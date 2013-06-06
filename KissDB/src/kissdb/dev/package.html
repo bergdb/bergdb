@@ -1,14 +1,12 @@
 <html><head><title>Package dev</title></head><body>
 
-<p>KissDB developers: <i>read this first</i>; this package contains documentation and classes for the 
-KissDB software developer.<p>
 
-<p>Depends on: com.kissdb.* (any kissdb package)</p>
-
-<p>KissDB is a keep-it-simple database designed for programmers who rather focus on 
-their specific application instead of on how to store their objects.</p>
+<p>KissDB developers: <i>read this first</i>; this package should contain the documentation you
+should need to modify the KissDB library for your needs.<p>
 
 <p>This package is not needed for production use and may be omitted from the final build.</p>
+
+<p>Depends on: com.kissdb.* (any kissdb package)</p>
 
 
 <!-- ====================================================================== -->
@@ -16,20 +14,18 @@ their specific application instead of on how to store their objects.</p>
 
 <p>The database performance is optimized for a modern 64-bit server. Typically 4 to 16 cores.
 1 to 2 CPUs. SSD or ordinary disk(s). But it should also run on very small devices with a unified
-source base. Settings can vary, however.</p>
+source base.</p>
 
 <p>There is only *one* DB stream format for all supported devices, operating systems and 
 programming languages.</p>
 
-<p>Logically, the database uses a single append-only stream (interface AppendOnlyStream).
-We do not explicitly implement storing data on multiple disks concurrently.</p>
+<p>Logically, the database uses a single append-only stream (interface stream.AppendOnlyStream).</p>
 
 <p><b>Serial writes</b>. While many transactions (both read and write) may run in parallel, write
-transactions are serialized and stored to permanent storage.</p>
+transactions are serialized for storage and stored to permanent storage.</p>
 
 <p>Anti-assumption: We DO NOT assume the system is running on a 64-bit server 
-with atomic operations on "long" and "double". Potentially, the database can run on very 
-small devices with little or no changes.</p>
+with atomic operations on "long" and "double".</p>
 
 
 <!-- ====================================================================== -->
@@ -93,10 +89,10 @@ Each package should specify its allowed package dependencies with a statement li
 rules are followed.</p>
 
 <p><b>Global stuff / static</b>. Do not use JVM global stuff (non-final "static" fields). 
-It should be possible to run multiple DB instances in one JVM. 
-Easy testing, limited dependencies.
-KissDB should run well in the same JVM together with other software. So no global
-state is set by KissDB (for example: default exception handler, logging).</p>
+It should be possible to run multiple KissDB instances in one JVM. 
+Easy testing, limited dependencies. KissDB should run well in the same JVM together with 
+other software. So no global state is set by KissDB (for example: default exception handler, 
+logging).</p>
 
 <p><b>Logging</b>. Do not use java.logging. This is global stuff, and its 
 benefits does not outweigh the added complexity, especially when KissDB is 
@@ -108,8 +104,6 @@ used in-JVM with other applications and other KissDB instances.</p>
 
 <p>With few exceptions, input and output is data read from / written to 
 the database.</p>
-
-<p>Warnings are handled by DB.warning().</p>
 
 <p>System.out is never used. System.err is never used. System.in is never used.</p>
 
@@ -185,8 +179,8 @@ to documentation etc.</p>
 <!-- ====================================================================== -->
 <h1>Documentation</h1>
 
-<p>All documentation needed to use KissDB should be included in the Javadoc files
-(possibly including files in doc-files/ directories). HTML and TXT files are allowed.
+<p>All documentation needed to use and modify KissDB should be included in the Javadoc files
+(possibly by including files in doc-files/ directories). HTML and TXT files are allowed.
 JPEG/PNG images are also allowed.<p>
 
 <p>Avoid separate documentation. The kissdb.com website should mostly simply have links to 
@@ -199,21 +193,20 @@ Javadoc (kissdb.com/api/2013.1/...).</p>
 <pre>
 -- Key replace --
 
-1. If we have code: Connection.store("d/${transactionTime}/d2/myObject.obj", obj); 
+1. If we have code: Connection.store("/d/${transactionTime}/d2/myObject.obj", obj); 
 We cannot check if directory is indexed. In theory the directory d/${transactionTime} could 
 replace into an existing indexed directory.
-   
-Possible solution: We could disallow key replacement for store() except in the last part of the key
-(simple key name).
 
-2. Consider: If there would be an indexed object with key "d/1230.obj" and an KV 
-with replace key "d/${transactionTime}.obj" evaluates to the same key -> we have a problem!
+Possible solution: We could disallow key replacement except in the last part of the key.
+
+2. Consider: If there would be an indexed object with key "/d/1230.obj" and an KV 
+with replace key "/d/${transactionTime}.obj" evaluates to the same key -> we have a problem!
 The old index entries are then not removed!
 
 Possible solution: Throw an exception if such a key already exists. Inform user that it is not
 allowed to have a *.obj key with replacements to replace an existing KV. 
-This may require a new setIfNotExisting (insert) feature in DB.
-We could disallow it only for indexed directories.
+This may require a new setIfNotExisting (insert) feature in DB. We could disallow it only 
+for indexed directories.
 </pre>
 
 
@@ -222,9 +215,7 @@ We could disallow it only for indexed directories.
 
 <p><a href="http://docs.oracle.com/javase/1.5.0/docs/api/">Java 1.5 API</a>, 
    <a href="http://javasourcecode.org/html/open-source/jdk/jdk-5.0/index.html">Source</a></p>
-
 <p><a href="http://demo.icu-project.org/icu-bin/locexp">ICU Demo: Locales/collations</a></p>
-
 
 
 </body></html>

@@ -7,13 +7,20 @@ class Person {
     public Person(String name) { this.name = name; }
 }
 
+/**
+ * Demo class, GetStarted1.
+ * 
+ * @author Frans Lundberg
+ */
 public class GetStarted1 {
     public static void main(String[] args) throws java.io.IOException {
         Person adam = new Person("Adam");
-        Database db = Factory.database().dir("demo-db").start();
+        Database db = Factory.database().dir("db-GetStarted1").start();
         Connection c = db.connection();
-        c.w().set("p.obj", adam).execute();
-        Person p = c.get("p.obj", Person.class);
+        
+        c.w().set("/p.obj", adam).execute();
+        Person p = c.get("/p.obj", Person.class);
+        
         System.out.println(p.name);
         db.sync();
     }

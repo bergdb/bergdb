@@ -208,8 +208,8 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
 
     <javadoc destdir="${javadoc-all-dir}"
     	    overview="src/overview-all.html"
-            doctitle="KissDB ${version} javadoc-all"
-            windowtitle="KissDB ${version} javadoc-all"
+            doctitle="KissDB ${version} doc-all"
+            windowtitle="KissDB ${version} doc-all"
             Footer="KissDB release: ${release}. Copyright Frans Lundberg."
             encoding="utf-8"
     	    linksource="no">   <!-- 1306 Frans: chose "no" for now. -->
