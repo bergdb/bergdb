@@ -1,0 +1,21 @@
+<html><head><title>Package kissdb.stream</title></head><body>
+
+<p>This package implements low-level append-only byte streams.
+Package was created in 2008.</p>
+
+<p>Depends on: common.</p>
+
+<h1>Append-only stream</h1>
+
+<p>The AppendOnlyStream interface is the most important interface of this 
+package. It provides a low-level, write once stream interface for the 
+rest of the system to use. Implementations in this package include 
+both in-memory and on disk implementations.</p>
+
+<p>Note that the append-only stream do not require any knowledge of the 
+bytes of the stream, it just provides random read access and append 
+access to a stream of bytes.</p>
+
+<p>The classes in this package are not thread-safe unless otherwise documented.</p>
+
+</body></html>

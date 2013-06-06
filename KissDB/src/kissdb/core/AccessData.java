@@ -1,0 +1,59 @@
+package kissdb.core;
+
+import kissdb.nanotest.Assert;
+
+/**
+ * <p>This class provides some functionality and most importantly documentation for node 
+ * "access data". The access data is stored as a long for performance reasons, not as a special 
+ * class. In addition, the access data long value shares storage space with an spos 
+ * (stream position) in KeyNode.pos (long[]) field. 
+ * An spos is used when we have a stream pointer, access data is
+ * used when we have a memory pointer. There is no need to have access data information for
+ * a stream pointer, so we can share the storage as an optimization.</p>
+ * 
+ * <p>The access data is updated when the pointer in a TopNode or KeyNode is followed.
+ * The value is used by the cache eviction to know when to evict a node from the cache.</p>
+ * 
+ * <p>An access data long should be created only with method DB.getAccessData().
+ * The current implementation of the method returns a value based on the counter 
+ * DB.cachedMemoryValue.</p>
+ * 
+ * <p>The value of an access data long is always negative, LTE -10 (LTE DB.minCacheMemoryValue).
+ * The negative range is used to differentiate it from an spos that is always non-negative.</p>
+ * 
+ * @see Spos
+ * @see KeyNode#pos
+ */
+abstract public class AccessData {
+    /**
+     * Checks whether the access data (a long) is valid.
+     */
+    public static final boolean isValid(long accessData) {
+        return accessData <= -Db.MIN_CACHE_MEMORY_VALUE;
+    }
+    
+    /**
+     * Returns "access time", given an access data long.
+     */
+    public static final long getAccessTime(long accessData) {
+        long result = -accessData;
+        assert result >= Db.MIN_CACHE_MEMORY_VALUE : "Unexpected accessData, " + accessData;
+        return result;
+    }
+    
+    /**
+     * Returns "access time", given an access data long.
+     */
+    public static final long getAccessTimeNoChecks(long accessData) {
+        return -accessData;
+    }
+    
+    public static void test1() {
+        long accessData = -Db.MIN_CACHE_MEMORY_VALUE;
+        Assert.assertTrue(isValid(accessData));
+    }
+    
+    public static void testDummy() {
+        new AccessData() {};
+    }
+}

@@ -1,0 +1,58 @@
+package kissdb.pubimp;
+
+import kissdb.common.Bug;
+
+/**
+ * Provides a way to use the ICU code without a Java reference to that code.
+ * This factory will use ICU package (com.kissdb.pubimpicu.IcuCollatorFactory) if available, 
+ * otherwise it default to use KissdbCollatorFactory.
+ *
+ * @author Frans Lundberg
+ */
+public class OptionalIcuCollatorFactory implements CollatorFactory {
+    private CollatorFactory factory;
+    
+    public OptionalIcuCollatorFactory() {
+        factory = init();
+    }
+    
+    private CollatorFactory init() {
+        Class<?> clazz;
+        CollatorFactory factory;
+        
+        if (!IcuInfo.hasIcu()) {
+            factory = new KissdbCollatorFactory();
+        } else {
+            String className = "kissdb.pubimpicu.IcuCollatorFactory";
+            
+            try {
+                clazz = Class.forName(className);
+            } catch (ClassNotFoundException e) {
+                return new KissdbCollatorFactory();
+            }
+            
+            Object factoryObject;
+            
+            try {
+                factoryObject = clazz.newInstance();
+                factory = (CollatorFactory) factoryObject;
+            } catch (InstantiationException e) {
+                throw new Bug("Should not happen, " + e.toString());
+            } catch (IllegalAccessException e) {
+                throw new Bug("Should not happen, " + e.toString());
+            } catch (ClassCastException e) {
+                throw new Bug("Class " + className + " does not implement CollatorFactory.");
+            }
+        }
+        
+        return factory;
+    }
+
+    public KCollator createCollator(String typeString) {
+        return factory.createCollator(typeString);
+    }
+
+    public boolean typeSupported(String typeString) {
+        return factory.typeSupported(typeString);
+    }
+}
