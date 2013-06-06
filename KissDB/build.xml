@@ -212,7 +212,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
             windowtitle="KissDB ${version} javadoc-all"
             Footer="KissDB release: ${release}. Copyright Frans Lundberg."
             encoding="utf-8"
-    	    linksource="no">   <!-- 1304 Frans: chose "no" for now. -->
+    	    linksource="no">   <!-- 1306 Frans: chose "no" for now. -->
         <packageset dir="src" defaultexcludes="yes">
         </packageset>
 

@@ -31,7 +31,7 @@ public class BuildInfo {
     /**
      * KissDB build ID, for example "2013.2.130401.1400".
      */
-    public static final String build = Util.identity("2013.1.130606.0836");
+    public static final String build = Util.identity("2013.1.130606.1732");
     
     /**
      * Prints build information to System.out.
