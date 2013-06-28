@@ -594,7 +594,6 @@ public class RecoverableStream {
         }
         
         @T
-        @SuppressWarnings("unused")
         private static void testGetTransPos() {
             Assert.assertEquals(0, getTransPos(0));
             Assert.assertEquals(0, getTransPos(1));

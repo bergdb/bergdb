@@ -116,6 +116,7 @@ public class Ciphers {
             }
         }
         double time = (System.nanoTime() - t0) * 1e-9;
+        cout.close();
         
         c.report(cipherName, bytesWritten / (time * 1024 * 1024));
         

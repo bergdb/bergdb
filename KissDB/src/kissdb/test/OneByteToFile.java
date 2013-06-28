@@ -43,6 +43,7 @@ public class OneByteToFile {
             r.write(i);    // writes a single byte
         }
         t = System.nanoTime() - t;
+        r.close();
         
         c.report("n", n);
         c.report("time", t*1e-9);

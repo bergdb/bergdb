@@ -56,6 +56,7 @@ public class FileSystemCache {
             f.readFully(block, 0, block.length);
         }
         t1 = System.nanoTime();
+        f.close();
         
         double time = 1e-9 * (t1 - t0);
         c.report("timePerBlock" + block.length, time/N);
@@ -89,6 +90,7 @@ public class FileSystemCache {
             buffer.get(block, 0, block.length);
         }
         t1 = System.nanoTime();
+        f.close();
         
         double time = 1e-9 * (t1 - t0);
         c.report("timePerBlock" + block.length, time/N);
