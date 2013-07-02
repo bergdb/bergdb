@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<head>
+  <title>KissDB - get started!</title>
+  <meta name="keywords" content="KissDB, NoSQL, database, append-only, get started"/>
+
+  <style>
+body {
+  font-size: 100%;
+  font-family: Arial, sans-serif;
+  color: #000;
+  background: #fff;
+  line-height: 140%;
+  margin: 0px;
+  padding: 0px;
+}
+
+.content {
+  width: 80%;
+  max-width: 48em;
+  margin-left: 10%;
+  margin-right: 10%;
+}
+
+h1 {
+  font-size: 2em;
+  font-family: "Courier New", Courier, monospace;
+  font-weight: bold;
+  color: #333;
+  border-bottom: 0.2em solid #f09;
+  margin-top: 2em;
+}
+
+h2 {
+  font-size: 1.3em;
+  font-family: "Courier New", Courier, monospace;
+  font-weight: bold;
+  color: #333;
+  margin-top: 1em;
+}
+
+p {
+  margin-bottom: 0.8em;
+  margin-top: 0.8em;
+}
+
+a {
+  text-decoration: none;
+  color: #f09;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.source {
+  font-family: "Liberation Mono", "Lucida Console", "Lucida Sans Typewriter", monospace;
+  font-size: 0.80em;
+  line-height: 120%;
+  color: #000;
+  white-space: pre;
+  margin: 2em 0em 2em 0em;
+  border: 1px solid #ddd;
+  padding: 0.8em;
+  background: #eee;
+}
+
+.source:hover {
+  border-color: #bbb;
+}
+  </style>
+</head>
+
+<body>
+<div class="content">
+
+<!-- ======================================================================= -->
+<p>Frans Lundberg, Saltsjobaden, June 2013</p>
+
+
+<!-- ======================================================================= -->
+<h1>Get started...</h1>
+
+<p>...with the Pub API of KissDB. It should be fun and simple to store objects
+and hopefully the Pub API won't bother you too much once you get the hang of it.</p>
+
+<p>The code examples are also available in the <code>kissdb.demo</code> 
+package in the KissDB distribution.</p>
+
+
+<!-- ======================================================================= -->
+<h1>Store an object</h1>
+
+<p>The code below creates a new database in directory demo-db and stores the adam 
+object to it. Then it reads back the object and prints the name field. 
+Yes, it really is that simple :-). No query language, no special annotations, 
+no interfaces, no xml settings - just code.</p>
+
+
+<h2>Java version</h2>
+
+<p>Include <code>kissdb.jar</code> in your Java project and run this code:</p>
+
+<div class="source">package demo;
+import kissdb.pub.*;
+
+class Person {
+    public String name;
+    public Person() {};
+    public Person(String name) { this.name = name; }
+}
+
+public class GetStarted1 {
+    public static void main(String[] args) throws java.io.IOException {
+        Person adam = new Person("Adam");
+        Database db = Factory.database().dir("demo-db").start();
+        Connection c = db.connection();
+        c.w().set("/p.obj", adam).execute();
+        Person p = c.get("/p.obj", Person.class);
+        System.out.println(p.name);
+        db.sync();
+    }
+}
+</div>
+
+
+<h2>C# version</h2>
+
+<p>Include the dll files in the dotnet/ directory of the KissDB download</a> 
+in your C# project. Then run this code:</p>
+
+<div class="source">using System;
+using kissdb.pub;
+
+namespace demo {
+    class Person {
+        public string name;
+        public Person() {}
+        public Person(String name) { this.name = name; }
+    }
+
+    class GetStarted1 {
+        public static void Main(string[] args) {
+            Person adam = new Person("Adam");
+            Database db = Factory.database().dir("db-GetStarted1").start();
+            Connection c = db.connection();
+            
+            c.w().set("/p.obj", adam).execute();
+            Person p = c.get("/p.obj", Person.class);
+            
+            System.out.println(p.name);
+            db.sync();
+        }
+    }
+}
+</div>
+
+<p>As you can see, the Java code and C# code is nearly identical. KissDB was 
+designed to work well for both Java and .NET languages. Note that a cast is
+required, <code>(Person)</code>, in C# while it can be omitted in Java.
+Also note that in C#, Java's <code>.class</code> suffix cannot be used. 
+Instead use the <code>typeof</code> operator.</p>
+
+<h2>Languages</h2>
+
+<p>KissDB should be possible to use from any Java or .NET language which include: 
+Java, Scala, Clojure, Groovy, JRuby, Jython, Rhino, C#, F#, VB.NET and more.
+KissDB is developed using Java source code and converted to a .NET library
+using IKVM (www.ikvm.net, thank you Jeroen Frijters!). The documentation for 
+KissDB, the Pub API and code examples mostly assumes Java. However, I hope 
+the docs should not be too hairy for a developer working with another language.
+</p>
+
+<p>I gladly receive information on how it is to use KissDB from other 
+languages than Java and C#.</p>
+
+<h2>Comments</h2>
+
+<p>The simple example above can used to store more complex objects.
+Java classes with field types: boolean, int, long, double, byte[]
+(or arrays of those types) are best suited for storing with KissDB, 
+but the other primitive types work too.</p>
+
+<p>Fields that are not static and not transient will be stored
+including private fields.</p>
+
+<p>The class of objects to store should have an empty constructor.</p>
+
+
+<!-- ======================================================================= -->
+<h1>Store two objects in a transaction</h1>
+
+<p>This example, adds a bit of code to store both <code>adam</code>
+and <code>eve</code> in the database.</p>
+
+<div class="source">package demo;
+import kissdb.pub.*;
+
+public class GetStarted2 {
+    public static void main(String[] args) throws java.io.IOException {
+        Person adam = new Person("Adam");
+        Person eve = new Person("Eve");
+        Database db = Factory.database().dir("db-GetStarted2").start();
+        Connection c = db.connection();
+        
+        c.w().set("/genesis/a.obj", adam)
+             .set("/genesis/e.obj", eve).execute();
+        
+        System.out.println(c.get("/genesis/a.obj", Person.class).name);
+        System.out.println(c.get("/genesis/e.obj", Person.class).name);
+        db.sync();
+    }
+}
+</div>
+
+<p>Both objects are stored in one ACID transaction. Another thread
+reading from the database will always see none or both objects.
+This is comparable to the highest SQL isolation level: <i>serializable</i>.
+Using KissDB, you will <i>never ever</i> have to deal with phantom reads,
+non-repeatable reads, dirty reads. Readers will <i>always</i> see a consistent
+state of the data. Yet, the performance of KissDB does not suffer. 
+The database has been optimized for serializable ACID transactions 
+using performant optimistic concurrency and fast append-only storage.</p>
+
+
+<!-- ======================================================================= -->
+<h1>Iterate objects</h1>
+
+<p>The code below iterates the objects stored in the previous example.</p>
+
+<div class="source">package demo;
+import kissdb.pub.*;
+
+public class GetStarted3 {
+    public static void main(String[] args) throws java.io.IOException {
+        Database db = Factory.database().dir("db-GetStarted2").start();
+        Connection c = db.connection();
+        
+        for (Person p : c.usePrimary(Person.class).dir("/genesis/").objects()) {
+            System.out.println(p.name);
+        }
+        
+        System.out.println("Backward:");
+        for (Person p : c.usePrimary(Person.class).dir("/genesis/").backward().objects()) {
+            System.out.println(p.name);
+        }
+        
+        System.out.println("Start at c:");
+        for (Person p : c.usePrimary(Person.class).dir("/genesis/").startAt("c").objects()) {
+            System.out.println(p.name);
+        }
+    }
+}
+</div>
+
+<p>This example iterates the objects stored with GetStarted2; forward, backward 
+and then forward starting from "c".</p>
+
+<p>Note that all keys start with "/". KissDB objects are stored using string 
+keys that form a hierarchy - this is much inspired by a Unix filesystem; thus
+the beginning "/" for the absolute path to an object.</p>
+
+
+
+<!-- ======================================================================= -->
+<h1>An RW transaction</h1>
+
+<p>This example shows how a payment is made in an RW transaction. 
+An RW transaction is a transaction that both reads and writes to the database 
+and the writes are dependent on the values from the reads.</p>
+
+<div class="source">package demo;
+import kissdb.pub.*;
+
+class Account {
+    String key;
+    long balance;
+    
+    Account() {}
+    
+    Account(String key, long balance) {
+        this.key = key;
+        this.balance = balance;
+    }
+    
+    public String toString() {
+        return key + ": " + balance;
+    }
+}
+
+public class GetStarted4 {
+    public static void main(String[] args) throws java.io.IOException {
+        Database db = Factory.database().dir("db-GetStarted4").start();
+        Connection c = db.connection();
+        
+        Account a0 = c.get("/accounts/0.obj", Account.class);
+        Account a1 = c.get("/accounts/1.obj", Account.class);
+        
+        // Creates accounts if they do not exist.
+        
+        if (a0 == null) {
+            a0 = new Account("/accounts/0.obj", 100);
+            c.w().set(a0).execute();
+        }
+        
+        if (a1 == null) {
+            a1 = new Account("/accounts/1.obj", 100);
+            c.w().set(a1).execute();
+        }
+        
+        // Performs a payment if there is enough money.
+        
+        final long amount = 30;
+        
+        c.rw(new Action() {
+            public void run(RwEnvironment env) {
+                Account acc0 = env.get("/accounts/0.obj", Account.class);
+                Account acc1 = env.get("/accounts/1.obj", Account.class);
+                
+                if (acc0.balance &lt; amount) {
+                    throw new IllegalStateException(
+                            "Not enough money on: " + acc0);
+                }
+                
+                acc0.balance -= amount;
+                acc1.balance += amount;
+                
+                env.set(acc0);
+                env.set(acc1);
+            }
+        }).execute().waitForD2();
+        
+        // Lists accounts
+        
+        for (Account a : c.usePrimary(Account.class).objects()) {
+            System.out.println(a);
+        }
+    }
+}
+</div>
+
+<p>Run the code several times to until the not-enough-money exception is thrown.</p>
+
+<p>An RW transaction is run by providing an Action for the database to execute.
+The action must always yield the same result (same data written database objects)
+for a certain input (objects read from the database). The run method may 
+execute more then once if there are many concurrent users of the database.
+This is due to the STM (software transactional memory) approach taken by 
+KissDB to achieve performance ACID transactions.</p>
+
+<p>The example demonstrates the use of a key field in the class to store the
+database keys.</p>
+
+
+<!-- ======================================================================= -->
+<h1>What to do now?</h1>
+
+<p>There are many more features, such as secondary indexes. Check out the Javadoc
+and kissdb.com for more information.</p>
+
+<p>Thank you for testing KissDB!</p>
+
+</div>  <!-- end of content -->
+</body>

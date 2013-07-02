@@ -1,0 +1,112 @@
+package bergdb.stream;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+
+import bergdb.common.IWarner;
+
+
+// NOTE 1305 Frans: We could make this stream more useful for real applications. For saving settings
+// or something like that, we really would like a single, small file. 
+// It may be enough to shrink file at startup.
+
+/**
+ * A simple AppendOnlyStream stored in a single file.
+ * Good for testing, but not useful for most real applications since the file grows forever.
+ * 
+ * @author Frans Lundberg
+ */
+public class OneFileStream implements AppendOnlyStream {
+    //
+    // We assume the file is not changed by other threads/processes while this object has
+    // opened it. The size of the file is computed in this class.
+    //
+    private RandomAccessFile rfile;
+    private Object sizeSynch = new Object();
+    private long size;
+    private IWarner warner;
+    
+    /**
+     * Creates a new write-once storage, or opens existing one.
+     * The stream size is assumed to equal the file size.
+     */
+    public OneFileStream(File file) throws FileNotFoundException, IOException {
+        rfile = new RandomAccessFile(file, "rw");
+        size = rfile.length();
+    }
+    
+    public long getLength() {
+        synchronized (sizeSynch) {
+            return size;
+        }
+    }
+    
+    /**
+     * Always returns 0, file never pretruncated.
+     */
+    public long getFirstPos() {
+        return 0;
+    }
+
+    public void append(byte[] source, int sourceOffset, int length) throws IOException {   
+        synchronized (rfile) {
+            rfile.seek(rfile.length());
+            rfile.write(source, sourceOffset, length);
+            
+            synchronized (sizeSynch) {
+                size += length;
+            }
+        }
+    }
+
+    public void read(long position, byte[] dest, int destOffset, int length) throws IOException {
+        synchronized (rfile) {
+            rfile.seek(position);
+            rfile.readFully(dest, destOffset, length);
+        }
+    }
+    
+    public void stop() {
+        if (rfile != null) {
+            try {
+                rfile.close();
+            } catch (IOException e) {
+                warn("Error when closing file.", e);
+            }
+        }
+    }
+    
+    public void close() {
+        stop();
+    }
+    
+    private void warn(String message, Throwable t) {
+        IWarner w = this.warner;
+        if (w != null) {
+            w.warn(message, t);
+        }
+    }
+    
+    public void setWarner(IWarner warner) {
+        if (warner == null) {
+            throw new IllegalArgumentException("warner == null not allowed");
+        }
+        this.warner = warner;
+    }
+
+    /**
+     * The method in this class does nothing. Disk space is never reclaimed.
+     */
+    public void pretruncate(long position) throws IOException {
+        // Note. An alternative implementation could copy the file to shrink it.
+        // This could be done by simply stopping the stream to copy the file, or better but more
+        // advanced, the file could be copied while the DB is running and a switch-over to the 
+        // new file and a delete of the old one is done.
+    }
+    
+    public void seekFirstPos(long pos) {
+        throw new UnsupportedOperationException();
+    }
+}

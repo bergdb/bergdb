@@ -1,0 +1,221 @@
+<html><head><title>Package dev</title></head><body>
+
+
+<p>KissDB developers: <i>read this first</i>; this package should contain the documentation you
+should need to modify the KissDB library for your needs.<p>
+
+<p>This package is not needed for production use and may be omitted from the final build.</p>
+
+<p>Depends on: com.kissdb.* (any kissdb package)</p>
+
+
+<!-- ====================================================================== -->
+<h1>General assumptions</h1>
+
+<p>The database performance is optimized for a modern 64-bit server. Typically 4 to 16 cores.
+1 to 2 CPUs. SSD or ordinary disk(s). But it should also run on very small devices with a unified
+source base.</p>
+
+<p>There is only *one* DB stream format for all supported devices, operating systems and 
+programming languages.</p>
+
+<p>Logically, the database uses a single append-only stream (interface stream.AppendOnlyStream).</p>
+
+<p><b>Serial writes</b>. While many transactions (both read and write) may run in parallel, write
+transactions are serialized for storage and stored to permanent storage.</p>
+
+<p>Anti-assumption: We DO NOT assume the system is running on a 64-bit server 
+with atomic operations on "long" and "double".</p>
+
+
+<!-- ====================================================================== -->
+<h1>Coding</h1>
+
+<pre>
+GENERAL
+* Use Java 1.5. Generics is allowed.
+* Annotations are only allowed for non-production code (test-code).
+* Do not use enums. (Issues with cross-compiling).
+* Do not use weak references because of GCJ issues.
+* Be careful with printf/String.format() because of GCJ issues. And to have one less IKVM DLL.
+* Do not use resource files because of GCJ issues and complexity in general.
+
+CODE STYLE
+* Follow Sun's (Oracle's) Java code style (but allow some deviation if useful) unless otherwise
+    specified here.
+* Use 100 columns instead of 80 (same as Android).
+* Treat acronyms as words. Eg.: getId(), getHtml(), setUrl() (same as Android).
+* One-line if statements are allowed (no curlys).
+    if (print) System.out.println("...");
+* Android has a good code style almost identical to Sun's original at
+    http://source.android.com/source/code-style.html
+* Use "public" in front of interface methods.
+
+JAVADOC
+* Use Javadoc. Class comments, method comments. Use few tags: @deprecated, @param, @throws, @author.
+* Use Javadoc "@author Frans Lundberg" for top-level classes/interfaces.
+* ALL classes/interface/methods of the Pub API must be have Javadoc comments.
+* ALL classes/interfaces must have Javadoc comments.
+* See Oracle's: "How to Write Doc Comments for the Javadoc Tool".
+  http://www.oracle.com/technetwork/java/javase/documentation/index-137868.html
+</pre>
+
+<p><b>Testing</b>. Use Nanotest (com.kissdb.nanotest). Use it for unit tests
+(nanotest group <b>unit</b>), functional tests (<b>f</b>) and performance tests (<b>perf</b>).
+A major reason for using Nanotest is to be able to self-test easily (even when compiled with GCJ, 
+IKVM, ..). Nanotest is very simple and small compare to JUnit and it allows test methods directly
+in the classes to be tested. I like when the test follows the testee with moves/renaming/deletion.
+A "unit" test should run within 0.1 s, an "f" test should run within 10 s.
+"perf" tests have no limit.
+The difference between "unit" tests and "f" tests is not strictly functional, but about 
+execution time. Both of the test types, test that the code is working properly.
+All "unit" test are normally successful at commit. "f" tests are not necessarily run before every
+commit, but should be run at least once week and after larger modifications.</p>
+
+<p>Use NOTE in addition to TODO and XXX. NOTE is used for something we may want 
+to modify at in the future. Possible improvements, considerations. 
+NOTEs can be kept in the code indefinitely, while XXX are temporary and
+should be gone before each commit. Most TODOs should be gone before a release.
+Use backlog for future tasks.</p>
+
+<p><b>Access rules</b>. "protected" keyword is not allowed and package access 
+is seldom used. This is to keep things simple, and make it work with GCJ.
+We need more advanced access rules anyway; they cannot be enforced by the Java compiler. 
+Instead, allowed access is determined by the allowed package dependencies.</p>
+
+<p><b>package.html</b>. Use Javadoc package.html files to document the Java packages.
+Each package should specify its allowed package dependencies with a statement like:
+<code>Depends on: list-of-packages</code>. kissdb/jdepend.sh is used to verify that these
+rules are followed.</p>
+
+<p><b>Global stuff / static</b>. Do not use JVM global stuff (non-final "static" fields). 
+It should be possible to run multiple KissDB instances in one JVM. 
+Easy testing, limited dependencies. KissDB should run well in the same JVM together with 
+other software. So no global state is set by KissDB (for example: default exception handler, 
+logging).</p>
+
+<p><b>Logging</b>. Do not use java.logging. This is global stuff, and its 
+benefits does not outweigh the added complexity, especially when KissDB is 
+used in-JVM with other applications and other KissDB instances.</p>
+
+
+<!-- ====================================================================== -->
+<h1>Input/output</h1>
+
+<p>With few exceptions, input and output is data read from / written to 
+the database.</p>
+
+<p>System.out is never used. System.err is never used. System.in is never used.</p>
+
+
+<!-- ====================================================================== -->
+<h1>Build</h1>
+
+<p>The source is built with vastly different targets in mind. It is build to a Java jar
+with Java byte code, of course. Also it is build to native machine code and to .NET (IL).</p>
+
+
+<h3>Java JAR</h3>
+
+<p>The source is built to one jar: "kissdb.jar". Source files are not included in this jar.</p>
+
+
+<h3>GCJ</h3>
+
+<p>The source also compiles to native machine code with GCJ. We should be able to compile
+it both to an executable and a library.
+Some restrictions when programming: not all "printf" statements work. For example:
+<code>System.out.printf("%s: %.3f s\n", currentMethodName, exeTime);</code>
+does not work. We avoid using "printf" all together as a work-around.</p>
+
+<p>Resource files are problematic, should work, but I did not manage to get it to compile
+when compiling the project from source.</p>
+
+<p>Other things to avoid: weak references.</p>
+
+<p>Assertions can be tricky to disable when compiling from jar file (kissdb.jar) instead of
+from source.</p>
+
+<p>In general, GCJ seems a bit old. Not much updated the last years. Lack of documentation.
+However, it does seem to work with a few limitiations on the Java coding.</p>
+
+
+<h3>IKVM</h3>
+
+<p>Works well, no problems at all. See build/ikvm.</p>
+
+
+<!-- ====================================================================== -->
+<h1>Versions and releases</h1>
+
+<p><b>Version</b>. "2013.1" is used as the <i>version ID</i> of the first KissDB version in 2013. 
+2013.2, 2013.3, 2014.1, 2014.2 are used for the following public releases (assuming 3 releases 
+in 2013). There must be no more than 9 versions for one specific year.
+The <b>version int</b> is 131, 132, 133, 141, 142 for the above example releases. The version
+int makes it simple to compare versions. It should be used internally only.
+The version ID and the version int are available from the class db.BuildInfo.
+The year (2013, 2014) is the <i>major version number</i>, and the second number if the 
+<i>minor version number</i>.
+A change in minor version adds functionality, improves existing functionality and aims to
+be backward compatible with previous versions with the same major version number.
+When the major version changes, changes may be introduced that are not backward compatible.</p>
+
+<p>New methods and features can be marked with "since" in Javadoc, example: "@since 2013.2".</p>
+
+<p><b>Release</b>. A KissDB software release is one single zip file made available from kissdb.com.
+</p>
+
+<p>Each release of a new zip file is given a release ID. A <i>release ID</i> contains the KissDB 
+version plus the release date. Examples: "2013.1.130401", "2013.2.130301", "2013.1.130601", 
+"2013.2.130610".Releases of old versions may be made, but should be avoided since newer minor 
+versions should be backward compatible. But such releases are allowed. Simple mistakes, updates 
+to documentation etc.</p>
+
+<p><b>Build</b>. Builds are used internally by KissDB developers (me only :-)). 
+<i>Build IDs</i> has HHMM added to the build ID. Examples: "2013.1.130401.1330", 
+"2013.2.130630.1500".</p>
+
+
+<!-- ====================================================================== -->
+<h1>Documentation</h1>
+
+<p>All documentation needed to use and modify KissDB should be included in the Javadoc files
+(possibly by including files in doc-files/ directories). HTML and TXT files are allowed.
+JPEG/PNG images are also allowed.<p>
+
+<p>Avoid separate documentation. The kissdb.com website should mostly simply have links to 
+Javadoc (kissdb.com/api/2013.1/...).</p>
+
+
+<!-- ====================================================================== -->
+<h1>Known issues/limitations</h1>
+
+<pre>
+-- Key replace --
+
+1. If we have code: Connection.store("/d/${transactionTime}/d2/myObject.obj", obj); 
+We cannot check if directory is indexed. In theory the directory d/${transactionTime} could 
+replace into an existing indexed directory.
+
+Possible solution: We could disallow key replacement except in the last part of the key.
+
+2. Consider: If there would be an indexed object with key "/d/1230.obj" and an KV 
+with replace key "/d/${transactionTime}.obj" evaluates to the same key -> we have a problem!
+The old index entries are then not removed!
+
+Possible solution: Throw an exception if such a key already exists. Inform user that it is not
+allowed to have a *.obj key with replacements to replace an existing KV. 
+This may require a new setIfNotExisting (insert) feature in DB. We could disallow it only 
+for indexed directories.
+</pre>
+
+
+<!-- ====================================================================== -->
+<h1>Link collection</h1>
+
+<p><a href="http://docs.oracle.com/javase/1.5.0/docs/api/">Java 1.5 API</a>, 
+   <a href="http://javasourcecode.org/html/open-source/jdk/jdk-5.0/index.html">Source</a></p>
+<p><a href="http://demo.icu-project.org/icu-bin/locexp">ICU Demo: Locales/collations</a></p>
+
+
+</body></html>

@@ -1,0 +1,38 @@
+package bergdb.dev;
+
+import bergdb.common.IPack;
+
+/**
+ * Almost identical to bergdb.dbdev.Unit, but ipacks array contains a larger set of 
+ * packages to test.
+ * 
+ * @author Frans Lundberg
+ */
+public class Unit extends bergdb.coredev.CoreUnit {
+     
+    private static IPack[] ipacks = new IPack[]{
+        new bergdb.common.Pack(),
+        new bergdb.core.Pack(),
+        new bergdb.test.java.Pack(),
+        new bergdb.pubimp.Pack(),
+        new bergdb.stream.Pack(),
+        new bergdb.test.Pack(),
+        new bergdb.dev.Pack()
+    };
+    
+    public static IPack[] getIPacksStatic() {
+        return ipacks;
+    }
+    
+    @Override
+    public IPack[] getIPacks() {
+        return ipacks;
+    }
+
+    /**
+     * Runs the unit tests (nano tests in group "unit"). No parameters used.
+     */
+    public static void main(String[] args) {
+        new Unit().go(args);
+    }
+}
