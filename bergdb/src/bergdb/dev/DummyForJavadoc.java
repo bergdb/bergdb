@@ -45,7 +45,7 @@ If a beta feature is later included, the @version tag is replaced by a "@since 2
 
 Note! @beta for method results in Javadoc tool warning:
 
-[javadoc] /f/files/bergdb/p/KissDB/src/bergdb/dev/DummyForJavadoc.java:18: 
+[javadoc] /f/files/bergdb/p/BergDB/src/bergdb/dev/DummyForJavadoc.java:18: 
 warning - Tag @version cannot be used in method documentation.  It can only be used in 
 the following types of documentation: overview, package, class/interface.
 

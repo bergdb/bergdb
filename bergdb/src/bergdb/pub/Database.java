@@ -6,7 +6,7 @@ import java.util.List;
 import bergdb.pubimp.IndexManager;
 
 /**
- * <p>A representation of a KissDB database. Call start() before any other methods.</p>
+ * <p>A representation of a BergDB database. Call start() before any other methods.</p>
  * 
  * <p>Multiple Database objects in the same process representing the same database
  * should be avoided.</p>

@@ -2,7 +2,7 @@ package bergdb.common;
 
 /**
  * 2-tuple implementation.
- * This class and Triplet forms a very simple tuple library for KissDB. 
+ * This class and Triplet forms a very simple tuple library for BergDB. 
  * If we need more feature, we should switch to http://www.javatuples.org/.
  * 
  * @param <T0>

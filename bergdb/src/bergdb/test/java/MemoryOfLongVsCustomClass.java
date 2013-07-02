@@ -78,7 +78,7 @@ public class MemoryOfLongVsCustomClass {
 
 /*
 2012-05
-$ java -cp p/KissDB/ -server -Xmx1000m com.bergdb.main.RunPerf "com.bergdb.perf.MemoryOfLongVsCustomClass"
+$ java -cp p/BergDB/ -server -Xmx1000m com.bergdb.main.RunPerf "com.bergdb.perf.MemoryOfLongVsCustomClass"
 com.bergdb.perf.MemoryOfLongVsCustomClass.run.memPerLong: 16.012
 com.bergdb.perf.MemoryOfLongVsCustomClass.run.memPerCustomObject: 16.00448
 */

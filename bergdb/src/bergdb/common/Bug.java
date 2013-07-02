@@ -5,7 +5,7 @@ package bergdb.common;
  * The code has a bug.
  * Assumptions are not fulfilled; the application should typically terminate when this exception
  * has been thrown.
- * This exception type can be used in KissDB code to assert an assumption.
+ * This exception type can be used in BergDB code to assert an assumption.
  * This is to fail-fast, give a good error message for developers, and avoid data corruption
  * in the database.</p>
  */

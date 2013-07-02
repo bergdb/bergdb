@@ -6,7 +6,7 @@ import java.lang.reflect.Method;
 
 /**
  * Main entry point to run other executable classes. Useful when it is not possible to run 
- * specified classes directly, for example when KissDB is compiled to a native executable.
+ * specified classes directly, for example when BergDB is compiled to a native executable.
  * 
  * @author Frans Lundberg
  */
@@ -33,7 +33,7 @@ public class Run {
         out.println();
         out.println("Available executable classes:");
         out.println("  " + bergdb.coredev.CoreUnit.class.getName() + " - Runs unit tests for Core Layer.");
-        out.println("  " + bergdb.coredev.Info.class.getName() + " - Prints info about KissDB and the environment.");
+        out.println("  " + bergdb.coredev.Info.class.getName() + " - Prints info about BergDB and the environment.");
         out.println();
         out.println("Use args: '<nameOfClass> <argsForClass>' to run an executable class.");
         out.println("Many executable classes print help text if executed with the single argument 'help'.");

@@ -1456,7 +1456,7 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
      * @throws StreamIoException
      *             If there was an i/o error with the database stream.
      * @throws InternalDataException
-     *             If KissDB internal data in the database is corrupt.
+     *             If BergDB internal data in the database is corrupt.
      */
     public final void execute(final Trans t) {
         //
@@ -2875,7 +2875,7 @@ throughput of small transactions at 100,000 transactions/s, so the
 exclusive-write-access does not result in bad performance. Likely, the
 underlying storage device will limit the performance.
 
-All transactions of KissDB are ACID transactions. Using an SQL term, the
+All transactions of BergDB are ACID transactions. Using an SQL term, the
 isolation level is serializable (the highest isolation level) with maintained
 performance.
  

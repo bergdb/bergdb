@@ -55,12 +55,12 @@ public interface IndexBuilder {
      * string index for a particular language. For example, "string/sv" will create an index
      * that sorts strings according to the conventions of the Swedish language.</p>
      * 
-     * <p>A specific way to sort strings is often called a "collation". KissDB uses ICU
+     * <p>A specific way to sort strings is often called a "collation". BergDB uses ICU
      * (http://icu-project.org/) for collation support (release 50.1, Dec 2012). 
      * ICU has a large collection of collation implementations that follows the UCA (Unicode 
      * Collation Algorithm) standard, available at http://www.unicode.org/reports/tr10/.</p>
      * 
-     * <p>The following collations (languages) are supported by KissDB 
+     * <p>The following collations (languages) are supported by BergDB 
      * (in addition to "string/unicode"):</p>
      * 
      * <pre>
@@ -171,9 +171,9 @@ public interface IndexBuilder {
      *   string/pl        - Polish language, comparison level L1.
      * </pre>
      * 
-     * <p>Note, builds of KissDB may not include ICU support and therefore will only support the
+     * <p>Note, builds of BergDB may not include ICU support and therefore will only support the
      * "string/unicode" collator. This means that indexes created with ICU collators may be 
-     * impossible to use in limited KissDB environments.</p>
+     * impossible to use in limited BergDB environments.</p>
      */
     public IndexBuilder type(String indexTypeString);
     

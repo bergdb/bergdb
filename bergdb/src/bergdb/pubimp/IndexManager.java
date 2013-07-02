@@ -1088,7 +1088,7 @@ public class IndexManager {
     public static class Tester {
         @T
         public static void testIndexConstructor1() {
-            IndexManager m = new IndexManager(new KissdbCollatorFactory());
+            IndexManager m = new IndexManager(new BergCollatorFactory());
             IndexManager.Index index = new Index("index1", new String[] {"d/testGetKey/"}, 
                     new String[][] {{"account"}, {"time"}}, new String[] {"long", "long"}, m);
             
@@ -1097,7 +1097,7 @@ public class IndexManager {
         
         @T
         public static void testIndexConstructor2() {
-            IndexManager m = new IndexManager(new KissdbCollatorFactory());
+            IndexManager m = new IndexManager(new BergCollatorFactory());
             IndexManager.Index index = new Index("index1", new String[] {"d/testGetKey/"}, 
                     new String[][] {{"from", "to"}, {"time", "rTime"}}, new String[] {"long", "long"}, m);
             
@@ -1122,7 +1122,7 @@ public class IndexManager {
             String[] types =     {"long", "double", "string", "a", "", "longs", "doublex", "string/"};
             boolean[] expected = {true,   true,     true,     false, false, false, false,  false};
             
-            IndexManager m = new IndexManager(new KissdbCollatorFactory());
+            IndexManager m = new IndexManager(new BergCollatorFactory());
             
             for (int i = 0; i < types.length; i++) {
                 Assert.assertEquals(expected[i], m.typeSupported(types[i]));

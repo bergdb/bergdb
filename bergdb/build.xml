@@ -182,8 +182,8 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
 
 	
 <target name="javadoc" depends="init, compile" description="Creates javadoc.">
-    <property name="javadoc-dir" value="${base}/${version}/doc"/>
-    <property name="javadoc-all-dir" value="${base}/${version}/more/doc-all"/>
+    <property name="javadoc-dir" value="${base}/${version}/javadoc"/>
+    <property name="javadoc-all-dir" value="${base}/${version}/more/javadoc-all"/>
 	
     <mkdir dir="${base}/${version}"/>   <!-- Creates directory in case it would not exist. -->
     <delete dir="${javadoc-dir}" failonerror="false"/>
@@ -208,8 +208,8 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
 
     <javadoc destdir="${javadoc-all-dir}"
     	    overview="src/overview-all.html"
-            doctitle="BergDB ${version} doc-all"
-            windowtitle="BergDB ${version} doc-all"
+            doctitle="BergDB ${version} javadoc-all"
+            windowtitle="BergDB ${version} javadoc-all"
             Footer="BergDB release: ${release}. Copyright Frans Lundberg."
             encoding="utf-8"
     	    linksource="no">   <!-- 1306 Frans: chose "no" for now. -->

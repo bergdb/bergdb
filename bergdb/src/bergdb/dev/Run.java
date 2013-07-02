@@ -6,7 +6,7 @@ import java.lang.reflect.Method;
 
 /**
  * Main entry point to run other executable classes. Useful when it is not possible to run 
- * specified classes directly, for example when KissDB is compiled to a native executable.
+ * specified classes directly, for example when BergDB is compiled to a native executable.
  * 
  * @author Frans Lundberg
  */

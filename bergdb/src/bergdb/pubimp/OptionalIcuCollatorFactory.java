@@ -5,7 +5,7 @@ import bergdb.common.Bug;
 /**
  * Provides a way to use the ICU code without a Java reference to that code.
  * This factory will use ICU package (com.bergdb.pubimpicu.IcuCollatorFactory) if available, 
- * otherwise it default to use KissdbCollatorFactory.
+ * otherwise it default to use BergCollatorFactory.
  *
  * @author Frans Lundberg
  */
@@ -21,14 +21,14 @@ public class OptionalIcuCollatorFactory implements CollatorFactory {
         CollatorFactory factory;
         
         if (!IcuInfo.hasIcu()) {
-            factory = new KissdbCollatorFactory();
+            factory = new BergCollatorFactory();
         } else {
             String className = "bergdb.pubimpicu.IcuCollatorFactory";
             
             try {
                 clazz = Class.forName(className);
             } catch (ClassNotFoundException e) {
-                return new KissdbCollatorFactory();
+                return new BergCollatorFactory();
             }
             
             Object factoryObject;

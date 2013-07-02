@@ -2,7 +2,7 @@ package bergdb.pubimpicu;
 
 
 import bergdb.pubimp.KCollator;
-import kissdb.icu50.text.Collator;
+import kissdb.icu50.text.Collator;   // TODO X Will need change soon.
 
 /**
  * Uses a Collator from ICU4J to get the sort bytes of strings.

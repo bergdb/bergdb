@@ -64,7 +64,7 @@ public class Hash {
     }
     
     /**
-     * How fast is hash map for possible KissDB memory blocks?
+     * How fast is hash map for possible BergDB memory blocks?
      */
     @T("perf")
     public static void hashMap(TestCollector c) {

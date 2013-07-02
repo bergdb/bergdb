@@ -15,7 +15,7 @@ import bergdb.common.Util;
 import bergdb.nanotest.TestRunner;
 
 /**
- * This class has a main method used to run the unit tests for the KissDB classes.
+ * This class has a main method used to run the unit tests for the BergDB classes.
  * Run this class before every commit. All tests should run within 30 s.
  * 
  * @author Frans Lundberg

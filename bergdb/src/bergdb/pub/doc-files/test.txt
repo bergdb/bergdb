@@ -3,8 +3,8 @@ Frans Lundberg, June 2013
 doc-files/test.txt
 ==================
 
-Just testing how well browsers and KissDB users can handle text files. 
-Are pure text files an acceptable format for you as a KissDB user?
+Just testing how well browsers and BergDB users can handle text files. 
+Are pure text files an acceptable format for you as a BergDB user?
 
 Please let me know.
 

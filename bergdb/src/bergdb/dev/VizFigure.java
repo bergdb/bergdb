@@ -28,7 +28,7 @@ import bergdb.core.ValueNode;
  *   dot -Tsvg -O 1.gv
  *   
  * Run java and create SVG file:
- *   $ java -cp ./p/KissDB/ com.bergdb.db.VizFigure; dot -Tsvg -O 1.gv
+ *   $ java -cp ./p/BergDB/ com.bergdb.db.VizFigure; dot -Tsvg -O 1.gv
  * </pre>
  */
 public class VizFigure {
@@ -73,7 +73,7 @@ public class VizFigure {
         Set<INode> nodes = new HashSet<INode>();
         addNodes(nodes, db.getSuperRoot());
         
-        String line = "digraph KissDB { node [fontsize=\"10\"]; graph [rankdir=\"LR\"]; \n";
+        String line = "digraph BergDB { node [fontsize=\"10\"]; graph [rankdir=\"LR\"]; \n";
         writer.write(line);
         
         // Node output:

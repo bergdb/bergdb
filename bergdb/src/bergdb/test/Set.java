@@ -186,7 +186,7 @@ set in 3 us. And that is for serialized access only, and no persistent data stru
 our code is only 4x slower. Good for in-memory-only database.
 
 ======== 2012-08-05 ========
-$ java -cp p/KissDB/ -server -Xmx1000m com.bergdb.db.perf.PerfDBSet
+$ java -cp p/BergDB/ -server -Xmx1000m com.bergdb.db.perf.PerfDBSet
 Runs set transactions. DB size: 50000.
 * transCount: 400000
 * outerCount: 4
@@ -198,7 +198,7 @@ Runs set transactions. DB size: 50000.
 After the "linear" refactoring it is a bit faster. It seems like the serialization is still a 
 performance bottleneck for set operations.
 
-$ java -cp p/KissDB/ -server -Xmx1000m com.bergdb.db.perf.PerfDBSet
+$ java -cp p/BergDB/ -server -Xmx1000m com.bergdb.db.perf.PerfDBSet
 Runs set transactions. DB size: 50000.
 com.bergdb.db.perf.PerfDBSet.transCount = 400000
 com.bergdb.db.perf.PerfDBSet.outerCount = 4

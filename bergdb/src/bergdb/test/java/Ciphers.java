@@ -138,7 +138,7 @@ public class Ciphers {
 /*
 Result on my laptop (Acer Extensa, 081025).
 
-$ java -server -cp source/bin/bergdb.jar:source/bin/commons-collections-3.2.1.jar:../KissDB_storage/bc/bcprov-jdk16-141.jar com.bergdb.perf.Starter
+$ java -server -cp source/bin/bergdb.jar:source/bin/commons-collections-3.2.1.jar:../BergDB_storage/bc/bcprov-jdk16-141.jar com.bergdb.perf.Starter
 Cipher speeds in MiB/s.
 com.bergdb.perf.Ciphers.AES/CBC/PKCS5Padding = 23.99646184168375
 com.bergdb.perf.Ciphers.AES/CBC/PKCS5Padding-initTime = 1.0306776859333774E-5

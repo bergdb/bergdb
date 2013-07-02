@@ -183,12 +183,12 @@ public class BytesToLong {
 
 121213. On rose, HotSpot JVM 1.7.0. 
 The methods to encode a long to bytes is slow. Bytes.longToBytesLE(), Bytes.intToBytesLE() are 
-problematically slow for KissDB.
+problematically slow for BergDB.
   52 ns for Bytes.longToBytesLE
   159 ns when ByteBuffer is used.
 From bytes -> long is fast enough (4 ns)
 
-120830. $ nice -10 java -server -cp p/KissDB/ com.bergdb.dev.Perf "com.bergdb.common.perf.BytesToLong"
+120830. $ nice -10 java -server -cp p/BergDB/ com.bergdb.dev.Perf "com.bergdb.common.perf.BytesToLong"
 com.bergdb.common.perf.BytesToLong.run.bytesToLongLE-time-per-long: 3.5e-9
 com.bergdb.common.perf.BytesToLong.run.bytesToLongBE-time-per-long: 3.8e-9
 com.bergdb.common.perf.BytesToLong.run.longToBytesBE-time-per-long: 51e-9

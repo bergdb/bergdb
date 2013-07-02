@@ -14,7 +14,7 @@ import bergdb.nanotest.T;
  * FORMAT OF A META BLOCK
  * Offset  Size    Description
  * 0       4       Magic bytes, meta block signature. Always the bytes for ASCII ":-*d".
- * 4       4       Version of KissDB stream format (currently 131).
+ * 4       4       Version of BergDB stream format (currently 131).
  * 8       8       time, database time as a long (Little-endian-first byte order).
  * 16      8       lastTrans, spos of last valid transaction completely written
  *                 before the meta block.

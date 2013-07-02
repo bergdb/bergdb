@@ -44,7 +44,7 @@ public class Info {
     }
     
     private void buildInfo() {
-        out.println("---- KissDB build info ----");
+        out.println("---- BergDB build info ----");
         out.println("BuildInfo.version: " + BuildInfo.version);
         out.println("BuildInfo.versionInt: " + BuildInfo.versionInt);
         out.println("BuildInfo.release: " + BuildInfo.release);

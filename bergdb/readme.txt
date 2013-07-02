@@ -1,4 +1,4 @@
-readme.txt for bergdb Java project
+readme.txt for BergDB Java project
 ==================================
 
 An Apache Ant build script (build.xml) is available to build the project. 
@@ -10,7 +10,7 @@ To build
 --------
 
 The Java source code is available in src/ and src-icu/.
-Dependencies: Java 5, in/icu-for-kissdb.jar, in/BuildInfoTemplate.txt.
+Dependencies: Java 5, in/icu-for-bergdb.jar, in/BuildInfoTemplate.txt.
 
 To build the source:
 
@@ -23,7 +23,7 @@ To test
 
 To test the generated jar file:
 
-    java -jar out/kissdb.jar kissdb.dev.Unit
+    java -jar out/bergdb.jar bergdb.dev.Unit
     
 Good luck!
 

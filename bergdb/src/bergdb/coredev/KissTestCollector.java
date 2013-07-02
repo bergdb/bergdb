@@ -3,7 +3,7 @@ package bergdb.coredev;
 import bergdb.nanotest.BasicCollector;
 
 /**
- * A test result collector designed for KissDB unit tests.
+ * A test result collector designed for BergDB unit tests.
  * 
  * @author Frans Lundberg
  */

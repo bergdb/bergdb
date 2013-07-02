@@ -60,7 +60,7 @@ import bergdb.common.Util;
  */
 public class DbObject extends DbValue {
     //
-    // Special handling of field KEY_FIELD makes this class KissDB specific.
+    // Special handling of field KEY_FIELD makes this class BergDB specific.
     // Otherwise, it could be used as a general purpose way to serialize/deserialize Java objects.
     //
     // 1304 Frans: Little-ending-first (LE) byte order is used to follow the byte ordering used 

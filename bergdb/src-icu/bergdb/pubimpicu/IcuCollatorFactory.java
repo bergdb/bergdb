@@ -5,9 +5,9 @@ import java.util.HashSet;
 import bergdb.common.Bug;
 import bergdb.pubimp.CollatorFactory;
 import bergdb.pubimp.KCollator;
-import bergdb.pubimp.KissdbCollatorFactory;
-import kissdb.icu50.text.Collator;
-import kissdb.icu50.util.ULocale;
+import bergdb.pubimp.BergCollatorFactory;
+import kissdb.icu50.text.Collator;        // TODO X Will need change soon.
+import kissdb.icu50.util.ULocale;         // TODO X Will need change soon.
 
 /**
  * A factory to create ICU implementations of KCollatory.
@@ -18,7 +18,7 @@ import kissdb.icu50.util.ULocale;
 public class IcuCollatorFactory implements CollatorFactory {
     private final HashSet<String> collationLocales;
         // Available collation locales (languages) from ICU.
-    private KissdbCollatorFactory bergdbCollatorFactory;
+    private BergCollatorFactory bergdbCollatorFactory;
 
     public IcuCollatorFactory() {
         collationLocales = new HashSet<String>();
@@ -37,7 +37,7 @@ public class IcuCollatorFactory implements CollatorFactory {
             collationLocales.add(s);
         }
         
-        bergdbCollatorFactory = new KissdbCollatorFactory();
+        bergdbCollatorFactory = new BergCollatorFactory();
     }
     
     

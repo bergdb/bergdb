@@ -61,7 +61,7 @@ public class SystemClock {
 
 /*
 120605 - on Rose. Very slow, it takes 1-2 us to call currentTimeMillis or nanoTime.
-$ java -cp p/KissDB/ -Xmx1000m -server com.bergdb.main.Perf com.bergdb.common.perf.SystemClock
+$ java -cp p/BergDB/ -Xmx1000m -server com.bergdb.main.Perf com.bergdb.common.perf.SystemClock
 * com.bergdb.common.perf.SystemClock.currentTimeMillis.notes: Calls System.currentTimeMillis(), 100000 times.
 * com.bergdb.common.perf.SystemClock.currentTimeMillis.n: 100000
 * com.bergdb.common.perf.SystemClock.currentTimeMillis.time-per-call: 1.7813152400000002E-6

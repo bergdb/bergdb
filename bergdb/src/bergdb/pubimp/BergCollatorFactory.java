@@ -5,9 +5,9 @@ package bergdb.pubimp;
  * 
  * @author Frans Lundberg
  */
-public class KissdbCollatorFactory implements CollatorFactory {
+public class BergCollatorFactory implements CollatorFactory {
     
-    public KissdbCollatorFactory() {
+    public BergCollatorFactory() {
     }
 
     public KCollator createCollator(String typeString) {

@@ -198,7 +198,7 @@ The performance degradation is fine. We need to synch to support multiple concur
 
 ======== 2012-12-13 ========
 Still getting: "get-time: 5.2 us" on Rose.
-Tip: "sudo nice --19 java -server -cp p/KissDB com.bergdb.test.Get".
+Tip: "sudo nice --19 java -server -cp p/BergDB com.bergdb.test.Get".
     "sudo nice --19" for highest process priority.
 
 ======== 2012-08-23 ========
@@ -213,7 +213,7 @@ less frequent than before. It improves performance significantly.
 * get-time: 4.5 us.
 
 ======== 2012-08-05 ========
-$ java -cp p/KissDB/ -server -Xmx1000m com.bergdb.db.perf.PerfDBGet
+$ java -cp p/BergDB/ -server -Xmx1000m com.bergdb.db.perf.PerfDBGet
 ---- com.bergdb.db.perf.PerfDBGet ----
 One thread running get(). DB size: 50000, m=10
 * node-depth-average: 5.0, * get-n: 50000, * get-m: 10
@@ -224,7 +224,7 @@ We need two iterations for KeyNode.searchLTE, first we must find the delete bitm
 lookup time. Inserts should be faster, however.
 
 ======== 2012-05-28 ========
-$ java -cp p/KissDB/ -server -Xmx1000m com.bergdb.db.perf.PerfDBGet
+$ java -cp p/BergDB/ -server -Xmx1000m com.bergdb.db.perf.PerfDBGet
 ---- com.bergdb.db.perf.PerfDBGet ----
 One thread running get(). DB size: 50000, m=10
 com.bergdb.db.perf.PerfDBGet Start
@@ -237,7 +237,7 @@ Testing the new "Linear" branch (refactoring). Great! Faster, before I even star
 Probably fewer pointers (no IPointer objects) makes the difference.
 
 ======== 2012-05-24 ========
-$ java -cp p/KissDB/ -server com.bergdb.db.perf.PerfDBGet
+$ java -cp p/BergDB/ -server com.bergdb.db.perf.PerfDBGet
 ---- com.bergdb.db.perf.PerfDBGet ----
 One thread running get(). DB size: 50000, m=10
 com.bergdb.db.perf.PerfDBGet Start

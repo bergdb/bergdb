@@ -1,7 +1,7 @@
 package bergdb.pub;
 
 /**
- * Long-running database tasks are performed in background Job:s started by KissDB.
+ * Long-running database tasks are performed in background Job:s started by BergDB.
  * 
  * @author Frans Lundberg
  */

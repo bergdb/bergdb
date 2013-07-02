@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <head>
-  <title>KissDB - get started!</title>
-  <meta name="keywords" content="KissDB, NoSQL, database, append-only, get started"/>
+  <title>BergDB - get started!</title>
+  <meta name="keywords" content="BergDB, NoSQL, database, append-only, get started"/>
 
   <style>
 body {
@@ -80,11 +80,11 @@ a:hover {
 <!-- ======================================================================= -->
 <h1>Get started...</h1>
 
-<p>...with the Pub API of KissDB. It should be fun and simple to store objects
+<p>...with the Pub API of BergDB. It should be fun and simple to store objects
 and hopefully the Pub API won't bother you too much once you get the hang of it.</p>
 
-<p>The code examples are also available in the <code>kissdb.demo</code> 
-package in the KissDB distribution.</p>
+<p>The code examples are also available in the <code>bergdb.demo</code> 
+package in the BergDB distribution.</p>
 
 
 <!-- ======================================================================= -->
@@ -98,10 +98,10 @@ no interfaces, no xml settings - just code.</p>
 
 <h2>Java version</h2>
 
-<p>Include <code>kissdb.jar</code> in your Java project and run this code:</p>
+<p>Include <code>bergdb.jar</code> in your Java project and run this code:</p>
 
 <div class="source">package demo;
-import kissdb.pub.*;
+import bergdb.pub.*;
 
 class Person {
     public String name;
@@ -125,11 +125,11 @@ public class GetStarted1 {
 
 <h2>C# version</h2>
 
-<p>Include the dll files in the dotnet/ directory of the KissDB download</a> 
+<p>Include the dll files in the dotnet/ directory of the BergDB download</a> 
 in your C# project. Then run this code:</p>
 
 <div class="source">using System;
-using kissdb.pub;
+using bergdb.pub;
 
 namespace demo {
     class Person {
@@ -154,7 +154,7 @@ namespace demo {
 }
 </div>
 
-<p>As you can see, the Java code and C# code is nearly identical. KissDB was 
+<p>As you can see, the Java code and C# code is nearly identical. BergDB was 
 designed to work well for both Java and .NET languages. Note that a cast is
 required, <code>(Person)</code>, in C# while it can be omitted in Java.
 Also note that in C#, Java's <code>.class</code> suffix cannot be used. 
@@ -162,22 +162,22 @@ Instead use the <code>typeof</code> operator.</p>
 
 <h2>Languages</h2>
 
-<p>KissDB should be possible to use from any Java or .NET language which include: 
+<p>BergDB should be possible to use from any Java or .NET language which include: 
 Java, Scala, Clojure, Groovy, JRuby, Jython, Rhino, C#, F#, VB.NET and more.
-KissDB is developed using Java source code and converted to a .NET library
+BergDB is developed using Java source code and converted to a .NET library
 using IKVM (www.ikvm.net, thank you Jeroen Frijters!). The documentation for 
-KissDB, the Pub API and code examples mostly assumes Java. However, I hope 
+BergDB, the Pub API and code examples mostly assumes Java. However, I hope 
 the docs should not be too hairy for a developer working with another language.
 </p>
 
-<p>I gladly receive information on how it is to use KissDB from other 
+<p>I gladly receive information on how it is to use BergDB from other 
 languages than Java and C#.</p>
 
 <h2>Comments</h2>
 
 <p>The simple example above can used to store more complex objects.
 Java classes with field types: boolean, int, long, double, byte[]
-(or arrays of those types) are best suited for storing with KissDB, 
+(or arrays of those types) are best suited for storing with BergDB, 
 but the other primitive types work too.</p>
 
 <p>Fields that are not static and not transient will be stored
@@ -193,7 +193,7 @@ including private fields.</p>
 and <code>eve</code> in the database.</p>
 
 <div class="source">package demo;
-import kissdb.pub.*;
+import bergdb.pub.*;
 
 public class GetStarted2 {
     public static void main(String[] args) throws java.io.IOException {
@@ -215,9 +215,9 @@ public class GetStarted2 {
 <p>Both objects are stored in one ACID transaction. Another thread
 reading from the database will always see none or both objects.
 This is comparable to the highest SQL isolation level: <i>serializable</i>.
-Using KissDB, you will <i>never ever</i> have to deal with phantom reads,
+Using BergDB, you will <i>never ever</i> have to deal with phantom reads,
 non-repeatable reads, dirty reads. Readers will <i>always</i> see a consistent
-state of the data. Yet, the performance of KissDB does not suffer. 
+state of the data. Yet, the performance of BergDB does not suffer. 
 The database has been optimized for serializable ACID transactions 
 using performant optimistic concurrency and fast append-only storage.</p>
 
@@ -228,7 +228,7 @@ using performant optimistic concurrency and fast append-only storage.</p>
 <p>The code below iterates the objects stored in the previous example.</p>
 
 <div class="source">package demo;
-import kissdb.pub.*;
+import bergdb.pub.*;
 
 public class GetStarted3 {
     public static void main(String[] args) throws java.io.IOException {
@@ -255,7 +255,7 @@ public class GetStarted3 {
 <p>This example iterates the objects stored with GetStarted2; forward, backward 
 and then forward starting from "c".</p>
 
-<p>Note that all keys start with "/". KissDB objects are stored using string 
+<p>Note that all keys start with "/". BergDB objects are stored using string 
 keys that form a hierarchy - this is much inspired by a Unix filesystem; thus
 the beginning "/" for the absolute path to an object.</p>
 
@@ -269,7 +269,7 @@ An RW transaction is a transaction that both reads and writes to the database
 and the writes are dependent on the values from the reads.</p>
 
 <div class="source">package demo;
-import kissdb.pub.*;
+import bergdb.pub.*;
 
 class Account {
     String key;
@@ -345,7 +345,7 @@ The action must always yield the same result (same data written database objects
 for a certain input (objects read from the database). The run method may 
 execute more then once if there are many concurrent users of the database.
 This is due to the STM (software transactional memory) approach taken by 
-KissDB to achieve performance ACID transactions.</p>
+BergDB to achieve performance ACID transactions.</p>
 
 <p>The example demonstrates the use of a key field in the class to store the
 database keys.</p>
@@ -355,9 +355,9 @@ database keys.</p>
 <h1>What to do now?</h1>
 
 <p>There are many more features, such as secondary indexes. Check out the Javadoc
-and kissdb.com for more information.</p>
+and bergdb.com for more information.</p>
 
-<p>Thank you for testing KissDB!</p>
+<p>Thank you for testing BergDB!</p>
 
 </div>  <!-- end of content -->
 </body>

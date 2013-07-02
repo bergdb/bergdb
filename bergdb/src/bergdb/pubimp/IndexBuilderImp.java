@@ -240,7 +240,7 @@ public class IndexBuilderImp implements IndexBuilder {
             }
 
             public JobStatus join(int ms) {
-                // It would be possible for KissDB user to interrupt this this.
+                // It would be possible for BergDB user to interrupt this this.
                 // Threads are globally accessible through Thread.getAllStackTraces(), or ThreadGroup.
                 
                 try {

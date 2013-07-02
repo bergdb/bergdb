@@ -62,7 +62,7 @@ com.bergdb.perf.ObjectMemory.memPerObject = 16.0
 com.bergdb.perf.ObjectMemory.memPerOneFieldObject = 24.0
 
 120523 on my Rose notebook.
-$ java -cp p/KissDB/ -server -Xmx1000m com.bergdb.perf.Starter
+$ java -cp p/BergDB/ -server -Xmx1000m com.bergdb.perf.Starter
 com.bergdb.perf.ObjectMemory.memPerObjectRef = 4.0016
 com.bergdb.perf.ObjectMemory.memPerObject = 8.024
 com.bergdb.perf.ObjectMemory.memPerOneFieldObject = 16.0312
