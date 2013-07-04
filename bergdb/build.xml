@@ -67,7 +67,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
 	
 	<javac srcdir="src-icu" destdir="out/classes" source="1.5" target="1.5" includeantruntime="false"
 	       fork="true" executable="${javac}"
-		   classpath="out/classes:in/icu-for-kissdb.jar"/>
+		   classpath="out/classes:in/icu-for-bergdb.jar"/>
 	
 </target>
 
@@ -96,7 +96,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
         <fileset dir="out/classes">
             <include name="bergdb/**/*.class"/>   <!-- Only classfiles, no resources. -->
         </fileset>
-        <zipfileset src="in/icu-for-kissdb.jar"/>
+        <zipfileset src="in/icu-for-bergdb.jar"/>
     </jar>
 	
     <copy tofile="${base}/${version}/bergdb.jar" 
@@ -221,7 +221,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
 
         <classpath>
             <fileset dir="">
-                <include name="in/icu-for-kissdb.jar"/>
+                <include name="in/icu-for-bergdb.jar"/>
             </fileset>
         </classpath>
     </javadoc>

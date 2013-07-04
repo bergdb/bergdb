@@ -4,8 +4,8 @@ import bergdb.common.Bug;
 
 /**
  * Provides a way to use the ICU code without a Java reference to that code.
- * This factory will use ICU package (com.bergdb.pubimpicu.IcuCollatorFactory) if available, 
- * otherwise it default to use BergCollatorFactory.
+ * This factory will use ICU package (bergdb.pubimpicu.IcuCollatorFactory) 
+ * if available, otherwise it default to use BergCollatorFactory.
  *
  * @author Frans Lundberg
  */
