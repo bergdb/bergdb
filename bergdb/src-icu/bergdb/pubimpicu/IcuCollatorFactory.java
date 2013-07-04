@@ -6,8 +6,8 @@ import bergdb.common.Bug;
 import bergdb.pubimp.CollatorFactory;
 import bergdb.pubimp.KCollator;
 import bergdb.pubimp.BergCollatorFactory;
-import kissdb.icu50.text.Collator;        // TODO X Will need change soon.
-import kissdb.icu50.util.ULocale;         // TODO X Will need change soon.
+import bergdb.icu50.text.Collator;
+import bergdb.icu50.util.ULocale;
 
 /**
  * A factory to create ICU implementations of KCollatory.

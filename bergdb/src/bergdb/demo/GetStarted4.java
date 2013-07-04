@@ -53,7 +53,7 @@ public class GetStarted4 {
                 
                 if (acc0.balance < amount) {
                     throw new IllegalStateException(
-                            "Not enough money on: " + acc0);
+                            "Not enough money, account: " + acc0);
                 }
                 
                 acc0.balance -= amount;
@@ -62,7 +62,9 @@ public class GetStarted4 {
                 env.set(acc0);
                 env.set(acc1);
             }
-        }).execute().waitForD2();
+        }).execute();
+        
+        db.sync();
         
         // Lists accounts
         
