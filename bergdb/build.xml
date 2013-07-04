@@ -24,7 +24,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
         <format property="minuteString" pattern="yyMMdd.HHmm" />
     </tstamp>
 
-    <property name="base" value="/home/f/fl/kissdb"/>             <!-- CHANGEIT for your environment. -->
+    <property name="base" value="/home/f/fl/bergdb"/>             <!-- CHANGEIT for your environment. -->
     <property name="javac" value="/a/pr/jdk1.5.0_22/bin/javac"/>  <!-- CHANGEIT for your environment. -->
     <property name="release" value="${version}.${dateString}"/>
     <property name="build" value="${version}.${minuteString}"/>
@@ -99,7 +99,6 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
         <zipfileset src="in/icu-for-kissdb.jar"/>
     </jar>
 	
-	<!-- Copies bergdb.jar to version directory. -->
     <copy tofile="${base}/${version}/bergdb.jar" 
             file="out/bergdb.jar" overwrite="true"/>
 	<copy todir="${base}/${version}/more/dev/dotnet/" 
@@ -116,6 +115,8 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
             <exclude name="bergdb/pubimpicu/**"/>   <!-- must be omitted -->
         </fileset>
     </jar>
+	
+	<copy todir="${base}/${version}/more/" file="out/bergdb-no-icu.jar" overwrite="true"/>
     
     <!-- bergdb-core.jar - Core Layer build -->
 
@@ -156,6 +157,8 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
                 Worth keeping them to have self-tests included. -->
         </fileset>
     </jar>
+	
+	<copy todir="${base}/${version}/more/" file="out/bergdb-core.jar" overwrite="true"/>
 
     <!-- jar for instrumentation, used by bergdb.dev.ObjectSize. inst.jar 
          Only used for developement purpose only. -->

@@ -26,12 +26,12 @@ public class BuildInfo {
     /**
      * BergDB version ID, for example "2013.2.130401".
      */
-    public static final String release = Util.identity("2013.2.130702");
+    public static final String release = Util.identity("2013.2.130704");
     
     /**
      * BergDB build ID, for example "2013.2.130401.1400".
      */
-    public static final String build = Util.identity("2013.2.130702.2143");
+    public static final String build = Util.identity("2013.2.130704.1412");
     
     /**
      * Prints build information to System.out.
