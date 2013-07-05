@@ -197,7 +197,9 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
             doctitle="BergDB ${version} Pub API"
             windowtitle="BergDB ${version} Pub API"
             Footer="BergDB release: ${release}. Copyright Frans Lundberg."
-            encoding="utf-8">
+            encoding="utf-8"
+    	    stylesheetfile="in/style.css">
+    	
         <packageset dir="src" defaultexcludes="yes">
             <include name="bergdb/pub/**"/>
         </packageset>
@@ -208,16 +210,17 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
             </fileset>
         </classpath>
     </javadoc>
-
+	
     <javadoc destdir="${javadoc-all-dir}"
     	    overview="src/overview-all.html"
             doctitle="BergDB ${version} javadoc-all"
             windowtitle="BergDB ${version} javadoc-all"
             Footer="BergDB release: ${release}. Copyright Frans Lundberg."
             encoding="utf-8"
-    	    linksource="no">   <!-- 1306 Frans: chose "no" for now. -->
-        <packageset dir="src" defaultexcludes="yes">
-        </packageset>
+    	    linksource="no"
+	        stylesheetfile="in/style.css">
+    	
+        <packageset dir="src" defaultexcludes="yes"></packageset>
 
         <classpath>
             <fileset dir="">
@@ -225,6 +228,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
             </fileset>
         </classpath>
     </javadoc>
+	
 </target>
 
 </project>
