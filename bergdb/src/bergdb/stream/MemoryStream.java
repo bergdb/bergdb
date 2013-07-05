@@ -197,10 +197,8 @@ public class MemoryStream implements AppendOnlyStream {
     }
     
     /**
-     * 
-     * @param index
      * @param pos   Only for exception error messages.
-     * @return
+     * @return The array.
      * @throws IOException
      */
     private byte[] getArray(int index, long pos) throws IOException {

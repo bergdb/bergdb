@@ -324,7 +324,7 @@ public class NodeStream {
      * @param spos
      * @param buffer Buffer for temporary storage only, will be modified. Can be anything at input.
      * Should be larger than most stream items and must be at least 4 bytes long.
-     * @return
+     * @return The INode that was read.
      * @throws StreamFormatException
      * @throws StreamIoException
      */
