@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import bergdb.common.Util;
+import bergdb.core.BuildInfo;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.TestRunner;
 import bergdb.test.Get;
@@ -15,7 +16,7 @@ import bergdb.test.Set;
 /**
  * <p>An executable class that runs a fixed set of performance tests of Core Layer.
  * Use this class to quickly detect how code changes affect performance.
- * Should run within 3 minutes on a standard development computer.</p>
+ * Should run within 3 minutes on an ordinary development computer.</p>
  * 
  * <p>Run the executable class with no arguments, or a single argument 'dots' to 
  * reduce printed output.</p>
@@ -55,8 +56,11 @@ public class CorePerf {
     private void printHeader() {
         System.out.println("\n======== " + CorePerf.class.getName() + " ========");
         String computer = Util.getComputerName();
-        System.out.println("Running on " + computer + ", " + new Date() + ".");
-        System.out.println("JVM: " + System.getProperty("java.vm.name") + ", " + System.getProperty("java.vm.version"));
+        System.out.println("Running on " + computer + ", " + new Date() 
+                + ". BergDB " + BuildInfo.release + ".");
+        System.out.println("JVM: " + System.getProperty("java.vm.name") + " " 
+                + System.getProperty("java.vm.version") 
+                + ", java " + System.getProperty("java.version"));
         
         if (!printDots) {
             System.out.println();
@@ -78,12 +82,20 @@ public class CorePerf {
         
         printHeader();
         
-        // rose
+        /* // rose
         baseline1.put("get",      6.4e-6);
         baseline1.put("get4t",    4.2e-6);
         baseline1.put("getmany",  1.4e-6);
         baseline1.put("set",     29.0e-6);
         baseline1.put("set2",    18.0e-6);
+        */
+        
+        // cissi
+        baseline1.put("get",      1.0e-6);
+        baseline1.put("get4t",    0.4e-6);
+        baseline1.put("getmany",  0.2e-6);
+        baseline1.put("set",      5.0e-6);
+        baseline1.put("set2",     3.5e-6);
         
         // linda
         baseline2.put("get",     1.50e-6);
@@ -136,22 +148,20 @@ public class CorePerf {
         double normalizedGeoMean2 = Math.pow(productGeo2, 1.0 / count);
         
         System.out.println();
-        //System.out.printf(Locale.US, "%-20s %.2f  %.2f\n", "**** GEO MEANS:", normalizedGeoMean1, normalizedGeoMean2);
-        String s = "GEO MEAN: " + Util.twoDecimals(normalizedGeoMean1) + ",  " + Util.twoDecimals(normalizedGeoMean2);
+        String s = "GEO MEAN: " + Util.twoDecimals(normalizedGeoMean1) + ",  " 
+                + Util.twoDecimals(normalizedGeoMean2);
         System.out.println(s);
         
         System.out.println();
     }
     
-    private void runMethod(Class<?> clazz, String methodName, String propName, 
-            String shortName) {
+    private void runMethod(Class<?> clazz, String methodName, String propName, String shortName) {
         BasicCollector collector = createCollector();
         long nanos = System.nanoTime();
         
         TestRunner.runMethod(clazz, methodName, collector);
         
         nanos = System.nanoTime() - nanos;
-        
         
         String fullPropName = clazz.getCanonicalName() + "." + methodName + "." + propName;
         Object value = collector.getProp(fullPropName);
@@ -198,10 +208,46 @@ public class CorePerf {
 
 /*
 
+
 Log 
 ===
 
-130530 Removed use of System.out.printf() since it does not work for GCJ build.
+
+== 130705 New profile ==
+Rose profile replace - low-end 32-bit system. Of little interest.
+Best run of 4. Note, values for "getmany", "get4t" varies with a factor of 3! Not per method
+invocation but for the total aggregate (min value).
+
+Running on cissi, Fri Jul 05 10:53:26 CEST 2013.
+JVM: Java HotSpot(TM) 64-Bit Server VM 23.25-b01, java 1.7.0_25
+Result:
+get:      0.14,  0.58,  8.661556043895126E-7
+get4t:    0.09,  0.78,  3.907786488820986E-7
+getmany:  0.12,  0.65,  1.6793923348358178E-7
+set:      0.15,  0.54,  4.355589125E-6
+set2:     0.17,  0.72,  3.1073825050000005E-6
+GEO MEAN: 0.13,  0.65
+
+Resulting profile (manual edit):
+
+    baseline1.put("get",      1.0e-6);
+    baseline1.put("get4t",    0.4e-6);
+    baseline1.put("getmany",  0.2e-6);
+    baseline1.put("set",      5.0e-6);
+    baseline1.put("set2",     3.5e-6);
+    
+    
+== 130705 Rose profile deleted ==
+From test running on Rose - low-end 32-bit Ubuntu netbook, Feb 2013. Profile values:
+    baseline1.put("get",      6.4e-6);
+    baseline1.put("get4t",    4.2e-6);
+    baseline1.put("getmany",  1.4e-6);
+    baseline1.put("set",     29.0e-6);
+    baseline1.put("set2",    18.0e-6);
+
+
+== 130530 ==
+Removed use of System.out.printf() since it does not work for the GCJ build.
 
 
 */
