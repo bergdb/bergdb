@@ -477,28 +477,11 @@ public class RwEnvironmentImp implements RwEnvironment {
             long[] newKey = Keys.toSegments(bytes);
             trans.kvs[index].keySegments = newKey;
             trans.writeKeyHashes[index] = Keys.hash(newKey);
-            
-            /*
-            final long[] key = trans.kvs[index].keySegments;      
-            String keyString;
-            try {
-                keyString = Keys.toString(key);
-            } catch (IllegalArgumentException e) {
-                return;    
-            }
-            keyString = keyString.replace(REPLACE_ME, 
-                    transactionTimeToString(trans.transactionTime));
-            long[] newKey = Keys.toSegments(keyString);
-            trans.kvs[index].keySegments = newKey;
-            trans.writeKeyHashes[index] = Keys.hash(newKey);
-            */
         }
     };
     
     private static final String transactionTimeToString(long transactionTime) {
-        // TODO Consider how this works in GCJ - does formatting work?
-        
-        // TODO Create formatter object to avoid parsing "%018d" each time.
+        // TODO X LATER Consider how this works in GCJ - does formatting work?
         
         assert transactionTime >= Klong.MIN_TIME && transactionTime <= Klong.MAX_TIME;
         return String.format(Locale.US, "%018d", transactionTime);

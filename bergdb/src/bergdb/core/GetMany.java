@@ -118,11 +118,20 @@ public class GetMany {
         boolean first = true;
         boolean setupEqMatch = false;
         
-        Chain(DbForMe db) {
-            // TODO Copy settings like inclusive, forward, startKey to final members of this class for more protection.
-            
+        private final long[] chainStartKey;
+        private final boolean chainForward;
+        private final boolean chainCache;
+        private final boolean chainInclusive;
+        
+        Chain(DbForMe db) {            
             assert db != null;
             this.db = db;
+            
+            chainStartKey = GetMany.this.startKey;
+            chainForward = GetMany.this.forward;
+            chainCache = GetMany.this.cache;
+            chainInclusive = GetMany.this.inclusive;
+            
             linkNodes = new KeyNode[4];
             linkCompareValues = new long[4];
             linkSize = 0;
@@ -196,26 +205,26 @@ public class GetMany {
          * @param db   Only used for testing.
          */
         void setup(KeyNode root) {
-            long[] startKey = GetMany.this.startKey;    // TODO copy startKey in constructor, make final for Chain
+            long[] start = chainStartKey;
             final long lookupTime = actualLookupTime;
             final KlongWithPointer kwi = this.kwi;
             
             assert root != null;            
             
-            if (startKey == null) {
+            if (start == null) {
                 if (forward) {
-                    startKey = new long[]{-1};   
+                    start = new long[]{-1};   
                     // A special "key" that is less than any real DB key.
                 } else {
-                    startKey = new long[]{Long.MAX_VALUE};
+                    start = new long[]{Long.MAX_VALUE};
                     // A special "key" that is greater than any real DB key.
                 }
             }
             
-            assert startKey.length > 0 : "startKey.length = " + startKey.length + ", not allowed";
+            assert start.length > 0 : "startKey.length = " + start.length + ", not allowed";
             
             KeyNode node = root;
-            final int segmentCount = startKey.length;
+            final int segmentCount = start.length;
             int index = 0;
             boolean hasDiff = false; 
                 // set to true when difference found between startKey and nearest db key.
@@ -224,19 +233,11 @@ public class GetMany {
                 long startKeySegment;
                 
                 if (index < segmentCount) {
-                    startKeySegment = startKey[index];
+                    startKeySegment = start[index];
                 } else {
                     startKeySegment = forward ? Long.MAX_VALUE : -1;
                 }
                 
-                // Old code:
-//                if (forward) {
-//                    node.searchLte(lookupTime, startKeySegment, kwi);
-//                } else {
-//                    node.searchGte(lookupTime, startKeySegment, kwi);
-//                }
-                
-                // New code:
                 if (hasDiff) {
                     if (forward) {
                         node.searchLt(lookupTime, Long.MAX_VALUE, kwi);
@@ -264,7 +265,7 @@ public class GetMany {
                     break;
                 }
                 
-                INode next = db.followPointer(node, kwi.pointerIndex, GetMany.this.cache, 
+                INode next = db.followPointer(node, kwi.pointerIndex, chainCache, 
                         db.getAccessData(), GetMany.this.gd);
                 assert next instanceof KeyNode : "next=" + next;
                 
@@ -283,22 +284,11 @@ public class GetMany {
             assert linkSize > 0;
             setupEqMatch = true;
             for (int i = 0; i < this.linkSize; i++) {
-                if (linkCompareValues[i] != Klong.getCompareValue(startKey[i])) {
+                if (linkCompareValues[i] != Klong.getCompareValue(start[i])) {
                     setupEqMatch = false;
                     break;
                 }
             }
-            
-//            System.out.println("-- GetMany.Chain.setup(), setupEqMatch: " + setupEqMatch + ", valueIsNull?: " + (value == null));
-//            System.out.println("GetMany.Chain.setup(), link compare values: ");
-//            for (int i = 0; i < linkSize; i++) {
-//                System.out.println("    " + this.linkCompareValues[i]);
-//            }
-//            
-//            System.out.println("GetMany.Chain.setup(), start key, compare values: ");
-//            for (int i = 0; i < startKey.length; i++) {
-//                System.out.println("    " + Klong.getCompareValue(startKey[i]));
-//            }
         }
         
         /**
@@ -308,7 +298,6 @@ public class GetMany {
          */
         public Kvt next() {
             Kvt result = null;
-            final boolean forward = GetMany.this.forward;
             
             while (true) {   // dummy while just to be able to do "continue".
                 int linkSize = getLinkSize();
@@ -319,14 +308,14 @@ public class GetMany {
                 KeyNode linkNode = getLinkNode(linkSize - 1);
                 long linkCompareValue = getLinkCompareValue(linkSize - 1);
                 
-                if (first && inclusive && setupEqMatch) {
-                    if (forward) {
+                if (first && chainInclusive && setupEqMatch) {
+                    if (chainForward) {
                         linkNode.searchGte(actualLookupTime, linkCompareValue, kwi);
                     } else {
                         linkNode.searchLte(actualLookupTime, linkCompareValue, kwi);
                     }
                 } else {
-                    if (forward) {
+                    if (chainForward) {
                         linkNode.searchGt(actualLookupTime, linkCompareValue, kwi);
                     } else {
                         linkNode.searchLt(actualLookupTime, linkCompareValue, kwi);

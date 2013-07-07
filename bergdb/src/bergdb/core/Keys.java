@@ -58,7 +58,6 @@ public class Keys {
      * Converts a segmented key to a String key.
      * 
      * @param key  The key segments, null is not allowed.
-     * @throws IllegalArgumentException
      */
     public static final String toString(long[] key) {
         return toString(toBytes(key));
@@ -67,8 +66,6 @@ public class Keys {
     /**
      * Converts a bkey to an ikey.
      * bytes == 'null' is not allowed.
-     * 
-     * @throws IllegalArgumentException if the byte key has no corresponding string key.
      */
     public static final String toString(byte[] bytes) {
         assert bytes != null;

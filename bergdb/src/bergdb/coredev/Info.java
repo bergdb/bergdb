@@ -1,12 +1,8 @@
 package bergdb.coredev;
 
 import java.io.PrintWriter;
-import java.util.Properties;
-
 import bergdb.common.Util;
 import bergdb.core.BuildInfo;
-
-// TODO A. Limit set of System.getProperties() that are printed to the most important ones.
 
 /**
  * Development tool, executable class that prints information about the environment
@@ -32,11 +28,10 @@ public class Info {
         this.out = out;
         
         out.println("======== " + Info.class.getName() + " ========");
-        out.println("Information about this computer, the JVM and the environment of the process in general.");
+        out.println("Information about the environment.");
         out.println();
         
         buildInfo();
-        general();
         runtime();
         system();
         
@@ -44,7 +39,7 @@ public class Info {
     }
     
     private void buildInfo() {
-        out.println("---- BergDB build info ----");
+        out.println("---- BergDB ----");
         out.println("BuildInfo.version: " + BuildInfo.version);
         out.println("BuildInfo.versionInt: " + BuildInfo.versionInt);
         out.println("BuildInfo.release: " + BuildInfo.release);
@@ -52,36 +47,48 @@ public class Info {
         out.println();
     }
     
-    private void general() {
-        out.println("---- General ----");
-        out.println("Util.runsIkvm(): " + Util.runsIkvm());
-        out.println("Util.runsGcj(): " + Util.runsGcj());
-        out.println("Util.runsAndroid(): " + Util.runsAndroid());
-        out.println();
-    }
-    
     private void runtime() {
         out.println("---- Runtime ----");
+        
         Runtime r = Runtime.getRuntime();
         out.println("availableProcessors: " + r.availableProcessors());
         out.println("freeMemory: " + r.freeMemory());
         out.println("totalMemory: " + r.totalMemory());
         out.println("maxMemory: " + r.maxMemory());
+        
+        out.println("Util.runsIkvm(): " + Util.runsIkvm());
+        out.println("Util.runsGcj(): " + Util.runsGcj());
+        out.println("Util.runsAndroid(): " + Util.runsAndroid());
+        
         out.println();
     }
     
     private void system() {
+        // Properties we want to print if not null.
+        
+        String[] props = new String[] {
+                "java.vm.name",
+                "java.runtime.version",
+                "java.vm.vendor",
+                "java.vm.version",
+                "sun.boot.library.path",
+                "user.country",
+                "file.encoding",
+                "os.name",
+                "os.version"
+        };
+        
         out.println("---- System.getProperties() ----");
-        Properties p = System.getProperties();
-        p.list(out);
+        
+        for (String p : props) {
+            String s = System.getProperty(p);
+            if (s != null) {
+                out.println(p + ": " + s);
+            }
+        }
         out.println();
         
-        /*out.println("---- System.getenv() ----");
-        Map<String, String> env = System.getenv();
-        for (Map.Entry<String, String> entry : env.entrySet()) {
-            out.println(entry.getKey() + " = " + entry.getValue());
-        }
-        out.println();*/
+        //System.getProperties().list(System.out);
     }
     
     public static void main(String[] args) throws Exception {

@@ -2502,11 +2502,15 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
             
             // Default settings for DB.
             
-            startupDistance = 10 * 1000000;
+            //startupDistance = 10 * 1000000;
+            startupDistance = 20 * 1000000;    // 130707 Frans: new default startup distance.
             clock = new SystemClock();
             evictBoss = new FixedDurationEvictBoss();
             maxNodeSize30();
-            retainDuration = Clock.UNITS_PER_SEC * 3600L * 24 * 7;
+            
+            //retainDuration = Clock.UNITS_PER_SEC * 3600L * 24 * 7;
+            retainDuration = Long.MAX_VALUE;   
+                // 130707 Frans: default retain duration = forever. Was one week.
         }
 
         /**

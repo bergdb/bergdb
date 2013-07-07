@@ -1320,7 +1320,7 @@ public class KeyNode implements INode {
      * For printing, debug. Prints value of key klong.
      */
     public static String getKeyString(byte[] bytes) {
-        // TODO Needs update for now encoding for string keys (ukey, ikey).
+        // TODO X LATER Needs update for new encoding for string keys (ukey, ikey).
         
         String result;
         

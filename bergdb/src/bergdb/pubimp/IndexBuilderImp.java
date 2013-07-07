@@ -348,7 +348,7 @@ public class IndexBuilderImp implements IndexBuilder {
                         processedEntries[0]++;
                         
                         String keyString = Keys.toString(kvt.key);   
-                            // TODO Consider Keys.toString() here, dangerous, not all keys are strings!
+                            // TODO X LATER Consider Keys.toString() here, dangerous (?), not all keys are strings!
                         if (!keyString.endsWith(".obj")) {
                             result = GetMany.StopCondition.CONTINUE;
                             return result;

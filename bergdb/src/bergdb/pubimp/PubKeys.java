@@ -29,7 +29,7 @@ public class PubKeys {
      */
     public static final String u2i(String ukey) throws BadFormatException {
         
-        // TODO Consider throwing IllegalArgumentException or subclass of it.
+        // TODO X LATER Consider throwing IllegalArgumentException or subclass of it.
         
         if (ukey == null) {
             throw new BadFormatException("null is not a valid key.");
@@ -83,7 +83,7 @@ public class PubKeys {
      */
     public static final String udir2idir(String udir) throws BadFormatException {
         
-        // TODO Consider throwing IllegalArgumentException or subclass of it.
+        // TODO X LATER Consider throwing IllegalArgumentException or subclass of it.
         
         if (udir == null) {
             throw new BadFormatException("null is not a valid dir.");
@@ -98,10 +98,6 @@ public class PubKeys {
         if (udir.charAt(length - 1) != '/') {
             throw new BadFormatException("udir must end with '/', was: " + udir);
         }
-        
-        //if (udir.charAt(0) != '/') {
-        //    throw new BadFormatException("udir must start with '/', was: " + udir);
-        //}
         
         StringBuilder b = new StringBuilder();
         

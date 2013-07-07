@@ -134,6 +134,11 @@ public class Set {
 
 /*
 
+======== 2013-07-07 ========
+Running on Cissi instead. 
+* 4.1 us, normal
+* 3.0 us, noWritesToStream
+
 ======== 2013-04-29 ========
 Testing on rose again. Runs slower from main() in this class then from dev.CorePerf.main() 
 for some unknown reason.

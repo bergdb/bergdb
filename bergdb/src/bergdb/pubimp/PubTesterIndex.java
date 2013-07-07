@@ -11,8 +11,6 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.pub.*;
 import bergdb.stream.MemoryStream;
- 
-// TODO X. Add long index test that includes all possible byte values (0..255) in the long values.
 
 /**
  * Tests secondary indexing for Layer Pub.
@@ -1722,6 +1720,33 @@ public class PubTesterIndex {
         iter = c.useIndex("i0", Payment.class).eq(10).backward().objects().iterator();
         p = iter.next();
         Assert.assertEquals("101", p.from);
+        Assert.assertFalse(iter.hasNext());
+        
+        database.stop();
+    }
+    
+    @T
+    public static void testLongs256() {
+        // Tests an index with all byte values 0..255 in a long.
+        
+        Database database = Factory.database().memory().start();
+        Connection c = database.newConnection();
+        
+        database.indexBuilder("i0").type("long").dir("/payments/")
+            .field("amount").start().join();
+        
+        WBuilder b = c.w();
+        for (int i = 0; i < 256; i++) {
+            b.set("/payments/" + i + ".obj", new Payment("" + i, "" + (i+1), i));
+        }
+        b.execute();
+        
+        Iterator<Payment> iter = c.useIndex("i0", Payment.class).objects().iterator();
+        for (int i = 0; i < 256; i++) {
+            Assert.assertTrue("i=" + i, iter.hasNext());
+            Payment p = iter.next();
+            Assert.assertEquals("i=" + i, i, p.amount);
+        }
         Assert.assertFalse(iter.hasNext());
         
         database.stop();

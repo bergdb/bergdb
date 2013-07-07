@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Calendar;
 import java.util.Random;
-
 import bergdb.common.EventToWaitFor;
 import bergdb.common.Util;
 import bergdb.core.Db;
@@ -14,12 +13,11 @@ import bergdb.core.Trans;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;
 import bergdb.pub.TestClock;
-import bergdb.storage.BufferedStream;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.FileStream;
 
 /**
- * Tests maximum throughput of many small transactions.
+ * Tests maximum throughput of many small, simple transactions.
  * 
  * @author Frans Lundberg
  */
@@ -53,11 +51,9 @@ public class TransactionThroughput {
         
         c.out().println("TransactionThroughput, dir: " + dir);
         
-        FileStream m = new FileStream(dir);
-        BufferedStream b = new BufferedStream(m, 20*1000000, 100);
-        b.start();
+        FileStream stream = new FileStream(dir);
         TestClock clock = new TestClock();
-        db = Db.builder().mainStream(b).retainForever().evictBoss(new NoEvictBoss()).clock(clock).start();
+        db = Db.builder().mainStream(stream).retainForever().evictBoss(new NoEvictBoss()).clock(clock).start();
         
         transactions = new Trans[n];
         Random random = new Random(0);
@@ -86,13 +82,13 @@ public class TransactionThroughput {
         
         Thread.sleep(200);    // warmup, allows threads to start
         
-        long size1 = b.getLength();
+        long size1 = stream.getLength();
         long t = System.nanoTime();
         long count1 = this.transCounter;
         
         doneEvent.waitForEvent();
-        b.close();
-        long size2 = b.getLength();
+        stream.close();
+        long size2 = stream.getLength();
         t = System.nanoTime() - t;
         long count2 = this.transCounter;
         
@@ -129,6 +125,7 @@ public class TransactionThroughput {
             }
         }
         
+        db.sync();
         done = true;
         doneEvent.happened();
     }
@@ -159,6 +156,13 @@ public class TransactionThroughput {
 }
 
 /*
+
+---- 130707 ----
+On Cissi, the performance is much better. 
+With one thread:   124k trans/s, 60 MB/s.
+With four threads: 173k trans/s, 99 MB/s.
+Great! I wonder how a more complex transaction would do? Bank payment. And how about using Pub API
+instead with object serialization?
 
 ---- 130108 ----
 On Rose, the best result is 25k trans/s (12 MB/s stream speed).
