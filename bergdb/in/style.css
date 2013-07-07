@@ -22,33 +22,38 @@ a:link, a:visited {
 a:hover, a:focus {
     text-decoration:underline;
     color:black;
-    background:#a6f;
+    background:#94c;
 }
 a:active {
     text-decoration:underline;
-    color:#a6f;
+    color:#94c;
 }
 a[name] {
     color:#353833;
 }
 a[name]:hover {
     text-decoration:none;
-    color:#353833;
+    background:#cca2e6;
 }
 pre {
     font-size:1.3em;
 }
+
 h1 {
-  color: #a6f;
+  color: #94c;
   font-size: 2.2em;
-  font-family: "Courier New", Courier, monospace;
+  font-family: "Courier 10 Pitch", "Courier New", Courier, monospace;
   font-weight: bold;
 }
 h2 {
-    font-size:1.6em;
+  font-size:1.6em;
+  font-family: "Courier 10 Pitch", "Courier New", Courier, monospace;
+  font-weight: bold;
 }
 h3 {
-    font-size:1.4em;
+  font-size:1.4em;
+  font-family: "Courier 10 Pitch", "Courier New", Courier, monospace;
+  font-weight: bold;
 }
 h4 {
     font-size:1.3em;
@@ -178,7 +183,7 @@ ul.subNavList li{
 }
 .navBarCell1Rev {
     color:white;
-    background:#a6f;
+    background:#94c;
     margin: auto 5px;
     border:1px solid #c9aa44;
 }
@@ -198,7 +203,7 @@ ul.subNavList li{
     font-size:1.3em;
 }
 .title {
-  color:#a6f;
+  color:#94c;
   margin:10px 0;
 }
 .subTitle {
@@ -386,12 +391,12 @@ caption a:link, caption a:hover, caption a:active, caption a:visited {
     padding-left:8px;
     display:block;
     float:left;
-    background:#a6f;
+    background:#94c;
     height:18px;
 }
 .overviewSummary .tabEnd, .packageSummary .tabEnd, .contentContainer ul.blockList li.blockList .tabEnd, .summary .tabEnd, .classUseContainer .tabEnd, .constantValuesContainer .tabEnd {
     width:10px;
-    background:#a6f;
+    background:#94c;
     position:relative;
     float:left;
 }
