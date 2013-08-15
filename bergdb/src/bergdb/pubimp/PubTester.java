@@ -719,6 +719,22 @@ public class PubTester {
         d.stop();
     }
     
+    @T
+    public static void testBadKey() {
+        IllegalArgumentException ex = null;
+        Database d = Factory.database().memory().start();
+        Connection c = d.connection();
+        
+        try {
+            c.w().set("k", "v");
+        } catch (IllegalArgumentException e) {
+            ex = e;
+        }
+        
+        d.stop();
+        Assert.assertTrue(ex != null);
+    }
+    
     public static void main(String[] args) {
         //
     }

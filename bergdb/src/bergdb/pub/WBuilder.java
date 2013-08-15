@@ -18,6 +18,8 @@ public interface WBuilder {
      * Adds a set operation to the write transaction. The operation sets the specified
      * key to the provided object. Special handling is provided for object of type byte[] 
      * and java.lang.String.
+     * 
+     * @throws IllegalArgumentException
      */
     public WBuilder set(String key, Object object);
     

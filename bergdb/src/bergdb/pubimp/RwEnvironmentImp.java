@@ -54,6 +54,9 @@ public class RwEnvironmentImp implements RwEnvironment {
         return get(ukey, byte[].class) != null;
     }
     
+    /**
+     * @throws IllegalArgumentException
+     */
     public <TYPE> TYPE get(String ukey, Class<TYPE> clazz) {
         String ikey = PubKeys.u2i(ukey);
         
@@ -207,6 +210,9 @@ public class RwEnvironmentImp implements RwEnvironment {
         kvOps.put(new MapKey(Keys.toSegments(key), kt), value);
     }
 
+    /**
+     * @throws IllegalArgumentException if 'ukey' is null or invalid.
+     */
     public void delete(String ukey) {
         String ikey = PubKeys.u2i(ukey);
         //PubKeys.check(key, isInternal);
@@ -221,7 +227,8 @@ public class RwEnvironmentImp implements RwEnvironment {
     
     /**
      * @throws MissingKeyFieldException
-     * @throws BadFormatException  If the format of the key in key field is not valid.
+     * @throws IllegalArgumentException if object is null or if the key field is null or 
+     * of an invalid format.
      */
     public void set(Object object) throws MissingKeyFieldException {
         if (object == null) {
@@ -242,6 +249,9 @@ public class RwEnvironmentImp implements RwEnvironment {
         set(ukey, object);
     }
     
+    /**
+     * @throws IllegalArgumentException
+     */
     public void set(String ukey, Object object) {
         // Implementation here must match the Java object creation. Currently (June 2013) this
         // is made in pubimp.KvToObjectImp.createObject().
@@ -268,7 +278,6 @@ public class RwEnvironmentImp implements RwEnvironment {
             }
             setBytes(ikey, Util.toBytes((String) object));
         } else {
-            //PubKeys.checkObjKey(key, isInternal);
             if (!ikey.endsWith(".obj")) {
                 throw new IllegalArgumentException("Bad key, expected ending '.obj', key was: '" 
                         + ikey + "'.");

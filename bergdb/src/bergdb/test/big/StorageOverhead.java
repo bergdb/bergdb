@@ -1,0 +1,19 @@
+package bergdb.test.big;
+
+import java.io.IOException;
+
+import bergdb.pub.*;
+
+/**
+ * Executable class that creates an empty database and prints the size of the 
+ * storage used.
+ * 
+ * @author Frans Lundberg
+ */
+public class StorageOverhead {
+    public static void main(String[] args) throws IOException {
+        Database d = Factory.database().dir("temp-1").start();
+        d.connection().w().set("/key", "value").execute();
+        d.sync();
+    }
+}

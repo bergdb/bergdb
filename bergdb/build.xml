@@ -196,7 +196,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
     	    overview="src/overview-pub.html"
             doctitle="BergDB ${version} Pub API"
             windowtitle="BergDB ${version} Pub API"
-            Footer="BergDB release: ${release}. Copyright Frans Lundberg."
+            footer="&lt;a href=&quot;http://bergdb.com/&quot;>BergDB&lt;a> release: ${release}. Copyright Frans Lundberg."
             encoding="utf-8"
     	    stylesheetfile="in/style.css">
     	
@@ -215,7 +215,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
     	    overview="src/overview-all.html"
             doctitle="BergDB ${version} javadoc-all"
             windowtitle="BergDB ${version} javadoc-all"
-            Footer="BergDB release: ${release}. Copyright Frans Lundberg."
+            footer="&lt;a href=&quot;http://bergdb.com/&quot;>BergDB&lt;a> release: ${release}. Copyright Frans Lundberg."
             encoding="utf-8"
     	    linksource="no"
 	        stylesheetfile="in/style.css">

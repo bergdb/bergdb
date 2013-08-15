@@ -81,12 +81,25 @@ public class ConnectionImp implements Connection {
         return database;
     }
 
+    /**
+     * @throws IllegalArgumentException if ukey is null.
+     */
     public final boolean exists(String ukey) {
         // NOTE Maybe we should have separate method for this. Or a boolean field in GetData
         // whether to get the actual value or not. Sometimes key and time can be enough. 
         // Like here.
         
-        String ikey = PubKeys.u2i(ukey);
+        if (ukey == null) {
+            throw new IllegalArgumentException("ukey == null not allowed");
+        }
+        
+        String ikey;
+        
+        try {
+            ikey = PubKeys.u2i(ukey);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
         
         byte[] bytes = getBytesAtLookupTime(lookupTime, Keys.toSegments(ikey));
         return bytes != null;
@@ -112,7 +125,7 @@ public class ConnectionImp implements Connection {
      * @throws NoFieldsSetException
      * @throws DbException
      * @throws NoSuchObjectException
-     * @throws IllegalArgumentException
+     * @throws IllegalArgumentException If an argument is null or if 'ukey' has an invalid format.
      */
     public <TYPE> TYPE get(String ukey, Class<TYPE> clazz) {
         if (clazz == null) {

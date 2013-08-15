@@ -25,22 +25,25 @@ public class PubKeys {
      * 
      * @param ukey The input ukey (user string key).
      * @return The ukey converted to an ikey.
-     * @throws BadFormatException  If ukey is null or not valid.
+     * @throws IllegalArgumentException  If ukey is null or invalid.
      */
-    public static final String u2i(String ukey) throws BadFormatException {
-        
-        // TODO X LATER Consider throwing IllegalArgumentException or subclass of it.
+    public static final String u2i(String ukey) throws IllegalArgumentException {
+        // 130815, changed to throw IllegalArgumentException instead of BadFormatException.
         
         if (ukey == null) {
-            throw new BadFormatException("null is not a valid key.");
+            throw new IllegalArgumentException("null is not a valid key.");
         }
         
-        if (ukey.length() < 2) { 
-            throw new BadFormatException("The empty string is not a valid key.");
+        if (ukey.length() == 0) {
+            throw new IllegalArgumentException("The empty string is not a valid key.");
         }
         
         if (ukey.charAt(0) != '/') {
-            throw new BadFormatException("Key does not start with mandatory '/', key: " + ukey);
+            throw new IllegalArgumentException("Key does not start with mandatory '/', key: " + ukey);
+        }
+        
+        if (ukey.length() < 2) { 
+            throw new IllegalArgumentException("Key is too short: " + ukey);
         }
         
         StringBuilder b = new StringBuilder();
@@ -53,7 +56,7 @@ public class PubKeys {
         int length = ukey.length();
         
         if (lastSlashIndex == length - 1) {
-            throw new BadFormatException("ukey is not allowed to end with a '/', was: " + ukey);
+            throw new IllegalArgumentException("Key is not allowed to end with a '/', was: " + ukey);
         }
         
         int slashIndex = Integer.MIN_VALUE;
@@ -63,7 +66,7 @@ public class PubKeys {
             
             if (c == '/') {
                 if (slashIndex == i - 1) {
-                    throw new BadFormatException("ukey cannot contain \"//\", was: " + ukey);
+                    throw new IllegalArgumentException("ukey cannot contain \"//\", was: " + ukey);
                 }
                 slashIndex = i;
                 b.append(c);
@@ -199,7 +202,7 @@ public class PubKeys {
         
         try {
             u2i(ukey);
-        } catch (BadFormatException e) {
+        } catch (IllegalArgumentException e) {
             ex = e;
         }
         

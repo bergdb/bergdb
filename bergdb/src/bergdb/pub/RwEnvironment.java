@@ -22,6 +22,7 @@ public interface RwEnvironment extends ReadInterface {
      * Deletes a database entry if it exists, otherwise, this method does nothing.
      * 
      * @param key Key of the database entry to delete.
+     * @throws IllegalArgumentException if 'key' is null or otherwise of an invalid format.
      */
     public void delete(String key);
     
@@ -30,11 +31,15 @@ public interface RwEnvironment extends ReadInterface {
      * 
      * @param object The object to store in the database.
      * @throws MissingKeyFieldException
+     * @throws IllegalArgumentException if key field is null or otherwise of an invalid format.
+     * @throws IllegalArgumentException if 'object' is null.
      */
     public void set(Object object) throws MissingKeyFieldException;
     
     /**
      * @see WBuilder#set(String, Object)
+     * @throws IllegalArgumentException if 'key' is null or otherwise of an invalid format.
+     * @throws IllegalArgumentException if 'object' is null.
      */
     public void set(String key, Object object);
     

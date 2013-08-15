@@ -61,10 +61,13 @@ public interface Connection extends ReadInterface {
     /**
      * Checks whether a key-value pair with the given key exists.
      * 
-     * @param key The key to check.
+     * @param key
+     *            The key to check.
      * @return True if the key exists.
-     * @throws IllegalArgumentException if the key is not of valid format.
+     * @throws IllegalArgumentException
+     *             if 'key' is null.
      * @throws DbException
+     *             Thrown if the database is faulty.
      */
     public boolean exists(String key);
     
