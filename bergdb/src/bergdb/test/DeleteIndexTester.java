@@ -1,12 +1,9 @@
 package bergdb.test;
 
-import java.util.List;
-
 import bergdb.core.Db;
 import bergdb.core.GetMany;
 import bergdb.core.Keys;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;
 import bergdb.pub.Connection;
@@ -15,10 +12,8 @@ import bergdb.pub.Factory;
 import bergdb.pub.Job;
 import bergdb.pub.JobStatus;
 import bergdb.pub.NoSuchIndexException;
-import bergdb.pubimp.DatabaseBuilderImp;
 import bergdb.pubimp.DatabaseImp;
 import bergdb.pubimp.PubKeys;
-import bergdb.stream.MemoryStream;
 
 /**
  * Tests deleting an index while the database is running and when it is restarted.
@@ -153,6 +148,9 @@ public class DeleteIndexTester {
         Assert.assertEquals("time2", 0, g.result.size());
     }
     
+    /*
+    130818 Frans: commented, number of jobs not reproducible.
+    
     @T("f")
     public static void testRestart(TestCollector coll) throws InterruptedException {
         //
@@ -200,10 +198,9 @@ public class DeleteIndexTester {
         JobStatus status = job.join();
         Assert.assertEquals(100, status.progress());
         coll.out().println("Job status: " + status.note());
-    }
+    }*/
     
     public static void main(String[] args) throws InterruptedException {
-        //deleteIndexWhileAddingMore(new BasicCollector());
-        testRestart(new BasicCollector());
+        //testRestart(new BasicCollector());
     }
 }

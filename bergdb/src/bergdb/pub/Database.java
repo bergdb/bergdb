@@ -43,7 +43,7 @@ public interface Database {
      * have been released; this will happen asynchronously in the background.
      * Typically, resources are released within one second after this method has been called.</p>
      * 
-     * <p>The user of this class can call sync() before stop() when appropriate; this method
+     * <p>The user of this class should call sync() before stop() when appropriate; this method
      * does not call sync().
      * After this method has been called the Database object cannot be used anymore.
      * This method is OK to call multiple times from multiple unsynchronized threads; only
@@ -53,8 +53,8 @@ public interface Database {
      * If there are no references to this Database object or to any Connection or 
      * Transaction object created with this Database, the Database will be stopped 
      * automatically when garbage collected. However, since the programmer has little control
-     * over Java garbage collection, it is still recommended that stop() is called when the
-     * Database is no longer used.</p>
+     * over when Java garbage collection actually occurs, it may be beneficial to call 
+     * stop() to free resources sooner.</p>
      */
     public void stop();
     

@@ -24,7 +24,10 @@ import bergdb.nanotest.TestCollector;
  * @author Frans Lundberg
  */
 public class FileStream implements AppendOnlyStream {
-    private static final String LOCK_FILENAME = Util.identity("lock");
+    //
+    // 130818, removed use of lock file "lock". Did not work reliably on IKVM.
+    //
+    
     private static final String SUFFIX = Util.identity(".bergdb");
     private static final int BYTES_PER_INDEX_UNIT = Util.identity(100*1000);
     private static final long M = 1000000L;
@@ -53,7 +56,6 @@ public class FileStream implements AppendOnlyStream {
     private long firstPos = 0;
     private long length = 0;
     private int fileSizeIndex = 0;
-    private File lockFile;
     private boolean renameAsDelete = false;
     private boolean max2G = false;
     
@@ -91,7 +93,6 @@ public class FileStream implements AppendOnlyStream {
         
         this.dir = dir;
         createDirIfNeeded();
-        handleLock();
         handleFiles();
     }
     
@@ -117,7 +118,6 @@ public class FileStream implements AppendOnlyStream {
         FileStream f = new FileStream();
         f.dir = dir;
         f.createDirIfNeeded();
-        f.handleLock();
         f.handleFiles();
         
         return f;
@@ -171,17 +171,6 @@ public class FileStream implements AppendOnlyStream {
             throw new IOException("Directory " + dir.getPath() 
                     + " could not be created because of a SecurityException; " + e.getMessage());
         }
-    }
-    
-    private void handleLock() throws IOException {
-        lockFile = new File(dir, LOCK_FILENAME);
-        
-        boolean result = lockFile.createNewFile();
-        if (result == false) {
-            throw new DirInUseException("Cannot proceed, lock file '" + lockFile.getPath() 
-                    + " exists. Is another process using the directory?");
-        }
-        lockFile.deleteOnExit();
     }
 
     /**
@@ -528,11 +517,6 @@ public class FileStream implements AppendOnlyStream {
             for (int i = 0; i < kfiles.length; i++) {
                 kfiles[i].close();
             }
-            
-            boolean ok = lockFile.delete();
-            if (!ok) {
-                throw new IOException("Could not delete " + lockFile.getPath() + ".");
-            }
         }
     }
     
@@ -556,6 +540,13 @@ public class FileStream implements AppendOnlyStream {
             applyFileSizeChangeRules();
             
             KFile newFile = openForRw(length, file, FILE_SIZES[fileSizeIndex]);
+            
+            // To make sure no-one just created the file and wrote to it.
+            long newFileLength = newFile.file.length();
+            if (newFileLength != 0) {
+                throw new IOException("File " + newFile.file.getPath() 
+                        + " already exists and has length " + newFileLength + ".");
+            }
             
             KFile[] newKFiles = new KFile[kfiles.length + 1];
             System.arraycopy(kfiles, 0, newKFiles, 0, kfiles.length);
@@ -797,6 +788,18 @@ public class FileStream implements AppendOnlyStream {
             int toAppend = len > availableInt ? availableInt : len;
             
             try {
+                // 130818 Frans:
+                // Alternative to lock file; detects other user appending to this file.
+                
+                long rfileLength = rfile.length();
+                
+                if (rfileLength != this.fileLength) {
+                    throw new IOException("File " + file.getPath() 
+                            + " is not of expected length (" + this.fileLength + "),"
+                            + "but " + rfileLength + " bytes."
+                            + " Was is modified by someone else?");
+                }
+                
                 rfile.seek(this.fileLength);
                 rfile.write(bytes, offset, toAppend);
                 fileLength += toAppend;
@@ -851,30 +854,6 @@ public class FileStream implements AppendOnlyStream {
         f2.read(0, b, 0, 1);
         f2.close();
         Assert.assertEquals((byte) 123, b[0]);
-    }
-    
-    @T
-    public static void testRestartLockfile(TestCollector c) throws IOException {
-        // Tests that it is impossible to start stream in directory with a lock file.
-        byte[] bytes = new byte[] {123};
-        File dir = c.createTempDir();
-        FileStream f = FileStream.create(dir);
-        f.append(bytes, 0, bytes.length);
-        f.close();
-        f = null;
-        
-        File lock = new File(dir, LOCK_FILENAME);
-        boolean ok = lock.createNewFile();
-        Assert.assertTrue(ok);
-        
-        Exception ex = null;
-        try {
-            FileStream.create(dir);
-        } catch (DirInUseException e) {
-            ex = e;
-        }
-        
-        Assert.assertTrue(ex != null);
     }
     
     @T
