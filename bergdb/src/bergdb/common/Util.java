@@ -11,9 +11,12 @@ import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import java.util.TimeZone;
 
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
@@ -988,5 +991,31 @@ public class Util {
         Assert.assertTrue(contains(new byte[]{'a', 'a'}, new byte[]{'g', 'a', 'b', 'a', 'a', 'b'}));
         Assert.assertFalse(contains(new byte[]{'a', 'q'}, new byte[]{'g', 'a', 'b', 'a', 'a', 'b'}));
         Assert.assertFalse(contains(new byte[]{'a', 'q'}, new byte[]{'a'}));
+    }
+    
+    /**
+     * 
+     * @param year
+     * @param month
+     * @param date
+     * @param hour
+     * @param min
+     * @param sec
+     * @param millis
+     * @return
+     */
+    public static long getMillisSinceEpoch(TimeZone zone, 
+            int year, int month, int date, 
+            int hour, int min, int sec, int millis) {
+        GregorianCalendar c = new GregorianCalendar(zone, Locale.US);
+        c.setTimeInMillis(0);
+        c.set(Calendar.YEAR, year);
+        c.set(Calendar.MONTH, month - 1);
+        c.set(Calendar.DATE, date);
+        c.set(Calendar.HOUR_OF_DAY, hour);
+        c.set(Calendar.MINUTE, min);
+        c.set(Calendar.SECOND, sec);
+        c.set(Calendar.MILLISECOND, millis);
+        return c.getTimeInMillis();
     }
 }

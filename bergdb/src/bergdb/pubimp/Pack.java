@@ -26,6 +26,7 @@ public class Pack implements IPack {
         PubTesterPrimary.class,
         PubUtil.class,
         WBuilderImp.class,
+        TimeResolver.class,
         WTransaction.class,
         RwEnvironmentImp.class,
         DbObjectTester.class
