@@ -6,10 +6,10 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Arrays;
 
-import bergdb.common.BadFormatException;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
+import bergdb.pub.BadFormatException;
 
 /**
  * Class that tests DbObject and company (DbValue, DbBoolean, DbInt, ...).

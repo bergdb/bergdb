@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import bergdb.common.BadFormatException;
 import bergdb.common.Bug;
 import bergdb.common.Bytes;
 import bergdb.common.Util;
@@ -17,6 +16,7 @@ import bergdb.core.Kvt;
 import bergdb.core.Trans;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
+import bergdb.pub.BadFormatException;
 import bergdb.pub.IndexAlreadyExistsException;
 import bergdb.pub.Job;
 import bergdb.pub.JobStatus;

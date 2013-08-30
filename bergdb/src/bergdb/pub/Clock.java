@@ -28,5 +28,6 @@ public interface Clock {
 Max time expanse in years = 7.2e16 / (1e7 * 3600 * 24 * 365) = 228 years. Fine!
 So, we are fine with using only the first 56 bits.
 
-The resolution is also enough. No more than 10M transactions per second.
+The resolution is also enough. No more than 10M transactions per second will be done.
+
 */

@@ -1,8 +1,8 @@
 package bergdb.pubimp;
 
-import bergdb.common.BadFormatException;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
+import bergdb.pub.BadFormatException;
 
 /**
  * The DbObject type for storing a boolean; a type that only have two possible values:

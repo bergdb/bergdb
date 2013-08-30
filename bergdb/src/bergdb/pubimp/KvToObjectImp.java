@@ -3,10 +3,10 @@ package bergdb.pubimp;
 import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 
-import bergdb.common.BadFormatException;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
+import bergdb.pub.BadFormatException;
 import bergdb.pub.ObjectCreationException;
 
 /**

@@ -1,4 +1,4 @@
-package bergdb.common;
+package bergdb.pub;
 
 /**
  * Thrown when the format (syntax) of data is not according to specification.

@@ -459,7 +459,7 @@ public class Util {
     /**
      * Converts hex string to bytes.
      * 
-     * @throws BadFormatException If argument 'hexString' is not a valid hex string.
+     * @throws IllegalArgumentException If argument 'hexString' is not a valid hex string.
      */
     public static byte[] hexStringToBytes(String hexString) {
         if (hexString == null) {
@@ -467,7 +467,7 @@ public class Util {
         }
         
         if (hexString.length() % 2 != 0) {
-            throw new BadFormatException("Bad length of hexString, was: " + hexString);
+            throw new IllegalArgumentException("Bad length of hexString, was: " + hexString);
         }
         
         hexString = hexString.toLowerCase(Locale.US);
@@ -479,7 +479,7 @@ public class Util {
             int c1 = hexCharToInt(hexString.charAt(i * 2 + 1));
             
             if (c0 == -1 || c1 == -1) {
-                throw new BadFormatException("String has an invalid char (not hex char): " 
+                throw new IllegalArgumentException("String has an invalid char (not hex char): " 
                         + hexString);
             }
             

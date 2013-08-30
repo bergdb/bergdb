@@ -1,9 +1,9 @@
 package bergdb.pubimp;
 
-import bergdb.common.BadFormatException;
 import bergdb.common.Bug;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
+import bergdb.pub.BadFormatException;
 
 /**
  * Class with static method for checking keys and converting them.

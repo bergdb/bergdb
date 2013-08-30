@@ -1,9 +1,9 @@
 package bergdb.pubimp;
 
-import bergdb.common.BadFormatException;
 import bergdb.common.Bytes;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
+import bergdb.pub.BadFormatException;
 
 /**
  * The DbObject type for a byte array.

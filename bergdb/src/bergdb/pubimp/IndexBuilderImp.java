@@ -3,7 +3,6 @@ package bergdb.pubimp;
 import java.util.ArrayList;
 import java.util.List;
 
-import bergdb.common.BadFormatException;
 import bergdb.common.EventToWaitFor;
 import bergdb.core.DbStoppingException;
 import bergdb.core.GetMany;
@@ -11,6 +10,7 @@ import bergdb.core.KeyTransformation;
 import bergdb.core.Keys;
 import bergdb.core.Kvt;
 import bergdb.pub.Action;
+import bergdb.pub.BadFormatException;
 import bergdb.pub.DataFormatException;
 import bergdb.pub.IndexAlreadyExistsException;
 import bergdb.pub.IndexBuilder;

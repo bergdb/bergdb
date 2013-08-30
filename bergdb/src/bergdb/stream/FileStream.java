@@ -9,12 +9,12 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Random;
 
-import bergdb.common.BadFormatException;
 import bergdb.common.Bug;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;
+import bergdb.pub.BadFormatException;
 
 /**
  * <p>An object of this class is an AppendOnlyStream that stores the stream data 

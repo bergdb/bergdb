@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
-import bergdb.common.BadFormatException;
 import bergdb.common.MyLongSet;
 import bergdb.common.Util;
 import bergdb.core.GetMany;
@@ -15,6 +14,7 @@ import bergdb.core.Kvt;
 import bergdb.core.Trans;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
+import bergdb.pub.BadFormatException;
 import bergdb.pub.DataFormatException;
 import bergdb.pub.MissingKeyFieldException;
 import bergdb.pub.RwEnvironment;

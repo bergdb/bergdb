@@ -2,7 +2,6 @@ package bergdb.common;
 
 public class Pack implements IPack {
     private static Class<?>[] classes = new Class<?>[] {
-        BadFormatException.class,
         ByteArrayComparator.class,
         Bytes.class,
         FrequencySensor.class,
