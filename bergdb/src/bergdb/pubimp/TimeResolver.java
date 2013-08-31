@@ -6,6 +6,7 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 import bergdb.common.Util;
+import bergdb.core.SystemClock;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.pub.BadFormatException;
@@ -14,12 +15,15 @@ import bergdb.pub.Clock;
 /**
  * <p>An instance of this class can resolve a <i>time string</i> to a time value
  * in database units (100 ns units since epoch).
- * The format of the time string loosely follows ISO 8601.</p>
+ * The format of the time string loosely follows ISO 8601.
+ * This class is not thread-safe. The gregorian calendar is used (the most common one).
+ * Leap seconds are never considered. One day is always 24*3600 s, one minute is 60 s and one
+ * hour is always 3600 s.</p>
  * 
  * <pre>
- * The following examples with comments should define the time format completely.
+ * The following examples with comments define the time format.
  * 
- * ABSOLUTE TIME
+ * ABSOLUTE-TIME
  * 
  * "2013-08-19 14:29:10.1234567"    -- 19 Aug 2013 at 14:29:10.1234567.
  * "2013-08-19 14:29"               -- 19 Aug 2013 at 14:29:00. 
@@ -27,56 +31,67 @@ import bergdb.pub.Clock;
  * "2013-08"                        -- 1 Aug 2013 at 00:00:00.
  * "2013-01"                        -- 1 Jan 2013 at 00:00:00.
  * 
- * RELATIVE TIME
+ * TIME-OF-DAY
  * 
- * "08-19 14:29:10.1234567"         -- The last time, the time was 14:29:10.1234567 on 19th of August.
- * "08-19 14:29"                    -- The last time, the time was 14:29:00 on 18th of August.
- * "08-19"                          -- The last time, the time was 00:00:00 on 18th of August.
- * "xx-13 14:29:10.1234567"         -- The last time, the time was 14:29:10.1234567 on the 19th of 
- *                                     any month (the current month or the previous).   
- * "xx-13 14:29"                    -- The last time, the time was 14:29:00 the 19th of 
- *                                     any month (the current month or the previous).
- * "xx-13"                          -- The last time, the time was 00:00:00 on the 13th of any
- *                                     month (the current month or the previous one.
- * "14:29:10.1234567"               -- The last time, the time was 14:29:10.1234567.
- * "14:29"                          -- The last time, the time was 14:29.
- * 
- * "mon"                            -- The last time, the time was 00:00:00 on a Monday.
- * "mon 14:29:10.1234567"           -- The last time, the time was 14:29:10.1234567 on a Monday.
- * "mon 14:29"                      -- The last time, the time was 14:29:00 on a Monday.
+ * "14:29:10.1234567"               -- Today at 14:29:10.1234567.
+ * "14:29"                          -- Today at 14:29.
  * 
  * MINUS-TIME
  * 
- * "Minus-time" is a negative offset to the current time in one of the following units: 
- * s, min, h, day, week.
+ * "Minus-time" is a negative offset to the current time in one of the following units: s, m, h, 
+ * d (second, minute, hour, day).
  * 
  * "-1.5 s"                         -- 1.5 seconds ago.
- * "-30 min"                        -- 30 minutes ago.
+ * "-30 m"                          -- 30 minutes ago.
  * "-2 h"                           -- 2 hours ago. 
- * "-3 day"                         -- 3 days ago (1 day = 24.0 hours).
- * "-1 week"                        -- 1 week (7 days) ago.
+ * "-3 d"                           -- 3 days ago (1 day = 24.0 hours).
  * 
- * MINUS-TIME PREFIX
+ * MINUS-TIME PLUS TIME-OF-DAY
  * 
  * A minus-time expression can be followed by a RELATIVE TIME. In this case, the resulting time
  * is the same as if the negative time duration was first subtracted from the current time, 
  * and then the resulting time was used together with the RELATIVE TIME to resolve the time.
  * 
- * "-1 week monday 14:29"           -- The last time, except for within the last 24x7 hours, that
- *                                     the time was 14:29.
+ * "-2 d 14:29"                     -- The day before yesterday at 14:29:00.
  * 
  * SPECIAL
  * 
- * "yesterday"                      -- Same as "-1 day 00:00".
  * "now"                            -- The current time.
+ * 
+ * MORE FORMAL
+ * The syntax for a time-string can be more formally be described by this ABNF:
+ * 
+ * time-string = absolute / time-of-day / minus / "now" 
+ * absolute = absolute-date [SPACE time-of-day]
+ * absolute-date = "YYYY-MM-DD" / "YYYY-MM"
+ * time-of-day = "HH:MM:SS.d" / "HH:MM"
+ * minus = "-" number SPACE unit [SPACE time]
+ * unit = "s" / "m" / "h" / "d"
  * </pre>
  * 
  * @author Frans Lundberg
  */
 public class TimeResolver {
+    // Let's try to implement the whole thing as a function. 
+    // resolve(currentTime, timeZone, timeString)... Would be thread-safe.
+    //
+    
     private static final TimeZone UTC = TimeZone.getTimeZone("UTC");
     private static final long MILLIS_TO_UNITS = Clock.UNITS_PER_SEC / 1000;
-    private final TimeZone timeZone;
+    private final TimeData td;
+    private final GregorianCalendar calendar;
+    
+    /**
+     * Parse data, keeps parse state.
+     */
+    private static class TimeData {
+        int year;
+        int month;
+        int date;
+        int hour;
+        int minute;
+        double second;
+    }
     
     /**
      * Creates a TimeResolver with UTC time zone.
@@ -92,7 +107,8 @@ public class TimeResolver {
         if (timeZone == null) {
             throw new IllegalArgumentException("timeZone == null not allowed");
         }
-        this.timeZone = timeZone;
+        this.td = new TimeData();
+        this.calendar = new GregorianCalendar(timeZone, Locale.US);
     }
     
     /**
@@ -104,7 +120,7 @@ public class TimeResolver {
      * @return The resolved time in database time units.
      * @throws BadFormatException
      */
-    public long getTime(long currentTime, String timeString) throws BadFormatException {
+    public long resolve(long currentTime, String timeString) throws BadFormatException {
         if (timeString == null) {
             throw new IllegalArgumentException("timeString == null is not allowed");
         }
@@ -119,41 +135,35 @@ public class TimeResolver {
             throw new BadFormatException("Time string is too short, was: " + timeString + ".");
         }
         
-        char first = timeString.charAt(0);
-        
-        switch (first) {
-        case '-':
-            return minus(currentTime, timeString);
-        case 'y':
-        case 'n':
-            return special(currentTime, timeString);
+        if (length == 3 && timeString.equals("now")) {
+            return currentTime;
         }
-            
+        
+        char first = timeString.charAt(0);
+        if (first == '-') {
+            return minus(currentTime, timeString);
+        }
+        
         if (length > 4 && timeString.charAt(4) == '-') {
             return absolute(timeString);
         } else {
-            return relative(currentTime, timeString);
+            if (first >= '0' && first <= '9') {
+                return timeOfDay(currentTime, timeString);
+            } else {
+                throw new BadFormatException("Bad time string, was: '" + timeString + "'.");
+            }
         }
     }
-        
+    
     private long absolute(String timeString) {
         long length = timeString.length();
-        int year = 0;
-        int month = 0;
-        int date = 0;
-        int h = 0;
-        int min = 0;
-        int s = 0;
-        int millis = 0;
-        long change = 0;    // smaller then millis
-        
         
         if (length < 7) {
             throw new BadFormatException("Bad time string, too short, was: '" + timeString + "'.");
         }
         
         try {
-            year = Integer.parseInt(timeString.substring(0, 4));
+            td.year = Integer.parseInt(timeString.substring(0, 4));
         } catch (NumberFormatException e) {
             throw new BadFormatException("Bad time string, was: '" + timeString + "'.");
         }
@@ -162,8 +172,8 @@ public class TimeResolver {
             throw new BadFormatException("Bad time string, expected '-' as 5th char, was: '" + timeString + "'.");
         }
         
-        month = parseZeroPadded(timeString.substring(5, 7), timeString);
-        if (month < 0) {
+        td.month = parseZeroPadded(timeString.substring(5, 7), timeString);
+        if (td.month < 0) {
             throw new BadFormatException("Bad absolute time string, bad month, was: '" + timeString + "'.");
         }
         
@@ -176,8 +186,10 @@ public class TimeResolver {
                 throw new BadFormatException("Bad absolute time string, was: '" + timeString + "'.");
             }
             
-            date = parseZeroPadded(timeString.substring(8, 10), timeString);
+            td.date = parseZeroPadded(timeString.substring(8, 10), timeString);
             // Let's allowed "overflow" for now, like: 2013-02-50".
+        } else {
+            td.date = 1;
         }
         
         if (length > 10) {
@@ -190,74 +202,185 @@ public class TimeResolver {
                 throw new BadFormatException("Bad absolute time string, was: '" + timeString + "'.");
             }
             
-            h = parseZeroPadded(timeString.substring(11, 13), timeString);
-            if (timeString.charAt(13) != ':') {
-                throw new BadFormatException("Bad absolute time string, expected ':' at 13, was: '" + timeString + "'.");
-            }
+            parseTime(timeString, 11);
             
-            min = parseZeroPadded(timeString.substring(14, 16), timeString);
+        } else {
+            td.hour = 0;
+            td.minute = 0;
+            td.second = 0.0;
         }
         
-        if (length > 16) {
-            if (length < 19) {
-                throw new BadFormatException("Bad absolute time string, was: '" + timeString + "'.");
-            }
-            
-            if (timeString.charAt(16) != ':') {
-                throw new BadFormatException("Bad absolute time string, expected ':' at 16, was: '" + timeString + "'.");
-            }
-            
-            double seconds = parseZeroPaddedDouble(timeString.substring(17), timeString);
-            double floor = Math.floor(seconds);
-            s = (int) floor;
-            double fraction = seconds - floor;
-            if (fraction > 1.0) {
-                throw new AssertionError("fraction: " + fraction + ", seconds = " + seconds);
-            }
-            
-            fraction = 1000.0 * fraction;
-            double milliFloor = Math.floor(fraction);
-            double milliFraction = fraction - milliFloor;
-            if (milliFraction > 1.0) {
-                throw new AssertionError("milliFraction: " + milliFraction + ", seconds = " + seconds);
-            }
-            
-            millis = (int) milliFloor;
-            change = (long) (milliFraction * MILLIS_TO_UNITS);
+        return computeTimeUnits();
+    }
+    
+    /**
+     * Converts from TimeData to GregorianCalendar to time units.
+     */
+    private long computeTimeUnits() {
+        calendar.setTimeInMillis(0);
+        calendar.set(Calendar.YEAR, td.year);
+        calendar.set(Calendar.MONTH, td.month - 1);
+        calendar.set(Calendar.DATE, td.date);
+        calendar.set(Calendar.HOUR_OF_DAY, td.hour);
+        calendar.set(Calendar.MINUTE, td.minute);
+        
+        double floor = Math.floor(td.second);
+        int second = (int) floor;
+        double fraction = td.second - floor;
+        if (fraction > 1.0) {
+            throw new AssertionError("fraction: " + fraction + ", td.second = " + td.second);
         }
         
-        GregorianCalendar c = new GregorianCalendar(timeZone, Locale.US);
-        c.setTimeInMillis(0);
-        c.set(Calendar.YEAR, year);
-        c.set(Calendar.MONTH, month - 1);     // 0 = January
-        c.set(Calendar.DATE, date);
-        c.set(Calendar.HOUR_OF_DAY, h);
-        c.set(Calendar.MINUTE, min);
-        c.set(Calendar.SECOND, s);
-        c.set(Calendar.MILLISECOND, millis);
+        fraction = 1000.0 * fraction;
+        double milliFloor = Math.floor(fraction);
+        double milliFraction = fraction - milliFloor;
+        if (milliFraction > 1.0) {
+            throw new AssertionError("milliFraction: " + milliFraction + ", td.second = " + td.second);
+        }
         
-        long result = c.getTimeInMillis() * MILLIS_TO_UNITS + change;
+        int millis = (int) milliFloor;
+        long change = (long) (milliFraction * MILLIS_TO_UNITS);
+        
+        calendar.set(Calendar.SECOND, second);
+        calendar.set(Calendar.MILLISECOND, millis);
+        
+        long result = calendar.getTimeInMillis() * MILLIS_TO_UNITS + change;
         return result;
     }
     
-    private long relative(long currentTime, String timeString) {
-        // TODO A. implement.
-        throw new RuntimeException("NOT implemented!");
+    /**
+     * Converts from TimeData to GregorianCalendar to time units.
+     * currentTime is used to compute "today".
+     */
+    private long computeTimeUnitsB(long currentTime) {
+        calendar.setTimeInMillis(currentTime / TimeResolver.MILLIS_TO_UNITS);
+        calendar.set(Calendar.HOUR_OF_DAY, td.hour);
+        calendar.set(Calendar.MINUTE, td.minute);
+        
+        double floor = Math.floor(td.second);
+        int second = (int) floor;
+        double fraction = td.second - floor;
+        if (fraction > 1.0) {
+            throw new AssertionError("fraction: " + fraction + ", td.second = " + td.second);
+        }
+        
+        fraction = 1000.0 * fraction;
+        double milliFloor = Math.floor(fraction);
+        double milliFraction = fraction - milliFloor;
+        if (milliFraction > 1.0) {
+            throw new AssertionError("milliFraction: " + milliFraction + ", td.second = " + td.second);
+        }
+        
+        int millis = (int) milliFloor;
+        long change = (long) (milliFraction * MILLIS_TO_UNITS);
+        
+        calendar.set(Calendar.SECOND, second);
+        calendar.set(Calendar.MILLISECOND, millis);
+        
+        long result = calendar.getTimeInMillis() * MILLIS_TO_UNITS + change;
+        return result;
+    }
+    
+    private long timeOfDay(long currentTime, String timeString) {
+        parseTime(timeString, 0);
+        return computeTimeUnitsB(currentTime);
+    }
+    
+    /**
+     * Parses a time string of the format HH:MM[:SS.sss], writes result to this.td.
+     * Sets td.hour, td.minute, td.second or throws BadFormatException.
+     */
+    private void parseTime(String timeString, int offset) throws BadFormatException {
+        int length = timeString.length() - offset;
+        
+        if (length < 5) {
+            throw new BadFormatException("Bad time string, was: '" + timeString + "'.");
+        }
+        
+        td.hour = parseZeroPadded(timeString.substring(offset + 0, offset + 2), timeString);
+        offset += 2;
+        
+        if (timeString.charAt(offset) != ':') {
+            throw new BadFormatException("Bad time string, expected ':', was: '" + timeString + "'.");
+        }
+        offset += 1;
+        
+        td.minute = parseZeroPadded(timeString.substring(offset, offset + 2), timeString);
+        offset += 2;
+        
+        // If there are seconds
+        if (length > 5) {
+            if (length < 8) {
+                throw new BadFormatException("Bad time string, was: '" + timeString + "'.");
+            }
+            
+            if (timeString.charAt(offset) != ':') {
+                throw new BadFormatException("Bad time string, expected ':', was: '" + timeString + "'.");
+            }
+            offset += 1;
+            
+            td.second = parseZeroPaddedDouble(timeString.substring(offset), timeString);
+        } else {
+            td.second = 0.0;
+        }
     }
     
     private long minus(long currentTime, String timeString) {
-        // TODO A. Implement
-        throw new RuntimeException("NOT implemented!");
-    }
-    
-    private long special(long currentTime, String timeString) {
-        if (timeString.equals("now")) {
-            return currentTime;
-        } else if (timeString.equals("yesterday")) {
-            return getTime(currentTime, "-1 day 00:00");
-        } else {
-            throw new BadFormatException("Bad time string, got: '" + timeString + "'.");
+        String[] parts = timeString.split(" ");
+        if (parts.length < 2) {
+            throw new BadFormatException("Bad minus time string: '" + timeString + "'.");
         }
+        
+        double number = 0.0;
+        try {
+            number = Double.parseDouble(parts[0]);
+        } catch (NumberFormatException e) {
+            throw new BadFormatException("Bad minus time string: '" + timeString + "'.");
+        }
+        
+        if (number > 0.0) {
+            throw new BadFormatException("Bad minus time string: '" + timeString + "'.");
+        }
+        
+        String unit = parts[1];
+        if (unit.length() != 1) {
+            throw new BadFormatException("Bad minus time string, unexpected unit, was: '" + timeString + "'.");
+        }
+        
+        char unitChar = unit.charAt(0);
+        double factor;
+        
+        switch (unitChar) {
+        case 's':
+            factor = Clock.UNITS_PER_SEC;
+            break;
+        case 'm':
+            factor = Clock.UNITS_PER_SEC * 60.0;
+            break;
+        case 'h':
+            factor = Clock.UNITS_PER_SEC * 3600.0;
+            break;
+        case 'd':
+            factor = Clock.UNITS_PER_SEC * 3600.0 * 24.0;
+            break;
+        default:
+            throw new BadFormatException("Bad minus time string, bad unit, was: '" + timeString + "'.");
+        }
+        
+        double deltaTime = number * factor;
+        long time = currentTime + ((long) deltaTime);
+        if (time < 0) {
+            throw new BadFormatException("Time out of range (negative: " + time 
+                    + "), time string was: '" + timeString + "'.");
+        }
+        
+        // If time of day comes after minus expression.
+        if (parts.length > 2) {
+            parseTime(timeString, parts[0].length() + 1 + parts[1].length() + 1);
+            time = computeTimeUnitsB(time);
+        }
+        
+        return time;
     }
     
     /**
@@ -317,14 +440,14 @@ public class TimeResolver {
         long currentTime = 1000*1000*1000 * MILLIS_TO_UNITS;  // not needed for absolute times
         
         for (String s : ok) {
-            r.getTime(currentTime, s);
+            r.resolve(currentTime, s);
         }
         
         Exception ex = null;
         for (String s : bad) {
             ex = null;
             try {
-                r.getTime(currentTime, s);
+                r.resolve(currentTime, s);
             } catch (BadFormatException e) {
                 ex = e;
             }
@@ -339,7 +462,7 @@ public class TimeResolver {
     public static void testAbsolute1() {
         long millis = Util.getMillisSinceEpoch(UTC, 2013, 3, 14, 16, 10, 20, 500);        
         String ts = "2013-03-14 16:10:20.500";
-        Assert.assertEquals(millis * MILLIS_TO_UNITS, new TimeResolver().getTime(0, ts));
+        Assert.assertEquals(millis * MILLIS_TO_UNITS, new TimeResolver().resolve(0, ts));
     }
     
     @T
@@ -348,13 +471,13 @@ public class TimeResolver {
         TimeResolver t = new TimeResolver();
         
         String ts = "2000-01-01 00:00:00.000";
-        Assert.assertEquals(millis * MILLIS_TO_UNITS, t.getTime(0, ts));
+        Assert.assertEquals(millis * MILLIS_TO_UNITS, t.resolve(0, ts));
         
         ts = "2000-01-01 00:00:00";
-        Assert.assertEquals(millis * MILLIS_TO_UNITS, t.getTime(0, ts));
+        Assert.assertEquals(millis * MILLIS_TO_UNITS, t.resolve(0, ts));
         
         ts = "2000-01-01 00:00";
-        Assert.assertEquals(millis * MILLIS_TO_UNITS, t.getTime(0, ts));
+        Assert.assertEquals(millis * MILLIS_TO_UNITS, t.resolve(0, ts));
     }
     
     @T
@@ -364,30 +487,95 @@ public class TimeResolver {
         long millis = Util.getMillisSinceEpoch(UTC, 2000, 1, 1, 0, 0, 0, 0);    
         TimeResolver t = new TimeResolver();
         String ts = "2000-01-01 00:00:00.0000123";
-        Assert.assertEquals(millis * MILLIS_TO_UNITS + 123, t.getTime(0, ts));
+        Assert.assertEquals(millis * MILLIS_TO_UNITS + 123, t.resolve(0, ts));
         
         ts = "2000-01-01 00:00:00.0000123456";
-        Assert.assertEquals(millis * MILLIS_TO_UNITS + 123, t.getTime(0, ts));
+        Assert.assertEquals(millis * MILLIS_TO_UNITS + 123, t.resolve(0, ts));
         
         ts = "2000-01-01 00:00:00.00001239";
-        Assert.assertEquals(millis * MILLIS_TO_UNITS + 123, t.getTime(0, ts));
+        Assert.assertEquals(millis * MILLIS_TO_UNITS + 123, t.resolve(0, ts));
     }
     
     @T
     public static void testSpecial0() {
         TimeResolver r = new TimeResolver();
         long current = 1 * 1000*1000*1000 * MILLIS_TO_UNITS + 123;
-        long result = r.getTime(current, "now");
+        long result = r.resolve(current, "now");
         Assert.assertEquals(current, result);
     }
     
-    // @T   TODO enable
+    @T
     public static void tSpecial1() {
         TimeResolver r = new TimeResolver();
-        long current = 1 * 1000*1000*1000 * MILLIS_TO_UNITS + 123;
-        long r1 = r.getTime(current, "yesterday");
-        long r2 = r.getTime(current, "-1 day 00:00");
-        Assert.assertEquals(r2, r1);
+        long current = new SystemClock().getTime();
+        long result = r.resolve(current, "now");
+        Assert.assertEquals(current, result);
+    }
+    
+    @T
+    public static void testTimeOfDay0() {
+        TimeResolver r = new TimeResolver();
+        long t1 = r.resolve(0, "2010-03-14 13:20:10.0010023");
+        long t2 = r.resolve(t1, "09:20:40.5000123");
+        
+        long millis = Util.getMillisSinceEpoch(UTC, 2010, 3, 14, 9, 20, 40, 500);
+        Assert.assertEquals(millis * MILLIS_TO_UNITS + 123, t2);
+    }
+    
+    @T
+    public static void testTimeOfDay1() {
+        TimeResolver r = new TimeResolver();
+        long t1 = r.resolve(0, "2010-03-14 03:01");
+        long t2 = r.resolve(t1, "09:20:40.5000123");
+        
+        long millis = Util.getMillisSinceEpoch(UTC, 2010, 3, 14, 9, 20, 40, 500);
+        Assert.assertEquals(millis * MILLIS_TO_UNITS + 123, t2);
+    }
+    
+    @T
+    public static void testTimeOfDay2() {
+        TimeResolver r = new TimeResolver();
+        long t1 = r.resolve(0, "2010-03-14 03:01");
+        long t2 = r.resolve(t1, "09:20");
+        
+        long millis = Util.getMillisSinceEpoch(UTC, 2010, 3, 14, 9, 20, 0, 0);
+        Assert.assertEquals(millis * MILLIS_TO_UNITS, t2);
+    }
+    
+    @T
+    public static void testMinus0() {
+        TimeResolver r = new TimeResolver();
+        long t1 = r.resolve(0, "2010-03-14 03:01:10");
+        long t2 = r.resolve(t1, "-10 s");
+        Assert.assertEquals(10 * Clock.UNITS_PER_SEC, t1 - t2);
+    }
+    
+    @T
+    public static void testMinus1() {
+        TimeResolver r = new TimeResolver();
+        long t1 = r.resolve(0, "2010-03-14 03:01:10");
+        long t2 = r.resolve(t1, "-10 m");
+        Assert.assertEquals(Clock.UNITS_PER_SEC * 600, t1 - t2);
+    }
+    
+    @T
+    public static void testMinus2() {
+        TimeResolver r = new TimeResolver();
+        long t1 = r.resolve(0, "2010-03-14 03:01:10");
+        long t2 = r.resolve(t1, "-1 d 13:00:01");
+        long t3 = r.resolve(0, "2010-03-13 13:00:01");
+        
+        Assert.assertEquals(t3, t2);
+    }
+    
+    @T
+    public static void testMinus3() {
+        TimeResolver r = new TimeResolver();
+        long t1 = r.resolve(0, "2013-09-01 03:01:10");
+        long t2 = r.resolve(t1, "-1 d 09:00");
+        long t3 = r.resolve(0, "2013-08-31 09:00:00");
+        
+        Assert.assertEquals(t3, t2);
     }
     
     public static void main(String[] args) {
@@ -402,22 +590,15 @@ Time string format
 
 Formal syntax definition.
 
-time-string = absolute / relative / minus / special 
+time-string = absolute / time-of-day / minus / "now" 
 
-absolute = absolute-date [" " time]
+absolute = absolute-date [" " time-of-day]
 
     absolute-date = "YYYY-MM-DD" / "YYYY-MM"
 
-    time = "HH:MM:SS.d" / "HH:MM"
-
-relative = relative-day [time] / [relative-day] time
-
-    relative-day = "MM-DD" / "xx-DD" / "mon" / "tue" / "wed" / "thu" / "fri" / "sat" / "sun"
+time-of-day = "HH:MM:SS.d" / "HH:MM"
     
-minus = "-" number " " unit [" " relative]
+minus = "-" number " " unit [" " time]
 
-    unit = "s" / "min" / "h" / "day" / "week" / "year"
-    
-special = "yesterday" / "now"
-
+    unit = "s" / "m" / "h" / "d"
 */
