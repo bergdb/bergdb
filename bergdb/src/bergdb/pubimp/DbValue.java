@@ -3,6 +3,8 @@ package bergdb.pubimp;
 import java.lang.reflect.Array;
 
 import bergdb.common.Bug;
+import bergdb.nanotest.Assert;
+import bergdb.nanotest.T;
 
 /**
  * <p>This is the superclass of all DbObject types: boolean, int, long, double, string, 
@@ -202,6 +204,41 @@ public abstract class DbValue {
         }
         
         return (TYPE) result;
+    }
+
+    /**
+     * Returns true if 'c' represents a primitive type (byte.class, short.class, ...) or a 
+     * primitive wrapper class (java.lang.Byte, java.lang.Short, ...).
+     */
+    public static boolean isPrimitiveOrWrapper(Class<?> c) {
+        char result = '.';
+        String name = c.getName();
+        int typeHash = name.hashCode();
+        
+        for (int i = 0; i < 16; i++) {
+            if (typeHash == specialHashes[i] && c.getName().equals(specialTypes[i])) {
+                result = specialTypeChars[i];
+                break;
+            }
+        }
+        
+        return result != '.';
+    }
+    
+    @T
+    public static void testIsPrimitiveOrWrapper0() {
+        Class<?>[] types = new Class<?>[] {
+                String.class, Math.class, Thread.class,
+                Integer.class, Double.class, Byte.class,
+                byte.class, char.class, double.class};
+        
+        boolean[] expected = new boolean[] {false, false, false,
+                true, true, true,
+                true, true, true};
+        
+        for (int i = 0; i < types.length; i++) {
+            Assert.assertEquals("index:" + i, expected[i], isPrimitiveOrWrapper(types[i]));
+        }
     }
     
     /**

@@ -735,6 +735,32 @@ public class PubTester {
         Assert.assertTrue(ex != null);
     }
     
+    @T
+    public static void testStoreArray() {
+        Database d = Factory.database().memory().start();
+        Connection c = d.connection();
+        
+        c.w().set("/strings.obj", new String[]{"adam", "eve"}).execute();
+        String[] strings = c.get("/strings.obj", String[].class);
+        d.stop();
+        
+        Assert.assertEquals(2, strings.length);
+        Assert.assertEquals("adam", strings[0]);
+        Assert.assertEquals("eve", strings[1]);
+    }
+    
+    @T
+    public static void testStorePrimitive() {
+        Database d = Factory.database().memory().start();
+        Connection c = d.connection();
+        
+        c.w().set("/myInt.obj", 123).execute();
+        int myInt = c.get("/myInt.obj", int.class);
+        d.stop();
+        
+        Assert.assertEquals(123, myInt);
+    }
+    
     public static void main(String[] args) {
         //
     }

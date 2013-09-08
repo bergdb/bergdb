@@ -1025,14 +1025,36 @@ public class DbObjectTester {
         }
     }
     
-    // TODO A. Not implemented yet, test-driven development ;-)
-    /*
-    public static void testSingleInt() {
+    public static void testPrimitive0() {
         DbObject dbo1 = DbObject.toDbObject(1234);
-        int theInt = dbo1.toJavaObject(Integer.class, new KvToObjectImp());
-        
+        Integer theInt = dbo1.toJavaObject(Integer.class, new KvToObjectImp());
+        Assert.assertEquals(1234, theInt.intValue());
+    }
+    
+    public static void testPrimitive1() {
+        // Same as previous, but uses int.class instead of Integer.class.
+        DbObject dbo1 = DbObject.toDbObject(1234);
+        int theInt = dbo1.toJavaObject(int.class, new KvToObjectImp());
         Assert.assertEquals(1234, theInt);
-    }*/
+    }
+    
+    public static void testPrimitive2() {
+        DbObject dbo1 = DbObject.toDbObject(true);
+        boolean result = dbo1.toJavaObject(boolean.class, new KvToObjectImp());
+        Assert.assertEquals(true, result);
+    }
+    
+    public static void testPrimitive3() {
+        DbObject dbo1 = DbObject.toDbObject(123.45);
+        double result = dbo1.toJavaObject(double.class, new KvToObjectImp());
+        Assert.assertEquals(123.45, result);
+    }
+    
+    public static void testPrimitive4() {
+        DbObject dbo1 = DbObject.toDbObject(Double.NaN);
+        double result = dbo1.toJavaObject(double.class, new KvToObjectImp());
+        Assert.assertTrue(Double.isNaN(result));
+    }
     
     public static void main(String[] args) {
     }

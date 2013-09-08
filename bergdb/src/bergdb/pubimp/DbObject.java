@@ -78,7 +78,7 @@ public class DbObject extends DbValue {
     private static final String KEY_FIELD = PubUtil.KEY_FIELD;
     private static final short KEY_FIELD_HASH = hash(KEY_FIELD);
     private static final String WRAPPED_ARRAY_FIELD_NAME = "array";
-    //private static final String WRAPPED_PRIMITIVE_FIELD_NAME = "v"; 
+    private static final String WRAPPED_PRIMITIVE_FIELD_NAME = "p";   // p for primitive.
     
     private final byte[] bytes;
     private final short[] hashes;   // cached data from 'bytes'
@@ -262,15 +262,23 @@ public class DbObject extends DbValue {
         Class<?> clazz = object.getClass();
         
         if (clazz.isArray()) {
-            // If it is an array, wrapped it in a DbObject and store the array
-            // in field "v".
+            // If it is an array, wraps it in a DbObject stored in a field.
             
             DbValue array = DbValue.toDbValue(clazz, object);
             if (!(array instanceof DbArray)) {
                 throw new Bug("Unexpected type, expected DbArray, got: " + array.getClass());
             }
             b.addArray(WRAPPED_ARRAY_FIELD_NAME, (DbArray) array);            
+        
+        } else if (DbValue.isPrimitiveOrWrapper(clazz)) {
+            // If it is a primitive value, wraps it in a DbObject. Value is stored in a field.  
+            
+            DbValue value = DbValue.toDbValue(clazz, object);
+            b.addDbValue(WRAPPED_PRIMITIVE_FIELD_NAME, value);
+            
         } else {
+            // An ordinary object.
+            
             ArrayList<Field> fields = getEligibleFields(clazz);
             for (Field f : fields) {
                 try {
@@ -282,6 +290,7 @@ public class DbObject extends DbValue {
                     throw new Bug("Should not happen, " + e.toString());
                 }
             }
+        
         }
         
         DbObject result = b.build();
@@ -330,6 +339,8 @@ public class DbObject extends DbValue {
             return null;
         }
         
+        TYPE result;
+        
         if (c.isArray()) {
             DbArray array = this.getArray(WRAPPED_ARRAY_FIELD_NAME);
             if (array == null) {
@@ -339,20 +350,27 @@ public class DbObject extends DbValue {
             Class<?> componentType = c.getComponentType();
             int size = array.getSize();
             
-            TYPE result = (TYPE) Array.newInstance(componentType, size);
+            result = (TYPE) Array.newInstance(componentType, size);
             
             int index = 0;
             for (DbValue dbValue : array) {
                 Array.set(result, index, dbValue.toJavaObject(componentType, c2o));
                 index++;
             }
-            return result;
             
-        } else {
+        } else if (DbValue.isPrimitiveOrWrapper(c)) {
+            DbValue value = this.getDbValue(WRAPPED_PRIMITIVE_FIELD_NAME);
+            if (value == null) {
+                return (TYPE) null;
+            }
+            result = value.toJavaObject(c, c2o);
+            
+        } else {            
             TYPE object1 = c2o.newObject(c);
-            TYPE object2 = (TYPE) toJavaObject(object1, c2o);
-            return object2;
+            result = (TYPE) toJavaObject(object1, c2o);
         }
+        
+        return result;
     }
     
     /**
