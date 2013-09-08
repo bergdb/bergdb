@@ -175,10 +175,6 @@ public class DbObjectTester {
         Assert.assertNull(to.getString("s"));
     }
     
-    public static class StringArrayClass {
-        public String[] strings;
-    }
-    
     private static class ByteArrayClass {
         @SuppressWarnings("unused")
         byte[] field;
@@ -660,9 +656,13 @@ public class DbObjectTester {
             };
         }
     }
+
+    public static class StringArrayClass {
+        public String[] strings;
+    }
     
     @T
-    public static void testStrings() {
+    public static void testStrings0() {
         Strings s0 = new Strings();
         s0.setThem1();
         
@@ -672,6 +672,50 @@ public class DbObjectTester {
         Assert.assertEquals(s0.s0a, s1.s0a);
         Assert.assertNull(s1.s0b);
         Assert.assertArrayEquals(s0.s1a, s1.s1a);
+    }
+    
+    @T
+    public static void testStrings1() {
+        // Tests storing an array of strings.
+        
+        String[] myStrings1 = new String[]{"first", "second"};
+        StringArrayClass obj1 = new StringArrayClass();
+        obj1.strings = myStrings1;
+        DbObject dbo1 = DbObject.toDbObject(obj1);
+        byte[] bytes = dbo1.getBytes();
+        
+        // Stored to bytes, lets try to get it back to a String[].
+        DbObject dbo2 = new DbObject(bytes);
+        StringArrayClass obj2 = (StringArrayClass) dbo2.toJavaObject(
+                StringArrayClass.class, new KvToObjectImp());
+        String[] myStrings2 = obj2.strings;
+        
+        // Assert
+        
+        Assert.assertEquals("first", myStrings2[0]);
+        Assert.assertEquals("second", myStrings2[1]);
+    }
+    
+    @T
+    public static void testStrings2() {
+        // Like previous test, but with null-value.
+        
+        String[] myStrings1 = new String[]{null, "second"};
+        StringArrayClass obj1 = new StringArrayClass();
+        obj1.strings = myStrings1;
+        DbObject dbo1 = DbObject.toDbObject(obj1);
+        byte[] bytes = dbo1.getBytes();
+        
+        // Stored to bytes, lets try to get it back to a String[].
+        DbObject dbo2 = new DbObject(bytes);
+        StringArrayClass obj2 = (StringArrayClass) dbo2.toJavaObject(
+                StringArrayClass.class, new KvToObjectImp());
+        String[] myStrings2 = obj2.strings;
+        
+        // Assert
+        
+        Assert.assertNull(myStrings2[0]);
+        Assert.assertEquals("second", myStrings2[1]);
     }
     
     private static class IntArray5D implements Serializable {
@@ -702,7 +746,6 @@ public class DbObjectTester {
         Assert.assertArrayEquals(bytes0, bytes1);
     }
     
-    @SuppressWarnings("unused")
     private static class Customer implements Serializable {
         private static final long serialVersionUID = 1L;
         
@@ -894,6 +937,102 @@ public class DbObjectTester {
         
         Assert.assertNull(obj1.field);
     }
+    
+    public static class TestClass4 {
+        public String[] array;
+    }
+   
+    @T
+    public static void testStringArray0() {
+        TestClass4 obj1 = new TestClass4();
+        obj1.array = new String[]{"1", "2", null, "4"};
+        DbObject dbo = DbObject.toDbObject(obj1);
+        TestClass4 obj2 = dbo.toJavaObject(TestClass4.class, new KvToObjectImp());
+        
+        Assert.assertEquals(4, obj2.array.length);
+        Assert.assertEquals("1", obj2.array[0]);
+        Assert.assertNull(obj2.array[2]);
+    }
+    
+    @T
+    public static void testArray0() {
+        String[] myStrings1 = new String[]{"first", "second"};
+        DbObject dbo = DbObject.toDbObject(myStrings1);
+        Assert.assertTrue("assert dbo not null", dbo != null);        
+        String[] myStrings2 = dbo.toJavaObject(String[].class, new KvToObjectImp());
+        Assert.assertEquals(2, myStrings2.length);
+        Assert.assertEquals("first", myStrings2[0]);
+        Assert.assertEquals("second", myStrings2[1]);
+    }
+    
+    @T
+    public static void testArray1() {
+        // Like previous test, but with a null value in array.
+        String[] myStrings1 = new String[]{null, "second"};
+        DbObject dbo = DbObject.toDbObject(myStrings1);
+        
+        String[] myStrings2 = dbo.toJavaObject(String[].class, new KvToObjectImp());
+        Assert.assertEquals(2, myStrings2.length);
+        Assert.assertNull(myStrings2[0]);
+        Assert.assertEquals("second", myStrings2[1]);
+    }
+    
+    @T
+    public static void testArray2() {
+        // Tests with an array using a custom class.
+        Customer[] c = new Customer[]{new Customer(), new Customer()};
+        c[0].id = 11;
+        c[0].name = "A";
+        c[1].id = 22;
+        c[1].name = "B";
+        
+        DbObject dbo = DbObject.toDbObject(c);
+        
+        Customer[] c2 = dbo.toJavaObject(Customer[].class, new KvToObjectImp());
+        Assert.assertEquals(2, c2.length);
+        Assert.assertEquals(c[0].id, c2[0].id);
+        Assert.assertEquals(c[0].name, c2[0].name);
+        Assert.assertEquals(c[1].id, c2[1].id);
+        Assert.assertEquals(c[1].name, c2[1].name);
+    }
+    
+    @T
+    public static void testArray3() {
+        // Tests storing an array of primitive values.
+        
+        int[] ints0 = new int[]{1, 2, -100, Integer.MAX_VALUE};
+        DbObject dbo = DbObject.toDbObject(ints0);
+        int[] ints1 = dbo.toJavaObject(int[].class, new KvToObjectImp());
+        Assert.assertArrayEquals(ints0, ints1);
+    }
+    
+    @T
+    public static void testArray4() {
+        // Tests storing a multi-dimensional array.
+        
+        int[][] ints0 = new int[][] {
+            new int[] { 1, 10 },
+            null,
+            new int[] {}
+        };
+        
+        DbObject dbo = DbObject.toDbObject(ints0);
+        int[][] ints1 = dbo.toJavaObject(int[][].class, new KvToObjectImp());
+        
+        Assert.assertEquals(ints0.length, ints1.length);
+        for (int i = 0; i < ints0.length; i++) {
+            Assert.assertArrayEquals(ints0[i], ints1[i]);
+        }
+    }
+    
+    // TODO A. Not implemented yet, test-driven development ;-)
+    /*
+    public static void testSingleInt() {
+        DbObject dbo1 = DbObject.toDbObject(1234);
+        int theInt = dbo1.toJavaObject(Integer.class, new KvToObjectImp());
+        
+        Assert.assertEquals(1234, theInt);
+    }*/
     
     public static void main(String[] args) {
     }

@@ -12,8 +12,7 @@ import bergdb.common.Bug;
  * <p>All subclasses must implement a static method like this: 
  * <pre>  public static DbBoolean parse(byte[] buffer, int offset) {...</pre>
  * "DbBoolean" is replaced with the subclass name.
- * This method must be able to read bytes written with the write() method.
- * </p>
+ * The method must be able to read bytes written with the write() method.</p>
  * 
  * @author Frans Lundberg
  */
@@ -92,7 +91,7 @@ public abstract class DbValue {
     
     /**
      * Returns the byte size of the serialized form of the DbValue.
-     * The method write(ByteBuffer) must write exactly as many bytes to the ByteBuffer.
+     * The method write(ByteBuffer) must write exactly as many bytes to the byte buffer.
      */
     public abstract int getByteSize();
     
@@ -149,7 +148,7 @@ public abstract class DbValue {
     
     /**
      * Converts this db value to a specified Java type, c, and returns the Java value.
-     * Primitive types (int.class, boolean.class, ...) result in primitive wrappers
+     * Primitive types (int.class, boolean.class, ...) result in primitive wrapper
      * objects (Integer, Boolean, ...).
      * The implementation of this method in this class handles primitive types, primitive
      * wrapper classes, and the java.lang.String class. Other Java classes are not handled 
@@ -347,6 +346,13 @@ public abstract class DbValue {
         return result;
     }
     
+    /**
+     * Important method that converts a Java object to a DbValue.
+     * 
+     * @param dstType  Only used when object == null.
+     * @param object
+     * @return
+     */
     public static DbValue toDbValue(Class<?> dstType, Object object) {
         if (object == null) {
             return toNullDbValue(dstType);

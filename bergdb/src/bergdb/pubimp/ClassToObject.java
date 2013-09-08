@@ -1,7 +1,7 @@
 package bergdb.pubimp;
 
 /**
- * An implementation of this interface can create template object given a Class parameter.
+ * An implementation of this interface can create a template object given a Class parameter.
  * 
  * @author Frans Lundberg
  */

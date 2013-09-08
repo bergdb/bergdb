@@ -75,6 +75,7 @@ public class StorageManager implements AppendOnlyStream {
      * Creates a new object based on the supplied builder object.
      * Streams that are not already a BufferedStream are wrapped with a BufferedStream.
      */
+    @SuppressWarnings("resource")
     private StorageManager(Builder builder) {
         if (builder.streams.size() == 0) {
             throw new IllegalArgumentException("No streams set.");

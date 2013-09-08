@@ -82,7 +82,7 @@ public class KvToObjectImp implements KvToObject, ClassToObject {
             }
         } else {   
             // The ordinary case of creating an object based on an DbObject value stored in 
-            // the database.
+            // the database. This works for Java arrays too.
             
             DbObject dbObject;
             try {
@@ -100,18 +100,26 @@ public class KvToObjectImp implements KvToObject, ClassToObject {
         return result;
     }
     
+    /**
+     * Creates and returns a new object of the specified class.
+     * The newly created object is typically used as a template; its fields will be set
+     * through reflection to match data in the database.
+     * 
+     * @throws ObjectCreationException  If the objection could not be created.
+     */
     @SuppressWarnings("unchecked")
     public <TYPE> TYPE newObject(Class<TYPE> c) {
         BlankConstructorFactory f;
         synchronized  (factories) {
             f = factories.get(c);
-        }
-        if (f == null) {
-            try {
-                f = new BlankConstructorFactory(c);
-                factories.put(c, f);
-            } catch (IllegalArgumentException e) {
-                throw new ObjectCreationException(e.getMessage());
+            
+            if (f == null) {
+                try {
+                    f = new BlankConstructorFactory(c);
+                    factories.put(c, f);
+                } catch (IllegalArgumentException e) {
+                    throw new ObjectCreationException(e.getMessage());
+                }
             }
         }
         

@@ -583,22 +583,3 @@ public class TimeResolver {
     }
 }
 
-/*
-
-Time string format
-==================
-
-Formal syntax definition.
-
-time-string = absolute / time-of-day / minus / "now" 
-
-absolute = absolute-date [" " time-of-day]
-
-    absolute-date = "YYYY-MM-DD" / "YYYY-MM"
-
-time-of-day = "HH:MM:SS.d" / "HH:MM"
-    
-minus = "-" number " " unit [" " time]
-
-    unit = "s" / "m" / "h" / "d"
-*/

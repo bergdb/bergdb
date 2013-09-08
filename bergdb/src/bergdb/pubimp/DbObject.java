@@ -1,5 +1,6 @@
 package bergdb.pubimp;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
@@ -38,14 +39,14 @@ import bergdb.pub.BadFormatException;
  * </pre>
  * 
  * <p>The types n, i, l, d can have any values permitted by the Java runtime for the primitive 
- * Java types with the same name. The string type can have a value of any Unicode string or
+ * Java types with the same name. The string type can have the value of any Unicode string or
  * null. The object type stores a DbObject, or it can have the value null.
  * The byteArray type stores an array of bytes or have a value of null. The array type stores
- * an array of elements; each element can independently be of any DbObject type. 
+ * an array of heterogeneous elements; each element can independently be of any DbObject type. 
  * See class DbArray. The value of an array can be null.</p>
  * 
  * <p>A DbObject can be serialized to a byte array; actually it is stored in memory in 
- * a form that is nearly identical to its byte format.
+ * a form that is nearly identical to its serialized byte format.
  * The method write() will serialize the DbObject to bytes, and parse() will parse it back
  * from bytes.</p>
  * 
@@ -65,6 +66,7 @@ public class DbObject extends DbValue {
     //
     // 1304 Frans: Little-ending-first (LE) byte order is used to follow the byte ordering used 
     // in the db stream.
+    // 1309 Frans: Added support for Java arrays; they are wrapped field 'v' of a DbObject.
     //
     
     private static final int HEADER_SIZE = 8;
@@ -75,6 +77,8 @@ public class DbObject extends DbValue {
     private static final int FIELD_INFO_SIZE = 6;
     private static final String KEY_FIELD = PubUtil.KEY_FIELD;
     private static final short KEY_FIELD_HASH = hash(KEY_FIELD);
+    private static final String WRAPPED_ARRAY_FIELD_NAME = "array";
+    //private static final String WRAPPED_PRIMITIVE_FIELD_NAME = "v"; 
     
     private final byte[] bytes;
     private final short[] hashes;   // cached data from 'bytes'
@@ -257,15 +261,26 @@ public class DbObject extends DbValue {
         DbObject.Builder b = new DbObject.Builder();
         Class<?> clazz = object.getClass();
         
-        ArrayList<Field> fields = getEligibleFields(clazz);
-        for (Field f : fields) {
-            try {
-                DbValue dbValue = fieldToDbValue(object, f);
-                b.addDbValue(f.getName(), dbValue);
-            } catch (IllegalArgumentException e) {
-                throw new Bug(e);
-            } catch (IllegalAccessException e) {
-                throw new Bug("Should not happen, " + e.toString());
+        if (clazz.isArray()) {
+            // If it is an array, wrapped it in a DbObject and store the array
+            // in field "v".
+            
+            DbValue array = DbValue.toDbValue(clazz, object);
+            if (!(array instanceof DbArray)) {
+                throw new Bug("Unexpected type, expected DbArray, got: " + array.getClass());
+            }
+            b.addArray(WRAPPED_ARRAY_FIELD_NAME, (DbArray) array);            
+        } else {
+            ArrayList<Field> fields = getEligibleFields(clazz);
+            for (Field f : fields) {
+                try {
+                    DbValue dbValue = fieldToDbValue(object, f);
+                    b.addDbValue(f.getName(), dbValue);
+                } catch (IllegalArgumentException e) {
+                    throw new Bug(e);
+                } catch (IllegalAccessException e) {
+                    throw new Bug("Should not happen, " + e.toString());
+                }
             }
         }
         
@@ -315,19 +330,41 @@ public class DbObject extends DbValue {
             return null;
         }
         
-        TYPE object = c2o.newObject(c);
-        object = (TYPE) toJavaObject(object, c2o);
-        return object;
+        if (c.isArray()) {
+            DbArray array = this.getArray(WRAPPED_ARRAY_FIELD_NAME);
+            if (array == null) {
+                return (TYPE) null;
+            }
+            
+            Class<?> componentType = c.getComponentType();
+            int size = array.getSize();
+            
+            TYPE result = (TYPE) Array.newInstance(componentType, size);
+            
+            int index = 0;
+            for (DbValue dbValue : array) {
+                Array.set(result, index, dbValue.toJavaObject(componentType, c2o));
+                index++;
+            }
+            return result;
+            
+        } else {
+            TYPE object1 = c2o.newObject(c);
+            TYPE object2 = (TYPE) toJavaObject(object1, c2o);
+            return object2;
+        }
     }
     
     /**
-     * Converts this DbObject to a Java object.
+     * Converts this DbObject to a Java object by setting the fields of 'dest'.
      * 
      * @param dest  The object to set the fields of, or null to create a new object.
      * @param c2o   How to create objects from classes.
-     * @return      Returns 'dest' or null if isNull() is true.
+     * @return      Returns 'dest' or defaultValue(dest.getClass()).
      */
     public Object toJavaObject(Object dest, ClassToObject c2o) {
+        // NOTE: Should this method be public? 
+        
         if (dest == null) {
             throw new IllegalArgumentException("dest == null not allowed");
         }
@@ -873,12 +910,16 @@ public class DbObject extends DbValue {
         /**
          * Builds a DbObject with its fields in order sorted alphabetically according
          * to their names.
-         * This method defines the byte format of a DbObject.
          */
         public DbObject build() {
             return buildInner(false);
         }
         
+        /**
+         * Builds a DbObject with its fields in order sorted alphabetically according
+         * to their names.
+         * This method currently (2013-09) defines the byte format of a DbObject.
+         */
         private DbObject buildInner(boolean isNull) {            
             int size = 0;
             
@@ -943,18 +984,43 @@ public class DbObject extends DbValue {
 
 /*
 
+
+
+Overhead for a single int
+=========================
+
+2013-09-01. Considering support for single numeric values
+(Byte, Character, Short, Int, Long, Float, Double). Example code:
+
+    c.set("noOfCores.obj", 8).execute();
+    int noOfCores = c.get("noOfCores.obj", Integer.class);
+    
+The size of the value (if stored in field "v") would be 8 + 6 + 1 + 2 + 1 + 4
+= 18 + 4 = 22. 18 bytes overhead. Not super much waste, but not super efficient either.
+We could have 8 + 4 = 12 instead and still keep the 4-byte signature and version.
+Special type byte used for byte at index 5 - currently 0 and not used. Or we could
+reduce header size with 4 bytes and have: ['B' VERSION(1) SIZE(2)] as header.
+
+However, this optimization may not be worth it. Could be done with code storing
+primitive as byte[]. This allows zero overhead for the stored value.
+
+
 Types to support, notes
 =======================
 
 Supporting as many field types as possible is not be the best approach. Not all languages
-will support all types, obviously. We want a subset of type inspired by Java and C#.
+will support all types, obviously. We want a subset of types inspired by Java and C#.
 We want to keep complexity as low as possible. Serialization of existing objects is not the goal; 
 we assume specially crafted classes for data storage.
+
+More important than supporting many types, is portability to vast number of platforms
+and languages. Therefore, a small set of types, supported on almost all systems has been
+chosen.
 
 == Java ==
 
 Primitive (8): boolean, byte, char, short, int, long, float, double.
-OString, Object. 1D, 2D arrays of these. Generic types.
+String, Object. 1D, 2D arrays of these. Generic types.
 
 == Json ==
 

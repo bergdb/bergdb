@@ -456,6 +456,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     public static void test1() throws IOException, InterruptedException {
         // Note, test relies on timing. Not deterministic.
         MemoryStream m = new MemoryStream();
+        @SuppressWarnings("resource")
         BufferedStream b = new BufferedStream(m, 1000, 20);
         b.start();
         
@@ -493,6 +494,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     @T
     public static void testWriteAfterClose1() throws IOException, InterruptedException {
         MemoryStream m = new MemoryStream();
+        @SuppressWarnings("resource")
         BufferedStream b = new BufferedStream(m, 1000, 20);
         b.start();
         
@@ -533,6 +535,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     @T
     public static void testReadAfterClose1() throws IOException, InterruptedException {
         MemoryStream m = new MemoryStream();
+        @SuppressWarnings("resource")
         BufferedStream b = new BufferedStream(m, 1000, 20);
         b.start();
         
