@@ -66,6 +66,9 @@ public class RwTransaction implements Transaction {
     }
 
     /**
+     * Internal method that executes a transaction.
+     * Both RwTransactions and WTransactions uses this method.
+     * 
      * @throws StreamIoException
      * @throws StreamFormatException
      * @throws InternalDataException

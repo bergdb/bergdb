@@ -5,6 +5,7 @@ import bergdb.pub.WBuilder;
 
 /**
  * The WBuilder implementation.
+ * A thin wrapper around RwEnvironmentImp.
  * 
  * @see bergdb.pub.WBuilder
  * @author Frans Lundberg

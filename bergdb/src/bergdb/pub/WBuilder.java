@@ -41,3 +41,10 @@ public interface WBuilder {
      */
     public Transaction execute();
 }
+
+/*
+
+This is really a convenience for the user. We could have used an RwTransaction too,
+I suppose.
+
+*/
