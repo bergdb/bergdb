@@ -17,6 +17,8 @@ import bergdb.stream.MemoryStream;
  * This class is used to build a Database instance.
  * Use code like this: <code>Database db = Builder.database().settingX().build();</code>
  * to create a Database.
+ * 
+ * @author Frans Lundberg
  */
 public class DatabaseBuilderImp implements DatabaseBuilder {
     
@@ -26,7 +28,11 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         dbBuilder = Db.builder();
     }
     
-    Db.Builder getDbBuilder() {
+    /**
+     * Returns the internal Db.Builder object.
+     * Not part of Pub API.
+     */
+    public Db.Builder getDbBuilder() {
         return dbBuilder;
     }
     

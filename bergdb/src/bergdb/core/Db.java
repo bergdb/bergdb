@@ -2677,6 +2677,16 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
         /** 
          * Adds a storage stream with the given buffer parameters.
          * If 'name' is the same as an existing stream, the existing one is replaced.
+         * 
+         * @param name
+         *      Name of the stream. The "main" stream is special.
+         * @param stream
+         *      The output database stream.
+         * @param bufferSize
+         *      Buffer size in bytes.
+         * @param bufferTime  
+         *      Maximum time in milliseconds to buffer the data 
+         *      before the buffer is flushed.
          */
         public Builder stream(String name, AppendOnlyStream stream, int bufferSize, int bufferTime) {
             if (name == null) {

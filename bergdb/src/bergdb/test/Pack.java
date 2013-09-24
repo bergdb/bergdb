@@ -8,6 +8,7 @@ public class Pack implements IPack {
         BigDb.class,
         BigDbEvict.class,
         BigDbWithDeletes.class,
+        Bug130924.class,
         Concurrency2.class,
         Crazy.class,
         CreateIndexTester.class,

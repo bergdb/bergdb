@@ -201,8 +201,6 @@ public class GetMany {
          * Sets up the chain to its initial state based on: g.startKey, g.inclusive, g.forward.
          * The initial state is at-or-before g.startKey, must be "at" if startKey equals an
          * existing key.
-         * 
-         * @param db   Only used for testing.
          */
         void setup(KeyNode root) {
             long[] start = chainStartKey;
@@ -283,8 +281,12 @@ public class GetMany {
             
             assert linkSize > 0;
             setupEqMatch = true;
+            
             for (int i = 0; i < this.linkSize; i++) {
-                if (linkCompareValues[i] != Klong.getCompareValue(start[i])) {
+                long linkCompareValue = linkCompareValues[i];
+                long startCompareValue = Klong.getCompareValue(start[i]);
+                
+                if (linkCompareValue != startCompareValue) {
                     setupEqMatch = false;
                     break;
                 }
