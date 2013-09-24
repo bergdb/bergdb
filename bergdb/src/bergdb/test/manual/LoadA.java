@@ -1,4 +1,4 @@
-package bergdb.test.big;
+package bergdb.test.manual;
 
 import java.io.File;
 import java.util.Random;

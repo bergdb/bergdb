@@ -16,13 +16,12 @@ import bergdb.test.Set;
 /**
  * <p>An executable class that runs a fixed set of performance tests of Core Layer.
  * Use this class to quickly detect how code changes affect performance.
- * Should run within 3 minutes on an ordinary development computer.</p>
- * 
- * <p>Run the executable class with no arguments, or a single argument 'dots' to 
+ * Should run within 3 minutes on an ordinary development computer.
+ * Run the executable class with no arguments, or a single argument 'dots' to 
  * reduce printed output.</p>
  * 
- * <p>Baseline1 is measured with my netbook, "rose", Feb 2013.
- * 32-bit Ubuntu OS.<p>
+ * <p>Baseline1 is measured with my laptop, "cissi", July 2013.
+ * 64-bit Ubuntu 12.04 server, Java 1.7 from Oracle.<p>
  * 
  * <p>Baseline2 is measured with "linda"; a virtual private server hosted by linode.com
  * (1 GB RAM version). Runs 64-bit Ubuntu. 
@@ -35,8 +34,8 @@ import bergdb.test.Set;
  */
 public class CorePerf {
     private Map<String, Double> result;
-    private Map<String, Double> baseline1;     // rose, 2013-03
-    private Map<String, Double> baseline2;     // linda, 2013-05-02.
+    private Map<String, Double> baseline1;
+    private Map<String, Double> baseline2;
     private boolean printDots = false;
     
     public CorePerf() {
@@ -133,7 +132,7 @@ public class CorePerf {
             double normalized2 = value / baseline2.get(name);
             productGeo1 = productGeo1 * normalized1;
             productGeo2 = productGeo2 * normalized2;
-            //System.out.printf(Locale.US, "%-10s %.3g  %.2f  %.2f\n", name, value, normalized1, normalized2);
+            
             String s = Util.spaceFill(name + ":", 10) 
                     + Util.twoDecimals(normalized1) + ",  " 
                     + Util.twoDecimals(normalized2) + ",  " + value;
@@ -215,8 +214,8 @@ Log
 
 == 130705 New profile ==
 Rose profile replace - low-end 32-bit system. Of little interest.
-Best run of 4. Note, values for "getmany", "get4t" varies with a factor of 3! Not per method
-invocation but for the total aggregate (min value).
+Best run of 4. Note, values for "getmany", "get4t" varies with a factor of 3! 
+For the total aggregate (min value).
 
 Running on cissi, Fri Jul 05 10:53:26 CEST 2013.
 JVM: Java HotSpot(TM) 64-Bit Server VM 23.25-b01, java 1.7.0_25
@@ -248,6 +247,5 @@ From test running on Rose - low-end 32-bit Ubuntu netbook, Feb 2013. Profile val
 
 == 130530 ==
 Removed use of System.out.printf() since it does not work for the GCJ build.
-
 
 */

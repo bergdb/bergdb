@@ -43,11 +43,12 @@ public interface Connection extends ReadInterface {
     public void freezeLookupTime();
     
     /**
-     * If key replace is enabled, occurrences of the string "${transactionTime}" in the database
-     * key will be replaced by the a string containing the unique transactionTime of the
-     * transaction when it is executed. The transactionTime of the transaction also functions
-     * as a unique transaction ID. The transactionTime is guaranteed to by unique for every
-     * transaction and strictly increasing.
+     * If key replace is enabled, occurrences of the string "${transactionTime}" in a database
+     * key will be replaced by the the unique transactionTime of the transaction when it 
+     * is executed. By default, the key replace feature of a connection is disabled.
+     * This method must to be called to enable it.
+     * The transactionTime of the transaction functions as a unique transaction ID. 
+     * It is guaranteed to be unique for every transaction and is strictly increasing.
      * 
      * @param enable  Set to true to enable key replace.
      */

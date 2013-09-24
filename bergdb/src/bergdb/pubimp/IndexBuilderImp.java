@@ -66,8 +66,8 @@ public class IndexBuilderImp implements IndexBuilder {
         }
         
         if (!indexManager.typeSupported(indexTypeString)) {
-            throw new IllegalArgumentException("Index type " + indexTypeString
-                    + " not supported.");
+            throw new IllegalArgumentException("Index type '" + indexTypeString
+                    + "' not supported.");
         }
         
         nextCompositeLevel();

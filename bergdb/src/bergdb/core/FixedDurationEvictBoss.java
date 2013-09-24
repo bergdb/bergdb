@@ -2,7 +2,8 @@ package bergdb.core;
 
 /**
  * An IEvictBoss that has a fixed configurable cache duration.
- * This class is thread-safe.
+ * Cache-duration is measured in stream-length. So the "time-scale" is the length of
+ * the database stream. This class is thread-safe.
  * 
  * @author Frans Lundberg
  */
@@ -62,7 +63,7 @@ We could add a feed-back loop. The evictOrNot method could decide that evict met
 run more often when the reported (reportEvictResult) fraction 
 ed.evictCount / ed.pointerCount is high.
 
-Example: normally evictOrNot return true every 200th time. But when fraction is above 0.50
-it could run every 20th time instead.
+Example: normally evictOrNot return true 1 in 100 times. But when fraction is above 0.50
+it could run every 1 on 20 instead.
 
 */

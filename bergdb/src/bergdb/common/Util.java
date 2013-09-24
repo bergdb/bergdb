@@ -1018,4 +1018,20 @@ public class Util {
         c.set(Calendar.MILLISECOND, millis);
         return c.getTimeInMillis();
     }
+    
+    /**
+     * Removes the first string in a String array.
+     * If in is null or the empty array, in itself is returned.
+     */
+    public static String[] removeFirst(String[] in) {
+        if (in == null || in.length == 0) {
+            return in;
+        }
+
+        String[] out = new String[in.length - 1];
+        for (int i = 0; i < out.length; i++) {
+            out[i] = in[i + 1];
+        }
+        return out;
+    }
 }

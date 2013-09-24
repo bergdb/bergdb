@@ -1,4 +1,4 @@
-package bergdb.test;
+package bergdb.test.manual;
 
 import java.io.File;
 import java.io.IOException;
@@ -176,7 +176,7 @@ than 10,000 transactions per second, with reliability, convenience and security.
 
 CONCLUSIONS: On a fast server we can run over 100k trans/s for very simple transactions.
 For advanced transactions, say payments, we can probably handle 10k payments/s. This is more than
-enough for any real-world application I know of. Stock exchange may reach thousands of transactions
+enough for most real-world application I know of. Stock exchange may reach thousands of transactions
 per second. Also, Visa/MasterCard may process in that order of transactions per second at peak.
 
 */

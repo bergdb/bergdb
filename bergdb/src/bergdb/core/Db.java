@@ -76,9 +76,9 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
     //
     // 1210 Frans: Making many fields final increased GET performance somewhat.
     //
-    // Note: There must be no reference to a DB object from a thread started
+    // Note: There must be no reference to a Db object from a thread started
     // by the database (directly or indirectly). 
-    // Otherwise, the DB object will never be available for GC,
+    // Otherwise, the Db object will never be available for garbage collection,
     // finalize() will not be called, and the thread will not stop.
     //
     
@@ -94,13 +94,13 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
     private static final int STATE_STOPPING = 4;
 
     private final Object writeLock;
-        // Global write lock.
+        // Global write lock. Held when STM stuff is done and while transaction serialized to bytes.
     private final Object readSynch;
         // Lock used to make sure writes from DB(), start(), execute(), are published
         // by the writer and 
-        // made visible to readers calling read(), readMany().
+        // made visible to readers calling get(), getMany().
         // It is typically used with an empty block: "synchronized (readSynch) {}".
-        //
+        
     private final Object[] pointerLocks;
     private final int pointerLocksLength;
         // Locks to synchronized node pointers. See followPointer().
@@ -2207,6 +2207,10 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
         if (evictBoss.evictOrNot()) {
             evict(ed);
         }
+    }
+    
+    public void flushCache() {
+        
     }
 
     /**

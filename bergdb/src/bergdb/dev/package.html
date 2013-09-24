@@ -61,18 +61,28 @@ JAVADOC
 </pre>
 
 <p><b>Testing</b>. Use Nanotest (com.bergdb.nanotest). Use it for unit tests
-(nanotest group <b>unit</b>), functional tests (<b>f</b>) and performance tests (<b>perf</b>).
+(nanotest group <b>unit</b>) and functional tests (<b>f</b>) 
 A major reason for using Nanotest is to be able to self-test easily (even when compiled with GCJ, 
 IKVM, ..). Nanotest is very simple and small compare to JUnit and it allows test methods directly
 in the classes to be tested. I like when the test follows the testee with moves/renaming/deletion.
 A "unit" test should run within 0.1 s, an "f" test should run within 10 s.
-"perf" tests have no limit.
 The difference between "unit" tests and "f" tests is not strictly functional, but about 
-execution time. Both of the test types, test that the code is working properly.
-All "unit" test are normally successful at commit. "f" tests are not necessarily run before every
-commit, but should be run at least once week and after larger modifications.</p>
+execution time. Both of the test types, test that the code is working properly.</p>
 
-<p>Use NOTE in addition to TODO and XXX. NOTE is used for something we may want 
+<pre>
+    Test type   Max time    Run with    Comments
+    
+    unit          0.1 s     Unit        Fast tests, typically unit tests. Run before every commit.
+    f            10.0 s     F           Slower tests. Run every week.
+    night      1000.0 s     Night       Long-running test, often needs filesystem. Run over night.
+    perf        100.0 s     Perf        Performance tests.
+    
+    Above test are automatic tests. Additionally, the package bergdb.test.man contains manual
+    tests. Tests that required interaction or manual inspection of the result.
+    bergdb.dev.CorePerf is the standard way of measuring Core performance.
+</pre>
+
+<p><b>Code markers</b>. Use NOTE in addition to TODO and XXX. NOTE is used for something we may want 
 to modify at in the future. Possible improvements, considerations. 
 NOTEs can be kept in the code indefinitely, while XXX are temporary and
 should be gone before each commit. Most TODOs should be gone before a release.
