@@ -32,11 +32,11 @@ public class Run {
         out.println("(the main method of this class).");
         out.println();
         out.println("Some available executable classes:");
-        out.println("  " + bergdb.dev.Unit.class.getName() + " - Runs unit tests.");
-        out.println("  " + bergdb.dev.F.class.getName() + " - Runs f tests.");
-        out.println("  " + bergdb.dev.CorePerf.class.getName() + " - Fixed set of performance tests for Core.");
+        out.println("  " + bergdb.dev.Unit.class.getName() + " - Runs 'unit' tests.");
+        out.println("  " + bergdb.dev.F.class.getName() + " - Runs 'f' tests.");
+        out.println("  " + bergdb.dev.Night.class.getName() + " - Runs 'night' tests.");
+        out.println("  " + bergdb.dev.CorePerf.class.getName() + " - Standard performance test for Core.");
         out.println("  " + bergdb.dev.Info.class.getName() + " - Prints info about the system.");
-        out.println("  " + bergdb.dev.Perf.class.getName() + " - Performance tests ('perf' nanotests).");
         out.println("  " + bergdb.dev.Swing.class.getName() + " - Test the graphics environment by displaying a Swing window.");
         out.println();
         out.println("Use args: '<nameOfClass> <argsForClass>' to run an executable class.");

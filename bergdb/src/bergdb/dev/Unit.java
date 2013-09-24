@@ -14,10 +14,11 @@ public class Unit extends bergdb.coredev.CoreUnit {
     private static IPack[] ipacks = new IPack[]{
         new bergdb.common.Pack(),
         new bergdb.core.Pack(),
+        new bergdb.test.Pack(),
         new bergdb.test.java.Pack(),
+        new bergdb.test.night.Pack(),
         new bergdb.pubimp.Pack(),
         new bergdb.stream.Pack(),
-        new bergdb.test.Pack(),
         new bergdb.dev.Pack()
     };
     

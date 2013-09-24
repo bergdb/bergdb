@@ -22,6 +22,7 @@ public class BasicCollector implements TestCollector, TestRunnerCollector {
     protected double totalExeTime = 0.0;
     protected boolean printProps = true;
     protected boolean printMethods = true;
+    protected boolean printStart = false;
     private File tmpDir;
     private Random random;
     protected PrintStream baseOut;
@@ -76,6 +77,14 @@ public class BasicCollector implements TestCollector, TestRunnerCollector {
         }
     }
     
+    /**
+     * Set to true to print name of test class and method before the test
+     * starts to run.
+     */
+    public void setPrintStart(boolean printStart) {
+        this.printStart = printStart;
+    }
+    
     public void report(String name, Object value) {
         Prop p = new Prop();
         p.name = currentMethodName == null ? name : currentMethodName + "." + name;
@@ -95,13 +104,13 @@ public class BasicCollector implements TestCollector, TestRunnerCollector {
         // empty
     }
     
-    /* (non-Javadoc)
-     * @see bergdb.nanotest.TestRunnerCollector#testAboutToRun(java.lang.String)
-     */
     public void testAboutToRun(String longMethodName) {
         currentMethodName = longMethodName;
-        nanoTime = System.nanoTime();
         currentTempDirs.clear();
+        if (printStart) {
+            out().println("======== " + longMethodName + " ========");
+        }
+        nanoTime = System.nanoTime();
     }
     
     public void testDone(Throwable t) {
