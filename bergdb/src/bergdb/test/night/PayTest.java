@@ -9,6 +9,7 @@ import bergdb.nanotest.TestCollector;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
 import bergdb.pub.Factory;
+import bergdb.pub.Transaction;
 import bergdb.pub.WBuilder;
 import bergdb.pubimp.DatabaseBuilderImp;
 import bergdb.stream.MemoryStream;
@@ -31,9 +32,11 @@ public class PayTest {
     @T("night")
     public static void testIt(TestCollector c) throws IOException {
         new PayTest().new Create().go(c);
+        System.gc();
     }
     
-    private final long total = 1500 * 1000;
+    //private final long total = 1500 * 1000;
+    private final long total = 1200 * 1000;
     private PrintStream out = System.out;
     
     private static String accountKey(long id) {
@@ -76,17 +79,12 @@ public class PayTest {
                     id += 1;
                 }
                 
-                builder.build().execute();
-                
-                if ((i + 1) % 500 == 0) {
-                    double progress = (100.0 * i) / (batchCount - 1);
-                    out.printf("Progress: %.1f. Accounts: %d.\n", progress, (i + 1) * batchSize);
-                }
+                Transaction t = builder.build().execute();
+                //t.waitForD1();  //  <-- Works with this line!
             }
             
             database.sync();
             t0 = System.nanoTime() - t0;
-            
             double time = 1e-9 * t0;
             out.printf("Total create time: %.1f s, time per account: %.6f s.\n", time, time / total);
             
