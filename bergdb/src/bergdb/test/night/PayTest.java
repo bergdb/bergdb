@@ -14,19 +14,18 @@ import bergdb.pub.WBuilder;
 import bergdb.pubimp.DatabaseBuilderImp;
 import bergdb.stream.MemoryStream;
 
-// TODO A. Test does not work!
-
 /**
  * <p>A 'night' test. Creates 1.2M Accounts. 
  * Tests that all are there when database restarted. 
- * This test recreates a bug detected by Frans 130924.</p>
+ * This test recreates a bug detected by Frans 130925.
+ * We call the bug: bug-130925.</p>
  * 
  * @author Frans Lundberg
  */
 public class PayTest {
     
     /**
-     * Runs that test. Requires 500 MB of RAM or so. 130924 Frans: Runs on 20 s on Cissi.
+     * Runs that test. Requires 500 MB of RAM or so. 130925 Frans: Runs on 20 s on Cissi.
      * 
      * @author Frans Lundberg
      * @throws IOException 
@@ -38,7 +37,7 @@ public class PayTest {
     }
     
     private final long total = 1200 * 1000;
-        // 1.0M or less does not raise the bug.
+        // 1.0M or less does not reproduce the bug.
     private PrintStream out = System.out;
     
     private static String accountKey(long id) {

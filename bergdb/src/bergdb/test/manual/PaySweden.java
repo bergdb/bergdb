@@ -29,7 +29,7 @@ import bergdb.stream.MemoryStream;
  * @author Frans Lundberg
  */
 public class PaySweden {
-    private final long total = 1500 * 1000;
+    private final long total = 1200 * 1000;
     
     private static String accountKey(long id) {
         StringBuilder b = new StringBuilder("/accounts/");
@@ -48,13 +48,6 @@ public class PaySweden {
     
     public class Create {
         public void go(String[] args) throws IOException {
-            //Database database = Factory.database().dir("/a/data/pay-sweden").start();
-            //
-            //DatabaseBuilderImp b = (DatabaseBuilderImp) Factory.database();
-            //b.dir("/a/data/pay-sweden");
-            //b.evictBoss(new FixedDurationEvictBoss(1000));    // Very short
-            //Database database = b.start();
-            
             MemoryStream mem = new MemoryStream();
             DatabaseBuilderImp b = (DatabaseBuilderImp) Factory.database();
             b.stream("main", mem);
@@ -98,7 +91,33 @@ public class PaySweden {
             System.out.printf("Total create time: %.1f s, time per account: %.6f s.\n", time, time / total);
             
             
-            // ---- Iterate based on memory stream ----
+            // ---- Iterates based on cached existing data ----
+            
+            System.out.println("-- Iterating the accounts");
+            
+            int count = 0;
+            int sum = 0;
+            c = database.connection();
+            
+            for (Account a : c.usePrimary(Account.class).dir("/accounts/").objects()) {
+                String expectedKey = accountKey(count);
+                
+                if (!a.key.equals(expectedKey)) {
+                    throw new AssertionError("Unexpected key: " + a.key + ", expected: " + expectedKey);
+                }
+                
+                sum += a.balance;
+                count += 1;
+                
+                if (count % 500000 == 0) {
+                    System.out.printf("Iterated %.1fM accounts.\n", (count / 1e6));
+                }
+            }
+            
+            
+            // ---- Iterates based on memory stream ----
+            
+            System.out.println("-- Iterating the accounts, re-read from stream");
             
             MemoryStream mem2 = mem.copy();
             mem = null;
@@ -109,11 +128,9 @@ public class PaySweden {
             database = b.start();
             c = database.connection();
             
-            System.out.println("Now iterating the accounts.");
-            
             t0 = System.nanoTime();
-            long sum = 0;
-            long count = 0;
+            sum = 0;
+            count = 0;
             
             for (Account a : c.usePrimary(Account.class).dir("/accounts/").objects()) {
                 String expectedKey = accountKey(count);
@@ -132,38 +149,7 @@ public class PaySweden {
             
             time = 1e-9 * (System.nanoTime() - t0);
             System.out.printf("Iterate. sum: %d, count: %d. time: %.1f s, time/account: %.6f s.\n", 
-                    sum, count, time, time / count);
-            
-            // ---- Iterates the result ----
-            // Interesting to compare this with non-cached iterate version.
-            
-            /*
-            System.out.println("Now iterating the accounts.");
-            
-            t0 = System.nanoTime();
-            long sum = 0;
-            long count = 0;
-            
-            for (Account a : c.usePrimary(Account.class).dir("/accounts/").objects()) {
-                String expectedKey = accountKey(count);
-                
-                if (!a.key.equals(expectedKey)) {
-                    throw new AssertionError("Unexpected key: " + a.key + ", expected: " + expectedKey);
-                }
-                
-                sum += a.balance;
-                count += 1;
-                
-                if (count % 500000 == 0) {
-                    System.out.printf("Iterated %.1fM accounts.\n", (count / 1e6));
-                }
-            }
-            
-            time = 1e-9 * (System.nanoTime() - t0);
-            System.out.printf("Iterate. sum: %d, count: %d. time: %.1f s, time/account: %.6f s.\n", 
-                    sum, count, time, time / count);
-            */
-            
+                    sum, count, time, time / count);            
         }
     }
     

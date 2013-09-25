@@ -17,7 +17,7 @@ import bergdb.pub.Factory;
 import bergdb.pubimp.PubKeys;
 
 /**
- * This class contains a test to reproduce a bug found 2013-09-24 by Frans.
+ * This class contains a test to reproduce bug-130924-1 reported by Frans.
  * 
  * @author Frans Lundberg
  */
