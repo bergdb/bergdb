@@ -279,10 +279,30 @@ public class GetMany {
                 node = (KeyNode) next;
             }
             
-            assert linkSize > 0;
-            setupEqMatch = true;
+            // -- Section below set setupEqMatch to true if setup results
+            // in an exact match.
             
-            for (int i = 0; i < this.linkSize; i++) {
+            assert linkSize > 0;
+            
+            // TODO A. Implement method to set setupEqMatch.
+            
+            if (linkSize == start.length) {
+                setupEqMatch = true;
+                for (int i = 0; i < this.linkSize; i++) {
+                    long linkCompareValue = linkCompareValues[i];
+                    long startCompareValue = Klong.getCompareValue(start[i]);
+                    
+                    if (linkCompareValue != startCompareValue) {
+                        setupEqMatch = false;
+                        break;
+                    }
+                }
+            } else {
+                setupEqMatch = false;
+            }
+            
+            // Code before 130925. Did NOT work when start.length < linkSize
+            /*for (int i = 0; i < this.linkSize; i++) {
                 long linkCompareValue = linkCompareValues[i];
                 long startCompareValue = Klong.getCompareValue(start[i]);
                 
@@ -290,7 +310,7 @@ public class GetMany {
                     setupEqMatch = false;
                     break;
                 }
-            }
+            }*/
         }
         
         /**

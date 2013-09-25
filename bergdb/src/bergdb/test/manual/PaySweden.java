@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.Random;
 
 import bergdb.common.Util;
-import bergdb.core.FixedDurationEvictBoss;
 import bergdb.pub.Action;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
@@ -14,6 +13,7 @@ import bergdb.pub.WBuilder;
 import bergdb.pubimp.DatabaseBuilderImp;
 import bergdb.stream.MemoryStream;
 
+// XXX Work here!
 
 /**
  * <p>Concrete example to test performance; imagine a payment system to handle all 
@@ -29,7 +29,6 @@ import bergdb.stream.MemoryStream;
  * @author Frans Lundberg
  */
 public class PaySweden {
-    //private final long total = 10 * 1000000;    // total number of accounts
     private final long total = 1500 * 1000;
     
     private static String accountKey(long id) {

@@ -14,10 +14,12 @@ import bergdb.pub.WBuilder;
 import bergdb.pubimp.DatabaseBuilderImp;
 import bergdb.stream.MemoryStream;
 
+// TODO A. Test does not work!
+
 /**
- * <p>A 'night' test. Creates 1.5M Accounts. 
+ * <p>A 'night' test. Creates 1.2M Accounts. 
  * Tests that all are there when database restarted. 
- * This test demonstrates a bug detected by Frans 130924.</p>
+ * This test recreates a bug detected by Frans 130924.</p>
  * 
  * @author Frans Lundberg
  */
@@ -35,8 +37,8 @@ public class PayTest {
         System.gc();
     }
     
-    //private final long total = 1500 * 1000;
     private final long total = 1200 * 1000;
+        // 1.0M or less does not raise the bug.
     private PrintStream out = System.out;
     
     private static String accountKey(long id) {

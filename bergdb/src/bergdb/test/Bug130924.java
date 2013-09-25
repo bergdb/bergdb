@@ -14,7 +14,7 @@ import bergdb.nanotest.TestCollector;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
 import bergdb.pub.Factory;
-import bergdb.stream.MemoryStream;
+import bergdb.pubimp.PubKeys;
 
 /**
  * This class contains a test to reproduce a bug found 2013-09-24 by Frans.
@@ -59,6 +59,7 @@ public class Bug130924 {
         
         for (int i = 0; i < total; i++) {
             Account a = new Account();
+            a.balance = 1;
             String key = accountKey(id);
             id += 1;
             c.w().set(key, a).execute();
@@ -66,19 +67,6 @@ public class Bug130924 {
         
         long sum = 0;
         long count = 0;
-        
-        /*
-        // The following code works:
-        for (int i = 0; i < total; i++) {
-            String key = accountKey(i);
-            Account a = c.get(key, Account.class);
-            if (a == null) {
-                throw new AssertionError("Missing object for key: " + key);
-            }
-            
-            sum += a.balance;
-            count += 1;
-        }*/
         
         for (Account a : c.usePrimary(Account.class).dir(accountDir).objects()) {
             sum += a.balance;
@@ -98,20 +86,20 @@ public class Bug130924 {
         long id = 0;
         
         for (int i = 0; i < total; i++) {
-            String key = accountKey(id);
+            String ikey = PubKeys.u2i(accountKey(id));
             id += 1;
-            db.execute(Trans.builder().set(key, "v"));
+            db.execute(Trans.builder().set(ikey, "v"));
         }
         
         GetMany g = new GetMany();
-        g.startKey = Keys.toSegments("/acc/");
-        g.stopCondition = new GetMany.Prefix(Keys.toSegments("/acc/"));
+        g.startKey = Keys.toSegments("/dacc/-");
+        g.stopCondition = new GetMany.Prefix(Keys.toSegments("/dacc/-"));
         g.inclusive = false;
         db.getMany(g);
         long count = 0;
         
         for (Kvt kvt : g.result) {
-            String expected = accountKey(count);
+            String expected = PubKeys.u2i(accountKey(count));
             Assert.assertEquals(expected, Keys.toString(kvt.key));
             count += 1;
         }
@@ -139,15 +127,15 @@ public class Bug130924 {
 
 Typical stack trace:
 
-FAILED! bergdb.test.Bug130924.testIt
+FAILED! bergdb.test.Bug130924.test1
 java.lang.ArrayIndexOutOfBoundsException: 2
     at bergdb.core.GetMany$Chain.setup(GetMany.java:287)
     at bergdb.core.Db.getMany(Db.java:1344)
     at bergdb.pubimp.UseIndexBuilderImp$IndexIterator.getMany(UseIndexBuilderImp.java:592)
     at bergdb.pubimp.UseIndexBuilderImp$IndexIterator.hasNext(UseIndexBuilderImp.java:611)
     at bergdb.pubimp.UseIndexBuilderImp$1$1.hasNext(UseIndexBuilderImp.java:503)
-    at bergdb.test.Bug130924$Create.go(Bug130924.java:89)
-    at bergdb.test.Bug130924.testIt(Bug130924.java:25)
+    at bergdb.test.Bug130924.go1(Bug130924.java:83)
+
 
 
 */

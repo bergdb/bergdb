@@ -84,8 +84,11 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
     
     /** 
      * IKP - internal key prefix - prefix of keys used to store internal database data.
+     * Is set to /#ikp/ for 2013.2.130818. Could be changed, but that destroys binary 
+     * compatibility.
      */
     public static final String INTERNAL_KEY_PREFIX = Util.identity("/#ikp/");
+    
     private static final long[] DUMMY_KEY = Keys.toSegments(INTERNAL_KEY_PREFIX + "-dummy");
     
     private static final int STATE_ZERO = 1;
