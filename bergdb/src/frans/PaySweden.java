@@ -1,4 +1,4 @@
-package bergdb.test.manual;
+package frans;
 
 import java.io.IOException;
 import java.util.Random;
@@ -12,8 +12,6 @@ import bergdb.pub.RwEnvironment;
 import bergdb.pub.WBuilder;
 import bergdb.pubimp.DatabaseBuilderImp;
 import bergdb.stream.MemoryStream;
-
-// XXX Work here!
 
 /**
  * <p>Concrete example to test performance; imagine a payment system to handle all 

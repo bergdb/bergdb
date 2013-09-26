@@ -80,8 +80,7 @@ public class PayTest {
                     id += 1;
                 }
                 
-                Transaction t = builder.build().execute();
-                //t.waitForD1();  //  <-- Works with this line!
+                builder.build().execute();
             }
             
             database.sync();
@@ -125,16 +124,6 @@ public class PayTest {
             Assert.assertEquals(count, total);
             Assert.assertEquals(sum, total);
         }
-    }
-    
-    /**
-     * Simple payment class. For direct db storage.
-     */
-    public static class Payment {
-        public long from;
-        public long to;
-        public long amount;
-        public String message;
     }
     
     /**
