@@ -2,9 +2,9 @@ package bergdb.test;
 
 import bergdb.common.Util;
 import bergdb.core.Db;
-import bergdb.core.Keys;
 import bergdb.core.Trans;
 import bergdb.coreds.GetData;
+import bergdb.coreds.Keys;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;

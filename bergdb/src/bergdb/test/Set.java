@@ -5,9 +5,9 @@ import java.util.Random;
 
 import bergdb.common.Bytes;
 import bergdb.core.Db;
-import bergdb.core.Keys;
 import bergdb.core.NoEvictBoss;
 import bergdb.core.Trans;
+import bergdb.coreds.Keys;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;

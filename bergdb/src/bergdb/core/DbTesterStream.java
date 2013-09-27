@@ -7,6 +7,7 @@ import java.util.Random;
 
 import bergdb.common.Bytes;
 import bergdb.common.Util;
+import bergdb.coreds.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.stream.AppendOnlyStream;

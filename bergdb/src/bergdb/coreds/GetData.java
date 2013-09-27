@@ -1,6 +1,5 @@
 package bergdb.coreds;
 
-
 /**
  * Data needed for a 'get' operation.
  * An object of this class can be seen as an operation-local variable scope.
@@ -40,6 +39,9 @@ public class GetData {
         // Set to the time the found kv was written to the database.
     public long followMemoryPointerCount;
     public long followStreamPointerCount;
+    
+    public Choices choices;
+        // If not null, set to the node choices made when making the get operation.
     
     public GetData() {
         kwi = new KlongWithPointer();

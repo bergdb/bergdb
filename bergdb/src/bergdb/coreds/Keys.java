@@ -1,13 +1,15 @@
-package bergdb.core;
+package bergdb.coreds;
 
 import java.io.UnsupportedEncodingException;
 
 import bergdb.common.Util;
-import bergdb.coreds.Klong;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
 /**
+ * <p>Documentation/implementation needs to be checked.
+ * Not updated for new ukey/ikey approach.</p>
+ * 
  * <p>This class has static methods used for handling database keys.
  * They include methods for converting a key between three key formats:
  * string key, byte key, and segment key.

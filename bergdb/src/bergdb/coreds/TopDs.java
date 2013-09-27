@@ -13,8 +13,6 @@ public class TopDs {
     public interface DbForMe {
         public INode followPointer(INode predecessor, int pointerIndex, 
                 boolean cache, long accessData, GetData gd);
-
-        public long getAccessData();
     }
     
     public TopDs(TopNode superRoot) {
@@ -208,6 +206,80 @@ public class TopDs {
     }
     
     /**
+     * Finds the space root node for a given lookup time.
+     * Returns null if there is no space root that is old enough.
+     * 
+     * @param accessPath Adds top nodes to the access path if non-null.
+     * The returned node is not added to this access path (it cannot be done, since it is not a
+     * TopNode).
+     * @param accessData Access data for this access.
+     */
+    public final KeyNode findRootNEW(DbGraph.DbForMe db, long time, TopAccessPath accessPath, GetData gd) {
+        //
+        // The common case of getting the last space root is treated as a 
+        // special case for performance.
+        //
+        // 130123 Frans: Fixed concurrency bug.
+        // The volatile read in the beginning of this method is important. It makes memory writes
+        // by writer visible and it makes sure we are using the same superRoot instance
+        // throughout this method. this.superRoot can change concurrently.
+        //
+        
+        assert gd != null;
+        TopNode mySuperRoot = this.superRoot;     // volatile read make writes visible.
+        
+        if (accessPath != null) accessPath.add(mySuperRoot);
+        
+        if (time >= mySuperRoot.rootTime) {
+            if (gd.choices != null) gd.choices.add(0);
+            return (KeyNode) db.followPointer(mySuperRoot, 0, gd.cache, gd.accessData, gd);
+        }
+        
+        TopNode n = mySuperRoot;
+        
+        // Finds right-most pointer with time >= 'time'.
+        
+        Pointer pt = gd.tempPointer;
+        
+        while (true) {
+            rightMostGte(n, time, pt);
+            if (pt.isNull()) {
+                break;
+            }
+            
+            if (gd.choices != null) gd.choices.add(pt.index);
+            n = (TopNode) db.followPointer(n, pt.index, gd.cache, gd.accessData, gd);
+            
+            if (accessPath != null) accessPath.add(n);
+        }
+        
+        if (n.rootTime == time) {
+            if (gd.choices != null) gd.choices.add(0);
+            return (KeyNode) db.followPointer(n, 0, gd.cache, gd.accessData, gd);
+        }
+        
+        // Find left-most pointer
+        
+        pt.reset();
+        leftMost(n, time, pt);
+        
+        if (pt.isNull()) {
+            return null;  // No old-enough node exists
+        }
+        
+        if (gd.choices != null) gd.choices.add(pt.index);
+        TopNode n2 = (TopNode) db.followPointer(n, pt.index, gd.cache, gd.accessData, gd);
+        assert n2 != null : "n2 is unexpectedly null, n: " + n;
+        
+        if (accessPath != null) {
+            accessPath.add(n2);
+        }
+        
+        if (gd.choices != null) gd.choices.add(0);
+        return (KeyNode) db.followPointer(n2, 0, gd.cache, gd.accessData, gd);
+    }
+    
+    /**
      * 
      * @param p  Output param, contains the result after method invocation.
      */
@@ -272,7 +344,7 @@ public class TopDs {
             TopNode next = null;
             for (int i = 0; i < t.pointersLength; i++) {
                 if (t.pointers[i] != null && next == null) {
-                    next = (TopNode) db.followPointer(t, i, false, db.getAccessData(), null);
+                    next = (TopNode) db.followPointer(t, i, false, 0, null);
                     break;
                 }
             }

@@ -20,6 +20,7 @@ import bergdb.coreds.EvictData;
 import bergdb.coreds.GetData;
 import bergdb.coreds.INode;
 import bergdb.coreds.KeyNode;
+import bergdb.coreds.Keys;
 import bergdb.coreds.Klong;
 import bergdb.coreds.KlongWithPointer;
 import bergdb.coreds.Pointer;
@@ -805,6 +806,15 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
 
         dbClock.setLastTransactionTime(lastTransactionTime);
 
+        reconciliatePointers(posMap, nextMap);
+
+        this.state = STATE_ACTIVE;
+
+        reclaim.initFromDb();
+            // state = STATE_ACTIVE needed before this method.
+    }
+
+    private void reconciliatePointers(HashMap<Long, INode> posMap, HashMap<Long, INode> nextMap) {
         //
         // Pointer reconciliation phase
         // * Refreshes stream pointers
@@ -881,11 +891,6 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
                 }
             }
         }
-
-        this.state = STATE_ACTIVE;
-
-        reclaim.initFromDb();
-            // state = STATE_ACTIVE needed before this method.
     }
     
     /**

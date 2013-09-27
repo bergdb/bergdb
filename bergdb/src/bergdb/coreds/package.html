@@ -1,7 +1,8 @@
 <html><head><title>Package coreds</title></head><body>
 
 <p>This packages implements the CoreDs - the core data structure.
-This is the in-memory data structure used by the database.</p>
+This is the in-memory data structure used by the database.
+This is a low-level package. Lower-lever than bergdb.core (core uses this package).</p>
 
 <p>Scope: traverse the graph (DAG), support get / getMany / setKv operations.
 Testable (without Db).</p>
@@ -12,5 +13,13 @@ Testable (without Db).</p>
 has does not depend on core. Mock stream if needed.</p>
 
 <p>Allowed package dependencies: common, nanotest, possibly stream, possibly storage, not core.</p>
+
+
+<pre>
+
+We would like this package to be testable in isolation. That is, without Db and the rest
+of the core package.
+
+</pre>
 
 </body></html>

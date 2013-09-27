@@ -2,7 +2,7 @@ package bergdb.test;
 
 import bergdb.core.Db;
 import bergdb.core.GetMany;
-import bergdb.core.Keys;
+import bergdb.coreds.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;

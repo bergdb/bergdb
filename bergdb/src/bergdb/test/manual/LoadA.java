@@ -6,9 +6,9 @@ import java.util.Random;
 import bergdb.core.Db;
 import bergdb.core.Jmx;
 import bergdb.core.KeyFactory;
-import bergdb.core.Keys;
 import bergdb.core.Trans;
 import bergdb.coreds.GetData;
+import bergdb.coreds.Keys;
 import bergdb.stream.FileStream;
 
 /**
