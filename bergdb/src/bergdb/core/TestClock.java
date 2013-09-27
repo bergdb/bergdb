@@ -1,6 +1,6 @@
 package bergdb.core;
 
-import bergdb.core.Klong;
+import bergdb.coreds.Klong;
 import bergdb.pub.Clock;
 
 

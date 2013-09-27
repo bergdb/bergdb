@@ -1,4 +1,7 @@
-package bergdb.core;
+package bergdb.coreds;
+
+import bergdb.core.Choices;
+import bergdb.core.GetData;
 
 /**
  * The top data structure is used to find the space root node given
@@ -9,7 +12,7 @@ package bergdb.core;
 public class TopDs {
     private volatile TopNode superRoot;
     
-    interface DbForMe {
+    public interface DbForMe {
         public INode followPointer(INode predecessor, int pointerIndex, 
                 boolean cache, long accessData, GetData gd);
 
@@ -27,7 +30,7 @@ public class TopDs {
      * Creates a TopDS from the transaction time and the very first 
      * space root node.
      */
-    static TopDs createFromFirstRoot(long firstTime, KeyNode firstRoot, long accessData) {
+    public static TopDs createFromFirstRoot(long firstTime, KeyNode firstRoot, long accessData) {
         TopNode first = new TopNode(0, firstRoot, accessData, firstTime, Spos.NULL);
         TopDs ds = new TopDs(first);
         return ds;
@@ -39,7 +42,7 @@ public class TopDs {
      * 
      * @param time  The transaction time.
      */
-    void newSuperRoot(long time, KeyNode newRoot, long accessData) {
+    public void newSuperRoot(long time, KeyNode newRoot, long accessData) {
         TopNode newSuperRoot = new TopNode(superRoot.topNodeId + 1, newRoot, accessData, time, 
                 Spos.NULL);
         final int h = newSuperRoot.pointersLength;
@@ -74,7 +77,7 @@ public class TopDs {
         this.superRoot = newSuperRoot;    // volatile write, publishes changes to readers
     }
     
-    final TopNode getSuperRoot() {
+    public final TopNode getSuperRoot() {
         // volatile read, synchs previous writes.
         return superRoot;
     }

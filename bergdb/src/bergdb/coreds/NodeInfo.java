@@ -1,4 +1,4 @@
-package bergdb.core;
+package bergdb.coreds;
 
 /**
  * Info about a node.

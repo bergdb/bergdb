@@ -6,6 +6,9 @@ import java.util.Random;
 
 import bergdb.common.Bytes;
 import bergdb.common.Util;
+import bergdb.coreds.KeyNode;
+import bergdb.coreds.Klong;
+import bergdb.coreds.TopNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.pub.BadReplicaException;

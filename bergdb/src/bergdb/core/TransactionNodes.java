@@ -1,5 +1,9 @@
 package bergdb.core;
 
+import bergdb.coreds.INode;
+import bergdb.coreds.KeyNode;
+import bergdb.coreds.TopNode;
+import bergdb.coreds.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 

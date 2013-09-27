@@ -15,6 +15,16 @@ import bergdb.common.NullProgressListener;
 import bergdb.common.ProgressListener;
 import bergdb.common.Util;
 import bergdb.core.GetMany.StopCondition;
+import bergdb.coreds.INode;
+import bergdb.coreds.KeyNode;
+import bergdb.coreds.Klong;
+import bergdb.coreds.KlongWithPointer;
+import bergdb.coreds.Pointer;
+import bergdb.coreds.Spos;
+import bergdb.coreds.TopAccessPath;
+import bergdb.coreds.TopDs;
+import bergdb.coreds.TopNode;
+import bergdb.coreds.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.pub.BadReplicaException;
 import bergdb.pub.Clock;
@@ -1580,9 +1590,9 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
         t.getData.evictData.enableEvict = enableEvict;
 
         synchronized (writeLock) {
-            assert topAccessPath.size == 0 : "topAccessPath.size = " + topAccessPath.size 
+            assert topAccessPath.getSize() == 0 : "topAccessPath.size = " + topAccessPath.getSize() 
                     + ", keyAccessPath.size = " + keyAccessPath.size;
-            assert keyAccessPath.size == 0 : "topAccessPath.size = " + topAccessPath.size 
+            assert keyAccessPath.size == 0 : "topAccessPath.size = " + topAccessPath.getSize() 
                     + ", keyAccessPath.size = " + keyAccessPath.size;
             if (!isPrimordial) assert transactionNodes.size() == 0;
             

@@ -1,5 +1,7 @@
 package bergdb.core;
 
+import bergdb.coreds.Pointer;
+
 /**
  * Data needed for an 'evict' operation.
  * An object of this class can be seen as an operation-local variable scope.

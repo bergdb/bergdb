@@ -4,6 +4,9 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeMap;
 
+import bergdb.coreds.KeyNode;
+import bergdb.coreds.Spos;
+import bergdb.coreds.TopNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 

@@ -1,5 +1,8 @@
 package bergdb.core;
 
+import bergdb.coreds.KlongWithPointer;
+import bergdb.coreds.Pointer;
+
 /**
  * Data needed for a 'get' operation.
  * An object of this class can be seen as an operation-local variable scope.
@@ -22,7 +25,7 @@ public class GetData {
     
     final KlongWithPointer kwi;
         // Temporary working data.
-    final Pointer tempPointer;
+    public final Pointer tempPointer;
         // Temporary working data.
     public int nodeDepth;
         // Depth in space node tree (TopNodes not counted). Output and working data.

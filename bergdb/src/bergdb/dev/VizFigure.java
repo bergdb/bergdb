@@ -8,12 +8,12 @@ import java.util.HashSet;
 import java.util.Set;
 
 import bergdb.core.Db;
-import bergdb.core.INode;
-import bergdb.core.KeyNode;
-import bergdb.core.Klong;
-import bergdb.core.TopNode;
 import bergdb.core.Trans;
-import bergdb.core.ValueNode;
+import bergdb.coreds.INode;
+import bergdb.coreds.KeyNode;
+import bergdb.coreds.Klong;
+import bergdb.coreds.TopNode;
+import bergdb.coreds.ValueNode;
 
 
 /**

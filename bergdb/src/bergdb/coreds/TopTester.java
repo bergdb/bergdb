@@ -1,6 +1,7 @@
-package bergdb.core;
+package bergdb.coreds;
 
 import bergdb.common.Bytes;
+import bergdb.core.GetData;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 

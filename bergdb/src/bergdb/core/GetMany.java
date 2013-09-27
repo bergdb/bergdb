@@ -3,6 +3,12 @@ package bergdb.core;
 import java.util.ArrayList;
 import java.util.List;
 
+import bergdb.coreds.INode;
+import bergdb.coreds.KeyNode;
+import bergdb.coreds.Klong;
+import bergdb.coreds.KlongWithPointer;
+import bergdb.coreds.ValueNode;
+
 /**
  * Input/output to the DB.getMany() method. Also data structures and algorithms to support that
  * method. We search for KVs in interval (key1, key2].

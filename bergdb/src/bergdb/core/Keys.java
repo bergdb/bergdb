@@ -3,6 +3,7 @@ package bergdb.core;
 import java.io.UnsupportedEncodingException;
 
 import bergdb.common.Util;
+import bergdb.coreds.Klong;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 

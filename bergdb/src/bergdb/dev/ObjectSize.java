@@ -2,7 +2,7 @@ package bergdb.dev;
 
 import java.lang.instrument.Instrumentation;
 
-import bergdb.core.KeyNode;
+import bergdb.coreds.KeyNode;
 
 /**
  * Executable class that prints the JVM memory sizes of different objects.

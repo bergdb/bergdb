@@ -1,5 +1,7 @@
 package bergdb.core;
 
+import bergdb.coreds.KeyNode;
+import bergdb.coreds.Spos;
 import bergdb.nanotest.Assert;
 
 /**

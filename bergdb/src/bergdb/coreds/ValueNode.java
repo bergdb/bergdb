@@ -1,14 +1,13 @@
-package bergdb.core;
+package bergdb.coreds;
 
 import bergdb.common.Bug;
 import bergdb.common.Bytes;
 import bergdb.common.Pair;
 import bergdb.common.Util;
+import bergdb.core.Choices;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.storage.StreamFormatException;
-
-// NOTE CHOICES We currently have no method to read choices from stream.
 
 /**
  * A ValueNode is an INode that contains the value of the KV in the database.
@@ -19,11 +18,11 @@ import bergdb.storage.StreamFormatException;
 public final class ValueNode implements INode {
     private final byte[] value;
         // Synch note: final - no problem.
-    volatile long spos;
+    public volatile long spos;
         // Synch note: "volatile" needed here to publish writes. Should not affect performance much.
         // Seldom written (when written to stream or read from stream). Reads are more common.
         // Reads of volative are noop on x86, I heard.
-    boolean isInTransactionNodes = false;
+    public boolean isInTransactionNodes = false;
         // Synch note: this field must only be accessed from threads holding DB.writeLock.
     
     /**

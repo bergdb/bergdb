@@ -1,9 +1,10 @@
-package bergdb.core;
+package bergdb.coreds;
 
 import java.io.PrintStream;
 
 import bergdb.common.Bug;
 import bergdb.common.Bytes;
+import bergdb.core.StreamChecksumException;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.storage.StreamFormatException;
@@ -16,31 +17,31 @@ import bergdb.storage.StreamFormatException;
  * @author Frans Lundberg
  */
 public final class TopNode implements INode {
-    final TopNode[] pointers;
+    public final TopNode[] pointers;
         // Backward pointers in skip list.
-    final long[] pointersPos;     
+    public final long[] pointersPos;     
         // stream pos when pointers[x] == null and accessTime when pointers[x] != null.
     final long[] pointersTime;
         // Time of pointers. When they were written.
     final short pointerCount;
         // Same as pointers.length + 1.
-    final short pointersLength;
+    public final short pointersLength;
         // Same as pointers.length.
     
-    KeyNode rootPointer;    // pointer to current space root
-    long rootPointerPos;    // stream pointer corresponding to rootPointer.
-    long rootTime;
+    public KeyNode rootPointer;    // pointer to current space root
+    public long rootPointerPos;    // stream pointer corresponding to rootPointer.
+    public long rootTime;
     
-    final int topNodeId;
-    volatile long spos;
-    volatile long id = Spos.NULL;
+    public final int topNodeId;
+    public volatile long spos;
+    public volatile long id = Spos.NULL;
         // The original spos of the node functions as its id.
         // Synch note: made volatile. Not accessed often, does not affect performance.
         // May be removed in future versions. For debug only.
-    volatile boolean isDirty;
+    public volatile boolean isDirty;
         // Synch note: This field is accessed by threads not holding DB.writeLock, so we need
         // field to be volatile to publish writes.
-    boolean isInTransactionNodes;
+    public boolean isInTransactionNodes;
         // Synch note: protected by DB.writeLock.
     
     private static final int MAX_HEIGHT = 30;

@@ -7,8 +7,8 @@ package bergdb.core;
  */
 public class Choices {
     private static final int INITIAL_SIZE = 32;
-    int size;
-    byte[] choices;
+    public int size;
+    public byte[] choices;
     
     public Choices() {
         size = 0;

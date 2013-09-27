@@ -1,5 +1,6 @@
-package bergdb.core;
+package bergdb.coreds;
 
+import bergdb.core.Db;
 import bergdb.nanotest.Assert;
 
 /**

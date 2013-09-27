@@ -1,5 +1,7 @@
 package bergdb.core;
 
+import bergdb.coreds.INode;
+
 /**
  * The data of a stored node in the state stream (a stream item).
  * Currently (2012-05), a "stream item" is always a node.

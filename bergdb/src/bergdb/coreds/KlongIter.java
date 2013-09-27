@@ -1,4 +1,5 @@
-package bergdb.core;
+package bergdb.coreds;
+
 
 /**
  * Iterates a sequence of klongs.

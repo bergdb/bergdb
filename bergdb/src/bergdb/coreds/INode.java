@@ -1,4 +1,5 @@
-package bergdb.core;
+package bergdb.coreds;
+
 
 /**
  * <p>A node of the DB graph. An INode can be serialized with toBytes(). 

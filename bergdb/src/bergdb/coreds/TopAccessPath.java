@@ -1,4 +1,4 @@
-package bergdb.core;
+package bergdb.coreds;
 
 /**
  * Specialized data structure for storing accessed top nodes.

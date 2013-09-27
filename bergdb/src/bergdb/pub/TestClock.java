@@ -1,6 +1,6 @@
 package bergdb.pub;
 
-import bergdb.core.Klong;
+import bergdb.coreds.Klong;
 
 
 /**

@@ -93,6 +93,7 @@ public class PayTestBugFix {
                 id += 1;
             }
             
+            @SuppressWarnings("unused")
             Transaction t = builder.build().execute();
             
             //t.waitForD1();  //  <-- Does not work, even with this line.

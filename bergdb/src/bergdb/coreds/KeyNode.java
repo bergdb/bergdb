@@ -1,4 +1,4 @@
-package bergdb.core;
+package bergdb.coreds;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -29,10 +29,10 @@ import bergdb.storage.StreamFormatException;
  * @author Frans Lundberg
  */
 public class KeyNode implements INode {
-    long spos;
+    public long spos;
         // The stream position of the node when it was last written to the stream.
         // Synch note: see get/set methods. Synched by read/write to volatile field this.size.
-    long id;            
+    public long id;            
         // id is used for debug purpose. It is the first spos of the node.
         // Synch note: synch issues not properly considered since it could be removed.
     private short lastTimeIndex = -1;
@@ -41,25 +41,25 @@ public class KeyNode implements INode {
         // allowed!
     private final boolean isSegmentLeaf;
         // Synch note: final, so we are fine :-)
-    volatile boolean isDirty;
+    public volatile boolean isDirty;
         // Synch note: This field is accessed by threads not holding DB.writeLock, so we need
         // field to be volatile to publish writes.
-    boolean isInTransactionNodes = false;
+    public boolean isInTransactionNodes = false;
         // Synch note: no need for volatile or something since all access is from threads 
         // holding DB.writeLock.
     
-    volatile short size;
+    public volatile short size;
         // Size of klong array actually used. 
         // Synch note: Used for synch action between writer and readers. Handles synch for 
         // the arrays too (klongs, pointers, pos).
-    long[] klongs;
+    public long[] klongs;
         // Synch note: Writes to "klongs" and its elements published by a write to this.size.
         // Readers should first read this.size, before accessing klongs or elements in klongs.
     
-    INode[] pointers;           
+    public INode[] pointers;           
         // Memory pointers to value nodes or other key nodes. Elements can be null.
         // Synch note: access protected by "this" lock and used atomically with "pos".
-    long[] pos;
+    public long[] pos;
         // spos for a stream pointer, access data for a memory pointer (see AccessData).
         // Synch note: access protected by "this" lock and used atomically with "pointers".
 
@@ -1098,7 +1098,7 @@ public class KeyNode implements INode {
      * Gets the previous spos directly from the byte buffer.
      * Note, this method must be updated if toBytes() is changed.
      */
-    static long prevPosFromBytes(byte[] buffer, int offset) {
+    public static long prevPosFromBytes(byte[] buffer, int offset) {
         long result = Bytes.bytesToLongLE(buffer, offset + 8);
         if (result != Spos.NULL && result < 0) {
             throw new StreamFormatException("Bad KeyNode, prevPos is illegal: " + result + ".");
@@ -1111,7 +1111,7 @@ public class KeyNode implements INode {
      * 
      * @throws StreamFormatException if buffer has badly formatted data.
      */
-    static KeyNode fromBytes(byte[] buffer, int offset, long spos) {
+    public static KeyNode fromBytes(byte[] buffer, int offset, long spos) {
         offset += 4;          // Skip size.
         byte type = buffer[offset];
         offset += 1;

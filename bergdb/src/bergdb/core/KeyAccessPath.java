@@ -1,5 +1,7 @@
 package bergdb.core;
 
+import bergdb.coreds.KeyNode;
+
 /**
  * Access path through the key nodes of the DB graph to access a certain KV.
  * Specialized, fast data structure. No repeated memory allocation, it is reused between

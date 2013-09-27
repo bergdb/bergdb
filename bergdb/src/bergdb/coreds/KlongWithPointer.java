@@ -1,4 +1,5 @@
-package bergdb.core;
+package bergdb.coreds;
+
 
 /**
  * A klong with node pointer and possibly more related data.
@@ -10,11 +11,11 @@ package bergdb.core;
  * @see KeyNode#searchLte(long, long, KlongWithPointer)
  */
 public class KlongWithPointer {
-    long klong;         // The klong.
-    int pointerIndex;   // Index of pointer.
-    long klongTime;     // Time of the klong. Last TIME klong before the found klong. Added 120612.
-    INode node;         // pointer (INode).
-    long pos;           // pos - accessData or spos.
+    public long klong;         // The klong.
+    public int pointerIndex;   // Index of pointer.
+    public long klongTime;     // Time of the klong. Last TIME klong before the found klong. Added 120612.
+    public INode node;         // pointer (INode).
+    public long pos;           // pos - accessData or spos.
     
     public KlongWithPointer() {
         this.klong = Klong.NULL;

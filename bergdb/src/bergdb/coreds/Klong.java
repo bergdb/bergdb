@@ -1,4 +1,4 @@
-package bergdb.core;
+package bergdb.coreds;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
@@ -8,6 +8,7 @@ import java.util.Random;
 
 import bergdb.common.ByteArrayComparator;
 import bergdb.common.Util;
+import bergdb.core.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
