@@ -746,7 +746,7 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
                 		"block of stream: " + startupDistance + ".");
             }
             
-            // XXX Db.startInner()
+            // TODO A. Part of bug fix... Db.startInner()
 //System.out.println("Db.startInner(), startupDistance: " + this.startupDistance);
 //this.startupDistance += 2*1000000;   // not enough with 2M
 //this.startupDistance += 3*1000000;    // Works!
@@ -1879,7 +1879,7 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
             out.println("setNode, depth " + keyAccessPath.size + ", compareValue "
                     + Klong.toString(Klong.compareValueToKeyKlong(compareValue)));
         }
-
+        
         while (!current.isSegmentLeaf()) {
             current = findNextNode(compareValue, kwi, current);
 
@@ -1981,8 +1981,7 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
             // 'node' is full. We cannot append 'toInsert' to it.
             final long tTime = this.trans.transactionTime;
             KeyNode last = node.lastVersion(tTime);
-            // XXX were is 'last' added to transactionNodes?
-            transactionNodes.add(last);   // XXX Work in progress
+            transactionNodes.add(last);
             
             assert last.assertOk(maxNodeSize);
             handleLastVersionOfFullNode(node, depth, toInsert, tTime, last);
@@ -2079,7 +2078,7 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
                     node.addKlong(tTime, union, null, transAccessData);
                 } else {
                     KeyNode last = node.lastVersionGivenDel(sz, tTime, union);
-                    transactionNodes.add(last);   // XXX work in progress
+                    transactionNodes.add(last);
                     
                     handleLastVersionOfFullNode(node, depth, zeroKwis, tTime, last);
                 }
