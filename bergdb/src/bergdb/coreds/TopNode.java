@@ -4,7 +4,6 @@ import java.io.PrintStream;
 
 import bergdb.common.Bug;
 import bergdb.common.Bytes;
-import bergdb.core.StreamChecksumException;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.storage.StreamFormatException;

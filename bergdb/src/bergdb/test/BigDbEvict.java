@@ -2,6 +2,8 @@ package bergdb.test;
 
 import bergdb.common.Util;
 import bergdb.core.*;
+import bergdb.coreds.EvictData;
+import bergdb.coreds.GetData;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;

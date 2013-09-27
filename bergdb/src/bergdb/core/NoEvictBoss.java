@@ -1,5 +1,7 @@
 package bergdb.core;
 
+import bergdb.coreds.EvictData;
+
 /**
  * An IEvcitBoss that never evicts nodes. Useful for testing.
  */

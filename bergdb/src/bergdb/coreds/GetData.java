@@ -1,7 +1,5 @@
-package bergdb.core;
+package bergdb.coreds;
 
-import bergdb.coreds.KlongWithPointer;
-import bergdb.coreds.Pointer;
 
 /**
  * Data needed for a 'get' operation.
@@ -23,13 +21,13 @@ public class GetData {
     
     // -- Internal working data --
     
-    final KlongWithPointer kwi;
+    public final KlongWithPointer kwi;
         // Temporary working data.
     public final Pointer tempPointer;
         // Temporary working data.
     public int nodeDepth;
         // Depth in space node tree (TopNodes not counted). Output and working data.
-    long accessData; 
+    public long accessData; 
         // "Time" of the get operation measured in an internal time scale.
     public final EvictData evictData;
         // Internal data for DB.evict().

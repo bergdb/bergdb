@@ -1,6 +1,7 @@
 package bergdb.core;
 
 import bergdb.common.IPack;
+import bergdb.coreds.GetData;
 
 public class Pack implements IPack {
     

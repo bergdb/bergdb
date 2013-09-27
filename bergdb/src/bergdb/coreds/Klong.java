@@ -8,7 +8,6 @@ import java.util.Random;
 
 import bergdb.common.ByteArrayComparator;
 import bergdb.common.Util;
-import bergdb.core.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
@@ -667,20 +666,6 @@ public class Klong {
             Assert.assertEquals(Util.toString(keys1.get(i)), Util.toString(keys2.get(i)));
         }
     }    
-
-    @T
-    public static void testBinaryKlongs() {
-        byte[] bytes0 = new byte[2];
-        bytes0[0] = 0;
-        byte[] bytes1 = new byte[2];
-        bytes1[0] = 1;
-        long[] key0 = Keys.toSegments(bytes0);
-        long[] key1 = Keys.toSegments(bytes1);
-        
-        Assert.assertEquals(2, Klong.getLength(key0[0]));
-        Assert.assertEquals(2, Klong.getLength(key1[0]));
-        Assert.assertTrue("" + key0[0], key0[0] != key1[0]);
-    }
     
     @T
     public static void testCreateKlongs() {

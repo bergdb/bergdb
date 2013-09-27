@@ -4,7 +4,6 @@ import bergdb.common.Bug;
 import bergdb.common.Bytes;
 import bergdb.common.Pair;
 import bergdb.common.Util;
-import bergdb.core.Choices;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.storage.StreamFormatException;

@@ -7,6 +7,7 @@ import java.util.List;
 import bergdb.common.Bug;
 import bergdb.common.StringMap;
 import bergdb.common.Util;
+import bergdb.coreds.GetData;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.pub.Clock;

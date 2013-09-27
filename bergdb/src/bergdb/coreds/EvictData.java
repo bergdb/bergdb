@@ -1,6 +1,5 @@
-package bergdb.core;
+package bergdb.coreds;
 
-import bergdb.coreds.Pointer;
 
 /**
  * Data needed for an 'evict' operation.

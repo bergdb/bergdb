@@ -1,7 +1,5 @@
 package bergdb.coreds;
 
-import bergdb.core.Choices;
-import bergdb.core.GetData;
 
 /**
  * The top data structure is used to find the space root node given

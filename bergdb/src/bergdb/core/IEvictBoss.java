@@ -1,5 +1,7 @@
 package bergdb.core;
 
+import bergdb.coreds.EvictData;
+
 /**
  * The implementations of this interface decides when to run the node eviction.
  * Implementations must support concurrent threads.

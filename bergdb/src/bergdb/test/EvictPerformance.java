@@ -3,12 +3,12 @@ package bergdb.test;
 import java.util.Random;
 
 import bergdb.core.Db;
-import bergdb.core.EvictData;
 import bergdb.core.FixedDurationEvictBoss;
 import bergdb.core.IEvictBoss;
 import bergdb.core.KeyFactory;
 import bergdb.core.Keys;
 import bergdb.core.Trans;
+import bergdb.coreds.EvictData;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.TestCollector;
 import bergdb.storage.StreamIoException;

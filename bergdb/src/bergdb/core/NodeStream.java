@@ -7,6 +7,7 @@ import bergdb.common.Pair;
 import bergdb.coreds.INode;
 import bergdb.coreds.KeyNode;
 import bergdb.coreds.Spos;
+import bergdb.coreds.StreamChecksumException;
 import bergdb.coreds.TopNode;
 import bergdb.coreds.ValueNode;
 import bergdb.storage.MetaBlock;

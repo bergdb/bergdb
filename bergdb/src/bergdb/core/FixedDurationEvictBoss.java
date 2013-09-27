@@ -1,5 +1,7 @@
 package bergdb.core;
 
+import bergdb.coreds.EvictData;
+
 /**
  * An IEvictBoss that has a fixed configurable cache duration.
  * Cache-duration is measured in stream-length. So the "time-scale" is the length of

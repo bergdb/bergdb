@@ -1,4 +1,4 @@
-package bergdb.core;
+package bergdb.coreds;
 
 /**
  * Specialized data structure for storing pointer indexes to the nodes accessed.

@@ -1,8 +1,8 @@
 package bergdb.pubimp;
 
 import bergdb.core.Db;
-import bergdb.core.GetData;
 import bergdb.core.Keys;
+import bergdb.coreds.GetData;
 import bergdb.pub.Action;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;

@@ -1,6 +1,5 @@
 package bergdb.coreds;
 
-import bergdb.core.Db;
 import bergdb.nanotest.Assert;
 
 /**
@@ -23,7 +22,9 @@ abstract public class Spos {
      * Can be used when access data is unknown or unimportant. For testing, for example.
      * The value is considered a valid accessData value and will pass asserts.
      */
-    public static final long DEFAULT_ACCESS_DATA = -Db.MIN_CACHE_MEMORY_VALUE;
+    //public static final long DEFAULT_ACCESS_DATA = -Db.MIN_CACHE_MEMORY_VALUE;
+    public static final long DEFAULT_ACCESS_DATA = -10;
+    
     
     /** Dummy test method to mark class as "tested". */
     public static void test1() {

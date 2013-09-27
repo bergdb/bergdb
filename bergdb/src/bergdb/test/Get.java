@@ -4,11 +4,11 @@ import java.util.Random;
 
 import bergdb.core.Db;
 import bergdb.core.FixedDurationEvictBoss;
-import bergdb.core.GetData;
 import bergdb.core.IEvictBoss;
 import bergdb.core.KeyFactory;
 import bergdb.core.Keys;
 import bergdb.core.Trans;
+import bergdb.coreds.GetData;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;

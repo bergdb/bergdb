@@ -3,6 +3,7 @@ package bergdb.core;
 import java.util.ArrayList;
 import java.util.List;
 
+import bergdb.coreds.GetData;
 import bergdb.coreds.INode;
 import bergdb.coreds.KeyNode;
 import bergdb.coreds.Klong;

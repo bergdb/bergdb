@@ -1,7 +1,6 @@
 package bergdb.pub;
 
-import bergdb.coreds.Klong;
-
+import bergdb.pubimp.ClockConstants;
 
 /**
  * Deterministic clock suitable for testing.
@@ -21,11 +20,11 @@ public final class TestClock implements Clock {
      * @param time In time units.
      */
     public void setTime(long time) {
-        if (time < Klong.MIN_TIME) {
+        if (time < ClockConstants.MIN_TIME) {
             throw new IllegalArgumentException("time is too small, was " + time + ".");
         }
         
-        if (time > Klong.MAX_TIME) {
+        if (time > ClockConstants.MAX_TIME) {
             throw new IllegalArgumentException("time is too large, was " + time + ".");
         }
         
