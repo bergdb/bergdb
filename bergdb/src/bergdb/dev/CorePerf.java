@@ -211,6 +211,15 @@ public class CorePerf {
 Log 
 ===
 
+== 130927 ==
+Running on cissi, Fri Sep 27 21:02:38 CEST 2013. BergDB 2013.2.130818.
+JVM: Java HotSpot(TM) 64-Bit Server VM 23.25-b01, java 1.7.0_25
+get:      0.81,  0.54,  8.116645672748937E-7
+get4t:    0.97,  0.78,  3.880243678605605E-7
+getmany:  1.02,  0.79,  2.0477340709234035E-7
+set:      0.87,  0.55,  4.3674387250000005E-6
+set2:     0.84,  0.68,  2.9322052450000004E-6
+GEO MEAN: 0.90,  0.66
 
 == 130705 New profile ==
 Rose profile replace - low-end 32-bit system. Of little interest.
