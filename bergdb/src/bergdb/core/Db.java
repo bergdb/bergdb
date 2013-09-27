@@ -1882,7 +1882,7 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
         
         while (!current.isSegmentLeaf()) {
             current = findNextNode(compareValue, kwi, current);
-
+            
             if (t.trace) {
                 out.println("setNode, current = " + current);
             }
