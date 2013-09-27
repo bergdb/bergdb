@@ -9,21 +9,26 @@ import bergdb.nanotest.T;
 
 /**
  * Simple implementation of the dirty node set, nodes are
- * stored in a one sorted spos-to-TopNode map and a sorted spos-to-KeyNode map.
+ * stored in a sorted spos-to-TopNode map and a sorted spos-to-KeyNode map.
+ * Synch note: this class itself is not thread-safe.
+ * Access is protected externally by Db.writeLock.
  * 
  * @author Frans Lundberg
  */
-public class DirtyNodes2 {
+public class DirtyNodes {
     //
-    // Synch note: this class itself is not thread-safe. 
-    // Access is protected externally by DB.writeLock.
+    // Note, ordinary TreeMap used. There could be room for performance 
+    // optimization here. We could have buckets, say 1M big. Put all there as if
+    // they all had the same spos.
     //
     
-    private TreeMap<Long, TopNode> topNodes;
-    private TreeMap<Long, KeyNode> keyNodes;
+    private final TreeMap<Long, TopNode> topNodes;
+    private final TreeMap<Long, KeyNode> keyNodes;
     
-    
-    public DirtyNodes2() {
+    /**
+     * Creates a new collection of dirty nodes.
+     */
+    public DirtyNodes() {
         topNodes = new TreeMap<Long, TopNode>();
         keyNodes = new TreeMap<Long, KeyNode>();
     }
@@ -66,8 +71,7 @@ public class DirtyNodes2 {
      * collection with spos < dirtyLimit.
      * Caller must hold DB.writeLock.
      * 
-     * @param dirtyLimit A node with an spos less than this is
-     * "too dirty".
+     * @param dirtyLimit A node with an spos less than this is "too dirty".
      * @param remove If true, the read entries will be removed from
      * the collection; a get-and-remove operation.
      * @param list The list to add the too dirty nodes to.
@@ -93,7 +97,7 @@ public class DirtyNodes2 {
                     iter.remove();
                 }
             } else {
-                break;    
+                break;
                 // keys are sorted, if keyPos >= dirtyLimit, the rest of the keys will also be
                 // >= dirtyLimit, so we can break here.
             }
@@ -119,7 +123,7 @@ public class DirtyNodes2 {
                     it.remove();
                 }
             } else {
-                break;    
+                break;
                 // keys are sorted, if keyPos >= dirtyLimit, the rest of the keys will also be
                 // >= dirtyLimit, so we can break here.
             }
@@ -139,7 +143,7 @@ public class DirtyNodes2 {
     
     @T
     public static void test1() {
-        DirtyNodes2 d = new DirtyNodes2();
+        DirtyNodes d = new DirtyNodes();
         KeyNode k = new KeyNode();
         k.setSpos(10);
         k.setIsDirty(true);
@@ -167,13 +171,13 @@ public class DirtyNodes2 {
     
     @T
     public static void test2() {
-        DirtyNodes2 d = new DirtyNodes2();
+        DirtyNodes d = new DirtyNodes();
         d.add(testNode(10));
         d.add(testNode(20));
         d.add(testNode(30));
         Assert.assertEquals("tooDirtyCount", 3, d.tooDirtyCount(100));
         
-        d = new DirtyNodes2();
+        d = new DirtyNodes();
         d.add(testNode(10));
         d.add(testNode(20));
         d.add(testNode(30));
@@ -182,7 +186,7 @@ public class DirtyNodes2 {
     
     @T
     public static void testGetTooDirtyNodes1() {
-        DirtyNodes2 d = new DirtyNodes2();
+        DirtyNodes d = new DirtyNodes();
         KeyNode n1 = testNode(10);
         KeyNode n2 = testNode(20);
         KeyNode n3 = testNode(30);
@@ -199,7 +203,7 @@ public class DirtyNodes2 {
     
     @T
     public static void testGetTooDirtyNodes2() {
-        DirtyNodes2 d = new DirtyNodes2();
+        DirtyNodes d = new DirtyNodes();
         KeyNode n1 = testNode(10);
         KeyNode n2 = testNode(20);
         KeyNode n3 = testNode(30);

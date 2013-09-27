@@ -84,7 +84,7 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
     
     /** 
      * IKP - internal key prefix - prefix of keys used to store internal database data.
-     * Is set to /#ikp/ for 2013.2.130818. Could be changed, but that destroys binary 
+     * Is set to /#ikp/ for 2013.2.130818. Could be changed to "/#i/", but that destroys binary 
      * compatibility.
      */
     public static final String INTERNAL_KEY_PREFIX = Util.identity("/#ikp/");
@@ -110,7 +110,7 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
     private final IKeyModSet keyModSet;
     private final NodeStream nodeStream; // IO for DB to read/append nodes.
     private final StorageManager storageManager;
-    private final DirtyNodes2 dirtyNodes;
+    private final DirtyNodes dirtyNodes;
     private TopDs topDS;
     private int state = STATE_ZERO;
         // Synch note: writes published by readSynch.
@@ -141,10 +141,11 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
         // The last metablock stream value of startDistance must be >= this.startDistance.
 
     // ---- Listeners ----
+    
     private final TransactionListener reclaimTransactionListener;
 
     // ---- Working data for write access ----
-    // Access only from threads holding writeLock.
+    // Must only be accessed from threads holding writeLock.
 
     /** The access path of top nodes used to access a KV in a set operation. */
     private final TopAccessPath topAccessPath;
@@ -160,7 +161,7 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
     private final KlongWithPointer[] twoKwis;
     /**  Temporary working data. */
     private final Pointer tempPointer;
-    /** The nodes updated for the current transaction. To be writte to the stream. */
+    /** The nodes updated for the current transaction. To be written to the stream. */
     private final TransactionNodes transactionNodes;
     /** Current transaction while writeLock is held. */
     private Trans trans;
@@ -228,9 +229,10 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
         keyAccessPath = new KeyAccessPath();
         transactionNodes = new TransactionNodes();
         keyModSet = new KeyModSet2();
-        dirtyNodes = new DirtyNodes2();
-
+        dirtyNodes = new DirtyNodes();
+ 
         this.startupDistance = b.startupDistance;
+       
         this.newIncreasedStartupDistance = -1;
         
         this.metaBlock = new MetaBlock();
@@ -635,7 +637,7 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
      * Returns the collection of dirty nodes. Needed by DB monitor. Same
      * reference is always returned since it comes from a final field.
      */
-    public final DirtyNodes2 getDirtyNodes() {
+    public final DirtyNodes getDirtyNodes() {
         return dirtyNodes;
     }
 
@@ -704,7 +706,7 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
                     + getStateName(state) + ".");
         }
 
-        boolean dbCreated;      // True if db was created in this method (no previously existing data).
+        boolean dbCreated;      // True if db was created in this method (there was no existing data).
         
         storageManager.checkStreamIds();
         
@@ -716,8 +718,7 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
             throw new StreamIoException(e);
         }
 
-        // Init DB graph state if stream is empty, otherwise recover existing
-        // one.
+        // Init DB graph state if stream is empty, otherwise recover existing one.
 
         if (nodeStream.getLength() == 0) {
             createInitialState();
@@ -744,11 +745,20 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
                 throw new StreamFormatException("Bad value of startupDistance in meta " +
                 		"block of stream: " + startupDistance + ".");
             }
+            
+            // XXX Db.startInner()
+//System.out.println("Db.startInner(), startupDistance: " + this.startupDistance);
+//this.startupDistance += 2*1000000;   // not enough with 2M
+//this.startupDistance += 3*1000000;    // Works!
+//System.out.println("Db.startInner(), startupDistance: " + this.startupDistance);
         }
         
         long pos1 = nodeStream.getPosOfLastCompletedTrans();
-        long startPos = pos1 - startupDistance;
+        long startPos = pos1 - (startupDistance + 1);
         startPos = startPos < 0 ? 0 : startPos;
+  
+//System.out.println("Db, node stream length: " + nodeStream.getLength());
+//System.out.println("Db, pos1 = " + pos1 + ", startPos = " + startPos);
 
         // posMap is a map from spos of a node to the node itself.
         // nextMap is a map from previous spos of a node to the node itself.
@@ -970,6 +980,8 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
      * if the node is dirty already. Caller must hold this.writeLock.
      */
     private final void makeDirty(TopNode n) {
+        assert Thread.holdsLock(this.writeLock);
+        
         if (!n.isDirty) {
             n.isDirty = true;
             dirtyNodes.add(n);
@@ -981,6 +993,8 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
      * if the node is dirty already. Caller must hold this.writeLock.
      */
     private final void makeDirty(KeyNode n) {
+        assert Thread.holdsLock(this.writeLock);
+        
         if (!n.isDirty) {
             //n.isDirty = false;   // Bug fixed 130522. Existed for 20 days or so.
             n.isDirty = true;
@@ -1434,7 +1448,9 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
     }
 
     /**
-     * Same as "execute(b.done());". AVOID using this method in new code, use execute(Trans).
+     * Same as "execute(b.build());", AVOID using this method in new code, 
+     * use execute(Trans).
+     * Db is selfish, should provide minimal interface, not convinience methods.
      */
     public final void execute(Trans.Builder b) {
         //
@@ -1540,23 +1556,23 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
         // Executes a KV set request as an ACID transaction.
         //
         // We make sure all readers have a read time that is strictly less than
-        // t.transactionTime
-        // while the synchronized(writeLock) clause is executing. This is
-        // handled by dbClock.
+        // t.transactionTime while the synchronized(writeLock) clause is executing.
+        // This is handled by dbClock.
         //
-
         // Reads the KVs as warm-up; aims to avoid lengthy disk reads and cache
         // misses while synchronizing on this.writeLock. We want to minimize the time holding
         // this.writeLock. However, if we do write transactions from a single thread anyway, it
         // would be better to void these get operations (would save 10-20% CPU for execute()).
-        // NOTE Room for a little optimization. A special warmup() method could be more performant
+        // NOTE Room for a small optimization. A special warmup() method could be more performant
         // than the general-purpose, public get() method.
+        //
         
         long time = dbClock.getTime();
 
         boolean enableEvict = t.getData.evictData.enableEvict;
         t.getData.evictData.enableEvict = false;
 
+        // Warm-up code, avoids read from stream while holding writeLock.
         for (Kv kv : t.kvs) {
             this.get(time, kv.keySegments, t.getData);
         }
@@ -1569,12 +1585,13 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
             assert keyAccessPath.size == 0 : "topAccessPath.size = " + topAccessPath.size 
                     + ", keyAccessPath.size = " + keyAccessPath.size;
             if (!isPrimordial) assert transactionNodes.size() == 0;
+            
             this.trans = t;
             this.transAccessData = getAccessData();
 
-            // Returns to caller if any key was modified after the read time of
-            // the transaction.
-            // This is the STM (software transactional memory) approach.
+            // Returns to caller with a RerunException if any key was modified after 
+            // the read time of the transaction.
+            // This is the essence of the STM (software transactional memory) approach.
 
             for (long hash : t.readKeyHashes) {
                 if (keyModSet.modifiedAfter(t.readTime, hash)) {
@@ -1597,7 +1614,6 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
                 dbClock.transactionEnd();
                 // After above line, get requests can use the time
                 // t.transactionTime.
-                // The in-memory state will not change more in this transaction.
             }
 
             for (int i = 0; i < t.writeKeyHashes.length; i++) {
@@ -1605,16 +1621,15 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
             }
 
             // IDEA 1210, we could possibly finish holding the writeLock here
-            // already. If so, the
-            // serialization of the nodes would have to be done using the
+            // already. If so, the serialization of the nodes would have to be done using the
             // transaction time as a parameter to the serialization.
             // Since all nodes are persistent data structures, this could work.
             // There would be a need to queue the transaction in a stream output
             // queue to enforce the ordering of the transactions. The serialization could
             // possibly be done in a separate thread, or not.
             
-            
             // 1305 Frans: Adds choices for ValueNodes to transactionNodes (+20% CPU).
+            // This is needed to have an active replica.
             
             for (int i = 0; i < transactionNodes.valueSize; i++) {
                 long[] key = transactionNodes.keys[i];
@@ -1629,8 +1644,8 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
             clearTransMemory();
 
             // 1301 Frans. The following line moved to inside the synchronized
-            // (writeLock) block
-            // to KISS the reclaim stuff.
+            // (writeLock) block to KISS the reclaim stuff. However, it does not have to
+            // belong to the writeLock code block.
             reclaimTransactionListener.transactionCompleted(t);
         }
     }
@@ -1643,12 +1658,23 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
      * @throws StreamIoException
      */
     private void addNodesToStream() {
+        //
+        // Note the call to getTooDirtyNodes. This is done without including the size
+        // of the current transaction. This means that the startup algorithm must
+        // take this into account. It must start reading before or at:
+        // spos = (last-spos-of-stream - (startupDistance + size-of-last-Transaction)).
+        // So, the spos that is at last startupDistance bytes before the beginning of the 
+        // last completed transaction.
+        //
+        
+        assert Thread.holdsLock(writeLock);
+        
         // Below is a simple implementation of the cachedMemoryValue.
         // Everything written to the stream is considered new data to the cache. This is not true.
         // KeyNode can be appended to without adding them to cache again. Also, the dirty
         // nodes are already cached. To handle this better, we could report to DB when
         // KeyNodes grow (their arrays enlarged) and when new nodes are created.
-        // An DBForMe interface sent to KeyNode methods that may enlarge its memory use,
+        // An DbForMe interface sent to KeyNode methods that may enlarge its memory use,
         // and to constructors of ValueNode, KeyNode, TopNode. Maybe overkill?
 
         this.cachedMemoryValue.addAndGet(transactionNodes.sumMemSize());
@@ -1659,22 +1685,27 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
         // However, a small transaction that comes after a large one, will often get unfairly
         // many dirty KeyNodes/TopNodes to write.
         // Would be better if the number of extra (too dirty nodes) nodes in a transaction was
-        // proportional to the KVs of the transaction.
-        // This can be solved. The total size of the transaction nodes can be computed first, then..
+        // proportional to the Kvs of the transaction.
+        // This can be solved. The total size of the transaction nodes can be computed first, 
+        // then..
 
         int ordinaryNodeCount = transactionNodes.size();
         
         dirtyNodes.getTooDirtyNodes(dirtyLimit, true, transactionNodes);
         
-        int totalNodeCount = transactionNodes.size();
-        int dirtyNodeCount = totalNodeCount - ordinaryNodeCount;
-        double dirtyFraction = ((double) dirtyNodeCount) / totalNodeCount;
-        this.dirtyFraction100   = 0.99  * this.dirtyFraction100  +  0.01  * dirtyFraction;
-        this.dirtyFraction1000  = 0.999 * this.dirtyFraction1000 +  0.001 * dirtyFraction;
+        {   // Computes dirtyFraction100, dirtyFraction1000. For statistics, monitoring.
+            int totalNodeCount = transactionNodes.size();
+            int dirtyNodeCount = totalNodeCount - ordinaryNodeCount;
+            double dirtyFraction = ((double) dirtyNodeCount) / totalNodeCount;
+            this.dirtyFraction100   = 0.99  * this.dirtyFraction100  +  0.01  * dirtyFraction;
+            this.dirtyFraction1000  = 0.999 * this.dirtyFraction1000 +  0.001 * dirtyFraction;
+        }
 
         trans.nodeCount = transactionNodes.size();
         
         boolean wroteMetaBlock = nodeStream.addNodes(trans.transactionTime, transactionNodes, trans);
+        
+        // TODO B. Check below code. Still needed? Did I simply this by writing a whole block?
         
         if (wroteMetaBlock && this.newIncreasedStartupDistance != -1) {
             assert newIncreasedStartupDistance > startupDistance 
@@ -1700,11 +1731,13 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
     }
 
     /**
+     * Returns the stream position that is currently the "dirty limit". 
+     * In general: nodeStream.getLength() - this.startupDistance is returned.
      * The caller must hold DB.writeLock.
      */
     private long getDirtyLimit() {
         assert Thread.holdsLock(writeLock);
-        long dirtyLimit = nodeStream.getLength() - startupDistance;
+        long dirtyLimit = nodeStream.getLength() - this.startupDistance;
         dirtyLimit = dirtyLimit < 0 ? 0 : dirtyLimit;
         return dirtyLimit;
     }
@@ -1716,6 +1749,7 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
      * (trans.transactionTime). Caller must hold writeLock.
      */
     private final void setKvs() {
+        //
         // 1210 Frans: Added [if (kv.keyTransformation != ...], [if (kv.valueTransformation != ...]
         // These changes do not add any measurable overhead when null; measured with test.Set.
         //
@@ -1735,7 +1769,7 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
             }
 
             if (kv.valueTransformation != null) {
-                final byte[] previous = this.get(trans.transactionTime, kv.keySegments,
+                final byte[] previous = this.get(trans.transactionTime, kv.keySegments, 
                         trans.getData);
                 kv.value = kv.valueTransformation.transform(trans.transactionTime, kv.value,
                         previous);
@@ -1780,7 +1814,7 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
     }
 
     /**
-     * Sets a value in the segment that has 'node' as its root node. If a KV
+     * Sets a value in the segment that has 'node' as its root node. If a Kv
      * with the key already exists, its value is overwritten.
      * 
      * @param node
@@ -1947,6 +1981,9 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
             // 'node' is full. We cannot append 'toInsert' to it.
             final long tTime = this.trans.transactionTime;
             KeyNode last = node.lastVersion(tTime);
+            // XXX were is 'last' added to transactionNodes?
+            transactionNodes.add(last);   // XXX Work in progress
+            
             assert last.assertOk(maxNodeSize);
             handleLastVersionOfFullNode(node, depth, toInsert, tTime, last);
         }
@@ -2042,6 +2079,8 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
                     node.addKlong(tTime, union, null, transAccessData);
                 } else {
                     KeyNode last = node.lastVersionGivenDel(sz, tTime, union);
+                    transactionNodes.add(last);   // XXX work in progress
+                    
                     handleLastVersionOfFullNode(node, depth, zeroKwis, tTime, last);
                 }
             }
@@ -2056,6 +2095,8 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
         // empty.
 
         final KeyNode parent = getParent(depth);
+        
+        assert transactionNodes.contains(last) : "Expected transactionNodes to contain 'last'.";
 
         for (int i = 0; i < toInsert.length; i++) {
             KlongWithPointer kwi = toInsert[i];
@@ -2066,7 +2107,6 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
             // 'node' is the current space root. Replace it with 'last'.
             topDS.newSuperRoot(tTime, last, this.transAccessData);
             assert last.checkWithMessage() == null;
-            transactionNodes.add(last);
             transactionNodes.add(topDS.getSuperRoot());
 
         } else {
@@ -2087,10 +2127,17 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
                     + parent.print();
 
             transactionNodes.add(parent);
-            transactionNodes.add(last);
         }
     }
 
+    /**
+     * Called to split 'node'.
+     * 
+     * @param node
+     * @param last
+     * @param depth
+     * @param toInsert
+     */
     private void splitNode(final KeyNode node, KeyNode last, final int depth,
             final KlongWithPointer[] toInsert) {
         //
@@ -2107,6 +2154,8 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
         final KeyNode second = new KeyNode(isSegmentLeaf);
         final KeyNode parent = getParent(depth);
         trans.splitCount++;
+        
+        assert transactionNodes.contains(last) : "Expected 'last' to already be in transactionNodes.";
 
         if (parent == null) {
             if (trans.trace) {

@@ -1,4 +1,4 @@
-package bergdb.test;
+package bergdb.test.manual;
 
 import java.io.PrintStream;
 import java.util.Random;
@@ -72,7 +72,7 @@ public class StreamSizeVsStartupDistance {
         
         for (int i = 0; i < tCount; i++) {
             index = random.nextInt(n);
-            db.execute(Trans.builder().set(KeyFactory.binaryIntKey(index), empty));
+            db.execute(Trans.builder().set(KeyFactory.binaryIntKey(index), empty).build());
         }
         
         long addedSize = db.getStreamLength() - streamSize1;

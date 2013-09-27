@@ -61,7 +61,7 @@ public final class TopNode implements INode {
     /**
      * This constructor should only be called from TopDS and from this class itself.
      */
-    TopNode(int topNodeId, KeyNode rootPointer, long rootPointerPos, long rootTime, long spos) {
+    public TopNode(int topNodeId, KeyNode rootPointer, long rootPointerPos, long rootTime, long spos) {
         this.rootPointer = rootPointer;
         this.rootPointerPos = rootPointerPos;
         this.rootTime = rootTime;
@@ -113,11 +113,11 @@ public final class TopNode implements INode {
         return i;
     }
     
-    public boolean isDirty() {
+    public final boolean isDirty() {
         return isDirty;
     }
     
-    public void setIsDirty(boolean b) {
+    public final void setIsDirty(boolean b) {
         this.isDirty = b;
     }
     

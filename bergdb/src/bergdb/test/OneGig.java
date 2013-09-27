@@ -77,7 +77,7 @@ public class OneGig {
                 b.set(key, value);
             }
             
-            db.execute(b);
+            db.execute(b.build());
             
             if (i % 5000 == 0) {
                 double totalKvSize = Math.round(i * 1000.0 * 10.0 * 1e-6);
@@ -177,7 +177,7 @@ public class OneGig {
                 b.set(key, value);
             }
             
-            db.execute(b);
+            db.execute(b.build());
             
             if (i % 1000 == 0) {
                 double totalKvSize = Math.round(i * 1000.0 * 10.0 * 1e-6);

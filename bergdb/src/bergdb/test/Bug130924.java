@@ -88,7 +88,7 @@ public class Bug130924 {
         for (int i = 0; i < total; i++) {
             String ikey = PubKeys.u2i(accountKey(id));
             id += 1;
-            db.execute(Trans.builder().set(ikey, "v"));
+            db.execute(Trans.builder().set(ikey, "v").build());
         }
         
         GetMany g = new GetMany();

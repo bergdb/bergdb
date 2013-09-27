@@ -31,7 +31,7 @@ public class StreamSize {
             
             for (int j = 0; j < kvCount[i]; j++) {
                 byte[] value = new byte[kvSizes[i] - 4];
-                db.execute(Trans.builder().set(KeyFactory.binaryIntKey(j), value));
+                db.execute(Trans.builder().set(KeyFactory.binaryIntKey(j), value).build());
             }
             db.sync();
             

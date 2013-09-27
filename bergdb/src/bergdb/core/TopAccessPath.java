@@ -17,7 +17,7 @@ public class TopAccessPath {
     }
     
     /**
-     * Sets size to 0. Memory leak warning: node reference not set to null.
+     * Sets size to 0. Memory leak warning: node references not set to null.
      */
     public final void clearFast() {
         size = 0;

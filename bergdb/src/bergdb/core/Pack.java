@@ -21,7 +21,7 @@ public class Pack implements IPack {
         DbTester.class,
         DbTesterGetMany.class,
         DbTesterStream.class,
-        DirtyNodes2.class,
+        DirtyNodes.class,
         GetData.class,
         KeyAccessPath.class,
         KeyModSet2.class,

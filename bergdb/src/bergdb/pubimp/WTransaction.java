@@ -50,6 +50,14 @@ public class WTransaction implements Transaction {
     }
     
     /**
+     * Not part of public API, exposes core transaction, core.Trans.
+     * Use for debugging, testing.
+     */
+    public Trans getTrans() {
+        return trans;
+    }
+    
+    /**
      * @throws StreamIoException
      */
     public void waitForD1() {

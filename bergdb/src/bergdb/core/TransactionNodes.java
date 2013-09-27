@@ -4,7 +4,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
 /**
- * A specialized, performant collection to keep nodes in the change set for a transaction.
+ * A specialized, performant collection to keep nodes in the node set of a transaction.
  * The three nodes types: TopNode, KeyNode, ValueNode are kept in separate arrays to allow
  * for type-specific optimizations.
  * 
@@ -68,6 +68,39 @@ public class TransactionNodes {
         }
         
         return sum;
+    }
+    
+    /**
+     * Checks whether the collection of nodes contains the given node 
+     * (compare by reference).
+     */
+    public boolean contains(INode node) {
+        boolean result = false;
+        
+        outer: {
+            for (int i = 0; i < topSize; i++) {
+                if (topNodes[i] == node) {
+                    result = true;
+                    break outer;
+                }
+            }
+            
+            for (int i = 0; i < keySize; i++) {
+                if (keyNodes[i] == node) {
+                    result = true;
+                    break outer;
+                }
+            }
+            
+            for (int i = 0; i < valueSize; i++) {
+                if (valueNodes[i] == node) {
+                    result = true;
+                    break outer;
+                }
+            }
+        }
+        
+        return result;
     }
     
     /**

@@ -1,6 +1,7 @@
 package bergdb.test;
 
 import bergdb.common.IPack;
+import bergdb.test.manual.StreamSizeVsStartupDistance;
 import bergdb.test.manual.TransactionThroughput;
 
 public class Pack implements IPack {

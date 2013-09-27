@@ -9,7 +9,6 @@ import bergdb.nanotest.TestCollector;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
 import bergdb.pub.Factory;
-import bergdb.pub.Transaction;
 import bergdb.pub.WBuilder;
 import bergdb.pubimp.DatabaseBuilderImp;
 import bergdb.stream.MemoryStream;

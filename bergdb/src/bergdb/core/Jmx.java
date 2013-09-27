@@ -66,7 +66,7 @@ public class Jmx {
      */
     public static class DbMonitor implements DbMonitorMBean {
         private Db db;
-        private DirtyNodes2 dirtyNodes;
+        private DirtyNodes dirtyNodes;
         private Object dbWriteLock;
         private MBeanServer mbs;
         

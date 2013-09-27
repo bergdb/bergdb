@@ -135,7 +135,7 @@ public class Crazy {
         clock.setTime(5*1000000);
         b = Trans.builder();
         b.set(KeyFactory.crazyKey(1001), new byte[20*1000000]);
-        db.execute(b);
+        db.execute(b.build());
         db.sync();
         
         out.println("Stream size: " + db.getStreamLength() + ".");
@@ -149,7 +149,7 @@ public class Crazy {
         byte[] key = new byte[keySize];
         key[0] = 44;
         b.set(key, new byte[3]);
-        db.execute(b);
+        db.execute(b.build());
         long streamSize2 = db.getStreamLength();
         double keySizeOverheadFactor = ((double)(streamSize2 - streamSize1)) / ((double) keySize);
         c.report("keySizeOverheadFactor", keySizeOverheadFactor);

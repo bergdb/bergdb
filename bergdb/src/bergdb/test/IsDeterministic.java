@@ -56,7 +56,7 @@ public class IsDeterministic {
             KTestClock clock = new KTestClock();
             Db db = Db.builder().testSetup().mainStream(m).clock(clock).id(DatabaseId.getTestId()).start();
             clock.setTime(100);
-            db.execute(Trans.builder().set("k", "v"));
+            db.execute(Trans.builder().set("k", "v").build());
             db.sync();
             
             if (i == 0) {
@@ -101,7 +101,7 @@ public class IsDeterministic {
                 Trans.Builder b = Trans.builder();
                 b.set(KeyFactory.crazyKey(j*2), new byte[j]);
                 b.set(KeyFactory.crazyKey(j*2 + 1), new byte[j]);
-                db.execute(b);
+                db.execute(b.build());
             }
             db.sync();
             

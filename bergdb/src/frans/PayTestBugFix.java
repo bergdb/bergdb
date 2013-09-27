@@ -22,7 +22,7 @@ import bergdb.stream.MemoryStream;
  * 
  * @author Frans Lundberg
  */
-public class PayTest {
+public class PayTestBugFix {
     
     /**
      * Runs that test. Requires 500 MB of RAM or so. 130925 Frans: Runs on 20 s on Cissi.
@@ -32,14 +32,21 @@ public class PayTest {
      */
     @T("night")
     public static void testIt(TestCollector c) throws IOException {
-        PayTest pt = new PayTest();
+        PayTestBugFix pt = new PayTestBugFix();
         pt.out = c.out();
         pt.go();
         System.gc();
     }
     
-    private final long total = 1200 * 1000;
-        // 1.0M or less does not reproduce the bug.
+    private final long total = 1199000;
+        // 1200k bug!
+        // 1000k ok
+        // 1001k ok
+        // 1100k ok
+        // 1150k ok
+        // 1180k ok
+        // 1199k   Unexpected key: /accounts/01000000.obj, expected: /accounts/00997000.obj
+        //
     
     private static final String dirName = "/accounts/";
         // Changing to /account/ makes code work.
@@ -90,6 +97,12 @@ public class PayTest {
             
             //t.waitForD1();  //  <-- Does not work, even with this line.
             
+            //if (id == 800*1000) {
+            //    Trans trans = ((WTransaction) t).getTrans();
+            //    System.out.println("Trans size: " + (trans.lastSpos - trans.spos));
+                // Trans size is 197k bytes.
+            //}
+            
             if (id % 200000 == 0) {
                 System.out.printf("Created %.0fk accounts.\n", id / 1000.0);
             }
@@ -133,6 +146,8 @@ public class PayTest {
         
         b = (DatabaseBuilderImp) Factory.database();
         b.stream("main", mem2);
+        b.noReclaim();
+        b.evictBoss(new NoEvictBoss());
         database = b.start();
         c = database.connection();
         
@@ -184,7 +199,7 @@ public class PayTest {
     }
     
     public static void main(String[] args) throws IOException {
-        new PayTest().go();
+        new PayTestBugFix().go();
     }
 }
 
@@ -206,5 +221,18 @@ Expected:
 
 Got:
 /accounts/01000000.obj
+
+== 130927 ==
+Idea: can it have to do with newly created nodes when we have splits?
+Db.setKvs(). What happens to access paths when we have splits?
+But new nodes are always added to transactionNodes and written to stream.
+
+== 130926 ==
+Hmmm, could something have to to with 20M startup distance. How large is a transaction, 
+1000 KVs in one.
+
+Hurray, something useful. this.startupDistance += 3*1000000 in Db.startInner()
+fixes the issue. Some nodes seem to get too dirty, re-check logic for this.
+Can it be tested / refactored?
 
 */
