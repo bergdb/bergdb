@@ -83,7 +83,8 @@ public class DbGraph {
     }
     
     /**
-     * Creates a DbGraph from stream nodes.
+     * Creates a DbGraph from the stream nodes of the startup interval 
+     * of the DB stream.
      * 
      * @param accessData
      * @param posMap
@@ -283,7 +284,6 @@ public class DbGraph {
 
 /*
 
-Maybe a builder?
 
 
 */
