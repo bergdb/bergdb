@@ -10,13 +10,22 @@ package bergdb.coreds;
  */
 public class GetData {
     
-    // -- Settings --
+    // -- Input, settings --
     
     /** Set to false to disable caching of read nodes. */
     public boolean cache = true;
     
-    /** Set to true to enable trace to System.out. Only used for debugging. */
+    /** 
+     * Set to true to enable trace to System.out. Only used for debugging. 
+     * 
+     * @deprecated
+     */
     public boolean trace = false;
+    
+    public DbGraph.PointerListener walker;
+    
+    public DbGraph.CachePolicy cachePolicy;
+    
     
     // -- Internal working data --
     
@@ -40,8 +49,10 @@ public class GetData {
     public long followMemoryPointerCount;
     public long followStreamPointerCount;
     
-    public Choices choices;
+    //public Choices choices;
         // If not null, set to the node choices made when making the get operation.
+        // If GetData object is reused, make sure choices is cleared before using it again.
+    
     
     public GetData() {
         kwi = new KlongWithPointer();

@@ -11,6 +11,12 @@ import bergdb.nanotest.T;
  * Typically used for temporary storage, method calls, output parameters.
  */
 public class Pointer {
+    /** Memory pointer type. */
+    public static final int TYPE_MEMORY = 1;
+    
+    /** Stream pointer type. */
+    public static final int TYPE_STREAM = 2;
+    
     public INode node;
     public long pos;
     public int index;    // pointer index, not always used

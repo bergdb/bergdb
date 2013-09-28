@@ -10,64 +10,30 @@ import bergdb.storage.StreamFormatException;
  * 
  * @author Frans Lundberg
  */
-public class DbGraph {
-    public interface DbForMe {
-        public INode followPointer(INode predecessor, int pointerIndex, 
-                boolean cache, long accessData, GetData gd);
-    }
-    
-    private static class DummyDb implements DbForMe {
-        public INode followPointer(INode predecessor, int pointerIndex,
-                boolean cache, long accessData, GetData gd) {
-            INode result;
-            assert predecessor != null;
-            assert gd != null : "gd == null, not allowed";
-
-            //final Object lock = getPointerLock(predecessor, pointerIndex);
-            final Object lock = new Object();
-            
-            synchronized (lock) {
-                INode pointerNode = predecessor.getPointerNode(pointerIndex);
-                long pointerPos = predecessor.getPointerPos(pointerIndex);
-
-                assert !Pointer.isNull(pointerNode, pointerPos) : "Pointer is null: " + pointerNode
-                        + ", " + pointerPos;
-
-                if (Pointer.isMem(pointerNode)) {
-                    result = pointerNode;
-                    if (accessData != 0) {
-                        predecessor.setPointerAccessData(pointerIndex, accessData);
-                    }
-                    gd.followMemoryPointerCount++;
-                } else {
-                    throw new IllegalStateException("No support for reading from stream.");
-                    /*
-                    result = nodeStream.readNode(pointerPos, null);
-                    if (cache) {
-                        predecessor.setPointer(pointerIndex, result, accessData);
-                        cachedMemoryValue.addAndGet(result.getMemSize());
-                    }
-                    
-                    gd.followStreamPointerCount++;
-                    */
-                }
-            }
-
-            return result;
-        }
-        
-    }
-    
-    private TopDs topDs;
-    private DbForMe db;
-    
+public class DbGraph implements TopDs.DbGraphForMe {
+    private final TopDs topDs;
+    private NodeReader nodeReader;
+    private final int POINTER_LOCKS_LENGTH = 128;
+    private final Object[] pointerLocks;
     
     /**
      * Private constructor; see the create methods for how to create
      * a DbGraph object.
      */
-    private DbGraph() {
-        db = new DummyDb();
+    private DbGraph(TopDs topDs) {
+        if (topDs == null) throw new IllegalArgumentException("topDs == null not allowed");
+        this.topDs = topDs;
+        this.nodeReader = new NodeReader() {
+            public INode readNode(long spos, byte[] tempBuffer) {
+                throw new IllegalStateException("No nodeReader was set, use " 
+                        + DbGraph.class.getName() + ".setNodeReader().");
+            }
+        };
+        
+        pointerLocks = new Object[POINTER_LOCKS_LENGTH];
+        for (int i = 0; i < POINTER_LOCKS_LENGTH; i++) {
+            pointerLocks[i] = new Object();
+        }
     }
     
     /**
@@ -76,9 +42,9 @@ public class DbGraph {
      * Nothing is written to the node stream.
      */
     public static DbGraph create(long time) {
-        DbGraph g = new DbGraph();
         KeyNode root = new KeyNode();
-        g.topDs = TopDs.createFromFirstRoot(time, root, Spos.DEFAULT_ACCESS_DATA);
+        TopDs topDs = TopDs.createFromFirstRoot(time, root, Spos.DEFAULT_ACCESS_DATA);
+        DbGraph g = new DbGraph(topDs);
         return g;
     }
     
@@ -100,7 +66,7 @@ public class DbGraph {
         // * Finds the superRoot TopNode among the startup nodes.
         //
 
-        DbGraph g = new DbGraph();
+        
         
         TopNode superRoot = null;
         Pointer pointer = new Pointer();
@@ -148,8 +114,6 @@ public class DbGraph {
             throw new StreamFormatException("Could not find root node within startup node set.");
         }
 
-        g.topDs = new TopDs(superRoot);
-
         // Creates memory pointers from stream pointers.
 
         Pointer p2 = new Pointer();
@@ -171,11 +135,15 @@ public class DbGraph {
             }
         }
         
+        DbGraph g = new DbGraph(new TopDs(superRoot));
         return g;
     }
     
-    public void setDb(DbForMe db) {
-        this.db = db;
+    public void setNodeReader(NodeReader nodeReader) {
+        if (nodeReader == null) {
+            throw new IllegalArgumentException("nodeReader == null not allowed");
+        }
+        this.nodeReader = nodeReader;
     }
     
     /**
@@ -183,8 +151,34 @@ public class DbGraph {
      * 
      * @param time  The lookup time.
      */
-    public byte[] getOne(long time, long[] keySegments, GetData gd) {
-        KeyNode segmentRoot = topDs.findRootNEW(db, time, null, gd);
+    public byte[] getOne(long time, long[] keySegments, final GetData gd) {
+
+        if (gd.walker == null) {
+            gd.walker = new PointerListener() {
+                public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
+                    switch (pointerType) {
+                    case Pointer.TYPE_MEMORY:
+                        gd.followMemoryPointerCount++;
+                        break;
+                    case Pointer.TYPE_STREAM:
+                        gd.followStreamPointerCount++;
+                        break;
+                    default:
+                        assert false : "Bad pointer type: " + pointerType + ".";
+                    }
+                }
+            };
+        }
+        
+        if (gd.cachePolicy == null) {
+            gd.cachePolicy = new CachePolicy() {
+                public boolean shouldCache(INode node) {
+                    return true;
+                }
+            };
+        }
+        
+        KeyNode segmentRoot = topDs.findRoot(this, time, gd);
 
         if (segmentRoot == null) {
             return null;
@@ -198,7 +192,7 @@ public class DbGraph {
 
         // For each segment in key segment array
         for (int i = 0; i < segmentCount; i++) {
-            item = getEqNodeInSegment(time, segmentRoot, keySegments[i], gd, null);
+            item = getEqNodeInSegment(time, segmentRoot, keySegments[i], gd);
 
             if (i == lastIndex) {
                 result = null;
@@ -242,7 +236,7 @@ public class DbGraph {
      *            disable the choice recording.
      */
     private final INode getEqNodeInSegment(long time, KeyNode segmentRoot, long compareValue,
-            GetData gd, Choices choices) {
+            GetData gd) {
         final KlongWithPointer kwi = gd.kwi;
         KeyNode current = segmentRoot;
         INode result;
@@ -254,8 +248,7 @@ public class DbGraph {
                 if (kwi.klong == Klong.NULL) {
                     result = null;
                 } else {
-                    if (choices != null) choices.add(kwi.pointerIndex);
-                    result = db.followPointer(current, kwi.pointerIndex, gd.cache, gd.accessData, gd);
+                    result = followPointer(current, kwi.pointerIndex, gd.accessData, gd.walker, gd.cachePolicy);
                 }
                 break;
 
@@ -269,21 +262,145 @@ public class DbGraph {
                     assert kwi.node == null || kwi.node instanceof KeyNode : "Expected a KeyNode, got "
                             + kwi.node;
 
-                    if (choices != null) choices.add(kwi.pointerIndex);
-                    KeyNode nextCurrent = (KeyNode) db.followPointer(current, kwi.pointerIndex,
-                            gd.cache, gd.accessData, gd);
+                    KeyNode nextCurrent = (KeyNode) followPointer(current, kwi.pointerIndex,
+                            gd.accessData, gd.walker, gd.cachePolicy);
                     current = nextCurrent;
-                    gd.nodeDepth++;
                 }
             }
         }
 
         return result;
     }
+    
+    /**
+     * Returns a lock for the pointerIndex'th pointer of node 'node'.
+     */
+    private final Object getPointerLock(final INode node, final int pointerIndex) {
+        int value = (node.hashCode() + 13 * pointerIndex);
+        value = (value < 0) ? -value : value;
+        return pointerLocks[value % POINTER_LOCKS_LENGTH];
+    }
+    
+    /**
+     * Follows a pointer. This method must always be used when a pointer is
+     * followed. This is an essential method.
+     */
+    public final INode followPointer(final INode predecessor, int pointerIndex, 
+            long accessData, PointerListener walker, CachePolicy cachePolicy) {
+        //
+        // 130928 Frans: Made listener and cachePolicy interfaces. Very flexible.
+        //      We will see if it is fast enough.
+        //
+        
+        INode result;
+        assert predecessor != null;
+
+        final Object lock = getPointerLock(predecessor, pointerIndex);
+
+        synchronized (lock) {
+            INode pointerNode = predecessor.getPointerNode(pointerIndex);
+            long pointerPos = predecessor.getPointerPos(pointerIndex);
+
+            assert !Pointer.isNull(pointerNode, pointerPos) : "Pointer is null: " + pointerNode
+                    + ", " + pointerPos;
+
+            if (Pointer.isMem(pointerNode)) {
+                result = pointerNode;
+                if (accessData != 0) {
+                    predecessor.setPointerAccessData(pointerIndex, accessData);
+                }
+                walker.pointerFollowed(predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
+            
+            } else {
+                result = nodeReader.readNode(pointerPos, null);
+                
+                walker.pointerFollowed(predecessor, pointerIndex, result, Pointer.TYPE_STREAM);
+                if (cachePolicy.shouldCache(result)) {
+                    predecessor.setPointer(pointerIndex, result, accessData);
+                }
+            }
+        }
+
+        return result;
+    }
+    
+    /**
+     * A NodeReader has method readNode() that can read a node from the DB stream
+     * give the spos of the node.
+     */
+    public static interface NodeReader {
+        
+        /**
+         * Reader a node from the stream. Assumes the item exists at the location 
+         * and that it is valid.
+         * 
+         * @param tempBuffer A buffer to read to. Avoids some mem alloc. If non-null it must be at
+         * least 4 bytes long. If long enough to read the node into it, it will save some 
+         * memory allocation.
+         * @throws StreamFormatException
+         * @throws StreamIoException
+         */
+        public INode readNode(long spos, byte[] tempBuffer);
+    }
+    
+    
+    /**
+     * A listener that listens to what happens when the DB graph is walked
+     * and a Walker also determines whether a read stream node should be cached or not.
+     */
+    public static interface PointerListener {
+        
+        /**
+         * Reports that a pointer was followed.
+         * 
+         * @param pointerType One of Pointer.TYPE_MEMORY, Pointer.TYPE_STREAM.
+         */
+        public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType);
+    }
+    
+    /**
+     * The cache policy determines whether to cache nodes read from stream.
+     * This interface enables us to easily set a cache policy such as:
+     * cache all nodes read from stream, cache no nodes, cache only KeyNodes, cache all
+     * KeyNodes and all ValueNodes that are smaller than 400k in size.
+     * Cache policy can be set per get operation (or even per call to DbGraph.followPointer()).
+     */
+    public static interface CachePolicy {
+        /**
+         * If true is returned, the node will be cached.
+         * 
+         * @param node  A node that was just read from the stream.
+         * @return True to cache the node.
+         */
+        public boolean shouldCache(INode node);
+    }
 }
 
 /*
 
+Dev notes
+=========
+
+Start with beautiful, understandable code. Possibly later add "Optimized" ending to 
+certain methods if optimization is needed. Keep original and go back to it it there 
+are bugs. We could even have a switch, if (highPerformance) {....
+
+Concepts:
+
+* Optimized, non-optimized switching.
+* Self-testing data structure.
+
+
+General walking - what is needed?
+=================================
+
+Use cases:
+
+1. GetOne operation.
+2. Follow choices.
+3. Set KV - find where to insert klong (or split, ...).
+4. Walk all in-memory nodes.
+5. Warm-up get (before writeLock).
 
 
 */
