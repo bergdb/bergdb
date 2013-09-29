@@ -1171,10 +1171,6 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
             return null;
         }
 
-        if (gd.trace) {
-            System.out.println("findRoot at time " + time + " -> " + segmentRoot.toString());
-        }
-
         // For each segment in key segment array
         for (int i = 0; i < segmentCount; i++) {
             item = getEqNodeInSegment(time, segmentRoot, keySegments[i], gd, null);
@@ -1967,15 +1963,13 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
     private void insertKlongs(final KeyNode node, final int depth, final KlongWithPointer[] toInsert) {
         //
         // This should be the only way the DB adds klongs to KeyNodes. It is the
-        // central point
-        // of code for node splitting.
+        // central point of code for node splitting.
         //
         // Implementation note: we allow memory allocation for a split, avoid it
         // otherwise.
         //
         // For performance, we use special code for the most common case of
-        // inserting exactly
-        // one klong to a non-full node.
+        // inserting exactly one klong to a non-full node.
         //
 
         assert toInsert.length < 3 : "toInsert.length = " + toInsert.length;
@@ -2144,22 +2138,18 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
 
     /**
      * Called to split 'node'.
+     * There are three different kinds of node splits:
+     * 1. 'node' is the space root node (parent == null).
+     * 2. The parent is a segment leaf (the full node is a segment root).
+     * 3. The parent is not a segment leaf.
      * 
-     * @param node
+     * @param node  The node that is full and needs to be split.
      * @param last
      * @param depth
      * @param toInsert
      */
     private void splitNode(final KeyNode node, KeyNode last, final int depth,
             final KlongWithPointer[] toInsert) {
-        //
-        // Split of 'node' into two nodes is needed. There are three cases to
-        // consider:
-        // 1. The space root node is full (parent == null).
-        // 2. The parent is a segment leaf (the full node is a segment root).
-        // 3. The parent is not a segment leaf.
-        //
-
         final long tTime = this.trans.transactionTime;
         final boolean isSegmentLeaf = node.isSegmentLeaf();
         final KeyNode first = new KeyNode(isSegmentLeaf);

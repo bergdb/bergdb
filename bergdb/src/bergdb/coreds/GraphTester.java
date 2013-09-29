@@ -47,10 +47,10 @@ public class GraphTester {
         
         g.putKv(Keys.toSegments("/-key"), Util.toBytes("value"), pd);
         
-        for (int i = 0; i < pd.keyAccessPath.getSize(); i++) {
-            System.out.println("keyAccessPath: " + Klong.toString(pd.keyAccessPath.getKlong(i)) 
-                    + "->" + pd.keyAccessPath.get(i));
-        }
+        //for (int i = 0; i < pd.keyAccessPath.getSize(); i++) {
+        //    System.out.println("keyAccessPath: " + Klong.toString(pd.keyAccessPath.getKlong(i)) 
+        //            + "->" + pd.keyAccessPath.get(i));
+        //}
         
         GetData gd = new GetData();
         byte[] value = g.getOne(20, Keys.toSegments("/-key"), gd);
@@ -73,13 +73,13 @@ public class GraphTester {
         pd.keyAccessPath.clear();
         
         g.putKv(Keys.toSegments("/longerKey2"), Util.toBytes("value"), pd);
-        for (int i = 0; i < pd.keyAccessPath.getSize(); i++) {
-            System.out.println("keyAccessPath: " + Klong.toString(pd.keyAccessPath.getKlong(i)) 
-                    + "->" + pd.keyAccessPath.get(i));
-        }
-        
-        System.out.println("Graph:\n");
-        g.printGraph(System.out);
+        //for (int i = 0; i < pd.keyAccessPath.getSize(); i++) {
+        //    System.out.println("keyAccessPath: " + Klong.toString(pd.keyAccessPath.getKlong(i)) 
+        //            + "->" + pd.keyAccessPath.get(i));
+        //}
+        //
+        //System.out.println("Graph:\n");
+        //g.printGraph(System.out);
         
         GetData gd = new GetData();
         byte[] value = g.getOne(20, Keys.toSegments("/longerKey1"), gd);
@@ -90,6 +90,69 @@ public class GraphTester {
         value = g.getOne(9, Keys.toSegments("/longerKey"), gd);
         Assert.assertTrue(value == null);
     }
+    
+    @T
+    public static void testSplit0() {
+        // Splits space root node. New super root node (top node) needed.
+        
+        String[] kvs = new String[] {
+                "/k1", "v1", "/k2", "v2", "/k3", "v3", "/k4", "v4", "/k0", "v0"
+        };
+        
+        Graph g = Graph.builder().maxNodeSize6().createEmpty(0);
+        PutData pd = new PutData();
+        pd.tt = 10;
+        
+        for (int i = 0; i < kvs.length; i += 2) {
+            g.putKv(Keys.toSegments(kvs[i]), Util.toBytes(kvs[i + 1]), pd);
+            pd.clearFast();
+        }
+        pd.clear();
+        
+        Assert.assertEquals(1, pd.splitCount);
+        GetData gd = new GetData();
+        for (int i = 0; i < kvs.length; i += 2) {
+            byte[] value = g.getOne(10, Keys.toSegments(kvs[i]), gd);
+            Assert.assertEquals(kvs[i + 1], Util.toString(value));
+        }
+        
+        for (int i = 0; i < kvs.length; i += 2) {
+            byte[] value = g.getOne(9, Keys.toSegments(kvs[i]), gd);
+            Assert.assertEquals(null, value);
+        }
+    }
+    
+    @T
+    public static void testSplit2() {
+        // Time split with an ordinary KeyNode as parent.
+
+        Graph g = Graph.builder().maxNodeSize6().createEmpty(0);
+        PutData pd = new PutData();
+        
+        for (int i = 0; i < 4; i++) {
+            String keyString = "account-id-" + i;
+            pd.tt = 1 + i;
+            g.putKv(Keys.toSegments(keyString), Util.toBytes("v" + i), pd);
+            pd.clearFast();
+        }
+        
+        Assert.assertEquals(1, pd.splitCount);
+        pd.clear();
+        
+        //System.out.println("---- Graph.testSplit2 ----");
+        //System.out.println("graph:");
+        //g.printGraph(System.out);
+        
+        byte[] value;
+        GetData gd = new GetData();
+        
+        for (int i = 0; i < 4; i++) {
+            String keyString = "account-id-" + i;
+            value = g.getOne(100, Keys.toSegments(keyString), gd);
+            Assert.assertArrayEquals("i=" + i, Util.toBytes("v" + i), value);
+        }
+    }
+    
     
     public static void main(String[] args) {
         Graph g = Graph.builder().createEmpty(10);

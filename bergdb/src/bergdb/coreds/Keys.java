@@ -69,14 +69,12 @@ public class Keys {
      */
     public static final String toString(byte[] bytes) {
         assert bytes != null;
-        assert bytes.length != 0;
         byte[] bytes2 = toStringBytes(bytes);
         return Util.toString(bytes2);
     }
     
     private static final byte[] toStringBytes(byte[] bytes) {
         assert bytes != null;
-        assert bytes.length != 0;
         
         byte[] result = bytes.clone();
         

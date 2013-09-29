@@ -59,6 +59,6 @@ public class GetData {
             }
         };
         
-        cachePolicy = Graph.CACHE_ALL_BUT_VERY_LARGE_VALUE_NODES;
+        cachePolicy = Graph.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES;
     }
 }

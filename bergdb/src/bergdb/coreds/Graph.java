@@ -4,6 +4,7 @@ import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.Map;
 
+import bergdb.common.Bug;
 import bergdb.storage.StreamFormatException;
 
 /**
@@ -13,43 +14,28 @@ import bergdb.storage.StreamFormatException;
  */
 public class Graph implements TopDs.DbGraphForMe {
     private final TopDs topDs;
-    private NodeReader nodeReader;
+    private final NodeReader nodeReader;
     private final int POINTER_LOCKS_LENGTH = 128;
     private final Object[] pointerLocks;
-    private int maxNodeSize;
-    
-    /**
-     * Private constructor; see the create methods for how to create
-     * a DbGraph object.
-     */
-    private Graph(TopDs topDs) {
-        if (topDs == null) throw new IllegalArgumentException("topDs == null not allowed");
-        
-        this.topDs = topDs;
-        
-        this.nodeReader = new NodeReader() {
-            public INode readNode(long spos, byte[] tempBuffer) {
-                throw new IllegalStateException("No nodeReader was set, use " 
-                        + Graph.class.getName() + ".setNodeReader().");
-            }
-        };
-        
-        this.pointerLocks = new Object[POINTER_LOCKS_LENGTH];
-        for (int i = 0; i < POINTER_LOCKS_LENGTH; i++) {
-            pointerLocks[i] = new Object();
-        }
-    }
+    private final int maxNodeSize;
     
     /**
      * Creates and returns a new, minimal DbGraph.
      * The returned graph has exactly one top node and one key node.
      * Nothing is written to the node stream.
      */
-    private static Graph create(long time) {
+    private Graph(Builder b, long time) {
         KeyNode root = new KeyNode();
-        TopDs topDs = TopDs.createFromFirstRoot(time, root, Spos.DEFAULT_ACCESS_DATA);
-        Graph g = new Graph(topDs);
-        return g;
+        this.topDs = TopDs.createFromFirstRoot(time, root, Spos.DEFAULT_ACCESS_DATA);
+        
+        // Non-topDS stuff:
+        this.maxNodeSize = b.maxNodeSize;
+        this.nodeReader = b.nodeReader;
+        
+        this.pointerLocks = new Object[POINTER_LOCKS_LENGTH];
+        for (int i = 0; i < POINTER_LOCKS_LENGTH; i++) {
+            pointerLocks[i] = new Object();
+        }
     }
     
     /**
@@ -61,7 +47,7 @@ public class Graph implements TopDs.DbGraphForMe {
      * @param nextMap
      * @return
      */
-    private static Graph createFromStreamNodes(long accessData,
+    private Graph(Builder b, long accessData,
             HashMap<Long, INode> posMap, HashMap<Long, INode> nextMap) {
         //
         // Pointer reconciliation phase
@@ -137,15 +123,16 @@ public class Graph implements TopDs.DbGraphForMe {
             }
         }
         
-        Graph g = new Graph(new TopDs(superRoot));
-        return g;
-    }
-    
-    public void setNodeReader(NodeReader nodeReader) {
-        if (nodeReader == null) {
-            throw new IllegalArgumentException("nodeReader == null not allowed");
+        this.topDs = new TopDs(superRoot);
+        
+        // Non-topDS stuff (copy from other constructor):
+        this.maxNodeSize = b.maxNodeSize;
+        this.nodeReader = b.nodeReader;
+        
+        this.pointerLocks = new Object[POINTER_LOCKS_LENGTH];
+        for (int i = 0; i < POINTER_LOCKS_LENGTH; i++) {
+            pointerLocks[i] = new Object();
         }
-        this.nodeReader = nodeReader;
     }
     
     /**
@@ -156,7 +143,66 @@ public class Graph implements TopDs.DbGraphForMe {
         top.printGraph(out, "", 0);
     }
     
-    // ---- getOne() with helpers ----
+
+    // ======== followPointers() and helpers ========
+    
+    /**
+     * Follows a pointer. This method must always be used when a pointer is
+     * followed. This is an essential method. It is used both by get and put operations.
+     * Besides following a pointer, it handles add-to-cache, and sets access data for
+     * the pointer (when was it last used). The access data is used by the 
+     * cache eviction algorithm.
+     */
+    public final INode followPointer(final INode predecessor, int pointerIndex, long accessData, 
+            PointerListener pointerListener, CachePolicy cachePolicy) {
+        //
+        // 130928 Frans: Made listener and cachePolicy interfaces. Very flexible.
+        //      We will see if it is fast enough.
+        //
+        
+        INode result;
+        assert predecessor != null;
+
+        final Object lock = getPointerLock(predecessor, pointerIndex);
+
+        synchronized (lock) {
+            INode pointerNode = predecessor.getPointerNode(pointerIndex);
+            long pointerPos = predecessor.getPointerPos(pointerIndex);
+
+            assert !Pointer.isNull(pointerNode, pointerPos) : "Pointer is null: " + pointerNode
+                    + ", " + pointerPos;
+
+            if (Pointer.isMem(pointerNode)) {
+                result = pointerNode;
+                if (accessData != 0) {
+                    predecessor.setPointerAccessData(pointerIndex, accessData);
+                }
+                pointerListener.pointerFollowed(predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
+            
+            } else {
+                result = nodeReader.readNode(pointerPos, null);
+                
+                pointerListener.pointerFollowed(predecessor, pointerIndex, result, Pointer.TYPE_STREAM);
+                if (cachePolicy.shouldCache(result)) {
+                    predecessor.setPointer(pointerIndex, result, accessData);
+                }
+            }
+        }
+
+        return result;
+    }
+    
+    /**
+     * Returns a lock for the pointerIndex'th pointer of node 'node'.
+     */
+    private final Object getPointerLock(final INode node, final int pointerIndex) {
+        int value = (node.hashCode() + 13 * pointerIndex);
+        value = (value < 0) ? -value : value;
+        return pointerLocks[value % POINTER_LOCKS_LENGTH];
+    }
+
+    
+    // ==== getOne() with helpers ========
     
     /**
      * Gets one KV value or returns null if it does not exist.
@@ -263,9 +309,9 @@ public class Graph implements TopDs.DbGraphForMe {
     }
     
     
-    
+
+    // ======== putKv() with helpers ========
     //
-    // ---- putKv() with helpers ----
     // Does DbGraph need to know about transactions? Or is putKv() enough?
     //
     
@@ -342,14 +388,15 @@ public class Graph implements TopDs.DbGraphForMe {
             
             // Inserts a delete klong if needed.
             
-            throw new Error("Delete not implemented yet!");   // TODO B. Implement.
-            
-            /*boolean isNoop = insertDeleteKlong(node, keyAccessPath.size - 1, compareValue);
+            boolean isNoop = insertDeleteKlong(node, pd.keyAccessPath.size - 1, compareValue, pd);
             if (!isNoop) {
-                transactionNodes.add(node);
+                //transactionNodes.add(node);
+                pd.nodeChangeListener.keyNodeChanged(node);
                 ValueNode valueNode = new ValueNode(null);
-                transactionNodes.add(valueNode, kv.keySegments);
-            }*/
+                //transactionNodes.add(valueNode, kv.keySegments);
+                pd.nodeChangeListener.newValueNode(valueNode, key);
+            }
+            
         } else {
             //transactionNodes.add(node);
             pd.nodeChangeListener.keyNodeChanged(node);
@@ -367,15 +414,10 @@ public class Graph implements TopDs.DbGraphForMe {
                 node.addKlong(pd.tt, Klong.compareValueToKeyKlong(compareValue),
                         valueNode, pd.accessData);
             } else {
-                
-                throw new Error("insertKlongs not implemented, node: " + node);  // TODO B. Implement!
-                
-                /*
-                oneKwi[0].klong = Klong.compareValueToKeyKlong(compareValue);
-                oneKwi[0].node = valueNode;
-                oneKwi[0].pos = this.transAccessData;
-                insertKlongs(node, keyAccessPath.size - 1, oneKwi);
-                */
+                pd.oneKwi[0].klong = Klong.compareValueToKeyKlong(compareValue);
+                pd.oneKwi[0].node = valueNode;
+                pd.oneKwi[0].pos = pd.accessData;
+                insertKlongs(node, pd.keyAccessPath.size - 1, pd.oneKwi, pd);
             }
         }
     }
@@ -413,10 +455,7 @@ public class Graph implements TopDs.DbGraphForMe {
                 pd.oneKwi[0].klong = Klong.compareValueToKeyKlong(compareValue);
                 pd.oneKwi[0].node = child;
                 pd.oneKwi[0].pos = pd.tt;
-                
-                throw new Error("insertKlongs not implemented!");    // TODO B. implement
-                // insertKlongs(current, keyAccessPath.size - 1, oneKwi);
-                
+                insertKlongs(current, pd.keyAccessPath.size - 1, pd.oneKwi, pd);
             }
             result = child;
 
@@ -432,93 +471,342 @@ public class Graph implements TopDs.DbGraphForMe {
         return result;
     }
     
-    
-    
-    // ---- followPointers() and helpers ----
-    
+
     /**
-     * Follows a pointer. This method must always be used when a pointer is
-     * followed. This is an essential method. It is used both by get and put operations.
-     * Besides following a pointer, it handles add-to-cache, and sets access data for
-     * the pointer (when was it last used). The access data is used by the 
-     * cache eviction algorithm.
+     * Appends a delete klong to 'node' if needed to delete the klong with the
+     * given compare value.
+     * 
+     * @return True if the operation is a noop (no operation).
      */
-    public final INode followPointer(final INode predecessor, int pointerIndex, long accessData, 
-            PointerListener pointerListener, CachePolicy cachePolicy) {
+    private boolean insertDeleteKlong(final KeyNode node, final int depth,
+            final long compareValueToDelete, PutData pd) {
         //
-        // 130928 Frans: Made listener and cachePolicy interfaces. Very flexible.
-        //      We will see if it is fast enough.
+        // If needed, a delete bitmap klong is added to the node for the current
+        // transaction time to delete a key klong with the specified compareValue.
+        // If no such key klong exists, or if it is already deleted, no action
+        // is taken (it is a NOOP).
+        // If 'node' ends with a delete klong of the current transaction (same transaction time), 
+        // the delete klong is updated to set a delete bit for the specified compareValue.
         //
-        
-        INode result;
-        assert predecessor != null;
+        // -- Implementation notes --
+        // Loop through. Is it a noop? If not, can it be added to existing
+        // delete klong of transaction or not? At end if noop, do nothing. If not, either modify
+        // existing delete klong or add one to 'node'.
+        //
 
-        final Object lock = getPointerLock(predecessor, pointerIndex);
+        final short sz = node.size;
+        assert sz <= this.maxNodeSize : "Bad node size: " + sz;
+        long arrayTime = -1;
+        long tTime = pd.tt;
+        long arrayDel = Klong.createDeleteBitmap();
+        long del = Klong.createDeleteBitmap();
+        boolean hasTransDel = false;
+            // Set to true if last klong is a delete for the same time as this transaction.
 
-        synchronized (lock) {
-            INode pointerNode = predecessor.getPointerNode(pointerIndex);
-            long pointerPos = predecessor.getPointerPos(pointerIndex);
+        for (int i = 0; i < sz; i++) {
+            long klong = node.klongs[i];
+            int type = Klong.getIntType(klong);
 
-            assert !Pointer.isNull(pointerNode, pointerPos) : "Pointer is null: " + pointerNode
-                    + ", " + pointerPos;
-
-            if (Pointer.isMem(pointerNode)) {
-                result = pointerNode;
-                if (accessData != 0) {
-                    predecessor.setPointerAccessData(pointerIndex, accessData);
+            switch (type) {
+            case Klong.INT_TYPE_TIME:
+                arrayTime = Klong.getTime(klong);
+                if (arrayTime > tTime) {
+                    throw new Bug("Bad state of node, arrayTime > transaction time."
+                            + " arrayTime=" + arrayTime + ", tTime=" + tTime + ", node="
+                            + node.toString() + ".");
                 }
-                pointerListener.pointerFollowed(predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
-            
-            } else {
-                result = nodeReader.readNode(pointerPos, null);
-                
-                pointerListener.pointerFollowed(predecessor, pointerIndex, result, Pointer.TYPE_STREAM);
-                if (cachePolicy.shouldCache(result)) {
-                    predecessor.setPointer(pointerIndex, result, accessData);
+                break;
+            case Klong.INT_TYPE_KEY:
+                long arrayCompareValue = Klong.getCompareValue(klong);
+                if (compareValueToDelete == arrayCompareValue) {
+                    del = Klong.delete(del, i);
                 }
+                break;
+            case Klong.INT_TYPE_DELETE_BITMAP:
+                arrayDel = klong;
+                if (arrayTime == tTime && i == sz - 1) {
+                    hasTransDel = true;
+                }
+                break;
+            default:
+                assert false : "Bad klong type at " + i + ": " + type + ".";
             }
         }
 
-        return result;
+        long union = (del | arrayDel);
+        boolean isNoop = (union == arrayDel);
+        
+        if (!isNoop) {
+            if (hasTransDel) {
+                node.klongs[sz - 1] = union;
+                // Direct modification, but still OK. A reader will always have a lookup
+                // time < trans.transactionTime. So, a reader is guaranteed not to see
+                // the delete at trans.transactionTime before the transaction completes.
+                // No need to add 'node' to transaction nodes. It is there
+                // already since it has a delete klong for transationTime.
+            } else {                
+                if (node.size + 1 < this.maxNodeSize) {
+                    node.addKlong(tTime, union, null, pd.accessData);
+                } else {
+                    KeyNode last = node.lastVersionGivenDel(sz, tTime, union);
+                    //transactionNodes.add(last);
+                    pd.nodeChangeListener.keyNodeChanged(last);
+                    
+                    handleLastVersionOfFullNode(node, depth, PutData.zeroKwi, tTime, last, pd);
+                }
+            }
+        }
+        
+        return isNoop;
     }
+    
+    
+    // ======== insertKlongs() and helpers ========
     
     /**
-     * Returns a lock for the pointerIndex'th pointer of node 'node'.
+     * Inserts one or two non-delete klongs to 'node' for the current
+     * transaction. This method splits 'node' and its ancestors if needed.
+     * 
+     * @param node
+     *            Node into which to insert.
+     * @param depth
+     *            Depth of 'node' in the access path.
+     * @param toInsert
+     *            The klongs and pointers to insert. 1 or 2 long array.
      */
-    private final Object getPointerLock(final INode node, final int pointerIndex) {
-        int value = (node.hashCode() + 13 * pointerIndex);
-        value = (value < 0) ? -value : value;
-        return pointerLocks[value % POINTER_LOCKS_LENGTH];
+    private void insertKlongs(final KeyNode node, final int depth, final KlongWithPointer[] toInsert, PutData pd) {
+        //
+        // This should be the only way the DB adds klongs to KeyNodes. It is the
+        // central point of code for node splitting.
+        //
+        // Implementation note: we allow memory allocation for a split, avoid it
+        // otherwise.
+        //
+        // For performance, we use special code for the most common case of
+        // inserting exactly one klong to a non-full node.
+        //
+
+        assert toInsert.length < 3 : "toInsert.length = " + toInsert.length;
+        assert node.assertOk(maxNodeSize);
+
+        // "+1" is needed since a TIME klong could be added along with the toInsert klongs.
+        final boolean isFull = node.size + toInsert.length + 1 > this.maxNodeSize;
+
+        if (!isFull) {
+            for (int i = 0; i < toInsert.length; i++) {
+                KlongWithPointer kwi = toInsert[i];
+                node.addKlong(pd.tt, kwi.klong, kwi.node, pd.accessData);
+                assert node.assertOk(maxNodeSize);
+            }
+        } else {
+            // 'node' is full. We cannot append 'toInsert' to it.
+            final long tTime = pd.tt;
+            KeyNode last = node.lastVersion(tTime);
+            pd.nodeChangeListener.keyNodeChanged(last);
+            
+            assert last.assertOk(maxNodeSize);
+            handleLastVersionOfFullNode(node, depth, toInsert, tTime, last, pd);
+        }
     }
     
+    private void handleLastVersionOfFullNode(final KeyNode node, final int depth,
+            final KlongWithPointer[] toInsert, final long tTime, KeyNode last, PutData pd) {
+        final int lastSize = last.size;
+
+        if (lastSize > this.maxNodeSize / 2) {
+            // Last version is large enough to split. Split and insert.
+            splitNode(node, last, depth, toInsert, pd);
+        } else {
+            // Last version is small enough not to split into two nodes.
+            replaceNodeWithLastVersion(tTime, last, depth, toInsert, pd);
+        }
+    }
+    
+    private void replaceNodeWithLastVersion(final long tTime, KeyNode last, final int depth,
+            KlongWithPointer[] toInsert, PutData pd) {
+        // Last version is small enough not to split into two nodes, but not
+        // empty.
+
+        final KeyNode parent = pd.getParent(depth);
+
+        for (int i = 0; i < toInsert.length; i++) {
+            KlongWithPointer kwi = toInsert[i];
+            last.addKlong(tTime, kwi.klong, kwi.node, pd.accessData);
+        }
+
+        if (parent == null) {
+            // 'node' is the current space root. Replace it with 'last'.
+            topDs.newSuperRoot(tTime, last, pd.accessData);
+            assert last.checkWithMessage() == null;
+            pd.nodeChangeListener.topNodeChanged(topDs.getSuperRoot());
+            
+        } else {
+            long klong1 = pd.keyAccessPath.getKlong(depth);
+            assert klong1 != Klong.NULL;
+
+            // "+1" needed since a TIME klong might be needed too.
+            if (parent.size + 1 < this.maxNodeSize) {
+                parent.addKlong(pd.tt, klong1, last, pd.accessData);
+            } else {
+                pd.oneKwi[0].klong = klong1;
+                pd.oneKwi[0].node = last;
+                pd.oneKwi[0].pos = pd.accessData;
+                insertKlongs(parent, depth - 1, pd.oneKwi, pd);
+            }
+
+            assert parent.checkWithMessage() == null : parent.checkWithMessage() + " node:\n"
+                    + parent.print();
+
+            //transactionNodes.add(parent);
+            pd.nodeChangeListener.keyNodeChanged(parent);
+        }
+    }
+    
+
+    /**
+     * Called to split 'node'.
+     * There are three different kinds of node splits:
+     * 1. 'node' is the space root node (parent == null).
+     * 2. The parent is a segment leaf (the full node is a segment root).
+     * 3. The parent is not a segment leaf.
+     * 
+     * @param node  The node that is full and needs to be split.
+     * @param last
+     * @param depth
+     * @param toInsert
+     */
+    private void splitNode(final KeyNode node, KeyNode last, final int depth,
+            final KlongWithPointer[] toInsert, PutData pd) {
+        final long tTime = pd.tt;
+        final boolean isSegmentLeaf = node.isSegmentLeaf();
+        final KeyNode first = new KeyNode(isSegmentLeaf);
+        final KeyNode second = new KeyNode(isSegmentLeaf);
+        final KeyNode parent = pd.getParent(depth);
+        pd.splitCount++;
+
+        if (parent == null) {
+            KeyNode newRoot = new KeyNode(false);
+            long secondKlong = node.firstAndSecond(tTime, last, toInsert, first, second);
+            newRoot.addKlong(tTime, Klong.EMPTY_KEY, first, pd.accessData);
+            newRoot.addKlong(tTime, secondKlong, second, pd.accessData);
+
+            topDs.newSuperRoot(tTime, newRoot, pd.accessData);
+
+            assert newRoot.checkWithMessage() == null;
+
+            //transactionNodes.add(newRoot);
+            //transactionNodes.add(topDS.getSuperRoot());
+            //transactionNodes.add(first);
+            //transactionNodes.add(second);
+            pd.nodeChangeListener.topNodeChanged(topDs.getSuperRoot());
+            pd.nodeChangeListener.keyNodeChanged(newRoot);
+            pd.nodeChangeListener.keyNodeChanged(first);
+            pd.nodeChangeListener.keyNodeChanged(second);
+
+        } else if (parent.isSegmentLeaf()) {
+            // Parent is segment leaf, so 'node' is a segment root. We need a
+            // new segment root.
+
+            KeyNode newSegmentRoot = new KeyNode(false);
+            long secondKlong = node.firstAndSecond(tTime, last, toInsert, first, second);
+
+            newSegmentRoot.addKlong(tTime, Klong.EMPTY_KEY, first, pd.accessData);
+            newSegmentRoot.addKlong(tTime, secondKlong, second, pd.accessData);
+
+            long klong1 = pd.keyAccessPath.getKlong(depth);
+            assert klong1 != Klong.NULL;
+
+            if (parent.size < this.maxNodeSize) {
+                parent.addKlong(pd.tt, klong1, newSegmentRoot, pd.accessData);
+            } else {
+                pd.oneKwi[0].klong = klong1;
+                pd.oneKwi[0].node = newSegmentRoot;
+                pd.oneKwi[0].pos = pd.accessData;
+                insertKlongs(parent, depth - 1, pd.oneKwi, pd);
+            }
+
+            assert parent.checkWithMessage() == null : parent.checkWithMessage() + " node:\n"
+                    + parent.print();
+            assert newSegmentRoot.checkWithMessage() == null;
+
+            //transactionNodes.add(newSegmentRoot);
+            //transactionNodes.add(parent);
+            //transactionNodes.add(first);
+            //transactionNodes.add(second);
+            pd.nodeChangeListener.keyNodeChanged(newSegmentRoot);
+            pd.nodeChangeListener.keyNodeChanged(parent);
+            pd.nodeChangeListener.keyNodeChanged(first);
+            pd.nodeChangeListener.keyNodeChanged(second);
+
+        } else {
+            // Parent is not a segment leaf, so 'node' is not a segment root.
+            long secondKlong = node.firstAndSecond(tTime, last, toInsert, first, second);
+            long firstKlong = pd.keyAccessPath.getKlong(depth);
+
+            pd.twoKwis[0].klong = firstKlong;
+            pd.twoKwis[0].node = first;
+            pd.twoKwis[0].pos = pd.accessData;
+            pd.twoKwis[1].klong = secondKlong;
+            pd.twoKwis[1].node = second;
+            pd.twoKwis[1].pos = pd.accessData;
+
+            insertKlongs(parent, depth - 1, pd.twoKwis, pd);
+
+            assert parent.checkWithMessage() == null : parent.checkWithMessage();
+
+            //transactionNodes.add(parent);
+            //transactionNodes.add(first);
+            //transactionNodes.add(second);
+            pd.nodeChangeListener.keyNodeChanged(parent);
+            pd.nodeChangeListener.keyNodeChanged(first);
+            pd.nodeChangeListener.keyNodeChanged(second);
+        }
+    }
+
+    // ======== Builder ========
+
     /**
      * The way to create a Builder.
      */
     public static Builder builder() {
         return new Builder();
-    }
-    
-    // ---- The Builder ----
+    }    
     
     /**
      * An object of this class is used to properly build a DB object.
      */
     public static class Builder {
         private int maxNodeSize;
-        
+        private NodeReader nodeReader;
+
         private Builder() {
-            maxNodeSize30();    // Default and best max node size.
+            maxNodeSize30(); // Default and best max node size.
+
+            this.nodeReader = new NodeReader() {
+                public INode readNode(long spos, byte[] tempBuffer) {
+                    throw new IllegalStateException("No nodeReader was set, use "
+                            + Graph.class.getName() + ".setNodeReader().");
+                }
+            };
         }
-        
-        /** 
-         * Use for testing only.
-         */
-        public Builder maxNodeSize4() {
-            this.maxNodeSize = 4;
+
+        public Builder nodeReader(NodeReader nodeReader) {
+            if (nodeReader == null) {
+                throw new IllegalArgumentException("nodeReader == null not allowed");
+            }
+            this.nodeReader = nodeReader;
             return this;
         }
-        
-        /** 
+
+        /**
+         * Use for testing only.
+         */
+        public Builder maxNodeSize6() {
+            this.maxNodeSize = 6;
+            return this;
+        }
+
+        /**
          * Use for testing only.
          */
         public Builder maxNodeSize8() {
@@ -540,26 +828,28 @@ public class Graph implements TopDs.DbGraphForMe {
             this.maxNodeSize = 64 - 2;
             return this;
         }
-        
+
         /**
-         * Creates a new DbGraph in its initial state created at t=time.
+         * Creates a new DbGraph with its initial state created at t=time. This
+         * method is suitable to create an all in-memory graph. Useful for
+         * testing.
          */
         public Graph createEmpty(long time) {
-            Graph g = Graph.create(time);
-            g.maxNodeSize = this.maxNodeSize;
-            return g;
+            return new Graph(this, time);
         }
-        
-        public Graph createFromStreamNodes(long accessData, 
-                HashMap<Long, INode> posMap, HashMap<Long, INode> nextMap) {
-            Graph g = Graph.createFromStreamNodes(accessData, posMap, nextMap);
-            g.maxNodeSize = this.maxNodeSize;
-            return g;
+
+        /**
+         * Creates a new DbGraph from existing nodes in the DB stream.
+         */
+        public Graph createFromStreamNodes(long accessData, HashMap<Long, INode> posMap,
+                HashMap<Long, INode> nextMap) {
+            return new Graph(this, accessData, posMap, nextMap);
         }
     }
     
     
-    // ---- Inner interfaces / classes ----
+    
+    // ======== Inner interfaces / classes ========
     
     /**
      * A NodeReader has method readNode() that can read a node from the DB stream
@@ -630,7 +920,11 @@ public class Graph implements TopDs.DbGraphForMe {
         }
     };
     
-    public static final CachePolicy CACHE_ALL_BUT_VERY_LARGE_VALUE_NODES = new CachePolicy() {
+    /**
+     * Cache policy that caches all node except for ValueNodes with a value larger 
+     * than 1 MiB.
+     */
+    public static final CachePolicy CACHE_ALL_EXCEPT_LARGE_VALUE_NODES = new CachePolicy() {
         public boolean shouldCache(INode node) {
             boolean result;
             int type = node.getType();
@@ -679,14 +973,21 @@ public class Graph implements TopDs.DbGraphForMe {
     }
     
     /**
-     * Common for a transaction (a number of putKv operations).
+     * Common for one put operation, or a set of put operations (a transaction).
      */
     public static class PutData {
+        private static final KlongWithPointer[] zeroKwi = new KlongWithPointer[0];
+        
         /** Transaction time. */
         public long tt;
         
         /** Access data. */
         public long accessData;
+        
+        /**
+         * Counter of number of splits.
+         */
+        public long splitCount;
         
         // ---- Temp data ---
         
@@ -696,10 +997,15 @@ public class Graph implements TopDs.DbGraphForMe {
         /** Temporary working data. */
         public final KlongWithPointer kwi;
         
-        /** Temporary working data, length = 1. */
+        /** Temporary working data, length == 1. */
         public final KlongWithPointer[] oneKwi;
         
+        /** Temporary working data, length == 2. */
+        public final KlongWithPointer[] twoKwis;
+        
         public NodeChangeListener nodeChangeListener;
+        
+        // ---- Listeners, cache policy and more ----
         
         public PointerListener pointerListener;
         
@@ -707,14 +1013,25 @@ public class Graph implements TopDs.DbGraphForMe {
         
         public KeyAccessPath keyAccessPath;
         
+        /**
+         * Creates a new PutData object with default values.
+         */
         public PutData() {
+            tt = 0;
+            accessData = -100;
+            splitCount = 0;
+            
             tempPointer = new Pointer();
             kwi = new KlongWithPointer();
             oneKwi = new KlongWithPointer[1];
             oneKwi[0] = new KlongWithPointer();
+            twoKwis = new KlongWithPointer[2];
+            twoKwis[0] = new KlongWithPointer();
+            twoKwis[1] = new KlongWithPointer();
             keyAccessPath = new KeyAccessPath();
             
             nodeChangeListener = Graph.DO_NOTHING_NODE_CHANGE_LISTENER;
+            
             pointerListener = new Graph.PointerListener() {
                 public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) { 
                     if (result != null) {
@@ -731,7 +1048,25 @@ public class Graph implements TopDs.DbGraphForMe {
                 }
             };
             
-            cachePolicy = Graph.CACHE_ALL;
+            cachePolicy = Graph.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES;
+        }
+        
+        public void clearFast() {
+            keyAccessPath.clearFast();
+        }
+        
+        public void clear() {
+            tempPointer.node = null;
+            kwi.node = null;
+            oneKwi[0].node = null;
+            twoKwis[0].node = null;
+            twoKwis[1].node = null;
+            keyAccessPath.clear();
+        }
+        
+        public KeyNode getParent(int depth) {
+            int parentDepth = depth - 1;
+            return parentDepth < 0 ? null : keyAccessPath.get(parentDepth);
         }
     }
 }
