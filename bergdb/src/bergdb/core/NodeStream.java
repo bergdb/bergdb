@@ -22,7 +22,7 @@ import bergdb.storage.StreamFormatException;
  * 
  * @author Frans Lundberg
  */
-public class NodeStream implements bergdb.coreds.DbGraph.NodeReader {
+public class NodeStream implements bergdb.coreds.Graph.NodeReader {
     private static final int initSizeOfByteBuffer = 100*1000;
     private static final int initSizeOfLongBuffer = 10*1000;
     

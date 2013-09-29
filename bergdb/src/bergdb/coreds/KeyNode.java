@@ -170,13 +170,21 @@ public class KeyNode implements INode {
         return pos[pointerIndex];
     }
     
+    private static final String classname = KeyNode.class.getName();
+    
     public String toString() {
         String result = super.toString();
-        String classname = KeyNode.class.getName();
         if (result.startsWith(classname)) {
-            result = "K" + result.substring(classname.length());
+            String sub = result.substring(classname.length());
+            if (sub.length() > 5) {
+                sub = sub.substring(sub.length() - 2);
+            }
+            result = "K@" + sub;
         }
-        result = result + " " + id + ":" + spos;
+        
+        String midPart = (id == -1 && spos == -1) ? "" : " " + id + ":" + spos + "";
+        
+        result = result + midPart;
         result = isSegmentLeaf ? result + " L" : result;
         result = isDirty ? result + " D" : result;
         return result;
@@ -1320,15 +1328,15 @@ public class KeyNode implements INode {
      * For printing, debug. Prints value of key klong.
      */
     public static String getKeyString(byte[] bytes) {
-        // TODO X LATER Needs update for new encoding for string keys (ukey, ikey).
+        // Assumes bytes created from ukey.
         
         String result;
         
         if (bytes == null) {
             result = "null";
         } else {
-            if (Util.isPrintableAscii(bytes)) {
-                result = Util.toString(bytes);
+            if (Keys.isPrintableAscii(bytes)) {
+                result = Keys.toString(bytes);
             } else {
                 result = "#" + Util.toHexString(bytes);
             }

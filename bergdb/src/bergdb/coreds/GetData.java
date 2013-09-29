@@ -3,8 +3,8 @@ package bergdb.coreds;
 /**
  * Data needed for a 'get' operation.
  * An object of this class can be seen as an operation-local variable scope.
- * A GetData object can be reused between serial get requests, but the same object must not be 
- * used for concurrent get requests.
+ * A GetData object can be reused between serial get requests, but the same GetData 
+ * object must not be used for concurrent get requests.
  * 
  * @author Frans Lundberg
  */
@@ -12,19 +12,9 @@ public class GetData {
     
     // -- Input, settings --
     
-    /** Set to false to disable caching of read nodes. */
-    public boolean cache = true;
+    public Graph.PointerListener pointerListener;
     
-    /** 
-     * Set to true to enable trace to System.out. Only used for debugging. 
-     * 
-     * @deprecated
-     */
-    public boolean trace = false;
-    
-    public DbGraph.PointerListener walker;
-    
-    public DbGraph.CachePolicy cachePolicy;
+    public Graph.CachePolicy cachePolicy;
     
     
     // -- Internal working data --
@@ -49,14 +39,26 @@ public class GetData {
     public long followMemoryPointerCount;
     public long followStreamPointerCount;
     
-    //public Choices choices;
-        // If not null, set to the node choices made when making the get operation.
-        // If GetData object is reused, make sure choices is cleared before using it again.
-    
-    
     public GetData() {
         kwi = new KlongWithPointer();
         tempPointer = new Pointer();
         evictData = new EvictData();
+        
+        pointerListener = new Graph.PointerListener() {
+            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
+                switch (pointerType) {
+                case Pointer.TYPE_MEMORY:
+                    GetData.this.followMemoryPointerCount++;
+                    break;
+                case Pointer.TYPE_STREAM:
+                    GetData.this.followStreamPointerCount++;
+                    break;
+                default:
+                    assert false : "Bad pointer type: " + pointerType + ".";
+                }
+            }
+        };
+        
+        cachePolicy = Graph.CACHE_ALL_BUT_VERY_LARGE_VALUE_NODES;
     }
 }

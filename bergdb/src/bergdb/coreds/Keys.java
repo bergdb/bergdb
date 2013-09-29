@@ -7,9 +7,6 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
 /**
- * <p>Documentation/implementation needs to be checked.
- * Not updated for new ukey/ikey approach.</p>
- * 
  * <p>This class has static methods used for handling database keys.
  * They include methods for converting a key between three key formats:
  * string key, byte key, and segment key.
@@ -73,8 +70,15 @@ public class Keys {
     public static final String toString(byte[] bytes) {
         assert bytes != null;
         assert bytes.length != 0;
+        byte[] bytes2 = toStringBytes(bytes);
+        return Util.toString(bytes2);
+    }
+    
+    private static final byte[] toStringBytes(byte[] bytes) {
+        assert bytes != null;
+        assert bytes.length != 0;
         
-        bytes = bytes.clone();
+        byte[] result = bytes.clone();
         
         for (int i = 0; i < bytes.length; i++) {
             byte b = bytes[i];
@@ -84,10 +88,17 @@ public class Keys {
                 b--;
                 b--;
             }
-            bytes[i] = b;
+            result[i] = b;
         }
-        
-        return Util.toString(bytes);
+        return result;
+    }
+    
+    /**
+     * Checks whether a bkey has a corresponding ikey of printable ASCII characters.
+     */
+    public static final boolean isPrintableAscii(byte[] bytes) {
+        byte[] bytes2 = toStringBytes(bytes);
+        return Util.isPrintableAscii(bytes2);
     }
     
     public static final String toDisplayString(byte[] bytes) {

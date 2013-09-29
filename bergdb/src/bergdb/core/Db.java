@@ -19,6 +19,7 @@ import bergdb.coreds.Choices;
 import bergdb.coreds.EvictData;
 import bergdb.coreds.GetData;
 import bergdb.coreds.INode;
+import bergdb.coreds.KeyAccessPath;
 import bergdb.coreds.KeyNode;
 import bergdb.coreds.Keys;
 import bergdb.coreds.Klong;
@@ -55,7 +56,6 @@ import bergdb.stream.MemoryStream;
  * central delegator object for the database application (and as a class-for-me
  * class).
  * <p>
- * 
  * <p>
  * The API of the <i>Core Layer</i> consists of the methods:
  * </p>
@@ -1804,11 +1804,6 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
                     this.transAccessData, trans.getData);
             keyAccessPath.add(Klong.NULL, segmentRoot);
 
-            if (trans.trace) {
-                out.println("-- setKV, tracing, key = " + Util.toString(Keys.toBytes(keySegments))
-                        + " --");
-            }
-
             for (int i3 = 0; i3 < segmentCount; i3++) {
                 assert segmentRoot.assertOk(maxNodeSize);
                 
@@ -1865,7 +1860,7 @@ public class Db implements TopDs.DbForMe, IWarner, GetMany.DbForMe {
             ValueNode valueNode = new ValueNode(kv.value);
             transactionNodes.add(valueNode, kv.keySegments);
             
-            // We need to fit two more klongs. A TIME klong might be needed.
+            // We need to be able to fit two more klongs. A TIME klong might be needed.
             // This is sub-optimal. Sometimes a node can be added without adding a TIME klong.
             // Little to gain from optimizing this, however.
             

@@ -11,7 +11,6 @@ import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
-
 /**
  * <p>A class for creating and reading long:s in the node array, "klongs".
  * Static final methods based on long. Memory allocation is avoided. 
@@ -221,11 +220,6 @@ public class Klong {
         // Length mask: 0011 1000 = 38
         return (int) ((value & 0x0000000000000038L) >>> 3);
     }
-   
-    /*public static final int getVersion(long value) {
-        // Version mask: 0000 0111 = 07
-        return (int) (value & 0x0000000000000007L);
-    }*/
     
     /**
      * Slow test method for getting a UTF-8 string key.
@@ -233,7 +227,7 @@ public class Klong {
     public static String getKeyString(long value) {
         byte[] bytes = new byte[getLength(value)];
         getKey(value, bytes);
-        String result = Util.toString(bytes);
+        String result = Keys.toString(bytes);
         return result;
     }
     

@@ -122,13 +122,16 @@ public final class TopNode implements INode {
     }
     
     public String toString() {
-        String result = "topNode" + topNodeId + " " + id + ":" + spos + " t=" + rootTime;
+        String midPart = (id == -1 && spos == -1) ? " " : " " + id + ":" + spos + " ";
+        String result = "topNode" + topNodeId + midPart + "t=" + rootTime;
         result = isDirty ? result + " D" : result;
         return result;
     }
     
+    // NOTE Probably not suitable with this code here.
     public void printGraph(PrintStream out, String indent, int depth) {
         // Oldest top nodes first
+        
         
         TopNode topNode;
         String newIndent = "    " + indent;
@@ -525,5 +528,7 @@ public final class TopNode implements INode {
         Assert.assertEquals(11, TopNode.height(1024));
         Assert.assertEquals(11, TopNode.height(1025));
         Assert.assertEquals(7, TopNode.height(100));   // 64 = 2^6
+        Assert.assertEquals(20+1, TopNode.height(1024*1024));
+        Assert.assertEquals(30, TopNode.height(1024*1024*1024 / 2));
     }
 }

@@ -1,7 +1,7 @@
 package bergdb.coreds;
 
-import bergdb.coreds.DbGraph.CachePolicy;
-import bergdb.coreds.DbGraph.PointerListener;
+import bergdb.coreds.Graph.CachePolicy;
+import bergdb.coreds.Graph.PointerListener;
 
 /**
  * The top data structure is used to find the space root node given
@@ -81,6 +81,15 @@ public class TopDs {
     }
     
     /**
+     * Convenience method for when GetData is used.
+     * 
+     * @see #findRoot(DbGraphForMe, long, long, Pointer, PointerListener, CachePolicy)
+     */
+    public final KeyNode findRoot(DbGraphForMe dbGraph, long time, GetData gd) {
+        return findRoot(dbGraph, time, gd.accessData, gd.tempPointer, gd.pointerListener, gd.cachePolicy);
+    }
+    
+    /**
      * Finds the space root node for a given lookup time.
      * Returns null if there is no space root that is old enough.
      * 
@@ -89,7 +98,8 @@ public class TopDs {
      * TopNode).
      * @param accessData Access data for this access.
      */
-    public final KeyNode findRoot(DbGraphForMe dbGraph, long time, GetData gd) {
+    public final KeyNode findRoot(DbGraphForMe dbGraph, long time, long accessData, 
+            Pointer tempPointer, PointerListener pointerListener, CachePolicy cachePolicy) {
         //
         // The common case of getting the last space root is treated as a 
         // special case for performance.
@@ -100,21 +110,20 @@ public class TopDs {
         // throughout this method. this.superRoot can change concurrently.
         //
         
-        assert gd != null;
-        assert gd.walker != null : "gd.walker is null";
+        assert pointerListener != null;
+        assert cachePolicy != null;
         
         TopNode mySuperRoot = this.superRoot;     // volatile read make writes visible.
         
-        
         if (time >= mySuperRoot.rootTime) {
-            return (KeyNode) dbGraph.followPointer(mySuperRoot, 0, gd.accessData, gd.walker, gd.cachePolicy);
+            return (KeyNode) dbGraph.followPointer(mySuperRoot, 0, accessData, pointerListener, cachePolicy);
         }
         
         TopNode n = mySuperRoot;
         
         // Finds right-most pointer with time >= 'time'.
         
-        Pointer pt = gd.tempPointer;
+        Pointer pt = tempPointer;
         
         while (true) {
             rightMostGte(n, time, pt);
@@ -122,12 +131,12 @@ public class TopDs {
                 break;
             }
             
-            n = (TopNode) dbGraph.followPointer(n, pt.index, gd.accessData, gd.walker, gd.cachePolicy);
+            n = (TopNode) dbGraph.followPointer(n, pt.index, accessData, pointerListener, cachePolicy);
         }
         
         
         if (n.rootTime == time) {
-            return (KeyNode) dbGraph.followPointer(n, 0, gd.accessData, gd.walker, gd.cachePolicy);
+            return (KeyNode) dbGraph.followPointer(n, 0, accessData, pointerListener, cachePolicy);
         }
         
         // Find left-most pointer
@@ -139,10 +148,10 @@ public class TopDs {
             return null;  // No old-enough node exists
         }
         
-        TopNode n2 = (TopNode) dbGraph.followPointer(n, pt.index, gd.accessData, gd.walker, gd.cachePolicy);
+        TopNode n2 = (TopNode) dbGraph.followPointer(n, pt.index, accessData, pointerListener, cachePolicy);
         assert n2 != null : "n2 is unexpectedly null, n: " + n;
         
-        return (KeyNode) dbGraph.followPointer(n2, 0, gd.accessData, gd.walker, gd.cachePolicy);
+        return (KeyNode) dbGraph.followPointer(n2, 0, accessData, pointerListener, cachePolicy);
     }
     
     /**
@@ -189,24 +198,14 @@ public class TopDs {
     }
     
     /**
-     * Prints data structure to a string.
+     * Prints the top data structure to a multi-line string.
      */
     public String print(DbGraphForMe dbGraph) {
         StringBuilder b = new StringBuilder();
         TopNode t = this.superRoot;
-        GetData gd = new GetData();
-        
-        gd.walker = new PointerListener() {
-            public void pointerFollowed(INode predecessor, int pointerIndex, INode result,
-                    int pointerType) {
-            }
-        };
-        
-        CachePolicy cachePolicy = new CachePolicy() {
-            public boolean shouldCache(INode node) {
-                return false;
-            }
-        };
+        long accessData = 0;
+        Graph.PointerListener pListener = Graph.DO_NOTHING_POINTER_LISTENER;
+        Graph.CachePolicy cachePolicy = Graph.CACHE_NOTHING;
         
         while (t != null) {
             b.append(String.format("%6d", t.topNodeId));
@@ -223,7 +222,8 @@ public class TopDs {
             TopNode next = null;
             for (int i = 0; i < t.pointersLength; i++) {
                 if (t.pointers[i] != null && next == null) {
-                    next = (TopNode) dbGraph.followPointer(t, i, gd.accessData, gd.walker, cachePolicy);
+                    next = (TopNode) dbGraph.followPointer(t, i, 
+                            accessData, pListener, cachePolicy);
                     break;
                 }
             }

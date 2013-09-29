@@ -1,8 +1,8 @@
 package bergdb.coreds;
 
 import bergdb.common.Bytes;
-import bergdb.coreds.DbGraph.CachePolicy;
-import bergdb.coreds.DbGraph.PointerListener;
+import bergdb.coreds.Graph.CachePolicy;
+import bergdb.coreds.Graph.PointerListener;
 import bergdb.coreds.TopDs.DbGraphForMe;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
@@ -52,12 +52,12 @@ public class TopTester {
     private KeyNode findRoot(TopDs topDs, long time) {
         GetData gd = new GetData();
         
-        gd.walker = new DbGraph.PointerListener() {
+        gd.pointerListener = new Graph.PointerListener() {
             public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
             }
         };
         
-        gd.cachePolicy = new DbGraph.CachePolicy() {
+        gd.cachePolicy = new Graph.CachePolicy() {
             public boolean shouldCache(INode node) {
                 return false;
             }

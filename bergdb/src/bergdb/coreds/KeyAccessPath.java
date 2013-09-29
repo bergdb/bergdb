@@ -1,6 +1,5 @@
-package bergdb.core;
+package bergdb.coreds;
 
-import bergdb.coreds.KeyNode;
 
 /**
  * Access path through the key nodes of the DB graph to access a certain KV.
@@ -29,7 +28,8 @@ public final class KeyAccessPath {
     }
     
     /**
-     * Sets depth to 0 and references to null.
+     * Sets depth to 0 and references to null; compare to clearFast, this method
+     * avoids memory leaks.
      */
     public void clear() {
         final int length = nodes.length;
@@ -50,8 +50,8 @@ public final class KeyAccessPath {
     }
     
     /**
-     * Adds a node and what klong in parent that was used to get to the
-     * node.
+     * Adds a node and what klong in parent that was used to get the node.
+     * The first call to this method should be: add(Klong.NULL, spaceRootNode);.
      */
     public final void add(long klong, KeyNode node) {
         size++;

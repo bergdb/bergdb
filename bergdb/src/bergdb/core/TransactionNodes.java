@@ -187,6 +187,14 @@ public class TransactionNodes {
         }
     }
     
+    /**
+     * Checks for no duplicates.
+     *  
+     * @throws AssertionError  
+     *              If there are duplicates.
+     * @return true  
+     *              Always returns true when the method returns normally.
+     */
     public boolean assertNoDuplicates() {
         for (int i = 0; i < topSize; i++) {
             TopNode n = topNodes[i];

@@ -313,7 +313,11 @@ public final class ValueNode implements INode {
         String result = super.toString();
         String classname = ValueNode.class.getName();
         if (result.startsWith(classname)) {
-            result = result.substring(classname.length());
+            String sub = result.substring(classname.length());
+            if (sub.length() > 5) {
+                sub = sub.substring(sub.length() - 2);
+            }
+            result = "@" + sub;
         }
         
         if (isDelete()) {

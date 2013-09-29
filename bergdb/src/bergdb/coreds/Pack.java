@@ -5,7 +5,7 @@ import bergdb.common.IPack;
 public class Pack implements IPack {
     
     private static Class<?>[] classes = new Class<?>[] {
-        DbGraphTester.class,
+        GraphTester.class,
         Klong.class,
         KlongIter.class,
         KlongWithPointer.class,
