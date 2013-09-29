@@ -5,9 +5,9 @@ import java.util.List;
 
 import bergdb.common.EventToWaitFor;
 import bergdb.core.DbStoppingException;
-import bergdb.core.GetMany;
 import bergdb.core.KeyTransformation;
 import bergdb.core.Kvt;
+import bergdb.coreds.GetMany;
 import bergdb.coreds.Keys;
 import bergdb.pub.Action;
 import bergdb.pub.BadFormatException;

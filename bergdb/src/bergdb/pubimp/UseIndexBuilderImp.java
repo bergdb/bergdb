@@ -5,10 +5,10 @@ import java.util.NoSuchElementException;
 
 import bergdb.common.Bug;
 import bergdb.common.Util;
-import bergdb.core.GetMany;
 import bergdb.core.Kvt;
-import bergdb.core.GetMany.StopCondition;
+import bergdb.coreds.GetMany;
 import bergdb.coreds.Keys;
+import bergdb.coreds.GetMany.StopCondition;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.pub.Kv;

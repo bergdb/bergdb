@@ -7,6 +7,7 @@ import java.util.Random;
 import bergdb.common.Bytes;
 import bergdb.common.Util;
 import bergdb.coreds.GetData;
+import bergdb.coreds.GetMany;
 import bergdb.coreds.KeyNode;
 import bergdb.coreds.Keys;
 import bergdb.coreds.Klong;
@@ -216,32 +217,6 @@ public class DbTester {
         Assert.assertArrayEquals(Util.toBytes("v2"), DbUtil.get(db, 30, "myLongerKey2"));
         Assert.assertNull(DbUtil.get(db, 30, Util.toBytes("myLongerX")));
         Assert.assertNull(DbUtil.get(db, 30, Util.toBytes("myLongerKey1b")));
-    }
-    
-    @T
-    public static void testDeleteBug130515() {
-        //
-        // Delete caused a new super top node, should not happen. This tests checks that bug
-        // is fixed and no new super top node is created because of the delete.
-        //
-        
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
-        TopNode superRoot = db.getSuperRoot();
-        
-        db.execute(Trans.builder().set("a", "a-value").build());
-        
-        //System.out.println("== DbTester.testDeleteBug130515 ==");
-        //db.printGraph(System.out);
-        
-        db.execute(Trans.builder().delete("a").build());
-        
-        //System.out.println("== DbTester.testDeleteBug130515 ==");
-        //db.printGraph(System.out);
-        
-        assert superRoot == db.getSuperRoot() : superRoot + " != " + db.getSuperRoot();
-        
-        db.stop();
     }
     
     @T
@@ -1526,7 +1501,7 @@ public class DbTester {
     @T
     public static void bug130403() {
         // Bug found 130403 when working with bergdb.test.StreamSize.
-        // The following code reproduce the error.
+        // The following code reproduced the error (before bug was fixed).
         
         MemoryStream m = new MemoryStream();
         Db db = Db.builder().maxNodeSize62().mainStream(m).start();

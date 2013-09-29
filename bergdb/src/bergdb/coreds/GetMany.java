@@ -1,15 +1,12 @@
-package bergdb.core;
+package bergdb.coreds;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import bergdb.coreds.GetData;
-import bergdb.coreds.INode;
-import bergdb.coreds.KeyNode;
-import bergdb.coreds.Keys;
-import bergdb.coreds.Klong;
-import bergdb.coreds.KlongWithPointer;
-import bergdb.coreds.ValueNode;
+import bergdb.core.Db;
+import bergdb.core.Kvt;
+import bergdb.coreds.Graph.CachePolicy;
+import bergdb.coreds.Graph.PointerListener;
 
 /**
  * Input/output to the DB.getMany() method. Also data structures and algorithms to support that
@@ -91,13 +88,11 @@ public class GetMany {
     // ---- Inner classes / interfaces ----
     
     /**
-     * Limited access to DB.
+     * Limited access to Graph.
      */
-    public interface DbForMe {
-        public INode followPointer(INode predecessor, int pointerIndex, 
-                boolean cache, long accessData, GetData gd);
-
-        public long getAccessData();
+    public interface GraphForMe {
+        public INode followPointer(final INode predecessor, int pointerIndex, long accessData, 
+                PointerListener pointerListener, CachePolicy cachePolicy);
     }
     
     /**
@@ -111,7 +106,7 @@ public class GetMany {
     /**
      * Class that implements GetMany functionality. Keeps the node chain for the iteration.
      */
-    class Chain {
+    public class Chain {
         // "Links" in the chain are node-compareValue pairs.
         // The links are stored in linkNodes, linkCompareValues and linkSize. More 
         // efficient then using ArrayList<Link> or something.
@@ -121,7 +116,7 @@ public class GetMany {
         long[] linkCompareValues;
         long[] keySegments;
         int keySegmentSize;
-        DbForMe db;
+        GraphForMe db;    // TODO D. rename
         KlongWithPointer kwi;
         boolean first = true;
         boolean setupEqMatch = false;
@@ -131,7 +126,7 @@ public class GetMany {
         private final boolean chainCache;
         private final boolean chainInclusive;
         
-        Chain(DbForMe db) {            
+        public Chain(GraphForMe db) {            
             assert db != null;
             this.db = db;
             
@@ -210,7 +205,7 @@ public class GetMany {
          * The initial state is at-or-before g.startKey, must be "at" if startKey equals an
          * existing key.
          */
-        void setup(KeyNode root) {
+        public void setup(KeyNode root) {
             long[] start = chainStartKey;
             final long lookupTime = actualLookupTime;
             final KlongWithPointer kwi = this.kwi;
@@ -271,8 +266,9 @@ public class GetMany {
                     break;
                 }
                 
-                INode next = db.followPointer(node, kwi.pointerIndex, chainCache, 
-                        db.getAccessData(), GetMany.this.gd);
+                INode next = db.followPointer(node, kwi.pointerIndex, GetMany.this.gd.accessData, 
+                        GetMany.this.gd.pointerListener, GetMany.this.gd.cachePolicy);
+                
                 assert next instanceof KeyNode : "next=" + next;
                 
                 if (node.isSegmentLeaf()) {
@@ -377,8 +373,8 @@ public class GetMany {
                 linkCompareValue = Klong.getCompareValue(kwi.klong);
                 setLinkCompareValue(linkCompareValue);
                 
-                INode next = db.followPointer(linkNode, kwi.pointerIndex, GetMany.this.cache, 
-                        db.getAccessData(), GetMany.this.gd);
+                INode next = db.followPointer(linkNode, kwi.pointerIndex, GetMany.this.gd.accessData, 
+                        GetMany.this.gd.pointerListener, GetMany.this.gd.cachePolicy);
                 
                 if (next instanceof ValueNode) {
                     // Found next KV, creates result.

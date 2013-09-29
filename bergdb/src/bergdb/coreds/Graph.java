@@ -5,14 +5,18 @@ import java.util.HashMap;
 import java.util.Map;
 
 import bergdb.common.Bug;
+import bergdb.core.Kvt;
+import bergdb.coreds.GetMany.StopCondition;
+import bergdb.pub.IllegalDbStateException;
 import bergdb.storage.StreamFormatException;
+import bergdb.storage.StreamIoException;
 
 /**
  * The DB graph is the core data structure of the database.
  * 
  * @author Frans Lundberg
  */
-public class Graph implements TopDs.DbGraphForMe {
+public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     private final TopDs topDs;
     private final NodeReader nodeReader;
     private final int POINTER_LOCKS_LENGTH = 128;
@@ -143,7 +147,33 @@ public class Graph implements TopDs.DbGraphForMe {
         top.printGraph(out, "", 0);
     }
     
+    /**
+     * Returns the super root node.
+     * Use for testing only.
+     */
+    public TopNode getSuperRoot() {
+        return topDs.getSuperRoot();
+    }
 
+    public INode findNode(int[] choices) {
+        if (choices == null) {
+            throw new IllegalArgumentException("choices == null not allowed");
+        }
+        
+        GetData gd = new GetData();
+        INode node = this.getSuperRoot();
+        
+        for (int i = 0; i < choices.length; i++) {
+            int choice = choices[i];
+            node = this.followPointer(node, choice, 0, gd.pointerListener, gd.cachePolicy);
+            if (node == null) {
+                break;
+            }
+        }
+        
+        return node;
+    }
+    
     // ======== followPointers() and helpers ========
     
     /**
@@ -309,6 +339,71 @@ public class Graph implements TopDs.DbGraphForMe {
     }
     
     
+    
+    // ======== getMany() ========
+    
+    /**
+     * Get multiple KVs in increasing (or decreasing) key order.
+     * 
+     * @param g
+     *            Input and output parameters.
+     * @see GetMany
+     * @throws IllegalDbStateException
+     *             If start() has not been called.
+     * @throws StreamFormatException
+     *             If the database stream is corrupt.
+     * @throws StreamIoException
+     *             If there was an i/o error with the database stream.
+     */
+    public void getMany(GetMany g) {
+        //
+        // Note, multiple get operations may be running in parallel.
+        // All data used must be thread safe. Temporary, operation-local data is stored in 
+        // the 'g' object.
+        //
+
+        KeyNode root = topDs.findRoot(this, g.actualLookupTime, g.gd);
+        
+        if (root == null) {
+            return;
+        }
+
+        GetMany.Chain chain = g.new Chain((GetMany.GraphForMe) this);
+        chain.setup(root);
+
+        outer: while (true) {
+            Kvt kvt = chain.next();
+
+            if (kvt == null) {
+                g.stopCondition.eod();
+                break outer;
+            }
+            
+            // TODO C. getOpCount should increase here. Let's do listener stuff.
+            //getOpCount.incrementAndGet();
+
+            int shouldStop = g.stopCondition.handleKvt(kvt);
+
+            switch (shouldStop) {
+            case StopCondition.STOP:
+                break outer;
+            case StopCondition.ADD:
+                g.result.add(kvt);
+                break;
+            case StopCondition.ADD_AND_STOP:
+                g.result.add(kvt);
+                break outer;
+            case StopCondition.CONTINUE:
+                // empty
+                break;
+            default:
+                assert false : "Bad int value: " + shouldStop;
+            }
+        }
+    }
+
+    
+    
 
     // ======== putKv() with helpers ========
     //
@@ -347,6 +442,11 @@ public class Graph implements TopDs.DbGraphForMe {
         final KeyNode root = topDs.findRoot((TopDs.DbGraphForMe) this, pd.tt, pd.accessData,
                 tempPointer, pd.pointerListener, pd.cachePolicy);
         
+        if (root == null) {
+            // NOTE Is this correct exception type?
+            throw new IllegalStateException("Found no root node at t=" + pd.tt + ", cannot continue put.");
+        }
+        
         KeyNode segmentRoot = root;
         final int segmentCount = key.length;
         final int lastSegment = segmentCount - 1;
@@ -368,6 +468,7 @@ public class Graph implements TopDs.DbGraphForMe {
      *            The segment root node.
      */
     private void setValue(KeyNode node, long compareValue, long[] key, byte[] value, PutData pd) {
+        assert node != null : "node is null";
         
         while (!node.isSegmentLeaf()) {
             node.searchLte(pd.tt, compareValue, pd.kwi);

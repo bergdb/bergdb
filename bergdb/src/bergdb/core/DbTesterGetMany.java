@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.Comparator;
 
 import bergdb.common.Util;
+import bergdb.coreds.GetMany;
 import bergdb.coreds.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;

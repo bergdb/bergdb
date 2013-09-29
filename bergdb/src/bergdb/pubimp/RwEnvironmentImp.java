@@ -6,10 +6,10 @@ import java.util.Map;
 
 import bergdb.common.MyLongSet;
 import bergdb.common.Util;
-import bergdb.core.GetMany;
 import bergdb.core.KeyTransformation;
 import bergdb.core.Kvt;
 import bergdb.core.Trans;
+import bergdb.coreds.GetMany;
 import bergdb.coreds.Keys;
 import bergdb.coreds.Klong;
 import bergdb.nanotest.Assert;
