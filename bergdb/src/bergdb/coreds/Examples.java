@@ -1,7 +1,6 @@
 package bergdb.coreds;
 
 import bergdb.common.Util;
-import bergdb.coreds.Graph.PutData;
 
 /**
  * Examples for the DB Graph document (docs/2013-dbgraph.odt).

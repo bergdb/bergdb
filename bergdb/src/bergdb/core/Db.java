@@ -18,14 +18,13 @@ import bergdb.coreds.Choices;
 import bergdb.coreds.EvictData;
 import bergdb.coreds.GetData;
 import bergdb.coreds.Graph;
-import bergdb.coreds.GetMany.StopCondition;
-import bergdb.coreds.Graph.PutData;
 import bergdb.coreds.GetMany;
 import bergdb.coreds.INode;
 import bergdb.coreds.KeyNode;
 import bergdb.coreds.Keys;
 import bergdb.coreds.Klong;
 import bergdb.coreds.Pointer;
+import bergdb.coreds.PutData;
 import bergdb.coreds.Spos;
 import bergdb.coreds.TopDs;
 import bergdb.coreds.TopNode;
@@ -1355,9 +1354,6 @@ public class Db implements IWarner {
 
         t.getData.evictData.enableEvict = enableEvict;
         
-        Graph.PutData pd = new Graph.PutData();
-        
-
         synchronized (writeLock) {
             if (!isPrimordial) assert transactionNodes.size() == 0;
             
@@ -1482,7 +1478,7 @@ public class Db implements IWarner {
         
         boolean wroteMetaBlock = nodeStream.addNodes(trans.transactionTime, transactionNodes, trans);
         
-        // TODO B. Check below code. Still needed? Did I simply this by writing a whole block?
+        // TODO D. Check below code. Still needed? Did I simply this by writing a whole block?
         
         if (wroteMetaBlock && this.newIncreasedStartupDistance != -1) {
             assert newIncreasedStartupDistance > startupDistance 

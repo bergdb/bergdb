@@ -2,14 +2,11 @@ package bergdb.coreds;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import bergdb.core.Db;
-import bergdb.core.Kvt;
 import bergdb.coreds.Graph.CachePolicy;
 import bergdb.coreds.Graph.PointerListener;
 
 /**
- * Input/output to the DB.getMany() method. Also data structures and algorithms to support that
+ * Input/output to the Graph.getMany() method. Also data structures and algorithms to support that
  * method. We search for KVs in interval (key1, key2].
  * If key2 == null, the interval is (key1, +inf).
  * If key1 == null, the interval is (-inf, key2].
@@ -116,23 +113,21 @@ public class GetMany {
         long[] linkCompareValues;
         long[] keySegments;
         int keySegmentSize;
-        GraphForMe db;    // TODO D. rename
+        GraphForMe graph;
         KlongWithPointer kwi;
         boolean first = true;
         boolean setupEqMatch = false;
         
         private final long[] chainStartKey;
         private final boolean chainForward;
-        private final boolean chainCache;
         private final boolean chainInclusive;
         
-        public Chain(GraphForMe db) {            
-            assert db != null;
-            this.db = db;
+        public Chain(GraphForMe graph) {            
+            assert graph != null;
+            this.graph = graph;
             
             chainStartKey = GetMany.this.startKey;
             chainForward = GetMany.this.forward;
-            chainCache = GetMany.this.cache;
             chainInclusive = GetMany.this.inclusive;
             
             linkNodes = new KeyNode[4];
@@ -266,7 +261,7 @@ public class GetMany {
                     break;
                 }
                 
-                INode next = db.followPointer(node, kwi.pointerIndex, GetMany.this.gd.accessData, 
+                INode next = graph.followPointer(node, kwi.pointerIndex, GetMany.this.gd.accessData, 
                         GetMany.this.gd.pointerListener, GetMany.this.gd.cachePolicy);
                 
                 assert next instanceof KeyNode : "next=" + next;
@@ -373,7 +368,7 @@ public class GetMany {
                 linkCompareValue = Klong.getCompareValue(kwi.klong);
                 setLinkCompareValue(linkCompareValue);
                 
-                INode next = db.followPointer(linkNode, kwi.pointerIndex, GetMany.this.gd.accessData, 
+                INode next = graph.followPointer(linkNode, kwi.pointerIndex, GetMany.this.gd.accessData, 
                         GetMany.this.gd.pointerListener, GetMany.this.gd.cachePolicy);
                 
                 if (next instanceof ValueNode) {

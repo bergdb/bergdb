@@ -1,4 +1,4 @@
-package bergdb.core;
+package bergdb.coreds;
 
 /**
  * An object of this class stores a key-value-time-spos tuple.

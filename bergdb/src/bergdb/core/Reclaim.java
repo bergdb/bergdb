@@ -10,6 +10,7 @@ import bergdb.common.Util;
 import bergdb.coreds.GetData;
 import bergdb.coreds.GetMany;
 import bergdb.coreds.Keys;
+import bergdb.coreds.Kvt;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.pub.Clock;

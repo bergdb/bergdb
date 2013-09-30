@@ -2,8 +2,6 @@ package bergdb.dev;
 
 /*
 
-TODO B. Make set faster - reuse PutData object.
-
 TODO D. Consider if we could make rw-transactions composable? How to make
 two payments and a log entry in one transaction using the single-payment 
 + new log entry code?

@@ -5,9 +5,9 @@ import java.util.NoSuchElementException;
 
 import bergdb.common.Bug;
 import bergdb.common.Util;
-import bergdb.core.Kvt;
 import bergdb.coreds.GetMany;
 import bergdb.coreds.Keys;
+import bergdb.coreds.Kvt;
 import bergdb.coreds.GetMany.StopCondition;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;

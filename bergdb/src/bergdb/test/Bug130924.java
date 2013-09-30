@@ -3,10 +3,10 @@ package bergdb.test;
 import java.io.IOException;
 
 import bergdb.core.Db;
-import bergdb.core.Kvt;
 import bergdb.core.Trans;
 import bergdb.coreds.GetMany;
 import bergdb.coreds.Keys;
+import bergdb.coreds.Kvt;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;

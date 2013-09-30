@@ -15,7 +15,6 @@ import bergdb.coreds.Klong;
 import bergdb.coreds.TopNode;
 import bergdb.coreds.ValueNode;
 
-
 /**
  * This class can generate a GraphViz dot file that can be plotted
  * with graphviz.
