@@ -1,6 +1,7 @@
 package bergdb.core;
 
 import bergdb.common.IPack;
+import bergdb.coreds.AccessData;
 import bergdb.coreds.GetData;
 import bergdb.coreds.KeyAccessPath;
 import bergdb.coreds.Keys;

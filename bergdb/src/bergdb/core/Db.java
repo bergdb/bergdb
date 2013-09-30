@@ -13,6 +13,7 @@ import bergdb.common.IWarner;
 import bergdb.common.NullProgressListener;
 import bergdb.common.ProgressListener;
 import bergdb.common.Util;
+import bergdb.coreds.AccessData;
 import bergdb.coreds.Choices;
 import bergdb.coreds.EvictData;
 import bergdb.coreds.GetData;
@@ -123,7 +124,6 @@ public class Db implements IWarner {
     private final NodeStream nodeStream; // IO for DB to read/append nodes.
     private final StorageManager storageManager;
     private final DirtyNodes dirtyNodes;
-    //private TopDs topDS;
     private int state = STATE_ZERO;
         // Synch note: writes published by readSynch.
     

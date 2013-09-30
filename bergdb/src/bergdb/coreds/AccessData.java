@@ -1,8 +1,8 @@
-package bergdb.core;
+package bergdb.coreds;
 
-import bergdb.coreds.KeyNode;
-import bergdb.coreds.Spos;
+import bergdb.core.Db;
 import bergdb.nanotest.Assert;
+import bergdb.nanotest.T;
 
 /**
  * <p>This class provides some functionality and most importantly documentation for node 
@@ -16,7 +16,7 @@ import bergdb.nanotest.Assert;
  * <p>The access data is updated when the pointer in a TopNode or KeyNode is followed.
  * The value is used by the cache eviction to know when to evict a node from the cache.</p>
  * 
- * <p>An access data long should be created only with method DB.getAccessData().
+ * <p>An access data long should be created only with method Db.getAccessData().
  * The current implementation of the method returns a value based on the counter 
  * DB.cachedMemoryValue.</p>
  * 
@@ -50,12 +50,9 @@ abstract public class AccessData {
         return -accessData;
     }
     
+    @T
     public static void test1() {
         long accessData = -Db.MIN_CACHE_MEMORY_VALUE;
         Assert.assertTrue(isValid(accessData));
-    }
-    
-    public static void testDummy() {
-        new AccessData() {};
     }
 }

@@ -127,6 +127,7 @@ public class GraphTester {
 
         Graph g = Graph.builder().maxNodeSize6().createEmpty(0);
         PutData pd = new PutData();
+        pd.accessData = 0;
         
         for (int i = 0; i < 4; i++) {
             String keyString = "account-id-" + i;

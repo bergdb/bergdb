@@ -191,6 +191,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
         
         INode result;
         assert predecessor != null;
+        assert accessData == 0 || AccessData.isValid(accessData);
 
         final Object lock = getPointerLock(predecessor, pointerIndex);
 
