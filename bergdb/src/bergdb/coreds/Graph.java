@@ -529,12 +529,15 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
         KeyNode current = segmentRoot;
         KeyNode result;
         
+        assert current.assertOk(this.maxNodeSize);
+        
         while (!current.isSegmentLeaf()) {
             current.searchLte(pd.tt, compareValue, pd.kwi);
             assert pd.kwi.klong != Klong.NULL;
             current = (KeyNode) followPointer(current, pd.kwi.pointerIndex, pd.accessData,
                     pd.pointerListener, pd.cachePolicy);
             assert current != null;
+            assert current.assertOk(this.maxNodeSize);
         }
         
         current.searchEq(pd.tt, compareValue, pd.kwi);

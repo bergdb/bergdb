@@ -5,7 +5,6 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -139,7 +138,6 @@ public class Db implements IWarner {
     // ---- Settings ----
     // Fields affected by settings.
 
-    //private final int maxNodeSize; // max node size in klongs, should no exceed 62.
     private final DbClock dbClock;
     private final IEvictBoss evictBoss;
     private final PrintStream out;
@@ -244,16 +242,18 @@ public class Db implements IWarner {
         
         final Graph.PointerListener existingListener = pd.pointerListener;
         
+        // TODO A. Consider: this does not include super root node.
+        
         pd.pointerListener = new Graph.PointerListener() {
             public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
                 existingListener.pointerFollowed(predecessor, pointerIndex, result, pointerType);
                 
                 switch (result.getType()) {
                 case INode.TYPE_TOP_NODE:
-                    transactionNodes.add((TopNode) result);
+                    makeDirty((TopNode) result);
                     break;
                 case INode.TYPE_KEY_NODE:
-                    transactionNodes.add((KeyNode) result);
+                    makeDirty((KeyNode) result);
                     break;
                 }
             }
@@ -283,7 +283,6 @@ public class Db implements IWarner {
         this.nodeStream = new NodeStream(rstream, !b.disableStreamWrite, writeLock);
         this.nodeStream.getMetaBlock().setStartupDistance(b.startupDistance);
         
-        //this.maxNodeSize = b.maxNodeSize;
         this.dbClock = new DbClock(b.clock);
         this.evictBoss = b.evictBoss;
         
@@ -735,8 +734,8 @@ public class Db implements IWarner {
      */
     private void startInner() {
         if (state != STATE_ZERO) {
-            throw new IllegalDbStateException("DB has been started already, "
-                    + "start() should be called once only; DB state is: " 
+            throw new IllegalDbStateException("Db has been started already, "
+                    + "start() should be called once only; Db state is: " 
                     + getStateName(state) + ".");
         }
 
@@ -815,8 +814,6 @@ public class Db implements IWarner {
 
         this.graph = Graph.builder().nodeReader(nodeStream)
                 .createFromStreamNodes(getAccessData(), posMap, nextMap);
-        
-        //reconciliatePointers(posMap, nextMap);
 
         this.state = STATE_ACTIVE;
 
@@ -824,88 +821,6 @@ public class Db implements IWarner {
             // state = STATE_ACTIVE needed before this method.
     }
 
-    /**
-     * @deprecated
-     */
-    private void reconciliatePointers(HashMap<Long, INode> posMap, HashMap<Long, INode> nextMap) {
-        //
-        // Pointer reconciliation phase
-        // * Refreshes stream pointers
-        // * Creates memory pointers
-        // * Finds the superRoot TopNode among the startup nodes.
-        //
-
-        TopNode superRoot = null;
-        Pointer pointer = new Pointer();
-
-        for (Map.Entry<Long, INode> entry : posMap.entrySet()) {
-            INode node = entry.getValue();
-
-            int pointerCount = node.getPointerCount();
-            for (int i = 0; i < pointerCount; i++) {
-                node.getPointer(i, pointer);
-                if (pointer.isNull()) {
-                    continue;
-                }
-
-                long pos = pointer.getPos();
-
-                while (true) {
-                    INode next = nextMap.get(pos);
-                    if (next == null) {
-                        break;
-                    }
-                    pos = next.getSpos();
-                }
-
-                if (pointer.getPos() != pos) {
-                    node.setPointer(i, null, pos);
-                }
-            }
-
-            // Check for super root node.
-
-            if (node instanceof TopNode) {
-                TopNode potentialSuperRoot = (TopNode) node;
-                if (superRoot == null) {
-                    superRoot = potentialSuperRoot;
-                }
-
-                if (potentialSuperRoot.topNodeId > superRoot.topNodeId) {
-                    superRoot = potentialSuperRoot;
-                }
-            }
-        }
-
-        if (superRoot == null) {
-            throw new StreamFormatException("Could not find root node within startup node set.");
-        }
-
-        //this.topDS = new TopDs(superRoot);
-
-        // Creates memory pointers from stream pointers.
-
-        long accessData = getAccessData();
-        Pointer p2 = new Pointer();
-
-        for (Map.Entry<Long, INode> entry : posMap.entrySet()) {
-            INode node = entry.getValue();
-
-            int pointerCount = node.getPointerCount();
-            for (int i = 0; i < pointerCount; i++) {
-                node.getPointer(i, p2);
-                if (p2.isNull()) {
-                    continue;
-                }
-
-                INode pointee = posMap.get(p2.pos);
-                if (pointee != null) {
-                    node.setPointer(i, pointee, accessData);
-                }
-            }
-        }
-    }
-    
     /**
      * <p>Calling this method is a request for stopping the database to not allow
      * any more get/execute operations on it and to eventually release resources
@@ -1168,8 +1083,8 @@ public class Db implements IWarner {
         }
 
         EvictData ed = new EvictData();
-
-        long accessData = getAccessData();
+        
+        g.gd.accessData = getAccessData();
 
         possiblyEvict(ed);
 
@@ -1371,7 +1286,7 @@ public class Db implements IWarner {
 
             try {
                 t.transactionTime = dbClock.transactionBegin();
-                setKvs();
+                putKvs();
                 kvCount += t.kvs.length;
                 transactionCount++;
 
@@ -1521,7 +1436,7 @@ public class Db implements IWarner {
      * concurrent readers that read with a lookup time strictly less than the transaction time
      * (trans.transactionTime). Caller must hold writeLock.
      */
-    private final void setKvs() {
+    private final void putKvs() {
         //
         // 1210 Frans: Added [if (kv.keyTransformation != ...], [if (kv.valueTransformation != ...]
         // These changes do not add any measurable overhead when null; measured with test.Set.
@@ -1546,6 +1461,7 @@ public class Db implements IWarner {
             }
 
             graph.putKv(kv.keySegments, kv.value, pd);
+            
             pd.clearFast();
         }
         
