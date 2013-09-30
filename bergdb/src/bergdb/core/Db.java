@@ -160,21 +160,9 @@ public class Db implements IWarner {
 
     // ---- Working data for write access ----
     // Must only be accessed from threads holding writeLock.
-
-    /** The access path of top nodes used to access a KV in a set operation. */
-    //private final TopAccessPath topAccessPath;
-    /** The access path of key nodes used to access a KV in a set operation. */
-    //private final KeyAccessPath keyAccessPath;
-    /** Temporary working data. */
-    //private final KlongWithPointer kwi;
-    /** Temporary working data, length = 0. */
-    //private final KlongWithPointer[] zeroKwis;
-    /** Temporary working data, length = 1. */
-    //private final KlongWithPointer[] oneKwi;
-    /** Temporary working data, length = 2. */
-    //private final KlongWithPointer[] twoKwis;
-    /**  Temporary working data. */
-    //private final Pointer tempPointer;
+    
+    private final PutData pd;
+    
     /** The nodes updated for the current transaction. To be written to the stream. */
     private final TransactionNodes transactionNodes;
     /** Current transaction while writeLock is held. */
@@ -231,6 +219,7 @@ public class Db implements IWarner {
     private Db(Builder b) {
         writeLock = new Object();
         readSynch = new Object();
+        
         pointerLocksLength = 128;
         pointerLocks = new Object[pointerLocksLength];
         for (int i = 0; i < pointerLocksLength; i++) {
@@ -238,13 +227,39 @@ public class Db implements IWarner {
         }
 
         evictRandom = new Random(0);
-        //kwi = new KlongWithPointer();
-        //zeroKwis = new KlongWithPointer[] {};
-        //oneKwi = new KlongWithPointer[] { new KlongWithPointer() };
-        //twoKwis = new KlongWithPointer[] { new KlongWithPointer(), new KlongWithPointer() };
-        //tempPointer = new Pointer();
-        //topAccessPath = new TopAccessPath();
-        //keyAccessPath = new KeyAccessPath();
+        
+        pd = new PutData();
+        pd.nodeChangeListener = new Graph.NodeChangeListener() {
+            public void topNodeChanged(TopNode node) {
+                transactionNodes.add(node);
+            }
+            
+            public void newValueNode(ValueNode node, long[] key) {
+                transactionNodes.add(node, key);
+            }
+            
+            public void keyNodeChanged(KeyNode node) {
+                transactionNodes.add(node);
+            }
+        };
+        
+        final Graph.PointerListener existingListener = pd.pointerListener;
+        
+        pd.pointerListener = new Graph.PointerListener() {
+            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
+                existingListener.pointerFollowed(predecessor, pointerIndex, result, pointerType);
+                
+                switch (result.getType()) {
+                case INode.TYPE_TOP_NODE:
+                    transactionNodes.add((TopNode) result);
+                    break;
+                case INode.TYPE_KEY_NODE:
+                    transactionNodes.add((KeyNode) result);
+                    break;
+                }
+            }
+        };
+        
         transactionNodes = new TransactionNodes();
         keyModSet = new KeyModSet2();
         dirtyNodes = new DirtyNodes();
@@ -726,8 +741,6 @@ public class Db implements IWarner {
                     + getStateName(state) + ".");
         }
 
-        boolean dbCreated;      // True if db was created in this method (there was no existing data).
-        
         storageManager.checkStreamIds();
         
         // Synchronizes storages based on the "longest" storage available.
@@ -801,7 +814,8 @@ public class Db implements IWarner {
 
         dbClock.setLastTransactionTime(lastTransactionTime);
 
-        this.graph = Graph.builder().createFromStreamNodes(getAccessData(), posMap, nextMap);
+        this.graph = Graph.builder().nodeReader(nodeStream)
+                .createFromStreamNodes(getAccessData(), posMap, nextMap);
         
         //reconciliatePointers(posMap, nextMap);
 
@@ -1518,41 +1532,8 @@ public class Db implements IWarner {
         //
 
         assert Thread.holdsLock(writeLock);
-        final int length = trans.kvs.length;
-        PutData pd = new PutData();
-        
+        final int length = trans.kvs.length;        
         pd.tt = trans.transactionTime;
-        pd.nodeChangeListener = new Graph.NodeChangeListener() {
-            public void topNodeChanged(TopNode node) {
-                transactionNodes.add(node);
-            }
-            
-            public void newValueNode(ValueNode node, long[] key) {
-                transactionNodes.add(node, key);
-            }
-            
-            public void keyNodeChanged(KeyNode node) {
-                transactionNodes.add(node);
-            }
-        };
-        
-        final Graph.PointerListener existingListener = pd.pointerListener;
-        
-        pd.pointerListener = new Graph.PointerListener() {
-            
-            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
-                existingListener.pointerFollowed(predecessor, pointerIndex, result, pointerType);
-                
-                switch (result.getType()) {
-                case INode.TYPE_TOP_NODE:
-                    transactionNodes.add((TopNode) result);
-                    break;
-                case INode.TYPE_KEY_NODE:
-                    transactionNodes.add((KeyNode) result);
-                    break;
-                }
-            }
-        };
 
         for (int i = 0; i < length; i++) {
             Kv kv = trans.kvs[i];
@@ -1613,12 +1594,11 @@ public class Db implements IWarner {
         // Consider: should we call evict on nodes further up in three?
         //
 
-        if (1 == 1) throw new Error("not implemented!");
+        // TODO A. implement evict.
         
         final Pointer pointer = ed.tempPointer;
 
-        //INode node = topDS.getSuperRoot();
-        INode node = null;
+        INode node = graph.getSuperRoot();
         
         INode nextNode;
         INode next2;
@@ -1818,12 +1798,10 @@ public class Db implements IWarner {
     }
     
     /**
-     * DUMMY!
-     * 
-     * @deprecated
+     * @deprecated Call graph.getPointerLock() directly.
      */
     private Object getPointerLock(INode keyNode, int index) {
-        return new Object();
+        return graph.getPointerLock(keyNode, index);
     }
 
     private void getEvictPointer(KeyNode keyNode, int rand, Pointer p) {

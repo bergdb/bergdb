@@ -179,7 +179,7 @@ public class Klong {
      * Slow, use for testing.
      */
     private static long create(String key) {
-        return create(Util.toBytes(key), false);
+        return create(Keys.toBytes(key), false);
     }
     
     /**

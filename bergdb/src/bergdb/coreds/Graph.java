@@ -225,7 +225,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     /**
      * Returns a lock for the pointerIndex'th pointer of node 'node'.
      */
-    private final Object getPointerLock(final INode node, final int pointerIndex) {
+    public final Object getPointerLock(final INode node, final int pointerIndex) {
         int value = (node.hashCode() + 13 * pointerIndex);
         value = (value < 0) ? -value : value;
         return pointerLocks[value % POINTER_LOCKS_LENGTH];
