@@ -15,6 +15,7 @@ import bergdb.common.ProgressListener;
 import bergdb.common.Util;
 import bergdb.coreds.AccessData;
 import bergdb.coreds.Choices;
+import bergdb.coreds.DirtyNodes;
 import bergdb.coreds.EvictData;
 import bergdb.coreds.GetData;
 import bergdb.coreds.Graph;
@@ -228,15 +229,15 @@ public class Db implements IWarner {
         pd = new PutData();
         pd.nodeChangeListener = new Graph.NodeChangeListener() {
             public void topNodeChanged(TopNode node) {
-                transactionNodes.add(node);
+                transactionNodes.addTopNode(node);
             }
             
             public void newValueNode(ValueNode node, long[] key) {
-                transactionNodes.add(node, key);
+                transactionNodes.addValueNode(node, key);
             }
             
             public void keyNodeChanged(KeyNode node) {
-                transactionNodes.add(node);
+                transactionNodes.addKeyNode(node);
             }
         };
         
@@ -895,8 +896,8 @@ public class Db implements IWarner {
             dbClock.transactionEnd();
         }
         
-        this.transactionNodes.add(root);
-        this.transactionNodes.add(top.getSuperRoot());
+        this.transactionNodes.addKeyNode(root);
+        this.transactionNodes.addTopNode(top.getSuperRoot());
         
         this.trans = Trans.builder().build();
         

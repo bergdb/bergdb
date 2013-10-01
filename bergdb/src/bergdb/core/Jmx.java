@@ -10,6 +10,7 @@ import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
 
 import bergdb.common.Bug;
+import bergdb.coreds.DirtyNodes;
 import bergdb.pub.Clock;
 
 

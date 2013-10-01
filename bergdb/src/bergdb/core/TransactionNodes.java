@@ -5,6 +5,7 @@ import bergdb.coreds.INode;
 import bergdb.coreds.KeyNode;
 import bergdb.coreds.TopNode;
 import bergdb.coreds.ValueNode;
+import bergdb.coreds.DirtyNodes;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
@@ -15,7 +16,7 @@ import bergdb.nanotest.T;
  * 
  * @author Frans Lundberg
  */
-public class TransactionNodes {
+public class TransactionNodes implements DirtyNodes.TransactionNodesForMe {
     //
     // The class must support the same node added to it several times without causing duplicates.
     // Should be a set of unique nodes.
@@ -126,7 +127,7 @@ public class TransactionNodes {
         return result;
     }
     
-    public final void add(TopNode node) {
+    public final void addTopNode(TopNode node) {
         if (!node.isInTransactionNodes) {
             node.isInTransactionNodes = true;
             
@@ -141,7 +142,7 @@ public class TransactionNodes {
         }
     }
     
-    public final void add(KeyNode node) {
+    public final void addKeyNode(KeyNode node) {
         if (!node.isInTransactionNodes) {
             node.isInTransactionNodes = true;
             
@@ -156,7 +157,7 @@ public class TransactionNodes {
         }
     }
     
-    public final void add(ValueNode node, long[] key) {
+    public final void addValueNode(ValueNode node, long[] key) {
         if (!node.isInTransactionNodes) {
             node.isInTransactionNodes = true;
             
@@ -331,8 +332,8 @@ public class TransactionNodes {
         ValueNode v2 = new ValueNode();
         
         Assert.assertEquals(0, nodes.valueSize);
-        nodes.add(v1, null);
-        nodes.add(v2, null);
+        nodes.addValueNode(v1, null);
+        nodes.addValueNode(v2, null);
         Assert.assertEquals(v1, nodes.valueNodes[0]);
         Assert.assertEquals(v2, nodes.valueNodes[1]);
         Assert.assertEquals(2, nodes.valueSize);
@@ -344,7 +345,7 @@ public class TransactionNodes {
         ValueNode v1 = new ValueNode();
         
         Assert.assertEquals(false, v1.isInTransactionNodes());
-        nodes.add(v1, null);
+        nodes.addValueNode(v1, null);
         Assert.assertEquals(true, v1.isInTransactionNodes());
         nodes.clear();
         Assert.assertEquals(false, v1.isInTransactionNodes());
@@ -362,7 +363,7 @@ public class TransactionNodes {
             if (i == index) {
                 v = value;
             }
-            nodes.add(value, null);
+            nodes.addValueNode(value, null);
         }
         
         Assert.assertEquals(count, nodes.valueSize);
@@ -382,7 +383,7 @@ public class TransactionNodes {
         
         for (int i = 0; i < count; i++) {
             ValueNode value = new ValueNode();
-            nodes.add(value, null);
+            nodes.addValueNode(value, null);
         }
         
         Assert.assertEquals(count, nodes.valueSize);
