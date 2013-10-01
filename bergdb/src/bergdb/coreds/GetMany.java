@@ -11,7 +11,7 @@ import bergdb.coreds.Graph.PointerListener;
  * If key2 == null, the interval is (key1, +inf).
  * If key1 == null, the interval is (-inf, key2].
  * 
- * @see Db#getMany(GetMany)
+ * @see Graph#getMany(GetMany)
  * @author Frans Lundberg
  */
 public class GetMany {

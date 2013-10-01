@@ -994,15 +994,16 @@ public class Util {
     }
     
     /**
+     * Returns milliseconds since Epoch for a certain Gregorian date/time.
      * 
-     * @param year
-     * @param month
-     * @param date
-     * @param hour
-     * @param min
-     * @param sec
-     * @param millis
-     * @return
+     * @param year    The year.
+     * @param month   The month, January = 1
+     * @param date    The date of the month.
+     * @param hour    The hour (0-23)
+     * @param min     The minutes (0-59)
+     * @param sec     The second (0-29)
+     * @param millis  Milliseconds of the second (0-999).
+     * @return The number of milliseconds since Epoch (1 Jan 1970 UTC).
      */
     public static long getMillisSinceEpoch(TimeZone zone, 
             int year, int month, int date, 

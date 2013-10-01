@@ -388,7 +388,7 @@ public abstract class DbValue {
      * 
      * @param dstType  Only used when object == null.
      * @param object
-     * @return
+     * @return The DbValue created from the input Java Object.
      */
     public static DbValue toDbValue(Class<?> dstType, Object object) {
         if (object == null) {

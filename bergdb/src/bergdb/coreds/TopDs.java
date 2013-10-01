@@ -82,8 +82,6 @@ public class TopDs {
     
     /**
      * Convenience method for when GetData is used.
-     * 
-     * @see #findRoot(DbGraphForMe, long, long, Pointer, PointerListener, CachePolicy)
      */
     public final KeyNode findRoot(DbGraphForMe dbGraph, long time, GetData gd) {
         return findRoot(dbGraph, time, gd.accessData, gd.tempPointer, gd.pointerListener, gd.cachePolicy);
@@ -93,9 +91,6 @@ public class TopDs {
      * Finds the space root node for a given lookup time.
      * Returns null if there is no space root that is old enough.
      * 
-     * @param accessPath Adds top nodes to the access path if non-null.
-     * The returned node is not added to this access path (it cannot be done, since it is not a
-     * TopNode).
      * @param accessData Access data for this access.
      */
     public final KeyNode findRoot(DbGraphForMe dbGraph, long time, long accessData, 

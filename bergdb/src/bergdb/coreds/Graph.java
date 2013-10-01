@@ -11,7 +11,32 @@ import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 
 /**
- * The DB graph is the core data structure of the database.
+ * <p>The DB graph is the main data structure of the database.
+ * An instance of this class handles the in-memory (cached) part of the DB graph.</p>
+ * 
+ * <p>Features/scope:</p>
+ * <ul>
+ * <li>Walking the graph, followPointer()</li>
+ * <li>getOne(), getMany(), putOne()</li>
+ * <li>Making nodes dirty</li>
+ * <li>Graph testable in isolation</li>
+ * <li>Cache: adding nodes, cache eviction</li>
+ * <li>Reads nodes (NodeReader implementation)</li>
+ * </ul>
+ * 
+ * <p>Not in scope:</p>
+ * <ul>
+ * <li>DbClock - clock for the database</li>
+ * <li>Concurrency - limited locking support, only pointer locks.</li>
+ * <li>Transaction: collecting transaction node set, adding transaction nodes
+ * to stream, ...</li>
+ * <li>STM implementation</li>
+ * </ul>
+ * 
+ * <p>1309: This class was created in September 2013 during a heavy refactoring.
+ * I wanted a smaller, cleaner Db class and a Graph that is testable in isolation.
+ * This is a change to review the code for correctness and add more unit test
+ * to show that code works.</p> 
  * 
  * @author Frans Lundberg
  */
@@ -457,8 +482,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      * that read with a lookup time strictly less than the transaction time.
      * Caller must hold Db.writeLock.</p>
      * 
-     * @param tt      Transaction time.
-     * @param key     The key segments.
+     * @param key     The key (as segments).
      * @param value   The value; null for delete operation.
      */
     public void putKv(long[] key, byte[] value, PutData pd) {
@@ -1024,8 +1048,6 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
         /**
          * Called from TopDs findRoot() to report that the super root node was
          * accessed.
-         * 
-         * @param mySuperRoot
          */
         public void superRootAccessed(TopNode superRoot);
     }

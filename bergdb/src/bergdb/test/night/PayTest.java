@@ -26,7 +26,6 @@ public class PayTest {
     /**
      * Runs that test. Requires 500 MB of RAM or so. 130925 Frans: Runs on 20 s on Cissi.
      * 
-     * @author Frans Lundberg
      * @throws IOException 
      */
     @T("night")
