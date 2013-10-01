@@ -1,5 +1,6 @@
 package bergdb.coreds;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeMap;
@@ -150,6 +151,19 @@ public class DirtyNodes {
     
     // ======== Testing ========
     
+    private static class TestTransactionNodes implements TransactionNodesForMe {
+        ArrayList<TopNode> topNodes = new ArrayList<TopNode>();
+        ArrayList<KeyNode> keyNodes = new ArrayList<KeyNode>();
+        
+        public void addTopNode(TopNode node) {
+            topNodes.add(node);
+        }
+
+        public void addKeyNode(KeyNode node) {
+            keyNodes.add(node);
+        }
+    }
+    
     @T
     public static void test1() {
         DirtyNodes d = new DirtyNodes();
@@ -195,7 +209,6 @@ public class DirtyNodes {
     
     @T
     public static void testGetTooDirtyNodes1() {
-        /* TODO D. Fix test, do not use TransactionNodes.
         DirtyNodes d = new DirtyNodes();
         KeyNode n1 = testNode(10);
         KeyNode n2 = testNode(20);
@@ -204,17 +217,16 @@ public class DirtyNodes {
         d.add(n2);
         d.add(n3);
         
-        TransactionNodes list = new TransactionNodes();
+        TestTransactionNodes list = new TestTransactionNodes();
         d.getTooDirtyNodes(100, false, list);
-        Assert.assertEquals(n1, list.keyNodes[0]);
-        Assert.assertEquals(n2, list.keyNodes[1]);
-        Assert.assertEquals(n3, list.keyNodes[2]);*/
+        Assert.assertEquals(n1, list.keyNodes.get(0));
+        Assert.assertEquals(n2, list.keyNodes.get(1));
+        Assert.assertEquals(n3, list.keyNodes.get(2));
     }
     
     @T
     public static void testGetTooDirtyNodes2() {
-        // TODO D. Fix test, do not use of TransactionNodes.
-        /*DirtyNodes d = new DirtyNodes();
+        DirtyNodes d = new DirtyNodes();
         KeyNode n1 = testNode(10);
         KeyNode n2 = testNode(20);
         KeyNode n3 = testNode(30);
@@ -223,10 +235,10 @@ public class DirtyNodes {
         d.add(n3);
         n2.setSpos(999);
         
-        TransactionNodes list = new TransactionNodes();
+        TestTransactionNodes list = new TestTransactionNodes();
         d.getTooDirtyNodes(100, false, list);
-        Assert.assertEquals(n1, list.keyNodes[0]);
-        Assert.assertEquals(n3, list.keyNodes[1]);
-        Assert.assertEquals(2, d.keyNodes.size());*/
+        Assert.assertEquals(n1, list.keyNodes.get(0));
+        Assert.assertEquals(n3, list.keyNodes.get(1));
+        Assert.assertEquals(2, d.keyNodes.size());
     }
 }
