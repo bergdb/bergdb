@@ -78,6 +78,8 @@ public class PutData {
                     }
                 }
             }
+
+            public void superRootAccessed(TopNode superRoot) {}
         };
         
         cachePolicy = Graph.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES;

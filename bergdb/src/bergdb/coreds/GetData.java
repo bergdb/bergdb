@@ -57,6 +57,8 @@ public class GetData {
                     assert false : "Bad pointer type: " + pointerType + ".";
                 }
             }
+
+            public void superRootAccessed(TopNode superRoot) {}
         };
         
         cachePolicy = Graph.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES;

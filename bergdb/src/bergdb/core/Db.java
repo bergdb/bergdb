@@ -257,6 +257,11 @@ public class Db implements IWarner {
                     break;
                 }
             }
+
+            public void superRootAccessed(TopNode superRoot) {
+                makeDirty(superRoot);
+            }
+            
         };
         
         transactionNodes = new TransactionNodes();

@@ -55,6 +55,8 @@ public class TopTester {
         gd.pointerListener = new Graph.PointerListener() {
             public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
             }
+
+            public void superRootAccessed(TopNode superRoot) {}
         };
         
         gd.cachePolicy = new Graph.CachePolicy() {

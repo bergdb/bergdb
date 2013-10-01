@@ -29,6 +29,9 @@ public class GraphTester {
             public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
                 choices.add(pointerIndex);
             }
+
+            public void superRootAccessed(TopNode superRoot) {
+            }
         };
         
         byte[] result = g.getOne(0, Keys.toSegments("/-k1"), gd);

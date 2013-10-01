@@ -115,6 +115,8 @@ public class TopDs {
         
         TopNode mySuperRoot = this.superRoot;     // volatile read make writes visible.
         
+        pointerListener.superRootAccessed(mySuperRoot);
+        
         if (time >= mySuperRoot.rootTime) {
             return (KeyNode) dbGraph.followPointer(mySuperRoot, 0, accessData, pointerListener, cachePolicy);
         }

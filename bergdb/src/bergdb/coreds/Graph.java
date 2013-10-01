@@ -184,11 +184,6 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      */
     public final INode followPointer(final INode predecessor, int pointerIndex, long accessData, 
             PointerListener pointerListener, CachePolicy cachePolicy) {
-        //
-        // 130928 Frans: Made listener and cachePolicy interfaces. Very flexible.
-        //      We will see if it is fast enough.
-        //
-        
         INode result;
         assert predecessor != null;
         assert accessData == 0 || AccessData.isValid(accessData);
@@ -984,11 +979,21 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
          * @param pointerType One of Pointer.TYPE_MEMORY, Pointer.TYPE_STREAM.
          */
         public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType);
+
+        /**
+         * Called from TopDs findRoot() to report that the super root node was
+         * accessed.
+         * 
+         * @param mySuperRoot
+         */
+        public void superRootAccessed(TopNode superRoot);
     }
     
     public static final PointerListener DO_NOTHING_POINTER_LISTENER = new PointerListener() {
         public void pointerFollowed(INode predecessor, int pointerIndex, INode result,
                 int pointerType) {}
+
+        public void superRootAccessed(TopNode mySuperRoot) {}
     };
     
     
