@@ -195,7 +195,7 @@ public class DirtyNodes {
     
     @T
     public static void testGetTooDirtyNodes1() {
-        /* TODO D. Fix test.
+        /* TODO D. Fix test, do not use TransactionNodes.
         DirtyNodes d = new DirtyNodes();
         KeyNode n1 = testNode(10);
         KeyNode n2 = testNode(20);
@@ -213,7 +213,7 @@ public class DirtyNodes {
     
     @T
     public static void testGetTooDirtyNodes2() {
-        // TODO D. Fix test
+        // TODO D. Fix test, do not use of TransactionNodes.
         /*DirtyNodes d = new DirtyNodes();
         KeyNode n1 = testNode(10);
         KeyNode n2 = testNode(20);

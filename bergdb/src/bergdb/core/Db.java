@@ -124,7 +124,7 @@ public class Db implements IWarner {
     private final IKeyModSet keyModSet;
     private final NodeStream nodeStream; // IO for DB to read/append nodes.
     private final StorageManager storageManager;
-    private final DirtyNodes dirtyNodes;
+    //private final DirtyNodes dirtyNodes;
     private int state = STATE_ZERO;
         // Synch note: writes published by readSynch.
     
@@ -243,31 +243,29 @@ public class Db implements IWarner {
         
         final Graph.PointerListener existingListener = pd.pointerListener;
         
-        // TODO A. Consider: this does not include super root node.
-        
         pd.pointerListener = new Graph.PointerListener() {
             public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
                 existingListener.pointerFollowed(predecessor, pointerIndex, result, pointerType);
                 
                 switch (result.getType()) {
                 case INode.TYPE_TOP_NODE:
-                    makeDirty((TopNode) result);
+                    graph.makeDirty((TopNode) result);
                     break;
                 case INode.TYPE_KEY_NODE:
-                    makeDirty((KeyNode) result);
+                    graph.makeDirty((KeyNode) result);
                     break;
                 }
             }
 
             public void superRootAccessed(TopNode superRoot) {
-                makeDirty(superRoot);
+                graph.makeDirty(superRoot);
             }
             
         };
         
         transactionNodes = new TransactionNodes();
         keyModSet = new KeyModSet2();
-        dirtyNodes = new DirtyNodes();
+        //dirtyNodes = new DirtyNodes();
  
         this.startupDistance = b.startupDistance;
        
@@ -677,7 +675,7 @@ public class Db implements IWarner {
      * reference is always returned since it comes from a final field.
      */
     public final DirtyNodes getDirtyNodes() {
-        return dirtyNodes;
+        return graph.getDirtyNodes();
     }
 
     public final Object getWriteLock() {
@@ -909,32 +907,6 @@ public class Db implements IWarner {
     }
     
     /**
-     * Makes a TopNode dirty if not already dirty. This method returns immediately
-     * if the node is dirty already. Caller must hold this.writeLock.
-     */
-    private final void makeDirty(TopNode n) {
-        assert Thread.holdsLock(this.writeLock);
-        
-        if (!n.isDirty) {
-            n.isDirty = true;
-            dirtyNodes.add(n);
-        }
-    }
-    
-    /**
-     * Makes a KeyNode dirty if not already dirty. This method returns immediately
-     * if the node is dirty already. Caller must hold this.writeLock.
-     */
-    private final void makeDirty(KeyNode n) {
-        assert Thread.holdsLock(this.writeLock);
-        
-        if (!n.isDirty) {
-            n.isDirty = true;
-            dirtyNodes.add(n);
-        }
-    }
-
-    /**
      * Prints the in memory part of the DB graph. Useful for test and
      * development.
      */
@@ -1100,47 +1072,6 @@ public class Db implements IWarner {
 
         
         graph.getMany(g);
-        
-        /*
-        KeyNode root = null;   // TODO A. Wrong!
-        //KeyNode root = topDS.findRoot(this, g.actualLookupTime, g.cache, null, accessData, g.gd);
-
-        if (root == null) {
-            return;
-        }
-
-        GetMany.Chain chain = g.new Chain((GetMany.DbForMe) this);
-        chain.setup(root);
-
-        outer: while (true) {
-            Kvt kvt = chain.next();
-
-            if (kvt == null) {
-                g.stopCondition.eod();
-                break outer;
-            }
-            
-            getOpCount.incrementAndGet();
-
-            int shouldStop = g.stopCondition.handleKvt(kvt);
-
-            switch (shouldStop) {
-            case StopCondition.STOP:
-                break outer;
-            case StopCondition.ADD:
-                g.result.add(kvt);
-                break;
-            case StopCondition.ADD_AND_STOP:
-                g.result.add(kvt);
-                break outer;
-            case StopCondition.CONTINUE:
-                // empty
-                break;
-            default:
-                assert false : "Bad int value: " + shouldStop;
-            }
-        }
-        */
     }
 
     /**
@@ -1382,7 +1313,10 @@ public class Db implements IWarner {
 
         int ordinaryNodeCount = transactionNodes.size();
         
-        dirtyNodes.getTooDirtyNodes(dirtyLimit, true, transactionNodes);
+        // NOTE I do not like this if statement. Only used for primordial transaction.
+        if (graph != null) {
+            graph.getDirtyNodes().getTooDirtyNodes(dirtyLimit, true, transactionNodes);
+        }
         
         {   // Computes dirtyFraction100, dirtyFraction1000. For statistics, monitoring.
             int totalNodeCount = transactionNodes.size();
@@ -1511,8 +1445,6 @@ public class Db implements IWarner {
         //
         // Consider: should we call evict on nodes further up in three?
         //
-
-        // TODO A. implement evict.
         
         final Pointer pointer = ed.tempPointer;
 

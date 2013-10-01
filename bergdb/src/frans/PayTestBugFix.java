@@ -15,7 +15,7 @@ import bergdb.pub.WBuilder;
 import bergdb.pubimp.DatabaseBuilderImp;
 import bergdb.stream.MemoryStream;
 
-// TODO A. Fix this bug!
+// TODO C. Fix this bug!
 
 /**
  * Trying to fix bug-130925, see test.night.PayTest.

@@ -21,6 +21,8 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     private final int POINTER_LOCKS_LENGTH = 128;
     private final Object[] pointerLocks;
     private final int maxNodeSize;
+    private final DirtyNodes dirtyNodes;
+    
     
     /**
      * Creates and returns a new, minimal DbGraph.
@@ -28,6 +30,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      * Nothing is written to the node stream.
      */
     private Graph(Builder b, long time) {
+        
         KeyNode root = new KeyNode();
         this.topDs = TopDs.createFromFirstRoot(time, root, Spos.DEFAULT_ACCESS_DATA);
         
@@ -39,6 +42,8 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
         for (int i = 0; i < POINTER_LOCKS_LENGTH; i++) {
             pointerLocks[i] = new Object();
         }
+        
+        this.dirtyNodes = new DirtyNodes();
     }
     
     /**
@@ -136,7 +141,11 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
         for (int i = 0; i < POINTER_LOCKS_LENGTH; i++) {
             pointerLocks[i] = new Object();
         }
+        
+        this.dirtyNodes = new DirtyNodes();
     }
+    
+    // ======== General utility methods ========
     
     /**
      * Prints the in memory part of the DB graph. Useful for test and development.
@@ -172,6 +181,38 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
         
         return node;
     }
+    
+    /**
+     * Returns the collection of dirty nodes. Needed by DB monitor. Same
+     * reference is always returned since it comes from a final field.
+     */
+    public final DirtyNodes getDirtyNodes() {
+        return dirtyNodes;
+    }
+    
+
+    /**
+     * Makes a TopNode dirty if not already dirty. This method returns immediately
+     * if the node is dirty already. Caller must hold this.writeLock.
+     */
+    public final void makeDirty(TopNode n) {        
+        if (!n.isDirty) {
+            n.isDirty = true;
+            dirtyNodes.add(n);
+        }
+    }
+    
+    /**
+     * Makes a KeyNode dirty if not already dirty. This method returns immediately
+     * if the node is dirty already. Caller must hold this.writeLock.
+     */
+    public final void makeDirty(KeyNode n) {
+        if (!n.isDirty) {
+            n.isDirty = true;
+            dirtyNodes.add(n);
+        }
+    }
+
     
     // ======== followPointers() and helpers ========
     

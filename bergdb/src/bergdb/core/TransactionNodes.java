@@ -45,7 +45,9 @@ public class TransactionNodes implements DirtyNodes.TransactionNodesForMe {
         
         valueNodes = new ValueNode[INITIAL_SIZE];
         valueSize = 0;
+        
         keys = new long[INITIAL_SIZE][];
+        
         choices = new Choices[INITIAL_SIZE];
         for (int i = 0; i < choices.length; i++) {
             choices[i] = new Choices();
