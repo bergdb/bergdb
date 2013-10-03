@@ -1221,8 +1221,11 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
 Task: move calls like [pd.nodeChangeListener.keyNodeChanged(node)] so it is as close
 to the node change as possible (the first place where it is change or created).
 
+Methods that modify nodes (in putKv() or methods called from there):
+
 KeyNode.addKlong()
 KeyNode.firstAndSecond()
+KeyNode.lastVersionGivenDel()
 TopDs.newSuperRoot()
 
 

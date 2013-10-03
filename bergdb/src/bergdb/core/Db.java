@@ -226,27 +226,8 @@ public class Db implements IWarner {
         }
 
         evictRandom = new Random(0);
-        
-        /*
-        pd = Graph.newPutData();
-        pd.nodeChangeListener = new Graph.NodeChangeListener() {
-            public void topNodeChanged(TopNode node) {
-                transactionNodes.addTopNode(node);
-            }
-            
-            public void newValueNode(ValueNode node, long[] key) {
-                transactionNodes.addValueNode(node, key);
-            }
-            
-            public void keyNodeChanged(KeyNode node) {
-                transactionNodes.addKeyNode(node);
-            }
-        };
-        */
-        
         transactionNodes = new TransactionNodes();
         keyModSet = new KeyModSet2();
-        //dirtyNodes = new DirtyNodes();
  
         this.startupDistance = b.startupDistance;
        
@@ -270,8 +251,6 @@ public class Db implements IWarner {
         
         this.dbClock = new DbClock(b.clock);
         this.evictBoss = b.evictBoss;
-        
-        
         
         this.reclaim = new Reclaim(this, aos);
         
@@ -797,6 +776,9 @@ public class Db implements IWarner {
 
         dbClock.setLastTransactionTime(lastTransactionTime);
 
+        // XXX set maxNodeSize, or drop it all together from Db builder,
+        // or minimize the number of choices in Db.Builder.
+        
         this.graph = Graph.builder().nodeReader(nodeStream)
                 .createFromStreamNodes(getAccessData(), posMap, nextMap);
         
