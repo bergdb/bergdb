@@ -142,6 +142,7 @@ public class Db implements IWarner {
     private final DbClock dbClock;
     private final IEvictBoss evictBoss;
     private final PrintStream out;
+    private final Builder builder;   // stored for use by Graph.Builder. See startinner().
     
     private int startupDistance; 
         // Current startupDistance that affects getDirtyLimit().
@@ -224,6 +225,8 @@ public class Db implements IWarner {
         for (int i = 0; i < pointerLocksLength; i++) {
             pointerLocks[i] = new Object();
         }
+        
+        builder = b;
 
         evictRandom = new Random(0);
         transactionNodes = new TransactionNodes();
@@ -778,9 +781,29 @@ public class Db implements IWarner {
 
         // XXX set maxNodeSize, or drop it all together from Db builder,
         // or minimize the number of choices in Db.Builder.
+        Graph.Builder b = Graph.builder();
+        b.nodeReader(nodeStream);
+        switch (builder.maxNodeSize) {
+        case 62:
+            b.maxNodeSize62();
+            break;
+        case 30:
+            b.maxNodeSize30();
+            break;
+        case 14:
+            b.maxNodeSize14();
+            break;
+        case 8:
+            b.maxNodeSize8();
+            break;
+        case 6:
+            b.maxNodeSize6();
+            break;
+        default:
+            throw new IllegalStateException("maxNodeSize = " + builder.maxNodeSize);
+        }
         
-        this.graph = Graph.builder().nodeReader(nodeStream)
-                .createFromStreamNodes(getAccessData(), posMap, nextMap);
+        this.graph = b.createFromStreamNodes(getAccessData(), posMap, nextMap);
         
         this.pd = graph.newPutData();
         this.pd.nodeChangeListener = new Graph.NodeChangeListener() {
