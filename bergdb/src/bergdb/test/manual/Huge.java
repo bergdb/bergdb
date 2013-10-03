@@ -158,7 +158,7 @@ public class Huge {
                 int intKey = intFactory.nextInt(n);
                 
                 long[] key = Keys.toSegments(KeyFactory.binaryIntKey(intKey));
-                value = db.get(Long.MAX_VALUE, key, gd);
+                value = db.getOne(Long.MAX_VALUE, key, gd);
                 if (value == null) {
                     throw new AssertionError("value == null for " + intKey);
                 }

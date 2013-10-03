@@ -237,6 +237,74 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             dirtyNodes.add(n);
         }
     }
+    
+    /**
+     * Creates a GetData object suitable for use with as a parameter to Graph.getOne().
+     * Use Db.newGetData() instead if you want to use the GetData object
+     * in Db.getOne().
+     */
+    public GetData newGetData() {
+        final GetData g = new GetData();
+        
+        g.pointerListener = new Graph.PointerListener() {
+            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
+                switch (pointerType) {
+                case Pointer.TYPE_MEMORY:
+                    g.followMemoryPointerCount++;
+                    break;
+                case Pointer.TYPE_STREAM:
+                    g.followStreamPointerCount++;
+                    break;
+                default:
+                    assert false : "Bad pointer type: " + pointerType + ".";
+                }
+            }
+
+            public void superRootAccessed(TopNode superRoot) {}
+        };
+        
+        return g;
+    }
+    
+    /**
+     * Creates a PutData object suitable for use with as a parameter to Graph.putKv().
+     * Use Db.newPutData() instead if you want to use the PutData object as a 
+     * parameter with methods of Db.
+     */
+    public PutData newPutData() {        
+        final PutData p = new PutData();
+        
+        p.pointerListener = new Graph.PointerListener() {
+            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) { 
+                if (result != null) {
+                    if (result.getType() == INode.TYPE_KEY_NODE) {
+                        if (predecessor.getType() == INode.TYPE_TOP_NODE) {
+                            p.keyAccessPath.add(Klong.NULL, (KeyNode) result); 
+                        } else if (predecessor.getType() == INode.TYPE_KEY_NODE) {
+                            KeyNode pre = (KeyNode) predecessor;
+                            KeyNode res = (KeyNode) result;
+                            p.keyAccessPath.add(pre.getKlong(pointerIndex), res);
+                        }
+                    }
+                    
+                    switch (result.getType()) {
+                    case INode.TYPE_TOP_NODE:
+                        makeDirty((TopNode) result);
+                        break;
+                    case INode.TYPE_KEY_NODE:
+                        makeDirty((KeyNode) result);
+                        break;
+                    }
+                }
+            }
+
+            public void superRootAccessed(TopNode superRoot) {
+                makeDirty(superRoot);
+            }
+        };
+        
+        return p;
+    }
 
     
     // ======== followPointers() and helpers ========
@@ -301,6 +369,9 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      * @param time  The lookup time.
      */
     public byte[] getOne(long time, long[] keySegments, final GetData gd) {
+        //
+        // TODO Z. Document exceptions that it throws.
+        // 
 
         assert gd.pointerListener != null;
         assert gd.cachePolicy != null;
@@ -479,8 +550,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      * 
      * <p>This method runs with exclusive write access to the data structure 
      * (synchronized on Db.writeLock). However, there may be concurrent readers 
-     * that read with a lookup time strictly less than the transaction time.
-     * Caller must hold Db.writeLock.</p>
+     * that read with a lookup time strictly less than the transaction time.</p>
      * 
      * @param key     The key (as segments).
      * @param value   The value; null for delete operation.
@@ -489,8 +559,10 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
         //
         // in:   time, key, value.
         // out:  changes to graph, 
-        //       changed/new nodes added to transactionNodes,
+        //       changed/new nodes reported to pd.nodeChangeListener.
         //       accessed nodes ensured "dirty"
+        //
+        // TODO D. Document exceptions that might be thrown.
         //
         
         assert pd.tt >= 0;
@@ -503,7 +575,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
                 tempPointer, pd.pointerListener, pd.cachePolicy);
         
         if (root == null) {
-            // NOTE Is this correct exception type?
+            // TODO D. What is the correct exception type?
             throw new IllegalStateException("Found no root node at t=" + pd.tt + ", cannot continue put.");
         }
         
@@ -548,19 +620,14 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             
             boolean isNoop = insertDeleteKlong(node, pd.keyAccessPath.size - 1, compareValue, pd);
             if (!isNoop) {
-                //transactionNodes.add(node);
-                pd.nodeChangeListener.keyNodeChanged(node);
+                //pd.nodeChangeListener.keyNodeChanged(node);
                 ValueNode valueNode = new ValueNode(null);
-                //transactionNodes.add(valueNode, kv.keySegments);
                 pd.nodeChangeListener.newValueNode(valueNode, key);
             }
             
         } else {
-            //transactionNodes.add(node);
-            pd.nodeChangeListener.keyNodeChanged(node);
-            
+            //pd.nodeChangeListener.keyNodeChanged(node);
             ValueNode valueNode = new ValueNode(value);
-            //transactionNodes.add(valueNode, kv.keySegments);
             pd.nodeChangeListener.newValueNode(valueNode, key);
             
             // We need to be able to fit two more klongs. A TIME klong might be needed.
@@ -571,6 +638,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             if (node.size + 1 < this.maxNodeSize) {
                 node.addKlong(pd.tt, Klong.compareValueToKeyKlong(compareValue),
                         valueNode, pd.accessData);
+                pd.nodeChangeListener.keyNodeChanged(node);
             } else {
                 pd.oneKwi[0].klong = Klong.compareValueToKeyKlong(compareValue);
                 pd.oneKwi[0].node = valueNode;
@@ -607,21 +675,24 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             // If not found, create the node
 
             KeyNode child = new KeyNode(true); // New segment leaf node.
-
+            pd.nodeChangeListener.keyNodeChanged(child);
+            
             // "+1" needed since there might be a need to insert a TIME klong too.
             if (current.size + 1 < this.maxNodeSize) {
                 current.addKlong(pd.tt, Klong.compareValueToKeyKlong(compareValue),
                         child, pd.accessData);
+                pd.nodeChangeListener.keyNodeChanged(current);
             } else {
                 pd.oneKwi[0].klong = Klong.compareValueToKeyKlong(compareValue);
                 pd.oneKwi[0].node = child;
                 pd.oneKwi[0].pos = pd.tt;
                 insertKlongs(current, pd.keyAccessPath.size - 1, pd.oneKwi, pd);
             }
+            
+            //pd.nodeChangeListener.keyNodeChanged(current);
+            //pd.nodeChangeListener.keyNodeChanged(child);
+            
             result = child;
-
-            pd.nodeChangeListener.keyNodeChanged(current);
-            pd.nodeChangeListener.keyNodeChanged(child);
             
         } else {
             // If found
@@ -700,17 +771,21 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
         if (!isNoop) {
             if (hasTransDel) {
                 node.klongs[sz - 1] = union;
+                pd.nodeChangeListener.keyNodeChanged(node);
+                
                 // Direct modification, but still OK. A reader will always have a lookup
                 // time < trans.transactionTime. So, a reader is guaranteed not to see
                 // the delete at trans.transactionTime before the transaction completes.
                 // No need to add 'node' to transaction nodes. It is there
                 // already since it has a delete klong for transationTime.
+                
             } else {                
                 if (node.size + 1 < this.maxNodeSize) {
                     node.addKlong(tTime, union, null, pd.accessData);
+                    pd.nodeChangeListener.keyNodeChanged(node);
+                    
                 } else {
                     KeyNode last = node.lastVersionGivenDel(sz, tTime, union);
-                    //transactionNodes.add(last);
                     pd.nodeChangeListener.keyNodeChanged(last);
                     
                     handleLastVersionOfFullNode(node, depth, PutData.zeroKwi, tTime, last, pd);
@@ -757,6 +832,8 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             for (int i = 0; i < toInsert.length; i++) {
                 KlongWithPointer kwi = toInsert[i];
                 node.addKlong(pd.tt, kwi.klong, kwi.node, pd.accessData);
+                pd.nodeChangeListener.keyNodeChanged(node);
+                
                 assert node.assertOk(maxNodeSize);
             }
         } else {
@@ -792,14 +869,17 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
 
         for (int i = 0; i < toInsert.length; i++) {
             KlongWithPointer kwi = toInsert[i];
+            
             last.addKlong(tTime, kwi.klong, kwi.node, pd.accessData);
+            pd.nodeChangeListener.keyNodeChanged(last);
         }
 
         if (parent == null) {
             // 'node' is the current space root. Replace it with 'last'.
             topDs.newSuperRoot(tTime, last, pd.accessData);
-            assert last.checkWithMessage() == null;
             pd.nodeChangeListener.topNodeChanged(topDs.getSuperRoot());
+            
+            assert last.checkWithMessage() == null;
             
         } else {
             long klong1 = pd.keyAccessPath.getKlong(depth);
@@ -808,6 +888,8 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             // "+1" needed since a TIME klong might be needed too.
             if (parent.size + 1 < this.maxNodeSize) {
                 parent.addKlong(pd.tt, klong1, last, pd.accessData);
+                pd.nodeChangeListener.keyNodeChanged(parent);
+                
             } else {
                 pd.oneKwi[0].klong = klong1;
                 pd.oneKwi[0].node = last;
@@ -817,9 +899,6 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
 
             assert parent.checkWithMessage() == null : parent.checkWithMessage() + " node:\n"
                     + parent.print();
-
-            //transactionNodes.add(parent);
-            pd.nodeChangeListener.keyNodeChanged(parent);
         }
     }
     
@@ -847,22 +926,20 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
 
         if (parent == null) {
             KeyNode newRoot = new KeyNode(false);
-            long secondKlong = node.firstAndSecond(tTime, last, toInsert, first, second);
-            newRoot.addKlong(tTime, Klong.EMPTY_KEY, first, pd.accessData);
-            newRoot.addKlong(tTime, secondKlong, second, pd.accessData);
-
-            topDs.newSuperRoot(tTime, newRoot, pd.accessData);
-
-            assert newRoot.checkWithMessage() == null;
-
-            //transactionNodes.add(newRoot);
-            //transactionNodes.add(topDS.getSuperRoot());
-            //transactionNodes.add(first);
-            //transactionNodes.add(second);
-            pd.nodeChangeListener.topNodeChanged(topDs.getSuperRoot());
             pd.nodeChangeListener.keyNodeChanged(newRoot);
+            
+            long secondKlong = node.firstAndSecond(tTime, last, toInsert, first, second);
             pd.nodeChangeListener.keyNodeChanged(first);
             pd.nodeChangeListener.keyNodeChanged(second);
+            
+            newRoot.addKlong(tTime, Klong.EMPTY_KEY, first, pd.accessData);
+            newRoot.addKlong(tTime, secondKlong, second, pd.accessData);
+            pd.nodeChangeListener.keyNodeChanged(newRoot);
+
+            topDs.newSuperRoot(tTime, newRoot, pd.accessData);
+            pd.nodeChangeListener.topNodeChanged(topDs.getSuperRoot());
+                        
+            assert newRoot.checkWithMessage() == null;
 
         } else if (parent.isSegmentLeaf()) {
             // Parent is segment leaf, so 'node' is a segment root. We need a
@@ -870,15 +947,20 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
 
             KeyNode newSegmentRoot = new KeyNode(false);
             long secondKlong = node.firstAndSecond(tTime, last, toInsert, first, second);
+            pd.nodeChangeListener.keyNodeChanged(first);
+            pd.nodeChangeListener.keyNodeChanged(second);
 
             newSegmentRoot.addKlong(tTime, Klong.EMPTY_KEY, first, pd.accessData);
             newSegmentRoot.addKlong(tTime, secondKlong, second, pd.accessData);
+            pd.nodeChangeListener.keyNodeChanged(newSegmentRoot);
 
             long klong1 = pd.keyAccessPath.getKlong(depth);
             assert klong1 != Klong.NULL;
 
             if (parent.size < this.maxNodeSize) {
                 parent.addKlong(pd.tt, klong1, newSegmentRoot, pd.accessData);
+                pd.nodeChangeListener.keyNodeChanged(parent);
+                
             } else {
                 pd.oneKwi[0].klong = klong1;
                 pd.oneKwi[0].node = newSegmentRoot;
@@ -889,19 +971,13 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             assert parent.checkWithMessage() == null : parent.checkWithMessage() + " node:\n"
                     + parent.print();
             assert newSegmentRoot.checkWithMessage() == null;
-
-            //transactionNodes.add(newSegmentRoot);
-            //transactionNodes.add(parent);
-            //transactionNodes.add(first);
-            //transactionNodes.add(second);
-            pd.nodeChangeListener.keyNodeChanged(newSegmentRoot);
-            pd.nodeChangeListener.keyNodeChanged(parent);
-            pd.nodeChangeListener.keyNodeChanged(first);
-            pd.nodeChangeListener.keyNodeChanged(second);
-
+            
         } else {
             // Parent is not a segment leaf, so 'node' is not a segment root.
             long secondKlong = node.firstAndSecond(tTime, last, toInsert, first, second);
+            pd.nodeChangeListener.keyNodeChanged(first);
+            pd.nodeChangeListener.keyNodeChanged(second);
+            
             long firstKlong = pd.keyAccessPath.getKlong(depth);
 
             pd.twoKwis[0].klong = firstKlong;
@@ -914,13 +990,6 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             insertKlongs(parent, depth - 1, pd.twoKwis, pd);
 
             assert parent.checkWithMessage() == null : parent.checkWithMessage();
-
-            //transactionNodes.add(parent);
-            //transactionNodes.add(first);
-            //transactionNodes.add(second);
-            pd.nodeChangeListener.keyNodeChanged(parent);
-            pd.nodeChangeListener.keyNodeChanged(first);
-            pd.nodeChangeListener.keyNodeChanged(second);
         }
     }
 
@@ -1142,7 +1211,20 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     }
 }
 
+
 /*
+
+
+131003
+======
+
+Task: move calls like [pd.nodeChangeListener.keyNodeChanged(node)] so it is as close
+to the node change as possible (the first place where it is change or created).
+
+KeyNode.addKlong()
+KeyNode.firstAndSecond()
+TopDs.newSuperRoot()
+
 
 Dev notes
 =========
@@ -1167,6 +1249,5 @@ Use cases:
 3. Set KV - find where to insert klong (or split, ...).
 4. Walk all in-memory nodes.
 5. Warm-up get (before writeLock).
-
 
 */

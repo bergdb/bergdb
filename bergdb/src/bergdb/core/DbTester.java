@@ -754,7 +754,7 @@ public class DbTester {
             clock.setTime(i * 10 + 10);
             db.execute(t);
             
-            byte[] value = db.get(Long.MAX_VALUE, Keys.toSegments(key), getData);
+            byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(key), getData);
             Assert.assertEquals("i=" + i, "v" + key, Util.toString(value));
         }
         return db;
@@ -813,7 +813,7 @@ public class DbTester {
         
         for (long i = 100; i < 113; i++) {
             GetData gd = new GetData();
-            value = db.get(Long.MAX_VALUE, Keys.toSegments("four" + i + "end"), gd);
+            value = db.getOne(Long.MAX_VALUE, Keys.toSegments("four" + i + "end"), gd);
             Assert.assertEquals("i=" + i, "" + i, Util.toString(value));
         }
         
@@ -1346,7 +1346,7 @@ public class DbTester {
         db.execute(t);
         
         GetData g = new GetData();
-        byte[] value = db.get(200, Keys.toSegments("t/1.s"), g);
+        byte[] value = db.getOne(200, Keys.toSegments("t/1.s"), g);
         Assert.assertTrue(value != null);
         String s = Util.toString(value);
         Assert.assertTrue(s.startsWith("tt"));
@@ -1379,7 +1379,7 @@ public class DbTester {
         db.execute(t);
         
         GetData g = new GetData();
-        byte[] value = db.get(200, Keys.toSegments("a"), g);
+        byte[] value = db.getOne(200, Keys.toSegments("a"), g);
         Assert.assertTrue(value != null);
         Assert.assertEquals(8, value.length);
         Assert.assertEquals(10, Bytes.bytesToLongBE(value, 0));
@@ -1390,7 +1390,7 @@ public class DbTester {
         db.execute(t);
         
         g = new GetData();
-        value = db.get(200, Keys.toSegments("a"), g);
+        value = db.getOne(200, Keys.toSegments("a"), g);
         Assert.assertTrue(value != null);
         Assert.assertEquals(8, value.length);
         Assert.assertEquals(20, Bytes.bytesToLongBE(value, 0));
@@ -1411,7 +1411,7 @@ public class DbTester {
         GetData g = new GetData();
         
         try {
-            db.get(200, Keys.toSegments("a"), g);
+            db.getOne(200, Keys.toSegments("a"), g);
         } catch (IllegalDbStateException e) {
             exception = e;
         }

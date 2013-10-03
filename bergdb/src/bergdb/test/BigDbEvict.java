@@ -111,7 +111,7 @@ public class BigDbEvict {
             byte[] key = Util.toBytes(keyString);
             expectedValue[0] = (byte) keyString.hashCode();
             assert gd2.evictData.enableEvict == false;
-            byte[] value = db.get(4*1000*1000, Keys.toSegments(key), gd2);
+            byte[] value = db.getOne(4*1000*1000, Keys.toSegments(key), gd2);
             Assert.assertArrayEquals("i=" + i + ", n=" + n, expectedValue, value);
             i++;
         }
@@ -139,7 +139,7 @@ public class BigDbEvict {
             expectedValue[0] = (byte) keyString.hashCode();
             
             assert gd2.evictData.enableEvict == false;
-            byte[] value = db2.get(4*1000*1000, Keys.toSegments(key), gd2);
+            byte[] value = db2.getOne(4*1000*1000, Keys.toSegments(key), gd2);
             Assert.assertArrayEquals(expectedValue, value);
         }
         

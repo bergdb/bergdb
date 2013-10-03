@@ -98,7 +98,7 @@ public class CacheTester {
         GetData gd1 = new GetData();
         
         {
-            byte[] value = db.get(Long.MAX_VALUE, Keys.toSegments(KeyFactory.crazyKey(23)), gd1);
+            byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(KeyFactory.crazyKey(23)), gd1);
         }
         
         for (int i = 0; i < ids.length*10; i++) {
@@ -107,7 +107,7 @@ public class CacheTester {
         
         { 
             GetData d = new GetData();
-            byte[] value = db.get(Long.MAX_VALUE, Keys.toSegments(KeyFactory.crazyKey(23)), d);
+            byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(KeyFactory.crazyKey(23)), d);
         }
         
         checkCrazyDb(db, ids);

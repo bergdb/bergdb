@@ -87,7 +87,7 @@ public class LoadA {
         while (!stop) {
             int keyInt = r.nextInt(n) * 10;
             byte[] key = KeyFactory.binaryIntKey(keyInt);
-            db.get(Long.MAX_VALUE, Keys.toSegments(key), gd);
+            db.getOne(Long.MAX_VALUE, Keys.toSegments(key), gd);
             
             try {
                 Thread.sleep(10);

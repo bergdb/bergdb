@@ -89,11 +89,11 @@ public class Concurrency2 {
     private void reader() {
         while (!stop) {
             GetData gd = new GetData();
-            byte[] value = db.get(Long.MAX_VALUE, Keys.toSegments("0"), gd);
+            byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments("0"), gd);
             readCount++;
             
             if (value == null) {
-                byte[] value2 = db.get(gd.actualLookupTime, Keys.toSegments("0"), gd);
+                byte[] value2 = db.getOne(gd.actualLookupTime, Keys.toSegments("0"), gd);
                 this.errorCount++;
                 
                 System.out.println("---- ERROR: no value for key '0' ----");

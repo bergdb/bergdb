@@ -220,7 +220,7 @@ public class OneGig {
             }
             
             byte[] key = KeyFactory.binaryIntKey(i);
-            byte[] value = db.get(Long.MAX_VALUE, Keys.toSegments(key), gd);
+            byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(key), gd);
             
             Assert.assertTrue("i=" + i, value != null);
             Assert.assertEquals(valueSize, value.length);

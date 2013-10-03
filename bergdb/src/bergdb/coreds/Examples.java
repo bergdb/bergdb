@@ -16,7 +16,7 @@ public class Examples {
     
     public static void simpleKey() {
         Graph g = Graph.builder().createEmpty(10);
-        PutData pd = new PutData();
+        PutData pd = g.newPutData();
         pd.tt = 20;
         g.putKv(Keys.toSegments("/myKey"), Util.toBytes("v1"), pd);
         g.printGraph(System.out);
@@ -24,7 +24,7 @@ public class Examples {
     
     public static void longerKey() {
         Graph g = Graph.builder().createEmpty(10);
-        PutData pd = new PutData();
+        PutData pd = g.newPutData();
         pd.tt = 20;
         g.putKv(Keys.toSegments("/myLongerKey"), Util.toBytes("v1"), pd);
         g.printGraph(System.out);
@@ -32,7 +32,7 @@ public class Examples {
     
     public static void severalKeys1() {
         Graph g = Graph.builder().maxNodeSize8().createEmpty(10);
-        PutData pd = new PutData();
+        PutData pd = g.newPutData();
         pd.tt = 20;
         
         for (int i = 0; i < 3; i++) {
@@ -44,7 +44,7 @@ public class Examples {
     
     public static void severalKeys2() {
         Graph g = Graph.builder().maxNodeSize8().createEmpty(10);
-        PutData pd = new PutData();
+        PutData pd = g.newPutData();
         pd.tt = 20;
         
         for (int i = 2; i >= 0; i--) {
@@ -56,7 +56,7 @@ public class Examples {
     
     public static void prefixDemo() {
         Graph g = Graph.builder().maxNodeSize8().createEmpty(10);
-        PutData pd = new PutData();
+        PutData pd = g.newPutData();
         pd.tt = 20;
         
         for (int i = 0; i < 4; i++) {

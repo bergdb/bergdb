@@ -60,7 +60,7 @@ import bergdb.stream.MemoryStream;
  * The API of the <i>Core Layer</i> consists of the methods:
  * </p>
  * <ul>
- * <li>get()</li>
+ * <li>getOne()</li>
  * <li>getMany()</li>
  * <li>execute(Transaction)</li>
  * </ul>
@@ -159,14 +159,15 @@ public class Db implements IWarner {
     // ---- Working data for write access ----
     // Must only be accessed from threads holding writeLock.
     
-    private final PutData pd;
+    /** PutData, set to non-null together with graph. */
+    private PutData pd;
     
     /** The nodes updated for the current transaction. To be written to the stream. */
     private final TransactionNodes transactionNodes;
+    
     /** Current transaction while writeLock is held. */
     private Trans trans;
-    /** Access data for the current transaction. */
-    //private long transAccessData;
+    
     /** End stream position of last transaction; used by Db.sync(). */
     private long lastSposOfLastTrans;
 
@@ -226,7 +227,8 @@ public class Db implements IWarner {
 
         evictRandom = new Random(0);
         
-        pd = new PutData();
+        /*
+        pd = Graph.newPutData();
         pd.nodeChangeListener = new Graph.NodeChangeListener() {
             public void topNodeChanged(TopNode node) {
                 transactionNodes.addTopNode(node);
@@ -240,28 +242,7 @@ public class Db implements IWarner {
                 transactionNodes.addKeyNode(node);
             }
         };
-        
-        final Graph.PointerListener existingListener = pd.pointerListener;
-        
-        pd.pointerListener = new Graph.PointerListener() {
-            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
-                existingListener.pointerFollowed(predecessor, pointerIndex, result, pointerType);
-                
-                switch (result.getType()) {
-                case INode.TYPE_TOP_NODE:
-                    graph.makeDirty((TopNode) result);
-                    break;
-                case INode.TYPE_KEY_NODE:
-                    graph.makeDirty((KeyNode) result);
-                    break;
-                }
-            }
-
-            public void superRootAccessed(TopNode superRoot) {
-                graph.makeDirty(superRoot);
-            }
-            
-        };
+        */
         
         transactionNodes = new TransactionNodes();
         keyModSet = new KeyModSet2();
@@ -818,6 +799,21 @@ public class Db implements IWarner {
 
         this.graph = Graph.builder().nodeReader(nodeStream)
                 .createFromStreamNodes(getAccessData(), posMap, nextMap);
+        
+        this.pd = graph.newPutData();
+        this.pd.nodeChangeListener = new Graph.NodeChangeListener() {
+            public void topNodeChanged(TopNode node) {
+                transactionNodes.addTopNode(node);
+            }
+            
+            public void newValueNode(ValueNode node, long[] key) {
+                transactionNodes.addValueNode(node, key);
+            }
+            
+            public void keyNodeChanged(KeyNode node) {
+                transactionNodes.addKeyNode(node);
+            }
+        };
 
         this.state = STATE_ACTIVE;
 
@@ -930,7 +926,7 @@ public class Db implements IWarner {
      * @throws StreamIoException
      *             If there was an i/o error with the database stream.
      */
-    public byte[] get(long lookupTime, long[] keySegments, GetData gd) {
+    public byte[] getOne(long lookupTime, long[] keySegments, GetData gd) {
         //
         // Few assumptions of previous state of gd are assumed. db.kwi must be non-null, however.
         //
@@ -1201,7 +1197,7 @@ public class Db implements IWarner {
 
         // Warm-up code, avoids read from stream while holding writeLock.
         for (Kv kv : t.kvs) {
-            this.get(time, kv.keySegments, t.getData);
+            this.getOne(time, kv.keySegments, t.getData);
         }
 
         t.getData.evictData.enableEvict = enableEvict;
@@ -1255,6 +1251,8 @@ public class Db implements IWarner {
             
             for (int i = 0; i < transactionNodes.valueSize; i++) {
                 long[] key = transactionNodes.keys[i];
+                
+                // TODO E. Implement getChoices here?
                 //getChoices(key, transactionNodes.choices[i], transactionNodes.valueNodes[i].isDelete());
                 //assert Keys.compareKeys(key, followChoices(transactionNodes.choices[i])) == 0 :
                 //    "key:" + Keys.toString(key) + ", choices: " + transactionNodes.choices[i];
@@ -1394,7 +1392,7 @@ public class Db implements IWarner {
             }
 
             if (kv.valueTransformation != null) {
-                final byte[] previous = this.get(trans.transactionTime, kv.keySegments, 
+                final byte[] previous = this.getOne(trans.transactionTime, kv.keySegments, 
                         trans.getData);
                 kv.value = kv.valueTransformation.transform(trans.transactionTime, kv.value,
                         previous);

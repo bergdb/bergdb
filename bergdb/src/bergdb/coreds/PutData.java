@@ -6,6 +6,8 @@ import bergdb.coreds.Graph.PointerListener;
 
 /**
  * Common for one put operation, or a set of put operations (a transaction).
+ * 
+ * @author Frans Lundberg
  */
 public class PutData {
     static final KlongWithPointer[] zeroKwi = new KlongWithPointer[0];
@@ -46,7 +48,8 @@ public class PutData {
     public KeyAccessPath keyAccessPath;
     
     /**
-     * Creates a new PutData object with default values.
+     * Creates a new PutData object directly.
+     * Note: prefer to use Graph.newPutData() or Db.newPutData().
      */
     public PutData() {
         tt = 0;
@@ -63,25 +66,7 @@ public class PutData {
         keyAccessPath = new KeyAccessPath();
         
         nodeChangeListener = Graph.DO_NOTHING_NODE_CHANGE_LISTENER;
-        
-        pointerListener = new Graph.PointerListener() {
-            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) { 
-                if (result != null) {
-                    if (result.getType() == INode.TYPE_KEY_NODE) {
-                        if (predecessor.getType() == INode.TYPE_TOP_NODE) {
-                            keyAccessPath.add(Klong.NULL, (KeyNode) result); 
-                        } else if (predecessor.getType() == INode.TYPE_KEY_NODE) {
-                            KeyNode pre = (KeyNode) predecessor;
-                            KeyNode res = (KeyNode) result;
-                            keyAccessPath.add(pre.getKlong(pointerIndex), res);
-                        }
-                    }
-                }
-            }
-
-            public void superRootAccessed(TopNode superRoot) {}
-        };
-        
+        pointerListener = Graph.DO_NOTHING_POINTER_LISTENER;
         cachePolicy = Graph.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES;
     }
     

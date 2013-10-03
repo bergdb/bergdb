@@ -296,7 +296,7 @@ public class Reclaim implements Db.TransactionListener {
      */
     public void initFromDb() {
         GetData g = new GetData();
-        byte[] value = db.get(Long.MAX_VALUE, tableKey, g);
+        byte[] value = db.getOne(Long.MAX_VALUE, tableKey, g);
         
         if (value != null) {
             String s = Util.toString(value);
@@ -681,10 +681,10 @@ public class Reclaim implements Db.TransactionListener {
                 byte[] value;
                 
                 if (stepLookupTime == -1) {         // BUG Fixed 130131, was "1" instead of "-1".
-                    value = db.get(Long.MAX_VALUE, kvt.key, gd);
+                    value = db.getOne(Long.MAX_VALUE, kvt.key, gd);
                     stepLookupTime = gd.actualLookupTime;
                 } else {
-                    value = db.get(stepLookupTime, kvt.key, gd);
+                    value = db.getOne(stepLookupTime, kvt.key, gd);
                 }
                 
                 // If KV still exists and has not been modified since tStart, it is rewritten

@@ -39,28 +39,14 @@ public class GetData {
     public long followMemoryPointerCount;
     public long followStreamPointerCount;
     
+    /**
+     * Creates a new instance; prefer to use Graph.newGetData() or Db.newGetData().
+     */
     public GetData() {
         kwi = new KlongWithPointer();
         tempPointer = new Pointer();
         evictData = new EvictData();
-        
-        pointerListener = new Graph.PointerListener() {
-            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
-                switch (pointerType) {
-                case Pointer.TYPE_MEMORY:
-                    GetData.this.followMemoryPointerCount++;
-                    break;
-                case Pointer.TYPE_STREAM:
-                    GetData.this.followStreamPointerCount++;
-                    break;
-                default:
-                    assert false : "Bad pointer type: " + pointerType + ".";
-                }
-            }
-
-            public void superRootAccessed(TopNode superRoot) {}
-        };
-        
+        pointerListener = Graph.DO_NOTHING_POINTER_LISTENER;        
         cachePolicy = Graph.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES;
     }
 }

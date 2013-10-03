@@ -11,7 +11,7 @@ public class GraphTester {
     @T
     public static void test0() {
         Graph g = Graph.builder().createEmpty(0);
-        GetData gd = new GetData();
+        GetData gd = g.newGetData();
         
         byte[] result = g.getOne(0, Keys.toSegments("/-k1"), gd);
         
@@ -22,7 +22,7 @@ public class GraphTester {
     public static void test1() {
         // With choices
         Graph g = Graph.builder().createEmpty(0);
-        GetData gd = new GetData();
+        GetData gd = g.newGetData();
         final ArrayList<Integer> choices = new ArrayList<Integer>();
         
         gd.pointerListener = new Graph.PointerListener() {
@@ -44,7 +44,7 @@ public class GraphTester {
     @T
     public static void testPut0() {
         Graph g = Graph.builder().createEmpty(0);
-        PutData pd = new PutData();
+        PutData pd = g.newPutData();
         pd.tt = 10;
         
         g.putKv(Keys.toSegments("/-key"), Util.toBytes("value"), pd);
@@ -67,7 +67,7 @@ public class GraphTester {
     @T
     public static void testPut1() {
         Graph g = Graph.builder().createEmpty(0);
-        PutData pd = new PutData();
+        PutData pd = g.newPutData();
         pd.tt = 10;
         
         g.putKv(Keys.toSegments("/longerKey1"), Util.toBytes("value"), pd);
@@ -102,7 +102,7 @@ public class GraphTester {
         };
         
         Graph g = Graph.builder().maxNodeSize6().createEmpty(0);
-        PutData pd = new PutData();
+        PutData pd = g.newPutData();
         pd.tt = 10;
         
         for (int i = 0; i < kvs.length; i += 2) {
@@ -129,7 +129,7 @@ public class GraphTester {
         // Time split with an ordinary KeyNode as parent.
 
         Graph g = Graph.builder().maxNodeSize6().createEmpty(0);
-        PutData pd = new PutData();
+        PutData pd = g.newPutData();
         pd.accessData = 0;
         
         for (int i = 0; i < 4; i++) {
@@ -159,7 +159,7 @@ public class GraphTester {
     
     public static void main(String[] args) {
         Graph g = Graph.builder().createEmpty(10);
-        PutData pd = new PutData();
+        PutData pd = g.newPutData();
         pd.tt = 20;
         
         g.putKv(Keys.toSegments("/-k1"), Util.toBytes("v1"), pd);

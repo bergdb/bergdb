@@ -74,7 +74,7 @@ public class ConnectionImp implements Connection {
             this.lookupTime = getData.actualLookupTime;
         }
         
-        return db.get(lookupTime, key, getData);
+        return db.getOne(lookupTime, key, getData);
     }
     
     public Database getDatabase() {
@@ -149,7 +149,7 @@ public class ConnectionImp implements Connection {
      * IndexManager, IndexIterBuilderImp.IndexIterator.
      */
     public final <TYPE> TYPE getInternal(long lookupTime, String ikey, Class<TYPE> clazz) {
-        byte[] value = db.get(lookupTime, Keys.toSegments(ikey), getData);
+        byte[] value = db.getOne(lookupTime, Keys.toSegments(ikey), getData);
         
         if (this.freezeLookupTime && this.lookupTime != getData.actualLookupTime) {
             this.lookupTime = getData.actualLookupTime;

@@ -75,7 +75,7 @@ public class Get {
         int limit = n > 10*1000 ? 10*1000 : n;
         
         for (int i = 0; i < limit; i++) {
-            db.get(Long.MAX_VALUE, keys[i], gd);
+            db.getOne(Long.MAX_VALUE, keys[i], gd);
         }
     }
     
@@ -153,7 +153,7 @@ public class Get {
             A: while (!done) {
                 for (int i = 0; i < n; i++) {
                     int index = (i + offset) % n;
-                    byte[] v = db.get(Long.MAX_VALUE, keys[index], gd);
+                    byte[] v = db.getOne(Long.MAX_VALUE, keys[index], gd);
                     count++;
                     assert v != null;
                     if (done) {
