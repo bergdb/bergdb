@@ -410,6 +410,10 @@ public final class ValueNode implements INode {
     public long getPointerAccessData(int pointerIndex) {
         throw new Bug("A ValueNode has no access data, " + this.toString());
     }
+
+    public void accept(NodeVisitor visitor) {
+        visitor.visit(this);
+    }
     
     // ---- Testing ----
     

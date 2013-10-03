@@ -55,7 +55,8 @@ public class Examples {
     }
     
     public static void prefixDemo() {
-        Graph g = Graph.builder().maxNodeSize8().createEmpty(10);
+        Graph g = Graph.builder().createEmpty(10);
+        
         PutData pd = g.newPutData();
         pd.tt = 20;
         

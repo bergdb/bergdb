@@ -156,6 +156,39 @@ public class GraphTester {
         }
     }
     
+    @T
+    public static void testVisit0() {
+        Graph g = Graph.builder().createEmpty(10);
+        final int[] counters = new int[3];
+        
+        g.visitMemoryNodes(new NodeVisitor() {
+            public void visit(TopNode node) { counters[0]++; }
+            public void visit(KeyNode node) { counters[1]++; }
+            public void visit(ValueNode node) { counters[2]++; }
+        });
+        
+        Assert.assertEquals(1, counters[0]);
+        Assert.assertEquals(1, counters[1]);
+        Assert.assertEquals(0, counters[2]);
+    }
+    
+    @T
+    public static void testVisit1() {
+        Graph g = Graph.builder().createEmpty(10);
+        PutData pd = g.newPutData();
+        pd.tt = 20;
+        
+        for (int i = 0; i < 4; i++) {
+            g.putKv(Keys.toSegments("/prefix-" + i), Util.toBytes("v" + i), pd);
+        }
+        
+        StatsNodeVisitor v = new StatsNodeVisitor();
+        g.visitMemoryNodes(v);
+        
+        Assert.assertEquals(1, v.topCount);
+        Assert.assertEquals(2, v.keyCount);
+        Assert.assertEquals(4, v.valueCount);
+    }
     
     public static void main(String[] args) {
         Graph g = Graph.builder().createEmpty(10);

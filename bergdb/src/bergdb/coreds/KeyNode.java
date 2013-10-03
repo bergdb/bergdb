@@ -170,6 +170,10 @@ public class KeyNode implements INode {
         return pos[pointerIndex];
     }
     
+    public void accept(NodeVisitor visitor) {
+        visitor.visit(this);
+    }
+    
     private static final String classname = KeyNode.class.getName();
     
     public String toString() {

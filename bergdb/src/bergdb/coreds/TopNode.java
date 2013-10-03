@@ -507,6 +507,10 @@ public final class TopNode implements INode {
         return result;
     }
     
+    public void accept(NodeVisitor visitor) {
+        visitor.visit(this);
+    }
+    
     public String print() {
         return toString();
     }

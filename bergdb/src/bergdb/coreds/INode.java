@@ -53,6 +53,11 @@ public interface INode {
     public void setPointer(int index, INode node, long spos);
     
     /**
+     * Calls visitor.visit().
+     */
+    public void accept(NodeVisitor visitor);
+    
+    /**
      * Returns a pointer for eviction, or null if there is no in-memory
      * pointer to return. Any non-null pointer returned must be an in-memory
      * pointer.

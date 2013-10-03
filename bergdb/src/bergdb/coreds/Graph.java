@@ -2,7 +2,9 @@ package bergdb.coreds;
 
 import java.io.PrintStream;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import bergdb.common.Bug;
 import bergdb.coreds.GetMany.StopCondition;
@@ -181,6 +183,35 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     }
     
     /**
+     * Visits all nodes cached in memory.
+     */
+    public void visitMemoryNodes(NodeVisitor visitor) {
+        Set<INode> visited = new HashSet<INode>();
+        INode start = topDs.getSuperRoot();
+        visitNodeWithChildren(visitor, visited, start);
+    }
+    
+    private void visitNodeWithChildren(NodeVisitor visitor, Set<INode> visited, INode node) {
+        if (visited.contains(node)) {
+            return;
+        } else {
+            visited.add(node);
+        }
+        
+        node.accept(visitor);
+        
+        Pointer p = new Pointer();
+        
+        int count = node.getPointerCount();
+        for (int i = 0; i < count; i++) {
+            node.getPointer(i, p);
+            if (p.isMem()) {
+                visitNodeWithChildren(visitor, visited, p.getNode());
+            }
+        }
+    }
+    
+    /**
      * Returns the super root node.
      * Use for testing only.
      */
@@ -214,7 +245,6 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     public final DirtyNodes getDirtyNodes() {
         return dirtyNodes;
     }
-    
 
     /**
      * Makes a TopNode dirty if not already dirty. This method returns immediately
