@@ -619,6 +619,8 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
                 segmentRoot = setNode(segmentRoot, key[i], pd);
             }
         }
+        
+        
     }
     
     /**
@@ -718,9 +720,6 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
                 insertKlongs(current, pd.keyAccessPath.size - 1, pd.oneKwi, pd);
             }
             
-            //pd.nodeChangeListener.keyNodeChanged(current);
-            //pd.nodeChangeListener.keyNodeChanged(child);
-            
             result = child;
             
         } else {
@@ -813,9 +812,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
                     node.addKlong(tTime, union, null, pd.accessData);
                     pd.nodeChangeListener.keyNodeChanged(node);
                     
-                } else {
-                    // XXX How does this work? last is not dirty, how about the predecessors?
-                    
+                } else {                    
                     KeyNode last = node.lastVersionGivenDel(sz, tTime, union);
                     pd.nodeChangeListener.keyNodeChanged(last);
                     
@@ -878,6 +875,11 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
         }
     }
     
+    /**
+     * This is a central and important method. 
+     * All calls to splitNode() and replaceNodeWithLastVersion() goes through this method.
+     * This is an "hourglass method" - multiple callers and multiple callees.
+     */
     private void handleLastVersionOfFullNode(final KeyNode node, final int depth,
             final KlongWithPointer[] toInsert, final long tTime, KeyNode last, PutData pd) {
         final int lastSize = last.size;
@@ -941,10 +943,10 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      * 2. The parent is a segment leaf (the full node is a segment root).
      * 3. The parent is not a segment leaf.
      * 
-     * @param node  The node that is full and needs to be split.
-     * @param last
-     * @param depth
-     * @param toInsert
+     * @param node    The node that is full and needs to be split.
+     * @param last    The last version of 'node'.
+     * @param depth   The current depth in the tree, used together with pd.getParent().
+     * @param toInsert  Klongs to insert.
      */
     private void splitNode(final KeyNode node, KeyNode last, final int depth,
             final KlongWithPointer[] toInsert, PutData pd) {

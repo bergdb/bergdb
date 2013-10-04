@@ -84,6 +84,8 @@ public class PutData {
     }
     
     public KeyNode getParent(int depth) {
+        assert (depth >= 0) : "depth = " + depth;
+        
         int parentDepth = depth - 1;
         return parentDepth < 0 ? null : keyAccessPath.get(parentDepth);
     }

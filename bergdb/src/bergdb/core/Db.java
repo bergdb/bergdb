@@ -1078,62 +1078,6 @@ public class Db implements IWarner {
         graph.getMany(g);
     }
 
-    /**
-     * Same as "execute(b.build());", AVOID using this method in new code, 
-     * use execute(Trans).
-     * Db is selfish, should provide minimal interface, not convinience methods.
-     */
-    public final void execute(Trans.Builder b) {
-        //
-        // This little method does not comply with the minimum Core Layer API rule.
-        // Should be be avoided, but currently (2012-12) called from over 100 places.
-        //
-        execute(b.build());
-    }
-
-    /**
-     * Executes a transaction using the STM approach. Assumes: t.kvs is sorted.
-     * 
-     * @throws IllegalDbStateException
-     *             If start() has not been called or database is stopping.
-     * @throws RerunException
-     *             Thrown if the transaction was cancelled and should be rerun
-     *             because one or more KVs with a key in the read key hash set,
-     *             were changed after the read time of the transaction. STM
-     *             approach.
-     * @throws StreamFormatException
-     *             If the database stream is corrupt.
-     * @throws StreamIoException
-     *             If there was an i/o error with the database stream.
-     * @throws InternalDataException
-     *             If BergDB internal data in the database is corrupt.
-     */
-    public final void execute(final Trans t) {
-        //
-        // Executes a KV set request as an ACID transaction.
-        //
-        // We make sure all readers have a read time that is strictly less than
-        // t.transactionTime
-        // while the synchronized(writeLock) clause is executing. This is
-        // handled by dbClock.
-        //
-
-        // Makes sure writes from startup and execute() are visible.
-        // We do not hold DB.writeLock yet.
-        synchronized (readSynch) {}
-
-        int myState = state;
-        if (myState != STATE_ACTIVE) {
-            if (myState == STATE_STOPPING) {
-                throw new DbStoppingException("Cannot call getMany() when DB is stopping.");
-            } else {
-                throw new IllegalDbStateException("Cannot call getMany() when DB state is " 
-                        + getStateName(myState) + ".");
-            }
-        }
-
-        executeInner(t, false);
-    }
     
     /**
      * Waits until D1 durability has been achieved for stream position 'spos'.
@@ -1245,7 +1189,64 @@ public class Db implements IWarner {
         //        + counters[0] + ", " + counters[1] + ", " + counters[2] + ", " + counters[3] + ")");
         //System.out.println("Db.checkNodes(): last trans size: " + lastTransSize);
     }
+    
+    /**
+     * Same as "execute(b.build());", AVOID using this method in new code, 
+     * use execute(Trans).
+     * Db is selfish, should provide minimal interface, not convinience methods.
+     */
+    public final void execute(Trans.Builder b) {
+        //
+        // This little method does not comply with the minimum Core Layer API rule.
+        // Should be be avoided, but currently (2012-12) called from over 100 places.
+        //
+        execute(b.build());
+    }
 
+    /**
+     * Executes a transaction using the STM approach. Assumes: t.kvs is sorted.
+     * 
+     * @throws IllegalDbStateException
+     *             If start() has not been called or database is stopping.
+     * @throws RerunException
+     *             Thrown if the transaction was cancelled and should be rerun
+     *             because one or more KVs with a key in the read key hash set,
+     *             were changed after the read time of the transaction. STM
+     *             approach.
+     * @throws StreamFormatException
+     *             If the database stream is corrupt.
+     * @throws StreamIoException
+     *             If there was an i/o error with the database stream.
+     * @throws InternalDataException
+     *             If BergDB internal data in the database is corrupt.
+     */
+    public final void execute(final Trans t) {
+        //
+        // Executes a KV set request as an ACID transaction.
+        //
+        // We make sure all readers have a read time that is strictly less than
+        // t.transactionTime
+        // while the synchronized(writeLock) clause is executing. This is
+        // handled by dbClock.
+        //
+
+        // Makes sure writes from startup and execute() are visible.
+        // We do not hold DB.writeLock yet.
+        synchronized (readSynch) {}
+
+        int myState = state;
+        if (myState != STATE_ACTIVE) {
+            if (myState == STATE_STOPPING) {
+                throw new DbStoppingException("Cannot call getMany() when DB is stopping.");
+            } else {
+                throw new IllegalDbStateException("Cannot call getMany() when DB state is " 
+                        + getStateName(myState) + ".");
+            }
+        }
+
+        executeInner(t, false);
+    }
+    
     /**
      * @throws RerunException
      * @throws StreamFormatException
@@ -1282,6 +1283,7 @@ public class Db implements IWarner {
         
         synchronized (writeLock) {
             if (!isPrimordial) assert transactionNodes.size() == 0;
+            this.pd.splitCount = 0;
             
             this.trans = t;
 
@@ -1339,11 +1341,11 @@ public class Db implements IWarner {
             addNodesToStream();
             this.lastSposOfLastTrans = this.trans.lastSpos;
             this.sposOfLastTrans = this.trans.spos;
-
+            
             clearTransMemory();
 
             // 1301 Frans. The following line moved to inside the synchronized
-            // (writeLock) block to KISS the reclaim stuff. However, it does not have to
+            // (writeLock) block to KISS the reclaim stuff. However, it does not really have to
             // belong to the writeLock code block.
             reclaimTransactionListener.transactionCompleted(t);
         }
@@ -1427,12 +1429,7 @@ public class Db implements IWarner {
     private void clearTransMemory() {
         assert Thread.holdsLock(writeLock);
         this.trans = null;
-        //topAccessPath.clear();
-        //keyAccessPath.clear();
         transactionNodes.clear();
-        //kwi.node = null;
-        //oneKwi[0].node = null;
-        //tempPointer.node = null;
     }
 
     /**
