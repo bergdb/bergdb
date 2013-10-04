@@ -249,7 +249,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      * Makes a TopNode dirty if not already dirty. This method returns immediately
      * if the node is dirty already. Caller must hold Db.writeLock.
      */
-    public final void makeDirty(TopNode n) {        
+    public final void ensureDirty(TopNode n) {        
         if (!n.isDirty) {
             n.isDirty = true;
             dirtyNodes.add(n);
@@ -260,7 +260,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      * Makes a KeyNode dirty if not already dirty. This method returns immediately
      * if the node is dirty already. Caller must hold Db.writeLock.
      */
-    public final void makeDirty(KeyNode n) {
+    public final void ensureDirty(KeyNode n) {
         if (!n.isDirty) {
             n.isDirty = true;
             dirtyNodes.add(n);
@@ -318,17 +318,17 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
                     
                     switch (result.getType()) {
                     case INode.TYPE_TOP_NODE:
-                        makeDirty((TopNode) result);
+                        ensureDirty((TopNode) result);
                         break;
                     case INode.TYPE_KEY_NODE:
-                        makeDirty((KeyNode) result);
+                        ensureDirty((KeyNode) result);
                         break;
                     }
                 }
             }
 
             public void superRootAccessed(TopNode superRoot) {
-                makeDirty(superRoot);
+                ensureDirty(superRoot);
             }
         };
         
