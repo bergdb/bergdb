@@ -20,7 +20,7 @@ public class NodeStreamTester {
         Db db = Db.builder().testSetup().mainStream(mstream).startupDistance(10000).clock(clock).build();
         db.start();
         clock.setTime(10);
-        db.execute(Trans.builder().set("admin1", "Sanna").build());
+        db.execute(Trans.builder().put("admin1", "Sanna").build());
 
         byte[] value;
         value = DbUtil.get(db, 99, "admin1");
@@ -49,7 +49,7 @@ public class NodeStreamTester {
         Db db = Db.builder().testSetup().mainStream(mstream).clock(clock).build();
         db.start();
         clock.setTime(10);
-        db.execute(Trans.builder().set("admin10", "Sanna").build());
+        db.execute(Trans.builder().put("admin10", "Sanna").build());
         
         value = DbUtil.get(db, 99, "admin10");
         Assert.assertArrayEquals(Util.toBytes("Sanna"), value);
@@ -73,9 +73,9 @@ public class NodeStreamTester {
         Db db = Db.builder().testSetup().mainStream(s).clock(clock).build();
         db.start();
         clock.setTime(10);
-        db.execute(Trans.builder().set("admin1", "Sanna1").build());
+        db.execute(Trans.builder().put("admin1", "Sanna1").build());
         clock.setTime(20);
-        db.execute(Trans.builder().set("admin2", "Sanna2").build());
+        db.execute(Trans.builder().put("admin2", "Sanna2").build());
         db.sync();
         db = null;
         
@@ -99,9 +99,9 @@ public class NodeStreamTester {
         AppendOnlyStream s = new MemoryStream();
         Db db = Db.builder().testSetup().mainStream(s).build();
         db.start();
-        db.execute(Trans.builder().set("admin1", "a1").set("admin2", "a2"));
-        db.execute(Trans.builder().set("admin3", "a3"));
-        db.execute(Trans.builder().set("admin4", "a4"));
+        db.execute(Trans.builder().put("admin1", "a1").put("admin2", "a2"));
+        db.execute(Trans.builder().put("admin3", "a3"));
+        db.execute(Trans.builder().put("admin4", "a4"));
         
         NodeStream.TransIterator ti = db.getStream().new TransIterator(0);
         

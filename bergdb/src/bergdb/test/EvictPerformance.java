@@ -78,7 +78,7 @@ public class EvictPerformance {
                 Trans.Builder b = Trans.builder();
                 for (int j = 0; j < bs; j++) {
                     byte[] key = KeyFactory.binaryIntKey(i * bs + j);
-                    b.set(key, value);
+                    b.put(key, value);
                 }
                 Trans t = b.build();
                 db.execute(t);

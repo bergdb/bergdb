@@ -17,7 +17,7 @@ import bergdb.stream.MemoryStream;
  * <p>A 'night' test. Creates 1.2M Accounts. 
  * Tests that all are there when database restarted. 
  * This test recreates a bug detected by Frans 130925.
- * We call the bug: bug-130925.</p>
+ * Bug id: bug-130925.</p>
  * 
  * @author Frans Lundberg
  */

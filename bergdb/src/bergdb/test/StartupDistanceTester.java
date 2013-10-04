@@ -128,7 +128,7 @@ public class StartupDistanceTester {
     private void createAccounts() {
         Trans.Builder b = Trans.builder();
         for (int i = 0; i < noOfAccounts; i++) {
-            b.set("" + i, "0");
+            b.put("" + i, "0");
         }
         trans = b.build();
         db.execute(trans);
@@ -162,8 +162,8 @@ public class StartupDistanceTester {
             trans = Trans.builder()
                     .lookupTime(lookupTime)
                     .keyRead(to).keyRead(from)
-                    .set(from, "" + (fromBalance - 1))
-                    .set(to, "" + (toBalance + 1)).build();
+                    .put(from, "" + (fromBalance - 1))
+                    .put(to, "" + (toBalance + 1)).build();
             
             try {
                 db.execute(trans);

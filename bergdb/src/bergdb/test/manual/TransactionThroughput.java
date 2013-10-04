@@ -61,7 +61,7 @@ public class TransactionThroughput {
         for (int i = 0; i < n; i++) {
             byte[] key = KeyFactory.binaryIntKey(random.nextInt());
             byte[] value = new byte[0];
-            transactions[i] = Trans.builder().set(key, value).build();
+            transactions[i] = Trans.builder().put(key, value).build();
         }
         
         Thread[] threads = new Thread[threadCount];

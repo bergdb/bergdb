@@ -412,7 +412,7 @@ public class RwEnvironmentImp implements RwEnvironment {
             if (value == null) {
                 b.delete(key);
             } else {
-                b.set(key, kt, value, null);
+                b.put(key, kt, value, null);
             }
         }
         
@@ -423,7 +423,7 @@ public class RwEnvironmentImp implements RwEnvironment {
             if (info.dbo == null) {
                 b.delete(key);
             } else {
-                b.set(Keys.toSegments(key), info.kt, info.dbo.getBytes(), null);
+                b.put(Keys.toSegments(key), info.kt, info.dbo.getBytes(), null);
             }
         }
         
@@ -436,7 +436,7 @@ public class RwEnvironmentImp implements RwEnvironment {
             if (value == null) {
                 b.delete(key);
             } else {
-                b.set(key, kt, value, null);
+                b.put(key, kt, value, null);
             }
         }
         

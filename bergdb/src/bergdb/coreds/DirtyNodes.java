@@ -10,10 +10,18 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
 /**
- * Simple implementation of the dirty node set, nodes are
+ * <p>Simple implementation of the dirty node set, nodes are
  * stored in one sorted spos-to-TopNode map and one sorted spos-to-KeyNode map.
- * Synch note: this class itself is not thread-safe.
- * Access is protected externally by Db.writeLock.
+ * Synch note: this class itself is not thread-safe. 
+ * Access is protected externally by Db.writeLock.</p>
+ * 
+ * <p>The nodes on this set are dirty when added to the set, but the set can still 
+ * contain nodes that are not dirty. If a node in this set is written to stream, 
+ * it will no longer be dirty, but it will still remain in this set.
+ * The idea is that this set only handles adding nodes until they get too dirty
+ * (if still dirty) when they are removed. If removing of single nodes is omitted, this
+ * data structure could be more specialized and possibly perform better
+ * (current implementation using TreeMap would allow removing nodes, however).</p>
  * 
  * @author Frans Lundberg
  */
@@ -40,15 +48,35 @@ public class DirtyNodes {
      * Caller must hold DB.writeLock.
      * This method is only used for monitoring.
      */
-    public int getSize() {
+    public final int getSize() {
         return topNodes.size() + keyNodes.size();
+    }
+    
+    /** For testing only. */
+    public boolean contains(TopNode node) {
+        return topNodes.containsKey(node.spos);
+    }
+    
+    /** For testing only. */
+    public boolean contains(KeyNode node) {
+        return keyNodes.containsKey(node.spos);
+    }
+    
+    /** For testing only. */
+    public TopNode getTopNode(long spos) {
+        return topNodes.get(spos);
+    }
+    
+    /** For testing only. */
+    public KeyNode getKeyNode(long spos) {
+        return keyNodes.get(spos);
     }
     
     /**
      * Adds 'node' to the node collection if: node.getSpos() != Spos.NULL.
      * Caller must hold DB.writeLock.
      */
-    public void add(TopNode node) {
+    public final void add(TopNode node) {
         assert node.isDirty == true;
         long pos = node.getSpos();
         if (pos != Spos.NULL) {   
@@ -60,7 +88,7 @@ public class DirtyNodes {
      * Adds 'node' to the node collection if: node.getSpos() != Spos.NULL.
      * Caller must hold DB.writeLock.
      */
-    public void add(KeyNode node) {
+    public final void add(KeyNode node) {
         assert node.isDirty == true;
         long pos = node.getSpos();
         if (pos != Spos.NULL) {   
@@ -88,16 +116,16 @@ public class DirtyNodes {
             TopNode node = entry.getValue();
             long keyPos = entry.getKey().longValue();
             
+            // Happens when node was written to stream after added to dirty nodes.
             if (keyPos != node.getSpos()) {
                 iter.remove();
                 continue;
             }
             
             if (node.getSpos() < dirtyLimit) {
-                list.addTopNode(node);
-                if (remove) {
-                    iter.remove();
-                }
+                if (node.isDirty) list.addTopNode(node);
+                if (remove) iter.remove();
+                
             } else {
                 break;
                 // keys are sorted, if keyPos >= dirtyLimit, the rest of the keys will also be
@@ -114,16 +142,16 @@ public class DirtyNodes {
             KeyNode node = entry.getValue();
             long keyPos = entry.getKey().longValue();
             
+            // Happens when node was written to stream after added to dirty nodes.
             if (keyPos != node.getSpos()) {
                 it.remove();
                 continue;
             }
             
             if (node.getSpos() < dirtyLimit) {
-                list.addKeyNode(node);
-                if (remove) {
-                    it.remove();
-                }
+                if (node.isDirty) list.addKeyNode(node);
+                if (remove) it.remove();
+                
             } else {
                 break;
                 // keys are sorted, if keyPos >= dirtyLimit, the rest of the keys will also be

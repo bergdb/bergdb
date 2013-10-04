@@ -50,7 +50,7 @@ public class LoadA {
                 int keyInt = i * batchSize + j;
                 keyInt = keyInt * 10;    // For possibility of inserts between existing keys
                 byte[] key = KeyFactory.binaryIntKey(keyInt);
-                b.set(key, key);   // key and value is the same
+                b.put(key, key);   // key and value is the same
             }
             Trans t = b.build();
             db.execute(t);
@@ -106,7 +106,7 @@ public class LoadA {
         while (!stop) {
             int keyInt = r.nextInt(n) * 10;
             byte[] key = KeyFactory.binaryIntKey(keyInt);
-            db.execute(Trans.builder().set(key, value).build());
+            db.execute(Trans.builder().put(key, value).build());
             
             try {
                 Thread.sleep(10);

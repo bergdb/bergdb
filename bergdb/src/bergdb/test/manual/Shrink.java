@@ -32,7 +32,7 @@ public class Shrink {
         while (index < n) {
             Trans.Builder b = Trans.builder();
             for (int i = 0; i < 100; i++) {
-                b.set("" + index, value10k);
+                b.put("" + index, value10k);
                 index++;
             }
             
@@ -71,7 +71,7 @@ public class Shrink {
         index = 0;
         while (index < n) {
             Trans.Builder b = Trans.builder();
-            b.set("k0", value10k);
+            b.put("k0", value10k);
             Trans trans = b.build();
             db.execute(trans);
             

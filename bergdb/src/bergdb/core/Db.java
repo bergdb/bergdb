@@ -24,6 +24,7 @@ import bergdb.coreds.INode;
 import bergdb.coreds.KeyNode;
 import bergdb.coreds.Keys;
 import bergdb.coreds.Klong;
+import bergdb.coreds.NodeVisitor;
 import bergdb.coreds.Pointer;
 import bergdb.coreds.PutData;
 import bergdb.coreds.Spos;
@@ -171,6 +172,10 @@ public class Db implements IWarner {
     
     /** End stream position of last transaction; used by Db.sync(). */
     private long lastSposOfLastTrans;
+    
+    /** First spos of last transaction to have executed. */
+    private long sposOfLastTrans;
+    
 
     // ---- Counters, statistics, aux state ----
     //
@@ -362,7 +367,7 @@ public class Db implements IWarner {
         assert newDistance < startupDistance;
         
         this.startupDistance = newDistance;
-        execute(Trans.builder().set(Db.DUMMY_KEY, new byte[0]).build());
+        execute(Trans.builder().put(Db.DUMMY_KEY, new byte[0]).build());
         nodeStream.getMetaBlock().setStartupDistance(newDistance);
     }
     
@@ -519,7 +524,7 @@ public class Db implements IWarner {
         final Thread syncThread = new Thread(new Runnable() {
             public void run() {
                 storageManager.syncReplica(ss, progressListener);
-                Trans trans = Trans.builder().set(DUMMY_KEY, new byte[0]).build();
+                Trans trans = Trans.builder().put(DUMMY_KEY, new byte[0]).build();
                 Db.this.execute(trans);
                 Db.this.waitForD2(trans.lastSpos);
 
@@ -779,8 +784,6 @@ public class Db implements IWarner {
 
         dbClock.setLastTransactionTime(lastTransactionTime);
 
-        // XXX set maxNodeSize, or drop it all together from Db builder,
-        // or minimize the number of choices in Db.Builder.
         Graph.Builder b = Graph.builder();
         b.nodeReader(nodeStream);
         switch (builder.maxNodeSize) {
@@ -1172,6 +1175,76 @@ public class Db implements IWarner {
         
         waitForD2(spos);
     }
+    
+    /**
+     * This method visits all nodes in memory to check that there state is consistent
+     * and that they are not too dirty.
+     * This method locks on both writeLock and readSynch. Use for testing only.
+     */
+    public void checkNodes() throws AssertionError {
+        synchronized (writeLock) {
+            synchronized (readSynch) {
+                checkNodeInner();
+            }
+        }
+    }
+    
+    private void checkNodeInner() throws AssertionError {
+        final long[] counters = new long[4];
+            // top, key, value, dirty, total
+        final long dirtyLimit = this.getDirtyLimit();
+        long lastTransSize = this.lastSposOfLastTrans - this.sposOfLastTrans;
+        final long dLimit = dirtyLimit - lastTransSize;
+        
+        NodeVisitor visitor = new NodeVisitor() {
+            public void visit(TopNode node) {
+                counters[0]++;
+                checkTooDirty(node);
+            }
+
+            public void visit(KeyNode node) {
+                counters[1]++;
+                node.check();    // throws AssertionError if bad.
+                checkTooDirty(node);
+            }
+
+            public void visit(ValueNode node) {
+                counters[2]++;
+                checkTooDirty(node);
+            }
+            
+            private void checkTooDirty(INode node) {
+                long spos = node.getSpos();
+                boolean isDirty = node.isDirty();
+                
+                if (spos == Spos.NULL) {
+                    throw new AssertionError("spos of node is Spos.NULL. node: " + node);
+                }
+                
+                if (isDirty) counters[3]++;
+                
+                if (isDirty && spos <= dLimit) {
+                    long length = Db.this.getStreamLength();
+                    String message = "Node too dirty. Stream length: " + length 
+                            + ", Dirty limit: " + dirtyLimit + ", node: " + node;
+                    
+                    throw new AssertionError(message);
+                }
+                
+                //if (!isDirty && spos <= dLimit) {
+                //    System.out.println("Non-dirty, dLimit=" + dLimit + ", node:" + node);
+                //}
+            }
+        };
+        
+        graph.visitMemoryNodes(visitor);
+        
+        //long total = counters[0] + counters[1] + counters[2];
+        //
+        //System.out.println("Db.checkNodes(): " + total + " nodes (" 
+        //        + counters[0] + ", " + counters[1] + ", " + counters[2] + ", " + counters[3] + ")");
+        //System.out.println("Db.checkNodes(): last trans size: " + lastTransSize);
+    }
 
     /**
      * @throws RerunException
@@ -1191,7 +1264,7 @@ public class Db implements IWarner {
         // misses while synchronizing on this.writeLock. We want to minimize the time holding
         // this.writeLock. However, if we do write transactions from a single thread anyway, it
         // would be better to void these get operations (would save 10-20% CPU for execute()).
-        // NOTE Room for a small optimization. A special warmup() method could be more performant
+        // NOTE Room for a minor optimization. A special warmup() method could be more performant
         // than the general-purpose, public get() method.
         //
         
@@ -1265,6 +1338,7 @@ public class Db implements IWarner {
             
             addNodesToStream();
             this.lastSposOfLastTrans = this.trans.lastSpos;
+            this.sposOfLastTrans = this.trans.spos;
 
             clearTransMemory();
 
@@ -1422,10 +1496,6 @@ public class Db implements IWarner {
         if (evictBoss.evictOrNot()) {
             evict(ed);
         }
-    }
-    
-    public void flushCache() {
-        
     }
 
     /**
@@ -2047,7 +2117,7 @@ public class Db implements IWarner {
             byte[] value = new byte[100*1000];
             MemoryStream stream = new MemoryStream();
             Db db = Db.builder().mainStream(stream).startupDistance(1*1000000).start();
-            Trans trans = Trans.builder().set("1", value).build();
+            Trans trans = Trans.builder().put("1", value).build();
             db.execute(trans);
             
             Assert.assertTrue(trans.lastSpos < RecoverableStream.META_BLOCK_DISTANCE);
@@ -2060,7 +2130,7 @@ public class Db implements IWarner {
             int index = 10;
             
             while (trans.lastSpos <= RecoverableStream.META_BLOCK_DISTANCE) {
-                trans = Trans.builder().set("" + index, value).build();
+                trans = Trans.builder().put("" + index, value).build();
                 db.execute(trans);
                 index++;
             }

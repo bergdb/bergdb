@@ -130,7 +130,6 @@ public class GraphTester {
 
         Graph g = Graph.builder().maxNodeSize6().createEmpty(0);
         PutData pd = g.newPutData();
-        pd.accessData = 0;
         
         for (int i = 0; i < 4; i++) {
             String keyString = "account-id-" + i;

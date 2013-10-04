@@ -35,7 +35,7 @@ public class Huge {
         Db db = Db.builder().mainStream(stream).startupDistance(40*1000000).build();
         db.start();
         
-        db.execute(Trans.builder().set("n", "" + n).build());
+        db.execute(Trans.builder().put("n", "" + n).build());
         System.out.println("Wrote n = " + n + " to database.");
         
         int kvCount = 0;
@@ -65,7 +65,7 @@ public class Huge {
                 int keyInt = i * batchSize + j;
                 keyInt = keyInt * 2;    // For possibility of inserts between existing keys
                 byte[] key = KeyFactory.binaryIntKey(keyInt);
-                b.set(key, key);   // key and value is the same
+                b.put(key, key);   // key and value is the same
             }
             Trans t = b.build();
             db.execute(t);

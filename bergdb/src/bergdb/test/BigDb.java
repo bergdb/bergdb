@@ -84,7 +84,7 @@ public class BigDb {
             byte[] key = Util.toBytes(keyString);
             byte[] value = new byte[valueSize];
             value[0] = (byte) keyString.hashCode();
-            Trans t = Trans.builder().set(key, value).build();
+            Trans t = Trans.builder().put(key, value).build();
             db.execute(t);
             i++;
         }

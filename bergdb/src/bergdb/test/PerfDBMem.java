@@ -33,7 +33,7 @@ public class PerfDBMem {
             for (int j = 0; j < batchSize; j++) {
                 String key = "" + (i*batchSize + j);
                 byte[] value = new byte[valueSize];
-                b.set(key, value);
+                b.put(key, value);
             }
             Trans t = b.build();
             db.execute(t);

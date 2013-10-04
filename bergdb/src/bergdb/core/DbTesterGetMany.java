@@ -29,11 +29,11 @@ public class DbTesterGetMany {
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
-        db.execute(Trans.builder().set("c", "3"));
+        db.execute(Trans.builder().put("c", "3"));
         clock.setTime(20);
-        db.execute(Trans.builder().set("b", "2"));
+        db.execute(Trans.builder().put("b", "2"));
         clock.setTime(30);
-        db.execute(Trans.builder().set("a", "1"));
+        db.execute(Trans.builder().put("a", "1"));
         
         GetMany d = new GetMany();
         d.startKey = null;
@@ -69,11 +69,11 @@ public class DbTesterGetMany {
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
-        db.execute(Trans.builder().set("a", "1"));
+        db.execute(Trans.builder().put("a", "1"));
         clock.setTime(20);
-        db.execute(Trans.builder().set("b", "2"));
+        db.execute(Trans.builder().put("b", "2"));
         clock.setTime(30);
-        db.execute(Trans.builder().set("c", "3"));
+        db.execute(Trans.builder().put("c", "3"));
         
         GetMany d = new GetMany();
         d.startKey = null;
@@ -104,11 +104,11 @@ public class DbTesterGetMany {
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
-        db.execute(Trans.builder().set("segment/c", "3"));
+        db.execute(Trans.builder().put("segment/c", "3"));
         clock.setTime(20);
-        db.execute(Trans.builder().set("segment/b", "2"));
+        db.execute(Trans.builder().put("segment/b", "2"));
         clock.setTime(30);
-        db.execute(Trans.builder().set("segment/a", "1"));
+        db.execute(Trans.builder().put("segment/a", "1"));
         
         GetMany d = new GetMany();
         d.startKey = null;
@@ -142,11 +142,11 @@ public class DbTesterGetMany {
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
-        db.execute(Trans.builder().set("segment/c", "3"));
+        db.execute(Trans.builder().put("segment/c", "3"));
         clock.setTime(20);
-        db.execute(Trans.builder().set("segment/b", "2"));
+        db.execute(Trans.builder().put("segment/b", "2"));
         clock.setTime(30);
-        db.execute(Trans.builder().set("segment/a", "1"));
+        db.execute(Trans.builder().put("segment/a", "1"));
         
         GetMany d = new GetMany();
         d.startKey = null;
@@ -179,11 +179,11 @@ public class DbTesterGetMany {
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
-        db.execute(Trans.builder().set("c", "3"));
+        db.execute(Trans.builder().put("c", "3"));
         clock.setTime(20);
-        db.execute(Trans.builder().set("b", "2"));
+        db.execute(Trans.builder().put("b", "2"));
         clock.setTime(30);
-        db.execute(Trans.builder().set("a", "1"));
+        db.execute(Trans.builder().put("a", "1"));
         
         GetMany d = new GetMany();
         d.startKey = null;
@@ -230,11 +230,11 @@ public class DbTesterGetMany {
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
-        db.execute(Trans.builder().set("c", "3"));
+        db.execute(Trans.builder().put("c", "3"));
         clock.setTime(20);
-        db.execute(Trans.builder().set("b", "2"));
+        db.execute(Trans.builder().put("b", "2"));
         clock.setTime(30);
-        db.execute(Trans.builder().set("a", "1"));
+        db.execute(Trans.builder().put("a", "1"));
         
         GetMany d = new GetMany();
         d.startKey = null;
@@ -285,11 +285,11 @@ public class DbTesterGetMany {
         Db db = Db.builder().testSetup().clock(clock).mainStream(stream).start();
         
         clock.setTime(10);
-        db.execute(Trans.builder().set("segment/c", "3"));
+        db.execute(Trans.builder().put("segment/c", "3"));
         clock.setTime(20);
-        db.execute(Trans.builder().set("segment/b", "2"));
+        db.execute(Trans.builder().put("segment/b", "2"));
         clock.setTime(30);
-        db.execute(Trans.builder().set("segment/a", "1"));
+        db.execute(Trans.builder().put("segment/a", "1"));
         db.sync();
         db = null;
         
@@ -323,11 +323,11 @@ public class DbTesterGetMany {
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
-        db.execute(Trans.builder().set("c", "3"));
+        db.execute(Trans.builder().put("c", "3"));
         clock.setTime(20);
-        db.execute(Trans.builder().set("b", "2"));
+        db.execute(Trans.builder().put("b", "2"));
         clock.setTime(30);
-        db.execute(Trans.builder().set("a", "1"));
+        db.execute(Trans.builder().put("a", "1"));
         
         GetMany d = new GetMany();
         d.startKey = null;
@@ -359,11 +359,11 @@ public class DbTesterGetMany {
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
-        db.execute(Trans.builder().set("e", "3"));
+        db.execute(Trans.builder().put("e", "3"));
         clock.setTime(20);
-        db.execute(Trans.builder().set("c", "2"));
+        db.execute(Trans.builder().put("c", "2"));
         clock.setTime(30);
-        db.execute(Trans.builder().set("a", "1"));
+        db.execute(Trans.builder().put("a", "1"));
         
         GetMany d = new GetMany();
         d.startKey = null;
@@ -398,13 +398,13 @@ public class DbTesterGetMany {
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
-        db.execute(Trans.builder().set("segment/e", "3"));
+        db.execute(Trans.builder().put("segment/e", "3"));
         clock.setTime(20);
-        db.execute(Trans.builder().set("segment/c", "2"));
+        db.execute(Trans.builder().put("segment/c", "2"));
         clock.setTime(30);
         db.execute(Trans.builder()
-                .set("a", "1")
-                .set("z", "4"));
+                .put("a", "1")
+                .put("z", "4"));
         
         GetMany d = new GetMany();
         d.startKey = null;
@@ -433,13 +433,13 @@ public class DbTesterGetMany {
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
-        db.execute(Trans.builder().set("segment/e", "3"));
+        db.execute(Trans.builder().put("segment/e", "3"));
         clock.setTime(20);
-        db.execute(Trans.builder().set("segment/c", "2"));
+        db.execute(Trans.builder().put("segment/c", "2"));
         clock.setTime(30);
         db.execute(Trans.builder()
-                .set("a", "1")
-                .set("z", "4"));
+                .put("a", "1")
+                .put("z", "4"));
         
         GetMany d = new GetMany();
         d.startKey = null;
@@ -460,11 +460,11 @@ public class DbTesterGetMany {
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
-        db.execute(Trans.builder().set("e", "3"));
+        db.execute(Trans.builder().put("e", "3"));
         clock.setTime(20);
-        db.execute(Trans.builder().set("c", "2"));
+        db.execute(Trans.builder().put("c", "2"));
         clock.setTime(30);
-        db.execute(Trans.builder().set("a", "1"));
+        db.execute(Trans.builder().put("a", "1"));
         
         GetMany d = new GetMany();
         d.startKey = null;
@@ -511,7 +511,7 @@ public class DbTesterGetMany {
         clock.setTime(100);
         Trans.Builder b = Trans.builder();
         for (int i = 0; i < size; i++) {
-            b.set(KeyFactory.crazyKey(i), Util.toBytes("" + i));
+            b.put(KeyFactory.crazyKey(i), Util.toBytes("" + i));
         }
         db.execute(b);
         
@@ -545,7 +545,7 @@ public class DbTesterGetMany {
         int size = 100;
         
         for (int i = 0; i < size; i++) {
-            db.execute(Trans.builder().set(KeyFactory.binaryIntKey(size - i), 
+            db.execute(Trans.builder().put(KeyFactory.binaryIntKey(size - i), 
                     Util.toBytes("" + (size - i))));
             time += 10;
             clock.setTime(time);
@@ -575,11 +575,11 @@ public class DbTesterGetMany {
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
-        db.execute(Trans.builder().set("c", "3"));
+        db.execute(Trans.builder().put("c", "3"));
         clock.setTime(20);
-        db.execute(Trans.builder().set("b", "2"));
+        db.execute(Trans.builder().put("b", "2"));
         clock.setTime(30);
-        db.execute(Trans.builder().set("a", "1"));
+        db.execute(Trans.builder().put("a", "1"));
         
         GetMany d = new GetMany();
         d.startKey = Keys.toSegments("b");
@@ -604,11 +604,11 @@ public class DbTesterGetMany {
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
-        db.execute(Trans.builder().set("c", "3"));
+        db.execute(Trans.builder().put("c", "3"));
         clock.setTime(20);
-        db.execute(Trans.builder().set("b", "2"));
+        db.execute(Trans.builder().put("b", "2"));
         clock.setTime(30);
-        db.execute(Trans.builder().set("a", "1"));
+        db.execute(Trans.builder().put("a", "1"));
         
         GetMany d = new GetMany();
         d.startKey = Keys.toSegments("b");
@@ -634,11 +634,11 @@ public class DbTesterGetMany {
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
-        db.execute(Trans.builder().set("c", "3"));
+        db.execute(Trans.builder().put("c", "3"));
         clock.setTime(20);
-        db.execute(Trans.builder().set("b", "2"));
+        db.execute(Trans.builder().put("b", "2"));
         clock.setTime(30);
-        db.execute(Trans.builder().set("a", "1"));
+        db.execute(Trans.builder().put("a", "1"));
         
         
         GetMany d = new GetMany();
@@ -673,11 +673,11 @@ public class DbTesterGetMany {
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
-        db.execute(Trans.builder().set("c", "3"));
+        db.execute(Trans.builder().put("c", "3"));
         clock.setTime(20);
-        db.execute(Trans.builder().set("b", "2"));
+        db.execute(Trans.builder().put("b", "2"));
         clock.setTime(30);
-        db.execute(Trans.builder().set("a", "1"));
+        db.execute(Trans.builder().put("a", "1"));
         
         GetMany d = new GetMany();
         d.startKey = Keys.toSegments("0");    // '0' < 'a'
@@ -698,11 +698,11 @@ public class DbTesterGetMany {
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
-        db.execute(Trans.builder().set("c", "3"));
+        db.execute(Trans.builder().put("c", "3"));
         clock.setTime(20);
-        db.execute(Trans.builder().set("b", "2"));
+        db.execute(Trans.builder().put("b", "2"));
         clock.setTime(30);
-        db.execute(Trans.builder().set("a", "1"));
+        db.execute(Trans.builder().put("a", "1"));
         
         GetMany d = new GetMany();
         d.startKey = Keys.toSegments("z");
@@ -725,7 +725,7 @@ public class DbTesterGetMany {
         
         for (int i = 0; i < 16; i++) {
             clock.setTime(1000 + i*10);
-            db.execute(Trans.builder().set("" + i, value));
+            db.execute(Trans.builder().put("" + i, value));
         }
         
         GetMany g = new GetMany();
@@ -753,10 +753,10 @@ public class DbTesterGetMany {
         
         clock.setTime(10);
         db.execute(Trans.builder()
-                .set("directory/10", "10")
-                .set("directory/20", "20")
-                .set("directory/30", "30")
-                .set("a40", "40"));
+                .put("directory/10", "10")
+                .put("directory/20", "20")
+                .put("directory/30", "30")
+                .put("a40", "40"));
         
         GetMany d = new GetMany();
         d.startKey = Keys.toSegments("directory/19");
@@ -784,10 +784,10 @@ public class DbTesterGetMany {
         
         clock.setTime(10);
         db.execute(Trans.builder()
-                .set("directory/10", "10")
-                .set("directory/2000", "20")
-                .set("directory/30", "30")
-                .set("a40", "40"));
+                .put("directory/10", "10")
+                .put("directory/2000", "20")
+                .put("directory/30", "30")
+                .put("a40", "40"));
         
         GetMany d = new GetMany();
         d.startKey = Keys.toSegments("directory/19");
@@ -826,7 +826,7 @@ public class DbTesterGetMany {
         clock.setTime(100);
         Trans.Builder b = Trans.builder();
         for (int i = 0; i < size; i++) {
-            b.set(KeyFactory.crazyKey(i), Util.toBytes("" + i));
+            b.put(KeyFactory.crazyKey(i), Util.toBytes("" + i));
         }
         db.execute(b);
         
@@ -866,7 +866,7 @@ public class DbTesterGetMany {
         clock.setTime(100);
         Trans.Builder b = Trans.builder();
         for (int i = 0; i < size; i++) {
-            b.set(KeyFactory.crazyKey(i), Util.toBytes("" + i));
+            b.put(KeyFactory.crazyKey(i), Util.toBytes("" + i));
         }
         db.execute(b);
         
@@ -905,7 +905,7 @@ public class DbTesterGetMany {
         
         for (int i = 0; i < 10; i++) {
             clock.setTime(1000 + i*10);
-            db.execute(Trans.builder().set("" + i, value));
+            db.execute(Trans.builder().put("" + i, value));
         }
         
         /*g = new GetMany();
@@ -952,7 +952,7 @@ public class DbTesterGetMany {
         for (int i = 0; i < keys.length; i++) {
             long[] segments = Keys.toSegments(keys[i]);
             Assert.assertEquals(2, segments.length);
-            b.set(segments, new byte[0]);
+            b.put(segments, new byte[0]);
         }
         
         db.execute(b.build());
@@ -990,7 +990,7 @@ public class DbTesterGetMany {
         for (int i = 0; i < keys.length; i++) {
             long[] segments = Keys.toSegments(keys[i]);
             Assert.assertEquals(2, segments.length);
-            b.set(segments, new byte[0]);
+            b.put(segments, new byte[0]);
         }
         
         db.execute(b.build());
@@ -1033,8 +1033,8 @@ public class DbTesterGetMany {
         
         Db db = Db.builder().testSetup().start();
         db.execute(Trans.builder()
-                .set(skeys[0], new byte[]{0})
-                .set(skeys[1], new byte[]{1}));
+                .put(skeys[0], new byte[]{0})
+                .put(skeys[1], new byte[]{1}));
         
         long[] startSkey = Keys.toSegments(Util.hexStringToBytes("00000000000002"));
         
@@ -1087,9 +1087,9 @@ public class DbTesterGetMany {
         
         Db db = Db.builder().testSetup().start();
         db.execute(Trans.builder()
-                .set(skeys[0], new byte[]{0})
-                .set(skeys[1], new byte[]{1})
-                .set(skeys[2], new byte[]{2}));
+                .put(skeys[0], new byte[]{0})
+                .put(skeys[1], new byte[]{1})
+                .put(skeys[2], new byte[]{2}));
         
         long[] startSkey = Keys.toSegments(
                   Util.hexStringToBytes("00000000000005"));
@@ -1144,8 +1144,8 @@ public class DbTesterGetMany {
         
         Db db = Db.builder().testSetup().start();
         db.execute(Trans.builder()
-                .set(skeys[0], new byte[]{0})
-                .set(skeys[1], new byte[]{1}));
+                .put(skeys[0], new byte[]{0})
+                .put(skeys[1], new byte[]{1}));
         
         long[] startSkey = Keys.toSegments(Util.hexStringToBytes("00000000000004"));
         
@@ -1190,8 +1190,8 @@ public class DbTesterGetMany {
         
         Db db = Db.builder().testSetup().start();
         db.execute(Trans.builder()
-                .set(skeys[0], new byte[]{0})
-                .set(skeys[1], new byte[]{1}));
+                .put(skeys[0], new byte[]{0})
+                .put(skeys[1], new byte[]{1}));
         
         long[] startSkey = Keys.toSegments(Util.hexStringToBytes("00000000000002"));
         

@@ -2,6 +2,13 @@ package bergdb.dev;
 
 /*
 
+TODO C. Fix waitForD1(), waitForD2(), .sync() naming. Available from where?
+Database or Connection or both?
+Call them sync() and syncHard()? sync()/syncExtra(), sync(), sync()/sync2() (also sync1() == sync())
+Allows for sync3() to be added. sync()/sync1() is used for "sync level 1". sync2() is called
+to use "sync level 2".
+sync() / syncStrong(). Allows for addition of syncStrongest(). Levels: ORDINARY / STRONG / STRONGEST.
+
 TODO D. Consider if we could make rw-transactions composable? How to make
 two payments and a log entry in one transaction using the single-payment 
 + new log entry code?

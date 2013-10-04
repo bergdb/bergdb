@@ -50,7 +50,7 @@ public class StreamSizeVsStartupDistance {
             Trans.Builder b = Trans.builder();
             
             for (int j = 0; j < batchSize; j++) {
-                b.set(KeyFactory.binaryIntKey(index), empty);
+                b.put(KeyFactory.binaryIntKey(index), empty);
                 index++;
             }
             
@@ -72,7 +72,7 @@ public class StreamSizeVsStartupDistance {
         
         for (int i = 0; i < tCount; i++) {
             index = random.nextInt(n);
-            db.execute(Trans.builder().set(KeyFactory.binaryIntKey(index), empty).build());
+            db.execute(Trans.builder().put(KeyFactory.binaryIntKey(index), empty).build());
         }
         
         long addedSize = db.getStreamLength() - streamSize1;

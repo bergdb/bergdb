@@ -50,7 +50,6 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     private final int maxNodeSize;
     private final DirtyNodes dirtyNodes;
     
-    
     /**
      * Creates and returns a new, minimal DbGraph.
      * The returned graph has exactly one top node and one key node.
@@ -248,7 +247,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
 
     /**
      * Makes a TopNode dirty if not already dirty. This method returns immediately
-     * if the node is dirty already. Caller must hold this.writeLock.
+     * if the node is dirty already. Caller must hold Db.writeLock.
      */
     public final void makeDirty(TopNode n) {        
         if (!n.isDirty) {
@@ -259,7 +258,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     
     /**
      * Makes a KeyNode dirty if not already dirty. This method returns immediately
-     * if the node is dirty already. Caller must hold this.writeLock.
+     * if the node is dirty already. Caller must hold Db.writeLock.
      */
     public final void makeDirty(KeyNode n) {
         if (!n.isDirty) {
@@ -715,7 +714,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             } else {
                 pd.oneKwi[0].klong = Klong.compareValueToKeyKlong(compareValue);
                 pd.oneKwi[0].node = child;
-                pd.oneKwi[0].pos = pd.tt;
+                pd.oneKwi[0].pos = pd.accessData;
                 insertKlongs(current, pd.keyAccessPath.size - 1, pd.oneKwi, pd);
             }
             
@@ -815,6 +814,8 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
                     pd.nodeChangeListener.keyNodeChanged(node);
                     
                 } else {
+                    // XXX How does this work? last is not dirty, how about the predecessors?
+                    
                     KeyNode last = node.lastVersionGivenDel(sz, tTime, union);
                     pd.nodeChangeListener.keyNodeChanged(last);
                     
@@ -838,7 +839,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      * @param depth
      *            Depth of 'node' in the access path.
      * @param toInsert
-     *            The klongs and pointers to insert. 1 or 2 long array.
+     *            The klongs, pointers, spos/accessData to insert. 1 or 2 long array.
      */
     private void insertKlongs(final KeyNode node, final int depth, final KlongWithPointer[] toInsert, PutData pd) {
         //

@@ -379,7 +379,7 @@ public class IndexManager {
             b.addVirtualWriteHash(vhashOfDir(dir));
         }
         DbObject dbo = DbObject.toDbObject(indexDo);
-        b.set(key, dbo.getBytes());
+        b.put(key, dbo.getBytes());
         db.execute(b.build());
     }
     

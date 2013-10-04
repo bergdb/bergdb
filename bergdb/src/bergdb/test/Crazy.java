@@ -45,7 +45,7 @@ public class Crazy {
         
         for (int i = 0; i < n; i++) {
             clock.setTime(1000000 + i * 10 + 1);
-            Trans t = Trans.builder().set(KeyFactory.crazyKey(i), Util.toBytes("v" + i)).build();
+            Trans t = Trans.builder().put(KeyFactory.crazyKey(i), Util.toBytes("v" + i)).build();
             db.execute(t);
         }
         db.sync();
@@ -85,7 +85,7 @@ public class Crazy {
         
         for (int i = 0; i < n; i += 10) {
             clock.setTime(3000000 + i * 10 + 1);
-            Trans t = Trans.builder().set(KeyFactory.crazyKey(i), Util.toBytes("v" + i)).build();
+            Trans t = Trans.builder().put(KeyFactory.crazyKey(i), Util.toBytes("v" + i)).build();
             db.execute(t);
         }
         
@@ -104,15 +104,15 @@ public class Crazy {
         
         value = new byte[1*1000000];
         value[0] = 1;
-        b.set(KeyFactory.crazyKey(100), value).build();
+        b.put(KeyFactory.crazyKey(100), value).build();
         
         value = new byte[1*1000000];
         value[0] = 2;
-        b.set(KeyFactory.crazyKey(101), value).build();
+        b.put(KeyFactory.crazyKey(101), value).build();
         
         value = new byte[1*1000000];
         value[0] = 3;
-        b.set(KeyFactory.crazyKey(123), value).build();
+        b.put(KeyFactory.crazyKey(123), value).build();
         
         db.execute(b.build());
         
@@ -134,7 +134,7 @@ public class Crazy {
         out.println("A very large transaction.");
         clock.setTime(5*1000000);
         b = Trans.builder();
-        b.set(KeyFactory.crazyKey(1001), new byte[20*1000000]);
+        b.put(KeyFactory.crazyKey(1001), new byte[20*1000000]);
         db.execute(b.build());
         db.sync();
         
@@ -148,7 +148,7 @@ public class Crazy {
         b = Trans.builder();
         byte[] key = new byte[keySize];
         key[0] = 44;
-        b.set(key, new byte[3]);
+        b.put(key, new byte[3]);
         db.execute(b.build());
         long streamSize2 = db.getStreamLength();
         double keySizeOverheadFactor = ((double)(streamSize2 - streamSize1)) / ((double) keySize);

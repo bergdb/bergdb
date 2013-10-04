@@ -11,6 +11,9 @@ import java.io.IOException;
  */
 public interface DatabaseBuilder {
     
+    // TODO D. Consider: Should we really through IOException. We usually throw 
+    // subclasses of RuntimeException.
+    
     /**
      * Use the given directory to store the database stream in files.
      * 

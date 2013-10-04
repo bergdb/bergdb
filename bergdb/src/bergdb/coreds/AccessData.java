@@ -34,6 +34,10 @@ abstract public class AccessData {
         return accessData <= -Db.MIN_CACHE_MEMORY_VALUE;
     }
     
+    public static final boolean isValidOrNull(long accessData) {
+        return isValid(accessData) || accessData == Spos.NULL;
+    }
+    
     /**
      * Returns "access time", given an access data long.
      */

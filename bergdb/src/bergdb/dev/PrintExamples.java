@@ -23,14 +23,14 @@ public class PrintExamples {
         clock.setTime(10);
         System.out.println("---- One KV ----");
         System.out.println("k1 = v1 added around t = 10\n");
-        db.execute(Trans.builder().set("k1", "v1").build());
+        db.execute(Trans.builder().put("k1", "v1").build());
         db.printGraph(System.out);
         System.out.println();
         
         
         clock = new KTestClock();
         db = Db.builder().testSetup().clock(clock).start();
-        db.execute(Trans.builder().set("r/library/sublibrary/theFinalDirectory/LongKey", "v").build());
+        db.execute(Trans.builder().put("r/library/sublibrary/theFinalDirectory/LongKey", "v").build());
         System.out.println("---- One long key ----");
         db.printGraph(System.out);
         System.out.println();
@@ -38,7 +38,7 @@ public class PrintExamples {
         
         clock = new KTestClock();
         db = Db.builder().testSetup().clock(clock).start();
-        db.execute(Trans.builder().set("a-14-long-key-", "v14").build());
+        db.execute(Trans.builder().put("a-14-long-key-", "v14").build());
         System.out.println("---- One 14-byte long key ----");
         db.printGraph(System.out);
         System.out.println();
@@ -47,9 +47,9 @@ public class PrintExamples {
         clock = new KTestClock();
         db = Db.builder().testSetup().clock(clock).start();
         clock.setTime(10);
-        db.execute(Trans.builder().set("theprefix-key1", "v1").build());
+        db.execute(Trans.builder().put("theprefix-key1", "v1").build());
         clock.setTime(20);
-        db.execute(Trans.builder().set("theprefix-key2", "v2").build());
+        db.execute(Trans.builder().put("theprefix-key2", "v2").build());
         System.out.println("---- Two keys, same prefix ----");
         System.out.println("Same prefix, two keys, two segements long. Added after t=10 and 20.\n");
         db.printGraph(System.out);
@@ -60,7 +60,7 @@ public class PrintExamples {
         db = Db.builder().testSetup().clock(clock).maxNodeSize8().start();
         for (int i = 0; i < 7; i++) {
             clock.setTime(1000 + i * 10);
-            db.execute(Trans.builder().set("k" + i, "v" + i).build());
+            db.execute(Trans.builder().put("k" + i, "v" + i).build());
         }
         System.out.println("---- 7 short keys ----");
         System.out.println("Causes one split since maxNodeSize8(). 7 different times.\n");

@@ -52,7 +52,7 @@ public class PerfGetMany {
             
             for (int j = 0; j < batchSize; j++) {
                 int index = i * batchSize + j;
-                b.set(KeyFactory.binaryIntKey(index), value);
+                b.put(KeyFactory.binaryIntKey(index), value);
             }
             
             Trans t = b.build();

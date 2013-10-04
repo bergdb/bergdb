@@ -74,7 +74,7 @@ public class OneGig {
                 byte[] key = KeyFactory.binaryIntKey(keyIndex);
                 byte[] value = new byte[valueSize];
                 Bytes.intToBytesLE(keyIndex, value, 0);
-                b.set(key, value);
+                b.put(key, value);
             }
             
             db.execute(b.build());
@@ -174,7 +174,7 @@ public class OneGig {
                 byte[] key = KeyFactory.binaryIntKey(keyIndex);
                 byte[] value = new byte[valueSize];
                 Bytes.intToBytesLE(keyIndex, value, 0);
-                b.set(key, value);
+                b.put(key, value);
             }
             
             db.execute(b.build());

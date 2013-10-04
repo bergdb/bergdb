@@ -183,7 +183,7 @@ public class VizFigure {
             
             for (int j = 0; j < 4; j++) {
                 String key = "accounts/" + index;
-                b.set(key, "v-" + index);
+                b.put(key, "v-" + index);
                 index++;
             }
             

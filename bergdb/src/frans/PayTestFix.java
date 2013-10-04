@@ -3,6 +3,7 @@ package frans;
 import java.io.IOException;
 import java.io.PrintStream;
 
+import bergdb.core.Db;
 import bergdb.core.NoEvictBoss;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
@@ -13,16 +14,17 @@ import bergdb.pub.Factory;
 import bergdb.pub.Transaction;
 import bergdb.pub.WBuilder;
 import bergdb.pubimp.DatabaseBuilderImp;
+import bergdb.pubimp.DatabaseImp;
 import bergdb.stream.MemoryStream;
 
-// TODO C. Fix this bug!
+// TODO B. Fix this bug!
 
 /**
  * Trying to fix bug-130925, see test.night.PayTest.
  * 
  * @author Frans Lundberg
  */
-public class PayTestBugFix {
+public class PayTestFix {
     
     /**
      * Runs that test. Requires 500 MB of RAM or so. 130925 Frans: Runs on 20 s on Cissi.
@@ -31,21 +33,23 @@ public class PayTestBugFix {
      */
     @T("night")
     public static void testIt(TestCollector c) throws IOException {
-        PayTestBugFix pt = new PayTestBugFix();
+        PayTestFix pt = new PayTestFix();
         pt.out = c.out();
         pt.go();
         System.gc();
     }
     
-    private final long total = 1199000;
-        // 1200k bug!
-        // 1000k ok
-        // 1001k ok
-        // 1100k ok
-        // 1150k ok
-        // 1180k ok
-        // 1199k   Unexpected key: /accounts/01000000.obj, expected: /accounts/00997000.obj
-        //
+    private final long total = 1200000;
+    private final int batchSize = 1000;
+
+    // Batch sizes:
+    // 1200k bug!
+    // 1000k ok
+    // 1001k ok
+    // 1100k ok
+    // 1150k ok
+    // 1180k ok
+    // 1199k   Unexpected key: /accounts/01000000.obj, expected: /accounts/00997000.obj
     
     private static final String dirName = "/accounts/";
         // Changing to /account/ makes code work.
@@ -76,7 +80,6 @@ public class PayTestBugFix {
         
         Connection c = database.connection();
         long id = 0;
-        long batchSize = 1000;
         long batchCount = total / batchSize;
         assert total % batchSize == 0;
         long t0 = System.nanoTime();
@@ -94,17 +97,15 @@ public class PayTestBugFix {
             
             @SuppressWarnings("unused")
             Transaction t = builder.build().execute();
-            
             //t.waitForD1();  //  <-- Does not work, even with this line.
-            
-            //if (id == 800*1000) {
-            //    Trans trans = ((WTransaction) t).getTrans();
-            //    System.out.println("Trans size: " + (trans.lastSpos - trans.spos));
-                // Trans size is 197k bytes.
-            //}
             
             if (id % 200000 == 0) {
                 System.out.printf("Created %.0fk accounts.\n", id / 1000.0);
+            }
+            
+            if (id % 100000 == 0) {
+                Db db = ((DatabaseImp) database).getDb();
+                db.checkNodes();
             }
         }
         
@@ -112,6 +113,11 @@ public class PayTestBugFix {
         t0 = System.nanoTime() - t0;
         double time = 1e-9 * t0;
         out.printf("Total create time: %.1f s, time per account: %.6f s.\n", time, time / total);
+        
+        
+        //Db db = ((DatabaseImp) database).getDb();
+        //db.printGraph(System.out);
+        
         
         // ----
         
@@ -151,6 +157,11 @@ public class PayTestBugFix {
         database = b.start();
         c = database.connection();
         
+        
+        Db db = ((DatabaseImp) database).getDb();
+        db.checkNodes();
+        
+        
         // -- Print a few
         
         out.println("---- A few accounts of interest: ");
@@ -163,6 +174,8 @@ public class PayTestBugFix {
         for (long theId : ids) {
             out.println(theId + ": " + c.get(accountKey(theId), Account.class));
         }
+        
+        db.checkNodes();
         
         out.println("---- Iterating the accounts of the restarted database.");
         
@@ -183,6 +196,10 @@ public class PayTestBugFix {
             if (count % 200000 == 0) {
                 out.printf("Iterated %.0fk accounts.\n", (count / 1000.0));
             }
+            
+            if (count % 50000 == 0) {
+                db.checkNodes();
+            }
         }
         
         Assert.assertEquals(count, total);
@@ -199,7 +216,7 @@ public class PayTestBugFix {
     }
     
     public static void main(String[] args) throws IOException {
-        new PayTestBugFix().go();
+        new PayTestFix().go();
     }
 }
 
@@ -222,6 +239,13 @@ Expected:
 Got:
 /accounts/01000000.obj
 
+
+Alternative:
+/daccou nt/-000 99999.o bj    
+/daccou nt/-001 00000.o bj     
+
+
+
 == 130927 ==
 Idea: can it have to do with newly created nodes when we have splits?
 Db.setKvs(). What happens to access paths when we have splits?
@@ -231,7 +255,7 @@ But new nodes are always added to transactionNodes and written to stream.
 Hmmm, could something have to to with 20M startup distance. How large is a transaction, 
 1000 KVs in one.
 
-Hurray, something useful. this.startupDistance += 3*1000000 in Db.startInner()
+Hurrah, something useful. this.startupDistance += 3*1000000 in Db.startInner()
 fixes the issue. Some nodes seem to get too dirty, re-check logic for this.
 Can it be tested / refactored?
 

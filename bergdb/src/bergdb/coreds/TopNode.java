@@ -75,7 +75,7 @@ public final class TopNode implements INode {
         pointersLength = (short) pointers.length;
         pointerCount = (short) (pointers.length + 1);
         
-        isDirty = false;            // 131010 Frans: Changed to "false".
+        isDirty = false;
         this.spos = spos;
         this.topNodeId = topNodeId;
         
@@ -93,11 +93,6 @@ public final class TopNode implements INode {
     public long getRootTime() {
         return rootTime;
     }
-    
-    // 130129 Frans: is this a suitable hashCode() implementation?
-    // public final int hashCode() {
-    //    return topNodeId;
-    //}
     
     private static final int height(int id) {
         //

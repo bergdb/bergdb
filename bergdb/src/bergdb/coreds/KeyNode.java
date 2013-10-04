@@ -783,7 +783,6 @@ public class KeyNode implements INode {
         
         result = new KeyNode(this.isSegmentLeaf);
         result.ensureCapacity(1 + sz - timeKlongCount(sz));
-        result.isDirty = true;
         
         // Note, actual result size may be smaller because of deletes or setting a key klong
         // several times.
@@ -1467,9 +1466,10 @@ public class KeyNode implements INode {
             if (Klong.getType(klong) == Klong.TYPE_KEY) {
                 if (pointers[i] != null) {
                     long accessData = pos[i];
-                    if (accessData == Spos.NULL || accessData >= 0) {
-                        throw new AssertionError("Bad access data (" + accessData + ") of pointer " + i + " of node " 
-                                + this + ".");
+                    
+                    if (!AccessData.isValidOrNull(accessData)) {
+                        throw new AssertionError("Bad access data (" + accessData 
+                                + ") of pointer " + i + " of node " + this + ".");
                     }
                 }
             }
@@ -1481,7 +1481,9 @@ public class KeyNode implements INode {
             long klong = klongs[i];
             if (Klong.getType(klong) == Klong.TYPE_KEY) {
                 if (pointers[i] == null) {
-                    if (!(pos[i] == Spos.NULL || pos[i] >= 0)) {
+                    long spos = pos[i];
+                    
+                    if (!Spos.isValidOrNull(spos)) {
                         throw new AssertionError("Bad spos of pointer " + i + " of node " 
                                 + this + ".");
                     }

@@ -70,7 +70,7 @@ public class BigDbWithDeletes {
             byte[] key = KeyFactory.intKey(i);
             byte[] value = new byte[valueSize];
             value[0] = (byte) Util.toString(key).hashCode();
-            Trans t = Trans.builder().set(key, value).build();
+            Trans t = Trans.builder().put(key, value).build();
             db.execute(t);
         }
         

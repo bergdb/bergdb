@@ -83,7 +83,7 @@ public interface Connection extends ReadInterface {
      * @throws NoSuchObjectException
      *              Thrown if there is no object in the database for the given key.
      * @throws NoFieldsSetException
-     *              If no fields of object to be returned was set.
+     *              If no fields of object to be returned were set.
      *              Not applicable when clazz is String.class or byte[].class.
      * @throws DbException
      *              Thrown if the database is faulty.
@@ -100,7 +100,7 @@ public interface Connection extends ReadInterface {
     public WBuilder w();
     
     /**
-     * Creates an RW transaction given its transaction Action.
+     * Creates an RW transaction given its transaction action.
      */
     public Transaction rw(Action action);
     

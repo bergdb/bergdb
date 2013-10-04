@@ -84,7 +84,7 @@ public class Set {
             int anInt = random.nextInt();
             Bytes.intToBytesBE(anInt, bytes, 0);
             long[] key = Keys.toSegments(bytes);
-            ts[i] = Trans.builder().set(key, empty).build();
+            ts[i] = Trans.builder().put(key, empty).build();
         }
         
         // Warmup

@@ -124,7 +124,7 @@ public class Trans {
             builderLookupTime = Long.MAX_VALUE;
         }
         
-        public Builder set(byte[] key, byte[] value) {
+        public Builder put(byte[] key, byte[] value) {
             if (value == null) {
                 throw new IllegalArgumentException("value == null not allowed, use delete() " +
                 		"to delete a key-value pair.");
@@ -133,7 +133,7 @@ public class Trans {
             return this;
         }
         
-        public Builder set(long[] key, byte[] value) {
+        public Builder put(long[] key, byte[] value) {
             if (value == null) {
                 throw new IllegalArgumentException("value == null not allowed, use delete() " +
                 		"to delete a key-value pair.");
@@ -142,7 +142,7 @@ public class Trans {
             return this;
         }
         
-        public Builder set(long[] key, KeyTransformation kt, byte[] value, ValueTransformation vt) {
+        public Builder put(long[] key, KeyTransformation kt, byte[] value, ValueTransformation vt) {
             if (key == null) {
                 throw new IllegalArgumentException("key == null not allowed");
             }
@@ -159,13 +159,13 @@ public class Trans {
             return this;
         }
         
-        public Builder set(String key, String value) {
-            set(Keys.toBytes(key), value == null ? null : Util.toBytes(value));
+        public Builder put(String key, String value) {
+            put(Keys.toBytes(key), value == null ? null : Util.toBytes(value));
             return this;
         }
         
-        public Builder set(String key, byte[] value) {
-            set(Keys.toBytes(key), value);
+        public Builder put(String key, byte[] value) {
+            put(Keys.toBytes(key), value);
             return this;
         }
         
@@ -286,7 +286,7 @@ public class Trans {
         
         //System.out.println("---- PerfDBSet.testTransReuse ----");
         
-        t = Trans.builder().set("k", "v").build();
+        t = Trans.builder().put("k", "v").build();
         
         db = Db.builder().testSetup().start();
         for (int i0 = 0; i0 < 2; i0++) {

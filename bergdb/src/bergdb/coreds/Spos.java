@@ -1,6 +1,7 @@
 package bergdb.coreds;
 
 import bergdb.nanotest.Assert;
+import bergdb.nanotest.T;
 
 /**
  * An spos (stream position) is a unique identifier for a stream item
@@ -25,12 +26,21 @@ abstract public class Spos {
     //public static final long DEFAULT_ACCESS_DATA = -Db.MIN_CACHE_MEMORY_VALUE;
     public static final long DEFAULT_ACCESS_DATA = -10;
     
-    
-    /** Dummy test method to mark class as "tested". */
-    public static void test1() {
-        new Spos() {};
+    /**
+     * Returns true if the long is a valid stream position (is non-negative).
+     */
+    public static final boolean isValid(long spos) {
+        return spos >= 0;
     }
     
+    /**
+     * Returns true if spos is a valid stream position (is non-negative) or NULL.
+     */
+    public static final boolean isValidOrNull(long spos) {
+        return isValid(spos) || spos == NULL;
+    }
+    
+    @T
     public static void testConstantCopy() {
         Assert.assertEquals(NULL, bergdb.storage.Constants.SposNULL);
     }
