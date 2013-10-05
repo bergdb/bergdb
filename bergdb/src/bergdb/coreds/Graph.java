@@ -866,12 +866,11 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             }
         } else {
             // 'node' is full. We cannot append 'toInsert' to it.
-            final long tTime = pd.tt;
-            KeyNode last = node.lastVersion(tTime);
+            KeyNode last = node.lastVersion(pd.tt);
             pd.nodeChangeListener.keyNodeChanged(last);
             
             assert last.assertOk(maxNodeSize);
-            handleLastVersionOfFullNode(node, depth, toInsert, tTime, last, pd);
+            handleLastVersionOfFullNode(node, depth, toInsert, pd.tt, last, pd);
         }
     }
     
@@ -879,21 +878,26 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      * This is a central and important method. 
      * All calls to splitNode() and replaceNodeWithLastVersion() goes through this method.
      * This is an "hourglass method" - multiple callers and multiple callees.
+     * insertKlongs/insertDelete methods call this method.
+     * If last.size > maxNodeSize / 2, then 'node' is split into two nodes (splitNode()), 
+     * a space-split is made.
+     * Otherwise, 'node' is replaced by the last version of it 
+     * (replaceNodeWithLastVersion()), a time-split.
      */
     private void handleLastVersionOfFullNode(final KeyNode node, final int depth,
             final KlongWithPointer[] toInsert, final long tTime, KeyNode last, PutData pd) {
-        final int lastSize = last.size;
-
-        if (lastSize > this.maxNodeSize / 2) {
-            // Last version is large enough to split. Split and insert.
-            splitNode(node, last, depth, toInsert, pd);
+        if (last.size > this.maxNodeSize / 2) {
+            spaceSplit(node, last, depth, toInsert, pd);
         } else {
-            // Last version is small enough not to split into two nodes.
-            replaceNodeWithLastVersion(tTime, last, depth, toInsert, pd);
+            timeSplit(tTime, last, depth, toInsert, pd);
         }
     }
     
-    private void replaceNodeWithLastVersion(final long tTime, KeyNode last, final int depth,
+    /**
+     * A time split "replaces" the time-full node with the last version of it.
+     * This method handles both: time-split-1 and time-split-2 cases.
+     */
+    private void timeSplit(final long tTime, KeyNode last, final int depth,
             KlongWithPointer[] toInsert, PutData pd) {
         // Last version is small enough not to split into two nodes, but not
         // empty.
@@ -908,13 +912,17 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
         }
 
         if (parent == null) {
+            // time-split-2:
             // 'node' is the current space root. Replace it with 'last'.
+            
             topDs.newSuperRoot(tTime, last, pd.accessData);
             pd.nodeChangeListener.topNodeChanged(topDs.getSuperRoot());
             
             assert last.checkWithMessage() == null;
             
         } else {
+            // time-split-1:
+            
             long klong1 = pd.keyAccessPath.getKlong(depth);
             assert klong1 != Klong.NULL;
 
@@ -937,18 +945,18 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     
 
     /**
-     * Called to split 'node'.
-     * There are three different kinds of node splits:
-     * 1. 'node' is the space root node (parent == null).
-     * 2. The parent is a segment leaf (the full node is a segment root).
-     * 3. The parent is not a segment leaf.
+     * Called to space split 'node'.
+     * There are three kinds of space splits:
+     * space-split-1: The node is not a segment root.
+     * space-split-2: The node is a segment root (parent is segment leaf).
+     * space-split-3: The node is the space root node (parent == null).
      * 
      * @param node    The node that is full and needs to be split.
      * @param last    The last version of 'node'.
      * @param depth   The current depth in the tree, used together with pd.getParent().
      * @param toInsert  Klongs to insert.
      */
-    private void splitNode(final KeyNode node, KeyNode last, final int depth,
+    private void spaceSplit(final KeyNode node, KeyNode last, final int depth,
             final KlongWithPointer[] toInsert, PutData pd) {
         final long tTime = pd.tt;
         final boolean isSegmentLeaf = node.isSegmentLeaf();
@@ -958,6 +966,11 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
         pd.splitCount++;
 
         if (parent == null) {
+            //
+            // space-split-3:
+            // 'node' is the space root node.
+            //
+            
             KeyNode newRoot = new KeyNode(false);
             pd.nodeChangeListener.keyNodeChanged(newRoot);
             
@@ -975,8 +988,10 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             assert newRoot.checkWithMessage() == null;
 
         } else if (parent.isSegmentLeaf()) {
-            // Parent is segment leaf, so 'node' is a segment root. We need a
-            // new segment root.
+            //
+            // space-split-2:
+            // 'node' is a segment root since parent is a segment leaf.
+            //
 
             KeyNode newSegmentRoot = new KeyNode(false);
             long secondKlong = node.firstAndSecond(tTime, last, toInsert, first, second);
@@ -1006,7 +1021,10 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             assert newSegmentRoot.checkWithMessage() == null;
             
         } else {
-            // Parent is not a segment leaf, so 'node' is not a segment root.
+            //
+            // space-split-1:
+            // 'node' is not a segment root since parent is not a segment leaf.
+            //
             long secondKlong = node.firstAndSecond(tTime, last, toInsert, first, second);
             pd.nodeChangeListener.keyNodeChanged(first);
             pd.nodeChangeListener.keyNodeChanged(second);
