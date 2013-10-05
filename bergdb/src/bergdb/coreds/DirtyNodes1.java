@@ -124,7 +124,10 @@ public class DirtyNodes1 implements IDirtyNodes {
             }
             
             if (node.getSpos() < dirtyLimit) {
-                if (node.isDirty) list.addTopNode(node);
+                if (node.isDirty) {
+                    list.addTopNode(node);
+                }
+                
                 if (remove) iter.remove();
                 
             } else {
@@ -150,7 +153,10 @@ public class DirtyNodes1 implements IDirtyNodes {
             }
             
             if (node.getSpos() < dirtyLimit) {
-                if (node.isDirty) list.addKeyNode(node);
+                if (node.isDirty) {
+                    list.addKeyNode(node);
+                }
+                
                 if (remove) it.remove();
                 
             } else {

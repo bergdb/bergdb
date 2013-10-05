@@ -40,16 +40,19 @@ public class PayTestFix {
     }
     
     private final long total = 1200000;
-    private final int batchSize = 1000;
+    private final int batchSize = 1000; 
+    //private final int batchSize = 1;  // Fails in similar way.
 
-    // Batch sizes:
-    // 1200k bug!
+    //
+    // total:
+    // 1200k bug! Unexpected key: /accounts/01000000.obj, expected: /accounts/00997000.obj
     // 1000k ok
     // 1001k ok
     // 1100k ok
     // 1150k ok
     // 1180k ok
-    // 1199k   Unexpected key: /accounts/01000000.obj, expected: /accounts/00997000.obj
+    // 1199k Unexpected key: /accounts/01000000.obj, expected: /accounts/00997000.obj
+    //
     
     private static final String dirName = "/accounts/";
         // Changing to /account/ makes code work.
