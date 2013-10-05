@@ -1283,7 +1283,7 @@ public class Db implements IWarner {
         
         synchronized (writeLock) {
             if (!isPrimordial) assert transactionNodes.size() == 0;
-            this.pd.splitCount = 0;
+            this.pd.spaceSplitCount = 0;
             
             this.trans = t;
 

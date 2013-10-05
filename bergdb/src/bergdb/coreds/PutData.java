@@ -18,10 +18,11 @@ public class PutData {
     /** Access data. */
     public long accessData;
     
-    /**
-     * Counter of number of splits.
-     */
-    public long splitCount;
+    /** Counter of space splits. */
+    public long spaceSplitCount;
+    
+    /** Counter of time splits. */
+    public long timeSplitCount;
     
     // ---- Temp data ---
     
@@ -47,6 +48,8 @@ public class PutData {
     
     public KeyAccessPath keyAccessPath;
     
+    public Graph.SplitListener splitListener;
+    
     /**
      * Creates a new PutData object directly.
      * Note: prefer to use Graph.newPutData() or Db.newPutData().
@@ -54,7 +57,7 @@ public class PutData {
     public PutData() {
         tt = 0;
         accessData = Spos.DEFAULT_ACCESS_DATA;
-        splitCount = 0;
+        spaceSplitCount = 0;
         
         tempPointer = new Pointer();
         kwi = new KlongWithPointer();
@@ -68,6 +71,7 @@ public class PutData {
         nodeChangeListener = Graph.DO_NOTHING_NODE_CHANGE_LISTENER;
         pointerListener = Graph.DO_NOTHING_POINTER_LISTENER;
         cachePolicy = Graph.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES;
+        splitListener = Graph.DO_NOTHING_SPLIT_LISTENER;
     }
     
     public void clearFast() {

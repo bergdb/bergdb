@@ -111,7 +111,7 @@ public class GraphTester {
         }
         pd.clear();
         
-        Assert.assertEquals(1, pd.splitCount);
+        Assert.assertEquals(1, pd.spaceSplitCount);
         GetData gd = new GetData();
         for (int i = 0; i < kvs.length; i += 2) {
             byte[] value = g.getOne(10, Keys.toSegments(kvs[i]), gd);
@@ -138,7 +138,7 @@ public class GraphTester {
             pd.clearFast();
         }
         
-        Assert.assertEquals(1, pd.splitCount);
+        Assert.assertEquals(1, pd.spaceSplitCount);
         pd.clear();
         
         //System.out.println("---- Graph.testSplit2 ----");

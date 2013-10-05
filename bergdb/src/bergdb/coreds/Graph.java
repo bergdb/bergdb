@@ -332,6 +332,22 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             }
         };
         
+        p.splitListener = new SplitListener() {
+            public void nodeSplit(int splitType) {
+                switch (splitType) {
+                case TIME_SPLIT_1:
+                case TIME_SPLIT_2:
+                    p.timeSplitCount += 1;
+                    break;
+                case SPACE_SPLIT_1:
+                case SPACE_SPLIT_2:
+                case SPACE_SPLIT_3:
+                    p.spaceSplitCount += 1;
+                    break;
+                }
+            }
+        };
+        
         return p;
     }
 
@@ -674,7 +690,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
                 pd.oneKwi[0].klong = Klong.compareValueToKeyKlong(compareValue);
                 pd.oneKwi[0].node = valueNode;
                 pd.oneKwi[0].pos = pd.accessData;
-                insertKlongs(node, pd.keyAccessPath.size - 1, pd.oneKwi, pd);
+                appendKlongs(node, pd.keyAccessPath.size - 1, pd.oneKwi, pd);
             }
         }
     }
@@ -717,7 +733,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
                 pd.oneKwi[0].klong = Klong.compareValueToKeyKlong(compareValue);
                 pd.oneKwi[0].node = child;
                 pd.oneKwi[0].pos = pd.accessData;
-                insertKlongs(current, pd.keyAccessPath.size - 1, pd.oneKwi, pd);
+                appendKlongs(current, pd.keyAccessPath.size - 1, pd.oneKwi, pd);
             }
             
             result = child;
@@ -825,7 +841,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     }
     
     
-    // ======== insertKlongs() and helpers ========
+    // ======== appendKlongs() and helpers ========
     
     /**
      * Inserts one or two non-delete klongs to 'node' for the current
@@ -835,42 +851,42 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      *            Node into which to insert.
      * @param depth
      *            Depth of 'node' in the access path.
-     * @param toInsert
-     *            The klongs, pointers, spos/accessData to insert. 1 or 2 long array.
+     * @param toAppend
+     *            The klongs, pointers, accessData to insert. 1 or 2 long array.
      */
-    private void insertKlongs(final KeyNode node, final int depth, final KlongWithPointer[] toInsert, PutData pd) {
+    private void appendKlongs(final KeyNode node, final int depth, 
+            final KlongWithPointer[] toAppend, PutData pd) {
         //
         // This should be the only way the DB adds klongs to KeyNodes. It is the
         // central point of code for node splitting.
         //
-        // Implementation note: we allow memory allocation for a split, avoid it
-        // otherwise.
+        // Implementation note: we allow memory allocation for a split, avoid it otherwise.
         //
         // For performance, we use special code for the most common case of
         // inserting exactly one klong to a non-full node.
         //
 
-        assert toInsert.length < 3 : "toInsert.length = " + toInsert.length;
+        assert toAppend.length < 3 : "toInsert.length = " + toAppend.length;
         assert node.assertOk(maxNodeSize);
 
         // "+1" is needed since a TIME klong could be added along with the toInsert klongs.
-        final boolean isFull = node.size + toInsert.length + 1 > this.maxNodeSize;
+        final boolean isFull = node.size + toAppend.length + 1 > this.maxNodeSize;
 
         if (!isFull) {
-            for (int i = 0; i < toInsert.length; i++) {
-                KlongWithPointer kwi = toInsert[i];
+            for (int i = 0; i < toAppend.length; i++) {
+                KlongWithPointer kwi = toAppend[i];
                 node.addKlong(pd.tt, kwi.klong, kwi.node, pd.accessData);
-                pd.nodeChangeListener.keyNodeChanged(node);
-                
-                assert node.assertOk(maxNodeSize);
             }
+            pd.nodeChangeListener.keyNodeChanged(node);
+            assert node.assertOk(maxNodeSize);
+            
         } else {
             // 'node' is full. We cannot append 'toInsert' to it.
             KeyNode last = node.lastVersion(pd.tt);
             pd.nodeChangeListener.keyNodeChanged(last);
             
             assert last.assertOk(maxNodeSize);
-            handleLastVersionOfFullNode(node, depth, toInsert, pd.tt, last, pd);
+            handleLastVersionOfFullNode(node, depth, toAppend, pd.tt, last, pd);
         }
     }
     
@@ -899,17 +915,15 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      */
     private void timeSplit(final long tTime, KeyNode last, final int depth,
             KlongWithPointer[] toInsert, PutData pd) {
-        // Last version is small enough not to split into two nodes, but not
-        // empty.
-
+        // Last version is small enough not to split into two nodes, but not empty.
+        
         final KeyNode parent = pd.getParent(depth);
 
         for (int i = 0; i < toInsert.length; i++) {
             KlongWithPointer kwi = toInsert[i];
-            
             last.addKlong(tTime, kwi.klong, kwi.node, pd.accessData);
-            pd.nodeChangeListener.keyNodeChanged(last);
         }
+        pd.nodeChangeListener.keyNodeChanged(last);
 
         if (parent == null) {
             // time-split-2:
@@ -917,7 +931,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             
             topDs.newSuperRoot(tTime, last, pd.accessData);
             pd.nodeChangeListener.topNodeChanged(topDs.getSuperRoot());
-            
+            pd.splitListener.nodeSplit(Graph.TIME_SPLIT_2);
             assert last.checkWithMessage() == null;
             
         } else {
@@ -926,18 +940,12 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             long klong1 = pd.keyAccessPath.getKlong(depth);
             assert klong1 != Klong.NULL;
 
-            // "+1" needed since a TIME klong might be needed too.
-            if (parent.size + 1 < this.maxNodeSize) {
-                parent.addKlong(pd.tt, klong1, last, pd.accessData);
-                pd.nodeChangeListener.keyNodeChanged(parent);
-                
-            } else {
-                pd.oneKwi[0].klong = klong1;
-                pd.oneKwi[0].node = last;
-                pd.oneKwi[0].pos = pd.accessData;
-                insertKlongs(parent, depth - 1, pd.oneKwi, pd);
-            }
-
+            pd.oneKwi[0].klong = klong1;
+            pd.oneKwi[0].node = last;
+            pd.oneKwi[0].pos = pd.accessData;
+            appendKlongs(parent, depth - 1, pd.oneKwi, pd);
+            
+            pd.splitListener.nodeSplit(Graph.TIME_SPLIT_1);
             assert parent.checkWithMessage() == null : parent.checkWithMessage() + " node:\n"
                     + parent.print();
         }
@@ -958,13 +966,12 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      */
     private void spaceSplit(final KeyNode node, KeyNode last, final int depth,
             final KlongWithPointer[] toInsert, PutData pd) {
-        final long tTime = pd.tt;
+        final long tt = pd.tt;
         final boolean isSegmentLeaf = node.isSegmentLeaf();
         final KeyNode first = new KeyNode(isSegmentLeaf);
         final KeyNode second = new KeyNode(isSegmentLeaf);
         final KeyNode parent = pd.getParent(depth);
-        pd.splitCount++;
-
+        
         if (parent == null) {
             //
             // space-split-3:
@@ -974,17 +981,18 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             KeyNode newRoot = new KeyNode(false);
             pd.nodeChangeListener.keyNodeChanged(newRoot);
             
-            long secondKlong = node.firstAndSecond(tTime, last, toInsert, first, second);
+            long secondKlong = node.firstAndSecond(tt, last, toInsert, first, second);
             pd.nodeChangeListener.keyNodeChanged(first);
             pd.nodeChangeListener.keyNodeChanged(second);
             
-            newRoot.addKlong(tTime, Klong.EMPTY_KEY, first, pd.accessData);
-            newRoot.addKlong(tTime, secondKlong, second, pd.accessData);
+            newRoot.addKlong(tt, Klong.EMPTY_KEY, first, pd.accessData);
+            newRoot.addKlong(tt, secondKlong, second, pd.accessData);
             pd.nodeChangeListener.keyNodeChanged(newRoot);
 
-            topDs.newSuperRoot(tTime, newRoot, pd.accessData);
+            topDs.newSuperRoot(tt, newRoot, pd.accessData);
             pd.nodeChangeListener.topNodeChanged(topDs.getSuperRoot());
-                        
+                     
+            pd.splitListener.nodeSplit(Graph.SPACE_SPLIT_3);
             assert newRoot.checkWithMessage() == null;
 
         } else if (parent.isSegmentLeaf()) {
@@ -994,28 +1002,23 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             //
 
             KeyNode newSegmentRoot = new KeyNode(false);
-            long secondKlong = node.firstAndSecond(tTime, last, toInsert, first, second);
+            long secondKlong = node.firstAndSecond(tt, last, toInsert, first, second);
             pd.nodeChangeListener.keyNodeChanged(first);
             pd.nodeChangeListener.keyNodeChanged(second);
 
-            newSegmentRoot.addKlong(tTime, Klong.EMPTY_KEY, first, pd.accessData);
-            newSegmentRoot.addKlong(tTime, secondKlong, second, pd.accessData);
+            newSegmentRoot.addKlong(tt, Klong.EMPTY_KEY, first, pd.accessData);
+            newSegmentRoot.addKlong(tt, secondKlong, second, pd.accessData);
             pd.nodeChangeListener.keyNodeChanged(newSegmentRoot);
 
             long klong1 = pd.keyAccessPath.getKlong(depth);
             assert klong1 != Klong.NULL;
 
-            if (parent.size < this.maxNodeSize) {
-                parent.addKlong(pd.tt, klong1, newSegmentRoot, pd.accessData);
-                pd.nodeChangeListener.keyNodeChanged(parent);
-                
-            } else {
-                pd.oneKwi[0].klong = klong1;
-                pd.oneKwi[0].node = newSegmentRoot;
-                pd.oneKwi[0].pos = pd.accessData;
-                insertKlongs(parent, depth - 1, pd.oneKwi, pd);
-            }
+            pd.oneKwi[0].klong = klong1;
+            pd.oneKwi[0].node = newSegmentRoot;
+            pd.oneKwi[0].pos = pd.accessData;
+            appendKlongs(parent, depth - 1, pd.oneKwi, pd);
 
+            pd.splitListener.nodeSplit(Graph.SPACE_SPLIT_2);
             assert parent.checkWithMessage() == null : parent.checkWithMessage() + " node:\n"
                     + parent.print();
             assert newSegmentRoot.checkWithMessage() == null;
@@ -1025,7 +1028,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             // space-split-1:
             // 'node' is not a segment root since parent is not a segment leaf.
             //
-            long secondKlong = node.firstAndSecond(tTime, last, toInsert, first, second);
+            long secondKlong = node.firstAndSecond(tt, last, toInsert, first, second);
             pd.nodeChangeListener.keyNodeChanged(first);
             pd.nodeChangeListener.keyNodeChanged(second);
             
@@ -1038,8 +1041,9 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             pd.twoKwis[1].node = second;
             pd.twoKwis[1].pos = pd.accessData;
 
-            insertKlongs(parent, depth - 1, pd.twoKwis, pd);
+            appendKlongs(parent, depth - 1, pd.twoKwis, pd);
 
+            pd.splitListener.nodeSplit(Graph.SPACE_SPLIT_1);
             assert parent.checkWithMessage() == null : parent.checkWithMessage();
         }
     }
@@ -1260,6 +1264,24 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
          */
         public void nodeAccessed(INode node);
     }
+    
+    
+    public static final int TIME_SPLIT_1 = 1;
+    public static final int TIME_SPLIT_2 = 2;
+    public static final int SPACE_SPLIT_1 = 11;
+    public static final int SPACE_SPLIT_2 = 12;
+    public static final int SPACE_SPLIT_3 = 13;
+    
+    /**
+     * Used to listen to node split events.
+     */
+    public static interface SplitListener {
+        public void nodeSplit(int splitType);
+    }
+    
+    public static final SplitListener DO_NOTHING_SPLIT_LISTENER = new SplitListener() {
+        public void nodeSplit(int splitType) {}
+    };
 }
 
 

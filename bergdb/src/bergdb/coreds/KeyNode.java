@@ -640,9 +640,8 @@ public class KeyNode implements INode {
     }
     
     /**
-     * Adds a klong with a pointer and accessData. 
-     * If needed, a time klong is also added.
-     * Write access required.
+     * Adds a klong with a pointer and accessData to the end of the key node.
+     * If needed, a time klong is added before 'klong'.
      */
     public void addKlong(long time, long klong, INode pointer, long accessData) {
         short sz;
