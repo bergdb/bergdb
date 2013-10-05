@@ -125,34 +125,31 @@ public class GraphTester {
     }
     
     @T
-    public static void testSplit2() {
-        // Time split with an ordinary KeyNode as parent.
+    public static void testTimeSplit1a() {
+        // Tests a time-split-1.
 
         Graph g = Graph.builder().maxNodeSize6().createEmpty(0);
         PutData pd = g.newPutData();
         
         for (int i = 0; i < 4; i++) {
-            String keyString = "account-id-" + i;
+            String keyString = "account-id-0";
             pd.tt = 1 + i;
-            g.putKv(Keys.toSegments(keyString), Util.toBytes("v" + i), pd);
+            g.putKv(Keys.toSegments(keyString), Util.toBytes("v at " + pd.tt), pd);
             pd.clearFast();
         }
         
-        Assert.assertEquals(1, pd.spaceSplitCount);
-        pd.clear();
+        Assert.assertEquals(1, pd.timeSplitCount);
         
-        //System.out.println("---- Graph.testSplit2 ----");
+        KeyNode node = (KeyNode) g.findNode(new int[]{0, 3});
+        KlongWithPointer kwi = new KlongWithPointer();
+        node.searchEq(Long.MAX_VALUE, Klong.createCompareValue(Keys.toBytes("-id-0")), kwi);
+        
+        Assert.assertEquals(4, kwi.klongTime);
+        
+        //System.out.println("---- Graph.testTimeSplit1a ----");
         //System.out.println("graph:");
         //g.printGraph(System.out);
-        
-        byte[] value;
-        GetData gd = new GetData();
-        
-        for (int i = 0; i < 4; i++) {
-            String keyString = "account-id-" + i;
-            value = g.getOne(100, Keys.toSegments(keyString), gd);
-            Assert.assertArrayEquals("i=" + i, Util.toBytes("v" + i), value);
-        }
+        //System.out.println("node: " + node);
     }
     
     @T

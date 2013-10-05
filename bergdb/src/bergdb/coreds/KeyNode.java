@@ -200,8 +200,6 @@ public class KeyNode implements INode {
      * If there are multiple matches, the one with the latest time is matched. If there are multiple
      * matches with same compareValue and time, the last one in the klong array (the last one
      * added) is matched. Only klongs with a time >= 'time' are considered.
-     * No synchronization is made in this method, it is the responsibility 
-     * of the caller.
      * 
      * @param kwi  The result is written to this parameter.
      *      kwi.klong is set to Klong.NULL if no klong was found. On entry, 'kwi' can have any
@@ -682,6 +680,53 @@ public class KeyNode implements INode {
         
         // Synch action, line below makes changes visible to readers (that read this.size).
         this.size = newSize;
+    }
+    
+    
+    // XXX new method
+    /**
+     * Replaces existing key klong along with pointer and accessData if
+     * 'klong' equals an existing key klong at the same time.
+     * Delete klongs are not allowed in this KeyNode.
+     * 
+     * @return true if a klong was replaced.
+     */
+    public boolean replaceKlong(long time, long klong1, INode pointer, long accessData) {
+        final int sz; 
+        final long[] klongs;
+        int index = 0;
+        long klong; 
+        long arrayTime = -1;
+        int klongType;
+        boolean result = false;
+        
+        sz = this.size;         // Synch action. Makes changes by writer visible.
+        klongs = this.klongs;
+        
+        A: for (index = 0; index < sz; index++) {
+            klong = klongs[index];
+            klongType = Klong.getIntType(klong);
+            
+            switch (klongType) {
+            case Klong.INT_TYPE_TIME:                
+                arrayTime = Klong.getTime(klong);
+                break;
+            case Klong.INT_TYPE_KEY:
+                if (klong1 == klong && time == arrayTime) {
+                    this.klongs[index] = klong1;
+                    this.pointers[index] = pointer;
+                    this.pos[index] = accessData;
+                    result = true;
+                    break A;
+                }
+                break;
+            case Klong.INT_TYPE_DELETE:
+            case Klong.INT_TYPE_DELETE_BITMAP:
+                throw new IllegalStateException("This method is cannot be used for "
+                        + "KeyNode with delete klongs.");
+            }
+        }
+        return result;
     }
     
     /**

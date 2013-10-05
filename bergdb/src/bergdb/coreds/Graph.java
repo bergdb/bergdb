@@ -665,7 +665,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             
             // Inserts a delete klong if needed.
             
-            boolean isNoop = insertDeleteKlong(node, pd.keyAccessPath.size - 1, compareValue, pd);
+            boolean isNoop = appendDeleteKlong(node, pd.keyAccessPath.size - 1, compareValue, pd);
             if (!isNoop) {
                 //pd.nodeChangeListener.keyNodeChanged(node);
                 ValueNode valueNode = new ValueNode(null);
@@ -754,7 +754,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      * 
      * @return True if the operation is a noop (no operation).
      */
-    private boolean insertDeleteKlong(final KeyNode node, final int depth,
+    private boolean appendDeleteKlong(final KeyNode node, final int depth,
             final long compareValueToDelete, PutData pd) {
         //
         // If needed, a delete bitmap klong is added to the node for the current
@@ -882,6 +882,8 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             
         } else {
             // 'node' is full. We cannot append 'toInsert' to it.
+            // It is either space-full or time-full.
+            
             KeyNode last = node.lastVersion(pd.tt);
             pd.nodeChangeListener.keyNodeChanged(last);
             
@@ -894,11 +896,10 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      * This is a central and important method. 
      * All calls to splitNode() and replaceNodeWithLastVersion() goes through this method.
      * This is an "hourglass method" - multiple callers and multiple callees.
-     * insertKlongs/insertDelete methods call this method.
-     * If last.size > maxNodeSize / 2, then 'node' is split into two nodes (splitNode()), 
+     * appendKlongs()/appendDelete() methods call this method.
+     * If last.size > maxNodeSize / 2, then 'node' is split into two nodes 
      * a space-split is made.
-     * Otherwise, 'node' is replaced by the last version of it 
-     * (replaceNodeWithLastVersion()), a time-split.
+     * Otherwise, 'node' is replaced by the last version of it, a time-split.
      */
     private void handleLastVersionOfFullNode(final KeyNode node, final int depth,
             final KlongWithPointer[] toInsert, final long tTime, KeyNode last, PutData pd) {
@@ -914,14 +915,20 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      * This method handles both: time-split-1 and time-split-2 cases.
      */
     private void timeSplit(final long tTime, KeyNode last, final int depth,
-            KlongWithPointer[] toInsert, PutData pd) {
+            KlongWithPointer[] toAppend, PutData pd) {
+        // 131005, added the last.replaceKlong() method call. A bit of a hack.
+        //   See Graph.testTimeSplit1a.
+        //   TODO A. Consider other solution. Maybe last should include toInsert.
+        //
         // Last version is small enough not to split into two nodes, but not empty.
+        //
         
         final KeyNode parent = pd.getParent(depth);
 
-        for (int i = 0; i < toInsert.length; i++) {
-            KlongWithPointer kwi = toInsert[i];
-            last.addKlong(tTime, kwi.klong, kwi.node, pd.accessData);
+        for (int i = 0; i < toAppend.length; i++) {
+            KlongWithPointer kwi = toAppend[i];    
+            boolean replaced = last.replaceKlong(tTime, kwi.klong, kwi.node, pd.accessData);
+            if (!replaced) last.addKlong(tTime, kwi.klong, kwi.node, pd.accessData);
         }
         pd.nodeChangeListener.keyNodeChanged(last);
 
@@ -936,6 +943,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             
         } else {
             // time-split-1:
+            // 'node' is an ordinary node (not space root).
             
             long klong1 = pd.keyAccessPath.getKlong(depth);
             assert klong1 != Klong.NULL;
