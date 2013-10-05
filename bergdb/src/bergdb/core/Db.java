@@ -1326,19 +1326,13 @@ public class Db implements IWarner {
             // queue to enforce the ordering of the transactions. The serialization could
             // possibly be done in a separate thread, or not.
             
-            // TODO A. Do addChoices + ensure dirty with GETs after all calls to putKv.
-            
             // 1305 Frans: Adds choices for ValueNodes to transactionNodes (+20% CPU).
             // This is needed to have an active replica.
             
-            for (int i = 0; i < transactionNodes.valueSize; i++) {
-                long[] key = transactionNodes.keys[i];
-                
-                // TODO E. Implement getChoices here?
-                //getChoices(key, transactionNodes.choices[i], transactionNodes.valueNodes[i].isDelete());
-                //assert Keys.compareKeys(key, followChoices(transactionNodes.choices[i])) == 0 :
-                //    "key:" + Keys.toString(key) + ", choices: " + transactionNodes.choices[i];
-            }
+            // TODO B. Consider choices+ensureDirty here, see branch for it.
+            //for (int i = 0; i < transactionNodes.valueSize; i++) {
+            //    long[] key = transactionNodes.keys[i];
+            //}
             
             addNodesToStream();
             this.lastSposOfLastTrans = this.trans.lastSpos;
