@@ -48,7 +48,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     private final int POINTER_LOCKS_LENGTH = 128;
     private final Object[] pointerLocks;
     private final int maxNodeSize;
-    private final DirtyNodes dirtyNodes;
+    private final IDirtyNodes dirtyNodes;
     
     /**
      * Creates and returns a new, minimal DbGraph.
@@ -69,7 +69,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             pointerLocks[i] = new Object();
         }
         
-        this.dirtyNodes = new DirtyNodes();
+        this.dirtyNodes = new DirtyNodes1();
     }
     
     /**
@@ -168,7 +168,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             pointerLocks[i] = new Object();
         }
         
-        this.dirtyNodes = new DirtyNodes();
+        this.dirtyNodes = new DirtyNodes1();
     }
     
     // ======== General utility methods ========
@@ -241,7 +241,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      * Returns the collection of dirty nodes. Needed by DB monitor. Same
      * reference is always returned since it comes from a final field.
      */
-    public final DirtyNodes getDirtyNodes() {
+    public final IDirtyNodes getDirtyNodes() {
         return dirtyNodes;
     }
 
@@ -951,7 +951,6 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
         }
     }
     
-
     /**
      * Called to space split 'node'.
      * There are three kinds of space splits:

@@ -25,7 +25,7 @@ import bergdb.nanotest.T;
  * 
  * @author Frans Lundberg
  */
-public class DirtyNodes {
+public class DirtyNodes1 implements IDirtyNodes {
     //
     // Note, ordinary TreeMap used. There could be room for performance 
     // optimization here. We could have buckets, say 1M big. Put all there as if
@@ -38,45 +38,23 @@ public class DirtyNodes {
     /**
      * Creates a new collection of dirty nodes.
      */
-    public DirtyNodes() {
+    public DirtyNodes1() {
         topNodes = new TreeMap<Long, TopNode>();
         keyNodes = new TreeMap<Long, KeyNode>();
     }
     
-    /**
-     * Returns the number of nodes in the collection.
-     * Caller must hold DB.writeLock.
-     * This method is only used for monitoring.
+    /* (non-Javadoc)
+     * @see bergdb.coreds.IDirtyNodes#getSize()
      */
     public final int getSize() {
         return topNodes.size() + keyNodes.size();
-    }
-    
-    /** For testing only. */
-    public boolean contains(TopNode node) {
-        return topNodes.containsKey(node.spos);
-    }
-    
-    /** For testing only. */
-    public boolean contains(KeyNode node) {
-        return keyNodes.containsKey(node.spos);
-    }
-    
-    /** For testing only. */
-    public TopNode getTopNode(long spos) {
-        return topNodes.get(spos);
-    }
-    
-    /** For testing only. */
-    public KeyNode getKeyNode(long spos) {
-        return keyNodes.get(spos);
     }
     
     /**
      * Adds 'node' to the node collection if: node.getSpos() != Spos.NULL.
      * Caller must hold DB.writeLock.
      */
-    public final void add(TopNode node) {
+    private final void add(TopNode node) {
         assert node.isDirty == true;
         long pos = node.getSpos();
         if (pos != Spos.NULL) {   
@@ -88,12 +66,35 @@ public class DirtyNodes {
      * Adds 'node' to the node collection if: node.getSpos() != Spos.NULL.
      * Caller must hold DB.writeLock.
      */
-    public final void add(KeyNode node) {
+    private final void add(KeyNode node) {
         assert node.isDirty == true;
         long pos = node.getSpos();
         if (pos != Spos.NULL) {   
             keyNodes.put(pos, node);
         }
+    }
+    
+    /* (non-Javadoc)
+     * @see bergdb.coreds.IDirtyNodes#add(bergdb.coreds.INode)
+     */
+    public void add(INode node) {
+        switch (node.getType()) {
+        case INode.TYPE_TOP_NODE:
+            add((TopNode) node);
+            break;
+        case INode.TYPE_KEY_NODE:
+            add((KeyNode) node);
+            break;
+        default:
+            throw new AssertionError("Unexpected node type: " + node);
+        }
+    }
+    
+    /* (non-Javadoc)
+     * @see bergdb.coreds.IDirtyNodes#getAndRemoveTooDirtyNodes(long, bergdb.coreds.DirtyNodes.TransactionNodesForMe)
+     */
+    public void getAndRemoveTooDirtyNodes(long dirtyLimit, TransactionNodesForMe list) {
+        getTooDirtyNodes(dirtyLimit, true, list);
     }
     
     /**
@@ -106,7 +107,7 @@ public class DirtyNodes {
      * the collection; a get-and-remove operation.
      * @param list The list to add the too dirty nodes to.
      */
-    public void getTooDirtyNodes(long dirtyLimit, boolean remove, TransactionNodesForMe list) {
+    private void getTooDirtyNodes(long dirtyLimit, boolean remove, TransactionNodesForMe list) {
         
         // TopNodes
         
@@ -194,7 +195,7 @@ public class DirtyNodes {
     
     @T
     public static void test1() {
-        DirtyNodes d = new DirtyNodes();
+        DirtyNodes1 d = new DirtyNodes1();
         KeyNode k = new KeyNode();
         k.setSpos(10);
         k.setIsDirty(true);
@@ -222,13 +223,13 @@ public class DirtyNodes {
     
     @T
     public static void test2() {
-        DirtyNodes d = new DirtyNodes();
+        DirtyNodes1 d = new DirtyNodes1();
         d.add(testNode(10));
         d.add(testNode(20));
         d.add(testNode(30));
         Assert.assertEquals("tooDirtyCount", 3, d.tooDirtyCount(100));
         
-        d = new DirtyNodes();
+        d = new DirtyNodes1();
         d.add(testNode(10));
         d.add(testNode(20));
         d.add(testNode(30));
@@ -237,7 +238,7 @@ public class DirtyNodes {
     
     @T
     public static void testGetTooDirtyNodes1() {
-        DirtyNodes d = new DirtyNodes();
+        DirtyNodes1 d = new DirtyNodes1();
         KeyNode n1 = testNode(10);
         KeyNode n2 = testNode(20);
         KeyNode n3 = testNode(30);
@@ -254,7 +255,7 @@ public class DirtyNodes {
     
     @T
     public static void testGetTooDirtyNodes2() {
-        DirtyNodes d = new DirtyNodes();
+        DirtyNodes1 d = new DirtyNodes1();
         KeyNode n1 = testNode(10);
         KeyNode n2 = testNode(20);
         KeyNode n3 = testNode(30);

@@ -15,11 +15,11 @@ import bergdb.common.ProgressListener;
 import bergdb.common.Util;
 import bergdb.coreds.AccessData;
 import bergdb.coreds.Choices;
-import bergdb.coreds.DirtyNodes;
 import bergdb.coreds.EvictData;
 import bergdb.coreds.GetData;
 import bergdb.coreds.Graph;
 import bergdb.coreds.GetMany;
+import bergdb.coreds.IDirtyNodes;
 import bergdb.coreds.INode;
 import bergdb.coreds.KeyNode;
 import bergdb.coreds.Keys;
@@ -642,7 +642,7 @@ public class Db implements IWarner {
      * Returns the collection of dirty nodes. Needed by DB monitor. Same
      * reference is always returned since it comes from a final field.
      */
-    public final DirtyNodes getDirtyNodes() {
+    public final IDirtyNodes getDirtyNodes() {
         return graph.getDirtyNodes();
     }
 
@@ -1394,7 +1394,7 @@ public class Db implements IWarner {
         
         // NOTE I do not like this if statement. Only used for primordial transaction.
         if (graph != null) {
-            graph.getDirtyNodes().getTooDirtyNodes(dirtyLimit, true, transactionNodes);
+            graph.getDirtyNodes().getAndRemoveTooDirtyNodes(dirtyLimit, transactionNodes);
         }
         
         {   // Computes dirtyFraction100, dirtyFraction1000. For statistics, monitoring.

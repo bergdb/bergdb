@@ -10,7 +10,7 @@ import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
 
 import bergdb.common.Bug;
-import bergdb.coreds.DirtyNodes;
+import bergdb.coreds.IDirtyNodes;
 import bergdb.pub.Clock;
 
 
@@ -67,7 +67,7 @@ public class Jmx {
      */
     public static class DbMonitor implements DbMonitorMBean {
         private Db db;
-        private DirtyNodes dirtyNodes;
+        private IDirtyNodes dirtyNodes;
         private Object dbWriteLock;
         private MBeanServer mbs;
         

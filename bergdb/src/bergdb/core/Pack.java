@@ -2,7 +2,7 @@ package bergdb.core;
 
 import bergdb.common.IPack;
 import bergdb.coreds.AccessData;
-import bergdb.coreds.DirtyNodes;
+import bergdb.coreds.DirtyNodes1;
 import bergdb.coreds.GetData;
 import bergdb.coreds.KeyAccessPath;
 import bergdb.coreds.Keys;
@@ -18,7 +18,7 @@ public class Pack implements IPack {
         DbTester.class,
         DbTesterGetMany.class,
         DbTesterStream.class,
-        DirtyNodes.class,
+        DirtyNodes1.class,
         GetData.class,
         KeyAccessPath.class,
         KeyModSet2.class,

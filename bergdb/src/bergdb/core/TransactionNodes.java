@@ -5,7 +5,7 @@ import bergdb.coreds.INode;
 import bergdb.coreds.KeyNode;
 import bergdb.coreds.TopNode;
 import bergdb.coreds.ValueNode;
-import bergdb.coreds.DirtyNodes;
+import bergdb.coreds.DirtyNodes1;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
@@ -16,7 +16,7 @@ import bergdb.nanotest.T;
  * 
  * @author Frans Lundberg
  */
-public class TransactionNodes implements DirtyNodes.TransactionNodesForMe {
+public class TransactionNodes implements DirtyNodes1.TransactionNodesForMe {
     //
     // The class must support the same node added to it several times without causing duplicates.
     // Should be a set of unique nodes.
