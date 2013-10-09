@@ -87,7 +87,6 @@ public class KeyNode implements INode {
         pointers = emptyPointerArray;
         pos = emptyLongArray;
         isDirty = false;
-            // 130117 Frans: changed to 'false' from 'true'. All unit tests still work.
         spos = Spos.NULL;
         id = Spos.NULL;
         this.size = 0;    
@@ -682,8 +681,6 @@ public class KeyNode implements INode {
         this.size = newSize;
     }
     
-    
-    // XXX new method
     /**
      * Replaces existing key klong along with pointer and accessData if
      * 'klong' equals an existing key klong at the same time.
@@ -1304,9 +1301,18 @@ public class KeyNode implements INode {
      * Return a multi-line string describing the key node. For debug.
      */
     public String print() {
+        return print("");
+    }
+    
+    /**
+     * Return a multi-line string describing the key node. For debug.
+     * 
+     * @param indent  The spaces or something else to indent the text with.
+     */
+    public String print(String indent) {
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         PrintStream out = new PrintStream(bout);
-        printInternal(out, "", 0, false);
+        printInternal(out, indent, 0, false);
         return Util.toString(bout.toByteArray());
     }
     

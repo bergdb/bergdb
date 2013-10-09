@@ -148,7 +148,7 @@ public class NodeStream implements bergdb.coreds.Graph.NodeReader {
             final TopNode n1 = nodes.topNodes[i];
             n1.spos = pos;
             n1.id = (n1.id == Spos.NULL) ? pos : n1.id;
-            n1.isDirty = false;
+            //n1.isDirty = false;   // XXX here! Remove from DirtyNodes
             totalSize += n1.getByteSize();
             pos = rstream.getSpos(transStartPos, totalSize);
         }
@@ -159,7 +159,7 @@ public class NodeStream implements bergdb.coreds.Graph.NodeReader {
             prevPos[prevPosIndex++] = n.spos;
             n.spos = pos;
             n.id = (n.id == Spos.NULL) ? pos : n.id;
-            n.isDirty = false;
+            //n.isDirty = false;   // XXX remove from DirtyNodes.
             totalSize += n.getByteSize();
             pos = rstream.getSpos(transStartPos, totalSize);
         }
@@ -464,7 +464,11 @@ public class NodeStream implements bergdb.coreds.Graph.NodeReader {
     }
     
     /**
-     * Caller must hold DB.writeLock.
+     * Returns the spos of the last valid transaction that was completely 
+     * written before stream position 'spos'.
+     * If there is no such transaction, the spos of the very first valid 
+     * transaction is returned instead. If there is no valid transaction at all in 
+     * the stream, Spos.NULL is returned. Caller must hold DB.writeLock.
      */
     public long getPosOfLastCompletedTrans() {
         assert Thread.holdsLock(writeLock);

@@ -261,6 +261,7 @@ public class Db implements IWarner {
         this.evictBoss = b.evictBoss;
         
         this.reclaim = new Reclaim(this, aos);
+        //this.reclaim = new NoReclaim(this, aos);
         
         this.reclaimTransactionListener = reclaim;
         reclaim.setRetainDuration(b.retainDuration);
@@ -740,7 +741,7 @@ public class Db implements IWarner {
         // Startup phase
         
         this.startupDistance = nodeStream.getMetaBlock().getStartupDistance();
-        if (startupDistance < 0) {
+        if (startupDistance <= 0) {
             throw new StreamFormatException("Bad value of startupDistance in meta " +
             		"block of stream: " + startupDistance + ".");
         }
@@ -749,6 +750,8 @@ public class Db implements IWarner {
         long startPos = pos1 - (startupDistance + 1);
         startPos = startPos < 0 ? 0 : startPos;
   
+        
+        
 //System.out.println("Db, node stream length: " + nodeStream.getLength());
 //System.out.println("Db, pos1 = " + pos1 + ", startPos = " + startPos);
 
@@ -764,7 +767,7 @@ public class Db implements IWarner {
         NodeStream.TransIterator ti = nodeStream.new TransIterator(startPos);
         while (ti.next()) {
             if (ti.nextTransPos < startPos) {
-                continue; // We can allow to skip forward here
+                continue; // We can skip forward here
             }
 
             lastTransactionTime = ti.getTransactionTime();
@@ -908,6 +911,9 @@ public class Db implements IWarner {
         
         this.addNodesToStream();
         this.clearTransMemory();
+        
+        assert root.isDirty() == false : "space root is dirty";
+        assert top.getSuperRoot().isDirty() == false : "super root is dirty";
     }
     
     /**
@@ -1341,8 +1347,8 @@ public class Db implements IWarner {
             clearTransMemory();
 
             // 1301 Frans. The following line moved to inside the synchronized
-            // (writeLock) block to KISS the reclaim stuff. However, it does not really have to
-            // belong to the writeLock code block.
+            // (writeLock) block to KISS the reclaim stuff. However, it does not really 
+            // have to belong to the writeLock code block.
             reclaimTransactionListener.transactionCompleted(t);
         }
     }
@@ -1405,6 +1411,30 @@ public class Db implements IWarner {
         assert transactionNodes != null : "transactionNodes is null";
         
         trans.nodeCount = transactionNodes.size();
+        
+        
+        // XXX here!
+        {
+            final TransactionNodes nodes = transactionNodes;
+            
+            // Loop topNodes.
+            for (int i = 0; i < transactionNodes.topSize; i++) {
+                final TopNode n = nodes.topNodes[i];
+                if (n.isDirty && n.spos != Spos.NULL) {
+                    graph.getDirtyNodes().remove(n);
+                }
+                n.isDirty = false;
+            }
+            
+            // Loop keyNodes.
+            for (int i = 0; i < nodes.keySize; i++) {
+                final KeyNode n = nodes.keyNodes[i];
+                if (n.isDirty && n.spos != Spos.NULL) {
+                    graph.getDirtyNodes().remove(n);
+                }
+                n.isDirty = false;
+            }
+        }
         
         boolean wroteMetaBlock = nodeStream.addNodes(trans.transactionTime, transactionNodes, trans);
         
@@ -2081,7 +2111,8 @@ public class Db implements IWarner {
     }
 
     /**
-     * A listener ("handler") for the transactionCompleted event.
+     * A listener ("handler") for the transactionCompleted event, 
+     * method transactionCompleted().
      */
     public static interface TransactionListener {
 

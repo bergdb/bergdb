@@ -74,7 +74,8 @@ public interface INode {
     public int getMemoryPointerCount();
     
     /**
-     * Returns multi-line print of the state of this node. Good for debug to complement toString().
+     * Returns multi-line print of the state of this node.
+     * Good for debug to complement toString().
      */
     public String print();
     

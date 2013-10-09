@@ -90,6 +90,25 @@ public class DirtyNodes1 implements IDirtyNodes {
         }
     }
     
+    public void remove(INode node) {
+        INode existing;
+        
+        switch (node.getType()) {
+        case INode.TYPE_TOP_NODE:
+            existing = topNodes.remove(node.getSpos());
+            break;
+        case INode.TYPE_KEY_NODE:
+            existing = keyNodes.remove(node.getSpos());
+            break;
+        default:
+            throw new AssertionError("Unexpected node type: " + node);
+        }
+        
+        if (existing == null) {
+            throw new AssertionError("No node with given spos, node: " + node.toString());
+        }
+    }
+    
     /* (non-Javadoc)
      * @see bergdb.coreds.IDirtyNodes#getAndRemoveTooDirtyNodes(long, bergdb.coreds.DirtyNodes.TransactionNodesForMe)
      */
@@ -117,14 +136,14 @@ public class DirtyNodes1 implements IDirtyNodes {
             TopNode node = entry.getValue();
             long keyPos = entry.getKey().longValue();
             
-            // Happens when node was written to stream after added to dirty nodes.
             if (keyPos != node.getSpos()) {
-                iter.remove();
-                continue;
+                throw new AssertionError("should not happen");
+                //iter.remove();
+                //continue;
             }
             
             if (node.getSpos() < dirtyLimit) {
-                if (node.isDirty) {
+                if (node.isDirty) {   // XXX
                     list.addTopNode(node);
                 }
                 
@@ -146,10 +165,10 @@ public class DirtyNodes1 implements IDirtyNodes {
             KeyNode node = entry.getValue();
             long keyPos = entry.getKey().longValue();
             
-            // Happens when node was written to stream after added to dirty nodes.
             if (keyPos != node.getSpos()) {
-                it.remove();
-                continue;
+                throw new AssertionError("bad state, node: " + node);
+                //it.remove();
+                //continue;
             }
             
             if (node.getSpos() < dirtyLimit) {

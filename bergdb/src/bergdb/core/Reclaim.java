@@ -87,8 +87,7 @@ public class Reclaim implements Db.TransactionListener {
         this.initialStartupDistance = db.getStartupDistance();
         this.lastIterationPStart = 0;
         
-        this.retainDuration = 7 * 24 * 3600 * Clock.UNITS_PER_SEC;
-            // Sets retain duration to default.
+        this.retainDuration = Long.MAX_VALUE;
         this.internalFraction = DEFAULT_INTERNAL_FRACTION;
         this.iterationCount = 0;
         
@@ -165,11 +164,13 @@ public class Reclaim implements Db.TransactionListener {
     }
     
     /**
+     * Called by Db after each transaction completed.
+     * 
      * @throws StreamFormatException
      * @throws StreamIoException
      * @throws InternalDataException  If DB data "table.txt" is badly formatted.
      */
-    public final void transactionCompleted(Trans t) {
+    public void transactionCompleted(Trans t) {
         final boolean isInternal = t.isInternal();
         long streamSize = t.nextSpos;
             // This is correct since meta blocks are written eagerly by RecoverableStream.
@@ -725,7 +726,8 @@ public class Reclaim implements Db.TransactionListener {
             byte[] value = new byte[100*1000];
             int size = 40;
             
-            Db db = Db.builder().testSetup().mainStream(stream).clock(clock).startupDistance(100*1000).start();
+            Db db = Db.builder().testSetup().mainStream(stream).clock(clock)
+                    .startupDistance(100*1000).start();
             
             for (int i = 0; i < size; i++) {
                 long time = 1000 + i * 10;
@@ -789,7 +791,7 @@ SpaceReclaim uses these calls to run its methods. Current implement does not sta
 but runs piggyback in the thread that executes an ordinary external transaction.
 
 This functionality is quite independent from the rest of the code. It will be possible to easily
-try different reclaim algorithms :-). However, interfaces are not used. Also consider that fact
+try different reclaim algorithms :-). However, interfaces are not used now. Also consider that fact
 that we need be compatible with what is stored in the database. Is user allowed to switch 
 reclaim algorithms in same database? That requires every type of reclaim implementation to 
 understand the data stored in TABLE_KEY_NAME even when it was produced by another implementation.

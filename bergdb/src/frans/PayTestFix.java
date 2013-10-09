@@ -5,16 +5,24 @@ import java.io.PrintStream;
 
 import bergdb.core.Db;
 import bergdb.core.NoEvictBoss;
+import bergdb.coreds.GetData;
+import bergdb.coreds.Graph;
+import bergdb.coreds.INode;
+import bergdb.coreds.KeyNode;
+import bergdb.coreds.Keys;
+import bergdb.coreds.TopNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
 import bergdb.pub.Factory;
+import bergdb.pub.TestClock;
 import bergdb.pub.Transaction;
 import bergdb.pub.WBuilder;
 import bergdb.pubimp.DatabaseBuilderImp;
 import bergdb.pubimp.DatabaseImp;
+import bergdb.pubimp.PubKeys;
 import bergdb.stream.MemoryStream;
 
 // TODO B. Fix this bug!
@@ -74,8 +82,10 @@ public class PayTestFix {
     }
     
     public void go() throws IOException {
+        TestClock clock = new TestClock();
         MemoryStream mem = new MemoryStream();
         DatabaseBuilderImp b = (DatabaseBuilderImp) Factory.database();
+        b.clock(clock);
         b.stream("main", mem);
         b.noReclaim();
         b.evictBoss(new NoEvictBoss());
@@ -98,6 +108,8 @@ public class PayTestFix {
                 id += 1;
             }
             
+            clock.setTime(i == 0 ? 1 : i * batchSize);
+            
             @SuppressWarnings("unused")
             Transaction t = builder.build().execute();
             //t.waitForD1();  //  <-- Does not work, even with this line.
@@ -117,10 +129,9 @@ public class PayTestFix {
         double time = 1e-9 * t0;
         out.printf("Total create time: %.1f s, time per account: %.6f s.\n", time, time / total);
         
+        // ---- Prints access path to KV
         
-        //Db db = ((DatabaseImp) database).getDb();
-        //db.printGraph(System.out);
-        
+        printAccessPath(database);
         
         // ----
         
@@ -147,6 +158,7 @@ public class PayTestFix {
         Assert.assertEquals(count, total);
         
         
+        
         // ---- Iterate based on memory stream ----
         
         MemoryStream mem2 = mem.copy();
@@ -167,6 +179,9 @@ public class PayTestFix {
         
         // -- Print a few
         
+        printAccessPath(database);
+        
+        /*
         out.println("---- A few accounts of interest: ");
         long[] ids = new long[] {
                 0, 996998, 996999, 
@@ -179,6 +194,8 @@ public class PayTestFix {
         }
         
         db.checkNodes();
+        */
+        
         
         out.println("---- Iterating the accounts of the restarted database.");
         
@@ -208,6 +225,42 @@ public class PayTestFix {
         Assert.assertEquals(count, total);
         Assert.assertEquals(sum, total);
     }
+
+    private void printAccessPath(Database database) {
+        //long[] theAccounts = new long[]{999999, 1000000};
+        long[] theAccounts = new long[]{999999};
+        
+        Db dbTemp = (Db) ((DatabaseImp) database).getDb();
+        GetData gd = new GetData();
+        gd.pointerListener = new Graph.PointerListener() {
+            public void superRootAccessed(TopNode superRoot) {
+                System.out.println("Super root: " + superRoot);
+            }
+            
+            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
+                System.out.println("Pointer followed, index " + pointerIndex + ", result: " + result);
+                long id = result.getId();
+                
+                if (id == 159470936L || id == 222520040 || id == 226129416) {
+                    System.out.print(((KeyNode) result).print("    "));
+                }
+            }
+        };
+        
+        System.out.println("\n---- Printing pointers to accounts");
+        System.out.println("Stream length: " + dbTemp.getStreamLength());
+        
+        for (int i = 0; i < theAccounts.length; i++) {
+            String key = accountKey(theAccounts[i]);
+            System.out.println("* key: " + key);
+            byte[] value = dbTemp.getOne(Long.MAX_VALUE, Keys.toSegments(PubKeys.u2i(key)), gd);
+            System.out.println("value = " + value);
+        }
+        
+        dbTemp.getOne(Long.MAX_VALUE, Keys.toSegments(accountKey(990000)), gd);
+        dbTemp.getOne(Long.MAX_VALUE, Keys.toSegments(accountKey(999000)), gd);
+        System.out.println("Print done.");
+    }
     
     /**
      * Simple account class. For direct db storage.
@@ -224,6 +277,17 @@ public class PayTestFix {
 }
 
 /*
+
+== 131007 ==
+
+Tracing getOne() is interesting. Shows what seems to be inconsistencies!
+Forward pointers exist, but not all ancestors to forward pointer have 
+spos > pointee.spos - startupDist.
+
+See bug-130925/notes.txt.
+
+
+== 13092x ==
 
 Bug-hunting notes.
 
@@ -246,8 +310,6 @@ Got:
 Alternative:
 /daccou nt/-000 99999.o bj    
 /daccou nt/-001 00000.o bj     
-
-
 
 == 130927 ==
 Idea: can it have to do with newly created nodes when we have splits?

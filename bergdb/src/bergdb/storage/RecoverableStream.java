@@ -420,13 +420,11 @@ public class RecoverableStream {
     }
     
     /**
-     * <p>Returns the last known spos of a transaction that completed before
-     * 'spos'. If there is no such transaction, the spos of the very first
-     * transaction is returned instead.
-     * If there are no completed transaction at all in the stream, SSPos.NULL is 
-     * returned.</p>
-     * 
-     * <p>Caller must hold DB.writeLock.</p>
+     * Returns the last valid transaction that was completely written before 
+     * stream position 'spos'.
+     * If there is no such transaction, the spos of the very first valid 
+     * transaction is returned instead. If there is no valid transaction at all in 
+     * the stream, Spos.NULL is returned. Caller must hold DB.writeLock.
      * 
      * @throws StreamIoException
      */

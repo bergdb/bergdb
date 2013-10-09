@@ -25,6 +25,7 @@ public class ConnectionImp implements Connection {
         this.database = database;
         this.db = database.getDb();
         this.getData = new GetData();
+            // TODO D. Create and use newGetData() in Graph/Db instead. Like for PutData.
         this.getData.actualLookupTime = -1;
         this.lookupTime = Long.MAX_VALUE;
         this.enableKeyReplace = false;

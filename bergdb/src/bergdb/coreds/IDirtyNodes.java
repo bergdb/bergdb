@@ -9,9 +9,12 @@ public interface IDirtyNodes {
      * Caller must hold DB.writeLock.
      * This method is only used for monitoring.
      */
-    public abstract int getSize();
+    public int getSize();
 
-    public abstract void add(INode node);
+    // TODO A. Should we add mapping tpos -> node instead?
+    public void add(INode node);
+    
+    public void remove(INode node);
 
     /**
      * Adds all nodes that are "too dirty" to "list". The too dirty nodes are the nodes in the 
