@@ -64,7 +64,7 @@ public class Trans {
     
     private Trans() {
         readKeyHashes = new long[0];
-        getData = new GetData();
+        getData = new GetData();     // NOTE Better to use Db.newGetData().
     }
     
     public boolean isInternal() {

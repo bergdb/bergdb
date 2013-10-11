@@ -151,7 +151,7 @@ public class StartupDistanceTester {
         
         
         while (true) {
-            GetData gd = new GetData();
+            GetData gd = db.newGetData();
             byte[] v1 = db.getOne(Long.MAX_VALUE, Keys.toSegments(from), gd);
             long lookupTime = gd.actualLookupTime;
             byte[] v2 = db.getOne(lookupTime, Keys.toSegments(to), gd);

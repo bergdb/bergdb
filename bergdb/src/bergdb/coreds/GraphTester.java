@@ -54,7 +54,7 @@ public class GraphTester {
         //            + "->" + pd.keyAccessPath.get(i));
         //}
         
-        GetData gd = new GetData();
+        GetData gd = g.newGetData();
         byte[] value = g.getOne(20, Keys.toSegments("/-key"), gd);
         
         Assert.assertTrue(value != null);
@@ -83,7 +83,7 @@ public class GraphTester {
         //System.out.println("Graph:\n");
         //g.printGraph(System.out);
         
-        GetData gd = new GetData();
+        GetData gd = g.newGetData();
         byte[] value = g.getOne(20, Keys.toSegments("/longerKey1"), gd);
         
         Assert.assertTrue(value != null);
@@ -112,7 +112,7 @@ public class GraphTester {
         pd.clear();
         
         Assert.assertEquals(1, pd.spaceSplitCount);
-        GetData gd = new GetData();
+        GetData gd = g.newGetData();
         for (int i = 0; i < kvs.length; i += 2) {
             byte[] value = g.getOne(10, Keys.toSegments(kvs[i]), gd);
             Assert.assertEquals(kvs[i + 1], Util.toString(value));

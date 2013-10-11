@@ -43,12 +43,12 @@ public class DbUtil {
 
     public static byte[] get(Db db, long lookupTime, byte[] key) {
         assert db != null : "db == null not allowed";
-        return db.getOne(lookupTime, Keys.toSegments(key), new GetData());
+        return db.getOne(lookupTime, Keys.toSegments(key), db.newGetData());
     }
     
     public static byte[] get(Db db, long lookupTime, String key) {
         assert db != null : "db == null not allowed";
-        return db.getOne(lookupTime, Keys.toSegments(key), new GetData());
+        return db.getOne(lookupTime, Keys.toSegments(key), db.newGetData());
     }
     
     /**
@@ -57,15 +57,15 @@ public class DbUtil {
      * @see Db#getOne(long, long[], GetData)
      */
     public static byte[] get(Db db, byte[] key) {
-        return db.getOne(Long.MAX_VALUE, Keys.toSegments(key), new GetData());
+        return db.getOne(Long.MAX_VALUE, Keys.toSegments(key), db.newGetData());
     }
     
     public static byte[] get(Db db, String key) {
-        return db.getOne(Long.MAX_VALUE, Keys.toSegments(key), new GetData());
+        return db.getOne(Long.MAX_VALUE, Keys.toSegments(key), db.newGetData());
     }
     
     public static String getString(Db db, String key) {
-        byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(key), new GetData());
+        byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(key), db.newGetData());
         return value == null ? null : Util.toString(value);
     }
     

@@ -82,7 +82,7 @@ public class LoadA {
         // Read method
         
         Random r = new Random(1);
-        GetData gd = new GetData();
+        GetData gd = db.newGetData();
         
         while (!stop) {
             int keyInt = r.nextInt(n) * 10;

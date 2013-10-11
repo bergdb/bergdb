@@ -297,7 +297,7 @@ public class Reclaim implements Db.TransactionListener {
      * @throws InternalDataException  If DB data "table.txt" is badly formatted.
      */
     public void initFromDb() {
-        GetData g = new GetData();
+        GetData g = db.newGetData();
         byte[] value = db.getOne(Long.MAX_VALUE, tableKey, g);
         
         if (value != null) {
@@ -679,7 +679,7 @@ public class Reclaim implements Db.TransactionListener {
             long stepLookupTime = -1;
             
             for (Kvt kvt : g.result) {
-                GetData gd = new GetData();
+                GetData gd = db.newGetData();
                 byte[] value;
                 
                 if (stepLookupTime == -1) {         // BUG Fixed 130131, was "1" instead of "-1".

@@ -88,7 +88,7 @@ public class Concurrency2 {
     
     private void reader() {
         while (!stop) {
-            GetData gd = new GetData();
+            GetData gd = db.newGetData();
             byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments("0"), gd);
             readCount++;
             

@@ -102,7 +102,7 @@ public class BigDbEvict {
         
         // Tests db after evicts
         
-        GetData gd2 = new GetData();
+        GetData gd2 = db.newGetData();
         gd2.evictData.enableEvict = false;
         byte[] expectedValue = new byte[valueSize];
         i = 0;

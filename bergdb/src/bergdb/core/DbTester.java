@@ -745,10 +745,10 @@ public class DbTester {
         Random random = new Random(1);
         KTestClock clock = new KTestClock();
         Db db = Db.builder().testSetup().mainStream(stream).clock(clock).start();
-        GetData getData = new GetData();
+        GetData getData = db.newGetData();
         
         for (int i = 0; i < n; i++) {
-            getData = new GetData();
+            getData = db.newGetData();
             String key = "" + random.nextInt();
             Trans t = Trans.builder().put(key, "v" + key).build();
             clock.setTime(i * 10 + 10);
@@ -813,7 +813,7 @@ public class DbTester {
         byte[] value;
         
         for (long i = 100; i < 113; i++) {
-            GetData gd = new GetData();
+            GetData gd = db.newGetData();
             value = db.getOne(Long.MAX_VALUE, Keys.toSegments("four" + i + "end"), gd);
             Assert.assertEquals("i=" + i, "" + i, Util.toString(value));
         }
@@ -1030,7 +1030,7 @@ public class DbTester {
         clock.setTime(20);
         db.execute(Trans.builder().put("anna", "v2"));
         
-        GetData gd = new GetData();
+        GetData gd = db.newGetData();
         
         byte[] key = DbUtil.getFirstKey(db, 5, gd);
         Assert.assertEquals(null, key);
@@ -1056,7 +1056,7 @@ public class DbTester {
         clock.setTime(30);
         db.execute(Trans.builder().put("a", "v3"));
         
-        GetData gd = new GetData();
+        GetData gd = db.newGetData();
         
         byte[] key = DbUtil.getFirstKey(db, 5, gd);
         Assert.assertEquals(null, key);
@@ -1348,7 +1348,7 @@ public class DbTester {
                 .build();
         db.execute(t);
         
-        GetData g = new GetData();
+        GetData g = db.newGetData();
         byte[] value = db.getOne(200, Keys.toSegments("t/1.s"), g);
         Assert.assertTrue(value != null);
         String s = Util.toString(value);
@@ -1381,7 +1381,7 @@ public class DbTester {
                 .build();
         db.execute(t);
         
-        GetData g = new GetData();
+        GetData g = db.newGetData();
         byte[] value = db.getOne(200, Keys.toSegments("a"), g);
         Assert.assertTrue(value != null);
         Assert.assertEquals(8, value.length);
@@ -1392,7 +1392,7 @@ public class DbTester {
                 .build();
         db.execute(t);
         
-        g = new GetData();
+        g = db.newGetData();
         value = db.getOne(200, Keys.toSegments("a"), g);
         Assert.assertTrue(value != null);
         Assert.assertEquals(8, value.length);
@@ -1411,7 +1411,7 @@ public class DbTester {
         Db db = Db.builder().testSetup().start();
         db.stop();
         IllegalDbStateException exception = null;
-        GetData g = new GetData();
+        GetData g = db.newGetData();
         
         try {
             db.getOne(200, Keys.toSegments("a"), g);

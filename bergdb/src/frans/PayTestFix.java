@@ -232,7 +232,7 @@ public class PayTestFix {
         long[] theAccounts = new long[]{999999};
         
         Db dbTemp = (Db) ((DatabaseImp) database).getDb();
-        GetData gd = new GetData();
+        GetData gd = dbTemp.newGetData();
         gd.pointerListener = new Graph.PointerListener() {
             public void superRootAccessed(TopNode superRoot) {
                 System.out.println("Super root: " + superRoot);

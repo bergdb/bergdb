@@ -125,7 +125,7 @@ public class Huge {
         
         System.out.printf("Startup time: %.1f s\n", (nanos * 1e-9));
         
-        GetData gd = new GetData();
+        GetData gd = db.newGetData();
         
         String nString = DbUtil.getString(db, "n");
         if (nString == null) {

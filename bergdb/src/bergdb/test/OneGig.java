@@ -210,7 +210,7 @@ public class OneGig {
         t = System.nanoTime() - t;
         c.report("startup-time", t*1e-9);
         
-        GetData gd = new GetData();
+        GetData gd = db.newGetData();
         
         t = System.nanoTime();
         for (int i = 0; i < 10*n; i++) {

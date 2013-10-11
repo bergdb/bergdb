@@ -52,7 +52,7 @@ public class PutData {
     
     /**
      * Creates a new PutData object directly.
-     * Note: prefer to use Graph.newPutData() or Db.newPutData().
+     * Note: prefer using Graph.newPutData() instead of this constructor.
      */
     public PutData() {
         tt = 0;

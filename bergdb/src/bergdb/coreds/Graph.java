@@ -219,11 +219,13 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     }
 
     public INode findNode(int[] choices) {
+        // TODO A. Not super efficient, allocates memory.
+        
         if (choices == null) {
             throw new IllegalArgumentException("choices == null not allowed");
         }
         
-        GetData gd = new GetData();
+        GetData gd = newGetData();
         INode node = this.getSuperRoot();
         
         for (int i = 0; i < choices.length; i++) {

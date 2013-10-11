@@ -68,7 +68,12 @@ public class GetMany {
      */
     public final GetData gd;
     
+    /**
+     * Created a new instance.
+     */
     public GetMany() {
+        // TODO C. Consider using factory method instead. Graph.newGetMany() and/or Db.newGetMany().
+        
         result = new ArrayList<Kvt>();
         stopCondition = new DontStop();
         startKey = null;

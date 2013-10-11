@@ -95,7 +95,7 @@ public class CacheTester {
         //System.out.println("key49 = " + Util.toString(Keys.crazyKey(49)));
         //System.out.println("key50 = " + Util.toString(Keys.crazyKey(50)));
         
-        GetData gd1 = new GetData();
+        GetData gd1 = db.newGetData();
         
         {
             byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(KeyFactory.crazyKey(23)), gd1);
@@ -106,7 +106,7 @@ public class CacheTester {
         }
         
         { 
-            GetData d = new GetData();
+            GetData d = db.newGetData();
             byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(KeyFactory.crazyKey(23)), d);
         }
         

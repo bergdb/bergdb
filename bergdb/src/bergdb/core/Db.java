@@ -930,6 +930,13 @@ public class Db implements IWarner {
     public void printGraph(PrintStream out) {
         graph.printGraph(out);
     }
+    
+    /**
+     * Returns a new GetData instance that can be used when calling getOne().
+     */
+    public GetData newGetData() {
+        return graph.newGetData();
+    }
 
     /**
      * Gets a value given a key. This is the primary and fastest GET method with

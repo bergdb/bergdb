@@ -85,7 +85,7 @@ public class DirtyNodes1 implements IDirtyNodes {
      * 
      * @param dirtyLimit A node with an spos less than this is "too dirty".
      * @param remove If true, the read entries will be removed from
-     * the collection; a get-and-remove operation.
+     * the collection and isDirty will be set to false.
      * @param list The list to add the too dirty nodes to.
      */
     private void getTooDirtyNodes(long dirtyLimit, boolean remove, TransactionNodesForMe list) {

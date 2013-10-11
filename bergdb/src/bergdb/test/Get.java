@@ -71,7 +71,7 @@ public class Get {
     }
     
     public void warmup() {
-        GetData gd = new GetData();
+        GetData gd = db.newGetData();
         int limit = n > 10*1000 ? 10*1000 : n;
         
         for (int i = 0; i < limit; i++) {
@@ -123,7 +123,7 @@ public class Get {
         }
         
         public Timed(int indexOffset) {
-            gd = new GetData();
+            gd = db.newGetData();
             count = 0;
             thread = null;
             this.indexOffset = indexOffset;

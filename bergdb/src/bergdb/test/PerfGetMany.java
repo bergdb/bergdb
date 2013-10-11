@@ -155,7 +155,7 @@ public class PerfGetMany {
         boolean forward;
         
         public Timed(boolean forward) {
-            gd = new GetData();
+            gd = db.newGetData();
             count = 0;
             thread = null;
             this.forward = forward;
