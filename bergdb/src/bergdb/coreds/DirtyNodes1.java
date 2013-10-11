@@ -9,21 +9,8 @@ import java.util.TreeMap;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
-// TODO Refactor: Merge top node and key nodes.
-
 /**
- * <p>Simple implementation of the dirty node set, nodes are
- * stored in one sorted spos-to-TopNode map and one sorted spos-to-KeyNode map.
- * Synch note: this class itself is not thread-safe. 
- * Access is protected externally by Db.writeLock.</p>
- * 
- * <p>The nodes on this set are dirty when added to the set, but the set can still 
- * contain nodes that are not dirty. If a node in this set is written to stream, 
- * it will no longer be dirty, but it will still remain in this set.
- * The idea is that this set only handles adding nodes until they get too dirty
- * (if still dirty) when they are removed. If removing of single nodes is omitted, this
- * data structure could be more specialized and possibly perform better
- * (current implementation using TreeMap would allow removing nodes, however).</p>
+ * Straight-forward implementation of the dirty node set.
  * 
  * @author Frans Lundberg
  */
@@ -32,108 +19,54 @@ public class DirtyNodes1 implements IDirtyNodes {
     // Note, ordinary TreeMap used. There could be room for performance 
     // optimization here. We could have buckets, say 1M big. Put all there as if
     // they all had the same spos.
+    // We could also allow non dirty nodes in the collection physically - avoid the 
+    // remove operation - would allow more room for optimization.
     //
     
-    private final TreeMap<Long, TopNode> topNodes;
-    private final TreeMap<Long, KeyNode> keyNodes;
+    private final TreeMap<Long, INode> nodes;
     
     /**
      * Creates a new collection of dirty nodes.
      */
     public DirtyNodes1() {
-        topNodes = new TreeMap<Long, TopNode>();
-        keyNodes = new TreeMap<Long, KeyNode>();
+        nodes = new TreeMap<Long, INode>();
     }
     
     /* (non-Javadoc)
      * @see bergdb.coreds.IDirtyNodes#getSize()
      */
     public final int getSize() {
-        return topNodes.size() + keyNodes.size();
-    }
-    
-    /**
-     * Adds 'node' to the node collection if: node.getSpos() != Spos.NULL.
-     * Caller must hold DB.writeLock.
-     */
-    private final void add(TopNode node) {
-        assert node.isDirty == true;
-        long pos = node.getSpos();
-        if (pos != Spos.NULL) {   
-            topNodes.put(pos, node);
-        }
-    }
-    
-    /**
-     * Adds 'node' to the node collection if: node.getSpos() != Spos.NULL.
-     * Caller must hold DB.writeLock.
-     */
-    private final void add(KeyNode node) {
-        assert node.isDirty == true;
-        long pos = node.getSpos();
-        if (pos != Spos.NULL) {   
-            keyNodes.put(pos, node);
-        }
+        //return topNodes.size() + keyNodes.size();
+        return nodes.size();
     }
     
     /* (non-Javadoc)
      * @see bergdb.coreds.IDirtyNodes#add(bergdb.coreds.INode)
      */
     public void add(INode node) {
-        switch (node.getType()) {
-        case INode.TYPE_TOP_NODE:
-            add((TopNode) node);
-            break;
-        case INode.TYPE_KEY_NODE:
-            add((KeyNode) node);
-            break;
-        default:
-            throw new AssertionError("Unexpected node type: " + node);
+        assert node.isDirty();
+        long pos = node.getSpos();
+        if (pos != Spos.NULL) {
+            nodes.put(pos, node);
         }
-    }
-    
-    public INode get(long spos) {
-        INode result = this.keyNodes.get(spos);
-        if (result != null) {
-            return result;
-        }
-        
-        return this.topNodes.get(spos);
     }
     
     public void remove(INode node) {
-        INode existing;       
-        
-        switch (node.getType()) {
-        case INode.TYPE_TOP_NODE:
-            existing = topNodes.remove(node.getSpos());
-            break;
-        case INode.TYPE_KEY_NODE:
-            existing = keyNodes.remove(node.getSpos());
-            break;
-        default:
-            throw new AssertionError("Unexpected node type: " + node);
-        }
+        INode existing = nodes.remove(node.getSpos());
         
         if (existing == null) {
             //System.out.print("---- DirtyNodes1, unexpected, printing dirty nodes:");
             //print(System.out);
             //System.out.println("Done.");
-            
             throw new AssertionError("No node with given spos, node: " + node.toString());
         }
     }
     
     @SuppressWarnings("unused")
     private void print(PrintStream out) {
-        for (Map.Entry<Long, TopNode> entry : topNodes.entrySet()) {
+        for (Map.Entry<Long, INode> entry : nodes.entrySet()) {
             out.println(entry.toString());
         }
-        
-        for (Map.Entry<Long, KeyNode> entry : keyNodes.entrySet()) {
-            out.println(entry.toString());
-        }
-        
         out.println();
     }
     
@@ -155,26 +88,35 @@ public class DirtyNodes1 implements IDirtyNodes {
      * @param list The list to add the too dirty nodes to.
      */
     private void getTooDirtyNodes(long dirtyLimit, boolean remove, TransactionNodesForMe list) {
-        
-        // TopNodes
-        
-        Iterator<Map.Entry<Long, TopNode>> iter = topNodes.entrySet().iterator();
+
+        Iterator<Map.Entry<Long, INode>> iter = nodes.entrySet().iterator();
         while (iter.hasNext()) {
-            Map.Entry<Long, TopNode> entry = iter.next();
-            TopNode node = entry.getValue();
+            Map.Entry<Long, INode> entry = iter.next();
+            INode node = entry.getValue();
             long keyPos = entry.getKey().longValue();
             
             if (keyPos != node.getSpos()) {
                 throw new AssertionError("should not happen");
-                //iter.remove();
-                //continue;
             }
             
             if (node.getSpos() < dirtyLimit) {
-                if (node.isDirty) {
-                    node.isDirty = false;
-                    list.addTopNode(node);
-                }  // TODO A. else throw exception... We do not expect non-dirty nodes in this collection.
+                if (node.isDirty()) {
+                    node.setIsDirty(false);
+                    
+                    switch (node.getType()) {
+                    case INode.TYPE_TOP_NODE:
+                        list.addTopNode((TopNode) node);
+                        break;
+                    case INode.TYPE_KEY_NODE:
+                        list.addKeyNode((KeyNode) node);
+                        break;
+                    default:
+                        throw new AssertionError("Bad node type, node: " + node);
+                    }
+                    
+                } else {
+                    throw new AssertionError("Non-dirty node in DirtyNodes collection, node: " + node);
+                }
                 
                 if (remove) {
                     iter.remove();
@@ -187,34 +129,6 @@ public class DirtyNodes1 implements IDirtyNodes {
             }
         }
         iter = null;
-        
-        // KeyNodes
-
-        Iterator<Map.Entry<Long, KeyNode>> it = keyNodes.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry<Long, KeyNode> entry = it.next();
-            KeyNode node = entry.getValue();
-            long keyPos = entry.getKey().longValue();
-            
-            if (keyPos != node.getSpos()) {
-                throw new AssertionError("bad state, node: " + node);
-            }
-            
-            if (node.getSpos() < dirtyLimit) {
-                if (node.isDirty) {
-                    node.isDirty = false;
-                    list.addKeyNode(node);
-                }  // TODO A. else throw exception... We do not expect non-dirty nodes in this collection.
-                
-                
-                if (remove) it.remove();
-                
-            } else {
-                break;
-                // keys are sorted, if keyPos >= dirtyLimit, the rest of the keys will also be
-                // >= dirtyLimit, so we can break here.
-            }
-        }
     }
     
     /**
