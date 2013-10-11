@@ -279,6 +279,13 @@ public class Db implements IWarner {
         synchronized (readSynch) {}
         synchronized (writeLock) {}
     }
+    
+    /**
+     * Useful for testing; violates Law of Demeter.
+     */
+    public Graph getGraph() {
+        return graph;
+    }
 
     /**
      * Returns the current length of the database stream. The method acquires
