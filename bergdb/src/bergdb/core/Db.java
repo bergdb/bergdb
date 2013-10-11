@@ -999,6 +999,8 @@ public class Db implements IWarner {
         return result;
     }
     
+    
+    // TODO B. Implement this.
     /**
      * Simulates a get() lookup to gather the node index choices that are made 
      * to access the value corresponding to a certain key.
@@ -1008,18 +1010,9 @@ public class Db implements IWarner {
      * @param choices Output parameter that collects the result.
      * @deprecated
      */
+    @SuppressWarnings("unused")
     private void getChoices(long[] key, Choices choices, boolean isDelete) {
         throw new Error("not implemented!");
-    }
-    
-    /**
-     * Follows node pointer choices to create and return a key.
-     * Currently (2013-05) used for testing only.
-     * 
-     * @deprecated
-     */
-    private long[] followChoices(Choices choices) {
-        throw new Error("not implemented");
     }
     
     /**
@@ -1420,7 +1413,7 @@ public class Db implements IWarner {
         trans.nodeCount = transactionNodes.size();
         
         
-        // XXX here!
+        // NOTE TODO B. Refactor - this is ugly.
         {
             final TransactionNodes nodes = transactionNodes;
             

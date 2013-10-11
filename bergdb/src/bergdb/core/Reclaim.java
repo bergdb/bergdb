@@ -7,20 +7,14 @@ import java.util.List;
 import bergdb.common.Bug;
 import bergdb.common.StringMap;
 import bergdb.common.Util;
-import bergdb.coreds.DirtyNodes1;
 import bergdb.coreds.GetData;
 import bergdb.coreds.GetMany;
-import bergdb.coreds.Graph;
-import bergdb.coreds.INode;
-import bergdb.coreds.KeyNode;
 import bergdb.coreds.Keys;
 import bergdb.coreds.Kvt;
-import bergdb.coreds.NodeVisitor;
-import bergdb.coreds.TopNode;
-import bergdb.coreds.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.pub.Clock;
+import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
@@ -748,62 +742,6 @@ public class Reclaim implements Db.TransactionListener {
             g.startKey = null;
             db.getMany(g);
             Assert.assertTrue(g.result.size() == size || g.result.size() == size + 1);
-        }
-        
-        @T
-        public static void test2() {
-            KTestClock clock = new KTestClock();
-            clock.setTime(10);
-            MemoryStream stream = new MemoryStream();
-            
-            Db db = Db.builder().testSetup().mainStream(stream).clock(clock)
-                    .startupDistance(100*1000).start();
-            
-            Graph graph = db.getGraph();
-            graph.visitMemoryNodes(new NodeVisitor() {
-                public void visit(TopNode node) {
-                    v(node);
-                }
-
-                public void visit(KeyNode node) {
-                    v(node);
-                }
-
-                public void visit(ValueNode node) {
-                    v(node);
-                }
-                
-                private void v(INode node) {
-                    //System.out.println("node: " + node);
-                }
-            });
-            
-            Trans t = Trans.builder().put("k", new byte[0]).build();
-            db.execute(t);
-            
-            
-            graph.visitMemoryNodes(new NodeVisitor() {
-                public void visit(TopNode node) {
-                    v(node);
-                }
-
-                public void visit(KeyNode node) {
-                    v(node);
-                }
-
-                public void visit(ValueNode node) {
-                    v(node);
-                }
-                
-                private void v(INode node) {
-                    //System.out.println("node: " + node);
-                }
-            });
-            
-            
-            DirtyNodes1 d = (DirtyNodes1) graph.getDirtyNodes();
-            //System.out.println("At 144: " + d.get(144));
-            
         }
         
         @T

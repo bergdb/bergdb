@@ -108,9 +108,6 @@ public class DirtyNodes1 implements IDirtyNodes {
         switch (node.getType()) {
         case INode.TYPE_TOP_NODE:
             existing = topNodes.remove(node.getSpos());
-            // XXX
-            //System.out.println("DirtyNodes1, remove: " + node);
-            //System.out.println("    existing: " + existing);
             break;
         case INode.TYPE_KEY_NODE:
             existing = keyNodes.remove(node.getSpos());
@@ -120,14 +117,15 @@ public class DirtyNodes1 implements IDirtyNodes {
         }
         
         if (existing == null) {
-            System.out.print("---- XXX unexpected, printing dirty nodes:");
-            print(System.out);
-            System.out.println("Done.");
+            //System.out.print("---- DirtyNodes1, unexpected, printing dirty nodes:");
+            //print(System.out);
+            //System.out.println("Done.");
             
             throw new AssertionError("No node with given spos, node: " + node.toString());
         }
     }
     
+    @SuppressWarnings("unused")
     private void print(PrintStream out) {
         for (Map.Entry<Long, TopNode> entry : topNodes.entrySet()) {
             out.println(entry.toString());
@@ -174,19 +172,13 @@ public class DirtyNodes1 implements IDirtyNodes {
             }
             
             if (node.getSpos() < dirtyLimit) {
-                if (node.isDirty) {   // XXX
-                    // XXX
+                if (node.isDirty) {
                     node.isDirty = false;
                     list.addTopNode(node);
                 }  // TODO A. else throw exception... We do not expect non-dirty nodes in this collection.
                 
                 if (remove) {
                     iter.remove();
-                    
-                    // XXX
-                    //if (node.getType() == INode.TYPE_TOP_NODE) {
-                    //    System.out.println("DirtyNodes1.getTooDirtyNodes(), removed top node: " + node);
-                    //}
                 }
                 
             } else {
@@ -207,13 +199,10 @@ public class DirtyNodes1 implements IDirtyNodes {
             
             if (keyPos != node.getSpos()) {
                 throw new AssertionError("bad state, node: " + node);
-                //it.remove();
-                //continue;
             }
             
             if (node.getSpos() < dirtyLimit) {
-                if (node.isDirty) {   // XXX
-                    // XXX
+                if (node.isDirty) {
                     node.isDirty = false;
                     list.addKeyNode(node);
                 }  // TODO A. else throw exception... We do not expect non-dirty nodes in this collection.

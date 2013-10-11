@@ -148,7 +148,6 @@ public class NodeStream implements bergdb.coreds.Graph.NodeReader {
             final TopNode n1 = nodes.topNodes[i];
             n1.spos = pos;
             n1.id = (n1.id == Spos.NULL) ? pos : n1.id;
-            //n1.isDirty = false;   // XXX here! Remove from DirtyNodes
             totalSize += n1.getByteSize();
             pos = rstream.getSpos(transStartPos, totalSize);
         }
@@ -159,7 +158,6 @@ public class NodeStream implements bergdb.coreds.Graph.NodeReader {
             prevPos[prevPosIndex++] = n.spos;
             n.spos = pos;
             n.id = (n.id == Spos.NULL) ? pos : n.id;
-            //n.isDirty = false;   // XXX remove from DirtyNodes.
             totalSize += n.getByteSize();
             pos = rstream.getSpos(transStartPos, totalSize);
         }

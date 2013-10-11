@@ -81,6 +81,7 @@ public class PayTestFix {
         return b.toString();
     }
     
+    @SuppressWarnings("all")
     public void go() throws IOException {
         TestClock clock = new TestClock();
         MemoryStream mem = new MemoryStream();
