@@ -252,7 +252,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     public final void ensureDirty(TopNode n) {        
         if (!n.isDirty) {
             n.isDirty = true;
-            dirtyNodes.add(n);
+            dirtyNodes.put(n.spos, n);
         }
     }
     
@@ -263,7 +263,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     public final void ensureDirty(KeyNode n) {
         if (!n.isDirty) {
             n.isDirty = true;
-            dirtyNodes.add(n);
+            dirtyNodes.put(n.spos, n);
         }
     }
     

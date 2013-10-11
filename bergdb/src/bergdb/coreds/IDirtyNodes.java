@@ -1,6 +1,10 @@
 package bergdb.coreds;
 
-
+/**
+ * Interface to the collection of dirty nodes.
+ * 
+ * @author Frans Lundberg
+ */
 public interface IDirtyNodes {
 
     /**
@@ -9,12 +13,20 @@ public interface IDirtyNodes {
      * This method is only used for monitoring.
      */
     public int getSize();
-
-    // TODO A. Should we add mapping tpos -> node instead?
-    public void add(INode node);
     
-    public void remove(INode node);
-
+    /**
+     * Adds an spos-to-INode mapping if spos != Spos.NULL.
+     */
+    public void put(long spos, INode node);
+    
+    /**
+     * Removes one mapping.
+     * 
+     * @param spos  The key of the mapping to remove.
+     * @throws AssertionError  If no key 'spos' exists.
+     */
+    public void remove(long spos);
+    
     /**
      * Adds all nodes that are "too dirty" to "list". The too dirty nodes are the nodes in the 
      * collection with spos < dirtyLimit.
@@ -27,11 +39,12 @@ public interface IDirtyNodes {
     public void getAndRemoveTooDirtyNodes(long dirtyLimit, TransactionNodesForMe list);
 
     
-    // ---- Types ----
-    
+    /**
+     * The method subset of core.TransactionNodes needed by this class.
+     * This type is useful to minimize dependency, good for testing, mocks.
+     */
     public static interface TransactionNodesForMe {
         public void addTopNode(TopNode node);
         public void addKeyNode(KeyNode node);
     }
-    
 }

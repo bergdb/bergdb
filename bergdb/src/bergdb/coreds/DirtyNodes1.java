@@ -32,33 +32,34 @@ public class DirtyNodes1 implements IDirtyNodes {
         nodes = new TreeMap<Long, INode>();
     }
     
-    /* (non-Javadoc)
-     * @see bergdb.coreds.IDirtyNodes#getSize()
-     */
     public final int getSize() {
-        //return topNodes.size() + keyNodes.size();
         return nodes.size();
     }
     
-    /* (non-Javadoc)
-     * @see bergdb.coreds.IDirtyNodes#add(bergdb.coreds.INode)
-     */
-    public void add(INode node) {
-        assert node.isDirty();
-        long pos = node.getSpos();
-        if (pos != Spos.NULL) {
-            nodes.put(pos, node);
+    private void put(INode node) {
+        put(node.getSpos(), node);
+    }
+    
+    public void put(long spos, INode node) {
+        if (spos != Spos.NULL) {
+            nodes.put(spos, node);
         }
     }
     
-    public void remove(INode node) {
-        INode existing = nodes.remove(node.getSpos());
+    /**
+     * Removes one mapping.
+     * 
+     * @param spos  The key of the mapping to remove.
+     * @throws AssertionError  If no key 'spos' exists.
+     */
+    public void remove(long spos) {
+        INode existing = nodes.remove(spos);
         
         if (existing == null) {
             //System.out.print("---- DirtyNodes1, unexpected, printing dirty nodes:");
             //print(System.out);
             //System.out.println("Done.");
-            throw new AssertionError("No node with given spos, node: " + node.toString());
+            throw new AssertionError("No node with given spos: " + spos);
         }
     }
     
@@ -101,7 +102,10 @@ public class DirtyNodes1 implements IDirtyNodes {
             
             if (node.getSpos() < dirtyLimit) {
                 if (node.isDirty()) {
-                    node.setIsDirty(false);
+                    
+                    if (remove) {
+                        node.setIsDirty(false);
+                    }
                     
                     switch (node.getType()) {
                     case INode.TYPE_TOP_NODE:
@@ -173,17 +177,17 @@ public class DirtyNodes1 implements IDirtyNodes {
         KeyNode k = new KeyNode();
         k.setSpos(10);
         k.setIsDirty(true);
-        d.add(k);
+        d.put(k.spos, k);
         
         k = new KeyNode();
         k.setSpos(20);
         k.setIsDirty(true);
-        d.add(k);
+        d.put(k.spos, k);
         
         k = new KeyNode();
         k.setSpos(30);
         k.setIsDirty(true);
-        d.add(k);
+        d.put(k.spos, k);
         
         Assert.assertEquals("tooDirtyCount", 2, d.tooDirtyCount(25));
     }
@@ -198,15 +202,15 @@ public class DirtyNodes1 implements IDirtyNodes {
     @T
     public static void test2() {
         DirtyNodes1 d = new DirtyNodes1();
-        d.add(testNode(10));
-        d.add(testNode(20));
-        d.add(testNode(30));
+        d.put(testNode(10));
+        d.put(testNode(20));
+        d.put(testNode(30));
         Assert.assertEquals("tooDirtyCount", 3, d.tooDirtyCount(100));
         
         d = new DirtyNodes1();
-        d.add(testNode(10));
-        d.add(testNode(20));
-        d.add(testNode(30));
+        d.put(testNode(10));
+        d.put(testNode(20));
+        d.put(testNode(30));
         Assert.assertEquals("tooDirtyCount", 1, d.tooDirtyCount(20));
     }
     
@@ -216,9 +220,9 @@ public class DirtyNodes1 implements IDirtyNodes {
         KeyNode n1 = testNode(10);
         KeyNode n2 = testNode(20);
         KeyNode n3 = testNode(30);
-        d.add(n1);
-        d.add(n2);
-        d.add(n3);
+        d.put(n1);
+        d.put(n2);
+        d.put(n3);
         
         TestTransactionNodes list = new TestTransactionNodes();
         d.getTooDirtyNodes(100, false, list);

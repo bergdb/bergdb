@@ -1421,7 +1421,7 @@ public class Db implements IWarner {
             for (int i = 0; i < transactionNodes.topSize; i++) {
                 final TopNode n = nodes.topNodes[i];
                 if (n.isDirty && n.spos != Spos.NULL) {
-                    graph.getDirtyNodes().remove(n);
+                    graph.getDirtyNodes().remove(n.spos);
                 }
                 n.isDirty = false;
             }
@@ -1430,7 +1430,7 @@ public class Db implements IWarner {
             for (int i = 0; i < nodes.keySize; i++) {
                 final KeyNode n = nodes.keyNodes[i];
                 if (n.isDirty && n.spos != Spos.NULL) {
-                    graph.getDirtyNodes().remove(n);
+                    graph.getDirtyNodes().remove(n.spos);
                 }
                 n.isDirty = false;
             }
