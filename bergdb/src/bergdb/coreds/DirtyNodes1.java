@@ -6,7 +6,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeMap;
 
-import bergdb.core.TransactionNodes;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
@@ -222,17 +221,20 @@ public class DirtyNodes1 implements IDirtyNodes {
      * Inefficient, for debug/test only.
      */
     private int tooDirtyCount(long dirtyLimit) {
-        TransactionNodes nodes = new TransactionNodes();
+        final int[] count = new int[1];
+        
+        TransactionNodesForMe nodes = new TransactionNodesForMe() {
+            public void addTopNode(TopNode node) {
+                count[0]++;
+            }
+
+            public void addKeyNode(KeyNode node) {
+                count[0]++;
+            }
+        };
+        
         getTooDirtyNodes(dirtyLimit, false, nodes);
-        return nodes.size();
-    }
-    
-    
-    // ======== Types ========
-    
-    public static interface TransactionNodesForMe {
-        public void addTopNode(TopNode node);
-        public void addKeyNode(KeyNode node);
+        return count[0];
     }
     
     

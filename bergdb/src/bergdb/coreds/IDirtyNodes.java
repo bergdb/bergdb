@@ -1,6 +1,5 @@
 package bergdb.coreds;
 
-import bergdb.coreds.DirtyNodes1.TransactionNodesForMe;
 
 public interface IDirtyNodes {
 
@@ -25,6 +24,14 @@ public interface IDirtyNodes {
      * @param dirtyLimit A node with an spos less than this is "too dirty".
      * @param list The list to add the too dirty nodes to.
      */
-    public abstract void getAndRemoveTooDirtyNodes(long dirtyLimit, TransactionNodesForMe list);
+    public void getAndRemoveTooDirtyNodes(long dirtyLimit, TransactionNodesForMe list);
 
+    
+    // ---- Types ----
+    
+    public static interface TransactionNodesForMe {
+        public void addTopNode(TopNode node);
+        public void addKeyNode(KeyNode node);
+    }
+    
 }
