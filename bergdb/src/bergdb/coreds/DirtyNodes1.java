@@ -84,9 +84,6 @@ public class DirtyNodes1 implements IDirtyNodes {
         switch (node.getType()) {
         case INode.TYPE_TOP_NODE:
             add((TopNode) node);
-            
-            // XXX
-            //System.out.println("DirtyNodes1, adding top node: " + node);
             break;
         case INode.TYPE_KEY_NODE:
             add((KeyNode) node);
