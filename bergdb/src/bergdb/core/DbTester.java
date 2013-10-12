@@ -243,7 +243,7 @@ public class DbTester {
         
         // Get the KeyNode and examines the DELETE_BITMAP at the end.
         
-        KeyNode k = (KeyNode) db.findNode(new int[]{0});
+        KeyNode k = (KeyNode) db.findNode(new int[]{0}, db.newGetData());
         long klong = k.getKlong(4);
         Assert.assertEquals(Klong.getType(klong), Klong.TYPE_DELETE_BITMAP);
         Assert.assertFalse(Klong.isDeleted(klong, 0));

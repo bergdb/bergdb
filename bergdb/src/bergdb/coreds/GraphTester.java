@@ -140,7 +140,7 @@ public class GraphTester {
         
         Assert.assertEquals(1, pd.timeSplitCount);
         
-        KeyNode node = (KeyNode) g.findNode(new int[]{0, 3});
+        KeyNode node = (KeyNode) g.findNode(new int[]{0, 3}, g.newGetData());
         KlongWithPointer kwi = new KlongWithPointer();
         node.searchEq(Long.MAX_VALUE, Klong.createCompareValue(Keys.toBytes("-id-0")), kwi);
         

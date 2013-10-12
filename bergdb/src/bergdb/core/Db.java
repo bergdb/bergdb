@@ -1027,8 +1027,8 @@ public class Db implements IWarner {
      * node index choices.
      * Useful for testing.
      */
-    public INode findNode(int[] choices) {
-        return graph.findNode(choices);
+    public INode findNode(int[] choices, GetData gd) {
+        return graph.findNode(choices, gd);
     }
 
     /**
@@ -1401,18 +1401,12 @@ public class Db implements IWarner {
 
         int ordinaryNodeCount = transactionNodes.size();
         
-        // NOTE I do not like this if statement. Only used for primordial transaction.
+        // NOTE, I do not like this if statement. Only used for primordial transaction.
         if (graph != null) {
             graph.getDirtyNodes().getAndRemoveTooDirtyNodes(dirtyLimit, transactionNodes);
         }
         
-        {   // Computes dirtyFraction100, dirtyFraction1000. For statistics, monitoring.
-            int totalNodeCount = transactionNodes.size();
-            int dirtyNodeCount = totalNodeCount - ordinaryNodeCount;
-            double dirtyFraction = ((double) dirtyNodeCount) / totalNodeCount;
-            this.dirtyFraction100   = 0.99  * this.dirtyFraction100  +  0.01  * dirtyFraction;
-            this.dirtyFraction1000  = 0.999 * this.dirtyFraction1000 +  0.001 * dirtyFraction;
-        }
+        computeStats(ordinaryNodeCount);
 
         assert trans != null : "trans is null";
         assert transactionNodes != null : "transactionNodes is null";
@@ -1420,32 +1414,11 @@ public class Db implements IWarner {
         trans.nodeCount = transactionNodes.size();
         
         
-        // NOTE TODO B. Refactor - this is ugly.
-        {
-            final TransactionNodes nodes = transactionNodes;
-            
-            // Loop topNodes.
-            for (int i = 0; i < transactionNodes.topSize; i++) {
-                final TopNode n = nodes.topNodes[i];
-                if (n.isDirty && n.spos != Spos.NULL) {
-                    graph.getDirtyNodes().remove(n.spos);
-                }
-                n.isDirty = false;
-            }
-            
-            // Loop keyNodes.
-            for (int i = 0; i < nodes.keySize; i++) {
-                final KeyNode n = nodes.keyNodes[i];
-                if (n.isDirty && n.spos != Spos.NULL) {
-                    graph.getDirtyNodes().remove(n.spos);
-                }
-                n.isDirty = false;
-            }
-        }
+        removeTransactionNodesFromDirtyNodes();
         
         boolean wroteMetaBlock = nodeStream.addNodes(trans.transactionTime, transactionNodes, trans);
         
-        // TODO D. Check below code. Still needed? Did I simply this by writing a whole block?
+        // TODO D. Check below code. Still needed? Did I simplify this by writing a whole block?
         
         if (wroteMetaBlock && this.newIncreasedStartupDistance != -1) {
             assert newIncreasedStartupDistance > startupDistance 
@@ -1453,6 +1426,45 @@ public class Db implements IWarner {
             startupDistance = newIncreasedStartupDistance;
             newIncreasedStartupDistance = -1;
         }
+    }
+
+    /**
+     * Removes nodes of the transaction (transactionNodes) from the collection
+     * of dirty nodes.
+     */
+    private void removeTransactionNodesFromDirtyNodes() {
+        final TransactionNodes nodes = transactionNodes;
+
+        for (int i = 0; i < transactionNodes.topSize; i++) {
+            final TopNode n = nodes.topNodes[i];
+            if (n.isDirty && n.spos != Spos.NULL) {
+                graph.getDirtyNodes().remove(n.spos);
+            }
+            n.isDirty = false;
+        }
+
+        for (int i = 0; i < nodes.keySize; i++) {
+            final KeyNode n = nodes.keyNodes[i];
+            if (n.isDirty && n.spos != Spos.NULL) {
+                graph.getDirtyNodes().remove(n.spos);
+            }
+            n.isDirty = false;
+        }
+    }
+
+    /**
+     * Computes this.dirtyFraction100, this.dirtyFraction1000.
+     * 
+     * @param ordinaryNodeCount   The number of ordinary (non-dirty) nodes of the transaction.
+     */
+    private void computeStats(int ordinaryNodeCount) {
+        // Computes dirtyFraction100, dirtyFraction1000.
+        
+        int totalNodeCount = transactionNodes.size();
+        int dirtyNodeCount = totalNodeCount - ordinaryNodeCount;
+        double dirtyFraction = ((double) dirtyNodeCount) / totalNodeCount;
+        this.dirtyFraction100   = 0.99  * this.dirtyFraction100  +  0.01  * dirtyFraction;
+        this.dirtyFraction1000  = 0.999 * this.dirtyFraction1000 +  0.001 * dirtyFraction;
     }
 
     /**
