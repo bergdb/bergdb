@@ -31,7 +31,8 @@ public interface IDirtyNodes {
      * Adds all nodes that are "too dirty" to "list". The too dirty nodes are the nodes in the 
      * collection with spos < dirtyLimit.
      * Caller must hold DB.writeLock.
-     * The returned entries are removed from the collection.
+     * The returned entries are removed from the collection and isDirty is set to 
+     * false for all nodes returned.
      * 
      * @param dirtyLimit A node with an spos less than this is "too dirty".
      * @param list The list to add the too dirty nodes to.

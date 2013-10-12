@@ -1341,11 +1341,14 @@ public class Db implements IWarner {
             // 1305 Frans: Adds choices for ValueNodes to transactionNodes (+20% CPU).
             // This is needed to have an active replica.
             
-            recordChoicesAndEnsureDirty();
+            //recordChoicesAndEnsureDirty();
             
             addNodesToStream();
+            
             this.lastSposOfLastTrans = this.trans.lastSpos;
             this.sposOfLastTrans = this.trans.spos;
+            
+            //recordChoicesAndEnsureDirty();   // Increases stream size significantly.
             
             clearTransMemory();
 
