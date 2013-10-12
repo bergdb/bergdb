@@ -31,6 +31,7 @@ import bergdb.coreds.Spos;
 import bergdb.coreds.TopDs;
 import bergdb.coreds.TopNode;
 import bergdb.coreds.ValueNode;
+import bergdb.coreds.Graph.PointerListener;
 import bergdb.nanotest.Assert;
 import bergdb.pub.BadReplicaException;
 import bergdb.pub.Clock;
@@ -757,8 +758,6 @@ public class Db implements IWarner {
         long startPos = pos1 - (startupDistance + 1);
         startPos = startPos < 0 ? 0 : startPos;
   
-        
-        
 //System.out.println("Db, node stream length: " + nodeStream.getLength());
 //System.out.println("Db, pos1 = " + pos1 + ", startPos = " + startPos);
 
@@ -1342,10 +1341,7 @@ public class Db implements IWarner {
             // 1305 Frans: Adds choices for ValueNodes to transactionNodes (+20% CPU).
             // This is needed to have an active replica.
             
-            // TODO B. Consider choices+ensureDirty here, see branch for it.
-            //for (int i = 0; i < transactionNodes.valueSize; i++) {
-            //    long[] key = transactionNodes.keys[i];
-            //}
+            recordChoicesAndEnsureDirty();
             
             addNodesToStream();
             this.lastSposOfLastTrans = this.trans.lastSpos;
@@ -1357,6 +1353,40 @@ public class Db implements IWarner {
             // (writeLock) block to KISS the reclaim stuff. However, it does not really 
             // have to belong to the writeLock code block.
             reclaimTransactionListener.transactionCompleted(t);
+        }
+    }
+
+    /**
+     * Records choices and ensures accessed nodes are dirty.
+     */
+    private void recordChoicesAndEnsureDirty() {
+        // transactionTime has been "released" for get operations, so we can to the lookups
+        // with that time. dbClock.transactionEnd() was called.
+        
+        GetData gd = graph.newGetData();
+        gd.actualLookupTime = trans.transactionTime;
+        gd.accessData = pd.accessData;
+        
+        final Choices[] finalChoice = new Choices[1];
+        
+        gd.pointerListener = new PointerListener() {
+            public void superRootAccessed(TopNode superRoot) {
+                graph.ensureDirty(superRoot);
+            }
+            
+            public void pointerFollowed(INode predecessor, int pointerIndex, INode result,
+                    int pointerType) {
+                graph.ensureDirty(result);
+                finalChoice[0].add(pointerIndex);
+            }
+        };
+        
+        for (int i = 0; i < transactionNodes.valueSize; i++) {
+            finalChoice[0] = transactionNodes.choices[i];
+            long[] key = transactionNodes.keys[i];
+            byte[] value = getOne(gd.actualLookupTime, key, gd);
+            
+            assert transactionNodes.valueNodes[i].isDelete() || Assert.arrayEquals(transactionNodes.valueNodes[i].getValue(), value);
         }
     }
 

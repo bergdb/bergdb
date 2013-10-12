@@ -266,6 +266,15 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
         }
     }
     
+    public final void ensureDirty(INode n) {
+    	int type = n.getType();
+    	
+        if ((type == INode.TYPE_TOP_NODE || type == INode.TYPE_KEY_NODE) && !n.isDirty()) {
+            n.setIsDirty(true);
+            dirtyNodes.put(n.getSpos(), n);
+        }
+    }
+    
     /**
      * Creates a GetData object suitable for use with as a parameter to Graph.getOne().
      * Use Db.newGetData() instead if you want to use the GetData object
@@ -1167,6 +1176,11 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      * and a Walker also determines whether a read stream node should be cached or not.
      */
     public static interface PointerListener {
+        /**
+         * Called from TopDs findRoot() to report that the super root node was
+         * accessed.
+         */
+        public void superRootAccessed(TopNode superRoot);
         
         /**
          * Reports that a pointer was followed.
@@ -1174,12 +1188,6 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
          * @param pointerType One of Pointer.TYPE_MEMORY, Pointer.TYPE_STREAM.
          */
         public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType);
-
-        /**
-         * Called from TopDs findRoot() to report that the super root node was
-         * accessed.
-         */
-        public void superRootAccessed(TopNode superRoot);
     }
     
     public static final PointerListener DO_NOTHING_POINTER_LISTENER = new PointerListener() {

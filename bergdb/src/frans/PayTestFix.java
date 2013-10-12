@@ -123,6 +123,10 @@ public class PayTestFix {
                 Db db = ((DatabaseImp) database).getDb();
                 db.checkNodes();
             }
+            
+            if (id == 1000*1000) {
+                printAccessPath(database, "0-just-written");
+            }
         }
         
         database.sync();
@@ -132,7 +136,7 @@ public class PayTestFix {
         
         // ---- Prints access path to KV
         
-        printAccessPath(database);
+        printAccessPath(database, "1");
         
         // ----
         
@@ -178,25 +182,9 @@ public class PayTestFix {
         db.checkNodes();
         
         
-        // -- Print a few
+        // -- Prints a few
         
-        printAccessPath(database);
-        
-        /*
-        out.println("---- A few accounts of interest: ");
-        long[] ids = new long[] {
-                0, 996998, 996999, 
-                997000, 998000, 998500, 999000, 999999, 
-                1000000, 1000001, 1000002, 1100000, 1199999
-        };
-        
-        for (long theId : ids) {
-            out.println(theId + ": " + c.get(accountKey(theId), Account.class));
-        }
-        
-        db.checkNodes();
-        */
-        
+        printAccessPath(database, "2-restarted");
         
         out.println("---- Iterating the accounts of the restarted database.");
         
@@ -227,7 +215,7 @@ public class PayTestFix {
         Assert.assertEquals(sum, total);
     }
 
-    private void printAccessPath(Database database) {
+    private void printAccessPath(Database database, String caseName) {
         //long[] theAccounts = new long[]{999999, 1000000};
         long[] theAccounts = new long[]{999999};
         
@@ -248,7 +236,7 @@ public class PayTestFix {
             }
         };
         
-        System.out.println("\n---- Printing pointers to accounts");
+        System.out.println("\n---- " + caseName + ": Printing pointers ----");
         System.out.println("Stream length: " + dbTemp.getStreamLength());
         
         for (int i = 0; i < theAccounts.length; i++) {

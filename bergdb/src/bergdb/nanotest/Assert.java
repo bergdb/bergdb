@@ -139,6 +139,32 @@ public class Assert {
         }
     }
     
+    public static boolean arrayEquals(byte[] expected, byte[] actual) {
+        if (expected == null) {
+            if (actual == null) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+        
+        if (actual == null) {
+            return false;
+        }
+        
+        if (expected.length != actual.length) {
+            return false;
+        }
+        
+        for (int i = 0; i < expected.length; i++) {
+            if (expected[i] != actual[i]) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
     public static void assertArrayEquals(char[] expected, char[] actual) {
         if (expected == null) {
             if (actual == null) {
