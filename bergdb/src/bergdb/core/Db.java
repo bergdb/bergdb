@@ -1668,7 +1668,8 @@ public class Db implements IWarner {
 
             synchronized (this.getPointerLock(node, 0)) {
                 pointee = node.rootPointer;
-                if (pointee != null && !pointee.isDirty()
+                if (pointee != null 
+                        && !pointee.isDirty()
                         && AccessData.getAccessTime(node.rootPointerPos) <= limit) {
                     node.rootPointerPos = pointee.getSpos();
                     node.rootPointer = null;
@@ -1695,7 +1696,8 @@ public class Db implements IWarner {
                 synchronized (this.getPointerLock(node, i + 1)) {
                     pointee = node.pointers[i];
                     if (node.pointers[i] != null
-                            && AccessData.getAccessTime(node.pointersPos[i]) <= limit) {
+                            && AccessData.getAccessTime(node.pointersPos[i]) <= limit
+                            && !pointee.isDirty()) {
                         node.pointersPos[i] = pointee.getSpos();
                         node.pointers[i] = null;
                         ed.evictCount++;
@@ -1727,12 +1729,14 @@ public class Db implements IWarner {
             pointerCount++;
             INode pointee = node.pointers[i];
 
-            if (pointee != null && !pointee.isDirty()
+            if (pointee != null 
+                    && !pointee.isDirty()
                     && AccessData.getAccessTimeNoChecks(node.pos[i]) <= limit) {
                 synchronized (getPointerLock(node, i)) {
                     pointee = node.pointers[i];
 
-                    if (pointee != null && !pointee.isDirty()
+                    if (pointee != null 
+                            && !pointee.isDirty()
                             && AccessData.getAccessTime(node.pos[i]) <= limit) {
                         node.pos[i] = pointee.getSpos();
                         node.pointers[i] = null;
