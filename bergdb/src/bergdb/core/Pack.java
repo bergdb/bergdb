@@ -6,6 +6,7 @@ import bergdb.coreds.DirtyNodes1;
 import bergdb.coreds.GetData;
 import bergdb.coreds.KeyAccessPath;
 import bergdb.coreds.Keys;
+import bergdb.coreds.TransactionNodes;
 
 public class Pack implements IPack {
     

@@ -9,6 +9,7 @@ import bergdb.coreds.KeyNode;
 import bergdb.coreds.Spos;
 import bergdb.coreds.StreamChecksumException;
 import bergdb.coreds.TopNode;
+import bergdb.coreds.TransactionNodes;
 import bergdb.coreds.ValueNode;
 import bergdb.storage.MetaBlock;
 import bergdb.storage.RecoverableStream;

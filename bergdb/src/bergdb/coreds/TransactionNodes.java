@@ -1,11 +1,5 @@
-package bergdb.core;
+package bergdb.coreds;
 
-import bergdb.coreds.Choices;
-import bergdb.coreds.IDirtyNodes;
-import bergdb.coreds.INode;
-import bergdb.coreds.KeyNode;
-import bergdb.coreds.TopNode;
-import bergdb.coreds.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
@@ -25,16 +19,16 @@ public class TransactionNodes implements IDirtyNodes.TransactionNodesForMe {
     private static final int INITIAL_SIZE = 64;
     private int counter;
     
-    int topSize;
-    TopNode[] topNodes;
+    public int topSize;
+    public TopNode[] topNodes;
     
-    int keySize;
-    KeyNode[] keyNodes;
+    public int keySize;
+    public KeyNode[] keyNodes;
     
-    int valueSize;
-    ValueNode[] valueNodes;
-    long[][] keys;         // key for each value node, size = valueSize
-    Choices[] choices;     // choices for each value node, size = valueSize
+    public int valueSize;
+    public ValueNode[] valueNodes;
+    public long[][] keys;         // key for each value node, size = valueSize
+    public Choices[] choices;     // choices for each value node, size = valueSize
     
     public TransactionNodes() {
         topNodes = new TopNode[INITIAL_SIZE];
@@ -58,6 +52,15 @@ public class TransactionNodes implements IDirtyNodes.TransactionNodesForMe {
     
     public final int size() {
         return topSize + keySize + valueSize;
+    }
+    
+    public TransSequence.TSet createTSet() {
+        int size = topSize + keySize;
+        TransSequence.TSet result = new TransSequence.TSet();
+        result.nodes = new INode[size];
+        System.arraycopy(topNodes, 0, result.nodes, 0, topSize);
+        System.arraycopy(keyNodes, 0, result.nodes, topSize, keySize);
+        return result;
     }
     
     public final long sumMemSize() {

@@ -1,6 +1,5 @@
 package bergdb.coreds;
 
-import bergdb.core.Db;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
@@ -31,7 +30,7 @@ abstract public class AccessData {
      * Checks whether the access data (a long) is valid.
      */
     public static final boolean isValid(long accessData) {
-        return accessData <= -Db.MIN_CACHE_MEMORY_VALUE;
+        return accessData <= -Constants.MIN_CACHE_MEMORY_VALUE;
     }
     
     public static final boolean isValidOrNull(long accessData) {
@@ -43,7 +42,7 @@ abstract public class AccessData {
      */
     public static final long getAccessTime(long accessData) {
         long result = -accessData;
-        assert result >= Db.MIN_CACHE_MEMORY_VALUE : "Unexpected accessData, " + accessData;
+        assert result >= Constants.MIN_CACHE_MEMORY_VALUE : "Unexpected accessData, " + accessData;
         return result;
     }
     
@@ -56,7 +55,7 @@ abstract public class AccessData {
     
     @T
     public static void test1() {
-        long accessData = -Db.MIN_CACHE_MEMORY_VALUE;
+        long accessData = -Constants.MIN_CACHE_MEMORY_VALUE;
         Assert.assertTrue(isValid(accessData));
     }
 }

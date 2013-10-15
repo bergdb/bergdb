@@ -15,6 +15,7 @@ import bergdb.common.ProgressListener;
 import bergdb.common.Util;
 import bergdb.coreds.AccessData;
 import bergdb.coreds.Choices;
+import bergdb.coreds.Constants;
 import bergdb.coreds.EvictData;
 import bergdb.coreds.GetData;
 import bergdb.coreds.Graph;
@@ -30,6 +31,7 @@ import bergdb.coreds.PutData;
 import bergdb.coreds.Spos;
 import bergdb.coreds.TopDs;
 import bergdb.coreds.TopNode;
+import bergdb.coreds.TransactionNodes;
 import bergdb.coreds.ValueNode;
 import bergdb.coreds.Graph.PointerListener;
 import bergdb.nanotest.Assert;
@@ -193,7 +195,7 @@ public class Db implements IWarner {
     // atomically.
     //
 
-    public final static long MIN_CACHE_MEMORY_VALUE = 10;
+    public final static long MIN_CACHE_MEMORY_VALUE = Constants.MIN_CACHE_MEMORY_VALUE;
     
     private final AtomicLong cachedMemoryValue = new AtomicLong(MIN_CACHE_MEMORY_VALUE);
         // The cachedMemoryValue is an estimate of the total amount of memory cached
@@ -1362,6 +1364,7 @@ public class Db implements IWarner {
     /**
      * Records choices and ensures accessed nodes are dirty.
      */
+    @SuppressWarnings("unused")
     private void recordChoicesAndEnsureDirty() {
         // transactionTime has been "released" for get operations, so we can to the lookups
         // with that time. dbClock.transactionEnd() was called.
