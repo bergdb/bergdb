@@ -47,7 +47,7 @@ public class IsDeterministic {
      * Tests DB with one KV.
      */
     @T("f")
-    public static void testOneKV(TestCollector c) throws IOException {
+    public static void testOneKv(TestCollector c) throws IOException {
         MemoryStream first = null;
         NodeStream firstNodeStream = null;
         

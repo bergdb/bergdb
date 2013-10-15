@@ -31,6 +31,7 @@ import bergdb.coreds.PutData;
 import bergdb.coreds.Spos;
 import bergdb.coreds.TopDs;
 import bergdb.coreds.TopNode;
+import bergdb.coreds.TransSequence;
 import bergdb.coreds.TransactionNodes;
 import bergdb.coreds.ValueNode;
 import bergdb.coreds.Graph.PointerListener;
@@ -759,9 +760,6 @@ public class Db implements IWarner {
         long pos1 = nodeStream.getPosOfLastCompletedTrans();
         long startPos = pos1 - (startupDistance + 1);
         startPos = startPos < 0 ? 0 : startPos;
-  
-//System.out.println("Db, node stream length: " + nodeStream.getLength());
-//System.out.println("Db, pos1 = " + pos1 + ", startPos = " + startPos);
 
         // posMap is a map from spos of a node to the node itself.
         // nextMap is a map from previous spos of a node to the node itself.
@@ -770,6 +768,8 @@ public class Db implements IWarner {
         HashMap<Long, INode> nextMap = new HashMap<Long, INode>(); // sposPrevious
                                                                    // -> Node
 
+        TransSequence seq = new TransSequence();
+        
         long lastTransactionTime = 0;
 
         NodeStream.TransIterator ti = nodeStream.new TransIterator(startPos);
@@ -779,10 +779,14 @@ public class Db implements IWarner {
             }
 
             lastTransactionTime = ti.getTransactionTime();
+            ArrayList<INode> tnodes = new ArrayList<INode>();
 
             NodeStream.NodeIterator ni = ti.getNodeIterator();
             while (ni.next()) {
                 INode node = ni.node;
+                if (node.isTopOrKeyNode()) {
+                    tnodes.add(node);
+                }
                 posMap.put(node.getSpos(), node);
                 long prev = ni.sposPrevious;
                 if (prev != Spos.NULL) {
@@ -791,6 +795,10 @@ public class Db implements IWarner {
 
                 this.cachedMemoryValue.addAndGet(node.getMemSize());
             }
+            
+            INode[] nodeArray = new INode[tnodes.size()];
+            tnodes.toArray(nodeArray);
+            seq.add(new TransSequence.Tset(nodeArray, ti.getTransPos()));
         }
 
         dbClock.setLastTransactionTime(lastTransactionTime);
@@ -817,7 +825,7 @@ public class Db implements IWarner {
             throw new IllegalStateException("maxNodeSize = " + builder.maxNodeSize);
         }
         
-        this.graph = b.createFromStreamNodes(getAccessData(), posMap, nextMap);
+        this.graph = b.createFromStreamNodes(getAccessData(), posMap, nextMap, seq);
         
         this.pd = graph.newPutData();
         this.pd.nodeChangeListener = new Graph.NodeChangeListener() {
@@ -1437,9 +1445,12 @@ public class Db implements IWarner {
 
         int ordinaryNodeCount = transactionNodes.size();
         
-        // NOTE, I do not like this if statement. Only used for primordial transaction.
+        //if (graph != null) {
+        //    graph.getDirtyNodes().getAndRemoveTooDirtyNodes(dirtyLimit, transactionNodes);
+        //}
+        
         if (graph != null) {
-            graph.getDirtyNodes().getAndRemoveTooDirtyNodes(dirtyLimit, transactionNodes);
+            graph.getTransSequence().addToTransactionNodes(dirtyLimit, transactionNodes);
         }
         
         computeStats(ordinaryNodeCount);
@@ -1449,10 +1460,16 @@ public class Db implements IWarner {
         
         trans.nodeCount = transactionNodes.size();
         
-        
-        removeTransactionNodesFromDirtyNodes();
+        //removeTransactionNodesFromDirtyNodes();
         
         boolean wroteMetaBlock = nodeStream.addNodes(trans.transactionTime, transactionNodes, trans);
+        
+        // XXX
+
+        if (graph != null) {
+            graph.getTransSequence().add(transactionNodes.createTSet(nodeStream.getLastTransSpos()));
+            graph.getTransSequence().removeBeforeSpos(dirtyLimit);
+        }
         
         // TODO D. Check below code. Still needed? Did I simplify this by writing a whole block?
         

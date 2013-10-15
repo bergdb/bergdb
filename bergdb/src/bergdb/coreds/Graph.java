@@ -49,13 +49,14 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     private final Object[] pointerLocks;
     private final int maxNodeSize;
     private final IDirtyNodes dirtyNodes;
+    private final TransSequence seq;
     
     /**
      * Creates and returns a new, minimal DbGraph.
      * The returned graph has exactly one top node and one key node.
-     * Nothing is written to the node stream.
      */
     private Graph(Builder b, long time) {
+        seq = new TransSequence();
         
         KeyNode root = new KeyNode();
         this.topDs = TopDs.createFromFirstRoot(time, root, AccessData.DEFAULT_ACCESS_DATA);
@@ -82,7 +83,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      * @return
      */
     private Graph(Builder b, long accessData,
-            HashMap<Long, INode> posMap, HashMap<Long, INode> nextMap) {
+            HashMap<Long, INode> posMap, HashMap<Long, INode> nextMap, TransSequence seq) {
         //
         // Pointer reconciliation phase
         // * Refreshes stream pointers
@@ -90,8 +91,13 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
         // * Finds the superRoot TopNode among the startup nodes.
         //
 
+        assert posMap != null;
+        assert nextMap != null;
+        assert seq != null;
+        
         TopNode superRoot = null;
         Pointer pointer = new Pointer();
+        this.seq = seq;
 
         for (Map.Entry<Long, INode> entry : posMap.entrySet()) {
             INode node = entry.getValue();
@@ -236,12 +242,12 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
         return node;
     }
     
-    /**
-     * Returns the collection of dirty nodes. Needed by DB monitor. Same
-     * reference is always returned since it comes from a final field.
-     */
     public final IDirtyNodes getDirtyNodes() {
         return dirtyNodes;
+    }
+    
+    public final TransSequence getTransSequence() {
+        return seq;
     }
 
     /**
@@ -1142,8 +1148,8 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
          * Creates a new DbGraph from existing nodes in the DB stream.
          */
         public Graph createFromStreamNodes(long accessData, HashMap<Long, INode> posMap,
-                HashMap<Long, INode> nextMap) {
-            return new Graph(this, accessData, posMap, nextMap);
+                HashMap<Long, INode> nextMap, TransSequence seq) {
+            return new Graph(this, accessData, posMap, nextMap, seq);
         }
     }
     

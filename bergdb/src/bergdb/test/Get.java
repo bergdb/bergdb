@@ -41,7 +41,6 @@ public class Get {
         
         db = Db.builder()
                 .stream("main", new NullStream())
-                .disableStreamWrite()
                 .systemClock()
                 .retainForever().evictBoss(boss).start();
         

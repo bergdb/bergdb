@@ -278,8 +278,11 @@ public class NodeStream implements bergdb.coreds.Graph.NodeReader {
         
         // Sets the start pos to the meta block.
         rstream.getMetaBlock().setLastTransSpos(transStartPos);
-        
         return wroteMetaBlock;
+    }
+    
+    public long getLastTransSpos() {
+        return rstream.getMetaBlock().getLastTransSpos();
     }
 
     private void resizeBuffersIfNeeded(int totalSize, int topAndKeySize) {
@@ -551,8 +554,12 @@ public class NodeStream implements bergdb.coreds.Graph.NodeReader {
             return true;
         }
         
-        public long getTransactionTime() {
+        public final long getTransactionTime() {
             return transactionTime;
+        }
+        
+        public final long getTransPos() {
+            return transPos;
         }
         
         public NodeIterator getNodeIterator() {

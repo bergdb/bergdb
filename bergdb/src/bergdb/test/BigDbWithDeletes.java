@@ -3,14 +3,16 @@ package bergdb.test;
 import bergdb.common.Util;
 import bergdb.core.*;
 import bergdb.nanotest.Assert;
+import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;
 import bergdb.stream.MemoryStream;
 
-
 /**
  * Tests large DB with deletes. The database is stored in memory 
  * (..stream.MemoryStream).
+ * 
+ * @author Frans Lundberg
  */
 public class BigDbWithDeletes {    
     @T("f perf")
@@ -46,7 +48,7 @@ public class BigDbWithDeletes {
         return rt.totalMemory() - rt.freeMemory();
     }
     
-    private static double toMB(long bytes) {
+    private static double toMb(long bytes) {
         double mb = (double) (bytes / 1.0e6);
         mb = Math.round(mb * 100.0) / 100.0;
         return mb;
@@ -58,10 +60,10 @@ public class BigDbWithDeletes {
     private static void run(int n, TestCollector c) throws InterruptedException {
         MemoryStream ms = new MemoryStream();
         KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().mainStream(ms).clock(clock).start();
+        Db db = Db.builder().mainStream(ms).clock(clock).evictBoss(new NoEvictBoss()).start();
         final int valueSize = 100 * 1000*1000 / n;
         
-        c.report("empty-db-memory-use", toMB(getMem()));
+        c.report("empty-db-memory-use", toMb(getMem()));
         
         c.report("kv-count", n);
         
@@ -74,7 +76,7 @@ public class BigDbWithDeletes {
             db.execute(t);
         }
         
-        c.report("memory-used-after-100MB-of-data", toMB(getMem()));
+        c.report("memory-used-after-100MB-of-data", toMb(getMem()));
         
         // Erases some values.
         
@@ -85,7 +87,7 @@ public class BigDbWithDeletes {
             db.execute(t);
         }
         
-        c.report("memory-used-after-delete", toMB(getMem()));
+        c.report("memory-used-after-delete", toMb(getMem()));
         
         // Tests database after some deletes.
         
@@ -108,7 +110,7 @@ public class BigDbWithDeletes {
         }
         
         db = null;
-        c.report("memory-use-after-db-null", toMB(getMem()));
+        c.report("memory-use-after-db-null", toMb(getMem()));
         
         Db db2 = Db.builder().testSetup().mainStream(ms).build();
         long t = System.nanoTime();
@@ -117,7 +119,7 @@ public class BigDbWithDeletes {
         clock.setTime(3*1000000);
         
         c.report("startup-time", 1e-9 * t);
-        c.report("memory-after-restart", toMB(getMem()));
+        c.report("memory-after-restart", toMb(getMem()));
         
         // Tests the restarted database (db2).
         
@@ -144,5 +146,110 @@ public class BigDbWithDeletes {
         db2 = null;
         ms = null;
         System.gc();
+    }
+    
+    /**
+     * Trying to fix the bug.
+     */
+    private static void run2(TestCollector c) throws InterruptedException {
+        int n = 1000;
+        MemoryStream ms = new MemoryStream();
+        KTestClock clock = new KTestClock();
+        Db db = Db.builder().mainStream(ms).clock(clock).evictBoss(new NoEvictBoss())
+                .startupDistance(1*1000000).start();
+        final int valueSize = 2000;
+        
+        c.report("empty-db-memory-use", toMb(getMem()));
+        
+        c.report("kv-count", n);
+        
+        for (int i = 0; i < n; i++) {
+            clock.setTime(1*1000000 + i);
+            byte[] key = KeyFactory.intKey(i);
+            byte[] value = new byte[valueSize];
+            value[0] = (byte) Util.toString(key).hashCode();
+            Trans t = Trans.builder().put(key, value).build();
+            db.execute(t);
+        }
+        c.report("stream-length", db.getStreamLength());
+        
+        c.report("memory-used", toMb(getMem()));
+        
+        // Erases some values.
+        
+        for (int i = 0; i < n; i += 4) {
+            clock.setTime(2*1000000 + i);
+            byte[] key = KeyFactory.intKey(i);
+            Trans t = Trans.builder().delete(key).build();
+            db.execute(t);
+        }
+        
+        c.report("memory-used-after-delete", toMb(getMem()));
+        
+        // Tests database after some deletes.
+        
+        byte[] expectedValue = new byte[valueSize];
+        
+        for (int i = 0; i < n; i++) {
+            byte[] key = KeyFactory.intKey(i);
+            byte[] value = DbUtil.get(db, Long.MAX_VALUE, key);
+            
+            if (i % 4 == 0) {
+                Assert.assertNull(value);
+            } else {
+                if (value == null) {
+                    throw new RuntimeException("value == null, i = " + i + ".");
+                }
+                
+                expectedValue[0] = (byte) Util.toString(key).hashCode();
+                Assert.assertEquals("i=" + i, expectedValue[0], value[0]);
+            }
+        }
+        
+        db = null;
+        c.report("memory-use-after-db-null", toMb(getMem()));
+        
+        Db db2 = Db.builder().mainStream(ms).clock(clock).evictBoss(new NoEvictBoss()).build();
+        long t = System.nanoTime();
+        db2.start();
+        t = System.nanoTime() - t;
+        clock.setTime(3*1000000);
+        
+        c.report("startup-time", 1e-9 * t);
+        c.report("memory-after-restart", toMb(getMem()));
+        
+        // Tests the restarted database (db2).
+        
+        expectedValue = new byte[valueSize];
+        
+        for (int i = 0; i < n; i++) {
+            byte[] key = KeyFactory.intKey(i);
+            byte[] value = DbUtil.get(db2, Long.MAX_VALUE, key);
+            
+            if (i % 4 == 0) {
+                if (value != null) {
+                    System.out.println("value.length = " + value.length);
+                    System.out.println(value[0]);
+                    throw new RuntimeException("Expected null value, got non-null for i = " 
+                            + i + ". value.length=" + value.length);
+                }
+            } else {
+                if (value == null) {
+                    throw new RuntimeException("value == null, i = " + i + ".");
+                }
+                
+                expectedValue[0] = (byte) Util.toString(key).hashCode();
+                Assert.assertEquals("i=" + i, expectedValue[0], value[0]);
+            }
+        }
+        
+        db2 = null;
+        ms = null;
+        System.gc();
+    }
+    
+    public static void main(String[] args) throws InterruptedException {
+        TestCollector c = new BasicCollector();
+        run2(c);
     }
 }

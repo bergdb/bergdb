@@ -10,7 +10,7 @@ import bergdb.nanotest.T;
  * 
  * @author Frans Lundberg
  */
-public class TransactionNodes implements IDirtyNodes.TransactionNodesForMe {
+public class TransactionNodes implements IDirtyNodes.TransactionNodesForMe, TransSequence.TransactionNodesForMe {
     //
     // The class must support the same node added to it several times without causing duplicates.
     // Should be a set of unique nodes.
