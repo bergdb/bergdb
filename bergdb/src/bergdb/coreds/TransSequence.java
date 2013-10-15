@@ -83,6 +83,23 @@ public class TransSequence {
     }
     
     /**
+     * For an update interval pos >= tpos, this method returns the greatest possible
+     * spos of a node included in the update interval.
+     * To test whether a node belongs to the update interval use: node.spos <= result;
+     * where 'result' is the result of this method.
+     */
+    public long lastPosOfUpdateInterval(long tpos) {
+        if (isEmpty()) return Long.MAX_VALUE;
+        
+        TSet s = first;
+        while (s != null && s.tpos <= tpos) s = s.next;
+        
+        if (s == null) return Long.MAX_VALUE;
+        
+        return s.tpos - 1;
+    }
+    
+    /**
      * A TSet is a collection of all top node and key nodes for a particular 
      * transaction.
      */
@@ -143,6 +160,38 @@ public class TransSequence {
         Assert.assertEquals(0, s.getSize());
         Assert.assertTrue(s.isEmpty());
     }
+    
+    @T
+    public static void testLastPos0() {
+        TransSequence s = new TransSequence();
+        TSet ts1 = new TSet();
+        ts1.tpos = 100;
+        TSet ts2 = new TSet();
+        ts2.tpos = 200;
+        
+        s.add(ts1);
+        s.add(ts2);
+        
+        Assert.assertEquals(199, s.lastPosOfUpdateInterval(100));
+        Assert.assertEquals(99, s.lastPosOfUpdateInterval(0));
+    }
+    
+    @T
+    public static void testLastPos1() {
+        TransSequence s = new TransSequence();
+        TSet ts1 = new TSet();
+        ts1.tpos = 100;
+        TSet ts2 = new TSet();
+        ts2.tpos = 200;
+        
+        s.add(ts1);
+        s.add(ts2);
+        
+        Assert.assertEquals(Long.MAX_VALUE, s.lastPosOfUpdateInterval(200));
+        Assert.assertEquals(Long.MAX_VALUE, s.lastPosOfUpdateInterval(300));
+    }
+    
+    
 }
 
 // Linked list? 
