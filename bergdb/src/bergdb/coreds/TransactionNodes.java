@@ -59,7 +59,6 @@ public class TransactionNodes implements IDirtyNodes.TransactionNodesForMe, Tran
         INode[] nodes = new INode[size];
         System.arraycopy(topNodes, 0, nodes, 0, topSize);
         System.arraycopy(keyNodes, 0, nodes, topSize, keySize);
-        
         TransSequence.Tset result = new TransSequence.Tset(nodes, tpos);
         return result;
     }

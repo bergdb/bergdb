@@ -25,8 +25,6 @@ import bergdb.pubimp.DatabaseImp;
 import bergdb.pubimp.PubKeys;
 import bergdb.stream.MemoryStream;
 
-// TODO B. Fix this bug!
-
 /**
  * Trying to fix bug-130925, see test.night.PayTest.
  * 

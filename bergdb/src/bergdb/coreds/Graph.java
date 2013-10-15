@@ -48,7 +48,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     private final int POINTER_LOCKS_LENGTH = 128;
     private final Object[] pointerLocks;
     private final int maxNodeSize;
-    private final IDirtyNodes dirtyNodes;
+    //private final IDirtyNodes dirtyNodes;
     private final TransSequence seq;
     
     /**
@@ -70,7 +70,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             pointerLocks[i] = new Object();
         }
         
-        this.dirtyNodes = new DirtyNodes1();
+        //this.dirtyNodes = new DirtyNodes1();
     }
     
     /**
@@ -174,7 +174,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             pointerLocks[i] = new Object();
         }
         
-        this.dirtyNodes = new DirtyNodes1();
+        //this.dirtyNodes = new DirtyNodes1();
     }
     
     // ======== General utility methods ========
@@ -242,9 +242,9 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
         return node;
     }
     
-    public final IDirtyNodes getDirtyNodes() {
-        return dirtyNodes;
-    }
+    //public final IDirtyNodes getDirtyNodes() {
+    //    return dirtyNodes;
+    //}
     
     public final TransSequence getTransSequence() {
         return seq;
@@ -257,7 +257,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     public final void ensureDirty(TopNode n) {        
         if (!n.isDirty) {
             n.isDirty = true;
-            dirtyNodes.put(n.spos, n);
+            //dirtyNodes.put(n.spos, n);
         }
     }
     
@@ -268,18 +268,18 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     public final void ensureDirty(KeyNode n) {
         if (!n.isDirty) {
             n.isDirty = true;
-            dirtyNodes.put(n.spos, n);
+            //dirtyNodes.put(n.spos, n);
         }
     }
     
-    public final void ensureDirty(INode n) {
+    /*public final void ensureDirty(INode n) {
     	int type = n.getType();
     	
         if ((type == INode.TYPE_TOP_NODE || type == INode.TYPE_KEY_NODE) && !n.isDirty()) {
             n.setIsDirty(true);
             dirtyNodes.put(n.getSpos(), n);
         }
-    }
+    }*/
     
     /**
      * Creates a GetData object suitable for use with as a parameter to Graph.getOne().
@@ -932,7 +932,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             KlongWithPointer[] toAppend, PutData pd) {
         // 131005, added the last.replaceKlong() method call. A bit of a hack.
         //   See Graph.testTimeSplit1a.
-        //   TODO A. Consider other solution. Maybe last should include toInsert.
+        //   TODO B. Consider other solution. Maybe last should include toInsert.
         //
         // Last version is small enough not to split into two nodes, but not empty.
         //
@@ -1234,7 +1234,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     };
     
     /**
-     * Cache policy that caches all node except for ValueNodes with a value larger 
+     * Cache policy that caches all nodes except for ValueNodes with a value larger 
      * than 1 MiB.
      */
     public static final CachePolicy CACHE_ALL_EXCEPT_LARGE_VALUE_NODES = new CachePolicy() {

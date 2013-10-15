@@ -10,7 +10,6 @@ import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
 
 import bergdb.common.Bug;
-import bergdb.coreds.IDirtyNodes;
 import bergdb.pub.Clock;
 
 
@@ -33,7 +32,6 @@ public class Jmx {
         public String getTimeH();
         public String dbTimeToString(long dbTime);
         public long getStreamSize();
-        public int getDirtyNodeCount();
         public int getStartupDistance();
         public void setStartupDistance(int newDistance);
         public String getStartupDistanceH();
@@ -67,7 +65,6 @@ public class Jmx {
      */
     public static class DbMonitor implements DbMonitorMBean {
         private Db db;
-        private IDirtyNodes dirtyNodes;
         private Object dbWriteLock;
         private MBeanServer mbs;
         
@@ -76,10 +73,6 @@ public class Jmx {
                 throw new IllegalArgumentException("db == null not allowed");
             }
             this.db = db;
-            this.dirtyNodes = db.getDirtyNodes();
-            if (dirtyNodes == null) {
-                throw new Bug("db.getDirtyNodes() == null");
-            }
             this.dbWriteLock = db.getWriteLock();
             if (dbWriteLock == null) {
                 throw new Bug("db.getWriteLock() == null");
@@ -115,12 +108,6 @@ public class Jmx {
          */
         public long getStreamSize() {
             return db.getStreamLength();
-        }
-        
-        public int getDirtyNodeCount() {
-            synchronized (dbWriteLock) {
-                return dirtyNodes.getSize();
-            }
         }
         
         public int getStartupDistance() {

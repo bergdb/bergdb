@@ -148,6 +148,9 @@ public class BigDbWithDeletes {
         System.gc();
     }
     
+    // TODO A. Fix bug with deletes that disappear when restarted.
+    // Same thing happens when values overwritten!
+    
     /**
      * Trying to fix the bug.
      */
@@ -175,18 +178,17 @@ public class BigDbWithDeletes {
         
         c.report("memory-used", toMb(getMem()));
         
-        // Erases some values.
+        // Erases one value
         
-        for (int i = 0; i < n; i += 4) {
-            clock.setTime(2*1000000 + i);
-            byte[] key = KeyFactory.intKey(i);
-            Trans t = Trans.builder().delete(key).build();
-            db.execute(t);
-        }
+        clock.setTime(2*1000000 + 120);
+        byte[] key1 = KeyFactory.intKey(120);
+        //Trans t2 = Trans.builder().delete(key1).build();
+        Trans t2 = Trans.builder().put(key1, new byte[123]).build();
+        db.execute(t2);
         
         c.report("memory-used-after-delete", toMb(getMem()));
         
-        // Tests database after some deletes.
+        // Tests database after a delete.
         
         byte[] expectedValue = new byte[valueSize];
         
@@ -194,8 +196,8 @@ public class BigDbWithDeletes {
             byte[] key = KeyFactory.intKey(i);
             byte[] value = DbUtil.get(db, Long.MAX_VALUE, key);
             
-            if (i % 4 == 0) {
-                Assert.assertNull(value);
+            if (i == 120) {
+                Assert.assertEquals(123, value.length);
             } else {
                 if (value == null) {
                     throw new RuntimeException("value == null, i = " + i + ".");
@@ -226,11 +228,9 @@ public class BigDbWithDeletes {
             byte[] key = KeyFactory.intKey(i);
             byte[] value = DbUtil.get(db2, Long.MAX_VALUE, key);
             
-            if (i % 4 == 0) {
-                if (value != null) {
-                    System.out.println("value.length = " + value.length);
-                    System.out.println(value[0]);
-                    throw new RuntimeException("Expected null value, got non-null for i = " 
+            if (i == 120) {
+                if (value.length != 123) {
+                    throw new RuntimeException("Expected 123 long value, got something else i = " 
                             + i + ". value.length=" + value.length);
                 }
             } else {

@@ -203,7 +203,6 @@ public class TransSequence {
         
         final HashSet<INode> forwardNodesB = new HashSet<INode>();
         
-        // XXX cannot add to itself while iterating! Can cause java.util.ConcurrentModificationException
         for (INode node : forwardNodesA) {
             forwardNodesB.add(node);
             addAncestors(node, forwardNodesB, childToParents);

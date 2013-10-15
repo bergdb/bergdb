@@ -20,7 +20,6 @@ import bergdb.coreds.EvictData;
 import bergdb.coreds.GetData;
 import bergdb.coreds.Graph;
 import bergdb.coreds.GetMany;
-import bergdb.coreds.IDirtyNodes;
 import bergdb.coreds.INode;
 import bergdb.coreds.KeyNode;
 import bergdb.coreds.Keys;
@@ -650,14 +649,6 @@ public class Db implements IWarner {
         return dbClock.timeForGet(wantedTime);
     }
 
-    /**
-     * Returns the collection of dirty nodes. Needed by DB monitor. Same
-     * reference is always returned since it comes from a final field.
-     */
-    public final IDirtyNodes getDirtyNodes() {
-        return graph.getDirtyNodes();
-    }
-
     public final Object getWriteLock() {
         return writeLock;
     }
@@ -1015,22 +1006,6 @@ public class Db implements IWarner {
         return result;
     }
     
-    
-    // TODO B. Implement this.
-    /**
-     * Simulates a get() lookup to gather the node index choices that are made 
-     * to access the value corresponding to a certain key.
-     * Caller holds Db.writeLock. The transactionTime must have been "released" 
-     * for use by get operations.
-     * 
-     * @param choices Output parameter that collects the result.
-     * @deprecated
-     */
-    @SuppressWarnings("unused")
-    private void getChoices(long[] key, Choices choices, boolean isDelete) {
-        throw new Error("not implemented!");
-    }
-    
     /**
      * Follows the pointers in the DB graph from the super top node using the given 
      * node index choices.
@@ -1165,21 +1140,21 @@ public class Db implements IWarner {
         NodeVisitor visitor = new NodeVisitor() {
             public void visit(TopNode node) {
                 counters[0]++;
-                checkTooDirty(node);
+                //checkTooDirty(node);
             }
 
             public void visit(KeyNode node) {
                 counters[1]++;
                 node.check();    // throws AssertionError if bad.
-                checkTooDirty(node);
+                //checkTooDirty(node);
             }
 
             public void visit(ValueNode node) {
                 counters[2]++;
-                checkTooDirty(node);
+                //checkTooDirty(node);
             }
             
-            private void checkTooDirty(INode node) {
+            /*private void checkTooDirty(INode node) {
                 long spos = node.getSpos();
                 boolean isDirty = node.isDirty();
                 
@@ -1196,11 +1171,7 @@ public class Db implements IWarner {
                     
                     throw new AssertionError(message);
                 }
-                
-                //if (!isDirty && spos <= dLimit) {
-                //    System.out.println("Non-dirty, dLimit=" + dLimit + ", node:" + node);
-                //}
-            }
+            }*/
         };
         
         graph.visitMemoryNodes(visitor);
@@ -1390,7 +1361,7 @@ public class Db implements IWarner {
             
             public void pointerFollowed(INode predecessor, int pointerIndex, INode result,
                     int pointerType) {
-                graph.ensureDirty(result);
+                //graph.ensureDirty(result);
                 finalChoice[0].add(pointerIndex);
             }
         };
@@ -1445,10 +1416,6 @@ public class Db implements IWarner {
 
         int ordinaryNodeCount = transactionNodes.size();
         
-        //if (graph != null) {
-        //    graph.getDirtyNodes().getAndRemoveTooDirtyNodes(dirtyLimit, transactionNodes);
-        //}
-        
         if (graph != null) {
             graph.getTransSequence().addToTransactionNodes(dirtyLimit, transactionNodes);
         }
@@ -1460,11 +1427,7 @@ public class Db implements IWarner {
         
         trans.nodeCount = transactionNodes.size();
         
-        //removeTransactionNodesFromDirtyNodes();
-        
         boolean wroteMetaBlock = nodeStream.addNodes(trans.transactionTime, transactionNodes, trans);
-        
-        // XXX
 
         if (graph != null) {
             graph.getTransSequence().add(transactionNodes.createTSet(nodeStream.getLastTransSpos()));
@@ -1478,30 +1441,6 @@ public class Db implements IWarner {
                     : newIncreasedStartupDistance + ", " + startupDistance;
             startupDistance = newIncreasedStartupDistance;
             newIncreasedStartupDistance = -1;
-        }
-    }
-
-    /**
-     * Removes nodes of the transaction (transactionNodes) from the collection
-     * of dirty nodes.
-     */
-    private void removeTransactionNodesFromDirtyNodes() {
-        final TransactionNodes nodes = transactionNodes;
-
-        for (int i = 0; i < transactionNodes.topSize; i++) {
-            final TopNode n = nodes.topNodes[i];
-            if (n.isDirty && n.spos != Spos.NULL) {
-                graph.getDirtyNodes().remove(n.spos);
-            }
-            n.isDirty = false;
-        }
-
-        for (int i = 0; i < nodes.keySize; i++) {
-            final KeyNode n = nodes.keyNodes[i];
-            if (n.isDirty && n.spos != Spos.NULL) {
-                graph.getDirtyNodes().remove(n.spos);
-            }
-            n.isDirty = false;
         }
     }
 
