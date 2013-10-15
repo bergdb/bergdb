@@ -4,12 +4,15 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Calendar;
 import java.util.Random;
+
 import bergdb.common.EventToWaitFor;
 import bergdb.common.Util;
 import bergdb.core.Db;
+import bergdb.core.Jmx;
 import bergdb.core.KeyFactory;
 import bergdb.core.NoEvictBoss;
 import bergdb.core.Trans;
+import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;
 import bergdb.pub.TestClock;
@@ -21,16 +24,18 @@ import bergdb.stream.FileStream;
  * 
  * @author Frans Lundberg
  */
-public class TransactionThroughput {
+public class TransThroughput {
     private volatile long transCounter = 0;
     private Db db;
     private Trans[] transactions;
     private EventToWaitFor doneEvent;
     private boolean done = false;
-    private final int n = 200*1000;
+    //private final int n = 200*1000;
+    private final int n = 1000*1000;
+    private final int repetitions = 10;
     private int threadCount;
     
-    public TransactionThroughput() {
+    public TransThroughput() {
         doneEvent = new EventToWaitFor();
     }
     
@@ -38,6 +43,23 @@ public class TransactionThroughput {
         Calendar c = Calendar.getInstance();
         String result = String.format("%1$tH%1$tM%1$tS%1$tL", c);
         return result;
+    }
+    
+    private void startJmx() throws Exception {
+        Jmx.DbMonitor dbMonitor = new Jmx.DbMonitor(db);
+        dbMonitor.register();
+        Jmx.Speed speed = new Jmx.Speed(db);
+        speed.registerAndStart();
+        System.out.println("Jmx MBeans now active.");
+    }
+    
+    private void startJmxSilently() {
+        try {
+            startJmx();
+        } catch (Exception e) {
+            System.out.println("ERROR, exception when starting JMX.");
+            e.printStackTrace(System.out);
+        }
     }
     
     private void run(TestCollector c, int threadCount) throws IOException, InterruptedException {
@@ -54,6 +76,10 @@ public class TransactionThroughput {
         FileStream stream = new FileStream(dir);
         TestClock clock = new TestClock();
         db = Db.builder().mainStream(stream).retainForever().evictBoss(new NoEvictBoss()).clock(clock).start();
+        
+        startJmxSilently();
+        System.out.println("JMX started, starting in a few seconds.");
+        Thread.sleep(5000);
         
         transactions = new Trans[n];
         Random random = new Random(0);
@@ -111,17 +137,19 @@ public class TransactionThroughput {
     }
     
     private void threadWork(int threadIndex) {
-        for (int i = threadIndex; i < transactions.length; i += threadCount) {
-            try {
-                db.execute(transactions[i]);
-            } catch (StreamIoException e) {
-                break;
-            }
-            
-            transCounter++;
-            
-            if (done) {
-                break;
+        for (int i0 = 0; i0 < repetitions; i0++) {
+            for (int i = threadIndex; i < transactions.length; i += threadCount) {
+                try {
+                    db.execute(transactions[i]);
+                } catch (StreamIoException e) {
+                    break;
+                }
+                
+                transCounter++;
+                
+                if (done) {
+                    break;
+                }
             }
         }
         
@@ -133,25 +161,31 @@ public class TransactionThroughput {
     @T("perf")
     public static void t1(TestCollector c) throws IOException, InterruptedException {
         c.out().println("1 thread...");
-        new TransactionThroughput().run(c, 1);
+        new TransThroughput().run(c, 1);
     }
     
     @T("perf")
     public static void t2(TestCollector c) throws IOException, InterruptedException {
         c.out().println("2 threads...");
-        new TransactionThroughput().run(c, 2);
+        new TransThroughput().run(c, 2);
     }
     
     @T("perf")
     public static void t4(TestCollector c) throws IOException, InterruptedException {
         c.out().println("4 threads...");
-        new TransactionThroughput().run(c, 4);
+        
+        new TransThroughput().run(c, 4);
     }
     
     @T("perf")
     public static void t8(TestCollector c) throws IOException, InterruptedException {
         c.out().println("8 threads...");
-        new TransactionThroughput().run(c, 8);
+        new TransThroughput().run(c, 8);
+    }
+    
+    public static void main(String[] args) throws IOException, InterruptedException {
+        TransThroughput t = new TransThroughput();
+        t.run(new BasicCollector(), 4);
     }
 }
 

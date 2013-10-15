@@ -2,7 +2,7 @@ package bergdb.test;
 
 import bergdb.common.IPack;
 import bergdb.test.manual.StreamSizeVsStartupDistance;
-import bergdb.test.manual.TransactionThroughput;
+import bergdb.test.manual.TransThroughput;
 
 public class Pack implements IPack {
     private static Class<?>[] classes = new Class<?>[] {
@@ -31,7 +31,7 @@ public class Pack implements IPack {
         StreamSizeVsStartupDistance.class,
         Set.class,
         StreamSize.class,
-        TransactionThroughput.class
+        TransThroughput.class
     };
     
     public Class<?>[] getClasses() {
