@@ -47,7 +47,7 @@ public class KeyNodeTester {
         
         for (int i = 0; i < keys.length; i++) {
             long klongToAdd = Klong.create(Util.toBytes(keys[i]));
-            node.addKlong(1, klongToAdd, t2Pointers[i], Spos.DEFAULT_ACCESS_DATA);
+            node.addKlong(1, klongToAdd, t2Pointers[i], AccessData.DEFAULT_ACCESS_DATA);
         }
         
         return node;
@@ -106,7 +106,7 @@ public class KeyNodeTester {
         
         KeyNode t2 = t.createT2();
         
-        t2.addKlong(1020, Klong.create(Util.toBytes("a")), t.t2Pointers[7], Spos.DEFAULT_ACCESS_DATA);
+        t2.addKlong(1020, Klong.create(Util.toBytes("a")), t.t2Pointers[7], AccessData.DEFAULT_ACCESS_DATA);
         
         long compareValue = createCompareValue(Util.toBytes("a"));
         t2.searchEq(2000, compareValue, kwi);
@@ -123,7 +123,7 @@ public class KeyNodeTester {
         KlongWithPointer kwi = new KlongWithPointer();
         KeyNode node = t.createT2();
         long klong = node.getDeleteBitmap(Klong.createCompareValue(Util.toBytes("apa")));
-        node.addKlong(1020, klong, null, Spos.DEFAULT_ACCESS_DATA);
+        node.addKlong(1020, klong, null, AccessData.DEFAULT_ACCESS_DATA);
         
         long compareValue = createCompareValue(Util.toBytes("apa"));
         node.searchEq(2000, compareValue, kwi);
@@ -138,7 +138,7 @@ public class KeyNodeTester {
         node.searchEq(1010, compareValue, kwi);
         Assert.assertEquals(t.t2Pointers[1], kwi.node);
         
-        node.addKlong(1030, Klong.create(Util.toBytes("apa")), t.t2Pointers[5], Spos.DEFAULT_ACCESS_DATA);
+        node.addKlong(1030, Klong.create(Util.toBytes("apa")), t.t2Pointers[5], AccessData.DEFAULT_ACCESS_DATA);
         
         compareValue = createCompareValue(Util.toBytes("apa"));
         node.searchEq(2000, compareValue, kwi);
@@ -149,7 +149,7 @@ public class KeyNodeTester {
     public static void testEqBeforeFirstVersion() {
         KeyNode n = new KeyNode();
         long klongToAdd = Klong.create(Util.toBytes("first"));
-        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
         
         n.check();
         KlongWithPointer kwi = new KlongWithPointer();
@@ -166,7 +166,7 @@ public class KeyNodeTester {
     public static void testLte1() {
         KeyNode n = new KeyNode();
         long klongToAdd = Klong.create(Util.toBytes("first"));
-        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
         n.check();
         KlongWithPointer kwi = new KlongWithPointer();
         long compareValue = createCompareValue(Util.toBytes("first"));
@@ -196,9 +196,9 @@ public class KeyNodeTester {
         // Creates KeyNode.
         
         klongToAdd = Klong.create(Util.toBytes("k10"));
-        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
         klongToAdd = Klong.create(Util.toBytes("k20"));
-        n.addKlong(20, klongToAdd, new ValueNode(new byte[0]), Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
 
         // Tests at time = Long.MAX_VALUE.
         
@@ -246,11 +246,11 @@ public class KeyNodeTester {
         // Creates KeyNode.
         
         klongToAdd = Klong.create(Util.toBytes("k10"));
-        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
         klongToAdd = Klong.create(Util.toBytes("k20"));
-        n.addKlong(20, klongToAdd, new ValueNode(new byte[0]), Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
         klongToAdd = n.getDeleteBitmap(Klong.createCompareValue(Util.toBytes("k10")));
-        n.addKlong(30, klongToAdd, null, Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, klongToAdd, null, AccessData.DEFAULT_ACCESS_DATA);
 
         // Tests at time = Long.MAX_VALUE.
         
@@ -275,7 +275,7 @@ public class KeyNodeTester {
     public static void testLt1() {
         KeyNode n = new KeyNode();
         long klongToAdd = Klong.create(Util.toBytes("first"));
-        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
         n.check();
         KlongWithPointer kwi = new KlongWithPointer();
         long compareValue = createCompareValue(Util.toBytes("first"));
@@ -305,9 +305,9 @@ public class KeyNodeTester {
         // Creates KeyNode.
         
         klongToAdd = Klong.create(Util.toBytes("k10"));
-        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
         klongToAdd = Klong.create(Util.toBytes("k20"));
-        n.addKlong(20, klongToAdd, new ValueNode(new byte[0]), Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
 
         // Tests at time = Long.MAX_VALUE.
         
@@ -355,11 +355,11 @@ public class KeyNodeTester {
         // Creates KeyNode.
         
         klongToAdd = Klong.create(Util.toBytes("k10"));
-        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
         klongToAdd = Klong.create(Util.toBytes("k20"));
-        n.addKlong(20, klongToAdd, new ValueNode(new byte[0]), Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
         klongToAdd = n.getDeleteBitmap(Klong.createCompareValue(Util.toBytes("k10")));
-        n.addKlong(30, klongToAdd, null, Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, klongToAdd, null, AccessData.DEFAULT_ACCESS_DATA);
 
         // Tests at time = Long.MAX_VALUE.
         
@@ -381,7 +381,7 @@ public class KeyNodeTester {
     public static void testGt1() {
         KeyNode n = new KeyNode();
         long klongToAdd = Klong.create(Util.toBytes("key"));
-        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
         n.check();
         KlongWithPointer kwi = new KlongWithPointer();
 
@@ -407,9 +407,9 @@ public class KeyNodeTester {
         // Creates KeyNode.
         
         klongToAdd = Klong.create(Util.toBytes("k10"));
-        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
         klongToAdd = Klong.create(Util.toBytes("k20"));
-        n.addKlong(20, klongToAdd, new ValueNode(new byte[0]), Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
 
         // Tests at time = Long.MAX_VALUE.
         
@@ -455,9 +455,9 @@ public class KeyNodeTester {
         // Creates KeyNode.
         
         klongToAdd = Klong.create(Util.toBytes("k10"));
-        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
         klongToAdd = Klong.create(Util.toBytes("k20"));
-        n.addKlong(20, klongToAdd, new ValueNode(new byte[0]), Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
 
         // Tests at time = Long.MAX_VALUE.
         
@@ -522,10 +522,10 @@ public class KeyNodeTester {
         KeyNode node = t.createT2();
         node.check();
         long klong = node.getDeleteBitmap(Klong.createCompareValue(Util.toBytes("apa")));
-        node.addKlong(1020, klong, null, Spos.DEFAULT_ACCESS_DATA);
+        node.addKlong(1020, klong, null, AccessData.DEFAULT_ACCESS_DATA);
         //node.addKlong(1020, Klong.createDelete(Util.toBytes("apa")), null, Spos.DEFAULT_ACCESS_DATA);
         node.check();        
-        node.addKlong(1030, Klong.create(Util.toBytes("apa")), t.t2Pointers[5], Spos.DEFAULT_ACCESS_DATA);
+        node.addKlong(1030, Klong.create(Util.toBytes("apa")), t.t2Pointers[5], AccessData.DEFAULT_ACCESS_DATA);
         node.check();
     }
     
@@ -549,9 +549,9 @@ public class KeyNodeTester {
     public static void testLastVersion1() {
         KeyNode n = new KeyNode();
         
-        n.addKlong(10, Klong.create(Util.toBytes("a")), new ValueNode(new byte[0]), Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(20, Klong.create(Util.toBytes("b")), new ValueNode(new byte[0]), Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(30, Klong.create(Util.toBytes("c")), new ValueNode(new byte[0]), Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.create(Util.toBytes("a")), new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, Klong.create(Util.toBytes("b")), new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, Klong.create(Util.toBytes("c")), new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
         
         KeyNode last = n.lastVersion(100);
         NodeInfo info = new NodeInfo();
@@ -571,13 +571,13 @@ public class KeyNodeTester {
         KeyNode n = new KeyNode();
         ValueNode value = new ValueNode(new byte[0]);
         
-        n.addKlong(10, Klong.create(Util.toBytes("a")), value, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(20, Klong.create(Util.toBytes("b")), value, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(25, Klong.create(Util.toBytes("c")), value, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(30, n.getDeleteBitmap(Klong.createCompareValue(Util.toBytes("b"))), null, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(40, n.getDeleteBitmap(Klong.createCompareValue(Util.toBytes("a"))), null, Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.create(Util.toBytes("a")), value, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, Klong.create(Util.toBytes("b")), value, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(25, Klong.create(Util.toBytes("c")), value, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, n.getDeleteBitmap(Klong.createCompareValue(Util.toBytes("b"))), null, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(40, n.getDeleteBitmap(Klong.createCompareValue(Util.toBytes("a"))), null, AccessData.DEFAULT_ACCESS_DATA);
         
-        n.addKlong(50, Klong.create(Util.toBytes("b")), value, Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(50, Klong.create(Util.toBytes("b")), value, AccessData.DEFAULT_ACCESS_DATA);
         
         KeyNode last = n.lastVersion(100);
         NodeInfo info = new NodeInfo();
@@ -603,13 +603,13 @@ public class KeyNodeTester {
         
         KeyNode n = new KeyNode();
         ValueNode value = new ValueNode(new byte[0]);
-        n.addKlong(10, Klong.create(Util.toBytes("a")), value, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(10, Klong.create(Util.toBytes("b")), value, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(20, Klong.create(Util.toBytes("c")), value, Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.create(Util.toBytes("a")), value, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.create(Util.toBytes("b")), value, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, Klong.create(Util.toBytes("c")), value, AccessData.DEFAULT_ACCESS_DATA);
         n.addKlong(30, n.getDeleteBitmap(Klong.createCompareValue(Util.toBytes("b"))), null, 
-                Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(40, Klong.create(Util.toBytes("d")), value, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(50, Klong.DELETE_ALL_BITMAP, null, Spos.DEFAULT_ACCESS_DATA);
+                AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(40, Klong.create(Util.toBytes("d")), value, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(50, Klong.DELETE_ALL_BITMAP, null, AccessData.DEFAULT_ACCESS_DATA);
         
         KeyNode last = n.lastVersion(100);
         
@@ -623,10 +623,10 @@ public class KeyNodeTester {
     public static void testFirstAndSecond2() {
         KeyNode n = new KeyNode();
         ValueNode v1 = new ValueNode(Util.toBytes("v1"));
-        n.addKlong(10, Klong.create(Util.toBytes("10")), v1, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(20, Klong.create(Util.toBytes("20")), v1, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(30, Klong.create(Util.toBytes("30")), v1, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(40, Klong.create(Util.toBytes("40")), v1, Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.create(Util.toBytes("10")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, Klong.create(Util.toBytes("20")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, Klong.create(Util.toBytes("30")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(40, Klong.create(Util.toBytes("40")), v1, AccessData.DEFAULT_ACCESS_DATA);
         
         KeyNode first = new KeyNode();
         KeyNode second = new KeyNode();
@@ -657,10 +657,10 @@ public class KeyNodeTester {
     public static void testFirstAndSecond3() {
         KeyNode n = new KeyNode();
         ValueNode v1 = new ValueNode(Util.toBytes("v1"));
-        n.addKlong(10, Klong.create(Util.toBytes("10")), v1, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(20, Klong.create(Util.toBytes("20")), v1, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(30, Klong.create(Util.toBytes("30")), v1, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(40, Klong.create(Util.toBytes("40")), v1, Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.create(Util.toBytes("10")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, Klong.create(Util.toBytes("20")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, Klong.create(Util.toBytes("30")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(40, Klong.create(Util.toBytes("40")), v1, AccessData.DEFAULT_ACCESS_DATA);
         
         KeyNode first = new KeyNode();
         KeyNode second = new KeyNode();
@@ -698,9 +698,9 @@ public class KeyNodeTester {
         
         KeyNode n = new KeyNode();
         ValueNode v1 = new ValueNode(Util.toBytes("v1"));
-        n.addKlong(10, Klong.create(Util.toBytes("10")), v1, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(30, Klong.create(Util.toBytes("30")), v1, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(40, Klong.create(Util.toBytes("40")), v1, Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.create(Util.toBytes("10")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, Klong.create(Util.toBytes("30")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(40, Klong.create(Util.toBytes("40")), v1, AccessData.DEFAULT_ACCESS_DATA);
         
         KeyNode first = new KeyNode();
         KeyNode second = new KeyNode();
@@ -741,10 +741,10 @@ public class KeyNodeTester {
         
         KeyNode n = new KeyNode();
         ValueNode v1 = new ValueNode(Util.toBytes("v1"));
-        n.addKlong(10, Klong.create(Util.toBytes("10")), v1, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(10, Klong.create(Util.toBytes("20")), v1, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(30, Klong.create(Util.toBytes("30")), v1, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(40, Klong.create(Util.toBytes("40")), v1, Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.create(Util.toBytes("10")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.create(Util.toBytes("20")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, Klong.create(Util.toBytes("30")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(40, Klong.create(Util.toBytes("40")), v1, AccessData.DEFAULT_ACCESS_DATA);
         
         KeyNode first = new KeyNode();
         KeyNode second = new KeyNode();
@@ -782,10 +782,10 @@ public class KeyNodeTester {
         
         KeyNode n = new KeyNode();
         ValueNode v1 = new ValueNode(Util.toBytes("v1"));
-        n.addKlong(10, Klong.create(Util.toBytes("10")), v1, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(10, Klong.create(Util.toBytes("20")), v1, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(30, Klong.create(Util.toBytes("30")), v1, Spos.DEFAULT_ACCESS_DATA);
-        n.addKlong(40, Klong.create(Util.toBytes("40")), v1, Spos.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.create(Util.toBytes("10")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.create(Util.toBytes("20")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, Klong.create(Util.toBytes("30")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(40, Klong.create(Util.toBytes("40")), v1, AccessData.DEFAULT_ACCESS_DATA);
         
         KeyNode first = new KeyNode();
         KeyNode second = new KeyNode();
@@ -821,8 +821,8 @@ public class KeyNodeTester {
     public static void testDeleteBitmap1() {
         KeyNode node = new KeyNode();
         ValueNode value = new ValueNode(new byte[0]);
-        node.addKlong(10, Klong.create(Util.toBytes("a")), value, Spos.DEFAULT_ACCESS_DATA);
-        node.addKlong(20, Klong.create(Util.toBytes("c")), value, Spos.DEFAULT_ACCESS_DATA);
+        node.addKlong(10, Klong.create(Util.toBytes("a")), value, AccessData.DEFAULT_ACCESS_DATA);
+        node.addKlong(20, Klong.create(Util.toBytes("c")), value, AccessData.DEFAULT_ACCESS_DATA);
         
         long ca = Klong.createCompareValue(Util.toBytes("a"));
         long cb = Klong.createCompareValue(Util.toBytes("b"));

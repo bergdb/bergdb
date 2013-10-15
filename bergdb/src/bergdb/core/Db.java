@@ -904,7 +904,7 @@ public class Db implements IWarner {
         
         long tt = dbClock.transactionBegin();
         try {
-            top = TopDs.createFromFirstRoot(tt, root, Spos.DEFAULT_ACCESS_DATA);
+            top = TopDs.createFromFirstRoot(tt, root, AccessData.DEFAULT_ACCESS_DATA);
         } finally {
             dbClock.transactionEnd();
         }

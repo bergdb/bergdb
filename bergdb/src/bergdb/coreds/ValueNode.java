@@ -41,6 +41,10 @@ public final class ValueNode implements INode {
         return TYPE_VALUE;
     }
     
+    public final boolean isTopOrKeyNode() {
+        return false;
+    }
+    
     /**
      * Returns the stream position, spos, of the node.
      */

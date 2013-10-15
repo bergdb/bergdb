@@ -42,7 +42,7 @@ public interface IDirtyNodes {
     
     /**
      * The method subset of core.TransactionNodes needed by this class.
-     * This type is useful to minimize dependency, good for testing, mocks.
+     * This type is useful to minimize dependency, good for testing / mocks.
      */
     public static interface TransactionNodesForMe {
         public void addTopNode(TopNode node);

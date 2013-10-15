@@ -58,7 +58,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     private Graph(Builder b, long time) {
         
         KeyNode root = new KeyNode();
-        this.topDs = TopDs.createFromFirstRoot(time, root, Spos.DEFAULT_ACCESS_DATA);
+        this.topDs = TopDs.createFromFirstRoot(time, root, AccessData.DEFAULT_ACCESS_DATA);
         
         // Non-topDS stuff:
         this.maxNodeSize = b.maxNodeSize;

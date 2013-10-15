@@ -27,6 +27,13 @@ import bergdb.nanotest.T;
  */
 abstract public class AccessData {
     /**
+     * Can be used when access data is unknown or unimportant. For testing, for example.
+     * The value is considered a valid accessData value and will pass asserts.
+     */
+    //public static final long DEFAULT_ACCESS_DATA = -Db.MIN_CACHE_MEMORY_VALUE;
+    public static final long DEFAULT_ACCESS_DATA = -10;
+    
+    /**
      * Checks whether the access data (a long) is valid.
      */
     public static final boolean isValid(long accessData) {
@@ -52,6 +59,9 @@ abstract public class AccessData {
     public static final long getAccessTimeNoChecks(long accessData) {
         return -accessData;
     }
+    
+    
+    // ======== Tests ========
     
     @T
     public static void test1() {

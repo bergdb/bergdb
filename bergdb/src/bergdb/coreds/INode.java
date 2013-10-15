@@ -22,6 +22,8 @@ public interface INode {
     public static final byte TYPE_DELETE = 40;
     
     public byte getType();
+    public boolean isTopOrKeyNode();
+    
     public long getSpos();
     public void setSpos(long spos);
     

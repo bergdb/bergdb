@@ -98,6 +98,10 @@ public class KeyNode implements INode {
         return INode.TYPE_KEY_NODE;
     }
     
+    public final boolean isTopOrKeyNode() {
+        return true;
+    }
+    
     // 130129 Frans: could not measure performance improvement by implementing hashCode.    
     //public final int hashCode() {
     //    return (int) this.id;

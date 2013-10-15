@@ -54,12 +54,13 @@ public class TransactionNodes implements IDirtyNodes.TransactionNodesForMe {
         return topSize + keySize + valueSize;
     }
     
-    public TransSequence.TSet createTSet() {
+    public TransSequence.Tset createTSet(long tpos) {
         int size = topSize + keySize;
-        TransSequence.TSet result = new TransSequence.TSet();
-        result.nodes = new INode[size];
-        System.arraycopy(topNodes, 0, result.nodes, 0, topSize);
-        System.arraycopy(keyNodes, 0, result.nodes, topSize, keySize);
+        INode[] nodes = new INode[size];
+        System.arraycopy(topNodes, 0, nodes, 0, topSize);
+        System.arraycopy(keyNodes, 0, nodes, topSize, keySize);
+        
+        TransSequence.Tset result = new TransSequence.Tset(nodes, tpos);
         return result;
     }
     

@@ -56,7 +56,7 @@ public class PutData {
      */
     public PutData() {
         tt = 0;
-        accessData = Spos.DEFAULT_ACCESS_DATA;
+        accessData = AccessData.DEFAULT_ACCESS_DATA;
         spaceSplitCount = 0;
         
         tempPointer = new Pointer();

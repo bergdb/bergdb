@@ -90,6 +90,10 @@ public final class TopNode implements INode {
         return INode.TYPE_TOP_NODE;
     }
     
+    public final boolean isTopOrKeyNode() {
+        return true;
+    }
+    
     public long getRootTime() {
         return rootTime;
     }
