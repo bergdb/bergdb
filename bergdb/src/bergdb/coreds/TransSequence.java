@@ -20,7 +20,7 @@ import bergdb.nanotest.T;
  */
 public class TransSequence {
     private Tset first;     // Head of linked list, may be null.
-    private Tset last;     // Last set of linked list, may be null.
+    private Tset last;      // Last set of linked list, may be null.
     private int size;
     
     public TransSequence() {
@@ -40,54 +40,52 @@ public class TransSequence {
     /**
      * Adds a TSet to the end of the list.
      * 
-     * @param tset  The TSet to add, condition: tset.tpos > last.tpos (or empty list).
+     * @param set  The TSet to add, condition: tset.tpos > last.tpos (or empty list).
      */
-    public void add(Tset tset) {
-        if (tset == null) throw new IllegalArgumentException("tset == null not allowed");
+    public void add(Tset set) {
+        if (set == null) throw new IllegalArgumentException("tset == null not allowed");
         
         if (isEmpty()) {
-            first = tset;
-            last = tset;
+            first = set;
+            last = set;
         } else {
-            if (tset.tpos <= last.tpos) {
+            if (set.tpos <= last.tpos) {
                 throw new IllegalArgumentException(
-                        "tset.tpos <= last.tpos, " + tset.tpos + ", " + last.tpos);
+                        "tset.tpos <= last.tpos, " + set.tpos + ", " + last.tpos);
             }
-            last.next = tset;
-            last = tset;
+            last.next = set;
+            last = set;
         }
         
         size += 1;
     }
     
     /**
-     * Removes all TSets with a tpos < pos.
+     * Removes all Tsets with a tpos < limit.
      * 
      * @return The number of sets removed from the list.
      */
-    public int removeBeforeSpos(long pos) {
+    public int removeBeforeSpos(long limit) {
+        int result = 0;
+        
         if (isEmpty()) {
             return 0;
         }
         
-        assert first != null;
-        
-        while (first.tpos < pos) {
-            if (first.next == null) {
-                first = null;
-                last = null;
-                size -= 1;
-                assert size == 0 : "size: " + size;
-                break;
-            } else {
-                first = first.next;
-                size -= 1;
-            }
+        while (first != null && first.tpos < limit) {
+            first = first.next;
+            size -= 1;
+            result += 1;
         }
         
-        return 0;
+        // To avoid possible memory leak.
+        if (first == null) {
+            last = null;
+        }
+        
+        return result;
     }
-    
+
     /**
      * For an update interval pos >= tpos, this method returns the greatest possible
      * spos of a node included in the update interval.
@@ -134,7 +132,7 @@ public class TransSequence {
         //
         
         final HashMap<INode, Long> nodeToTpos = new HashMap<INode, Long>();
-        final HashSet<INode> forwardNodes = new HashSet<INode>();
+        final HashSet<INode> forwardNodesA = new HashSet<INode>();
         final HashMap<INode, ArrayList<INode>> childToParents = new HashMap<INode, ArrayList<INode>>();
         
         acceptVisitor(limit, new Visitor() {
@@ -198,16 +196,20 @@ public class TransSequence {
                 }
                 
                 if (isForward) {
-                    forwardNodes.add(node);
+                    forwardNodesA.add(node);
                 }
             }
         });
         
-        for (INode node : forwardNodes) {
-            addAncestors(node, forwardNodes, childToParents);
+        final HashSet<INode> forwardNodesB = new HashSet<INode>();
+        
+        // XXX cannot add to itself while iterating! Can cause java.util.ConcurrentModificationException
+        for (INode node : forwardNodesA) {
+            forwardNodesB.add(node);
+            addAncestors(node, forwardNodesB, childToParents);
         }
         
-        for (INode node : forwardNodes) {
+        for (INode node : forwardNodesB) {
             switch (node.getType()) {
             case INode.TYPE_TOP_NODE:
                 tNodes.addTopNode((TopNode) node);
