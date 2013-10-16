@@ -19,7 +19,6 @@ public class GetStarted1 {
         Connection c = db.connection();
         
         c.put("/p.obj", adam);
-        
         Person p = c.get("/p.obj", Person.class);
         
         System.out.println(p.name);
