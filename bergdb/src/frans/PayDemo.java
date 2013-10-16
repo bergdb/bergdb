@@ -12,15 +12,7 @@ import bergdb.pub.RwEnvironment;
 import bergdb.pub.WBuilder;
 
 /**
- * <p>Concrete example to test performance; imagine a payment system to handle all 
- * electronic payments needed in Sweden. 24/7, instant replication, security.
- * 10M accounts, 300 payments/year per accounts gives use 3G payments/year which 
- * is around 100 payments/s average. Assume peak load of 10*100 = 1000 payments/s
- * (this is reasonable).</p>
- * 
- * <p>We could implement this two ways, both from the pub layer (not optimized, 
- * object serialization, nice code) and using the low-level db layer (optimized, bunch-up by 
- * clients, multiple clients to use cores).</p>
+ * <p>Pay demo, 1M accounts and a few actions.</p>
  * 
  * @author Frans Lundberg
  */
@@ -253,7 +245,3 @@ public class PayDemo {
         }
     }
 }
-
-/*
-
-*/
