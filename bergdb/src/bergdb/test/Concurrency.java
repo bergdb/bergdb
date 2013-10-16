@@ -104,9 +104,9 @@ public class Concurrency {
         
         for (int i = 0; i < accounts; i++) {
             String key = "" + i;
-            b.set(key, "0");
+            b.put(key, "0");
         }
-        b.set("99", "0");         // Transaction count.
+        b.put("99", "0");         // Transaction count.
         Transaction trans = b.build();
         trans.execute();
         
@@ -172,9 +172,9 @@ public class Concurrency {
                 long balance1 = readLong(env, account1);
                 long balance2 = readLong(env, account2);
                 long count = readLong(env, 99);
-                env.set("" + account1, "" + (balance1 - 2));
-                env.set("" + account2, "" + (balance2 + 2));
-                env.set("99", "" + (count + 1));
+                env.put("" + account1, "" + (balance1 - 2));
+                env.put("" + account2, "" + (balance2 + 2));
+                env.put("99", "" + (count + 1));
             }
         }).execute();
     }

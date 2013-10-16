@@ -52,7 +52,7 @@ public class PayDemo {
                     Account a = new Account();
                     a.balance = 1;
                     String key = accountKey(id);
-                    builder.set(key, a);
+                    builder.put(key, a);
                     id += 1;
                 }
                 
@@ -116,9 +116,9 @@ public class PayDemo {
                         a1.balance -= p.amount;
                         a2.balance += p.amount;
                         
-                        env.set(a1);
-                        env.set(a2);
-                        env.set("/payments/${transactionTime}.obj", p);
+                        env.put(a1);
+                        env.put(a2);
+                        env.put("/payments/${transactionTime}.obj", p);
                     }
                 }).execute();
                 

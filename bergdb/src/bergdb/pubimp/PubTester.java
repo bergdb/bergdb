@@ -30,7 +30,7 @@ public class PubTester {
     public static void test1() {
         Database db = Factory.database().memory().start();
         Connection c = db.connection();
-        c.w().set("/key1", "value1").execute();
+        c.w().put("/key1", "value1").execute();
         
         String value = c.get("/key1", String.class);
         Assert.assertEquals("value1", value);
@@ -43,13 +43,13 @@ public class PubTester {
     @T
     public static void testRw1() {
         Connection c = Factory.database().memory().start().connection();
-        c.w().set("/key1", "value1").set("/key2", "value2..").execute();
+        c.w().put("/key1", "value1").put("/key2", "value2..").execute();
         
         Transaction t = c.rw(new Action() { 
             public void run(RwEnvironment env) {
                 v1 = env.get("/key1", String.class);
                 v2 = env.get("/key2", String.class);
-                env.set("/length", "" + (v1.length() + v2.length()));
+                env.put("/length", "" + (v1.length() + v2.length()));
             }
         });
         t.execute();
@@ -68,7 +68,7 @@ public class PubTester {
         
         Database db = Factory.database().memory().start();
         Connection c1 = db.connection();
-        c1.w().set("/key1", "value1").set("/key2", "value2..").execute();
+        c1.w().put("/key1", "value1").put("/key2", "value2..").execute();
         
         final EventToWaitFor modifiedKey1 = new EventToWaitFor();
         final EventToWaitFor getDone = new EventToWaitFor();
@@ -80,7 +80,7 @@ public class PubTester {
                 getDone.happened();
                 modifiedKey1.waitForEvent();
                 String lengthString = "" + (v1.length() + v2.length());
-                env.set("/length", lengthString);
+                env.put("/length", lengthString);
             }
         });
         
@@ -94,7 +94,7 @@ public class PubTester {
         thread.start();
         
         getDone.waitForEvent();
-        c2.w().set("/key1", "value1B").execute();
+        c2.w().put("/key1", "value1B").execute();
         modifiedKey1.happened();
         
         thread.join();
@@ -134,7 +134,7 @@ public class PubTester {
         
         WBuilder b = c.w();
         for (int i = 0; i < count; i++) {
-            b.set("/persons/" + (1000 + i) + ".obj", new Person("P" + (1000 + i)));
+            b.put("/persons/" + (1000 + i) + ".obj", new Person("P" + (1000 + i)));
         }
         b.execute();
         
@@ -215,8 +215,8 @@ public class PubTester {
         Payment p2 = new Payment("100", "105", 200);
         
         c.setEnableKeyReplace(true);
-        c.w().set(key, p1).execute();
-        c.w().set(key, p2).execute();
+        c.w().put(key, p1).execute();
+        c.w().put(key, p2).execute();
         
         Iterator<Kv<Payment>> iter = c.usePrimary(Payment.class).dir("/payments/").kvs().iterator();
         
@@ -249,13 +249,13 @@ public class PubTester {
         Connection c1 = database.connection();
         
         clock.setTime(100);
-        c1.w().set("/a", "1").set("/b", "2").execute();
+        c1.w().put("/a", "1").put("/b", "2").execute();
         c1.freezeLookupTime();
         c1.get("/a", String.class);
         
         Connection c2 = database.newConnection();
         clock.setTime(200);
-        c2.w().set("/b", "2b").set("/c", "3b").execute();
+        c2.w().put("/b", "2b").put("/c", "3b").execute();
         
         Assert.assertEquals("2", c1.get("/b", String.class));
         Assert.assertNull(c1.get("/c", String.class));
@@ -273,7 +273,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         MyString s1 = new MyString(null);
-        c.w().set("/d/s.obj", s1).execute();
+        c.w().put("/d/s.obj", s1).execute();
         MyString s2 = c.get("/d/s.obj", MyString.class);
         Assert.assertNull(s2.s);
         d.stop();
@@ -289,7 +289,7 @@ public class PubTester {
         Connection c = d.connection();
         StringArrayClass a = new StringArrayClass();
         a.strings = null;
-        c.w().set("/d/a.obj", a).execute();
+        c.w().put("/d/a.obj", a).execute();
         StringArrayClass b = c.get("/d/a.obj", StringArrayClass.class);
         Assert.assertNull(b.strings);
         d.stop();
@@ -301,7 +301,7 @@ public class PubTester {
         Connection c = d.connection();
         StringArrayClass a = new StringArrayClass();
         a.strings = new String[]{"", null};
-        c.w().set("/d/a.obj", a).execute();
+        c.w().put("/d/a.obj", a).execute();
         StringArrayClass b = c.get("/d/a.obj", StringArrayClass.class);
         Assert.assertEquals(2, b.strings.length);
         Assert.assertEquals("", b.strings[0]);
@@ -319,7 +319,7 @@ public class PubTester {
         o1.field = 1234567890;
         
         Database d = Factory.database().memory().start();
-        d.connection().w().set("/d/o1.obj", o1).execute();
+        d.connection().w().put("/d/o1.obj", o1).execute();
         IntClass o2 = d.connection().get("/d/o1.obj", IntClass.class);
         Assert.assertEquals(o2.field, o1.field);
         d.stop();
@@ -345,10 +345,10 @@ public class PubTester {
         Assert.assertTrue("retain = " + retain, retain > 0);
         
         d.start();
-        d.connection().w().set("/key", "value").execute();
+        d.connection().w().put("/key", "value").execute();
         d.setRetainDuration(Clock.UNITS_PER_SEC * 21);
         
-        d.connection().w().set("/key2", "value2").execute();
+        d.connection().w().put("/key2", "value2").execute();
         Assert.assertEquals(Clock.UNITS_PER_SEC * 21, d.getRetainDuration());
         d.stop();
     }
@@ -357,7 +357,7 @@ public class PubTester {
     public static void testObjectInRootDir() {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
-        c.w().set("/myDouble.obj", new MyDouble(12.3)).execute();
+        c.w().put("/myDouble.obj", new MyDouble(12.3)).execute();
         MyDouble myDouble = c.get("/myDouble.obj", MyDouble.class);
         
         Assert.assertEquals(12.3, myDouble.value, 0.00001);
@@ -369,12 +369,12 @@ public class PubTester {
         a.key = "/a.obj";
         
         // One-liner with database creation.
-        Factory.database().memory().start().connection().w().set(a).execute();
+        Factory.database().memory().start().connection().w().put(a).execute();
         
         Connection c = Factory.database().memory().start().connection();
         
         // Given connection, it is a short one-liner to store an object (assumes key field).
-        c.w().set(a).execute();
+        c.w().put(a).execute();
         
         // To retrieve it.
         c.get("/a.obj", MyDouble.class);
@@ -385,7 +385,7 @@ public class PubTester {
             public void run(RwEnvironment env) {
                 MyDouble a = env.get("/a.obj", MyDouble.class);
                 a.value = a.value + 2.0;
-                env.set(a);
+                env.put(a);
             }
         }).execute();
     }
@@ -397,7 +397,7 @@ public class PubTester {
         
         Connection c = Factory.database().memory().start().connection();
         
-        Transaction t = c.w().set(a).build();
+        Transaction t = c.w().put(a).build();
         t.execute();
         t.waitForD1();
     }
@@ -408,7 +408,7 @@ public class PubTester {
         a.key = "/a.obj";
         Connection c = Factory.database().memory().start().connection();
         
-        Transaction t = c.w().set(a).execute();
+        Transaction t = c.w().put(a).execute();
         t.waitForD2();
     }
     
@@ -418,7 +418,7 @@ public class PubTester {
         DatabaseBuilderImp b = (DatabaseBuilderImp) Factory.database();
         Database d = b.mainStream(m0).start();
         Connection c = d.connection();
-        c.w().set("/s1.txt", "S1-m0").execute();
+        c.w().put("/s1.txt", "S1-m0").execute();
         d.sync();
         d.stop();
         
@@ -426,7 +426,7 @@ public class PubTester {
         b = (DatabaseBuilderImp) Factory.database();
         d = b.mainStream(m1).start();
         c = d.connection();
-        c.w().set("/s1.txt", "S1-m1-hej").execute();
+        c.w().put("/s1.txt", "S1-m1-hej").execute();
         d.sync();
         d.stop();
         
@@ -472,7 +472,7 @@ public class PubTester {
         a0.name = "Saltis";
         
         Database d = Factory.database().memory().start();
-        d.connection().w().set("/a.obj", a0).execute();
+        d.connection().w().put("/a.obj", a0).execute();
         
         A a1 = d.connection().get("/a.obj", A.class);
         Assert.assertEquals("Saltis", a1.name);
@@ -487,7 +487,7 @@ public class PubTester {
         a0.name = "Saltis";
         
         Database d = Factory.database().memory().start();
-        d.connection().w().set("/a.obj", a0).execute();
+        d.connection().w().put("/a.obj", a0).execute();
         
         A2 a1 = d.connection().get("/a.obj", A2.class);
         Assert.assertEquals("Saltis", a1.name);
@@ -503,7 +503,7 @@ public class PubTester {
         a0.key = "/a.obj";
         
         Database d = Factory.database().memory().start();
-        d.connection().w().set(a0).execute();
+        d.connection().w().put(a0).execute();
         
         A a1 = d.connection().get("/a.obj", A.class);
         Assert.assertEquals("Saltis", a1.name);
@@ -524,7 +524,7 @@ public class PubTester {
         h0.area = 120;
         h0.name = "MyHome";
         
-        c.w().set("/h.obj", h0).execute();
+        c.w().put("/h.obj", h0).execute();
         
         c.rw(new Action() {
             public void run(RwEnvironment env) {
@@ -556,7 +556,7 @@ public class PubTester {
         
         c.rw(new Action() {
             public void run(RwEnvironment env) {
-                env.set(house);
+                env.put(house);
             }
         }).execute();
         
@@ -587,7 +587,7 @@ public class PubTester {
         obj0.key = "/k.obj";
         obj0.s = "hello";
         
-        c.w().set(obj0).execute();
+        c.w().put(obj0).execute();
         
         D obj1 = c.get("/k.obj", D.class);
         Assert.assertEquals("/k.obj", obj1.key);
@@ -606,7 +606,7 @@ public class PubTester {
         obj0.key = null;
         obj0.s = "hello";
         
-        c.w().set("/k.obj", obj0).execute();
+        c.w().put("/k.obj", obj0).execute();
         
         D obj1 = c.get("/k.obj", D.class);
         Assert.assertEquals("/k.obj", obj1.key);
@@ -620,8 +620,8 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        c.w().set("/dir/a0.obj", new A(null, "a0"))
-             .set("/dir/a1.obj", new A(null, "a1")).execute();
+        c.w().put("/dir/a0.obj", new A(null, "a0"))
+             .put("/dir/a1.obj", new A(null, "a1")).execute();
         
         int index = 0;
         for (A a : c.usePrimary(A.class).objects()) {
@@ -638,7 +638,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        c.w().set("/a.obj", new Object() { String name = "Carl"; }).execute();
+        c.w().put("/a.obj", new Object() { String name = "Carl"; }).execute();
         DbObject dbo = c.get("/a.obj", DbObject.class);
         
         Assert.assertEquals("/a.obj", dbo.getString("key"));
@@ -653,7 +653,7 @@ public class PubTester {
         Connection c = d.connection();
         
         DbObject dbo0 = new DbObject.Builder().addString("key", "/a.obj").addInt("b", 123).build();
-        c.w().set(dbo0).execute();
+        c.w().put(dbo0).execute();
         
         DbObject dbo1 = c.get("/a.obj", DbObject.class);
         
@@ -669,7 +669,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        c.w().set("/a.obj", new Object() { String name = "Gustav"; int b = 123; }).execute();
+        c.w().put("/a.obj", new Object() { String name = "Gustav"; int b = 123; }).execute();
         DbObject dbo = c.get("/a.obj", DbObject.class);
         
         Assert.assertEquals("Gustav", dbo.getString("name"));
@@ -683,7 +683,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        c.w().set(new Object() { String key = "/a.obj"; int b = 123; }).execute();
+        c.w().put(new Object() { String key = "/a.obj"; int b = 123; }).execute();
         DbObject dbo = c.get("/a.obj", DbObject.class);
         
         Assert.assertEquals("/a.obj", dbo.getString("key"));
@@ -696,7 +696,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         DbObject dbo = new DbObject.Builder().addInt("i", 123).addString("s", "hello").build();
-        c.w().set("/a.obj", dbo).execute();
+        c.w().put("/a.obj", dbo).execute();
         DbObject o = c.get("/a.obj", DbObject.class);
         
         Assert.assertEquals("hello", o.getString("s"));
@@ -710,7 +710,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         DbObject dbo = new DbObject.Builder().addInt("i", 123).addString(PubUtil.KEY_FIELD, "/a.obj").build();
-        c.w().set(dbo).execute();
+        c.w().put(dbo).execute();
         DbObject o = c.get("/a.obj", DbObject.class);
         
         Assert.assertEquals("/a.obj", o.getString(PubUtil.KEY_FIELD));
@@ -726,7 +726,7 @@ public class PubTester {
         Connection c = d.connection();
         
         try {
-            c.w().set("k", "v");
+            c.w().put("k", "v");
         } catch (IllegalArgumentException e) {
             ex = e;
         }
@@ -740,7 +740,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        c.w().set("/strings.obj", new String[]{"adam", "eve"}).execute();
+        c.w().put("/strings.obj", new String[]{"adam", "eve"}).execute();
         String[] strings = c.get("/strings.obj", String[].class);
         d.stop();
         
@@ -754,7 +754,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        c.w().set("/myInt.obj", 123).execute();
+        c.w().put("/myInt.obj", 123).execute();
         int myInt = c.get("/myInt.obj", int.class);
         d.stop();
         

@@ -74,7 +74,7 @@ public class PayTest {
                     Account a = new Account();
                     a.balance = 1;
                     String key = accountKey(id);
-                    builder.set(key, a);
+                    builder.put(key, a);
                     id += 1;
                 }
                 

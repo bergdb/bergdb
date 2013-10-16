@@ -230,7 +230,7 @@ public class RwEnvironmentImp implements RwEnvironment {
      * @throws IllegalArgumentException if object is null or if the key field is null or 
      * of an invalid format.
      */
-    public void set(Object object) throws MissingKeyFieldException {
+    public void put(Object object) throws MissingKeyFieldException {
         if (object == null) {
             throw new IllegalArgumentException("object == null not allowed");
         }
@@ -246,13 +246,13 @@ public class RwEnvironmentImp implements RwEnvironment {
             ukey = PubUtil.readExistingKeyField(object);
         }
         
-        set(ukey, object);
+        put(ukey, object);
     }
     
     /**
      * @throws IllegalArgumentException
      */
-    public void set(String ukey, Object object) {
+    public void put(String ukey, Object object) {
         // Implementation here must match the Java object creation. Currently (June 2013) this
         // is made in pubimp.KvToObjectImp.createObject().
         

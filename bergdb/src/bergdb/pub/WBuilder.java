@@ -21,7 +21,7 @@ public interface WBuilder {
      * 
      * @throws IllegalArgumentException
      */
-    public WBuilder set(String key, Object object);
+    public WBuilder put(String key, Object object);
     
     /**
      * Adds an operation to the write transaction that sets a key-value entry to the database.
@@ -29,7 +29,7 @@ public interface WBuilder {
      * 
      * @throws MissingKeyFieldException If 'object' does not have a String field named 'key'.
      */
-    public WBuilder set(Object object);
+    public WBuilder put(Object object);
     
     /**
      * Creates and returns the transaction.

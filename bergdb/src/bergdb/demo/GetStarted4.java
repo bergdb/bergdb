@@ -34,12 +34,12 @@ public class GetStarted4 {
         
         if (a0 == null) {
             a0 = new Account("/accounts/0.obj", 100);
-            c.w().set(a0).execute();
+            c.w().put(a0).execute();
         }
         
         if (a1 == null) {
             a1 = new Account("/accounts/1.obj", 100);
-            c.w().set(a1).execute();
+            c.w().put(a1).execute();
         }
         
         // Performs a payment if there is enough money.
@@ -59,8 +59,8 @@ public class GetStarted4 {
                 acc0.balance -= amount;
                 acc1.balance += amount;
                 
-                env.set(acc0);
-                env.set(acc1);
+                env.put(acc0);
+                env.put(acc1);
             }
         }).execute();
         

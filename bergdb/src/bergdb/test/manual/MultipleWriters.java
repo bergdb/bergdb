@@ -24,7 +24,7 @@ public class MultipleWriters {
         
         for (int i = 0; i < n; i++) {
             String value = id + "-" + i;
-            c.w().set("/k" + i, value).execute();
+            c.w().put("/k" + i, value).execute();
             System.out.println("Wrote value: " + value + ".");
             Thread.sleep(1000);
         }

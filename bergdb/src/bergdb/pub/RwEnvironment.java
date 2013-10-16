@@ -34,14 +34,14 @@ public interface RwEnvironment extends ReadInterface {
      * @throws IllegalArgumentException if key field is null or otherwise of an invalid format.
      * @throws IllegalArgumentException if 'object' is null.
      */
-    public void set(Object object) throws MissingKeyFieldException;
+    public void put(Object object) throws MissingKeyFieldException;
     
     /**
-     * @see WBuilder#set(String, Object)
+     * @see WBuilder#put(String, Object)
      * @throws IllegalArgumentException if 'key' is null or otherwise of an invalid format.
      * @throws IllegalArgumentException if 'object' is null.
      */
-    public void set(String key, Object object);
+    public void put(String key, Object object);
     
     /**
      * Sets an output value for a transaction; the output object is available 

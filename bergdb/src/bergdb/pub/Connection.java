@@ -95,6 +95,15 @@ public interface Connection extends ReadInterface {
     public <TYPE> TYPE get(String key, Class<TYPE> clazz);
     
     /**
+     * Stores a single object to the database.
+     * 
+     * @param key
+     * @param object
+     */
+    // TODO D. Document.
+    public Transaction put(String key, Object object);
+    
+    /**
      * Creates a builder object used to build a write transaction.
      */
     public WBuilder w();

@@ -33,7 +33,7 @@ public class CreateIndexTester {
         
         int i = 0;
         for (; i < n; i++) {
-            c.w().set(new Employee("/e/" + i + ".obj", i * 10)).execute();
+            c.w().put(new Employee("/e/" + i + ".obj", i * 10)).execute();
         }
         database.sync();
         
@@ -48,7 +48,7 @@ public class CreateIndexTester {
         long time1 = database.getTime();
         
         for (; i < n*2; i++) {
-            c.w().set(new Employee("/e/" + i + ".obj", (i-n) * 10 + 1)).execute();
+            c.w().put(new Employee("/e/" + i + ".obj", (i-n) * 10 + 1)).execute();
         }
         
         JobStatus status = job.getStatus();
@@ -110,7 +110,7 @@ public class CreateIndexTester {
         
         int i = 0;
         for (; i < n; i++) {
-            c.w().set(new Employee("/e/" + i + ".obj", (n - i) * 10)).execute();
+            c.w().put(new Employee("/e/" + i + ".obj", (n - i) * 10)).execute();
         }
         database.sync();
         

@@ -23,16 +23,16 @@ public class WBuilderImp implements WBuilder {
     /**
      * @throws BadFormatException
      */
-    public WBuilder set(String ukey, Object object) {
-        env.set(ukey, object);
+    public WBuilder put(String ukey, Object object) {
+        env.put(ukey, object);
         return this;
     }
     
     /**
      * @throws MissingKeyFieldException
      */
-    public WBuilder set(Object object) {
-        env.set(object);
+    public WBuilder put(Object object) {
+        env.put(object);
         return this;
     }
 

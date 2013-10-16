@@ -62,7 +62,7 @@ public class Bug130924 {
             a.balance = 1;
             String key = accountKey(id);
             id += 1;
-            c.w().set(key, a).execute();
+            c.w().put(key, a).execute();
         }
         
         long sum = 0;
