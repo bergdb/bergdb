@@ -7,6 +7,7 @@ import java.util.TreeMap;
 import bergdb.common.Util;
 import bergdb.coreds.GetData;
 import bergdb.coreds.Keys;
+import bergdb.coreds.TransactionNodes;
 import bergdb.nanotest.T;
 
 /**
@@ -17,8 +18,8 @@ import bergdb.nanotest.T;
  */
 public class Trans {
     //
-    // This class is defined in the most preferred, most efficient form for the DB side, 
-    // not for the client using DB.
+    // This class is defined in the most preferred, most efficient form for the Db side, 
+    // not for the client using Db.
     //
     // We might want to add a size limitation to the transactions.
     // It can easily be enforced in the Builder.
@@ -48,6 +49,7 @@ public class Trans {
     public long nextSpos;           // spos of the next transaction. Available after execute.
     public int nodeCount;           // Number of nodes written to stream. Useful for testing/debug.
                                     // Note. Not super important, could be removed.
+    public Listener listener;
     
     // -- Internal working data --
     public final GetData getData;
@@ -65,6 +67,7 @@ public class Trans {
     private Trans() {
         readKeyHashes = new long[0];
         getData = new GetData();     // NOTE Better to use Db.newGetData().
+        listener = NO_ACTION_LISTENER;
     }
     
     public boolean isInternal() {
@@ -103,6 +106,25 @@ public class Trans {
         // I prefer factory: [t = Trans.create().set(key, value).done();]
         // or:               [t = Trans.builder().set(key, value).build();]
         return new Builder();
+    }
+    
+    /**
+     * Listens to what happens to a transaction; suitable for testing.
+     */
+    public static interface Listener {
+        /**
+         * Reports that the nodes were written to stream.
+         */
+        public void nodesWritten(TransactionNodes nodes);
+    }
+    
+    public static final NoActionListener NO_ACTION_LISTENER = new NoActionListener();
+    
+    /**
+     * A Trans.Listener implementation that does nothing.
+     */
+    public static class NoActionListener implements Listener {
+        public void nodesWritten(TransactionNodes nodes) {}
     }
     
     /**

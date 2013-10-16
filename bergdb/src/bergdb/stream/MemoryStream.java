@@ -23,7 +23,7 @@ public class MemoryStream implements AppendOnlyStream {
     
     private long streamLength;
     private static final int ARRAY_SIZE = Util.identity(1 * 1000000);
-    private int firstArrayIndex;    // NOTE Consider: mayby a long?
+    private int firstArrayIndex;    // NOTE Consider: maybe a long?
     private ArrayList<byte[]> arrays;
     private long firstValidPos;
     private boolean closed = false;
@@ -68,6 +68,8 @@ public class MemoryStream implements AppendOnlyStream {
     }
     
     /**
+     * Useful for testing; checks that the internal state is OK.
+     * 
      * @throws AssertionError if state not ok.
      */
     public synchronized boolean assertOk() {

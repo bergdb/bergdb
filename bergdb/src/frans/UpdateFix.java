@@ -4,7 +4,6 @@ import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.DbUtil;
 import bergdb.core.KTestClock;
-import bergdb.core.KeyFactory;
 import bergdb.core.NoEvictBoss;
 import bergdb.core.Trans;
 import bergdb.coreds.GetData;
@@ -13,12 +12,10 @@ import bergdb.coreds.INode;
 import bergdb.coreds.KeyNode;
 import bergdb.coreds.Keys;
 import bergdb.coreds.TopNode;
+import bergdb.coreds.TransactionNodes;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.TestCollector;
-import bergdb.pub.Database;
-import bergdb.pubimp.DatabaseImp;
-import bergdb.pubimp.PubKeys;
 import bergdb.stream.MemoryStream;
 
 /**
@@ -27,13 +24,17 @@ import bergdb.stream.MemoryStream;
  */
 public class UpdateFix {
     
+    String updateKey = "/k120";
+    
     private void run2(TestCollector c) throws InterruptedException {
-        int n = 1000;
+        int n = 250;
+        int startupDistance = 10*1000;
+        int valueSize = 1000;
+        
         MemoryStream ms = new MemoryStream();
         KTestClock clock = new KTestClock();
         Db db = Db.builder().mainStream(ms).clock(clock).evictBoss(new NoEvictBoss())
-                .startupDistance(1*1000000).start();
-        final int valueSize = 2000;
+                .startupDistance(startupDistance).start();
         
         c.report("kv-count", n);
         
@@ -50,9 +51,17 @@ public class UpdateFix {
         
         // Updates one value
         
-        clock.setTime(2*1000000 + 120);
-        byte[] key1 = Keys.toBytes("/k120");
+        clock.setTime(2*1000000);
+        byte[] key1 = Keys.toBytes(updateKey);
         Trans t2 = Trans.builder().put(key1, new byte[123]).build();
+        t2.listener = new Trans.Listener() {
+            public void nodesWritten(TransactionNodes nodes) {
+                for (int i = 0; i < nodes.size(); i++) {
+                    INode n = nodes.get(i);
+                    System.out.println("Trans node: " + n);
+                }
+            }
+        };
         db.execute(t2);
         
         // Tests database after update.
@@ -79,14 +88,32 @@ public class UpdateFix {
             }
         }
         
+        db.sync();
         db = null;
-        c.out().println("db set to null");
+        c.out().println("db synced and set to null");
+        
+        ms = ms.copy();
+        c.out().println("Memory stream copied.");
         
         clock.setTime(3*1000000);
         
         Db db2 = Db.builder().mainStream(ms).clock(clock).evictBoss(new NoEvictBoss()).build();
         long t = System.nanoTime();
-        db2.start();
+        
+        db2.start(new Db.StartListener() {
+            public void tpos(long tpos) {
+                //System.out.println("start() tpos: " + tpos);
+            }
+            
+            public void startupDistance(int startupDistance) {
+                System.out.println("start() startupDistance: " + startupDistance);
+            }
+            
+            public void startPos(long startPos) {
+                System.out.println("start() startPos: " + startPos);
+            }
+        });
+        
         t = System.nanoTime() - t;
         clock.setTime(4*1000000);
         
@@ -96,7 +123,7 @@ public class UpdateFix {
         
         this.printAccessPath(db2, "after restart");
         
-        byte[] val = DbUtil.get(db2, Keys.toBytes("/k120"));
+        byte[] val = DbUtil.get(db2, Keys.toBytes(updateKey));
         if (val.length != 123) {
             throw new RuntimeException("Expected 123 long value, val.length=" 
                     + val.length);
@@ -105,7 +132,7 @@ public class UpdateFix {
     
 
     private void printAccessPath(Db db, String caseName) {
-        String[] keys = new String[]{"/k120"};
+        String[] keys = new String[]{updateKey};
         
         GetData gd = db.newGetData();
         gd.pointerListener = new Graph.PointerListener() {
@@ -116,7 +143,7 @@ public class UpdateFix {
             public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
                 System.out.println("Pointer followed, index " + pointerIndex + ", result: " + result);
                 long id = result.getId();
-                if (id == 318992L || id == 469640L) {
+                if (id == 242544L || id == 360720L) {
                     System.out.print(((KeyNode) result).print("    "));
                 }
             }
@@ -128,7 +155,7 @@ public class UpdateFix {
         for (int i = 0; i < keys.length; i++) {
             String key = keys[i];
             System.out.println("* key: " + key);
-            byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments("/k120"), gd);
+            byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(key), gd);
             System.out.println("value = " + value);
         }
         
@@ -145,7 +172,11 @@ public class UpdateFix {
 }
 
 /*
-    
-Same issue with both delete and update of value.
+
+131016. Minimized problem. Can reproduce with: 
+  int n = 250;
+  int startupDistance = 10*1000;
+  int valueSize = 1000;
+but not with n much smaller.
 
 */

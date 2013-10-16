@@ -28,6 +28,7 @@ public class Pack implements IPack {
         PerfTreeMapGet.class,
         PerfTreeMapSet.class,
         StartupDistanceTester.class,
+        StreamSizeTest.class,
         StreamSizeVsStartupDistance.class,
         Set.class,
         StreamSize.class,

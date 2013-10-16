@@ -177,6 +177,7 @@ public class Db implements IWarner {
     private long lastSposOfLastTrans;
     
     /** First spos of last transaction to have executed. */
+    @SuppressWarnings("unused")
     private long sposOfLastTrans;
     
 
@@ -694,9 +695,23 @@ public class Db implements IWarner {
      * @throws BadReplicaException
      */
     public void start() {
+        start(Db.DO_NOTHING_START_LISTENER);
+    }
+    
+    /**
+     * Starts the database by reading from the stream. Call once per object
+     * after constructor and before the get/set methods.
+     * 
+     * @throws StreamIoException
+     * @throws StreamFormatException
+     * @throws IllegalStateException
+     *             If start() has been called already.
+     * @throws BadReplicaException
+     */
+    public void start(StartListener listener) {
         synchronized (writeLock) {
             synchronized (readSynch) {
-                startInner();
+                startInner(listener);
             }
         }
     }
@@ -707,7 +722,7 @@ public class Db implements IWarner {
      * @throws BadReplicaException
      * @throws IllegalDbStateException
      */
-    private void startInner() {
+    private void startInner(StartListener listener) {
         if (state != STATE_ZERO) {
             throw new IllegalDbStateException("Db has been started already, "
                     + "start() should be called once only; Db state is: " 
@@ -748,9 +763,14 @@ public class Db implements IWarner {
             		"block of stream: " + startupDistance + ".");
         }
         
+        listener.startupDistance(this.startupDistance);
+        
         long pos1 = nodeStream.getPosOfLastCompletedTrans();
+
         long startPos = pos1 - (startupDistance + 1);
         startPos = startPos < 0 ? 0 : startPos;
+        
+        listener.startPos(startPos);
 
         // posMap is a map from spos of a node to the node itself.
         // nextMap is a map from previous spos of a node to the node itself.
@@ -768,6 +788,8 @@ public class Db implements IWarner {
             if (ti.nextTransPos < startPos) {
                 continue; // We can skip forward here
             }
+            
+            listener.tpos(ti.transPos);
 
             lastTransactionTime = ti.getTransactionTime();
             ArrayList<INode> tnodes = new ArrayList<INode>();
@@ -1133,9 +1155,9 @@ public class Db implements IWarner {
     private void checkNodeInner() throws AssertionError {
         final long[] counters = new long[4];
             // top, key, value, dirty, total
-        final long dirtyLimit = this.getDirtyLimit();
-        long lastTransSize = this.lastSposOfLastTrans - this.sposOfLastTrans;
-        final long dLimit = dirtyLimit - lastTransSize;
+        //final long dirtyLimit = this.getDirtyLimit();
+        //long lastTransSize = this.lastSposOfLastTrans - this.sposOfLastTrans;
+        //final long dLimit = dirtyLimit - lastTransSize;
         
         NodeVisitor visitor = new NodeVisitor() {
             public void visit(TopNode node) {
@@ -1336,7 +1358,48 @@ public class Db implements IWarner {
             // 1301 Frans. The following line moved to inside the synchronized
             // (writeLock) block to KISS the reclaim stuff. However, it does not really 
             // have to belong to the writeLock code block.
+            
             reclaimTransactionListener.transactionCompleted(t);
+        }
+    }
+    
+    /**
+     * Records choices and ensures that index nodes last written to stream before limit
+     * is added to transactionNodes.
+     */
+    private void recordChoicesAndEnsureIncluded(final long limit) {        
+        GetData gd = graph.newGetData();
+        gd.actualLookupTime = trans.transactionTime;
+        gd.accessData = pd.accessData;
+        
+        final Choices[] finalChoice = new Choices[1];
+        
+        gd.pointerListener = new PointerListener() {
+            public void superRootAccessed(TopNode superRoot) {
+                if (superRoot.getSpos() < limit) {
+                    transactionNodes.addTopNode(superRoot);
+                }
+            }
+            
+            public void pointerFollowed(INode predecessor, int pointerIndex, INode result,
+                    int pointerType) {
+                if (result.getSpos() < limit && result.isTopOrKeyNode()) {
+                    if (result.getType() == INode.TYPE_TOP_NODE) {
+                        transactionNodes.addTopNode((TopNode) result);
+                    } else {
+                        transactionNodes.addKeyNode((KeyNode) result);
+                    }
+                }
+                finalChoice[0].add(pointerIndex);
+            }
+        };
+        
+        for (int i = 0; i < transactionNodes.valueSize; i++) {
+            finalChoice[0] = transactionNodes.choices[i];
+            long[] key = transactionNodes.keys[i];
+            byte[] value = getOne(gd.actualLookupTime, key, gd);
+            
+            assert transactionNodes.valueNodes[i].isDelete() || Assert.arrayEquals(transactionNodes.valueNodes[i].getValue(), value);
         }
     }
 
@@ -1420,6 +1483,10 @@ public class Db implements IWarner {
             graph.getTransSequence().addToTransactionNodes(dirtyLimit, transactionNodes);
         }
         
+        if (graph != null) {
+            recordChoicesAndEnsureIncluded(dirtyLimit);
+        }
+        
         computeStats(ordinaryNodeCount);
 
         assert trans != null : "trans is null";
@@ -1433,6 +1500,8 @@ public class Db implements IWarner {
             graph.getTransSequence().add(transactionNodes.createTSet(nodeStream.getLastTransSpos()));
             graph.getTransSequence().removeBeforeSpos(dirtyLimit);
         }
+        
+        trans.listener.nodesWritten(transactionNodes);
         
         // TODO D. Check below code. Still needed? Did I simplify this by writing a whole block?
         
@@ -1810,7 +1879,27 @@ public class Db implements IWarner {
     public static Builder builder() {
         return new Builder();
     }
-
+    
+    
+    // ======== Types ========
+    
+    /**
+     * For listening to what happens at startup. Useful for testing / debugging.
+     */
+    public static interface StartListener {
+        void startupDistance(int startupDistance);
+        void tpos(long startPos);
+        void startPos(long startPos);
+    }
+    
+    public static final DoNothingStartListener DO_NOTHING_START_LISTENER = new DoNothingStartListener();
+    
+    public static class DoNothingStartListener implements StartListener {
+        public void startupDistance(int startupDistance) {}
+        public void tpos(long startPos) {}
+        public void startPos(long startPos) {}
+    }
+    
     /**
      * An object of this class is used to properly build a DB object.
      */

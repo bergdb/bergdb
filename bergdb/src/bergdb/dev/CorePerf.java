@@ -81,14 +81,6 @@ public class CorePerf {
         
         printHeader();
         
-        /* // rose
-        baseline1.put("get",      6.4e-6);
-        baseline1.put("get4t",    4.2e-6);
-        baseline1.put("getmany",  1.4e-6);
-        baseline1.put("set",     29.0e-6);
-        baseline1.put("set2",    18.0e-6);
-        */
-        
         // cissi
         baseline1.put("get",      1.0e-6);
         baseline1.put("get4t",    0.4e-6);

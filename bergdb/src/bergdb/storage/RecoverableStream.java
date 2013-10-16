@@ -205,8 +205,8 @@ public class RecoverableStream {
     }
     
     /**
-     * The start SSPos of the next transaction that will be appended.
-     * The caller must hold DB.writeLock since method calls aos.getSize().
+     * The start Spos of the next transaction that will be appended.
+     * The caller must hold DB.writeLock since method calls aos.getLength().
      */
     public final long getNextSpos() {
         long pos = aos.getLength();
@@ -425,6 +425,10 @@ public class RecoverableStream {
      * If there is no such transaction, the spos of the very first valid 
      * transaction is returned instead. If there is no valid transaction at all in 
      * the stream, Spos.NULL is returned. Caller must hold DB.writeLock.
+     * 
+     * TODO B. This doc is not true, or we have a bug. This method does not iterate to find
+     * last valid transaction, just any recent transaction completely written before
+     * stream position 'spos'.
      * 
      * @throws StreamIoException
      */

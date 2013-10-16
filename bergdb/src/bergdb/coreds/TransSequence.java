@@ -126,6 +126,12 @@ public class TransSequence {
      */
     public void addToTransactionNodes(long limit, TransactionNodesForMe tNodes) {
         //
+        // TODO B. Consider: we may have multiple objects representing same node! I suppose, we
+        // should not use an INode as key, but use node.getSpos() instead, or possibly 
+        // node.getId(). Would be first functional use of node.getId() in that case, I believe.
+        // But, is this really true, can we have this provided that we always keep startup 
+        // interval index nodes in memory?
+        //
         // 1. Iterate nodes in update interval to create nodeToTpos.
         // 2. Iterate nodes in update interval to create forwardNodesA and childToParents.
         // 3. Iterate nodes in forwardNodesA, add all ancestors that are also in childToParents.
@@ -144,7 +150,6 @@ public class TransSequence {
 
             public void node(INode node) {
                 nodeToTpos.put(node, tpos);
-//System.out.println("nodeToTpos: " + node + " --> " + tpos);
             }
         });
         
@@ -179,7 +184,6 @@ public class TransSequence {
                         }
                         
                         if (tposLong != null && child.isTopOrKeyNode()) {
-   //System.out.println("child ==> parent, " + child + " ==> " + node);
                             ArrayList<INode> parents = childToParents.get(child);
                             if (parents == null) {
                                 parents = new ArrayList<INode>();

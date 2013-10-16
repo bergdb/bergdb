@@ -314,23 +314,25 @@ public final class ValueNode implements INode {
     }
     
     public String toString() {
-        String result = super.toString();
+        String addressString = super.toString();
         String classname = ValueNode.class.getName();
-        if (result.startsWith(classname)) {
-            String sub = result.substring(classname.length());
+        if (addressString.startsWith(classname)) {
+            String sub = addressString.substring(classname.length());
             if (sub.length() > 5) {
                 sub = sub.substring(sub.length() - 2);
             }
-            result = "@" + sub;
+            addressString = "@" + sub;
         }
         
+        String result = "V" + addressString + " " + this.spos + " ";
+        
         if (isDelete()) {
-            result = "V" + result + " DELETE";
+            result += "DELETE";
         } else {
             if (value.length < 20 && Util.isPrintableAscii(value)) {
-                result = "V" + result + " \"" + Util.toString(value) + "\"";
+                result += "\"" + Util.toString(value) + "\"";
             } else {
-                result = "V" + result + " " + value.length;
+                result += value.length;
             }
         }
         return result;

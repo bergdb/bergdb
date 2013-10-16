@@ -18,6 +18,7 @@ public class Pack implements IPack {
         DbClock.class,
         DbTester.class,
         DbTesterGetMany.class,
+        DbTesterRestart.class,
         DbTesterStream.class,
         DirtyNodes1.class,
         GetData.class,

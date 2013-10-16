@@ -125,15 +125,18 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             }
 
             // Check for super root node.
+            // The super root node with maximum topNodeId-spos "wins". 
 
             if (node instanceof TopNode) {
                 TopNode potentialSuperRoot = (TopNode) node;
                 if (superRoot == null) {
                     superRoot = potentialSuperRoot;
-                }
-
-                if (potentialSuperRoot.topNodeId > superRoot.topNodeId) {
+                } else if (potentialSuperRoot.topNodeId > superRoot.topNodeId) {
                     superRoot = potentialSuperRoot;
+                } else if (potentialSuperRoot.topNodeId == superRoot.topNodeId) {
+                    if (potentialSuperRoot.getSpos() > superRoot.getSpos()) {
+                        superRoot = potentialSuperRoot;
+                    }
                 }
             }
         }

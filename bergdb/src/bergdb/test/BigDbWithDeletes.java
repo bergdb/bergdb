@@ -3,7 +3,6 @@ package bergdb.test;
 import bergdb.common.Util;
 import bergdb.core.*;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;
 import bergdb.stream.MemoryStream;
@@ -146,110 +145,5 @@ public class BigDbWithDeletes {
         db2 = null;
         ms = null;
         System.gc();
-    }
-    
-    // TODO A. Fix bug with deletes that disappear when restarted.
-    // Same thing happens when values overwritten!
-    
-    /**
-     * Trying to fix the bug.
-     */
-    private static void run2(TestCollector c) throws InterruptedException {
-        int n = 1000;
-        MemoryStream ms = new MemoryStream();
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().mainStream(ms).clock(clock).evictBoss(new NoEvictBoss())
-                .startupDistance(1*1000000).start();
-        final int valueSize = 2000;
-        
-        c.report("empty-db-memory-use", toMb(getMem()));
-        
-        c.report("kv-count", n);
-        
-        for (int i = 0; i < n; i++) {
-            clock.setTime(1*1000000 + i);
-            byte[] key = KeyFactory.intKey(i);
-            byte[] value = new byte[valueSize];
-            value[0] = (byte) Util.toString(key).hashCode();
-            Trans t = Trans.builder().put(key, value).build();
-            db.execute(t);
-        }
-        c.report("stream-length", db.getStreamLength());
-        
-        c.report("memory-used", toMb(getMem()));
-        
-        // Erases one value
-        
-        clock.setTime(2*1000000 + 120);
-        byte[] key1 = KeyFactory.intKey(120);
-        //Trans t2 = Trans.builder().delete(key1).build();
-        Trans t2 = Trans.builder().put(key1, new byte[123]).build();
-        db.execute(t2);
-        
-        c.report("memory-used-after-delete", toMb(getMem()));
-        
-        // Tests database after a delete.
-        
-        byte[] expectedValue = new byte[valueSize];
-        
-        for (int i = 0; i < n; i++) {
-            byte[] key = KeyFactory.intKey(i);
-            byte[] value = DbUtil.get(db, Long.MAX_VALUE, key);
-            
-            if (i == 120) {
-                Assert.assertEquals(123, value.length);
-            } else {
-                if (value == null) {
-                    throw new RuntimeException("value == null, i = " + i + ".");
-                }
-                
-                expectedValue[0] = (byte) Util.toString(key).hashCode();
-                Assert.assertEquals("i=" + i, expectedValue[0], value[0]);
-            }
-        }
-        
-        db = null;
-        c.report("memory-use-after-db-null", toMb(getMem()));
-        
-        Db db2 = Db.builder().mainStream(ms).clock(clock).evictBoss(new NoEvictBoss()).build();
-        long t = System.nanoTime();
-        db2.start();
-        t = System.nanoTime() - t;
-        clock.setTime(3*1000000);
-        
-        c.report("startup-time", 1e-9 * t);
-        c.report("memory-after-restart", toMb(getMem()));
-        
-        // Tests the restarted database (db2).
-        
-        expectedValue = new byte[valueSize];
-        
-        for (int i = 0; i < n; i++) {
-            byte[] key = KeyFactory.intKey(i);
-            byte[] value = DbUtil.get(db2, Long.MAX_VALUE, key);
-            
-            if (i == 120) {
-                if (value.length != 123) {
-                    throw new RuntimeException("Expected 123 long value, got something else i = " 
-                            + i + ". value.length=" + value.length);
-                }
-            } else {
-                if (value == null) {
-                    throw new RuntimeException("value == null, i = " + i + ".");
-                }
-                
-                expectedValue[0] = (byte) Util.toString(key).hashCode();
-                Assert.assertEquals("i=" + i, expectedValue[0], value[0]);
-            }
-        }
-        
-        db2 = null;
-        ms = null;
-        System.gc();
-    }
-    
-    public static void main(String[] args) throws InterruptedException {
-        TestCollector c = new BasicCollector();
-        run2(c);
     }
 }
