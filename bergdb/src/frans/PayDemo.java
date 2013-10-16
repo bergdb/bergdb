@@ -12,7 +12,8 @@ import bergdb.pub.RwEnvironment;
 import bergdb.pub.WBuilder;
 
 /**
- * <p>Pay demo, 1M accounts and a few actions.</p>
+ * Pay demo, 1M accounts and a few actions: create, pay, iterate, random access.
+ * Replication is used.
  * 
  * @author Frans Lundberg
  */
@@ -31,7 +32,7 @@ public class PayDemo {
         System.out.printf("Database started in %.1f s. Data dir: " + dir + "\n", time);
         
         database.addReplica("replica", replicaDir);
-        System.out.printf("Replica added: %s\n", replicaDir);
+        System.out.printf("Replica: %s\n", replicaDir);
         
         return database;
     }
@@ -51,7 +52,6 @@ public class PayDemo {
     /** Creates the accounts and secondary indexes. */
     public void create(String[] args) throws IOException {
         Database database = createDatabase();
-        database.start();
         Connection c = database.connection();
         long id = 0;
         long batchSize = 1000;
@@ -69,26 +69,24 @@ public class PayDemo {
                 builder.put(key, a);
                 id += 1;
             }
-            
             builder.build().execute();
             
             if ((i + 1) % 100 == 0) {
-                double progress = (100.0 * i) / (batchCount - 1);
-                System.out.printf("Progress: %.1f. Accounts: %d.\n", progress, (i + 1) * batchCount);
+                System.out.printf("Accounts: %d.\n", (i + 1) * batchCount);
             }
         }
         
         database.indexBuilder("payments-from-to")
                 .type("string").dir("/payments/")
                 .field("from").field("to").createFast();
-        
         database.sync();
-        t0 = System.nanoTime() - t0;
         
+        t0 = System.nanoTime() - t0;
         double time = 1e-9 * t0;
-        System.out.printf("Total create time: %.1f s, time per account: %.6f s.\n", time, time / n);        
+        System.out.printf("Total time: %.1f s, time/account: %.6f s.\n", time, time / n);        
     }
 
+    /** Demonstrates payments. */
     public class Pay {
         Random random;
         
