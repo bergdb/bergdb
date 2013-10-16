@@ -26,10 +26,11 @@ import bergdb.pub.BadFormatException;
 public class FileStream implements AppendOnlyStream {
     //
     // 130818, removed use of lock file "lock". Did not work reliably on IKVM.
+    // 131016, fixed serious error, integer overflow, BYTES_PER_INDEX_UNIT now a long.
     //
     
     private static final String SUFFIX = Util.identity(".bergdb");
-    private static final int BYTES_PER_INDEX_UNIT = Util.identity(100*1000);
+    private static final long BYTES_PER_INDEX_UNIT = Util.identity(100*1000);
     private static final long M = 1000000L;
     private static final long G = 1000*M;
     
@@ -221,8 +222,9 @@ public class FileStream implements AppendOnlyStream {
                 if (currentSpos != fileSpos) {
                     throw new BadDirStateException("Existing files in dir " + dir.getPath() 
                             + " are not in a correct state. File " + f.getPath() 
-                            + " have a filename with an index value that does not" 
-                            + " match the previous file sizes.");
+                            + " has a filename with an index value that does not" 
+                            + " match the previous file sizes. currentSpos: " + currentSpos 
+                            + ", fileSpos: " + fileSpos);
                 }
             }
             

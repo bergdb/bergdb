@@ -22,7 +22,7 @@ public class StreamSizeTest {
     @T("perf")
     public static void run(TestCollector c) {
         MemoryStream stream = new MemoryStream();
-        Db db = Db.builder().mainStream(stream).start();
+        Db db = Db.builder().mainStream(stream).startupDistance(20*1000000).start();
         
         byte[] v1 = new byte[0];
         byte[] v2 = new byte[1000];
@@ -49,6 +49,7 @@ public class StreamSizeTest {
             index += 1;
         }
         
+        index = 0;
         for (int i = 0; i < 50*1000; i++) {
             db.execute(Trans.builder().put(key(index), v1));
             index += 1;
@@ -57,7 +58,7 @@ public class StreamSizeTest {
         db.sync();
         c.report("length", db.getStreamLength());
         c.report("nodesWritten", db.getNodesWritten());
-        c.report("dirtyFraction", db.getDirtyFraction1000());
+        c.report("ordinaryNodesWritten", db.getOrdinaryNodesWritten());
     }
     
     public static void main(String[] args) {
