@@ -56,6 +56,8 @@ public class StreamSizeTest {
         
         db.sync();
         c.report("length", db.getStreamLength());
+        c.report("nodesWritten", db.getNodesWritten());
+        c.report("dirtyFraction", db.getDirtyFraction1000());
     }
     
     public static void main(String[] args) {
@@ -65,6 +67,14 @@ public class StreamSizeTest {
 
 /*
 
-97182920 -- 
+Branch 2013:
+$ time j -ea bergdb.test.StreamSizeTest
+* length: 60207632
+* nodesWritten: 387470
+
+Branch "forward-pointers":
+$ time j -ea bergdb.test.StreamSizeTest
+* length: 97182920
+* nodesWritten: 545899
 
 */

@@ -213,6 +213,9 @@ public class Db implements IWarner {
         // Number of KVs set since this.start().
         // Protected by writeLock.
     
+    private long nodesWrittenCount = 0;
+        // Number of nodes written since database started.
+    
     // Below two, protected by writeLock.
     private double dirtyFraction100 = 0.10;
     private double dirtyFraction1000 = 0.10;
@@ -333,6 +336,12 @@ public class Db implements IWarner {
     public double getDirtyFraction1000() {
         synchronized (writeLock) {
             return this.dirtyFraction1000;
+        }
+    }
+    
+    public long getNodesWritten() {
+        synchronized (writeLock) {
+            return this.nodesWrittenCount;
         }
     }
     
@@ -1501,6 +1510,7 @@ public class Db implements IWarner {
             graph.getTransSequence().removeBeforeSpos(dirtyLimit);
         }
         
+        this.nodesWrittenCount += transactionNodes.size();
         trans.listener.nodesWritten(transactionNodes);
         
         // TODO D. Check below code. Still needed? Did I simplify this by writing a whole block?
