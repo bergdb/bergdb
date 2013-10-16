@@ -17,9 +17,24 @@ import bergdb.pub.WBuilder;
  * @author Frans Lundberg
  */
 public class PayDemo {
-    private final long total = 1*1000000;
-    private final String dir = "/a/data/pay-demo";
+    private static final long n = 1*1000000;
+    private static final String dir = "/a/data/pay-demo";
+    private static final String replicaDir = "/a/data/pay-demo-replica";
     
+    /** Creates database, starts it and adds the replica. */
+    private static Database createDatabase() throws IOException {
+        Database database = Factory.database().dir(dir).build();
+        
+        long t0 = System.nanoTime();
+        database.start();
+        double time = 1e-9 * (System.nanoTime() - t0);
+        System.out.printf("Database started in %.1f s. Data dir: " + dir + "\n", time);
+        
+        database.addReplica("replica", replicaDir);
+        System.out.printf("Replica added: %s\n", replicaDir);
+        
+        return database;
+    }
     
     private static String accountKey(long id) {
         StringBuilder b = new StringBuilder("/acc/");
@@ -32,50 +47,48 @@ public class PayDemo {
         b.append(".obj");
         return b.toString();
     }
-    
-    public class Create {
-        public void go(String[] args) throws IOException {
-            Database database = Factory.database().dir(dir).start();
+
+    /** Creates the accounts and secondary indexes. */
+    public void create(String[] args) throws IOException {
+        Database database = createDatabase();
+        database.start();
+        Connection c = database.connection();
+        long id = 0;
+        long batchSize = 1000;
+        long batchCount = n / batchSize;
+        assert n % batchSize == 0;
+        long t0 = System.nanoTime();
+        
+        for (int i = 0; i < batchCount; i++) {
+            WBuilder builder = c.w();
             
-            Connection c = database.connection();
-            long id = 0;
-            long batchSize = 1000;
-            long batchCount = total / batchSize;
-            assert total % batchSize == 0;
-            long t0 = System.nanoTime();
-            
-            
-            for (int i = 0; i < batchCount; i++) {
-                WBuilder builder = c.w();
-                
-                for (int j = 0; j < batchSize; j++) {
-                    Account a = new Account();
-                    a.balance = 1;
-                    String key = accountKey(id);
-                    builder.put(key, a);
-                    id += 1;
-                }
-                
-                builder.build().execute();
-                
-                if ((i + 1) % 100 == 0) {
-                    double progress = (100.0 * i) / (batchCount - 1);
-                    System.out.printf("Progress: %.1f. Accounts: %d.\n", progress, (i + 1) * batchCount);
-                }
+            for (int j = 0; j < batchSize; j++) {
+                Account a = new Account();
+                a.balance = 1;
+                String key = accountKey(id);
+                builder.put(key, a);
+                id += 1;
             }
             
-            database.indexBuilder("payments-from-to").type("string").dir("/payments/")
-                    .field("from").field("to").createFast();
+            builder.build().execute();
             
-            database.sync();
-            t0 = System.nanoTime() - t0;
-            
-            double time = 1e-9 * t0;
-            System.out.printf("Total create time: %.1f s, time per account: %.6f s.\n", time, time / total);
-            
+            if ((i + 1) % 100 == 0) {
+                double progress = (100.0 * i) / (batchCount - 1);
+                System.out.printf("Progress: %.1f. Accounts: %d.\n", progress, (i + 1) * batchCount);
+            }
         }
+        
+        database.indexBuilder("payments-from-to")
+                .type("string").dir("/payments/")
+                .field("from").field("to").createFast();
+        
+        database.sync();
+        t0 = System.nanoTime() - t0;
+        
+        double time = 1e-9 * t0;
+        System.out.printf("Total create time: %.1f s, time per account: %.6f s.\n", time, time / n);        
     }
-    
+
     public class Pay {
         Random random;
         
@@ -85,23 +98,18 @@ public class PayDemo {
         
         Payment createPayment() {
             Payment p = new Payment();
-            p.from = random.nextInt((int) total);
-            p.to = random.nextInt((int) total);
+            p.from = random.nextInt((int) n);
+            p.to = random.nextInt((int) n);
             p.message = "invoice:2304870";
             return p;
         }
         
         void go(String[] args) throws IOException {
-            Database database = Factory.database().dir(dir).build();
-            
-            long t0 = System.nanoTime();
-            database.start();
-            double time = 1e-9 * (System.nanoTime() - t0);
-            System.out.printf("Started database in %.1f s.\n", time);
-            
+            Database database = createDatabase();
             Connection c = database.connection();
             long count = 100*1000;
-            t0 = System.nanoTime();
+            double t0 = System.nanoTime();
+            double time;
             
             c.setEnableKeyReplace(true);
             
@@ -137,72 +145,55 @@ public class PayDemo {
         }
     }
     
-    /**
-     * Iterates through whole database with an iterator on primary index.
-     */
-    public class Iter {
-        public void go(String[] args) throws IOException {
-            Database database = Factory.database().dir(dir).start();
-            Connection c = database.connection();
+    /** Iterates through database with iterator on primary index. */
+    public void iter(String[] args) throws IOException {
+        Database database = createDatabase();
+        Connection c = database.connection();
+        
+        for (int i = 0; i < 3; i++) {
+            long t0 = System.nanoTime();
+            long count = 0;
+            long sum = 0;
             
-            for (int i = 0; i < 3; i++) {
-                long t0 = System.nanoTime();
-                long count = 0;
-                long sum = 0;
-                
-                for (Account a : c.usePrimary(Account.class).dir("/acc/").objects()) {
-                    if (a == null) {
-                        throw new AssertionError("a == null, never happens");
-                    }
-                    
-                    sum += a.balance;
-                    count += 1;
-                    
-                    if (count % 200000 == 0) {
-                        System.out.println("Count: " + count);
-                    }
+            for (Account a : c.usePrimary(Account.class).dir("/acc/").objects()) {
+                if (a == null) {
+                    throw new AssertionError("a == null, never happens");
                 }
                 
-                double time = 1e-9 * (System.nanoTime() - t0);
+                sum += a.balance;
+                count += 1;
                 
-                System.out.printf("Iterate. sum: %d, count: %d. time: %.1f s, time/account: %.6f s.\n", 
-                        sum, count, time, time / count);
+                if (count % 200000 == 0) {
+                    System.out.println("Count: " + count);
+                }
             }
+            
+            double time = 1e-9 * (System.nanoTime() - t0);       
+            System.out.printf("Iterate. sum: %d, count: %d. time: %.1f s, time/account: %.6f s.\n", 
+                    sum, count, time, time / count);
         }
     }
-    
-    /**
-     * Demonstrates random access.
-     * @throws IOException 
-     */
+
+    /** Demonstrates random access. */
     public void access() throws IOException {
         Random random = new Random();
-        
-        Database database = Factory.database().dir(dir).build();
-        
-        long t0 = System.nanoTime();
-        database.start();
-        double time = 1e-9 * (System.nanoTime() - t0);
-        System.out.printf("Started database in %.1f s.\n", time);
-        
+        Database database = createDatabase();        
         Connection c = database.connection();
         
         for (int i = 0; i < 10; i++) {
-            t0 = System.nanoTime();
+            long t0 = System.nanoTime();
             
             for (int j = 0; j < 100*1000; j++) {
                 int id = random.nextInt(1000*1000);
                 c.get(accountKey(id), Account.class);
             }
             
-            time = 1e-9 * (System.nanoTime() - t0);
+            double time = 1e-9 * (System.nanoTime() - t0);
             System.out.printf("Retrieved 100k accounts, time: %.1f s. time/account: %.6f s.\n", time, time/100000.0);
         }
     }
     
-    /**
-     * Simple payment class. For direct db storage.
-     */
+    /** Simple payment class. For direct db storage. */
     public static class Payment {
         public long from;
         public long to;
@@ -210,9 +201,7 @@ public class PayDemo {
         public String message;
     }
     
-    /**
-     * Simple account class. For direct db storage.
-     */
+    /** Simple account class. For direct db storage. */
     public static class Account {
         public String key;
         public long balance;
@@ -230,15 +219,16 @@ public class PayDemo {
         
         String first = args[0];
         String[] tail = Util.removeFirst(args);
+        PayDemo demo = new PayDemo();
         
         if (first.equals("create")) {
-            new PayDemo().new Create().go(tail);
+            demo.create(tail);
         } else if (first.equals("pay")) {
-            new PayDemo().new Pay().go(tail);
+            demo.new Pay().go(tail);
         } else if (first.equals("iter")) {
-            new PayDemo().new Iter().go(tail);
+            demo.iter(tail);
         } else if (first.equals("access")) {
-            new PayDemo().access();
+            demo.access();
         } else {
             System.out.println("Error, bad first arg.");
             help();

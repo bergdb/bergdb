@@ -1109,6 +1109,7 @@ public class StorageManager implements AppendOnlyStream {
                             firstTime = false;
                         }
                         
+                        totalDiff = totalDiff == 0 ? 1 : totalDiff;
                         int progressValue = 100 - (int)(diff * 100 / totalDiff);
                         progressValue = progressValue < 0 ? 0 : progressValue;
                         progressListener.progress(progressValue, "Synching storage '" 
