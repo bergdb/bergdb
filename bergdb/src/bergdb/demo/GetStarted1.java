@@ -34,7 +34,7 @@ If we have special code for one-set and Connection.sync().
     Person p;
     
     Connection c = Factory.database().dir("demo-db").start().connection();
-    c.set("p.obj", adam);
+    c.put("p.obj", adam);
     p = c.get("p.obj", Person.class);
     System.out.println(p.name);
     c.sync();
