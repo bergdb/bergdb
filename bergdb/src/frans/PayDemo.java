@@ -79,6 +79,7 @@ public class PayDemo {
         database.indexBuilder("payments-from-to")
                 .type("string").dir("/payments/")
                 .field("from").field("to").createFast();
+        
         database.sync();
         
         t0 = System.nanoTime() - t0;
