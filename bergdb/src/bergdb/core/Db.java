@@ -30,7 +30,7 @@ import bergdb.coreds.PutData;
 import bergdb.coreds.Spos;
 import bergdb.coreds.TopDs;
 import bergdb.coreds.TopNode;
-import bergdb.coreds.TransSequence;
+import bergdb.coreds.TransSeq;
 import bergdb.coreds.TransactionNodes;
 import bergdb.coreds.ValueNode;
 import bergdb.coreds.Graph.PointerListener;
@@ -374,7 +374,7 @@ public class Db implements IWarner {
                 throw new IllegalStateException("An increase of startupDistance from " 
                         + this.startupDistance + " to " + this.newIncreasedStartupDistance 
                         + " has been requested but not finalized. Cannot make change request "
-                        + "to startupDistance: " + newDistance + ".");
+                        + "to set startupDistance to " + newDistance + ".");
             }
             
             if (newDistance < startupDistance) {
@@ -388,6 +388,7 @@ public class Db implements IWarner {
     }
     
     private void decreaseStartupDistance(int newDistance) {
+        //
         // Checks should have been done by caller.
         // Note. Possibly, we could split decrease into many parts for large decreases
         // to avoid large transactions.
@@ -396,7 +397,7 @@ public class Db implements IWarner {
         // 2. Run dummy transaction. May cause many dirty nodes to be written since
         //    result of getDirtyLimit() changes.
         // 3. Modify startupDistance of metaBlock. Next time metaBlock is written, the 
-        //    new startupDistance will be available to an "upstarter" (a process calling DB.start()).
+        //    new startupDistance will be available to an "upstarter" (a process calling Db.start()).
         //
         
         assert Thread.holdsLock(writeLock);
@@ -804,7 +805,7 @@ public class Db implements IWarner {
         HashMap<Long, INode> nextMap = new HashMap<Long, INode>(); // sposPrevious
                                                                    // -> Node
 
-        TransSequence seq = new TransSequence();
+        TransSeq seq = new TransSeq();
         
         long lastTransactionTime = 0;
 
@@ -836,7 +837,7 @@ public class Db implements IWarner {
             
             INode[] nodeArray = new INode[tnodes.size()];
             tnodes.toArray(nodeArray);
-            seq.add(new TransSequence.Tset(nodeArray, ti.getTransPos()));
+            seq.add(new TransSeq.Tset(nodeArray, ti.getTransPos()));
         }
 
         dbClock.setLastTransactionTime(lastTransactionTime);
@@ -1538,7 +1539,6 @@ public class Db implements IWarner {
         this.ordinaryNodesWritten += ordinaryNodeCount;
         trans.listener.nodesWritten(transactionNodes);
         
-        // TODO D. Check below code. Still needed? Did I simplify this by writing a whole block?
         
         if (wroteMetaBlock && this.newIncreasedStartupDistance != -1) {
             assert newIncreasedStartupDistance > startupDistance 

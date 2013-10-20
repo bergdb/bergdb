@@ -10,20 +10,20 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
 /**
- * An instance of this class keep a list (sequence) of node sets in the
- * startup interval. Each node set contains the key/top nodes of a particular 
+ * An instance of this class keeps a sequence of node sets in the
+ * startup interval. Each node set contains the index nodes of a particular 
  * transaction.
  * This class is not thread-safe, use external synchronization.
- * Normally, and object of this class is protected by Db.writeLock.
+ * Normally, an object of this class is protected by Db.writeLock.
  * 
  * @author Frans Lundberg
  */
-public class TransSequence {
+public class TransSeq {
     private Tset first;     // Head of linked list, may be null.
     private Tset last;      // Last set of linked list, may be null.
     private int size;
     
-    public TransSequence() {
+    public TransSeq() {
         first = null;
         last = null;
         size = 0;
@@ -209,7 +209,7 @@ public class TransSequence {
         
         for (INode node : forwardNodesA) {
             forwardNodesB.add(node);
-            addAncestors(node, forwardNodesB, childToParents);
+            addAncestors(node, forwardNodesB, childToParents, 0);
         }
         
         for (INode node : forwardNodesB) {
@@ -229,12 +229,18 @@ public class TransSequence {
     /**
      * Adds all ancestors of node that exist in childToParents to 'set'.
      */
-    private void addAncestors(INode node, Set<INode> set, HashMap<INode, ArrayList<INode>> childToParents) {
+    private void addAncestors(INode node, Set<INode> set, HashMap<INode, 
+            ArrayList<INode>> childToParents, int recurseDepth) {
         List<INode> parents = childToParents.get(node);
+        
+        //if (recurseDepth > 30) {
+        //    System.out.println("TransSequence.addAncestors, node: " + node);
+        //}
+        
         if (parents != null) {
             for (INode p : parents) {
                 set.add(p);
-                addAncestors(p, set, childToParents);   // TODO A. Loops forever for StartupDistanceTester.
+                addAncestors(p, set, childToParents, recurseDepth + 1);   // TODO A. Loops forever for StartupDistanceTester.
             }
         }
     }
@@ -302,7 +308,7 @@ public class TransSequence {
     
     @T
     public static void test0() {
-        TransSequence s = new TransSequence();
+        TransSeq s = new TransSeq();
         
         Assert.assertEquals(0, s.getSize());
         Assert.assertTrue(s.isEmpty());
@@ -310,7 +316,7 @@ public class TransSequence {
     
     @T
     public static void test1() {
-        TransSequence s = new TransSequence();
+        TransSeq s = new TransSeq();
         Tset ts = new Tset(100);
         s.add(ts);
         
@@ -320,7 +326,7 @@ public class TransSequence {
     
     @T
     public static void test2() {
-        TransSequence s = new TransSequence();
+        TransSeq s = new TransSeq();
         Tset ts1 = new Tset(100);
         Tset ts2 = new Tset(200);
         
@@ -342,7 +348,7 @@ public class TransSequence {
     
     @T
     public static void testLastPos0() {
-        TransSequence s = new TransSequence();
+        TransSeq s = new TransSeq();
         Tset ts1 = new Tset(100);
         Tset ts2 = new Tset(200);
         
@@ -355,7 +361,7 @@ public class TransSequence {
     
     @T
     public static void testLastPos1() {
-        TransSequence s = new TransSequence();
+        TransSeq s = new TransSeq();
         Tset ts1 = new Tset(100);
         Tset ts2 = new Tset(200);
         
@@ -390,7 +396,7 @@ public class TransSequence {
     public static void testAddToTransactionNodes0() {
         // Test with no nodes at all.
         
-        TransSequence s = new TransSequence();
+        TransSeq s = new TransSeq();
         Tset ts1 = new Tset(100);
         Tset ts2 = new Tset(200);
         Tset ts3 = new Tset(300);
@@ -421,7 +427,7 @@ public class TransSequence {
         k11.addKlong(100, Klong.create(Keys.toBytes("abc")), k31, AccessData.DEFAULT_ACCESS_DATA);
             // Forward pointer k11 --> k31
         
-        TransSequence s = new TransSequence();
+        TransSeq s = new TransSeq();
         s.add(new Tset(new INode[]{k11}, 100));
         s.add(new Tset(new INode[]{k21}, 200));
         s.add(new Tset(new INode[]{k31}, 300));
@@ -466,7 +472,7 @@ public class TransSequence {
         k12.addKlong(100, Klong.create(Keys.toBytes("bbb")), k13, AccessData.DEFAULT_ACCESS_DATA);
         k21.addKlong(100, Klong.create(Keys.toBytes("aaa")), k22, AccessData.DEFAULT_ACCESS_DATA);
      
-        TransSequence s = new TransSequence();
+        TransSeq s = new TransSeq();
         s.add(new Tset(new INode[]{k11, k12, k13}, 100));
         s.add(new Tset(new INode[]{k21, k22}, 200));
         s.add(new Tset(new INode[]{k31}, 300));
@@ -502,7 +508,7 @@ public class TransSequence {
         k13.addKlong(100, Klong.create(Keys.toBytes("a")), k31, AccessData.DEFAULT_ACCESS_DATA);
             // forward pointer
         
-        TransSequence s = new TransSequence();
+        TransSeq s = new TransSeq();
         s.add(new Tset(new INode[]{k11, k12, k13}, 100));
         s.add(new Tset(new INode[]{k21, k22}, 200));
         s.add(new Tset(new INode[]{k31}, 300));
@@ -552,7 +558,7 @@ public class TransSequence {
         k14.addKlong(100, Klong.create(Keys.toBytes("a")), k32, AccessData.DEFAULT_ACCESS_DATA);
             // k14 has forward pointer to k22.
         
-        TransSequence s = new TransSequence();
+        TransSeq s = new TransSeq();
         s.add(new Tset(new INode[]{k11, k12, k13, k14}, 100));
         s.add(new Tset(new INode[]{k21, k22}, 200));
         s.add(new Tset(new INode[]{k31, k32, k33}, 300));

@@ -2,6 +2,9 @@ package bergdb.dev;
 
 /*
 
+TODO B. Have special classes for ReadSync and WriteLock. Good for debug (monitoring 
+with jvisualvm).
+
 TODO C. Fix waitForD1(), waitForD2(), .sync() naming. Available from where?
 Database or Connection or both?
 Call them sync() and syncHard()? sync()/syncExtra(), sync(), sync()/sync2() (also sync1() == sync())

@@ -16,6 +16,7 @@ import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;
 import bergdb.stream.MemoryStream;
 
+
 /**
  * f-tests for DB.setStartupDistance().
  * 
@@ -177,7 +178,7 @@ public class StartupDistanceTester {
         }
     }
     
-    //@T("f")  TODO A. Enable test
+    @T("f")
     public static void test(TestCollector c) throws Exception {
         new StartupDistanceTester().go(c);
     }
@@ -186,3 +187,21 @@ public class StartupDistanceTester {
         test(new BasicCollector());
     }
 }
+
+/*
+
+at bergdb.coreds.TransSequence.addAncestors(TransSequence.java:244)
+    at bergdb.coreds.TransSequence.addAncestors(TransSequence.java:244)
+    at bergdb.coreds.TransSequence.addAncestors(TransSequence.java:244)
+    at bergdb.coreds.TransSequence.addToTransactionNodes(TransSequence.java:212)
+    at bergdb.core.Db.addNodesToStream(Db.java:1516)
+    at bergdb.core.Db.executeInner(Db.java:1374)
+    - locked <0x0000000689c949c0> (a java.lang.Object)
+    at bergdb.core.Db.execute(Db.java:1287)
+    at bergdb.core.Db.decreaseStartupDistance(Db.java:407)
+    at bergdb.core.Db.setStartupDistance(Db.java:381)
+    - locked <0x0000000689c949c0> (a java.lang.Object)
+    at bergdb.test.StartupDistanceTester.go(StartupDistanceTester.java:66)
+    at bergdb.test.StartupDistanceTester.test(StartupDistanceTester.java:182)
+
+*/

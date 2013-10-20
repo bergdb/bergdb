@@ -19,7 +19,7 @@ import bergdb.nanotest.T;
  * 16      8       lastTrans, spos of last valid transaction completely written
  *                 before the meta block.
  * 24     16       Database ID. 128 random bits, used as unique database ID. Static.
- * 40      4       startupDistance in bytes. Typically 10M (LE-first byte order).
+ * 40      4       startupDistance in bytes. Typically 20M (LE-first byte order).
  * 44     83       Reserved, must be set to zero.
  * 127     1       META_BLOCK_LAST_BYTE. Used to indicate that the block is valid.
  * </pre>

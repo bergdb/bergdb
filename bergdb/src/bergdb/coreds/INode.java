@@ -7,6 +7,9 @@ package bergdb.coreds;
  * "static KeyNode fromBytes(...) {" method that handles deserialization. 
  * That cannot be enforced with the interface (but with this documentation).</p>
  * 
+ * <p>There are three types of nodes: TopNode, KeyNode, and ValueNode. Top nodes and key
+ * nodes are called <i>index nodes</i> since that are used to index the value nodes.</p>
+ * 
  * <p>Concurrency. The methods setPointer(), getMemSize() may be run from concurrent read 
  * operations.</p>
  * 
@@ -14,7 +17,7 @@ package bergdb.coreds;
  */
 public interface INode {
     // 130502 Frans: changed constants to 10, 20, ... smart if we ever would want 
-    // type + serialization version in same number to save a byte.
+    // node type + serialization version in same number to save a byte.
     
     public static final byte TYPE_TOP_NODE = 10;
     public static final byte TYPE_KEY_NODE = 20;

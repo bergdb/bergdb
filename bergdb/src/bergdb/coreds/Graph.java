@@ -49,14 +49,14 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     private final Object[] pointerLocks;
     private final int maxNodeSize;
     //private final IDirtyNodes dirtyNodes;
-    private final TransSequence seq;
+    private final TransSeq seq;
     
     /**
      * Creates and returns a new, minimal DbGraph.
      * The returned graph has exactly one top node and one key node.
      */
     private Graph(Builder b, long time) {
-        seq = new TransSequence();
+        seq = new TransSeq();
         
         KeyNode root = new KeyNode();
         this.topDs = TopDs.createFromFirstRoot(time, root, AccessData.DEFAULT_ACCESS_DATA);
@@ -83,7 +83,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      * @return
      */
     private Graph(Builder b, long accessData,
-            HashMap<Long, INode> posMap, HashMap<Long, INode> nextMap, TransSequence seq) {
+            HashMap<Long, INode> posMap, HashMap<Long, INode> nextMap, TransSeq seq) {
         //
         // Pointer reconciliation phase
         // * Refreshes stream pointers
@@ -249,7 +249,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     //    return dirtyNodes;
     //}
     
-    public final TransSequence getTransSequence() {
+    public final TransSeq getTransSequence() {
         return seq;
     }
 
@@ -1142,7 +1142,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
          * Creates a new DbGraph from existing nodes in the DB stream.
          */
         public Graph createFromStreamNodes(long accessData, HashMap<Long, INode> posMap,
-                HashMap<Long, INode> nextMap, TransSequence seq) {
+                HashMap<Long, INode> nextMap, TransSeq seq) {
             return new Graph(this, accessData, posMap, nextMap, seq);
         }
     }

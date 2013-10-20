@@ -31,8 +31,8 @@ import bergdb.stream.MemoryStream;
  *        // the Transaction including Header itself (4 bytes) and LastByte (1 byte). The size is 
  *        // stored as a 4-byte little-endian integer. Maximum Size is 2^31-1 (Integer.MAX_VALUE).
  * TransactionBytes = 
- *        // The transaction bytes. Contents can be anything and is unknown to this class
- *        // (this layer).
+ *        // The transaction bytes. For this class (layer), contents can be anything and is 
+ *        // unknown.
  * LastByte =
  *        // One byte equal to 10 (decimal) for a successful transaction and 0 otherwise.
  * 

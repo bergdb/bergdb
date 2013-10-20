@@ -10,7 +10,7 @@ import bergdb.nanotest.T;
  * 
  * @author Frans Lundberg
  */
-public class TransactionNodes implements IDirtyNodes.TransactionNodesForMe, TransSequence.TransactionNodesForMe {
+public class TransactionNodes implements IDirtyNodes.TransactionNodesForMe, TransSeq.TransactionNodesForMe {
     //
     // The class must support the same node added to it several times without causing duplicates.
     // Should be a set of unique nodes.
@@ -54,12 +54,12 @@ public class TransactionNodes implements IDirtyNodes.TransactionNodesForMe, Tran
         return topSize + keySize + valueSize;
     }
     
-    public TransSequence.Tset createTSet(long tpos) {
+    public TransSeq.Tset createTSet(long tpos) {
         int size = topSize + keySize;
         INode[] nodes = new INode[size];
         System.arraycopy(topNodes, 0, nodes, 0, topSize);
         System.arraycopy(keyNodes, 0, nodes, topSize, keySize);
-        TransSequence.Tset result = new TransSequence.Tset(nodes, tpos);
+        TransSeq.Tset result = new TransSeq.Tset(nodes, tpos);
         return result;
     }
     
