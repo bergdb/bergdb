@@ -434,7 +434,7 @@ public class NodeStream implements bergdb.coreds.Graph.NodeReader {
                     + ", buffer.length=" + buffer.length + ".");
         }
         
-        assert node.isDirty() == false;
+        //assert node.isDirty() == false;
         assert node.getSpos() == spos;
         
         if (stored != null) {

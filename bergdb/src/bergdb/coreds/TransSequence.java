@@ -234,7 +234,7 @@ public class TransSequence {
         if (parents != null) {
             for (INode p : parents) {
                 set.add(p);
-                addAncestors(p, set, childToParents);
+                addAncestors(p, set, childToParents);   // TODO A. Loops forever for StartupDistanceTester.
             }
         }
     }

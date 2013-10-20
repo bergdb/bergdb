@@ -118,8 +118,7 @@ public class Db implements IWarner {
         // Global write lock. Held when STM stuff is done and while transaction serialized to bytes.
     private final Object readSynch;
         // Lock used to make sure writes from DB(), start(), execute(), are published
-        // by the writer and 
-        // made visible to readers calling get(), getMany().
+        // by the writer and made visible to readers calling get(), getMany().
         // It is typically used with an empty block: "synchronized (readSynch) {}".
         
     private final Object[] pointerLocks;
@@ -221,7 +220,17 @@ public class Db implements IWarner {
     private double dirtyFraction100 = 0.10;
     private double dirtyFraction1000 = 0.10;
     
+    private long nextDirtyLimit;
+    private long currentDirtyLimit;     
+        // The current dirty limit; used by evict code. Index nodes with 
+        // spos >= currentDirtyLimit must not be evicted.
+        // SYNC: Concurrency to this field is handled by readLock. The execute() code
+        // will have [synchronized(readLock){}] statement. This publishes the latest
+        // value of currentDirtyLimit to readers.
+        // TODO B. Analyze sync code, how about 32-bit machines? Partly updated long?
+    
     // ---- Graph ----
+    
     private Graph graph;
     
     
@@ -957,8 +966,8 @@ public class Db implements IWarner {
         this.addNodesToStream();
         this.clearTransMemory();
         
-        assert root.isDirty() == false : "space root is dirty";
-        assert top.getSuperRoot().isDirty() == false : "super root is dirty";
+        //assert root.isDirty() == false : "space root is dirty";
+        //assert top.getSuperRoot().isDirty() == false : "super root is dirty";
     }
     
     /**
@@ -1261,7 +1270,7 @@ public class Db implements IWarner {
         // handled by dbClock.
         //
 
-        // Makes sure writes from startup and execute() are visible.
+        // Makes sure writes from startup and previous execute() are visible.
         // We do not hold DB.writeLock yet.
         synchronized (readSynch) {}
 
@@ -1366,16 +1375,24 @@ public class Db implements IWarner {
             
             this.lastSposOfLastTrans = this.trans.lastSpos;
             this.sposOfLastTrans = this.trans.spos;
+            this.currentDirtyLimit = this.nextDirtyLimit;
             
             //recordChoicesAndEnsureDirty();   // Increases stream size significantly.
             
             clearTransMemory();
 
+            // The synch statement below guarantees that the writes are visible to
+            // all readers assuming they also use the same statement as below
+            // before that start reading.
+            
+            synchronized (readSynch) {}
+            
             // 1301 Frans. The following line moved to inside the synchronized
             // (writeLock) block to KISS the reclaim stuff. However, it does not really 
             // have to belong to the writeLock code block.
             
             reclaimTransactionListener.transactionCompleted(t);
+            
         }
     }
     
@@ -1435,7 +1452,7 @@ public class Db implements IWarner {
         
         gd.pointerListener = new PointerListener() {
             public void superRootAccessed(TopNode superRoot) {
-                graph.ensureDirty(superRoot);
+                //graph.ensureDirty(superRoot);
             }
             
             public void pointerFollowed(INode predecessor, int pointerIndex, INode result,
@@ -1610,7 +1627,7 @@ public class Db implements IWarner {
         return -cachedMemoryValue.get();
     }
 
-    private void possiblyEvict(EvictData ed) {
+    private final void possiblyEvict(EvictData ed) {
         // Synch note: concurrent access must be supported.
         // We have a benign race condition here. Updates could be missed.
 
@@ -1627,6 +1644,7 @@ public class Db implements IWarner {
 
         ed.pointerCount = 0;
         ed.evictCount = 0;
+        ed.dirtyLimit = this.currentDirtyLimit;
         evictInner(ed);
         evictBoss.reportEvictCount(ed);
     }
@@ -1636,8 +1654,7 @@ public class Db implements IWarner {
         // node ----> nextNode ---> next2
         //
         // Synch note: concurrent access must be supported by this method.
-        //
-        // Consider: should we call evict on nodes further up in three?
+        // Multiple concurrent readers, one writer.
         //
         
         final Pointer pointer = ed.tempPointer;
@@ -1649,6 +1666,7 @@ public class Db implements IWarner {
         long limit = this.cachedMemoryValue.get() - evictBoss.getCacheDuration();
         limit = limit < 0 ? 0 : limit;
         // limit is the limit for accessData. Nodes accessed after limit are not evictable.
+        // TODO B. we need to have another limit too - the dirty limit...
 
         int rand = Math.abs(evictRandom.nextInt());
         // random int used as randomness for this evict operation.
@@ -1700,12 +1718,14 @@ public class Db implements IWarner {
         }
     }
 
+    // TODO B. Double-check evict code (refactor possible?)
     private void evictTopNode(TopNode node, long limit, EvictData ed) {
         INode pointee;
         ed.pointerCount += 1; // +1 for root pointer.
 
         pointee = node.rootPointer;
-        if (pointee != null && !pointee.isDirty()
+        if (pointee != null /*&& !pointee.isDirty()*/
+                && !(pointee.getSpos() >= ed.dirtyLimit)
                 && AccessData.getAccessTimeNoChecks(node.rootPointerPos) <= limit) {
 
             // Probably an evictable pointer, but we must synch to make an
@@ -1714,8 +1734,8 @@ public class Db implements IWarner {
 
             synchronized (this.getPointerLock(node, 0)) {
                 pointee = node.rootPointer;
-                if (pointee != null 
-                        && !pointee.isDirty()
+                if (pointee != null /*&& !pointee.isDirty()*/
+                        && !(pointee.getSpos() >= ed.dirtyLimit)
                         && AccessData.getAccessTime(node.rootPointerPos) <= limit) {
                     node.rootPointerPos = pointee.getSpos();
                     node.rootPointer = null;
@@ -1733,17 +1753,23 @@ public class Db implements IWarner {
 
             ed.pointerCount++;
             pointee = node.pointers[i];
+            long pointeeSpos;
 
-            if (pointee != null && !pointee.isDirty() && node.pointersPos[i] != Spos.NULL
+            if (pointee != null /*&& !pointee.isDirty()*/ 
+                    && (pointeeSpos = pointee.getSpos()) != Spos.NULL
+                    && !(pointeeSpos >= ed.dirtyLimit)
                     && AccessData.getAccessTimeNoChecks(node.pointersPos[i]) <= limit) {
 
                 // Probably evictable pointer
 
-                synchronized (this.getPointerLock(node, i + 1)) {
+                synchronized (this.getPointerLock(node, i + 1)) {        
                     pointee = node.pointers[i];
-                    if (node.pointers[i] != null
-                            && AccessData.getAccessTime(node.pointersPos[i]) <= limit
-                            && !pointee.isDirty()) {
+                    pointeeSpos = pointee.getSpos();
+                    
+                    if (pointee != null /*&& !pointee.isDirty()*/ 
+                            && pointeeSpos != Spos.NULL
+                            && !(pointeeSpos >= ed.dirtyLimit)
+                            && AccessData.getAccessTimeNoChecks(node.pointersPos[i]) <= limit) {
                         node.pointersPos[i] = pointee.getSpos();
                         node.pointers[i] = null;
                         ed.evictCount++;
@@ -1753,6 +1779,7 @@ public class Db implements IWarner {
         }
     }
 
+    // TODO B. Double-check code. De-optimize / refactor if possible.
     private void evictKeyNode(KeyNode node, long limit, EvictData ed) {
         //
         // getAccessTimeNoChecks() used when not in synch. Possibly concurrently
@@ -1774,17 +1801,19 @@ public class Db implements IWarner {
 
             pointerCount++;
             INode pointee = node.pointers[i];
-
-            if (pointee != null 
-                    && !pointee.isDirty()
+            long pointeeSpos;
+            
+            if (pointee != null /*&& !pointee.isDirty()*/
+                    && !((pointeeSpos = pointee.getSpos()) >= ed.dirtyLimit)
                     && AccessData.getAccessTimeNoChecks(node.pos[i]) <= limit) {
                 synchronized (getPointerLock(node, i)) {
                     pointee = node.pointers[i];
+                    pointeeSpos = pointee.getSpos();
 
-                    if (pointee != null 
-                            && !pointee.isDirty()
+                    if (pointee != null /*&& !pointee.isDirty()*/
+                            && !(pointeeSpos >= ed.dirtyLimit)
                             && AccessData.getAccessTime(node.pos[i]) <= limit) {
-                        node.pos[i] = pointee.getSpos();
+                        node.pos[i] = pointeeSpos;
                         node.pointers[i] = null;
                         ed.evictCount++;
                     }
@@ -1852,7 +1881,7 @@ public class Db implements IWarner {
         return graph.getPointerLock(keyNode, index);
     }
 
-    private void getEvictPointer(KeyNode keyNode, int rand, Pointer p) {
+    private void getEvictPointer(KeyNode keyNode, int rand, final Pointer p) {
         int size = keyNode.size;
         p.node = null;
         p.index = -1;

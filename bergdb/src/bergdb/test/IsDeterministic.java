@@ -46,8 +46,8 @@ public class IsDeterministic {
     /** 
      * Tests DB with one KV.
      */
-    @T("f")
-    public static void testOneKv(TestCollector c) throws IOException {
+    @T("f") 
+    public static void tOneKv(TestCollector c) throws IOException {
         MemoryStream first = null;
         NodeStream firstNodeStream = null;
         
@@ -87,7 +87,7 @@ public class IsDeterministic {
      * Tests DB with multiple KVs.
      */
     @T("f")
-    public static void testMultipleTransactions(TestCollector c) throws IOException {
+    public static void tMultipleTransactions(TestCollector c) throws IOException {
         MemoryStream first = null;
         NodeStream firstNodeStream = null;
         

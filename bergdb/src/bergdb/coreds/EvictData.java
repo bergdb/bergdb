@@ -13,6 +13,7 @@ public class EvictData {
     public Pointer tempPointer;     // temporary data
     public int evictCount;          // number of evicted pointers
     public int pointerCount;        // number of pointers processed
+    public long dirtyLimit;         // Index nodes with spos >= dirtyLimit must not be evicted
     
     public EvictData() {
         tempPointer = new Pointer();

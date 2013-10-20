@@ -41,7 +41,7 @@ public class KeyNode implements INode {
         // allowed!
     private final boolean isSegmentLeaf;
         // Synch note: final, so we are fine :-)
-    public volatile boolean isDirty;
+    //public volatile boolean isDirty;
         // Synch note: This field is accessed by threads not holding DB.writeLock, so we need
         // field to be volatile to publish writes.
     public boolean isInTransactionNodes = false;
@@ -86,7 +86,7 @@ public class KeyNode implements INode {
         klongs = emptyLongArray;
         pointers = emptyPointerArray;
         pos = emptyLongArray;
-        isDirty = false;
+        //isDirty = false;
         spos = Spos.NULL;
         id = Spos.NULL;
         this.size = 0;    
@@ -125,13 +125,13 @@ public class KeyNode implements INode {
         return isSegmentLeaf;
     }
     
-    public final boolean isDirty() {
-        return isDirty;
-    }
+    //public final boolean isDirty() {
+    //    return isDirty;
+    //}
     
-    public final void setIsDirty(boolean isDirty) {
-        this.isDirty = isDirty;
-    }
+    //public final void setIsDirty(boolean isDirty) {
+    //    this.isDirty = isDirty;
+    //}
     
     public final long getKlong(int index) {
         return klongs[index];
@@ -193,7 +193,7 @@ public class KeyNode implements INode {
         
         result = result + midPart;
         result = isSegmentLeaf ? result + " L" : result;
-        result = isDirty ? result + " D" : result;
+        //result = isDirty ? result + " D" : result;
         return result;
     }
     

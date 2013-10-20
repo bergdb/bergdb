@@ -51,6 +51,7 @@ public class F {
         }
         
         BasicCollector collector = new BasicCollector(System.out);
+        collector.setPrintStart(true);
         collector.setPrintOutput(false);
         collector.setPrintProps(false);
         collector.setPrintMethods(true);

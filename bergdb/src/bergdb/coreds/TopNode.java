@@ -37,7 +37,7 @@ public final class TopNode implements INode {
         // The original spos of the node functions as its id.
         // Synch note: made volatile. Not accessed often, does not affect performance.
         // May be removed in future versions. For debug only.
-    public volatile boolean isDirty;
+    //public volatile boolean isDirty;
         // Synch note: This field is accessed by threads not holding DB.writeLock, so we need
         // field to be volatile to publish writes.
     public boolean isInTransactionNodes;
@@ -75,7 +75,7 @@ public final class TopNode implements INode {
         pointersLength = (short) pointers.length;
         pointerCount = (short) (pointers.length + 1);
         
-        isDirty = false;
+        //isDirty = false;
         this.spos = spos;
         this.topNodeId = topNodeId;
         
@@ -112,18 +112,18 @@ public final class TopNode implements INode {
         return i;
     }
     
-    public final boolean isDirty() {
-        return isDirty;
-    }
+    //public final boolean isDirty() {
+    //    return isDirty;
+    //}
     
-    public final void setIsDirty(boolean b) {
-        this.isDirty = b;
-    }
+    //public final void setIsDirty(boolean b) {
+    //    this.isDirty = b;
+    //}
     
     public String toString() {
         String midPart = (id == -1 && spos == -1) ? " " : " " + id + ":" + spos + " ";
         String result = "topNode" + topNodeId + midPart + "t=" + rootTime;
-        result = isDirty ? result + " D" : result;
+        //result = isDirty ? result + " D" : result;
         return result;
     }
     
@@ -371,7 +371,7 @@ public final class TopNode implements INode {
         
         TopNode t = new TopNode(topNodeId, null, rootPointerPos, rootTime, spos);
         
-        t.isDirty = false;
+        //t.isDirty = false;
         t.id = id;
         
         for (int i = 0; i < t.pointersLength; i++) {

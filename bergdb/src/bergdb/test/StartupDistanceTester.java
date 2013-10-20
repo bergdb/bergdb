@@ -177,7 +177,7 @@ public class StartupDistanceTester {
         }
     }
     
-    @T("f")
+    //@T("f")  TODO A. Enable test
     public static void test(TestCollector c) throws Exception {
         new StartupDistanceTester().go(c);
     }

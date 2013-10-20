@@ -1,8 +1,8 @@
 package bergdb.core;
 
+// TODO A. Fix classes - move some to coreds.
 import bergdb.common.IPack;
 import bergdb.coreds.AccessData;
-import bergdb.coreds.DirtyNodes1;
 import bergdb.coreds.GetData;
 import bergdb.coreds.KeyAccessPath;
 import bergdb.coreds.Keys;
@@ -20,7 +20,6 @@ public class Pack implements IPack {
         DbTesterGetMany.class,
         DbTesterRestart.class,
         DbTesterStream.class,
-        DirtyNodes1.class,
         GetData.class,
         KeyAccessPath.class,
         KeyModSet2.class,

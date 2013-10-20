@@ -23,7 +23,7 @@ import bergdb.storage.StreamIoException;
  * <li>Making nodes dirty</li>
  * <li>Graph testable in isolation</li>
  * <li>Cache: adding nodes, cache eviction</li>
- * <li>Reads nodes (NodeReader implementation)</li>
+ * <li>Reads nodes (from interface NodeReader instance)</li>
  * </ul>
  * 
  * <p>Not in scope:</p>
@@ -257,30 +257,21 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      * Makes a TopNode dirty if not already dirty. This method returns immediately
      * if the node is dirty already. Caller must hold Db.writeLock.
      */
-    public final void ensureDirty(TopNode n) {        
+    /*public final void ensureDirty(TopNode n) {        
         if (!n.isDirty) {
             n.isDirty = true;
             //dirtyNodes.put(n.spos, n);
         }
-    }
+    }*/
     
     /**
      * Makes a KeyNode dirty if not already dirty. This method returns immediately
      * if the node is dirty already. Caller must hold Db.writeLock.
      */
-    public final void ensureDirty(KeyNode n) {
+    /*public final void ensureDirty(KeyNode n) {
         if (!n.isDirty) {
             n.isDirty = true;
             //dirtyNodes.put(n.spos, n);
-        }
-    }
-    
-    /*public final void ensureDirty(INode n) {
-    	int type = n.getType();
-    	
-        if ((type == INode.TYPE_TOP_NODE || type == INode.TYPE_KEY_NODE) && !n.isDirty()) {
-            n.setIsDirty(true);
-            dirtyNodes.put(n.getSpos(), n);
         }
     }*/
     
@@ -333,19 +324,19 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
                         }
                     }
                     
-                    switch (result.getType()) {
+                    /*switch (result.getType()) {
                     case INode.TYPE_TOP_NODE:
                         ensureDirty((TopNode) result);
                         break;
                     case INode.TYPE_KEY_NODE:
                         ensureDirty((KeyNode) result);
                         break;
-                    }
+                    }*/
                 }
             }
 
             public void superRootAccessed(TopNode superRoot) {
-                ensureDirty(superRoot);
+                //ensureDirty(superRoot);
             }
         };
         

@@ -36,8 +36,8 @@ public interface INode {
     public long getId();
     public void setId(long id);
     
-    public boolean isDirty();
-    public void setIsDirty(boolean b);
+    //public boolean isDirty();
+    //public void setIsDirty(boolean b);
     
     public int getPointerCount();
     
