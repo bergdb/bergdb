@@ -112,13 +112,13 @@ public class NodeStream implements bergdb.coreds.Graph.NodeReader {
     
     /**
      * Adds nodes to the stream as one single transaction.
-     * Caller must hold DB.writeLock.
+     * Caller must hold Db.writeLock.
      * 
      * @param trans Optional parameter for output. If non-null, this method sets trans.spos, 
      *              trans.byteSize.
      * @throws StreamIoException
      */
-    public boolean addNodes(long transactionTime, TransactionNodes nodes, Trans trans) {
+    public boolean appendNodes(long transactionTime, TransactionNodes nodes, Trans trans) {
         //
         // 130430: Changed to use new version of TransactionNodes (separates node types).
         // 130409: boolean return instead of void.

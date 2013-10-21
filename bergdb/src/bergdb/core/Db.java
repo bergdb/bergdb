@@ -964,7 +964,7 @@ public class Db implements IWarner {
         DatabaseId id = (databaseIdFromBuilder == null) ? new DatabaseId() : databaseIdFromBuilder;
         nodeStream.getMetaBlock().setId(id.getBytes());
         
-        this.addNodesToStream();
+        this.appendNodesToStream();
         this.clearTransMemory();
         
         //assert root.isDirty() == false : "space root is dirty";
@@ -1372,7 +1372,7 @@ public class Db implements IWarner {
             
             //recordChoicesAndEnsureDirty();
             
-            addNodesToStream();
+            appendNodesToStream();
             
             this.lastSposOfLastTrans = this.trans.lastSpos;
             this.sposOfLastTrans = this.trans.spos;
@@ -1479,7 +1479,7 @@ public class Db implements IWarner {
      * 
      * @throws StreamIoException
      */
-    private void addNodesToStream() {
+    private void appendNodesToStream() {
         //
         // Note the call to getTooDirtyNodes. This is done without including the size
         // of the current transaction. This means that the startup algorithm must
@@ -1528,7 +1528,7 @@ public class Db implements IWarner {
         
         trans.nodeCount = transactionNodes.size();
         
-        boolean wroteMetaBlock = nodeStream.addNodes(trans.transactionTime, transactionNodes, trans);
+        boolean wroteMetaBlock = nodeStream.appendNodes(trans.transactionTime, transactionNodes, trans);
 
         if (graph != null) {
             graph.getTransSequence().add(transactionNodes.createTSet(nodeStream.getLastTransSpos()));
