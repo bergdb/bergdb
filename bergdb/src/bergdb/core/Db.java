@@ -147,14 +147,9 @@ public class Db implements IWarner {
     private final PrintStream out;
     private final Builder builder;   // stored for use by Graph.Builder. See startinner().
     
-    private int startupDistance; 
+    private long startupDistance; 
         // Current startupDistance that affects getDirtyLimit().
         // Sync note: protected by writeLock.
-    private int newIncreasedStartupDistance;
-        // Normally -1, if not it is the new requested increased startup distance.
-        // The 'startupDistance' field is not set immediately, after next meta block has
-        // written this new value of startupDistance to the stream.
-        // The last metablock stream value of startDistance must be >= this.startDistance.
 
     // ---- Listeners ----
     
@@ -258,8 +253,6 @@ public class Db implements IWarner {
  
         this.startupDistance = b.startupDistance;
         this.startupPos = new StartupPos(0);
-       
-        this.newIncreasedStartupDistance = -1;
         
         this.metaBlock = new MetaBlock();
         
@@ -316,27 +309,22 @@ public class Db implements IWarner {
         }
     }
 
-    public int getStartupDistance() {
+    public long getStartupDistance() {
         synchronized (writeLock) {
             return this.startupDistance;
         }
     }
     
     public String getStartupDistanceH() {
-        int sd;
-        int newSd;
+        long sd;
         int metaSd;
         
         synchronized (writeLock) {
             sd = this.startupDistance;
-            newSd = this.newIncreasedStartupDistance;
             metaSd = this.nodeStream.getMetaBlock().getStartupDistance();
         }
         
-        return "DB.startupDistance = " + sd 
-                + ", db.new..=" + newSd 
-                + ", metablock sd = " 
-                + metaSd;
+        return "DB.startupDistance = " + sd + ", metablock sd = " + metaSd;
     }
     
     public double getDirtyFraction100() {
@@ -365,66 +353,37 @@ public class Db implements IWarner {
     
     /**
      * Suggests a new startup distance.
+     * If the startup distance is reduced drastically, this method
+     * can cause a large transaction to be run. It is recommended that the 
+     * startup distance is reduced no more than 10M for every call to this 
+     * method. Call this method repeatedly to reduce the startup distance
+     * more than 10M.
      */
-    public void setStartupDistance(int newDistance) {
+    public void setStartupDistance(long newDistance) {
+        //
+        // A dummy transaction of size > META_BLOCK_DISTANCE is written
+        // to the stream to ensure that the new value of startupDistance is 
+        // stored in a meta block in the stream.
+        //
+        
         if (newDistance < 0) {
             throw new IllegalArgumentException("Bad newDistance: " + newDistance + ".");
         }
         
+        long min = RecoverableStream.META_BLOCK_DISTANCE * 2;
+        long max = 1000*1000000;
+        
+        newDistance = newDistance < min ? min : newDistance;
+        newDistance = newDistance > max ? max : newDistance;
+        
+        int dist = (int) newDistance;
+        byte[] dummyValue = new byte[RecoverableStream.META_BLOCK_DISTANCE];
+        
         synchronized (writeLock) {
-            if (this.newIncreasedStartupDistance != -1) {
-                throw new IllegalStateException("An increase of startupDistance from " 
-                        + this.startupDistance + " to " + this.newIncreasedStartupDistance 
-                        + " has been requested but not finalized. Cannot make change request "
-                        + "to set startupDistance to " + newDistance + ".");
-            }
-            
-            if (newDistance < startupDistance) {
-                decreaseStartupDistance(newDistance);
-            }
-            
-            if (newDistance > startupDistance) {
-                increaseStartupDistance(newDistance);
-            }
+            this.startupDistance = newDistance;
+            this.nodeStream.getMetaBlock().setStartupDistance(dist);
+            this.execute(Trans.builder().put(DUMMY_KEY, dummyValue).build());
         }
-    }
-    
-    private void decreaseStartupDistance(int newDistance) {
-        //
-        // Checks should have been done by caller.
-        // Note. Possibly, we could split decrease into many parts for large decreases
-        // to avoid large transactions.
-        //
-        // 1. Set this.startupDistance.
-        // 2. Run dummy transaction. May cause many dirty nodes to be written since
-        //    result of getDirtyLimit() changes.
-        // 3. Modify startupDistance of metaBlock. Next time metaBlock is written, the 
-        //    new startupDistance will be available to an "upstarter" (a process calling Db.start()).
-        //
-        
-        assert Thread.holdsLock(writeLock);
-        assert newDistance >= 0;
-        assert newDistance < startupDistance;
-        
-        this.startupDistance = newDistance;
-        execute(Trans.builder().put(Db.DUMMY_KEY, new byte[0]).build());
-        nodeStream.getMetaBlock().setStartupDistance(newDistance);
-    }
-    
-    private void increaseStartupDistance(int newDistance) {
-        // Checks should have been done by caller.
-        //
-        // 1. Increases startupDistance in meta block.
-        // 2. Sets this.newIncreasedStartupDistance. This is a request to change this.startupDistance
-        //    later, after meta block has been written to stream.
-        //
-        
-        assert Thread.holdsLock(writeLock);
-        assert newDistance > 0;
-        assert newDistance > startupDistance;
-        
-        nodeStream.getMetaBlock().setStartupDistance(newDistance);
-        this.newIncreasedStartupDistance = newDistance;
     }
     
     public long getCachedMemoryValue() {
@@ -1492,9 +1451,10 @@ public class Db implements IWarner {
         
         trans.nodeCount = transactionNodes.size();
         
-        boolean wroteMetaBlock = nodeStream.appendNodes(trans.transactionTime, transactionNodes, trans);
+        nodeStream.appendNodes(trans.transactionTime, transactionNodes, trans);
 
-        nodeStream.getMetaBlock().setStartupPos(startupPos2);
+        MetaBlock meta = nodeStream.getMetaBlock();
+        meta.setStartupPos(startupPos.get());
         
         if (graph != null) {
             graph.getTransSequence().add(transactionNodes.createTSet(nodeStream.getLastTransSpos()));
@@ -1504,14 +1464,6 @@ public class Db implements IWarner {
         this.nodesWritten += transactionNodes.size();
         this.ordinaryNodesWritten += ordinaryNodeCount;
         trans.listener.nodesWritten(transactionNodes);
-        
-        // TODO A. Needs update.
-        if (wroteMetaBlock && this.newIncreasedStartupDistance != -1) {
-            assert newIncreasedStartupDistance > startupDistance 
-                    : newIncreasedStartupDistance + ", " + startupDistance;
-            startupDistance = newIncreasedStartupDistance;
-            newIncreasedStartupDistance = -1;
-        }
     }
 
     /**
@@ -1900,7 +1852,7 @@ public class Db implements IWarner {
      * For listening to what happens at startup. Useful for testing / debugging.
      */
     public static interface StartListener {
-        void startupDistance(int startupDistance);
+        void startupDistance(long startupDistance);
         void tpos(long startPos);
         void startPos(long startPos);
     }
@@ -1908,7 +1860,7 @@ public class Db implements IWarner {
     public static final DoNothingStartListener DO_NOTHING_START_LISTENER = new DoNothingStartListener();
     
     public static class DoNothingStartListener implements StartListener {
-        public void startupDistance(int startupDistance) {}
+        public void startupDistance(long startupDistance) {}
         public void tpos(long startPos) {}
         public void startPos(long startPos) {}
     }
@@ -2247,40 +2199,10 @@ public class Db implements IWarner {
     }
     
     /**
-     * Unit tests that need access to private fields. Use sparingly, put tests in DBTester
-     * or elsewhere if possible.
+     * Unit tests that need access to private fields. Use sparingly, elsewhere when possible.
      */
     public static class Tester {
-        public static void testStartupDistanceIncrease() {
-            // Checks increase of startup distance. Increase not affective immediately, but
-            // after the stream meta block has been written to stream.
-            
-            byte[] value = new byte[100*1000];
-            MemoryStream stream = new MemoryStream();
-            Db db = Db.builder().mainStream(stream).startupDistance(1*1000000).start();
-            Trans trans = Trans.builder().put("1", value).build();
-            db.execute(trans);
-            
-            Assert.assertTrue(trans.lastSpos < RecoverableStream.META_BLOCK_DISTANCE);
-            Assert.assertEquals(-1, db.newIncreasedStartupDistance);
-            
-            db.setStartupDistance(2*1000000);
-            Assert.assertEquals(1*1000000, db.getStartupDistance());
-            Assert.assertEquals(2*1000000, db.newIncreasedStartupDistance);
-            
-            int index = 10;
-            
-            while (trans.lastSpos <= RecoverableStream.META_BLOCK_DISTANCE) {
-                trans = Trans.builder().put("" + index, value).build();
-                db.execute(trans);
-                index++;
-            }
-            
-            Assert.assertEquals(2*1000000, db.getStartupDistance());
-            Assert.assertEquals(-1, db.newIncreasedStartupDistance);
-            
-            db.stop();
-        }
+        public static void test0() {}
     }
 }
 

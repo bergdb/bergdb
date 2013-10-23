@@ -1,7 +1,5 @@
 package bergdb.core;
 
-// TODO A. Consider letting this class handle startupDistance too.
-
 /**
  * The startup stream position (startupPos) is the position in the stream the
  * the startup procedure can start from when the database is started.
@@ -48,7 +46,7 @@ public class StartupPos {
      * @return  The next (now current) startup position.
      */
     public long next(long startupDistance, long streamLength) {
-        // TODO E. Improve by including size of current transaction.
+        // TODO D. Consider: include size of current transaction in calculation.
         long current = pos;
         long candidate = streamLength - startupDistance;
         candidate = candidate < 0 ? 0 : candidate;

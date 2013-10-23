@@ -1521,14 +1521,14 @@ public class DbTester {
     
     @T
     public static void testStartupDistance1() {
-        // Checks that startupDistance from DB.Builder is used.
+        // Checks that startupDistance from Db.Builder is used.
         
         MemoryStream stream = new MemoryStream();
-        Db db = Db.builder().mainStream(stream).startupDistance(123456).build();
+        Db db = Db.builder().mainStream(stream).startupDistance(523456).build();
         
-        Assert.assertEquals(123456, db.getStartupDistance());
+        Assert.assertEquals(523456, db.getStartupDistance());
         db.start();
-        Assert.assertEquals(123456, db.getStartupDistance());
+        Assert.assertEquals(523456, db.getStartupDistance());
         db.stop();
     }
     
@@ -1548,25 +1548,4 @@ public class DbTester {
         
         db.stop();
     }
-    
-    @T
-    public static void testStartupDistance3() {
-        // Checks that calls to DB.setStartupDistance() not allowed when we have latent 
-        // startupDistance increase.
-        
-        MemoryStream stream = new MemoryStream();
-        Db db = Db.builder().mainStream(stream).startupDistance(1*1000000).start();
-        db.setStartupDistance(2*1000000);
-        Exception ex = null;
-        
-        try {
-            db.setStartupDistance(3*1000000);
-        } catch (Exception e) {
-            ex = e;
-        }
-        
-        db.stop();
-        Assert.assertTrue(ex != null);
-    }
-
 }

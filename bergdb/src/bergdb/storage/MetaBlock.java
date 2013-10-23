@@ -159,15 +159,6 @@ public class MetaBlock {
         return Bytes.bytesToLongLE(block, 8);
     }
     
-    /*public void setId(DatabaseId id) {
-        if (id == null) {
-            throw new IllegalArgumentException("id == null not allowed");
-        }
-        
-        byte[] idBytes = id.getBytes();
-        System.arraycopy(idBytes, 0, block, 24, idBytes.length);
-    }*/
-    
     public void setId(byte[] id) {
         if (id == null) {
             throw new IllegalArgumentException("id == null not allowed");

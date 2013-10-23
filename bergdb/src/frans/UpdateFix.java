@@ -105,7 +105,7 @@ public class UpdateFix {
                 //System.out.println("start() tpos: " + tpos);
             }
             
-            public void startupDistance(int startupDistance) {
+            public void startupDistance(long startupDistance) {
                 System.out.println("start() startupDistance: " + startupDistance);
             }
             
