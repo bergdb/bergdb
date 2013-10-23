@@ -220,7 +220,7 @@ public class DbTesterStream {
         }
     }
     
-    public static Db createRandomDB(int n, AppendOnlyStream stream) {
+    public static Db createRandomDb(int n, AppendOnlyStream stream) {
         Random random = new Random(1);
         KTestClock clock = new KTestClock();
         Db db = Db.builder().testSetup().mainStream(stream).clock(clock).build();
@@ -251,7 +251,7 @@ public class DbTesterStream {
     public static void testMoreData0() {
         int n = 50;
         MemoryStream stream = new MemoryStream();
-        Db db = createRandomDB(n, stream);
+        Db db = createRandomDb(n, stream);
         checkRandomDB(db, n);
         db.sync();
         db = null;
@@ -537,7 +537,7 @@ public class DbTesterStream {
         AppendOnlyStream s = new MemoryStream();
         int n = 2;
         int valueSize = 20*1000*1000;
-        Db db = createRandomDB(n, s);  // Make sure we have some data (some dirty nodes).
+        Db db = createRandomDb(n, s);  // Make sure we have some data (some dirty nodes).
         
         db.execute(Trans.builder().put("/large", new byte[valueSize]));
         db.sync();

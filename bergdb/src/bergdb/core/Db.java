@@ -788,16 +788,19 @@ public class Db implements IWarner {
             throw new StreamFormatException("Bad value of startupDistance in meta " +
             		"block of stream: " + startupDistance + ".");
         }
+        this.startupPos.set(nodeStream.getMetaBlock().getStartupPos());
         
         listener.startupDistance(this.startupDistance);
         
-        long pos1 = nodeStream.getPosOfLastCompletedTrans();
-
-        long startPos = pos1 - (startupDistance + 1);
-        startPos = startPos < 0 ? 0 : startPos;
+        //long pos1 = nodeStream.getPosOfLastCompletedTrans();
+        //
+        //long startPos = pos1 - (startupDistance + 1);
+        //startPos = startPos < 0 ? 0 : startPos;
+        //
         
+        long startPos = startupPos.get();
         listener.startPos(startPos);
-
+        
         // posMap is a map from spos of a node to the node itself.
         // nextMap is a map from previous spos of a node to the node itself.
 
@@ -1372,18 +1375,11 @@ public class Db implements IWarner {
             // queue to enforce the ordering of the transactions. The serialization could
             // possibly be done in a separate thread, or not.
             
-            // 1305 Frans: Adds choices for ValueNodes to transactionNodes (+20% CPU).
-            // This is needed to have an active replica.
-            
-            //recordChoicesAndEnsureDirty();
-            
             appendNodesToStream();
             
             this.lastSposOfLastTrans = this.trans.lastSpos;
             this.sposOfLastTrans = this.trans.spos;
             this.currentDirtyLimit = this.nextDirtyLimit;
-            
-            //recordChoicesAndEnsureDirty();   // Increases stream size significantly.
             
             clearTransMemory();
 
@@ -1471,8 +1467,6 @@ public class Db implements IWarner {
 
         this.cachedMemoryValue.addAndGet(transactionNodes.sumMemSize());
 
-        long dirtyLimit = getDirtyLimit();
-
         // NOTE The current implementation works (120522)
         // However, a small transaction that comes after a large one, will often get unfairly
         // many dirty KeyNodes/TopNodes to write.
@@ -1483,9 +1477,12 @@ public class Db implements IWarner {
 
         int ordinaryNodeCount = transactionNodes.size();
         
+        //long startupPos1 = startupPos.get();
+        long startupPos2 = startupPos.next(this.startupDistance, nodeStream.getLength());
+        
         if (graph != null) {
-            graph.getTransSequence().addToTransactionNodes(dirtyLimit, transactionNodes);
-            recordChoicesAndEnsureIncluded(dirtyLimit);
+            graph.getTransSequence().addToTransactionNodes(startupPos2, transactionNodes);
+            recordChoicesAndEnsureIncluded(startupPos2);
         }
         
         computeStats(ordinaryNodeCount);
@@ -1497,16 +1494,18 @@ public class Db implements IWarner {
         
         boolean wroteMetaBlock = nodeStream.appendNodes(trans.transactionTime, transactionNodes, trans);
 
+        nodeStream.getMetaBlock().setStartupPos(startupPos2);
+        
         if (graph != null) {
             graph.getTransSequence().add(transactionNodes.createTSet(nodeStream.getLastTransSpos()));
-            graph.getTransSequence().removeBeforeSpos(dirtyLimit);
+            graph.getTransSequence().removeBeforeSpos(startupPos2);
         }
         
         this.nodesWritten += transactionNodes.size();
         this.ordinaryNodesWritten += ordinaryNodeCount;
         trans.listener.nodesWritten(transactionNodes);
         
-        
+        // TODO A. Needs update.
         if (wroteMetaBlock && this.newIncreasedStartupDistance != -1) {
             assert newIncreasedStartupDistance > startupDistance 
                     : newIncreasedStartupDistance + ", " + startupDistance;
@@ -1545,12 +1544,12 @@ public class Db implements IWarner {
      * In general: nodeStream.getLength() - this.startupDistance is returned.
      * The caller must hold DB.writeLock.
      */
-    private long getDirtyLimit() {
+    /*private long getDirtyLimit() {
         assert Thread.holdsLock(writeLock);
         long dirtyLimit = nodeStream.getLength() - this.startupDistance;
         dirtyLimit = dirtyLimit < 0 ? 0 : dirtyLimit;
         return dirtyLimit;
-    }
+    }*/
 
     /**
      * Sets the KVs directly to the in-memory data structure. This method runs with exclusive 

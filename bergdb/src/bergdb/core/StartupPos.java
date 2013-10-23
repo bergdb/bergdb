@@ -43,15 +43,17 @@ public class StartupPos {
      * the startup distance and the current transaction size.
      * 
      * @param startupDistance  The current startupDistance of the database.
-     * @param currentTransSize The transaction size of the transaction to be executed
-     * without counting the additional index nodes that need to be updated to avoid
-     * too dirty pointers.
      * @param streamLength  The current stream length before the current transaction
      * is appended to the stream.
      * @return  The next (now current) startup position.
      */
-    public long next(long startupDistance, long currentTransSize, long streamLength) {
-        // TODO A. Implement next().
-        return 0;
+    public long next(long startupDistance, long streamLength) {
+        // TODO E. Improve by including size of current transaction.
+        long current = pos;
+        long candidate = streamLength - startupDistance;
+        candidate = candidate < 0 ? 0 : candidate;
+        candidate = candidate < current ? current : candidate;
+        this.pos = candidate;
+        return this.pos;
     }
 }

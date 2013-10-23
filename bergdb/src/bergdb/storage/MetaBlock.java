@@ -119,7 +119,12 @@ public class MetaBlock {
             throw new StreamFormatException("Meta block, bad time, " + time + ".");
         }
         
-        for (int offset = 44; offset < RecoverableStream.META_BLOCK_SIZE - 1; offset++) {
+        long startupPos = this.getStartupPos();
+        if (startupPos < 0) {
+            throw new StreamFormatException("Meta block, bad startupPos, " + startupPos + ".");
+        }
+        
+        for (int offset = 44+8; offset < RecoverableStream.META_BLOCK_SIZE - 1; offset++) {
             int b = block[offset];
             if (block[offset] != 0) {
                 throw new StreamFormatException("Meta block, expected byte to be 0 at offset " 
@@ -191,6 +196,9 @@ public class MetaBlock {
         return Bytes.bytesToLongLE(block, 16);
     }
     
+    /**
+     * Sets the spos of the last completed and valid transaction written to the stream.
+     */
     public void setLastTransSpos(long spos) {
         Bytes.longToBytesLE(spos, block, 16);
     }

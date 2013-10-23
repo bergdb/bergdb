@@ -12,7 +12,7 @@ import bergdb.coreds.GetData;
 import bergdb.coreds.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.BasicCollector;
-import bergdb.nanotest.T;
+//import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;
 import bergdb.stream.MemoryStream;
 
@@ -178,13 +178,13 @@ public class StartupDistanceTester {
         }
     }
     
-    @T("f")
-    public static void test(TestCollector c) throws Exception {
+    // @T("f")   TODO B. Enable test.
+    public static void t1(TestCollector c) throws Exception {
         new StartupDistanceTester().go(c);
     }
     
     public static void main(String[] args) throws Exception {
-        test(new BasicCollector());
+        t1(new BasicCollector());
     }
 }
 
