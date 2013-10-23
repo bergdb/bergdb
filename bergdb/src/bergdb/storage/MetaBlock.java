@@ -9,9 +9,24 @@ import bergdb.nanotest.T;
  * An instance of this class represents a meta information block in the 
  * db stream (RecoverableStream). The meta information includes 
  * the spos of the last successful transaction.
+ *
+ * <pre>
+ * FORMAT OF A META BLOCK, v133
+ * Offset  Size    Description
+ * 0       4       Magic bytes, meta block signature. Always the bytes for ASCII ":-*d".
+ * 4       4       Version of BergDB stream format (currently 133).
+ * 8       8       time, database time as a long (Little-endian-first byte order).
+ * 16      8       lastTrans, spos of last valid transaction completely written
+ *                 before the meta block.
+ * 24     16       Database ID. 128 random bits, used as unique database ID. Static.
+ * 40      4       startupDistance in bytes. Typically 20M (LE-first byte order).
+ * 44     52       startupPos. Stream position to startup from (LE-first byte order).
+ * 53     75       Reserved, must be set to zero.
+ * 127     1       META_BLOCK_LAST_BYTE. Used to indicate that the block is valid.
+ * </pre>
  * 
  * <pre>
- * FORMAT OF A META BLOCK
+ * FORMAT OF A META BLOCK, v131
  * Offset  Size    Description
  * 0       4       Magic bytes, meta block signature. Always the bytes for ASCII ":-*d".
  * 4       4       Version of BergDB stream format (currently 131).
@@ -27,7 +42,8 @@ import bergdb.nanotest.T;
 public class MetaBlock {
     private static final byte META_BLOCK_LAST_BYTE = (byte) Util.identity(10);
     private static final byte[] MAGIC = new byte[] {':', '-', '*', 'd'};
-    private static final int STREAM_FORMAT_VERSION = Util.identity(131);    
+    //private static final int STREAM_FORMAT_VERSION = Util.identity(131);    
+    private static final int STREAM_FORMAT_VERSION = Util.identity(133);    
     private byte[] block;
     private long pos;         // stream pos, only used sometimes
     
@@ -66,6 +82,7 @@ public class MetaBlock {
         block[RecoverableStream.META_BLOCK_SIZE - 1] = META_BLOCK_LAST_BYTE;
             // last byte set to indicate successful meta block
         setLastTransSpos(Constants.SposNULL);
+        setStartupPos(0);
     }
 
     /**
@@ -186,6 +203,14 @@ public class MetaBlock {
         Bytes.intToBytesLE(startupDistance, block, 40);
     }
     
+    public long getStartupPos() {
+        return Bytes.bytesToLongLE(block, 44);
+    }
+    
+    public void setStartupPos(long pos) {
+        Bytes.longToBytesLE(pos, block, 44);
+    }
+    
     /**
      * Returns true if the last byte is META_BLOCK_LAST_BYTE.
      */
@@ -210,9 +235,15 @@ public class MetaBlock {
      */
     public static class Tester {
         @T
+        public static void tStartupPos() {
+            MetaBlock b = new MetaBlock();
+            b.setStartupPos(3111222333444L);
+            Assert.assertEquals(3111222333444L, b.getStartupPos());
+        }
+        
+        @T
         public static void time() {
             MetaBlock b = new MetaBlock();
-            b.initBlock();
             b.setTime(1234567);
             
             long time = b.getTime();
@@ -222,7 +253,7 @@ public class MetaBlock {
         @T
         public static void version() {
             MetaBlock b = new MetaBlock();
-            Assert.assertEquals(131, b.getVersion());
+            Assert.assertEquals(133, b.getVersion());
         }
         
         @T

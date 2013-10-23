@@ -163,6 +163,8 @@ public class Db implements IWarner {
     // ---- Working data for write access ----
     // Must only be accessed from threads holding writeLock.
     
+    private final StartupPos startupPos;
+    
     /** PutData, set to non-null together with graph. */
     private PutData pd;
     
@@ -255,6 +257,7 @@ public class Db implements IWarner {
         keyModSet = new KeyModSet2();
  
         this.startupDistance = b.startupDistance;
+        this.startupPos = new StartupPos(0);
        
         this.newIncreasedStartupDistance = -1;
         
@@ -278,7 +281,6 @@ public class Db implements IWarner {
         this.evictBoss = b.evictBoss;
         
         this.reclaim = new Reclaim(this, aos);
-        //this.reclaim = new NoReclaim(this, aos);
         
         this.reclaimTransactionListener = reclaim;
         reclaim.setRetainDuration(b.retainDuration);
@@ -757,8 +759,6 @@ public class Db implements IWarner {
 
         storageManager.checkStreamIds();
         
-        // Synchronizes storages based on the "longest" storage available.
-        
         try {
             storageManager.syncStreams(new NullProgressListener());
         } catch (IOException e) {
@@ -844,25 +844,7 @@ public class Db implements IWarner {
 
         Graph.Builder b = Graph.builder();
         b.nodeReader(nodeStream);
-        switch (builder.maxNodeSize) {
-        case 62:
-            b.maxNodeSize62();
-            break;
-        case 30:
-            b.maxNodeSize30();
-            break;
-        case 14:
-            b.maxNodeSize14();
-            break;
-        case 8:
-            b.maxNodeSize8();
-            break;
-        case 6:
-            b.maxNodeSize6();
-            break;
-        default:
-            throw new IllegalStateException("maxNodeSize = " + builder.maxNodeSize);
-        }
+        setMaxNodeSize(b);
         
         this.graph = b.createFromStreamNodes(getAccessData(), posMap, nextMap, seq);
         
@@ -885,6 +867,28 @@ public class Db implements IWarner {
 
         reclaim.initFromDb();
             // state = STATE_ACTIVE needed before this method.
+    }
+
+    private void setMaxNodeSize(Graph.Builder b) {
+        switch (builder.maxNodeSize) {
+        case 62:
+            b.maxNodeSize62();
+            break;
+        case 30:
+            b.maxNodeSize30();
+            break;
+        case 14:
+            b.maxNodeSize14();
+            break;
+        case 8:
+            b.maxNodeSize8();
+            break;
+        case 6:
+            b.maxNodeSize6();
+            break;
+        default:
+            throw new IllegalStateException("maxNodeSize = " + builder.maxNodeSize);
+        }
     }
 
     /**
@@ -963,6 +967,7 @@ public class Db implements IWarner {
         
         DatabaseId id = (databaseIdFromBuilder == null) ? new DatabaseId() : databaseIdFromBuilder;
         nodeStream.getMetaBlock().setId(id.getBytes());
+        nodeStream.getMetaBlock().setStartupPos(0);
         
         this.appendNodesToStream();
         this.clearTransMemory();
@@ -1438,41 +1443,6 @@ public class Db implements IWarner {
     }
 
     /**
-     * Records choices and ensures accessed nodes are dirty.
-     */
-    @SuppressWarnings("unused")
-    private void recordChoicesAndEnsureDirty() {
-        // transactionTime has been "released" for get operations, so we can to the lookups
-        // with that time. dbClock.transactionEnd() was called.
-        
-        GetData gd = graph.newGetData();
-        gd.actualLookupTime = trans.transactionTime;
-        gd.accessData = pd.accessData;
-        
-        final Choices[] finalChoice = new Choices[1];
-        
-        gd.pointerListener = new PointerListener() {
-            public void superRootAccessed(TopNode superRoot) {
-                //graph.ensureDirty(superRoot);
-            }
-            
-            public void pointerFollowed(INode predecessor, int pointerIndex, INode result,
-                    int pointerType) {
-                //graph.ensureDirty(result);
-                finalChoice[0].add(pointerIndex);
-            }
-        };
-        
-        for (int i = 0; i < transactionNodes.valueSize; i++) {
-            finalChoice[0] = transactionNodes.choices[i];
-            long[] key = transactionNodes.keys[i];
-            byte[] value = getOne(gd.actualLookupTime, key, gd);
-            
-            assert transactionNodes.valueNodes[i].isDelete() || Assert.arrayEquals(transactionNodes.valueNodes[i].getValue(), value);
-        }
-    }
-
-    /**
      * Writes the nodes in this.transactionNodes to stream. Uses this.trans, 
      * this.transactionNodes, this.metaBlock, this.cacheMemoryValue, and more.
      * The caller must hold DB.writeLock.
@@ -1515,9 +1485,6 @@ public class Db implements IWarner {
         
         if (graph != null) {
             graph.getTransSequence().addToTransactionNodes(dirtyLimit, transactionNodes);
-        }
-        
-        if (graph != null) {
             recordChoicesAndEnsureIncluded(dirtyLimit);
         }
         

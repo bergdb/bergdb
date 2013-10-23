@@ -29,6 +29,16 @@ public class StartupPos {
     }
     
     /**
+     * Sets the startup pos.
+     * 
+     * @param pos  A stream position, >= 0.
+     */
+    public void set(long pos) {
+        if (pos < 0) throw new IllegalArgumentException("Bad stream pos: " + pos);
+        this.pos = pos;
+    }
+    
+    /**
      * Computes a new current startup pos based on the current one, 
      * the startup distance and the current transaction size.
      * 

@@ -346,7 +346,8 @@ public class StorageManager implements AppendOnlyStream {
     }
     
     /**
-     * 
+     * Synchronizes storages based on the "longest" storage available.
+     *  
      * @throws IOException
      * @throws BadReplicaException
      */
