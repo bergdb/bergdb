@@ -14,7 +14,7 @@ public class Unit extends bergdb.coredev.CoreUnit {
     private static IPack[] ipacks = new IPack[]{
         new bergdb.common.Pack(),
         new bergdb.core.Pack(),
-        new bergdb.coreds.Pack(),
+        new bergdb.graph.Pack(),
         new bergdb.storage.Pack(),
         new bergdb.test.Pack(),
         new bergdb.test.java.Pack(),

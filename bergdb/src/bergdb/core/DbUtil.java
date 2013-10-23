@@ -6,9 +6,9 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 import bergdb.common.Util;
-import bergdb.coreds.GetData;
-import bergdb.coreds.GetMany;
-import bergdb.coreds.Keys;
+import bergdb.graph.GetData;
+import bergdb.graph.GetMany;
+import bergdb.graph.Keys;
 import bergdb.pub.Clock;
 
 

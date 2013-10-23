@@ -1,6 +1,6 @@
 package bergdb.pubimp;
 
-import bergdb.coreds.Klong;
+import bergdb.graph.Klong;
 
 /**
  * We want pub to access stuff in pubimp, not in coreds directly.

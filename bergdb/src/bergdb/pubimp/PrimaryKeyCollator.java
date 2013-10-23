@@ -1,6 +1,6 @@
 package bergdb.pubimp;
 
-import bergdb.coreds.Keys;
+import bergdb.graph.Keys;
 
 /**
  * Special handling for the primary key.

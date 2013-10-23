@@ -13,8 +13,8 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
 
 	
 <target name="init" description="Initializes properties and prints version, release, and build.">
-    <property name="version" value="2013.2"/>
-    <property name="versionInt" value="132"/>
+    <property name="release" value="2013.3"/>                     <!-- CHANGEIT for new release. -->
+    <property name="releaseInt" value="133"/>                     <!-- CHANGEIT for new release. -->
 
     <tstamp>
         <format property="dateString" pattern="yyMMdd" />
@@ -26,23 +26,20 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
 
     <property name="base" value="/home/f/fl/bergdb"/>             <!-- CHANGEIT for your environment. -->
     <property name="javac" value="/a/pr/jdk1.5.0_22/bin/javac"/>  <!-- CHANGEIT for your environment. -->
-    <property name="release" value="${version}.${dateString}"/>
-    <property name="build" value="${version}.${minuteString}"/>
+    <property name="build" value="${release}.${minuteString}"/>
 
     <!-- bergdb.core.BuildInfo.java is machine generated from template. -->
 	<copy file="in/BuildInfoTemplate.txt" 
             toFile="src/bergdb/core/BuildInfo.java"
             overwrite="true">
 	    <filterset begintoken="{{" endtoken="}}">
-	        <filter token="version" value="${version}"/>
-	        <filter token="versionInt" value="${versionInt}"/>
+	        <filter token="releaseInt" value="${releaseInt}"/>
 	        <filter token="release" value="${release}"/>
 	        <filter token="build" value="${build}"/>
 	    </filterset>
 	</copy>
 
-    <echo>version: ${version}</echo>
-    <echo>versionInt: ${versionInt}, release: ${release}, build: ${build}</echo>
+    <echo>release: ${release}, releaseInt: ${releaseInt}, build: ${build}</echo>
 </target>
 	
 	
@@ -87,7 +84,6 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
         <attribute name="Author" value="Frans Lundberg"/>
         <attribute name="Ant-Version" value=""/>    <!-- how to remove completely? -->
         <attribute name="Created-By" value=""/>     <!-- only managed to overwrite -->
-        <attribute name="version" value="${version}"/>
         <attribute name="release" value="${release}"/>
         <attribute name="build" value="${build}"/>
     </manifest>
@@ -99,9 +95,9 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
         <zipfileset src="in/icu-for-bergdb.jar"/>
     </jar>
 	
-    <copy tofile="${base}/${version}/bergdb.jar" 
+    <copy tofile="${base}/${release}/bergdb.jar" 
             file="out/bergdb.jar" overwrite="true"/>
-	<copy todir="${base}/${version}/more/dev/dotnet/" 
+	<copy todir="${base}/${release}/more/dev/dotnet/" 
 	        file="out/bergdb.jar" overwrite="true"/>
 
     <!-- bergdb-no-icu.jar (used by dev/kissdb-for-c (gcc)) -->
@@ -116,7 +112,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
         </fileset>
     </jar>
 	
-	<copy todir="${base}/${version}/more/" file="out/bergdb-no-icu.jar" overwrite="true"/>
+	<copy todir="${base}/${release}/more/" file="out/bergdb-no-icu.jar" overwrite="true"/>
     
     <!-- bergdb-core.jar - Core Layer build -->
 
@@ -129,7 +125,6 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
         <attribute name="Author" value="Frans Lundberg"/>
         <attribute name="Ant-Version" value=""/>
         <attribute name="Created-By" value=""/>
-        <attribute name="version" value="${version}"/>
         <attribute name="release" value="${release}"/>
         <attribute name="build" value="${build}"/>
     </manifest>
@@ -140,6 +135,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
         	<include name="bergdb/common/**"/>
         	<include name="bergdb/stream/**"/>
         	<include name="bergdb/storage/**"/>
+        	<include name="bergdb/graph/**"/>
         	<include name="bergdb/core/**"/>
         	<include name="bergdb/coredev/**"/>
 
@@ -154,11 +150,11 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
             <include name="bergdb/pub/JobStatus.class"/>
 
             <!-- coredev, nanotest could be omitted, but does not reduce jar size much. 
-                Worth keeping them to have self-tests included. -->
+                 Worth keeping them to have self-tests included. -->
         </fileset>
     </jar>
 	
-	<copy todir="${base}/${version}/more/" file="out/bergdb-core.jar" overwrite="true"/>
+	<copy todir="${base}/${release}/more/" file="out/bergdb-core.jar" overwrite="true"/>
 
     <!-- jar for instrumentation, used by bergdb.dev.ObjectSize. inst.jar 
          Only used for developement purpose only. -->
@@ -185,17 +181,17 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
 
 	
 <target name="javadoc" depends="init, compile" description="Creates javadoc.">
-    <property name="javadoc-dir" value="${base}/${version}/javadoc"/>
-    <property name="javadoc-all-dir" value="${base}/${version}/more/javadoc-all"/>
+    <property name="javadoc-dir" value="${base}/${release}/javadoc"/>
+    <property name="javadoc-all-dir" value="${base}/${release}/more/javadoc-all"/>
 	
-    <mkdir dir="${base}/${version}"/>   <!-- Creates directory in case it would not exist. -->
+    <mkdir dir="${base}/${release}"/>   <!-- Creates directory in case it would not exist. -->
     <delete dir="${javadoc-dir}" failonerror="false"/>
     <delete dir="${javadoc-all-dir}" failonerror="false"/>
 
     <javadoc destdir="${javadoc-dir}"
     	    overview="src/overview-pub.html"
-            doctitle="BergDB ${version} Pub API"
-            windowtitle="BergDB ${version} Pub API"
+            doctitle="BergDB ${release} Pub API"
+            windowtitle="BergDB ${release} Pub API"
             footer="&lt;a href=&quot;http://bergdb.com/&quot;>BergDB&lt;a> release: ${release}. Copyright Frans Lundberg."
             encoding="utf-8"
     	    stylesheetfile="in/style.css">
@@ -213,8 +209,8 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
 	
     <javadoc destdir="${javadoc-all-dir}"
     	    overview="src/overview-all.html"
-            doctitle="BergDB ${version} javadoc-all"
-            windowtitle="BergDB ${version} javadoc-all"
+            doctitle="BergDB ${release} javadoc-all"
+            windowtitle="BergDB ${release} javadoc-all"
             footer="&lt;a href=&quot;http://bergdb.com/&quot;>BergDB&lt;a> release: ${release}. Copyright Frans Lundberg."
             encoding="utf-8"
     	    linksource="no"

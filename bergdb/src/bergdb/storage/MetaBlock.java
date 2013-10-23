@@ -13,7 +13,7 @@ import bergdb.nanotest.T;
  * <pre>
  * FORMAT OF A META BLOCK, v133
  * Offset  Size    Description
- * 0       4       Magic bytes, meta block signature. Always the bytes for ASCII ":-*d".
+ * 0       4       Magic bytes, meta block signature. Always the bytes for ASCII "berg".
  * 4       4       Version of BergDB stream format (currently 133).
  * 8       8       time, database time as a long (Little-endian-first byte order).
  * 16      8       lastTrans, spos of last valid transaction completely written
@@ -41,8 +41,7 @@ import bergdb.nanotest.T;
  */
 public class MetaBlock {
     private static final byte META_BLOCK_LAST_BYTE = (byte) Util.identity(10);
-    private static final byte[] MAGIC = new byte[] {':', '-', '*', 'd'};
-    //private static final int STREAM_FORMAT_VERSION = Util.identity(131);    
+    private static final byte[] MAGIC = new byte[] {'b', 'e', 'r', 'g'};
     private static final int STREAM_FORMAT_VERSION = Util.identity(133);    
     private byte[] block;
     private long pos;         // stream pos, only used sometimes

@@ -4,9 +4,9 @@ import java.util.Iterator;
 
 import bergdb.common.EventToWaitFor;
 import bergdb.core.Db;
-import bergdb.coreds.GetMany;
-import bergdb.coreds.Keys;
-import bergdb.coreds.Kvt;
+import bergdb.graph.GetMany;
+import bergdb.graph.Keys;
+import bergdb.graph.Kvt;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.pub.*;
