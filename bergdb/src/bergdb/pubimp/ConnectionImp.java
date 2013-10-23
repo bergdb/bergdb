@@ -146,6 +146,10 @@ public class ConnectionImp implements Connection {
         return w().put(ukey, object).build().execute();
     }
     
+    public Transaction put(Object object) {
+        return w().put(object).build().execute();
+    }
+    
     /**
      * Get method for internal use.
      * All gets (calls to Db.get() from Pub Layer) should go through this method

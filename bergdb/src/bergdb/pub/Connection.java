@@ -96,12 +96,22 @@ public interface Connection extends ReadInterface {
     
     /**
      * Stores a single object to the database.
+     * The transaction is executed immediately without an explicit call to execute().
      * 
      * @param key
      * @param object
      */
-    // TODO D. Document.
+    // TODO A. Document. Exceptions...
     public Transaction put(String key, Object object);
+    
+    /**
+     * Stores a single object using the 'key' field as the database key.
+     * The transaction is executed immediately without an explicit call to execute().
+     * 
+     * @param object
+     */
+    // TODO A. Document. Exceptions...
+    public Transaction put(Object object);
     
     /**
      * Creates a builder object used to build a write transaction.

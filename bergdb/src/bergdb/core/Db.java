@@ -102,10 +102,9 @@ public class Db implements IWarner {
     
     /** 
      * IKP - internal key prefix - prefix of keys used to store internal database data.
-     * Is set to /#ikp/ for 2013.2.130818. Could be changed to "/#i/", but that destroys binary 
-     * compatibility.
+     * 131023: changed from /#ikp/ to "/#i/", destroyed binary compatibility.
      */
-    public static final String INTERNAL_KEY_PREFIX = Util.identity("/#ikp/");
+    public static final String INTERNAL_KEY_PREFIX = Util.identity("/#i/");
     
     private static final long[] DUMMY_KEY = Keys.toSegments(INTERNAL_KEY_PREFIX + "-dummy");
     
