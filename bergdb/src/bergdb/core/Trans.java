@@ -7,7 +7,7 @@ import java.util.TreeMap;
 import bergdb.common.Util;
 import bergdb.graph.GetData;
 import bergdb.graph.Keys;
-import bergdb.graph.TransactionNodes;
+import bergdb.graph.TransNodes;
 import bergdb.nanotest.T;
 
 /**
@@ -115,7 +115,7 @@ public class Trans {
         /**
          * Reports that the nodes were written to stream.
          */
-        public void nodesWritten(TransactionNodes nodes);
+        public void nodesWritten(TransNodes nodes);
     }
     
     public static final NoActionListener NO_ACTION_LISTENER = new NoActionListener();
@@ -124,7 +124,7 @@ public class Trans {
      * A Trans.Listener implementation that does nothing.
      */
     public static class NoActionListener implements Listener {
-        public void nodesWritten(TransactionNodes nodes) {}
+        public void nodesWritten(TransNodes nodes) {}
     }
     
     /**

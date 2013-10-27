@@ -4,13 +4,13 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
 /**
- * A specialized, performant collection to keep nodes in the node set of a transaction.
+ * A specialized, performant collection containing the nodes included in one transaction.
  * The three nodes types: TopNode, KeyNode, ValueNode are kept in separate arrays to allow
  * for type-specific optimizations.
  * 
  * @author Frans Lundberg
  */
-public class TransactionNodes implements IDirtyNodes.TransactionNodesForMe, TransSeq.TransactionNodesForMe {
+public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNodesForMe {
     //
     // The class must support the same node added to it several times without causing duplicates.
     // Should be a set of unique nodes.
@@ -30,7 +30,7 @@ public class TransactionNodes implements IDirtyNodes.TransactionNodesForMe, Tran
     public long[][] keys;         // key for each value node, size = valueSize
     public Choices[] choices;     // choices for each value node, size = valueSize
     
-    public TransactionNodes() {
+    public TransNodes() {
         topNodes = new TopNode[INITIAL_SIZE];
         topSize = 0;
         
@@ -133,8 +133,8 @@ public class TransactionNodes implements IDirtyNodes.TransactionNodesForMe, Tran
     }
     
     public final void addTopNode(TopNode node) {
-        if (!node.isInTransactionNodes) {
-            node.isInTransactionNodes = true;
+        if (!node.isInTransNodes) {
+            node.isInTransNodes = true;
             
             if (topSize == topNodes.length) {
                 TopNode[] newNodes = new TopNode[topNodes.length * 2];
@@ -148,8 +148,8 @@ public class TransactionNodes implements IDirtyNodes.TransactionNodesForMe, Tran
     }
     
     public final void addKeyNode(KeyNode node) {
-        if (!node.isInTransactionNodes) {
-            node.isInTransactionNodes = true;
+        if (!node.isInTransNodes) {
+            node.isInTransNodes = true;
             
             if (keySize == keyNodes.length) {
                 KeyNode[] newNodes = new KeyNode[keyNodes.length * 2];
@@ -253,7 +253,7 @@ public class TransactionNodes implements IDirtyNodes.TransactionNodesForMe, Tran
         assert topSize <= topNodes.length;
         
         for (int i = 0; i < topSize; i++) {
-            topNodes[i].isInTransactionNodes = false;
+            topNodes[i].isInTransNodes = false;
             topNodes[i] = null;
         }
         if (counter % 983 == 0 && topNodes.length > INITIAL_SIZE * 4) {
@@ -266,7 +266,7 @@ public class TransactionNodes implements IDirtyNodes.TransactionNodesForMe, Tran
         assert keySize <= keyNodes.length;
         
         for (int i = 0; i < keySize; i++) {
-            keyNodes[i].isInTransactionNodes = false;
+            keyNodes[i].isInTransNodes = false;
             keyNodes[i] = null;
         }
         if (counter % 991 == 0 && keyNodes.length > INITIAL_SIZE * 4) {
@@ -332,7 +332,7 @@ public class TransactionNodes implements IDirtyNodes.TransactionNodesForMe, Tran
     public static void test1() {
         // Tests simple create, add, get, size.
         
-        TransactionNodes nodes = new TransactionNodes();
+        TransNodes nodes = new TransNodes();
         ValueNode v1 = new ValueNode();
         ValueNode v2 = new ValueNode();
         
@@ -346,21 +346,21 @@ public class TransactionNodes implements IDirtyNodes.TransactionNodesForMe, Tran
     
     @T
     public static void testIsInTransactionNodes() {
-        TransactionNodes nodes = new TransactionNodes();
+        TransNodes nodes = new TransNodes();
         ValueNode v1 = new ValueNode();
         
-        Assert.assertEquals(false, v1.isInTransactionNodes());
+        Assert.assertEquals(false, v1.isInTransNodes());
         nodes.addValueNode(v1, null);
-        Assert.assertEquals(true, v1.isInTransactionNodes());
+        Assert.assertEquals(true, v1.isInTransNodes());
         nodes.clear();
-        Assert.assertEquals(false, v1.isInTransactionNodes());
+        Assert.assertEquals(false, v1.isInTransNodes());
     }
     
     @T
     public static void testLarge1() {
-        int count = TransactionNodes.INITIAL_SIZE * 2 + 10;
+        int count = TransNodes.INITIAL_SIZE * 2 + 10;
         int index = count / 2;
-        TransactionNodes nodes = new TransactionNodes();
+        TransNodes nodes = new TransNodes();
         ValueNode v = null;
         
         for (int i = 0; i < count; i++) {
@@ -383,8 +383,8 @@ public class TransactionNodes implements IDirtyNodes.TransactionNodesForMe, Tran
         //
         // Tests that length of this.nodes goes back to initialSize.
         //
-        int count = TransactionNodes.INITIAL_SIZE * 4 + 10;
-        TransactionNodes nodes = new TransactionNodes();
+        int count = TransNodes.INITIAL_SIZE * 4 + 10;
+        TransNodes nodes = new TransNodes();
         
         for (int i = 0; i < count; i++) {
             ValueNode value = new ValueNode();

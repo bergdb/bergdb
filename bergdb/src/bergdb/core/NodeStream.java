@@ -9,7 +9,7 @@ import bergdb.graph.KeyNode;
 import bergdb.graph.Spos;
 import bergdb.graph.StreamChecksumException;
 import bergdb.graph.TopNode;
-import bergdb.graph.TransactionNodes;
+import bergdb.graph.TransNodes;
 import bergdb.graph.ValueNode;
 import bergdb.storage.MetaBlock;
 import bergdb.storage.RecoverableStream;
@@ -118,9 +118,9 @@ public class NodeStream implements bergdb.graph.Graph.NodeReader {
      *              trans.byteSize.
      * @throws StreamIoException
      */
-    public boolean appendNodes(long transactionTime, TransactionNodes nodes, Trans trans) {
+    public boolean appendNodes(long transactionTime, TransNodes nodes, Trans trans) {
         //
-        // 130430: Changed to use new version of TransactionNodes (separates node types).
+        // 130430: Changed to use new version of TransNodes (separates node types).
         // 130409: boolean return instead of void.
         // 121009: We now allow noop operation, that is, nodesToAdd.size() == 0.
         // 

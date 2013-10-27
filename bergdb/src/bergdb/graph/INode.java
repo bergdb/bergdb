@@ -120,11 +120,11 @@ public interface INode {
      */
     //public int toBytes(byte[] buffer, int offset, long prevPos);
     
-    /** Only used by class TransactionNodes. */
-    public boolean isInTransactionNodes();
+    /** Only used by class TransNodes. */
+    public boolean isInTransNodes();
     
-    /** Only used by class TransactionNodes. */
-    public void setIsInTransactionNodes(boolean b);
+    /** Only used by class TransNodes. */
+    public void setIsInTransNodes(boolean b);
 }
 
 /*
@@ -140,7 +140,7 @@ Refactoring. Added parameter 'prevPos' to toBytes(). Not all node types need to 
 Only KeyNode, actually.
 
 ---- Implementation note, 2012-05 ----
-The special isInTransactionNodes() and setIsInTransactionNodes() methods are unortodox. They
-provide a one-bit storage for the TransactionNodes data structure. This allows an important
+The special isInTransNodes() and setIsInTransNodes() methods are unortodox. They
+provide a one-bit storage for the TransNodes data structure. This allows an important
 performance optimization to be made.
 */

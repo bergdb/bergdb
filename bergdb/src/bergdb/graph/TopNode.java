@@ -40,7 +40,7 @@ public final class TopNode implements INode {
     //public volatile boolean isDirty;
         // Synch note: This field is accessed by threads not holding DB.writeLock, so we need
         // field to be volatile to publish writes.
-    public boolean isInTransactionNodes;
+    public boolean isInTransNodes;
         // Synch note: protected by DB.writeLock.
     
     private static final int MAX_HEIGHT = 30;
@@ -434,12 +434,12 @@ public final class TopNode implements INode {
         this.id = id;
     }
 
-    public final boolean isInTransactionNodes() {
-        return isInTransactionNodes;
+    public final boolean isInTransNodes() {
+        return isInTransNodes;
     }
 
-    public final void setIsInTransactionNodes(boolean b) {
-        this.isInTransactionNodes = b;
+    public final void setIsInTransNodes(boolean b) {
+        this.isInTransNodes = b;
     }
     
     

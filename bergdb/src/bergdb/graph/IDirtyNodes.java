@@ -37,14 +37,14 @@ public interface IDirtyNodes {
      * @param dirtyLimit A node with an spos less than this is "too dirty".
      * @param list The list to add the too dirty nodes to.
      */
-    public void getAndRemoveTooDirtyNodes(long dirtyLimit, TransactionNodesForMe list);
+    public void getAndRemoveTooDirtyNodes(long dirtyLimit, TransNodesForMe list);
 
     
     /**
-     * The method subset of core.TransactionNodes needed by this class.
+     * The method subset of core.TransNodes needed by this class.
      * This type is useful to minimize dependency, good for testing / mocks.
      */
-    public static interface TransactionNodesForMe {
+    public static interface TransNodesForMe {
         public void addTopNode(TopNode node);
         public void addKeyNode(KeyNode node);
     }

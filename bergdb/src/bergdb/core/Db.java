@@ -31,7 +31,7 @@ import bergdb.graph.Spos;
 import bergdb.graph.TopDs;
 import bergdb.graph.TopNode;
 import bergdb.graph.TransSeq;
-import bergdb.graph.TransactionNodes;
+import bergdb.graph.TransNodes;
 import bergdb.graph.ValueNode;
 import bergdb.graph.Graph.PointerListener;
 import bergdb.nanotest.Assert;
@@ -162,7 +162,7 @@ public class Db implements IWarner {
     private PutData pd;
     
     /** The nodes updated for the current transaction. To be written to the stream. */
-    private final TransactionNodes transactionNodes;
+    private final TransNodes transNodes;
     
     /** Current transaction while writeLock is held. */
     private Trans trans;
@@ -246,7 +246,7 @@ public class Db implements IWarner {
         builder = b;
 
         evictRandom = new Random(0);
-        transactionNodes = new TransactionNodes();
+        transNodes = new TransNodes();
         keyModSet = new KeyModSet2();
  
         this.startupDistance = b.startupDistance;
@@ -811,15 +811,15 @@ public class Db implements IWarner {
         this.pd = graph.newPutData();
         this.pd.nodeChangeListener = new Graph.NodeChangeListener() {
             public void topNodeChanged(TopNode node) {
-                transactionNodes.addTopNode(node);
+                transNodes.addTopNode(node);
             }
             
             public void newValueNode(ValueNode node, long[] key) {
-                transactionNodes.addValueNode(node, key);
+                transNodes.addValueNode(node, key);
             }
             
             public void keyNodeChanged(KeyNode node) {
-                transactionNodes.addKeyNode(node);
+                transNodes.addKeyNode(node);
             }
         };
 
@@ -920,8 +920,8 @@ public class Db implements IWarner {
             dbClock.transactionEnd();
         }
         
-        this.transactionNodes.addKeyNode(root);
-        this.transactionNodes.addTopNode(top.getSuperRoot());
+        this.transNodes.addKeyNode(root);
+        this.transNodes.addTopNode(top.getSuperRoot());
         
         this.trans = Trans.builder().build();
         
@@ -1285,7 +1285,7 @@ public class Db implements IWarner {
         t.getData.evictData.enableEvict = enableEvict;
         
         synchronized (writeLock) {
-            if (!isPrimordial) assert transactionNodes.size() == 0;
+            if (!isPrimordial) assert transNodes.size() == 0;
             this.pd.spaceSplitCount = 0;
             
             this.trans = t;
@@ -1354,7 +1354,7 @@ public class Db implements IWarner {
     
     /**
      * Records choices and ensures that index nodes last written to stream before limit
-     * is added to transactionNodes.
+     * is added to transNodes.
      */
     private void recordChoicesAndEnsureIncluded(final long limit) {        
         GetData gd = graph.newGetData();
@@ -1366,7 +1366,7 @@ public class Db implements IWarner {
         gd.pointerListener = new PointerListener() {
             public void superRootAccessed(TopNode superRoot) {
                 if (superRoot.getSpos() < limit) {
-                    transactionNodes.addTopNode(superRoot);
+                    transNodes.addTopNode(superRoot);
                 }
             }
             
@@ -1374,27 +1374,27 @@ public class Db implements IWarner {
                     int pointerType) {
                 if (result.getSpos() < limit && result.isTopOrKeyNode()) {
                     if (result.getType() == INode.TYPE_TOP_NODE) {
-                        transactionNodes.addTopNode((TopNode) result);
+                        transNodes.addTopNode((TopNode) result);
                     } else {
-                        transactionNodes.addKeyNode((KeyNode) result);
+                        transNodes.addKeyNode((KeyNode) result);
                     }
                 }
                 finalChoice[0].add(pointerIndex);
             }
         };
         
-        for (int i = 0; i < transactionNodes.valueSize; i++) {
-            finalChoice[0] = transactionNodes.choices[i];
-            long[] key = transactionNodes.keys[i];
+        for (int i = 0; i < transNodes.valueSize; i++) {
+            finalChoice[0] = transNodes.choices[i];
+            long[] key = transNodes.keys[i];
             byte[] value = getOne(gd.actualLookupTime, key, gd);
             
-            assert transactionNodes.valueNodes[i].isDelete() || Assert.arrayEquals(transactionNodes.valueNodes[i].getValue(), value);
+            assert transNodes.valueNodes[i].isDelete() || Assert.arrayEquals(transNodes.valueNodes[i].getValue(), value);
         }
     }
 
     /**
-     * Writes the nodes in this.transactionNodes to stream. Uses this.trans, 
-     * this.transactionNodes, this.metaBlock, this.cacheMemoryValue, and more.
+     * Writes the nodes in this.transNodes to stream. Uses this.trans, 
+     * this.transNodes, this.metaBlock, this.cacheMemoryValue, and more.
      * The caller must hold DB.writeLock.
      * 
      * @throws StreamIoException
@@ -1419,7 +1419,7 @@ public class Db implements IWarner {
         // An DbForMe interface sent to KeyNode methods that may enlarge its memory use,
         // and to constructors of ValueNode, KeyNode, TopNode. Maybe overkill?
 
-        this.cachedMemoryValue.addAndGet(transactionNodes.sumMemSize());
+        this.cachedMemoryValue.addAndGet(transNodes.sumMemSize());
 
         // NOTE The current implementation works (120522)
         // However, a small transaction that comes after a large one, will often get unfairly
@@ -1429,35 +1429,35 @@ public class Db implements IWarner {
         // This can be solved. The total size of the transaction nodes can be computed first, 
         // then..
 
-        int ordinaryNodeCount = transactionNodes.size();
+        int ordinaryNodeCount = transNodes.size();
         
         long startupPos2 = startupPos.next(this.startupDistance, nodeStream.getLength());
         
         if (graph != null) {
-            graph.getTransSeq().addToTransactionNodes(startupPos2, transactionNodes);
+            graph.getTransSeq().addToTransNodes(startupPos2, transNodes);
             recordChoicesAndEnsureIncluded(startupPos2);
         }
         
         computeStats(ordinaryNodeCount);
 
         assert trans != null : "trans is null";
-        assert transactionNodes != null : "transactionNodes is null";
+        assert transNodes != null : "transNodes is null";
         
-        trans.nodeCount = transactionNodes.size();
+        trans.nodeCount = transNodes.size();
         
-        nodeStream.appendNodes(trans.transactionTime, transactionNodes, trans);
+        nodeStream.appendNodes(trans.transactionTime, transNodes, trans);
 
         MetaBlock meta = nodeStream.getMetaBlock();
         meta.setStartupPos(startupPos.get());
         
         if (graph != null) {
-            graph.getTransSeq().add(transactionNodes.createTset(trans.tpos, trans.lastSpos));            
+            graph.getTransSeq().add(transNodes.createTset(trans.tpos, trans.lastSpos));            
             graph.getTransSeq().removeBeforeSpos(startupPos2);
         }
         
-        this.nodesWritten += transactionNodes.size();
+        this.nodesWritten += transNodes.size();
         this.ordinaryNodesWritten += ordinaryNodeCount;
-        trans.listener.nodesWritten(transactionNodes);
+        trans.listener.nodesWritten(transNodes);
     }
 
     /**
@@ -1468,7 +1468,7 @@ public class Db implements IWarner {
     private void computeStats(int ordinaryNodeCount) {
         // Computes dirtyFraction100, dirtyFraction1000.
         
-        int totalNodeCount = transactionNodes.size();
+        int totalNodeCount = transNodes.size();
         int dirtyNodeCount = totalNodeCount - ordinaryNodeCount;
         double dirtyFraction = ((double) dirtyNodeCount) / totalNodeCount;
         this.dirtyFraction100   = 0.99  * this.dirtyFraction100  +  0.01  * dirtyFraction;
@@ -1482,7 +1482,7 @@ public class Db implements IWarner {
     private void clearTransMemory() {
         assert Thread.holdsLock(writeLock);
         this.trans = null;
-        transactionNodes.clear();
+        transNodes.clear();
     }
 
     /**

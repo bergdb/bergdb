@@ -12,7 +12,7 @@ import bergdb.graph.INode;
 import bergdb.graph.KeyNode;
 import bergdb.graph.Keys;
 import bergdb.graph.TopNode;
-import bergdb.graph.TransactionNodes;
+import bergdb.graph.TransNodes;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.TestCollector;
@@ -55,7 +55,7 @@ public class UpdateFix {
         byte[] key1 = Keys.toBytes(updateKey);
         Trans t2 = Trans.builder().put(key1, new byte[123]).build();
         t2.listener = new Trans.Listener() {
-            public void nodesWritten(TransactionNodes nodes) {
+            public void nodesWritten(TransNodes nodes) {
                 for (int i = 0; i < nodes.size(); i++) {
                     INode n = nodes.get(i);
                     System.out.println("Trans node: " + n);

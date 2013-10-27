@@ -10,11 +10,12 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
 /**
- * An instance of this class keeps a sequence of index node sets in the
+ * <p>An instance of this class keeps a sequence of index node sets in the
  * startup interval. Each node set contains the index nodes of a particular 
- * transaction.
- * This class is not thread-safe, use external synchronization.
- * Normally, an object of this class is protected by Db.writeLock.
+ * transaction.</p>
+ * 
+ * <p>This class is not thread-safe, use external synchronization.
+ * Normally, an object of this class is protected by Db.writeLock.</p>
  * 
  * @author Frans Lundberg
  */
@@ -130,13 +131,7 @@ public class TransSeq {
     /**
      * Adds index nodes with a tpos < limit to tNodes.
      */
-    public void addToTransactionNodes(long limit, TransactionNodesForMe tNodes) {
-        //
-        // NOTE Consider: we may have multiple objects representing same node! I suppose, we
-        // should not use an INode as key, but use node.getSpos() instead, or possibly 
-        // node.getId(). Would be first functional use of node.getId() in that case, I believe.
-        // But, is this really true, can we have this provided that we always keep startup 
-        // interval index nodes in memory?
+    public void addToTransNodes(long limit, TransNodesForMe tNodes) {
         //
         // 1. Iterate nodes in update interval to create nodeToTpos.
         // 2. Iterate nodes in update interval to create forwardNodesA and childToParents.
@@ -264,12 +259,12 @@ public class TransSeq {
      * The method subset of core.TransactionNodes needed by this class.
      * This type is useful to minimize dependency, good for testing / mocks.
      */
-    public static interface TransactionNodesForMe {
+    public static interface TransNodesForMe {
         public void addTopNode(TopNode node);
         public void addKeyNode(KeyNode node);
     }
     
-    public static class TNodes implements TransactionNodesForMe {
+    public static class TNodes implements TransNodesForMe {
         public ArrayList<INode> nodes;
 
         public TNodes() {
@@ -427,7 +422,7 @@ public class TransSeq {
         s.add(ts3);
         
         TNodes t = new TNodes();
-        s.addToTransactionNodes(250, t);
+        s.addToTransNodes(250, t);
         
         Assert.assertEquals(0, t.nodes.size());
     }
@@ -454,16 +449,16 @@ public class TransSeq {
         s.add(new Tset(new INode[]{k31}, 300, 320));
         
         TNodes t = new TNodes();
-        s.addToTransactionNodes(150, t);
+        s.addToTransNodes(150, t);
         Assert.assertEquals(1, t.nodes.size());
         Assert.assertEquals(k11, t.nodes.get(0));
         
         t = new TNodes();
-        s.addToTransactionNodes(300, t);
+        s.addToTransNodes(300, t);
         Assert.assertEquals(1, t.nodes.size());
         
         t = new TNodes();
-        s.addToTransactionNodes(50, t);
+        s.addToTransNodes(50, t);
         Assert.assertEquals(0, t.nodes.size());
     }
     
@@ -499,7 +494,7 @@ public class TransSeq {
         s.add(new Tset(new INode[]{k31}, 300, 320));
         
         TNodes t = new TNodes();
-        s.addToTransactionNodes(350, t);
+        s.addToTransNodes(350, t);
         Assert.assertEquals(0, t.nodes.size());
     }
     
@@ -535,7 +530,7 @@ public class TransSeq {
         s.add(new Tset(new INode[]{k31}, 300, 320));
         
         TNodes t = new TNodes();
-        s.addToTransactionNodes(250, t);
+        s.addToTransNodes(250, t);
         Assert.assertEquals(1+2, t.nodes.size());
     }
     
@@ -585,7 +580,7 @@ public class TransSeq {
         s.add(new Tset(new INode[]{k31, k32, k33}, 300, 320));
         
         TNodes t = new TNodes();
-        s.addToTransactionNodes(250, t);
+        s.addToTransNodes(250, t);
         
         // t should include: k11, k12, k13, k14
         Assert.assertEquals(4, t.nodes.size());

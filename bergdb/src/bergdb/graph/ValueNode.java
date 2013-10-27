@@ -64,14 +64,14 @@ public final class ValueNode implements INode {
     /**
      * Caller must hold DB.writeLock.
      */
-    public final boolean isInTransactionNodes() {
+    public final boolean isInTransNodes() {
         return isInTransactionNodes;
     }
 
     /**
      * Caller must hold DB.writeLock.
      */
-    public final void setIsInTransactionNodes(boolean b) {
+    public final void setIsInTransNodes(boolean b) {
         this.isInTransactionNodes = b;
     }
 
