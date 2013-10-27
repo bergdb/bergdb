@@ -183,21 +183,21 @@ public class NodeStream implements bergdb.graph.Graph.NodeReader {
         totalSize += extraZeros;
         assert totalSize % TRANS_ALIGNMENT == 0 : totalSize + ", " + extraZeros;
         
-        trans.spos = transStartPos;
+        trans.tpos = transStartPos;
         trans.lastSpos = rstream.getSpos(transStartPos, totalSize - 1);
         trans.nextSpos = rstream.getSpos(transStartPos, totalSize);
         
         // Determines whether a metablock was written.
         // Assumes meta blocks are written eagerly.
         
-        long tSize = trans.lastSpos - trans.spos + 1;
+        long tSize = trans.lastSpos - trans.tpos + 1;
         if (tSize > RecoverableStream.META_BLOCK_SIZE) {
             if (tSize >= RecoverableStream.META_BLOCK_DISTANCE) {
                 wroteMetaBlock = true;
             } else {
-                long blockIndex1 = trans.spos / RecoverableStream.META_BLOCK_DISTANCE;
+                long blockIndex1 = trans.tpos / RecoverableStream.META_BLOCK_DISTANCE;
                 long blockIndex2 = trans.lastSpos / RecoverableStream.META_BLOCK_DISTANCE;                
-                wroteMetaBlock = (blockIndex1 != blockIndex2) || trans.spos == 0;
+                wroteMetaBlock = (blockIndex1 != blockIndex2) || trans.tpos == 0;
             }
         }
         
@@ -454,7 +454,7 @@ public class NodeStream implements bergdb.graph.Graph.NodeReader {
         TransIterator titer = new TransIterator(startSSPos);
         
         while (titer.next()) {
-            out.println("==== Trans at " + titer.transPos + " ====");
+            out.println("==== Trans at " + titer.tpos + " ====");
             NodeIterator niter = titer.getNodeIterator();
             while (niter.next()) {
                 INode inode = niter.node;
@@ -483,7 +483,8 @@ public class NodeStream implements bergdb.graph.Graph.NodeReader {
      */
     public class TransIterator {
         long startPos;
-        long transPos;
+        long tpos;          // stream pos of first byte of current transaction
+        long lastPos;       // stream pos of last byte of current transaction
         long nextTransPos;
         long transCount;
         boolean transOk;
@@ -513,34 +514,36 @@ public class NodeStream implements bergdb.graph.Graph.NodeReader {
                         // No valid transactions in stream.
                         return false;
                     }
-                    transPos = p;
+                    tpos = p;
                 } else {
-                    transPos = nextTransPos;
+                    tpos = nextTransPos;
                 }
                 
-                if (transPos >= rstream.getLength()) {
+                if (tpos >= rstream.getLength()) {
                     return false;
                 }
                 
                 byte[] buffer = new byte[4];
-                rstream.read(transPos, buffer, 0, 4);
+                rstream.read(tpos, buffer, 0, 4);
                 int size = Bytes.bytesToIntLE(buffer, 0);
                 if (size < 16 + 0 + 1) {
                     String message = "Bad transaction size, " + size 
-                            + ", transPos=" + transPos + ", stream size: " + rstream.getLength()
+                            + ", transPos=" + tpos + ", stream size: " + rstream.getLength()
                             + ", transCount=" + transCount;
                     throw new StreamFormatException(message);
                 }
                 
                 buffer = new byte[size];
-                rstream.read(transPos, buffer, 0, size);
+                rstream.read(tpos, buffer, 0, size);
                 byte lastByte = buffer[buffer.length - 1];
                 if (lastByte != 0 && lastByte != RecoverableStream.LAST_BYTE) {
                     throw new StreamFormatException("Bad lastByte: " + ((int) lastByte));
                 }
                 transOk = lastByte == 0 ? false : true;
                 transBuffer = buffer;
-                nextTransPos = rstream.getSpos(transPos, size);
+                
+                lastPos = rstream.getSpos(tpos, size - 1);
+                nextTransPos = rstream.getSpos(tpos, size);
                 
                 if (!transOk) {
                     continue start;
@@ -558,12 +561,18 @@ public class NodeStream implements bergdb.graph.Graph.NodeReader {
             return transactionTime;
         }
         
-        public final long getTransPos() {
-            return transPos;
+        /** Returns the stream pos of the first byte of the transaction. */
+        public final long getTpos() {
+            return tpos;
+        }
+        
+        /** Returns the stream pos of the last byte of the transaction. */
+        public final long getLastPos() {
+            return lastPos;
         }
         
         public NodeIterator getNodeIterator() {
-            return new NodeIterator(transPos, transBuffer);
+            return new NodeIterator(tpos, transBuffer);
         }
     }
     

@@ -44,8 +44,8 @@ public class Trans {
     
     public long transactionTime;    // Transaction time, also used as internally.
     public int splitCount;          // Number of node splits due to transaction.
-    public long spos;               // spos of the first byte of the transaction. Available after execute.
-    public long lastSpos;           // spos of the last byte of the transaction. Available after execute.
+    public long tpos;               // Stream position of the first byte of the transaction. Available after execute.
+    public long lastSpos;           // Stream position of the last byte of the transaction. Available after execute.
     public long nextSpos;           // spos of the next transaction. Available after execute.
     public int nodeCount;           // Number of nodes written to stream. Useful for testing/debug.
                                     // Note. Not super important, could be removed.

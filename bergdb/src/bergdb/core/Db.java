@@ -126,7 +126,6 @@ public class Db implements IWarner {
     private final IKeyModSet keyModSet;
     private final NodeStream nodeStream; // IO for DB to read/append nodes.
     private final StorageManager storageManager;
-    //private final DirtyNodes dirtyNodes;
     private int state = STATE_ZERO;
         // Synch note: writes published by readSynch.
     
@@ -216,8 +215,8 @@ public class Db implements IWarner {
     private double dirtyFraction100 = 0.10;
     private double dirtyFraction1000 = 0.10;
     
-    private long nextDirtyLimit;
-    private long currentDirtyLimit;     
+    //private long nextDirtyLimit;
+    //private long currentDirtyLimit;     
         // The current dirty limit; used by evict code. Index nodes with 
         // spos >= currentDirtyLimit must not be evicted.
         // SYNC: Concurrency to this field is handled by readLock. The execute() code
@@ -353,14 +352,14 @@ public class Db implements IWarner {
     /**
      * Suggests a new startup distance.
      * If the startup distance is reduced drastically, this method
-     * can cause a large transaction to be run. It is recommended that the 
+     * can cause a large transaction to run. It is recommended that the 
      * startup distance is reduced no more than 10M for every call to this 
      * method. Call this method repeatedly to reduce the startup distance
      * more than 10M.
      */
     public void setStartupDistance(long newDistance) {
         //
-        // A dummy transaction of size > META_BLOCK_DISTANCE is written
+        // A dummy transaction of size >= META_BLOCK_DISTANCE is written
         // to the stream to ensure that the new value of startupDistance is 
         // stored in a meta block in the stream.
         //
@@ -776,7 +775,7 @@ public class Db implements IWarner {
                 continue; // We can skip forward here
             }
             
-            listener.tpos(ti.transPos);
+            listener.tpos(ti.tpos);
 
             lastTransactionTime = ti.getTransactionTime();
             ArrayList<INode> tnodes = new ArrayList<INode>();
@@ -798,7 +797,7 @@ public class Db implements IWarner {
             
             INode[] nodeArray = new INode[tnodes.size()];
             tnodes.toArray(nodeArray);
-            seq.add(new TransSeq.Tset(nodeArray, ti.getTransPos()));
+            seq.add(new TransSeq.Tset(nodeArray, ti.getTpos(), ti.getLastPos()));
         }
 
         dbClock.setLastTransactionTime(lastTransactionTime);
@@ -932,9 +931,6 @@ public class Db implements IWarner {
         
         this.appendNodesToStream();
         this.clearTransMemory();
-        
-        //assert root.isDirty() == false : "space root is dirty";
-        //assert top.getSuperRoot().isDirty() == false : "super root is dirty";
     }
     
     /**
@@ -1336,8 +1332,8 @@ public class Db implements IWarner {
             appendNodesToStream();
             
             this.lastSposOfLastTrans = this.trans.lastSpos;
-            this.sposOfLastTrans = this.trans.spos;
-            this.currentDirtyLimit = this.nextDirtyLimit;
+            this.sposOfLastTrans = this.trans.tpos;
+            this.startupPos.releaseForEvict();
             
             clearTransMemory();
 
@@ -1435,11 +1431,10 @@ public class Db implements IWarner {
 
         int ordinaryNodeCount = transactionNodes.size();
         
-        //long startupPos1 = startupPos.get();
         long startupPos2 = startupPos.next(this.startupDistance, nodeStream.getLength());
         
         if (graph != null) {
-            graph.getTransSequence().addToTransactionNodes(startupPos2, transactionNodes);
+            graph.getTransSeq().addToTransactionNodes(startupPos2, transactionNodes);
             recordChoicesAndEnsureIncluded(startupPos2);
         }
         
@@ -1456,8 +1451,8 @@ public class Db implements IWarner {
         meta.setStartupPos(startupPos.get());
         
         if (graph != null) {
-            graph.getTransSequence().add(transactionNodes.createTSet(nodeStream.getLastTransSpos()));
-            graph.getTransSequence().removeBeforeSpos(startupPos2);
+            graph.getTransSeq().add(transactionNodes.createTset(trans.tpos, trans.lastSpos));            
+            graph.getTransSeq().removeBeforeSpos(startupPos2);
         }
         
         this.nodesWritten += transactionNodes.size();
@@ -1561,7 +1556,7 @@ public class Db implements IWarner {
 
         ed.pointerCount = 0;
         ed.evictCount = 0;
-        ed.dirtyLimit = this.currentDirtyLimit;
+        ed.startupPos = this.startupPos.get();
         evictInner(ed);
         evictBoss.reportEvictCount(ed);
     }
@@ -1642,7 +1637,7 @@ public class Db implements IWarner {
 
         pointee = node.rootPointer;
         if (pointee != null /*&& !pointee.isDirty()*/
-                && !(pointee.getSpos() >= ed.dirtyLimit)
+                && !(pointee.getSpos() >= ed.startupPos)
                 && AccessData.getAccessTimeNoChecks(node.rootPointerPos) <= limit) {
 
             // Probably an evictable pointer, but we must synch to make an
@@ -1652,7 +1647,7 @@ public class Db implements IWarner {
             synchronized (this.getPointerLock(node, 0)) {
                 pointee = node.rootPointer;
                 if (pointee != null /*&& !pointee.isDirty()*/
-                        && !(pointee.getSpos() >= ed.dirtyLimit)
+                        && !(pointee.getSpos() >= ed.startupPos)
                         && AccessData.getAccessTime(node.rootPointerPos) <= limit) {
                     node.rootPointerPos = pointee.getSpos();
                     node.rootPointer = null;
@@ -1674,7 +1669,7 @@ public class Db implements IWarner {
 
             if (pointee != null /*&& !pointee.isDirty()*/ 
                     && (pointeeSpos = pointee.getSpos()) != Spos.NULL
-                    && !(pointeeSpos >= ed.dirtyLimit)
+                    && !(pointeeSpos >= ed.startupPos)
                     && AccessData.getAccessTimeNoChecks(node.pointersPos[i]) <= limit) {
 
                 // Probably evictable pointer
@@ -1685,7 +1680,7 @@ public class Db implements IWarner {
                     
                     if (pointee != null /*&& !pointee.isDirty()*/ 
                             && pointeeSpos != Spos.NULL
-                            && !(pointeeSpos >= ed.dirtyLimit)
+                            && !(pointeeSpos >= ed.startupPos)
                             && AccessData.getAccessTimeNoChecks(node.pointersPos[i]) <= limit) {
                         node.pointersPos[i] = pointee.getSpos();
                         node.pointers[i] = null;
@@ -1721,14 +1716,14 @@ public class Db implements IWarner {
             long pointeeSpos;
             
             if (pointee != null /*&& !pointee.isDirty()*/
-                    && !((pointeeSpos = pointee.getSpos()) >= ed.dirtyLimit)
+                    && !((pointeeSpos = pointee.getSpos()) >= ed.startupPos)
                     && AccessData.getAccessTimeNoChecks(node.pos[i]) <= limit) {
                 synchronized (getPointerLock(node, i)) {
                     pointee = node.pointers[i];
                     pointeeSpos = pointee.getSpos();
 
                     if (pointee != null /*&& !pointee.isDirty()*/
-                            && !(pointeeSpos >= ed.dirtyLimit)
+                            && !(pointeeSpos >= ed.startupPos)
                             && AccessData.getAccessTime(node.pos[i]) <= limit) {
                         node.pos[i] = pointeeSpos;
                         node.pointers[i] = null;

@@ -615,13 +615,13 @@ public class Reclaim implements Db.TransactionListener {
         }
         
         public final void gotInternal(Trans t) {
-            totalInternalTransactionSize += (t.lastSpos - t.spos + 1);
+            totalInternalTransactionSize += (t.lastSpos - t.tpos + 1);
         }
         
         public final void gotExternal(Trans t) {
             // reclaimSize is the size currently allowed for space reclaim transactions.
             
-            totalExternalTransactionSize += (t.lastSpos - t.spos + 1);
+            totalExternalTransactionSize += (t.lastSpos - t.tpos + 1);
             long total = totalExternalTransactionSize + totalInternalTransactionSize;
             
             long reclaimSize = (long) ((total * internalFractionForIteration) - totalInternalTransactionSize);

@@ -249,7 +249,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     //    return dirtyNodes;
     //}
     
-    public final TransSeq getTransSequence() {
+    public final TransSeq getTransSeq() {
         return seq;
     }
 

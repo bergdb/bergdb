@@ -12,7 +12,7 @@ import bergdb.graph.GetData;
 import bergdb.graph.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.BasicCollector;
-//import bergdb.nanotest.T;
+import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;
 import bergdb.stream.MemoryStream;
 
@@ -36,45 +36,52 @@ public class StartupDistanceTester {
         out = c.out();
         random = new Random(0);
         stream = new MemoryStream();
-        db = Db.builder().mainStream(stream).startupDistance(100*1000).retainForever().build();
+        db = Db.builder().mainStream(stream).startupDistance(500*1000)
+                .retainForever()
+                .build();
         db.start();
         createAccounts();
         
         long posZero = trans.lastSpos;
         
-        db.setStartupDistance(200*1000);
-        Assert.assertEquals(100*1000, db.getStartupDistance());
+        db.setStartupDistance(1000*1000);
         db.sync();
-        out.println("Stream length: " + stream.getLength());
+        out.println(this.getClass() + "0. stream length: " + stream.getLength());
         
         payTillStreamSize(1.5e6);
         checkAccountSum(db);
-        Assert.assertEquals(200*1000, db.getStartupDistance());
-        out.println("Stream length: " + db.getStreamLength());
+        Assert.assertEquals(1000*1000, db.getStartupDistance());
+        out.println("1. Stream length: " + db.getStreamLength());
         
-        db.setStartupDistance(50*1000);
+        db.setStartupDistance(400*1000);
         payTillStreamSize(2.5e6);
         checkAccountSum(db);
-        Assert.assertEquals(50*1000, db.getStartupDistance());
-        out.println("Stream length: " + db.getStreamLength());
+        Assert.assertEquals(400*1000, db.getStartupDistance());
+        out.println("2. Stream length: " + db.getStreamLength());
         
         db.setStartupDistance(2000*1000);
         payTillStreamSize(5.5e6);
         checkAccountSum(db);
         Assert.assertEquals(2000*1000, db.getStartupDistance());
-        out.println("Stream length: " + db.getStreamLength());
+        out.println("3. Stream length: " + db.getStreamLength());
         
-        db.setStartupDistance(10*1000);
+        db.setStartupDistance(500*1000);
+        out.println("After setStartupDistance()");
+        
         payTillStreamSize(6.5e6);
         checkAccountSum(db);
-        Assert.assertEquals(10*1000, db.getStartupDistance());
-        out.println("Stream length: " + db.getStreamLength());
+        Assert.assertEquals(500*1000, db.getStartupDistance());
+        out.println("StartupDistanceTester: stream length: " + db.getStreamLength());
+        out.println("Calling sync()...");
         db.sync();
+        out.println("Calling stop()...");
         db.stop();
+        out.println("  stop() done.");
         
         Assert.assertEquals(db.getStreamLength(), stream.getLength());
         db = null;
         stream.assertOk();
+        c.out().println("db = null, now restarting from memory stream...");
         
         MemoryStream origStream = stream;
         MemoryStream stream = origStream.copy();
@@ -98,6 +105,9 @@ public class StartupDistanceTester {
             
             int toTruncate = random.nextInt(400*1000) + 1;
             long newLength = length - toTruncate;
+            
+            c.out().println("newLength: " + newLength);
+            
             if (newLength <= posZero) {
                 break;
             }
@@ -178,7 +188,7 @@ public class StartupDistanceTester {
         }
     }
     
-    // @T("f")   TODO B. Enable test.
+    @T("f")
     public static void t1(TestCollector c) throws Exception {
         new StartupDistanceTester().go(c);
     }

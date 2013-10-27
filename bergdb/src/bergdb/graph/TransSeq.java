@@ -10,7 +10,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
 /**
- * An instance of this class keeps a sequence of node sets in the
+ * An instance of this class keeps a sequence of index node sets in the
  * startup interval. Each node set contains the index nodes of a particular 
  * transaction.
  * This class is not thread-safe, use external synchronization.
@@ -104,7 +104,9 @@ public class TransSeq {
     }
     
     /**
-     * Accepts the visitors over all TSets and nodes with a tpos < limit.
+     * Accepts a visitor which will visit nodes of all Tsets with a tpos &lt; limit.
+     * Only nodes not written to stream after they where included in the Tset 
+     * is visited. That is, only nodes for node.spos &lt; tset.lastPos is visited.
      */
     public void acceptVisitor(long limit, Visitor visitor) {
         if (isEmpty()) {
@@ -115,18 +117,22 @@ public class TransSeq {
         while (s != null && s.tpos < limit) {
             visitor.tset(s);
             for (int i = 0; i < s.nodes.length; i++) {
-                visitor.node(s.nodes[i]);
+                INode node = s.nodes[i];
+                
+                if (node.getSpos() < s.lastPos) {
+                    visitor.node(s.nodes[i]);
+                }
             }
             s = s.next;
         }
     }
     
     /**
-     * Adds nodes with a tpos < limit to the supplied transaction node collection.
+     * Adds index nodes with a tpos < limit to tNodes.
      */
     public void addToTransactionNodes(long limit, TransactionNodesForMe tNodes) {
         //
-        // TODO B. Consider: we may have multiple objects representing same node! I suppose, we
+        // NOTE Consider: we may have multiple objects representing same node! I suppose, we
         // should not use an INode as key, but use node.getSpos() instead, or possibly 
         // node.getId(). Would be first functional use of node.getId() in that case, I believe.
         // But, is this really true, can we have this provided that we always keep startup 
@@ -149,6 +155,13 @@ public class TransSeq {
             }
 
             public void node(INode node) {
+                Long prev = nodeToTpos.get(node);
+                if (prev != null) {
+                    String message = "Error, bad state, already has mapping: " + node + " -> " 
+                            + prev + ", new tpos: " + tpos;
+                    throw new AssertionError(message);
+                }
+                
                 nodeToTpos.put(node, tpos);
             }
         });
@@ -208,8 +221,11 @@ public class TransSeq {
         final HashSet<INode> forwardNodesB = new HashSet<INode>();
         
         for (INode node : forwardNodesA) {
-            forwardNodesB.add(node);
-            addAncestors(node, forwardNodesB, childToParents, 0);
+            boolean added = forwardNodesB.add(node);
+            
+            if (added) {
+                addAncestors(node, forwardNodesB, childToParents, 0);
+            }
         }
         
         for (INode node : forwardNodesB) {
@@ -233,14 +249,13 @@ public class TransSeq {
             ArrayList<INode>> childToParents, int recurseDepth) {
         List<INode> parents = childToParents.get(node);
         
-        //if (recurseDepth > 30) {
-        //    System.out.println("TransSequence.addAncestors, node: " + node);
-        //}
-        
         if (parents != null) {
             for (INode p : parents) {
-                set.add(p);
-                addAncestors(p, set, childToParents, recurseDepth + 1);   // TODO A. Loops forever for StartupDistanceTester.
+                assert p != null;
+                boolean added = set.add(p);
+                if (added) {
+                    addAncestors(p, set, childToParents, recurseDepth + 1);
+                }
             }
         }
     }
@@ -277,8 +292,9 @@ public class TransSeq {
     }
     
     /**
-     * A TSet is a collection of all top node and key nodes for a particular 
-     * transaction.
+     * A Tset is an immutable collection of all index nodes of a particular transaction.
+     * An object of this class also has a field called "next" used to TransSeq to create
+     * a linked-list between Tsets.
      */
     public static class Tset {
         /** Next element in the linked list. */
@@ -287,19 +303,24 @@ public class TransSeq {
         /** Transaction stream position. */
         public final long tpos;
         
+        /** Last stream position of the transaction. */
+        public final long lastPos;
+        
         /** The top/key nodes of the transaction. */
         public final INode[] nodes;
         
         private static final INode[] EMPTY = new INode[0];
         
-        public Tset(long tpos) {
+        public Tset(long tpos, long lastPos) {
             nodes = EMPTY;
             this.tpos = tpos;
+            this.lastPos = lastPos;
         }
         
-        public Tset(INode[] nodes, long tpos) {
+        public Tset(INode[] nodes, long tpos, long lastPos) {
             this.nodes = nodes;
             this.tpos = tpos;
+            this.lastPos = lastPos;
         }
     }
     
@@ -317,7 +338,7 @@ public class TransSeq {
     @T
     public static void test1() {
         TransSeq s = new TransSeq();
-        Tset ts = new Tset(100);
+        Tset ts = new Tset(100, 120);
         s.add(ts);
         
         Assert.assertEquals(1, s.getSize());
@@ -327,8 +348,8 @@ public class TransSeq {
     @T
     public static void test2() {
         TransSeq s = new TransSeq();
-        Tset ts1 = new Tset(100);
-        Tset ts2 = new Tset(200);
+        Tset ts1 = new Tset(100, 120);
+        Tset ts2 = new Tset(200, 220);
         
         s.add(ts1);
         s.add(ts2);
@@ -349,8 +370,8 @@ public class TransSeq {
     @T
     public static void testLastPos0() {
         TransSeq s = new TransSeq();
-        Tset ts1 = new Tset(100);
-        Tset ts2 = new Tset(200);
+        Tset ts1 = new Tset(100, 120);
+        Tset ts2 = new Tset(200, 220);
         
         s.add(ts1);
         s.add(ts2);
@@ -362,8 +383,8 @@ public class TransSeq {
     @T
     public static void testLastPos1() {
         TransSeq s = new TransSeq();
-        Tset ts1 = new Tset(100);
-        Tset ts2 = new Tset(200);
+        Tset ts1 = new Tset(100, 120);
+        Tset ts2 = new Tset(200, 220);
         
         s.add(ts1);
         s.add(ts2);
@@ -397,9 +418,9 @@ public class TransSeq {
         // Test with no nodes at all.
         
         TransSeq s = new TransSeq();
-        Tset ts1 = new Tset(100);
-        Tset ts2 = new Tset(200);
-        Tset ts3 = new Tset(300);
+        Tset ts1 = new Tset(100, 120);
+        Tset ts2 = new Tset(200, 220);
+        Tset ts3 = new Tset(300, 320);
         
         s.add(ts1);
         s.add(ts2);
@@ -428,9 +449,9 @@ public class TransSeq {
             // Forward pointer k11 --> k31
         
         TransSeq s = new TransSeq();
-        s.add(new Tset(new INode[]{k11}, 100));
-        s.add(new Tset(new INode[]{k21}, 200));
-        s.add(new Tset(new INode[]{k31}, 300));
+        s.add(new Tset(new INode[]{k11}, 100, 120));
+        s.add(new Tset(new INode[]{k21}, 200, 220));
+        s.add(new Tset(new INode[]{k31}, 300, 320));
         
         TNodes t = new TNodes();
         s.addToTransactionNodes(150, t);
@@ -473,9 +494,9 @@ public class TransSeq {
         k21.addKlong(100, Klong.create(Keys.toBytes("aaa")), k22, AccessData.DEFAULT_ACCESS_DATA);
      
         TransSeq s = new TransSeq();
-        s.add(new Tset(new INode[]{k11, k12, k13}, 100));
-        s.add(new Tset(new INode[]{k21, k22}, 200));
-        s.add(new Tset(new INode[]{k31}, 300));
+        s.add(new Tset(new INode[]{k11, k12, k13}, 100, 120));
+        s.add(new Tset(new INode[]{k21, k22}, 200, 220));
+        s.add(new Tset(new INode[]{k31}, 300, 320));
         
         TNodes t = new TNodes();
         s.addToTransactionNodes(350, t);
@@ -509,9 +530,9 @@ public class TransSeq {
             // forward pointer
         
         TransSeq s = new TransSeq();
-        s.add(new Tset(new INode[]{k11, k12, k13}, 100));
-        s.add(new Tset(new INode[]{k21, k22}, 200));
-        s.add(new Tset(new INode[]{k31}, 300));
+        s.add(new Tset(new INode[]{k11, k12, k13}, 100, 120));
+        s.add(new Tset(new INode[]{k21, k22}, 200, 220));
+        s.add(new Tset(new INode[]{k31}, 300, 320));
         
         TNodes t = new TNodes();
         s.addToTransactionNodes(250, t);
@@ -559,9 +580,9 @@ public class TransSeq {
             // k14 has forward pointer to k22.
         
         TransSeq s = new TransSeq();
-        s.add(new Tset(new INode[]{k11, k12, k13, k14}, 100));
-        s.add(new Tset(new INode[]{k21, k22}, 200));
-        s.add(new Tset(new INode[]{k31, k32, k33}, 300));
+        s.add(new Tset(new INode[]{k11, k12, k13, k14}, 100, 120));
+        s.add(new Tset(new INode[]{k21, k22}, 200, 220));
+        s.add(new Tset(new INode[]{k31, k32, k33}, 300, 320));
         
         TNodes t = new TNodes();
         s.addToTransactionNodes(250, t);
@@ -578,9 +599,3 @@ public class TransSeq {
         testAddToTransactionNodes1();
     }
 }
-
-// Linked list? 
-// -> a -> b -> c
-// Add new one, d, to end.
-// -> a -> b -> c -> d.
-// Remove from beginning. Set new head.
