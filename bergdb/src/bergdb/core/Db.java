@@ -1087,7 +1087,7 @@ public class Db implements IWarner {
 
     
     /**
-     * Waits until D1 durability has been achieved for stream position 'spos'.
+     * Waits until ordinary durability has been achieved for stream position 'spos'.
      * 
      * @throws StreamIoException
      */
@@ -1100,7 +1100,7 @@ public class Db implements IWarner {
     }
     
     /**
-     * Waits until syncStrong durability has been achieved for stream position 'spos'.
+     * Waits until strong durability has been achieved for stream position 'spos'.
      * 
      * @throws StreamIoException
      */
@@ -1113,11 +1113,26 @@ public class Db implements IWarner {
     }
     
     /**
-     * Waits for last stream position to be considered durable according to durability rule D2.
+     * Waits for last stream position to be considered durable according to ordinary sync.
      * 
      * @throws StreamIoException
      */
     public void sync() {
+        long spos;
+        
+        synchronized (writeLock) {
+            spos = this.lastSposOfLastTrans;
+        }
+        
+        sync(spos);
+    }
+    
+    /**
+     * Waits for last stream position to be considered durable according to strong sync.
+     * 
+     * @throws StreamIoException
+     */
+    public void syncStrong() {
         long spos;
         
         synchronized (writeLock) {

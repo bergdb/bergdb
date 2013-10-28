@@ -1,7 +1,5 @@
 package bergdb.pub;
 
-// TODO A. Consider methods: sync()/syncStrong().
-
 /**
  * A connection to a Database is used to set and get data stored in the database.
  * Given a Connection, get operations [<code>c.get(..)</code>], 
@@ -145,6 +143,22 @@ public interface Connection extends ReadInterface {
      */
     public <TYPE> UsePrimaryBuilder<TYPE> usePrimary(Class<TYPE> type) 
             throws NoSuchIndexException;
+    
+    /**
+     * Waits until ordinary durability has been achieved for the last transaction
+     * started with this connection.
+     * 
+     * @throws StreamIoException
+     */
+    public void sync();
+    
+    /**
+     * Waits until strong durability has been achieved for the last transaction
+     * started with this connection.
+     * 
+     * @throws StreamIoException
+     */
+    public void syncStrong();
 }
 
 /*
@@ -152,6 +166,8 @@ public interface Connection extends ReadInterface {
 Log
 ===
 
+131028 Added sync()/syncStrong().
+1310xx Changed "set" to "put".
 130605 Added usePrimary() method that returns a PrimaryIterBuilder and some renaming.
 130602 Added primary() method.
 130310 Changed to a single get method: public <TYPE> TYPE get(String key, Class<TYPE> clazz);

@@ -24,11 +24,13 @@ public class WTransaction implements Transaction {
      */
     public Transaction execute() {
         if (env.getObjectOpsSize() > 0) {
-            trans = RwTransaction.executeRW(env, connection, null);
+            trans = RwTransaction.executeRw(env, connection, null);
+            connection.lastSposOfLastTrans = trans.lastSpos;
         } else {
             trans = env.createTrans();
             try {
                 connection.getDb().execute(trans);
+                connection.lastSposOfLastTrans = trans.lastSpos;
             } catch (RerunException e) {
                 throw new Bug("should not happen, no objectOps");
             }

@@ -78,13 +78,24 @@ public interface Database {
     public Connection newConnection();
     
     /**
-     * Waits until the last started transaction has been stored durably.
+     * Waits until the last started transaction has been stored durably
+     * according to ordinary durability rules.
      * 
      * @throws IllegalDbStateException if start() has not been called.
+     * @throws StreamIoException if there was an error writing to the underlying
+     * database stream.
      */
     public void sync();
     
-    // TODO A. Consider a syncStrong() method here
+    /**
+     * Waits until the last started transaction has been stored durably
+     * according to strong durability rules.
+     * 
+     * @throws IllegalDbStateException if start() has not been called.
+     * @throws StreamIoException if there was an error writing to the underlying
+     * database stream.
+     */
+    public void syncStrong();
     
     /**
      * <p>Returns the current database time in 100 ns units. The returned time is guaranteed to be 

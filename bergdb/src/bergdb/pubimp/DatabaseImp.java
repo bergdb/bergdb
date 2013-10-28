@@ -135,6 +135,18 @@ public class DatabaseImp implements Database {
      * @throws IllegalDbStateException
      * @throws StreamIoException
      */
+    public void syncStrong() {
+        if (!started) {
+            throw new IllegalDbStateException("start() must be called first.");
+        }
+        
+        db.syncStrong();
+    }
+    
+    /**
+     * @throws IllegalDbStateException
+     * @throws StreamIoException
+     */
     public void syncInternal() {
         db.sync();
     }

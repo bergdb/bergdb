@@ -61,7 +61,8 @@ public class RwTransaction implements Transaction {
             throws StreamFormatException, StreamIoException, InternalDataException {
         assert action != null;
         RwEnvironmentImp env = new RwEnvironmentImp(connection);
-        this.trans = executeRW(env, connection, this);
+        this.trans = executeRw(env, connection, this);
+        connection.lastSposOfLastTrans = trans.lastSpos;
         return this;
     }
 
@@ -73,7 +74,7 @@ public class RwTransaction implements Transaction {
      * @throws StreamFormatException
      * @throws InternalDataException
      */
-    public static Trans executeRW(RwEnvironmentImp env, ConnectionImp connection, RwTransaction rw) {
+    public static Trans executeRw(RwEnvironmentImp env, ConnectionImp connection, RwTransaction rw) {
         long sleepTime = 10;
         final IndexManager m = connection.getDatabaseImp().getIndexManager();
         int runCount = 0;

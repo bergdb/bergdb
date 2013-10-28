@@ -19,6 +19,7 @@ public class ConnectionImp implements Connection {
     private long lookupTime;
     private boolean enableKeyReplace;
     private boolean freezeLookupTime;
+    long lastSposOfLastTrans;
     
     public ConnectionImp(DatabaseImp database) {
         assert database != null;
@@ -28,6 +29,7 @@ public class ConnectionImp implements Connection {
         this.getData.actualLookupTime = -1;
         this.lookupTime = Long.MAX_VALUE;
         this.enableKeyReplace = false;
+        this.lastSposOfLastTrans = 0;
     }
     
     public final void setLookupTime(long lookupTime) {
@@ -163,13 +165,6 @@ public class ConnectionImp implements Connection {
             this.lookupTime = getData.actualLookupTime;
         }
         
-//        String ukey;
-//        try {
-//            ukey = PubKeys.i2u(ikey);
-//        } catch (IllegalArgumentException e) {
-//            ukey = null;
-//        }
-        
         TYPE result = database.getKvToObject().createObject(clazz, ikey, value);
         return result;
     }
@@ -205,6 +200,24 @@ public class ConnectionImp implements Connection {
     public <TYPE> UsePrimaryBuilder<TYPE> usePrimary(Class<TYPE> type) {
         return new UsePrimaryBuilderImp<TYPE>(this, type, lookupTime);
     }
+    
+    /**
+     * Waits until ordinary durability has been achieved for the last transaction
+     * started with this connection.
+     * 
+     * @throws StreamIoException
+     */
+    public void sync() {
+        this.db.sync(lastSposOfLastTrans);
+    }
+    
+    /**
+     * Waits until strong durability has been achieved for the last transaction
+     * started with this connection.
+     * 
+     * @throws StreamIoException
+     */
+    public void syncStrong() {
+        this.db.syncStrong(lastSposOfLastTrans);
+    }
 }
-
-// NOTE Consider storing a RwEnvironmentImp object in this class. For performance. Heavy to initialize.
