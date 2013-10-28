@@ -84,6 +84,8 @@ public interface Database {
      */
     public void sync();
     
+    // TODO A. Consider a syncStrong() method here
+    
     /**
      * <p>Returns the current database time in 100 ns units. The returned time is guaranteed to be 
      * strictly less then the transaction time of any currently executing transaction (if any 

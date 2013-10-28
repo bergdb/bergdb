@@ -391,7 +391,7 @@ public class PubTester {
     }
     
     @T
-    public static void testWaitForD1() {
+    public static void testSync1() {
         MyDouble a = new MyDouble(1.2);
         a.key = "/a.obj";
         
@@ -399,17 +399,17 @@ public class PubTester {
         
         Transaction t = c.w().put(a).build();
         t.execute();
-        t.waitForD1();
+        t.sync();
     }
     
     @T
-    public static void testWaitForD2() {
+    public static void testSyncStrong1() {
         MyDouble a = new MyDouble(1.2);
         a.key = "/a.obj";
         Connection c = Factory.database().memory().start().connection();
         
         Transaction t = c.w().put(a).execute();
-        t.waitForD2();
+        t.syncStrong();
     }
     
     @T

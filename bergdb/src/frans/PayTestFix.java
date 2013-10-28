@@ -18,7 +18,6 @@ import bergdb.pub.Connection;
 import bergdb.pub.Database;
 import bergdb.pub.Factory;
 import bergdb.pub.TestClock;
-import bergdb.pub.Transaction;
 import bergdb.pub.WBuilder;
 import bergdb.pubimp.DatabaseBuilderImp;
 import bergdb.pubimp.DatabaseImp;
@@ -109,9 +108,7 @@ public class PayTestFix {
             
             clock.setTime(i == 0 ? 1 : i * batchSize);
             
-            @SuppressWarnings("unused")
-            Transaction t = builder.build().execute();
-            //t.waitForD1();  //  <-- Does not work, even with this line.
+            builder.build().execute();
             
             if (id % 200000 == 0) {
                 System.out.printf("Created %.0fk accounts.\n", id / 1000.0);

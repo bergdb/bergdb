@@ -120,14 +120,14 @@ public class RwTransaction implements Transaction {
     /**
      * @throws StreamIoException
      */
-    public void waitForD1() {
-        connection.getDb().waitForD1(trans.lastSpos);
+    public void sync() {
+        connection.getDb().sync(trans.lastSpos);
     }
     
     /**
      * @throws StreamIoException
      */
-    public void waitForD2() {
-        connection.getDb().waitForD2(trans.lastSpos);
+    public void syncStrong() {
+        connection.getDb().syncStrong(trans.lastSpos);
     }
 }

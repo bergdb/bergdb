@@ -473,7 +473,7 @@ public class Db implements IWarner {
      */
     public Job addReplica(final String name, final AppendOnlyStream replicaStream,
             final int bufferSize, final int bufferTime) throws IOException {
-        // Note, the dummy write followed by waitForD2 call are needed to make
+        // Note, the dummy write followed by syncStrong call are needed to make
         // sure replica is really synched once the Job finishes.
         
         if (name == null) {
@@ -502,7 +502,7 @@ public class Db implements IWarner {
                 synchronized (progressLock) {
                     if (myProgressValue == 100) {
                         progressValue[0] = 99;
-                        progressNote[0] = "Almost done, waitForD2...";
+                        progressNote[0] = "Almost done, waiting for syncString...";
                     } else {
                         progressValue[0] = myProgressValue;
                         progressNote[0] = myProgressNote;
@@ -523,7 +523,7 @@ public class Db implements IWarner {
                 storageManager.syncReplica(ss, progressListener);
                 Trans trans = Trans.builder().put(DUMMY_KEY, new byte[0]).build();
                 Db.this.execute(trans);
-                Db.this.waitForD2(trans.lastSpos);
+                Db.this.syncStrong(trans.lastSpos);
 
                 synchronized (progressLock) {
                     progressValue[0] = 100;
@@ -1091,22 +1091,22 @@ public class Db implements IWarner {
      * 
      * @throws StreamIoException
      */
-    public void waitForD1(long spos) {
+    public void sync(long spos) {
         try {
-            storageManager.waitForD1(spos);
+            storageManager.sync(spos);
         } catch (IOException e) {
             throw new StreamIoException(e);
         }
     }
     
     /**
-     * Waits until D2 durability has been achieved for stream position 'spos'.
+     * Waits until syncStrong durability has been achieved for stream position 'spos'.
      * 
      * @throws StreamIoException
      */
-    public void waitForD2(long spos) {
+    public void syncStrong(long spos) {
         try {
-            storageManager.waitForD2(spos);
+            storageManager.syncStrong(spos);
         } catch (IOException e) {
             throw new StreamIoException(e);
         }
@@ -1124,7 +1124,7 @@ public class Db implements IWarner {
             spos = this.lastSposOfLastTrans;
         }
         
-        waitForD2(spos);
+        syncStrong(spos);
     }
     
     /**

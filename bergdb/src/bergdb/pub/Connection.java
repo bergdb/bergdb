@@ -1,5 +1,7 @@
 package bergdb.pub;
 
+// TODO A. Consider methods: sync()/syncStrong().
+
 /**
  * A connection to a Database is used to set and get data stored in the database.
  * Given a Connection, get operations [<code>c.get(..)</code>], 

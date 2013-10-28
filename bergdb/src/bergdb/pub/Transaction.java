@@ -28,16 +28,16 @@ public interface Transaction {
     public Object getOutput(String name);
     
     /**
-     * Waits until D1 durability has been attained for the transaction.
+     * Waits until ordinary durability has been attained for the transaction.
      * 
      * @throws DbException
      */
-    public void waitForD1();
+    public void sync();
     
     /**
-     * Wait until D2 durability has been attained for the transaction.
+     * Wait until strong durability has been attained for the transaction.
      * 
      * @throws DbException
      */
-    public void waitForD2();
+    public void syncStrong();
 }

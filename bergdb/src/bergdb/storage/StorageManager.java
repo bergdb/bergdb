@@ -33,7 +33,7 @@ import bergdb.stream.MemoryStream;
  * with the longest stream "wins" and the other is appended to from this longest stream.</p>
  * 
  * <p>This class is not thread-safe by itself. All methods and constructors require
- * Write Access except get() that requires Read Access, and waitForD1(), waitForD2()
+ * Write Access except get() that requires Read Access, and sync(), syncStrong()
  * that can be called from any thread.</p>
  * 
  * @author Frans Lundberg
@@ -443,7 +443,7 @@ public class StorageManager implements AppendOnlyStream {
         }
     }
     
-    public void waitForD1(long pos) throws IOException {
+    public void sync(long pos) throws IOException {
         synchronized (d1Lock) {
             while (d1Size < pos) {
                 Internal in = internal.get();
@@ -462,7 +462,7 @@ public class StorageManager implements AppendOnlyStream {
         }
     }
     
-    public void waitForD2(long pos) throws IOException {
+    public void syncStrong(long pos) throws IOException {
         synchronized (d2Lock) {
             while (d2Size < pos) {
                 Internal in = internal.get();
@@ -1233,7 +1233,7 @@ public class StorageManager implements AppendOnlyStream {
             StorageManager manager = new StorageManager.Builder(writeLock)
                 .stream("m1", m1).stream("m2", m2).build();
             manager.syncStreams(new NullProgressListener());
-            manager.waitForD2(200);
+            manager.syncStrong(200);
             Assert.assertEquals(200, m1.getLength());
             Assert.assertEquals(200, m2.getLength());
             
@@ -1285,7 +1285,7 @@ public class StorageManager implements AppendOnlyStream {
             });
             
             manager.syncStreams(new NullProgressListener());
-            manager.waitForD2(300);
+            manager.syncStrong(300);
             manager.stop();
         }
         
@@ -1307,7 +1307,7 @@ public class StorageManager implements AppendOnlyStream {
         StorageManager manager = new StorageManager.Builder(writeLock)
                 .stream("main", m1).stream("r", m2).build();
         manager.syncStreams(new NullProgressListener());
-        manager.waitForD2(700);
+        manager.syncStrong(700);
         
         Assert.assertEquals(700, m1.getLength());
         Assert.assertEquals(700, m2.getLength());
@@ -1395,7 +1395,7 @@ public class StorageManager implements AppendOnlyStream {
     
     @T
     public static void testWait1() throws IOException, InterruptedException {
-        // Tests a call to waitForD1() that should return immediately.
+        // Tests a call to sync() that should return immediately.
         
         MemoryStream m = new MemoryStream();
         Object writeLock = new Object();
@@ -1406,7 +1406,7 @@ public class StorageManager implements AppendOnlyStream {
         }
         
         long t = System.nanoTime();
-        manager.waitForD1(0);
+        manager.sync(0);
         t = System.nanoTime() - t;
         double time = t * 1e-9;
         Assert.assertTrue(time < 0.05);
@@ -1431,7 +1431,7 @@ public class StorageManager implements AppendOnlyStream {
             public void run() {
                 long nanos = System.nanoTime();
                 try {
-                    manager.waitForD1(10);
+                    manager.sync(10);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -1724,7 +1724,7 @@ public class StorageManager implements AppendOnlyStream {
         }
         
         writer.join();
-        manager.waitForD2(750);
+        manager.syncStrong(750);
         
         Assert.assertEquals(750, m1.getLength());
         Assert.assertEquals(750, m2.getLength());
@@ -1745,7 +1745,7 @@ public class StorageManager implements AppendOnlyStream {
         StorageManager manager = new StorageManager.Builder(writeLock)
                 .stream("main", m1).stream("r", m2).build();
         manager.syncStreams(new NullProgressListener());
-        manager.waitForD2(700);
+        manager.syncStrong(700);
         
         Assert.assertEquals(700, m1.getLength());
         Assert.assertEquals(700, m2.getLength());
@@ -1771,7 +1771,7 @@ public class StorageManager implements AppendOnlyStream {
         StorageManager manager = new StorageManager.Builder(writeLock)
                 .stream("main", m1).stream("r", m2).build();
         manager.syncStreams(new NullProgressListener());
-        manager.waitForD2(700);
+        manager.syncStrong(700);
         
         Assert.assertEquals(700, m1.getLength());
         Assert.assertEquals(700, m2.getLength());
@@ -1781,7 +1781,7 @@ public class StorageManager implements AppendOnlyStream {
         Assert.assertTrue(manager.getStorageInfo("r") == null);
         
         manager.append(bytes, 0, 20);
-        manager.waitForD2(720);
+        manager.syncStrong(720);
         Assert.assertEquals(720, m1.getLength());
         Assert.assertEquals(700, m2.getLength());
         
@@ -1819,17 +1819,17 @@ types of concurrent threads.
     Write threads execute one at a time. They share the common DB.writeLock.
     The writer calls the constructor, getSize, append, and more.
     Writes: error, append.
-* WaitForD.
+* WaitForSync.
     Threads waiting until a particular spos has been confirmed to be durable.
     These are user threads with no particular synchronization.
     They synchronize on d1Lock/d2Lock while they wait for a change in 
-    d1Size/d2Size. These threads call waitForDX().
+    d1Size/d2Size. These threads call sync()/syncStrong().
     Writes: none.
 * Buffer threads.
     These threads are started by BufferedStream. They will asynchronously
     call computeRules to recompute the rules (determine possible error
     condition, d1Size, d2Size) once a stream has a new confirmed size.
-    WaitForD threads may be waiting for dXSize to increase and they will
+    WaitForSync threads may be waiting for dXSize to increase and they will
     be notified of changes.
     We could synch on DB.writeLock. At max load, we typically have 
     hundreds of transactions per append (because of BufferedStream),
