@@ -215,15 +215,6 @@ public class Db implements IWarner {
     private double dirtyFraction100 = 0.10;
     private double dirtyFraction1000 = 0.10;
     
-    //private long nextDirtyLimit;
-    //private long currentDirtyLimit;     
-        // The current dirty limit; used by evict code. Index nodes with 
-        // spos >= currentDirtyLimit must not be evicted.
-        // SYNC: Concurrency to this field is handled by readLock. The execute() code
-        // will have [synchronized(readLock){}] statement. This publishes the latest
-        // value of currentDirtyLimit to readers.
-        // TODO B. Analyze sync code, how about 32-bit machines? Partly updated long?
-    
     // ---- Graph ----
     
     private Graph graph;
@@ -1501,18 +1492,6 @@ public class Db implements IWarner {
     }
 
     /**
-     * Returns the stream position that is currently the "dirty limit". 
-     * In general: nodeStream.getLength() - this.startupDistance is returned.
-     * The caller must hold DB.writeLock.
-     */
-    /*private long getDirtyLimit() {
-        assert Thread.holdsLock(writeLock);
-        long dirtyLimit = nodeStream.getLength() - this.startupDistance;
-        dirtyLimit = dirtyLimit < 0 ? 0 : dirtyLimit;
-        return dirtyLimit;
-    }*/
-
-    /**
      * Sets the KVs directly to the in-memory data structure. This method runs with exclusive 
      * write access to the data structure (synchronized (writeLock)). However, there may be
      * concurrent readers that read with a lookup time strictly less than the transaction time
@@ -1593,7 +1572,6 @@ public class Db implements IWarner {
         long limit = this.cachedMemoryValue.get() - evictBoss.getCacheDuration();
         limit = limit < 0 ? 0 : limit;
         // limit is the limit for accessData. Nodes accessed after limit are not evictable.
-        // TODO B. we need to have another limit too - the dirty limit...
 
         int rand = Math.abs(evictRandom.nextInt());
         // random int used as randomness for this evict operation.
@@ -1632,7 +1610,11 @@ public class Db implements IWarner {
      * Evicts all pointers in the node that are evictable.
      */
     private void evict(INode node, long limit, EvictData ed) {
-        // NOTE This is awkward.
+        // This is awkward, but required to be able to use node-type-specific optimizations
+        // implemented in this class.
+        // Note, we could avoid this awkwardness with the visitor pattern, but that would
+        // require creating a new object, a NodeVisitor.
+        
         switch (node.getType()) {
         case INode.TYPE_KEY_NODE:
             evictKeyNode((KeyNode) node, limit, ed);
@@ -1659,7 +1641,7 @@ public class Db implements IWarner {
             // atomic read plus
             // subsequent write.
 
-            synchronized (this.getPointerLock(node, 0)) {
+            synchronized (graph.getPointerLock(node, 0)) {
                 pointee = node.rootPointer;
                 if (pointee != null /*&& !pointee.isDirty()*/
                         && !(pointee.getSpos() >= ed.startupPos)
@@ -1689,7 +1671,7 @@ public class Db implements IWarner {
 
                 // Probably evictable pointer
 
-                synchronized (this.getPointerLock(node, i + 1)) {        
+                synchronized (graph.getPointerLock(node, i + 1)) {        
                     pointee = node.pointers[i];
                     pointeeSpos = pointee.getSpos();
                     
@@ -1733,7 +1715,7 @@ public class Db implements IWarner {
             if (pointee != null /*&& !pointee.isDirty()*/
                     && !((pointeeSpos = pointee.getSpos()) >= ed.startupPos)
                     && AccessData.getAccessTimeNoChecks(node.pos[i]) <= limit) {
-                synchronized (getPointerLock(node, i)) {
+                synchronized (graph.getPointerLock(node, i)) {
                     pointee = node.pointers[i];
                     pointeeSpos = pointee.getSpos();
 
@@ -1756,8 +1738,7 @@ public class Db implements IWarner {
      * node and its index. Only memory pointers are considered.
      */
     private void getEvictPointer(INode node, int rand, Pointer p) {
-        // Returns a random in-memory pointer and its pointer index written to
-        // p.
+        // Returns a random in-memory pointer and its pointer index written to p.
 
         switch (node.getType()) {
         case INode.TYPE_KEY_NODE:
@@ -1800,13 +1781,6 @@ public class Db implements IWarner {
             rand++;
         }
     }
-    
-    /**
-     * @deprecated Call graph.getPointerLock() directly.
-     */
-    private Object getPointerLock(INode keyNode, int index) {
-        return graph.getPointerLock(keyNode, index);
-    }
 
     private void getEvictPointer(KeyNode keyNode, int rand, final Pointer p) {
         int size = keyNode.size;
@@ -1816,7 +1790,7 @@ public class Db implements IWarner {
         for (int i = 0; i < size; i++) {
             int index = rand % size;
 
-            synchronized (getPointerLock(keyNode, index)) {
+            synchronized (graph.getPointerLock(keyNode, index)) {
                 p.node = keyNode.pointers[index];
             }
 
