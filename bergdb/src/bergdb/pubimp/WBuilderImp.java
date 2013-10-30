@@ -21,7 +21,8 @@ public class WBuilderImp implements WBuilder {
     }
     
     /**
-     * @throws BadFormatException
+     * @throws IllegalArgumentException  
+     *      If 'key' is null or otherwise invalid, or if object is null.
      */
     public WBuilder put(String ukey, Object object) {
         env.put(ukey, object);

@@ -15,11 +15,12 @@ public interface WBuilder {
     
     
     /**
-     * Adds a set operation to the write transaction. The operation sets the specified
-     * key to the provided object. Special handling is provided for object of type byte[] 
-     * and java.lang.String.
+     * Adds a set operation to the write transaction. The operation sets the
+     * specified key to the provided object. Special handling is provided for
+     * object of type byte[] and java.lang.String.
      * 
      * @throws IllegalArgumentException
+     *             If 'key' is null or otherwise invalid, or if object is null.
      */
     public WBuilder put(String key, Object object);
     
@@ -28,6 +29,8 @@ public interface WBuilder {
      * The key string is taken from the 'key' field of 'object'.
      * 
      * @throws MissingKeyFieldException If 'object' does not have a String field named 'key'.
+     * @throws IllegalArgumentException
+     *             If 'key' is null or otherwise invalid, or if object is null.
      */
     public WBuilder put(Object object);
     
@@ -41,10 +44,3 @@ public interface WBuilder {
      */
     public Transaction execute();
 }
-
-/*
-
-This is really a convenience for the user. We could have used an RwTransaction too,
-I suppose.
-
-*/
