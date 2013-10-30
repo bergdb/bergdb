@@ -392,24 +392,104 @@ public class PubTester {
     
     @T
     public static void testSync1() {
+        // Tests Transaction.sync().
+        
         MyDouble a = new MyDouble(1.2);
         a.key = "/a.obj";
         
-        Connection c = Factory.database().memory().start().connection();
+        Database d = Factory.database().memory().start();
+        Connection c = d.connection();
         
         Transaction t = c.w().put(a).build();
         t.execute();
         t.sync();
+        Assert.assertEquals(((WTransaction)t).getTrans().lastSpos,
+                ((DatabaseImp) d).getDb().getStreamLength() - 1);
     }
     
     @T
-    public static void testSyncStrong1() {
+    public static void testSync2() {
+        // Tests Transaction.syncStrong().
+        
         MyDouble a = new MyDouble(1.2);
         a.key = "/a.obj";
-        Connection c = Factory.database().memory().start().connection();
         
-        Transaction t = c.w().put(a).execute();
+        Database d = Factory.database().memory().start();
+        Connection c = d.connection();
+        
+        Transaction t = c.w().put(a).build();
+        t.execute();
         t.syncStrong();
+        Assert.assertEquals(((WTransaction)t).getTrans().lastSpos,
+                ((DatabaseImp) d).getDb().getStreamLength() - 1);
+    }
+    
+    @T
+    public static void testSync3() {
+        // Tests Connection.sync().
+        
+        MyDouble a = new MyDouble(1.2);
+        a.key = "/a.obj";
+        
+        Database d = Factory.database().memory().start();
+        Connection c = d.connection();
+        
+        Transaction t = c.w().put(a).build();
+        t.execute();
+        c.sync();
+        Assert.assertEquals(((WTransaction)t).getTrans().lastSpos,
+                ((DatabaseImp) d).getDb().getStreamLength() - 1);
+    }
+    
+    @T
+    public static void testSync4() {
+        // Tests Connection.syncStrong().
+        
+        MyDouble a = new MyDouble(1.2);
+        a.key = "/a.obj";
+        
+        Database d = Factory.database().memory().start();
+        Connection c = d.connection();
+        
+        Transaction t = c.w().put(a).build();
+        t.execute();
+        c.syncStrong();
+        Assert.assertEquals(((WTransaction)t).getTrans().lastSpos,
+                ((DatabaseImp) d).getDb().getStreamLength() - 1);
+    }
+    
+    @T
+    public static void testSync5() {
+        // Tests Database.sync().
+        
+        MyDouble a = new MyDouble(1.2);
+        a.key = "/a.obj";
+        
+        Database d = Factory.database().memory().start();
+        Connection c = d.connection();
+        
+        Transaction t = c.w().put(a).build();
+        t.execute();
+        d.sync();
+        Assert.assertEquals(((WTransaction)t).getTrans().lastSpos,
+                ((DatabaseImp) d).getDb().getStreamLength() - 1);
+    }
+    
+    @T
+    public static void testSync6() {
+        // Tests Database.syncStrong().
+        
+        MyDouble a = new MyDouble(1.2);
+        a.key = "/a.obj";
+        
+        Database d = Factory.database().memory().start();
+        Connection c = d.connection();
+        
+        Transaction t = c.w().put(a).build();
+        t.execute();
+        d.syncStrong();
+        Assert.assertEquals(((WTransaction)t).getTrans().lastSpos,
+                ((DatabaseImp) d).getDb().getStreamLength() - 1);
     }
     
     @T

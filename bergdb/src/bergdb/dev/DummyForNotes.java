@@ -5,8 +5,8 @@ package bergdb.dev;
 TODO B. Have special classes for ReadSync and WriteLock. Good for debug (monitoring 
 with jvisualvm).
 
-TODO A. Testing for Connection.sync(), Connection.syncStrong(). How in general to
-  test these things? Can we inject deterministic control over StorageManager somehow?
+TODO D. Testing for Connection.sync(), Connection.syncStrong() better. How in general to test these things?
+Can we inject deterministic control over StorageManager somehow?
   
 TODO D. Consider if we could make rw-transactions composable? How to make
 two payments and a log entry in one transaction using the single-payment 
