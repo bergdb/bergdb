@@ -932,10 +932,17 @@ public class Db implements IWarner {
     }
     
     /**
-     * Returns a new GetData instance that can be used when calling getOne().
+     * Creates and returns a new GetData object for use with the getOne() method.
      */
     public GetData newGetData() {
         return graph.newGetData();
+    }
+    
+    /**
+     * Creates and returns a new GetMany object for use with the getMany() method.
+     */
+    public GetMany newGetMany() {
+        return graph.newGetMany();
     }
 
     /**

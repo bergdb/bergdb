@@ -25,6 +25,7 @@ import bergdb.storage.StreamIoException;
  * <li>Cache: adding nodes, cache eviction</li>
  * <li>Reads nodes (from interface NodeReader instance)</li>
  * <li>Pointer locks</li>
+ * <li>Factory methods: newGetData(), newGetMany(), new PutData().</li>
  * </ul>
  * 
  * <p>Not in scope:</p>
@@ -69,8 +70,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         for (int i = 0; i < POINTER_LOCKS_LENGTH; i++) {
             pointerLocks[i] = new PointerLock();
         }
-        
-        //this.dirtyNodes = new DirtyNodes1();
     }
     
     /**
@@ -304,6 +303,14 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     }
     
     /**
+     * This is the preferred way to create a GetMany object used together with 
+     * this Dag object.
+     */
+    public GetMany newGetMany() {
+        return new GetMany();
+    }
+    
+    /**
      * Creates a PutData object suitable for use with as a parameter to Graph.putKv().
      * Use Db.newPutData() instead if you want to use the PutData object as a 
      * parameter with methods of Db.
@@ -323,21 +330,10 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                             p.keyAccessPath.add(pre.getKlong(pointerIndex), res);
                         }
                     }
-                    
-                    /*switch (result.getType()) {
-                    case INode.TYPE_TOP_NODE:
-                        ensureDirty((TopNode) result);
-                        break;
-                    case INode.TYPE_KEY_NODE:
-                        ensureDirty((KeyNode) result);
-                        break;
-                    }*/
                 }
             }
 
-            public void superRootAccessed(TopNode superRoot) {
-                //ensureDirty(superRoot);
-            }
+            public void superRootAccessed(TopNode superRoot) {}
         };
         
         p.splitListener = new SplitListener() {
@@ -531,7 +527,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      * Get multiple KVs in increasing (or decreasing) key order.
      * 
      * @param g
-     *            Input and output parameters.
+     *            Input and output parameters. The GetMany object should have been createed
+     *            with the newGetMany() factory method.
      * @see GetMany
      * @throws IllegalDbStateException
      *             If start() has not been called.

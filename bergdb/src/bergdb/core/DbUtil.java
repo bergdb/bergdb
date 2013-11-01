@@ -26,7 +26,7 @@ public class DbUtil {
      * @throws IllegalStateException If start() has not been called.
      */
     public static byte[] getFirstKey(Db db, long lookupTime, GetData gd) {
-        GetMany g = new GetMany();
+        GetMany g = db.newGetMany();
         g.stopCondition = new GetMany.GetOne();
         g.startKey = null;
         g.lookupTime = lookupTime;

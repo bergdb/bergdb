@@ -91,7 +91,7 @@ public class Bug130924 {
             db.execute(Trans.builder().put(ikey, "v").build());
         }
         
-        GetMany g = new GetMany();
+        GetMany g = db.newGetMany();
         g.startKey = Keys.toSegments("/dacc/-");
         g.stopCondition = new GetMany.Prefix(Keys.toSegments("/dacc/-"));
         g.inclusive = false;

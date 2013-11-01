@@ -35,7 +35,7 @@ public class DbTesterGetMany {
         clock.setTime(30);
         db.execute(Trans.builder().put("a", "1"));
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
@@ -75,7 +75,7 @@ public class DbTesterGetMany {
         clock.setTime(30);
         db.execute(Trans.builder().put("c", "3"));
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = 100;
         d.setBackward();
@@ -110,7 +110,7 @@ public class DbTesterGetMany {
         clock.setTime(30);
         db.execute(Trans.builder().put("segment/a", "1"));
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
@@ -148,7 +148,7 @@ public class DbTesterGetMany {
         clock.setTime(30);
         db.execute(Trans.builder().put("segment/a", "1"));
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = 100;
         d.setBackward();
@@ -185,7 +185,7 @@ public class DbTesterGetMany {
         clock.setTime(30);
         db.execute(Trans.builder().put("a", "1"));
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = 1;
         d.stopCondition = new GetMany.DontStop();
@@ -193,7 +193,7 @@ public class DbTesterGetMany {
         
         Assert.assertEquals(0, d.result.size());
         
-        d = new GetMany();
+        d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = 25;
         d.stopCondition = new GetMany.DontStop();
@@ -205,7 +205,7 @@ public class DbTesterGetMany {
         kvt = d.result.get(1);
         Assert.assertEquals("3", Util.toString(kvt.value));
         
-        d = new GetMany();
+        d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = Long.MAX_VALUE;
         d.stopCondition = new GetMany.DontStop();
@@ -236,7 +236,7 @@ public class DbTesterGetMany {
         clock.setTime(30);
         db.execute(Trans.builder().put("a", "1"));
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = 1;
         d.setBackward();
@@ -245,7 +245,7 @@ public class DbTesterGetMany {
         
         Assert.assertEquals(0, d.result.size());
         
-        d = new GetMany();
+        d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = 25;
         d.setBackward();
@@ -258,7 +258,7 @@ public class DbTesterGetMany {
         kvt = d.result.get(1);
         Assert.assertEquals("2", Util.toString(kvt.value));
         
-        d = new GetMany();
+        d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = Long.MAX_VALUE;
         d.setBackward();
@@ -295,7 +295,7 @@ public class DbTesterGetMany {
         
         db = Db.builder().testSetup().clock(clock).mainStream(stream).start();
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
@@ -329,7 +329,7 @@ public class DbTesterGetMany {
         clock.setTime(30);
         db.execute(Trans.builder().put("a", "1"));
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = 100;
         d.stopCondition = new GetMany.StopCondition() {
@@ -365,7 +365,7 @@ public class DbTesterGetMany {
         clock.setTime(30);
         db.execute(Trans.builder().put("a", "1"));
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = 100;
         d.stopCondition = new GetMany.Endpoint(Keys.toSegments("c"), true);
@@ -377,7 +377,7 @@ public class DbTesterGetMany {
         kvt = d.result.get(1);
         Assert.assertEquals("2", Util.toString(kvt.value));
         
-        d = new GetMany();
+        d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = 100;
         d.stopCondition = new GetMany.Endpoint(Keys.toSegments("c"), false);
@@ -406,7 +406,7 @@ public class DbTesterGetMany {
                 .put("a", "1")
                 .put("z", "4"));
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = 100;
         d.stopCondition = new GetMany.Endpoint(Keys.toSegments("z - should be the last"));
@@ -441,7 +441,7 @@ public class DbTesterGetMany {
                 .put("a", "1")
                 .put("z", "4"));
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = 100;
         d.stopCondition = new GetMany.Endpoint(Keys.toSegments("a"), false);
@@ -466,7 +466,7 @@ public class DbTesterGetMany {
         clock.setTime(30);
         db.execute(Trans.builder().put("a", "1"));
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = 100;
         d.setBackward();
@@ -479,7 +479,7 @@ public class DbTesterGetMany {
         kvt = d.result.get(1);
         Assert.assertEquals("2", Util.toString(kvt.value));
         
-        d = new GetMany();
+        d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = 100;
         d.setBackward();
@@ -515,7 +515,7 @@ public class DbTesterGetMany {
         }
         db.execute(b);
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = Long.MAX_VALUE;
         d.stopCondition = new GetMany.DontStop();
@@ -551,7 +551,7 @@ public class DbTesterGetMany {
             clock.setTime(time);
         }
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = time + 100;
         d.stopCondition = new GetMany.DontStop();
@@ -581,7 +581,7 @@ public class DbTesterGetMany {
         clock.setTime(30);
         db.execute(Trans.builder().put("a", "1"));
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = Keys.toSegments("b");
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
@@ -610,7 +610,7 @@ public class DbTesterGetMany {
         clock.setTime(30);
         db.execute(Trans.builder().put("a", "1"));
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = Keys.toSegments("b");
         d.lookupTime = 100;
         d.setBackward();
@@ -641,7 +641,7 @@ public class DbTesterGetMany {
         db.execute(Trans.builder().put("a", "1"));
         
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = Keys.toSegments("bbb");
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
@@ -651,7 +651,7 @@ public class DbTesterGetMany {
         Assert.assertEquals("3", Util.toString(kvt.value));
         
         
-        d = new GetMany();
+        d = db.newGetMany();
         d.startKey = Keys.toSegments("aa");
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
@@ -679,7 +679,7 @@ public class DbTesterGetMany {
         clock.setTime(30);
         db.execute(Trans.builder().put("a", "1"));
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = Keys.toSegments("0");    // '0' < 'a'
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
@@ -704,7 +704,7 @@ public class DbTesterGetMany {
         clock.setTime(30);
         db.execute(Trans.builder().put("a", "1"));
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = Keys.toSegments("z");
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
@@ -728,14 +728,14 @@ public class DbTesterGetMany {
             db.execute(Trans.builder().put("" + i, value));
         }
         
-        GetMany g = new GetMany();
+        GetMany g = db.newGetMany();
         g.startKey = null;
         g.inclusive = true;
         db.getMany(g);
         
         Assert.assertEquals(16, g.result.size());
         
-        g = new GetMany();
+        g = db.newGetMany();
         g.startKey = Keys.toSegments("0");
         g.inclusive = false;
         db.getMany(g);
@@ -758,7 +758,7 @@ public class DbTesterGetMany {
                 .put("directory/30", "30")
                 .put("a40", "40"));
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = Keys.toSegments("directory/19");
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
@@ -789,7 +789,7 @@ public class DbTesterGetMany {
                 .put("directory/30", "30")
                 .put("a40", "40"));
         
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = Keys.toSegments("directory/19");
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
@@ -831,7 +831,7 @@ public class DbTesterGetMany {
         db.execute(b);
         
         // Starting at Key 0. Gets all KVs.
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         d.startKey = keys.get(0);
         d.lookupTime = Long.MAX_VALUE;
         d.stopCondition = new GetMany.DontStop();
@@ -873,7 +873,7 @@ public class DbTesterGetMany {
         GetMany d;
         
         // Starting at last key. 
-        d = new GetMany();
+        d = db.newGetMany();
         d.startKey = keys.get(size - 1);
         d.lookupTime = Long.MAX_VALUE;
         d.stopCondition = new GetMany.DontStop();
@@ -883,7 +883,7 @@ public class DbTesterGetMany {
         
         
         // Starting at Key 5.
-        d = new GetMany();
+        d = db.newGetMany();
         d.startKey = keys.get(5);
         d.lookupTime = Long.MAX_VALUE;
         d.stopCondition = new GetMany.DontStop();
@@ -908,30 +908,11 @@ public class DbTesterGetMany {
             db.execute(Trans.builder().put("" + i, value));
         }
         
-        /*g = new GetMany();
-        g.startKey = null;
-        g.inclusive = false;
-        db.getMany(g);
-        Assert.assertEquals(10, g.result.size());
-        */
-        
-        g = new GetMany();
+        g = db.newGetMany();
         g.startKey = Keys.toSegments("0");
         g.inclusive = true;
         db.getMany(g);
-        
-//        System.out.println("DbTesterGetMany.testGt1");
-//        for (Kvt k : g.result) {
-//            System.out.println("  key = " + Keys.toDisplayString(Keys.toBytes(k.key)));
-//        }
-        
         Assert.assertEquals(10, g.result.size());
-        
-        /*g = new GetMany();
-        g.startKey = Keys.toSegments("0");
-        g.inclusive = true;
-        db.getMany(g);
-        Assert.assertEquals(10, g.result.size());*/
     }
     
     @T
@@ -957,15 +938,10 @@ public class DbTesterGetMany {
         
         db.execute(b.build());
         
-        GetMany g = new GetMany();
+        GetMany g = db.newGetMany();
         g.startKey = Keys.toSegments("002");
         Assert.assertEquals(1, g.startKey.length);
         db.getMany(g);
-        
-        /*System.out.println("---- DBTesterGetMany.testFromIndexing1 ----");
-        for (KVT kvt : g.result) {
-            System.out.println(KeySegments.toString(kvt.key));
-        }*/
         
         Assert.assertEquals(2, g.result.size());
         Assert.assertEquals(keys[1], Keys.toString(g.result.get(0).key));
@@ -995,16 +971,11 @@ public class DbTesterGetMany {
         
         db.execute(b.build());
         
-        GetMany g = new GetMany();
+        GetMany g = db.newGetMany();
         g.startKey = Keys.toSegments("002");
         g.forward = false;
         Assert.assertEquals(1, g.startKey.length);
         db.getMany(g);
-        
-        /*System.out.println("---- DBTesterGetMany.testFromIndexing2 ----");
-        for (KVT kvt : g.result) {
-            System.out.println(KeySegments.toString(kvt.key));
-        }*/
         
         Assert.assertEquals(1, g.result.size());
         Assert.assertEquals(keys[0], Keys.toString(g.result.get(0).key));
@@ -1037,12 +1008,7 @@ public class DbTesterGetMany {
                 .put(skeys[1], new byte[]{1}));
         
         long[] startSkey = Keys.toSegments(Util.hexStringToBytes("00000000000002"));
-        
-//        System.out.println("startSkey: " + Util.toString(startSkey));
-//        System.out.println("skeys[0]: " + Util.toString(skeys[0]));
-//        System.out.println("skeys[1]: " + Util.toString(skeys[1]));
-        
-        GetMany g = new GetMany();
+        GetMany g = db.newGetMany();
         g.inclusive = true;
         g.forward = true;
         g.startKey = startSkey;
@@ -1093,26 +1059,13 @@ public class DbTesterGetMany {
         
         long[] startSkey = Keys.toSegments(
                   Util.hexStringToBytes("00000000000005"));
-        
-//        System.out.println("startKey: " + Util.toString(startSkey));
-//        System.out.println("skeys[0]: " + Util.toString(skeys[0]));
-//        System.out.println("skeys[1]: " + Util.toString(skeys[1]));
-//        System.out.println("skeys[2]: " + Util.toString(skeys[2]));
-        
-        GetMany g = new GetMany();
+        GetMany g = db.newGetMany();
         g.inclusive = true;
         g.forward = true;
         g.startKey = startSkey;
         g.stopCondition = new GetMany.DontStop();
         
         db.getMany(g);
-        
-//        for (Kvt k : g.result) {
-//            System.out.println("-- result key");
-//            System.out.println("Compare: " + Keys.compareKeys(k.key, startSkey));
-//            System.out.println("key:      " + Util.toString(k.key));
-//        }
-        
         Assert.assertEquals(1, g.result.size());
         Assert.assertArrayEquals(skeys[2], g.result.get(0).key);
         
@@ -1148,12 +1101,7 @@ public class DbTesterGetMany {
                 .put(skeys[1], new byte[]{1}));
         
         long[] startSkey = Keys.toSegments(Util.hexStringToBytes("00000000000004"));
-        
-//        System.out.println("startSkey: " + Util.toString(startSkey));
-//        System.out.println("skeys[0]: " + Util.toString(skeys[0]));
-//        System.out.println("skeys[1]: " + Util.toString(skeys[1]));
-        
-        GetMany g = new GetMany();
+        GetMany g = db.newGetMany();
         g.inclusive = true;
         g.forward = true;
         g.startKey = startSkey;
@@ -1195,7 +1143,7 @@ public class DbTesterGetMany {
         
         long[] startSkey = Keys.toSegments(Util.hexStringToBytes("00000000000002"));
         
-        GetMany g = new GetMany();
+        GetMany g = db.newGetMany();
         g.inclusive = true;
         g.forward = false;
         g.startKey = startSkey;

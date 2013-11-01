@@ -1309,7 +1309,7 @@ public class DbTester {
         
         // Getting KVs from database
         
-        GetMany g = new GetMany();
+        GetMany g = db.newGetMany();
         g.startKey = Keys.toSegments("test/");
         g.stopCondition = new GetMany.Endpoint(Keys.toSegments("test0"));   
                 // '0' == '/' + 1
@@ -1427,8 +1427,7 @@ public class DbTester {
         Db db = Db.builder().testSetup().start();
         db.stop();
         IllegalDbStateException exception = null;
-        
-        GetMany d = new GetMany();
+        GetMany d = db.newGetMany();
         
         try {
             db.getMany(d);

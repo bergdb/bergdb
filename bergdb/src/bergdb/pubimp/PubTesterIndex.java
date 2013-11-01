@@ -885,7 +885,7 @@ public class PubTesterIndex {
 
     private static int getIndexKvCount(Database db) {
         Db db2 = ((DatabaseImp) db).getDb();
-        GetMany g = new GetMany();
+        GetMany g = db2.newGetMany();
         final String prefix = Db.INTERNAL_KEY_PREFIX + "di/";
         g.startKey = Keys.toSegments(prefix);
         g.stopCondition = new GetMany.StopCondition() {
@@ -1296,7 +1296,9 @@ public class PubTesterIndex {
         Assert.assertTrue("Got NoSuchIndexException?", ex != null);
         
         byte[] indexDbDir = IndexManager.getIndexDbDirAsBytes("payments-from");
-        final GetMany g = new GetMany();
+        Db db = ((DatabaseImp) database).getDb();
+        
+        final GetMany g = db.newGetMany();
         g.startKey = Keys.toSegments(indexDbDir);
         g.inclusive = false;
         g.stopCondition = new GetMany.StopCondition() {
@@ -1309,7 +1311,7 @@ public class PubTesterIndex {
             }
         };
         
-        Db db = ((DatabaseImp) database).getDb();
+        
         db.getMany(g);
         Assert.assertEquals(0, g.result.size());
         
@@ -1346,7 +1348,9 @@ public class PubTesterIndex {
         Assert.assertTrue("Got NoSuchIndexException?", ex != null);
         
         byte[] indexDbDir = IndexManager.getIndexDbDirAsBytes("payments-from");
-        final GetMany g = new GetMany();
+        Db db = ((DatabaseImp) database).getDb();
+        final GetMany g = db.newGetMany();
+        
         g.startKey = Keys.toSegments(indexDbDir);
         g.inclusive = false;
         g.stopCondition = new GetMany.StopCondition() {
@@ -1359,7 +1363,7 @@ public class PubTesterIndex {
             }
         };
         
-        Db db = ((DatabaseImp) database).getDb();
+        
         db.getMany(g);
         Assert.assertEquals(0, g.result.size());
         

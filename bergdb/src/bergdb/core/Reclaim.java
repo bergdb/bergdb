@@ -639,7 +639,7 @@ public class Reclaim implements Db.TransactionListener {
             final long[][] lastKeyOfStep = new long[][] {this.lastKey};
                     // final and extra "[]" to be able to use in anonymous class below
             
-            GetMany g = new GetMany();
+            GetMany g = db.newGetMany();
             g.startKey = lastKey;
             assert g.startKey == null || g.startKey.length > 0 
                     : "g.startKey.length = " + g.startKey.length;
@@ -737,7 +737,7 @@ public class Reclaim implements Db.TransactionListener {
                 db.execute(t);
             }
             
-            GetMany g = new GetMany();
+            GetMany g = db.newGetMany();
             g.lookupTime = Long.MAX_VALUE;
             g.startKey = null;
             db.getMany(g);

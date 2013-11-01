@@ -111,7 +111,7 @@ public class DeleteIndexTester {
         
         GetMany g;
         
-        g = new GetMany();
+        g = db.newGetMany();
         g.inclusive = false;
         g.lookupTime = timeA;
         g.startKey = Keys.toSegments(dir);
@@ -120,7 +120,7 @@ public class DeleteIndexTester {
         Assert.assertEquals("timeA", 0, g.result.size());
         
         
-        g = new GetMany();
+        g = db.newGetMany();
         g.inclusive = false;
         g.lookupTime = time0;
         g.startKey = Keys.toSegments(dir);
@@ -129,7 +129,7 @@ public class DeleteIndexTester {
         Assert.assertEquals("time0", 10, g.result.size());
         
         
-        g = new GetMany();
+        g = db.newGetMany();
         g.inclusive = false;
         g.lookupTime = time1;
         g.startKey = Keys.toSegments(dir);
@@ -139,7 +139,7 @@ public class DeleteIndexTester {
         
         // There should be no index entries left once delete job finishes.
         
-        g = new GetMany();
+        g = db.newGetMany();
         g.inclusive = false;
         g.lookupTime = time2;
         g.startKey = Keys.toSegments(dir);
@@ -148,59 +148,6 @@ public class DeleteIndexTester {
         Assert.assertEquals("time2", 0, g.result.size());
     }
     
-    /*
-    130818 Frans: commented, number of jobs not reproducible.
-    
-    @T("f")
-    public static void testRestart(TestCollector coll) throws InterruptedException {
-        //
-        // Tests that an index deletion process survives a database restart.
-        //
-        
-        int n = 1000;
-        MemoryStream stream = new MemoryStream();
-        DatabaseBuilderImp b = (DatabaseBuilderImp) Factory.database();
-        Database database = b.mainStream(stream).start();
-        database.indexBuilder("e-salary").dir("/e/").type("long").field("salary").start().join();
-        Connection c = database.connection();
-        
-        long t0 = System.nanoTime();
-        int i = 0;
-        for (; i < n; i++) {
-            c.w().set(new Employee(getEmployeeKey(i), i * 10)).execute();
-        }
-        double setTime = (System.nanoTime() - t0) * 1e-9;
-        database.sync();
-        
-        Job job = database.deleteIndex("e-salary");
-        
-        Thread.sleep((long) (setTime * 0.03 * 1000));           // Sleep 3% of setTime
-        Assert.assertTrue(job.getStatus().progress() < 100);    // Assert not done yet.
-        coll.out().println("Job status = " + job.getStatus().note());
-        
-        database.sync();
-        database.stop();
-        database = null;
-        
-        stream = stream.copy();
-        b = (DatabaseBuilderImp) Factory.database();
-        database = b.mainStream(stream).build();
-        
-        coll.out().println("Restarting... calling start() on restarted database.");
-        List<Job> jobs = database.start();
-        c = database.connection();
-        
-        Assert.assertEquals("start() jobs.size()", 1, jobs.size());
-        job = jobs.get(0);
-        coll.out().println("Job status: " + job.getStatus().note());
-        Thread.sleep(100);
-        coll.out().println("Job status: " + job.getStatus().note());
-        JobStatus status = job.join();
-        Assert.assertEquals(100, status.progress());
-        coll.out().println("Job status: " + status.note());
-    }*/
-    
     public static void main(String[] args) throws InterruptedException {
-        //testRestart(new BasicCollector());
     }
 }

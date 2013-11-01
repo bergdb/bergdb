@@ -70,11 +70,10 @@ public class GetMany {
     public final GetData gd;
     
     /**
-     * Created a new instance.
+     * Creates a new instance; use Db.newGetMany() or Dag.newGetMany() instead
+     * if possible.
      */
     public GetMany() {
-        // TODO C. Consider using factory method instead. Graph.newGetMany() and/or Db.newGetMany().
-        
         result = new ArrayList<Kvt>();
         stopCondition = new DontStop();
         startKey = null;
