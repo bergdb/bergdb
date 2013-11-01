@@ -6,12 +6,12 @@ import java.util.Random;
 
 import bergdb.common.Bytes;
 import bergdb.common.Util;
-import bergdb.graph.GetData;
-import bergdb.graph.GetMany;
-import bergdb.graph.KeyNode;
-import bergdb.graph.Keys;
-import bergdb.graph.Klong;
-import bergdb.graph.TopNode;
+import bergdb.dag.GetData;
+import bergdb.dag.GetMany;
+import bergdb.dag.KeyNode;
+import bergdb.dag.Keys;
+import bergdb.dag.Klong;
+import bergdb.dag.TopNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.pub.BadReplicaException;

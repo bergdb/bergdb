@@ -2,9 +2,9 @@ package bergdb.core;
 
 import bergdb.common.Util;
 import bergdb.core.Trans.Builder;
-import bergdb.graph.EvictData;
-import bergdb.graph.GetData;
-import bergdb.graph.Keys;
+import bergdb.dag.EvictData;
+import bergdb.dag.GetData;
+import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.storage.BufferedStream;

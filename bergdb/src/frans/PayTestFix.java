@@ -5,12 +5,12 @@ import java.io.PrintStream;
 
 import bergdb.core.Db;
 import bergdb.core.NoEvictBoss;
-import bergdb.graph.GetData;
-import bergdb.graph.Dag;
-import bergdb.graph.INode;
-import bergdb.graph.KeyNode;
-import bergdb.graph.Keys;
-import bergdb.graph.TopNode;
+import bergdb.dag.Dag;
+import bergdb.dag.GetData;
+import bergdb.dag.INode;
+import bergdb.dag.KeyNode;
+import bergdb.dag.Keys;
+import bergdb.dag.TopNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;

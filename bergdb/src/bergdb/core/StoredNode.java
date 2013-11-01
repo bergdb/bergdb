@@ -1,6 +1,6 @@
 package bergdb.core;
 
-import bergdb.graph.INode;
+import bergdb.dag.INode;
 
 /**
  * The data of a stored node in the state stream (a stream item).

@@ -6,9 +6,9 @@ import java.util.Collections;
 import java.util.Comparator;
 
 import bergdb.common.Util;
-import bergdb.graph.GetMany;
-import bergdb.graph.Keys;
-import bergdb.graph.Kvt;
+import bergdb.dag.GetMany;
+import bergdb.dag.Keys;
+import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.stream.MemoryStream;

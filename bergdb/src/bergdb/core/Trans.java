@@ -5,9 +5,9 @@ import java.util.Comparator;
 import java.util.TreeMap;
 
 import bergdb.common.Util;
-import bergdb.graph.GetData;
-import bergdb.graph.Keys;
-import bergdb.graph.TransNodes;
+import bergdb.dag.GetData;
+import bergdb.dag.Keys;
+import bergdb.dag.TransNodes;
 import bergdb.nanotest.T;
 
 /**

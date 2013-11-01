@@ -7,8 +7,8 @@ import bergdb.core.Db;
 import bergdb.core.Jmx;
 import bergdb.core.KeyFactory;
 import bergdb.core.Trans;
-import bergdb.graph.GetData;
-import bergdb.graph.Keys;
+import bergdb.dag.GetData;
+import bergdb.dag.Keys;
 import bergdb.stream.FileStream;
 
 /**

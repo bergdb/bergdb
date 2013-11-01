@@ -1,6 +1,6 @@
 package bergdb.core;
 
-import bergdb.graph.EvictData;
+import bergdb.dag.EvictData;
 
 /**
  * An IEvictBoss that has a fixed configurable cache duration.

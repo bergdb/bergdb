@@ -5,7 +5,7 @@ import java.util.Random;
 
 import bergdb.common.Bytes;
 import bergdb.common.Util;
-import bergdb.graph.Keys;
+import bergdb.dag.Keys;
 import bergdb.nanotest.T;
 
 /**

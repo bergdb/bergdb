@@ -4,9 +4,9 @@ import java.io.IOException;
 
 import bergdb.core.Db;
 import bergdb.core.Trans;
-import bergdb.graph.GetMany;
-import bergdb.graph.Keys;
-import bergdb.graph.Kvt;
+import bergdb.dag.GetMany;
+import bergdb.dag.Keys;
+import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;

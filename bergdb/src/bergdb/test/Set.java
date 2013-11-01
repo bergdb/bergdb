@@ -7,7 +7,7 @@ import bergdb.common.Bytes;
 import bergdb.core.Db;
 import bergdb.core.NoEvictBoss;
 import bergdb.core.Trans;
-import bergdb.graph.Keys;
+import bergdb.dag.Keys;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;

@@ -9,11 +9,11 @@ import java.util.Set;
 
 import bergdb.core.Db;
 import bergdb.core.Trans;
-import bergdb.graph.INode;
-import bergdb.graph.KeyNode;
-import bergdb.graph.Klong;
-import bergdb.graph.TopNode;
-import bergdb.graph.ValueNode;
+import bergdb.dag.INode;
+import bergdb.dag.KeyNode;
+import bergdb.dag.Klong;
+import bergdb.dag.TopNode;
+import bergdb.dag.ValueNode;
 
 /**
  * This class can generate a GraphViz dot file that can be plotted

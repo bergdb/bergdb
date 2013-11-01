@@ -1,6 +1,6 @@
 package bergdb.core;
 
-import bergdb.graph.Keys;
+import bergdb.dag.Keys;
 
 /**
  * A key-value pair. Designed for use with Trans.

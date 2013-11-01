@@ -4,13 +4,13 @@ import java.io.PrintStream;
 
 import bergdb.common.Bytes;
 import bergdb.common.Pair;
-import bergdb.graph.INode;
-import bergdb.graph.KeyNode;
-import bergdb.graph.Spos;
-import bergdb.graph.StreamChecksumException;
-import bergdb.graph.TopNode;
-import bergdb.graph.TransNodes;
-import bergdb.graph.ValueNode;
+import bergdb.dag.INode;
+import bergdb.dag.KeyNode;
+import bergdb.dag.Spos;
+import bergdb.dag.StreamChecksumException;
+import bergdb.dag.TopNode;
+import bergdb.dag.TransNodes;
+import bergdb.dag.ValueNode;
 import bergdb.storage.MetaBlock;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
@@ -23,7 +23,7 @@ import bergdb.storage.StreamFormatException;
  * 
  * @author Frans Lundberg
  */
-public class NodeStream implements bergdb.graph.Dag.NodeReader {
+public class NodeStream implements bergdb.dag.Dag.NodeReader {
     private static final int initSizeOfByteBuffer = 100*1000;
     private static final int initSizeOfLongBuffer = 10*1000;
     
