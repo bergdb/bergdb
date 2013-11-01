@@ -24,6 +24,7 @@ import bergdb.storage.StreamIoException;
  * <li>Graph testable in isolation</li>
  * <li>Cache: adding nodes, cache eviction</li>
  * <li>Reads nodes (from interface NodeReader instance)</li>
+ * <li>Pointer locks</li>
  * </ul>
  * 
  * <p>Not in scope:</p>
@@ -46,9 +47,8 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     private final TopDs topDs;
     private final NodeReader nodeReader;
     private final int POINTER_LOCKS_LENGTH = 128;
-    private final Object[] pointerLocks;
+    private final PointerLock[] pointerLocks;
     private final int maxNodeSize;
-    //private final IDirtyNodes dirtyNodes;
     private final TransSeq seq;
     
     /**
@@ -65,9 +65,9 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
         this.maxNodeSize = b.maxNodeSize;
         this.nodeReader = b.nodeReader;
         
-        this.pointerLocks = new Object[POINTER_LOCKS_LENGTH];
+        this.pointerLocks = new PointerLock[POINTER_LOCKS_LENGTH];
         for (int i = 0; i < POINTER_LOCKS_LENGTH; i++) {
-            pointerLocks[i] = new Object();
+            pointerLocks[i] = new PointerLock();
         }
         
         //this.dirtyNodes = new DirtyNodes1();
@@ -172,9 +172,9 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
         this.maxNodeSize = b.maxNodeSize;
         this.nodeReader = b.nodeReader;
         
-        this.pointerLocks = new Object[POINTER_LOCKS_LENGTH];
+        this.pointerLocks = new PointerLock[POINTER_LOCKS_LENGTH];
         for (int i = 0; i < POINTER_LOCKS_LENGTH; i++) {
-            pointerLocks[i] = new Object();
+            pointerLocks[i] = new PointerLock();
         }
         
         //this.dirtyNodes = new DirtyNodes1();
@@ -1150,6 +1150,9 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     
     
     // ======== Inner interfaces / classes ========
+    
+    /** Special type for pointer lock object; useful for debug. */
+    public static class PointerLock {}
     
     /**
      * A NodeReader has method readNode() that can read a node from the DB stream
