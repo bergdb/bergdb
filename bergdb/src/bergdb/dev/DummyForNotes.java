@@ -2,9 +2,6 @@ package bergdb.dev;
 
 /*
 
-TODO B. Have special classes for ReadSync and WriteLock. Good for debug (monitoring 
-with jvisualvm).
-
 TODO D. Testing for Connection.sync(), Connection.syncStrong() better. How in general to test these things?
 Can we inject deterministic control over StorageManager somehow?
   

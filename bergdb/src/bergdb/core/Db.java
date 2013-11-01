@@ -112,9 +112,9 @@ public class Db implements IWarner {
     private static final int STATE_ACTIVE = 3;
     private static final int STATE_STOPPING = 4;
 
-    private final Object writeLock;
+    private final WriteLock writeLock;
         // Global write lock. Held when STM stuff is done and while transaction serialized to bytes.
-    private final Object readSynch;
+    private final ReadSync readSync;
         // Lock used to make sure writes from DB(), start(), execute(), are published
         // by the writer and made visible to readers calling get(), getMany().
         // It is typically used with an empty block: "synchronized (readSynch) {}".
@@ -224,8 +224,8 @@ public class Db implements IWarner {
      * on Builder settings.
      */
     private Db(Builder b) {
-        writeLock = new Object();
-        readSynch = new Object();
+        writeLock = new WriteLock();
+        readSync = new ReadSync();
         
         pointerLocksLength = 128;
         pointerLocks = new Object[pointerLocksLength];
@@ -276,7 +276,7 @@ public class Db implements IWarner {
         // Readers synchronize with readSynch (get(), getMany()) and writers
         // synchronize with writeLock.
         //
-        synchronized (readSynch) {}
+        synchronized (readSync) {}
         synchronized (writeLock) {}
     }
     
@@ -408,12 +408,12 @@ public class Db implements IWarner {
      * First (smallest) time available for a lookup.
      */
     public long getFirstAvailableLookupTime() {
-        synchronized (readSynch) {}
+        synchronized (readSync) {}
         return reclaim.getFirstAvailableLookupTime();
     }
 
     public long getFirstAvailablePos() {
-        synchronized (readSynch) {}
+        synchronized (readSync) {}
         return reclaim.getFirstAvailablePos();
     }
     
@@ -633,7 +633,7 @@ public class Db implements IWarner {
      * Returns the readSynch lock Object.
      */
     public final Object getReadSynch() {
-        return readSynch;
+        return readSync;
     }
     
     
@@ -685,7 +685,7 @@ public class Db implements IWarner {
      */
     public void start(StartListener listener) {
         synchronized (writeLock) {
-            synchronized (readSynch) {
+            synchronized (readSync) {
                 startInner(listener);
             }
         }
@@ -856,14 +856,14 @@ public class Db implements IWarner {
      * will be started, and no read operation will be started (but could be running).</p>
      */
     public void stop() {
-        synchronized (readSynch) {};
+        synchronized (readSync) {};
         
         if (state == STATE_STOPPING) {
             return;
         }
         
         state = STATE_STOPPING;
-        synchronized (readSynch) {};
+        synchronized (readSync) {};
         storageManager.stop();
     }
     
@@ -873,7 +873,7 @@ public class Db implements IWarner {
      * This method does what stop() does and more.
      */
     public void close() {
-        synchronized (readSynch) {};
+        synchronized (readSync) {};
         
         if (state == STATE_STOPPING) {
             return;
@@ -886,7 +886,7 @@ public class Db implements IWarner {
             
             state = STATE_STOPPING;
             
-            synchronized (readSynch) {};
+            synchronized (readSync) {};
         }
             
         // Here, no write op is running or will be started.
@@ -963,7 +963,7 @@ public class Db implements IWarner {
         assert gd.kwi != null;
 
         // Makes sure writes from startup and execute() are visible.
-        synchronized (readSynch) {}
+        synchronized (readSync) {}
 
         int myState = state;
         if (myState != STATE_ACTIVE) {
@@ -1038,7 +1038,7 @@ public class Db implements IWarner {
         assert g.result.size() == 0 : "g.result.size() not 0, but " + g.result.size();
         assert g.stopCondition != null;
 
-        synchronized (readSynch) {}
+        synchronized (readSync) {}
             // Makes sure writes from startup and execute() are visible.
 
         int myState = state;
@@ -1139,7 +1139,7 @@ public class Db implements IWarner {
      */
     public void checkNodes() throws AssertionError {
         synchronized (writeLock) {
-            synchronized (readSynch) {
+            synchronized (readSync) {
                 checkNodeInner();
             }
         }
@@ -1240,7 +1240,7 @@ public class Db implements IWarner {
 
         // Makes sure writes from startup and previous execute() are visible.
         // We do not hold DB.writeLock yet.
-        synchronized (readSynch) {}
+        synchronized (readSync) {}
 
         int myState = state;
         if (myState != STATE_ACTIVE) {
@@ -1311,7 +1311,7 @@ public class Db implements IWarner {
                 kvCount += t.kvs.length;
                 transactionCount++;
 
-                synchronized (readSynch) {}
+                synchronized (readSync) {}
                     // Publishes the changes by the writer thread to the readers. This is done
                     // before the t.transactionTime can be used as lookup time, so all readers
                     // (that do: "synchronized (readSynch) {}") are guaranteed to see all changes
@@ -1346,7 +1346,7 @@ public class Db implements IWarner {
             // all readers assuming they also use the same statement as below
             // before that start reading.
             
-            synchronized (readSynch) {}
+            synchronized (readSync) {}
             
             // 1301 Frans. The following line moved to inside the synchronized
             // (writeLock) block to KISS the reclaim stuff. However, it does not really 
@@ -1686,6 +1686,12 @@ public class Db implements IWarner {
     
     
     // ======== Types ========
+    
+    /** Special class for Db.readSync is useful for debug. */
+    public static class ReadSync {}
+    
+    /** Special class for Db.writeLock is useful for debug. */
+    public static class WriteLock {}
     
     /**
      * For listening to what happens at startup. Useful for testing / debugging.
