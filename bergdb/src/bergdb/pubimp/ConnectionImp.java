@@ -6,7 +6,6 @@ import bergdb.graph.Keys;
 import bergdb.pub.Action;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
-import bergdb.pub.NoSuchObjectException;
 import bergdb.pub.Transaction;
 import bergdb.pub.UseIndexBuilder;
 import bergdb.pub.UsePrimaryBuilder;

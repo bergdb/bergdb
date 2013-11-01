@@ -2,7 +2,6 @@ package bergdb.pubimp;
 
 import bergdb.pub.Database;
 import bergdb.pub.Kv;
-import bergdb.pub.NoSuchIndexException;
 import bergdb.pub.UsePrimaryBuilder;
 
 /**
@@ -14,7 +13,7 @@ public class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
     private UseIndexBuilderImp<TYPE> builder;
     
     /**
-     * @throws NoSuchIndexException if no index with the name exists.
+     * @throws bergdb.pub.NoSuchIndexException if no index with the name exists.
      */
     public UsePrimaryBuilderImp(ConnectionImp connection, Class<TYPE> type, 
             long wantedLookupTime) {

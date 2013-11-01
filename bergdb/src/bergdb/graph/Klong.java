@@ -615,7 +615,7 @@ public class Klong {
             Assert.assertEquals(Util.toString(keys1.get(i)), Util.toString(keys2.get(i)));
         }
     }
-    
+
     @T
     public static void testSortOrder2() throws UnsupportedEncodingException {
         //
@@ -659,7 +659,7 @@ public class Klong {
         for (int i = 0; i < keys1.size(); i++) {
             Assert.assertEquals(Util.toString(keys1.get(i)), Util.toString(keys2.get(i)));
         }
-    }    
+    }
     
     @T
     public static void testCreateKlongs() {
