@@ -389,31 +389,6 @@ public final class TopNode implements INode {
         
         return t;
     }
-
-    public INode getEvictPointer(int rand) {
-        assert rand >= 0;
-        INode result = null;
-        int total = pointersLength + 1;
-        
-        for (int i = 0; i < total; i++) {
-            int index = rand % total;
-            if (index == 0) {
-                if (rootPointer != null) {
-                    result = rootPointer;
-                    break;
-                }
-            } else {
-                INode p = pointers[index - 1];
-                if (p != null) {
-                    result = p;
-                    break;
-                }
-            }
-            
-            rand++;
-        }
-        return result;
-    }
     
     public int getMemoryPointerCount() {
         int count = rootPointer == null ? 0 : 1;

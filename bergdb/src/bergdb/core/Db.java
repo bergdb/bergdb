@@ -23,7 +23,6 @@ import bergdb.graph.Graph;
 import bergdb.graph.INode;
 import bergdb.graph.KeyNode;
 import bergdb.graph.Keys;
-import bergdb.graph.Klong;
 import bergdb.graph.NodeVisitor;
 import bergdb.graph.Pointer;
 import bergdb.graph.PutData;
@@ -236,7 +235,7 @@ public class Db implements IWarner {
         
         builder = b;
 
-        evictRandom = new Random(0);
+        evictRandom = new Random(0);      // pseudo-random, but deterministic.
         transNodes = new TransNodes();
         keyModSet = new KeyModSet2();
  
@@ -1543,7 +1542,7 @@ public class Db implements IWarner {
     }
 
     /**
-     * Runs the evict algorithm and returns the number of nodes evicted.
+     * Runs the evict algorithm.
      */
     public final void evict(EvictData ed) {
         // Synch note: concurrent access must be supported.
@@ -1561,22 +1560,24 @@ public class Db implements IWarner {
         //
         // Synch note: concurrent access must be supported by this method.
         // Multiple concurrent readers, one writer.
-        //
+        // rand is used to somewhat randomly choose a nodes to evict process.
+        // For performance a single call to evictRandom.nextInt() is used.
+        // To increase randomness, the rand value is increase between each time it is used.
         
         final Pointer pointer = ed.tempPointer;
 
         INode node = graph.getSuperRoot();
-        
         INode nextNode;
         INode next2;
         long limit = this.cachedMemoryValue.get() - evictBoss.getCacheDuration();
-        limit = limit < 0 ? 0 : limit;
-        // limit is the limit for accessData. Nodes accessed after limit are not evictable.
+        ed.accessTimeLimit = limit < 0 ? 0 : limit;
+            // Nodes accessed after accessTimeLimit are not evictable.
 
         int rand = Math.abs(evictRandom.nextInt());
-        // random int used as randomness for this evict operation.
-
-        getEvictPointer(node, rand, pointer);
+            // random int used as randomness for this evict operation.
+        
+        getEvictPointer2(node, rand, pointer);
+        rand += 31;
         nextNode = pointer.node;
 
         if (nextNode == null) {
@@ -1587,7 +1588,8 @@ public class Db implements IWarner {
         }
 
         while (true) {
-            getEvictPointer(nextNode, rand, pointer);
+            getEvictPointer2(nextNode, rand, pointer);
+            rand += 17;
             next2 = pointer.node;
 
             if (next2 == null) {
@@ -1601,213 +1603,67 @@ public class Db implements IWarner {
             next2 = null;
         }
 
-        // Here, we have selected a node, 'node' to process.
-
-        evict(node, limit, ed);
+        // We have selected a node to process.
+        evictPointers(node, ed);
     }
-
+    
     /**
-     * Evicts all pointers in the node that are evictable.
+     * Evicts all evictable pointers of 'node'.
      */
-    private void evict(INode node, long limit, EvictData ed) {
-        // This is awkward, but required to be able to use node-type-specific optimizations
-        // implemented in this class.
-        // Note, we could avoid this awkwardness with the visitor pattern, but that would
-        // require creating a new object, a NodeVisitor.
-        
-        switch (node.getType()) {
-        case INode.TYPE_KEY_NODE:
-            evictKeyNode((KeyNode) node, limit, ed);
-            break;
-        case INode.TYPE_TOP_NODE:
-            evictTopNode((TopNode) node, limit, ed);
-            break;
-        default:
-            throw new Bug("Unexpected node type: " + node.getClass().getName());
-        }
-    }
-
-    // TODO B. Double-check evict code (refactor possible?)
-    private void evictTopNode(TopNode node, long limit, EvictData ed) {
-        INode pointee;
-        ed.pointerCount += 1; // +1 for root pointer.
-
-        pointee = node.rootPointer;
-        if (pointee != null /*&& !pointee.isDirty()*/
-                && !(pointee.getSpos() >= ed.startupPos)
-                && AccessData.getAccessTimeNoChecks(node.rootPointerPos) <= limit) {
-
-            // Probably an evictable pointer, but we must synch to make an
-            // atomic read plus
-            // subsequent write.
-
-            synchronized (graph.getPointerLock(node, 0)) {
-                pointee = node.rootPointer;
-                if (pointee != null /*&& !pointee.isDirty()*/
-                        && !(pointee.getSpos() >= ed.startupPos)
-                        && AccessData.getAccessTime(node.rootPointerPos) <= limit) {
-                    node.rootPointerPos = pointee.getSpos();
-                    node.rootPointer = null;
-                    ed.evictCount++;
-                }
-            }
-        }
-
-        for (int i = 0; i < node.pointersLength; i++) {
-            if (node.pointersPos[i] == Spos.NULL) {
-                // If "null" pointer. Not all pointer index values have actual
-                // pointers.
-                continue;
-            }
-
-            ed.pointerCount++;
-            pointee = node.pointers[i];
-            long pointeeSpos;
-
-            if (pointee != null /*&& !pointee.isDirty()*/ 
-                    && (pointeeSpos = pointee.getSpos()) != Spos.NULL
-                    && !(pointeeSpos >= ed.startupPos)
-                    && AccessData.getAccessTimeNoChecks(node.pointersPos[i]) <= limit) {
-
-                // Probably evictable pointer
-
-                synchronized (graph.getPointerLock(node, i + 1)) {        
-                    pointee = node.pointers[i];
-                    pointeeSpos = pointee.getSpos();
-                    
-                    if (pointee != null /*&& !pointee.isDirty()*/ 
-                            && pointeeSpos != Spos.NULL
-                            && !(pointeeSpos >= ed.startupPos)
-                            && AccessData.getAccessTimeNoChecks(node.pointersPos[i]) <= limit) {
-                        node.pointersPos[i] = pointee.getSpos();
-                        node.pointers[i] = null;
-                        ed.evictCount++;
-                    }
-                }
-            }
-        }
-    }
-
-    // TODO B. Double-check code. De-optimize / refactor if possible.
-    private void evictKeyNode(KeyNode node, long limit, EvictData ed) {
-        //
-        // getAccessTimeNoChecks() used when not in synch. Possibly concurrently
-        // modified.
-        //
-        // NOTE Could be moved to KeyNode class if DB.getPointerLock() is made
-        // available to the method (ClassForMe approach).
-        //
-
-        int sz = node.size;
-        int pointerCount = 0;
-            // Number of TYPE_KEY klongs. Points to ValueNode or KeyNode.
-            // Delete and time klongs do not have corresponding pointers.
-
-        for (int i = 0; i < sz; i++) {
-            if (Klong.getType(node.klongs[i]) != Klong.TYPE_KEY) {
-                continue;
-            }
-
-            pointerCount++;
-            INode pointee = node.pointers[i];
-            long pointeeSpos;
-            
-            if (pointee != null /*&& !pointee.isDirty()*/
-                    && !((pointeeSpos = pointee.getSpos()) >= ed.startupPos)
-                    && AccessData.getAccessTimeNoChecks(node.pos[i]) <= limit) {
+    private void evictPointers(INode node, EvictData ed) {
+        int count = node.getPointerCount();
+        for (int i = 0; i < count; i++) {
+            INode pointee = node.getPointerNode(i);
+            if (pointee != null) {
                 synchronized (graph.getPointerLock(node, i)) {
-                    pointee = node.pointers[i];
-                    pointeeSpos = pointee.getSpos();
+                    pointee = node.getPointerNode(i); // re-read needed in case
+                                                      // change happened.
+                    long pointeePos;
 
-                    if (pointee != null /*&& !pointee.isDirty()*/
-                            && !(pointeeSpos >= ed.startupPos)
-                            && AccessData.getAccessTime(node.pos[i]) <= limit) {
-                        node.pos[i] = pointeeSpos;
-                        node.pointers[i] = null;
-                        ed.evictCount++;
+                    if (pointee != null
+                            && (pointeePos = pointee.getSpos()) != Spos.NULL
+                            && !(pointeePos >= ed.startupPos)
+                            && AccessData.getAccessTime(node.getPointerAccessData(i)) <= ed.accessTimeLimit) {
+
+                        node.setPointer(i, null, pointeePos);
+                        ed.evictCount += 1;
                     }
                 }
             }
         }
-
-        ed.pointerCount += pointerCount;
     }
 
-    /**
-     * Sets p.node and p.index. p.node will be null if none found. Set p with a
-     * node and its index. Only memory pointers are considered.
-     */
-    private void getEvictPointer(INode node, int rand, Pointer p) {
-        // Returns a random in-memory pointer and its pointer index written to p.
-
-        switch (node.getType()) {
-        case INode.TYPE_KEY_NODE:
-            getEvictPointer((KeyNode) node, rand, p);
-            break;
-        case INode.TYPE_TOP_NODE:
-            getEvictPointer((TopNode) node, rand, p);
-            break;
-        default:
-            p.node = null;
-            p.pos = Spos.NULL;
-            p.index = -1;
-        }
-    }
-
-    private void getEvictPointer(TopNode topNode, int rand, Pointer p) {
-        int length = topNode.pointersLength + 1;
+    
+    private void getEvictPointer2(INode node, int rand, Pointer p) {
+        int length = node.getPointerCount();
         int index;
         p.node = null;
         p.index = -1;
-
+        
         for (int i = 0; i < length; i++) {
             index = rand % length;
-            assert index >= 0 : "index = " + index;
-
-            if (index == 0) {
-                p.node = topNode.rootPointer;
-                if (p.node != null) {
-                    p.index = index;
-                    break;
-                }
-            } else {
-                p.node = topNode.pointers[index - 1];
-                if (p.node != null) {
-                    p.index = index;
-                    break;
-                }
+            assert index >= 0 && index < length;
+            
+            synchronized (graph.getPointerLock(node, index)) {
+                node.getPointer(index, p);
             }
-
-            rand++;
-        }
-    }
-
-    private void getEvictPointer(KeyNode keyNode, int rand, final Pointer p) {
-        int size = keyNode.size;
-        p.node = null;
-        p.index = -1;
-
-        for (int i = 0; i < size; i++) {
-            int index = rand % size;
-
-            synchronized (graph.getPointerLock(keyNode, index)) {
-                p.node = keyNode.pointers[index];
-            }
-
+            
             if (p.node != null) {
                 p.index = index;
                 break;
             }
-
-            rand++;
+            
+            rand += 1;
         }
     }
 
     /**
-     * Reports a warning. Current implementation prints to DB.out - standard
+     * Reports a warning. Current implementation prints to Db.out - standard
      * database output.
      */
     public void warn(String message, Throwable t) {
+        // TODO Z LATER. This is not really used, we need other way to handle warnings.
+        
         out.println("WARNING. " + message);
         t.printStackTrace(out);
     }

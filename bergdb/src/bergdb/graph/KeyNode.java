@@ -1235,31 +1235,6 @@ public class KeyNode implements INode {
         
         return result;
     }
-
-    /**
-     * Returns an in-memory pointer or null if there is no such out-bound
-     * pointer from this node.
-     * Does not require write access.
-     */
-    public INode getEvictPointer(int rand) {
-        //
-        // The pointer returned is the first non-null pointer found starting at
-        // a random index.
-        //
-        
-        INode result = null;
-        int pointerCount = this.size;
-        for (int i = 0; i < pointerCount; i++) {
-            int index = rand % pointerCount;
-            INode p = pointers[index];
-            if (p != null) {
-                result = p;
-                break;
-            }
-            rand++;
-        }
-        return result;
-    }
     
     /**
      * Does not require write access.

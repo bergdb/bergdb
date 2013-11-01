@@ -14,6 +14,7 @@ public class EvictData {
     public int evictCount;          // number of evicted pointers
     public int pointerCount;        // number of pointers processed
     public long startupPos;         // Index nodes with spos >= dirtyLimit must not be evicted
+    public long accessTimeLimit;    // A node with access time >= accessTimeLimit is not evictable.
     
     public EvictData() {
         tempPointer = new Pointer();

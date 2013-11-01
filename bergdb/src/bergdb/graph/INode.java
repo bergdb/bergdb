@@ -16,6 +16,7 @@ package bergdb.graph;
  * @author Frans Lundberg
  */
 public interface INode {
+    // 131101 Frans: removed getEvictPointer(). Access needs lock, Graph.getPointerLock().
     // 130502 Frans: changed constants to 10, 20, ... smart if we ever would want 
     // node type + serialization version in same number to save a byte.
     
@@ -61,16 +62,6 @@ public interface INode {
      * Calls visitor.visit().
      */
     public void accept(NodeVisitor visitor);
-    
-    /**
-     * Returns a pointer for eviction, or null if there is no in-memory
-     * pointer to return. Any non-null pointer returned must be an in-memory
-     * pointer.
-     * 
-     * @param rand A random int between 0 and Integer.MAX_VALUE. Can be used
-     * by node when randomness is needed.
-     */
-    public INode getEvictPointer(int rand);
     
     /**
      * Returns the number of in-memory out-bound pointer from this node.
