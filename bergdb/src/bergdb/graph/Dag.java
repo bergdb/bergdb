@@ -13,15 +13,15 @@ import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 
 /**
- * <p>The DB graph is the main data structure of the database.
- * An instance of this class handles the in-memory (cached) part of the DB graph.</p>
+ * <p>The DAG (directed acyclic graph) is the main data structure of the database.
+ * An instance of this class handles the in-memory (cached) part of the DAG.</p>
  * 
  * <p>Features/scope:</p>
  * <ul>
- * <li>Walking the graph, followPointer()</li>
+ * <li>Walking the DAG, followPointer()</li>
  * <li>getOne(), getMany(), putOne()</li>
  * <li>Making nodes dirty</li>
- * <li>Graph testable in isolation</li>
+ * <li>Dag testable in isolation</li>
  * <li>Cache: adding nodes, cache eviction</li>
  * <li>Reads nodes (from interface NodeReader instance)</li>
  * <li>Pointer locks</li>
@@ -37,13 +37,13 @@ import bergdb.storage.StreamIoException;
  * </ul>
  * 
  * <p>1309: This class was created in September 2013 during a heavy refactoring.
- * I wanted a smaller, cleaner Db class and a Graph that is testable in isolation.
+ * I wanted a smaller, cleaner Db class and a DAG class that is testable in isolation.
  * This is a change to review the code for correctness and add more unit test
  * to show that code works.</p> 
  * 
  * @author Frans Lundberg
  */
-public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
+public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     private final TopDs topDs;
     private final NodeReader nodeReader;
     private final int POINTER_LOCKS_LENGTH = 128;
@@ -55,7 +55,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      * Creates and returns a new, minimal DbGraph.
      * The returned graph has exactly one top node and one key node.
      */
-    private Graph(Builder b, long time) {
+    private Dag(Builder b, long time) {
         seq = new TransSeq();
         
         KeyNode root = new KeyNode();
@@ -82,7 +82,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
      * @param nextMap
      * @return
      */
-    private Graph(Builder b, long accessData,
+    private Dag(Builder b, long accessData,
             HashMap<Long, INode> posMap, HashMap<Long, INode> nextMap, TransSeq seq) {
         //
         // Pointer reconciliation phase
@@ -283,7 +283,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     public GetData newGetData() {
         final GetData g = new GetData();
         
-        g.pointerListener = new Graph.PointerListener() {
+        g.pointerListener = new Dag.PointerListener() {
             public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
                 switch (pointerType) {
                 case Pointer.TYPE_MEMORY:
@@ -311,7 +311,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
     public PutData newPutData() {        
         final PutData p = new PutData();
         
-        p.pointerListener = new Graph.PointerListener() {
+        p.pointerListener = new Dag.PointerListener() {
             public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) { 
                 if (result != null) {
                     if (result.getType() == INode.TYPE_KEY_NODE) {
@@ -553,7 +553,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             return;
         }
 
-        GetMany.Chain chain = g.new Chain((GetMany.GraphForMe) this);
+        GetMany.Chain chain = g.new Chain((GetMany.DagForMe) this);
         chain.setup(root);
 
         outer: while (true) {
@@ -624,7 +624,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
         assert key != null && key.length > 0;
         
         Pointer tempPointer = new Pointer();
-        final KeyNode root = topDs.findRoot((TopDs.DbGraphForMe) this, pd.tt, pd.accessData,
+        final KeyNode root = topDs.findRoot((TopDs.DagForMe) this, pd.tt, pd.accessData,
                 tempPointer, pd.pointerListener, pd.cachePolicy);
         
         if (root == null) {
@@ -946,7 +946,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             
             topDs.newSuperRoot(tTime, last, pd.accessData);
             pd.nodeChangeListener.topNodeChanged(topDs.getSuperRoot());
-            pd.splitListener.nodeSplit(Graph.TIME_SPLIT_2);
+            pd.splitListener.nodeSplit(Dag.TIME_SPLIT_2);
             assert last.checkWithMessage() == null;
             
         } else {
@@ -961,7 +961,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             pd.oneKwi[0].pos = pd.accessData;
             appendKlongs(parent, depth - 1, pd.oneKwi, pd);
             
-            pd.splitListener.nodeSplit(Graph.TIME_SPLIT_1);
+            pd.splitListener.nodeSplit(Dag.TIME_SPLIT_1);
             assert parent.checkWithMessage() == null : parent.checkWithMessage() + " node:\n"
                     + parent.print();
         }
@@ -1007,7 +1007,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             topDs.newSuperRoot(tt, newRoot, pd.accessData);
             pd.nodeChangeListener.topNodeChanged(topDs.getSuperRoot());
                      
-            pd.splitListener.nodeSplit(Graph.SPACE_SPLIT_3);
+            pd.splitListener.nodeSplit(Dag.SPACE_SPLIT_3);
             assert newRoot.checkWithMessage() == null;
 
         } else if (parent.isSegmentLeaf()) {
@@ -1033,7 +1033,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             pd.oneKwi[0].pos = pd.accessData;
             appendKlongs(parent, depth - 1, pd.oneKwi, pd);
 
-            pd.splitListener.nodeSplit(Graph.SPACE_SPLIT_2);
+            pd.splitListener.nodeSplit(Dag.SPACE_SPLIT_2);
             assert parent.checkWithMessage() == null : parent.checkWithMessage() + " node:\n"
                     + parent.print();
             assert newSegmentRoot.checkWithMessage() == null;
@@ -1058,7 +1058,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
 
             appendKlongs(parent, depth - 1, pd.twoKwis, pd);
 
-            pd.splitListener.nodeSplit(Graph.SPACE_SPLIT_1);
+            pd.splitListener.nodeSplit(Dag.SPACE_SPLIT_1);
             assert parent.checkWithMessage() == null : parent.checkWithMessage();
         }
     }
@@ -1085,7 +1085,7 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
             this.nodeReader = new NodeReader() {
                 public INode readNode(long spos, byte[] tempBuffer) {
                     throw new IllegalStateException("No nodeReader was set, use "
-                            + Graph.class.getName() + ".setNodeReader().");
+                            + Dag.class.getName() + ".setNodeReader().");
                 }
             };
         }
@@ -1134,16 +1134,16 @@ public class Graph implements TopDs.DbGraphForMe, GetMany.GraphForMe {
          * method is suitable to create an all in-memory graph. Useful for
          * testing.
          */
-        public Graph createEmpty(long time) {
-            return new Graph(this, time);
+        public Dag createEmpty(long time) {
+            return new Dag(this, time);
         }
 
         /**
          * Creates a new DbGraph from existing nodes in the DB stream.
          */
-        public Graph createFromStreamNodes(long accessData, HashMap<Long, INode> posMap,
+        public Dag createFromStreamNodes(long accessData, HashMap<Long, INode> posMap,
                 HashMap<Long, INode> nextMap, TransSeq seq) {
-            return new Graph(this, accessData, posMap, nextMap, seq);
+            return new Dag(this, accessData, posMap, nextMap, seq);
         }
     }
     

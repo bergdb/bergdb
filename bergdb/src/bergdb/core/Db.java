@@ -19,7 +19,7 @@ import bergdb.graph.Constants;
 import bergdb.graph.EvictData;
 import bergdb.graph.GetData;
 import bergdb.graph.GetMany;
-import bergdb.graph.Graph;
+import bergdb.graph.Dag;
 import bergdb.graph.INode;
 import bergdb.graph.KeyNode;
 import bergdb.graph.Keys;
@@ -32,7 +32,7 @@ import bergdb.graph.TopNode;
 import bergdb.graph.TransSeq;
 import bergdb.graph.TransNodes;
 import bergdb.graph.ValueNode;
-import bergdb.graph.Graph.PointerListener;
+import bergdb.graph.Dag.PointerListener;
 import bergdb.nanotest.Assert;
 import bergdb.pub.BadReplicaException;
 import bergdb.pub.Clock;
@@ -216,7 +216,7 @@ public class Db implements IWarner {
     
     // ---- Graph ----
     
-    private Graph graph;
+    private Dag graph;
     
     
     /**
@@ -283,7 +283,7 @@ public class Db implements IWarner {
     /**
      * Useful for testing; violates Law of Demeter.
      */
-    public Graph getGraph() {
+    public Dag getGraph() {
         return graph;
     }
 
@@ -792,14 +792,14 @@ public class Db implements IWarner {
 
         dbClock.setLastTransactionTime(lastTransactionTime);
 
-        Graph.Builder b = Graph.builder();
+        Dag.Builder b = Dag.builder();
         b.nodeReader(nodeStream);
         setMaxNodeSize(b);
         
         this.graph = b.createFromStreamNodes(getAccessData(), posMap, nextMap, seq);
         
         this.pd = graph.newPutData();
-        this.pd.nodeChangeListener = new Graph.NodeChangeListener() {
+        this.pd.nodeChangeListener = new Dag.NodeChangeListener() {
             public void topNodeChanged(TopNode node) {
                 transNodes.addTopNode(node);
             }
@@ -819,7 +819,7 @@ public class Db implements IWarner {
             // state = STATE_ACTIVE needed before this method.
     }
 
-    private void setMaxNodeSize(Graph.Builder b) {
+    private void setMaxNodeSize(Dag.Builder b) {
         switch (builder.maxNodeSize) {
         case 62:
             b.maxNodeSize62();

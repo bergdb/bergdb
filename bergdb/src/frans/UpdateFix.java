@@ -7,7 +7,7 @@ import bergdb.core.KTestClock;
 import bergdb.core.NoEvictBoss;
 import bergdb.core.Trans;
 import bergdb.graph.GetData;
-import bergdb.graph.Graph;
+import bergdb.graph.Dag;
 import bergdb.graph.INode;
 import bergdb.graph.KeyNode;
 import bergdb.graph.Keys;
@@ -135,7 +135,7 @@ public class UpdateFix {
         String[] keys = new String[]{updateKey};
         
         GetData gd = db.newGetData();
-        gd.pointerListener = new Graph.PointerListener() {
+        gd.pointerListener = new Dag.PointerListener() {
             public void superRootAccessed(TopNode superRoot) {
                 System.out.println("Super root: " + superRoot);
             }

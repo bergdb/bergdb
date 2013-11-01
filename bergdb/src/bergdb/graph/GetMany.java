@@ -3,8 +3,8 @@ package bergdb.graph;
 import java.util.ArrayList;
 import java.util.List;
 
-import bergdb.graph.Graph.CachePolicy;
-import bergdb.graph.Graph.PointerListener;
+import bergdb.graph.Dag.CachePolicy;
+import bergdb.graph.Dag.PointerListener;
 
 /**
  * Input/output to the Graph.getMany() method. Also data structures and algorithms to support that
@@ -12,7 +12,7 @@ import bergdb.graph.Graph.PointerListener;
  * If key2 == null, the interval is (key1, +inf).
  * If key1 == null, the interval is (-inf, key2].
  * 
- * @see Graph#getMany(GetMany)
+ * @see Dag#getMany(GetMany)
  * @author Frans Lundberg
  */
 public class GetMany {
@@ -93,7 +93,7 @@ public class GetMany {
     /**
      * Limited access to Graph.
      */
-    public interface GraphForMe {
+    public interface DagForMe {
         public INode followPointer(final INode predecessor, int pointerIndex, long accessData, 
                 PointerListener pointerListener, CachePolicy cachePolicy);
     }
@@ -119,7 +119,7 @@ public class GetMany {
         long[] linkCompareValues;
         long[] keySegments;
         int keySegmentSize;
-        GraphForMe graph;
+        DagForMe graph;
         KlongWithPointer kwi;
         boolean first = true;
         boolean setupEqMatch = false;
@@ -128,7 +128,7 @@ public class GetMany {
         private final boolean chainForward;
         private final boolean chainInclusive;
         
-        public Chain(GraphForMe graph) {            
+        public Chain(DagForMe graph) {            
             assert graph != null;
             this.graph = graph;
             

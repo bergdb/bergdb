@@ -12,9 +12,9 @@ public class GetData {
     
     // -- Input, settings --
     
-    public Graph.PointerListener pointerListener;
+    public Dag.PointerListener pointerListener;
     
-    public Graph.CachePolicy cachePolicy;
+    public Dag.CachePolicy cachePolicy;
     
     
     // -- Internal working data --
@@ -46,7 +46,7 @@ public class GetData {
         kwi = new KlongWithPointer();
         tempPointer = new Pointer();
         evictData = new EvictData();
-        pointerListener = Graph.DO_NOTHING_POINTER_LISTENER;        
-        cachePolicy = Graph.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES;
+        pointerListener = Dag.DO_NOTHING_POINTER_LISTENER;        
+        cachePolicy = Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES;
     }
 }

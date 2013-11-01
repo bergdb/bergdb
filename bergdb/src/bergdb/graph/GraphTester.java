@@ -10,7 +10,7 @@ public class GraphTester {
     
     @T
     public static void test0() {
-        Graph g = Graph.builder().createEmpty(0);
+        Dag g = Dag.builder().createEmpty(0);
         GetData gd = g.newGetData();
         
         byte[] result = g.getOne(0, Keys.toSegments("/-k1"), gd);
@@ -21,11 +21,11 @@ public class GraphTester {
     @T
     public static void test1() {
         // With choices
-        Graph g = Graph.builder().createEmpty(0);
+        Dag g = Dag.builder().createEmpty(0);
         GetData gd = g.newGetData();
         final ArrayList<Integer> choices = new ArrayList<Integer>();
         
-        gd.pointerListener = new Graph.PointerListener() {
+        gd.pointerListener = new Dag.PointerListener() {
             public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
                 choices.add(pointerIndex);
             }
@@ -43,7 +43,7 @@ public class GraphTester {
     
     @T
     public static void testPut0() {
-        Graph g = Graph.builder().createEmpty(0);
+        Dag g = Dag.builder().createEmpty(0);
         PutData pd = g.newPutData();
         pd.tt = 10;
         
@@ -66,7 +66,7 @@ public class GraphTester {
     
     @T
     public static void testPut1() {
-        Graph g = Graph.builder().createEmpty(0);
+        Dag g = Dag.builder().createEmpty(0);
         PutData pd = g.newPutData();
         pd.tt = 10;
         
@@ -101,7 +101,7 @@ public class GraphTester {
                 "/k1", "v1", "/k2", "v2", "/k3", "v3", "/k4", "v4", "/k0", "v0"
         };
         
-        Graph g = Graph.builder().maxNodeSize6().createEmpty(0);
+        Dag g = Dag.builder().maxNodeSize6().createEmpty(0);
         PutData pd = g.newPutData();
         pd.tt = 10;
         
@@ -128,7 +128,7 @@ public class GraphTester {
     public static void testTimeSplit1a() {
         // Tests a time-split-1.
 
-        Graph g = Graph.builder().maxNodeSize6().createEmpty(0);
+        Dag g = Dag.builder().maxNodeSize6().createEmpty(0);
         PutData pd = g.newPutData();
         
         for (int i = 0; i < 4; i++) {
@@ -154,7 +154,7 @@ public class GraphTester {
     
     @T
     public static void testVisit0() {
-        Graph g = Graph.builder().createEmpty(10);
+        Dag g = Dag.builder().createEmpty(10);
         final int[] counters = new int[3];
         
         g.visitMemoryNodes(new NodeVisitor() {
@@ -170,7 +170,7 @@ public class GraphTester {
     
     @T
     public static void testVisit1() {
-        Graph g = Graph.builder().createEmpty(10);
+        Dag g = Dag.builder().createEmpty(10);
         PutData pd = g.newPutData();
         pd.tt = 20;
         
@@ -187,7 +187,7 @@ public class GraphTester {
     }
     
     public static void main(String[] args) {
-        Graph g = Graph.builder().createEmpty(10);
+        Dag g = Dag.builder().createEmpty(10);
         PutData pd = g.newPutData();
         pd.tt = 20;
         

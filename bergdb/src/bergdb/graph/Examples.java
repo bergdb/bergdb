@@ -10,12 +10,12 @@ import bergdb.common.Util;
 public class Examples {
     
     public static void empty() {
-        Graph g = Graph.builder().createEmpty(10);
+        Dag g = Dag.builder().createEmpty(10);
         g.printGraph(System.out);
     }
     
     public static void simpleKey() {
-        Graph g = Graph.builder().createEmpty(10);
+        Dag g = Dag.builder().createEmpty(10);
         PutData pd = g.newPutData();
         pd.tt = 20;
         g.putKv(Keys.toSegments("/myKey"), Util.toBytes("v1"), pd);
@@ -23,7 +23,7 @@ public class Examples {
     }
     
     public static void longerKey() {
-        Graph g = Graph.builder().createEmpty(10);
+        Dag g = Dag.builder().createEmpty(10);
         PutData pd = g.newPutData();
         pd.tt = 20;
         g.putKv(Keys.toSegments("/myLongerKey"), Util.toBytes("v1"), pd);
@@ -31,7 +31,7 @@ public class Examples {
     }
     
     public static void severalKeys1() {
-        Graph g = Graph.builder().maxNodeSize8().createEmpty(10);
+        Dag g = Dag.builder().maxNodeSize8().createEmpty(10);
         PutData pd = g.newPutData();
         pd.tt = 20;
         
@@ -43,7 +43,7 @@ public class Examples {
     }
     
     public static void severalKeys2() {
-        Graph g = Graph.builder().maxNodeSize8().createEmpty(10);
+        Dag g = Dag.builder().maxNodeSize8().createEmpty(10);
         PutData pd = g.newPutData();
         pd.tt = 20;
         
@@ -55,7 +55,7 @@ public class Examples {
     }
     
     public static void prefixDemo() {
-        Graph g = Graph.builder().createEmpty(10);
+        Dag g = Dag.builder().createEmpty(10);
         
         PutData pd = g.newPutData();
         pd.tt = 20;

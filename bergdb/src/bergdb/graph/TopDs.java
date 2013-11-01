@@ -1,7 +1,7 @@
 package bergdb.graph;
 
-import bergdb.graph.Graph.CachePolicy;
-import bergdb.graph.Graph.PointerListener;
+import bergdb.graph.Dag.CachePolicy;
+import bergdb.graph.Dag.PointerListener;
 
 /**
  * The top data structure is used to find the space root node given
@@ -12,7 +12,7 @@ import bergdb.graph.Graph.PointerListener;
 public class TopDs {
     private volatile TopNode superRoot;
     
-    public interface DbGraphForMe {
+    public interface DagForMe {
         public INode followPointer(final INode predecessor, int pointerIndex, 
                 long accessData, PointerListener walker, CachePolicy cachPolicy);
     }
@@ -83,7 +83,7 @@ public class TopDs {
     /**
      * Convenience method for when GetData is used.
      */
-    public final KeyNode findRoot(DbGraphForMe dbGraph, long time, GetData gd) {
+    public final KeyNode findRoot(DagForMe dbGraph, long time, GetData gd) {
         return findRoot(dbGraph, time, gd.accessData, gd.tempPointer, gd.pointerListener, gd.cachePolicy);
     }
     
@@ -93,7 +93,7 @@ public class TopDs {
      * 
      * @param accessData Access data for this access.
      */
-    public final KeyNode findRoot(DbGraphForMe dbGraph, long time, long accessData, 
+    public final KeyNode findRoot(DagForMe dbGraph, long time, long accessData, 
             Pointer tempPointer, PointerListener pointerListener, CachePolicy cachePolicy) {
         //
         // The common case of getting the last space root is treated as a 
@@ -197,12 +197,12 @@ public class TopDs {
     /**
      * Prints the top data structure to a multi-line string.
      */
-    public String print(DbGraphForMe dbGraph) {
+    public String print(DagForMe dbGraph) {
         StringBuilder b = new StringBuilder();
         TopNode t = this.superRoot;
         long accessData = 0;
-        Graph.PointerListener pListener = Graph.DO_NOTHING_POINTER_LISTENER;
-        Graph.CachePolicy cachePolicy = Graph.CACHE_NOTHING;
+        Dag.PointerListener pListener = Dag.DO_NOTHING_POINTER_LISTENER;
+        Dag.CachePolicy cachePolicy = Dag.CACHE_NOTHING;
         
         while (t != null) {
             b.append(String.format("%6d", t.topNodeId));

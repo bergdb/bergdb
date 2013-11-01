@@ -1,8 +1,8 @@
 package bergdb.graph;
 
-import bergdb.graph.Graph.CachePolicy;
-import bergdb.graph.Graph.NodeChangeListener;
-import bergdb.graph.Graph.PointerListener;
+import bergdb.graph.Dag.CachePolicy;
+import bergdb.graph.Dag.NodeChangeListener;
+import bergdb.graph.Dag.PointerListener;
 
 /**
  * Common for one put operation, or a set of put operations (a transaction).
@@ -48,7 +48,7 @@ public class PutData {
     
     public KeyAccessPath keyAccessPath;
     
-    public Graph.SplitListener splitListener;
+    public Dag.SplitListener splitListener;
     
     /**
      * Creates a new PutData object directly.
@@ -68,10 +68,10 @@ public class PutData {
         twoKwis[1] = new KlongWithPointer();
         keyAccessPath = new KeyAccessPath();
         
-        nodeChangeListener = Graph.DO_NOTHING_NODE_CHANGE_LISTENER;
-        pointerListener = Graph.DO_NOTHING_POINTER_LISTENER;
-        cachePolicy = Graph.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES;
-        splitListener = Graph.DO_NOTHING_SPLIT_LISTENER;
+        nodeChangeListener = Dag.DO_NOTHING_NODE_CHANGE_LISTENER;
+        pointerListener = Dag.DO_NOTHING_POINTER_LISTENER;
+        cachePolicy = Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES;
+        splitListener = Dag.DO_NOTHING_SPLIT_LISTENER;
     }
     
     public void clearFast() {

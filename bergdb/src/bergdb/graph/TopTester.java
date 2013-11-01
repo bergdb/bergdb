@@ -1,9 +1,9 @@
 package bergdb.graph;
 
 import bergdb.common.Bytes;
-import bergdb.graph.Graph.CachePolicy;
-import bergdb.graph.Graph.PointerListener;
-import bergdb.graph.TopDs.DbGraphForMe;
+import bergdb.graph.Dag.CachePolicy;
+import bergdb.graph.Dag.PointerListener;
+import bergdb.graph.TopDs.DagForMe;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
@@ -52,20 +52,20 @@ public class TopTester {
     private KeyNode findRoot(TopDs topDs, long time) {
         GetData gd = new GetData();
         
-        gd.pointerListener = new Graph.PointerListener() {
+        gd.pointerListener = new Dag.PointerListener() {
             public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
             }
 
             public void superRootAccessed(TopNode superRoot) {}
         };
         
-        gd.cachePolicy = new Graph.CachePolicy() {
+        gd.cachePolicy = new Dag.CachePolicy() {
             public boolean shouldCache(INode node) {
                 return false;
             }
         };
         
-        DbGraphForMe g = new DbGraphForMe() {
+        DagForMe g = new DagForMe() {
             public INode followPointer(INode predecessor, int pointerIndex, long accessData,
                     PointerListener walker, CachePolicy cachPolicy) {
                 return predecessor.getPointerNode(pointerIndex);

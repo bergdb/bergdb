@@ -6,7 +6,7 @@ import java.io.PrintStream;
 import bergdb.core.Db;
 import bergdb.core.NoEvictBoss;
 import bergdb.graph.GetData;
-import bergdb.graph.Graph;
+import bergdb.graph.Dag;
 import bergdb.graph.INode;
 import bergdb.graph.KeyNode;
 import bergdb.graph.Keys;
@@ -216,7 +216,7 @@ public class PayTestFix {
         
         Db dbTemp = (Db) ((DatabaseImp) database).getDb();
         GetData gd = dbTemp.newGetData();
-        gd.pointerListener = new Graph.PointerListener() {
+        gd.pointerListener = new Dag.PointerListener() {
             public void superRootAccessed(TopNode superRoot) {
                 System.out.println("Super root: " + superRoot);
             }
