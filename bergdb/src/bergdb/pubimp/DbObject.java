@@ -67,13 +67,12 @@ public class DbObject extends DbValue {
     // 1304 Frans: Little-ending-first (LE) byte order is used to follow the byte ordering used 
     // in the db stream.
     // 1309 Frans: Added support for Java arrays; they are wrapped field 'v' of a DbObject.
+    // 1311 Frans: Change byte signature to start with "bergo", then byte value 1 for version.
     //
     
     private static final int HEADER_SIZE = 8;
-    private static final int MAGIC_SIZE = 4;
-    private static final int MAGIC = 0x6f2a2d3a;     
-        // :-*o in ACSII, little-endian first byte order (kiss emoticon plus 'o' for object.
-        // :-*o  =  dec: 58 45 42 111  =  hex: 3a 2d 2a 6f
+    private static final byte[] MAGIC = new byte[]{'b', 'e', 'r', 'g', 'o'};
+    private static final int MAGIC_SIZE = MAGIC.length;
     private static final int FIELD_INFO_SIZE = 6;
     private static final String KEY_FIELD = PubUtil.KEY_FIELD;
     private static final short KEY_FIELD_HASH = hash(KEY_FIELD);
@@ -121,18 +120,20 @@ public class DbObject extends DbValue {
         
         this.bytes = b;
         
-        int magic = Bytes.bytesToIntLE(b, 0);
-        if (magic != MAGIC) {
-            throw new BadFormatException("Bad file signature, expected :-*o.");
-        }
+        //int magic = Bytes.bytesToIntLE(b, 0);
+        //if (magic != MAGIC) {
+        //    throw new BadFormatException("Bad file signature, expected :-*o.");
+        //}
+        
+        checkSignature(b);
         
         byte version = bytes[MAGIC_SIZE];
-        if (version != 0) {
-            throw new BadFormatException("Only Version 0 supported, got version " 
+        if (version != 1) {
+            throw new BadFormatException("Only Version 1 supported, got version " 
                     + ((int) version) + ".");
         }
         
-        int fCount = Bytes.bytesToShortLE(bytes, MAGIC_SIZE + 2);
+        int fCount = Bytes.bytesToShortLE(bytes, MAGIC_SIZE + 1);
         if (fCount < -1) {
             throw new BadFormatException("Bad fieldCount, " + fCount + ".");
         }
@@ -168,6 +169,15 @@ public class DbObject extends DbValue {
         }
     }
     
+    private void checkSignature(byte[] b) {
+        for (int i = 0; i < MAGIC.length; i++) {
+            if (b[i] != MAGIC[i]) {
+                throw new BadFormatException("Bad byte signature of bytes that were expected "
+                        + "to be DbObject bytes.");
+            }
+        }
+    }
+    
     /**
      * Returns a reference to the internal byte buffer.
      * No value copy is made, the returned reference must not be used to modify the array.
@@ -184,7 +194,7 @@ public class DbObject extends DbValue {
      * Returns the number of fields of the typeless object.
      */
     public int getFieldCount() {
-        int count = Bytes.bytesToShortLE(bytes, MAGIC_SIZE + 2);
+        int count = Bytes.bytesToShortLE(bytes, MAGIC_SIZE + 1);
         count = key == null ? count : count + 1;
         return count;
     }
@@ -936,7 +946,7 @@ public class DbObject extends DbValue {
         /**
          * Builds a DbObject with its fields in order sorted alphabetically according
          * to their names.
-         * This method currently (2013-09) defines the byte format of a DbObject.
+         * This method currently (2013-11) defines the byte format of a DbObject.
          */
         private DbObject buildInner(boolean isNull) {            
             int size = 0;
@@ -962,11 +972,14 @@ public class DbObject extends DbValue {
             
             int offset = 0;
             byte[] bytes = new byte[size];
-            Bytes.intToBytesLE(MAGIC, bytes, offset);    // ASCII ":-*o" - byte format signature.
-            offset += 4;
-            bytes[offset] = 0;      // Version 0 of byte format.
-            offset++;
-            bytes[offset] = 0;      // not used, set to 0 for this version
+            //Bytes.intToBytesLE(MAGIC, bytes, offset);
+            //offset += 4;
+            //bytes[offset] = 0;      // Version 0 of byte format.
+            //offset++;
+            
+            System.arraycopy(MAGIC, 0, bytes, 0, MAGIC.length);
+            offset += MAGIC.length;
+            bytes[offset] = 1;        // Version 1 of byte format.
             offset++;
             short fieldSize = isNull ? -1 : (short) fields.size();
             Bytes.shortToBytesLE(fieldSize, bytes, offset);
