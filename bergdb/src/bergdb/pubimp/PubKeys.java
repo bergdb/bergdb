@@ -6,7 +6,7 @@ import bergdb.nanotest.T;
 import bergdb.pub.BadFormatException;
 
 /**
- * Class with static method for checking keys and converting them.
+ * Class with static methods for handling database keys.
  * 
  * @author Frans Lundberg
  */
@@ -85,7 +85,6 @@ public class PubKeys {
      * Converts a ukey directory to an ikey directory according to doc/2013-key-encoding.txt.
      */
     public static final String udir2idir(String udir) throws BadFormatException {
-        
         // TODO X LATER Consider throwing IllegalArgumentException or subclass of it.
         
         if (udir == null) {
@@ -168,6 +167,9 @@ public class PubKeys {
         String ukey = b.toString();
         return ukey;
     }
+    
+    // ======== Tests ========
+    
     
     @T
     public static void testToIkey0() {

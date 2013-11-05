@@ -347,8 +347,11 @@ public class IndexBuilderImp implements IndexBuilder {
                         int result = GetMany.StopCondition.ADD;
                         processedEntries[0]++;
                         
+                        // XXX About .obj. Here, we could use a method: isObject(Kvt kvt) {...
+                        
                         String keyString = Keys.toString(kvt.key);   
-                            // TODO X LATER Consider Keys.toString() here, dangerous (?), not all keys are strings!
+                            // TODO D. Consider Keys.toString() here, dangerous (?), 
+                            // not all keys are strings!
                         if (!keyString.endsWith(".obj")) {
                             result = GetMany.StopCondition.CONTINUE;
                             return result;
@@ -397,8 +400,7 @@ public class IndexBuilderImp implements IndexBuilder {
             transaction.execute();
         } catch (DbStoppingException e) {
             // Special case, index creation while database is stopping.
-            // This is fine, index creation will continue once database is started 
-            // again.
+            // This is fine, index creation will continue once database is started again.
             
             createState.isDone = true;
             return;

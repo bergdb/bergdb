@@ -60,7 +60,10 @@ public class KvToObjectImp implements KvToObject, ClassToObject {
                 result = (TYPE) new DbObject(value, ukey);
             }            
         } else if (c.equals(Object.class)) {
+            //
             // Handling a mix of KVs: .obj -> DbObject, .txt -> String, others -> byte[]
+            // XXX About .obj - use method isObject(String ikey, byte[] value)
+            //
             
             if (ikey.endsWith(".obj")) {
                 DbObject dbObject;

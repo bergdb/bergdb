@@ -127,7 +127,7 @@ public class IndexManager {
             indexDo.check(this);
             
             String ikey = kv.ikey();
-            if (!ikey.endsWith(".obj")) {
+            if (!ikey.endsWith(".obj")) {   // XXX About .obj: this is just an assertion.
                 throw new InternalDataException("Bad ikey in dir " + INDEX_INFO_DIR + ", '" + ikey + "'.");
             }
             
@@ -392,8 +392,8 @@ public class IndexManager {
     }
     
     private final byte[] getIndexInfoKeyAsBytes(String indexName) {
-        byte[] result = Util.concat(INDEX_INFO_DIR_BYTES, Keys.toBytes("-" + indexName + ".obj"));
-        return result;
+        // XXX Remove .obj
+        return Util.concat(INDEX_INFO_DIR_BYTES, Keys.toBytes("-" + indexName + ".obj"));
     }
 
     /**
@@ -526,7 +526,6 @@ public class IndexManager {
         }
         
         Data.Index indexDo;
-        //String key = INDEX_INFO_DIR + indexName + ".obj";
         byte[] key = getIndexInfoKeyAsBytes(indexName);
         
         long[] segmentKey = Keys.toSegments(key);

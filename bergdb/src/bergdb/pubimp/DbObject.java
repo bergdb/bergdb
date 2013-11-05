@@ -71,7 +71,10 @@ public class DbObject extends DbValue {
     //
     
     private static final int HEADER_SIZE = 8;
-    private static final byte[] MAGIC = new byte[]{'b', 'e', 'r', 'g', 'o'};
+    
+    /** The byte signature; the first bytes of the DbObject when serialized. */
+    public static final byte[] MAGIC = new byte[]{'b', 'e', 'r', 'g', 'o'};
+    
     private static final int MAGIC_SIZE = MAGIC.length;
     private static final int FIELD_INFO_SIZE = 6;
     private static final String KEY_FIELD = PubUtil.KEY_FIELD;

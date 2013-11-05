@@ -215,8 +215,8 @@ public class RwEnvironmentImp implements RwEnvironment {
      */
     public void delete(String ukey) {
         String ikey = PubKeys.u2i(ukey);
-        //PubKeys.check(key, isInternal);
 
+        // XXX .obj: Use isObjectKey(ukey)
         if (ikey.endsWith(".obj")) {
             objectOps.put(ikey, new ObjectInfo(ikey, null, null));
         } else {
@@ -265,6 +265,7 @@ public class RwEnvironmentImp implements RwEnvironment {
         Class<?> clazz = object.getClass();
         
         if (clazz.equals(byte[].class)) {
+            // XXX .obj: remove the check.
             if (ikey.endsWith(".obj")) {
                 throw new IllegalArgumentException("Bad key for set of byte[], should not end " +
                 		"with .obj, was: '" + ikey + "'.");
@@ -272,12 +273,14 @@ public class RwEnvironmentImp implements RwEnvironment {
             
             setBytes(ikey, (byte[]) object);
         } else if (clazz.equals(String.class)) {
+            // XXX .obj: remove the check
             if (ikey.endsWith(".obj")) {
                 throw new IllegalArgumentException("Bad key for set of String.class, should not end " +
                         "with .obj, was: '" + ikey + "'.");
             }
             setBytes(ikey, Util.toBytes((String) object));
         } else {
+            // XXX .obj: change to isObjectKey(ikey).
             if (!ikey.endsWith(".obj")) {
                 throw new IllegalArgumentException("Bad key, expected ending '.obj', key was: '" 
                         + ikey + "'.");
@@ -651,15 +654,10 @@ public class RwEnvironmentImp implements RwEnvironment {
             assert ikey != null;
             int charIndex = ikey.lastIndexOf('/');
             assert charIndex != -1 : "An object must be stored in a directory, missing '/' in key.";
-            assert ikey.endsWith(".obj");
+            assert ikey.endsWith(".obj");    // XXX .obj: remove assert
             
-            //if (charIndex == -1) {
-            //    dir = "";
-            //    name = key;
-            //} else {
-                dir = ikey.substring(0, charIndex + 1);
-                name = ikey.substring(charIndex + 1);
-            //}
+            dir = ikey.substring(0, charIndex + 1);
+            name = ikey.substring(charIndex + 1);
             
             if (object == null) {
                 dbo = null;
@@ -669,7 +667,6 @@ public class RwEnvironmentImp implements RwEnvironment {
                 dbo = DbObject.toDbObject(object);
             }
             
-            //to = (object == null) ? null : DbObject.toDbObject(object);
             this.kt = kt;
         }
     }

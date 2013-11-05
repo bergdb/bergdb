@@ -41,7 +41,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
     private boolean startAtCalled;
     private int level;              // The composite level we are at.
     private String prefixString;    // The prefix string set with prefix(String) method.
-    private final boolean filterNonObj;     // If true, non ".obj" KVs are not include (filtered) from result.
+    private final boolean excludeNonObj;  // If true, non-object KVs are excluded from the result.
     private final Class<TYPE> type;
     
     // Level info for builder
@@ -90,6 +90,8 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                     + index.getStateString() + ".");
         }
         
+        // TODO B. consider moving the following type determination to Entries.
+        
         final int typeOfType;
         
         if (type.equals(Object.class)) {
@@ -102,7 +104,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
             typeOfType = TYPE_ORDINARY;
         }
         
-        this.filterNonObj = isPrimary && (typeOfType == TYPE_ORDINARY || typeOfType == TYPE_DB_OBJECT);
+        this.excludeNonObj = isPrimary && (typeOfType == TYPE_ORDINARY || typeOfType == TYPE_DB_OBJECT);
         this.dir = isPrimary ? new byte[0] : IndexManager.getIndexDbDirAsBytes(indexName);
         
         this.forward = true;
@@ -497,7 +499,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         return new Iterable<TYPE>() {
             public Iterator<TYPE> iterator() {
                 return new Iterator<TYPE>() {
-                    private final Iterator<Kv<TYPE>> iter = new IndexIterator(actualLookupTime, filterNonObj);
+                    private final Iterator<Kv<TYPE>> iter = new IndexIterator(actualLookupTime, excludeNonObj);
                     
                     public final boolean hasNext() {
                         return iter.hasNext();
@@ -530,7 +532,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         
         return new Iterable<Kv<TYPE>>() {
             public Iterator<Kv<TYPE>> iterator() {
-                final Iterator<Kv<TYPE>> iter = new IndexIterator(actualLookupTime, filterNonObj);
+                final Iterator<Kv<TYPE>> iter = new IndexIterator(actualLookupTime, excludeNonObj);
                 
                 return new Iterator<Kv<TYPE>>() {
                     public boolean hasNext() {
@@ -563,23 +565,23 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         private long actualLookupTime = -1;
         private final boolean forward;
         private final boolean inclusive2;
-        private final boolean filterNonObj;
+        private final boolean excludeNonObj;
         
-        public IndexIterator(long wantedLookupTime, boolean filterNonObj) {
+        public IndexIterator(long wantedLookupTime, boolean excludeNonObj) {
             this.startKey = UseIndexBuilderImp.this.startKeySegments;            
             this.index = UseIndexBuilderImp.this.index;
             assert this.index != null;
             this.wantedLookupTime = wantedLookupTime;
             this.forward = UseIndexBuilderImp.this.forward;
             this.inclusive2 = UseIndexBuilderImp.this.inclusive;
-            this.filterNonObj = filterNonObj;
+            this.excludeNonObj = excludeNonObj;
         }
         
         private void getMany() {
             assert connection != null : "connection is null";
             assert connection.getDb() != null : "DB is null";
             
-            IterStopCondition stopCondition = new IterStopCondition(filterNonObj);
+            IterStopCondition stopCondition = new IterStopCondition(excludeNonObj);
             
             g = new GetMany();
             g.startKey = this.startKey;
@@ -657,7 +659,6 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                 break;
             }
             
-            //final byte[] finalObjectKey = objectKey;
             final String ikey = Keys.toString(objectKey);
             
             String ukey;
@@ -706,12 +707,12 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         private int count = 0;
         private boolean gotEod = false;
         private long data = 0;
-        private final boolean filterNonObj;
+        private final boolean excludeNonObj;
         
-        public IterStopCondition(boolean filterNonObj) {
+        public IterStopCondition(boolean excludeNonObj) {
             isFirst = true;
             gotEod = false;
-            this.filterNonObj = filterNonObj;
+            this.excludeNonObj = excludeNonObj;
         }
         
         public int handleKvt(Kvt kvt) {
@@ -734,7 +735,8 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                 result = GetMany.StopCondition.ADD_AND_STOP;
             }
             
-            if (filterNonObj) {
+            if (excludeNonObj) {
+                // XXX .obj: change comment and use method isObjectKey() or isObject(key, value).
                 // Filters KVs that do not have a key name that ends with ".obj".
                 if (!Keys.toString(kvt.key).endsWith(".obj")) {
                     if (result == GetMany.StopCondition.ADD) {

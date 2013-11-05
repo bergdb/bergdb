@@ -136,6 +136,4 @@ java.lang.ArrayIndexOutOfBoundsException: 2
     at bergdb.pubimp.UseIndexBuilderImp$1$1.hasNext(UseIndexBuilderImp.java:503)
     at bergdb.test.Bug130924.go1(Bug130924.java:83)
 
-
-
 */
