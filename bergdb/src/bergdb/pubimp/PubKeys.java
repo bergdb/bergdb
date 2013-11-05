@@ -173,8 +173,8 @@ public class PubKeys {
     
     @T
     public static void testToIkey0() {
-        String ukey = "/db1/customers/c001.obj";
-        String expected = "/ddb1/dcustomers/-c001.obj";
+        String ukey = "/db1/customers/c001";
+        String expected = "/ddb1/dcustomers/-c001";
         Assert.assertEquals(expected, PubKeys.u2i(ukey));
     }
     

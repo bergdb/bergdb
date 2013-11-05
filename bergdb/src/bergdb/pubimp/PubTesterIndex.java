@@ -598,7 +598,7 @@ public class PubTesterIndex {
         
         WBuilder b = c.w();
         for (int i = 0; i < values.length; i++) {
-            b.put("/d/" + i + ".obj", new MyDouble(values[i]));
+            b.put("/d/" + i, new MyDouble(values[i]));
         }
         b.execute();
         
@@ -631,7 +631,7 @@ public class PubTesterIndex {
         
         WBuilder b = c.w();
         for (int i = 0; i < values.length; i++) {
-            b.put("/d/" + i + ".obj", new MyDouble(values[i]));
+            b.put("/d/" + i, new MyDouble(values[i]));
         }
         b.execute();
         
@@ -671,7 +671,7 @@ public class PubTesterIndex {
         WBuilder b = c.w();
         int index = 0;
         for (Object o : objects) {
-            b.put("/d/" + index + ".obj", o);
+            b.put("/d/" + index, o);
             index++;
         }
         b.execute();
@@ -714,7 +714,7 @@ public class PubTesterIndex {
         WBuilder b = c.w();
         int index = 0;
         for (Object o : objects) {
-            b.put("/d/" + index + ".obj", o);
+            b.put("/d/" + index, o);
             index++;
         }
         b.execute();
@@ -1046,7 +1046,7 @@ public class PubTesterIndex {
         for (int i = 0; i < 20; i++) {
             String id = "" + (1000 + (i * 10));
             Payment p = new Payment("1000", "2000", i * 10);
-            c.w().put("/payments/" + id + ".obj", p).execute();
+            c.w().put("/payments/" + id, p).execute();
         }
         
         IndexBuilderImp iCreator = (IndexBuilderImp) db.indexBuilder("payments-amount").type("long")
@@ -1059,11 +1059,11 @@ public class PubTesterIndex {
         
         // Adds one payment in section handled by index creator.
         Payment p = new Payment("1000", "2000", 15);
-        c.w().put("/payments/1015.obj", p).execute();
+        c.w().put("/payments/1015", p).execute();
         
         // Adds one payment in section not yet handled by index creator.
         p = new Payment("1000", "2000", 125);
-        c.w().put("/payments/1125.obj", p).execute();
+        c.w().put("/payments/1125", p).execute();
         
         while (!state.isDone) {
             iCreator.createStep(state);
@@ -1095,7 +1095,7 @@ public class PubTesterIndex {
         for (int i = 0; i < 20; i++) {
             String id = "" + (1000 + (i * 10));
             Payment p = new Payment("1000", "2000", i * 10);
-            c.w().put("/payments/" + id + ".obj", p).execute();
+            c.w().put("/payments/" + id, p).execute();
         }
         
         IndexBuilderImp iCreator = (IndexBuilderImp) db.indexBuilder("payments-amount").type("long")
@@ -1132,7 +1132,7 @@ public class PubTesterIndex {
         
         // Adds one payment in section not yet handled by index creator.
         p = new Payment("1000", "2000", 125);
-        c.w().put("/payments/1125.obj", p).execute();
+        c.w().put("/payments/1125", p).execute();
         
         IndexManager m = ((DatabaseImp) db).getIndexManager();
         IndexManager.Index index = m.getIndex("payments-amount");
@@ -1178,7 +1178,7 @@ public class PubTesterIndex {
         for (int i = 0; i < 20; i++) {
             String id = "" + (1000 + (i * 10));
             Payment p = new Payment("1000", "2000", i * 10);
-            c.w().put("/p/" + id + ".obj", p).execute();
+            c.w().put("/p/" + id, p).execute();
         }
         
         // Act
@@ -1192,25 +1192,25 @@ public class PubTesterIndex {
         
         // Adds one payment in section handled by index creator.
         Payment p = new Payment("1000", "2000", 15);
-        c.w().put("/p/1015.obj", p).execute();
+        c.w().put("/p/1015", p).execute();
         
         // Modifies one payment in section handled by index creator.
         p = new Payment("1000", "2000", 41);
-        c.w().put("/p/1040.obj", p).execute();
+        c.w().put("/p/1040", p).execute();
         
         // Deletes one payment in section handled by index creator.
-        c.w().delete("/p/1060.obj").execute();
+        c.w().delete("/p/1060").execute();
         
         // Adds one payment in section not yet handled by index creator.
         p = new Payment("1000", "2000", 125);
-        c.w().put("/p/1125.obj", p).execute();
+        c.w().put("/p/1125", p).execute();
         
         // Modifies one payment in section not yet handled by index creator.
         p = new Payment("1000", "2000", 141);
-        c.w().put("/p/1140.obj", p).execute();
+        c.w().put("/p/1140", p).execute();
         
         // Deletes one payment in section not yet handled by index creator.
-        c.w().delete("/p/1160.obj").execute();
+        c.w().delete("/p/1160").execute();
         
         while (!state.isDone) {
             iCreator.createStep(state);
@@ -1247,7 +1247,7 @@ public class PubTesterIndex {
         for (int i = 0; i < n; i++) {
             String id = "" + (1000 + (i * 10));
             Payment p = new Payment("1", "2", i * 10);
-            b.put("/p/" + id + ".obj", p);
+            b.put("/p/" + id, p);
             
             if (i % 10 == 9 || i == (n - 1)) {
                 b.execute();
@@ -1741,7 +1741,7 @@ public class PubTesterIndex {
         
         WBuilder b = c.w();
         for (int i = 0; i < 256; i++) {
-            b.put("/payments/" + i + ".obj", new Payment("" + i, "" + (i+1), i));
+            b.put("/payments/" + i, new Payment("" + i, "" + (i+1), i));
         }
         b.execute();
         
@@ -1823,7 +1823,7 @@ public class PubTesterIndex {
         
         WBuilder b = c.w();
         for (int i = 0; i < strings.length; i++) {
-            b.put("/strings/" + i + ".obj", new MyString(strings[i]));
+            b.put("/strings/" + i, new MyString(strings[i]));
         }
         b.execute();
         
@@ -1852,7 +1852,7 @@ public class PubTesterIndex {
         
         WBuilder b = c.w();
         for (int i = 0; i < strings.length; i++) {
-            b.put("/strings/" + i + ".obj", new MyString(strings[i]));
+            b.put("/strings/" + i, new MyString(strings[i]));
         }
         b.execute();
         
@@ -1883,7 +1883,7 @@ public class PubTesterIndex {
         
         WBuilder b = c.w();
         for (int i = 0; i < strings.length; i++) {
-            b.put("/strings/" + i + ".obj", new MyString(strings[i]));
+            b.put("/strings/" + i, new MyString(strings[i]));
         }
         b.execute();
         
@@ -1919,7 +1919,7 @@ public class PubTesterIndex {
         
         WBuilder b = c.w();
         for (int i = 0; i < strings.length; i++) {
-            b.put("/strings/" + i + ".obj", new MyString(strings[i]));
+            b.put("/strings/" + i, new MyString(strings[i]));
         }
         b.execute();
         
@@ -1954,7 +1954,7 @@ public class PubTesterIndex {
         
         WBuilder b = c.w();
         for (int i = 0; i < strings.length; i++) {
-            b.put("/strings/" + i + ".obj", new MyString(strings[i]));
+            b.put("/strings/" + i, new MyString(strings[i]));
         }
         b.execute();
         

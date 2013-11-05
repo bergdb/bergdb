@@ -156,7 +156,7 @@ public class KvToObjectImp implements KvToObject, ClassToObject {
         ClassA a0 = new ClassA();
         a0.count = 200;
         byte[] value = DbObject.toDbObject(a0).getBytes();
-        String ukey = "/classA/1.obj";
+        String ukey = "/classA/1";
         
         ClassA a1 = k.createObject(KvToObjectImp.ClassA.class, PubKeys.u2i(ukey), value);
         
@@ -171,7 +171,7 @@ public class KvToObjectImp implements KvToObject, ClassToObject {
         ClassA a0 = new ClassA();
         a0.count = 200;
         byte[] value = DbObject.toDbObject(a0).getBytes();
-        String key = "/classA/1.obj";
+        String key = "/classA/1";
         
         byte[] value2 = k.createObject(byte[].class, PubKeys.u2i(key), value);
         
@@ -183,7 +183,7 @@ public class KvToObjectImp implements KvToObject, ClassToObject {
         KvToObjectImp k = new KvToObjectImp();
         String s0 = "hello";
         byte[] value = s0.getBytes("UTF-8");
-        String key = "classA/1.obj";
+        String key = "classA/1";
         
         String s1 = k.createObject(String.class, key, value);
         

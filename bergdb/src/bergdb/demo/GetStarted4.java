@@ -27,18 +27,18 @@ public class GetStarted4 {
         Database db = Factory.database().dir("db-GetStarted4").start();
         Connection c = db.connection();
         
-        Account a0 = c.get("/accounts/0.obj", Account.class);
-        Account a1 = c.get("/accounts/1.obj", Account.class);
+        Account a0 = c.get("/accounts/0", Account.class);
+        Account a1 = c.get("/accounts/1", Account.class);
         
         // Creates accounts if they do not exist.
         
         if (a0 == null) {
-            a0 = new Account("/accounts/0.obj", 100);
+            a0 = new Account("/accounts/0", 100);
             c.put(a0);
         }
         
         if (a1 == null) {
-            a1 = new Account("/accounts/1.obj", 100);
+            a1 = new Account("/accounts/1", 100);
             c.put(a1);
         }
         
@@ -48,8 +48,8 @@ public class GetStarted4 {
         
         c.rw(new Action() {
             public void run(RwEnvironment env) {
-                Account acc0 = env.get("/accounts/0.obj", Account.class);
-                Account acc1 = env.get("/accounts/1.obj", Account.class);
+                Account acc0 = env.get("/accounts/0", Account.class);
+                Account acc1 = env.get("/accounts/1", Account.class);
                 
                 if (acc0.balance < amount) {
                     throw new IllegalStateException(

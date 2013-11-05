@@ -240,7 +240,7 @@ public class PubTesterPrimary {
         
         WBuilder b = c.w();
         for (int i = 0; i < count; i++) {
-            b.put("/persons/" + (1000 + i) + ".obj", new Person("P" + (1000 + i)));
+            b.put("/persons/" + (1000 + i), new Person("P" + (1000 + i)));
         }
         b.execute();
         

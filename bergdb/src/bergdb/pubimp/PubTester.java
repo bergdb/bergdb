@@ -271,8 +271,8 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         MyString s1 = new MyString(null);
-        c.w().put("/d/s.obj", s1).execute();
-        MyString s2 = c.get("/d/s.obj", MyString.class);
+        c.w().put("/d/s", s1).execute();
+        MyString s2 = c.get("/d/s", MyString.class);
         Assert.assertNull(s2.s);
         d.stop();
     }
@@ -287,8 +287,8 @@ public class PubTester {
         Connection c = d.connection();
         StringArrayClass a = new StringArrayClass();
         a.strings = null;
-        c.w().put("/d/a.obj", a).execute();
-        StringArrayClass b = c.get("/d/a.obj", StringArrayClass.class);
+        c.w().put("/d/a", a).execute();
+        StringArrayClass b = c.get("/d/a", StringArrayClass.class);
         Assert.assertNull(b.strings);
         d.stop();
     }
@@ -299,8 +299,8 @@ public class PubTester {
         Connection c = d.connection();
         StringArrayClass a = new StringArrayClass();
         a.strings = new String[]{"", null};
-        c.w().put("/d/a.obj", a).execute();
-        StringArrayClass b = c.get("/d/a.obj", StringArrayClass.class);
+        c.w().put("/d/a", a).execute();
+        StringArrayClass b = c.get("/d/a", StringArrayClass.class);
         Assert.assertEquals(2, b.strings.length);
         Assert.assertEquals("", b.strings[0]);
         Assert.assertNull(b.strings[1]);
@@ -317,8 +317,8 @@ public class PubTester {
         o1.field = 1234567890;
         
         Database d = Factory.database().memory().start();
-        d.connection().w().put("/d/o1.obj", o1).execute();
-        IntClass o2 = d.connection().get("/d/o1.obj", IntClass.class);
+        d.connection().w().put("/d/o1", o1).execute();
+        IntClass o2 = d.connection().get("/d/o1", IntClass.class);
         Assert.assertEquals(o2.field, o1.field);
         d.stop();
     }

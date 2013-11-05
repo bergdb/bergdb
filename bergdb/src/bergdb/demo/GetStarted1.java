@@ -13,8 +13,8 @@ public class GetStarted1 {
         Database db = Factory.database().dir("db-GetStarted1").start();
         Connection c = db.connection();
         
-        c.put("/p.obj", adam);
-        Person p = c.get("/p.obj", Person.class);
+        c.put("/p", adam);
+        Person p = c.get("/p", Person.class);
         
         System.out.println(p.name);
         db.sync();

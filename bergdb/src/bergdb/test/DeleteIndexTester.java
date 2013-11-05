@@ -37,7 +37,7 @@ public class DeleteIndexTester {
     }
     
     private static String getEmployeeKey(int i) {
-        return "/e/" + (i + 1000) + ".obj";
+        return "/e/" + (i + 1000);
     }
     
     

@@ -13,11 +13,11 @@ public class GetStarted2 {
         Database db = Factory.database().dir("db-GetStarted2").start();
         Connection c = db.connection();
         
-        c.w().put("/genesis/a.obj", adam)
-             .put("/genesis/e.obj", eve).execute();
+        c.w().put("/genesis/a", adam)
+             .put("/genesis/e", eve).execute();
         
-        System.out.println(c.get("/genesis/a.obj", Person.class).name);
-        System.out.println(c.get("/genesis/e.obj", Person.class).name);
+        System.out.println(c.get("/genesis/a", Person.class).name);
+        System.out.println(c.get("/genesis/e", Person.class).name);
         db.sync();
     }
 }

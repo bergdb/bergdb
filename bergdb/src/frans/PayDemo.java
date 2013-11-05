@@ -45,7 +45,6 @@ public class PayDemo {
             b.append('0');
         }
         b.append(idString);
-        b.append(".obj");
         return b.toString();
     }
 

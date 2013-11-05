@@ -264,7 +264,7 @@ public class RwEnvironmentImp implements RwEnvironment {
         Class<?> clazz = object.getClass();
         
         if (clazz.equals(byte[].class)) {
-            // NOTE, No check here, but we could force suffice != EMPTY.
+            // NOTE, No check here, but we could force suffix != EMPTY.
             setBytes(ikey, (byte[]) object);
         } else if (clazz.equals(String.class)) {
             // TODO, A. Consider forcing special suffix, or at least not EMPTY or ".obj".
@@ -272,8 +272,9 @@ public class RwEnvironmentImp implements RwEnvironment {
             setBytes(ikey, Util.toBytes((String) object));
         } else {
             if (!Entries.isObjectKey(ikey)) {
-                throw new IllegalArgumentException("Bad key, expected ending '.obj', key was: '" 
-                        + ikey + "'.");
+                throw new IllegalArgumentException(
+                        "Bad key, expected no suffix (or possibly the obsolete '.obj' suffix), "
+                        + "key was: '" + ikey + "'.");
             }
             objectOps.put(ikey, new ObjectInfo(ikey, object, 
                     enableKeyReplace ? getKeyTransformation(ikey) : null));

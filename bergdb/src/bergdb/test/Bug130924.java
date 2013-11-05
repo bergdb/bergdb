@@ -47,7 +47,6 @@ public class Bug130924 {
             b.append('0');
         }
         b.append(idString);
-        b.append(".obj");
         return b.toString();
     }
     

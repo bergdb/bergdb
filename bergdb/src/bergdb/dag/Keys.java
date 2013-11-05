@@ -402,7 +402,7 @@ public class Keys {
     @T
     public static void testPrefix1() {
         long[] k1 = Keys.toSegments("dir/customers/");
-        long[] k2 = Keys.toSegments("dir/customers/anna.obj");
+        long[] k2 = Keys.toSegments("dir/customers/anna");
         
         Assert.assertTrue(Keys.isPrefix(k1, k2));
         Assert.assertFalse(Keys.isPrefix(k2, k1));
@@ -411,7 +411,7 @@ public class Keys {
     @T
     public static void testPrefix2() {
         long[] k1 = Keys.toSegments("dir/customers/");
-        long[] k2 = Keys.toSegments("dir/customers/anna.obj");
+        long[] k2 = Keys.toSegments("dir/customers/anna");
         long[] k3 = Keys.toSegments("dir/customers/");
         long[] k4 = Keys.toSegments("dir/cust");
         
