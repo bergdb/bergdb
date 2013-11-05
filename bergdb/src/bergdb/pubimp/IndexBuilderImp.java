@@ -347,12 +347,10 @@ public class IndexBuilderImp implements IndexBuilder {
                         int result = GetMany.StopCondition.ADD;
                         processedEntries[0]++;
                         
-                        // XXX About .obj. Here, we could use a method: isObject(Kvt kvt) {...
+                        String keyString = Keys.toString(kvt.key);
+                        boolean isObject = Entries.isObject(keyString, kvt.value);
                         
-                        String keyString = Keys.toString(kvt.key);   
-                            // TODO D. Consider Keys.toString() here, dangerous (?), 
-                            // not all keys are strings!
-                        if (!keyString.endsWith(".obj")) {
+                        if (!isObject) {
                             result = GetMany.StopCondition.CONTINUE;
                             return result;
                         }

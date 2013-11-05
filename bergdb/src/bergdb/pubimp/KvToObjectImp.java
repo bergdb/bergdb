@@ -28,6 +28,13 @@ public class KvToObjectImp implements KvToObject, ClassToObject {
     @SuppressWarnings("unchecked")
     public <TYPE> TYPE createObject(Class<TYPE> c, String ikey, byte[] value) 
             throws ObjectCreationException {
+        //
+        // If c.equals(Object.class), we handle a mix of value types.
+        //      isObjectKey(key) -> DbObject
+        //      .txt             -> String
+        //      others           -> byte[]
+        //
+        
         if (c == null) {
             throw new IllegalArgumentException("c == null is not allowed");
         }
@@ -60,12 +67,10 @@ public class KvToObjectImp implements KvToObject, ClassToObject {
                 result = (TYPE) new DbObject(value, ukey);
             }            
         } else if (c.equals(Object.class)) {
-            //
-            // Handling a mix of KVs: .obj -> DbObject, .txt -> String, others -> byte[]
-            // XXX About .obj - use method isObject(String ikey, byte[] value)
-            //
             
-            if (ikey.endsWith(".obj")) {
+            boolean isObject = Entries.isObject(ikey, value);
+            
+            if (isObject) {
                 DbObject dbObject;
                 try {
                     if (ukey == null) {

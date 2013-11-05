@@ -90,7 +90,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                     + index.getStateString() + ".");
         }
         
-        // TODO B. consider moving the following type determination to Entries.
+        // TODO C. consider moving the following type determination to Entries.
         
         final int typeOfType;
         
@@ -736,9 +736,9 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
             }
             
             if (excludeNonObj) {
-                // XXX .obj: change comment and use method isObjectKey() or isObject(key, value).
-                // Filters KVs that do not have a key name that ends with ".obj".
-                if (!Keys.toString(kvt.key).endsWith(".obj")) {
+                boolean isObject = Entries.isObject(Keys.toString(kvt.key), kvt.value);
+                
+                if (!isObject) {
                     if (result == GetMany.StopCondition.ADD) {
                         result = GetMany.StopCondition.CONTINUE;
                     } else if (result == GetMany.StopCondition.ADD_AND_STOP) {

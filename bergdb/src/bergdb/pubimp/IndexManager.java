@@ -127,18 +127,13 @@ public class IndexManager {
             indexDo.check(this);
             
             String ikey = kv.ikey();
-            if (!ikey.endsWith(".obj")) {   // XXX About .obj: this is just an assertion.
-                throw new InternalDataException("Bad ikey in dir " + INDEX_INFO_DIR + ", '" + ikey + "'.");
-            }
             
             int index1 = ikey.lastIndexOf('/');
-            int index2 = ikey.lastIndexOf('.');
-            
-            if (index1 == -1 || index2 == -1 || index2 - index1 < 2) {
+            if (index1 == -1) {
                 throw new InternalDataException("Bad ikey in dir " + INDEX_INFO_DIR + ", '" + ikey + "'.");
             }
             
-            String indexName = ikey.substring(index1 + 2, index2);     
+            String indexName = ikey.substring(index1 + 2);
                 // Does not include the '-', that is why we do "+ 2".
             IndexManager.Index index = Data.createIndex(indexName, indexDo, this);            
             nameToIndex.put(indexName, index);
@@ -392,8 +387,7 @@ public class IndexManager {
     }
     
     private final byte[] getIndexInfoKeyAsBytes(String indexName) {
-        // XXX Remove .obj
-        return Util.concat(INDEX_INFO_DIR_BYTES, Keys.toBytes("-" + indexName + ".obj"));
+        return Util.concat(INDEX_INFO_DIR_BYTES, Keys.toBytes("-" + indexName));
     }
 
     /**

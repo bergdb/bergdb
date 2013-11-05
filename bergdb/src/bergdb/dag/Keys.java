@@ -56,6 +56,7 @@ public class Keys {
 
     /**
      * Converts a segmented key to a String key.
+     * Does not throw exceptions if key != null.
      * 
      * @param key  The key segments, null is not allowed.
      */
@@ -65,6 +66,8 @@ public class Keys {
 
     /**
      * Converts a bkey to an ikey.
+     * If bytes != null, this method will always return a String 
+     * (not throw an exception).
      * bytes == 'null' is not allowed.
      */
     public static final String toString(byte[] bytes) {

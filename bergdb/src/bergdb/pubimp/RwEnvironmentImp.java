@@ -214,14 +214,14 @@ public class RwEnvironmentImp implements RwEnvironment {
      * @throws IllegalArgumentException if 'ukey' is null or invalid.
      */
     public void delete(String ukey) {
+        // Null values allowed in a HashMap.
+        
         String ikey = PubKeys.u2i(ukey);
 
-        // XXX .obj: Use isObjectKey(ukey)
-        if (ikey.endsWith(".obj")) {
+        if (Entries.isObjectKey(ikey)) {
             objectOps.put(ikey, new ObjectInfo(ikey, null, null));
         } else {
-            kvOps.put(new MapKey(Keys.toSegments(ikey), null), null); 
-                // Yes, null value allowed in HashMap.
+            kvOps.put(new MapKey(Keys.toSegments(ikey), null), null);   
         }
     }
     
@@ -261,27 +261,17 @@ public class RwEnvironmentImp implements RwEnvironment {
         }
         
         String ikey = PubKeys.u2i(ukey);
-        
         Class<?> clazz = object.getClass();
         
         if (clazz.equals(byte[].class)) {
-            // XXX .obj: remove the check.
-            if (ikey.endsWith(".obj")) {
-                throw new IllegalArgumentException("Bad key for set of byte[], should not end " +
-                		"with .obj, was: '" + ikey + "'.");
-            }
-            
+            // NOTE, No check here, but we could force suffice != EMPTY.
             setBytes(ikey, (byte[]) object);
         } else if (clazz.equals(String.class)) {
-            // XXX .obj: remove the check
-            if (ikey.endsWith(".obj")) {
-                throw new IllegalArgumentException("Bad key for set of String.class, should not end " +
-                        "with .obj, was: '" + ikey + "'.");
-            }
+            // TODO, A. Consider forcing special suffix, or at least not EMPTY or ".obj".
+            // Or rather:  !Entries.isObjectKey(ikey)
             setBytes(ikey, Util.toBytes((String) object));
         } else {
-            // XXX .obj: change to isObjectKey(ikey).
-            if (!ikey.endsWith(".obj")) {
+            if (!Entries.isObjectKey(ikey)) {
                 throw new IllegalArgumentException("Bad key, expected ending '.obj', key was: '" 
                         + ikey + "'.");
             }
@@ -654,7 +644,7 @@ public class RwEnvironmentImp implements RwEnvironment {
             assert ikey != null;
             int charIndex = ikey.lastIndexOf('/');
             assert charIndex != -1 : "An object must be stored in a directory, missing '/' in key.";
-            assert ikey.endsWith(".obj");    // XXX .obj: remove assert
+            assert Entries.isObjectKey(ikey);
             
             dir = ikey.substring(0, charIndex + 1);
             name = ikey.substring(charIndex + 1);

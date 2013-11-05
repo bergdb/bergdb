@@ -2,9 +2,6 @@ package bergdb.dev;
 
 /*
 
-TODO B. Should we drop ".obj" and have no suffix for objects
-as the default? Still, we may allow .obj (deprecated usage).
-
 TODO D. Testing for Connection.sync(), Connection.syncStrong() better. How in general to test these things?
 Can we inject deterministic control over StorageManager somehow?
   

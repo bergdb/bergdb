@@ -134,7 +134,7 @@ public class PubTester {
         
         WBuilder b = c.w();
         for (int i = 0; i < count; i++) {
-            b.put("/persons/" + (1000 + i) + ".obj", new Person("P" + (1000 + i)));
+            b.put("/persons/" + (1000 + i), new Person("P" + (1000 + i)));
         }
         b.execute();
         
@@ -210,7 +210,7 @@ public class PubTester {
         
         Database database = Factory.database().memory().start();
         Connection c = database.connection();
-        String key = "/payments/${transactionTime}.obj";
+        String key = "/payments/${transactionTime}";
         Payment p1 = new Payment("100", "105", 120);
         Payment p2 = new Payment("100", "105", 200);
         
@@ -226,15 +226,13 @@ public class PubTester {
         Kv<Payment> kv = iter.next();
         key1 = kv.key();
         Assert.assertTrue(key1.startsWith("/payments/"));
-        Assert.assertTrue(key1.endsWith(".obj"));
-        long t1 = Long.parseLong(key1.substring("/payments/".length(), key1.indexOf(".")));
+        long t1 = Long.parseLong(key1.substring("/payments/".length()));
         Assert.assertTrue(iter.hasNext());
         
         kv = iter.next();
         key2 = kv.key();
         Assert.assertTrue(key2.startsWith("/payments/"));
-        Assert.assertTrue(key2.endsWith(".obj"));
-        long t2 = Long.parseLong(key2.substring("/payments/".length(), key2.indexOf(".")));
+        long t2 = Long.parseLong(key2.substring("/payments/".length()));
         Assert.assertFalse(iter.hasNext());
         Assert.assertFalse(key1.equals(key2));
         
@@ -700,12 +698,12 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        c.w().put("/dir/a0.obj", new A(null, "a0"))
-             .put("/dir/a1.obj", new A(null, "a1")).execute();
+        c.w().put("/dir/a0", new A(null, "a0"))
+             .put("/dir/a1", new A(null, "a1")).execute();
         
         int index = 0;
         for (A a : c.usePrimary(A.class).objects()) {
-            Assert.assertEquals("/dir/a" + index + ".obj", a.key);
+            Assert.assertEquals("/dir/a" + index, a.key);
             index++;
         }
         

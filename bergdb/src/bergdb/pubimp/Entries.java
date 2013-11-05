@@ -48,7 +48,7 @@ public class Entries {
         assert key != null;
         assert key.length() > 0;
         String suffix = suffix(key);
-        return suffix.length() == 0 || suffix.equals(".obj");
+        return suffix.length() == 0 || suffix.equals("obj");
     }
     
     /**
@@ -79,6 +79,29 @@ public class Entries {
     }
 
     // ======== Tests ========
+    
+    @T
+    public static void testIsObject1() {
+        Assert.assertTrue(isObject("/dir/1.obj", 
+                new DbObject.Builder().addString("name", "Foo").build().getBytes()));
+    }
+    
+    @T
+    public static void testIsObject2() {
+        Assert.assertTrue(isObject("/dir/1", 
+                new DbObject.Builder().addString("name", "Foo").build().getBytes()));
+    }
+    
+    @T
+    public static void testIsObject3() {
+        Assert.assertFalse(isObject("/dir/1.txt", 
+                new DbObject.Builder().addString("name", "Foo").build().getBytes()));
+    }
+    
+    @T
+    public static void testIsObject4() {
+        Assert.assertFalse(isObject("/dir/1", new byte[10]));
+    }
     
     @T
     public static void testSuffix1() {
