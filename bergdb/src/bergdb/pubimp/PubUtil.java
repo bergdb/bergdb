@@ -116,12 +116,12 @@ public class PubUtil {
     // ======================= Tests ================
     
     private static class A {
-        String key = "a.obj";
+        String key = "a";
     }
     
     private static class B {
         @SuppressWarnings("unused")
-        String myKey = "a.obj";
+        String myKey = "a";
     }
     
     private static class C {
@@ -146,7 +146,7 @@ public class PubUtil {
     
     @T
     public static void testReadExistingKeyField0() {
-        Assert.assertEquals("a.obj", readExistingKeyField(new A()));
+        Assert.assertEquals("a", readExistingKeyField(new A()));
     }
     
     @T
@@ -209,22 +209,22 @@ public class PubUtil {
     @T
     public static void testSet0() {
         A obj = new A();
-        setKeyFieldIfItExists(obj, "k20.obj");
-        Assert.assertEquals("k20.obj", obj.key);
+        setKeyFieldIfItExists(obj, "k20");
+        Assert.assertEquals("k20", obj.key);
     }
     
     @T
     public static void testSet1() {
         // Does nothing
         B obj = new B();
-        setKeyFieldIfItExists(obj, "k20.obj");
+        setKeyFieldIfItExists(obj, "k20");
     }
     
     @T
     public static void testSet2() {
         // Sets field in superclass.
         F obj = new F();
-        setKeyFieldIfItExists(obj, "k20.obj");
-        Assert.assertEquals("k20.obj", obj.key);
+        setKeyFieldIfItExists(obj, "k20");
+        Assert.assertEquals("k20", obj.key);
     }
 }

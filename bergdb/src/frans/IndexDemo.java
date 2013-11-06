@@ -29,9 +29,9 @@ public class IndexDemo {
             .dir("/payments/").field("from")
             .createFast();
         
-        c.w().put("/payments/1.obj", new Payment("1001", "1002", 20))
-             .put("/payments/2.obj", new Payment("1002", "1009", 30))
-             .put("/payments/3.obj", new Payment("1000", "1009", 40))
+        c.w().put("/payments/1", new Payment("1001", "1002", 20))
+             .put("/payments/2", new Payment("1002", "1009", 30))
+             .put("/payments/3", new Payment("1000", "1009", 40))
              .execute();
         
         for (Payment p : c.useIndex("payment-from", Payment.class).objects()) {

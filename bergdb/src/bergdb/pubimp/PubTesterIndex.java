@@ -115,7 +115,7 @@ public class PubTesterIndex {
         
         Payment p1 = new Payment("1001", "1002", 20);
         
-        c.w().put("/payments/1.obj", p1).execute();
+        c.w().put("/payments/1", p1).execute();
         
         Iterator<Payment> iter;
         
@@ -142,9 +142,9 @@ public class PubTesterIndex {
         final Payment p2 = new Payment("1002", "1009", 30);
         final Payment p3 = new Payment("1001", "1009", 40);
         
-        c.w().put("/payments/1.obj", p1)
-            .put("/payments/2.obj", p2)
-            .put("/payments/3.obj", p3).execute();
+        c.w().put("/payments/1", p1)
+            .put("/payments/2", p2)
+            .put("/payments/3", p3).execute();
         
         Iterable<Payment> payments = c.useIndex("payments-from", Payment.class).eq("1001").objects();
         Iterator<Payment> iter = payments.iterator();
@@ -178,9 +178,9 @@ public class PubTesterIndex {
         Payment p2 = new Payment("1002", "1009", 30);
         Payment p3 = new Payment("1001", "1009", 40);
         
-        c.w().put("/payments/1.obj", p1)
-            .put("/payments/2.obj", p2)
-            .put("/payments/3.obj", p3)
+        c.w().put("/payments/1", p1)
+            .put("/payments/2", p2)
+            .put("/payments/3", p3)
             .put("/payments/1b.txt", "1b - my text.")
             .put("/payments/2.txt", "2.txt - another string")
             .execute();
@@ -208,10 +208,10 @@ public class PubTesterIndex {
         Payment p30 = new Payment("1010", "1008", 40);
         DPayment p15 = new DPayment("1015", "1000", 12.3);
         
-        c.w().put("/payments/p10.obj", p10)
-            .put("/payments/p20.obj", p20)
-            .put("/payments/p30.obj", p30)
-            .put("/payments/p15.obj", p15)
+        c.w().put("/payments/p10", p10)
+            .put("/payments/p20", p20)
+            .put("/payments/p30", p30)
+            .put("/payments/p15", p15)
             .execute();
         
         Iterator<DbObject> it = c.useIndex("payments-from", DbObject.class).objects().iterator();
@@ -241,8 +241,8 @@ public class PubTesterIndex {
         Payment p1 = new Payment("1001", "1002", 20);
         Payment p2 = new Payment("1002", "1009", 30);
         
-        c.w().put("/payments/1.obj", p1)
-            .put("/payments/2.obj", p2).execute();
+        c.w().put("/payments/1", p1)
+            .put("/payments/2", p2).execute();
         
         Iterator<Payment> iter = c.useIndex("payments-from", Payment.class).backward()
                 .objects().iterator();
@@ -268,8 +268,8 @@ public class PubTesterIndex {
         MyDouble p1 = new MyDouble(20);
         MyDouble p2 = new MyDouble(30);
         
-        c.w().put("/payments/1.obj", p1)
-            .put("/payments/2.obj", p2).execute();
+        c.w().put("/payments/1", p1)
+            .put("/payments/2", p2).execute();
         
         Iterator<MyDouble> iter = c.useIndex("i1", MyDouble.class).backward()
                 .objects().iterator();
@@ -296,9 +296,9 @@ public class PubTesterIndex {
         Payment p2 = new Payment("1002", "1009", 30);
         Payment p3 = new Payment("1001", "1009", 40);
         
-        c.w().put("/payments/1.obj", p1)
-            .put("/payments/2.obj", p2)
-            .put("/payments/3.obj", p3).execute();
+        c.w().put("/payments/1", p1)
+            .put("/payments/2", p2)
+            .put("/payments/3", p3).execute();
         
         Iterator<Payment> iter = c.useIndex("payments-from", Payment.class).backward()
                 .objects().iterator();
@@ -340,9 +340,9 @@ public class PubTesterIndex {
         Payment p2 = new Payment("1002", "1009", 30);
         Payment p3 = new Payment("1001", "1009", 40);
         
-        c.w().put("/payments/1.obj", p1)
-            .put("/payments/2.obj", p2)
-            .put("/payments/3.obj", p3).execute();
+        c.w().put("/payments/1", p1)
+            .put("/payments/2", p2)
+            .put("/payments/3", p3).execute();
         
         Iterator<Payment> iter = c.useIndex("payments-from", Payment.class).eq("1001").backward()
                 .objects().iterator();
@@ -367,16 +367,16 @@ public class PubTesterIndex {
         
         clock.setTime(200);
         
-        c.w().put("/payments/10.obj", new Payment("1001", "1002", 10))
-            .put("/payments/20.obj", new Payment("1002", "1009", 20))
-            .put("/payments/30.obj", new Payment("1001", "1009", 30))
+        c.w().put("/payments/10", new Payment("1001", "1002", 10))
+            .put("/payments/20", new Payment("1002", "1009", 20))
+            .put("/payments/30", new Payment("1001", "1009", 30))
             .execute();
         
         clock.setTime(300);
         
-        c.w().put("/payments/12.obj", new Payment("1001", "1012", 12))
-            .put("/payments/30.obj", new Payment("1001", "1030", 31))
-            .put("/payments/40.obj", new Payment("1001", "1040", 40))
+        c.w().put("/payments/12", new Payment("1001", "1012", 12))
+            .put("/payments/30", new Payment("1001", "1030", 31))
+            .put("/payments/40", new Payment("1001", "1040", 40))
             .execute();
         
         c.setLookupTime(250);
@@ -412,9 +412,9 @@ public class PubTesterIndex {
         
         clock.setTime(200);
         
-        c.w().put("/payments/10.obj", new Payment("1001", "1002", 10))
-            .put("/payments/20.obj", new Payment("1002", "1009", 20))
-            .put("/payments/30.obj", new Payment("1001", "1009", 30))
+        c.w().put("/payments/10", new Payment("1001", "1002", 10))
+            .put("/payments/20", new Payment("1002", "1009", 20))
+            .put("/payments/30", new Payment("1001", "1009", 30))
             .execute();
         
         Exception ex = null;
@@ -452,7 +452,7 @@ public class PubTesterIndex {
         Payment p1 = new Payment("1001", "1002", 20);
         Payment p2 = new Payment("1002", "1009", 30);
         Payment p3 = new Payment("1001", "1009", 40);
-        c.w().put("/payments/1.obj", p1).put("/payments/2.obj", p2).put("/payments/3.obj", p3).execute();
+        c.w().put("/payments/1", p1).put("/payments/2", p2).put("/payments/3", p3).execute();
         
         Iterable<Payment> payments = c.useIndex("payments-to-from", Payment.class).objects();
         long expected[] = new long[] {20, 40, 20, 30, 30, 40};
@@ -479,7 +479,7 @@ public class PubTesterIndex {
         Payment p1 = new Payment("1001", "1002", 20);
         Payment p2 = new Payment("1002", "1009", 30);
         Payment p3 = new Payment("1001", "1009", 40);
-        c.w().put("/payments/1.obj", p1).put("/payments/2.obj", p2).put("/payments/3.obj", p3).execute();
+        c.w().put("/payments/1", p1).put("/payments/2", p2).put("/payments/3", p3).execute();
         
         Iterable<Payment> payments = c.useIndex("payments-to-from", Payment.class).eq("1002").objects();
         long expected[] = new long[] {20, 30};
@@ -502,9 +502,9 @@ public class PubTesterIndex {
         Connection c = db.newConnection();
         db.indexBuilder("payments-amount").type("long").dir("/payments/").field("amount").start().join();
         
-        c.w().put("/payments/1.obj", new Payment("1", "2", -100))
-            .put("/payments/2.obj", new Payment("1", "3", 0))
-            .put("/payments/3.obj", new Payment("1", "4", 90)).execute();
+        c.w().put("/payments/1", new Payment("1", "2", -100))
+            .put("/payments/2", new Payment("1", "3", 0))
+            .put("/payments/3", new Payment("1", "4", 90)).execute();
         
         Iterable<Payment> payments = c.useIndex("payments-amount", Payment.class).objects();
         
@@ -528,13 +528,13 @@ public class PubTesterIndex {
         Connection c = db.newConnection();
         db.indexBuilder("payments-amount").type("long").dir("/payments/").field("amount").start().join();
         
-        c.w().put("/payments/1.obj", new Payment("1", "1", -100))
-            .put("/payments/2.obj", new Payment("1", "2", 0))
-            .put("/payments/3.obj", new Payment("1", "3", 90))
-            .put("/payments/4.obj", new Payment("1", "4", Long.MIN_VALUE))
-            .put("/payments/5.obj", new Payment("1", "5", Long.MAX_VALUE))
-            .put("/payments/6.obj", new Payment("1", "6", -1))
-            .put("/payments/7.obj", new Payment("1", "7", -23))
+        c.w().put("/payments/1", new Payment("1", "1", -100))
+            .put("/payments/2", new Payment("1", "2", 0))
+            .put("/payments/3", new Payment("1", "3", 90))
+            .put("/payments/4", new Payment("1", "4", Long.MIN_VALUE))
+            .put("/payments/5", new Payment("1", "5", Long.MAX_VALUE))
+            .put("/payments/6", new Payment("1", "6", -1))
+            .put("/payments/7", new Payment("1", "7", -23))
             .execute();
         
         Iterable<Payment> payments = c.useIndex("payments-amount", Payment.class).objects();
@@ -567,9 +567,9 @@ public class PubTesterIndex {
         Connection c = db.newConnection();
         db.indexBuilder("value").type("double").dir("/d/").field("value").start().join();
         
-        c.w().put("/d/1.obj", new MyDouble(1.23))
-            .put("/d/2.obj", new MyDouble(3e10))
-            .put("/d/3.obj", new MyDouble(1.2e-2))
+        c.w().put("/d/1", new MyDouble(1.23))
+            .put("/d/2", new MyDouble(3e10))
+            .put("/d/3", new MyDouble(1.2e-2))
             .execute();
         
         double[] expected = new double[]{1.2e-2, 1.23, 3e10};
@@ -760,7 +760,7 @@ public class PubTesterIndex {
         final Payment p2 = new Payment("1002", "1009", 30);
         final Payment p3 = new Payment("1001", "1009", 40);
         
-        c.w().put("/payments/1.obj", p1).put("/payments/2.obj", p2).put("/payments/3.obj", p3).execute();
+        c.w().put("/payments/1", p1).put("/payments/2", p2).put("/payments/3", p3).execute();
         
         Iterable<Payment> payments = c.useIndex("payments-from", Payment.class).eq("1001").objects();
         Iterator<Payment> iter = payments.iterator();
@@ -825,7 +825,7 @@ public class PubTesterIndex {
         
         Payment p1 = new Payment("1010", "2", 10);
         Payment p2 = new Payment("1000", "2", 20);
-        c.w().put("/payments/1.obj", p1).put("/payments/2.obj", p2).execute();
+        c.w().put("/payments/1", p1).put("/payments/2", p2).execute();
         
         // Restarts the database, adds another indexed object.
         
@@ -841,7 +841,7 @@ public class PubTesterIndex {
         Connection c2 = db2.newConnection();
         
         Payment p3 = new Payment("1005", "2", 5);
-        c2.w().put("/payments/3.obj", p3).execute();
+        c2.w().put("/payments/3", p3).execute();
         
         Iterator<Payment> iter = c2.useIndex("payments-from", Payment.class).objects().iterator();
         long[] expected = new long[] { 20, 5, 10 };
@@ -865,7 +865,7 @@ public class PubTesterIndex {
         final Payment p2 = new Payment("1002", "1009", 30);
         final Payment p3 = new Payment("1001", "1009", 40);
         
-        c.w().put("/payments/1.obj", p1).put("/payments/2.obj", p2).put("/payments/3.obj", p3).execute();
+        c.w().put("/payments/1", p1).put("/payments/2", p2).put("/payments/3", p3).execute();
         
         // Assert we have index KVs.
         
@@ -873,11 +873,11 @@ public class PubTesterIndex {
         
         // Now, delete all KVs and check that corresponding index entries were deleted too.
         
-        c.w().delete("/payments/1.obj").delete("/payments/2.obj").execute();
+        c.w().delete("/payments/1").delete("/payments/2").execute();
         
         Assert.assertEquals(1, getIndexKvCount(db));
         
-        c.w().delete("/payments/1.obj").delete("/payments/3.obj").execute();
+        c.w().delete("/payments/1").delete("/payments/3").execute();
         
         Assert.assertEquals(0, getIndexKvCount(db));
         db.stop();
@@ -917,10 +917,10 @@ public class PubTesterIndex {
         final Payment p2 = new Payment("1002", "1009", 30);
         final Payment p3 = new Payment("1001", "1009", 40);
         
-        c.w().put("/payments/1.obj", p1).put("/payments/2.obj", p2).put("/payments/3.obj", p3).execute();
+        c.w().put("/payments/1", p1).put("/payments/2", p2).put("/payments/3", p3).execute();
         
         final Payment p2b = new Payment("1002", "1019", 31);
-        c.w().delete("/payments/1.obj").put("/payments/2.obj", p2b).execute();
+        c.w().delete("/payments/1").put("/payments/2", p2b).execute();
         
         Assert.assertEquals(2, getIndexKvCount(db));
         
@@ -945,7 +945,7 @@ public class PubTesterIndex {
         final Payment p1 = new Payment("1001", "1002", 20);
         final Payment p2 = new Payment("1002", "1009", 30);
         final Payment p3 = new Payment("1000", "1009", 40);
-        c.w().put("/payments/1.obj", p1).put("/payments/2.obj", p2).put("/payments/3.obj", p3).execute();
+        c.w().put("/payments/1", p1).put("/payments/2", p2).put("/payments/3", p3).execute();
         
         db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").start().join();
         
@@ -971,7 +971,7 @@ public class PubTesterIndex {
         final Payment p1 = new Payment("1001", "2002", 20);
         final Payment p2 = new Payment("1002", "2003", 30);
         final Payment p3 = new Payment("1000", "2004", 40);
-        c.w().put("/payments/1.obj", p1).put("/payments/2.obj", p2).put("/payments/3.obj", p3).execute();
+        c.w().put("/payments/1", p1).put("/payments/2", p2).put("/payments/3", p3).execute();
         
         db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").start().join();
         db.indexBuilder("payments-to").type("string/unicode").dir("/payments/").field("to").start().join();
@@ -1008,13 +1008,13 @@ public class PubTesterIndex {
         Payment p1 = new Payment("1010", "2020", 20);
         Payment p2 = new Payment("1020", "2030", 30);
         Payment p3 = new Payment("1000", "2040", 40);
-        c.w().put("/payments/1.obj", p1).put("/payments/2.obj", p2).put("/payments/3.obj", p3).execute();
+        c.w().put("/payments/1", p1).put("/payments/2", p2).put("/payments/3", p3).execute();
         
         db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").start().join();
         db.indexBuilder("payments-to").type("string/unicode").dir("/payments/").field("to").start().join();
         
         Payment p4 = new Payment("1005", "2019", 50);
-        c.w().put("/payments/4.obj", p4).execute();
+        c.w().put("/payments/4", p4).execute();
         
         Iterable<Payment> iterable = c.useIndex("payments-from", Payment.class).objects();
         Iterator<Payment> iter = iterable.iterator();
@@ -1128,7 +1128,7 @@ public class PubTesterIndex {
         
         // Adds one payment in section handled by index creator.
         Payment p = new Payment("1000", "2000", 15);
-        c.w().put("/payments/1015.obj", p).execute();
+        c.w().put("/payments/1015", p).execute();
         
         // Adds one payment in section not yet handled by index creator.
         p = new Payment("1000", "2000", 125);
@@ -1277,7 +1277,7 @@ public class PubTesterIndex {
         final Payment p1 = new Payment("1001", "1002", 20);
         final Payment p2 = new Payment("1000", "1009", 40);
         
-        c.w().put("/payments/1.obj", p1).put("/payments/2.obj", p2).execute();
+        c.w().put("/payments/1", p1).put("/payments/2", p2).execute();
         
         c.useIndex("payments-from", Payment.class).objects();
         
@@ -1328,7 +1328,7 @@ public class PubTesterIndex {
         final Payment p1 = new Payment("1001", "1002", 20);
         final Payment p2 = new Payment("1000", "1009", 40);
         
-        c.w().put("/payments/1.obj", p1).put("/payments/2.obj", p2).execute();
+        c.w().put("/payments/1", p1).put("/payments/2", p2).execute();
         
         c.useIndex("payments-from", Payment.class).objects();
         
@@ -1379,11 +1379,11 @@ public class PubTesterIndex {
         Payment p2 = new Payment("1000", "1009", 40);
         Payment p3 = new Payment("1009", "2000", 50);
         
-        c.w().put("/payments/1.obj", p1).put("/payments/2.obj", p2).execute();
+        c.w().put("/payments/1", p1).put("/payments/2", p2).execute();
         
         Job job = database.indexBuilder("payments-from").type("string/unicode").dir("/payments/")
                 .field("from").start();
-        c.w().put("/payments/3.obj", p3).execute();
+        c.w().put("/payments/3", p3).execute();
         job.join();
         
         // Assert
@@ -1412,7 +1412,7 @@ public class PubTesterIndex {
         Payment p2 = new Payment("1000", "1009", 40);
         Payment p3 = new Payment("1009", "2000", 50);
         
-        c.w().put("/payments/1.obj", p1).put("/payments/2.obj", p2).execute();
+        c.w().put("/payments/1", p1).put("/payments/2", p2).execute();
         
         EventToWaitFor waitEvent = new EventToWaitFor();
         IndexBuilderImp creator = (IndexBuilderImp) database.indexBuilder("payments-from");
@@ -1420,7 +1420,7 @@ public class PubTesterIndex {
         
         Job job = creator.type("string/unicode").dir("/payments/")
                 .field("from").start();
-        c.w().put("/payments/3.obj", p3).execute();
+        c.w().put("/payments/3", p3).execute();
         waitEvent.happened();
         job.join();
         
@@ -1444,7 +1444,7 @@ public class PubTesterIndex {
         TestClock clock = new TestClock();
         Database database = Factory.database().memory().clock(clock).start();
         Connection c = database.newConnection();
-        String key = "/payments/${transactionTime}.obj";
+        String key = "/payments/${transactionTime}";
         
         database.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").start().join();
         c.setEnableKeyReplace(true);
@@ -1471,9 +1471,9 @@ public class PubTesterIndex {
         database.indexBuilder("payments-from").type("string/unicode").dir("/payments/")
             .field("from").start().join();
         
-        c.w().put("/payments/1.obj", new Payment("101", "105", 1)).execute();
-        c.w().put("/payments/2.obj", new Payment("100", "106", 2)).execute();
-        c.w().put("/payments/3.obj", new Payment("099", "106", 3)).execute();
+        c.w().put("/payments/1", new Payment("101", "105", 1)).execute();
+        c.w().put("/payments/2", new Payment("100", "106", 2)).execute();
+        c.w().put("/payments/3", new Payment("099", "106", 3)).execute();
         
         Iterator<Payment> iter = c.useIndex("payments-from", Payment.class).startAt("100")
                 .objects().iterator();
@@ -1495,9 +1495,9 @@ public class PubTesterIndex {
         database.indexBuilder("pay-from").type("string/unicode").dir("/payments/")
             .field("from").start().join();
         
-        c.w().put("/payments/1.obj", new Payment("101", "105", 1)).execute();
-        c.w().put("/payments/2.obj", new Payment("100", "106", 2)).execute();
-        c.w().put("/payments/3.obj", new Payment("099", "106", 3)).execute();
+        c.w().put("/payments/1", new Payment("101", "105", 1)).execute();
+        c.w().put("/payments/2", new Payment("100", "106", 2)).execute();
+        c.w().put("/payments/3", new Payment("099", "106", 3)).execute();
         
         Iterator<Payment> iter = c.useIndex("pay-from", Payment.class).startAt("100")
                 .inclusive(false).objects().iterator();
@@ -1517,9 +1517,9 @@ public class PubTesterIndex {
         database.indexBuilder("payments-from").type("string/unicode").dir("/payments/")
             .field("from").start().join();
         
-        c.w().put("/payments/1.obj", new Payment("101", "105", 1)).execute();
-        c.w().put("/payments/2.obj", new Payment("100", "106", 2)).execute();
-        c.w().put("/payments/3.obj", new Payment("099", "106", 3)).execute();
+        c.w().put("/payments/1", new Payment("101", "105", 1)).execute();
+        c.w().put("/payments/2", new Payment("100", "106", 2)).execute();
+        c.w().put("/payments/3", new Payment("099", "106", 3)).execute();
         
         Iterator<Payment> iter = c.useIndex("payments-from", Payment.class).startAt("100")
                 .backward().objects().iterator();
@@ -1541,9 +1541,9 @@ public class PubTesterIndex {
         database.indexBuilder("payments-from").type("string/unicode").dir("/payments/")
             .field("from").start().join();
         
-        c.w().put("/payments/1.obj", new Payment("101", "105", 1)).execute();
-        c.w().put("/payments/2.obj", new Payment("100", "106", 2)).execute();
-        c.w().put("/payments/3.obj", new Payment("099", "106", 3)).execute();
+        c.w().put("/payments/1", new Payment("101", "105", 1)).execute();
+        c.w().put("/payments/2", new Payment("100", "106", 2)).execute();
+        c.w().put("/payments/3", new Payment("099", "106", 3)).execute();
         
         Iterator<Payment> iter = c.useIndex("payments-from", Payment.class).startAt("100")
                 .backward().inclusive(false).objects().iterator();
@@ -1563,9 +1563,9 @@ public class PubTesterIndex {
         database.indexBuilder("i0").type("long").dir("/payments/")
             .field("amount").start().join();
         
-        c.w().put("/payments/20.obj", new Payment("101", "105", 20)).execute();
-        c.w().put("/payments/30.obj", new Payment("100", "106", 30)).execute();
-        c.w().put("/payments/10.obj", new Payment("099", "106", 10)).execute();
+        c.w().put("/payments/20", new Payment("101", "105", 20)).execute();
+        c.w().put("/payments/30", new Payment("100", "106", 30)).execute();
+        c.w().put("/payments/10", new Payment("099", "106", 10)).execute();
         
         Iterator<Payment> iter = c.useIndex("i0", Payment.class).startAt(20).objects().iterator();
         Payment p = iter.next();
@@ -1586,9 +1586,9 @@ public class PubTesterIndex {
         database.indexBuilder("aaa").type("long").dir("/payments/")
             .field("amount").start().join();
         
-        c.w().put("/payments/20.obj", new Payment("101", "105", 20)).execute();
-        c.w().put("/payments/30.obj", new Payment("100", "106", 30)).execute();
-        c.w().put("/payments/10.obj", new Payment("099", "106", 10)).execute();
+        c.w().put("/payments/20", new Payment("101", "105", 20)).execute();
+        c.w().put("/payments/30", new Payment("100", "106", 30)).execute();
+        c.w().put("/payments/10", new Payment("099", "106", 10)).execute();
         
         Iterator<Payment> iter = c.useIndex("aaa", Payment.class).startAt(20).inclusive(false)
                 .objects().iterator();
@@ -1608,9 +1608,9 @@ public class PubTesterIndex {
         database.indexBuilder("bb").type("long").dir("/payments/")
             .field("amount").start().join();
         
-        c.w().put("/payments/20.obj", new Payment("101", "105", 20)).execute();
-        c.w().put("/payments/30.obj", new Payment("100", "106", 30)).execute();
-        c.w().put("/payments/10.obj", new Payment("099", "106", 10)).execute();
+        c.w().put("/payments/20", new Payment("101", "105", 20)).execute();
+        c.w().put("/payments/30", new Payment("100", "106", 30)).execute();
+        c.w().put("/payments/10", new Payment("099", "106", 10)).execute();
         
         Iterator<Payment> iter = c.useIndex("bb", Payment.class).startAt(20).inclusive(false)
                 .objects().iterator();
@@ -1629,9 +1629,9 @@ public class PubTesterIndex {
         database.indexBuilder("cc").type("long").dir("/p/")
             .field("amount").start().join();
         
-        c.w().put("/p/a.obj", new Payment("", "", 2)).execute();
-        c.w().put("/p/b.obj", new Payment("", "", 4)).execute();
-        c.w().put("/p/c.obj", new Payment("", "", 6)).execute();
+        c.w().put("/p/a", new Payment("", "", 2)).execute();
+        c.w().put("/p/b", new Payment("", "", 4)).execute();
+        c.w().put("/p/c", new Payment("", "", 6)).execute();
         
         Iterator<Payment> iter = c.useIndex("cc", Payment.class).startAt(4).inclusive(false)
                 .objects().iterator();
@@ -1650,9 +1650,9 @@ public class PubTesterIndex {
         database.indexBuilder("i11").type("long").dir("/payments/")
             .field("amount").start().join();
         
-        c.w().put("/payments/20.obj", new Payment("101", "105", -20)).execute();
-        c.w().put("/payments/30.obj", new Payment("100", "106", -30)).execute();
-        c.w().put("/payments/10.obj", new Payment("099", "106", 10)).execute();
+        c.w().put("/payments/20", new Payment("101", "105", -20)).execute();
+        c.w().put("/payments/30", new Payment("100", "106", -30)).execute();
+        c.w().put("/payments/10", new Payment("099", "106", 10)).execute();
         
         Iterator<Payment> iter = c.useIndex("i11", Payment.class).startAt(-25).inclusive(false)
                 .objects().iterator();
@@ -1681,9 +1681,9 @@ public class PubTesterIndex {
         database.indexBuilder("i0").type("long").dir("/payments/")
             .field("amount").start().join();
         
-        c.w().put("/payments/10.obj", new Payment("101", "105", 10)).execute();
-        c.w().put("/payments/20.obj", new Payment("100", "106", 20)).execute();
-        c.w().put("/payments/30.obj", new Payment("099", "106", 20)).execute();
+        c.w().put("/payments/10", new Payment("101", "105", 10)).execute();
+        c.w().put("/payments/20", new Payment("100", "106", 20)).execute();
+        c.w().put("/payments/30", new Payment("099", "106", 20)).execute();
         
         Iterator<Payment> iter = c.useIndex("i0", Payment.class).eq(20).objects().iterator();
         Payment p = iter.next();
@@ -1710,9 +1710,9 @@ public class PubTesterIndex {
         database.indexBuilder("i0").type("long").dir("/payments/")
             .field("amount").start().join();
         
-        c.w().put("/payments/10.obj", new Payment("101", "105", 10)).execute();
-        c.w().put("/payments/20.obj", new Payment("100", "106", 20)).execute();
-        c.w().put("/payments/30.obj", new Payment("099", "106", 20)).execute();
+        c.w().put("/payments/10", new Payment("101", "105", 10)).execute();
+        c.w().put("/payments/20", new Payment("100", "106", 20)).execute();
+        c.w().put("/payments/30", new Payment("099", "106", 20)).execute();
         
         Iterator<Payment> iter = c.useIndex("i0", Payment.class).eq(20).backward().objects().iterator();
         Payment p = iter.next();
@@ -1764,9 +1764,9 @@ public class PubTesterIndex {
         database.indexBuilder("i0").type("double").dir("/payments/")
             .field("amount").start().join();
         
-        c.w().put("/payments/10.obj", new DPayment("101", "105", 10.0)).execute();
-        c.w().put("/payments/20.obj", new DPayment("100", "106", 20.0)).execute();
-        c.w().put("/payments/30.obj", new DPayment("099", "106", 20.0)).execute();
+        c.w().put("/payments/10", new DPayment("101", "105", 10.0)).execute();
+        c.w().put("/payments/20", new DPayment("100", "106", 20.0)).execute();
+        c.w().put("/payments/30", new DPayment("099", "106", 20.0)).execute();
         
         Iterator<DPayment> iter = c.useIndex("i0", DPayment.class).eq(20.0).objects().iterator();
         DPayment p = iter.next();
@@ -1793,9 +1793,9 @@ public class PubTesterIndex {
         database.indexBuilder("i0").type("double").dir("/payments/")
             .field("amount").start().join();
         
-        c.w().put("/payments/10.obj", new DPayment("101", "105", 10.0)).execute();
-        c.w().put("/payments/20.obj", new DPayment("100", "106", 20.0)).execute();
-        c.w().put("/payments/30.obj", new DPayment("099", "106", 20.0)).execute();
+        c.w().put("/payments/10", new DPayment("101", "105", 10.0)).execute();
+        c.w().put("/payments/20", new DPayment("100", "106", 20.0)).execute();
+        c.w().put("/payments/30", new DPayment("099", "106", 20.0)).execute();
         
         Iterator<DPayment> iter = c.useIndex("i0", DPayment.class).eq(20.0).backward().objects().iterator();
         DPayment p = iter.next();

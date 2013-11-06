@@ -33,8 +33,8 @@ public class PubTesterPrimary {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
         
-        c.w().put("/d/person1.obj", new Person("Fredrik"))
-             .put("/d/person2.obj", new Person("Amelia")).execute();
+        c.w().put("/d/person1", new Person("Fredrik"))
+             .put("/d/person2", new Person("Amelia")).execute();
         
         Iterator<Person> iter = c.usePrimary(Person.class).dir("/d/").objects().iterator();
         Assert.assertTrue(iter.hasNext());
@@ -56,7 +56,7 @@ public class PubTesterPrimary {
         Person t2 = new Person("Amelia");
         Person t3 = new Person("Emma");
         
-        c.w().put("/d/person1.obj", t1).put("/d/person2.obj", t2).put("/e/emma.obj", t3).execute();
+        c.w().put("/d/person1", t1).put("/d/person2", t2).put("/e/emma", t3).execute();
         
         Iterable<Person> it = c.usePrimary(Person.class).dir("/d/").objects();
         Iterator<Person> iter1 = it.iterator();
@@ -79,12 +79,12 @@ public class PubTesterPrimary {
     public static void testStart() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        c.w().put("/p/1.obj", new Person("1"))
-             .put("/p/2.obj", new Person("2"))
-             .put("/p/3.obj", new Person("3"))
-             .put("/p/4.obj", new Person("4")).execute();
+        c.w().put("/p/1", new Person("1"))
+             .put("/p/2", new Person("2"))
+             .put("/p/3", new Person("3"))
+             .put("/p/4", new Person("4")).execute();
         
-        Iterator<Person> iter = c.usePrimary(Person.class).dir("/p/").startAt("2.obj")
+        Iterator<Person> iter = c.usePrimary(Person.class).dir("/p/").startAt("2")
                 .objects().iterator();
         
         String[] expected = {"2", "3", "4"};
@@ -100,12 +100,12 @@ public class PubTesterPrimary {
     public static void testExclusive1() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        c.w().put("/p/1.obj", new Person("1"))
-             .put("/p/2.obj", new Person("2"))
-             .put("/p/3.obj", new Person("3"))
-             .put("/p/4.obj", new Person("4")).execute();
+        c.w().put("/p/1", new Person("1"))
+             .put("/p/2", new Person("2"))
+             .put("/p/3", new Person("3"))
+             .put("/p/4", new Person("4")).execute();
         
-        Iterator<Person> iter = c.usePrimary(Person.class).dir("/p/").startAt("2.obj")
+        Iterator<Person> iter = c.usePrimary(Person.class).dir("/p/").startAt("2")
                 .inclusive(false).objects().iterator();
         String[] expected = {"3", "4"};
         
@@ -122,12 +122,12 @@ public class PubTesterPrimary {
         
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        c.w().put("/p/1.obj", new Person("1"))
-             .put("/p/2.obj", new Person("2"))
-             .put("/p/3.obj", new Person("3"))
-             .put("/p/4.obj", new Person("4")).execute();
+        c.w().put("/p/1", new Person("1"))
+             .put("/p/2", new Person("2"))
+             .put("/p/3", new Person("3"))
+             .put("/p/4", new Person("4")).execute();
         
-        Iterator<Person> iter = c.usePrimary(Person.class).dir("/p/").startAt("4.obj")
+        Iterator<Person> iter = c.usePrimary(Person.class).dir("/p/").startAt("4")
                 .inclusive(false).objects().iterator();
         Assert.assertFalse(iter.hasNext());
         db.stop();
@@ -137,10 +137,10 @@ public class PubTesterPrimary {
     public static void testBackward1() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        c.w().put("/p/1.obj", new Person("1"))
-             .put("/p/2.obj", new Person("2"))
-             .put("/p/3.obj", new Person("3"))
-             .put("/p/4.obj", new Person("4")).execute();
+        c.w().put("/p/1", new Person("1"))
+             .put("/p/2", new Person("2"))
+             .put("/p/3", new Person("3"))
+             .put("/p/4", new Person("4")).execute();
         
         Iterator<Person> iter = c.usePrimary(Person.class).dir("/p/").backward().objects().iterator();
         String[] expected = {"4", "3", "2", "1"};
@@ -154,16 +154,16 @@ public class PubTesterPrimary {
     
     @T
     public static void testBackward2() {
-        // With startAt("3.obj").
+        // With startAt("3").
         
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        c.w().put("/p/1.obj", new Person("1"))
-             .put("/p/2.obj", new Person("2"))
-             .put("/p/3.obj", new Person("3"))
-             .put("/p/4.obj", new Person("4")).execute();
+        c.w().put("/p/1", new Person("1"))
+             .put("/p/2", new Person("2"))
+             .put("/p/3", new Person("3"))
+             .put("/p/4", new Person("4")).execute();
         
-        Iterator<Person> iter = c.usePrimary(Person.class).dir("/p/").backward().startAt("3.obj")
+        Iterator<Person> iter = c.usePrimary(Person.class).dir("/p/").backward().startAt("3")
                 .objects().iterator();
         
         String[] expected = {"3", "2", "1"};
@@ -179,13 +179,13 @@ public class PubTesterPrimary {
     public static void testBackward3() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        c.w().put("/p/1.obj", new Person("1"))
-             .put("/p/2.obj", new Person("2"))
-             .put("/p/3.obj", new Person("3"))
-             .put("/p/4.obj", new Person("4")).execute();
+        c.w().put("/p/1", new Person("1"))
+             .put("/p/2", new Person("2"))
+             .put("/p/3", new Person("3"))
+             .put("/p/4", new Person("4")).execute();
         
         Iterator<Person> iter = c.usePrimary(Person.class).dir("/p/")
-                .backward().startAt("3.obj").inclusive(false).objects().iterator();
+                .backward().startAt("3").inclusive(false).objects().iterator();
         String[] expected = {"2", "1"};
         
         for (int i = 0; i < expected.length; i++) {
@@ -204,9 +204,9 @@ public class PubTesterPrimary {
         Person t2 = new Person("Amelia");
         Person t3 = new Person("Emma");
         
-        c.w().put("/d/person1.obj", t1)
-             .put("/d/person2.obj", t2)
-             .put("/e/person1.obj", t3).execute();
+        c.w().put("/d/person1", t1)
+             .put("/d/person2", t2)
+             .put("/e/person1", t3).execute();
         
         Iterable<Kv<Person>> it = c.usePrimary(Person.class).dir("/d/").kvs();
         
@@ -263,15 +263,15 @@ public class PubTesterPrimary {
         
         long t0 = db.getTime();
         
-        c.w().put("/p/p10.obj", new Person("p10"))
-            .put("/p/p20.obj", new Person("p20"))
-            .put("/p/p30.obj", new Person("p30")).execute();
+        c.w().put("/p/p10", new Person("p10"))
+            .put("/p/p20", new Person("p20"))
+            .put("/p/p30", new Person("p30")).execute();
         
         long t1 = db.getTime();
         
-        c.w().put("/p/p01.obj", new Person("p01"))
-            .put("/p/p22.obj", new Person("p22"))
-            .put("/p/p23.obj", new Person("p23")).execute();
+        c.w().put("/p/p01", new Person("p01"))
+            .put("/p/p22", new Person("p22"))
+            .put("/p/p23", new Person("p23")).execute();
         
         String[] expected = new String[]{"p01", "p10", "p20", "p22", "p23", "p30"};
         
@@ -309,9 +309,9 @@ public class PubTesterPrimary {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
         
-        c.w().put("/p10.obj", new Person("p10"))
-            .put("/p20.obj", new Person("p20"))
-            .put("/p30.obj", new Person("p30"))
+        c.w().put("/p10", new Person("p10"))
+            .put("/p20", new Person("p20"))
+            .put("/p30", new Person("p30"))
             .put("/p12.txt", "p12 - my string!")
             .put("/p13.txt", "p13 - second string")
             .execute();
@@ -334,9 +334,9 @@ public class PubTesterPrimary {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
         
-        c.w().put("/p10.obj", new Person("p10"))
-            .put("/p20.obj", new Person("p20"))
-            .put("/p30.obj", new Person("p30"))
+        c.w().put("/p10", new Person("p10"))
+            .put("/p20", new Person("p20"))
+            .put("/p30", new Person("p30"))
             .put("/p12.txt", "p12 - my string!")
             .put("/p13.txt", "p13 - second string")
             .put("/p22.bytes", new byte[] {12})
@@ -364,9 +364,9 @@ public class PubTesterPrimary {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
         
-        c.w().put("/10.obj", new Person("10"))
-            .put("/20.obj", new MyDouble(1.2))
-            .put("/30.obj", new Person("30"))
+        c.w().put("/10", new Person("10"))
+            .put("/20", new MyDouble(1.2))
+            .put("/30", new Person("30"))
             .execute();
         
         Iterator<DbObject> it = c.usePrimary(DbObject.class).objects().iterator();
@@ -383,8 +383,8 @@ public class PubTesterPrimary {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
         
-        c.w().put("/10.obj", new Person("10"))
-            .put("/20.obj", new MyDouble(1.2))
+        c.w().put("/10", new Person("10"))
+            .put("/20", new MyDouble(1.2))
             .put("/30.txt", "30.txt - a string")
             .put("/40", new byte[] {1, 2})
             .execute();
@@ -464,15 +464,15 @@ public class PubTesterPrimary {
     public static void testSubdir0() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        c.w().put("/d/10.obj", new Person("1"))
-             .put("/d/20.obj", new Person("2"))
-             .put("/d/25/p5.obj", new Person("p5"))
-             .put("/d/25/p6.obj", new Person("p6"))
-             .put("/d/30.obj", new Person("3"))
-             .put("/d/40.obj", new Person("4"))
-             .put("/d/45/p7.obj", new Person("p7")).execute();
+        c.w().put("/d/10", new Person("1"))
+             .put("/d/20", new Person("2"))
+             .put("/d/25/p5", new Person("p5"))
+             .put("/d/25/p6", new Person("p6"))
+             .put("/d/30", new Person("3"))
+             .put("/d/40", new Person("4"))
+             .put("/d/45/p7", new Person("p7")).execute();
         
-        Iterator<Person> iter = c.usePrimary(Person.class).dir("/d/").startAt("20.obj")
+        Iterator<Person> iter = c.usePrimary(Person.class).dir("/d/").startAt("20")
                 .inclusive(false).objects().iterator();
         String[] expected = {"3", "4"};
         
@@ -488,8 +488,8 @@ public class PubTesterPrimary {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
         
-        c.w().put("/person1.obj", new Person("Fredrik"))
-             .put("/person2.obj", new Person("Amelia")).execute();
+        c.w().put("/person1", new Person("Fredrik"))
+             .put("/person2", new Person("Amelia")).execute();
         
         Iterator<Person> iter = c.usePrimary(Person.class).objects().iterator();
         Assert.assertTrue(iter.hasNext());
@@ -507,8 +507,8 @@ public class PubTesterPrimary {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
         
-        c.w().put("/person1.obj", new Person("Fredrik"))
-             .put("/person2.obj", new Person("Amelia")).execute();
+        c.w().put("/person1", new Person("Fredrik"))
+             .put("/person2", new Person("Amelia")).execute();
         
         Iterator<Person> iter = c.usePrimary(Person.class).dir("/").objects().iterator();
         Assert.assertTrue(iter.hasNext());

@@ -124,7 +124,7 @@ public class PayDemo {
                         
                         env.put(a1);
                         env.put(a2);
-                        env.put("/payments/${transactionTime}.obj", p);
+                        env.put("/payments/${transactionTime}", p);
                     }
                 }).execute();
                 

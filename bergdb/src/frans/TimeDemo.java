@@ -14,9 +14,9 @@ public class TimeDemo {
         Database db = Factory.database().dir("db-TimeDemo").clock(clock).start();
         Connection c = db.connection();
         
-        clock.setTime(100); c.put("/a.obj", new Person("Adam"));
-        clock.setTime(200); c.put("/e.obj", new Person("Eve"));
-        clock.setTime(300); c.put("/b.obj", new Person("Bob"));
+        clock.setTime(100); c.put("/a", new Person("Adam"));
+        clock.setTime(200); c.put("/e", new Person("Eve"));
+        clock.setTime(300); c.put("/b", new Person("Bob"));
         
         // Prints: Adam, Bob, Eve
         for (Person p : c.usePrimary(Person.class).dir("/").objects()) {
