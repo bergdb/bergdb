@@ -96,11 +96,11 @@ public class PubTesterComposite {
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new Payment2("2", 100))
-             .put("/p/2.obj", new Payment2("2", 200))
-             .put("/p/3.obj", new Payment2("1", 300))
-             .put("/p/4.obj", new Payment2("1", 400))
-             .put("/p/5.obj", new Payment2("2", 0)).execute();
+        c.w().put("/p/1", new Payment2("2", 100))
+             .put("/p/2", new Payment2("2", 200))
+             .put("/p/3", new Payment2("1", 300))
+             .put("/p/4", new Payment2("1", 400))
+             .put("/p/5", new Payment2("2", 0)).execute();
         
         long[] expected = new long[]{300, 400, 0, 100, 200};
         
@@ -125,11 +125,11 @@ public class PubTesterComposite {
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new Payment2("2", "3", 100))
-             .put("/p/2.obj", new Payment2("2", "1", 200))
-             .put("/p/3.obj", new Payment2("1", "3", 300))
-             .put("/p/4.obj", new Payment2("1", "2", 400))
-             .put("/p/5.obj", new Payment2("2", "1", 0)).execute();
+        c.w().put("/p/1", new Payment2("2", "3", 100))
+             .put("/p/2", new Payment2("2", "1", 200))
+             .put("/p/3", new Payment2("1", "3", 300))
+             .put("/p/4", new Payment2("1", "2", 400))
+             .put("/p/5", new Payment2("2", "1", 0)).execute();
         
         long[] expected = new long[]{0, 200, 300, 400, 0, 100, 200, 400, 100, 300};
         
@@ -154,11 +154,11 @@ public class PubTesterComposite {
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new Payment2("2", "3", 100))
-             .put("/p/2.obj", new Payment2("2", "1", 200))
-             .put("/p/3.obj", new Payment2("1", "3", 300))
-             .put("/p/4.obj", new Payment2("1", "2", 400))
-             .put("/p/5.obj", new Payment2("2", "1", 0)).execute();
+        c.w().put("/p/1", new Payment2("2", "3", 100))
+             .put("/p/2", new Payment2("2", "1", 200))
+             .put("/p/3", new Payment2("1", "3", 300))
+             .put("/p/4", new Payment2("1", "2", 400))
+             .put("/p/5", new Payment2("2", "1", 0)).execute();
         
         long[] expected = new long[]{400, 300, 0, 200, 100};
         
@@ -184,9 +184,9 @@ public class PubTesterComposite {
             .type("string/unicode").field("from")
             .type("long").field("time").createFast();
         
-        c.w().put("/payments/1.obj", new Payment2("1001", 20))
-             .put("/payments/2.obj", new Payment2("1002", 30))
-             .put("/payments/3.obj", new Payment2("1001", 40)).execute();
+        c.w().put("/payments/1", new Payment2("1001", 20))
+             .put("/payments/2", new Payment2("1002", 30))
+             .put("/payments/3", new Payment2("1001", 40)).execute();
         
         Iterator<Payment2> iter = c.useIndex("a", Payment2.class).objects().iterator();
         
@@ -231,11 +231,11 @@ public class PubTesterComposite {
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new Payment2("2", 100))
-             .put("/p/2.obj", new Payment2("2", 200))
-             .put("/p/3.obj", new Payment2("1", 300))
-             .put("/p/4.obj", new Payment2("1", 400))
-             .put("/p/5.obj", new Payment2("2", 0)).execute();
+        c.w().put("/p/1", new Payment2("2", 100))
+             .put("/p/2", new Payment2("2", 200))
+             .put("/p/3", new Payment2("1", 300))
+             .put("/p/4", new Payment2("1", 400))
+             .put("/p/5", new Payment2("2", 0)).execute();
         
         long[] expected = new long[]{0, 100, 200};
         
@@ -259,11 +259,11 @@ public class PubTesterComposite {
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new Payment2("2", 100))
-             .put("/p/2.obj", new Payment2("2", 200))
-             .put("/p/3.obj", new Payment2("1", 300))
-             .put("/p/4.obj", new Payment2("1", 400))
-             .put("/p/5.obj", new Payment2("2", 0)).execute();
+        c.w().put("/p/1", new Payment2("2", 100))
+             .put("/p/2", new Payment2("2", 200))
+             .put("/p/3", new Payment2("1", 300))
+             .put("/p/4", new Payment2("1", 400))
+             .put("/p/5", new Payment2("2", 0)).execute();
         
         Iterator<Payment2> iter = c.useIndex("i0", Payment2.class).eq("3").objects().iterator();
         Assert.assertFalse(iter.hasNext());
@@ -280,12 +280,12 @@ public class PubTesterComposite {
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new Payment2("2", 100))
-             .put("/p/2.obj", new Payment2("2", 200))
-             .put("/p/3.obj", new Payment2("1", 300))
-             .put("/p/3b.obj", new Payment2("1", 300))
-             .put("/p/4.obj", new Payment2("1", 400))
-             .put("/p/5.obj", new Payment2("2", 0)).execute();
+        c.w().put("/p/1", new Payment2("2", 100))
+             .put("/p/2", new Payment2("2", 200))
+             .put("/p/3", new Payment2("1", 300))
+             .put("/p/3b", new Payment2("1", 300))
+             .put("/p/4", new Payment2("1", 400))
+             .put("/p/5", new Payment2("2", 0)).execute();
         
         long[] expected = new long[]{300, 300, 400};
         
@@ -312,12 +312,12 @@ public class PubTesterComposite {
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new Payment2("2", 100))
-             .put("/p/2.obj", new Payment2("2", 200))
-             .put("/p/3.obj", new Payment2("1", 300))
-             .put("/p/3b.obj", new Payment2("1", 300))
-             .put("/p/4.obj", new Payment2("1", 400))
-             .put("/p/5.obj", new Payment2("2", 0)).execute();
+        c.w().put("/p/1", new Payment2("2", 100))
+             .put("/p/2", new Payment2("2", 200))
+             .put("/p/3", new Payment2("1", 300))
+             .put("/p/3b", new Payment2("1", 300))
+             .put("/p/4", new Payment2("1", 400))
+             .put("/p/5", new Payment2("2", 0)).execute();
         
         long[] expected = new long[]{300, 300};
         
@@ -348,12 +348,12 @@ public class PubTesterComposite {
             .type("double").field("time")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new DPayment2("2", 100.0))
-             .put("/p/2.obj", new DPayment2("2", 200.0))
-             .put("/p/3.obj", new DPayment2("1", 300.0))
-             .put("/p/3b.obj", new DPayment2("1", 300.0))
-             .put("/p/4.obj", new DPayment2("1", 400.0))
-             .put("/p/5.obj", new DPayment2("2", 0.0)).execute();
+        c.w().put("/p/1", new DPayment2("2", 100.0))
+             .put("/p/2", new DPayment2("2", 200.0))
+             .put("/p/3", new DPayment2("1", 300.0))
+             .put("/p/3b", new DPayment2("1", 300.0))
+             .put("/p/4", new DPayment2("1", 400.0))
+             .put("/p/5", new DPayment2("2", 0.0)).execute();
         
         double[] expected = new double[]{300.0, 300.0};
         
@@ -383,12 +383,12 @@ public class PubTesterComposite {
             .type("string/unicode").field("to")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new Payment2("2", "3", 100))
-             .put("/p/2.obj", new Payment2("2", "1", 200))
-             .put("/p/3.obj", new Payment2("1", "3", 300))
-             .put("/p/4.obj", new Payment2("1", "2", 400))
-             .put("/p/6.obj", new Payment2("3", "0", 333))
-             .put("/p/5.obj", new Payment2("2", "1", 0)).execute();
+        c.w().put("/p/1", new Payment2("2", "3", 100))
+             .put("/p/2", new Payment2("2", "1", 200))
+             .put("/p/3", new Payment2("1", "3", 300))
+             .put("/p/4", new Payment2("1", "2", 400))
+             .put("/p/6", new Payment2("3", "0", 333))
+             .put("/p/5", new Payment2("2", "1", 0)).execute();
         
         long[] expected = new long[] { 200, 0 };
         
@@ -414,12 +414,12 @@ public class PubTesterComposite {
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new Payment2("2", 100))
-             .put("/p/2.obj", new Payment2("2", 200))
-             .put("/p/3.obj", new Payment2("1", 300))
-             .put("/p/4.obj", new Payment2("1", 400))
-             .put("/p/6.obj", new Payment2("3", 333))
-             .put("/p/5.obj", new Payment2("2", 0)).execute();
+        c.w().put("/p/1", new Payment2("2", 100))
+             .put("/p/2", new Payment2("2", 200))
+             .put("/p/3", new Payment2("1", 300))
+             .put("/p/4", new Payment2("1", 400))
+             .put("/p/6", new Payment2("3", 333))
+             .put("/p/5", new Payment2("2", 0)).execute();
         
         long[] expected = new long[]{0, 100, 200, 333};
         
@@ -446,12 +446,12 @@ public class PubTesterComposite {
             .type("string/unicode").field("to")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new Payment2("2", "3", 100))
-             .put("/p/2.obj", new Payment2("2", "1", 200))
-             .put("/p/3.obj", new Payment2("1", "3", 300))
-             .put("/p/4.obj", new Payment2("1", "2", 400))
-             .put("/p/6.obj", new Payment2("3", "0", 333))
-             .put("/p/5.obj", new Payment2("2", "1", 0)).execute();
+        c.w().put("/p/1", new Payment2("2", "3", 100))
+             .put("/p/2", new Payment2("2", "1", 200))
+             .put("/p/3", new Payment2("1", "3", 300))
+             .put("/p/4", new Payment2("1", "2", 400))
+             .put("/p/6", new Payment2("3", "0", 333))
+             .put("/p/5", new Payment2("2", "1", 0)).execute();
         
         long[] expected = new long[] { 100, 333 };
         
@@ -477,12 +477,12 @@ public class PubTesterComposite {
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new Payment2("2", "3", 100))
-             .put("/p/2.obj", new Payment2("2", "1", 200))
-             .put("/p/3.obj", new Payment2("1", "3", 300))
-             .put("/p/4.obj", new Payment2("1", "2", 400))
-             .put("/p/6.obj", new Payment2("3", "0", 33))
-             .put("/p/5.obj", new Payment2("2", "1", 0)).execute();
+        c.w().put("/p/1", new Payment2("2", "3", 100))
+             .put("/p/2", new Payment2("2", "1", 200))
+             .put("/p/3", new Payment2("1", "3", 300))
+             .put("/p/4", new Payment2("1", "2", 400))
+             .put("/p/6", new Payment2("3", "0", 33))
+             .put("/p/5", new Payment2("2", "1", 0)).execute();
         
         long[] expected = new long[] { 100, 200, 33 };
         
@@ -506,13 +506,13 @@ public class PubTesterComposite {
             .type("string/unicode").field("to")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new Payment2("2", "3", 100))
-             .put("/p/2.obj", new Payment2("2", "1", 200))
-             .put("/p/3.obj", new Payment2("1", "3", 300))
-             .put("/p/4.obj", new Payment2("1", "2", 400))
-             .put("/p/6.obj", new Payment2("3", "0", 333))
-             .put("/p/6.obj", new Payment2("2", "4", 444))
-             .put("/p/5.obj", new Payment2("2", "1", 0)).execute();
+        c.w().put("/p/1", new Payment2("2", "3", 100))
+             .put("/p/2", new Payment2("2", "1", 200))
+             .put("/p/3", new Payment2("1", "3", 300))
+             .put("/p/4", new Payment2("1", "2", 400))
+             .put("/p/6", new Payment2("3", "0", 333))
+             .put("/p/6", new Payment2("2", "4", 444))
+             .put("/p/5", new Payment2("2", "1", 0)).execute();
         
         long[] expected = new long[] { 100, 444 };
         
@@ -537,13 +537,13 @@ public class PubTesterComposite {
             .type("string/unicode").field("to")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new Payment2("2", "3", 100))
-             .put("/p/2.obj", new Payment2("2", "1", 200))
-             .put("/p/3.obj", new Payment2("1", "3", 300))
-             .put("/p/4.obj", new Payment2("1", "2", 400))
-             .put("/p/6.obj", new Payment2("3", "0", 333))
-             .put("/p/6.obj", new Payment2("2", "4", 444))
-             .put("/p/5.obj", new Payment2("2", "1", 0)).execute();
+        c.w().put("/p/1", new Payment2("2", "3", 100))
+             .put("/p/2", new Payment2("2", "1", 200))
+             .put("/p/3", new Payment2("1", "3", 300))
+             .put("/p/4", new Payment2("1", "2", 400))
+             .put("/p/6", new Payment2("3", "0", 333))
+             .put("/p/6", new Payment2("2", "4", 444))
+             .put("/p/5", new Payment2("2", "1", 0)).execute();
         
         long[] expected = new long[] { 444 };
         
@@ -570,13 +570,13 @@ public class PubTesterComposite {
             .type("string/unicode").field("to")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new Payment2("2", "3", 100))
-             .put("/p/2.obj", new Payment2("2", "1", 200))
-             .put("/p/3.obj", new Payment2("1", "3", 300))
-             .put("/p/4.obj", new Payment2("1", "2", 400))
-             .put("/p/6.obj", new Payment2("3", "0", 333))
-             .put("/p/6.obj", new Payment2("2", "4", 444))
-             .put("/p/5.obj", new Payment2("2", "1", 0)).execute();
+        c.w().put("/p/1", new Payment2("2", "3", 100))
+             .put("/p/2", new Payment2("2", "1", 200))
+             .put("/p/3", new Payment2("1", "3", 300))
+             .put("/p/4", new Payment2("1", "2", 400))
+             .put("/p/6", new Payment2("3", "0", 333))
+             .put("/p/6", new Payment2("2", "4", 444))
+             .put("/p/5", new Payment2("2", "1", 0)).execute();
         
         long[] expected = new long[] { 100, 0, 200 };
         
@@ -603,13 +603,13 @@ public class PubTesterComposite {
             .type("string/unicode").field("to")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new Payment2("2", "3", 100))
-             .put("/p/2.obj", new Payment2("2", "1", 200))
-             .put("/p/3.obj", new Payment2("1", "3", 300))
-             .put("/p/4.obj", new Payment2("1", "2", 400))
-             .put("/p/6.obj", new Payment2("3", "0", 333))
-             .put("/p/6.obj", new Payment2("2", "4", 444))
-             .put("/p/5.obj", new Payment2("2", "1", 0)).execute();
+        c.w().put("/p/1", new Payment2("2", "3", 100))
+             .put("/p/2", new Payment2("2", "1", 200))
+             .put("/p/3", new Payment2("1", "3", 300))
+             .put("/p/4", new Payment2("1", "2", 400))
+             .put("/p/6", new Payment2("3", "0", 333))
+             .put("/p/6", new Payment2("2", "4", 444))
+             .put("/p/5", new Payment2("2", "1", 0)).execute();
         
         long[] expected = new long[] { 0, 200 };
         
@@ -638,12 +638,12 @@ public class PubTesterComposite {
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new Payment2("1", 100))
-             .put("/p/2.obj", new Payment2("2", 200))
-             .put("/p/3.obj", new Payment2("1", 300))
-             .put("/p/3b.obj", new Payment2("1", 300))
-             .put("/p/4.obj", new Payment2("1", 400))
-             .put("/p/5.obj", new Payment2("1", 0)).execute();
+        c.w().put("/p/1", new Payment2("1", 100))
+             .put("/p/2", new Payment2("2", 200))
+             .put("/p/3", new Payment2("1", 300))
+             .put("/p/3b", new Payment2("1", 300))
+             .put("/p/4", new Payment2("1", 400))
+             .put("/p/5", new Payment2("1", 0)).execute();
         
         long[] expected = new long[]{100, 300, 300, 400};
         Iterator<Payment2> iter = c.useIndex("i0", Payment2.class)
@@ -685,12 +685,12 @@ public class PubTesterComposite {
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new Payment2("1", 100))
-             .put("/p/2.obj", new Payment2("2", 200))
-             .put("/p/3.obj", new Payment2("1", 300))
-             .put("/p/3b.obj", new Payment2("1", 300))
-             .put("/p/4.obj", new Payment2("1", 400))
-             .put("/p/5.obj", new Payment2("1", 0)).execute();
+        c.w().put("/p/1", new Payment2("1", 100))
+             .put("/p/2", new Payment2("2", 200))
+             .put("/p/3", new Payment2("1", 300))
+             .put("/p/3b", new Payment2("1", 300))
+             .put("/p/4", new Payment2("1", 400))
+             .put("/p/5", new Payment2("1", 0)).execute();
         
         long[] expected = new long[]{300, 300, 100, 0};
         Iterator<Payment2> iter = c.useIndex("i0", Payment2.class).backward().inclusive(false)
@@ -719,12 +719,12 @@ public class PubTesterComposite {
             .type("double").field("time")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new DPayment2("1", 100.0))
-             .put("/p/2.obj", new DPayment2("2", 200.0))
-             .put("/p/3.obj", new DPayment2("1", 300.0))
-             .put("/p/3b.obj", new DPayment2("1", 300.0))
-             .put("/p/4.obj", new DPayment2("1", 400.0))
-             .put("/p/5.obj", new DPayment2("1", 0.0)).execute();
+        c.w().put("/p/1", new DPayment2("1", 100.0))
+             .put("/p/2", new DPayment2("2", 200.0))
+             .put("/p/3", new DPayment2("1", 300.0))
+             .put("/p/3b", new DPayment2("1", 300.0))
+             .put("/p/4", new DPayment2("1", 400.0))
+             .put("/p/5", new DPayment2("1", 0.0)).execute();
         
         double[] expected = new double[]{300.0, 300.0, 100.0, 0.0};
         Iterator<DPayment2> iter = c.useIndex("i0", DPayment2.class).backward().inclusive(false)
@@ -755,12 +755,12 @@ public class PubTesterComposite {
             .type("double").field("time")
             .start().join();
         Connection c = database.newConnection();
-        c.w().put("/p/1.obj", new DPayment2("1", 100.0))
-             .put("/p/2.obj", new DPayment2("2", 200.0))
-             .put("/p/3.obj", new DPayment2("1", -99.9))
-             .put("/p/3b.obj", new DPayment2("1", 300.0))
-             .put("/p/4.obj", new DPayment2("1", Double.POSITIVE_INFINITY))
-             .put("/p/5.obj", new DPayment2("1", 0.0)).execute();
+        c.w().put("/p/1", new DPayment2("1", 100.0))
+             .put("/p/2", new DPayment2("2", 200.0))
+             .put("/p/3", new DPayment2("1", -99.9))
+             .put("/p/3b", new DPayment2("1", 300.0))
+             .put("/p/4", new DPayment2("1", Double.POSITIVE_INFINITY))
+             .put("/p/5", new DPayment2("1", 0.0)).execute();
         
         double[] expected = new double[]{-99.9, 0.0, 100, 300.0, Double.POSITIVE_INFINITY};
         Iterator<DPayment2> iter = c.useIndex("i0", DPayment2.class)
@@ -809,10 +809,10 @@ public class PubTesterComposite {
             .start().join();
         Connection c = database.newConnection();
         
-        c.w().put("/p/1.obj", p1)
-            .put("/p/2.obj", p2)
-            .put("/p/3.obj", p3)
-            .put("/p/4.obj", p4)
+        c.w().put("/p/1", p1)
+            .put("/p/2", p2)
+            .put("/p/3", p3)
+            .put("/p/4", p4)
             .execute();
         
         String[] expected = new String[] { "4", "3", "2", "1" };
@@ -854,10 +854,10 @@ public class PubTesterComposite {
             .start().join();
         Connection c = database.newConnection();
         
-        c.w().put("/p/1.obj", p1)
-            .put("/p/2.obj", p2)
-            .put("/p/3.obj", p3)
-            .put("/p/4.obj", p4)
+        c.w().put("/p/1", p1)
+            .put("/p/2", p2)
+            .put("/p/3", p3)
+            .put("/p/4", p4)
             .execute();
         
         String[] expected = new String[] { "4", "3", "2", "1" };
