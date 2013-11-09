@@ -112,13 +112,18 @@ public class Db implements IWarner {
     private static final int STATE_ACTIVE = 3;
     private static final int STATE_STOPPING = 4;
 
+    /**
+     * Global write lock. Held when STM stuff is done and while transaction serialized to bytes.
+     */
     private final WriteLock writeLock;
-        // Global write lock. Held when STM stuff is done and while transaction serialized to bytes.
+    
+    /**
+     * Lock used to make sure writes from DB(), start(), execute(), are published
+     * by the writer and made visible to readers calling get(), getMany().
+     * It is typically used with an empty block: "synchronized (readSynch) {}".
+     */
     private final ReadSync readSync;
-        // Lock used to make sure writes from DB(), start(), execute(), are published
-        // by the writer and made visible to readers calling get(), getMany().
-        // It is typically used with an empty block: "synchronized (readSynch) {}".
-        
+    
     private final Object[] pointerLocks;
     private final int pointerLocksLength;
         // Locks to synchronized node pointers. See followPointer().
@@ -155,6 +160,7 @@ public class Db implements IWarner {
     // ---- Working data for write access ----
     // Must only be accessed from threads holding writeLock.
     
+    /** Current startupPos; stream pos to use by startup procedure. */
     private final StartupPos startupPos;
     
     /** PutData, set to non-null together with graph. */
@@ -1263,6 +1269,9 @@ public class Db implements IWarner {
     }
     
     /**
+     * Executes a transaction; this is the heart of the transaction handling;
+     * implements the STM approach to concurrency control.
+     * 
      * @throws RerunException
      * @throws StreamFormatException
      * @throws StreamIoException
@@ -1280,9 +1289,6 @@ public class Db implements IWarner {
         // misses while synchronizing on this.writeLock. We want to minimize the time holding
         // this.writeLock. However, if we do write transactions from a single thread anyway, it
         // would be better to void these get operations (would save 10-20% CPU for execute()).
-        // NOTE Room for a minor optimization. A special warmup() method could be more performant
-        // than the general-purpose, public get() method.
-        //
         
         long time = dbClock.getTime();
 
@@ -1332,34 +1338,22 @@ public class Db implements IWarner {
                 keyModSet.add(t.transTime, t.writeKeyHashes[i]);
             }
 
-            // IDEA 1210, we could possibly finish holding the writeLock here
-            // already. If so, the serialization of the nodes would have to be done using the
-            // transaction time as a parameter to the serialization.
-            // Since all nodes are persistent data structures, this could work.
-            // There would be a need to queue the transaction in a stream output
-            // queue to enforce the ordering of the transactions. The serialization could
-            // possibly be done in a separate thread, or not.
-            
             appendNodesToStream();
             
-            this.lastSposOfLastTrans = this.trans.lastSpos;
-            this.sposOfLastTrans = this.trans.tpos;
-            this.startupPos.releaseForEvict();
+            lastSposOfLastTrans = trans.lastSpos;
+            startupPos.releaseForEvict();
             
             clearTransMemory();
 
             // The synch statement below guarantees that the writes are visible to
             // all readers assuming they also use the same statement as below
             // before that start reading.
-            
             synchronized (readSync) {}
             
             // 1301 Frans. The following line moved to inside the synchronized
             // (writeLock) block to KISS the reclaim stuff. However, it does not really 
             // have to belong to the writeLock code block.
-            
-            reclaimTransactionListener.transactionCompleted(t);
-            
+            reclaimTransactionListener.transactionCompleted(t);    
         }
     }
     

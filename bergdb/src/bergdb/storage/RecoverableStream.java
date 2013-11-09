@@ -391,18 +391,13 @@ public class RecoverableStream {
     public MetaBlock readLastValidMetaBlock() {
         long length = aos.getLength();
         long spos = length - META_BLOCK_SIZE;
-        spos = spos < 0 ? 0 : spos;
-        
-//System.out.println("RecoverableStream.readLastValueMetaBlock: spos = " + spos + ", aos=" + aos 
-//        + ", length=" + aos.getLength() + ", " + aos.getFirstPos());
-        
+        spos = spos < 0 ? 0 : spos;        
         MetaBlock block = readValidMetaBlock(aos, spos);
         if (block == null) {
             return null;
         }
         this.posOfLastValidMetaBlock = block.getPos();
         
-//System.out.println("RecoverableStream.posOfLastValidMetaBlock: " + posOfLastValidMetaBlock + ", lastTransPos: " + block.getLastTransSpos());
         return block;
     }
     
