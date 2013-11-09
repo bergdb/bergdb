@@ -310,12 +310,12 @@ public class RecoverableStream {
      * that is, it has to equal 'size'.
      *  
      * @param useChecks Normally checks should be run. They are fast.
-     * @param transactionTime Transaction time of the transaction that caused the append or -1
+     * @param transTime Transaction time of the transaction that caused the append or -1
      * if unknown.
      * @throws StreamIoException
      * @throws StreamFormatException
      */
-    public void append(byte[] buffer, int offset, int size, boolean useChecks, long transactionTime) {
+    public void append(byte[] buffer, int offset, int size, boolean useChecks, long transTime) {
         //
         // We could also write the last byte in this method. However, it would
         // give us one more write to AppendOnlyStream or allocation of

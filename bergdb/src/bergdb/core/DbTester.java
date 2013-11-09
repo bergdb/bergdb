@@ -123,7 +123,7 @@ public class DbTester {
         t = Trans.builder().put("e", "e-value").build();
         db.execute(t);
 
-        Assert.assertEquals(true, t.transactionTime >= 20);
+        Assert.assertEquals(true, t.transTime >= 20);
         Assert.assertArrayEquals(Util.toBytes("e-value"), DbUtil.get(db, 999, "e"));
 
         byte[] value = DbUtil.get(db, 10, "e");
@@ -624,7 +624,7 @@ public class DbTester {
         db.execute(t);
         
         //System.out.println("---- DBTester.testSpaceSplitOfRoot ----");
-        //System.out.println("transactionTime = " + t.transactionTime);
+        //System.out.println("transTime = " + t.transTime);
         //System.out.println(db.findRoot(Long.MAX_VALUE).printTree());
         
         for (int i = 0; i <= max; i++) {
@@ -1254,7 +1254,7 @@ public class DbTester {
             public void transform(Trans trans, int index) {
                 long[] key = trans.kvs[index].keySegments;
                 String keyString = Keys.toString(key);
-                keyString = keyString.replace("<transactionTime>", "" + trans.transactionTime);
+                keyString = keyString.replace("<transactionTime>", "" + trans.transTime);
                 long[] newKey = Keys.toSegments(keyString);
                 trans.kvs[index].keySegments = newKey;
                 trans.writeKeyHashes[index] = Keys.hash(newKey);
@@ -1269,8 +1269,8 @@ public class DbTester {
         
         String s = Keys.toString(t.kvs[0].keySegments);
         Assert.assertFalse(s.contains("transactionTime"));
-        long transactionTime1 = Long.parseLong(s.substring("test/".length()));
-        Assert.assertTrue(transactionTime1 >= 0);
+        long transTime1 = Long.parseLong(s.substring("test/".length()));
+        Assert.assertTrue(transTime1 >= 0);
     }
     
     @T
@@ -1279,7 +1279,7 @@ public class DbTester {
             public void transform(Trans trans, int index) {
                 long[] key = trans.kvs[index].keySegments;
                 String keyString = Keys.toString(key);
-                keyString = keyString.replace("<transactionTime>", "" + trans.transactionTime);
+                keyString = keyString.replace("<transactionTime>", "" + trans.transTime);
                 long[] newKey = Keys.toSegments(keyString);
                 trans.kvs[index].keySegments = newKey;
                 trans.writeKeyHashes[index] = Keys.hash(newKey);

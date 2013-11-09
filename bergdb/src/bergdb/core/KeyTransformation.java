@@ -1,7 +1,7 @@
 package bergdb.core;
 
 /**
- * Transformation for a key applied after transactionTime is known.
+ * Transformation for a key applied after transTime is known.
  * 
  * @author Frans Lundberg
  */
@@ -9,7 +9,7 @@ public interface KeyTransformation {
     
     /**
      * This method is allowed to modify trans.kvs[index].key and trans.writeKeyHashes[index],
-     * and allowed to read trans.transactionTime. 
+     * and allowed to read trans.transTime. 
      * Other data should not be read or modified.
      * The implementation of this method must not throw any exception.
      * 

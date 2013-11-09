@@ -7,7 +7,7 @@ package bergdb.core;
 public interface IKeyModSet {
     /**
      * Returns true if a key with hash 'keyHash' has been modified by a transaction with a 
-     * transactionTime strictly greater than 'time'.
+     * transTime strictly greater than 'time'.
      * The method also returns true if 'time' is too old, so there is no information about the
      * key hash.
      */

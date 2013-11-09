@@ -757,7 +757,7 @@ public class Db implements IWarner {
 
         TransSeq seq = new TransSeq();
         
-        long lastTransactionTime = 0;
+        long lastTransTime = 0;
 
         NodeStream.TransIterator ti = nodeStream.new TransIterator(startPos);
         while (ti.next()) {
@@ -767,7 +767,7 @@ public class Db implements IWarner {
             
             listener.tpos(ti.tpos);
 
-            lastTransactionTime = ti.getTransactionTime();
+            lastTransTime = ti.getTransTime();
             ArrayList<INode> tnodes = new ArrayList<INode>();
 
             NodeStream.NodeIterator ni = ti.getNodeIterator();
@@ -790,7 +790,7 @@ public class Db implements IWarner {
             seq.add(new TransSeq.Tset(nodeArray, ti.getTpos(), ti.getLastPos()));
         }
 
-        dbClock.setLastTransactionTime(lastTransactionTime);
+        dbClock.setLastTransTime(lastTransTime);
 
         Dag.Builder b = Dag.builder();
         b.nodeReader(nodeStream);
@@ -1240,7 +1240,7 @@ public class Db implements IWarner {
         // Executes a KV set request as an ACID transaction.
         //
         // We make sure all readers have a read time that is strictly less than
-        // t.transactionTime
+        // t.transTime
         // while the synchronized(writeLock) clause is executing. This is
         // handled by dbClock.
         //
@@ -1273,7 +1273,7 @@ public class Db implements IWarner {
         // Executes a KV set request as an atomic transaction.
         //
         // We make sure all readers have a read time that is strictly less than
-        // t.transactionTime while the synchronized(writeLock) clause is executing.
+        // t.transTime while the synchronized(writeLock) clause is executing.
         // This is handled by dbClock.
         //
         // Reads the KVs as warm-up; aims to avoid lengthy disk reads and cache
@@ -1313,24 +1313,23 @@ public class Db implements IWarner {
             }
 
             try {
-                t.transactionTime = dbClock.transactionBegin();
+                t.transTime = dbClock.transactionBegin();
                 putKvs();
                 kvCount += t.kvs.length;
                 transactionCount++;
 
                 synchronized (readSync) {}
                     // Publishes the changes by the writer thread to the readers. This is done
-                    // before the t.transactionTime can be used as lookup time, so all readers
+                    // before the t.transTime can be used as lookup time, so all readers
                     // (that do: "synchronized (readSynch) {}") are guaranteed to see all changes
                     // made by the writer (the thread executing this code).
             } finally {
                 dbClock.transactionEnd();
-                // After above line, get requests can use the time
-                // t.transactionTime.
+                // After above line, get requests can use the lookuptime t.transTime.
             }
 
             for (int i = 0; i < t.writeKeyHashes.length; i++) {
-                keyModSet.add(t.transactionTime, t.writeKeyHashes[i]);
+                keyModSet.add(t.transTime, t.writeKeyHashes[i]);
             }
 
             // IDEA 1210, we could possibly finish holding the writeLock here
@@ -1370,7 +1369,7 @@ public class Db implements IWarner {
      */
     private void recordChoicesAndEnsureIncluded(final long limit) {        
         GetData gd = graph.newGetData();
-        gd.actualLookupTime = trans.transactionTime;
+        gd.actualLookupTime = trans.transTime;
         gd.accessData = pd.accessData;
         
         final Choices[] finalChoice = new Choices[1];
@@ -1457,7 +1456,7 @@ public class Db implements IWarner {
         
         trans.nodeCount = transNodes.size();
         
-        nodeStream.appendNodes(trans.transactionTime, transNodes, trans);
+        nodeStream.appendNodes(trans.transTime, transNodes, trans);
 
         MetaBlock meta = nodeStream.getMetaBlock();
         meta.setStartupPos(startupPos.get());
@@ -1501,7 +1500,7 @@ public class Db implements IWarner {
      * Sets the KVs directly to the in-memory data structure. This method runs with exclusive 
      * write access to the data structure (synchronized (writeLock)). However, there may be
      * concurrent readers that read with a lookup time strictly less than the transaction time
-     * (trans.transactionTime). Caller must hold writeLock.
+     * (trans.transTime). Caller must hold writeLock.
      */
     private final void putKvs() {
         //
@@ -1511,7 +1510,7 @@ public class Db implements IWarner {
 
         assert Thread.holdsLock(writeLock);
         final int length = trans.kvs.length;        
-        pd.tt = trans.transactionTime;
+        pd.tt = trans.transTime;
 
         for (int i = 0; i < length; i++) {
             Kv kv = trans.kvs[i];
@@ -1521,9 +1520,9 @@ public class Db implements IWarner {
             }
 
             if (kv.valueTransformation != null) {
-                final byte[] previous = this.getOne(trans.transactionTime, kv.keySegments, 
+                final byte[] previous = this.getOne(trans.transTime, kv.keySegments, 
                         trans.getData);
-                kv.value = kv.valueTransformation.transform(trans.transactionTime, kv.value,
+                kv.value = kv.valueTransformation.transform(trans.transTime, kv.value,
                         previous);
             }
 
@@ -2109,7 +2108,7 @@ performance.
 A writer published its writes (modifications to data) for readers by an empty
 synchronized block. See code fragment below.
      
-    t.transactionTime = dbClock.transactionBegin(); 
+    t.transTime = dbClock.transactionBegin(); 
     setKVs(); 
     synchronized (readSynch) {} 
     dbClock.transactionEnd();

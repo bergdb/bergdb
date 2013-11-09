@@ -118,7 +118,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      *              trans.byteSize.
      * @throws StreamIoException
      */
-    public boolean appendNodes(long transactionTime, TransNodes nodes, Trans trans) {
+    public boolean appendNodes(long transTime, TransNodes nodes, Trans trans) {
         //
         // 130430: Changed to use new version of TransNodes (separates node types).
         // 130409: boolean return instead of void.
@@ -136,7 +136,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
             // On my computer, it is faster than a member field that is reused.
         
         addNodesCounter++;
-        metaBlock.setTime(transactionTime);
+        metaBlock.setTime(transTime);
         totalSize = 16;        // Header size, trans size, 4 empty, trans time
         final long transStartPos = rstream.getNextSpos();
         long pos = rstream.getSpos(transStartPos, totalSize);
@@ -225,7 +225,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         // 130502 Frans: Transaction header now 4+4+8 = 16 (size, free, transTime).
         
         longBuffer[longOffset++] = totalSize;      // Note, 4 bytes available.
-        longBuffer[longOffset++] = transactionTime;
+        longBuffer[longOffset++] = transTime;
         
         for (int i = 0; i < nodes.topSize; i++) {
             TopNode n1 = nodes.topNodes[i];
@@ -274,7 +274,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         //System.out.println("==== NodeStream.addNodes ====\n" + nodes.print());
         
         // Stores buffer to stream.
-        rstream.append(byteBuffer, 0, totalSize, true, transactionTime);
+        rstream.append(byteBuffer, 0, totalSize, true, transTime);
         
         // Sets the start pos to the meta block.
         rstream.getMetaBlock().setLastTransSpos(transStartPos);
@@ -489,7 +489,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         long transCount;
         boolean transOk;
         byte[] transBuffer;
-        long transactionTime;
+        long transTime;
         
         public TransIterator() {
             this(0);
@@ -550,15 +550,15 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
                 }
                 
                 transCount++;    // We do not include non-committed transactions in count.
-                transactionTime = Bytes.bytesToLongLE(transBuffer, 8);
+                transTime = Bytes.bytesToLongLE(transBuffer, 8);
                 
                 break;    // always break at end of while loop
             }
             return true;
         }
         
-        public final long getTransactionTime() {
-            return transactionTime;
+        public final long getTransTime() {
+            return transTime;
         }
         
         /** Returns the stream pos of the first byte of the transaction. */
@@ -589,7 +589,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         byte[] choices;       // non-null for value nodes (including deletes)
         INode node;
         private StoredNode storedNode;
-        private long transactionTime;
+        private long transTime;
         
         public NodeIterator(long transPos, byte[] buffer) throws StreamFormatException {
             if (buffer == null) {
@@ -606,12 +606,12 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
                 throw new StreamFormatException("Bad size, " + size + ", " + buffer.length);
             }
             offset += 8;
-            transactionTime = Bytes.bytesToLongLE(buffer, offset);
+            transTime = Bytes.bytesToLongLE(buffer, offset);
             offset += 8;
         }
         
-        public long getTransactionTime() {
-            return transactionTime;
+        public long getTransTime() {
+            return transTime;
         }
         
         /**

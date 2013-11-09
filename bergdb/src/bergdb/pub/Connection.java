@@ -56,9 +56,8 @@ public interface Connection extends ReadInterface {
      * in a database key will be replaced by the the unique transactionTime of
      * the transaction when it is executed. By default, the key replace feature
      * of a connection is disabled. This method must to be called to enable it.
-     * The transactionTime of the transaction functions as a unique transaction
-     * ID. It is guaranteed to be unique for every transaction and is strictly
-     * increasing.
+     * The transaction time of the transaction functions as a unique transaction ID.
+     * It is guaranteed to be unique for every transaction and is strictly increasing.
      * 
      * @param enable
      *            Set to true to enable key replace.

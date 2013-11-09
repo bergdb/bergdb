@@ -823,8 +823,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                 pd.nodeChangeListener.keyNodeChanged(node);
                 
                 // Direct modification, but still OK. A reader will always have a lookup
-                // time < trans.transactionTime. So, a reader is guaranteed not to see
-                // the delete at trans.transactionTime before the transaction completes.
+                // time < trans.transTime. So, a reader is guaranteed not to see
+                // the delete at trans.transTime before the transaction completes.
                 // No need to add 'node' to transaction nodes. It is there
                 // already since it has a delete klong for transationTime.
                 

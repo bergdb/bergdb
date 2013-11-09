@@ -218,7 +218,7 @@ public class Reclaim implements Db.TransactionListener {
                 
                 if (iteration.done) {
                     this.iterationCount++;
-                    iteration.tEnd = t.transactionTime;
+                    iteration.tEnd = t.transTime;
 
                     IterationInfo info = table.rows.get(table.rows.size() - 1);
                    
@@ -249,7 +249,7 @@ public class Reclaim implements Db.TransactionListener {
                                 + e.getMessage());
                     }
                     
-                    pretruncateIfPossible(t.transactionTime);
+                    pretruncateIfPossible(t.transTime);
                     
                     iteration = null;
                 }
@@ -262,7 +262,7 @@ public class Reclaim implements Db.TransactionListener {
         
         if (!isInternal && streamSize - this.sposAtLastPretruncateCall > 2 * initialStartupDistance) {
             this.sposAtLastPretruncateCall = streamSize;
-            pretruncateIfPossible(t.transactionTime);
+            pretruncateIfPossible(t.transTime);
             
             if (iteration != null && table.rows.size() > 0) {
                 
@@ -602,7 +602,7 @@ public class Reclaim implements Db.TransactionListener {
         
         public Iteration(Trans t, double internalFraction) {
             pStart = t.nextSpos;
-            tStart = t.transactionTime;
+            tStart = t.transTime;
             tEnd = -1;
             kvCount = 0;
             lastKey = null;

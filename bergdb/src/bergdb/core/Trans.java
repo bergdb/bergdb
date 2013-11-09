@@ -42,7 +42,7 @@ public class Trans {
     
     // -- Output --
     
-    public long transactionTime;    // Transaction time, also used as internally.
+    public long transTime;          // Transaction time, also used as internally.
     public int splitCount;          // Number of node splits due to transaction.
     public long tpos;               // Stream position of the first byte of the transaction. Available after execute.
     public long lastSpos;           // Stream position of the last byte of the transaction. Available after execute.

@@ -100,8 +100,8 @@ public class DbClock {
     /**
      * Used for initialization when an existing database is started.
      */
-    public synchronized void setLastTransactionTime(long lastTransactionTime) {
+    public synchronized void setLastTransTime(long lastTransTime) {
         assert !transactionRunning;
-        lastWriteTime = lastTransactionTime;
+        lastWriteTime = lastTransTime;
     }
 }

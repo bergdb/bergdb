@@ -452,7 +452,7 @@ public class RwEnvironmentImp implements RwEnvironment {
         
         public void transform(Trans trans, int index) {
             byte[] bytes = Keys.toBytes(trans.kvs[index].keySegments);
-            byte[] timeBytes = Keys.toBytes(transactionTimeToString(trans.transactionTime));
+            byte[] timeBytes = Keys.toBytes(transTimeToString(trans.transTime));
             assert timeBytes.length == REPLACE_ME_LENGTH;
             boolean found = false;
             
@@ -483,11 +483,11 @@ public class RwEnvironmentImp implements RwEnvironment {
         }
     };
     
-    private static final String transactionTimeToString(long transactionTime) {
+    private static final String transTimeToString(long transTime) {
         // TODO X LATER Consider how this works in GCJ - does formatting work?
         
-        assert transactionTime >= Klong.MIN_TIME && transactionTime <= Klong.MAX_TIME;
-        return String.format(Locale.US, "%018d", transactionTime);
+        assert transTime >= Klong.MIN_TIME && transTime <= Klong.MAX_TIME;
+        return String.format(Locale.US, "%018d", transTime);
     }
 
     /**
@@ -743,7 +743,7 @@ public class RwEnvironmentImp implements RwEnvironment {
         };  
         
         for (int i = 0; i < times.length; i++) {
-            Assert.assertEquals(expected[i], transactionTimeToString(times[i]));
+            Assert.assertEquals(expected[i], transTimeToString(times[i]));
         }
     }
     
@@ -752,7 +752,7 @@ public class RwEnvironmentImp implements RwEnvironment {
         // Assertions must be enabled to test this. (-ea). Otherwise, nothing is tested.
         Throwable ex = null;
         try {
-            transactionTimeToString(210000000000000000L);
+            transTimeToString(210000000000000000L);
         } catch (AssertionError e) {
             ex = e;
         }
@@ -763,10 +763,10 @@ public class RwEnvironmentImp implements RwEnvironment {
     }
     
     public static void main(String[] args) {
-        System.out.println("transactionTimeToString, 1, 111222333444L");
-        System.out.println(transactionTimeToString(1));
-        System.out.println(transactionTimeToString(111222333444L));
-        System.out.println(transactionTimeToString(Klong.MAX_TIME));
+        System.out.println("transTimeToString, 1, 111222333444L");
+        System.out.println(transTimeToString(1));
+        System.out.println(transTimeToString(111222333444L));
+        System.out.println(transTimeToString(Klong.MAX_TIME));
         
         // -->
         // 000000000000000001
