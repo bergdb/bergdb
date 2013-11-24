@@ -9,5 +9,14 @@ public class Dev {
     }
     
     public static void go() {
+        String s = "a";
+        
+        assert (s = "b").equals("b");
+        
+        boolean assertsEnabled = false;
+        assert (assertsEnabled = true) == true;
+        
+        System.out.println("s = " + s);
+        System.out.println("assertsEnabled = " + assertsEnabled);
     }
 }

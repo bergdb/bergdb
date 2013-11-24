@@ -12,6 +12,9 @@ import bergdb.pub.IllegalDbStateException;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 
+// TODO D. Consider: should cache eviction be here or in Db? Caching is in this class
+// (followPointer). Maybe cache eviction should be too?
+
 /**
  * <p>The DAG (directed acyclic graph) is the main data structure of the database.
  * An instance of this class handles the in-memory (cached) part of the DAG.</p>
@@ -22,7 +25,7 @@ import bergdb.storage.StreamIoException;
  * <li>getOne(), getMany(), putOne()</li>
  * <li>Making nodes dirty</li>
  * <li>Dag testable in isolation</li>
- * <li>Cache: adding nodes, cache eviction</li>
+ * <li>Cache: adding nodes to cache</li>
  * <li>Reads nodes (from interface NodeReader instance)</li>
  * <li>Pointer locks</li>
  * <li>Factory methods: newGetData(), newGetMany(), new PutData().</li>
@@ -244,35 +247,9 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         return node;
     }
     
-    //public final IDirtyNodes getDirtyNodes() {
-    //    return dirtyNodes;
-    //}
-    
     public final TransSeq getTransSeq() {
         return seq;
     }
-
-    /**
-     * Makes a TopNode dirty if not already dirty. This method returns immediately
-     * if the node is dirty already. Caller must hold Db.writeLock.
-     */
-    /*public final void ensureDirty(TopNode n) {        
-        if (!n.isDirty) {
-            n.isDirty = true;
-            //dirtyNodes.put(n.spos, n);
-        }
-    }*/
-    
-    /**
-     * Makes a KeyNode dirty if not already dirty. This method returns immediately
-     * if the node is dirty already. Caller must hold Db.writeLock.
-     */
-    /*public final void ensureDirty(KeyNode n) {
-        if (!n.isDirty) {
-            n.isDirty = true;
-            //dirtyNodes.put(n.spos, n);
-        }
-    }*/
     
     /**
      * Creates a GetData object suitable for use with as a parameter to Graph.getOne().

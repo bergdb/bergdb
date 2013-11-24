@@ -279,7 +279,7 @@ public class Db implements IWarner {
         // Synch note:
         // Synchronized blocks make sure the writes in the constructor are
         // visible to writers and readers. 
-        // Readers synchronize with readSynch (get(), getMany()) and writers
+        // Readers synchronize with readSync (get(), getMany()) and writers
         // synchronize with writeLock.
         //
         synchronized (readSync) {}
@@ -1393,7 +1393,8 @@ public class Db implements IWarner {
             long[] key = transNodes.keys[i];
             byte[] value = getOne(gd.actualLookupTime, key, gd);
             
-            assert transNodes.valueNodes[i].isDelete() || Assert.arrayEquals(transNodes.valueNodes[i].getValue(), value);
+            assert transNodes.valueNodes[i].isDelete() 
+                || Assert.arrayEquals(transNodes.valueNodes[i].getValue(), value);
         }
     }
 
@@ -1441,6 +1442,8 @@ public class Db implements IWarner {
         if (graph != null) {
             graph.getTransSeq().addToTransNodes(startupPos2, transNodes);
             recordChoicesAndEnsureIncluded(startupPos2);
+                // NOTE 131124, 0 unit tests and only 1 f test fails if above line commented.
+                // Is ensure included needed?
         }
         
         computeStats(ordinaryNodeCount);
@@ -1687,10 +1690,16 @@ public class Db implements IWarner {
     
     // ======== Types ========
     
-    /** Special class for Db.readSync is useful for debug. */
+    /** 
+     * Using a special class for Db.readSync is useful for debug / monitoring.
+     * The class has no other purpose.
+     */
     public static class ReadSync {}
     
-    /** Special class for Db.writeLock is useful for debug. */
+    /** 
+     * Using a special class for Db.writeLock is useful for debug / monitoring.
+     * The class has no other purpose.
+     */
     public static class WriteLock {}
     
     /**

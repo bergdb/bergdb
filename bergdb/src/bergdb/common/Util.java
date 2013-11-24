@@ -27,13 +27,14 @@ import bergdb.nanotest.TestCollector;
  * Static utility methods for general-purpose.
  */
 public class Util {
+    
     /**
      * Deletes a single file or a whole directory, if 'file' is a directory.
      * An IOException is thrown if the file(s) cannot be deleted.
      * If 'file' does not exist, or is 'null' this method returns silently.
      * 
      * @param file The file or directory to delete.
-     * @throws IOException 
+     * @throws IOException
      */
     public static void delete(File file) throws IOException {
         boolean ok;
