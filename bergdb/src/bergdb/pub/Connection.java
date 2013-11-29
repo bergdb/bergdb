@@ -194,7 +194,7 @@ public interface Connection extends ReadInterface {
      * Waits until ordinary durability has been achieved for the last
      * transaction started with this connection.
      * 
-     * @throws StreamIoException
+     * @throws DbException if the database is faulty.
      */
     public void sync();
 
@@ -202,7 +202,7 @@ public interface Connection extends ReadInterface {
      * Waits until strong durability has been achieved for the last transaction
      * started with this connection.
      * 
-     * @throws StreamIoException
+     * @throws DbException is the database is faulty.
      */
     public void syncStrong();
 }

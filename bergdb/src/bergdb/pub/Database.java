@@ -82,8 +82,7 @@ public interface Database {
      * according to ordinary durability rules.
      * 
      * @throws IllegalDbStateException if start() has not been called.
-     * @throws StreamIoException if there was an error writing to the underlying
-     * database stream.
+     * @throws DbException if the database is faulty.
      */
     public void sync();
     
@@ -92,8 +91,7 @@ public interface Database {
      * according to strong durability rules.
      * 
      * @throws IllegalDbStateException if start() has not been called.
-     * @throws StreamIoException if there was an error writing to the underlying
-     * database stream.
+     * @throws DbException if the database is faulty.
      */
     public void syncStrong();
     
