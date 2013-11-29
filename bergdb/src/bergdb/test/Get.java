@@ -98,13 +98,36 @@ public class Get {
         c.report("get-total-time", tg.time);
     }
     
+    private void go1M(TestCollector c) throws InterruptedException {
+        c.report("note", "One thread running get(), db size: 1M.");
+        
+        createDB(1000*1000);
+        
+        Timed tg = new Timed();
+        warmup();
+        tg.start();
+        
+        Thread.sleep(2000);
+        done = true;
+        
+        tg.join();
+        
+        c.report("get-n", n);
+        c.report("get-count", tg.count);
+        c.report("get-time", tg.time / tg.count);
+        c.report("get-total-time", tg.time);
+    }
+    
     @T("perf")
     public static void run(TestCollector c) throws InterruptedException {
         new Get().go(c);
     }
     
     public static void main(String[] args) throws Exception {
-        run(new BasicCollector());
+        Get g = new Get();
+        
+        g.go(new BasicCollector());
+        g.go1M(new BasicCollector());
     }
     
     /**
@@ -166,6 +189,11 @@ public class Get {
 }
 
 /*
+
+
+======== 2013-11-24 ========
+Running it from CorePerf on Cissi, the typical get-time is 0.9 us for 100k db size
+and 1.1 us for 1M db size.
 
 ======== 2013-04-05 ========
 Tested a variation. Same as before, but only first 1000, 100, 10 kvs read. This increased 

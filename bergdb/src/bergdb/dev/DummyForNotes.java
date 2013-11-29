@@ -2,8 +2,6 @@ package bergdb.dev;
 
 /*
 
-TODO E. Remove more usage of ".obj" in tests (search for: [.obj"]).
-
 TODO D. Testing for Connection.sync(), Connection.syncStrong() better. How in general to test these things?
 Can we inject deterministic control over StorageManager somehow?
   

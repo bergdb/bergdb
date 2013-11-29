@@ -267,8 +267,6 @@ public class RwEnvironmentImp implements RwEnvironment {
             // NOTE, No check here, but we could force suffix != EMPTY.
             setBytes(ikey, (byte[]) object);
         } else if (clazz.equals(String.class)) {
-            // TODO, A. Consider forcing special suffix, or at least not EMPTY or ".obj".
-            // Or rather:  !Entries.isObjectKey(ikey)
             setBytes(ikey, Util.toBytes((String) object));
         } else {
             if (!Entries.isObjectKey(ikey)) {
