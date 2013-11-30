@@ -13,8 +13,8 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
 
 	
 <target name="init" description="Initializes properties and prints version, release, and build.">
-    <property name="release" value="2013.3"/>                     <!-- CHANGEIT for new release. -->
-    <property name="releaseInt" value="133"/>                     <!-- CHANGEIT for new release. -->
+    <property name="release" value="2013.4"/>                     <!-- CHANGEIT for new release. -->
+    <property name="releaseInt" value="134"/>                     <!-- CHANGEIT for new release. -->
 
     <tstamp>
         <format property="dateString" pattern="yyMMdd" />
@@ -183,7 +183,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
 <target name="javadoc" depends="init, compile" description="Creates javadoc.">
     <property name="javadoc-dir" value="${base}/${release}/javadoc"/>
     <property name="javadoc-all-dir" value="${base}/${release}/more/javadoc-all"/>
-	
+
     <mkdir dir="${base}/${release}"/>   <!-- Creates directory in case it would not exist. -->
     <delete dir="${javadoc-dir}" failonerror="false"/>
     <delete dir="${javadoc-all-dir}" failonerror="false"/>
@@ -216,7 +216,9 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
     	    linksource="no"
 	        stylesheetfile="in/style.css">
     	
-        <packageset dir="src" defaultexcludes="yes"></packageset>
+    	<packageset dir="src" defaultexcludes="yes">
+    	    <include name="bergdb/**"/>
+    	</packageset>
 
         <classpath>
             <fileset dir="">
