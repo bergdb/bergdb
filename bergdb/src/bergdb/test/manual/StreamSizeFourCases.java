@@ -140,5 +140,5 @@ Release 2013.3. Output:
 KV size: 1000000*(4+4 + 4+100) = 112000000 = 112M.
 This should be a reasonable base case for comparison when trying a KV-based stream format
 instead.
-    
+
 */
