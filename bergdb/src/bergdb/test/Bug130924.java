@@ -33,7 +33,7 @@ public class Bug130924 {
         new Bug130924().go2(c);
     }
     
-    private final long total = 151;
+    private static final long total = 151;
         // Test seems to fail for any total >= 151 and be successful for 
         // for total < 151.
     private static final String accountDir = "/acc/";

@@ -38,10 +38,10 @@ public class KeyModSet2 implements IKeyModSet {
             Bin bin = bins[i];
             if (bin == null) {
                 continue;
+            } else {
+                result = bin.firstTime;
+                break;
             }
-            
-            result = bin.firstTime;
-            break;
         }
         
         return result;

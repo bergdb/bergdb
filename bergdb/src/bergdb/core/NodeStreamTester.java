@@ -109,11 +109,11 @@ public class NodeStreamTester {
             for (int i = 0; i < 4; i++) {
                 Assert.assertTrue(ti.next());
                 //System.out.println("---- trans: " + ti.transPos);
-                NodeStream.NodeIterator ni = ti.getNodeIterator();
-                while (ni.next()) {
+                //NodeStream.NodeIterator ni = ti.getNodeIterator();
+                //while (ni.next()) {
                     //System.out.println(ni.transPos);
                     //System.out.println("node: " + ni.node);
-                }
+                //}
             }
         
             Assert.assertTrue(ti.next() == false);

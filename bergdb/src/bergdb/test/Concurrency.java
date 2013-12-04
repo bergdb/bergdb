@@ -41,7 +41,7 @@ import bergdb.stream.NullStream;
 public class Concurrency {
     private Database database;
     private volatile boolean stop = false;
-    private final int accounts = 10;
+    private static final int accounts = 10;
     private final AtomicLong transCount = new AtomicLong(0);
     private final AtomicLong readCount = new AtomicLong(0);
     private volatile long transPerSec;

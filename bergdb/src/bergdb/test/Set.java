@@ -93,7 +93,6 @@ public class Set {
         }
         
         db = null;
-        System.gc(); System.gc(); System.gc();
         
         db = createDB(enableWrite);
         out.println("Starting...");
