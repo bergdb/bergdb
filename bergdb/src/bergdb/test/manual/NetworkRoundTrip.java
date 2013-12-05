@@ -151,7 +151,7 @@ public class NetworkRoundTrip {
 
 /*
 
-131130. Typical round-trip time on cissi: 52 us. Not bad :-).
+131130. Typical round-trip time on cissi (localhost): 52 us. Not bad :-).
 Server started with: [$ j bergdb.test.java.NetworkRoundTrip server &]
 I get the same result when I comment out calls to setPerformancePreferences() and setTcpNoDelay().
 
