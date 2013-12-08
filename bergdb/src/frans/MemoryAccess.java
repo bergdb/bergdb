@@ -170,7 +170,7 @@ Refactored. Result:
 
     Test        Access time
     cacheSeq     0.33 ns,  0.69 cycles
-    cacheRan     4.39 ns,  9.20 cycles
+    cacheRan     3.16 ns,  6.64 cycles
     ramSeq       0.56 ns,  1.37 cycles
     ramRan      20.07 ns, 42.16 cycles
 
