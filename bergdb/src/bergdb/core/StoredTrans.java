@@ -108,11 +108,7 @@ public class StoredTrans {
     /**
      * @throws StreamFormatException
      */
-    private StoredNode next(byte[] buffer) {
-        // TODO E. Do we need two ways of returning null?
-        
-        StoredNode storedNode = new StoredNode();
-        
+    private StoredNode next(byte[] buffer) {        
         if (offset + 4 >= buffer.length) {
             return null;
         }
@@ -124,10 +120,10 @@ public class StoredTrans {
         }
         
         long spos = RecoverableStream.getSpos(transPos, offset);
-        NodeStream.bytesToNode(spos, buffer, offset, nodeSize, storedNode);
+        StoredNode stored = NodeStream.bytesToNode(spos, buffer, offset, nodeSize);
         
         offset += nodeSize;
-        return storedNode;
+        return stored;
     }
     
     /**
@@ -140,7 +136,7 @@ public class StoredTrans {
         
         int valueCount = 0;
         for (StoredNode s : nodes) {
-            byte type = s.node.getType();
+            byte type = s.getNode().getType();
             if (type == INode.TYPE_VALUE || type == INode.TYPE_DELETE) {
                 valueCount++;
             }
@@ -154,11 +150,12 @@ public class StoredTrans {
         int offset = 0;
         
         for (StoredNode s : nodes) {
-            byte type = s.node.getType();
+            byte type = s.getNode().getType();
             if (type == INode.TYPE_VALUE) {
-                byte[] value = ((ValueNode) s.node).getValue();
+                byte[] value = ((ValueNode) s.getNode()).getValue();
                 if (value == null) {
-                    throw new IllegalStateException("ValueNode with null value not allowed, " + s.node);
+                    throw new IllegalStateException("ValueNode with null value not allowed, " 
+                            + s.getNode());
                 }
                 b.put(keys[offset], value);
                 offset++;

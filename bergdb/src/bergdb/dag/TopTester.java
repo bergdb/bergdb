@@ -191,7 +191,7 @@ public class TopTester {
             Bytes.longToBytesLE(longs[i], bytes, i * 8);
         }
         
-        TopNode top2 = StoredTopNode.fromBytes(bytes, 0, Spos.NULL);
+        TopNode top2 = StoredTopNode.fromBytes(bytes, 0, Spos.NULL).getNode();
         
         Assert.assertEquals(top1.topNodeId, top2.topNodeId);
         Assert.assertEquals(top1.rootTime, top2.rootTime);
@@ -210,7 +210,7 @@ public class TopTester {
         for (int i = 0; i < longs.length; i++) {
             Bytes.longToBytesLE(longs[i], bytes, i * 8);
         }
-        TopNode top2 = StoredTopNode.fromBytes(bytes, 0, Spos.NULL);
+        TopNode top2 = StoredTopNode.fromBytes(bytes, 0, Spos.NULL).getNode();
         
         Assert.assertEquals(top1.topNodeId, top2.topNodeId);
         Assert.assertEquals(top1.rootTime, top2.rootTime);

@@ -139,7 +139,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         
         rstream.read(spos, buffer, 0, size);
         
-        INode node = bytesToNode(spos, buffer, 0, size, null);
+        INode node = bytesToNode(spos, buffer, 0, size).getNode();
         return node;
     }
 
@@ -161,9 +161,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * @throws StreamFormatException
      * @throws StreamIoException
      */
-    static INode bytesToNode(long spos, byte[] buffer, int offset, int size,
-            StoredNode stored) {
-
+    static StoredNode bytesToNode(long spos, byte[] buffer, int offset, int size) {
         assert buffer.length > offset + 5 : "offset=" + offset + ", buffer.length=" + buffer.length;
         byte nodeType = buffer[offset + 4];
         // Node type byte always has this location for all node types.
@@ -194,42 +192,29 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
                 }
             }
         }
-
-        long sposPrevious = Spos.NULL;
-        INode node = null;
-        byte[] choices = null;
+        
+        StoredNode stored;
 
         switch (nodeType) {
         case INode.TYPE_KEY_NODE:
-            StoredKeyNode storedKeyNode = StoredKeyNode.createFromBytes(buffer, offset, spos);
-            node = storedKeyNode.getNode();
-            sposPrevious = storedKeyNode.getPrevPos();
+            stored = StoredKeyNode.createFromBytes(buffer, offset, spos);
             break;
         case INode.TYPE_TOP_NODE:
-            node = StoredTopNode.fromBytes(buffer, offset, spos);
+            stored = StoredTopNode.fromBytes(buffer, offset, spos);
             break;
         case INode.TYPE_VALUE:
         case INode.TYPE_DELETE:
-            StoredValueNode storedValueNode = StoredValueNode.create(buffer, offset, spos);
-            node = storedValueNode.getNode();
-            choices = storedValueNode.getChoices();
+            stored = StoredValueNode.create(buffer, offset, spos);
             break;
         default:
             throw new StreamFormatException("Bad node type in stream, " + ((int) nodeType)
-                    + ", for stream item at spos = " + spos + ". " + "sposPrevious=" + sposPrevious
+                    + ", for stream item at spos = " + spos + ". " 
                     + ", buffer.length=" + buffer.length + ".");
         }
 
-        assert node.getSpos() == spos;
-
-        if (stored != null) {
-            stored.node = node;
-            stored.sposPrevious = sposPrevious;
-            stored.choices = choices;
-        }
-
-        return node;
+        return stored;
     }
+    
 
     public void printStream(PrintStream out) {
         printStream(out, 0);
@@ -371,7 +356,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         long sposPrevious;
         byte[] choices; // non-null for value nodes (including deletes)
         INode node;
-        private StoredNode storedNode;
+        StoredNode stored;
         private long transTime;
 
         public NodeIterator(long transPos, byte[] buffer) throws StreamFormatException {
@@ -383,7 +368,6 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
             }
             this.buffer = buffer;
             this.transPos = transPos;
-            this.storedNode = new StoredNode();
             int size = Bytes.bytesToIntLE(buffer, offset);
             if (size != buffer.length) {
                 throw new StreamFormatException("Bad size, " + size + ", " + buffer.length);
@@ -413,11 +397,12 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
             }
 
             long spos = RecoverableStream.getSpos(transPos, offset);
-            NodeStream.bytesToNode(spos, buffer, offset, nodeSize, storedNode);
-
-            this.node = storedNode.node;
-            this.sposPrevious = storedNode.sposPrevious;
-            this.choices = storedNode.choices;
+            //NodeStream.bytesToNodeOLD(spos, buffer, offset, nodeSize, storedNode);
+            
+            this.stored = NodeStream.bytesToNode(spos, buffer, offset, nodeSize);
+            this.node = stored.getNode();
+            this.sposPrevious = stored.getPrevPos();
+            this.choices = stored instanceof StoredValueNode ? ((StoredValueNode) stored).getChoices() : null;
 
             offset += nodeSize;
             count++;
