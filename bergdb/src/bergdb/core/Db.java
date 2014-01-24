@@ -519,7 +519,7 @@ public class Db implements IWarner {
                 storageManager.syncReplica(ss, progressListener);
                 Trans trans = Trans.builder().put(DUMMY_KEY, new byte[0]).build();
                 Db.this.execute(trans);
-                Db.this.syncStrong(trans.lastSpos);
+                Db.this.syncStrong(trans.lastPos);
 
                 synchronized (progressLock) {
                     progressValue[0] = 100;
@@ -1319,7 +1319,7 @@ public class Db implements IWarner {
             }
 
             try {
-                t.transTime = dbClock.transactionBegin();
+                t.time = dbClock.transactionBegin();
                 putKvs();
                 kvCount += t.kvs.length;
                 transactionCount++;
@@ -1335,12 +1335,12 @@ public class Db implements IWarner {
             }
 
             for (int i = 0; i < t.writeKeyHashes.length; i++) {
-                keyModSet.add(t.transTime, t.writeKeyHashes[i]);
+                keyModSet.add(t.time, t.writeKeyHashes[i]);
             }
 
             appendNodesToStream();
             
-            lastSposOfLastTrans = trans.lastSpos;
+            lastSposOfLastTrans = trans.lastPos;
             startupPos.releaseForEvict();
             
             clearTransMemory();
@@ -1363,7 +1363,7 @@ public class Db implements IWarner {
      */
     private void recordChoicesAndEnsureIncluded(final long limit) {        
         GetData gd = graph.newGetData();
-        gd.actualLookupTime = trans.transTime;
+        gd.actualLookupTime = trans.time;
         gd.accessData = pd.accessData;
         
         final Choices[] finalChoice = new Choices[1];
@@ -1453,13 +1453,13 @@ public class Db implements IWarner {
         
         trans.nodeCount = transNodes.size();
         
-        nodeStream.appendNodes(trans.transTime, transNodes, trans);
+        nodeStream.appendNodes(transNodes, trans);
 
         MetaBlock meta = nodeStream.getMetaBlock();
         meta.setStartupPos(startupPos.get());
         
         if (graph != null) {
-            graph.getTransSeq().add(transNodes.createTset(trans.tpos, trans.lastSpos));            
+            graph.getTransSeq().add(transNodes.createTset(trans.pos, trans.lastPos));            
             graph.getTransSeq().removeBeforeSpos(startupPos2);
         }
         
@@ -1507,7 +1507,7 @@ public class Db implements IWarner {
 
         assert Thread.holdsLock(writeLock);
         final int length = trans.kvs.length;        
-        pd.tt = trans.transTime;
+        pd.tt = trans.time;
 
         for (int i = 0; i < length; i++) {
             Kv kv = trans.kvs[i];
@@ -1517,9 +1517,9 @@ public class Db implements IWarner {
             }
 
             if (kv.valueTransformation != null) {
-                final byte[] previous = this.getOne(trans.transTime, kv.keySegments, 
+                final byte[] previous = this.getOne(trans.time, kv.keySegments, 
                         trans.getData);
-                kv.value = kv.valueTransformation.transform(trans.transTime, kv.value,
+                kv.value = kv.valueTransformation.transform(trans.time, kv.value,
                         previous);
             }
 

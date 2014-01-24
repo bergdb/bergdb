@@ -26,7 +26,7 @@ public class DbTesterRestart {
         clock.setTime(10);
         Trans trans = Trans.builder().put("admin1", "Sanna").build();
         db.execute(trans);
-        long tt = trans.transTime;
+        long tt = trans.time;
         db.sync();
         
         db = null;

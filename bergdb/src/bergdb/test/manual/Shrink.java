@@ -76,7 +76,7 @@ public class Shrink {
             db.execute(trans);
             
             if (index > 0.999*n) {
-                System.out.println(index + " trans in stream: " + trans.tpos + " -- " + trans.lastSpos);
+                System.out.println(index + " trans in stream: " + trans.pos + " -- " + trans.lastPos);
             }
             index++;
         }

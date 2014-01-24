@@ -25,12 +25,12 @@ public class WTransaction implements Transaction {
     public Transaction execute() {
         if (env.getObjectOpsSize() > 0) {
             trans = RwTransaction.executeRw(env, connection, null);
-            connection.lastSposOfLastTrans = trans.lastSpos;
+            connection.lastSposOfLastTrans = trans.lastPos;
         } else {
             trans = env.createTrans();
             try {
                 connection.getDb().execute(trans);
-                connection.lastSposOfLastTrans = trans.lastSpos;
+                connection.lastSposOfLastTrans = trans.lastPos;
             } catch (RerunException e) {
                 throw new Bug("should not happen, no objectOps");
             }
@@ -63,13 +63,13 @@ public class WTransaction implements Transaction {
      * @throws StreamIoException
      */
     public void sync() {
-        connection.getDb().sync(trans.lastSpos);
+        connection.getDb().sync(trans.lastPos);
     }
     
     /**
      * @throws StreamIoException
      */
     public void syncStrong() {
-        connection.getDb().syncStrong(trans.lastSpos);
+        connection.getDb().syncStrong(trans.lastPos);
     }
 }

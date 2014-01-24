@@ -62,7 +62,7 @@ public class RwTransaction implements Transaction {
         assert action != null;
         RwEnvironmentImp env = new RwEnvironmentImp(connection);
         this.trans = executeRw(env, connection, this);
-        connection.lastSposOfLastTrans = trans.lastSpos;
+        connection.lastSposOfLastTrans = trans.lastPos;
         return this;
     }
 
@@ -122,13 +122,13 @@ public class RwTransaction implements Transaction {
      * @throws StreamIoException
      */
     public void sync() {
-        connection.getDb().sync(trans.lastSpos);
+        connection.getDb().sync(trans.lastPos);
     }
     
     /**
      * @throws StreamIoException
      */
     public void syncStrong() {
-        connection.getDb().syncStrong(trans.lastSpos);
+        connection.getDb().syncStrong(trans.lastPos);
     }
 }

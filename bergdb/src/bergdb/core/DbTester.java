@@ -123,7 +123,7 @@ public class DbTester {
         t = Trans.builder().put("e", "e-value").build();
         db.execute(t);
 
-        Assert.assertEquals(true, t.transTime >= 20);
+        Assert.assertEquals(true, t.time >= 20);
         Assert.assertArrayEquals(Util.toBytes("e-value"), DbUtil.get(db, 999, "e"));
 
         byte[] value = DbUtil.get(db, 10, "e");
@@ -1120,12 +1120,12 @@ public class DbTester {
         
         Trans trans = Trans.builder().put("key", "the-first-value").build();
         db.execute(trans);
-        db.syncStrong(trans.lastSpos);
+        db.syncStrong(trans.lastPos);
         long size1 = mstream.getLength();
         
         trans = Trans.builder().put("key", "the-second-value").build();
         db.execute(trans);
-        db.syncStrong(trans.lastSpos);
+        db.syncStrong(trans.lastPos);
         long size2 = mstream.getLength();
         Assert.assertEquals("the-second-value", DbUtil.getString(db, "key"));
         db.stop();
@@ -1161,7 +1161,7 @@ public class DbTester {
         db.execute(Trans.builder().put("a-significantly-longer-key", "value2").build());
         Trans trans = Trans.builder().put("another-key-that-is-longer-than-most", "value3").build();
         db.execute(trans);
-        db.syncStrong(trans.lastSpos);
+        db.syncStrong(trans.lastPos);
         db.stop();
         db = null;
         
@@ -1199,7 +1199,7 @@ public class DbTester {
         
         Trans trans = Trans.builder().put("key2", v2).build();
         db.execute(trans);
-        db.syncStrong(trans.lastSpos);
+        db.syncStrong(trans.lastPos);
         db.stop();
         db = null;
         
@@ -1224,14 +1224,14 @@ public class DbTester {
         Db db = testDB(mstream);
         Trans trans = Trans.builder().put("key1", "value1").build();
         db.execute(trans);
-        db.syncStrong(trans.lastSpos);
+        db.syncStrong(trans.lastPos);
         long size1 = mstream.getLength();
         
         trans = Trans.builder().put("key2", "value2").build();
         db.execute(trans);
-        db.syncStrong(trans.lastSpos);
+        db.syncStrong(trans.lastPos);
         
-        Assert.assertTrue(mstream.getLength() >= trans.lastSpos);
+        Assert.assertTrue(mstream.getLength() >= trans.lastPos);
         mstream.truncate(size1 + 3);
         Assert.assertEquals(size1 + 3, mstream.getLength());
         
@@ -1254,7 +1254,7 @@ public class DbTester {
             public void transform(Trans trans, int index) {
                 long[] key = trans.kvs[index].keySegments;
                 String keyString = Keys.toString(key);
-                keyString = keyString.replace("<transactionTime>", "" + trans.transTime);
+                keyString = keyString.replace("<transactionTime>", "" + trans.time);
                 long[] newKey = Keys.toSegments(keyString);
                 trans.kvs[index].keySegments = newKey;
                 trans.writeKeyHashes[index] = Keys.hash(newKey);
@@ -1279,7 +1279,7 @@ public class DbTester {
             public void transform(Trans trans, int index) {
                 long[] key = trans.kvs[index].keySegments;
                 String keyString = Keys.toString(key);
-                keyString = keyString.replace("<transactionTime>", "" + trans.transTime);
+                keyString = keyString.replace("<transactionTime>", "" + trans.time);
                 long[] newKey = Keys.toSegments(keyString);
                 trans.kvs[index].keySegments = newKey;
                 trans.writeKeyHashes[index] = Keys.hash(newKey);

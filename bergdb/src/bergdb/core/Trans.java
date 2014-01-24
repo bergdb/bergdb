@@ -11,8 +11,9 @@ import bergdb.dag.TransNodes;
 import bergdb.nanotest.T;
 
 /**
- * Data data for executing a transaction. Input, output and working data.
+ * Data for executing a transaction. Input, output and working data.
  * The change set of the transaction is defined in this class.
+ * This class is defined for Db -- for performance. Not for the end user.
  * 
  * @author Frans Lundberg
  */
@@ -42,13 +43,13 @@ public class Trans {
     
     // -- Output --
     
-    public long transTime;          // Transaction time, also used as internally.
-    public int splitCount;          // Number of node splits due to transaction.
-    public long tpos;               // Stream position of the first byte of the transaction. Available after execute.
-    public long lastSpos;           // Stream position of the last byte of the transaction. Available after execute.
-    public long nextSpos;           // spos of the next transaction. Available after execute.
+    public long time;               // Transaction time, used internally and as output.
+    public int splitCount;          // Number of node splits made during execute().
+    public long pos;                // Stream position of the first byte of the transaction. Available after execute().
+    public long lastPos;            // Stream position of the last byte of the transaction. Available after execute().
+    public long nextPos;            // Stream position of the first byte of the next transaction. Available after execute().
     public int nodeCount;           // Number of nodes written to stream. Useful for testing/debug.
-                                    // Note. Not super important, could be removed.
+                                    // Note, not super important, could be removed.
     public Listener listener;
     
     // -- Internal working data --
@@ -105,6 +106,7 @@ public class Trans {
         // Code like         [t = new Trans.Builder().set(key, value).build();]
         // I prefer factory: [t = Trans.create().set(key, value).done();]
         // or:               [t = Trans.builder().set(key, value).build();]
+        
         return new Builder();
     }
     

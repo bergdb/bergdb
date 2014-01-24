@@ -173,7 +173,7 @@ public class Reclaim implements Db.TransactionListener {
      */
     public void transactionCompleted(Trans t) {
         final boolean isInternal = t.isInternal();
-        long streamSize = t.nextSpos;
+        long streamSize = t.nextPos;
             // This is correct since meta blocks are written eagerly by RecoverableStream.
         
         if (!isInternal && iteration == null && retainDuration != Long.MAX_VALUE) {
@@ -218,7 +218,7 @@ public class Reclaim implements Db.TransactionListener {
                 
                 if (iteration.done) {
                     this.iterationCount++;
-                    iteration.tEnd = t.transTime;
+                    iteration.tEnd = t.time;
 
                     IterationInfo info = table.rows.get(table.rows.size() - 1);
                    
@@ -249,7 +249,7 @@ public class Reclaim implements Db.TransactionListener {
                                 + e.getMessage());
                     }
                     
-                    pretruncateIfPossible(t.transTime);
+                    pretruncateIfPossible(t.time);
                     
                     iteration = null;
                 }
@@ -262,7 +262,7 @@ public class Reclaim implements Db.TransactionListener {
         
         if (!isInternal && streamSize - this.sposAtLastPretruncateCall > 2 * initialStartupDistance) {
             this.sposAtLastPretruncateCall = streamSize;
-            pretruncateIfPossible(t.transTime);
+            pretruncateIfPossible(t.time);
             
             if (iteration != null && table.rows.size() > 0) {
                 
@@ -601,8 +601,8 @@ public class Reclaim implements Db.TransactionListener {
         }
         
         public Iteration(Trans t, double internalFraction) {
-            pStart = t.nextSpos;
-            tStart = t.transTime;
+            pStart = t.nextPos;
+            tStart = t.time;
             tEnd = -1;
             kvCount = 0;
             lastKey = null;
@@ -615,13 +615,13 @@ public class Reclaim implements Db.TransactionListener {
         }
         
         public final void gotInternal(Trans t) {
-            totalInternalTransactionSize += (t.lastSpos - t.tpos + 1);
+            totalInternalTransactionSize += (t.lastPos - t.pos + 1);
         }
         
         public final void gotExternal(Trans t) {
             // reclaimSize is the size currently allowed for space reclaim transactions.
             
-            totalExternalTransactionSize += (t.lastSpos - t.tpos + 1);
+            totalExternalTransactionSize += (t.lastPos - t.pos + 1);
             long total = totalExternalTransactionSize + totalInternalTransactionSize;
             
             long reclaimSize = (long) ((total * internalFractionForIteration) - totalInternalTransactionSize);

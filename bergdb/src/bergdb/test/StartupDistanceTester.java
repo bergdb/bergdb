@@ -42,7 +42,7 @@ public class StartupDistanceTester {
         db.start();
         createAccounts();
         
-        long posZero = trans.lastSpos;
+        long posZero = trans.lastPos;
         
         db.setStartupDistance(1000*1000);
         db.sync();
@@ -148,7 +148,7 @@ public class StartupDistanceTester {
     private void payTillStreamSize(double sizeD) throws InterruptedException {
         long size = (long) sizeD;
         
-        while (trans.lastSpos < size) {
+        while (trans.lastPos < size) {
             makePayment();
         }
     }

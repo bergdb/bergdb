@@ -401,7 +401,7 @@ public class PubTester {
         Transaction t = c.w().put(a).build();
         t.execute();
         t.sync();
-        Assert.assertEquals(((WTransaction)t).getTrans().lastSpos,
+        Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
                 ((DatabaseImp) d).getDb().getStreamLength() - 1);
     }
     
@@ -418,7 +418,7 @@ public class PubTester {
         Transaction t = c.w().put(a).build();
         t.execute();
         t.syncStrong();
-        Assert.assertEquals(((WTransaction)t).getTrans().lastSpos,
+        Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
                 ((DatabaseImp) d).getDb().getStreamLength() - 1);
     }
     
@@ -435,7 +435,7 @@ public class PubTester {
         Transaction t = c.w().put(a).build();
         t.execute();
         c.sync();
-        Assert.assertEquals(((WTransaction)t).getTrans().lastSpos,
+        Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
                 ((DatabaseImp) d).getDb().getStreamLength() - 1);
     }
     
@@ -452,7 +452,7 @@ public class PubTester {
         Transaction t = c.w().put(a).build();
         t.execute();
         c.syncStrong();
-        Assert.assertEquals(((WTransaction)t).getTrans().lastSpos,
+        Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
                 ((DatabaseImp) d).getDb().getStreamLength() - 1);
     }
     
@@ -469,7 +469,7 @@ public class PubTester {
         Transaction t = c.w().put(a).build();
         t.execute();
         d.sync();
-        Assert.assertEquals(((WTransaction)t).getTrans().lastSpos,
+        Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
                 ((DatabaseImp) d).getDb().getStreamLength() - 1);
     }
     
@@ -486,7 +486,7 @@ public class PubTester {
         Transaction t = c.w().put(a).build();
         t.execute();
         d.syncStrong();
-        Assert.assertEquals(((WTransaction)t).getTrans().lastSpos,
+        Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
                 ((DatabaseImp) d).getDb().getStreamLength() - 1);
     }
     
