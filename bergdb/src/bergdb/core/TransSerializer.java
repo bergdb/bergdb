@@ -2,7 +2,6 @@ package bergdb.core;
 
 import bergdb.common.Bytes;
 import bergdb.dag.KeyNode;
-import bergdb.dag.Keys;
 import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
 import bergdb.dag.TransNodes;
@@ -17,8 +16,6 @@ import bergdb.storage.RecoverableStream;
  * @author Frans Lundberg
  */
 public class TransSerializer {
-    // NOTE We current have no checksum for keys.
-    
     private static final int INIT_SIZE_OF_BYTE_BUFFER = 100*1000;
     private static final int INIT_SIZE_OF_LONG_BUFFER = 10*1000;
     private static final int INIT_SIZE_OF_PREV_POS = 100;
@@ -31,14 +28,30 @@ public class TransSerializer {
     private int extraZeros;
     private TransNodes transNodes;
     private Trans trans;
+    private long transStartPos;
     private boolean writeMetaBlock = false;
-    private long appendNodesCounter;
+    
+    /** Number of times serialize() has been called. */
+    private long counter;
     
     
     public TransSerializer() {
         longBuffer = new long[INIT_SIZE_OF_LONG_BUFFER];
         byteBuffer = new byte[INIT_SIZE_OF_BYTE_BUFFER];
         prevPos = new long[INIT_SIZE_OF_PREV_POS];
+        counter = 0;
+    }
+    
+    public void serialize(Trans trans, TransNodes transNodes, long transStartPos) {
+        assert trans != null;
+        assert transNodes != null;
+        
+        this.trans = trans;
+        this.transNodes = transNodes;
+        this.transStartPos = transStartPos;
+        
+        prepareToSerialize();
+        serializeToBuffer();
     }
     
     /**
@@ -48,18 +61,14 @@ public class TransSerializer {
      * @param transNodes
      * @param transStartPos
      * @param appendNodesCounter  
-     *  A counter that increases with 1 for each transaction that is appended to the stream.
-     * 
+     *  A counter that increases with one for each transaction that is appended to the stream.
      */
-    public void prepare(Trans trans, TransNodes transNodes, 
-            long transStartPos, long appendNodesCounter) {
+    public void prepareToSerialize() {
         // Below three loops sets new stream pos of nodes, sets ID if needed, and sets isDirty = false.
         // Also computes totalSize and sets prevPos array for KeyNodes.
         
         assert trans != null;
         assert transNodes != null;
-        
-        this.appendNodesCounter = appendNodesCounter;
         this.trans = trans;
         this.transNodes = transNodes;
         int prevPosIndex = 0;
@@ -99,11 +108,6 @@ public class TransSerializer {
         }
         
         totalSize += 4;
-        totalSize += 4;
-        
-        for (int i = 0; i < trans.kvs.length; i++) {
-            totalSize += 4 + Keys.getByteSize(trans.kvs[i].keySegments);
-        }
         
         totalSize = totalSize + 1;
             // Adds room for RecoverableStream.LAST_BYTE.
@@ -135,15 +139,15 @@ public class TransSerializer {
     }
     
 
-    public void serialize() {
+    public void serializeToBuffer() {
         //
-        // Code to serialize causes significant exe time (30-40%) for Set operations.
+        // Code to serialize causes significant execution time (30-40%) for PUT operations.
         // We could possibly return quickly and let another thread serialize nodes.
         // Possibly the thread that handles flushing the buffer could be used, or a separate one.
         // KeyNode.size and order of transactions would need to be stored.
         //
         
-        resizeBuffersIfNeeded(appendNodesCounter);
+        resizeBuffersIfNeeded();
         
         int offset = 0;
         int longOffset = 0;
@@ -193,22 +197,6 @@ public class TransSerializer {
         Bytes.intToBytesLE(0, byteBuffer, offset);
         offset += 4;
         
-        final int kvCount = trans.kvs.length;
-        Bytes.intToBytesLE(kvCount, byteBuffer, offset);
-        offset += 4;
-        
-        // Adding the keys
-        
-        for (int i = 0; i < kvCount; i++) {
-            // TODO C. Add method to Keys to serialize to existing byte array
-            // to avoid memory allocation here.
-            byte[] key = Keys.toBytes(trans.kvs[i].keySegments);
-            Bytes.intToBytesLE(key.length, byteBuffer, offset);
-            offset += 4;
-            System.arraycopy(key, 0, byteBuffer, offset, key.length);
-            offset += key.length;
-        }
-        
         System.arraycopy(NodeStream.ZEROS64, 0, byteBuffer, offset, extraZeros);
         offset += extraZeros;
         
@@ -224,7 +212,7 @@ public class TransSerializer {
     private void resizePrevPosIfNeeded() {
         // 10007 is a prime.
         
-        if (appendNodesCounter % 10007 == 0) {    
+        if (counter % 10007 == 0) {    
             int newSize = Math.max(INIT_SIZE_OF_PREV_POS, transNodes.keySize);
             if (prevPos.length != newSize) {
                 prevPos = new long[newSize];
@@ -236,8 +224,8 @@ public class TransSerializer {
         }
     }
     
-    private void resizeBuffersIfNeeded(long addNodesCounter) {
-        if (addNodesCounter % 10007 == 0) {
+    private void resizeBuffersIfNeeded() {
+        if (counter % 10007 == 0) {
             int newSize = Math.max(INIT_SIZE_OF_BYTE_BUFFER, totalSize);
             if (byteBuffer.length != newSize) {
                 byteBuffer = new byte[newSize];
@@ -258,17 +246,18 @@ public class TransSerializer {
         }
     }
     
-    /** Returns the transaction buffer that contains the serialized transaction. */
-    public final byte[] getTransBuffer() {
+    /** Returns the transaction buffer with the serialized transaction. */
+    public final byte[] getOutputTransBuffer() {
         return this.byteBuffer;
     }
     
     /** Returns the byte size of the buffer returned by getTransBuffer(). */
-    public final int getTransSize() {
+    public final int getOutputTransSize() {
         return this.totalSize;
     }
     
-    public final boolean wroteMetaBlock() {
+    /** Returns true if at least one meta block was written to stream. */
+    public final boolean getOutputWroteMetaBlock() {
         return this.writeMetaBlock;
     }
 }

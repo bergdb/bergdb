@@ -5,7 +5,7 @@ import java.util.Random;
 import bergdb.dag.INode;
 import bergdb.dag.ValueNode;
 
-// XXX finish this. Check performance.
+// TODO E. finish this. Check performance.
 
 /**
  * Testing performance of high-performance map from

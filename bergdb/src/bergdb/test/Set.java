@@ -47,9 +47,6 @@ public class Set {
                 .retainForever()
                 .evictBoss(new NoEvictBoss())
                 .stream("main", nullStream);
-        if (!enableWrite) {
-            b.disableStreamWrite();
-        }
         
         //db.setRetainDuration(Long.MAX_VALUE);  --> // 30 us
         //db.setReclaimInternalFraction(0.001);      // 32 us

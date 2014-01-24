@@ -538,7 +538,7 @@ public class RecoverableStream {
                 stream.read(spos, bytes, 0, bytes.length);
                 transSSPos = spos;
                 
-                spos = stream.getSpos(spos, size);
+                spos = RecoverableStream.getSpos(spos, size);
                 if (spos >= stream.getLength()) {
                     spos = Constants.SposNULL;
                 }
@@ -618,24 +618,22 @@ public class RecoverableStream {
         
         @T
         public static void testGetPos1() {
-            RecoverableStream r = new RecoverableStream(new MemoryStream(), new MetaBlock());
             final int s = META_BLOCK_SIZE;
             final int d = META_BLOCK_DISTANCE;
             
-            Assert.assertTrue(r.getSpos(s, d) == d + s + s);
-            Assert.assertTrue(r.getSpos(s, 0) == s);
-            Assert.assertTrue(r.getSpos(s + 18, 3) == s + 21);
+            Assert.assertTrue(RecoverableStream.getSpos(s, d) == d + s + s);
+            Assert.assertTrue(RecoverableStream.getSpos(s, 0) == s);
+            Assert.assertTrue(RecoverableStream.getSpos(s + 18, 3) == s + 21);
         }
         
         @T
         public static void testGetPos2() {
-            RecoverableStream r = new RecoverableStream(new MemoryStream(), new MetaBlock());
             final int s = META_BLOCK_SIZE;
             final int d = META_BLOCK_DISTANCE;
             
-            Assert.assertTrue(r.getSpos(10*d + s, 38) == 10*d + s + 38);
-            Assert.assertEquals(11*d + s + 10, r.getSpos(10*d + (d-10), 20));
-            Assert.assertEquals(15*d + (d-s-10), r.getSpos(10*d + (d-s-10), 5*(d-s)));
+            Assert.assertTrue(RecoverableStream.getSpos(10*d + s, 38) == 10*d + s + 38);
+            Assert.assertEquals(11*d + s + 10, RecoverableStream.getSpos(10*d + (d-10), 20));
+            Assert.assertEquals(15*d + (d-s-10), RecoverableStream.getSpos(10*d + (d-s-10), 5*(d-s)));
         }
         
         @T

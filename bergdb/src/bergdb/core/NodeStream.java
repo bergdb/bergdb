@@ -23,29 +23,14 @@ import bergdb.storage.StreamFormatException;
  * 
  * @author Frans Lundberg
  */
-public class NodeStream implements bergdb.dag.Dag.NodeReader {
-    private static final int initSizeOfByteBuffer = 100*1000;
-    private static final int initSizeOfLongBuffer = 10*1000;
-    
+public class NodeStream implements bergdb.dag.Dag.NodeReader {    
     /** Transaction start position is always divisable by TRANS_ALIGNMENT. */
     static final int TRANS_ALIGNMENT = 8;
     
     private final RecoverableStream rstream;
-    private final MetaBlock metaBlock;
-            // Shortcut reference.
-    private final boolean writeEnabled;
-            // Set to false to test performance without serialization of nodes and without writing
-            // anything to the DB stream.
     private final Object writeLock;
             // For asserting that caller of some methods holds the required DB.writeLock.
-    
-    /** Buffer with serialized nodes for the current transaction. */
-    private byte[] byteBuffer;
-    
-    /** Buffer with serialized top and key nodes for current transaction. */
-    private long[] longBuffer;
-    
-    private int addNodesCounter;
+    private final TransSerializer transSerializer;
     
     /** Byte array with 64 zero bytes, useful for zero-fill of transaction buffer. */
     public static final byte[] ZEROS64 = new byte[64];
@@ -57,7 +42,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * @param writeEnabled  True for normal usage, false for performance testing
      * (will disable writes to the underlying stream and INode serialization).
      */
-    public NodeStream(RecoverableStream rstream, boolean writeEnabled, Object writeLock) {
+    public NodeStream(RecoverableStream rstream, Object writeLock) {
         if (rstream == null) {
             throw new IllegalArgumentException("rstream == null not allowed.");
         }
@@ -66,12 +51,8 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
             throw new IllegalArgumentException("writeLock == null not allowed");
         }
         
+        this.transSerializer = new TransSerializer();
         this.rstream = rstream;
-        this.metaBlock = rstream.getMetaBlock();
-        this.writeEnabled = writeEnabled;
-        this.byteBuffer = new byte[initSizeOfByteBuffer];
-        this.longBuffer = new long[initSizeOfLongBuffer];
-        this.addNodesCounter = 0;
         this.writeLock = writeLock;
     }
     
@@ -118,195 +99,21 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      *              trans.byteSize.
      * @throws StreamIoException
      */
-    public boolean appendNodes(long transTime, TransNodes nodes, Trans trans) {
-        //
-        // 130430: Changed to use new version of TransNodes (separates node types).
-        // 130409: boolean return instead of void.
-        // 121009: We now allow noop operation, that is, nodesToAdd.size() == 0.
-        // 
-        
+    public boolean appendNodes(long transTime, TransNodes nodes, Trans trans) {        
         assert nodes.assertNoDuplicates();
-        
-        int totalSize = 0;
-        int topAndKeySize = 0;     // Bytesize of TopNode + KeyNodes for transaction.
-        int prevPosIndex = 0;
-        boolean wroteMetaBlock = false;     // the result
-        final long[] prevPos = new long[nodes.keySize];    
-            // 1305 Frans: Note, this allocation seems to be done on the stack.
-            // On my computer, it is faster than a member field that is reused.
-        
-        addNodesCounter++;
-        metaBlock.setTime(transTime);
-        totalSize = 16;        // Header size, trans size, 4 empty, trans time
         final long transStartPos = rstream.getNextSpos();
-        long pos = rstream.getSpos(transStartPos, totalSize);
         
-        // Below three loops sets new stream pos of nodes, sets ID if needed, and sets isDirty = false.
-        // Also computes totalSize and sets prevPos array for KeyNodes.
-        
-        // Loop topNodes.
-        for (int i = 0; i < nodes.topSize; i++) {
-            final TopNode n1 = nodes.topNodes[i];
-            n1.spos = pos;
-            n1.id = (n1.id == Spos.NULL) ? pos : n1.id;
-            totalSize += n1.getByteSize();
-            pos = rstream.getSpos(transStartPos, totalSize);
-        }
-        
-        // Loop keyNodes.
-        for (int i = 0; i < nodes.keySize; i++) {
-            final KeyNode n = nodes.keyNodes[i];
-            prevPos[prevPosIndex++] = n.spos;
-            n.spos = pos;
-            n.id = (n.id == Spos.NULL) ? pos : n.id;
-            totalSize += n.getByteSize();
-            pos = rstream.getSpos(transStartPos, totalSize);
-        }
-        
-        topAndKeySize = totalSize;
-        
-        // Loop valueNodes.
-        for (int i = 0; i < nodes.valueSize; i++) {
-            final ValueNode n = nodes.valueNodes[i];
-            n.spos = pos;
-            totalSize += n.getByteSize(nodes.choices[i].size);
-            pos = rstream.getSpos(transStartPos, totalSize);
-        }
-        
-        // Below code creates a transaction byte buffer to be written to database stream.
-        
-        totalSize = totalSize + 1;
-                // Adds room for RecoverableStream.LAST_BYTE.
-        
-        // For totalSize to be a multiple of TRANS_ALIGNMENT.
-        int extraZeros = TRANS_ALIGNMENT - totalSize % TRANS_ALIGNMENT;
-        totalSize += extraZeros;
-        assert totalSize % TRANS_ALIGNMENT == 0 : totalSize + ", " + extraZeros;
-        
-        trans.tpos = transStartPos;
-        trans.lastSpos = rstream.getSpos(transStartPos, totalSize - 1);
-        trans.nextSpos = rstream.getSpos(transStartPos, totalSize);
-        
-        // Determines whether a metablock was written.
-        // Assumes meta blocks are written eagerly.
-        
-        long tSize = trans.lastSpos - trans.tpos + 1;
-        if (tSize > RecoverableStream.META_BLOCK_SIZE) {
-            if (tSize >= RecoverableStream.META_BLOCK_DISTANCE) {
-                wroteMetaBlock = true;
-            } else {
-                long blockIndex1 = trans.tpos / RecoverableStream.META_BLOCK_DISTANCE;
-                long blockIndex2 = trans.lastSpos / RecoverableStream.META_BLOCK_DISTANCE;                
-                wroteMetaBlock = (blockIndex1 != blockIndex2) || trans.tpos == 0;
-            }
-        }
-        
-        if (!this.writeEnabled && addNodesCounter > 2) {
-            // Special DEV if-clause. Useful for performance testing.
-            // With/without stream + serialization of nodes.
-            // The condition with addNodesCount is required when 
-            // the stream is empty and initialized with internal transaction.
-            // This is an ugly hack and only used for performance testing.
-            return wroteMetaBlock;
-        }
-        
-        // ----
-        // Code for rest of method causes significant exe time (30-40%) for Set operations.
-        // We could possibly return quickly and let other thread serialize nodes. 
-        // KeyNode.size would need to be stored.
-        // ----
-        
-        resizeBuffersIfNeeded(totalSize, topAndKeySize);
-        
-        int offset = 0;
-        int longOffset = 0;
-        prevPosIndex = 0;
-        
-        // 130502 Frans: Transaction header now 4+4+8 = 16 (size, free, transTime).
-        
-        longBuffer[longOffset++] = totalSize;      // Note, 4 bytes available.
-        longBuffer[longOffset++] = transTime;
-        
-        for (int i = 0; i < nodes.topSize; i++) {
-            TopNode n1 = nodes.topNodes[i];
-            int longSize = n1.toLongs(longBuffer, longOffset);
-            longOffset += longSize;
-        }
-        
-        for (int i = 0; i < nodes.keySize; i++) {
-            KeyNode n1 = nodes.keyNodes[i];
-            int longSize = n1.toLongs(longBuffer, longOffset, prevPos[prevPosIndex++]);
-            longOffset += longSize;
-        }
-        
-        // TopNodes and KeyNodes have been serialized to longBuffer[]
-        // Code here will set byteBuffer from longBuffer.
-        
-        for (int j = 0; j < longOffset; j++) {
-            long value = longBuffer[j];
-            byteBuffer[offset++] = (byte) value;
-            byteBuffer[offset++] = (byte) (value >>>  8);
-            byteBuffer[offset++] = (byte) (value >>> 16);
-            byteBuffer[offset++] = (byte) (value >>> 24);
-            byteBuffer[offset++] = (byte) (value >>> 32);
-            byteBuffer[offset++] = (byte) (value >>> 40);
-            byteBuffer[offset++] = (byte) (value >>> 48);
-            byteBuffer[offset++] = (byte) (value >>> 56);
-        }
-        
-        for (int i = 0; i < nodes.valueSize; i++) {
-            ValueNode n = nodes.valueNodes[i];
-            int byteSize = n.toBytes(nodes.choices[i], byteBuffer, offset);
-            offset += byteSize;
-        }
-        
-        System.arraycopy(ZEROS64, 0, byteBuffer, offset, extraZeros);
-        offset += extraZeros;
-        
-        // End of buffer (LAST_BYTE indicates a valid transaction).
-        
-        byteBuffer[offset] = RecoverableStream.LAST_BYTE;
-        offset += 1;
-        
-        assert offset == totalSize : "offset = " + offset + ", but totalSize = " + totalSize;
-        assert totalSize % 8 == 0 : "totalSize = " + totalSize;
-
-        //System.out.println("==== NodeStream.addNodes ====\n" + nodes.print());
-        
-        // Stores buffer to stream.
-        rstream.append(byteBuffer, 0, totalSize, true, transTime);
-        
-        // Sets the start pos to the meta block.
+        transSerializer.serialize(trans, nodes, transStartPos);
+        rstream.append(transSerializer.getOutputTransBuffer(), 0, transSerializer.getOutputTransSize(), 
+                true, trans.transTime);
         rstream.getMetaBlock().setLastTransSpos(transStartPos);
-        return wroteMetaBlock;
+        return transSerializer.getOutputWroteMetaBlock();
     }
     
     public long getLastTransSpos() {
         return rstream.getMetaBlock().getLastTransSpos();
     }
 
-    private void resizeBuffersIfNeeded(int totalSize, int topAndKeySize) {
-        if (addNodesCounter % 5013 == 0) {
-            int newSize = Math.max(initSizeOfByteBuffer, totalSize);
-            if (byteBuffer.length != newSize) {
-                byteBuffer = new byte[newSize];
-            }
-            
-            newSize = Math.max(initSizeOfLongBuffer, topAndKeySize / 8);
-            if (longBuffer.length != newSize) {
-                longBuffer = new long[newSize];
-            }
-        }
-        
-        if (this.byteBuffer.length < totalSize) {
-            this.byteBuffer = new byte[(int) (totalSize * 1.10)];
-        }
-        
-        if (this.longBuffer.length < (topAndKeySize / 8) + 8) {
-            this.longBuffer = new long[(int) (topAndKeySize / 8 + 8)];
-        }
-    }
-    
     /**
      * Gets a stream item. Assumes the item exists at the location and that it 
      * is valid.
@@ -542,8 +349,8 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
                 transOk = lastByte == 0 ? false : true;
                 transBuffer = buffer;
                 
-                lastPos = rstream.getSpos(tpos, size - 1);
-                nextTransPos = rstream.getSpos(tpos, size);
+                lastPos = RecoverableStream.getSpos(tpos, size - 1);
+                nextTransPos = RecoverableStream.getSpos(tpos, size);
                 
                 if (!transOk) {
                     continue start;
@@ -630,7 +437,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
                 return false;
             }
             
-            long spos = rstream.getSpos(transPos, offset);
+            long spos = RecoverableStream.getSpos(transPos, offset);
             NodeStream.bytesToNode(spos, buffer, offset, nodeSize, storedNode);
             
             this.node = storedNode.node;

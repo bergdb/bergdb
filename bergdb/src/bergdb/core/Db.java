@@ -261,7 +261,7 @@ public class Db implements IWarner {
         this.lastSposOfLastTrans = aos.getLength();
         
         RecoverableStream rstream = new RecoverableStream(aos, metaBlock);
-        this.nodeStream = new NodeStream(rstream, !b.disableStreamWrite, writeLock);
+        this.nodeStream = new NodeStream(rstream, writeLock);
         this.nodeStream.getMetaBlock().setStartupDistance(b.startupDistance);
         
         this.dbClock = new DbClock(b.clock);
@@ -1724,7 +1724,7 @@ public class Db implements IWarner {
      */
     public static class Builder {
         private Clock clock;
-        private boolean disableStreamWrite;
+        //private boolean disableStreamWrite;
         private int maxNodeSize;
         private int startupDistance;
         private IEvictBoss evictBoss;
@@ -1966,15 +1966,6 @@ public class Db implements IWarner {
                 streamInfos.set(index, info);     // replaces previous value
             }
             
-            return this;
-        }
-        
-        /**
-         * For testing, it disables all writes to 'appendOnlyStream' and the serialization of
-         * stream nodes.
-         */
-        public Builder disableStreamWrite() {
-            this.disableStreamWrite = true;
             return this;
         }
 
