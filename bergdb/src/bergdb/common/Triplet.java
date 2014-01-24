@@ -1,16 +1,15 @@
 package bergdb.common;
 
 /**
- * 3-tuple implementation.
+ * Immutable 3-tuple implementation.
  * 
- * @param <T0>
- * @param <T1>
+ * @see Pair
  * @author Frans Lundberg
  */
 public class Triplet<T0, T1, T2> {
-    private T0 v0;
-    private T1 v1;
-    private T2 v2;
+    private final T0 v0;
+    private final T1 v1;
+    private final T2 v2;
     
     public Triplet(T0 v0, T1 v1, T2 v2) {
         this.v0 = v0;
