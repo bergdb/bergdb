@@ -191,7 +191,7 @@ public class RecoverableStream {
      * @param sposStart  Start spos, cannot be an spos for a byte in a meta-block.
      * @throws IllegalArgumentException  if sposStart is in a meta-block.
      */
-    public final long getSpos(final long sposStart, final int size) {
+    public final static long getSpos(final long sposStart, final int size) {
         final long startOffset = sposStart % META_BLOCK_DISTANCE;
         final long transBytesPerBlock = META_BLOCK_DISTANCE - META_BLOCK_SIZE;
         long blockCount = size / transBytesPerBlock;

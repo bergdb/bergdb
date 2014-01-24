@@ -28,7 +28,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     private static final int initSizeOfLongBuffer = 10*1000;
     
     /** Transaction start position is always divisable by TRANS_ALIGNMENT. */
-    private static final int TRANS_ALIGNMENT = 8;
+    static final int TRANS_ALIGNMENT = 8;
     
     private final RecoverableStream rstream;
     private final MetaBlock metaBlock;
@@ -47,8 +47,8 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     
     private int addNodesCounter;
     
-    /** Byte array with zero bytes, useful for zero-fill of transaction buffer. */
-    private static final byte[] zeros64 = new byte[64];
+    /** Byte array with 64 zero bytes, useful for zero-fill of transaction buffer. */
+    public static final byte[] ZEROS64 = new byte[64];
     
     /**
      * Creates a new NodeStream given a RecoverableStream.
@@ -260,7 +260,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
             offset += byteSize;
         }
         
-        System.arraycopy(zeros64, 0, byteBuffer, offset, extraZeros);
+        System.arraycopy(ZEROS64, 0, byteBuffer, offset, extraZeros);
         offset += extraZeros;
         
         // End of buffer (LAST_BYTE indicates a valid transaction).

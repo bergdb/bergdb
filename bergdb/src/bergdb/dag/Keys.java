@@ -233,6 +233,19 @@ public class Keys {
         return result;
     }
     
+    
+    /**
+     * Converts a key in the the segmented form (long[]) to its byte array form.
+     * Always use this method to convert a segmented key to a byte array.
+     */
+    public static int getByteSize(long[] segments) {
+        // Note, in theory, we could get int overflow here.
+        int size = Klong.MAX_SIZE * (segments.length - 1)
+                     + Klong.getLength(segments[segments.length - 1]);
+        return size;
+    }
+    
+    
     public static final int compareArrays(long[] arr1, long[] arr2) {
         //
         // arr1 < arr2  --> neg
@@ -346,6 +359,17 @@ public class Keys {
     }
     
     // ======== Testing ========
+    
+    @T
+    public static void testByteSize0() {
+        int[] sizes = new int[]{0, 1, 6, 7, 8, 40, 27, 28, 29};
+        
+        for (int i = 0; i < sizes.length; i++) {
+            byte[] bytes = new byte[sizes[i]];
+            long[] segments = Keys.toSegments(bytes);
+            Assert.assertEquals(sizes[i], Keys.getByteSize(segments));
+        }
+    }
     
     @T
     public static void testConversion0() {
