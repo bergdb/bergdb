@@ -1,7 +1,5 @@
 package bergdb.dag;
 
-import bergdb.common.Bytes;
-import bergdb.core.StoredTopNode;
 import bergdb.dag.Dag.CachePolicy;
 import bergdb.dag.Dag.PointerListener;
 import bergdb.dag.TopDs.DagForMe;
@@ -16,12 +14,12 @@ public class TopTester {
     private KeyNode n2;
     private KeyNode n3;
     private KeyNode n4;
-    private TopDs ds1;
+    public TopDs ds1;
     private TopDs ds2;
     private TopDs ds3;
-    private TopDs ds4;
+    public TopDs ds4;
     
-    private void createTestData() {
+    public void createTestData() {
         
         long firstTime = 5;
         n1 = new KeyNode();
@@ -142,15 +140,6 @@ public class TopTester {
         Assert.assertTrue(p != null);
         Assert.assertEquals(t.n3, p);
     }
-
-    /*
-    void printTestData() {
-        System.out.println("-- TestTester test data --");
-        System.out.println("ds1 = \n" + ds1.print(db));
-        System.out.println("ds2 = \n" + ds2.print(db));
-        System.out.println("ds3 = \n" + ds3.print(db));
-        System.out.println("ds4 = \n" + ds4.print(db));
-    }*/
     
     @T
     public static void testDS4() {
@@ -173,47 +162,6 @@ public class TopTester {
         Assert.assertEquals(t.n2, t.findRoot(t.ds4, 19));
         Assert.assertEquals(t.n3, t.findRoot(t.ds4, 29));
         Assert.assertEquals(t.n4, t.findRoot(t.ds4, 30));
-    }
-    
-    @T
-    public static void testTopNodeToLongs1() {
-        TopTester t = new TopTester();
-        t.createTestData();
-        TopNode top1 = t.ds1.getSuperRoot();
-        int size = StoredTopNode.getByteSize(top1);
-        
-        assert size % 8 == 0;
-        long[] longs = new long[size / 8];
-        
-        StoredTopNode.toLongs(top1, longs, 0);
-        byte[] bytes = new byte[longs.length * 8];
-        for (int i = 0; i < longs.length; i++) {
-            Bytes.longToBytesLE(longs[i], bytes, i * 8);
-        }
-        
-        TopNode top2 = StoredTopNode.fromBytes(bytes, 0, Spos.NULL).getNode();
-        
-        Assert.assertEquals(top1.topNodeId, top2.topNodeId);
-        Assert.assertEquals(top1.rootTime, top2.rootTime);
-    }
-    
-    @T
-    public static void testTopNodeToLongs2() {
-        TopTester t = new TopTester();
-        t.createTestData();
-        TopNode top1 = t.ds4.getSuperRoot();
-        int size = StoredTopNode.getByteSize(top1);
-        assert size % 8 == 0;
-        byte[] bytes = new byte[size];
-        long[] longs = new long[size / 8];
-        StoredTopNode.toLongs(top1, longs, 0);
-        for (int i = 0; i < longs.length; i++) {
-            Bytes.longToBytesLE(longs[i], bytes, i * 8);
-        }
-        TopNode top2 = StoredTopNode.fromBytes(bytes, 0, Spos.NULL).getNode();
-        
-        Assert.assertEquals(top1.topNodeId, top2.topNodeId);
-        Assert.assertEquals(top1.rootTime, top2.rootTime);
     }
     
     public static void main(String[] args) { 

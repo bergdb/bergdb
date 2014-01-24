@@ -7,6 +7,9 @@ import bergdb.dag.Klong;
 import bergdb.dag.Spos;
 import bergdb.dag.StreamChecksumException;
 import bergdb.dag.TopNode;
+import bergdb.dag.TopTester;
+import bergdb.nanotest.Assert;
+import bergdb.nanotest.T;
 import bergdb.storage.StreamFormatException;
 
 /**
@@ -28,7 +31,7 @@ public class StoredTopNode implements StoredNode {
     public final long getPrevPos() {
         return Spos.NULL;
     }
-    
+
     /**
      * Creates a TopNode from the data in the byte buffer.
      * 
@@ -188,7 +191,48 @@ public class StoredTopNode implements StoredNode {
                 + (offset - firstOffset) + ", byteSize=" + byteSize;
         return byteSize / 8;
     }
+    
+    // ======== Tests ========
 
-    // TODO C. Test serialization.
+    @T
+    public static void testTopNodeToLongs2() {
+        TopTester t = new TopTester();
+        t.createTestData();
+        TopNode top1 = t.ds4.getSuperRoot();
+        int size = StoredTopNode.getByteSize(top1);
+        assert size % 8 == 0;
+        byte[] bytes = new byte[size];
+        long[] longs = new long[size / 8];
+        StoredTopNode.toLongs(top1, longs, 0);
+        for (int i = 0; i < longs.length; i++) {
+            Bytes.longToBytesLE(longs[i], bytes, i * 8);
+        }
+        TopNode top2 = StoredTopNode.fromBytes(bytes, 0, Spos.NULL).getNode();
+        
+        Assert.assertEquals(top1.topNodeId, top2.topNodeId);
+        Assert.assertEquals(top1.rootTime, top2.rootTime);
+    }
 
+
+    @T
+    public static void testTopNodeToLongs1() {
+        TopTester t = new TopTester();
+        t.createTestData();
+        TopNode top1 = t.ds1.getSuperRoot();
+        int size = StoredTopNode.getByteSize(top1);
+        
+        assert size % 8 == 0;
+        long[] longs = new long[size / 8];
+        
+        StoredTopNode.toLongs(top1, longs, 0);
+        byte[] bytes = new byte[longs.length * 8];
+        for (int i = 0; i < longs.length; i++) {
+            Bytes.longToBytesLE(longs[i], bytes, i * 8);
+        }
+        
+        TopNode top2 = StoredTopNode.fromBytes(bytes, 0, Spos.NULL).getNode();
+        
+        Assert.assertEquals(top1.topNodeId, top2.topNodeId);
+        Assert.assertEquals(top1.rootTime, top2.rootTime);
+    }
 }

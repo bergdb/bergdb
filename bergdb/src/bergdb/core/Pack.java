@@ -21,6 +21,9 @@ public class Pack implements IPack {
         Reclaim.class,
         Reclaim.Tester.class,
         StoredNode.class,
+        StoredKeyNode.class,
+        StoredTopNode.class,
+        StoredValueNode.class,
         Trans.class
     };
     
