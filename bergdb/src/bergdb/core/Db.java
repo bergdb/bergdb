@@ -770,7 +770,23 @@ public class Db implements IWarner {
             lastTransTime = ti.getTransTime();
             ArrayList<INode> tnodes = new ArrayList<INode>();
 
-            NodeStream.NodeIterator ni = ti.getNodeIterator();
+            StoredTrans storedTrans = ti.getStoredTrans();
+            
+            for (StoredNode storedNode : storedTrans.nodes) {
+                INode node = storedNode.getNode();
+                if (node.isTopOrKeyNode()) {
+                    tnodes.add(node);
+                }
+                posMap.put(node.getSpos(), node);
+                long prev = storedNode.getPrevPos();
+                if (prev != Spos.NULL) {
+                    nextMap.put(prev, node);
+                }
+
+                this.cachedMemoryValue.addAndGet(node.getMemSize());
+            }
+            
+            /*NodeStream.NodeIterator ni = ti.getNodeIterator();
             while (ni.next()) {
                 INode node = ni.node;
                 if (node.isTopOrKeyNode()) {
@@ -783,7 +799,7 @@ public class Db implements IWarner {
                 }
 
                 this.cachedMemoryValue.addAndGet(node.getMemSize());
-            }
+            }*/
             
             INode[] nodeArray = new INode[tnodes.size()];
             tnodes.toArray(nodeArray);

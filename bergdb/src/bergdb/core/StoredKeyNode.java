@@ -79,7 +79,7 @@ public class StoredKeyNode implements StoredNode {
     /**
      * @throws StreamFormatException
      */
-    public static StoredKeyNode createFromBytes(byte[] buffer, int offset, long spos) {
+    public static StoredKeyNode parse(byte[] buffer, int offset, long spos) {
         offset += 4; // Skip size.
         byte type = buffer[offset];
         offset += 1;

@@ -35,7 +35,10 @@ public class StoredValueNode implements StoredNode {
         return Spos.NULL;
     }
 
-    public static StoredValueNode create(byte[] buffer, int offset, long spos) {
+    /**
+     * Creates a StoredValueNode by parsing the provided byte buffer.
+     */
+    public static StoredValueNode parse(byte[] buffer, int offset, long spos) {
         Pair<ValueNode, byte[]> pair = fromBytesIncludingChoices(buffer, offset, spos);
 
         StoredValueNode stored = new StoredValueNode();
@@ -187,7 +190,7 @@ public class StoredValueNode implements StoredNode {
         byte[] buffer = new byte[getByteSize(node, 0)];
         toBytes(node, new Choices(), buffer, 0);
 
-        ValueNode node2 = create(buffer, 0, Spos.NULL).getNode();
+        ValueNode node2 = parse(buffer, 0, Spos.NULL).getNode();
         Assert.assertEquals(getByteSize(node, 0), getByteSize(node2, 0));
         Assert.assertArrayEquals(node.value, node2.value);
     }

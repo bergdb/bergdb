@@ -26,6 +26,8 @@ public interface INode {
     public static final byte TYPE_DELETE = 40;
     
     public byte getType();
+    
+    // TODO A. Rename. isIndexNode()..
     public boolean isTopOrKeyNode();
     
     public long getSpos();

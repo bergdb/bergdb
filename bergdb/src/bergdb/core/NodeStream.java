@@ -25,8 +25,9 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
 
     private final RecoverableStream rstream;
     private final Object writeLock;
-    // For asserting that caller of some methods holds the required DB.writeLock.
-    private final TransSerializer transSerializer;
+        // For asserting that caller of some methods holds the required DB.writeLock.
+    
+    private final StoredTrans.Serializer transSerializer;
 
     /** Byte array with 64 zero bytes, useful for zero-fill of transaction buffer. */
     public static final byte[] ZEROS64 = new byte[64];
@@ -49,7 +50,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
             throw new IllegalArgumentException("writeLock == null not allowed");
         }
 
-        this.transSerializer = new TransSerializer();
+        this.transSerializer = new StoredTrans.Serializer();
         this.rstream = rstream;
         this.writeLock = writeLock;
     }
@@ -197,14 +198,14 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
 
         switch (nodeType) {
         case INode.TYPE_KEY_NODE:
-            stored = StoredKeyNode.createFromBytes(buffer, offset, spos);
+            stored = StoredKeyNode.parse(buffer, offset, spos);
             break;
         case INode.TYPE_TOP_NODE:
-            stored = StoredTopNode.fromBytes(buffer, offset, spos);
+            stored = StoredTopNode.parse(buffer, offset, spos);
             break;
         case INode.TYPE_VALUE:
         case INode.TYPE_DELETE:
-            stored = StoredValueNode.create(buffer, offset, spos);
+            stored = StoredValueNode.parse(buffer, offset, spos);
             break;
         default:
             throw new StreamFormatException("Bad node type in stream, " + ((int) nodeType)
@@ -225,12 +226,13 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
 
         while (titer.next()) {
             out.println("==== Trans at " + titer.tpos + " ====");
-            NodeIterator niter = titer.getNodeIterator();
-            while (niter.next()) {
-                INode inode = niter.node;
-                out.println("-- " + inode.getClass().getSimpleName() + " prev:"
-                        + niter.sposPrevious + " --");
-                out.println(inode.toString());
+            
+            StoredTrans storedTrans = titer.getStoredTrans();
+            for (StoredNode storedNode : storedTrans.nodes) {
+                INode node = storedNode.getNode();
+                out.println("-- " + node.getClass().getSimpleName() + " prev:"
+                        + storedNode.getPrevPos() + " --");
+                out.println(node.toString());
             }
         }
     }
@@ -338,15 +340,18 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         public final long getLastPos() {
             return lastPos;
         }
-
-        public NodeIterator getNodeIterator() {
-            return new NodeIterator(tpos, transBuffer);
+        
+        public StoredTrans getStoredTrans() {
+            //return new StoredTrans(tpos, transBuffer);
+            return StoredTrans.parse(tpos, transBuffer);
         }
     }
 
     /**
      * Class that can iterate through the nodes (stream items) of a transaction given the
      * transaction bytes.
+     * 
+     * @deprecated Used StoredTrans instead.
      */
     public class NodeIterator {
         byte[] buffer;
@@ -396,9 +401,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
                 return false;
             }
 
-            long spos = RecoverableStream.getSpos(transPos, offset);
-            //NodeStream.bytesToNodeOLD(spos, buffer, offset, nodeSize, storedNode);
-            
+            long spos = RecoverableStream.getSpos(transPos, offset);            
             this.stored = NodeStream.bytesToNode(spos, buffer, offset, nodeSize);
             this.node = stored.getNode();
             this.sposPrevious = stored.getPrevPos();

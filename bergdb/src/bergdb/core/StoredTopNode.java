@@ -33,7 +33,7 @@ public class StoredTopNode implements StoredNode {
     }
 
     /**
-     * Creates a TopNode from the data in the byte buffer.
+     * Creates a TopNode by parsing the data in the byte buffer.
      * 
      * @param buffer
      *            The byte buffer (read from the database stream).
@@ -44,7 +44,7 @@ public class StoredTopNode implements StoredNode {
      * @throws StreamFormatException
      * @throws StreamChecksumException
      */
-    public static StoredTopNode fromBytes(byte[] buffer, final int firstOffset, long spos) {
+    public static StoredTopNode parse(byte[] buffer, final int firstOffset, long spos) {
         int offset = firstOffset;
         offset += 4; // Skip size bytes
         byte type = buffer[offset];
@@ -207,7 +207,7 @@ public class StoredTopNode implements StoredNode {
         for (int i = 0; i < longs.length; i++) {
             Bytes.longToBytesLE(longs[i], bytes, i * 8);
         }
-        TopNode top2 = StoredTopNode.fromBytes(bytes, 0, Spos.NULL).getNode();
+        TopNode top2 = StoredTopNode.parse(bytes, 0, Spos.NULL).getNode();
         
         Assert.assertEquals(top1.topNodeId, top2.topNodeId);
         Assert.assertEquals(top1.rootTime, top2.rootTime);
@@ -230,7 +230,7 @@ public class StoredTopNode implements StoredNode {
             Bytes.longToBytesLE(longs[i], bytes, i * 8);
         }
         
-        TopNode top2 = StoredTopNode.fromBytes(bytes, 0, Spos.NULL).getNode();
+        TopNode top2 = StoredTopNode.parse(bytes, 0, Spos.NULL).getNode();
         
         Assert.assertEquals(top1.topNodeId, top2.topNodeId);
         Assert.assertEquals(top1.rootTime, top2.rootTime);
