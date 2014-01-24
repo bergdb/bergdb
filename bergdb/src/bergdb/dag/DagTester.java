@@ -6,7 +6,7 @@ import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
-public class GraphTester {
+public class DagTester {
     
     @T
     public static void test0() {

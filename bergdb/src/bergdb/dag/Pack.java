@@ -6,7 +6,7 @@ public class Pack implements IPack {
     private static Class<?>[] classes = new Class<?>[] {
         AccessData.class,
         GetData.class,
-        GraphTester.class,
+        DagTester.class,
         KeyAccessPath.class,
         Klong.class,
         KlongIter.class,
