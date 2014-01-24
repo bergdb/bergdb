@@ -124,6 +124,10 @@ public final class ValueNode implements INode {
         long myLong;
         long nodeType = value == null ? INode.TYPE_DELETE : INode.TYPE_VALUE;
         
+        if (choices.size > Short.MAX_VALUE) {
+            throw new Bug("Bad size of choices, " + choices.size);
+        }
+        
         myLong = ((long)byteSize) | (nodeType << (4*8)) | (1L << (5*8));
         Bytes.longToBytesLE(myLong, buffer, offset);  offset += 8;
             // Room for 2 checksum bytes.
@@ -135,18 +139,12 @@ public final class ValueNode implements INode {
             System.arraycopy(value, 0, buffer, offset, value.length);
             offset += value.length;
             
-            if (choices.size > Short.MAX_VALUE) {
-                throw new Bug("Bad size of choices, " + choices.size);
-            }
             Bytes.shortToBytesLE((short) choices.size, buffer, offset);
             offset += 2;
             System.arraycopy(choices.choices, 0, buffer, offset, choices.size);
             offset += choices.size;
         } else {
             // For a TYPE_DELETE, only choices are written, we have no value.
-            if (choices.size > Short.MAX_VALUE) {
-                throw new Bug("Bad size of choices, " + choices.size);
-            }
             Bytes.shortToBytesLE((short) choices.size, buffer, offset);
             offset += 2;
             System.arraycopy(choices.choices, 0, buffer, offset, choices.size);
@@ -421,7 +419,8 @@ public final class ValueNode implements INode {
         visitor.visit(this);
     }
     
-    // ---- Testing ----
+    
+    // ======== Tests ========
     
     @T
     public static void testToBytes() {
@@ -468,10 +467,3 @@ public final class ValueNode implements INode {
         } catch (Bug e) {}
     }
 }
-
-/*
-130118 Frans. Considering concurrency issues carefully.
-
-
-
-*/

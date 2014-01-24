@@ -365,7 +365,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                 pointerListener.pointerFollowed(predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
             
             } else {
-                result = nodeReader.readNode(pointerPos, null);
+                result = nodeReader.readNode(pointerPos);
                 
                 pointerListener.pointerFollowed(predecessor, pointerIndex, result, Pointer.TYPE_STREAM);
                 if (cachePolicy.shouldCache(result)) {
@@ -455,9 +455,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      *            The compareValue to search for.
      * @param gd
      *            GetData to the lookup operation.
-     * @param choices
-     *            The choice path records pointer indexes chosen, may be null to
-     *            disable the choice recording.
      */
     private final INode getEqNodeInSegment(long time, KeyNode segmentRoot, long compareValue,
             GetData gd) {
@@ -1057,7 +1054,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             maxNodeSize30(); // Default and best max node size.
 
             this.nodeReader = new NodeReader() {
-                public INode readNode(long spos, byte[] tempBuffer) {
+                public INode readNode(long spos) {
                     throw new IllegalStateException("No nodeReader was set, use "
                             + Dag.class.getName() + ".setNodeReader().");
                 }
@@ -1138,13 +1135,10 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
          * Reader a node from the stream. Assumes the item exists at the location 
          * and that it is valid.
          * 
-         * @param tempBuffer A buffer to read to. Avoids some mem alloc. If non-null it must be at
-         * least 4 bytes long. If long enough to read the node into it, it will save some 
-         * memory allocation.
          * @throws StreamFormatException
          * @throws StreamIoException
          */
-        public INode readNode(long spos, byte[] tempBuffer);
+        public INode readNode(long spos);
     }
     
     

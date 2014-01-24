@@ -3,8 +3,9 @@ package bergdb.core;
 import bergdb.dag.INode;
 
 /**
- * The data of a stored node in the state stream (a stream item).
- * Currently (2012-05), a "stream item" is always a node.
+ * The data of a stored node in the stream.
+ * 
+ * @author Frans Lundberg
  */
 public class StoredNode {
     /** The in-memory node object. */

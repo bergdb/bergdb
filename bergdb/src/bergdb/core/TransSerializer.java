@@ -86,6 +86,10 @@ public class TransSerializer {
         return this.transLastSpos;
     }
 
+    /**
+     * Prepare for serialization by computing sizes, needed to 
+     * get totalSize and 
+     */
     private void prepareToSerialize() {
         // Below three loops sets new stream pos of nodes, sets ID if needed,
         // Also computes totalSize and sets prevPos array for KeyNodes.
@@ -99,20 +103,20 @@ public class TransSerializer {
 
         // Loop topNodes.
         for (int i = 0; i < transNodes.topSize; i++) {
-            final TopNode n1 = transNodes.topNodes[i];
-            n1.spos = pos;
-            n1.id = (n1.id == Spos.NULL) ? pos : n1.id;
-            totalSize += n1.getByteSize();
+            TopNode node = transNodes.topNodes[i];
+            node.spos = pos;
+            node.id = (node.id == Spos.NULL) ? pos : node.id;
+            totalSize += node.getByteSize();
             pos = RecoverableStream.getSpos(transStartPos, totalSize);
         }
 
         // Loop keyNodes.
         for (int i = 0; i < transNodes.keySize; i++) {
-            final KeyNode n = transNodes.keyNodes[i];
-            prevPos[prevPosIndex++] = n.spos;
-            n.spos = pos;
-            n.id = (n.id == Spos.NULL) ? pos : n.id;
-            totalSize += n.getByteSize();
+            KeyNode node = transNodes.keyNodes[i];
+            prevPos[prevPosIndex++] = node.spos;
+            node.spos = pos;
+            node.id = (node.id == Spos.NULL) ? pos : node.id;
+            totalSize += node.getByteSize();
             pos = RecoverableStream.getSpos(transStartPos, totalSize);
         }
 
@@ -120,9 +124,9 @@ public class TransSerializer {
 
         // Loop valueNodes.
         for (int i = 0; i < transNodes.valueSize; i++) {
-            final ValueNode n = transNodes.valueNodes[i];
-            n.spos = pos;
-            totalSize += n.getByteSize(transNodes.choices[i].size);
+            ValueNode node = transNodes.valueNodes[i];
+            node.spos = pos;
+            totalSize += node.getByteSize(transNodes.choices[i].size);
             pos = RecoverableStream.getSpos(transStartPos, totalSize);
         }
 
@@ -132,6 +136,7 @@ public class TransSerializer {
         // Adds room for RecoverableStream.LAST_BYTE.
 
         // For totalSize to be a multiple of TRANS_ALIGNMENT.
+
         extraZeros = NodeStream.TRANS_ALIGNMENT - totalSize % NodeStream.TRANS_ALIGNMENT;
         totalSize += extraZeros;
         assert totalSize % NodeStream.TRANS_ALIGNMENT == 0 : totalSize + ", " + extraZeros;
@@ -148,34 +153,51 @@ public class TransSerializer {
         // KeyNode.size and order of transactions would need to be stored.
         //
 
-        resizeBuffersIfNeeded();
-
-        int offset = 0;
         int longOffset = 0;
-        int prevPosIndex = 0;
+        int byteOffset;
 
-        // 130502 Frans: Transaction header now 4+4+8 = 16 (size, free, transTime).
+        resizeBuffersIfNeeded();
+        longOffset = serializeHeader(longOffset);
+        byteOffset = serializeNodes(longOffset);
+        byteOffset = serializeEnd(byteOffset);
 
+        assert byteOffset == totalSize;
+        assert totalSize % 8 == 0;
+    }
+
+    private int serializeHeader(int longOffset) {
         longBuffer[longOffset] = totalSize; // Note, 4 bytes available, int-to-long conversion.
         longOffset += 1;
         longBuffer[longOffset] = transTime;
         longOffset += 1;
+        return longOffset;
+    }
+
+    private int serializeNodes(int longOffset) {
+        int offset = 0;
+        int prevPosIndex = 0;
 
         for (int i = 0; i < transNodes.topSize; i++) {
-            TopNode n1 = transNodes.topNodes[i];
-            int longSize = n1.toLongs(longBuffer, longOffset);
-            longOffset += longSize;
+            TopNode node = transNodes.topNodes[i];
+            longOffset += node.toLongs(longBuffer, longOffset);
         }
 
         for (int i = 0; i < transNodes.keySize; i++) {
-            KeyNode n1 = transNodes.keyNodes[i];
-            int longSize = n1.toLongs(longBuffer, longOffset, prevPos[prevPosIndex++]);
-            longOffset += longSize;
+            KeyNode node = transNodes.keyNodes[i];
+            longOffset += node.toLongs(longBuffer, longOffset, prevPos[prevPosIndex++]);
         }
 
-        // TopNodes and KeyNodes have been serialized to longBuffer[]
-        // Code here will set byteBuffer from longBuffer.
+        // Copies from longBuffer to byteBuffer, top nodes and value nodes.
+        offset = copyLongBufferToByteBuffer(longOffset, offset);
 
+        for (int i = 0; i < transNodes.valueSize; i++) {
+            ValueNode n = transNodes.valueNodes[i];
+            offset += n.toBytes(transNodes.choices[i], byteBuffer, offset);
+        }
+        return offset;
+    }
+
+    private int copyLongBufferToByteBuffer(int longOffset, int offset) {
         for (int j = 0; j < longOffset; j++) {
             long value = longBuffer[j];
             byteBuffer[offset++] = (byte) value;
@@ -187,13 +209,10 @@ public class TransSerializer {
             byteBuffer[offset++] = (byte) (value >>> 48);
             byteBuffer[offset++] = (byte) (value >>> 56);
         }
+        return offset;
+    }
 
-        for (int i = 0; i < transNodes.valueSize; i++) {
-            ValueNode n = transNodes.valueNodes[i];
-            int byteSize = n.toBytes(transNodes.choices[i], byteBuffer, offset);
-            offset += byteSize;
-        }
-
+    private int serializeEnd(int offset) {
         // Zero to indicate end of nodes.
         Bytes.intToBytesLE(0, byteBuffer, offset);
         offset += 4;
@@ -205,9 +224,7 @@ public class TransSerializer {
 
         byteBuffer[offset] = RecoverableStream.LAST_BYTE;
         offset += 1;
-
-        assert offset == totalSize : "offset = " + offset + ", but totalSize = " + totalSize;
-        assert totalSize % 8 == 0 : "totalSize = " + totalSize;
+        return offset;
     }
 
     private void resizePrevPosIfNeeded() {

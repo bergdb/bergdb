@@ -124,49 +124,25 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     /**
      * Reads a node from the stream given is spos.
      * 
-     * @param tempBuffer
-     *            A buffer to read to. Avoids some mem alloc. If non-null it must be at least 4
-     *            bytes long. If long enough to read the node into it, it will save some memory
-     *            allocation.
      * @throws StreamFormatException
      * @throws StreamIoException
      */
-    public final INode readNode(long spos, byte[] tempBuffer) {
-        if (tempBuffer == null || tempBuffer.length < 4) {
-            tempBuffer = new byte[1024];
-        }
-        return readNode(rstream, spos, tempBuffer);
-    }
-
-    /**
-     * Reads a node from the stream given is spos.
-     * 
-     * @param stream
-     * @param spos
-     * @param buffer
-     *            Buffer for temporary storage only, will be modified. Can be anything at input.
-     *            Should be larger than most stream items and must be at least 4 bytes long.
-     * @return The INode that was read.
-     * @throws StreamFormatException
-     * @throws StreamIoException
-     */
-    private static INode readNode(RecoverableStream stream, long spos, byte[] buffer) {
-        assert buffer != null;
-        assert buffer.length >= 4 : "Bad buffer.length, " + buffer.length + ".";
-
-        stream.read(spos, buffer, 0, 4);
-
+    public final INode readNode(long spos) {
+        byte[] buffer = new byte[1024];        
+        rstream.read(spos, buffer, 0, 4);
+        
         int size = Bytes.bytesToIntLE(buffer, 0);
         if (size <= 6) {
             throw new StreamFormatException("Bad node byte size, " + size + ". At spos " + spos
                     + ".");
         }
+        
         if (buffer.length < size) {
             buffer = new byte[size];
         }
-
-        stream.read(spos, buffer, 0, size);
-
+        
+        rstream.read(spos, buffer, 0, size);
+        
         INode node = bytesToNode(spos, buffer, 0, size, null);
         return node;
     }
@@ -189,7 +165,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * @throws StreamFormatException
      * @throws StreamIoException
      */
-    private static INode bytesToNode(long spos, byte[] buffer, int offset, int size,
+    static INode bytesToNode(long spos, byte[] buffer, int offset, int size,
             StoredNode stored) {
 
         assert buffer.length > offset + 5 : "offset=" + offset + ", buffer.length=" + buffer.length;

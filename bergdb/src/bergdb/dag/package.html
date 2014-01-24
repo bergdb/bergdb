@@ -3,16 +3,16 @@
 <p>This packages implements the core data structure which is
 a graph in the graph theory sense. More specifically, it is a DAG (directed acyclic graph).
 This is the in-memory data structure used by the database.
-This is a low-level package. Lower-lever than bergdb.core 
-(core uses this package and this package is not allowed to use code).</p>
+This is a low-level package. Lower-level than bergdb.core.
+Core uses this package and this package is not allowed to use core.</p>
 
 <p>Scope: traverse the graph (DAG), support get / getMany / putKv operations.
 Testable (without Db).</p>
 
 <p>Anti-scope: db clock, locking, STM, statistics.</p>
 
-<p>Inject what is needed and work with call-backs and the like. This package 
-has does not depend on core.</p>
+<p>Inject what is needed and work with call-backs. This package 
+does not depend on core.</p>
 
 <p>Allowed package dependencies: common, nanotest, possibly stream, possibly storage.</p>
 

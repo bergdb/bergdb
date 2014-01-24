@@ -64,9 +64,8 @@ public class KeyNode implements INode {
             = new int[]{2, 8-2, 16-2, 32-2, 64-2, 128-2};
         // Sizes for klong array.
     
-    // Empty arrays, suitable for initialization.
-    private static final long[] emptyLongArray = new long[0];
-    private static final INode[] emptyPointerArray = new INode[0];
+    private static final long[] EMPTY_LONG_ARRAY = new long[0];
+    private static final INode[] EMPTY_INODE_ARRAY = new INode[0];
     
     /**
      * Creates an empty node with zero klongs. isSegmentLeaf is set to true.
@@ -80,9 +79,9 @@ public class KeyNode implements INode {
      */
     public KeyNode(final boolean isSegmentLeaf) {
         this.isSegmentLeaf = isSegmentLeaf;
-        klongs = emptyLongArray;
-        pointers = emptyPointerArray;
-        pos = emptyLongArray;
+        klongs = EMPTY_LONG_ARRAY;
+        pointers = EMPTY_INODE_ARRAY;
+        pos = EMPTY_LONG_ARRAY;
         spos = Spos.NULL;
         id = Spos.NULL;
         this.size = 0;    
@@ -1062,50 +1061,6 @@ public class KeyNode implements INode {
     }
     
     /**
-     * Writes the node to a byte buffer.
-     * This source code currently (2013-04) defines the stream format for a node.
-     * The method writes exactly getByteSize() bytes to 'buffer'.
-     * 
-     * @deprecated No longer used in production.
-     */
-    public int toBytes(byte[] buffer, final int firstOffset, long prevPos) {
-        int sz = this.size;
-        
-        int byteSize = getByteSize();
-        int offset = firstOffset;
-        long myLong;
-        
-        myLong = ((long)byteSize) | (((long)INode.TYPE_KEY_NODE) << (4*8)) | (1L << (5*8));
-        Bytes.longToBytesLE(myLong, buffer, offset);  offset += 8;
-            // Room for 2 checksum bytes.
-        
-        assert buffer[firstOffset + 4] == INode.TYPE_KEY_NODE : buffer[firstOffset + 4];
-        assert buffer[firstOffset + 5] == 1;
-        
-        Bytes.longToBytesLE(prevPos, buffer, offset);  offset += 8;
-        
-        myLong = ((long) (isSegmentLeaf ? 1 : 0)) | sz << (1*8);
-        Bytes.longToBytesLE(myLong, buffer, offset);  offset += 8;
-            // 5 zero bytes available...
-        
-        Bytes.longToBytesLE(id, buffer, offset);  offset += 8;
-        
-        for (int i = 0; i < sz; i++) {
-            Bytes.longToBytesLE(klongs[i], buffer, offset);  offset += 8;
-        }
-        
-        for (int i = 0; i < sz; i++) {
-            long spos = pointers[i] == null ? pos[i] : pointers[i].getSpos();
-            Bytes.longToBytesLE(spos, buffer, offset);  offset += 8;
-        }
-        
-        // Checksum needed if method would be used.
-        
-        assert offset - firstOffset == byteSize;
-        return byteSize;
-    }
-    
-    /**
      * Writes the node to a long buffer.
      */
     public int toLongs(long[] buffer, final int firstOffset, long prevPos) {
@@ -1151,6 +1106,7 @@ public class KeyNode implements INode {
      * Note, this method must be updated if toBytes() is changed.
      */
     public static long prevPosFromBytes(byte[] buffer, int offset) {
+        // This is a hack we would like to avoid.
         long result = Bytes.bytesToLongLE(buffer, offset + 8);
         if (result != Spos.NULL && result < 0) {
             throw new StreamFormatException("Bad KeyNode, prevPos is illegal: " + result + ".");
@@ -1681,10 +1637,5 @@ public class KeyNode implements INode {
 
 130117 Frans. Made some fields private. Made isDirty volatile for synch reasons.
 Checked the whole class for concurrency issues. There are no more synch issues that I know of.
-
-121200 Frans. It would be possible to search array in reverse order. That way we just need to 
-scan it once. A drawback is that we need to scan the whole klong array, not only the part
-we are interesting in based on lookup time. However, we can assume that for most cases
-lookup time is the current time for above 80 percent of all lookups.
 
 */

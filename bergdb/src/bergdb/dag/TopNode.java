@@ -112,25 +112,15 @@ public final class TopNode implements INode {
         return i;
     }
     
-    //public final boolean isDirty() {
-    //    return isDirty;
-    //}
-    
-    //public final void setIsDirty(boolean b) {
-    //    this.isDirty = b;
-    //}
-    
     public String toString() {
         String midPart = (id == -1 && spos == -1) ? " " : " " + id + ":" + spos + " ";
         String result = "topNode" + topNodeId + midPart + "t=" + rootTime;
-        //result = isDirty ? result + " D" : result;
         return result;
     }
     
     // NOTE Probably not suitable with this code here.
     public void printGraph(PrintStream out, String indent, int depth) {
         // Oldest top nodes first
-        
         
         TopNode topNode;
         String newIndent = "    " + indent;
@@ -179,60 +169,6 @@ public final class TopNode implements INode {
 
     public final int getByteSize() {
         return 40 + 16*pointersLength;
-    }
-    
-
-    /**
-     * Serializes a TopNode to bytes.
-     * 
-     * @deprecated Use toLongs() instead.
-     */
-    public int toBytes(final byte[] buffer, final int firstOffset, long prevPos) {
-        //
-        // Note, we would reduce size in stream by including the number of 
-        // pointers instead of writing null pointers that occupy space.
-        //
-        // prevPos is neglected. This is fine, a TopNode is never dirty, no need for previous
-        // spos at database startup.
-        //
-        
-        int byteSize = getByteSize();
-        int offset = firstOffset;
-        long myLong;
-        
-        myLong = ((long)byteSize) | (((long)INode.TYPE_TOP_NODE) << (4*8)) | (1L << (5*8));
-        Bytes.longToBytesLE(myLong, buffer, offset);  offset += 8;
-            // Room for 2 checksum bytes.
-        
-        assert buffer[firstOffset + 4] == INode.TYPE_TOP_NODE : buffer[firstOffset + 4];
-        assert buffer[firstOffset + 5] == 1;
-
-        myLong = ((long) pointersLength) | (topNodeId << (2*8));
-        Bytes.longToBytesLE(myLong, buffer, offset);  offset += 8;
-            // 1 + 2 zero bytes.
-        
-        Bytes.longToBytesLE(this.id, buffer, offset);  offset += 8;
-        
-        Bytes.longToBytesLE(this.rootTime, buffer, offset);  offset += 8;
-        
-        
-        // spos for the pointers
-        
-        long spos = rootPointer == null ? rootPointerPos : rootPointer.getSpos();
-        Bytes.longToBytesLE(spos, buffer, offset);  offset += 8;
-        
-        for (int i = 0; i < pointersLength; i++) {
-            INode pointersNode = pointers[i];
-            spos = pointersNode == null ? pointersPos[i] : pointersNode.getSpos();
-            Bytes.longToBytesLE(spos, buffer, offset);  offset += 8;
-            long time = pointersNode == null ? -1 : pointersTime[i];
-            Bytes.longToBytesLE(time, buffer, offset);  offset += 8;
-        }
-        
-        //NodeChecksum.compute2(buffer, firstOffset, byteSize, firstOffset + 6);
-        
-        assert offset - firstOffset == byteSize;
-        return byteSize;
     }
     
     /**
@@ -363,15 +299,12 @@ public final class TopNode implements INode {
             offset += 8;
         }
         
-        //if (!NodeChecksum.isOk2(buffer, firstOffset, offset - firstOffset, firstOffset + 6)) {
-        //    throw new StreamChecksumException("Bad checksum for node at spos " + spos + ", offset = " + (firstOffset + 6) + ".");
-        //}
+        // TODO E. consider checksum checking here?
         
         assert Bytes.bytesToIntLE(buffer, firstOffset) == offset - firstOffset;
         
         TopNode t = new TopNode(topNodeId, null, rootPointerPos, rootTime, spos);
         
-        //t.isDirty = false;
         t.id = id;
         
         for (int i = 0; i < t.pointersLength; i++) {
@@ -488,6 +421,9 @@ public final class TopNode implements INode {
     public String print() {
         return toString();
     }
+
+    
+    // ======== Tests ========
     
     @T
     public static void testHeight() {
