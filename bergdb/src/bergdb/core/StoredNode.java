@@ -2,6 +2,8 @@ package bergdb.core;
 
 import bergdb.dag.INode;
 
+// TODO A. Refactor this.
+
 /**
  * The data of a stored node in the stream.
  * 

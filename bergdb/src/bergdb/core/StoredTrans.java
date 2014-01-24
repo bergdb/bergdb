@@ -8,7 +8,7 @@ import bergdb.dag.ValueNode;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
 
-// XXX not used.
+// TODO B. Should we use this? Not used now, 140124.
 
 /**
  * This class deserializes transaction data from the database stream

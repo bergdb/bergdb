@@ -745,12 +745,6 @@ public class Db implements IWarner {
         
         listener.startupDistance(this.startupDistance);
         
-        //long pos1 = nodeStream.getPosOfLastCompletedTrans();
-        //
-        //long startPos = pos1 - (startupDistance + 1);
-        //startPos = startPos < 0 ? 0 : startPos;
-        //
-        
         long startPos = startupPos.get();
         listener.startPos(startPos);
         

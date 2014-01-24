@@ -1,6 +1,7 @@
 package bergdb.dag;
 
 import bergdb.common.Bytes;
+import bergdb.core.StoredTopNode;
 import bergdb.dag.Dag.CachePolicy;
 import bergdb.dag.Dag.PointerListener;
 import bergdb.dag.TopDs.DagForMe;
@@ -179,18 +180,18 @@ public class TopTester {
         TopTester t = new TopTester();
         t.createTestData();
         TopNode top1 = t.ds1.getSuperRoot();
-        int size = top1.getByteSize();
+        int size = StoredTopNode.getByteSize(top1);
         
         assert size % 8 == 0;
         long[] longs = new long[size / 8];
         
-        top1.toLongs(longs, 0);
+        StoredTopNode.toLongs(top1, longs, 0);
         byte[] bytes = new byte[longs.length * 8];
         for (int i = 0; i < longs.length; i++) {
             Bytes.longToBytesLE(longs[i], bytes, i * 8);
         }
         
-        TopNode top2 = TopNode.fromBytes(bytes, 0, Spos.NULL);
+        TopNode top2 = StoredTopNode.fromBytes(bytes, 0, Spos.NULL);
         
         Assert.assertEquals(top1.topNodeId, top2.topNodeId);
         Assert.assertEquals(top1.rootTime, top2.rootTime);
@@ -201,15 +202,15 @@ public class TopTester {
         TopTester t = new TopTester();
         t.createTestData();
         TopNode top1 = t.ds4.getSuperRoot();
-        int size = top1.getByteSize();
+        int size = StoredTopNode.getByteSize(top1);
         assert size % 8 == 0;
         byte[] bytes = new byte[size];
         long[] longs = new long[size / 8];
-        top1.toLongs(longs, 0);
+        StoredTopNode.toLongs(top1, longs, 0);
         for (int i = 0; i < longs.length; i++) {
             Bytes.longToBytesLE(longs[i], bytes, i * 8);
         }
-        TopNode top2 = TopNode.fromBytes(bytes, 0, Spos.NULL);
+        TopNode top2 = StoredTopNode.fromBytes(bytes, 0, Spos.NULL);
         
         Assert.assertEquals(top1.topNodeId, top2.topNodeId);
         Assert.assertEquals(top1.rootTime, top2.rootTime);

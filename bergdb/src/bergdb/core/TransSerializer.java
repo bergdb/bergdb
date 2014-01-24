@@ -106,7 +106,7 @@ public class TransSerializer {
             TopNode node = transNodes.topNodes[i];
             node.spos = pos;
             node.id = (node.id == Spos.NULL) ? pos : node.id;
-            totalSize += node.getByteSize();
+            totalSize += StoredTopNode.getByteSize(node);
             pos = RecoverableStream.getSpos(transStartPos, totalSize);
         }
 
@@ -116,7 +116,8 @@ public class TransSerializer {
             prevPos[prevPosIndex++] = node.spos;
             node.spos = pos;
             node.id = (node.id == Spos.NULL) ? pos : node.id;
-            totalSize += node.getByteSize();
+            //totalSize += node.getByteSize();
+            totalSize += StoredKeyNode.getByteSize(node);
             pos = RecoverableStream.getSpos(transStartPos, totalSize);
         }
 
@@ -126,7 +127,7 @@ public class TransSerializer {
         for (int i = 0; i < transNodes.valueSize; i++) {
             ValueNode node = transNodes.valueNodes[i];
             node.spos = pos;
-            totalSize += node.getByteSize(transNodes.choices[i].size);
+            totalSize += StoredValueNode.getByteSize(node, transNodes.choices[i].size);
             pos = RecoverableStream.getSpos(transStartPos, totalSize);
         }
 
@@ -178,13 +179,14 @@ public class TransSerializer {
         int prevPosIndex = 0;
 
         for (int i = 0; i < transNodes.topSize; i++) {
-            TopNode node = transNodes.topNodes[i];
-            longOffset += node.toLongs(longBuffer, longOffset);
+            TopNode topNode = transNodes.topNodes[i];
+            longOffset += StoredTopNode.toLongs(topNode, longBuffer, longOffset);
         }
 
         for (int i = 0; i < transNodes.keySize; i++) {
-            KeyNode node = transNodes.keyNodes[i];
-            longOffset += node.toLongs(longBuffer, longOffset, prevPos[prevPosIndex++]);
+            KeyNode keyNode = transNodes.keyNodes[i];
+            longOffset += StoredKeyNode.toLongs(keyNode, longBuffer, longOffset, 
+                    prevPos[prevPosIndex++]);
         }
 
         // Copies from longBuffer to byteBuffer, top nodes and value nodes.
@@ -192,7 +194,7 @@ public class TransSerializer {
 
         for (int i = 0; i < transNodes.valueSize; i++) {
             ValueNode n = transNodes.valueNodes[i];
-            offset += n.toBytes(transNodes.choices[i], byteBuffer, offset);
+            offset += StoredValueNode.toBytes(n, transNodes.choices[i], byteBuffer, offset);
         }
         return offset;
     }

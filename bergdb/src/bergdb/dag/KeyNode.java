@@ -3,11 +3,8 @@ package bergdb.dag;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
-import bergdb.common.Bug;
-import bergdb.common.Bytes;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
-import bergdb.storage.StreamFormatException;
 
 /**
  * <p>A key node has an array of "klongs" and corresponding INode references.</p>
@@ -768,7 +765,7 @@ public class KeyNode implements INode {
      * Adds a klong and its pointer to the end of the arrays.
      * No checking is used. Write access required.
      */
-    private void addToEnd(long klongToAdd, INode pointerToAdd, long posToAdd) {
+    public void addToEnd(long klongToAdd, INode pointerToAdd, long posToAdd) {
         int sz = this.size;             // Synch action make previous writes visible.
         if (klongs.length + 1 > sz) {
             ensureCapacity(sz + 1);
@@ -1054,142 +1051,6 @@ public class KeyNode implements INode {
         //
         
         return 80 + klongs.length * 24;
-    }
-
-    public final int getByteSize() {
-        return 32 + size * 16;
-    }
-    
-    /**
-     * Writes the node to a long buffer.
-     */
-    public int toLongs(long[] buffer, final int firstOffset, long prevPos) {
-        int sz = this.size;
-        int byteSize = getByteSize();
-        int offset = firstOffset;
-        
-        buffer[offset++] = ((long)byteSize) | (((long)INode.TYPE_KEY_NODE) << (4*8)) | (1L << (5*8));
-            // 2 bytes available for checksum
-        buffer[offset++] = prevPos;
-        buffer[offset++] = ((long) (isSegmentLeaf ? 1 : 0)) | sz << (1*8);
-            // 5 zero bytes available...
-        buffer[offset++] = id;
-        
-        System.arraycopy(klongs, 0, buffer, offset, sz);
-        offset += sz;
-        
-        for (int i = 0; i < sz; i++) {
-            long spos = pointers[i] == null ? pos[i] : pointers[i].getSpos();
-            buffer[offset++] = spos;
-        }
-        
-        // Checksum, XOR of all bytes.
-        
-        long checksum = 0;
-        for (int i = firstOffset; i < offset; i++) {
-            checksum ^= buffer[i];
-        }
-        
-        checksum = 0x000000ff &
-               ((checksum >>> 0)  ^ (checksum >>> 8)  ^ (checksum >>> 16) ^ (checksum >>> 24)
-              ^ (checksum >>> 32) ^ (checksum >>> 40) ^ (checksum >>> 48) ^ (checksum >>> 56));
-        checksum = checksum == 0 ? 1 : checksum;
-        buffer[firstOffset] = buffer[firstOffset] | (checksum << (6*8));
-        
-        assert (offset - firstOffset) * 8 == byteSize;
-        assert byteSize % 8 == 0;
-        return byteSize / 8;
-    }
-    
-    /**
-     * Gets the previous spos directly from the byte buffer.
-     * Note, this method must be updated if toBytes() is changed.
-     */
-    public static long prevPosFromBytes(byte[] buffer, int offset) {
-        // This is a hack we would like to avoid.
-        long result = Bytes.bytesToLongLE(buffer, offset + 8);
-        if (result != Spos.NULL && result < 0) {
-            throw new StreamFormatException("Bad KeyNode, prevPos is illegal: " + result + ".");
-        }
-        return result;
-    }
-    
-    /**
-     * Creates a Node from bytes.
-     * 
-     * @throws StreamFormatException if buffer has badly formatted data.
-     */
-    public static KeyNode fromBytes(byte[] buffer, int offset, long spos) {
-        offset += 4;          // Skip size.
-        byte type = buffer[offset];
-        offset += 1;
-        if (type != INode.TYPE_KEY_NODE) {
-            throw new Bug("Bad node type byte, " + ((int) type) 
-                    + ", should have been checked already.");
-        }
-        
-        byte version = buffer[offset];
-        if (version != 1) {
-            throw new StreamFormatException("Bad Node stream format version, expected 1, was " 
-                    + ((int)version) + ".");
-        }
-        offset += 1;
-        
-        offset += 2;    // checksum bytes
-        
-        long prevPos = Bytes.bytesToLongLE(buffer, offset);
-        if (prevPos != Spos.NULL && prevPos < 0) {
-            throw new StreamFormatException("Bad KeyNode, prevPos is illegal: " + prevPos + ".");
-        }
-        offset += 8;
-        
-        if (!(buffer[offset] == 0 || buffer[offset] == 1)) {
-            throw new StreamFormatException("Bad second byte, expected 0 or 1, was " 
-                    + ((int) buffer[offset]) + ".");
-        }
-        boolean isSegmentLeaf = buffer[offset] == 1;
-        offset += 1;
-        
-        int size = Bytes.bytesToShortLE(buffer, offset);
-        if (size > Short.MAX_VALUE) {
-            throw new StreamFormatException("Bad size: " + size + ", spos=" + spos + ".");
-        }
-        offset += 2;
-        
-        // 5 zero bytes
-        offset += 5;
-        
-        long id = Bytes.bytesToLongLE(buffer, offset);
-        offset += 8;
-        
-        if (size < 0) {
-            throw new StreamFormatException("Bad Node size, " + size + ".");
-        }
-        
-        long[] klongs = new long[size];
-        long[] positions = new long[size];
-        
-        for (int i = 0; i < size; i++) {
-            klongs[i] = Bytes.bytesToLongLE(buffer, offset);
-            offset += 8;
-        }
-        
-        for (int i = 0; i < size; i++) {
-            positions[i] = Bytes.bytesToLongLE(buffer, offset);
-            offset += 8;
-        }
-        
-        KeyNode result = new KeyNode(isSegmentLeaf);
-        result.spos = spos;
-        result.id = id;
-        
-        for (int i = 0; i < size; i++) {
-            result.addToEnd(klongs[i], null, positions[i]);
-        }
-        
-        result.size = result.size;     // Synch action to publish writes.
-        
-        return result;
     }
     
     /**
@@ -1632,10 +1493,3 @@ public class KeyNode implements INode {
         return del;
     }
 }
-
-/*
-
-130117 Frans. Made some fields private. Made isDirty volatile for synch reasons.
-Checked the whole class for concurrency issues. There are no more synch issues that I know of.
-
-*/

@@ -2,11 +2,8 @@ package bergdb.dag;
 
 import java.io.PrintStream;
 
-import bergdb.common.Bug;
-import bergdb.common.Bytes;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
-import bergdb.storage.StreamFormatException;
 
 
 /**
@@ -20,7 +17,7 @@ public final class TopNode implements INode {
         // Backward pointers in skip list.
     public final long[] pointersPos;     
         // stream pos when pointers[x] == null and accessTime when pointers[x] != null.
-    final long[] pointersTime;
+    public final long[] pointersTime;
         // Time of pointers. When they were written.
     final short pointerCount;
         // Same as pointers.length + 1.
@@ -46,7 +43,7 @@ public final class TopNode implements INode {
     private static final int MAX_HEIGHT = 30;
         
     /** power2[x] = 2^x */
-    final static int[] power2;
+    public final static int[] power2;
     
     static {
         power2 = new int[MAX_HEIGHT];
@@ -167,162 +164,6 @@ public final class TopNode implements INode {
         return 112 + pointersLength * 24;
     }
 
-    public final int getByteSize() {
-        return 40 + 16*pointersLength;
-    }
-    
-    /**
-     * Serializes the node to a long array.
-     */
-    public int toLongs(long[] buffer, final int firstOffset) {
-        int byteSize = getByteSize();
-        int offset = firstOffset;
-        long checksum = 0;
-        long l;
-        assert byteSize % 8 == 0: "byteSize=" + byteSize;
-        
-        l =       ((long)byteSize) 
-                | (((long)INode.TYPE_TOP_NODE) << (4*8)) 
-                | (1L << (5*8));
-            // Room for 2 checksum bytes.
-        checksum ^= l;
-        buffer[offset++] = l;
-        
-        l = ((long) pointersLength) | (topNodeId << (2*8));
-        checksum ^= l;
-        buffer[offset++] = l;
-            // 1 + 2 bytes not used
-        
-        checksum ^= this.id;
-        buffer[offset++] = this.id;
-        
-        checksum ^= this.rootTime;
-        buffer[offset++] = this.rootTime;
-        
-        // spos for the pointers
-        
-        long spos = rootPointer == null ? rootPointerPos : rootPointer.getSpos();
-        checksum ^= spos;
-        buffer[offset++] = spos;
-        
-        for (int i = 0; i < pointersLength; i++) {
-            INode pointersNode = pointers[i];
-            spos = pointersNode == null ? pointersPos[i] : pointersNode.getSpos();
-            checksum ^= spos;
-            buffer[offset++] = spos;
-            
-            long time = pointersNode == null ? -1 : pointersTime[i];
-            checksum ^= time;
-            buffer[offset++] = time;
-        }
-        
-        checksum = 0x000000ff & 
-               ((checksum >>> 0)  ^ (checksum >>> 8)  ^ (checksum >>> 16) ^ (checksum >>> 24)
-              ^ (checksum >>> 32) ^ (checksum >>> 40) ^ (checksum >>> 48) ^ (checksum >>> 56));
-        checksum = checksum == 0 ? 1 : checksum;    // 0 used as "no checksum" indication
-       
-        buffer[firstOffset] = buffer[firstOffset] | (checksum << (6*8));
-        assert (offset - firstOffset) * 8 == byteSize : "offset-firstOffset=" + (offset - firstOffset) + ", byteSize=" + byteSize;
-        return byteSize / 8;
-    }
-    
-    /**
-     * Creates a TopNode from the data in the byte buffer.
-     * 
-     * @param buffer  The byte buffer (read from the database stream).
-     * @param firstOffset  Offset into the buffer where the serialized node is stored.
-     * @param spos    The stream position of the node.
-     * @throws StreamFormatException
-     * @throws StreamChecksumException
-     */
-    public static TopNode fromBytes(byte[] buffer, final int firstOffset, long spos) {
-        int offset = firstOffset;
-        offset += 4;    // Skip size bytes
-        byte type = buffer[offset];
-        offset += 1;
-        if (type != INode.TYPE_TOP_NODE) {
-            throw new Bug("Bad node type byte, " + ((int) type) 
-                    + ", should have been checked already.");
-        }
-        
-        byte version = buffer[offset];
-        offset += 1;
-        if (version != 1) {
-            throw new StreamFormatException("Can only handle TopNode of " +
-            		"version 1, got version " + version + ".");
-        }
-        
-        offset += 2;     // checksum bytes, checked later.
-        
-        int pointerCount = buffer[offset];
-        offset += 1;
-        
-        offset += 1;    // rest of header (reserved)
-        
-        int topNodeId = Bytes.bytesToIntLE(buffer, offset);
-        offset += 4;
-        offset += 2;     // Added, 2 zero bytes.
-        
-        if (topNodeId < 0) {
-            throw new StreamFormatException("Bad TopNode ID of TopNode in stream, " + topNodeId);
-        }
-        if (topNodeId >= power2[power2.length - 1]) {
-            throw new StreamFormatException("Bad TopNode ID of TopNode in stream, " + topNodeId);
-        }
-        
-        long id = Bytes.bytesToLongLE(buffer, offset);
-        offset += 8;
-        
-        long rootTime = Bytes.bytesToLongLE(buffer, offset);
-        offset += 8;
-        if (rootTime < Klong.MIN_TIME) {
-            throw new StreamFormatException("Time too small, " + rootTime + ".");
-        }
-        if (rootTime > Klong.MAX_TIME) {
-            throw new StreamFormatException("Time too large, " + rootTime + ".");
-        }
-        
-        long rootPointerPos = Bytes.bytesToLongLE(buffer, offset);
-        offset += 8;
-        if (rootPointerPos < 0) {
-            throw new StreamFormatException("Invalid root pointer pos, " + rootPointerPos + ".");
-        }
-        
-        long[] times = new long[pointerCount];
-        long[] positions = new long[pointerCount];
-        
-        for (int i = 0; i < pointerCount; i++) {
-            positions[i] = Bytes.bytesToLongLE(buffer, offset);
-            offset += 8;
-            
-            times[i] = Bytes.bytesToLongLE(buffer, offset);
-            offset += 8;
-        }
-        
-        // TODO E. consider checksum checking here?
-        
-        assert Bytes.bytesToIntLE(buffer, firstOffset) == offset - firstOffset;
-        
-        TopNode t = new TopNode(topNodeId, null, rootPointerPos, rootTime, spos);
-        
-        t.id = id;
-        
-        for (int i = 0; i < t.pointersLength; i++) {
-            long pos = positions[i];
-            if (pos == Spos.NULL) {
-                t.pointers[i] = null;
-                t.pointersPos[i] = Spos.NULL;
-                t.pointersTime[i] = -1;
-            } else {
-                t.pointers[i] = null;
-                t.pointersPos[i] = pos;
-                t.pointersTime[i] = times[i];
-            }
-        }
-        
-        return t;
-    }
-    
     public int getMemoryPointerCount() {
         int count = rootPointer == null ? 0 : 1;
         

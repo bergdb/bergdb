@@ -3,14 +3,10 @@ package bergdb.core;
 import java.io.PrintStream;
 
 import bergdb.common.Bytes;
-import bergdb.common.Pair;
 import bergdb.dag.INode;
-import bergdb.dag.KeyNode;
 import bergdb.dag.Spos;
 import bergdb.dag.StreamChecksumException;
-import bergdb.dag.TopNode;
 import bergdb.dag.TransNodes;
-import bergdb.dag.ValueNode;
 import bergdb.storage.MetaBlock;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
@@ -200,31 +196,23 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         }
 
         long sposPrevious = Spos.NULL;
-
-        if (nodeType == INode.TYPE_KEY_NODE) {
-            sposPrevious = KeyNode.prevPosFromBytes(buffer, offset);
-        }
-
         INode node = null;
         byte[] choices = null;
 
         switch (nodeType) {
         case INode.TYPE_KEY_NODE:
-            node = KeyNode.fromBytes(buffer, offset, spos);
+            StoredKeyNode storedKeyNode = StoredKeyNode.createFromBytes(buffer, offset, spos);
+            node = storedKeyNode.getNode();
+            sposPrevious = storedKeyNode.getPrevPos();
             break;
         case INode.TYPE_TOP_NODE:
-            node = TopNode.fromBytes(buffer, offset, spos);
+            node = StoredTopNode.fromBytes(buffer, offset, spos);
             break;
         case INode.TYPE_VALUE:
         case INode.TYPE_DELETE:
-            if (stored == null) {
-                node = ValueNode.fromBytes(buffer, offset, spos);
-            } else {
-                Pair<ValueNode, byte[]> pair = ValueNode.fromBytesIncludingChoices(buffer, offset,
-                        spos);
-                node = pair.getValue0();
-                choices = pair.getValue1();
-            }
+            StoredValueNode storedValueNode = StoredValueNode.create(buffer, offset, spos);
+            node = storedValueNode.getNode();
+            choices = storedValueNode.getChoices();
             break;
         default:
             throw new StreamFormatException("Bad node type in stream, " + ((int) nodeType)
