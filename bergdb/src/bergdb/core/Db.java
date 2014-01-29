@@ -911,8 +911,9 @@ public class Db implements IWarner {
         storageManager.close();
     }
     
-    public void finalize() {
+    public void finalize() throws Throwable {
         stop();
+        super.finalize();
     }
     
     private void createInitialStreamState() {

@@ -1,9 +1,9 @@
 package bergdb.core;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 
 import bergdb.common.Util;
 import bergdb.dag.GetMany;
@@ -15,7 +15,9 @@ import bergdb.stream.MemoryStream;
 
 
 /**
- * Class for unit testing GetMany functionality of the DB.
+ * Class for unit testing the GetMany functionality of Db.
+ * 
+ * @author Frans Lundberg
  */
 public class DbTesterGetMany {
     
@@ -25,15 +27,7 @@ public class DbTesterGetMany {
         // Simple test with three short keys added in reverse order.
         //
         
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
-        
-        clock.setTime(10);
-        db.execute(Trans.builder().put("c", "3"));
-        clock.setTime(20);
-        db.execute(Trans.builder().put("b", "2"));
-        clock.setTime(30);
-        db.execute(Trans.builder().put("a", "1"));
+        Db db = createDbWithKeys("c", "b", "a");
         
         GetMany d = db.newGetMany();
         d.startKey = null;
@@ -41,22 +35,7 @@ public class DbTesterGetMany {
         d.stopCondition = new GetMany.DontStop();
         db.getMany(d);
         
-        //System.out.println("---- DBTesterGetMany.test1 ----");
-        //for (KVT kvt : d.result) {
-        //    System.out.println(Util.toString(Klong.segmentsToKeyBytes(kvt.key)) + ": " 
-        //            + Util.toString(kvt.value) + " at " + kvt.time);
-        //}
-        
-        Assert.assertEquals(3, d.result.size());
-        Kvt kvt = d.result.get(0);
-        Assert.assertEquals("1", Util.toString(kvt.value));
-        kvt = d.result.get(1);
-        Assert.assertEquals("2", Util.toString(kvt.value));
-        kvt = d.result.get(2);
-        Assert.assertEquals("3", Util.toString(kvt.value));
-        
-        Assert.assertTrue(kvt.time >= 30 || kvt.time < 35);
-        Assert.assertEquals("c", Keys.toString(kvt.key));
+        assertResultValues(d.result, "1", "2", "3");
     }
     
     @T
@@ -65,15 +44,7 @@ public class DbTesterGetMany {
         // Like test1(), but backward iteration direction.
         //
         
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
-        
-        clock.setTime(10);
-        db.execute(Trans.builder().put("a", "1"));
-        clock.setTime(20);
-        db.execute(Trans.builder().put("b", "2"));
-        clock.setTime(30);
-        db.execute(Trans.builder().put("c", "3"));
+        Db db = createDbWithKeys("a", "b", "c");
         
         GetMany d = db.newGetMany();
         d.startKey = null;
@@ -82,14 +53,10 @@ public class DbTesterGetMany {
         d.stopCondition = new GetMany.DontStop();
         db.getMany(d);
         
-        Assert.assertEquals(3, d.result.size());
-        Kvt kvt = d.result.get(0);
-        Assert.assertEquals("3", Util.toString(kvt.value));
-        kvt = d.result.get(1);
-        Assert.assertEquals("2", Util.toString(kvt.value));
-        kvt = d.result.get(2);
-        Assert.assertEquals("1", Util.toString(kvt.value));
+        assertResultValues(d.result, "3", "2", "1");
         
+        Kvt kvt = d.result.get(2);
+        Assert.assertEquals("1", Util.toString(kvt.value));
         Assert.assertTrue(kvt.time >= 30 || kvt.time < 35);
         Assert.assertEquals("a", Keys.toString(kvt.key));
     }
@@ -100,15 +67,10 @@ public class DbTesterGetMany {
         // Test keys with multiple segments. One single parent segment of all keys.
         //
         
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
-        
-        clock.setTime(10);
-        db.execute(Trans.builder().put("segment/c", "3"));
-        clock.setTime(20);
-        db.execute(Trans.builder().put("segment/b", "2"));
-        clock.setTime(30);
-        db.execute(Trans.builder().put("segment/a", "1"));
+        Db db = createDbWithKvs(
+                "c", "basedir/c",
+                "b", "basedir/b", 
+                "a", "basedir/a");
         
         GetMany d = db.newGetMany();
         d.startKey = null;
@@ -117,36 +79,16 @@ public class DbTesterGetMany {
         
         db.getMany(d);
         
-        //System.out.println("---- DBTesterGetMany.test2 ----");
-        //for (KVT kvt : d.result) {
-        //    System.out.println(Util.toString(Klong.segmentsToKeyBytes(kvt.key)) + ": " 
-        //            + Util.toString(kvt.value) + " at " + kvt.time);
-        //}
+        assertResultValues(d.result, "basedir/a", "basedir/b", "basedir/c");
         
-        Assert.assertEquals(3, d.result.size());
-        
-        Kvt kvt = d.result.get(0);
-        Assert.assertEquals("1", Util.toString(kvt.value));
-        kvt = d.result.get(1);
-        Assert.assertEquals("2", Util.toString(kvt.value));
-        kvt = d.result.get(2);
-        Assert.assertEquals("3", Util.toString(kvt.value));
-        
+        Kvt kvt = d.result.get(2);
         Assert.assertTrue(kvt.time >= 30 || kvt.time < 35);
-        Assert.assertEquals("segment/c", Keys.toString(kvt.key));
+        Assert.assertEquals("c", Keys.toString(kvt.key));
     }
     
     @T
-    public static void test2Backward() {        
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
-        
-        clock.setTime(10);
-        db.execute(Trans.builder().put("segment/c", "3"));
-        clock.setTime(20);
-        db.execute(Trans.builder().put("segment/b", "2"));
-        clock.setTime(30);
-        db.execute(Trans.builder().put("segment/a", "1"));
+    public static void test2Backward() {
+        Db db = createDbWithKeys("c", "b", "a");
         
         GetMany d = db.newGetMany();
         d.startKey = null;
@@ -156,17 +98,14 @@ public class DbTesterGetMany {
         
         db.getMany(d);
         
+        assertResultValues(d.result, "3", "2", "1");
+        
         Assert.assertEquals(3, d.result.size());
         
-        Kvt kvt = d.result.get(0);
-        Assert.assertEquals("3", Util.toString(kvt.value));
-        kvt = d.result.get(1);
-        Assert.assertEquals("2", Util.toString(kvt.value));
-        kvt = d.result.get(2);
+        Kvt kvt = d.result.get(2);
         Assert.assertEquals("1", Util.toString(kvt.value));
-        
         Assert.assertTrue(kvt.time >= 30 || kvt.time < 35);
-        Assert.assertEquals("segment/a", Keys.toString(kvt.key));
+        Assert.assertEquals("a", Keys.toString(kvt.key));
     }
     
     @T
@@ -175,15 +114,7 @@ public class DbTesterGetMany {
         // Historic lookups.
         //
         
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
-        
-        clock.setTime(10);
-        db.execute(Trans.builder().put("c", "3"));
-        clock.setTime(20);
-        db.execute(Trans.builder().put("b", "2"));
-        clock.setTime(30);
-        db.execute(Trans.builder().put("a", "1"));
+        Db db = createDbWithKeys("c", "b", "a");
         
         GetMany d = db.newGetMany();
         d.startKey = null;
@@ -199,11 +130,7 @@ public class DbTesterGetMany {
         d.stopCondition = new GetMany.DontStop();
         db.getMany(d);
         
-        Assert.assertEquals(2, d.result.size());
-        Kvt kvt = d.result.get(0);
-        Assert.assertEquals("2", Util.toString(kvt.value));
-        kvt = d.result.get(1);
-        Assert.assertEquals("3", Util.toString(kvt.value));
+        assertResultValues(d.result, "2", "3");
         
         d = db.newGetMany();
         d.startKey = null;
@@ -211,13 +138,7 @@ public class DbTesterGetMany {
         d.stopCondition = new GetMany.DontStop();
         db.getMany(d);
         
-        Assert.assertEquals(3, d.result.size());
-        kvt = d.result.get(0);
-        Assert.assertEquals("1", Util.toString(kvt.value));
-        kvt = d.result.get(1);
-        Assert.assertEquals("2", Util.toString(kvt.value));
-        kvt = d.result.get(2);
-        Assert.assertEquals("3", Util.toString(kvt.value));
+        assertResultValues(d.result, "1", "2", "3");
     }
     
     @T
@@ -226,15 +147,7 @@ public class DbTesterGetMany {
         // Like test3(), but backward.
         //
         
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
-        
-        clock.setTime(10);
-        db.execute(Trans.builder().put("c", "3"));
-        clock.setTime(20);
-        db.execute(Trans.builder().put("b", "2"));
-        clock.setTime(30);
-        db.execute(Trans.builder().put("a", "1"));
+        Db db = createDbWithKeys("c", "b", "a");
         
         GetMany d = db.newGetMany();
         d.startKey = null;
@@ -252,11 +165,7 @@ public class DbTesterGetMany {
         d.stopCondition = new GetMany.DontStop();
         db.getMany(d);
         
-        Assert.assertEquals(2, d.result.size());
-        Kvt kvt = d.result.get(0);
-        Assert.assertEquals("3", Util.toString(kvt.value));
-        kvt = d.result.get(1);
-        Assert.assertEquals("2", Util.toString(kvt.value));
+        assertResultValues(d.result, "3", "2");
         
         d = db.newGetMany();
         d.startKey = null;
@@ -265,13 +174,7 @@ public class DbTesterGetMany {
         d.stopCondition = new GetMany.DontStop();
         db.getMany(d);
         
-        Assert.assertEquals(3, d.result.size());
-        kvt = d.result.get(0);
-        Assert.assertEquals("3", Util.toString(kvt.value));
-        kvt = d.result.get(1);
-        Assert.assertEquals("2", Util.toString(kvt.value));
-        kvt = d.result.get(2);
-        Assert.assertEquals("1", Util.toString(kvt.value));
+        assertResultValues(d.result, "3", "2", "1");
     }
     
     @T
@@ -285,11 +188,12 @@ public class DbTesterGetMany {
         Db db = Db.builder().testSetup().clock(clock).mainStream(stream).start();
         
         clock.setTime(10);
-        db.execute(Trans.builder().put("segment/c", "3"));
+        db.execute(Trans.builder().put("c", "3"));
         clock.setTime(20);
-        db.execute(Trans.builder().put("segment/b", "2"));
+        db.execute(Trans.builder().put("b", "2"));
         clock.setTime(30);
-        db.execute(Trans.builder().put("segment/a", "1"));
+        db.execute(Trans.builder().put("a", "1"));
+        
         db.sync();
         db = null;
         
@@ -301,17 +205,11 @@ public class DbTesterGetMany {
         d.stopCondition = new GetMany.DontStop();
         db.getMany(d);
         
-        Assert.assertEquals(3, d.result.size());
+        assertResultValues(d.result, "1", "2", "3");
         
-        Kvt kvt = d.result.get(0);
-        Assert.assertEquals("1", Util.toString(kvt.value));
-        kvt = d.result.get(1);
-        Assert.assertEquals("2", Util.toString(kvt.value));
-        kvt = d.result.get(2);
-        Assert.assertEquals("3", Util.toString(kvt.value));
-        
+        Kvt kvt = d.result.get(2);
         Assert.assertTrue(kvt.time >= 30 || kvt.time < 35);
-        Assert.assertEquals("segment/c", Keys.toString(kvt.key));
+        Assert.assertEquals("c", Keys.toString(kvt.key));
     }
     
     public static void testStopCondition1() {
@@ -319,21 +217,13 @@ public class DbTesterGetMany {
         // Tests a stop condition. Only 2 KVTs will be returned.
         //
         
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
-        
-        clock.setTime(10);
-        db.execute(Trans.builder().put("c", "3"));
-        clock.setTime(20);
-        db.execute(Trans.builder().put("b", "2"));
-        clock.setTime(30);
-        db.execute(Trans.builder().put("a", "1"));
+        Db db = createDbWithKeys("c", "b", "a");
         
         GetMany d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = 100;
         d.stopCondition = new GetMany.StopCondition() {
-            private int count = 0;
+            int count = 0;
             public int handleKvt(Kvt kvt) {
                 count++;
                 return count > 2 ? STOP : ADD;
@@ -342,11 +232,7 @@ public class DbTesterGetMany {
         };
         db.getMany(d);
         
-        Assert.assertEquals(2, d.result.size());
-        Kvt kvt = d.result.get(0);
-        Assert.assertEquals("1", Util.toString(kvt.value));
-        kvt = d.result.get(1);
-        Assert.assertEquals("2", Util.toString(kvt.value));
+        assertResultValues(d.result, "1", "2");
     }
     
     @T
@@ -355,15 +241,7 @@ public class DbTesterGetMany {
         // Tests an endpoint stop condition.
         //
         
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
-        
-        clock.setTime(10);
-        db.execute(Trans.builder().put("e", "3"));
-        clock.setTime(20);
-        db.execute(Trans.builder().put("c", "2"));
-        clock.setTime(30);
-        db.execute(Trans.builder().put("a", "1"));
+        Db db = createDbWithKeys("e", "c", "a");  // 5, 3, 1
         
         GetMany d = db.newGetMany();
         d.startKey = null;
@@ -371,11 +249,7 @@ public class DbTesterGetMany {
         d.stopCondition = new GetMany.Endpoint(Keys.toSegments("c"), true);
         db.getMany(d);
         
-        Assert.assertEquals(2, d.result.size());
-        Kvt kvt = d.result.get(0);
-        Assert.assertEquals("1", Util.toString(kvt.value));
-        kvt = d.result.get(1);
-        Assert.assertEquals("2", Util.toString(kvt.value));
+        assertResultValues(d.result, "1", "3");
         
         d = db.newGetMany();
         d.startKey = null;
@@ -383,9 +257,7 @@ public class DbTesterGetMany {
         d.stopCondition = new GetMany.Endpoint(Keys.toSegments("c"), false);
         db.getMany(d);
         
-        Assert.assertEquals(1, d.result.size());
-        kvt = d.result.get(0);
-        Assert.assertEquals("1", Util.toString(kvt.value));
+        assertResultValues(d.result, "1");
     }
     
     @T
@@ -394,53 +266,21 @@ public class DbTesterGetMany {
         // Tests an endpoint stop condition. Longer keys.
         //
         
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
-        
-        clock.setTime(10);
-        db.execute(Trans.builder().put("segment/e", "3"));
-        clock.setTime(20);
-        db.execute(Trans.builder().put("segment/c", "2"));
-        clock.setTime(30);
-        db.execute(Trans.builder()
-                .put("a", "1")
-                .put("z", "4"));
-        
+        Db db = createDbWithKvs("segments/e", "3",  "segment/c", "2",  "a", "1",  "z", "4");
+
         GetMany d = db.newGetMany();
         d.startKey = null;
-        d.lookupTime = 100;
+        d.lookupTime = Long.MAX_VALUE;
         d.stopCondition = new GetMany.Endpoint(Keys.toSegments("z - should be the last"));
         db.getMany(d);
         
-        Assert.assertEquals(4, d.result.size());
-        Kvt kvt = d.result.get(0);
-        Assert.assertEquals("1", Util.toString(kvt.value));
-        kvt = d.result.get(1);
-        Assert.assertEquals("2", Util.toString(kvt.value));
-        kvt = d.result.get(2);
-        Assert.assertEquals("3", Util.toString(kvt.value));
-        kvt = d.result.get(3);
-        Assert.assertEquals("4", Util.toString(kvt.value));
+        assertResultValues(d.result, "1", "2", "3", "4");
     }
     
     @T
     public static void testEndpoint3() {
-        //
-        // Tests an endpoint stop condition. Longer keys.
-        //
-        
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
-        
-        clock.setTime(10);
-        db.execute(Trans.builder().put("segment/e", "3"));
-        clock.setTime(20);
-        db.execute(Trans.builder().put("segment/c", "2"));
-        clock.setTime(30);
-        db.execute(Trans.builder()
-                .put("a", "1")
-                .put("z", "4"));
-        
+        Db db = createDbWithKvs("segments/e", "3",  "segment/c", "2",  "a", "1",  "z", "4");
+      
         GetMany d = db.newGetMany();
         d.startKey = null;
         d.lookupTime = 100;
@@ -456,15 +296,7 @@ public class DbTesterGetMany {
         // Tests an endpoint stop condition.
         //
         
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
-        
-        clock.setTime(10);
-        db.execute(Trans.builder().put("e", "3"));
-        clock.setTime(20);
-        db.execute(Trans.builder().put("c", "2"));
-        clock.setTime(30);
-        db.execute(Trans.builder().put("a", "1"));
+        Db db = createDbWithKvs("e", "3",  "c", "2",  "a", "1");
         
         GetMany d = db.newGetMany();
         d.startKey = null;
@@ -473,11 +305,7 @@ public class DbTesterGetMany {
         d.stopCondition = new GetMany.Endpoint(Keys.toSegments("c"), true, true);
         db.getMany(d);
         
-        Assert.assertEquals(2, d.result.size());
-        Kvt kvt = d.result.get(0);
-        Assert.assertEquals("3", Util.toString(kvt.value));
-        kvt = d.result.get(1);
-        Assert.assertEquals("2", Util.toString(kvt.value));
+        assertResultValues(d.result, "3", "2");
         
         d = db.newGetMany();
         d.startKey = null;
@@ -486,15 +314,12 @@ public class DbTesterGetMany {
         d.stopCondition = new GetMany.Endpoint(Keys.toSegments("c"), false, true);
         db.getMany(d);
         
-        Assert.assertEquals(1, d.result.size());
-        kvt = d.result.get(0);
-        Assert.assertEquals("3", Util.toString(kvt.value));
+        assertResultValues(d.result, "3");
     }
     
     @T
     public static void testCrazyKeys() {
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
+        Db db = Db.builder().testSetup().start();
         int size = 20;
         
         ArrayList<long[]> keys = new ArrayList<long[]>();
@@ -508,7 +333,6 @@ public class DbTesterGetMany {
             }
         });
         
-        clock.setTime(100);
         Trans.Builder b = Trans.builder();
         for (int i = 0; i < size; i++) {
             b.put(KeyFactory.crazyKey(i), Util.toBytes("" + i));
@@ -571,15 +395,7 @@ public class DbTesterGetMany {
         // Tests setting d.key1 to non-null.
         //
         
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
-        
-        clock.setTime(10);
-        db.execute(Trans.builder().put("c", "3"));
-        clock.setTime(20);
-        db.execute(Trans.builder().put("b", "2"));
-        clock.setTime(30);
-        db.execute(Trans.builder().put("a", "1"));
+        Db db = createDbWithKeys("c", "b", "a");
         
         GetMany d = db.newGetMany();
         d.startKey = Keys.toSegments("b");
@@ -587,20 +403,16 @@ public class DbTesterGetMany {
         d.stopCondition = new GetMany.DontStop();
         db.getMany(d);
         
-        Assert.assertEquals(2, d.result.size());
-        Kvt kvt = d.result.get(0);
-        Assert.assertEquals("2", Util.toString(kvt.value));
-        kvt = d.result.get(1);
-        Assert.assertEquals("3", Util.toString(kvt.value));
+        assertResultValues(d.result, "2", "3");
     }
     
     @T
     public static void testStart1Backward() {
         //
-        // Tests setting d.key1 to non-null.
+        // Tests setting d.startKey to non-null.
         //
         
-        KTestClock clock = new KTestClock();
+        /*KTestClock clock = new KTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
@@ -609,6 +421,9 @@ public class DbTesterGetMany {
         db.execute(Trans.builder().put("b", "2"));
         clock.setTime(30);
         db.execute(Trans.builder().put("a", "1"));
+        */
+        
+        Db db = createDbWithKeys("c", "b", "a");
         
         GetMany d = db.newGetMany();
         d.startKey = Keys.toSegments("b");
@@ -627,19 +442,10 @@ public class DbTesterGetMany {
     @T
     public static void testStart2() {
         //
-        // Tests setting d.key1 to non-null.
+        // Tests setting d.startKey to non-null.
         //
         
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
-        
-        clock.setTime(10);
-        db.execute(Trans.builder().put("c", "3"));
-        clock.setTime(20);
-        db.execute(Trans.builder().put("b", "2"));
-        clock.setTime(30);
-        db.execute(Trans.builder().put("a", "1"));
-        
+        Db db = createDbWithKeys("c", "b", "a");
         
         GetMany d = db.newGetMany();
         d.startKey = Keys.toSegments("bbb");
@@ -647,20 +453,17 @@ public class DbTesterGetMany {
         d.stopCondition = new GetMany.DontStop();
         db.getMany(d);
         Assert.assertEquals(1, d.result.size());
-        Kvt kvt = d.result.get(0);
-        Assert.assertEquals("3", Util.toString(kvt.value));
-        
+        assertValueEquals("3", d.result.get(0).value);
         
         d = db.newGetMany();
         d.startKey = Keys.toSegments("aa");
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
         db.getMany(d);
+        
         Assert.assertEquals(2, d.result.size());
-        kvt = d.result.get(0);
-        Assert.assertEquals("2", Util.toString(kvt.value));
-        kvt = d.result.get(1);
-        Assert.assertEquals("3", Util.toString(kvt.value));
+        assertValueEquals("2", d.result.get(0).value);
+        assertValueEquals("3", d.result.get(1).value);
     }
     
     @T
@@ -669,15 +472,7 @@ public class DbTesterGetMany {
         // A start key less than any existing key.
         //
         
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
-        
-        clock.setTime(10);
-        db.execute(Trans.builder().put("c", "3"));
-        clock.setTime(20);
-        db.execute(Trans.builder().put("b", "2"));
-        clock.setTime(30);
-        db.execute(Trans.builder().put("a", "1"));
+        Db db = createDbWithKeys("c", "b", "a");
         
         GetMany d = db.newGetMany();
         d.startKey = Keys.toSegments("0");    // '0' < 'a'
@@ -694,15 +489,7 @@ public class DbTesterGetMany {
         // A start key greater than any existing key.
         //
         
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
-        
-        clock.setTime(10);
-        db.execute(Trans.builder().put("c", "3"));
-        clock.setTime(20);
-        db.execute(Trans.builder().put("b", "2"));
-        clock.setTime(30);
-        db.execute(Trans.builder().put("a", "1"));
+        Db db = createDbWithKeys("c", "b", "a");
         
         GetMany d = db.newGetMany();
         d.startKey = Keys.toSegments("z");
@@ -713,18 +500,16 @@ public class DbTesterGetMany {
         Assert.assertEquals(0, d.result.size());
     }
     
-    
     @T
     public static void testStart5() {
         //
         // Two top nodes created.
         //
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
+        
+        Db db = Db.builder().testSetup().start();
         byte[] value = new byte[100];
         
         for (int i = 0; i < 16; i++) {
-            clock.setTime(1000 + i*10);
             db.execute(Trans.builder().put("" + i, value));
         }
         
@@ -745,13 +530,8 @@ public class DbTesterGetMany {
     
     @T
     public static void testStartWithLongerKeys() {
-        //
-        //
+        Db db = Db.builder().testSetup().start();
         
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
-        
-        clock.setTime(10);
         db.execute(Trans.builder()
                 .put("directory/10", "10")
                 .put("directory/20", "20")
@@ -765,10 +545,10 @@ public class DbTesterGetMany {
         db.getMany(d);
         
         Assert.assertEquals(2, d.result.size());
-        Assert.assertEquals(0, Keys.compareKeys(
+        Assert.assertTrue(Keys.areEqual(
                 Keys.toSegments("directory/20"), d.result.get(0).key));
         Assert.assertEquals("20", Util.toString(d.result.get(0).value));
-        Assert.assertEquals(0, Keys.compareKeys(
+        Assert.assertTrue(Keys.areEqual(
                 Keys.toSegments("directory/30"), d.result.get(1).key));
         Assert.assertEquals("30", Util.toString(d.result.get(1).value));
     }
@@ -806,29 +586,10 @@ public class DbTesterGetMany {
     
     @T
     public static void testStartWithCrazyKeys1() {
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
+        Db db = Db.builder().testSetup().start();
         int size = 10;
         
-        ArrayList<long[]> keys = new ArrayList<long[]>();
-        for (int i = 0; i < size; i++) {
-            keys.add(Keys.toSegments(KeyFactory.crazyKey(i)));
-        }
-        
-        // Sorts the keys
-        
-        Collections.sort(keys, new Comparator<long[]>() {
-            public int compare(long[] key1, long[] key2) {
-                return Keys.compareKeys(key1, key2);
-            }
-        });
-        
-        clock.setTime(100);
-        Trans.Builder b = Trans.builder();
-        for (int i = 0; i < size; i++) {
-            b.put(KeyFactory.crazyKey(i), Util.toBytes("" + i));
-        }
-        db.execute(b);
+        ArrayList<long[]> keys = putCrazyKeys(db, size);
         
         // Starting at Key 0. Gets all KVs.
         GetMany d = db.newGetMany();
@@ -843,13 +604,8 @@ public class DbTesterGetMany {
             Assert.assertEquals(0, Keys.compareKeys(k1, k2));
         }
     }
-    
-    @T
-    public static void testStartWithCrazyKeys2() {
-        KTestClock clock = new KTestClock();
-        Db db = Db.builder().testSetup().clock(clock).start();
-        int size = 10;
-        
+
+    private static ArrayList<long[]> putCrazyKeys(Db db, int size) {
         ArrayList<long[]> keys = new ArrayList<long[]>();
         for (int i = 0; i < size; i++) {
             keys.add(Keys.toSegments(KeyFactory.crazyKey(i)));
@@ -863,12 +619,20 @@ public class DbTesterGetMany {
             }
         });
         
-        clock.setTime(100);
         Trans.Builder b = Trans.builder();
         for (int i = 0; i < size; i++) {
             b.put(KeyFactory.crazyKey(i), Util.toBytes("" + i));
         }
         db.execute(b);
+        return keys;
+    }
+    
+    @T
+    public static void testStartWithCrazyKeys2() {
+        Db db = Db.builder().testSetup().start();
+        int size = 10;
+        
+        ArrayList<long[]> keys = putCrazyKeys(db, size);
         
         GetMany d;
         
@@ -920,40 +684,15 @@ public class DbTesterGetMany {
         //
         // Replicates a bug that occurred when g.startKey is shorter than the actual keys.
         //
-        
-        String[] keys = new String[]{
-                "001.object",
-                "002.object",
-                "003.object"
-        };
-        
-        Db db = Db.builder().testSetup().start();
-        Trans.Builder b = Trans.builder();
-        
-        for (int i = 0; i < keys.length; i++) {
-            long[] segments = Keys.toSegments(keys[i]);
-            Assert.assertEquals(2, segments.length);
-            b.put(segments, new byte[0]);
-        }
-        
-        db.execute(b.build());
-        
-        GetMany g = db.newGetMany();
-        g.startKey = Keys.toSegments("002");
-        Assert.assertEquals(1, g.startKey.length);
-        db.getMany(g);
-        
-        Assert.assertEquals(2, g.result.size());
-        Assert.assertEquals(keys[1], Keys.toString(g.result.get(0).key));
-        Assert.assertEquals(keys[2], Keys.toString(g.result.get(1).key));
+        testFromIndexing(true);
     }
     
     @T
     public static void testFromIndexing2() {
-        //
-        // Like testFromIndexing2(), but backwards.
-        //
-        
+        testFromIndexing(false);
+    }
+    
+    public static void testFromIndexing(boolean forward) {
         String[] keys = new String[]{
                 "001.object",
                 "002.object",
@@ -973,12 +712,18 @@ public class DbTesterGetMany {
         
         GetMany g = db.newGetMany();
         g.startKey = Keys.toSegments("002");
-        g.forward = false;
+        g.forward = forward;
         Assert.assertEquals(1, g.startKey.length);
         db.getMany(g);
-        
-        Assert.assertEquals(1, g.result.size());
-        Assert.assertEquals(keys[0], Keys.toString(g.result.get(0).key));
+
+        if (forward) {
+            Assert.assertEquals(2, g.result.size());
+            Assert.assertEquals(keys[1], Keys.toString(g.result.get(0).key));
+            Assert.assertEquals(keys[2], Keys.toString(g.result.get(1).key));
+        } else {
+            Assert.assertEquals(1, g.result.size());
+            Assert.assertEquals(keys[0], Keys.toString(g.result.get(0).key));
+        }
     }
 
     /**
@@ -1015,12 +760,6 @@ public class DbTesterGetMany {
         g.stopCondition = new GetMany.DontStop();
         
         db.getMany(g);
-        
-//        for (Kvt k : g.result) {
-//            System.out.println("-- result key");
-//            System.out.println(Keys.compareKeys(k.key, startSkey));
-//            System.out.println("DbTester, key = " + Util.toHexString(Keys.toBytes(k.key)));
-//        }
         
         Assert.assertEquals(1, g.result.size());
         Assert.assertArrayEquals(skeys[1], g.result.get(0).key);
@@ -1155,8 +894,59 @@ public class DbTesterGetMany {
         
         db.stop();
     }
+
     
-    public static void main(String[] args) throws IOException {
-        DbTesterGetMany.bug130606();
+    // ======== Helpers ========
+    
+    /**
+     * For example, for args a, b, c, this method returns a 
+     * database with the following time-key-value triplets:
+     * (10 a 1), (20 b 2), (30 c 3).
+     */
+    private static Db createDbWithKeys(String... keys) {
+        KTestClock clock = new KTestClock();
+        Db db = Db.builder().testSetup().clock(clock).start();
+        
+        for (int i = 0; i < keys.length; i++) {
+            String key = keys[i];
+            clock.setTime(10 + i*10);
+            db.execute(Trans.builder().put(key, getValueGivenKey(key)));
+        }
+        
+        return db;
+    }
+
+    private static String getValueGivenKey(String key) {
+        return Integer.toString(key.charAt(0) - 'a' + 1);
+    }
+    
+    private static Db createDbWithKvs(String... kvs) {
+        KTestClock clock = new KTestClock();
+        Db db = Db.builder().testSetup().clock(clock).start();
+        
+        int n = kvs.length / 2;
+        
+        for (int i = 0; i < n; i++) {
+            String key   = kvs[i*2 + 0];
+            String value = kvs[i*2 + 1];
+            clock.setTime(10 + i*10);
+            db.execute(Trans.builder().put(key, value));
+        }
+        
+        return db;
+    }
+    
+    private static void assertResultValues(List<Kvt> result, String... values) {
+        int n = result.size();
+        Assert.assertEquals(values.length, n);
+        
+        for (int i = 0; i < n; i++) {
+            assertValueEquals(values[i], result.get(i).value);
+        }
+    }
+    
+    private static void assertValueEquals(String expected, byte[] value) {
+        String stringValue = Util.toString(value);
+        Assert.assertEquals(expected, stringValue);
     }
 }

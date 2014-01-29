@@ -270,12 +270,16 @@ public class Keys {
         return result;
     }
     
+    public static final boolean areEqual(long[] key1, long[] key2) {
+        return compareKeys(key1, key2) == 0;
+    }
+    
     /**
      * A simpler version assuming that a Klong compare value is always non-negative. 
      * Currently they are defined to be in the range [0, 2^59] (2012-08).
-     * Returns 0 if k1 == k2, returns -1 if k1 < k2, and +1 if k1 > k2.
+     * Returns 0 if key1 == key2, returns -1 if key1 < key2, and +1 if key1 > key2.
      */
-    public static final int compareKeys(long[] k1, long[] k2) {
+    public static final int compareKeys(long[] key1, long[] key2) {
         //
         // arr1 < arr2  --> neg
         // arr1 == arr2 --> 0
@@ -283,17 +287,17 @@ public class Keys {
         //
         
         int result = 0;
-        int length = Math.min(k1.length, k2.length);
+        int length = Math.min(key1.length, key2.length);
         
         for (int i = 0; i < length; i++) {
-            result = compareLongs(k1[i], k2[i]);
+            result = compareLongs(key1[i], key2[i]);
             if (result != 0) {
                 break;
             }
         }
         
-        if (result == 0 && k1.length != k2.length) {
-            result = k1.length < k2.length ? -1 : +1;
+        if (result == 0 && key1.length != key2.length) {
+            result = key1.length < key2.length ? -1 : +1;
         }
         
         return result;
