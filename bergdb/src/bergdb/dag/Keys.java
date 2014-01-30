@@ -343,16 +343,6 @@ public class Keys {
         return result;
     }
     
-    /**
-     * Checks whether two keys are equal.
-     */
-    public static final boolean equals(long[] k1, long[] k2) {
-        assert k1 != null;
-        assert k2 != null;
-        
-        return compareKeys(k1, k2) == 0;
-    }
-    
     private static int compareLongs(long n1, long n2) {
         return n1 == n2 ? 0 : n1 < n2 ? -1 : +1;
     }

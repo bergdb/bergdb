@@ -15,7 +15,7 @@ public class ObjectSize {
     private final Instrumentation inst;
     
     public ObjectSize() {
-        inst = KissInstrumentation.getInstrumentation();
+        inst = MyInstrumentation.getInstrumentation();
         if (inst == null) {
             throw new IllegalStateException(
                     "KissInstrumentation.getInstrumentation() returned null. Use -javaagent properly.");

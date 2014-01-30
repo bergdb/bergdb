@@ -37,9 +37,6 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * 
      * @param rstream
      *            The underlying stream.
-     * @param writeEnabled
-     *            True for normal usage, false for performance testing (will disable writes to the
-     *            underlying stream and INode serialization).
      */
     public NodeStream(RecoverableStream rstream, Object writeLock) {
         if (rstream == null) {

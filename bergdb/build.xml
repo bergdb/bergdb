@@ -61,7 +61,10 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
 	
 	<javac srcdir="src" destdir="out/classes" source="1.5" target="1.5" includeantruntime="false"
 	       fork="true" executable="${javac}"/>
-	
+
+	<javac srcdir="src-dev" destdir="out/classes" source="1.5" target="1.5" includeantruntime="false"
+	       fork="true" executable="${javac}"/>
+
 	<javac srcdir="src-icu" destdir="out/classes" source="1.5" target="1.5" includeantruntime="false"
 	       fork="true" executable="${javac}"
 		   classpath="out/classes:in/icu-for-bergdb.jar"/>
@@ -160,10 +163,10 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
          Only used for developement purpose only. -->
     
     <delete file="out/inst-MANIFEST.MF" failonerror="false"/>
-    <delete file="out/bin/inst.jar" failonerror="false"/>
+    <delete file="out/inst.jar" failonerror="false"/>
 
     <manifest file="out/MANIFEST-inst.MF">
-        <attribute name="Premain-Class" value="bergdb.dev.KissInstrumentation"/>
+        <attribute name="Premain-Class" value="bergdb.dev.MyInstrumentation"/>
         <attribute name="Copyright" value="Frans Lundberg"/>
         <attribute name="Author" value="Frans Lundberg"/>
         <attribute name="Ant-Version" value=""/>
@@ -171,8 +174,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
     	<attribute name="build" value="${build}"/>
     </manifest>
 
-    <jar jarfile="out/inst.jar"
-            manifest="out/MANIFEST-inst.MF">
+    <jar jarfile="out/inst.jar" manifest="out/MANIFEST-inst.MF">
         <fileset dir="out/classes">
             <include name="bergdb/dev/KissInstrumentation.class"/>
         </fileset>

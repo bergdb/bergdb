@@ -9,11 +9,13 @@ import java.lang.instrument.Instrumentation;
  * @see ObjectSize
  * @author Frans Lundberg
  */
-public class KissInstrumentation {
+public class MyInstrumentation {
+    // Note: Class name is used in build.xml.
+    
     private static Instrumentation inst;
 
     public static void premain(String args, Instrumentation inst) {
-        KissInstrumentation.inst = inst;
+        MyInstrumentation.inst = inst;
     }
     
     public static Instrumentation getInstrumentation() {
@@ -24,7 +26,7 @@ public class KissInstrumentation {
 /*
 This class must be put into a jar (inst.jar) with MANIFEST.MF containing:
 
-    Premain-Class: com.bergdb.dev.KissInstrumentation
+    Premain-Class: bergdb.dev.MyInstrumentation
 
 Then run instrumented application like this:
 
