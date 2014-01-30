@@ -18,6 +18,7 @@ import java.util.Properties;
  * @author Frans Lundberg
  */
 public class SeedGenerator {
+    //
     // 1302 Frans: addJMXData() no longer used because of IKVM issues. We want to avoid
     // the dependency of one more IKVM DLL.
     //
@@ -33,11 +34,9 @@ public class SeedGenerator {
         seed = new byte[128];
         addTimeData();
         addRandomOffset();
-        //addJMXData();
         addRuntimeData();
         addTimeData();
         addRandomOffset();
-        //addJMXData();
         addRuntimeData();
         addTimeData();
         addRuntimeData();
@@ -47,29 +46,40 @@ public class SeedGenerator {
     /**
      * Slower than constructor, but generates more entropy.
      */
-    public void moreEntropy() {
+    public synchronized void moreEntropy() {
+        addTimeData();
         addMachineData();
         
         addTimeData();
         addRandomOffset();
-        //addJMXData();
         addRuntimeData();
+        
         addTimeData();
-        
-        System.gc();
-        
         addRandomOffset();
-        //addJMXData();
         addRuntimeData();
+        
         addTimeData();
         addRuntimeData();
+        addStackTrace();
+        
         addTimeData();
+    }
+    
+    private void addStackTrace() {
+        StackTraceElement[] elements = Thread.currentThread().getStackTrace();
+        for (StackTraceElement element : elements) {
+            addData(element.getLineNumber());
+            addData(element.getMethodName());
+            addData(element.getFileName());
+        }
+        
+        addData(elements.length);
     }
 
     /**
      * Just to avoid not writing much to certain offsets.
      */
-    private synchronized void addRandomOffset() {
+    private void addRandomOffset() {
         offset = offset + (int) (Math.random() * 8.0);
         if (offset >= seed.length) {
             offset = offset % seed.length;
@@ -111,35 +121,6 @@ public class SeedGenerator {
     }
 
     /**
-     * Adds data from a JMX - java management extension objects.
-     */
-    /*private void addJMXData() {
-        ClassLoadingMXBean clBean;
-        ThreadMXBean tBean;
-        long[] ids;
-
-        clBean = ManagementFactory.getClassLoadingMXBean();
-        tBean = ManagementFactory.getThreadMXBean();
-
-        addData(clBean.getTotalLoadedClassCount());
-        addData(clBean.getUnloadedClassCount());
-        addData(clBean.getLoadedClassCount());
-
-        addData(tBean.getCurrentThreadCpuTime());
-        addData(tBean.getCurrentThreadUserTime());
-        addData(tBean.getTotalStartedThreadCount());
-        addData(tBean.getDaemonThreadCount());
-        addData(tBean.getPeakThreadCount());
-        addData(tBean.getThreadCount());
-        addRandomOffset();
-
-        ids = tBean.getAllThreadIds();
-        for (int i = 0; i < ids.length; i++) {
-            addData(ids[i]);
-        }
-    }*/
-
-    /**
      * Adds data from Runtime state.
      */
     private void addRuntimeData() {
@@ -148,8 +129,14 @@ public class SeedGenerator {
         addData(rt.maxMemory());
         addData(rt.totalMemory());
     }
+    
+    private void addData(String s) {
+        for (int i = 0; i < s.length(); i++) {
+            addData(s.charAt(i));
+        }
+    }
 
-    private synchronized void addData(byte[] bytes) {
+    private void addData(byte[] bytes) {
         for (int i = 0; i < bytes.length; i++) {
             seed[offset] += bytes[i];
             offset++;
@@ -171,7 +158,6 @@ public class SeedGenerator {
     public synchronized byte[] getSeed() {
         addTimeData();
         addRandomOffset();
-        //addJMXData();
         return (byte[]) seed.clone();
     }
 

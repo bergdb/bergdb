@@ -212,7 +212,7 @@ public class Concurrency {
             while (!stop) {
                 readerInner(c);
             }
-        } catch (Throwable e) {
+        } catch (Exception e) {
             this.exception = e;
         }
     }
