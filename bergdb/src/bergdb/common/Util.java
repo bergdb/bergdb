@@ -22,7 +22,6 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;
 
-
 /**
  * Static utility methods for general-purpose.
  */

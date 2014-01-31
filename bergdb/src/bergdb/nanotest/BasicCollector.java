@@ -146,6 +146,7 @@ public class BasicCollector implements TestCollector, TestRunnerCollector {
             } else {
                 baseOut.println("FAILED! " + currentMethodName);
             }
+            
             exception.printStackTrace(baseOut);
         }
     }

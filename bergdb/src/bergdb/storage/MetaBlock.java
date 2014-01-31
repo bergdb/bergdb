@@ -46,16 +46,35 @@ public class MetaBlock {
     private byte[] block;
     private long pos;         // stream pos, only used sometimes
     
+    /**
+     * Creates a new MetaBlock with startPos = 0.
+     */
     public MetaBlock() {
         pos = -1;
         block = new byte[RecoverableStream.META_BLOCK_SIZE];
         initBlock();
     }
+
+    private void initBlock() {
+        System.arraycopy(MAGIC, 0, block, 0, 4);
+        Bytes.intToBytesLE(STREAM_FORMAT_VERSION, block, 4);
+        
+        block[RecoverableStream.META_BLOCK_SIZE - 1] = META_BLOCK_LAST_BYTE;
+            // last byte set to indicate successful meta block
+        setLastTransSpos(Constants.SposNULL);
+        setStartupPos(0);
+    }
     
+    /**
+     * Creates a new MetaBlock given the 'block' byte buffer.
+     * 
+     * @param block  The bytes of the meta block. Must be of length RecoverableStream.META_BLOCK_SIZE.
+     * @param pos XXX ?     
+     */ 
     MetaBlock(byte[] block, long pos) {
         assert block != null;
         assert block.length == RecoverableStream.META_BLOCK_SIZE;
-        this.block = block;
+        this.block = block.clone();
         assert pos >= 0;
         this.pos = pos;
     }
@@ -74,15 +93,6 @@ public class MetaBlock {
         this.pos = source.pos;
     }
     
-    private void initBlock() {
-        System.arraycopy(MAGIC, 0, block, 0, 4);
-        Bytes.intToBytesLE(STREAM_FORMAT_VERSION, block, 4);
-        
-        block[RecoverableStream.META_BLOCK_SIZE - 1] = META_BLOCK_LAST_BYTE;
-            // last byte set to indicate successful meta block
-        setLastTransSpos(Constants.SposNULL);
-        setStartupPos(0);
-    }
 
     /**
      * If last byte is OK, this method can be used to check that the block bytes

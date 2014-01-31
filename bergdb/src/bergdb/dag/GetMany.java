@@ -482,7 +482,7 @@ public class GetMany {
         public Endpoint(long[] key, boolean inclusive, boolean backward) {
             assert key != null;
             this.inclusive = inclusive;
-            this.key = key;
+            this.key = key.clone();
             this.backward = backward;
         }
         
@@ -561,7 +561,8 @@ public class GetMany {
         private boolean eod;
         
         public Prefix(long[] prefix) {
-            this.prefix = prefix;
+            assert prefix != null;
+            this.prefix = prefix.clone();
         }
         
         public int handleKvt(Kvt kvt) {
@@ -589,6 +590,7 @@ public class GetMany {
         public PrefixN(long[] prefix, int maxCount) {
             this.prefix = prefix;
             this.maxCount = maxCount;
+            prefix = prefix.clone();
             count = 0;
             eod = false;
         }

@@ -374,6 +374,7 @@ public class Klong {
             break;
         default:
             assert false : "Bad klong type: " + type;
+            break;
         }
         
         return b.toString();

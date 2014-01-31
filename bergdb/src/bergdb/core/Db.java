@@ -9,7 +9,6 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
 import bergdb.common.Bug;
-import bergdb.common.IWarner;
 import bergdb.common.NullProgressListener;
 import bergdb.common.ProgressListener;
 import bergdb.common.Util;
@@ -70,7 +69,7 @@ import bergdb.stream.MemoryStream;
  * 
  * <p>
  * Only these methods should be used by a consumer of the Core Layer once the
- * DB has been started and before it has been stopped. This API
+ * Db has been started and before it has been stopped. This API
  * form a narrow "waist" with a large code base under it and potentially a large code
  * base "above" it. These methods are believed to be "feature complete" in the
  * sense that all features we want from the database can be implemented on top
@@ -79,7 +78,7 @@ import bergdb.stream.MemoryStream;
  * but for initialization like the constructor or DB.Builder class.
  * </p>
  * 
- * <p>DB Shutdown. The DB typically has allocated resources besides memory: 
+ * <p>Db Shutdown. The DB typically has allocated resources besides memory: 
  * open sockets, open files, running threads. These resources are guaranteed
  * to be *eventually released* without any action from the DB user after the
  * finalize() method has been called from the garbage collector.
@@ -89,9 +88,7 @@ import bergdb.stream.MemoryStream;
  * 
  * @author Frans Lundberg
  */
-public class Db implements IWarner {
-    //
-    // 1210 Frans: Making many fields final increased GET performance somewhat.
+public class Db {
     //
     // Note: There must be no reference to a Db object from a thread started
     // by the database (directly or indirectly). 
@@ -146,7 +143,6 @@ public class Db implements IWarner {
 
     private final DbClock dbClock;
     private final IEvictBoss evictBoss;
-    private final PrintStream out;
     private final Builder builder;   // stored for use by Graph.Builder. See startinner().
     
     private long startupDistance; 
@@ -271,8 +267,7 @@ public class Db implements IWarner {
         
         this.reclaimTransactionListener = reclaim;
         reclaim.setRetainDuration(b.retainDuration);
-
-        this.out = System.out;
+        
         this.databaseIdFromBuilder = b.id;
         
         //
@@ -661,6 +656,7 @@ public class Db implements IWarner {
             break;
         default:
             result = "Unknown DB state (" + state + ")";
+            break;
         }
         return result;
     }
@@ -1675,12 +1671,12 @@ public class Db implements IWarner {
      * Reports a warning. Current implementation prints to Db.out - standard
      * database output.
      */
-    public void warn(String message, Throwable t) {
+    /*public void warn(String message, Throwable t) {
         // TODO Z LATER. This is not really used, we need other way to handle warnings.
         
         out.println("WARNING. " + message);
         t.printStackTrace(out);
-    }
+    }*/
 
     /**
      * Returns current super root.

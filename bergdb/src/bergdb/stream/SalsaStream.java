@@ -32,6 +32,16 @@ public class SalsaStream implements AppendOnlyStream {
             throw new IllegalArgumentException("stream == null not allowed");
         }
         
+        if (nonce == null) {
+            throw new IllegalArgumentException("nonce == null not allowed");
+        }
+        
+        if (key == null) {
+            throw new IllegalArgumentException("key == null not allowed");
+        }
+        
+        nonce = nonce.clone();
+        key = key.clone();
         this.stream = stream;
         
         length = stream.getLength();

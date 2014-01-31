@@ -270,6 +270,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                     break;
                 default:
                     assert false : "Bad pointer type: " + pointerType + ".";
+                    break;
                 }
             }
 
@@ -554,6 +555,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                 break;
             default:
                 assert false : "Bad int value: " + shouldStop;
+                break;
             }
         }
     }
@@ -785,6 +787,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                 break;
             default:
                 assert false : "Bad klong type at " + i + ": " + type + ".";
+                break;
             }
         }
 

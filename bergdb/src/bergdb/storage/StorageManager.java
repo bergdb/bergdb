@@ -1433,7 +1433,7 @@ public class StorageManager implements AppendOnlyStream {
                 try {
                     manager.sync(10);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    throw new RuntimeException(e);
                 }
                 nanos = System.nanoTime() - nanos;
                 time[0] = nanos * 1e-9;
@@ -1684,13 +1684,13 @@ public class StorageManager implements AppendOnlyStream {
                     try {
                         manager.append(bytes, 0, 10);
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        throw new RuntimeException(e);
                     }
                     
                     try {
                         Thread.sleep(10);
                     } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        throw new RuntimeException(e);
                     }
                 }
             }

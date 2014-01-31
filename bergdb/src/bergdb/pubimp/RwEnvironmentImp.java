@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
+import bergdb.common.Bug;
 import bergdb.common.MyLongSet;
 import bergdb.common.Util;
 import bergdb.core.KeyTransformation;
@@ -536,55 +537,57 @@ public class RwEnvironmentImp implements RwEnvironment {
             DbObject dbo) {
         // Both long and int fields are indexed in a "long" index.
         // Both double and float fields are indexed in a "double" index.
-        
+
         byte[] result = null;
         byte[][] parts = new byte[index.parts][];
         final String[] fieldCombination = index.fieldCombinations[combinationIndex];
-        
+
         for (int j = 0; j < index.parts; j++) {
             String field = fieldCombination[j];
             char type = index.types[j];
-            
+
             // Switch will set parts[j] if field exist.
-            
+
             parts[j] = null;
-            
+
             switch (type) {
-                case Index.TYPE_LONG: {
-                    if (dbo.has(field, 'l')) {
-                        parts[j] = IndexManager.indexKeyPartFromLong(dbo.getLong(field));
-                    } else if (dbo.has(field, 'i')) {
-                        parts[j] = IndexManager.indexKeyPartFromLong(dbo.getInt(field));
-                    }
-                    break;
+            case Index.TYPE_LONG:
+                if (dbo.has(field, 'l')) {
+                    parts[j] = IndexManager.indexKeyPartFromLong(dbo.getLong(field));
+                } else if (dbo.has(field, 'i')) {
+                    parts[j] = IndexManager.indexKeyPartFromLong(dbo.getInt(field));
                 }
-                
-                case Index.TYPE_DOUBLE: {
-                    if (dbo.has(field, 'd')) {
-                        parts[j] = IndexManager.indexKeyPartFromDouble(dbo.getDouble(field));
-                    }
-                    break;
+                break;
+
+            case Index.TYPE_DOUBLE:
+                if (dbo.has(field, 'd')) {
+                    parts[j] = IndexManager.indexKeyPartFromDouble(dbo.getDouble(field));
                 }
-                
-                case Index.TYPE_STRING: {
-                    if (dbo.has(field, 's')) {
-                        String stringValue = dbo.getString(field);
-                        parts[j] = IndexManager.indexKeyPartFromString(index.kcollators[j], stringValue);
-                    }
-                    break;
+                break;
+
+            case Index.TYPE_STRING:
+                if (dbo.has(field, 's')) {
+                    String stringValue = dbo.getString(field);
+                    parts[j] = IndexManager
+                            .indexKeyPartFromString(index.kcollators[j], stringValue);
                 }
+                break;
+
+            default:
+                throw new Bug("Bad index type: " + type + ".");
+
             }
-            
+
             if (parts[j] == null) {
                 break;
             }
-            
+
             if (j == index.parts - 1) {
                 // Last part, create complete indexKey.
                 result = concat(parts);
             }
         }
-        
+
         return result;
     }
     
@@ -664,6 +667,9 @@ public class RwEnvironmentImp implements RwEnvironment {
         public void setIndexKey(byte[] indexKey, KeyTransformation kt);
     }
     
+    /**
+     * Internal class that bounds a key transformation with a database key.
+     */
     private static final class MapKey {
         private long[] array;
         private KeyTransformation kt;
@@ -703,8 +709,10 @@ public class RwEnvironmentImp implements RwEnvironment {
             return true;
         }
         
+        /**
+         * See http://stackoverflow.com/questions/2827612/effective-java-hashcode-implementation.
+         */
         public int hashCode() {
-            // See http://stackoverflow.com/questions/2827612/effective-java-hashcode-implementation
             long prime = 37;
             long value = prime;
             for (int i = 0; i < array.length; i++) {

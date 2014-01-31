@@ -762,6 +762,7 @@ public class IndexManager {
             this.keyHash = Keys.hash(Keys.toSegments(m.getIndexInfoKeyAsBytes(name)));
             this.parts = typeStrings.length;
             this.lock = m.lock;
+            typeStrings = typeStrings.clone();
             
             assert parts >= 1;
             assert dirs != null;

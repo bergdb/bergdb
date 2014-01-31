@@ -13,7 +13,7 @@ public class DatabaseId {
     /**
      * The number of bytes in a database ID.
      */
-    public static int SIZE = 16;
+    public static final int SIZE = 16;
     
     /**
      * A database ID used for testing; useful to have deterministic stream bytes.

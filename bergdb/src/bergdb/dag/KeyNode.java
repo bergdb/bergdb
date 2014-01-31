@@ -260,6 +260,7 @@ public class KeyNode implements INode {
                 break;
             default:
                 assert false : "Bad klong type, " + klongType;
+                break;
             }
         }
     }
@@ -331,6 +332,7 @@ public class KeyNode implements INode {
                 break;
             default:
                 assert false : "Bad klong type, " + klongType;
+                break;
             }
         }
         
@@ -407,6 +409,7 @@ public class KeyNode implements INode {
                 break;
             default:
                 assert false : "Bad klong type, " + klongType;
+                break;
             }
         }
         
@@ -481,6 +484,7 @@ public class KeyNode implements INode {
                 break;
             default:
                 assert false : "Bad klong type, " + klongType;
+                break;
             }
         }
         
@@ -555,6 +559,7 @@ public class KeyNode implements INode {
                 break;
             default:
                 assert false : "Bad klong type, " + klongType;
+                break;
             }
         }
         
@@ -620,6 +625,7 @@ public class KeyNode implements INode {
                 break;
             default:
                 assert false : "Bad klong type, " + klongType;
+                break;
             }
         }
         
@@ -898,6 +904,7 @@ public class KeyNode implements INode {
                     break;
                 default:
                     assert false : "Bad klong type, " + intType2 + ".";
+                    break;
                 }
             }
             
@@ -1159,6 +1166,7 @@ public class KeyNode implements INode {
                 
             default:
                 assert false : "bad klong type " + type;
+                break;
             }
         }
     }
@@ -1412,6 +1420,7 @@ public class KeyNode implements INode {
                 break;                
             default:
                 assert false : "Bad klong type, " + klongType;
+                break;
             }
         }
         
@@ -1448,6 +1457,7 @@ public class KeyNode implements INode {
                 break;
             default:
                 assert false : "Bad klong type, " + klongType;
+                break;
             }
         }
         
@@ -1487,6 +1497,7 @@ public class KeyNode implements INode {
                 break;
             default:
                 assert false : "Bad klong type, " + Klong.getIntType(klong);
+                break;
             }
         }
         
