@@ -45,12 +45,13 @@ public class MemoryOutputStream extends OutputStream {
     /**
      * This is the preferred write method to use.
      */
-    public void write(byte[] bytes, int offset, int length) throws IOException {
-        long last = size + length - 1;
+    public void write(byte[] bytes, int bytesOffset, int lengthToWrite) throws IOException {
+        int offset = bytesOffset;
+        long last = size + lengthToWrite - 1;
         int firstBuffer = (int) (size / BUFFER_SIZE);
         int lastBuffer = (int) (last / BUFFER_SIZE);
         
-        if (length < 1) {
+        if (lengthToWrite < 1) {
             return;
         }
         
@@ -58,12 +59,13 @@ public class MemoryOutputStream extends OutputStream {
             throw new IllegalArgumentException("bad off, " + offset 
                     + ", bytes.length = " + bytes.length);
         }
-        if (length > bytes.length - offset) {
-            throw new IllegalArgumentException("bad len, " + length + ", off = " 
+        if (lengthToWrite > bytes.length - offset) {
+            throw new IllegalArgumentException("bad len, " + lengthToWrite + ", off = " 
                     + offset + ", bytes.length = " + bytes.length);
         }
         
-        addBuffersIfNeeded(length);
+        addBuffersIfNeeded(lengthToWrite);
+        int length = lengthToWrite;
         
         for (int i = firstBuffer; i <= lastBuffer; i++) {
             byte[] array;

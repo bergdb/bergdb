@@ -450,7 +450,7 @@ public class RwEnvironmentImp implements RwEnvironment {
     private static final KeyTransformation replaceTransformation = new KeyTransformation() {
         
         public void transform(Trans trans, int index) {
-            byte[] bytes = Keys.toBytes(trans.kvs[index].keySegments);
+            byte[] bytes = Keys.toBytes(trans.kvs[index].getKey());
             byte[] timeBytes = Keys.toBytes(transTimeToString(trans.time));
             assert timeBytes.length == REPLACE_ME_LENGTH;
             boolean found = false;
@@ -477,7 +477,8 @@ public class RwEnvironmentImp implements RwEnvironment {
             }
             
             long[] newKey = Keys.toSegments(bytes);
-            trans.kvs[index].keySegments = newKey;
+            //trans.kvs[index].keySegments = newKey;
+            trans.kvs[index].setKey(newKey);   // XXX
             trans.writeKeyHashes[index] = Keys.hash(newKey);
         }
     };

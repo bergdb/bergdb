@@ -1252,11 +1252,11 @@ public class DbTester {
     public static void testKeyTransformation1() {
         KeyTransformation kt = new KeyTransformation() {
             public void transform(Trans trans, int index) {
-                long[] key = trans.kvs[index].keySegments;
+                long[] key = trans.kvs[index].getKey();
                 String keyString = Keys.toString(key);
                 keyString = keyString.replace("<transactionTime>", "" + trans.time);
                 long[] newKey = Keys.toSegments(keyString);
-                trans.kvs[index].keySegments = newKey;
+                trans.kvs[index].setKey(newKey);
                 trans.writeKeyHashes[index] = Keys.hash(newKey);
             }
         };
@@ -1267,7 +1267,7 @@ public class DbTester {
                 .build();
         db.execute(t);
         
-        String s = Keys.toString(t.kvs[0].keySegments);
+        String s = Keys.toString(t.kvs[0].getKey());
         Assert.assertFalse(s.contains("transactionTime"));
         long transTime1 = Long.parseLong(s.substring("test/".length()));
         Assert.assertTrue(transTime1 >= 0);
@@ -1277,11 +1277,12 @@ public class DbTester {
     public static void testKeyTransformation2() {
         KeyTransformation kt = new KeyTransformation() {
             public void transform(Trans trans, int index) {
-                long[] key = trans.kvs[index].keySegments;
+                long[] key = trans.kvs[index].getKey();
                 String keyString = Keys.toString(key);
                 keyString = keyString.replace("<transactionTime>", "" + trans.time);
                 long[] newKey = Keys.toSegments(keyString);
-                trans.kvs[index].keySegments = newKey;
+                //trans.kvs[index].keySegments = newKey;
+                trans.kvs[index].setKey(newKey);
                 trans.writeKeyHashes[index] = Keys.hash(newKey);
             }
         };
@@ -1292,7 +1293,7 @@ public class DbTester {
                 .build();
         db.execute(t);
         
-        String s = Keys.toString(t.kvs[0].keySegments);
+        String s = Keys.toString(t.kvs[0].getKey());
         Assert.assertFalse(s.contains("transactionTime"));
         long transactionTime1 = Long.parseLong(s.substring("test/".length()));
         
@@ -1301,7 +1302,7 @@ public class DbTester {
                 .build();
         db.execute(t);
         
-        s = Keys.toString(t.kvs[0].keySegments);
+        s = Keys.toString(t.kvs[0].getKey());
         Assert.assertFalse(s.contains("transactionTime"));
         long transactionTime2 = Long.parseLong(s.substring("test/".length()));
         

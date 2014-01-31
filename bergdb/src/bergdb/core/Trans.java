@@ -90,9 +90,9 @@ public class Trans {
         b.append("kv keys:\n");
         for (int i = 0; i < this.kvs.length; i++) {
             Kv kv =  kvs[i];
-            b.append("  " + Keys.toStringWithSubstitute(kv.keySegments)
-                    + " -> size:" + kv.value.length
-                    + ", key hash: " + Keys.hash(kv.keySegments) + "\n");
+            b.append("  " + Keys.toStringWithSubstitute(kv.getKey())
+                    + " -> size:" + kv.getValue().length
+                    + ", key hash: " + Keys.hash(kv.getKey()) + "\n");
         }
         
         return b.toString();
@@ -153,7 +153,7 @@ public class Trans {
                 throw new IllegalArgumentException("value == null not allowed, use delete() " +
                 		"to delete a key-value pair.");
             }
-            kvs.add(new Kv(key, value));
+            kvs.add(new Kv(Keys.toSegments(key), value));
             return this;
         }
         
@@ -176,9 +176,7 @@ public class Trans {
                 		"to delete a key-value pair.");
             }
             
-            Kv kv = new Kv(key, value);
-            kv.keyTransformation = kt;
-            kv.valueTransformation = vt;
+            Kv kv = new Kv(key, value, kt, vt);
             kvs.add(kv);
             return this;
         }
@@ -241,7 +239,7 @@ public class Trans {
         }
 
         public Builder delete(byte[] key) {
-            kvs.add(new Kv(key, null));
+            kvs.add(new Kv(Keys.toSegments(key), null));
             return this;
         }
         
@@ -261,7 +259,7 @@ public class Trans {
         private long[] computeWriteHashes(Kv[] kvs) {
             long[] keyHashes = new long[kvs.length + this.virtualWriteHashes.size()];
             for (int i = 0; i < kvs.length; i++) {
-                keyHashes[i] = Keys.hash(kvs[i].keySegments);
+                keyHashes[i] = Keys.hash(kvs[i].getKey());
             }
             for (int i = 0; i < virtualWriteHashes.size(); i++) {
                 keyHashes[kvs.length + i] = virtualWriteHashes.get(i);
@@ -284,9 +282,9 @@ public class Trans {
             TreeMap<long[], Kv> map = new TreeMap<long[], Kv>(arrayComparator);
             
             for (Kv kv : kvs) {
-                Kv prev = map.put(kv.keySegments, kv);
-                if (kv.value == null && prev != null && prev.value != null) {
-                    map.put(kv.keySegments, prev);
+                Kv prev = map.put(kv.getKey(), kv);
+                if (kv.getValue() == null && prev != null && prev.getValue() != null) {
+                    map.put(kv.getKey(), prev);
                 }
             }
             

@@ -8,6 +8,8 @@ import bergdb.common.Util;
 
 /**
  * A 16-byte (128-bit) database ID. An object of this class is immutable.
+ * 
+ * @author Frans Lundberg
  */
 public class DatabaseId {
     /**
@@ -33,7 +35,6 @@ public class DatabaseId {
         r.setSeed(new SeedGenerator().getSeed());
         id = new byte[SIZE];
         r.nextBytes(id);
-        //id = testId.getBytes();
     }
     
     /**

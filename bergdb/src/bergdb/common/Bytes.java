@@ -28,14 +28,15 @@ public class Bytes {
      * assumed.
      */
     public static final long bytesToLongLE(byte[] arr, int offset) {
-        long result = (arr[offset++] & 0x000000ffL);
-        result |= (arr[offset++] & 0x000000ffL) << 8;
-        result |= (arr[offset++] & 0x000000ffL) << 16;
-        result |= (arr[offset++] & 0x000000ffL) << 24;
-        result |= (arr[offset++] & 0x000000ffL) << 32;
-        result |= (arr[offset++] & 0x000000ffL) << 40;
-        result |= (arr[offset++] & 0x000000ffL) << 48;
-        result |= (arr[offset]   & 0x000000ffL) << 56;
+        int i = offset;
+        long result = (arr[i++] & 0x000000ffL);
+        result |= (arr[i++] & 0x000000ffL) << 8;
+        result |= (arr[i++] & 0x000000ffL) << 16;
+        result |= (arr[i++] & 0x000000ffL) << 24;
+        result |= (arr[i++] & 0x000000ffL) << 32;
+        result |= (arr[i++] & 0x000000ffL) << 40;
+        result |= (arr[i++] & 0x000000ffL) << 48;
+        result |= (arr[i]   & 0x000000ffL) << 56;
         return result;
     }
     
@@ -49,14 +50,15 @@ public class Bytes {
         // 6 ns almost seems suspiciously fast, however. At 1.66 GHz, its only 10 cycles.
         //
         
-        arr[offset++] = (byte) value;
-        arr[offset++] = (byte) (value >>> 8);
-        arr[offset++] = (byte) (value >>> 16);
-        arr[offset++] = (byte) (value >>> 24);
-        arr[offset++] = (byte) (value >>> 32);
-        arr[offset++] = (byte) (value >>> 40);
-        arr[offset++] = (byte) (value >>> 48);
-        arr[offset]   = (byte) (value >>> 56);
+        int i = offset;
+        arr[i++] = (byte) value;
+        arr[i++] = (byte) (value >>> 8);
+        arr[i++] = (byte) (value >>> 16);
+        arr[i++] = (byte) (value >>> 24);
+        arr[i++] = (byte) (value >>> 32);
+        arr[i++] = (byte) (value >>> 40);
+        arr[i++] = (byte) (value >>> 48);
+        arr[i]   = (byte) (value >>> 56);
     }
 
     /**
@@ -64,14 +66,15 @@ public class Bytes {
      * assumed.
      */
     public static final long bytesToLongBE(byte[] arr, int offset) {
-        long result = (arr[offset++] & 0x000000ffL) << 56;
-        result |= (arr[offset++] & 0x000000ffL) << 48;
-        result |= (arr[offset++] & 0x000000ffL) << 40;
-        result |= (arr[offset++] & 0x000000ffL) << 32;
-        result |= (arr[offset++] & 0x000000ffL) << 24;
-        result |= (arr[offset++] & 0x000000ffL) << 16;
-        result |= (arr[offset++] & 0x000000ffL) << 8;
-        result |= (arr[offset++] & 0x000000ffL);
+        int i = offset;
+        long result = (arr[i++] & 0x000000ffL) << 56;
+        result |= (arr[i++] & 0x000000ffL) << 48;
+        result |= (arr[i++] & 0x000000ffL) << 40;
+        result |= (arr[i++] & 0x000000ffL) << 32;
+        result |= (arr[i++] & 0x000000ffL) << 24;
+        result |= (arr[i++] & 0x000000ffL) << 16;
+        result |= (arr[i++] & 0x000000ffL) << 8;
+        result |= (arr[i++] & 0x000000ffL);
         return result;
     }
     
@@ -80,14 +83,15 @@ public class Bytes {
      */
     public static final void longToBytesBE(final long v, final byte[] bytes, int offset) {
         // Inspired by Sun's implementation of java.io.DataInputStream.
-        bytes[offset++] = (byte)(v >>> 56);
-        bytes[offset++] = (byte)(v >>> 48);
-        bytes[offset++] = (byte)(v >>> 40);
-        bytes[offset++] = (byte)(v >>> 32);
-        bytes[offset++] = (byte)(v >>> 24);
-        bytes[offset++] = (byte)(v >>> 16);
-        bytes[offset++] = (byte)(v >>>  8);
-        bytes[offset] = (byte) v;
+        int i = offset;
+        bytes[i++] = (byte)(v >>> 56);
+        bytes[i++] = (byte)(v >>> 48);
+        bytes[i++] = (byte)(v >>> 40);
+        bytes[i++] = (byte)(v >>> 32);
+        bytes[i++] = (byte)(v >>> 24);
+        bytes[i++] = (byte)(v >>> 16);
+        bytes[i++] = (byte)(v >>>  8);
+        bytes[i] = (byte) v;
     }
     
     // ---- float ----
@@ -154,8 +158,9 @@ public class Bytes {
      * Writes a long to a byte array. Little endian first byte order is used.
      */
     public static final void shortToBytesLE(final long value, final byte[] arr, int offset) {
-        arr[offset++] = (byte) value;
-        arr[offset++] = (byte) (value >>> 8);
+        int i = offset;
+        arr[i++] = (byte) value;
+        arr[i++] = (byte) (value >>> 8);
     }
     
     @T
@@ -215,10 +220,11 @@ public class Bytes {
      * Creates an integer from a byte array. Little endian byte order is used.
      */
     public static final int bytesToIntLE(byte[] arr, int offset) {
-        int result = (arr[offset++] & 0x00ff);
-        result |= (arr[offset++] & 0x00ff) << 8;
-        result |= (arr[offset++] & 0x00ff) << 16;
-        result |= (arr[offset] & 0x00ff) << 24;
+        int i = offset;
+        int result = (arr[i++] & 0x00ff);
+        result |= (arr[i++] & 0x00ff) << 8;
+        result |= (arr[i++] & 0x00ff) << 16;
+        result |= (arr[i] & 0x00ff) << 24;
         return result;
     }
     

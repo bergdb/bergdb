@@ -123,6 +123,8 @@ public class Salsa {
         // process() inlined, handles 64-byte blocks of data.
         
         int i, c;
+        int inIndex = inOffset;
+        int outIndex = outOffset;
         
         if (len > 0) {
             while (true) {
@@ -133,15 +135,15 @@ public class Salsa {
                 
                 c = (len <= 64) ? len : 64;
                 for (i = 0; i < c; i++) {
-                    out[outOffset + i] = (byte)(in[inOffset + i] ^ output[i]);
+                    out[outIndex + i] = (byte)(in[inIndex + i] ^ output[i]);
                 }
                 appendPos += c;
                 len -= 64;
                 if (len < 1) {
                     break;
                 }
-                inOffset += 64;
-                outOffset += 64;
+                inIndex += 64;
+                outIndex += 64;
             }
         }
     }

@@ -3,9 +3,6 @@ package bergdb.common;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-//import java.lang.management.ClassLoadingMXBean;
-//import java.lang.management.ManagementFactory;
-//import java.lang.management.ThreadMXBean;
 import java.util.Enumeration;
 import java.util.Properties;
 

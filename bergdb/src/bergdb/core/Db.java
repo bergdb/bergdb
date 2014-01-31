@@ -1168,54 +1168,23 @@ public class Db {
     private void checkNodeInner() throws AssertionError {
         final long[] counters = new long[4];
             // top, key, value, dirty, total
-        //final long dirtyLimit = this.getDirtyLimit();
-        //long lastTransSize = this.lastSposOfLastTrans - this.sposOfLastTrans;
-        //final long dLimit = dirtyLimit - lastTransSize;
         
         NodeVisitor visitor = new NodeVisitor() {
             public void visit(TopNode node) {
                 counters[0]++;
-                //checkTooDirty(node);
             }
 
             public void visit(KeyNode node) {
                 counters[1]++;
                 node.check();    // throws AssertionError if bad.
-                //checkTooDirty(node);
             }
 
             public void visit(ValueNode node) {
                 counters[2]++;
-                //checkTooDirty(node);
             }
-            
-            /*private void checkTooDirty(INode node) {
-                long spos = node.getSpos();
-                boolean isDirty = node.isDirty();
-                
-                if (spos == Spos.NULL) {
-                    throw new AssertionError("spos of node is Spos.NULL. node: " + node);
-                }
-                
-                if (isDirty) counters[3]++;
-                
-                if (isDirty && spos <= dLimit) {
-                    long length = Db.this.getStreamLength();
-                    String message = "Node too dirty. Stream length: " + length 
-                            + ", Dirty limit: " + dirtyLimit + ", node: " + node;
-                    
-                    throw new AssertionError(message);
-                }
-            }*/
         };
         
         graph.visitMemoryNodes(visitor);
-        
-        //long total = counters[0] + counters[1] + counters[2];
-        //
-        //System.out.println("Db.checkNodes(): " + total + " nodes (" 
-        //        + counters[0] + ", " + counters[1] + ", " + counters[2] + ", " + counters[3] + ")");
-        //System.out.println("Db.checkNodes(): last trans size: " + lastTransSize);
     }
     
     /**
@@ -1304,7 +1273,7 @@ public class Db {
 
         // Warm-up code, avoids read from stream while holding writeLock.
         for (Kv kv : t.kvs) {
-            this.getOne(time, kv.keySegments, t.getData);
+            this.getOne(time, kv.getKey(), t.getData);
         }
 
         t.getData.evictData.enableEvict = enableEvict;
@@ -1508,6 +1477,8 @@ public class Db {
      */
     private final void putKvs() {
         //
+        // 1401 Frans: Tried [if (kv.keyTransformation != null) {...], but that increased set time
+        // (dev.CorePerf "set") with 10 per cent.
         // 1210 Frans: Added [if (kv.keyTransformation != ...], [if (kv.valueTransformation != ...]
         // These changes do not add any measurable overhead when null; measured with test.Set.
         //
@@ -1520,17 +1491,15 @@ public class Db {
             Kv kv = trans.kvs[i];
 
             if (kv.keyTransformation != null) {
-                kv.keyTransformation.transform(trans, i);
+                kv.getKeyTransformation().transform(trans, i);
             }
 
             if (kv.valueTransformation != null) {
-                final byte[] previous = this.getOne(trans.time, kv.keySegments, 
-                        trans.getData);
-                kv.value = kv.valueTransformation.transform(trans.time, kv.value,
-                        previous);
+                final byte[] previousValue = this.getOne(trans.time, kv.getKey(), trans.getData);
+                kv.transformValue(trans.time, previousValue);
             }
 
-            graph.putKv(kv.keySegments, kv.value, pd);
+            graph.putKv(kv.getKey(), kv.getValue(), pd);
             
             pd.clearFast();
         }
