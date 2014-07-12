@@ -225,6 +225,10 @@ Only used for developement purpose only.
     	    <include name="bergdb/**"/>
     	</packageset>
 
+    	<packageset dir="src-dev" defaultexcludes="yes">
+    	    <include name="bergdb/**"/>
+    	</packageset>
+    		
         <classpath>
             <fileset dir="">
                 <include name="in/icu-for-bergdb.jar"/>

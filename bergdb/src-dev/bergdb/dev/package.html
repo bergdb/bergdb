@@ -130,26 +130,6 @@ with Java byte code, of course. Also it is build to native machine code and to .
 <p>The source is built to one jar: "bergdb.jar". Source files are not included in this jar.</p>
 
 
-<h3>GCJ</h3>
-
-<p>The source also compiles to native machine code with GCJ. We should be able to compile
-it both to an executable and a library.
-Some restrictions when programming: not all "printf" statements work. For example:
-<code>System.out.printf("%s: %.3f s\n", currentMethodName, exeTime);</code>
-does not work. We avoid using "printf" all together as a work-around.</p>
-
-<p>Resource files are problematic, should work, but I did not manage to get it to compile
-when compiling the project from source.</p>
-
-<p>Other things to avoid: weak references.</p>
-
-<p>Assertions can be tricky to disable when compiling from jar file (bergdb.jar) instead of
-from source.</p>
-
-<p>In general, GCJ seems a bit old. Not much updated the last years. Lack of documentation.
-However, it does seem to work with a few limitiations on the Java coding.</p>
-
-
 <h3>IKVM</h3>
 
 <p>Works well, no problems at all. See build/ikvm.</p>
@@ -158,28 +138,18 @@ However, it does seem to work with a few limitiations on the Java coding.</p>
 <!-- ====================================================================== -->
 <h1>Versions and releases</h1>
 
-<p><b>Version</b>. "2013.1" is used as the <i>version ID</i> of the first BergDB version in 2013. 
-2013.2, 2013.3, 2014.1, 2014.2 are used for the following public releases (assuming 3 releases 
+<p><b>Version</b>. "2014.1" is used as the <i>version ID</i> of the first BergDB version in 2014. 
+2014.2, 2014.3, 2015.1, 2015.2 are used for the following public releases (assuming 3 releases 
 in 2013). There must be no more than 9 versions for one specific year.
-The <b>version int</b> is 131, 132, 133, 141, 142 for the above example releases. The version
-int makes it simple to compare versions. It should be used internally only.
+The <b>version int</b> is 141, 142, 143, 151, 152 for the above example releases. 
+The version int makes it simple to compare versions. It should be used internally only.
 The version ID and the version int are available from the class db.BuildInfo.
 The year (2013, 2014) is the <i>major version number</i>, and the second number if the 
-<i>minor version number</i>.
-A change in minor version adds functionality, improves existing functionality and aims to
-be backward compatible with previous versions with the same major version number.
-When the major version changes, changes may be introduced that are not backward compatible.</p>
+<i>minor version number</i>.</p>
 
 <p>New methods and features can be marked with "since" in Javadoc, example: "@since 2013.2".</p>
 
-<p><b>Release</b>. A BergDB software release is one single zip file made available from bergdb.com.
-</p>
-
-<p>Each release of a new zip file is given a release ID. A <i>release ID</i> contains the BergDB 
-version plus the release date. Examples: "2013.1.130401", "2013.2.130301", "2013.1.130601", 
-"2013.2.130610".Releases of old versions may be made, but should be avoided since newer minor 
-versions should be backward compatible. But such releases are allowed. Simple mistakes, updates 
-to documentation etc.</p>
+<p>A BergDB software release is one single zip file made available from bergdb.com.</p>
 
 <p><b>Build</b>. Builds are used internally by BergDB developers (me only :-)). 
 <i>Build IDs</i> has HHMM added to the build ID. Examples: "2013.1.130401.1330", 
@@ -193,8 +163,8 @@ to documentation etc.</p>
 (possibly by including files in doc-files/ directories). HTML and TXT files are allowed.
 JPEG/PNG images are also allowed.<p>
 
-<p>Avoid separate documentation. The bergdb.com website should mostly simply have links to 
-Javadoc (bergdb.com/api/2013.1/...).</p>
+<p>Avoid separate documentation. The bergdb.com website should mostly simply link to 
+Javadoc (bergdb.com/2014.1/...).</p>
 
 
 <!-- ====================================================================== -->
