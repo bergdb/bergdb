@@ -88,32 +88,32 @@ public class ObjectSize {
 
 /*
 
-Example output, 130328:
+Example output, 140712
 
 $ java -javaagent:out/inst.jar -cp out/bergdb.jar bergdb.dev.ObjectSize
-Object: 8
+Object: 16
 Node: 48
-A: 8
+A: 16
 NonStatic: 16
 B1: 16
 B4: 16
-B8: 16
+B8: 24
 B9: 24
 Booleans: 16
 Booleans.field: 96
 byte[0]: 16 (16)
-byte[1]: 16 (15)
-byte[2]: 16 (14)
-byte[3]: 16 (13)
-byte[4]: 16 (12)
+byte[1]: 24 (23)
+byte[2]: 24 (22)
+byte[3]: 24 (21)
+byte[4]: 24 (20)
 byte[5]: 24 (19)
 byte[6]: 24 (18)
 byte[7]: 24 (17)
 byte[8]: 24 (16)
-byte[9]: 24 (15)
-byte[10]: 24 (14)
-byte[11]: 24 (13)
-byte[12]: 24 (12)
+byte[9]: 32 (23)
+byte[10]: 32 (22)
+byte[11]: 32 (21)
+byte[12]: 32 (20)
 byte[13]: 32 (19)
 byte[14]: 32 (18)
 byte[15]: 32 (17)

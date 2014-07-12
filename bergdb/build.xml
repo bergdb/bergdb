@@ -175,7 +175,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
 
     <jar jarfile="out/inst.jar" manifest="out/MANIFEST-inst.MF">
         <fileset dir="out/classes">
-            <include name="bergdb/dev/KissInstrumentation.class"/>
+            <include name="bergdb/dev/MyInstrumentation.class"/>
         </fileset>
     </jar>
 </target>
