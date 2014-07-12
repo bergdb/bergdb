@@ -43,9 +43,11 @@ public interface DatabaseBuilder {
     public DatabaseBuilder clock(Clock clock);
     
     /**
-     * Creates and returns the Database according to the settings specified in the
+     * Creates and returns an UnstartedDatabase according to the settings specified in the
      * settings methods.
-     * After this method has been called, this object should not used again.
+     * After this method returns, this builder object must not used again.
+     * 
+     * TODO A. Return UnstartedDatabase instead.
      */
     public abstract Database build();
 
