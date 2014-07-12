@@ -87,7 +87,7 @@ public final class TopNode implements INode {
         return INode.TYPE_TOP_NODE;
     }
     
-    public final boolean isTopOrKeyNode() {
+    public final boolean isIndexNode() {
         return true;
     }
     

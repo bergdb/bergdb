@@ -57,7 +57,7 @@ public class CoreUnit {
      * Called from main().
      */
     public void go(String[] args) {
-        KissTestCollector c = new KissTestCollector();
+        BergDBTestCollector c = new BergDBTestCollector();
         c.setPrintProps(false);
         c.setPrintMethods(true);
         
@@ -92,7 +92,7 @@ public class CoreUnit {
      * @param classPatternString Regex for classname or null for all classes.
      * @param methodPatternString Regex for method name or null for all nano unit test methods.
      */
-    public void go(KissTestCollector collector, String classPatternString, 
+    public void go(BergDBTestCollector collector, String classPatternString, 
             String methodPatternString) {
         List<Class<?>> classes = new ArrayList<Class<?>>();
         IPack[] ipacks = getIPacks();

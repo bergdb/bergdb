@@ -191,7 +191,7 @@ public class TransSeq {
                             }
                         }
                         
-                        if (tposLong != null && child.isTopOrKeyNode()) {
+                        if (tposLong != null && child.isIndexNode()) {
                             ArrayList<INode> parents = childToParents.get(child);
                             if (parents == null) {
                                 parents = new ArrayList<INode>();

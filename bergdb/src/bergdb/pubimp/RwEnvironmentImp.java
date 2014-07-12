@@ -477,8 +477,7 @@ public class RwEnvironmentImp implements RwEnvironment {
             }
             
             long[] newKey = Keys.toSegments(bytes);
-            //trans.kvs[index].keySegments = newKey;
-            trans.kvs[index].setKey(newKey);   // XXX
+            trans.kvs[index].setKey(newKey);
             trans.writeKeyHashes[index] = Keys.hash(newKey);
         }
     };

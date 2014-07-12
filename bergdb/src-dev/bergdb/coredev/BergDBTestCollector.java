@@ -7,13 +7,13 @@ import bergdb.nanotest.BasicCollector;
  * 
  * @author Frans Lundberg
  */
-public class KissTestCollector extends BasicCollector {
+public class BergDBTestCollector extends BasicCollector {
     private int classCount = 0;
     private Class<?> currentClass;
     private boolean firstTestOfClass;
     private static final int SLOW_LIMIT = 500;   // ms limit, if exceeded print time
     
-    public KissTestCollector() {
+    public BergDBTestCollector() {
         super();
     }
     

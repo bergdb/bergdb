@@ -38,7 +38,7 @@ public final class ValueNode implements INode {
         return TYPE_VALUE;
     }
     
-    public final boolean isTopOrKeyNode() {
+    public final boolean isIndexNode() {
         return false;
     }
     

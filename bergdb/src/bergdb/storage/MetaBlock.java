@@ -69,7 +69,6 @@ public class MetaBlock {
      * Creates a new MetaBlock given the 'block' byte buffer.
      * 
      * @param block  The bytes of the meta block. Must be of length RecoverableStream.META_BLOCK_SIZE.
-     * @param pos XXX ?     
      */ 
     MetaBlock(byte[] block, long pos) {
         assert block != null;

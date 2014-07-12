@@ -27,8 +27,7 @@ public interface INode {
     
     public byte getType();
     
-    // TODO A. Rename. isIndexNode()..
-    public boolean isTopOrKeyNode();
+    public boolean isIndexNode();
     
     public long getSpos();
     public void setSpos(long spos);
@@ -41,9 +40,6 @@ public interface INode {
      */
     public long getId();
     public void setId(long id);
-    
-    //public boolean isDirty();
-    //public void setIsDirty(boolean b);
     
     public int getPointerCount();
     

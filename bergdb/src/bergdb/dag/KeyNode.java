@@ -90,7 +90,7 @@ public class KeyNode implements INode {
         return INode.TYPE_KEY_NODE;
     }
     
-    public final boolean isTopOrKeyNode() {
+    public final boolean isIndexNode() {
         return true;
     }
     

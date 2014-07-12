@@ -770,7 +770,7 @@ public class Db {
             
             for (StoredNode storedNode : storedTrans.nodes) {
                 INode node = storedNode.getNode();
-                if (node.isTopOrKeyNode()) {
+                if (node.isIndexNode()) {
                     tnodes.add(node);
                 }
                 posMap.put(node.getSpos(), node);
@@ -1353,7 +1353,7 @@ public class Db {
             
             public void pointerFollowed(INode predecessor, int pointerIndex, INode result,
                     int pointerType) {
-                if (result.getSpos() < limit && result.isTopOrKeyNode()) {
+                if (result.getSpos() < limit && result.isIndexNode()) {
                     if (result.getType() == INode.TYPE_TOP_NODE) {
                         transNodes.addTopNode((TopNode) result);
                     } else {
