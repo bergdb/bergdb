@@ -4,7 +4,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Enumeration;
+import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 
 /**
  * This class is able to generate random data (not evenly distributed) with
@@ -15,7 +17,8 @@ import java.util.Properties;
  * @author Frans Lundberg
  */
 public class SeedGenerator {
-    //
+    // 
+    // 1402 Frans: now using stack traces for *all* threads.
     // 1302 Frans: addJMXData() no longer used because of IKVM issues. We want to avoid
     // the dependency of one more IKVM DLL.
     //
@@ -63,14 +66,21 @@ public class SeedGenerator {
     }
     
     private void addStackTrace() {
-        StackTraceElement[] elements = Thread.currentThread().getStackTrace();
-        for (StackTraceElement element : elements) {
-            addData(element.getLineNumber());
-            addData(element.getMethodName());
-            addData(element.getFileName());
-        }
+        Map<Thread, StackTraceElement[]> traces = Thread.getAllStackTraces();
+        Set<Thread> threads = traces.keySet();
         
-        addData(elements.length);
+        addData(threads.size());
+        
+        for (Thread t : threads) {
+            StackTraceElement[] elements = traces.get(t);
+            addData(elements.length);
+            
+            for (StackTraceElement element : elements) {
+                addData(element.getLineNumber());
+                addData(element.getMethodName());
+                addData(element.getFileName());
+            }
+        }
     }
 
     /**

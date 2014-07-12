@@ -17,11 +17,12 @@ import bergdb.pub.BadFormatException;
 
 /**
  * <p>An immutable object with a map of named and typed fields.
- * The fields are typed, but the object itself has no particular schema or type in the sense that
- * the set of fields can vary independently between any two DbObjects.
- * The word "field" is not used for the actual Java class fields, but for the conceptual
+ * The fields are typed, but the object itself has no particular schema.
+ * The set of fields can vary independently between any two DbObjects.
+ * The word "field" is not used as the actual Java class fields, but for the conceptual
  * fields that this object contain. The set of types available for a DbObject field does 
- * not correspond directly to Java types, but is a separate small type system with 8 distinct types.
+ * not correspond directly to Java types, but is a separate small type system with 
+ * 8 distinct types.
  * </p>
  * 
  * <p>The DbObject types with their one-character representation, name, and descriptions:</p>
@@ -35,7 +36,7 @@ import bergdb.pub.BadFormatException;
  * b - byteArray  An array of bytes.
  * a - array      A heterogeneous array (list) of values. See class DbArray.
  * o - object     A nested DbObject.
- * z - zero       Not a type, character 'z' is reserved for null-capability usage.
+ * z - zero       Not a type, character 'z' is reserved for null-capability.
  * </pre>
  * 
  * <p>The types n, i, l, d can have any values permitted by the Java runtime for the primitive 
@@ -1017,8 +1018,6 @@ public class DbObject extends DbValue {
 }
 
 /*
-
-
 
 Overhead for a single int
 =========================

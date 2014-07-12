@@ -154,9 +154,7 @@ public class Bytes {
         return (short) result;
     }
     
-    /**
-     * Writes a long to a byte array. Little endian first byte order is used.
-     */
+    
     public static final void shortToBytesLE(final long value, final byte[] arr, int offset) {
         int i = offset;
         arr[i++] = (byte) value;

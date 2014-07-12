@@ -13,8 +13,8 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
 
 	
 <target name="init" description="Initializes properties and prints version, release, and build.">
-    <property name="release" value="2013.4"/>                     <!-- CHANGEIT for new release. -->
-    <property name="releaseInt" value="134"/>                     <!-- CHANGEIT for new release. -->
+    <property name="release" value="2014.1"/>                     <!-- CHANGEIT for new release. -->
+    <property name="releaseInt" value="141"/>                     <!-- CHANGEIT for new release. -->
 
     <tstamp>
         <format property="dateString" pattern="yyMMdd" />
@@ -28,7 +28,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
     <property name="javac" value="/a/pr/jdk1.5.0_22/bin/javac"/>  <!-- CHANGEIT for your environment. -->
     <property name="build" value="${release}.${minuteString}"/>
 
-    <!-- bergdb.core.BuildInfo.java is machine generated from template. -->
+    <!-- bergdb.core.BuildInfo.java is generated from a template. -->
 	<copy file="in/BuildInfoTemplate.txt" 
             toFile="src/bergdb/core/BuildInfo.java"
             overwrite="true">
@@ -51,14 +51,13 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
 </target>
 
 	
-<!-- Compiles sources with Java 1.5 compiler. -->
+<!-- 
+  Compiles sources with ${javac} compiler. 
+  Note that fork="true" must be set, otherwise the "executable" parameter is ignored. 
+-->
 <target name="compile" depends="init" description="Compiles Java sources to class files.">
 	<mkdir dir="out/classes"/>
-	
-	<!-- Compiling with ${javac} compiler.
-	     Note that fork="true" must be set, otherwise the "executable" parameter is ignored.
-	-->
-	
+
 	<javac srcdir="src" destdir="out/classes" source="1.5" target="1.5" includeantruntime="false"
 	       fork="true" executable="${javac}"/>
 
@@ -85,8 +84,8 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
         <attribute name="Main-Class" value="bergdb.dev.Run"/>
         <attribute name="Copyright" value="Frans Lundberg"/>
         <attribute name="Author" value="Frans Lundberg"/>
-        <attribute name="Ant-Version" value=""/>    <!-- how to remove completely? -->
-        <attribute name="Created-By" value=""/>     <!-- only managed to overwrite -->
+        <attribute name="Ant-Version" value=""/>    
+        <attribute name="Created-By" value=""/>     
         <attribute name="release" value="${release}"/>
         <attribute name="build" value="${build}"/>
     </manifest>
@@ -111,7 +110,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
             manifest="out/MANIFEST.MF">
         <fileset dir="out/classes">
             <include name="bergdb/**/*.class"/>     <!-- Only classfiles. -->
-            <exclude name="bergdb/pubimpicu/**"/>   <!-- must be omitted -->
+            <exclude name="bergdb/pubimpicu/**"/>   <!-- Must be omitted. -->
         </fileset>
     </jar>
 	

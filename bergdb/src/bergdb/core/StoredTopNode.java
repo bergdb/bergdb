@@ -22,8 +22,7 @@ public class StoredTopNode implements StoredNode {
     private TopNode node;
     
     private StoredTopNode() {}
-    
-    
+        
     public final TopNode getNode() {
         return node;
     }

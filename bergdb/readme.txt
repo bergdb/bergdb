@@ -24,6 +24,17 @@ To test
 To test the generated jar file:
 
     java -jar out/bergdb.jar bergdb.dev.Unit
+
+
+Files
+-----
+
+src      - The main Java source code directory.
+src-icu  - Source code for package bergdb.pubimpicu.
+src-dev  - Development and test packages not needed in production 
+           and could be omitted from the final build.
+
+----
     
 Good luck!
 

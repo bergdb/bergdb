@@ -17,7 +17,7 @@ public class GetStarted1 {
         Person p = c.get("/p", Person.class);
         
         System.out.println(p.name);
-        db.sync();
+        c.sync();
     }
 }
 
