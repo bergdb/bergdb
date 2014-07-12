@@ -157,10 +157,14 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
     </jar>
 	
 	<copy todir="${base}/${release}/more/" file="out/bergdb-core.jar" overwrite="true"/>
+</target>
 
-    <!-- jar for instrumentation, used by bergdb.dev.ObjectSize. inst.jar 
-         Only used for developement purpose only. -->
-    
+<!-- 
+inst.jar, jar for instrumentation, used by bergdb.dev.ObjectSize. 
+Only used for developement purpose only. 
+-->
+<target name="inst.jar" depends="init, compile" description="Creates out/inst.jar.">
+    <mkdir dir="out/classes"/>    
     <delete file="out/inst-MANIFEST.MF" failonerror="false"/>
     <delete file="out/inst.jar" failonerror="false"/>
 
@@ -170,7 +174,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
         <attribute name="Author" value="Frans Lundberg"/>
         <attribute name="Ant-Version" value=""/>
         <attribute name="Created-By" value=""/>
-    	<attribute name="build" value="${build}"/>
+        <attribute name="build" value="${build}"/>
     </manifest>
 
     <jar jarfile="out/inst.jar" manifest="out/MANIFEST-inst.MF">
