@@ -15,13 +15,15 @@ import bergdb.pub.IndexAlreadyExistsException;
 import bergdb.pub.IndexBuilder;
 import bergdb.pub.Job;
 import bergdb.pub.JobStatus;
+import bergdb.pub.StartInfo;
 import bergdb.pub.StorageInfo;
 import bergdb.storage.StorageManager;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.FileStream;
 
 /**
- * Implementation of pub.Database. See pub.Database for Javadoc.
+ * Implementation of pub.Database, a started database. 
+ * See pub.Database for Javadoc.
  * 
  * @see bergdb.pub.Database
  * @author Frans Lundberg
@@ -32,7 +34,7 @@ public class DatabaseImp implements Database {
     // initializing state that can be customized by the Pub user. But is it required?
     //
     private final Db db;
-    private volatile boolean started;
+    private StartInfoImp startInfo;
     private final IndexManager indexManager;
     private final ConnectionInitializer connectionInitializer;
         // "final" for now. Could become a setting.
@@ -42,7 +44,7 @@ public class DatabaseImp implements Database {
         // "final" for now, could become a setting.
     private final HashMap<Thread, Connection> threadLocalConnections;
     
-    public DatabaseImp(final Db db) {
+    private DatabaseImp(final Db db) {
         synchronized (this) {
             assert db != null;
             this.db = db;
@@ -62,11 +64,33 @@ public class DatabaseImp implements Database {
             KvToObjectImp k = new KvToObjectImp();
             this.kvToObject = k;
             this.classToObject = k;
-            
-            this.started = false;
         }
     }
     
+    /**
+     * @throws StreamIoException
+     * @throws StreamFormatException
+     * @throws IllegalDbStateException  If db has been started already.
+     * @throws BadReplicaException
+     */
+    public static synchronized DatabaseImp createAndStart(final Db db) {
+        DatabaseImp database = new DatabaseImp(db);
+        
+        long t0 = System.nanoTime();
+        db.start();
+        double startTime = (t0 - System.nanoTime()) * 1e-9;
+        
+        ConnectionImp connection = new ConnectionImp(database);
+        database.indexManager.initFromDatabase(connection);
+        List<Job> jobs = database.indexManager.finishOngoingJobs(database);        
+        database.startInfo = new StartInfoImp(jobs, startTime);
+        
+        return database;
+    }
+    
+    /**
+     * Not Pub API.
+     */
     public final Db getDb() {
         return db;
     }
@@ -83,14 +107,7 @@ public class DatabaseImp implements Database {
         return this.classToObject;
     }
     
-    /**
-     * @throws IllegalDbStateException
-     */
     public Connection connection() {
-        if (!started) {
-            throw new IllegalDbStateException("start() must be called first.");
-        }
-        
         Connection c;
         
         synchronized (threadLocalConnections) {
@@ -108,38 +125,21 @@ public class DatabaseImp implements Database {
         return c;
     }
     
-    /**
-     * @throws IllegalDbStateException
-     */
     public Connection newConnection() {
-        if (!started) {
-            throw new IllegalDbStateException("start() must be called first.");
-        }
-        
         return new ConnectionImp(DatabaseImp.this);
     }
     
     /**
-     * @throws IllegalDbStateException
      * @throws StreamIoException
      */
     public void sync() {
-        if (!started) {
-            throw new IllegalDbStateException("start() must be called first.");
-        }
-        
         db.sync();
     }
     
     /**
-     * @throws IllegalDbStateException
      * @throws StreamIoException
      */
     public void syncStrong() {
-        if (!started) {
-            throw new IllegalDbStateException("start() must be called first.");
-        }
-        
         db.syncStrong();
     }
     
@@ -151,25 +151,8 @@ public class DatabaseImp implements Database {
         db.sync();
     }
     
-    /**
-     * @throws StreamIoException
-     * @throws StreamFormatException
-     * @throws IllegalDbStateException  If start() has been called already.
-     * @throws BadReplicaException
-     */
-    public synchronized List<Job> start() {
-        if (started) {
-            throw new IllegalDbStateException("start() was already called, cannot start " +
-            		"database again.");
-        }
-        
-        db.start();
-        
-        ConnectionImp connection = new ConnectionImp(this);
-        indexManager.initFromDatabase(connection);
-        List<Job> jobs = indexManager.finishOngoingJobs(this);        
-        this.started = true;
-        return jobs;
+    public StartInfo getStartInfo() {
+        return startInfo;
     }
     
     public synchronized void stop() {
@@ -243,10 +226,6 @@ public class DatabaseImp implements Database {
     }
     
     public IndexBuilder indexBuilder(String indexName) {
-        if (!started) {
-            throw new IllegalStateException("start() must be called first.");
-        }
-        
         IndexManager.checkIndexName(indexName);
         if (indexManager.hasIndex(indexName)) {
             throw new IndexAlreadyExistsException("Index '" + indexName + "' already exists.");
@@ -259,10 +238,6 @@ public class DatabaseImp implements Database {
      * @throws DbException
      */
     public Job deleteIndex(final String indexName) {        
-        if (!started) {
-            throw new IllegalStateException("start() must be called first.");
-        }
-        
         if (indexName == null) {
             throw new IllegalArgumentException("indexName == null not allowed");
         }

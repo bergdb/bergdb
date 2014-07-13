@@ -1,8 +1,6 @@
 package bergdb.pub;
 
 import java.io.IOException;
-import java.util.List;
-
 import bergdb.pubimp.IndexManager;
 
 /**
@@ -21,21 +19,9 @@ public interface Database {
     public static final String PRIMARY = IndexManager.PRIMARY;
     
     /**
-     * Starts the database. When this method returns, connections to the
-     * database can be made.
-     * 
-     * @throws IllegalStateException
-     *             If start() has been called already.
-     * @throws DbException
-     *             If the database is not functioning.
-     * @throws BadReplicaException
-     *             If the replica provided in when creating the Database object
-     *             is not a valid replica of the database. The database ID in
-     *             the stream may be wrong, for example.
-     * @return A list of internal jobs started by the method. Jobs include finishing the 
-     * creation of an index or finishing the deletion of an index.
+     * Returns information about the start of this database.
      */
-    public List<Job> start();
+    public StartInfo getStartInfo();
     
     /**
      * <p>Stops the database - requests that resources allocated by this Database are 
@@ -63,25 +49,21 @@ public interface Database {
      * The returned object is always the same object for one specific thread that calls this 
      * method. Two different threads calling this method are guaranteed to get different 
      * Connection instances. The lookupTime of the returned Connection is always Long.MAX_VALUE.
-     * 
-     * @throws IllegalDbStateException if start() has not been called.
      */
     public Connection connection();
     
     /**
-     * Gets a new connection to the database.
-     * The returned object is always newly created in this method and will not be
-     * returned from newConnection() or connection() again.
-     * 
-     * @throws IllegalDbStateException if start() has not been called.
+     * Creates and returns a new connection to the database.
+     * The returned object is always newly created in this method and 
+     * is guaranteed not to be returned from subsequent calls to 
+     * newConnection() or connection().
      */
     public Connection newConnection();
     
     /**
      * Waits until the last started transaction has been stored durably
-     * according to ordinary durability rules.
+     * according to the ordinary durability rules.
      * 
-     * @throws IllegalDbStateException if start() has not been called.
      * @throws DbException if the database is faulty.
      */
     public void sync();
@@ -90,15 +72,15 @@ public interface Database {
      * Waits until the last started transaction has been stored durably
      * according to strong durability rules.
      * 
-     * @throws IllegalDbStateException if start() has not been called.
      * @throws DbException if the database is faulty.
      */
     public void syncStrong();
     
     /**
-     * <p>Returns the current database time in 100 ns units. The returned time is guaranteed to be 
-     * strictly less then the transaction time of any currently executing transaction (if any 
-     * transaction is executing) and less then the transaction time of any future transaction.
+     * <p>Returns the current database time in 100 ns units (DB time units). 
+     * The returned time is guaranteed to be strictly less then the transaction time of any 
+     * currently executing transaction (if any transaction is executing)
+     * and less then the transaction time of any future transaction.
      * The time is measured in number of 100 nanosecond units that has passed since Unix Epoch
      * (00:00:00.000 1 Jan 1970). Leap seconds are not counted; a day always has 24*60*60 seconds
      * (24*60*60*10,000,000 time units).</p>
@@ -119,9 +101,9 @@ public interface Database {
      * This method can be called before start() or while the database is running.</p>
      * 
      * <p>If the retain duration is increased, the 
-     * actual duration available for lookups will increase until it exceeds the retain duration
-     * set in this method. Use getFirstAvailableLookupTime() to see the currently available
-     * time span for lookups.<p>
+     * actual duration available for lookups will increase until it equals or exceeds 
+     * the retain duration set in this method. Use getFirstAvailableLookupTime() to see the 
+     * currently available time span for lookups.<p>
      * 
      * <p>Use Long.MAX_VALUE to keep old states available forever. Note, that this will increase
      * the database storage space indefinitely even when data is deleted from the database.
@@ -145,7 +127,7 @@ public interface Database {
      * 
      * @param indexName  Unique name of the index. Cannot be the empty string. Cannot contain 
      * the forward slash character (/), or a whitespace character.
-     * @throws IllegalArgumentException If 'indexName' is bad.
+     * @throws IllegalArgumentException If 'indexName' is illegal.
      * @throws IndexAlreadyExistsException If an index with the given name already exists.
      */
     public IndexBuilder indexBuilder(String indexName);
@@ -175,7 +157,7 @@ public interface Database {
     public Job addReplica(String name, String dir) throws IOException;
     
     /**
-     * Removes an active replica storage from the database. The existing replica data is not 
+     * Removes a replica storage from the database. The existing replica data is not 
      * deleted but will no longer be updated.
      * 
      * @param name  Name of the storage.

@@ -7,6 +7,7 @@ import bergdb.common.Util;
 import bergdb.pub.Action;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
+import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.Factory;
 import bergdb.pub.RwEnvironment;
 import bergdb.pub.WBuilder;
@@ -24,10 +25,10 @@ public class PayDemo {
     
     /** Creates database, starts it and adds the replica. */
     private static Database createDatabase() throws IOException {
-        Database database = Factory.database().dir(dir).build();
+        DatabaseBuilder builder = Factory.database().dir(dir);
         
         long t0 = System.nanoTime();
-        database.start();
+        Database database = builder.start();
         double time = 1e-9 * (System.nanoTime() - t0);
         System.out.printf("Database started in %.1f s. Data dir: " + dir + "\n", time);
         

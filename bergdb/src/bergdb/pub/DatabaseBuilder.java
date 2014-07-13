@@ -41,20 +41,19 @@ public interface DatabaseBuilder {
      * deterministic testing.
      */
     public DatabaseBuilder clock(Clock clock);
-    
-    /**
-     * Creates and returns an UnstartedDatabase according to the settings specified in the
-     * settings methods.
-     * After this method returns, this builder object must not used again.
-     * 
-     * TODO A. Return UnstartedDatabase instead.
-     */
-    public abstract Database build();
 
     /**
-     * A convenience shortcut method equivalent to 
-     * <code>build().start()</code>.
-     * After this method has been called, this object should not be used.
+     * Starts the database. When this method returns, connections to the
+     * database can be made.
+     * 
+     * @throws DbException
+     *             If the database is not functioning.
+     * @throws BadReplicaException
+     *             If the replica provided in when creating the Database object
+     *             is not a valid replica of the database. The database ID in
+     *             the stream may be wrong, for example.
      */
     public abstract Database start();
+        
+    // TODO Add setRetainDuration to this builder.
 }

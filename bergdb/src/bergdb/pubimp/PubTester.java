@@ -10,6 +10,7 @@ import bergdb.pub.BadReplicaException;
 import bergdb.pub.Clock;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
+import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.Factory;
 import bergdb.pub.Kv;
 import bergdb.pub.RwEnvironment;
@@ -325,7 +326,7 @@ public class PubTester {
     
     @T
     public static void testRetainDuration1() {
-        Database d = Factory.database().memory().build();
+        Database d = Factory.database().memory().start();
         
         long retain = d.getRetainDuration();
         Assert.assertTrue("retain = " + retain, retain > 0);
@@ -337,12 +338,8 @@ public class PubTester {
     
     @T
     public static void testRetainDuration2() {
-        Database d = Factory.database().memory().build();
-        
-        long retain = d.getRetainDuration();
-        Assert.assertTrue("retain = " + retain, retain > 0);
-        
-        d.start();
+        DatabaseBuilder builder = Factory.database().memory();
+        Database d = builder.start();
         d.connection().w().put("/key", "value").execute();
         d.setRetainDuration(Clock.UNITS_PER_SEC * 21);
         
@@ -511,11 +508,10 @@ public class PubTester {
         b = (DatabaseBuilderImp) Factory.database();
         b.stream("m0", m0);
         b.stream("m1", m1);
-        d = b.build();
         
         BadReplicaException ex = null;
         try {
-            d.start();
+            b.start();
         } catch (BadReplicaException e) {
             ex = e;
         }

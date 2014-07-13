@@ -99,22 +99,8 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         return this;
     }
     
-    /* (non-Javadoc)
-     * @see com.bergdb.pub.IBuilder#build()
-     */
-    public Database build() {
-        Db db = dbBuilder.build();
-        DatabaseImp d = new DatabaseImp(db);
-        return d;
-    }
-    
-    /* (non-Javadoc)
-     * @see com.bergdb.pub.IBuilder#start()
-     */
     public Database start() {
-        Database db = build();
-        db.start();
-        return db;
+        return DatabaseImp.createAndStart(dbBuilder.build());
     }
     
     /**

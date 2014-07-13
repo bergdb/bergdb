@@ -54,11 +54,10 @@ public class Concurrency {
         DatabaseBuilderImp builder = (DatabaseBuilderImp) Factory.database();
         builder.mainStream(stream);
         builder.evictBoss(new FixedDurationEvictBoss());
-        database = builder.build();
         
         Db db = ((DatabaseImp) database).getDb();
         db.setRetainDuration(10 * Clock.UNITS_PER_SEC);
-        database.start();
+        database = builder.start();
         new Jmx.DbMonitor(db).register();
         new Jmx.Speed(db).registerAndStart();
     }
