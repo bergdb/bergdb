@@ -24,5 +24,5 @@ public final class Factory {
 
 /*
 Note, the code [new DatabaseBuilderImp();] is the *only* reference to the implementation package
-bergdb.pubimp.
+bergdb.pubimp. Nice, ha!?
 */

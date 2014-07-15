@@ -379,7 +379,7 @@ public class PubTesterIndex {
             .put("/payments/40", new Payment("1001", "1040", 40))
             .execute();
         
-        c.setLookupTime(250);
+        c.setLookupTime(Time.units(250));
         Iterable<Payment> it = c.useIndex("payments-from", Payment.class).eq("1001").objects();
         Iterator<Payment> iter = it.iterator();
         Assert.assertTrue(iter.hasNext());
@@ -388,7 +388,7 @@ public class PubTesterIndex {
         Assert.assertEquals(30, iter.next().amount);
         Assert.assertFalse(iter.hasNext());
         
-        c.setLookupTime(350);
+        c.setLookupTime(Time.units(350));
         it = c.useIndex("payments-from", Payment.class).eq("1001").objects();
         iter = it.iterator();
         
@@ -420,7 +420,7 @@ public class PubTesterIndex {
         Exception ex = null;
         
         try {
-            c.setLookupTime(50);
+            c.setLookupTime(Time.units(50));
             c.useIndex("payments-from", Payment.class);
         } catch (NoSuchIndexException e) {
             ex = e;
@@ -430,7 +430,7 @@ public class PubTesterIndex {
         ex = null;
         
         try {
-            c.setLookupTime(500);
+            c.setLookupTime(Time.units(500));
             c.useIndex("payments-from", Payment.class);
         } catch (NoSuchIndexException e) {
             ex = e;

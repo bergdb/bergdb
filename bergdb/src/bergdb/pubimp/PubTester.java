@@ -7,14 +7,15 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.pub.Action;
 import bergdb.pub.BadReplicaException;
-import bergdb.pub.Clock;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
+import bergdb.pub.Duration;
 import bergdb.pub.Factory;
 import bergdb.pub.Kv;
 import bergdb.pub.RwEnvironment;
 import bergdb.pub.TestClock;
+import bergdb.pub.Time;
 import bergdb.pub.Transaction;
 import bergdb.pub.WBuilder;
 import bergdb.stream.MemoryStream;
@@ -259,7 +260,7 @@ public class PubTester {
         Assert.assertEquals("2", c1.get("/b", String.class));
         Assert.assertNull(c1.get("/c", String.class));
         
-        c1.setLookupTime(Long.MAX_VALUE);
+        c1.setLookupTime(Time.MAX);
         Assert.assertEquals("2b", c1.get("/b", String.class));
         Assert.assertEquals("3b", c1.get("/c", String.class));
         database.stop();
@@ -328,11 +329,11 @@ public class PubTester {
     public static void testRetainDuration1() {
         Database d = Factory.database().memory().start();
         
-        long retain = d.getRetainDuration();
-        Assert.assertTrue("retain = " + retain, retain > 0);
+        Duration duration = d.getRetainDuration();
+        Assert.assertTrue(duration.getDbUnits() > 0);
         
-        d.setRetainDuration(Clock.UNITS_PER_SEC * 123);
-        Assert.assertEquals(Clock.UNITS_PER_SEC * 123, d.getRetainDuration());
+        d.setRetainDuration(Duration.seconds(123.0));
+        Assert.assertEquals(Duration.seconds(123.0), d.getRetainDuration());
         d.stop();
     }
     
@@ -341,10 +342,10 @@ public class PubTester {
         DatabaseBuilder builder = Factory.database().memory();
         Database d = builder.start();
         d.connection().w().put("/key", "value").execute();
-        d.setRetainDuration(Clock.UNITS_PER_SEC * 21);
+        d.setRetainDuration(Duration.seconds(21));
         
         d.connection().w().put("/key2", "value2").execute();
-        Assert.assertEquals(Clock.UNITS_PER_SEC * 21, d.getRetainDuration());
+        Assert.assertEquals(Duration.seconds(21.0), d.getRetainDuration());
         d.stop();
     }
     

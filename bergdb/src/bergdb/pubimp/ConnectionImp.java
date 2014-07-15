@@ -6,6 +6,7 @@ import bergdb.dag.Keys;
 import bergdb.pub.Action;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
+import bergdb.pub.Time;
 import bergdb.pub.Transaction;
 import bergdb.pub.UseIndexBuilder;
 import bergdb.pub.UsePrimaryBuilder;
@@ -30,11 +31,12 @@ public class ConnectionImp implements Connection {
         this.enableKeyReplace = false;
         this.lastSposOfLastTrans = 0;
     }
+    
+    public final void setLookupTime(Time lookupTime) {
+        setLookupTime(lookupTime.getUnits());
+    }
 
     public final void setLookupTime(long lookupTime) {
-        if (lookupTime < 0) {
-            throw new IllegalArgumentException("Bad lookupTime, " + lookupTime + ".");
-        }
         this.freezeLookupTime = false;
         this.lookupTime = lookupTime;
     }

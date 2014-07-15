@@ -26,6 +26,7 @@ import bergdb.pub.Database;
 import bergdb.pub.Factory;
 import bergdb.pub.ReadInterface;
 import bergdb.pub.RwEnvironment;
+import bergdb.pub.Time;
 import bergdb.pub.Transaction;
 import bergdb.pub.WBuilder;
 import bergdb.pubimp.DatabaseBuilderImp;
@@ -257,7 +258,7 @@ public class Concurrency {
         Assert.assertEquals(-count * 2, sum1);
         Assert.assertEquals(count * 2, sum2);
         
-        c.setLookupTime(Long.MAX_VALUE);
+        c.setLookupTime(Time.MAX);
         this.readCount.incrementAndGet();
     }
     

@@ -10,6 +10,7 @@ import bergdb.core.DbStoppingException;
 import bergdb.pub.Clock;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
+import bergdb.pub.Duration;
 import bergdb.pub.IllegalDbStateException;
 import bergdb.pub.IndexAlreadyExistsException;
 import bergdb.pub.IndexBuilder;
@@ -17,6 +18,7 @@ import bergdb.pub.Job;
 import bergdb.pub.JobStatus;
 import bergdb.pub.StartInfo;
 import bergdb.pub.StorageInfo;
+import bergdb.pub.Time;
 import bergdb.storage.StorageManager;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.FileStream;
@@ -57,7 +59,7 @@ public class DatabaseImp implements Database {
             
             this.connectionInitializer = new ConnectionInitializer() {
                 public void initialize(Connection connection) {
-                    connection.setLookupTime(Long.MAX_VALUE);
+                    connection.setLookupTime(Time.MAX);
                 }
             };
             
@@ -202,27 +204,27 @@ public class DatabaseImp implements Database {
         return db.getStorageInfos();
     }
     
-    public final long getTime() {
-        return db.getTime();
+    public final Time getTime() {
+        return Time.units(db.getTime());
     }
     
-    public final long getRetainDuration() {
-        return db.getRetainDuration();
+    public final Duration getRetainDuration() {
+        return Duration.dbUnits(db.getRetainDuration());
     }
     
-    public void setRetainDuration(long retainDuration) {
-        long limit = 1 * Clock.UNITS_PER_SEC;
+    public void setRetainDuration(Duration retainDuration) {
+        long units = retainDuration.getDbUnits();
         
-        if (retainDuration < 1 * Clock.UNITS_PER_SEC) {
+        if (units < 1 * Clock.UNITS_PER_SEC) {
             throw new IllegalArgumentException("retainDuration too small, must be at least " 
-                    + limit + ".");
+                    + "one second.");
         }
         
-        db.setRetainDuration(retainDuration);
+        db.setRetainDuration(units);
     }
     
-    public final long getFirstAvailableLookupTime() {
-        return db.getTime();
+    public final Time getFirstAvailableLookupTime() {
+        return Time.units(db.getTime());
     }
     
     public IndexBuilder indexBuilder(String indexName) {

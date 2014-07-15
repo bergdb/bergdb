@@ -12,7 +12,7 @@ public class GetStarted5 {
         Connection c = db.connection();
         
         c.put("/key", "a");
-        long time = db.getTime();
+        Time time = db.getTime();
         
         c.put("/key", "b");
         

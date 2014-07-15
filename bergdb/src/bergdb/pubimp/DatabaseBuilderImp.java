@@ -8,6 +8,7 @@ import bergdb.core.IEvictBoss;
 import bergdb.pub.Clock;
 import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
+import bergdb.pub.Duration;
 import bergdb.storage.StorageManager;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.FileStream;
@@ -15,17 +16,23 @@ import bergdb.stream.MemoryStream;
 
 /**
  * This class is used to build a Database instance.
- * Use code like this: <code>Database db = Builder.database().settingX().build();</code>
+ * Use like this: <code>Database d = Builder.database().settingX().start();</code>
  * to create a Database.
  * 
  * @author Frans Lundberg
  */
 public class DatabaseBuilderImp implements DatabaseBuilder {
-    
-    private Db.Builder dbBuilder;
+    private final Db.Builder dbBuilder;
     
     public DatabaseBuilderImp() {
         dbBuilder = Db.builder();
+    }
+    
+    /**
+     * Creates and returns a database builder object that is used to create a database.
+     */
+    public static DatabaseBuilder database() {
+        return new DatabaseBuilderImp();
     }
     
     /**
@@ -70,6 +77,11 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         return this;
     }
     
+    public DatabaseBuilder retainDuration(Duration retainDuration) {
+        dbBuilder.retainDuration(retainDuration.getDbUnits());
+        return this;
+    }
+    
     /**
      * Not part of Pub API.
      */
@@ -101,12 +113,5 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     
     public Database start() {
         return DatabaseImp.createAndStart(dbBuilder.build());
-    }
-    
-    /**
-     * Creates and returns a database builder object that is used to create a database.
-     */
-    public static DatabaseBuilder database() {
-        return new DatabaseBuilderImp();
     }
 }

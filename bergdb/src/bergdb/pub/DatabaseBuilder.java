@@ -41,6 +41,11 @@ public interface DatabaseBuilder {
      * deterministic testing.
      */
     public DatabaseBuilder clock(Clock clock);
+    
+    /**
+     * Sets the wanted retain duration.
+     */
+    public DatabaseBuilder retainDuration(Duration duration);
 
     /**
      * Starts the database. When this method returns, connections to the
@@ -54,6 +59,4 @@ public interface DatabaseBuilder {
      *             the stream may be wrong, for example.
      */
     public abstract Database start();
-        
-    // TODO Add setRetainDuration to this builder.
 }

@@ -31,11 +31,9 @@ public interface Connection extends ReadInterface {
      * 
      * @param lookupTime
      *            The database time to use for read operations. Use
-     *            Long.MAX_VALUE to read the last database state.
-     * @throws IllegalArgumentException
-     *             If lookupTime is negative.
+     *            Time.MAX to read the latest database state.
      */
-    public void setLookupTime(long lookupTime);
+    public void setLookupTime(Time lookupTime);
 
     /**
      * Returns the actual lookup time that was used for the last read operation.

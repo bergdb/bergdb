@@ -1,7 +1,5 @@
 package bergdb.test;
 
-import java.util.List;
-
 import bergdb.core.Db;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.BasicCollector;
@@ -14,6 +12,7 @@ import bergdb.pub.Factory;
 import bergdb.pub.Job;
 import bergdb.pub.JobStatus;
 import bergdb.pub.NoSuchIndexException;
+import bergdb.pub.Time;
 import bergdb.pubimp.DatabaseBuilderImp;
 import bergdb.pubimp.DatabaseImp;
 import bergdb.stream.MemoryStream;
@@ -42,11 +41,11 @@ public class CreateIndexTester {
         long length = db.getStreamLength();
         coll.out().println("Created database, stream length: " + (length/1e6));
         
-        long time0 = database.getTime();
+        Time time0 = database.getTime();
         
         Job job = database.indexBuilder("e-salary").type("long").dir("/e/").field("salary").start();
         
-        long time1 = database.getTime();
+        Time time1 = database.getTime();
         
         for (; i < n*2; i++) {
             c.w().put(new Employee("/e/" + i, (i-n) * 10 + 1)).execute();
@@ -58,7 +57,7 @@ public class CreateIndexTester {
         database.sync();
         coll.out().println("Index job status = " + status.note());
         
-        long time2 = database.getTime();
+        Time time2 = database.getTime();
         
         coll.out().println("Index created, stream length = " + (db.getStreamLength()/1e6));
         
@@ -121,7 +120,7 @@ public class CreateIndexTester {
         
         Job job = database.indexBuilder("e-salary").type("long").dir("/e/").field("salary").start();
         
-        long time1 = database.getTime();
+        Time time1 = database.getTime();
         
         Thread.sleep(100);
         
@@ -172,7 +171,7 @@ public class CreateIndexTester {
         }
         Assert.assertTrue("Tries c.index() while it is being created", ex != null);
         
-        c.setLookupTime(Long.MAX_VALUE);
+        c.setLookupTime(Time.MAX);
         c.useIndex("e-salary", Employee.class);
     }
     
