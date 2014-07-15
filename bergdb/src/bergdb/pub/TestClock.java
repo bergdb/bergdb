@@ -15,11 +15,21 @@ public final class TestClock implements Clock {
     }
     
     /**
-     * Sets the time. The time must be larger than or equal to the current time of the clock.
-     * 
-     * @param time In time units.
+     * Sets the time of this test clock.
+     * The time must be larger than or equal to the current time of the clock.
      */
-    public void setTime(long time) {
+    public void setTime(Time time) {
+        if (time == null) {
+            throw new IllegalArgumentException("time == null not allowed");
+        }
+        
+        setTimeInUnits(time.units());
+    }
+    
+    /**
+     * @param time In clock units.
+     */
+    private void setTimeInUnits(long time) {
         if (time < ClockConstants.MIN_TIME) {
             throw new IllegalArgumentException("time is too small, was " + time + ".");
         }

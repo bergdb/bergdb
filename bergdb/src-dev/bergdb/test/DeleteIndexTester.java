@@ -114,7 +114,7 @@ public class DeleteIndexTester {
         
         g = db.newGetMany();
         g.inclusive = false;
-        g.lookupTime = timeA.getUnits();
+        g.lookupTime = timeA.units();
         g.startKey = Keys.toSegments(dir);
         g.stopCondition = new GetMany.PrefixN(g.startKey, 10);
         db.getMany(g);
@@ -123,7 +123,7 @@ public class DeleteIndexTester {
         
         g = db.newGetMany();
         g.inclusive = false;
-        g.lookupTime = time0.getUnits();
+        g.lookupTime = time0.units();
         g.startKey = Keys.toSegments(dir);
         g.stopCondition = new GetMany.PrefixN(g.startKey, 10);
         db.getMany(g);
@@ -132,7 +132,7 @@ public class DeleteIndexTester {
         
         g = db.newGetMany();
         g.inclusive = false;
-        g.lookupTime = time1.getUnits();
+        g.lookupTime = time1.units();
         g.startKey = Keys.toSegments(dir);
         g.stopCondition = new GetMany.PrefixN(g.startKey, 10);
         db.getMany(g);
@@ -142,7 +142,7 @@ public class DeleteIndexTester {
         
         g = db.newGetMany();
         g.inclusive = false;
-        g.lookupTime = time2.getUnits();
+        g.lookupTime = time2.units();
         g.startKey = Keys.toSegments(dir);
         g.stopCondition = new GetMany.PrefixN(g.startKey, 10);
         db.getMany(g);

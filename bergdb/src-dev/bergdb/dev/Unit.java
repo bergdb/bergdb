@@ -20,6 +20,7 @@ public class Unit extends bergdb.coredev.CoreUnit {
         new bergdb.test.java.Pack(),
         new bergdb.test.night.Pack(),
         new bergdb.pubimp.Pack(),
+        new bergdb.pubimp.PackForPub(),
         new bergdb.stream.Pack(),
         new bergdb.dev.Pack()
     };

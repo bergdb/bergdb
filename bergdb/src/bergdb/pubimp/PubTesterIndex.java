@@ -359,20 +359,20 @@ public class PubTesterIndex {
     @T
     public static void testIterHistory() {
         TestClock clock = new TestClock();
-        clock.setTime(100);
+        clock.setTime(Time.units(100));
         Database db = Factory.database().memory().clock(clock).start();
         Connection c = db.newConnection();
         
         db.indexBuilder("payments-from").dir("/payments/").type("string/unicode").field("from").createFast();
         
-        clock.setTime(200);
+        clock.setTime(Time.units(200));
         
         c.w().put("/payments/10", new Payment("1001", "1002", 10))
             .put("/payments/20", new Payment("1002", "1009", 20))
             .put("/payments/30", new Payment("1001", "1009", 30))
             .execute();
         
-        clock.setTime(300);
+        clock.setTime(Time.units(300));
         
         c.w().put("/payments/12", new Payment("1001", "1012", 12))
             .put("/payments/30", new Payment("1001", "1030", 31))
@@ -404,13 +404,13 @@ public class PubTesterIndex {
     @T
     public static void testNonExistantIndex() {
         TestClock clock = new TestClock();
-        clock.setTime(100);
+        clock.setTime(Time.units(100));
         Database db = Factory.database().memory().clock(clock).start();
         Connection c = db.newConnection();
         
         db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").createFast();
         
-        clock.setTime(200);
+        clock.setTime(Time.units(200));
         
         c.w().put("/payments/10", new Payment("1001", "1002", 10))
             .put("/payments/20", new Payment("1002", "1009", 20))
@@ -1448,9 +1448,9 @@ public class PubTesterIndex {
         
         database.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").start().join();
         c.setEnableKeyReplace(true);
-        clock.setTime(100);
+        clock.setTime(Time.units(100));
         c.w().put(key, new Payment("101", "105", 5)).execute();
-        clock.setTime(200);
+        clock.setTime(Time.units(200));
         c.w().put(key, new Payment("100", "106", 6)).execute();
         
         Iterator<Payment> iter = c.useIndex("payments-from", Payment.class).objects().iterator();

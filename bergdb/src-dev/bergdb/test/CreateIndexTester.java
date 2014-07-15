@@ -139,7 +139,7 @@ public class CreateIndexTester {
         database = builder.start();
         c = database.connection();
         
-        // TODO database.getStartInfo().getJobs()
+        // TODO A. database.getStartInfo().getJobs()
         /*Assert.assertEquals("start() jobs.size()", 1, jobs.size());
         job = jobs.get(0);
         coll.out().println("Job status: " + job.getStatus().note());

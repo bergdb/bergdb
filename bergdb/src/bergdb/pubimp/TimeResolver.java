@@ -14,11 +14,11 @@ import bergdb.pub.Clock;
 
 /**
  * <p>An instance of this class can resolve a <i>time string</i> to a time value
- * in database units (100 ns units since epoch).
+ * in clock units (100 ns units since epoch).
  * The format of the time string loosely follows ISO 8601.
- * This class is not thread-safe. The gregorian calendar is used (the most common one).
- * Leap seconds are never considered. One day is always 24*3600 s, one minute is 60 s and one
- * hour is always 3600 s.</p>
+ * This class is not thread-safe. The Gregorian calendar is used (the ordinary Western calendar).
+ * Leap seconds are never considered. One day is always 24*3600 seconds, 
+ * one minute is 60 seconds and one hour is always 3600 seconds.</p>
  * 
  * <pre>
  * The following examples with comments define the time format.
@@ -48,9 +48,9 @@ import bergdb.pub.Clock;
  * 
  * MINUS-TIME PLUS TIME-OF-DAY
  * 
- * A minus-time expression can be followed by a RELATIVE TIME. In this case, the resulting time
+ * A minus-time expression can be followed by a TIME-OF-DAY. In this case, the resulting time
  * is the same as if the negative time duration was first subtracted from the current time, 
- * and then the resulting time was used together with the RELATIVE TIME to resolve the time.
+ * and then the resulting time was used together with the TIME-OF-DAY to resolve the time.
  * 
  * "-2 d 14:29"                     -- The day before yesterday at 14:29:00.
  * 
@@ -72,17 +72,19 @@ import bergdb.pub.Clock;
  * @author Frans Lundberg
  */
 public class TimeResolver {
+    //
     // Let's try to implement the whole thing as a function. 
     // resolve(currentTime, timeZone, timeString)... Would be thread-safe.
     //
     
-    private static final TimeZone UTC = TimeZone.getTimeZone("UTC");
-    private static final long MILLIS_TO_UNITS = Clock.UNITS_PER_SEC / 1000;
+    /** UTC time zone. */
+    public static final TimeZone UTC = TimeZone.getTimeZone("UTC");
+    private static final long UNITS_PER_MILLISECOND = Clock.UNITS_PER_SEC / 1000;
     private final TimeData td;
     private final GregorianCalendar calendar;
     
     /**
-     * Parse data, keeps parse state.
+     * Stores parse state.
      */
     private static class TimeData {
         int year;
@@ -101,7 +103,7 @@ public class TimeResolver {
     }
     
     /**
-     * Creates a TimeResult with the given time zone.
+     * Creates a TimeResolver with the given time zone.
      */
     public TimeResolver(TimeZone timeZone) {
         if (timeZone == null) {
@@ -145,7 +147,7 @@ public class TimeResolver {
         }
         
         if (length > 4 && timeString.charAt(4) == '-') {
-            return absolute(timeString);
+            return resolveAbsolute(timeString);
         } else {
             if (first >= '0' && first <= '9') {
                 return timeOfDay(currentTime, timeString);
@@ -155,7 +157,7 @@ public class TimeResolver {
         }
     }
     
-    private long absolute(String timeString) {
+    public long resolveAbsolute(String timeString) {
         long length = timeString.length();
         
         if (length < 7) {
@@ -239,12 +241,12 @@ public class TimeResolver {
         }
         
         int millis = (int) milliFloor;
-        long change = (long) (milliFraction * MILLIS_TO_UNITS);
+        long change = (long) (milliFraction * UNITS_PER_MILLISECOND);
         
         calendar.set(Calendar.SECOND, second);
         calendar.set(Calendar.MILLISECOND, millis);
         
-        long result = calendar.getTimeInMillis() * MILLIS_TO_UNITS + change;
+        long result = calendar.getTimeInMillis() * UNITS_PER_MILLISECOND + change;
         return result;
     }
     
@@ -253,7 +255,7 @@ public class TimeResolver {
      * currentTime is used to compute "today".
      */
     private long computeTimeUnitsB(long currentTime) {
-        calendar.setTimeInMillis(currentTime / TimeResolver.MILLIS_TO_UNITS);
+        calendar.setTimeInMillis(currentTime / TimeResolver.UNITS_PER_MILLISECOND);
         calendar.set(Calendar.HOUR_OF_DAY, td.hour);
         calendar.set(Calendar.MINUTE, td.minute);
         
@@ -272,12 +274,12 @@ public class TimeResolver {
         }
         
         int millis = (int) milliFloor;
-        long change = (long) (milliFraction * MILLIS_TO_UNITS);
+        long change = (long) (milliFraction * UNITS_PER_MILLISECOND);
         
         calendar.set(Calendar.SECOND, second);
         calendar.set(Calendar.MILLISECOND, millis);
         
-        long result = calendar.getTimeInMillis() * MILLIS_TO_UNITS + change;
+        long result = calendar.getTimeInMillis() * UNITS_PER_MILLISECOND + change;
         return result;
     }
     
@@ -437,7 +439,7 @@ public class TimeResolver {
                 "2013-03-10 "};
         
         TimeResolver r = new TimeResolver();
-        long currentTime = 1000*1000*1000 * MILLIS_TO_UNITS;  // not needed for absolute times
+        long currentTime = 1000*1000*1000 * UNITS_PER_MILLISECOND;  // not needed for absolute times
         
         for (String s : ok) {
             r.resolve(currentTime, s);
@@ -462,7 +464,7 @@ public class TimeResolver {
     public static void testAbsolute1() {
         long millis = Util.getMillisSinceEpoch(UTC, 2013, 3, 14, 16, 10, 20, 500);        
         String ts = "2013-03-14 16:10:20.500";
-        Assert.assertEquals(millis * MILLIS_TO_UNITS, new TimeResolver().resolve(0, ts));
+        Assert.assertEquals(millis * UNITS_PER_MILLISECOND, new TimeResolver().resolve(0, ts));
     }
     
     @T
@@ -471,13 +473,13 @@ public class TimeResolver {
         TimeResolver t = new TimeResolver();
         
         String ts = "2000-01-01 00:00:00.000";
-        Assert.assertEquals(millis * MILLIS_TO_UNITS, t.resolve(0, ts));
+        Assert.assertEquals(millis * UNITS_PER_MILLISECOND, t.resolve(0, ts));
         
         ts = "2000-01-01 00:00:00";
-        Assert.assertEquals(millis * MILLIS_TO_UNITS, t.resolve(0, ts));
+        Assert.assertEquals(millis * UNITS_PER_MILLISECOND, t.resolve(0, ts));
         
         ts = "2000-01-01 00:00";
-        Assert.assertEquals(millis * MILLIS_TO_UNITS, t.resolve(0, ts));
+        Assert.assertEquals(millis * UNITS_PER_MILLISECOND, t.resolve(0, ts));
     }
     
     @T
@@ -487,19 +489,19 @@ public class TimeResolver {
         long millis = Util.getMillisSinceEpoch(UTC, 2000, 1, 1, 0, 0, 0, 0);    
         TimeResolver t = new TimeResolver();
         String ts = "2000-01-01 00:00:00.0000123";
-        Assert.assertEquals(millis * MILLIS_TO_UNITS + 123, t.resolve(0, ts));
+        Assert.assertEquals(millis * UNITS_PER_MILLISECOND + 123, t.resolve(0, ts));
         
         ts = "2000-01-01 00:00:00.0000123456";
-        Assert.assertEquals(millis * MILLIS_TO_UNITS + 123, t.resolve(0, ts));
+        Assert.assertEquals(millis * UNITS_PER_MILLISECOND + 123, t.resolve(0, ts));
         
         ts = "2000-01-01 00:00:00.00001239";
-        Assert.assertEquals(millis * MILLIS_TO_UNITS + 123, t.resolve(0, ts));
+        Assert.assertEquals(millis * UNITS_PER_MILLISECOND + 123, t.resolve(0, ts));
     }
     
     @T
     public static void testSpecial0() {
         TimeResolver r = new TimeResolver();
-        long current = 1 * 1000*1000*1000 * MILLIS_TO_UNITS + 123;
+        long current = 1 * 1000*1000*1000 * UNITS_PER_MILLISECOND + 123;
         long result = r.resolve(current, "now");
         Assert.assertEquals(current, result);
     }
@@ -519,7 +521,7 @@ public class TimeResolver {
         long t2 = r.resolve(t1, "09:20:40.5000123");
         
         long millis = Util.getMillisSinceEpoch(UTC, 2010, 3, 14, 9, 20, 40, 500);
-        Assert.assertEquals(millis * MILLIS_TO_UNITS + 123, t2);
+        Assert.assertEquals(millis * UNITS_PER_MILLISECOND + 123, t2);
     }
     
     @T
@@ -529,7 +531,7 @@ public class TimeResolver {
         long t2 = r.resolve(t1, "09:20:40.5000123");
         
         long millis = Util.getMillisSinceEpoch(UTC, 2010, 3, 14, 9, 20, 40, 500);
-        Assert.assertEquals(millis * MILLIS_TO_UNITS + 123, t2);
+        Assert.assertEquals(millis * UNITS_PER_MILLISECOND + 123, t2);
     }
     
     @T
@@ -539,7 +541,7 @@ public class TimeResolver {
         long t2 = r.resolve(t1, "09:20");
         
         long millis = Util.getMillisSinceEpoch(UTC, 2010, 3, 14, 9, 20, 0, 0);
-        Assert.assertEquals(millis * MILLIS_TO_UNITS, t2);
+        Assert.assertEquals(millis * UNITS_PER_MILLISECOND, t2);
     }
     
     @T

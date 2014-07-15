@@ -82,8 +82,6 @@ public class FileStream implements AppendOnlyStream {
      * @param dir  The directory to use.
      * @throws IOException  If existing directory cannot be read from / written to, or if 
      * 'dir' does not exist and cannot be created.
-     * @throws DirInUseException  If the directory is used by another database process based
-     * on the existence of a lock file.
      * @throws BadDirStateException  If the directory exists but the files in the directory
      * are not in a valid state. The files in the directory were modified by some other software.
      */
@@ -98,20 +96,9 @@ public class FileStream implements AppendOnlyStream {
     }
     
     /**
-     * Creates a new stream if it does not exist or opens an existing one if it exists.
-     * If the directory 'dir' does not exist an attempt is made to create it.
-     * 
-     * @param dir  The directory to use.
-     * @return A new FileStream object.
-     * @throws IOException  If existing directory cannot be read from / written to, or if 
-     * 'dir' does not exist and cannot be created.
-     * @throws DirInUseException  If the directory is used by another database process based
-     * on the existence of a lock file.
-     * @throws BadDirStateException  If the directory exists but the files in the directory
-     * are not in a valid state. The files in the directory were modified by some other software.
      * @deprecated
      */
-    public static FileStream create(File dir) throws IOException, DirInUseException {
+    public static FileStream create(File dir) throws IOException {
         if (dir == null) {
             throw new IllegalArgumentException("dir == null not allowed");
         }
@@ -147,7 +134,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     /**
-     * @throws IOException If directory does not exist and cannot be created.
+     * @throws IOException  If directory does not exist and cannot be created.
      */
     private void createDirIfNeeded() throws IOException {
         boolean exists;
@@ -176,16 +163,19 @@ public class FileStream implements AppendOnlyStream {
 
     /**
      * Handles initialization based on existing *.bergdb files.
+     * 
+     * @throws IOException
+     * @thrown BadDirStateException
      */
     private void handleFiles() throws IOException, BadDirStateException {
-        File[] kissFiles = dir.listFiles(new FilenameFilter() {
+        File[] bergdbFiles = dir.listFiles(new FilenameFilter() {
             public boolean accept(File dir, String name) {
                 boolean result = name.endsWith(SUFFIX);
                 return result;
             }    
         });
         
-        Arrays.sort(kissFiles, new Comparator<File>() {
+        Arrays.sort(bergdbFiles, new Comparator<File>() {
             public int compare(File f1, File f2) {
                 return f1.getName().compareTo(f2.getName());
             }
@@ -195,8 +185,8 @@ public class FileStream implements AppendOnlyStream {
         
         long currentSpos = 0;
         
-        for (int i = 0; i < kissFiles.length; i++) {
-            File f = kissFiles[i];
+        for (int i = 0; i < bergdbFiles.length; i++) {
+            File f = bergdbFiles[i];
             long fileSpos;
             
             String name = f.getName();
@@ -229,7 +219,7 @@ public class FileStream implements AppendOnlyStream {
             }
             
             long fLength = f.length();
-            if (i != kissFiles.length - 1) {
+            if (i != bergdbFiles.length - 1) {
                 if (fLength % BYTES_PER_INDEX_UNIT != 0) {
                     throw new BadDirStateException("Bad size of file " + f.getPath() 
                             + ", should have been a multiple of " + BYTES_PER_INDEX_UNIT 
@@ -242,12 +232,12 @@ public class FileStream implements AppendOnlyStream {
         
         // Determines fileSizeIndex
         
-        if (kissFiles.length == 0) {
+        if (bergdbFiles.length == 0) {
             this.fileSizeIndex = 0;
         } else {
-            long fileSize = kissFiles[kissFiles.length - 1].length();
-            if (kissFiles.length > 1) {
-                fileSize = Math.max(fileSize, kissFiles[kissFiles.length - 2].length());
+            long fileSize = bergdbFiles[bergdbFiles.length - 1].length();
+            if (bergdbFiles.length > 1) {
+                fileSize = Math.max(fileSize, bergdbFiles[bergdbFiles.length - 2].length());
             }
             
             this.fileSizeIndex = FILE_SIZES.length - 1;    // max
@@ -263,17 +253,17 @@ public class FileStream implements AppendOnlyStream {
         
         // Creates kfiles, kfilePositions.
         
-        kfiles = new KFile[kissFiles.length];
-        kfilePositions = new long[kissFiles.length];
+        kfiles = new KFile[bergdbFiles.length];
+        kfilePositions = new long[bergdbFiles.length];
         
-        if (kissFiles.length == 0) {
+        if (bergdbFiles.length == 0) {
             // Special case, no bergdb files, create one.
             newFile();
             return;
         }
         
-        for (int i = 0; i < kissFiles.length; i++) {
-            File f = kissFiles[i];
+        for (int i = 0; i < bergdbFiles.length; i++) {
+            File f = bergdbFiles[i];
             
             if (i == 0) {
                 String name = f.getName();
@@ -295,7 +285,7 @@ public class FileStream implements AppendOnlyStream {
             
             kfilePositions[i] = currentSpos;
             
-            if (i == kissFiles.length - 1) {
+            if (i == bergdbFiles.length - 1) {
                 kfiles[i] = openForRw(currentSpos, f, FILE_SIZES[fileSizeIndex]);
             } else {
                 kfiles[i] = openForR(currentSpos, f);

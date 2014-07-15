@@ -209,11 +209,11 @@ public class DatabaseImp implements Database {
     }
     
     public final Duration getRetainDuration() {
-        return Duration.dbUnits(db.getRetainDuration());
+        return Duration.units(db.getRetainDuration());
     }
     
     public void setRetainDuration(Duration retainDuration) {
-        long units = retainDuration.getDbUnits();
+        long units = retainDuration.units();
         
         if (units < 1 * Clock.UNITS_PER_SEC) {
             throw new IllegalArgumentException("retainDuration too small, must be at least " 

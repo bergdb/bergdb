@@ -86,14 +86,12 @@ public class CorePerf {
         baseline1.put("get4t",    0.4e-6);
         baseline1.put("getmany",  0.2e-6);
         baseline1.put("set",      5.0e-6);
-        //baseline1.put("set2",     3.5e-6);
         
         // linda
         baseline2.put("get",     1.50e-6);
         baseline2.put("get4t",   0.50e-6);
         baseline2.put("getmany", 0.26e-6);
         baseline2.put("set",     8.00e-6);
-        //baseline2.put("set2",    4.30e-6);
         
         int n = 5;
         
@@ -102,7 +100,6 @@ public class CorePerf {
             runMethod(GetThreaded.class, "get4t", "get-time-4", "get4t");
             runMethod(PerfGetMany.class, "standard", "time-per-kv", "getmany");
             runMethod(Set.class, "normal", "time-per-trans", "set");
-            //runMethod(Set.class, "noWritesToStream", "time-per-trans", "set2");
         }
         
         handleResult();
@@ -202,6 +199,17 @@ public class CorePerf {
 
 Log 
 ===
+
+== 140715 ==
+On Cissi.
+get:      0.78,  0.52,  7.791102764702836E-7
+get4t:    1.03,  0.82,  4.115720094654181E-7
+getmany:  0.86,  0.66,  1.7254319529026488E-7
+set:      0.92,  0.58,  4.60915452E-6
+GEO MEAN: 0.89,  0.64
+
+== 140715 ==
+Removed "set2" since it is still not working.
 
 == 131011 ==
 Disabled "set2" temporarily because of issue I do not want to fix now.

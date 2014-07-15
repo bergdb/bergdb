@@ -248,13 +248,13 @@ public class PubTester {
         Database database = Factory.database().memory().clock(clock).start();
         Connection c1 = database.connection();
         
-        clock.setTime(100);
+        clock.setTime(Time.units(100));
         c1.w().put("/a", "1").put("/b", "2").execute();
         c1.freezeLookupTime();
         c1.get("/a", String.class);
         
         Connection c2 = database.newConnection();
-        clock.setTime(200);
+        clock.setTime(Time.units(200));
         c2.w().put("/b", "2b").put("/c", "3b").execute();
         
         Assert.assertEquals("2", c1.get("/b", String.class));
@@ -330,7 +330,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         
         Duration duration = d.getRetainDuration();
-        Assert.assertTrue(duration.getDbUnits() > 0);
+        Assert.assertTrue(duration.units() > 0);
         
         d.setRetainDuration(Duration.seconds(123.0));
         Assert.assertEquals(Duration.seconds(123.0), d.getRetainDuration());
@@ -837,7 +837,24 @@ public class PubTester {
         Assert.assertEquals(123, myInt);
     }
     
-    public static void main(String[] args) {
-        //
+    @T
+    public static void testSetLookupWithTimeString1() {
+        Database d = Factory.database().memory().start();
+        Connection c = d.connection();
+        c.setLookupTime(Time.resolve(Time.UTC, "1970-01-01 00:00:01"));
+        c.get("/key", String.class);
+        Time time = c.getLookupTime();
+        Assert.assertEquals(Time.millis(1000), time);
+    }
+    
+    @T
+    public static void testSetLookupWithTimeString2() {
+        TestClock clock = new TestClock();
+        clock.setTime(Time.utc("1970-01-01 00:02:03.000"));       // UTC 1970-01-01 00:02:03.000
+        Database d = Factory.database().memory().clock(clock).start();
+        Time dbTime = d.getTime();
+        Time time1 = Time.resolve(Time.UTC, dbTime, "00:01");
+        Time time2 = Time.millis(60 * 1000);
+        Assert.assertEquals(time2, time1);
     }
 }

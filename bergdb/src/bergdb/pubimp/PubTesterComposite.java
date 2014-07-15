@@ -9,6 +9,7 @@ import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.Factory;
 import bergdb.pub.TestClock;
+import bergdb.pub.Time;
 import bergdb.stream.MemoryStream;
 
 /**
@@ -74,7 +75,7 @@ public class PubTesterComposite {
     @T
     public static void test0() {
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -89,7 +90,7 @@ public class PubTesterComposite {
     @T
     public static void test1() {
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -118,7 +119,7 @@ public class PubTesterComposite {
         // Two parts, two fields at in first part.
         
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from").field("to")
@@ -146,7 +147,7 @@ public class PubTesterComposite {
     @T
     public static void testThreeParts() {
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -224,7 +225,7 @@ public class PubTesterComposite {
     @T
     public static void testEq1() {
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -252,7 +253,7 @@ public class PubTesterComposite {
     @T
     public static void testEq2() {
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -273,7 +274,7 @@ public class PubTesterComposite {
     @T
     public static void testEq3() {
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -305,7 +306,7 @@ public class PubTesterComposite {
         // Same as previous, but using eq(long) too.
         
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -341,7 +342,7 @@ public class PubTesterComposite {
         // Same as previous, but using eq(double).
         
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -376,7 +377,7 @@ public class PubTesterComposite {
     public static void testEq4() {
         // Two eq levels.
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -407,7 +408,7 @@ public class PubTesterComposite {
     @T
     public static void testStart1() {
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -439,7 +440,7 @@ public class PubTesterComposite {
         // Multiple startAt().
         
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -470,7 +471,7 @@ public class PubTesterComposite {
         // Multiple startAt(), includes startAt(long).
         
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -499,7 +500,7 @@ public class PubTesterComposite {
     @T
     public static void testEqAndStart1() {
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -530,7 +531,7 @@ public class PubTesterComposite {
     @T
     public static void testEqAndStart2() {
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -563,7 +564,7 @@ public class PubTesterComposite {
     @T
     public static void testEqAndStart3() {
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -596,7 +597,7 @@ public class PubTesterComposite {
     @T
     public static void testEqAndStart4() {
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -631,7 +632,7 @@ public class PubTesterComposite {
         // eq and startAt with string-long composite index.
         
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -678,7 +679,7 @@ public class PubTesterComposite {
     public static void testEqAndStart6() {
         // eq and startAt with string-long composite index. backward().exclude().
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -712,7 +713,7 @@ public class PubTesterComposite {
     public static void testEqAndStart7() {
         // eq and startAt with string-double composite index. backward().exclude().
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -748,7 +749,7 @@ public class PubTesterComposite {
         // and POSITIVE_INFINITY.
         
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
             .type("string/unicode").field("from")
@@ -801,7 +802,7 @@ public class PubTesterComposite {
         Payment2 p1 = new Payment2("ab\0", "1", 0);
         
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("a").dir("/p/")
             .type("string/en/Ln").field("from")
@@ -846,7 +847,7 @@ public class PubTesterComposite {
         Payment2 p1 = new Payment2("ab\0", "1", 0);
         
         TestClock clock = new TestClock();
-        clock.setTime(10);
+        clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("a").dir("/p/")
             .type("string/unicode").field("from")

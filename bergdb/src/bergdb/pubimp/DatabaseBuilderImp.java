@@ -10,6 +10,7 @@ import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.Duration;
 import bergdb.storage.StorageManager;
+import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
@@ -43,9 +44,6 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         return dbBuilder;
     }
     
-    /* (non-Javadoc)
-     * @see com.bergdb.pub.IBuilder#memory()
-     */
     public DatabaseBuilder memory() {
         dbBuilder.mainStream(new MemoryStream());
         return this;
@@ -59,15 +57,19 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         return this;
     }
     
-    public DatabaseBuilder dir(String dirname) throws IOException {
+    public DatabaseBuilder dir(String dirname) {
         File d = new File(dirname);
         return dir(d);
     }
     
-    public DatabaseBuilder dir(File dir) throws IOException {
-        // NOTE We could allow/document more specific subclasses of IOException
-        // that are thrown by FileStream.create().
-        FileStream stream = new FileStream(dir);
+    public DatabaseBuilder dir(File dir) {
+        FileStream stream;
+        try {
+            stream = new FileStream(dir);
+        } catch (IOException e) {
+            throw new StreamIoException(e);
+        }
+        
         dbBuilder.mainStream(stream);
         return this;
     }
@@ -78,7 +80,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     }
     
     public DatabaseBuilder retainDuration(Duration retainDuration) {
-        dbBuilder.retainDuration(retainDuration.getDbUnits());
+        dbBuilder.retainDuration(retainDuration.units());
         return this;
     }
     

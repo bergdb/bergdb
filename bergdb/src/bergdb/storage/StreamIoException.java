@@ -3,8 +3,7 @@ package bergdb.storage;
 import java.io.IOException;
 
 /**
- * Thrown when it was not possible to read from or write to the underlying 
- * storage.
+ * Thrown when it was not possible to read from or write to the underlying storage.
  * 
  * @author Frans Lundberg
  */
@@ -20,8 +19,8 @@ public class StreamIoException extends StreamException {
     }
     
     /**
-     * This is used to simple wrap an IOException. It sets the "cause" of the exception
-     * properly.
+     * Uses the message of the provided exception.
+     * This constructor sets the "cause" of the exception properly.
      */
     public StreamIoException(IOException e) {
         super(e.getMessage());

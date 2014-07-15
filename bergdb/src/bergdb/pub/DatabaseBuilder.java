@@ -3,23 +3,22 @@ package bergdb.pub;
 import java.io.IOException;
 
 /**
- * A DatabaseBuilder is used to create a database.
- * Use the settings methods (dir, memory, replica, clock) and then build() to create the Database.
- * start() is a convenience shortcut to create and start the Database in one method call.
+ * A DatabaseBuilder is used to create a Database.
+ * Use the settings methods (dir, memory, replica, clock, ...) and then 
+ * call start() to create and start the database.
  * 
+ * @see Database
  * @author Frans Lundberg
  */
 public interface DatabaseBuilder {
     
-    // TODO D. Consider: Should we really through IOException. We usually throw 
-    // subclasses of RuntimeException.
-    
     /**
      * Use the given directory to store the database stream in files.
      * 
-     * @throws IOException f there is a file access error with the specified directory 'dirname'.
+     * @throws DbException  If there is file error when accessing the 
+     * specified directory.
      */
-    public DatabaseBuilder dir(String dirname) throws IOException;
+    public DatabaseBuilder dir(String dirname);
     
     /**
      * An in-memory database stream will be used.
@@ -52,9 +51,9 @@ public interface DatabaseBuilder {
      * database can be made.
      * 
      * @throws DbException
-     *             If the database is not functioning.
+     *             If a functioning database could not be started.
      * @throws BadReplicaException
-     *             If the replica provided in when creating the Database object
+     *             If the replica provided when creating the Database object
      *             is not a valid replica of the database. The database ID in
      *             the stream may be wrong, for example.
      */

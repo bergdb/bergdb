@@ -10,9 +10,6 @@ import java.util.Locale;
  * @author Frans Lundberg
  */
 public class Duration {
-    public static final Duration MAX = new Duration(Long.MAX_VALUE);
-    public static final Duration ZERO = new Duration(0);
-    
     private static final double UNITS_PER_SECOND = (double) Clock.UNITS_PER_SEC;
     private static final double UNITS_PER_MINUTE = UNITS_PER_SECOND * 60.0;
     private static final double UNITS_PER_HOUR = UNITS_PER_MINUTE * 60.0;
@@ -28,42 +25,56 @@ public class Duration {
     }
     
     /**
-     * Returns the duration measured in DB units (see Clock).
+     * Returns the duration measured in clock units (see Clock).
      */
-    public long getDbUnits() {
+    public long units() {
         return units;
     }
     
+    /**
+     * Adds a duration to this duraction and returns the result in a 
+     * new object.
+     */
     public Duration add(Duration duration) {
         return new Duration(this.units + duration.units);
     }
     
-    public boolean isGreaterThen(Duration that) {
-        return that.getDbUnits() > this.getDbUnits();
-    }
-    
-    public boolean isGreaterThanOrEqualTo(Duration that) {
-        return that.getDbUnits() >= this.getDbUnits();
-    }
-    
+    /**
+     * Creates a Duration specified in days (24 hour periods).
+     */
     public static Duration days(double days) {
         return new Duration(Math.round(days * UNITS_PER_DAY));
     }
     
+    /**
+     * Creates a Duration specified in hours.
+     */
     public static Duration hours(double hours) {
         return new Duration(Math.round(hours * UNITS_PER_HOUR));
     }
     
+    /**
+     * Creates a Duration specified in minutes.
+     */
     public static Duration minutes(double minutes) {
         return new Duration(Math.round(minutes * UNITS_PER_MINUTE));
     }
     
+    /**
+     * Creates a Duration specified in seconds.
+     */
     public static Duration seconds(double seconds) {
         return new Duration(Math.round(seconds * UNITS_PER_SECOND));
     }
 
-    public static Duration dbUnits(long retainDuration) {
-        return new Duration(retainDuration);
+    /**
+     * Creates a Duration specified in clock units.
+     * 
+     * @see Clock
+     * @param units  Clock units.
+     */
+    public static Duration units(long units) {
+        return new Duration(units);
     }
     
     @Override
@@ -134,15 +145,5 @@ public class Duration {
     private String toStringDays() {
         double days = units / UNITS_PER_DAY;
         return String.format(Locale.US, "%.2f days", days);
-    }
-    
-    public static void main(String[] args) {
-        System.out.println("1 day : " + Duration.days(1.0));
-        System.out.println("3 days: " + Duration.days(3.0));
-        System.out.println("3.5 days: " + Duration.days(3.5));
-        System.out.println("0.001 days: " + Duration.days(0.001));
-        System.out.println("0.001 s: " + Duration.seconds(0.001));
-        System.out.println("0.123 s: " + Duration.seconds(0.123));
-        System.out.println("5 s: " + Duration.seconds(5));
     }
 }

@@ -3,51 +3,15 @@ package bergdb.pub;
 /**
  * A connection to a Database is used to put and get data stored in the
  * database. Given a Connection, get operations [<code>c.get(..)</code>], put
- * operations [<code>c.w().set(...execute()</code> or <code>c.put(...)</code>],
+ * operations [<code>c.w().put(...execute()</code> or <code>c.put(...)</code>],
  * and rw-transactions [<code>c.rw(...).execute()</code>] can be executed. A
  * Connection object assumes it and any objects returned from its methods are
  * accessed from a single thread. For multi-threaded access to the database,
- * create a Connection object for each thread.
+ * create a Connection object for each thread by calling Database.newConnection().
  * 
  * @author Frans Lundberg
  */
 public interface Connection extends ReadInterface {
-
-    /**
-     * <p>
-     * Sets the requested lookup time to use for subsequent calls to: get(),
-     * exists(). By default, the requested lookup time is Long.MAX_VALUE. This
-     * means that read operations are performed on the last database state. Note
-     * that the requested lookup time is not always the same as the *actual*
-     * lookup time used. If the requested lookup time is larger than the
-     * transaction time of the last transaction, the transaction time of the
-     * last transaction, is used as the actual lookup time.
-     * </p>
-     * 
-     * <p>
-     * A call to this method neutralize any effect from a previous call to
-     * freezeLookupTime().
-     * </p>
-     * 
-     * @param lookupTime
-     *            The database time to use for read operations. Use
-     *            Time.MAX to read the latest database state.
-     */
-    public void setLookupTime(Time lookupTime);
-
-    /**
-     * Returns the actual lookup time that was used for the last read operation.
-     */
-    public long getActualLookupTime();
-
-    /**
-     * After this method has been called, the actual lookup time of subsequent
-     * read operations will be constant. The lookup time of this Connection will
-     * not change until setLookupTime() is called or this method is called
-     * again. This method is useful for reading a consistent state of the data
-     * at one particular time using multiple read operations.
-     */
-    public void freezeLookupTime();
 
     /**
      * If key replace is enabled, occurrences of the string "${transactionTime}"
@@ -66,6 +30,42 @@ public interface Connection extends ReadInterface {
      * Returns true if key replace is enabled and false otherwise.
      */
     public boolean getEnableKeyReplace();
+
+    /**
+     * <p>
+     * Sets the requested lookup time to use for subsequent calls to: get(),
+     * exists(). By default, the requested lookup time is Time.MAX. This
+     * means that read operations are performed one the lastest database state. Note
+     * that the requested lookup time is not always the same as the *actual*
+     * lookup time used. If the requested lookup time is larger than the
+     * transaction time of the last transaction, the transaction time of the
+     * last transaction, is used as the actual lookup time.
+     * </p>
+     * 
+     * <p>
+     * A call to this method neutralize any effect from a previous call to
+     * freezeLookupTime().
+     * </p>
+     * 
+     * @param lookupTime
+     *            The database time to use for read operations. Use
+     *            Time.MAX to read the latest database state.
+     */
+    public void setLookupTime(Time lookupTime);
+    
+    /**
+     * Returns the requested lookup time that was set with setLookupTime().
+     */
+    public Time getLookupTime();
+
+    /**
+     * After this method has been called, the actual lookup time of subsequent
+     * read operations will be constant. The lookup time of this Connection will
+     * not change until setLookupTime() is called or this method is called
+     * again. This method is useful for reading a consistent state of the data
+     * at one particular time using multiple read operations.
+     */
+    public void freezeLookupTime();
 
     /**
      * Checks whether a key-value entry with the given key exists.
@@ -210,6 +210,7 @@ public interface Connection extends ReadInterface {
 Log
 ===
 
+140715 Added setLookupTime() now takes a Time.
 131028 Added sync()/syncStrong().
 1310xx Changed "set" to "put".
 130605 Added usePrimary() method that returns a PrimaryIterBuilder and some renaming.
