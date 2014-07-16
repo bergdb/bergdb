@@ -61,10 +61,10 @@ public class FileStream implements AppendOnlyStream {
     private boolean max2G = false;
     
     /** First spos of each file in 'files'. Protected by this. */
-    private long[] kfilePositions;
+    private long[] dbFilePositions;
     
     /** The .bergdb files of the directory. Protected by this. */
-    private KFile[] kfiles;
+    private DbFile[] dbFiles;
     
     /** If null, this stream should be considered faulty and not used any further. */
     private volatile IOException ioException = null;
@@ -168,21 +168,89 @@ public class FileStream implements AppendOnlyStream {
      * @thrown BadDirStateException
      */
     private void handleFiles() throws IOException, BadDirStateException {
-        File[] bergdbFiles = dir.listFiles(new FilenameFilter() {
-            public boolean accept(File dir, String name) {
-                boolean result = name.endsWith(SUFFIX);
-                return result;
-            }    
-        });
         
-        Arrays.sort(bergdbFiles, new Comparator<File>() {
-            public int compare(File f1, File f2) {
-                return f1.getName().compareTo(f2.getName());
+        File[] bergdbFiles = getSortedDbFiles();
+        
+        long currentSpos = checkDbFiles(bergdbFiles);
+        
+        determineFileSizeIndex(bergdbFiles);
+        
+        createDbFileObjects(bergdbFiles, currentSpos);
+    }
+
+    private void createDbFileObjects(File[] bergdbFiles, long currentSpos) throws IOException,
+            BadDirStateException {
+        // Creates this.dbFiles, this.dbFilePositions. Sets this.length.
+        
+        dbFiles = new DbFile[bergdbFiles.length];
+        dbFilePositions = new long[bergdbFiles.length];
+        
+        if (bergdbFiles.length == 0) {
+            // Special case, no bergdb files, create one.
+            newFile();
+            return;
+        }
+        
+        for (int i = 0; i < bergdbFiles.length; i++) {
+            File f = bergdbFiles[i];
+            
+            if (i == 0) {
+                String name = f.getName();
+                if (!(name.length() > SUFFIX.length())) {
+                    throw new BadDirStateException("Bad name of bergdb file: " + f.getPath() + ".");
+                }
+                name = name.substring(0, name.length() - SUFFIX.length());
+                
+                int index;
+                try {
+                    index = this.stringToIndex(name);
+                } catch (BadFormatException e) {
+                    throw new BadDirStateException("Bad name of bergdb file: " + f.getPath() + ".");
+                }
+                
+                currentSpos = index * BYTES_PER_INDEX_UNIT;
+                this.firstPos = currentSpos;
             }
-        });
+            
+            dbFilePositions[i] = currentSpos;
+            
+            if (i == bergdbFiles.length - 1) {
+                dbFiles[i] = openForRw(currentSpos, f, FILE_SIZES[fileSizeIndex]);
+            } else {
+                dbFiles[i] = openForR(currentSpos, f);
+            }
+            
+            currentSpos += f.length();
+        }
         
-        // Checks the bergdb files.
-        
+        this.length = currentSpos;
+    }
+
+    /**
+     * Computes and sets this.fileSizeIndex.
+     */
+    private void determineFileSizeIndex(File[] bergdbFiles) {
+        if (bergdbFiles.length == 0) {
+            this.fileSizeIndex = 0;
+        } else {
+            long fileSize = bergdbFiles[bergdbFiles.length - 1].length();
+            if (bergdbFiles.length > 1) {
+                fileSize = Math.max(fileSize, bergdbFiles[bergdbFiles.length - 2].length());
+            }
+            
+            this.fileSizeIndex = FILE_SIZES.length - 1;    // max
+            
+            for (int i = FILE_SIZES.length - 1; i >= 0; i--) {
+                long s0 = FILE_SIZES[i];
+                if (s0 < fileSize) {
+                    break;
+                }
+                this.fileSizeIndex = i;
+            }
+        }
+    }
+
+    private long checkDbFiles(File[] bergdbFiles) throws BadDirStateException {
         long currentSpos = 0;
         
         for (int i = 0; i < bergdbFiles.length; i++) {
@@ -229,72 +297,27 @@ public class FileStream implements AppendOnlyStream {
             
             currentSpos += fLength;
         }
+        return currentSpos;
+    }
+
+    /**
+     * Returns berg *.bergdb file in this.dir.
+     */
+    private File[] getSortedDbFiles() {
+        File[] bergdbFiles = dir.listFiles(new FilenameFilter() {
+            public boolean accept(File dir, String name) {
+                boolean result = name.endsWith(SUFFIX);
+                return result;
+            }    
+        });
         
-        // Determines fileSizeIndex
-        
-        if (bergdbFiles.length == 0) {
-            this.fileSizeIndex = 0;
-        } else {
-            long fileSize = bergdbFiles[bergdbFiles.length - 1].length();
-            if (bergdbFiles.length > 1) {
-                fileSize = Math.max(fileSize, bergdbFiles[bergdbFiles.length - 2].length());
+        Arrays.sort(bergdbFiles, new Comparator<File>() {
+            public int compare(File f1, File f2) {
+                return f1.getName().compareTo(f2.getName());
             }
-            
-            this.fileSizeIndex = FILE_SIZES.length - 1;    // max
-            
-            for (int i = FILE_SIZES.length - 1; i >= 0; i--) {
-                long s0 = FILE_SIZES[i];
-                if (s0 < fileSize) {
-                    break;
-                }
-                this.fileSizeIndex = i;
-            }
-        }
+        });
         
-        // Creates kfiles, kfilePositions.
-        
-        kfiles = new KFile[bergdbFiles.length];
-        kfilePositions = new long[bergdbFiles.length];
-        
-        if (bergdbFiles.length == 0) {
-            // Special case, no bergdb files, create one.
-            newFile();
-            return;
-        }
-        
-        for (int i = 0; i < bergdbFiles.length; i++) {
-            File f = bergdbFiles[i];
-            
-            if (i == 0) {
-                String name = f.getName();
-                if (!(name.length() > SUFFIX.length())) {
-                    throw new BadDirStateException("Bad name of bergdb file: " + f.getPath() + ".");
-                }
-                name = name.substring(0, name.length() - SUFFIX.length());
-                
-                int index;
-                try {
-                    index = this.stringToIndex(name);
-                } catch (BadFormatException e) {
-                    throw new BadDirStateException("Bad name of bergdb file: " + f.getPath() + ".");
-                }
-                
-                currentSpos = index * BYTES_PER_INDEX_UNIT;
-                this.firstPos = currentSpos;
-            }
-            
-            kfilePositions[i] = currentSpos;
-            
-            if (i == bergdbFiles.length - 1) {
-                kfiles[i] = openForRw(currentSpos, f, FILE_SIZES[fileSizeIndex]);
-            } else {
-                kfiles[i] = openForR(currentSpos, f);
-            }
-            
-            currentSpos += f.length();
-        }
-        
-        this.length = currentSpos;
+        return bergdbFiles;
     }
     
     private static String indexToString(long fileIndex) {
@@ -381,15 +404,15 @@ public class FileStream implements AppendOnlyStream {
         this.length = pos;
         this.firstPos = pos;
         
-        kfiles = new KFile[0];
-        kfilePositions = new long[0];
+        dbFiles = new DbFile[0];
+        dbFilePositions = new long[0];
         newFile();
     }
     
     private synchronized void deleteAllFiles() throws IOException {
         try {
-            for (int i = 0; i < kfiles.length; i++) {
-                kfiles[i].delete();
+            for (int i = 0; i < dbFiles.length; i++) {
+                dbFiles[i].delete();
             }
         } catch (IOException e) {
             ioException = e;
@@ -407,8 +430,8 @@ public class FileStream implements AppendOnlyStream {
             throw new IllegalArgumentException("pos > length of stream (" + len + ").");
         }
         
-        for (int i = 0; i < kfiles.length; i++) {
-            KFile k = kfiles[i];
+        for (int i = 0; i < dbFiles.length; i++) {
+            DbFile k = dbFiles[i];
             if (k.spos + k.fileLength - 1 < pos) {
                 index = i;
             } else {
@@ -418,24 +441,24 @@ public class FileStream implements AppendOnlyStream {
         
         if (index != -1) {
             for (int i = 0; i <= index; i++) {
-                kfiles[i].delete();
+                dbFiles[i].delete();
             }
             
-            int newSize = kfiles.length - (index + 1);
+            int newSize = dbFiles.length - (index + 1);
             if (newSize < 1) {
                 throw new Bug("Unexpected newSize: " + newSize + ". pos=" + pos 
-                        + ", kfiles.length=" + kfiles.length);
+                        + ", kfiles.length=" + dbFiles.length);
             }
             
-            KFile[] newFiles = new KFile[newSize];
+            DbFile[] newFiles = new DbFile[newSize];
             long[] newPositions = new long[newSize];
             
-            System.arraycopy(kfiles, index + 1, newFiles, 0, newSize);
-            System.arraycopy(kfilePositions, index + 1, newPositions, 0, newSize);
+            System.arraycopy(dbFiles, index + 1, newFiles, 0, newSize);
+            System.arraycopy(dbFilePositions, index + 1, newPositions, 0, newSize);
             
-            this.kfiles = newFiles;
-            this.kfilePositions = newPositions;
-            this.firstPos = kfiles[0].spos;
+            this.dbFiles = newFiles;
+            this.dbFilePositions = newPositions;
+            this.firstPos = dbFiles[0].spos;
         }
     }
     
@@ -461,7 +484,7 @@ public class FileStream implements AppendOnlyStream {
         int leftToRead;
         
         while (true) {
-            KFile k = findFile(spos);
+            DbFile k = findFile(spos);
             if (k == null) {
                 this.ioException = new IOException("No file found for reading at spos " + spos + ".");
                 throw ioException;
@@ -487,7 +510,7 @@ public class FileStream implements AppendOnlyStream {
         int leftToAppend;
         
         while (true) {
-            KFile k = findLastFile();
+            DbFile k = findLastFile();
             actuallyAppended = k.append(source, sourceOffset, len);
             length += actuallyAppended;
             leftToAppend = len - actuallyAppended;
@@ -506,8 +529,8 @@ public class FileStream implements AppendOnlyStream {
         checkIOException();
         
         synchronized (this) {
-            for (int i = 0; i < kfiles.length; i++) {
-                kfiles[i].close();
+            for (int i = 0; i < dbFiles.length; i++) {
+                dbFiles[i].close();
             }
         }
     }
@@ -518,11 +541,11 @@ public class FileStream implements AppendOnlyStream {
                 throw new Bug("Illegal state, length = " + length);
             }
             
-            if (kfiles.length > 0) {
+            if (dbFiles.length > 0) {
                 // last file is opened for RW, close and reopen for R only.
-                KFile k = kfiles[kfiles.length - 1];
+                DbFile k = dbFiles[dbFiles.length - 1];
                 k.close();     
-                kfiles[kfiles.length - 1] = openForR(k.spos, k.file);
+                dbFiles[dbFiles.length - 1] = openForR(k.spos, k.file);
             }
             
             long index = this.length / BYTES_PER_INDEX_UNIT;
@@ -531,7 +554,7 @@ public class FileStream implements AppendOnlyStream {
             // Change file size if it should be changed.
             applyFileSizeChangeRules();
             
-            KFile newFile = openForRw(length, file, FILE_SIZES[fileSizeIndex]);
+            DbFile newFile = openForRw(length, file, FILE_SIZES[fileSizeIndex]);
             
             // To make sure no-one just created the file and wrote to it.
             long newFileLength = newFile.file.length();
@@ -540,17 +563,17 @@ public class FileStream implements AppendOnlyStream {
                         + " already exists and has length " + newFileLength + ".");
             }
             
-            KFile[] newKFiles = new KFile[kfiles.length + 1];
-            System.arraycopy(kfiles, 0, newKFiles, 0, kfiles.length);
+            DbFile[] newKFiles = new DbFile[dbFiles.length + 1];
+            System.arraycopy(dbFiles, 0, newKFiles, 0, dbFiles.length);
             newKFiles[newKFiles.length - 1] = newFile;
-            kfiles = newKFiles;
+            dbFiles = newKFiles;
             
-            long[] newPositions = new long[kfiles.length];
-            System.arraycopy(kfilePositions, 0, newPositions, 0, kfilePositions.length);
+            long[] newPositions = new long[dbFiles.length];
+            System.arraycopy(dbFilePositions, 0, newPositions, 0, dbFilePositions.length);
             newPositions[newPositions.length - 1] = length;
-            this.kfilePositions = newPositions;
+            this.dbFilePositions = newPositions;
             
-            assert kfilePositions.length == kfiles.length : kfilePositions.length + " != " + kfiles.length;
+            assert dbFilePositions.length == dbFiles.length : dbFilePositions.length + " != " + dbFiles.length;
         }
     }
 
@@ -599,20 +622,20 @@ public class FileStream implements AppendOnlyStream {
         }
     }
     
-    private KFile findFile(long spos) {
+    private DbFile findFile(long spos) {
         // Find file with largest spos that is <= spos.
         // Yes, we use linear search. Should be faster in this case then an O(log N) data structure
         // since number of files should not exceed 100.
         
-        KFile result = null;
-        assert kfilePositions.length == kfiles.length :
-                kfilePositions.length + " != " + kfiles.length;
+        DbFile result = null;
+        assert dbFilePositions.length == dbFiles.length :
+                dbFilePositions.length + " != " + dbFiles.length;
         
         synchronized (this) {
-            for (int i = 0; i < kfilePositions.length; i++) {
-                long p = kfilePositions[i];
+            for (int i = 0; i < dbFilePositions.length; i++) {
+                long p = dbFilePositions[i];
                 if (p <= spos) {
-                    result = kfiles[i];
+                    result = dbFiles[i];
                 } else {
                     break;
                 }
@@ -622,15 +645,15 @@ public class FileStream implements AppendOnlyStream {
         return result;
     }
     
-    private KFile findLastFile() {        
+    private DbFile findLastFile() {        
         synchronized (this) {
-            assert kfiles.length > 0;
-            return kfiles[kfiles.length - 1];
+            assert dbFiles.length > 0;
+            return dbFiles[dbFiles.length - 1];
         }
     }
     
-    private KFile openForR(long spos, File file) throws IOException {
-        KFile k = new KFile(spos, file, 0);
+    private DbFile openForR(long spos, File file) throws IOException {
+        DbFile k = new DbFile(spos, file, 0);
         k.rfile = new RandomAccessFile(file, "r");
         k.fileLength = k.rfile.length();
         k.isRw = false;
@@ -638,8 +661,8 @@ public class FileStream implements AppendOnlyStream {
         return k;
     }
     
-    private KFile openForRw(long spos, File file, long maxSize) throws IOException {
-        KFile k = new KFile(spos, file, maxSize);
+    private DbFile openForRw(long spos, File file, long maxSize) throws IOException {
+        DbFile k = new DbFile(spos, file, maxSize);
         k.rfile = new RandomAccessFile(file, "rws");
         k.fileLength = k.rfile.length();
         k.isRw = true;
@@ -652,7 +675,7 @@ public class FileStream implements AppendOnlyStream {
      * Cached information about a particular *.bergdb file.
      * This class is not thread-safe.
      */
-    private class KFile {
+    private class DbFile {
         private File file;
         private RandomAccessFile rfile = null;
         private long fileLength;   // current length of the file
@@ -661,7 +684,7 @@ public class FileStream implements AppendOnlyStream {
         private long maxSize;
         private volatile boolean isClosed = false;
         
-        private KFile(long spos, File file, long maxSize) {
+        private DbFile(long spos, File file, long maxSize) {
             if (file == null) {
                 throw new IllegalArgumentException("file == null not allowed");
             }
@@ -916,9 +939,9 @@ public class FileStream implements AppendOnlyStream {
         f.seekFirstPos(200*1000 * 5);
         Assert.assertEquals(200*1000 * 5, f.getLength());
         Assert.assertEquals(200*1000 * 5, f.getFirstPos());
-        Assert.assertEquals(1, f.kfiles.length);
+        Assert.assertEquals(1, f.dbFiles.length);
         f.append(bytes, 0, bytes.length);
-        Assert.assertEquals(2, f.kfiles.length);
+        Assert.assertEquals(2, f.dbFiles.length);
         Assert.assertEquals(200*1000 * 5 + 300*1000, f.getLength());
         Assert.assertEquals(200*1000 * 5, f.getFirstPos());
         f.close();
@@ -929,10 +952,10 @@ public class FileStream implements AppendOnlyStream {
         FileStream f = FileStream.create(c.createTempDir());            
         byte[] bytes = new byte[500*1000];
         f.append(bytes, 0, bytes.length);
-        Assert.assertEquals(3, f.kfiles.length);
+        Assert.assertEquals(3, f.dbFiles.length);
         
         f.pretruncate(200*1000);
-        Assert.assertEquals(2, f.kfiles.length);
+        Assert.assertEquals(2, f.dbFiles.length);
         Assert.assertEquals(200*1000, f.getFirstPos());
         Assert.assertEquals(500*1000, f.getLength());
         f.close();
@@ -985,9 +1008,9 @@ public class FileStream implements AppendOnlyStream {
             f.append(bytes, 0, bytes.length);
         }
         
-        Assert.assertEquals(21, f.kfiles.length);
-        Assert.assertEquals(200*1000, f.kfiles[0].fileLength);
-        Assert.assertEquals(1000*1000, f.kfiles[f.kfiles.length - 1].fileLength);
+        Assert.assertEquals(21, f.dbFiles.length);
+        Assert.assertEquals(200*1000, f.dbFiles[0].fileLength);
+        Assert.assertEquals(1000*1000, f.dbFiles[f.dbFiles.length - 1].fileLength);
         
         f.close();
     }

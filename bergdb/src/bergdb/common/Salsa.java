@@ -120,39 +120,12 @@ public class Salsa {
             len -= lenDone;
         }
         
-        // process() inlined, handles 64-byte blocks of data.
-        
-        int i, c;
-        int inIndex = inOffset;
-        int outIndex = outOffset;
-        
-        if (len > 0) {
-            while (true) {
-                core();
-                if (0 == ++input[8]) {
-                    input[9]++;      // We don't stop at 2^70 bytes.
-                }
-                
-                c = (len <= 64) ? len : 64;
-                for (i = 0; i < c; i++) {
-                    out[outIndex + i] = (byte)(in[inIndex + i] ^ output[i]);
-                }
-                appendPos += c;
-                len -= 64;
-                if (len < 1) {
-                    break;
-                }
-                inIndex += 64;
-                outIndex += 64;
-            }
-        }
+        process(in, inOffset, out, outOffset, len);
     }
 
     /**
      * in[inOffset] and out[outOffset] are assumed to be at 64-byte block start.
      * Only last len may be less than 64.
-     * 
-     * @deprecated 130506 Use append() instead.
      */
     public void process(byte[] in, int inOffset, byte[] out, int outOffset, int len) {
         int i, c;
