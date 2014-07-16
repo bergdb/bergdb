@@ -596,7 +596,6 @@ public class GetMany {
         }
         
         public int handleKvt(Kvt kvt) {
-//System.out.println("GetMany.PrefixN kvt.key = " + Keys.toString(kvt.key));
             count++;
             return Keys.isPrefix(prefix, kvt.key) ? (count == maxCount ? ADD_AND_STOP : ADD) : STOP;
         }

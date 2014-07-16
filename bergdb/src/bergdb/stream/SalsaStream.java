@@ -40,8 +40,10 @@ public class SalsaStream implements AppendOnlyStream {
             throw new IllegalArgumentException("key == null not allowed");
         }
         
-        nonce = nonce.clone();
-        key = key.clone();
+        byte[] nonceCopy = nonce.clone();
+        nonce = null;
+        byte[] keyCopy = key.clone();
+        key = null;
         this.stream = stream;
         
         length = stream.getLength();
@@ -53,16 +55,16 @@ public class SalsaStream implements AppendOnlyStream {
             stream.read(p0, lastBlock, 0, lastBlock.length);
         }
         
-        Salsa salsa = new Salsa(nonce, key);
+        Salsa salsa = new Salsa(nonceCopy, keyCopy);
         salsa.setupBlockCounter(p0 / Salsa.BLOCK_SIZE);
         salsa.append(lastBlock, 0, lastBlock, 0, lastBlock.length);    // in-place decryption
         
         byte[] outDummy = new byte[lastBlock.length];
-        encrypt = new Salsa(nonce, key);
+        encrypt = new Salsa(nonceCopy, keyCopy);
         encrypt.setupBlockCounter(length / Salsa.BLOCK_SIZE);
         encrypt.append(lastBlock, 0, outDummy, 0, lastBlock.length);
         
-        decrypt = new Salsa(nonce, key);
+        decrypt = new Salsa(nonceCopy, keyCopy);
         
         synchronized (readLock) {}    // Could be needed, in theory.
     }

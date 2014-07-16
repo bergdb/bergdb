@@ -5,7 +5,7 @@ import bergdb.pub.Kv;
 import bergdb.pub.UsePrimaryBuilder;
 
 /**
- * This implementation mostly uses a wrapped IndexIterBuilderImp class.
+ * This implementation mostly uses a wrapped UseIndexBuilderImp class.
  * 
  * @author Frans Lundberg
  */

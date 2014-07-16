@@ -163,6 +163,7 @@ public interface Database {
      *             If the replica stream is longer than the main stream; if the replica stream has a
      *             different database ID than the main stream.
      */
+    // TODO B. Consider whether we should use IOException here?
     public Job addReplica(String name, String dir) throws IOException;
 
     /**

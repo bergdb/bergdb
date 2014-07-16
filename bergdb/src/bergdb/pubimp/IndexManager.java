@@ -757,7 +757,7 @@ public class IndexManager {
             this.name = name;
             this.dirs = dirs.clone();
             this.fields = fields.clone();
-            this.typeStrings = typeStrings;
+            this.typeStrings = typeStrings.clone();
             this.state = STATE_CREATING;
             this.keyHash = Keys.hash(Keys.toSegments(m.getIndexInfoKeyAsBytes(name)));
             this.parts = typeStrings.length;

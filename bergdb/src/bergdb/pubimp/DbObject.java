@@ -105,29 +105,28 @@ public class DbObject extends DbValue {
     /**
      * Creates a new DbObject based in its byte array representation.
      * 
-     * @param b The serialized format of the DbObject.
-     * @param key The database string key of the DbObject, may be null.
-     * @throws BadFormatException If the bytes are not formatted OK according to the 
-     * serialized byte format defined by this class.
+     * @param b 
+     *      The serialized format of the DbObject. 
+     *      Will be copied. 
+     * @param key 
+     *      The database string key of the DbObject, may be null.
+     * @throws BadFormatException 
+     *      If the bytes are not formatted OK according to the 
+     *      serialized byte format defined by this class.
      */
     public DbObject(byte[] b, String key) throws BadFormatException {
         super('o');
         this.key = key;
         
         if (b == null) {
-            throw new IllegalArgumentException("bytes == null not allowed");
+            throw new IllegalArgumentException("b == null not allowed");
         }
         
         if (b.length < HEADER_SIZE) {
             throw new BadFormatException("bytes too short, " + b.length);
         }
         
-        this.bytes = b;
-        
-        //int magic = Bytes.bytesToIntLE(b, 0);
-        //if (magic != MAGIC) {
-        //    throw new BadFormatException("Bad file signature, expected :-*o.");
-        //}
+        this.bytes = b.clone();
         
         checkSignature(b);
         

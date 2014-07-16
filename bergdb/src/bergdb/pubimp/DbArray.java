@@ -207,7 +207,7 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
         private char nextType;
         private int elementCount = 0;
         
-        public ElementIterator(byte[] bytes, int offset) {
+        ElementIterator(byte[] bytes, int offset) {
             assert bytes != null;
             assert offset >= 0;
             assert offset < bytes.length : "offset=" + offset + ", bytes.length=" + bytes.length;

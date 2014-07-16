@@ -149,8 +149,9 @@ public class Bytes {
      * assumed.
      */
     public static final short bytesToShortLE(final byte[] arr, int offset) {
-        int result = (arr[offset++] & 0x00ff);
-        result |= (arr[offset++] & 0x00ff) << 8;
+        int off = offset;
+        int result = (arr[off++] & 0x00ff);
+        result |= (arr[off++] & 0x00ff) << 8;
         return (short) result;
     }
     
@@ -241,10 +242,11 @@ public class Bytes {
      * Creates an integer from a byte array. Big endian byte order is used.
      */
     public static final int bytesToIntBE(byte[] arr, int offset) {
-        int result = (arr[offset++] & 0x00ff) << 24;
-        result |= (arr[offset++] & 0x00ff) << 16;
-        result |= (arr[offset++] & 0x00ff) << 8;
-        result |= (arr[offset++] & 0x00ff);
+        int off = offset;
+        int result = (arr[off++] & 0x00ff) << 24;
+        result |= (arr[off++] & 0x00ff) << 16;
+        result |= (arr[off++] & 0x00ff) << 8;
+        result |= (arr[off++] & 0x00ff);
         return result;
     }
 
@@ -257,10 +259,11 @@ public class Bytes {
         // the (byte) cast simply discards all but the
         // least significant 8 bits.*/
         
-        arr[offset++] = (byte)(v >>> 24);
-        arr[offset++] = (byte)(v >>> 16);
-        arr[offset++] = (byte)(v >>>  8);
-        arr[offset] = (byte) v;
+        int off = offset;
+        arr[off++] = (byte)(v >>> 24);
+        arr[off++] = (byte)(v >>> 16);
+        arr[off++] = (byte)(v >>>  8);
+        arr[off] = (byte) v;
     }
     
     // ---- string ----

@@ -782,21 +782,6 @@ public class Db {
                 this.cachedMemoryValue.addAndGet(node.getMemSize());
             }
             
-            /*NodeStream.NodeIterator ni = ti.getNodeIterator();
-            while (ni.next()) {
-                INode node = ni.node;
-                if (node.isTopOrKeyNode()) {
-                    tnodes.add(node);
-                }
-                posMap.put(node.getSpos(), node);
-                long prev = ni.sposPrevious;
-                if (prev != Spos.NULL) {
-                    nextMap.put(prev, node);
-                }
-
-                this.cachedMemoryValue.addAndGet(node.getMemSize());
-            }*/
-            
             INode[] nodeArray = new INode[tnodes.size()];
             tnodes.toArray(nodeArray);
             seq.add(new TransSeq.Tset(nodeArray, ti.getTpos(), ti.getLastPos()));
@@ -1700,7 +1685,6 @@ public class Db {
      */
     public static class Builder {
         private Clock clock;
-        //private boolean disableStreamWrite;
         private int maxNodeSize;
         private int startupDistance;
         private IEvictBoss evictBoss;

@@ -14,9 +14,16 @@ import bergdb.pub.BadFormatException;
 public class DbByteArray extends DbValue {
     private byte[] value;
     
+    /**
+     * Creates a new object given a byte array, 'value'.
+     * 
+     * @param value  
+     *      The bytes; copied in this constructor unless
+     *      it is null. Can be null.
+     */
     public DbByteArray(byte[] value) {
         super('b');
-        this.value = value;
+        this.value = value == null ? null : value.clone();
     }
     
     public int getByteSize() {

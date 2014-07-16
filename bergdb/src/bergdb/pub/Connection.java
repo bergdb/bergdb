@@ -34,9 +34,10 @@ public interface Connection extends ReadInterface {
     /**
      * <p>
      * Sets the requested lookup time to use for subsequent calls to: get(),
-     * exists(). By default, the requested lookup time is Time.MAX. This
-     * means that read operations are performed one the lastest database state. Note
-     * that the requested lookup time is not always the same as the *actual*
+     * exists(), useIndex(), usePrimary().
+     * By default, the requested lookup time is Time.MAX. This means that read 
+     * operations are performed on the lastest database state.
+     * Note that the requested lookup time is not always the same as the *actual*
      * lookup time used. If the requested lookup time is larger than the
      * transaction time of the last transaction, the transaction time of the
      * last transaction, is used as the actual lookup time.
@@ -230,14 +231,14 @@ This depends. See http://stackoverflow.com/questions/175532/should-a-retrieval-m
 I like exceptions in general. But in some cases, the condition that there is
 no such object is normal, not exceptional. Can be tested with exists(), but that requires
 two method calls. java.util.Map.get(key) returns null if the map contains no mapping for the key.
-Conclusion: Use exception.
+Conclusion 2013: Use exception.
 
 == Index iterators ==
 
 Should index() return empty iterators, or throw an exception if index does not exist for the 
 lookup time? In a way, it makes sense to return an empty iterator. On the other hand, for most 
 cases, the caller expects an existing index and throwing an explicit exception would be best
-to report the error conditions are early as possible. 
+to report the error condition as early as possible. 
 Conclusion 2012-10: Use exceptions!
 
 */

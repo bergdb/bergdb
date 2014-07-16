@@ -251,13 +251,14 @@ public class ConnectionImp implements Connection {
             throw new IllegalArgumentException("type == null not allowed");
         }
 
+        
         if (indexName.equals(Database.PRIMARY)) {
             throw new IllegalArgumentException("This method cannot be used for primary index (\""
                     + Database.PRIMARY + "\"), try Connection.usePrimary().");
         }
 
         UseIndexBuilderImp<TYPE> b = new UseIndexBuilderImp<TYPE>(this, indexName, type, lookupTime);
-        // throws NoSuchIndexException if index does not exists
+            // throws NoSuchIndexException if index does not exists
         return b;
     }
 
