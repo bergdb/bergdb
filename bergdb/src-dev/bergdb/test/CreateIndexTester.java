@@ -139,17 +139,15 @@ public class CreateIndexTester {
         database = builder.start();
         c = database.connection();
         
-        // TODO A. database.getStartInfo().getJobs()
-        /*Assert.assertEquals("start() jobs.size()", 1, jobs.size());
-        job = jobs.get(0);
+        Job[] jobs = database.getStartInfo().getStartJobs();
+        Assert.assertEquals("start() jobs.size()", 1, jobs.length);
+        job = jobs[0];
         coll.out().println("Job status: " + job.getStatus().note());
         Thread.sleep(100);
         coll.out().println("Job status: " + job.getStatus().note());
         status = job.join();
         Assert.assertEquals(100, status.progress());
-        
         coll.out().println("Job status: " + status.note());
-        */
         
         // Checks index by iterating it.
         
