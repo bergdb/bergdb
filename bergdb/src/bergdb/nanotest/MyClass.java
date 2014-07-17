@@ -1,13 +1,20 @@
 package bergdb.nanotest;
 
+/**
+ * Class used for testing.
+ * 
+ * @author Frans Lundberg
+ */
 public class MyClass {
+    
+    private MyClass() {}
     
     @T("f")
     public static void t1() {}
     
     @T("unit f perf")
     public static void t2() {
-        throw new RuntimeException("Error!");
+        throw new MyRuntimeException();
     }
     
     @T 
@@ -22,13 +29,7 @@ public class MyClass {
     
     public static void testOfPrivateMethod() {}
     
-    //
-    // Lines below removed to remove dependence on JUnit.
-    // Just used  to test that JUnit tests can be run.
-    // NOTE if JUnit is not on the classpath, the JUnit-annotated methods will NOT run.
-    //
-    //@org.junit.Test
-    //public void testJUnitMethod() {
-    //    System.out.println("   (Hello from testJUnitMethod)");
-    //}
+    private static class MyRuntimeException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+    }
 }

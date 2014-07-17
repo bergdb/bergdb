@@ -1,6 +1,7 @@
 package bergdb.nanotest;
 
 import java.lang.annotation.Annotation;
+
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
@@ -8,61 +9,15 @@ import java.util.Comparator;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
+// TODO LATER. A main method like bergdb.dev.Unit.main() for general use.
+
 /**
- * This class is used to run Nanotests.
+ * Functions to run Nanotests.
  * 
  * @author Frans Lundberg
  */
-public class TestRunner {    
-    
-    /**
-     * Run a nanotest method (static void method with zero or one ICollector param).
-     * 
-     * @param c  The class.
-     * @param methodName  Name of the method.
-     * @param collector  Test result collector.
-     */
-    public static void runMethod(Class<?> c, String methodName, TestRunnerCollector collector) {
-        Method[] methods = c.getDeclaredMethods();
-        Method m = null;
-        
-        for (Method method : methods) {
-            if (method.getName().equals(methodName)) {
-                m = method;
-            }
-        }
-        
-        if (m == null) {
-            return;
-        }
-        
-        if (!m.isAnnotationPresent(T.class)) {
-            return;
-        }
-        
-        m.setAccessible(true);    // can run a private method, useful feature.
-
-        Class<?>[] paramTypes = m.getParameterTypes();
-    
-        Object[] params = null;
-        if (paramTypes.length == 1) {
-            params = new Object[1];
-            params[0] = collector;
-        }
-        
-        Throwable testError = null;
-        Object object = null;
-        
-        collector.testAboutToRun(c.getCanonicalName() + "." + m.getName());
-        
-        try {
-            m.invoke(object, params);
-        } catch (Throwable ex) {
-            testError = ex;
-        }
-        
-        collector.testDone(testError);
-    }
+public class TestRunner {
+    private TestRunner() {}
     
     /**
      * Runs the tests in a class.
@@ -90,14 +45,38 @@ public class TestRunner {
             }
             
             if (handle) {
-                handleMethod(m, collector, groups);
+                runMethod(m, collector, groups);
             }
         }
         
         collector.classDone();
     }
     
-    private static void handleMethod(Method m, TestRunnerCollector collector, String[] groups) {
+    /**
+     * Runs a single nanotest 'unit' test method.
+     * 
+     * @param c  The class.
+     * @param methodName  Name of the method.
+     * @param collector  Test result collector.
+     */
+    public static void runOneMethod(Class<?> c, String methodName, TestRunnerCollector collector) {
+        Method[] methods = c.getDeclaredMethods();
+        Method m = null;
+        
+        for (Method method : methods) {
+            if (method.getName().equals(methodName) && m.isAnnotationPresent(T.class)) {
+                m = method;
+            }
+        }
+        
+        if (m == null) {
+            return;
+        }
+        
+        runMethod(m, collector, new String[]{"unit"});
+    }
+    
+    private static void runMethod(Method m, TestRunnerCollector collector, String[] groups) {
         boolean runTest = false;
         boolean junit = false;
         
@@ -153,7 +132,8 @@ public class TestRunner {
             return;
         }
         
-        m.setAccessible(true);    // can run private methods, useful feature.
+        // Can run private methods, useful feature.
+        m.setAccessible(true);    
 
         Class<?>[] paramTypes = m.getParameterTypes();
     
@@ -203,14 +183,14 @@ public class TestRunner {
     }
 
     /**
+     * Test.
+     * 
      * @throws ClassNotFoundException
      * @throws SecurityException
      */
     public static void main(String[] args) {
         BasicCollector collector = new BasicCollector();
-        
         Class<?> c = MyClass.class;
-        
         run(new String[]{"unit", "f"}, c, null, collector);
         
         int failed = collector.getFailed();

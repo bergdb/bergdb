@@ -10,7 +10,6 @@ import bergdb.nanotest.T;
 import bergdb.storage.BufferedStream;
 import bergdb.stream.MemoryStream;
 
-
 /**
  * Unit tests for cache and evict.
  * 
@@ -89,26 +88,15 @@ public class CacheTester {
             db.evict(ed);
         }
         
-        //System.out.println("---- CacheTester.testEvictCrazy ----");
-        //System.out.println("key23 = " + Util.toString(Keys.crazyKey(23)));
-        //System.out.println("key5 = " + Util.toString(Keys.crazyKey(5)));
-        //System.out.println("key49 = " + Util.toString(Keys.crazyKey(49)));
-        //System.out.println("key50 = " + Util.toString(Keys.crazyKey(50)));
-        
         GetData gd1 = db.newGetData();
-        
-        {
-            byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(KeyFactory.crazyKey(23)), gd1);
-        }
+        byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(KeyFactory.crazyKey(23)), gd1);
         
         for (int i = 0; i < ids.length*10; i++) {
             db.evict(gd1.evictData);
         }
         
-        { 
-            GetData d = db.newGetData();
-            byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(KeyFactory.crazyKey(23)), d);
-        }
+        GetData d = db.newGetData();
+        value = db.getOne(Long.MAX_VALUE, Keys.toSegments(KeyFactory.crazyKey(23)), d);
         
         checkCrazyDb(db, ids);
         
@@ -134,28 +122,24 @@ public class CacheTester {
         }
         
         // Checks DB
-        {
-            for (int i = 0; i < ids.length; i++) {
-                byte[] key = KeyFactory.crazyKey(ids[i]);
-                byte[] expected = key;
-                byte[] value = DbUtil.get(db, Long.MAX_VALUE, key);
-                Assert.assertArrayEquals("i=" + i, expected, value);
-            }
+        for (int i = 0; i < ids.length; i++) {
+            byte[] key = KeyFactory.crazyKey(ids[i]);
+            byte[] expected = key;
+            byte[] value = DbUtil.get(db, Long.MAX_VALUE, key);
+            Assert.assertArrayEquals("i=" + i, expected, value);
         }
-        
+    
         EvictData gd = new EvictData();
         for (int i = 0; i < ids.length * 10; i++) {
             db.evict(gd);
         }
         
         // Checks DB
-        {
-            for (int i = 0; i < ids.length; i++) {
-                byte[] key = KeyFactory.crazyKey(ids[i]);
-                byte[] expected = key;
-                byte[] value = DbUtil.get(db, Long.MAX_VALUE, key);
-                Assert.assertArrayEquals("i=" + i, expected, value);
-            }
+        for (int i = 0; i < ids.length; i++) {
+            byte[] key = KeyFactory.crazyKey(ids[i]);
+            byte[] expected = key;
+            byte[] value = DbUtil.get(db, Long.MAX_VALUE, key);
+            Assert.assertArrayEquals("i=" + i, expected, value);
         }
     }
     
@@ -180,16 +164,12 @@ public class CacheTester {
         }
         
         // Checks DB
-        {
-            for (int i = 0; i < keys.length; i++) {
-                byte[] key = keys[i];
-                byte[] expected = key;
-                byte[] value = DbUtil.get(db, Long.MAX_VALUE, key);
-                Assert.assertArrayEquals("i=" + i, expected, value);
-            }
+        for (int i = 0; i < keys.length; i++) {
+            byte[] key = keys[i];
+            byte[] expected = key;
+            byte[] value = DbUtil.get(db, Long.MAX_VALUE, key);
+            Assert.assertArrayEquals("i=" + i, expected, value);
         }
-        
-        //System.out.println("-- db orig --");  db.printGraph(System.out);
         
         EvictData gd = new EvictData();
         
@@ -197,27 +177,19 @@ public class CacheTester {
             db.evict(gd);
         }
         
-        //System.out.println("-- db after 2 evicts --");  db.printGraph(System.out);
-        
         for (int i = 0; i < 2; i++) {
             db.evict(gd);
         }
         
-        //System.out.println("-- db after 4 evicts --");  db.printGraph(System.out);
-        
         DbUtil.get(db, Long.MAX_VALUE, keys[0]);
         DbUtil.get(db, Long.MAX_VALUE, keys[1]);
         
-        //System.out.println("-- db after get() --\n");  db.printGraph(System.out);
-        
         // Checks DB after evicts
-        {
-            for (int i = 0; i < keys.length; i++) {
-                byte[] key = keys[i];
-                byte[] expected = key;
-                byte[] value = DbUtil.get(db, Long.MAX_VALUE, key);
-                Assert.assertArrayEquals("i=" + i, expected, value);
-            }
+        for (int i = 0; i < keys.length; i++) {
+            byte[] key = keys[i];
+            byte[] expected = key;
+            byte[] value = DbUtil.get(db, Long.MAX_VALUE, key);
+            Assert.assertArrayEquals("i=" + i, expected, value);
         }
     }
     
@@ -236,8 +208,6 @@ public class CacheTester {
         
         db.execute(b.build());
         
-        //System.out.println("-- db orig --");  db.printGraph(System.out);
-        
         EvictData ed = new EvictData();
         int evictCount = 0;
         
@@ -245,9 +215,5 @@ public class CacheTester {
             db.evict(ed);
             evictCount += ed.evictCount;
         }
-        
-        //System.out.println("-- after evict --");  
-        //System.out.println("Evict count: " + evictCount);
-        //db.printGraph(System.out);
     }
 }

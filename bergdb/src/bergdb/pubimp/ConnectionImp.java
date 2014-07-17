@@ -17,7 +17,6 @@ public class ConnectionImp implements Connection {
     private final DatabaseImp database;
     private final GetData getData;
     private long lookupTime;
-    private TimeResolver timeResolver;
     private boolean enableKeyReplace;
     private boolean freezeLookupTime;
     long lastSposOfLastTrans;
@@ -31,20 +30,6 @@ public class ConnectionImp implements Connection {
         this.lookupTime = Long.MAX_VALUE;
         this.enableKeyReplace = false;
         this.lastSposOfLastTrans = 0;
-        this.timeResolver = new TimeResolver(TimeResolver.UTC);
-    }
-    
-    /**
-     * @throws BadFormatException
-     */
-    public final void setLookupTime(String timeString) {
-        if (timeString == null) {
-            throw new IllegalArgumentException("timeString == null not allowed");
-        }
-        
-        long now = db.getTime();
-        long time = timeResolver.resolve(now, timeString);
-        setLookupTime(time);
     }
     
     public final void setLookupTime(Time lookupTime) {

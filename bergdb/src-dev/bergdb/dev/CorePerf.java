@@ -147,7 +147,7 @@ public class CorePerf {
         BasicCollector collector = createCollector();
         long nanos = System.nanoTime();
         
-        TestRunner.runMethod(clazz, methodName, collector);
+        TestRunner.runOneMethod(clazz, methodName, collector);
         
         nanos = System.nanoTime() - nanos;
         

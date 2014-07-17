@@ -10,3 +10,9 @@ import java.lang.annotation.*;
 public @interface T {
     String value() default "unit";
 }
+
+/*
+The name "T" can be discussed. "T" is often used as a type parameter.
+Naming it "Test" is not suitable if one would want to combine nano tests with jUnit 
+tests (org.junit.Test annotation). Alternatives: "Nano" / "N" / "Nanotest" for Nano test.
+*/

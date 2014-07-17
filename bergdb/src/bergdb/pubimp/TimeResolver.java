@@ -4,7 +4,6 @@ import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.Locale;
 import java.util.TimeZone;
-
 import bergdb.common.Util;
 import bergdb.core.SystemClock;
 import bergdb.nanotest.Assert;
@@ -13,7 +12,7 @@ import bergdb.pub.BadFormatException;
 import bergdb.pub.Clock;
 
 /**
- * <p>An instance of this class can resolve a <i>time string</i> to a time value
+ * <p>The methods resolve() and resolveAbsolute() resolve a <i>time string</i> to a time value
  * in clock units (100 ns units since epoch).
  * The format of the time string loosely follows ISO 8601.
  * This class is not thread-safe. The Gregorian calendar is used (the ordinary Western calendar).
@@ -26,6 +25,7 @@ import bergdb.pub.Clock;
  * ABSOLUTE-TIME
  * 
  * "2013-08-19 14:29:10.1234567"    -- 19 Aug 2013 at 14:29:10.1234567.
+ * "2013-08-19T14:29:10.1234567"    -- 19 Aug 2013 at 14:29:10.1234567.
  * "2013-08-19 14:29"               -- 19 Aug 2013 at 14:29:00. 
  * "2013-08-19"                     -- 19 Aug 2013 at 00:00:00.
  * "2013-08"                        -- 1 Aug 2013 at 00:00:00.
@@ -62,9 +62,10 @@ import bergdb.pub.Clock;
  * The syntax for a time-string can be more formally be described by this ABNF:
  * 
  * time-string = absolute / time-of-day / minus / "now" 
- * absolute = absolute-date [SPACE time-of-day]
+ * absolute = absolute-date [space-or-t time-of-day]
  * absolute-date = "YYYY-MM-DD" / "YYYY-MM"
  * time-of-day = "HH:MM:SS.d" / "HH:MM"
+ * space-or-t = SPACE / "T"
  * minus = "-" number SPACE unit [SPACE time]
  * unit = "s" / "m" / "h" / "d"
  * </pre>
@@ -96,16 +97,9 @@ public class TimeResolver {
     }
     
     /**
-     * Creates a TimeResolver with UTC time zone.
-     */
-    public TimeResolver() {
-        this(UTC);
-    }
-    
-    /**
      * Creates a TimeResolver with the given time zone.
      */
-    public TimeResolver(TimeZone timeZone) {
+    private TimeResolver(TimeZone timeZone) {
         if (timeZone == null) {
             throw new IllegalArgumentException("timeZone == null not allowed");
         }
@@ -117,12 +111,23 @@ public class TimeResolver {
      * This method resolves a time string (like "yesterday", "2013-08-30" or "now") to a time
      * value in database time units (100 ns units since epoch).
      * 
-     * @param currentTime
-     * @param timeString
+     * @param currentTime  In database units.
+     * @param timeString  The time string to resolve.
      * @return The resolved time in database time units.
      * @throws BadFormatException
      */
-    public long resolve(long currentTime, String timeString) throws BadFormatException {
+    public static long resolve(TimeZone timeZone, long currentTime, String timeString) throws BadFormatException {
+        return new TimeResolver(timeZone).reallyResolve(currentTime, timeString);
+    }
+    
+    /**
+     * Resolves a time string the must be absolute; no current time is needed.
+     */
+    public static long resolveAbsolute(TimeZone timeZone, String timeString) {
+        return new TimeResolver(timeZone).reallyResolveAbsolute(timeString);
+    }
+    
+    private long reallyResolve(long currentTime, String timeString) throws BadFormatException {
         if (timeString == null) {
             throw new IllegalArgumentException("timeString == null is not allowed");
         }
@@ -147,7 +152,7 @@ public class TimeResolver {
         }
         
         if (length > 4 && timeString.charAt(4) == '-') {
-            return resolveAbsolute(timeString);
+            return reallyResolveAbsolute(timeString);
         } else {
             if (first >= '0' && first <= '9') {
                 return timeOfDay(currentTime, timeString);
@@ -157,27 +162,20 @@ public class TimeResolver {
         }
     }
     
-    public long resolveAbsolute(String timeString) {
+    private long reallyResolveAbsolute(String timeString) {
         long length = timeString.length();
         
         if (length < 7) {
             throw new BadFormatException("Bad time string, too short, was: '" + timeString + "'.");
         }
         
-        try {
-            td.year = Integer.parseInt(timeString.substring(0, 4));
-        } catch (NumberFormatException e) {
-            throw new BadFormatException("Bad time string, was: '" + timeString + "'.");
-        }
-        
         if (timeString.charAt(4) != '-') {
             throw new BadFormatException("Bad time string, expected '-' as 5th char, was: '" + timeString + "'.");
         }
         
-        td.month = parseZeroPadded(timeString.substring(5, 7), timeString);
-        if (td.month < 0) {
-            throw new BadFormatException("Bad absolute time string, bad month, was: '" + timeString + "'.");
-        }
+        parseYear(timeString);
+        
+        parseMonth(timeString);
         
         if (length > 7) {
             if (length < 10) {
@@ -188,8 +186,7 @@ public class TimeResolver {
                 throw new BadFormatException("Bad absolute time string, was: '" + timeString + "'.");
             }
             
-            td.date = parseZeroPadded(timeString.substring(8, 10), timeString);
-            // Let's allowed "overflow" for now, like: 2013-02-50".
+            parseDate(timeString);
         } else {
             td.date = 1;
         }
@@ -213,6 +210,26 @@ public class TimeResolver {
         }
         
         return computeTimeUnits();
+    }
+
+    private void parseDate(String timeString) {
+        td.date = parseZeroPadded(timeString.substring(8, 10), timeString);
+        // Let's allowed "overflow" for now, like: 2013-02-50".
+    }
+
+    private void parseMonth(String timeString) {
+        td.month = parseZeroPadded(timeString.substring(5, 7), timeString);
+        if (td.month < 0) {
+            throw new BadFormatException("Bad absolute time string, bad month, was: '" + timeString + "'.");
+        }
+    }
+
+    private void parseYear(String timeString) {
+        try {
+            td.year = Integer.parseInt(timeString.substring(0, 4));
+        } catch (NumberFormatException e) {
+            throw new BadFormatException("Bad time string, was: '" + timeString + "'.");
+        }
     }
     
     /**
@@ -420,36 +437,39 @@ public class TimeResolver {
         
         return result;
     }
+   
     
+    // ======== Tests ========
     
     @T
     public static void testAbsolute0() {
         String[] ok = new String[]{
-                "2013-01-02 12:02:12.1234567", 
+                "2013-01-02 12:02:12.1234567",
+                "2013-01-02T12:02:12.1234567",
                 "2013-01-02", 
                 "2013-12-12 12:00", 
                 "1999-02-10 12:00:01"};
         
         String[] bad = new String[]{
                 "", 
+                "2013-01-02W12:02:12.1234567",
                 "2013-x1", 
                 "2013-03-10 12:33-30", 
                 "2013-03-10 12",
                 "2013-03-10 12:30:",
                 "2013-03-10 "};
         
-        TimeResolver r = new TimeResolver();
         long currentTime = 1000*1000*1000 * UNITS_PER_MILLISECOND;  // not needed for absolute times
         
         for (String s : ok) {
-            r.resolve(currentTime, s);
+            TimeResolver.resolve(UTC, currentTime, s);
         }
         
         Exception ex = null;
         for (String s : bad) {
             ex = null;
             try {
-                r.resolve(currentTime, s);
+                TimeResolver.resolve(UTC, currentTime, s);
             } catch (BadFormatException e) {
                 ex = e;
             }
@@ -464,22 +484,21 @@ public class TimeResolver {
     public static void testAbsolute1() {
         long millis = Util.getMillisSinceEpoch(UTC, 2013, 3, 14, 16, 10, 20, 500);        
         String ts = "2013-03-14 16:10:20.500";
-        Assert.assertEquals(millis * UNITS_PER_MILLISECOND, new TimeResolver().resolve(0, ts));
+        Assert.assertEquals(millis * UNITS_PER_MILLISECOND, TimeResolver.resolve(UTC, 0, ts));
     }
     
     @T
     public static void testAbsolute2() {
         long millis = Util.getMillisSinceEpoch(UTC, 2000, 1, 1, 0, 0, 0, 0);   
-        TimeResolver t = new TimeResolver();
         
         String ts = "2000-01-01 00:00:00.000";
-        Assert.assertEquals(millis * UNITS_PER_MILLISECOND, t.resolve(0, ts));
+        Assert.assertEquals(millis * UNITS_PER_MILLISECOND, TimeResolver.resolve(UTC, 0, ts));
         
         ts = "2000-01-01 00:00:00";
-        Assert.assertEquals(millis * UNITS_PER_MILLISECOND, t.resolve(0, ts));
+        Assert.assertEquals(millis * UNITS_PER_MILLISECOND, TimeResolver.resolveAbsolute(UTC, ts));
         
         ts = "2000-01-01 00:00";
-        Assert.assertEquals(millis * UNITS_PER_MILLISECOND, t.resolve(0, ts));
+        Assert.assertEquals(millis * UNITS_PER_MILLISECOND, TimeResolver.resolve(UTC, 0, ts));
     }
     
     @T
@@ -487,38 +506,35 @@ public class TimeResolver {
         // Resolves units - 10,000 time units in one millisecond.
         
         long millis = Util.getMillisSinceEpoch(UTC, 2000, 1, 1, 0, 0, 0, 0);    
-        TimeResolver t = new TimeResolver();
+        
         String ts = "2000-01-01 00:00:00.0000123";
-        Assert.assertEquals(millis * UNITS_PER_MILLISECOND + 123, t.resolve(0, ts));
+        Assert.assertEquals(millis * UNITS_PER_MILLISECOND + 123, TimeResolver.resolve(UTC, 0, ts));
         
         ts = "2000-01-01 00:00:00.0000123456";
-        Assert.assertEquals(millis * UNITS_PER_MILLISECOND + 123, t.resolve(0, ts));
+        Assert.assertEquals(millis * UNITS_PER_MILLISECOND + 123, TimeResolver.resolve(UTC, 0, ts));
         
         ts = "2000-01-01 00:00:00.00001239";
-        Assert.assertEquals(millis * UNITS_PER_MILLISECOND + 123, t.resolve(0, ts));
+        Assert.assertEquals(millis * UNITS_PER_MILLISECOND + 123, TimeResolver.resolve(UTC, 0, ts));
     }
     
     @T
     public static void testSpecial0() {
-        TimeResolver r = new TimeResolver();
         long current = 1 * 1000*1000*1000 * UNITS_PER_MILLISECOND + 123;
-        long result = r.resolve(current, "now");
+        long result = TimeResolver.resolve(UTC, current, "now");
         Assert.assertEquals(current, result);
     }
     
     @T
     public static void tSpecial1() {
-        TimeResolver r = new TimeResolver();
         long current = new SystemClock().getTime();
-        long result = r.resolve(current, "now");
+        long result = TimeResolver.resolve(UTC, current, "now");
         Assert.assertEquals(current, result);
     }
     
     @T
     public static void testTimeOfDay0() {
-        TimeResolver r = new TimeResolver();
-        long t1 = r.resolve(0, "2010-03-14 13:20:10.0010023");
-        long t2 = r.resolve(t1, "09:20:40.5000123");
+        long t1 = TimeResolver.resolve(UTC, 0, "2010-03-14 13:20:10.0010023");
+        long t2 = TimeResolver.resolve(UTC, t1, "09:20:40.5000123");
         
         long millis = Util.getMillisSinceEpoch(UTC, 2010, 3, 14, 9, 20, 40, 500);
         Assert.assertEquals(millis * UNITS_PER_MILLISECOND + 123, t2);
@@ -526,9 +542,8 @@ public class TimeResolver {
     
     @T
     public static void testTimeOfDay1() {
-        TimeResolver r = new TimeResolver();
-        long t1 = r.resolve(0, "2010-03-14 03:01");
-        long t2 = r.resolve(t1, "09:20:40.5000123");
+        long t1 = TimeResolver.resolve(UTC, 0, "2010-03-14 03:01");
+        long t2 = TimeResolver.resolve(UTC, t1, "09:20:40.5000123");
         
         long millis = Util.getMillisSinceEpoch(UTC, 2010, 3, 14, 9, 20, 40, 500);
         Assert.assertEquals(millis * UNITS_PER_MILLISECOND + 123, t2);
@@ -536,9 +551,8 @@ public class TimeResolver {
     
     @T
     public static void testTimeOfDay2() {
-        TimeResolver r = new TimeResolver();
-        long t1 = r.resolve(0, "2010-03-14 03:01");
-        long t2 = r.resolve(t1, "09:20");
+        long t1 = TimeResolver.resolve(UTC, 0, "2010-03-14 03:01");
+        long t2 = TimeResolver.resolve(UTC, t1, "09:20");
         
         long millis = Util.getMillisSinceEpoch(UTC, 2010, 3, 14, 9, 20, 0, 0);
         Assert.assertEquals(millis * UNITS_PER_MILLISECOND, t2);
@@ -546,42 +560,32 @@ public class TimeResolver {
     
     @T
     public static void testMinus0() {
-        TimeResolver r = new TimeResolver();
-        long t1 = r.resolve(0, "2010-03-14 03:01:10");
-        long t2 = r.resolve(t1, "-10 s");
+        long t1 = TimeResolver.resolve(UTC, 0, "2010-03-14 03:01:10");
+        long t2 = TimeResolver.resolve(UTC, t1, "-10 s");
         Assert.assertEquals(10 * Clock.UNITS_PER_SEC, t1 - t2);
     }
     
     @T
     public static void testMinus1() {
-        TimeResolver r = new TimeResolver();
-        long t1 = r.resolve(0, "2010-03-14 03:01:10");
-        long t2 = r.resolve(t1, "-10 m");
+        long t1 = TimeResolver.resolve(UTC, 0, "2010-03-14 03:01:10");
+        long t2 = TimeResolver.resolve(UTC, t1, "-10 m");
         Assert.assertEquals(Clock.UNITS_PER_SEC * 600, t1 - t2);
     }
     
     @T
     public static void testMinus2() {
-        TimeResolver r = new TimeResolver();
-        long t1 = r.resolve(0, "2010-03-14 03:01:10");
-        long t2 = r.resolve(t1, "-1 d 13:00:01");
-        long t3 = r.resolve(0, "2010-03-13 13:00:01");
-        
+        long t1 = TimeResolver.resolve(UTC, 0, "2010-03-14 03:01:10");
+        long t2 = TimeResolver.resolve(UTC, t1, "-1 d 13:00:01");
+        long t3 = TimeResolver.resolve(UTC, 0, "2010-03-13 13:00:01");
         Assert.assertEquals(t3, t2);
     }
     
     @T
     public static void testMinus3() {
-        TimeResolver r = new TimeResolver();
-        long t1 = r.resolve(0, "2013-09-01 03:01:10");
-        long t2 = r.resolve(t1, "-1 d 09:00");
-        long t3 = r.resolve(0, "2013-08-31 09:00:00");
-        
+        long t1 = TimeResolver.resolve(UTC, 0, "2013-09-01 03:01:10");
+        long t2 = TimeResolver.resolve(UTC, t1, "-1 d 09:00");
+        long t3 = TimeResolver.resolve(UTC, 0, "2013-08-31 09:00:00");
         Assert.assertEquals(t3, t2);
-    }
-    
-    public static void main(String[] args) {
-        testAbsolute0();
     }
 }
 

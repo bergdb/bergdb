@@ -120,10 +120,6 @@ public class Db {
      * It is typically used with an empty block: "synchronized (readSynch) {}".
      */
     private final ReadSync readSync;
-    
-    private final Object[] pointerLocks;
-    private final int pointerLocksLength;
-        // Locks to synchronized node pointers. See followPointer().
     private final IKeyModSet keyModSet;
     private final NodeStream nodeStream; // IO for DB to read/append nodes.
     private final StorageManager storageManager;
@@ -191,7 +187,7 @@ public class Db {
     // atomically.
     //
 
-    public final static long MIN_CACHE_MEMORY_VALUE = Constants.MIN_CACHE_MEMORY_VALUE;
+    public static final long MIN_CACHE_MEMORY_VALUE = Constants.MIN_CACHE_MEMORY_VALUE;
     
     private final AtomicLong cachedMemoryValue = new AtomicLong(MIN_CACHE_MEMORY_VALUE);
         // The cachedMemoryValue is an estimate of the total amount of memory cached
@@ -229,14 +225,7 @@ public class Db {
         writeLock = new WriteLock();
         readSync = new ReadSync();
         
-        pointerLocksLength = 128;
-        pointerLocks = new Object[pointerLocksLength];
-        for (int i = 0; i < pointerLocksLength; i++) {
-            pointerLocks[i] = new Object();
-        }
-        
         builder = b;
-
         evictRandom = new Random(0);      // pseudo-random, but deterministic.
         transNodes = new TransNodes();
         keyModSet = new KeyModSet2();
@@ -277,6 +266,7 @@ public class Db {
         // Readers synchronize with readSync (get(), getMany()) and writers
         // synchronize with writeLock.
         //
+        
         synchronized (readSync) {}
         synchronized (writeLock) {}
     }

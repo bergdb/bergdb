@@ -1,6 +1,13 @@
 package bergdb.nanotest;
 
+/**
+ * Static utility methods to assert expected conditions.
+ * 
+ * @author Frans Lundberg
+ */
 public class Assert {
+    private Assert() {}
+    
     public static void assertEquals(String about, String expected, String actual) {
         if (!expected.equals(actual)) {
             throw new AssertionError(about + ", expected '" + expected + "', got '" + actual + "'.");
@@ -26,8 +33,8 @@ public class Assert {
     }
 
     public static void assertFalse(boolean actual) {
-        if (actual != false) {
-            throw new AssertionError("Expected false, got " + actual + ".");
+        if (actual) {
+            throw new AssertionError("Expected actual == false, was true.");
         }
     }
 
@@ -141,11 +148,7 @@ public class Assert {
     
     public static boolean arrayEquals(byte[] expected, byte[] actual) {
         if (expected == null) {
-            if (actual == null) {
-                return true;
-            } else {
-                return false;
-            }
+            return actual == null ? true : false;
         }
         
         if (actual == null) {
@@ -377,13 +380,13 @@ public class Assert {
     }
 
     public static void assertTrue(String message, boolean b) {
-        if (b != true) {
+        if (!b) {
             throw new AssertionError(message + ", expected true, but was false.");
         }
     }
 
     public static void assertTrue(boolean b) {
-        if (b != true) {
+        if (!b) {
             throw new AssertionError("Expected true, but was false.");
         }
     }

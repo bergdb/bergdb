@@ -7,11 +7,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+/**
+ * Basic, simple test result collector.
+ * 
+ * @author Frans Lundberg
+ */
 public class BasicCollector implements TestCollector, TestRunnerCollector {
-    //
-    // This class avoids using "printf" because of GCJ issues with it.
-    //
-    
     private List<Prop> props = new ArrayList<Prop>();
     protected String currentMethodName = null;
     private List<File> currentTempDirs = new ArrayList<File>();
@@ -39,11 +40,11 @@ public class BasicCollector implements TestCollector, TestRunnerCollector {
         }
         baseOut = output;
         
-        setPrintOutput(true);
-        setPrintMethods(true);
-        setPrintProps(true);
+        this.testOut = baseOut;
+        this.printMethods = true;
+        this.printProps = true;
         
-        // Sets tmpDir
+        // Sets this.tmpDir.
         
         File tmp = new File("/tmp");
         if (tmp.exists() && tmp.isDirectory()) {
@@ -189,12 +190,12 @@ public class BasicCollector implements TestCollector, TestRunnerCollector {
             }
             ok = file.delete();
             if(!ok) {
-                throw new IOException("cannot delete file " + file);
+                throw new IOException("Cannot delete file: " + file + ".");
             }
         } else {
             ok = file.delete();
             if(!ok) {
-                throw new IOException("cannot delete file " + file);
+                throw new IOException("Cannot delete file " + file + ".");
             }
         }
     }
@@ -224,7 +225,7 @@ public class BasicCollector implements TestCollector, TestRunnerCollector {
     
     public long getLong(String name) {
         Object obj = getProp(name);
-        if (obj != null && obj instanceof Long) {
+        if (obj instanceof Long) {
             return (Long) obj;
         } else {
             throw new IllegalArgumentException("No such Long prop");
@@ -233,7 +234,7 @@ public class BasicCollector implements TestCollector, TestRunnerCollector {
     
     public double getDouble(String name) {
         Object obj = getProp(name);
-        if (obj != null && obj instanceof Double) {
+        if (obj instanceof Double) {
             return (Double) obj;
         } else {
             throw new IllegalArgumentException("No such Double prop");
@@ -260,14 +261,13 @@ public class BasicCollector implements TestCollector, TestRunnerCollector {
         //
         
         String result;
-        int failed = getFailed();
-        int total = getTotal();
         double rounded = Math.round(10.0 * totalExeTime) / 10.0;
         
         if (failed == 0 && total > 0) {
             result = "RESULT: SUCCESS. " + total + " successful tests in " + rounded + " s.\n";
         } else {
-            result = "RESULT: FAILED. Total: " + total + ", failed: " + failed + ". Time: " + rounded + " s.\n";
+            result = "RESULT: FAILED. Total: " + total + ", failed: " + failed 
+                    + ". Time: " + rounded + " s.\n";
         }
         
         return result;

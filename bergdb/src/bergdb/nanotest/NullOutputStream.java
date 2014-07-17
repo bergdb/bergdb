@@ -7,6 +7,8 @@ import java.io.OutputStream;
  * Dummy output stream useful for testing.
  * Write methods and does nothing but counts the number of bytes 
  * "written" to the output stream.
+ * 
+ * @author Frans Lundberg
  */
 public class NullOutputStream extends OutputStream {
     private long count = 0;

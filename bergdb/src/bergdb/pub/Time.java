@@ -82,7 +82,7 @@ public class Time {
      * @see #resolve(TimeZone, Time, String)
      */
     public static Time resolve(TimeZone timeZone, String timeString) {
-        long units = new TimeResolver(UTC).resolveAbsolute(timeString);
+        long units = TimeResolver.resolveAbsolute(UTC, timeString);
         return Time.units(units);
     }
     
@@ -146,7 +146,7 @@ public class Time {
      * one minute is 60 seconds and one hour is always 3600 seconds.</p>
      */
     public static Time resolve(TimeZone timeZone, Time now, String timeString) {
-        long units = new TimeResolver(timeZone).resolve(now.units(), timeString);
+        long units = TimeResolver.resolve(timeZone, now.units(), timeString);
         return Time.units(units);
     }
     
