@@ -399,8 +399,25 @@ public abstract class DbValue {
         final String typeName = c.getName();
         final int typeHash = typeName.hashCode();
         DbValue result = null;
-        
         char specialTypeChar = DbValue.getSpecialTypeChar(typeName, typeHash);
+        
+        if (specialTypeChar == '.') {
+            if (c.isArray()) {
+                result = createDbArray(c, object);
+            } else {
+                result = DbObject.toDbObject(object);
+            }
+        } else {
+            result = handleSpecialType(object, specialTypeChar);
+        }
+        
+        return result;
+    }
+
+    private static DbValue handleSpecialType(Object object, char specialTypeChar)
+            throws Bug {
+        DbValue result;
+        
         switch (specialTypeChar) {
         case 'Z':
             result = new DbBoolean((Boolean) object);
@@ -432,33 +449,22 @@ public abstract class DbValue {
         case 'b':
             result = new DbByteArray((byte[]) object);
             break;
-        case '.':
-            // not a special type...
-            break;
         default:
             throw new Bug("Unexpected special type char: " + specialTypeChar + ".");
         }
-        
-        if (specialTypeChar != '.') {
-            assert result != null;
-            return result;
-        }
-        
-        if (c.isArray()) {
-            Object javaArray = object;
-            Class<?> c2 = c.getComponentType();
-            DbArray.Builder arrayBuilder = new DbArray.Builder();
-            int length = Array.getLength(javaArray);
-            for (int i = 0; i < length; i++) {
-                Object element = Array.get(javaArray, i);
-                DbValue dbValue = DbValue.toDbValue(c2, element);
-                arrayBuilder.add(dbValue);
-            }
-            result = arrayBuilder.build();
-        } else {
-            result = DbObject.toDbObject(object);
-        }
-        
         return result;
+    }
+
+    private static DbValue createDbArray(Class<?> c, Object object) {
+        Object javaArray = object;
+        Class<?> c2 = c.getComponentType();
+        DbArray.Builder arrayBuilder = new DbArray.Builder();
+        int length = Array.getLength(javaArray);
+        for (int i = 0; i < length; i++) {
+            Object element = Array.get(javaArray, i);
+            DbValue dbValue = DbValue.toDbValue(c2, element);
+            arrayBuilder.add(dbValue);
+        }
+        return arrayBuilder.build();
     }
 }

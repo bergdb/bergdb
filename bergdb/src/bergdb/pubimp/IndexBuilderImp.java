@@ -7,6 +7,7 @@ import bergdb.common.EventToWaitFor;
 import bergdb.core.DbStoppingException;
 import bergdb.core.KeyTransformation;
 import bergdb.dag.GetMany;
+import bergdb.dag.GetMany.StopCondition;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.pub.Action;
@@ -33,15 +34,16 @@ public class IndexBuilderImp implements IndexBuilder {
     private final ConnectionImp connection;
     private final String indexName;
     private IndexManager.Index index;       // The index that was created.
-    private int bunchSize = 25;             // How many index entries to create in one bunch - in one transaction.
+    private int bunchSize;                  // Max index entries to create in one bunch - in one transaction.
     
     public IndexBuilderImp(String indexName, DatabaseImp database) {
         assert indexName != null;
         assert database != null;
         
         this.indexName = indexName;
-        this.indexManager = database.getIndexManager();
-        this.connection = new ConnectionImp(database);
+        bunchSize = 25;
+        indexManager = database.getIndexManager();
+        connection = new ConnectionImp(database);
         parts = new ArrayList<CompositePart>();
         dirList = new ArrayList<String>();
     }
@@ -87,8 +89,6 @@ public class IndexBuilderImp implements IndexBuilder {
             throw new IllegalStateException("Dir cannot be added when index creation started, " +
                     "dir: " + udir + ".");
         } 
-        
- //System.out.println("idir = " + idir);
         
         dirList.add(idir);
         return this;
@@ -222,6 +222,8 @@ public class IndexBuilderImp implements IndexBuilder {
     }
     
     /**
+     * Starts the index creation in a new low-priority thread.
+     * 
      * @throws IndexAlreadyExistsException
      * @throws IllegalStateException
      */
@@ -240,8 +242,8 @@ public class IndexBuilderImp implements IndexBuilder {
             }
 
             public JobStatus join(int ms) {
-                // It would be possible for BergDB user to interrupt this this.
-                // Threads are globally accessible through Thread.getAllStackTraces(), or ThreadGroup.
+                // It would be possible for BergDB user to interrupt this.
+                // Threads are globally accessible through ThreadGroup.
                 
                 try {
                     thread.join(ms);
@@ -255,10 +257,13 @@ public class IndexBuilderImp implements IndexBuilder {
     }
     
     /**
+     * Creates a new thread which will create the index.
+     * 
      * @throws IndexAlreadyExistsException
      */
     public Thread createInThread(final IndexCreateState createState) {
-        final EventToWaitFor event = createInThread_waitEvent;   // Event used for testing.
+        // Event used for testing.
+        final EventToWaitFor event = createInThread_waitEvent;   
         
         Thread t = new Thread(new Runnable() {
             public void run() {
@@ -282,14 +287,7 @@ public class IndexBuilderImp implements IndexBuilder {
                     long duration = (System.nanoTime() - t0);
                     
                     if (!createState.isDone) {
-                        // Sleep 50 % of the step time to keep index creation in the background.
-                        long ms = duration / 1000000;
-                        int nanos = (int) (duration % 1000000);
-                        try {
-                            Thread.sleep(ms / 2, nanos / 2);
-                        } catch (InterruptedException e) {
-                            throw new Error("Internal thread was interrupted.");
-                        }
+                        sleepFiftyPercentOfDuration(duration);
                     }
                 }
             }
@@ -300,6 +298,31 @@ public class IndexBuilderImp implements IndexBuilder {
         t.setName("IndexBuilderImp-CreateIndex-" + createState.index.getName() + "-" + t.getId());
         t.start();
         return t;
+    }
+    
+    /**
+     * Sleeps 50 per cent of the given duration, but never longer than 1 second.
+     * 
+     * @param duration  The duration in nanoseconds; determines how long to sleep.
+     */
+    private static void sleepFiftyPercentOfDuration(long duration) throws Error {
+        final long maxMillis = 1000;
+        long ms = duration / 1000000;
+        int nanos = (int) (duration % 1000000);
+        
+        long msToSleep = ms / 2;
+        int nanosToSleep = nanos / 2;
+        
+        if (msToSleep > maxMillis) {
+            ms = maxMillis;
+            nanos = 0;
+        }
+        
+        try {
+            Thread.sleep(msToSleep, nanosToSleep);
+        } catch (InterruptedException e) {
+            throw new Error("Internal thread was interrupted.");
+        }
     }
     
     /**
@@ -316,63 +339,22 @@ public class IndexBuilderImp implements IndexBuilder {
         final String dir = createState.index.dirs[createState.dirId];
         final long[] dirKey = Keys.toSegments(dir);
         final int dirIndex = createState.dirId;
-        final boolean[] isDone = new boolean[1];
-        final long[] processedEntries = new long[1];
         
         if (createState.startKey == null) {
             createState.startKey = Keys.toSegments(dir);
         }
         
-        final GetMany[] gArray = new GetMany[] { null };
+        final TheStopCondition stopCondition = new TheStopCondition(dirKey, IndexBuilderImp.this.bunchSize);
         
-        isDone[0] = false;
+        final GetMany g = new GetMany();
+        g.startKey = createState.startKey;
+        g.inclusive = false;
+        g.stopCondition = stopCondition;
         
         Transaction transaction = connection.rw(new Action() {
             public void run(final RwEnvironment environment) {
                 final RwEnvironmentImp env = (RwEnvironmentImp) environment;
-                processedEntries[0] = 0;
-                
-                GetMany g = new GetMany();
-                gArray[0] = g;
-                g.startKey = createState.startKey;
-                g.inclusive = false;
-                    
-                // Stop condition allows iteration until 100 KVs, eod(), or end of directory.
-                
-                g.stopCondition = new GetMany.StopCondition() {
-                    private int count = 0;
-                    private final int maxCount = IndexBuilderImp.this.bunchSize;
-                    
-                    public int handleKvt(Kvt kvt) {
-                        int result = GetMany.StopCondition.ADD;
-                        processedEntries[0]++;
-                        
-                        String keyString = Keys.toString(kvt.key);
-                        boolean isObject = Entries.isObject(keyString, kvt.value);
-                        
-                        if (!isObject) {
-                            result = GetMany.StopCondition.CONTINUE;
-                            return result;
-                        }
-                        
-                        count++;
-                        if (count == maxCount) {
-                            result = GetMany.StopCondition.ADD_AND_STOP;
-                        }
-                        
-                        if (!Keys.isPrefix(dirKey, kvt.key)) {
-                            result = GetMany.StopCondition.STOP;
-                            isDone[0] = true;
-                        }
-                    
-                        return result;
-                    }
-                    
-                    public void eod() {
-                        isDone[0] = true;
-                    }
-                };
-                
+                stopCondition.resetProcessedEntries();
                 env.getMany(g);
                 
                 for (Kvt kvt : g.result) {
@@ -404,20 +386,25 @@ public class IndexBuilderImp implements IndexBuilder {
             return;
         }
         
-        if (isDone[0]) {
+        handleStepResult(createState, stopCondition, g);
+    }
+
+    private void handleStepResult(final IndexCreateState createState,
+            final TheStopCondition stopCondition, final GetMany g) {
+        if (stopCondition.isDone()) {
             if (createState.dirId == createState.index.dirs.length - 1) {
-                createState.update(true, createState.processedEntries + processedEntries[0]);
-                    // Done with all directories
+                // Done with all directories.
+                createState.update(true, createState.processedEntries + stopCondition.getProcessedEntries());
                 indexManager.setIndexStateToActive(connection, createState.index);
             } else {
-                createState.update(false, createState.processedEntries + processedEntries[0]);
+                // Done with one directory, prepare to process next directory.
+                createState.update(false, createState.processedEntries + stopCondition.getProcessedEntries());
                 createState.dirId++;
                 createState.startKey = Keys.toSegments(createState.index.dirs[createState.dirId]);
             }
         } else {
-            // There is more from current directory (from index.dirs[createState.dirId]).
-            createState.update(false, createState.processedEntries + processedEntries[0]);
-            GetMany g = gArray[0];
+            // There is more to process from current directory.
+            createState.update(false, createState.processedEntries + stopCondition.getProcessedEntries());
             createState.startKey = g.result.get(g.result.size() - 1).key;
         }
     }
@@ -465,7 +452,7 @@ public class IndexBuilderImp implements IndexBuilder {
         }
         
         public synchronized JobStatus getJobStatus() {
-            // May be called from any thread. Synch accordingly.
+            // May be called from any thread; synch accordingly.
             
             final int progress = isDone ? 100 : -1;
             
@@ -485,6 +472,66 @@ public class IndexBuilderImp implements IndexBuilder {
                 }
             };
             
+        }
+    }
+    
+    /**
+     * Stop condition for getMany(). 
+     * Stops when maxCount is reached or if we do not have the dirKey prefix
+     * any longer.
+     */
+    private static class TheStopCondition implements StopCondition {
+        private final int maxCount;
+        private final long[] dirKey;        
+        private int count = 0;
+        private int processedEntries = 0;
+        private boolean isDone = false;
+        
+        public TheStopCondition(long[] dirKey, int maxCount) {
+            this.maxCount = maxCount;
+            this.dirKey = dirKey;
+        }
+        
+        public int handleKvt(Kvt kvt) {
+            int result = GetMany.StopCondition.ADD;
+            processedEntries++;
+            
+            String keyString = Keys.toString(kvt.key);
+            boolean isObject = Entries.isObject(keyString, kvt.value);
+            
+            if (!isObject) {
+                result = GetMany.StopCondition.CONTINUE;
+                return result;
+            }
+            
+            count++;
+            if (count == maxCount) {
+                result = GetMany.StopCondition.ADD_AND_STOP;
+            }
+            
+            if (!Keys.isPrefix(dirKey, kvt.key)) {
+                result = GetMany.StopCondition.STOP;
+                isDone = true;
+            }
+        
+            return result;
+        }
+        
+        public void eod() {
+            isDone = true;
+        }
+        
+        /** Sets this.processedEntries to 0. */
+        public void resetProcessedEntries() {
+            processedEntries = 0;
+        }
+        
+        public boolean isDone() {
+            return isDone;
+        }
+        
+        public int getProcessedEntries() {
+            return processedEntries;
         }
     }
 }

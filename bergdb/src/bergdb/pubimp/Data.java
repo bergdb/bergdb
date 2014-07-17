@@ -9,7 +9,6 @@ import bergdb.core.InternalDataException;
  * @author Frans Lundberg
  */
 public class Data {
-    // 130308 Frans: Changed "String[][] fields" to "String[] fields".
     
     /**
      * Class used for storing index info as internal data.
@@ -23,30 +22,64 @@ public class Data {
         public Index() {}
         
         /**
-         * Checks object state after read from database.
+         * Checks object state after reading it from database.
          * 
          * @throws InternalDataException
          */
         public void check(IndexManager indexManager) throws InternalDataException {
-            if (dirs == null) {
-                throw new InternalDataException("'dirs' is null");
+            checkDirs();
+            int levels = checkFields();
+            checkTypeStrings(indexManager, levels);
+            checkState();
+        }
+
+        private void checkState() {
+            if (state == null) {
+                throw new InternalDataException("'state' == null");
             }
             
-            if (dirs.length == 0) {
-                throw new InternalDataException("Length of 'dirs' is 0.");
+            if (state.length() < 1) {
+                throw new InternalDataException("state.length() < 1: '" + state + "'.");
             }
             
-            for (int i = 0; i < dirs.length; i++) {
-                String dir = dirs[i];
-                if (dir == null) {
-                    throw new InternalDataException("dir[" + i + "] is null.");
+            char c = state.charAt(0);
+            
+            switch (c) {
+            case 'c':
+                if (!state.equals("creating")) {
+                    throw new InternalDataException("Bad index 'state': " + state + ".");
                 }
-                
-                if (dir.length() == 0) {
-                    throw new InternalDataException("dir[" + i + "] has length == 0.");
+                break;
+            case 'a':
+                if (!state.equals("active")) {
+                    throw new InternalDataException("Bad index 'state': " + state + ".");
                 }
+                break;
+            case 'd':
+                if (!state.equals("deleting")) {
+                    throw new InternalDataException("Bad index 'state': " + state + ".");
+                }
+                break;
+            default:
+                throw new InternalDataException("Bad index 'state': " + state + ".");
+            }
+        }
+
+        private void checkTypeStrings(IndexManager indexManager, int levels) {
+            if (typeStrings.length != levels) {
+                throw new InternalDataException("fields.length != typeStrings.length (" 
+                        + typeStrings.length + ")");
             }
             
+            for (int i = 0; i < typeStrings.length; i++) {
+                if (!indexManager.typeSupported(typeStrings[i])) {
+                    throw new InternalDataException("Type string '" + typeStrings[i] + "' not " +
+                    		"supported.");
+                }
+            }
+        }
+
+        private int checkFields() {
             if (fields == null) {
                 throw new InternalDataException("'fields' is null.");
             }
@@ -76,47 +109,27 @@ public class Data {
                     }
                 }
             }
-            
-            if (typeStrings.length != levels) {
-                throw new InternalDataException("fields.length != typeStrings.length (" 
-                        + typeStrings.length + ")");
+            return levels;
+        }
+
+        private void checkDirs() {
+            if (dirs == null) {
+                throw new InternalDataException("'dirs' is null");
             }
             
-            for (int i = 0; i < typeStrings.length; i++) {
-                if (!indexManager.typeSupported(typeStrings[i])) {
-                    throw new InternalDataException("Type string '" + typeStrings[i] + "' not " +
-                    		"supported.");
-                }
+            if (dirs.length == 0) {
+                throw new InternalDataException("Length of 'dirs' is 0.");
             }
             
-            if (state == null) {
-                throw new InternalDataException("'state' == null");
-            }
-            
-            if (state.length() < 1) {
-                throw new InternalDataException("state.length() < 1: '" + state + "'.");
-            }
-            
-            char c = state.charAt(0);
-            
-            switch (c) {
-            case 'c':
-                if (!state.equals("creating")) {
-                    throw new InternalDataException("Bad index 'state': " + state + ".");
+            for (int i = 0; i < dirs.length; i++) {
+                String dir = dirs[i];
+                if (dir == null) {
+                    throw new InternalDataException("dir[" + i + "] is null.");
                 }
-                break;
-            case 'a':
-                if (!state.equals("active")) {
-                    throw new InternalDataException("Bad index 'state': " + state + ".");
+                
+                if (dir.length() == 0) {
+                    throw new InternalDataException("dir[" + i + "] has length == 0.");
                 }
-                break;
-            case 'd':
-                if (!state.equals("deleting")) {
-                    throw new InternalDataException("Bad index 'state': " + state + ".");
-                }
-                break;
-            default:
-                throw new InternalDataException("Bad index 'state': " + state + ".");
             }
         }
     }
