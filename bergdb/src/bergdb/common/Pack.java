@@ -4,6 +4,7 @@ public class Pack implements IPack {
     private static Class<?>[] classes = new Class<?>[] {
         ByteArrayComparator.class,
         Bytes.class,
+        EventToWaitFor.class,
         FrequencySensor.class,
         HashCodeUtil.class,
         Bug.class,

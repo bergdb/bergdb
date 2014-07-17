@@ -79,6 +79,7 @@ public class TestRunner {
     private static void runMethod(Method m, TestRunnerCollector collector, String[] groups) {
         boolean runTest = false;
         boolean junit = false;
+        int modifiers = m.getModifiers();
         
         A: {
             if (m.isAnnotationPresent(T.class)) {
@@ -157,6 +158,10 @@ public class TestRunner {
         try {
             if (junit) {
                 object = m.getDeclaringClass().newInstance();
+            }
+            
+            if (!Modifier.isStatic(modifiers)) {
+                throw new RuntimeException("Nanotest method must be static.");
             }
             
             m.invoke(object, params);

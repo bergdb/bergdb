@@ -1,5 +1,10 @@
 package bergdb.common;
 
+import bergdb.nanotest.Assert;
+import bergdb.nanotest.T;
+
+// TODO half time in seconds is strange when all other time units are different
+
 /**
  * Counts how often something happens in occurrences per second. An exponentially decreasing mean is
  * used. See http://en.wikipedia.org/wiki/Exponential_decay.
@@ -23,13 +28,13 @@ public class FrequencySensor {
      * @param halfLife
      *            Half life for averaging in seconds.
      */
-    public FrequencySensor(double halfLife) {
+    public FrequencySensor(double halfLife, long startTime) {
         if (halfLife <= 0.0) {
             throw new IllegalArgumentException();
         }
         this.halfLife = halfLife;
         this.value = 0.0;
-        this.valueTime = System.nanoTime();
+        this.valueTime = startTime;
     }
 
     /**
@@ -75,29 +80,33 @@ public class FrequencySensor {
     public String toString() {
         return "f=" + getFrequency();
     }
-
-    /** For testing. */
-    public static void main(String[] args) throws Exception {
-        final FrequencySensor f1 = new FrequencySensor(1.0);
-
-        new Thread(new Runnable() {
-            public void run() {
-                for (int i = 0; i < 2000; i++) {
-                    f1.tick();
-                    try {
-                        Thread.sleep(10);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }
-        }).start();
-
-        for (int i = 0; i < 30; i++) {
-            System.out.println(f1);
-            Thread.sleep(1000);
+    
+    @T
+    private static void test1() {
+        long e9 = 1000L*1000*1000;
+        FrequencySensor sensor = new FrequencySensor(10.0, 0);
+        
+        for (int i = 1; i <= 100; i++) {
+            sensor.tick(i*e9);
         }
-    }
+        
+        double diff = Math.abs(1.0 - sensor.getFrequency(100*e9));
+        Assert.assertTrue("diff:" + diff, diff < 0.01);
+   }
+    
+   @T
+   private static void test2() {
+        long stepTime = 1000L*1000*1000 / 3;
+        FrequencySensor sensor = new FrequencySensor(5.0, 0);
+        
+        for (int i = 1; i <= 100; i++) {
+            sensor.tick(i*stepTime);
+        }
+        
+        double f = sensor.getFrequency(101*stepTime);
+        double diff = Math.abs(3.0 - f);
+        Assert.assertTrue("f=" + f, diff < 0.3);
+   }
 }
 
 /*

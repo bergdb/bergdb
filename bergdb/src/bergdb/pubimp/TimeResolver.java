@@ -135,7 +135,7 @@ public class TimeResolver {
         int length = timeString.length();
         
         if (length == 0) {
-            throw new BadFormatException("empty string is not allowed for a timeString");
+            throw new BadFormatException("Empty string is not allowed for a timeString.");
         }
         
         if (length < 3) {
@@ -154,11 +154,7 @@ public class TimeResolver {
         if (length > 4 && timeString.charAt(4) == '-') {
             return reallyResolveAbsolute(timeString);
         } else {
-            if (first >= '0' && first <= '9') {
-                return timeOfDay(currentTime, timeString);
-            } else {
-                throw new BadFormatException("Bad time string, was: '" + timeString + "'.");
-            }
+            return timeOfDay(currentTime, timeString);
         }
     }
     
@@ -350,9 +346,30 @@ public class TimeResolver {
             throw new BadFormatException("Bad minus time string: '" + timeString + "'.");
         }
         
+        double number = parseNumber(parts[0], timeString);
+        
+        double factor = parseUnit(parts[1], timeString);
+        
+        double deltaTime = number * factor;
+        long time = currentTime + ((long) deltaTime);
+        if (time < 0) {
+            throw new BadFormatException("Time out of range (negative: " + time 
+                    + "), time string was: '" + timeString + "'.");
+        }
+        
+        // If time of day comes after minus expression.
+        if (parts.length > 2) {
+            parseTime(timeString, parts[0].length() + 1 + parts[1].length() + 1);
+            time = computeTimeUnitsB(time);
+        }
+        
+        return time;
+    }
+
+    private double parseNumber(String numberString, String timeString) {
         double number = 0.0;
         try {
-            number = Double.parseDouble(parts[0]);
+            number = Double.parseDouble(numberString);
         } catch (NumberFormatException e) {
             throw new BadFormatException("Bad minus time string: '" + timeString + "'.");
         }
@@ -360,8 +377,10 @@ public class TimeResolver {
         if (number > 0.0) {
             throw new BadFormatException("Bad minus time string: '" + timeString + "'.");
         }
-        
-        String unit = parts[1];
+        return number;
+    }
+
+    private double parseUnit(String unit, String timeString) {
         if (unit.length() != 1) {
             throw new BadFormatException("Bad minus time string, unexpected unit, was: '" + timeString + "'.");
         }
@@ -385,21 +404,7 @@ public class TimeResolver {
         default:
             throw new BadFormatException("Bad minus time string, bad unit, was: '" + timeString + "'.");
         }
-        
-        double deltaTime = number * factor;
-        long time = currentTime + ((long) deltaTime);
-        if (time < 0) {
-            throw new BadFormatException("Time out of range (negative: " + time 
-                    + "), time string was: '" + timeString + "'.");
-        }
-        
-        // If time of day comes after minus expression.
-        if (parts.length > 2) {
-            parseTime(timeString, parts[0].length() + 1 + parts[1].length() + 1);
-            time = computeTimeUnitsB(time);
-        }
-        
-        return time;
+        return factor;
     }
     
     /**
