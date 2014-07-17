@@ -16,6 +16,9 @@ import bergdb.pub.Clock;
  * Static utility methods related to DB.
  */
 public class DbUtil {
+    
+    private DbUtil() {}
+    
     /**
      * Gets the first key in the database.
      * 

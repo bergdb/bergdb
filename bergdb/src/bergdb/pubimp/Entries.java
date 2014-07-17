@@ -11,7 +11,8 @@ import bergdb.nanotest.T;
  * @author Frans Lundberg
  */
 public class Entries {
-
+    private Entries() {}
+    
     /**
      * Returns the suffix of the key string, s.
      * The suffix is the part of the string after the last '.' character

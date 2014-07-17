@@ -78,6 +78,9 @@ public class IndexBuilderImp implements IndexBuilder {
         return this;
     }
 
+    /**
+     * @throws BadFormatException
+     */
     public IndexBuilder dir(String udir) {
         String idir = PubKeys.udir2idir(udir);    // throws BadFormatException
         

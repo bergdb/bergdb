@@ -19,18 +19,20 @@ import bergdb.nanotest.T;
  * The current implementation of the method returns a value based on the counter 
  * DB.cachedMemoryValue.</p>
  * 
- * <p>The value of an access data long is always negative, LTE -10 (LTE DB.minCacheMemoryValue).
+ * <p>The value of an access data long is always negative, LTE -10 (LTE DB.MIN_CACHE_MEMORY_VALUE).
  * The negative range is used to differentiate it from an spos that is always non-negative.</p>
  * 
  * @see Spos
  * @see KeyNode#pos
  */
-abstract public class AccessData {
+public class AccessData {
+    
+    private AccessData() {}
+    
     /**
      * Can be used when access data is unknown or unimportant. For testing, for example.
      * The value is considered a valid accessData value and will pass asserts.
      */
-    //public static final long DEFAULT_ACCESS_DATA = -Db.MIN_CACHE_MEMORY_VALUE;
     public static final long DEFAULT_ACCESS_DATA = -10;
     
     /**

@@ -719,6 +719,8 @@ public class Reclaim implements Db.TransactionListener {
      */
     public static class Tester {
 
+        private Tester() {}
+        
         @T
         public static void test1() {
             KTestClock clock = new KTestClock();

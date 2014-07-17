@@ -12,6 +12,7 @@ public class Pack implements IPack {
         RecoverableStream.class,
         RecoverableStream.Tester.class,
         StorageManager.class,
+        StorageManagerTester.class,
         StreamException.class,
         StreamFormatException.class,
         StreamIoException.class,

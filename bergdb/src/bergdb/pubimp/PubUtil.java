@@ -13,6 +13,8 @@ import bergdb.pub.MissingKeyFieldException;
  * @author Frans Lundberg
  */
 public class PubUtil {
+    private PubUtil() {}
+    
     /**
      * "key" - name of field used to store the database key; the value is "key" and is not 
      * expected to change.

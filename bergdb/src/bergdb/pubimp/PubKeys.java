@@ -18,6 +18,8 @@ public class PubKeys {
     
     public static final char DIR_PREFIX = 'd';
     
+    private PubKeys() {}
+    
     /**
      * Converts a ukey to an ikey according to doc/2013-key-encoding.txt.
      * This method should always be applied to all keys as they cross the border between
@@ -28,13 +30,13 @@ public class PubKeys {
      * @throws IllegalArgumentException  If ukey is null or invalid.
      */
     public static final String u2i(String ukey) throws IllegalArgumentException {
-        // 130815, changed to throw IllegalArgumentException instead of BadFormatException.
-        
         if (ukey == null) {
             throw new IllegalArgumentException("null is not a valid key.");
         }
         
-        if (ukey.length() == 0) {
+        int length = ukey.length();
+        
+        if (length == 0) {
             throw new IllegalArgumentException("The empty string is not a valid key.");
         }
         
@@ -42,18 +44,22 @@ public class PubKeys {
             throw new IllegalArgumentException("Key does not start with mandatory '/', key: " + ukey);
         }
         
-        if (ukey.length() < 2) { 
+        if (length < 2) { 
             throw new IllegalArgumentException("Key is too short: " + ukey);
         }
         
+        String ikey = createIKey(ukey);
+        return ikey;
+    }
+
+    private static String createIKey(String ukey) {
+        int length = ukey.length();
         StringBuilder b = new StringBuilder();
         
         int lastSlashIndex = ukey.lastIndexOf('/');
         if (lastSlashIndex == -1) {
             throw new Bug("Cannot happen, ukey: " + ukey);
         }
-        
-        int length = ukey.length();
         
         if (lastSlashIndex == length - 1) {
             throw new IllegalArgumentException("Key is not allowed to end with a '/', was: " + ukey);
@@ -76,13 +82,11 @@ public class PubKeys {
             }
         }
         
-        String ikey = b.toString();
-        return ikey;
+        return b.toString();
     }
     
-    
     /**
-     * Converts a ukey directory to an ikey directory according to doc/2013-key-encoding.txt.
+     * Converts a directory ukey to a directory ikey according to doc/2013-key-encoding.txt.
      */
     public static final String udir2idir(String udir) throws BadFormatException {
         // TODO X LATER Consider throwing IllegalArgumentException or subclass of it.
@@ -120,7 +124,8 @@ public class PubKeys {
             }
         }
         
-        b.append(udir.charAt(length - 1));     // last char is a '/' - no added 'd' wanted.
+        // last char is a '/' - no added 'd' wanted.
+        b.append(udir.charAt(length - 1));     
         
         String idir = b.toString();
         return idir;

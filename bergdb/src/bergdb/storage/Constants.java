@@ -8,6 +8,8 @@ import bergdb.common.Util;
  * @author Frans Lundberg
  */
 public class Constants {    
+    private Constants() {}
+    
     /**
      * Must equal bergdb.core.Spos.NULL.
      */

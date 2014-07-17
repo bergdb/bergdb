@@ -97,6 +97,8 @@ public class Klong {
         }
     }
     
+    private Klong() {}
+    
     /**
      * 7 bytes time value.
      */

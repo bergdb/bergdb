@@ -892,7 +892,7 @@ public class Db {
         storageManager.close();
     }
     
-    public void finalize() throws Throwable {
+    protected void finalize() throws Throwable {
         stop();
         super.finalize();
     }
@@ -2002,39 +2002,9 @@ public class Db {
          */
         public void transactionCompleted(Trans t);
     }
-    
-    /**
-     * Unit tests that need access to private fields. Use sparingly, elsewhere when possible.
-     */
-    public static class Tester {
-        public static void test0() {}
-    }
 }
 
 /*
-
-======== Log ========
-
-Different IKP values.
-
-//public static final String INTERNAL_KEY_PREFIX = Util.identity("/#ikp/");  // ok, used now!
-
-//public static final String INTERNAL_KEY_PREFIX = Util.identity("/dikp/"); // ok
-//public static final String INTERNAL_KEY_PREFIX = Util.identity(".db/");   // ok
-//public static final String INTERNAL_KEY_PREFIX = Util.identity(".dc/");   // ok
-//public static final String INTERNAL_KEY_PREFIX = Util.identity(".dbx/");   // fails!
-       // bergdb.pubimp.PubTesterComposite.testEqAndStart2
-       // bergdb.pubimp.PubTesterComposite.testStart2
-//public static final String INTERNAL_KEY_PREFIX = Util.identity(".xx/");   // ok
-//public static final String INTERNAL_KEY_PREFIX = Util.identity("fml/");   // ok
-//public static final String INTERNAL_KEY_PREFIX = Util.identity("fmlx");   // OK
-//public static final String INTERNAL_KEY_PREFIX = Util.identity("./");   // ok
-//public static final String INTERNAL_KEY_PREFIX = Util.identity(".db2/");   // fails like .dbx/
-//public static final String INTERNAL_KEY_PREFIX = Util.identity(".db/a-longer-dir/");   // ok
-//public static final String INTERNAL_KEY_PREFIX = Util.identity(".db333444/");   // ok
-//public static final String INTERNAL_KEY_PREFIX = Util.identity("55555");   // fails like .dbx/
-//public static final String INTERNAL_KEY_PREFIX = Util.identity("\u0000i/");   // Works!
-//public static final String INTERNAL_KEY_PREFIX = Util.identity("\u0000i/");   // Works!
 
 
 ======== Concurrency ========

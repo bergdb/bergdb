@@ -17,6 +17,7 @@ import bergdb.pub.BadFormatException;
  * @author Frans Lundberg
  */
 public class DbObjectTester {
+    private DbObjectTester() {}
     
     @T
     public static void test0() {

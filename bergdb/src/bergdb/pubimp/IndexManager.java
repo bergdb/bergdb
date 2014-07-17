@@ -1106,6 +1106,8 @@ public class IndexManager {
     }
     
     public static class Tester {
+        private Tester() {}
+        
         @T
         public static void testIndexConstructor1() {
             IndexManager m = new IndexManager(new BergCollatorFactory());

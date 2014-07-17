@@ -53,7 +53,7 @@ public class Choices {
     }
     
     public String toString() {
-        StringBuffer b = new StringBuffer("[");
+        StringBuilder b = new StringBuilder("[");
         for (int i = 0; i < size; i++) {
             b.append((int) choices[i]);
             if (i < size - 1) {

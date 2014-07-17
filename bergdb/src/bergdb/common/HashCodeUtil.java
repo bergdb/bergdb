@@ -30,6 +30,10 @@ public final class HashCodeUtil {
   * values.
   */
   public static final int SEED = 23;
+  
+  /** No reason to create instances. */
+  private HashCodeUtil() {
+  }
 
   /**
   * booleans.

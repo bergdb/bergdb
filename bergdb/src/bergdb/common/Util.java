@@ -26,6 +26,10 @@ import bergdb.nanotest.TestCollector;
  * Static utility methods for general-purpose.
  */
 public class Util {
+
+    /** No reason to create an instance. */
+    private Util() {
+    }
     
     /**
      * Deletes a single file or a whole directory, if 'file' is a directory.

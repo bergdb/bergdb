@@ -570,6 +570,7 @@ public class RecoverableStream {
     }
     
     public static class Tester {
+        private Tester() {}
         
         @T
         public static void testGetRemainingTransBytes1() {

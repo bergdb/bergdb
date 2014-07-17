@@ -10,6 +10,8 @@ import bergdb.core.InternalDataException;
  */
 public class Data {
     
+    private Data() {}
+    
     /**
      * Class used for storing index info as internal data.
      */

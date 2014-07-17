@@ -14,6 +14,8 @@ import bergdb.nanotest.T;
 abstract public class Spos {
     // Note, set NULL to -2 to test if used everywhere where it should be used.
     
+    private Spos() {}
+    
     /**
      * Used to indicate "no spos".
      */

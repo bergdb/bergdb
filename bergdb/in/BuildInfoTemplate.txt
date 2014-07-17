@@ -11,6 +11,8 @@ import bergdb.common.Util;
 public class BuildInfo {
     // Note, Util.identity() used to avoid compiler inlining.
     
+    private BuildInfo() {}
+    
     /**
      * BergDB release int, for example "132".
      */

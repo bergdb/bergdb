@@ -14,6 +14,8 @@ import bergdb.nanotest.T;
  * @author Frans Lundberg
  */
 public class KeyFactory {
+
+    private KeyFactory() {}
     
     public static Iterable<String> shortRandomKeys(final int size) {
         return new Iterable<String>() {

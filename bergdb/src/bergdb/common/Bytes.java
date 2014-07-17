@@ -21,6 +21,10 @@ public class Bytes {
     // to use instead of Java's ByteBuffer.
     //
     
+    /** No reason to create instances. */
+    private Bytes() {
+    }
+    
     // --- long ----
     
     /**

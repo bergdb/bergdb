@@ -1,7 +1,7 @@
 package bergdb.pubimp;
 
 /**
- * Info about whether current VM has access to ICU or not.
+ * Info about whether current JVM has access to ICU or not.
  * 
  * @author Frans Lundberg
  */

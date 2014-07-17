@@ -64,35 +64,34 @@ public class KvToObjectImp implements KvToObject, ClassToObject {
         TYPE result;
         
         if (c.equals(String.class)) {
-            result = (TYPE) valueToString(value);
+            result = (TYPE) entryToString(value);
         } else if (c.equals(byte[].class)) {
             result = (TYPE) value;
         } else if (c.equals(DbObject.class)) {
             result = (TYPE) entryToDbObject(ukey, value);
         } else if (c.equals(Object.class)) {
-            result = (TYPE) createObjectMixedType(ikey, ukey, value);
+            result = (TYPE) entryToMixedTypeObject(ikey, ukey, value);
         } else {
-            DbObject dbObject = entryToDbObject(ukey, value);
-            result = (TYPE) dbObject.toJavaObject(c, this);
+            result = (TYPE) entryToDbObject(ukey, value).toJavaObject(c, this);
         }
         
         return result;
     }
 
     /** Converts a database value to a String, UTF-8 encoding assumed. */
-    private String valueToString(byte[] value) {
+    private String entryToString(byte[] value) {
         return Util.toString(value);
     }
 
     /** Converts an entry to a Java Object when c is Object.class. */
-    private Object createObjectMixedType(String ikey, String ukey, byte[] value) {
+    private Object entryToMixedTypeObject(String ikey, String ukey, byte[] value) {
         Object result;
         boolean isObject = Entries.isDbObject(ikey, value);
         
         if (isObject) {
             result = entryToDbObject(ukey, value);
         } else if (ikey.endsWith(".txt")) {
-            result = valueToString(value);
+            result = entryToString(value);
         } else {
             result = value;
         }

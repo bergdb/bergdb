@@ -241,6 +241,8 @@ public class MetaBlock {
      * Unit tests for this class.
      */
     public static class Tester {
+        private Tester() {}
+        
         @T
         public static void tStartupPos() {
             MetaBlock b = new MetaBlock();

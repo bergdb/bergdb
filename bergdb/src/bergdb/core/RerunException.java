@@ -5,8 +5,7 @@ import bergdb.nanotest.T;
 
 public class RerunException extends RuntimeException {
     private static final long serialVersionUID = 1L;
-    
-    private long keyHash;
+    private final long keyHash;
     
     public RerunException(long keyHash) {
         this.keyHash = keyHash;

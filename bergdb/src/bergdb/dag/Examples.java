@@ -9,6 +9,8 @@ import bergdb.common.Util;
  */
 public class Examples {
     
+    private Examples() {}
+    
     public static void empty() {
         Dag g = Dag.builder().createEmpty(10);
         g.printGraph(System.out);

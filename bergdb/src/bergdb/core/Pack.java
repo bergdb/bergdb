@@ -6,7 +6,6 @@ public class Pack implements IPack {
     private static Class<?>[] classes = new Class<?>[] {
         CacheTester.class,
         Db.class,
-        Db.Tester.class,
         DbClock.class,
         DbTester.class,
         DbTesterGetMany.class,
