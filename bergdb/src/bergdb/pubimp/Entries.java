@@ -36,13 +36,11 @@ public class Entries {
     /**
      * <p>Returns true if the key is "an object key".
      * An object key, has suffix ".obj" or no suffix at all.
-     * The use of ".obj" is obsolete, prefer to use no suffix for
-     * database objects.</p>
-     * 
-     * <p>All objects stored in the database must have a key that is an 
+     * Note: the use of ".obj" is obsolete, prefer to use no suffix for
+     * database objects. All objects stored in the database must have a key that is an 
      * object key according to this method.</p>
      * 
-     * @param key  A ukey/ikey, not null.
+     * @param key  A non-null ukey or ikey.
      */
     public static boolean isObjectKey(String key) {
         assert key != null;
@@ -52,12 +50,12 @@ public class Entries {
     }
     
     /**
-     * Returns true if the key-value entry is a DbObject.
-     * We assume this is the case when the key is an object key
+     * Returns true if the entry likely contains the bytes of a DbObject.
+     * This is the case when the key is an object key
      * (see isObjectKey()) and the value starts with the byte signature for
      * DbObjects (DbObject.MAGIC).
      */
-    public static boolean isObject(String key, byte[] value) {
+    public static boolean isDbObject(String key, byte[] value) {
         assert key != null;
         assert key.length() > 0;
         assert value != null;
@@ -82,25 +80,25 @@ public class Entries {
     
     @T
     public static void testIsObject1() {
-        Assert.assertTrue(isObject("/dir/1.obj", 
+        Assert.assertTrue(isDbObject("/dir/1.obj", 
                 new DbObject.Builder().addString("name", "Foo").build().getBytes()));
     }
     
     @T
     public static void testIsObject2() {
-        Assert.assertTrue(isObject("/dir/1", 
+        Assert.assertTrue(isDbObject("/dir/1", 
                 new DbObject.Builder().addString("name", "Foo").build().getBytes()));
     }
     
     @T
     public static void testIsObject3() {
-        Assert.assertFalse(isObject("/dir/1.txt", 
+        Assert.assertFalse(isDbObject("/dir/1.txt", 
                 new DbObject.Builder().addString("name", "Foo").build().getBytes()));
     }
     
     @T
     public static void testIsObject4() {
-        Assert.assertFalse(isObject("/dir/1", new byte[10]));
+        Assert.assertFalse(isDbObject("/dir/1", new byte[10]));
     }
     
     @T

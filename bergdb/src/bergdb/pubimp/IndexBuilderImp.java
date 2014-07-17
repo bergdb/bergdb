@@ -497,7 +497,7 @@ public class IndexBuilderImp implements IndexBuilder {
             processedEntries++;
             
             String keyString = Keys.toString(kvt.key);
-            boolean isObject = Entries.isObject(keyString, kvt.value);
+            boolean isObject = Entries.isDbObject(keyString, kvt.value);
             
             if (!isObject) {
                 result = GetMany.StopCondition.CONTINUE;

@@ -736,7 +736,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
             }
             
             if (excludeNonObj) {
-                boolean isObject = Entries.isObject(Keys.toString(kvt.key), kvt.value);
+                boolean isObject = Entries.isDbObject(Keys.toString(kvt.key), kvt.value);
                 
                 if (!isObject) {
                     if (result == GetMany.StopCondition.ADD) {

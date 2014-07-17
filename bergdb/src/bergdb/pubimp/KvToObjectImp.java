@@ -29,10 +29,17 @@ public class KvToObjectImp implements KvToObject, ClassToObject {
     public <TYPE> TYPE createObject(Class<TYPE> c, String ikey, byte[] value) 
             throws ObjectCreationException {
         //
-        // If c.equals(Object.class), we handle a mix of value types.
-        //      isObjectKey(key) -> DbObject
+        // If c is String.class, byte[].class, or DbObject.class, we handle it
+        // in a special, but simple way (convert to String from UTF-8 bytes, return raw
+        // bytes, parse to a DbObject).
+        // 
+        // If c is Object.class, we handle a mix of value types.
+        //      isObject()       -> DbObject
         //      .txt             -> String
         //      others           -> byte[]
+        //
+        // Otherwise, use the dbObject.toJavaObject() to convert to an object
+        // of the specified type.
         //
         
         if (c == null) {
@@ -57,55 +64,54 @@ public class KvToObjectImp implements KvToObject, ClassToObject {
         TYPE result;
         
         if (c.equals(String.class)) {
-            result = (TYPE) Util.toString(value);
+            result = (TYPE) valueToString(value);
         } else if (c.equals(byte[].class)) {
             result = (TYPE) value;
         } else if (c.equals(DbObject.class)) {
-            if (ukey == null) {
-                result = (TYPE) new DbObject(value);
-            } else {
-                result = (TYPE) new DbObject(value, ukey);
-            }            
+            result = (TYPE) entryToDbObject(ukey, value);
         } else if (c.equals(Object.class)) {
-            
-            boolean isObject = Entries.isObject(ikey, value);
-            
-            if (isObject) {
-                DbObject dbObject;
-                try {
-                    if (ukey == null) {
-                        dbObject = new DbObject(value);
-                    } else {
-                        dbObject = new DbObject(value, ukey);
-                    }
-                } catch (BadFormatException e) {
-                    throw new ObjectCreationException(e.getMessage() + " ikey=" + ikey);
-                }
-                result = (TYPE) dbObject;
-                
-            } else if (ikey.endsWith(".txt")) {
-                result = (TYPE) Util.toString(value);
-            } else {
-                result = (TYPE) value;
-            }
-        } else {   
-            // The ordinary case of creating an object based on an DbObject value stored in 
-            // the database. This works for Java arrays too.
-            
-            DbObject dbObject;
-            try {
-                if (ukey == null) {
-                    dbObject = new DbObject(value);
-                } else {
-                    dbObject = new DbObject(value, ukey);
-                }
-            } catch (BadFormatException e) {
-                throw new ObjectCreationException(e.getMessage() + " ikey=" + ikey);
-            }
+            result = (TYPE) createObjectMixedType(ikey, ukey, value);
+        } else {
+            DbObject dbObject = entryToDbObject(ukey, value);
             result = (TYPE) dbObject.toJavaObject(c, this);
         }
         
         return result;
+    }
+
+    /** Converts a database value to a String, UTF-8 encoding assumed. */
+    private String valueToString(byte[] value) {
+        return Util.toString(value);
+    }
+
+    /** Converts an entry to a Java Object when c is Object.class. */
+    private Object createObjectMixedType(String ikey, String ukey, byte[] value) {
+        Object result;
+        boolean isObject = Entries.isDbObject(ikey, value);
+        
+        if (isObject) {
+            result = entryToDbObject(ukey, value);
+        } else if (ikey.endsWith(".txt")) {
+            result = valueToString(value);
+        } else {
+            result = value;
+        }
+        return result;
+    }
+    
+    private DbObject entryToDbObject(String ukey, byte[] value) {
+        DbObject dbObject;
+        try {
+            if (ukey == null) {
+                dbObject = new DbObject(value);
+            } else {
+                dbObject = new DbObject(value, ukey);
+            }
+        } catch (BadFormatException e) {
+            throw new ObjectCreationException(e.getMessage() + " ukey=" + ukey);
+        }
+        
+        return dbObject;
     }
     
     /**
