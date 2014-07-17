@@ -24,8 +24,6 @@ import bergdb.pub.Kv;
 import bergdb.pub.NoSuchIndexException;
 import bergdb.pubimp.IndexBuilderImp.IndexCreateState;
 
-// Also see implementation notes at the end of the file. 
-
 /**
  * <p>An object of this class manages secondary indexes.
  * A single IndexManager object is used for one database (DatabaseImp.indeXManager). 
@@ -146,9 +144,11 @@ public class IndexManager {
     /**
      * Starts new Jobs to complete index creation for indexes in state STATE_CREATING,
      * and to complete index deletion for indexes in state STATE_DELETING.
+     * The previously started index operations where stopped when the database was
+     * stopped.
      */
     public List<Job> finishOngoingJobs(DatabaseImp database) {
-        // Assumption: method run before any other operations. Locking not needed.
+        // Assumption: method run before any other operations.
         
         List<Job> startedJobs = new ArrayList<Job>();
         List<Index> indexes = new ArrayList<Index>();
@@ -167,65 +167,47 @@ public class IndexManager {
             int state = index.getState();
             
             if (state == Index.STATE_CREATING) {
-                IndexBuilderImp creator = new IndexBuilderImp(index.name, connection.getDatabaseImp());
-                IndexCreateState createState = new IndexCreateState(index);
-                final Thread thread = creator.createInThread(createState);
-                
-                Job job = new Job() {
-
-                    public JobStatus getStatus() {
-                        JobStatus status;
-                        
-                        if (thread.isAlive()) {
-                            status = new JobStatus() {
-                                public int progress() {
-                                    return -1;
-                                }
-
-                                public String note() {
-                                    return "Working on creating index '" + index.name + "'.";
-                                }
-                            };
-                        } else {
-                            status = new JobStatus() {
-                                public int progress() {
-                                    return 100;
-                                }
-
-                                public String note() {
-                                    return "Done, created index '" + index.name + "'.";
-                                }
-                            };
-                        }
-                        
-                        return status;
-                    }
-
-                    public JobStatus join() {
-                        join(0);
-                        return getStatus();
-                    }
-
-                    public JobStatus join(int millis) {
-                        try {
-                            thread.join(millis);
-                        } catch (InterruptedException e) {
-                            throw new Error("Unexpected interruption of internal thread.");
-                        }
-                        return getStatus();
-                    }
-                };
-                
-                startedJobs.add(job);
-            }
-            
-            if (state == Index.STATE_DELETING) {
-                Job job = connection.getDatabaseImp().deleteIndexInternal(index.name);
-                startedJobs.add(job);
+                startedJobs.add(createJob(connection, index));
+            } else if (state == Index.STATE_DELETING) {
+                startedJobs.add(deleteJob(connection, index));
             }
         }
         
         return startedJobs;
+    }
+
+    /** Creates a Job for finishing creating the index. */
+    private Job createJob(ConnectionImp connection, final Index index) {
+        IndexBuilderImp creator = new IndexBuilderImp(index.name, connection.getDatabaseImp());
+        IndexCreateState createState = new IndexCreateState(index);
+        final Thread thread = creator.createInThread(createState);
+        
+        Job job = new Job() {
+            public JobStatus getStatus() {
+                return thread.isAlive() ? new WorkingJobStatus(index) : new DoneJobStatus(index);
+            }
+
+            public JobStatus join() {
+                join(0);
+                return getStatus();
+            }
+
+            public JobStatus join(int millis) {
+                try {
+                    thread.join(millis);
+                } catch (InterruptedException e) {
+                    throw new Error("Unexpected interruption of internal thread.");
+                }
+                return getStatus();
+            }
+        };
+        
+        return job;
+    }
+
+    private Job deleteJob(ConnectionImp connection, final Index index) {
+        Job job = connection.getDatabaseImp().deleteIndexInternal(index.name);
+        return job;
     }
     
     /**
@@ -748,20 +730,20 @@ public class IndexManager {
         
         /**
          * Created an Index object.
-         * Parameters should have been checked. Only asserts (not IllegalArgumentException)
-         * used in the constructor.
+         * Parameters should have been checked already. 
+         * Only asserts (not IllegalArgumentException) used in this constructor.
          */
         public Index(String name, String[] dirs, String[][] fields, String[] typeStrings, 
-                IndexManager m) {
+                IndexManager indexManager) {
             KCollator kc = null;      // local variable
             this.name = name;
             this.dirs = dirs.clone();
             this.fields = fields.clone();
             this.typeStrings = typeStrings.clone();
             this.state = STATE_CREATING;
-            this.keyHash = Keys.hash(Keys.toSegments(m.getIndexInfoKeyAsBytes(name)));
+            this.keyHash = Keys.hash(Keys.toSegments(indexManager.getIndexInfoKeyAsBytes(name)));
             this.parts = typeStrings.length;
-            this.lock = m.lock;
+            this.lock = indexManager.lock;
             typeStrings = typeStrings.clone();
             
             assert parts >= 1;
@@ -770,42 +752,26 @@ public class IndexManager {
             assert typeStrings != null;
             
             for (int i = 0; i < typeStrings.length; i++) {
-                assert m.typeSupported(typeStrings[i]);
+                assert indexManager.typeSupported(typeStrings[i]);
             }
             
-            // -- Computes field combinations --
-            int cCount = 1;
-            for (int i = 0; i < parts; i++) {
-                cCount = cCount * fields[i].length;
-            }
-            combinationCount = cCount;
-            
-            fieldCombinations = new String[combinationCount][];
-            int[] indexArray = new int[parts];
-            int[] sizeArray = new int[parts];
-            for (int i = 0; i < parts; i++) {
-                sizeArray[i] = fields[i].length;
-            }
-            int combinationIndex = 0;
-            
-            for (int i = 0; i < combinationCount; i++) {
-                String[] combination = new String[parts];
-                for (int j = 0; j < parts; j++) {
-                    combination[j] = fields[j][indexArray[j]];
-                }
-                
-                fieldCombinations[combinationIndex++] = combination;
-                
-                boolean increased = nextIndexArray(indexArray, sizeArray);
-                if (i < combinationCount - 1) {
-                    assert increased : "'increased' was false, levels=" + parts + ", i=" + i;
-                }
-            }
-            // --
-            
+            this.combinationCount = computeCombinationCount();
+            this.fieldCombinations = computeFieldCombinations(fields);
             this.types = new char[parts];
             this.kcollators = new KCollator[parts];
             this.dirBytes = new byte[dirs.length][];
+            
+            handleIndexLevels(indexManager, kc);
+            
+            if (name.equals(PRIMARY)) {
+                // The primary index is a special case. 
+                this.kcollators[0] = new PrimaryKeyCollator();
+                this.state = Index.STATE_ACTIVE;
+            }
+        }
+
+        private void handleIndexLevels(IndexManager indexManager, KCollator kc) {
+            
             for (int i = 0; i < dirs.length; i++) {
                 dirBytes[i] = Keys.toBytes(dirs[i]);
             }
@@ -833,7 +799,7 @@ public class IndexManager {
                     break;
                     
                 case 's':   
-                    kc = m.collatorFactory.createCollator(typeString);
+                    kc = indexManager.collatorFactory.createCollator(typeString);
                     if (kc == null) {
                         throw new IllegalArgumentException("Unsupported index type: " + typeString);
                     }
@@ -848,13 +814,40 @@ public class IndexManager {
                 this.types[level] = type;
                 this.kcollators[level] = kc;
             }
-            
-            // Primary index is a special case. Always STATE_ACTIVE. Special collator.
-            
-            if (name.equals(PRIMARY)) {
-                this.kcollators[0] = new PrimaryKeyCollator();
-                this.state = Index.STATE_ACTIVE;
+        }
+        
+        private int computeCombinationCount() {
+            int cCount = 1;
+            for (int i = 0; i < parts; i++) {
+                cCount = cCount * fields[i].length;
             }
+            return cCount;
+        }
+
+        private String[][] computeFieldCombinations(String[][] fields) {
+            String[][] fieldComb = new String[combinationCount][];
+            int[] indexArray = new int[parts];
+            int[] sizeArray = new int[parts];
+            for (int i = 0; i < parts; i++) {
+                sizeArray[i] = fields[i].length;
+            }
+            int combinationIndex = 0;
+            
+            for (int i = 0; i < combinationCount; i++) {
+                String[] combination = new String[parts];
+                for (int j = 0; j < parts; j++) {
+                    combination[j] = fields[j][indexArray[j]];
+                }
+                
+                fieldComb[combinationIndex++] = combination;
+                
+                boolean increased = nextIndexArray(indexArray, sizeArray);
+                if (i < combinationCount - 1) {
+                    assert increased : "'increased' was false, levels=" + parts + ", i=" + i;
+                }
+            }
+            
+            return fieldComb;
         }
         
         private boolean nextIndexArray(int[] indexArray, int[] sizeArray) {
@@ -967,6 +960,39 @@ public class IndexManager {
         public IndexForDir(Index index, int dirId) {
             this.index = index;
             this.dirId = dirId;
+        }
+    }
+    
+    
+    private static class WorkingJobStatus implements JobStatus {
+        private Index index;
+        
+        WorkingJobStatus(Index index) {
+            this.index = index;
+        }
+        
+        public int progress() {
+            return -1;
+        }
+
+        public String note() {
+            return "Working on creating index '" + index.name + "'.";
+        }
+    }
+    
+    private static class DoneJobStatus implements JobStatus {
+        private Index index;
+        
+        DoneJobStatus(Index index) {
+            this.index = index;
+        }
+        
+        public int progress() {
+            return 100;
+        }
+
+        public String note() {
+            return "Done, created index '" + index.name + "'.";
         }
     }
     
