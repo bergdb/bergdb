@@ -15,6 +15,7 @@ import bergdb.stream.AppendOnlyStream;
 
 /**
  * Methods to help the Db implementation.
+ * This class should only be used by Db.
  * 
  * @author Frans Lundberg
  */
