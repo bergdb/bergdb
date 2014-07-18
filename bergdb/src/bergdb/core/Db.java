@@ -214,7 +214,7 @@ public class Db {
     
     // ---- Graph ----
     
-    private Dag graph;
+    private Dag dag;
     
     
     /**
@@ -275,7 +275,7 @@ public class Db {
      * Useful for testing; violates Law of Demeter.
      */
     public Dag getGraph() {
-        return graph;
+        return dag;
     }
 
     /**
@@ -690,38 +690,37 @@ public class Db {
      * @throws IllegalDbStateException
      */
     private void startInner(StartListener listener) {
-        if (state != STATE_ZERO) {
-            throw new IllegalDbStateException("Db has been started already, "
-                    + "start() should be called once only; Db state is: " 
-                    + getStateName(state) + ".");
-        }
+        // 
+        // posMap is a map from spos of a node to the node itself.
+        // nextMap is a map from previous spos of a node to the node itself.
+        //
+        
+        HashMap<Long, INode> posMap = new HashMap<Long, INode>();
+        HashMap<Long, INode> nextMap = new HashMap<Long, INode>();
+        TransSeq seq = new TransSeq();
+        
+        checkThatStateIsZero();
 
-        storageManager.checkStreamIds();
+        syncStreams();
         
-        try {
-            storageManager.syncStreams(new NullProgressListener());
-        } catch (IOException e) {
-            throw new StreamIoException(e);
-        }
-        
-        // Inits stream with primordial state (two nodes) if needed.
-        
-        if (nodeStream.getLength() == 0) {
-            createInitialStreamState();
-        }
-
-        // Recovers stream, reads meta block in stream.
+        createInitialStreamStateIfStreamIsEmpty();
 
         nodeStream.recover();
 
-        // An assertion
+        doStartupPhase(listener, posMap, nextMap, seq);
 
-        if (Util.hasOnlyZeros(nodeStream.getMetaBlock().getId())) {
-            throw new IllegalStateException("Invalid database ID, only zero bytes.");
-        }
+        createDag(posMap, nextMap, seq);
 
-        // Startup phase
-        
+        this.state = STATE_ACTIVE;
+
+        reclaim.initFromDb();
+            // state = STATE_ACTIVE needed before this method.
+    }
+
+    private void doStartupPhase(StartListener listener, HashMap<Long, INode> posMap,
+            HashMap<Long, INode> nextMap, TransSeq seq) {
+        long lastTransTime = 0;
+
         this.startupDistance = nodeStream.getMetaBlock().getStartupDistance();
         if (startupDistance <= 0) {
             throw new StreamFormatException("Bad value of startupDistance in meta " +
@@ -734,17 +733,7 @@ public class Db {
         long startPos = startupPos.get();
         listener.startPos(startPos);
         
-        // posMap is a map from spos of a node to the node itself.
-        // nextMap is a map from previous spos of a node to the node itself.
-
-        HashMap<Long, INode> posMap = new HashMap<Long, INode>();
-        HashMap<Long, INode> nextMap = new HashMap<Long, INode>(); // sposPrevious
-                                                                   // -> Node
-
-        TransSeq seq = new TransSeq();
         
-        long lastTransTime = 0;
-
         NodeStream.TransIterator ti = nodeStream.new TransIterator(startPos);
         while (ti.next()) {
             if (ti.nextTransPos < startPos) {
@@ -778,14 +767,15 @@ public class Db {
         }
 
         dbClock.setLastTransTime(lastTransTime);
+    }
 
+    private void createDag(HashMap<Long, INode> posMap, HashMap<Long, INode> nextMap, TransSeq seq) {
         Dag.Builder b = Dag.builder();
         b.nodeReader(nodeStream);
         setMaxNodeSize(b);
         
-        this.graph = b.createFromStreamNodes(getAccessData(), posMap, nextMap, seq);
-        
-        this.pd = graph.newPutData();
+        this.dag = b.createFromStreamNodes(getAccessData(), posMap, nextMap, seq);        
+        this.pd = dag.newPutData();
         this.pd.nodeChangeListener = new Dag.NodeChangeListener() {
             public void topNodeChanged(TopNode node) {
                 transNodes.addTopNode(node);
@@ -799,11 +789,33 @@ public class Db {
                 transNodes.addKeyNode(node);
             }
         };
+    }
 
-        this.state = STATE_ACTIVE;
+    private void checkThatStateIsZero() {
+        if (state != STATE_ZERO) {
+            throw new IllegalDbStateException("Db has been started already, "
+                    + "start() should be called once only; Db state is: " 
+                    + getStateName(state) + ".");
+        }
+    }
 
-        reclaim.initFromDb();
-            // state = STATE_ACTIVE needed before this method.
+    private void createInitialStreamStateIfStreamIsEmpty() {
+        if (nodeStream.getLength() == 0) {
+            createInitialStreamState();
+        }
+    }
+
+    /**
+     * Syncs storage streams during database start.
+     */
+    private void syncStreams() {
+        storageManager.checkStreamIds();
+        
+        try {
+            storageManager.syncStreams(new NullProgressListener());
+        } catch (IOException e) {
+            throw new StreamIoException(e);
+        }
     }
 
     private void setMaxNodeSize(Dag.Builder b) {
@@ -916,21 +928,21 @@ public class Db {
      * development.
      */
     public void printGraph(PrintStream out) {
-        graph.printGraph(out);
+        dag.printGraph(out);
     }
     
     /**
      * Creates and returns a new GetData object for use with the getOne() method.
      */
     public GetData newGetData() {
-        return graph.newGetData();
+        return dag.newGetData();
     }
     
     /**
      * Creates and returns a new GetMany object for use with the getMany() method.
      */
     public GetMany newGetMany() {
-        return graph.newGetMany();
+        return dag.newGetMany();
     }
 
     /**
@@ -995,7 +1007,7 @@ public class Db {
         gd.actualLookupTime = time;
         gd.nodeDepth = 0;
 
-        result = graph.getOne(gd.actualLookupTime, keySegments, gd);
+        result = dag.getOne(gd.actualLookupTime, keySegments, gd);
 
         getOpCount.incrementAndGet();
         return result;
@@ -1007,7 +1019,7 @@ public class Db {
      * Useful for testing.
      */
     public INode findNode(int[] choices, GetData gd) {
-        return graph.findNode(choices, gd);
+        return dag.findNode(choices, gd);
     }
 
     /**
@@ -1066,8 +1078,7 @@ public class Db {
             // Limits lookup time so it strictly less than the transaction time of
             // any running or future transaction.
 
-        
-        graph.getMany(g);
+        dag.getMany(g);
     }
 
     
@@ -1159,7 +1170,7 @@ public class Db {
             }
         };
         
-        graph.visitMemoryNodes(visitor);
+        dag.visitMemoryNodes(visitor);
     }
     
     /**
@@ -1313,7 +1324,7 @@ public class Db {
      * is added to transNodes.
      */
     private void recordChoicesAndEnsureIncluded(final long limit) {        
-        GetData gd = graph.newGetData();
+        GetData gd = dag.newGetData();
         gd.actualLookupTime = trans.time;
         gd.accessData = pd.accessData;
         
@@ -1390,8 +1401,8 @@ public class Db {
         
         long startupPos2 = startupPos.next(this.startupDistance, nodeStream.getLength());
         
-        if (graph != null) {
-            graph.getTransSeq().addToTransNodes(startupPos2, transNodes);
+        if (dag != null) {
+            dag.getTransSeq().addToTransNodes(startupPos2, transNodes);
             recordChoicesAndEnsureIncluded(startupPos2);
                 // NOTE 131124, 0 unit tests and only 1 f test fails if above line commented.
                 // Is ensure included needed?
@@ -1409,9 +1420,9 @@ public class Db {
         MetaBlock meta = nodeStream.getMetaBlock();
         meta.setStartupPos(startupPos.get());
         
-        if (graph != null) {
-            graph.getTransSeq().add(transNodes.createTset(trans.pos, trans.lastPos));            
-            graph.getTransSeq().removeBeforeSpos(startupPos2);
+        if (dag != null) {
+            dag.getTransSeq().add(transNodes.createTset(trans.pos, trans.lastPos));            
+            dag.getTransSeq().removeBeforeSpos(startupPos2);
         }
         
         this.nodesWritten += transNodes.size();
@@ -1451,13 +1462,6 @@ public class Db {
      * (trans.transTime). Caller must hold writeLock.
      */
     private final void putKvs() {
-        //
-        // 1401 Frans: Tried [if (kv.keyTransformation != null) {...], but that increased set time
-        // (dev.CorePerf "set") with 10 per cent.
-        // 1210 Frans: Added [if (kv.keyTransformation != ...], [if (kv.valueTransformation != ...]
-        // These changes do not add any measurable overhead when null; measured with test.Set.
-        //
-
         assert Thread.holdsLock(writeLock);
         final int length = trans.kvs.length;        
         pd.tt = trans.time;
@@ -1474,7 +1478,7 @@ public class Db {
                 kv.transformValue(trans.time, previousValue);
             }
 
-            graph.putKv(kv.getKey(), kv.getValue(), pd);
+            dag.putKv(kv.getKey(), kv.getValue(), pd);
             
             pd.clearFast();
         }
@@ -1520,7 +1524,7 @@ public class Db {
         
         final Pointer pointer = ed.tempPointer;
 
-        INode node = graph.getSuperRoot();
+        INode node = dag.getSuperRoot();
         INode nextNode;
         INode next2;
         long limit = this.cachedMemoryValue.get() - evictBoss.getCacheDuration();
@@ -1569,7 +1573,7 @@ public class Db {
         for (int i = 0; i < count; i++) {
             INode pointee = node.getPointerNode(i);
             if (pointee != null) {
-                synchronized (graph.getPointerLock(node, i)) {
+                synchronized (dag.getPointerLock(node, i)) {
                     pointee = node.getPointerNode(i); // re-read needed in case
                                                       // change happened.
                     long pointeePos;
@@ -1598,7 +1602,7 @@ public class Db {
             index = rand % length;
             assert index >= 0 && index < length;
             
-            synchronized (graph.getPointerLock(node, index)) {
+            synchronized (dag.getPointerLock(node, index)) {
                 node.getPointer(index, p);
             }
             
@@ -1612,27 +1616,16 @@ public class Db {
     }
 
     /**
-     * Reports a warning. Current implementation prints to Db.out - standard
-     * database output.
-     */
-    /*public void warn(String message, Throwable t) {
-        // TODO Z LATER. This is not really used, we need other way to handle warnings.
-        
-        out.println("WARNING. " + message);
-        t.printStackTrace(out);
-    }*/
-
-    /**
      * Returns current super root.
      * Use for testing only.
      */
     public final TopNode getSuperRoot() {
-        return graph.getSuperRoot();
+        return dag.getSuperRoot();
     }
 
     /**
-     * Creates and returns a DB.Builder that can create a DB object. The
-     * "official" and only public way of creating a DB.
+     * Creates and returns a Db.Builder that can create a Db object. The
+     * "official" and only public way of creating a Db.
      */
     public static Builder builder() {
         return new Builder();
@@ -1993,6 +1986,7 @@ public class Db {
         public void transactionCompleted(Trans t);
     }
 }
+
 
 /*
 

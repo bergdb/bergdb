@@ -51,14 +51,22 @@ public class IndexManager {
      */
     public static final String PRIMARY = Util.identity("primary");
     
-    /** Where to store index entries, constant database directory. */
+    /** 
+     * ikey for where to store index entries, constant database directory. 
+     */
     private static final byte[] INDEX_DIR_BYTES = Keys.toBytes(Db.INTERNAL_KEY_PREFIX + "di/");
 
     private static final String INDEX_INFO_DIR = Util.identity(Db.INTERNAL_KEY_PREFIX + "dii/");
-    /** Where to store index info entries (Data.Index objects). */
+    
+    /** 
+     * bkey for where to store index info entries (Data.Index objects).
+     */
     private static final byte[] INDEX_INFO_DIR_BYTES = Keys.toBytes(Db.INTERNAL_KEY_PREFIX + "dii/");
     
-    /** A virtual key directory. Just a prefix. Nothing actually stored here. */
+    /** 
+     * ikey for a virtual key directory. 
+     * Just a prefix. Nothing actually stored here.
+     */
     private static final String INDEX_VDIR = Util.identity(Db.INTERNAL_KEY_PREFIX + "div/");
     
     /**

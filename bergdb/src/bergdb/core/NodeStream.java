@@ -53,7 +53,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     }
 
     /**
-     * Calls method with same name in RecoverableStream. Same exceptions.
+     * Recovers stream, reads meta block in stream.
      * 
      * @see RecoverableStream#recover()
      * @throws StreamIoException
