@@ -3,8 +3,6 @@ package bergdb.common;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
-// TODO half time in seconds is strange when all other time units are different
-
 /**
  * Counts how often something happens in occurrences per second. An exponentially decreasing mean is
  * used. See http://en.wikipedia.org/wiki/Exponential_decay.
@@ -26,9 +24,11 @@ public class FrequencySensor {
      * many times smaller than halfLife. The frequency value estimate start at 0.0.
      * 
      * @param halfLife
-     *            Half life for averaging in seconds.
+     *            Half life for averaging in seconds. 
      */
     public FrequencySensor(double halfLife, long startTime) {
+        // NOTE incosequent to have half-time in s, when other time units are in nanoseconds.
+        
         if (halfLife <= 0.0) {
             throw new IllegalArgumentException();
         }

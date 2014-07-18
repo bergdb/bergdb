@@ -83,8 +83,8 @@ import bergdb.stream.MemoryStream;
  * to be *eventually released* without any action from the DB user after the
  * finalize() method has been called from the garbage collector.
  * The DB user can call DB.stop() to request the eventual release of resources.
- * Resources are not guaranteed to be released when stop() returns, but sometime
- * in the near future (typically within a second).</p>
+ * Resources are not guaranteed to be released when stop() returns, but they will
+ * be release in the the near future (typically within a second).</p>
  * 
  * @author Frans Lundberg
  */
