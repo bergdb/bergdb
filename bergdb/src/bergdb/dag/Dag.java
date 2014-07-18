@@ -178,8 +178,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         for (int i = 0; i < POINTER_LOCKS_LENGTH; i++) {
             pointerLocks[i] = new PointerLock();
         }
-        
-        //this.dirtyNodes = new DirtyNodes1();
     }
     
     // ======== General utility methods ========
@@ -1120,7 +1118,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             return new Dag(this, accessData, posMap, nextMap, seq);
         }
     }
-    
     
     
     // ======== Inner interfaces / classes ========

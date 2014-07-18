@@ -13,7 +13,10 @@ import bergdb.pub.Clock;
 
 
 /**
- * Static utility methods related to DB.
+ * Static utility methods related to Db; Db help functions.
+ * Useful for a Core Layer user.
+ * 
+ * @author Frans Lundberg
  */
 public class DbUtil {
     
@@ -85,15 +88,5 @@ public class DbUtil {
     public static String dbTimeToUtc(long dbTime) {
         long ms = dbTime / (Clock.UNITS_PER_SEC / 1000);
         return dateFormat.format(new Date(ms)) + " UTC";
-    }
-    
-    private static long unity(long value) {
-        return value;
-    }
-    
-    public static void main(String[] args) {
-        assert unity(Clock.UNITS_PER_SEC) % 1000 == 0;
-            // unity() used to avoid warning.
-        System.out.println(dbTimeToUtc(System.currentTimeMillis() * (Clock.UNITS_PER_SEC / 1000)));
     }
 }

@@ -8,10 +8,9 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
-import bergdb.common.Bug;
 import bergdb.common.NullProgressListener;
-import bergdb.common.ProgressListener;
 import bergdb.common.Util;
+import bergdb.core.DbHelper.AddReplicaClass;
 import bergdb.dag.AccessData;
 import bergdb.dag.Choices;
 import bergdb.dag.Constants;
@@ -37,7 +36,6 @@ import bergdb.pub.BadReplicaException;
 import bergdb.pub.Clock;
 import bergdb.pub.IllegalDbStateException;
 import bergdb.pub.Job;
-import bergdb.pub.JobStatus;
 import bergdb.pub.LookupTimeNotAvailableException;
 import bergdb.pub.StorageInfo;
 import bergdb.storage.BufferedStream;
@@ -102,7 +100,7 @@ public class Db {
      */
     public static final String INTERNAL_KEY_PREFIX = Util.identity("/#i/");
     
-    private static final long[] DUMMY_KEY = Keys.toSegments(INTERNAL_KEY_PREFIX + "-dummy");
+    static final long[] DUMMY_KEY = Keys.toSegments(INTERNAL_KEY_PREFIX + "-dummy");
     
     private static final int STATE_ZERO = 1;
     private static final int STATE_STARTING = 2;
@@ -473,126 +471,12 @@ public class Db {
             throw new IllegalArgumentException("'replica' is instance of BufferedStream; not allowed.");
         }
         
-        // Shared final refs. Array values protected by: progressLock.
-        final Object progressLock = new Object();
-        final int[] progressValue = new int[] { 0 };
-        final String[] progressNote = new String[] { "About to start to synch." };
-
-        final ProgressListener progressListener = new ProgressListener() {
-            public void progress(int myProgressValue, String myProgressNote) {
-                synchronized (progressLock) {
-                    if (myProgressValue == 100) {
-                        progressValue[0] = 99;
-                        progressNote[0] = "Almost done, waiting for syncString...";
-                    } else {
-                        progressValue[0] = myProgressValue;
-                        progressNote[0] = myProgressNote;
-                    }
-                }
-            }
-        };
-
-        // Checks database id of main and replica; must match.
+        // Checks database id of main and replica; must match. Otherwise Bad
+        DbHelper.checkReplicaId(metaBlock.getId(), replicaStream);
         
-        checkReplicaId(metaBlock.getId(), replicaStream);
-
-        final StorageManager.SynchingStorage ss = storageManager.addReplica(name, replicaStream,
-                bufferSize, bufferTime);
-
-        final Thread syncThread = new Thread(new Runnable() {
-            public void run() {
-                storageManager.syncReplica(ss, progressListener);
-                Trans trans = Trans.builder().put(DUMMY_KEY, new byte[0]).build();
-                Db.this.execute(trans);
-                Db.this.syncStrong(trans.lastPos);
-
-                synchronized (progressLock) {
-                    progressValue[0] = 100;
-                    progressNote[0] = "Done!";
-                }
-            }
-        });
-        syncThread.setName("db-addReplica-sync-" + name + "-" + syncThread.getId());
-        syncThread.setPriority(Thread.NORM_PRIORITY - 1);
-        syncThread.start();
-
-        // Adaptor, adapts Thread + ProgressListener to a Job.
-        
-        Job job = new Job() {
-            public JobStatus getStatus() {
-                final int pValue;
-                final String pNote;
-
-                synchronized (progressLock) {
-                    pValue = progressValue[0];
-                    pNote = progressNote[0];
-                }
-
-                return new JobStatus() {
-                    public int progress() {
-                        return pValue;
-                    }
-
-                    public String note() {
-                        return pNote;
-                    }
-                };
-            }
-
-            public JobStatus join() {
-                return join(0);
-            }
-
-            public JobStatus join(int millis) {
-                try {
-                    syncThread.join(millis);
-                } catch (InterruptedException e) {
-                    throw new Error("Internal thread unexpectedly interrupted.");
-                }
-                return getStatus();
-            }
-        };
-
-        return job;
+        return AddReplicaClass.addReplica(storageManager, this, name, replicaStream, bufferSize, bufferTime);
     }
 
-    /**
-     * @throws BadReplicaException
-     */
-    private void checkReplicaId(byte[] mainId, final AppendOnlyStream replicaStream) {
-        if (replicaStream.getLength() > 0) {
-            RecoverableStream rStream = new RecoverableStream(replicaStream, new MetaBlock());
-            MetaBlock meta = rStream.readLastValidMetaBlock();
-            if (meta == null) {
-                throw new BadReplicaException("Found no valid meta block in replica stream; " +
-                		"replica length: " + replicaStream.getLength() + ".");
-            }
-            
-            byte[] replicaId = meta.getId();
-            
-            if (replicaId == null) {
-                throw new Bug("replicaId == null");
-            }
-            
-            if (mainId == null) {
-                throw new Bug("mainId == null");
-            }
-            
-            if (replicaId.length == 0) {
-                throw new Bug("replicaId.length == 0");
-            }
-            
-            if (mainId.length == 0) {
-                throw new Bug("mainId.length == 0");
-            }
-
-            if (!Util.areEqual(mainId, replicaId)) {
-                throw new BadReplicaException("ID of replica stream (" + Util.toHexString(replicaId)
-                        + ") does not match database ID (" + Util.toHexString(mainId) + ").");
-            }
-        }
-    }
-    
     public void removeReplica(String name) {
         storageManager.removeReplica(name);
     }
@@ -707,17 +591,19 @@ public class Db {
 
         nodeStream.recover();
 
-        doStartupPhase(listener, posMap, nextMap, seq);
+        readStartupTransactions(listener, posMap, nextMap, seq);
 
         createDag(posMap, nextMap, seq);
+        
+        createPutData();
 
         this.state = STATE_ACTIVE;
 
+        // state = STATE_ACTIVE needed before this method.
         reclaim.initFromDb();
-            // state = STATE_ACTIVE needed before this method.
     }
 
-    private void doStartupPhase(StartListener listener, HashMap<Long, INode> posMap,
+    private void readStartupTransactions(StartListener listener, HashMap<Long, INode> posMap,
             HashMap<Long, INode> nextMap, TransSeq seq) {
         long lastTransTime = 0;
 
@@ -774,7 +660,10 @@ public class Db {
         b.nodeReader(nodeStream);
         setMaxNodeSize(b);
         
-        this.dag = b.createFromStreamNodes(getAccessData(), posMap, nextMap, seq);        
+        this.dag = b.createFromStreamNodes(getAccessData(), posMap, nextMap, seq);
+    }
+    
+    private void createPutData() {
         this.pd = dag.newPutData();
         this.pd.nodeChangeListener = new Dag.NodeChangeListener() {
             public void topNodeChanged(TopNode node) {
