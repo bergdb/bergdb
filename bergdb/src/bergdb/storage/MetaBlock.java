@@ -100,16 +100,11 @@ public class MetaBlock {
      * @throws StreamFormatException  If invalid byte format detected.
      */
     public void checkFormat() {
-        if (!isValid(this.block)) {
+        if (!isValid(block)) {
             return;
         }
         
-        for (int i = 0; i < 4; i++) {
-            if (block[i] != MAGIC[i]) {
-                throw new StreamFormatException("Illegal first bytes of block, offset=" + i 
-                        + ", value=" + ((int) block[i]) + ".");
-            }
-        }
+        checkMagic();
         
         long version = getVersion();
         if (version != STREAM_FORMAT_VERSION) {
@@ -132,6 +127,19 @@ public class MetaBlock {
             throw new StreamFormatException("Meta block, bad startupPos, " + startupPos + ".");
         }
         
+        checkEndZeros();
+    }
+
+    private void checkMagic() {
+        for (int i = 0; i < 4; i++) {
+            if (block[i] != MAGIC[i]) {
+                throw new StreamFormatException("Illegal first bytes of block, offset=" + i 
+                        + ", value=" + ((int) block[i]) + ".");
+            }
+        }
+    }
+    
+    private void checkEndZeros() {
         for (int offset = 44+8; offset < RecoverableStream.META_BLOCK_SIZE - 1; offset++) {
             int b = block[offset];
             if (block[offset] != 0) {

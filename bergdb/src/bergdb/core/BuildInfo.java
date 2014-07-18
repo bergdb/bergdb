@@ -11,6 +11,8 @@ import bergdb.common.Util;
 public class BuildInfo {
     // Note, Util.identity() used to avoid compiler inlining.
     
+    private BuildInfo() {}
+    
     /**
      * BergDB release int, for example "132".
      */
@@ -24,7 +26,7 @@ public class BuildInfo {
     /**
      * BergDB build ID, for example "2013.2.130401.1400".
      */
-    public static final String build = Util.identity("2014.1.140715.2115");
+    public static final String build = Util.identity("2014.1.140718.1508");
     
     /**
      * Prints build information to System.out.
