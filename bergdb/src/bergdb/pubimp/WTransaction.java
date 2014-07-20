@@ -4,6 +4,7 @@ import bergdb.common.Bug;
 import bergdb.core.RerunException;
 import bergdb.core.Trans;
 import bergdb.pub.NoSuchObjectException;
+import bergdb.pub.Time;
 import bergdb.pub.Transaction;
 
 public class WTransaction implements Transaction {
@@ -49,6 +50,10 @@ public class WTransaction implements Transaction {
         }
         
         throw new NoSuchObjectException("No output objects for a WTransaction.");
+    }
+    
+    public Time getTime() {
+        return Time.units(trans.time);
     }
     
     /**

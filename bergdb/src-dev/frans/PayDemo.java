@@ -69,7 +69,7 @@ public class PayDemo {
                 builder.put(key, a);
                 id += 1;
             }
-            builder.build().execute();
+            builder.execute();
             
             if ((i + 1) % 100 == 0) {
                 System.out.printf("Accounts: %d.\n", (i + 1) * batchCount);
@@ -127,7 +127,7 @@ public class PayDemo {
                         env.put(a2);
                         env.put("/payments/${transactionTime}", p);
                     }
-                }).execute();
+                });
                 
                 if (i % 10000 == 0 && i > 0) {
                     time = 1e-9 * (System.nanoTime() - t0);

@@ -13,7 +13,7 @@ import bergdb.nanotest.T;
 /**
  * Data for executing a transaction. Input, output and working data.
  * The change set of the transaction is defined in this class.
- * This class is defined for Db -- for performance. Not for the end user.
+ * This class is designed to suit class Db and to achieve high performance.
  * 
  * @author Frans Lundberg
  */
@@ -28,7 +28,7 @@ public class Trans {
     // Note. It would be good for memory reuse possibilities to use array+size approach.
     // For example; have long[] readKeyHashes *and* int readKeyHashesLength.
     // We would be able to reuse Trans object memory. 
-    // Should be neglectable performance degradation for DB.execute.
+    // Should be neglectable performance degradation for DB.execute().
     //
     
     private static final Kv[] emptyKVArray = new Kv[0];
@@ -141,6 +141,9 @@ public class Trans {
         private ArrayList<Long> readHashes;    // hashes of keys read.
         private ArrayList<Long> virtualWriteHashes;    // virtual key hashes for virtual writes
         
+        /**
+         * Use Db.builder() to create a new Builder object.
+         */
         private Builder() {
             kvs = new ArrayList<Kv>();
             readHashes = new ArrayList<Long>();
@@ -269,13 +272,14 @@ public class Trans {
         }
         
         /**
-         * Finishes building the transaction by creating a Transaction
+         * Finishes building the transaction by creating a Trans
          * instance and returning it.
          */
         public Trans build() {
             // We use a TreeMap to sort and to avoid duplicates.
             // Could be done while we add KVs too.
-            // Non-deletes take precedence over deletes. (Needed feature?)
+            // Non-deletes take precedence over deletes.
+            
             Trans t = new Trans();
             t.readTime = builderLookupTime;
             
@@ -305,8 +309,6 @@ public class Trans {
     public static void testTransReuse() {
         Trans t;
         Db db;
-        
-        //System.out.println("---- PerfDBSet.testTransReuse ----");
         
         t = Trans.builder().put("k", "v").build();
         

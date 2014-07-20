@@ -47,16 +47,16 @@ public class WBuilderImp implements WBuilder {
         return this;
     }
 
-    public Transaction build() {
-        Transaction trans = new WTransaction(env, connection);
-        return trans;
-    }
+    //public Transaction build() {
+    //    Transaction trans = new WTransaction(env, connection);
+    //    return trans;
+    //}
 
     /**
      * @throws DbException if the database is faulty.
      */
     public Transaction execute() {
-        Transaction t = build();
+        WTransaction t = new WTransaction(env, connection);
         t.execute();
         return t;
     }

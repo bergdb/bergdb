@@ -34,11 +34,6 @@ public interface WBuilder {
      */
     public WBuilder put(Object object);
     
-    /**
-     * Creates and returns the transaction.
-     */
-    public Transaction build();
-    
     /** 
      * Shortcut for <code>build().execute()</code>.
      */

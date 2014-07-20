@@ -115,7 +115,7 @@ public interface Connection extends ReadInterface {
     public <TYPE> TYPE get(String key, Class<TYPE> clazz);
 
     /**
-     * Puts a key-object entry to the database. If an entry with the given key
+     * Puts one key-object entry to the database. If an entry with the given key
      * already exists, it is overwritten. The transaction is executed
      * immediately in this method.
      * 
@@ -132,7 +132,7 @@ public interface Connection extends ReadInterface {
     public Transaction put(String key, Object object);
 
     /**
-     * Stores a single object to the database using the 'key' field of the
+     * Stores one object to the database using the 'key' field of the
      * object as the key. The object must have a field of type String and name
      * 'key', otherwise an exception is thrown. If an entry with the given key
      * already exists, it is overwritten. The transaction is executed
@@ -158,7 +158,7 @@ public interface Connection extends ReadInterface {
     public WBuilder w();
 
     /**
-     * Creates an RW transaction given its action.
+     * Executes an RW transaction given its action.
      */
     public Transaction rw(Action action);
 
@@ -211,6 +211,7 @@ public interface Connection extends ReadInterface {
 Log
 ===
 
+147020 rw() now executes transaction immediately.
 140715 Added setLookupTime() now takes a Time.
 131028 Added sync()/syncStrong().
 1310xx Changed "set" to "put".

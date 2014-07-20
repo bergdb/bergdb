@@ -7,6 +7,7 @@ import bergdb.core.RerunException;
 import bergdb.core.Trans;
 import bergdb.pub.Action;
 import bergdb.pub.NoSuchObjectException;
+import bergdb.pub.Time;
 import bergdb.pub.Transaction;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
@@ -46,6 +47,10 @@ public class RwTransaction implements Transaction {
         }
         
         return value;
+    }
+    
+    public Time getTime() {
+        return Time.units(trans.time);
     }
     
     public String getOutputStream(String key) {

@@ -1,12 +1,13 @@
 package bergdb.pub;
 
+import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 import java.util.TimeZone;
 
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.pubimp.TimeResolver;
-
 
 /**
  * A Time instance represents a time instance measure by the database
@@ -205,7 +206,38 @@ public class Time {
     }
     
     public String toString() {
-        return "units:" + units;
+        return toUtcString();
+    }
+    
+    private static final SimpleDateFormat UTC_DATE_FORMAT;
+    static { 
+        UTC_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US);
+        UTC_DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
+    }
+    
+    /**
+     * Returns the time in UTC formatted like this: yyyy-MM-dd HH:mm:ss.SSSSSSS. 
+     * For example: 2000-01-01 18:01:12.1234567.
+     */
+    public String toUtcString() {       
+        long millis = units / Time.UNITS_PER_MILLISECOND;
+        long unitsLeft = units % Time.UNITS_PER_MILLISECOND;
+        String firstPart = UTC_DATE_FORMAT.format(new Date(millis));
+        String secondPart = String.format(Locale.US, "%04d", unitsLeft);
+        return firstPart + secondPart;
+    }
+    
+    @T
+    private static void testToUtcString() {
+        Time time = Time.utc("2000-01-01 18:01:12.1234567");
+        Assert.assertEquals(67, time.units() % 100);
+        Assert.assertEquals("2000-01-01 18:01:12.1234567", time.toUtcString());
+    }
+    
+    @T
+    private static void testToUtcStringWithRounding() {
+        Time time = Time.utc("2000-01-01 18:01:12.123456789");
+        Assert.assertEquals("2000-01-01 18:01:12.1234568", time.toUtcString());
     }
     
     @T
@@ -223,21 +255,21 @@ public class Time {
     }
     
     @T
-    public static void testAdd() {
+    private static void testAdd() {
         Time t0 = Time.units(0);
         Time t1 = t0.add(Duration.seconds(1.0));
         Assert.assertEquals(Clock.UNITS_PER_SEC, t1.units - t0.units());
     }
     
     @T
-    public static void testMillis() {
+    private static void testMillis() {
         Time t1 = Time.millis(1000);
         Time t2 = Time.units(Clock.UNITS_PER_SEC);
         Assert.assertTrue(t1.equals(t2));
     }
     
     @T
-    public static void testResolve1() {
+    private static void testResolve1() {
         Time t1 = Time.utc("2014-01-01 00:00:00.000000");
         Time t2 = Time.utc("2014-01-01 00:00:00.000001");
         Time t3 = t1.add(Duration.seconds(1e-6));
@@ -245,20 +277,20 @@ public class Time {
     }
     
     @T
-    public static void testResolve2() {
+    private static void testResolve2() {
         Time t1 = Time.utc("1970-01-01");
         Assert.assertEquals(0, t1.units());
     }
     
     @T
-    public static void testResolve3() {
+    private static void testResolve3() {
         Time t1 = Time.utc("2000-01");
         Time t2 = Time.utc("2000-01-01 00:00:00.000");
         Assert.assertEquals(t2, t1);
     }
     
     @T
-    public static void testResolve4() {
+    private static void testResolve4() {
         //  09 Sep 2001 01:46:40 UTC = 1000L*1000*1000 Unix time (s).
         
         TimeZone zone = TimeZone.getTimeZone("UTC");
@@ -268,7 +300,7 @@ public class Time {
     }
     
     @T
-    public static void testResolve5() {
+    private static void testResolve5() {
         //  09 Sep 2001 01:46:40 UTC = 1000L*1000*1000 Unix time (s).
         
         TimeZone zone = TimeZone.getTimeZone("UTC");

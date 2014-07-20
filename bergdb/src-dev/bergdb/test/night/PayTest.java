@@ -77,7 +77,7 @@ public class PayTest {
                     id += 1;
                 }
                 
-                builder.build().execute();
+                builder.execute();
             }
             
             database.sync();

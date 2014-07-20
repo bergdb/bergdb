@@ -62,7 +62,7 @@ public class GetStarted4 {
                 env.put(acc0);
                 env.put(acc1);
             }
-        }).execute().sync();
+        }).sync();
         
         // Lists accounts
         

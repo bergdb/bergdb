@@ -47,14 +47,13 @@ public class PubTester {
         Connection c = Factory.database().memory().start().connection();
         c.w().put("/key1", "value1").put("/key2", "value2..").execute();
         
-        Transaction t = c.rw(new Action() { 
+        c.rw(new Action() { 
             public void run(RwEnvironment env) {
                 v1 = env.get("/key1", String.class);
                 v2 = env.get("/key2", String.class);
                 env.put("/length", "" + (v1.length() + v2.length()));
             }
         });
-        t.execute();
         
         Assert.assertEquals("value1", v1);
         Assert.assertEquals("value2..", v2);
@@ -69,13 +68,13 @@ public class PubTester {
         //
         
         Database db = Factory.database().memory().start();
-        Connection c1 = db.connection();
+        final Connection c1 = db.connection();
         c1.w().put("/key1", "value1").put("/key2", "value2..").execute();
         
         final EventToWaitFor modifiedKey1 = new EventToWaitFor();
         final EventToWaitFor getDone = new EventToWaitFor();
         
-        final Transaction t = c1.rw(new Action() { 
+        final Action action = new Action() { 
             public void run(RwEnvironment env) {
                 v1 = env.get("/key1", String.class);
                 v2 = env.get("/key2", String.class);
@@ -84,13 +83,14 @@ public class PubTester {
                 String lengthString = "" + (v1.length() + v2.length());
                 env.put("/length", lengthString);
             }
-        });
+        };
         
         Connection c2 = db.connection();
+        final Transaction[] transactionArray = new Transaction[1];
         
         Thread thread = new Thread(new Runnable() {
             public void run() {
-                t.execute();
+                transactionArray[0] = c1.rw(action);
             }
         });
         thread.start();
@@ -101,7 +101,7 @@ public class PubTester {
         
         thread.join();
         
-        Assert.assertEquals(2, ((RwTransaction) t).getRunCount());
+        Assert.assertEquals(2, ((RwTransaction) transactionArray[0]).getRunCount());
         Assert.assertEquals("value2..", v2);
         Assert.assertEquals("15", c1.get("/length", String.class));
         db.stop();
@@ -383,7 +383,7 @@ public class PubTester {
                 a.value = a.value + 2.0;
                 env.put(a);
             }
-        }).execute();
+        });
     }
     
     @T
@@ -396,8 +396,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        Transaction t = c.w().put(a).build();
-        t.execute();
+        Transaction t = c.w().put(a).execute();
         t.sync();
         Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
                 ((DatabaseImp) d).getDb().getStreamLength() - 1);
@@ -413,8 +412,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        Transaction t = c.w().put(a).build();
-        t.execute();
+        Transaction t = c.w().put(a).execute();
         t.syncStrong();
         Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
                 ((DatabaseImp) d).getDb().getStreamLength() - 1);
@@ -430,8 +428,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        Transaction t = c.w().put(a).build();
-        t.execute();
+        Transaction t = c.w().put(a).execute();
         c.sync();
         Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
                 ((DatabaseImp) d).getDb().getStreamLength() - 1);
@@ -447,8 +444,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        Transaction t = c.w().put(a).build();
-        t.execute();
+        Transaction t = c.w().put(a).execute();
         c.syncStrong();
         Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
                 ((DatabaseImp) d).getDb().getStreamLength() - 1);
@@ -464,8 +460,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        Transaction t = c.w().put(a).build();
-        t.execute();
+        Transaction t = c.w().put(a).execute();
         d.sync();
         Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
                 ((DatabaseImp) d).getDb().getStreamLength() - 1);
@@ -481,8 +476,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        Transaction t = c.w().put(a).build();
-        t.execute();
+        Transaction t = c.w().put(a).execute();
         d.syncStrong();
         Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
                 ((DatabaseImp) d).getDb().getStreamLength() - 1);
@@ -604,7 +598,7 @@ public class PubTester {
                 Assert.assertEquals("/h", h.key);
                 Assert.assertEquals("MyHome", h.name);
             }
-        }).execute();
+        });
         
         database.stop();
     }
@@ -630,7 +624,7 @@ public class PubTester {
             public void run(RwEnvironment env) {
                 env.put(house);
             }
-        }).execute();
+        });
         
         // Assert
         
@@ -856,5 +850,14 @@ public class PubTester {
         Time time1 = Time.resolve(Time.UTC, dbTime, "00:01");
         Time time2 = Time.millis(60 * 1000);
         Assert.assertEquals(time2, time1);
+    }
+    
+    @T
+    public static void testGetTime() {
+        TestClock clock = new TestClock();
+        clock.setTime(Time.utc("2010-01-01 00:02:03.000"));
+        Database d = Factory.database().memory().clock(clock).start();
+        Transaction t = d.connection().put("/key", "value");
+        Assert.assertEquals(Time.utc("2010-01-01 00:02:03.0000001"), t.getTime());
     }
 }

@@ -18,7 +18,6 @@ import bergdb.pub.IndexBuilder;
 import bergdb.pub.Job;
 import bergdb.pub.JobStatus;
 import bergdb.pub.RwEnvironment;
-import bergdb.pub.Transaction;
 import bergdb.storage.StreamIoException;
 
 /**
@@ -354,7 +353,7 @@ public class IndexBuilderImp implements IndexBuilder {
         g.inclusive = false;
         g.stopCondition = stopCondition;
         
-        Transaction transaction = connection.rw(new Action() {
+        Action action = new Action() {
             public void run(final RwEnvironment environment) {
                 final RwEnvironmentImp env = (RwEnvironmentImp) environment;
                 stopCondition.resetProcessedEntries();
@@ -377,10 +376,10 @@ public class IndexBuilderImp implements IndexBuilder {
                     }, false);
                 }
             }
-        });
+        };
         
         try {
-            transaction.execute();
+            connection.rw(action);
         } catch (DbStoppingException e) {
             // Special case, index creation while database is stopping.
             // This is fine, index creation will continue once database is started again.

@@ -75,11 +75,11 @@ public class DbUtil {
         return value == null ? null : Util.toString(value);
     }
     
-    private static final SimpleDateFormat dateFormat;
+    private static final SimpleDateFormat DATE_FORMAT;
     
     static { 
-        dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US);
-        dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+        DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US);
+        DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
     
     /**
@@ -87,6 +87,6 @@ public class DbUtil {
      */
     public static String dbTimeToUtc(long dbTime) {
         long ms = dbTime / (Clock.UNITS_PER_SEC / 1000);
-        return dateFormat.format(new Date(ms)) + " UTC";
+        return DATE_FORMAT.format(new Date(ms)) + " UTC";
     }
 }

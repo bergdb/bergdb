@@ -130,7 +130,7 @@ public class ConnectionImp implements Connection {
         if (action == null) {
             throw new IllegalArgumentException("action == null not allowed");
         }
-        return new RwTransaction(this, action);
+        return new RwTransaction(this, action).execute();
     }
 
     public WBuilder w() {
@@ -175,7 +175,7 @@ public class ConnectionImp implements Connection {
      *             If 'key' is null or otherwise invalid, or if object is null.
      */
     public Transaction put(String key, Object object) {
-        return w().put(key, object).build().execute();
+        return w().put(key, object).execute();
     }
 
     /**
@@ -197,7 +197,7 @@ public class ConnectionImp implements Connection {
      *             object is null.
      */
     public Transaction put(Object object) {
-        return w().put(object).build().execute();
+        return w().put(object).execute();
     }
 
     /**

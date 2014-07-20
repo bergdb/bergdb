@@ -998,7 +998,7 @@ public class Util {
     }
     
     /**
-     * Returns milliseconds since Epoch for a certain Gregorian date/time.
+     * Returns milliseconds since Epoch for a certain UTC date/time.
      * 
      * @param year    The year.
      * @param month   The month, January = 1

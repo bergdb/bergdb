@@ -27,7 +27,6 @@ import bergdb.pub.Factory;
 import bergdb.pub.ReadInterface;
 import bergdb.pub.RwEnvironment;
 import bergdb.pub.Time;
-import bergdb.pub.Transaction;
 import bergdb.pub.WBuilder;
 import bergdb.pubimp.DatabaseBuilderImp;
 import bergdb.pubimp.DatabaseImp;
@@ -107,9 +106,7 @@ public class Concurrency {
             b.put(key, "0");
         }
         b.put("99", "0");         // Transaction count.
-        Transaction trans = b.build();
-        trans.execute();
-        
+        b.execute();        
         for (Thread t : readers) t.start();
         for (Thread t : writers) t.start();
         
@@ -176,7 +173,7 @@ public class Concurrency {
                 env.put("" + account2, "" + (balance2 + 2));
                 env.put("99", "" + (count + 1));
             }
-        }).execute();
+        });
     }
     
     private long readLong(ReadInterface r, int account) {
