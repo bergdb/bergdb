@@ -1,8 +1,8 @@
 <html><head><title>Package dev</title></head><body>
 
-
 <p>BergDB developers: <i>read this first</i>; this package should contain the documentation you
-should need to modify the BergDB library for your needs.<p>
+should need to modify BergDB for your needs. If you just want to <i>use</i> the BergDB library,
+look elsewhere.<p>
 
 <p>This package is not needed for production use and may be omitted from the final build.</p>
 
@@ -13,8 +13,9 @@ should need to modify the BergDB library for your needs.<p>
 <h1>General assumptions</h1>
 
 <p>The database performance is optimized for a modern 64-bit server. Typically 4 to 16 cores.
-1 to 2 CPUs. SSD or ordinary disk(s). But it should also run on very small devices with a unified
-source base.</p>
+1 to 2 CPUs. SSD or ordinary disk(s). But the database also has reasonable performance on 
+very small devices. There is only one code based; no differentiation between large
+server and small devices (Android phone for example).</p>
 
 <p>There is only *one* DB stream format for all supported devices, operating systems and 
 programming languages.</p>
@@ -22,7 +23,7 @@ programming languages.</p>
 <p>Logically, the database uses a single append-only stream (interface stream.AppendOnlyStream).</p>
 
 <p><b>Serial writes</b>. While many transactions (both read and write) may run in parallel, write
-transactions are serialized for storage and stored to permanent storage.</p>
+transactions are serialized for storage.</p>
 
 <p>Anti-assumption: We DO NOT assume the system is running on a 64-bit server 
 with atomic operations on "long" and "double".</p>
@@ -33,9 +34,9 @@ with atomic operations on "long" and "double".</p>
 
 <pre>
 GENERAL
-* Use Java 1.5. Generics is allowed.
-* Annotations are only allowed for non-production code (test-code).
-* Do not use enums. (Issues with cross-compiling).
+* Use Java 1.5.
+* Generics is allowed.
+* Annotations are only allowed for non-production code (test code).
 * Do not use weak references because of GCJ issues.
 * Be careful with printf/String.format() because of GCJ issues. And to have one less IKVM DLL.
 * Do not use resource files because of GCJ issues and complexity in general.
@@ -53,7 +54,7 @@ CODE STYLE
 
 JAVADOC
 * Use Javadoc. Class comments, method comments. Use few tags: @deprecated, @param, @throws, @author.
-* Use Javadoc "@author Frans Lundberg" for top-level classes/interfaces.
+* Use Javadoc "@author firstName lastName" for top-level classes/interfaces.
 * ALL classes/interface/methods of the Pub API must be have Javadoc comments.
 * ALL classes/interfaces must have Javadoc comments.
 * See Oracle's: "How to Write Doc Comments for the Javadoc Tool".
@@ -130,6 +131,11 @@ with Java byte code, of course. Also it is build to native machine code and to .
 <p>The source is built to one jar: "bergdb.jar". Source files are not included in this jar.</p>
 
 
+<h3>Android</h3>
+
+<p>The database runs on Android without modifications.</p>
+
+
 <h3>IKVM</h3>
 
 <p>Works well, no problems at all. See build/ikvm.</p>
@@ -138,20 +144,20 @@ with Java byte code, of course. Also it is build to native machine code and to .
 <!-- ====================================================================== -->
 <h1>Versions and releases</h1>
 
-<p><b>Version</b>. "2014.1" is used as the <i>version ID</i> of the first BergDB version in 2014. 
+<p><b>Version</b>. Version "2014.1" is used as the first BergDB release in 2014. 
 2014.2, 2014.3, 2015.1, 2015.2 are used for the following public releases (assuming 3 releases 
-in 2013). There must be no more than 9 versions for one specific year.
+in 2013). There must be no more than 9 releases during one year.
 The <b>version int</b> is 141, 142, 143, 151, 152 for the above example releases. 
 The version int makes it simple to compare versions. It should be used internally only.
 The version ID and the version int are available from the class db.BuildInfo.
 The year (2013, 2014) is the <i>major version number</i>, and the second number if the 
 <i>minor version number</i>.</p>
 
-<p>New methods and features can be marked with "since" in Javadoc, example: "@since 2013.2".</p>
+<p>New methods and features may be marked with "since" in Javadoc, example: "@since 2013.2".</p>
 
 <p>A BergDB software release is one single zip file made available from bergdb.com.</p>
 
-<p><b>Build</b>. Builds are used internally by BergDB developers (me only :-)). 
+<p><b>Build</b>. Builds are used internally by BergDB developers.
 <i>Build IDs</i> has HHMM added to the build ID. Examples: "2013.1.130401.1330", 
 "2013.2.130630.1500".</p>
 
@@ -196,6 +202,5 @@ for indexed directories.
 <p><a href="http://docs.oracle.com/javase/1.5.0/docs/api/">Java 1.5 API</a>, 
    <a href="http://javasourcecode.org/html/open-source/jdk/jdk-5.0/index.html">Source</a></p>
 <p><a href="http://demo.icu-project.org/icu-bin/locexp">ICU Demo: Locales/collations</a></p>
-
 
 </body></html>

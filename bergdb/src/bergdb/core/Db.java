@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
+import bergdb.common.Bug;
 import bergdb.common.NullProgressListener;
 import bergdb.common.Util;
 import bergdb.core.DbHelper.AddReplicaClass;
@@ -970,6 +971,28 @@ public class Db {
         dag.getMany(g);
     }
 
+    /**
+     * Sync parametarized.
+     */
+    public void sync(SyncLevel syncLevel) {
+        if (syncLevel == null) {
+            throw new IllegalArgumentException("syncLevel == null not allowed");
+        }
+        
+        switch (syncLevel) {
+        case NONE:
+            // empty, do nothing
+            break;
+        case ORDINARY:
+            sync();
+            break;
+        case STRONG:
+            syncStrong();
+            break;
+        default:
+            throw new Bug("never happens, " + syncLevel);
+        }
+    }
     
     /**
      * Waits until ordinary durability has been achieved for stream position 'spos'.
