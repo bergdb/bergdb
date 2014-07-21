@@ -1,10 +1,17 @@
 package bergdb.core;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
 import bergdb.common.Bug;
 import bergdb.common.Bytes;
+import bergdb.common.Util;
 import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
+import bergdb.dag.Klong;
 import bergdb.dag.Spos;
+import bergdb.nanotest.Assert;
+import bergdb.nanotest.T;
 import bergdb.storage.StreamFormatException;
 
 /**
@@ -42,7 +49,9 @@ public class StoredKeyNode implements StoredNode {
         int byteSize = getByteSize(node);
         int offset = firstOffset;
 
-        buffer[offset++] = ((long) byteSize) | (((long) INode.TYPE_KEY_NODE) << (4 * 8))
+        buffer[offset++] = 
+                  ((long) byteSize) 
+                | (((long) INode.TYPE_KEY_NODE) << (4 * 8))
                 | (1L << (5 * 8));
         // 2 bytes available for checksum
         buffer[offset++] = prevPos;
@@ -154,7 +163,36 @@ public class StoredKeyNode implements StoredNode {
         result.prevPos = prevPos;
         return result;
     }
-
-    // TODO C. Test serialization.
-
+    
+    @T
+    private static void testSerialize() {
+        KeyNode node = new KeyNode();
+        long k0 = Klong.createTime(5000);
+        long k1 = Klong.create(Util.toBytes("key"));
+        node.addToEnd(k0, null, Spos.NULL);
+        node.addToEnd(k1, null, Spos.NULL);
+        
+        int byteSize = StoredKeyNode.getByteSize(node);
+        long[] longBuffer = new long[byteSize / 8];
+        int offset = StoredKeyNode.toLongs(node, longBuffer, 0, 200);
+        Assert.assertEquals(byteSize / 8, offset);
+        
+        byte[] byteBuffer = longArrayToByteArray(longBuffer);
+        StoredKeyNode storedNode = StoredKeyNode.parse(byteBuffer, 0, 0);
+        
+        Assert.assertEquals(node.size, storedNode.node.size);
+        Assert.assertEquals(node.getKlong(0), storedNode.node.getKlong(0));
+        Assert.assertEquals(node.getKlong(1), storedNode.node.getKlong(1));
+    }
+    
+    /**
+     * long array to byte array using little-endian byte order.
+     */
+    private static byte[] longArrayToByteArray(long[] longs) {
+        byte[] bytes = new byte[longs.length * 8];
+        ByteBuffer buffer = ByteBuffer.wrap(bytes);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+        buffer.asLongBuffer().put(longs);
+        return bytes;
+    }
 }

@@ -9,9 +9,9 @@ import bergdb.nanotest.T;
 /**
  * <p>This class has static methods used for handling database keys.
  * They include methods for converting a key between three key formats:
- * string key, byte key, and segment key.
- * This class is the authority on the key formats and should always be used to convert 
- * a key between different formats.</p>
+ * ikey, bkey, and skey.
+ * This class should always be used to convert a key between these representations.
+ * See doc/2013-key-encoding.txt.</p>
  * 
  * @author Frans Lundberg
  */
@@ -47,11 +47,11 @@ public class Keys {
     }
 
     /**
-     * Converts a String key to its segmented key representation by first converting
+     * Converts an ikey to its segmented key representation by first converting
      * the String to bytes and than to segments with the method toSegments(byte[]).
      */
-    public static final long[] toSegments(String key) {
-        return toSegments(toBytes(key));
+    public static final long[] toSegments(String ikey) {
+        return toSegments(toBytes(ikey));
     }
 
     /**
@@ -181,8 +181,9 @@ public class Keys {
     }
 
     /**
-     * Converts a key to its segmented key representation - an array of long
-     * compare values. Always use this method to create key segments from a byte array key.
+     * Converts a bkey to an skey (segmented key representation).
+     * See spec in 2013-key-encoding.txt.
+     * Always use this method to create key segments from a byte array key.
      * This method defines the segmented key representation format.
      */
     public static final long[] toSegments(byte[] key) {
@@ -210,7 +211,7 @@ public class Keys {
     }
     
     /**
-     * Converts a key in the the segmented form (long[]) to its byte array form.
+     * Converts a key in the the segmented form (long[]) to its byte array form (bkey).
      * Always use this method to convert a segmented key to a byte array.
      */
     public static byte[] toBytes(long[] segments) {

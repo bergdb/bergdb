@@ -146,14 +146,6 @@ public class DatabaseImp implements Database {
         db.sync(0, syncLevel);
     }
     
-    /**
-     * @deprecated
-     * @throws StreamIoException
-     */
-    public void syncStrong() {
-        db.sync(0, SyncLevel.STRONG);
-    }
-    
     public StartInfo getStartInfo() {
         return startInfo;
     }

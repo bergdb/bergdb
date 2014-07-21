@@ -5,6 +5,9 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.pub.BadFormatException;
 
+//TODO LATER Review what exception to throw? Make it consistent. Consider throwing IllegalArgumentException or subclass of it.
+
+
 /**
  * Class with static methods for handling database keys.
  * 
@@ -12,18 +15,18 @@ import bergdb.pub.BadFormatException;
  */
 public class PubKeys {
     
+    private PubKeys() {}
+    
     public static final char INTERNAL_DIR_PREFIX = '#';
     
     public static final char FILE_PREFIX = '-';
     
     public static final char DIR_PREFIX = 'd';
     
-    private PubKeys() {}
-    
     /**
      * Converts a ukey to an ikey according to doc/2013-key-encoding.txt.
      * This method should always be applied to all keys as they cross the border between
-     * the user application into the Pub Layer.
+     * the user application and the Pub Layer.
      * 
      * @param ukey The input ukey (user string key).
      * @return The ukey converted to an ikey.
@@ -87,9 +90,10 @@ public class PubKeys {
     
     /**
      * Converts a directory ukey to a directory ikey according to doc/2013-key-encoding.txt.
+     * 
+     * @throws BadFormatException
      */
     public static final String udir2idir(String udir) throws BadFormatException {
-        // TODO X LATER Consider throwing IllegalArgumentException or subclass of it.
         
         if (udir == null) {
             throw new BadFormatException("null is not a valid dir.");
@@ -134,7 +138,7 @@ public class PubKeys {
     /**
      * Converts an ikey that was created from a ukey, back to the original ukey.
      * 
-     * @throws IllegalArgumentException if ikey is not or not a valid ikey created from a ukey.
+     * @throws IllegalArgumentException if ikey is not a valid ikey created from a ukey.
      */
     public static String i2u(String ikey) {
         if (ikey == null) {
@@ -173,11 +177,11 @@ public class PubKeys {
         return ukey;
     }
     
+    
     // ======== Tests ========
     
-    
     @T
-    public static void testToIkey0() {
+    public static void testU2I_1() {
         String ukey = "/db1/customers/c001";
         String expected = "/ddb1/dcustomers/-c001";
         Assert.assertEquals(expected, PubKeys.u2i(ukey));
@@ -186,7 +190,7 @@ public class PubKeys {
     private static char ARABIC_LETTER_JEEM = '\u062c';
     
     @T
-    public static void testToIkey1() {
+    public static void testU2I_2() {
         String[] ukeys = new String[] {
                 "/a",
                 "/dir/Special Chars: \u0000\u0001\u0002",

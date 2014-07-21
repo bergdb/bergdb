@@ -21,11 +21,6 @@ import bergdb.pub.UseIndexBuilder;
  * @author Frans Lundberg
  */
 public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
-    private static final int TYPE_OBJECT = 1;
-    private static final int TYPE_DB_OBJECT = 2;
-    private static final int TYPE_BYTE_ARRAY = 3;
-    private static final int TYPE_ORDINARY = 4;
-    
     private static final byte[] emptyByteArray = new byte[0];
     private boolean builderDone;
     private final ConnectionImp connection;
@@ -90,21 +85,9 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                     + index.getStateString() + ".");
         }
         
-        // TODO C. consider moving the following type determination to Entries.
-        
-        final int typeOfType;
-        
-        if (type.equals(Object.class)) {
-            typeOfType = TYPE_OBJECT;
-        } else if (type.equals(DbObject.class)) {
-            typeOfType = TYPE_DB_OBJECT;
-        } else if (type.equals(byte[].class)) {
-            typeOfType = TYPE_BYTE_ARRAY;
-        } else {
-            typeOfType = TYPE_ORDINARY;
-        }
-        
-        this.excludeNonObj = isPrimary && (typeOfType == TYPE_ORDINARY || typeOfType == TYPE_DB_OBJECT);
+        final int typeOfType = Entries.classify(type);
+        this.excludeNonObj = isPrimary && 
+                (typeOfType == Entries.TYPE_ORDINARY || typeOfType == Entries.TYPE_DB_OBJECT);
         this.dir = isPrimary ? new byte[0] : IndexManager.getIndexDbDirAsBytes(indexName);
         
         this.forward = true;

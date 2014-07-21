@@ -197,13 +197,13 @@ public class RwEnvironmentImp implements RwEnvironment {
         return Util.contains(TRANSACTION_TIME_BYTES, key) ? replaceTransformation : null;
     }
     
-    private void setBytes(String key, byte[] value) {        
+    private void setBytes(String ikey, byte[] value) {        
         if (value == null) {
             throw new IllegalArgumentException("value == null not allowed.");
         }
 
-        kvOps.put(new MapKey(Keys.toSegments(key), 
-                enableKeyReplace ? getKeyTransformation(key) : null), value);
+        kvOps.put(new MapKey(Keys.toSegments(ikey), 
+                enableKeyReplace ? getKeyTransformation(ikey) : null), value);
     }
     
     // Used internally, no checking
@@ -483,8 +483,6 @@ public class RwEnvironmentImp implements RwEnvironment {
     };
     
     private static final String transTimeToString(long transTime) {
-        // TODO X LATER Consider how this works in GCJ - does formatting work?
-        
         assert transTime >= Klong.MIN_TIME && transTime <= Klong.MAX_TIME;
         return String.format(Locale.US, "%018d", transTime);
     }

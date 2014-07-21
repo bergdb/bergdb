@@ -5,7 +5,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.stream.MemoryStream;
 
-// TODO D. Work in progress... Much more we could do.
+// TODO LATER. Work in progress... Much more we could do.
 
 /**
  * Class that tests restarting Db from an in-memory stream.
@@ -59,8 +59,6 @@ public class DbTesterRestart {
             bytes[0] = (byte) i;
             Trans trans = Trans.builder().put("k", bytes).build();
             db.execute(trans);
-            
-            //System.out.println("lastSpos: " + trans.lastSpos);
         }
         db.sync(SyncLevel.ORDINARY);
         

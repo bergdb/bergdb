@@ -68,6 +68,11 @@ public class GetMany {
      * The GetData; used for get operations.
      */
     public final GetData gd;
+
+    /**
+     * The number of get operations run. Output.
+     */
+    public int getOpCount;
     
     /**
      * Creates a new instance; use Db.newGetMany() or Dag.newGetMany() instead
@@ -81,6 +86,7 @@ public class GetMany {
         inclusive = true;
         forward = true;
         gd = new GetData();
+        getOpCount = 0;
     }
     
     public void setBackward() {

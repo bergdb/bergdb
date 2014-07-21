@@ -421,7 +421,7 @@ public class RecoverableStream {
      * transaction is returned instead. If there is no valid transaction at all in 
      * the stream, Spos.NULL is returned. Caller must hold DB.writeLock.
      * 
-     * TODO B. This doc is not true, or we have a bug. This method does not iterate to find
+     * TODO D. This doc is not true, or we have a bug. This method does not iterate to find
      * last valid transaction, just any recent transaction completely written before
      * stream position 'spos'.
      * 

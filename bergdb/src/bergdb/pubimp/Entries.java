@@ -12,6 +12,26 @@ import bergdb.nanotest.T;
  */
 public class Entries {
     private Entries() {}
+
+    static final int TYPE_OBJECT = 1;
+    static final int TYPE_DB_OBJECT = 2;
+    static final int TYPE_BYTE_ARRAY = 3;
+    static final int TYPE_ORDINARY = 4;
+
+    static int classify(Class<?> clazz) {
+        int result;
+        
+        if (clazz.equals(Object.class)) {
+            result = TYPE_OBJECT;
+        } else if (clazz.equals(DbObject.class)) {
+            result = TYPE_DB_OBJECT;
+        } else if (clazz.equals(byte[].class)) {
+            result = TYPE_BYTE_ARRAY;
+        } else {
+            result = TYPE_ORDINARY;
+        }
+        return result;
+    }
     
     /**
      * Returns the suffix of the key string, s.
@@ -116,5 +136,13 @@ public class Entries {
         Assert.assertEquals("g", suffix("graph.g"));
         Assert.assertEquals("txt", suffix(".hidden.txt"));
         Assert.assertEquals("t", suffix("www.bergdb.gson.as.t"));
+    }
+    
+    @T
+    private static void testClassify() {
+        Assert.assertEquals(classify(DbObject.class), Entries.TYPE_DB_OBJECT);
+        Assert.assertEquals(classify(Object.class), Entries.TYPE_OBJECT);
+        Assert.assertEquals(classify(Entries.class), Entries.TYPE_ORDINARY);
+        Assert.assertEquals(classify(byte[].class), Entries.TYPE_BYTE_ARRAY);
     }
 }

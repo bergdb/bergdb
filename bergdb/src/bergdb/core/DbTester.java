@@ -1548,4 +1548,18 @@ public class DbTester {
         
         db.stop();
     }
+    
+    @T
+    public static void testGetOp() {
+        Db db = Db.builder().testSetup().start();
+        db.execute(Trans.builder().put("key", new byte[1]));
+        
+        long count1 = db.getGetOpCount();
+        DbUtil.get(db, "key");
+        DbUtil.get(db, "non-existing");
+        long count2 = db.getGetOpCount();
+        db.stop();
+        
+        Assert.assertEquals("diff", 2, count2 - count1);
+    }
 }

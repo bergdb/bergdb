@@ -894,7 +894,19 @@ public class DbTesterGetMany {
         
         db.stop();
     }
-
+    
+    @T
+    public static void testGetOpCount() {
+        Db db = createDbWithKeys("a", "b", "c", "d");
+        
+        GetMany g = db.newGetMany();
+        g.startKey = null;
+        g.lookupTime = 100;
+        g.stopCondition = new GetMany.DontStop();
+        db.getMany(g);
+        
+        Assert.assertEquals(4, g.getOpCount);
+    }
     
     // ======== Helpers ========
     

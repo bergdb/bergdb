@@ -8,11 +8,12 @@ import java.util.Set;
 
 import bergdb.common.Bug;
 import bergdb.dag.GetMany.StopCondition;
+import bergdb.pub.DbException;
 import bergdb.pub.IllegalDbStateException;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 
-// TODO D. Consider: should cache eviction be here or in Db? Caching is in this class
+// TODO LATER Consider: should cache eviction be here or in Db? Caching is in this class
 // (followPointer). Maybe cache eviction should be too?
 
 /**
@@ -340,6 +341,9 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      * Besides following a pointer, it handles add-to-cache, and sets access data for
      * the pointer (when was it last used). The access data is used by the 
      * cache eviction algorithm.
+     * 
+     * @throws StreamFormatException
+     * @throws StreamIoException
      */
     public final INode followPointer(final INode predecessor, int pointerIndex, long accessData, 
             PointerListener pointerListener, CachePolicy cachePolicy) {
@@ -392,12 +396,10 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      * Gets one KV value or returns null if it does not exist.
      * 
      * @param time  The lookup time.
+     * @throws StreamFormatException
+     * @throws StreamIoException
      */
     public byte[] getOne(long time, long[] keySegments, final GetData gd) {
-        //
-        // TODO Z. Document exceptions that it throws.
-        // 
-
         assert gd.pointerListener != null;
         assert gd.cachePolicy != null;
         
@@ -454,6 +456,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      *            The compareValue to search for.
      * @param gd
      *            GetData to the lookup operation.
+     * @throws StreamFormatException
+     * @throws StreamIoException
      */
     private final INode getEqNodeInSegment(long time, KeyNode segmentRoot, long compareValue,
             GetData gd) {
@@ -534,9 +538,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                 break outer;
             }
             
-            // TODO C. getOpCount should increase here. Let's do listener stuff.
-            //getOpCount.incrementAndGet();
-
+            g.getOpCount++;
             int shouldStop = g.stopCondition.handleKvt(kvt);
 
             switch (shouldStop) {
@@ -556,9 +558,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                 break;
             }
         }
-    }
-
-    
+    }    
     
 
     // ======== putKv() with helpers ========
@@ -578,6 +578,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      * 
      * @param key     The key (as segments).
      * @param value   The value; null for delete operation.
+     * @throws DbException
      */
     public void putKv(long[] key, byte[] value, PutData pd) {
         //
@@ -585,8 +586,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         // out:  changes to graph, 
         //       changed/new nodes reported to pd.nodeChangeListener.
         //       accessed nodes ensured "dirty"
-        //
-        // TODO D. Document exceptions that might be thrown.
         //
         
         assert pd.tt >= 0;
@@ -599,8 +598,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                 tempPointer, pd.pointerListener, pd.cachePolicy);
         
         if (root == null) {
-            // TODO D. What is the correct exception type?
-            throw new IllegalStateException("Found no root node at t=" + pd.tt + ", cannot continue put.");
+            throw new DbException("Found no root node at t=" + pd.tt + ", cannot continue put.");
         }
         
         KeyNode segmentRoot = root;
@@ -614,8 +612,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                 segmentRoot = setNode(segmentRoot, key[i], pd);
             }
         }
-        
-        
     }
     
     /**
@@ -898,7 +894,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             KlongWithPointer[] toAppend, PutData pd) {
         // 131005, added the last.replaceKlong() method call. A bit of a hack.
         //   See Graph.testTimeSplit1a.
-        //   TODO B. Consider other solution. Maybe last should include toInsert.
+        //   TODO LATER. Consider other solution. Maybe last should include toInsert.
         //
         // Last version is small enough not to split into two nodes, but not empty.
         //
