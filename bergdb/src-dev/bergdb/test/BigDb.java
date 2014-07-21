@@ -91,6 +91,8 @@ public class BigDb {
         
         c.report("memory-used-after-100MB-of-data", getMem());
         
+        db.sync(SyncLevel.ORDINARY);
+        db.stop();
         db = null;
         c.report("memory-use-after-db-null", toMB(getMem()));
         
@@ -115,6 +117,8 @@ public class BigDb {
             Assert.assertArrayEquals(expectedValue, value);
         }
         
+        db2.sync(SyncLevel.ORDINARY);
+        db2.stop();
         db2 = null;
         ms = null;
         System.gc();

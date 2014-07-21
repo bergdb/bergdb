@@ -4,6 +4,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.TreeMap;
 
+import bergdb.common.Bug;
 import bergdb.common.Util;
 import bergdb.core.BuildInfo;
 import bergdb.nanotest.BasicCollector;
@@ -147,6 +148,10 @@ public class CorePerf {
         BasicCollector collector = createCollector();
         long nanos = System.nanoTime();
         
+        if (clazz == null || methodName == null || propName == null || shortName == null) {
+            throw new IllegalArgumentException("null not allowed");
+        }
+        
         TestRunner.runOneMethod(clazz, methodName, collector);
         
         nanos = System.nanoTime() - nanos;
@@ -155,11 +160,11 @@ public class CorePerf {
         Object value = collector.getProp(fullPropName);
         
         if (value == null) {
-            throw new Error("No value for property " + fullPropName);
+            throw new Bug("No value for property '" + fullPropName + "'.");
         }
         
         if (!(value instanceof Double)) {
-            throw new Error("Property " + fullPropName + " not a Double.");
+            throw new Bug("Property " + fullPropName + " not a Double.");
         }
         
         Double dValue = (Double) value;

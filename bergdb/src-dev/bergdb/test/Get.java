@@ -80,7 +80,7 @@ public class Get {
     
     private void go(TestCollector c) throws InterruptedException {
         c.report("note", "One thread running get(), db size: 100k.");
-        
+
         createDB(100*1000);
         
         Timed tg = new Timed();

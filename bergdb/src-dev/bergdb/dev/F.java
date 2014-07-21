@@ -15,7 +15,7 @@ import bergdb.nanotest.TestRunner;
 /**
  * Runs functional tests ("f").
  * Run this class without arguments every week and after every major change.
- * Each f-test should run within around 10 seconds.
+ * Each f-test should run within 10 seconds.
  * 
  * @author Frans Lundberg
  */
@@ -64,7 +64,7 @@ public class F {
         
         System.out.println();
         System.out.println("======================================================================");
-        System.out.print(collector.getReport());
+        System.out.print("    " + collector.getReport());
         System.out.println("======================================================================");
     }
     

@@ -60,11 +60,23 @@ public class TestRunner {
      * @param collector  Test result collector.
      */
     public static void runOneMethod(Class<?> c, String methodName, TestRunnerCollector collector) {
+        if (c == null) {
+            throw new IllegalArgumentException("c == null not allowed");
+        }
+        
+        if (methodName == null) {
+            throw new IllegalArgumentException("methodName == null not allowed");
+        }
+        
+        if (collector == null) {
+            throw new IllegalArgumentException("collector == null not allowed");
+        }
+        
         Method[] methods = c.getDeclaredMethods();
         Method m = null;
         
         for (Method method : methods) {
-            if (method.getName().equals(methodName) && m.isAnnotationPresent(T.class)) {
+            if (method.getName().equals(methodName) && method.isAnnotationPresent(T.class)) {
                 m = method;
             }
         }
@@ -73,9 +85,14 @@ public class TestRunner {
             return;
         }
         
-        runMethod(m, collector, new String[]{"unit"});
+        runMethod(m, collector, new String[0]);
     }
     
+    /**
+     * @param m
+     * @param collector
+     * @param groups   If empty, run method no matter what.
+     */
     private static void runMethod(Method m, TestRunnerCollector collector, String[] groups) {
         boolean runTest = false;
         boolean junit = false;
@@ -89,7 +106,7 @@ public class TestRunner {
                 // should report error to user, not just skip the test method.
                 
                 T annotation = m.getAnnotation(T.class);
-                if (!isInGroups(annotation.value(), groups)) {
+                if (!(groups.length == 0 || isInGroups(annotation.value(), groups))) {
                     break A;
                 }
                 
@@ -134,7 +151,7 @@ public class TestRunner {
         }
         
         // Can run private methods, useful feature.
-        m.setAccessible(true);    
+        m.setAccessible(true);
 
         Class<?>[] paramTypes = m.getParameterTypes();
     

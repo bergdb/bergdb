@@ -110,7 +110,7 @@ public class BasicCollector implements TestCollector, TestRunnerCollector {
         currentTempDirs.clear();
         
         if (printStart) {
-            baseOut.println("======== " + longMethodName + " ========");
+            baseOut.println("==== " + longMethodName + " ====");
         }
         nanoTime = System.nanoTime();
     }
