@@ -53,7 +53,7 @@ public class DbClock {
         // Not using "synchronized" here improved performance with 0.7% for serial GETs. More is 
         // expected for parallel access, of course.
         // Note, avoiding a call to clock.getTime() is important for performance. 
-        // System.currentTimeMillis() is slow.
+        // System.currentTimeMillis() is very slow.
         
         final long last = this.lastWriteTime;
         return wantedTime > last ? last : wantedTime;
@@ -63,13 +63,23 @@ public class DbClock {
      * Returns the current read time. The returned time is guaranteed to be strictly less then 
      * the transaction time of a currently executing transaction (if one is executing) and less
      * then the transaction time of any future transaction.
+     * The returned time is also greater than or equal to the transaction time of the last
+     * completed transaction.
      */
     public final synchronized long getTime() {
-        long time = clock.getTime();
+        // XXX Think about this!
+        // TODO A. Think about this.
+        
+        long time;
+        
         if (transactionRunning) {
-            time = time < lastWriteTime ? time : lastWriteTime;
+            time = transWriteTime - 1;
+        } else {
+            time = clock.getTime();
+            time = time < lastWriteTime ? lastWriteTime : time;
+            lastReadTime = time;
         }
-        lastReadTime = time;
+        
         return time;
     }
     
