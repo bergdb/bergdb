@@ -11,6 +11,7 @@ import bergdb.core.Db;
 import bergdb.core.Jmx;
 import bergdb.core.KeyFactory;
 import bergdb.core.NoEvictBoss;
+import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
@@ -153,7 +154,7 @@ public class TransThroughput {
             }
         }
         
-        db.sync();
+        db.sync(SyncLevel.ORDINARY);
         done = true;
         doneEvent.happened();
     }

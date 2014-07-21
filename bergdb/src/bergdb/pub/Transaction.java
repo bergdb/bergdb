@@ -1,5 +1,7 @@
 package bergdb.pub;
 
+import bergdb.core.SyncLevel;
+
 /**
  * <p>Represents a database transaction that has been executed.
  * The transaction can be a w-transaction (write transaction) or an
@@ -32,10 +34,10 @@ public interface Transaction {
      */
     public void sync();
     
-    /**
-     * Wait until strong durability has been attained for the transaction.
+    /** 
+     * Waits until the specific sync level has been attained for this transaction.
      * 
      * @throws DbException
      */
-    public void syncStrong();
+    public void sync(SyncLevel syncLevel);
 }

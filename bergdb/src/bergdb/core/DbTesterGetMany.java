@@ -194,7 +194,7 @@ public class DbTesterGetMany {
         clock.setTime(30);
         db.execute(Trans.builder().put("a", "1"));
         
-        db.sync();
+        db.sync(0, SyncLevel.ORDINARY);
         db = null;
         
         db = Db.builder().testSetup().clock(clock).mainStream(stream).start();

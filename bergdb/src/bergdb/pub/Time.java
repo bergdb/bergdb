@@ -235,9 +235,15 @@ public class Time {
     }
     
     @T
-    private static void testToUtcStringWithRounding() {
+    private static void testToUtcStringRoundUp() {
         Time time = Time.utc("2000-01-01 18:01:12.123456789");
         Assert.assertEquals("2000-01-01 18:01:12.1234568", time.toUtcString());
+    }
+    
+    @T
+    private static void testToUtcStringRoundDown() {
+        Time time = Time.utc("2000-01-01 18:01:12.123456701");
+        Assert.assertEquals("2000-01-01 18:01:12.1234567", time.toUtcString());
     }
     
     @T

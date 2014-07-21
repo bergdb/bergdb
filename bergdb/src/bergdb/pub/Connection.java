@@ -1,5 +1,7 @@
 package bergdb.pub;
 
+import bergdb.core.SyncLevel;
+
 /**
  * A connection to a Database is used to put and get data stored in the
  * database. Given a Connection, get operations [<code>c.get(..)</code>], put
@@ -198,12 +200,10 @@ public interface Connection extends ReadInterface {
     public void sync();
 
     /**
-     * Waits until strong durability has been achieved for the last transaction
-     * started with this connection.
-     * 
-     * @throws DbException is the database is faulty.
+     * Waits until the specified sync level (durability) has been achieved 
+     * for the last transaction started with this connection.
      */
-    public void syncStrong();
+    public void sync(SyncLevel syncLevel);
 }
 
 /*
@@ -211,7 +211,8 @@ public interface Connection extends ReadInterface {
 Log
 ===
 
-147020 rw() now executes transaction immediately.
+140721 syncString deprecated since 2014.1.
+140720 rw() now executes transaction immediately.
 140715 Added setLookupTime() now takes a Time.
 131028 Added sync()/syncStrong().
 1310xx Changed "set" to "put".

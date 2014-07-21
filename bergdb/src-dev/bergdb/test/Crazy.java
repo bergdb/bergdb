@@ -9,6 +9,7 @@ import bergdb.core.FixedDurationEvictBoss;
 import bergdb.core.IEvictBoss;
 import bergdb.core.KTestClock;
 import bergdb.core.KeyFactory;
+import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
@@ -48,7 +49,7 @@ public class Crazy {
             Trans t = Trans.builder().put(KeyFactory.crazyKey(i), Util.toBytes("v" + i)).build();
             db.execute(t);
         }
-        db.sync();
+        db.sync(0, SyncLevel.ORDINARY);
         
         out.println("Wrote 1000 crazy kvs, stream size: " + db.getStreamLength() + ".");
         
@@ -136,7 +137,7 @@ public class Crazy {
         b = Trans.builder();
         b.put(KeyFactory.crazyKey(1001), new byte[20*1000000]);
         db.execute(b.build());
-        db.sync();
+        db.sync(0, SyncLevel.ORDINARY);
         
         out.println("Stream size: " + db.getStreamLength() + ".");
         
@@ -156,7 +157,7 @@ public class Crazy {
         
         value = DbUtil.get(db, Long.MAX_VALUE, key);
         Assert.assertEquals(3, value.length);
-        db.sync();
+        db.sync(0, SyncLevel.ORDINARY);
         
         // ---- Restarting 
         

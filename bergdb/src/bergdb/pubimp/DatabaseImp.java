@@ -7,6 +7,7 @@ import java.util.List;
 
 import bergdb.core.Db;
 import bergdb.core.DbStoppingException;
+import bergdb.core.SyncLevel;
 import bergdb.pub.Clock;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
@@ -135,22 +136,22 @@ public class DatabaseImp implements Database {
      * @throws StreamIoException
      */
     public void sync() {
-        db.sync();
+        db.sync(0, SyncLevel.ORDINARY);
     }
     
     /**
+     * @throws StreamIoException
+     */
+    public void sync(SyncLevel syncLevel) {
+        db.sync(0, syncLevel);
+    }
+    
+    /**
+     * @deprecated
      * @throws StreamIoException
      */
     public void syncStrong() {
-        db.syncStrong();
-    }
-    
-    /**
-     * @throws IllegalDbStateException
-     * @throws StreamIoException
-     */
-    public void syncInternal() {
-        db.sync();
+        db.sync(0, SyncLevel.STRONG);
     }
     
     public StartInfo getStartInfo() {
@@ -261,7 +262,7 @@ public class DatabaseImp implements Database {
         index = indexManager.ensureDeletingState(connection, indexName);
             // After this method returns, there should be no more index entries added to the
             // index directory (IKP/i/<indexName>/).
-        syncInternal();
+        sync(SyncLevel.ORDINARY);
         
         final long[] deletedCounter = new long[1];    
             // Shared between anonymous classes and removeIndexEntries()
@@ -271,7 +272,7 @@ public class DatabaseImp implements Database {
                 try {
                     indexManager.deleteIndexEntries(indexName, db, deletedCounter);
                     indexManager.deleteIndexInfo(connection, index);
-                    syncInternal();
+                    sync(SyncLevel.ORDINARY);
                 } catch (DbStoppingException e) {
                     // empty, delete job will continue when database is started again.
                 } catch (StreamIoException e) {

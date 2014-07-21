@@ -3,6 +3,7 @@ package bergdb.pubimp;
 import java.util.Iterator;
 
 import bergdb.common.EventToWaitFor;
+import bergdb.core.SyncLevel;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.pub.Action;
@@ -413,7 +414,7 @@ public class PubTester {
         Connection c = d.connection();
         
         Transaction t = c.w().put(a).execute();
-        t.syncStrong();
+        t.sync(SyncLevel.STRONG);
         Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
                 ((DatabaseImp) d).getDb().getStreamLength() - 1);
     }
@@ -445,7 +446,7 @@ public class PubTester {
         Connection c = d.connection();
         
         Transaction t = c.w().put(a).execute();
-        c.syncStrong();
+        c.sync(SyncLevel.STRONG);
         Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
                 ((DatabaseImp) d).getDb().getStreamLength() - 1);
     }
@@ -477,7 +478,7 @@ public class PubTester {
         Connection c = d.connection();
         
         Transaction t = c.w().put(a).execute();
-        d.syncStrong();
+        d.sync(SyncLevel.STRONG);
         Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
                 ((DatabaseImp) d).getDb().getStreamLength() - 1);
     }

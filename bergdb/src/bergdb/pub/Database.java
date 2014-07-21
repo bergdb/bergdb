@@ -1,6 +1,8 @@
 package bergdb.pub;
 
 import java.io.IOException;
+
+import bergdb.core.SyncLevel;
 import bergdb.pubimp.IndexManager;
 
 /**
@@ -69,15 +71,15 @@ public interface Database {
      *             if the database is faulty.
      */
     public void sync();
-
+    
     /**
-     * Waits until the last started transaction has been stored durably according to strong
-     * durability rules.
+     * Waits until the last started transaction has been stored durably according to the
+     * specified sync level.
      * 
      * @throws DbException
      *             if the database is faulty.
      */
-    public void syncStrong();
+    public void sync(SyncLevel syncLevel);
 
     /**
      * <p>

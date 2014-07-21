@@ -113,7 +113,7 @@ public class DbHelper {
                     storageManager.syncReplica(ss, progressListener);
                     Trans trans = Trans.builder().put(Db.DUMMY_KEY, new byte[0]).build();
                     db.execute(trans);
-                    db.syncStrong(trans.lastPos);
+                    db.sync(trans.lastPos, SyncLevel.STRONG);
     
                     synchronized (progressLock) {
                         progressValue[0] = 100;

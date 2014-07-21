@@ -25,7 +25,7 @@ public class NodeStreamTester {
         byte[] value;
         value = DbUtil.get(db, 99, "admin1");
         Assert.assertArrayEquals(Util.toBytes("Sanna"), value);
-        db.sync();
+        db.sync(SyncLevel.ORDINARY);
         db = null;
         
         Db db2 = Db.builder().testSetup().mainStream(mstream).build();
@@ -53,7 +53,7 @@ public class NodeStreamTester {
         
         value = DbUtil.get(db, 99, "admin10");
         Assert.assertArrayEquals(Util.toBytes("Sanna"), value);
-        db.sync();
+        db.sync(SyncLevel.ORDINARY);
         db = null;
         
         Db db2 = Db.builder().testSetup().mainStream(mstream).build();
@@ -76,7 +76,7 @@ public class NodeStreamTester {
         db.execute(Trans.builder().put("admin1", "Sanna1").build());
         clock.setTime(20);
         db.execute(Trans.builder().put("admin2", "Sanna2").build());
-        db.sync();
+        db.sync(SyncLevel.ORDINARY);
         db = null;
         
         Db db2 = Db.builder().testSetup().mainStream(s).build();

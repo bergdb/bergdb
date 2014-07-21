@@ -1,6 +1,7 @@
 package bergdb.test;
 
 import bergdb.core.Db;
+import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.Keys;
 import bergdb.nanotest.BasicCollector;
@@ -55,7 +56,7 @@ public class StreamSizeTest {
             index += 1;
         }
         
-        db.sync();
+        db.sync(SyncLevel.ORDINARY);
         c.report("length", db.getStreamLength());
         c.report("nodesWritten", db.getNodesWritten());
         c.report("ordinaryNodesWritten", db.getOrdinaryNodesWritten());

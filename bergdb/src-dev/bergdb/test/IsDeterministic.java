@@ -7,6 +7,7 @@ import bergdb.core.Db;
 import bergdb.core.KTestClock;
 import bergdb.core.KeyFactory;
 import bergdb.core.NodeStream;
+import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;
@@ -30,7 +31,7 @@ public class IsDeterministic {
         for (int i = 0; i < 1+5; i++) {
             MemoryStream m = new MemoryStream();
             Db db = Db.builder().testSetup().mainStream(m).id(DatabaseId.getTestId()).start();
-            db.sync();
+            db.sync(SyncLevel.ORDINARY);
             
             if (i == 0) {
                 first = m;
@@ -57,7 +58,7 @@ public class IsDeterministic {
             Db db = Db.builder().testSetup().mainStream(m).clock(clock).id(DatabaseId.getTestId()).start();
             clock.setTime(100);
             db.execute(Trans.builder().put("k", "v").build());
-            db.sync();
+            db.sync(SyncLevel.ORDINARY);
             
             if (i == 0) {
                 first = m;
@@ -103,7 +104,7 @@ public class IsDeterministic {
                 b.put(KeyFactory.crazyKey(j*2 + 1), new byte[j]);
                 db.execute(b.build());
             }
-            db.sync();
+            db.sync(SyncLevel.ORDINARY);
             
             if (i == 0) {
                 first = m;

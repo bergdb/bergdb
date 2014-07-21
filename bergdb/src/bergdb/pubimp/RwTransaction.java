@@ -4,6 +4,7 @@ import java.util.HashMap;
 
 import bergdb.core.InternalDataException;
 import bergdb.core.RerunException;
+import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.pub.Action;
 import bergdb.pub.NoSuchObjectException;
@@ -124,16 +125,18 @@ public class RwTransaction implements Transaction {
     }
     
     /**
+     * Same as: sync(SyncLevel.ORDINARY).
+     * 
      * @throws StreamIoException
      */
     public void sync() {
-        connection.getDb().sync(trans.lastPos);
+        sync(SyncLevel.ORDINARY);
     }
     
     /**
      * @throws StreamIoException
      */
-    public void syncStrong() {
-        connection.getDb().syncStrong(trans.lastPos);
+    public void sync(SyncLevel syncLevel) {
+        connection.getDb().sync(trans.lastPos, syncLevel);
     }
 }

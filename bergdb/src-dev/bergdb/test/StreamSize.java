@@ -2,6 +2,7 @@ package bergdb.test;
 
 import bergdb.core.Db;
 import bergdb.core.KeyFactory;
+import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestCollector;
@@ -33,7 +34,7 @@ public class StreamSize {
                 byte[] value = new byte[kvSizes[i] - 4];
                 db.execute(Trans.builder().put(KeyFactory.binaryIntKey(j), value).build());
             }
-            db.sync();
+            db.sync(SyncLevel.ORDINARY);
             
             double overheadPerKV = (m.getLength() - kvCount[i]*kvSizes[i]) / ((double) kvCount[i]);
             overheadPerKV = Math.round(overheadPerKV * 10) / 10.0;

@@ -5,6 +5,7 @@ import java.io.IOException;
 
 import bergdb.common.Util;
 import bergdb.core.Db;
+import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.pub.Clock;
 import bergdb.stream.FileStream;
@@ -40,7 +41,7 @@ public class Shrink {
             db.execute(trans);
             //System.out.println("trans.spos: " + trans.spos);
         }
-        db.sync();
+        db.sync(SyncLevel.ORDINARY);
         
         double time = (System.nanoTime() - t0) * 1e-9;
         System.out.println("Created " + n + " entries in " + Util.oneDecimal(time) + " s.");
@@ -59,7 +60,7 @@ public class Shrink {
             
             db.execute(b.build());
         }
-        db.sync();
+        db.sync(SyncLevel.ORDINARY);
         
         time = (System.nanoTime() - t0) * 1e-9;
         System.out.println("Deleted all entries in " + Util.oneDecimal(time) + " s.");
@@ -80,7 +81,7 @@ public class Shrink {
             }
             index++;
         }
-        db.sync();
+        db.sync(SyncLevel.ORDINARY);
         
         time = (System.nanoTime() - t0) * 1e-9;
         System.out.println("Wrote k0 " + n + " times in " + Util.oneDecimal(time) + " s.");

@@ -1,12 +1,8 @@
 package bergdb.core;
 
-// XXX
-// TODO A. Document sync levels here.
-// TODO A. Change Connection, Database, Transaction APIs. sync(SyncLevel) instead of syncStrong().
-// TODO A. Make syncStrong() deprecated.
-
 /**
- * Sync level for Database.sync() method.
+ * The sync level for method Database.sync() and others determine
+ * what durability rule to apply to do the sync.
  * 
  * @author Frans Lundberg
  */
@@ -21,9 +17,13 @@ public enum SyncLevel {
     /** Sync to strong durability. */
     STRONG(30);
     
-    private int value;
+    private final int value;
     
-    SyncLevel(int value) {
+    private SyncLevel(int value) {
         this.value = value;
+    }
+    
+    public int getValue() {
+        return value;
     }
 }

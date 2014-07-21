@@ -970,84 +970,56 @@ public class Db {
 
         dag.getMany(g);
     }
-
+    
     /**
-     * Sync parametarized.
+     * Sync method with parametarized sync level.
+     * 
+     * @param syncLevel
+     *      The sync level.
      */
     public void sync(SyncLevel syncLevel) {
+        sync(0, syncLevel);
+    }
+    
+    /**
+     * Sync method with parametarized sync level.
+     * 
+     * @param pos
+     *      Stream position to sync to or 0 to sync to last transaction written.
+     * @param syncLevel
+     *      The sync level.
+     */
+    public void sync(long pos, SyncLevel syncLevel) {
         if (syncLevel == null) {
             throw new IllegalArgumentException("syncLevel == null not allowed");
         }
         
+        if (syncLevel == SyncLevel.NONE) {
+            return;
+        }
+        
+        if (pos == 0) {
+            synchronized (writeLock) {
+                pos = this.lastSposOfLastTrans;
+            }
+        }
+        
         switch (syncLevel) {
-        case NONE:
-            // empty, do nothing
-            break;
         case ORDINARY:
-            sync();
-            break;
         case STRONG:
-            syncStrong();
+            try {
+                if (syncLevel == SyncLevel.ORDINARY) {
+                    storageManager.sync(pos);
+                } else {
+                    storageManager.syncStrong(pos);
+                }
+            } catch (IOException e) {
+                throw new StreamIoException(e);
+            }
             break;
         default:
             throw new Bug("never happens, " + syncLevel);
         }
-    }
-    
-    /**
-     * Waits until ordinary durability has been achieved for stream position 'spos'.
-     * 
-     * @throws StreamIoException
-     */
-    public void sync(long spos) {
-        try {
-            storageManager.sync(spos);
-        } catch (IOException e) {
-            throw new StreamIoException(e);
-        }
-    }
-    
-    /**
-     * Waits until strong durability has been achieved for stream position 'spos'.
-     * 
-     * @throws StreamIoException
-     */
-    public void syncStrong(long spos) {
-        try {
-            storageManager.syncStrong(spos);
-        } catch (IOException e) {
-            throw new StreamIoException(e);
-        }
-    }
-    
-    /**
-     * Waits for last stream position to be considered durable according to ordinary sync.
-     * 
-     * @throws StreamIoException
-     */
-    public void sync() {
-        long spos;
-        
-        synchronized (writeLock) {
-            spos = this.lastSposOfLastTrans;
-        }
-        
-        sync(spos);
-    }
-    
-    /**
-     * Waits for last stream position to be considered durable according to strong sync.
-     * 
-     * @throws StreamIoException
-     */
-    public void syncStrong() {
-        long spos;
-        
-        synchronized (writeLock) {
-            spos = this.lastSposOfLastTrans;
-        }
-        
-        syncStrong(spos);
     }
     
     /**

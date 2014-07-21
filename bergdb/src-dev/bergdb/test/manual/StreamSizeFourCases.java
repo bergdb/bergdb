@@ -5,6 +5,7 @@ import java.io.PrintStream;
 import bergdb.core.Db;
 import bergdb.core.KeyFactory;
 import bergdb.core.NoEvictBoss;
+import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.stream.MemoryStream;
 
@@ -56,7 +57,7 @@ public class StreamSizeFourCases {
             db.execute(Trans.builder().put(keys[i], value));
         }
         
-        db.sync();
+        db.sync(SyncLevel.ORDINARY);
         long length = db.getStreamLength();
         System.out.printf("Stream size: %d bytes, %.1f MB.\n", length, length / 1000.0);
     }
@@ -76,7 +77,7 @@ public class StreamSizeFourCases {
             db.execute(b.build());
         }
         
-        db.sync();
+        db.sync(SyncLevel.ORDINARY);
         long length = db.getStreamLength();
         System.out.printf("Stream size: %d bytes, %.1f MB.\n", length, length / 1000.0);
     }

@@ -1095,7 +1095,7 @@ public class DbTester {
         long size1 = mstream.getLength();
         Trans trans = Trans.builder().put("key", "value").build();
         db.execute(trans);
-        db.sync();
+        db.sync(trans.lastPos, SyncLevel.ORDINARY);
         db.stop();
         long size2 = mstream.getLength();
         long diff = size2 - size1;
@@ -1120,12 +1120,12 @@ public class DbTester {
         
         Trans trans = Trans.builder().put("key", "the-first-value").build();
         db.execute(trans);
-        db.syncStrong(trans.lastPos);
+        db.sync(trans.lastPos, SyncLevel.STRONG);
         long size1 = mstream.getLength();
         
         trans = Trans.builder().put("key", "the-second-value").build();
         db.execute(trans);
-        db.syncStrong(trans.lastPos);
+        db.sync(trans.lastPos, SyncLevel.STRONG);
         long size2 = mstream.getLength();
         Assert.assertEquals("the-second-value", DbUtil.getString(db, "key"));
         db.stop();
@@ -1161,7 +1161,7 @@ public class DbTester {
         db.execute(Trans.builder().put("a-significantly-longer-key", "value2").build());
         Trans trans = Trans.builder().put("another-key-that-is-longer-than-most", "value3").build();
         db.execute(trans);
-        db.syncStrong(trans.lastPos);
+        db.sync(trans.lastPos, SyncLevel.STRONG);
         db.stop();
         db = null;
         
@@ -1199,7 +1199,7 @@ public class DbTester {
         
         Trans trans = Trans.builder().put("key2", v2).build();
         db.execute(trans);
-        db.syncStrong(trans.lastPos);
+        db.sync(trans.lastPos, SyncLevel.STRONG);
         db.stop();
         db = null;
         
@@ -1224,12 +1224,12 @@ public class DbTester {
         Db db = testDB(mstream);
         Trans trans = Trans.builder().put("key1", "value1").build();
         db.execute(trans);
-        db.syncStrong(trans.lastPos);
+        db.sync(trans.lastPos, SyncLevel.STRONG);
         long size1 = mstream.getLength();
         
         trans = Trans.builder().put("key2", "value2").build();
         db.execute(trans);
-        db.syncStrong(trans.lastPos);
+        db.sync(trans.lastPos, SyncLevel.STRONG);
         
         Assert.assertTrue(mstream.getLength() >= trans.lastPos);
         mstream.truncate(size1 + 3);
@@ -1485,7 +1485,7 @@ public class DbTester {
         
         Db db = Db.builder().stream("m0", m0).start();
         db.execute(Trans.builder().put("a.txt", "v1").build());
-        db.sync();
+        db.sync(0, SyncLevel.ORDINARY);
         
         db = Db.builder().stream("m1", m1).start();
         db.execute(Trans.builder().put("b.txt", "v2-b").build());

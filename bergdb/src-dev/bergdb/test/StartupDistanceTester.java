@@ -7,6 +7,7 @@ import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.DbUtil;
 import bergdb.core.RerunException;
+import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
@@ -45,7 +46,7 @@ public class StartupDistanceTester {
         long posZero = trans.lastPos;
         
         db.setStartupDistance(1000*1000);
-        db.sync();
+        db.sync(SyncLevel.ORDINARY);
         out.println(this.getClass() + "0. stream length: " + stream.getLength());
         
         payTillStreamSize(1.5e6);
@@ -73,7 +74,7 @@ public class StartupDistanceTester {
         Assert.assertEquals(500*1000, db.getStartupDistance());
         out.println("StartupDistanceTester: stream length: " + db.getStreamLength());
         out.println("Calling sync()...");
-        db.sync();
+        db.sync(SyncLevel.ORDINARY);
         out.println("Calling stop()...");
         db.stop();
         out.println("  stop() done.");
@@ -120,7 +121,7 @@ public class StartupDistanceTester {
             
             Db myDb = Db.builder().mainStream(stream).retainForever().start();
             checkAccountSum(myDb);
-            myDb.sync();
+            myDb.sync(SyncLevel.ORDINARY);
             myDb.stop();
         }
     }

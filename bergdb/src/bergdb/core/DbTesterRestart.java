@@ -26,8 +26,9 @@ public class DbTesterRestart {
         clock.setTime(10);
         Trans trans = Trans.builder().put("admin1", "Sanna").build();
         db.execute(trans);
+        db.sync(SyncLevel.ORDINARY);
         long tt = trans.time;
-        db.sync();
+        stream = stream.copy();
         
         db = null;
         Db db2 = Db.builder().testSetup().mainStream(stream).start();
@@ -61,7 +62,7 @@ public class DbTesterRestart {
             
             //System.out.println("lastSpos: " + trans.lastSpos);
         }
-        db.sync();
+        db.sync(SyncLevel.ORDINARY);
         
         db = null;
         Db db2 = Db.builder().testSetup().mainStream(stream).start();

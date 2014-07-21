@@ -2,6 +2,7 @@ package bergdb.pubimp;
 
 import bergdb.common.Bug;
 import bergdb.core.RerunException;
+import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.pub.NoSuchObjectException;
 import bergdb.pub.Time;
@@ -68,13 +69,13 @@ public class WTransaction implements Transaction {
      * @throws StreamIoException
      */
     public void sync() {
-        connection.getDb().sync(trans.lastPos);
+        connection.getDb().sync(trans.lastPos, SyncLevel.ORDINARY);
     }
     
     /**
      * @throws StreamIoException
      */
-    public void syncStrong() {
-        connection.getDb().syncStrong(trans.lastPos);
+    public void sync(SyncLevel syncLevel) {
+        connection.getDb().sync(syncLevel);
     }
 }

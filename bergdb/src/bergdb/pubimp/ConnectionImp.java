@@ -1,6 +1,7 @@
 package bergdb.pubimp;
 
 import bergdb.core.Db;
+import bergdb.core.SyncLevel;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.pub.Action;
@@ -12,6 +13,11 @@ import bergdb.pub.UseIndexBuilder;
 import bergdb.pub.UsePrimaryBuilder;
 import bergdb.pub.WBuilder;
 
+/**
+ * Implementation of Connection.
+ * 
+ * @author Frans Lundberg
+ */
 public class ConnectionImp implements Connection {
     private final Db db;
     private final DatabaseImp database;
@@ -258,16 +264,16 @@ public class ConnectionImp implements Connection {
      * @throws StreamIoException
      */
     public void sync() {
-        this.db.sync(lastSposOfLastTrans);
+        this.db.sync(lastSposOfLastTrans, SyncLevel.ORDINARY);
     }
-
+    
     /**
-     * Waits until strong durability has been achieved for the last transaction
-     * started with this connection.
+     * Waits until the specified durability has been achieved for the last
+     * transaction started with this connection.
      * 
      * @throws StreamIoException
      */
-    public void syncStrong() {
-        this.db.syncStrong(lastSposOfLastTrans);
+    public void sync(SyncLevel syncLevel) {
+        this.db.sync(lastSposOfLastTrans, syncLevel);
     }
 }

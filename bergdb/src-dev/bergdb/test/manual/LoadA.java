@@ -6,6 +6,7 @@ import java.util.Random;
 import bergdb.core.Db;
 import bergdb.core.Jmx;
 import bergdb.core.KeyFactory;
+import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
@@ -55,7 +56,7 @@ public class LoadA {
             Trans t = b.build();
             db.execute(t);
         }
-        db.sync();
+        db.sync(SyncLevel.ORDINARY);
         
         System.out.println("Dummy data created, n = " + n);
         
