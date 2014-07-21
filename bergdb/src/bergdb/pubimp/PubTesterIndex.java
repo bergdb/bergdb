@@ -3,7 +3,9 @@ package bergdb.pubimp;
 import java.util.Iterator;
 
 import bergdb.common.EventToWaitFor;
+import bergdb.common.Util;
 import bergdb.core.Db;
+import bergdb.core.Trans;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
@@ -168,7 +170,7 @@ public class PubTesterIndex {
     }
     
     @T
-    public static void testNonObjects() {
+    public static void testNonObjects1() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
         db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").createFast();
@@ -193,6 +195,47 @@ public class PubTesterIndex {
         Assert.assertEquals(30, p.amount);
         Assert.assertFalse(iter.hasNext());
         db.stop();
+    }
+    
+    @T
+    public static void testNonObjects2() {
+        //
+        // Index creation after KVs have been addded.
+        //
+        
+        Database database = Factory.database().memory().start();
+        Connection c = database.newConnection();
+        
+        Payment p1 = new Payment("1001", "1002", 20);
+        Payment p2 = new Payment("1002", "1009", 30);
+        Payment p3 = new Payment("1001", "1009", 40);
+        
+        c.w().put("/payments/10", p1)
+            .put("/payments/20", p2)
+            .put("/payments/22", new byte[]{8})
+            .put("/payments/30", p3)
+            .execute();
+        
+        // Hack to add value that is not a DbObject, but starts with DbObject.MAGIC bytes.
+        
+        Db db = ((DatabaseImp) database).getDb();
+        byte[] value = Util.concat(DbObject.MAGIC.clone(), new byte[]{'a'});
+        Trans trans = Trans.builder().put(Keys.toBytes(PubKeys.u2i("/payments/1b")), value).build();
+        db.execute(trans);
+
+        // Create index
+        
+        database.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from")
+            .start().join();
+        
+        Iterable<Payment> payments = c.useIndex("payments-from", Payment.class).objects();
+        Iterator<Payment> iter = payments.iterator();
+        
+        Assert.assertEquals(20, iter.next().amount);
+        Assert.assertEquals(40, iter.next().amount);
+        Assert.assertEquals(30, iter.next().amount);
+        
+        database.stop();
     }
     
     @T
@@ -1086,6 +1129,12 @@ public class PubTesterIndex {
     
     @T
     public static void testCreateDuringRestart() throws InterruptedException {
+        // 
+        // Advanced index test. Checks that index creation survives database restart.
+        // Adds entries after restart to provocate the index creation thread that
+        // will start when the database is started.
+        //
+        
         MemoryStream stream = new MemoryStream();
         DatabaseBuilder builder = Factory.database();
         ((DatabaseBuilderImp) builder).getDbBuilder().mainStream(stream);
@@ -1120,13 +1169,16 @@ public class PubTesterIndex {
         db.stop();
         db = null;
         c = null;
+        state = null;
+        iCreator = null;
+        stream = stream.copy();
         
         builder = Factory.database();
         ((DatabaseBuilderImp) builder).getDbBuilder().mainStream(stream);
         db = builder.start();
         c = db.newConnection();
         
-        // Adds one payment in section handled by index creator.
+        // Adds one payment in section already handled by index creator.
         Payment p = new Payment("1000", "2000", 15);
         c.w().put("/payments/1015", p).execute();
         

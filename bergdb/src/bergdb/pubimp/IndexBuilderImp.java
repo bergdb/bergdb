@@ -346,7 +346,8 @@ public class IndexBuilderImp implements IndexBuilder {
             createState.startKey = Keys.toSegments(dir);
         }
         
-        final TheStopCondition stopCondition = new TheStopCondition(dirKey, IndexBuilderImp.this.bunchSize);
+        final TheStopCondition stopCondition = 
+                new TheStopCondition(dirKey, IndexBuilderImp.this.bunchSize);
         
         final GetMany g = new GetMany();
         g.startKey = createState.startKey;
@@ -354,11 +355,26 @@ public class IndexBuilderImp implements IndexBuilder {
         g.stopCondition = stopCondition;
         
         Action action = new Action() {
+            void reset() {
+                g.result.clear();
+                stopCondition.reset();
+            }
+            
             public void run(final RwEnvironment environment) {
+                // Resetting stuff is important; an Action may be rerun.
+                
+                reset();
+                
                 final RwEnvironmentImp env = (RwEnvironmentImp) environment;
-                stopCondition.resetProcessedEntries();
+                
                 env.getMany(g);
                 
+                RwEnvironmentImp.IndexSetter indexSetter = new RwEnvironmentImp.IndexSetter() {
+                    public void setIndexKey(byte[] indexKey, KeyTransformation kt) {
+                        env.set(indexKey, new byte[0], kt);
+                    }
+                };
+
                 for (Kvt kvt : g.result) {
                     String keyname = Keys.toString(kvt.key).substring(dir.length());
                     DbObject dbo;
@@ -366,14 +382,15 @@ public class IndexBuilderImp implements IndexBuilder {
                     try {
                         dbo = new DbObject(kvt.value, null);
                     } catch (BadFormatException e) {
-                        throw new DataFormatException(e.getMessage());
+                        // We silently ignore values that are not DbObjects.
+                        // Most non-object values will not get to this anyway.
+                        // There is filtering in TheStopCondition; only values starting
+                        // with DbObject.MAGIC bytes are returned with env.getMany() call.
+                        continue;
                     }
                     
-                    RwEnvironmentImp.setIndexEntry(dbo, keyname, createState.index, dirIndex, new RwEnvironmentImp.IndexSetter() {
-                        public void setIndexKey(byte[] indexKey, KeyTransformation kt) {
-                            env.set(indexKey, new byte[0], kt);
-                        }
-                    }, false);
+                    RwEnvironmentImp.setIndexEntry(dbo, keyname, createState.index, dirIndex, 
+                            indexSetter, false);
                 }
             }
         };
@@ -382,7 +399,7 @@ public class IndexBuilderImp implements IndexBuilder {
             connection.rw(action);
         } catch (DbStoppingException e) {
             // Special case, index creation while database is stopping.
-            // This is fine, index creation will continue once database is started again.
+            // This is fine, index creation will continue once database has been started again.
             
             createState.isDone = true;
             return;
@@ -478,7 +495,7 @@ public class IndexBuilderImp implements IndexBuilder {
     }
     
     /**
-     * Stop condition for getMany(). 
+     * Stop condition for GetMany when building an index.
      * Stops when maxCount is reached or if we do not have the dirKey prefix
      * any longer.
      */
@@ -494,12 +511,22 @@ public class IndexBuilderImp implements IndexBuilder {
             this.dirKey = dirKey;
         }
         
+        /**
+         * Resets the object to the state it was in when
+         * first constructed.
+         */
+        public void reset() {
+            count = 0;
+            processedEntries = 0;
+            isDone = false;
+        }
+        
         public int handleKvt(Kvt kvt) {
             int result = GetMany.StopCondition.ADD;
             processedEntries++;
             
             String keyString = Keys.toString(kvt.key);
-            boolean isObject = Entries.isDbObject(keyString, kvt.value);
+            boolean isObject = Entries.isProbablyDbObject(keyString, kvt.value);
             
             if (!isObject) {
                 result = GetMany.StopCondition.CONTINUE;
@@ -523,17 +550,16 @@ public class IndexBuilderImp implements IndexBuilder {
             isDone = true;
         }
         
-        /** Sets this.processedEntries to 0. */
-        public void resetProcessedEntries() {
-            processedEntries = 0;
-        }
-        
         public boolean isDone() {
             return isDone;
         }
         
         public int getProcessedEntries() {
             return processedEntries;
+        }
+        
+        public String toString() {
+            return getClass().getSimpleName() + ":maxCount=" + maxCount;
         }
     }
 }

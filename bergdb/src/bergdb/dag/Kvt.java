@@ -16,4 +16,8 @@ public class Kvt {
      * Stream position of ValueNode.
      */
     public long spos;
+    
+    public String toString() {
+        return "kvt:" + Keys.toDisplayString(Keys.toBytes(key));
+    }
 }

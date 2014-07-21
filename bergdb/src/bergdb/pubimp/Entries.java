@@ -71,12 +71,12 @@ public class Entries {
     }
     
     /**
-     * Returns true if the entry likely contains the bytes of a DbObject.
+     * Returns true if the entry is probably a DbObject.
      * This is the case when the key is an object key
      * (see isObjectKey()) and the value starts with the byte signature for
      * DbObjects (DbObject.MAGIC).
      */
-    public static boolean isDbObject(String key, byte[] value) {
+    public static boolean isProbablyDbObject(String key, byte[] value) {
         assert key != null;
         assert key.length() > 0;
         assert value != null;
@@ -101,25 +101,25 @@ public class Entries {
     
     @T
     public static void testIsObject1() {
-        Assert.assertTrue(isDbObject("/dir/1.obj", 
+        Assert.assertTrue(isProbablyDbObject("/dir/1.obj", 
                 new DbObject.Builder().addString("name", "Foo").build().getBytes()));
     }
     
     @T
     public static void testIsObject2() {
-        Assert.assertTrue(isDbObject("/dir/1", 
+        Assert.assertTrue(isProbablyDbObject("/dir/1", 
                 new DbObject.Builder().addString("name", "Foo").build().getBytes()));
     }
     
     @T
     public static void testIsObject3() {
-        Assert.assertFalse(isDbObject("/dir/1.txt", 
+        Assert.assertFalse(isProbablyDbObject("/dir/1.txt", 
                 new DbObject.Builder().addString("name", "Foo").build().getBytes()));
     }
     
     @T
     public static void testIsObject4() {
-        Assert.assertFalse(isDbObject("/dir/1", new byte[10]));
+        Assert.assertFalse(isProbablyDbObject("/dir/1", new byte[10]));
     }
     
     @T

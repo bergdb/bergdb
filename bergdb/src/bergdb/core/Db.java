@@ -934,7 +934,6 @@ public class Db {
         assert g.result != null;
         assert g.result.size() == 0 : "g.result.size() not 0, but " + g.result.size();
         assert g.stopCondition != null;
-        assert g.getOpCount == 0;
 
         synchronized (readSync) {}
             // Makes sure writes from startup and execute() are visible.

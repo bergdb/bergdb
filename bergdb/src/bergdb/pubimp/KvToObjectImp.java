@@ -86,7 +86,7 @@ public class KvToObjectImp implements KvToObject, ClassToObject {
     /** Converts an entry to a Java Object when c is Object.class. */
     private Object entryToMixedTypeObject(String ikey, String ukey, byte[] value) {
         Object result;
-        boolean isObject = Entries.isDbObject(ikey, value);
+        boolean isObject = Entries.isProbablyDbObject(ikey, value);
         
         if (isObject) {
             result = entryToDbObject(ukey, value);

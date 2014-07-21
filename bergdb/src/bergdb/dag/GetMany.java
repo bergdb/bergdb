@@ -76,7 +76,7 @@ public class GetMany {
     
     /**
      * Creates a new instance; use Db.newGetMany() or Dag.newGetMany() instead
-     * if possible.
+     * when possible.
      */
     public GetMany() {
         result = new ArrayList<Kvt>();
@@ -295,17 +295,6 @@ public class GetMany {
             assert linkSize > 0;
             
             setupEqMatch = eqMatch(start);
-            
-            // Code before 130925. Did NOT work when start.length < linkSize
-            /*for (int i = 0; i < this.linkSize; i++) {
-                long linkCompareValue = linkCompareValues[i];
-                long startCompareValue = Klong.getCompareValue(start[i]);
-                
-                if (linkCompareValue != startCompareValue) {
-                    setupEqMatch = false;
-                    break;
-                }
-            }*/
         }
 
         /**
@@ -420,8 +409,8 @@ public class GetMany {
     }
     
     /**
-     * Implements a stop condition for DB.GetMany().
-     * Can be used as a combined stop condition and filter condition.
+     * Implements a stop condition for Db.getMany().
+     * Can be used as a combined stop condition and filter.
      */
     public static interface StopCondition {
         /** Add the KV and continue. */
@@ -514,24 +503,6 @@ public class GetMany {
     }
     
     /**
-     * Gets one KV stop condition.
-     */
-    public static class GetOne implements StopCondition {
-        private int count;
-        
-        public GetOne() {
-            count = 0;
-        }
-        
-        public int handleKvt(Kvt kvt) {
-            count++;
-            return count > 1 ? STOP : ADD;
-        }
-
-        public void eod() {}
-    }
-    
-    /**
      * Gets at most N kvs.
      */
     public static class GetN implements StopCondition {
@@ -560,7 +531,16 @@ public class GetMany {
     }
     
     /**
-     * Stops when key is no longer has a given prefix.
+     * Gets at most one KV.
+     */
+    public static class GetOne extends GetN {
+        public GetOne() {
+            super(1);
+        }
+    }
+    
+    /**
+     * Stops when the key is no longer has a given prefix.
      */
     public static class Prefix implements StopCondition {
         private long[] prefix;

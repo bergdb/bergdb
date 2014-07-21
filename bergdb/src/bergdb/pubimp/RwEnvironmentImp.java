@@ -27,6 +27,10 @@ import bergdb.pubimp.IndexManager.Index;
  * @author Frans Lundberg
  */
 public class RwEnvironmentImp implements RwEnvironment {
+    // For now, we assume one object of this class per transaction.
+    // If needed for performance, this could change. Initialization is 
+    // relatively heavy.
+    
     private static final byte[] emptyByteArray = new byte[0];
     private HashMap<String, Object> output;
     private boolean firstRead;
@@ -65,7 +69,6 @@ public class RwEnvironmentImp implements RwEnvironment {
         addReadHash(Keys.hash(keySegments));
         long lookupTime = firstRead ? Long.MAX_VALUE : this.readTime;
         
-        //PubKeys.check(key, false);
         TYPE result = connection.getInternal(lookupTime, ikey, clazz);
         
         if (firstRead) {
@@ -118,7 +121,7 @@ public class RwEnvironmentImp implements RwEnvironment {
     }
     
     public HashMap<String, Object> getOutputMap() {
-        // NOTE If we start to reuse RwEnvironmentImp objects, we must copy 'output' before
+        // NOTE If we would start to reuse RwEnvironmentImp objects, we must copy 'output' before
         // returning it. Alternatively, it can be copied when this object is reset for reuse.
         return output;
     }
@@ -175,7 +178,7 @@ public class RwEnvironmentImp implements RwEnvironment {
      * Prepares internal data structures for rerunning an RW-transaction.
      */
     public void prepareForRWRerun() {
-        // Everything done again.
+        // Everything done again, reset everything.
         
         firstRead = true;
         readTime = -1;
@@ -183,7 +186,6 @@ public class RwEnvironmentImp implements RwEnvironment {
         kvOps.clear();
         objectOps.clear();
         indexOps.clear();
-        //this.getData = new GetData();
     }
     
     private static KeyTransformation getKeyTransformation(String key) {
@@ -488,8 +490,8 @@ public class RwEnvironmentImp implements RwEnvironment {
     }
 
     /**
-     * The core code for creating one (or more) index entries in the database for a given object
-     * and a given index.
+     * The core code for creating one (or more) index entries in the database for a 
+     * given DbObject and a given index.
      * 
      * @param dbo  The object to index.
      * @param keyname  Database key name of the object.

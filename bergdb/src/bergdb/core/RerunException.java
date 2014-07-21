@@ -3,6 +3,11 @@ package bergdb.core;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
+/**
+ * Thrown to indicate that an RW transaction needs to be rerun.
+ * 
+ * @author Frans Lundberg
+ */
 public class RerunException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     private final long keyHash;
