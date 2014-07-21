@@ -62,8 +62,6 @@ public class StartupPos {
      * @return  The next (now current) startup position.
      */
     public long next(long startupDistance, long streamLength) {
-        // TODO D. Consider: include size of current transaction in calculation.
-        
         long current = pos2.get();
         long candidate = streamLength - startupDistance;
         candidate = candidate < 0 ? 0 : candidate;

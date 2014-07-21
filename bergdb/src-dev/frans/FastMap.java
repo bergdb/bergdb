@@ -1,15 +1,14 @@
 package frans;
 
 import java.util.Random;
-
 import bergdb.dag.INode;
 import bergdb.dag.ValueNode;
-
-// TODO E. finish this. Check performance.
 
 /**
  * Testing performance of high-performance map from
  * long to INode.
+ * 
+ * @author Frans Lundberg
  */
 public class FastMap {
     final INode[][] bins;
@@ -34,7 +33,7 @@ public class FastMap {
                 }
             }
             
-            // of course not complete
+            // NOTE not complete!
         }
     }
     
@@ -93,6 +92,15 @@ public class FastMap {
 }
 
 /*
+
+140721:
+Got 0.12 us per lookup. 1M bins, 2M ids.
+This test the possibility of using a separate cache. id -> INode. Instead of
+the current in-tree cache approach. In-tree cache is super fast, but more dependent
+on the rest of the code.
+
+Note that this test is for random access. Actual usage would be better (fewer cache misses).
+120 ns ~= 
 
 131129:
 Something like 0.12 us per lookup.

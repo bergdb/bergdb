@@ -282,10 +282,43 @@ public class Bytes {
         }
         System.arraycopy(bytes, 0, arr, offset, bytes.length);
     }
-
-    // ---- Testing ----
     
+    /**
+     * Copies data from longs to bytes. Little-endian byte order is used.
+     * 
+     * @param longs
+     * @param longOffset
+     * @param longCopySize  Number of longs to copy.
+     * @param bytes
+     * @param byteOffset
+     */
+    public static void longsToBytesLE(long[] longs, int longOffset, int longCopySize, byte[] bytes, int byteOffset) {
+        for (int i = 0; i < longCopySize; i++) {
+            Bytes.longToBytesLE(longs[longOffset + i], bytes, i * 8);
+        }
+    }
+    
+    public static byte[] longsToBytesLE(long[] longs) {
+        byte[] bytes = new byte[longs.length * 8];
+        longsToBytesLE(longs, 0, longs.length, bytes, 0);
+        return bytes;
+    }
 
+    
+    // ======== Testing ========
+    
+    @T
+    public static void testLongsToBytesLE() {
+        long[] longs = new long[] {123, 111222333444L, -1000};
+        byte[] bytes1 = new byte[longs.length * 8];
+        ByteBuffer buffer = ByteBuffer.wrap(bytes1);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+        buffer.asLongBuffer().put(longs);
+        
+        byte[] bytes2 = longsToBytesLE(longs);
+        
+        Assert.assertArrayEquals(bytes1, bytes2);
+    }
     
     @T
     public static void testLongToBytesBE() {

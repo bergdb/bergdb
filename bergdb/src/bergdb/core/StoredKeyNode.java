@@ -1,7 +1,7 @@
 package bergdb.core;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+// TODO LATER Refactor checksum computation. StoredKeyNode, StoredTopNode, StoredValueNode.
+// TODO LATER Use checksum checking for StoredKeyNode, StoredTopNode, StoredValueNode.
 
 import bergdb.common.Bug;
 import bergdb.common.Bytes;
@@ -74,9 +74,10 @@ public class StoredKeyNode implements StoredNode {
             checksum ^= buffer[i];
         }
 
-        checksum = 0x000000ff & ((checksum >>> 0) ^ (checksum >>> 8) ^ (checksum >>> 16)
-                ^ (checksum >>> 24) ^ (checksum >>> 32) ^ (checksum >>> 40) 
-                ^ (checksum >>> 48) ^ (checksum >>> 56));
+        checksum = 0x000000ff & (
+                  (checksum >>>  0) ^ (checksum >>>  8) ^ (checksum >>> 16) ^ (checksum >>> 24) ^ 
+                  (checksum >>> 32) ^ (checksum >>> 40) ^ (checksum >>> 48) ^ (checksum >>> 56) );
+        
         checksum = checksum == 0 ? 1 : checksum;
         buffer[firstOffset] = buffer[firstOffset] | (checksum << (6 * 8));
 
@@ -177,22 +178,11 @@ public class StoredKeyNode implements StoredNode {
         int offset = StoredKeyNode.toLongs(node, longBuffer, 0, 200);
         Assert.assertEquals(byteSize / 8, offset);
         
-        byte[] byteBuffer = longArrayToByteArray(longBuffer);
+        byte[] byteBuffer = Bytes.longsToBytesLE(longBuffer);
         StoredKeyNode storedNode = StoredKeyNode.parse(byteBuffer, 0, 0);
         
         Assert.assertEquals(node.size, storedNode.node.size);
         Assert.assertEquals(node.getKlong(0), storedNode.node.getKlong(0));
         Assert.assertEquals(node.getKlong(1), storedNode.node.getKlong(1));
-    }
-    
-    /**
-     * long array to byte array using little-endian byte order.
-     */
-    private static byte[] longArrayToByteArray(long[] longs) {
-        byte[] bytes = new byte[longs.length * 8];
-        ByteBuffer buffer = ByteBuffer.wrap(bytes);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-        buffer.asLongBuffer().put(longs);
-        return bytes;
     }
 }

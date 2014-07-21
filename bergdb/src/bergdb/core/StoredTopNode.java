@@ -107,7 +107,7 @@ public class StoredTopNode implements StoredNode {
             offset += 8;
         }
 
-        // TODO E. consider checksum checking here?
+        // NOTE consider checksum checking here?
 
         assert Bytes.bytesToIntLE(buffer, firstOffset) == offset - firstOffset;
 
@@ -181,8 +181,9 @@ public class StoredTopNode implements StoredNode {
             buffer[offset++] = time;
         }
 
-        checksum = 0x000000ff & ((checksum >>> 0) ^ (checksum >>> 8) ^ (checksum >>> 16)
-                ^ (checksum >>> 24) ^ (checksum >>> 32) ^ (checksum >>> 40) ^ (checksum >>> 48) ^ (checksum >>> 56));
+        checksum = 0x000000ff & 
+                 ((checksum >>>  0) ^ (checksum >>>  8) ^ (checksum >>> 16) ^ (checksum >>> 24) ^ 
+                  (checksum >>> 32) ^ (checksum >>> 40) ^ (checksum >>> 48) ^ (checksum >>> 56) );
         checksum = checksum == 0 ? 1 : checksum; // 0 used as "no checksum" indication
 
         buffer[firstOffset] = buffer[firstOffset] | (checksum << (6 * 8));
@@ -202,10 +203,9 @@ public class StoredTopNode implements StoredNode {
         assert size % 8 == 0;
         byte[] bytes = new byte[size];
         long[] longs = new long[size / 8];
+        
         StoredTopNode.toLongs(top1, longs, 0);
-        for (int i = 0; i < longs.length; i++) {
-            Bytes.longToBytesLE(longs[i], bytes, i * 8);
-        }
+        bytes = Bytes.longsToBytesLE(longs);
         TopNode top2 = StoredTopNode.parse(bytes, 0, Spos.NULL).getNode();
         
         Assert.assertEquals(top1.topNodeId, top2.topNodeId);
@@ -224,10 +224,7 @@ public class StoredTopNode implements StoredNode {
         long[] longs = new long[size / 8];
         
         StoredTopNode.toLongs(top1, longs, 0);
-        byte[] bytes = new byte[longs.length * 8];
-        for (int i = 0; i < longs.length; i++) {
-            Bytes.longToBytesLE(longs[i], bytes, i * 8);
-        }
+        byte[] bytes = Bytes.longsToBytesLE(longs);
         
         TopNode top2 = StoredTopNode.parse(bytes, 0, Spos.NULL).getNode();
         
