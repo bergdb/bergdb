@@ -67,7 +67,7 @@ public class CacheTester {
     @T
     public static void tEvictCrazy() {
         MemoryStream m = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(m).clock(clock).start();
         
         int[] ids = new int[50];
@@ -108,7 +108,7 @@ public class CacheTester {
     public static void tEvict23() {
         int[] ids = new int[] { 5, 23, 50 }; 
         MemoryStream m = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(m).clock(clock).start();
         
         db.execute(Trans.builder().put("key-hello-there1", "v1").build());
@@ -151,7 +151,7 @@ public class CacheTester {
         };
         
         MemoryStream m = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().mainStream(m).clock(clock).evictBoss(new FixedDurationEvictBoss(0)).start();
         
         //System.out.println("---- CacheTester.evict23B ----");

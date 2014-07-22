@@ -1,7 +1,7 @@
 package bergdb.dev;
 
 import bergdb.core.Db;
-import bergdb.core.KTestClock;
+import bergdb.core.CoreTestClock;
 import bergdb.core.Trans;
 
 /**
@@ -12,7 +12,7 @@ import bergdb.core.Trans;
 public class PrintExamples {
     public void run() {
         
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         System.out.println("---- Empty DB ----");
         System.out.println("DB at initial state.\n");
@@ -28,7 +28,7 @@ public class PrintExamples {
         System.out.println();
         
         
-        clock = new KTestClock();
+        clock = new CoreTestClock();
         db = Db.builder().testSetup().clock(clock).start();
         db.execute(Trans.builder().put("r/library/sublibrary/theFinalDirectory/LongKey", "v").build());
         System.out.println("---- One long key ----");
@@ -36,7 +36,7 @@ public class PrintExamples {
         System.out.println();
         
         
-        clock = new KTestClock();
+        clock = new CoreTestClock();
         db = Db.builder().testSetup().clock(clock).start();
         db.execute(Trans.builder().put("a-14-long-key-", "v14").build());
         System.out.println("---- One 14-byte long key ----");
@@ -44,7 +44,7 @@ public class PrintExamples {
         System.out.println();
         
         
-        clock = new KTestClock();
+        clock = new CoreTestClock();
         db = Db.builder().testSetup().clock(clock).start();
         clock.setTime(10);
         db.execute(Trans.builder().put("theprefix-key1", "v1").build());
@@ -56,7 +56,7 @@ public class PrintExamples {
         System.out.println();
         
         
-        clock = new KTestClock();
+        clock = new CoreTestClock();
         db = Db.builder().testSetup().clock(clock).maxNodeSize8().start();
         for (int i = 0; i < 7; i++) {
             clock.setTime(1000 + i * 10);

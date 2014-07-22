@@ -16,7 +16,7 @@ public class NodeStreamTester {
     @T
     public static void testSimpleRestart() {
         AppendOnlyStream mstream = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().mainStream(mstream).startupDistance(10000).clock(clock).build();
         db.start();
         clock.setTime(10);
@@ -45,7 +45,7 @@ public class NodeStreamTester {
         //
         byte[] value;
         AppendOnlyStream mstream = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().mainStream(mstream).clock(clock).build();
         db.start();
         clock.setTime(10);
@@ -69,7 +69,7 @@ public class NodeStreamTester {
     @T
     public static void testRestartWithMultipleTransactions() {
         AppendOnlyStream s = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().mainStream(s).clock(clock).build();
         db.start();
         clock.setTime(10);

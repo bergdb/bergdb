@@ -63,7 +63,7 @@ public class DbTester {
     
     @T
     public static void test4() {
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         //db.setTime(100);
         clock.setTime(100);
@@ -82,7 +82,7 @@ public class DbTester {
     @T
     public static void testT2() {
         byte[] value;
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = createT2DB(clock);
         
         value = DbUtil.get(db, 999, "apa");
@@ -114,7 +114,7 @@ public class DbTester {
         // Adds new value in a new key.
         //
 
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = createT2DB(clock);
         Trans t;
         
@@ -132,7 +132,7 @@ public class DbTester {
     
     @T
     public static void testVersionsReplaceValue() {
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = createT2DB(clock);
         clock.setTime(20);
         db.execute(Trans.builder().put("apa", "A").build());
@@ -225,7 +225,7 @@ public class DbTester {
         // Delete of two values in same transaction.
         //
         
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         TopNode superRoot = db.getSuperRoot();
         
@@ -257,7 +257,7 @@ public class DbTester {
     
     @T
     public static void testDelete0() {
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         clock.setTime(10);
         db.execute(Trans.builder().put("a", "a-value")
@@ -282,7 +282,7 @@ public class DbTester {
     public static void testDelete1() {
         // Tests rewriting a value and deleting it in-between.
         
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
@@ -325,7 +325,7 @@ public class DbTester {
     
     @T
     public static void testDeleteOfNonExistingData0() {
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         clock.setTime(10);
         db.execute(Trans.builder().delete("a").build());   // This is a noop transaction.
@@ -335,7 +335,7 @@ public class DbTester {
     
     @T
     public static void testDeleteOfNonExistingData1() {
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         clock.setTime(10);
         db.execute(Trans.builder().put("a", "a-value").put("b", "b-value").build());
@@ -360,7 +360,7 @@ public class DbTester {
     
     @T
     public static void testRerun() throws NumberFormatException, UnsupportedEncodingException {
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         clock.setTime(10);
         
@@ -450,7 +450,7 @@ public class DbTester {
         
         Db db;
         AppendOnlyStream stream = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         db = Db.builder().testSetup().maxNodeSize14().mainStream(stream).clock(clock).start();
 
         for (int i = 0; i < 10; i++) {
@@ -479,7 +479,7 @@ public class DbTester {
         long time;
         Db db;
         int n = 10;
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         
         db = Db.builder().testSetup().maxNodeSize14().clock(clock).start();
         
@@ -512,7 +512,7 @@ public class DbTester {
     
     @T
     public static void testSpaceSplit1() {
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().maxNodeSize8().clock(clock).start();
         
         Trans t;
@@ -546,7 +546,7 @@ public class DbTester {
     @T
     public static void testSplitInSingleTransaction() {
         int n = 10;
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().maxNodeSize14().clock(clock).start();
         
         clock.setTime(10);
@@ -565,7 +565,7 @@ public class DbTester {
     @T
     public static void testSplitTwoSplitsInOneTransaction() {
         int n = 15;
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().maxNodeSize14().clock(clock).start();
         
         clock.setTime(10);
@@ -587,7 +587,7 @@ public class DbTester {
     
     @T
     public static void testSpaceSplitAddBackwards() {
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().maxNodeSize8().clock(clock).start();
         int max = 10;
         
@@ -610,7 +610,7 @@ public class DbTester {
     
     @T
     public static void testSpaceSplitOfRoot() {
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().maxNodeSize8().clock(clock).start();
         
         int max = 10;
@@ -636,7 +636,7 @@ public class DbTester {
     @T
     public static void testTimeSplitOfRoot() {
         int n = 20;
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         
         for (int i = 1; i <= n; i++) {
@@ -694,7 +694,7 @@ public class DbTester {
     @T
     public static void testGetWithLongerKey() {
         String longerKey = "anotherKeyThatIsLongerThanThePreviousAndIndeedVeryLong";
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         clock.setTime(2);
         db.execute(Trans.builder()
@@ -710,7 +710,7 @@ public class DbTester {
         // Tests with two keys, k1, k2. k1 has two segments and k2 has one and
         // the order is: k1 < k2.
         //
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().start();
         //db.setTime(10);
         clock.setTime(10);
@@ -732,7 +732,7 @@ public class DbTester {
     
     @T
     public static void testGetBeforeFirstSet() {
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         clock.setTime(10);
         db.execute(Trans.builder().put("first", "f").build());
@@ -743,7 +743,7 @@ public class DbTester {
     
     private static Db createRandomDB(int n, AppendOnlyStream stream) {
         Random random = new Random(1);
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().mainStream(stream).clock(clock).start();
         GetData getData = db.newGetData();
         
@@ -778,7 +778,7 @@ public class DbTester {
     
     @T
     public static void testSplit3() {
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().maxNodeSize14().clock(clock).start();
         
         clock.setTime(100);
@@ -834,7 +834,7 @@ public class DbTester {
     
     @T
     public static void testSpecialCase() {
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         clock.setTime(10);
         db.execute(Trans.builder()
@@ -939,7 +939,7 @@ public class DbTester {
     @T
     public static void testCrazyKeys() {
         AppendOnlyStream s = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         int n = 50;
         KeySource ks = new KeySource() {
             public byte[] getKey(int index) {
@@ -997,7 +997,7 @@ public class DbTester {
     
     @T
     public static void testSettingValueManyTimes() {
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         int n = 20;
         String key = "directory/myFile";     // 3 klongs long (2x7 + 2)
@@ -1022,7 +1022,7 @@ public class DbTester {
     public static void tGetFirst1() {
         // Tests get first with simple db. Multiple times.
         
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
@@ -1046,7 +1046,7 @@ public class DbTester {
     public static void tGetFirst2() {
         // Similar to tGetFirst1, but with longer, multi-segment keys.
         
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);

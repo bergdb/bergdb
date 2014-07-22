@@ -67,7 +67,7 @@ public class BigDb {
      */
     private static void runTest(int n, TestCollector c) throws InterruptedException {
         MemoryStream ms = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(ms).clock(clock).start();
         final int valueSize = 100 * 1000*1000 / n;
         

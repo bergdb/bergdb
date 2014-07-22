@@ -183,7 +183,7 @@ public class DbTesterGetMany {
         // Lookup after a restart. Nodes will be read from stream.
         //
         
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         MemoryStream stream = new MemoryStream();
         Db db = Db.builder().testSetup().clock(clock).mainStream(stream).start();
         
@@ -361,7 +361,7 @@ public class DbTesterGetMany {
         // KVs added backwards.
         //
         
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         
         long time = 100;
@@ -559,7 +559,7 @@ public class DbTesterGetMany {
         // Test with key of size % 7 == 0.
         //
         
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         
         clock.setTime(10);
@@ -662,7 +662,7 @@ public class DbTesterGetMany {
     
     @T
     public static void testGt1() {
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         byte[] value = new byte[100];
         GetMany g;
@@ -916,7 +916,7 @@ public class DbTesterGetMany {
      * (10 a 1), (20 b 2), (30 c 3).
      */
     private static Db createDbWithKeys(String... keys) {
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         
         for (int i = 0; i < keys.length; i++) {
@@ -933,7 +933,7 @@ public class DbTesterGetMany {
     }
     
     private static Db createDbWithKvs(String... kvs) {
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
         
         int n = kvs.length / 2;

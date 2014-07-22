@@ -4,8 +4,10 @@ import bergdb.pub.Clock;
 
 /**
  * Deterministic clock suitable for testing.
+ * 
+ * @author Frans Lundberg
  */
-public class KTestClock implements Clock {
+public class CoreTestClock implements Clock {
     private long time = 0;
     
     public long getTime() {

@@ -60,7 +60,7 @@ public class BigDbEvict {
      */
     private static void runTest(int n, TestCollector c) throws InterruptedException {
         MemoryStream ms = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().mainStream(ms).clock(clock).evictBoss(new FixedDurationEvictBoss(10*1000000)).start();
         db.setRetainDuration(Long.MAX_VALUE);
         final int valueSize = 100 * 1000*1000 / n;
@@ -121,7 +121,7 @@ public class BigDbEvict {
         db = null;
         c.report("memory-use-after-db-null", toMB(getMem()));
         
-        clock = new KTestClock();
+        clock = new CoreTestClock();
         Db db2 = Db.builder().testSetup().mainStream(ms).clock(clock).build();
         long t = System.nanoTime();
         db2.start();

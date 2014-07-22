@@ -39,7 +39,7 @@ public class DbTesterStream {
     public static void testSimpleRestart1() {
         byte[] value;
         MemoryStream stream = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().mainStream(stream).clock(clock).start();
         clock.setTime(10);
         db.execute(Trans.builder().put("admin1", "Sanna").build());
@@ -61,7 +61,7 @@ public class DbTesterStream {
         //
         byte[] value;
         MemoryStream stream = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().mainStream(stream).clock(clock).build();
         db.start();
         clock.setTime(10);
@@ -84,7 +84,7 @@ public class DbTesterStream {
     
     public static void testRestartWithMultipleTransactions() {
         MemoryStream stream = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().mainStream(stream).clock(clock).build();
         db.start();
         clock.setTime(10);
@@ -150,7 +150,7 @@ public class DbTesterStream {
         Db db;
         int n = 10;
         
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         db = Db.builder().testSetup().mainStream(stream).clock(clock).build();
         db.start();
         
@@ -189,7 +189,7 @@ public class DbTesterStream {
         long time;
         Db db;
         int n = 10;
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         db = Db.builder().testSetup().mainStream(stream).clock(clock).build();
         db.start();
         
@@ -222,7 +222,7 @@ public class DbTesterStream {
     
     public static Db createRandomDb(int n, AppendOnlyStream stream) {
         Random random = new Random(1);
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().mainStream(stream).clock(clock).build();
         db.start();
         
@@ -263,7 +263,7 @@ public class DbTesterStream {
     public static void testMoreData1() {
         int n = 100;
         MemoryStream stream = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().mainStream(stream).clock(clock).start();
         
         for (int i = 0; i < n; i++) {
@@ -292,7 +292,7 @@ public class DbTesterStream {
     public static void testMoreData2() {
         int n = 2000;
         MemoryStream stream = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().mainStream(stream).clock(clock).start();
 
         for (int i = 0; i < n; i++) {
@@ -322,7 +322,7 @@ public class DbTesterStream {
     
     public static void testDbOnMemStream() throws IOException {
         AppendOnlyStream s = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().mainStream(s).clock(clock).start();
         clock.setTime(10);
         db.execute(Trans.builder().put("k", "k-value"));
@@ -352,7 +352,7 @@ public class DbTesterStream {
         
         try {
             AppendOnlyStream s = new OneFileStream(f);
-            KTestClock clock = new KTestClock();
+            CoreTestClock clock = new CoreTestClock();
             Db db = Db.builder().testSetup().mainStream(s).clock(clock).start();
             clock.setTime(10);
             db.execute(Trans.builder().put("k", "k-value"));
@@ -383,7 +383,7 @@ public class DbTesterStream {
         f.deleteOnExit();
         
         AppendOnlyStream s = new OneFileStream(f);
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().mainStream(s).clock(clock).start();
         clock.setTime(10);
         db.execute(Trans.builder().put("admin1", "Sanna1").build());
@@ -411,7 +411,7 @@ public class DbTesterStream {
     
     public static void testDeleteAndRestart() {
         AppendOnlyStream s = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().mainStream(s).clock(clock).start();
         
         clock.setTime(10);
@@ -443,7 +443,7 @@ public class DbTesterStream {
     
     public static void testOverwriteAndRestart() {
         AppendOnlyStream s = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().mainStream(s).clock(clock).start();
         
         clock.setTime(10);

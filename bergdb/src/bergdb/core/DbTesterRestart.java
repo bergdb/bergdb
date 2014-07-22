@@ -21,7 +21,7 @@ public class DbTesterRestart {
         
         byte[] value;
         MemoryStream stream = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().mainStream(stream).clock(clock).start();
         clock.setTime(10);
         Trans trans = Trans.builder().put("admin1", "Sanna").build();
@@ -48,7 +48,7 @@ public class DbTesterRestart {
         // Stream is longer than startupDistance, single key, value updated.
         
         MemoryStream stream = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         clock.setTime(2);
         Db db = Db.builder().mainStream(stream).clock(clock).startupDistance(10*1000)
                 .evictBoss(new NoEvictBoss()).start();

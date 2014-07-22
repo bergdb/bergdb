@@ -723,7 +723,7 @@ public class Reclaim implements Db.TransactionListener {
         
         @T
         public static void test1() {
-            KTestClock clock = new KTestClock();
+            CoreTestClock clock = new CoreTestClock();
             clock.setTime(10);
             MemoryStream stream = new MemoryStream();
             byte[] value = new byte[100*1000];
@@ -751,7 +751,7 @@ public class Reclaim implements Db.TransactionListener {
             //
             // Same key set again and again.
             //
-            KTestClock clock = new KTestClock();
+            CoreTestClock clock = new CoreTestClock();
             clock.setTime(10);
             final long[] ints = new long[] {-1, -1};
             

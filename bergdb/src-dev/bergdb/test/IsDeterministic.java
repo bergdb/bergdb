@@ -4,7 +4,7 @@ import java.io.IOException;
 
 import bergdb.core.DatabaseId;
 import bergdb.core.Db;
-import bergdb.core.KTestClock;
+import bergdb.core.CoreTestClock;
 import bergdb.core.KeyFactory;
 import bergdb.core.NodeStream;
 import bergdb.core.SyncLevel;
@@ -54,7 +54,7 @@ public class IsDeterministic {
         
         for (int i = 0; i < 1+3; i++) {
             MemoryStream m = new MemoryStream();
-            KTestClock clock = new KTestClock();
+            CoreTestClock clock = new CoreTestClock();
             Db db = Db.builder().testSetup().mainStream(m).clock(clock).id(DatabaseId.getTestId()).start();
             clock.setTime(100);
             db.execute(Trans.builder().put("k", "v").build());
@@ -94,7 +94,7 @@ public class IsDeterministic {
         
         for (int i = 0; i < 1+3; i++) {
             MemoryStream m = new MemoryStream();
-            KTestClock clock = new KTestClock();
+            CoreTestClock clock = new CoreTestClock();
             Db db = Db.builder().testSetup().mainStream(m).clock(clock).id(DatabaseId.getTestId()).start();
             
             for (int j = 0; j < 10; j++) {

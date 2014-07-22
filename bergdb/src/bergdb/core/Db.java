@@ -494,11 +494,11 @@ public class Db {
     }
     
     public long getTime() {
-        return dbClock.getTime();
+        return dbClock.time();
     }
     
     public long getTimeForGet(long wantedTime) {
-        return dbClock.timeForGet(wantedTime);
+        return dbClock.timeForRead(wantedTime);
     }
 
     public final Object getWriteLock() {
@@ -890,7 +890,7 @@ public class Db {
 
         byte[] result = null;
 
-        long time = dbClock.timeForGet(lookupTime);
+        long time = dbClock.timeForRead(lookupTime);
         // Limits lookup time so it strictly less than the transaction time of
         // any running
         // or future transaction.
@@ -964,7 +964,7 @@ public class Db {
 
         possiblyEvict(ed);
 
-        g.actualLookupTime = dbClock.timeForGet(g.lookupTime);
+        g.actualLookupTime = dbClock.timeForRead(g.lookupTime);
             // Limits lookup time so it strictly less than the transaction time of
             // any running or future transaction.
 
@@ -1138,7 +1138,7 @@ public class Db {
         // this.writeLock. However, if we do write transactions from a single thread anyway, it
         // would be better to void these get operations (would save 10-20% CPU for execute()).
         
-        long time = dbClock.getTime();
+        long time = dbClock.time();
 
         boolean enableEvict = t.getData.evictData.enableEvict;
         t.getData.evictData.enableEvict = false;
@@ -1661,7 +1661,7 @@ public class Db {
          * time. Suitable for testing.
          */
         public Builder testClock() {
-            this.clock = new KTestClock();
+            this.clock = new CoreTestClock();
             return this;
         }
 

@@ -58,7 +58,7 @@ public class BigDbWithDeletes {
      */
     private static void run(int n, TestCollector c) throws InterruptedException {
         MemoryStream ms = new MemoryStream();
-        KTestClock clock = new KTestClock();
+        CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().mainStream(ms).clock(clock).evictBoss(new NoEvictBoss()).start();
         final int valueSize = 100 * 1000*1000 / n;
         
