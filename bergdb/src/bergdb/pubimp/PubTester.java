@@ -861,4 +861,24 @@ public class PubTester {
         Transaction t = d.connection().put("/key", "value");
         Assert.assertEquals(Time.utc("2010-01-01 00:02:03.0000001"), t.getTime());
     }
+    
+    @T
+    public static void testHistoric1() {
+        Database database = Factory.database().memory().start();
+        Connection c = database.connection();
+        
+        c.put("/key", "v1");
+        Time t1 = database.getTime();
+        c.put("/key", "v2");
+        Time t2 = database.getTime();
+        c.put("/key", "v3");
+        Time t3 = database.getTime();
+        
+        c.setLookupTime(t1);
+        Assert.assertEquals("v1", c.get("/key", String.class));
+        c.setLookupTime(t2);
+        Assert.assertEquals("v2", c.get("/key", String.class));
+        c.setLookupTime(t3);
+        Assert.assertEquals("v3", c.get("/key", String.class));
+    }
 }
