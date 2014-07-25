@@ -24,6 +24,8 @@ public class WebCode {
         Person adam2 = c.get("/adam", Person.class);
         
         System.out.println("adam2 = " + adam2.name);
+        
+        database.stop();
     }
     
     void m2() {
@@ -47,6 +49,8 @@ public class WebCode {
         
         System.out.println("/data length: " + c.get("/data", byte[].class).length);
         System.out.println("/text: " + c.get("/text", String.class));
+        
+        database.stop();
     }
     
     void m3() {
@@ -58,11 +62,11 @@ public class WebCode {
         Connection c = database.connection();
         
         c.put("/key", "v1");
-        Time t1 = database.currentTime();
+        Time t1 = c.currentTime();
         c.put("/key", "v2");
-        Time t2 = database.currentTime();
+        Time t2 = c.currentTime();
         c.put("/key", "v3");
-        Time t3 = database.currentTime();
+        Time t3 = c.currentTime();
         
         c.setLookupTime(t1);
         String v1 = c.get("/key", String.class);    // returns "v1"
@@ -77,6 +81,8 @@ public class WebCode {
         System.out.println("t1 = " + t1);
         System.out.println("t2 = " + t2);
         System.out.println("t3 = " + t3);
+        
+        database.stop();
     }
     
     static class Person {

@@ -82,13 +82,12 @@ public interface Database {
     public void sync(SyncLevel syncLevel);
 
     /**
-     * <p>
-     * Returns the current database time. The returned time is guaranteed to be less then
+     * <p>Returns the current based on the database clock. 
+     * The returned time is guaranteed to be less then
      * the transaction time of any currently executing transaction (if any transaction is executing)
      * and less then the transaction time of any future transaction.
      * The returned time is also guaranteed to be greater than or equal to the transaction 
-     * time of the last completed transaction.
-     * </p>
+     * time of the last completed transaction.</p>
      */
     public Time currentTime();
 

@@ -62,6 +62,10 @@ public class ConnectionImp implements Connection {
     public final void freezeLookupTime() {
         this.freezeLookupTime = true;
     }
+    
+    public Time currentTime() {
+        return database.currentTime();
+    }
 
     public final void setEnableKeyReplace(boolean enable) {
         enableKeyReplace = enable;
