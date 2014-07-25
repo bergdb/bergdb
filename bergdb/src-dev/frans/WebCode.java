@@ -54,9 +54,6 @@ public class WebCode {
     }
     
     void m3() {
-        // TODO A. Maybe c.getTime() is nicer?
-        // TODO Consider Database.getTime() vs Database.time().
-        
         System.out.println("== m3() ==");
         Database database = Factory.database().dir("db2").start();
         Connection c = database.connection();
