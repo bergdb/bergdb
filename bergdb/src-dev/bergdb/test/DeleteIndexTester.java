@@ -49,7 +49,7 @@ public class DeleteIndexTester {
         
         database.indexBuilder("e-salary").dir("/e/").type("long").field("salary").start().join();
         
-        Time timeA = database.getTime();
+        Time timeA = database.currentTime();
         
         Connection c = database.connection();
         
@@ -62,14 +62,14 @@ public class DeleteIndexTester {
         
         Db db = ((DatabaseImp) database).getDb();
         
-        Time time0 = database.getTime();
+        Time time0 = database.currentTime();
         
         Job job = database.deleteIndex("e-salary");
         
         JobStatus status = job.getStatus();
         coll.out().println("deleteIndex job status = " + status.note());
         
-        Time time1 = database.getTime();
+        Time time1 = database.currentTime();
         
         // Setting more objects while index is being deleted.
         
@@ -85,7 +85,7 @@ public class DeleteIndexTester {
         database.sync();
         coll.out().println("deleteIndex job status = " + status.note());
         
-        Time time2 = database.getTime();
+        Time time2 = database.currentTime();
         
         // Checks index exists or not at different times
         

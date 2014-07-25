@@ -69,7 +69,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         
         this.index = indexManager.getActiveIndex(connection, indexName, wantedLookupTime);
         if (isPrimary) {
-            this.actualLookupTime = connection.getDb().getTimeForGet(wantedLookupTime);
+            this.actualLookupTime = connection.getDb().lookupTime(wantedLookupTime);
         } else {
             this.actualLookupTime = connection.getActualLookupTime();
                 // Returns the actual lookup time used in indexManager.getActiveIndex.

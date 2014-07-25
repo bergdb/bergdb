@@ -41,11 +41,11 @@ public class CreateIndexTester {
         long length = db.getStreamLength();
         coll.out().println("Created database, stream length: " + (length/1e6));
         
-        Time time0 = database.getTime();
+        Time time0 = database.currentTime();
         
         Job job = database.indexBuilder("e-salary").type("long").dir("/e/").field("salary").start();
         
-        Time time1 = database.getTime();
+        Time time1 = database.currentTime();
         
         for (; i < n*2; i++) {
             c.w().put(new Employee("/e/" + i, (i-n) * 10 + 1)).execute();
@@ -57,7 +57,7 @@ public class CreateIndexTester {
         database.sync();
         coll.out().println("Index job status = " + status.note());
         
-        Time time2 = database.getTime();
+        Time time2 = database.currentTime();
         
         coll.out().println("Index created, stream length = " + (db.getStreamLength()/1e6));
         
@@ -120,7 +120,7 @@ public class CreateIndexTester {
         
         Job job = database.indexBuilder("e-salary").type("long").dir("/e/").field("salary").start();
         
-        Time time1 = database.getTime();
+        Time time1 = database.currentTime();
         
         Thread.sleep(100);
         

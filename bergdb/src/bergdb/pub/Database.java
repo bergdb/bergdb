@@ -83,12 +83,14 @@ public interface Database {
 
     /**
      * <p>
-     * Returns the current database time. The returned time is guaranteed to be strictly less then
+     * Returns the current database time. The returned time is guaranteed to be less then
      * the transaction time of any currently executing transaction (if any transaction is executing)
      * and less then the transaction time of any future transaction.
+     * The returned time is also guaranteed to be greater than or equal to the transaction 
+     * time of the last completed transaction.
      * </p>
      */
-    public Time getTime();
+    public Time currentTime();
 
     /**
      * Returns the minimum duration for which data should be available for historic lookups.

@@ -493,12 +493,19 @@ public class Db {
         return nodeStream;
     }
     
-    public long getTime() {
-        return dbClock.time();
+    /**
+     * @see bergdb.core.DbClock
+     */
+    public long currentTime() {
+        return dbClock.currentTime();
     }
     
-    public long getTimeForGet(long wantedTime) {
-        return dbClock.timeForRead(wantedTime);
+    /**
+     * Internal, not part of public API.
+     * Returns internal (actual) lookup time given a wanted lookup time.
+     */
+    public long lookupTime(long wantedLookupTime) {
+        return dbClock.lookupTime(wantedLookupTime);
     }
 
     public final Object getWriteLock() {
@@ -890,10 +897,10 @@ public class Db {
 
         byte[] result = null;
 
-        long time = dbClock.timeForRead(lookupTime);
-        // Limits lookup time so it strictly less than the transaction time of
-        // any running
-        // or future transaction.
+        // Limits lookup time so it is strictly less than the transaction time of
+        // any running or future transaction.
+        long time = dbClock.lookupTime(lookupTime);
+        
         gd.actualLookupTime = time;
         gd.nodeDepth = 0;
 
@@ -964,9 +971,9 @@ public class Db {
 
         possiblyEvict(ed);
 
-        g.actualLookupTime = dbClock.timeForRead(g.lookupTime);
+        g.actualLookupTime = dbClock.lookupTime(g.lookupTime);
             // Limits lookup time so it strictly less than the transaction time of
-            // any running or future transaction.
+            // any currently running or any future transaction.
 
         dag.getMany(g);
         
@@ -1133,22 +1140,8 @@ public class Db {
         // t.transTime while the synchronized(writeLock) clause is executing.
         // This is handled by dbClock.
         //
-        // Reads the KVs as warm-up; aims to avoid lengthy disk reads and cache
-        // misses while synchronizing on this.writeLock. We want to minimize the time holding
-        // this.writeLock. However, if we do write transactions from a single thread anyway, it
-        // would be better to void these get operations (would save 10-20% CPU for execute()).
         
-        long time = dbClock.time();
-
-        boolean enableEvict = t.getData.evictData.enableEvict;
-        t.getData.evictData.enableEvict = false;
-
-        // Warm-up code, avoids read from stream while holding writeLock.
-        for (Kv kv : t.kvs) {
-            this.getOne(time, kv.getKey(), t.getData);
-        }
-
-        t.getData.evictData.enableEvict = enableEvict;
+        warmup(t);
         
         synchronized (writeLock) {
             if (!isPrimordial) assert transNodes.size() == 0;
@@ -1203,6 +1196,28 @@ public class Db {
             // have to belong to the writeLock code block.
             reclaimTransactionListener.transactionCompleted(t);    
         }
+    }
+
+    private final void warmup(Trans t) {
+        //
+        // Reads the KVs as warm-up; aims to avoid lengthy disk reads and cache
+        // misses while synchronizing on this.writeLock. We want to minimize the time holding
+        // this.writeLock. However, if we do write transactions from a single thread anyway, it
+        // would be better to void these get operations (would save 10-20% CPU for execute()).
+        //
+        
+        //long readTime = dbClock.time();
+        long readTime = dbClock.lookupTime(Long.MAX_VALUE);
+
+        boolean enableEvict = t.getData.evictData.enableEvict;
+        
+        t.getData.evictData.enableEvict = false;
+
+        for (Kv kv : t.kvs) {
+            this.getOne(readTime, kv.getKey(), t.getData);
+        }
+
+        t.getData.evictData.enableEvict = enableEvict;
     }
     
     /**

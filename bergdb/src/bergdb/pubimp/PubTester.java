@@ -847,19 +847,19 @@ public class PubTester {
         TestClock clock = new TestClock();
         clock.setTime(Time.utc("1970-01-01 00:02:03.000"));       // UTC 1970-01-01 00:02:03.000
         Database d = Factory.database().memory().clock(clock).start();
-        Time dbTime = d.getTime();
+        Time dbTime = d.currentTime();
         Time time1 = Time.resolve(Time.UTC, dbTime, "00:01");
         Time time2 = Time.millis(60 * 1000);
         Assert.assertEquals(time2, time1);
     }
     
     @T
-    public static void testGetTime() {
+    public static void testCurrentTime() {
         TestClock clock = new TestClock();
-        clock.setTime(Time.utc("2010-01-01 00:02:03.000"));
+        clock.setTime(Time.utc("2010-01-01 00:02:03.0000000"));
         Database d = Factory.database().memory().clock(clock).start();
         Transaction t = d.connection().put("/key", "value");
-        Assert.assertEquals(Time.utc("2010-01-01 00:02:03.0000001"), t.getTime());
+        Assert.assertEquals(Time.utc("2010-01-01 00:02:03.0000000"), t.getTime());
     }
     
     @T
@@ -868,11 +868,11 @@ public class PubTester {
         Connection c = database.connection();
         
         c.put("/key", "v1");
-        Time t1 = database.getTime();
+        Time t1 = database.currentTime();
         c.put("/key", "v2");
-        Time t2 = database.getTime();
+        Time t2 = database.currentTime();
         c.put("/key", "v3");
-        Time t3 = database.getTime();
+        Time t3 = database.currentTime();
         
         c.setLookupTime(t1);
         Assert.assertEquals("v1", c.get("/key", String.class));

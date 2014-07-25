@@ -58,11 +58,11 @@ public class WebCode {
         Connection c = database.connection();
         
         c.put("/key", "v1");
-        Time t1 = database.getTime();
+        Time t1 = database.currentTime();
         c.put("/key", "v2");
-        Time t2 = database.getTime();
+        Time t2 = database.currentTime();
         c.put("/key", "v3");
-        Time t3 = database.getTime();
+        Time t3 = database.currentTime();
         
         c.setLookupTime(t1);
         String v1 = c.get("/key", String.class);    // returns "v1"

@@ -262,13 +262,13 @@ public class PubTesterPrimary {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
         
-        Time t0 = db.getTime();
+        Time t0 = db.currentTime();
         
         c.w().put("/p/p10", new Person("p10"))
             .put("/p/p20", new Person("p20"))
             .put("/p/p30", new Person("p30")).execute();
         
-        Time t1 = db.getTime();
+        Time t1 = db.currentTime();
         
         c.w().put("/p/p01", new Person("p01"))
             .put("/p/p22", new Person("p22"))

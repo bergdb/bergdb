@@ -5,15 +5,14 @@ import bergdb.nanotest.T;
 import bergdb.pub.Clock;
 
 /**
- * <p>A special clock for Db that implements a read time / transaction time concept. 
- * The read time is always strictly less than the transaction time of a currently 
- * running transaction. This is required, we cannot read the state at time t1 if a 
- * transaction is currently modifying the state at time t1.</p>
- * 
- * <p>This class also implements timeForRead(wantedTime). The time returned by this method is
- * the actual lookup time to use given a wanted lookup time. If the wanted lookup time
- * is in the future, the lastWriteTime is returned, otherwise the wanted lookup time
- * is returned.</p>
+ * <p>A special clock for Db that implements a lookup time / transaction time concept. 
+ * The lookup time is always strictly less than the transaction time of a currently 
+ * running transaction. This is required; we must not read the state at time t1 if a 
+ * transaction is currently modifying the state at time t1.
+ * The lookup time is also strictly less than the transaction time of any 
+ * future transaction. This is a useful property. A database read at time t2 will 
+ * always return the same values. A future transaction cannot change this.
+ * [key, value, time] tuples are immutable.</p>
  * 
  * @author Frans Lundberg
  */
@@ -66,13 +65,16 @@ public class DbClock {
     }
     
     /**
-     * Returns the time to use internally for a read operation given the wanted lookup time.
+     * Returns the actual lookup time to use internally for a read operation given the 
+     * lookup time wanted by the database user.
      * The method does not return the current time and does not call clock.getTime() 
      * (which is important for performance).
      * The returned time is less than or equal to the write time (transaction time)
-     * of the last completed transactions.
+     * of the last completed transaction.
      */
-    public final long timeForRead(final long wantedTime) {
+    public final long lookupTime(final long wantedLookupTime) {
+        //
+        // Returns the "internal" or "actual" lookup time.
         // We do not need a lock here, we just read a volatile long.
         // this is OK since lastWriteTime is strictly increasing and a read from a volatile long
         // is atomic.
@@ -82,18 +84,19 @@ public class DbClock {
         // System.currentTimeMillis() is very slow.
         
         final long last = this.lastTransactionTime;
-        return wantedTime > last ? last : wantedTime;
+        return wantedLookupTime > last ? last : wantedLookupTime;
     }
     
     /**
-     * Returns the current database time useful for reading from the database (as the lookup time). 
-     * The returned time is guaranteed to be less than 
-     * the transaction time of a currently executing transaction (if one is executing) and less
-     * than the transaction time of any future transaction.
+     * Returns the current database time. 
+     * The returned time can be used as the lookup time when reading from the database.
+     * The returned time is guaranteed to be less than the transaction time of a 
+     * currently executing transaction (if one is executing) and less than the 
+     * transaction time of any future transaction.
      * The returned time is also greater than or equal to the transaction time of the last
      * completed transaction.
      */
-    public final synchronized long time() {
+    public final synchronized long currentTime() {
         //
         // The code [transactionTime - 1] is OK. transactionTime is >= 1.
         //
@@ -166,22 +169,22 @@ public class DbClock {
     }
     
     @T
-    private static void testGetTime() {
+    private static void testTime() {
         CoreTestClock testClock = new CoreTestClock();
         DbClock dbClock = new DbClock(testClock);
         
         testClock.setTime(1*F);
         
-        long time1 = dbClock.time();
-        long time2 = dbClock.time();
+        long time1 = dbClock.currentTime();
+        long time2 = dbClock.currentTime();
         
         long transactionTime = dbClock.transactionBegin();
         
-        long time3 = dbClock.time();
+        long time3 = dbClock.currentTime();
         
         dbClock.transactionEnd();
         
-        long time4 = dbClock.time();
+        long time4 = dbClock.currentTime();
         
         assertEquals(1*F, time1);
         assertEquals(1*F, time2);
@@ -191,7 +194,7 @@ public class DbClock {
     }
     
     @T
-    private static void testTimeForRead() {
+    private static void testLookupTime() {
         CoreTestClock testClock = new CoreTestClock();
         DbClock dbClock = new DbClock(testClock);
         
@@ -200,21 +203,21 @@ public class DbClock {
         dbClock.transactionEnd();
         testClock.setTime(2*F);
         
-        assertEquals(100, dbClock.timeForRead(100));
-        assertEquals(1*F, dbClock.timeForRead(Long.MAX_VALUE));
-        assertEquals(1*F, dbClock.timeForRead(1*F));
+        assertEquals(100, dbClock.lookupTime(100));
+        assertEquals(1*F, dbClock.lookupTime(Long.MAX_VALUE));
+        assertEquals(1*F, dbClock.lookupTime(1*F));
         
         dbClock.transactionBegin();
         
-        assertEquals(100, dbClock.timeForRead(100));
-        assertEquals(1*F, dbClock.timeForRead(Long.MAX_VALUE));
-        assertEquals(1*F, dbClock.timeForRead(1*F));
+        assertEquals(100, dbClock.lookupTime(100));
+        assertEquals(1*F, dbClock.lookupTime(Long.MAX_VALUE));
+        assertEquals(1*F, dbClock.lookupTime(1*F));
         
         dbClock.transactionEnd();
         
-        assertEquals(100, dbClock.timeForRead(100));
-        assertEquals(2*F, dbClock.timeForRead(Long.MAX_VALUE));
-        assertEquals(1*F, dbClock.timeForRead(1*F));
+        assertEquals(100, dbClock.lookupTime(100));
+        assertEquals(2*F, dbClock.lookupTime(Long.MAX_VALUE));
+        assertEquals(1*F, dbClock.lookupTime(1*F));
         
     }
     
@@ -222,7 +225,8 @@ public class DbClock {
 
 /*
 
+140725 Now using "lookup time" instead of "read time".
 140722 Wrote some units tests.
-140722 Using "transaction time" instead of write time. More well-defined.
+140722 Using "transaction time" instead of "write time". More well-defined.
 
 */

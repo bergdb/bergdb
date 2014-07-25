@@ -83,7 +83,7 @@ public class Jmx {
          * Returns the current database time in time units (see Clock).
          */
         public long getTime() {
-            return db.getTime();
+            return db.currentTime();
         }
         
         /**
@@ -91,7 +91,7 @@ public class Jmx {
          * time. UTC time zone is used.
          */
         public String getTimeH() {
-            return DbUtil.dbTimeToUtc(db.getTime());
+            return DbUtil.dbTimeToUtc(db.currentTime());
         }
         
         /**
@@ -158,12 +158,12 @@ public class Jmx {
         }
         
         public double getActualRetainDurationInSeconds() {
-            long duration = db.getTime() - db.getFirstAvailableLookupTime();
+            long duration = db.currentTime() - db.getFirstAvailableLookupTime();
             return ((double) duration) / Clock.UNITS_PER_SEC;
         }
         
         public double getActualRetainDurationInDays() {
-            long duration = db.getTime() - db.getFirstAvailableLookupTime();
+            long duration = db.currentTime() - db.getFirstAvailableLookupTime();
             return duration / (Clock.UNITS_PER_SEC * (24.0 * 3600.0));
         }
         

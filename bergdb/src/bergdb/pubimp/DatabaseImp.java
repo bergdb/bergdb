@@ -197,8 +197,10 @@ public class DatabaseImp implements Database {
         return db.getStorageInfos();
     }
     
-    public final Time getTime() {
-        return Time.units(db.getTime());
+    public final Time currentTime() {
+        // This method may change the state of db.
+        
+        return Time.units(db.currentTime());
     }
     
     public final Duration getRetainDuration() {
@@ -217,7 +219,7 @@ public class DatabaseImp implements Database {
     }
     
     public final Time getFirstAvailableLookupTime() {
-        return Time.units(db.getTime());
+        return Time.units(db.currentTime());
     }
     
     public IndexBuilder indexBuilder(String indexName) {
