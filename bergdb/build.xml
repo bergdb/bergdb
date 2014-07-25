@@ -137,7 +137,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
         	<include name="bergdb/common/**"/>
         	<include name="bergdb/stream/**"/>
         	<include name="bergdb/storage/**"/>
-        	<include name="bergdb/graph/**"/>
+        	<include name="bergdb/dag/**"/>
         	<include name="bergdb/core/**"/>
         	<include name="bergdb/coredev/**"/>
 
@@ -147,6 +147,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
             <include name="bergdb/pub/LookupTimeNotAvailableException.class"/>
             <include name="bergdb/pub/BadReplicaException.class"/>
         	<include name="bergdb/pub/IllegalDbStateException.class"/>
+        	<include name="bergdb/pub/BadFormatException.class"/>
             <include name="bergdb/pub/Storage*.class"/>
             <include name="bergdb/pub/Job.class"/>
             <include name="bergdb/pub/JobStatus.class"/>
