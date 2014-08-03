@@ -505,7 +505,7 @@ public class Reclaim implements Db.TransactionListener {
                 throw new InternalDataException("Missing 'done' in " + TABLE_KEY_NAME);
             }
             
-            if ( !(doneString.equals("true") || doneString.equals("false")) ) {
+            if ( !("true".equals(doneString)) || "false".equals(doneString)) {
                 throw new InternalDataException("Bad value of 'done' in " + TABLE_KEY_NAME 
                         + ", " + doneString);
             }

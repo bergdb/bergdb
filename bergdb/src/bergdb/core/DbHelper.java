@@ -72,14 +72,17 @@ public class DbHelper {
     static class AddReplicaClass {
         // progressValue and progressNote are sync protected by progressLock.
         
-        Db db;
-        StorageManager storageManager;
+        final Db db;
+        final StorageManager storageManager;
         final Object progressLock = new Object();
         final int[] progressValue = new int[] { 0 };
         final String[] progressNote = new String[] { "About to start to synch." };
 
+        // TODO A. Make sure this class is tested.
+        
         private AddReplicaClass(StorageManager storageManager, Db db) {
             this.storageManager = storageManager;
+            this.db = db;
         }
         
         static Job addReplica(StorageManager storageManager, Db db, String name, AppendOnlyStream replicaStream, 
