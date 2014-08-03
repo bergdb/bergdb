@@ -34,29 +34,10 @@ public final class TopNode implements INode {
         // The original spos of the node functions as its id.
         // Synch note: made volatile. Not accessed often, does not affect performance.
         // May be removed in future versions. For debug only.
-    //public volatile boolean isDirty;
-        // Synch note: This field is accessed by threads not holding DB.writeLock, so we need
-        // field to be volatile to publish writes.
     public boolean isInTransNodes;
         // Synch note: protected by DB.writeLock.
     
     private static final int MAX_HEIGHT = 30;
-        
-    /** power2[x] = 2^x */
-    public final static int[] POWER2;
-    
-    static {
-        // Precomputes power of 2's.
-        // NOTE check if this really improves performance. Just a bit-shift really.
-        
-        POWER2 = new int[MAX_HEIGHT];
-        int num = 1;
-        
-        for (int i = 0; i < POWER2.length; i++) {
-            POWER2[i] = num;
-            num <<= 1;
-        }
-    }
     
     /**
      * This constructor should only be called from TopDS and from this class itself.
@@ -75,7 +56,6 @@ public final class TopNode implements INode {
         pointersLength = (short) pointers.length;
         pointerCount = (short) (pointers.length + 1);
         
-        //isDirty = false;
         this.spos = spos;
         this.topNodeId = topNodeId;
         
@@ -100,21 +80,28 @@ public final class TopNode implements INode {
     
     private static int height(int id) {
         //
-        // power2: 1, 2, 4, ...
-        //         0  1  2
+        // power2: 1  2  4  8
+        //      i: 0  1  2  3
         //
+        
+        if (id > TopNode.MAX_TOP_NODE_ID_VALUE) {
+            throw new IllegalStateException("Bad id value: " + id);
+        }
+        
         int i = 0; 
-        for (i = 0; i < POWER2.length; i++) {
-            if (id < POWER2[i]) {      // 1, 2, 4, ...
+        for (i = 0; i < MAX_HEIGHT; i++) {
+            if (id < power2(i)) {
                 break;
             }
         }
         return i;
     }
     
-    // TODO A. Cosider using this method.
-    private static final int power2(int x) {
-        return POWER2[x];
+    /** Maximum supported value of a TopNode id. */
+    public static final int MAX_TOP_NODE_ID_VALUE = power2(MAX_HEIGHT) - 1;
+    
+    public static final int power2(int x) {
+        return 1 << x;
     }
     
     public String toString() {
@@ -123,9 +110,9 @@ public final class TopNode implements INode {
         return result;
     }
     
-    // NOTE Probably not suitable with this code here.
     public void printGraph(PrintStream out, String indent, int depth) {
-        // Oldest top nodes first
+        // NOTE CShould this code be here?
+        // Oldest top nodes first.
         
         TopNode topNode;
         String newIndent = "    " + indent;
@@ -275,7 +262,7 @@ public final class TopNode implements INode {
     // ======== Tests ========
     
     @T
-    public static void testHeight() {
+    public static void testHeight1() {
         Assert.assertEquals(0, TopNode.height(0));
         Assert.assertEquals(1, TopNode.height(1));
         Assert.assertEquals(2, TopNode.height(2));
@@ -287,11 +274,15 @@ public final class TopNode implements INode {
         Assert.assertEquals(4, TopNode.height(8));
         Assert.assertEquals(4, TopNode.height(9));
         Assert.assertEquals(4, TopNode.height(10));
-        Assert.assertEquals(10, TopNode.height(1023));
-        Assert.assertEquals(11, TopNode.height(1024));
-        Assert.assertEquals(11, TopNode.height(1025));
-        Assert.assertEquals(7, TopNode.height(100));   // 64 = 2^6
-        Assert.assertEquals(20+1, TopNode.height(1024*1024));
+    }
+    
+    @T
+    public static void testHeight2() {
+        //Assert.assertEquals(10, TopNode.height(1023));
+        //Assert.assertEquals(11, TopNode.height(1024));
+        //Assert.assertEquals(11, TopNode.height(1025));
+        //Assert.assertEquals(7, TopNode.height(100));   // 64 = 2^6
+        //Assert.assertEquals(20+1, TopNode.height(1024*1024));
         Assert.assertEquals(30, TopNode.height(1024*1024*1024 / 2));
     }
 }
