@@ -16,30 +16,30 @@ public class BuildInfo {
     /**
      * BergDB release int, for example "132".
      */
-    public static final int releaseInt = Util.identity(141);
+    public static final int RELEASE_INT = Util.identity(142);
     
     /**
      * BergDB version ID, for example "2013.2".
      */
-    public static final String release = Util.identity("2014.1");
+    public static final String RELEASE = Util.identity("2014.2");
     
     /**
      * BergDB build ID, for example "2013.2.130401.1400".
      */
-    public static final String build = Util.identity("2014.1.140725.1029");
+    public static final String BUILD = Util.identity("2014.2.140803.1030");
     
     /**
      * Prints build information to System.out.
      */
     public static void main(String[] args) {
-        System.out.println("release: " + release);
-        System.out.println("releaseInt: " + releaseInt);
-        System.out.println("build: " + build);
+        System.out.println("release: " + RELEASE);
+        System.out.println("releaseInt: " + RELEASE_INT);
+        System.out.println("build: " + BUILD);
     }
 }
 
 /*
-Use like the following in ANT build script:
+Use something like the following in ANT build script:
 
 <copy file="p/bergdb/in/BuildInfoTemplate.txt" 
         toFile="p/bergdb/src/bergdb/db/BuildInfo.java"

@@ -41,7 +41,6 @@ public class Salsa {
     private void core() {
         // Processes 64 bytes in this.input to 64 bytes in this.output.
         
-        final int[] x = this.x;
         int i;
         int s;
         

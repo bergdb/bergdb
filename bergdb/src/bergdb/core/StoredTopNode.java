@@ -74,7 +74,7 @@ public class StoredTopNode implements StoredNode {
         if (topNodeId < 0) {
             throw new StreamFormatException("Bad TopNode ID of TopNode in stream, " + topNodeId);
         }
-        if (topNodeId >= TopNode.power2[TopNode.power2.length - 1]) {
+        if (topNodeId >= TopNode.POWER2[TopNode.POWER2.length - 1]) {
             throw new StreamFormatException("Bad TopNode ID of TopNode in stream, " + topNodeId);
         }
 

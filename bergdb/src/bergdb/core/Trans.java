@@ -31,7 +31,7 @@ public class Trans {
     // Should be neglectable performance degradation for DB.execute().
     //
     
-    private static final Kv[] emptyKVArray = new Kv[0];
+    private static final Kv[] EMPTY_KV_ARRAY = new Kv[0];
     
     // -- Input --
     
@@ -292,7 +292,7 @@ public class Trans {
                 }
             }
             
-            t.kvs = map.values().toArray(emptyKVArray);
+            t.kvs = map.values().toArray(EMPTY_KV_ARRAY);
             
             t.readKeyHashes = new long[readHashes.size()];
             for (int i = 0; i < t.readKeyHashes.length; i++) {

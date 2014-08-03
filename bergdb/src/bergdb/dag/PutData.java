@@ -10,7 +10,6 @@ import bergdb.dag.Dag.PointerListener;
  * @author Frans Lundberg
  */
 public class PutData {
-    static final KlongWithPointer[] zeroKwi = new KlongWithPointer[0];
     
     /** Transaction time. */
     public long tt;

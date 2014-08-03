@@ -107,12 +107,8 @@ public final class HashCodeUtil {
     return result;
   }
 
-
-  /// PRIVATE ///
-  private static final long fODD_PRIME_NUMBER = 37;
-
   private static final long firstTerm(long aSeed ){
-    return fODD_PRIME_NUMBER * aSeed;
+    return 37 * aSeed;
   }
 
   private static boolean isArray(Object aObject){

@@ -57,7 +57,7 @@ public class CorePerf {
         System.out.println("\n======== " + CorePerf.class.getName() + " ========");
         String computer = Util.getComputerName();
         System.out.println("Running on " + computer + ", " + new Date() 
-                + ". BergDB " + BuildInfo.release + ".");
+                + ". BergDB " + BuildInfo.RELEASE + ".");
         System.out.println("JVM: " + System.getProperty("java.vm.name") + " " 
                 + System.getProperty("java.vm.version") 
                 + ", java " + System.getProperty("java.version"));

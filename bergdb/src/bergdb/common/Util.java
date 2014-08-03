@@ -414,7 +414,7 @@ public class Util {
         return new String(chars);
     }
     
-    private static final char[] hexArray = {
+    private static final char[] HEX_ARRAY = {
             '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
     
     /**
@@ -431,7 +431,7 @@ public class Util {
      * Returns a hex string (two lowercase hex chars per byte) given a byte array.
      */
     public static String toHexString(byte[] bytes, int offset, int length) {
-        char[] hexArray = Util.hexArray;
+        char[] hexArray = Util.HEX_ARRAY;
         char[] hexChars = new char[length * 2];
         int v;
         for (int i = 0; i < length; i++) {

@@ -4,29 +4,30 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
 /**
- * An implementation of KeyModSet that stores a fixed maximum number of hash(key)-time pairs.
- * Instead previous implementation stored pairs for a fixed time duration.
+ * An implementation of IKeyModSet that stores a fixed maximum number of hash(key)-time pairs.
+ * 
+ * @author Frans Lundberg
  */
-public class KeyModSet2 implements IKeyModSet {
-    private static final int binCount = 4;
+public class KeyModSet implements IKeyModSet {
+    private static final int BIN_COUNT = 4;
     private final Bin[] bins;
-    private static final int initialSizeOfLongArray = 4;
+    private static final int INITIAL_SIZE_OF_LONG_ARRAY = 4;
     private final int totalSize;
     
-    public KeyModSet2() {
+    public KeyModSet() {
         this(128*1000);
     }
     
-    public KeyModSet2(int totalSize) {
+    private KeyModSet(int totalSize) {
         assert totalSize > 0;
-        if (totalSize % binCount != 0) {
+        if (totalSize % BIN_COUNT != 0) {
             throw new IllegalArgumentException("size was " + totalSize + ", must be dividable by " 
-                    + binCount + ".");
+                    + BIN_COUNT + ".");
         }
         this.totalSize = totalSize;
         
-        bins = new Bin[binCount];
-        bins[0] = new Bin(totalSize / binCount);     // The other bins set to null to start with.
+        bins = new Bin[BIN_COUNT];
+        bins[0] = new Bin(totalSize / BIN_COUNT);     // The other bins set to null to start with.
     }
     
     /**
@@ -34,7 +35,7 @@ public class KeyModSet2 implements IKeyModSet {
      */
     public long getFirstTime() {
         long result = -1;
-        for (int i = binCount - 1; i >= 0; i--) {
+        for (int i = BIN_COUNT - 1; i >= 0; i--) {
             Bin bin = bins[i];
             if (bin == null) {
                 continue;
@@ -50,7 +51,7 @@ public class KeyModSet2 implements IKeyModSet {
     public boolean modifiedAfter(long time, long hash) {
         int endBin = -1;
         
-        for (int i = 0; i < binCount; i++) {
+        for (int i = 0; i < BIN_COUNT; i++) {
             Bin bin = bins[i];
             if (bin == null) {
                 break;
@@ -87,8 +88,8 @@ public class KeyModSet2 implements IKeyModSet {
 
     public final void add(long time, long hash) {
         if (bins[0].isFull()) {
-            System.arraycopy(bins, 0, bins, 1, binCount - 1);
-            bins[0] = new Bin(totalSize / binCount);
+            System.arraycopy(bins, 0, bins, 1, BIN_COUNT - 1);
+            bins[0] = new Bin(totalSize / BIN_COUNT);
         }
         
         bins[0].add(time, hash);
@@ -145,7 +146,7 @@ public class KeyModSet2 implements IKeyModSet {
             long[] array;
             
             if (sub == null) {
-                array = new long[initialSizeOfLongArray];
+                array = new long[INITIAL_SIZE_OF_LONG_ARRAY];
                 for (int i = 0; i < array.length; i+=2) {
                     array[i] = -1;
                 }
@@ -207,7 +208,7 @@ public class KeyModSet2 implements IKeyModSet {
     public static void test1() {
         // Any request with time < 1 should return true.
         
-        IKeyModSet s = new KeyModSet2();
+        IKeyModSet s = new KeyModSet();
         s.add(1, 1234);
         Assert.assertTrue(s.modifiedAfter(0, 1234));
         Assert.assertFalse(s.modifiedAfter(1, 1234));
@@ -218,7 +219,7 @@ public class KeyModSet2 implements IKeyModSet {
     
     @T
     public static void test2() {
-        IKeyModSet s = new KeyModSet2();
+        IKeyModSet s = new KeyModSet();
         s.add(1001, 3);
         Assert.assertEquals(true, s.modifiedAfter(100, 3));
         Assert.assertEquals(false, s.modifiedAfter(2000, 3));
@@ -226,7 +227,7 @@ public class KeyModSet2 implements IKeyModSet {
     
     @T
     public static void test3() {
-        IKeyModSet s = new KeyModSet2();
+        IKeyModSet s = new KeyModSet();
         s.add(1, 3); 
         s.add(1001, 3);
         Assert.assertEquals(true, s.modifiedAfter(100, 3));
@@ -237,7 +238,7 @@ public class KeyModSet2 implements IKeyModSet {
     
     @T
     public static void testFutureTime() {
-        IKeyModSet s = new KeyModSet2();
+        IKeyModSet s = new KeyModSet();
         s.add(1001, 3);
         Assert.assertEquals(false, s.modifiedAfter(99999, 3));
         Assert.assertEquals(false, s.modifiedAfter(99999, 4));
@@ -247,22 +248,22 @@ public class KeyModSet2 implements IKeyModSet {
     public static void testResize() {
         // Resize of array needed.
         
-        IKeyModSet s = new KeyModSet2();
-        for (int i = 0; i < initialSizeOfLongArray * 3; i++) {
+        IKeyModSet s = new KeyModSet();
+        for (int i = 0; i < INITIAL_SIZE_OF_LONG_ARRAY * 3; i++) {
             s.add(i, 0);
         }
         
-        Assert.assertEquals(false, s.modifiedAfter(initialSizeOfLongArray * 3, 0));
-        Assert.assertEquals(false, s.modifiedAfter(initialSizeOfLongArray * 3 - 1, 0));
-        Assert.assertEquals(true, s.modifiedAfter(initialSizeOfLongArray * 3 - 2, 0));
+        Assert.assertEquals(false, s.modifiedAfter(INITIAL_SIZE_OF_LONG_ARRAY * 3, 0));
+        Assert.assertEquals(false, s.modifiedAfter(INITIAL_SIZE_OF_LONG_ARRAY * 3 - 1, 0));
+        Assert.assertEquals(true, s.modifiedAfter(INITIAL_SIZE_OF_LONG_ARRAY * 3 - 2, 0));
     }
     
     @T
     public static void testBins1() {
         // + s.zero() avoid compiler warning.
         //
-        KeyModSet2 s = new KeyModSet2(8);
-        assert KeyModSet2.binCount + s.zero() == 4;
+        KeyModSet s = new KeyModSet(8);
+        assert KeyModSet.BIN_COUNT + s.zero() == 4;
         
         s.add(10, 0);
         s.add(20, 0);
@@ -280,8 +281,8 @@ public class KeyModSet2 implements IKeyModSet {
     public static void testBins2() {
         // Adds enough hash-time pairs so we will create more than 4 bins.
         
-        KeyModSet2 s = new KeyModSet2(8);
-        assert KeyModSet2.binCount + s.zero() == 4;
+        KeyModSet s = new KeyModSet(8);
+        assert KeyModSet.BIN_COUNT + s.zero() == 4;
         
         s.add(3, 222);
         for (int i = 0; i < 16; i++) {

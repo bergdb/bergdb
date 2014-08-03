@@ -47,7 +47,7 @@ public class TopDs {
         final int id = newSuperRoot.topNodeId;
         
         for (int i = 0; i < h; i++) {
-            if ((id & TopNode.power2[i]) != 0) {
+            if ((id & TopNode.POWER2[i]) != 0) {
                 assert superRoot != null;
                 assert superRoot.pointers != null;
                 

@@ -43,14 +43,17 @@ public final class TopNode implements INode {
     private static final int MAX_HEIGHT = 30;
         
     /** power2[x] = 2^x */
-    public final static int[] power2;
+    public final static int[] POWER2;
     
     static {
-        power2 = new int[MAX_HEIGHT];
+        // Precomputes power of 2's.
+        // NOTE check if this really improves performance. Just a bit-shift really.
+        
+        POWER2 = new int[MAX_HEIGHT];
         int num = 1;
         
-        for (int i = 0; i < power2.length; i++) {
-            power2[i] = num;
+        for (int i = 0; i < POWER2.length; i++) {
+            POWER2[i] = num;
             num <<= 1;
         }
     }
@@ -95,18 +98,23 @@ public final class TopNode implements INode {
         return rootTime;
     }
     
-    private static final int height(int id) {
+    private static int height(int id) {
         //
         // power2: 1, 2, 4, ...
         //         0  1  2
         //
         int i = 0; 
-        for (i = 0; i < power2.length; i++) {
-            if (id < power2[i]) {      // 1, 2, 4, ...
+        for (i = 0; i < POWER2.length; i++) {
+            if (id < POWER2[i]) {      // 1, 2, 4, ...
                 break;
             }
         }
         return i;
+    }
+    
+    // TODO A. Cosider using this method.
+    private static final int power2(int x) {
+        return POWER2[x];
     }
     
     public String toString() {

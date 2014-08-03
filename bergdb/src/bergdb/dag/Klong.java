@@ -86,13 +86,15 @@ public class Klong {
     /** A delete bitmap klong with all delete bits set. */
     public static final long DELETE_ALL_BITMAP = TYPE_DELETE_BITMAP | 0x3fffffffffffffffL;
     
-    /** Set to 2^arrayIndex. */
-    public static final long[] deleteBits = new long[62];
+    /** Pre-computed array of longs, each with a value of 2^arrayIndex. */
+    public static final long[] DELETE_BITS = new long[62];
     
+    // 1408 Frans: Does this really increase performance? 
+    // Was it measured? We could even decrease performance because of more cache-misses.
     static {
         long del = 1;
-        for (int i = 0; i < deleteBits.length; i++) {
-            deleteBits[i] = del;
+        for (int i = 0; i < DELETE_BITS.length; i++) {
+            DELETE_BITS[i] = del;
             del <<= 1;
         }
     }
@@ -141,12 +143,12 @@ public class Klong {
      */
     public static final long delete(long klong, int index) {
         assert index >= 0 && index < 62 : "index out of range: " + index;
-        return klong | deleteBits[index];
+        return klong | DELETE_BITS[index];
     }
     
     public static final boolean isDeleted(long klong, int index) {
         assert index >= 0 && index < 62 : "index out of range: " + index;
-        return (klong & deleteBits[index]) != 0;
+        return (klong & DELETE_BITS[index]) != 0;
     }
     
     /**
@@ -701,10 +703,10 @@ public class Klong {
     @T
     public static void tDeleteBits() {
         long bit = Math.round(Math.pow(2, 15));
-        Assert.assertEquals(bit, Klong.deleteBits[15]);
+        Assert.assertEquals(bit, Klong.DELETE_BITS[15]);
         
         bit = Math.round(Math.pow(2, 61));
-        Assert.assertEquals(bit, Klong.deleteBits[61]);
+        Assert.assertEquals(bit, Klong.DELETE_BITS[61]);
     }
     
     @T

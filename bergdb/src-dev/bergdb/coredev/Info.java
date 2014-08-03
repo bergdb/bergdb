@@ -40,9 +40,9 @@ public class Info {
     
     private void buildInfo() {
         out.println("---- BergDB ----");
-        out.println("BuildInfo.release: " + BuildInfo.release);
-        out.println("BuildInfo.versionInt: " + BuildInfo.releaseInt);
-        out.println("BuildInfo.build: " + BuildInfo.build);
+        out.println("BuildInfo.release: " + BuildInfo.RELEASE);
+        out.println("BuildInfo.versionInt: " + BuildInfo.RELEASE_INT);
+        out.println("BuildInfo.build: " + BuildInfo.BUILD);
         out.println();
     }
     

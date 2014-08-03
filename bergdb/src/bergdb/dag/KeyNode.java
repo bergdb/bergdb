@@ -57,9 +57,8 @@ public class KeyNode implements INode {
         // spos for a stream pointer, access data for a memory pointer (see AccessData).
         // Synch note: access protected by "this" lock and used atomically with "pointers".
 
-    private static final int[] arraySizes 
-            = new int[]{2, 8-2, 16-2, 32-2, 64-2, 128-2};
-        // Sizes for klong array.
+    /** Possible sizes (lengths) of the 'klongs' ('pointers', 'pos') array. */
+    private static final int[] ARRAY_SIZES = new int[]{2, 8-2, 16-2, 32-2, 64-2, 128-2};
     
     private static final long[] EMPTY_LONG_ARRAY = new long[0];
     private static final INode[] EMPTY_INODE_ARRAY = new INode[0];
@@ -169,12 +168,12 @@ public class KeyNode implements INode {
         visitor.visit(this);
     }
     
-    private static final String classname = KeyNode.class.getName();
+    private static final String CLASSNAME = KeyNode.class.getName();
     
     public String toString() {
         String result = super.toString();
-        if (result.startsWith(classname)) {
-            String sub = result.substring(classname.length());
+        if (result.startsWith(CLASSNAME)) {
+            String sub = result.substring(CLASSNAME.length());
             if (sub.length() > 5) {
                 sub = sub.substring(sub.length() - 2);
             }
@@ -222,7 +221,7 @@ public class KeyNode implements INode {
         
         A: for (index = 0; index < sz; index++) {
             // Not inlined: if (Klong.isDeleted(deleteBitmap, index)) {
-            if ((deleteBitmap & Klong.deleteBits[index]) != 0) {
+            if ((deleteBitmap & Klong.DELETE_BITS[index]) != 0) {
                 continue;
             }
             
@@ -254,7 +253,7 @@ public class KeyNode implements INode {
             case Klong.INT_TYPE_DELETE_BITMAP:
                 deleteBitmap = klong;
                 // Not inlined: if (kwi.klong != Klong.NULL && Klong.isDeleted(deleteBitmap, kwi.pointerIndex)) {
-                if (kwi.klong != Klong.NULL && (deleteBitmap & Klong.deleteBits[kwi.pointerIndex]) != 0) {
+                if (kwi.klong != Klong.NULL && (deleteBitmap & Klong.DELETE_BITS[kwi.pointerIndex]) != 0) {
                     kwi.klong = Klong.NULL;
                 }
                 break;
@@ -300,7 +299,7 @@ public class KeyNode implements INode {
         A: for (int i = 0; i < sz; i++) {
             
             // Not inlined: if (Klong.isDeleted(del, i)) {
-            if ((del & Klong.deleteBits[i]) != 0) {
+            if ((del & Klong.DELETE_BITS[i]) != 0) {
                 continue;
             }
             
@@ -376,7 +375,7 @@ public class KeyNode implements INode {
         A: for (int i = 0; i < sz; i++) {
             
             // Not inlined: if (Klong.isDeleted(del, i)) {
-            if ((del & Klong.deleteBits[i]) != 0) {
+            if ((del & Klong.DELETE_BITS[i]) != 0) {
                 continue;
             }
             
@@ -451,7 +450,7 @@ public class KeyNode implements INode {
         A: for (int i = 0; i < sz; i++) {
             
             // Not inlined: if (Klong.isDeleted(del, i)) {
-            if ((del & Klong.deleteBits[i]) != 0) {
+            if ((del & Klong.DELETE_BITS[i]) != 0) {
                 continue;
             }
             
@@ -526,7 +525,7 @@ public class KeyNode implements INode {
         A: for (int i = 0; i < sz; i++) {
             
             // Not inlined: if (Klong.isDeleted(del, i)) {
-            if ((del & Klong.deleteBits[i]) != 0) {
+            if ((del & Klong.DELETE_BITS[i]) != 0) {
                 continue;
             }
             
@@ -593,7 +592,7 @@ public class KeyNode implements INode {
         A: for (int i = 0; i < sz; i++) {
             
             // Not inlined: if (Klong.isDeleted(del, i)) {
-            if ((del & Klong.deleteBits[i]) != 0) {
+            if ((del & Klong.DELETE_BITS[i]) != 0) {
                 continue;
             }
             
@@ -645,7 +644,8 @@ public class KeyNode implements INode {
     public void addKlong(long time, long klong, INode pointer, long accessData) {
         short sz;
         
-        sz = this.size;             // Synch action, makes previous writes visible.
+        // Synch action, publishes previous writes visible.
+        sz = this.size;             
         
         assert lastTimeIndex == -1 || time >= klongs[lastTimeIndex];
         assert Klong.getType(klong) != Klong.TYPE_TIME : "Time klongs not supported.";
@@ -740,9 +740,9 @@ public class KeyNode implements INode {
         
         if (neededSize > klongs.length) {
             int newSize = -1;
-            final int arraySizesLength = KeyNode.arraySizes.length;
+            final int arraySizesLength = KeyNode.ARRAY_SIZES.length;
             for (int i = 0; i < arraySizesLength; i++) {
-                int arraySize = KeyNode.arraySizes[i];
+                int arraySize = KeyNode.ARRAY_SIZES[i];
                 if (arraySize >= neededSize) {
                     newSize = arraySize;
                     break;

@@ -227,7 +227,7 @@ public class Db {
         builder = b;
         evictRandom = new Random(0);      // pseudo-random, but deterministic.
         transNodes = new TransNodes();
-        keyModSet = new KeyModSet2();
+        keyModSet = new KeyModSet();
  
         this.startupDistance = b.startupDistance;
         this.startupPos = new StartupPos(0);

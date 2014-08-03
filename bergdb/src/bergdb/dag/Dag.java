@@ -49,6 +49,9 @@ import bergdb.storage.StreamIoException;
  * @author Frans Lundberg
  */
 public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
+    /** Empty array of KlongWithPointer (new KlongWithPointer[0]). */
+    private static final KlongWithPointer[] ZERO_LONG_KWP = new KlongWithPointer[0];
+    
     private final TopDs topDs;
     private final NodeReader nodeReader;
     private final int POINTER_LOCKS_LENGTH = 128;
@@ -808,7 +811,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                     KeyNode last = node.lastVersionGivenDel(sz, tTime, union);
                     pd.nodeChangeListener.keyNodeChanged(last);
                     
-                    handleLastVersionOfFullNode(node, depth, PutData.zeroKwi, tTime, last, pd);
+                    handleLastVersionOfFullNode(node, depth, ZERO_LONG_KWP, tTime, last, pd);
                 }
             }
         }
