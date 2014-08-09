@@ -54,10 +54,10 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     
     private final TopDs topDs;
     private final NodeReader nodeReader;
+    private final TransSeq seq;
+    private final int maxNodeSize;
     private final int POINTER_LOCKS_LENGTH = 128;
     private final PointerLock[] pointerLocks;
-    private final int maxNodeSize;
-    private final TransSeq seq;
     
     /**
      * Creates and returns a new, minimal DbGraph.

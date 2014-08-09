@@ -36,7 +36,7 @@ public interface INode {
      * Sets a unique ID of the node. This ID does not change as the node
      * is appended to or written to stream.
      * Note, currently (2013-04) the ID is only used for debug and
-     * assert reasons; it could be removed with maintained features.
+     * assert reasons; it might be removed in the future.
      */
     public long getId();
     public void setId(long id);

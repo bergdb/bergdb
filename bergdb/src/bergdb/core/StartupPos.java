@@ -12,14 +12,14 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Frans Lundberg
  */
 public class StartupPos {
-    private final AtomicLong pos2;
+    private final AtomicLong startupPos;
     private volatile long evictPos;    // startupPos for evict
     
-    public StartupPos(long startupPos) {
-        if (startupPos < 0) {
+    public StartupPos(long startupPosParam) {
+        if (startupPosParam < 0) {
             throw new IllegalArgumentException();
         }
-        pos2 = new AtomicLong(startupPos);
+        startupPos = new AtomicLong(startupPosParam);
         releaseForEvict();
     }
     
@@ -27,7 +27,7 @@ public class StartupPos {
      * Returns the current startup stream position as a long.
      */
     public final long get() {
-        return pos2.get();
+        return startupPos.get();
     }
     
     /**
@@ -47,7 +47,7 @@ public class StartupPos {
      */
     public void set(long pos) {
         if (pos < 0) throw new IllegalArgumentException("Bad stream pos: " + pos);
-        this.pos2.set(pos);
+        this.startupPos.set(pos);
     }
     
     /**
@@ -62,20 +62,20 @@ public class StartupPos {
      * @return  The next (now current) startup position.
      */
     public long next(long startupDistance, long streamLength) {
-        long current = pos2.get();
+        long current = startupPos.get();
         long candidate = streamLength - startupDistance;
         candidate = candidate < 0 ? 0 : candidate;
         candidate = candidate < current ? current : candidate;
         
-        boolean updated = pos2.compareAndSet(current, candidate);
+        boolean updated = startupPos.compareAndSet(current, candidate);
         if (!updated) {
             throw new Error("Should not happend, pos was updated by other thread.");
         }
         
-        return pos2.get();
+        return startupPos.get();
     }
     
     public void releaseForEvict() {
-        evictPos = pos2.get();
+        evictPos = startupPos.get();
     }
 }

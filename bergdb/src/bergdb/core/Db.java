@@ -1306,7 +1306,7 @@ public class Db {
             dag.getTransSeq().addToTransNodes(startupPos2, transNodes);
             recordChoicesAndEnsureIncluded(startupPos2);
                 // NOTE 131124, 0 unit tests and only 1 f test fails if above line commented.
-                // Is ensure included needed?
+                // Is recordChoicesAndEnsureIncluded needed?
         }
         
         computeStats(ordinaryNodeCount);
