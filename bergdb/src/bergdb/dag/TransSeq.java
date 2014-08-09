@@ -10,7 +10,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
 /**
- * <p>An instance of this class keeps a sequence of index node sets in the
+ * <p>An instance of this class keeps a sequence of sets of index nodes in the
  * startup interval. Each node set contains the index nodes of a particular 
  * transaction.</p>
  * 
@@ -132,16 +132,20 @@ public class TransSeq {
      * Adds index nodes with a tpos < limit to tNodes.
      */
     public void addToTransNodes(long limit, TransNodesForMe tNodes) {
-        //
-        // 1. Iterate nodes in update interval to create nodeToTpos.
-        // 2. Iterate nodes in update interval to create forwardNodesA and childToParents.
-        // 3. Iterate nodes in forwardNodesA, add all ancestors that are also in childToParents.
-        //
-        
         final HashMap<INode, Long> nodeToTpos = new HashMap<INode, Long>();
         final HashSet<INode> forwardNodesA = new HashSet<INode>();
-        final HashMap<INode, ArrayList<INode>> childToParents = new HashMap<INode, ArrayList<INode>>();
+        final HashMap<INode, ArrayList<INode>> childToParents = 
+                new HashMap<INode, ArrayList<INode>>();
         
+        populateNodeToPos(limit, nodeToTpos);
+        populateForwardNodesAndChildToParents(limit, nodeToTpos, forwardNodesA, childToParents);
+        addToTNodes(forwardNodesA, childToParents, tNodes);
+    }
+    
+    /**
+     * Iterates nodes in update interval to populate nodeToTpos.
+     */
+    private HashMap<INode, Long> populateNodeToPos(long limit, final HashMap<INode, Long> nodeToTpos) {
         acceptVisitor(limit, new Visitor() {
             long tpos;
             
@@ -160,6 +164,17 @@ public class TransSeq {
                 nodeToTpos.put(node, tpos);
             }
         });
+        return nodeToTpos;
+    }
+    
+    /**
+     * Iterates nodes in update interval to create forwardNodesA and childToParents.
+     */
+    private void populateForwardNodesAndChildToParents(
+            long limit, 
+            final HashMap<INode, Long> nodeToTpos,
+            final HashSet<INode> forwardNodesA,
+            final HashMap<INode, ArrayList<INode>> childToParents) {
         
         acceptVisitor(limit, new Visitor() {
             long tpos;
@@ -212,7 +227,15 @@ public class TransSeq {
                 }
             }
         });
-        
+    }
+
+    /**
+     * Iterate nodes in forwardNodesA, add all ancestors that are also in childToParents
+     * to tNodes.
+     */
+    private void addToTNodes(final HashSet<INode> forwardNodesA,
+            final HashMap<INode, ArrayList<INode>> childToParents, TransNodesForMe tNodes)
+            throws AssertionError {
         final HashSet<INode> forwardNodesB = new HashSet<INode>();
         
         for (INode node : forwardNodesA) {
@@ -236,6 +259,7 @@ public class TransSeq {
             }
         }
     }
+
     
     /**
      * Adds all ancestors of node that exist in childToParents to 'set'.
