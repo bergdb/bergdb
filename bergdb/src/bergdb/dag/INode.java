@@ -11,15 +11,11 @@ package bergdb.dag;
  * nodes are called <i>index nodes</i> since that are used to index the value nodes.</p>
  * 
  * <p>Concurrency. The methods setPointer(), getMemSize() may be run from concurrent read 
- * operations.</p>
+ * operation threads.</p>
  * 
  * @author Frans Lundberg
  */
 public interface INode {
-    // 131101 Frans: removed getEvictPointer(). Access needs lock, Graph.getPointerLock().
-    // 130502 Frans: changed constants to 10, 20, ... smart if we ever would want 
-    // node type + serialization version in same number to save a byte.
-    
     public static final byte TYPE_TOP_NODE = 10;
     public static final byte TYPE_KEY_NODE = 20;
     public static final byte TYPE_VALUE = 30;
@@ -78,58 +74,7 @@ public interface INode {
     
     /**
      * Returns an estimate of the size of the node object when stored in memory; when stored
-     * in the DB node cache. A 64-bit JVM can be assumed.
+     * in the node cache.
      */
     public int getMemSize();
-    
-    ///**
-    // * Returns the total byte size of the node when serialized with method toBytes().
-    // */
-    //public int getByteSize();
-    
-    /**
-     * <p>Serialized the state of the node to a byte array at the given offset.
-     * First 5 bytes must be the total byte size of the serialized node (little-endian
-     * byte order, 4 bytes) followed by one byte that is the node type (TYPE_KEY_NODE for example).<p>
-     * 
-     * <p>Each class implementing INode should have a static method "fromBytes" that deserializes
-     * the node.</p>
-     * 
-     * <pre>
-     *     // Creates a node from the data in the byte buffer.
-     *     // param buffer:  The byte buffer (read from the database stream).
-     *     // param offset:  Offset into the buffer where the serialized node is stored.
-     *     // param spos:    The stream position of the node.
-     *     // throws:        StreamFormatException, StreamChecksumException
-     *     fromBytes(byte[] buffer, int offset, long spos) { ...
-     * </pre>
-     * 
-     * @param prevPos previous spos of node, or Spos.NULL is not applicable/unknown.
-     * @return byte size of the serialized node.
-     */
-    //public int toBytes(byte[] buffer, int offset, long prevPos);
-    
-    /** Only used by class TransNodes. */
-    public boolean isInTransNodes();
-    
-    /** Only used by class TransNodes. */
-    public void setIsInTransNodes(boolean b);
 }
-
-/*
-
----- 130413 ----
-getBytesSize(), toBytes() not needed. Done per node type instead.
-
----- 130429 ----
-Changed node serialization. Updated documentation and interface for the change.
-
----- 130403 ----
-Refactoring. Added parameter 'prevPos' to toBytes(). Not all node types need to store it.
-Only KeyNode, actually.
-
----- Implementation note, 2012-05 ----
-The special isInTransNodes() and setIsInTransNodes() methods are unortodox. They
-provide a one-bit storage for the TransNodes data structure. This allows an important
-performance optimization to be made.
-*/

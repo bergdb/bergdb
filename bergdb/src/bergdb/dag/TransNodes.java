@@ -345,18 +345,6 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
     }
     
     @T
-    public static void testIsInTransactionNodes() {
-        TransNodes nodes = new TransNodes();
-        ValueNode v1 = new ValueNode();
-        
-        Assert.assertEquals(false, v1.isInTransNodes());
-        nodes.addValueNode(v1, null);
-        Assert.assertEquals(true, v1.isInTransNodes());
-        nodes.clear();
-        Assert.assertEquals(false, v1.isInTransNodes());
-    }
-    
-    @T
     public static void testLarge1() {
         int count = TransNodes.INITIAL_SIZE * 2 + 10;
         int index = count / 2;
