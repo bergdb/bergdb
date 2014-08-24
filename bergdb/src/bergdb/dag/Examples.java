@@ -1,6 +1,7 @@
 package bergdb.dag;
 
 import bergdb.common.Util;
+import bergdb.dag.Dag.NodeReader;
 
 /**
  * Examples for the DB Graph document (docs/2013-dbgraph.odt).
@@ -8,16 +9,38 @@ import bergdb.common.Util;
  * @author Frans Lundberg
  */
 public class Examples {
+    private static final int MAX_NODE_SIZE = 30;
+    
+    private static final NodeReader DUMMY_NODE_READER = new NodeReader() {
+        public INode readNode(long spos) {
+            throw new IllegalStateException("No nodeReader was set, use "
+                    + Dag.class.getName() + ".setNodeReader().");
+        }
+    };
+    
+    /**
+     * Default Dag created at time 10 with the default max node size.
+     */
+    public static Dag dag() {        
+        return Dag.createEmpty(10, MAX_NODE_SIZE, DUMMY_NODE_READER);
+    }
+    
+    /**
+     * Creates an empty Dag with the specified max node size.
+     */
+    public static Dag dag(int maxNodeSize) {        
+        return Dag.createEmpty(10, maxNodeSize, DUMMY_NODE_READER);
+    }
     
     private Examples() {}
     
     public static void empty() {
-        Dag g = Dag.builder().createEmpty(10);
+        Dag g = dag();
         g.printGraph(System.out);
     }
     
     public static void simpleKey() {
-        Dag g = Dag.builder().createEmpty(10);
+        Dag g = dag();
         PutData pd = g.newPutData();
         pd.tt = 20;
         g.putKv(Keys.toSegments("/myKey"), Util.toBytes("v1"), pd);
@@ -25,7 +48,7 @@ public class Examples {
     }
     
     public static void longerKey() {
-        Dag g = Dag.builder().createEmpty(10);
+        Dag g = dag();
         PutData pd = g.newPutData();
         pd.tt = 20;
         g.putKv(Keys.toSegments("/myLongerKey"), Util.toBytes("v1"), pd);
@@ -33,7 +56,7 @@ public class Examples {
     }
     
     public static void severalKeys1() {
-        Dag g = Dag.builder().maxNodeSize8().createEmpty(10);
+        Dag g = dag(8);
         PutData pd = g.newPutData();
         pd.tt = 20;
         
@@ -45,7 +68,7 @@ public class Examples {
     }
     
     public static void severalKeys2() {
-        Dag g = Dag.builder().maxNodeSize8().createEmpty(10);
+        Dag g = dag(8);
         PutData pd = g.newPutData();
         pd.tt = 20;
         
@@ -57,7 +80,7 @@ public class Examples {
     }
     
     public static void prefixDemo() {
-        Dag g = Dag.builder().createEmpty(10);
+        Dag g = dag();
         
         PutData pd = g.newPutData();
         pd.tt = 20;

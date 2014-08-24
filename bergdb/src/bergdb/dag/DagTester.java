@@ -3,14 +3,28 @@ package bergdb.dag;
 import java.util.ArrayList;
 
 import bergdb.common.Util;
+import bergdb.dag.Dag.NodeReader;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
 public class DagTester {
     
+    private static final int MAX_NODE_SIZE = 30;
+    
+    private static final NodeReader DUMMY_NODE_READER = new NodeReader() {
+        public INode readNode(long spos) {
+            throw new IllegalStateException("No nodeReader was set, use "
+                    + Dag.class.getName() + ".setNodeReader().");
+        }
+    };
+    
+    public static Dag emptyDag(long time) {        
+        return Dag.createEmpty(time, MAX_NODE_SIZE, DUMMY_NODE_READER);
+    }
+    
     @T
     public static void test0() {
-        Dag g = Dag.builder().createEmpty(0);
+        Dag g = emptyDag(0);
         GetData gd = g.newGetData();
         
         byte[] result = g.getOne(0, Keys.toSegments("/-k1"), gd);
@@ -21,7 +35,7 @@ public class DagTester {
     @T
     public static void test1() {
         // With choices
-        Dag g = Dag.builder().createEmpty(0);
+        Dag g = emptyDag(0);
         GetData gd = g.newGetData();
         final ArrayList<Integer> choices = new ArrayList<Integer>();
         
@@ -43,7 +57,7 @@ public class DagTester {
     
     @T
     public static void testPut0() {
-        Dag g = Dag.builder().createEmpty(0);
+        Dag g = emptyDag(0);
         PutData pd = g.newPutData();
         pd.tt = 10;
         
@@ -66,7 +80,7 @@ public class DagTester {
     
     @T
     public static void testPut1() {
-        Dag g = Dag.builder().createEmpty(0);
+        Dag g = emptyDag(0);
         PutData pd = g.newPutData();
         pd.tt = 10;
         
@@ -75,13 +89,6 @@ public class DagTester {
         pd.keyAccessPath.clear();
         
         g.putKv(Keys.toSegments("/longerKey2"), Util.toBytes("value"), pd);
-        //for (int i = 0; i < pd.keyAccessPath.getSize(); i++) {
-        //    System.out.println("keyAccessPath: " + Klong.toString(pd.keyAccessPath.getKlong(i)) 
-        //            + "->" + pd.keyAccessPath.get(i));
-        //}
-        //
-        //System.out.println("Graph:\n");
-        //g.printGraph(System.out);
         
         GetData gd = g.newGetData();
         byte[] value = g.getOne(20, Keys.toSegments("/longerKey1"), gd);
@@ -100,8 +107,8 @@ public class DagTester {
         String[] kvs = new String[] {
                 "/k1", "v1", "/k2", "v2", "/k3", "v3", "/k4", "v4", "/k0", "v0"
         };
+        Dag g = Dag.createEmpty(0, 6, DUMMY_NODE_READER);
         
-        Dag g = Dag.builder().maxNodeSize6().createEmpty(0);
         PutData pd = g.newPutData();
         pd.tt = 10;
         
@@ -128,7 +135,8 @@ public class DagTester {
     public static void testTimeSplit1a() {
         // Tests a time-split-1.
 
-        Dag g = Dag.builder().maxNodeSize6().createEmpty(0);
+        Dag g = Dag.createEmpty(0, 6, DUMMY_NODE_READER);
+        
         PutData pd = g.newPutData();
         
         for (int i = 0; i < 4; i++) {
@@ -145,16 +153,11 @@ public class DagTester {
         node.searchEq(Long.MAX_VALUE, Klong.createCompareValue(Keys.toBytes("-id-0")), kwi);
         
         Assert.assertEquals(4, kwi.klongTime);
-        
-        //System.out.println("---- Graph.testTimeSplit1a ----");
-        //System.out.println("graph:");
-        //g.printGraph(System.out);
-        //System.out.println("node: " + node);
     }
     
     @T
     public static void testVisit0() {
-        Dag g = Dag.builder().createEmpty(10);
+        Dag g = emptyDag(10);
         final int[] counters = new int[3];
         
         g.visitMemoryNodes(new NodeVisitor() {
@@ -170,7 +173,7 @@ public class DagTester {
     
     @T
     public static void testVisit1() {
-        Dag g = Dag.builder().createEmpty(10);
+        Dag g = emptyDag(10);
         PutData pd = g.newPutData();
         pd.tt = 20;
         
@@ -187,7 +190,7 @@ public class DagTester {
     }
     
     public static void main(String[] args) {
-        Dag g = Dag.builder().createEmpty(10);
+        Dag g = emptyDag(10);
         PutData pd = g.newPutData();
         pd.tt = 20;
         

@@ -3,7 +3,6 @@ package bergdb.core;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
@@ -29,7 +28,6 @@ import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
 import bergdb.dag.TransNodes;
-import bergdb.dag.TransSeq;
 import bergdb.dag.ValueNode;
 import bergdb.dag.Dag.PointerListener;
 import bergdb.nanotest.Assert;
@@ -582,14 +580,6 @@ public class Db {
      * @throws IllegalDbStateException
      */
     private void startInner(StartListener listener) {
-        // 
-        // posMap is a map from spos of a node to the node itself.
-        // nextMap is a map from previous spos of a node to the node itself.
-        //
-        
-        HashMap<Long, INode> posMap = new HashMap<Long, INode>();
-        HashMap<Long, INode> nextMap = new HashMap<Long, INode>();
-        TransSeq seq = new TransSeq();
         
         checkThatStateIsZero();
 
@@ -598,27 +588,19 @@ public class Db {
         createInitialStreamStateIfStreamIsEmpty();
 
         nodeStream.recover();
-
-        readStartupTransactions(listener, posMap, nextMap, seq);
-
-        createDag(posMap, nextMap, seq);
         
-        createPutData();
-
-        this.state = STATE_ACTIVE;
-
-        // state = STATE_ACTIVE needed before this method.
-        reclaim.initFromDb();
-    }
-
-    private void readStartupTransactions(StartListener listener, HashMap<Long, INode> posMap,
-            HashMap<Long, INode> nextMap, TransSeq seq) {
-        long lastTransTime = 0;
-
+        // Just an assertion
+        
+        if (Util.hasOnlyZeros(nodeStream.getMetaBlock().getId())) {
+            throw new IllegalStateException("Invalid database ID, only zero bytes.");
+        }
+        
+        // Startup phase
+        
         this.startupDistance = nodeStream.getMetaBlock().getStartupDistance();
         if (startupDistance <= 0) {
             throw new StreamFormatException("Bad value of startupDistance in meta " +
-            		"block of stream: " + startupDistance + ".");
+                    "block of stream: " + startupDistance + ".");
         }
         this.startupPos.set(nodeStream.getMetaBlock().getStartupPos());
         
@@ -628,47 +610,43 @@ public class Db {
         listener.startPos(startPos);
         
         
+        ArrayList<StoredTrans> transactions = readTransactions(startPos);
+        
+        setLastTransTimeOfDbClock(transactions);
+        
+        DagStarter dagStarter = DagStarter.start(transactions, getAccessData(), nodeStream, 
+                builder.maxNodeSize);
+        
+        this.dag = dagStarter.getDag();
+        this.cachedMemoryValue.set(dagStarter.getCachedMemoryValue());
+        dagStarter = null;
+        
+        createPutData();
+
+        this.state = STATE_ACTIVE;
+
+        // state = STATE_ACTIVE needed before this method.
+        reclaim.initFromDb();
+    }
+    
+    /** Reads transactions from DB stream starting at startPos. */
+    private ArrayList<StoredTrans> readTransactions(long startPos) {
+        ArrayList<StoredTrans> transactions = new ArrayList<StoredTrans>();
+        
         NodeStream.TransIterator ti = nodeStream.new TransIterator(startPos);
         while (ti.next()) {
-            if (ti.nextTransPos < startPos) {
-                continue; // We can skip forward here
-            }
-            
-            listener.tpos(ti.tpos);
-
-            lastTransTime = ti.getTransTime();
-            ArrayList<INode> tnodes = new ArrayList<INode>();
-
-            StoredTrans storedTrans = ti.getStoredTrans();
-            
-            for (StoredNode storedNode : storedTrans.nodes) {
-                INode node = storedNode.getNode();
-                if (node.isIndexNode()) {
-                    tnodes.add(node);
-                }
-                posMap.put(node.getSpos(), node);
-                long prev = storedNode.getPrevPos();
-                if (prev != Spos.NULL) {
-                    nextMap.put(prev, node);
-                }
-
-                this.cachedMemoryValue.addAndGet(node.getMemSize());
-            }
-            
-            INode[] nodeArray = new INode[tnodes.size()];
-            tnodes.toArray(nodeArray);
-            seq.add(new TransSeq.Tset(nodeArray, ti.getTpos(), ti.getLastPos()));
+            StoredTrans stored = ti.getStoredTrans();
+            transactions.add(stored);
         }
-
-        dbClock.setLastTransTime(lastTransTime);
+        return transactions;
     }
-
-    private void createDag(HashMap<Long, INode> posMap, HashMap<Long, INode> nextMap, TransSeq seq) {
-        Dag.Builder b = Dag.builder();
-        b.nodeReader(nodeStream);
-        setMaxNodeSize(b);
-        
-        this.dag = b.createFromStreamNodes(getAccessData(), posMap, nextMap, seq);
+    
+    private void setLastTransTimeOfDbClock(ArrayList<StoredTrans> transactions) {
+        long lastTransTime = 0;
+        if (transactions.size() > 0) {
+            lastTransTime = transactions.get(transactions.size() - 1).time;
+        }
+        dbClock.setLastTransTime(lastTransTime);
     }
     
     private void createPutData() {
@@ -712,28 +690,6 @@ public class Db {
             storageManager.syncStreams(new NullProgressListener());
         } catch (IOException e) {
             throw new StreamIoException(e);
-        }
-    }
-
-    private void setMaxNodeSize(Dag.Builder b) {
-        switch (builder.maxNodeSize) {
-        case 62:
-            b.maxNodeSize62();
-            break;
-        case 30:
-            b.maxNodeSize30();
-            break;
-        case 14:
-            b.maxNodeSize14();
-            break;
-        case 8:
-            b.maxNodeSize8();
-            break;
-        case 6:
-            b.maxNodeSize6();
-            break;
-        default:
-            throw new IllegalStateException("maxNodeSize = " + builder.maxNodeSize);
         }
     }
 

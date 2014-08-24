@@ -1,9 +1,7 @@
 package bergdb.dag;
 
 import java.io.PrintStream;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 import bergdb.common.Bug;
@@ -59,131 +57,39 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     private final int POINTER_LOCKS_LENGTH = 128;
     private final PointerLock[] pointerLocks;
     
-    /**
-     * Creates and returns a new, minimal DbGraph.
-     * The returned graph has exactly one top node and one key node.
-     */
-    private Dag(Builder b, long time) {
-        seq = new TransSeq();
-        
-        KeyNode root = new KeyNode();
-        this.topDs = TopDs.createFromFirstRoot(time, root, AccessData.DEFAULT_ACCESS_DATA);
-        
-        // Non-topDS stuff:
-        this.maxNodeSize = b.maxNodeSize;
-        this.nodeReader = b.nodeReader;
-        
-        this.pointerLocks = new PointerLock[POINTER_LOCKS_LENGTH];
-        for (int i = 0; i < POINTER_LOCKS_LENGTH; i++) {
-            pointerLocks[i] = new PointerLock();
-        }
+    public Dag(NodeReader nodeReader, TopDs topDs, TransSeq transSeq, int maxNodeSize) {
+        this.nodeReader = nodeReader;
+        this.topDs = topDs;
+        this.seq = transSeq;
+        this.maxNodeSize = maxNodeSize;
+        this.pointerLocks = createPointerLocks();
     }
     
     /**
-     * Creates a DbGraph from the stream nodes of the startup interval 
-     * of the DB stream.
-     * 
-     * @param accessData
-     * @param posMap
-     * @param nextMap
-     * @return
+     * Factory method to create minimal Dag with two nodes: a top node and a key node.
+     * The database is empty; no KVs.
      */
-    private Dag(Builder b, long accessData,
-            HashMap<Long, INode> posMap, HashMap<Long, INode> nextMap, TransSeq seq) {
-        //
-        // Pointer reconciliation phase
-        // * Refreshes stream pointers
-        // * Creates memory pointers
-        // * Finds the superRoot TopNode among the startup nodes.
-        //
-
-        assert posMap != null;
-        assert nextMap != null;
-        assert seq != null;
-        
-        TopNode superRoot = null;
-        Pointer pointer = new Pointer();
-        this.seq = seq;
-
-        for (Map.Entry<Long, INode> entry : posMap.entrySet()) {
-            INode node = entry.getValue();
-
-            int pointerCount = node.getPointerCount();
-            for (int i = 0; i < pointerCount; i++) {
-                node.getPointer(i, pointer);
-                if (pointer.isNull()) {
-                    continue;
-                }
-
-                long pos = pointer.getPos();
-
-                while (true) {
-                    INode next = nextMap.get(pos);
-                    if (next == null) {
-                        break;
-                    }
-                    pos = next.getSpos();
-                }
-
-                if (pointer.getPos() != pos) {
-                    node.setPointer(i, null, pos);
-                }
-            }
-
-            // Check for super root node.
-            // The super root node with maximum topNodeId-spos "wins". 
-
-            if (node instanceof TopNode) {
-                TopNode potentialSuperRoot = (TopNode) node;
-                if (superRoot == null) {
-                    superRoot = potentialSuperRoot;
-                } else if (potentialSuperRoot.topNodeId > superRoot.topNodeId) {
-                    superRoot = potentialSuperRoot;
-                } else if (potentialSuperRoot.topNodeId == superRoot.topNodeId) {
-                    if (potentialSuperRoot.getSpos() > superRoot.getSpos()) {
-                        superRoot = potentialSuperRoot;
-                    }
-                }
-            }
-        }
-
-        if (superRoot == null) {
-            throw new StreamFormatException("Could not find root node within startup node set.");
-        }
-
-        // Creates memory pointers from stream pointers.
-
-        Pointer p2 = new Pointer();
-
-        for (Map.Entry<Long, INode> entry : posMap.entrySet()) {
-            INode node = entry.getValue();
-
-            int pointerCount = node.getPointerCount();
-            for (int i = 0; i < pointerCount; i++) {
-                node.getPointer(i, p2);
-                if (p2.isNull()) {
-                    continue;
-                }
-
-                INode pointee = posMap.get(p2.pos);
-                if (pointee != null) {
-                    node.setPointer(i, pointee, accessData);
-                }
-            }
-        }
-        
-        this.topDs = new TopDs(superRoot);
-        
-        // Non-topDS stuff (copy from other constructor):
-        this.maxNodeSize = b.maxNodeSize;
-        this.nodeReader = b.nodeReader;
-        
-        this.pointerLocks = new PointerLock[POINTER_LOCKS_LENGTH];
-        for (int i = 0; i < POINTER_LOCKS_LENGTH; i++) {
-            pointerLocks[i] = new PointerLock();
-        }
+    public static Dag createEmpty(long time, int maxNodeSize, NodeReader nodeReader) {
+        return new Dag(time, maxNodeSize, nodeReader);
     }
     
+    private Dag(long time, int maxNodeSize, NodeReader nodeReader) {
+        this.nodeReader = nodeReader;
+        this.topDs = TopDs.createFromFirstRoot(time, new KeyNode(), AccessData.DEFAULT_ACCESS_DATA);
+        this.seq = new TransSeq();
+        this.maxNodeSize = maxNodeSize;
+        this.pointerLocks = createPointerLocks();
+    }
+
+    private PointerLock[] createPointerLocks() {
+        PointerLock[] locks = new PointerLock[POINTER_LOCKS_LENGTH];
+        for (int i = 0; i < POINTER_LOCKS_LENGTH; i++) {
+            locks[i] = new PointerLock();
+        }
+        return locks;
+    }
+    
+        
     // ======== General utility methods ========
     
     /**
@@ -262,7 +168,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         final GetData g = new GetData();
         
         g.pointerListener = new Dag.PointerListener() {
-            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
+            public void pointerFollowed(
+                    INode predecessor, int pointerIndex, INode result, int pointerType) {
                 switch (pointerType) {
                 case Pointer.TYPE_MEMORY:
                     g.followMemoryPointerCount++;
@@ -299,7 +206,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         final PutData p = new PutData();
         
         p.pointerListener = new Dag.PointerListener() {
-            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) { 
+            public void pointerFollowed(
+                    INode predecessor, int pointerIndex, INode result, int pointerType) { 
                 if (result != null) {
                     if (result.getType() == INode.TYPE_KEY_NODE) {
                         if (predecessor.getType() == INode.TYPE_TOP_NODE) {
@@ -368,12 +276,14 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                 if (accessData != 0) {
                     predecessor.setPointerAccessData(pointerIndex, accessData);
                 }
-                pointerListener.pointerFollowed(predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
+                pointerListener.pointerFollowed(
+                        predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
             
             } else {
                 result = nodeReader.readNode(pointerPos);
                 
-                pointerListener.pointerFollowed(predecessor, pointerIndex, result, Pointer.TYPE_STREAM);
+                pointerListener.pointerFollowed(
+                        predecessor, pointerIndex, result, Pointer.TYPE_STREAM);
                 if (cachePolicy.shouldCache(result)) {
                     predecessor.setPointer(pointerIndex, result, accessData);
                 }
@@ -475,7 +385,9 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                 if (kwi.klong == Klong.NULL) {
                     result = null;
                 } else {
-                    result = followPointer(current, kwi.pointerIndex, gd.accessData, gd.pointerListener, gd.cachePolicy);
+                    result = followPointer(
+                            current, kwi.pointerIndex, gd.accessData, 
+                            gd.pointerListener, gd.cachePolicy);
                 }
                 break;
 
@@ -486,8 +398,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                     result = null;
                     break;
                 } else {
-                    assert kwi.node == null || kwi.node instanceof KeyNode : "Expected a KeyNode, got "
-                            + kwi.node;
+                    assert kwi.node == null || kwi.node instanceof KeyNode 
+                            : "Expected a KeyNode, got " + kwi.node;
 
                     KeyNode nextCurrent = (KeyNode) followPointer(current, kwi.pointerIndex,
                             gd.accessData, gd.pointerListener, gd.cachePolicy);
@@ -1034,92 +946,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         }
     }
 
-    // ======== Builder ========
-
-    /**
-     * The way to create a Builder.
-     */
-    public static Builder builder() {
-        return new Builder();
-    }    
     
-    /**
-     * An object of this class is used to properly build a DB object.
-     */
-    public static class Builder {
-        private int maxNodeSize;
-        private NodeReader nodeReader;
-
-        private Builder() {
-            maxNodeSize30(); // Default and best max node size.
-
-            this.nodeReader = new NodeReader() {
-                public INode readNode(long spos) {
-                    throw new IllegalStateException("No nodeReader was set, use "
-                            + Dag.class.getName() + ".setNodeReader().");
-                }
-            };
-        }
-
-        public Builder nodeReader(NodeReader nodeReader) {
-            if (nodeReader == null) {
-                throw new IllegalArgumentException("nodeReader == null not allowed");
-            }
-            this.nodeReader = nodeReader;
-            return this;
-        }
-
-        /**
-         * Use for testing only.
-         */
-        public Builder maxNodeSize6() {
-            this.maxNodeSize = 6;
-            return this;
-        }
-
-        /**
-         * Use for testing only.
-         */
-        public Builder maxNodeSize8() {
-            this.maxNodeSize = 8;
-            return this;
-        }
-
-        public Builder maxNodeSize14() {
-            this.maxNodeSize = 16 - 2;
-            return this;
-        }
-
-        public Builder maxNodeSize30() {
-            this.maxNodeSize = 32 - 2;
-            return this;
-        }
-
-        public Builder maxNodeSize62() {
-            this.maxNodeSize = 64 - 2;
-            return this;
-        }
-
-        /**
-         * Creates a new DbGraph with its initial state created at t=time. This
-         * method is suitable to create an all in-memory graph. Useful for
-         * testing.
-         */
-        public Dag createEmpty(long time) {
-            return new Dag(this, time);
-        }
-
-        /**
-         * Creates a new DbGraph from existing nodes in the DB stream.
-         */
-        public Dag createFromStreamNodes(long accessData, HashMap<Long, INode> posMap,
-                HashMap<Long, INode> nextMap, TransSeq seq) {
-            return new Dag(this, accessData, posMap, nextMap, seq);
-        }
-    }
-    
-    
-    // ======== Inner interfaces / classes ========
+    // ======== Inner types ========
     
     /** Special type for pointer lock object; useful for debug. */
     public static class PointerLock {}
@@ -1157,7 +985,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
          * 
          * @param pointerType One of Pointer.TYPE_MEMORY, Pointer.TYPE_STREAM.
          */
-        public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType);
+        public void pointerFollowed(
+                INode predecessor, int pointerIndex, INode result, int pointerType);
     }
     
     public static final PointerListener DO_NOTHING_POINTER_LISTENER = new PointerListener() {
@@ -1267,45 +1096,3 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         public void nodeSplit(int splitType) {}
     };
 }
-
-/*
-
-131003
-======
-
-Task: move calls like [pd.nodeChangeListener.keyNodeChanged(node)] so it is as close
-to the node change as possible (the first place where it is change or created).
-
-Methods that modify nodes (in putKv() or methods called from there):
-
-KeyNode.addKlong()
-KeyNode.firstAndSecond()
-KeyNode.lastVersionGivenDel()
-TopDs.newSuperRoot()
-
-
-Dev notes
-=========
-
-Start with beautiful, understandable code. Possibly later add "Optimized" ending to 
-certain methods if optimization is needed. Keep original and go back to it it there 
-are bugs. We could even have a switch, if (highPerformance) {....
-
-Concepts:
-
-* Optimized, non-optimized switching.
-* Self-testing data structure.
-
-
-General walking - what is needed?
-=================================
-
-Use cases:
-
-1. GetOne operation.
-2. Follow choices.
-3. Set KV - find where to insert klong (or split, ...).
-4. Walk all in-memory nodes.
-5. Warm-up get (before writeLock).
-
-*/
