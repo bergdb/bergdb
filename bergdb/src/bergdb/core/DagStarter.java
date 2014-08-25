@@ -16,15 +16,13 @@ import bergdb.dag.TransSeq;
 import bergdb.storage.StreamFormatException;
 
 /**
- * An instance of this class is used to create the in-memory data structure
- * of the database given the transactions in the stream startup section.
- * The instance is only used for the restart process and is no longer used
- * once the database has been started.
+ * A function-class.
  * 
+ * @see #start(List, long, NodeReader, int)
  * @author Frans Lundberg
  */
 public class DagStarter {
-    // 140824 Class introduced in main branch. 
+    // 140824 Class introduced to keep startup algo separate.
     
     private final TransSeq seq = new TransSeq();
     private long cachedMemoryValue = Db.MIN_CACHE_MEMORY_VALUE;
@@ -32,70 +30,39 @@ public class DagStarter {
     final HashMap<Long, INode> nextMap = new HashMap<Long, INode>(); // posPrevious -> node
     private final List<StoredTrans> transactions;
     private TopNode superRoot;
-    private TopDs topDs;
     private final long accessData;
-    private final NodeReader nodeReader;
-    private final int maxNodeSize;
-    private Dag dag;
     
     /**
-     * Creates a new object.
+     * Runs the startup algorithms and returns the result from it.
      * 
      * @param transactions  The stored transactions from the startup interval of the db stream.
      * @param accessData    The access data for the in-memory pointers that are created.
      */
-    private DagStarter(List<StoredTrans> transactions, long accessData, 
-            NodeReader nodeReader, int maxNodeSize) {
+    public static DagStarter.Result start(List<StoredTrans> transactions, long accessData) {
+        DagStarter dagStarter = new DagStarter(transactions, accessData);
+        dagStarter.startInternal();
+        return dagStarter.new Result();
+    }
+    
+    private DagStarter(List<StoredTrans> transactions, long accessData) {
         
         if (transactions == null) {
             throw new IllegalArgumentException("transactions == null not allowed");
         }
         
-        if (nodeReader == null) {
-            throw new IllegalArgumentException("nodeReader == null not allowed");
-        }
-        
-        if (maxNodeSize < 1) {
-            throw new IllegalArgumentException("bad maxNodeSize " + maxNodeSize);
-        }
-        
         this.transactions = transactions;
         this.accessData = accessData;
-        this.nodeReader = nodeReader;
-        this.maxNodeSize = maxNodeSize;
         this.superRoot = null;
-    }
-    
-    /**
-     * Runs the startup algorithms; the result is available from
-     * getDag(), getCachedMemoryValue().
-     */
-    public static DagStarter start(List<StoredTrans> transactions, long accessData, 
-            NodeReader nodeReader, int maxNodeSize) {
-        DagStarter dagStarter = new DagStarter(transactions, accessData, nodeReader, maxNodeSize);
-        dagStarter.startInternal();
-        return dagStarter;
     }
     
     /**
      * Runs the startup algorithm.
      */
-    public void startInternal() {
+    private void startInternal() {
         createTransSeq();
         createMaps();
         refreshStreamPointers();
         createMemoryPointers();
-        
-        this.topDs = new TopDs(superRoot);
-        this.dag = new Dag(nodeReader, topDs, seq, maxNodeSize);
-    }
-    
-    public long getCachedMemoryValue() {
-        return cachedMemoryValue;
-    }
-    
-    public Dag getDag() {
-        return dag;
     }
     
     /**
@@ -219,6 +186,28 @@ public class DagStarter {
                     node.setPointer(i, pointee, accessData);
                 }
             }
+        }
+    }
+    
+    /**
+     * The result.
+     */
+    public class Result {
+        public Dag createDag(NodeReader nodeReader, int maxNodeSize) {
+            if (nodeReader == null) {
+                throw new IllegalArgumentException("nodeReader == null not allowed");
+            }
+            
+            if (maxNodeSize < 1) {
+                throw new IllegalArgumentException("bad maxNodeSize " + maxNodeSize);
+            }
+            
+            TopDs topDs = new TopDs(superRoot);
+            return new Dag(nodeReader, topDs, seq, maxNodeSize);
+        }
+        
+        public long getCachedMemoryValue() {
+            return cachedMemoryValue;
         }
     }
 }

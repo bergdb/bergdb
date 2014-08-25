@@ -614,12 +614,9 @@ public class Db {
         
         setLastTransTimeOfDbClock(transactions);
         
-        DagStarter dagStarter = DagStarter.start(transactions, getAccessData(), nodeStream, 
-                builder.maxNodeSize);
-        
-        this.dag = dagStarter.getDag();
-        this.cachedMemoryValue.set(dagStarter.getCachedMemoryValue());
-        dagStarter = null;
+        DagStarter.Result result = DagStarter.start(transactions, getAccessData());
+        this.dag = result.createDag(nodeStream, builder.maxNodeSize);
+        this.cachedMemoryValue.set(result.getCachedMemoryValue());
         
         createPutData();
 
