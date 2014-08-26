@@ -11,24 +11,25 @@ import bergdb.dag.TransNodes;
 import bergdb.nanotest.T;
 
 /**
- * Data for executing a transaction. Input, output and working data.
- * The change set of the transaction is defined in this class.
+ * Data for executing a transaction. Input, output and some working data.
+ * The KVs of the transaction is defined in this class.
  * This class is designed to suit class Db and to achieve high performance.
+ * This class is defined in the most preferred, most efficient form for the Db class, 
+ * not for the client using Db.
  * 
  * @author Frans Lundberg
  */
 public class Trans {
-    //
-    // This class is defined in the most preferred, most efficient form for the Db side, 
-    // not for the client using Db.
     //
     // We might want to add a size limitation to the transactions.
     // It can easily be enforced in the Builder.
     //
     // Note. It would be good for memory reuse possibilities to use array+size approach.
     // For example; have long[] readKeyHashes *and* int readKeyHashesLength.
-    // We would be able to reuse Trans object memory. 
-    // Should be neglectable performance degradation for DB.execute().
+    // We would be able to reuse Trans object memory.
+    //
+    // Note, Frans 1308, it might be a good idea to have a Trans.Listener for
+    // debugging and statistics and such stuff.
     //
     
     private static final Kv[] EMPTY_KV_ARRAY = new Kv[0];
@@ -50,7 +51,6 @@ public class Trans {
     public long nextPos;            // Stream position of the first byte of the next transaction. Available after execute().
     public int nodeCount;           // Number of nodes written to stream. Useful for testing/debug.
                                     // Note, not super important, could be removed.
-    public Listener listener;
     
     // -- Internal working data --
     public final GetData getData;
@@ -68,7 +68,6 @@ public class Trans {
     private Trans() {
         readKeyHashes = new long[0];
         getData = new GetData();     // NOTE Better to use Db.newGetData().
-        listener = NO_ACTION_LISTENER;
     }
     
     public boolean isInternal() {
@@ -120,14 +119,12 @@ public class Trans {
         public void nodesWritten(TransNodes nodes);
     }
     
-    public static final NoActionListener NO_ACTION_LISTENER = new NoActionListener();
-    
     /**
-     * A Trans.Listener implementation that does nothing.
+     * A listener that does nothing.
      */
-    public static class NoActionListener implements Listener {
+    public static final Listener NO_ACTION_LISTENER = new Listener() {
         public void nodesWritten(TransNodes nodes) {}
-    }
+    };
     
     /**
      * Used to create a transaction.

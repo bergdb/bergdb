@@ -100,6 +100,11 @@ public class Db {
      */
     public static final long MIN_CACHE_MEMORY_VALUE = Constants.MIN_CACHE_MEMORY_VALUE;
     
+    /**
+     * Used for internal dummy writes. 
+     * No real data is stored for this key and it is not accessible externally
+     * (from Pub API).
+     */
     static final long[] DUMMY_KEY = Keys.toSegments(INTERNAL_KEY_PREFIX + "-dummy");
     
     private static final int STATE_ZERO = 1;
@@ -107,48 +112,52 @@ public class Db {
     private static final int STATE_ACTIVE = 3;
     private static final int STATE_STOPPING = 4;
 
+    /** 
+     * State of the database. Synch note: writes published by readSync.
+     */
+    private int state = STATE_ZERO;
+    
     /**
-     * Global write lock. Held when STM stuff is done and while transaction serialized to bytes.
+     * Global transaction write lock. Held when STM stuff is done.
      */
     private final WriteLock writeLock;
     
     /**
-     * Lock used to make sure writes from DB(), start(), execute(), are published
-     * by the writer and made visible to readers calling get(), getMany().
+     * Sync object used to make sure writes from Db(), start(), execute(), are published
+     * and made visible to threads calling getOne(), getMany().
      * It is typically used with an empty block: "synchronized (readSynch) {}".
      */
     private final ReadSync readSync;
-    private final IKeyModSet keyModSet;
-    private final NodeStream nodeStream; // IO for DB to read/append nodes.
-    private final StorageManager storageManager;
-    private int state = STATE_ZERO;
-        // Synch note: writes published by readSynch.
     
+    private final IKeyModSet keyModSet;
+    private final NodeStream nodeStream;
+    private final StorageManager storageManager;
     private final Random evictRandom;
+    
+    /** DatabaseId from Database.Builder, may be null. */
     private DatabaseId databaseIdFromBuilder;
-        // DatabaseId from Database.Builder, may be null.
+    
+    /** The reclaim algorithm. */
     private final Reclaim reclaim;
-        // Object used for stream space reclaim.
+    
+    /** The current meta block data of the node stream. */
     private final MetaBlock metaBlock;
-        // MetaBlock of RecoverableStream.
-
+    
     // ---- Settings ----
-    // Fields affected by settings.
 
     private final DbClock dbClock;
     private final IEvictBoss evictBoss;
-    private final Builder builder;   // stored for use by Graph.Builder. See startinner().
+    private final int maxNodeSize;
     
-    private long startupDistance; 
-        // Current startupDistance that affects getDirtyLimit().
-        // Sync note: protected by writeLock.
-
+    /** Current startupDistance. Sync note: protected by writeLock. */
+    private long startupDistance;
+    
     // ---- Listeners ----
     
     private final TransactionListener reclaimTransactionListener;
 
     // ---- Working data, write access ----
-    // Must only be accessed from threads holding writeLock.
+    // Must only be accessed from thread holding writeLock.
     
     /** Current startupPos; stream pos to use by startup procedure. */
     private final StartupPos startupPos;
@@ -165,24 +174,9 @@ public class Db {
     /** End stream position of last transaction; used by Db.sync(). */
     private long lastSposOfLastTrans;
     
-    // ---- Counters, statistics, aux state ----
-    //
-    // The cacheMemoryValue can be used as a time scale instead of ordinary
-    // calendar time.
-    // It is suitable for cache-related timing, cache eviction.
-    // Note that cachedMemoryValue and cachedNodeCount are read and written from
-    // concurrent
-    // threads, so there is a small probability of "missing an update" when
-    // multiple writers
-    // add to these values. We allow this to happen, we only need approximate
-    // values.
-    // "volatile" is needed to assure the values themselves are read/written
-    // atomically.
-    //
-
+    // ---- Auxilliary state ----
     
     private final Aux aux = new Aux();
-    
     
     // ---- Graph ----
     
@@ -197,12 +191,11 @@ public class Db {
     private Db(Builder b) {
         writeLock = new WriteLock();
         readSync = new ReadSync();
-        
-        builder = b;
         evictRandom = new Random(0);      // pseudo-random, but deterministic.
         transNodes = new TransNodes();
         keyModSet = new KeyModSet();
  
+        this.maxNodeSize = b.maxNodeSize;
         this.startupDistance = b.startupDistance;
         this.startupPos = new StartupPos(0);
         
@@ -570,7 +563,7 @@ public class Db {
 
     private void startDag(ArrayList<StoredTrans> transactions) {
         DagStarter.Result result = DagStarter.start(transactions, getAccessData());
-        dag = result.createDag(nodeStream, builder.maxNodeSize);
+        dag = result.createDag(nodeStream, maxNodeSize);
         aux.cachedMemoryValue.set(result.getCachedMemoryValue());
         transSeq = result.getTransSeq();
     }
@@ -1232,7 +1225,6 @@ public class Db {
         
         aux.nodesWritten += transNodes.size();
         aux.ordinaryNodesWritten += ordinaryNodeCount;
-        trans.listener.nodesWritten(transNodes);
     }
 
     /**
