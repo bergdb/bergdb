@@ -79,8 +79,8 @@ public class TransSeq {
             result += 1;
         }
         
-        // To avoid possible memory leak.
         if (first == null) {
+            // To avoid possible memory leak, last is set to null.
             last = null;
         }
         

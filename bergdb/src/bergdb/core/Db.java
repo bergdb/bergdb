@@ -28,6 +28,7 @@ import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
 import bergdb.dag.TransNodes;
+import bergdb.dag.TransSeq;
 import bergdb.dag.ValueNode;
 import bergdb.dag.Dag.PointerListener;
 import bergdb.nanotest.Assert;
@@ -143,13 +144,13 @@ public class Db {
     
     private final TransactionListener reclaimTransactionListener;
 
-    // ---- Working data for write access ----
+    // ---- Working data, write access ----
     // Must only be accessed from threads holding writeLock.
     
     /** Current startupPos; stream pos to use by startup procedure. */
     private final StartupPos startupPos;
     
-    /** PutData, set to non-null together with graph. */
+    /** PutData, used when putting data to Dag in executeInner(). */
     private PutData putData;
     
     /** The nodes updated for the current transaction. To be written to the stream. */
@@ -209,6 +210,7 @@ public class Db {
     // ---- Graph ----
     
     private Dag dag;
+    private TransSeq transSeq;
     
     
     /**
@@ -593,6 +595,7 @@ public class Db {
         DagStarter.Result result = DagStarter.start(transactions, getAccessData());
         this.dag = result.createDag(nodeStream, builder.maxNodeSize);
         this.cachedMemoryValue.set(result.getCachedMemoryValue());
+        this.transSeq = result.getTransSeq();
     }
 
     private void setStartupPosAndStartupDistanceFromStream(StartListener listener) {
@@ -1227,7 +1230,7 @@ public class Db {
         long startupPos2 = startupPos.next(this.startupDistance, nodeStream.getLength());
         
         if (dag != null) {
-            dag.getTransSeq().addToTransNodes(startupPos2, transNodes);
+            transSeq.addToTransNodes(startupPos2, transNodes);
             recordChoicesAndEnsureIncluded(startupPos2);
                 // NOTE 131124, 0 unit tests and only 1 f test fails if above line commented.
                 // Is recordChoicesAndEnsureIncluded needed?
@@ -1246,8 +1249,8 @@ public class Db {
         meta.setStartupPos(startupPos.get());
         
         if (dag != null) {
-            dag.getTransSeq().add(transNodes.createTset(trans.pos, trans.lastPos));            
-            dag.getTransSeq().removeBeforeSpos(startupPos2);
+            transSeq.add(transNodes.createTset(trans.pos, trans.lastPos));            
+            transSeq.removeBeforeSpos(startupPos2);
         }
         
         this.nodesWritten += transNodes.size();

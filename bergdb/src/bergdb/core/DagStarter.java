@@ -16,7 +16,7 @@ import bergdb.dag.TransSeq;
 import bergdb.storage.StreamFormatException;
 
 /**
- * A function-class.
+ * A function-class, see the one public method.
  * 
  * @see #start(List, long, NodeReader, int)
  * @author Frans Lundberg
@@ -24,10 +24,10 @@ import bergdb.storage.StreamFormatException;
 public class DagStarter {
     // 140824 Class introduced to keep startup algo separate.
     
-    private final TransSeq seq = new TransSeq();
+    private final TransSeq transSeq = new TransSeq();
     private long cachedMemoryValue = Db.MIN_CACHE_MEMORY_VALUE;
-    final HashMap<Long, INode> posMap = new HashMap<Long, INode>();  // pos -> node
-    final HashMap<Long, INode> nextMap = new HashMap<Long, INode>(); // posPrevious -> node
+    private final HashMap<Long, INode> posMap = new HashMap<Long, INode>();  // pos -> node
+    private final HashMap<Long, INode> nextMap = new HashMap<Long, INode>(); // posPrevious -> node
     private final List<StoredTrans> transactions;
     private TopNode superRoot;
     private final long accessData;
@@ -82,13 +82,13 @@ public class DagStarter {
             
             INode[] nodeArray = new INode[tnodes.size()];
             tnodes.toArray(nodeArray);
-            seq.add(new TransSeq.Tset(nodeArray, trans.pos, trans.lastPos));
+            transSeq.add(new TransSeq.Tset(nodeArray, trans.pos, trans.lastPos));
         }
     }
     
     /** 
      * Creates posMap and nextMap and increases cachedMemoryValue. 
-     * Also calls the handler callback for top nodes.
+     * Also calls the handler for top nodes.
      */
     private void createMaps() {
         for (StoredTrans trans : transactions) {
@@ -114,6 +114,10 @@ public class DagStarter {
                 }
             }
         }
+        
+        if (superRoot == null) {
+            throw new StreamFormatException("Could not find super root node within startup node set.");
+        }
     }
     
     private void handleTopNode(TopNode potentialSuperRoot) {                
@@ -129,7 +133,7 @@ public class DagStarter {
     }
     
     /** 
-     * Refreshes stream pointers and calls topNodeHandler callback.
+     * Refreshes stream pointers.
      */
     private void refreshStreamPointers() {
         Pointer pointer = new Pointer();
@@ -159,10 +163,6 @@ public class DagStarter {
                 }
             }
         }
-
-        if (superRoot == null) {
-            throw new StreamFormatException("Could not find super root node within startup node set.");
-        }
     }
     
     /**
@@ -190,7 +190,7 @@ public class DagStarter {
     }
     
     /**
-     * The result.
+     * The result of starting the Dag.
      */
     public class Result {
         public Dag createDag(NodeReader nodeReader, int maxNodeSize) {
@@ -203,11 +203,16 @@ public class DagStarter {
             }
             
             TopDs topDs = new TopDs(superRoot);
-            return new Dag(nodeReader, topDs, seq, maxNodeSize);
+            return new Dag(nodeReader, topDs, maxNodeSize);
+        }
+        
+        public TransSeq getTransSeq() {
+            return transSeq;
         }
         
         public long getCachedMemoryValue() {
             return cachedMemoryValue;
         }
+        
     }
 }

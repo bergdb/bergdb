@@ -20,11 +20,10 @@ import bergdb.storage.StreamIoException;
  * 
  * <p>Features/scope:</p>
  * <ul>
- * <li>Walking the DAG, followPointer()</li>
+ * <li>Walking the Dag, followPointer()</li>
  * <li>getOne(), getMany(), putOne()</li>
- * <li>Making nodes dirty</li>
  * <li>Dag testable in isolation</li>
- * <li>Cache: adding nodes to cache</li>
+ * <li>Cache: adding nodes to cache (read from stream, memory pointer)</li>
  * <li>Reads nodes (from interface NodeReader instance)</li>
  * <li>Pointer locks</li>
  * <li>Factory methods: newGetData(), newGetMany(), new PutData().</li>
@@ -37,12 +36,13 @@ import bergdb.storage.StreamIoException;
  * <li>Transaction: collecting transaction node set, adding transaction nodes
  * to stream, ...</li>
  * <li>STM implementation</li>
+ * <li>TransSeq</li>
  * </ul>
  * 
  * <p>This class was created in September 2013 during a heavy refactoring.
- * I wanted a smaller, cleaner Db class and a DAG class that is testable in isolation.
+ * I wanted a smaller, cleaner Db class and a Dag class that is testable in isolation.
  * This is a change to review the code for correctness and add more unit test
- * to show that code works.</p> 
+ * to show that code works. The refactoring was done without much performance penalty.</p> 
  * 
  * @author Frans Lundberg
  */
@@ -52,15 +52,13 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     
     private final TopDs topDs;
     private final NodeReader nodeReader;
-    private final TransSeq seq;
     private final int maxNodeSize;
     private final int POINTER_LOCKS_LENGTH = 128;
     private final PointerLock[] pointerLocks;
     
-    public Dag(NodeReader nodeReader, TopDs topDs, TransSeq transSeq, int maxNodeSize) {
+    public Dag(NodeReader nodeReader, TopDs topDs, int maxNodeSize) {
         this.nodeReader = nodeReader;
         this.topDs = topDs;
-        this.seq = transSeq;
         this.maxNodeSize = maxNodeSize;
         this.pointerLocks = createPointerLocks();
     }
@@ -76,7 +74,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     private Dag(long time, int maxNodeSize, NodeReader nodeReader) {
         this.nodeReader = nodeReader;
         this.topDs = TopDs.createFromFirstRoot(time, new KeyNode(), AccessData.DEFAULT_ACCESS_DATA);
-        this.seq = new TransSeq();
         this.maxNodeSize = maxNodeSize;
         this.pointerLocks = createPointerLocks();
     }
@@ -153,10 +150,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         }
         
         return node;
-    }
-    
-    public final TransSeq getTransSeq() {
-        return seq;
     }
     
     /**

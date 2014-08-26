@@ -37,7 +37,7 @@ public class StoredTrans {
     }
 
     /**
-     * Creates a StoredTrans by parsign the data in a the byte buffer.
+     * Creates a StoredTrans by parsing the data in a the byte buffer.
      * 
      * @throws IllegalArgumentException
      * @throws StreamFormatException
@@ -204,7 +204,8 @@ public class StoredTrans {
         }
 
         /**
-         * Prepare for serialization by computing sizes, needed to get totalSize and
+         * Prepare for serialization by computing sizes; sets totalSize, transLastSpos,
+         * transNextSpos.
          */
         private void prepareToSerialize() {
             // Below three loops sets new stream pos of nodes, sets ID if needed,
@@ -267,8 +268,7 @@ public class StoredTrans {
             // Code to serialize causes significant execution time (30-40%) for PUT operations.
             // We could possibly return quickly and let another thread serialize nodes.
             // Possibly the thread that handles flushing the buffer could be used, or a separate
-            // one.
-            // KeyNode.size and order of transactions would need to be stored.
+            // one. KeyNode.size and order of transactions would need to be handled.
             //
 
             int longOffset = 0;
