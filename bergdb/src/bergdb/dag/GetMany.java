@@ -2,7 +2,6 @@ package bergdb.dag;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import bergdb.dag.Dag.CachePolicy;
 import bergdb.dag.Dag.PointerListener;
 

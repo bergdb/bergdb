@@ -31,7 +31,7 @@ public class ConnectionImp implements Connection {
         assert database != null;
         this.database = database;
         this.db = database.getDb();
-        this.getData = db.getGraph().newGetData();
+        this.getData = db.newGetData();
         this.getData.actualLookupTime = -1;
         this.lookupTime = Long.MAX_VALUE;
         this.enableKeyReplace = false;

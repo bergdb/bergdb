@@ -477,14 +477,10 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     
 
     // ======== putKv() with helpers ========
-    //
-    // Does DbGraph need to know about transactions? Or is putKv() enough?
-    //
-    
     
     /**
      * <p>Adds a KV to the graph.
-     * If a KV with the given key exists, the last value for the key is replaced.
+     * If a value for the key exists, the previous value for the key is replaced.
      * If value is null, this is a delete operation.</p>
      * 
      * <p>This method runs with exclusive write access to the data structure 
@@ -970,8 +966,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     
     
     /**
-     * A listener that listens to what happens when the DB graph is walked
-     * and a Walker also determines whether a read stream node should be cached or not.
+     * A PointerListener is used to listen to pointer-followed events
+     * and super-root-node-accessed events.
      */
     public static interface PointerListener {
         /**

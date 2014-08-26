@@ -150,7 +150,7 @@ public class Db {
     private final StartupPos startupPos;
     
     /** PutData, set to non-null together with graph. */
-    private PutData pd;
+    private PutData putData;
     
     /** The nodes updated for the current transaction. To be written to the stream. */
     private final TransNodes transNodes;
@@ -254,18 +254,11 @@ public class Db {
         this.databaseIdFromBuilder = b.id;
         
         //
-        // Synch note: Synchronized blocks make sure the writes in the constructor are
-        // visible to other threads.
+        // Synch note: Synchronized blocks make sure the writes in constructor are
+        // published to threads synchronizing on readSync or writeLock.
         //
         synchronized (readSync) {}
         synchronized (writeLock) {}
-    }
-    
-    /**
-     * Useful for testing; violates Law of Demeter.
-     */
-    public Dag getGraph() {
-        return dag;
     }
 
     /**
@@ -411,7 +404,7 @@ public class Db {
     }
     
     /**
-     * Returns the number of get operations that has completed since DB.start() was called.
+     * Returns the number of get operations that has completed since Db.start() was called.
      */
     public long getGetOpCount() {
         return getOpCount.get();
@@ -463,7 +456,7 @@ public class Db {
             throw new IllegalArgumentException("'replica' is instance of BufferedStream; not allowed.");
         }
         
-        // Checks database id of main and replica; must match. Otherwise Bad
+        // Checks database id of main and replica; must match. 
         DbHelper.checkReplicaId(metaBlock.getId(), replicaStream);
         
         return AddReplicaClass.addReplica(storageManager, this, name, replicaStream, bufferSize, bufferTime);
@@ -582,10 +575,7 @@ public class Db {
         createInitialStreamStateIfStreamIsEmpty();
         nodeStream.recover();
         assertDatabaseIdNotOnlyZeros();
-        setStartupDistanceFromStream();
-        setStartupPosFromStream();
-        listener.startupDistance(this.startupDistance);
-        listener.startPos(startupPos.get());
+        setStartupPosAndStartupDistanceFromStream(listener);
         
         ArrayList<StoredTrans> transactions = readTransactions(startupPos.get());
         setLastTransTimeOfDbClock(transactions);
@@ -605,16 +595,16 @@ public class Db {
         this.cachedMemoryValue.set(result.getCachedMemoryValue());
     }
 
-    private void setStartupPosFromStream() {
-        this.startupPos.set(nodeStream.getMetaBlock().getStartupPos());
-    }
-
-    private void setStartupDistanceFromStream() {
+    private void setStartupPosAndStartupDistanceFromStream(StartListener listener) {
         this.startupDistance = nodeStream.getMetaBlock().getStartupDistance();
         if (startupDistance <= 0) {
             throw new StreamFormatException("Bad value of startupDistance in meta " +
                     "block of stream: " + startupDistance + ".");
         }
+        this.startupPos.set(nodeStream.getMetaBlock().getStartupPos());
+        
+        listener.reportStartupDistance(this.startupDistance);
+        listener.reportStartPos(startupPos.get());
     }
 
     private void assertDatabaseIdNotOnlyZeros() {
@@ -644,8 +634,8 @@ public class Db {
     }
     
     private void createPutData() {
-        this.pd = dag.newPutData();
-        this.pd.nodeChangeListener = new Dag.NodeChangeListener() {
+        this.putData = dag.newPutData();
+        this.putData.nodeChangeListener = new Dag.NodeChangeListener() {
             public void topNodeChanged(TopNode node) {
                 transNodes.addTopNode(node);
             }
@@ -821,16 +811,8 @@ public class Db {
 
         // Makes sure writes from startup and execute() are visible.
         synchronized (readSync) {}
-
-        int myState = state;
-        if (myState != STATE_ACTIVE) {
-            if (myState == STATE_STOPPING) {
-                throw new DbStoppingException("Cannot call get() when DB is stopping.");
-            } else {
-                throw new IllegalDbStateException("Cannot call get() when DB state is " 
-                        + getStateName(myState) + ".");
-            }
-        }
+        
+        assertDbStateIsActive("get");
         
         long firstAvailable = reclaim.getFirstAvailableLookupTime();
         if (lookupTime < firstAvailable) {
@@ -864,9 +846,8 @@ public class Db {
     }
     
     /**
-     * Follows the pointers in the DB graph from the super top node using the given 
-     * node index choices.
-     * Useful for testing.
+     * Follows the pointers in the Db graph from the super top node using the given 
+     * node index choices. Useful for testing.
      */
     public INode findNode(int[] choices, GetData gd) {
         return dag.findNode(choices, gd);
@@ -898,15 +879,7 @@ public class Db {
         synchronized (readSync) {}
             // Makes sure writes from startup and execute() are visible.
 
-        int myState = state;
-        if (myState != STATE_ACTIVE) {
-            if (myState == STATE_STOPPING) {
-                throw new DbStoppingException("Cannot call getMany() when DB is stopping.");
-            } else {
-                throw new IllegalDbStateException("Cannot call getMany() when DB state is " 
-                        + getStateName(myState) + ".");
-            }
-        }
+        assertDbStateIsActive("getMany");
         
         long first = reclaim.getFirstAvailableLookupTime();
         if (g.lookupTime < first) {
@@ -1026,7 +999,7 @@ public class Db {
      */
     public final void execute(Trans.Builder b) {
         //
-        // This little method does not comply with the minimum Core Layer API rule.
+        // This little method does not comply with the minimal Core Layer API rule.
         // Should be be avoided, but currently (2012-12) called from over 100 places.
         //
         execute(b.build());
@@ -1054,26 +1027,28 @@ public class Db {
         // Executes a KV set request as an ACID transaction.
         //
         // We make sure all readers have a read time that is strictly less than
-        // t.transTime
-        // while the synchronized(writeLock) clause is executing. This is
-        // handled by dbClock.
+        // t.transTime while the synchronized(writeLock) clause is executing. 
+        // This is handled by dbClock.
         //
 
-        // Makes sure writes from startup and previous execute() are visible.
+        // Makes sure writes from startup and previous execute() calls are visible.
         // We do not hold DB.writeLock yet.
         synchronized (readSync) {}
 
+        assertDbStateIsActive("execute");
+        executeInner(t, false);
+    }
+
+    private void assertDbStateIsActive(String methodName) {
         int myState = state;
         if (myState != STATE_ACTIVE) {
             if (myState == STATE_STOPPING) {
-                throw new DbStoppingException("Cannot call getMany() when DB is stopping.");
+                throw new DbStoppingException("Cannot call " + methodName + "() while DB is stopping.");
             } else {
-                throw new IllegalDbStateException("Cannot call getMany() when DB state is " 
+                throw new IllegalDbStateException("Cannot call " + methodName + "() when DB state is " 
                         + getStateName(myState) + ".");
             }
         }
-
-        executeInner(t, false);
     }
     
     /**
@@ -1098,8 +1073,7 @@ public class Db {
         
         synchronized (writeLock) {
             if (!isPrimordial) assert transNodes.size() == 0;
-            this.pd.spaceSplitCount = 0;
-            
+            this.putData.spaceSplitCount = 0;
             this.trans = t;
 
             // Returns to caller with a RerunException if any key was modified after 
@@ -1125,7 +1099,7 @@ public class Db {
                     // made by the writer (the thread executing this code).
             } finally {
                 dbClock.transactionEnd();
-                // After above line, get requests can use the lookuptime t.transTime.
+                // After above line, get operations can use the lookuptime t.transTime.
             }
 
             for (int i = 0; i < t.writeKeyHashes.length; i++) {
@@ -1141,7 +1115,7 @@ public class Db {
 
             // The synch statement below guarantees that the writes are visible to
             // all readers assuming they also use the same statement as below
-            // before that start reading.
+            // before they start reading.
             synchronized (readSync) {}
             
             // 1301 Frans. The following line moved to inside the synchronized
@@ -1151,19 +1125,16 @@ public class Db {
         }
     }
 
+    /**
+     * Reads the KVs as warm-up; aims to avoid lengthy disk reads and cache
+     * misses while synchronizing on this.writeLock. We want to minimize the time holding
+     * this.writeLock. However, if we do write transactions from a single thread anyway, it
+     * would be better to void these get operations (would save 10-20% CPU for execute()).
+     */
     private final void warmup(Trans t) {
-        //
-        // Reads the KVs as warm-up; aims to avoid lengthy disk reads and cache
-        // misses while synchronizing on this.writeLock. We want to minimize the time holding
-        // this.writeLock. However, if we do write transactions from a single thread anyway, it
-        // would be better to void these get operations (would save 10-20% CPU for execute()).
-        //
-        
-        //long readTime = dbClock.time();
         long readTime = dbClock.lookupTime(Long.MAX_VALUE);
 
         boolean enableEvict = t.getData.evictData.enableEvict;
-        
         t.getData.evictData.enableEvict = false;
 
         for (Kv kv : t.kvs) {
@@ -1180,7 +1151,7 @@ public class Db {
     private void recordChoicesAndEnsureIncluded(final long limit) {        
         GetData gd = dag.newGetData();
         gd.actualLookupTime = trans.time;
-        gd.accessData = pd.accessData;
+        gd.accessData = putData.accessData;
         
         final Choices[] finalChoice = new Choices[1];
         
@@ -1313,12 +1284,12 @@ public class Db {
      * Sets the KVs directly to the in-memory data structure. This method runs with exclusive 
      * write access to the data structure (synchronized (writeLock)). However, there may be
      * concurrent readers that read with a lookup time strictly less than the transaction time
-     * (trans.transTime). Caller must hold writeLock.
+     * (trans.transTime).
      */
     private final void putKvs() {
         assert Thread.holdsLock(writeLock);
         final int length = trans.kvs.length;        
-        pd.tt = trans.time;
+        putData.tt = trans.time;
 
         for (int i = 0; i < length; i++) {
             Kv kv = trans.kvs[i];
@@ -1332,12 +1303,12 @@ public class Db {
                 kv.transformValue(trans.time, previousValue);
             }
 
-            dag.putKv(kv.getKey(), kv.getValue(), pd);
+            dag.putKv(kv.getKey(), kv.getValue(), putData);
             
-            pd.clearFast();
+            putData.clearFast();
         }
         
-        pd.clear();
+        putData.clear();
     }
 
     public long getAccessData() {
@@ -1504,17 +1475,15 @@ public class Db {
      * For listening to what happens at startup. Useful for testing / debugging.
      */
     public static interface StartListener {
-        void startupDistance(long startupDistance);
-        void tpos(long startPos);
-        void startPos(long startPos);
+        void reportStartupDistance(long startupDistance);
+        void reportStartPos(long startPos);
     }
     
     public static final DoNothingStartListener DO_NOTHING_START_LISTENER = new DoNothingStartListener();
     
     public static class DoNothingStartListener implements StartListener {
-        public void startupDistance(long startupDistance) {}
-        public void tpos(long startPos) {}
-        public void startPos(long startPos) {}
+        public void reportStartupDistance(long startupDistance) {}
+        public void reportStartPos(long startPos) {}
     }
     
     /**
@@ -1539,19 +1508,16 @@ public class Db {
         }
 
         private Builder() {
+            // Default settings for Db is specified here.
+            
             streamInfos = new ArrayList<StreamInfo>();
-            
-            // Default settings for DB.
-            
-            //startupDistance = 10 * 1000000;
-            startupDistance = 20 * 1000000;    // 130707 Frans: new default startup distance.
+            startupDistance = 20 * 1000000;
             clock = new SystemClock();
             evictBoss = new FixedDurationEvictBoss();
             maxNodeSize30();
             
-            //retainDuration = Clock.UNITS_PER_SEC * 3600L * 24 * 7;
-            retainDuration = Long.MAX_VALUE;   
-                // 130707 Frans: default retain duration = forever. Was one week.
+            // 130707 Frans: default retain duration = forever. Was one week before.
+            retainDuration = Long.MAX_VALUE;
         }
 
         /**
