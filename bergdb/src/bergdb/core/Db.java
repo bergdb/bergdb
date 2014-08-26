@@ -47,16 +47,13 @@ import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
 
 /**
- * <p>
- * An object of this class provides access to the data in the database. This
+ * <p>An object of this class provides access to the data in the database. This
  * class is the internal DB implementation; it should not be used directly by
- * end users unless they really need the absolutely highest performance. This
- * class implements the <i>Core Layer</i>, see below. Also this class works as a
- * central delegator object for the database application (and as a class-for-me
- * class).
- * <p>
- * <p>
- * The API of the <i>Core Layer</i> consists of the methods:
+ * end users unless they really need the absolutely highest performance or some feature
+ * not exposed by the higher level API. 
+ * This class implements the <i>Core Layer</i>, see below.</p>
+ * 
+ * <p>The API of the <i>Core Layer</i> consists of the methods:
  * </p>
  * <ul>
  * <li>getOne()</li>
@@ -257,13 +254,9 @@ public class Db {
         this.databaseIdFromBuilder = b.id;
         
         //
-        // Synch note:
-        // Synchronized blocks make sure the writes in the constructor are
-        // visible to writers and readers. 
-        // Readers synchronize with readSync (get(), getMany()) and writers
-        // synchronize with writeLock.
+        // Synch note: Synchronized blocks make sure the writes in the constructor are
+        // visible to other threads.
         //
-        
         synchronized (readSync) {}
         synchronized (writeLock) {}
     }
@@ -574,6 +567,8 @@ public class Db {
     }
     
     /**
+     * The startup implementation.
+     * 
      * @throws StreamIoException
      * @throws StreamFormatException
      * @throws BadReplicaException
@@ -581,49 +576,51 @@ public class Db {
      */
     private void startInner(StartListener listener) {
         
-        checkThatStateIsZero();
+        assertStateIsZero();
 
         syncStreams();
-        
         createInitialStreamStateIfStreamIsEmpty();
-
         nodeStream.recover();
+        assertDatabaseIdNotOnlyZeros();
+        setStartupDistanceFromStream();
+        setStartupPosFromStream();
+        listener.startupDistance(this.startupDistance);
+        listener.startPos(startupPos.get());
         
-        // Just an assertion
+        ArrayList<StoredTrans> transactions = readTransactions(startupPos.get());
+        setLastTransTimeOfDbClock(transactions);
         
-        if (Util.hasOnlyZeros(nodeStream.getMetaBlock().getId())) {
-            throw new IllegalStateException("Invalid database ID, only zero bytes.");
-        }
+        startDag(transactions);
         
-        // Startup phase
+        createPutData();
+        this.state = STATE_ACTIVE;
         
+        // state = STATE_ACTIVE needed before this method.
+        reclaim.initFromDb();
+    }
+
+    private void startDag(ArrayList<StoredTrans> transactions) {
+        DagStarter.Result result = DagStarter.start(transactions, getAccessData());
+        this.dag = result.createDag(nodeStream, builder.maxNodeSize);
+        this.cachedMemoryValue.set(result.getCachedMemoryValue());
+    }
+
+    private void setStartupPosFromStream() {
+        this.startupPos.set(nodeStream.getMetaBlock().getStartupPos());
+    }
+
+    private void setStartupDistanceFromStream() {
         this.startupDistance = nodeStream.getMetaBlock().getStartupDistance();
         if (startupDistance <= 0) {
             throw new StreamFormatException("Bad value of startupDistance in meta " +
                     "block of stream: " + startupDistance + ".");
         }
-        this.startupPos.set(nodeStream.getMetaBlock().getStartupPos());
-        
-        listener.startupDistance(this.startupDistance);
-        
-        long startPos = startupPos.get();
-        listener.startPos(startPos);
-        
-        
-        ArrayList<StoredTrans> transactions = readTransactions(startPos);
-        
-        setLastTransTimeOfDbClock(transactions);
-        
-        DagStarter.Result result = DagStarter.start(transactions, getAccessData());
-        this.dag = result.createDag(nodeStream, builder.maxNodeSize);
-        this.cachedMemoryValue.set(result.getCachedMemoryValue());
-        
-        createPutData();
+    }
 
-        this.state = STATE_ACTIVE;
-
-        // state = STATE_ACTIVE needed before this method.
-        reclaim.initFromDb();
+    private void assertDatabaseIdNotOnlyZeros() {
+        if (Util.hasOnlyZeros(nodeStream.getMetaBlock().getId())) {
+            throw new IllegalStateException("Invalid database ID, only zero bytes.");
+        }
     }
     
     /** Reads transactions from DB stream starting at startPos. */
@@ -663,7 +660,10 @@ public class Db {
         };
     }
 
-    private void checkThatStateIsZero() {
+    /**
+     * @throws IllegalDbStateException
+     */
+    private void assertStateIsZero() {
         if (state != STATE_ZERO) {
             throw new IllegalDbStateException("Db has been started already, "
                     + "start() should be called once only; Db state is: " 
