@@ -5,7 +5,6 @@ import java.util.Comparator;
 import java.util.TreeMap;
 
 import bergdb.common.Util;
-import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.dag.TransNodes;
 import bergdb.nanotest.T;
@@ -52,12 +51,8 @@ public class Trans {
     public int nodeCount;           // Number of nodes written to stream. Useful for testing/debug.
                                     // Note, not super important, could be removed.
     
-    // -- Internal working data --
-    public final GetData getData;
-    
     // -- Other --
-    boolean trace;              // If true, debug trace is printed to System.out.
-    boolean isInternal;         // True if transaction was executed on behalf of the database itself.
+    boolean isInternal;             // True if transaction was executed on behalf of the database itself.
 
     private static Comparator<long[]> arrayComparator = new Comparator<long[]>() {
         public int compare(long[] a1, long[] a2) {
@@ -67,7 +62,6 @@ public class Trans {
     
     private Trans() {
         readKeyHashes = new long[0];
-        getData = new GetData();     // NOTE Better to use Db.newGetData().
     }
     
     public boolean isInternal() {
@@ -131,7 +125,6 @@ public class Trans {
      */
     public static class Builder {
         // Note This class does not enforce uniqueness of elements in keyReadSet, kvs, vkeyHashes.
-        // NOTE Specialized array implementations would be more efficient.
         
         private long builderLookupTime;
         private ArrayList<Kv> kvs;

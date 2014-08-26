@@ -157,13 +157,17 @@ public class Db {
     private final TransactionListener reclaimTransactionListener;
 
     // ---- Working data, write access ----
+    // TODO A. Consider how to handle working data for a transaction.
     // Must only be accessed from thread holding writeLock.
     
     /** Current startupPos; stream pos to use by startup procedure. */
     private final StartupPos startupPos;
     
-    /** PutData, used when putting data to Dag in executeInner(). */
-    private PutData putData;
+    /** PutData used when executing a transaction. */
+    private PutData putDataForExecute;
+    
+    /** GetData used when executing a transaction. */
+    private GetData getDataForExecute;
     
     /** The nodes updated for the current transaction. To be written to the stream. */
     private final TransNodes transNodes;
@@ -555,6 +559,8 @@ public class Db {
         startDag(transactions);
         
         createPutData();
+        this.getDataForExecute = newGetData();
+        
         this.state = STATE_ACTIVE;
         
         // state = STATE_ACTIVE needed before this method.
@@ -607,8 +613,8 @@ public class Db {
     }
     
     private void createPutData() {
-        this.putData = dag.newPutData();
-        this.putData.nodeChangeListener = new Dag.NodeChangeListener() {
+        this.putDataForExecute = dag.newPutData();
+        this.putDataForExecute.nodeChangeListener = new Dag.NodeChangeListener() {
             public void topNodeChanged(TopNode node) {
                 transNodes.addTopNode(node);
             }
@@ -1046,7 +1052,7 @@ public class Db {
         
         synchronized (writeLock) {
             if (!isPrimordial) assert transNodes.size() == 0;
-            this.putData.spaceSplitCount = 0;
+            this.putDataForExecute.spaceSplitCount = 0;
             this.trans = t;
 
             // Returns to caller with a RerunException if any key was modified after 
@@ -1105,16 +1111,17 @@ public class Db {
      * would be better to void these get operations (would save 10-20% CPU for execute()).
      */
     private final void warmup(Trans t) {
-        long readTime = dbClock.lookupTime(Long.MAX_VALUE);
+        final long readTime = dbClock.lookupTime(Long.MAX_VALUE);
+        final GetData gd = getDataForExecute;
 
-        boolean enableEvict = t.getData.evictData.enableEvict;
-        t.getData.evictData.enableEvict = false;
+        boolean enableEvict = gd.evictData.enableEvict;
+        gd.evictData.enableEvict = false;
 
         for (Kv kv : t.kvs) {
-            this.getOne(readTime, kv.getKey(), t.getData);
+            this.getOne(readTime, kv.getKey(), gd);
         }
 
-        t.getData.evictData.enableEvict = enableEvict;
+        gd.evictData.enableEvict = enableEvict;
     }
     
     /**
@@ -1124,7 +1131,7 @@ public class Db {
     private void recordChoicesAndEnsureIncluded(final long limit) {        
         GetData gd = dag.newGetData();
         gd.actualLookupTime = trans.time;
-        gd.accessData = putData.accessData;
+        gd.accessData = putDataForExecute.accessData;
         
         final Choices[] finalChoice = new Choices[1];
         
@@ -1261,7 +1268,7 @@ public class Db {
     private final void putKvs() {
         assert Thread.holdsLock(writeLock);
         final int length = trans.kvs.length;        
-        putData.tt = trans.time;
+        putDataForExecute.tt = trans.time;
 
         for (int i = 0; i < length; i++) {
             Kv kv = trans.kvs[i];
@@ -1271,16 +1278,16 @@ public class Db {
             }
 
             if (kv.valueTransformation != null) {
-                final byte[] previousValue = this.getOne(trans.time, kv.getKey(), trans.getData);
+                final byte[] previousValue = this.getOne(trans.time, kv.getKey(), getDataForExecute);
                 kv.transformValue(trans.time, previousValue);
             }
 
-            dag.putKv(kv.getKey(), kv.getValue(), putData);
+            dag.putKv(kv.getKey(), kv.getValue(), putDataForExecute);
             
-            putData.clearFast();
+            putDataForExecute.clearFast();
         }
         
-        putData.clear();
+        putDataForExecute.clear();
     }
 
     public long getAccessData() {

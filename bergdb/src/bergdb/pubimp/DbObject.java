@@ -393,9 +393,7 @@ public class DbObject extends DbValue {
      * @param c2o   How to create objects from classes.
      * @return      Returns 'dest' or defaultValue(dest.getClass()).
      */
-    public Object toJavaObject(Object dest, ClassToObject c2o) {
-        // NOTE: Should this method be public? 
-        
+    public Object toJavaObject(Object dest, ClassToObject c2o) {        
         if (dest == null) {
             throw new IllegalArgumentException("dest == null not allowed");
         }
