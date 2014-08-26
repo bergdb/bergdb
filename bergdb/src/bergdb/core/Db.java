@@ -133,6 +133,10 @@ public class Db {
     private final NodeStream nodeStream;
     private final StorageManager storageManager;
     private final Random evictRandom;
+    private Dag dag;
+    private TransSeq transSeq;
+    private final ExecuteData x;
+    private final Aux aux = new Aux();
     
     /** DatabaseId from Database.Builder, may be null. */
     private DatabaseId databaseIdFromBuilder;
@@ -152,42 +156,10 @@ public class Db {
     /** Current startupDistance. Sync note: protected by writeLock. */
     private long startupDistance;
     
-    // ---- Listeners ----
+    // ---- Misc ----
     
     private final TransactionListener reclaimTransactionListener;
 
-    // ---- Working data, write access ----
-    // TODO A. Consider how to handle working data for a transaction.
-    // Must only be accessed from thread holding writeLock.
-    
-    /** Current startupPos; stream pos to use by startup procedure. */
-    private final StartupPos startupPos;
-    
-    /** PutData used when executing a transaction. */
-    private PutData putDataForExecute;
-    
-    /** GetData used when executing a transaction. */
-    private GetData getDataForExecute;
-    
-    /** The nodes updated for the current transaction. To be written to the stream. */
-    private final TransNodes transNodes;
-    
-    /** Current transaction while writeLock is held. */
-    private Trans trans;
-    
-    /** End stream position of last transaction; used by Db.sync(). */
-    private long lastSposOfLastTrans;
-    
-    // ---- Auxilliary state ----
-    
-    private final Aux aux = new Aux();
-    
-    // ---- Graph ----
-    
-    private Dag dag;
-    private TransSeq transSeq;
-    
-    
     /**
      * Private constructor, only DB.Builder calls it. Wires dependencies based
      * on Builder settings.
@@ -195,14 +167,14 @@ public class Db {
     private Db(Builder b) {
         writeLock = new WriteLock();
         readSync = new ReadSync();
+        
+        x = new ExecuteData();
+        
         evictRandom = new Random(0);      // pseudo-random, but deterministic.
-        transNodes = new TransNodes();
         keyModSet = new KeyModSet();
  
         this.maxNodeSize = b.maxNodeSize;
         this.startupDistance = b.startupDistance;
-        this.startupPos = new StartupPos(0);
-        
         this.metaBlock = new MetaBlock();
         
         StorageManager.Builder smBuilder = new StorageManager.Builder(writeLock);
@@ -213,7 +185,7 @@ public class Db {
         this.storageManager = smBuilder.build();
         
         AppendOnlyStream aos = storageManager;
-        this.lastSposOfLastTrans = aos.getLength();
+        x.lastSposOfLastTrans = aos.getLength();
         
         RecoverableStream rstream = new RecoverableStream(aos, metaBlock);
         this.nodeStream = new NodeStream(rstream, writeLock);
@@ -553,13 +525,13 @@ public class Db {
         assertDatabaseIdNotOnlyZeros();
         setStartupPosAndStartupDistanceFromStream(listener);
         
-        ArrayList<StoredTrans> transactions = readTransactions(startupPos.get());
+        ArrayList<StoredTrans> transactions = readTransactions(x.startupPos.get());
         setLastTransTimeOfDbClock(transactions);
         
         startDag(transactions);
         
         createPutData();
-        this.getDataForExecute = newGetData();
+        x.getData = newGetData();
         
         this.state = STATE_ACTIVE;
         
@@ -580,10 +552,10 @@ public class Db {
             throw new StreamFormatException("Bad value of startupDistance in meta " +
                     "block of stream: " + startupDistance + ".");
         }
-        this.startupPos.set(nodeStream.getMetaBlock().getStartupPos());
+        x.startupPos.set(nodeStream.getMetaBlock().getStartupPos());
         
         listener.reportStartupDistance(this.startupDistance);
-        listener.reportStartPos(startupPos.get());
+        listener.reportStartPos(x.startupPos.get());
     }
 
     private void assertDatabaseIdNotOnlyZeros() {
@@ -613,18 +585,18 @@ public class Db {
     }
     
     private void createPutData() {
-        this.putDataForExecute = dag.newPutData();
-        this.putDataForExecute.nodeChangeListener = new Dag.NodeChangeListener() {
+        x.putData = dag.newPutData();
+        x.putData.nodeChangeListener = new Dag.NodeChangeListener() {
             public void topNodeChanged(TopNode node) {
-                transNodes.addTopNode(node);
+                x.transNodes.addTopNode(node);
             }
             
             public void newValueNode(ValueNode node, long[] key) {
-                transNodes.addValueNode(node, key);
+                x.transNodes.addValueNode(node, key);
             }
             
             public void keyNodeChanged(KeyNode node) {
-                transNodes.addKeyNode(node);
+                x.transNodes.addKeyNode(node);
             }
         };
     }
@@ -729,10 +701,9 @@ public class Db {
             dbClock.transactionEnd();
         }
         
-        this.transNodes.addKeyNode(root);
-        this.transNodes.addTopNode(top.getSuperRoot());
-        
-        this.trans = Trans.builder().build();
+        x.transNodes.addKeyNode(root);
+        x.transNodes.addTopNode(top.getSuperRoot());
+        x.trans = Trans.builder().build();
         
         DatabaseId id = (databaseIdFromBuilder == null) ? new DatabaseId() : databaseIdFromBuilder;
         nodeStream.getMetaBlock().setId(id.getBytes());
@@ -914,7 +885,7 @@ public class Db {
         
         if (pos == 0) {
             synchronized (writeLock) {
-                pos = this.lastSposOfLastTrans;
+                pos = x.lastSposOfLastTrans;
             }
         }
         
@@ -1051,9 +1022,9 @@ public class Db {
         warmup(t);
         
         synchronized (writeLock) {
-            if (!isPrimordial) assert transNodes.size() == 0;
-            this.putDataForExecute.spaceSplitCount = 0;
-            this.trans = t;
+            if (!isPrimordial) assert x.transNodes.size() == 0;
+            x.putData.spaceSplitCount = 0;
+            x.trans = t;
 
             // Returns to caller with a RerunException if any key was modified after 
             // the read time of the transaction.
@@ -1087,8 +1058,8 @@ public class Db {
 
             appendNodesToStream();
             
-            lastSposOfLastTrans = trans.lastPos;
-            startupPos.releaseForEvict();
+            x.lastSposOfLastTrans = x.trans.lastPos;
+            x.startupPos.releaseForEvict();
             
             clearTransMemory();
 
@@ -1112,7 +1083,7 @@ public class Db {
      */
     private final void warmup(Trans t) {
         final long readTime = dbClock.lookupTime(Long.MAX_VALUE);
-        final GetData gd = getDataForExecute;
+        final GetData gd = x.getData;
 
         boolean enableEvict = gd.evictData.enableEvict;
         gd.evictData.enableEvict = false;
@@ -1130,15 +1101,15 @@ public class Db {
      */
     private void recordChoicesAndEnsureIncluded(final long limit) {        
         GetData gd = dag.newGetData();
-        gd.actualLookupTime = trans.time;
-        gd.accessData = putDataForExecute.accessData;
+        gd.actualLookupTime = x.trans.time;
+        gd.accessData = x.putData.accessData;
         
         final Choices[] finalChoice = new Choices[1];
         
         gd.pointerListener = new PointerListener() {
             public void superRootAccessed(TopNode superRoot) {
                 if (superRoot.getSpos() < limit) {
-                    transNodes.addTopNode(superRoot);
+                    x.transNodes.addTopNode(superRoot);
                 }
             }
             
@@ -1146,22 +1117,22 @@ public class Db {
                     int pointerType) {
                 if (result.getSpos() < limit && result.isIndexNode()) {
                     if (result.getType() == INode.TYPE_TOP_NODE) {
-                        transNodes.addTopNode((TopNode) result);
+                        x.transNodes.addTopNode((TopNode) result);
                     } else {
-                        transNodes.addKeyNode((KeyNode) result);
+                        x.transNodes.addKeyNode((KeyNode) result);
                     }
                 }
                 finalChoice[0].add(pointerIndex);
             }
         };
         
-        for (int i = 0; i < transNodes.valueSize; i++) {
-            finalChoice[0] = transNodes.choices[i];
-            long[] key = transNodes.keys[i];
+        for (int i = 0; i < x.transNodes.valueSize; i++) {
+            finalChoice[0] = x.transNodes.choices[i];
+            long[] key = x.transNodes.keys[i];
             byte[] value = getOne(gd.actualLookupTime, key, gd);
             
-            assert transNodes.valueNodes[i].isDelete() 
-                || Assert.arrayEquals(transNodes.valueNodes[i].getValue(), value);
+            assert x.transNodes.valueNodes[i].isDelete() 
+                || Assert.arrayEquals(x.transNodes.valueNodes[i].getValue(), value);
         }
     }
 
@@ -1192,7 +1163,7 @@ public class Db {
         // An DbForMe interface sent to KeyNode methods that may enlarge its memory use,
         // and to constructors of ValueNode, KeyNode, TopNode. Maybe overkill?
 
-        aux.cachedMemoryValue.addAndGet(transNodes.sumMemSize());
+        aux.cachedMemoryValue.addAndGet(x.transNodes.sumMemSize());
 
         // NOTE The current implementation works (120522)
         // However, a small transaction that comes after a large one, will often get unfairly
@@ -1202,12 +1173,12 @@ public class Db {
         // This can be solved. The total size of the transaction nodes can be computed first, 
         // then..
 
-        int ordinaryNodeCount = transNodes.size();
+        int ordinaryNodeCount = x.transNodes.size();
         
-        long startupPos2 = startupPos.next(this.startupDistance, nodeStream.getLength());
+        long startupPos2 = x.startupPos.next(this.startupDistance, nodeStream.getLength());
         
         if (dag != null) {
-            transSeq.addToTransNodes(startupPos2, transNodes);
+            transSeq.addToTransNodes(startupPos2, x.transNodes);
             recordChoicesAndEnsureIncluded(startupPos2);
                 // NOTE 131124, 0 unit tests and only 1 f test fails if above line commented.
                 // Is recordChoicesAndEnsureIncluded needed?
@@ -1215,22 +1186,22 @@ public class Db {
         
         computeStats(ordinaryNodeCount);
 
-        assert trans != null : "trans is null";
-        assert transNodes != null : "transNodes is null";
+        assert x.trans != null : "trans is null";
+        assert x.transNodes != null : "transNodes is null";
         
-        trans.nodeCount = transNodes.size();
+        x.trans.nodeCount = x.transNodes.size();
         
-        nodeStream.appendNodes(transNodes, trans);
+        nodeStream.appendNodes(x.transNodes, x.trans);
 
         MetaBlock meta = nodeStream.getMetaBlock();
-        meta.setStartupPos(startupPos.get());
+        meta.setStartupPos(x.startupPos.get());
         
         if (dag != null) {
-            transSeq.add(transNodes.createTset(trans.pos, trans.lastPos));            
+            transSeq.add(x.transNodes.createTset(x.trans.pos, x.trans.lastPos));            
             transSeq.removeBeforeSpos(startupPos2);
         }
         
-        aux.nodesWritten += transNodes.size();
+        aux.nodesWritten += x.transNodes.size();
         aux.ordinaryNodesWritten += ordinaryNodeCount;
     }
 
@@ -1242,7 +1213,7 @@ public class Db {
     private void computeStats(int ordinaryNodeCount) {
         // Computes dirtyFraction100, dirtyFraction1000.
         
-        int totalNodeCount = transNodes.size();
+        int totalNodeCount = x.transNodes.size();
         int dirtyNodeCount = totalNodeCount - ordinaryNodeCount;
         double dirtyFraction = ((double) dirtyNodeCount) / totalNodeCount;
         aux.dirtyFraction100   = 0.99  * aux.dirtyFraction100  +  0.01  * dirtyFraction;
@@ -1255,8 +1226,8 @@ public class Db {
      */
     private void clearTransMemory() {
         assert Thread.holdsLock(writeLock);
-        this.trans = null;
-        transNodes.clear();
+        x.trans = null;
+        x.transNodes.clear();
     }
 
     /**
@@ -1267,27 +1238,27 @@ public class Db {
      */
     private final void putKvs() {
         assert Thread.holdsLock(writeLock);
-        final int length = trans.kvs.length;        
-        putDataForExecute.tt = trans.time;
+        final int length = x.trans.kvs.length;        
+        x.putData.tt = x.trans.time;
 
         for (int i = 0; i < length; i++) {
-            Kv kv = trans.kvs[i];
+            Kv kv = x.trans.kvs[i];
 
             if (kv.keyTransformation != null) {
-                kv.getKeyTransformation().transform(trans, i);
+                kv.getKeyTransformation().transform(x.trans, i);
             }
 
             if (kv.valueTransformation != null) {
-                final byte[] previousValue = this.getOne(trans.time, kv.getKey(), getDataForExecute);
-                kv.transformValue(trans.time, previousValue);
+                final byte[] previousValue = this.getOne(x.trans.time, kv.getKey(), x.getData);
+                kv.transformValue(x.trans.time, previousValue);
             }
 
-            dag.putKv(kv.getKey(), kv.getValue(), putDataForExecute);
+            dag.putKv(kv.getKey(), kv.getValue(), x.putData);
             
-            putDataForExecute.clearFast();
+            x.putData.clearFast();
         }
         
-        putDataForExecute.clear();
+        x.putData.clear();
     }
 
     public long getAccessData() {
@@ -1311,7 +1282,7 @@ public class Db {
 
         ed.pointerCount = 0;
         ed.evictCount = 0;
-        ed.startupPos = this.startupPos.get();
+        ed.startupPos = x.startupPos.get();
         evictInner(ed);
         evictBoss.reportEvictCount(ed);
     }
@@ -1449,6 +1420,36 @@ public class Db {
      * The class has no other purpose.
      */
     public static class WriteLock {}
+    
+    
+    /**
+     * Reusable memory for execute(Transaction) method.
+     * All field access must be from thread holding Db.writeLock.
+     */
+    private class ExecuteData {
+        /** Current transaction while writeLock is held. */
+        private Trans trans;
+        
+        /** Current startupPos; stream pos to use by startup procedure. */
+        private final StartupPos startupPos;
+        
+        /** PutData used when executing a transaction. */
+        private PutData putData;
+        
+        /** GetData used when executing a transaction. */
+        private GetData getData;
+        
+        /** The nodes updated for the current transaction. To be written to the stream. */
+        private final TransNodes transNodes;
+        
+        /** End stream position of last transaction; used by Db.sync(). */
+        private long lastSposOfLastTrans;
+        
+        ExecuteData() {
+            startupPos = new StartupPos(0);
+            transNodes = new TransNodes();
+        }
+    }
     
     /**
      * Private auxilliary database state; counters, statistics, ...
@@ -1768,12 +1769,6 @@ public class Db {
         public Builder testSetup(AppendOnlyStream stream) {
             testSetup();
             stream("main", stream, 100*1000, 10);
-            
-            //testClock();
-            //evictBoss = new NoEvictBoss();
-            //stream("main", stream, 100*1000, 10);
-            //retainForever();
-            //id = DatabaseId.getTestId();
             return this;
         }
 
