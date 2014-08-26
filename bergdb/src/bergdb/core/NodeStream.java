@@ -339,74 +339,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         }
         
         public StoredTrans getStoredTrans() {
-            //return new StoredTrans(tpos, transBuffer);
             return StoredTrans.parse(tpos, transBuffer);
-        }
-    }
-
-    /**
-     * Class that can iterate through the nodes (stream items) of a transaction given the
-     * transaction bytes.
-     * 
-     * @deprecated Used StoredTrans instead.
-     */
-    public class NodeIterator {
-        byte[] buffer;
-        int count = 0;
-        int offset = 0;
-        long transPos;
-        long sposPrevious;
-        byte[] choices; // non-null for value nodes (including deletes)
-        INode node;
-        StoredNode stored;
-        private long transTime;
-
-        public NodeIterator(long transPos, byte[] buffer) throws StreamFormatException {
-            if (buffer == null) {
-                throw new IllegalArgumentException("buffer == null not allowed");
-            }
-            if (buffer.length < 16 + 0 + 1) {
-                throw new IllegalArgumentException("buffer too small, " + buffer.length);
-            }
-            this.buffer = buffer;
-            this.transPos = transPos;
-            int size = Bytes.bytesToIntLE(buffer, offset);
-            if (size != buffer.length) {
-                throw new StreamFormatException("Bad size, " + size + ", " + buffer.length);
-            }
-            offset += 8;
-            transTime = Bytes.bytesToLongLE(buffer, offset);
-            offset += 8;
-        }
-
-        public long getTransTime() {
-            return transTime;
-        }
-
-        /**
-         * Advances iterator to next stream item. Sets fields: node, sposPrevious, count, offset.
-         */
-        public boolean next() {
-            // 130424 Frans: modified to handle zero-fill.
-
-            if (offset + 4 >= buffer.length) {
-                return false;
-            }
-
-            int nodeSize = Bytes.bytesToIntLE(buffer, offset);
-            if (nodeSize == 0) {
-                return false;
-            }
-
-            long spos = RecoverableStream.getSpos(transPos, offset);            
-            this.stored = NodeStream.bytesToNode(spos, buffer, offset, nodeSize);
-            this.node = stored.getNode();
-            this.sposPrevious = stored.getPrevPos();
-            this.choices = stored instanceof StoredValueNode ? ((StoredValueNode) stored).getChoices() : null;
-
-            offset += nodeSize;
-            count++;
-            return true;
         }
     }
 }
