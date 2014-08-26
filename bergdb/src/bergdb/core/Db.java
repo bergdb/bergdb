@@ -62,16 +62,14 @@ import bergdb.stream.MemoryStream;
  * <li>execute(Transaction)</li>
  * </ul>
  * 
- * <p>
- * Only these methods should be used by a consumer of the Core Layer once the
- * Db has been started and before it has been stopped. This API
+ * <p>These methods are the only ones that need to be used by a consumer of the 
+ * Core Layer once the Db has been started and before it has been stopped. This API
  * form a narrow "waist" with a large code base under it and potentially a large code
  * base "above" it. These methods are believed to be "feature complete" in the
  * sense that all features we want from the database can be implemented on top
  * of them. Functionality that can be provided by using only the Core Layer API,
  * should not offered by this class. The method start(), is needed by a user,
- * but for initialization like the constructor or DB.Builder class.
- * </p>
+ * but for initialization like the constructor or DB.Builder class.</p>
  * 
  * <p>Db Shutdown. The DB typically has allocated resources besides memory: 
  * open sockets, open files, running threads. These resources are guaranteed
@@ -96,6 +94,11 @@ public class Db {
      * 131023: changed from /#ikp/ to "/#i/", destroyed binary compatibility.
      */
     public static final String INTERNAL_KEY_PREFIX = Util.identity("/#i/");
+    
+    /**
+     * Minimum possible cacheMemoryValue.
+     */
+    public static final long MIN_CACHE_MEMORY_VALUE = Constants.MIN_CACHE_MEMORY_VALUE;
     
     static final long[] DUMMY_KEY = Keys.toSegments(INTERNAL_KEY_PREFIX + "-dummy");
     
@@ -162,11 +165,6 @@ public class Db {
     /** End stream position of last transaction; used by Db.sync(). */
     private long lastSposOfLastTrans;
     
-    /** First spos of last transaction to have executed. */
-    @SuppressWarnings("unused")
-    private long sposOfLastTrans;
-    
-
     // ---- Counters, statistics, aux state ----
     //
     // The cacheMemoryValue can be used as a time scale instead of ordinary
@@ -182,30 +180,9 @@ public class Db {
     // atomically.
     //
 
-    public static final long MIN_CACHE_MEMORY_VALUE = Constants.MIN_CACHE_MEMORY_VALUE;
     
-    private final AtomicLong cachedMemoryValue = new AtomicLong(MIN_CACHE_MEMORY_VALUE);
-        // The cachedMemoryValue is an estimate of the total amount of memory cached
-        // since the database process was started. It works as a time-scale for the cache.
-        // Yes, starting from minCacheMemoryValue instead of 0 has importance.
-    private final AtomicLong getOpCount = new AtomicLong(0);
-        // Number of get operations processed since startup of DB.
+    private final Aux aux = new Aux();
     
-    private long transactionCount = 0;
-        // Number of transactions executed since this.start().
-        // Protected by writeLock.
-    
-    private long kvCount = 0;
-        // Number of KVs set since this.start().
-        // Protected by writeLock.
-    
-    private long nodesWritten = 0;
-        // Number of nodes written since database started.
-    private long ordinaryNodesWritten = 0;
-    
-    // Below two, protected by writeLock.
-    private double dirtyFraction100 = 0.10;
-    private double dirtyFraction1000 = 0.10;
     
     // ---- Graph ----
     
@@ -293,25 +270,25 @@ public class Db {
     
     public double getDirtyFraction100() {
         synchronized (writeLock) {
-            return this.dirtyFraction100;
+            return aux.dirtyFraction100;
         }
     }
     
     public double getDirtyFraction1000() {
         synchronized (writeLock) {
-            return this.dirtyFraction1000;
+            return aux.dirtyFraction1000;
         }
     }
     
     public long getNodesWritten() {
         synchronized (writeLock) {
-            return this.nodesWritten;
+            return aux.nodesWritten;
         }
     }
     
     public long getOrdinaryNodesWritten() {
         synchronized (writeLock) {
-            return this.ordinaryNodesWritten;
+            return aux.ordinaryNodesWritten;
         }
     }
     
@@ -351,7 +328,7 @@ public class Db {
     }
     
     public long getCachedMemoryValue() {
-        return cachedMemoryValue.get();
+        return aux.cachedMemoryValue.get();
     }
 
     public long getRetainDuration() {
@@ -395,13 +372,13 @@ public class Db {
     
     public long getTransactionCount() {
         synchronized (writeLock) {
-            return transactionCount;
+            return aux.transactionCount;
         }
     }
     
     public long getKvCount() {
         synchronized (writeLock) {
-            return kvCount;
+            return aux.kvCount;
         }
     }
     
@@ -409,7 +386,7 @@ public class Db {
      * Returns the number of get operations that has completed since Db.start() was called.
      */
     public long getGetOpCount() {
-        return getOpCount.get();
+        return aux.getOpCount.get();
     }
 
     public final long getPosOfLastValidMetaBlock() {
@@ -593,9 +570,9 @@ public class Db {
 
     private void startDag(ArrayList<StoredTrans> transactions) {
         DagStarter.Result result = DagStarter.start(transactions, getAccessData());
-        this.dag = result.createDag(nodeStream, builder.maxNodeSize);
-        this.cachedMemoryValue.set(result.getCachedMemoryValue());
-        this.transSeq = result.getTransSeq();
+        dag = result.createDag(nodeStream, builder.maxNodeSize);
+        aux.cachedMemoryValue.set(result.getCachedMemoryValue());
+        transSeq = result.getTransSeq();
     }
 
     private void setStartupPosAndStartupDistanceFromStream(StartListener listener) {
@@ -844,7 +821,7 @@ public class Db {
 
         result = dag.getOne(gd.actualLookupTime, keySegments, gd);
 
-        getOpCount.incrementAndGet();
+        aux.getOpCount.incrementAndGet();
         return result;
     }
     
@@ -906,7 +883,7 @@ public class Db {
 
         dag.getMany(g);
         
-        this.getOpCount.addAndGet(g.getOpCount);
+        aux.getOpCount.addAndGet(g.getOpCount);
     }
     
     /**
@@ -1092,8 +1069,8 @@ public class Db {
             try {
                 t.time = dbClock.transactionBegin();
                 putKvs();
-                kvCount += t.kvs.length;
-                transactionCount++;
+                aux.kvCount += t.kvs.length;
+                aux.transactionCount++;
 
                 synchronized (readSync) {}
                     // Publishes the changes by the writer thread to the readers. This is done
@@ -1215,7 +1192,7 @@ public class Db {
         // An DbForMe interface sent to KeyNode methods that may enlarge its memory use,
         // and to constructors of ValueNode, KeyNode, TopNode. Maybe overkill?
 
-        this.cachedMemoryValue.addAndGet(transNodes.sumMemSize());
+        aux.cachedMemoryValue.addAndGet(transNodes.sumMemSize());
 
         // NOTE The current implementation works (120522)
         // However, a small transaction that comes after a large one, will often get unfairly
@@ -1253,8 +1230,8 @@ public class Db {
             transSeq.removeBeforeSpos(startupPos2);
         }
         
-        this.nodesWritten += transNodes.size();
-        this.ordinaryNodesWritten += ordinaryNodeCount;
+        aux.nodesWritten += transNodes.size();
+        aux.ordinaryNodesWritten += ordinaryNodeCount;
         trans.listener.nodesWritten(transNodes);
     }
 
@@ -1269,8 +1246,8 @@ public class Db {
         int totalNodeCount = transNodes.size();
         int dirtyNodeCount = totalNodeCount - ordinaryNodeCount;
         double dirtyFraction = ((double) dirtyNodeCount) / totalNodeCount;
-        this.dirtyFraction100   = 0.99  * this.dirtyFraction100  +  0.01  * dirtyFraction;
-        this.dirtyFraction1000  = 0.999 * this.dirtyFraction1000 +  0.001 * dirtyFraction;
+        aux.dirtyFraction100   = 0.99  * aux.dirtyFraction100  +  0.01  * dirtyFraction;
+        aux.dirtyFraction1000  = 0.999 * aux.dirtyFraction1000 +  0.001 * dirtyFraction;
     }
 
     /**
@@ -1315,7 +1292,7 @@ public class Db {
     }
 
     public long getAccessData() {
-        return -cachedMemoryValue.get();
+        return -aux.cachedMemoryValue.get();
     }
 
     private final void possiblyEvict(EvictData ed) {
@@ -1355,7 +1332,7 @@ public class Db {
         INode node = dag.getSuperRoot();
         INode nextNode;
         INode next2;
-        long limit = this.cachedMemoryValue.get() - evictBoss.getCacheDuration();
+        long limit = aux.cachedMemoryValue.get() - evictBoss.getCacheDuration();
         ed.accessTimeLimit = limit < 0 ? 0 : limit;
             // Nodes accessed after accessTimeLimit are not evictable.
 
@@ -1473,6 +1450,42 @@ public class Db {
      * The class has no other purpose.
      */
     public static class WriteLock {}
+    
+    /**
+     * Private auxilliary database state; counters, statistics, ...
+     */
+    private class Aux {
+        
+        /**
+         * The cachedMemoryValue is an estimate of the total amount of memory cached
+         * since the database process was started. It works as a time-scale for the cache.
+         * Yes, starting from minCacheMemoryValue instead of 0 has importance.
+         */
+        private final AtomicLong cachedMemoryValue = new AtomicLong(MIN_CACHE_MEMORY_VALUE);
+        
+        /** Number of get operations processed since startup of Db. */
+        private final AtomicLong getOpCount = new AtomicLong(0);
+        
+        /** 
+         * Number of transactions executed since this.start(). 
+         * Protected by writeLock.
+         */
+        private long transactionCount = 0;
+        
+        /**
+         * Number of KVs set since this.start().
+         * Protected by writeLock.
+         */
+        private long kvCount = 0;
+        
+        private long nodesWritten = 0;
+            // Number of nodes written since database started.
+        private long ordinaryNodesWritten = 0;
+        
+        // Below two, protected by writeLock.
+        private double dirtyFraction100 = 0.10;
+        private double dirtyFraction1000 = 0.10;
+    }
     
     /**
      * For listening to what happens at startup. Useful for testing / debugging.

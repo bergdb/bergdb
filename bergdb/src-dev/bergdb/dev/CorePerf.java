@@ -205,6 +205,14 @@ public class CorePerf {
 Log 
 ===
 
+== 140826 ==
+Running on cissi. JVM: OpenJDK 64-Bit Server VM 24.65-b04, java 1.7.0_65
+get:      0.81,  0.54,  8.087790093721592E-7
+get4t:    1.00,  0.80,  3.984744443304732E-7
+getmany:  0.86,  0.66,  1.7207912748321522E-7
+set:      0.99,  0.62,  4.949910585E-6
+GEO MEAN: 0.91,  0.65
+
 == 140715 ==
 On Cissi.
 get:      0.78,  0.52,  7.791102764702836E-7
