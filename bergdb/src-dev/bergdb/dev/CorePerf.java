@@ -205,6 +205,17 @@ public class CorePerf {
 Log 
 ===
 
+== 140909 ==
+On Cissi. OpenJDK 64-Bit Server VM 24.65-b04, java 1.7.0_65. Ubuntu 14.04.
+Main branch. Before kv2 branching.
+
+---- Result ----
+get:      0.80,  0.54,  8.039992727904227E-7
+get4t:    0.98,  0.78,  3.923383108572271E-7
+getmany:  0.84,  0.65,  1.683493660953631E-7
+set:      1.01,  0.63,  5.069338365E-6
+GEO MEAN: 0.91,  0.64
+
 == 140826 ==
 Running on cissi. JVM: OpenJDK 64-Bit Server VM 24.65-b04, java 1.7.0_65
 get:      0.81,  0.54,  8.087790093721592E-7
