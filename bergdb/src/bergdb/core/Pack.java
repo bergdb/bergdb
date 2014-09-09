@@ -22,6 +22,7 @@ public class Pack implements IPack {
         StoredNode.class,
         StoredKeyNode.class,
         StoredTopNode.class,
+        StoredTrans.class,
         StoredValueNode.class,
         Trans.class
     };

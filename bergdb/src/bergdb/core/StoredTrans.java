@@ -3,11 +3,18 @@ package bergdb.core;
 import java.util.ArrayList;
 
 import bergdb.common.Bytes;
+import bergdb.common.Util;
+import bergdb.dag.AccessData;
+import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
+import bergdb.dag.Keys;
+import bergdb.dag.Klong;
 import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
 import bergdb.dag.TransNodes;
 import bergdb.dag.ValueNode;
+import bergdb.nanotest.Assert;
+import bergdb.nanotest.T;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
 
@@ -55,6 +62,22 @@ public class StoredTrans {
         return b.toString();
     }
 
+    /**
+     * Struct class; key-value pair with raw data as read from the stored transaction.
+     */
+    public static class Kv {
+        public final byte[] key;
+        public final byte[] value;
+        
+        public Kv(byte[] key, byte[] value) {
+            this.key = key;
+            this.value = value;
+        }
+    }
+
+    /**
+     * Parses stream bytes to StoredNode objects.
+     */
     private static class Parser {
         long time;
         long pos;
@@ -63,6 +86,10 @@ public class StoredTrans {
 
         int offset = 0;
 
+        /**
+         * Parses a transaction starting at buffer[0].
+         * buffer.length may be longer than required to store the transaction.
+         */
         void parse(long transPos, byte[] buffer) {
             if (buffer == null) {
                 throw new IllegalArgumentException("buffer == null not allowed");
@@ -81,9 +108,9 @@ public class StoredTrans {
             int byteSize = Bytes.bytesToIntLE(buffer, offset);
             offset += 4;
 
-            if (byteSize != buffer.length) {
-                throw new StreamFormatException("Incompatible sizes, " + byteSize + " != "
-                        + buffer.length);
+            if (buffer.length < byteSize) {
+                throw new StreamFormatException("buffer too small, size in header: " 
+                        + byteSize + ", buffer size: " + buffer.length + ".");
             }
 
             offset += 4; // 4 unused bytes
@@ -124,7 +151,7 @@ public class StoredTrans {
             return stored;
         }
     }
-
+    
     /**
      * Class used to serialize a transaction to bytes. For performance reasons, an object of this
      * class can be reused to serialize multiple transactions. It has internal buffers that may be
@@ -233,7 +260,6 @@ public class StoredTrans {
                 prevPos[prevPosIndex++] = node.spos;
                 node.spos = currentPos;
                 node.id = (node.id == Spos.NULL) ? currentPos : node.id;
-                // totalSize += node.getByteSize();
                 totalSize += StoredKeyNode.getByteSize(node);
                 currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
             }
@@ -244,7 +270,7 @@ public class StoredTrans {
             for (int i = 0; i < transNodes.valueSize; i++) {
                 ValueNode node = transNodes.valueNodes[i];
                 node.spos = currentPos;
-                totalSize += StoredValueNode.getByteSize(node, transNodes.choices[i].size);
+                totalSize += StoredValueNode.getByteSize(node);
                 currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
             }
 
@@ -311,7 +337,7 @@ public class StoredTrans {
 
             for (int i = 0; i < transNodes.valueSize; i++) {
                 ValueNode n = transNodes.valueNodes[i];
-                offset += StoredValueNode.toBytes(n, transNodes.choices[i], byteBuffer, offset);
+                offset += StoredValueNode.toBytes(n, byteBuffer, offset);
             }
             return offset;
         }
@@ -383,4 +409,73 @@ public class StoredTrans {
             }
         }
     }
+    
+    
+    // ======== Tests ========
+    
+    @T
+    private static void testKvSanity() {
+        byte[] key = new byte[]{1};
+        byte[] value = new byte[]{1, 2};
+        
+        Kv kv = new Kv(key, value);
+        Assert.assertArrayEquals(new byte[]{1}, kv.key);
+        Assert.assertArrayEquals(new byte[]{1, 2}, kv.value);
+    }
+    
+    @T
+    private static void testSerialize1() {
+        Serializer serializer = new Serializer();
+        TransNodes transNodes = new TransNodes();
+        serializer.serialize(transNodes, 100, 200);
+        byte[] buffer = serializer.getOutputTransBuffer();
+        
+        Parser parser = new Parser();
+        parser.parse(200, buffer);
+        
+        Assert.assertEquals(0, parser.nodes.length);
+        Assert.assertEquals(100, parser.time);
+        Assert.assertEquals(200, parser.pos);
+    }
+    
+    @T
+    private static void testSerialize2() {
+        Serializer serializer = new Serializer();
+        TransNodes transNodes = new TransNodes();
+        
+        ValueNode v0 = new ValueNode(new byte[]{});
+        ValueNode v1 = new ValueNode(new byte[]{12});
+        ValueNode v2 = new ValueNode(new byte[]{13, 14});
+        
+        KeyNode n = new KeyNode();
+        n.addKlong(10, Klong.create(Util.toBytes("a")), v0, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, Klong.create(Util.toBytes("b")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, Klong.create(Util.toBytes("c")), v2, AccessData.DEFAULT_ACCESS_DATA);
+        
+        transNodes.addValueNode(v0, Keys.toSegments("a"));
+        transNodes.addValueNode(v1, Keys.toSegments("b"));
+        transNodes.addValueNode(v2, Keys.toSegments("c"));
+        transNodes.addKeyNode(n);
+        
+        serializer.serialize(transNodes, 100, 200);
+        byte[] buffer = serializer.getOutputTransBuffer();
+        
+        Parser parser = new Parser();
+        parser.parse(200, buffer);
+        
+        Assert.assertEquals(4, parser.nodes.length);
+        Assert.assertEquals(100, parser.time);
+        Assert.assertEquals(200, parser.pos);
+        Assert.assertEquals(INode.TYPE_KEY_NODE, parser.nodes[0].getNode().getType());
+        Assert.assertEquals(INode.TYPE_VALUE, parser.nodes[1].getNode().getType());
+        Assert.assertEquals(INode.TYPE_VALUE, parser.nodes[2].getNode().getType());
+        Assert.assertEquals(INode.TYPE_VALUE, parser.nodes[3].getNode().getType());
+        
+        byte[] value1 = ((ValueNode) parser.nodes[2].getNode()).value.clone();
+        Assert.assertArrayEquals(new byte[]{12}, value1);
+        
+        byte[] value2 = ((ValueNode) parser.nodes[3].getNode()).value.clone();
+        Assert.assertArrayEquals(new byte[]{13, 14}, value2);
+    }
+    
 }

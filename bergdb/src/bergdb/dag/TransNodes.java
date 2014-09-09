@@ -4,7 +4,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
 /**
- * A specialized, performant collection containing the nodes included in one transaction.
+ * A specialized, performant collection containing the nodes and keys included in one transaction.
  * The three nodes types: TopNode, KeyNode, ValueNode are kept in separate arrays to allow
  * for type-specific optimizations.
  * 
@@ -28,7 +28,6 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
     public int valueSize;
     public ValueNode[] valueNodes;
     public long[][] keys;         // key for each value node, size = valueSize
-    public Choices[] choices;     // choices for each value node, size = valueSize
     
     public TransNodes() {
         topNodes = new TopNode[INITIAL_SIZE];
@@ -41,11 +40,6 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         valueSize = 0;
         
         keys = new long[INITIAL_SIZE][];
-        
-        choices = new Choices[INITIAL_SIZE];
-        for (int i = 0; i < choices.length; i++) {
-            choices[i] = new Choices();
-        }
         
         counter = 0;
     }
@@ -168,7 +162,6 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
             
             if (valueSize == valueNodes.length) {
                 assert keys.length == valueNodes.length : keys.length + " != " + valueNodes.length;
-                assert choices.length == valueNodes.length : choices.length + " != " + valueNodes.length;
                 
                 int newSize = valueNodes.length * 2;
                 ValueNode[] newNodes = new ValueNode[newSize];
@@ -178,13 +171,6 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
                 long[][] newKeys = new long[newSize][];
                 System.arraycopy(keys, 0, newKeys, 0, keys.length);
                 keys = newKeys;
-                
-                Choices[] newChoices = new Choices[newSize];
-                System.arraycopy(choices, 0, newChoices, 0, choices.length);
-                for (int i = choices.length; i < newChoices.length; i++) {
-                    newChoices[i] = new Choices();
-                }
-                choices = newChoices;
             }
             
             valueNodes[valueSize] = node;
@@ -281,16 +267,11 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         for (int i = 0; i < valueSize; i++) {
             valueNodes[i].isInTransactionNodes = false;
             valueNodes[i] = null;
-            choices[i].clear();
             keys[i] = null;
         }
         
         if (counter % 997 == 0 && valueNodes.length > INITIAL_SIZE * 4) {
             valueNodes = new ValueNode[INITIAL_SIZE];
-            choices = new Choices[INITIAL_SIZE];
-            for (int i = 0; i < choices.length; i++) {
-                choices[i] = new Choices();
-            }
             keys = new long[INITIAL_SIZE][];
         }
         this.valueSize = 0;

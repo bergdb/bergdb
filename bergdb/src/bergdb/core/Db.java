@@ -12,7 +12,6 @@ import bergdb.common.NullProgressListener;
 import bergdb.common.Util;
 import bergdb.core.DbHelper.AddReplicaClass;
 import bergdb.dag.AccessData;
-import bergdb.dag.Choices;
 import bergdb.dag.Constants;
 import bergdb.dag.Dag;
 import bergdb.dag.EvictData;
@@ -30,8 +29,6 @@ import bergdb.dag.TopNode;
 import bergdb.dag.TransNodes;
 import bergdb.dag.TransSeq;
 import bergdb.dag.ValueNode;
-import bergdb.dag.Dag.PointerListener;
-import bergdb.nanotest.Assert;
 import bergdb.pub.BadReplicaException;
 import bergdb.pub.Clock;
 import bergdb.pub.IllegalDbStateException;
@@ -1098,13 +1095,15 @@ public class Db {
     /**
      * Records choices and ensures that index nodes last written to stream before limit
      * is added to transNodes.
+     * 
+     * @deprecated Removing this for kv2 branch.
      */
     private void recordChoicesAndEnsureIncluded(final long limit) {        
-        GetData gd = dag.newGetData();
+        /*GetData gd = dag.newGetData();
         gd.actualLookupTime = x.trans.time;
         gd.accessData = x.putData.accessData;
         
-        final Choices[] finalChoice = new Choices[1];
+        //final Choices[] finalChoice = new Choices[1];
         
         gd.pointerListener = new PointerListener() {
             public void superRootAccessed(TopNode superRoot) {
@@ -1134,6 +1133,7 @@ public class Db {
             assert x.transNodes.valueNodes[i].isDelete() 
                 || Assert.arrayEquals(x.transNodes.valueNodes[i].getValue(), value);
         }
+        */
     }
 
     /**

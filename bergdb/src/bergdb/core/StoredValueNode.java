@@ -3,7 +3,6 @@ package bergdb.core;
 import bergdb.common.Bug;
 import bergdb.common.Bytes;
 import bergdb.common.Pair;
-import bergdb.dag.Choices;
 import bergdb.dag.INode;
 import bergdb.dag.Spos;
 import bergdb.dag.ValueNode;
@@ -18,17 +17,12 @@ import bergdb.storage.StreamFormatException;
  */
 public class StoredValueNode implements StoredNode {
     private ValueNode node;
-    private byte[] choices;
 
     private StoredValueNode() {
     }
 
     public final ValueNode getNode() {
         return node;
-    }
-
-    public final byte[] getChoices() {
-        return choices;
     }
     
     public long getPrevPos() {
@@ -39,19 +33,20 @@ public class StoredValueNode implements StoredNode {
      * Creates a StoredValueNode by parsing the provided byte buffer.
      */
     public static StoredValueNode parse(byte[] buffer, int offset, long spos) {
-        Pair<ValueNode, byte[]> pair = fromBytesIncludingChoices(buffer, offset, spos);
+        Pair<ValueNode, byte[]> pair = fromBytes(buffer, offset, spos);
 
         StoredValueNode stored = new StoredValueNode();
         stored.node = pair.getValue0();
-        stored.choices = pair.getValue1();
 
         return stored;
     }
 
     /**
+     * XXX The second return pair part not currently used!
+     * 
      * @throws StreamFormatException
      */
-    private static Pair<ValueNode, byte[]> fromBytesIncludingChoices(byte[] buffer, int offset,
+    private static Pair<ValueNode, byte[]> fromBytes(byte[] buffer, int offset,
             long spos) {
         assert buffer != null;
         assert buffer.length > offset;
@@ -75,15 +70,9 @@ public class StoredValueNode implements StoredNode {
                         + "version 1, got version " + version + ".");
             }
 
-            short size = Bytes.bytesToShortLE(buffer, offset);
-            offset += 2;
-            byte[] choices = new byte[size];
-            System.arraycopy(buffer, offset, choices, 0, size);
-            offset += size;
-
             ValueNode valueNode = new ValueNode(null);
             valueNode.spos = spos;
-            result = new Pair<ValueNode, byte[]>(valueNode, choices);
+            result = new Pair<ValueNode, byte[]>(valueNode, new byte[0]); // XXX
         } else {
             byte version = buffer[offset];
             offset += 1;
@@ -101,43 +90,27 @@ public class StoredValueNode implements StoredNode {
             byte[] value = new byte[size];
             System.arraycopy(buffer, offset, value, 0, size);
             offset += size;
-
-            size = Bytes.bytesToShortLE(buffer, offset);
-            offset += 2;
-            byte[] choices = new byte[size];
-            try {
-                System.arraycopy(buffer, offset, choices, 0, size);
-            } catch (ArrayIndexOutOfBoundsException e) {
-                throw new ArrayIndexOutOfBoundsException(e.getMessage() + "; size=" + size
-                        + ", buffer.length=" + buffer.length + ", offset=" + offset);
-            }
-            offset += size;
-
+            
             ValueNode valueNode = new ValueNode(value);
             valueNode.spos = spos;
-            result = new Pair<ValueNode, byte[]>(valueNode, choices);
+            result = new Pair<ValueNode, byte[]>(valueNode, new byte[0]);  // XXX
         }
 
         return result;
     }
 
-    public static int getByteSize(ValueNode node, int choicesSize) {
-        return node.value == null ? 8 + 2 + choicesSize : 8 + 4 + node.value.length + 2
-                + choicesSize;
+    public static int getByteSize(ValueNode node) {
+        return node.value == null ? 8 : 8 + 4 + node.value.length;
     }
 
     /**
      * The value is serialized to the byte buffer.
      */
-    public static int toBytes(ValueNode node, Choices choices, byte[] buffer, final int firstOffset) {
+    public static int toBytes(ValueNode node, byte[] buffer, final int firstOffset) {
         int offset = firstOffset;
-        int byteSize = getByteSize(node, choices.size);
+        int byteSize = getByteSize(node);
         long myLong;
         long nodeType = node.value == null ? INode.TYPE_DELETE : INode.TYPE_VALUE;
-
-        if (choices.size > Short.MAX_VALUE) {
-            throw new Bug("Bad size of choices, " + choices.size);
-        }
 
         myLong = ((long) byteSize) | (nodeType << (4 * 8)) | (1L << (5 * 8));
         Bytes.longToBytesLE(myLong, buffer, offset);
@@ -150,17 +123,8 @@ public class StoredValueNode implements StoredNode {
 
             System.arraycopy(node.value, 0, buffer, offset, node.value.length);
             offset += node.value.length;
-
-            Bytes.shortToBytesLE((short) choices.size, buffer, offset);
-            offset += 2;
-            System.arraycopy(choices.choices, 0, buffer, offset, choices.size);
-            offset += choices.size;
         } else {
-            // For a TYPE_DELETE, only choices are written, we have no value.
-            Bytes.shortToBytesLE((short) choices.size, buffer, offset);
-            offset += 2;
-            System.arraycopy(choices.choices, 0, buffer, offset, choices.size);
-            offset += choices.size;
+            // For a TYPE_DELETE, we have no value.
         }
 
         // Checksum, XOR of all bytes to buffer[firstOffset + 6], 0 -> 1. 0 used as no checksum
@@ -187,11 +151,11 @@ public class StoredValueNode implements StoredNode {
         value[9] = -2;
 
         ValueNode node = new ValueNode(value);
-        byte[] buffer = new byte[getByteSize(node, 0)];
-        toBytes(node, new Choices(), buffer, 0);
+        byte[] buffer = new byte[getByteSize(node)];
+        toBytes(node, buffer, 0);
 
         ValueNode node2 = parse(buffer, 0, Spos.NULL).getNode();
-        Assert.assertEquals(getByteSize(node, 0), getByteSize(node2, 0));
+        Assert.assertEquals(getByteSize(node), getByteSize(node2));
         Assert.assertArrayEquals(node.value, node2.value);
     }
 }
