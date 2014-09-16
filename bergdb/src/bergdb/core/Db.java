@@ -707,7 +707,7 @@ public class Db {
         nodeStream.getMetaBlock().setStartupPos(0);
         
         this.appendNodesToStream();
-        this.clearTransMemory();
+        this.x.clearTransMemory();
     }
     
     /**
@@ -1057,8 +1057,7 @@ public class Db {
             
             x.lastSposOfLastTrans = x.trans.lastPos;
             x.startupPos.releaseForEvict();
-            
-            clearTransMemory();
+            x.clearTransMemory();
 
             // The synch statement below guarantees that the writes are visible to
             // all readers assuming they also use the same statement as below
@@ -1218,16 +1217,6 @@ public class Db {
         double dirtyFraction = ((double) dirtyNodeCount) / totalNodeCount;
         aux.dirtyFraction100   = 0.99  * aux.dirtyFraction100  +  0.01  * dirtyFraction;
         aux.dirtyFraction1000  = 0.999 * aux.dirtyFraction1000 +  0.001 * dirtyFraction;
-    }
-
-    /**
-     * Clears temporary references at end of transaction. Important to avoid memory leakage
-     * and prepare for next transaction. Caller must hold writeLock.
-     */
-    private void clearTransMemory() {
-        assert Thread.holdsLock(writeLock);
-        x.trans = null;
-        x.transNodes.clear();
     }
 
     /**
@@ -1423,7 +1412,7 @@ public class Db {
     
     
     /**
-     * Reusable memory for execute(Transaction) method.
+     * Collection of variables for method Db.execute(Transaction).
      * All field access must be from thread holding Db.writeLock.
      */
     private class ExecuteData {
@@ -1445,9 +1434,19 @@ public class Db {
         /** End stream position of last transaction; used by Db.sync(). */
         private long lastSposOfLastTrans;
         
-        ExecuteData() {
+        private ExecuteData() {
             startupPos = new StartupPos(0);
             transNodes = new TransNodes();
+        }
+        
+        /**
+         * Clears temporary references at end of transaction. Important to avoid memory leakage
+         * and prepare for next transaction. Caller must hold writeLock.
+         */
+        private void clearTransMemory() {
+            assert Thread.holdsLock(writeLock);
+            trans = null;
+            transNodes.clear();
         }
     }
     

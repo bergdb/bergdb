@@ -158,9 +158,6 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
     
     public final void addValueNode(ValueNode node, long[] key) {
         
-        // ??? FRANS ever DELETE?
-        // XXX
-        
         assert node.getType() != INode.TYPE_DELETE 
                 : "Unexpected DELETE node added to " + this.getClass().getSimpleName() + ".";
         
