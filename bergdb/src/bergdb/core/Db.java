@@ -540,6 +540,7 @@ public class Db {
         dag = result.createDag(nodeStream, maxNodeSize);
         aux.cachedMemoryValue.set(result.getCachedMemoryValue());
         transSeq = result.getTransSeq();
+        kvTransSeq = result.getKvTransSeq();
     }
 
     private void setStartupPosAndStartupDistanceFromStream(StartListener listener) {
@@ -593,6 +594,30 @@ public class Db {
             
             public void keyNodeChanged(KeyNode node) {
                 x.transNodes.addKeyNode(node);
+            }
+        };
+        
+        // Appending to existing pointerListener used by Dag.
+        
+        final Dag.PointerListener pListener = x.putData.pointerListener;
+        
+        x.putData.pointerListener = new Dag.PointerListener() {
+            public void superRootAccessed(TopNode superRoot) {
+                pListener.superRootAccessed(superRoot);
+                
+                if (!superRoot.isDirty) {
+                    superRoot.setDirty(true);
+                    x.transInfo.gotDirtyNodes.add(superRoot);
+                }
+            }
+            
+            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
+                pListener.pointerFollowed(predecessor, pointerIndex, result, pointerType);
+                
+                if (!result.isDirty() && result.isIndexNode()) {
+                    result.setDirty(true);
+                    x.transInfo.gotDirtyNodes.add(result);
+                }
             }
         };
     }
@@ -1021,7 +1046,6 @@ public class Db {
         
         synchronized (writeLock) {
             x.begin(t);
-            x.putData.spaceSplitCount = 0;
             
             // Returns to caller with a RerunException if any key was modified after 
             // the read time of the transaction.
@@ -1036,8 +1060,7 @@ public class Db {
             try {
                 t.time = dbClock.transactionBegin();
                 putKvs();
-                aux.kvCount += t.kvs.length;
-                aux.transactionCount++;
+                aux.updateTransCounters();
 
                 synchronized (readSync) {}
                     // Publishes the changes by the writer thread to the readers. This is done
@@ -1098,6 +1121,7 @@ public class Db {
      * @throws StreamIoException
      */
     private void appendToStream() {
+        // TODO LATER Consider special code for primordial state. Nice to avoid: if (dag != null) {...
         
         assert Thread.holdsLock(writeLock);
         
@@ -1106,8 +1130,6 @@ public class Db {
         // This could be improved for a better memory-added-to-cache estimate.
 
         aux.cachedMemoryValue.addAndGet(x.transNodes.sumMemSize());
-
-        int ordinaryNodeCount = x.transNodes.size();
         
         long startupPos2 = x.startupPos.next(this.startupDistance, nodeStream.getLength());
         
@@ -1115,7 +1137,7 @@ public class Db {
             transSeq.addToTransNodes(startupPos2, x.transNodes);
         }
         
-        computeStats(ordinaryNodeCount);
+        computeStats();
 
         assert x.trans != null : "trans is null";
         assert x.transNodes != null : "transNodes is null";
@@ -1131,18 +1153,15 @@ public class Db {
             transSeq.add(x.transNodes.createTset(x.trans.pos, x.trans.lastPos));            
             transSeq.removeBeforeSpos(startupPos2);
         }
-        
-        aux.nodesWritten += x.transNodes.size();
-        aux.ordinaryNodesWritten += ordinaryNodeCount;
     }
 
     /**
      * Computes this.dirtyFraction100, this.dirtyFraction1000.
-     * 
-     * @param ordinaryNodeCount   The number of ordinary (non-dirty) nodes of the transaction.
      */
-    private void computeStats(int ordinaryNodeCount) {
-        // Computes dirtyFraction100, dirtyFraction1000.
+    private void computeStats() {
+        int ordinaryNodeCount = x.transNodes.size();
+        aux.nodesWritten += x.transNodes.size();
+        aux.ordinaryNodesWritten += ordinaryNodeCount;
         
         int totalNodeCount = x.transNodes.size();
         int dirtyNodeCount = totalNodeCount - ordinaryNodeCount;
@@ -1381,6 +1400,9 @@ public class Db {
             assert Thread.holdsLock(writeLock);
             this.trans = trans;
             transInfo = new KvTransSeq.TransInfo();
+            if (x.putData != null) {
+                x.putData.spaceSplitCount = 0;
+            }
         }
         
         /**
@@ -1429,6 +1451,11 @@ public class Db {
         // Below two, protected by writeLock.
         private double dirtyFraction100 = 0.10;
         private double dirtyFraction1000 = 0.10;
+        
+        public void updateTransCounters() {
+            aux.kvCount += x.trans.kvs.length;
+            aux.transactionCount++;
+        }
     }
     
     /**

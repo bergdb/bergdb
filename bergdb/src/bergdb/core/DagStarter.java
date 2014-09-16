@@ -15,6 +15,9 @@ import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
 import bergdb.storage.StreamFormatException;
 
+// TODO implement creation of TransSeq.
+// TODO remove TransSeq
+
 /**
  * A function-class, see the one public method.
  * 
@@ -25,12 +28,14 @@ public class DagStarter {
     // 140824 Class introduced to keep startup algo separate.
     
     private final TransSeq transSeq = new TransSeq();
+    private final KvTransSeq kvTransSeq = new KvTransSeq();
     private long cachedMemoryValue = Db.MIN_CACHE_MEMORY_VALUE;
     private final HashMap<Long, INode> posMap = new HashMap<Long, INode>();  // pos -> node
     private final HashMap<Long, INode> nextMap = new HashMap<Long, INode>(); // posPrevious -> node
     private final List<StoredTrans> transactions;
     private TopNode superRoot;
     private final long accessData;
+    
     
     /**
      * Runs the startup algorithms and returns the result from it.
@@ -246,6 +251,10 @@ public class DagStarter {
         
         public long getCachedMemoryValue() {
             return cachedMemoryValue;
+        }
+
+        public KvTransSeq getKvTransSeq() {
+            return kvTransSeq;
         }
         
     }

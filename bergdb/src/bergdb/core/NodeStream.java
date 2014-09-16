@@ -200,7 +200,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
             stored = StoredTopNode.parse(buffer, offset, spos);
             break;
         case INode.TYPE_VALUE:
-        case INode.TYPE_DELETE:    // XXX do we ever stored DELETE nodes in stream?
+        case INode.TYPE_DELETE:  // TODO do we ever stored DELETE nodes in stream? Try removing this line.
             stored = StoredValueNode.parse(buffer, offset, spos, false);
             break;
         default:
