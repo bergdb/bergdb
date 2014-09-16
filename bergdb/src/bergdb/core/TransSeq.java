@@ -1,4 +1,4 @@
-package bergdb.dag;
+package bergdb.core;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -6,12 +6,19 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import bergdb.dag.AccessData;
+import bergdb.dag.INode;
+import bergdb.dag.KeyNode;
+import bergdb.dag.Keys;
+import bergdb.dag.Klong;
+import bergdb.dag.Pointer;
+import bergdb.dag.TopNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
 /**
  * <p>An instance of this class keeps a sequence of sets of index nodes in the
- * startup interval. Each node set contains the index nodes of a particular 
+ * startup section. Each node set contains the index nodes of a particular 
  * transaction.</p>
  * 
  * <p>This class is not thread-safe, use external synchronization.

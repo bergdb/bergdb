@@ -1,5 +1,10 @@
-package bergdb.dag;
+package bergdb.core;
 
+import bergdb.dag.IDirtyNodes;
+import bergdb.dag.INode;
+import bergdb.dag.KeyNode;
+import bergdb.dag.TopNode;
+import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 

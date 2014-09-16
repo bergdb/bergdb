@@ -26,8 +26,6 @@ import bergdb.dag.PutData;
 import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
-import bergdb.dag.TransNodes;
-import bergdb.dag.TransSeq;
 import bergdb.dag.ValueNode;
 import bergdb.pub.BadReplicaException;
 import bergdb.pub.Clock;

@@ -24,7 +24,10 @@ public class Pack implements IPack {
         StoredTopNode.class,
         StoredTrans.class,
         StoredValueNode.class,
-        Trans.class
+        Trans.class,
+        TransNodes.class,
+        TransSeq.class,
+        KvTransSeq.class
     };
     
     public Class<?>[] getClasses() {

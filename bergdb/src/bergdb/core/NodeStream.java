@@ -6,7 +6,6 @@ import bergdb.common.Bytes;
 import bergdb.dag.INode;
 import bergdb.dag.Spos;
 import bergdb.dag.StreamChecksumException;
-import bergdb.dag.TransNodes;
 import bergdb.storage.MetaBlock;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;

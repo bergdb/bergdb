@@ -13,7 +13,6 @@ import bergdb.dag.Pointer;
 import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
-import bergdb.dag.TransSeq;
 import bergdb.storage.StreamFormatException;
 
 /**
@@ -36,7 +35,7 @@ public class DagStarter {
     /**
      * Runs the startup algorithms and returns the result from it.
      * 
-     * @param transactions  The stored transactions from the startup interval of the db stream.
+     * @param transactions  The stored transactions from the startup section of the db stream.
      * @param accessData    The access data for the in-memory pointers that are created.
      */
     public static DagStarter.Result start(List<StoredTrans> transactions, long accessData) {

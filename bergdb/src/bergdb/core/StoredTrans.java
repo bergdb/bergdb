@@ -11,7 +11,6 @@ import bergdb.dag.Keys;
 import bergdb.dag.Klong;
 import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
-import bergdb.dag.TransNodes;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;

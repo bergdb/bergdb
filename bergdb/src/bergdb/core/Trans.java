@@ -6,7 +6,6 @@ import java.util.TreeMap;
 
 import bergdb.common.Util;
 import bergdb.dag.Keys;
-import bergdb.dag.TransNodes;
 import bergdb.nanotest.T;
 
 /**

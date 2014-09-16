@@ -20,8 +20,6 @@ public class Pack implements IPack {
         TopDs.class,
         TopNode.class,
         TopTester.class,
-        TransNodes.class,
-        TransSeq.class,
         ValueNode.class
     };
     
