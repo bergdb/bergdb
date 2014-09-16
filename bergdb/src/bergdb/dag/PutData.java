@@ -6,6 +6,7 @@ import bergdb.dag.Dag.PointerListener;
 
 /**
  * Common for one put operation, or a set of put operations (a transaction).
+ * Is reused between transactions for performance reasons.
  * 
  * @author Frans Lundberg
  */
@@ -73,17 +74,23 @@ public class PutData {
         splitListener = Dag.DO_NOTHING_SPLIT_LISTENER;
     }
     
+    /**
+     * Called at end of each putKv() call.
+     */
     public void clearFast() {
         keyAccessPath.clearFast();
     }
     
+    /**
+     * Called at end of Db.putKvs() to clear for new transaction execution.
+     */
     public void clear() {
+        clearFast();
         tempPointer.node = null;
         kwi.node = null;
         oneKwi[0].node = null;
         twoKwis[0].node = null;
         twoKwis[1].node = null;
-        keyAccessPath.clear();
     }
     
     public KeyNode getParent(int depth) {
