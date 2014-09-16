@@ -112,6 +112,8 @@ public class StoredValueNode implements StoredNode {
             }
             
             ValueNode valueNode = new ValueNode(value);
+            valueNode.spos = spos;
+            
             result = new Pair<ValueNode, long[]>(valueNode, key);
         }
 
@@ -185,11 +187,25 @@ public class StoredValueNode implements StoredNode {
         byte[] buffer = new byte[getByteSize(node, key)];
         StoredValueNode.toBytes(node, key, buffer, 0);
 
-        StoredValueNode stored = parse(buffer, 0, Spos.NULL, true);
+        StoredValueNode stored = parse(buffer, 0, 100, true);
         ValueNode node2 = stored.getNode();
         
         Assert.assertEquals(getByteSize(node, key), getByteSize(node2, key));
         Assert.assertArrayEquals(node.value, node2.value);
+    }
+    
+    @T
+    public static void testThatSposIsSetWhenParsedFromBytes() {
+        long[] key = Keys.toSegments("/-mykey.txt");
+        ValueNode node = new ValueNode(new byte[0]);
+        byte[] buffer = new byte[getByteSize(node, key)];
+        StoredValueNode.toBytes(node, key, buffer, 0);
+
+        long spos = 120;
+        StoredValueNode stored = parse(buffer, 0, spos, true);
+        ValueNode node2 = stored.getNode();
+        
+        Assert.assertEquals(spos, node2.getSpos());
     }
     
     public static void main(String[] args) {

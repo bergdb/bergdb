@@ -201,7 +201,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
             stored = StoredTopNode.parse(buffer, offset, spos);
             break;
         case INode.TYPE_VALUE:
-        case INode.TYPE_DELETE:
+        case INode.TYPE_DELETE:    // XXX do we ever stored DELETE nodes in stream?
             stored = StoredValueNode.parse(buffer, offset, spos, false);
             break;
         default:

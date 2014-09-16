@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import bergdb.dag.Dag.NodeReader;
+import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.INode;
 import bergdb.dag.Pointer;
@@ -45,14 +46,49 @@ public class DagStarter {
     }
     
     private DagStarter(List<StoredTrans> transactions, long accessData) {
+        validateTransactions(transactions);
+        validateAccessData(accessData);
+        this.transactions = transactions;
+        this.accessData = accessData;
+        this.superRoot = null;
+    }
+    
+    private void validateTransactions(List<StoredTrans> transactions) {
+        // This code could be removed, or just called when when asserts enabled if
+        // it is determined that it takes significant time to run.
         
         if (transactions == null) {
             throw new IllegalArgumentException("transactions == null not allowed");
         }
         
-        this.transactions = transactions;
-        this.accessData = accessData;
-        this.superRoot = null;
+        for (int i = 0; i < transactions.size(); i++) {
+            StoredTrans t = transactions.get(i);
+            if (t == null) {
+                throw new IllegalArgumentException("null transaction, i = " + i);
+            }
+            
+            if (!Spos.isValid(t.pos)) {
+                throw new IllegalArgumentException("Bad spos of transaction, " + t.toString());
+            }
+            
+            for (StoredNode stored : t.nodes) {
+                INode node = stored.getNode();
+                if (node == null) {
+                    throw new IllegalArgumentException("getNode() returned null, " + t.toString());
+                }
+                
+                long spos = node.getSpos();
+                if (!Spos.isValid(spos)) {
+                    throw new IllegalArgumentException("Bad spos of node, spos=" + spos + ", node: " + node);
+                }
+            }
+        }
+    }
+    
+    private void validateAccessData(long accessData) {
+        if (!AccessData.isValid(accessData)) {
+            throw new IllegalArgumentException("bad accessData when starting database, " + accessData + ".");
+        }
     }
     
     /**
@@ -96,7 +132,6 @@ public class DagStarter {
                 INode node = storedNode.getNode();
                 long spos = node.getSpos();
                 
-                assert Spos.isValid(spos) : "spos: " + spos;
                 assert posMap.get(spos) == null 
                         : "posMap already has node for spos " + spos + ": " + posMap.get(spos);
                 

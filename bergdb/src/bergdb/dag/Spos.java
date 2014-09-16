@@ -17,7 +17,7 @@ abstract public class Spos {
     private Spos() {}
     
     /**
-     * Used to indicate "no spos".
+     * Used to indicate "no spos", not considered a "valid" Spos.
      */
     public static final long NULL = -1;
     
