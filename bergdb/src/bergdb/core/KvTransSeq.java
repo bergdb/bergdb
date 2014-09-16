@@ -1,5 +1,7 @@
 package bergdb.core;
 
+import java.util.ArrayList;
+import bergdb.dag.INode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
@@ -16,7 +18,6 @@ public class KvTransSeq {
     private TransInfo last;      // Last set of linked list, may be null.
     private int size;
     
-
     public boolean isEmpty() {
         return first == null;
     }
@@ -78,7 +79,7 @@ public class KvTransSeq {
     /**
      * Information needed about one transaction and linked-list pointer.
      */
-    static class TransInfo {
+    public static class TransInfo {
         TransInfo next = null;
         
         /** Transaction stream position. */
@@ -86,6 +87,12 @@ public class KvTransSeq {
         
         /** Last stream position of the transaction. */
         long lastPos;
+        
+        /** Index nodes (top nodes, key nodes) that got dirty when the transaction executed. */
+        ArrayList<INode> gotDirtyNodes = new ArrayList<INode>();
+        
+        TransInfo() {
+        }
         
         TransInfo(long tpos, long lastPos) {
             this.tpos = tpos;

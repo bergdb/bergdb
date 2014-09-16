@@ -130,6 +130,7 @@ public class Db {
     private final Random evictRandom;
     private Dag dag;
     private TransSeq transSeq;
+    private KvTransSeq kvTransSeq;
     private final ExecuteData x;
     private final Aux aux = new Aux();
     
@@ -689,6 +690,9 @@ public class Db {
         KeyNode root = new KeyNode();
         TopDs top;
         
+        Trans trans = Trans.builder().build();
+        x.begin(trans);
+        
         long tt = dbClock.transactionBegin();
         try {
             top = TopDs.createFromFirstRoot(tt, root, AccessData.DEFAULT_ACCESS_DATA);
@@ -698,14 +702,13 @@ public class Db {
         
         x.transNodes.addKeyNode(root);
         x.transNodes.addTopNode(top.getSuperRoot());
-        x.trans = Trans.builder().build();
         
         DatabaseId id = (databaseIdFromBuilder == null) ? new DatabaseId() : databaseIdFromBuilder;
         nodeStream.getMetaBlock().setId(id.getBytes());
         nodeStream.getMetaBlock().setStartupPos(0);
         
-        this.appendNodesToStream();
-        this.x.clearTransMemory();
+        appendToStream();
+        x.end();
     }
     
     /**
@@ -981,7 +984,7 @@ public class Db {
         synchronized (readSync) {}
 
         assertDbStateIsActive("execute");
-        executeInner(t, false);
+        executeInner(t);
     }
 
     private void assertDbStateIsActive(String methodName) {
@@ -1005,7 +1008,7 @@ public class Db {
      * @throws StreamIoException
      * @throws InternalDataException
      */
-    private void executeInner(Trans t, final boolean isPrimordial) {
+    private void executeInner(Trans t) {
         //
         // Executes a KV set request as an atomic transaction.
         //
@@ -1017,10 +1020,9 @@ public class Db {
         warmup(t);
         
         synchronized (writeLock) {
-            if (!isPrimordial) assert x.transNodes.size() == 0;
+            x.begin(t);
             x.putData.spaceSplitCount = 0;
-            x.trans = t;
-
+            
             // Returns to caller with a RerunException if any key was modified after 
             // the read time of the transaction.
             // This is the essence of the STM (software transactional memory) approach.
@@ -1051,11 +1053,11 @@ public class Db {
                 keyModSet.add(t.time, t.writeKeyHashes[i]);
             }
 
-            appendNodesToStream();
+            appendToStream();
             
             x.lastSposOfLastTrans = x.trans.lastPos;
             x.startupPos.releaseForEvict();
-            x.clearTransMemory();
+            x.end();
 
             // The synch statement below guarantees that the writes are visible to
             // all readers assuming they also use the same statement as below
@@ -1088,87 +1090,22 @@ public class Db {
 
         gd.evictData.enableEvict = enableEvict;
     }
-    
-    /**
-     * Records choices and ensures that index nodes last written to stream before limit
-     * is added to transNodes.
-     * 
-     * @deprecated Removing this for kv2 branch.
-     */
-    private void recordChoicesAndEnsureIncluded(final long limit) {        
-        /*GetData gd = dag.newGetData();
-        gd.actualLookupTime = x.trans.time;
-        gd.accessData = x.putData.accessData;
-        
-        //final Choices[] finalChoice = new Choices[1];
-        
-        gd.pointerListener = new PointerListener() {
-            public void superRootAccessed(TopNode superRoot) {
-                if (superRoot.getSpos() < limit) {
-                    x.transNodes.addTopNode(superRoot);
-                }
-            }
-            
-            public void pointerFollowed(INode predecessor, int pointerIndex, INode result,
-                    int pointerType) {
-                if (result.getSpos() < limit && result.isIndexNode()) {
-                    if (result.getType() == INode.TYPE_TOP_NODE) {
-                        x.transNodes.addTopNode((TopNode) result);
-                    } else {
-                        x.transNodes.addKeyNode((KeyNode) result);
-                    }
-                }
-                finalChoice[0].add(pointerIndex);
-            }
-        };
-        
-        for (int i = 0; i < x.transNodes.valueSize; i++) {
-            finalChoice[0] = x.transNodes.choices[i];
-            long[] key = x.transNodes.keys[i];
-            byte[] value = getOne(gd.actualLookupTime, key, gd);
-            
-            assert x.transNodes.valueNodes[i].isDelete() 
-                || Assert.arrayEquals(x.transNodes.valueNodes[i].getValue(), value);
-        }
-        */
-    }
 
     /**
-     * Writes the nodes in this.transNodes to stream. Uses this.trans, 
-     * this.transNodes, this.metaBlock, this.cacheMemoryValue, and more.
+     * Writes the nodes in this.transNodes to stream.
      * The caller must hold DB.writeLock.
      * 
      * @throws StreamIoException
      */
-    private void appendNodesToStream() {
-        //
-        // Note the call to getTooDirtyNodes. This is done without including the size
-        // of the current transaction. This means that the startup algorithm must
-        // take this into account. It must start reading before or at:
-        // spos = (last-spos-of-stream - (startupDistance + size-of-last-Transaction)).
-        // So, the spos that is at last startupDistance bytes before the beginning of the 
-        // last completed transaction.
-        //
+    private void appendToStream() {
         
         assert Thread.holdsLock(writeLock);
         
         // Below is a simple implementation of the cachedMemoryValue.
-        // Everything written to the stream is considered new data to the cache. This is not true.
-        // KeyNode can be appended to without adding them to cache again. Also, the dirty
-        // nodes are already cached. To handle this better, we could report to DB when
-        // KeyNodes grow (their arrays enlarged) and when new nodes are created.
-        // An DbForMe interface sent to KeyNode methods that may enlarge its memory use,
-        // and to constructors of ValueNode, KeyNode, TopNode. Maybe overkill?
+        // Everything written to the stream is considered new data to the cache.
+        // This could be improved for a better memory-added-to-cache estimate.
 
         aux.cachedMemoryValue.addAndGet(x.transNodes.sumMemSize());
-
-        // NOTE The current implementation works (120522)
-        // However, a small transaction that comes after a large one, will often get unfairly
-        // many dirty KeyNodes/TopNodes to write.
-        // Would be better if the number of extra (too dirty nodes) nodes in a transaction was
-        // proportional to the Kvs of the transaction.
-        // This can be solved. The total size of the transaction nodes can be computed first, 
-        // then..
 
         int ordinaryNodeCount = x.transNodes.size();
         
@@ -1176,9 +1113,6 @@ public class Db {
         
         if (dag != null) {
             transSeq.addToTransNodes(startupPos2, x.transNodes);
-            recordChoicesAndEnsureIncluded(startupPos2);
-                // NOTE 131124, 0 unit tests and only 1 f test fails if above line commented.
-                // Is recordChoicesAndEnsureIncluded needed?
         }
         
         computeStats(ordinaryNodeCount);
@@ -1221,7 +1155,7 @@ public class Db {
      * Sets the KVs directly to the in-memory data structure. This method runs with exclusive 
      * write access to the data structure (synchronized (writeLock)). However, there may be
      * concurrent readers that read with a lookup time strictly less than the transaction time
-     * (trans.transTime).
+     * (trans.time).
      */
     private final void putKvs() {
         assert Thread.holdsLock(writeLock);
@@ -1429,6 +1363,8 @@ public class Db {
         /** The nodes updated for the current transaction. To be written to the stream. */
         private final TransNodes transNodes;
         
+        private KvTransSeq.TransInfo transInfo;
+        
         /** End stream position of last transaction; used by Db.sync(). */
         private long lastSposOfLastTrans;
         
@@ -1437,11 +1373,22 @@ public class Db {
             transNodes = new TransNodes();
         }
         
+        /** 
+         * Called before transaction executes, just after Db.writeLock held. 
+         * Allows ExecuteData to prepare for new transaction.
+         */
+        private void begin(Trans trans) {
+            assert Thread.holdsLock(writeLock);
+            this.trans = trans;
+            transInfo = new KvTransSeq.TransInfo();
+        }
+        
         /**
+         * Called after transaction has executed (but still holds Db.writeLock).
          * Clears temporary references at end of transaction. Important to avoid memory leakage
          * and prepare for next transaction. Caller must hold writeLock.
          */
-        private void clearTransMemory() {
+        private void end() {
             assert Thread.holdsLock(writeLock);
             trans = null;
             transNodes.clear();
