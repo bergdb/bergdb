@@ -19,7 +19,10 @@ import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
 
 /**
- * This class and its inner classes are responsible for how a transaction is stored in the stream.
+ * This class and its inner classes are responsible serializing transactions to bytes
+ * and to parse transactions from raw bytes.
+ * Performance is important enough here that is may take precedence over
+ * pretty code.
  * 
  * @author Frans Lundberg
  */
@@ -191,7 +194,7 @@ public class StoredTrans {
         }
 
         /**
-         * Serializes the transaction given the transactions nodes. Use the getOutputX() methods to
+         * Serializes the transaction given the nodes in TransNodes. Use the getOutputX() methods to
          * get the result.
          * 
          * @param transTime
@@ -269,8 +272,9 @@ public class StoredTrans {
             // Loop valueNodes.
             for (int i = 0; i < transNodes.valueSize; i++) {
                 ValueNode node = transNodes.valueNodes[i];
+                long[] key = transNodes.keys[i];
                 node.spos = currentPos;
-                totalSize += StoredValueNode.getByteSize(node);
+                totalSize += StoredValueNode.getByteSize(node, key);
                 currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
             }
 
@@ -337,7 +341,8 @@ public class StoredTrans {
 
             for (int i = 0; i < transNodes.valueSize; i++) {
                 ValueNode n = transNodes.valueNodes[i];
-                offset += StoredValueNode.toBytes(n, byteBuffer, offset);
+                long[] skey = transNodes.keys[i];
+                offset += StoredValueNode.toBytes(n, skey, byteBuffer, offset);
             }
             return offset;
         }

@@ -293,8 +293,11 @@ public class Bytes {
      * @param byteOffset
      */
     public static void longsToBytesLE(long[] longs, int longOffset, int longCopySize, byte[] bytes, int byteOffset) {
+        int byteOff = byteOffset;
+        
         for (int i = 0; i < longCopySize; i++) {
-            Bytes.longToBytesLE(longs[longOffset + i], bytes, i * 8);
+            Bytes.longToBytesLE(longs[longOffset + i], bytes, byteOff);
+            byteOff += 8;
         }
     }
     
@@ -318,6 +321,19 @@ public class Bytes {
         byte[] bytes2 = longsToBytesLE(longs);
         
         Assert.assertArrayEquals(bytes1, bytes2);
+    }
+    
+    @T
+    public static void testLongsToBytesLE2() {
+        // Using array offsets.
+        
+        long[] longs = new long[] {123, 111222333444L, -1000};
+        byte[] bytes = new byte[40];
+        
+        longsToBytesLE(longs, 1, 2, bytes, 19);
+        
+        Assert.assertEquals(111222333444L, Bytes.bytesToLongLE(bytes, 19));
+        Assert.assertEquals(-1000, Bytes.bytesToLongLE(bytes, 19+8));
     }
     
     @T

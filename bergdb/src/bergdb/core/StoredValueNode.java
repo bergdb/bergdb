@@ -4,6 +4,7 @@ import bergdb.common.Bug;
 import bergdb.common.Bytes;
 import bergdb.common.Pair;
 import bergdb.dag.INode;
+import bergdb.dag.Keys;
 import bergdb.dag.Spos;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
@@ -42,8 +43,6 @@ public class StoredValueNode implements StoredNode {
     }
 
     /**
-     * XXX The second return pair part not currently used!
-     * 
      * @throws StreamFormatException
      */
     private static Pair<ValueNode, byte[]> fromBytes(byte[] buffer, int offset,
@@ -91,6 +90,8 @@ public class StoredValueNode implements StoredNode {
             System.arraycopy(buffer, offset, value, 0, size);
             offset += size;
             
+            // TODO A. Read key here!
+            
             ValueNode valueNode = new ValueNode(value);
             valueNode.spos = spos;
             result = new Pair<ValueNode, byte[]>(valueNode, new byte[0]);  // XXX
@@ -99,16 +100,18 @@ public class StoredValueNode implements StoredNode {
         return result;
     }
 
-    public static int getByteSize(ValueNode node) {
-        return node.value == null ? 8 : 8 + 4 + node.value.length;
+    public static int getByteSize(ValueNode node, long[] key) {
+        return node.value == null ? 
+                8 : 
+                8 + 4 + node.value.length + 4 + 8* key.length;
     }
 
     /**
      * The value is serialized to the byte buffer.
      */
-    public static int toBytes(ValueNode node, byte[] buffer, final int firstOffset) {
+    public static int toBytes(ValueNode node, long[] key, byte[] buffer, final int firstOffset) {
         int offset = firstOffset;
-        int byteSize = getByteSize(node);
+        int byteSize = getByteSize(node, key);
         long myLong;
         long nodeType = node.value == null ? INode.TYPE_DELETE : INode.TYPE_VALUE;
 
@@ -123,8 +126,16 @@ public class StoredValueNode implements StoredNode {
 
             System.arraycopy(node.value, 0, buffer, offset, node.value.length);
             offset += node.value.length;
+            
+            Bytes.intToBytesLE(key.length * 8, buffer, offset);
+            offset += 4;
+            
+            Bytes.longsToBytesLE(key, 0, key.length, buffer, offset);
+            offset += 8 * key.length;
+            
+            
         } else {
-            // For a TYPE_DELETE, we have no value.
+            // For a TYPE_DELETE, we have no value, no key.
         }
 
         // Checksum, XOR of all bytes to buffer[firstOffset + 6], 0 -> 1. 0 used as no checksum
@@ -142,20 +153,28 @@ public class StoredValueNode implements StoredNode {
         return byteSize;
     }
 
+    
     // ======== Tests ========
 
     @T
-    public static void testToBytes() {
+    public static void testToBytesAndBack() {
         byte[] value = new byte[10];
         value[3] = 3;
         value[9] = -2;
+        long[] key = Keys.toSegments("/-mykey.txt");
 
         ValueNode node = new ValueNode(value);
-        byte[] buffer = new byte[getByteSize(node)];
-        toBytes(node, buffer, 0);
+        byte[] buffer = new byte[getByteSize(node, key)];
+        StoredValueNode.toBytes(node, key, buffer, 0);
 
-        ValueNode node2 = parse(buffer, 0, Spos.NULL).getNode();
-        Assert.assertEquals(getByteSize(node), getByteSize(node2));
+        StoredValueNode stored = parse(buffer, 0, Spos.NULL);
+        ValueNode node2 = stored.getNode();
+        
+        Assert.assertEquals(getByteSize(node, key), getByteSize(node2, key));
         Assert.assertArrayEquals(node.value, node2.value);
+    }
+    
+    public static void main(String[] args) {
+        testToBytesAndBack();
     }
 }

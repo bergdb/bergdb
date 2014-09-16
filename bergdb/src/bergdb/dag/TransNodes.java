@@ -27,7 +27,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
     
     public int valueSize;
     public ValueNode[] valueNodes;
-    public long[][] keys;         // key for each value node, size = valueSize
+    public long[][] keys;         // key (segmented key) for each value node, size = valueSize
     
     public TransNodes() {
         topNodes = new TopNode[INITIAL_SIZE];
