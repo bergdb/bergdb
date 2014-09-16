@@ -1,7 +1,10 @@
 package bergdb.core;
 
 import java.util.ArrayList;
+
 import bergdb.dag.INode;
+import bergdb.dag.KeyNode;
+import bergdb.dag.TopNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
@@ -74,8 +77,48 @@ public class KvTransSeq {
         
         return result;
     }
-    
 
+    /**
+     * Adds index nodes with a tpos < limit to transNodes.
+     */
+    public void addToTransNodes(long limit, final TransNodesForMe transNodes) {
+        visitGotDirtyNodes(limit, new Visitor() {
+            public void node(INode node) {
+                int type = node.getType();
+                switch (type) {
+                case INode.TYPE_TOP_NODE:
+                    transNodes.addTopNode((TopNode) node);
+                    System.out.println("XXX KvTransSeq, added to transNodes: " + node);
+                    break;
+                case INode.TYPE_KEY_NODE:
+                    transNodes.addKeyNode((KeyNode) node);
+                    System.out.println("XXX KvTransSeq, added to transNodes: " + node);
+                    break;
+                default:
+                    throw new IllegalStateException("Unexpected node type in " 
+                            + this.getClass().getSimpleName() + ", nodeType: " + node.getType());
+                }
+            }
+        });
+    }
+    
+    /**
+     * Accepts a visitor which will visit all gotDirtyNodes with a tpos &lt; limit.
+     */
+    public void visitGotDirtyNodes(long limit, Visitor visitor) {
+        if (isEmpty()) {
+            return;
+        }
+        
+        TransInfo info = first;
+        while (info != null && info.tpos < limit) {
+            for (INode node : info.gotDirtyNodes) {
+                visitor.node(node);
+            }
+            info = info.next;
+        }
+    }
+    
     /**
      * Information needed about one transaction and linked-list pointer.
      */
@@ -98,6 +141,19 @@ public class KvTransSeq {
             this.tpos = tpos;
             this.lastPos = lastPos;
         }
+    }
+    
+    /**
+     * The method subset of core.TransactionNodes needed by this class.
+     * This type is useful to minimize dependency, good for testing / mocks.
+     */
+    public static interface TransNodesForMe {
+        public void addTopNode(TopNode node);
+        public void addKeyNode(KeyNode node);
+    }
+    
+    public static interface Visitor {
+        public void node(INode node);
     }
     
     
@@ -161,5 +217,5 @@ public class KvTransSeq {
         s.removeBeforeSpos(400);
         Assert.assertEquals(0, s.getSize());
         Assert.assertTrue(s.isEmpty());
-    }
+    }    
 }

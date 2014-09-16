@@ -16,6 +16,8 @@ import bergdb.dag.TopNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
+// TODO kv2, do not used this class. KvTransSeq used instead.
+
 /**
  * <p>An instance of this class keeps a sequence of sets of index nodes in the
  * startup section. Each node set contains the index nodes of a particular 

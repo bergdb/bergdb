@@ -1060,7 +1060,6 @@ public class Db {
             try {
                 t.time = dbClock.transactionBegin();
                 putKvs();
-                aux.updateTransCounters();
 
                 synchronized (readSync) {}
                     // Publishes the changes by the writer thread to the readers. This is done
@@ -1071,15 +1070,17 @@ public class Db {
                 dbClock.transactionEnd();
                 // After above line, get operations can use the lookuptime t.transTime.
             }
-
+            
             for (int i = 0; i < t.writeKeyHashes.length; i++) {
                 keyModSet.add(t.time, t.writeKeyHashes[i]);
             }
 
+            updateStats();
+            
             appendToStream();
             
-            x.lastSposOfLastTrans = x.trans.lastPos;
             x.startupPos.releaseForEvict();
+            
             x.end();
 
             // The synch statement below guarantees that the writes are visible to
@@ -1129,15 +1130,14 @@ public class Db {
         // Everything written to the stream is considered new data to the cache.
         // This could be improved for a better memory-added-to-cache estimate.
 
-        aux.cachedMemoryValue.addAndGet(x.transNodes.sumMemSize());
-        
         long startupPos2 = x.startupPos.next(this.startupDistance, nodeStream.getLength());
         
         if (dag != null) {
             transSeq.addToTransNodes(startupPos2, x.transNodes);
+            
+            kvTransSeq.addToTransNodes(startupPos2, x.transNodes);     // XXX work here!
+            kvTransSeq.removeBeforeSpos(startupPos2);
         }
-        
-        computeStats();
 
         assert x.trans != null : "trans is null";
         assert x.transNodes != null : "transNodes is null";
@@ -1152,13 +1152,20 @@ public class Db {
         if (dag != null) {
             transSeq.add(x.transNodes.createTset(x.trans.pos, x.trans.lastPos));            
             transSeq.removeBeforeSpos(startupPos2);
+            
+            x.transInfo.tpos = x.trans.pos;
+            x.transInfo.lastPos = x.trans.lastPos;
+            kvTransSeq.add(x.transInfo);
         }
     }
 
     /**
-     * Computes this.dirtyFraction100, this.dirtyFraction1000.
+     * Updates statistics for one transaction.
      */
-    private void computeStats() {
+    private void updateStats() {
+        aux.kvCount += x.trans.kvs.length;
+        aux.transactionCount++;
+        
         int ordinaryNodeCount = x.transNodes.size();
         aux.nodesWritten += x.transNodes.size();
         aux.ordinaryNodesWritten += ordinaryNodeCount;
@@ -1168,6 +1175,8 @@ public class Db {
         double dirtyFraction = ((double) dirtyNodeCount) / totalNodeCount;
         aux.dirtyFraction100   = 0.99  * aux.dirtyFraction100  +  0.01  * dirtyFraction;
         aux.dirtyFraction1000  = 0.999 * aux.dirtyFraction1000 +  0.001 * dirtyFraction;
+        
+        aux.cachedMemoryValue.addAndGet(x.transNodes.sumMemSize());
     }
 
     /**
@@ -1406,12 +1415,14 @@ public class Db {
         }
         
         /**
-         * Called after transaction has executed (but still holds Db.writeLock).
+         * Called after transaction has done putKvs(), but still holds Db.writeLock.
          * Clears temporary references at end of transaction. Important to avoid memory leakage
          * and prepare for next transaction. Caller must hold writeLock.
          */
         private void end() {
             assert Thread.holdsLock(writeLock);
+            
+            x.lastSposOfLastTrans = x.trans.lastPos;
             trans = null;
             transNodes.clear();
         }
