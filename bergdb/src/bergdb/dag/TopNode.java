@@ -35,7 +35,9 @@ public final class TopNode implements INode {
         // Synch note: made volatile. Not accessed often, does not affect performance.
         // May be removed in future versions. For debug only.
     public boolean isInTransNodes;
-        // Synch note: protected by DB.writeLock.
+        // Synch note: protected by Db.writeLock.
+    public boolean isDirty;
+        // Synch note: access from threads holding Db.writeLock only.
     
     private static final int MAX_HEIGHT = 30;
     
@@ -186,7 +188,13 @@ public final class TopNode implements INode {
         this.isInTransNodes = b;
     }
     
+    public final boolean isDirty() {
+        return this.isDirty;
+    }
     
+    public final void setDirty(boolean isDirty) {
+        this.isDirty = isDirty;
+    }
 
     public final int getPointerCount() {
         return pointerCount;

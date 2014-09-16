@@ -28,6 +28,9 @@ public interface INode {
     public long getSpos();
     public void setSpos(long spos);
     
+    public boolean isDirty();
+    public void setDirty(boolean isDirty);
+    
     /**
      * Sets a unique ID of the node. This ID does not change as the node
      * is appended to or written to stream.

@@ -40,7 +40,9 @@ public class KeyNode implements INode {
         // Synch note: final, so we are fine :-)
     public boolean isInTransNodes = false;
         // Synch note: no need for volatile or something since all access is from threads 
-        // holding DB.writeLock.
+        // holding Db.writeLock.
+    public boolean isDirty;
+        // Synch note: read/write access only from threads holding Db.writeLock.
     
     public volatile short size;
         // Size of klong array actually used. 
@@ -116,13 +118,13 @@ public class KeyNode implements INode {
         return isSegmentLeaf;
     }
     
-    //public final boolean isDirty() {
-    //    return isDirty;
-    //}
+    public final boolean isDirty() {
+        return isDirty;
+    }
     
-    //public final void setIsDirty(boolean isDirty) {
-    //    this.isDirty = isDirty;
-    //}
+    public final void setDirty(boolean isDirty) {
+        this.isDirty = isDirty;
+    }
     
     public final long getKlong(int index) {
         return klongs[index];

@@ -82,10 +82,10 @@ public final class ValueNode implements INode {
 
     /**
      * A ValueNode is never dirty. This method should not be used. If it is still used and
-     * called with b == true, an IllegalArgumentException is thrown.
+     * called with isDirty == true, an IllegalArgumentException is thrown.
      */
-    public final void setIsDirty(boolean b) {
-        if (b == true) {
+    public final void setDirty(boolean isDirty) {
+        if (isDirty == true) {
             throw new IllegalArgumentException("A ValueNode cannot be dirty.");
         }
     }
