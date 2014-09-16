@@ -1122,7 +1122,7 @@ public class Db {
      * @throws StreamIoException
      */
     private void appendToStream() {
-        // TODO LATER Consider special code for primordial state. Nice to avoid: if (dag != null) {...
+        // TODO A. Special code for primordial state to avoid: if (dag != null) {...
         
         assert Thread.holdsLock(writeLock);
         
@@ -1133,9 +1133,9 @@ public class Db {
         long startupPos2 = x.startupPos.next(this.startupDistance, nodeStream.getLength());
         
         if (dag != null) {
-            transSeq.addToTransNodes(startupPos2, x.transNodes);
+            transSeq.addToTransNodes(startupPos2, x.transNodes);    // XXX remove transSeq.addToTransNodes().
             
-            kvTransSeq.addToTransNodes(startupPos2, x.transNodes);     // XXX work here!
+            kvTransSeq.addToTransNodes(startupPos2, x.transNodes);
             kvTransSeq.removeBeforeSpos(startupPos2);
         }
 

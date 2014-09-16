@@ -94,6 +94,8 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * @throws StreamIoException
      */
     public void appendNodes(TransNodes nodes, Trans trans) {
+        // XXX We need to include deletes somehow to be able to rerun transactions.
+        
         assert nodes.assertNoDuplicates();
 
         long transTpos = rstream.getNextSpos();
