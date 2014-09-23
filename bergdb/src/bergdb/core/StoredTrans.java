@@ -1,6 +1,7 @@
 package bergdb.core;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import bergdb.common.Bytes;
 import bergdb.common.Util;
@@ -13,6 +14,8 @@ import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
+import static bergdb.nanotest.Assert.assertEquals;
+import static bergdb.nanotest.Assert.assertArrayEquals;
 import bergdb.nanotest.T;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
@@ -26,8 +29,8 @@ import bergdb.storage.StreamFormatException;
  * @author Frans Lundberg
  */
 public class StoredTrans {
-    /** Transaction time (tt). */
-    public final long time;
+    /** Transaction time. */
+    public final long tt;
 
     /** First spos of transaction (tpos). */
     public final long pos;
@@ -39,10 +42,42 @@ public class StoredTrans {
     public final StoredNode[] nodes;
 
     private StoredTrans(Parser d) {
-        time = d.time;
+        tt = d.transactionTime;
         pos = d.pos;
         lastPos = d.lastPos;
         nodes = d.nodes;
+    }
+    
+    public Trans createRerunTransaction() {
+        // NOTE needs to handle DELETE ops later.
+        
+        List<StoredValueNode> storedValueNodes = extractValueNodes();
+        
+        Trans.Builder b = Trans.builder();
+        for (StoredValueNode n : storedValueNodes) {
+            assert n.getKey() != null : "key is null, " + n;
+            assert n.getKey().length > 0 : "Bad key, zero-length";
+            b.put(n.getKey(), n.getNode().getValue());
+        }
+        
+        Trans trans = b.build();
+        trans.isInternal = true;
+        trans.pos = pos;
+        trans.lastPos = lastPos;
+        trans.time = tt;
+        
+        return b.build();
+    }
+
+    private List<StoredValueNode> extractValueNodes() {
+        List<StoredValueNode> storedValueNodes = new ArrayList<StoredValueNode>();
+        
+        for (StoredNode n : nodes) {
+            if (n.getNode().getType() == INode.TYPE_VALUE) {
+                storedValueNodes.add((StoredValueNode) n);
+            }
+        }
+        return storedValueNodes;
     }
 
     /**
@@ -59,7 +94,7 @@ public class StoredTrans {
 
     public String toString() {
         StringBuilder b = new StringBuilder();
-        b.append("tt:" + time + ", transPos:" + pos);
+        b.append("tt:" + tt + ", transPos:" + pos);
         b.append(", nodeCount:" + this.nodes.length);
         return b.toString();
     }
@@ -81,7 +116,7 @@ public class StoredTrans {
      * Parses stream bytes to StoredNode objects.
      */
     private static class Parser {
-        long time;
+        long transactionTime;
         long pos;
         long lastPos;
         StoredNode[] nodes;
@@ -116,7 +151,7 @@ public class StoredTrans {
             }
 
             offset += 4; // 4 unused bytes
-            time = Bytes.bytesToLongLE(buffer, offset);
+            transactionTime = Bytes.bytesToLongLE(buffer, offset);
             offset += 8;
 
             // Parse nodes
@@ -204,7 +239,7 @@ public class StoredTrans {
         public void serialize(TransNodes transNodes, long transTime, long transStartPos) {
             assert transNodes != null;
             assert transTime >= 0;
-            assert transStartPos > 0;
+            assert transStartPos >= 0;
 
             this.transNodes = transNodes;
             this.transStartPos = transStartPos;
@@ -437,9 +472,9 @@ public class StoredTrans {
         Parser parser = new Parser();
         parser.parse(200, buffer);
         
-        Assert.assertEquals(0, parser.nodes.length);
-        Assert.assertEquals(100, parser.time);
-        Assert.assertEquals(200, parser.pos);
+        assertEquals(0, parser.nodes.length);
+        assertEquals(100, parser.transactionTime);
+        assertEquals(200, parser.pos);
     }
     
     @T
@@ -467,13 +502,13 @@ public class StoredTrans {
         Parser parser = new Parser();
         parser.parse(200, buffer);
         
-        Assert.assertEquals(4, parser.nodes.length);
-        Assert.assertEquals(100, parser.time);
-        Assert.assertEquals(200, parser.pos);
-        Assert.assertEquals(INode.TYPE_KEY_NODE, parser.nodes[0].getNode().getType());
-        Assert.assertEquals(INode.TYPE_VALUE, parser.nodes[1].getNode().getType());
-        Assert.assertEquals(INode.TYPE_VALUE, parser.nodes[2].getNode().getType());
-        Assert.assertEquals(INode.TYPE_VALUE, parser.nodes[3].getNode().getType());
+        assertEquals(4, parser.nodes.length);
+        assertEquals(100, parser.transactionTime);
+        assertEquals(200, parser.pos);
+        assertEquals(INode.TYPE_KEY_NODE, parser.nodes[0].getNode().getType());
+        assertEquals(INode.TYPE_VALUE, parser.nodes[1].getNode().getType());
+        assertEquals(INode.TYPE_VALUE, parser.nodes[2].getNode().getType());
+        assertEquals(INode.TYPE_VALUE, parser.nodes[3].getNode().getType());
         
         byte[] value1 = ((ValueNode) parser.nodes[2].getNode()).value.clone();
         Assert.assertArrayEquals(new byte[]{12}, value1);
@@ -482,4 +517,61 @@ public class StoredTrans {
         Assert.assertArrayEquals(new byte[]{13, 14}, value2);
     }
     
+    @T
+    private static void testSerializeAndCheckKey() {
+        Serializer serializer = new Serializer();
+        TransNodes transNodes = new TransNodes();
+        
+        ValueNode v0 = new ValueNode(new byte[]{});
+        KeyNode n = new KeyNode();
+        n.addKlong(10, Klong.create(Util.toBytes("a")), v0, AccessData.DEFAULT_ACCESS_DATA);
+        
+        transNodes.addValueNode(v0, Keys.toSegments("a"));
+        transNodes.addKeyNode(n);
+        
+        serializer.serialize(transNodes, 100, 200);
+        byte[] buffer = serializer.getOutputTransBuffer();
+        Parser parser = new Parser();
+        parser.parse(200, buffer);
+        
+        assertEquals(2, parser.nodes.length);
+        assertEquals(INode.TYPE_VALUE, parser.nodes[1].getNode().getType());
+        assertArrayEquals(Keys.toSegments("a"), ((StoredValueNode) parser.nodes[1]).getKey());
+    }
+    
+    @T
+    private static void testSerializeAndCheckKey2() {
+        Serializer serializer = new Serializer();
+        TransNodes transNodes = new TransNodes();
+        
+        ValueNode v0 = new ValueNode(new byte[]{});
+        transNodes.addValueNode(v0, Keys.toSegments("a"));
+        
+        long time = 120;
+        long transPos = 0;
+        serializer.serialize(transNodes, time, transPos);
+        Parser parser = new Parser();
+        parser.parse(transPos, serializer.getOutputTransBuffer());
+        
+        assertEquals(1, parser.nodes.length);
+        assertEquals(INode.TYPE_VALUE, parser.nodes[0].getNode().getType());
+        StoredValueNode node = (StoredValueNode) parser.nodes[0];
+        assertArrayEquals(Keys.toSegments("a"), node.getKey());
+    }
+    
+    @T
+    private static void testCreateRerunTransaction() {
+        Serializer serializer = new Serializer();
+        TransNodes nodes = new TransNodes();
+        nodes.addValueNode(new ValueNode(new byte[]{1, 2, 3}), Keys.toSegments("key1"));
+        serializer.serialize(nodes, 101, 0);
+        byte[] buffer = serializer.getOutputTransBuffer();
+        
+        StoredTrans stored = StoredTrans.parse(0, buffer);
+        Trans trans = stored.createRerunTransaction();
+        
+        assertEquals(1, trans.kvs.length);
+        assertArrayEquals(new byte[]{1, 2, 3}, trans.kvs[0].getValue());
+        assertArrayEquals(Keys.toSegments("key1"), trans.kvs[0].getKey());
+    }
 }

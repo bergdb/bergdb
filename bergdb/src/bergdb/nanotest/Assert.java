@@ -279,8 +279,8 @@ public class Assert {
         
         for (int i = 0; i < expected.length; i++) {
             if (expected[i] != actual[i]) {
-                throw new AssertionError("expected[" + i + "] = " + ((int)expected[i]) 
-                        + " while actual[" + i + "] = " + ((int)actual[i]));
+                throw new AssertionError("expected[" + i + "] = " + expected[i] 
+                        + " while actual[" + i + "] = " + actual[i]);
             }
         }
     }

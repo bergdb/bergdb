@@ -586,7 +586,7 @@ public class Db {
         if (size == 0) {
             lastTransTime = 0;
         } else {
-            lastTransTime = transactions.get(size - 1).time;
+            lastTransTime = transactions.get(size - 1).tt;
         }
         
         dbClock.setLastTransTime(lastTransTime);

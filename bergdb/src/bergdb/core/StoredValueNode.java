@@ -11,6 +11,8 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.storage.StreamFormatException;
 
+// XXX Fix testToBytesAndBackAndCheckKey()
+
 /**
  * This class is responsible for how to store a ValueNode in the stream.
  * 
@@ -39,6 +41,8 @@ public class StoredValueNode implements StoredNode {
      * Creates a StoredValueNode by parsing the provided byte buffer.
      */
     public static StoredValueNode parse(byte[] buffer, int offset, long spos, boolean readKey) {
+        // TODO If we allow enums now, use it instead of boolean parameter.
+        
         Pair<ValueNode, long[]> pair = fromBytes(buffer, offset, spos, readKey);
 
         StoredValueNode stored = new StoredValueNode();
@@ -99,6 +103,8 @@ public class StoredValueNode implements StoredNode {
             
             if (readKey) {
                 int keySize = Bytes.bytesToIntLE(buffer, offset);
+                offset += 4;
+                
                 if (keySize % 8 != 0 || keySize <= 0) {
                     throw new StreamFormatException("Bad key size when reading value node at spos " 
                             + spos + ", keySize: " + keySize + ".");
@@ -123,11 +129,13 @@ public class StoredValueNode implements StoredNode {
     public static int getByteSize(ValueNode node, long[] key) {
         return node.value == null ? 
                 8 : 
-                8 + 4 + node.value.length + 4 + 8* key.length;
+                8 + 4 + node.value.length + 4 + 8 * key.length;
     }
 
     /**
      * The value is serialized to the byte buffer.
+     * 
+     * @return The number of bytes required to store the value node.
      */
     public static int toBytes(ValueNode node, long[] key, byte[] buffer, final int firstOffset) {
         int offset = firstOffset;
@@ -177,7 +185,7 @@ public class StoredValueNode implements StoredNode {
     // ======== Tests ========
 
     @T
-    public static void testToBytesAndBack() {
+    private static void testToBytesAndBack() {
         byte[] value = new byte[10];
         value[3] = 3;
         value[9] = -2;
@@ -195,7 +203,21 @@ public class StoredValueNode implements StoredNode {
     }
     
     @T
-    public static void testThatSposIsSetWhenParsedFromBytes() {
+    private static void testToBytesAndBackAndCheckKey() {
+        final String keyString = "a";
+        long[] key = Keys.toSegments(keyString);
+        ValueNode node = new ValueNode(new byte[0]);
+        byte[] buffer = new byte[getByteSize(node, key)];
+        
+        StoredValueNode.toBytes(node, key, buffer, 0);
+        
+        StoredValueNode stored = parse(buffer, 0, 100, true);
+        
+        Assert.assertArrayEquals(Keys.toSegments(keyString), stored.getKey());
+    }
+    
+    @T
+    private static void testThatSposIsSetWhenParsedFromBytes() {
         long[] key = Keys.toSegments("/-mykey.txt");
         ValueNode node = new ValueNode(new byte[0]);
         byte[] buffer = new byte[getByteSize(node, key)];
