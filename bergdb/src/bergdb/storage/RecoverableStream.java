@@ -108,7 +108,7 @@ public class RecoverableStream {
         MetaBlock lastBlock = readLastValidMetaBlock();
         if (lastBlock == null) {
             throw new StreamFormatException("Could not find *any* valid meta block. "
-                    + "At least the very first meta block must be valid in the valid db stream.");
+                    + "At least the very first meta block must be valid in a db stream.");
         }
         
         this.metaBlock.setFromOtherMetaBlock(lastBlock);

@@ -11,7 +11,8 @@ public class Constants {
     private Constants() {}
     
     /**
-     * Must equal bergdb.core.Spos.NULL.
+     * Equals bergdb.core.Spos.NULL.
+     * Needed to avoid disallowed package dependency.
      */
     public static final int SposNULL = Util.identity(-1);
 }

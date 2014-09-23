@@ -51,7 +51,7 @@ public interface INode {
     public long getPointerPos(int index);
     
     /**
-     * Sets pointer node and spos at a given pointer index.
+     * Sets pointer node and spos (accessData) at a given pointer index.
      */
     public void setPointer(int index, INode node, long spos);
     

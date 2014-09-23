@@ -32,8 +32,8 @@ public class Jmx {
         public String getTimeH();
         public String dbTimeToString(long dbTime);
         public long getStreamSize();
-        public long getStartupDistance();
-        public void setStartupDistance(long newDistance);
+        public int getStartupDistance();
+        public void setStartupDistance(int newDistance);
         public String getStartupDistanceH();
         public double getDirtyFraction100();
         public double getDirtyFraction1000();
@@ -110,11 +110,11 @@ public class Jmx {
             return db.getStreamLength();
         }
         
-        public long getStartupDistance() {
+        public int getStartupDistance() {
             return db.getStartupDistance();
         }
         
-        public void setStartupDistance(long newDistance) {
+        public void setStartupDistance(int newDistance) {
             db.setStartupDistance(newDistance);
         }
         

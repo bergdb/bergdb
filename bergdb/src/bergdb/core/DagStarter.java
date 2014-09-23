@@ -1,6 +1,5 @@
 package bergdb.core;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,14 +8,13 @@ import bergdb.dag.Dag.NodeReader;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.INode;
+import bergdb.dag.KeyNode;
 import bergdb.dag.Pointer;
 import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
+import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
-
-// XXX implement creation of KvTransSeq in DagStarter
-// TODO A remove TransSeq
 
 /**
  * A function-class, see the one public method.
@@ -25,9 +23,9 @@ import bergdb.storage.StreamFormatException;
  * @author Frans Lundberg
  */
 public class DagStarter {
+    // 140923 kv2 branch - new algorigthm.
     // 140824 Class introduced to keep startup algo separate.
     
-    private final TransSeq transSeq = new TransSeq();
     private final KvTransSeq kvTransSeq = new KvTransSeq();
     private long cachedMemoryValue = Db.MIN_CACHE_MEMORY_VALUE;
     private final HashMap<Long, INode> posMap = new HashMap<Long, INode>();  // pos -> node
@@ -35,7 +33,14 @@ public class DagStarter {
     private final List<StoredTrans> transactions;
     private TopNode superRoot;
     private final long accessData;
-    
+        
+    private DagStarter(List<StoredTrans> transactions, long accessData) {
+        validateTransactions(transactions);
+        validateAccessData(accessData);
+        this.transactions = transactions;
+        this.accessData = accessData;
+        this.superRoot = null;
+    }
     
     /**
      * Runs the startup algorithms and returns the result from it.
@@ -45,16 +50,48 @@ public class DagStarter {
      */
     public static DagStarter.Result start(List<StoredTrans> transactions, long accessData) {
         DagStarter dagStarter = new DagStarter(transactions, accessData);
-        dagStarter.startInternal();
+        dagStarter.startInner();
         return dagStarter.new Result();
     }
     
-    private DagStarter(List<StoredTrans> transactions, long accessData) {
-        validateTransactions(transactions);
-        validateAccessData(accessData);
-        this.transactions = transactions;
-        this.accessData = accessData;
-        this.superRoot = null;
+    /**
+     * Runs the startup algorithm.
+     */
+    private void startInner() {
+        // XXX work here!
+        // * Handle case with zero transactions (first startup).
+        // * Find super root.
+        // * Change nodes to their state at t = t_first.
+        // * Re-run transactions - no add to stream, no stats, but create KvTransSeq.
+        
+        if (transactions.size() == 0) {
+            throw new IllegalStateException("No transactions for startup algorithm.");
+        }
+        
+        if (transactions.size() == 1 && transactions.get(0).pos == RecoverableStream.META_BLOCK_SIZE) {
+            firstStartup();
+            return;
+        }
+        
+        
+        throw new IllegalStateException("STARTUP NOT IMPLEMENTED, " + transactions.size());
+        
+        // OLD ALGORITHM
+        //createTransSeq();
+        //createMaps();
+        //refreshStreamPointers();
+        //createMemoryPointers();
+    }
+    
+    private void firstStartup() {
+        StoredNode[] nodes = transactions.get(0).nodes;
+        superRoot = (TopNode) nodes[0].getNode();
+        KeyNode keyNode = (KeyNode) nodes[1].getNode();
+        
+        superRoot.setPointer(0, keyNode, AccessData.DEFAULT_ACCESS_DATA);
+        
+        assert keyNode.isDirty() == false;
+        assert superRoot.isDirty() == false;
     }
     
     private void validateTransactions(List<StoredTrans> transactions) {
@@ -95,36 +132,6 @@ public class DagStarter {
         }
     }
     
-    /**
-     * Runs the startup algorithm.
-     */
-    private void startInternal() {
-        createTransSeq();
-        createMaps();
-        refreshStreamPointers();
-        createMemoryPointers();
-    }
-    
-    /**
-     * Creates seq (the TransSeq).
-     */
-    private void createTransSeq() {
-        for (StoredTrans trans : transactions) {
-            ArrayList<INode> tnodes = new ArrayList<INode>();
-            
-            for (StoredNode storedNode : trans.nodes) {
-                INode node = storedNode.getNode();
-                
-                if (node.isIndexNode()) {
-                    tnodes.add(node);
-                }
-            }
-            
-            INode[] nodeArray = new INode[tnodes.size()];
-            tnodes.toArray(nodeArray);
-            transSeq.add(new TransSeq.Tset(nodeArray, trans.pos, trans.lastPos));
-        }
-    }
     
     /** 
      * Creates posMap and nextMap and increases cachedMemoryValue. 
@@ -232,21 +239,9 @@ public class DagStarter {
      * The result of starting the Dag.
      */
     public class Result {
-        public Dag createDag(NodeReader nodeReader, int maxNodeSize) {
-            if (nodeReader == null) {
-                throw new IllegalArgumentException("nodeReader == null not allowed");
-            }
-            
-            if (maxNodeSize < 1) {
-                throw new IllegalArgumentException("bad maxNodeSize " + maxNodeSize);
-            }
-            
+        public Dag createDag(NodeReader nodeReader, int maxNodeSize) {            
             TopDs topDs = new TopDs(superRoot);
             return new Dag(nodeReader, topDs, maxNodeSize);
-        }
-        
-        public TransSeq getTransSeq() {
-            return transSeq;
         }
         
         public long getCachedMemoryValue() {
@@ -256,6 +251,5 @@ public class DagStarter {
         public KvTransSeq getKvTransSeq() {
             return kvTransSeq;
         }
-        
     }
 }

@@ -12,9 +12,10 @@ import bergdb.storage.StreamFormatException;
 
 /**
  * Db uses a NodeStream object as its interface to the database stream. Db appends nodes with
- * appendNodes() and reads nodes with readNode(). Concurrency: One writer thread calling addNodes(),
- * getLength(), recover(), getPosOfLastCompletedTrans() and multiple reader threads calling
- * readNode() is the concurrency situation that is assumed.
+ * appendNodes() and reads nodes with readNode(). 
+ * Concurrency: One write thread (holding writeLock) calling appendNodes(), getLength(), recover(), 
+ * getPosOfLastCompletedTrans() and multiple concurrent reader threads calling
+ * readNode() is the assumption.
  * 
  * @author Frans Lundberg
  */
@@ -52,7 +53,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     }
 
     /**
-     * Recovers stream, reads meta block in stream.
+     * Recovers the stream; adds zero bytes at end if needed, reads the last valid meta block.
      * 
      * @see RecoverableStream#recover()
      * @throws StreamIoException
@@ -60,7 +61,14 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      */
     public void recover() {
         assert Thread.holdsLock(writeLock);
-        this.rstream.recover();
+        
+        long length = rstream.getLength();
+        if (length < RecoverableStream.META_BLOCK_SIZE) {
+            throw new StreamFormatException("Cannot recover stream without complete first "
+                    + "meta block, length: " + length);
+        }
+        
+        rstream.recover();
     }
 
     /**

@@ -5,41 +5,30 @@ import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
+// TODO LATER How is "time" used? What exactly is it? Is it used, is it necessary?
+
 /**
  * An instance of this class represents a meta information block in the 
  * db stream (RecoverableStream). The meta information includes 
  * the spos of the last successful transaction.
+ * Little-endian byte order is used.
  *
  * <pre>
  * FORMAT OF A META BLOCK, v133
  * Offset  Size    Description
  * 0       4       Magic bytes, meta block signature. Always the bytes for ASCII "berg".
- * 4       4       Version of BergDB stream format (currently 133).
+ * 4       4       Version of BergDB stream format as an int (currently 133).
  * 8       8       time, database time as a long (Little-endian-first byte order).
  * 16      8       lastTrans, spos of last valid transaction completely written
  *                 before the meta block.
- * 24     16       Database ID. 128 random bits, used as unique database ID. Static.
+ * 24     16       Database ID. 128 random bits, used as unique database ID.
  * 40      4       startupDistance in bytes. Typically 20M (LE-first byte order).
  * 44     52       startupPos. Stream position to startup from (LE-first byte order).
  * 53     75       Reserved, must be set to zero.
  * 127     1       META_BLOCK_LAST_BYTE. Used to indicate that the block is valid.
  * </pre>
- * 
- * <pre>
- * FORMAT OF A META BLOCK, v131
- * Offset  Size    Description
- * 0       4       Magic bytes, meta block signature. Always the bytes for ASCII ":-*d".
- * 4       4       Version of BergDB stream format (currently 131).
- * 8       8       time, database time as a long (Little-endian-first byte order).
- * 16      8       lastTrans, spos of last valid transaction completely written
- *                 before the meta block.
- * 24     16       Database ID. 128 random bits, used as unique database ID. Static.
- * 40      4       startupDistance in bytes. Typically 20M (LE-first byte order).
- * 44     83       Reserved, must be set to zero.
- * 127     1       META_BLOCK_LAST_BYTE. Used to indicate that the block is valid.
- * </pre>
  */
-public class MetaBlock {
+public class MetaBlock {    
     private static final byte META_BLOCK_LAST_BYTE = (byte) Util.identity(10);
     private static final byte[] MAGIC = new byte[] {'b', 'e', 'r', 'g'};
     private static final int STREAM_FORMAT_VERSION = Util.identity(133);    
@@ -113,7 +102,7 @@ public class MetaBlock {
         }
         
         long last = getLastTransSpos();
-        if (last < -1) {
+        if (last < 0 && last != Constants.SposNULL) {
             throw new StreamFormatException("Meta block, bad last transaction spos: " + last + ".");
         }
 
@@ -150,10 +139,14 @@ public class MetaBlock {
     }
     
     /**
-     * Returns the stream position of the block, or -1 if unknown or not applicable.
+     * Returns the stream position of this meta block, or -1 if unknown or not applicable.
      */
     final long getPos() {
         return pos;
+    }
+    
+    public void setPos(long pos) {
+        this.pos = pos;
     }
     
     /**
@@ -163,6 +156,9 @@ public class MetaBlock {
         return block;
     }
     
+    /**
+     * Returns the version of the stream format.
+     */
     public int getVersion() {
         return Bytes.bytesToIntLE(block, 4);
     }
@@ -171,6 +167,9 @@ public class MetaBlock {
         Bytes.longToBytesLE(time, block, 8);
     }
     
+    /**
+     * Database time in db time units (100 ns units since Unix Epoch).
+     */
     public long getTime() {
         return Bytes.bytesToLongLE(block, 8);
     }
@@ -196,8 +195,8 @@ public class MetaBlock {
     /**
      * Returns the spos of the last completed and valid transaction written to the stream
      * before the meta block was written.
-     * Returns -1 if unknow or if no transaction has been written completely
-     * before the meta block.
+     * Returns Constants.SposNULL if no transaction has been written to the 
+     * stream before the meta block.
      */
     public long getLastTransSpos() {
         return Bytes.bytesToLongLE(block, 16);
@@ -205,6 +204,7 @@ public class MetaBlock {
     
     /**
      * Sets the spos of the last completed and valid transaction written to the stream.
+     * Use Constants.SposNULL if no transaction has run yet.
      */
     public void setLastTransSpos(long spos) {
         Bytes.longToBytesLE(spos, block, 16);

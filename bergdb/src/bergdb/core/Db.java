@@ -129,7 +129,6 @@ public class Db {
     private final StorageManager storageManager;
     private final Random evictRandom;
     private Dag dag;
-    private TransSeq transSeq;
     private KvTransSeq kvTransSeq;
     private final ExecuteData x;
     private final Aux aux = new Aux();
@@ -150,7 +149,7 @@ public class Db {
     private final int maxNodeSize;
     
     /** Current startupDistance. Sync note: protected by writeLock. */
-    private long startupDistance;
+    private int startupDistance;
     
     // ---- Misc ----
     
@@ -215,7 +214,7 @@ public class Db {
         }
     }
 
-    public long getStartupDistance() {
+    public int getStartupDistance() {
         synchronized (writeLock) {
             return this.startupDistance;
         }
@@ -265,7 +264,7 @@ public class Db {
      * method. Call this method repeatedly to reduce the startup distance
      * more than 10M.
      */
-    public void setStartupDistance(long newDistance) {
+    public void setStartupDistance(int newDistance) {
         //
         // A dummy transaction of size >= META_BLOCK_DISTANCE is written
         // to the stream to ensure that the new value of startupDistance is 
@@ -276,8 +275,8 @@ public class Db {
             throw new IllegalArgumentException("Bad newDistance: " + newDistance + ".");
         }
         
-        long min = RecoverableStream.META_BLOCK_DISTANCE * 2;
-        long max = 1000*1000000;
+        int min = RecoverableStream.META_BLOCK_DISTANCE * 2;
+        int max = 1000*1000000;
         
         newDistance = newDistance < min ? min : newDistance;
         newDistance = newDistance > max ? max : newDistance;
@@ -515,10 +514,11 @@ public class Db {
         assertStateIsZero();
 
         syncStreams();
-        createInitialStreamStateIfStreamIsEmpty();
+        handleEmptyStream();
+        
         nodeStream.recover();
         assertDatabaseIdNotOnlyZeros();
-        setStartupPosAndStartupDistanceFromStream(listener);
+        setStartupPosAndStartupDistanceFromMetaBlock(listener);
         
         ArrayList<StoredTrans> transactions = readTransactions(x.startupPos.get());
         setLastTransTimeOfDbClock(transactions);
@@ -538,20 +538,27 @@ public class Db {
         DagStarter.Result result = DagStarter.start(transactions, getAccessData());
         dag = result.createDag(nodeStream, maxNodeSize);
         aux.cachedMemoryValue.set(result.getCachedMemoryValue());
-        transSeq = result.getTransSeq();
         kvTransSeq = result.getKvTransSeq();
     }
 
-    private void setStartupPosAndStartupDistanceFromStream(StartListener listener) {
-        this.startupDistance = nodeStream.getMetaBlock().getStartupDistance();
-        if (startupDistance <= 0) {
+    private void setStartupPosAndStartupDistanceFromMetaBlock(StartListener listener) {
+        int distance = nodeStream.getMetaBlock().getStartupDistance();
+        if (distance <= 0) {
             throw new StreamFormatException("Bad value of startupDistance in meta " +
-                    "block of stream: " + startupDistance + ".");
+                    "block of stream: " + distance + ".");
         }
-        x.startupPos.set(nodeStream.getMetaBlock().getStartupPos());
         
-        listener.reportStartupDistance(this.startupDistance);
-        listener.reportStartPos(x.startupPos.get());
+        long pos = nodeStream.getMetaBlock().getStartupPos();
+        if (pos < 0) {
+            throw new StreamFormatException("Bad value of startupPos in meta " +
+                    "block of stream: " + pos + ".");
+        }
+        
+        this.startupDistance = distance;
+        this.x.startupPos.set(pos);
+        
+        listener.reportStartupDistance(distance);
+        listener.reportStartPos(pos);
     }
 
     private void assertDatabaseIdNotOnlyZeros() {
@@ -573,10 +580,15 @@ public class Db {
     }
     
     private void setLastTransTimeOfDbClock(ArrayList<StoredTrans> transactions) {
-        long lastTransTime = 0;
-        if (transactions.size() > 0) {
-            lastTransTime = transactions.get(transactions.size() - 1).time;
+        long lastTransTime;
+        int size = transactions.size();
+        
+        if (size == 0) {
+            lastTransTime = 0;
+        } else {
+            lastTransTime = transactions.get(size - 1).time;
         }
+        
         dbClock.setLastTransTime(lastTransTime);
     }
     
@@ -632,10 +644,47 @@ public class Db {
         }
     }
 
-    private void createInitialStreamStateIfStreamIsEmpty() {
+    /**
+     * If the stream is empty, this method creates the database id 
+     * (if not given in the database builder)
+     * and writes the first metablock to the stream.
+     */
+    private void handleEmptyStream() {
         if (nodeStream.getLength() == 0) {
-            createInitialStreamState();
+            writePrimordialTransaction();
         }
+    }
+
+    private void writePrimordialTransaction() {
+        DatabaseId id = (databaseIdFromBuilder == null) ? new DatabaseId() : databaseIdFromBuilder;
+        
+        long tt;
+        try {
+            tt = dbClock.transactionBegin();
+        } finally {
+            dbClock.transactionEnd();
+        }
+        
+        KeyNode root = new KeyNode();
+        TopNode superRoot = TopDs.createSuperRootFromFirstKeyNode(tt, root, AccessData.DEFAULT_ACCESS_DATA);
+        TransNodes nodes = new TransNodes();
+        nodes.addKeyNode(root);
+        nodes.addTopNode(superRoot);
+        
+        MetaBlock meta = nodeStream.getMetaBlock();
+        meta.setId(id.getBytes());
+        meta.setStartupDistance(startupDistance);
+        meta.setStartupPos(0);
+        meta.setTime(tt);
+        
+        Trans trans = Trans.builder().build();
+        trans.isInternal = true;
+        nodeStream.appendNodes(nodes, trans);
+        
+        //System.out.println("---- Primordinal transaction ----");
+        //System.out.println("trans.lastPos " + trans.lastPos);
+        //System.out.println("trans.pos " + trans.pos);
+        //System.out.println("nodes.size() = " + nodes.size());
     }
 
     /**
@@ -710,6 +759,7 @@ public class Db {
         super.finalize();
     }
     
+    /*
     private void createInitialStreamState() {
         KeyNode root = new KeyNode();
         TopDs top;
@@ -733,7 +783,7 @@ public class Db {
         
         appendToStream();
         x.end();
-    }
+    }*/
     
     /**
      * Prints the in memory part of the DB graph. Useful for test and
@@ -1120,9 +1170,7 @@ public class Db {
      * 
      * @throws StreamIoException
      */
-    private void appendToStream() {
-        // TODO A. Special code for primordial state to avoid: if (dag != null) {...
-        
+    private void appendToStream() {        
         assert Thread.holdsLock(writeLock);
         
         // Below is a simple implementation of the cachedMemoryValue.
@@ -1130,13 +1178,9 @@ public class Db {
         // This could be improved for a better memory-added-to-cache estimate.
 
         long startupPos2 = x.startupPos.next(this.startupDistance, nodeStream.getLength());
-        
-        if (dag != null) {
-            transSeq.addToTransNodes(startupPos2, x.transNodes);    // XXX remove transSeq.addToTransNodes().
             
-            kvTransSeq.addToTransNodes(startupPos2, x.transNodes);
-            kvTransSeq.removeBeforeSpos(startupPos2);
-        }
+        kvTransSeq.addToTransNodes(startupPos2, x.transNodes);
+        kvTransSeq.removeBeforeSpos(startupPos2);
 
         assert x.trans != null : "trans is null";
         assert x.transNodes != null : "transNodes is null";
@@ -1148,14 +1192,9 @@ public class Db {
         MetaBlock meta = nodeStream.getMetaBlock();
         meta.setStartupPos(x.startupPos.get());
         
-        if (dag != null) {
-            transSeq.add(x.transNodes.createTset(x.trans.pos, x.trans.lastPos));            
-            transSeq.removeBeforeSpos(startupPos2);
-            
-            x.transInfo.tpos = x.trans.pos;
-            x.transInfo.lastPos = x.trans.lastPos;
-            kvTransSeq.add(x.transInfo);
-        }
+        x.transInfo.tpos = x.trans.pos;
+        x.transInfo.lastPos = x.trans.lastPos;
+        kvTransSeq.add(x.transInfo);
     }
 
     /**

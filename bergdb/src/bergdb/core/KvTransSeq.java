@@ -124,7 +124,7 @@ public class KvTransSeq {
         /** Last stream position of the transaction. */
         long lastPos;
         
-        /** Index nodes (top nodes, key nodes) that got dirty when the transaction executed. */
+        /** Index nodes (top nodes, key nodes) that got dirty while the transaction executed. */
         ArrayList<INode> gotDirtyNodes = new ArrayList<INode>();
         
         TransInfo() {

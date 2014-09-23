@@ -29,9 +29,14 @@ public class TopDs {
      * space root node.
      */
     public static TopDs createFromFirstRoot(long firstTime, KeyNode firstRoot, long accessData) {
+        TopNode first = createSuperRootFromFirstKeyNode(firstTime, firstRoot, accessData);
+        return new TopDs(first);
+    }
+    
+    public static TopNode createSuperRootFromFirstKeyNode(long firstTime, KeyNode firstRoot, 
+            long accessData) {
         TopNode first = new TopNode(0, firstRoot, accessData, firstTime, Spos.NULL);
-        TopDs ds = new TopDs(first);
-        return ds;
+        return first;
     }
     
     /**

@@ -1072,9 +1072,9 @@ public class DbTester {
     }
     
     /**
-     * Creates and starts test DB based on the provided stream. Small bufferSize and bufferTime.
+     * Creates and starts a test Db based on the provided stream. Small bufferSize and bufferTime.
      */
-    private static Db testDB(AppendOnlyStream stream) {
+    private static Db testDb(AppendOnlyStream stream) {
         Db.Builder b = Db.builder();
         b.testClock();
         b.evictBoss(new NoEvictBoss());
@@ -1084,27 +1084,32 @@ public class DbTester {
         return b.start();
     }
     
-    @T
-    public static void testCrash1() {
+    // TODO enable this test
+    //@T
+    public static void tCrash1() {
         //
         // Truncate from end, one transaction in addition to the primordial one.
         //
         MemoryStream mstream = new MemoryStream();
-        Db db = testDB(mstream);
+        Db db = testDb(mstream);
         
         long size1 = mstream.getLength();
         Trans trans = Trans.builder().put("key", "value").build();
         db.execute(trans);
         db.sync(trans.lastPos, SyncLevel.ORDINARY);
         db.stop();
+        
         long size2 = mstream.getLength();
         long diff = size2 - size1;
         
         Assert.assertTrue(diff > 10);
         mstream.truncate(size2 - 10);
         
-        Assert.assertEquals(size2 - 10, mstream.getLength());
-        Db db2 = testDB(mstream);
+        MemoryStream mstream2 = mstream.copy();
+        
+        Assert.assertEquals(size2 - 10, mstream2.getLength());
+     
+        Db db2 = testDb(mstream2);
         byte[] value = DbUtil.get(db2, Keys.toBytes("key"));
         Assert.assertTrue(value == null);
         db2.stop();
@@ -1116,7 +1121,7 @@ public class DbTester {
         // Truncate from end, two transactions, one should still work when database restarted.
         //
         MemoryStream mstream = new MemoryStream();
-        Db db = testDB(mstream);
+        Db db = testDb(mstream);
         
         Trans trans = Trans.builder().put("key", "the-first-value").build();
         db.execute(trans);
@@ -1131,19 +1136,19 @@ public class DbTester {
         db.stop();
         
         // Restart, no crash
-        Db db2 = testDB(mstream);
+        Db db2 = testDb(mstream);
         Assert.assertEquals("the-second-value", DbUtil.getString(db2, "key"));
         db2.stop();
         
         // Restart, truncate 10 bytes (last transaction)
         mstream.truncate(size2 - 10);
-        Db db3 = testDB(mstream);
+        Db db3 = testDb(mstream);
         Assert.assertEquals("the-first-value", DbUtil.getString(db3, "key"));
         db3.stop();
         
         // Restart, truncate first transaction.
         mstream.truncate(size1 - 10);
-        Db db4 = testDB(mstream);
+        Db db4 = testDb(mstream);
         Assert.assertNull(DbUtil.getString(db4, "key"));
         db4.stop();
     }
@@ -1154,7 +1159,7 @@ public class DbTester {
         // Truncates complicated stream a few times.
         //
         MemoryStream mstream = new MemoryStream();
-        Db db = testDB(mstream);
+        Db db = testDb(mstream);
         
         long size1 = mstream.getLength();
         db.execute(Trans.builder().put("key", "value1").build());
@@ -1176,7 +1181,7 @@ public class DbTester {
             MemoryStream mstream2 = mstream.copy();
             mstream2.truncate(newSize);
  
-            Db db2 = testDB(mstream);
+            Db db2 = testDb(mstream);
             byte[] value = DbUtil.get(db2, Util.toBytes("non-existing-key"));
             Assert.assertTrue(value == null);
             db2.stop();
@@ -1189,7 +1194,7 @@ public class DbTester {
         // Truncates stream in the middle of 2nd meta block.
         //
         MemoryStream mstream = new MemoryStream();
-        Db db = testDB(mstream);
+        Db db = testDb(mstream);
         final int blockDist = RecoverableStream.META_BLOCK_DISTANCE;
         
         db.execute(Trans.builder().put("key1", "value1"));
@@ -1205,7 +1210,7 @@ public class DbTester {
         
         mstream.truncate(blockDist + RecoverableStream.META_BLOCK_SIZE / 2);
         
-        Db db2 = testDB(mstream);
+        Db db2 = testDb(mstream);
         String v1 = DbUtil.getString(db2, "key1");
         byte[] v2b = DbUtil.get(db2, "key2");
         
@@ -1221,7 +1226,7 @@ public class DbTester {
         // Truncates stream in the middle of the size (4 first bytes) of a transaction.
         //
         MemoryStream mstream = new MemoryStream();
-        Db db = testDB(mstream);
+        Db db = testDb(mstream);
         Trans trans = Trans.builder().put("key1", "value1").build();
         db.execute(trans);
         db.sync(trans.lastPos, SyncLevel.STRONG);
@@ -1238,7 +1243,7 @@ public class DbTester {
         db.stop();
         db = null;
         
-        Db db2 = testDB(mstream);
+        Db db2 = testDb(mstream);
         
         String v1 = DbUtil.getString(db2, "key1");
         String v2 = DbUtil.getString(db2, "key2");

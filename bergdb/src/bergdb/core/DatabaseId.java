@@ -5,6 +5,7 @@ import java.security.SecureRandom;
 import bergdb.common.SeedGenerator;
 import bergdb.common.Util;
 
+// TODO LATER Move class to bergdb.storage and used it there too.
 
 /**
  * A 16-byte (128-bit) database ID. An object of this class is immutable.
