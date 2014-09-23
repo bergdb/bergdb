@@ -21,12 +21,12 @@ import bergdb.stream.AppendOnlyStream;
  * A replica can be added while the database is running. Also replicas can be removed while
  * the database is running.<p>
  * 
- * <p>When the database is started this object is used to synch the initial DBStorages. The storage
- * with the longest stream "wins" and the other is appended to from this longest stream.</p>
+ * <p>When the database is started this object is used to synch the initial storages. The storage
+ * with the longest stream "wins" and the others are appended to from this longest stream.</p>
  * 
- * <p>This class is not thread-safe by itself. All methods and constructors require
- * Write Access except get() that requires Read Access, and sync(), syncStrong()
- * that can be called from any thread.</p>
+ * <p>This class is not thread-safe by itself. By default methods and constructors require
+ * Write Access. get() requires Read Access. sync() and syncStrong() that can be called 
+ * from any thread.</p>
  * 
  * @author Frans Lundberg
  */
@@ -35,10 +35,10 @@ public class StorageManager implements AppendOnlyStream {
     // Note for developers. There is no point implementing finalize() with "stop()" in hope that 
     // BufferedStream thread would stop. This does not work since those threads have 
     // a reference to MyStorage (BufferedStream.setListener()) which have an implicit reference
-    // to DBStorageManager (non-static inner class).
+    // to StorageManager (non-static inner class).
     //
     // Note the use of CAS - compare and swap on the reference to 'internal'.
-    // Data stored in 'internal' changes relatively seldom compared to number of times it is read.
+    // Data stored in 'internal' changes seldom compared to number of times it is read.
     //
     
     public static final int DEFAULT_REPLICA_BUFFER_SIZE = 20 * 1000000;

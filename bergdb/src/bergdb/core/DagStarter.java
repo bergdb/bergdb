@@ -15,7 +15,7 @@ import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
 import bergdb.storage.StreamFormatException;
 
-// XXX implement creation of TransSeq in DagStarter
+// XXX implement creation of KvTransSeq in DagStarter
 // TODO A remove TransSeq
 
 /**

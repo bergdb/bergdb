@@ -78,7 +78,7 @@ public class DbHelper {
         final int[] progressValue = new int[] { 0 };
         final String[] progressNote = new String[] { "About to start to synch." };
 
-        // TODO LATER A. Make sure this class is tested.
+        // TODO LATER Make sure this class is tested.
         
         private AddReplicaClass(StorageManager storageManager, Db db) {
             this.storageManager = storageManager;

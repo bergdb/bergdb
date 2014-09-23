@@ -29,11 +29,6 @@ public class KvTransSeq {
         return size;
     }
     
-    /**
-     * Adds a TSet to the end of the list.
-     * 
-     * @param set  The TSet to add, condition: tset.tpos > last.tpos (or empty list).
-     */
     public void add(TransInfo info) {
         if (info == null) throw new IllegalArgumentException("info == null not allowed");
         
@@ -88,11 +83,9 @@ public class KvTransSeq {
                 switch (type) {
                 case INode.TYPE_TOP_NODE:
                     transNodes.addTopNode((TopNode) node);
-                    System.out.println("XXX KvTransSeq, added to transNodes: " + node);
                     break;
                 case INode.TYPE_KEY_NODE:
                     transNodes.addKeyNode((KeyNode) node);
-                    System.out.println("XXX KvTransSeq, added to transNodes: " + node);
                     break;
                 default:
                     throw new IllegalStateException("Unexpected node type in " 

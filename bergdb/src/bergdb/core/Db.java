@@ -472,7 +472,7 @@ public class Db {
     }
 
     /**
-     * Starts the database by reading from the stream. Call once per object
+     * Starts the database by reading from the stream. Call once per Db object
      * after constructor and before the get/set methods.
      * 
      * @throws StreamIoException
@@ -486,7 +486,7 @@ public class Db {
     }
     
     /**
-     * Starts the database by reading from the stream. Call once per object
+     * Starts the database by reading from the stream. Call once per Db object
      * after constructor and before the get/set methods.
      * 
      * @throws StreamIoException
@@ -511,8 +511,7 @@ public class Db {
      * @throws BadReplicaException
      * @throws IllegalDbStateException
      */
-    private void startInner(StartListener listener) {
-        
+    private void startInner(StartListener listener) {        
         assertStateIsZero();
 
         syncStreams();
@@ -1075,7 +1074,7 @@ public class Db {
                 keyModSet.add(t.time, t.writeKeyHashes[i]);
             }
 
-            updateStats();
+            aux.updateStats();
             
             appendToStream();
             
@@ -1157,26 +1156,6 @@ public class Db {
             x.transInfo.lastPos = x.trans.lastPos;
             kvTransSeq.add(x.transInfo);
         }
-    }
-
-    /**
-     * Updates statistics for one transaction.
-     */
-    private void updateStats() {
-        aux.kvCount += x.trans.kvs.length;
-        aux.transactionCount++;
-        
-        int ordinaryNodeCount = x.transNodes.size();
-        aux.nodesWritten += x.transNodes.size();
-        aux.ordinaryNodesWritten += ordinaryNodeCount;
-        
-        int totalNodeCount = x.transNodes.size();
-        int dirtyNodeCount = totalNodeCount - ordinaryNodeCount;
-        double dirtyFraction = ((double) dirtyNodeCount) / totalNodeCount;
-        aux.dirtyFraction100   = 0.99  * aux.dirtyFraction100  +  0.01  * dirtyFraction;
-        aux.dirtyFraction1000  = 0.999 * aux.dirtyFraction1000 +  0.001 * dirtyFraction;
-        
-        aux.cachedMemoryValue.addAndGet(x.transNodes.sumMemSize());
     }
 
     /**
@@ -1463,9 +1442,21 @@ public class Db {
         private double dirtyFraction100 = 0.10;
         private double dirtyFraction1000 = 0.10;
         
-        public void updateTransCounters() {
-            aux.kvCount += x.trans.kvs.length;
-            aux.transactionCount++;
+        private void updateStats() {
+            kvCount += x.trans.kvs.length;
+            transactionCount++;
+            
+            int ordinaryNodeCount = x.transNodes.size();
+            nodesWritten += x.transNodes.size();
+            ordinaryNodesWritten += ordinaryNodeCount;
+            
+            int totalNodeCount = x.transNodes.size();
+            int dirtyNodeCount = totalNodeCount - ordinaryNodeCount;
+            double dirtyFraction = ((double) dirtyNodeCount) / totalNodeCount;
+            dirtyFraction100   = 0.99  * aux.dirtyFraction100  +  0.01  * dirtyFraction;
+            dirtyFraction1000  = 0.999 * aux.dirtyFraction1000 +  0.001 * dirtyFraction;
+            
+            cachedMemoryValue.addAndGet(x.transNodes.sumMemSize());
         }
     }
     
