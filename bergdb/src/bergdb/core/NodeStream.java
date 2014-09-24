@@ -102,7 +102,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * @throws StreamIoException
      */
     public void appendNodes(TransNodes nodes, Trans trans) {
-        // XXX We need to include deletes somehow to be able to rerun transactions.
+        // TODO B. We need to include deletes somehow to be able to rerun transactions.
         
         assert nodes.assertNoDuplicates();
 
@@ -206,7 +206,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
             stored = StoredTopNode.parse(buffer, offset, spos);
             break;
         case INode.TYPE_VALUE:
-        case INode.TYPE_DELETE:  // TODO B. do we ever stored DELETE nodes in stream? Try removing this line.
+        case INode.TYPE_DELETE:  // TODO C. do we ever stored DELETE nodes in stream? Try removing this line.
             stored = StoredValueNode.parse(buffer, offset, spos, true);
             // NOTE Key always read currently. Not always needed. Check if we can increase
             // performance.

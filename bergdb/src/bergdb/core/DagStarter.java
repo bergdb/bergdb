@@ -14,6 +14,7 @@ import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
 import bergdb.storage.RecoverableStream;
+import bergdb.storage.StreamException;
 import bergdb.storage.StreamFormatException;
 
 /**
@@ -57,16 +58,14 @@ public class DagStarter {
     /**
      * Runs the startup algorithm.
      */
-    private void startInner() {
+    private void startInner() throws StreamException {
         // XXX work here!
-        // * Handle case with zero transactions (first startup).
+        // * Handle first startup.
         // * Find super root.
         // * Change nodes to their state at t = t_first.
         // * Re-run transactions - no add to stream, no stats, but create KvTransSeq.
         
-        if (transactions.size() == 0) {
-            throw new IllegalStateException("No transactions for startup algorithm.");
-        }
+        validateTransactions(transactions);
         
         if (transactions.size() == 1 && transactions.get(0).pos == RecoverableStream.META_BLOCK_SIZE) {
             firstStartup();
@@ -85,8 +84,23 @@ public class DagStarter {
     
     private void firstStartup() {
         StoredNode[] nodes = transactions.get(0).nodes;
-        superRoot = (TopNode) nodes[0].getNode();
-        KeyNode keyNode = (KeyNode) nodes[1].getNode();
+        if (nodes.length != 2) {
+            throw new StreamFormatException("expected 2, got " + nodes.length + " nodes.");
+        }
+        
+        INode n0 = nodes[0].getNode();
+        INode n1 = nodes[1].getNode();
+        
+        if (!(n0 instanceof TopNode)) {
+            throw new StreamFormatException("Expected TopNode, got " + n0);
+        }
+        
+        if (!(n1 instanceof KeyNode)) {
+            throw new StreamFormatException("Expected KeyNode, got " + n1);
+        }
+        
+        superRoot = (TopNode) n0;
+        KeyNode keyNode = (KeyNode) n1;
         
         superRoot.setPointer(0, keyNode, AccessData.DEFAULT_ACCESS_DATA);
         
@@ -94,33 +108,40 @@ public class DagStarter {
         assert superRoot.isDirty() == false;
     }
     
+    /**
+     * @throws StreamFormatException
+     */
     private void validateTransactions(List<StoredTrans> transactions) {
         // This code could be removed, or just called when when asserts enabled if
         // it is determined that it takes significant time to run.
         
         if (transactions == null) {
-            throw new IllegalArgumentException("transactions == null not allowed");
+            throw new StreamFormatException("transactions == null not allowed");
+        }
+        
+        if (transactions.size() == 0) {
+            throw new StreamFormatException("zero transactions for startup algorithm");
         }
         
         for (int i = 0; i < transactions.size(); i++) {
             StoredTrans t = transactions.get(i);
             if (t == null) {
-                throw new IllegalArgumentException("null transaction, i = " + i);
+                throw new StreamFormatException("null transaction, i = " + i);
             }
             
             if (!Spos.isValid(t.pos)) {
-                throw new IllegalArgumentException("Bad spos of transaction, " + t.toString());
+                throw new StreamFormatException("Bad spos of transaction, " + t.toString());
             }
             
             for (StoredNode stored : t.nodes) {
                 INode node = stored.getNode();
                 if (node == null) {
-                    throw new IllegalArgumentException("getNode() returned null, " + t.toString());
+                    throw new StreamFormatException("getNode() returned null, " + t.toString());
                 }
                 
                 long spos = node.getSpos();
                 if (!Spos.isValid(spos)) {
-                    throw new IllegalArgumentException("Bad spos of node, spos=" + spos + ", node: " + node);
+                    throw new StreamFormatException("Bad spos of node, spos=" + spos + ", node: " + node);
                 }
             }
         }

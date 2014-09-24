@@ -11,8 +11,6 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.storage.StreamFormatException;
 
-// XXX Fix testToBytesAndBackAndCheckKey()
-
 /**
  * This class is responsible for how to store a ValueNode in the stream.
  * 
