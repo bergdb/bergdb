@@ -399,8 +399,14 @@ public class PubTester {
         
         Transaction t = c.w().put(a).execute();
         t.sync();
-        Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
-                ((DatabaseImp) d).getDb().getStreamLength() - 1);
+        
+        assertThatTransWrittenCompletely(d, t);
+    }
+
+    private static void assertThatTransWrittenCompletely(Database d, Transaction t) {
+        long lastStreamPos = ((DatabaseImp) d).getDb().getStreamLength() - 1;
+        long lastTransPos = ((WTransaction)t).getTrans().lastPos;
+        Assert.assertTrue(lastStreamPos >= lastTransPos);
     }
     
     @T
@@ -415,8 +421,8 @@ public class PubTester {
         
         Transaction t = c.w().put(a).execute();
         t.sync(SyncLevel.STRONG);
-        Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
-                ((DatabaseImp) d).getDb().getStreamLength() - 1);
+     
+        assertThatTransWrittenCompletely(d, t);
     }
     
     @T
@@ -431,8 +437,8 @@ public class PubTester {
         
         Transaction t = c.w().put(a).execute();
         c.sync();
-        Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
-                ((DatabaseImp) d).getDb().getStreamLength() - 1);
+        
+        assertThatTransWrittenCompletely(d, t);
     }
     
     @T
@@ -447,8 +453,8 @@ public class PubTester {
         
         Transaction t = c.w().put(a).execute();
         c.sync(SyncLevel.STRONG);
-        Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
-                ((DatabaseImp) d).getDb().getStreamLength() - 1);
+        
+        assertThatTransWrittenCompletely(d, t);
     }
     
     @T
@@ -463,8 +469,8 @@ public class PubTester {
         
         Transaction t = c.w().put(a).execute();
         d.sync();
-        Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
-                ((DatabaseImp) d).getDb().getStreamLength() - 1);
+        
+        assertThatTransWrittenCompletely(d, t);
     }
     
     @T
@@ -479,8 +485,8 @@ public class PubTester {
         
         Transaction t = c.w().put(a).execute();
         d.sync(SyncLevel.STRONG);
-        Assert.assertEquals(((WTransaction)t).getTrans().lastPos,
-                ((DatabaseImp) d).getDb().getStreamLength() - 1);
+        
+        assertThatTransWrittenCompletely(d, t);
     }
     
     @T

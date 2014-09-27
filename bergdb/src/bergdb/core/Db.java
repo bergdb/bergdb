@@ -525,7 +525,7 @@ public class Db {
         
         startDag(transactions);
         
-        createPutData();
+        x.putData = createPutData();
         x.getData = newGetData();
         
         this.state = STATE_ACTIVE;
@@ -592,11 +592,11 @@ public class Db {
         dbClock.setLastTransTime(lastTransTime);
     }
     
-    private void createPutData() {
-        x.putData = dag.newPutData();
-        x.putData.nodeChangeListener = new Dag.NodeChangeListener() {
+    private PutData createPutData() {
+        PutData putData = dag.newPutData();
+        putData.nodeChangeListener = new Dag.NodeChangeListener() {
             public void topNodeChanged(TopNode node) {
-                x.transNodes.addTopNode(node);
+            //    x.transNodes.addTopNode(node);
             }
             
             public void newValueNode(ValueNode node, long[] key) {
@@ -604,15 +604,15 @@ public class Db {
             }
             
             public void keyNodeChanged(KeyNode node) {
-                x.transNodes.addKeyNode(node);
+            //    x.transNodes.addKeyNode(node);
             }
         };
         
         // Appending to existing pointerListener used by Dag.
         
-        final Dag.PointerListener pListener = x.putData.pointerListener;
+        final Dag.PointerListener pListener = putData.pointerListener;
         
-        x.putData.pointerListener = new Dag.PointerListener() {
+        putData.pointerListener = new Dag.PointerListener() {
             public void superRootAccessed(TopNode superRoot) {
                 pListener.superRootAccessed(superRoot);
                 
@@ -631,6 +631,8 @@ public class Db {
                 }
             }
         };
+        
+        return putData;
     }
 
     /**
@@ -680,11 +682,6 @@ public class Db {
         Trans trans = Trans.builder().build();
         trans.isInternal = true;
         nodeStream.appendNodes(nodes, trans);
-        
-        //System.out.println("---- Primordinal transaction ----");
-        //System.out.println("trans.lastPos " + trans.lastPos);
-        //System.out.println("trans.pos " + trans.pos);
-        //System.out.println("nodes.size() = " + nodes.size());
     }
 
     /**
@@ -1075,7 +1072,7 @@ public class Db {
     
     /**
      * Executes a transaction; this is the heart of the transaction handling;
-     * implements the STM approach to concurrency control.
+     * implements the STM approach for concurrency control.
      * 
      * @throws RerunException
      * @throws StreamFormatException
@@ -1083,8 +1080,6 @@ public class Db {
      * @throws InternalDataException
      */
     private void executeInner(Trans t) {
-        //
-        // Executes a KV set request as an atomic transaction.
         //
         // We make sure all readers have a read time that is strictly less than
         // t.transTime while the synchronized(writeLock) clause is executing.
@@ -1117,7 +1112,7 @@ public class Db {
                     // made by the writer (the thread executing this code).
             } finally {
                 dbClock.transactionEnd();
-                // After above line, get operations can use the lookuptime t.transTime.
+                    // After above line, read operations can use the lookuptime t.transTime.
             }
             
             for (int i = 0; i < t.writeKeyHashes.length; i++) {
@@ -1138,7 +1133,7 @@ public class Db {
             synchronized (readSync) {}
             
             // 1301 Frans. The following line moved to inside the synchronized
-            // (writeLock) block to KISS the reclaim stuff. However, it does not really 
+            // (writeLock) block to KISS the reclaim stuff. However, fundamentally, it does not 
             // have to belong to the writeLock code block.
             reclaimTransactionListener.transactionCompleted(t);    
         }
@@ -1171,15 +1166,22 @@ public class Db {
      * @throws StreamIoException
      */
     private void appendToStream() {        
-        assert Thread.holdsLock(writeLock);
-        
+        // Handles KvTransSeq update, startupPos update, node transaction
+        // and writes two transactions to stream (the kv transactions and node transaction).
+        //
         // Below is a simple implementation of the cachedMemoryValue.
         // Everything written to the stream is considered new data to the cache.
         // This could be improved for a better memory-added-to-cache estimate.
+        //
+        
+        TransNodes indexNodes = new TransNodes();     // NOTE, we could re-use this for performance
+        Trans nodeTrans = Trans.builder().build();     // NOTE, we could re-use this for performance
+        nodeTrans.isInternal = true;
+        nodeTrans.time = x.trans.time;
 
         long startupPos2 = x.startupPos.next(this.startupDistance, nodeStream.getLength());
             
-        kvTransSeq.addToTransNodes(startupPos2, x.transNodes);
+        kvTransSeq.addToTransNodes(startupPos2, indexNodes);
         kvTransSeq.removeBeforeSpos(startupPos2);
 
         assert x.trans != null : "trans is null";
@@ -1188,6 +1190,9 @@ public class Db {
         x.trans.nodeCount = x.transNodes.size();
         
         nodeStream.appendNodes(x.transNodes, x.trans);
+        if (indexNodes.size() > 0) {
+            nodeStream.appendNodes(indexNodes, nodeTrans);
+        }
 
         MetaBlock meta = nodeStream.getMetaBlock();
         meta.setStartupPos(x.startupPos.get());
@@ -1424,7 +1429,6 @@ public class Db {
          * Allows ExecuteData to prepare for new transaction.
          */
         private void begin(Trans trans) {
-            assert Thread.holdsLock(writeLock);
             this.trans = trans;
             transInfo = new KvTransSeq.TransInfo();
             if (x.putData != null) {
@@ -1438,8 +1442,6 @@ public class Db {
          * and prepare for next transaction. Caller must hold writeLock.
          */
         private void end() {
-            assert Thread.holdsLock(writeLock);
-            
             x.lastSposOfLastTrans = x.trans.lastPos;
             trans = null;
             transNodes.clear();

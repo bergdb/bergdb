@@ -105,18 +105,13 @@ public class NodeStreamTester {
         
         NodeStream.TransIterator ti = db.getStream().new TransIterator(0);
         
-        synchronized (db.getWriteLock()) {
-            for (int i = 0; i < 4; i++) {
-                Assert.assertTrue(ti.next());
-                //System.out.println("---- trans: " + ti.transPos);
-                //NodeStream.NodeIterator ni = ti.getNodeIterator();
-                //while (ni.next()) {
-                    //System.out.println(ni.transPos);
-                    //System.out.println("node: " + ni.node);
-                //}
+        while (ti.next()) {
+            StoredTrans stored = ti.getStoredTrans();
+            
+            System.out.println("---- trans: " + ti.getTpos());                
+            for (int j = 0; j < stored.nodes.length; j++) {
+                System.out.println(stored.nodes[j].getNode());
             }
-        
-            Assert.assertTrue(ti.next() == false);
         }
     }
 }
