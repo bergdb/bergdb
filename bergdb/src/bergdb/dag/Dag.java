@@ -14,6 +14,10 @@ import bergdb.storage.StreamIoException;
 // TODO LATER Consider: should cache eviction be here or in Db? Caching is in this class
 // (followPointer). Maybe cache eviction should be too?
 
+// TODO LATER does it work to change maxNodeSize from large to small? Will we just have 
+// lots of splits to start with, or will it fail? Is it something to fix per created database?
+// Actually, this setting is currently (2014-09) not even exposed to Pub API user.
+
 /**
  * <p>The DAG (directed acyclic graph) is the main data structure of the database.
  * An instance of this class handles the in-memory (cached) part of the DAG.</p>
@@ -252,7 +256,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     public final INode followPointer(final INode predecessor, int pointerIndex, long accessData, 
             PointerListener pointerListener, CachePolicy cachePolicy) {
         INode result;
-        assert predecessor != null;
+        assert predecessor != null : "predecessor is null";
         assert accessData == 0 || AccessData.isValid(accessData);
 
         final Object lock = getPointerLock(predecessor, pointerIndex);

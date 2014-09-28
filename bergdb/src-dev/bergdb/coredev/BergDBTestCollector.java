@@ -69,10 +69,15 @@ public class BergDBTestCollector extends BasicCollector {
                 exception = t.getCause();
             }
             
+            String message = exception.getMessage();
+            
             // XXX temp special hack
-            if (!exception.getMessage().startsWith("STARTUP NOT IMPLEMENTED")) {
+            boolean special = message != null && message.startsWith("STARTUP NOT IMPLEMENTED");
+            if (!special) {
                 baseOut.println("\nFAILED! " + currentMethodName);
                 exception.printStackTrace(baseOut);
+            } else {
+                baseOut.print("X");
             }
         }
     }

@@ -1,5 +1,6 @@
 package bergdb.core;
 
+import java.io.UnsupportedEncodingException;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
@@ -95,7 +96,7 @@ public class NodeStreamTester {
     }
     
     @T
-    public static void tIterators1() {
+    public static void tIterators1() throws UnsupportedEncodingException {
         AppendOnlyStream s = new MemoryStream();
         Db db = Db.builder().testSetup().mainStream(s).build();
         db.start();
@@ -104,14 +105,13 @@ public class NodeStreamTester {
         db.execute(Trans.builder().put("admin4", "a4"));
         
         NodeStream.TransIterator ti = db.getStream().new TransIterator(0);
+        ti.next();
+        ti.next();
+        StoredTrans stored = ti.getStoredTrans();
         
-        while (ti.next()) {
-            StoredTrans stored = ti.getStoredTrans();
-            
-            System.out.println("---- trans: " + ti.getTpos());                
-            for (int j = 0; j < stored.nodes.length; j++) {
-                System.out.println(stored.nodes[j].getNode());
-            }
-        }
+        Assert.assertEquals(2, stored.nodes.length);
+        Assert.assertTrue(stored.nodes[0] instanceof StoredValueNode);
+        StoredValueNode storedValue = (StoredValueNode) stored.nodes[0];
+        Assert.assertEquals("a1", new String(storedValue.getNode().getValue(), "UTF-8"));
     }
 }

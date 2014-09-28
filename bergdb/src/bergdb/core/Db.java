@@ -535,8 +535,8 @@ public class Db {
     }
 
     private void startDag(ArrayList<StoredTrans> transactions) {
-        DagStarter.Result result = DagStarter.start(transactions, getAccessData());
-        dag = result.createDag(nodeStream, maxNodeSize);
+        DagStarter.Result result = DagStarter.start(transactions, getAccessData(), nodeStream, maxNodeSize);
+        dag = result.createDag();
         aux.cachedMemoryValue.set(result.getCachedMemoryValue());
         kvTransSeq = result.getKvTransSeq();
     }
@@ -680,6 +680,7 @@ public class Db {
         meta.setTime(tt);
         
         Trans trans = Trans.builder().build();
+        trans.time = tt;
         trans.isInternal = true;
         nodeStream.appendNodes(nodes, trans);
     }

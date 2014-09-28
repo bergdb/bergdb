@@ -7,6 +7,7 @@ import java.util.Map;
 import bergdb.dag.Dag.NodeReader;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
+import bergdb.dag.GetData;
 import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Pointer;
@@ -18,9 +19,8 @@ import bergdb.storage.StreamException;
 import bergdb.storage.StreamFormatException;
 
 /**
- * A function-class, see the one public method.
+ * A function-class, see the public method.
  * 
- * @see #start(List, long, NodeReader, int)
  * @author Frans Lundberg
  */
 public class DagStarter {
@@ -34,25 +34,33 @@ public class DagStarter {
     private final List<StoredTrans> transactions;
     private TopNode superRoot;
     private final long accessData;
+    private NodeReader nodeReader;
+    private int maxNodeSize;
         
-    private DagStarter(List<StoredTrans> transactions, long accessData) {
-        validateTransactions(transactions);
-        validateAccessData(accessData);
-        this.transactions = transactions;
-        this.accessData = accessData;
-        this.superRoot = null;
-    }
-    
     /**
      * Runs the startup algorithms and returns the result from it.
      * 
      * @param transactions  The stored transactions from the startup section of the db stream.
      * @param accessData    The access data for the in-memory pointers that are created.
      */
-    public static DagStarter.Result start(List<StoredTrans> transactions, long accessData) {
-        DagStarter dagStarter = new DagStarter(transactions, accessData);
+    public static DagStarter.Result start(List<StoredTrans> transactions, long accessData,
+            NodeReader nodeReader, int maxNodeSize) {
+        DagStarter dagStarter = new DagStarter(transactions, accessData, nodeReader, maxNodeSize);
         dagStarter.startInner();
         return dagStarter.new Result();
+    }
+    
+    private DagStarter(List<StoredTrans> transactions, long accessData, 
+            NodeReader nodeReader, int maxNodeSize) {
+        validateTransactions(transactions);
+        validateAccessData(accessData);
+        if (nodeReader == null) throw new IllegalArgumentException("nodeReader == null not allowed");
+        
+        this.transactions = transactions;
+        this.accessData = accessData;
+        this.superRoot = null;
+        this.nodeReader = nodeReader;
+        this.maxNodeSize = maxNodeSize;
     }
     
     /**
@@ -65,13 +73,35 @@ public class DagStarter {
         // * Change nodes to their state at t = t_first.
         // * Re-run transactions - no add to stream, no stats, but create KvTransSeq.
         
-        validateTransactions(transactions);
-        
-        if (transactions.size() == 1 && transactions.get(0).pos == RecoverableStream.META_BLOCK_SIZE) {
-            firstStartup();
+        if (isPrimordialTransaction()) {
+            doFirstStartup();
             return;
         }
         
+        int transCount = transactions.size();
+        long tFirst = transactions.get(0).tt;
+        long tLast = transactions.get(transCount - 1).tt;
+        
+//System.out.println("tFirst, tLast = " + tFirst + ", " + tLast);
+        
+
+        // long tFirstMinus = tFirst - 1;
+        // tFirstMinus -- tricky. Special case, primordial transaction has only nodes.
+        
+        createMapsAndSearchForSuperRoot();
+        refreshStreamPointers();
+        createMemoryPointers();
+        
+//System.out.println("superRoot.rootTime: " + superRoot.rootTime);
+        
+        TopDs topDs = new TopDs(superRoot);
+        Dag dag = new Dag(nodeReader, topDs, maxNodeSize);
+        TopNode superRoot = topDs.findSuperRootAtTime(dag, tFirst, dag.newGetData());
+        if (superRoot == null) {
+            throw new StreamFormatException("No super root at time " + tFirst + " was found.");
+        }
+        
+        // XXX
         
         throw new IllegalStateException("STARTUP NOT IMPLEMENTED, " + transactions.size());
         
@@ -81,8 +111,12 @@ public class DagStarter {
         //refreshStreamPointers();
         //createMemoryPointers();
     }
+
+    private boolean isPrimordialTransaction() {
+        return transactions.size() == 1 && transactions.get(0).pos == RecoverableStream.META_BLOCK_SIZE;
+    }
     
-    private void firstStartup() {
+    private void doFirstStartup() {
         StoredNode[] nodes = transactions.get(0).nodes;
         if (nodes.length != 2) {
             throw new StreamFormatException("expected 2, got " + nodes.length + " nodes.");
@@ -149,7 +183,8 @@ public class DagStarter {
     
     private void validateAccessData(long accessData) {
         if (!AccessData.isValid(accessData)) {
-            throw new IllegalArgumentException("bad accessData when starting database, " + accessData + ".");
+            throw new IllegalArgumentException("bad accessData when starting database, " 
+                    + accessData + ".");
         }
     }
     
@@ -157,8 +192,10 @@ public class DagStarter {
     /** 
      * Creates posMap and nextMap and increases cachedMemoryValue. 
      * Also calls the handler for top nodes.
+     * 
+     * @throws StreamFormatException  If super root cannot be found.
      */
-    private void createMaps() {
+    private void createMapsAndSearchForSuperRoot() {
         for (StoredTrans trans : transactions) {
             for (StoredNode storedNode : trans.nodes) {
                 INode node = storedNode.getNode();
@@ -260,7 +297,7 @@ public class DagStarter {
      * The result of starting the Dag.
      */
     public class Result {
-        public Dag createDag(NodeReader nodeReader, int maxNodeSize) {            
+        public Dag createDag() {            
             TopDs topDs = new TopDs(superRoot);
             return new Dag(nodeReader, topDs, maxNodeSize);
         }

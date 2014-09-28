@@ -272,17 +272,15 @@ public class StoredTrans {
          * transNextSpos.
          */
         private void prepareToSerialize() {
-            // Below three loops sets new stream pos of nodes, sets ID if needed,
+            // The three node loops sets new stream pos of nodes, sets ID if needed,
             // Also computes totalSize and sets prevPos array for KeyNodes.
-
-            int prevPosIndex = 0;
 
             totalSize = 16; // Header size, trans size, 4 empty, trans time
             long currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
 
             resizePrevPosIfNeeded();
 
-            // Loop topNodes.
+            // Prepares topNodes.
             for (int i = 0; i < transNodes.topSize; i++) {
                 TopNode node = transNodes.topNodes[i];
                 node.spos = currentPos;
@@ -291,19 +289,22 @@ public class StoredTrans {
                 currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
             }
 
-            // Loop keyNodes.
-            for (int i = 0; i < transNodes.keySize; i++) {
-                KeyNode node = transNodes.keyNodes[i];
-                prevPos[prevPosIndex++] = node.spos;
-                node.spos = currentPos;
-                node.id = (node.id == Spos.NULL) ? currentPos : node.id;
-                totalSize += StoredKeyNode.getByteSize(node);
-                currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
+            // Prepares keyNodes.
+            {
+                int prevPosIndex = 0;
+                for (int i = 0; i < transNodes.keySize; i++) {
+                    KeyNode node = transNodes.keyNodes[i];
+                    prevPos[prevPosIndex++] = node.spos;
+                    node.spos = currentPos;
+                    node.id = (node.id == Spos.NULL) ? currentPos : node.id;
+                    totalSize += StoredKeyNode.getByteSize(node);
+                    currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
+                }
             }
 
             topAndKeySize = totalSize;
 
-            // Loop valueNodes.
+            // Prepares valueNodes.
             for (int i = 0; i < transNodes.valueSize; i++) {
                 ValueNode node = transNodes.valueNodes[i];
                 long[] key = transNodes.keys[i];

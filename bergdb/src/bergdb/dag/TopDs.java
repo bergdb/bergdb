@@ -98,7 +98,17 @@ public class TopDs {
      * 
      * @param accessData Access data for this access.
      */
-    public final KeyNode findRoot(DagForMe dbGraph, long time, long accessData, 
+    public final KeyNode findRoot(DagForMe dag, long time, long accessData, 
+            Pointer tempPointer, PointerListener pointerListener, CachePolicy cachePolicy) {
+        TopNode n = findSuperRootAtTime(dag, time, accessData, tempPointer, pointerListener, cachePolicy);
+        if (n == null) {
+            return null;
+        }
+        return (KeyNode) dag.followPointer(n, 0, accessData, pointerListener, cachePolicy);
+    }
+    
+    /*
+    public final KeyNode findRoot(DagForMe dag, long time, long accessData, 
             Pointer tempPointer, PointerListener pointerListener, CachePolicy cachePolicy) {
         //
         // The common case of getting the last space root is treated as a 
@@ -118,7 +128,7 @@ public class TopDs {
         pointerListener.superRootAccessed(mySuperRoot);
         
         if (time >= mySuperRoot.rootTime) {
-            return (KeyNode) dbGraph.followPointer(mySuperRoot, 0, accessData, pointerListener, cachePolicy);
+            return (KeyNode) dag.followPointer(mySuperRoot, 0, accessData, pointerListener, cachePolicy);
         }
         
         TopNode n = mySuperRoot;
@@ -133,12 +143,12 @@ public class TopDs {
                 break;
             }
             
-            n = (TopNode) dbGraph.followPointer(n, pt.index, accessData, pointerListener, cachePolicy);
+            n = (TopNode) dag.followPointer(n, pt.index, accessData, pointerListener, cachePolicy);
         }
         
         
         if (n.rootTime == time) {
-            return (KeyNode) dbGraph.followPointer(n, 0, accessData, pointerListener, cachePolicy);
+            return (KeyNode) dag.followPointer(n, 0, accessData, pointerListener, cachePolicy);
         }
         
         // Find left-most pointer
@@ -150,10 +160,80 @@ public class TopDs {
             return null;  // No old-enough node exists
         }
         
-        TopNode n2 = (TopNode) dbGraph.followPointer(n, pt.index, accessData, pointerListener, cachePolicy);
+        TopNode n2 = (TopNode) dag.followPointer(n, pt.index, accessData, pointerListener, cachePolicy);
         assert n2 != null : "n2 is unexpectedly null, n: " + n;
         
-        return (KeyNode) dbGraph.followPointer(n2, 0, accessData, pointerListener, cachePolicy);
+        return (KeyNode) dag.followPointer(n2, 0, accessData, pointerListener, cachePolicy);
+    }*/
+    
+    /**
+     * Convenience method for when GetData is used.
+     */
+    public final TopNode findSuperRootAtTime(DagForMe dbGraph, long time, GetData gd) {
+        return findSuperRootAtTime(dbGraph, time, gd.accessData, gd.tempPointer, 
+                gd.pointerListener, gd.cachePolicy);
+    }
+    
+    /**
+     * Finds the top node that was super root node at a given time.
+     * Returns null if there is no accessible top node that was 
+     * super root at the given time.
+     * 
+     * @param accessData Access data for this access.
+     */
+    public final TopNode findSuperRootAtTime(DagForMe dag, long time, long accessData, 
+            Pointer tempPointer, PointerListener pointerListener, CachePolicy cachePolicy) {
+        //
+        // 130123 Frans: Fixed concurrency bug.
+        // The volatile read in the beginning of this method is important. It makes memory writes
+        // by writer visible and it makes sure we are using the same superRoot instance
+        // throughout this method. this.superRoot can change concurrently.
+        //
+        
+        assert pointerListener != null;
+        assert cachePolicy != null;
+        
+        TopNode mySuperRoot = this.superRoot;     // volatile read make writes visible.
+        
+        pointerListener.superRootAccessed(mySuperRoot);
+        
+        if (time >= mySuperRoot.rootTime) {
+            return mySuperRoot;
+        }
+        
+        TopNode n = mySuperRoot;
+        
+        // Finds right-most pointer with time >= 'time'.
+        
+        Pointer pt = tempPointer;
+        
+        while (true) {
+            rightMostGte(n, time, pt);
+            if (pt.isNull()) {
+                break;
+            }
+            
+            n = (TopNode) dag.followPointer(n, pt.index, accessData, pointerListener, cachePolicy);
+        }
+        
+        
+        if (n.rootTime == time) {
+            return n;
+        }
+        
+        // Find left-most pointer
+        
+        pt.reset();
+        leftMost(n, time, pt);
+        
+        if (pt.isNull()) {
+            return null;  // No old-enough node exists
+        }
+        
+        TopNode n2 = (TopNode) dag.followPointer(n, pt.index, accessData, pointerListener, cachePolicy);
+        assert n2 != null : "n2 is unexpectedly null, n: " + n;
+        
+        return n2;
     }
     
     /**

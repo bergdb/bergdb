@@ -865,7 +865,7 @@ public class PubTester {
         clock.setTime(Time.utc("2010-01-01 00:02:03.0000000"));
         Database d = Factory.database().memory().clock(clock).start();
         Transaction t = d.connection().put("/key", "value");
-        Assert.assertEquals(Time.utc("2010-01-01 00:02:03.0000000"), t.getTime());
+        Assert.assertEquals(Time.utc("2010-01-01 00:02:03.0000001"), t.getTime());
     }
     
     @T
