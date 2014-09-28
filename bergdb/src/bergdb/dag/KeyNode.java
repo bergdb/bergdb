@@ -6,6 +6,8 @@ import java.io.PrintStream;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 
+// TODO LATER. lastTimeIndex, check usage. It it really useful enough? Could it be removed?
+
 /**
  * <p>A key node has an array of "klongs" and corresponding INode references.</p>
  * 
@@ -94,11 +96,6 @@ public class KeyNode implements INode {
     public final boolean isIndexNode() {
         return true;
     }
-    
-    // 130129 Frans: could not measure performance improvement by implementing hashCode.    
-    //public final int hashCode() {
-    //    return (int) this.id;
-    //}
     
     public final long getSpos() {
         @SuppressWarnings("unused")
@@ -788,6 +785,33 @@ public class KeyNode implements INode {
         pos[sz] = posToAdd;
         
         this.size = (short) (sz + 1);  // Synch action that publishes the changes to readers.
+    }
+    
+    /**
+     * Changes the state of this node to the state it was in at 
+     * the given time.
+     */
+    public void toPreviousState(long time) {
+        short sz = this.size;
+        
+        A: for (int i = 0; i < sz; i++) {
+            long klong = klongs[i];
+            
+            switch (Klong.getIntType(klong)) {
+            case Klong.INT_TYPE_TIME:
+                long klongTime = Klong.getTime(klong);
+                if (klongTime > time) {
+                    if (i == 0) {
+                        this.size = 0;
+                    } else {
+                        this.size = (short) i;
+                    }
+                    break A;
+                }
+            }
+        }
+        
+        this.lastTimeIndex = -1;
     }
     
     /**

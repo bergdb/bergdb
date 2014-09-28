@@ -96,7 +96,7 @@ public class NodeStreamTester {
     }
     
     @T
-    public static void tIterators1() throws UnsupportedEncodingException {
+    private static void tIterators1() throws UnsupportedEncodingException {
         AppendOnlyStream s = new MemoryStream();
         Db db = Db.builder().testSetup().mainStream(s).build();
         db.start();

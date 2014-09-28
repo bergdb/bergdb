@@ -238,7 +238,7 @@ public class DbTesterStream {
         return db;
     }
     
-    public static void checkRandomDB(Db db, int n) {
+    public static void checkRandomDb(Db db, int n) {
         Random random = new Random(1);
         
         for (int i = 0; i < n; i++) {
@@ -252,12 +252,12 @@ public class DbTesterStream {
         int n = 50;
         MemoryStream stream = new MemoryStream();
         Db db = createRandomDb(n, stream);
-        checkRandomDB(db, n);
+        checkRandomDb(db, n);
         db.sync(SyncLevel.ORDINARY);
         db = null;
         
         Db db2 = Db.builder().testSetup().mainStream(stream).start();
-        checkRandomDB(db2, n);
+        checkRandomDb(db2, n);
     }
     
     public static void testMoreData1() {
@@ -544,7 +544,7 @@ public class DbTesterStream {
         db = null;
         
         db = Db.builder().testSetup().mainStream(s).start();
-        checkRandomDB(db, n);
+        checkRandomDb(db, n);
         byte[] value = DbUtil.get(db, Long.MAX_VALUE, Keys.toBytes("/large"));
         Assert.assertTrue(value != null);
         Assert.assertEquals(valueSize, value.length);

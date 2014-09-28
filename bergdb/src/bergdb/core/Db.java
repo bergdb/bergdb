@@ -584,7 +584,7 @@ public class Db {
         int size = transactions.size();
         
         if (size == 0) {
-            lastTransTime = 0;
+            throw new StreamFormatException("No transactions in startup transaction set.");
         } else {
             lastTransTime = transactions.get(size - 1).tt;
         }
@@ -653,11 +653,11 @@ public class Db {
      */
     private void handleEmptyStream() {
         if (nodeStream.getLength() == 0) {
-            writePrimordialTransaction();
+            writePrimordialTransactions();
         }
     }
 
-    private void writePrimordialTransaction() {
+    private void writePrimordialTransactions() {
         DatabaseId id = (databaseIdFromBuilder == null) ? new DatabaseId() : databaseIdFromBuilder;
         
         long tt;

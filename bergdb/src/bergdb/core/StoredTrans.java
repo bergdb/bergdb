@@ -48,6 +48,10 @@ public class StoredTrans {
         nodes = d.nodes;
     }
     
+    public boolean isPrimordial() {
+        return pos == RecoverableStream.META_BLOCK_SIZE;
+    }
+    
     public Trans createRerunTransaction() {
         // NOTE needs to handle DELETE ops later.
         
@@ -67,6 +71,17 @@ public class StoredTrans {
         trans.time = tt;
         
         return b.build();
+    }
+    
+    public boolean isNodeTransaction() {
+        boolean result = true;
+        for (StoredNode stored : nodes) {
+            if (!stored.getNode().isIndexNode()) {
+                result = false;
+                break;
+            }
+        }
+        return result;
     }
 
     private List<StoredValueNode> extractValueNodes() {

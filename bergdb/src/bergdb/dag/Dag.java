@@ -499,7 +499,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         assert pd.tt >= 0;
         assert pd.nodeChangeListener != null;
         assert pd.pointerListener != null;
-        assert key != null && key.length > 0;
+        assert key != null && key.length > 0 : "key not non-null and with length > 0";
         
         Pointer tempPointer = new Pointer();
         final KeyNode root = topDs.findRoot((TopDs.DagForMe) this, pd.tt, pd.accessData,
@@ -830,7 +830,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             // 'node' is an ordinary node (not space root).
             
             long klong1 = pd.keyAccessPath.getKlong(depth);
-            assert klong1 != Klong.NULL;
+            assert klong1 != Klong.NULL : "time-split-1, missing klong in keyAccessPath, " + depth;
 
             pd.oneKwi[0].klong = klong1;
             pd.oneKwi[0].node = last;
@@ -902,7 +902,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             pd.nodeChangeListener.keyNodeChanged(newSegmentRoot);
 
             long klong1 = pd.keyAccessPath.getKlong(depth);
-            assert klong1 != Klong.NULL;
+            assert klong1 != Klong.NULL : "Missing klong in keyAccessPath, " + depth;
 
             pd.oneKwi[0].klong = klong1;
             pd.oneKwi[0].node = newSegmentRoot;

@@ -166,6 +166,13 @@ public class Time {
     }
     
     /**
+     * Returns true if this time, t, satisfies: t0 <= t <= t1.
+     */
+    public boolean isBetween(Time t0, Time t1) {
+        return this.units >= t0.units && this.units <= t1.units;
+    }
+    
+    /**
      * Returns the number of clock units that has passed since Unix Epoch.
      */
     public long units() {
@@ -225,6 +232,24 @@ public class Time {
         String firstPart = UTC_DATE_FORMAT.format(new Date(millis));
         String secondPart = String.format(Locale.US, "%04d", unitsLeft);
         return firstPart + secondPart;
+    }
+    
+    
+    // ======== Tests ========
+    
+    @T
+    private static void testIsBetween() {
+        Time t1 = Time.utc("2000-01-01 00:00:01.0000000");
+        Time t2 = Time.utc("2000-01-01 00:00:02.0000000");
+        Time t3 = Time.utc("2000-01-01 00:00:00.0000000");
+        Time t4 = Time.utc("2000-01-01 00:00:01.0000000");
+        Time t5 = Time.utc("2000-01-01 00:00:01.3000000");
+        Time t6 = Time.utc("2000-01-01 00:00:02.3000000");
+        
+        Assert.assertFalse(t3.isBetween(t1, t2));
+        Assert.assertTrue(t4.isBetween(t1, t2));
+        Assert.assertTrue(t5.isBetween(t1, t2));
+        Assert.assertFalse(t6.isBetween(t1, t2));       
     }
     
     @T
@@ -315,4 +340,6 @@ public class Time {
         Time t3 = Time.resolve(zone, "2001-09-08 14:00");
         Assert.assertEquals(t3, t2);
     }
+
+    
 }

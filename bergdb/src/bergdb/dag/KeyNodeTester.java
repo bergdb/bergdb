@@ -850,6 +850,77 @@ public class KeyNodeTester {
         t2.print();
     }
     
+    /** Changing to state t=15 should remove "c" and keep "a". */
+    @T private static void testToPreviousState1() {
+        KeyNode node = new KeyNode();
+        addKlong(node, 10, "a");
+        addKlong(node, 20, "b");
+        
+        node.toPreviousState(15);
+        
+        assertExists(node, "a");
+        assertNotExists(node, "b");
+    }
+
+    private static void assertNotExists(KeyNode node, String s) {
+        KlongWithPointer kwi = new KlongWithPointer();
+        node.searchEq(999, Klong.createCompareValue(Util.toBytes(s)), kwi);
+        Assert.assertEquals(Klong.NULL, kwi.klong);
+    }
+    
+    private static void assertExists(KeyNode node, String s) {
+        KlongWithPointer kwi = new KlongWithPointer();
+        node.searchEq(999, Klong.createCompareValue(Util.toBytes(s)), kwi);
+        Assert.assertTrue(kwi.klong != Klong.NULL);
+    }
+    
+    private static void addKlong(KeyNode node, long time, String s) {
+        ValueNode value = new ValueNode(new byte[0]);
+        node.addKlong(time, Klong.create(Util.toBytes(s)), value, AccessData.DEFAULT_ACCESS_DATA);
+    }
+    
+    /** Changing to state t=5 should remove "b" and "a". */
+    @T private static void testToPreviousState2() {
+        KeyNode node = new KeyNode();
+        addKlong(node, 10, "a");
+        addKlong(node, 20, "b");
+        
+        node.toPreviousState(5);
+        
+        assertNotExists(node, "a");
+        assertNotExists(node, "b");
+    }
+    
+    @T
+    private static void testToPreviousState3() {
+        // Changing to state t=40 (in future) should not remove "c", nor "a".
+        
+        KeyNode node = new KeyNode();
+        addKlong(node, 10, "a");
+        addKlong(node, 20, "b");
+        
+        node.toPreviousState(40);
+        
+        assertExists(node, "a");
+        assertExists(node, "b");
+    }
+    
+    @T private static void testToPreviousState4() {
+        // Changing to state t=15 and add klong "c" after that, should work.
+        
+        KeyNode node = new KeyNode();
+        addKlong(node, 10, "a");
+        addKlong(node, 20, "b");
+        
+        node.toPreviousState(15);
+        addKlong(node, 30, "c");
+        
+        assertExists(node, "a");
+        assertNotExists(node, "b");
+        assertExists(node, "c");
+    }
+    
+    
     public static void main(String[] args) throws Exception {
         testGt1();
     }

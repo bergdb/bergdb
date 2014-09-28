@@ -862,10 +862,14 @@ public class PubTester {
     @T
     public static void testCurrentTime() {
         TestClock clock = new TestClock();
-        clock.setTime(Time.utc("2010-01-01 00:02:03.0000000"));
+        Time t0 = Time.utc("2010-01-01 00:02:03.0000000");
+        clock.setTime(t0);
         Database d = Factory.database().memory().clock(clock).start();
         Transaction t = d.connection().put("/key", "value");
-        Assert.assertEquals(Time.utc("2010-01-01 00:02:03.0000001"), t.getTime());
+        Time t1 = t0.add(Duration.units(10));
+        Time transTime = t.getTime();
+        
+        Assert.assertTrue(transTime.isBetween(t0, t1));
     }
     
     @T

@@ -7,13 +7,14 @@ import java.util.Map;
 import bergdb.dag.Dag.NodeReader;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
-import bergdb.dag.GetData;
 import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Pointer;
+import bergdb.dag.PutData;
 import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
+import bergdb.dag.ValueNode;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamException;
 import bergdb.storage.StreamFormatException;
@@ -36,6 +37,7 @@ public class DagStarter {
     private final long accessData;
     private NodeReader nodeReader;
     private int maxNodeSize;
+    private KvTransSeq.TransInfo transInfo;
         
     /**
      * Runs the startup algorithms and returns the result from it.
@@ -67,49 +69,130 @@ public class DagStarter {
      * Runs the startup algorithm.
      */
     private void startInner() throws StreamException {
-        // XXX work here!
+        //
         // * Handle first startup.
-        // * Find super root.
-        // * Change nodes to their state at t = t_first.
+        // * Find super root, at t = tInit
+        // * Change nodes to their state at t = tInit.
         // * Re-run transactions - no add to stream, no stats, but create KvTransSeq.
+        // * For kv transactions, call dag.putKv, append to kvTransSeq.
+        // * For node transactions, set nodes to not dirty.
+        //
+        
+        // XXX work here!
+        
+        // TODO A. clean-up this code!        
         
         if (isPrimordialTransaction()) {
             doFirstStartup();
             return;
         }
         
-        int transCount = transactions.size();
-        long tFirst = transactions.get(0).tt;
-        long tLast = transactions.get(transCount - 1).tt;
-        
-//System.out.println("tFirst, tLast = " + tFirst + ", " + tLast);
-        
-
-        // long tFirstMinus = tFirst - 1;
-        // tFirstMinus -- tricky. Special case, primordial transaction has only nodes.
+        StoredTrans first = transactions.get(0);
+        long tFirst = first.tt;
+        long tInit = first.isPrimordial() ? tFirst : tFirst - 1;
+            // Time to initialize dag to before re-running transactions.
+        if (tInit < 0) {
+            throw new StreamFormatException("Unexpected tFirst, " + tFirst);
+        }
         
         createMapsAndSearchForSuperRoot();
         refreshStreamPointers();
         createMemoryPointers();
         
-//System.out.println("superRoot.rootTime: " + superRoot.rootTime);
-        
         TopDs topDs = new TopDs(superRoot);
         Dag dag = new Dag(nodeReader, topDs, maxNodeSize);
-        TopNode superRoot = topDs.findSuperRootAtTime(dag, tFirst, dag.newGetData());
+        TopNode superRoot = topDs.findSuperRootAtTime(dag, tInit, dag.newGetData());
         if (superRoot == null) {
-            throw new StreamFormatException("No super root at time " + tFirst + " was found.");
+            throw new StreamFormatException("No super root at time " + tInit + " was found.");
         }
         
-        // XXX
+        changeNodesToPreviousState(tInit);
         
-        throw new IllegalStateException("STARTUP NOT IMPLEMENTED, " + transactions.size());
+        PutData pd = dag.newPutData();
         
-        // OLD ALGORITHM
-        //createTransSeq();
-        //createMaps();
-        //refreshStreamPointers();
-        //createMemoryPointers();
+        final Dag.PointerListener pListener = pd.pointerListener;
+        
+        pd.pointerListener = new Dag.PointerListener() {
+            public void superRootAccessed(TopNode superRoot) {
+                pListener.superRootAccessed(superRoot);
+                
+                if (!superRoot.isDirty) {
+                    superRoot.setDirty(true);
+                    transInfo.gotDirtyNodes.add(superRoot);
+                }
+            }
+            
+            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
+                pListener.pointerFollowed(predecessor, pointerIndex, result, pointerType);
+                
+                if (!result.isDirty() && result.isIndexNode()) {
+                    result.setDirty(true);
+                    transInfo.gotDirtyNodes.add(result);
+                }
+            }
+        };
+        
+        
+        for (StoredTrans stored : transactions) {
+            if (stored.isNodeTransaction()) {
+                for (StoredNode n : stored.nodes) {
+                    n.getNode().setDirty(false);
+                }
+            } else {
+                // kv transaction assumed
+                
+                pd.tt = stored.tt;
+                transInfo = new KvTransSeq.TransInfo();
+                transInfo.tpos = stored.pos;
+                transInfo.lastPos = stored.lastPos;
+                
+                for (StoredNode n : stored.nodes) {
+                    INode node = n.getNode();
+                    if (node.isIndexNode()) {
+                        throw new StreamFormatException("kv transaction with index node: " + node);
+                    }
+                    
+                    int type = node.getType();
+                    
+                    // DELETES not yet handled
+                    if (type == INode.TYPE_VALUE) {
+                        long[] key = ((StoredValueNode) n).getKey();
+                        assert key != null : "key is null, in startup";
+                        assert key.length > 0 : "bad key length " + key.length;
+                        byte[] value;
+                        
+                        if (type == INode.TYPE_VALUE) {
+                            ValueNode vNode = (ValueNode) node;
+                            value = vNode.getValue();
+                        } else if (type == INode.TYPE_DELETE) {
+                            value = null;
+                        } else {
+                            throw new IllegalStateException("Bad type: " + type);
+                        }
+                        
+                        dag.putKv(key, value, pd);
+                        
+                        pd.clearFast();
+                    }
+                }
+                
+                pd.clear();
+                
+                kvTransSeq.add(transInfo);
+            }
+        }
+        
+        //throw new IllegalStateException("STARTUP NOT IMPLEMENTED, " + transactions.size());
+    }
+
+    private void changeNodesToPreviousState(long tInit) {
+        for (Map.Entry<Long, INode> entry : posMap.entrySet()) {
+            INode node = entry.getValue();
+            if (node.getType() == INode.TYPE_KEY_NODE) {
+                KeyNode k = (KeyNode) node;
+                k.toPreviousState(tInit);
+            }
+        }
     }
 
     private boolean isPrimordialTransaction() {
