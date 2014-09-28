@@ -38,6 +38,7 @@ public class DagStarter {
     private NodeReader nodeReader;
     private int maxNodeSize;
     private KvTransSeq.TransInfo transInfo;
+    private Dag dag;
         
     /**
      * Runs the startup algorithms and returns the result from it.
@@ -100,7 +101,7 @@ public class DagStarter {
         createMemoryPointers();
         
         TopDs topDs = new TopDs(superRoot);
-        Dag dag = new Dag(nodeReader, topDs, maxNodeSize);
+        dag = new Dag(nodeReader, topDs, maxNodeSize);
         TopNode superRoot = topDs.findSuperRootAtTime(dag, tInit, dag.newGetData());
         if (superRoot == null) {
             throw new StreamFormatException("No super root at time " + tInit + " was found.");
@@ -183,6 +184,7 @@ public class DagStarter {
         }
         
         //throw new IllegalStateException("STARTUP NOT IMPLEMENTED, " + transactions.size());
+        
     }
 
     private void changeNodesToPreviousState(long tInit) {
@@ -220,6 +222,9 @@ public class DagStarter {
         KeyNode keyNode = (KeyNode) n1;
         
         superRoot.setPointer(0, keyNode, AccessData.DEFAULT_ACCESS_DATA);
+        
+        TopDs topDs = new TopDs(superRoot);
+        dag = new Dag(nodeReader, topDs, maxNodeSize);
         
         assert keyNode.isDirty() == false;
         assert superRoot.isDirty() == false;
@@ -380,9 +385,8 @@ public class DagStarter {
      * The result of starting the Dag.
      */
     public class Result {
-        public Dag createDag() {            
-            TopDs topDs = new TopDs(superRoot);
-            return new Dag(nodeReader, topDs, maxNodeSize);
+        public Dag getDag() {
+            return dag;
         }
         
         public long getCachedMemoryValue() {

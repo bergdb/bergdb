@@ -5,7 +5,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.stream.MemoryStream;
 
-// TODO LATER. Work in progress... Much more we could do.
+// TODO LATER. Work in progress... add more tests.
 
 /**
  * Class that tests restarting Db from an in-memory stream.

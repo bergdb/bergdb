@@ -536,9 +536,11 @@ public class Db {
 
     private void startDag(ArrayList<StoredTrans> transactions) {
         DagStarter.Result result = DagStarter.start(transactions, getAccessData(), nodeStream, maxNodeSize);
-        dag = result.createDag();
+        dag = result.getDag();
         aux.cachedMemoryValue.set(result.getCachedMemoryValue());
         kvTransSeq = result.getKvTransSeq();
+        
+        assert dag != null : "dag null in Db.startDag";
     }
 
     private void setStartupPosAndStartupDistanceFromMetaBlock(StartListener listener) {
@@ -593,6 +595,8 @@ public class Db {
     }
     
     private PutData createPutData() {
+        assert dag != null : "dag is null";
+        
         PutData putData = dag.newPutData();
         putData.nodeChangeListener = new Dag.NodeChangeListener() {
             public void topNodeChanged(TopNode node) {
