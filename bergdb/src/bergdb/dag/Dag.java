@@ -494,8 +494,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         // out:  changes to graph, 
         //       changed/new nodes reported to pd.nodeChangeListener.
         //       accessed nodes ensured "dirty"
-        //
         
+        //
         assert pd.tt >= 0;
         assert pd.nodeChangeListener != null;
         assert pd.pointerListener != null;
@@ -550,7 +550,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             
             boolean isNoop = appendDeleteKlong(node, pd.keyAccessPath.size - 1, compareValue, pd);
             if (!isNoop) {
-                ValueNode valueNode = new ValueNode(null);
+                ValueNode valueNode = ValueNode.createDelete();
                 pd.nodeChangeListener.newValueNode(valueNode, key);
             }
             

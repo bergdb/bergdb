@@ -60,7 +60,7 @@ public final class ValueNode implements INode {
      */
     public final void setSpos(long spos) {
         // Called from: NodeStream.addNodes (DB.writeLock held) and from NodeStream.bytesToNode
-        // when uncached node is read.
+        // when uncached node is read.        
         this.spos = spos;
     }
     
@@ -142,7 +142,7 @@ public final class ValueNode implements INode {
             addressString = "@" + sub;
         }
         
-        String result = "V" + addressString + " " + this.spos + " ";
+        String result = "V" + addressString + " " + getSpos() + " ";
         
         if (isDelete()) {
             result += "DELETE";

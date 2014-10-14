@@ -4,11 +4,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import bergdb.dag.Dag.NodeChangeListener;
 import bergdb.dag.Dag.NodeReader;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
+import bergdb.dag.Keys;
 import bergdb.dag.Pointer;
 import bergdb.dag.PutData;
 import bergdb.dag.Spos;
@@ -133,6 +135,8 @@ public class DagStarter {
             }
         };
         
+        SetSposNodeChangeListener setSposListener = new SetSposNodeChangeListener();
+        pd.nodeChangeListener = setSposListener;
         
         for (StoredTrans stored : transactions) {
             if (stored.isNodeTransaction()) {
@@ -141,6 +145,7 @@ public class DagStarter {
                 }
             } else {
                 // kv transaction assumed
+                
                 
                 pd.tt = stored.tt;
                 transInfo = new KvTransSeq.TransInfo();
@@ -162,14 +167,23 @@ public class DagStarter {
                         assert key.length > 0 : "bad key length " + key.length;
                         byte[] value;
                         
+
+                        // XXX
+                        //System.out.println("XXX Rerun trans, key: " + Keys.toString(key));
+                        
+                        ValueNode vNode;
+                        
                         if (type == INode.TYPE_VALUE) {
-                            ValueNode vNode = (ValueNode) node;
+                            vNode = (ValueNode) node;
                             value = vNode.getValue();
                         } else if (type == INode.TYPE_DELETE) {
+                            vNode = (ValueNode) node;
                             value = null;
                         } else {
                             throw new IllegalStateException("Bad type: " + type);
                         }
+                        
+                        setSposListener.setSpos(vNode.getSpos());
                         
                         dag.putKv(key, value, pd);
                         
@@ -394,6 +408,26 @@ public class DagStarter {
 
         public KvTransSeq getKvTransSeq() {
             return kvTransSeq;
+        }
+    }
+    
+    private static class SetSposNodeChangeListener implements NodeChangeListener {
+        private long spos;
+        
+        void setSpos(long spos) {
+            this.spos = spos;
+        }
+
+        public void topNodeChanged(TopNode node) {
+            // nothing
+        }
+
+        public void keyNodeChanged(KeyNode node) {
+            // nothing
+        }
+
+        public void newValueNode(ValueNode node, long[] key) {
+            node.setSpos(spos);   
         }
     }
 }

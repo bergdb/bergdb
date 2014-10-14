@@ -323,7 +323,8 @@ public class StoredTrans {
             for (int i = 0; i < transNodes.valueSize; i++) {
                 ValueNode node = transNodes.valueNodes[i];
                 long[] key = transNodes.keys[i];
-                node.spos = currentPos;
+                //node.spos = currentPos;
+                node.setSpos(currentPos);
                 totalSize += StoredValueNode.getByteSize(node, key);
                 currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
             }

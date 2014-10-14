@@ -74,8 +74,6 @@ public class DbTesterRestart {
         }
     }
     
-    // XXX Check -1 in printout.
-    
     @T private static void testScenarioB2() {
         int n = 8;
         int startupDistance = 400 * 1000;
@@ -102,7 +100,8 @@ public class DbTesterRestart {
         
         db.sync(SyncLevel.STRONG);     
         
-        db.printGraph(System.out);
+        // XXX
+        //db.printGraph(System.out);
         
         // Restart
         
@@ -127,7 +126,8 @@ public class DbTesterRestart {
             Assert.assertArrayEquals(value, actual);
         }
         
-        db.printGraph(System.out);
+        // XXX
+        //db.printGraph(System.out);
     }
     
     /**

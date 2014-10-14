@@ -68,8 +68,8 @@ public class FastMap {
         
         for (int i = 0; i < ids.length; i++) {
             ValueNode v = ValueNode.createDelete();
-            v.spos = ids[i];
-            m.put(v.spos, v);
+            v.setSpos(ids[i]);
+            m.put(v.getSpos(), v);
         }
         
         long t0 = System.nanoTime();
