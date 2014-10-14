@@ -5,8 +5,6 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.stream.MemoryStream;
 
-// TODO LATER. Work in progress... add more tests.
-
 /**
  * Class that tests restarting Db from an in-memory stream.
  * Typically a short startupDistance is used and eviction is often disabled.
@@ -72,5 +70,106 @@ public class DbTesterRestart {
             Assert.assertTrue(v != null);
             Assert.assertEquals(i, v[0]);
         }
+    }
+    
+    @T private static void testScenarioB2() {
+        int n = 8;
+        int startupDistance = 400 * 1000;
+        int valueSize = 100 * 1000;
+        
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        
+        Db db = Db.builder()
+                .mainStream(stream)
+                .clock(clock)
+                .startupDistance(startupDistance)
+                .evictBoss(new NoEvictBoss())
+                .start();
+        
+        for (int i = 0; i < n; i++) {
+            byte[] value = new byte[valueSize];
+            value[0] = (byte) i;
+            clock.setTime(i * 100 + 5);
+            
+            Trans trans = Trans.builder().put("/k" + i, value).build();
+            db.execute(trans);
+        }
+        
+        db.sync(SyncLevel.STRONG);     
+        
+        //db.printGraph(System.out);
+        
+        // Restart
+        
+        stream = stream.copy();
+        db = Db.builder()
+                .mainStream(stream)
+                .clock(clock)
+                .evictBoss(new NoEvictBoss())
+                .start();
+        
+        Assert.assertEquals(startupDistance, db.getStartupDistance());
+        
+        // TODO finish this
+    }
+    
+    /** Db should remember startupDistance after restart of empty database. */
+    @T private static void dbShouldRememberStartupDistance() throws InterruptedException {
+        int startupDistance = 400 * 1000;
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        
+        Db db = Db.builder()
+                .mainStream(stream)
+                .clock(clock)
+                .startupDistance(startupDistance)
+                .start();
+        
+        Assert.assertEquals("before restart", startupDistance, db.getStartupDistance());
+        db.sync(SyncLevel.STRONG);
+        
+        // Restart
+        
+        stream = stream.copy();
+        db = Db.builder()
+                .mainStream(stream)
+                .clock(clock)
+                .start();
+        
+        Assert.assertEquals("after restart", startupDistance, db.getStartupDistance());
+    }
+    
+    /**
+     * Db should remember startupDistance after one user transaction.
+     */
+    @T private static void dbShouldRememberStartupDistance2() throws InterruptedException {
+        int startupDistance = 400 * 1000;
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        
+        Db db = Db.builder()
+                .mainStream(stream)
+                .clock(clock)
+                .startupDistance(startupDistance)
+                .start();
+        
+        db.execute(Trans.builder().put("key", "value"));
+        Assert.assertEquals("before restart", startupDistance, db.getStartupDistance());
+        db.sync(SyncLevel.STRONG);
+        
+        // Restart
+        
+        stream = stream.copy();
+        db = Db.builder()
+                .mainStream(stream)
+                .clock(clock)
+                .start();
+        
+        Assert.assertEquals("after restart", startupDistance, db.getStartupDistance());
+    }
+    
+    public static void main(String[] args) throws Exception {
+        dbShouldRememberStartupDistance();
     }
 }

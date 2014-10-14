@@ -656,12 +656,12 @@ public class Db {
      * and writes the first metablock to the stream.
      */
     private void handleEmptyStream() {
-        if (nodeStream.getLength() == 0) {
-            writePrimordialTransactions();
+        if (nodeStream.getLength() == 0) {  
+            writePrimordialTransaction();
         }
     }
 
-    private void writePrimordialTransactions() {
+    private void writePrimordialTransaction() {
         DatabaseId id = (databaseIdFromBuilder == null) ? new DatabaseId() : databaseIdFromBuilder;
         
         long tt;
@@ -687,6 +687,8 @@ public class Db {
         trans.time = tt;
         trans.isInternal = true;
         nodeStream.appendNodes(nodes, trans);
+        
+        x.lastSposOfLastTrans = trans.lastPos;
     }
 
     /**
@@ -976,6 +978,7 @@ public class Db {
                 throw new StreamIoException(e);
             }
             break;
+        
         default:
             throw new Bug("never happens, " + syncLevel);
         }

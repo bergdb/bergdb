@@ -107,10 +107,13 @@ public class CoreUnit {
             methodPattern = Pattern.compile(methodPatternString);
         }
         
+        // TODO LATER Consider matching any substring, that is: m.find() instead of m.match().
+        
         for (IPack p : ipacks) {
             for (Class<?> c : p.getClasses()) {
                 if (classPattern != null) {
                     Matcher m = classPattern.matcher(c.getName());
+                    
                     if (m.matches()) {
                         classes.add(c);
                     }
