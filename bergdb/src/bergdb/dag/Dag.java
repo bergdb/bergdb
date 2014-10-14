@@ -550,13 +550,11 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             
             boolean isNoop = appendDeleteKlong(node, pd.keyAccessPath.size - 1, compareValue, pd);
             if (!isNoop) {
-                //pd.nodeChangeListener.keyNodeChanged(node);
                 ValueNode valueNode = new ValueNode(null);
                 pd.nodeChangeListener.newValueNode(valueNode, key);
             }
             
         } else {
-            //pd.nodeChangeListener.keyNodeChanged(node);
             ValueNode valueNode = new ValueNode(value);
             pd.nodeChangeListener.newValueNode(valueNode, key);
             

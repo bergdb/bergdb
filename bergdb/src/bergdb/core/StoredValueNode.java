@@ -76,8 +76,7 @@ public class StoredValueNode implements StoredNode {
                         + "version 1, got version " + version + ".");
             }
 
-            ValueNode valueNode = new ValueNode(null);
-            valueNode.spos = spos;
+            ValueNode valueNode = new ValueNode(null, spos);
             result = new Pair<ValueNode, long[]>(valueNode, new long[0]);
         } else {
             byte version = buffer[offset];
@@ -115,9 +114,7 @@ public class StoredValueNode implements StoredNode {
                 }
             }
             
-            ValueNode valueNode = new ValueNode(value);
-            valueNode.spos = spos;
-            
+            ValueNode valueNode = new ValueNode(value, spos);            
             result = new Pair<ValueNode, long[]>(valueNode, key);
         }
         
@@ -189,7 +186,7 @@ public class StoredValueNode implements StoredNode {
         value[9] = -2;
         long[] key = Keys.toSegments("/-mykey.txt");
 
-        ValueNode node = new ValueNode(value);
+        ValueNode node = new ValueNode(value, Spos.NULL);
         byte[] buffer = new byte[getByteSize(node, key)];
         StoredValueNode.toBytes(node, key, buffer, 0);
 
@@ -204,7 +201,7 @@ public class StoredValueNode implements StoredNode {
     private static void testToBytesAndBackAndCheckKey() {
         final String keyString = "a";
         long[] key = Keys.toSegments(keyString);
-        ValueNode node = new ValueNode(new byte[0]);
+        ValueNode node = new ValueNode(new byte[0], Spos.NULL);
         byte[] buffer = new byte[getByteSize(node, key)];
         
         StoredValueNode.toBytes(node, key, buffer, 0);
@@ -217,7 +214,7 @@ public class StoredValueNode implements StoredNode {
     @T
     private static void testThatSposIsSetWhenParsedFromBytes() {
         long[] key = Keys.toSegments("/-mykey.txt");
-        ValueNode node = new ValueNode(new byte[0]);
+        ValueNode node = new ValueNode(new byte[0], Spos.NULL);
         byte[] buffer = new byte[getByteSize(node, key)];
         StoredValueNode.toBytes(node, key, buffer, 0);
 

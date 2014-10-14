@@ -22,16 +22,22 @@ public final class ValueNode implements INode {
         // Synch note: this field must only be accessed from threads holding DB.writeLock.
     
     /**
-     * Creates a new delete ValueNode (value == null).
+     * Creates a new delete ValueNode (value == null, spos = Spos.NULL).
      */
     public ValueNode() {
-        this.value = null;
-        this.spos = Spos.NULL;
+        this(null, Spos.NULL);
     }
     
+    /**
+     * Creates a new ValueNode with the given value and spos = Spos.NULL.
+     */
     public ValueNode(byte[] value) {
+        this(value, Spos.NULL);
+    }
+    
+    public ValueNode(byte[] value, long spos) {
         this.value = value;
-        this.spos = Spos.NULL;
+        this.spos = spos;
     }
     
     public final byte getType() {
