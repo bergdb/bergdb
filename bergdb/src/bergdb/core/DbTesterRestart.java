@@ -1,6 +1,8 @@
 package bergdb.core;
 
 import bergdb.common.Util;
+import bergdb.dag.GetData;
+import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.stream.MemoryStream;
@@ -72,6 +74,8 @@ public class DbTesterRestart {
         }
     }
     
+    // XXX Check -1 in printout.
+    
     @T private static void testScenarioB2() {
         int n = 8;
         int startupDistance = 400 * 1000;
@@ -98,7 +102,7 @@ public class DbTesterRestart {
         
         db.sync(SyncLevel.STRONG);     
         
-        //db.printGraph(System.out);
+        db.printGraph(System.out);
         
         // Restart
         
@@ -111,10 +115,24 @@ public class DbTesterRestart {
         
         Assert.assertEquals(startupDistance, db.getStartupDistance());
         
-        // TODO finish this
+        
+        for (int i = 0; i < n; i++) {
+            byte[] value = new byte[valueSize];
+            value[0] = (byte) i;
+            
+            GetData g = new GetData();
+            long[] key = Keys.toSegments("/k" + i);
+            byte[] actual = db.getOne(Long.MAX_VALUE, key, g);
+            
+            Assert.assertArrayEquals(value, actual);
+        }
+        
+        db.printGraph(System.out);
     }
     
-    /** Db should remember startupDistance after restart of empty database. */
+    /**
+     * Db should remember startupDistance after restart of initial state database.
+     */
     @T private static void dbShouldRememberStartupDistance() throws InterruptedException {
         int startupDistance = 400 * 1000;
         MemoryStream stream = new MemoryStream();

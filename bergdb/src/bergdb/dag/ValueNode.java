@@ -116,10 +116,6 @@ public final class ValueNode implements INode {
     public final long getId() {
         return spos;
     }
-
-    public final void setId(long id) {
-        this.spos = id;
-    }
     
     public final boolean isDelete() {
         return value == null;

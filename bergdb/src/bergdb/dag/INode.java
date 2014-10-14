@@ -38,7 +38,6 @@ public interface INode {
      * assert reasons; it might be removed in the future.
      */
     public long getId();
-    public void setId(long id);
     
     public int getPointerCount();
     

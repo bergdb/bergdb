@@ -208,8 +208,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         case INode.TYPE_VALUE:
         case INode.TYPE_DELETE:  // TODO C. do we ever stored DELETE nodes in stream? Try removing this line.
             stored = StoredValueNode.parse(buffer, offset, spos, true);
-            // NOTE Key always read currently. Not always needed. Check if we can increase
-            // performance.
+            // NOTE Key always read currently. Not always needed. Check if we can increase performance.
             break;
         default:
             throw new StreamFormatException("Bad node type in stream, " + ((int) nodeType)

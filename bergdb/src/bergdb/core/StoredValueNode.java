@@ -39,7 +39,7 @@ public class StoredValueNode implements StoredNode {
      * Creates a StoredValueNode by parsing the provided byte buffer.
      */
     public static StoredValueNode parse(byte[] buffer, int offset, long spos, boolean readKey) {
-        // TODO If we allow enums now, use it instead of boolean parameter.
+        // TODO LATER when we allow enums, use it instead of boolean parameter.
         
         Pair<ValueNode, long[]> pair = fromBytes(buffer, offset, spos, readKey);
 
@@ -56,7 +56,7 @@ public class StoredValueNode implements StoredNode {
     private static Pair<ValueNode, long[]> fromBytes(byte[] buffer, int offset, long spos, boolean readKey) {
         assert buffer != null;
         assert buffer.length > offset;
-
+        
         offset += 4; // Skips byte size.
         byte type = buffer[offset];
         offset += 1;
@@ -120,7 +120,7 @@ public class StoredValueNode implements StoredNode {
             
             result = new Pair<ValueNode, long[]>(valueNode, key);
         }
-
+        
         return result;
     }
 
