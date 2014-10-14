@@ -26,7 +26,6 @@ public class Pack implements IPack {
         StoredValueNode.class,
         Trans.class,
         TransNodes.class,
-        TransSeq.class,
         KvTransSeq.class
     };
     

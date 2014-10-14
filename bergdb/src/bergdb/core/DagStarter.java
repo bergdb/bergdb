@@ -10,7 +10,6 @@ import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
-import bergdb.dag.Keys;
 import bergdb.dag.Pointer;
 import bergdb.dag.PutData;
 import bergdb.dag.Spos;
@@ -22,7 +21,7 @@ import bergdb.storage.StreamException;
 import bergdb.storage.StreamFormatException;
 
 /**
- * A function-class, see the public method.
+ * A function-class, see the single public method.
  * 
  * @author Frans Lundberg
  */
@@ -80,8 +79,6 @@ public class DagStarter {
         // * For kv transactions, call dag.putKv, append to kvTransSeq.
         // * For node transactions, set nodes to not dirty.
         //
-        
-        // XXX work here!
         
         // TODO A. clean-up this code!        
         
@@ -145,8 +142,7 @@ public class DagStarter {
                 }
             } else {
                 // kv transaction assumed
-                
-                
+               
                 pd.tt = stored.tt;
                 transInfo = new KvTransSeq.TransInfo();
                 transInfo.tpos = stored.pos;
@@ -166,10 +162,6 @@ public class DagStarter {
                         assert key != null : "key is null, in startup";
                         assert key.length > 0 : "bad key length " + key.length;
                         byte[] value;
-                        
-
-                        // XXX
-                        //System.out.println("XXX Rerun trans, key: " + Keys.toString(key));
                         
                         ValueNode vNode;
                         
@@ -196,8 +188,6 @@ public class DagStarter {
                 kvTransSeq.add(transInfo);
             }
         }
-        
-        //throw new IllegalStateException("STARTUP NOT IMPLEMENTED, " + transactions.size());
     }
 
     private void changeNodesToPreviousState(long tInit) {

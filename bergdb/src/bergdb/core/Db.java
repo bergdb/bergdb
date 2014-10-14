@@ -573,11 +573,12 @@ public class Db {
     private ArrayList<StoredTrans> readTransactions(long startPos) {
         ArrayList<StoredTrans> transactions = new ArrayList<StoredTrans>();
         
-        NodeStream.TransIterator ti = nodeStream.new TransIterator(startPos);
+        NodeStream.TransIterator ti = nodeStream.createTransIterator(startPos);
         while (ti.next()) {
             StoredTrans stored = ti.getStoredTrans();
             transactions.add(stored);
         }
+        
         return transactions;
     }
     
@@ -1187,6 +1188,8 @@ public class Db {
         nodeTrans.isInternal = true;
         nodeTrans.time = x.trans.time;
 
+        // TODO A - Start using exact startPos; that is, startPos should always be the pos of a trans.
+        
         long startupPos2 = x.startupPos.next(this.startupDistance, nodeStream.getLength());
             
         kvTransSeq.addToTransNodes(startupPos2, indexNodes);

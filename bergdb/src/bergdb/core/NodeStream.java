@@ -224,8 +224,8 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         printStream(out, 0);
     }
 
-    public void printStream(PrintStream out, long startSSPos) {
-        TransIterator titer = new TransIterator(startSSPos);
+    public void printStream(PrintStream out, long startPos) {
+        TransIterator titer = createTransIterator(startPos);
 
         while (titer.next()) {
             out.println("==== Trans at " + titer.tpos + " ====");
@@ -250,10 +250,19 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         assert Thread.holdsLock(writeLock);
         return rstream.getPosOfTransCompletedBefore(rstream.getNextSpos());
     }
+    
+    public TransIterator createTransIterator(long startPos) {
+        return new TransIterator(startPos, false);
+    }
+    
+    // Enable when used; should be used when we have exact startPos in meta-block.
+    //public TransIterator createTransIteratorFromExactStartPos(long startPos) {
+    //    return new TransIterator(startPos, true);
+    //}
 
     /**
-     * Iterator that iterates through the successful transactions in the stream from a given start
-     * pos.
+     * Iterator that iterates through the successful transactions in the stream 
+     * from a given start pos.
      */
     public class TransIterator {
         long startPos;
@@ -264,13 +273,11 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         boolean transOk;
         byte[] transBuffer;
         long transTime;
+        boolean exactStartPos;
 
-        public TransIterator() {
-            this(0);
-        }
-
-        public TransIterator(long startPos) {
+        private TransIterator(long startPos, boolean exactStartPos) {
             this.startPos = startPos;
+            this.exactStartPos = exactStartPos;
         }
 
         /**
@@ -282,12 +289,16 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
 
             start: while (true) { // Dummy while-loop just to be able to do "continue start;".
                 if (transCount == 0) {
-                    long p = rstream.getPosOfTransCompletedBefore(startPos);
-                    if (p == Spos.NULL) {
-                        // No valid transactions in stream.
-                        return false;
+                    if (exactStartPos) {
+                        tpos = startPos;
+                    } else {
+                        long p = rstream.getPosOfTransCompletedBefore(startPos);
+                        if (p == Spos.NULL) {
+                            // No valid transactions in stream.
+                            return false;
+                        }
+                        tpos = p;
                     }
-                    tpos = p;
                 } else {
                     tpos = nextTransPos;
                 }

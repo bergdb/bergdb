@@ -100,9 +100,6 @@ public class DbTesterRestart {
         
         db.sync(SyncLevel.STRONG);     
         
-        // XXX
-        //db.printGraph(System.out);
-        
         // Restart
         
         stream = stream.copy();
@@ -125,9 +122,6 @@ public class DbTesterRestart {
             
             Assert.assertArrayEquals(value, actual);
         }
-        
-        // XXX
-        //db.printGraph(System.out);
     }
     
     /**

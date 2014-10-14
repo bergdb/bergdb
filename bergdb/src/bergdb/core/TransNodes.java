@@ -15,7 +15,7 @@ import bergdb.nanotest.T;
  * 
  * @author Frans Lundberg
  */
-public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNodesForMe, KvTransSeq.TransNodesForMe {
+public class TransNodes implements IDirtyNodes.TransNodesForMe, KvTransSeq.TransNodesForMe {
     //
     // The class must support the same node added to it several times without causing duplicates.
     // Should be a set of unique nodes.
@@ -51,15 +51,6 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
     
     public final int size() {
         return topSize + keySize + valueSize;
-    }
-    
-    public TransSeq.Tset createTset(long tpos, long lastPos) {
-        int size = topSize + keySize;
-        INode[] nodes = new INode[size];
-        System.arraycopy(topNodes, 0, nodes, 0, topSize);
-        System.arraycopy(keyNodes, 0, nodes, topSize, keySize);
-        TransSeq.Tset result = new TransSeq.Tset(nodes, tpos, lastPos);
-        return result;
     }
     
     public final long sumMemSize() {
