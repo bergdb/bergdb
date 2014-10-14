@@ -184,7 +184,6 @@ public class DagStarter {
         }
         
         //throw new IllegalStateException("STARTUP NOT IMPLEMENTED, " + transactions.size());
-        
     }
 
     private void changeNodesToPreviousState(long tInit) {

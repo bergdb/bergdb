@@ -323,8 +323,8 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         // Tests simple create, add, get, size.
         
         TransNodes nodes = new TransNodes();
-        ValueNode v1 = new ValueNode();
-        ValueNode v2 = new ValueNode();
+        ValueNode v1 = ValueNode.createDelete();
+        ValueNode v2 = ValueNode.createDelete();
         
         Assert.assertEquals(0, nodes.valueSize);
         nodes.addValueNode(v1, null);
@@ -342,7 +342,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         ValueNode v = null;
         
         for (int i = 0; i < count; i++) {
-            ValueNode value = new ValueNode();
+            ValueNode value = ValueNode.createDelete();
             if (i == index) {
                 v = value;
             }
@@ -365,7 +365,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         TransNodes nodes = new TransNodes();
         
         for (int i = 0; i < count; i++) {
-            ValueNode value = new ValueNode();
+            ValueNode value = ValueNode.createDelete();
             nodes.addValueNode(value, null);
         }
         

@@ -22,10 +22,10 @@ public final class ValueNode implements INode {
         // Synch note: this field must only be accessed from threads holding DB.writeLock.
     
     /**
-     * Creates a new delete ValueNode (value == null, spos = Spos.NULL).
+     * Returns a delete value node (value == null, spos = Spos.NULL).
      */
-    public ValueNode() {
-        this(null, Spos.NULL);
+    public static ValueNode createDelete() {
+        return new ValueNode(null, Spos.NULL);
     }
     
     /**
@@ -246,7 +246,7 @@ public final class ValueNode implements INode {
     public static void testDummy() {
         // Mostly just to "mark" methods as tested.
         
-        ValueNode v = new ValueNode();
+        ValueNode v = ValueNode.createDelete();
         
         Assert.assertEquals(0, v.getPointerCount());
         Assert.assertEquals(0, v.getMemoryPointerCount());

@@ -67,7 +67,7 @@ public class FastMap {
         }
         
         for (int i = 0; i < ids.length; i++) {
-            ValueNode v = new ValueNode();
+            ValueNode v = ValueNode.createDelete();
             v.spos = ids[i];
             m.put(v.spos, v);
         }
