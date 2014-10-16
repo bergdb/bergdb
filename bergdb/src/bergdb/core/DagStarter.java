@@ -80,7 +80,7 @@ public class DagStarter {
         // * For node transactions, set nodes to not dirty.
         //
         
-        // TODO A. clean-up this code!        
+        // TODO B. clean-up this code!        
         
         if (isPrimordialTransaction()) {
             doFirstStartup();

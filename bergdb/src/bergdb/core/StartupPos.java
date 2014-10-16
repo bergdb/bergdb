@@ -60,6 +60,7 @@ public class StartupPos {
      * @param streamLength  The current stream length before the current transaction
      * is appended to the stream.
      * @return  The next (now current) startup position.
+     * @deprecated Use startPos = exact trans pos
      */
     public long next(long startupDistance, long streamLength) {
         long current = startupPos.get();

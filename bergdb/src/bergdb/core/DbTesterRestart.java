@@ -74,7 +74,8 @@ public class DbTesterRestart {
         }
     }
     
-    @T private static void testScenarioB2() {
+    @T
+    private static void testScenarioB2() {
         int n = 8;
         int startupDistance = 400 * 1000;
         int valueSize = 100 * 1000;
@@ -127,7 +128,8 @@ public class DbTesterRestart {
     /**
      * Db should remember startupDistance after restart of initial state database.
      */
-    @T private static void dbShouldRememberStartupDistance() throws InterruptedException {
+    @T
+    private static void dbShouldRememberStartupDistance() throws InterruptedException {
         int startupDistance = 400 * 1000;
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
@@ -155,7 +157,8 @@ public class DbTesterRestart {
     /**
      * Db should remember startupDistance after one user transaction.
      */
-    @T private static void dbShouldRememberStartupDistance2() throws InterruptedException {
+    @T
+    private static void dbShouldRememberStartupDistance2() throws InterruptedException {
         int startupDistance = 400 * 1000;
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();

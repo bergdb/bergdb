@@ -764,32 +764,6 @@ public class Db {
         super.finalize();
     }
     
-    /*
-    private void createInitialStreamState() {
-        KeyNode root = new KeyNode();
-        TopDs top;
-        
-        Trans trans = Trans.builder().build();
-        x.begin(trans);
-        
-        long tt = dbClock.transactionBegin();
-        try {
-            top = TopDs.createFromFirstRoot(tt, root, AccessData.DEFAULT_ACCESS_DATA);
-        } finally {
-            dbClock.transactionEnd();
-        }
-        
-        x.transNodes.addKeyNode(root);
-        x.transNodes.addTopNode(top.getSuperRoot());
-        
-        DatabaseId id = (databaseIdFromBuilder == null) ? new DatabaseId() : databaseIdFromBuilder;
-        nodeStream.getMetaBlock().setId(id.getBytes());
-        nodeStream.getMetaBlock().setStartupPos(0);
-        
-        appendToStream();
-        x.end();
-    }*/
-    
     /**
      * Prints the in memory part of the DB graph. Useful for test and
      * development.
@@ -1188,10 +1162,8 @@ public class Db {
         nodeTrans.isInternal = true;
         nodeTrans.time = x.trans.time;
 
-        // TODO A - Start using exact startPos; that is, startPos should always be the pos of a trans.
+        long startupPos2 = updateStartupPos();
         
-        long startupPos2 = x.startupPos.next(this.startupDistance, nodeStream.getLength());
-            
         kvTransSeq.addToTransNodes(startupPos2, indexNodes);
         kvTransSeq.removeBeforeSpos(startupPos2);
 
@@ -1211,6 +1183,25 @@ public class Db {
         x.transInfo.tpos = x.trans.pos;
         x.transInfo.lastPos = x.trans.lastPos;
         kvTransSeq.add(x.transInfo);
+    }
+
+    /** Updates startupPos and returns the new startupPos. Calls x.startupPos.set(). */
+    private long updateStartupPos() {
+        long current = x.startupPos.get();
+        long length = nodeStream.getLength();
+        long candidate = length - startupDistance;
+        candidate = candidate < 0 ? 0 : candidate;
+        long updated;
+        
+        long pos = this.kvTransSeq.posOfTransBefore(candidate);
+        if (pos == -1) {
+            updated = current;
+        } else {
+            updated = pos;
+        }
+        
+        x.startupPos.set(updated);
+        return updated;
     }
 
     /**

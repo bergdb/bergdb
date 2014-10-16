@@ -57,7 +57,6 @@ public class RecoverableStream {
     
     /** The distance between two consecutive meta blocks in the stream. */
     public static final int META_BLOCK_DISTANCE = 200*1000;
-    //public static final int META_BLOCK_DISTANCE = 1000000;  <-- Value before 130424.
     
     /** Byte size of transaction header. */
     public static final int TRANS_HEADER_SIZE = 4;
@@ -361,9 +360,7 @@ public class RecoverableStream {
         while (size >= distanceToMeta) {
             try {
                 aos.append(buffer, offset, distanceToMeta);
-                long metaPos = aos.getLength();
-                aos.append(metaBlock.getBlock(), 0, RecoverableStream.META_BLOCK_SIZE);
-                this.posOfLastValidMetaBlock = metaPos;
+                writeMetaBlock();
             } catch (IOException e) {
                 throw new StreamIoException(e);
             }
@@ -380,6 +377,14 @@ public class RecoverableStream {
             }
             offset += size;
         }
+    }
+
+    private void writeMetaBlock() throws IOException {
+        long metaPos = aos.getLength();
+        aos.append(metaBlock.getBlock(), 0, RecoverableStream.META_BLOCK_SIZE);
+        this.posOfLastValidMetaBlock = metaPos;
+        
+        //System.out.println("Wrote MetaBlock, pos: " + metaPos + ", startupPos: " + metaBlock.getStartupPos());
     }
     
     /**

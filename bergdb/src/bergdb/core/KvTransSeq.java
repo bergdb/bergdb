@@ -6,6 +6,7 @@ import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
 import bergdb.dag.TopNode;
 import bergdb.nanotest.Assert;
+import static bergdb.nanotest.Assert.*;
 import bergdb.nanotest.T;
 
 /**
@@ -45,6 +46,22 @@ public class KvTransSeq {
         }
         
         size += 1;
+    }
+    
+    /**
+     * Returns pos of last trans with trans.pos < limit
+     * or -1 if there is no such transaction.
+     */
+    public long posOfTransBefore(long limit) {
+        long result = -1;
+        
+        TransInfo t = first;
+        while (t != null && t.tpos < limit) {
+            result = t.tpos;
+            t = t.next;
+        }
+        
+        return result;
     }
     
     /**
@@ -210,5 +227,31 @@ public class KvTransSeq {
         s.removeBeforeSpos(400);
         Assert.assertEquals(0, s.getSize());
         Assert.assertTrue(s.isEmpty());
-    }    
+    }
+    
+    @T
+    private static void testPosOfTransBefore() {        
+        KvTransSeq s = new KvTransSeq();
+        TransInfo info1 = new TransInfo(100, 120);
+        TransInfo info2 = new TransInfo(200, 220);
+        
+        s.add(info1);
+        s.add(info2);
+        
+        assertEquals(-1, s.posOfTransBefore(0));
+        assertEquals(-1, s.posOfTransBefore(99));
+        assertEquals(-1, s.posOfTransBefore(100));
+        assertEquals(100, s.posOfTransBefore(101));
+        assertEquals(200, s.posOfTransBefore(9999999));
+        assertEquals(100, s.posOfTransBefore(160));
+    }
+    
+    @T
+    private static void testPosOfTransBeforeWithEmptySeq() {
+        KvTransSeq s = new KvTransSeq();
+        assertEquals(-1, s.posOfTransBefore(0));
+        assertEquals(-1, s.posOfTransBefore(99));
+        assertEquals(-1, s.posOfTransBefore(Long.MAX_VALUE));
+        assertEquals(-1, s.posOfTransBefore(Long.MIN_VALUE));
+    }
 }

@@ -534,7 +534,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         
         while (!node.isSegmentLeaf()) {
             node.searchLte(pd.tt, compareValue, pd.kwi);
-            assert pd.kwi.klong != Klong.NULL;
+            assert pd.kwi.klong != Klong.NULL : "pd.kwi.klong is not Klong.NULL as expected";
             node = (KeyNode) followPointer(node, pd.kwi.pointerIndex, pd.accessData,
                     pd.pointerListener, pd.cachePolicy);
             assert node != null;
