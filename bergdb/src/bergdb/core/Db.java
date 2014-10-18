@@ -1518,6 +1518,24 @@ public class Db {
         public void reportStartPos(long startPos) {}
     }
     
+    public static final PrintStartListener SYSTEM_OUT_START_LISTENER = new PrintStartListener(System.out);
+    
+    public static class PrintStartListener implements StartListener {
+        private PrintStream p;
+        
+        public PrintStartListener(PrintStream out) {
+            this.p = out;
+        }
+        
+        public void reportStartupDistance(long startupDistance) {
+            p.println("startupDistance: " + startupDistance);
+        }
+        
+        public void reportStartPos(long startPos) {
+            p.println("startPos: " + startPos);
+        }
+    }
+    
     /**
      * An object of this class is used to properly build a DB object.
      */

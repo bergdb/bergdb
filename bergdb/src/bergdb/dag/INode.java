@@ -42,7 +42,7 @@ public interface INode {
     public int getPointerCount();
     
     /**
-     * This method is only used in DB.start() (and test methods).
+     * Returns pointer data in 'pointer' parameter.
      */
     public void getPointer(int index, Pointer pointer);
     

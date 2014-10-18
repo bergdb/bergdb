@@ -562,6 +562,7 @@ public class DbTesterStream {
         db.sync(SyncLevel.ORDINARY);
         
         
+        
         System.out.println("---- Before restart ----");
         db.printGraph(System.out);
         db = null;
@@ -569,7 +570,10 @@ public class DbTesterStream {
         // ---- Restart
         
         s = s.copy();
-        db = Db.builder().testSetup().mainStream(s).start();
+        db = Db.builder().testSetup().mainStream(s).build();
+        db.start(Db.SYSTEM_OUT_START_LISTENER);
+        System.out.println("Stream length: " + s.getLength());
+        
         
         System.out.println("---- After restart ----");
         db.printGraph(System.out);

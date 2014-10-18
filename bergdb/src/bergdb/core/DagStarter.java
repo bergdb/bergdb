@@ -73,25 +73,20 @@ public class DagStarter {
      * Runs the startup algorithm.
      */
     private void startInner() throws StreamException { 
-        
         if (isPrimordialTransaction()) {
             doFirstStartup();
             return;
         }
         
-        long initTime = computeInitTime();
-        
         createMapsAndSearchForSuperRoot();
         refreshStreamPointers();
         createMemoryPointers();
         
+        long initTime = computeInitTime();
         createDag(initTime);
-        
         changeNodesToPreviousState(initTime);
         
-        PutData pd = createPutData();
-        
-        rerunTransactions(pd);
+        rerunTransactions(createPutData());
     }
 
     private void rerunTransactions(PutData pd) {
@@ -262,6 +257,7 @@ public class DagStarter {
         
         for (int i = 0; i < transactions.size(); i++) {
             StoredTrans t = transactions.get(i);
+            
             if (t == null) {
                 throw new StreamFormatException("null transaction, i = " + i);
             }
@@ -271,14 +267,39 @@ public class DagStarter {
             }
             
             for (StoredNode stored : t.nodes) {
-                INode node = stored.getNode();
-                if (node == null) {
-                    throw new StreamFormatException("getNode() returned null, " + t.toString());
-                }
+                validateNode(stored);
+            }
+        }
+    }
+
+    private void validateNode(StoredNode stored) {
+        INode node = stored.getNode();
+        if (node == null) {
+            throw new StreamFormatException("getNode() returned null");
+        }
+        
+        long spos = node.getSpos();
+        if (!Spos.isValid(spos)) {
+            throw new StreamFormatException("Bad spos of node, spos=" + spos + ", node: " + node);
+        }
+        
+        if (node.getType() == INode.TYPE_KEY_NODE) {
+            KeyNode knode = (KeyNode) node;
+            int count = knode.getPointerCount();
+            
+            for (int k = 0; k < count; k++) {
+                long klong = knode.getKlong(k);
                 
-                long spos = node.getSpos();
-                if (!Spos.isValid(spos)) {
-                    throw new StreamFormatException("Bad spos of node, spos=" + spos + ", node: " + node);
+                if (Klong.getType(klong) == Klong.TYPE_KEY) {
+                    Pointer p = new Pointer();
+                    knode.getPointer(k, p);
+                    long ppos = p.getPos();
+                    if (!Spos.isValid(ppos)) {
+                        throw new StreamFormatException(
+                                "Bad spos (" + ppos + ") of pointer from key node, " + knode +
+                                ", pointer index: " + k + ", klong: " + Klong.toString(klong)
+                                );
+                    }
                 }
             }
         }
