@@ -98,6 +98,14 @@ public class DbUtil {
     }
     
     /**
+     * Equivalent to: checksum(db, Long.MAX_VALUE, false).
+     * Checksum of latest database state (keys and their values only).
+     */
+    public static long checksum(Db db) {
+        return checksum(db, Long.MAX_VALUE, false);
+    }
+    
+    /**
      * Computes a CRC32 checksum of the state of the database. All KVs are included, 
      * also internal KVs. Time of Kvs are optionally included.
      * 

@@ -1,8 +1,6 @@
 package bergdb.core;
 
 import bergdb.common.Util;
-import bergdb.dag.GetData;
-import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 import bergdb.stream.MemoryStream;
@@ -77,7 +75,7 @@ public class DbTesterRestart {
     /**
      * Developed 2013-10 during SKYDD 2014.
      */
-    @T private static void testScenarioB2() {
+    @T private static void testScenario100() {
         int n = 8;
         int startupDistance = 400 * 1000;
         int valueSize = 100 * 1000;
@@ -101,7 +99,8 @@ public class DbTesterRestart {
             db.execute(trans);
         }
         
-        db.sync(SyncLevel.STRONG);     
+        long checksum1 = DbUtil.checksum(db);
+        db.sync(SyncLevel.STRONG);
         
         // Restart
         
@@ -113,18 +112,8 @@ public class DbTesterRestart {
                 .start();
         
         Assert.assertEquals(startupDistance, db.getStartupDistance());
-        
-        
-        for (int i = 0; i < n; i++) {
-            byte[] value = new byte[valueSize];
-            value[0] = (byte) i;
-            
-            GetData g = new GetData();
-            long[] key = Keys.toSegments("/k" + i);
-            byte[] actual = db.getOne(Long.MAX_VALUE, key, g);
-            
-            Assert.assertArrayEquals(value, actual);
-        }
+        long checksum2 = DbUtil.checksum(db);  
+        Assert.assertEquals(checksum1, checksum2);
     }
     
     /**
