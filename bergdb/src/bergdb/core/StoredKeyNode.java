@@ -64,6 +64,14 @@ public class StoredKeyNode implements StoredNode {
 
         for (int i = 0; i < sz; i++) {
             long spos = node.pointers[i] == null ? node.pos[i] : node.pointers[i].getSpos();
+            
+            assert Klong.getType(node.klongs[i]) != Klong.TYPE_KEY
+                    || spos >= 0 
+                    : "KEY klong pointer, spos to stream: " + spos 
+                    + "\nklong index: " + i
+                    + "\nNODE:\n" + node.print()
+                    + "POINTEE:\n" + node.pointers[i].print();
+            
             buffer[offset++] = spos;
         }
 
@@ -165,13 +173,16 @@ public class StoredKeyNode implements StoredNode {
         return result;
     }
     
+    
+    // ======== Tests ========
+    
     @T
     private static void testSerialize() {
         KeyNode node = new KeyNode();
         long k0 = Klong.createTime(5000);
         long k1 = Klong.create(Util.toBytes("key"));
         node.addToEnd(k0, null, Spos.NULL);
-        node.addToEnd(k1, null, Spos.NULL);
+        node.addToEnd(k1, null, 1234);
         
         int byteSize = StoredKeyNode.getByteSize(node);
         long[] longBuffer = new long[byteSize / 8];
@@ -184,5 +195,6 @@ public class StoredKeyNode implements StoredNode {
         Assert.assertEquals(node.size, storedNode.node.size);
         Assert.assertEquals(node.getKlong(0), storedNode.node.getKlong(0));
         Assert.assertEquals(node.getKlong(1), storedNode.node.getKlong(1));
+        Assert.assertEquals(1234, storedNode.node.getPointerPos(1));
     }
 }

@@ -4,9 +4,6 @@ import java.io.PrintStream;
 
 import bergdb.common.Bytes;
 import bergdb.dag.INode;
-import bergdb.dag.KeyNode;
-import bergdb.dag.Klong;
-import bergdb.dag.Pointer;
 import bergdb.dag.Spos;
 import bergdb.dag.StreamChecksumException;
 import bergdb.storage.MetaBlock;
@@ -105,11 +102,10 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * @throws StreamIoException
      */
     public void appendNodes(TransNodes nodes, Trans trans) {
-        // TODO A. We must convert mem pointers to stream pointers before writing them to stream.
         // TODO B. We need to include deletes somehow to be able to rerun transactions.
         
         assert nodes.assertNoDuplicates();
-        assert assertNoMemoryPointersInKeyNodes(nodes);
+        //assert assertNoMemoryPointersInKeyNodes(nodes);
         
         long transTpos = rstream.getNextSpos();
         transSerializer.serialize(nodes, trans.time, transTpos);
@@ -123,32 +119,6 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
 
         rstream.append(buffer, 0, bufferSize, true, trans.time);
         rstream.getMetaBlock().setLastTransSpos(transTpos);
-    }
-
-    private boolean assertNoMemoryPointersInKeyNodes(TransNodes nodes) {
-        for (int i = 0; i < nodes.keySize; i++) {
-            bergdb.dag.KeyNode knode = nodes.keyNodes[i];
-            
-            int count = knode.getPointerCount();
-            
-            for (int k = 0; k < count; k++) {
-                long klong = knode.getKlong(k);
-                
-                if (Klong.getType(klong) == Klong.TYPE_KEY) {
-                    Pointer p = new Pointer();
-                    knode.getPointer(k, p);
-                    long ppos = p.getPos();
-                    if (!Spos.isValid(ppos)) {
-                        throw new AssertionError(
-                                "Bad spos (" + ppos + ") of pointer from key node, " + knode +
-                                ", pointer index: " + k + ", klong: " + Klong.toString(klong)
-                                );
-                    }
-                }
-            }
-        }
-        
-        return true;
     }
 
     public long getLastTransSpos() {

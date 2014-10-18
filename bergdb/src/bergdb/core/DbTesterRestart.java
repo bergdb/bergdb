@@ -73,50 +73,6 @@ public class DbTesterRestart {
     }
     
     /**
-     * Developed 2013-10 during SKYDD 2014.
-     */
-    @T private static void testScenario100() {
-        int n = 8;
-        int startupDistance = 400 * 1000;
-        int valueSize = 100 * 1000;
-        
-        MemoryStream stream = new MemoryStream();
-        CoreTestClock clock = new CoreTestClock();
-        
-        Db db = Db.builder()
-                .mainStream(stream)
-                .clock(clock)
-                .startupDistance(startupDistance)
-                .evictBoss(new NoEvictBoss())
-                .start();
-        
-        for (int i = 0; i < n; i++) {
-            byte[] value = new byte[valueSize];
-            value[0] = (byte) i;
-            clock.setTime(i * 100 + 5);
-            
-            Trans trans = Trans.builder().put("/k" + i, value).build();
-            db.execute(trans);
-        }
-        
-        long checksum1 = DbUtil.checksum(db);
-        db.sync(SyncLevel.STRONG);
-        
-        // Restart
-        
-        stream = stream.copy();
-        db = Db.builder()
-                .mainStream(stream)
-                .clock(clock)
-                .evictBoss(new NoEvictBoss())
-                .start();
-        
-        Assert.assertEquals(startupDistance, db.getStartupDistance());
-        long checksum2 = DbUtil.checksum(db);  
-        Assert.assertEquals(checksum1, checksum2);
-    }
-    
-    /**
      * Db should remember startupDistance after restart of initial state database.
      */
     @T

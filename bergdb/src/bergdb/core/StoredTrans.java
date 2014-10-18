@@ -283,7 +283,7 @@ public class StoredTrans {
         }
 
         /**
-         * Prepare for serialization by computing sizes; sets totalSize, transLastSpos,
+         * Prepares for serialization by computing sizes; sets totalSize, transLastSpos,
          * transNextSpos.
          */
         private void prepareToSerialize() {
