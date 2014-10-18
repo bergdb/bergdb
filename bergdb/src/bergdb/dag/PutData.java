@@ -79,15 +79,23 @@ public class PutData {
      */
     public void clearFast() {
         keyAccessPath.clearFast();
+        kwi.klong = Klong.NULL;
+        kwi.node = null;
     }
     
     /**
      * Called at end of Db.putKvs() to clear for new transaction execution.
      */
     public void clear() {
-        clearFast();
+        keyAccessPath.clear();
+        tempPointer.index = -1;
         tempPointer.node = null;
+        tempPointer.pos = Spos.NULL;
+        
         kwi.node = null;
+        kwi.klong = Klong.NULL;
+        kwi.klongTime = -1;
+        
         oneKwi[0].node = null;
         twoKwis[0].node = null;
         twoKwis[1].node = null;

@@ -495,7 +495,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         //       changed/new nodes reported to pd.nodeChangeListener.
         //       accessed nodes ensured "dirty"
         
-        //
         assert pd.tt >= 0;
         assert pd.nodeChangeListener != null;
         assert pd.pointerListener != null;
@@ -534,7 +533,9 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         
         while (!node.isSegmentLeaf()) {
             node.searchLte(pd.tt, compareValue, pd.kwi);
-            assert pd.kwi.klong != Klong.NULL : "pd.kwi.klong is not Klong.NULL as expected";
+            assert pd.kwi.klong != Klong.NULL : 
+                "pd.kwi.klong is Klong.NULL, non-null expected, node: " + node.print();
+            
             node = (KeyNode) followPointer(node, pd.kwi.pointerIndex, pd.accessData,
                     pd.pointerListener, pd.cachePolicy);
             assert node != null;

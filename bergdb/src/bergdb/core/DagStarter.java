@@ -10,6 +10,7 @@ import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
+import bergdb.dag.Klong;
 import bergdb.dag.Pointer;
 import bergdb.dag.PutData;
 import bergdb.dag.Spos;
@@ -40,6 +41,7 @@ public class DagStarter {
     private int maxNodeSize;
     private KvTransSeq.TransInfo transInfo;
     private Dag dag;
+    private SetSposNodeChangeListener setSposListener;
         
     /**
      * Runs the startup algorithms and returns the result from it.
@@ -70,71 +72,29 @@ public class DagStarter {
     /**
      * Runs the startup algorithm.
      */
-    private void startInner() throws StreamException {
-        //
-        // * Handle first startup.
-        // * Find super root, at t = tInit
-        // * Change nodes to their state at t = tInit.
-        // * Re-run transactions - no add to stream, no stats, but create KvTransSeq.
-        // * For kv transactions, call dag.putKv, append to kvTransSeq.
-        // * For node transactions, set nodes to not dirty.
-        //
-        
-        // TODO B. clean-up this code!        
+    private void startInner() throws StreamException { 
         
         if (isPrimordialTransaction()) {
             doFirstStartup();
             return;
         }
         
-        StoredTrans first = transactions.get(0);
-        long tFirst = first.tt;
-        long tInit = first.isPrimordial() ? tFirst : tFirst - 1;
-            // Time to initialize dag to before re-running transactions.
-        if (tInit < 0) {
-            throw new StreamFormatException("Unexpected tFirst, " + tFirst);
-        }
+        long initTime = computeInitTime();
         
         createMapsAndSearchForSuperRoot();
         refreshStreamPointers();
         createMemoryPointers();
         
-        TopDs topDs = new TopDs(superRoot);
-        dag = new Dag(nodeReader, topDs, maxNodeSize);
-        TopNode superRoot = topDs.findSuperRootAtTime(dag, tInit, dag.newGetData());
-        if (superRoot == null) {
-            throw new StreamFormatException("No super root at time " + tInit + " was found.");
-        }
+        createDag(initTime);
         
-        changeNodesToPreviousState(tInit);
+        changeNodesToPreviousState(initTime);
         
-        PutData pd = dag.newPutData();
+        PutData pd = createPutData();
         
-        final Dag.PointerListener pListener = pd.pointerListener;
-        
-        pd.pointerListener = new Dag.PointerListener() {
-            public void superRootAccessed(TopNode superRoot) {
-                pListener.superRootAccessed(superRoot);
-                
-                if (!superRoot.isDirty) {
-                    superRoot.setDirty(true);
-                    transInfo.gotDirtyNodes.add(superRoot);
-                }
-            }
-            
-            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
-                pListener.pointerFollowed(predecessor, pointerIndex, result, pointerType);
-                
-                if (!result.isDirty() && result.isIndexNode()) {
-                    result.setDirty(true);
-                    transInfo.gotDirtyNodes.add(result);
-                }
-            }
-        };
-        
-        SetSposNodeChangeListener setSposListener = new SetSposNodeChangeListener();
-        pd.nodeChangeListener = setSposListener;
-        
+        rerunTransactions(pd);
+    }
+
+    private void rerunTransactions(PutData pd) {
         for (StoredTrans stored : transactions) {
             if (stored.isNodeTransaction()) {
                 for (StoredNode n : stored.nodes) {
@@ -177,6 +137,8 @@ public class DagStarter {
                         
                         setSposListener.setSpos(vNode.getSpos());
                         
+                        assert pd.kwi.klong == Klong.NULL : "db.kwi.klong not Klong.NULL";
+                        
                         dag.putKv(key, value, pd);
                         
                         pd.clearFast();
@@ -187,6 +149,56 @@ public class DagStarter {
                 
                 kvTransSeq.add(transInfo);
             }
+        }
+    }
+
+    private long computeInitTime() {
+        StoredTrans first = transactions.get(0);
+        long tFirst = first.tt;
+        long tInit = first.isPrimordial() ? tFirst : tFirst - 1;
+            // Time to initialize dag to before re-running transactions.
+        if (tInit < 0) {
+            throw new StreamFormatException("Unexpected tFirst, " + tFirst);
+        }
+        return tInit;
+    }
+
+    private PutData createPutData() {
+        PutData pd = dag.newPutData();
+        
+        final Dag.PointerListener pListener = pd.pointerListener;
+        
+        pd.pointerListener = new Dag.PointerListener() {
+            public void superRootAccessed(TopNode superRoot) {
+                pListener.superRootAccessed(superRoot);
+                
+                if (!superRoot.isDirty) {
+                    superRoot.setDirty(true);
+                    transInfo.gotDirtyNodes.add(superRoot);
+                }
+            }
+            
+            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
+                pListener.pointerFollowed(predecessor, pointerIndex, result, pointerType);
+                
+                if (!result.isDirty() && result.isIndexNode()) {
+                    result.setDirty(true);
+                    transInfo.gotDirtyNodes.add(result);
+                }
+            }
+        };
+        
+        setSposListener = new SetSposNodeChangeListener();
+        pd.nodeChangeListener = setSposListener;
+        return pd;
+    }
+
+    private void createDag(long initTime) {
+        TopDs topDs = new TopDs(superRoot);
+        dag = new Dag(nodeReader, topDs, maxNodeSize);
+        TopNode superRoot = topDs.findSuperRootAtTime(dag, initTime, dag.newGetData());
+        if (superRoot == null) {
+            throw new StreamFormatException("No super root at time " + initTime + " was found.");
         }
     }
 

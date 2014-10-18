@@ -15,8 +15,7 @@ import bergdb.stream.MemoryStream;
 import bergdb.stream.OneFileStream;
 
 /**
- * Tests the database with a stream. Nanotest should be used.
- * Method format: static void testX()).
+ * Tests the database with a stream.
  * 
  * @author Frans Lundberg
  */
@@ -529,15 +528,11 @@ public class DbTesterStream {
     }
     
     @T("f")     // Too slow to be "unit".
-    public static void testDirtyNodesLargeTransaction() {
-        //
-        // Tests that the dirty node limit approach works for large transactions.
-        //
-        
+    public static void testLargeTransaction() {
         AppendOnlyStream s = new MemoryStream();
         int n = 2;
         int valueSize = 20*1000*1000;
-        Db db = createRandomDb(n, s);  // Make sure we have some data (some dirty nodes).
+        Db db = createRandomDb(n, s);  // Make sure we have some data
         
         db.execute(Trans.builder().put("/large", new byte[valueSize]));
         db.sync(SyncLevel.ORDINARY);
@@ -551,34 +546,39 @@ public class DbTesterStream {
     }
     
     @T("f")    // Too slow to be "unit".
-    public static void testDirtyNodesLargeTransactions() {
-        //
-        // Tests that the dirty node limit approach works for large transactions.
-        //
-        
-        AppendOnlyStream s = new MemoryStream();
-        int valueSize = 2*1000*1000;
-        Db db = Db.builder().testSetup().startupDistance(2*1000*1000).mainStream(s).start();
+    public static void testLargeTransactions() {
+        MemoryStream s = new MemoryStream();
+        int valueSize = 1000*1000;
+        Db db = Db.builder().testSetup().startupDistance(100*1000).mainStream(s).start();
+        int n = 5;
         
         db.execute(Trans.builder().put("/small1", "v-small1"));
         
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < n; i++) {
             db.execute(Trans.builder().put("/large-" + i, new byte[valueSize + i]));
         }
         
         db.execute(Trans.builder().put("/small2", "v-small2"));
         db.sync(SyncLevel.ORDINARY);
+        
+        
+        System.out.println("---- Before restart ----");
+        db.printGraph(System.out);
         db = null;
         
-        db = Db.builder().testSetup().startupDistance(2*1000*1000).mainStream(s).start();
+        // ---- Restart
         
-        byte[] value = DbUtil.get(db, Long.MAX_VALUE, Keys.toBytes("/small1"));
-        Assert.assertEquals("v-small1", Util.toString(value));
-        value = DbUtil.get(db, Long.MAX_VALUE, Keys.toBytes("/small2"));
-        Assert.assertEquals("v-small2", Util.toString(value));
+        s = s.copy();
+        db = Db.builder().testSetup().mainStream(s).start();
         
-        for (int i = 0; i < 6; i++) {
-            value = DbUtil.get(db, Long.MAX_VALUE, Keys.toBytes("/large-" + i));
+        System.out.println("---- After restart ----");
+        db.printGraph(System.out);
+        
+        Assert.assertEquals("v-small1", DbUtil.getString(db, "/small1"));
+        Assert.assertEquals("v-small2", DbUtil.getString(db, "/small2"));
+        
+        for (int i = 0; i < n; i++) {
+            byte[] value = DbUtil.get(db, Long.MAX_VALUE, Keys.toBytes("/large-" + i));
             Assert.assertEquals(valueSize + i, value.length);
         }
     }
