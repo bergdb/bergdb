@@ -54,7 +54,7 @@ public class GetMany {
     // ---- Output ----
     
     /**
-     * The time used for the lookup. Possibly different from the requested lookup time.
+     * Actual time used for the lookup. Possibly different from the requested lookup time.
      */
     public long actualLookupTime;
     
@@ -429,6 +429,7 @@ public class GetMany {
          * 1. Add the KV to result and continue to next KV.
          * 2. Stop iterating, do not add the KV to the result.
          * 3. Continue to next KV without adding the current KV to the result.
+         * 4. Add the Kv to the result and stop.
          * 
          * @return ADD/STOP/CONTINUE/ADD_AND_STOP.
          */
@@ -436,8 +437,8 @@ public class GetMany {
         
         /**
          * This is called to report that the end of database was reached.
-         * This method will only be called once, and handleKVT will never be called after this
-         * method was called.
+         * This method will only be called once and handleKvt() will never be called after 
+         * this method.
          */
         public void eod();
     }

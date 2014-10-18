@@ -74,8 +74,10 @@ public class DbTesterRestart {
         }
     }
     
-    @T
-    private static void testScenarioB2() {
+    /**
+     * Developed 2013-10 during SKYDD 2014.
+     */
+    @T private static void testScenarioB2() {
         int n = 8;
         int startupDistance = 400 * 1000;
         int valueSize = 100 * 1000;

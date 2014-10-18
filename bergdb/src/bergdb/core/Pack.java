@@ -11,6 +11,7 @@ public class Pack implements IPack {
         DbTesterGetMany.class,
         DbTesterRestart.class,
         DbTesterStream.class,
+        DbUtil.class,
         KeyModSet.class,
         Kv.class,
         NodeStream.class,

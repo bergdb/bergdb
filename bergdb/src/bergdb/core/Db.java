@@ -855,7 +855,7 @@ public class Db {
     }
 
     /**
-     * Get multiple KVs in increasing key order.
+     * Get multiple KVs in increasing or decreasing key order.
      * 
      * @param g
      *            Input and output parameters.
