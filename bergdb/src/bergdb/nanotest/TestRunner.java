@@ -1,12 +1,12 @@
 package bergdb.nanotest;
 
 import java.lang.annotation.Annotation;
-
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Locale;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 // TODO LATER. A main method like bergdb.dev.Unit.main() for general use.
@@ -29,27 +29,38 @@ public class TestRunner {
         collector.classAboutToRun(c);
         
         Method[] methods = c.getDeclaredMethods();
+        sort(methods);
+        
+        for (Method m : methods) {
+            if (matches(methodPattern, m)) {
+                runMethod(m, collector, groups);
+            }
+        }
+        
+        collector.classDone();
+    }
+
+    private static void sort(Method[] methods) {
         Arrays.sort(methods, new Comparator<Method>() {
             public int compare(Method m0, Method m1) {
                 return m0.getName().toLowerCase(Locale.US)
                         .compareTo(m1.getName().toLowerCase(Locale.US));
             }
         });
-        
-        for (Method m : methods) {
-            boolean handle = false;
-            if (methodPattern == null) {
-                handle = true;
-            } else {
-                handle = methodPattern.matcher(m.getName()).matches();
-            }
-            
-            if (handle) {
-                runMethod(m, collector, groups);
-            }
+    }
+
+    /**
+     * Matches any occurences of regexp in method name.
+     */
+    private static boolean matches(Pattern methodPattern, Method m) {
+        boolean result;
+        if (methodPattern == null) {
+            result = true;
+        } else {
+            Matcher matcher = methodPattern.matcher(m.getName());
+            result = matcher.find();
         }
-        
-        collector.classDone();
+        return result;
     }
     
     /**

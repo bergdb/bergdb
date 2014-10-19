@@ -107,17 +107,9 @@ public class CoreUnit {
             methodPattern = Pattern.compile(methodPatternString);
         }
         
-        // TODO LATER Consider matching any substring, that is: m.find() instead of m.match().
-        
         for (IPack p : ipacks) {
             for (Class<?> c : p.getClasses()) {
-                if (classPattern != null) {
-                    Matcher m = classPattern.matcher(c.getName());
-                    
-                    if (m.matches()) {
-                        classes.add(c);
-                    }
-                } else {          
+                if (mathes(classPattern, c)) {
                     classes.add(c);
                 }
             }
@@ -137,6 +129,18 @@ public class CoreUnit {
         for (Class<?> c : classesArray) {
             TestRunner.run(groups, c, methodPattern, collector);
         }
+    }
+
+    private boolean mathes(Pattern classPattern, Class<?> c) {
+        boolean result;
+        if (classPattern == null) {
+            result = true;
+        } else {
+            Matcher m = classPattern.matcher(c.getName());
+            //result = m.matches();
+            result = m.find();
+        }
+        return result;
     }
     
     /**
