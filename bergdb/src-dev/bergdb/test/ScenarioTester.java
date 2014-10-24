@@ -98,6 +98,8 @@ public class ScenarioTester {
      * A scenario with a multi-klong key, an increase of startupPos and a restart.
      */
     @T private static void testScenario102() {
+        // TODO B. Check position of Key node after restart -- compare with before restart.
+        
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(10);
         MemoryStream stream = new MemoryStream();
@@ -106,8 +108,9 @@ public class ScenarioTester {
                 .startupDistance(100*1000).start();
         
         db.execute(Trans.builder().put("/direct/key1", "v1"));
-        db.execute(Trans.builder().put("/z", new byte[200*1000]));
-        db.execute(Trans.builder().put("/direct/key2", "v2"));     // This should increase startupPos
+        db.execute(Trans.builder().put("/z1", new byte[200*1000]));
+        db.execute(Trans.builder().put("/direct/key2", "v2"));     
+        db.execute(Trans.builder().put("/z2", new byte[200*1000]));
         db.sync(SyncLevel.STRONG);
         
         //System.out.println("==== printGraph");
@@ -119,6 +122,41 @@ public class ScenarioTester {
         
         assertEquals(100*1000, db.getStartupDistance());
         
+        //System.out.println("==== printGraph after restart");
         //db.printGraph(System.out);
     }
+    
+    /**
+     * Like 102, but with more KVs.
+     */
+    /*
+    @T private static void testScenario103() {
+        CoreTestClock clock = new CoreTestClock();
+        clock.setTime(10);
+        MemoryStream stream = new MemoryStream();
+
+        Db db = Db.builder().testSetup().mainStream(stream).clock(clock)
+                .startupDistance(100*1000).start();
+        
+        db.execute(Trans.builder().put("/direct/key1", "v1"));
+        db.execute(Trans.builder().put("/z1", new byte[200*1000]));
+        db.execute(Trans.builder().put("/direct/key2", "v2"));     
+        db.execute(Trans.builder().put("/z2", new byte[200*1000]));
+        db.execute(Trans.builder().put("/direct/key3", "v3"));     
+        db.execute(Trans.builder().put("/z3", new byte[200*1000]));
+        db.sync(SyncLevel.STRONG);
+        
+        System.out.println("==== printGraph");
+        db.printGraph(System.out);
+        
+        // Restart
+        stream = stream.copy();
+        db = Db.builder().testSetup().mainStream(stream).clock(clock).start();
+        
+        assertEquals(100*1000, db.getStartupDistance());
+        
+        System.out.println("==== printGraph after restart");
+        db.printGraph(System.out);
+    }*/
+    
 }

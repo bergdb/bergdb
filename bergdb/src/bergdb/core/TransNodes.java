@@ -103,6 +103,21 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, KvTransSeq.Trans
         
         return result;
     }
+
+    public void clean() {
+        
+        for (int i = 0; i < topSize; i++) {
+            topNodes[i].isDirty = false;
+            // XXX
+            //System.out.println("FFF cleaned: " + topNodes[i]);
+        }
+        
+        for (int i = 0; i < keySize; i++) {
+            keyNodes[i].isDirty = false;
+            // XXX
+            //System.out.println("FFF cleaned: " + keyNodes[i]);
+        }
+    }
     
     /**
      * For highest performance iterate directly on the three arrays: topNodes, keyNodes, valueNodes
@@ -368,4 +383,5 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, KvTransSeq.Trans
         
         Assert.assertEquals(INITIAL_SIZE, nodes.valueNodes.length);
     }
+
 }

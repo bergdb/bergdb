@@ -67,6 +67,12 @@ public class Trans {
         return isInternal;
     }
     
+    public String toString() {
+        String s = "tt:" + time + ", pos:" + pos;
+        s = isInternal ? s + ", internal" : s;
+        return s;
+    }
+    
     /**
      * Returns a multi-line string representing this object for debug purpose.
      */

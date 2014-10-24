@@ -570,10 +570,17 @@ public class Db {
     }
     
     /** Reads transactions from DB stream starting at startPos. */
-    private ArrayList<StoredTrans> readTransactions(long startPos) {
+    private ArrayList<StoredTrans> readTransactions(long startupPos) {
+        if (startupPos == 0) {
+            startupPos = RecoverableStream.META_BLOCK_SIZE;
+        }
+        
         ArrayList<StoredTrans> transactions = new ArrayList<StoredTrans>();
         
-        NodeStream.TransIterator ti = nodeStream.createTransIterator(startPos);
+        // XXX
+        //System.out.println("XXX, readTransactions: startupPos: " + startupPos);
+        
+        NodeStream.TransIterator ti = nodeStream.createTransIteratorFromExactStartupPos(startupPos);
         while (ti.next()) {
             StoredTrans stored = ti.getStoredTrans();
             transactions.add(stored);
@@ -1172,15 +1179,16 @@ public class Db {
      */
     private void appendToStream() {        
         // Handles KvTransSeq update, startupPos update, node transaction
-        // and writes two transactions to stream (the kv transactions and node transaction).
+        // and writes one or two transactions to stream; a kv transaction and 
+        // if needed, a node transaction.
         //
-        // Below is a simple implementation of the cachedMemoryValue.
+        // Below code has a simple implementation of the cachedMemoryValue.
         // Everything written to the stream is considered new data to the cache.
         // This could be improved for a better memory-added-to-cache estimate.
         //
         
         TransNodes indexNodes = new TransNodes();     // NOTE, we could re-use this for performance
-        Trans nodeTrans = Trans.builder().build();     // NOTE, we could re-use this for performance
+        Trans nodeTrans = Trans.builder().build();    // NOTE, we could re-use this for performance
         nodeTrans.isInternal = true;
         nodeTrans.time = x.trans.time;
 
@@ -1195,8 +1203,15 @@ public class Db {
         x.trans.nodeCount = x.transNodes.size();
         
         nodeStream.appendNodes(x.transNodes, x.trans);
+        x.transNodes.clean();
+        // XXX
+        //System.out.println("XXX Wrote KV transaction: " + x.trans);
+        
         if (indexNodes.size() > 0) {
             nodeStream.appendNodes(indexNodes, nodeTrans);
+            indexNodes.clean();
+         // XXX
+            //System.out.println("XXX Wrote index transaction: " + nodeTrans);
         }
 
         MetaBlock meta = nodeStream.getMetaBlock();

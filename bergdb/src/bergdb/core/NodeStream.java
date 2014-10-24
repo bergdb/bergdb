@@ -256,10 +256,9 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         return new TransIterator(startPos, false);
     }
     
-    // Enable when used; should be used when we have exact startPos in meta-block.
-    //public TransIterator createTransIteratorFromExactStartPos(long startPos) {
-    //    return new TransIterator(startPos, true);
-    //}
+    public TransIterator createTransIteratorFromExactStartupPos(long startPos) {
+        return new TransIterator(startPos, true);
+    }
 
     /**
      * Iterator that iterates through the successful transactions in the stream 
