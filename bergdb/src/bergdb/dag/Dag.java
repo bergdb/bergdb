@@ -542,11 +542,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         }
 
         if (value == null) {
+            // TODO A. Handle delete -- write something to stream to allow for trans rerun.
             // If a delete operation.
-            
-            // 130514 Frans: Added delete ValueNode to transaction nodes. Needed to store choices for
-            // the delete operation. But only non-noop deletes added.
-            
             // Inserts a delete klong if needed.
             
             boolean isNoop = appendDeleteKlong(node, pd.keyAccessPath.size - 1, compareValue, pd);
@@ -562,8 +559,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             // We need to be able to fit two more klongs. A TIME klong might be needed.
             // This is sub-optimal. Sometimes a node can be added without adding a TIME klong.
             // Little to gain from optimizing this, however.
-            
             // "+1" needed, there may be a need to insert a TIME klong too.
+            
             if (node.size + 1 < this.maxNodeSize) {
                 node.addKlong(pd.tt, Klong.compareValueToKeyKlong(compareValue),
                         valueNode, pd.accessData);

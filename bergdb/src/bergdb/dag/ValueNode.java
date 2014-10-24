@@ -12,6 +12,9 @@ import bergdb.nanotest.T;
  * @author Frans Lundberg
  */
 public final class ValueNode implements INode {
+    // NOTE 141024, the INode.TYPE_VALUE/DELETE is confusing!
+    // In this class, the value node is considered a delete if value == null.
+    
     public final byte[] value;
         // Synch note: final - no problem.
     public volatile long spos;
@@ -41,7 +44,7 @@ public final class ValueNode implements INode {
     }
     
     public final byte getType() {
-        return TYPE_VALUE;
+        return value == null ? INode.TYPE_DELETE : INode.TYPE_VALUE;
     }
     
     public final boolean isIndexNode() {

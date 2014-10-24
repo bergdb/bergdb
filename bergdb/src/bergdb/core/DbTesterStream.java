@@ -408,38 +408,6 @@ public class DbTesterStream {
         f.delete();
     }
     
-    public static void testDeleteAndRestart() {
-        AppendOnlyStream s = new MemoryStream();
-        CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup().mainStream(s).clock(clock).start();
-        
-        clock.setTime(10);
-        db.execute(Trans.builder().put("k1", "k1-value").put("k2", "k2-value"));
-        
-        clock.setTime(20);
-        db.execute(Trans.builder().delete("k1"));
-        db.sync(SyncLevel.ORDINARY);
-        db = null;
-        
-        Db db2 = Db.builder().testSetup().mainStream(s).start();
-        
-        // t = 15
-        
-        byte[] value = DbUtil.get(db2, 15, "k2");
-        Assert.assertArrayEquals(Util.toBytes("k2-value"), value);
-        
-        value = DbUtil.get(db2, 15, "k1");
-        Assert.assertArrayEquals(Util.toBytes("k1-value"), value);
-        
-        // t = 25
-        
-        value = DbUtil.get(db2, 25, "k2");
-        Assert.assertArrayEquals(Util.toBytes("k2-value"), value);
-        
-        value = DbUtil.get(db2, 25, Util.toBytes("k1"));
-        Assert.assertNull(value);
-    }
-    
     public static void testOverwriteAndRestart() {
         AppendOnlyStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
@@ -561,22 +529,19 @@ public class DbTesterStream {
         db.execute(Trans.builder().put("/small2", "v-small2"));
         db.sync(SyncLevel.ORDINARY);
         
-        
-        
-        System.out.println("---- Before restart ----");
-        db.printGraph(System.out);
+        //System.out.println("---- Before restart ----");
+        //db.printGraph(System.out);
         db = null;
         
         // ---- Restart
         
         s = s.copy();
         db = Db.builder().testSetup().mainStream(s).build();
-        db.start(Db.SYSTEM_OUT_START_LISTENER);
-        System.out.println("Stream length: " + s.getLength());
+        db.start();
+        //System.out.println("Stream length: " + s.getLength());
         
-        
-        System.out.println("---- After restart ----");
-        db.printGraph(System.out);
+        //System.out.println("---- After restart ----");
+        //db.printGraph(System.out);
         
         Assert.assertEquals("v-small1", DbUtil.getString(db, "/small1"));
         Assert.assertEquals("v-small2", DbUtil.getString(db, "/small2"));

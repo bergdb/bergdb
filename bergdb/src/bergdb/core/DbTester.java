@@ -1085,8 +1085,7 @@ public class DbTester {
         return b.start();
     }
     
-    // TODO C. enable this test
-    //@T
+    @T
     public static void tCrash1() {
         //
         // Truncate from end, one transaction in addition to the primordial one.

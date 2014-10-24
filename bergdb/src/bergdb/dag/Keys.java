@@ -102,6 +102,11 @@ public class Keys {
         return Util.isPrintableAscii(bytes2);
     }
     
+    public static final String toDisplayString(long[] skey) {
+        byte[] bkey = toBytes(skey);
+        return toDisplayString(bkey);
+    }
+    
     public static final String toDisplayString(byte[] bytes) {
         assert bytes != null;
         bytes = bytes.clone();

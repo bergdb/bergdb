@@ -86,17 +86,20 @@ public class DagStarter {
         createDag(initTime);
         changeNodesToPreviousState(initTime);
         
-        rerunTransactions(createPutData());
+        PutData pd = createPutData();
+        rerunTransactions(pd);
     }
 
     private void rerunTransactions(PutData pd) {
-        for (StoredTrans stored : transactions) {
+        // TODO A. Does DELETE work?
+        
+        for (StoredTrans stored : transactions) {            
             if (stored.isNodeTransaction()) {
                 for (StoredNode n : stored.nodes) {
                     n.getNode().setDirty(false);
                 }
             } else {
-                // kv transaction assumed
+                // kv transaction
                
                 pd.tt = stored.tt;
                 transInfo = new KvTransSeq.TransInfo();
@@ -105,46 +108,51 @@ public class DagStarter {
                 transInfo.tt = stored.tt;
                 
                 for (StoredNode n : stored.nodes) {
-                    INode node = n.getNode();
-                    if (node.isIndexNode()) {
-                        throw new StreamFormatException("kv transaction with index node: " + node);
-                    }
-                    
-                    int type = node.getType();
-                    
-                    // DELETES not yet handled
-                    if (type == INode.TYPE_VALUE) {
-                        long[] key = ((StoredValueNode) n).getKey();
-                        assert key != null : "key is null, in startup";
-                        assert key.length > 0 : "bad key length " + key.length;
-                        byte[] value;
-                        
-                        ValueNode vNode;
-                        
-                        if (type == INode.TYPE_VALUE) {
-                            vNode = (ValueNode) node;
-                            value = vNode.getValue();
-                        } else if (type == INode.TYPE_DELETE) {
-                            vNode = (ValueNode) node;
-                            value = null;
-                        } else {
-                            throw new IllegalStateException("Bad type: " + type);
-                        }
-                        
-                        setSposListener.setSpos(vNode.getSpos());
-                        
-                        assert pd.kwi.klong == Klong.NULL : "db.kwi.klong not Klong.NULL";
-                        
-                        dag.putKv(key, value, pd);
-                        
-                        pd.clearFast();
-                    }
+                    putRerunKv(pd, n);
                 }
                 
                 pd.clear();
                 
                 kvTransSeq.add(transInfo);
             }
+        }
+    }
+
+    private void putRerunKv(PutData pd, StoredNode n) {
+        
+        
+        INode node = n.getNode();
+        if (node.isIndexNode()) {
+            throw new StreamFormatException("kv transaction with index node: " + node);
+        }
+        
+        int type = node.getType();
+        
+        if (type == INode.TYPE_VALUE || type == INode.TYPE_DELETE) {
+            long[] key = ((StoredValueNode) n).getKey();
+            assert key != null : "key is null, in startup";
+            assert key.length > 0 : "bad key length " + key.length;
+            byte[] value;
+            
+            ValueNode vNode;
+            
+            if (type == INode.TYPE_VALUE) {
+                vNode = (ValueNode) node;
+                value = vNode.getValue();
+            } else if (type == INode.TYPE_DELETE) {
+                vNode = (ValueNode) node;
+                value = null;
+            } else {
+                throw new IllegalStateException("Bad type: " + type);
+            }
+            
+            setSposListener.setSpos(vNode.getSpos());
+            
+            assert pd.kwi.klong == Klong.NULL : "db.kwi.klong not Klong.NULL";
+            
+            dag.putKv(key, value, pd);
+            
+            pd.clearFast();
         }
     }
 
@@ -248,13 +256,11 @@ public class DagStarter {
         // This code could be removed, or just called when when asserts enabled if
         // it is determined that it takes significant time to run.
         
-        /*if (transactions.size() > 0 && transactions.get(0).pos == 300688) {
-            System.out.println("==== Startup transactions:");
-            for (StoredTrans s : transactions) {
-                System.out.println("stored trans: " + s);
-                for (StoredNode n : s.nodes) {
-                    System.out.println("  " + n);
-                }
+        /*System.out.println("==== Startup transactions:");
+        for (StoredTrans s : transactions) {
+            System.out.println("stored trans: " + s);
+            for (StoredNode n : s.nodes) {
+                System.out.println("  " + n);
             }
         }*/
         

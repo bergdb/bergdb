@@ -3,6 +3,7 @@ package bergdb.core;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
+import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
 
 /**
@@ -131,7 +132,30 @@ public class DbTesterRestart {
         Assert.assertEquals("after restart", startupDistance, db.getStartupDistance());
     }
     
-    public static void main(String[] args) throws Exception {
-        dbShouldRememberStartupDistance();
+    @T
+    private static void testDeleteAndRestart() {
+        AppendOnlyStream s = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup().mainStream(s).clock(clock).start();
+        
+        clock.setTime(10);
+        db.execute(Trans.builder().put("k1", "k1-value"));
+        
+        clock.setTime(20);
+        db.execute(Trans.builder().delete("k1"));
+        db.sync(SyncLevel.ORDINARY);
+        
+        //db.printGraph(System.out);
+        db = null;
+        
+        // Restart
+        
+        Db db2 = Db.builder().testSetup().mainStream(s).start();        
+        //db2.printGraph(System.out);
+        
+        byte[] v1 = DbUtil.get(db2, 15, "k1");
+        Assert.assertArrayEquals(Util.toBytes("k1-value"), v1);
+        v1 = DbUtil.get(db2, 25, "k1");
+        Assert.assertNull(v1);
     }
 }

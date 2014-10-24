@@ -171,4 +171,10 @@ public class ScenarioTester {
         //System.out.println("==== printGraph after restart");
         //db.printGraph(System.out);
     }
+    
+    @T private static void testScenario104() {
+        // Trying to recreate the issue with stream pointer == -1.
+        
+        
+    }
 }

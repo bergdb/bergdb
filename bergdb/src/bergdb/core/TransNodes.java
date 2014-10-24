@@ -164,10 +164,6 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, KvTransSeq.Trans
     }
     
     public final void addValueNode(ValueNode node, long[] key) {
-        
-        assert node.getType() != INode.TYPE_DELETE 
-                : "Unexpected DELETE node added to " + this.getClass().getSimpleName() + ".";
-        
         if (!node.isInTransactionNodes) {
             node.isInTransactionNodes = true;
             

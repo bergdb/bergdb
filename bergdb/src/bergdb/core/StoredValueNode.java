@@ -71,26 +71,55 @@ public class StoredValueNode implements StoredNode {
 
         Pair<ValueNode, long[]> result;
 
+        byte version = buffer[offset];
+        offset += 1;
+
+        if (version != 1) {
+            throw new StreamFormatException("Can only handle ValueNode of "
+                    + "version 1, got version " + version + ".");
+        }
+        
+        offset += 2; // two bytes not used
+
+        byte[] value = null;
+        
+        if (type == INode.TYPE_VALUE) {
+            int valueSize = Bytes.bytesToIntLE(buffer, offset);
+            offset += 4;
+            value = new byte[valueSize];
+            System.arraycopy(buffer, offset, value, 0, valueSize);
+            offset += valueSize;
+        }
+        
+        long[] key = new long[0];
+        
+        if (readKey) {
+            int keySize = Bytes.bytesToIntLE(buffer, offset);
+            offset += 4;
+            
+            if (keySize % 8 != 0 || keySize <= 0) {
+                throw new StreamFormatException("Bad key size when reading value node at spos " 
+                        + spos + ", keySize: " + keySize + ".");
+            }
+            
+            key = new long[keySize / 8];
+            for (int i = 0; i < key.length; i++) {
+                key[i] = Bytes.bytesToLongLE(buffer, offset);
+                offset += 8;
+            }
+        }
+        
+        ValueNode valueNode = new ValueNode(value, spos);            
+        result = new Pair<ValueNode, long[]>(valueNode, key);
+        
+        
+        
+        /*
+        
         if (type == INode.TYPE_DELETE) {
-            byte version = buffer[offset];
-            offset += 1;
-
-            if (version != 1) {
-                throw new StreamFormatException("Can only handle ValueNode of "
-                        + "version 1, got version " + version + ".");
-            }
-
             ValueNode valueNode = new ValueNode(null, spos);
-            result = new Pair<ValueNode, long[]>(valueNode, new long[0]);
+            result = new Pair<ValueNode, long[]>(valueNode, new long[0]);   // TODO A. Fix -- we need the key!
         } else {
-            byte version = buffer[offset];
-            offset += 1;
-
-            if (version != 1) {
-                throw new StreamFormatException("Can only handle ValueNode of "
-                        + "version 1, got version " + version + ".");
-            }
-
             offset += 2; // two bytes not used
 
             int size = Bytes.bytesToIntLE(buffer, offset);
@@ -121,14 +150,15 @@ public class StoredValueNode implements StoredNode {
             ValueNode valueNode = new ValueNode(value, spos);            
             result = new Pair<ValueNode, long[]>(valueNode, key);
         }
+        */
         
         return result;
     }
 
     public static int getByteSize(ValueNode node, long[] key) {
         return node.value == null ? 
-                8 : 
-                8 + 4 + node.value.length + 4 + 8 * key.length;
+                8 +                         4 + 8 * key.length
+              : 8 + 4 + node.value.length + 4 + 8 * key.length;
     }
 
     /**
@@ -148,22 +178,19 @@ public class StoredValueNode implements StoredNode {
         // Room for 2 checksum bytes.
 
         if (nodeType == INode.TYPE_VALUE) {
+            // DELETE nodes have no value.
+            
             Bytes.intToBytesLE(node.value.length, buffer, offset);
             offset += 4;
-
             System.arraycopy(node.value, 0, buffer, offset, node.value.length);
-            offset += node.value.length;
-            
-            Bytes.intToBytesLE(key.length * 8, buffer, offset);
-            offset += 4;
-            
-            Bytes.longsToBytesLE(key, 0, key.length, buffer, offset);
-            offset += 8 * key.length;
-            
-            
-        } else {
-            // For a TYPE_DELETE, we have no value, no key.
+            offset += node.value.length;    
         }
+        
+        Bytes.intToBytesLE(key.length * 8, buffer, offset);
+        offset += 4;
+        Bytes.longsToBytesLE(key, 0, key.length, buffer, offset);
+        offset += 8 * key.length;
+        
 
         // Checksum, XOR of all bytes to buffer[firstOffset + 6], 0 -> 1. 0 used as no checksum
         // indicator.
@@ -176,7 +203,8 @@ public class StoredValueNode implements StoredNode {
         checksum = checksum == 0 ? 1 : checksum;
         buffer[firstOffset + 6] = (byte) checksum;
 
-        assert offset - firstOffset == byteSize;
+        assert offset - firstOffset == byteSize 
+                : "offset:" + offset + ", firstOffset:" + firstOffset + ", byteSize: " + byteSize;
         return byteSize;
     }
 
