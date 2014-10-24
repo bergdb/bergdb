@@ -90,10 +90,6 @@ public class ScenarioTester {
         Assert.assertTrue(g.result.size() == size || g.result.size() == size + 1);
     }
     
-
-    
-    
-    
     /**
      * A scenario with a multi-klong key, an increase of startupPos and a restart.
      */
@@ -130,25 +126,30 @@ public class ScenarioTester {
     }
     
     // TODO A. Fix test and general issue: sometimes spos = -1 is written to stream. The pointee, p, of a node has p.getSpos() == -1 because it has not ever been written to stream.
+    
     // TODO A. Fix Scenario103.
     
     /**
-     * Like 102, but with more KVs.
+     * Restart scenario with multiple large transactions.
      */
     @T private static void testScenario103() {
+        //
+        // NOTES issue. No index nodes at all in startup transactions.
+        //
+        
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(10);
         MemoryStream stream = new MemoryStream();
+        int n = 6;
+        int valueSize = 100*1000;
 
         Db db = Db.builder().testSetup().mainStream(stream).clock(clock)
-                .startupDistance(100*1000).start();
+                .startupDistance(10*1000).start();
         
-        db.execute(Trans.builder().put("/direct/key1", "v1"));
-        db.execute(Trans.builder().put("/z1", new byte[200*1000]));
-        db.execute(Trans.builder().put("/direct/key2", "v2"));     
-        db.execute(Trans.builder().put("/z2", new byte[200*1000]));
-        db.execute(Trans.builder().put("/direct/key3", "v3"));     
-        db.execute(Trans.builder().put("/z3", new byte[200*1000]));
+        for (int i = 0; i < n; i++) {
+            db.execute(Trans.builder().put("/z" + i, new byte[valueSize + i]));
+        }
+        
         long sum1 = DbUtil.checksum(db, Long.MAX_VALUE, true);
         db.sync(SyncLevel.STRONG);
         
@@ -160,7 +161,6 @@ public class ScenarioTester {
         db = Db.builder().testSetup().mainStream(stream).clock(clock).start();
         long sum2 = DbUtil.checksum(db, Long.MAX_VALUE, true);
         
-        assertEquals(100*1000, db.getStartupDistance());
         assertEquals(sum1, sum2);
         
         //System.out.println("==== printGraph after restart");

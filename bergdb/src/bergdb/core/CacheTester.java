@@ -100,7 +100,7 @@ public class CacheTester {
         
         checkCrazyDb(db, ids);
         
-        int count = db.getSuperRoot().getMemoryPointerCount();
+        int count = db.internal().superRoot().getMemoryPointerCount();
         Assert.assertTrue("count=" + count, count > 0);
     }
     

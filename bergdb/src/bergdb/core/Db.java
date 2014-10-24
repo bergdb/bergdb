@@ -80,13 +80,12 @@ public class Db {
     //
     // Note: There must be no reference to a Db object from a thread started
     // by the database (directly or indirectly). 
-    // Otherwise, the Db object will never be available for garbage collection,
-    // finalize() will not be called, and the thread will not stop.
+    // Otherwise, the Db object will never be available for garbage collection.
     //
     
     /** 
      * IKP - internal key prefix - prefix of keys used to store internal database data.
-     * 131023: changed from /#ikp/ to "/#i/", destroyed binary compatibility.
+     * 131023: changed from /#ikp/ to "/#i/", destroyes binary compatibility.
      */
     public static final String INTERNAL_KEY_PREFIX = Util.identity("/#i/");
     
@@ -101,16 +100,11 @@ public class Db {
      * (from Pub API).
      */
     static final long[] DUMMY_KEY = Keys.toSegments(INTERNAL_KEY_PREFIX + "-dummy");
-    
-    private static final int STATE_ZERO = 1;
-    private static final int STATE_STARTING = 2;
-    private static final int STATE_ACTIVE = 3;
-    private static final int STATE_STOPPING = 4;
 
     /** 
      * State of the database. Synch note: writes published by readSync.
      */
-    private int state = STATE_ZERO;
+    private DbState state = DbState.ZERO;
     
     /**
      * Global transaction write lock. Held when STM stuff is done.
@@ -222,18 +216,6 @@ public class Db {
     
     public long getStartupPos() {
         return x.startupPos.get();
-    }
-    
-    public String getStartupDistanceH() {
-        long sd;
-        int metaSd;
-        
-        synchronized (writeLock) {
-            sd = this.startupDistance;
-            metaSd = this.nodeStream.getMetaBlock().getStartupDistance();
-        }
-        
-        return "DB.startupDistance = " + sd + ", metablock sd = " + metaSd;
     }
     
     public double getDirtyFraction100() {
@@ -439,41 +421,6 @@ public class Db {
         return dbClock.lookupTime(wantedLookupTime);
     }
 
-    public final Object getWriteLock() {
-        return writeLock;
-    }
-    
-    /**
-     * Returns the readSynch lock Object.
-     */
-    public final Object getReadSynch() {
-        return readSync;
-    }
-    
-    
-    private static String getStateName(int state) {
-        String result;
-        
-        switch (state) {
-        case STATE_ZERO:
-            result = "STATE_ZERO";
-            break;
-        case STATE_STARTING:
-            result = "STATE_STARTING";
-            break;
-        case STATE_ACTIVE:
-            result = "STATE_ACTIVE";
-            break;
-        case STATE_STOPPING:
-            result = "STATE_STOPPING";
-            break;
-        default:
-            result = "Unknown DB state (" + state + ")";
-            break;
-        }
-        return result;
-    }
-
     /**
      * Starts the database by reading from the stream. Call once per Db object
      * after constructor and before the get/set methods.
@@ -532,7 +479,7 @@ public class Db {
         x.putData = createPutData();
         x.getData = newGetData();
         
-        this.state = STATE_ACTIVE;
+        this.state = DbState.ACTIVE;
         
         // state = STATE_ACTIVE needed before this method.
         reclaim.initFromDb();
@@ -650,10 +597,10 @@ public class Db {
      * @throws IllegalDbStateException
      */
     private void assertStateIsZero() {
-        if (state != STATE_ZERO) {
+        if (state != DbState.ZERO) {
             throw new IllegalDbStateException("Db has been started already, "
                     + "start() should be called once only; Db state is: " 
-                    + getStateName(state) + ".");
+                    + state + ".");
         }
     }
 
@@ -748,11 +695,11 @@ public class Db {
     public void stop() {
         synchronized (readSync) {};
         
-        if (state == STATE_STOPPING) {
+        if (state == DbState.STOPPING) {
             return;
         }
         
-        state = STATE_STOPPING;
+        state = DbState.STOPPING;
         synchronized (readSync) {};
         storageManager.stop();
     }
@@ -765,16 +712,16 @@ public class Db {
     public void close() {
         synchronized (readSync) {};
         
-        if (state == STATE_STOPPING) {
+        if (state == DbState.STOPPING) {
             return;
         }
         
         synchronized (this.writeLock) {
-            if (state == STATE_STOPPING) {
+            if (state == DbState.STOPPING) {
                 return;
             }
             
-            state = STATE_STOPPING;
+            state = DbState.STOPPING;
             
             synchronized (readSync) {};
         }
@@ -1068,13 +1015,13 @@ public class Db {
     }
 
     private void assertDbStateIsActive(String methodName) {
-        int myState = state;
-        if (myState != STATE_ACTIVE) {
-            if (myState == STATE_STOPPING) {
+        DbState myState = state;
+        if (myState != DbState.ACTIVE) {
+            if (myState == DbState.STOPPING) {
                 throw new DbStoppingException("Cannot call " + methodName + "() while DB is stopping.");
             } else {
                 throw new IllegalDbStateException("Cannot call " + methodName + "() when DB state is " 
-                        + getStateName(myState) + ".");
+                        + myState + ".");
             }
         }
     }
@@ -1371,7 +1318,6 @@ public class Db {
         }
     }
 
-    
     private void getEvictPointer2(INode node, int rand, Pointer p) {
         int length = node.getPointerCount();
         int index;
@@ -1394,13 +1340,21 @@ public class Db {
             rand += 1;
         }
     }
-
+    
+    private static Internal internal = null;
+    private static final Object INTERNAL_LOCK = new Object();
+    
     /**
-     * Returns current super root.
-     * Use for testing only.
+     * Returns access to the internals of Db.
+     * Do NOT use for normal operation.
      */
-    public final TopNode getSuperRoot() {
-        return dag.getSuperRoot();
+    public Internal internal() {
+        synchronized (INTERNAL_LOCK) {
+            if (internal == null) {
+                internal = new Internal();
+            }
+        }
+        return internal;
     }
 
     /**
@@ -1426,6 +1380,32 @@ public class Db {
      */
     public static class WriteLock {}
     
+    /**
+     * Access to the internal structure of the Db object.
+     * Do NOT use these methods for normal operation, they are available
+     * for developement, testing, and internal use.
+     */
+    public class Internal {
+        public TopNode superRoot() {
+            return dag.getSuperRoot();
+        }
+        
+        public Dag dag() {
+            return dag;
+        }
+
+        public final Object getWriteLock() {
+            return writeLock;
+        }
+        
+        /**
+         * Returns the readSynch lock Object.
+         */
+        public final Object getReadSynch() {
+            return readSync;
+        }
+        
+    }
     
     /**
      * Collection of variables for method Db.execute(Transaction).

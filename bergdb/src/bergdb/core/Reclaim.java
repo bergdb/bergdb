@@ -92,8 +92,8 @@ public class Reclaim implements Db.TransactionListener {
         this.internalFraction = DEFAULT_INTERNAL_FRACTION;
         this.iterationCount = 0;
         
-        this.readSynch = db.getReadSynch();
-        this.writeLock = db.getWriteLock();
+        this.readSynch = db.internal().getReadSynch();
+        this.writeLock = db.internal().getWriteLock();
         
         synchronized (readSynch) {}
             // 1301: Currently not needed; same synchronized block is executed by caller.

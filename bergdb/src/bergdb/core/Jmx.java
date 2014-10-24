@@ -8,8 +8,6 @@ import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
-
-import bergdb.common.Bug;
 import bergdb.pub.Clock;
 
 
@@ -34,7 +32,6 @@ public class Jmx {
         public long getStreamSize();
         public int getStartupDistance();
         public void setStartupDistance(int newDistance);
-        public String getStartupDistanceH();
         public double getDirtyFraction100();
         public double getDirtyFraction1000();
         public long getRetainDuration();
@@ -65,7 +62,6 @@ public class Jmx {
      */
     public static class DbMonitor implements DbMonitorMBean {
         private Db db;
-        private Object dbWriteLock;
         private MBeanServer mbs;
         
         public DbMonitor(Db db) {
@@ -73,10 +69,6 @@ public class Jmx {
                 throw new IllegalArgumentException("db == null not allowed");
             }
             this.db = db;
-            this.dbWriteLock = db.getWriteLock();
-            if (dbWriteLock == null) {
-                throw new Bug("db.getWriteLock() == null");
-            }
         }
         
         /**
@@ -116,10 +108,6 @@ public class Jmx {
         
         public void setStartupDistance(int newDistance) {
             db.setStartupDistance(newDistance);
-        }
-        
-        public String getStartupDistanceH() {
-            return db.getStartupDistanceH();
         }
         
         public double getDirtyFraction100() {

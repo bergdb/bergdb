@@ -70,7 +70,7 @@ public class VizFigure {
         //
         
         Set<INode> nodes = new HashSet<INode>();
-        addNodes(nodes, db.getSuperRoot());
+        addNodes(nodes, db.internal().superRoot());
         
         String line = "digraph BergDB { node [fontsize=\"10\"]; graph [rankdir=\"LR\"]; \n";
         writer.write(line);

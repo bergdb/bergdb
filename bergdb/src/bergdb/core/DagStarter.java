@@ -248,13 +248,15 @@ public class DagStarter {
         // This code could be removed, or just called when when asserts enabled if
         // it is determined that it takes significant time to run.
         
-        /*System.out.println("==== Startup transactions:");
-        for (StoredTrans s : transactions) {
-            System.out.println("stored trans: " + s);
-            for (StoredNode n : s.nodes) {
-                System.out.println("  " + n);
+        if (transactions.size() > 0 && transactions.get(0).pos == 300688) {
+            System.out.println("==== Startup transactions:");
+            for (StoredTrans s : transactions) {
+                System.out.println("stored trans: " + s);
+                for (StoredNode n : s.nodes) {
+                    System.out.println("  " + n);
+                }
             }
-        }*/
+        }
         
         if (transactions == null) {
             throw new StreamFormatException("transactions == null not allowed");

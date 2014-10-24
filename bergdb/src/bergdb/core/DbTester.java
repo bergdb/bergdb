@@ -228,7 +228,7 @@ public class DbTester {
         
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
-        TopNode superRoot = db.getSuperRoot();
+        TopNode superRoot = db.internal().superRoot();
         
         db.execute(Trans.builder().put("a", "a-value").put("b", "b-value").build());
         
@@ -240,7 +240,7 @@ public class DbTester {
         //System.out.println("== DbTester.testDeleteX ==");
         //db.printGraph(System.out);
         
-        assert superRoot == db.getSuperRoot() : superRoot + " != " + db.getSuperRoot();
+        assert superRoot == db.internal().superRoot() : superRoot + " != " + db.internal().superRoot();
         
         // Get the KeyNode and examines the DELETE_BITMAP at the end.
         
@@ -653,7 +653,7 @@ public class DbTester {
         //System.out.println(db.printSkipList());
         //System.out.println(db.printTree());
         
-        Assert.assertEquals(true, db.getSuperRoot().rootTime != 0);
+        Assert.assertEquals(true, db.internal().superRoot().rootTime != 0);
         
         for (int i = 1; i <= n; i++) {
             Assert.assertArrayEquals("i=" + i, Util.toBytes("v" + getKey(i)), 
