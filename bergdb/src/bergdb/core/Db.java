@@ -600,8 +600,11 @@ public class Db {
         
         PutData putData = dag.newPutData();
         putData.nodeChangeListener = new Dag.NodeChangeListener() {
-            public void topNodeChanged(TopNode node) {
-            //    x.transNodes.addTopNode(node);
+            public void newTopNode(TopNode node) {
+                // The gotDirty code in the PointerListener is not enough for
+                // the case when new top nodes are created.
+                // This method call assumes new nodes are not dirty.
+                makeDirtyIfNeeded(node);
             }
             
             public void newValueNode(ValueNode node, long[] key) {
@@ -609,7 +612,10 @@ public class Db {
             }
             
             public void keyNodeChanged(KeyNode node) {
-            //    x.transNodes.addKeyNode(node);
+                // The gotDirty code in the PointerListener is not enough for
+                // the case when new key nodes are created.
+                // This method call assumes new nodes are not dirty.
+                makeDirtyIfNeeded(node);
             }
         };
         
@@ -620,11 +626,7 @@ public class Db {
         putData.pointerListener = new Dag.PointerListener() {
             public void superRootAccessed(TopNode superRoot) {
                 pListener.superRootAccessed(superRoot);
-                
-                if (!superRoot.isDirty) {
-                    superRoot.setDirty(true);
-                    x.transInfo.gotDirtyNodes.add(superRoot);
-                }
+                makeDirtyIfNeeded(superRoot);
             }
             
             public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
@@ -674,9 +676,6 @@ public class Db {
         
         KeyNode root = new KeyNode();
         TopNode superRoot = TopDs.createSuperRootFromFirstKeyNode(tt, root, AccessData.DEFAULT_ACCESS_DATA);
-        TransNodes nodes = new TransNodes();
-        nodes.addKeyNode(root);
-        nodes.addTopNode(superRoot);
         
         MetaBlock meta = nodeStream.getMetaBlock();
         meta.setId(id.getBytes());
@@ -684,12 +683,35 @@ public class Db {
         meta.setStartupPos(0);
         meta.setTime(tt);
         
+        this.kvTransSeq = new KvTransSeq();
+        
         Trans trans = Trans.builder().build();
         trans.time = tt;
         trans.isInternal = true;
-        nodeStream.appendNodes(nodes, trans);
+        
+        
+        x.begin(trans);
+        
+        assert !root.isDirty;
+        assert !superRoot.isDirty;
+        makeDirtyIfNeeded(root);
+        makeDirtyIfNeeded(superRoot);
+        
+        x.transNodes.addKeyNode(root);
+        x.transNodes.addTopNode(superRoot);
+        
+        appendToStream();
         
         x.lastSposOfLastTrans = trans.lastPos;
+        
+        x.end();
+    }
+
+    private void makeDirtyIfNeeded(INode node) {
+        if (!node.isDirty() && node.isIndexNode()) {
+            node.setDirty(true);
+            x.transInfo.gotDirtyNodes.add(node);
+        }
     }
 
     /**
@@ -1182,6 +1204,7 @@ public class Db {
         
         x.transInfo.tpos = x.trans.pos;
         x.transInfo.lastPos = x.trans.lastPos;
+        x.transInfo.tt = x.trans.time;
         kvTransSeq.add(x.transInfo);
     }
 

@@ -102,6 +102,7 @@ public class DagStarter {
                 transInfo = new KvTransSeq.TransInfo();
                 transInfo.tpos = stored.pos;
                 transInfo.lastPos = stored.lastPos;
+                transInfo.tt = stored.tt;
                 
                 for (StoredNode n : stored.nodes) {
                     INode node = n.getNode();
@@ -246,6 +247,14 @@ public class DagStarter {
     private void validateTransactions(List<StoredTrans> transactions) {
         // This code could be removed, or just called when when asserts enabled if
         // it is determined that it takes significant time to run.
+        
+        /*System.out.println("==== Startup transactions:");
+        for (StoredTrans s : transactions) {
+            System.out.println("stored trans: " + s);
+            for (StoredNode n : s.nodes) {
+                System.out.println("  " + n);
+            }
+        }*/
         
         if (transactions == null) {
             throw new StreamFormatException("transactions == null not allowed");
@@ -441,7 +450,7 @@ public class DagStarter {
             this.spos = spos;
         }
 
-        public void topNodeChanged(TopNode node) {
+        public void newTopNode(TopNode node) {
             // nothing
         }
 

@@ -820,7 +820,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             // 'node' is the current space root. Replace it with 'last'.
             
             topDs.newSuperRoot(tTime, last, pd.accessData);
-            pd.nodeChangeListener.topNodeChanged(topDs.getSuperRoot());
+            pd.nodeChangeListener.newTopNode(topDs.getSuperRoot());
             pd.splitListener.nodeSplit(Dag.TIME_SPLIT_2);
             assert last.checkWithMessage() == null;
             
@@ -880,7 +880,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             pd.nodeChangeListener.keyNodeChanged(newRoot);
 
             topDs.newSuperRoot(tt, newRoot, pd.accessData);
-            pd.nodeChangeListener.topNodeChanged(topDs.getSuperRoot());
+            pd.nodeChangeListener.newTopNode(topDs.getSuperRoot());
                      
             pd.splitListener.nodeSplit(Dag.SPACE_SPLIT_3);
             assert newRoot.checkWithMessage() == null;
@@ -1041,9 +1041,9 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     public static interface NodeChangeListener {
         
         /**
-         * Reports that TopNode was created or modified.
+         * Reports that a TopNode was created.
          */
-        public void topNodeChanged(TopNode node);
+        public void newTopNode(TopNode node);
         
         /**
          * Reports that a KeyNode was created or modified.
@@ -1051,13 +1051,13 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         public void keyNodeChanged(KeyNode node);
         
         /**
-         * Reports about a new ValueNode.
+         * Reports that a ValueNode was created.
          */
         public void newValueNode(ValueNode node, long[] key);
     }
     
     public static final NodeChangeListener DO_NOTHING_NODE_CHANGE_LISTENER = new NodeChangeListener() {
-        public void topNodeChanged(TopNode node) {}
+        public void newTopNode(TopNode node) {}
         public void keyNodeChanged(KeyNode node) {}
         public void newValueNode(ValueNode node, long[] key) {}
     };

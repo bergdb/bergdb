@@ -34,6 +34,10 @@ public class StoredKeyNode implements StoredNode {
     public long getPrevPos() {
         return prevPos;
     }
+    
+    public String toString() {
+        return "p:" + prevPos + ", n:" + node.toString();
+    }
 
     public static int getByteSize(KeyNode node) {
         return 32 + node.size * 16;

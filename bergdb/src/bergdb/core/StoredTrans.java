@@ -109,7 +109,7 @@ public class StoredTrans {
 
     public String toString() {
         StringBuilder b = new StringBuilder();
-        b.append("tt:" + tt + ", transPos:" + pos);
+        b.append("tt:" + tt + ", tpos:" + pos);
         b.append(", nodeCount:" + this.nodes.length);
         return b.toString();
     }

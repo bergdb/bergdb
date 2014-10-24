@@ -8,6 +8,7 @@ import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.GetMany;
 import bergdb.nanotest.Assert;
+import static bergdb.nanotest.Assert.assertEquals;
 import bergdb.nanotest.T;
 import bergdb.stream.MemoryStream;
 
@@ -22,8 +23,7 @@ public class ScenarioTester {
      * A restart scenario with 0.4M startup distances and 8 KVs 
      * with values of size 0.1M.
      */
-    @T 
-    private static void testScenario100() {
+    @T private static void testScenario100() {
         // Developed 2013-10.
         
         int n = 8;
@@ -66,10 +66,7 @@ public class ScenarioTester {
         Assert.assertEquals(checksum1, checksum2);
     }
     
-    // TODO A. Fix test and general issue: sometimes spos = -1 is written to stream. The pointee, p, of a node has p.getSpos() == -1 because it has not ever been written to stream.
-    
-    @T
-    public static void testScenario101() {
+    @T public static void testScenario101() {
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(10);
         MemoryStream stream = new MemoryStream();
@@ -91,5 +88,37 @@ public class ScenarioTester {
         g.startKey = null;
         db.getMany(g);
         Assert.assertTrue(g.result.size() == size || g.result.size() == size + 1);
+    }
+    
+
+    // TODO A. Fix test and general issue: sometimes spos = -1 is written to stream. The pointee, p, of a node has p.getSpos() == -1 because it has not ever been written to stream.
+    
+    
+    /**
+     * A scenario with a multi-klong key, an increase of startupPos and a restart.
+     */
+    @T private static void testScenario102() {
+        CoreTestClock clock = new CoreTestClock();
+        clock.setTime(10);
+        MemoryStream stream = new MemoryStream();
+
+        Db db = Db.builder().testSetup().mainStream(stream).clock(clock)
+                .startupDistance(100*1000).start();
+        
+        db.execute(Trans.builder().put("/direct/key1", "v1"));
+        db.execute(Trans.builder().put("/z", new byte[200*1000]));
+        db.execute(Trans.builder().put("/direct/key2", "v2"));     // This should increase startupPos
+        db.sync(SyncLevel.STRONG);
+        
+        //System.out.println("==== printGraph");
+        //db.printGraph(System.out);
+        
+        // Restart
+        stream = stream.copy();
+        db = Db.builder().testSetup().mainStream(stream).clock(clock).start();
+        
+        assertEquals(100*1000, db.getStartupDistance());
+        
+        //db.printGraph(System.out);
     }
 }

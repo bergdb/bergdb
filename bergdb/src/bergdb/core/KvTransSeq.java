@@ -141,15 +141,29 @@ public class KvTransSeq {
         /** Last stream position of the transaction. */
         long lastPos;
         
+        long tt;
+        
         /** Index nodes (top nodes, key nodes) that got dirty while the transaction executed. */
         ArrayList<INode> gotDirtyNodes = new ArrayList<INode>();
+
+        TransInfo() {}
         
-        TransInfo() {
+        public String toString() {
+            return "tt:" + tt + ", tpos:" + tpos + ", gotDirtyCount:" + gotDirtyNodes.size();
         }
         
-        TransInfo(long tpos, long lastPos) {
-            this.tpos = tpos;
-            this.lastPos = lastPos;
+        public String print() {
+            StringBuilder b = new StringBuilder();
+            b.append("tt:" + tt + ", tpos:" + tpos);
+            if (gotDirtyNodes.size() == 0) {
+                b.append(", no gotDirtyNodes");
+            } else {
+                b.append(", gotDirtyNodes:\n");
+                for (INode n : gotDirtyNodes) {
+                    b.append("  " + n.toString() + "\n");
+                }
+            }
+            return b.toString();
         }
     }
     
@@ -169,6 +183,18 @@ public class KvTransSeq {
     
     // ======== Tests ========
     
+    private static TransInfo newTransInfo(long tpos, long lastPos) {
+        return newTransInfo(tpos, lastPos, -1);
+    }
+    
+    private static TransInfo newTransInfo(long tpos, long lastPos, long tt) {
+        TransInfo info = new TransInfo();
+        info.tpos = tpos;
+        info.lastPos = lastPos;
+        info.tt = tt;
+        return info;
+    }
+    
     @T
     public static void test0() {
         KvTransSeq s = new KvTransSeq();
@@ -180,7 +206,7 @@ public class KvTransSeq {
     @T
     public static void testAddOne() {
         KvTransSeq s = new KvTransSeq();
-        TransInfo info = new TransInfo(120, 200);
+        TransInfo info = newTransInfo(120, 200);
         s.add(info);
         
         Assert.assertEquals(1, s.getSize());
@@ -192,9 +218,9 @@ public class KvTransSeq {
         // Test with no nodes at all.
         
         KvTransSeq s = new KvTransSeq();
-        TransInfo ts1 = new TransInfo(100, 120);
-        TransInfo ts2 = new TransInfo(200, 220);
-        TransInfo ts3 = new TransInfo(300, 320);
+        TransInfo ts1 = newTransInfo(100, 120);
+        TransInfo ts2 = newTransInfo(200, 220);
+        TransInfo ts3 = newTransInfo(300, 320);
         
         s.add(ts1);
         s.add(ts2);
@@ -207,8 +233,8 @@ public class KvTransSeq {
     public static void testRemoveBeforeSpos() {
         
         KvTransSeq s = new KvTransSeq();
-        TransInfo info1 = new TransInfo(100, 120);
-        TransInfo info2 = new TransInfo(200, 220);
+        TransInfo info1 = newTransInfo(100, 120);
+        TransInfo info2 = newTransInfo(200, 220);
         
         s.add(info1);
         s.add(info2);
@@ -232,8 +258,8 @@ public class KvTransSeq {
     @T
     private static void testPosOfTransBefore() {        
         KvTransSeq s = new KvTransSeq();
-        TransInfo info1 = new TransInfo(100, 120);
-        TransInfo info2 = new TransInfo(200, 220);
+        TransInfo info1 = newTransInfo(100, 120);
+        TransInfo info2 = newTransInfo(200, 220);
         
         s.add(info1);
         s.add(info2);

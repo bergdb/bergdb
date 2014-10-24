@@ -34,6 +34,10 @@ public class StoredValueNode implements StoredNode {
     public long[] getKey() {
         return key;
     }
+    
+    public String toString() {
+        return "p:" + getPrevPos() + ", n:" + node.toString();
+    }
 
     /**
      * Creates a StoredValueNode by parsing the provided byte buffer.

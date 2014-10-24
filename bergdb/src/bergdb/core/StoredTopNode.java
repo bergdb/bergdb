@@ -30,6 +30,10 @@ public class StoredTopNode implements StoredNode {
     public final long getPrevPos() {
         return Spos.NULL;
     }
+    
+    public String toString() {
+        return "p:" + getPrevPos() + ", n:" + node.toString();
+    }
 
     /**
      * Creates a TopNode by parsing the data in the byte buffer.
