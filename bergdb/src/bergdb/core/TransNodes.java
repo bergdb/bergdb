@@ -240,8 +240,8 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, KvTransSeq.Trans
         //
         // The arrays are reset to initialSize once in a while if they are long to 
         // avoid memory leak.
-        // Prime numbers around 1000: 983, 991, 997.
-        // Prime numbers around 100:  101, 103, 107.
+        // Prime numbers around 1000: 1009   1013  1019   1021   1031
+        // Prime numbers around 100:   101    103   107    109    113 
         
         counter++;
         
@@ -253,9 +253,11 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, KvTransSeq.Trans
             topNodes[i].isInTransNodes = false;
             topNodes[i] = null;
         }
-        if (counter % 983 == 0 && topNodes.length > INITIAL_SIZE * 4) {
+        
+        if (counter % 1009 == 0 && topNodes.length > INITIAL_SIZE * 4) {
             topNodes = new TopNode[INITIAL_SIZE];
         }
+        
         this.topSize = 0;
         
         // KeyNodes
@@ -266,9 +268,11 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, KvTransSeq.Trans
             keyNodes[i].isInTransNodes = false;
             keyNodes[i] = null;
         }
-        if (counter % 991 == 0 && keyNodes.length > INITIAL_SIZE * 4) {
+        
+        if (counter % 1013 == 0 && keyNodes.length > INITIAL_SIZE * 4) {
             keyNodes = new KeyNode[INITIAL_SIZE];
         }
+        
         this.keySize = 0;
         
         // ValueNodes
@@ -281,10 +285,11 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, KvTransSeq.Trans
             keys[i] = null;
         }
         
-        if (counter % 997 == 0 && valueNodes.length > INITIAL_SIZE * 4) {
+        if (counter % 1019 == 0 && valueNodes.length > INITIAL_SIZE * 4) {
             valueNodes = new ValueNode[INITIAL_SIZE];
             keys = new long[INITIAL_SIZE][];
         }
+        
         this.valueSize = 0;
     }
     
@@ -373,11 +378,10 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, KvTransSeq.Trans
         
         Assert.assertEquals(count, nodes.valueSize);
         
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < 1100; i++) {
             nodes.clear();
         }
         
         Assert.assertEquals(INITIAL_SIZE, nodes.valueNodes.length);
     }
-
 }

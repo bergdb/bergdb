@@ -3,7 +3,6 @@ package bergdb.core;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -28,7 +27,6 @@ import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 import bergdb.pub.BadReplicaException;
-import bergdb.pub.Clock;
 import bergdb.pub.IllegalDbStateException;
 import bergdb.pub.Job;
 import bergdb.pub.LookupTimeNotAvailableException;
@@ -40,7 +38,6 @@ import bergdb.storage.StorageManager;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
-import bergdb.stream.MemoryStream;
 
 /**
  * <p>An object of this class provides access to the data in the database. This
@@ -147,15 +144,15 @@ public class Db {
     
     // ---- Misc ----
     
+    private DatabaseId databaseId;
     private final TransactionListener reclaimTransactionListener;
     
     private final Internal internal;
 
     /**
-     * Private constructor, only DB.Builder calls it. Wires dependencies based
-     * on Builder settings.
+     * Constructor takes a DbBuilder; it wires dependencies based on builder settings.
      */
-    private Db(Builder b) {
+    Db(DbBuilder b) {
         internal = new Internal();
         writeLock = new WriteLock();
         readSync = new ReadSync();
@@ -171,7 +168,7 @@ public class Db {
         
         StorageManager.Builder smBuilder = new StorageManager.Builder(writeLock);
         for (int i = 0; i < b.streamInfos.size(); i++) {
-            Builder.StreamInfo info = b.streamInfos.get(i);
+            DbBuilder.StreamInfo info = b.streamInfos.get(i);
             smBuilder.stream(info.name, info.stream, info.bufferSize, info.bufferTime);
         }
         this.storageManager = smBuilder.build();
@@ -189,7 +186,7 @@ public class Db {
         this.reclaim = new Reclaim(this, aos);
         
         this.reclaimTransactionListener = reclaim;
-        reclaim.setRetainDuration(b.retainDuration);
+        reclaim.setRetainDuration(b.retainDurationInTimeUnits);
         
         this.databaseIdFromBuilder = b.id;
         
@@ -609,14 +606,20 @@ public class Db {
      * and writes the first metablock to the stream.
      */
     private void handleEmptyStream() {
-        if (nodeStream.getLength() == 0) {  
+        if (nodeStream.getLength() == 0) {
+            determineDatabaseId();
             writePrimordialTransaction();
+        }
+    }
+    
+    private void determineDatabaseId() {
+        databaseId = databaseIdFromBuilder;
+        if (databaseId.isNull()) {
+            databaseId = DatabaseId.createRandom();
         }
     }
 
     private void writePrimordialTransaction() {
-        DatabaseId id = (databaseIdFromBuilder == null) ? new DatabaseId() : databaseIdFromBuilder;
-        
         long tt;
         try {
             tt = dbClock.transactionBegin();
@@ -628,7 +631,7 @@ public class Db {
         TopNode superRoot = TopDs.createSuperRootFromFirstKeyNode(tt, root, AccessData.DEFAULT_ACCESS_DATA);
         
         MetaBlock meta = nodeStream.getMetaBlock();
-        meta.setId(id.getBytes());
+        meta.setId(databaseId.getBytes());
         meta.setStartupDistance(startupDistance);
         meta.setStartupPos(0);
         meta.setTime(tt);
@@ -1129,7 +1132,7 @@ public class Db {
         // This could be improved for a better memory-added-to-cache estimate.
         //
         
-        Trans nodeTrans = Trans.builder().build();    // NOTE, we could re-use this for performance
+        Trans nodeTrans = Trans.builder().build();    // Note, we could re-use this for performance
         nodeTrans.isInternal = true;
         nodeTrans.time = x.trans.time;
 
@@ -1349,11 +1352,11 @@ public class Db {
     }
 
     /**
-     * Creates and returns a Db.Builder that can create a Db object. The
-     * "official" and only public way of creating a Db.
+     * Creates and returns a Db.Builder that can create a Db object. 
+     * The "official" and only public way of creating a Db.
      */
-    public static Builder builder() {
-        return new Builder();
+    public static DbBuilder builder() {
+        return new DbBuilder();
     }
     
     
@@ -1447,9 +1450,6 @@ public class Db {
             if (x.putData != null) {
                 x.putData.spaceSplitCount = 0;
             }
-            
-            kvTransNodes.clear();
-            indexTransNodes.clear();
         }
         
         /**
@@ -1458,10 +1458,13 @@ public class Db {
          * and prepare for next transaction. Caller must hold writeLock.
          */
         private void end() {
+            // Good to clear here, kvTransNodes/indexTransNodes. 
+            // Large transaction otherwise consumes memory until next transaction written.
+            
             x.lastSposOfLastTrans = x.trans.lastPos;
             trans = null;
-            //kvTransNodes.clear();
-            //indexTransNodes.clear();
+            kvTransNodes.clear();
+            indexTransNodes.clear();
         }
     }
     
@@ -1551,301 +1554,6 @@ public class Db {
         }
     }
     
-    /**
-     * An object of this class is used to properly build a DB object.
-     */
-    public static class Builder {
-        private Clock clock;
-        private int maxNodeSize;
-        private int startupDistance;
-        private IEvictBoss evictBoss;
-        private long retainDuration;
-            // Number of time units to retain data available for lookups.
-        private DatabaseId id;
-            // Database ID if new database, or null.
-        private List<StreamInfo> streamInfos;
-        
-        static class StreamInfo {
-            String name;
-            AppendOnlyStream stream;
-            int bufferSize;
-            int bufferTime;
-        }
-
-        private Builder() {
-            // Default settings for Db is specified here.
-            
-            streamInfos = new ArrayList<StreamInfo>();
-            startupDistance = 20 * 1000000;
-            clock = new SystemClock();
-            evictBoss = new FixedDurationEvictBoss();
-            maxNodeSize30();
-            
-            // 130707 Frans: default retain duration = forever. Was one week before.
-            retainDuration = Long.MAX_VALUE;
-        }
-
-        /**
-         * Returns index to stream with given name, or -1 if no stream with the given 
-         * name exists in streamInfos.
-         */
-        private int indexOfStream(String name) {
-            if (name == null) throw new IllegalArgumentException("name == null");
-            final int size = streamInfos.size();
-            int result = -1;
-            
-            for (int i = 0; i < size; i++) {
-                StreamInfo info = streamInfos.get(i);
-                if (info.name.equals(name)) {
-                    result = i;
-                    break;
-                }
-            }
-            
-            return result;
-        }
-        
-        /**
-         * Chooses a non-default clock to use for the database.
-         */
-        public Builder clock(Clock clock) {
-            this.clock = clock;
-            return this;
-        }
-
-        /**
-         * Sets the database ID. This method is suitable for deterministic
-         * testing. This setting only applies for non-existent databases.
-         */
-        public Builder id(DatabaseId id) {
-            if (id == null) {
-                throw new IllegalArgumentException("id == null not allowed");
-            }
-
-            this.id = id;
-            return this;
-        }
-
-        public Builder maxNodeSize8() {
-            this.maxNodeSize = 8;
-            return this;
-        }
-
-        public Builder maxNodeSize14() {
-            this.maxNodeSize = 16 - 2;
-            return this;
-        }
-
-        public Builder maxNodeSize30() {
-            this.maxNodeSize = 32 - 2;
-            return this;
-        }
-
-        public Builder maxNodeSize62() {
-            this.maxNodeSize = 64 - 2;
-            return this;
-        }
-
-        public Builder startupDistance(int startupDistance) {
-            if (startupDistance < 10) {
-                throw new IllegalArgumentException("Too small, " + startupDistance);
-            }
-
-            this.startupDistance = startupDistance;
-            return this;
-        }
-
-        /**
-         * Use an internal test clock together with DB.setTime to handle the
-         * time. Suitable for testing.
-         */
-        public Builder testClock() {
-            this.clock = new CoreTestClock();
-            return this;
-        }
-
-        /**
-         * Use the system clock (System.currentTimeMillis()) as the database
-         * time.
-         */
-        public Builder systemClock() {
-            this.clock = new SystemClock();
-            return this;
-        }
-        
-        public Builder retainDuration(long retainDuration) {
-            final long MIN = 1 * Clock.UNITS_PER_SEC;
-            
-            if (retainDuration < 0) {
-                throw new IllegalArgumentException("Negative retainDuration not allowed.");
-            }
-            
-            if (retainDuration < MIN) {
-                throw new IllegalArgumentException("retainDuration is too small, must be at " +
-                		"least one second (" + MIN + "), was " + retainDuration + ".");
-            }
-            
-            this.retainDuration = retainDuration;
-            return this;
-        }
-        
-        public Builder retainForever() {
-            return retainDuration(Long.MAX_VALUE);
-        }
-
-        /**
-         * Sets a non-default evict boss. The evict boss decides when to evict
-         * nodes from memory.
-         */
-        public Builder evictBoss(IEvictBoss evictBoss) {
-            this.evictBoss = evictBoss;
-            return this;
-        }
-
-        public Builder noEvict() {
-            this.evictBoss = new NoEvictBoss();
-            return this;
-        }
-        
-        /**
-         * Sets main stream.
-         */
-        public Builder mainStream(AppendOnlyStream appendOnlyStream) {
-            if (this.streamInfos.size() == 0) {
-                stream("main", appendOnlyStream);
-            } else {
-                StreamInfo info = new StreamInfo();
-                info.name = "main";
-                info.stream = appendOnlyStream;
-                info.bufferSize = StorageManager.DEFAULT_BUFFER_SIZE;
-                info.bufferTime = StorageManager.DEFAULT_BUFFER_TIME;
-                
-                streamInfos.set(0, info);
-            }
-            
-            return this;
-        }
-        
-        /** 
-         * Adds a storage stream, default buffer parameters are used.
-         * If 'name' is the same as an existing stream, the existing one is replaced.
-         */
-        public Builder stream(String name, AppendOnlyStream aos) {
-            if (streamInfos.size() == 0) {
-                return stream(name, aos, 
-                        StorageManager.DEFAULT_BUFFER_SIZE, 
-                        StorageManager.DEFAULT_BUFFER_TIME);
-            } else {
-                return stream(name, aos,
-                        StorageManager.DEFAULT_REPLICA_BUFFER_SIZE,
-                        StorageManager.DEFAULT_REPLICA_BUFFER_TIME);
-            }
-        }
-        
-        /** 
-         * Adds a storage stream with the given buffer parameters.
-         * If 'name' is the same as an existing stream, the existing one is replaced.
-         * 
-         * @param name
-         *      Name of the stream. The "main" stream is special.
-         * @param stream
-         *      The output database stream.
-         * @param bufferSize
-         *      Buffer size in bytes.
-         * @param bufferTime  
-         *      Maximum time in milliseconds to buffer the data 
-         *      before the buffer is flushed.
-         */
-        public Builder stream(String name, AppendOnlyStream stream, int bufferSize, int bufferTime) {
-            if (name == null) {
-                throw new IllegalArgumentException("name == null not allowed");
-            }
-            
-            if (stream == null) {
-                throw new IllegalArgumentException("stream == null not allowed");
-            }
-            
-            if (bufferSize < 0) {
-                throw new IllegalArgumentException("Illegal bufferSize, " + bufferSize + ".");
-            }
-            
-            if (bufferTime < 0) {
-                throw new IllegalArgumentException("Bad bufferTime, " + bufferTime + ".");
-            }
-            
-            if (bufferSize < 100) {
-                bufferSize = 100;
-            }
-            
-            if (bufferTime < 10) {
-                bufferTime = 10;
-            }
-            
-            StreamInfo info = new StreamInfo();
-            info.name = name;
-            info.stream = stream;
-            info.bufferSize = bufferSize;
-            info.bufferTime = bufferTime;
-            
-            int index = this.indexOfStream(name);
-            if (index == -1) {
-                streamInfos.add(info);
-            } else {
-                streamInfos.set(index, info);     // replaces previous value
-            }
-            
-            return this;
-        }
-
-        /**
-         * Use the default unit test setup. No write to disk, a deterministic
-         * clock is used. The node stream is an in-memory stream.
-         * Short buffer time (10 ms) for fast tests.
-         */
-        public Builder testSetup() {
-            testClock();
-            evictBoss = new NoEvictBoss();
-            stream("main", new MemoryStream(), 100*1000, 10);
-            retainForever();
-            id = DatabaseId.getTestId();
-            return this;
-        }
-        
-        /**
-         * Use the default unit test setup and a specified stream.
-         * Short buffer time (10 ms) for fast tests.
-         */
-        public Builder testSetup(AppendOnlyStream stream) {
-            testSetup();
-            stream("main", stream, 100*1000, 10);
-            return this;
-        }
-
-        public Db build() {
-            //
-            // At this time, we know all DB settings. Time to create the DB object.
-            //
-
-            if (streamInfos.size() == 0) {
-                throw new IllegalStateException("No streams. At least one is required.");
-            }
-
-            return new Db(this);
-        }
-
-        /**
-         * Same as calling done() and then start() on the returned DB object.
-         * 
-         * @throws StreamIoException
-         * @throws StreamFormatException
-         */
-        public Db start() {
-            Db db = build();
-            db.start();
-            return db;
-        }
-    }
-
     /**
      * A listener ("handler") for the transactionCompleted event, 
      * method transactionCompleted().

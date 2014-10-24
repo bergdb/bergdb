@@ -30,7 +30,7 @@ public class IsDeterministic {
 
         for (int i = 0; i < 1+5; i++) {
             MemoryStream m = new MemoryStream();
-            Db db = Db.builder().testSetup().mainStream(m).id(DatabaseId.getTestId()).start();
+            Db db = Db.builder().testSetup().mainStream(m).id(DatabaseId.TEST_ID).start();
             db.sync(SyncLevel.ORDINARY);
             
             if (i == 0) {
@@ -55,7 +55,7 @@ public class IsDeterministic {
         for (int i = 0; i < 1+3; i++) {
             MemoryStream m = new MemoryStream();
             CoreTestClock clock = new CoreTestClock();
-            Db db = Db.builder().testSetup().mainStream(m).clock(clock).id(DatabaseId.getTestId()).start();
+            Db db = Db.builder().testSetup().mainStream(m).clock(clock).id(DatabaseId.TEST_ID).start();
             clock.setTime(100);
             db.execute(Trans.builder().put("k", "v").build());
             db.sync(SyncLevel.ORDINARY);
@@ -95,7 +95,7 @@ public class IsDeterministic {
         for (int i = 0; i < 1+3; i++) {
             MemoryStream m = new MemoryStream();
             CoreTestClock clock = new CoreTestClock();
-            Db db = Db.builder().testSetup().mainStream(m).clock(clock).id(DatabaseId.getTestId()).start();
+            Db db = Db.builder().testSetup().mainStream(m).clock(clock).id(DatabaseId.TEST_ID).start();
             
             for (int j = 0; j < 10; j++) {
                 clock.setTime(100 + j*10);

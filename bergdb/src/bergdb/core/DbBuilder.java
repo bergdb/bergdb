@@ -1,0 +1,309 @@
+package bergdb.core;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import bergdb.pub.Clock;
+import bergdb.storage.StorageManager;
+import bergdb.storage.StreamFormatException;
+import bergdb.storage.StreamIoException;
+import bergdb.stream.AppendOnlyStream;
+import bergdb.stream.MemoryStream;
+
+/**
+ * An object of this class is used to properly build a DB object.
+ */
+public class DbBuilder {
+    Clock clock;
+    int maxNodeSize;
+    int startupDistance;
+    IEvictBoss evictBoss;
+    long retainDurationInTimeUnits;
+    DatabaseId id;
+    List<DbBuilder.StreamInfo> streamInfos;
+    
+    static class StreamInfo {
+        String name;
+        AppendOnlyStream stream;
+        int bufferSize;
+        int bufferTime;
+    }
+
+    DbBuilder() {
+        // Default Db settings are specified here.
+        // DatabaseId.createRandom() is not used because it can be slow. 
+        // A NULL id is replaced by Db when Db is started.
+        //
+        // 130707 Frans: default retain duration = forever. Was one week before.
+        //
+        
+        streamInfos = new ArrayList<DbBuilder.StreamInfo>();
+        
+        startupDistance = 20 * 1000000;
+        clock = new SystemClock();
+        evictBoss = new FixedDurationEvictBoss();
+        maxNodeSize30();
+        retainDurationInTimeUnits = Long.MAX_VALUE;
+        id = DatabaseId.NULL;
+    }
+
+    /**
+     * Returns index to stream with given name, or -1 if no stream with the given 
+     * name exists in streamInfos.
+     */
+    private int indexOfStream(String name) {
+        if (name == null) throw new IllegalArgumentException("name == null");
+        final int size = streamInfos.size();
+        int result = -1;
+        
+        for (int i = 0; i < size; i++) {
+            DbBuilder.StreamInfo info = streamInfos.get(i);
+            if (info.name.equals(name)) {
+                result = i;
+                break;
+            }
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Chooses a non-default clock to use for the database.
+     */
+    public DbBuilder clock(Clock clock) {
+        this.clock = clock;
+        return this;
+    }
+
+    /**
+     * Sets the database ID. This method is suitable for deterministic
+     * testing. This setting only applies for non-existent databases.
+     */
+    public DbBuilder id(DatabaseId id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id == null not allowed");
+        }
+
+        this.id = id;
+        return this;
+    }
+
+    public DbBuilder maxNodeSize8() {
+        this.maxNodeSize = 8;
+        return this;
+    }
+
+    public DbBuilder maxNodeSize14() {
+        this.maxNodeSize = 16 - 2;
+        return this;
+    }
+
+    public DbBuilder maxNodeSize30() {
+        this.maxNodeSize = 32 - 2;
+        return this;
+    }
+
+    public DbBuilder maxNodeSize62() {
+        this.maxNodeSize = 64 - 2;
+        return this;
+    }
+
+    public DbBuilder startupDistance(int startupDistance) {
+        if (startupDistance < 10) {
+            throw new IllegalArgumentException("Too small, " + startupDistance);
+        }
+
+        this.startupDistance = startupDistance;
+        return this;
+    }
+
+    /**
+     * Use an internal test clock together with DB.setTime to handle the
+     * time. Suitable for testing.
+     */
+    public DbBuilder testClock() {
+        this.clock = new CoreTestClock();
+        return this;
+    }
+
+    /**
+     * Use the system clock (System.currentTimeMillis()) as the database
+     * time.
+     */
+    public DbBuilder systemClock() {
+        this.clock = new SystemClock();
+        return this;
+    }
+    
+    public DbBuilder retainDuration(long retainDurationInTimeUnits) {
+        final long MIN = 1 * Clock.UNITS_PER_SEC;
+        
+        if (retainDurationInTimeUnits < 0) {
+            throw new IllegalArgumentException("Negative retainDuration not allowed.");
+        }
+        
+        if (retainDurationInTimeUnits < MIN) {
+            throw new IllegalArgumentException("retainDuration is too small, must be at " +
+            		"least one second (" + MIN + "), was " + retainDurationInTimeUnits + ".");
+        }
+        
+        this.retainDurationInTimeUnits = retainDurationInTimeUnits;
+        return this;
+    }
+    
+    public DbBuilder retainForever() {
+        return retainDuration(Long.MAX_VALUE);
+    }
+
+    /**
+     * Sets a non-default evict boss. The evict boss decides when to evict
+     * nodes from memory.
+     */
+    public DbBuilder evictBoss(IEvictBoss evictBoss) {
+        this.evictBoss = evictBoss;
+        return this;
+    }
+
+    public DbBuilder noEvict() {
+        this.evictBoss = new NoEvictBoss();
+        return this;
+    }
+    
+    /**
+     * Sets main stream.
+     */
+    public DbBuilder mainStream(AppendOnlyStream appendOnlyStream) {
+        if (this.streamInfos.size() == 0) {
+            stream("main", appendOnlyStream);
+        } else {
+            DbBuilder.StreamInfo info = new StreamInfo();
+            info.name = "main";
+            info.stream = appendOnlyStream;
+            info.bufferSize = StorageManager.DEFAULT_BUFFER_SIZE;
+            info.bufferTime = StorageManager.DEFAULT_BUFFER_TIME;
+            
+            streamInfos.set(0, info);
+        }
+        
+        return this;
+    }
+    
+    /** 
+     * Adds a storage stream, default buffer parameters are used.
+     * If 'name' is the same as an existing stream, the existing one is replaced.
+     */
+    public DbBuilder stream(String name, AppendOnlyStream aos) {
+        if (streamInfos.size() == 0) {
+            return stream(name, aos, 
+                    StorageManager.DEFAULT_BUFFER_SIZE, 
+                    StorageManager.DEFAULT_BUFFER_TIME);
+        } else {
+            return stream(name, aos,
+                    StorageManager.DEFAULT_REPLICA_BUFFER_SIZE,
+                    StorageManager.DEFAULT_REPLICA_BUFFER_TIME);
+        }
+    }
+    
+    /** 
+     * Adds a storage stream with the given buffer parameters.
+     * If 'name' is the same as an existing stream, the existing one is replaced.
+     * 
+     * @param name
+     *      Name of the stream. The "main" stream is special.
+     * @param stream
+     *      The output database stream.
+     * @param bufferSize
+     *      Buffer size in bytes.
+     * @param bufferTime  
+     *      Maximum time in milliseconds to buffer the data 
+     *      before the buffer is flushed.
+     */
+    public DbBuilder stream(String name, AppendOnlyStream stream, int bufferSize, int bufferTime) {
+        if (name == null) {
+            throw new IllegalArgumentException("name == null not allowed");
+        }
+        
+        if (stream == null) {
+            throw new IllegalArgumentException("stream == null not allowed");
+        }
+        
+        if (bufferSize < 0) {
+            throw new IllegalArgumentException("Illegal bufferSize, " + bufferSize + ".");
+        }
+        
+        if (bufferTime < 0) {
+            throw new IllegalArgumentException("Bad bufferTime, " + bufferTime + ".");
+        }
+        
+        if (bufferSize < 100) {
+            bufferSize = 100;
+        }
+        
+        if (bufferTime < 10) {
+            bufferTime = 10;
+        }
+        
+        DbBuilder.StreamInfo info = new StreamInfo();
+        info.name = name;
+        info.stream = stream;
+        info.bufferSize = bufferSize;
+        info.bufferTime = bufferTime;
+        
+        int index = this.indexOfStream(name);
+        if (index == -1) {
+            streamInfos.add(info);
+        } else {
+            streamInfos.set(index, info);     // replaces previous value
+        }
+        
+        return this;
+    }
+
+    /**
+     * Use the default unit test setup. No write to disk, a deterministic
+     * clock is used. The node stream is an in-memory stream.
+     * Short buffer time (10 ms) for fast tests.
+     */
+    public DbBuilder testSetup() {
+        testClock();
+        evictBoss = new NoEvictBoss();
+        stream("main", new MemoryStream(), 100*1000, 10);
+        retainForever();
+        id = DatabaseId.TEST_ID;
+        return this;
+    }
+    
+    /**
+     * Use the default unit test setup and a specified stream.
+     * Short buffer time (10 ms) for fast tests.
+     */
+    public DbBuilder testSetup(AppendOnlyStream stream) {
+        testSetup();
+        stream("main", stream, 100*1000, 10);
+        return this;
+    }
+
+    public Db build() {
+        //
+        // At this time, we know all DB settings. Time to create the DB object.
+        //
+
+        if (streamInfos.size() == 0) {
+            throw new IllegalStateException("No streams. At least one is required.");
+        }
+
+        return new Db(this);
+    }
+
+    /**
+     * Same as calling done() and then start() on the returned DB object.
+     * 
+     * @throws StreamIoException
+     * @throws StreamFormatException
+     */
+    public Db start() {
+        Db db = build();
+        db.start();
+        return db;
+    }
+}

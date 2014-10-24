@@ -1076,11 +1076,11 @@ public class DbTester {
      * Creates and starts a test Db based on the provided stream. Small bufferSize and bufferTime.
      */
     private static Db testDb(AppendOnlyStream stream) {
-        Db.Builder b = Db.builder();
+        DbBuilder b = Db.builder();
         b.testClock();
         b.evictBoss(new NoEvictBoss());
         b.retainForever();
-        b.id(DatabaseId.getTestId());
+        b.id(DatabaseId.TEST_ID);
         b.stream("main", stream, 10*1000, 10);
         return b.start();
     }

@@ -1,6 +1,7 @@
 package bergdb.test;
 
 import bergdb.core.Db;
+import bergdb.core.DbBuilder;
 import bergdb.core.KeyFactory;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
@@ -81,7 +82,7 @@ public class StreamSize {
     public static void t3(TestCollector c) {
         c.report("notes", "Average transaction stream size vs maxNodeSize");
         
-        Db.Builder[] builders = new Db.Builder[] {
+        DbBuilder[] builders = new DbBuilder[] {
                 Db.builder().maxNodeSize8(),
                 Db.builder().maxNodeSize14(),
                 Db.builder().maxNodeSize30(),

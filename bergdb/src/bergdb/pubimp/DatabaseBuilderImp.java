@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 
 import bergdb.core.Db;
+import bergdb.core.DbBuilder;
 import bergdb.core.IEvictBoss;
 import bergdb.pub.Clock;
 import bergdb.pub.Database;
@@ -23,7 +24,7 @@ import bergdb.stream.MemoryStream;
  * @author Frans Lundberg
  */
 public class DatabaseBuilderImp implements DatabaseBuilder {
-    private final Db.Builder dbBuilder;
+    private final DbBuilder dbBuilder;
     
     public DatabaseBuilderImp() {
         dbBuilder = Db.builder();
@@ -40,7 +41,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
      * Returns the internal Db.Builder object.
      * Not part of Pub API.
      */
-    public Db.Builder getDbBuilder() {
+    public DbBuilder getDbBuilder() {
         return dbBuilder;
     }
     

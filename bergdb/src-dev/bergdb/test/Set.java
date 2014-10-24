@@ -5,6 +5,7 @@ import java.util.Random;
 
 import bergdb.common.Bytes;
 import bergdb.core.Db;
+import bergdb.core.DbBuilder;
 import bergdb.core.NoEvictBoss;
 import bergdb.core.Trans;
 import bergdb.dag.Keys;
@@ -42,7 +43,7 @@ public class Set {
     public Db createDB(boolean enableWrite) {
         NullStream nullStream = new NullStream();
         
-        Db.Builder b = Db.builder()
+        DbBuilder b = Db.builder()
                 .clock(new TestClock())
                 .retainForever()
                 .evictBoss(new NoEvictBoss())
