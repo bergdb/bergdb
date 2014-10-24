@@ -91,8 +91,6 @@ public class DagStarter {
     }
 
     private void rerunTransactions(PutData pd) {
-        // TODO A. Does DELETE work?
-        
         for (StoredTrans stored : transactions) {            
             if (stored.isNodeTransaction()) {
                 for (StoredNode n : stored.nodes) {

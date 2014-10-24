@@ -542,9 +542,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         }
 
         if (value == null) {
-            // TODO A. Handle delete -- write something to stream to allow for trans rerun.
-            // If a delete operation.
-            // Inserts a delete klong if needed.
+            // A delete operation. Inserts a delete klong if needed.
             
             boolean isNoop = appendDeleteKlong(node, pd.keyAccessPath.size - 1, compareValue, pd);
             if (!isNoop) {

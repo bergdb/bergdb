@@ -101,9 +101,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      *            trans.transTime used as input.
      * @throws StreamIoException
      */
-    public void appendNodes(TransNodes nodes, Trans trans) {
-        // TODO C. We need to include deletes somehow to be able to rerun transactions.
-        
+    public void appendNodes(TransNodes nodes, Trans trans) {        
         assert nodes.assertNoDuplicates();
         //assert assertNoMemoryPointersInKeyNodes(nodes);
         

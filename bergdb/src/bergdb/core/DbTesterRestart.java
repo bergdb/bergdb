@@ -132,8 +132,8 @@ public class DbTesterRestart {
         Assert.assertEquals("after restart", startupDistance, db.getStartupDistance());
     }
     
-    @T
-    private static void testDeleteAndRestart() {
+    /** Simplest possible delete-and-restart test. */
+    @T private static void testDelete1() {
         AppendOnlyStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().mainStream(s).clock(clock).start();
@@ -157,5 +157,28 @@ public class DbTesterRestart {
         Assert.assertArrayEquals(Util.toBytes("k1-value"), v1);
         v1 = DbUtil.get(db2, 25, "k1");
         Assert.assertNull(v1);
+    }
+    
+    /** Multiple deletes in a single transaction. */
+    @T private static void testDelete2() {
+        MemoryStream s = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup().mainStream(s).clock(clock).start();
+        
+        clock.setTime(10);
+        db.execute(Trans.builder().put("k1", "k1-value").put("k2", "k2-value"));
+        
+        clock.setTime(20);
+        db.execute(Trans.builder().delete("k1").delete("k2").delete("kk").put("k3", "k3-value").build());
+        
+        long sum1 = DbUtil.checksum(db);
+        db.sync(SyncLevel.ORDINARY);
+        
+        // Restart
+        
+        Db db2 = Db.builder().testSetup().mainStream(s.copy()).start();        
+        long sum2 = DbUtil.checksum(db2);
+        
+        Assert.assertEquals(sum1, sum2);
     }
 }

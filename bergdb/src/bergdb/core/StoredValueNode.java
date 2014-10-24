@@ -112,46 +112,6 @@ public class StoredValueNode implements StoredNode {
         ValueNode valueNode = new ValueNode(value, spos);            
         result = new Pair<ValueNode, long[]>(valueNode, key);
         
-        
-        
-        /*
-        
-        if (type == INode.TYPE_DELETE) {
-            ValueNode valueNode = new ValueNode(null, spos);
-            result = new Pair<ValueNode, long[]>(valueNode, new long[0]);   // TODO A. Fix -- we need the key!
-        } else {
-            offset += 2; // two bytes not used
-
-            int size = Bytes.bytesToIntLE(buffer, offset);
-            offset += 4;
-
-            byte[] value = new byte[size];
-            System.arraycopy(buffer, offset, value, 0, size);
-            offset += size;
-            
-            long[] key = new long[0];
-            
-            if (readKey) {
-                int keySize = Bytes.bytesToIntLE(buffer, offset);
-                offset += 4;
-                
-                if (keySize % 8 != 0 || keySize <= 0) {
-                    throw new StreamFormatException("Bad key size when reading value node at spos " 
-                            + spos + ", keySize: " + keySize + ".");
-                }
-                
-                key = new long[keySize / 8];
-                for (int i = 0; i < key.length; i++) {
-                    key[i] = Bytes.bytesToLongLE(buffer, offset);
-                    offset += 8;
-                }
-            }
-            
-            ValueNode valueNode = new ValueNode(value, spos);            
-            result = new Pair<ValueNode, long[]>(valueNode, key);
-        }
-        */
-        
         return result;
     }
 
