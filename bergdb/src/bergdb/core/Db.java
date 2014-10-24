@@ -220,6 +220,10 @@ public class Db {
         }
     }
     
+    public long getStartupPos() {
+        return x.startupPos.get();
+    }
+    
     public String getStartupDistanceH() {
         long sd;
         int metaSd;

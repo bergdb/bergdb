@@ -13,6 +13,7 @@ import bergdb.dag.Keys;
 import bergdb.dag.Klong;
 import bergdb.dag.TopNode;
 import bergdb.nanotest.Assert;
+import static bergdb.nanotest.Assert.*;
 import bergdb.nanotest.T;
 import bergdb.pub.BadReplicaException;
 import bergdb.pub.Clock;
@@ -1566,5 +1567,69 @@ public class DbTester {
         db.stop();
         
         Assert.assertEquals("diff", 2, count2 - count1);
+    }
+    
+    /**
+     * Large transactions relative to startupDistance. 
+     * Startup pos should be the tpos of the previous transaction.
+     */
+    @T private static void testStartupPos1() {
+        Db db = Db.builder().testSetup().startupDistance(1*1000).start();
+        int n = 6;
+        long[] tpos = new long[n];
+        long[] sp = new long[n];
+        
+        for (int i = 0; i < n; i++) {
+            Trans t = Trans.builder().put("/k", new byte[10*1000]).build();
+            db.execute(t);
+            tpos[i] = t.pos;
+            sp[i] = db.getStartupPos();
+        }
+        
+        for (int i = 1; i < n; i++) {
+            assertEquals(tpos[i-1], sp[i]);
+        }
+    }
+    
+    /**
+     * A startup distance and transaction size of same order of magnitude in size.
+     */
+    @T private static void testStartupPos2() {
+        int startupDistance = 10*1000;
+        Db db = Db.builder().testSetup().startupDistance(startupDistance).start();
+        int n = 6;
+        long[] tpos = new long[n];
+        long[] sp = new long[n];
+        
+        for (int i = 0; i < n; i++) {
+            Trans t = Trans.builder().put("/k", new byte[4*1000]).build();
+            db.execute(t);
+            tpos[i] = t.pos;
+            sp[i] = db.getStartupPos();
+        }
+        
+        for (int i = 0; i < n; i++) {
+            assertEquals(sp[i], expectedStartupPos(tpos, startupDistance, i));
+        }
+    }
+    
+    private static long expectedStartupPos(long[] tpos, int startupDistance, int index) {
+        long result = 0;
+        long lastTpos = tpos[index];
+        
+        for (int i = 0; i < index; i++) {
+            long temp = tpos[i];
+            long candidate = lastTpos - startupDistance;
+            candidate = candidate < 0 ? 0 : candidate;
+            
+            // LTE or LT?
+            if (temp <= candidate) {
+                result = temp;
+            } else {
+                break;
+            }
+        }
+        
+        return result;
     }
 }
