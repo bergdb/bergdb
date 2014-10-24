@@ -113,8 +113,8 @@ public final class TopNode implements INode {
     }
     
     public void printGraph(PrintStream out, String indent, int depth) {
-        // NOTE CShould this code be here?
-        // Oldest top nodes first.
+        // A nice refactoring could be to use some kind of iterator / visitor
+        // to separate the printing from the iteration.
         
         TopNode topNode;
         String newIndent = "    " + indent;

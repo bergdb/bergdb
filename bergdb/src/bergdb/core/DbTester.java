@@ -1583,11 +1583,11 @@ public class DbTester {
             Trans t = Trans.builder().put("/k", new byte[10*1000]).build();
             db.execute(t);
             tpos[i] = t.pos;
-            sp[i] = db.getStartupPos();
+            sp[i] = db.internal().getStartupPos();
         }
         
         for (int i = 1; i < n; i++) {
-            assertEquals(tpos[i-1], sp[i]);
+            assertEquals("i=" + i, tpos[i-1], sp[i]);
         }
     }
     
@@ -1605,11 +1605,11 @@ public class DbTester {
             Trans t = Trans.builder().put("/k", new byte[4*1000]).build();
             db.execute(t);
             tpos[i] = t.pos;
-            sp[i] = db.getStartupPos();
+            sp[i] = db.internal().getStartupPos();
         }
         
         for (int i = 0; i < n; i++) {
-            assertEquals(sp[i], expectedStartupPos(tpos, startupDistance, i));
+            assertEquals("i=" + i, expectedStartupPos(tpos, startupDistance, i), sp[i]);
         }
     }
     

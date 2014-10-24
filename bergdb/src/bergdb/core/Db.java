@@ -148,12 +148,15 @@ public class Db {
     // ---- Misc ----
     
     private final TransactionListener reclaimTransactionListener;
+    
+    private final Internal internal;
 
     /**
      * Private constructor, only DB.Builder calls it. Wires dependencies based
      * on Builder settings.
      */
     private Db(Builder b) {
+        internal = new Internal();
         writeLock = new WriteLock();
         readSync = new ReadSync();
         
@@ -212,10 +215,6 @@ public class Db {
         synchronized (writeLock) {
             return this.startupDistance;
         }
-    }
-    
-    public long getStartupPos() {
-        return x.startupPos.get();
     }
     
     public double getDirtyFraction100() {
@@ -563,7 +562,7 @@ public class Db {
             }
             
             public void newValueNode(ValueNode node, long[] key) {
-                x.transNodes.addValueNode(node, key);
+                x.kvTransNodes.addValueNode(node, key);
             }
             
             public void keyNodeChanged(KeyNode node) {
@@ -640,7 +639,6 @@ public class Db {
         trans.time = tt;
         trans.isInternal = true;
         
-        
         x.begin(trans);
         
         assert !root.isDirty;
@@ -648,8 +646,8 @@ public class Db {
         makeDirtyIfNeeded(root);
         makeDirtyIfNeeded(superRoot);
         
-        x.transNodes.addKeyNode(root);
-        x.transNodes.addTopNode(superRoot);
+        x.kvTransNodes.addKeyNode(root);
+        x.kvTransNodes.addTopNode(superRoot);
         
         appendToStream();
         
@@ -1131,27 +1129,26 @@ public class Db {
         // This could be improved for a better memory-added-to-cache estimate.
         //
         
-        TransNodes indexNodes = new TransNodes();     // NOTE, we could re-use this for performance
         Trans nodeTrans = Trans.builder().build();    // NOTE, we could re-use this for performance
         nodeTrans.isInternal = true;
         nodeTrans.time = x.trans.time;
 
         long startupPos2 = updateStartupPos();
         
-        kvTransSeq.addToTransNodes(startupPos2, indexNodes);
+        kvTransSeq.addToTransNodes(startupPos2, x.indexTransNodes);
         kvTransSeq.removeBeforeSpos(startupPos2);
 
         assert x.trans != null : "trans is null";
-        assert x.transNodes != null : "transNodes is null";
+        assert x.kvTransNodes != null : "transNodes is null";
         
-        x.trans.nodeCount = x.transNodes.size();
+        x.trans.nodeCount = x.kvTransNodes.size();
         
-        nodeStream.appendNodes(x.transNodes, x.trans);
-        x.transNodes.clean();
+        nodeStream.appendNodes(x.kvTransNodes, x.trans);
+        x.kvTransNodes.clean();
         
-        if (indexNodes.size() > 0) {
-            nodeStream.appendNodes(indexNodes, nodeTrans);
-            indexNodes.clean();
+        if (x.indexTransNodes.size() > 0) {
+            nodeStream.appendNodes(x.indexTransNodes, nodeTrans);
+            x.indexTransNodes.clean();
         }
 
         MetaBlock meta = nodeStream.getMetaBlock();
@@ -1234,7 +1231,7 @@ public class Db {
 
         ed.pointerCount = 0;
         ed.evictCount = 0;
-        ed.startupPos = x.startupPos.get();
+        ed.startupPos = x.startupPos.getForEvict();
         evictInner(ed);
         evictBoss.reportEvictCount(ed);
     }
@@ -1341,19 +1338,13 @@ public class Db {
         }
     }
     
-    private static Internal internal = null;
-    private static final Object INTERNAL_LOCK = new Object();
+    
     
     /**
      * Returns access to the internals of Db.
      * Do NOT use for normal operation.
      */
     public Internal internal() {
-        synchronized (INTERNAL_LOCK) {
-            if (internal == null) {
-                internal = new Internal();
-            }
-        }
         return internal;
     }
 
@@ -1394,47 +1385,56 @@ public class Db {
             return dag;
         }
 
-        public final Object getWriteLock() {
+        public long getStartupPos() {
+            return x.startupPos.get();
+        }
+
+        public Object getWriteLock() {
             return writeLock;
         }
         
         /**
          * Returns the readSynch lock Object.
          */
-        public final Object getReadSynch() {
+        public Object getReadSynch() {
             return readSync;
         }
         
+        public ExecuteData x() {
+            return x;
+        }
     }
     
     /**
      * Collection of variables for method Db.execute(Transaction).
      * All field access must be from thread holding Db.writeLock.
      */
-    private class ExecuteData {
+    public class ExecuteData {
         /** Current transaction while writeLock is held. */
-        private Trans trans;
+        public Trans trans;
         
         /** Current startupPos; stream pos to use by startup procedure. */
-        private final StartupPos startupPos;
+        public final StartupPos startupPos;
         
         /** PutData used when executing a transaction. */
-        private PutData putData;
+        public PutData putData;
         
         /** GetData used when executing a transaction. */
-        private GetData getData;
+        public GetData getData;
         
         /** The nodes updated for the current transaction. To be written to the stream. */
-        private final TransNodes transNodes;
+        public final TransNodes kvTransNodes;
+        public final TransNodes indexTransNodes;
         
-        private KvTransSeq.TransInfo transInfo;
+        public KvTransSeq.TransInfo transInfo;
         
         /** End stream position of last transaction; used by Db.sync(). */
-        private long lastSposOfLastTrans;
+        public long lastSposOfLastTrans;
         
         private ExecuteData() {
             startupPos = new StartupPos(0);
-            transNodes = new TransNodes();
+            kvTransNodes = new TransNodes();
+            indexTransNodes = new TransNodes();
         }
         
         /** 
@@ -1447,6 +1447,9 @@ public class Db {
             if (x.putData != null) {
                 x.putData.spaceSplitCount = 0;
             }
+            
+            kvTransNodes.clear();
+            indexTransNodes.clear();
         }
         
         /**
@@ -1457,7 +1460,8 @@ public class Db {
         private void end() {
             x.lastSposOfLastTrans = x.trans.lastPos;
             trans = null;
-            transNodes.clear();
+            //kvTransNodes.clear();
+            //indexTransNodes.clear();
         }
     }
     
@@ -1500,17 +1504,17 @@ public class Db {
             kvCount += x.trans.kvs.length;
             transactionCount++;
             
-            int ordinaryNodeCount = x.transNodes.size();
-            nodesWritten += x.transNodes.size();
+            int ordinaryNodeCount = x.kvTransNodes.size();
+            nodesWritten += x.kvTransNodes.size();
             ordinaryNodesWritten += ordinaryNodeCount;
             
-            int totalNodeCount = x.transNodes.size();
+            int totalNodeCount = x.kvTransNodes.size();
             int dirtyNodeCount = totalNodeCount - ordinaryNodeCount;
             double dirtyFraction = ((double) dirtyNodeCount) / totalNodeCount;
             dirtyFraction100   = 0.99  * aux.dirtyFraction100  +  0.01  * dirtyFraction;
             dirtyFraction1000  = 0.999 * aux.dirtyFraction1000 +  0.001 * dirtyFraction;
             
-            cachedMemoryValue.addAndGet(x.transNodes.sumMemSize());
+            cachedMemoryValue.addAndGet(x.kvTransNodes.sumMemSize());
         }
     }
     

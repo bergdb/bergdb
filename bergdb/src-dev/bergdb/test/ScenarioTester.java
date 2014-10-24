@@ -93,9 +93,7 @@ public class ScenarioTester {
     /**
      * A scenario with a multi-klong key, an increase of startupPos and a restart.
      */
-    @T private static void testScenario102() {
-        // TODO B. Check position of Key node after restart -- compare with before restart.
-        
+    @T private static void testScenario102() {        
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(10);
         MemoryStream stream = new MemoryStream();
@@ -112,10 +110,13 @@ public class ScenarioTester {
         
         //System.out.println("==== printGraph");
         //db.printGraph(System.out);
+        db = null;
         
         // Restart
         stream = stream.copy();
-        db = Db.builder().testSetup().mainStream(stream).clock(clock).start();
+        
+        db = Db.builder().testSetup().mainStream(stream).clock(clock).build();
+        db.start();
         long sum2 = DbUtil.checksum(db, Long.MAX_VALUE, true);
         
         assertEquals(100*1000, db.getStartupDistance());
@@ -127,10 +128,9 @@ public class ScenarioTester {
     
     // TODO A. Fix test and general issue: sometimes spos = -1 is written to stream. The pointee, p, of a node has p.getSpos() == -1 because it has not ever been written to stream.
     
-    // TODO A. Fix Scenario103.
     
     /**
-     * Restart scenario with multiple large transactions.
+     * Restart scenario with six large transactions.
      */
     @T private static void testScenario103() {
         //
@@ -144,10 +144,13 @@ public class ScenarioTester {
         int valueSize = 100*1000;
 
         Db db = Db.builder().testSetup().mainStream(stream).clock(clock)
-                .startupDistance(10*1000).start();
+                .startupDistance(10*1000).build();
+        db.start();
         
         for (int i = 0; i < n; i++) {
-            db.execute(Trans.builder().put("/z" + i, new byte[valueSize + i]));
+            Trans trans = Trans.builder().put("/z" + i, new byte[valueSize + i]).build();
+            db.execute(trans);
+            //print103(db, trans);
         }
         
         long sum1 = DbUtil.checksum(db, Long.MAX_VALUE, true);
@@ -155,10 +158,12 @@ public class ScenarioTester {
         
         //System.out.println("==== printGraph");
         //db.printGraph(System.out);
+        db = null;
         
         // Restart
         stream = stream.copy();
-        db = Db.builder().testSetup().mainStream(stream).clock(clock).start();
+        db = Db.builder().testSetup().mainStream(stream).clock(clock).build();
+        db.start();
         long sum2 = DbUtil.checksum(db, Long.MAX_VALUE, true);
         
         assertEquals(sum1, sum2);
