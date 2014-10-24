@@ -44,7 +44,7 @@ public class DbBuilder {
         evictBoss = new FixedDurationEvictBoss();
         maxNodeSize30();
         retainDurationInTimeUnits = Long.MAX_VALUE;
-        id = DatabaseId.NULL;
+        id = DatabaseId.CREATE_LATER_MARKER;
     }
 
     /**

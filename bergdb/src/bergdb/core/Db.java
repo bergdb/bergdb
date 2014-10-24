@@ -613,9 +613,10 @@ public class Db {
     }
     
     private void determineDatabaseId() {
-        databaseId = databaseIdFromBuilder;
-        if (databaseId.isNull()) {
+        if (databaseIdFromBuilder.isCreateLaterMarker()) {
             databaseId = DatabaseId.createRandom();
+        } else {
+            databaseId = databaseIdFromBuilder;
         }
     }
 

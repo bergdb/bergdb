@@ -15,18 +15,19 @@ import bergdb.nanotest.T;
 public class DatabaseId {
     private static final int SIZE = 16;
     
-    /** Represents null, no database id. */
-    public static final DatabaseId NULL = new DatabaseId(new byte[SIZE]);
-    
     /** A database ID used for testing; useful to have deterministic stream bytes. */
     public static final DatabaseId TEST_ID = new DatabaseId(new byte[] {
         125, -18, -12, -118, -124, 102, -13, -121, -64, -69, 114, -99, 44, -118, -85, 56
-    });
+    }, Type.NORMAL);
+    
+    public static final DatabaseId CREATE_LATER_MARKER = new DatabaseId(new byte[SIZE], Type.CREATE_LATER);
     
     private final byte[] id;
-
-    private DatabaseId(byte[] id) {
+    private final Type type;
+    
+    private DatabaseId(byte[] id, Type type) {
         this.id = id;
+        this.type = type;
     }
     
     /**
@@ -37,12 +38,7 @@ public class DatabaseId {
         r.setSeed(new SeedGenerator().getSeed());
         byte[] id = new byte[SIZE];
         r.nextBytes(id);
-        
-        if (Util.hasOnlyZeros(id)) {
-            return createRandom();
-        } else {
-            return new DatabaseId(id);
-        }
+        return new DatabaseId(id, Type.NORMAL);
     }
     
     /**
@@ -61,7 +57,7 @@ public class DatabaseId {
             throw new IllegalArgumentException("Database ID cannot contain only zeros.");
         }
         
-        return new DatabaseId(bytes.clone());
+        return new DatabaseId(bytes.clone(), Type.NORMAL);
     }
     
     public byte[] getBytes() {
@@ -78,9 +74,16 @@ public class DatabaseId {
         return Util.areEqual(this.id, that.id);
     }
     
-    public boolean isNull() {
-        return this.equals(NULL);
+    public boolean isCreateLaterMarker() {
+        return type == Type.CREATE_LATER;
     }
+    
+    private enum Type {
+        NORMAL, CREATE_LATER
+    }
+    
+    // ======== Tests ========
+    
     
     @T private static void twoRandomIdsShouldNotBeEqual() {
         DatabaseId id1 = DatabaseId.createRandom();
@@ -89,16 +92,13 @@ public class DatabaseId {
         Assert.assertFalse(id2.equals(id1));
     }
     
-    @T private static void testNull() {
-        DatabaseId id1 = DatabaseId.NULL;
-        DatabaseId id2 = DatabaseId.NULL;
-        DatabaseId id3 = DatabaseId.createRandom();
+    @T private static void testCreateLater() {
+        DatabaseId id1 = DatabaseId.CREATE_LATER_MARKER;
+        DatabaseId id2 = DatabaseId.createRandom();
         
-        Assert.assertTrue(id1.isNull());
-        Assert.assertTrue(id2.isNull());
-        Assert.assertFalse(id3.isNull());
-        Assert.assertTrue(id1.equals(id2));
-        Assert.assertFalse(id1.equals(id3));
+        Assert.assertTrue(id1.isCreateLaterMarker());
+        Assert.assertFalse(id2.isCreateLaterMarker());
+        Assert.assertFalse(id1.equals(id2));
     }
     
     @T private static void testThatNullBytesCannotBeCreated() {
