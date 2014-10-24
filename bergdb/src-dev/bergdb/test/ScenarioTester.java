@@ -91,7 +91,7 @@ public class ScenarioTester {
     }
     
 
-    // TODO A. Fix test and general issue: sometimes spos = -1 is written to stream. The pointee, p, of a node has p.getSpos() == -1 because it has not ever been written to stream.
+    
     
     
     /**
@@ -111,6 +111,7 @@ public class ScenarioTester {
         db.execute(Trans.builder().put("/z1", new byte[200*1000]));
         db.execute(Trans.builder().put("/direct/key2", "v2"));     
         db.execute(Trans.builder().put("/z2", new byte[200*1000]));
+        long sum1 = DbUtil.checksum(db, Long.MAX_VALUE, true);
         db.sync(SyncLevel.STRONG);
         
         //System.out.println("==== printGraph");
@@ -119,17 +120,21 @@ public class ScenarioTester {
         // Restart
         stream = stream.copy();
         db = Db.builder().testSetup().mainStream(stream).clock(clock).start();
+        long sum2 = DbUtil.checksum(db, Long.MAX_VALUE, true);
         
         assertEquals(100*1000, db.getStartupDistance());
+        assertEquals(sum1, sum2);
         
         //System.out.println("==== printGraph after restart");
         //db.printGraph(System.out);
     }
     
+    // TODO A. Fix test and general issue: sometimes spos = -1 is written to stream. The pointee, p, of a node has p.getSpos() == -1 because it has not ever been written to stream.
+    // TODO A. Fix Scenario103.
+    
     /**
      * Like 102, but with more KVs.
      */
-    /*
     @T private static void testScenario103() {
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(10);
@@ -144,19 +149,21 @@ public class ScenarioTester {
         db.execute(Trans.builder().put("/z2", new byte[200*1000]));
         db.execute(Trans.builder().put("/direct/key3", "v3"));     
         db.execute(Trans.builder().put("/z3", new byte[200*1000]));
+        long sum1 = DbUtil.checksum(db, Long.MAX_VALUE, true);
         db.sync(SyncLevel.STRONG);
         
-        System.out.println("==== printGraph");
-        db.printGraph(System.out);
+        //System.out.println("==== printGraph");
+        //db.printGraph(System.out);
         
         // Restart
         stream = stream.copy();
         db = Db.builder().testSetup().mainStream(stream).clock(clock).start();
+        long sum2 = DbUtil.checksum(db, Long.MAX_VALUE, true);
         
         assertEquals(100*1000, db.getStartupDistance());
+        assertEquals(sum1, sum2);
         
-        System.out.println("==== printGraph after restart");
-        db.printGraph(System.out);
-    }*/
-    
+        //System.out.println("==== printGraph after restart");
+        //db.printGraph(System.out);
+    }
 }

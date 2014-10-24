@@ -93,7 +93,8 @@ public class KvTransSeq {
     /**
      * Adds index nodes with a tpos < limit to transNodes.
      */
-    public void addToTransNodes(long limit, final TransNodesForMe transNodes) {
+    public void addToTransNodes(final long limit, final TransNodesForMe transNodes) {
+        
         visitGotDirtyNodes(limit, new Visitor() {
             public void node(INode node) {
                 int type = node.getType();
@@ -113,7 +114,7 @@ public class KvTransSeq {
     }
     
     /**
-     * Accepts a visitor which will visit all gotDirtyNodes with a tpos &lt; limit.
+     * Accepts a visitor which will visit all gotDirtyNodes with a tpos < limit.
      */
     public void visitGotDirtyNodes(long limit, Visitor visitor) {
         if (isEmpty()) {

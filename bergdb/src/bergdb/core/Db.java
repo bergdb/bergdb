@@ -577,9 +577,6 @@ public class Db {
         
         ArrayList<StoredTrans> transactions = new ArrayList<StoredTrans>();
         
-        // XXX
-        //System.out.println("XXX, readTransactions: startupPos: " + startupPos);
-        
         NodeStream.TransIterator ti = nodeStream.createTransIteratorFromExactStartupPos(startupPos);
         while (ti.next()) {
             StoredTrans stored = ti.getStoredTrans();
@@ -638,11 +635,7 @@ public class Db {
             
             public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
                 pListener.pointerFollowed(predecessor, pointerIndex, result, pointerType);
-                
-                if (!result.isDirty() && result.isIndexNode()) {
-                    result.setDirty(true);
-                    x.transInfo.gotDirtyNodes.add(result);
-                }
+                makeDirtyIfNeeded(result);
             }
         };
         
@@ -1204,14 +1197,10 @@ public class Db {
         
         nodeStream.appendNodes(x.transNodes, x.trans);
         x.transNodes.clean();
-        // XXX
-        //System.out.println("XXX Wrote KV transaction: " + x.trans);
         
         if (indexNodes.size() > 0) {
             nodeStream.appendNodes(indexNodes, nodeTrans);
             indexNodes.clean();
-         // XXX
-            //System.out.println("XXX Wrote index transaction: " + nodeTrans);
         }
 
         MetaBlock meta = nodeStream.getMetaBlock();
@@ -1229,16 +1218,16 @@ public class Db {
         long length = nodeStream.getLength();
         long candidate = length - startupDistance;
         candidate = candidate < 0 ? 0 : candidate;
-        long updated;
         
         long pos = this.kvTransSeq.posOfTransBefore(candidate);
-        if (pos == -1) {
-            updated = current;
-        } else {
-            updated = pos;
+        long updated = pos == -1 ? current : pos;
+        
+        if (updated != current) {
+            //System.out.println("STARTUP POS UPDATED, " + current + " --> " + updated
+            //        + ", length: " + length + ", startupDistance: " + startupDistance);
+            x.startupPos.set(updated);
         }
         
-        x.startupPos.set(updated);
         return updated;
     }
 

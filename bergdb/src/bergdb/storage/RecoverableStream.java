@@ -384,7 +384,6 @@ public class RecoverableStream {
         aos.append(metaBlock.getBlock(), 0, RecoverableStream.META_BLOCK_SIZE);
         this.posOfLastValidMetaBlock = metaPos;
         
-        // XXX
         //System.out.println("RecoverableStream, wrote MetaBlock, pos: " + metaPos 
         //        + ", startupPos: " + metaBlock.getStartupPos());
     }

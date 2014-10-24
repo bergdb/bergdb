@@ -45,9 +45,6 @@ public class StartupPos {
     public void set(long pos) {
         assert pos >= 0;
         startupPos.set(pos);
-        
-        // XXX
-        //System.out.println("XXX Startup pos set to: " + get());
     }
     
     public void releaseForEvict() {

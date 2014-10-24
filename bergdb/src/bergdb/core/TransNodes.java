@@ -104,18 +104,14 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, KvTransSeq.Trans
         return result;
     }
 
+    /** Sets isDirty = false for all index nodes. */
     public void clean() {
-        
         for (int i = 0; i < topSize; i++) {
             topNodes[i].isDirty = false;
-            // XXX
-            //System.out.println("FFF cleaned: " + topNodes[i]);
         }
         
         for (int i = 0; i < keySize; i++) {
             keyNodes[i].isDirty = false;
-            // XXX
-            //System.out.println("FFF cleaned: " + keyNodes[i]);
         }
     }
     

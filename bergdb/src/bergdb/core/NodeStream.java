@@ -102,7 +102,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * @throws StreamIoException
      */
     public void appendNodes(TransNodes nodes, Trans trans) {
-        // TODO B. We need to include deletes somehow to be able to rerun transactions.
+        // TODO C. We need to include deletes somehow to be able to rerun transactions.
         
         assert nodes.assertNoDuplicates();
         //assert assertNoMemoryPointersInKeyNodes(nodes);

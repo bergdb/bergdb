@@ -248,7 +248,6 @@ public class DagStarter {
         // This code could be removed, or just called when when asserts enabled if
         // it is determined that it takes significant time to run.
         
-        // XXX
         /*System.out.println("==== Startup transactions:");
         for (StoredTrans s : transactions) {
             System.out.println("stored trans: " + s);
