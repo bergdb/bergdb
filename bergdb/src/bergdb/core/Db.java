@@ -146,8 +146,18 @@ public class Db {
     
     private DatabaseId databaseId;
     private final TransactionListener reclaimTransactionListener;
-    
     private final Internal internal;
+    
+    private StartupPosUpdater startupPosUpdater = new StartupPosUpdater() {
+        public long newStartupPos(long current, long streamLength, int startupDistance, 
+                PosOfTransBeforeFunction posFunction) { 
+            long candidate = streamLength - startupDistance;
+            candidate = candidate < 0 ? 0 : candidate;
+            long pos = posFunction.posOfTransBefore(candidate);
+            long updated = pos == -1 ? current : pos;
+            return updated;
+        }
+    };
 
     /**
      * Constructor takes a DbBuilder; it wires dependencies based on builder settings.
@@ -156,7 +166,6 @@ public class Db {
         internal = new Internal();
         writeLock = new WriteLock();
         readSync = new ReadSync();
-        
         x = new ExecuteData();
         
         evictRandom = new Random(0);      // pseudo-random, but deterministic.
@@ -677,7 +686,8 @@ public class Db {
         x.kvTransNodes.addKeyNode(root);
         x.kvTransNodes.addTopNode(superRoot);
         
-        appendToStream();
+        appendKvTransToStream();
+        appendIndexTransToStream(newStartupPos());
         
         x.lastSposOfLastTrans = trans.lastPos;
         
@@ -1103,7 +1113,8 @@ public class Db {
 
             aux.updateStats();
             
-            appendToStream();
+            appendKvTransToStream();
+            appendIndexTransToStream(newStartupPos());
             
             x.startupPos.releaseForEvict();
             
@@ -1120,6 +1131,8 @@ public class Db {
             reclaimTransactionListener.transactionCompleted(t);    
         }
     }
+    
+    
 
     /**
      * Reads the KVs as warm-up; aims to avoid lengthy disk reads and cache
@@ -1141,11 +1154,6 @@ public class Db {
         gd.evictData.enableEvict = enableEvict;
     }
 
-    private void appendToStream() {
-        appendKvTransToStream();
-        appendIndexTransToStream();
-    }
-    
     private void appendKvTransToStream() {
         assert x.trans != null : "trans is null";
         assert x.kvTransNodes != null : "transNodes is null";
@@ -1161,11 +1169,9 @@ public class Db {
         x.kvTransNodes.clean();
     }
 
-    private void appendIndexTransToStream() {
-        long startupPos2 = updateStartupPos();
-        
-        kvTransSeq.addToTransNodes(startupPos2, x.indexTransNodes);
-        kvTransSeq.removeBeforeSpos(startupPos2);
+    private void appendIndexTransToStream(long newStartupPos) {        
+        kvTransSeq.addToTransNodes(newStartupPos, x.indexTransNodes);
+        kvTransSeq.removeBeforeSpos(newStartupPos);
         
         Trans nodeTrans = Trans.builder().build();    // Note, we could re-use this for performance
         nodeTrans.isInternal = true;
@@ -1176,26 +1182,16 @@ public class Db {
             x.indexTransNodes.clean();
         }
 
-        nodeStream.getMetaBlock().setStartupPos(startupPos2);
+        x.startupPos.set(newStartupPos);
+        nodeStream.getMetaBlock().setStartupPos(newStartupPos);
     }
 
-    /** Updates startupPos and returns the new startupPos. Calls x.startupPos.set(). */
-    private long updateStartupPos() {
+    /** Increases startupPos and returns the new value for it. */
+    private long newStartupPos() {
         long current = x.startupPos.get();
         long length = nodeStream.getLength();
-        long candidate = length - startupDistance;
-        candidate = candidate < 0 ? 0 : candidate;
-        
-        long pos = this.kvTransSeq.posOfTransBefore(candidate);
-        long updated = pos == -1 ? current : pos;
-        
-        if (updated != current) {
-            //System.out.println("STARTUP POS UPDATED, " + current + " --> " + updated
-            //        + ", length: " + length + ", startupDistance: " + startupDistance);
-            x.startupPos.set(updated);
-        }
-        
-        return updated;
+        return startupPosUpdater.newStartupPos(
+                current, length, startupDistance, (PosOfTransBeforeFunction) kvTransSeq);
     }
 
     /**
@@ -1422,6 +1418,8 @@ public class Db {
         public ExecuteData x() {
             return x;
         }
+        
+        
     }
     
     /**

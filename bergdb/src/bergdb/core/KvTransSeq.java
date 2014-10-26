@@ -10,14 +10,14 @@ import static bergdb.nanotest.Assert.*;
 import bergdb.nanotest.T;
 
 /**
- * An in-memory data structure that keeps information about the transactions
+ * An in-memory data structure that keeps information about the KV transactions
  * that belongs to the startup section of the database stream.
  * The information is needed to be able to append dirty nodes to the current transaction
  * so they do not become too dirty.
  * 
  * @author Frans Lundberg
  */
-public class KvTransSeq {
+public class KvTransSeq implements PosOfTransBeforeFunction {
     private TransInfo first;     // Head of linked list, may be null.
     private TransInfo last;      // Last set of linked list, may be null.
     private int size;

@@ -26,11 +26,13 @@ public class Trans {
     // For example; have long[] readKeyHashes *and* int readKeyHashesLength.
     // We would be able to reuse Trans object memory.
     //
-    // Note, Frans 1308, it might be a good idea to have a Trans.Listener for
-    // debugging and statistics and such stuff.
-    //
     
     private static final Kv[] EMPTY_KV_ARRAY = new Kv[0];
+    private static final Comparator<long[]> ARRAY_COMPARATOR = new Comparator<long[]>() {
+        public int compare(long[] a1, long[] a2) {
+            return Keys.compareArrays(a1, a2);
+        }
+    };
     
     // -- Input --
     
@@ -48,16 +50,9 @@ public class Trans {
     public long lastPos;            // Stream position of the last byte of the transaction. Available after execute().
     public long nextPos;            // Stream position of the first byte of the next transaction. Available after execute().
     public int nodeCount;           // Number of nodes written to stream. Useful for testing/debug.
-                                    // Note, not super important, could be removed.
-    
+          
     // -- Other --
     boolean isInternal;             // True if transaction was executed on behalf of the database itself.
-
-    private static Comparator<long[]> arrayComparator = new Comparator<long[]>() {
-        public int compare(long[] a1, long[] a2) {
-            return Keys.compareArrays(a1, a2);
-        }
-    };
     
     private Trans() {
         readKeyHashes = new long[0];
@@ -126,7 +121,7 @@ public class Trans {
     };
     
     /**
-     * Used to create a transaction.
+     * Used to create a transaction; use Db.builder() to create a new instance.
      */
     public static class Builder {
         // Note This class does not enforce uniqueness of elements in keyReadSet, kvs, vkeyHashes.
@@ -136,9 +131,6 @@ public class Trans {
         private ArrayList<Long> readHashes;    // hashes of keys read.
         private ArrayList<Long> virtualWriteHashes;    // virtual key hashes for virtual writes
         
-        /**
-         * Use Db.builder() to create a new Builder object.
-         */
         private Builder() {
             kvs = new ArrayList<Kv>();
             readHashes = new ArrayList<Long>();
@@ -278,7 +270,7 @@ public class Trans {
             Trans t = new Trans();
             t.readTime = builderLookupTime;
             
-            TreeMap<long[], Kv> map = new TreeMap<long[], Kv>(arrayComparator);
+            TreeMap<long[], Kv> map = new TreeMap<long[], Kv>(ARRAY_COMPARATOR);
             
             for (Kv kv : kvs) {
                 Kv prev = map.put(kv.getKey(), kv);
