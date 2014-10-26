@@ -1141,51 +1141,42 @@ public class Db {
         gd.evictData.enableEvict = enableEvict;
     }
 
-    /**
-     * Writes the nodes in this.transNodes to stream.
-     * The caller must hold DB.writeLock.
-     * 
-     * @throws StreamIoException
-     */
-    private void appendToStream() {        
-        // Handles KvTransSeq update, startupPos update, node transaction
-        // and writes one or two transactions to stream; a kv transaction and 
-        // if needed, a node transaction.
-        //
-        // Below code has a simple implementation of the cachedMemoryValue.
-        // Everything written to the stream is considered new data to the cache.
-        // This could be improved for a better memory-added-to-cache estimate.
-        //
-        
-        Trans nodeTrans = Trans.builder().build();    // Note, we could re-use this for performance
-        nodeTrans.isInternal = true;
-        nodeTrans.time = x.trans.time;
-
-        long startupPos2 = updateStartupPos();
-        
-        kvTransSeq.addToTransNodes(startupPos2, x.indexTransNodes);
-        kvTransSeq.removeBeforeSpos(startupPos2);
-
+    private void appendToStream() {
+        appendKvTransToStream();
+        appendIndexTransToStream();
+    }
+    
+    private void appendKvTransToStream() {
         assert x.trans != null : "trans is null";
         assert x.kvTransNodes != null : "transNodes is null";
         
         x.trans.nodeCount = x.kvTransNodes.size();
         
         nodeStream.appendNodes(x.kvTransNodes, x.trans);
+        x.transInfo.tpos = x.trans.pos;
+        x.transInfo.lastPos = x.trans.lastPos;
+        x.transInfo.tt = x.trans.time;
+        kvTransSeq.add(x.transInfo);
+        
         x.kvTransNodes.clean();
+    }
+
+    private void appendIndexTransToStream() {
+        long startupPos2 = updateStartupPos();
+        
+        kvTransSeq.addToTransNodes(startupPos2, x.indexTransNodes);
+        kvTransSeq.removeBeforeSpos(startupPos2);
+        
+        Trans nodeTrans = Trans.builder().build();    // Note, we could re-use this for performance
+        nodeTrans.isInternal = true;
+        nodeTrans.time = x.trans.time;
         
         if (x.indexTransNodes.size() > 0) {
             nodeStream.appendNodes(x.indexTransNodes, nodeTrans);
             x.indexTransNodes.clean();
         }
 
-        MetaBlock meta = nodeStream.getMetaBlock();
-        meta.setStartupPos(x.startupPos.get());
-        
-        x.transInfo.tpos = x.trans.pos;
-        x.transInfo.lastPos = x.trans.lastPos;
-        x.transInfo.tt = x.trans.time;
-        kvTransSeq.add(x.transInfo);
+        nodeStream.getMetaBlock().setStartupPos(startupPos2);
     }
 
     /** Updates startupPos and returns the new startupPos. Calls x.startupPos.set(). */
