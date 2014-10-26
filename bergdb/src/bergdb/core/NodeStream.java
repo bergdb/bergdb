@@ -53,7 +53,8 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     }
 
     /**
-     * Recovers the stream; adds zero bytes at end if needed, reads the last valid meta block.
+     * Recovers the stream by adding zero bytes at end if needed
+     * and reads the last valid meta block.
      * 
      * @see RecoverableStream#recover()
      * @throws StreamIoException

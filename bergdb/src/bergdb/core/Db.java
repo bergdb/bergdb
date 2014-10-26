@@ -428,26 +428,45 @@ public class Db {
      * @throws BadReplicaException
      */
     public void start() {
-        start(Db.DO_NOTHING_START_LISTENER);
+        start(StartParams.NULL, Db.DO_NOTHING_START_LISTENER);
+    }
+    
+    public static class StartParams {
+        public static final StartParams NULL = new StartParams();
+        public long startupPos;
+        public int startupDistance;
+        
+        public StartParams() {
+            startupPos = Spos.NULL;
+            startupDistance = -1;
+        }
+        
+        public boolean isNull() {
+            return this == NULL;
+        }
     }
     
     /**
      * Starts the database by reading from the stream. Call once per Db object
      * after constructor and before the get/set methods.
      * 
+     * @param param params  
+     *          Used for testing, normally set to StartParams.NULL as default.
      * @throws StreamIoException
      * @throws StreamFormatException
      * @throws IllegalStateException
-     *             If start() has been called already.
+     *          If start() has been called already.
      * @throws BadReplicaException
      */
-    public void start(StartListener listener) {
+    public void start(StartParams params, StartListener listener) {
         synchronized (writeLock) {
             synchronized (readSync) {
-                startInner(listener);
+                startInner(params, listener);
             }
         }
     }
+    
+    // TODO A. Test start() with StartParams.
     
     /**
      * The startup implementation.
@@ -457,27 +476,22 @@ public class Db {
      * @throws BadReplicaException
      * @throws IllegalDbStateException
      */
-    private void startInner(StartListener listener) {        
+    private void startInner(StartParams params, StartListener listener) {        
         assertStateIsZero();
 
         syncStreams();
         handleEmptyStream();
-        
         nodeStream.recover();
-        assertDatabaseIdNotOnlyZeros();
-        setStartupPosAndStartupDistanceFromMetaBlock(listener);
+        handleStartParams(params, listener);
         
         ArrayList<StoredTrans> transactions = readTransactions(x.startupPos.get());
         setLastTransTimeOfDbClock(transactions);
-        
         startDag(transactions);
         
         x.putData = createPutData();
         x.getData = newGetData();
         
         this.state = DbState.ACTIVE;
-        
-        // state = STATE_ACTIVE needed before this method.
         reclaim.initFromDb();
     }
 
@@ -490,30 +504,40 @@ public class Db {
         assert dag != null : "dag null in Db.startDag";
     }
 
-    private void setStartupPosAndStartupDistanceFromMetaBlock(StartListener listener) {
-        int distance = nodeStream.getMetaBlock().getStartupDistance();
-        if (distance <= 0) {
-            throw new StreamFormatException("Bad value of startupDistance in meta " +
-                    "block of stream: " + distance + ".");
+    /**
+     * @throws StreamFormatException
+     * @param listener
+     */
+    private void handleStartParams(StartParams params, StartListener listener) {
+        if (params.isNull()) {
+            params = new StartParams();
+            MetaBlock meta = nodeStream.getMetaBlock();
+            params.startupPos = getStartupPosFromMetaBlock(meta);
+            params.startupDistance = getStartupDistanceFromMetaBlock(meta);
         }
         
-        long pos = nodeStream.getMetaBlock().getStartupPos();
+        startupDistance = params.startupDistance;
+        x.startupPos.set(params.startupPos);
+        listener.reportStartupDistance(startupDistance);
+        listener.reportStartPos(x.startupPos.get());
+    }
+
+    private long getStartupPosFromMetaBlock(MetaBlock meta) {
+        long pos = meta.getStartupPos();
         if (pos < 0) {
             throw new StreamFormatException("Bad value of startupPos in meta " +
                     "block of stream: " + pos + ".");
         }
-        
-        this.startupDistance = distance;
-        this.x.startupPos.set(pos);
-        
-        listener.reportStartupDistance(distance);
-        listener.reportStartPos(pos);
+        return pos;
     }
 
-    private void assertDatabaseIdNotOnlyZeros() {
-        if (Util.hasOnlyZeros(nodeStream.getMetaBlock().getId())) {
-            throw new IllegalStateException("Invalid database ID, only zero bytes.");
+    private int getStartupDistanceFromMetaBlock(MetaBlock meta) {
+        int distance = meta.getStartupDistance();
+        if (distance <= 0) {
+            throw new StreamFormatException("Bad value of startupDistance in meta " +
+                    "block of stream: " + distance + ".");
         }
+        return distance;
     }
     
     /** Reads transactions from DB stream starting at startPos. */
@@ -603,7 +627,7 @@ public class Db {
     /**
      * If the stream is empty, this method creates the database id 
      * (if not given in the database builder)
-     * and writes the first metablock to the stream.
+     * and writes the first metablock and the primordial transaction to the stream.
      */
     private void handleEmptyStream() {
         if (nodeStream.getLength() == 0) {
@@ -668,7 +692,7 @@ public class Db {
     }
 
     /**
-     * Syncs storage streams during database start.
+     * Syncs raw storage streams.
      */
     private void syncStreams() {
         storageManager.checkStreamIds();

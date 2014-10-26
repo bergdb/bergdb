@@ -126,9 +126,6 @@ public class ScenarioTester {
         //db.printGraph(System.out);
     }
     
-    // TODO A. Fix test and general issue: sometimes spos = -1 is written to stream. The pointee, p, of a node has p.getSpos() == -1 because it has not ever been written to stream.
-    
-    
     /**
      * Restart scenario with six large transactions.
      */

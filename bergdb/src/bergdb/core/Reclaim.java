@@ -291,6 +291,7 @@ public class Reclaim implements Db.TransactionListener {
 
     /**
      * Initializes the iteration table, 'table' from what is stored in the database.
+     * Db must be in state ACTIVE when this method is called.
      * 
      * @throws StreamFormatException
      * @throws StreamIoException
