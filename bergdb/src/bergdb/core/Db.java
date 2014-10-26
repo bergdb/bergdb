@@ -437,7 +437,7 @@ public class Db {
      * @throws BadReplicaException
      */
     public void start() {
-        start(StartParams.NULL, Db.DO_NOTHING_START_LISTENER);
+        start(StartParams.NULL, Db.StartListener.DO_NOTHING);
     }
     
     public static class StartParams {
@@ -474,8 +474,6 @@ public class Db {
             }
         }
     }
-    
-    // TODO A. Test start() with StartParams.
     
     /**
      * The startup implementation.
@@ -1419,7 +1417,12 @@ public class Db {
             return x;
         }
         
-        
+        /** Used for testing only. */
+        public void setStartupPosUpdater(StartupPosUpdater u) {
+            synchronized (writeLock) {
+                startupPosUpdater = u;
+            }
+        }
     }
     
     /**
@@ -1539,15 +1542,13 @@ public class Db {
      * For listening to what happens at startup. Useful for testing / debugging.
      */
     public static interface StartListener {
-        void reportStartupDistance(long startupDistance);
-        void reportStartPos(long startPos);
-    }
-    
-    public static final DoNothingStartListener DO_NOTHING_START_LISTENER = new DoNothingStartListener();
-    
-    public static class DoNothingStartListener implements StartListener {
-        public void reportStartupDistance(long startupDistance) {}
-        public void reportStartPos(long startPos) {}
+        public void reportStartupDistance(long startupDistance);
+        public void reportStartPos(long startPos);
+        
+        public static final StartListener DO_NOTHING = new StartListener() {
+            public void reportStartupDistance(long startupDistance) {}
+            public void reportStartPos(long startPos) {}
+        };
     }
     
     public static final PrintStartListener SYSTEM_OUT_START_LISTENER = new PrintStartListener(System.out);

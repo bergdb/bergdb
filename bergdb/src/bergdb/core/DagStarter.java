@@ -307,9 +307,8 @@ public class DagStarter {
                     long ppos = p.getPos();
                     if (!Spos.isValid(ppos)) {
                         throw new StreamFormatException(
-                                "Bad spos (" + ppos + ") of pointer from key node, " + knode +
-                                ", pointer index: " + k + ", klong: " + Klong.toString(klong)
-                                );
+                                "Bad spos (" + ppos + ") of Pointer " + k 
+                                + " from key node:\n" + knode.print());
                     }
                 }
             }

@@ -1,7 +1,6 @@
 package bergdb.dev;
 
-// TODO A24. Fix test and general issue: sometimes spos = -1 is written to stream. The pointee, p, of a node has p.getSpos() == -1 because it has not ever been written to stream.
-// TODO A24/1: Add failing test for the A24 issue.
+// TODO B. Issue: sometimes spos == -1 is written to stream. The pointee, p, of a node has p.getSpos() == -1 because it has not ever been written to stream.
 
 /**
  * Dummy test code; for development only.

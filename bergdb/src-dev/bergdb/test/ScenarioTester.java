@@ -2,8 +2,10 @@ package bergdb.test;
 
 import bergdb.core.CoreTestClock;
 import bergdb.core.Db;
+import bergdb.core.Db.StartParams;
 import bergdb.core.DbUtil;
 import bergdb.core.NoEvictBoss;
+import bergdb.core.StartupPosUpdater;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.GetMany;
@@ -169,9 +171,83 @@ public class ScenarioTester {
         //db.printGraph(System.out);
     }
     
+    // TODO A. Fix S104.
+    
     @T private static void testScenario104() {
-        // Trying to recreate the issue with stream pointer == -1.
+        // Demonstrates bug 141027:
+        // bergdb.storage.StreamFormatException: Could not find super root node within startup node set.
+        // at bergdb.core.DagStarter.createMapsAndSearchForSuperRoot(DagStarter.java:357)
+        // ...
+        // at bergdb.test.ScenarioTester.testScenario104(ScenarioTester.java:210)
+        //
+
+        MemoryStream stream = new MemoryStream();
+        StartupPosUpdater.TestUpdater updater = new StartupPosUpdater.TestUpdater();
+        long startupPos;
         
+        Db db = Db.builder().testSetup().mainStream(stream).clock(new CoreTestClock()).build();
+        db.internal().setStartupPosUpdater(updater);
+        db.start();
         
+        Trans t1 = Trans.builder().put("/dir100/key1", "v1").build();
+        db.execute(t1);
+        
+        startupPos = t1.pos;
+        updater.setNextPos(startupPos);
+        Trans t3 = Trans.builder().put("/z", "zzz5").build();
+        db.execute(t3);
+        db.sync(SyncLevel.ORDINARY);
+        
+        //db.printGraph(System.out);
+        
+        // Restart
+        
+        db = Db.builder().testSetup().mainStream(stream.copy()).build();
+        
+        System.out.println("startupPos: " + startupPos);
+        StartParams params = new StartParams();
+        params.startupDistance = 20*1000000;
+        params.startupPos = startupPos;
+        
+        db.start(params, Db.StartListener.DO_NOTHING);
+    }
+    
+    // TODO B. Fix S105.
+    
+    @T private static void testScenario105() {
+        // Demonstrates bug 141027:
+        // bergdb.storage.StreamFormatException: Bad spos (-1) of Pointer 3 from key node
+        // At startup time.
+
+        MemoryStream stream = new MemoryStream();
+        StartupPosUpdater.TestUpdater updater = new StartupPosUpdater.TestUpdater();
+        long startupPos;
+        
+        Db db = Db.builder().testSetup().mainStream(stream).clock(new CoreTestClock()).build();
+        db.internal().setStartupPosUpdater(updater);
+        db.start();
+        
+        Trans t1 = Trans.builder().put("/dir100/key1", "v1").build();
+        db.execute(t1);
+        
+        Trans t2 = Trans.builder().put("/dir200/key2", "v2").build();
+        db.execute(t2);
+        
+        startupPos = t2.pos;
+        updater.setNextPos(startupPos);
+        Trans t3 = Trans.builder().put("/z", "zzz5").build();
+        db.execute(t3);
+        db.sync(SyncLevel.ORDINARY);
+        
+        //db.printGraph(System.out);
+        
+        // Restart
+        
+        StartParams params = new StartParams();
+        params.startupDistance = 20*1000000;
+        params.startupPos = startupPos;
+        
+        db = Db.builder().testSetup().mainStream(stream.copy()).build();
+        db.start(params, Db.StartListener.DO_NOTHING);
     }
 }
