@@ -166,12 +166,7 @@ public class ScenarioTester {
         long sum2 = DbUtil.checksum(db, Long.MAX_VALUE, true);
         
         assertEquals(sum1, sum2);
-        
-        //System.out.println("==== printGraph after restart");
-        //db.printGraph(System.out);
     }
-    
-    // TODO A. Fix S104.
     
     @T private static void testScenario104() {
         // Demonstrates bug 141027:
@@ -180,7 +175,7 @@ public class ScenarioTester {
         // ...
         // at bergdb.test.ScenarioTester.testScenario104(ScenarioTester.java:210)
         //
-
+        
         MemoryStream stream = new MemoryStream();
         StartupPosUpdater.TestUpdater updater = new StartupPosUpdater.TestUpdater();
         long startupPos;
@@ -189,30 +184,29 @@ public class ScenarioTester {
         db.internal().setStartupPosUpdater(updater);
         db.start();
         
-        Trans t1 = Trans.builder().put("/dir100/key1", "v1").build();
+        Trans t1 = Trans.builder().put("/key1", "v1").build();
         db.execute(t1);
         
         startupPos = t1.pos;
         updater.setNextPos(startupPos);
-        Trans t3 = Trans.builder().put("/z", "zzz5").build();
-        db.execute(t3);
+        Trans t2 = Trans.builder().put("/key2", "v2").build();
+        db.execute(t2);
+        long sum1 = DbUtil.checksum(db);
         db.sync(SyncLevel.ORDINARY);
-        
-        //db.printGraph(System.out);
         
         // Restart
         
         db = Db.builder().testSetup().mainStream(stream.copy()).build();
         
-        System.out.println("startupPos: " + startupPos);
         StartParams params = new StartParams();
         params.startupDistance = 20*1000000;
         params.startupPos = startupPos;
         
-        db.start(params, Db.StartListener.DO_NOTHING);
+        db.start(params, Db.PrintStartListener.DO_NOTHING);
+        long sum2 = DbUtil.checksum(db);
+        
+        Assert.assertEquals(sum1, sum2);
     }
-    
-    // TODO B. Fix S105.
     
     @T private static void testScenario105() {
         // Demonstrates bug 141027:
@@ -238,8 +232,7 @@ public class ScenarioTester {
         Trans t3 = Trans.builder().put("/z", "zzz5").build();
         db.execute(t3);
         db.sync(SyncLevel.ORDINARY);
-        
-        //db.printGraph(System.out);
+        long sum1 = DbUtil.checksum(db);
         
         // Restart
         
@@ -249,5 +242,8 @@ public class ScenarioTester {
         
         db = Db.builder().testSetup().mainStream(stream.copy()).build();
         db.start(params, Db.StartListener.DO_NOTHING);
+        long sum2 = DbUtil.checksum(db);
+        
+        Assert.assertEquals(sum1, sum2);
     }
 }

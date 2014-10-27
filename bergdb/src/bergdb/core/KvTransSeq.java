@@ -65,18 +65,18 @@ public class KvTransSeq implements PosOfTransBeforeFunction {
     }
     
     /**
-     * Removes all TransInfos with a tpos < limit.
+     * Removes all TransInfos with a tpos <= limit.
      * 
      * @return The number of sets removed from the list.
      */
-    public int removeBeforeSpos(long limit) {
+    public int removeBefore(long limit) {
         int result = 0;
         
         if (isEmpty()) {
             return 0;
         }
         
-        while (first != null && first.tpos < limit) {
+        while (first != null && first.tpos <= limit) {
             first = first.next;
             size -= 1;
             result += 1;
@@ -91,7 +91,7 @@ public class KvTransSeq implements PosOfTransBeforeFunction {
     }
 
     /**
-     * Adds index nodes with a tpos < limit to transNodes.
+     * Adds index nodes with a tpos <= limit to transNodes.
      */
     public void addToTransNodes(final long limit, final TransNodesForMe transNodes) {
         
@@ -114,7 +114,7 @@ public class KvTransSeq implements PosOfTransBeforeFunction {
     }
     
     /**
-     * Accepts a visitor which will visit all gotDirtyNodes with a tpos < limit.
+     * Accepts a visitor which will visit all gotDirtyNodes with a tpos <= limit.
      */
     public void visitGotDirtyNodes(long limit, Visitor visitor) {
         if (isEmpty()) {
@@ -122,7 +122,7 @@ public class KvTransSeq implements PosOfTransBeforeFunction {
         }
         
         TransInfo info = first;
-        while (info != null && info.tpos < limit) {
+        while (info != null && info.tpos <= limit) {
             for (INode node : info.gotDirtyNodes) {
                 visitor.node(node);
             }
@@ -231,7 +231,7 @@ public class KvTransSeq implements PosOfTransBeforeFunction {
     }
     
     @T
-    public static void testRemoveBeforeSpos() {
+    public static void testRemoveBefore() {
         
         KvTransSeq s = new KvTransSeq();
         TransInfo info1 = newTransInfo(100, 120);
@@ -242,16 +242,13 @@ public class KvTransSeq implements PosOfTransBeforeFunction {
         
         Assert.assertEquals(2, s.getSize());
         
-        s.removeBeforeSpos(99);
+        s.removeBefore(99);
         Assert.assertEquals(2, s.getSize());
         
-        s.removeBeforeSpos(100);
-        Assert.assertEquals(2, s.getSize());
-        
-        s.removeBeforeSpos(101);
+        s.removeBefore(100);
         Assert.assertEquals(1, s.getSize());
         
-        s.removeBeforeSpos(400);
+        s.removeBefore(400);
         Assert.assertEquals(0, s.getSize());
         Assert.assertTrue(s.isEmpty());
     }

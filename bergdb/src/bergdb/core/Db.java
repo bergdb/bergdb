@@ -492,6 +492,7 @@ public class Db {
         handleStartParams(params, listener);
         
         ArrayList<StoredTrans> transactions = readTransactions(x.startupPos.get());
+        listener.reportStartupTransactions(transactions);
         setLastTransTimeOfDbClock(transactions);
         startDag(transactions);
         
@@ -1169,7 +1170,7 @@ public class Db {
 
     private void appendIndexTransToStream(long newStartupPos) {        
         kvTransSeq.addToTransNodes(newStartupPos, x.indexTransNodes);
-        kvTransSeq.removeBeforeSpos(newStartupPos);
+        kvTransSeq.removeBefore(newStartupPos);
         
         Trans nodeTrans = Trans.builder().build();    // Note, we could re-use this for performance
         nodeTrans.isInternal = true;
@@ -1544,10 +1545,12 @@ public class Db {
     public static interface StartListener {
         public void reportStartupDistance(long startupDistance);
         public void reportStartPos(long startPos);
+        public void reportStartupTransactions(ArrayList<StoredTrans> transactions);
         
         public static final StartListener DO_NOTHING = new StartListener() {
             public void reportStartupDistance(long startupDistance) {}
             public void reportStartPos(long startPos) {}
+            public void reportStartupTransactions(ArrayList<StoredTrans> transactions) {}
         };
     }
     
@@ -1566,6 +1569,16 @@ public class Db {
         
         public void reportStartPos(long startPos) {
             p.println("startPos: " + startPos);
+        }
+        
+        public void reportStartupTransactions(ArrayList<StoredTrans> transactions) {
+            p.println("---- startupTransactions ----");
+            for (StoredTrans s : transactions) {
+                p.println("StoredTrans: " + s);
+                for (StoredNode n : s.nodes) {
+                    p.println("  " + n);
+                }
+            }
         }
     }
     

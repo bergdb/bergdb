@@ -98,11 +98,11 @@ public class DbUtil {
     }
     
     /**
-     * Equivalent to: checksum(db, Long.MAX_VALUE, false).
-     * Checksum of latest database state (keys and their values only).
+     * Equivalent to: checksum(db, Long.MAX_VALUE, true).
+     * Checksum of latest database state (key-value-time tupple set).
      */
     public static long checksum(Db db) {
-        return checksum(db, Long.MAX_VALUE, false);
+        return checksum(db, Long.MAX_VALUE, true);
     }
     
     /**
