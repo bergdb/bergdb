@@ -1,15 +1,18 @@
 package bergdb.test;
 
+import bergdb.common.Util;
 import bergdb.core.CoreTestClock;
 import bergdb.core.Db;
 import bergdb.core.Db.StartParams;
 import bergdb.core.DbUtil;
+import bergdb.core.KeyFactory;
 import bergdb.core.NoEvictBoss;
 import bergdb.core.StartupPosUpdater;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.GetMany;
 import bergdb.nanotest.Assert;
+import bergdb.nanotest.TestCollector;
 import static bergdb.nanotest.Assert.assertEquals;
 import bergdb.nanotest.T;
 import bergdb.stream.MemoryStream;
@@ -204,6 +207,7 @@ public class ScenarioTester {
         
         db.start(params, Db.PrintStartListener.DO_NOTHING);
         long sum2 = DbUtil.checksum(db);
+        db.stop();
         
         Assert.assertEquals(sum1, sum2);
     }
@@ -233,6 +237,7 @@ public class ScenarioTester {
         db.execute(t3);
         db.sync(SyncLevel.ORDINARY);
         long sum1 = DbUtil.checksum(db);
+        db.stop();
         
         // Restart
         
@@ -243,7 +248,44 @@ public class ScenarioTester {
         db = Db.builder().testSetup().mainStream(stream.copy()).build();
         db.start(params, Db.StartListener.DO_NOTHING);
         long sum2 = DbUtil.checksum(db);
+        db.stop();
         
         Assert.assertEquals(sum1, sum2);
+    }
+    
+    @T private static void testScenario106(TestCollector c) throws InterruptedException {
+        int n = 6;
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(5*1000).start();
+        final int valueSize = 1000;
+        
+        int i = 0;
+        for (String keyString : KeyFactory.shortRandomKeys(n)) {
+            clock.setTime(1000 + i);
+            byte[] key = Util.toBytes(keyString);
+            byte[] value = new byte[valueSize];
+            value[0] = (byte) keyString.hashCode();
+            Trans t = Trans.builder().put(key, value).build();
+            db.execute(t);
+            i++;
+        }
+        
+        System.out.println("---- printGraph ----");
+        db.printGraph(System.out);
+        long sum1 = DbUtil.checksum(db);
+        
+        db.sync(SyncLevel.ORDINARY);
+        db.stop();
+        
+        // Restart
+        
+        db = Db.builder().testSetup(stream).build();
+        db.start();
+        long sum2 = DbUtil.checksum(db);
+        db.stop();
+        
+        Assert.assertEquals(sum1, sum2);
+        
     }
 }

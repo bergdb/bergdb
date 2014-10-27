@@ -41,7 +41,7 @@ public class F {
             for (Class<?> c : p.getClasses()) {
                 if (classPattern != null) {
                     Matcher m = classPattern.matcher(c.getName());
-                    if (m.matches()) {
+                    if (m.find()) {
                         classes.add(c);
                     }
                 } else {          

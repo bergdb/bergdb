@@ -92,7 +92,8 @@ public class CoreUnit {
      * @param classPatternString Regex for classname or null for all classes.
      * @param methodPatternString Regex for method name or null for all nano unit test methods.
      */
-    public void go(BergDBTestCollector collector, String classPatternString, 
+    public void go(BergDBTestCollector collector, 
+            String classPatternString, 
             String methodPatternString) {
         List<Class<?>> classes = new ArrayList<Class<?>>();
         IPack[] ipacks = getIPacks();
@@ -137,7 +138,6 @@ public class CoreUnit {
             result = true;
         } else {
             Matcher m = classPattern.matcher(c.getName());
-            //result = m.matches();
             result = m.find();
         }
         return result;
