@@ -107,7 +107,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         //assert assertNoMemoryPointersInKeyNodes(nodes);
         
         long transTpos = rstream.getNextSpos();
-        transSerializer.serialize(nodes, trans.time, transTpos);
+        transSerializer.serialize(nodes, trans.time, transTpos, -1);
 
         trans.pos = transTpos;
         trans.lastPos = transSerializer.getOutputLastSpos();
@@ -220,22 +220,25 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     }
     
 
-    public void printStream(PrintStream out) {
-        printStream(out, 0);
+    public void print(PrintStream out) {
+        print(out, 0);
     }
 
-    public void printStream(PrintStream out, long startPos) {
+    public void print(PrintStream out, long startPos) {
         TransIterator titer = createTransIterator(startPos);
 
         while (titer.next()) {
             out.println("==== Trans at " + titer.tpos + " ====");
             
             StoredTrans storedTrans = titer.getStoredTrans();
-            for (StoredNode storedNode : storedTrans.nodes) {
-                INode node = storedNode.getNode();
+            for (StoredNode s : storedTrans.nodes) {
+                out.println("p:" + s.getPrevPos());
+                out.println(s.getNode().print().replace("\n", "\n  "));
+                /*
+                INode node = s.getNode();
                 out.println("-- " + node.getClass().getSimpleName() + " prev:"
-                        + storedNode.getPrevPos() + " --");
-                out.println(node.toString());
+                        + s.getPrevPos() + " --");
+                out.println(node.toString());*/
             }
         }
     }

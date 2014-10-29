@@ -58,7 +58,9 @@ public class DagStarter {
     
     private DagStarter(List<StoredTrans> transactions, long accessData, 
             NodeReader nodeReader, int maxNodeSize) {
-        validateTransactions(transactions);
+        // TODO B. -1 pointers could be allowed if pointer time > initTime
+        // TODO B. change this validation, move to after init time computed. 
+        //validateTransactions(transactions);
         validateAccessData(accessData);
         if (nodeReader == null) throw new IllegalArgumentException("nodeReader == null not allowed");
         

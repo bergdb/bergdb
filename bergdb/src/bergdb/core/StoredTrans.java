@@ -16,6 +16,7 @@ import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import static bergdb.nanotest.Assert.assertEquals;
 import static bergdb.nanotest.Assert.assertArrayEquals;
+import static bergdb.nanotest.Assert.assertFalse;
 import bergdb.nanotest.T;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
@@ -23,8 +24,7 @@ import bergdb.storage.StreamFormatException;
 /**
  * This class and its inner classes are responsible serializing transactions to bytes
  * and to parse transactions from raw bytes.
- * Performance is important enough here that is may take precedence over
- * pretty code.
+ * For this class, performance is important enough that it may take precedence over pretty code.
  * 
  * @author Frans Lundberg
  */
@@ -40,16 +40,23 @@ public class StoredTrans {
 
     /** The nodes of the transaction. */
     public final StoredNode[] nodes;
+    
+    public final long newStartupPos;
 
     private StoredTrans(Parser d) {
         tt = d.transactionTime;
         pos = d.pos;
         lastPos = d.lastPos;
         nodes = d.nodes;
+        newStartupPos = d.newStartupPos;
     }
     
     public boolean isPrimordial() {
         return pos == RecoverableStream.META_BLOCK_SIZE;
+    }
+    
+    public boolean hasNewStartupPos() {
+        return newStartupPos != -1;
     }
     
     public Trans createRerunTransaction() {
@@ -134,6 +141,7 @@ public class StoredTrans {
         long transactionTime;
         long pos;
         long lastPos;
+        long newStartupPos;
         StoredNode[] nodes;
 
         int offset = 0;
@@ -164,11 +172,23 @@ public class StoredTrans {
                 throw new StreamFormatException("buffer too small, size in header: " 
                         + byteSize + ", buffer size: " + buffer.length + ".");
             }
-
-            offset += 4; // 4 unused bytes
+            
+            byte bits = buffer[offset];
+            offset += 1;
+            boolean hasNewStartupPos = (bits & 1) != 0;
+            
+            offset += 3; // 3 unused bytes
+            
             transactionTime = Bytes.bytesToLongLE(buffer, offset);
             offset += 8;
-
+            
+            if (hasNewStartupPos) {
+                newStartupPos = Bytes.bytesToLongLE(buffer, offset);
+                offset += 8;
+            } else {
+                newStartupPos = -1;
+            }
+            
             // Parse nodes
 
             ArrayList<StoredNode> nodeList = new ArrayList<StoredNode>();
@@ -183,6 +203,10 @@ public class StoredTrans {
 
             nodes = nodeList.toArray(new StoredNode[nodeList.size()]);
             lastPos = RecoverableStream.getSpos(transPos, offset - 1);
+        }
+        
+        boolean hasNewStartupPos() {
+            return newStartupPos != -1;
         }
 
         private StoredNode next(byte[] buffer) {
@@ -223,15 +247,18 @@ public class StoredTrans {
         private int topAndKeySize;
         private long[] prevPos;
         private int extraZeros;
+        
         private TransNodes transNodes;
-        private long transTime;
         private long transStartPos;
+        private long transTime;
+        private long newStartupPos;
+        
         private long transNextSpos;
         private long transLastSpos;
 
         /** Number of times serialize() has been called. */
         private long counter;
-
+        
         /**
          * Allocates memory for the serialization.
          */
@@ -250,8 +277,11 @@ public class StoredTrans {
          *            The transaction time.
          * @param transStartPos
          *            The spos of the first byte of the transaction.
+         * @param newStartupPos
+         *            This is the updated startupPos for this transaction, or -1 if
+         *            the startupPos was not updated by this transaction.
          */
-        public void serialize(TransNodes transNodes, long transTime, long transStartPos) {
+        public void serialize(TransNodes transNodes, long transTime, long transStartPos, long newStartupPos) {
             assert transNodes != null;
             assert transTime >= 0;
             assert transStartPos >= 0;
@@ -259,6 +289,7 @@ public class StoredTrans {
             this.transNodes = transNodes;
             this.transStartPos = transStartPos;
             this.transTime = transTime;
+            this.newStartupPos = newStartupPos;
 
             prepareToSerialize();
             serializeToBuffer();
@@ -290,7 +321,8 @@ public class StoredTrans {
             // The three node loops sets new stream pos of nodes, sets ID if needed,
             // Also computes totalSize and sets prevPos array for KeyNodes.
 
-            totalSize = 16; // Header size, trans size, 4 empty, trans time
+            totalSize = 16; // Header size, 16 = trans size (4), empty (4), trans time (8)
+            totalSize += (newStartupPos == -1 ? 0 : 8);
             long currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
 
             resizePrevPosIfNeeded();
@@ -323,7 +355,6 @@ public class StoredTrans {
             for (int i = 0; i < transNodes.valueSize; i++) {
                 ValueNode node = transNodes.valueNodes[i];
                 long[] key = transNodes.keys[i];
-                //node.spos = currentPos;
                 node.setSpos(currentPos);
                 totalSize += StoredValueNode.getByteSize(node, key);
                 currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
@@ -365,10 +396,18 @@ public class StoredTrans {
         }
 
         private int serializeHeader(int longOffset) {
-            longBuffer[longOffset] = totalSize; // Note, 4 bytes available, int-to-long conversion.
+            long int0 = totalSize;
+            long int1 = (newStartupPos == -1) ? 0 : 1;     // one bit set when newStartupPos set
+            
+            longBuffer[longOffset] = int0 | (int1 << 32);
             longOffset += 1;
             longBuffer[longOffset] = transTime;
             longOffset += 1;
+            if (newStartupPos != -1) {
+                longBuffer[longOffset] = newStartupPos;
+                longOffset += 1;
+            }
+            
             return longOffset;
         }
 
@@ -398,21 +437,6 @@ public class StoredTrans {
             return offset;
         }
 
-        private int copyLongBufferToByteBuffer(int longOffset, int offset) {
-            for (int j = 0; j < longOffset; j++) {
-                long value = longBuffer[j];
-                byteBuffer[offset++] = (byte) value;
-                byteBuffer[offset++] = (byte) (value >>> 8);
-                byteBuffer[offset++] = (byte) (value >>> 16);
-                byteBuffer[offset++] = (byte) (value >>> 24);
-                byteBuffer[offset++] = (byte) (value >>> 32);
-                byteBuffer[offset++] = (byte) (value >>> 40);
-                byteBuffer[offset++] = (byte) (value >>> 48);
-                byteBuffer[offset++] = (byte) (value >>> 56);
-            }
-            return offset;
-        }
-
         private int serializeEnd(int offset) {
             // Zero to indicate end of nodes.
             Bytes.intToBytesLE(0, byteBuffer, offset);
@@ -425,6 +449,21 @@ public class StoredTrans {
 
             byteBuffer[offset] = RecoverableStream.LAST_BYTE;
             offset += 1;
+            return offset;
+        }
+
+        private int copyLongBufferToByteBuffer(int longOffset, int offset) {
+            for (int j = 0; j < longOffset; j++) {
+                long value = longBuffer[j];
+                byteBuffer[offset++] = (byte) value;
+                byteBuffer[offset++] = (byte) (value >>> 8);
+                byteBuffer[offset++] = (byte) (value >>> 16);
+                byteBuffer[offset++] = (byte) (value >>> 24);
+                byteBuffer[offset++] = (byte) (value >>> 32);
+                byteBuffer[offset++] = (byte) (value >>> 40);
+                byteBuffer[offset++] = (byte) (value >>> 48);
+                byteBuffer[offset++] = (byte) (value >>> 56);
+            }
             return offset;
         }
 
@@ -483,7 +522,7 @@ public class StoredTrans {
     private static void testSerialize1() {
         Serializer serializer = new Serializer();
         TransNodes transNodes = new TransNodes();
-        serializer.serialize(transNodes, 100, 200);
+        serializer.serialize(transNodes, 100, 200, -1);
         byte[] buffer = serializer.getOutputTransBuffer();
         
         Parser parser = new Parser();
@@ -492,6 +531,33 @@ public class StoredTrans {
         assertEquals(0, parser.nodes.length);
         assertEquals(100, parser.transactionTime);
         assertEquals(200, parser.pos);
+    }
+    
+    @T
+    private static void testSerializeWithNewStartupPos1() {
+        Serializer serializer = new Serializer();
+        TransNodes transNodes = new TransNodes();
+        serializer.serialize(transNodes, 100, 200, 12345);
+        byte[] buffer = serializer.getOutputTransBuffer();
+        
+        Parser parser = new Parser();
+        parser.parse(200, buffer);
+        
+        assertEquals(12345, parser.newStartupPos);
+    }
+    
+    @T
+    private static void testSerializeWithNewStartupPos2() {
+        Serializer serializer = new Serializer();
+        TransNodes transNodes = new TransNodes();
+        serializer.serialize(transNodes, 100, 200, -1);
+        byte[] buffer = serializer.getOutputTransBuffer();
+        
+        Parser parser = new Parser();
+        parser.parse(200, buffer);
+        
+        assertEquals(-1, parser.newStartupPos);
+        assertFalse(parser.hasNewStartupPos());
     }
     
     @T
@@ -513,7 +579,7 @@ public class StoredTrans {
         transNodes.addValueNode(v2, Keys.toSegments("c"));
         transNodes.addKeyNode(n);
         
-        serializer.serialize(transNodes, 100, 200);
+        serializer.serialize(transNodes, 100, 200, -1);
         byte[] buffer = serializer.getOutputTransBuffer();
         
         Parser parser = new Parser();
@@ -546,7 +612,7 @@ public class StoredTrans {
         transNodes.addValueNode(v0, Keys.toSegments("a"));
         transNodes.addKeyNode(n);
         
-        serializer.serialize(transNodes, 100, 200);
+        serializer.serialize(transNodes, 100, 200, -1);
         byte[] buffer = serializer.getOutputTransBuffer();
         Parser parser = new Parser();
         parser.parse(200, buffer);
@@ -566,7 +632,7 @@ public class StoredTrans {
         
         long time = 120;
         long transPos = 0;
-        serializer.serialize(transNodes, time, transPos);
+        serializer.serialize(transNodes, time, transPos, -1);
         Parser parser = new Parser();
         parser.parse(transPos, serializer.getOutputTransBuffer());
         
@@ -581,7 +647,7 @@ public class StoredTrans {
         Serializer serializer = new Serializer();
         TransNodes nodes = new TransNodes();
         nodes.addValueNode(new ValueNode(new byte[]{1, 2, 3}), Keys.toSegments("key1"));
-        serializer.serialize(nodes, 101, 0);
+        serializer.serialize(nodes, 101, 0, -1);
         byte[] buffer = serializer.getOutputTransBuffer();
         
         StoredTrans stored = StoredTrans.parse(0, buffer);

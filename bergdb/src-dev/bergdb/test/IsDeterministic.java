@@ -70,10 +70,10 @@ public class IsDeterministic {
                     NodeStream mNodeStream = (NodeStream) db.getStream();
                     
                     c.out().println("======== IsDeterministic.testOneKV, first ========");
-                    firstNodeStream.printStream(System.out);
+                    firstNodeStream.print(System.out);
                     
                     c.out().println("======== IsDeterministic.testOneKV, m, i=" + i + " ========");
-                    mNodeStream.printStream(System.out);
+                    mNodeStream.print(System.out);
                     
                     throw e;
                 }
@@ -116,10 +116,10 @@ public class IsDeterministic {
                     NodeStream mNodeStream = (NodeStream) db.getStream();
                     
                     c.out().println("======== IsDeterministic.testMultipleTransactions, first ========");
-                    firstNodeStream.printStream(System.out);
+                    firstNodeStream.print(System.out);
                     
                     c.out().println("======== IsDeterministic.testMultipleTransactions, m, i=" + i + " ========");
-                    mNodeStream.printStream(c.out());
+                    mNodeStream.print(c.out());
                     
                     throw e;
                 }

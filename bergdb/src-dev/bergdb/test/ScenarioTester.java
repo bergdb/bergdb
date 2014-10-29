@@ -11,6 +11,7 @@ import bergdb.core.StartupPosUpdater;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.GetMany;
+import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.TestCollector;
 import static bergdb.nanotest.Assert.assertEquals;
@@ -253,39 +254,54 @@ public class ScenarioTester {
         Assert.assertEquals(sum1, sum2);
     }
     
+    /**
+     * Two transactions with multi-klong keys: t1, t2. t2 sets startup pos to t1.pos.
+     */
     @T private static void testScenario106(TestCollector c) throws InterruptedException {
-        int n = 6;
+        
+        // TODO A. internal state differs before and after restart.
+        // How to handle startup pos updater? Updates must be the same after startup rerun
+        // as it was originally to recreate the exact same internal state.
+        
+        System.out.println("======== testScenario106 ========");
+        
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(5*1000).start();
-        final int valueSize = 1000;
+        StartupPosUpdater.TestUpdater updater = new StartupPosUpdater.TestUpdater();
         
-        int i = 0;
-        for (String keyString : KeyFactory.shortRandomKeys(n)) {
-            clock.setTime(1000 + i);
-            byte[] key = Util.toBytes(keyString);
-            byte[] value = new byte[valueSize];
-            value[0] = (byte) keyString.hashCode();
-            Trans t = Trans.builder().put(key, value).build();
-            db.execute(t);
-            i++;
-        }
+        Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(5*1000).start();
+        db.internal().setStartupPosUpdater(updater);
+        
+        Trans t1 = Trans.builder().put("/key1-suffix", new byte[0]).build();
+        db.execute(t1);
+        
+        updater.setNextPos(t1.pos);
+        Trans t2 = Trans.builder().put("/key2-suffix", new byte[0]).build();
+        db.execute(t2);
         
         System.out.println("---- printGraph ----");
         db.printGraph(System.out);
         long sum1 = DbUtil.checksum(db);
         
         db.sync(SyncLevel.ORDINARY);
+        
+        System.out.println("\nSTREAM: [[");
+        db.getStream().print(System.out);
+        System.out.println("]]");
+        
         db.stop();
         
         // Restart
         
         db = Db.builder().testSetup(stream).build();
         db.start();
+        
+        System.out.println("---- printGraph ----");
+        db.printGraph(System.out);
+        
         long sum2 = DbUtil.checksum(db);
         db.stop();
         
         Assert.assertEquals(sum1, sum2);
-        
     }
 }
