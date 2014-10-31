@@ -263,7 +263,7 @@ public class ScenarioTester {
         // How to handle startup pos updater? Updates must be the same after startup rerun
         // as it was originally to recreate the exact same internal state.
         
-        System.out.println("======== testScenario106 ========");
+        //System.out.println("======== testScenario106 ========");
         
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
@@ -279,15 +279,15 @@ public class ScenarioTester {
         Trans t2 = Trans.builder().put("/key2-suffix", new byte[0]).build();
         db.execute(t2);
         
-        System.out.println("---- printGraph ----");
-        db.printGraph(System.out);
+        //System.out.println("---- printGraph ----");
+        //db.printGraph(System.out);
         long sum1 = DbUtil.checksum(db);
         
         db.sync(SyncLevel.ORDINARY);
         
-        System.out.println("\nSTREAM: [[");
-        db.getStream().print(System.out);
-        System.out.println("]]");
+        //System.out.println("\nSTREAM: [[");
+        //db.getStream().print(System.out);
+        //System.out.println("]]");
         
         db.stop();
         
@@ -296,8 +296,8 @@ public class ScenarioTester {
         db = Db.builder().testSetup(stream).build();
         db.start();
         
-        System.out.println("---- printGraph ----");
-        db.printGraph(System.out);
+        //System.out.println("---- printGraph ----");
+        //db.printGraph(System.out);
         
         long sum2 = DbUtil.checksum(db);
         db.stop();

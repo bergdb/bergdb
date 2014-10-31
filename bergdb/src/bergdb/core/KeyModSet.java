@@ -4,7 +4,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
 
 /**
- * An implementation of IKeyModSet that stores a fixed maximum number of hash(key)-time pairs.
+ * An implementation of IKeyModSet that stores a fixed maximum number of hashOfKey-time pairs.
  * 
  * @author Frans Lundberg
  */
@@ -204,6 +204,9 @@ public class KeyModSet implements IKeyModSet {
         }
     }
 
+    
+    // ======== Tests ========
+    
     @T
     public static void test1() {
         // Any request with time < 1 should return true.

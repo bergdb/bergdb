@@ -685,8 +685,8 @@ public class Db {
         x.kvTransNodes.addKeyNode(root);
         x.kvTransNodes.addTopNode(superRoot);
         
-        appendKvTransToStream();
-        appendIndexTransToStream(newStartupPos());
+        storeKvTrans();
+        storeIndexTrans(newStartupPos());
         
         x.lastSposOfLastTrans = trans.lastPos;
         
@@ -1062,8 +1062,7 @@ public class Db {
     }
     
     /**
-     * Executes a transaction; this is the heart of the transaction handling;
-     * implements the STM approach for concurrency control.
+     * Executes a transaction; this is the heart of the transaction handling.
      * 
      * @throws RerunException
      * @throws StreamFormatException
@@ -1071,9 +1070,8 @@ public class Db {
      * @throws InternalDataException
      */
     private void executeInner(Trans t) {
-        //
         // We make sure all readers have a read time that is strictly less than
-        // t.transTime while the synchronized(writeLock) clause is executing.
+        // t.time while the synchronized(writeLock) clause is executing.
         // This is handled by dbClock.
         //
         
@@ -1082,15 +1080,7 @@ public class Db {
         synchronized (writeLock) {
             x.begin(t);
             
-            // Returns to caller with a RerunException if any key was modified after 
-            // the read time of the transaction.
-            // This is the essence of the STM (software transactional memory) approach.
-
-            for (long hash : t.readKeyHashes) {
-                if (keyModSet.modifiedAfter(t.readTime, hash)) {
-                    throw new RerunException(hash);
-                }
-            }
+            stmCheckConflicts(t);
 
             try {
                 t.time = dbClock.transactionBegin();
@@ -1099,21 +1089,20 @@ public class Db {
                 synchronized (readSync) {}
                     // Publishes the changes by the writer thread to the readers. This is done
                     // before the t.transTime can be used as lookup time, so all readers
-                    // (that do: "synchronized (readSynch) {}") are guaranteed to see all changes
-                    // made by the writer (the thread executing this code).
+                    // (that do: "synchronized (readSynch) {}") are guaranteed to see all 
+                    // in-memory changes made by the writer (the thread executing this code).
+                
             } finally {
                 dbClock.transactionEnd();
-                    // After above line, read operations can use the lookuptime t.transTime.
+                    // After this, read operations can use the lookuptime t.time.
             }
             
-            for (int i = 0; i < t.writeKeyHashes.length; i++) {
-                keyModSet.add(t.time, t.writeKeyHashes[i]);
-            }
+            stmRecordKeys(t);
 
             aux.updateStats();
             
-            appendKvTransToStream();
-            appendIndexTransToStream(newStartupPos());
+            storeKvTrans();
+            storeIndexTrans(newStartupPos()); 
             
             x.startupPos.releaseForEvict();
             
@@ -1130,14 +1119,42 @@ public class Db {
             reclaimTransactionListener.transactionCompleted(t);    
         }
     }
-    
-    
 
+    /**
+     * Returns to caller with a RerunException if any key was modified after 
+     * the read time of the transaction. This is the essence of the 
+     * STM (software transactional memory) approach.
+     * 
+     * @throws RerunException
+     */
+    private final void stmCheckConflicts(Trans t) {
+        for (long hash : t.readKeyHashes) {
+            if (keyModSet.modifiedAfter(t.readTime, hash)) {
+                throw new RerunException(hash);
+            }
+        }
+    }
+
+    /**
+     * Records hash values of the keys for the KVs updated by the transaction, t.
+     */
+    private void stmRecordKeys(Trans t) {
+        // Note, possible refactoring: Extract stm methods to Stm class, or merge with KeyModSet.
+        
+        for (int i = 0; i < t.writeKeyHashes.length; i++) {
+            keyModSet.add(t.time, t.writeKeyHashes[i]);
+        }
+    }
+    
     /**
      * Reads the KVs as warm-up; aims to avoid lengthy disk reads and cache
      * misses while synchronizing on this.writeLock. We want to minimize the time holding
      * this.writeLock. However, if we do write transactions from a single thread anyway, it
      * would be better to void these get operations (would save 10-20% CPU for execute()).
+     * This is a trade-off. Of course, we could have optimization setting for this:
+     * [enum ThreadOptimization { SINGLE_WRITE_THREAD, MULTIPLE_WRITE_THREADS }].
+     * But, until proven important enough, we keep variability as low as possible and focus
+     * on best "worst-case" performance (worst-case performance vs best-case performance).
      */
     private final void warmup(Trans t) {
         final long readTime = dbClock.lookupTime(Long.MAX_VALUE);
@@ -1153,7 +1170,8 @@ public class Db {
         gd.evictData.enableEvict = enableEvict;
     }
 
-    private void appendKvTransToStream() {
+    /** Appends the KV transaction to the db stream and updates KvTransSeq. */
+    private void storeKvTrans() {
         assert x.trans != null : "trans is null";
         assert x.kvTransNodes != null : "transNodes is null";
         
@@ -1168,15 +1186,19 @@ public class Db {
         x.kvTransNodes.clean();
     }
 
-    private void appendIndexTransToStream(long newStartupPos) {        
+    /** Appends the index transaction to the db stream and updates startupPos. */
+    private void storeIndexTrans(long newStartupPos) {
+        // Note, we could re-use nodeTrans object for performance like we do for
+        // storeKvTrans (x.kvTransNodes).
+        
         kvTransSeq.addToTransNodes(newStartupPos, x.indexTransNodes);
         kvTransSeq.removeBefore(newStartupPos);
         
-        Trans nodeTrans = Trans.builder().build();    // Note, we could re-use this for performance
-        nodeTrans.isInternal = true;
-        nodeTrans.time = x.trans.time;
-        
         if (x.indexTransNodes.size() > 0) {
+            Trans nodeTrans = Trans.builder().build();
+            nodeTrans.isInternal = true;
+            nodeTrans.time = x.trans.time;
+            
             nodeStream.appendNodes(x.indexTransNodes, nodeTrans);
             x.indexTransNodes.clean();
         }
@@ -1198,6 +1220,11 @@ public class Db {
      * write access to the data structure (synchronized (writeLock)). However, there may be
      * concurrent readers that read with a lookup time strictly less than the transaction time
      * (trans.time).
+     *
+     * @throws IllegalDbStateException
+     * @throws StreamFormatException
+     * @throws StreamIoException
+     * @throws DbException
      */
     private final void putKvs() {
         assert Thread.holdsLock(writeLock);
@@ -1356,7 +1383,7 @@ public class Db {
     
     /**
      * Returns access to the internals of Db.
-     * Do NOT use for normal operation.
+     * Warning, this method is for internal use only.
      */
     public Internal internal() {
         return internal;
