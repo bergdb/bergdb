@@ -494,22 +494,28 @@ public class Db {
         ArrayList<StoredTrans> transactions = readTransactions(x.startupPos.get());
         listener.reportStartupTransactions(transactions);
         setLastTransTimeOfDbClock(transactions);
+        
         startDag(transactions);
         
-        x.putData = createPutData();
-        x.getData = newGetData();
+        createPutAndGetData();
         
         this.state = DbState.ACTIVE;
         reclaim.initFromDb();
     }
 
+    private void createPutAndGetData() {
+        x.putData = createPutData();
+        x.getData = newGetData();
+    }
+
     private void startDag(ArrayList<StoredTrans> transactions) {
         DagStarter.Result result = DagStarter.start(transactions, getAccessData(), nodeStream, maxNodeSize);
         dag = result.getDag();
+        
+        //DbStarter.Result result = DbStarter.start(this, transactions, getAccessData(), nodeStream, maxNodeSize);
+        
         aux.cachedMemoryValue.set(result.getCachedMemoryValue());
         kvTransSeq = result.getKvTransSeq();
-        
-        assert dag != null : "dag null in Db.startDag";
     }
 
     /**
@@ -813,17 +819,21 @@ public class Db {
      *             If there was an i/o error with the database stream.
      */
     public byte[] getOne(long lookupTime, long[] keySegments, GetData gd) {
-        //
-        // Few assumptions of previous state of gd are assumed. db.kwi must be non-null, however.
-        //
-
         assert gd != null;
         assert gd.kwi != null;
+        
+        assertDbStateIsActive("getOne");
 
         // Makes sure writes from startup and execute() are visible.
         synchronized (readSync) {}
         
-        assertDbStateIsActive("get");
+        return getOneInternal(lookupTime, keySegments, gd);
+    }
+    
+    public byte[] getOneInternal(long lookupTime, long[] keySegments, GetData gd) {
+        //
+        // Few assumptions of previous state of gd are assumed. db.kwi must be non-null, however.
+        //
         
         long firstAvailable = reclaim.getFirstAvailableLookupTime();
         if (lookupTime < firstAvailable) {
@@ -1104,9 +1114,6 @@ public class Db {
 
             storeKvTrans();
             
-            //long sp1 = x.startupPos.get();
-            //long sp2 = computeNewStartupPos();
-            
             long sp0 = x.startupPos.get();
             long sp1;
             if (x.trans.isRerun) {
@@ -1176,6 +1183,9 @@ public class Db {
      * on best "worst-case" performance (worst-case performance vs best-case performance).
      */
     private final void warmup(Trans t) {
+        assert x != null : "x == null";
+        assert x.getData != null : "x.getData == null";
+        
         final long readTime = dbClock.lookupTime(Long.MAX_VALUE);
         final GetData gd = x.getData;
 
@@ -1183,7 +1193,7 @@ public class Db {
         gd.evictData.enableEvict = false;
 
         for (Kv kv : t.kvs) {
-            this.getOne(readTime, kv.getKey(), gd);
+            this.getOneInternal(readTime, kv.getKey(), gd);
         }
 
         gd.evictData.enableEvict = enableEvict;
@@ -1445,39 +1455,31 @@ public class Db {
      * for developement, testing, and internal use.
      */
     public class Internal {
-        public TopNode superRoot() {
-            return dag.getSuperRoot();
-        }
+        public TopNode superRoot() { return dag.getSuperRoot(); }
         
-        public Dag dag() {
-            return dag;
+        public Dag dag() { return dag; }
+        
+        public void setDag(Dag d) { 
+            dag = d;
         }
 
-        public long getStartupPos() {
-            return x.startupPos.get();
-        }
+        public long getStartupPos() { return x.startupPos.get(); }
 
-        public Object getWriteLock() {
-            return writeLock;
-        }
+        public Object getWriteLock() { return writeLock; }
         
-        /**
-         * Returns the readSynch lock Object.
-         */
-        public Object getReadSynch() {
-            return readSync;
-        }
+        public Object getReadSynch() { return readSync; }
         
-        public ExecuteData x() {
-            return x;
-        }
+        public ExecuteData x() { return x; }
         
-        /** Used for testing only. */
         public void setStartupPosUpdater(StartupPosUpdater u) {
             synchronized (writeLock) {
                 startupPosUpdater = u;
             }
         }
+        
+        public void executeInner(Trans t) { Db.this.executeInner(t); }
+        
+        public void createPutAndGetData() { Db.this.createPutAndGetData(); }
     }
     
     /**

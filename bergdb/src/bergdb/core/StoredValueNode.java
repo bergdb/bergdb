@@ -27,6 +27,10 @@ public class StoredValueNode implements StoredNode {
         return node;
     }
     
+    public final ValueNode getValueNode() {
+        return node;
+    }
+    
     public long getPrevPos() {
         return Spos.NULL;
     }

@@ -94,7 +94,7 @@ public class DagStarter {
 
     private void rerunTransactions(PutData pd) {
         for (StoredTrans stored : transactions) {            
-            if (stored.isNodeTransaction()) {
+            if (stored.isIndexTransaction()) {
                 for (StoredNode n : stored.nodes) {
                     n.getNode().setDirty(false);
                 }

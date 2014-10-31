@@ -37,7 +37,7 @@ public class StoredTrans {
 
     /** The spos of the last byte of the transaction. */
     public final long lastPos;
-
+    
     /** The nodes of the transaction. */
     public final StoredNode[] nodes;
     
@@ -60,16 +60,22 @@ public class StoredTrans {
         return newStartupPos != -1;
     }
     
-    public Trans createRerunTransaction() {
-        // NOTE needs to handle DELETE ops later.
-        
+    public Trans createRerunTransaction() {        
         List<StoredValueNode> storedValueNodes = extractValueNodes();
         
         Trans.Builder b = Trans.builder();
         for (StoredValueNode n : storedValueNodes) {
             assert n.getKey() != null : "key is null, " + n;
             assert n.getKey().length > 0 : "Bad key, zero-length";
-            b.put(n.getKey(), n.getNode().getValue());
+            
+            ValueNode node = n.getValueNode();
+            long[] key = n.getKey();
+            
+            if (node.isDelete()) {
+                b.delete(key);
+            } else {
+                b.put(key, node.getValue());
+            }
         }
         
         Trans trans = b.build();
@@ -77,11 +83,12 @@ public class StoredTrans {
         trans.pos = pos;
         trans.lastPos = lastPos;
         trans.time = tt;
+        trans.isRerun = true;
         
-        return b.build();
+        return trans;
     }
     
-    public boolean isNodeTransaction() {
+    public boolean isIndexTransaction() {
         boolean result = true;
         for (StoredNode stored : nodes) {
             if (!stored.getNode().isIndexNode()) {
