@@ -15,7 +15,7 @@ import bergdb.stream.MemoryStream;
 public class DbTesterRestart {
 
     @T
-    public static void simple0() {
+    public static void test0() {
         // Simple restart, Db with one single value.
         
         byte[] value;
@@ -146,6 +146,8 @@ public class DbTesterRestart {
         db.sync(SyncLevel.ORDINARY);
         
         //db.printGraph(System.out);
+        //db.getStream().print(System.out);
+        
         db = null;
         
         // Restart

@@ -509,10 +509,10 @@ public class Db {
     }
 
     private void startDag(ArrayList<StoredTrans> transactions) {
-        DagStarter.Result result = DagStarter.start(transactions, getAccessData(), nodeStream, maxNodeSize);
-        dag = result.getDag();
+        //DagStarter.Result result = DagStarter.start(transactions, getAccessData(), nodeStream, maxNodeSize);
+        //dag = result.getDag();
         
-        //DbStarter.Result result = DbStarter.start(this, transactions, getAccessData(), nodeStream, maxNodeSize);
+        DbStarter.Result result = DbStarter.start(this, transactions, getAccessData(), nodeStream, maxNodeSize);
         
         aux.cachedMemoryValue.set(result.getCachedMemoryValue());
         kvTransSeq = result.getKvTransSeq();
@@ -1096,7 +1096,8 @@ public class Db {
             stmCheckConflicts(t);
 
             try {
-                t.time = dbClock.transactionBegin();
+                if (!t.isRerun) t.time = dbClock.transactionBegin();
+                
                 putKvs();
 
                 synchronized (readSync) {}
@@ -1106,7 +1107,7 @@ public class Db {
                     // in-memory changes made by the writer (the thread executing this code).
                 
             } finally {
-                dbClock.transactionEnd();
+                if (!t.isRerun) dbClock.transactionEnd();
                     // After this, read operations can use the lookuptime t.time.
             }
             
@@ -1203,6 +1204,7 @@ public class Db {
     private void storeKvTrans() {
         assert x.trans != null : "trans is null";
         assert x.kvTransNodes != null : "transNodes is null";
+        assert kvTransSeq != null : "kvTransSeq is null";
         
         x.trans.nodeCount = x.kvTransNodes.size();
         
@@ -1210,8 +1212,8 @@ public class Db {
         x.transInfo.tpos = x.trans.pos;
         x.transInfo.lastPos = x.trans.lastPos;
         x.transInfo.tt = x.trans.time;
+       
         kvTransSeq.add(x.transInfo);
-        
         x.kvTransNodes.clean();
     }
 
@@ -1459,9 +1461,7 @@ public class Db {
         
         public Dag dag() { return dag; }
         
-        public void setDag(Dag d) { 
-            dag = d;
-        }
+        public void setDag(Dag d) { dag = d; }
 
         public long getStartupPos() { return x.startupPos.get(); }
 
@@ -1480,6 +1480,8 @@ public class Db {
         public void executeInner(Trans t) { Db.this.executeInner(t); }
         
         public void createPutAndGetData() { Db.this.createPutAndGetData(); }
+
+        public void setKvTransSeq(KvTransSeq seq) { Db.this.kvTransSeq = seq; }
     }
     
     /**

@@ -54,7 +54,7 @@ public class Trans {
     // -- Other --
     boolean isInternal;             // True if transaction is executed on behalf of the database itself.
     boolean isRerun;                // True if used at startup for transaction rerun.
-    long storedStartupPos;          // startupPos stored in stream with transaction, -1 for "no update".
+    long storedStartupPos = -1;     // startupPos stored in stream with transaction, -1 for "no update".
     
     
     private Trans() {
@@ -76,7 +76,9 @@ public class Trans {
      */
     public String print() {
         StringBuilder b = new StringBuilder();
-        b.append("readTime: " + readTime + "\n");
+        b.append("pos: " + pos + "\n");
+        b.append("isRerun: " + isRerun + "\n");
+        b.append("storedNewStartupPos: " + storedStartupPos + "\n");
         b.append("readKeyHashes: ");
         for (int i = 0; i < this.readKeyHashes.length; i++) {
             b.append(readKeyHashes[i] + " ");

@@ -138,23 +138,21 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         assert nodes.assertNoDuplicates();
         
         if (trans.pos <= 0) {
-            throw new Bug("trans.pos not set, was " + trans.pos);
+            throw new Bug("trans.pos not set, was " + trans.pos + ", trans: " + trans);
         }
         
-        //long pos = rstream.getNextSpos();
-        serializer.serialize(nodes, trans.time, trans.pos, -1);
-        // XXX fix -1
+        serializer.serialize(nodes, trans.time, trans.pos, trans.storedStartupPos);
 
         long lastPos = serializer.getOutputLastSpos();
         long nextPos = serializer.getOutputNextSpos();
         
         if (trans.lastPos != lastPos) {
-            throw new IllegalStateException("trans.lastPos:" + trans.lastPos + ", lastPos:" + lastPos);
+            throw new IllegalStateException("trans.pos: " + trans.pos 
+                    + ", trans.lastPos (from rerun):" + trans.lastPos 
+                    + ", lastPos from Serializer:" + lastPos);
         }
         
-        if (trans.nextPos != nextPos) {
-            throw new IllegalStateException("trans.nextPos:" + trans.lastPos + ", nextPos:" + nextPos);
-        }
+        trans.nextPos = nextPos;
         
         byte[] buffer = serializer.getTransBuffer();
         int bufferSize = serializer.getOutputTransSize();
@@ -166,15 +164,23 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         
         rstream.getMetaBlock().setLastTransSpos(trans.pos);
  
-        // XXX set startupPos in rstream.getMetaBlock here?
+        // A. set startupPos in rstream.getMetaBlock here?
     }
 
-    private void checkEqualBytes(int bufferSize, byte[] buffer, byte[] streamBytes) {
-        for (int i = 0; i < bufferSize; i++) {
-            if (buffer[i] != streamBytes[i]) {
-                throw new IllegalStateException("transBytes and streamBytes are not equal, i:" + i);
+    private void checkEqualBytes(int size, byte[] transBytes, byte[] streamBytes) {
+        for (int i = 0; i < size; i++) {
+            if (transBytes[i] != streamBytes[i]) {
+                String diff = analyseDiff(size, transBytes, streamBytes);
+                throw new IllegalStateException(
+                        "transBytes and streamBytes are not equal, i:" + i + ". Diff: " + diff);
             }
         }
+    }
+
+    private String analyseDiff(int size, byte[] transBytes, byte[] streamBytes) {
+        StoredTrans t1 = StoredTrans.parse(100, transBytes);
+        StoredTrans t2 = StoredTrans.parse(100, streamBytes);
+        return "transBytes:\n" + t1 + "\nstreamBytes:\n" + t2;
     }
 
     public long getLastTransSpos() {

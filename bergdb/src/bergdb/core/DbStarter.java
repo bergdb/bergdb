@@ -66,6 +66,8 @@ public class DbStarter {
         validateTransactions(transactions, 0);
         validateAccessData(accessData);
         
+        db.internal().setKvTransSeq(kvTransSeq);
+        
         if (isPrimordialTransaction()) {
             doFirstStartup();
             return;

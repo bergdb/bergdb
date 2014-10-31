@@ -103,7 +103,8 @@ public class StoredTrans {
         List<StoredValueNode> storedValueNodes = new ArrayList<StoredValueNode>();
         
         for (StoredNode n : nodes) {
-            if (n.getNode().getType() == INode.TYPE_VALUE) {
+            byte type = n.getNode().getType();
+            if (type == INode.TYPE_VALUE || type == INode.TYPE_DELETE) {
                 storedValueNodes.add((StoredValueNode) n);
             }
         }
@@ -127,6 +128,15 @@ public class StoredTrans {
         b.append("tt:" + tt + ", tpos:" + pos);
         b.append(", nodeCount:" + this.nodes.length);
         return b.toString();
+    }
+    
+    /** Returns number of zero bytes to add to provided transaction size. */
+    private static int computeZeroCount(long transSizeBefore) {
+        final int N = NodeStream.TRANS_ALIGNMENT;
+        int result = (int) (N - transSizeBefore % N);
+        result = (result == 8) ? 0 : result;
+        assert result >= 0 && result < 8 : "result:" + result;
+        return result;
     }
 
     /**
@@ -210,7 +220,17 @@ public class StoredTrans {
             }
 
             nodes = nodeList.toArray(new StoredNode[nodeList.size()]);
-            lastPos = RecoverableStream.getSpos(transPos, offset - 1);
+            
+            // Room for RecoverableStream.LAST_BYTE.
+            offset += 1;     
+            
+            int transSizeBefore = offset;
+            int count = computeZeroCount(transSizeBefore);
+            int transSize = transSizeBefore + count;
+            lastPos = RecoverableStream.getSpos(transPos, transSize - 1);
+            
+            assert lastPos % NodeStream.TRANS_ALIGNMENT == (NodeStream.TRANS_ALIGNMENT - 1) 
+                    : "Bad lastPos: " + lastPos;
         }
         
         boolean hasNewStartupPos() {
@@ -371,15 +391,16 @@ public class StoredTrans {
                 currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
             }
 
+            // Marker for end of nodes
             totalSize += 4;
 
-            totalSize = totalSize + 1;
-            // Adds room for RecoverableStream.LAST_BYTE.
+            // Room for RecoverableStream.LAST_BYTE.
+            totalSize += 1;
 
             // For totalSize to be a multiple of TRANS_ALIGNMENT.
-
-            extraZeros = NodeStream.TRANS_ALIGNMENT - totalSize % NodeStream.TRANS_ALIGNMENT;
+            extraZeros = computeZeroCount(totalSize);
             totalSize += extraZeros;
+            
             assert totalSize % NodeStream.TRANS_ALIGNMENT == 0 : totalSize + ", " + extraZeros;
 
             transLastSpos = RecoverableStream.getSpos(transStartPos, totalSize - 1);
@@ -545,33 +566,6 @@ public class StoredTrans {
     }
     
     @T
-    private static void testSerializeWithNewStartupPos1() {
-        Serializer serializer = new Serializer();
-        TransNodes transNodes = new TransNodes();
-        serializer.serialize(transNodes, 100, 200, 12345);
-        byte[] buffer = serializer.getTransBuffer();
-        
-        Parser parser = new Parser();
-        parser.parse(200, buffer);
-        
-        assertEquals(12345, parser.newStartupPos);
-    }
-    
-    @T
-    private static void testSerializeWithNewStartupPos2() {
-        Serializer serializer = new Serializer();
-        TransNodes transNodes = new TransNodes();
-        serializer.serialize(transNodes, 100, 200, -1);
-        byte[] buffer = serializer.getTransBuffer();
-        
-        Parser parser = new Parser();
-        parser.parse(200, buffer);
-        
-        assertEquals(-1, parser.newStartupPos);
-        assertFalse(parser.hasNewStartupPos());
-    }
-    
-    @T
     private static void testSerialize2() {
         Serializer serializer = new Serializer();
         TransNodes transNodes = new TransNodes();
@@ -609,6 +603,50 @@ public class StoredTrans {
         
         byte[] value2 = ((ValueNode) parser.nodes[3].getNode()).value.clone();
         Assert.assertArrayEquals(new byte[]{13, 14}, value2);
+    }
+    
+    @T
+    public static void testSerializeTransWithDelete() {
+        Serializer s = new Serializer();
+        TransNodes transNodes = new TransNodes();
+        transNodes.addValueNode(ValueNode.createDelete(), Keys.toSegments("key1"));
+        s.serialize(transNodes, 100, 200, -1);
+        byte[] buffer = s.getTransBuffer();
+        
+        Parser parser = new Parser();
+        parser.parse(200, buffer);
+        
+        StoredNode[] stored = parser.nodes;
+        assertEquals(1, stored.length);
+        assertEquals(INode.TYPE_DELETE, stored[0].getNode().getType());
+        
+    }
+
+    @T
+    private static void testSerializeWithNewStartupPos1() {
+        Serializer serializer = new Serializer();
+        TransNodes transNodes = new TransNodes();
+        serializer.serialize(transNodes, 100, 200, 12345);
+        byte[] buffer = serializer.getTransBuffer();
+        
+        Parser parser = new Parser();
+        parser.parse(200, buffer);
+        
+        assertEquals(12345, parser.newStartupPos);
+    }
+    
+    @T
+    private static void testSerializeWithNewStartupPos2() {
+        Serializer serializer = new Serializer();
+        TransNodes transNodes = new TransNodes();
+        serializer.serialize(transNodes, 100, 200, -1);
+        byte[] buffer = serializer.getTransBuffer();
+        
+        Parser parser = new Parser();
+        parser.parse(200, buffer);
+        
+        assertEquals(-1, parser.newStartupPos);
+        assertFalse(parser.hasNewStartupPos());
     }
     
     @T
@@ -668,4 +706,6 @@ public class StoredTrans {
         assertArrayEquals(new byte[]{1, 2, 3}, trans.kvs[0].getValue());
         assertArrayEquals(Keys.toSegments("key1"), trans.kvs[0].getKey());
     }
+    
+    
 }
