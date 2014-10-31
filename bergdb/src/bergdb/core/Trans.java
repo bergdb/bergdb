@@ -52,7 +52,10 @@ public class Trans {
     public int nodeCount;           // Number of nodes written to stream. Useful for testing/debug.
           
     // -- Other --
-    boolean isInternal;             // True if transaction was executed on behalf of the database itself.
+    boolean isInternal;             // True if transaction is executed on behalf of the database itself.
+    boolean isRerun;                // True if used at startup for transaction rerun.
+    long storedStartupPos;          // startupPos stored in stream with transaction, -1 for "no update".
+    
     
     private Trans() {
         readKeyHashes = new long[0];

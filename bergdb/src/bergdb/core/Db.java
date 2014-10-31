@@ -587,6 +587,8 @@ public class Db {
                 // The gotDirty code in the PointerListener is not enough for
                 // the case when new top nodes are created.
                 // This method call assumes new nodes are not dirty.
+                
+                assert node.isDirty == false : "node is dirty, " + node;
                 makeDirtyIfNeeded(node);
             }
             
@@ -602,7 +604,7 @@ public class Db {
             }
         };
         
-        // Appending to existing pointerListener used by Dag.
+        // Extends existing pointerListener used by Dag.
         
         final Dag.PointerListener pListener = putData.pointerListener;
         
@@ -686,7 +688,7 @@ public class Db {
         x.kvTransNodes.addTopNode(superRoot);
         
         storeKvTrans();
-        storeIndexTrans(newStartupPos());
+        storeIndexTrans(computeNewStartupPos(), true, false);
         
         x.lastSposOfLastTrans = trans.lastPos;
         
@@ -1070,6 +1072,7 @@ public class Db {
      * @throws InternalDataException
      */
     private void executeInner(Trans t) {
+        //
         // We make sure all readers have a read time that is strictly less than
         // t.time while the synchronized(writeLock) clause is executing.
         // This is handled by dbClock.
@@ -1099,23 +1102,39 @@ public class Db {
             
             stmRecordKeys(t);
 
-            aux.updateStats();
-            
             storeKvTrans();
-            storeIndexTrans(newStartupPos()); 
+            
+            //long sp1 = x.startupPos.get();
+            //long sp2 = computeNewStartupPos();
+            
+            long sp0 = x.startupPos.get();
+            long sp1;
+            if (x.trans.isRerun) {
+                long storedSp = x.trans.storedStartupPos;
+                if (storedSp == -1) {
+                    sp1 = sp0;
+                } else {
+                    sp1 = storedSp;
+                }
+            } else {
+                sp1 = computeNewStartupPos();
+            }
+            
+            storeIndexTrans(sp1, sp1 == sp0, x.trans.isRerun); 
+            
+            aux.updateStats();
             
             x.startupPos.releaseForEvict();
             
             x.end();
 
-            // The synch statement below guarantees that the writes are visible to
-            // all readers assuming they also use the same statement as below
-            // before they start reading.
+            // The synch statement guarantees that the writes are visible to all readers 
+            // assuming they also do [synchronized(readSync) {}] before they start reading.
             synchronized (readSync) {}
             
-            // 1301 Frans. The following line moved to inside the synchronized
-            // (writeLock) block to KISS the reclaim stuff. However, fundamentally, it does not 
-            // have to belong to the writeLock code block.
+            // 1301 Frans. The below line moved to inside the synchronized (writeLock) block 
+            // to KISS the reclaim stuff. However, fundamentally, it does not have to 
+            // belong to the block.
             reclaimTransactionListener.transactionCompleted(t);    
         }
     }
@@ -1186,29 +1205,37 @@ public class Db {
         x.kvTransNodes.clean();
     }
 
-    /** Appends the index transaction to the db stream and updates startupPos. */
-    private void storeIndexTrans(long newStartupPos) {
+    /** 
+     * Appends the index transaction to the db stream and updates startupPos
+     * so it is effective for next transaction. 
+     */
+    private void storeIndexTrans(long newStartupPos, boolean wasSpIncreased, boolean isRerun) {
         // Note, we could re-use nodeTrans object for performance like we do for
         // storeKvTrans (x.kvTransNodes).
+        // NOTE Do we need double storage of startupPos? In MetaBlock and x.startupPos?
         
         kvTransSeq.addToTransNodes(newStartupPos, x.indexTransNodes);
         kvTransSeq.removeBefore(newStartupPos);
         
         if (x.indexTransNodes.size() > 0) {
-            Trans nodeTrans = Trans.builder().build();
-            nodeTrans.isInternal = true;
-            nodeTrans.time = x.trans.time;
+            Trans trans = Trans.builder().build();
+            trans.isInternal = true;
+            trans.time = x.trans.time;
+            trans.isRerun = isRerun;
+            trans.storedStartupPos = wasSpIncreased ? newStartupPos : -1;
             
-            nodeStream.appendNodes(x.indexTransNodes, nodeTrans);
+            nodeStream.appendNodes(x.indexTransNodes, trans);
             x.indexTransNodes.clean();
         }
 
         x.startupPos.set(newStartupPos);
-        nodeStream.getMetaBlock().setStartupPos(newStartupPos);
     }
 
-    /** Increases startupPos and returns the new value for it. */
-    private long newStartupPos() {
+    /** 
+     * Computes a new startupPos based on the current current startupPos,
+     * the stream length and the startupPosUpdater.
+     */
+    private long computeNewStartupPos() {
         long current = x.startupPos.get();
         long length = nodeStream.getLength();
         return startupPosUpdater.newStartupPos(

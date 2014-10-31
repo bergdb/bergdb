@@ -52,7 +52,7 @@ public class DagStarter {
     public static DagStarter.Result start(List<StoredTrans> transactions, long accessData,
             NodeReader nodeReader, int maxNodeSize) {
         DagStarter dagStarter = new DagStarter(transactions, accessData, nodeReader, maxNodeSize);
-        dagStarter.startInner();
+        dagStarter.start();
         return dagStarter.new Result();
     }
     
@@ -70,7 +70,7 @@ public class DagStarter {
     /**
      * Runs the startup algorithm.
      */
-    private void startInner() throws StreamException {
+    private void start() throws StreamException {
         validateTransactions(transactions, 0);
         validateAccessData(accessData);
         

@@ -2,6 +2,7 @@ package bergdb.core;
 
 import java.io.PrintStream;
 
+import bergdb.common.Bug;
 import bergdb.common.Bytes;
 import bergdb.dag.INode;
 import bergdb.dag.Spos;
@@ -27,7 +28,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     private final Object writeLock;
         // For asserting that caller of some methods holds the required DB.writeLock.
     
-    private final StoredTrans.Serializer transSerializer;
+    private final StoredTrans.Serializer serializer;
 
     /** Byte array with 64 zero bytes, useful for zero-fill of transaction buffer. */
     public static final byte[] ZEROS64 = new byte[64];
@@ -47,7 +48,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
             throw new IllegalArgumentException("writeLock == null not allowed");
         }
 
-        this.transSerializer = new StoredTrans.Serializer();
+        this.serializer = new StoredTrans.Serializer();
         this.rstream = rstream;
         this.writeLock = writeLock;
     }
@@ -95,29 +96,85 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     }
 
     /**
-     * Adds nodes to the stream as one single transaction. Caller must hold Db.writeLock.
+     * Appends nodes to the stream as one single transaction.
      * 
      * @param trans
-     *            Parameter for input/output, this method sets trans.tpos/lastSpos/nextSpos.
-     *            trans.transTime used as input.
+     *          The transaction; used for both input and output, 
+     *          this method sets trans.pos/lastSpos/nextSpos.
      * @throws StreamIoException
      */
     public void appendNodes(TransNodes nodes, Trans trans) {        
         assert nodes.assertNoDuplicates();
-        //assert assertNoMemoryPointersInKeyNodes(nodes);
         
-        long transTpos = rstream.getNextSpos();
-        transSerializer.serialize(nodes, trans.time, transTpos, -1);
+        if (trans.isRerun) {
+            doDummyAppend(nodes, trans);
+        } else {
+            doAppendNodes(nodes, trans);
+        }
+    }
+    
+    private void doAppendNodes(TransNodes nodes, Trans trans) {                
+        long pos = rstream.getNextSpos();
+        serializer.serialize(nodes, trans.time, pos, -1);
 
-        trans.pos = transTpos;
-        trans.lastPos = transSerializer.getOutputLastSpos();
-        trans.nextPos = transSerializer.getOutputNextSpos();
+        trans.pos = pos;
+        trans.lastPos = serializer.getOutputLastSpos();
+        trans.nextPos = serializer.getOutputNextSpos();
 
-        byte[] buffer = transSerializer.getOutputTransBuffer();
-        int bufferSize = transSerializer.getOutputTransSize();
+        byte[] buffer = serializer.getTransBuffer();
+        int bufferSize = serializer.getOutputTransSize();
 
         rstream.append(buffer, 0, bufferSize, true, trans.time);
-        rstream.getMetaBlock().setLastTransSpos(transTpos);
+        rstream.getMetaBlock().setLastTransSpos(pos);
+    }
+    
+    /**
+     * Similar to appendNodes(), but does not actually write to 
+     * db stream, instead it serializes and checks that the serialized transaction bytes
+     * matches what is in the stream already. Used when re-running transactions.
+     * trans.pos/lastPos/nextPos should be set correctly already.
+     */
+    private void doDummyAppend(TransNodes nodes, Trans trans) {        
+        assert nodes.assertNoDuplicates();
+        
+        if (trans.pos <= 0) {
+            throw new Bug("trans.pos not set, was " + trans.pos);
+        }
+        
+        //long pos = rstream.getNextSpos();
+        serializer.serialize(nodes, trans.time, trans.pos, -1);
+        // XXX fix -1
+
+        long lastPos = serializer.getOutputLastSpos();
+        long nextPos = serializer.getOutputNextSpos();
+        
+        if (trans.lastPos != lastPos) {
+            throw new IllegalStateException("trans.lastPos:" + trans.lastPos + ", lastPos:" + lastPos);
+        }
+        
+        if (trans.nextPos != nextPos) {
+            throw new IllegalStateException("trans.nextPos:" + trans.lastPos + ", nextPos:" + nextPos);
+        }
+        
+        byte[] buffer = serializer.getTransBuffer();
+        int bufferSize = serializer.getOutputTransSize();
+        
+        byte[] streamBytes = new byte[bufferSize];
+        rstream.read(trans.pos, streamBytes, 0, streamBytes.length);
+        
+        checkEqualBytes(bufferSize, buffer, streamBytes);
+        
+        rstream.getMetaBlock().setLastTransSpos(trans.pos);
+ 
+        // XXX set startupPos in rstream.getMetaBlock here?
+    }
+
+    private void checkEqualBytes(int bufferSize, byte[] buffer, byte[] streamBytes) {
+        for (int i = 0; i < bufferSize; i++) {
+            if (buffer[i] != streamBytes[i]) {
+                throw new IllegalStateException("transBytes and streamBytes are not equal, i:" + i);
+            }
+        }
     }
 
     public long getLastTransSpos() {

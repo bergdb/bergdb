@@ -41,6 +41,7 @@ public class StoredTrans {
     /** The nodes of the transaction. */
     public final StoredNode[] nodes;
     
+    /** The new startup pos, or -1 if no new startupPos. */
     public final long newStartupPos;
 
     private StoredTrans(Parser d) {
@@ -296,7 +297,7 @@ public class StoredTrans {
         }
 
         /** Returns the transaction buffer with the serialized transaction. */
-        public final byte[] getOutputTransBuffer() {
+        public final byte[] getTransBuffer() {
             return this.byteBuffer;
         }
 
@@ -315,11 +316,14 @@ public class StoredTrans {
 
         /**
          * Prepares for serialization by computing sizes; sets totalSize, transLastSpos,
-         * transNextSpos.
+         * transNextSpos. Sets spos for the nodes. This solves the inter-transaction stream
+         * pointer issue. Inter-transaction stream pointers will work, even when stream pointers 
+         * point forward.
          */
         private void prepareToSerialize() {
             // The three node loops sets new stream pos of nodes, sets ID if needed,
             // Also computes totalSize and sets prevPos array for KeyNodes.
+            // This is performance-sensitive; pretty code has lower-than-usual prio here.
 
             totalSize = 16; // Header size, 16 = trans size (4), empty (4), trans time (8)
             totalSize += (newStartupPos == -1 ? 0 : 8);
@@ -523,7 +527,7 @@ public class StoredTrans {
         Serializer serializer = new Serializer();
         TransNodes transNodes = new TransNodes();
         serializer.serialize(transNodes, 100, 200, -1);
-        byte[] buffer = serializer.getOutputTransBuffer();
+        byte[] buffer = serializer.getTransBuffer();
         
         Parser parser = new Parser();
         parser.parse(200, buffer);
@@ -538,7 +542,7 @@ public class StoredTrans {
         Serializer serializer = new Serializer();
         TransNodes transNodes = new TransNodes();
         serializer.serialize(transNodes, 100, 200, 12345);
-        byte[] buffer = serializer.getOutputTransBuffer();
+        byte[] buffer = serializer.getTransBuffer();
         
         Parser parser = new Parser();
         parser.parse(200, buffer);
@@ -551,7 +555,7 @@ public class StoredTrans {
         Serializer serializer = new Serializer();
         TransNodes transNodes = new TransNodes();
         serializer.serialize(transNodes, 100, 200, -1);
-        byte[] buffer = serializer.getOutputTransBuffer();
+        byte[] buffer = serializer.getTransBuffer();
         
         Parser parser = new Parser();
         parser.parse(200, buffer);
@@ -580,7 +584,7 @@ public class StoredTrans {
         transNodes.addKeyNode(n);
         
         serializer.serialize(transNodes, 100, 200, -1);
-        byte[] buffer = serializer.getOutputTransBuffer();
+        byte[] buffer = serializer.getTransBuffer();
         
         Parser parser = new Parser();
         parser.parse(200, buffer);
@@ -613,7 +617,7 @@ public class StoredTrans {
         transNodes.addKeyNode(n);
         
         serializer.serialize(transNodes, 100, 200, -1);
-        byte[] buffer = serializer.getOutputTransBuffer();
+        byte[] buffer = serializer.getTransBuffer();
         Parser parser = new Parser();
         parser.parse(200, buffer);
         
@@ -634,7 +638,7 @@ public class StoredTrans {
         long transPos = 0;
         serializer.serialize(transNodes, time, transPos, -1);
         Parser parser = new Parser();
-        parser.parse(transPos, serializer.getOutputTransBuffer());
+        parser.parse(transPos, serializer.getTransBuffer());
         
         assertEquals(1, parser.nodes.length);
         assertEquals(INode.TYPE_VALUE, parser.nodes[0].getNode().getType());
@@ -648,7 +652,7 @@ public class StoredTrans {
         TransNodes nodes = new TransNodes();
         nodes.addValueNode(new ValueNode(new byte[]{1, 2, 3}), Keys.toSegments("key1"));
         serializer.serialize(nodes, 101, 0, -1);
-        byte[] buffer = serializer.getOutputTransBuffer();
+        byte[] buffer = serializer.getTransBuffer();
         
         StoredTrans stored = StoredTrans.parse(0, buffer);
         Trans trans = stored.createRerunTransaction();
