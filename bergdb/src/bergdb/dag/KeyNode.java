@@ -5,6 +5,7 @@ import java.io.PrintStream;
 
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
+import bergdb.storage.StreamFormatException;
 
 // TODO LATER. lastTimeIndex, check usage. It it really useful enough? Could it be removed?
 
@@ -1291,52 +1292,34 @@ public class KeyNode implements INode {
      * Checks the state of the node and throws AssertionError if
      * is is not in a consistent state. There are a number of invariants.
      * Write access required (since this.lastTimeIndex is used).
+     * This method is not performant, could be much faster.
      */
     public void check() {
         short sz = this.size;
-        
-        // Checks sizes
-        
-        if (klongs.length < sz) {
-            throw new AssertionError("klongs.length too small, " + klongs.length + ", sz=" + sz);
-        }
-        
-        if (pointers.length < sz) {
-            throw new AssertionError("pointers.length too small, " + pointers.length + ", sz=" + sz);
-        }
-        
-        if (pos.length < sz) {
-            throw new AssertionError("pos.length too small, " + pos.length + ", sz=" + sz);
-        }
-        
-        // Checks lastTimeIndex. Could return bad result in multi-threaded situations.
-        
-        int index = this.lastTimeIndex;
-        if (index != -1) {
-            long klong = klongs[index];
-            Assert.assertEquals(Klong.TYPE_TIME, Klong.getType(klong));
-            long time = Klong.getTime(klong);
-            if (time < 0) {
-                throw new AssertionError("Bad time, " + time);
-            }
-        }
-        
-        // Checks for increasing time klongs
-        
-        long time = Long.MIN_VALUE;
+        checkSizes();
+        checkLastTimeIndex();
+        checkIncreasingTime();
+        checkMemoryPointers(sz);
+        checkStreamPointers(sz);
+    }
+
+    private void checkStreamPointers(short sz) throws AssertionError {
         for (int i = 0; i < sz; i++) {
             long klong = klongs[i];
-            if (Klong.getType(klong) == Klong.TYPE_TIME) {
-                long klongTime = Klong.getTime(klong);
-                if (klongTime <= time) {
-                    throw new AssertionError("Time not increasing, " + klongTime + ", " + time 
-                            + ", index=" + i);
+            if (Klong.getType(klong) == Klong.TYPE_KEY) {
+                if (pointers[i] == null) {
+                    long spos = pos[i];
+                    
+                    if (!Spos.isValidOrNull(spos)) {
+                        throw new AssertionError("Bad spos of pointer " + i + " of node " 
+                                + this + ".");
+                    }
                 }
             }
         }
-        
-        // Checks that memory pointers have accessData, not spos.
-        
+    }
+
+    private void checkMemoryPointers(short sz) throws AssertionError {
         for (int i = 0; i < sz; i++) {
             long klong = klongs[i];
             if (Klong.getType(klong) == Klong.TYPE_KEY) {
@@ -1350,19 +1333,95 @@ public class KeyNode implements INode {
                 }
             }
         }
-        
-        // Checks that stream pointers have a valid spos.
+    }
+
+    private void checkIncreasingTime() throws AssertionError {
+        long time = Long.MIN_VALUE;
+        short sz = this.size;
         
         for (int i = 0; i < sz; i++) {
             long klong = klongs[i];
-            if (Klong.getType(klong) == Klong.TYPE_KEY) {
+            if (Klong.getType(klong) == Klong.TYPE_TIME) {
+                long klongTime = Klong.getTime(klong);
+                if (klongTime <= time) {
+                    throw new AssertionError("Time not increasing, " + klongTime + ", " + time 
+                            + ", index=" + i);
+                }
+            }
+        }
+    }
+
+    private void checkLastTimeIndex() throws AssertionError {
+        int index = this.lastTimeIndex;
+        if (index != -1) {
+            long klong = klongs[index];
+            Assert.assertEquals(Klong.TYPE_TIME, Klong.getType(klong));
+            long time = Klong.getTime(klong);
+            if (time < 0) {
+                throw new AssertionError("Bad time, " + time);
+            }
+        }
+    }
+
+    private void checkSizes() throws AssertionError {
+        short sz = this.size;
+        
+        if (klongs.length < sz) {
+            throw new AssertionError("klongs.length too small, " + klongs.length + ", sz=" + sz);
+        }
+        
+        if (pointers.length < sz) {
+            throw new AssertionError("pointers.length too small, " + pointers.length + ", sz=" + sz);
+        }
+        
+        if (pos.length < sz) {
+            throw new AssertionError("pos.length too small, " + pos.length + ", sz=" + sz);
+        }
+    }
+    
+    /**
+     * Validates this node. Pointers for time > initTime are 
+     * allowed to be NULL (-1).
+     * 
+     * @throws StreamFormatException
+     */
+    public void validateStreamNode(long initTime) {
+        short sz = this.size;
+        
+        try {
+            checkSizes();
+            checkLastTimeIndex();
+            checkIncreasingTime();
+        } catch (AssertionError e) {
+            throw new StreamFormatException(e.getMessage());
+        }
+        
+        long klongTime = 0;
+        
+        for (int i = 0; i < sz; i++) {
+            long klong = klongs[i];
+            long type = Klong.getType(klong);
+            
+            if (type == Klong.TYPE_TIME) {
+                klongTime = Klong.getTime(klong);
+            } else if (type == Klong.TYPE_KEY) {
                 if (pointers[i] == null) {
+                    // if stream pointer...
                     long spos = pos[i];
                     
-                    if (!Spos.isValidOrNull(spos)) {
-                        throw new AssertionError("Bad spos of pointer " + i + " of node " 
-                                + this + ".");
+                    if (klongTime > initTime) {
+                        if (!Spos.isValidOrNull(spos)) {
+                            throw new StreamFormatException("Bad spos of pointer " + i + " of node " 
+                                    + this + ".");
+                        }
+                    } else {
+                        if (!Spos.isValid(spos)) {
+                            throw new StreamFormatException("Bad spos of pointer " + i + " of node " 
+                                    + this + ".");
+                        }
                     }
+                } else {
+                    // memory pointer, not further validation
                 }
             }
         }

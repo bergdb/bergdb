@@ -1,11 +1,11 @@
 package bergdb.dag;
 
-import bergdb.nanotest.Assert;
+import static bergdb.nanotest.Assert.*;
 import bergdb.nanotest.T;
 
 /**
  * An spos (stream position) is a unique identifier for a stream item
- * in the DB stream. For performance reasons, an spos is stored as a long, not in a special class.
+ * in the DB stream. For performance reasons, an spos is stored as a long, not with a special class.
  * This class provides functionality for handling spos values.
  * A valid spos for a position in the state-stream is always non-negative.
  * 
@@ -13,13 +13,15 @@ import bergdb.nanotest.T;
  */
 abstract public class Spos {
     // Note, set NULL to -2 to test if used everywhere where it should be used.
-    
-    private Spos() {}
+    // But, consider on-disk, at-customer data.
     
     /**
      * Used to indicate "no spos", not considered a "valid" Spos.
      */
     public static final long NULL = -1;
+    
+    /** No instances needed. */
+    private Spos() {}
     
     /**
      * Returns true if the long is a valid stream position (is non-negative).
@@ -32,7 +34,11 @@ abstract public class Spos {
      * Returns true if spos is a valid stream position (is non-negative) or NULL.
      */
     public static final boolean isValidOrNull(long spos) {
-        return isValid(spos) || spos == NULL;
+        return spos >= 0 || spos == NULL;
+    }
+    
+    public static final boolean isNull(long spos) {
+        return spos == NULL;
     }
     
     
@@ -40,6 +46,28 @@ abstract public class Spos {
     
     @T
     public static void testConstantCopy() {
-        Assert.assertEquals(NULL, bergdb.storage.Constants.SposNULL);
+        assertEquals(NULL, bergdb.storage.Constants.SposNULL);
+    }
+    
+    @T
+    public static void testIsNull() {
+        assertTrue(isNull(NULL));
+        assertFalse(isNull(12345));
+    }
+    
+    @T
+    public static void testIsValid() {
+        assertTrue(isValid(1200));
+        assertTrue(isValid(0));
+        assertFalse(isValid(-1234));
+        assertFalse(isValid(NULL));
+    }
+    
+    @T
+    public static void testIsValidOrNull() {
+        assertTrue(isValidOrNull(1200));
+        assertTrue(isValidOrNull(0));
+        assertFalse(isValidOrNull(-1234));
+        assertTrue(isValidOrNull(NULL));
     }
 }

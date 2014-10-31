@@ -74,7 +74,10 @@ public class DagStarter {
     /**
      * Runs the startup algorithm.
      */
-    private void startInner() throws StreamException { 
+    private void startInner() throws StreamException {
+        validateTransactions(transactions, 0);
+        validateAccessData(accessData);
+        
         if (isPrimordialTransaction()) {
             doFirstStartup();
             return;
@@ -85,6 +88,7 @@ public class DagStarter {
         createMemoryPointers();
         
         long initTime = computeInitTime();
+        validateTransactions(transactions, initTime);
         createDag(initTime);
         changeNodesToPreviousState(initTime);
         
@@ -250,11 +254,14 @@ public class DagStarter {
     }
     
     /**
-     * @throws StreamFormatException
+     * Validates stream transactions, pointers for time > initTime are allowed 
+     * to be NULL (-1).
+     * 
+     * @throws StreamFormatException 
+     *      If a transaction does not follow the db stream format. This should only happen
+     *      if the db stream was tampered with.
      */
-    private void validateTransactions(List<StoredTrans> transactions) {
-        // This code could be removed, or just called when when asserts enabled if
-        // it is determined that it takes significant time to run.
+    private void validateTransactions(List<StoredTrans> transactions, long initTime) {
         
         /*System.out.println("==== Startup transactions:");
         for (StoredTrans s : transactions) {
@@ -265,7 +272,7 @@ public class DagStarter {
         }*/
         
         if (transactions.size() == 0) {
-            throw new StreamFormatException("zero transactions for startup algorithm");
+            throw new StreamFormatException("No transactions for startup algorithm.");
         }
         
         for (int i = 0; i < transactions.size(); i++) {
@@ -275,17 +282,19 @@ public class DagStarter {
                 throw new StreamFormatException("null transaction, i = " + i);
             }
             
+            // t.version --- stream format version? Check?
+            
             if (!Spos.isValid(t.pos)) {
                 throw new StreamFormatException("Bad spos of transaction, " + t.toString());
             }
             
             for (StoredNode stored : t.nodes) {
-                validateNode(stored);
+                validateNode(stored, initTime);
             }
         }
     }
 
-    private void validateNode(StoredNode stored) {
+    private void validateNode(StoredNode stored, long initTime) {
         INode node = stored.getNode();
         if (node == null) {
             throw new StreamFormatException("getNode() returned null");
@@ -296,24 +305,13 @@ public class DagStarter {
             throw new StreamFormatException("Bad spos of node, spos=" + spos + ", node: " + node);
         }
         
-        if (node.getType() == INode.TYPE_KEY_NODE) {
+        switch (node.getType()) {
+        case INode.TYPE_KEY_NODE:
             KeyNode knode = (KeyNode) node;
-            int count = knode.getPointerCount();
+            knode.validateStreamNode(initTime);
+            break;
+        case INode.TYPE_TOP_NODE:
             
-            for (int k = 0; k < count; k++) {
-                long klong = knode.getKlong(k);
-                
-                if (Klong.getType(klong) == Klong.TYPE_KEY) {
-                    Pointer p = new Pointer();
-                    knode.getPointer(k, p);
-                    long ppos = p.getPos();
-                    if (!Spos.isValid(ppos)) {
-                        throw new StreamFormatException(
-                                "Bad spos (" + ppos + ") of Pointer " + k 
-                                + " from key node:\n" + knode.print());
-                    }
-                }
-            }
         }
     }
     
