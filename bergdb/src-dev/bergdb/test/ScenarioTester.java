@@ -172,25 +172,21 @@ public class ScenarioTester {
         assertEquals(sum1, sum2);
     }
     
-    @T private static void testScenario104() {
-        // Demonstrates bug 141027:
-        // bergdb.storage.StreamFormatException: Could not find super root node within startup node set.
-        // at bergdb.core.DagStarter.createMapsAndSearchForSuperRoot(DagStarter.java:357)
-        // ...
-        // at bergdb.test.ScenarioTester.testScenario104(ScenarioTester.java:210)
-        //
-        
+    @T private static void testScenario104() {        
         MemoryStream stream = new MemoryStream();
         StartupPosUpdater.TestUpdater updater = new StartupPosUpdater.TestUpdater();
         long startupPos;
         
-        Db db = Db.builder().testSetup().mainStream(stream).clock(new CoreTestClock()).build();
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup().mainStream(stream).clock(clock).build();
         db.internal().setStartupPosUpdater(updater);
         db.start();
         
+        clock.setTime(100);
         Trans t1 = Trans.builder().put("/key1", "v1").build();
         db.execute(t1);
         
+        clock.setTime(200);
         startupPos = t1.pos;
         updater.setNextPos(startupPos);
         Trans t2 = Trans.builder().put("/key2", "v2").build();

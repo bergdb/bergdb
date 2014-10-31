@@ -597,6 +597,13 @@ public class RecoverableStream {
             Assert.assertEquals(META_BLOCK_DISTANCE - META_BLOCK_SIZE, res);
         }
         
+        @SuppressWarnings("all")
+        @T
+        public static void testThatConstantsMatch() {
+            Assert.assertTrue(META_BLOCK_SIZE % TRANS_ALIGNMENT == 0);
+            Assert.assertTrue(META_BLOCK_DISTANCE % TRANS_ALIGNMENT == 0);
+        }
+        
         @T
         private static void testGetTransPos() {
             Assert.assertEquals(0, getTransPos(0));

@@ -179,14 +179,6 @@ public class DbStarter {
      */
     private void validateTransactions(List<StoredTrans> transactions, long initTime) {
         
-        /*System.out.println("==== Startup transactions:");
-        for (StoredTrans s : transactions) {
-            System.out.println("stored trans: " + s);
-            for (StoredNode n : s.nodes) {
-                System.out.println("  " + n);
-            }
-        }*/
-        
         if (transactions.size() == 0) {
             throw new StreamFormatException("No transactions for startup algorithm.");
         }
@@ -198,9 +190,9 @@ public class DbStarter {
                 throw new StreamFormatException("null transaction, i = " + i);
             }
             
-            // t.version --- stream format version? Check?
+            // NOTE t.version --- stream format version? Check?
             
-            if (!Spos.isValid(t.pos)) {
+            if (t.pos < RecoverableStream.META_BLOCK_SIZE) {
                 throw new StreamFormatException("Bad spos of transaction, " + t.toString());
             }
             

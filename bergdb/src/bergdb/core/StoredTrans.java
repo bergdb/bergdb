@@ -125,7 +125,7 @@ public class StoredTrans {
 
     public String toString() {
         StringBuilder b = new StringBuilder();
-        b.append("tt:" + tt + ", tpos:" + pos);
+        b.append("tt:" + tt + ", tpos:" + pos + ", lastPos:" + lastPos + ", newStartupPos:" + this.newStartupPos);
         b.append(", nodeCount:" + this.nodes.length);
         return b.toString();
     }
@@ -180,6 +180,10 @@ public class StoredTrans {
             if (transPos < 0) {
                 throw new IllegalArgumentException("transPos < 0, " + transPos);
             }
+            
+            if (transPos % RecoverableStream.TRANS_ALIGNMENT != 0) {
+                throw new IllegalArgumentException("bad transPos, " + transPos);
+            }
 
             this.pos = transPos;
             offset = 0;
@@ -230,7 +234,7 @@ public class StoredTrans {
             lastPos = RecoverableStream.getSpos(transPos, transSize - 1);
             
             assert lastPos % NodeStream.TRANS_ALIGNMENT == (NodeStream.TRANS_ALIGNMENT - 1) 
-                    : "Bad lastPos: " + lastPos;
+                    : "Bad lastPos: " + lastPos + ", transSize:" + transSize + ", transPos: " + transPos;
         }
         
         boolean hasNewStartupPos() {

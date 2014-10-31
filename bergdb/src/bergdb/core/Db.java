@@ -1203,7 +1203,7 @@ public class Db {
     /** Appends the KV transaction to the db stream and updates KvTransSeq. */
     private void storeKvTrans() {
         assert x.trans != null : "trans is null";
-        assert x.kvTransNodes != null : "transNodes is null";
+        assert x.kvTransNodes != null : "kvTransNodes is null";
         assert kvTransSeq != null : "kvTransSeq is null";
         
         x.trans.nodeCount = x.kvTransNodes.size();
@@ -1235,8 +1235,12 @@ public class Db {
             trans.time = x.trans.time;
             trans.isRerun = isRerun;
             trans.storedStartupPos = wasSpIncreased ? newStartupPos : -1;
+            trans.pos = x.trans.nextPos;
+            
+            assert trans.pos % RecoverableStream.TRANS_ALIGNMENT == 0 : "Bad trans.pos, " + trans.pos;
             
             nodeStream.appendNodes(x.indexTransNodes, trans);
+            
             x.indexTransNodes.clean();
         }
 
