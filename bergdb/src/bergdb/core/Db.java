@@ -1135,7 +1135,7 @@ public class Db {
         long sp0 = x.startupPos.get();
         long sp1;
         if (x.trans.isRerun) {
-            long storedSp = x.trans.storedStartupPos;
+            long storedSp = x.trans.storedNewStartupPos;
             if (storedSp == -1) {
                 sp1 = sp0;
             } else {
@@ -1238,7 +1238,7 @@ public class Db {
             trans.isInternal = true;
             trans.time = x.trans.time;
             trans.isRerun = isRerun;
-            trans.storedStartupPos = wasSpIncreased ? newStartupPos : -1;
+            trans.storedNewStartupPos = wasSpIncreased ? newStartupPos : -1;
             trans.pos = x.trans.nextPos;
             
             assert trans.pos % RecoverableStream.TRANS_ALIGNMENT == 0 : "Bad trans.pos, " + trans.pos;

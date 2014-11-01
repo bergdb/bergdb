@@ -115,7 +115,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     
     private void doAppendNodes(TransNodes nodes, Trans trans) {                
         long pos = rstream.getNextSpos();
-        serializer.serialize(nodes, trans.time, pos, -1);
+        serializer.serialize(nodes, trans.time, pos, trans.storedNewStartupPos);
 
         trans.pos = pos;
         trans.lastPos = serializer.getOutputLastSpos();
@@ -141,7 +141,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
             throw new Bug("trans.pos not set, was " + trans.pos + ", trans: " + trans);
         }
         
-        serializer.serialize(nodes, trans.time, trans.pos, trans.storedStartupPos);
+        serializer.serialize(nodes, trans.time, trans.pos, trans.storedNewStartupPos);
 
         long lastPos = serializer.getOutputLastSpos();
         long nextPos = serializer.getOutputNextSpos();
