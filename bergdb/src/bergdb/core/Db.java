@@ -693,8 +693,7 @@ public class Db {
         x.kvTransNodes.addKeyNode(root);
         x.kvTransNodes.addTopNode(superRoot);
         
-        storeKvTrans();
-        storeIndexTrans(computeNewStartupPos(), true, false);
+        store();
         
         x.lastSposOfLastTrans = trans.lastPos;
         
@@ -1113,22 +1112,7 @@ public class Db {
             
             stmRecordKeys(t);
 
-            storeKvTrans();
-            
-            long sp0 = x.startupPos.get();
-            long sp1;
-            if (x.trans.isRerun) {
-                long storedSp = x.trans.storedStartupPos;
-                if (storedSp == -1) {
-                    sp1 = sp0;
-                } else {
-                    sp1 = storedSp;
-                }
-            } else {
-                sp1 = computeNewStartupPos();
-            }
-            
-            storeIndexTrans(sp1, sp1 == sp0, x.trans.isRerun); 
+            store(); 
             
             aux.updateStats();
             
@@ -1145,6 +1129,25 @@ public class Db {
             // belong to the block.
             reclaimTransactionListener.transactionCompleted(t);    
         }
+    }
+
+    private void store() {
+        storeKvTrans();
+        
+        long sp0 = x.startupPos.get();
+        long sp1;
+        if (x.trans.isRerun) {
+            long storedSp = x.trans.storedStartupPos;
+            if (storedSp == -1) {
+                sp1 = sp0;
+            } else {
+                sp1 = storedSp;
+            }
+        } else {
+            sp1 = computeNewStartupPos();
+        }
+        
+        storeIndexTrans(sp1, sp1 == sp0, x.trans.isRerun);
     }
 
     /**
