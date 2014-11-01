@@ -91,6 +91,8 @@ public class DbStarter {
         // For an index transaction, just set nodes to dirty.
         // For a kv transaction, rerun corresponding transaction.
         
+        // TODO A. Consider following code when merging kv+index transaction.
+        
         for (StoredTrans stored : transactions) {            
             if (stored.isIndexTransaction()) {
                 for (StoredNode n : stored.nodes) {

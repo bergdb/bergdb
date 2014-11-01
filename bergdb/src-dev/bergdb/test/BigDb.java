@@ -15,7 +15,7 @@ import bergdb.stream.MemoryStream;
  */
 public class BigDb {
     
-    // TODO C. Make as-simple-as-possible version of t10kv, and fix it!
+    // TODO D. Make as-simple-as-possible version of t10kv, and fix it!
     
     @T("f perf")
     public static void t10kv(TestCollector c) throws InterruptedException {

@@ -1144,6 +1144,8 @@ public class Db {
         
         // kv trans
         
+        // TODO A. WORK HERE -- Merge kv and index transactions into one, kv + index piggyback.
+        
         if (x.trans.isRerun) {
             nodeStream.doDummyAppend(x.kvTransNodes, x.trans);
         } else {

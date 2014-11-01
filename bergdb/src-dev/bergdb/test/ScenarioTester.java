@@ -263,7 +263,7 @@ public class ScenarioTester {
     @T 
     private static void scenario106(TestCollector c) throws InterruptedException {
         
-        // TODO B. S106, internal state differs before and after restart.
+        // TODO C. S106, internal state differs before and after restart.
         // How to handle startup pos updater? Updates must be the same after startup rerun
         // as it was originally to recreate the exact same internal state.
         
