@@ -1132,36 +1132,31 @@ public class Db {
     }
 
     private void store() {
+        
         long sp0 = x.startupPos.get();
         long sp1;
+        
         if (x.trans.isRerun) {
-            long storedSp = x.trans.startupPos;
-            if (storedSp == -1) {
-                sp1 = sp0;
-            } else {
-                sp1 = storedSp;
-            }
+            sp1 = x.trans.startupPos;
         } else {
             sp1 = computeNewStartupPos();
         }
         
         // kv trans
         
-        x.trans.nodeCount = x.kvTransNodes.size();
-        TransNodes nodes = x.kvTransNodes;
-        Trans trans1 = x.trans;
-        
-        if (trans1.isRerun) {
-            nodeStream.doDummyAppend(nodes, trans1);
+        if (x.trans.isRerun) {
+            nodeStream.doDummyAppend(x.kvTransNodes, x.trans);
         } else {
-            nodeStream.appendNodes(nodes, trans1);
+            nodeStream.appendNodes(x.kvTransNodes, x.trans);
         }
         
+        x.trans.nodeCount = x.kvTransNodes.size();
+
         x.transInfo.tpos = x.trans.pos;
         x.transInfo.lastPos = x.trans.lastPos;
         x.transInfo.tt = x.trans.time;
-        
         kvTransSeq.add(x.transInfo);
+        
         x.kvTransNodes.clean();
         
         // Index trans
