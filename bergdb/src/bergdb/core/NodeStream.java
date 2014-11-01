@@ -95,27 +95,9 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         return rstream.getPosOfLastValidMetaBlock();
     }
 
-    /**
-     * Appends nodes to the stream as one single transaction.
-     * 
-     * @param trans
-     *          The transaction; used for both input and output, 
-     *          this method sets trans.pos/lastSpos/nextSpos.
-     * @throws StreamIoException
-     */
-    public void appendNodes(TransNodes nodes, Trans trans) {        
-        assert nodes.assertNoDuplicates();
-        
-        if (trans.isRerun) {
-            doDummyAppend(nodes, trans);
-        } else {
-            doAppendNodes(nodes, trans);
-        }
-    }
-    
-    private void doAppendNodes(TransNodes nodes, Trans trans) {                
+    void appendNodes(TransNodes nodes, Trans trans) {                
         long pos = rstream.getNextSpos();
-        serializer.serialize(nodes, trans.time, pos, trans.storedNewStartupPos);
+        serializer.serialize(nodes, trans.time, pos, trans.startupPos);
 
         trans.pos = pos;
         trans.lastPos = serializer.getOutputLastSpos();
@@ -134,14 +116,14 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * matches what is in the stream already. Used when re-running transactions.
      * trans.pos/lastPos/nextPos should be set correctly already.
      */
-    private void doDummyAppend(TransNodes nodes, Trans trans) {        
+    void doDummyAppend(TransNodes nodes, Trans trans) {        
         assert nodes.assertNoDuplicates();
         
         if (trans.pos < 1) {
             throw new Bug("trans.pos not set, was " + trans.pos + ", trans: " + trans);
         }
         
-        serializer.serialize(nodes, trans.time, trans.pos, trans.storedNewStartupPos);
+        serializer.serialize(nodes, trans.time, trans.pos, trans.startupPos);
 
         long lastPos = serializer.getOutputLastSpos();
         long nextPos = serializer.getOutputNextSpos();

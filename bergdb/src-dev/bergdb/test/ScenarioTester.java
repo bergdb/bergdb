@@ -26,7 +26,8 @@ public class ScenarioTester {
      * A restart scenario with 0.4M startup distances and 8 KVs 
      * with values of size 0.1M.
      */
-    @T private static void testScenario100() {
+    @T
+    private static void scenario100() {
         // Developed 2013-10.
         
         int n = 8;
@@ -69,7 +70,8 @@ public class ScenarioTester {
         Assert.assertEquals(checksum1, checksum2);
     }
     
-    @T public static void testScenario101() {
+    @T
+    public static void scenario101() {
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(10);
         MemoryStream stream = new MemoryStream();
@@ -96,7 +98,8 @@ public class ScenarioTester {
     /**
      * A scenario with a multi-klong key, an increase of startupPos and a restart.
      */
-    @T private static void testScenario102() {        
+    @T
+    private static void scenario102() {        
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(10);
         MemoryStream stream = new MemoryStream();
@@ -132,7 +135,8 @@ public class ScenarioTester {
     /**
      * Restart scenario with six large transactions.
      */
-    @T private static void testScenario103() {
+    @T
+    private static void scenario103() {
         //
         // NOTES issue. No index nodes at all in startup transactions.
         //
@@ -169,7 +173,10 @@ public class ScenarioTester {
         assertEquals(sum1, sum2);
     }
     
-    @T private static void testScenario104() {        
+    //TODO B. Enable S104
+    //@T
+    @SuppressWarnings("unused")
+    private static void scenario104() {        
         MemoryStream stream = new MemoryStream();
         StartupPosUpdater.TestUpdater updater = new StartupPosUpdater.TestUpdater();
         long startupPos;
@@ -206,7 +213,10 @@ public class ScenarioTester {
         Assert.assertEquals(sum1, sum2);
     }
     
-    @T private static void testScenario105() {
+    //TODO B. Enable S105.
+    //@T 
+    @SuppressWarnings("unused")
+    private static void scenario105() {
         // Demonstrates bug 141027:
         // bergdb.storage.StreamFormatException: Bad spos (-1) of Pointer 3 from key node
         // At startup time.
@@ -250,9 +260,10 @@ public class ScenarioTester {
     /**
      * Two transactions with multi-klong keys: t1, t2. t2 sets startup pos to t1.pos.
      */
-    @T private static void testScenario106(TestCollector c) throws InterruptedException {
+    @T 
+    private static void scenario106(TestCollector c) throws InterruptedException {
         
-        // TODO A. internal state differs before and after restart.
+        // TODO B. S106, internal state differs before and after restart.
         // How to handle startup pos updater? Updates must be the same after startup rerun
         // as it was originally to recreate the exact same internal state.
         

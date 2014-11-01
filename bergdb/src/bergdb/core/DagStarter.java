@@ -103,7 +103,7 @@ public class DagStarter {
                
                 pd.tt = stored.tt;
                 transInfo = new KvTransSeq.TransInfo();
-                transInfo.tpos = stored.pos;
+                transInfo.tpos = stored.tpos;
                 transInfo.lastPos = stored.lastPos;
                 transInfo.tt = stored.tt;
                 
@@ -217,7 +217,7 @@ public class DagStarter {
     }
 
     private boolean isPrimordialTransaction() {
-        return transactions.size() == 1 && transactions.get(0).pos == RecoverableStream.META_BLOCK_SIZE;
+        return transactions.size() == 1 && transactions.get(0).tpos == RecoverableStream.META_BLOCK_SIZE;
     }
     
     private void doFirstStartup() {
@@ -280,7 +280,7 @@ public class DagStarter {
             
             // t.version --- stream format version? Check?
             
-            if (!Spos.isValid(t.pos)) {
+            if (!Spos.isValid(t.tpos)) {
                 throw new StreamFormatException("Bad spos of transaction, " + t.toString());
             }
             

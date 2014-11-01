@@ -136,7 +136,7 @@ public class DbStarter {
     }
 
     private boolean isPrimordialTransaction() {
-        return transactions.size() == 1 && transactions.get(0).pos == RecoverableStream.META_BLOCK_SIZE;
+        return transactions.size() == 1 && transactions.get(0).tpos == RecoverableStream.META_BLOCK_SIZE;
     }
     
     private void doFirstStartup() {
@@ -192,7 +192,7 @@ public class DbStarter {
             
             // NOTE t.version --- stream format version? Check?
             
-            if (t.pos < RecoverableStream.META_BLOCK_SIZE) {
+            if (t.tpos < RecoverableStream.META_BLOCK_SIZE) {
                 throw new StreamFormatException("Bad spos of transaction, " + t.toString());
             }
             

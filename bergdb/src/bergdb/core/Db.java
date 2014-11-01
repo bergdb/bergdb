@@ -1135,7 +1135,7 @@ public class Db {
         long sp0 = x.startupPos.get();
         long sp1;
         if (x.trans.isRerun) {
-            long storedSp = x.trans.storedNewStartupPos;
+            long storedSp = x.trans.startupPos;
             if (storedSp == -1) {
                 sp1 = sp0;
             } else {
@@ -1145,10 +1145,59 @@ public class Db {
             sp1 = computeNewStartupPos();
         }
         
+        // kv trans
         
-        storeKvTrans();
+        assert x.trans != null : "trans is null";
+        assert x.kvTransNodes != null : "kvTransNodes is null";
+        assert kvTransSeq != null : "kvTransSeq is null";
         
-        storeIndexTrans(sp1, sp1 == sp0, x.trans.isRerun);
+        x.trans.nodeCount = x.kvTransNodes.size();
+        TransNodes nodes = x.kvTransNodes;
+        Trans trans1 = x.trans;
+        
+        assert nodes.assertNoDuplicates();
+        
+        if (trans1.isRerun) {
+            nodeStream.doDummyAppend(nodes, trans1);
+        } else {
+            nodeStream.appendNodes(nodes, trans1);
+        }
+        
+        x.transInfo.tpos = x.trans.pos;
+        x.transInfo.lastPos = x.trans.lastPos;
+        x.transInfo.tt = x.trans.time;
+        
+        kvTransSeq.add(x.transInfo);
+        x.kvTransNodes.clean();
+        
+        // Index trans
+        
+        kvTransSeq.addToTransNodes(sp1, x.indexTransNodes);
+        kvTransSeq.removeBefore(sp1);
+        
+        if (x.indexTransNodes.size() > 0) {
+            Trans trans = Trans.builder().build();
+            trans.isInternal = true;
+            trans.time = x.trans.time;
+            trans.isRerun = x.trans.isRerun;
+            trans.startupPos = sp1 == sp0 ? sp1 : -1;
+            trans.pos = x.trans.nextPos;
+            
+            assert trans.pos % RecoverableStream.TRANS_ALIGNMENT == 0 : "Bad trans.pos, " + trans.pos;
+            TransNodes nodes1 = x.indexTransNodes;
+            
+            assert nodes1.assertNoDuplicates();
+            
+            if (trans.isRerun) {
+                nodeStream.doDummyAppend(nodes1, trans);
+            } else {
+                nodeStream.appendNodes(nodes1, trans);
+            }
+            
+            x.indexTransNodes.clean();
+        }
+        
+        x.startupPos.set(sp1);
     }
 
     /**
@@ -1202,53 +1251,6 @@ public class Db {
         }
 
         gd.evictData.enableEvict = enableEvict;
-    }
-
-    /** Appends the KV transaction to the db stream and updates KvTransSeq. */
-    private void storeKvTrans() {
-        assert x.trans != null : "trans is null";
-        assert x.kvTransNodes != null : "kvTransNodes is null";
-        assert kvTransSeq != null : "kvTransSeq is null";
-        
-        x.trans.nodeCount = x.kvTransNodes.size();
-        
-        nodeStream.appendNodes(x.kvTransNodes, x.trans);
-        x.transInfo.tpos = x.trans.pos;
-        x.transInfo.lastPos = x.trans.lastPos;
-        x.transInfo.tt = x.trans.time;
-       
-        kvTransSeq.add(x.transInfo);
-        x.kvTransNodes.clean();
-    }
-
-    /** 
-     * Appends the index transaction to the db stream and updates startupPos
-     * so it is effective for next transaction. 
-     */
-    private void storeIndexTrans(long newStartupPos, boolean wasSpIncreased, boolean isRerun) {
-        // Note, we could re-use nodeTrans object for performance like we do for
-        // storeKvTrans (x.kvTransNodes).
-        // NOTE Do we need double storage of startupPos? In MetaBlock and x.startupPos?
-        
-        kvTransSeq.addToTransNodes(newStartupPos, x.indexTransNodes);
-        kvTransSeq.removeBefore(newStartupPos);
-        
-        if (x.indexTransNodes.size() > 0) {
-            Trans trans = Trans.builder().build();
-            trans.isInternal = true;
-            trans.time = x.trans.time;
-            trans.isRerun = isRerun;
-            trans.storedNewStartupPos = wasSpIncreased ? newStartupPos : -1;
-            trans.pos = x.trans.nextPos;
-            
-            assert trans.pos % RecoverableStream.TRANS_ALIGNMENT == 0 : "Bad trans.pos, " + trans.pos;
-            
-            nodeStream.appendNodes(x.indexTransNodes, trans);
-            
-            x.indexTransNodes.clean();
-        }
-
-        x.startupPos.set(newStartupPos);
     }
 
     /** 

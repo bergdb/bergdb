@@ -33,7 +33,7 @@ public class StoredTrans {
     public final long tt;
 
     /** First spos of transaction (tpos). */
-    public final long pos;
+    public final long tpos;
 
     /** The spos of the last byte of the transaction. */
     public final long lastPos;
@@ -41,23 +41,22 @@ public class StoredTrans {
     /** The nodes of the transaction. */
     public final StoredNode[] nodes;
     
-    /** The new startup pos, or -1 if no new startupPos. */
-    public final long newStartupPos;
+    public final long startupPos;
 
     private StoredTrans(Parser d) {
         tt = d.transactionTime;
-        pos = d.pos;
+        tpos = d.tpos;
         lastPos = d.lastPos;
         nodes = d.nodes;
-        newStartupPos = d.newStartupPos;
+        startupPos = d.startupPos;
     }
     
     public boolean isPrimordial() {
-        return pos == RecoverableStream.META_BLOCK_SIZE;
+        return tpos == RecoverableStream.META_BLOCK_SIZE;
     }
     
     public boolean hasNewStartupPos() {
-        return newStartupPos != -1;
+        return startupPos != -1;
     }
     
     public Trans createRerunTransaction() {        
@@ -80,7 +79,7 @@ public class StoredTrans {
         
         Trans trans = b.build();
         trans.isInternal = true;
-        trans.pos = pos;
+        trans.pos = tpos;
         trans.lastPos = lastPos;
         trans.time = tt;
         trans.isRerun = true;
@@ -125,7 +124,7 @@ public class StoredTrans {
 
     public String toString() {
         StringBuilder b = new StringBuilder();
-        b.append("tt:" + tt + ", tpos:" + pos + ", lastPos:" + lastPos + ", newStartupPos:" + this.newStartupPos);
+        b.append("tt:" + tt + ", tpos:" + tpos + ", lastPos:" + lastPos + ", newStartupPos:" + this.startupPos);
         b.append(", nodeCount:" + this.nodes.length);
         return b.toString();
     }
@@ -157,9 +156,9 @@ public class StoredTrans {
      */
     private static class Parser {
         long transactionTime;
-        long pos;
+        long tpos;
         long lastPos;
-        long newStartupPos;
+        long startupPos;
         StoredNode[] nodes;
 
         int offset = 0;
@@ -168,7 +167,7 @@ public class StoredTrans {
          * Parses a transaction starting at buffer[0].
          * buffer.length may be longer than required to store the transaction.
          */
-        void parse(long transPos, byte[] buffer) {
+        void parse(long tpos, byte[] buffer) {
             if (buffer == null) {
                 throw new IllegalArgumentException("buffer == null not allowed");
             }
@@ -177,15 +176,15 @@ public class StoredTrans {
                 throw new StreamFormatException("buffer too short, " + buffer.length);
             }
 
-            if (transPos < 0) {
-                throw new IllegalArgumentException("transPos < 0, " + transPos);
+            if (tpos < 0) {
+                throw new IllegalArgumentException("transPos < 0, " + tpos);
             }
             
-            if (transPos % RecoverableStream.TRANS_ALIGNMENT != 0) {
-                throw new IllegalArgumentException("bad transPos, " + transPos);
+            if (tpos % RecoverableStream.TRANS_ALIGNMENT != 0) {
+                throw new IllegalArgumentException("bad transPos, " + tpos);
             }
 
-            this.pos = transPos;
+            this.tpos = tpos;
             offset = 0;
             int byteSize = Bytes.bytesToIntLE(buffer, offset);
             offset += 4;
@@ -195,21 +194,13 @@ public class StoredTrans {
                         + byteSize + ", buffer size: " + buffer.length + ".");
             }
             
-            byte bits = buffer[offset];
-            offset += 1;
-            boolean hasNewStartupPos = (bits & 1) != 0;
-            
-            offset += 3; // 3 unused bytes
+            offset += 4; // 4 unused bytes
             
             transactionTime = Bytes.bytesToLongLE(buffer, offset);
             offset += 8;
             
-            if (hasNewStartupPos) {
-                newStartupPos = Bytes.bytesToLongLE(buffer, offset);
-                offset += 8;
-            } else {
-                newStartupPos = -1;
-            }
+            startupPos = Bytes.bytesToLongLE(buffer, offset);
+            offset += 8;
             
             // Parse nodes
 
@@ -231,14 +222,14 @@ public class StoredTrans {
             int transSizeBefore = offset;
             int count = computeZeroCount(transSizeBefore);
             int transSize = transSizeBefore + count;
-            lastPos = RecoverableStream.getSpos(transPos, transSize - 1);
+            lastPos = RecoverableStream.getSpos(tpos, transSize - 1);
             
             assert lastPos % NodeStream.TRANS_ALIGNMENT == (NodeStream.TRANS_ALIGNMENT - 1) 
-                    : "Bad lastPos: " + lastPos + ", transSize:" + transSize + ", transPos: " + transPos;
+                    : "Bad lastPos: " + lastPos + ", transSize:" + transSize + ", transPos: " + tpos;
         }
         
         boolean hasNewStartupPos() {
-            return newStartupPos != -1;
+            return startupPos != -1;
         }
 
         private StoredNode next(byte[] buffer) {
@@ -252,7 +243,7 @@ public class StoredTrans {
                 return null;
             }
 
-            long spos = RecoverableStream.getSpos(pos, offset);
+            long spos = RecoverableStream.getSpos(tpos, offset);
             StoredNode stored = NodeStream.bytesToNode(spos, buffer, offset, nodeSize);
 
             offset += nodeSize;
@@ -283,7 +274,7 @@ public class StoredTrans {
         private TransNodes transNodes;
         private long transStartPos;
         private long transTime;
-        private long newStartupPos;
+        private long startupPos;
         
         private long transNextSpos;
         private long transLastSpos;
@@ -309,11 +300,9 @@ public class StoredTrans {
          *            The transaction time.
          * @param transStartPos
          *            The spos of the first byte of the transaction.
-         * @param newStartupPos
-         *            This is the updated startupPos for this transaction, or -1 if
-         *            the startupPos was not updated by this transaction.
+         * @param startupPos
          */
-        public void serialize(TransNodes transNodes, long transTime, long transStartPos, long newStartupPos) {
+        public void serialize(TransNodes transNodes, long transTime, long transStartPos, long startupPos) {
             assert transNodes != null;
             assert transTime >= 0;
             assert transStartPos >= 0;
@@ -321,7 +310,7 @@ public class StoredTrans {
             this.transNodes = transNodes;
             this.transStartPos = transStartPos;
             this.transTime = transTime;
-            this.newStartupPos = newStartupPos;
+            this.startupPos = startupPos;
 
             prepareToSerialize();
             serializeToBuffer();
@@ -356,8 +345,7 @@ public class StoredTrans {
             // Also computes totalSize and sets prevPos array for KeyNodes.
             // This is performance-sensitive; pretty code has lower-than-usual prio here.
 
-            totalSize = 16; // Header size, 16 = trans size (4), empty (4), trans time (8)
-            totalSize += (newStartupPos == -1 ? 0 : 8);
+            totalSize = 24; // Header size, 24 = trans size (4), empty (4), trans time (8), startupPos (8)
             long currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
 
             resizePrevPosIfNeeded();
@@ -433,16 +421,14 @@ public class StoredTrans {
 
         private int serializeHeader(int longOffset) {
             long int0 = totalSize;
-            long int1 = (newStartupPos == -1) ? 0 : 1;     // one bit set when newStartupPos set
+            long int1 = 0;
             
             longBuffer[longOffset] = int0 | (int1 << 32);
             longOffset += 1;
             longBuffer[longOffset] = transTime;
             longOffset += 1;
-            if (newStartupPos != -1) {
-                longBuffer[longOffset] = newStartupPos;
-                longOffset += 1;
-            }
+            longBuffer[longOffset] = startupPos;
+            longOffset += 1;
             
             return longOffset;
         }
@@ -566,7 +552,7 @@ public class StoredTrans {
         
         assertEquals(0, parser.nodes.length);
         assertEquals(100, parser.transactionTime);
-        assertEquals(200, parser.pos);
+        assertEquals(200, parser.tpos);
     }
     
     @T
@@ -596,7 +582,7 @@ public class StoredTrans {
         
         assertEquals(4, parser.nodes.length);
         assertEquals(100, parser.transactionTime);
-        assertEquals(200, parser.pos);
+        assertEquals(200, parser.tpos);
         assertEquals(INode.TYPE_KEY_NODE, parser.nodes[0].getNode().getType());
         assertEquals(INode.TYPE_VALUE, parser.nodes[1].getNode().getType());
         assertEquals(INode.TYPE_VALUE, parser.nodes[2].getNode().getType());
@@ -636,7 +622,7 @@ public class StoredTrans {
         Parser parser = new Parser();
         parser.parse(200, buffer);
         
-        assertEquals(12345, parser.newStartupPos);
+        assertEquals(12345, parser.startupPos);
     }
     
     @T
@@ -649,7 +635,7 @@ public class StoredTrans {
         Parser parser = new Parser();
         parser.parse(200, buffer);
         
-        assertEquals(-1, parser.newStartupPos);
+        assertEquals(-1, parser.startupPos);
         assertFalse(parser.hasNewStartupPos());
     }
     
@@ -710,6 +696,4 @@ public class StoredTrans {
         assertArrayEquals(new byte[]{1, 2, 3}, trans.kvs[0].getValue());
         assertArrayEquals(Keys.toSegments("key1"), trans.kvs[0].getKey());
     }
-    
-    
 }
