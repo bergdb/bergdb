@@ -1147,15 +1147,9 @@ public class Db {
         
         // kv trans
         
-        assert x.trans != null : "trans is null";
-        assert x.kvTransNodes != null : "kvTransNodes is null";
-        assert kvTransSeq != null : "kvTransSeq is null";
-        
         x.trans.nodeCount = x.kvTransNodes.size();
         TransNodes nodes = x.kvTransNodes;
         Trans trans1 = x.trans;
-        
-        assert nodes.assertNoDuplicates();
         
         if (trans1.isRerun) {
             nodeStream.doDummyAppend(nodes, trans1);
@@ -1185,8 +1179,6 @@ public class Db {
             
             assert trans.pos % RecoverableStream.TRANS_ALIGNMENT == 0 : "Bad trans.pos, " + trans.pos;
             TransNodes nodes1 = x.indexTransNodes;
-            
-            assert nodes1.assertNoDuplicates();
             
             if (trans.isRerun) {
                 nodeStream.doDummyAppend(nodes1, trans);
