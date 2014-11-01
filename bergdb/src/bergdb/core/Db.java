@@ -1132,8 +1132,6 @@ public class Db {
     }
 
     private void store() {
-        storeKvTrans();
-        
         long sp0 = x.startupPos.get();
         long sp1;
         if (x.trans.isRerun) {
@@ -1146,6 +1144,9 @@ public class Db {
         } else {
             sp1 = computeNewStartupPos();
         }
+        
+        
+        storeKvTrans();
         
         storeIndexTrans(sp1, sp1 == sp0, x.trans.isRerun);
     }

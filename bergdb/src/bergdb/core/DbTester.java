@@ -1586,12 +1586,9 @@ public class DbTester {
             sp[i] = db.internal().getStartupPos();
         }
         
-        for (int i = 0; i < n; i++) {
-            //System.out.println(i + ", " + tpos[i] + ", " + sp[i]);
-        }
-        
-        for (int i = 0; i < n; i++) {
-            assertEquals("i=" + i, tpos[i], sp[i]);
+        assertEquals(0, sp[0]);
+        for (int i = 1; i < n; i++) {
+            assertEquals("i=" + i, tpos[i-1], sp[i]);
         }
     }
 }

@@ -1,17 +1,14 @@
 package bergdb.test;
 
-import bergdb.common.Util;
 import bergdb.core.CoreTestClock;
 import bergdb.core.Db;
 import bergdb.core.Db.StartParams;
 import bergdb.core.DbUtil;
-import bergdb.core.KeyFactory;
 import bergdb.core.NoEvictBoss;
 import bergdb.core.StartupPosUpdater;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.GetMany;
-import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.TestCollector;
 import static bergdb.nanotest.Assert.assertEquals;
