@@ -83,6 +83,7 @@ public class StoredTrans {
         trans.lastPos = lastPos;
         trans.time = tt;
         trans.isRerun = true;
+        trans.startupPos = startupPos;
         
         return trans;
     }
@@ -124,8 +125,17 @@ public class StoredTrans {
 
     public String toString() {
         StringBuilder b = new StringBuilder();
-        b.append("tt:" + tt + ", tpos:" + tpos + ", lastPos:" + lastPos + ", newStartupPos:" + this.startupPos);
+        b.append("tt:" + tt + ", tpos:" + tpos + ", lastPos:" + lastPos + ", startupPos:" + this.startupPos);
         b.append(", nodeCount:" + this.nodes.length);
+        return b.toString();
+    }
+    
+    public String print() {
+        StringBuilder b = new StringBuilder();
+        b.append(toString() + "\n");
+        for (StoredNode n : this.nodes) {
+            b.append("* " + n.toString() + "\n");
+        }
         return b.toString();
     }
     

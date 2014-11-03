@@ -128,43 +128,57 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         long lastPos = serializer.getOutputLastSpos();
         long nextPos = serializer.getOutputNextSpos();
         
-        /*
-        if (trans.lastPos != lastPos) {
-            throw new IllegalStateException("trans.pos: " + trans.pos 
-                    + ", trans.lastPos (from rerun):" + trans.lastPos 
-                    + ", lastPos from Serializer:" + lastPos);
-        }*/
-        
         trans.lastPos = lastPos;
         trans.nextPos = nextPos;
         
         byte[] buffer = serializer.getTransBuffer();
         int bufferSize = serializer.getOutputTransSize();
         
-        byte[] streamBytes = new byte[bufferSize];
-        rstream.read(trans.pos, streamBytes, 0, streamBytes.length);
-        
-        checkEqualBytes(trans.pos, bufferSize, buffer, streamBytes);
+        checkEqualBytes(trans.pos, buffer, bufferSize);
         
         rstream.getMetaBlock().setLastTransSpos(trans.pos);
- 
-        // A. set startupPos in rstream.getMetaBlock here?
     }
 
-    private void checkEqualBytes(long transPos, int size, byte[] transBytes, byte[] streamBytes) {
-        for (int i = 0; i < size; i++) {
-            if (transBytes[i] != streamBytes[i]) {
-                String diff = printDiff(transPos, size, transBytes, streamBytes);
-                throw new IllegalStateException(
-                        "transBytes and streamBytes are not equal, i:" + i + ". Diff:\n" + diff);
+    private void checkEqualBytes(long transPos, byte[] transBytes, int transBytesSize) {
+        boolean equal = true;
+        int diffIndex = -1;
+        
+        byte[] streamBytes = readTransBytes(transPos);
+        
+        if (transBytesSize != streamBytes.length) {
+            equal = false;
+        } else {
+            for (int i = 0; i < transBytesSize; i++) {
+                if (transBytes[i] != streamBytes[i]) {
+                    equal = false;
+                    diffIndex = i;
+                    break;
+                }
             }
+        }
+        
+        if (!equal) {
+            String diff = printDiff(transPos, transBytes, streamBytes);
+            throw new IllegalStateException(
+                    "transBytes and streamBytes are not equal. " + diffIndex + ", diff:\n" + diff);
         }
     }
 
-    private String printDiff(long transPos, int size, byte[] transBytes, byte[] streamBytes) {
-        StoredTrans t1 = StoredTrans.parse(transPos, transBytes);
-        StoredTrans t2 = StoredTrans.parse(transPos, streamBytes);
-        return "transBytes:\n" + t1 + "\nstreamBytes:\n" + t2;
+    private String printDiff(long transPos, byte[] transBytes, byte[] streamBytes) {
+        String s1 = printTransGivenBuffer(transPos, transBytes);
+        String s2 = printTransGivenBuffer(transPos, streamBytes);
+        return "From transBytes:\n  " + s1 + "\nFrom streamBytes:\n  " + s2;
+    }
+    
+    private String printTransGivenBuffer(long tpos, byte[] buffer) {
+        String s;
+        try {
+            StoredTrans t = StoredTrans.parse(tpos, buffer);
+            s = t.print();
+        } catch (StreamFormatException e) {
+            s = "format exception: " + e.getMessage();
+        }
+        return s;
     }
 
     public long getLastTransSpos() {
@@ -177,7 +191,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * @throws StreamFormatException
      * @throws StreamIoException
      */
-    public final INode readNode(long spos) {
+    public INode readNode(long spos) {
         byte[] buffer = new byte[1024];        
         rstream.read(spos, buffer, 0, 4);
         
@@ -195,6 +209,21 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         
         INode node = bytesToNode(spos, buffer, 0, size).getNode();
         return node;
+    }
+    
+    public byte[] readTransBytes(long tpos) {
+        byte[] buffer = new byte[4];
+        rstream.read(tpos, buffer, 0, 4);
+        
+        int size = Bytes.bytesToIntLE(buffer, 0);
+        if (size <= 6) {
+            throw new StreamFormatException("Bad transaction byte size, " + size + ". At spos " + tpos
+                    + ".");
+        }
+        
+        buffer = new byte[size];
+        rstream.read(tpos, buffer, 0, size);
+        return buffer;
     }
 
     /**
@@ -275,11 +304,13 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         TransIterator titer = createTransIterator(startPos);
 
         while (titer.next()) {
-            out.println("==== Trans at " + titer.tpos + " ====");
+            out.println("==== Trans @" + titer.tpos + " ====");
             
             StoredTrans storedTrans = titer.getStoredTrans();
+            out.println(storedTrans.toString());
+            
             for (StoredNode s : storedTrans.nodes) {
-                out.println("p:" + s.getPrevPos());
+                out.println("* p:" + s.getPrevPos());
                 out.println(s.getNode().print().replace("\n", "\n  "));
                 /*
                 INode node = s.getNode();

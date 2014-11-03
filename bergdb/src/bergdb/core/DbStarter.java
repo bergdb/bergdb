@@ -63,6 +63,9 @@ public class DbStarter {
      * Runs the startup algorithm.
      */
     private void start() throws StreamException {
+        
+        // A. Set prev pos correctly for KeyNodes when rerun. stored.prev = node.spos.
+        
         validateTransactions(transactions, 0);
         validateAccessData(accessData);
         

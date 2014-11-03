@@ -1,5 +1,6 @@
 package bergdb.test;
 
+import bergdb.common.Util;
 import bergdb.core.CoreTestClock;
 import bergdb.core.Db;
 import bergdb.core.Db.StartParams;
@@ -55,6 +56,8 @@ public class ScenarioTester {
         
         long checksum1 = DbUtil.checksum(db);
         db.sync(SyncLevel.STRONG);
+        
+        //db.getStream().print(System.out);
         
         // Restart
         
@@ -154,14 +157,11 @@ public class ScenarioTester {
         for (int i = 0; i < n; i++) {
             Trans trans = Trans.builder().put("/z" + i, new byte[valueSize + i]).build();
             db.execute(trans);
-            //print103(db, trans);
         }
         
         long sum1 = DbUtil.checksum(db, Long.MAX_VALUE, true);
         db.sync(SyncLevel.STRONG);
         
-        //System.out.println("==== printGraph");
-        //db.printGraph(System.out);
         db = null;
         
         // Restart
@@ -173,9 +173,7 @@ public class ScenarioTester {
         assertEquals(sum1, sum2);
     }
     
-    //TODO B. Enable S104
-    //@T
-    @SuppressWarnings("unused")
+    @T
     private static void scenario104() {        
         MemoryStream stream = new MemoryStream();
         StartupPosUpdater.TestUpdater updater = new StartupPosUpdater.TestUpdater();
@@ -213,9 +211,7 @@ public class ScenarioTester {
         Assert.assertEquals(sum1, sum2);
     }
     
-    //TODO B. Enable S105.
-    //@T 
-    @SuppressWarnings("unused")
+    @T
     private static void scenario105() {
         // Demonstrates bug 141027:
         // bergdb.storage.StreamFormatException: Bad spos (-1) of Pointer 3 from key node
@@ -276,11 +272,11 @@ public class ScenarioTester {
         Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(5*1000).start();
         db.internal().setStartupPosUpdater(updater);
         
-        Trans t1 = Trans.builder().put("/key1-suffix", new byte[0]).build();
+        Trans t1 = Trans.builder().put("/key1-suffix1", Util.toBytes("v1")).build();
         db.execute(t1);
         
         updater.setNextPos(t1.pos);
-        Trans t2 = Trans.builder().put("/key2-suffix", new byte[0]).build();
+        Trans t2 = Trans.builder().put("/key2-suffix2", Util.toBytes("v2")).build();
         db.execute(t2);
         
         //System.out.println("---- printGraph ----");

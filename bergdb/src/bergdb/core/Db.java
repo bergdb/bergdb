@@ -495,7 +495,7 @@ public class Db {
         listener.reportStartupTransactions(transactions);
         setLastTransTimeOfDbClock(transactions);
         
-        startDag(transactions);
+        startupDb(transactions);
         
         createPutAndGetData();
         
@@ -508,7 +508,7 @@ public class Db {
         x.getData = newGetData();
     }
 
-    private void startDag(ArrayList<StoredTrans> transactions) {
+    private void startupDb(ArrayList<StoredTrans> transactions) {
         //DagStarter.Result result = DagStarter.start(transactions, getAccessData(), nodeStream, maxNodeSize);
         //dag = result.getDag();
         
@@ -1130,8 +1130,13 @@ public class Db {
             reclaimTransactionListener.transactionCompleted(t);    
         }
     }
-
+    
     private void store() {
+        //storeAsTwo();
+        storeAsOne();
+    }
+
+    private void storeAsTwo() {
         
         long sp0 = x.startupPos.get();
         long sp1;
@@ -1187,6 +1192,37 @@ public class Db {
         }
         
         x.startupPos.set(sp1);
+    }
+    
+    private void storeAsOne() {
+        long sp;
+        
+        if (x.trans.isRerun) {
+            sp = x.trans.startupPos;
+            assert sp >= 0 : "bad sp: " + sp + ", trans: " + x.trans.toString();
+        } else {
+            sp = computeNewStartupPos();
+            x.trans.startupPos = sp;
+        }
+        
+        kvTransSeq.addToTransNodes(sp, x.kvTransNodes);
+        kvTransSeq.removeBefore(sp);
+        
+        if (x.trans.isRerun) {
+            nodeStream.doDummyAppend(x.kvTransNodes, x.trans);
+        } else {
+            nodeStream.appendNodes(x.kvTransNodes, x.trans);
+        }
+        
+        x.trans.nodeCount = x.kvTransNodes.size();
+
+        x.transInfo.tpos = x.trans.pos;
+        x.transInfo.lastPos = x.trans.lastPos;
+        x.transInfo.tt = x.trans.time;
+        kvTransSeq.add(x.transInfo);
+        
+        x.kvTransNodes.clean();
+        x.startupPos.set(sp);
     }
 
     /**
