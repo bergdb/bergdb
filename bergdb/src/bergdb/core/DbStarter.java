@@ -136,43 +136,47 @@ public class DbStarter {
 
     private void changeNodesToPreviousState(long tInit) {
         // * Change key nodes to the previous state.
-        // * Change previous pos.
+        // * Change spos.
         
-        for (Map.Entry<Long, INode> entry : posMap.entrySet()) {
-            INode node = entry.getValue();
-            if (node.getType() == INode.TYPE_KEY_NODE) {
-                KeyNode k = (KeyNode) node;
-                k.toPreviousState(tInit);
+        for (StoredTrans trans : transactions) {
+            for (StoredNode stored : trans.nodes) {
+                INode node = stored.getNode();
+                if (node.getType() == INode.TYPE_KEY_NODE) {
+                    KeyNode k = (KeyNode) node;
+                    k.toPreviousState(tInit);
+                }
+                
+                backtrackPos(node, firstTrans.lastPos);
             }
-            
-            backtrackPos(node, firstTrans.lastPos);
         }
     }
     
-    private void backtrackPos(INode node, long startupPos) {
+    private void backtrackPos(INode node, long posLimit) {
         int count = node.getPointerCount();
         Pointer p = new Pointer();
         
-        node.setSpos(backtrackPos(startupPos, node.getSpos()));
+        node.setSpos(backtrackPos(posLimit, node.getSpos()));
         
         for (int i = 0; i < count; i++) {
             node.getPointer(i, p);
             if (!p.isNull()) {
-                p.pos = backtrackPos(startupPos, p.pos);
+                long newPos = backtrackPos(posLimit, p.pos);
+                node.setPointer(i, p.node, newPos);
             }
         }
     }
     
-    private long backtrackPos(long startupPos, long pos) {
-        // "Backtrack" node position 'pos' to a position that is <= startupPos.
+    private long backtrackPos(long posLimit, long pos) {
+        // "Backtracks" stream position 'pos' to a position that is <= posLimit.
         
         long p = pos;
   
-        while (p > startupPos) {
+        while (p > posLimit) {
             if (prevMap.containsKey(p)) {
                 p = prevMap.get(p);
             } else {
                 p = Spos.NULL;
+                break;
             }
         }
         
