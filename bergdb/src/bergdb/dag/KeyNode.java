@@ -789,8 +789,7 @@ public class KeyNode implements INode {
     }
     
     /**
-     * Changes the state of this node to the state it was in at 
-     * the given time.
+     * Changes the state of this node to the state it was at the given time.
      */
     public void toPreviousState(long time) {
         short sz = this.size;

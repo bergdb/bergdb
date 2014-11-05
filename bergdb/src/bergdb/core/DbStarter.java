@@ -3,6 +3,7 @@ package bergdb.core;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import bergdb.dag.Dag.NodeReader;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
@@ -25,14 +26,17 @@ public class DbStarter {
     private final KvTransSeq kvTransSeq = new KvTransSeq();
     private long cachedMemoryValue = Db.MIN_CACHE_MEMORY_VALUE;
     private final HashMap<Long, INode> posMap = new HashMap<Long, INode>();  // pos -> node
-    private final HashMap<Long, INode> nextMap = new HashMap<Long, INode>(); // posPrevious -> node
+    private final HashMap<Long, INode> nextMap = new HashMap<Long, INode>(); // prev pos -> node
+    private final HashMap<Long, Long> prevMap = new HashMap<Long, Long>();   // pos -> prev pos
     private final Db db;
     private final List<StoredTrans> transactions;
+    private final StoredTrans firstTrans;
     private TopNode superRoot;
     private final long accessData;
     private NodeReader nodeReader;
     private int maxNodeSize;
     private Dag dag;
+    
         
     /**
      * Runs the startup algorithms and returns the result from it.
@@ -50,9 +54,12 @@ public class DbStarter {
     private DbStarter(Db db, List<StoredTrans> transactions, long accessData, 
             NodeReader nodeReader, int maxNodeSize) {
         if (nodeReader == null) throw new IllegalArgumentException("nodeReader == null not allowed");
+        if (transactions == null) throw new IllegalArgumentException("transactions == null not allowed");
+        if (transactions.size() == 0) throw new IllegalArgumentException("transactions.size() == 0");
         
         this.db = db;
         this.transactions = transactions;
+        this.firstTrans = transactions.get(0);
         this.accessData = accessData;
         this.superRoot = null;
         this.nodeReader = nodeReader;
@@ -80,7 +87,14 @@ public class DbStarter {
         refreshStreamPointers();
         createMemoryPointers();
         
-        long initTime = computeInitTime();
+        // XXX
+        //System.out.println("startupPos: " + firstTrans.tpos);
+        //System.out.println("prevMap:");
+        //for (Map.Entry<Long, Long> entry : this.prevMap.entrySet()) {
+        //    System.out.println(entry.getKey() + " -> " + entry.getValue());
+        //}
+        
+        long initTime = firstTrans.tt;
         validateTransactions(transactions, initTime);
         createDag(initTime);
         changeNodesToPreviousState(initTime);
@@ -90,33 +104,23 @@ public class DbStarter {
     }
     
     private void rerunTransactions() {
-        // Rerun transactions.
-        // For an index transaction, just set nodes to dirty.
-        // For a kv transaction, rerun corresponding transaction.
+        // Rerun transactions, but not the very first.
         
-        // TODO A. Consider following code when merging kv+index transaction.
+        int count = transactions.size();
         
-        for (StoredTrans stored : transactions) {            
-            if (stored.isIndexTransaction()) {
-                for (StoredNode n : stored.nodes) {
-                    n.getNode().setDirty(false);
+        for (int i = 0; i < count; i++) {
+            StoredTrans trans = transactions.get(i);
+            if (i > 0) {
+                db.internal().executeInner(trans.createRerunTransaction());
+            }
+            
+            for (StoredNode stored : trans.nodes) {
+                INode n = stored.getNode();
+                if (n.isIndexNode()) {
+                    n.setDirty(false);
                 }
-            } else {
-                Trans t = stored.createRerunTransaction();
-                db.internal().executeInner(t);
             }
         }
-    }
-
-    private long computeInitTime() {
-        StoredTrans first = transactions.get(0);
-        long tFirst = first.tt;
-        long tInit = first.isPrimordial() ? tFirst : tFirst - 1;
-            // Time to initialize dag to before re-running transactions.
-        if (tInit < 0) {
-            throw new StreamFormatException("Unexpected tFirst, " + tFirst);
-        }
-        return tInit;
     }
 
     private void createDag(long initTime) {
@@ -131,13 +135,48 @@ public class DbStarter {
     }
 
     private void changeNodesToPreviousState(long tInit) {
+        // * Change key nodes to the previous state.
+        // * Change previous pos.
+        
         for (Map.Entry<Long, INode> entry : posMap.entrySet()) {
             INode node = entry.getValue();
             if (node.getType() == INode.TYPE_KEY_NODE) {
                 KeyNode k = (KeyNode) node;
                 k.toPreviousState(tInit);
             }
+            
+            backtrackPos(node, firstTrans.lastPos);
         }
+    }
+    
+    private void backtrackPos(INode node, long startupPos) {
+        int count = node.getPointerCount();
+        Pointer p = new Pointer();
+        
+        node.setSpos(backtrackPos(startupPos, node.getSpos()));
+        
+        for (int i = 0; i < count; i++) {
+            node.getPointer(i, p);
+            if (!p.isNull()) {
+                p.pos = backtrackPos(startupPos, p.pos);
+            }
+        }
+    }
+    
+    private long backtrackPos(long startupPos, long pos) {
+        // "Backtrack" node position 'pos' to a position that is <= startupPos.
+        
+        long p = pos;
+  
+        while (p > startupPos) {
+            if (prevMap.containsKey(p)) {
+                p = prevMap.get(p);
+            } else {
+                p = Spos.NULL;
+            }
+        }
+        
+        return p;
     }
 
     private boolean isPrimordialTransaction() {
@@ -238,7 +277,7 @@ public class DbStarter {
     
     /** 
      * Creates posMap and nextMap and increases cachedMemoryValue. 
-     * Also calls the handler for top nodes.
+     * Also calls handleTopNode().
      * 
      * @throws StreamFormatException  If super root cannot be found.
      */
@@ -248,12 +287,15 @@ public class DbStarter {
                 INode node = storedNode.getNode();
                 long spos = node.getSpos();
                 
-                assert posMap.get(spos) == null 
-                        : "posMap already has node for spos " + spos + ": " + posMap.get(spos);
+                assert posMap.get(spos) == null : "posMap already has node for spos " 
+                        + spos + ": " + posMap.get(spos);
                 
                 posMap.put(node.getSpos(), node);
-                
                 long prev = storedNode.getPrevPos();
+                
+                assert spos > prev;
+                prevMap.put(spos, prev);
+                
                 if (prev != Spos.NULL) {
                     nextMap.put(prev, node);
                 }

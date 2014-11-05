@@ -1136,8 +1136,8 @@ public class Db {
         storeAsOne();
     }
 
+    @SuppressWarnings("unused")
     private void storeAsTwo() {
-        
         long sp0 = x.startupPos.get();
         long sp1;
         
@@ -1148,8 +1148,6 @@ public class Db {
         }
         
         // kv trans
-        
-        // TODO A. WORK HERE -- Merge kv and index transactions into one, kv + index piggyback.
         
         if (x.trans.isRerun) {
             nodeStream.doDummyAppend(x.kvTransNodes, x.trans);
