@@ -134,7 +134,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         byte[] buffer = serializer.getTransBuffer();
         int bufferSize = serializer.getOutputTransSize();
         
-        checkEqualBytes(trans.pos, buffer, bufferSize);
+        //checkEqualBytes(trans.pos, buffer, bufferSize);
         
         rstream.getMetaBlock().setLastTransSpos(trans.pos);
     }

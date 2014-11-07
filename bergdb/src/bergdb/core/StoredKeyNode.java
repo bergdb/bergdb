@@ -67,15 +67,7 @@ public class StoredKeyNode implements StoredNode {
         offset += sz;
 
         for (int i = 0; i < sz; i++) {
-            long spos = node.pointers[i] == null ? node.pos[i] : node.pointers[i].getSpos();
-            
-            assert Klong.getType(node.klongs[i]) != Klong.TYPE_KEY
-                    || spos >= 0 
-                    : "KEY klong pointer, spos to stream: " + spos 
-                    + "\nklong index: " + i
-                    + "\nNODE:\n" + node.print()
-                    + "POINTEE:\n" + node.pointers[i].print();
-            
+            long spos = node.pointers[i] == null ? node.pos[i] : node.pointers[i].getSpos();            
             buffer[offset++] = spos;
         }
 
