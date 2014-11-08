@@ -21,6 +21,8 @@ import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamException;
 import bergdb.storage.StreamFormatException;
 
+// TODO LATER Remove this class
+
 /**
  * A function-class, see the single public method.
  * 

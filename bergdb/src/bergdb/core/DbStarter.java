@@ -150,11 +150,6 @@ public class DbStarter {
                 if (node.getType() == INode.TYPE_KEY_NODE) {
                     KeyNode k = (KeyNode) node;
                     k.toPreviousState(tInit);
-                    
-                    // NOTE We do get k.size == 0 cases.
-                    //if (k.size == 0) {
-                        //System.out.println("XXX " + k.print());
-                    //}
                 }
                 
                 backtrackPos(node, firstTrans.lastPos);

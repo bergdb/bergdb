@@ -801,16 +801,17 @@ public class KeyNode implements INode {
     }
     
     /**
-     * Changes the state of this node to the state it was at the given time.
+     * Changes the state of this node to the state it was at the given database time.
+     * Klongs with time <= 'time' are retained, while klongs with a higher time are discarded.
      */
     public void toPreviousState(long time) {
         short sz = this.size;
         
-        A: for (int i = 0; i < sz; i++) {
+        A:
+        for (int i = 0; i < sz; i++) {
             long klong = klongs[i];
             
-            switch (Klong.getIntType(klong)) {
-            case Klong.INT_TYPE_TIME:
+            if (Klong.getIntType(klong) == Klong.INT_TYPE_TIME) {
                 long klongTime = Klong.getTime(klong);
                 if (klongTime > time) {
                     if (i == 0) {
