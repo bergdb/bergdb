@@ -24,7 +24,7 @@ import bergdb.storage.StreamFormatException;
  * 
  * @author Frans Lundberg
  */
-public class DbStarter {
+public class DbStarter1 {
     //
     // This implementation is not optimized for CPU performance. Clean code takes precedence.
     // Startup is not that performance-sensitive and its likely I/O bound anyway.
@@ -51,14 +51,14 @@ public class DbStarter {
      * @param transactions  The stored transactions from the startup section of the db stream.
      * @param accessData    The access data for the in-memory pointers that are created.
      */
-    public static DbStarter.Result start(Db db, List<StoredTrans> transactions, long accessData,
+    public static DbStarter1.Result start(Db db, List<StoredTrans> transactions, long accessData,
             NodeReader nodeReader, int maxNodeSize) {
-        DbStarter s = new DbStarter(db, transactions, accessData, nodeReader, maxNodeSize);
+        DbStarter1 s = new DbStarter1(db, transactions, accessData, nodeReader, maxNodeSize);
         s.start();
         return s.new Result();
     }
     
-    private DbStarter(Db db, List<StoredTrans> transactions, long accessData, 
+    private DbStarter1(Db db, List<StoredTrans> transactions, long accessData, 
             NodeReader nodeReader, int maxNodeSize) {
         if (nodeReader == null) throw new IllegalArgumentException("nodeReader == null not allowed");
         if (transactions == null) throw new IllegalArgumentException("transactions == null not allowed");

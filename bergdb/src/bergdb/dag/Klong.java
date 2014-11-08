@@ -213,6 +213,14 @@ public class Klong {
                 // 0x3f = 0011 1111
     }
     
+    public static final boolean isKey(long klong) {
+        return getType(klong) == TYPE_KEY;
+    }
+    
+    public static final boolean isTime(long klong) {
+        return getType(klong) == TYPE_TIME;
+    }
+    
     /**
      * Gets a small type value: 0, 1, or 2. int required for a switch.
      */
@@ -722,6 +730,14 @@ public class Klong {
         Assert.assertEquals(true, Klong.isDeleted(k, 33));
         Assert.assertEquals(false, Klong.isDeleted(k, 34));
         Assert.assertEquals(false, Klong.isDeleted(k, 61));
+    }
+    
+    @T
+    public static void testIsKey() {
+        long k1 = Klong.create(new byte[]{1, 2, 3});
+        Assert.assertTrue(Klong.isKey(k1));
+        long k2 = Klong.createTime(1000);
+        Assert.assertFalse(Klong.isKey(k2));
     }
 }
 

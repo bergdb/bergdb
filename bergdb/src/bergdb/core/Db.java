@@ -512,7 +512,7 @@ public class Db {
         //DagStarter.Result result = DagStarter.start(transactions, getAccessData(), nodeStream, maxNodeSize);
         //dag = result.getDag();
         
-        DbStarter.Result result = DbStarter.start(this, transactions, getAccessData(), nodeStream, maxNodeSize);
+        DbStarter1.Result result = DbStarter1.start(this, transactions, getAccessData(), nodeStream, maxNodeSize);
         
         aux.cachedMemoryValue.set(result.getCachedMemoryValue());
         kvTransSeq = result.getKvTransSeq();

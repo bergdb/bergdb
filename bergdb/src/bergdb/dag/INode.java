@@ -85,4 +85,8 @@ public interface INode {
      * in the node cache.
      */
     public int getMemSize();
+
+    public boolean isKeyNode();
+    public boolean isTopNode();
+    public boolean isValueNode();
 }

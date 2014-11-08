@@ -9,6 +9,7 @@ import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
+import bergdb.dag.Klong;
 import bergdb.dag.Pointer;
 import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
@@ -83,7 +84,7 @@ public class DbStarter2 {
      */
     private void start() throws StreamException {
         
-        // A. Set prev pos correctly for KeyNodes when rerun. stored.prev = node.spos.
+        // TODO B. Is KeyNode.getId() ok after rerun?
         
         db.internal().setKvTransSeq(kvTransSeq);
         
@@ -97,46 +98,72 @@ public class DbStarter2 {
         
         createMaps();
         increaseCachedMemoryValue();
-        
+        findSuperRoot();
         
         changeKeyNodesToPreviousState();
-        
-        updateStreamPointers();        // backtrack to pointer pos <= firstTrans.lastSpos.
-        
-        // XXX work here!
+        checkKeyNodeStreamPointers();
         
         updateStreamPointers();
+        updateNodePos();
+        
         createMemoryPointers();
+        checkKeyNodeStreamPointers();
         
-        createDag(startupTime);
-        
+        createDag();
         db.internal().createPutAndGetData();
+        
         rerunTransactions();
     }
     
+    /**
+     * Checks that there are no stream pointers of KeyNodes that
+     * are equal to Spos.NULL.
+     */
+    private void checkKeyNodeStreamPointers() {
+        for (INode node : posMap.values()) {
+            if (node.isKeyNode()) {
+                KeyNode k = (KeyNode) node;
+                
+                for (int i = 0; i < k.size; i++) {
+                    long klong = k.klongs[i];
+                    if (Klong.isKey(klong)) {
+                        long pos = node.getSpos();
+                        if (pos == Spos.NULL) {
+                            throw new StreamFormatException("Unexpected stream pointer, was " 
+                                    + pos + ", index " + i + ", node: " + node);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private void findSuperRoot() {
-        // Returns first top node in startup section.
-        
-        StoredTopNode top = null;
+        StoredTopNode first = null;   // first top node in startup section
         
         LabelA: 
         for (StoredTrans trans : transactions) {
             for (StoredNode storedNode : trans.nodes) {
                 INode node = storedNode.getNode();
-                if (node.getType() == INode.TYPE_TOP_NODE) {
-                    top = (StoredTopNode) storedNode;
+                
+                if (node.isTopNode()) {
+                    first = (StoredTopNode) storedNode;
                     break LabelA;
                 }
             }
         }
         
-        if (top == null) {
+        if (first == null) {
             throw new StreamFormatException("No top node in startup interval, startupPos: " + startupPos);
         }
         
-        // XXX work in progress -- use findSuperRootAtTime...
+        TopDs topDs = new TopDs(first.getNode());
+        Dag myDag = new Dag(nodeReader, topDs, maxNodeSize);
         
-        this.superRoot = top.getNode();
+        superRoot = topDs.findSuperRootAtTime(myDag, startupTime, myDag.newGetData());
+        if (superRoot == null) {
+            throw new StreamFormatException("No super root at time " + startupTime + " was found.");
+        }
     }
     
     private void rerunTransactions() {
@@ -159,17 +186,10 @@ public class DbStarter2 {
         }
     }
 
-    private void createDag(long initTime) {
-        // TODO A. local variable "superRoot" not used?
-        
+    private void createDag() {
         TopDs topDs = new TopDs(superRoot);
         dag = new Dag(nodeReader, topDs, maxNodeSize);
         db.internal().setDag(dag);
-        
-        TopNode superRoot = topDs.findSuperRootAtTime(dag, initTime, dag.newGetData());
-        if (superRoot == null) {
-            throw new StreamFormatException("No super root at time " + initTime + " was found.");
-        }
     }
 
     /**
@@ -185,21 +205,6 @@ public class DbStarter2 {
                     KeyNode k = (KeyNode) node;
                     k.toPreviousState(startupTime);
                 }
-            }
-        }
-    }
-    
-    private void backtrackPos(INode node, long posLimit) {
-        int count = node.getPointerCount();
-        Pointer p = new Pointer();
-        
-        node.setSpos(prevMap.backtrack(posLimit, node.getSpos()));
-        
-        for (int i = 0; i < count; i++) {
-            node.getPointer(i, p);
-            if (!p.isNull()) {
-                long newPos = prevMap.backtrack(posLimit, p.pos);
-                node.setPointer(i, p.node, newPos);
             }
         }
     }
@@ -346,60 +351,55 @@ public class DbStarter2 {
     }
     
     /** 
-     * Refreshes stream pointers.
+     * Updates stream pointers "backwards" so pointer.pos <= firstTrans.lastPos.
      */
     private void updateStreamPointers() {
-        
-        // backtrack to pointer pos <= firstTrans.lastSpos.
-        
-        // XXX CHANGE THIS, backtrack -- not forward track
-        
-        Pointer pointer = new Pointer();
+        Pointer p = new Pointer();
         
         for (Map.Entry<Long, INode> entry : posMap.entrySet()) {
             INode node = entry.getValue();
 
             int pointerCount = node.getPointerCount();
             for (int i = 0; i < pointerCount; i++) {
-                node.getPointer(i, pointer);
-                if (pointer.isNull()) {
+                node.getPointer(i, p);
+                if (p.isNull()) {
                     continue;
                 }
 
-                long pos = pointer.getPos();
-
-                while (true) {
-                    INode next = nextMap.get(pos);
-                    if (next == null) {
-                        break;
-                    }
-                    pos = next.getSpos();
-                }
-
-                if (pointer.getPos() != pos) {
-                    node.setPointer(i, null, pos);
-                }
+                long pos = p.getPos();
+                long newPos = prevMap.backtrack(firstTrans.lastPos, pos);
+                node.setPointer(i, null, newPos);
             }
         }
     }
     
-    /**
-     * Creates memory pointers from stream pointers.
+    
+    /** 
+     * Updates node positions so node.getPos() <= firstTrans.lastSpos.
      */
-    private void createMemoryPointers() {
-        Pointer p2 = new Pointer();
-
+    private void updateNodePos() {
         for (Map.Entry<Long, INode> entry : posMap.entrySet()) {
             INode node = entry.getValue();
+            long newPos = prevMap.backtrack(firstTrans.lastPos, node.getSpos());
+            node.setSpos(newPos);
+        }
+    }
+    
+    /**
+     * Creates memory pointers from stream pointers when possible.
+     */
+    private void createMemoryPointers() {
+        Pointer p = new Pointer();
 
+        for (INode node : posMap.values()) {
             int pointerCount = node.getPointerCount();
             for (int i = 0; i < pointerCount; i++) {
-                node.getPointer(i, p2);
-                if (p2.isNull()) {
+                node.getPointer(i, p);
+                if (p.isNull()) {
                     continue;
                 }
 
-                INode pointee = posMap.get(p2.pos);
+                INode pointee = posMap.get(p.pos);
                 if (pointee != null) {
                     node.setPointer(i, pointee, accessData);
                 }

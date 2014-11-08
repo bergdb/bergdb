@@ -128,6 +128,10 @@ public class KeyNode implements INode {
         return isSegmentLeaf;
     }
     
+    public final boolean isKeyNode() { return true; }
+    public final boolean isTopNode() { return false; }
+    public final boolean isValueNode() { return false; }
+    
     public final boolean isDirty() {
         return isDirty;
     }
@@ -147,6 +151,7 @@ public class KeyNode implements INode {
     public final void getPointer(int index, Pointer pointer) {
         pointer.node = pointers[index];
         pointer.pos = pos[index];
+        pointer.index = index;
     }
     
     public final INode getPointerNode(int index) {
@@ -158,7 +163,7 @@ public class KeyNode implements INode {
     }
     
     public final void setPointer(int index, INode node, long spos) {
-        // Besides DB.start() only called from DB.evictInner() and DB.followPointer().
+        // Besides Db startup, only called from Db.evictPointers() and Dag.followPointer().
         
         pointers[index] = node;
         pos[index] = spos;

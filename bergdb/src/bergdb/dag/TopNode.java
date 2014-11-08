@@ -293,4 +293,8 @@ public final class TopNode implements INode {
         //Assert.assertEquals(20+1, TopNode.height(1024*1024));
         Assert.assertEquals(30, TopNode.height(1024*1024*1024 / 2));
     }
+
+    public boolean isKeyNode() { return false; }
+    public boolean isTopNode() { return true; }
+    public boolean isValueNode() { return false; }
 }

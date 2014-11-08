@@ -274,4 +274,8 @@ public final class ValueNode implements INode {
             v.setPointerAccessData(0, 0);
         } catch (Bug e) {}
     }
+
+    public boolean isTopNode() { return false; }
+    public boolean isKeyNode() { return false; }
+    public boolean isValueNode() { return true; }
 }
