@@ -25,6 +25,11 @@ import bergdb.storage.StreamFormatException;
  * @author Frans Lundberg
  */
 public class DbStarter {
+    //
+    // This implementation is not optimized for CPU performance. Clean code takes precedence.
+    // Startup is not that performance-sensitive and its likely I/O bound anyway.
+    //
+    
     private final KvTransSeq kvTransSeq = new KvTransSeq();
     private long cachedMemoryValue = Db.MIN_CACHE_MEMORY_VALUE;
     private final HashMap<Long, INode> posMap = new HashMap<Long, INode>();  // pos -> node
@@ -145,6 +150,11 @@ public class DbStarter {
                 if (node.getType() == INode.TYPE_KEY_NODE) {
                     KeyNode k = (KeyNode) node;
                     k.toPreviousState(tInit);
+                    
+                    // NOTE We do get k.size == 0 cases.
+                    //if (k.size == 0) {
+                        //System.out.println("XXX " + k.print());
+                    //}
                 }
                 
                 backtrackPos(node, firstTrans.lastPos);

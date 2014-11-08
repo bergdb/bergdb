@@ -19,7 +19,6 @@ import bergdb.dag.GetMany;
 import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Keys;
-import bergdb.dag.Klong;
 import bergdb.dag.NodeVisitor;
 import bergdb.dag.Pointer;
 import bergdb.dag.PutData;
