@@ -256,6 +256,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     public final INode followPointer(final INode predecessor, int pointerIndex, long accessData, 
             PointerListener pointerListener, CachePolicy cachePolicy) {
         INode result;
+        assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
         assert predecessor != null : "predecessor is null";
         assert accessData == 0 || AccessData.isValid(accessData);
 
@@ -586,10 +587,13 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         
         while (!current.isSegmentLeaf()) {
             current.searchLte(pd.tt, compareValue, pd.kwi);
-            assert pd.kwi.klong != Klong.NULL;
+            assert pd.kwi.klong != Klong.NULL 
+                    : "LTE search -> Klong.NULL, tt=" + pd.tt + ", node:" + current.print();
+            assert pd.kwi.pointerIndex >= 0 
+                    : "LTE search found klong, but pointerIndex=" + pd.kwi.pointerIndex;
+            
             current = (KeyNode) followPointer(current, pd.kwi.pointerIndex, pd.accessData,
                     pd.pointerListener, pd.cachePolicy);
-            assert current != null;
             assert current.assertOk(this.maxNodeSize);
         }
         

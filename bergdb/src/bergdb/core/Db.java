@@ -19,6 +19,7 @@ import bergdb.dag.GetMany;
 import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Keys;
+import bergdb.dag.Klong;
 import bergdb.dag.NodeVisitor;
 import bergdb.dag.Pointer;
 import bergdb.dag.PutData;
@@ -660,6 +661,9 @@ public class Db {
         }
     }
 
+    /**
+     * Creates super root node and root node (TopNode + KeyNode) and writes them to stream.
+     */
     private void writePrimordialTransaction() {
         long tt;
         try {
@@ -668,7 +672,8 @@ public class Db {
             dbClock.transactionEnd();
         }
         
-        KeyNode root = new KeyNode();
+        //KeyNode root = new KeyNode();
+        KeyNode root = KeyNode.nodeWithTime(tt);
         TopNode superRoot = TopDs.createSuperRootFromFirstKeyNode(tt, root, AccessData.DEFAULT_ACCESS_DATA);
         
         MetaBlock meta = nodeStream.getMetaBlock();
@@ -747,9 +752,12 @@ public class Db {
     }
     
     /**
-     * Stops the database, flushes the storage streams and releases resources; 
-     * for example closes open files and network sockets.
-     * This method does what stop() does and more.
+     * Stops the database, flushes the storage streams and releases resources.
+     * The method closes open files and network sockets and waits until its done
+     * before it returns.
+     * 
+     * This method is seldom needed, clients should prefer to call stop(), or just
+     * let GC clean up the Db object once there are no more references to it.
      */
     public void close() {
         synchronized (readSync) {};
@@ -774,6 +782,9 @@ public class Db {
         storageManager.close();
     }
     
+    /**
+     * Used by JVM garbage collector; this method calls stop().
+     */
     protected void finalize() throws Throwable {
         stop();
         super.finalize();

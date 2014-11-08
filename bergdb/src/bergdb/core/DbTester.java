@@ -232,26 +232,27 @@ public class DbTester {
         
         db.execute(Trans.builder().put("a", "a-value").put("b", "b-value").build());
         
-        //System.out.println("== DbTester.testDeleteX ==");
+        //System.out.println("== DbTester.testDeleteTwoValues ==");
         //db.printGraph(System.out);
         
         db.execute(Trans.builder().delete("a").delete("b").build());
         
-        //System.out.println("== DbTester.testDeleteX ==");
+        //System.out.println("== DbTester.testDeleteTwoValues ==");
         //db.printGraph(System.out);
         
         assert superRoot == db.internal().superRoot() : superRoot + " != " + db.internal().superRoot();
         
-        // Get the KeyNode and examines the DELETE_BITMAP at the end.
+        // Gets the KeyNode and examines the DELETE_BITMAP at the end.
         
         KeyNode k = (KeyNode) db.findNode(new int[]{0}, db.newGetData());
-        long klong = k.getKlong(4);
-        Assert.assertEquals(Klong.getType(klong), Klong.TYPE_DELETE_BITMAP);
-        Assert.assertFalse(Klong.isDeleted(klong, 0));
-        Assert.assertTrue(Klong.isDeleted(klong, 1));
-        Assert.assertTrue(Klong.isDeleted(klong, 2));
-        Assert.assertFalse(Klong.isDeleted(klong, 3));
-        Assert.assertFalse(Klong.isDeleted(klong, 4));
+        
+        long klong = k.getKlong(5);
+        Assert.assertEquals("check TYPE_DELETE_BITMAP", Klong.getType(klong), Klong.TYPE_DELETE_BITMAP);
+        
+        boolean[] expected = new boolean[]{false, false, true, true, false, false};
+        for (int i = 0; i < expected.length; i++) {
+            Assert.assertEquals(expected[i], Klong.isDeleted(klong, i));
+        }
         
         db.stop();
     }

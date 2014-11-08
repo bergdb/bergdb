@@ -15,19 +15,18 @@ import bergdb.stream.MemoryStream;
  */
 public class BigDb {
     
-    // TODO D. Make as-simple-as-possible version of t10kv, and fix it!
-    
     @T("f perf")
     public static void t10kv(TestCollector c) throws InterruptedException {
         runTest(10, c);
     }
     
-    @T("perf")
+    // TODO A. Fix t100kv
+    @T("f perf")
     public static void t100kv(TestCollector c) throws InterruptedException {
         runTest(100, c);
     }
     
-    @T("perf")
+    @T("f perf")
     public static void t1000kv(TestCollector c) throws InterruptedException {
         runTest(1000, c);
     }
@@ -63,9 +62,9 @@ public class BigDb {
     
     /**
      * Runs the test with a total of 100 MB payload in the DB and a variable 
-     * number of KV.
+     * number of KVs.
      * 
-     * @param n Number of KVs. 10, 100, 1000, 10000 are suitable.
+     * @param n  Number of KVs. 10, 100, 1000, 10000 are suitable.
      */
     private static void runTest(int n, TestCollector c) throws InterruptedException {
         MemoryStream ms = new MemoryStream();
@@ -90,6 +89,8 @@ public class BigDb {
             db.execute(t);
             i++;
         }
+        
+        long sum1 = DbUtil.checksum(db);
         
         c.report("memory-used-after-100MB-of-data", getMem());
         
@@ -119,10 +120,14 @@ public class BigDb {
             Assert.assertArrayEquals(expectedValue, value);
         }
         
+        long sum2 = DbUtil.checksum(db2);
+        
         db2.sync(SyncLevel.ORDINARY);
         db2.stop();
         db2 = null;
         ms = null;
         System.gc();
+        
+        Assert.assertEquals(sum1, sum2);
     }
 }

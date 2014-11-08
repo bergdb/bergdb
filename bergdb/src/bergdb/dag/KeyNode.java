@@ -90,6 +90,18 @@ public class KeyNode implements INode {
             // field this.size.
     }
     
+    /**
+     * Creates a key node with one klong -- a TIME klong.
+     * isSegmentLeaf is set to true.
+     */
+    public static KeyNode nodeWithTime(long time) {
+        KeyNode node = new KeyNode(true);
+        node.addToEnd(Klong.createTime(time), null, Spos.NULL);
+        node.lastTimeIndex = 0;
+        assert node.size == 1;
+        return node;
+    }
+    
     public final byte getType() {
         return INode.TYPE_KEY_NODE;
     }
@@ -644,7 +656,7 @@ public class KeyNode implements INode {
     public void addKlong(long time, long klong, INode pointer, long accessData) {
         short sz;
         
-        // Synch action, publishes previous writes visible.
+        // Synch action, ensures that published previous writes are visible.
         sz = this.size;             
         
         assert lastTimeIndex == -1 || time >= klongs[lastTimeIndex];
@@ -1153,6 +1165,9 @@ public class KeyNode implements INode {
             return;
         }
         out.println(indent + this.toString());
+        if (size == 0) {
+            out.println(indent + "    no klongs");
+        }
         
         for (int i = 0; i < size; i++) {
             long klong = klongs[i];
@@ -1381,11 +1396,16 @@ public class KeyNode implements INode {
     /**
      * Validates this node. Pointers for time > initTime are 
      * allowed to be NULL (-1).
+     * Size must be > 0.
      * 
      * @throws StreamFormatException
      */
     public void validateStreamNode(long initTime) {
         short sz = this.size;
+        
+        if (sz < 1) {
+            throw new StreamFormatException("Key node with size " + sz + ", " + toString() + ".");
+        }
         
         try {
             checkSizes();
@@ -1420,7 +1440,7 @@ public class KeyNode implements INode {
                         }
                     }
                 } else {
-                    // memory pointer, not further validation
+                    // memory pointer, no further validation
                 }
             }
         }

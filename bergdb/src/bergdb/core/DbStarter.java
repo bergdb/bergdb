@@ -73,10 +73,10 @@ public class DbStarter {
         
         // A. Set prev pos correctly for KeyNodes when rerun. stored.prev = node.spos.
         
+        db.internal().setKvTransSeq(kvTransSeq);
+        
         validateTransactions(transactions, 0);
         validateAccessData(accessData);
-        
-        db.internal().setKvTransSeq(kvTransSeq);
         
         if (isPrimordialTransaction()) {
             doFirstStartup();
@@ -87,7 +87,6 @@ public class DbStarter {
         refreshStreamPointers();
         createMemoryPointers();
         
-        // XXX
         //System.out.println("startupPos: " + firstTrans.tpos);
         //System.out.println("prevMap:");
         //for (Map.Entry<Long, Long> entry : this.prevMap.entrySet()) {
@@ -226,6 +225,8 @@ public class DbStarter {
      *      if the db stream was tampered with.
      */
     private void validateTransactions(List<StoredTrans> transactions, long initTime) {
+        // NOTE t.version --- stream format version. We should check that this
+        // software supports the version of the transactions in the stream.
         
         if (transactions.size() == 0) {
             throw new StreamFormatException("No transactions for startup algorithm.");
@@ -237,8 +238,6 @@ public class DbStarter {
             if (t == null) {
                 throw new StreamFormatException("null transaction, i = " + i);
             }
-            
-            // NOTE t.version --- stream format version? Check?
             
             if (t.tpos < RecoverableStream.META_BLOCK_SIZE) {
                 throw new StreamFormatException("Bad spos of transaction, " + t.toString());
@@ -267,6 +266,7 @@ public class DbStarter {
             knode.validateStreamNode(initTime);
             break;
         case INode.TYPE_TOP_NODE:
+            break;
             
         }
     }

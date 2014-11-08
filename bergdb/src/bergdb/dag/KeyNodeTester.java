@@ -920,6 +920,19 @@ public class KeyNodeTester {
         assertExists(node, "c");
     }
     
+    @T private static void testNewKeyNodeWithTime() {
+        KeyNode node = KeyNode.nodeWithTime(123);
+        
+        Assert.assertEquals(1, node.size);
+        Assert.assertEquals(1, node.getPointerCount());
+        Pointer p = new Pointer();
+        node.getPointer(0, p);
+        Assert.assertTrue(p.isNull());
+        long klong = node.getKlong(0);
+        Assert.assertEquals(Klong.TYPE_TIME, Klong.getType(klong));
+        Assert.assertEquals(123, Klong.getTime(klong));
+    }
+    
     
     public static void main(String[] args) throws Exception {
         testGt1();
