@@ -13,6 +13,8 @@ import bergdb.dag.Pointer;
 import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
+import bergdb.nanotest.Assert;
+import bergdb.nanotest.T;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamException;
 import bergdb.storage.StreamFormatException;
@@ -27,7 +29,7 @@ public class DbStarter {
     private long cachedMemoryValue = Db.MIN_CACHE_MEMORY_VALUE;
     private final HashMap<Long, INode> posMap = new HashMap<Long, INode>();  // pos -> node
     private final HashMap<Long, INode> nextMap = new HashMap<Long, INode>(); // prev pos -> node
-    private final HashMap<Long, Long> prevMap = new HashMap<Long, Long>();   // pos -> prev pos
+    private final PrevMap prevMap = new PrevMap();   // pos -> prev pos
     private final Db db;
     private final List<StoredTrans> transactions;
     private final StoredTrans firstTrans;
@@ -103,7 +105,7 @@ public class DbStarter {
     }
     
     private void rerunTransactions() {
-        // Rerun transactions, but not the very first.
+        // Reruns transactions, except the first one.
         
         int count = transactions.size();
         
@@ -154,32 +156,15 @@ public class DbStarter {
         int count = node.getPointerCount();
         Pointer p = new Pointer();
         
-        node.setSpos(backtrackPos(posLimit, node.getSpos()));
+        node.setSpos(prevMap.backtrack(posLimit, node.getSpos()));
         
         for (int i = 0; i < count; i++) {
             node.getPointer(i, p);
             if (!p.isNull()) {
-                long newPos = backtrackPos(posLimit, p.pos);
+                long newPos = prevMap.backtrack(posLimit, p.pos);
                 node.setPointer(i, p.node, newPos);
             }
         }
-    }
-    
-    private long backtrackPos(long posLimit, long pos) {
-        // "Backtracks" stream position 'pos' to a position that is <= posLimit.
-        
-        long p = pos;
-  
-        while (p > posLimit) {
-            if (prevMap.containsKey(p)) {
-                p = prevMap.get(p);
-            } else {
-                p = Spos.NULL;
-                break;
-            }
-        }
-        
-        return p;
     }
 
     private boolean isPrimordialTransaction() {
@@ -298,7 +283,7 @@ public class DbStarter {
                 long prev = storedNode.getPrevPos();
                 
                 assert spos > prev;
-                prevMap.put(spos, prev);
+                prevMap.addMapping(spos, prev);
                 
                 if (prev != Spos.NULL) {
                     nextMap.put(prev, node);
@@ -401,5 +386,87 @@ public class DbStarter {
         public KvTransSeq getKvTransSeq() {
             return kvTransSeq;
         }
+    }
+    
+    /**
+     * Pos-to-prevPos map.
+     */
+    private static class PrevMap {
+        private HashMap<Long, Long> map = new HashMap<Long, Long>();
+        
+        void addMapping(long pos, long previousPos) {
+            if (!Spos.isValid(pos)) {
+                throw new IllegalArgumentException("bad pos: " + pos);
+            }
+            
+            if (!Spos.isValidOrNull(previousPos)) {
+                throw new IllegalArgumentException("bad previousPos: " + previousPos);
+            }
+            
+            if (!(previousPos < pos)) {
+                throw new IllegalArgumentException("previousPos not less than pos, " + previousPos + ", " + pos);
+            }
+            
+            map.put(pos, previousPos);
+        }
+        
+        long backtrack(long limit, long pos) {
+            while (pos > limit) {
+                Long posLong = map.get(pos);
+                
+                if (posLong == null) {
+                    pos = Spos.NULL;
+                    break;
+                } else {
+                    pos = posLong;
+                }
+            }
+            
+            return pos;
+        }
+    }
+    
+    // ======== Tests ========
+    
+    @T
+    private static void testPrevMap1() {
+        PrevMap m = new PrevMap();
+        m.addMapping(40, 30);
+        m.addMapping(30, 20);
+        m.addMapping(20, 10);
+        
+        Assert.assertEquals(20, m.backtrack(25, 40));
+        Assert.assertEquals(10, m.backtrack(15, 40));
+    }
+    
+    @T
+    private static void testPrevMap2() {
+        PrevMap m = new PrevMap();
+        m.addMapping(40, 30);
+        m.addMapping(30, 20);
+        m.addMapping(20, 10);
+        
+        Assert.assertEquals(Spos.NULL, m.backtrack(0, 40));
+        Assert.assertEquals(40, m.backtrack(40, 40));
+    }
+    
+    @T
+    private static void testPrevMap3() {
+        IllegalArgumentException ex = null;
+        PrevMap m = new PrevMap();
+        
+        try {
+            m.addMapping(100, 200);
+        } catch (IllegalArgumentException e) {
+            ex = e;
+        }
+        
+        Assert.assertTrue(ex != null);
+    }
+    
+    @T
+    private static void testEmptyPrevMap() {
+        PrevMap m = new PrevMap();
+        Assert.assertEquals(Spos.NULL, m.backtrack(10, 40));
     }
 }

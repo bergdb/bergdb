@@ -8,6 +8,7 @@ public class Pack implements IPack {
         DatabaseId.class,
         Db.class,
         DbClock.class,
+        DbStarter.class,
         DbTester.class,
         DbTesterGetMany.class,
         DbTesterRestart.class,
