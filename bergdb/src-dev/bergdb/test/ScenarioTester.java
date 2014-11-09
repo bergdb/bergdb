@@ -180,35 +180,44 @@ public class ScenarioTester {
         long startupPos;
         
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup().mainStream(stream).clock(clock).build();
-        db.internal().setStartupPosUpdater(updater);
-        db.start();
+        Db db1 = Db.builder().testSetup().mainStream(stream).clock(clock).build();
+        db1.internal().setStartupPosUpdater(updater);
+        db1.start();
         
         clock.setTime(100);
         Trans t1 = Trans.builder().put("/key1", "v1").build();
-        db.execute(t1);
+        db1.execute(t1);
         
         clock.setTime(200);
         startupPos = t1.pos;
         updater.setNextPos(startupPos);
         Trans t2 = Trans.builder().put("/key2", "v2").build();
-        db.execute(t2);
-        long sum1 = DbUtil.checksum(db);
-        db.sync(SyncLevel.ORDINARY);
+        db1.execute(t2);
+        long sum1 = DbUtil.checksum(db1);
+        db1.sync(SyncLevel.ORDINARY);
         
         // Restart
         
-        db = Db.builder().testSetup().mainStream(stream.copy()).build();
+        Db db2 = Db.builder().testSetup().mainStream(stream.copy()).build();
         
         StartParams params = new StartParams();
         params.startupDistance = 20*1000000;
         params.startupPos = startupPos;
         
-        db.start(params, Db.PrintStartListener.DO_NOTHING);
-        long sum2 = DbUtil.checksum(db);
-        db.stop();
+        db2.start(params, Db.PrintStartListener.DO_NOTHING);
+        long sum2 = DbUtil.checksum(db2);
         
-        Assert.assertEquals(sum1, sum2);
+        System.out.println("== db1:");
+        db1.printGraph(System.out);
+        System.out.println("== db2:");
+        db2.printGraph(System.out);
+        
+        db2.getStream().print(System.out);
+        
+        db1.stop();
+        db2.stop();
+        
+        Assert.assertEquals("checksum", sum1, sum2);
     }
     
     @T
@@ -256,7 +265,7 @@ public class ScenarioTester {
     /**
      * Two transactions with multi-klong keys: t1, t2. t2 sets startup pos to t1.pos.
      */
-    @T 
+    @T
     private static void scenario106(TestCollector c) throws InterruptedException {
         
         //System.out.println("======== testScenario106 ========");

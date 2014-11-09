@@ -20,7 +20,7 @@ import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamException;
 import bergdb.storage.StreamFormatException;
 
-// TODO A. Work on DbStarter2, focus on state at t = startupTime directly (instead of latest state first).
+// TODO D. S104, 328 -> -1, too few mem pointers are created. Rethink node.pos backtrack!
 
 /**
  * A function-class, see the single public method.
@@ -29,6 +29,10 @@ import bergdb.storage.StreamFormatException;
  */
 public class DbStarter2 {
     //
+    // DbStarter2 -- focus on state at t = startupTime directly (instead of latest state first).
+    // Status 141109. Tests: unit:2,f:2. Mem pointer creation has issues. Backtrack does not 
+    // work properly. Lots of backtrack to -1... not correct.
+    //
     // This implementation is not optimized for CPU performance. Clean code takes precedence.
     // Startup is not that performance-sensitive and its likely I/O bound anyway.
     //
@@ -36,6 +40,7 @@ public class DbStarter2 {
     private final KvTransSeq kvTransSeq = new KvTransSeq();
     private long cachedMemoryValue = Db.MIN_CACHE_MEMORY_VALUE;
     private final HashMap<Long, INode> posMap = new HashMap<Long, INode>();  // pos -> node
+    private final HashMap<Long, INode> posMap2 = new HashMap<Long, INode>();  // pos -> node
     private final HashMap<Long, INode> nextMap = new HashMap<Long, INode>(); // prev pos -> node
     private final PrevMap prevMap = new PrevMap();   // pos -> prev pos
     private final Db db;
@@ -86,6 +91,10 @@ public class DbStarter2 {
         
         // TODO B. Is KeyNode.getId() ok after rerun?
         
+        //if (startupPos > RecoverableStream.META_BLOCK_SIZE) {
+        //    System.out.println("startupPos: " + startupPos + ", startupTime: " + startupTime);
+        //}
+        
         db.internal().setKvTransSeq(kvTransSeq);
         
         validateTransactions(transactions, 0);
@@ -106,6 +115,7 @@ public class DbStarter2 {
         updateStreamPointers();
         updateNodePos();
         
+        createPosMap2();
         createMemoryPointers();
         checkKeyNodeStreamPointers();
         
@@ -115,12 +125,31 @@ public class DbStarter2 {
         rerunTransactions();
     }
     
+    private void createPosMap2() {
+        for (Map.Entry<Long, INode> entry : posMap.entrySet()) {
+            INode node = entry.getValue();
+            long pos = node.getSpos();
+            
+            if (!Spos.isNull(pos)) {
+                posMap2.put(pos, node);
+            }
+        }
+        
+        
+        for (INode node : posMap.values()) {
+            long pos = node.getSpos();
+            if (!Spos.isNull(pos)) {
+                posMap2.put(pos, node);
+            }
+        }
+    }
+
     /**
      * Checks that there are no stream pointers of KeyNodes that
      * are equal to Spos.NULL.
      */
     private void checkKeyNodeStreamPointers() {
-        for (INode node : posMap.values()) {
+        for (INode node : posMap2.values()) {
             if (node.isKeyNode()) {
                 KeyNode k = (KeyNode) node;
                 
@@ -380,7 +409,8 @@ public class DbStarter2 {
     private void updateNodePos() {
         for (Map.Entry<Long, INode> entry : posMap.entrySet()) {
             INode node = entry.getValue();
-            long newPos = prevMap.backtrack(firstTrans.lastPos, node.getSpos());
+            long pos = node.getSpos();
+            long newPos = prevMap.backtrack(firstTrans.lastPos, pos);
             node.setSpos(newPos);
         }
     }
@@ -391,7 +421,7 @@ public class DbStarter2 {
     private void createMemoryPointers() {
         Pointer p = new Pointer();
 
-        for (INode node : posMap.values()) {
+        for (INode node : posMap2.values()) {
             int pointerCount = node.getPointerCount();
             for (int i = 0; i < pointerCount; i++) {
                 node.getPointer(i, p);
@@ -399,9 +429,11 @@ public class DbStarter2 {
                     continue;
                 }
 
-                INode pointee = posMap.get(p.pos);
+                INode pointee = posMap2.get(p.pos);
                 if (pointee != null) {
                     node.setPointer(i, pointee, accessData);
+                    
+                    //System.out.println("*** mem pointer created: " + node + " ==> " + pointee);
                 }
             }
         }
