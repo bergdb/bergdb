@@ -20,8 +20,6 @@ import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamException;
 import bergdb.storage.StreamFormatException;
 
-// TODO D. S104, 328 -> -1, too few mem pointers are created. Rethink node.pos backtrack!
-
 /**
  * A function-class, see the single public method.
  * 
@@ -37,7 +35,7 @@ public class DbStarter2 {
     // Startup is not that performance-sensitive and its likely I/O bound anyway.
     //
     
-    private final KvTransSeq kvTransSeq = new KvTransSeq();
+    private final TransSeq kvTransSeq = new TransSeq();
     private long cachedMemoryValue = Db.MIN_CACHE_MEMORY_VALUE;
     private final HashMap<Long, INode> posMap = new HashMap<Long, INode>();  // pos -> node
     private final HashMap<Long, INode> posMap2 = new HashMap<Long, INode>();  // pos -> node
@@ -87,14 +85,7 @@ public class DbStarter2 {
     /**
      * Runs the startup algorithm.
      */
-    private void start() throws StreamException {
-        
-        // TODO B. Is KeyNode.getId() ok after rerun?
-        
-        //if (startupPos > RecoverableStream.META_BLOCK_SIZE) {
-        //    System.out.println("startupPos: " + startupPos + ", startupTime: " + startupTime);
-        //}
-        
+    private void start() throws StreamException {        
         db.internal().setKvTransSeq(kvTransSeq);
         
         validateTransactions(transactions, 0);
@@ -281,9 +272,6 @@ public class DbStarter2 {
      *      if the db stream was tampered with.
      */
     private void validateTransactions(List<StoredTrans> transactions, long startupTime) {
-        // NOTE t.version --- stream format version. We should check that this
-        // software supports the version of the transactions in the stream.
-        
         if (transactions.size() == 0) {
             throw new StreamFormatException("No transactions for startup algorithm.");
         }
@@ -451,7 +439,7 @@ public class DbStarter2 {
             return cachedMemoryValue;
         }
 
-        public KvTransSeq getKvTransSeq() {
+        public TransSeq getKvTransSeq() {
             return kvTransSeq;
         }
     }

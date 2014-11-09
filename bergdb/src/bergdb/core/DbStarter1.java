@@ -30,7 +30,7 @@ public class DbStarter1 {
     // Startup is not that performance-sensitive and its likely I/O bound anyway.
     //
     
-    private final KvTransSeq kvTransSeq = new KvTransSeq();
+    private final TransSeq kvTransSeq = new TransSeq();
     private long cachedMemoryValue = Db.MIN_CACHE_MEMORY_VALUE;
     private final HashMap<Long, INode> posMap = new HashMap<Long, INode>();  // pos -> node
     private final HashMap<Long, INode> nextMap = new HashMap<Long, INode>(); // prev pos -> node
@@ -388,7 +388,7 @@ public class DbStarter1 {
             return cachedMemoryValue;
         }
 
-        public KvTransSeq getKvTransSeq() {
+        public TransSeq getKvTransSeq() {
             return kvTransSeq;
         }
     }

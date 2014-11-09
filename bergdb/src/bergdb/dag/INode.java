@@ -1,12 +1,5 @@
 package bergdb.dag;
 
-// TODO D. isTopNode(), isKeyNode(), isValueNode() methods. Possible also toTopNode, toKeyNode, toValueNode methods.
-// Code like:
-//   if (inode.getType() == INode.KEY_NODE) { KeyNode k = (KeyNode) inode; print(k); ..
-// can be improved to:
-///  if (inode.isKeyNode) { print(inode.toKeyNode(); ..
-
-
 /**
  * <p>A node of the DB graph. An INode can be serialized with toBytes(). 
  * Each INode implementation should also have a

@@ -120,7 +120,7 @@ public class Db {
     private final StorageManager storageManager;
     private final Random evictRandom;
     private Dag dag;
-    private KvTransSeq kvTransSeq;
+    private TransSeq kvTransSeq;
     private final ExecuteData x;
     private final Aux aux = new Aux();
     
@@ -151,6 +151,7 @@ public class Db {
     private StartupPosUpdater startupPosUpdater = new StartupPosUpdater() {
         public long newStartupPos(long current, long streamLength, int startupDistance, 
                 PosOfTransBeforeFunction posFunction) { 
+            assert posFunction != null : "posFunction is null";
             long candidate = streamLength - startupDistance;
             candidate = candidate < 0 ? 0 : candidate;
             long pos = posFunction.posOfTransBefore(candidate);
@@ -509,15 +510,9 @@ public class Db {
     }
 
     private void startupDb(ArrayList<StoredTrans> transactions) {
-        //DagStarter.Result result = DagStarter.start(transactions, getAccessData(), nodeStream, maxNodeSize);
-        //dag = result.getDag();
-        
         //DbStarter1.Result result = DbStarter1.start(this, transactions, getAccessData(), nodeStream, maxNodeSize);
-        
-        DbStarter2.Result result = DbStarter2.start(this, transactions, getAccessData(), nodeStream, maxNodeSize);
-        
-        aux.cachedMemoryValue.set(result.getCachedMemoryValue());
-        kvTransSeq = result.getKvTransSeq();
+        //DbStarter2.Result result = DbStarter2.start(this, transactions, getAccessData(), nodeStream, maxNodeSize);
+        DbStarter3.start(this, transactions, getAccessData(), nodeStream, maxNodeSize);
     }
 
     /**
@@ -649,7 +644,7 @@ public class Db {
      */
     private void handleEmptyStream() {
         if (nodeStream.getLength() == 0) {
-            determineDatabaseId();
+            determineDatabaseId();            
             writePrimordialTransaction();
         }
     }
@@ -663,9 +658,16 @@ public class Db {
     }
 
     /**
-     * Creates super root node and root node (TopNode + KeyNode) and writes them to stream.
+     * Creates the two primordial transaction nodes and writes them to db stream.
      */
     private void writePrimordialTransaction() {
+        //
+        // Created node instances should *not* leak from this method.
+        // The startup process will create the node instance from the stream.
+        // We do not want duplicates. Just append the nodes to stream, 
+        // this method should not change in-memory state.
+        //
+        
         long tt;
         try {
             tt = dbClock.transactionBegin();
@@ -673,7 +675,6 @@ public class Db {
             dbClock.transactionEnd();
         }
         
-        //KeyNode root = new KeyNode();
         KeyNode root = KeyNode.nodeWithTime(tt);
         TopNode superRoot = TopDs.createSuperRootFromFirstKeyNode(tt, root, AccessData.DEFAULT_ACCESS_DATA);
         
@@ -683,27 +684,18 @@ public class Db {
         meta.setStartupPos(0);
         meta.setTime(tt);
         
-        this.kvTransSeq = new KvTransSeq();
-        
         Trans trans = Trans.builder().build();
         trans.time = tt;
         trans.isInternal = true;
         
-        x.begin(trans);
+        TransNodes transNodes = new TransNodes();
+        transNodes.addKeyNode(root);
+        transNodes.addTopNode(superRoot);
         
-        assert !root.isDirty;
-        assert !superRoot.isDirty;
-        makeDirtyIfNeeded(root);
-        makeDirtyIfNeeded(superRoot);
+        nodeStream.appendNodes(transNodes, trans);
         
-        x.kvTransNodes.addKeyNode(root);
-        x.kvTransNodes.addTopNode(superRoot);
-        
-        store();
-        
+        // This is needed to be able to use sync() method.
         x.lastSposOfLastTrans = trans.lastPos;
-        
-        x.end();
     }
 
     private void makeDirtyIfNeeded(INode node) {
@@ -1144,72 +1136,10 @@ public class Db {
     }
     
     private void store() {
-        //storeAsTwo();
-        storeAsOne();
-    }
-
-    @SuppressWarnings("unused")
-    private void storeAsTwo() {
-        long sp0 = x.startupPos.get();
-        long sp1;
-        
-        if (x.trans.isRerun) {
-            sp1 = x.trans.startupPos;
-        } else {
-            sp1 = computeNewStartupPos();
-        }
-        
-        // kv trans
-        
-        if (x.trans.isRerun) {
-            nodeStream.doDummyAppend(x.kvTransNodes, x.trans);
-        } else {
-            nodeStream.appendNodes(x.kvTransNodes, x.trans);
-        }
-        
-        x.trans.nodeCount = x.kvTransNodes.size();
-
-        x.transInfo.tpos = x.trans.pos;
-        x.transInfo.lastPos = x.trans.lastPos;
-        x.transInfo.tt = x.trans.time;
-        kvTransSeq.add(x.transInfo);
-        
-        x.kvTransNodes.clean();
-        
-        // Index trans
-        
-        kvTransSeq.addToTransNodes(sp1, x.indexTransNodes);
-        kvTransSeq.removeBefore(sp1);
-        
-        if (x.indexTransNodes.size() > 0) {
-            Trans trans = Trans.builder().build();
-            trans.isInternal = true;
-            trans.time = x.trans.time;
-            trans.isRerun = x.trans.isRerun;
-            trans.startupPos = sp1 == sp0 ? sp1 : -1;
-            trans.pos = x.trans.nextPos;
-            
-            assert trans.pos % RecoverableStream.TRANS_ALIGNMENT == 0 : "Bad trans.pos, " + trans.pos;
-            TransNodes nodes1 = x.indexTransNodes;
-            
-            if (trans.isRerun) {
-                nodeStream.doDummyAppend(nodes1, trans);
-            } else {
-                nodeStream.appendNodes(nodes1, trans);
-            }
-            
-            x.indexTransNodes.clean();
-        }
-        
-        x.startupPos.set(sp1);
-    }
-    
-    private void storeAsOne() {
         long sp;
         
         if (x.trans.isRerun) {
             sp = x.trans.startupPos;
-            assert sp >= 0 : "bad sp: " + sp + ", trans: " + x.trans.toString();
         } else {
             sp = computeNewStartupPos();
             x.trans.startupPos = sp;
@@ -1218,14 +1148,12 @@ public class Db {
         kvTransSeq.addToTransNodes(sp, x.kvTransNodes);
         kvTransSeq.removeBefore(sp);
         
-        if (x.trans.isRerun) {
-            nodeStream.doDummyAppend(x.kvTransNodes, x.trans);
-        } else {
+        if (!x.trans.isRerun) {
             nodeStream.appendNodes(x.kvTransNodes, x.trans);
         }
         
         x.trans.nodeCount = x.kvTransNodes.size();
-
+        
         x.transInfo.tpos = x.trans.pos;
         x.transInfo.lastPos = x.trans.lastPos;
         x.transInfo.tt = x.trans.time;
@@ -1234,7 +1162,7 @@ public class Db {
         x.kvTransNodes.clean();
         x.startupPos.set(sp);
     }
-
+    
     /**
      * Returns to caller with a RerunException if any key was modified after 
      * the read time of the transaction. This is the essence of the 
@@ -1293,6 +1221,7 @@ public class Db {
      * the stream length and the startupPosUpdater.
      */
     private long computeNewStartupPos() {
+        assert kvTransSeq != null : "kvTransSeq is null";
         long current = x.startupPos.get();
         long length = nodeStream.getLength();
         return startupPosUpdater.newStartupPos(
@@ -1526,7 +1455,11 @@ public class Db {
         
         public void createPutAndGetData() { Db.this.createPutAndGetData(); }
 
-        public void setKvTransSeq(KvTransSeq seq) { Db.this.kvTransSeq = seq; }
+        public void setKvTransSeq(TransSeq seq) { Db.this.kvTransSeq = seq; }
+        
+        public void setCachedMemoryValue(long cachedMemoryValue) {
+            Db.this.aux.cachedMemoryValue.set(cachedMemoryValue);
+        }
     }
     
     /**
@@ -1550,7 +1483,7 @@ public class Db {
         public final TransNodes kvTransNodes;
         public final TransNodes indexTransNodes;
         
-        public KvTransSeq.TransInfo transInfo;
+        public TransSeq.TransInfo transInfo;
         
         /** End stream position of last transaction; used by Db.sync(). */
         public long lastSposOfLastTrans;
@@ -1567,7 +1500,7 @@ public class Db {
          */
         private void begin(Trans trans) {
             this.trans = trans;
-            transInfo = new KvTransSeq.TransInfo();
+            transInfo = new TransSeq.TransInfo();
             if (x.putData != null) {
                 x.putData.spaceSplitCount = 0;
             }

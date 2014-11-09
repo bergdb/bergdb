@@ -106,9 +106,20 @@ public final class TopNode implements INode {
         return 1 << x;
     }
     
+    private static final String CLASSNAME = TopNode.class.getName();
+    
     public String toString() {
+        String s = super.toString();
+        if (s.startsWith(CLASSNAME)) {
+            String sub = s.substring(CLASSNAME.length());
+            if (sub.length() > 5) {
+                sub = sub.substring(sub.length() - 2);
+            }
+            s = sub;
+        }
+        
         String midPart = (id == -1 && spos == -1) ? " " : " " + id + ":" + spos + " ";
-        String result = "topNode" + topNodeId + midPart + "t=" + rootTime;
+        String result = "T" + topNodeId + "/" + s + midPart + "t=" + rootTime;
         return result;
     }
     

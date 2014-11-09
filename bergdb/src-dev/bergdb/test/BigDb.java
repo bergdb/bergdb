@@ -20,7 +20,6 @@ public class BigDb {
         runTest(10, c);
     }
     
-    // TODO B. Fix t100kv
     @T("f perf")
     public static void t100kv(TestCollector c) throws InterruptedException {
         runTest(100, c);

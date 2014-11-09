@@ -15,7 +15,10 @@ import bergdb.nanotest.T;
 public class DatabaseId {
     private static final int SIZE = 16;
     
-    /** A database ID used for testing; useful to have deterministic stream bytes. */
+    /** 
+     * A database ID used for testing; useful to have deterministic stream bytes
+     * and to avoid overhead of creating a new one.
+     */
     public static final DatabaseId TEST_ID = new DatabaseId(new byte[] {
         125, -18, -12, -118, -124, 102, -13, -121, -64, -69, 114, -99, 44, -118, -85, 56
     }, Type.NORMAL);

@@ -1,9 +1,6 @@
 package bergdb.dev;
 
-// TODO C. Consider checksum computation for internal state. To compare before and after restart.
-
-// TODO B. Issue: sometimes spos == -1 is written to stream. The pointee, p, of a node has p.getSpos() == -1 because it has not ever been written to stream.
-
+// TODO C. Consider checksum computation for internal state (include TransSeq). To compare before and after restart.
 
 /**
  * Dummy test code; for development only.

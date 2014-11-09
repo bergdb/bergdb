@@ -10,14 +10,14 @@ import static bergdb.nanotest.Assert.*;
 import bergdb.nanotest.T;
 
 /**
- * An in-memory data structure that keeps information about the KV transactions
+ * An in-memory data structure that keeps information about the transactions
  * that belongs to the startup section of the database stream.
  * The information is needed to be able to append dirty nodes to the current transaction
  * so they do not become too dirty.
  * 
  * @author Frans Lundberg
  */
-public class KvTransSeq implements PosOfTransBeforeFunction {
+public class TransSeq implements PosOfTransBeforeFunction {
     private TransInfo first;     // Head of linked list, may be null.
     private TransInfo last;      // Last set of linked list, may be null.
     private int size;
@@ -198,7 +198,7 @@ public class KvTransSeq implements PosOfTransBeforeFunction {
     
     @T
     public static void test0() {
-        KvTransSeq s = new KvTransSeq();
+        TransSeq s = new TransSeq();
         
         Assert.assertEquals(0, s.getSize());
         Assert.assertTrue(s.isEmpty());
@@ -206,7 +206,7 @@ public class KvTransSeq implements PosOfTransBeforeFunction {
     
     @T
     public static void testAddOne() {
-        KvTransSeq s = new KvTransSeq();
+        TransSeq s = new TransSeq();
         TransInfo info = newTransInfo(120, 200);
         s.add(info);
         
@@ -218,7 +218,7 @@ public class KvTransSeq implements PosOfTransBeforeFunction {
     public static void testAddThree() {
         // Test with no nodes at all.
         
-        KvTransSeq s = new KvTransSeq();
+        TransSeq s = new TransSeq();
         TransInfo ts1 = newTransInfo(100, 120);
         TransInfo ts2 = newTransInfo(200, 220);
         TransInfo ts3 = newTransInfo(300, 320);
@@ -233,7 +233,7 @@ public class KvTransSeq implements PosOfTransBeforeFunction {
     @T
     public static void testRemoveBefore() {
         
-        KvTransSeq s = new KvTransSeq();
+        TransSeq s = new TransSeq();
         TransInfo info1 = newTransInfo(100, 120);
         TransInfo info2 = newTransInfo(200, 220);
         
@@ -255,7 +255,7 @@ public class KvTransSeq implements PosOfTransBeforeFunction {
     
     @T
     private static void testPosOfTransBefore() {        
-        KvTransSeq s = new KvTransSeq();
+        TransSeq s = new TransSeq();
         TransInfo info1 = newTransInfo(100, 120);
         TransInfo info2 = newTransInfo(200, 220);
         
@@ -272,7 +272,7 @@ public class KvTransSeq implements PosOfTransBeforeFunction {
     
     @T
     private static void testPosOfTransBeforeWithEmptySeq() {
-        KvTransSeq s = new KvTransSeq();
+        TransSeq s = new TransSeq();
         assertEquals(-1, s.posOfTransBefore(0));
         assertEquals(-1, s.posOfTransBefore(99));
         assertEquals(-1, s.posOfTransBefore(Long.MAX_VALUE));

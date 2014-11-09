@@ -140,10 +140,6 @@ public class ScenarioTester {
      */
     @T
     private static void scenario103() {
-        //
-        // NOTES issue. No index nodes at all in startup transactions.
-        //
-        
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(10);
         MemoryStream stream = new MemoryStream();
@@ -207,12 +203,12 @@ public class ScenarioTester {
         db2.start(params, Db.PrintStartListener.DO_NOTHING);
         long sum2 = DbUtil.checksum(db2);
         
-        System.out.println("== db1:");
-        db1.printGraph(System.out);
-        System.out.println("== db2:");
-        db2.printGraph(System.out);
+        //System.out.println("== db1:");
+        //db1.printGraph(System.out);
+        //System.out.println("== db2:");
+        //db2.printGraph(System.out);
         
-        db2.getStream().print(System.out);
+        //db2.getStream().print(System.out);
         
         db1.stop();
         db2.stop();

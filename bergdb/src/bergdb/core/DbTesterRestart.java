@@ -3,6 +3,7 @@ package bergdb.core;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
+import bergdb.storage.RecoverableStream;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
 
@@ -21,7 +22,7 @@ public class DbTesterRestart {
         byte[] value;
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().mainStream(stream).clock(clock).start();
+        Db db = Db.builder().mainStream(stream).clock(clock).testId().start();
         clock.setTime(10);
         Trans trans = Trans.builder().put("admin1", "Sanna").build();
         db.execute(trans);
@@ -44,7 +45,7 @@ public class DbTesterRestart {
     
     @T
     public static void longerThanStartup() {
-        // Stream is longer than startupDistance, single key, value updated.
+        // Stream is longer than startupDistance, single key, value updated many times.
         
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
@@ -54,50 +55,54 @@ public class DbTesterRestart {
         byte[] bytes = new byte[1000];
         
         for (int i = 0; i < 20; i++) {
-            clock.setTime(1000000 + i*10);
+            clock.setTime(100 + i*10);
             bytes[0] = (byte) i;
             Trans trans = Trans.builder().put("k", bytes).build();
             db.execute(trans);
         }
+        long sum1 = DbUtil.checksum(db);
         db.sync(SyncLevel.ORDINARY);
-        
+        db.stop();
         db = null;
+        
         Db db2 = Db.builder().testSetup().mainStream(stream).start();
         Assert.assertNull(DbUtil.get(db2, 5, "k"));
         
         for (int i = 0; i < 20; i++) {
-            long lookupTime = 1000000 + i*10 + 5;
+            long lookupTime = 100 + i*10 + 5;
             byte[] v = DbUtil.get(db2, lookupTime, "k");
             Assert.assertTrue(v != null);
             Assert.assertEquals(i, v[0]);
         }
+        
+        long sum2 = DbUtil.checksum(db2);
+        Assert.assertEquals("checksum", sum1, sum2);
+        
+        db2.stop();
     }
     
     /**
      * Db should remember startupDistance after restart of initial state database.
      */
     @T
-    private static void dbShouldRememberStartupDistance() throws InterruptedException {
-        int startupDistance = 400 * 1000;
+    private static void dbShouldRememberStartupDistance1() throws InterruptedException {
+        final int startupDistance = 400 * 1000;
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         
-        Db db = Db.builder()
-                .mainStream(stream)
-                .clock(clock)
-                .startupDistance(startupDistance)
-                .start();
-        
+        Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(startupDistance).start();
         Assert.assertEquals("before restart", startupDistance, db.getStartupDistance());
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         
         // Restart
         
+        long streamLength = stream.getLength();
+        Assert.assertTrue("" + streamLength, streamLength > RecoverableStream.META_BLOCK_SIZE);
+        
         stream = stream.copy();
-        db = Db.builder()
-                .mainStream(stream)
-                .clock(clock)
-                .start();
+        Assert.assertTrue(stream.getLength() > RecoverableStream.META_BLOCK_SIZE);
+        
+        db = Db.builder().mainStream(stream).start();
         
         Assert.assertEquals("after restart", startupDistance, db.getStartupDistance());
     }
@@ -111,12 +116,7 @@ public class DbTesterRestart {
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         
-        Db db = Db.builder()
-                .mainStream(stream)
-                .clock(clock)
-                .startupDistance(startupDistance)
-                .start();
-        
+        Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(startupDistance).start();
         db.execute(Trans.builder().put("key", "value"));
         Assert.assertEquals("before restart", startupDistance, db.getStartupDistance());
         db.sync(SyncLevel.STRONG);

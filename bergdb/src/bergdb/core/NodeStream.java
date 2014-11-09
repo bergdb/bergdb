@@ -2,7 +2,6 @@ package bergdb.core;
 
 import java.io.PrintStream;
 
-import bergdb.common.Bug;
 import bergdb.common.Bytes;
 import bergdb.dag.INode;
 import bergdb.dag.Spos;
@@ -109,35 +108,6 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         rstream.append(buffer, 0, bufferSize, true, trans.time);
         rstream.getMetaBlock().setLastTransSpos(pos);
     }
-    
-    /**
-     * Similar to appendNodes(), but does not actually write to 
-     * db stream, instead it serializes and checks that the serialized transaction bytes
-     * matches what is in the stream already. Used when re-running transactions.
-     * trans.pos/lastPos/nextPos should be set correctly already.
-     */
-    void doDummyAppend(TransNodes nodes, Trans trans) {        
-        assert nodes.assertNoDuplicates();
-        
-        if (trans.pos < 1) {
-            throw new Bug("trans.pos not set, was " + trans.pos + ", trans: " + trans);
-        }
-        
-        serializer.serialize(nodes, trans.time, trans.pos, trans.startupPos);
-
-        long lastPos = serializer.getOutputLastSpos();
-        long nextPos = serializer.getOutputNextSpos();
-        
-        trans.lastPos = lastPos;
-        trans.nextPos = nextPos;
-        
-        //byte[] buffer = serializer.getTransBuffer();
-        //int bufferSize = serializer.getOutputTransSize();
-        //checkEqualBytes(trans.pos, buffer, bufferSize);
-        
-        rstream.getMetaBlock().setLastTransSpos(trans.pos);
-    }
-
     
     @SuppressWarnings("unused")
     private void checkEqualBytes(long transPos, byte[] transBytes, int transBytesSize) {

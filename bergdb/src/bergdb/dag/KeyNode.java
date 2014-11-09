@@ -194,14 +194,13 @@ public class KeyNode implements INode {
             if (sub.length() > 5) {
                 sub = sub.substring(sub.length() - 2);
             }
-            result = "K@" + sub;
+            result = "K/" + sub;
         }
         
         String midPart = (id == -1 && spos == -1) ? "" : " " + id + ":" + spos + "";
         
         result = result + midPart;
         result = isSegmentLeaf ? result + " L" : result;
-        //result = isDirty ? result + " D" : result;
         return result;
     }
     
@@ -1612,5 +1611,23 @@ public class KeyNode implements INode {
         }
         
         return del;
+    }
+
+    /**
+     * Returns the first klong time. If there are no TIME klongs, -1 is returned.
+     */
+    public long getFirstTime() {
+        long time = -1;
+        short sz = this.size;
+        
+        for (int i = 0; i < sz; i++) {
+            long klong = klongs[i];
+            if (Klong.getType(klong) == Klong.TYPE_TIME) {
+                time = Klong.getTime(klong);
+                break;
+            }
+        }
+        
+        return time;
     }
 }

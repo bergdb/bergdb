@@ -933,6 +933,22 @@ public class KeyNodeTester {
         Assert.assertEquals(123, Klong.getTime(klong));
     }
     
+    @T private static void testGetFirstTime1() {
+        KeyNode node = KeyNode.nodeWithTime(123);
+        Assert.assertEquals(123, node.getFirstTime());
+    }
+    
+    @T private static void testGetFirstTime2() {
+        KeyNode node = new KeyNode();
+        Assert.assertEquals(-1, node.getFirstTime());
+    }
+    
+    @T private static void testGetFirstTime3() {
+        KeyNode node = new KeyNode();
+        addKlong(node, 10, "a");
+        addKlong(node, 20, "b");
+        Assert.assertEquals(10, node.getFirstTime());
+    }
     
     public static void main(String[] args) throws Exception {
         testGt1();

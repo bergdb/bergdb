@@ -9,6 +9,8 @@ public class Pack implements IPack {
         Db.class,
         DbClock.class,
         DbStarter1.class,
+        DbStarter2.class,
+        DbStarter3.class,
         DbTester.class,
         DbTesterGetMany.class,
         DbTesterRestart.class,
@@ -29,7 +31,7 @@ public class Pack implements IPack {
         StoredValueNode.class,
         Trans.class,
         TransNodes.class,
-        KvTransSeq.class
+        TransSeq.class
     };
     
     public Class<?>[] getClasses() {

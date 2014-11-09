@@ -15,7 +15,7 @@ import bergdb.nanotest.T;
  * 
  * @author Frans Lundberg
  */
-public class TransNodes implements IDirtyNodes.TransNodesForMe, KvTransSeq.TransNodesForMe {
+public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNodesForMe {
     //
     // The class must support the same node added to it several times without causing duplicates.
     // Should be a set of unique nodes.
@@ -135,6 +135,8 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, KvTransSeq.Trans
     
     public final void addTopNode(TopNode node) {
         if (!node.isInTransNodes) {
+            assert assertNoDuplicateTopNodeId(node);
+            
             node.isInTransNodes = true;
             
             if (topSize == topNodes.length) {
@@ -146,6 +148,19 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, KvTransSeq.Trans
             topNodes[topSize] = node;
             topSize++;
         }
+    }
+    
+    /** Assert that there is no existing top node with same top node id. */
+    private boolean assertNoDuplicateTopNodeId(TopNode node) {
+        int id1 = node.topNodeId;
+        for (int i = 0; i < topSize; i++) {
+            int id2 = topNodes[i].topNodeId;
+            if (id2 == id1) {
+                throw new AssertionError("Cannot add TopNode with same topNodeId as existing one, " 
+                        + "existing: " + topNodes[i] + ", to add: " + node);
+            }
+        }
+        return true;
     }
     
     public final void addKeyNode(KeyNode node) {

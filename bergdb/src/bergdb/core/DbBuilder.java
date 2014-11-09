@@ -87,6 +87,16 @@ public class DbBuilder {
         this.id = id;
         return this;
     }
+    
+    /**
+     * Use a test ID (DatabaseId.TEST_ID) for database ID.
+     * This is faster than generating an id with SecureRandom which is the default
+     * when no id has been set in this builder.
+     */
+    public DbBuilder testId() {
+        this.id = DatabaseId.TEST_ID;
+        return this;
+    }
 
     public DbBuilder maxNodeSize8() {
         this.maxNodeSize = 8;
@@ -269,7 +279,7 @@ public class DbBuilder {
         evictBoss = new NoEvictBoss();
         stream("main", new MemoryStream(), 100*1000, 10);
         retainForever();
-        id = DatabaseId.TEST_ID;
+        testId();
         return this;
     }
     

@@ -13,7 +13,7 @@ look elsewhere.<p>
 <h1>General assumptions</h1>
 
 <p>The database performance is optimized for a modern 64-bit server. Typically 4 to 16 cores.
-1 to 2 CPUs. SSD or ordinary disk(s). But the database also has reasonable performance on 
+1 to 2 CPUs. SSD or ordinary disk(s). But the database also has good performance on 
 very small devices. There is only one code based; no differentiation between large
 server and small devices (Android phone for example).</p>
 
@@ -42,21 +42,21 @@ GENERAL
 * Do not use resource files because of GCJ issues and complexity in general.
 
 CODE STYLE
-* Follow Sun's (Oracle's) Java code style (but allow some deviation if useful) unless otherwise
-    specified here.
-* Use 100 columns instead of 80 (same as Android).
+* Follow Sun's (Oracle's) Java code style unless otherwise
+    specified here. Deviations are allowed if useful.
+* Use 100 column max line width instead of 80 (same as Android).
 * Treat acronyms as words. Eg.: getId(), getHtml(), setUrl() (same as Android).
-* One-line if statements are allowed (no curlys).
-    if (print) System.out.println("...");
 * Android has a good code style almost identical to Sun's original at
     http://source.android.com/source/code-style.html
 * Use "public" in front of interface methods.
+* Do not use "throws..." for runtime exceptions, document with @throws instead.
+    (This follows JDK approach, see Integer.parseInt() as example.)
 
 JAVADOC
 * Use Javadoc. Class comments, method comments. Use few tags: @deprecated, @param, @throws, @author.
 * Use Javadoc "@author firstName lastName" for top-level classes/interfaces.
 * ALL classes/interface/methods of the Pub API must be have Javadoc comments.
-* ALL classes/interfaces must have Javadoc comments.
+* ALL packages/classes/interfaces should have Javadoc comments.
 * See Oracle's: "How to Write Doc Comments for the Javadoc Tool".
   http://www.oracle.com/technetwork/java/javase/documentation/index-137868.html
 </pre>

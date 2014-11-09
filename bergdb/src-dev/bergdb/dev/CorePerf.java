@@ -205,9 +205,22 @@ public class CorePerf {
 Log 
 ===
 
+== 141109 ==
+Running on cissi, BergDB 2014.2. JVM: Java HotSpot(TM) 64-Bit Server VM 24.65-b04, java 1.7.0_67.
+
+---- Result ----
+get:      0.74,  0.49,  7.384251724477857E-7
+get4t:    0.96,  0.76,  3.821072264260492E-7
+getmany:  0.84,  0.65,  1.679440933171994E-7
+set:      0.54,  0.34,  2.7217045700000004E-6
+GEO MEAN: 0.75,  0.54
+
+Great! Running even faster with kv2 approach... And I have not even started to optimize :-)
+
+
 == 140909 ==
 On Cissi. OpenJDK 64-Bit Server VM 24.65-b04, java 1.7.0_65. Ubuntu 14.04.
-Main branch. Before kv2 branching.
+main branch. Before kv2 branching.
 
 ---- Result ----
 get:      0.80,  0.54,  8.039992727904227E-7
