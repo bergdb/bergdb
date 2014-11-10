@@ -173,7 +173,7 @@ public interface IndexBuilder {
      * 
      * <p>Note, builds of BergDB may not include ICU support and therefore will only support the
      * "string/unicode" collator. This means that indexes created with ICU collators may be 
-     * impossible to use in limited BergDB environments.</p>
+     * impossible to use in constrained BergDB environments.</p>
      */
     public IndexBuilder type(String indexTypeString);
     

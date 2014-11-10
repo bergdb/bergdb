@@ -157,13 +157,15 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     }
 
     /**
-     * Reads a node from the stream given is spos.
+     * Reads a node from the stream given its spos.
      * 
      * @throws StreamFormatException
      * @throws StreamIoException
      */
     public INode readNode(long spos) {
-        byte[] buffer = new byte[1024];        
+        assert spos >= RecoverableStream.META_BLOCK_SIZE : "bad spos, " + spos;
+        
+        byte[] buffer = new byte[1024];      
         rstream.read(spos, buffer, 0, 4);
         
         int size = Bytes.bytesToIntLE(buffer, 0);

@@ -155,6 +155,7 @@ public class KeyNode implements INode {
     }
     
     public final INode getPointerNode(int index) {
+        assert index < pointers.length : "bad index, " + index + ", length:" + pointers.length;
         return pointers[index];
     }
     
