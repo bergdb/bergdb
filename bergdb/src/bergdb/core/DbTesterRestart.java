@@ -22,7 +22,7 @@ public class DbTesterRestart {
         byte[] value;
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().mainStream(stream).clock(clock).testId().start();
+        Db db = Db.builder().testSetup(stream).clock(clock).testId().start();
         clock.setTime(10);
         Trans trans = Trans.builder().put("admin1", "Sanna").build();
         db.execute(trans);
@@ -50,8 +50,8 @@ public class DbTesterRestart {
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(2);
-        Db db = Db.builder().mainStream(stream).clock(clock).startupDistance(10*1000)
-                .evictBoss(new NoEvictBoss()).start();
+        Db db = Db.builder().testSetup(stream)
+                .clock(clock).startupDistance(10*1000).start();
         byte[] bytes = new byte[1000];
         
         for (int i = 0; i < 20; i++) {
@@ -136,7 +136,7 @@ public class DbTesterRestart {
     @T private static void testDelete1() {
         AppendOnlyStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup().mainStream(s).clock(clock).start();
+        Db db = Db.builder().testSetup(s).clock(clock).start();
         
         clock.setTime(10);
         db.execute(Trans.builder().put("k1", "k1-value"));
@@ -152,7 +152,7 @@ public class DbTesterRestart {
         
         // Restart
         
-        Db db2 = Db.builder().testSetup().mainStream(s).start();        
+        Db db2 = Db.builder().testSetup(s).start();        
         //db2.printGraph(System.out);
         
         byte[] v1 = DbUtil.get(db2, 15, "k1");
@@ -165,7 +165,7 @@ public class DbTesterRestart {
     @T private static void testDelete2() {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup().mainStream(s).clock(clock).start();
+        Db db = Db.builder().testSetup(s).clock(clock).start();
         
         clock.setTime(10);
         db.execute(Trans.builder().put("k1", "k1-value").put("k2", "k2-value"));
@@ -178,7 +178,7 @@ public class DbTesterRestart {
         
         // Restart
         
-        Db db2 = Db.builder().testSetup().mainStream(s.copy()).start();        
+        Db db2 = Db.builder().testSetup(s.copy()).start();        
         long sum2 = DbUtil.checksum(db2);
         
         Assert.assertEquals(sum1, sum2);

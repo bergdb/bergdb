@@ -39,19 +39,21 @@ public class DbTesterStream {
         byte[] value;
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup().mainStream(stream).clock(clock).start();
+        Db db = Db.builder().testSetup(stream).clock(clock).start();
         clock.setTime(10);
         db.execute(Trans.builder().put("admin1", "Sanna").build());
         db.sync(SyncLevel.ORDINARY);
-        
+        db.stop();
         db = null;
-        Db db2 = Db.builder().testSetup().mainStream(stream).start();
+        
+        Db db2 = Db.builder().testSetup(stream).start();
         
         value = DbUtil.get(db2, 99, "admin1");
         Assert.assertArrayEquals(Util.toBytes("Sanna"), value);
         
         value = DbUtil.get(db2, 5, Util.toBytes("admin1"));
         Assert.assertNull(value);
+        db2.stop();
     }
     
     public static void testSimpleRestart2() {
@@ -61,7 +63,7 @@ public class DbTesterStream {
         byte[] value;
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup().mainStream(stream).clock(clock).build();
+        Db db = Db.builder().testSetup(stream).clock(clock).build();
         db.start();
         clock.setTime(10);
         db.execute(Trans.builder().put("admin10", "Sanna").build());
@@ -70,6 +72,7 @@ public class DbTesterStream {
         value = DbUtil.get(db, 99, "admin10");
         Assert.assertArrayEquals(Util.toBytes("Sanna"), value);
         
+        db.stop();
         db = null;
         Db db2 = Db.builder().testSetup().mainStream(stream).build();
         db2.start();
@@ -79,22 +82,23 @@ public class DbTesterStream {
         
         value = DbUtil.get(db2, 5, "admin10");
         Assert.assertNull(value);
+        db2.stop();
     }
     
     public static void testRestartWithMultipleTransactions() {
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup().mainStream(stream).clock(clock).build();
+        Db db = Db.builder().testSetup(stream).clock(clock).build();
         db.start();
         clock.setTime(10);
         db.execute(Trans.builder().put("admin1", "Sanna1").build());
         clock.setTime(20);
         db.execute(Trans.builder().put("admin2", "Sanna2").build());
         db.sync(SyncLevel.ORDINARY);
-        
+        db.stop();
         db = null;
         
-        Db db2 = Db.builder().testSetup().mainStream(stream).build();
+        Db db2 = Db.builder().testSetup(stream).build();
         db2.start();
         
         byte[] value;
@@ -108,6 +112,7 @@ public class DbTesterStream {
         Assert.assertArrayEquals(Util.toBytes("Sanna2"), value);
         value = DbUtil.get(db2, 15, "admin2");
         Assert.assertNull(value);
+        db2.stop();
     }
     
     public static void testRestart2() {
@@ -119,7 +124,7 @@ public class DbTesterStream {
         byte[] value;
         Db db;
         
-        db = Db.builder().testSetup().mainStream(stream).build();
+        db = Db.builder().testSetup(stream).build();
         db.start();
         
         db.execute(Trans.builder().put("admin10", "Sanna1").build());
@@ -130,7 +135,7 @@ public class DbTesterStream {
         value = DbUtil.get(db, 999, "admin20");
         Assert.assertEquals("Sanna2", Util.toString(value));
         db.sync(SyncLevel.ORDINARY);
-        
+        db.stop();
         db = null;
         
         Db db2 = Db.builder().testSetup().mainStream(stream).build();
@@ -140,6 +145,7 @@ public class DbTesterStream {
         Assert.assertEquals("Sanna1", Util.toString(value));
         value = DbUtil.get(db2, 999, "admin20");
         Assert.assertEquals("Sanna2", Util.toString(value));
+        db2.stop();
     }
     
     public static void testRestartWithTimeSplit() {
@@ -150,7 +156,7 @@ public class DbTesterStream {
         int n = 10;
         
         CoreTestClock clock = new CoreTestClock();
-        db = Db.builder().testSetup().mainStream(stream).clock(clock).build();
+        db = Db.builder().testSetup(stream).clock(clock).build();
         db.start();
         
         time = 100;
@@ -168,10 +174,10 @@ public class DbTesterStream {
         }
         
         db.sync(SyncLevel.ORDINARY);
-        
+        db.stop();
         db = null;
         
-        Db db2 = Db.builder().testSetup().mainStream(stream).build();
+        Db db2 = Db.builder().testSetup(stream).build();
         db2.start();
         
         time = 100;
@@ -180,6 +186,7 @@ public class DbTesterStream {
             Assert.assertEquals("i=" + i, "Sanna" + time, Util.toString(value));
             time += 10;
         }
+        db2.stop();
     }
     
     public static void testRestartWithTwoSuperRoots() {
@@ -189,7 +196,7 @@ public class DbTesterStream {
         Db db;
         int n = 10;
         CoreTestClock clock = new CoreTestClock();
-        db = Db.builder().testSetup().mainStream(stream).clock(clock).build();
+        db = Db.builder().testSetup(stream).clock(clock).build();
         db.start();
         
         time = 100;
@@ -206,6 +213,7 @@ public class DbTesterStream {
             time += 10;
         }
         db.sync(SyncLevel.ORDINARY);
+        db.stop();
         db = null;
         
         Db db2 = Db.builder().testSetup().mainStream(stream).build();
@@ -217,12 +225,13 @@ public class DbTesterStream {
             Assert.assertEquals("i=" + i, "v" + time, Util.toString(value));
             time += 10;
         }
+        db2.stop();
     }
     
     public static Db createRandomDb(int n, AppendOnlyStream stream) {
         Random random = new Random(1);
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup().mainStream(stream).clock(clock).build();
+        Db db = Db.builder().testSetup(stream).clock(clock).build();
         db.start();
         
         for (int i = 0; i < n; i++) {
@@ -253,17 +262,19 @@ public class DbTesterStream {
         Db db = createRandomDb(n, stream);
         checkRandomDb(db, n);
         db.sync(SyncLevel.ORDINARY);
+        db.stop();
         db = null;
         
         Db db2 = Db.builder().testSetup().mainStream(stream).start();
         checkRandomDb(db2, n);
+        db2.stop();
     }
     
     public static void testMoreData1() {
         int n = 100;
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup().mainStream(stream).clock(clock).start();
+        Db db = Db.builder().testSetup(stream).clock(clock).start();
         
         for (int i = 0; i < n; i++) {
             clock.setTime(100 + i * 10);
@@ -277,14 +288,16 @@ public class DbTesterStream {
         }
         
         db.sync(SyncLevel.ORDINARY);
+        db.stop();
         db = null;
         
-        Db db2 = Db.builder().testSetup().mainStream(stream).start();
+        Db db2 = Db.builder().testSetup(stream).start();
         
         for (int i = 0; i < n; i++) {
             String valueString = Util.toString(DbUtil.get(db2, n * 10 + 9999, "" + i));
             Assert.assertEquals("v" + i, valueString);
         }
+        db2.stop();
     }
     
     @T("f")   // Too slow to be "unit".
@@ -322,19 +335,21 @@ public class DbTesterStream {
     public static void testDbOnMemStream() throws IOException {
         AppendOnlyStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup().mainStream(s).clock(clock).start();
+        Db db = Db.builder().testSetup(s).clock(clock).start();
         clock.setTime(10);
         db.execute(Trans.builder().put("k", "k-value"));
         db.sync(SyncLevel.ORDINARY);
+        db.stop();
         db = null;
         
-        Db db2 = Db.builder().testSetup().mainStream(s).start();
+        Db db2 = Db.builder().testSetup(s).start();
         
         byte[]value = DbUtil.get(db2, 99, "k");
         Assert.assertArrayEquals(Util.toBytes("k-value"), value);
         
         value = DbUtil.get(db2, 5, "k");
         Assert.assertNull(value);
+        db2.stop();
     }
     
     public static void testDbOnFile() throws IOException {
@@ -352,7 +367,7 @@ public class DbTesterStream {
         try {
             AppendOnlyStream s = new OneFileStream(f);
             CoreTestClock clock = new CoreTestClock();
-            Db db = Db.builder().testSetup().mainStream(s).clock(clock).start();
+            Db db = Db.builder().testSetup(s).clock(clock).start();
             clock.setTime(10);
             db.execute(Trans.builder().put("k", "k-value"));
             db.sync(SyncLevel.ORDINARY);
@@ -360,7 +375,7 @@ public class DbTesterStream {
             s = null;
             
             AppendOnlyStream s2 = new OneFileStream(f);
-            Db db2 = Db.builder().testSetup().mainStream(s2).start();
+            Db db2 = Db.builder().testSetup(s2).start();
             
             byte[] value = DbUtil.get(db2, 99, "k");
             Assert.assertArrayEquals(Util.toBytes("k-value"), value);
@@ -383,7 +398,7 @@ public class DbTesterStream {
         
         AppendOnlyStream s = new OneFileStream(f);
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup().mainStream(s).clock(clock).start();
+        Db db = Db.builder().testSetup(s).clock(clock).start();
         clock.setTime(10);
         db.execute(Trans.builder().put("admin1", "Sanna1").build());
         clock.setTime(20);
@@ -393,7 +408,7 @@ public class DbTesterStream {
         s = null;
         
         AppendOnlyStream s2 = new OneFileStream(f);
-        Db db2 = Db.builder().testSetup().mainStream(s2).start();
+        Db db2 = Db.builder().testSetup(s2).start();
         
         byte[] value = DbUtil.get(db2, 99, "admin1");
         Assert.assertArrayEquals(Util.toBytes("Sanna1"), value);
@@ -411,7 +426,7 @@ public class DbTesterStream {
     public static void testOverwriteAndRestart() {
         AppendOnlyStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup().mainStream(s).clock(clock).start();
+        Db db = Db.builder().testSetup(s).clock(clock).start();
         
         clock.setTime(10);
         db.execute(Trans.builder().put("k1", "k1-value").put("k2", "k2-value"));
@@ -424,7 +439,7 @@ public class DbTesterStream {
         db.sync(SyncLevel.ORDINARY);
         db = null;
         
-        Db db2 = Db.builder().testSetup().mainStream(s).start();
+        Db db2 = Db.builder().testSetup(s).start();
         
         // t = 15
         
@@ -454,7 +469,8 @@ public class DbTesterStream {
     @T
     public static void testTwoKvsInOneTransaction() {
         AppendOnlyStream s = new MemoryStream();
-        Db db = Db.builder().testClock().mainStream(s).start();
+        TestClock clock = new TestClock();
+        Db db = Db.builder().testSetup(s).clock(clock).start();
         int n = 2;
         Trans.Builder b = Trans.builder();
             
@@ -479,11 +495,12 @@ public class DbTesterStream {
         }
         
         db.sync(SyncLevel.ORDINARY);
+        db.stop();
         db = null;
         
-        // Now, let's create a new DB from stream.
+        // Now, let's create a new Db from stream.
         
-        db = Db.builder().mainStream(s).start();
+        db = Db.builder().testSetup(s).start();
         
         for (int i = 0; i < n; i++) {
             byte[] key = KeyFactory.intKey(n - i);

@@ -128,15 +128,6 @@ public class DbBuilder {
     }
 
     /**
-     * Use an internal test clock together with DB.setTime to handle the
-     * time. Suitable for testing.
-     */
-    public DbBuilder testClock() {
-        this.clock = new CoreTestClock();
-        return this;
-    }
-
-    /**
      * Use the system clock (System.currentTimeMillis()) as the database
      * time.
      */
@@ -180,7 +171,7 @@ public class DbBuilder {
     }
     
     /**
-     * Sets main stream.
+     * Sets main db stream.
      */
     public DbBuilder mainStream(AppendOnlyStream appendOnlyStream) {
         if (this.streamInfos.size() == 0) {
@@ -270,13 +261,13 @@ public class DbBuilder {
     }
 
     /**
-     * Use the default unit test setup. No write to disk, a deterministic
+     * Used for the default unit test setup. No write to disk, a deterministic
      * clock is used. The node stream is an in-memory stream.
      * Short buffer time (10 ms) for fast tests.
      */
     public DbBuilder testSetup() {
-        testClock();
-        evictBoss = new NoEvictBoss();
+        clock(new CoreTestClock());
+        evictBoss(new NoEvictBoss());
         stream("main", new MemoryStream(), 100*1000, 10);
         retainForever();
         testId();

@@ -773,12 +773,6 @@ public class DbTester {
     }
     
     @T
-    public static void testConfigTestClock() {
-        Db db = Db.builder().testClock().stream("main", new MemoryStream()).start();
-        db.execute(Trans.builder().put("k", "v").build());
-    }
-    
-    @T
     public static void testSplit3() {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().maxNodeSize14().clock(clock).start();
@@ -885,7 +879,8 @@ public class DbTester {
         // Two kvs, one transaction, binary keys.
         //
         AppendOnlyStream s = new MemoryStream();
-        Db db = Db.builder().testClock().mainStream(s).start();
+        TestClock clock = new TestClock();
+        Db db = Db.builder().clock(clock).mainStream(s).start();
         int n = 2;
         Trans.Builder b = Trans.builder();
          
@@ -1078,7 +1073,7 @@ public class DbTester {
      */
     private static Db testDb(AppendOnlyStream stream) {
         DbBuilder b = Db.builder();
-        b.testClock();
+        b.clock(new TestClock());
         b.evictBoss(new NoEvictBoss());
         b.retainForever();
         b.id(DatabaseId.TEST_ID);
@@ -1489,11 +1484,11 @@ public class DbTester {
         MemoryStream m0 = new MemoryStream();
         MemoryStream m1 = new MemoryStream();
         
-        Db db = Db.builder().stream("m0", m0).start();
+        Db db = Db.builder().stream("m0", m0, 10*1000, 10).start();
         db.execute(Trans.builder().put("a.txt", "v1").build());
         db.sync(0, SyncLevel.ORDINARY);
         
-        db = Db.builder().stream("m1", m1).start();
+        db = Db.builder().stream("m1", m1, 10*1000, 10).start();
         db.execute(Trans.builder().put("b.txt", "v2-b").build());
         
         BadReplicaException ex = null;
@@ -1502,9 +1497,8 @@ public class DbTester {
         } catch (BadReplicaException e) {
             ex = e;
         }
-        db.stop();
-        
         Assert.assertTrue(ex != null);
+        db.stop();
     }
     
     @T
@@ -1513,7 +1507,7 @@ public class DbTester {
         // The following code reproduced the error (before bug was fixed).
         
         MemoryStream m = new MemoryStream();
-        Db db = Db.builder().maxNodeSize62().mainStream(m).start();
+        Db db = Db.builder().testSetup(m).maxNodeSize62().start();
         
         byte[] value = new byte[0];
         int n = 100;
