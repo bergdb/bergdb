@@ -110,7 +110,9 @@ public class IndexManager {
                 new String[]{"string"}, this);
         assert primaryIndex.kcollators.length == 1;
         
-        nameToIndex.put(primaryIndex.getName(), primaryIndex);
+        synchronized (lock) {
+            nameToIndex.put(primaryIndex.getName(), primaryIndex);
+        }
     }
     
     public Index getIndex(String indexName) {
@@ -502,7 +504,12 @@ public class IndexManager {
         assert indexName != null;
         
         if (indexName.equals(PRIMARY)) {
-            Index primary = this.nameToIndex.get(PRIMARY);
+            Index primary;
+            
+            synchronized (lock) {
+                primary = nameToIndex.get(PRIMARY);
+            }
+            
             if (primary == null) {
                 throw new Bug("Missing 'primary' index, should not happen.");
             }
@@ -526,19 +533,6 @@ public class IndexManager {
         }
         
         indexDo = dbo.toJavaObject(Data.Index.class, connection.getDatabaseImp().getClassToObject());
-        
-        /*
-        try {
-            indexDo = connection.getInternal(wantedLookupTime, key, Data.Index.class);
-        } catch (NoFieldsSetException e) {
-            throw new InternalDataException("Bad index info object: '" + key + "'.");
-        }
-        
-        if (indexDo == null) {
-            return null;
-        }
-        */
-        
         indexDo.check(this);
         
         Index index = Data.createIndex(indexName, indexDo, this);

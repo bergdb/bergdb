@@ -25,6 +25,8 @@ import bergdb.stream.MemoryStream;
  */
 public class CreateIndexTester {
     
+    // TODO A. Fix this
+    
     @T("f")
     public static void createIndexWhileAddingMore(TestCollector coll) {
         int n = 4*1000;
@@ -71,7 +73,7 @@ public class CreateIndexTester {
         } catch (NoSuchIndexException e) {
             ex = e;
         }
-        Assert.assertTrue("Tries c.index() before it exists", ex != null);
+        Assert.assertTrue("c.useIndex() before it exists should throw NoSuchIndexException", ex != null);
         
         c.setLookupTime(time1);
         ex = null;
@@ -80,7 +82,7 @@ public class CreateIndexTester {
         } catch (NoSuchIndexException e) {
             ex = e;
         }
-        Assert.assertTrue("Tries c.index() while it is being created", ex != null);
+        Assert.assertTrue("c.useIndex() while it is being created", ex != null);
         
         // Checking resulting index at current time
         
