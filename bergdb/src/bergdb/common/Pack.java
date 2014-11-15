@@ -17,7 +17,10 @@ public class Pack implements IPack {
         Salsa.class,
         StringMap.class,
         SystemOutReportHandler.class,
-        Util.class
+        Util.class,
+        
+        // Classes in nanotest:
+        bergdb.nanotest.CommandLine.class
     };
     
     public Class<?>[] getClasses() {
