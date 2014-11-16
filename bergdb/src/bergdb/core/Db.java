@@ -924,6 +924,8 @@ public class Db {
         g.actualLookupTime = dbClock.lookupTime(g.lookupTime);
             // Limits lookup time so it strictly less than the transaction time of
             // any currently running or any future transaction.
+        
+//System.out.println("Db.getMany, g.actualLookupTime: " + g.actualLookupTime + ", g.lookupTime: " + g.lookupTime);
 
         dag.getMany(g);
         

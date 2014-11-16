@@ -372,8 +372,10 @@ public class RwEnvironmentImp implements RwEnvironment {
         
         connection.getDb().getMany(g);
         if (firstRead) {
-            firstRead = false;
             this.readTime = g.actualLookupTime;
+            firstRead = false;
+            
+            //System.out.println("RwEnvironmentImp, firstRead, readTime: " + readTime + ", " + g.result.size());
         }
         
         for (Kvt kvt : g.result) {

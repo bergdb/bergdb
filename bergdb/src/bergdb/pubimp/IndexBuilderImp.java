@@ -39,8 +39,8 @@ public class IndexBuilderImp implements IndexBuilder {
         assert indexName != null;
         assert database != null;
         
-        this.indexName = indexName;
         bunchSize = 25;
+        this.indexName = indexName;
         indexManager = database.getIndexManager();
         connection = new ConnectionImp(database);
         parts = new ArrayList<CompositePart>();
@@ -263,7 +263,7 @@ public class IndexBuilderImp implements IndexBuilder {
      * 
      * @throws IndexAlreadyExistsException
      */
-    public Thread createInThread(final IndexCreateState createState) {
+    Thread createInThread(final IndexCreateState createState) {
         // Event used for testing.
         final EventToWaitFor event = createInThread_waitEvent;   
         
@@ -281,9 +281,11 @@ public class IndexBuilderImp implements IndexBuilder {
                     } catch (StreamIoException e) {
                         // Empty. This is expected if the database is stopped.
                         // The index creation will continue when the database is restarted.
+                        break;
                     } catch (DbStoppingException e) {
                         // Empty. This is expected if the database is being stopped.
                         // The index creation will continue when the database is restarted.
+                        break;
                     }
                     
                     long duration = (System.nanoTime() - t0);
@@ -399,7 +401,7 @@ public class IndexBuilderImp implements IndexBuilder {
             connection.rw(action);
         } catch (DbStoppingException e) {
             // Special case, index creation while database is stopping.
-            // This is fine, index creation will continue once database has been started again.
+            // This is fine, index creation will continue once database is started again.
             
             createState.isDone = true;
             return;

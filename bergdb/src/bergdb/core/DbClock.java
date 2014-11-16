@@ -12,7 +12,7 @@ import bergdb.pub.Clock;
  * The lookup time is also strictly less than the transaction time of any 
  * future transaction. This is a useful property. A database read at time t2 will 
  * always return the same values. A future transaction cannot change this.
- * [key, value, time] tuples are immutable.</p>
+ * [time, key, value] tuples are immutable.</p>
  * 
  * @author Frans Lundberg
  */
@@ -26,13 +26,13 @@ public class DbClock {
     
     /** 
      * Transaction time of the last completed transaction. 
-     * "volatile" is required.
+     * "volatile" is essential here.
      */
     private volatile long lastTransactionTime;
     
     /** 
      * Transaction time of the currently running transaction. 
-     * Only used when transactionRunning == true.
+     * Only meaningful when transactionRunning == true.
      */
     private long transactionTime;
     
@@ -69,8 +69,8 @@ public class DbClock {
      * lookup time wanted by the database user.
      * The method does not return the current time and does not call clock.getTime() 
      * (which is important for performance).
-     * The returned time is less than or equal to the write time (transaction time)
-     * of the last completed transaction.
+     * The returned time is less than or equal to the transaction time of the last 
+     * completed transaction.
      */
     public final long lookupTime(final long wantedLookupTime) {
         //
@@ -82,9 +82,11 @@ public class DbClock {
         // expected for parallel access, of course.
         // Note, avoiding a call to clock.getTime() is important for performance. 
         // System.currentTimeMillis() is very slow.
+        //
         
         final long last = this.lastTransactionTime;
-        return wantedLookupTime > last ? last : wantedLookupTime;
+        long result = wantedLookupTime > last ? last : wantedLookupTime;
+        return result;
     }
     
     /**

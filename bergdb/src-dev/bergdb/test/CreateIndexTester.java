@@ -12,6 +12,7 @@ import bergdb.pub.Factory;
 import bergdb.pub.Job;
 import bergdb.pub.JobStatus;
 import bergdb.pub.NoSuchIndexException;
+import bergdb.pub.TestClock;
 import bergdb.pub.Time;
 import bergdb.pubimp.DatabaseBuilderImp;
 import bergdb.pubimp.DatabaseImp;
@@ -30,7 +31,8 @@ public class CreateIndexTester {
     @T("f")
     public static void createIndexWhileAddingMore(TestCollector coll) {
         int n = 4*1000;
-        Database database = Factory.database().memory().start();
+        DatabaseBuilderImp b = (DatabaseBuilderImp) Factory.database();
+        Database database = b.memory().clock(new TestClock()).start();
         Connection c = database.connection();
         
         int i = 0;
