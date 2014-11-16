@@ -29,7 +29,7 @@ public class PerfDBMem {
         
         int batchSize = 1000;
         for (int i = 0; i < n/batchSize; i++) {
-            Trans.Builder b = Trans.builder();
+            Trans.Builder b = Db.trans0();
             for (int j = 0; j < batchSize; j++) {
                 String key = "" + (i*batchSize + j);
                 byte[] value = new byte[valueSize];

@@ -29,7 +29,7 @@ public class DbBuilder {
         int bufferTime;
     }
 
-    DbBuilder() {
+    private DbBuilder() {
         // Default Db settings are specified here.
         // DatabaseId.createRandom() is not used because it can be slow. 
         // A NULL id is replaced by Db when Db is started.
@@ -45,6 +45,14 @@ public class DbBuilder {
         maxNodeSize30();
         retainDurationInTimeUnits = Long.MAX_VALUE;
         id = DatabaseId.CREATE_LATER_MARKER;
+    }
+    
+    /**
+     * Creates a new DbBuilder instance.
+     * Only Db should call this method.
+     */
+    static DbBuilder createForDb() {
+        return new DbBuilder();
     }
 
     /**

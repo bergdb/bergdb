@@ -2,7 +2,6 @@ package bergdb.test;
 
 import bergdb.common.Util;
 import bergdb.core.Db;
-import bergdb.core.Trans;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.nanotest.BasicCollector;
@@ -52,7 +51,7 @@ public class Concurrency2 {
         });
         reader.setName("reader");
         
-        db.execute(Trans.builder().put("0", "0").build());
+        db.execute(Db.trans0().put("0", "0").build());
 
         reader.start();
         writer.start();
@@ -81,7 +80,7 @@ public class Concurrency2 {
     
     private void writer() {
         while (!stop) {
-            db.execute(Trans.builder().put("0", "1").build());
+            db.execute(Db.trans0().put("0", "1").build());
             this.writeCount++;
         }
     }

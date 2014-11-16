@@ -3,7 +3,6 @@ package bergdb.test;
 import java.io.IOException;
 
 import bergdb.core.Db;
-import bergdb.core.Trans;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
@@ -87,7 +86,7 @@ public class Bug130924 {
         for (int i = 0; i < total; i++) {
             String ikey = PubKeys.u2i(accountKey(id));
             id += 1;
-            db.execute(Trans.builder().put(ikey, "v").build());
+            db.execute(Db.trans0().put(ikey, "v").build());
         }
         
         GetMany g = db.newGetMany();

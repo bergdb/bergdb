@@ -62,7 +62,7 @@ public class StoredTrans {
     public Trans createRerunTransaction() {        
         List<StoredValueNode> storedValueNodes = extractValueNodes();
         
-        Trans.Builder b = Trans.builder();
+        Trans.Builder b = Db.trans0();
         for (StoredValueNode n : storedValueNodes) {
             assert n.getKey() != null : "key is null, " + n;
             assert n.getKey().length > 0 : "Bad key, zero-length";

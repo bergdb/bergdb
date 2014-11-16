@@ -106,9 +106,6 @@ public class DbStarter3 {
     }
 
     private void doPrimordialStartup() {
-        // TODO B. Consider: Maybe we need to handle KvTransSeq initialization better. I guess we should
-        // add a transaction to it?
-        
         StoredNode[] nodes = transactions.get(0).nodes;
         checkPrimordialTransaction(nodes);
         

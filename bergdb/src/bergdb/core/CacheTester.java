@@ -76,7 +76,7 @@ public class CacheTester {
         for (int i = 0; i < ids.length; i++) {
             byte[] key = KeyFactory.crazyKey(ids[i]);
             byte[] value = key;
-            Trans t = Trans.builder().put(key, value).build();
+            Trans t = db.trans().put(key, value).build();
             clock.setTime(i * 10 + 1000);
             db.execute(t);
         }
@@ -111,14 +111,14 @@ public class CacheTester {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(m).clock(clock).start();
         
-        db.execute(Trans.builder().put("key-hello-there1", "v1").build());
-        db.execute(Trans.builder().put("key-hello-there2", "v2").build());
+        db.execute(db.trans().put("key-hello-there1", "v1").build());
+        db.execute(db.trans().put("key-hello-there2", "v2").build());
         
         for (int i = 0; i < ids.length; i++) {
             byte[] key = KeyFactory.crazyKey(ids[i]);
             byte[] value = KeyFactory.crazyKey(ids[i]);
             clock.setTime(1000 + i*10);
-            db.execute(Trans.builder().put(key, value).build());
+            db.execute(db.trans().put(key, value).build());
         }
         
         // Checks DB
@@ -160,7 +160,7 @@ public class CacheTester {
             byte[] key = keys[i];
             byte[] value = keys[i];
             clock.setTime(1000 + i*10);
-            db.execute(Trans.builder().put(key, value).build());
+            db.execute(db.trans().put(key, value).build());
         }
         
         // Checks DB
@@ -200,7 +200,7 @@ public class CacheTester {
                 .mainStream(new MemoryStream())
                 .start();
         
-        Trans.Builder b = Trans.builder();
+        Trans.Builder b = db.trans();
         
         for (int i = 0; i < 50; i++) {
             b.put("" + i, "v" + i);

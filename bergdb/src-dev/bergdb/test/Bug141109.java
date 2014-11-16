@@ -34,7 +34,7 @@ public class Bug141109 {
             clock.setTime(time);
             //System.out.println("time: " + time);
             
-            Trans trans = Trans.builder().put("k", new byte[valueSize]).build();
+            Trans trans = Db.trans0().put("k", new byte[valueSize]).build();
             db.execute(trans);
         }
         db.stop();

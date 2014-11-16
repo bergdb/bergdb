@@ -34,7 +34,7 @@ public class StreamSizeSS1 {
     private void addSingleKvTransactions() {        
         for (int i = 0; i < n; i++) {
             long[] key = Keys.toSegments("k-" + i);
-            Trans t = Trans.builder().put(key, new byte[valueSize]).build();
+            Trans t = Db.trans0().put(key, new byte[valueSize]).build();
             db.execute(t);
         }
         

@@ -50,7 +50,7 @@ public class ScenarioTester {
             value[0] = (byte) i;
             clock.setTime(i * 100 + 5);
             
-            Trans trans = Trans.builder().put("/k" + i, value).build();
+            Trans trans = Db.trans0().put("/k" + i, value).build();
             db.execute(trans);
         }
         
@@ -87,7 +87,7 @@ public class ScenarioTester {
         for (int i = 0; i < size; i++) {
             long time = 1000 + i * 10;
             clock.setTime(time);
-            Trans t = Trans.builder().put("" + i, value).build();
+            Trans t = Db.trans0().put("" + i, value).build();
             db.execute(t);
         }
         
@@ -110,10 +110,10 @@ public class ScenarioTester {
         Db db = Db.builder().testSetup().mainStream(stream).clock(clock)
                 .startupDistance(100*1000).start();
         
-        db.execute(Trans.builder().put("/direct/key1", "v1"));
-        db.execute(Trans.builder().put("/z1", new byte[200*1000]));
-        db.execute(Trans.builder().put("/direct/key2", "v2"));     
-        db.execute(Trans.builder().put("/z2", new byte[200*1000]));
+        db.execute(Db.trans0().put("/direct/key1", "v1"));
+        db.execute(Db.trans0().put("/z1", new byte[200*1000]));
+        db.execute(Db.trans0().put("/direct/key2", "v2"));     
+        db.execute(Db.trans0().put("/z2", new byte[200*1000]));
         long sum1 = DbUtil.checksum(db, Long.MAX_VALUE, true);
         db.sync(SyncLevel.STRONG);
         
@@ -151,7 +151,7 @@ public class ScenarioTester {
         db.start();
         
         for (int i = 0; i < n; i++) {
-            Trans trans = Trans.builder().put("/z" + i, new byte[valueSize + i]).build();
+            Trans trans = Db.trans0().put("/z" + i, new byte[valueSize + i]).build();
             db.execute(trans);
         }
         
@@ -181,13 +181,13 @@ public class ScenarioTester {
         db1.start();
         
         clock.setTime(100);
-        Trans t1 = Trans.builder().put("/key1", "v1").build();
+        Trans t1 = Db.trans0().put("/key1", "v1").build();
         db1.execute(t1);
         
         clock.setTime(200);
         startupPos = t1.pos;
         updater.setNextPos(startupPos);
-        Trans t2 = Trans.builder().put("/key2", "v2").build();
+        Trans t2 = Db.trans0().put("/key2", "v2").build();
         db1.execute(t2);
         long sum1 = DbUtil.checksum(db1);
         db1.sync(SyncLevel.ORDINARY);
@@ -230,15 +230,15 @@ public class ScenarioTester {
         db.internal().setStartupPosUpdater(updater);
         db.start();
         
-        Trans t1 = Trans.builder().put("/dir100/key1", "v1").build();
+        Trans t1 = Db.trans0().put("/dir100/key1", "v1").build();
         db.execute(t1);
         
-        Trans t2 = Trans.builder().put("/dir200/key2", "v2").build();
+        Trans t2 = Db.trans0().put("/dir200/key2", "v2").build();
         db.execute(t2);
         
         startupPos = t2.pos;
         updater.setNextPos(startupPos);
-        Trans t3 = Trans.builder().put("/z", "zzz5").build();
+        Trans t3 = Db.trans0().put("/z", "zzz5").build();
         db.execute(t3);
         db.sync(SyncLevel.ORDINARY);
         long sum1 = DbUtil.checksum(db);
@@ -273,11 +273,11 @@ public class ScenarioTester {
         Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(5*1000).start();
         db.internal().setStartupPosUpdater(updater);
         
-        Trans t1 = Trans.builder().put("/key1-suffix1", Util.toBytes("v1")).build();
+        Trans t1 = Db.trans0().put("/key1-suffix1", Util.toBytes("v1")).build();
         db.execute(t1);
         
         updater.setNextPos(t1.pos);
-        Trans t2 = Trans.builder().put("/key2-suffix2", Util.toBytes("v2")).build();
+        Trans t2 = Db.trans0().put("/key2-suffix2", Util.toBytes("v2")).build();
         db.execute(t2);
         
         //System.out.println("---- printGraph ----");

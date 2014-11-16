@@ -7,6 +7,7 @@ import java.util.Map;
 import bergdb.common.Bug;
 import bergdb.common.MyLongSet;
 import bergdb.common.Util;
+import bergdb.core.Db;
 import bergdb.core.KeyTransformation;
 import bergdb.core.Trans;
 import bergdb.dag.GetMany;
@@ -389,7 +390,7 @@ public class RwEnvironmentImp implements RwEnvironment {
      * (Connection.rw()), the Action.run() method has been run already.
      */
     public Trans createTrans() {
-        Trans.Builder b = Trans.builder();
+        Trans.Builder b = Db.trans0();
         
         b.lookupTime(readTime == -1 ? Long.MAX_VALUE : this.readTime);
         

@@ -114,7 +114,7 @@ public class DbHelper {
             final Thread syncThread = new Thread(new Runnable() {
                 public void run() {
                     storageManager.syncReplica(ss, progressListener);
-                    Trans trans = Trans.builder().put(Db.DUMMY_KEY, new byte[0]).build();
+                    Trans trans = Db.trans0().put(Db.DUMMY_KEY, new byte[0]).build();
                     db.execute(trans);
                     db.sync(trans.lastPos, SyncLevel.STRONG);
     

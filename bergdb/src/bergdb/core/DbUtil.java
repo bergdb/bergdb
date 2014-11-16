@@ -187,8 +187,8 @@ public class DbUtil {
         Db db1 = createEmptyDb();
         Db db2 = createEmptyDb();
         
-        db1.execute(Trans.builder().put("/key1", "v1"));
-        db2.execute(Trans.builder().put("/key1", "v1"));
+        db1.execute(Db.trans0().put("/key1", "v1"));
+        db2.execute(Db.trans0().put("/key1", "v1"));
         
         long t = Long.MAX_VALUE;
         long c1 = DbUtil.checksum(db1, t, true);
@@ -202,8 +202,8 @@ public class DbUtil {
         Db db1 = createEmptyDb();
         Db db2 = createEmptyDb();
         
-        db1.execute(Trans.builder().put("/key1", "v1"));
-        db2.execute(Trans.builder().put("/key1", "v2"));   // <-- diff in value
+        db1.execute(Db.trans0().put("/key1", "v1"));
+        db2.execute(Db.trans0().put("/key1", "v2"));   // <-- diff in value
         
         long t = Long.MAX_VALUE;
         long c1 = DbUtil.checksum(db1, t, true);
@@ -217,8 +217,8 @@ public class DbUtil {
         Db db1 = createEmptyDb();
         Db db2 = createEmptyDb();
         
-        db1.execute(Trans.builder().put("/key1", "v1"));
-        db2.execute(Trans.builder().put("/key2", "v1"));   // <-- diff in key
+        db1.execute(Db.trans0().put("/key1", "v1"));
+        db2.execute(Db.trans0().put("/key2", "v1"));   // <-- diff in key
         
         long t = Long.MAX_VALUE;
         long c1 = DbUtil.checksum(db1, t, true);
@@ -232,8 +232,8 @@ public class DbUtil {
         Db db1 = createEmptyDb(100);
         Db db2 = createEmptyDb(200);
         
-        db1.execute(Trans.builder().put("/key1", "v1"));
-        db2.execute(Trans.builder().put("/key1", "v1"));
+        db1.execute(Db.trans0().put("/key1", "v1"));
+        db2.execute(Db.trans0().put("/key1", "v1"));
         
         long t = Long.MAX_VALUE;
         long c1 = DbUtil.checksum(db1, t, true);
@@ -249,8 +249,8 @@ public class DbUtil {
         Db db1 = createEmptyDb(100);
         Db db2 = createEmptyDb(200);
         
-        db1.execute(Trans.builder().put("/key1", "v1"));
-        db2.execute(Trans.builder().put("/key1", "v1"));
+        db1.execute(Db.trans0().put("/key1", "v1"));
+        db2.execute(Db.trans0().put("/key1", "v1"));
         
         long t = Long.MAX_VALUE;
         long c1 = DbUtil.checksum(db1, t, false);
@@ -263,10 +263,10 @@ public class DbUtil {
     private static void testChecksumWithMultipleKvs() {
         Db db1 = createEmptyDb();
         Db db2 = createEmptyDb();
-        db1.execute(Trans.builder().put("/key1", "v1"));
-        db1.execute(Trans.builder().put("/key2", "v2"));
-        db2.execute(Trans.builder().put("/key1", "v1"));
-        db2.execute(Trans.builder().put("/key2", "v2"));
+        db1.execute(Db.trans0().put("/key1", "v1"));
+        db1.execute(Db.trans0().put("/key2", "v2"));
+        db2.execute(Db.trans0().put("/key1", "v1"));
+        db2.execute(Db.trans0().put("/key2", "v2"));
         
         long t = Long.MAX_VALUE;
         long c1 = DbUtil.checksum(db1, t, true);

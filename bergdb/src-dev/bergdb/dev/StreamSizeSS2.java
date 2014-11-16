@@ -36,7 +36,7 @@ public class StreamSizeSS2 {
         int counter = 0;
         
         for (int i = 0; i < n; i++) {
-            Trans.Builder b = Trans.builder();
+            Trans.Builder b = Db.trans0();
             
             for (int j = 0; j < kvsPerTrans; j++) {
                 long[] key = Keys.toSegments("k-" + counter);

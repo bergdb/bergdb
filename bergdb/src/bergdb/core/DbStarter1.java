@@ -23,6 +23,7 @@ import bergdb.storage.StreamFormatException;
  * A function-class, see the single public method.
  * 
  * @author Frans Lundberg
+ * @deprecated
  */
 public class DbStarter1 {
     //

@@ -36,7 +36,7 @@ public class Huge {
         Db db = Db.builder().mainStream(stream).startupDistance(40*1000000).build();
         db.start();
         
-        db.execute(Trans.builder().put("n", "" + n).build());
+        db.execute(Db.trans0().put("n", "" + n).build());
         System.out.println("Wrote n = " + n + " to database.");
         
         int kvCount = 0;
@@ -61,7 +61,7 @@ public class Huge {
         long periodKvCount = 0;
         
         for (int i = 0; i < n / batchSize; i++) {
-            Trans.Builder b = Trans.builder();
+            Trans.Builder b = Db.trans0();
             for (int j = 0; j < batchSize; j++) {
                 int keyInt = i * batchSize + j;
                 keyInt = keyInt * 2;    // For possibility of inserts between existing keys

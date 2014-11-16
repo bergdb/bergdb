@@ -279,7 +279,7 @@ public class Db {
         synchronized (writeLock) {
             this.startupDistance = newDistance;
             this.nodeStream.getMetaBlock().setStartupDistance(dist);
-            this.execute(Trans.builder().put(DUMMY_KEY, dummyValue).build());
+            this.execute(trans().put(DUMMY_KEY, dummyValue).build());
         }
     }
     
@@ -684,7 +684,7 @@ public class Db {
         meta.setStartupPos(0);
         meta.setTime(tt);
         
-        Trans trans = Trans.builder().build();
+        Trans trans = Db.trans0().build();
         trans.time = tt;
         trans.isInternal = true;
         
@@ -1394,16 +1394,62 @@ public class Db {
     public Internal internal() {
         return internal;
     }
-
+    
     /**
      * Creates and returns a Db.Builder that can create a Db object. 
      * The "official" and only public way of creating a Db.
      */
     public static DbBuilder builder() {
-        return new DbBuilder();
+        return DbBuilder.createForDb();
+    }
+
+    /**
+     * Creates a transaction builder object for creating transactions to 
+     * run on this database.
+     * 
+     * @deprecated Use trans() instead.
+     */
+    public static Trans.Builder trans0() {
+        // "Effective Java" book has builder examples like this:
+        //                   [t = new Trans.Builder().set(key, value).build();]
+        // We have:          [t = db.trans().set(key, value).build();]
+        //
+        
+        Trans.Builder b = Trans.Builder.ForDb.create();
+        
+        GetData warmupGetData = new GetData();
+        warmupGetData.evictData.enableEvict = false;
+        warmupGetData.pointerListener = Dag.DO_NOTHING_POINTER_LISTENER;        
+        warmupGetData.cachePolicy = Dag.CACHE_ALL;
+       
+        Trans.Builder.ForDb.setWarmupGetData(b, warmupGetData);
+        return b;
     }
     
     
+    /**
+     * Creates a transaction builder object for creating transactions to 
+     * run on this database.
+     */
+    public Trans.Builder trans() {
+        //
+        // "Effective Java" book has builder examples like this:
+        //                   [t = new Trans.Builder().set(key, value).build();]
+        // We have:          [t = db.trans().set(key, value).build();]
+        //
+        
+        Trans.Builder b = Trans.Builder.ForDb.create();
+        
+        GetData warmupGetData = new GetData();
+        warmupGetData.evictData.enableEvict = false;
+        warmupGetData.pointerListener = Dag.DO_NOTHING_POINTER_LISTENER;        
+        warmupGetData.cachePolicy = Dag.CACHE_ALL;
+       
+        Trans.Builder.ForDb.setWarmupGetData(b, warmupGetData);
+        return b;
+    }
+    
+
     // ======== Types ========
     
     /** 

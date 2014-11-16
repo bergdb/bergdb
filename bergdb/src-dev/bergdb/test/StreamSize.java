@@ -33,7 +33,7 @@ public class StreamSize {
             
             for (int j = 0; j < kvCount[i]; j++) {
                 byte[] value = new byte[kvSizes[i] - 4];
-                db.execute(Trans.builder().put(KeyFactory.binaryIntKey(j), value).build());
+                db.execute(Db.trans0().put(KeyFactory.binaryIntKey(j), value).build());
             }
             db.sync(SyncLevel.ORDINARY);
             
@@ -55,7 +55,7 @@ public class StreamSize {
         for (int n = 2; n < 10; n++) {
             MemoryStream m = new MemoryStream();
             Db db = Db.builder().mainStream(m).start();
-            Trans.Builder b = Trans.builder();
+            Trans.Builder b = Db.trans0();
             for (int k = 0; k < n; k++) {
                 b.put(KeyFactory.binaryIntKey(k), value);
             }
@@ -66,7 +66,7 @@ public class StreamSize {
             
             m = new MemoryStream();
             db = Db.builder().mainStream(m).start();
-            b = Trans.builder();
+            b = Db.trans0();
             for (int k = 0; k < n + 1; k++) {
                 b.put(KeyFactory.binaryIntKey(k), value);
             }
@@ -100,7 +100,7 @@ public class StreamSize {
             sum = 0;
             
             for (int i = 0; i < n; i++) {
-                Trans trans = Trans.builder().put("" + i, value).build();
+                Trans trans = Db.trans0().put("" + i, value).build();
                 db.execute(trans);
                 long size = (trans.lastPos - trans.pos + 1);
                 sum += size;

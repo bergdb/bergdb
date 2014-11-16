@@ -12,10 +12,14 @@ import bergdb.nanotest.T;
 
 /**
  * Data for executing a transaction. Input, output and some working data.
- * The KVs of the transaction is defined in this class.
+ * The KVs of the transaction are defined in this class.
  * This class is designed to suit class Db and achieve high performance.
  * This class is defined in the most preferred, most efficient form for the Db class, 
- * not for the client using Db. It is not especially user-friendly.
+ * not for the client using Db;it is not especially user-friendly.
+ * 
+ * To save memory allocation costs, a Trans object may be reused for multiple 
+ * transactions run by the same thread. This is however only recommended when 
+ * there is a significant performance benefit. 
  * 
  * @author Frans Lundberg
  */
@@ -65,10 +69,6 @@ public class Trans {
      */
     private Trans() {
         readKeyHashes = new long[0];
-        warmupGetData = new GetData();
-        warmupGetData.evictData.enableEvict = false;
-        warmupGetData.pointerListener = Dag.DO_NOTHING_POINTER_LISTENER;        
-        warmupGetData.cachePolicy = Dag.CACHE_ALL;
     }
     
     public boolean isInternal() {
@@ -107,18 +107,6 @@ public class Trans {
     }
     
     /**
-     * Creates a builder for a transaction.
-     */
-    public static Builder builder() {
-        // "Effective Java" has example with constructor for builders.
-        // Code like         [t = new Trans.Builder().set(key, value).build();]
-        // I prefer factory: [t = Trans.create().set(key, value).done();]
-        // or:               [t = Trans.builder().set(key, value).build();]
-        
-        return new Builder();
-    }
-    
-    /**
      * Listens to what happens to a transaction; suitable for testing.
      */
     public static interface Listener {
@@ -145,12 +133,19 @@ public class Trans {
         private ArrayList<Kv> kvs;
         private ArrayList<Long> readHashes;    // hashes of keys read.
         private ArrayList<Long> virtualWriteHashes;    // virtual key hashes for virtual writes
+        private GetData warmupGetData;
         
-        private Builder() {
+        // XXX should be private
+        public Builder() {
             kvs = new ArrayList<Kv>();
             readHashes = new ArrayList<Long>();
             virtualWriteHashes = new ArrayList<Long>();
             builderLookupTime = Long.MAX_VALUE;
+
+            warmupGetData = new GetData();
+            warmupGetData.evictData.enableEvict = false;
+            warmupGetData.pointerListener = Dag.DO_NOTHING_POINTER_LISTENER;        
+            warmupGetData.cachePolicy = Dag.CACHE_ALL;
         }
         
         public Builder put(byte[] key, byte[] value) {
@@ -284,6 +279,7 @@ public class Trans {
             
             Trans t = new Trans();
             t.readTime = builderLookupTime;
+            t.warmupGetData = warmupGetData;
             
             TreeMap<long[], Kv> map = new TreeMap<long[], Kv>(ARRAY_COMPARATOR);
             
@@ -305,6 +301,19 @@ public class Trans {
             
             return t;
         }
+        
+        /**
+         * Special access for Db; methods must only be called from Db.
+         */
+        static class ForDb {
+            static Builder create() {
+                return new Trans.Builder();
+            }
+            
+            static void setWarmupGetData(Trans.Builder b, GetData warmupGetData) {
+                b.warmupGetData = warmupGetData;
+            }
+        }
     }
     
     @T
@@ -312,7 +321,7 @@ public class Trans {
         Trans t;
         Db db;
         
-        t = Trans.builder().put("k", "v").build();
+        t = Db.trans0().put("k", "v").build();
         
         db = Db.builder().testSetup().start();
         for (int i0 = 0; i0 < 2; i0++) {
