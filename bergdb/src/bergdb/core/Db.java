@@ -880,15 +880,14 @@ public class Db {
     /**
      * Get multiple KVs in increasing or decreasing key order.
      * 
-     * @param g
-     *            Input and output parameters.
-     * @see GetMany
+     * @param g     Input and output parameters.
      * @throws IllegalDbStateException
-     *             If start() has not been called.
+     *              If start() has not been called.
      * @throws StreamFormatException
-     *             If the database stream is corrupt.
+     *              If the database stream is corrupt.
      * @throws StreamIoException
-     *             If there was an i/o error with the database stream.
+     *              If there was an i/o error with the database stream.
+     * @see GetMany
      */
     public void getMany(GetMany g) {
         // Note, multiple get operations may be running in parallel.
@@ -1199,23 +1198,15 @@ public class Db {
      * This is a trade-off. Of course, we could have optimization setting for this:
      * [enum ThreadOptimization { SINGLE_WRITE_THREAD, MULTIPLE_WRITE_THREADS }].
      * But, until proven important enough, we keep variability as low as possible and focus
-     * on best "worst-case" performance (worst-case performance vs best-case performance).
+     * on best "worst-case" performance.
      */
     private final void warmup(Trans t) {
-        assert x != null : "x == null";
-        assert x.getData != null : "x.getData == null";
-        
         final long readTime = dbClock.lookupTime(Long.MAX_VALUE);
-        final GetData gd = x.getData;
-
-        boolean enableEvict = gd.evictData.enableEvict;
-        gd.evictData.enableEvict = false;
+        final GetData gd = t.warmupGetData;
 
         for (Kv kv : t.kvs) {
             this.getOneInternal(readTime, kv.getKey(), gd);
         }
-
-        gd.evictData.enableEvict = enableEvict;
     }
 
     /** 
@@ -1465,8 +1456,8 @@ public class Db {
     }
     
     /**
-     * Collection of variables for method Db.execute(Transaction).
-     * All field access must be from thread holding Db.writeLock.
+     * Collection of operation-scope variables for method Db.execute().
+     * All access must be from thread holding Db.writeLock.
      */
     public class ExecuteData {
         /** Current transaction while writeLock is held. */
@@ -1515,7 +1506,7 @@ public class Db {
          */
         private void end() {
             // Good to clear here, kvTransNodes/indexTransNodes. 
-            // Large transaction otherwise consumes memory until next transaction written.
+            // Large transaction otherwise consumes memory until next transaction executed.
             
             x.lastSposOfLastTrans = x.trans.lastPos;
             trans = null;

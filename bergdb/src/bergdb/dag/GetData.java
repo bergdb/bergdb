@@ -1,10 +1,10 @@
 package bergdb.dag;
 
 /**
- * Data needed for a 'get' operation.
+ * Data needed for a database get operation (Db.getOne(), getMany()).
  * An object of this class can be seen as an operation-local variable scope.
  * A GetData object can be reused between serial get requests, but the same GetData 
- * object must not be used for concurrent get requests.
+ * object must not be used by multiple threads for concurrent get operations.
  * 
  * @author Frans Lundberg
  */
@@ -12,10 +12,8 @@ public class GetData {
     
     // -- Input, settings --
     
-    public Dag.PointerListener pointerListener;
-    
+    public Dag.PointerListener pointerListener;  
     public Dag.CachePolicy cachePolicy;
-    
     
     // -- Internal working data --
     
@@ -28,7 +26,7 @@ public class GetData {
     public long accessData; 
         // "Time" of the get operation measured in an internal time scale.
     public final EvictData evictData;
-        // Internal data for DB.evict().
+        // Internal data for Db.evict().
     
     // -- Output --
     

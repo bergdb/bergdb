@@ -26,8 +26,6 @@ import bergdb.stream.MemoryStream;
  */
 public class CreateIndexTester {
     
-    // TODO A. Fix this test.
-    
     @T("f")
     public static void createIndexWhileAddingMore(TestCollector coll) {
         int n = 4*1000;

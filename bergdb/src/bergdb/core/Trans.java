@@ -5,15 +5,17 @@ import java.util.Comparator;
 import java.util.TreeMap;
 
 import bergdb.common.Util;
+import bergdb.dag.Dag;
+import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.nanotest.T;
 
 /**
  * Data for executing a transaction. Input, output and some working data.
  * The KVs of the transaction is defined in this class.
- * This class is designed to suit class Db and to achieve high performance.
+ * This class is designed to suit class Db and achieve high performance.
  * This class is defined in the most preferred, most efficient form for the Db class, 
- * not for the client using Db.
+ * not for the client using Db. It is not especially user-friendly.
  * 
  * @author Frans Lundberg
  */
@@ -52,12 +54,21 @@ public class Trans {
     public int nodeCount;           // Number of nodes written to stream. Useful for testing/debug.
           
     // -- Other --
+    
     boolean isInternal;             // True if transaction is executed on behalf of the database itself.
     boolean isRerun;                // True if used at startup for transaction rerun.
-    long startupPos = -1;  // startupPos stored in stream with transaction or -1 for "no update".
+    long startupPos = -1;           // startupPos stored in stream with transaction or -1 for "no update".
+    GetData warmupGetData;          // GetData for Db.warmup() method.
     
+    /**
+     * Private constructor, use the builder: Trans.builder().
+     */
     private Trans() {
         readKeyHashes = new long[0];
+        warmupGetData = new GetData();
+        warmupGetData.evictData.enableEvict = false;
+        warmupGetData.pointerListener = Dag.DO_NOTHING_POINTER_LISTENER;        
+        warmupGetData.cachePolicy = Dag.CACHE_ALL;
     }
     
     public boolean isInternal() {
