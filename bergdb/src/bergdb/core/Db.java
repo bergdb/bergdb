@@ -1401,52 +1401,18 @@ public class Db {
      */
     public static DbBuilder builder() {
         return DbBuilder.createForDb();
-    }
-
-    /**
-     * Creates a transaction builder object for creating transactions to 
-     * run on this database.
-     * 
-     * @deprecated Use trans() instead.
-     */
-    public static Trans.Builder trans0() {
-        // "Effective Java" book has builder examples like this:
-        //                   [t = new Trans.Builder().set(key, value).build();]
-        // We have:          [t = db.trans().set(key, value).build();]
-        //
-        
-        Trans.Builder b = Trans.Builder.ForDb.create();
-        
-        GetData warmupGetData = new GetData();
-        warmupGetData.evictData.enableEvict = false;
-        warmupGetData.pointerListener = Dag.DO_NOTHING_POINTER_LISTENER;        
-        warmupGetData.cachePolicy = Dag.CACHE_ALL;
-       
-        Trans.Builder.ForDb.setWarmupGetData(b, warmupGetData);
-        return b;
-    }
-    
+    }   
     
     /**
-     * Creates a transaction builder object for creating transactions to 
-     * run on this database.
+     * Creates a transaction builder object for creating transactions that are
+     * suitable to run on this database.
      */
     public Trans.Builder trans() {
-        //
-        // "Effective Java" book has builder examples like this:
-        //                   [t = new Trans.Builder().set(key, value).build();]
-        // We have:          [t = db.trans().set(key, value).build();]
-        //
+        // Currently, the Db settings do not affect how Trans objects are 
+        // created, but this may well be changed in the future. 
+        // This method gives Db an opportunity to affect how Trans objects are created.
         
-        Trans.Builder b = Trans.Builder.ForDb.create();
-        
-        GetData warmupGetData = new GetData();
-        warmupGetData.evictData.enableEvict = false;
-        warmupGetData.pointerListener = Dag.DO_NOTHING_POINTER_LISTENER;        
-        warmupGetData.cachePolicy = Dag.CACHE_ALL;
-       
-        Trans.Builder.ForDb.setWarmupGetData(b, warmupGetData);
-        return b;
+        return Trans.Builder.ForDb.create();
     }
     
 
