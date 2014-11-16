@@ -46,7 +46,7 @@ public class Crazy {
         
         for (int i = 0; i < n; i++) {
             clock.setTime(1000000 + i * 10 + 1);
-            Trans t = Db.trans0().put(KeyFactory.crazyKey(i), Util.toBytes("v" + i)).build();
+            Trans t = db.trans().put(KeyFactory.crazyKey(i), Util.toBytes("v" + i)).build();
             db.execute(t);
         }
         db.sync(0, SyncLevel.ORDINARY);
@@ -64,7 +64,7 @@ public class Crazy {
         
         for (int i = 0; i < n; i += 10) {
             clock.setTime(2000000 + i * 10 + 1);
-            Trans t = Db.trans0().delete(KeyFactory.crazyKey(i)).build();
+            Trans t = db.trans().delete(KeyFactory.crazyKey(i)).build();
             db.execute(t);
         }
         
@@ -86,7 +86,7 @@ public class Crazy {
         
         for (int i = 0; i < n; i += 10) {
             clock.setTime(3000000 + i * 10 + 1);
-            Trans t = Db.trans0().put(KeyFactory.crazyKey(i), Util.toBytes("v" + i)).build();
+            Trans t = db.trans().put(KeyFactory.crazyKey(i), Util.toBytes("v" + i)).build();
             db.execute(t);
         }
         
@@ -101,7 +101,7 @@ public class Crazy {
         
         byte[] value;
         clock.setTime(4000000);
-        Trans.Builder b = Db.trans0();
+        Trans.Builder b = db.trans();
         
         value = new byte[1*1000000];
         value[0] = 1;
@@ -134,7 +134,7 @@ public class Crazy {
         // ----
         out.println("A very large transaction.");
         clock.setTime(5*1000000);
-        b = Db.trans0();
+        b = db.trans();
         b.put(KeyFactory.crazyKey(1001), new byte[20*1000000]);
         db.execute(b.build());
         db.sync(0, SyncLevel.ORDINARY);
@@ -146,7 +146,7 @@ public class Crazy {
         out.println("An unsusually large key, size: " + keySize + " bytes.");
         clock.setTime(6*1000000);
         long streamSize1 = db.getStreamLength();
-        b = Db.trans0();
+        b = db.trans();
         byte[] key = new byte[keySize];
         key[0] = 44;
         b.put(key, new byte[3]);

@@ -24,7 +24,7 @@ public class DbTesterRestart {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(stream).clock(clock).testId().start();
         clock.setTime(10);
-        Trans trans = Db.trans0().put("admin1", "Sanna").build();
+        Trans trans = db.trans().put("admin1", "Sanna").build();
         db.execute(trans);
         db.sync(SyncLevel.ORDINARY);
         long tt = trans.time;
@@ -57,7 +57,7 @@ public class DbTesterRestart {
         for (int i = 0; i < 20; i++) {
             clock.setTime(100 + i*10);
             bytes[0] = (byte) i;
-            Trans trans = Db.trans0().put("k", bytes).build();
+            Trans trans = db.trans().put("k", bytes).build();
             db.execute(trans);
         }
         long sum1 = DbUtil.checksum(db);
@@ -117,7 +117,7 @@ public class DbTesterRestart {
         CoreTestClock clock = new CoreTestClock();
         
         Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(startupDistance).start();
-        db.execute(Db.trans0().put("key", "value"));
+        db.execute(db.trans().put("key", "value"));
         Assert.assertEquals("before restart", startupDistance, db.getStartupDistance());
         db.sync(SyncLevel.STRONG);
         
@@ -139,10 +139,10 @@ public class DbTesterRestart {
         Db db = Db.builder().testSetup(s).clock(clock).start();
         
         clock.setTime(10);
-        db.execute(Db.trans0().put("k1", "k1-value"));
+        db.execute(db.trans().put("k1", "k1-value"));
         
         clock.setTime(20);
-        db.execute(Db.trans0().delete("k1"));
+        db.execute(db.trans().delete("k1"));
         db.sync(SyncLevel.ORDINARY);
         
         //db.printGraph(System.out);
@@ -168,10 +168,10 @@ public class DbTesterRestart {
         Db db = Db.builder().testSetup(s).clock(clock).start();
         
         clock.setTime(10);
-        db.execute(Db.trans0().put("k1", "k1-value").put("k2", "k2-value"));
+        db.execute(db.trans().put("k1", "k1-value").put("k2", "k2-value"));
         
         clock.setTime(20);
-        db.execute(Db.trans0().delete("k1").delete("k2").delete("kk").put("k3", "k3-value").build());
+        db.execute(db.trans().delete("k1").delete("k2").delete("kk").put("k3", "k3-value").build());
         
         long sum1 = DbUtil.checksum(db);
         db.sync(SyncLevel.ORDINARY);

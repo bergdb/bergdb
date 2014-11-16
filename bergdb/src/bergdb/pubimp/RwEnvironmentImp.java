@@ -389,8 +389,8 @@ public class RwEnvironmentImp implements RwEnvironment {
      * kvOps, objectOps, indexOps, vkeyWriteHashes. If this transaction is an RW transaction
      * (Connection.rw()), the Action.run() method has been run already.
      */
-    public Trans createTrans() {
-        Trans.Builder b = Db.trans0();
+    public Trans createTrans(Db db) {
+        Trans.Builder b = db.trans();
         
         b.lookupTime(readTime == -1 ? Long.MAX_VALUE : this.readTime);
         

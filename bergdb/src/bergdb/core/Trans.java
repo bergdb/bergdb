@@ -135,8 +135,7 @@ public class Trans {
         private ArrayList<Long> virtualWriteHashes;    // virtual key hashes for virtual writes
         private GetData warmupGetData;
         
-        // XXX should be private
-        public Builder() {
+        private Builder() {
             kvs = new ArrayList<Kv>();
             readHashes = new ArrayList<Long>();
             virtualWriteHashes = new ArrayList<Long>();
@@ -303,7 +302,8 @@ public class Trans {
         }
         
         /**
-         * Special access for Db; methods must only be called from Db.
+         * Special access for Db; methods must only be called from Db or from
+         * test code.
          */
         static class ForDb {
             static Builder create() {
@@ -321,9 +321,9 @@ public class Trans {
         Trans t;
         Db db;
         
-        t = Db.trans0().put("k", "v").build();
-        
         db = Db.builder().testSetup().start();
+        t = db.trans().put("k", "v").build();
+        
         for (int i0 = 0; i0 < 2; i0++) {
             db.execute(t);
         }

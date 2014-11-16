@@ -195,7 +195,7 @@ public class DbStarter2 {
         for (int i = 0; i < count; i++) {
             StoredTrans trans = transactions.get(i);
             if (i > 0) {
-                db.internal().executeInner(trans.createRerunTransaction());
+                db.internal().executeInner(trans.createRerunTransaction(db.trans()));
             }
             
             for (StoredNode stored : trans.nodes) {

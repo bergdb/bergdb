@@ -54,7 +54,7 @@ public class StreamSizeFourCases {
     void runOneByOne() {
         createDatabase();
         for (int i = 0; i < n; i++) {
-            db.execute(Db.trans0().put(keys[i], value));
+            db.execute(db.trans().put(keys[i], value));
         }
         
         db.sync(SyncLevel.ORDINARY);
@@ -68,7 +68,7 @@ public class StreamSizeFourCases {
         int reps = n / batchSize;
         
         for (int i = 0; i < reps; i++) {
-            Trans.Builder b = Db.trans0();
+            Trans.Builder b = db.trans();
             
             for (int j = 0; j < batchSize; j++) {
                 b.put(keys[i * batchSize + j], value);

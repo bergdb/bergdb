@@ -88,7 +88,7 @@ public class TransThroughput {
         for (int i = 0; i < n; i++) {
             byte[] key = KeyFactory.binaryIntKey(random.nextInt());
             byte[] value = new byte[0];
-            transactions[i] = Db.trans0().put(key, value).build();
+            transactions[i] = db.trans().put(key, value).build();
         }
         
         Thread[] threads = new Thread[threadCount];

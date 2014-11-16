@@ -361,7 +361,7 @@ public class IndexManager {
         
         byte[] key = getIndexInfoKeyAsBytes(index.name);
         Db db = connection.getDb();
-        Trans.Builder b = Db.trans0();
+        Trans.Builder b = db.trans();
         for (String dir : index.dirs) {
             b.addVirtualWriteHash(vhashOfDir(dir));
         }
@@ -430,7 +430,7 @@ public class IndexManager {
             };
             
             db.getMany(g);
-            Trans.Builder b = Db.trans0();
+            Trans.Builder b = db.trans();
 
             if (g.result.size() > 0) {
                 for (Kvt kvt : g.result) {
@@ -463,7 +463,7 @@ public class IndexManager {
         
         byte[] key = getIndexInfoKeyAsBytes(index.name);
         Db db = connection.getDb();
-        Trans trans = Db.trans0().delete(key).build();
+        Trans trans = db.trans().delete(key).build();
         
         synchronized (lock) {
             db.execute(trans);

@@ -30,12 +30,12 @@ public class StreamSizeTest {
         int index = 0;
         
         for (int i = 0; i < 50*1000; i++) {
-            db.execute(Db.trans0().put(key(index), v1));
+            db.execute(db.trans().put(key(index), v1));
             index += 1;
         }
         
         for (int i = 0; i < 1*1000; i++) {
-            Trans.Builder b = Db.trans0();
+            Trans.Builder b = db.trans();
             
             for (int j = 0; j < 50; j++) {
                 b.put(key(index), v1);
@@ -46,13 +46,13 @@ public class StreamSizeTest {
         }
         
         for (int i = 0; i < 5*1000; i++) {
-            db.execute(Db.trans0().put(key(index), v2));
+            db.execute(db.trans().put(key(index), v2));
             index += 1;
         }
         
         index = 0;
         for (int i = 0; i < 50*1000; i++) {
-            db.execute(Db.trans0().put(key(index), v1));
+            db.execute(db.trans().put(key(index), v1));
             index += 1;
         }
         

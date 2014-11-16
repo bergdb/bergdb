@@ -29,7 +29,7 @@ public class WTransaction implements Transaction {
             trans = RwTransaction.executeRw(env, connection, null);
             connection.lastSposOfLastTrans = trans.lastPos;
         } else {
-            trans = env.createTrans();
+            trans = env.createTrans(connection.getDb());
             try {
                 connection.getDb().execute(trans);
                 connection.lastSposOfLastTrans = trans.lastPos;

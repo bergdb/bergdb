@@ -31,7 +31,7 @@ public class Shrink {
         long t0 = System.nanoTime();
         int index = 0;
         while (index < n) {
-            Trans.Builder b = Db.trans0();
+            Trans.Builder b = db.trans();
             for (int i = 0; i < 100; i++) {
                 b.put("" + index, value10k);
                 index++;
@@ -52,7 +52,7 @@ public class Shrink {
         t0 = System.nanoTime();
         index = 0;
         while (index < n) {
-            Trans.Builder b = Db.trans0();
+            Trans.Builder b = db.trans();
             for (int i = 0; i < 100; i++) {
                 b.delete("" + index);
                 index++;
@@ -71,7 +71,7 @@ public class Shrink {
         t0 = System.nanoTime();
         index = 0;
         while (index < n) {
-            Trans.Builder b = Db.trans0();
+            Trans.Builder b = db.trans();
             b.put("k0", value10k);
             Trans trans = b.build();
             db.execute(trans);

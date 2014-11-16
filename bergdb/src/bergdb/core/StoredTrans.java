@@ -59,10 +59,9 @@ public class StoredTrans {
         return startupPos != -1;
     }
     
-    public Trans createRerunTransaction() {        
+    public Trans createRerunTransaction(Trans.Builder b) {        
         List<StoredValueNode> storedValueNodes = extractValueNodes();
         
-        Trans.Builder b = Db.trans0();
         for (StoredValueNode n : storedValueNodes) {
             assert n.getKey() != null : "key is null, " + n;
             assert n.getKey().length > 0 : "Bad key, zero-length";
@@ -700,7 +699,7 @@ public class StoredTrans {
         byte[] buffer = serializer.getTransBuffer();
         
         StoredTrans stored = StoredTrans.parse(0, buffer);
-        Trans trans = stored.createRerunTransaction();
+        Trans trans = stored.createRerunTransaction(Trans.Builder.ForDb.create());
         
         assertEquals(1, trans.kvs.length);
         assertArrayEquals(new byte[]{1, 2, 3}, trans.kvs[0].getValue());

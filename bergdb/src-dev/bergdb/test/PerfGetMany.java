@@ -48,7 +48,7 @@ public class PerfGetMany {
         byte[] value = new byte[0];
         
         for (int i = 0; i < n / batchSize; i++) {
-            Trans.Builder b = Db.trans0();
+            Trans.Builder b = db.trans();
             
             for (int j = 0; j < batchSize; j++) {
                 int index = i * batchSize + j;

@@ -199,7 +199,7 @@ public class Reclaim implements Db.TransactionListener {
                 table.rows.add(info);
                 
                 String tableString = table.serialize();
-                Trans t2 = Db.trans0().put(tableKey, Util.toBytes(tableString)).build();
+                Trans t2 = db.trans().put(tableKey, Util.toBytes(tableString)).build();
                 t2.isInternal = true;
                 try {
                     db.execute(t2);
@@ -240,7 +240,7 @@ public class Reclaim implements Db.TransactionListener {
                     }
                     
                     String tableString = table.serialize();
-                    Trans t2 = Db.trans0().put(tableKey, Util.toBytes(tableString)).build();
+                    Trans t2 = db.trans().put(tableKey, Util.toBytes(tableString)).build();
                     t2.isInternal = true;
                     try {
                         db.execute(t2);
@@ -275,7 +275,7 @@ public class Reclaim implements Db.TransactionListener {
                     System.arraycopy(iteration.lastKey, 0, info.lastKey, 0, iteration.lastKey.length);
                     
                     String tableString = table.serialize();
-                    Trans tt = Db.trans0().put(tableKey, Util.toBytes(tableString)).build();
+                    Trans tt = db.trans().put(tableKey, Util.toBytes(tableString)).build();
                     tt.isInternal = true;
                     
                     try {
@@ -676,7 +676,7 @@ public class Reclaim implements Db.TransactionListener {
                 return;
             }
             
-            Trans.Builder b = Db.trans0();
+            Trans.Builder b = db.trans();
             long stepLookupTime = -1;
             
             for (Kvt kvt : g.result) {
@@ -736,7 +736,7 @@ public class Reclaim implements Db.TransactionListener {
             for (int i = 0; i < size; i++) {
                 long time = 1000 + i * 10;
                 clock.setTime(time);
-                Trans t = Db.trans0().put("" + i, value).build();
+                Trans t = db.trans().put("" + i, value).build();
                 db.execute(t);
             }
             
@@ -774,7 +774,7 @@ public class Reclaim implements Db.TransactionListener {
             for (int i = 0; i < size; i++) {
                 long time = (i + 1) * Clock.UNITS_PER_SEC;
                 clock.setTime(time);
-                Trans t = Db.trans0().put("k", value).build();
+                Trans t = db.trans().put("k", value).build();
                 db.execute(t);
             }
             

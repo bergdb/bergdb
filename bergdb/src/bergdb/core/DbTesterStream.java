@@ -30,7 +30,7 @@ public class DbTesterStream {
         Db db = Db.builder().testSetup().build();
         db.start();
         
-        db.execute(Db.trans0().put("admin1", "Sanna").build());
+        db.execute(db.trans().put("admin1", "Sanna").build());
         byte[] value = DbUtil.get(db, 99, "admin1");
         Assert.assertArrayEquals(Util.toBytes("Sanna"), value);
     }
@@ -41,7 +41,7 @@ public class DbTesterStream {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(stream).clock(clock).start();
         clock.setTime(10);
-        db.execute(Db.trans0().put("admin1", "Sanna").build());
+        db.execute(db.trans().put("admin1", "Sanna").build());
         db.sync(SyncLevel.ORDINARY);
         db.stop();
         db = null;
@@ -66,7 +66,7 @@ public class DbTesterStream {
         Db db = Db.builder().testSetup(stream).clock(clock).build();
         db.start();
         clock.setTime(10);
-        db.execute(Db.trans0().put("admin10", "Sanna").build());
+        db.execute(db.trans().put("admin10", "Sanna").build());
         db.sync(SyncLevel.ORDINARY);
         
         value = DbUtil.get(db, 99, "admin10");
@@ -91,9 +91,9 @@ public class DbTesterStream {
         Db db = Db.builder().testSetup(stream).clock(clock).build();
         db.start();
         clock.setTime(10);
-        db.execute(Db.trans0().put("admin1", "Sanna1").build());
+        db.execute(db.trans().put("admin1", "Sanna1").build());
         clock.setTime(20);
-        db.execute(Db.trans0().put("admin2", "Sanna2").build());
+        db.execute(db.trans().put("admin2", "Sanna2").build());
         db.sync(SyncLevel.ORDINARY);
         db.stop();
         db = null;
@@ -127,8 +127,8 @@ public class DbTesterStream {
         db = Db.builder().testSetup(stream).build();
         db.start();
         
-        db.execute(Db.trans0().put("admin10", "Sanna1").build());
-        db.execute(Db.trans0().put("admin20", "Sanna2").build());
+        db.execute(db.trans().put("admin10", "Sanna1").build());
+        db.execute(db.trans().put("admin20", "Sanna2").build());
         
         value = DbUtil.get(db, 999, "admin10");
         Assert.assertEquals("Sanna1", Util.toString(value));
@@ -162,7 +162,7 @@ public class DbTesterStream {
         time = 100;
         for (int i = 0; i < n; i++) {
             clock.setTime(time);
-            db.execute(Db.trans0().put("admin" + time, "Sanna" + time).build());
+            db.execute(db.trans().put("admin" + time, "Sanna" + time).build());
             time += 10;
         }
         
@@ -202,7 +202,7 @@ public class DbTesterStream {
         time = 100;
         for (int i = 0; i < n; i++) {
             clock.setTime(time);
-            db.execute(Db.trans0().put("a" + time, "v" + time).build());
+            db.execute(db.trans().put("a" + time, "v" + time).build());
             time += 10;
         }
         
@@ -236,7 +236,7 @@ public class DbTesterStream {
         
         for (int i = 0; i < n; i++) {
             String key = "" + random.nextInt();
-            Trans t = Db.trans0().put(key, "v" + key).build();
+            Trans t = db.trans().put(key, "v" + key).build();
             clock.setTime(i * 10 + 10);
             db.execute(t);
             
@@ -278,7 +278,7 @@ public class DbTesterStream {
         
         for (int i = 0; i < n; i++) {
             clock.setTime(100 + i * 10);
-            Trans t = Db.trans0().put("" + i, "v" + i).build();
+            Trans t = db.trans().put("" + i, "v" + i).build();
             db.execute(t);
         }
         
@@ -310,7 +310,7 @@ public class DbTesterStream {
         for (int i = 0; i < n; i++) {
             int k = i + 100;
             clock.setTime(100 + k * 10);
-            Trans t = Db.trans0().put("" + k, "v" + k).build();
+            Trans t = db.trans().put("" + k, "v" + k).build();
             db.execute(t);
         }
         
@@ -337,7 +337,7 @@ public class DbTesterStream {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(s).clock(clock).start();
         clock.setTime(10);
-        db.execute(Db.trans0().put("k", "k-value"));
+        db.execute(db.trans().put("k", "k-value"));
         db.sync(SyncLevel.ORDINARY);
         db.stop();
         db = null;
@@ -369,7 +369,7 @@ public class DbTesterStream {
             CoreTestClock clock = new CoreTestClock();
             Db db = Db.builder().testSetup(s).clock(clock).start();
             clock.setTime(10);
-            db.execute(Db.trans0().put("k", "k-value"));
+            db.execute(db.trans().put("k", "k-value"));
             db.sync(SyncLevel.ORDINARY);
             db = null;
             s = null;
@@ -400,9 +400,9 @@ public class DbTesterStream {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(s).clock(clock).start();
         clock.setTime(10);
-        db.execute(Db.trans0().put("admin1", "Sanna1").build());
+        db.execute(db.trans().put("admin1", "Sanna1").build());
         clock.setTime(20);
-        db.execute(Db.trans0().put("admin2", "Sanna2").build());
+        db.execute(db.trans().put("admin2", "Sanna2").build());
         db.sync(SyncLevel.ORDINARY);
         db = null;
         s = null;
@@ -429,13 +429,13 @@ public class DbTesterStream {
         Db db = Db.builder().testSetup(s).clock(clock).start();
         
         clock.setTime(10);
-        db.execute(Db.trans0().put("k1", "k1-value").put("k2", "k2-value"));
+        db.execute(db.trans().put("k1", "k1-value").put("k2", "k2-value"));
         
         clock.setTime(20);
-        db.execute(Db.trans0().put("k1", "k1-value-b"));
+        db.execute(db.trans().put("k1", "k1-value-b"));
         
         clock.setTime(30);
-        db.execute(Db.trans0().put("k2", "k2-value-b"));
+        db.execute(db.trans().put("k2", "k2-value-b"));
         db.sync(SyncLevel.ORDINARY);
         db = null;
         
@@ -472,7 +472,7 @@ public class DbTesterStream {
         TestClock clock = new TestClock();
         Db db = Db.builder().testSetup(s).clock(clock).start();
         int n = 2;
-        Trans.Builder b = Db.trans0();
+        Trans.Builder b = db.trans();
             
         for (int i = 0; i < n; i++) {
             byte[] key = KeyFactory.intKey(n - i);
@@ -519,7 +519,7 @@ public class DbTesterStream {
         int valueSize = 20*1000*1000;
         Db db = createRandomDb(n, s);  // Make sure we have some data
         
-        db.execute(Db.trans0().put("/large", new byte[valueSize]));
+        db.execute(db.trans().put("/large", new byte[valueSize]));
         db.sync(SyncLevel.ORDINARY);
         db = null;
         
@@ -537,13 +537,13 @@ public class DbTesterStream {
         Db db = Db.builder().testSetup().startupDistance(100*1000).mainStream(s).start();
         int n = 5;
         
-        db.execute(Db.trans0().put("/small1", "v-small1"));
+        db.execute(db.trans().put("/small1", "v-small1"));
         
         for (int i = 0; i < n; i++) {
-            db.execute(Db.trans0().put("/large-" + i, new byte[valueSize + i]));
+            db.execute(db.trans().put("/large-" + i, new byte[valueSize + i]));
         }
         
-        db.execute(Db.trans0().put("/small2", "v-small2"));
+        db.execute(db.trans().put("/small2", "v-small2"));
         db.sync(SyncLevel.ORDINARY);
         
         //System.out.println("---- Before restart ----");

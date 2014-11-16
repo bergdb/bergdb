@@ -92,7 +92,7 @@ public class RwTransaction implements Transaction {
                 rw.action.run(env);                     // User reads are done here, writes are requested.
             }
             env.indexEntries(m);                        // Internal reads are done here, internal writes are requested.
-            trans = env.createTrans();
+            trans = env.createTrans(connection.getDb());
             
             try {
                 connection.getDb().execute(trans);      // Writes are executed.

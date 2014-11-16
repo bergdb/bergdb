@@ -179,7 +179,7 @@ public class VizFigure {
         
         for (int i = 0; i < 1; i++) {
             
-            Trans.Builder b = Db.trans0();
+            Trans.Builder b = db.trans();
             
             for (int j = 0; j < 4; j++) {
                 String key = "accounts/" + index;

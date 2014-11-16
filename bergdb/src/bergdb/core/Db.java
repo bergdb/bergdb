@@ -684,7 +684,7 @@ public class Db {
         meta.setStartupPos(0);
         meta.setTime(tt);
         
-        Trans trans = Db.trans0().build();
+        Trans trans = this.trans().build();
         trans.time = tt;
         trans.isInternal = true;
         

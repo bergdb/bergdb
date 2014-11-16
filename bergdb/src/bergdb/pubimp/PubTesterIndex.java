@@ -220,7 +220,7 @@ public class PubTesterIndex {
         
         Db db = ((DatabaseImp) database).getDb();
         byte[] value = Util.concat(DbObject.MAGIC.clone(), new byte[]{'a'});
-        Trans trans = Db.trans0().put(Keys.toBytes(PubKeys.u2i("/payments/1b")), value).build();
+        Trans trans = db.trans().put(Keys.toBytes(PubKeys.u2i("/payments/1b")), value).build();
         db.execute(trans);
 
         // Create index

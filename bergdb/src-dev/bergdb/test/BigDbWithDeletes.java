@@ -71,7 +71,7 @@ public class BigDbWithDeletes {
             byte[] key = KeyFactory.intKey(i);
             byte[] value = new byte[valueSize];
             value[0] = (byte) Util.toString(key).hashCode();
-            Trans t = Db.trans0().put(key, value).build();
+            Trans t = db.trans().put(key, value).build();
             db.execute(t);
         }
         
@@ -82,7 +82,7 @@ public class BigDbWithDeletes {
         for (int i = 0; i < n; i += 4) {
             clock.setTime(2*1000000 + i);
             byte[] key = KeyFactory.intKey(i);
-            Trans t = Db.trans0().delete(key).build();
+            Trans t = db.trans().delete(key).build();
             db.execute(t);
         }
         

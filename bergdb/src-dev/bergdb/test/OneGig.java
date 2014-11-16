@@ -66,7 +66,7 @@ public class OneGig {
         long t = System.nanoTime();
         
         for (int i = 0; i < n; i++) {
-            Trans.Builder b = Db.trans0();
+            Trans.Builder b = db.trans();
             int keyIndex = -1;
             
             for (int j = 0; j < 10; j++) {
@@ -166,7 +166,7 @@ public class OneGig {
         long t = System.nanoTime();
         
         for (int i = 0; i < n; i++) {
-            Trans.Builder b = Db.trans0();
+            Trans.Builder b = db.trans();
             int keyIndex = -1;
             
             for (int j = 0; j < 10; j++) {
