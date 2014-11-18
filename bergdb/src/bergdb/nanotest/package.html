@@ -9,6 +9,7 @@ It is designed with BergDB in mind, but it is for general use.</p>
 Properties of Nanotest
 
 * Suitable for self-testing after deployment.
+* For inclusion with created software.
 * Small. In code size.
 * Code to be tested need not be dependent on Nanotest. Just use convention "public static void testXxx()".
 * A simple test runner for console output included.
@@ -17,14 +18,15 @@ Properties of Nanotest
   "perf". Testing is started by selecting a set of test groups to run and a set of classes/methods.
 * Tests should be able to report back arbitrary key-value pairs.
 * A test is successful if it does not throw an exception.
+* Deterministic thread testing supported.
 
 Issues:
 * How to find set of classes to inspect?
 * How to specify which methods?
 * How to specify groups?
-* Use annotations? Convinient, but does it work for
+* Use annotations? Convienient, but does it work for
   all our environments? GCJ, IKVM, ..?
-* Use reflection? Convinient, but does it work for all environments.
+* Use reflection? Convienient, but does it work for all environments.
 
 Without both reflection and annotations, this will be too ugly. 
 Lets use reflection and annotations so we can develop something simple,
@@ -54,6 +56,7 @@ The class finder code should be pluggable.
 None allowed. This package should be self-contained.
 
 ---- Log ----
+141118: Added MyThread class.
 130221: Changes. Two interface TestCollector used by individual tests and TestRunnerCollector
     used by a test runner.
 130221: Yes, it works well for all my test needs.
