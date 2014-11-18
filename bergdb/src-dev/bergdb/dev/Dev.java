@@ -1,6 +1,6 @@
 package bergdb.dev;
 
-// TODO C. Consider checksum computation for internal state (include TransSeq). To compare before and after restart.
+// TODO C. Improve Nanotest, terminal app, command-line params, flexible way to specify set of classes.
 
 /**
  * Dummy test code; for development only.

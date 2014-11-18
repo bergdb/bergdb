@@ -28,6 +28,7 @@ public class BigDbEvict {
         runTest(1000, c);
     }
     
+    // TODO A. Fix test
     @T("f perf")
     public static void t10000KV(TestCollector c) throws InterruptedException {
         runTest(10*1000, c);
@@ -46,7 +47,7 @@ public class BigDbEvict {
         return rt.totalMemory() - rt.freeMemory();
     }
     
-    private static double toMB(long bytes) {
+    private static double toMb(long bytes) {
         double mb = (double) (bytes / 1.0e6);
         mb = Math.round(mb * 100.0) / 100.0;
         return mb;
@@ -69,7 +70,7 @@ public class BigDbEvict {
         
         c.report("note", "Total size of all values is 100e6 bytes.");
         c.report("kv-count", n);
-        c.report("empty-db-memory-use", toMB(emptyMem));
+        c.report("empty-db-memory-use", toMb(emptyMem));
         
         int i = 0;
         for (String keyString : KeyFactory.shortRandomKeys(n)) {
@@ -82,7 +83,7 @@ public class BigDbEvict {
             i++;
         }
         
-        c.report("memory-used-after-100MB-of-data", toMB(getMem()));
+        c.report("memory-used-after-100MB-of-data", toMb(getMem()));
         
         int nEvict = 500;
         long nano = System.nanoTime();
@@ -96,8 +97,8 @@ public class BigDbEvict {
         nano = System.nanoTime() - nano;
         
         c.report("time-per-evict-call", 1e-9*nano / nEvict);
-        c.report("memory-use-after-evict", toMB(getMem()));
-        c.report("stream-size-after-evict", toMB(db.getStreamLength()));
+        c.report("memory-use-after-evict", toMb(getMem()));
+        c.report("stream-size-after-evict", toMb(db.getStreamLength()));
         c.report("evictCount", evictCount);
         
         // Tests db after evicts
@@ -111,7 +112,7 @@ public class BigDbEvict {
             byte[] key = Util.toBytes(keyString);
             expectedValue[0] = (byte) keyString.hashCode();
             assert gd2.evictData.enableEvict == false;
-            byte[] value = db.getOne(4*1000*1000, Keys.toSegments(key), gd2);
+            byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(key), gd2);
             Assert.assertArrayEquals("i=" + i + ", n=" + n, expectedValue, value);
             i++;
         }
@@ -119,7 +120,7 @@ public class BigDbEvict {
         // --
         
         db = null;
-        c.report("memory-use-after-db-null", toMB(getMem()));
+        c.report("memory-use-after-db-null", toMb(getMem()));
         
         clock = new CoreTestClock();
         Db db2 = Db.builder().testSetup().mainStream(ms).clock(clock).build();
@@ -129,7 +130,7 @@ public class BigDbEvict {
         clock.setTime(3*1000000);
         
         c.report("startup-time", 1e-9 * t);
-        c.report("memory-after-restart", toMB(getMem()));
+        c.report("memory-after-restart", toMb(getMem()));
         
         // Tests the restarted database (db2).
         

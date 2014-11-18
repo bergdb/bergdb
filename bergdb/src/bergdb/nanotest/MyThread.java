@@ -6,6 +6,8 @@ package bergdb.nanotest;
  * @author Frans Lundberg
  */
 public class MyThread extends Thread {
+    // If this little code works out well, maybe I should publish to blog.franslundberg.com.
+    
     private final Object sync = new Object();
     private volatile String breakName;
     

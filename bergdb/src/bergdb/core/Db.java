@@ -1272,9 +1272,12 @@ public class Db {
 
     /**
      * Runs the evict algorithm.
+     * 
+     * @param ed  Operation-local data scope.
      */
     public final void evict(EvictData ed) {
-        // Synch note: concurrent access must be supported.
+        // Synch note: concurrent access by multiple threads must be supported
+        // by this method. The EvictData, ed, is specific for each thread.
 
         ed.pointerCount = 0;
         ed.evictCount = 0;
@@ -1285,31 +1288,33 @@ public class Db {
 
     private void evictInner(EvictData ed) {
         //
-        // node ----> nextNode ---> next2
+        // node ----> next1 ---> next2
         //
         // Synch note: concurrent access must be supported by this method.
         // Multiple concurrent readers, one writer.
         // rand is used to somewhat randomly choose a nodes to evict process.
-        // For performance a single call to evictRandom.nextInt() is used.
-        // To increase randomness, the rand value is increase between each time it is used.
+        // For performance, a single call to evictRandom.nextInt() is used.
+        // To increased randomness, the rand value is increased between each time it is used.
+        //
         
         final Pointer pointer = ed.tempPointer;
 
         INode node = dag.getSuperRoot();
-        INode nextNode;
+        INode next1;
         INode next2;
         long limit = aux.cachedMemoryValue.get() - evictBoss.getCacheDuration();
+        
         ed.accessTimeLimit = limit < 0 ? 0 : limit;
             // Nodes accessed after accessTimeLimit are not evictable.
-
+        
         int rand = Math.abs(evictRandom.nextInt());
             // random int used as randomness for this evict operation.
         
         getEvictPointer2(node, rand, pointer);
         rand += 31;
-        nextNode = pointer.node;
+        next1 = pointer.node;
 
-        if (nextNode == null) {
+        if (next1 == null) {
             // Only superRoot is cached, nothing to evict.
             assert node.getMemoryPointerCount() == 0 : "Count is " + node.getMemoryPointerCount()
                     + " for node " + node + ".";
@@ -1317,7 +1322,7 @@ public class Db {
         }
 
         while (true) {
-            getEvictPointer2(nextNode, rand, pointer);
+            getEvictPointer2(next1, rand, pointer);
             rand += 17;
             next2 = pointer.node;
 
@@ -1327,8 +1332,8 @@ public class Db {
 
             // Here we go to the next deeper level.
 
-            node = nextNode;
-            nextNode = next2;
+            node = next1;
+            next1 = next2;
             next2 = null;
         }
 
@@ -1342,21 +1347,18 @@ public class Db {
     private void evictPointers(INode node, EvictData ed) {
         int count = node.getPointerCount();
         for (int i = 0; i < count; i++) {
-            INode pointee = node.getPointerNode(i);
-            if (pointee != null) {
-                synchronized (dag.getPointerLock(node, i)) {
-                    pointee = node.getPointerNode(i); // re-read needed in case
-                                                      // change happened.
-                    long pointeePos;
+            synchronized (dag.getPointerLock(node, i)) {
+                INode pointee = node.getPointerNode(i); // re-read needed in case
+                                                  // change happened.
+                long pointeePos;
 
-                    if (pointee != null
-                            && (pointeePos = pointee.getSpos()) != Spos.NULL
-                            && !(pointeePos >= ed.startupPos)
-                            && AccessData.getAccessTime(node.getPointerAccessData(i)) <= ed.accessTimeLimit) {
+                if (pointee != null
+                        && (pointeePos = pointee.getSpos()) != Spos.NULL
+                        && !(pointeePos >= ed.startupPos)
+                        && AccessData.getAccessTime(node.getPointerAccessData(i)) <= ed.accessTimeLimit) {
 
-                        node.setPointer(i, null, pointeePos);
-                        ed.evictCount += 1;
-                    }
+                    node.setPointer(i, null, pointeePos);
+                    ed.evictCount += 1;
                 }
             }
         }
@@ -1384,8 +1386,6 @@ public class Db {
             rand += 1;
         }
     }
-    
-    
     
     /**
      * Returns access to the internals of Db.
@@ -1535,7 +1535,7 @@ public class Db {
         /**
          * The cachedMemoryValue is an estimate of the total amount of memory cached
          * since the database process was started. It works as a time-scale for the cache.
-         * Yes, starting from minCacheMemoryValue instead of 0 has importance.
+         * Yes, starting from MIN_CACHE_MEMORY_VALUE (10) instead of 0 has importance.
          */
         private final AtomicLong cachedMemoryValue = new AtomicLong(MIN_CACHE_MEMORY_VALUE);
         

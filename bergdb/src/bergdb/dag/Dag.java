@@ -385,6 +385,9 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                 if (kwi.klong == Klong.NULL) {
                     result = null;
                 } else {
+                    assert current.getPointerNode(kwi.pointerIndex) != null || current.getPointerPos(kwi.pointerIndex) != Spos.NULL
+                            : "bad pointer " + kwi.pointerIndex + " of node " + current;
+                    
                     result = followPointer(
                             current, kwi.pointerIndex, gd.accessData, 
                             gd.pointerListener, gd.cachePolicy);
