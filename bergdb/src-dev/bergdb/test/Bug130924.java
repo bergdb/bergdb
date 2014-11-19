@@ -9,7 +9,7 @@ import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
 import bergdb.pub.Factory;
@@ -23,12 +23,12 @@ import bergdb.pubimp.PubKeys;
 public class Bug130924 {
    
     @T("unit")
-    public static void test1(TestCollector c) throws IOException {
+    public static void test1(TestEnvironment c) throws IOException {
         new Bug130924().go1(c);
     }
     
     @T("unit")
-    public static void test2(TestCollector c) throws IOException {
+    public static void test2(TestEnvironment c) throws IOException {
         new Bug130924().go2(c);
     }
     
@@ -49,7 +49,7 @@ public class Bug130924 {
         return b.toString();
     }
     
-    public void go1(bergdb.nanotest.TestCollector coll) throws IOException {
+    public void go1(bergdb.nanotest.TestEnvironment coll) throws IOException {
         Database database = Factory.database().memory().start();
         Connection c = database.connection();
         
@@ -78,7 +78,7 @@ public class Bug130924 {
     /**
      * Low-level version of go1().
      */
-    public void go2(bergdb.nanotest.TestCollector coll) throws IOException {
+    public void go2(bergdb.nanotest.TestEnvironment coll) throws IOException {
         Db db = Db.builder().testSetup().start();
         
         long id = 0;

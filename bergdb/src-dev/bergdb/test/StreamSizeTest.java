@@ -6,7 +6,7 @@ import bergdb.core.Trans;
 import bergdb.dag.Keys;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
 
 /**
@@ -21,7 +21,7 @@ public class StreamSizeTest {
     }
 
     @T("perf")
-    public static void run(TestCollector c) {
+    public static void run(TestEnvironment c) {
         MemoryStream stream = new MemoryStream();
         Db db = Db.builder().mainStream(stream).startupDistance(20*1000000).start();
         

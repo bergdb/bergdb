@@ -2,7 +2,7 @@ package bergdb.test;
 
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 /**
  * Performance of get operations.
@@ -12,7 +12,7 @@ public class GetManyScalability extends PerfGetMany {
     public GetManyScalability() {
     }
     
-    private void run(TestCollector c, boolean forward) throws InterruptedException {
+    private void run(TestEnvironment c, boolean forward) throws InterruptedException {
         this.c = c;
         
         c.report("note", "One thread, GetMany measured with increasing DB size.");
@@ -36,7 +36,7 @@ public class GetManyScalability extends PerfGetMany {
     }
 
     @T("perf")
-    public static void standard(TestCollector c) throws InterruptedException {
+    public static void standard(TestEnvironment c) throws InterruptedException {
         GetManyScalability p = new GetManyScalability();
         p.run(c, true);
     }

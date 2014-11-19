@@ -1,13 +1,13 @@
 package bergdb.nanotest;
 
 /**
- * Class used for testing.
+ * Class used for testing Nanotest.
  * 
  * @author Frans Lundberg
  */
-public class MyClass {
+public class DummyTestClass {
     
-    private MyClass() {}
+    private DummyTestClass() {}
     
     @T("f")
     public static void t1() {}

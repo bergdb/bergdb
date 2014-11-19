@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.IOException;
 
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.storage.BufferedStream;
 import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
@@ -17,17 +17,17 @@ import bergdb.stream.MemoryStream;
 public class FileSynchPerformance {
     
     @T("perf")
-    public static void testRWS(TestCollector c) throws IOException, InterruptedException {
+    public static void testRWS(TestEnvironment c) throws IOException, InterruptedException {
         run(c, "rws");
     }
     
     @T("perf")
-    public static void testRWD(TestCollector c) throws IOException, InterruptedException {
+    public static void testRWD(TestEnvironment c) throws IOException, InterruptedException {
         run(c, "rwd");
     }
     
     @T("perf")
-    public static void testWait(TestCollector c) throws IOException, InterruptedException {
+    public static void testWait(TestEnvironment c) throws IOException, InterruptedException {
         // Tests whether consumer thread causes any significant CPU load when idle.
         // Suitable to start this test with "&" (in the background) and run
         //     top -p <PID>
@@ -49,7 +49,7 @@ public class FileSynchPerformance {
         }
     }
     
-    public static void run(TestCollector c, String mode) throws IOException, InterruptedException {
+    public static void run(TestEnvironment c, String mode) throws IOException, InterruptedException {
         //final int bufferSize = 1*1000000;
         //final int bufferSize = 2*1000000;
         //final int bufferSize = 5*1000000;

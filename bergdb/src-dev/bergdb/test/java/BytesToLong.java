@@ -6,13 +6,13 @@ import java.nio.LongBuffer;
 
 import bergdb.common.Bytes;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 
 public class BytesToLong {
 
     @T("perf")
-    public static void run(TestCollector c) throws Exception {
+    public static void run(TestEnvironment c) throws Exception {
         long t0, t1;
         double time;
         final int N = 50*1000*1000;
@@ -96,7 +96,7 @@ public class BytesToLong {
     }
     
     @T("perf")
-    public static void byteBuffer(TestCollector c) {
+    public static void byteBuffer(TestEnvironment c) {
         // Converting between byte array and long array and other direction.
         
         final int longCount = 100;

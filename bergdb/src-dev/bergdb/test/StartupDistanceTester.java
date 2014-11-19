@@ -14,7 +14,7 @@ import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
 
 
@@ -33,7 +33,7 @@ public class StartupDistanceTester {
     
     public StartupDistanceTester() {}
     
-    public void go(TestCollector c) throws InterruptedException {
+    public void go(TestEnvironment c) throws InterruptedException {
         out = c.out();
         random = new Random(0);
         stream = new MemoryStream();
@@ -190,7 +190,7 @@ public class StartupDistanceTester {
     }
     
     @T("f")
-    public static void t1(TestCollector c) throws Exception {
+    public static void t1(TestEnvironment c) throws Exception {
         new StartupDistanceTester().go(c);
     }
     

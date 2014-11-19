@@ -2,7 +2,7 @@ package bergdb.test;
 
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 /**
  * Performance of get operations.
@@ -12,7 +12,7 @@ public class GetThreaded extends Get {
     public GetThreaded() {
     }
     
-    private void go(TestCollector c) throws InterruptedException {
+    private void go(TestEnvironment c) throws InterruptedException {
         c.report("note", "Increasing number of threads running DB.get(), DB size: 100k.");
         
         createDB(100*1000);
@@ -27,13 +27,13 @@ public class GetThreaded extends Get {
     }
     
     @T("perf")
-    public static void get4t(TestCollector c) throws InterruptedException {
+    public static void get4t(TestEnvironment c) throws InterruptedException {
         GetThreaded t = new GetThreaded();
         t.createDB(100*1000);
         t.runGetTest(c, 4);
     }
 
-    private void runGetTest(TestCollector c, int tCount) throws InterruptedException {
+    private void runGetTest(TestEnvironment c, int tCount) throws InterruptedException {
         Timed[] timed = new Timed[tCount];
         for (int i = 0; i < tCount; i++) {
             timed[i] = new Timed(i * n/tCount);
@@ -70,7 +70,7 @@ public class GetThreaded extends Get {
     }
 
     @T("perf")
-    public static void run(TestCollector c) throws InterruptedException {
+    public static void run(TestEnvironment c) throws InterruptedException {
         new GetThreaded().go(c);
     }
     

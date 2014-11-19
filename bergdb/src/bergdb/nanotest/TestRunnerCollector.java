@@ -1,6 +1,6 @@
 package bergdb.nanotest;
 
-public interface TestRunnerCollector extends TestCollector {
+public interface TestRunnerCollector extends TestEnvironment {
     public void classAboutToRun(Class<?> clazz);
     public void classDone();
     public void testAboutToRun(String longMethodName);

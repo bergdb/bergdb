@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Random;
 
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 
 /**
@@ -16,7 +16,7 @@ import bergdb.nanotest.TestCollector;
 public class JudyPerf {
     
     @T("perf")
-    public static void testJudy(TestCollector c) {
+    public static void testJudy(TestEnvironment c) {
         long t0, t1;
         int n = 100000;
         Random r = new Random(0);
@@ -48,7 +48,7 @@ public class JudyPerf {
     }
     
     @T("perf")
-    public static void testHash(TestCollector c) {
+    public static void testHash(TestEnvironment c) {
         long t0, t1;
         int n = 1000 * 1000;
         Random r = new Random(0);

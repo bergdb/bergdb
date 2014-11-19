@@ -1,11 +1,11 @@
 package bergdb.test.java;
 
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 public class CloneArray {
     @T("perf")
-    public static void run(TestCollector c) throws Exception {
+    public static void run(TestEnvironment c) throws Exception {
         byte[] bytes = new byte[4096];
         int N = 100000;
         long t0, t1;

@@ -3,7 +3,7 @@ package bergdb.test.java;
 import java.lang.reflect.Field;
 
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 
 /**
@@ -26,7 +26,7 @@ public class Reflection {
     }
     
     @T("perf")
-    public static void run(TestCollector c) throws Exception {
+    public static void run(TestEnvironment c) throws Exception {
         long t0, t1;
         int n = 1000000;
         double time;

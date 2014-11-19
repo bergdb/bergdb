@@ -6,7 +6,7 @@ import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 public class ChecksumPerf {
 
@@ -33,7 +33,7 @@ public class ChecksumPerf {
     }
     
     @T("perf")
-    public static void run(TestCollector c) throws Exception {
+    public static void run(TestEnvironment c) throws Exception {
         c.report("notes", "Tests checksums");
         Checksum[] checksums = new Checksum[]{
                 new Adler32(), new CRC32(), new MyChecksum1(), new MyChecksum2()};
@@ -43,7 +43,7 @@ public class ChecksumPerf {
         }
     }
     
-    private static void test(TestCollector c, Checksum cs) {
+    private static void test(TestEnvironment c, Checksum cs) {
         long t0;
         long bytesWritten;
         

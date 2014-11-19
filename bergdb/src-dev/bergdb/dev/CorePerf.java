@@ -8,7 +8,7 @@ import bergdb.common.Bug;
 import bergdb.common.Util;
 import bergdb.core.BuildInfo;
 import bergdb.nanotest.BasicCollector;
-import bergdb.nanotest.TestRunner;
+import bergdb.nanotest.TestRunnerUtil;
 import bergdb.test.Get;
 import bergdb.test.GetThreaded;
 import bergdb.test.PerfGetMany;
@@ -152,7 +152,7 @@ public class CorePerf {
             throw new IllegalArgumentException("null not allowed");
         }
         
-        TestRunner.runOneMethod(clazz, methodName, collector);
+        TestRunnerUtil.runOneMethod(clazz, methodName, collector);
         
         nanos = System.nanoTime() - nanos;
         

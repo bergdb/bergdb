@@ -12,7 +12,7 @@ import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 /**
  * ZIP performance, compression of random longs.
@@ -22,7 +22,7 @@ import bergdb.nanotest.TestCollector;
 public class Zip {
     private double time;
     private int N = 100000;
-    private TestCollector r;
+    private TestEnvironment r;
     private int compressionLevel = 7;
     
     public long[] createInts(int n) {
@@ -108,7 +108,7 @@ public class Zip {
     }
 
     @T("perf")
-    public static void run(TestCollector c) throws Exception {
+    public static void run(TestEnvironment c) throws Exception {
         Zip z = new Zip();
         long[] ints = new long[z.N];
         StringBuilder b = new StringBuilder();

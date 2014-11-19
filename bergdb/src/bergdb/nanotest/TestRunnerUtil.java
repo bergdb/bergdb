@@ -16,15 +16,15 @@ import java.util.regex.Pattern;
  * 
  * @author Frans Lundberg
  */
-public class TestRunner {
-    private TestRunner() {}
+public class TestRunnerUtil {
+    private TestRunnerUtil() {}
     
     /**
      * Runs the tests in a class.
      * Only the tests belonging to one of the groups in 'groups' will be run.
      * The result is collected by 'collector'.
      */
-    public static void run(String[] groups, Class<?> c, Pattern methodPattern, 
+    public static void runClassTests(String[] groups, Class<?> c, Pattern methodPattern, 
             TestRunnerCollector collector) {
         collector.classAboutToRun(c);
         
@@ -223,8 +223,8 @@ public class TestRunner {
      */
     public static void main(String[] args) {
         BasicCollector collector = new BasicCollector();
-        Class<?> c = MyClass.class;
-        run(new String[]{"unit", "f"}, c, null, collector);
+        Class<?> c = DummyTestClass.class;
+        runClassTests(new String[]{"unit", "f"}, c, null, collector);
         
         int failed = collector.getFailed();
         if (failed == 0) {

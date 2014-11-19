@@ -11,8 +11,9 @@ import java.util.Random;
  * Basic, simple test result collector.
  * 
  * @author Frans Lundberg
+ * @deprecated
  */
-public class BasicCollector implements TestCollector, TestRunnerCollector {
+public class BasicCollector implements TestEnvironment, TestRunnerCollector {
     private List<Prop> props = new ArrayList<Prop>();
     protected String currentMethodName = null;
     private List<File> currentTempDirs = new ArrayList<File>();

@@ -1,7 +1,7 @@
 package bergdb.test.java;
 
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 /**
  * Performance of parsing integers (string to binary).
@@ -10,7 +10,7 @@ import bergdb.nanotest.TestCollector;
  */
 public class ParseIntegers {
     @T("perf")
-    public static void run(TestCollector c) throws Exception {
+    public static void run(TestEnvironment c) throws Exception {
         int N = 100;
         double t0, t1, time;
         

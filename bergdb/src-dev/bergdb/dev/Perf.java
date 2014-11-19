@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 
 import bergdb.common.IPack;
 import bergdb.nanotest.BasicCollector;
-import bergdb.nanotest.TestRunner;
+import bergdb.nanotest.TestRunnerUtil;
 
 
 /**
@@ -51,7 +51,7 @@ public class Perf {
         String[] groups = new String[]{"perf"};
         
         for (Class<?> c : classes) {
-            TestRunner.run(groups, c, methodPattern, collector);
+            TestRunnerUtil.runClassTests(groups, c, methodPattern, collector);
         }
         
         System.out.println(collector.getReport());

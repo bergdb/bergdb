@@ -4,11 +4,11 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 public class BytesToByteBuffer {
     @T("perf")
-    public static void run(TestCollector c) throws Exception {
+    public static void run(TestEnvironment c) throws Exception {
         int bufferSize = 128*1024;
         ByteBuffer bytes = ByteBuffer.allocateDirect(bufferSize);
         bytes.order(ByteOrder.LITTLE_ENDIAN);

@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
 
 import bergdb.common.IPack;
 import bergdb.nanotest.BasicCollector;
-import bergdb.nanotest.TestRunner;
+import bergdb.nanotest.TestRunnerUtil;
 
 /**
  * Runs nightly tests, Nano test group 'night'.
@@ -59,7 +59,7 @@ public class Night {
         String[] groups = new String[]{"night"};
         
         for (Class<?> c : classes) {
-            TestRunner.run(groups, c, methodPattern, collector);
+            TestRunnerUtil.runClassTests(groups, c, methodPattern, collector);
         }
         
         System.out.println();

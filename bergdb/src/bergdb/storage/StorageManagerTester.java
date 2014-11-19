@@ -8,7 +8,7 @@ import bergdb.common.NullProgressListener;
 import bergdb.common.ProgressListener;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.StorageInfo;
 import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
@@ -119,7 +119,7 @@ public class StorageManagerTester {
     }
     
     @T
-    public static void testSync4(TestCollector c) throws IOException, InterruptedException {
+    public static void testSync4(TestEnvironment c) throws IOException, InterruptedException {
         // Testing with real files.
         
         File temp = c.createTempDir();
@@ -177,7 +177,7 @@ public class StorageManagerTester {
     }
     
     @T
-    public static void testMultipleClose(TestCollector c) throws IOException, InterruptedException {
+    public static void testMultipleClose(TestEnvironment c) throws IOException, InterruptedException {
         File temp = c.createTempDir();
         
         File mainDir = new File(temp, "main");
@@ -219,7 +219,7 @@ public class StorageManagerTester {
     }
     
     @T
-    public static void testWait2(final TestCollector c) throws IOException, InterruptedException {        
+    public static void testWait2(final TestEnvironment c) throws IOException, InterruptedException {        
         MemoryStream m = new MemoryStream();
         Object writeLock = new Object();
         final StorageManager manager;
@@ -360,7 +360,7 @@ public class StorageManagerTester {
     }
     
     @T
-    public static void testAddReplica3(TestCollector c) throws IOException, InterruptedException {
+    public static void testAddReplica3(TestEnvironment c) throws IOException, InterruptedException {
         // Adds an empty replica, main stream has getFirstPos() > 0.
         
         File mainDir = c.createTempDir();
@@ -394,7 +394,7 @@ public class StorageManagerTester {
     
 
     @T
-    public static void testAddReplica4(TestCollector c) throws IOException {
+    public static void testAddReplica4(TestEnvironment c) throws IOException {
         // Adds a replica with existing obsolete data.
         
         File mainDir = c.createTempDir();
@@ -428,7 +428,7 @@ public class StorageManagerTester {
     }
     
     @T
-    public static void testAddReplica5(TestCollector c) throws IOException {
+    public static void testAddReplica5(TestEnvironment c) throws IOException {
         // Adds a replica with existing obsolete and non-obsolete data.
         
         File mainDir = c.createTempDir();

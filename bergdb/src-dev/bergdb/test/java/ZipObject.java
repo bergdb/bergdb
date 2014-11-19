@@ -4,7 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 /**
  * Tests performance of data objects that stores whole string for type 
@@ -16,7 +16,7 @@ import bergdb.nanotest.TestCollector;
  */
 public class ZipObject {
     @T("perf")
-    public static void run(TestCollector r) throws Exception {
+    public static void run(TestEnvironment r) throws Exception {
         ByteArrayOutputStream vout = new ByteArrayOutputStream();
         ByteArrayOutputStream cout = new ByteArrayOutputStream();
         DataOutputStream verboseOut;

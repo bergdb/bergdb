@@ -4,7 +4,7 @@ import bergdb.common.Util;
 import bergdb.core.*;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
 
 /**
@@ -15,22 +15,22 @@ import bergdb.stream.MemoryStream;
  */
 public class BigDbWithDeletes {    
     @T("f perf")
-    public static void test100MB10KV(TestCollector c) throws InterruptedException {
+    public static void test100MB10KV(TestEnvironment c) throws InterruptedException {
         run(10, c);
     }
     
     @T("f perf")
-    public static void test100MB100KV(TestCollector c) throws InterruptedException {
+    public static void test100MB100KV(TestEnvironment c) throws InterruptedException {
         run(100, c);
     }
     
     @T("f perf")
-    public static void test100MB1000KV(TestCollector c) throws InterruptedException {
+    public static void test100MB1000KV(TestEnvironment c) throws InterruptedException {
         run(1000, c);
     }
     
     @T("perf")
-    public static void test100MB10000KV(TestCollector c) throws InterruptedException {
+    public static void test100MB10000KV(TestEnvironment c) throws InterruptedException {
         run(10000, c);
     }
     
@@ -56,7 +56,7 @@ public class BigDbWithDeletes {
     /**
      * @param n Number of KVs. 10, 100, 1000, 10000 are suitable.
      */
-    private static void run(int n, TestCollector c) throws InterruptedException {
+    private static void run(int n, TestEnvironment c) throws InterruptedException {
         MemoryStream ms = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().mainStream(ms).clock(clock).evictBoss(new NoEvictBoss()).start();

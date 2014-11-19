@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Random;
 
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 /**
  * Memory requirements for storing many equal strings in Java.
@@ -15,7 +15,7 @@ public class StringMemory {
     
     @SuppressWarnings("unchecked")
     @T("perf")
-    public static void run(TestCollector c) throws Exception {
+    public static void run(TestEnvironment c) throws Exception {
         int N = 1000;
         long m0, m1;
         String[] strings;

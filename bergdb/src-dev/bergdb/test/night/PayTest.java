@@ -5,7 +5,7 @@ import java.io.PrintStream;
 
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
 import bergdb.pub.Factory;
@@ -29,7 +29,7 @@ public class PayTest {
      * @throws IOException 
      */
     @T("night")
-    public static void testIt(TestCollector c) throws IOException {
+    public static void testIt(TestEnvironment c) throws IOException {
         new PayTest().new Create().go(c);
         System.gc();
     }
@@ -50,7 +50,7 @@ public class PayTest {
     }
     
     public class Create {
-        public void go(bergdb.nanotest.TestCollector coll) throws IOException {       
+        public void go(bergdb.nanotest.TestEnvironment coll) throws IOException {       
             PayTest.this.out = coll.out();
             
             MemoryStream mem = new MemoryStream();

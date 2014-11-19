@@ -7,7 +7,7 @@ import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
 
 
@@ -19,18 +19,18 @@ import bergdb.stream.MemoryStream;
 public class BigDbEvict {
     
     @T("f perf")
-    public static void t100KV(TestCollector c) throws InterruptedException {
+    public static void t100KV(TestEnvironment c) throws InterruptedException {
         runTest(100, c);
     }
     
     @T("perf")
-    public static void t1000KV(TestCollector c) throws InterruptedException {
+    public static void t1000KV(TestEnvironment c) throws InterruptedException {
         runTest(1000, c);
     }
     
     // TODO A. Fix test
     @T("f perf")
-    public static void t10000KV(TestCollector c) throws InterruptedException {
+    public static void t10000KV(TestEnvironment c) throws InterruptedException {
         runTest(10*1000, c);
     }
     
@@ -59,7 +59,7 @@ public class BigDbEvict {
      * 
      * @param n Number of KVs. 10, 100, 1000, 10000 are suitable.
      */
-    private static void runTest(int n, TestCollector c) throws InterruptedException {
+    private static void runTest(int n, TestEnvironment c) throws InterruptedException {
         MemoryStream ms = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().mainStream(ms).clock(clock).evictBoss(new FixedDurationEvictBoss(10*1000000)).start();

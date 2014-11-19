@@ -14,7 +14,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 import bergdb.common.NullOutputStream;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 //import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
@@ -25,7 +25,7 @@ public class Ciphers {
     //}
     
     @T("perf")
-    public static void run(TestCollector c) throws Exception {
+    public static void run(TestEnvironment c) throws Exception {
         String[] cipherNames = {
                 "AES/CBC/PKCS5Padding",
                 "AES/OFB8/NoPadding",
@@ -50,7 +50,7 @@ public class Ciphers {
         }
     }
     
-    private static void cipherPerf(TestCollector c, String cipherName, String provider) 
+    private static void cipherPerf(TestEnvironment c, String cipherName, String provider) 
             throws NoSuchPaddingException,
             NoSuchAlgorithmException, IOException, NoSuchProviderException,
             InvalidKeyException, InvalidAlgorithmParameterException {

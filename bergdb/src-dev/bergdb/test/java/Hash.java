@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.Random;
 
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 
 /**
@@ -18,7 +18,7 @@ import bergdb.nanotest.TestCollector;
 public class Hash {
     
     @T("perf")
-    public static void secureHash(TestCollector c) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+    public static void secureHash(TestEnvironment c) throws NoSuchAlgorithmException, UnsupportedEncodingException {
         //MessageDigest d = MessageDigest.getInstance("MD5");
         MessageDigest d = MessageDigest.getInstance("SHA1");
         byte[] bytes1 = "R/Accounts/46700000000".getBytes("UTF-8");
@@ -38,7 +38,7 @@ public class Hash {
     }
     
     @T("perf")
-    public static void stringHash(TestCollector c) {
+    public static void stringHash(TestEnvironment c) {
         String s1 = "R/Accounts/46700000000";
         String s2 = "R/Accounts/46700000000.balance";
         long t0, t1;
@@ -67,7 +67,7 @@ public class Hash {
      * How fast is hash map for possible BergDB memory blocks?
      */
     @T("perf")
-    public static void hashMap(TestCollector c) {
+    public static void hashMap(TestEnvironment c) {
         Random rand = new Random(0);
         rand.setSeed(0);
         byte[] block = new byte[4 * 1024];

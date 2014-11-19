@@ -11,7 +11,7 @@ import bergdb.core.Trans;
 import bergdb.dag.Keys;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.TestClock;
 import bergdb.stream.NullStream;
 
@@ -22,20 +22,20 @@ import bergdb.stream.NullStream;
  */
 public class Set {
     @SuppressWarnings("unused") private PrintStream out;
-    private TestCollector c;
+    private TestEnvironment c;
     private Db db;
     
     @T("perf")
-    public static void normal(TestCollector c) {
+    public static void normal(TestEnvironment c) {
         new Set(c).run(100000, true, 2);
     }
     
     @T("perf")
-    public static void noWritesToStream(TestCollector c) {
+    public static void noWritesToStream(TestEnvironment c) {
         new Set(c).run(100000, false, 2);
     }
     
-    public Set(TestCollector c) {
+    public Set(TestEnvironment c) {
         this.c = c;
         this.out = c.out();
     }

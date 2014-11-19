@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
 
 import bergdb.common.IPack;
 import bergdb.common.Util;
-import bergdb.nanotest.TestRunner;
+import bergdb.nanotest.TestRunnerUtil;
 
 /**
  * This class has a main method used to run the unit tests for the BergDB classes.
@@ -128,7 +128,7 @@ public class CoreUnit {
         String[] groups = new String[]{"unit"};
         
         for (Class<?> c : classesArray) {
-            TestRunner.run(groups, c, methodPattern, collector);
+            TestRunnerUtil.runClassTests(groups, c, methodPattern, collector);
         }
     }
 

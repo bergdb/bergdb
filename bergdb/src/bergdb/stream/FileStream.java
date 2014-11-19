@@ -13,7 +13,7 @@ import bergdb.common.Bug;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.BadFormatException;
 
 /**
@@ -831,7 +831,7 @@ public class FileStream implements AppendOnlyStream {
     // ----------------------- Tests ---------------------------------------------------------------
 
     @T
-    public static void test0(TestCollector c) throws IOException {
+    public static void test0(TestEnvironment c) throws IOException {
         // Simple test.
         File dir = c.createTempDir();
         FileStream f = FileStream.create(dir);
@@ -841,7 +841,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @T
-    public static void test1(TestCollector c) throws IOException {
+    public static void test1(TestEnvironment c) throws IOException {
         // Like test0() but appends a single byte and reads it back.
         byte[] bytes = new byte[] {123};
         File dir = c.createTempDir();
@@ -856,7 +856,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @T
-    public static void testRestart0(TestCollector c) throws IOException {
+    public static void testRestart0(TestEnvironment c) throws IOException {
         byte[] bytes = new byte[] {123};
         File dir = c.createTempDir();
         FileStream f = FileStream.create(dir);
@@ -872,7 +872,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @T
-    public static void testRestartMissingFile(TestCollector c) throws IOException {
+    public static void testRestartMissingFile(TestEnvironment c) throws IOException {
         // Tests starting a FileStream in directory with a missing file.
         byte[] bytes = new byte[500*1000];     // 3 stream files
         File dir = c.createTempDir();
@@ -899,7 +899,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @T
-    public static void testBigAppend0(TestCollector c) throws IOException {
+    public static void testBigAppend0(TestEnvironment c) throws IOException {
         byte[] bytes = new byte[10*1000];
         File dir = c.createTempDir();
         FileStream f = FileStream.create(dir);
@@ -923,7 +923,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @T
-    public static void testSeekFirstPos0(TestCollector c) throws IOException {
+    public static void testSeekFirstPos0(TestEnvironment c) throws IOException {
         FileStream f = FileStream.create(c.createTempDir());
         f.seekFirstPos(200*1000 * 30);
         Assert.assertEquals(200*1000 * 30, f.getLength());
@@ -932,7 +932,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @T
-    public static void testSeekFirstPos1(TestCollector c) throws IOException {
+    public static void testSeekFirstPos1(TestEnvironment c) throws IOException {
         byte[] bytes = new byte[300*1000];
         FileStream f = FileStream.create(c.createTempDir());
         f.append(bytes, 0, bytes.length);
@@ -948,7 +948,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @T
-    public static void testPretruncate0(TestCollector c) throws Exception {
+    public static void testPretruncate0(TestEnvironment c) throws Exception {
         FileStream f = FileStream.create(c.createTempDir());            
         byte[] bytes = new byte[500*1000];
         f.append(bytes, 0, bytes.length);
@@ -962,7 +962,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @T
-    public static void testMultiFileRead0(TestCollector c) throws IOException {
+    public static void testMultiFileRead0(TestEnvironment c) throws IOException {
         File dir = c.createTempDir();
         Random r = new Random(0);
         byte[] bytes1 = new byte[201*1000];
@@ -979,7 +979,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @T
-    public static void testMultiFileRead1(TestCollector c) throws IOException {
+    public static void testMultiFileRead1(TestEnvironment c) throws IOException {
         File dir = c.createTempDir();
         Random r = new Random(0);
         byte[] bytes1 = new byte[201*1000];
@@ -999,7 +999,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @T("f")    // Takes too long for unit test
-    public static void tFileSizeIncrease(TestCollector c) throws IOException {
+    public static void tFileSizeIncrease(TestEnvironment c) throws IOException {
         File dir = c.createTempDir();
         byte[] bytes = new byte[100*1000];
         FileStream f = FileStream.create(dir);

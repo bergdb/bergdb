@@ -15,7 +15,7 @@ import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.TestClock;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.FileStream;
@@ -63,7 +63,7 @@ public class TransThroughput {
         }
     }
     
-    private void run(TestCollector c, int threadCount) throws IOException, InterruptedException {
+    private void run(TestEnvironment c, int threadCount) throws IOException, InterruptedException {
         this.threadCount = threadCount;
         
         File temp = File.createTempFile("prefix", "suffix");
@@ -160,26 +160,26 @@ public class TransThroughput {
     }
     
     @T("perf")
-    public static void t1(TestCollector c) throws IOException, InterruptedException {
+    public static void t1(TestEnvironment c) throws IOException, InterruptedException {
         c.out().println("1 thread...");
         new TransThroughput().run(c, 1);
     }
     
     @T("perf")
-    public static void t2(TestCollector c) throws IOException, InterruptedException {
+    public static void t2(TestEnvironment c) throws IOException, InterruptedException {
         c.out().println("2 threads...");
         new TransThroughput().run(c, 2);
     }
     
     @T("perf")
-    public static void t4(TestCollector c) throws IOException, InterruptedException {
+    public static void t4(TestEnvironment c) throws IOException, InterruptedException {
         c.out().println("4 threads...");
         
         new TransThroughput().run(c, 4);
     }
     
     @T("perf")
-    public static void t8(TestCollector c) throws IOException, InterruptedException {
+    public static void t8(TestEnvironment c) throws IOException, InterruptedException {
         c.out().println("8 threads...");
         new TransThroughput().run(c, 8);
     }

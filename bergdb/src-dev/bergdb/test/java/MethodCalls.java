@@ -1,7 +1,7 @@
 package bergdb.test.java;
 
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 /**
  * Tests performance of static vs dynamic method dispatch.
@@ -13,7 +13,7 @@ public class MethodCalls {
     private static int size = 1000;
     
     @T("perf")
-    public static void dynamicDispatch(TestCollector c) {
+    public static void dynamicDispatch(TestEnvironment c) {
         A[] as = new A[size];
         int sum = 0;
         
@@ -46,7 +46,7 @@ public class MethodCalls {
     }
     
     @T("perf")
-    public static void staticDispatch(TestCollector c) {
+    public static void staticDispatch(TestEnvironment c) {
         B[] bs = new B[size];
         int sum = 0;
         
@@ -75,7 +75,7 @@ public class MethodCalls {
     }
     
     @T("perf")
-    public static void inline(TestCollector c) {
+    public static void inline(TestEnvironment c) {
         B[] bs = new B[size];
         int sum = 0;
         
@@ -104,7 +104,7 @@ public class MethodCalls {
     }
     
     @T("perf")
-    public static void inlineLoopUnroll(TestCollector c) {
+    public static void inlineLoopUnroll(TestEnvironment c) {
         B[] bs = new B[size];
         int sum = 0;
         

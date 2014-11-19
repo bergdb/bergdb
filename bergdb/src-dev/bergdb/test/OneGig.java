@@ -16,7 +16,7 @@ import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.OneFileStream;
@@ -33,7 +33,7 @@ import bergdb.stream.OneFileStream;
 public class OneGig {
     
     @T("perf")
-    public static void t1(TestCollector c) throws IOException, InterruptedException {
+    public static void t1(TestEnvironment c) throws IOException, InterruptedException {
         String fname = t1Inner(c);
        
         System.gc();
@@ -49,7 +49,7 @@ public class OneGig {
         f.delete();
     }
     
-    private static String t1Inner(TestCollector c) throws IOException {
+    private static String t1Inner(TestEnvironment c) throws IOException {
         final PrintStream out = c.out();
         File f = File.createTempFile("OneGig-", ".bergdb");
         out.println("DB stream file: " + f);
@@ -107,7 +107,7 @@ public class OneGig {
         readFile(c, fname);
     }*/
     
-    public static void readFile(TestCollector c, String fname) throws IOException {
+    public static void readFile(TestEnvironment c, String fname) throws IOException {
         // Now, let's read the file and check it.
         PrintStream out = c.out();
         out.println("Reads db file: " + fname);
@@ -144,7 +144,7 @@ public class OneGig {
     }
     
     @T("perf")
-    public static void t1mem(TestCollector c) throws IOException {
+    public static void t1mem(TestEnvironment c) throws IOException {
         //
         // In-memory version similar to t1().
         // Smaller, 100 MB. Use "-Xmx1000m" or something to run test.

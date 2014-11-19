@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
 
 import bergdb.common.IPack;
 import bergdb.nanotest.BasicCollector;
-import bergdb.nanotest.TestRunner;
+import bergdb.nanotest.TestRunnerUtil;
 
 /**
  * Runs functional tests ("f").
@@ -59,7 +59,7 @@ public class F {
         String[] groups = new String[]{"f"};
         
         for (Class<?> c : classes) {
-            TestRunner.run(groups, c, methodPattern, collector);
+            TestRunnerUtil.runClassTests(groups, c, methodPattern, collector);
         }
         
         System.out.println();

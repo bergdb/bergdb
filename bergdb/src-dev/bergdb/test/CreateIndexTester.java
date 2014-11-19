@@ -4,7 +4,7 @@ import bergdb.core.Db;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
@@ -27,7 +27,7 @@ import bergdb.stream.MemoryStream;
 public class CreateIndexTester {
     
     @T("f")
-    public static void createIndexWhileAddingMore(TestCollector coll) {
+    public static void createIndexWhileAddingMore(TestEnvironment coll) {
         int n = 4*1000;
         DatabaseBuilderImp b = (DatabaseBuilderImp) Factory.database();
         Database database = b.memory().clock(new TestClock()).start();
@@ -100,7 +100,7 @@ public class CreateIndexTester {
     }
     
     @T("f")
-    public static void testRestart(TestCollector coll) throws InterruptedException {
+    public static void testRestart(TestEnvironment coll) throws InterruptedException {
         //
         // Tests that an index creation process survives a database restart.
         //

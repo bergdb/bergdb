@@ -8,7 +8,7 @@ import bergdb.common.ByteArrayComparator;
 import bergdb.common.Util;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 
 /**
@@ -17,7 +17,7 @@ import bergdb.nanotest.TestCollector;
 public class PerfTreeMapSet {
     
     @T("perf")
-    public static void go(TestCollector r) {
+    public static void go(TestEnvironment r) {
         Random random = new Random(1);
         int n = 100*1000;
         int m = 20;   // 1 or 2 normally

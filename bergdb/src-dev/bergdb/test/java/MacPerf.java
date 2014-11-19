@@ -13,7 +13,7 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
 
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 
 //import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -27,7 +27,7 @@ public class MacPerf {
     //}
     
     @T("perf")
-    public static void run(TestCollector c) throws Exception {
+    public static void run(TestEnvironment c) throws Exception {
         String[] names = {
                 "HmacMD5",
                 "HmacSHA1",
@@ -49,7 +49,7 @@ public class MacPerf {
         }
     }
     
-    private static void hashPerf(TestCollector c, String name, String provider) 
+    private static void hashPerf(TestEnvironment c, String name, String provider) 
             throws NoSuchPaddingException,
             NoSuchAlgorithmException, IOException, NoSuchProviderException,
             InvalidKeyException, InvalidAlgorithmParameterException {

@@ -7,7 +7,7 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel.MapMode;
 
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 
 /**
@@ -19,7 +19,7 @@ import bergdb.nanotest.TestCollector;
 public class FileSystemCache {
 
     @T("perf")
-    public static void run(TestCollector c) throws Exception {
+    public static void run(TestEnvironment c) throws Exception {
         int[] blockSizes = new int[]{1, 1024, 2*1024, 4*1024, 8*1024};
         
         for (int i = 0; i < blockSizes.length; i++) {
@@ -29,7 +29,7 @@ public class FileSystemCache {
         }
     }
     
-    private static void testBlockSize1(TestCollector c, int blockSize) throws IOException {
+    private static void testBlockSize1(TestEnvironment c, int blockSize) throws IOException {
         File file = File.createTempFile(FileSystemCache.class.getName(), ".temp");
         file.deleteOnExit();
         RandomAccessFile f = new RandomAccessFile(file, "rw");
@@ -63,7 +63,7 @@ public class FileSystemCache {
         c.report("timePerByte" + block.length, time / (N*block.length));
     }
     
-    private static void testBlockSize2(TestCollector c, int blockSize) throws IOException {
+    private static void testBlockSize2(TestEnvironment c, int blockSize) throws IOException {
         File file = File.createTempFile(FileSystemCache.class.getName(), ".temp");
         file.deleteOnExit();
         RandomAccessFile f = new RandomAccessFile(file, "rw");

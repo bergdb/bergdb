@@ -6,7 +6,7 @@ import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.TestClock;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.NullStream;
@@ -36,7 +36,7 @@ public class Concurrency2 {
      * @param seconds  Number of seconds to run the test.
      * @throws Exception
      */
-    public void go(TestCollector collector, int seconds) throws Exception {
+    public void go(TestEnvironment collector, int seconds) throws Exception {
         Thread writer = new Thread(new Runnable() {
             public void run() {
                 writer();
@@ -107,7 +107,7 @@ public class Concurrency2 {
     }
     
     @T("f")
-    public static void test1(TestCollector c) throws Exception {
+    public static void test1(TestEnvironment c) throws Exception {
         new Concurrency2().go(c, 10);
     }
     

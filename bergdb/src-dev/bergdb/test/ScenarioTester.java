@@ -11,7 +11,7 @@ import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.GetMany;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 import static bergdb.nanotest.Assert.assertEquals;
 import bergdb.nanotest.T;
 import bergdb.stream.MemoryStream;
@@ -262,7 +262,7 @@ public class ScenarioTester {
      * Two transactions with multi-klong keys: t1, t2. t2 sets startup pos to t1.pos.
      */
     @T
-    private static void scenario106(TestCollector c) throws InterruptedException {
+    private static void scenario106(TestEnvironment c) throws InterruptedException {
         
         //System.out.println("======== testScenario106 ========");
         

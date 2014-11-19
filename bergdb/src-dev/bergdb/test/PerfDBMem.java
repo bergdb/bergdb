@@ -7,7 +7,7 @@ import bergdb.core.Db;
 import bergdb.core.DbUtil;
 import bergdb.core.Trans;
 import bergdb.nanotest.BasicCollector;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
 
 
@@ -17,7 +17,7 @@ import bergdb.stream.MemoryStream;
  */
 public class PerfDBMem {
      
-    public static void get(TestCollector c) {
+    public static void get(TestEnvironment c) {
         int n = 100000;
         int valueSize = 0;
         PrintStream out = c.out();

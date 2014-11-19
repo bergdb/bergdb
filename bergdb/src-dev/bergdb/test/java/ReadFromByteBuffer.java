@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 
 /**
@@ -15,7 +15,7 @@ import bergdb.nanotest.TestCollector;
 public class ReadFromByteBuffer {
     
     @T("perf")
-    public static void p1(TestCollector c) {
+    public static void p1(TestEnvironment c) {
         ByteBuffer bytes = ByteBuffer.allocateDirect(1024*1024);
         //ByteBuffer bytes = ByteBuffer.allocate(1024*1024);
         long t0, t1;
@@ -76,7 +76,7 @@ public class ReadFromByteBuffer {
      * Hash value for suffix is 100. Offset to that bin is 12000.
      */
     @T("perf")
-    public static void p2(TestCollector c) throws Exception {
+    public static void p2(TestEnvironment c) throws Exception {
         ByteBuffer bytes = ByteBuffer.allocateDirect(1024*1024);
         //ByteBuffer bytes = ByteBuffer.allocate(1024*1024);
         bytes.order(ByteOrder.LITTLE_ENDIAN);

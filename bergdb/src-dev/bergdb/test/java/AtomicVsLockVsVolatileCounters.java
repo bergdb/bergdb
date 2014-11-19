@@ -3,7 +3,7 @@ package bergdb.test.java;
 import java.util.concurrent.atomic.AtomicLong;
 
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 
 /**
@@ -24,7 +24,7 @@ public class AtomicVsLockVsVolatileCounters {
     AtomicVsLockVsVolatileCounters() {
     }
     
-    void withAtomic(TestCollector c, int n) {
+    void withAtomic(TestEnvironment c, int n) {
         assert n >= 100 || n % 4 == 0;
         
         for (int i = 0; i < n; i++) {
@@ -43,7 +43,7 @@ public class AtomicVsLockVsVolatileCounters {
         c.report("timePerCount", timePerCount);
     }
     
-    void withLock(TestCollector c, int n) {
+    void withLock(TestEnvironment c, int n) {
         assert n >= 100 || n % 4 == 0;
         
         for (int i = 0; i < n; i++) {
@@ -67,7 +67,7 @@ public class AtomicVsLockVsVolatileCounters {
         c.report("timePerCount", timePerCount);
     }
     
-    void withVolatile(TestCollector c, int n) {
+    void withVolatile(TestEnvironment c, int n) {
         assert n >= 100 || n % 4 == 0;
         
         for (int i = 0; i < n; i++) {
@@ -88,17 +88,17 @@ public class AtomicVsLockVsVolatileCounters {
     }
     
     @T("perf")
-    public static void atomic(TestCollector c) {
+    public static void atomic(TestEnvironment c) {
         new AtomicVsLockVsVolatileCounters().withAtomic(c, 10*1000000);
     }
     
     @T("perf")
-    public static void lock(TestCollector c) {
+    public static void lock(TestEnvironment c) {
         new AtomicVsLockVsVolatileCounters().withLock(c, 10*1000000);
     }
     
     @T("perf")
-    public static void volatileCounter(TestCollector c) {
+    public static void volatileCounter(TestEnvironment c) {
         new AtomicVsLockVsVolatileCounters().withVolatile(c, 10*1000000);
     }
 }

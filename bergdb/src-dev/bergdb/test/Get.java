@@ -11,7 +11,7 @@ import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.NullStream;
 
 /**
@@ -78,7 +78,7 @@ public class Get {
         }
     }
     
-    private void go(TestCollector c) throws InterruptedException {
+    private void go(TestEnvironment c) throws InterruptedException {
         c.report("note", "One thread running get(), db size: 100k.");
 
         createDB(100*1000);
@@ -98,7 +98,7 @@ public class Get {
         c.report("get-total-time", tg.time);
     }
     
-    private void go1M(TestCollector c) throws InterruptedException {
+    private void go1M(TestEnvironment c) throws InterruptedException {
         c.report("note", "One thread running get(), db size: 1M.");
         
         createDB(1000*1000);
@@ -119,7 +119,7 @@ public class Get {
     }
     
     @T("perf")
-    public static void run(TestCollector c) throws InterruptedException {
+    public static void run(TestEnvironment c) throws InterruptedException {
         new Get().go(c);
     }
     

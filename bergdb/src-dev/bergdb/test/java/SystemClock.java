@@ -1,7 +1,7 @@
 package bergdb.test.java;
 
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 /**
  * Tests performance of calling System.currentTimeMillis() and System.nanoTime().
@@ -9,7 +9,7 @@ import bergdb.nanotest.TestCollector;
 public class SystemClock {
     
     @T("perf")
-    public static void currentTimeMillis(TestCollector c) {
+    public static void currentTimeMillis(TestEnvironment c) {
         long t = System.nanoTime();
         int n = 1000*1000;
         long sum = 0;
@@ -34,7 +34,7 @@ public class SystemClock {
     }
     
     @T("perf")
-    public static void nanoTime(TestCollector c) {
+    public static void nanoTime(TestEnvironment c) {
         long t = System.nanoTime();
         int n = 1000*1000;
         long sum = 0;

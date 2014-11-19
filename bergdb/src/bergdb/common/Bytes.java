@@ -7,7 +7,7 @@ import java.util.Random;
 
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 
 /**
@@ -480,7 +480,7 @@ public class Bytes {
     }
     
     @T("perf")
-    public static void perfBytesToLongBE(TestCollector c) {
+    public static void perfBytesToLongBE(TestEnvironment c) {
         byte[] arr = new byte[]{0, 0, 1, 2, 3, 4, 5, 6, 3, 3, 3, 3, 3, 3, 3, 3};
         long t0, t1;
         int n = 100*1000*1000;
@@ -501,7 +501,7 @@ public class Bytes {
     }
     
     @T("perf")
-    public static void perfBytesToLongLE(TestCollector c) {
+    public static void perfBytesToLongLE(TestEnvironment c) {
         byte[] arr = new byte[]{0, 0, 1, 2, 3, 4, 5, 6, 3, 3, 3, 3, 3, 3, 3};
         long t0, t1;
         int n = 100*1000*1000;
@@ -522,7 +522,7 @@ public class Bytes {
     }
     
     @T("perf")
-    public static void perfLongToBytesBE(TestCollector c) {
+    public static void perfLongToBytesBE(TestEnvironment c) {
         byte[] arr = new byte[16];
         long t0, t1;
         int n = 20*1000*1000;
@@ -543,7 +543,7 @@ public class Bytes {
     }
     
     @T("perf")
-    public static void perfLongToBytesLE(TestCollector c) {
+    public static void perfLongToBytesLE(TestEnvironment c) {
         byte[] arr = new byte[16];
         long t0, t1;
         int n = 20*1000*1000;

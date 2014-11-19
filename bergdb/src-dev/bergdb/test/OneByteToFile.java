@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 
 /**
@@ -17,21 +17,21 @@ import bergdb.nanotest.TestCollector;
 public class OneByteToFile {
        
     @T("perf")
-    public static void rw(TestCollector c) throws IOException {
+    public static void rw(TestEnvironment c) throws IOException {
         writeOneByteChunks(c, "rw");
     }
     
     @T("perf")
-    public static void rwd(TestCollector c) throws IOException {
+    public static void rwd(TestEnvironment c) throws IOException {
         writeOneByteChunks(c, "rwd");
     }
     
     @T("perf")
-    public static void rws(TestCollector c) throws IOException {
+    public static void rws(TestEnvironment c) throws IOException {
         writeOneByteChunks(c, "rws");
     }
     
-    private static void writeOneByteChunks(TestCollector c, String mode) throws IOException {
+    private static void writeOneByteChunks(TestEnvironment c, String mode) throws IOException {
         File file = File.createTempFile("FileSystemPerformance", ".temp");
         file.deleteOnExit();
         

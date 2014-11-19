@@ -20,7 +20,7 @@ import java.util.TimeZone;
 
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 /**
  * Static utility methods for general-purpose.
@@ -689,7 +689,7 @@ public class Util {
     }
     
     @T
-    public static void testBytesToFileToBytes(TestCollector c) throws IOException {
+    public static void testBytesToFileToBytes(TestEnvironment c) throws IOException {
         File dir = c.createTempDir();
         File file = new File(dir, "file1.dat");
         byte[] bytes = "hello".getBytes("UTF-8");

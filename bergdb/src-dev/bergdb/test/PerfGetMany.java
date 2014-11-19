@@ -11,7 +11,7 @@ import bergdb.dag.GetMany;
 import bergdb.dag.Kvt;
 import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
 
 /**
@@ -23,7 +23,7 @@ import bergdb.stream.MemoryStream;
 public class PerfGetMany {
     Db db;
     int n;
-    TestCollector c;
+    TestEnvironment c;
     volatile boolean done;
     
     public PerfGetMany() {
@@ -118,7 +118,7 @@ public class PerfGetMany {
         done = false;
     }
     
-    private void run(TestCollector c, boolean forward) throws InterruptedException {
+    private void run(TestEnvironment c, boolean forward) throws InterruptedException {
         this.c = c;
         
         setup(100*1000);
@@ -135,7 +135,7 @@ public class PerfGetMany {
     }
     
     @T("perf")
-    public static void standard(TestCollector c) throws InterruptedException {
+    public static void standard(TestEnvironment c) throws InterruptedException {
         PerfGetMany p = new PerfGetMany();
         p.run(c, true);
     }

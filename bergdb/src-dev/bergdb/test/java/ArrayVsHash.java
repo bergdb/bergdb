@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Random;
 
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestCollector;
+import bergdb.nanotest.TestEnvironment;
 
 /**
  * Tests storing key-value data in a hash maps versus a simple array.
@@ -18,12 +18,12 @@ public class ArrayVsHash {
     private HashMap<Long, String> map;
     
     @T("perf")
-    public static void run(TestCollector c) throws Exception {
+    public static void run(TestEnvironment c) throws Exception {
         new ArrayVsHash().go(c);
     }
     
     @SuppressWarnings("unused")
-    public void go(TestCollector c) throws Exception {
+    public void go(TestEnvironment c) throws Exception {
         Random random = new Random(0);
         int current = 0;
         long t0, t1;
