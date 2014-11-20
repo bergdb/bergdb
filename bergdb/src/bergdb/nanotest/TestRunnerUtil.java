@@ -6,13 +6,10 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-// TODO LATER. A main method like bergdb.dev.Unit.main() for general use.
 
 /**
  * Functions to run Nanotests.
@@ -35,7 +32,7 @@ public class TestRunnerUtil {
         sort(methods);
         
         for (Method m : methods) {
-            if (matches(methodPattern, m)) {
+            if (matches(methodPattern, m.getName())) {
                 runMethod(m, consumer, groups, testEnv);
             }
         }
@@ -55,12 +52,12 @@ public class TestRunnerUtil {
     /**
      * Matches any occurences of regexp in method name.
      */
-    private static boolean matches(Pattern methodPattern, Method m) {
+    private static boolean matches(Pattern methodPattern, String methodName) {
         boolean result;
         if (methodPattern == null) {
             result = true;
         } else {
-            Matcher matcher = methodPattern.matcher(m.getName());
+            Matcher matcher = methodPattern.matcher(methodName);
             result = matcher.find();
         }
         return result;
