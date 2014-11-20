@@ -834,6 +834,7 @@ public class FileStream implements AppendOnlyStream {
     public static void test0(TestEnvironment c) throws IOException {
         // Simple test.
         File dir = c.createTempDir();
+        assert dir != null : "dir is null";
         FileStream f = FileStream.create(dir);
         Assert.assertEquals(0, f.getFirstPos());
         Assert.assertEquals(0, f.getLength());

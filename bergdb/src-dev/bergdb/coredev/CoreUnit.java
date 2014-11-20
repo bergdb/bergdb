@@ -4,15 +4,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import bergdb.common.IPack;
 import bergdb.common.Util;
-import bergdb.nanotest.TestRunnerUtil;
+import bergdb.nanotest.TestRunner;
 
 /**
  * This class has a main method used to run the unit tests for the BergDB classes.
@@ -21,7 +23,6 @@ import bergdb.nanotest.TestRunnerUtil;
  * @author Frans Lundberg
  */
 public class CoreUnit {
-    // 130221 Frans: making Unit runs more flexible, configurable.
     
     private static IPack[] ipacks = new IPack[]{
         new bergdb.common.Pack(),
@@ -57,9 +58,7 @@ public class CoreUnit {
      * Called from main().
      */
     public void go(String[] args) {
-        BergDBTestCollector c = new BergDBTestCollector();
-        c.setPrintProps(false);
-        c.setPrintMethods(true);
+        BergDBTestRunConsumer c = new BergDBTestRunConsumer();
         
         System.out.println(getHeader());
         
@@ -88,24 +87,19 @@ public class CoreUnit {
      * given class and method patterns (regex).
      * This method is for general use - used by both main method and other callers.
      * 
-     * @param collector The test result collector.
+     * @param consumer The test result collector.
      * @param classPatternString Regex for classname or null for all classes.
      * @param methodPatternString Regex for method name or null for all nano unit test methods.
      */
-    public void go(BergDBTestCollector collector, 
+    public void go(BergDBTestRunConsumer consumer, 
             String classPatternString, 
             String methodPatternString) {
-        List<Class<?>> classes = new ArrayList<Class<?>>();
+        Set<Class<?>> classes = new HashSet<Class<?>>();
         IPack[] ipacks = getIPacks();
         Pattern classPattern = null;
-        Pattern methodPattern = null;
         
         if (classPatternString != null) {
             classPattern = Pattern.compile(classPatternString);
-        }
-        
-        if (methodPatternString != null) {
-            methodPattern = Pattern.compile(methodPatternString);
         }
         
         for (IPack p : ipacks) {
@@ -116,20 +110,25 @@ public class CoreUnit {
             }
         }
         
-        Class<?>[] classesArray = classes.toArray(new Class<?>[0]);
+        /*Class<?>[] classesArray = classes.toArray(new Class<?>[0]);
         Arrays.sort(classesArray, new Comparator<Class<?>>() {
             public int compare(Class<?> c0, Class<?> c1) {
                 return c0.getName().toLowerCase(Locale.US)
                         .compareTo(c1.getName().toLowerCase(Locale.US));
             }
-        });
+        });*/
         
-        collector.setClassCount(classes.size());
-        String[] groups = new String[]{"unit"};
+        consumer.setClassCount(classes.size());
+        Set<String> groups = new HashSet<String>();
+        groups.add("unit");
         
-        for (Class<?> c : classesArray) {
-            TestRunnerUtil.runClassTests(groups, c, methodPattern, collector);
-        }
+        TestRunner testRunner = new TestRunner(consumer, classes, methodPatternString, groups);
+        
+        testRunner.run();
+        
+        //for (Class<?> c : classesArray) {
+        //    TestRunnerUtil.runClassTests(groups, c, methodPattern, consumer, testEnv);
+        //}
     }
 
     private boolean mathes(Pattern classPattern, Class<?> c) {

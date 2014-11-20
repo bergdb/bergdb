@@ -2,15 +2,15 @@ package bergdb.dev;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import bergdb.common.IPack;
-import bergdb.nanotest.BasicCollector;
-import bergdb.nanotest.TestRunnerUtil;
+import bergdb.nanotest.ConsoleUI;
+import bergdb.nanotest.TestRunner;
 
 /**
  * Runs functional tests ("f").
@@ -23,18 +23,20 @@ public class F {
     public static void main(String[] args) {
         printHeader();
         
-        List<Class<?>> classes = new ArrayList<Class<?>>();
+        Set<Class<?>> classes = new HashSet<Class<?>>();
         IPack[] ipacks = Unit.getIPacksStatic();
         
         Pattern classPattern = null;
-        Pattern methodPattern = null;
+        String methodRegex = null;
         
         if (args.length > 0) {
             classPattern = Pattern.compile(args[0]);
         }
         
         if (args.length > 1) {
-            methodPattern = Pattern.compile(args[1]);
+            methodRegex = args[1];
+        } else {
+            methodRegex = ".*";
         }
         
         for (IPack p : ipacks) {
@@ -50,22 +52,14 @@ public class F {
             }
         }
         
-        BasicCollector collector = new BasicCollector(System.out);
-        collector.setPrintStart(true);
-        collector.setPrintOutput(false);
-        collector.setPrintProps(false);
-        collector.setPrintMethods(true);
+        ConsoleUI ui = ConsoleUI.builder()
+                .printStart(true).printProps(false).printMethods(true)
+                .build();
+        Set<String> groups = new HashSet<String>();
+        groups.add("f");
         
-        String[] groups = new String[]{"f"};
-        
-        for (Class<?> c : classes) {
-            TestRunnerUtil.runClassTests(groups, c, methodPattern, collector);
-        }
-        
-        System.out.println();
-        System.out.println("======================================================================");
-        System.out.print("    " + collector.getReport());
-        System.out.println("======================================================================");
+        TestRunner runner = new TestRunner(ui, classes, methodRegex, groups);
+        runner.run();
     }
     
     private static void printHeader() {

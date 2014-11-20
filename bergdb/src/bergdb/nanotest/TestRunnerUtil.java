@@ -4,8 +4,11 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -24,20 +27,20 @@ public class TestRunnerUtil {
      * Only the tests belonging to one of the groups in 'groups' will be run.
      * The result is collected by 'collector'.
      */
-    public static void runClassTests(String[] groups, Class<?> c, Pattern methodPattern, 
-            TestRunnerCollector collector) {
-        collector.classAboutToRun(c);
+    public static void runClassTests(Set<String> groups, Class<?> c, Pattern methodPattern, 
+            TestRunConsumer consumer, TestEnvironment testEnv) {
+        consumer.classAboutToRun(c);
         
         Method[] methods = c.getDeclaredMethods();
         sort(methods);
         
         for (Method m : methods) {
             if (matches(methodPattern, m)) {
-                runMethod(m, collector, groups);
+                runMethod(m, consumer, groups, testEnv);
             }
         }
         
-        collector.classDone();
+        consumer.classDone();
     }
 
     private static void sort(Method[] methods) {
@@ -70,7 +73,7 @@ public class TestRunnerUtil {
      * @param methodName  Name of the method.
      * @param collector  Test result collector.
      */
-    public static void runOneMethod(Class<?> c, String methodName, TestRunnerCollector collector) {
+    public static void runOneMethod(Class<?> c, String methodName, TestRunConsumer collector, TestEnvironment testEnv) {
         if (c == null) {
             throw new IllegalArgumentException("c == null not allowed");
         }
@@ -96,15 +99,13 @@ public class TestRunnerUtil {
             return;
         }
         
-        runMethod(m, collector, new String[0]);
+        runMethod(m, collector, Collections.<String>emptySet(), testEnv);
     }
     
     /**
-     * @param m
-     * @param collector
      * @param groups   If empty, run method no matter what.
      */
-    private static void runMethod(Method m, TestRunnerCollector collector, String[] groups) {
+    private static void runMethod(Method m, TestRunConsumer consumer, Set<String> groups, TestEnvironment testEnv) {
         boolean runTest = false;
         boolean junit = false;
         int modifiers = m.getModifiers();
@@ -117,7 +118,7 @@ public class TestRunnerUtil {
                 // should report error to user, not just skip the test method.
                 
                 T annotation = m.getAnnotation(T.class);
-                if (!(groups.length == 0 || isInGroups(annotation.value(), groups))) {
+                if (!(groups.size() == 0 || isInGroups(annotation.value(), groups))) {
                     break A;
                 }
                 
@@ -169,7 +170,7 @@ public class TestRunnerUtil {
         Object[] params = null;
         if (paramTypes.length == 1) {
             params = new Object[1];
-            params[0] = collector;
+            params[0] = testEnv;
         }
         
         // NOTE, When <T> annoted method has bad params, or is not static, we 
@@ -181,7 +182,7 @@ public class TestRunnerUtil {
         Throwable testError = null;
         Object object = null;
         
-        collector.testAboutToRun(m.getDeclaringClass().getCanonicalName() + "." + m.getName());
+        consumer.testAboutToRun(m.getDeclaringClass().getCanonicalName() + "." + m.getName());
         
         try {
             if (junit) {
@@ -197,41 +198,19 @@ public class TestRunnerUtil {
             testError = ex;
         }
         
-        collector.testDone(testError);
+        consumer.testDone(testError);
     }
     
-    private static boolean isInGroups(String annotationValue, String[] groups) {
+    private static boolean isInGroups(String annotationValue, Set<String> groups) {
         String[] aGroups = annotationValue.split(" ");
         boolean result = false;
         
-        A: for (String g : aGroups) {
-            for (int i = 0; i < groups.length; i++) {
-                if (g.equals(groups[i])) {
-                    result = true;
-                    break A;
-                }
+        for (String g : aGroups) {
+            if (groups.contains(g)) {
+                result = true;
+                break;
             }
         }
         return result;
-    }
-
-    /**
-     * Test.
-     * 
-     * @throws ClassNotFoundException
-     * @throws SecurityException
-     */
-    public static void main(String[] args) {
-        BasicCollector collector = new BasicCollector();
-        Class<?> c = DummyTestClass.class;
-        runClassTests(new String[]{"unit", "f"}, c, null, collector);
-        
-        int failed = collector.getFailed();
-        if (failed == 0) {
-            System.out.printf("SUCCESS! %d success tests.", collector.getTotal());
-        } else {
-            System.out.printf("Total: %d, failed %d%n", 
-                collector.getTotal(), collector.getFailed());
-        }
     }
 }

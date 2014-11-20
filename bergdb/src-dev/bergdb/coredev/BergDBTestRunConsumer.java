@@ -1,20 +1,20 @@
 package bergdb.coredev;
 
-import bergdb.nanotest.BasicCollector;
+import bergdb.nanotest.ConsoleUI;
 
 /**
- * A test result collector designed for BergDB unit tests.
+ * A test run consumer designed for BergDB unit tests.
  * 
  * @author Frans Lundberg
  */
-public class BergDBTestCollector extends BasicCollector {
+public class BergDBTestRunConsumer extends ConsoleUI {
     private int classCount = 0;
     private Class<?> currentClass;
     private boolean firstTestOfClass;
     private static final int SLOW_LIMIT = 500;   // ms limit, if exceeded print time
     
-    public BergDBTestCollector() {
-        super();
+    public BergDBTestRunConsumer() {
+        super(ConsoleUI.builder().printProps(false).printMethods(false));
     }
     
     public void setClassCount(int classCount) {
@@ -48,7 +48,7 @@ public class BergDBTestCollector extends BasicCollector {
         if (t == null) {
             
             // if test OK
-            if (printMethods) {
+            if (getPrintMethods()) {
                 long rounded = Math.round(exeTime * 1000.0);
                 
                 if (manyClasses) {

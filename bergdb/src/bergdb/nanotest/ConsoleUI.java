@@ -8,8 +8,7 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Runs a set of test classes and reports to a PrintStream, 
- * typically to System.out.
+ * Handles a test run by reporting to a console.
  * 
  * @author Frans Lundberg
  */
@@ -22,77 +21,22 @@ public class ConsoleUI implements TestRunConsumer {
     protected long nanoTime;
     protected double exeTime;  // Time in sec to execute test method.
     protected double totalExeTime = 0.0;
-    protected boolean printProps = true;
-    protected boolean printMethods = true;
-    protected boolean printStart = false;
-    private File tmpDir;
-    private Random random;
-    protected PrintStream baseOut;
-    private PrintStream testOut;
     private long startTime;
     private long doneTime;
+    private final Builder b;
     
-    /**
-     * Creates a new ConsoleUI reporting to System.out.
-     */
-    public ConsoleUI() {
-        this(System.out);
+    protected final PrintStream baseOut;
+    private final PrintStream testOut;
+    
+    
+    protected ConsoleUI(Builder b) {
+        this.b = b;
+        this.baseOut = b.baseOut;
+        this.testOut = b.testOut;
     }
     
-    /**
-     * Creates a new ConsoleUI reporting to the given PrintStream.
-     */
-    public ConsoleUI(PrintStream output) {
-        random = new Random();
-        if (output == null) {
-            throw new IllegalArgumentException("output == null not allowed");
-        }
-        baseOut = output;
-        
-        this.testOut = baseOut;
-        this.printMethods = true;
-        this.printProps = true;
-        
-        // Sets this.tmpDir.
-        
-        File tmp = new File("/tmp");
-        if (tmp.exists() && tmp.isDirectory()) {
-            File file = new File(tmp, "bergdb-BasicCollector-" + System.currentTimeMillis() + ".temp");
-            file.deleteOnExit();
-            
-            try {
-                file.createNewFile();
-                tmpDir = tmp;
-            } catch (IOException e) {
-                // Empty
-            } finally {
-                file.delete();
-            }
-        }
-    }
-    
-    public void setPrintProps(boolean printProps) {
-        this.printProps = printProps;
-    }
-    
-    public void setPrintMethods(boolean printMethods) {
-        this.printMethods = printMethods;
-    }
-    
-    public void setPrintOutput(boolean printOutput) {
-        if (printOutput) {
-            this.testOut = baseOut;
-        } else {
-            this.testOut = new NullPrintStream();
-        }
-    }
-    
-    /**
-     * Set to true to print name of test class and method before the test
-     * starts to run.
-     */
-    public void setPrintStart(boolean printStart) {
-        this.printStart = printStart;
+    public boolean getPrintMethods() {
+        return b.printMethods;
     }
     
     public void report(String name, Object value) {
@@ -101,7 +45,7 @@ public class ConsoleUI implements TestRunConsumer {
         p.value = value;
         props.add(p);
         
-        if (printProps) {
+        if (b.printProps) {
             baseOut.println("* " + p.name + ": " + p.value);
         }
     }
@@ -118,7 +62,7 @@ public class ConsoleUI implements TestRunConsumer {
         currentMethodName = longMethodName;
         currentTempDirs.clear();
         
-        if (printStart) {
+        if (b.printStart) {
             baseOut.println("==== " + longMethodName + " ====");
         }
         nanoTime = System.nanoTime();
@@ -135,7 +79,7 @@ public class ConsoleUI implements TestRunConsumer {
         
         if (t == null) {
             // if test OK
-            if (printMethods) {
+            if (b.printMethods) {
                 long rounded = Math.round(exeTime * 1000.0);
                 if (currentMethodName == null) {
                     baseOut.println("Time (ms): " + rounded);
@@ -299,29 +243,6 @@ public class ConsoleUI implements TestRunConsumer {
         }
     }
 
-    public File createTempDir() throws IOException {
-        int randomInt;
-        File file;
-        
-        randomInt = Math.abs(random.nextInt());
-        
-        if (tmpDir != null) {
-            // Using /tmp directory on Unix-like system.
-            file = new File(tmpDir, "temp-bergdb-" + randomInt);
-        } else {
-            // Using current directory
-            file = new File("temp-bergdb-" + randomInt);
-        }
-        
-        boolean created = file.mkdir();
-        if (!created) {
-            throw new IOException("Could not create " + file.getPath() + ".");
-        }
-        
-        currentTempDirs.add(file);
-        return file;
-    }
-
     public void starting() {
         this.startTime = System.nanoTime();
     }
@@ -329,5 +250,59 @@ public class ConsoleUI implements TestRunConsumer {
     public void done() {
         this.doneTime = System.nanoTime();
         baseOut.print(this.getReport());
+    }
+    
+    public static Builder builder() {
+        return new Builder(System.out);
+    }
+    
+    public static Builder builder(PrintStream s) {
+        return new Builder(s);
+    }
+    
+    public static class Builder {
+        private boolean printProps = true;
+        private boolean printMethods = true;
+        private boolean printStart = false;
+        private PrintStream baseOut;
+        private PrintStream testOut;
+        
+        private Builder(PrintStream s) {
+            if (s == null) {
+                baseOut = System.out;
+            } else {
+                baseOut = s;
+            }
+            
+            testOut = new NullPrintStream();
+        }
+        
+        public Builder printTestOutput(boolean b) {
+            if (b) {
+                testOut = baseOut;
+            } else {
+                testOut = new NullPrintStream();
+            }
+            return this;
+        }
+        
+        public Builder printProps(boolean b) {
+            printProps = b;
+            return this;
+        }
+        
+        public Builder printMethods(boolean b) {
+            printProps = b;
+            return this;
+        }
+        
+        public Builder printStart(boolean b) {
+            printProps = b;
+            return this;
+        }
+        
+        public ConsoleUI build() {
+            return new ConsoleUI(this);
+        }
     }
 }
