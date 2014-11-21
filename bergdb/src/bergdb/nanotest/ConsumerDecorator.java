@@ -14,8 +14,8 @@ public class ConsumerDecorator implements TestRunConsumer {
         this.base = base;
     }
     
-    public void starting() {
-        base.starting();
+    public void aboutToRun(int classCount) {
+        base.aboutToRun(classCount);
     }
 
     public void classAboutToRun(Class<?> clazz) {

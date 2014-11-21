@@ -73,4 +73,8 @@ public class BergDBTestRunConsumer extends ConsoleUI {
             exception.printStackTrace(baseOut);
         }
     }
+    
+    public void done() {
+        baseOut.print(getReport());
+    }
 }

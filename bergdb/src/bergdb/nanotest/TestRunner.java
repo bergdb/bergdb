@@ -3,8 +3,11 @@ package bergdb.nanotest;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Locale;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * Takes a set of classes and a TestRunConsumer and runs the
@@ -14,22 +17,15 @@ import java.util.regex.Pattern;
  */
 public class TestRunner {
     private TestRunConsumer consumer;
-    private Pattern methodPattern;
     private Set<Class<?>> classes;
-    private Set<String> groups;
     private final TempDirCreator tempDirCreator;
+    private MethodFilter methodFilter;
 
-    public TestRunner(TestRunConsumer consumer, Set<Class<?>> classes, String methodRegex, Set<String> groups) {
+    public TestRunner(TestRunConsumer consumer, Set<Class<?>> classes, MethodFilter methodFilter) {
         this.consumer = consumer;
         this.classes = classes;
-        this.groups = groups;
         this.tempDirCreator = new TempDirCreator();
-        
-        if (methodRegex == null) {
-            methodRegex = ".*";
-        }
-        
-        this.methodPattern = Pattern.compile(methodRegex);
+        this.methodFilter = methodFilter;
     }
     
     public void run() {
@@ -55,8 +51,88 @@ public class TestRunner {
             }
         };
         
-        for (Class<?> c : classes) {
-            TestRunnerUtil.runClassTests(groups, c, methodPattern, myConsumer, testEnv);
+        Class<?>[] array = createArrayOfClasses();
+        
+        consumer.aboutToRun(array.length);
+        
+        for (Class<?> c : array) {
+            runClassTests(c, myConsumer, testEnv, methodFilter);
         }
+        
+        consumer.done();
+    }
+
+    private Class<?>[] createArrayOfClasses() {
+        Class<?>[] array = classes.toArray(new Class<?>[0]);
+        Arrays.sort(array, new Comparator<Class<?>>() {
+            public int compare(Class<?> c1, Class<?> c2) {
+                return c1.getName().toLowerCase(Locale.US)
+                        .compareTo(c2.getName().toLowerCase(Locale.US));
+            }
+        });
+        return array;
+    }
+    
+    /**
+     * Runs the tests in a class.
+     * Only the tests belonging to one of the groups in 'groups' will be run.
+     * The result is collected by 'collector'.
+     */
+    public static void runClassTests(Class<?> c, TestRunConsumer consumer, TestEnvironment testEnv, 
+            MethodFilter filter) {
+        consumer.classAboutToRun(c);
+        
+        Method[] methods = c.getDeclaredMethods();
+        sort(methods);
+        
+        for (Method m : methods) {
+            if (filter.include(m)) {
+                invokeTestMethod(m, consumer, testEnv);
+            }
+        }
+        
+        consumer.classDone();
+    }
+    
+    /**
+     * @param groups   If empty, run method no matter what.
+     */
+    private static void invokeTestMethod(Method m, TestRunConsumer consumer, TestEnvironment testEnv) {
+        Object object = null;
+        boolean isJunit = MethodFilter.isJunitTest(m);
+        Throwable testError = null;
+        Object[] params = null;
+        
+        consumer.testAboutToRun(m.getDeclaringClass().getCanonicalName() + "." + m.getName());
+        
+        try {
+            if (isJunit) {
+                object = m.getDeclaringClass().newInstance();
+            } else {
+                Class<?>[] paramTypes = m.getParameterTypes();
+                if (paramTypes.length == 1) {
+                    params = new Object[1];
+                    params[0] = testEnv;
+                }
+                
+                // Can run private methods, useful feature.
+                m.setAccessible(true);
+            }
+            
+            m.invoke(object, params);
+        } catch (Throwable ex) {
+            testError = ex;
+        }
+        
+        consumer.testDone(testError);
+    }
+    
+    private static void sort(Method[] methods) {
+        Arrays.sort(methods, new Comparator<Method>() {
+            public int compare(Method m0, Method m1) {
+                return m0.getName().toLowerCase(Locale.US)
+                        .compareTo(m1.getName().toLowerCase(Locale.US));
+            }
+        });
     }
 }

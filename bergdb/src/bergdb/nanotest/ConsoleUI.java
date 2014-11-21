@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 /**
  * Handles a test run by reporting to a console.
@@ -21,8 +20,6 @@ public class ConsoleUI implements TestRunConsumer {
     protected long nanoTime;
     protected double exeTime;  // Time in sec to execute test method.
     protected double totalExeTime = 0.0;
-    private long startTime;
-    private long doneTime;
     private final Builder b;
     
     protected final PrintStream baseOut;
@@ -153,9 +150,6 @@ public class ConsoleUI implements TestRunConsumer {
         }
     }
     
-    /* (non-Javadoc)
-     * @see bergdb.nanotest.TestRunnerCollector#reportOK()
-     */
     public void reportOK() {
         testDone(null);
     }
@@ -243,12 +237,10 @@ public class ConsoleUI implements TestRunConsumer {
         }
     }
 
-    public void starting() {
-        this.startTime = System.nanoTime();
+    public void aboutToRun(int classCount) {
     }
 
     public void done() {
-        this.doneTime = System.nanoTime();
         baseOut.print(this.getReport());
     }
     

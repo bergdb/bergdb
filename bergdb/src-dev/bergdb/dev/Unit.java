@@ -3,9 +3,8 @@ package bergdb.dev;
 import bergdb.common.IPack;
 
 /**
- * Almost identical to bergdb.dbdev.Unit, but ipacks array contains a larger set of 
- * packages to test.
- * Run the unit tests before every commit.
+ * Almost identical to bergdb.coredev.CoreUnit, but ipacks array contains a larger set of 
+ * packages to test. Run the unit tests before every commit.
  * 
  * @author Frans Lundberg
  */

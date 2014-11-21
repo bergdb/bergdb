@@ -7,7 +7,6 @@ import java.util.TreeMap;
 import bergdb.common.Bug;
 import bergdb.common.Util;
 import bergdb.core.BuildInfo;
-import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.nanotest.TestRunnerUtil;
 import bergdb.test.Get;

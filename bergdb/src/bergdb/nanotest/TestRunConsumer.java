@@ -10,7 +10,7 @@ import java.io.PrintStream;
  */
 public interface TestRunConsumer {
     /** Reports that the test run is about to start. */
-    public void starting();
+    public void aboutToRun(int classCount);
     
     public void classAboutToRun(Class<?> clazz);
     
