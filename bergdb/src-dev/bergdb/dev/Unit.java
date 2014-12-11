@@ -34,7 +34,7 @@ public class Unit extends bergdb.coredev.CoreUnit {
     }
 
     /**
-     * Runs the unit tests (nano tests in group "unit"). No parameters used.
+     * Runs the unit tests (nano tests in group "unit").
      */
     public static void main(String[] args) {
         new Unit().go(args);

@@ -88,13 +88,22 @@ public class CoreUnit {
             String methodPatternString) {
         Set<Class<?>> classes = new ClassFilter(classPatternString).filter(getClasses());
         
-        Set<String> groups = new HashSet<String>();
-        groups.add("unit");
         consumer.setClassCount(classes.size());
-        MethodFilter methodFilter = new MethodFilter(methodPatternString, groups);
+        MethodFilter methodFilter = new MethodFilter(methodPatternString, getGroups());
         
         TestRunner testRunner = new TestRunner(consumer, classes, methodFilter);
         testRunner.run();
+    }
+    
+    /**
+     * Override for other set of groups.
+     * The implementation in this class returns a set with "unit" as the only
+     * member.
+     */
+    protected Set<String> getGroups() {
+        Set<String> groups = new HashSet<String>();
+        groups.add("unit");
+        return groups;
     }
     
     private Set<Class<?>> getClasses() {
@@ -126,7 +135,7 @@ public class CoreUnit {
     }
     
     /**
-     * Very special hack.
+     * Very special hack, rarely used.
      */
     @SuppressWarnings("unused")
     private int bufferedStreamThreadCount() {

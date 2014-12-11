@@ -9,7 +9,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import bergdb.common.IPack;
+import bergdb.coredev.BergDBTestRunConsumer;
+import bergdb.nanotest.ClassFilter;
 import bergdb.nanotest.ConsoleUI;
+import bergdb.nanotest.MethodFilter;
 import bergdb.nanotest.TestRunner;
 
 /**
@@ -21,7 +24,8 @@ import bergdb.nanotest.TestRunner;
  */
 public class F {
     public static void main(String[] args) {
-        printHeader();
+        
+        /*printHeader();
         
         Set<Class<?>> classes = new HashSet<Class<?>>();
         IPack[] ipacks = Unit.getIPacksStatic();
@@ -60,6 +64,47 @@ public class F {
         
         TestRunner runner = new TestRunner(ui, classes, methodRegex, groups);
         runner.run();
+        */
+        
+        // ===========
+        
+        ConsoleUI ui = ConsoleUI.builder()
+                .printStart(true).printProps(false).printMethods(true)
+                .build();
+        printHeader();
+        
+        String classPatternString = ".*";
+        if (args.length >= 1) {
+            classPatternString = args[0];
+        }
+        
+        String methodPatternString = ".*";
+        if (args.length >= 2) {
+            methodPatternString = args[1];
+        }
+        
+        Set<Class<?>> classes = new ClassFilter(classPatternString).filter(getClasses());
+        MethodFilter methodFilter = new MethodFilter(methodPatternString, getGroups());
+        
+        TestRunner testRunner = new TestRunner(ui, classes, methodFilter);
+        testRunner.run();
+    }
+    
+    private static Set<String> getGroups() {
+        Set<String> groups = new HashSet<String>();
+        groups.add("f");
+        return groups;
+    }
+    
+    private static Set<Class<?>> getClasses() {
+        Set<Class<?>> classes = new HashSet<Class<?>>();
+        IPack[] ipacks = Unit.getIPacksStatic();
+        for (IPack p : ipacks) {
+            for (Class<?> c : p.getClasses()) {
+                classes.add(c);
+            }
+        }
+        return classes;
     }
     
     private static void printHeader() {
