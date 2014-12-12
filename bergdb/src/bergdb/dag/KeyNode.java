@@ -7,8 +7,6 @@ import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.storage.StreamFormatException;
 
-// TODO LATER. lastTimeIndex, check usage. It it really useful enough? Could it be removed?
-
 /**
  * <p>A key node has an array of "klongs" and corresponding INode references.</p>
  * 
