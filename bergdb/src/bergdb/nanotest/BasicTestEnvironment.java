@@ -8,12 +8,11 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Basic, simple test result collector.
+ * Basic, simple test environment.
  * 
  * @author Frans Lundberg
- * @deprecated
  */
-public class BasicCollector implements TestEnvironment, TestRunnerCollector {
+public class BasicTestEnvironment implements TestEnvironment {
     private List<Prop> props = new ArrayList<Prop>();
     protected String currentMethodName = null;
     private List<File> currentTempDirs = new ArrayList<File>();
@@ -30,11 +29,11 @@ public class BasicCollector implements TestEnvironment, TestRunnerCollector {
     protected PrintStream baseOut;
     private PrintStream testOut;
     
-    public BasicCollector() {
+    public BasicTestEnvironment() {
         this(System.out);
     }
     
-    public BasicCollector(PrintStream output) {
+    public BasicTestEnvironment(PrintStream output) {
         random = new Random();
         if (output == null) {
             throw new IllegalArgumentException("output == null not allowed");

@@ -9,7 +9,7 @@ import bergdb.core.KeyFactory;
 import bergdb.core.Trans;
 import bergdb.dag.EvictData;
 import bergdb.dag.Keys;
-import bergdb.nanotest.BasicCollector;
+import bergdb.nanotest.BasicTestEnvironment;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.MemoryStream;
@@ -95,7 +95,7 @@ public class EvictPerformance {
     }
     
     public static void main(String[] args) {
-        TestEnvironment collector = new BasicCollector();
+        TestEnvironment collector = new BasicTestEnvironment();
         
         //collector.out().println("With new FixedDurationEvictBoss(Long.MAX_VALUE)...");
         //new EvictPerformance().go(new Collector(), new FixedDurationEvictBoss(Long.MAX_VALUE));
@@ -106,7 +106,7 @@ public class EvictPerformance {
         IEvictBoss boss = new FixedDurationEvictBoss(duration);
         
         EvictPerformance p = new EvictPerformance();
-        p.go(new BasicCollector(), boss);
+        p.go(new BasicTestEnvironment(), boss);
         
         //p.db.printGraph(System.out);
     }

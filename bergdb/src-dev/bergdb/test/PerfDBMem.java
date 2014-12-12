@@ -6,7 +6,7 @@ import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.DbUtil;
 import bergdb.core.Trans;
-import bergdb.nanotest.BasicCollector;
+import bergdb.nanotest.BasicTestEnvironment;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
 
@@ -70,6 +70,6 @@ public class PerfDBMem {
     }
     
     public static void main(String[] args) throws Exception {
-        get(new BasicCollector());
+        get(new BasicTestEnvironment());
     }
 }

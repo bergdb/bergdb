@@ -6,7 +6,7 @@ import java.util.TreeMap;
 
 import bergdb.common.ByteArrayComparator;
 import bergdb.common.Util;
-import bergdb.nanotest.BasicCollector;
+import bergdb.nanotest.BasicTestEnvironment;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestEnvironment;
 
@@ -48,7 +48,7 @@ public class PerfTreeMapSet {
     }
     
     public static void main(String[] args) throws Exception {
-        go(new BasicCollector());
+        go(new BasicTestEnvironment());
     }
 }
 

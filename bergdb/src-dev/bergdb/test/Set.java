@@ -12,7 +12,7 @@ import bergdb.core.DbBuilder;
 import bergdb.core.NoEvictBoss;
 import bergdb.core.Trans;
 import bergdb.dag.Keys;
-import bergdb.nanotest.BasicCollector;
+import bergdb.nanotest.BasicTestEnvironment;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.TestClock;
@@ -145,16 +145,16 @@ public class Set {
     }
     
     public static void main(String[] args) throws Exception {
-        Set.normal(new BasicCollector());
+        Set.normal(new BasicTestEnvironment());
         
         System.out.println("*** Now running Set.noWritesToStream ****");
-        Set.noWritesToStream(new BasicCollector());
+        Set.noWritesToStream(new BasicTestEnvironment());
         
         System.out.println("AGAIN!");
-        Set.normal(new BasicCollector());
+        Set.normal(new BasicTestEnvironment());
         
         System.out.println("*** Now running Set.noWritesToStream ****");
-        Set.noWritesToStream(new BasicCollector());
+        Set.noWritesToStream(new BasicTestEnvironment());
     }
 
     

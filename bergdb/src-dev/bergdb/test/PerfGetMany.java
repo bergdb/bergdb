@@ -9,7 +9,7 @@ import bergdb.core.Trans;
 import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
 import bergdb.dag.Kvt;
-import bergdb.nanotest.BasicCollector;
+import bergdb.nanotest.BasicTestEnvironment;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
@@ -155,7 +155,7 @@ public class PerfGetMany {
     }
     
     public static void main(String[] args) throws Exception {
-        standard(new BasicCollector());
+        standard(new BasicTestEnvironment());
     }
     
     /**

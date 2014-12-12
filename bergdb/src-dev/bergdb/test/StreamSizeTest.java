@@ -4,7 +4,7 @@ import bergdb.core.Db;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.Keys;
-import bergdb.nanotest.BasicCollector;
+import bergdb.nanotest.BasicTestEnvironment;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
@@ -63,7 +63,7 @@ public class StreamSizeTest {
     }
     
     public static void main(String[] args) {
-        run(new BasicCollector());
+        run(new BasicTestEnvironment());
     }
 }
 

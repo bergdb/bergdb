@@ -1,6 +1,6 @@
 package bergdb.test;
 
-import bergdb.nanotest.BasicCollector;
+import bergdb.nanotest.BasicTestEnvironment;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestEnvironment;
 
@@ -42,7 +42,7 @@ public class GetManyScalability extends PerfGetMany {
     }
     
     public static void main(String[] args) throws Exception {
-        standard(new BasicCollector());
+        standard(new BasicTestEnvironment());
     }
 }
 

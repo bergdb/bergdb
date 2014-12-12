@@ -12,7 +12,7 @@ import bergdb.core.Trans;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.BasicCollector;
+import bergdb.nanotest.BasicTestEnvironment;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
@@ -195,6 +195,6 @@ public class StartupDistanceTester {
     }
     
     public static void main(String[] args) throws Exception {
-        t1(new BasicCollector());
+        t1(new BasicTestEnvironment());
     }
 }

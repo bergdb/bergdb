@@ -16,9 +16,9 @@ import bergdb.core.Db;
 import bergdb.core.FixedDurationEvictBoss;
 import bergdb.core.Jmx;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.BasicCollector;
+import bergdb.nanotest.BasicTestEnvironment;
 import bergdb.nanotest.T;
-import bergdb.nanotest.TestRunnerCollector;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Action;
 import bergdb.pub.Clock;
 import bergdb.pub.Connection;
@@ -62,8 +62,8 @@ public class Concurrency {
         new Jmx.Speed(db).registerAndStart();
     }
     
-    public void go(BasicCollector collector, int secondsToRun) throws Throwable {
-        collector.report("note", "Running 4 readers and 4 writers. 10 accounts, checking sum.");
+    public void go(TestEnvironment env, int secondsToRun) throws Throwable {
+        env.out().println("Running 4 readers and 4 writers. 10 accounts, checking sum.");
         
         final Random random = new Random();
         UncaughtExceptionHandler handler = new UncaughtExceptionHandler() {
@@ -134,7 +134,7 @@ public class Concurrency {
                 lastReadCount = rCount;
                 opsPerSec = transPerSec + readsPerSec;
                 
-                collector.out().println("i = " + i + ", tCount = " + transCount 
+                env.out().println("i = " + i + ", tCount = " + transCount 
                         + ", trans/s: " + transPerSec 
                         + ", reads/s: " + readsPerSec 
                         + ", ops/s: " + opsPerSec);
@@ -260,8 +260,8 @@ public class Concurrency {
     }
     
     @T("f")
-    public static void t1(TestRunnerCollector collector) throws Throwable {
-        new Concurrency().go(new BasicCollector(), 10);
+    public static void t1(TestEnvironment env) throws Throwable {
+        new Concurrency().go(env, 10);
     }
     
     public static void main(String[] args) throws Throwable {
@@ -276,7 +276,7 @@ public class Concurrency {
         Monitor m = new Monitor(c);
         m.register();
         
-        c.go(new BasicCollector(), Integer.MAX_VALUE);
+        c.go(new BasicTestEnvironment(), Integer.MAX_VALUE);
     }
     
     public static class Monitor implements MonitorMBean {
