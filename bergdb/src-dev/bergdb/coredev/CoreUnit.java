@@ -4,6 +4,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
 import bergdb.common.IPack;
 import bergdb.common.Util;
 import bergdb.nanotest.ClassFilter;
@@ -18,6 +19,9 @@ import bergdb.nanotest.TestRunner;
  */
 public class CoreUnit {
     
+    /**
+     * A subset of the classes.
+     */
     private static IPack[] ipacks = new IPack[]{
         new bergdb.common.Pack(),
         new bergdb.core.Pack(),
@@ -26,6 +30,21 @@ public class CoreUnit {
     
     public IPack[] getIPacks() {
         return ipacks;
+    }
+    
+    /**
+     * Creates and returns a set of all classes in the packages
+     * specified in this.ipacks.
+     */
+    public Set<Class<?>> getClasses() {
+        Set<Class<?>> classes = new HashSet<Class<?>>();
+        IPack[] ipacks = getIPacks();
+        for (IPack p : ipacks) {
+            for (Class<?> c : p.getClasses()) {
+                classes.add(c);
+            }
+        }
+        return classes;
     }
 
     private String getHeader() {
@@ -104,17 +123,6 @@ public class CoreUnit {
         Set<String> groups = new HashSet<String>();
         groups.add("unit");
         return groups;
-    }
-    
-    private Set<Class<?>> getClasses() {
-        Set<Class<?>> classes = new HashSet<Class<?>>();
-        IPack[] ipacks = getIPacks();
-        for (IPack p : ipacks) {
-            for (Class<?> c : p.getClasses()) {
-                classes.add(c);
-            }
-        }
-        return classes;
     }
     
     /**

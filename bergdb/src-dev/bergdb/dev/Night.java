@@ -33,7 +33,7 @@ public class Night {
             methodPatternString = args[1];
         }
         
-        Set<Class<?>> classes = new ClassFilter(classPatternString).filter(Unit.getClasses());
+        Set<Class<?>> classes = new ClassFilter(classPatternString).filter(TestClasses.getClasses());
         MethodFilter methodFilter = new MethodFilter(methodPatternString, Create.setOfStrings("night"));
         
         TestRunner testRunner = new TestRunner(ui, classes, methodFilter);
