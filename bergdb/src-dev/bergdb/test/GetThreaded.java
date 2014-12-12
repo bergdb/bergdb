@@ -1,6 +1,5 @@
 package bergdb.test;
 
-import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestEnvironment;
 
@@ -24,6 +23,51 @@ public class GetThreaded extends Get {
         for (int tCount : threadCount) {
             runGetTest(c, tCount);
         }
+    }
+    
+    public static double corePerfMethod() {
+        int tCount = 4;
+        int n = 100*1000;
+        GetThreaded g = new GetThreaded();
+        g.createDB(n);
+        
+        Timed[] timed = new Timed[tCount];
+        for (int i = 0; i < tCount; i++) {
+            timed[i] = g.new Timed(i * n/tCount);
+        }
+        
+        g.warmup();
+        g.done = false;
+        
+        for (Timed t : timed) {
+            t.start();
+        }
+        
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            throw new Error(e);
+        }
+        g.done = true;
+        
+        for (Timed t : timed) {
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                throw new Error(e);
+            }
+        }
+        
+        long count = 0;
+        double time = 0.0;
+        for (Timed t : timed) {
+            count += t.count;
+            time += t.time;
+        }
+        time = time / tCount;
+        
+        double getTime = time / count;
+        return getTime;
     }
     
     @T("perf")
@@ -73,9 +117,4 @@ public class GetThreaded extends Get {
     public static void run(TestEnvironment c) throws InterruptedException {
         new GetThreaded().go(c);
     }
-    
-    public static void main(String[] args) throws Exception {
-        run(new BasicCollector());
-    }
 }
-

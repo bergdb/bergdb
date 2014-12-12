@@ -1,14 +1,12 @@
 package bergdb.dev;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-
-import bergdb.common.Bug;
 import bergdb.common.Util;
 import bergdb.core.BuildInfo;
-import bergdb.nanotest.TestEnvironment;
-import bergdb.nanotest.TestRunnerUtil;
 import bergdb.test.Get;
 import bergdb.test.GetThreaded;
 import bergdb.test.PerfGetMany;
@@ -45,34 +43,10 @@ public class CorePerf {
         baseline2 = new TreeMap<String, Double>();
     }
     
-    private BasicCollector createCollector() {
-        BasicCollector collector = new BasicCollector();
-        collector.setPrintProps(false);
-        collector.setPrintMethods(false);
-        collector.setPrintOutput(false);
-        return collector;
-    }
-    
-    private void printHeader() {
-        System.out.println("\n======== " + CorePerf.class.getName() + " ========");
-        String computer = Util.getComputerName();
-        System.out.println("Running on " + computer + ", " + new Date() 
-                + ". BergDB " + BuildInfo.RELEASE + ".");
-        System.out.println("JVM: " + System.getProperty("java.vm.name") + " " 
-                + System.getProperty("java.vm.version") 
-                + ", java " + System.getProperty("java.version"));
-        
-        if (!printDots) {
-            System.out.println();
-        }
-    }
-    
     public void go(String[] args) {
         if (args.length >= 1 && args[0].equals("help")) {
             printHeader();
-            System.out.println("Standard set of performance tests for Core.");
-            System.out.println("These tests form a standard performance test suit.");
-            System.out.println("Use no arguments to run the tests, or one argument 'dots' to reduced printed output.");
+            printHelp();
             return;
         }
         
@@ -81,31 +55,98 @@ public class CorePerf {
         }
         
         printHeader();
-        
-        // cissi
-        baseline1.put("get",      1.0e-6);
-        baseline1.put("get4t",    0.4e-6);
-        baseline1.put("getmany",  0.2e-6);
-        baseline1.put("set",      5.0e-6);
-        
-        // linda
-        baseline2.put("get",     1.50e-6);
-        baseline2.put("get4t",   0.50e-6);
-        baseline2.put("getmany", 0.26e-6);
-        baseline2.put("set",     8.00e-6);
-        
-        int n = 5;
-        
-        for (int i = 0; i < n; i++) {
-            runMethod(Get.class, "run", "get-time", "get");
-            runMethod(GetThreaded.class, "get4t", "get-time-4", "get4t");
-            runMethod(PerfGetMany.class, "standard", "time-per-kv", "getmany");
-            runMethod(Set.class, "normal", "time-per-trans", "set");
-        }
-        
+        createBaselines();
+        List<PerfMethod> methods = createMethods();
+        runMethods(methods);
         handleResult();
     }
+    
+    private List<PerfMethod> createMethods() {
+        List<PerfMethod> methods;
+        methods = new ArrayList<PerfMethod>();
+        PerfMethod method;
+        
+        method = new PerfMethod() {
+            public double runPerf() {
+                return Get.corePerfMethod();
+            }
+            
+            public String name() {
+                return "get";
+            }
+        };
+        methods.add(method);
+        
+        method = new PerfMethod() {
+            public double runPerf() {
+                return GetThreaded.corePerfMethod();
+            }
+            
+            public String name() { return "get4t"; }
+        };
+        methods.add(method);
+        
+        method = new PerfMethod() {
+            public double runPerf() {
+                try {
+                    return PerfGetMany.corePerfMethod();
+                } catch (InterruptedException e) {
+                    throw new Error(e);
+                }
+            }
+            
+            public String name() { return "getmany"; }
+        };
+        methods.add(method);
+        
+        method = new PerfMethod() {
+            public double runPerf() {
+                return Set.corePerfMethod();
+            }
+            
+            public String name() { return "set"; }
+        };
+        methods.add(method);
+        return methods;
+    }
 
+    private void runMethods(List<PerfMethod> methods) {
+        for (int i = 0; i < 5; i++) {
+            for (PerfMethod m : methods) {
+                runMethod(m);
+            }
+        }
+    }
+    
+    private void runMethod(PerfMethod method) {
+        double time = method.runPerf();
+        String name = method.name();
+        
+        if (!result.containsKey(name)) {
+            result.put(name, Double.MAX_VALUE);
+        }
+        
+        double current = result.get(name);
+        if (time < current) {
+            result.put(name, time);
+        }
+
+        double normalized1 = time / (baseline1.get(name));
+        double normalized2 = time / (baseline2.get(name));
+        
+        if (printDots) {
+            System.out.print(".");
+        } else {
+            // 1305 Frans: following printf does not work for GCJ build.
+            //System.out.printf(Locale.US, "%-10s %.3g  %.2f  %.2f\n", shortName, value, normalized1, normalized2);
+            
+            String s = Util.spaceFill(name + ":", 10) 
+                    + Util.twoDecimals(normalized1) + "   " 
+                    + Util.twoDecimals(normalized2) + "   " + time;
+            System.out.println(s);
+        }
+    }
+    
     private void handleResult() throws Error {
         System.out.println("\n---- Result ----");
         double product = 1.0;
@@ -143,64 +184,58 @@ public class CorePerf {
         
         System.out.println();
     }
-    
-    private void runMethod(Class<?> clazz, String methodName, String propName, String shortName, TestEnvironment testEnv) {
-        BasicCollector collector = createCollector();
-        long nanos = System.nanoTime();
+
+
+    private void printHeader() {
+        System.out.println("\n======== " + CorePerf.class.getName() + " ========");
+        String computer = Util.getComputerName();
+        System.out.println("Running on " + computer + ", " + new Date() 
+                + ". BergDB " + BuildInfo.RELEASE + ".");
+        System.out.println("JVM: " + System.getProperty("java.vm.name") + " " 
+                + System.getProperty("java.vm.version") 
+                + ", java " + System.getProperty("java.version"));
         
-        if (clazz == null || methodName == null || propName == null || shortName == null) {
-            throw new IllegalArgumentException("null not allowed");
-        }
-        
-        TestRunnerUtil.runOneMethod(clazz, methodName, collector, testEnv);
-        
-        nanos = System.nanoTime() - nanos;
-        
-        String fullPropName = clazz.getCanonicalName() + "." + methodName + "." + propName;
-        Object value = collector.getProp(fullPropName);
-        
-        if (value == null) {
-            throw new Bug("No value for property '" + fullPropName + "'.");
-        }
-        
-        if (!(value instanceof Double)) {
-            throw new Bug("Property " + fullPropName + " not a Double.");
-        }
-        
-        Double dValue = (Double) value;
-        Double previous = this.result.get(shortName);
-        
-        if (previous == null) {
-            previous = Double.POSITIVE_INFINITY;
-        }
-        
-        if (dValue < previous) {
-            result.put(shortName, dValue);
-        }
-        
-        double normalized1 = dValue / (baseline1.get(shortName));
-        double normalized2 = dValue / (baseline2.get(shortName));
-        
-        if (printDots) {
-            System.out.print(".");
-        } else {
-            // 1305 Frans: following printf does not work for GCJ build.
-            //System.out.printf(Locale.US, "%-10s %.3g  %.2f  %.2f\n", shortName, value, normalized1, normalized2);
-            
-            String s = Util.spaceFill(shortName + ":", 10) 
-                    + Util.twoDecimals(normalized1) + "   " 
-                    + Util.twoDecimals(normalized2) + "   " + value;
-            System.out.println(s);
+        if (!printDots) {
+            System.out.println();
         }
     }
-    
+
+    private void printHelp() {
+        System.out.println("Standard set of performance tests for Core.");
+        System.out.println("These tests form a standard performance test suit.");
+        System.out.println("Use no arguments to run the tests, or one argument 'dots' to reduced printed output.");
+    }
+
+    private void createBaselines() {
+        // cissi
+        baseline1.put("get",      1.0e-6);
+        baseline1.put("get4t",    0.4e-6);
+        baseline1.put("getmany",  0.2e-6);
+        baseline1.put("set",      5.0e-6);
+        
+        // linda
+        baseline2.put("get",     1.50e-6);
+        baseline2.put("get4t",   0.50e-6);
+        baseline2.put("getmany", 0.26e-6);
+        baseline2.put("set",     8.00e-6);
+    }
+        
     public static void main(String[] args) {
         new CorePerf().go(args);
+    }
+    
+    interface PerfMethod {
+        /**
+         * Runs the performance tests and returns the measured time
+         * in seconds.
+         */
+        public double runPerf();
+        
+        public String name();
     }
 }
 
 /*
-
 
 Log 
 ===

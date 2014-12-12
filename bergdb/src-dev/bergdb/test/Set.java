@@ -1,9 +1,12 @@
 package bergdb.test;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Random;
 
 import bergdb.common.Bytes;
+import bergdb.common.NullPrintStream;
 import bergdb.core.Db;
 import bergdb.core.DbBuilder;
 import bergdb.core.NoEvictBoss;
@@ -57,6 +60,32 @@ public class Set {
         Db db = b.start();
         //out.println("test.Set, internal fraction: " + db.getInternalFraction());
         return db;
+    }
+    
+    public static double corePerfMethod() {
+        final double[] time = new double[1];
+        
+        TestEnvironment c = new TestEnvironment() {
+
+            public void report(String name, Object value) {
+                if (name.equals("time-per-trans")) {
+                    time[0] = ((Double) value).doubleValue();
+                }
+            }
+
+            public PrintStream out() {
+                return new NullPrintStream();
+            }
+
+            public File createTempDir() throws IOException {
+                return null;
+            }
+            
+        };
+        
+        new Set(c).run(100000, false, 2);
+  
+        return time[0];
     }
     
     private void run(int size, boolean enableWrite, int repetitions) {
@@ -127,6 +156,8 @@ public class Set {
         System.out.println("*** Now running Set.noWritesToStream ****");
         Set.noWritesToStream(new BasicCollector());
     }
+
+    
 }
 
 /*

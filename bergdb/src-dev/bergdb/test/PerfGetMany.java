@@ -118,6 +118,20 @@ public class PerfGetMany {
         done = false;
     }
     
+    public static double corePerfMethod() throws InterruptedException {
+        PerfGetMany g = new PerfGetMany();
+        g.setup(100*1000);
+        g.warmup();
+        
+        Timed timed = g.new Timed(true);
+        timed.start();
+        Thread.sleep(2000);
+        g.done = true;
+        timed.join();
+        
+        return timed.time / timed.count;
+    }
+    
     private void run(TestEnvironment c, boolean forward) throws InterruptedException {
         this.c = c;
         

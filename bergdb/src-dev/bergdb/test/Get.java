@@ -9,7 +9,6 @@ import bergdb.core.KeyFactory;
 import bergdb.core.Trans;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
-import bergdb.nanotest.BasicCollector;
 import bergdb.nanotest.T;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.NullStream;
@@ -98,36 +97,39 @@ public class Get {
         c.report("get-total-time", tg.time);
     }
     
-    private void go1M(TestEnvironment c) throws InterruptedException {
-        c.report("note", "One thread running get(), db size: 1M.");
+    /**
+     * Used by CorePerf.
+     */
+    public static double corePerfMethod() {
+        Get get = new Get();
+
+        get.createDB(100*1000);
         
-        createDB(1000*1000);
-        
-        Timed tg = new Timed();
-        warmup();
+        Timed tg = get.new Timed();
+        get.warmup();
         tg.start();
         
-        Thread.sleep(2000);
-        done = true;
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            throw new Error(e);
+        }
         
-        tg.join();
+        get.done = true;
         
-        c.report("get-n", n);
-        c.report("get-count", tg.count);
-        c.report("get-time", tg.time / tg.count);
-        c.report("get-total-time", tg.time);
+        try {
+            tg.join();
+        } catch (InterruptedException e) {
+            throw new Error(e);
+        }
+        
+        double result = tg.time / tg.count;
+        return result;
     }
     
     @T("perf")
     public static void run(TestEnvironment c) throws InterruptedException {
         new Get().go(c);
-    }
-    
-    public static void main(String[] args) throws Exception {
-        Get g = new Get();
-        
-        g.go(new BasicCollector());
-        g.go1M(new BasicCollector());
     }
     
     /**

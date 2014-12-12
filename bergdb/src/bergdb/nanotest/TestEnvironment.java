@@ -5,13 +5,15 @@ import java.io.IOException;
 import java.io.PrintStream;
 
 /**
- * A test method can choose to take a TestCollector as the single parameter.
- * This allows the test to report back information to the test runner.
- * This allows for more advanced testing than unit tests.
+ * A test method may have a TestEnvironment instance as its single parameter.
+ * This allows the test to report back information to the test runner
+ * while the test is running. This allows for more advanced testing than unit tests.
+ * Long-running tests may have the need to report to the UI while it is running.
  * 
  * @author Frans Lundberg
  */
 public interface TestEnvironment {
+    
     /**
      * Reports a property of the test run. A named value. 'name' does not have to be unique
      * for all tests, just unique for within this particular test.
