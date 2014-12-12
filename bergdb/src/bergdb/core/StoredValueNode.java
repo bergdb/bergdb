@@ -2,7 +2,6 @@ package bergdb.core;
 
 import bergdb.common.Bug;
 import bergdb.common.Bytes;
-import bergdb.common.Pair;
 import bergdb.dag.INode;
 import bergdb.dag.Keys;
 import bergdb.dag.Spos;
@@ -46,22 +45,7 @@ public class StoredValueNode implements StoredNode {
     /**
      * Creates a StoredValueNode by parsing the provided byte buffer.
      */
-    public static StoredValueNode parse(byte[] buffer, int offset, long spos, boolean readKey) {
-        // TODO LATER when we allow enums, use it instead of boolean parameter.
-        
-        Pair<ValueNode, long[]> pair = fromBytes(buffer, offset, spos, readKey);
-
-        StoredValueNode stored = new StoredValueNode();
-        stored.node = pair.getValue0();
-        stored.key = pair.getValue1();
-
-        return stored;
-    }
-
-    /**
-     * @throws StreamFormatException
-     */
-    private static Pair<ValueNode, long[]> fromBytes(byte[] buffer, int offset, long spos, boolean readKey) {
+    public static StoredValueNode parse(byte[] buffer, int offset, long spos) {
         assert buffer != null;
         assert buffer.length > offset;
         
@@ -72,19 +56,17 @@ public class StoredValueNode implements StoredNode {
             throw new Bug("Bad node type byte, " + ((int) type)
                     + ", should have been checked already.");
         }
-
-        Pair<ValueNode, long[]> result;
-
+        
         byte version = buffer[offset];
         offset += 1;
-
+        
         if (version != 1) {
             throw new StreamFormatException("Can only handle ValueNode of "
                     + "version 1, got version " + version + ".");
         }
         
         offset += 2; // two bytes not used
-
+        
         byte[] value = null;
         
         if (type == INode.TYPE_VALUE) {
@@ -97,26 +79,26 @@ public class StoredValueNode implements StoredNode {
         
         long[] key = new long[0];
         
-        if (readKey) {
-            int keySize = Bytes.bytesToIntLE(buffer, offset);
-            offset += 4;
-            
-            if (keySize % 8 != 0 || keySize <= 0) {
-                throw new StreamFormatException("Bad key size when reading value node at spos " 
-                        + spos + ", keySize: " + keySize + ".");
-            }
-            
-            key = new long[keySize / 8];
-            for (int i = 0; i < key.length; i++) {
-                key[i] = Bytes.bytesToLongLE(buffer, offset);
-                offset += 8;
-            }
+        int keySize = Bytes.bytesToIntLE(buffer, offset);
+        offset += 4;
+        
+        if (keySize % 8 != 0 || keySize <= 0) {
+            throw new StreamFormatException("Bad key size when reading value node at spos " 
+                    + spos + ", keySize: " + keySize + ".");
         }
         
-        ValueNode valueNode = new ValueNode(value, spos);            
-        result = new Pair<ValueNode, long[]>(valueNode, key);
+        key = new long[keySize / 8];
+        for (int i = 0; i < key.length; i++) {
+            key[i] = Bytes.bytesToLongLE(buffer, offset);
+            offset += 8;
+        }
         
-        return result;
+        ValueNode valueNode = new ValueNode(value, spos);
+        StoredValueNode stored = new StoredValueNode();
+        stored.node = valueNode;
+        stored.key = key;
+
+        return stored;
     }
 
     public static int getByteSize(ValueNode node, long[] key) {
@@ -186,7 +168,7 @@ public class StoredValueNode implements StoredNode {
         byte[] buffer = new byte[getByteSize(node, key)];
         StoredValueNode.toBytes(node, key, buffer, 0);
 
-        StoredValueNode stored = parse(buffer, 0, 100, true);
+        StoredValueNode stored = parse(buffer, 0, 100);
         ValueNode node2 = stored.getNode();
         
         Assert.assertEquals(getByteSize(node, key), getByteSize(node2, key));
@@ -202,7 +184,7 @@ public class StoredValueNode implements StoredNode {
         
         StoredValueNode.toBytes(node, key, buffer, 0);
         
-        StoredValueNode stored = parse(buffer, 0, 100, true);
+        StoredValueNode stored = parse(buffer, 0, 100);
         
         Assert.assertArrayEquals(Keys.toSegments(keyString), stored.getKey());
     }
@@ -215,7 +197,7 @@ public class StoredValueNode implements StoredNode {
         StoredValueNode.toBytes(node, key, buffer, 0);
 
         long spos = 120;
-        StoredValueNode stored = parse(buffer, 0, spos, true);
+        StoredValueNode stored = parse(buffer, 0, spos);
         ValueNode node2 = stored.getNode();
         
         Assert.assertEquals(spos, node2.getSpos());

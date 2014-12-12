@@ -256,8 +256,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
             break;
         case INode.TYPE_VALUE:
         case INode.TYPE_DELETE:
-            stored = StoredValueNode.parse(buffer, offset, spos, true);
-            // NOTE Key always read currently. Not always needed. Check if we can increase performance.
+            stored = StoredValueNode.parse(buffer, offset, spos);
             break;
         default:
             throw new StreamFormatException("Bad node type in stream, " + ((int) nodeType)
