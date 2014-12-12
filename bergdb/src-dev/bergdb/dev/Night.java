@@ -1,16 +1,13 @@
 package bergdb.dev;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import bergdb.common.IPack;
-import bergdb.nanotest.BasicCollector;
-import bergdb.nanotest.TestRunnerUtil;
+import java.util.Set;
+import bergdb.common.Create;
+import bergdb.common.Util;
+import bergdb.nanotest.ClassFilter;
+import bergdb.nanotest.ConsoleUI;
+import bergdb.nanotest.MethodFilter;
+import bergdb.nanotest.TestRunner;
 
 /**
  * Runs nightly tests, Nano test group 'night'.
@@ -21,61 +18,31 @@ import bergdb.nanotest.TestRunnerUtil;
  */
 public class Night {
     public static void main(String[] args) {
+        ConsoleUI ui = ConsoleUI.builder()
+                .printStart(true).printProps(true).printMethods(true)
+                .build();
         printHeader();
         
-        List<Class<?>> classes = new ArrayList<Class<?>>();
-        IPack[] ipacks = Unit.getIPacksStatic();
-        
-        Pattern classPattern = null;
-        Pattern methodPattern = null;
-        
-        if (args.length > 0) {
-            classPattern = Pattern.compile(args[0]);
+        String classPatternString = ".*";
+        if (args.length >= 1) {
+            classPatternString = args[0];
         }
         
-        if (args.length > 1) {
-            methodPattern = Pattern.compile(args[1]);
+        String methodPatternString = ".*";
+        if (args.length >= 2) {
+            methodPatternString = args[1];
         }
         
-        for (IPack p : ipacks) {
-            for (Class<?> c : p.getClasses()) {
-                if (classPattern != null) {
-                    Matcher m = classPattern.matcher(c.getName());
-                    if (m.matches()) {
-                        classes.add(c);
-                    }
-                } else {          
-                    classes.add(c);
-                }
-            }
-        }
+        Set<Class<?>> classes = new ClassFilter(classPatternString).filter(Unit.getClasses());
+        MethodFilter methodFilter = new MethodFilter(methodPatternString, Create.setOfStrings("night"));
         
-        BasicCollector collector = new BasicCollector(System.out);
-        collector.setPrintOutput(true);
-        collector.setPrintProps(false);
-        collector.setPrintMethods(true);
-        collector.setPrintStart(true);
-        
-        String[] groups = new String[]{"night"};
-        
-        for (Class<?> c : classes) {
-            TestRunnerUtil.runClassTests(groups, c, methodPattern, collector);
-        }
-        
-        System.out.println();
-        System.out.println("======================================================================");
-        System.out.print(collector.getReport());
-        System.out.println("======================================================================");
+        TestRunner testRunner = new TestRunner(ui, classes, methodFilter);
+        testRunner.run();
     }
     
     private static void printHeader() {
         System.out.println("\n======== Night ========");
-        String computer = "'unknown'";
-        try {
-            computer = InetAddress.getLocalHost().getHostName();
-        } catch (UnknownHostException e) {
-            // empty
-        }
+        String computer = Util.hostname();
         System.out.println("'night' tests on " + computer + ", " 
                     + new Date().toString() + ".\n");
     }

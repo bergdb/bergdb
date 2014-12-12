@@ -1039,4 +1039,17 @@ public class Util {
         }
         return out;
     }
+    
+    /**
+     * Returns the hostname of the computer or "unknown" if unknown.
+     */
+    public static String hostname() {
+        String name;
+        try {
+            name = InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException e) {
+            name = "unknown";
+        }
+        return name;
+    }
 }

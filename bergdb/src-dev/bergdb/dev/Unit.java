@@ -1,6 +1,11 @@
 package bergdb.dev;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import bergdb.common.IPack;
+
+// TODO B. Move list of Pack classes to separate class.
 
 /**
  * Almost identical to bergdb.coredev.CoreUnit, but ipacks array contains a larger set of 
@@ -26,6 +31,21 @@ public class Unit extends bergdb.coredev.CoreUnit {
     
     public static IPack[] getIPacksStatic() {
         return ipacks;
+    }
+    
+    /**
+     * Creates and returns a set of all classes in the packages
+     * specified in this.ipacks.
+     */
+    public static Set<Class<?>> getClasses() {
+        Set<Class<?>> classes = new HashSet<Class<?>>();
+        IPack[] ipacks = Unit.getIPacksStatic();
+        for (IPack p : ipacks) {
+            for (Class<?> c : p.getClasses()) {
+                classes.add(c);
+            }
+        }
+        return classes;
     }
     
     @Override
