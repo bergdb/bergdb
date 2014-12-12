@@ -7,7 +7,7 @@ import java.util.Arrays;
 import bergdb.common.NullProgressListener;
 import bergdb.common.ProgressListener;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.StorageInfo;
 import bergdb.stream.FileStream;
@@ -15,7 +15,7 @@ import bergdb.stream.MemoryStream;
 
 public class StorageManagerTester {
 
-    @T
+    @Nano
     public static void testSync1() throws IOException {
         MemoryStream m1 = new MemoryStream();
         MemoryStream m2 = new MemoryStream();
@@ -45,7 +45,7 @@ public class StorageManagerTester {
         }
     }
     
-    @T
+    @Nano
     public static void testSync2() throws IOException {
         MemoryStream m1 = new MemoryStream();
         MemoryStream m2 = new MemoryStream();
@@ -98,7 +98,7 @@ public class StorageManagerTester {
         Assert.assertEquals(300, m3.getLength());
     }
     
-    @T
+    @Nano
     public static void testSync3() throws IOException {
         MemoryStream m1 = new MemoryStream();
         MemoryStream m2 = new MemoryStream();
@@ -118,7 +118,7 @@ public class StorageManagerTester {
         manager.stop();
     }
     
-    @T
+    @Nano
     public static void testSync4(TestEnvironment c) throws IOException, InterruptedException {
         // Testing with real files.
         
@@ -176,7 +176,7 @@ public class StorageManagerTester {
         Assert.assertEquals(200*900, files[1].length());
     }
     
-    @T
+    @Nano
     public static void testMultipleClose(TestEnvironment c) throws IOException, InterruptedException {
         File temp = c.createTempDir();
         
@@ -197,7 +197,7 @@ public class StorageManagerTester {
         m.close();
     }    
     
-    @T
+    @Nano
     public static void testWait1() throws IOException, InterruptedException {
         // Tests a call to sync() that should return immediately.
         
@@ -218,7 +218,7 @@ public class StorageManagerTester {
         manager.stop();
     }
     
-    @T
+    @Nano
     public static void testWait2(final TestEnvironment c) throws IOException, InterruptedException {        
         MemoryStream m = new MemoryStream();
         Object writeLock = new Object();
@@ -257,7 +257,7 @@ public class StorageManagerTester {
         manager.stop();
     }
     
-    @T
+    @Nano
     public static void testAddReplica1() throws IOException, InterruptedException {
         final MemoryStream m1 = new MemoryStream();
         final MemoryStream m2 = new MemoryStream();
@@ -311,7 +311,7 @@ public class StorageManagerTester {
         Assert.assertEquals(700, m2.getLength());
     }
     
-    @T
+    @Nano
     public static void testAddReplica2() throws IOException, InterruptedException {
         // Creates streams, adds replica, appends to StorageManager, asserts.
         
@@ -359,7 +359,7 @@ public class StorageManagerTester {
         Assert.assertEquals(800, m2.getLength());
     }
     
-    @T
+    @Nano
     public static void testAddReplica3(TestEnvironment c) throws IOException, InterruptedException {
         // Adds an empty replica, main stream has getFirstPos() > 0.
         
@@ -393,7 +393,7 @@ public class StorageManagerTester {
     }
     
 
-    @T
+    @Nano
     public static void testAddReplica4(TestEnvironment c) throws IOException {
         // Adds a replica with existing obsolete data.
         
@@ -427,7 +427,7 @@ public class StorageManagerTester {
         Assert.assertEquals("r length", 200*3000, r.getLength());
     }
     
-    @T
+    @Nano
     public static void testAddReplica5(TestEnvironment c) throws IOException {
         // Adds a replica with existing obsolete and non-obsolete data.
         
@@ -465,7 +465,7 @@ public class StorageManagerTester {
         Assert.assertEquals("r length", 200*3000, r.getLength());
     }
     
-    @T
+    @Nano
     public static void testAddReplicaWhileAppending() throws IOException, InterruptedException {
         final MemoryStream m1 = new MemoryStream();
         final MemoryStream m2 = new MemoryStream();
@@ -536,7 +536,7 @@ public class StorageManagerTester {
         manager.close();
     }
     
-    @T
+    @Nano
     public static void testRemoveReplica1() throws IOException {
         MemoryStream m1 = new MemoryStream();
         MemoryStream m2 = new MemoryStream();
@@ -562,7 +562,7 @@ public class StorageManagerTester {
         manager.stop();
     }
     
-    @T
+    @Nano
     public static void testRemoveReplica2() throws IOException {
         MemoryStream m1 = new MemoryStream();
         MemoryStream m2 = new MemoryStream();

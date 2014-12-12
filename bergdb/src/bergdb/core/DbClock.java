@@ -1,7 +1,7 @@
 package bergdb.core;
 
 import static bergdb.nanotest.Assert.assertEquals;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pub.Clock;
 
 /**
@@ -158,7 +158,7 @@ public class DbClock {
     /** For testing only. Factor "F". */
     private static long F = 10*1000;
     
-    @T
+    @Nano
     private static void test1() {
         CoreTestClock testClock = new CoreTestClock();
         DbClock dbClock = new DbClock(testClock);
@@ -170,7 +170,7 @@ public class DbClock {
         assertEquals(1*F, transactionTime);
     }
     
-    @T
+    @Nano
     private static void testTime() {
         CoreTestClock testClock = new CoreTestClock();
         DbClock dbClock = new DbClock(testClock);
@@ -195,7 +195,7 @@ public class DbClock {
         assertEquals(1*F + 1, transactionTime);
     }
     
-    @T
+    @Nano
     private static void testLookupTime() {
         CoreTestClock testClock = new CoreTestClock();
         DbClock dbClock = new DbClock(testClock);

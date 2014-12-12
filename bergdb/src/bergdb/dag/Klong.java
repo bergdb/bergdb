@@ -9,7 +9,7 @@ import java.util.Random;
 import bergdb.common.ByteArrayComparator;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * <p>A class for creating and reading long:s in the node array, "klongs".
@@ -463,7 +463,7 @@ public class Klong {
     // =========================== Testing =================
     // Nanotests are used.
     
-    @T
+    @Nano
     public static void testPrefixLength1() {
         long k1 = create(Util.toBytes("ab1"), false);
         long k2 = create(Util.toBytes("ab2"), false);
@@ -471,7 +471,7 @@ public class Klong {
         Assert.assertEquals(2, prefixLength(k2, k1));
     }
     
-    @T
+    @Nano
     public static void testPrefixLength2() {
         long k1 = create(Util.toBytes("abc"), false);
         long k2 = create(Util.toBytes("abcd11"), false);
@@ -492,7 +492,7 @@ public class Klong {
         Assert.assertEquals(4, prefixLength(k2, k4));
     }
     
-    @T
+    @Nano
     public static void testPrefixLength3() {
         long k1 = create(Util.toBytes("a1"), false);
         long k2 = create(Util.toBytes("a2"), false);
@@ -500,7 +500,7 @@ public class Klong {
         Assert.assertEquals(1, prefixLength(k2, k1));
     }
     
-    @T
+    @Nano
     public static void testTime() {
         long[] times = new long[]{1, 123, 123456789012345L, 2222222233333L};
         
@@ -512,7 +512,7 @@ public class Klong {
         }
     }
     
-    @T
+    @Nano
     public static void testLength() {
         long v = 0;
         v = setHeader(v, TYPE_KEY, 4);        
@@ -525,7 +525,7 @@ public class Klong {
         Assert.assertEquals(7, getLength(v));       
     }
     
-    @T
+    @Nano
     public static void testHeader() {
         long v = create("abc");
         Assert.assertEquals(3, getLength(v));
@@ -540,7 +540,7 @@ public class Klong {
         Assert.assertEquals(TYPE_DELETE, getType(v));
     }
     
-    @T
+    @Nano
     public static void testIntType() {
         long v = create("abc");
         Assert.assertEquals(INT_TYPE_KEY, getIntType(v));
@@ -552,7 +552,7 @@ public class Klong {
         Assert.assertEquals(INT_TYPE_DELETE, getIntType(v));
     }
     
-    @T
+    @Nano
     public static void testKey() {
         long v = create("aaa");
         String s = getKeyString(v);
@@ -574,7 +574,7 @@ public class Klong {
         Assert.assertArrayEquals(bytes, output);
     }
     
-    @T
+    @Nano
     public static void testSortOrder1() throws UnsupportedEncodingException {
         //
         // Two sort methods compared
@@ -629,7 +629,7 @@ public class Klong {
         }
     }
 
-    @T
+    @Nano
     public static void testSortOrder2() throws UnsupportedEncodingException {
         //
         // Two sort methods compared
@@ -674,7 +674,7 @@ public class Klong {
         }
     }
     
-    @T
+    @Nano
     public static void testCreateKlongs() {
         byte[] bytes0 = new byte[2];
         bytes0[0] = 0;
@@ -691,7 +691,7 @@ public class Klong {
         Assert.assertTrue(c1 > c0);
     }
     
-    @T
+    @Nano
     public static void testCreateCompareValueTwoWays() {
         // Two ways to create a compare value.
         Random r = new Random(0);
@@ -708,7 +708,7 @@ public class Klong {
         }
     }
     
-    @T
+    @Nano
     public static void tDeleteBits() {
         long bit = Math.round(Math.pow(2, 15));
         Assert.assertEquals(bit, Klong.DELETE_BITS[15]);
@@ -717,7 +717,7 @@ public class Klong {
         Assert.assertEquals(bit, Klong.DELETE_BITS[61]);
     }
     
-    @T
+    @Nano
     public static void tDelete1() {
         long k = createDeleteBitmap();
         k = Klong.delete(k, 5);
@@ -732,7 +732,7 @@ public class Klong {
         Assert.assertEquals(false, Klong.isDeleted(k, 61));
     }
     
-    @T
+    @Nano
     public static void testIsKey() {
         long k1 = Klong.create(new byte[]{1, 2, 3});
         Assert.assertTrue(Klong.isKey(k1));

@@ -8,7 +8,7 @@ import java.util.TimeZone;
 import bergdb.common.Util;
 import bergdb.core.SystemClock;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pub.BadFormatException;
 import bergdb.pub.Clock;
 
@@ -447,7 +447,7 @@ public class TimeResolver {
     
     // ======== Tests ========
     
-    @T
+    @Nano
     private static void testAbsolute0() {
         String[] ok = new String[]{
                 "2013-01-02 12:02:12.1234567",
@@ -486,14 +486,14 @@ public class TimeResolver {
         }
     }
     
-    @T
+    @Nano
     private static void testAbsolute1() {
         long millis = Util.getMillisSinceEpoch(UTC, 2013, 3, 14, 16, 10, 20, 500);        
         String ts = "2013-03-14 16:10:20.500";
         Assert.assertEquals(millis * UNITS_PER_MILLISECOND, TimeResolver.resolve(UTC, 0, ts));
     }
     
-    @T
+    @Nano
     private static void testAbsolute2() {
         long millis = Util.getMillisSinceEpoch(UTC, 2000, 1, 1, 0, 0, 0, 0);   
         
@@ -507,7 +507,7 @@ public class TimeResolver {
         Assert.assertEquals(millis * UNITS_PER_MILLISECOND, TimeResolver.resolve(UTC, 0, ts));
     }
     
-    @T
+    @Nano
     private static void testAbsolute3() {
         // Resolves units - 10,000 time units in one millisecond.
         
@@ -523,21 +523,21 @@ public class TimeResolver {
         Assert.assertEquals(millis * UNITS_PER_MILLISECOND + 124, TimeResolver.resolve(UTC, 0, ts));
     }
     
-    @T
+    @Nano
     private static void testSpecial0() {
         long current = 1 * 1000*1000*1000 * UNITS_PER_MILLISECOND + 123;
         long result = TimeResolver.resolve(UTC, current, "now");
         Assert.assertEquals(current, result);
     }
     
-    @T
+    @Nano
     private static void tSpecial1() {
         long current = new SystemClock().getTime();
         long result = TimeResolver.resolve(UTC, current, "now");
         Assert.assertEquals(current, result);
     }
     
-    @T
+    @Nano
     private static void testTimeOfDay0() {
         long t1 = TimeResolver.resolve(UTC, 0, "2010-03-14 13:20:10.0010023");
         long t2 = TimeResolver.resolve(UTC, t1, "09:20:40.5000123");
@@ -546,7 +546,7 @@ public class TimeResolver {
         Assert.assertEquals(millis * UNITS_PER_MILLISECOND + 123, t2);
     }
     
-    @T
+    @Nano
     private static void testTimeOfDay1() {
         long t1 = TimeResolver.resolve(UTC, 0, "2010-03-14 03:01");
         long t2 = TimeResolver.resolve(UTC, t1, "09:20:40.5000123");
@@ -555,7 +555,7 @@ public class TimeResolver {
         Assert.assertEquals(millis * UNITS_PER_MILLISECOND + 123, t2);
     }
     
-    @T
+    @Nano
     private static void testTimeOfDay2() {
         long t1 = TimeResolver.resolve(UTC, 0, "2010-03-14 03:01");
         long t2 = TimeResolver.resolve(UTC, t1, "09:20");
@@ -564,7 +564,7 @@ public class TimeResolver {
         Assert.assertEquals(millis * UNITS_PER_MILLISECOND, t2);
     }
     
-    @T
+    @Nano
     private static void testTimeOfDay3() {
         long t1 = TimeResolver.resolve(UTC, 0, "1975-03-14");
         long t2 = TimeResolver.resolve(UTC, t1, "09:20");
@@ -572,21 +572,21 @@ public class TimeResolver {
         Assert.assertEquals(2, t3 - t2);
     }
     
-    @T
+    @Nano
     private static void testMinus0() {
         long t1 = TimeResolver.resolve(UTC, 0, "2010-03-14 03:01:10");
         long t2 = TimeResolver.resolve(UTC, t1, "-10 s");
         Assert.assertEquals(10 * Clock.UNITS_PER_SEC, t1 - t2);
     }
     
-    @T
+    @Nano
     private static void testMinus1() {
         long t1 = TimeResolver.resolve(UTC, 0, "2010-03-14 03:01:10");
         long t2 = TimeResolver.resolve(UTC, t1, "-10 m");
         Assert.assertEquals(Clock.UNITS_PER_SEC * 600, t1 - t2);
     }
     
-    @T
+    @Nano
     private static void testMinus2() {
         long t1 = TimeResolver.resolve(UTC, 0, "2010-03-14 03:01:10");
         long t2 = TimeResolver.resolve(UTC, t1, "-1 d 13:00:01");
@@ -594,7 +594,7 @@ public class TimeResolver {
         Assert.assertEquals(t3, t2);
     }
     
-    @T
+    @Nano
     private static void testMinus3() {
         long t1 = TimeResolver.resolve(UTC, 0, "2013-09-01 03:01:10");
         long t2 = TimeResolver.resolve(UTC, t1, "-1 d 09:00");
@@ -602,7 +602,7 @@ public class TimeResolver {
         Assert.assertEquals(t3, t2);
     }
 
-    @T
+    @Nano
     private static void testOneUnit() {
         long units = resolveAbsolute(UTC, "1970-01-01 00:00:00.0000001");
         Assert.assertEquals(1L, units);

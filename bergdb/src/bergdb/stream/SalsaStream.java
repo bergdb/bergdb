@@ -5,7 +5,7 @@ import java.util.Random;
 
 import bergdb.common.Salsa;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * A decorator for an AppendOnlyStream that adds Salsa20 encryption to the stream.
@@ -119,7 +119,7 @@ public class SalsaStream implements AppendOnlyStream {
         stream.close();
     }
     
-    @T
+    @Nano
     public static void test0() throws IOException {
         // Writes 128 bytes of data to SalsaStream and reads it back.
         
@@ -142,7 +142,7 @@ public class SalsaStream implements AppendOnlyStream {
         Assert.assertArrayEquals(data, data2);
     }
     
-    @T
+    @Nano
     public static void test1() throws IOException {
         // Writes 128 bytes of data to SalsaStream and reads it back using another Salsa object.
         
@@ -165,7 +165,7 @@ public class SalsaStream implements AppendOnlyStream {
         Assert.assertArrayEquals(data, data2);
     }
     
-    @T
+    @Nano
     public static void testMultiAppend() throws IOException {
         Random r = new Random(0);
         byte[] data = new byte[64];
@@ -187,7 +187,7 @@ public class SalsaStream implements AppendOnlyStream {
         Assert.assertArrayEquals(data, data2);
     }
     
-    @T
+    @Nano
     public static void testReadPartOfBlock1() throws IOException {
         // Writes 128 bytes of data to SalsaStream and reads part of it back.
         
@@ -213,7 +213,7 @@ public class SalsaStream implements AppendOnlyStream {
         Assert.assertArrayEquals(data3, data2);
     }
     
-    @T
+    @Nano
     public static void testNon64a() throws IOException {
         Random r = new Random(123);
         byte[] data = new byte[100];
@@ -238,7 +238,7 @@ public class SalsaStream implements AppendOnlyStream {
         Assert.assertArrayEquals(data, data2);
     }
     
-    @T
+    @Nano
     public static void testNon64b() throws IOException {
         // Multiple append operations. Appends 5+5 bytes, read by another Salsa object.
         
@@ -266,7 +266,7 @@ public class SalsaStream implements AppendOnlyStream {
         Assert.assertArrayEquals(data, data2);
     }
     
-    @T
+    @Nano
     public static void testNon64c() throws IOException {
         // Writes 100 + 100 bytes of data to SalsaStream and reads it back.
         

@@ -11,7 +11,7 @@ import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 /**
@@ -107,7 +107,7 @@ public class Zip {
         }
     }
 
-    @T("perf")
+    @Nano("perf")
     public static void run(TestEnvironment c) throws Exception {
         Zip z = new Zip();
         long[] ints = new long[z.N];

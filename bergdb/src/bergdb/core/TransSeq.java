@@ -7,7 +7,7 @@ import bergdb.dag.KeyNode;
 import bergdb.dag.TopNode;
 import bergdb.nanotest.Assert;
 import static bergdb.nanotest.Assert.*;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * An in-memory data structure that keeps information about the transactions
@@ -196,7 +196,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
         return info;
     }
     
-    @T
+    @Nano
     public static void test0() {
         TransSeq s = new TransSeq();
         
@@ -204,7 +204,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
         Assert.assertTrue(s.isEmpty());
     }
     
-    @T
+    @Nano
     public static void testAddOne() {
         TransSeq s = new TransSeq();
         TransInfo info = newTransInfo(120, 200);
@@ -214,7 +214,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
         Assert.assertFalse(s.isEmpty());
     }
 
-    @T
+    @Nano
     public static void testAddThree() {
         // Test with no nodes at all.
         
@@ -230,7 +230,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
         Assert.assertEquals(3, s.getSize());
     }
     
-    @T
+    @Nano
     public static void testRemoveBefore() {
         
         TransSeq s = new TransSeq();
@@ -253,7 +253,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
         Assert.assertTrue(s.isEmpty());
     }
     
-    @T
+    @Nano
     private static void testPosOfTransBefore() {        
         TransSeq s = new TransSeq();
         TransInfo info1 = newTransInfo(100, 120);
@@ -270,7 +270,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
         assertEquals(100, s.posOfTransBefore(160));
     }
     
-    @T
+    @Nano
     private static void testPosOfTransBeforeWithEmptySeq() {
         TransSeq s = new TransSeq();
         assertEquals(-1, s.posOfTransBefore(0));

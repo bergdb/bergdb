@@ -4,7 +4,7 @@ import java.lang.reflect.Field;
 
 import bergdb.common.Bug;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pub.MissingKeyFieldException;
 
 /**
@@ -146,12 +146,12 @@ public class PubUtil {
         private String s = "s";
     }
     
-    @T
+    @Nano
     public static void testReadExistingKeyField0() {
         Assert.assertEquals("a", readExistingKeyField(new A()));
     }
     
-    @T
+    @Nano
     public static void testReadExistingKeyField1() {
         Exception ex = null;
         try {
@@ -163,7 +163,7 @@ public class PubUtil {
         Assert.assertTrue(ex != null);
     }
     
-    @T
+    @Nano
     public static void testReadExistingKeyField2() {
         Exception ex = null;
         try {
@@ -175,7 +175,7 @@ public class PubUtil {
         Assert.assertTrue(ex != null);
     }
     
-    @T
+    @Nano
     public static void testGetField0() {
         Field f = getField(A.class, "key");
         Assert.assertTrue(f != null);
@@ -183,7 +183,7 @@ public class PubUtil {
         Assert.assertEquals(String.class, f.getType());
     }
     
-    @T
+    @Nano
     public static void testGetField1() {
         // private field
         
@@ -193,7 +193,7 @@ public class PubUtil {
         Assert.assertEquals(int.class, f.getType());
     }
     
-    @T
+    @Nano
     public static void testGetField2() {
         // private field in superclass
         
@@ -208,21 +208,21 @@ public class PubUtil {
         Assert.assertEquals(double.class, f.getType());
     }
     
-    @T
+    @Nano
     public static void testSet0() {
         A obj = new A();
         setKeyFieldIfItExists(obj, "k20");
         Assert.assertEquals("k20", obj.key);
     }
     
-    @T
+    @Nano
     public static void testSet1() {
         // Does nothing
         B obj = new B();
         setKeyFieldIfItExists(obj, "k20");
     }
     
-    @T
+    @Nano
     public static void testSet2() {
         // Sets field in superclass.
         F obj = new F();

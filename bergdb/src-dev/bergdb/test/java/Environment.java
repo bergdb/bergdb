@@ -1,6 +1,6 @@
 package bergdb.test.java;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 /**
@@ -8,7 +8,7 @@ import bergdb.nanotest.TestEnvironment;
  */
 public class Environment {
     
-    @T("perf")
+    @Nano("perf")
     public static void figures(TestEnvironment c) {
         Runtime rt = Runtime.getRuntime();
         

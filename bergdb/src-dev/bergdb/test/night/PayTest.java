@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
@@ -28,7 +28,7 @@ public class PayTest {
      * 
      * @throws IOException 
      */
-    @T("night")
+    @Nano("night")
     public static void testIt(TestEnvironment c) throws IOException {
         new PayTest().new Create().go(c);
         System.gc();

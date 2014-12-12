@@ -8,7 +8,7 @@ import bergdb.dag.Keys;
 import bergdb.dag.Spos;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.storage.StreamFormatException;
 
 /**
@@ -175,7 +175,7 @@ public class StoredValueNode implements StoredNode {
     
     // ======== Tests ========
 
-    @T
+    @Nano
     private static void testToBytesAndBack() {
         byte[] value = new byte[10];
         value[3] = 3;
@@ -193,7 +193,7 @@ public class StoredValueNode implements StoredNode {
         Assert.assertArrayEquals(node.value, node2.value);
     }
     
-    @T
+    @Nano
     private static void testToBytesAndBackAndCheckKey() {
         final String keyString = "a";
         long[] key = Keys.toSegments(keyString);
@@ -207,7 +207,7 @@ public class StoredValueNode implements StoredNode {
         Assert.assertArrayEquals(Keys.toSegments(keyString), stored.getKey());
     }
     
-    @T
+    @Nano
     private static void testThatSposIsSetWhenParsedFromBytes() {
         long[] key = Keys.toSegments("/-mykey.txt");
         ValueNode node = new ValueNode(new byte[0], Spos.NULL);

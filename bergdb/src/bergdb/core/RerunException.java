@@ -1,7 +1,7 @@
 package bergdb.core;
 
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * Thrown to indicate that an RW transaction needs to be rerun.
@@ -20,7 +20,7 @@ public class RerunException extends RuntimeException {
         return keyHash;
     }
     
-    @T
+    @Nano
     public static void test1() {
         Assert.assertEquals(1234L, new RerunException(1234L).getKeyHash());
     }

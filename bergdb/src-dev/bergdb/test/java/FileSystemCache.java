@@ -6,7 +6,7 @@ import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel.MapMode;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 
@@ -18,7 +18,7 @@ import bergdb.nanotest.TestEnvironment;
  */
 public class FileSystemCache {
 
-    @T("perf")
+    @Nano("perf")
     public static void run(TestEnvironment c) throws Exception {
         int[] blockSizes = new int[]{1, 1024, 2*1024, 4*1024, 8*1024};
         

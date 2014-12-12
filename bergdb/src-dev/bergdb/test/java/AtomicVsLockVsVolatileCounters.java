@@ -2,7 +2,7 @@ package bergdb.test.java;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 
@@ -87,17 +87,17 @@ public class AtomicVsLockVsVolatileCounters {
         c.report("timePerCount", timePerCount);
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void atomic(TestEnvironment c) {
         new AtomicVsLockVsVolatileCounters().withAtomic(c, 10*1000000);
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void lock(TestEnvironment c) {
         new AtomicVsLockVsVolatileCounters().withLock(c, 10*1000000);
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void volatileCounter(TestEnvironment c) {
         new AtomicVsLockVsVolatileCounters().withVolatile(c, 10*1000000);
     }

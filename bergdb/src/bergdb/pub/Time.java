@@ -6,7 +6,7 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pubimp.TimeResolver;
 
 /**
@@ -237,7 +237,7 @@ public class Time {
     
     // ======== Tests ========
     
-    @T
+    @Nano
     private static void testIsBetween() {
         Time t1 = Time.utc("2000-01-01 00:00:01.0000000");
         Time t2 = Time.utc("2000-01-01 00:00:02.0000000");
@@ -252,54 +252,54 @@ public class Time {
         Assert.assertFalse(t6.isBetween(t1, t2));       
     }
     
-    @T
+    @Nano
     private static void testToUtcString() {
         Time time = Time.utc("2000-01-01 18:01:12.1234567");
         Assert.assertEquals(67, time.units() % 100);
         Assert.assertEquals("2000-01-01 18:01:12.1234567", time.toUtcString());
     }
     
-    @T
+    @Nano
     private static void testToUtcStringRoundUp() {
         Time time = Time.utc("2000-01-01 18:01:12.123456789");
         Assert.assertEquals("2000-01-01 18:01:12.1234568", time.toUtcString());
     }
     
-    @T
+    @Nano
     private static void testToUtcStringRoundDown() {
         Time time = Time.utc("2000-01-01 18:01:12.123456701");
         Assert.assertEquals("2000-01-01 18:01:12.1234567", time.toUtcString());
     }
     
-    @T
+    @Nano
     private static void testEquals1() {
         Time t0 = Time.MAX;
         Time t1 = Time.units(72057594037927936L - 1L);
         Assert.assertTrue(t0.equals(t1));
     }
     
-    @T
+    @Nano
     private static void testEquals2() {
         Time t0 = Time.units(1);
         Time t1 = Time.units(2);
         Assert.assertFalse(t0.equals(t1));
     }
     
-    @T
+    @Nano
     private static void testAdd() {
         Time t0 = Time.units(0);
         Time t1 = t0.add(Duration.seconds(1.0));
         Assert.assertEquals(Clock.UNITS_PER_SEC, t1.units - t0.units());
     }
     
-    @T
+    @Nano
     private static void testMillis() {
         Time t1 = Time.millis(1000);
         Time t2 = Time.units(Clock.UNITS_PER_SEC);
         Assert.assertTrue(t1.equals(t2));
     }
     
-    @T
+    @Nano
     private static void testResolve1() {
         Time t1 = Time.utc("2014-01-01 00:00:00.000000");
         Time t2 = Time.utc("2014-01-01 00:00:00.000001");
@@ -307,20 +307,20 @@ public class Time {
         Assert.assertEquals(t2, t3);
     }
     
-    @T
+    @Nano
     private static void testResolve2() {
         Time t1 = Time.utc("1970-01-01");
         Assert.assertEquals(0, t1.units());
     }
     
-    @T
+    @Nano
     private static void testResolve3() {
         Time t1 = Time.utc("2000-01");
         Time t2 = Time.utc("2000-01-01 00:00:00.000");
         Assert.assertEquals(t2, t1);
     }
     
-    @T
+    @Nano
     private static void testResolve4() {
         //  09 Sep 2001 01:46:40 UTC = 1000L*1000*1000 Unix time (s).
         
@@ -330,7 +330,7 @@ public class Time {
         Assert.assertEquals(t1, t2);
     }
     
-    @T
+    @Nano
     private static void testResolve5() {
         //  09 Sep 2001 01:46:40 UTC = 1000L*1000*1000 Unix time (s).
         

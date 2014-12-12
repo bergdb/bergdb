@@ -1,7 +1,7 @@
 package bergdb.common;
 
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * An event that a thread can wait for.
@@ -55,7 +55,7 @@ public class EventToWaitFor {
         return hasHappened;
     }
     
-    @T
+    @Nano
     private static void test1() {
         EventToWaitFor event = new EventToWaitFor();
         Assert.assertFalse(event.didItHappen());
@@ -63,7 +63,7 @@ public class EventToWaitFor {
         Assert.assertTrue(event.didItHappen());
     }
     
-    @T
+    @Nano
     private static void test2() {
         final EventToWaitFor event = new EventToWaitFor();
         Thread t = new Thread(new Runnable() {

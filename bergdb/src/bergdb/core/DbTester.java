@@ -14,7 +14,7 @@ import bergdb.dag.Klong;
 import bergdb.dag.TopNode;
 import bergdb.nanotest.Assert;
 import static bergdb.nanotest.Assert.*;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pub.BadReplicaException;
 import bergdb.pub.Clock;
 import bergdb.pub.IllegalDbStateException;
@@ -29,20 +29,20 @@ import bergdb.stream.MemoryStream;
  */
 public class DbTester {
     
-    @T
+    @Nano
     public static void test0() {
         Db db = Db.builder().testSetup().start();
         db.stop();
     }
     
-    @T
+    @Nano
     public static void test1() {
         Db db = Db.builder().testSetup().start();
         byte[] value = DbUtil.get(db, 99, Util.toBytes("admin1"));
         Assert.assertNull(value);
     }
     
-    @T
+    @Nano
     public static void test2() {
         Db db = Db.builder().testSetup().start();
         db.execute(db.trans().put("admin1", "F").build());
@@ -50,7 +50,7 @@ public class DbTester {
         Assert.assertArrayEquals(Util.toBytes("F"), value);
     }
     
-    @T
+    @Nano
     public static void test3() {
         Db db = Db.builder().testSetup().start();
         db.execute(db.trans().put("admin1", "F1")
@@ -62,7 +62,7 @@ public class DbTester {
         Assert.assertArrayEquals(Util.toBytes("F2"), value);
     }
     
-    @T
+    @Nano
     public static void test4() {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
@@ -80,7 +80,7 @@ public class DbTester {
         //db.stop();
     }
 
-    @T
+    @Nano
     public static void testT2() {
         byte[] value;
         CoreTestClock clock = new CoreTestClock();
@@ -109,7 +109,7 @@ public class DbTester {
         return db;
     }
     
-    @T
+    @Nano
     public static void testVersions() {
         //
         // Adds new value in a new key.
@@ -131,7 +131,7 @@ public class DbTester {
         Assert.assertNull(value);
     }
     
-    @T
+    @Nano
     public static void testVersionsReplaceValue() {
         CoreTestClock clock = new CoreTestClock();
         Db db = createT2DB(clock);
@@ -142,7 +142,7 @@ public class DbTester {
         Assert.assertArrayEquals(Util.toBytes("A"), DbUtil.get(db, 999, "apa"));
     }
     
-    @T
+    @Nano
     public static void testLongKey() {
         Db db = Db.builder().testSetup().start();
         db.execute(db.trans().put("myLongerKey", "v1").build());
@@ -154,7 +154,7 @@ public class DbTester {
         Assert.assertArrayEquals(Util.toBytes("v1"), DbUtil.get(db, 99, "myLongerKey"));
     }
     
-    @T
+    @Nano
     public static void testLongerKey() {
         String longerKey = "anotherKeyThatIsLongerThanThePreviousAndIndeedVeryLong";
         Db db = Db.builder().testSetup().start();
@@ -166,7 +166,7 @@ public class DbTester {
                 DbUtil.get(db, 99, longerKey));
     }
     
-    @T
+    @Nano
     public static void testMultipleLongKeys() {
         String longerKey = "anotherKeyThatIsLongerThanThePreviousAndIndeedVeryLong";
         Db db = Db.builder().testSetup().start();
@@ -180,7 +180,7 @@ public class DbTester {
         Assert.assertNull(DbUtil.get(db, 99, Util.toBytes("myLongerX")));
     }
     
-    @T
+    @Nano
     public static void testLongAndShortKeys() {
         //
         // Tests with two keys, k1, k2. k1 has two segments and k2 has one and
@@ -203,7 +203,7 @@ public class DbTester {
         Assert.assertNull(DbUtil.get(db, 20, "nasher"));
     }
     
-    @T
+    @Nano
     public static void testMultipleKeysWithSamePrefix() {
         Db db = Db.builder().testSetup().start();
         db.execute(db.trans()
@@ -220,7 +220,7 @@ public class DbTester {
         Assert.assertNull(DbUtil.get(db, 30, Util.toBytes("myLongerKey1b")));
     }
     
-    @T
+    @Nano
     public static void testDeleteTwoValues() {
         //
         // Delete of two values in same transaction.
@@ -257,7 +257,7 @@ public class DbTester {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testDelete0() {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
@@ -280,7 +280,7 @@ public class DbTester {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testDelete1() {
         // Tests rewriting a value and deleting it in-between.
         
@@ -325,7 +325,7 @@ public class DbTester {
         Assert.assertEquals("a-value-3", Util.toString(value));
     }
     
-    @T
+    @Nano
     public static void testDeleteOfNonExistingData0() {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
@@ -335,7 +335,7 @@ public class DbTester {
         Assert.assertNull(value);
     }
     
-    @T
+    @Nano
     public static void testDeleteOfNonExistingData1() {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
@@ -360,7 +360,7 @@ public class DbTester {
         Assert.assertNull(value);
     }
     
-    @T
+    @Nano
     public static void testRerun() throws NumberFormatException, UnsupportedEncodingException {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
@@ -421,7 +421,7 @@ public class DbTester {
         db.execute(t);
     }
     
-    @T
+    @Nano
     public static void testSame7BytesPrefix() {
         Db db = Db.builder().testSetup().start();
         Trans t = db.trans()
@@ -430,7 +430,7 @@ public class DbTester {
         db.execute(t);
     }
     
-    @T
+    @Nano
     public static void testGetSmallerKey() {
         //
         // Smaller key then previous added. More than one segment.
@@ -446,7 +446,7 @@ public class DbTester {
         Assert.assertNull(value);
     }
     
-    @T
+    @Nano
     public static void testSplit0() {
         // Time split with an ordinary KeyNode as parent.
         
@@ -473,7 +473,7 @@ public class DbTester {
         }
     }
     
-    @T
+    @Nano
     public static void testSplit1() {
         // Parent is a space root node.
         
@@ -512,7 +512,7 @@ public class DbTester {
         return key;
     }
     
-    @T
+    @Nano
     public static void testSpaceSplit1() {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().maxNodeSize8().clock(clock).start();
@@ -545,7 +545,7 @@ public class DbTester {
         }
     }
     
-    @T
+    @Nano
     public static void testSplitInSingleTransaction() {
         int n = 10;
         CoreTestClock clock = new CoreTestClock();
@@ -564,7 +564,7 @@ public class DbTester {
         }
     }
     
-    @T
+    @Nano
     public static void testSplitTwoSplitsInOneTransaction() {
         int n = 15;
         CoreTestClock clock = new CoreTestClock();
@@ -587,7 +587,7 @@ public class DbTester {
         }
     }
     
-    @T
+    @Nano
     public static void testSpaceSplitAddBackwards() {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().maxNodeSize8().clock(clock).start();
@@ -610,7 +610,7 @@ public class DbTester {
         }
     }
     
-    @T
+    @Nano
     public static void testSpaceSplitOfRoot() {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().maxNodeSize8().clock(clock).start();
@@ -635,7 +635,7 @@ public class DbTester {
         }
     }
     
-    @T
+    @Nano
     public static void testTimeSplitOfRoot() {
         int n = 20;
         CoreTestClock clock = new CoreTestClock();
@@ -662,7 +662,7 @@ public class DbTester {
         }
     }
     
-    @T
+    @Nano
     public static void testManyKeysInOneTransaction() {
         //TestClock clock = new TestClock();
         Db db = Db.builder().testSetup().start();
@@ -679,21 +679,21 @@ public class DbTester {
         Assert.assertArrayEquals(Util.toBytes("v0"), DbUtil.get(db, Long.MAX_VALUE, "admin-account-0"));
     }
     
-    @T
+    @Nano
     public static void testGet1() {
         Db db = Db.builder().testSetup().start();
         db.execute(db.trans().put("k", "v"));
         Assert.assertArrayEquals(Util.toBytes("v"), DbUtil.get(db, 999, "k"));
     }
     
-    @T
+    @Nano
     public static void testGet2() {
         Db db = Db.builder().testSetup().start();
         db.execute(db.trans().put("longerKey", "v"));
         Assert.assertArrayEquals(Util.toBytes("v"), DbUtil.get(db, 999, "longerKey"));
     }
     
-    @T
+    @Nano
     public static void testGetWithLongerKey() {
         String longerKey = "anotherKeyThatIsLongerThanThePreviousAndIndeedVeryLong";
         CoreTestClock clock = new CoreTestClock();
@@ -706,7 +706,7 @@ public class DbTester {
         Assert.assertArrayEquals(Util.toBytes("v2"), DbUtil.get(db, 99, longerKey));
     }
     
-    @T
+    @Nano
     public static void testGetWithLongAndShortKeys() {
         //
         // Tests with two keys, k1, k2. k1 has two segments and k2 has one and
@@ -732,7 +732,7 @@ public class DbTester {
         Assert.assertNull(DbUtil.get(db, 20, "nasher"));
     }
     
-    @T
+    @Nano
     public static void testGetBeforeFirstSet() {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
@@ -762,17 +762,17 @@ public class DbTester {
         return db;
     }
     
-    @T
+    @Nano
     public static void testWithRandomData() {
         createRandomDB(25, new MemoryStream());
     }
     
-    @T("f")     // Too slow to be "unit"
+    @Nano("f")     // Too slow to be "unit"
     public static void testWithMoreRandomData() {
         createRandomDB(1000, new MemoryStream());
     }
     
-    @T
+    @Nano
     public static void testSplit3() {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().maxNodeSize14().clock(clock).start();
@@ -828,7 +828,7 @@ public class DbTester {
         Assert.assertEquals("v-four110-111", Util.toString(value));
     }
     
-    @T
+    @Nano
     public static void testSpecialCase() {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
@@ -845,7 +845,7 @@ public class DbTester {
         Assert.assertEquals("v4", Util.toString(DbUtil.get(db, 999, "r/direct")));
     }
     
-    @T
+    @Nano
     public static void testPrintGraph1() {
         // Test for manual inspection.
         
@@ -860,7 +860,7 @@ public class DbTester {
         //System.out.println(db.printGraph());
     }
     
-    @T
+    @Nano
     public static void testPrintGraph2() {
         // For manual inspection.
         
@@ -873,7 +873,7 @@ public class DbTester {
         //System.out.println(db.printGraph());
     }
     
-    @T
+    @Nano
     public static void testTwoBinaryKeysInOneTransaction() {
         //
         // Two kvs, one transaction, binary keys.
@@ -905,7 +905,7 @@ public class DbTester {
         }
     }
     
-    @T
+    @Nano
     public static void testManyOverwrites() {
         Db db = Db.builder().testSetup().start();
         
@@ -933,7 +933,7 @@ public class DbTester {
         byte[] getKey(int index);
     }
     
-    @T
+    @Nano
     public static void testCrazyKeys() {
         AppendOnlyStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
@@ -992,7 +992,7 @@ public class DbTester {
         }
     }
     
-    @T
+    @Nano
     public static void testSettingValueManyTimes() {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
@@ -1015,7 +1015,7 @@ public class DbTester {
         }
     }
     
-    @T
+    @Nano
     public static void tGetFirst1() {
         // Tests get first with simple db. Multiple times.
         
@@ -1039,7 +1039,7 @@ public class DbTester {
         Assert.assertArrayEquals(Keys.toBytes("anna"), key);
     }
     
-    @T
+    @Nano
     public static void tGetFirst2() {
         // Similar to tGetFirst1, but with longer, multi-segment keys.
         
@@ -1081,7 +1081,7 @@ public class DbTester {
         return b.start();
     }
     
-    @T
+    @Nano
     public static void tCrash1() {
         //
         // Truncate from end, one transaction in addition to the primordial one.
@@ -1111,7 +1111,7 @@ public class DbTester {
         db2.stop();
     }
     
-    @T
+    @Nano
     public static void testCrash2() {
         //
         // Truncate from end, two transactions, one should still work when database restarted.
@@ -1149,7 +1149,7 @@ public class DbTester {
         db4.stop();
     }
     
-    @T
+    @Nano
     public static void testCrash3() {
         //
         // Truncates complicated stream a few times.
@@ -1184,7 +1184,7 @@ public class DbTester {
         }
     }
     
-    @T("f")   // Too slow to be "unit" test.
+    @Nano("f")   // Too slow to be "unit" test.
     public static void testCrash4MetaBlock() {
         //
         // Truncates stream in the middle of 2nd meta block.
@@ -1216,7 +1216,7 @@ public class DbTester {
         db2.stop();
     }
     
-    @T
+    @Nano
     public static void testCrash5InTransSize() {
         //
         // Truncates stream in the middle of the size (4 first bytes) of a transaction.
@@ -1249,7 +1249,7 @@ public class DbTester {
         db2.stop();
     }
     
-    @T
+    @Nano
     public static void testKeyTransformation1() {
         KeyTransformation kt = new KeyTransformation() {
             public void transform(Trans trans, int index) {
@@ -1274,7 +1274,7 @@ public class DbTester {
         Assert.assertTrue(transTime1 >= 0);
     }
     
-    @T
+    @Nano
     public static void testKeyTransformation2() {
         KeyTransformation kt = new KeyTransformation() {
             public void transform(Trans trans, int index) {
@@ -1330,7 +1330,7 @@ public class DbTester {
         Assert.assertTrue(transactionTime2 > transactionTime1);
     }
     
-    @T
+    @Nano
     public static void testValueTransformation1() {
         // Uses transactionTime to compute value.
         
@@ -1359,7 +1359,7 @@ public class DbTester {
         Assert.assertTrue(time == 100 || time == 101);
     }
     
-    @T
+    @Nano
     public static void testValueTransformation2() {
         // Uses previous value to do an atomic increment of a long (big-ending first).
         
@@ -1402,13 +1402,13 @@ public class DbTester {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testStop1() {
         Db db = Db.builder().testSetup().start();
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testStopGetException1() {
         Db db = Db.builder().testSetup().start();
         db.stop();
@@ -1424,7 +1424,7 @@ public class DbTester {
         Assert.assertTrue(exception != null);
     }
     
-    @T
+    @Nano
     public static void testStopGetException2() {
         Db db = Db.builder().testSetup().start();
         db.stop();
@@ -1440,7 +1440,7 @@ public class DbTester {
         Assert.assertTrue(exception != null);
     }
     
-    @T
+    @Nano
     public static void testStopExecute() {
         Db db = Db.builder().testSetup().start();
         db.stop();
@@ -1455,7 +1455,7 @@ public class DbTester {
         Assert.assertTrue(exception != null);
     }
     
-    @T
+    @Nano
     public static void testStopMultipleStopCalls() {
         Db db = Db.builder().testSetup().start();
         db.stop();
@@ -1464,22 +1464,22 @@ public class DbTester {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testFinalize1() {
         Db.builder().testSetup().start();
     }
     
-    @T
+    @Nano
     public static void testFinalize2() {
         Db.builder().testSetup().start();
     }
     
-    @T
+    @Nano
     public static void testFinalize3() {
         Db.builder().testSetup().start();
     }
     
-    @T
+    @Nano
     public static void testBadReplica1() throws IOException {
         MemoryStream m0 = new MemoryStream();
         MemoryStream m1 = new MemoryStream();
@@ -1501,7 +1501,7 @@ public class DbTester {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void bug130403() {
         // Bug found 130403 when working with bergdb.test.StreamSize.
         // The following code reproduced the error (before bug was fixed).
@@ -1519,7 +1519,7 @@ public class DbTester {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testStartupDistance1() {
         // Checks that startupDistance from Db.Builder is used.
         
@@ -1532,7 +1532,7 @@ public class DbTester {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testStartupDistance2() {
         // A decreased of startup distance is seen immediately by DB.getStartupDistance().
         
@@ -1549,7 +1549,7 @@ public class DbTester {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testGetOp() {
         Db db = Db.builder().testSetup().start();
         db.execute(db.trans().put("key", new byte[1]));
@@ -1568,7 +1568,7 @@ public class DbTester {
      * Startup pos should be the tpos of the kv transaction
      * (the following index node transaction will write all dirty index nodes to stream).
      */
-    @T private static void testStartupPos1() {
+    @Nano private static void testStartupPos1() {
         Db db = Db.builder().testSetup().startupDistance(1*1000).start();
         int n = 6;
         long[] tpos = new long[n];

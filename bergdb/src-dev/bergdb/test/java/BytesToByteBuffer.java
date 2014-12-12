@@ -3,11 +3,11 @@ package bergdb.test.java;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 public class BytesToByteBuffer {
-    @T("perf")
+    @Nano("perf")
     public static void run(TestEnvironment c) throws Exception {
         int bufferSize = 128*1024;
         ByteBuffer bytes = ByteBuffer.allocateDirect(bufferSize);

@@ -4,7 +4,7 @@ import java.lang.reflect.Array;
 
 import bergdb.common.Bug;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * <p>This is the superclass of all DbObject types: boolean, int, long, double, string, 
@@ -225,7 +225,7 @@ public abstract class DbValue {
         return result != '.';
     }
     
-    @T
+    @Nano
     public static void testIsPrimitiveOrWrapper0() {
         Class<?>[] types = new Class<?>[] {
                 String.class, Math.class, Thread.class,

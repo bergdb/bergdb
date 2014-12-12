@@ -1,7 +1,7 @@
 package bergdb.dag;
 
 import static bergdb.nanotest.Assert.*;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * An spos (stream position) is a unique identifier for a stream item
@@ -44,18 +44,18 @@ abstract public class Spos {
     
     // ======== Tests ========
     
-    @T
+    @Nano
     public static void testConstantCopy() {
         assertEquals(NULL, bergdb.storage.Constants.SposNULL);
     }
     
-    @T
+    @Nano
     public static void testIsNull() {
         assertTrue(isNull(NULL));
         assertFalse(isNull(12345));
     }
     
-    @T
+    @Nano
     public static void testIsValid() {
         assertTrue(isValid(1200));
         assertTrue(isValid(0));
@@ -63,7 +63,7 @@ abstract public class Spos {
         assertFalse(isValid(NULL));
     }
     
-    @T
+    @Nano
     public static void testIsValidOrNull() {
         assertTrue(isValidOrNull(1200));
         assertTrue(isValidOrNull(0));

@@ -9,7 +9,7 @@ import bergdb.core.KeyFactory;
 import bergdb.core.Trans;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.NullStream;
 
@@ -127,7 +127,7 @@ public class Get {
         return result;
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void run(TestEnvironment c) throws InterruptedException {
         new Get().go(c);
     }

@@ -5,7 +5,7 @@ import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.Keys;
 import bergdb.nanotest.BasicTestEnvironment;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
 
@@ -20,7 +20,7 @@ public class StreamSizeTest {
         return Keys.toSegments("/k" + index);
     }
 
-    @T("perf")
+    @Nano("perf")
     public static void run(TestEnvironment c) {
         MemoryStream stream = new MemoryStream();
         Db db = Db.builder().mainStream(stream).startupDistance(20*1000000).start();

@@ -1,7 +1,7 @@
 package bergdb.pubimp;
 
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * Class with functions that handles database entries; for example, this
@@ -99,30 +99,30 @@ public class Entries {
 
     // ======== Tests ========
     
-    @T
+    @Nano
     public static void testIsObject1() {
         Assert.assertTrue(isProbablyDbObject("/dir/1.obj", 
                 new DbObject.Builder().addString("name", "Foo").build().getBytes()));
     }
     
-    @T
+    @Nano
     public static void testIsObject2() {
         Assert.assertTrue(isProbablyDbObject("/dir/1", 
                 new DbObject.Builder().addString("name", "Foo").build().getBytes()));
     }
     
-    @T
+    @Nano
     public static void testIsObject3() {
         Assert.assertFalse(isProbablyDbObject("/dir/1.txt", 
                 new DbObject.Builder().addString("name", "Foo").build().getBytes()));
     }
     
-    @T
+    @Nano
     public static void testIsObject4() {
         Assert.assertFalse(isProbablyDbObject("/dir/1", new byte[10]));
     }
     
-    @T
+    @Nano
     public static void testSuffix1() {
         // No suffix.
         Assert.assertEquals("", suffix("abcd"));
@@ -131,14 +131,14 @@ public class Entries {
         Assert.assertEquals("", suffix(".hidden"));
     }
 
-    @T
+    @Nano
     public static void testSuffix2() {
         Assert.assertEquals("g", suffix("graph.g"));
         Assert.assertEquals("txt", suffix(".hidden.txt"));
         Assert.assertEquals("t", suffix("www.bergdb.gson.as.t"));
     }
     
-    @T
+    @Nano
     private static void testClassify() {
         Assert.assertEquals(classify(DbObject.class), Entries.TYPE_DB_OBJECT);
         Assert.assertEquals(classify(Object.class), Entries.TYPE_OBJECT);

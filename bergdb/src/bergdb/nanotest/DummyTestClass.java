@@ -9,15 +9,15 @@ public class DummyTestClass {
     
     private DummyTestClass() {}
     
-    @T("f")
+    @Nano("f")
     public static void t1() {}
     
-    @T("unit f perf")
+    @Nano("unit f perf")
     public static void t2() {
         throw new MyRuntimeException();
     }
     
-    @T 
+    @Nano 
     public static void test3() {
     }
     

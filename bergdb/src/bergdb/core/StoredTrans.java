@@ -17,7 +17,7 @@ import bergdb.nanotest.Assert;
 import static bergdb.nanotest.Assert.assertEquals;
 import static bergdb.nanotest.Assert.assertArrayEquals;
 import static bergdb.nanotest.Assert.assertFalse;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
 
@@ -539,7 +539,7 @@ public class StoredTrans {
     
     // ======== Tests ========
     
-    @T
+    @Nano
     private static void testKvSanity() {
         byte[] key = new byte[]{1};
         byte[] value = new byte[]{1, 2};
@@ -549,7 +549,7 @@ public class StoredTrans {
         Assert.assertArrayEquals(new byte[]{1, 2}, kv.value);
     }
     
-    @T
+    @Nano
     private static void testSerialize1() {
         Serializer serializer = new Serializer();
         TransNodes transNodes = new TransNodes();
@@ -564,7 +564,7 @@ public class StoredTrans {
         assertEquals(200, parser.tpos);
     }
     
-    @T
+    @Nano
     private static void testSerialize2() {
         Serializer serializer = new Serializer();
         TransNodes transNodes = new TransNodes();
@@ -604,7 +604,7 @@ public class StoredTrans {
         Assert.assertArrayEquals(new byte[]{13, 14}, value2);
     }
     
-    @T
+    @Nano
     public static void testSerializeTransWithDelete() {
         Serializer s = new Serializer();
         TransNodes transNodes = new TransNodes();
@@ -621,7 +621,7 @@ public class StoredTrans {
         
     }
 
-    @T
+    @Nano
     private static void testSerializeWithNewStartupPos1() {
         Serializer serializer = new Serializer();
         TransNodes transNodes = new TransNodes();
@@ -634,7 +634,7 @@ public class StoredTrans {
         assertEquals(12345, parser.startupPos);
     }
     
-    @T
+    @Nano
     private static void testSerializeWithNewStartupPos2() {
         Serializer serializer = new Serializer();
         TransNodes transNodes = new TransNodes();
@@ -648,7 +648,7 @@ public class StoredTrans {
         assertFalse(parser.hasNewStartupPos());
     }
     
-    @T
+    @Nano
     private static void testSerializeAndCheckKey() {
         Serializer serializer = new Serializer();
         TransNodes transNodes = new TransNodes();
@@ -670,7 +670,7 @@ public class StoredTrans {
         assertArrayEquals(Keys.toSegments("a"), ((StoredValueNode) parser.nodes[1]).getKey());
     }
     
-    @T
+    @Nano
     private static void testSerializeAndCheckKey2() {
         Serializer serializer = new Serializer();
         TransNodes transNodes = new TransNodes();
@@ -690,7 +690,7 @@ public class StoredTrans {
         assertArrayEquals(Keys.toSegments("a"), node.getKey());
     }
     
-    @T
+    @Nano
     private static void testCreateRerunTransaction() {
         Serializer serializer = new Serializer();
         TransNodes nodes = new TransNodes();

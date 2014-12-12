@@ -8,7 +8,7 @@ import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.BasicTestEnvironment;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
@@ -22,12 +22,12 @@ import bergdb.pubimp.PubKeys;
  */
 public class Bug130924 {
    
-    @T("unit")
+    @Nano("unit")
     public static void test1(TestEnvironment c) throws IOException {
         new Bug130924().go1(c);
     }
     
-    @T("unit")
+    @Nano("unit")
     public static void test2(TestEnvironment c) throws IOException {
         new Bug130924().go2(c);
     }

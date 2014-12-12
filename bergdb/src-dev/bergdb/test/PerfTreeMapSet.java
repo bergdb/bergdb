@@ -7,7 +7,7 @@ import java.util.TreeMap;
 import bergdb.common.ByteArrayComparator;
 import bergdb.common.Util;
 import bergdb.nanotest.BasicTestEnvironment;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 
@@ -16,7 +16,7 @@ import bergdb.nanotest.TestEnvironment;
  */
 public class PerfTreeMapSet {
     
-    @T("perf")
+    @Nano("perf")
     public static void go(TestEnvironment r) {
         Random random = new Random(1);
         int n = 100*1000;

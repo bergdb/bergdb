@@ -2,7 +2,7 @@ package bergdb.test.java;
 
 import java.util.Random;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 
@@ -11,7 +11,7 @@ import bergdb.nanotest.TestEnvironment;
  */
 public class RandomPerf {
     
-    @T("perf")
+    @Nano("perf")
     public static void bytes(TestEnvironment c) {
         long t;
         int n = 100 * 1000;
@@ -41,7 +41,7 @@ public class RandomPerf {
     }
     
     
-    @T("perf")
+    @Nano("perf")
     public static void nextInt(TestEnvironment c) {
         long t;
         int n = 10*1000000;
@@ -67,7 +67,7 @@ public class RandomPerf {
         c.report("sum-not-interesting", sum);
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void nextLong(TestEnvironment c) {
         long t;
         int n = 10*1000000;

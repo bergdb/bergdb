@@ -13,7 +13,7 @@ import bergdb.dag.GetMany;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.TestEnvironment;
 import static bergdb.nanotest.Assert.assertEquals;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.stream.MemoryStream;
 
 /**
@@ -27,7 +27,7 @@ public class ScenarioTester {
      * A restart scenario with 0.4M startup distances and 8 KVs 
      * with values of size 0.1M.
      */
-    @T
+    @Nano
     private static void scenario100() {
         // Developed 2013-10.
         
@@ -73,7 +73,7 @@ public class ScenarioTester {
         Assert.assertEquals(checksum1, checksum2);
     }
     
-    @T
+    @Nano
     public static void scenario101() {
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(10);
@@ -101,7 +101,7 @@ public class ScenarioTester {
     /**
      * A scenario with a multi-klong key, an increase of startupPos and a restart.
      */
-    @T
+    @Nano
     private static void scenario102() {        
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(10);
@@ -138,7 +138,7 @@ public class ScenarioTester {
     /**
      * Restart scenario with six large transactions.
      */
-    @T
+    @Nano
     private static void scenario103() {
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(10);
@@ -169,7 +169,7 @@ public class ScenarioTester {
         assertEquals(sum1, sum2);
     }
     
-    @T
+    @Nano
     private static void scenario104() {        
         MemoryStream stream = new MemoryStream();
         StartupPosUpdater.TestUpdater updater = new StartupPosUpdater.TestUpdater();
@@ -216,7 +216,7 @@ public class ScenarioTester {
         Assert.assertEquals("checksum", sum1, sum2);
     }
     
-    @T
+    @Nano
     private static void scenario105() {
         // Demonstrates bug 141027:
         // bergdb.storage.StreamFormatException: Bad spos (-1) of Pointer 3 from key node
@@ -261,7 +261,7 @@ public class ScenarioTester {
     /**
      * Two transactions with multi-klong keys: t1, t2. t2 sets startup pos to t1.pos.
      */
-    @T
+    @Nano
     private static void scenario106(TestEnvironment c) throws InterruptedException {
         
         //System.out.println("======== testScenario106 ========");

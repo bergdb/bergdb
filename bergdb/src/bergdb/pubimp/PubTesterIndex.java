@@ -10,7 +10,7 @@ import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pub.*;
 import bergdb.stream.MemoryStream;
 
@@ -107,7 +107,7 @@ public class PubTesterIndex {
         }
     }
     
-    @T
+    @Nano
     public static void test0() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -133,7 +133,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void test1() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -169,7 +169,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testNonObjects1() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -197,7 +197,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testNonObjects2() {
         //
         // Index creation after KVs have been addded.
@@ -238,7 +238,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testTypeMix() {
         // Using DbObject.class as iteration type is a special case.
         
@@ -272,7 +272,7 @@ public class PubTesterIndex {
         Assert.assertEquals("1009", t.getString("to"));
     }
     
-    @T
+    @Nano
     public static void testBackward1() {
         // Simple case with backward().
         
@@ -299,7 +299,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testBackward1b() {
         // Like testBackward1, but with double field instead.
         
@@ -326,7 +326,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testBackward2() {
         // 3 elements, two has same indexed value, no eq()
         
@@ -355,7 +355,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testBackward3() {
         // backward(), empty iterator.
         
@@ -370,7 +370,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testBackward4() {
         // backward() and eq()
         
@@ -399,7 +399,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testIterHistory() {
         TestClock clock = new TestClock();
         clock.setTime(Time.units(100));
@@ -444,7 +444,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testNonExistantIndex() {
         TestClock clock = new TestClock();
         clock.setTime(Time.units(100));
@@ -483,7 +483,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testIterMultiField1() {
         // A multi-field index.
         
@@ -510,7 +510,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testIterMultiField2() {
         // A multi-field index.
         
@@ -537,7 +537,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testNegLongs1() {
         // Tests index including negative long integers.
         
@@ -563,7 +563,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testNegLongs2() {
         // Tests index including negative long integers.
         
@@ -604,7 +604,7 @@ public class PubTesterIndex {
         }
     }
     
-    @T
+    @Nano
     public static void testDoubles1() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -628,7 +628,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testDoubles2() {
         // With negative values too.
         
@@ -659,7 +659,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testDoubles3() {
         // With INFINITY values.
         
@@ -693,7 +693,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testFloat1() {
         // double and float fields mixed in same "double" index.
         
@@ -736,7 +736,7 @@ public class PubTesterIndex {
         Assert.assertEquals(2e6, it.next().getDouble("amount"));
     }
     
-    @T
+    @Nano
     public static void testInt1() {
         // long and int fields mixed in same "long" index.
         
@@ -789,7 +789,7 @@ public class PubTesterIndex {
         }
     }
     
-    @T
+    @Nano
     public static void testRestart1() {
         MemoryStream stream = new MemoryStream();
         DatabaseBuilder builder = Factory.database();
@@ -856,7 +856,7 @@ public class PubTesterIndex {
         db2.stop();
     }
     
-    @T
+    @Nano
     public static void testRestart2() {
         MemoryStream stream = new MemoryStream();
         DatabaseBuilder builder = Factory.database();
@@ -897,7 +897,7 @@ public class PubTesterIndex {
         db2.stop();
     }
     
-    @T
+    @Nano
     public static void testKvDelete() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -949,7 +949,7 @@ public class PubTesterIndex {
         return count;
     }
     
-    @T
+    @Nano
     public static void testWithDeletesAndUpdates() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -980,7 +980,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testExistingData1() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -1004,7 +1004,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testExistingData2() {
         // Like "1", but with two indexes.
         
@@ -1041,7 +1041,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testExistingData3() {
         // Like "2", but new KVs too.
         
@@ -1081,7 +1081,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testCreateWhileWriteOps1() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -1127,7 +1127,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testCreateDuringRestart() throws InterruptedException {
         // 
         // Advanced index test. Checks that index creation survives database restart.
@@ -1221,7 +1221,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testCreateWhileWriteOps2() {
         // Arrange
         Database db = Factory.database().memory().start();
@@ -1284,7 +1284,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testManyObjects() {
         // Tests index with more than 100 objects. DB.getMany() must be called more than once.
         
@@ -1319,7 +1319,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testDeleteIndex1() {
         // Arrange
         Database database = Factory.database().memory().start();
@@ -1370,7 +1370,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testDeleteIndex2() throws InterruptedException {
         // Arrange
         Database database = Factory.database().memory().start();
@@ -1422,7 +1422,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testCreateInThread1() throws InterruptedException {
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
@@ -1453,7 +1453,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testCreateInThread2() throws InterruptedException {
         // This test uses an EventToWaitFor to test concurrency.
         
@@ -1491,7 +1491,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testKeyReplaceWithIndex() {
         TestClock clock = new TestClock();
         Database database = Factory.database().memory().clock(clock).start();
@@ -1514,7 +1514,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testStartAt1() {
         // forward, include
         Database database = Factory.database().memory().start();
@@ -1538,7 +1538,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testStartAt2() {
         // forward, exclude
         Database database = Factory.database().memory().start();
@@ -1560,7 +1560,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testStartAt3() {
         // backward, include
         Database database = Factory.database().memory().start();
@@ -1584,7 +1584,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testStartAt4() {
         // backward, exclude
         Database database = Factory.database().memory().start();
@@ -1606,7 +1606,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testStartAtLong1() {
         // forward, include, long index
         Database database = Factory.database().memory().start();
@@ -1629,7 +1629,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void tStartAtLong2a() {
         // forward, include, long index
         Database database = Factory.database().memory().start();
@@ -1651,7 +1651,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void tStartAtLong2b() {
         // forward, include, long index
         Database database = Factory.database().memory().start();
@@ -1673,7 +1673,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void tStartAtLong2c() {        
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
@@ -1694,7 +1694,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testStartAtLong3() {
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
@@ -1725,7 +1725,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testEqLong1() {
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
@@ -1752,7 +1752,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testEqLong2() {
         // Same as previous, but uses backward().
         
@@ -1781,7 +1781,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testLongs256() {
         // Tests an index with all byte values 0..255 in a long.
         
@@ -1808,7 +1808,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testEqDouble1() {
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
@@ -1835,7 +1835,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testEqDouble2() {
         // Same as previous, but uses backward().
         
@@ -1864,7 +1864,7 @@ public class PubTesterIndex {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void collationUnicode1() {
         String[] strings = new String[] {"a", "alfons", "AB", "AA", "", "B", "\n", "b", "0", "AAA", "~"};
         String[] expected = new String[]{"", "\n", "0", "AA", "AAA", "AB", "B", "a", "alfons", "b", "~"};
@@ -1890,7 +1890,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void collationUnicode2() {
         // Tests sort order using strings that contain NUL characters (U+0000).
         // Sort is *stable* because of key naming: 0.obj, 1.obj, .., 5.obj.
@@ -1920,7 +1920,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void collationSv() {
         if (!IcuInfo.hasIcu()) {
             return;
@@ -1950,7 +1950,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void collationSvL3() {
         if (!IcuInfo.hasIcu()) {
             return;
@@ -1991,7 +1991,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void collationPl() {
         if (!IcuInfo.hasIcu()) {
             return;

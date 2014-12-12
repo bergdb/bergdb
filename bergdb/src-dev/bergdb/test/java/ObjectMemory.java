@@ -1,11 +1,11 @@
 package bergdb.test.java;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 public class ObjectMemory {
 
-    @T("perf")
+    @Nano("perf")
     public static void run(TestEnvironment c) throws Exception {
         Object[] objects;
         long m0, m1, m2;

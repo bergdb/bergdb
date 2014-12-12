@@ -3,7 +3,7 @@ package bergdb.common;
 import java.util.Random;
 
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * <p>This class implements Salsa20 encryption with a 256 bit key.
@@ -216,7 +216,7 @@ public class Salsa {
     
     // ======== Tests ========
     
-    @T
+    @Nano
     public static void testBasic() {
         Random r = new Random(0);
         byte[] nonce = new byte[8];
@@ -238,7 +238,7 @@ public class Salsa {
         Assert.assertArrayEquals("arrays compared", dataIn, dataBack);
     }
     
-    @T
+    @Nano
     public static void testStream7() {
         // Encrypting/decrypting a byte array that is 7 bytes long.
         
@@ -262,7 +262,7 @@ public class Salsa {
         Assert.assertArrayEquals("arrays compared", dataIn, dataBack);
     }
     
-    @T
+    @Nano
     public static void testRandomAccess() {
         Salsa c;
         byte[] nonce = new byte[8];
@@ -292,7 +292,7 @@ public class Salsa {
         }
     }
     
-    @T
+    @Nano
     public static void testInPlace() {
         Salsa c;
         byte[] nonce = new byte[8];
@@ -318,7 +318,7 @@ public class Salsa {
         Assert.assertArrayEquals("in place copy", clearCopy, text);
     }
     
-    @T
+    @Nano
     public static void testNot64() {
         //
         // Encrypts some data with a size not a multiple of 64, restarts encryption to continue.
@@ -359,7 +359,7 @@ public class Salsa {
         Assert.assertArrayEquals(data, dataBack);
     }
     
-    @T
+    @Nano
     public static void testNot64b() {
         //
         // Encrypts some data with a size not a multiple of 64, restarts encryption to continue.
@@ -410,7 +410,7 @@ public class Salsa {
         Assert.assertArrayEquals(data, dataBack);
     }
     
-    @T
+    @Nano
     public static void testFirst3() {
         byte[] data = new byte[100];
         for (int i = 0; i < data.length; i++) {

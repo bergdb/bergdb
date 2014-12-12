@@ -1,7 +1,7 @@
 package bergdb.dag;
 
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * <p>This class provides some functionality and most importantly documentation for node 
@@ -65,7 +65,7 @@ public class AccessData {
     
     // ======== Tests ========
     
-    @T
+    @Nano
     public static void test1() {
         long accessData = -Constants.MIN_CACHE_MEMORY_VALUE;
         Assert.assertTrue(isValid(accessData));

@@ -1,6 +1,6 @@
 package bergdb.test;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 /**
@@ -70,7 +70,7 @@ public class GetThreaded extends Get {
         return getTime;
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void get4t(TestEnvironment c) throws InterruptedException {
         GetThreaded t = new GetThreaded();
         t.createDB(100*1000);
@@ -113,7 +113,7 @@ public class GetThreaded extends Get {
         this.done = false;
     }
 
-    @T("perf")
+    @Nano("perf")
     public static void run(TestEnvironment c) throws InterruptedException {
         new GetThreaded().go(c);
     }

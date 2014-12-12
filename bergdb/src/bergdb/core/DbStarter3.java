@@ -16,7 +16,7 @@ import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
 
@@ -567,7 +567,7 @@ public class DbStarter3 {
         return m;
     }
     
-    @T
+    @Nano
     private static void testNextMapNoIncrease() {
         NextMap m = m1();
         Assert.assertEquals(123, m.forward(123));
@@ -575,7 +575,7 @@ public class DbStarter3 {
         Assert.assertEquals(30, m.forward(30));
     }
     
-    @T
+    @Nano
     private static void testNextMapForForwardsStepsTo30() {
         NextMap m = m1();
         Assert.assertEquals(30, m.forward(10));
@@ -583,14 +583,14 @@ public class DbStarter3 {
         Assert.assertEquals(30, m.forward(30));
     }
     
-    @T
+    @Nano
     private static void testNextMap3() {
         NextMap m = m1();
         Assert.assertEquals(80, m.forward(50));
         Assert.assertEquals(80, m.forward(80));
     }
     
-    @T
+    @Nano
     private static void testPrevMap1() {
         PrevMap m = new PrevMap();
         m.put(40, 30);
@@ -601,7 +601,7 @@ public class DbStarter3 {
         Assert.assertEquals(10, m.backtrack(15, 40));
     }
     
-    @T
+    @Nano
     private static void testPrevMap2() {
         PrevMap m = new PrevMap();
         m.put(40, 30);
@@ -612,7 +612,7 @@ public class DbStarter3 {
         Assert.assertEquals(40, m.backtrack(40, 40));
     }
     
-    @T
+    @Nano
     private static void testPrevMap3() {
         IllegalArgumentException ex = null;
         PrevMap m = new PrevMap();
@@ -626,7 +626,7 @@ public class DbStarter3 {
         Assert.assertTrue(ex != null);
     }
     
-    @T
+    @Nano
     private static void testEmptyPrevMap() {
         PrevMap m = new PrevMap();
         Assert.assertEquals(Spos.NULL, m.backtrack(10, 40));

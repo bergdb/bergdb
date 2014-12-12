@@ -1,6 +1,6 @@
 package bergdb.test.java;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 /**
@@ -14,7 +14,7 @@ import bergdb.nanotest.TestEnvironment;
 public class MemoryOfLongVsCustomClass {
     static String dummy;
     
-    @T("perf")
+    @Nano("perf")
     public static void run(TestEnvironment c) throws Exception {
         int n = 100 * 1000;
         Object[] longs = new Object[n];

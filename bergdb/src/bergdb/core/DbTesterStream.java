@@ -9,7 +9,7 @@ import bergdb.common.Bytes;
 import bergdb.common.Util;
 import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.OneFileStream;
@@ -300,7 +300,7 @@ public class DbTesterStream {
         db2.stop();
     }
     
-    @T("f")   // Too slow to be "unit".
+    @Nano("f")   // Too slow to be "unit".
     public static void testMoreData2() {
         int n = 2000;
         MemoryStream stream = new MemoryStream();
@@ -466,7 +466,7 @@ public class DbTesterStream {
         Assert.assertEquals("k2-value-b", Util.toString(value));
     }
 
-    @T
+    @Nano
     public static void testTwoKvsInOneTransaction() {
         AppendOnlyStream s = new MemoryStream();
         TestClock clock = new TestClock();
@@ -512,7 +512,7 @@ public class DbTesterStream {
         }
     }
     
-    @T("f")     // Too slow to be "unit".
+    @Nano("f")     // Too slow to be "unit".
     public static void testLargeTransaction() {
         AppendOnlyStream s = new MemoryStream();
         int n = 2;
@@ -530,7 +530,7 @@ public class DbTesterStream {
         Assert.assertEquals(valueSize, value.length);
     }
     
-    @T("f")    // Too slow to be "unit".
+    @Nano("f")    // Too slow to be "unit".
     public static void testLargeTransactions() {
         MemoryStream s = new MemoryStream();
         int valueSize = 1000*1000;

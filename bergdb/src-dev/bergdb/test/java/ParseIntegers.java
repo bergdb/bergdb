@@ -1,6 +1,6 @@
 package bergdb.test.java;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 /**
@@ -9,7 +9,7 @@ import bergdb.nanotest.TestEnvironment;
  * @author Frans Lundberg
  */
 public class ParseIntegers {
-    @T("perf")
+    @Nano("perf")
     public static void run(TestEnvironment c) throws Exception {
         int N = 100;
         double t0, t1, time;

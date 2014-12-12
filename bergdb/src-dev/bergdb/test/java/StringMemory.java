@@ -3,7 +3,7 @@ package bergdb.test.java;
 import java.util.HashMap;
 import java.util.Random;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 /**
@@ -14,7 +14,7 @@ import bergdb.nanotest.TestEnvironment;
 public class StringMemory {
     
     @SuppressWarnings("unchecked")
-    @T("perf")
+    @Nano("perf")
     public static void run(TestEnvironment c) throws Exception {
         int N = 1000;
         long m0, m1;

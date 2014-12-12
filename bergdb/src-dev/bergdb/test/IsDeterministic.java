@@ -9,7 +9,7 @@ import bergdb.core.KeyFactory;
 import bergdb.core.NodeStream;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
 
@@ -24,7 +24,7 @@ public class IsDeterministic {
     /** 
      * Tests DB as empty as it gets.
      */
-    @T("f")
+    @Nano("f")
     public static void testEmptyDB(TestEnvironment c) throws IOException {
         MemoryStream first = null;
 
@@ -47,7 +47,7 @@ public class IsDeterministic {
     /** 
      * Tests DB with one KV.
      */
-    @T("f") 
+    @Nano("f") 
     public static void tOneKv(TestEnvironment c) throws IOException {
         MemoryStream first = null;
         NodeStream firstNodeStream = null;
@@ -87,7 +87,7 @@ public class IsDeterministic {
     /** 
      * Tests DB with multiple KVs.
      */
-    @T("f")
+    @Nano("f")
     public static void tMultipleTransactions(TestEnvironment c) throws IOException {
         MemoryStream first = null;
         NodeStream firstNodeStream = null;

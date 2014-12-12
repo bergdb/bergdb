@@ -4,7 +4,7 @@ import bergdb.core.CoreTestClock;
 import bergdb.core.Db;
 import bergdb.core.NoEvictBoss;
 import bergdb.core.Trans;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.stream.MemoryStream;
 
 /**
@@ -19,7 +19,7 @@ import bergdb.stream.MemoryStream;
  */
 public class Bug141109 {
 
-    @T
+    @Nano
     private static void t1() {
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();

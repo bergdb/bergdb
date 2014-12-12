@@ -6,7 +6,7 @@ import java.nio.ByteOrder;
 import java.util.Random;
 
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 
@@ -109,7 +109,7 @@ public class Bytes {
         return Float.intBitsToFloat(myInt);
     }
     
-    @T
+    @Nano
     public static void testFloatLE() {
         float[] values = new float[] {1.0f, 0.0f, Float.MIN_VALUE, Float.MAX_VALUE, Float.NaN, 
                 123.45f, -0.0012f};
@@ -133,7 +133,7 @@ public class Bytes {
         return Double.longBitsToDouble(myLong);
     }
     
-    @T
+    @Nano
     public static void testDoubleLE() {
         double[] values = new double[] {1.0, 0.0, Double.MIN_VALUE, Double.MAX_VALUE, Double.NaN, 
                 123.45, -0.0012};
@@ -166,7 +166,7 @@ public class Bytes {
         arr[i++] = (byte) (value >>> 8);
     }
     
-    @T
+    @Nano
     public static void testShortLE() {
         short[] shorts = new short[] {0, Short.MIN_VALUE, Short.MAX_VALUE, 12345, -1, -32000, 32000};
         byte[] array = new byte[10 + shorts.length];
@@ -310,7 +310,7 @@ public class Bytes {
     
     // ======== Testing ========
     
-    @T
+    @Nano
     public static void testLongsToBytesLE() {
         long[] longs = new long[] {123, 111222333444L, -1000};
         byte[] bytes1 = new byte[longs.length * 8];
@@ -323,7 +323,7 @@ public class Bytes {
         Assert.assertArrayEquals(bytes1, bytes2);
     }
     
-    @T
+    @Nano
     public static void testLongsToBytesLE2() {
         // Using array offsets.
         
@@ -336,7 +336,7 @@ public class Bytes {
         Assert.assertEquals(-1000, Bytes.bytesToLongLE(bytes, 19+8));
     }
     
-    @T
+    @Nano
     public static void testLongToBytesBE() {
         long long1;
         byte[] bytes1 = new byte[12];
@@ -354,7 +354,7 @@ public class Bytes {
         }
     }
 
-    @T
+    @Nano
     public static void testLongToBytesLE() {
         long long1;
         byte[] bytes1 = new byte[12];
@@ -372,7 +372,7 @@ public class Bytes {
         }
     }
 
-    @T
+    @Nano
     public static void testLongBE() {
         long long3 = Long.MAX_VALUE - 1000;
         long long4 = 0;
@@ -387,7 +387,7 @@ public class Bytes {
         }
     }
     
-    @T
+    @Nano
     public static void testLongBE2() {
         long long1, long2;
         byte[] bytes = new byte[12];
@@ -402,7 +402,7 @@ public class Bytes {
         }
     }
 
-    @T
+    @Nano
     public static void testLongLE() {
         long long1, long2;
         byte[] bytes = new byte[12];
@@ -417,7 +417,7 @@ public class Bytes {
         }
     }
     
-    @T
+    @Nano
     public static void testLongLE2() {
         long long1, long2;
         byte[] bytes = new byte[110];
@@ -435,7 +435,7 @@ public class Bytes {
         }
     }
     
-    @T
+    @Nano
     public static void testIntLE() {
         Random r = new Random(0);
         byte[] buffer = new byte[110];
@@ -448,7 +448,7 @@ public class Bytes {
         }
     }
     
-    @T
+    @Nano
     public static void testIntBE() {
         Random r = new Random(0);
         byte[] buffer = new byte[110];
@@ -461,7 +461,7 @@ public class Bytes {
         }
     }
 
-    @T
+    @Nano
     public static void testUShortLE() {
         byte[] bytes = new byte[5];
         int value = (int) (Math.random() * (1 << 16));
@@ -472,14 +472,14 @@ public class Bytes {
         }
     }
 
-    @T
+    @Nano
     public static void testUShortLE2() {
         for (int i = 0; i < 20; i++) {
             testUShortLE();
         }
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void perfBytesToLongBE(TestEnvironment c) {
         byte[] arr = new byte[]{0, 0, 1, 2, 3, 4, 5, 6, 3, 3, 3, 3, 3, 3, 3, 3};
         long t0, t1;
@@ -500,7 +500,7 @@ public class Bytes {
         c.report("n", n);
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void perfBytesToLongLE(TestEnvironment c) {
         byte[] arr = new byte[]{0, 0, 1, 2, 3, 4, 5, 6, 3, 3, 3, 3, 3, 3, 3};
         long t0, t1;
@@ -521,7 +521,7 @@ public class Bytes {
         c.report("n", n);
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void perfLongToBytesBE(TestEnvironment c) {
         byte[] arr = new byte[16];
         long t0, t1;
@@ -542,7 +542,7 @@ public class Bytes {
         c.report("n", n);
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void perfLongToBytesLE(TestEnvironment c) {
         byte[] arr = new byte[16];
         long t0, t1;

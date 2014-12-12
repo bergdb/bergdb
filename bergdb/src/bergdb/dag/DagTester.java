@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import bergdb.common.Util;
 import bergdb.dag.Dag.NodeReader;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 public class DagTester {
     
@@ -22,7 +22,7 @@ public class DagTester {
         return Dag.createEmpty(time, MAX_NODE_SIZE, DUMMY_NODE_READER);
     }
     
-    @T
+    @Nano
     public static void test0() {
         Dag g = emptyDag(0);
         GetData gd = g.newGetData();
@@ -32,7 +32,7 @@ public class DagTester {
         Assert.assertTrue(result == null);
     }
     
-    @T
+    @Nano
     public static void test1() {
         // With choices
         Dag g = emptyDag(0);
@@ -55,7 +55,7 @@ public class DagTester {
         Assert.assertEquals(0, choices.get(0).intValue());
     }
     
-    @T
+    @Nano
     public static void testPut0() {
         Dag g = emptyDag(0);
         PutData pd = g.newPutData();
@@ -78,7 +78,7 @@ public class DagTester {
         Assert.assertTrue(value == null);
     }
     
-    @T
+    @Nano
     public static void testPut1() {
         Dag g = emptyDag(0);
         PutData pd = g.newPutData();
@@ -100,7 +100,7 @@ public class DagTester {
         Assert.assertTrue(value == null);
     }
     
-    @T
+    @Nano
     public static void testSplit0() {
         // Splits space root node. New super root node (top node) needed.
         
@@ -131,7 +131,7 @@ public class DagTester {
         }
     }
     
-    @T
+    @Nano
     public static void testTimeSplit1a() {
         // Tests a time-split-1.
 
@@ -155,7 +155,7 @@ public class DagTester {
         Assert.assertEquals(4, kwi.klongTime);
     }
     
-    @T
+    @Nano
     public static void testVisit0() {
         Dag g = emptyDag(10);
         final int[] counters = new int[3];
@@ -171,7 +171,7 @@ public class DagTester {
         Assert.assertEquals(0, counters[2]);
     }
     
-    @T
+    @Nano
     public static void testVisit1() {
         Dag g = emptyDag(10);
         PutData pd = g.newPutData();

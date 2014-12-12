@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * Simple string-string map that can be easily serialized to a string and deserialized 
@@ -102,7 +102,7 @@ public class StringMap {
         return b.toString();
     }
     
-    @T
+    @Nano
     public static void test1() {
         StringMap m = new StringMap("k1=v1\nk2=v2\n");
         
@@ -110,7 +110,7 @@ public class StringMap {
         Assert.assertEquals("v2", m.get("k2"));
     }
     
-    @T
+    @Nano
     public static void test2() {
         StringMap m = new StringMap();
         m.put("name", "Nalia");
@@ -123,7 +123,7 @@ public class StringMap {
         Assert.assertEquals("1234", m2.get("id"));
     }
     
-    @T
+    @Nano
     public static void testLong() {
         StringMap m = new StringMap();
         m.put("name", "Nalia");

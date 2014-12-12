@@ -5,7 +5,7 @@ import java.util.HashMap;
 
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pub.BadFormatException;
 import bergdb.pub.ObjectCreationException;
 
@@ -154,7 +154,7 @@ public class KvToObjectImp implements KvToObject, ClassToObject {
         public long count = 123L;
     }
     
-    @T
+    @Nano
     public static void test0() {
         KvToObjectImp k = new KvToObjectImp();
         
@@ -169,7 +169,7 @@ public class KvToObjectImp implements KvToObject, ClassToObject {
         Assert.assertEquals("hello", a1.greeting);
     }
     
-    @T
+    @Nano
     public static void testByteArray() {
         KvToObjectImp k = new KvToObjectImp();
         
@@ -183,7 +183,7 @@ public class KvToObjectImp implements KvToObject, ClassToObject {
         Assert.assertEquals(value, value2);
     }
     
-    @T
+    @Nano
     public static void testString() throws UnsupportedEncodingException {
         KvToObjectImp k = new KvToObjectImp();
         String s0 = "hello";
@@ -195,14 +195,14 @@ public class KvToObjectImp implements KvToObject, ClassToObject {
         Assert.assertEquals(s1, s0);
     }
     
-    @T
+    @Nano
     public static void testNull() throws UnsupportedEncodingException {
         KvToObjectImp k = new KvToObjectImp();
         String s1 = k.createObject(String.class, "key", null);
         Assert.assertNull(s1);
     }
     
-    @T
+    @Nano
     public static void testCouldNotCreateObject() {
         KvToObjectImp k = new KvToObjectImp();
         byte[] dummyBytes = new byte[100];

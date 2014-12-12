@@ -12,7 +12,7 @@ import bergdb.core.KeyFactory;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
 
@@ -29,7 +29,7 @@ import bergdb.stream.MemoryStream;
  */
 public class Crazy {
     
-    @T("f")
+    @Nano("f")
     public static void run(TestEnvironment c) {
         PrintStream out = c.out();
         MemoryStream s = new MemoryStream();

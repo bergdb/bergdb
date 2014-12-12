@@ -2,7 +2,7 @@ package bergdb.core;
 
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.storage.RecoverableStream;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
@@ -15,7 +15,7 @@ import bergdb.stream.MemoryStream;
  */
 public class DbTesterRestart {
 
-    @T
+    @Nano
     public static void test0() {
         // Simple restart, Db with one single value.
         
@@ -43,7 +43,7 @@ public class DbTesterRestart {
         Assert.assertArrayEquals(Util.toBytes("Sanna"), value);
     }
     
-    @T
+    @Nano
     public static void longerThanStartup() {
         // Stream is longer than startupDistance, single key, value updated many times.
         
@@ -84,7 +84,7 @@ public class DbTesterRestart {
     /**
      * Db should remember startupDistance after restart of initial state database.
      */
-    @T
+    @Nano
     private static void dbShouldRememberStartupDistance1() throws InterruptedException {
         final int startupDistance = 400 * 1000;
         MemoryStream stream = new MemoryStream();
@@ -110,7 +110,7 @@ public class DbTesterRestart {
     /**
      * Db should remember startupDistance after one user transaction.
      */
-    @T
+    @Nano
     private static void dbShouldRememberStartupDistance2() throws InterruptedException {
         int startupDistance = 400 * 1000;
         MemoryStream stream = new MemoryStream();
@@ -133,7 +133,7 @@ public class DbTesterRestart {
     }
     
     /** Simplest possible delete-and-restart test. */
-    @T private static void testDelete1() {
+    @Nano private static void testDelete1() {
         AppendOnlyStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(s).clock(clock).start();
@@ -162,7 +162,7 @@ public class DbTesterRestart {
     }
     
     /** Multiple deletes in a single transaction. */
-    @T private static void testDelete2() {
+    @Nano private static void testDelete2() {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(s).clock(clock).start();

@@ -17,7 +17,7 @@ import bergdb.core.FixedDurationEvictBoss;
 import bergdb.core.Jmx;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.BasicTestEnvironment;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Action;
 import bergdb.pub.Clock;
@@ -259,7 +259,7 @@ public class Concurrency {
         this.readCount.incrementAndGet();
     }
     
-    @T("f")
+    @Nano("f")
     public static void t1(TestEnvironment env) throws Throwable {
         new Concurrency().go(env, 10);
     }

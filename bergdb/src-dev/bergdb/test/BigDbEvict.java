@@ -6,7 +6,7 @@ import bergdb.dag.EvictData;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
 
@@ -18,18 +18,18 @@ import bergdb.stream.MemoryStream;
  */
 public class BigDbEvict {
     
-    @T("f perf")
+    @Nano("f perf")
     public static void t100KV(TestEnvironment c) throws InterruptedException {
         runTest(100, c);
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void t1000KV(TestEnvironment c) throws InterruptedException {
         runTest(1000, c);
     }
     
     // TODO A. Fix test
-    @T("f perf")
+    @Nano("f perf")
     public static void t10000KV(TestEnvironment c) throws InterruptedException {
         runTest(10*1000, c);
     }

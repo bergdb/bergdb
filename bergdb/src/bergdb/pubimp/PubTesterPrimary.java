@@ -4,7 +4,7 @@ import java.util.Iterator;
 
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
 import bergdb.pub.Factory;
@@ -29,7 +29,7 @@ public class PubTesterPrimary {
         }
     }
     
-    @T
+    @Nano
     public static void test0() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -48,7 +48,7 @@ public class PubTesterPrimary {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void test1() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -76,7 +76,7 @@ public class PubTesterPrimary {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testStart() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -97,7 +97,7 @@ public class PubTesterPrimary {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testExclusive1() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -117,7 +117,7 @@ public class PubTesterPrimary {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testExclude2() {
         // An empty iterator.
         
@@ -134,7 +134,7 @@ public class PubTesterPrimary {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testBackward1() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -153,7 +153,7 @@ public class PubTesterPrimary {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testBackward2() {
         // With startAt("3").
         
@@ -176,7 +176,7 @@ public class PubTesterPrimary {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testBackward3() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -196,7 +196,7 @@ public class PubTesterPrimary {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testKv() {        
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -222,13 +222,13 @@ public class PubTesterPrimary {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testManyObjects1() {
         // Lookup of large number of objects. DB.getMany() must be called several times.   
         manyObjects(233);
     }
     
-    @T
+    @Nano
     public static void testManyObjects2() {
         // Lookup of large number of objects. Exactly 200 objects (same as precisely 2 DB.getMany
         // calls).
@@ -257,7 +257,7 @@ public class PubTesterPrimary {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testHistoric() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -303,7 +303,7 @@ public class PubTesterPrimary {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testNonObjects1() {
         // Non .obj KVs in the middle of Person.class objects. Iterate with Person.class.
         
@@ -327,7 +327,7 @@ public class PubTesterPrimary {
         
     }
     
-    @T
+    @Nano
     public static void testNonObjects2() {
         // Testing a mix of objects and strings. Iterate with Object.class.
         // Results in Objects of type: DbObject (.obj), String (.txt) and byte[] (the rest).
@@ -358,7 +358,7 @@ public class PubTesterPrimary {
         Assert.assertEquals("p30", ((DbObject) obj).getString("name"));
     }
     
-    @T
+    @Nano
     public static void testTypeMix() {
         // Retrieving stored objects with DbObject iterator.
         
@@ -379,7 +379,7 @@ public class PubTesterPrimary {
         Assert.assertEquals("30", obj.getString("name"));
     }
     
-    @T
+    @Nano
     public static void testByteArrayIterator() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -445,14 +445,14 @@ public class PubTesterPrimary {
         }
     }
     
-    @T
+    @Nano
     public static void sortOrder0() {
         String[] keys = {"/c", "/a", "/b"};
         String[] expected = {"/a", "/b", "/c"};
         sortOrderCheck(keys, expected, true);
     }
     
-    @T
+    @Nano
     public static void sortOrder1() {
         // Files always sorted before directories. 
         // File "/c" sorts before subdir files "/b/1" and "/b/2".
@@ -461,7 +461,7 @@ public class PubTesterPrimary {
         sortOrderCheck(keys, expected, true);
     }
     
-    @T
+    @Nano
     public static void testSubdir0() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -484,7 +484,7 @@ public class PubTesterPrimary {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testRootDir0() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -503,7 +503,7 @@ public class PubTesterPrimary {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testRootDir1() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
@@ -523,7 +523,7 @@ public class PubTesterPrimary {
     }
     
     @SuppressWarnings("unused")
-    @T
+    @Nano
     public static void testAll() {
         // Iterates through all entries in /, expect not to get any internal entries.
         

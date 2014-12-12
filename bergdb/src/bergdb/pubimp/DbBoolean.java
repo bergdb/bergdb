@@ -1,7 +1,7 @@
 package bergdb.pubimp;
 
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pub.BadFormatException;
 
 /**
@@ -55,13 +55,13 @@ public class DbBoolean extends DbValue {
     
     // ---- Tests ----
     
-    @T
+    @Nano
     public static void test0() {
         Assert.assertEquals(true, new DbBoolean(true).toBoolean());
         Assert.assertEquals(false, new DbBoolean(false).toBoolean());
     }
     
-    @T
+    @Nano
     public static void test1() {
         byte[] bytes = new byte[16];
         DbBoolean b0 = new DbBoolean(false);
@@ -73,7 +73,7 @@ public class DbBoolean extends DbValue {
         Assert.assertEquals(false, b1.toBoolean());
     }
     
-    @T
+    @Nano
     public static void test2() {
         byte[] bytes = new byte[16];
         DbBoolean b0 = new DbBoolean(true);

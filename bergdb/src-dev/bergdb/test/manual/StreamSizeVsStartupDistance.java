@@ -7,7 +7,7 @@ import bergdb.core.Db;
 import bergdb.core.KeyFactory;
 import bergdb.core.NoEvictBoss;
 import bergdb.core.Trans;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
@@ -19,7 +19,7 @@ import bergdb.stream.MemoryStream;
  */
 public class StreamSizeVsStartupDistance {
 
-    @T("perf")
+    @Nano("perf")
     public static void t1(TestEnvironment c) {
         PrintStream out = c.out();
         //int startupDistance = 1000*1000000;

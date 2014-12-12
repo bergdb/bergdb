@@ -5,7 +5,7 @@ import java.io.IOException;
 
 import bergdb.common.Bug;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
 
@@ -466,7 +466,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         }
     }
 
-    @T
+    @Nano
     public static void test1() throws IOException, InterruptedException {
         // Note, test relies on timing. Not deterministic.
         MemoryStream m = new MemoryStream();
@@ -488,7 +488,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         }
     }
 
-    @T
+    @Nano
     public static void testClose() throws IOException, InterruptedException {
         MemoryStream m = new MemoryStream();
         BufferedStream b = new BufferedStream(m, 1000, 20);
@@ -505,7 +505,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         Assert.assertEquals(2, m.getLength());
     }
 
-    @T
+    @Nano
     public static void testWriteAfterClose1() throws IOException, InterruptedException {
         MemoryStream m = new MemoryStream();
         @SuppressWarnings("resource")
@@ -526,7 +526,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         Assert.assertTrue(ex != null);
     }
 
-    @T
+    @Nano
     public static void testWriteAfterClose2() throws IOException, InterruptedException {
         MemoryStream m = new MemoryStream();
         BufferedStream b = new BufferedStream(m, 1000, 20);
@@ -546,7 +546,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         Assert.assertTrue(ex != null);
     }
 
-    @T
+    @Nano
     public static void testReadAfterClose1() throws IOException, InterruptedException {
         MemoryStream m = new MemoryStream();
         @SuppressWarnings("resource")
@@ -568,7 +568,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         Assert.assertTrue(ex != null);
     }
 
-    @T
+    @Nano
     public static void testReadAfterClose2() throws IOException, InterruptedException {
         MemoryStream m = new MemoryStream();
         BufferedStream b = new BufferedStream(m, 1000, 20);
@@ -589,7 +589,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         Assert.assertTrue(ex != null);
     }
 
-    @T
+    @Nano
     public static void testWriteMuch() throws IOException {
         // Writes more then buffer size.
         MemoryStream m = new MemoryStream();
@@ -601,7 +601,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         Assert.assertEquals(3000, m.getLength());
     }
 
-    @T
+    @Nano
     public static void testWriteLittle() throws IOException {
         // Writes one byte at a time.
         MemoryStream m = new MemoryStream();
@@ -617,7 +617,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         Assert.assertEquals(222, m.getLength());
     }
 
-    @T
+    @Nano
     public static void testWriteZero() throws IOException {
         MemoryStream m = new MemoryStream();
         BufferedStream b = new BufferedStream(m, 100, 20);

@@ -109,7 +109,7 @@ public class CommandLine {
     
     // ======== Tests ========
     
-    @T
+    @Nano
     private static void testNoOptions() {
         CommandLine line = CommandLine.parse(new String[0]);
         
@@ -117,7 +117,7 @@ public class CommandLine {
         Assert.assertEquals(0, line.optionCount());
     }
     
-    @T
+    @Nano
     private static void testOneOption() {
         CommandLine line = CommandLine.parse(new String[]{"-groups", "unit"});
         
@@ -127,7 +127,7 @@ public class CommandLine {
         Assert.assertEquals("unit", line.get("groups")[0]);
     }
     
-    @T
+    @Nano
     private static void testMultipleValues() {
         CommandLine line = CommandLine.parse(new String[]{"-groups", "unit", "f"});
         
@@ -138,7 +138,7 @@ public class CommandLine {
         Assert.assertEquals("get1", "f", line.get("groups")[1]);
     }
     
-    @T
+    @Nano
     public static void valuesWithNoOptionShouldBeIgnored() {
         CommandLine line = CommandLine.parse(new String[]{"value1", "value2"});
         Assert.assertEquals(0, line.optionCount());

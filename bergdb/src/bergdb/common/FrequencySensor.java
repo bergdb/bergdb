@@ -1,7 +1,7 @@
 package bergdb.common;
 
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * Counts how often something happens in occurrences per second. An exponentially decreasing mean is
@@ -81,7 +81,7 @@ public class FrequencySensor {
         return "f=" + getFrequency();
     }
     
-    @T
+    @Nano
     private static void test1() {
         long e9 = 1000L*1000*1000;
         FrequencySensor sensor = new FrequencySensor(10.0, 0);
@@ -94,7 +94,7 @@ public class FrequencySensor {
         Assert.assertTrue("diff:" + diff, diff < 0.01);
    }
     
-   @T
+   @Nano
    private static void test2() {
         long stepTime = 1000L*1000*1000 / 3;
         FrequencySensor sensor = new FrequencySensor(5.0, 0);

@@ -3,7 +3,7 @@ package bergdb.test;
 import bergdb.common.Util;
 import bergdb.core.*;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
 
@@ -15,27 +15,27 @@ import bergdb.stream.MemoryStream;
  */
 public class BigDb {
     
-    @T("f perf")
+    @Nano("f perf")
     public static void t10kv(TestEnvironment c) throws InterruptedException {
         runTest(10, c);
     }
     
-    @T("f perf")
+    @Nano("f perf")
     public static void t100kv(TestEnvironment c) throws InterruptedException {
         runTest(100, c);
     }
     
-    @T("f perf")
+    @Nano("f perf")
     public static void t1000kv(TestEnvironment c) throws InterruptedException {
         runTest(1000, c);
     }
     
-    @T("f perf")
+    @Nano("f perf")
     public static void t10000kv(TestEnvironment c) throws InterruptedException {
         runTest(10*1000, c);
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void t100000kv(TestEnvironment c) throws InterruptedException {
         runTest(100*1000, c);
     }

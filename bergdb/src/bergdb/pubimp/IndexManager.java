@@ -15,7 +15,7 @@ import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pub.BadFormatException;
 import bergdb.pub.IndexAlreadyExistsException;
 import bergdb.pub.Job;
@@ -1110,7 +1110,7 @@ public class IndexManager {
     public static class Tester {
         private Tester() {}
         
-        @T
+        @Nano
         public static void testIndexConstructor1() {
             IndexManager m = new IndexManager(new BergCollatorFactory());
             IndexManager.Index index = new Index("index1", new String[] {"d/testGetKey/"}, 
@@ -1119,7 +1119,7 @@ public class IndexManager {
             Assert.assertEquals(1, index.combinationCount);
         }
         
-        @T
+        @Nano
         public static void testIndexConstructor2() {
             IndexManager m = new IndexManager(new BergCollatorFactory());
             IndexManager.Index index = new Index("index1", new String[] {"d/testGetKey/"}, 
@@ -1141,7 +1141,7 @@ public class IndexManager {
             Assert.assertEquals("rTime", index.fieldCombinations[3][1]);
         }
         
-        @T
+        @Nano
         public static void testCheckType1() {
             String[] types =     {"long", "double", "string", "a", "", "longs", "doublex", "string/"};
             boolean[] expected = {true,   true,     true,     false, false, false, false,  false};

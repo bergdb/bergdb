@@ -12,7 +12,7 @@ import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pub.Clock;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
@@ -722,7 +722,7 @@ public class Reclaim implements Db.TransactionListener {
 
         private Tester() {}
         
-        @T
+        @Nano
         public static void test1() {
             CoreTestClock clock = new CoreTestClock();
             clock.setTime(10);
@@ -747,7 +747,7 @@ public class Reclaim implements Db.TransactionListener {
             Assert.assertTrue(g.result.size() == size || g.result.size() == size + 1);
         }
         
-        @T
+        @Nano
         public static void testPretruncate() {
             //
             // Same key set again and again.

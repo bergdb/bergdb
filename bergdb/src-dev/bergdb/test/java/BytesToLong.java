@@ -5,13 +5,13 @@ import java.nio.ByteOrder;
 import java.nio.LongBuffer;
 
 import bergdb.common.Bytes;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 
 public class BytesToLong {
 
-    @T("perf")
+    @Nano("perf")
     public static void run(TestEnvironment c) throws Exception {
         long t0, t1;
         double time;
@@ -95,7 +95,7 @@ public class BytesToLong {
         byteBuffer.putLong(offset, value);
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void byteBuffer(TestEnvironment c) {
         // Converting between byte array and long array and other direction.
         

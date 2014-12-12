@@ -5,7 +5,7 @@ import java.nio.ByteBuffer;
 import bergdb.common.Bytes;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * The DbObject type for a string stored in UTF-8 format.
@@ -81,14 +81,14 @@ public class DbString extends DbValue {
     
     // ----
     
-    @T
+    @Nano
     public static void test0() {
         Assert.assertEquals("abc", new DbString("abc").toStringValue());
         Assert.assertEquals("", new DbString("").toStringValue());
         Assert.assertNull(new DbString(null).toStringValue());
     }
     
-    @T
+    @Nano
     public static void testSerialize0() {
         byte[] bytes = new byte[100];
         String s = "abc";
@@ -100,7 +100,7 @@ public class DbString extends DbValue {
         Assert.assertEquals("abc", d1.toStringValue());
     }
     
-    @T
+    @Nano
     public static void testSerialize1() {
         byte[] bytes = new byte[10];
         

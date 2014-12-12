@@ -3,7 +3,7 @@ package bergdb.core;
 import java.io.UnsupportedEncodingException;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
 
@@ -14,7 +14,7 @@ import bergdb.stream.MemoryStream;
  */
 public class NodeStreamTester {
     
-    @T
+    @Nano
     public static void testSimpleRestart() {
         AppendOnlyStream mstream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
@@ -39,7 +39,7 @@ public class NodeStreamTester {
         Assert.assertNull(value);
     }
     
-    @T
+    @Nano
     public static void testSimpleRestart2() {
         //
         // Like testSimpleRestart, but 2-segment key
@@ -67,7 +67,7 @@ public class NodeStreamTester {
         Assert.assertNull(value);
     }
     
-    @T
+    @Nano
     public static void testRestartWithMultipleTransactions() {
         AppendOnlyStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
@@ -95,7 +95,7 @@ public class NodeStreamTester {
         Assert.assertNull(value);
     }
     
-    @T
+    @Nano
     private static void tIterators1() throws UnsupportedEncodingException {
         AppendOnlyStream s = new MemoryStream();
         Db db = Db.builder().testSetup().mainStream(s).build();

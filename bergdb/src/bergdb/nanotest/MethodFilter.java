@@ -27,7 +27,7 @@ public class MethodFilter {
         if (isJunitTest(m)) {
             return groups.contains("unit");
         } else if (isNanoTestByAnnotation(m)) {
-            T annotation = m.getAnnotation(T.class);
+            Nano annotation = m.getAnnotation(Nano.class);
             return isInGroups(annotation.value());
         } else if (isNanoTestByConvention(m)) {
             return groups.contains("unit");
@@ -50,7 +50,7 @@ public class MethodFilter {
     }
     
     private boolean isNanoTestByAnnotation(Method m) {
-        return m.isAnnotationPresent(T.class);
+        return m.isAnnotationPresent(Nano.class);
     }
     
     private boolean isNanoTestByConvention(Method m) {

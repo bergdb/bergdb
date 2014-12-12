@@ -4,7 +4,7 @@ import java.io.UnsupportedEncodingException;
 
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * <p>This class has static methods used for handling database keys.
@@ -360,7 +360,7 @@ public class Keys {
     
     // ======== Testing ========
     
-    @T
+    @Nano
     public static void testByteSize0() {
         int[] sizes = new int[]{0, 1, 6, 7, 8, 40, 27, 28, 29};
         
@@ -371,7 +371,7 @@ public class Keys {
         }
     }
     
-    @T
+    @Nano
     public static void testConversion0() {
         String[] strings = new String[] { "a", "dir/f1.txt", " ", "Stange\n\r  next line" };
         
@@ -381,7 +381,7 @@ public class Keys {
         }
     }
     
-    @T
+    @Nano
     public static void testConversion1() {
         Exception ex = null;
         
@@ -394,7 +394,7 @@ public class Keys {
         Assert.assertTrue(ex != null);
     }
     
-    @T
+    @Nano
     public static void testLongs() {
         Assert.assertEquals(true, compareUnsignedLongs(3, 1) > 0);
         Assert.assertEquals(true, compareUnsignedLongs(111222333444L, 111222333444L) == 0);
@@ -405,7 +405,7 @@ public class Keys {
         Assert.assertEquals(true, compareUnsignedLongs(1, 44) < 0);
     }
     
-    @T
+    @Nano
     public static void testArrays() {
         Assert.assertEquals(true, compareArrays(new long[]{}, new long[]{}) == 0);
         Assert.assertEquals(true, compareArrays(new long[]{123}, new long[]{123}) == 0);
@@ -423,7 +423,7 @@ public class Keys {
         Assert.assertEquals(true, compareArrays(new long[]{1, 2, 3, 4}, new long[]{1, 2, 3}) > 0);
     }
     
-    @T
+    @Nano
     public static void testPrefix1() {
         long[] k1 = Keys.toSegments("dir/customers/");
         long[] k2 = Keys.toSegments("dir/customers/anna");
@@ -432,7 +432,7 @@ public class Keys {
         Assert.assertFalse(Keys.isPrefix(k2, k1));
     }
     
-    @T
+    @Nano
     public static void testPrefix2() {
         long[] k1 = Keys.toSegments("dir/customers/");
         long[] k2 = Keys.toSegments("dir/customers/anna");

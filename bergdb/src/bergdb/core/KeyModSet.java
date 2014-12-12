@@ -1,7 +1,7 @@
 package bergdb.core;
 
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * An implementation of IKeyModSet that stores a fixed maximum number of hashOfKey-time pairs.
@@ -207,7 +207,7 @@ public class KeyModSet implements IKeyModSet {
     
     // ======== Tests ========
     
-    @T
+    @Nano
     public static void test1() {
         // Any request with time < 1 should return true.
         
@@ -220,7 +220,7 @@ public class KeyModSet implements IKeyModSet {
         Assert.assertFalse(s.modifiedAfter(9999, 9234));
     }
     
-    @T
+    @Nano
     public static void test2() {
         IKeyModSet s = new KeyModSet();
         s.add(1001, 3);
@@ -228,7 +228,7 @@ public class KeyModSet implements IKeyModSet {
         Assert.assertEquals(false, s.modifiedAfter(2000, 3));
     }
     
-    @T
+    @Nano
     public static void test3() {
         IKeyModSet s = new KeyModSet();
         s.add(1, 3); 
@@ -239,7 +239,7 @@ public class KeyModSet implements IKeyModSet {
         Assert.assertEquals(false, s.modifiedAfter(99999, 3));
     }
     
-    @T
+    @Nano
     public static void testFutureTime() {
         IKeyModSet s = new KeyModSet();
         s.add(1001, 3);
@@ -247,7 +247,7 @@ public class KeyModSet implements IKeyModSet {
         Assert.assertEquals(false, s.modifiedAfter(99999, 4));
     }
     
-    @T
+    @Nano
     public static void testResize() {
         // Resize of array needed.
         
@@ -261,7 +261,7 @@ public class KeyModSet implements IKeyModSet {
         Assert.assertEquals(true, s.modifiedAfter(INITIAL_SIZE_OF_LONG_ARRAY * 3 - 2, 0));
     }
     
-    @T
+    @Nano
     public static void testBins1() {
         // + s.zero() avoid compiler warning.
         //
@@ -280,7 +280,7 @@ public class KeyModSet implements IKeyModSet {
         Assert.assertEquals(false, s.modifiedAfter(30, 1));
     }
     
-    @T
+    @Nano
     public static void testBins2() {
         // Adds enough hash-time pairs so we will create more than 4 bins.
         

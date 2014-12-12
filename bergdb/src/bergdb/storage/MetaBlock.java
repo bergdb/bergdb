@@ -3,7 +3,7 @@ package bergdb.storage;
 import bergdb.common.Bytes;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 // TODO LATER How is "time" used? What exactly is it? Is it used, is it necessary?
 
@@ -251,14 +251,14 @@ public class MetaBlock {
     public static class Tester {
         private Tester() {}
         
-        @T
+        @Nano
         public static void tStartupPos() {
             MetaBlock b = new MetaBlock();
             b.setStartupPos(3111222333444L);
             Assert.assertEquals(3111222333444L, b.getStartupPos());
         }
         
-        @T
+        @Nano
         public static void time() {
             MetaBlock b = new MetaBlock();
             b.setTime(1234567);
@@ -267,13 +267,13 @@ public class MetaBlock {
             Assert.assertEquals(1234567, time);
         }
         
-        @T
+        @Nano
         public static void version() {
             MetaBlock b = new MetaBlock();
             Assert.assertEquals(133, b.getVersion());
         }
         
-        @T
+        @Nano
         public static void startupDistance() {
             MetaBlock b = new MetaBlock();
             b.setStartupDistance(10*1000000);

@@ -2,7 +2,7 @@ package bergdb.pubimp;
 
 import bergdb.common.Bytes;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * The DbObject type for a 64-bit integer, like Java's long type.
@@ -51,12 +51,12 @@ public class DbLong extends DbValue {
     
     // ---- Tests -------------------------------------------------
     
-    @T
+    @Nano
     public static void test0() {
         Assert.assertEquals(111222333444L, new DbLong(111222333444L).toLong());
     }
     
-    @T
+    @Nano
     public static void testSerialize0() {
         byte[] bytes = new byte[20];
         DbLong l0 = new DbLong(111222333444L);

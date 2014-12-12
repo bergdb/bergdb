@@ -3,7 +3,7 @@ package bergdb.dag;
 import java.io.PrintStream;
 
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 
 /**
@@ -280,7 +280,7 @@ public final class TopNode implements INode {
     
     // ======== Tests ========
     
-    @T
+    @Nano
     public static void testHeight1() {
         Assert.assertEquals(0, TopNode.height(0));
         Assert.assertEquals(1, TopNode.height(1));
@@ -295,7 +295,7 @@ public final class TopNode implements INode {
         Assert.assertEquals(4, TopNode.height(10));
     }
     
-    @T
+    @Nano
     public static void testHeight2() {
         //Assert.assertEquals(10, TopNode.height(1023));
         //Assert.assertEquals(11, TopNode.height(1024));

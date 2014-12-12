@@ -3,7 +3,7 @@ package bergdb.test.java;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 /**
@@ -15,7 +15,7 @@ import bergdb.nanotest.TestEnvironment;
  * @author Frans Lundberg
  */
 public class ZipObject {
-    @T("perf")
+    @Nano("perf")
     public static void run(TestEnvironment r) throws Exception {
         ByteArrayOutputStream vout = new ByteArrayOutputStream();
         ByteArrayOutputStream cout = new ByteArrayOutputStream();

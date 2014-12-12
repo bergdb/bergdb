@@ -13,7 +13,7 @@ import bergdb.core.NoEvictBoss;
 import bergdb.core.Trans;
 import bergdb.dag.Keys;
 import bergdb.nanotest.BasicTestEnvironment;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.TestClock;
 import bergdb.stream.NullStream;
@@ -28,12 +28,12 @@ public class Set {
     private TestEnvironment c;
     private Db db;
     
-    @T("perf")
+    @Nano("perf")
     public static void normal(TestEnvironment c) {
         new Set(c).run(100000, true, 2);
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void noWritesToStream(TestEnvironment c) {
         new Set(c).run(100000, false, 2);
     }

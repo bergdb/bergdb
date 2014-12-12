@@ -4,7 +4,7 @@ import java.io.IOException;
 
 import bergdb.common.Bytes;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
@@ -578,19 +578,19 @@ public class RecoverableStream {
     public static class Tester {
         private Tester() {}
         
-        @T
+        @Nano
         public static void testGetRemainingTransBytes1() {
             Assert.assertEquals(300 - META_BLOCK_SIZE, getRemainingTransBytes(100, 300));
         }
         
-        @T
+        @Nano
         public static void testGetRemainingTransBytes3() {
             // Extends over two meta blocks.
             long res = getRemainingTransBytes(0, META_BLOCK_DISTANCE+1000);
             Assert.assertEquals(META_BLOCK_DISTANCE+1000 - 2 * META_BLOCK_SIZE, res);
         }
         
-        @T
+        @Nano
         public static void testGetRemainingTransBytes4() {
             // Exactly after a meta block
             long res = getRemainingTransBytes(0, META_BLOCK_DISTANCE + META_BLOCK_SIZE);
@@ -598,13 +598,13 @@ public class RecoverableStream {
         }
         
         @SuppressWarnings("all")
-        @T
+        @Nano
         public static void testThatConstantsMatch() {
             Assert.assertTrue(META_BLOCK_SIZE % TRANS_ALIGNMENT == 0);
             Assert.assertTrue(META_BLOCK_DISTANCE % TRANS_ALIGNMENT == 0);
         }
         
-        @T
+        @Nano
         private static void testGetTransPos() {
             Assert.assertEquals(0, getTransPos(0));
             Assert.assertEquals(0, getTransPos(1));
@@ -616,7 +616,7 @@ public class RecoverableStream {
                     getTransPos(2 * META_BLOCK_DISTANCE + META_BLOCK_SIZE + 1));
         }
         
-        @T
+        @Nano
         public static void test1() {
             MemoryStream mstream = new MemoryStream();
             RecoverableStream r = new RecoverableStream(mstream, new MetaBlock());
@@ -630,7 +630,7 @@ public class RecoverableStream {
             Assert.assertEquals(RecoverableStream.META_BLOCK_SIZE + 20, mstream.getLength());
         }
         
-        @T
+        @Nano
         public static void testGetPos1() {
             final int s = META_BLOCK_SIZE;
             final int d = META_BLOCK_DISTANCE;
@@ -640,7 +640,7 @@ public class RecoverableStream {
             Assert.assertTrue(RecoverableStream.getSpos(s + 18, 3) == s + 21);
         }
         
-        @T
+        @Nano
         public static void testGetPos2() {
             final int s = META_BLOCK_SIZE;
             final int d = META_BLOCK_DISTANCE;
@@ -650,7 +650,7 @@ public class RecoverableStream {
             Assert.assertEquals(15*d + (d-s-10), RecoverableStream.getSpos(10*d + (d-s-10), 5*(d-s)));
         }
         
-        @T
+        @Nano
         public static void crashInFirstTransaction() throws Exception {
             MemoryStream mstream = new MemoryStream();
             RecoverableStream r1 = new RecoverableStream(mstream, new MetaBlock());
@@ -672,7 +672,7 @@ public class RecoverableStream {
             Assert.assertEquals(0, buffer[0]);
         }
         
-        @T
+        @Nano
         public static void crashInTransactionSize() throws IOException {
             MemoryStream mstream = new MemoryStream();
             RecoverableStream r1 = new RecoverableStream(mstream, new MetaBlock());
@@ -695,7 +695,7 @@ public class RecoverableStream {
             Assert.assertEquals(0, buffer[0]);
         }
         
-        @T
+        @Nano
         public static void crashInThirdTransaction() throws Exception {
             MemoryStream mstream = new MemoryStream();
             RecoverableStream r1 = new RecoverableStream(mstream, new MetaBlock());
@@ -720,7 +720,7 @@ public class RecoverableStream {
             Assert.assertEquals(0, buffer[0]);
         }
         
-        @T
+        @Nano
         public static void largeTransaction() throws IOException {
             MemoryStream mstream = new MemoryStream();
             RecoverableStream r1 = new RecoverableStream(mstream, new MetaBlock());
@@ -739,7 +739,7 @@ public class RecoverableStream {
             Assert.assertEquals(expectedSize, mstream.getLength());
         }
         
-        @T
+        @Nano
         public static void crashInlargeTransaction() throws IOException {
             MemoryStream mstream = new MemoryStream();
             RecoverableStream r1 = new RecoverableStream(mstream, new MetaBlock());
@@ -759,7 +759,7 @@ public class RecoverableStream {
             Assert.assertEquals(expectedSize + 10, mstream.getLength());
         }
         
-        @T
+        @Nano
         public static void recoverFromMiddleOfStream() {
             //
             // A recovery that is not done from the beginning of the stream.
@@ -799,7 +799,7 @@ public class RecoverableStream {
                     // Checks for no append during recovery.
         }
         
-        @T
+        @Nano
         public static void testIterator() throws Exception {
             MemoryStream mstream = new MemoryStream();
             RecoverableStream r1 = new RecoverableStream(mstream, new MetaBlock());
@@ -839,7 +839,7 @@ public class RecoverableStream {
             Assert.assertEquals(false, iter.next());
         }
         
-        @T
+        @Nano
         public static void testConstantInFileStream() {
             Assert.assertTrue(FileStream.getSmallestFileSize() % META_BLOCK_DISTANCE == 0);
         }

@@ -1,7 +1,7 @@
 package bergdb.test.java;
 
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * A node in a 256-ary prefix tree.
@@ -305,7 +305,7 @@ public class JudyNode {
      * Class for testing; uses Nanotest.
      */
     public static class Tester {
-        @T
+        @Nano
         public static void testCast() {
             // We cannot use cast from byte to char to make byte non-negative.
             byte b = -1;
@@ -313,7 +313,7 @@ public class JudyNode {
             Assert.assertEquals("c", 65535, (int) c);
         }
 
-        @T
+        @Nano
         public static void testSet() {
             JudyNode n = new JudyNode();
 
@@ -326,7 +326,7 @@ public class JudyNode {
             Assert.assertEquals(12, n.values[1]);
         }
 
-        @T
+        @Nano
         public static void testSetUnordered() {
             JudyNode n = new JudyNode();
 
@@ -340,7 +340,7 @@ public class JudyNode {
             Assert.assertEquals(3, n.values[1]);
         }
 
-        @T
+        @Nano
         public static void testSearch1() {
             JudyNode n = new JudyNode();
 
@@ -353,7 +353,7 @@ public class JudyNode {
             Assert.assertEquals(-5, n.search((byte) 0));
         }
 
-        @T
+        @Nano
         public static void testGet() {
             JudyNode n = new JudyNode();
             JudyNode n2 = new JudyNode();
@@ -366,7 +366,7 @@ public class JudyNode {
             Assert.assertEquals(n2, n.get((byte) 133));
         }
         
-        @T
+        @Nano
         public static void testGetInLargeValuesArray() {
             JudyNode n = new JudyNode();
             
@@ -382,7 +382,7 @@ public class JudyNode {
             Assert.assertEquals(nodes[3], n.get((byte) 3));
         }
         
-        @T
+        @Nano
         public static void testGet2() {
             JudyNode n = new JudyNode();
             
@@ -398,7 +398,7 @@ public class JudyNode {
             Assert.assertEquals(nodes[3], n.get((byte) 3));
         }
         
-        @T
+        @Nano
         public static void testGetSpeed1() {
             JudyNode n = new JudyNode();
             int size = 1000;
@@ -411,7 +411,7 @@ public class JudyNode {
             }
         }
 
-        @T
+        @Nano
         public static void testCapacity() {
             JudyNode n = new JudyNode();
 

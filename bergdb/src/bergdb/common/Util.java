@@ -19,7 +19,7 @@ import java.util.Random;
 import java.util.TimeZone;
 
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 /**
@@ -102,7 +102,7 @@ public class Util {
         return s;
     }
     
-    @T
+    @Nano
     public static void testOneDecimal() {
         Assert.assertEquals("1.2", oneDecimal(1.23456));
         Assert.assertEquals("1.3", oneDecimal(1.29999));
@@ -129,7 +129,7 @@ public class Util {
         return s;
     }
     
-    @T
+    @Nano
     public static void testTwoDecimals() {
         Assert.assertEquals("1.23", twoDecimals(1.23456));
         Assert.assertEquals("1.30", twoDecimals(1.29999));
@@ -155,7 +155,7 @@ public class Util {
         return b.toString();
     }
     
-    @T
+    @Nano
     public static void testSpaceFill() {
         Assert.assertEquals("outer     ", spaceFill("outer", 10));
     }
@@ -167,7 +167,7 @@ public class Util {
         return "" + Math.round(value);
     }
     
-    @T
+    @Nano
     public static void testWholeNumber() {
         Assert.assertEquals("2", wholeNumber(1.93456));
         Assert.assertEquals("2", wholeNumber(2.29999));
@@ -311,7 +311,7 @@ public class Util {
         return count;
     }
     
-    @T
+    @Nano
     public static void testUtf8Size() throws UnsupportedEncodingException {
         String[] strings = { "", "a", "å", "Alban", "Snöslask", "być", "العربية", "\u0000abc" };
             // Last word is "Arabic" in Arabic.
@@ -390,7 +390,7 @@ public class Util {
         return result;
     }
     
-    @T
+    @Nano
     public static void testIsPrintableAscii() throws UnsupportedEncodingException {
         Assert.assertEquals(false, isPrintableAscii(null));
         Assert.assertEquals(false, isPrintableAscii(new byte[]{3}));
@@ -496,7 +496,7 @@ public class Util {
         return result;
     }
     
-    @T
+    @Nano
     public static void testHex() {
         byte[][] arrays = new byte[][] {
                 new byte[0],
@@ -688,7 +688,7 @@ public class Util {
         return out.toByteArray();
     }
     
-    @T
+    @Nano
     public static void testBytesToFileToBytes(TestEnvironment c) throws IOException {
         File dir = c.createTempDir();
         File file = new File(dir, "file1.dat");
@@ -765,7 +765,7 @@ public class Util {
     }
 
     
-    @T
+    @Nano
     public static void testAreEqual1() {
         Assert.assertTrue(areEqual(null, null));
         Assert.assertFalse(areEqual(null, new byte[0]));
@@ -773,7 +773,7 @@ public class Util {
         Assert.assertTrue(areEqual(new byte[1], new byte[1]));
     }
     
-    @T
+    @Nano
     public static void testAreEqual2() {
         byte[] a1 = new byte[] { 1, 2, 3 };
         byte[] a2 = new byte[] { 1, 2, 3, 4 };
@@ -814,12 +814,12 @@ public class Util {
         return result;
     }
     
-    @T
+    @Nano
     public static void testToArray0() {
         Assert.assertNull(toArray(null));
     }
     
-    @T
+    @Nano
     public static void testToArray1() {
         ArrayList<Long> list = new ArrayList<Long>();
         list.add(1L);
@@ -827,7 +827,7 @@ public class Util {
         Assert.assertArrayEquals(new long[]{1, 123}, toArray(list));
     }
     
-    @T
+    @Nano
     public static void testToArray2() {
         ArrayList<Long> list = new ArrayList<Long>();
         list.add(null);
@@ -855,21 +855,21 @@ public class Util {
         return result;
     }
     
-    @T
+    @Nano
     public static void testIsPrefix0() {
         Assert.assertEquals(true, isPrefix(
                 new byte[]{'a', 'b'}, 
                 new byte[]{'a', 'b', 'c'}));
     }
     
-    @T
+    @Nano
     public static void testIsPrefix1() {
         Assert.assertEquals(false, isPrefix(
                 new byte[]{'a', 'x'}, 
                 new byte[]{'a', 'b', 'c'}));
     }
     
-    @T
+    @Nano
     public static void testIsPrefix2() {
         Assert.assertEquals(true, isPrefix(new byte[]{}, new byte[]{'a', 'b', 'c'}));
         Assert.assertEquals(true, isPrefix(new byte[]{}, new byte[]{}));
@@ -898,13 +898,13 @@ public class Util {
         return result;
     }
     
-    @T
+    @Nano
     public static void testIsSuffix0() {
         Assert.assertEquals(true, isSuffix(new byte[]{'b', 'c'}, new byte[]{'a', 'b', 'c'}));
         Assert.assertEquals(false, isSuffix(new byte[]{'x', 'c'}, new byte[]{'a', 'b', 'c'}));
     }
     
-    @T
+    @Nano
     public static void testIsSuffix1() {
         Assert.assertEquals(true, isSuffix(new byte[]{}, new byte[]{'a', 'b', 'c'}));
         Assert.assertEquals(true, isSuffix(new byte[]{}, new byte[]{}));
@@ -982,13 +982,13 @@ public class Util {
         return result;
     }
     
-    @T
+    @Nano
     public static void testContains0() {
         Assert.assertTrue(contains(new byte[]{'a'}, new byte[]{'0', 'a', 'b', 'c'}));
         Assert.assertFalse(contains(new byte[]{'a', 'z'}, new byte[]{'0', 'a', 'b', 'c'}));
     }
     
-    @T
+    @Nano
     public static void testContains1() {
         Assert.assertTrue(contains(new byte[]{}, new byte[]{'0', 'a', 'b', 'c'}));
         Assert.assertTrue(contains(new byte[]{}, new byte[]{}));

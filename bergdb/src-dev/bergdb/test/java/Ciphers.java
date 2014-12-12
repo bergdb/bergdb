@@ -13,7 +13,7 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import bergdb.common.NullOutputStream;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 //import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -24,7 +24,7 @@ public class Ciphers {
     //    Security.addProvider(new BouncyCastleProvider());
     //}
     
-    @T("perf")
+    @Nano("perf")
     public static void run(TestEnvironment c) throws Exception {
         String[] cipherNames = {
                 "AES/CBC/PKCS5Padding",

@@ -3,7 +3,7 @@ package bergdb.test.java;
 import java.util.HashMap;
 import java.util.Random;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 
@@ -15,7 +15,7 @@ import bergdb.nanotest.TestEnvironment;
  */
 public class JudyPerf {
     
-    @T("perf")
+    @Nano("perf")
     public static void testJudy(TestEnvironment c) {
         long t0, t1;
         int n = 100000;
@@ -47,7 +47,7 @@ public class JudyPerf {
         c.report("judyLookupTime", time / (128*n));
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void testHash(TestEnvironment c) {
         long t0, t1;
         int n = 1000 * 1000;

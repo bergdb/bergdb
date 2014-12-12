@@ -1,10 +1,10 @@
 package bergdb.test.java;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 public class CopyBytes {
-    @T("perf")
+    @Nano("perf")
     public static void run(TestEnvironment c) throws Exception {
         long t0, t1;
         int N = 1000000;

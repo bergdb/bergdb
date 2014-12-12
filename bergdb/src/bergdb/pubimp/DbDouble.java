@@ -2,7 +2,7 @@ package bergdb.pubimp;
 
 import bergdb.common.Bytes;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * The DbObject type for a double value, a 64-bit floating point value.
@@ -54,14 +54,14 @@ public class DbDouble extends DbValue {
     
     // ---- Tests -------------------------------------------------
     
-    @T
+    @Nano
     public static void test0() {
         Assert.assertEquals(1.2, new DbDouble(1.2).toDouble());
         Assert.assertEquals(Double.MAX_VALUE, new DbDouble(Double.MAX_VALUE).toDouble());
         Assert.assertEquals(Double.NaN, new DbDouble(Double.NaN).toDouble());
     }
     
-    @T
+    @Nano
     public static void testSerialize0() {
         byte[] bytes = new byte[20];
         DbDouble d0 = new DbDouble(12.34);

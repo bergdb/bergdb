@@ -10,7 +10,7 @@ import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.stream.MemoryStream;
 
 
@@ -21,7 +21,7 @@ import bergdb.stream.MemoryStream;
  */
 public class DbTesterGetMany {
     
-    @T
+    @Nano
     public static void test1() {
         //
         // Simple test with three short keys added in reverse order.
@@ -38,7 +38,7 @@ public class DbTesterGetMany {
         assertResultValues(d.result, "1", "2", "3");
     }
     
-    @T
+    @Nano
     public static void test1Backward() {
         //
         // Like test1(), but backward iteration direction.
@@ -61,7 +61,7 @@ public class DbTesterGetMany {
         Assert.assertEquals("a", Keys.toString(kvt.key));
     }
     
-    @T
+    @Nano
     public static void test2() {
         //
         // Test keys with multiple segments. One single parent segment of all keys.
@@ -86,7 +86,7 @@ public class DbTesterGetMany {
         Assert.assertEquals("c", Keys.toString(kvt.key));
     }
     
-    @T
+    @Nano
     public static void test2Backward() {
         Db db = createDbWithKeys("c", "b", "a");
         
@@ -108,7 +108,7 @@ public class DbTesterGetMany {
         Assert.assertEquals("a", Keys.toString(kvt.key));
     }
     
-    @T
+    @Nano
     public static void test3() {
         //
         // Historic lookups.
@@ -141,7 +141,7 @@ public class DbTesterGetMany {
         assertResultValues(d.result, "1", "2", "3");
     }
     
-    @T
+    @Nano
     public static void test3Backward() {
         //
         // Like test3(), but backward.
@@ -177,7 +177,7 @@ public class DbTesterGetMany {
         assertResultValues(d.result, "3", "2", "1");
     }
     
-    @T
+    @Nano
     public static void test4() {
         //
         // Lookup after a restart. Nodes will be read from stream.
@@ -235,7 +235,7 @@ public class DbTesterGetMany {
         assertResultValues(d.result, "1", "2");
     }
     
-    @T
+    @Nano
     public static void testEndpoint1() {
         //
         // Tests an endpoint stop condition.
@@ -260,7 +260,7 @@ public class DbTesterGetMany {
         assertResultValues(d.result, "1");
     }
     
-    @T
+    @Nano
     public static void testEndpoint2() {
         //
         // Tests an endpoint stop condition. Longer keys.
@@ -277,7 +277,7 @@ public class DbTesterGetMany {
         assertResultValues(d.result, "1", "2", "3", "4");
     }
     
-    @T
+    @Nano
     public static void testEndpoint3() {
         Db db = createDbWithKvs("segments/e", "3",  "segment/c", "2",  "a", "1",  "z", "4");
       
@@ -290,7 +290,7 @@ public class DbTesterGetMany {
         Assert.assertEquals(0, d.result.size());
     }
     
-    @T
+    @Nano
     public static void testEndpointBackward() {
         //
         // Tests an endpoint stop condition.
@@ -317,7 +317,7 @@ public class DbTesterGetMany {
         assertResultValues(d.result, "3");
     }
     
-    @T
+    @Nano
     public static void testCrazyKeys() {
         Db db = Db.builder().testSetup().start();
         int size = 20;
@@ -354,7 +354,7 @@ public class DbTesterGetMany {
         }
     }
     
-    @T
+    @Nano
     public static void testDeepSegment() {
         //
         // Tests with tree segments of depth > 1.
@@ -389,7 +389,7 @@ public class DbTesterGetMany {
         }
     }
     
-    @T
+    @Nano
     public static void testStart1() {
         //
         // Tests setting d.key1 to non-null.
@@ -406,7 +406,7 @@ public class DbTesterGetMany {
         assertResultValues(d.result, "2", "3");
     }
     
-    @T
+    @Nano
     public static void testStart1Backward() {
         //
         // Tests setting d.startKey to non-null.
@@ -439,7 +439,7 @@ public class DbTesterGetMany {
         Assert.assertEquals("1", Util.toString(kvt.value));
     }
     
-    @T
+    @Nano
     public static void testStart2() {
         //
         // Tests setting d.startKey to non-null.
@@ -466,7 +466,7 @@ public class DbTesterGetMany {
         assertValueEquals("3", d.result.get(1).value);
     }
     
-    @T
+    @Nano
     public static void testStart3() {
         //
         // A start key less than any existing key.
@@ -483,7 +483,7 @@ public class DbTesterGetMany {
         Assert.assertEquals(3, d.result.size());
     }
     
-    @T
+    @Nano
     public static void testStart4() {
         //
         // A start key greater than any existing key.
@@ -500,7 +500,7 @@ public class DbTesterGetMany {
         Assert.assertEquals(0, d.result.size());
     }
     
-    @T
+    @Nano
     public static void testStart5() {
         //
         // Two top nodes created.
@@ -528,7 +528,7 @@ public class DbTesterGetMany {
         Assert.assertEquals(15, g.result.size());
     }
     
-    @T
+    @Nano
     public static void testStartWithLongerKeys() {
         Db db = Db.builder().testSetup().start();
         
@@ -553,7 +553,7 @@ public class DbTesterGetMany {
         Assert.assertEquals("30", Util.toString(d.result.get(1).value));
     }
     
-    @T
+    @Nano
     public static void testStartWith7() {
         //
         // Test with key of size % 7 == 0.
@@ -584,7 +584,7 @@ public class DbTesterGetMany {
         Assert.assertEquals("30", Util.toString(d.result.get(1).value));
     }
     
-    @T
+    @Nano
     public static void testStartWithCrazyKeys1() {
         Db db = Db.builder().testSetup().start();
         int size = 10;
@@ -627,7 +627,7 @@ public class DbTesterGetMany {
         return keys;
     }
     
-    @T
+    @Nano
     public static void testStartWithCrazyKeys2() {
         Db db = Db.builder().testSetup().start();
         int size = 10;
@@ -660,7 +660,7 @@ public class DbTesterGetMany {
         }
     }
     
-    @T
+    @Nano
     public static void testGt1() {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
@@ -679,7 +679,7 @@ public class DbTesterGetMany {
         Assert.assertEquals(10, g.result.size());
     }
     
-    @T
+    @Nano
     public static void testFromIndexing1() {
         //
         // Replicates a bug that occurred when g.startKey is shorter than the actual keys.
@@ -687,7 +687,7 @@ public class DbTesterGetMany {
         testFromIndexing(true);
     }
     
-    @T
+    @Nano
     public static void testFromIndexing2() {
         testFromIndexing(false);
     }
@@ -730,7 +730,7 @@ public class DbTesterGetMany {
      * Bug I fixed 130606 - day of first release :-).
      * Simplified version of pub.PubTesterIndex.tStartAtLong2c().
      */
-    @T
+    @Nano
     public static void bug130606() {        
         String[] hexKeys = new String[] { 
                 "00000000000000", 
@@ -771,7 +771,7 @@ public class DbTesterGetMany {
      * Bug I fixed 130606 - day of first release :-).
      * Same index keys as for pub.PubTesterIndex.tStartAtLong2c().
      */
-    @T
+    @Nano
     public static void bug130606b() {
         
         String[] hexKeys = new String[] { 
@@ -815,7 +815,7 @@ public class DbTesterGetMany {
      * Bug I fixed 130606 - day of first release :-).
      * Simplified version of pub.PubTesterIndex.tStartAtLong2c().
      */
-    @T
+    @Nano
     public static void bug130606c() { 
         // Same as bug130606 but start key is exact match with a key in db.
         
@@ -858,7 +858,7 @@ public class DbTesterGetMany {
      * Bug I fixed 130606 - day of first release :-).
      * Simplified version of pub.PubTesterIndex.tStartAtLong2c().
      */
-    @T
+    @Nano
     public static void bug130606backwards() {        
         String[] hexKeys = new String[] { 
                 "00000000000000", 
@@ -895,7 +895,7 @@ public class DbTesterGetMany {
         db.stop();
     }
     
-    @T
+    @Nano
     public static void testGetOpCount() {
         Db db = createDbWithKeys("a", "b", "c", "d");
         

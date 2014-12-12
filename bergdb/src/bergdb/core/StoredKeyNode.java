@@ -11,7 +11,7 @@ import bergdb.dag.KeyNode;
 import bergdb.dag.Klong;
 import bergdb.dag.Spos;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.storage.StreamFormatException;
 
 /**
@@ -172,7 +172,7 @@ public class StoredKeyNode implements StoredNode {
     
     // ======== Tests ========
     
-    @T
+    @Nano
     private static void testSerialize() {
         KeyNode node = new KeyNode();
         long k0 = Klong.createTime(5000);

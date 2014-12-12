@@ -15,7 +15,7 @@ import bergdb.dag.Keys;
 import bergdb.dag.Klong;
 import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pub.BadFormatException;
 import bergdb.pub.DataFormatException;
 import bergdb.pub.MissingKeyFieldException;
@@ -742,7 +742,7 @@ public class RwEnvironmentImp implements RwEnvironment {
         return enabled;
     }
     
-    @T
+    @Nano
     public static void testTransactionTimeString1() {
         long[] times = {0, 200, 17000000000000000L};
         String[] expected = {
@@ -756,7 +756,7 @@ public class RwEnvironmentImp implements RwEnvironment {
         }
     }
     
-    @T
+    @Nano
     public static void testTransactionTimeString2() {
         // Assertions must be enabled to test this. (-ea). Otherwise, nothing is tested.
         Throwable ex = null;

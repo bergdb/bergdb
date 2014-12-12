@@ -12,7 +12,7 @@ import java.util.Random;
 import bergdb.common.Bug;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.BadFormatException;
 
@@ -830,7 +830,7 @@ public class FileStream implements AppendOnlyStream {
     
     // ----------------------- Tests ---------------------------------------------------------------
 
-    @T
+    @Nano
     public static void test0(TestEnvironment c) throws IOException {
         // Simple test.
         File dir = c.createTempDir();
@@ -841,7 +841,7 @@ public class FileStream implements AppendOnlyStream {
         f.close();
     }
     
-    @T
+    @Nano
     public static void test1(TestEnvironment c) throws IOException {
         // Like test0() but appends a single byte and reads it back.
         byte[] bytes = new byte[] {123};
@@ -856,7 +856,7 @@ public class FileStream implements AppendOnlyStream {
         Assert.assertEquals((byte) 123, b[0]);
     }
     
-    @T
+    @Nano
     public static void testRestart0(TestEnvironment c) throws IOException {
         byte[] bytes = new byte[] {123};
         File dir = c.createTempDir();
@@ -872,7 +872,7 @@ public class FileStream implements AppendOnlyStream {
         Assert.assertEquals((byte) 123, b[0]);
     }
     
-    @T
+    @Nano
     public static void testRestartMissingFile(TestEnvironment c) throws IOException {
         // Tests starting a FileStream in directory with a missing file.
         byte[] bytes = new byte[500*1000];     // 3 stream files
@@ -899,7 +899,7 @@ public class FileStream implements AppendOnlyStream {
         Assert.assertTrue(ex != null);
     }
     
-    @T
+    @Nano
     public static void testBigAppend0(TestEnvironment c) throws IOException {
         byte[] bytes = new byte[10*1000];
         File dir = c.createTempDir();
@@ -913,7 +913,7 @@ public class FileStream implements AppendOnlyStream {
         f.close();
     }
     
-    @T
+    @Nano
     public static void testConstants() {
         Assert.assertTrue(SMALLEST_FILE_SIZE % BYTES_PER_INDEX_UNIT == 0);
         Assert.assertEquals(2L*1000*1000000, FILE_SIZES[INDEX_2G]);
@@ -923,7 +923,7 @@ public class FileStream implements AppendOnlyStream {
         }
     }
     
-    @T
+    @Nano
     public static void testSeekFirstPos0(TestEnvironment c) throws IOException {
         FileStream f = FileStream.create(c.createTempDir());
         f.seekFirstPos(200*1000 * 30);
@@ -932,7 +932,7 @@ public class FileStream implements AppendOnlyStream {
         f.close();
     }
     
-    @T
+    @Nano
     public static void testSeekFirstPos1(TestEnvironment c) throws IOException {
         byte[] bytes = new byte[300*1000];
         FileStream f = FileStream.create(c.createTempDir());
@@ -948,7 +948,7 @@ public class FileStream implements AppendOnlyStream {
         f.close();
     }
     
-    @T
+    @Nano
     public static void testPretruncate0(TestEnvironment c) throws Exception {
         FileStream f = FileStream.create(c.createTempDir());            
         byte[] bytes = new byte[500*1000];
@@ -962,7 +962,7 @@ public class FileStream implements AppendOnlyStream {
         f.close();
     }
     
-    @T
+    @Nano
     public static void testMultiFileRead0(TestEnvironment c) throws IOException {
         File dir = c.createTempDir();
         Random r = new Random(0);
@@ -979,7 +979,7 @@ public class FileStream implements AppendOnlyStream {
         f.close();
     }
     
-    @T
+    @Nano
     public static void testMultiFileRead1(TestEnvironment c) throws IOException {
         File dir = c.createTempDir();
         Random r = new Random(0);
@@ -999,7 +999,7 @@ public class FileStream implements AppendOnlyStream {
         f.close();
     }
     
-    @T("f")    // Takes too long for unit test
+    @Nano("f")    // Takes too long for unit test
     public static void tFileSizeIncrease(TestEnvironment c) throws IOException {
         File dir = c.createTempDir();
         byte[] bytes = new byte[100*1000];

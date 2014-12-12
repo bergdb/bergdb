@@ -14,7 +14,7 @@ import bergdb.core.NoEvictBoss;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.nanotest.BasicTestEnvironment;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.TestClock;
 import bergdb.storage.StreamIoException;
@@ -159,26 +159,26 @@ public class TransThroughput {
         doneEvent.happened();
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void t1(TestEnvironment c) throws IOException, InterruptedException {
         c.out().println("1 thread...");
         new TransThroughput().run(c, 1);
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void t2(TestEnvironment c) throws IOException, InterruptedException {
         c.out().println("2 threads...");
         new TransThroughput().run(c, 2);
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void t4(TestEnvironment c) throws IOException, InterruptedException {
         c.out().println("4 threads...");
         
         new TransThroughput().run(c, 4);
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void t8(TestEnvironment c) throws IOException, InterruptedException {
         c.out().println("8 threads...");
         new TransThroughput().run(c, 8);

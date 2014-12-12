@@ -5,7 +5,7 @@ import bergdb.core.Db;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.nanotest.BasicTestEnvironment;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.TestClock;
 import bergdb.stream.AppendOnlyStream;
@@ -106,7 +106,7 @@ public class Concurrency2 {
         }
     }
     
-    @T("f")
+    @Nano("f")
     public static void test1(TestEnvironment c) throws Exception {
         new Concurrency2().go(c, 10);
     }

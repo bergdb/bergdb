@@ -3,7 +3,7 @@ package bergdb.stream;
 import java.io.IOException;
 
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * Dummy AppendOnlyStream that sometimes is useful for testing.
@@ -83,13 +83,13 @@ public class NullStream implements AppendOnlyStream {
     }
     
     
-    @T
+    @Nano
     public static void test1() {
         NullStream s = new NullStream();
         Assert.assertEquals(0, s.getLength());
     }
     
-    @T
+    @Nano
     public static void testRead1() throws IOException {
         // Reads in the beginning of the stream.
         NullStream s = new NullStream();
@@ -103,7 +103,7 @@ public class NullStream implements AppendOnlyStream {
         Assert.assertEquals(12, buffer[0]);
     }
     
-    @T
+    @Nano
     public static void testRead2() throws IOException {
         // Reads in non-existant part of the stream.
         NullStream s = new NullStream();
@@ -124,7 +124,7 @@ public class NullStream implements AppendOnlyStream {
         Assert.assertTrue(ex != null);
     }
     
-    @T
+    @Nano
     public static void testSize() throws IOException {
         NullStream s = new NullStream();
         Assert.assertEquals(0, s.getLength());

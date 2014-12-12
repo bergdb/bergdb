@@ -3,7 +3,7 @@ package bergdb.test.java;
 import java.util.HashMap;
 import java.util.Random;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 /**
@@ -17,7 +17,7 @@ public class ArrayVsHash {
     private String[] values;
     private HashMap<Long, String> map;
     
-    @T("perf")
+    @Nano("perf")
     public static void run(TestEnvironment c) throws Exception {
         new ArrayVsHash().go(c);
     }

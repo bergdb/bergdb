@@ -1,6 +1,6 @@
 package bergdb.test.java;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 /**
@@ -8,7 +8,7 @@ import bergdb.nanotest.TestEnvironment;
  */
 public class SystemClock {
     
-    @T("perf")
+    @Nano("perf")
     public static void currentTimeMillis(TestEnvironment c) {
         long t = System.nanoTime();
         int n = 1000*1000;
@@ -33,7 +33,7 @@ public class SystemClock {
         c.report("sum-not-interesting", sum);
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void nanoTime(TestEnvironment c) {
         long t = System.nanoTime();
         int n = 1000*1000;

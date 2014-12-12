@@ -2,7 +2,7 @@ package bergdb.pubimp;
 
 import bergdb.common.Bytes;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * The DbObject type for a 32-bit integer, like Java's int type.
@@ -63,12 +63,12 @@ public class DbInt extends DbValue {
     
     // ---- Tests ----------------------------------------------------
     
-    @T
+    @Nano
     public static void test0() {
         Assert.assertEquals(-1234, new DbInt(-1234).toInt());
     }
     
-    @T
+    @Nano
     public static void testSerialize0() {
         byte[] bytes = new byte[12];
         DbInt i0 = new DbInt(444555);
@@ -79,7 +79,7 @@ public class DbInt extends DbValue {
         Assert.assertEquals(444555, i1.toInt());
     }
     
-    @T
+    @Nano
     public static void testToMethods0() {
         DbInt i0 = new DbInt(444555);
         Assert.assertEquals(444555, i0.toInt());
@@ -91,7 +91,7 @@ public class DbInt extends DbValue {
         Assert.assertEquals((byte) 444555, i0.toByte());
     }
     
-    @T
+    @Nano
     public static void testToMethods1() {
         DbInt i0 = new DbInt(444555);
         Assert.assertEquals("444555", i0.toStringValue());

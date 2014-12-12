@@ -5,7 +5,7 @@ import java.lang.reflect.Array;
 import java.util.Iterator;
 
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pub.BadFormatException;
 
 
@@ -324,26 +324,26 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
     
     // ---- Tests ----
     
-    @T
+    @Nano
     public static void test0() {
         DbArray a = new DbArray.Builder().build();
         Assert.assertEquals(0, a.getSize());
     }
     
-    @T
+    @Nano
     public static void test1() {
         DbArray a = new DbArray.Builder().add(new DbDouble(1.2)).add(new DbString("hello")).build();
         Assert.assertEquals(2, a.getSize());
         Assert.assertFalse(a.isNull());
     }
     
-    @T
+    @Nano
     public static void testNull() {
         DbArray a = DbArray.Builder.buildNull();
         Assert.assertTrue(a.isNull());
     }
     
-    @T
+    @Nano
     public static void testIterator0() {
         DbArray a = new DbArray.Builder().build();
         Assert.assertEquals(0, a.getSize());
@@ -353,7 +353,7 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
         }
     }
     
-    @T
+    @Nano
     public static void testIterator1() {
         DbArray a = new DbArray.Builder().add(new DbInt(3)).build();
         Assert.assertEquals(1, a.getSize());

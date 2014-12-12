@@ -3,7 +3,7 @@ package bergdb.pubimp;
 import java.util.Iterator;
 
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
@@ -72,7 +72,7 @@ public class PubTesterComposite {
         }
     }
     
-    @T
+    @Nano
     public static void test0() {
         TestClock clock = new TestClock();
         clock.setTime(Time.units(10));
@@ -87,7 +87,7 @@ public class PubTesterComposite {
         Assert.assertEquals(2, index.parts);
     }
     
-    @T
+    @Nano
     public static void test1() {
         TestClock clock = new TestClock();
         clock.setTime(Time.units(10));
@@ -114,7 +114,7 @@ public class PubTesterComposite {
         Assert.assertFalse(iter.hasNext());
     }
     
-    @T
+    @Nano
     public static void testTwoFields() {
         // Two parts, two fields at in first part.
         
@@ -144,7 +144,7 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testThreeParts() {
         TestClock clock = new TestClock();
         clock.setTime(Time.units(10));
@@ -173,7 +173,7 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testWithRestart() {
         MemoryStream stream = new MemoryStream();
         DatabaseBuilder builder = Factory.database();
@@ -222,7 +222,7 @@ public class PubTesterComposite {
         db2.stop();
     }
     
-    @T
+    @Nano
     public static void testEq1() {
         TestClock clock = new TestClock();
         clock.setTime(Time.units(10));
@@ -250,7 +250,7 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testEq2() {
         TestClock clock = new TestClock();
         clock.setTime(Time.units(10));
@@ -271,7 +271,7 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testEq3() {
         TestClock clock = new TestClock();
         clock.setTime(Time.units(10));
@@ -301,7 +301,7 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testEq3long() {
         // Same as previous, but using eq(long) too.
         
@@ -337,7 +337,7 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testEq3double() {
         // Same as previous, but using eq(double).
         
@@ -373,7 +373,7 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testEq4() {
         // Two eq levels.
         TestClock clock = new TestClock();
@@ -405,7 +405,7 @@ public class PubTesterComposite {
     }
     
     
-    @T
+    @Nano
     public static void testStart1() {
         TestClock clock = new TestClock();
         clock.setTime(Time.units(10));
@@ -435,7 +435,7 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testStart2() {
         // Multiple startAt().
         
@@ -466,7 +466,7 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testStart3() {
         // Multiple startAt(), includes startAt(long).
         
@@ -497,7 +497,7 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testEqAndStart1() {
         TestClock clock = new TestClock();
         clock.setTime(Time.units(10));
@@ -528,7 +528,7 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testEqAndStart2() {
         TestClock clock = new TestClock();
         clock.setTime(Time.units(10));
@@ -561,7 +561,7 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testEqAndStart3() {
         TestClock clock = new TestClock();
         clock.setTime(Time.units(10));
@@ -594,7 +594,7 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testEqAndStart4() {
         TestClock clock = new TestClock();
         clock.setTime(Time.units(10));
@@ -627,7 +627,7 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testEqAndStart5() {
         // eq and startAt with string-long composite index.
         
@@ -675,7 +675,7 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testEqAndStart6() {
         // eq and startAt with string-long composite index. backward().exclude().
         TestClock clock = new TestClock();
@@ -709,7 +709,7 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testEqAndStart7() {
         // eq and startAt with string-double composite index. backward().exclude().
         TestClock clock = new TestClock();
@@ -743,7 +743,7 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testEqAndStart8() {
         // eq and startAt with string-double composite index. Uses Double.NEGATIVE_INFINITY
         // and POSITIVE_INFINITY.
@@ -779,7 +779,7 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void tricky1() {
         // A tricky composite sort. Example with four keys.
         //
@@ -828,7 +828,7 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void tricky2() {
         // A tricky composite sort. Example with "string/unicode".
         //

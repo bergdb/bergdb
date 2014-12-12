@@ -6,7 +6,7 @@ import java.util.Random;
 import bergdb.common.Bytes;
 import bergdb.common.Util;
 import bergdb.dag.Keys;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * Sets of keys useful for testing the database.
@@ -207,7 +207,7 @@ public class KeyFactory {
         return key;
     }
     
-    @T
+    @Nano
     public static void testGettingCrazy() {
         for (int i = 0; i < 1000; i++) {
             KeyFactory.crazyKey(i);

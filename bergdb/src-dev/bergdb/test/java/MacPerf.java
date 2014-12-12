@@ -12,7 +12,7 @@ import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 
@@ -26,7 +26,7 @@ public class MacPerf {
     //    Security.addProvider(new BouncyCastleProvider());
     //}
     
-    @T("perf")
+    @Nano("perf")
     public static void run(TestEnvironment c) throws Exception {
         String[] names = {
                 "HmacMD5",

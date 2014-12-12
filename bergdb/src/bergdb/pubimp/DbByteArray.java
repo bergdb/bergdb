@@ -2,7 +2,7 @@ package bergdb.pubimp;
 
 import bergdb.common.Bytes;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pub.BadFormatException;
 
 /**
@@ -89,13 +89,13 @@ public class DbByteArray extends DbValue {
     
     // ---- Tests ----
     
-    @T
+    @Nano
     public static void test0() {
         Assert.assertArrayEquals(new byte[]{1, 2, 3}, 
                 new DbByteArray(new byte[]{1, 2, 3}).getByteArray());
     }
     
-    @T
+    @Nano
     public static void testSerialize() {
         byte[] buffer = new byte[100];
         byte[] array = new byte[] {1, 2, -3};

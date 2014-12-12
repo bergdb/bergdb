@@ -4,7 +4,7 @@ import bergdb.dag.Dag.CachePolicy;
 import bergdb.dag.Dag.PointerListener;
 import bergdb.dag.TopDs.DagForMe;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * Tests TopDB, TopNode.
@@ -74,13 +74,13 @@ public class TopTester {
         return topDs.findRoot(g, time, gd);
     }
     
-    @T
+    @Nano
     public static void test1() {
         TopTester tt = new TopTester();
         tt.createTestData();
     }
     
-    @T
+    @Nano
     public static void testBeforeFirst() {
         // No space root node before first time.
         
@@ -95,7 +95,7 @@ public class TopTester {
         Assert.assertEquals(null, t.findRoot(t.ds3, 1));
     }
     
-    @T
+    @Nano
     public static void testFindFirstNode() {
         TopTester t = new TopTester();
         t.createTestData();
@@ -111,7 +111,7 @@ public class TopTester {
         Assert.assertEquals(t.n1, root);
     }
     
-    @T
+    @Nano
     public static void testDS3() {
         //
         // ds3: 2-10-20 (n1, n2, n3).
@@ -141,7 +141,7 @@ public class TopTester {
         Assert.assertEquals(t.n3, p);
     }
     
-    @T
+    @Nano
     public static void testDS4() {
         //
         // ds4: t  var id

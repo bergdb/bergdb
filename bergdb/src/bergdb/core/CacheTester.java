@@ -6,7 +6,7 @@ import bergdb.dag.EvictData;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.storage.BufferedStream;
 import bergdb.stream.MemoryStream;
 
@@ -64,7 +64,7 @@ public class CacheTester {
         }
     }
     
-    @T
+    @Nano
     public static void tEvictCrazy() {
         MemoryStream m = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
@@ -104,7 +104,7 @@ public class CacheTester {
         Assert.assertTrue("count=" + count, count > 0);
     }
     
-    @T
+    @Nano
     public static void tEvict23() {
         int[] ids = new int[] { 5, 23, 50 }; 
         MemoryStream m = new MemoryStream();
@@ -143,7 +143,7 @@ public class CacheTester {
         }
     }
     
-    @T
+    @Nano
     public static void tEvict23B() {       
         byte[][] keys = new byte[][]{ 
                 Keys.toBytes("dir/key1"),
@@ -193,7 +193,7 @@ public class CacheTester {
         }
     }
     
-    @T
+    @Nano
     public static void test50() {
         Db db = Db.builder().clock(new TestClock()).retainForever()
                 .evictBoss(new FixedDurationEvictBoss(0))

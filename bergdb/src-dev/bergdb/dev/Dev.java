@@ -1,7 +1,5 @@
 package bergdb.dev;
 
-// TODO C. Improve Nanotest, terminal app, command-line params, flexible way to specify set of classes.
-
 /**
  * Dummy test code; for development only.
  */

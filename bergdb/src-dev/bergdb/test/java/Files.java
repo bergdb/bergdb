@@ -5,7 +5,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 
 /**
@@ -15,7 +15,7 @@ import bergdb.nanotest.T;
  */
 public class Files {
 
-    @T("perf")
+    @Nano("perf")
     public static void readWriteAndReadOnly() throws IOException {
         //File f = File.createTempFile(this.getClass().getName(), ".temp");
         File f = new File("./Files_temp.data");

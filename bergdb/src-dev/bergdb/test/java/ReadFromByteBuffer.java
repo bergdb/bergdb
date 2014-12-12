@@ -3,7 +3,7 @@ package bergdb.test.java;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 
@@ -14,7 +14,7 @@ import bergdb.nanotest.TestEnvironment;
  */
 public class ReadFromByteBuffer {
     
-    @T("perf")
+    @Nano("perf")
     public static void p1(TestEnvironment c) {
         ByteBuffer bytes = ByteBuffer.allocateDirect(1024*1024);
         //ByteBuffer bytes = ByteBuffer.allocate(1024*1024);
@@ -75,7 +75,7 @@ public class ReadFromByteBuffer {
      * "phone:46700000000/balance".
      * Hash value for suffix is 100. Offset to that bin is 12000.
      */
-    @T("perf")
+    @Nano("perf")
     public static void p2(TestEnvironment c) throws Exception {
         ByteBuffer bytes = ByteBuffer.allocateDirect(1024*1024);
         //ByteBuffer bytes = ByteBuffer.allocate(1024*1024);

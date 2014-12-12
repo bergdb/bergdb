@@ -1,7 +1,7 @@
 package bergdb.dag;
 
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * A general-purpose pointer class. Used to represent both memory pointers and stream pointers.
@@ -63,7 +63,7 @@ public class Pointer {
     
     // ======== Tests ========
     
-    @T
+    @Nano
     public static void test1() {
         Pointer p = new Pointer();
         p.pos = 1234L;

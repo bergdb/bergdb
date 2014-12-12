@@ -9,7 +9,7 @@ import bergdb.dag.StreamChecksumException;
 import bergdb.dag.TopNode;
 import bergdb.dag.TopTester;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.storage.StreamFormatException;
 
 /**
@@ -198,7 +198,7 @@ public class StoredTopNode implements StoredNode {
     
     // ======== Tests ========
 
-    @T
+    @Nano
     public static void testTopNodeToLongs2() {
         TopTester t = new TopTester();
         t.createTestData();
@@ -217,7 +217,7 @@ public class StoredTopNode implements StoredNode {
     }
 
 
-    @T
+    @Nano
     public static void testTopNodeToLongs1() {
         TopTester t = new TopTester();
         t.createTestData();

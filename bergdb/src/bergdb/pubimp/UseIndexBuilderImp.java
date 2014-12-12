@@ -10,7 +10,7 @@ import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.dag.GetMany.StopCondition;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pub.Kv;
 import bergdb.pub.NoSuchIndexException;
 import bergdb.pub.UseIndexBuilder;
@@ -746,35 +746,35 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
     
     // ============== Tests =============
     
-    @T
+    @Nano
     public static void testPlusOne1() {
         byte[] bytes = {1, 2, '/'};
         plusOne(bytes);
         Assert.assertArrayEquals(new byte[]{1, 2, '/' + 1}, bytes);
     }
     
-    @T
+    @Nano
     public static void testPlusOneArray1() {
         byte[] bytes = {1, 2, 3};
         plusOneArray(bytes);
         Assert.assertArrayEquals(new byte[]{1, 2, 4}, bytes);
     }
     
-    @T
+    @Nano
     public static void testPlusOneArray2() {
         byte[] bytes = {1, 2, (byte) 0xff};
         plusOneArray(bytes);
         Assert.assertArrayEquals(new byte[]{1, 3, 0}, bytes);
     }
     
-    @T
+    @Nano
     public static void testPlusOneArray3() {
         byte[] bytes = {1, (byte) 0xff, (byte) 0xff};
         plusOneArray(bytes);
         Assert.assertArrayEquals(new byte[]{2, 0, 0}, bytes);
     }
     
-    @T
+    @Nano
     public static void testPlusOneArray4() {
         byte[] bytes = {(byte) 0xff, (byte) 0xff, (byte) 0xff};
         Throwable ex = null;

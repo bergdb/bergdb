@@ -5,22 +5,22 @@ package bergdb.nanotest;
  * 
  * @author Frans Lundberg
  */
-public class MyThread extends Thread {
-    // If this little code works out well, maybe I should publish to blog.franslundberg.com.
+public class TestThread extends Thread {
+    // Maybe publish to blog.franslundberg.com when tested more.
     
     private final Object sync = new Object();
     private volatile String breakName;
     
-    public MyThread() {
+    public TestThread() {
         super();
     }
     
-    public MyThread(Runnable r) {
+    public TestThread(Runnable r) {
         super(r);
     }
     
     /**
-     * Run thread till the named breakpoint.
+     * Run thread until it hits the named breakpoint or exists.
      */
     public void goTo(String breakName) {
         synchronized (sync) {
@@ -46,8 +46,8 @@ public class MyThread extends Thread {
         }
         
         Thread t = Thread.currentThread();
-        if (t instanceof MyThread) {
-            MyThread my = (MyThread) t;
+        if (t instanceof TestThread) {
+            TestThread my = (TestThread) t;
             synchronized (my.sync) {
                 if (my.breakName != null && my.breakName.equals(breakName)) {
                     try {
@@ -66,11 +66,11 @@ public class MyThread extends Thread {
      * Try running with and without -ea.
      */
     public static void main(String[] args) throws InterruptedException {
-        MyThread t1 = new MyThread(new Runnable() {
+        TestThread t1 = new TestThread(new Runnable() {
             public void run() {
                 for (int i = 0; i < 3; i++) {
                     System.out.println("t1: Before " + i);
-                    assert MyThread.breakpoint("break-" + i);
+                    assert TestThread.breakpoint("break-" + i);
                     System.out.println("t1: After " + i);
                     System.out.println();
                 }

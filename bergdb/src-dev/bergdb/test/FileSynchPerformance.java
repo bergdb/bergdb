@@ -3,7 +3,7 @@ package bergdb.test;
 import java.io.File;
 import java.io.IOException;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.storage.BufferedStream;
 import bergdb.stream.FileStream;
@@ -16,17 +16,17 @@ import bergdb.stream.MemoryStream;
  */
 public class FileSynchPerformance {
     
-    @T("perf")
+    @Nano("perf")
     public static void testRWS(TestEnvironment c) throws IOException, InterruptedException {
         run(c, "rws");
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void testRWD(TestEnvironment c) throws IOException, InterruptedException {
         run(c, "rwd");
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void testWait(TestEnvironment c) throws IOException, InterruptedException {
         // Tests whether consumer thread causes any significant CPU load when idle.
         // Suitable to start this test with "&" (in the background) and run

@@ -2,7 +2,7 @@ package bergdb.dag;
 
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 
 /**
@@ -53,13 +53,13 @@ public class KeyNodeTester {
         return node;
     }
     
-    @T
+    @Nano
     public static void testSanity1() {
         KeyNodeTester t = new KeyNodeTester();
         t.createT2();
     }
     
-    @T
+    @Nano
     public static void testSanity2() {
         KeyNodeTester t = new KeyNodeTester();
         KeyNode t2 = t.createT2();
@@ -76,7 +76,7 @@ public class KeyNodeTester {
         return Klong.createCompareValue(bytes, 0, bytes.length);
     }
     
-    @T
+    @Nano
     public static void testEq() {
         KeyNodeTester t = new KeyNodeTester();
         KeyNode t2 = t.createT2();
@@ -99,7 +99,7 @@ public class KeyNodeTester {
         Assert.assertEquals(t.t2Pointers[7], t2.getPointerNode(kwi.pointerIndex));
     }
     
-    @T
+    @Nano
     public static void testEqWithVersions() {
         KeyNodeTester t = new KeyNodeTester();
         KlongWithPointer kwi = new KlongWithPointer();
@@ -117,7 +117,7 @@ public class KeyNodeTester {
         Assert.assertEquals(t.t2Pointers[6], kwi.node);
     }
     
-    @T
+    @Nano
     public static void testEqWithVersionsAndDelete() {
         KeyNodeTester t = new KeyNodeTester();
         KlongWithPointer kwi = new KlongWithPointer();
@@ -145,7 +145,7 @@ public class KeyNodeTester {
         Assert.assertEquals(t.t2Pointers[5], kwi.node);
     }
     
-    @T
+    @Nano
     public static void testEqBeforeFirstVersion() {
         KeyNode n = new KeyNode();
         long klongToAdd = Klong.create(Util.toBytes("first"));
@@ -162,7 +162,7 @@ public class KeyNodeTester {
         Assert.assertEquals(true, kwi.klong == Klong.NULL);
     }
     
-    @T
+    @Nano
     public static void testLte1() {
         KeyNode n = new KeyNode();
         long klongToAdd = Klong.create(Util.toBytes("first"));
@@ -186,7 +186,7 @@ public class KeyNodeTester {
         Assert.assertEquals(true, kwi.klong != Klong.NULL);
     }
     
-    @T
+    @Nano
     public static void testLte2() {
         KeyNode n = new KeyNode();
         long klongToAdd;
@@ -233,7 +233,7 @@ public class KeyNodeTester {
         Assert.assertEquals(Klong.NULL, kwi.klong);
     }
     
-    @T
+    @Nano
     public static void testLte3() {
         //
         // Tests KeyNode.searchLTE() with a delete.
@@ -271,7 +271,7 @@ public class KeyNodeTester {
         Assert.assertEquals(Klong.NULL, kwi.klong);
     }
     
-    @T
+    @Nano
     public static void testLt1() {
         KeyNode n = new KeyNode();
         long klongToAdd = Klong.create(Util.toBytes("first"));
@@ -295,7 +295,7 @@ public class KeyNodeTester {
         Assert.assertTrue(kwi.klong != Klong.NULL);
     }
     
-    @T
+    @Nano
     public static void testLt2() {
         KeyNode n = new KeyNode();
         long klongToAdd;
@@ -342,7 +342,7 @@ public class KeyNodeTester {
         Assert.assertEquals(Klong.NULL, kwi.klong);
     }
     
-    @T
+    @Nano
     public static void testLt3() {
         //
         // Tests KeyNode.searchLt() with a delete.
@@ -377,7 +377,7 @@ public class KeyNodeTester {
                 Klong.NULL, kwi.klong);
     }
     
-    @T
+    @Nano
     public static void testGt1() {
         KeyNode n = new KeyNode();
         long klongToAdd = Klong.create(Util.toBytes("key"));
@@ -397,7 +397,7 @@ public class KeyNodeTester {
         Assert.assertEquals(true, kwi.klong == Klong.NULL);
     }
     
-    @T
+    @Nano
     public static void testGt2() {
         KeyNode n = new KeyNode();
         long klongToAdd;
@@ -445,7 +445,7 @@ public class KeyNodeTester {
     }
     
     
-    @T
+    @Nano
     public static void testGte() {
         KeyNode n = new KeyNode();
         long klongToAdd;
@@ -493,7 +493,7 @@ public class KeyNodeTester {
     }
     
     
-    @T
+    @Nano
     public static void testFirst1() {
         KeyNodeTester t = new KeyNodeTester();
         KeyNode t2 = t.createT2();
@@ -505,18 +505,18 @@ public class KeyNodeTester {
         Assert.assertEquals(Klong.create(Util.toBytes("ap")), kwi.klong);
     }
     
-    @T
+    @Nano
     public static void testCheckEmptyNode() {
         // The empty node is allowed, zero klongs.
         new KeyNode().check();
     }
     
-    @T
+    @Nano
     public static void testCheck1() {
         new KeyNodeTester().createT2().check();
     }
     
-    @T
+    @Nano
     public static void testCheck2() {
         KeyNodeTester t = new KeyNodeTester();
         KeyNode node = t.createT2();
@@ -529,7 +529,7 @@ public class KeyNodeTester {
         node.check();
     }
     
-    @T
+    @Nano
     public static void testGetPointers() {
         KeyNodeTester t = new KeyNodeTester();
         KeyNode node = t.createT2();
@@ -545,7 +545,7 @@ public class KeyNodeTester {
         }
     }
     
-    @T
+    @Nano
     public static void testLastVersion1() {
         KeyNode n = new KeyNode();
         
@@ -566,7 +566,7 @@ public class KeyNodeTester {
         Assert.assertEquals(1, info.timeCount);
     }
     
-    @T
+    @Nano
     public static void testLastVersion3() {
         KeyNode n = new KeyNode();
         ValueNode value = new ValueNode(new byte[0]);
@@ -595,7 +595,7 @@ public class KeyNodeTester {
         Assert.assertEquals(Klong.create(Util.toBytes("c")), last.klongs[2]);
     }
     
-    @T
+    @Nano
     public static void testLastVersion4() {
         //
         // Tests adding a delete-all klong.
@@ -619,7 +619,7 @@ public class KeyNodeTester {
         Assert.assertTrue(last.size <= 1);
     }
     
-    @T
+    @Nano
     public static void testFirstAndSecond2() {
         KeyNode n = new KeyNode();
         ValueNode v1 = new ValueNode(Util.toBytes("v1"));
@@ -653,7 +653,7 @@ public class KeyNodeTester {
         Assert.assertEquals(3, second.size);
     }
     
-    @T
+    @Nano
     public static void testFirstAndSecond3() {
         KeyNode n = new KeyNode();
         ValueNode v1 = new ValueNode(Util.toBytes("v1"));
@@ -691,7 +691,7 @@ public class KeyNodeTester {
         Assert.assertEquals(3, second.size);
     }
     
-    @T
+    @Nano
     public static void testFirstAndSecond4() {
         // Inserts many in the middle. Make sure thay all end up in first.
         //
@@ -735,7 +735,7 @@ public class KeyNodeTester {
         Assert.assertEquals(3, second.size);
     }
     
-    @T
+    @Nano
     public static void testFirstAndSecond5() {
         // Insert in beginning
         
@@ -776,7 +776,7 @@ public class KeyNodeTester {
         Assert.assertEquals(3, second.size);
     }
     
-    @T
+    @Nano
     public static void testFirstAndSecond6() {
         // Insert more than one at very end.
         
@@ -817,7 +817,7 @@ public class KeyNodeTester {
         Assert.assertEquals(5, second.size);
     }
     
-    @T
+    @Nano
     public static void testDeleteBitmap1() {
         KeyNode node = new KeyNode();
         ValueNode value = new ValueNode(new byte[0]);
@@ -843,7 +843,7 @@ public class KeyNodeTester {
         Assert.assertEquals(del, node.getDeleteBitmap(cc));
     }
     
-    @T
+    @Nano
     public static void testPrint() {
         KeyNodeTester t = new KeyNodeTester();
         KeyNode t2 = t.createT2();
@@ -851,7 +851,7 @@ public class KeyNodeTester {
     }
     
     /** Changing to state t=15 should remove "c" and keep "a". */
-    @T private static void testToPreviousState1() {
+    @Nano private static void testToPreviousState1() {
         KeyNode node = new KeyNode();
         addKlong(node, 10, "a");
         addKlong(node, 20, "b");
@@ -880,7 +880,7 @@ public class KeyNodeTester {
     }
     
     /** Changing to state t=5 should remove "b" and "a". */
-    @T private static void testToPreviousState2() {
+    @Nano private static void testToPreviousState2() {
         KeyNode node = new KeyNode();
         addKlong(node, 10, "a");
         addKlong(node, 20, "b");
@@ -891,7 +891,7 @@ public class KeyNodeTester {
         assertNotExists(node, "b");
     }
     
-    @T
+    @Nano
     private static void testToPreviousState3() {
         // Changing to state t=40 (in future) should not remove "c", nor "a".
         
@@ -905,7 +905,7 @@ public class KeyNodeTester {
         assertExists(node, "b");
     }
     
-    @T private static void testToPreviousState4() {
+    @Nano private static void testToPreviousState4() {
         // Changing to state t=15 and add klong "c" after that, should work.
         
         KeyNode node = new KeyNode();
@@ -920,7 +920,7 @@ public class KeyNodeTester {
         assertExists(node, "c");
     }
     
-    @T private static void testNewKeyNodeWithTime() {
+    @Nano private static void testNewKeyNodeWithTime() {
         KeyNode node = KeyNode.nodeWithTime(123);
         
         Assert.assertEquals(1, node.size);
@@ -933,17 +933,17 @@ public class KeyNodeTester {
         Assert.assertEquals(123, Klong.getTime(klong));
     }
     
-    @T private static void testGetFirstTime1() {
+    @Nano private static void testGetFirstTime1() {
         KeyNode node = KeyNode.nodeWithTime(123);
         Assert.assertEquals(123, node.getFirstTime());
     }
     
-    @T private static void testGetFirstTime2() {
+    @Nano private static void testGetFirstTime2() {
         KeyNode node = new KeyNode();
         Assert.assertEquals(-1, node.getFirstTime());
     }
     
-    @T private static void testGetFirstTime3() {
+    @Nano private static void testGetFirstTime3() {
         KeyNode node = new KeyNode();
         addKlong(node, 10, "a");
         addKlong(node, 20, "b");

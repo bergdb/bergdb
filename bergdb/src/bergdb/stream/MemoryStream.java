@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import bergdb.common.Bug;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * An in-memory implementation of AppendOnlyStream. Useful for testing.
@@ -305,7 +305,7 @@ public class MemoryStream implements AppendOnlyStream {
     public static class Tester {
         public Tester() {}
         
-        @T
+        @Nano
         public static void testSize1() throws IOException {
             MemoryStream s = new MemoryStream();
             
@@ -314,7 +314,7 @@ public class MemoryStream implements AppendOnlyStream {
             Assert.assertEquals("size", 123L, s.getLength());
         }
         
-        @T
+        @Nano
         public static void testOneByte() throws IOException {
             MemoryStream s = new MemoryStream();
             byte[] dest = new byte[1024];
@@ -324,7 +324,7 @@ public class MemoryStream implements AppendOnlyStream {
             Assert.assertEquals("first byte", (byte) 1, dest[0]);
         }
         
-        @T
+        @Nano
         public static void testSize2() throws IOException {
             MemoryStream s = new MemoryStream();
             byte[] bytes = new byte[1024 * 1024 + 1];
@@ -338,7 +338,7 @@ public class MemoryStream implements AppendOnlyStream {
             Assert.assertEquals("size appended", bytes.length * 2L, s.getLength());
         }
         
-        @T
+        @Nano
         public static void testArrays() throws IOException {
             MemoryStream s = new MemoryStream();
             byte[] bytes = new byte[1024 * 1024 + 1];
@@ -360,7 +360,7 @@ public class MemoryStream implements AppendOnlyStream {
             Assert.assertEquals("byte1", (byte) 2, dest[1]);
         }
         
-        @T
+        @Nano
         public static void testTruncate1() throws IOException {
             MemoryStream s = new MemoryStream();
             byte[] bytes = Util.getTestBytes(1024 * 1024);
@@ -375,7 +375,7 @@ public class MemoryStream implements AppendOnlyStream {
             Assert.assertEquals("size2", 123456L, s.getLength());
         }
         
-        @T
+        @Nano
         public static void testTruncate2() throws IOException {
             MemoryStream s = new MemoryStream();
             byte[] bytes = Util.getTestBytes(1000000 + 123);
@@ -395,7 +395,7 @@ public class MemoryStream implements AppendOnlyStream {
             Assert.assertEquals(bytes[1000064 - 10], buffer[90]);
         }
         
-        @T
+        @Nano
         public static void testPretruncate1() throws IOException {
             MemoryStream s = new MemoryStream();
             byte[] bytes = Util.getTestBytes(MemoryStream.ARRAY_SIZE);
@@ -419,7 +419,7 @@ public class MemoryStream implements AppendOnlyStream {
             Assert.assertEquals(1, s.firstArrayIndex);
         }
         
-        @T
+        @Nano
         public static void testPretruncate2() throws IOException {
             MemoryStream s = new MemoryStream();
             byte[] bytes = Util.getTestBytes(MemoryStream.ARRAY_SIZE);

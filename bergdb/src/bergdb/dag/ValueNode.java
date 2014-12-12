@@ -3,7 +3,7 @@ package bergdb.dag;
 import bergdb.common.Bug;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * A ValueNode is an INode that contains the value of the KV in the database.
@@ -245,7 +245,7 @@ public final class ValueNode implements INode {
     
     // ======== Tests ========
     
-    @T
+    @Nano
     public static void testDummy() {
         // Mostly just to "mark" methods as tested.
         

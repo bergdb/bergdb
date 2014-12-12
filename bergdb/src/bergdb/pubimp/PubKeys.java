@@ -2,7 +2,7 @@ package bergdb.pubimp;
 
 import bergdb.common.Bug;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pub.BadFormatException;
 
 //TODO LATER Review what exception to throw? Make it consistent. Consider throwing IllegalArgumentException or subclass of it.
@@ -180,7 +180,7 @@ public class PubKeys {
     
     // ======== Tests ========
     
-    @T
+    @Nano
     public static void testU2I_1() {
         String ukey = "/db1/customers/c001";
         String expected = "/ddb1/dcustomers/-c001";
@@ -189,7 +189,7 @@ public class PubKeys {
     
     private static char ARABIC_LETTER_JEEM = '\u062c';
     
-    @T
+    @Nano
     public static void testU2I_2() {
         String[] ukeys = new String[] {
                 "/a",
@@ -220,7 +220,7 @@ public class PubKeys {
         Assert.assertTrue(ex != null);
     }
     
-    @T
+    @Nano
     public static void testToIkey2() {
         assertI2uException("");
         assertI2uException(null);

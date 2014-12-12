@@ -8,7 +8,7 @@ import bergdb.common.Util;
 import bergdb.dag.Dag;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * Data for executing a transaction. Input, output and some working data.
@@ -316,7 +316,7 @@ public class Trans {
         }
     }
     
-    @T
+    @Nano
     public static void testTransReuse() {
         Trans t;
         Db db;

@@ -8,7 +8,7 @@ import java.util.Arrays;
 
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pub.BadFormatException;
 
 /**
@@ -19,7 +19,7 @@ import bergdb.pub.BadFormatException;
 public class DbObjectTester {
     private DbObjectTester() {}
     
-    @T
+    @Nano
     public static void test0() {
         DbObject obj = new DbObject.Builder().addString("a", "b").build();
         
@@ -28,7 +28,7 @@ public class DbObjectTester {
         Assert.assertNull(obj.getString("lastName"));
     }
     
-    @T
+    @Nano
     public static void test1() {
         DbObject obj = new DbObject.Builder().addString("firstName", "Nalia").build();
         
@@ -37,7 +37,7 @@ public class DbObjectTester {
         Assert.assertNull(obj.getString("lastName"));
     }
     
-    @T
+    @Nano
     public static void test2() {
         DbObject obj = new DbObject.Builder()
             .addString("firstName", "Ron")
@@ -49,7 +49,7 @@ public class DbObjectTester {
         Assert.assertNull(obj.getString("phone"));
     }
     
-    @T
+    @Nano
     public static void testAssumption1() {
         byte[] b1 = new byte[]{1, 2, 3};
         byte[] b2 = new byte[]{1, 2, 3};
@@ -60,7 +60,7 @@ public class DbObjectTester {
         Assert.assertFalse(b1.equals(b2));
     }
     
-    @T
+    @Nano
     public static void testAssumption2() {
         byte[] b1 = new byte[]{1, 2, 3};
         byte[] b2 = new byte[]{1, 2, 3};
@@ -71,7 +71,7 @@ public class DbObjectTester {
         Assert.assertFalse(Arrays.equals(b1, b2));
     }
     
-    @T
+    @Nano
     public static void testLong() {
         DbObject obj = new DbObject.Builder()
         .addString("firstName", "Ron")
@@ -91,7 +91,7 @@ public class DbObjectTester {
         public String sub = "Sub!";
     }
     
-    @T
+    @Nano
     public static void testSetObjectFields1() {
         // Simplest possible test for setting object fields.
         TestClass1 object = new TestClass1();
@@ -101,7 +101,7 @@ public class DbObjectTester {
         Assert.assertEquals("Hello there!", object.s);
     }
     
-    @T
+    @Nano
     public static void testSetObjectFields2() {
         // Tests multiple fields and field types.
         TestClass1 object = new TestClass1();
@@ -113,7 +113,7 @@ public class DbObjectTester {
         Assert.assertEquals(222L, object.value);
     }
     
-    @T
+    @Nano
     public static void testSetObjectFields3() {
         // Tests inheritance.
         TestClass2 object = new TestClass2();
@@ -135,7 +135,7 @@ public class DbObjectTester {
         public long[] ids = new long[]{123, 444};
     }
     
-    @T
+    @Nano
     public static void tSetObjectFields4() {
         // Tests setting a long array.
         
@@ -151,7 +151,7 @@ public class DbObjectTester {
         Assert.assertArrayEquals(new long[]{1, 2, 44}, object.ids);
     }
     
-    @T
+    @Nano
     public static void testBadFormatException() {
         byte[] bytes = new byte[3];
         BadFormatException ex = null;
@@ -165,7 +165,7 @@ public class DbObjectTester {
         Assert.assertTrue(ex != null);
     }
     
-    @T
+    @Nano
     public static void testString1() {
         TestClass1 object = new TestClass1();
         object.s = null;
@@ -181,7 +181,7 @@ public class DbObjectTester {
         byte[] field;
     }
     
-    @T
+    @Nano
     public static void testByteArray1() {
         ByteArrayClass object = new ByteArrayClass();
         object.field = new byte[]{-1, 123, Byte.MAX_VALUE};
@@ -194,7 +194,7 @@ public class DbObjectTester {
         Assert.assertEquals(Byte.MAX_VALUE, array[2]);   // *
     }
     
-    @T
+    @Nano
     public static void testByteArray2() {
         ByteArrayClass object = new ByteArrayClass();
         object.field = new byte[0];
@@ -204,7 +204,7 @@ public class DbObjectTester {
         Assert.assertEquals(0, array.length);
     }
     
-    @T
+    @Nano
     public static void testByteArray3() {
         ByteArrayClass object = new ByteArrayClass();
         object.field = null;
@@ -219,7 +219,7 @@ public class DbObjectTester {
         public BooleanClass() {}
     }
     
-    @T
+    @Nano
     public static void testBoolean1() {
         BooleanClass object = new BooleanClass();
         object.field = true;
@@ -229,7 +229,7 @@ public class DbObjectTester {
         Assert.assertEquals(true, to.getBoolean("field"));
     }
     
-    @T
+    @Nano
     public static void testBoolean2() {
         BooleanClass object = new BooleanClass();
         object.field = false;
@@ -246,7 +246,7 @@ public class DbObjectTester {
         int field;
     }
     
-    @T
+    @Nano
     public static void testInt1() {
         IntClass object = new IntClass();
         object.field = 1234567890;
@@ -256,7 +256,7 @@ public class DbObjectTester {
         Assert.assertEquals(1234567890, to.getInt("field"));
     }
     
-    @T
+    @Nano
     public static void testInt2() {
         IntClass object = new IntClass();
         object.field = -1234567890;
@@ -291,7 +291,7 @@ public class DbObjectTester {
         }
     }
     
-    @T
+    @Nano
     public static void testObject1() {
         // Tests storing an instance of ObjectClass in a DbObject.
         
@@ -309,7 +309,7 @@ public class DbObjectTester {
         Assert.assertEquals("hello", nested.getString("myString"));
     }
     
-    @T
+    @Nano
     public static void testObject2() {
         // Similar to testObject1, but 'nested' is null.
         
@@ -329,7 +329,7 @@ public class DbObjectTester {
         public ObjectClass obj = new ObjectClass();
     }
     
-    @T
+    @Nano
     public static void testObjectMultiLevel() {
         // 3-level object: MultiLevelClass-ObjectClass-Nested.
         
@@ -346,7 +346,7 @@ public class DbObjectTester {
         Assert.assertEquals("hello", nested.getString("myString"));
     }
     
-    @T
+    @Nano
     public static void testSetObjectFields5() {
         // Tests the storing an object m1 to a DbObject and getting a new object
         // back from the DbObject with the same field values.
@@ -365,7 +365,7 @@ public class DbObjectTester {
         Assert.assertEquals("Alea iacta est", m2.obj.nested.myString);
     }
     
-    @T
+    @Nano
     public static void testSetObjectFields6() {
         // Tests the storing an object m1 to a DbObject and getting a new object
         // back from the DbObject with the same field values.
@@ -390,7 +390,7 @@ public class DbObjectTester {
         int[] ints;
     }
     
-    @T
+    @Nano
     public static void testIntArray1() {
         IntArrayClass object = new IntArrayClass();
         object.ints = new int[]{-1, 1234, Integer.MAX_VALUE};
@@ -403,7 +403,7 @@ public class DbObjectTester {
         Assert.assertEquals(Integer.MAX_VALUE, ints[2]);
     }
     
-    @T
+    @Nano
     public static void testIntArray2() {
         IntArrayClass object = new IntArrayClass();
         object.ints = new int[0];
@@ -413,7 +413,7 @@ public class DbObjectTester {
         Assert.assertEquals(0, ints.length);
     }
     
-    @T
+    @Nano
     public static void testIntArray3() {
         IntArrayClass object = new IntArrayClass();
         object.ints = null;
@@ -433,7 +433,7 @@ public class DbObjectTester {
         double[] array;
     }
     
-    @T
+    @Nano
     public static void testLongArray1() {
         LongArrayClass object = new LongArrayClass();
         object.array = new long[]{-1, 1234, Long.MAX_VALUE};
@@ -446,7 +446,7 @@ public class DbObjectTester {
         Assert.assertEquals(Long.MAX_VALUE, longs[2]);
     }
     
-    @T
+    @Nano
     public static void testLongArray2() {
         LongArrayClass object = new LongArrayClass();
         object.array = new long[0];
@@ -456,7 +456,7 @@ public class DbObjectTester {
         Assert.assertEquals(0, longs.length);
     }
     
-    @T
+    @Nano
     public static void testLongArray3() {
         LongArrayClass object = new LongArrayClass();
         object.array = null;
@@ -466,7 +466,7 @@ public class DbObjectTester {
         Assert.assertNull(longs);
     }
     
-    @T
+    @Nano
     public static void testLongArray4() {
         LongArrayClass object = new LongArrayClass();
         object.array = new long[]{-1, 1234, Long.MAX_VALUE};
@@ -479,7 +479,7 @@ public class DbObjectTester {
     }
 
 
-    @T
+    @Nano
     public static void testDoubleArray1() {
         DoubleArrayClass object = new DoubleArrayClass();
         object.array = new double[]{-1.2, 1234.5, 
@@ -495,7 +495,7 @@ public class DbObjectTester {
         Assert.assertEquals(Double.POSITIVE_INFINITY, array[4]);
     }
     
-    @T
+    @Nano
     public static void testDoubleArray2() {
         DoubleArrayClass object = new DoubleArrayClass();
         object.array = new double[0];
@@ -505,7 +505,7 @@ public class DbObjectTester {
         Assert.assertEquals(0, array.length);
     }
     
-    @T
+    @Nano
     public static void testDoubleArray3() {
         DoubleArrayClass object = new DoubleArrayClass();
         object.array = null;
@@ -515,7 +515,7 @@ public class DbObjectTester {
         Assert.assertNull(array);
     }
     
-    @T
+    @Nano
     public static void testDoubleArray4() {
         DoubleArrayClass object = new DoubleArrayClass();
         object.array = new double[]{1.2, -123.4};
@@ -564,7 +564,7 @@ public class DbObjectTester {
         }
     }
     
-    @T
+    @Nano
     public static void testPrimitiveArrays0() {
         PrimitiveArrays p0 = new PrimitiveArrays();
         p0.setThem1();
@@ -582,7 +582,7 @@ public class DbObjectTester {
         Assert.assertArrayEquals(p0.doubles, p1.doubles);
     }
     
-    @T
+    @Nano
     public static void testPrimitiveArrays1() {
         PrimitiveArrays p0 = new PrimitiveArrays();
         p0.setThem2();
@@ -600,7 +600,7 @@ public class DbObjectTester {
         Assert.assertArrayEquals(p0.doubles, p1.doubles);
     }
     
-    @T
+    @Nano
     public static void testPrimitiveArrays2() {
         // Tests arrays values that are null.
         
@@ -662,7 +662,7 @@ public class DbObjectTester {
         public String[] strings;
     }
     
-    @T
+    @Nano
     public static void testStrings0() {
         Strings s0 = new Strings();
         s0.setThem1();
@@ -675,7 +675,7 @@ public class DbObjectTester {
         Assert.assertArrayEquals(s0.s1a, s1.s1a);
     }
     
-    @T
+    @Nano
     public static void testStrings1() {
         // Tests storing an array of strings.
         
@@ -697,7 +697,7 @@ public class DbObjectTester {
         Assert.assertEquals("second", myStrings2[1]);
     }
     
-    @T
+    @Nano
     public static void testStrings2() {
         // Like previous test, but with null-value.
         
@@ -734,7 +734,7 @@ public class DbObjectTester {
         }
     }
     
-    @T
+    @Nano
     public static void test5DIntArray() throws IOException {
         IntArray5D obj0 = new IntArray5D();
         obj0.set();
@@ -779,7 +779,7 @@ public class DbObjectTester {
         }
     }
     
-    @T
+    @Nano
     public static void test4DCustomerArray() throws IOException {
         CustomerArray obj0 = new CustomerArray();
         obj0.set();
@@ -797,7 +797,7 @@ public class DbObjectTester {
         Assert.assertNull(obj1.array[0][0][0][1]);
     }
     
-    @T
+    @Nano
     public static void testStrings2D() {
         Strings s0 = new Strings();
         s0.setThem1();
@@ -831,7 +831,7 @@ public class DbObjectTester {
      * and the error condition seem not to disturb the rest of the code.
      * The tests is only run in an ordinary Java environment, not on IKVM, GCJ, Android.
      */
-    @T
+    @Nano
     public static void testCircularRefs() {
         if (Util.runsIkvm() || Util.runsGcj() || Util.runsAndroid()) {
             return;
@@ -864,7 +864,7 @@ public class DbObjectTester {
         }
     }
     
-    @T
+    @Nano
     public static void testHierarchy() {
         MyClass obj0 = new MyClass();
         obj0.a = 1;
@@ -883,7 +883,7 @@ public class DbObjectTester {
         long a;
     }
     
-    @T
+    @Nano
     public static void testPrivateConstructor() {
         MyClass2a obj0 = new MyClass2a();
         obj0.a = 123;
@@ -896,7 +896,7 @@ public class DbObjectTester {
         long a;
     }
     
-    @T
+    @Nano
     public static void testTypeSwitch() {
         MyClass2a obj0 = new MyClass2a();
         obj0.a = -111222333444L;
@@ -915,7 +915,7 @@ public class DbObjectTester {
         return b.toByteArray();
     }
     
-    @T
+    @Nano
     public static void testNullField0() {
         TestClass1 obj0 = new TestClass1();
         obj0.s = null;
@@ -929,7 +929,7 @@ public class DbObjectTester {
         TestClass1 field = new TestClass1();
     }
     
-    @T
+    @Nano
     public static void testNullField1() {
         A obj0 = new A();
         obj0.field = null;
@@ -943,7 +943,7 @@ public class DbObjectTester {
         public String[] array;
     }
    
-    @T
+    @Nano
     public static void testStringArray0() {
         TestClass4 obj1 = new TestClass4();
         obj1.array = new String[]{"1", "2", null, "4"};
@@ -955,7 +955,7 @@ public class DbObjectTester {
         Assert.assertNull(obj2.array[2]);
     }
     
-    @T
+    @Nano
     public static void testArray0() {
         String[] myStrings1 = new String[]{"first", "second"};
         DbObject dbo = DbObject.toDbObject(myStrings1);
@@ -966,7 +966,7 @@ public class DbObjectTester {
         Assert.assertEquals("second", myStrings2[1]);
     }
     
-    @T
+    @Nano
     public static void testArray1() {
         // Like previous test, but with a null value in array.
         String[] myStrings1 = new String[]{null, "second"};
@@ -978,7 +978,7 @@ public class DbObjectTester {
         Assert.assertEquals("second", myStrings2[1]);
     }
     
-    @T
+    @Nano
     public static void testArray2() {
         // Tests with an array using a custom class.
         Customer[] c = new Customer[]{new Customer(), new Customer()};
@@ -997,7 +997,7 @@ public class DbObjectTester {
         Assert.assertEquals(c[1].name, c2[1].name);
     }
     
-    @T
+    @Nano
     public static void testArray3() {
         // Tests storing an array of primitive values.
         
@@ -1007,7 +1007,7 @@ public class DbObjectTester {
         Assert.assertArrayEquals(ints0, ints1);
     }
     
-    @T
+    @Nano
     public static void testArray4() {
         // Tests storing a multi-dimensional array.
         

@@ -10,7 +10,7 @@ import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
 import bergdb.dag.Kvt;
 import bergdb.nanotest.BasicTestEnvironment;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
 
@@ -148,7 +148,7 @@ public class PerfGetMany {
         c.report("time-per-kv", timed.time / timed.count);
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void standard(TestEnvironment c) throws InterruptedException {
         PerfGetMany p = new PerfGetMany();
         p.run(c, true);

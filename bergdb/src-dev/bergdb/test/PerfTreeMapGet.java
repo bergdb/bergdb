@@ -7,14 +7,14 @@ import java.util.TreeMap;
 import bergdb.common.ByteArrayComparator;
 import bergdb.common.Util;
 import bergdb.nanotest.BasicTestEnvironment;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 
 /**
  * Performance for get from TreeMap.
  */
 public class PerfTreeMapGet {
-    @T("perf")
+    @Nano("perf")
     public static void get(BasicTestEnvironment r) {
         Random random = new Random(1);
         int n = 100*1000;

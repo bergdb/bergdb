@@ -5,7 +5,7 @@ import bergdb.core.DbBuilder;
 import bergdb.core.KeyFactory;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
 
@@ -17,7 +17,7 @@ import bergdb.stream.MemoryStream;
  */
 public class StreamSize {
     
-    @T("perf")
+    @Nano("perf")
     public static void transStreamOverhead(TestEnvironment c) {
         int[] kvSizes = new int[] {100*1000, 10*1000, 1000,  100,  4};
         int[] kvCount = new int[] {100,      100,     100,   100,  100};
@@ -45,7 +45,7 @@ public class StreamSize {
         }
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void kvStreamOverhead(TestEnvironment c) {
         
         c.report("notes", "Finds minimum stream overhead per KV.");
@@ -78,7 +78,7 @@ public class StreamSize {
         }
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void t3(TestEnvironment c) {
         c.report("notes", "Average transaction stream size vs maxNodeSize");
         

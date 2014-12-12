@@ -4,7 +4,7 @@ import bergdb.core.Db;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
@@ -42,7 +42,7 @@ public class DeleteIndexTester {
     }
     
     
-    @T("f")
+    @Nano("f")
     public static void deleteIndexWhileAddingMore(TestEnvironment coll) {
         int n = 100;
         Database database = Factory.database().memory().start();

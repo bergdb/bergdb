@@ -2,7 +2,7 @@ package bergdb.dev;
 
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * Test how java strings work. Tests are for determining how strings are handled with
@@ -12,13 +12,13 @@ import bergdb.nanotest.T;
  */
 public class StringTester {
 
-    @T
+    @Nano
     public static void testNull0() {
         String s = "pre\u0000post";
         Assert.assertEquals(8, s.length());
     }
     
-    @T
+    @Nano
     public static void testConcat0() {
         String s1 = "\u0000post";
         String s2 = "pre";
@@ -26,7 +26,7 @@ public class StringTester {
         Assert.assertEquals("pre\u0000post", s3);
     }
     
-    @T
+    @Nano
     public static void testConcat1() {
         String s1 = "\u0000\u0001\u0002\u0003";
         String s2 = "txt";
@@ -34,7 +34,7 @@ public class StringTester {
         Assert.assertEquals("\u0000\u0001\u0002\u0003txt\u0000\u0001\u0002\u0003", s3);
     }
     
-    @T
+    @Nano
     public static void testIndexOf() {
         String s = "pre\u0000abc\u0000end";
         Assert.assertEquals(3, s.indexOf('\u0000'));

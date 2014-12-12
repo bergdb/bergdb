@@ -5,7 +5,7 @@ import java.util.Iterator;
 import bergdb.common.EventToWaitFor;
 import bergdb.core.SyncLevel;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pub.Action;
 import bergdb.pub.BadReplicaException;
 import bergdb.pub.Connection;
@@ -29,7 +29,7 @@ import bergdb.stream.MemoryStream;
  */
 public class PubTester {
     
-    @T
+    @Nano
     public static void test1() {
         Database db = Factory.database().memory().start();
         Connection c = db.connection();
@@ -43,7 +43,7 @@ public class PubTester {
     private static String v1;
     private static String v2;
     
-    @T
+    @Nano
     public static void testRw1() {
         Connection c = Factory.database().memory().start().connection();
         c.w().put("/key1", "value1").put("/key2", "value2..").execute();
@@ -61,7 +61,7 @@ public class PubTester {
         Assert.assertEquals("14", c.get("/length", String.class));
     }
     
-    @T
+    @Nano
     public static void testRw2() throws InterruptedException {
         //
         // An RW transaction that should result in an STM rerun of the transaction since another
@@ -118,13 +118,13 @@ public class PubTester {
         }
     }
     
-    @T
+    @Nano
     public static void testDirManyObjects1() {
         // Lookup of large number of objects. DB.getMany() must be called several times.   
         manyObjects(233);
     }
     
-    @T
+    @Nano
     public static void testDirManyObjects2() {
         // Lookup of large number of objects. Exactly 200 objects (same as precisely 2 DB.getMany
         // calls).
@@ -207,7 +207,7 @@ public class PubTester {
     
     
     
-    @T
+    @Nano
     public static void testKeyReplace1() {
         // Two write transactions. transactionTime used in key.
         
@@ -243,7 +243,7 @@ public class PubTester {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testFreezeLookupTime1() {
         TestClock clock = new TestClock();
         Database database = Factory.database().memory().clock(clock).start();
@@ -267,7 +267,7 @@ public class PubTester {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void nullStringField() {
         // Tests storing an object with a null field.
         
@@ -284,7 +284,7 @@ public class PubTester {
         public String[] strings;
     }
     
-    @T
+    @Nano
     public static void nullStringArrayField1() {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
@@ -296,7 +296,7 @@ public class PubTester {
         d.stop();
     }
     
-    @T
+    @Nano
     public static void nullStringArrayField2() {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
@@ -314,7 +314,7 @@ public class PubTester {
         int field;
     }
     
-    @T
+    @Nano
     public static void intField() {
         IntClass o1 = new IntClass();
         o1.field = 1234567890;
@@ -326,7 +326,7 @@ public class PubTester {
         d.stop();
     }
     
-    @T
+    @Nano
     public static void testRetainDuration1() {
         Database d = Factory.database().memory().start();
         
@@ -338,7 +338,7 @@ public class PubTester {
         d.stop();
     }
     
-    @T
+    @Nano
     public static void testRetainDuration2() {
         DatabaseBuilder builder = Factory.database().memory();
         Database d = builder.start();
@@ -350,7 +350,7 @@ public class PubTester {
         d.stop();
     }
     
-    @T
+    @Nano
     public static void testObjectInRootDir() {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
@@ -360,7 +360,7 @@ public class PubTester {
         Assert.assertEquals(12.3, myDouble.value, 0.00001);
     }
     
-    @T
+    @Nano
     public static void minimalCodeToStoreObject() {
         MyDouble a = new MyDouble(1.2);
         a.key = "/a";
@@ -387,7 +387,7 @@ public class PubTester {
         });
     }
     
-    @T
+    @Nano
     public static void testSync1() {
         // Tests Transaction.sync().
         
@@ -409,7 +409,7 @@ public class PubTester {
         Assert.assertTrue(lastStreamPos >= lastTransPos);
     }
     
-    @T
+    @Nano
     public static void testSync2() {
         // Tests Transaction.syncStrong().
         
@@ -425,7 +425,7 @@ public class PubTester {
         assertThatTransWrittenCompletely(d, t);
     }
     
-    @T
+    @Nano
     public static void testSync3() {
         // Tests Connection.sync().
         
@@ -441,7 +441,7 @@ public class PubTester {
         assertThatTransWrittenCompletely(d, t);
     }
     
-    @T
+    @Nano
     public static void testSync4() {
         // Tests Connection.syncStrong().
         
@@ -457,7 +457,7 @@ public class PubTester {
         assertThatTransWrittenCompletely(d, t);
     }
     
-    @T
+    @Nano
     public static void testSync5() {
         // Tests Database.sync().
         
@@ -473,7 +473,7 @@ public class PubTester {
         assertThatTransWrittenCompletely(d, t);
     }
     
-    @T
+    @Nano
     public static void testSync6() {
         // Tests Database.syncStrong().
         
@@ -489,7 +489,7 @@ public class PubTester {
         assertThatTransWrittenCompletely(d, t);
     }
     
-    @T
+    @Nano
     public static void testBadStartReplica() {
         MemoryStream m0 = new MemoryStream();
         DatabaseBuilderImp b = (DatabaseBuilderImp) Factory.database();
@@ -537,7 +537,7 @@ public class PubTester {
     }
     
     
-    @T
+    @Nano
     public static void testKeyField0() {
         // Uses key field, get.
         
@@ -552,7 +552,7 @@ public class PubTester {
         Assert.assertEquals("/a", a1.key);
     }
     
-    @T
+    @Nano
     public static void testKeyField0Private() {
         // Uses private key field, get.
         
@@ -567,7 +567,7 @@ public class PubTester {
         Assert.assertEquals("/a", a1.key);
     }
     
-    @T
+    @Nano
     public static void testKeyField1() {
         // Uses key field, set.
         
@@ -585,7 +585,7 @@ public class PubTester {
     
     
     
-    @T
+    @Nano
     public static void testKeyField2() {
         // Uses key field, rw get.
         
@@ -611,7 +611,7 @@ public class PubTester {
     }
     
     
-    @T
+    @Nano
     public static void testKeyField3() {
         // Uses key field, rw set.
         
@@ -650,7 +650,7 @@ public class PubTester {
         String s;
     }
     
-    @T
+    @Nano
     public static void testKeyFieldInSuperClass0() {
         // key field in super class, set
         
@@ -669,7 +669,7 @@ public class PubTester {
         database.stop();
     }
     
-    @T
+    @Nano
     public static void testKeyFieldInSuperClass1() {
         // key field in super class, get
         
@@ -688,7 +688,7 @@ public class PubTester {
         d.stop();
     }
     
-    @T
+    @Nano
     public static void testKeyFieldWithIterator() {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
@@ -705,7 +705,7 @@ public class PubTester {
         d.stop();
     }
     
-    @T
+    @Nano
     @SuppressWarnings("unused")
     public static void testKeyFieldWithDbObject0() {
         Database d = Factory.database().memory().start();
@@ -720,7 +720,7 @@ public class PubTester {
         d.stop();
     }
     
-    @T
+    @Nano
     public static void testKeyFieldWithDbObject1() {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
@@ -736,7 +736,7 @@ public class PubTester {
         d.stop();
     }
     
-    @T
+    @Nano
     @SuppressWarnings("unused")
     public static void testAnonymous0() {
         Database d = Factory.database().memory().start();
@@ -750,7 +750,7 @@ public class PubTester {
         d.stop();
     }
     
-    @T
+    @Nano
     @SuppressWarnings("unused")
     public static void testAnonymous1() {
         Database d = Factory.database().memory().start();
@@ -764,7 +764,7 @@ public class PubTester {
         d.stop();
     }
     
-    @T
+    @Nano
     public static void testDbObject0() {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
@@ -778,7 +778,7 @@ public class PubTester {
         d.stop();
     }
     
-    @T
+    @Nano
     public static void testDbObject1() {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
@@ -796,7 +796,7 @@ public class PubTester {
         d.stop();
     }
     
-    @T
+    @Nano
     public static void testBadKey() {
         IllegalArgumentException ex = null;
         Database d = Factory.database().memory().start();
@@ -812,7 +812,7 @@ public class PubTester {
         Assert.assertTrue(ex != null);
     }
     
-    @T
+    @Nano
     public static void testStoreArray() {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
@@ -826,7 +826,7 @@ public class PubTester {
         Assert.assertEquals("eve", strings[1]);
     }
     
-    @T
+    @Nano
     public static void testStorePrimitive() {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
@@ -838,7 +838,7 @@ public class PubTester {
         Assert.assertEquals(123, myInt);
     }
     
-    @T
+    @Nano
     public static void testSetLookupWithTimeString1() {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
@@ -848,7 +848,7 @@ public class PubTester {
         Assert.assertEquals(Time.millis(1000), time);
     }
     
-    @T
+    @Nano
     public static void testSetLookupWithTimeString2() {
         TestClock clock = new TestClock();
         clock.setTime(Time.utc("1970-01-01 00:02:03.000"));       // UTC 1970-01-01 00:02:03.000
@@ -859,7 +859,7 @@ public class PubTester {
         Assert.assertEquals(time2, time1);
     }
     
-    @T
+    @Nano
     public static void testCurrentTime() {
         TestClock clock = new TestClock();
         Time t0 = Time.utc("2010-01-01 00:02:03.0000000");
@@ -872,7 +872,7 @@ public class PubTester {
         Assert.assertTrue(transTime.isBetween(t0, t1));
     }
     
-    @T
+    @Nano
     public static void testHistoric1() {
         Database database = Factory.database().memory().start();
         Connection c = database.connection();

@@ -10,7 +10,7 @@ import java.security.NoSuchProviderException;
 //import java.security.Security;
 import javax.crypto.NoSuchPaddingException;
 
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 //import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -24,7 +24,7 @@ public class SecureHash {
     //    Security.addProvider(new BouncyCastleProvider());
     //}
     
-    @T("perf")
+    @Nano("perf")
     public static void run(TestEnvironment c) throws Exception {
         String[] names = {
                 //"Tiger",

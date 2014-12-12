@@ -5,7 +5,7 @@ import java.security.SecureRandom;
 import bergdb.common.SeedGenerator;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * A 16-byte (128-bit) database ID. An immutable class.
@@ -88,14 +88,14 @@ public class DatabaseId {
     // ======== Tests ========
     
     
-    @T private static void twoRandomIdsShouldNotBeEqual() {
+    @Nano private static void twoRandomIdsShouldNotBeEqual() {
         DatabaseId id1 = DatabaseId.createRandom();
         DatabaseId id2 = DatabaseId.createRandom();
         Assert.assertFalse(id1.equals(id2));
         Assert.assertFalse(id2.equals(id1));
     }
     
-    @T private static void testCreateLater() {
+    @Nano private static void testCreateLater() {
         DatabaseId id1 = DatabaseId.CREATE_LATER_MARKER;
         DatabaseId id2 = DatabaseId.createRandom();
         
@@ -104,7 +104,7 @@ public class DatabaseId {
         Assert.assertFalse(id1.equals(id2));
     }
     
-    @T private static void testThatNullBytesCannotBeCreated() {
+    @Nano private static void testThatNullBytesCannotBeCreated() {
         Exception ex = null;
         try {
             DatabaseId.createFromBytes(new byte[SIZE]);
@@ -115,7 +115,7 @@ public class DatabaseId {
         Assert.assertTrue(ex != null);
     }
     
-    @T private static void testEquals() {
+    @Nano private static void testEquals() {
         byte[] bytes1 = new byte[DatabaseId.SIZE];
         byte[] bytes2 = new byte[DatabaseId.SIZE];
         byte[] bytes3 = new byte[DatabaseId.SIZE];

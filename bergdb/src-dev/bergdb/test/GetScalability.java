@@ -1,7 +1,7 @@
 package bergdb.test;
 
 import bergdb.nanotest.BasicTestEnvironment;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 /**
@@ -34,7 +34,7 @@ public class GetScalability extends Get {
         }
     }
 
-    @T("perf")
+    @Nano("perf")
     public static void run(TestEnvironment c) throws InterruptedException {
         new GetScalability().go(c);
     }

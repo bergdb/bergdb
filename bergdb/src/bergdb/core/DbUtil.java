@@ -14,7 +14,7 @@ import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.pub.Clock;
 import bergdb.stream.MemoryStream;
 
@@ -170,7 +170,7 @@ public class DbUtil {
         return db;
     }
     
-    @T
+    @Nano
     private static void testChecksumForEmptyDb() {
         Db db1 = createEmptyDb();
         Db db2 = createEmptyDb();
@@ -182,7 +182,7 @@ public class DbUtil {
         Assert.assertEquals(c1, c2);
     }
     
-    @T
+    @Nano
     private static void testChecksumForOneKv1() {
         Db db1 = createEmptyDb();
         Db db2 = createEmptyDb();
@@ -197,7 +197,7 @@ public class DbUtil {
         Assert.assertEquals(c1, c2);
     }
     
-    @T
+    @Nano
     private static void testChecksumForDiffInValue() {
         Db db1 = createEmptyDb();
         Db db2 = createEmptyDb();
@@ -212,7 +212,7 @@ public class DbUtil {
         Assert.assertTrue(c1 != c2);
     }
     
-    @T
+    @Nano
     private static void testChecksumForDiffInKey() {
         Db db1 = createEmptyDb();
         Db db2 = createEmptyDb();
@@ -227,7 +227,7 @@ public class DbUtil {
         Assert.assertTrue(c1 != c2);
     }
     
-    @T
+    @Nano
     private static void testChecksumForDiffInTime1() {
         Db db1 = createEmptyDb(100);
         Db db2 = createEmptyDb(200);
@@ -242,7 +242,7 @@ public class DbUtil {
         Assert.assertTrue(c1 != c2);
     }
     
-    @T
+    @Nano
     private static void testChecksumForDiffInTime2() {
         // Test with parameter includeKvTime == false, time should not be included in checksum.
         
@@ -259,7 +259,7 @@ public class DbUtil {
         Assert.assertTrue(c1 == c2);
     }
     
-    @T
+    @Nano
     private static void testChecksumWithMultipleKvs() {
         Db db1 = createEmptyDb();
         Db db2 = createEmptyDb();

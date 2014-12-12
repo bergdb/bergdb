@@ -6,7 +6,7 @@ import bergdb.dag.KeyNode;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 
 /**
  * A specialized, performant collection containing the nodes and keys included in one transaction.
@@ -336,7 +336,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
     
     // ---- Testing ----
     
-    @T
+    @Nano
     public static void test1() {
         // Tests simple create, add, get, size.
         
@@ -352,7 +352,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         Assert.assertEquals(2, nodes.valueSize);
     }
     
-    @T
+    @Nano
     public static void testLarge1() {
         int count = TransNodes.INITIAL_SIZE * 2 + 10;
         int index = count / 2;
@@ -374,7 +374,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         Assert.assertEquals(0, nodes.valueSize);
     }
     
-    @T
+    @Nano
     public static void testLarge2() {
         //
         // Tests that length of this.nodes goes back to initialSize.

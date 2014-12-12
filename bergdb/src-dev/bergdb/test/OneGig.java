@@ -15,7 +15,7 @@ import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.BasicTestEnvironment;
-import bergdb.nanotest.T;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
@@ -32,7 +32,7 @@ import bergdb.stream.OneFileStream;
  */
 public class OneGig {
     
-    @T("perf")
+    @Nano("perf")
     public static void t1(TestEnvironment c) throws IOException, InterruptedException {
         String fname = t1Inner(c);
        
@@ -143,7 +143,7 @@ public class OneGig {
         c.report("read-time-per-data-mb", t*1e-9 / (n*0.01));
     }
     
-    @T("perf")
+    @Nano("perf")
     public static void t1mem(TestEnvironment c) throws IOException {
         //
         // In-memory version similar to t1().
