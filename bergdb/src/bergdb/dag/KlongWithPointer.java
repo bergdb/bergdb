@@ -24,4 +24,12 @@ public class KlongWithPointer {
         this.node = null;
         this.pos = Spos.NULL;
     }
+    
+    /**
+     * Returns true if the pointer of this object is not a memory pointer, 
+     * nor a valid stream pointer.
+     */
+    public boolean isNullPointer() {
+        return Pointer.isNull(node, pos);
+    }
 }

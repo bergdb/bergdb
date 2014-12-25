@@ -356,9 +356,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         return result;
     }
     
-
     /**
-     * Gets a ValueNode or KeyNode from a segment in the DB graph. Returns null
+     * Gets a ValueNode or KeyNode from a segment in the Db graph. Returns null
      * if none was found.
      * 
      * @param time
@@ -385,8 +384,9 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                 if (kwi.klong == Klong.NULL) {
                     result = null;
                 } else {
-                    assert current.getPointerNode(kwi.pointerIndex) != null || current.getPointerPos(kwi.pointerIndex) != Spos.NULL
-                            : "bad pointer " + kwi.pointerIndex + " of node " + current;
+                    assert !kwi.isNullPointer()
+                            : "bad pointer " + kwi.pointerIndex + " of node " + current
+                              + ", KeyNode.searchEq() found result, but there is no pointer (no mem pointer, no stream pointer)";
                     
                     result = followPointer(
                             current, kwi.pointerIndex, gd.accessData, 

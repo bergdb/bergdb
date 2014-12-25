@@ -112,8 +112,16 @@ public class BigDbEvict {
             byte[] key = Util.toBytes(keyString);
             expectedValue[0] = (byte) keyString.hashCode();
             assert gd2.evictData.enableEvict == false;
-            byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(key), gd2);
-            Assert.assertArrayEquals("i=" + i + ", n=" + n, expectedValue, value);
+            byte[] value;
+            try {
+                value = db.getOne(Long.MAX_VALUE, Keys.toSegments(key), gd2);
+                Assert.assertArrayEquals("i=" + i + ", n=" + n, expectedValue, value);
+            } catch (AssertionError e) {
+                String message = e.getMessage() + ", i=" + i + ", keyString=" + keyString;
+                throw new AssertionError(message);
+                //System.out.println(message);
+            }            
+            
             i++;
         }
         

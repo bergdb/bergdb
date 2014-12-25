@@ -6,9 +6,10 @@ import bergdb.nanotest.Nano;
 /**
  * A general-purpose pointer class. Used to represent both memory pointers and stream pointers.
  * Useful in method calls like INode.getPointer(int index, Pointer p). 
- * Used as output parameter for efficiency.
- * Used in Db.follow(Pointer p).
+ * Used as output parameter for efficiency. Used in Db.follow(Pointer p).
  * Typically used for temporary storage, method calls, output parameters.
+ * 
+ * @author Frans Lundberg
  */
 public class Pointer {
     /** Memory pointer type. */
@@ -33,7 +34,10 @@ public class Pointer {
         pos = Spos.NULL;
         index = -1;
     }
-    
+
+    /**
+     * Returns true if the pointer is a memory pointer.
+     */
     public final boolean isMem() {
         return node != null;
     }
@@ -50,6 +54,7 @@ public class Pointer {
      * Returns true if this object is not a memory pointer, nor a valid stream pointer.
      */
     public final boolean isNull() {
+        // Manual inline of: return isNull(node, pos);
         return node == null && pos == Spos.NULL;
     }
     
