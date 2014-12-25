@@ -8,7 +8,7 @@ import bergdb.common.Bytes;
 import bergdb.core.Db;
 import bergdb.core.DbUtil;
 import bergdb.core.FixedDurationEvictBoss;
-import bergdb.core.IEvictBoss;
+import bergdb.core.EvictBoss;
 import bergdb.core.KeyFactory;
 import bergdb.core.Trans;
 import bergdb.dag.GetData;
@@ -160,7 +160,7 @@ public class OneGig {
         c.report("transaction-count", n);
         c.report("kv-size", valueSize + 4);
         
-        IEvictBoss boss = new FixedDurationEvictBoss(10*1000000);
+        EvictBoss boss = new FixedDurationEvictBoss(10*1000000);
         Db db = Db.builder().mainStream(s).evictBoss(boss).start();
         
         long t = System.nanoTime();

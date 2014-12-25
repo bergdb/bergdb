@@ -4,7 +4,7 @@ import java.util.Random;
 
 import bergdb.core.Db;
 import bergdb.core.FixedDurationEvictBoss;
-import bergdb.core.IEvictBoss;
+import bergdb.core.EvictBoss;
 import bergdb.core.KeyFactory;
 import bergdb.core.Trans;
 import bergdb.dag.GetData;
@@ -36,7 +36,7 @@ public class Get {
         this.n = n;
         done = false;
         
-        IEvictBoss boss = new FixedDurationEvictBoss();
+        EvictBoss boss = new FixedDurationEvictBoss();
         
         db = Db.builder()
                 .stream("main", new NullStream())

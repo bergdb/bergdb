@@ -62,7 +62,8 @@ public class BigDbEvict {
     private static void runTest(int n, TestEnvironment c) throws InterruptedException {
         MemoryStream ms = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().mainStream(ms).clock(clock).evictBoss(new FixedDurationEvictBoss(10*1000000)).start();
+        Db db = Db.builder().mainStream(ms).clock(clock).evictBoss(
+                new FixedDurationEvictBoss(10*1000000)).start();
         db.setRetainDuration(Long.MAX_VALUE);
         final int valueSize = 100 * 1000*1000 / n;
         

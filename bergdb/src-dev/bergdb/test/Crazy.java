@@ -6,7 +6,7 @@ import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.DbUtil;
 import bergdb.core.FixedDurationEvictBoss;
-import bergdb.core.IEvictBoss;
+import bergdb.core.EvictBoss;
 import bergdb.core.CoreTestClock;
 import bergdb.core.KeyFactory;
 import bergdb.core.SyncLevel;
@@ -34,7 +34,7 @@ public class Crazy {
         PrintStream out = c.out();
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        IEvictBoss boss = new FixedDurationEvictBoss(20*1000000);
+        EvictBoss boss = new FixedDurationEvictBoss(20*1000000);
         int n = 50;
         
         out.println("---- Crazy.run ----");

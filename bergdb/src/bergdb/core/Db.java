@@ -136,7 +136,7 @@ public class Db {
     // ---- Settings ----
 
     private final DbClock dbClock;
-    private final IEvictBoss evictBoss;
+    private final EvictBoss evictBoss;
     private final int maxNodeSize;
     
     /** Current startupDistance. Sync note: protected by writeLock. */
@@ -1262,10 +1262,9 @@ public class Db {
     }
 
     private final void possiblyEvict(EvictData ed) {
-        // Synch note: concurrent access must be supported.
-        // We have a benign race condition here. Updates could be missed.
+        // Synch note: concurrent access is supported.
 
-        if (evictBoss.evictOrNot()) {
+        if (evictBoss.evictShouldRun()) {
             evict(ed);
         }
     }
@@ -1273,17 +1272,18 @@ public class Db {
     /**
      * Runs the evict algorithm.
      * 
-     * @param ed  Operation-local data scope.
+     * @param ed  Operation-local data.
      */
     public final void evict(EvictData ed) {
-        // Synch note: concurrent access by multiple threads must be supported
-        // by this method. The EvictData, ed, is specific for each thread.
-
+        // Synch note: concurrent access by multiple threads is supported
+        // by this method. The implement can assume that the EvictData, ed, 
+        // is specific for each thread. 'ed' is not shared between concurrent threads.
+        
         ed.pointerCount = 0;
         ed.evictCount = 0;
         ed.startupPos = x.startupPos.getForEvict();
         evictInner(ed);
-        evictBoss.reportEvictCount(ed);
+        evictBoss.reportEvict(ed);
     }
 
     private void evictInner(EvictData ed) {
@@ -1535,7 +1535,7 @@ public class Db {
         /**
          * The cachedMemoryValue is an estimate of the total amount of memory cached
          * since the database process was started. It works as a time-scale for the cache.
-         * Yes, starting from MIN_CACHE_MEMORY_VALUE (10) instead of 0 has importance.
+         * Starting from MIN_CACHE_MEMORY_VALUE (10) instead of 0 has importance.
          */
         private final AtomicLong cachedMemoryValue = new AtomicLong(MIN_CACHE_MEMORY_VALUE);
         

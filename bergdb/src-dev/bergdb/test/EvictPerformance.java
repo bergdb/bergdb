@@ -4,7 +4,7 @@ import java.util.Random;
 
 import bergdb.core.Db;
 import bergdb.core.FixedDurationEvictBoss;
-import bergdb.core.IEvictBoss;
+import bergdb.core.EvictBoss;
 import bergdb.core.KeyFactory;
 import bergdb.core.Trans;
 import bergdb.dag.EvictData;
@@ -25,7 +25,7 @@ public class EvictPerformance {
     long[][] keys;
     int n;                  // number of KVs
     
-    private void go(TestEnvironment c, IEvictBoss boss) {
+    private void go(TestEnvironment c, EvictBoss boss) {
         
         try {
             createDB(100*1000, boss);
@@ -57,7 +57,7 @@ public class EvictPerformance {
      * Creates 'db', 'keys', sets done = false; prepares for calls to warmup() and 
      * TimedGets.start/run.
      */
-    private void createDB(int n, IEvictBoss evictBoss) {
+    private void createDB(int n, EvictBoss evictBoss) {
         assert n > 0 : "Bad n: " + n;
         this.n = n;
         
@@ -103,7 +103,7 @@ public class EvictPerformance {
         
         int duration = 1000;
         collector.out().println("With new FixedDurationEvictBoss(" + duration + ")");
-        IEvictBoss boss = new FixedDurationEvictBoss(duration);
+        EvictBoss boss = new FixedDurationEvictBoss(duration);
         
         EvictPerformance p = new EvictPerformance();
         p.go(new BasicTestEnvironment(), boss);

@@ -1,8 +1,7 @@
 package bergdb.dag;
 
-
 /**
- * A klong with node pointer and possibly more related data.
+ * A klong with node pointer and related data.
  * Used internally in node search methods.
  * The pointer can be either a memory pointer (node != null, pos = accessData)
  * or a stream pointer (node == null, pos = stream position of the node).

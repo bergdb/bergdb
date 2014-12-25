@@ -5,7 +5,7 @@ import java.io.IOException;
 
 import bergdb.core.Db;
 import bergdb.core.DbBuilder;
-import bergdb.core.IEvictBoss;
+import bergdb.core.EvictBoss;
 import bergdb.pub.Clock;
 import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
@@ -109,7 +109,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         return this;
     }
     
-    public DatabaseBuilder evictBoss(IEvictBoss evictBoss) {
+    public DatabaseBuilder evictBoss(EvictBoss evictBoss) {
         dbBuilder.evictBoss(evictBoss);
         return this;
     }

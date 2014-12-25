@@ -17,7 +17,7 @@ public class DbBuilder {
     Clock clock;
     int maxNodeSize;
     int startupDistance;
-    IEvictBoss evictBoss;
+    EvictBoss evictBoss;
     long retainDurationInTimeUnits;
     DatabaseId id;
     List<DbBuilder.StreamInfo> streamInfos;
@@ -168,7 +168,7 @@ public class DbBuilder {
      * Sets a non-default evict boss. The evict boss decides when to evict
      * nodes from memory.
      */
-    public DbBuilder evictBoss(IEvictBoss evictBoss) {
+    public DbBuilder evictBoss(EvictBoss evictBoss) {
         this.evictBoss = evictBoss;
         return this;
     }

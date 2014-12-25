@@ -3,21 +3,23 @@ package bergdb.core;
 import bergdb.dag.EvictData;
 
 /**
- * An IEvcitBoss that never evicts nodes. Useful for testing.
+ * An IEvictBoss that never evicts nodes. Useful for testing, but not for
+ * production use, of course. Cache grows without limit.
+ * 
+ * @author Frans Lundberg
  */
-public class NoEvictBoss implements IEvictBoss {
+public class NoEvictBoss implements EvictBoss {
     
-    /**
-     * Returns Long.MAX_VALUE.
-     */
+    /** Returns Long.MAX_VALUE. */
     public long getCacheDuration() {
         return Long.MAX_VALUE;
     }
 
-    public void reportEvictCount(EvictData ed) {
-    }
+    /** Does nothing. */
+    public void reportEvict(EvictData ed) {}
 
-    public boolean evictOrNot() {
+    /** Always returns false. */
+    public boolean evictShouldRun() {
         return false;
     }
 }
