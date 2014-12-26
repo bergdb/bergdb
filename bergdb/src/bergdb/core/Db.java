@@ -1257,6 +1257,10 @@ public class Db {
         x.putData.clear();
     }
 
+    /**
+     * Returns the current 'access data' that should be written to accessed pointers.
+     * The 'access data' is a negative value.
+     */
     public long getAccessData() {
         return -aux.cachedMemoryValue.get();
     }
@@ -1292,7 +1296,7 @@ public class Db {
         //
         // Synch note: concurrent access must be supported by this method.
         // Multiple concurrent readers, one writer.
-        // rand is used to somewhat randomly choose a nodes to evict process.
+        // rand is used to somewhat randomly choose nodes to evict.
         // For performance, a single call to evictRandom.nextInt() is used.
         // To increased randomness, the rand value is increased between each time it is used.
         //
@@ -1345,20 +1349,28 @@ public class Db {
      * Evicts all evictable pointers of 'node'.
      */
     private void evictPointers(INode node, EvictData ed) {
+        //
+        // Iterates the pointers and evicts a pointee that fullfills all conditions:
+        // * pointee != null (a memory pointer)
+        // * Spos of pointee is smaller than current startup pos of database.
+        // * Access time of pointer is LTE ed.accessTimeLimit (pointer not recently accessed).
+        //
+        
         int count = node.getPointerCount();
         for (int i = 0; i < count; i++) {
             synchronized (dag.getPointerLock(node, i)) {
-                INode pointee = node.getPointerNode(i); // re-read needed in case
-                                                  // change happened.
-                long pointeePos;
-
-                if (pointee != null
-                        && (pointeePos = pointee.getSpos()) != Spos.NULL
-                        && !(pointeePos >= ed.startupPos)
-                        && AccessData.getAccessTime(node.getPointerAccessData(i)) <= ed.accessTimeLimit) {
-
-                    node.setPointer(i, null, pointeePos);
-                    ed.evictCount += 1;
+                INode pointee = node.getPointerNode(i); 
+                
+                if (pointee != null) {
+                    long pointeePos = pointee.getSpos();
+                    if (pointeePos != Spos.NULL
+                            && pointeePos < ed.startupPos
+                            && AccessData.getAccessTime(node.getPointerAccessData(i)) 
+                                    <= ed.accessTimeLimit) {
+                        
+                        node.setPointer(i, null, pointeePos);
+                        ed.evictCount += 1;
+                    }
                 }
             }
         }
@@ -1534,7 +1546,8 @@ public class Db {
         
         /**
          * The cachedMemoryValue is an estimate of the total amount of memory cached
-         * since the database process was started. It works as a time-scale for the cache.
+         * since the database process was started (in bytes). 
+         * It works as a time-scale for the cache and defines the "cache time-scale".
          * Starting from MIN_CACHE_MEMORY_VALUE (10) instead of 0 has importance.
          */
         private final AtomicLong cachedMemoryValue = new AtomicLong(MIN_CACHE_MEMORY_VALUE);

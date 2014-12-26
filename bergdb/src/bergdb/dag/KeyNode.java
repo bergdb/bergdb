@@ -1294,6 +1294,11 @@ public class KeyNode implements INode {
         return true;
     }
     
+    public boolean assertOk() {
+        check();
+        return true;
+    }
+    
     /**
      * Same as check() except for that the node size is also checked against maxNodeSize.
      */
@@ -1328,9 +1333,9 @@ public class KeyNode implements INode {
                 if (pointers[i] == null) {
                     long spos = pos[i];
                     
-                    if (!Spos.isValidOrNull(spos)) {
+                    if (!Spos.isValid(spos)) {
                         throw new AssertionError("Bad spos of pointer " + i + " of node " 
-                                + this + ".");
+                                + this + ". Spos: " + spos);
                     }
                 }
             }

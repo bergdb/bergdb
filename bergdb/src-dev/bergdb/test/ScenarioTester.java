@@ -17,7 +17,9 @@ import bergdb.nanotest.Nano;
 import bergdb.stream.MemoryStream;
 
 /**
- * Numbered scenarios tested. Referred to as ScenarioNNN.
+ * Numbered scenarios that can be references. Referred to as ScenarioNNN.
+ * Written test scenarios are not much changed; they should be thought of
+ * as static, but may have to evolve as the database evolves.
  * 
  * @author Frans Lundberg
  */
@@ -72,7 +74,11 @@ public class ScenarioTester {
         long checksum2 = DbUtil.checksum(db);  
         Assert.assertEquals(checksum1, checksum2);
     }
-    
+
+    /**
+     * Scenario with a 100k startup distance and 40 KVs 
+     * written one by one to the stream. Each KV has a value of size 100k.
+     */
     @Nano
     public static void scenario101() {
         CoreTestClock clock = new CoreTestClock();
@@ -95,7 +101,8 @@ public class ScenarioTester {
         g.lookupTime = Long.MAX_VALUE;
         g.startKey = null;
         db.getMany(g);
-        Assert.assertTrue(g.result.size() == size || g.result.size() == size + 1);
+        
+        Assert.assertTrue(g.result.size() == size);
     }
     
     /**

@@ -46,7 +46,7 @@ public class FixedDurationEvictBoss implements EvictBoss {
     }
     
     public long getCacheDuration() {
-        // No need to synch, cacheDuration is final.
+        // Sync note: No need to synchronize, cacheDuration is final.
         return cacheDuration;
     }
     
