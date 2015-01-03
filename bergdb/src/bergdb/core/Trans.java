@@ -8,6 +8,7 @@ import bergdb.common.Util;
 import bergdb.dag.Dag;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
+import bergdb.dag.Spos;
 import bergdb.nanotest.Nano;
 
 /**
@@ -59,10 +60,17 @@ public class Trans {
           
     // -- Other --
     
-    boolean isInternal;             // True if transaction is executed on behalf of the database itself.
-    boolean isRerun;                // True if used at startup for transaction rerun.
-    long startupPos = -1;           // startupPos stored in stream with transaction or -1 for "no update".
-    GetData warmupGetData;          // GetData for Db.warmup() method.
+    /** True if transaction is executed on behalf of the database itself. */
+    boolean isInternal;
+    
+    /** True if used at startup for transaction rerun. */
+    boolean isStartupRerun;
+    
+    /** startupPos stored in stream with transaction or Spos.NULL for "no update". */
+    long startupPos = Spos.NULL;
+    
+    /** GetData for Db.warmup() method. */
+    GetData warmupGetData;
     
     /**
      * Private constructor, use the builder: Trans.builder().
@@ -87,7 +95,7 @@ public class Trans {
     public String print() {
         StringBuilder b = new StringBuilder();
         b.append("pos: " + pos + "\n");
-        b.append("isRerun: " + isRerun + "\n");
+        b.append("isRerun: " + isStartupRerun + "\n");
         b.append("storedNewStartupPos: " + startupPos + "\n");
         b.append("readKeyHashes: ");
         for (int i = 0; i < this.readKeyHashes.length; i++) {

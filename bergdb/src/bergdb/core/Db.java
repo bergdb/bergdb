@@ -104,7 +104,7 @@ public class Db {
     private DbState state = DbState.ZERO;
     
     /**
-     * Global transaction write lock. Held when STM stuff is done.
+     * Global transaction write lock. Held when STM stuff is happening.
      */
     private final WriteLock writeLock;
     
@@ -460,7 +460,7 @@ public class Db {
      * Starts the database by reading from the stream. Call once per Db object
      * after constructor and before the get/set methods.
      * 
-     * @param param params  
+     * @param params  
      *          Used for testing, normally set to StartParams.NULL as default.
      * @throws StreamIoException
      * @throws StreamFormatException
@@ -1026,7 +1026,7 @@ public class Db {
     public final void execute(Trans.Builder b) {
         //
         // This little method does not comply with the minimal Core Layer API rule.
-        // Should be be avoided, but currently (2012-12) called from over 100 places.
+        // Should be be avoided, but is currently (2012-12) called from over 100 places.
         //
         execute(b.build());
     }
@@ -1039,8 +1039,8 @@ public class Db {
      * @throws RerunException
      *             Thrown if the transaction was cancelled and should be rerun
      *             because one or more KVs with a key in the read key hash set,
-     *             were changed after the read time of the transaction. STM
-     *             approach.
+     *             were changed after the read time of the transaction; 
+     *             the STM approach.
      * @throws StreamFormatException
      *             If the database stream is corrupt.
      * @throws StreamIoException
@@ -1100,19 +1100,23 @@ public class Db {
             stmCheckConflicts(t);
 
             try {
-                if (!t.isRerun) t.time = dbClock.transactionBegin();
+                if (!t.isStartupRerun) t.time = dbClock.transactionBegin();
                 
                 putKvs();
 
+                // The synch statement below publishes the changes by the writer thread 
+                // (the thread executing this code) to the readers. This is done
+                // before the t.transTime can be used as lookup time, so all readers
+                // (that do: "synchronized (readSynch) {}") are guaranteed to see all 
+                // in-memory changes made by the writer.
                 synchronized (readSync) {}
-                    // Publishes the changes by the writer thread to the readers. This is done
-                    // before the t.transTime can be used as lookup time, so all readers
-                    // (that do: "synchronized (readSynch) {}") are guaranteed to see all 
-                    // in-memory changes made by the writer (the thread executing this code).
+                    
                 
             } finally {
-                if (!t.isRerun) dbClock.transactionEnd();
-                    // After this, read operations can use the lookuptime t.time.
+                
+                // After the call to dbClock.transactionEnd(), read operations may use
+                // t.time as a lookup time.
+                if (!t.isStartupRerun) dbClock.transactionEnd();
             }
             
             stmRecordKeys(t);
@@ -1139,7 +1143,7 @@ public class Db {
     private void store() {
         long sp;
         
-        if (x.trans.isRerun) {
+        if (x.trans.isStartupRerun) {
             sp = x.trans.startupPos;
         } else {
             sp = computeNewStartupPos();
@@ -1149,7 +1153,7 @@ public class Db {
         kvTransSeq.addToTransNodes(sp, x.kvTransNodes);
         kvTransSeq.removeBefore(sp);
         
-        if (!x.trans.isRerun) {
+        if (!x.trans.isStartupRerun) {
             nodeStream.appendNodes(x.kvTransNodes, x.trans);
         }
         

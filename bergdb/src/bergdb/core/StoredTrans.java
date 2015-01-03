@@ -81,7 +81,7 @@ public class StoredTrans {
         trans.pos = tpos;
         trans.lastPos = lastPos;
         trans.time = tt;
-        trans.isRerun = true;
+        trans.isStartupRerun = true;
         trans.startupPos = startupPos;
         
         return trans;
