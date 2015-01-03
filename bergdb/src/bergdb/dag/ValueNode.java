@@ -142,7 +142,7 @@ public final class ValueNode implements INode {
             if (sub.length() > 5) {
                 sub = sub.substring(sub.length() - 2);
             }
-            addressString = "@" + sub;
+            addressString = "/" + sub;
         }
         
         String result = "V" + addressString + " " + getSpos() + " ";

@@ -119,7 +119,8 @@ public final class TopNode implements INode {
         }
         
         String midPart = (id == -1 && spos == -1) ? " " : " " + id + ":" + spos + " ";
-        String result = "T" + topNodeId + "/" + s + midPart + "t=" + rootTime;
+        //String result = "T" + topNodeId + "/" + s + midPart + "t=" + rootTime;
+        String result = "T" + topNodeId + midPart + "t=" + rootTime;
         return result;
     }
     

@@ -8,7 +8,7 @@ import bergdb.dag.Keys;
 import bergdb.dag.PutData;
 
 /**
- * Dag examples for the 2013 Graph document (doc/2013/2013-graph.odt).
+ * Dag examples for the 2015-algos document (and doc/2013/2013-graph.odt).
  * 
  * @author Frans Lundberg
  */
@@ -98,11 +98,22 @@ public class DagExamples {
 
     
     public static void main(String[] args) {
-        //empty();
-        //simpleKey();
-        //longerKey();
-        //severalKeys1();
-        //severalKeys2();
+        System.out.println("==== empty() ====");
+        empty();
+        
+        System.out.println("==== simpleKey() ====");
+        simpleKey();
+        
+        System.out.println("==== longerKey() ====");
+        longerKey();
+        
+        System.out.println("==== severalKeys1() ====");
+        severalKeys1();
+        
+        System.out.println("==== severalKeys2() ====");
+        severalKeys2();
+        
+        System.out.println("==== prefixDemo() ====");
         prefixDemo();
     }
 }

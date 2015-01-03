@@ -1169,9 +1169,9 @@ public class KeyNode implements INode {
             return;
         }
         out.println(indent + this.toString());
-        if (size == 0) {
-            out.println(indent + "    no klongs");
-        }
+        //if (size == 0) {
+        //    out.println(indent + "no klongs");
+        //}
         
         for (int i = 0; i < size; i++) {
             long klong = klongs[i];
@@ -1182,7 +1182,7 @@ public class KeyNode implements INode {
             switch (type) {
             case Klong.INT_TYPE_TIME:
                 long arrayTime = Klong.getTime(klong);
-                out.println("TIME: " + arrayTime);
+                out.println("TIME:" + arrayTime);
                 break;
                 
             case Klong.INT_TYPE_KEY:
