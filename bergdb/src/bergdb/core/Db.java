@@ -72,17 +72,13 @@ import bergdb.stream.AppendOnlyStream;
  * @author Frans Lundberg
  */
 public class Db {
-    //
-    // Note: There must be no reference (direct or indirect) to a Db object from 
-    // a thread started by the database. Otherwise, the Db object will never be 
-    // available for garbage collection.
-    //
     
     private Dag dag;
     
-    private TransSeq kvTransSeq;
-    
     private final NodeStream nodeStream;
+    
+    private TransSeq transSeq;
+    
     
     /** 
      * State of the database. Synch note: writes published by readSync.
@@ -1136,8 +1132,8 @@ public class Db {
             x.trans.startupPos = sp;
         }
         
-        kvTransSeq.addToTransNodes(sp, x.kvTransNodes);
-        kvTransSeq.removeBefore(sp);
+        transSeq.addToTransNodes(sp, x.kvTransNodes);
+        transSeq.removeBefore(sp);
         
         if (!x.trans.isStartupRerun) {
             nodeStream.appendNodes(x.kvTransNodes, x.trans);
@@ -1148,7 +1144,7 @@ public class Db {
         x.transInfo.tpos = x.trans.pos;
         x.transInfo.lastPos = x.trans.lastPos;
         x.transInfo.tt = x.trans.time;
-        kvTransSeq.add(x.transInfo);
+        transSeq.add(x.transInfo);
         
         x.kvTransNodes.clean();
         x.startupPos.set(sp);
@@ -1204,11 +1200,11 @@ public class Db {
      * the stream length and the startupPosUpdater.
      */
     private long computeNewStartupPos() {
-        assert kvTransSeq != null : "kvTransSeq is null";
+        assert transSeq != null : "kvTransSeq is null";
         long current = x.startupPos.get();
         long length = nodeStream.getLength();
         return startupPosUpdater.newStartupPos(
-                current, length, startupDistance, (PosOfTransBeforeFunction) kvTransSeq);
+                current, length, startupDistance, (PosOfTransBeforeFunction) transSeq);
     }
 
     /**
@@ -1462,7 +1458,7 @@ public class Db {
         
         public void createPutAndGetData() { Db.this.createPutAndGetData(); }
 
-        public void setKvTransSeq(TransSeq seq) { Db.this.kvTransSeq = seq; }
+        public void setKvTransSeq(TransSeq seq) { Db.this.transSeq = seq; }
         
         public void setCachedMemoryValue(long cachedMemoryValue) {
             Db.this.aux.cachedMemoryValue.set(cachedMemoryValue);
@@ -1649,24 +1645,33 @@ public class Db {
 
 /*
 
+======== Note on garbage collection of Db objects ========
+
+There must be no reference (direct or indirect) to a Db object from 
+a thread started by the database. Otherwise, the Db object will never
+be available for garbage collection. Threads are considered "top-level"
+objects to the garbage collector.
+
 
 ======== Concurrency ========
  
-130122 Frans. The concurrency implementation of DB is fast and
+2015-01 Frans: The concurrency implementation of Db is fast and
 non-conventional. The advantage is that readers (threads calling
-DB.get()/getMany()) will never block on anything but stream reads. Yes,
-really never! This is independent on what a writer does.
+DB.get()/getMany()) will *never* block on anything but stream reads. 
+Yes, really never! This is independent on what a writer does and 
+other concurrent read threads.
  
 ---- The essence ----
  
-An initialized DB instance is essentially only used through the three methods
-get(), getMany() and execute(Trans). A thread that calls get()/getMany() is
-called a *reader* while a thread that calls execute() is called a *writer*.
-The core part of execute() runs holding a lock called DB.writeLock. So,
-execute() is called in serial, one thread at a time. I have measured
-throughput of small transactions at 100,000 transactions/s, so the
-exclusive-write-access does not result in bad performance. Likely, the
-underlying storage device will limit the performance.
+An initialized Db instance is essentially only used through the three methods
+getOne(), getMany() and execute(Trans). A thread that calls getOne()/getMany()
+is called a *reader* while a thread that calls execute() is called a *writer*.
+A core part of execute() holds a lock called Db.writeLock. So, a part of 
+execute() is called in serial, one thread at a time. I have measured the 
+throughput of small transactions at over 100,000 transactions/s, so the
+exclusive-write-access does not result in bad performance. Likely, IO will 
+limit performance. An STM (software transactional memory) approach is used 
+to achieve fast optimistic concurrency control.
 
 All transactions of BergDB are ACID transactions. Using an SQL term, the
 isolation level is serializable (the highest isolation level) with maintained
@@ -1681,21 +1686,21 @@ synchronized block. See code fragment below.
     dbClock.transactionEnd();
  
 Readers are guaranteed to see the changes since the read methods
-(get/getMany) also synchronize on readSynch in the beginning of the methods.
+(getOne/getMany) also synchronize on readSynch in the beginning of the methods.
 See code fragment below.
 
-synchronized (readSynch) {} actualLookupTime =
-dbClock.timeForGet(requestedLookupTime);
- 
+    synchronized (readSynch) {}
+    actualLookupTime = dbClock.timeForGet(requestedLookupTime);
+
 The memory writes made by the writer can in general become visible to readers
 before the synch operation. The execute() method is however designed in a
 particular way. The writes by the writer preserves the previous states - a
 lookup with a given actualLookupTime will always give the same result. So,
 readers can access the database while the writer is executing transactions.
-The result of a transaction will never become visible to a read until the
-reader will use an actualLookupTime that is equal or greater the the
+The result of a transaction is not visible to a reader unless
+the reader uses an actualLookupTime that is equal or greater than the
 transaction time of the transaction.
- 
+
 Note that this approach requires a lot from the writer. Any memory write may
 or may not become visible to concurrent readers and possibly these writes can
 become visible in another order than the order observed by the writer. This
@@ -1708,8 +1713,8 @@ future transaction.
  
 ---- Initialization ----
  
-The construction of the DB instance and DB.start() (database startup) are
-protected by the code holding both the locks DB.writeLock and DB.readSynch.
+The construction of the Db instance and Db.start() (database startup) are
+protected by the code holding both the locks Db.writeLock and Db.readSynch.
 All changes of the init stage should thus be available to any writer thread
 and any reader thread since that synchronize on writeLock/readSynch before
 any memory reads.
@@ -1718,7 +1723,7 @@ any memory reads.
  
 The long[] klongs field of KeyNode is important. It has valid klongs in the
 range[0..size-1] where "size" is the volatile short field KeyNode.size. This
-volatile size if key to the concurrency implementation. Once KeyNode.size is
+volatile size is key to the concurrency implementation. Once KeyNode.size is
 increased (it never decreases) by the writer all other changes to the KeyNode
 needed to read the new range of klongs [0..newSize-1] has been made by the
 writer.
@@ -1730,18 +1735,24 @@ the reader.
  
 Readers must not read klongs that are not in the currently valid klongs array
 range [0..size-1].
+
  
-======== maxNodeSize ========
- 
-//maxNodeSize = 16 - 2; 
-maxNodeSize = 32 - 2; 
-//maxNodeSize = 64 - 2;
-  
-32-2 works best on Rose for Get. Possibly more on computers with // larger cache
-lines. Rose has 64 byte cache line. Linda has 64 byte cache line.
-(Linux command: sudo cat /sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size) 
--2 is used to have margin. -1 did not work on Rose. 
-For Set ops, its is less sensitive. Everything from 8-2 to 128-2 is reasonable. 
-(does not degrade performance more than 20% from optimum).
+======== CorePerf vs maximum node size ========
+
+Frans 2015-01. The maximum number of klongs per KeyNode.
+Checking if 30 is still a good choice. Measured on my Cissi laptop.
+
+Max node size   CorePerf geo mean (get, get4t, getmany, set)
+ 8              1.00 (1.25, 1.65, 0.73, 0.66)
+14              0.73 (0.82, 1.06, 0.61, 0.55)
+30              0.77 (0.79, 0.98, 0.86, 0.54)
+62              0.89 (0.86, 1.06, 1.22, 0.60)
+
+The default maxNodeSize = 30 is still a resonable choice.
+14 is even faster for the CorePerf geo mean, but 30 is best for getOne() 
+performance (one or 4 threads).
+
+There are other criteria besides CorePerf; stream size, memory usage. Not
+investigated now.
 
 */

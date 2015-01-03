@@ -329,7 +329,4 @@ From test running on Rose - low-end 32-bit Ubuntu netbook, Feb 2013. Profile val
     baseline1.put("set2",    18.0e-6);
 
 
-== 130530 ==
-Removed use of System.out.printf() since it does not work for the GCJ build.
-
 */

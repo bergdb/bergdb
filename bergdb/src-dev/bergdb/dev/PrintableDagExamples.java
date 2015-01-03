@@ -4,17 +4,17 @@ import bergdb.core.Db;
 import bergdb.core.CoreTestClock;
 
 /**
- * Executable class that prints examples of the DB tree.
+ * Executable class that prints examples of the db graph.
  * 
  * @author Frans Lundberg
  */
-public class PrintExamples {
+public class PrintableDagExamples {
     public void run() {
         
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().clock(clock).start();
-        System.out.println("---- Empty DB ----");
-        System.out.println("DB at initial state.\n");
+        System.out.println("---- Empty database ----");
+        System.out.println("Db at initial state.\n");
         db.printGraph(System.out);
         System.out.println();
         
@@ -68,6 +68,6 @@ public class PrintExamples {
     }
     
     public static void main(String[] args) {
-        new PrintExamples().run();
+        new PrintableDagExamples().run();
     }
 }

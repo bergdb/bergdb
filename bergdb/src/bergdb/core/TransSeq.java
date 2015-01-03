@@ -4,6 +4,7 @@ import java.util.ArrayList;
 
 import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
+import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
 import bergdb.nanotest.Assert;
 import static bergdb.nanotest.Assert.*;
@@ -12,8 +13,8 @@ import bergdb.nanotest.Nano;
 /**
  * An in-memory data structure that keeps information about the transactions
  * that belongs to the startup section of the database stream.
- * The information is needed to be able to append dirty nodes to the current transaction
- * so they do not become too dirty.
+ * The information is needed to be able to append dirty nodes to the end of the
+ * stream before so they will not become too dirty.
  * 
  * @author Frans Lundberg
  */
@@ -49,11 +50,11 @@ public class TransSeq implements PosOfTransBeforeFunction {
     }
     
     /**
-     * Returns pos of last trans with trans.pos < limit
-     * or -1 if there is no such transaction.
+     * Returns the stream position of the last transaction with 
+     * tpos < limit or Spos.NULL if there is no such transaction.
      */
     public long posOfTransBefore(long limit) {
-        long result = -1;
+        long result = Spos.NULL;
         
         TransInfo t = first;
         while (t != null && t.tpos < limit) {
@@ -83,7 +84,8 @@ public class TransSeq implements PosOfTransBeforeFunction {
         }
         
         if (first == null) {
-            // To avoid possible memory leak, last is set to null.
+            
+            // To avoid a possible memory leak, last is set to null.
             last = null;
         }
         
@@ -131,7 +133,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
     }
     
     /**
-     * Information needed about one transaction and linked-list pointer.
+     * Information about a transaction and a linked-list pointer.
      */
     public static class TransInfo {
         TransInfo next = null;

@@ -20,7 +20,7 @@ public class DbBuilder {
     EvictBoss evictBoss;
     long retainDurationInTimeUnits;
     DatabaseId id;
-    List<DbBuilder.StreamInfo> streamInfos;
+    List<DbBuilder.StreamInfo> streamInfos = new ArrayList<DbBuilder.StreamInfo>();
     
     static class StreamInfo {
         String name;
@@ -30,21 +30,29 @@ public class DbBuilder {
     }
 
     private DbBuilder() {
-        // Default Db settings are specified here.
+        
         // DatabaseId.createRandom() is not used because it can be slow. 
         // A NULL id is replaced by Db when Db is started.
+        id = DatabaseId.CREATE_LATER_MARKER;
+        
+        applyDefaultSettings();
+    }
+    
+    /**
+     * Default database settings are specified in this method.
+     */
+    private void applyDefaultSettings() {
         //
+        // 150103 Frans: keeping maxNodeSize30() after renewed investigation. 
+        //      See end comments of Db class.
         // 130707 Frans: default retain duration = forever. Was one week before.
         //
-        
-        streamInfos = new ArrayList<DbBuilder.StreamInfo>();
         
         startupDistance = 20 * 1000000;
         clock = new SystemClock();
         evictBoss = new FixedDurationEvictBoss();
         maxNodeSize30();
         retainDurationInTimeUnits = Long.MAX_VALUE;
-        id = DatabaseId.CREATE_LATER_MARKER;
     }
     
     /**
