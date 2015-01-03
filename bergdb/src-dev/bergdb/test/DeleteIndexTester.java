@@ -1,6 +1,7 @@
 package bergdb.test;
 
 import bergdb.core.Db;
+import bergdb.core.DbConstants;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
@@ -107,7 +108,7 @@ public class DeleteIndexTester {
         // Internal check that there are index entries before deletion starts, but they
         // are gone when deletion is done.
         
-        String dir = Db.INTERNAL_KEY_PREFIX + "di/de-salary/";  // Note the added d's.
+        String dir = DbConstants.INTERNAL_KEY_PREFIX + "di/de-salary/";  // Note the added d's.
         Assert.assertEquals('d', PubKeys.DIR_PREFIX);
         
         GetMany g;

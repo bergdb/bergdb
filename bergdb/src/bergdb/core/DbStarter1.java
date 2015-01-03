@@ -32,7 +32,7 @@ public class DbStarter1 {
     //
     
     private final TransSeq kvTransSeq = new TransSeq();
-    private long cachedMemoryValue = Db.MIN_CACHE_MEMORY_VALUE;
+    private long cachedMemoryValue = DbConstants.MIN_CACHE_MEMORY_VALUE;
     private final HashMap<Long, INode> posMap = new HashMap<Long, INode>();  // pos -> node
     private final HashMap<Long, INode> nextMap = new HashMap<Long, INode>(); // prev pos -> node
     private final PrevMap prevMap = new PrevMap();   // pos -> prev pos

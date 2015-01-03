@@ -8,17 +8,14 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import bergdb.common.Bug;
 import bergdb.common.NullProgressListener;
-import bergdb.common.Util;
 import bergdb.core.DbHelper.AddReplicaClass;
 import bergdb.dag.AccessData;
-import bergdb.dag.Constants;
 import bergdb.dag.Dag;
 import bergdb.dag.EvictData;
 import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
 import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
-import bergdb.dag.Keys;
 import bergdb.dag.NodeVisitor;
 import bergdb.dag.Pointer;
 import bergdb.dag.PutData;
@@ -41,12 +38,13 @@ import bergdb.stream.AppendOnlyStream;
 
 /**
  * <p>An object of this class provides access to the data in the database. This
- * class is the internal DB implementation; it should not be used directly by
- * end users unless they really need the absolutely highest performance or some feature
- * not exposed by the higher level API. 
+ * class is the main class of the internal low-level database implementation.
+ * It should not be used directly by users unless they really 
+ * need the highest possible performance or some feature not exposed by 
+ * the higher level API.
  * This class implements the <i>Core Layer</i>, see below.</p>
  * 
- * <p>The API of the <i>Core Layer</i> consists of the methods:
+ * <p>The API of the <i>Core Layer</i> consists of the following methods of Db:
  * </p>
  * <ul>
  * <li>getOne()</li>
@@ -55,49 +53,37 @@ import bergdb.stream.AppendOnlyStream;
  * </ul>
  * 
  * <p>These methods are the only ones that need to be used by a consumer of the 
- * Core Layer once the Db has been started and before it has been stopped. This API
+ * Core Layer once the Db has been started and before it is stopped. This API
  * form a narrow "waist" with a large code base under it and potentially a large code
  * base "above" it. These methods are believed to be "feature complete" in the
  * sense that all features we want from the database can be implemented on top
- * of them. Functionality that can be provided by using only the Core Layer API,
- * should not offered by this class. The method start(), is needed by a user,
- * but for initialization like the constructor or DB.Builder class.</p>
+ * of them. Functionality that can be provided by using the Core Layer API,
+ * should not offered by this class.</p>
  * 
- * <p>Db Shutdown. The DB typically has allocated resources besides memory: 
- * open sockets, open files, running threads. These resources are guaranteed
- * to be *eventually released* without any action from the DB user after the
- * finalize() method has been called from the garbage collector.
- * The DB user can call DB.stop() to request the eventual release of resources.
- * Resources are not guaranteed to be released when stop() returns, but they will
- * be release in the the near future (typically within a second).</p>
+ * <p>Db shutdown. The Db typically has allocated resources besides memory: 
+ * open files, running threads, open sockets for example. These resources are guaranteed
+ * to be *eventually released* without any action from the Db user as the Db object
+ * is garbage collected. 
+ * The finalize() method makes sure that the resources are released.
+ * The Db user can call stop() to request the eventual release of resources before it
+ * is garbage collected or close() to stop the database and wait until all resources
+ * have been released.</p>
  * 
  * @author Frans Lundberg
  */
 public class Db {
     //
-    // Note: There must be no reference to a Db object from a thread started
-    // by the database (directly or indirectly). 
-    // Otherwise, the Db object will never be available for garbage collection.
+    // Note: There must be no reference (direct or indirect) to a Db object from 
+    // a thread started by the database. Otherwise, the Db object will never be 
+    // available for garbage collection.
     //
     
-    /** 
-     * IKP - internal key prefix - prefix of keys used to store internal database data.
-     * 131023: changed from /#ikp/ to "/#i/", destroyes binary compatibility.
-     */
-    public static final String INTERNAL_KEY_PREFIX = Util.identity("/#i/");
+    private Dag dag;
     
-    /**
-     * Minimum possible cacheMemoryValue.
-     */
-    public static final long MIN_CACHE_MEMORY_VALUE = Constants.MIN_CACHE_MEMORY_VALUE;
+    private TransSeq kvTransSeq;
     
-    /**
-     * Used for internal dummy writes. 
-     * No real data is stored for this key and it is not accessible externally
-     * (from Pub API).
-     */
-    static final long[] DUMMY_KEY = Keys.toSegments(INTERNAL_KEY_PREFIX + "-dummy");
-
+    private final NodeStream nodeStream;
+    
     /** 
      * State of the database. Synch note: writes published by readSync.
      */
@@ -116,11 +102,10 @@ public class Db {
     private final ReadSync readSync;
     
     private final IKeyModSet keyModSet;
-    private final NodeStream nodeStream;
+    
     private final StorageManager storageManager;
     private final Random evictRandom;
-    private Dag dag;
-    private TransSeq kvTransSeq;
+    
     private final ExecuteData x;
     private final Aux aux = new Aux();
     
@@ -168,20 +153,13 @@ public class Db {
         writeLock = new WriteLock();
         readSync = new ReadSync();
         x = new ExecuteData();
-        
-        evictRandom = new Random(0);      // pseudo-random, but deterministic.
+        evictRandom = new Random(0);      // pseudo-random, but deterministic
         keyModSet = new KeyModSet();
  
         this.maxNodeSize = b.maxNodeSize;
         this.startupDistance = b.startupDistance;
-        this.metaBlock = new MetaBlock();
-        
-        StorageManager.Builder smBuilder = new StorageManager.Builder(writeLock);
-        for (int i = 0; i < b.streamInfos.size(); i++) {
-            DbBuilder.StreamInfo info = b.streamInfos.get(i);
-            smBuilder.stream(info.name, info.stream, info.bufferSize, info.bufferTime);
-        }
-        this.storageManager = smBuilder.build();
+        this.metaBlock = new MetaBlock();        
+        this.storageManager = createStorageManager(b);
         
         AppendOnlyStream aos = storageManager;
         x.lastSposOfLastTrans = aos.getLength();
@@ -192,9 +170,7 @@ public class Db {
         
         this.dbClock = new DbClock(b.clock);
         this.evictBoss = b.evictBoss;
-        
         this.reclaim = new Reclaim(this, aos);
-        
         this.reclaimTransactionListener = reclaim;
         reclaim.setRetainDuration(b.retainDurationInTimeUnits);
         
@@ -208,9 +184,20 @@ public class Db {
         synchronized (writeLock) {}
     }
 
+    private StorageManager createStorageManager(DbBuilder b) {
+        StorageManager.Builder smBuilder = new StorageManager.Builder(writeLock);
+        for (int i = 0; i < b.streamInfos.size(); i++) {
+            DbBuilder.StreamInfo info = b.streamInfos.get(i);
+            smBuilder.stream(info.name, info.stream, info.bufferSize, info.bufferTime);
+        }
+        
+        StorageManager sm = smBuilder.build();
+        return sm;
+    }
+
     /**
      * Returns the current length of the database stream. The method acquires
-     * DB.writeLock; may affect performance.
+     * Db.writeLock; may affect performance.
      */
     public final long getStreamLength() {
         synchronized (writeLock) {
@@ -279,7 +266,7 @@ public class Db {
         synchronized (writeLock) {
             this.startupDistance = newDistance;
             this.nodeStream.getMetaBlock().setStartupDistance(dist);
-            this.execute(trans().put(DUMMY_KEY, dummyValue).build());
+            this.execute(trans().put(DbConstants.DUMMY_KEY, dummyValue).build());
         }
     }
     
@@ -496,7 +483,7 @@ public class Db {
         listener.reportStartupTransactions(transactions);
         setLastTransTimeOfDbClock(transactions);
         
-        startupDb(transactions);
+        startDb(transactions);
         
         createPutAndGetData();
         
@@ -504,17 +491,15 @@ public class Db {
         reclaim.initFromDb();
     }
 
+    private void startDb(ArrayList<StoredTrans> transactions) {
+        DbStarter3.start(this, transactions, getAccessData(), nodeStream, maxNodeSize);
+    }
+
     private void createPutAndGetData() {
         x.putData = createPutData();
         x.getData = newGetData();
     }
-
-    private void startupDb(ArrayList<StoredTrans> transactions) {
-        //DbStarter1.Result result = DbStarter1.start(this, transactions, getAccessData(), nodeStream, maxNodeSize);
-        //DbStarter2.Result result = DbStarter2.start(this, transactions, getAccessData(), nodeStream, maxNodeSize);
-        DbStarter3.start(this, transactions, getAccessData(), nodeStream, maxNodeSize);
-    }
-
+    
     /**
      * @throws StreamFormatException
      * @param listener
@@ -750,7 +735,8 @@ public class Db {
      * before it returns.
      * 
      * This method is seldom needed, clients should prefer to call stop(), or just
-     * let GC clean up the Db object once there are no more references to it.
+     * let the garbage collector clean up the Db object once there are no more 
+     * references to it.
      */
     public void close() {
         synchronized (readSync) {};
@@ -1554,7 +1540,7 @@ public class Db {
          * It works as a time-scale for the cache and defines the "cache time-scale".
          * Starting from MIN_CACHE_MEMORY_VALUE (10) instead of 0 has importance.
          */
-        private final AtomicLong cachedMemoryValue = new AtomicLong(MIN_CACHE_MEMORY_VALUE);
+        private final AtomicLong cachedMemoryValue = new AtomicLong(DbConstants.MIN_CACHE_MEMORY_VALUE);
         
         /** Number of get operations processed since startup of Db. */
         private final AtomicLong getOpCount = new AtomicLong(0);

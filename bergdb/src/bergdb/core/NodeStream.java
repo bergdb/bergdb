@@ -13,9 +13,9 @@ import bergdb.storage.StreamFormatException;
 /**
  * Db uses a NodeStream object as its interface to the database stream. Db appends nodes with
  * appendNodes() and reads nodes with readNode(). 
- * Concurrency: One write thread (holding writeLock) calling appendNodes(), getLength(), recover(), 
- * getPosOfLastCompletedTrans() and multiple concurrent reader threads calling
- * readNode() is the assumption.
+ * Concurrency assumption: one write thread holding writeLock and calling appendNodes(), 
+ * getLength(), recover(), getPosOfLastCompletedTrans() and multiple concurrent 
+ * threads calling readNode().
  * 
  * @author Frans Lundberg
  */
@@ -25,7 +25,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
 
     private final RecoverableStream rstream;
     private final Object writeLock;
-        // For asserting that caller of some methods holds the required DB.writeLock.
+        // For asserting that caller of some methods holds the required Db.writeLock.
     
     private final StoredTrans.Serializer serializer;
 

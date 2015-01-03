@@ -49,7 +49,7 @@ public class Reclaim implements Db.TransactionListener {
         // pStart of last iteration that completed, or 0 if no iteration has completed yet.
         // Used to limit iterations not to start too often.
     private long sposAtLastPretruncateCall;
-    private static final String TABLE_KEY_NAME = Db.INTERNAL_KEY_PREFIX + "dreclaim/-table.txt";
+    private static final String TABLE_KEY_NAME = DbConstants.INTERNAL_KEY_PREFIX + "dreclaim/-table.txt";
     private final long initialStartupDistance;
     
     // internalFraction is the fraction of the stream allowed to be occupied by

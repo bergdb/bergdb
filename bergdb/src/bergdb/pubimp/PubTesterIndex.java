@@ -5,6 +5,7 @@ import java.util.Iterator;
 import bergdb.common.EventToWaitFor;
 import bergdb.common.Util;
 import bergdb.core.Db;
+import bergdb.core.DbConstants;
 import bergdb.core.Trans;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
@@ -929,7 +930,7 @@ public class PubTesterIndex {
     private static int getIndexKvCount(Database db) {
         Db db2 = ((DatabaseImp) db).getDb();
         GetMany g = db2.newGetMany();
-        final String prefix = Db.INTERNAL_KEY_PREFIX + "di/";
+        final String prefix = DbConstants.INTERNAL_KEY_PREFIX + "di/";
         g.startKey = Keys.toSegments(prefix);
         g.stopCondition = new GetMany.StopCondition() {
             public int handleKvt(Kvt kvt) {
