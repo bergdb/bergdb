@@ -28,7 +28,7 @@ public class BigDbEvict {
         runTest(1000, c);
     }
     
-    // TODO A. Fix test
+    // TODO A. Fix f-test t10000KV().
     @Nano("f perf")
     public static void t10000KV(TestEnvironment c) throws InterruptedException {
         runTest(10*1000, c);
@@ -114,14 +114,14 @@ public class BigDbEvict {
             expectedValue[0] = (byte) keyString.hashCode();
             assert gd2.evictData.enableEvict == false;
             byte[] value;
-            try {
+            //try {
                 value = db.getOne(Long.MAX_VALUE, Keys.toSegments(key), gd2);
                 Assert.assertArrayEquals("i=" + i + ", n=" + n, expectedValue, value);
-            } catch (AssertionError e) {
-                String message = e.getMessage() + ", i=" + i + ", keyString=" + keyString;
-                throw new AssertionError(message);
-                //System.out.println(message);
-            }            
+            //} catch (AssertionError e) {
+            //    String message = e.getMessage() + ", i=" + i + ", keyString=" + keyString;
+            //    throw new AssertionError(message);
+            //    //System.out.println(message);
+            //}            
             
             i++;
         }

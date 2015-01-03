@@ -3,6 +3,7 @@ package bergdb.core;
 // TODO LATER Refactor checksum computation. StoredKeyNode, StoredTopNode, StoredValueNode.
 // TODO LATER Use checksum checking for StoredKeyNode, StoredTopNode, StoredValueNode.
 
+import bergdb.common.AssertStatus;
 import bergdb.common.Bug;
 import bergdb.common.Bytes;
 import bergdb.common.Util;
@@ -69,11 +70,12 @@ public class StoredKeyNode implements StoredNode {
         for (int i = 0; i < sz; i++) {
             long spos = node.pointers[i] == null ? node.pos[i] : node.pointers[i].getSpos(); 
             
-            //if (AssertStatus.enabled()) {
-            //    if (Klong.getType(node.getKlong(i)) == Klong.TYPE_KEY && spos < 0) {
-            //        throw new AssertionError("bad spos to store, spos:" + spos + ", i=" + i + ", node: " + node.print());
-            //    }
-            //}
+            // XXX enable this code?
+            if (AssertStatus.enabled()) {
+                if (Klong.getType(node.getKlong(i)) == Klong.TYPE_KEY && spos < 0) {
+                    throw new AssertionError("bad spos to store, spos:" + spos + ", i=" + i + ", node: " + node.print());
+                }
+            }
             
             buffer[offset++] = spos;
         }

@@ -1,4 +1,4 @@
-package bergdb.test;
+package bergdb.dev;
 
 import java.io.PrintStream;
 
@@ -15,7 +15,7 @@ import bergdb.stream.MemoryStream;
  * Let's use check memory with VisualVM or something.
  * Builds key-value map and just waits.
  */
-public class PerfDBMem {
+public class MemPerf {
      
     public static void get(TestEnvironment c) {
         int n = 100000;
@@ -43,10 +43,10 @@ public class PerfDBMem {
         c.report("valueSize", valueSize);
         c.report("emptyMem", emptyMem);
         
-        System.gc(); System.gc(); System.gc();
-        
         int count = 0;
         while (true) {
+            System.gc(); System.gc(); System.gc();
+            
             long used = rt.totalMemory() - rt.freeMemory();
             out.println("Doing nothing " + (count++));
             out.println("  maxMemory: " + rt.maxMemory());
@@ -73,3 +73,10 @@ public class PerfDBMem {
         get(new BasicTestEnvironment());
     }
 }
+
+/*
+
+150103 Frans: memPerKv: 258 (Cissi, Oracles JVM 7).
+
+
+*/

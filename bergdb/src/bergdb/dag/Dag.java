@@ -386,7 +386,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                 } else {
                     assert !kwi.isNullPointer()
                             : "bad pointer " + kwi.pointerIndex + " of node " + current
-                              + ", KeyNode.searchEq() found result, but there is no pointer (no mem pointer, no stream pointer)";
+                              + ", KeyNode.searchEq() found result, but there is no pointer "
+                              + "(no mem pointer, no stream pointer)";
                     
                     result = followPointer(
                             current, kwi.pointerIndex, gd.accessData, 

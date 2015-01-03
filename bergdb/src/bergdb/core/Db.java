@@ -873,8 +873,8 @@ public class Db {
      */
     public void getMany(GetMany g) {
         // Note, multiple get operations may be running in parallel.
-        // All data used must be thread safe. Temporary, operation-local data is stored in 
-        // the 'g' object.
+        // All data used must be thread safe. 
+        // Operation-local data is stored in the 'g' object.
         //
 
         assert g.result != null;
@@ -895,18 +895,13 @@ public class Db {
                     + ", the first time available for lookup is " 
                     + first + " (" + firstString + ").");
         }
-
-        EvictData ed = new EvictData();
         
         g.gd.accessData = getAccessData();
-
-        possiblyEvict(ed);
+        possiblyEvict(g.gd.evictData);
 
         g.actualLookupTime = dbClock.lookupTime(g.lookupTime);
             // Limits lookup time so it strictly less than the transaction time of
             // any currently running or any future transaction.
-        
-//System.out.println("Db.getMany, g.actualLookupTime: " + g.actualLookupTime + ", g.lookupTime: " + g.lookupTime);
 
         dag.getMany(g);
         
@@ -1337,7 +1332,8 @@ public class Db {
     private void evictPointers(INode node, EvictData ed) {
         //
         // Iterates the pointers and evicts a pointee that fullfills all conditions:
-        // * pointee != null (a memory pointer)
+        // * pointee != null (is a memory pointer)
+        // * Spos of pointee is not Spos.NULL
         // * Spos of pointee is smaller than current startup pos of database.
         // * Access time of pointer is LTE ed.accessTimeLimit (pointer not recently accessed).
         //

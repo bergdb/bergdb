@@ -44,7 +44,7 @@ public class ScenarioTester {
                 .mainStream(stream)
                 .clock(clock)
                 .startupDistance(startupDistance)
-                .evictBoss(new NoEvictBoss())
+                .noEvict()
                 .start();
         
         for (int i = 0; i < n; i++) {
@@ -67,7 +67,7 @@ public class ScenarioTester {
         db = Db.builder()
                 .mainStream(stream)
                 .clock(clock)
-                .evictBoss(new NoEvictBoss())
+                .noEvict()
                 .start();
         
         Assert.assertEquals(startupDistance, db.getStartupDistance());
@@ -77,23 +77,25 @@ public class ScenarioTester {
 
     /**
      * Scenario with a 100k startup distance and 40 KVs 
-     * written one by one to the stream. Each KV has a value of size 100k.
+     * written one by one to the stream. Each KV has a value of size 10k.
      */
     @Nano
-    public static void scenario101() {
+    private static void scenario101() {
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(10);
         MemoryStream stream = new MemoryStream();
-        byte[] value = new byte[100*1000];
-        int size = 40;
+        byte[] value = new byte[10*1000];
+        int n = 40;
         
-        Db db = Db.builder().testSetup().mainStream(stream).clock(clock)
-                .startupDistance(100*1000).start();
+        Db db = Db.builder().testSetup().mainStream(stream)
+                .clock(clock).noEvict().startupDistance(100*1000)
+                .start();
         
-        for (int i = 0; i < size; i++) {
+        for (int i = 0; i < n; i++) {
             long time = 1000 + i * 10;
             clock.setTime(time);
-            Trans t = db.trans().put("" + i, value).build();
+            String key = key101(i);
+            Trans t = db.trans().put(key, value).build();
             db.execute(t);
         }
         
@@ -102,7 +104,55 @@ public class ScenarioTester {
         g.startKey = null;
         db.getMany(g);
         
-        Assert.assertTrue(g.result.size() == size);
+        Assert.assertTrue(g.result.size() == n);
+    }
+    
+    private static String key101(int i) {
+        String key = "" + i;
+        if (i < 10) {
+            key = "0" + key;
+        }
+        return "k" + key;
+    }
+    
+    /**
+     * Playground version of 101.
+     * 
+     * TODO B. Remove when bug fixed.
+     */
+    //@Nano
+    private static void scenario101B() {
+        CoreTestClock clock = new CoreTestClock();
+        clock.setTime(10);
+        MemoryStream stream = new MemoryStream();
+        byte[] value = new byte[10*1000];
+        int n = 33;
+        
+        Db db = Db.builder().testSetup().mainStream(stream)
+                .clock(clock).noEvict().startupDistance(100*1000)
+                .start();
+        
+        for (int i = 0; i < n; i++) {
+            long time = 1000 + i * 10;
+            clock.setTime(time);
+            String key = key101(i);
+            Trans t = db.trans().put(key, value).build();
+            
+            //System.out.println("i=" + i + ", time=" + time + ", key=" + key);
+            
+            db.execute(t);
+            
+            if (i == 32) {
+                db.printGraph(System.out);
+            }
+        }
+        
+        GetMany g = db.newGetMany();
+        g.lookupTime = Long.MAX_VALUE;
+        g.startKey = null;
+        db.getMany(g);
+        
+        Assert.assertTrue(g.result.size() == n);
     }
     
     /**

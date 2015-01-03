@@ -1,6 +1,7 @@
 package bergdb.test;
 
 import bergdb.common.IPack;
+import bergdb.dev.MemPerf;
 import bergdb.test.manual.StreamSizeVsStartupDistance;
 import bergdb.test.manual.TransThroughput;
 
@@ -24,7 +25,7 @@ public class Pack implements IPack {
         OneByteToFile.class,
         OneGig.class,
         Pack.class,
-        PerfDBMem.class,
+        MemPerf.class,
         PerfGetMany.class,
         PerfTreeMapGet.class,
         PerfTreeMapSet.class,
