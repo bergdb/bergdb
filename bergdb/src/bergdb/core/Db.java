@@ -567,7 +567,7 @@ public class Db {
         
         PutData putData = dag.newPutData();
         putData.nodeChangeListener = new Dag.NodeChangeListener() {
-            public void newTopNode(TopNode node) {
+            public void topNodeCreated(TopNode node) {
                 // The gotDirty code in the PointerListener is not enough for
                 // the case when new top nodes are created.
                 // This method call assumes new nodes are not dirty.
@@ -576,8 +576,8 @@ public class Db {
                 makeDirtyIfNeeded(node);
             }
             
-            public void newValueNode(ValueNode node, long[] key) {
-                x.kvTransNodes.addValueNode(node, key);
+            public void keyNodeCreated(KeyNode node) {
+                keyNodeChanged(node);
             }
             
             public void keyNodeChanged(KeyNode node) {
@@ -585,6 +585,10 @@ public class Db {
                 // the case when new key nodes are created.
                 // This method call assumes new nodes are not dirty.
                 makeDirtyIfNeeded(node);
+            }
+            
+            public void valueNodeCreated(ValueNode node, long[] key) {
+                x.kvTransNodes.addValueNode(node, key);
             }
         };
         

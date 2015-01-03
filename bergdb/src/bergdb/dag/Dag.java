@@ -554,12 +554,12 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             boolean isNoop = appendDeleteKlong(node, pd.keyAccessPath.size - 1, compareValue, pd);
             if (!isNoop) {
                 ValueNode valueNode = ValueNode.createDelete();
-                pd.nodeChangeListener.newValueNode(valueNode, key);
+                pd.nodeChangeListener.valueNodeCreated(valueNode, key);
             }
             
         } else {
             ValueNode valueNode = new ValueNode(value);
-            pd.nodeChangeListener.newValueNode(valueNode, key);
+            pd.nodeChangeListener.valueNodeCreated(valueNode, key);
             
             // We need to be able to fit two more klongs. A TIME klong might be needed.
             // This is sub-optimal. Sometimes a node can be added without adding a TIME klong.
@@ -609,7 +609,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             // If not found, create the node
 
             KeyNode child = new KeyNode(true); // New segment leaf node.
-            pd.nodeChangeListener.keyNodeChanged(child);
+            pd.nodeChangeListener.keyNodeCreated(child);
             
             // "+1" needed since there might be a need to insert a TIME klong too.
             if (current.size + 1 < this.maxNodeSize) {
@@ -718,7 +718,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                     
                 } else {                    
                     KeyNode last = node.lastVersionGivenDel(sz, tTime, union);
-                    pd.nodeChangeListener.keyNodeChanged(last);
+                    pd.nodeChangeListener.keyNodeCreated(last);
                     
                     handleLastVersionOfFullNode(node, depth, ZERO_LONG_KWP, tTime, last, pd);
                 }
@@ -754,7 +754,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         // inserting exactly one klong to a non-full node.
         //
 
-        assert toAppend.length < 3 : "toInsert.length = " + toAppend.length;
+        assert toAppend.length < 3 : "toAppend.length = " + toAppend.length;
+        assert toAppend.length > 0 : "toAppend.length = " + toAppend.length;
         assert node.assertOk(maxNodeSize);
 
         // "+1" is needed since a TIME klong could be added along with the toInsert klongs.
@@ -773,7 +774,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             // It is either space-full or time-full.
             
             KeyNode last = node.lastVersion(pd.tt);
-            pd.nodeChangeListener.keyNodeChanged(last);
+            pd.nodeChangeListener.keyNodeCreated(last);
             
             assert last.assertOk(maxNodeSize);
             handleLastVersionOfFullNode(node, depth, toAppend, pd.tt, last, pd);
@@ -825,7 +826,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             // 'node' is the current space root. Replace it with 'last'.
             
             topDs.newSuperRoot(tTime, last, pd.accessData);
-            pd.nodeChangeListener.newTopNode(topDs.getSuperRoot());
+            pd.nodeChangeListener.topNodeCreated(topDs.getSuperRoot());
             pd.splitListener.nodeSplit(Dag.TIME_SPLIT_2);
             assert last.checkWithMessage() == null;
             
@@ -867,6 +868,9 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         final KeyNode second = new KeyNode(isSegmentLeaf);
         final KeyNode parent = pd.getParent(depth);
         
+        pd.nodeChangeListener.keyNodeCreated(first);
+        pd.nodeChangeListener.keyNodeCreated(second);
+        
         if (parent == null) {
             //
             // space-split-3:
@@ -874,18 +878,18 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             //
             
             KeyNode newRoot = new KeyNode(false);
-            pd.nodeChangeListener.keyNodeChanged(newRoot);
+            pd.nodeChangeListener.keyNodeCreated(newRoot);
             
             long secondKlong = node.firstAndSecond(tt, last, toInsert, first, second);
-            pd.nodeChangeListener.keyNodeChanged(first);
-            pd.nodeChangeListener.keyNodeChanged(second);
+            //pd.nodeChangeListener.keyNodeChanged(first);
+            //pd.nodeChangeListener.keyNodeChanged(second);
             
             newRoot.addKlong(tt, Klong.EMPTY_KEY, first, pd.accessData);
             newRoot.addKlong(tt, secondKlong, second, pd.accessData);
-            pd.nodeChangeListener.keyNodeChanged(newRoot);
+            //pd.nodeChangeListener.keyNodeChanged(newRoot);
 
             topDs.newSuperRoot(tt, newRoot, pd.accessData);
-            pd.nodeChangeListener.newTopNode(topDs.getSuperRoot());
+            pd.nodeChangeListener.topNodeCreated(topDs.getSuperRoot());
                      
             pd.splitListener.nodeSplit(Dag.SPACE_SPLIT_3);
             assert newRoot.checkWithMessage() == null;
@@ -897,13 +901,14 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             //
 
             KeyNode newSegmentRoot = new KeyNode(false);
+            pd.nodeChangeListener.keyNodeCreated(newSegmentRoot);
             long secondKlong = node.firstAndSecond(tt, last, toInsert, first, second);
-            pd.nodeChangeListener.keyNodeChanged(first);
-            pd.nodeChangeListener.keyNodeChanged(second);
+            //pd.nodeChangeListener.keyNodeChanged(first);
+            //pd.nodeChangeListener.keyNodeChanged(second);
 
             newSegmentRoot.addKlong(tt, Klong.EMPTY_KEY, first, pd.accessData);
             newSegmentRoot.addKlong(tt, secondKlong, second, pd.accessData);
-            pd.nodeChangeListener.keyNodeChanged(newSegmentRoot);
+            //pd.nodeChangeListener.keyNodeChanged(newSegmentRoot);
 
             long klong1 = pd.keyAccessPath.getKlong(depth);
             assert klong1 != Klong.NULL : "Missing klong in keyAccessPath, " + depth;
@@ -1048,23 +1053,29 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         /**
          * Reports that a TopNode was created.
          */
-        public void newTopNode(TopNode node);
+        public void topNodeCreated(TopNode node);
         
         /**
-         * Reports that a KeyNode was created or modified.
+         * Reports that a new KeyNode was created.
+         */
+        public void keyNodeCreated(KeyNode node);
+        
+        /**
+         * Reports that an existing KeyNode was modified.
          */
         public void keyNodeChanged(KeyNode node);
         
         /**
          * Reports that a ValueNode was created.
          */
-        public void newValueNode(ValueNode node, long[] key);
+        public void valueNodeCreated(ValueNode node, long[] key);
     }
     
     public static final NodeChangeListener DO_NOTHING_NODE_CHANGE_LISTENER = new NodeChangeListener() {
-        public void newTopNode(TopNode node) {}
+        public void topNodeCreated(TopNode node) {}
+        public void keyNodeCreated(KeyNode node) {}
         public void keyNodeChanged(KeyNode node) {}
-        public void newValueNode(ValueNode node, long[] key) {}
+        public void valueNodeCreated(ValueNode node, long[] key) {}
     };
     
     
