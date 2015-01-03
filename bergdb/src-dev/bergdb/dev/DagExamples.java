@@ -1,14 +1,18 @@
-package bergdb.dag;
+package bergdb.dev;
 
 import bergdb.common.Util;
+import bergdb.dag.Dag;
 import bergdb.dag.Dag.NodeReader;
+import bergdb.dag.INode;
+import bergdb.dag.Keys;
+import bergdb.dag.PutData;
 
 /**
- * Examples for the DB Graph document (docs/2013-dbgraph.odt).
+ * Dag examples for the 2013 Graph document (doc/2013/2013-graph.odt).
  * 
  * @author Frans Lundberg
  */
-public class Examples {
+public class DagExamples {
     private static final int MAX_NODE_SIZE = 30;
     
     private static final NodeReader DUMMY_NODE_READER = new NodeReader() {
@@ -32,7 +36,7 @@ public class Examples {
         return Dag.createEmpty(10, maxNodeSize, DUMMY_NODE_READER);
     }
     
-    private Examples() {}
+    private DagExamples() {}
     
     public static void empty() {
         Dag g = dag();
