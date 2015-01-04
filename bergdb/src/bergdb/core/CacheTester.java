@@ -85,14 +85,14 @@ public class CacheTester {
         
         EvictData ed = new EvictData();
         for (int i = 0; i < ids.length; i++) {
-            db.evict(ed);
+            db.internal().evictor().evict(ed);
         }
         
         GetData gd1 = db.newGetData();
         byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(KeyFactory.crazyKey(23)), gd1);
         
         for (int i = 0; i < ids.length*10; i++) {
-            db.evict(gd1.evictData);
+            db.internal().evictor().evict(gd1.evictData);
         }
         
         GetData d = db.newGetData();
@@ -131,7 +131,7 @@ public class CacheTester {
     
         EvictData gd = new EvictData();
         for (int i = 0; i < ids.length * 10; i++) {
-            db.evict(gd);
+            db.internal().evictor().evict(gd);
         }
         
         // Checks DB
@@ -174,11 +174,11 @@ public class CacheTester {
         EvictData gd = new EvictData();
         
         for (int i = 0; i < 2; i++) {
-            db.evict(gd);
+            db.internal().evictor().evict(gd);
         }
         
         for (int i = 0; i < 2; i++) {
-            db.evict(gd);
+            db.internal().evictor().evict(gd);
         }
         
         DbUtil.get(db, Long.MAX_VALUE, keys[0]);
@@ -211,8 +211,10 @@ public class CacheTester {
         EvictData ed = new EvictData();
         int evictCount = 0;
         
+        Evictor evictor = db.internal().evictor();
+        
         for (int i = 0; i < 10; i++) {
-            db.evict(ed);
+            evictor.evict(ed);
             evictCount += ed.evictCount;
         }
     }

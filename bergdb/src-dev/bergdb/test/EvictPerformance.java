@@ -3,6 +3,7 @@ package bergdb.test;
 import java.util.Random;
 
 import bergdb.core.Db;
+import bergdb.core.Evictor;
 import bergdb.core.FixedDurationEvictBoss;
 import bergdb.core.EvictBoss;
 import bergdb.core.KeyFactory;
@@ -38,9 +39,10 @@ public class EvictPerformance {
         final int m = 100*1000;
         int evictedCount = 0;
         
+        Evictor evictor = db.internal().evictor();
         long t = System.nanoTime();
         for (int i = 0; i < m; i++) {
-            db.evict(ed);
+            evictor.evict(ed);
             evictedCount += ed.evictCount;
         }
         t = System.nanoTime() - t;

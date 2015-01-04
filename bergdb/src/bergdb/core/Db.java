@@ -3,7 +3,6 @@ package bergdb.core;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
 import bergdb.common.Bug;
@@ -11,7 +10,6 @@ import bergdb.common.NullProgressListener;
 import bergdb.core.DbHelper.AddReplicaClass;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
-import bergdb.dag.EvictData;
 import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
 import bergdb.dag.INode;
@@ -79,12 +77,6 @@ public class Db {
     
     private TransSeq transSeq;
     
-    
-    /** 
-     * State of the database. Synch note: writes published by readSync.
-     */
-    private DbState state = DbState.ZERO;
-    
     /**
      * Global transaction write lock. Held when STM stuff is happening.
      */
@@ -100,7 +92,16 @@ public class Db {
     private final IKeyModSet keyModSet;
     
     private final StorageManager storageManager;
-    private final Random evictRandom;
+    
+    /** The reclaim algorithm. */
+    private final Reclaim reclaim;
+    
+    private final Evictor evictor;
+    
+    /** 
+     * State of the database. Synch note: writes published by readSync.
+     */
+    private DbState state = DbState.ZERO;
     
     private final ExecuteData x;
     private final Aux aux = new Aux();
@@ -108,16 +109,10 @@ public class Db {
     /** DatabaseId from Database.Builder, may be null. */
     private DatabaseId databaseIdFromBuilder;
     
-    /** The reclaim algorithm. */
-    private final Reclaim reclaim;
-    
     /** The current meta block data of the node stream. */
     private final MetaBlock metaBlock;
     
-    // ---- Settings ----
-
     private final DbClock dbClock;
-    private final EvictBoss evictBoss;
     private final int maxNodeSize;
     
     /** Current startupDistance. Sync note: protected by writeLock. */
@@ -141,6 +136,7 @@ public class Db {
         }
     };
 
+
     /**
      * Constructor takes a DbBuilder; it wires dependencies based on builder settings.
      */
@@ -149,7 +145,6 @@ public class Db {
         writeLock = new WriteLock();
         readSync = new ReadSync();
         x = new ExecuteData();
-        evictRandom = new Random(0);      // pseudo-random, but deterministic
         keyModSet = new KeyModSet();
  
         this.maxNodeSize = b.maxNodeSize;
@@ -165,7 +160,7 @@ public class Db {
         this.nodeStream.getMetaBlock().setStartupDistance(b.startupDistance);
         
         this.dbClock = new DbClock(b.clock);
-        this.evictBoss = b.evictBoss;
+        this.evictor = new Evictor(internal(), b.evictBoss);
         this.reclaim = new Reclaim(this, aos);
         this.reclaimTransactionListener = reclaim;
         reclaim.setRetainDuration(b.retainDurationInTimeUnits);
@@ -482,6 +477,8 @@ public class Db {
         startDb(transactions);
         
         createPutAndGetData();
+        
+        evictor.setDag(dag);
         
         this.state = DbState.ACTIVE;
         reclaim.initFromDb();
@@ -837,7 +834,7 @@ public class Db {
         gd.accessData = getAccessData();
 
         if (gd.evictData.enableEvict) {
-            possiblyEvict(gd.evictData);
+            evictor.possiblyEvict(gd.evictData);
         }
 
         byte[] result = null;
@@ -901,7 +898,7 @@ public class Db {
         }
         
         g.gd.accessData = getAccessData();
-        possiblyEvict(g.gd.evictData);
+        evictor.possiblyEvict(g.gd.evictData);
 
         g.actualLookupTime = dbClock.lookupTime(g.lookupTime);
             // Limits lookup time so it strictly less than the transaction time of
@@ -1290,146 +1287,6 @@ public class Db {
         return -aux.cachedMemoryValue.get();
     }
 
-    private final void possiblyEvict(EvictData ed) {
-        // Synch note: concurrent access is supported.
-
-        if (evictBoss.evictShouldRun()) {
-            evict(ed);
-        }
-    }
-
-    /**
-     * Runs the evict algorithm.
-     * 
-     * @param ed  Operation-local data.
-     */
-    public final void evict(EvictData ed) {
-        // Synch note: concurrent access by multiple threads is supported
-        // by this method. The implement can assume that the EvictData, ed, 
-        // is specific for each thread. 'ed' is not shared between concurrent threads.
-        
-        ed.pointerCount = 0;
-        ed.evictCount = 0;
-        ed.startupPos = x.startupPos.getForEvict();
-        evictInner(ed);
-        evictBoss.reportEvict(ed);
-    }
-
-    private void evictInner(EvictData ed) {
-        //
-        // node ----> next1 ---> next2
-        //
-        // Synch note: concurrent access must be supported by this method.
-        // Multiple concurrent readers, one writer.
-        // rand is used to somewhat randomly choose nodes to evict.
-        // For performance, a single call to evictRandom.nextInt() is used.
-        // To increased randomness, the rand value is increased between each time it is used.
-        //
-        
-        final Pointer pointer = ed.tempPointer;
-
-        INode node = dag.getSuperRoot();
-        INode next1;
-        INode next2;
-        long limit = aux.cachedMemoryValue.get() - evictBoss.getCacheDuration();
-        
-        ed.accessTimeLimit = limit < 0 ? 0 : limit;
-            // Nodes accessed after accessTimeLimit are not evictable.
-        
-        int rand = Math.abs(evictRandom.nextInt());
-            // random int used as randomness for this evict operation.
-        
-        getEvictPointer2(node, rand, pointer);
-        rand += 31;
-        next1 = pointer.node;
-
-        if (next1 == null) {
-            // Only superRoot is cached, nothing to evict.
-            assert node.getMemoryPointerCount() == 0 : "Count is " + node.getMemoryPointerCount()
-                    + " for node " + node + ".";
-            return;
-        }
-
-        while (true) {
-            getEvictPointer2(next1, rand, pointer);
-            rand += 17;
-            next2 = pointer.node;
-
-            if (next2 == null) {
-                break;
-            }
-
-            // Here we go to the next deeper level.
-
-            node = next1;
-            next1 = next2;
-            next2 = null;
-        }
-
-        // We have selected a node to process.
-        evictPointers(node, ed);
-    }
-    
-    /**
-     * Evicts all evictable pointers from 'node'.
-     */
-    private void evictPointers(INode node, EvictData ed) {
-        //
-        // Iterates the pointers and evicts a pointee that fullfills all conditions:
-        // * pointee != null (is a memory pointer)
-        // * Spos of pointee is not Spos.NULL
-        // * Spos of pointee is smaller than current startup pos of database.
-        // * Access time of pointer is LTE ed.accessTimeLimit (pointer not recently accessed).
-        //
-        
-        long spos = node.getSpos();
-        if (!Spos.isValid(spos) || spos >= ed.startupPos) {
-            return;
-        }
-        
-        int count = node.getPointerCount();
-        for (int i = 0; i < count; i++) {
-            synchronized (dag.getPointerLock(node, i)) {
-                INode pointee = node.getPointerNode(i); 
-                
-                if (pointee != null) {
-                    long pointeePos = pointee.getSpos();
-                    if (pointeePos != Spos.NULL
-                            && pointeePos < ed.startupPos
-                            && AccessData.getAccessTime(node.getPointerAccessData(i)) 
-                                    <= ed.accessTimeLimit) {
-                        
-                        node.setPointer(i, null, pointeePos);
-                        ed.evictCount += 1;
-                    }
-                }
-            }
-        }
-    }
-
-    private void getEvictPointer2(INode node, int rand, Pointer p) {
-        int length = node.getPointerCount();
-        int index;
-        p.node = null;
-        p.index = -1;
-        
-        for (int i = 0; i < length; i++) {
-            index = rand % length;
-            assert index >= 0 && index < length;
-            
-            synchronized (dag.getPointerLock(node, index)) {
-                node.getPointer(index, p);
-            }
-            
-            if (p.node != null) {
-                p.index = index;
-                break;
-            }
-            
-            rand += 1;
-        }
-    }
-    
     /**
      * Returns access to the internals of Db.
      * Warning, this method is for internal use only.
@@ -1508,6 +1365,10 @@ public class Db {
         public void setCachedMemoryValue(long cachedMemoryValue) {
             Db.this.aux.cachedMemoryValue.set(cachedMemoryValue);
         }
+        
+        public Aux aux() { return aux; }
+        
+        public Evictor evictor() { return evictor; }
     }
     
     /**
@@ -1570,7 +1431,7 @@ public class Db {
     /**
      * Private auxilliary database state; counters, statistics, ...
      */
-    private class Aux {
+    class Aux {
         
         /**
          * The cachedMemoryValue is an estimate of the total amount of memory cached
@@ -1578,7 +1439,7 @@ public class Db {
          * It works as a time-scale for the cache and defines the "cache time-scale".
          * Starting from MIN_CACHE_MEMORY_VALUE (10) instead of 0 has importance.
          */
-        private final AtomicLong cachedMemoryValue = new AtomicLong(DbConstants.MIN_CACHE_MEMORY_VALUE);
+        final AtomicLong cachedMemoryValue = new AtomicLong(DbConstants.MIN_CACHE_MEMORY_VALUE);
         
         /** Number of get operations processed since startup of Db. */
         private final AtomicLong getOpCount = new AtomicLong(0);

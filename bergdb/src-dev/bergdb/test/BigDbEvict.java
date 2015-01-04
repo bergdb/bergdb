@@ -91,7 +91,7 @@ public class BigDbEvict {
         
         EvictData ed = new EvictData();
         for (int k = 0; k < nEvict; k++) {
-            db.evict(ed);
+            db.internal().evictor().evict(ed);
             evictCount += ed.evictCount;
         }
         nano = System.nanoTime() - nano;
