@@ -116,46 +116,6 @@ public class ScenarioTester {
     }
     
     /**
-     * Playground version of 101.
-     * 
-     * TODO B. Remove when bug fixed.
-     */
-    //@Nano
-    private static void scenario101B() {
-        CoreTestClock clock = new CoreTestClock();
-        clock.setTime(10);
-        MemoryStream stream = new MemoryStream();
-        byte[] value = new byte[10*1000];
-        int n = 33;
-        
-        Db db = Db.builder().testSetup().mainStream(stream)
-                .clock(clock).noEvict().startupDistance(100*1000)
-                .start();
-        
-        for (int i = 0; i < n; i++) {
-            long time = 1000 + i * 10;
-            clock.setTime(time);
-            String key = key101(i);
-            Trans t = db.trans().put(key, value).build();
-            
-            //System.out.println("i=" + i + ", time=" + time + ", key=" + key);
-            
-            db.execute(t);
-            
-            if (i == 32) {
-                db.printGraph(System.out);
-            }
-        }
-        
-        GetMany g = db.newGetMany();
-        g.lookupTime = Long.MAX_VALUE;
-        g.startKey = null;
-        db.getMany(g);
-        
-        Assert.assertTrue(g.result.size() == n);
-    }
-    
-    /**
      * A scenario with a multi-klong key, an increase of startupPos and a restart.
      */
     @Nano

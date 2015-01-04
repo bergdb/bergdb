@@ -28,7 +28,6 @@ public class BigDbEvict {
         runTest(1000, c);
     }
     
-    // TODO A. Fix f-test t10000KV().
     @Nano("f perf")
     public static void t10000KV(TestEnvironment c) throws InterruptedException {
         runTest(10*1000, c);

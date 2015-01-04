@@ -1331,7 +1331,7 @@ public class Db {
     }
     
     /**
-     * Evicts all evictable pointers of 'node'.
+     * Evicts all evictable pointers from 'node'.
      */
     private void evictPointers(INode node, EvictData ed) {
         //
@@ -1341,6 +1341,11 @@ public class Db {
         // * Spos of pointee is smaller than current startup pos of database.
         // * Access time of pointer is LTE ed.accessTimeLimit (pointer not recently accessed).
         //
+        
+        long spos = node.getSpos();
+        if (!Spos.isValid(spos) || spos >= ed.startupPos) {
+            return;
+        }
         
         int count = node.getPointerCount();
         for (int i = 0; i < count; i++) {

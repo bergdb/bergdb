@@ -70,12 +70,16 @@ public class StoredKeyNode implements StoredNode {
         for (int i = 0; i < sz; i++) {
             long spos = node.pointers[i] == null ? node.pos[i] : node.pointers[i].getSpos(); 
             
-            // XXX enable this code?
-            if (AssertStatus.enabled()) {
-                if (Klong.getType(node.getKlong(i)) == Klong.TYPE_KEY && spos < 0) {
-                    throw new AssertionError("bad spos to store, spos:" + spos + ", i=" + i + ", node: " + node.print());
+            // TODO B. Consider enabling this check.
+            /*if (AssertStatus.enabled()) {
+                long klong = node.getKlong(i);
+                if (Klong.isKey(klong)) {
+                    if (!Spos.isValid(spos)) {
+                        throw new AssertionError("bad spos of pointer from KeyNode, spos:" 
+                                + spos + ", i=" + i + ", node: " + node.print());
+                    }
                 }
-            }
+            }*/
             
             buffer[offset++] = spos;
         }
