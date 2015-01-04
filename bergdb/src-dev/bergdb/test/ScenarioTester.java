@@ -5,7 +5,6 @@ import bergdb.core.CoreTestClock;
 import bergdb.core.Db;
 import bergdb.core.Db.StartParams;
 import bergdb.core.DbUtil;
-import bergdb.core.NoEvictBoss;
 import bergdb.core.StartupPosUpdater;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
@@ -80,7 +79,7 @@ public class ScenarioTester {
      * written one by one to the stream. Each KV has a value of size 10k.
      */
     @Nano
-    private static void scenario101() {
+    private static void scenario101A() {
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(10);
         MemoryStream stream = new MemoryStream();
@@ -97,6 +96,39 @@ public class ScenarioTester {
             String key = key101(i);
             Trans t = db.trans().put(key, value).build();
             db.execute(t);
+        }
+        
+        GetMany g = db.newGetMany();
+        g.lookupTime = Long.MAX_VALUE;
+        g.startKey = null;
+        db.getMany(g);
+        
+        Assert.assertTrue(g.result.size() == n);
+    }
+    
+    /**
+     * Playground for 101A.
+     */
+    @Nano
+    private static void scenario101B() {
+        CoreTestClock clock = new CoreTestClock();
+        clock.setTime(10);
+        MemoryStream stream = new MemoryStream();
+        byte[] value = new byte[10*1000];
+        int n = 33;
+        
+        Db db = Db.builder().testSetup().mainStream(stream)
+                .clock(clock).noEvict().startupDistance(100*1000)
+                .start();
+        
+        for (int i = 0; i < n; i++) {
+            long time = 1000 + i * 10;
+            clock.setTime(time);
+            String key = key101(i);
+            Trans t = db.trans().put(key, value).build();
+            db.execute(t);
+            
+            db.checkNodes();
         }
         
         GetMany g = db.newGetMany();

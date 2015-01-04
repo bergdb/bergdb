@@ -588,7 +588,7 @@ public class Db {
             }
             
             public void valueNodeCreated(ValueNode node, long[] key) {
-                x.kvTransNodes.addValueNode(node, key);
+                x.transNodes.addValueNode(node, key);
             }
         };
         
@@ -1131,24 +1131,64 @@ public class Db {
             x.trans.startupPos = sp;
         }
         
-        transSeq.addToTransNodes(sp, x.kvTransNodes);
+        transSeq.addToTransNodes(sp, x.transNodes);
         transSeq.removeBefore(sp);
         
         if (!x.trans.isStartupRerun) {
-            nodeStream.appendNodes(x.kvTransNodes, x.trans);
+            addUnstoredDescendents(x.transNodes);
+            nodeStream.appendNodes(x.transNodes, x.trans);
         }
         
-        x.trans.nodeCount = x.kvTransNodes.size();
+        x.trans.nodeCount = x.transNodes.size();
         
         x.transInfo.tpos = x.trans.pos;
         x.transInfo.lastPos = x.trans.lastPos;
         x.transInfo.tt = x.trans.time;
         transSeq.add(x.transInfo);
         
-        x.kvTransNodes.clean();
+        x.transNodes.clean();
         x.startupPos.set(sp);
     }
     
+    /**
+     * Adds pointees that have never been stored to the set of
+     * transaction nodes. All stream pointers should be valid.
+     */
+    private void addUnstoredDescendents(TransNodes transNodes) {
+        // Added 2015-01-04, resulted in a somewhat larger stream, but CorePerf is intact.
+        
+        int count = transNodes.size();
+        Pointer p = new Pointer();
+        
+        for (int i = 0; i < count; i++) {
+            INode node = transNodes.get(i);
+            if (!node.isIndexNode()) {
+                continue;
+            }
+            
+            addUnstoredDescendents(transNodes, node, p);
+        }
+    }
+    
+    /**
+     * Adds unstored pointees to transNodes, node must be an index node.
+     * This is done recursively.
+     */
+    private void addUnstoredDescendents(TransNodes transNodes, INode node, Pointer p) {
+        int pointerCount = node.getPointerCount();
+        for (int j = 0; j < pointerCount; j++) {
+            node.getPointer(j, p);
+            
+            if (p.isMem()) {
+                INode pointee = p.getNode();
+                if (!pointee.isInTransNodes() && Spos.isNull(pointee.getSpos())) {
+                    transNodes.addIndexNode(pointee);
+                    addUnstoredDescendents(transNodes, pointee, p);
+                }
+            }
+        }
+    }
+
     /**
      * Returns to caller with a RerunException if any key was modified after 
      * the read time of the transaction. This is the essence of the 
@@ -1488,8 +1528,7 @@ public class Db {
         public GetData getData;
         
         /** The nodes updated for the current transaction. To be written to the stream. */
-        public final TransNodes kvTransNodes;
-        public final TransNodes indexTransNodes;
+        public final TransNodes transNodes;
         
         public TransSeq.TransInfo transInfo;
         
@@ -1498,8 +1537,7 @@ public class Db {
         
         private ExecuteData() {
             startupPos = new StartupPos(0);
-            kvTransNodes = new TransNodes();
-            indexTransNodes = new TransNodes();
+            transNodes = new TransNodes();
         }
         
         /** 
@@ -1525,8 +1563,7 @@ public class Db {
             
             x.lastSposOfLastTrans = x.trans.lastPos;
             trans = null;
-            kvTransNodes.clear();
-            indexTransNodes.clear();
+            transNodes.clear();
         }
     }
     
@@ -1570,17 +1607,17 @@ public class Db {
             kvCount += x.trans.kvs.length;
             transactionCount++;
             
-            int ordinaryNodeCount = x.kvTransNodes.size();
-            nodesWritten += x.kvTransNodes.size();
+            int ordinaryNodeCount = x.transNodes.size();
+            nodesWritten += x.transNodes.size();
             ordinaryNodesWritten += ordinaryNodeCount;
             
-            int totalNodeCount = x.kvTransNodes.size();
+            int totalNodeCount = x.transNodes.size();
             int dirtyNodeCount = totalNodeCount - ordinaryNodeCount;
             double dirtyFraction = ((double) dirtyNodeCount) / totalNodeCount;
             dirtyFraction100   = 0.99  * aux.dirtyFraction100  +  0.01  * dirtyFraction;
             dirtyFraction1000  = 0.999 * aux.dirtyFraction1000 +  0.001 * dirtyFraction;
             
-            cachedMemoryValue.addAndGet(x.kvTransNodes.sumMemSize());
+            cachedMemoryValue.addAndGet(x.transNodes.sumMemSize());
         }
     }
     

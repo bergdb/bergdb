@@ -3,6 +3,7 @@ package bergdb.core;
 import java.util.ArrayList;
 import java.util.List;
 
+import bergdb.common.AssertStatus;
 import bergdb.common.Bytes;
 import bergdb.common.Util;
 import bergdb.dag.AccessData;
@@ -322,7 +323,46 @@ public class StoredTrans {
             this.startupPos = startupPos;
 
             prepareToSerialize();
+            
+            if (AssertStatus.enabled()) checkStreamPointersOfKeyNodes();
+            
             serializeToBuffer();
+        }
+
+        /**
+         * Checks that stream pointers from key nodes are not Spos.NULL.
+         * They should be valid after prepareToSerialized has been run.
+         * Call this method, only if assertions are enabled (-ea).
+         * This method may degrade performance.
+         * 
+         * @throws AssertionError
+         */
+        private void checkStreamPointersOfKeyNodes() {
+            for (int i = 0; i < transNodes.keyCount; i++) {
+                KeyNode keyNode = transNodes.keyNodes[i];
+                int size = keyNode.size;
+                
+                for (int j = 0; j < size; j++) {
+                    long klong = keyNode.klongs[j];
+                    if (Klong.getType(klong) == Klong.TYPE_KEY) {
+                        long pos = keyNode.pos[j];
+                        INode pointee = keyNode.pointers[j];
+                        long spos = pointee == null ? pos : pointee.getSpos();
+                        
+                        if (!Spos.isValid(spos)) {
+                            String message = "Bad stream pointer of KeyNode, index " + j + ", " + pos 
+                                    + ", trans at t=" + transTime + " tpos=" + transStartPos 
+                                    + ", node:\n" + keyNode.print();
+                                    
+                            if (pointee != null) {
+                                message += "pointee node:\n" + pointee.print();
+                            }
+                            
+                            throw new AssertionError(message);
+                        }
+                    }
+                }
+            }
         }
 
         /** Returns the transaction buffer with the serialized transaction. */
@@ -347,7 +387,7 @@ public class StoredTrans {
          * Prepares for serialization by computing sizes; sets totalSize, transLastSpos,
          * transNextSpos. Sets spos for the nodes. This solves the inter-transaction stream
          * pointer issue. Inter-transaction stream pointers will work, even when stream pointers 
-         * point forward.
+         * point forward within the transaction.
          */
         private void prepareToSerialize() {
             // The three node loops sets new stream pos of nodes, sets ID if needed,
@@ -360,7 +400,7 @@ public class StoredTrans {
             resizePrevPosIfNeeded();
 
             // Prepares topNodes.
-            for (int i = 0; i < transNodes.topSize; i++) {
+            for (int i = 0; i < transNodes.topCount; i++) {
                 TopNode node = transNodes.topNodes[i];
                 node.spos = currentPos;
                 node.id = (node.id == Spos.NULL) ? currentPos : node.id;
@@ -371,7 +411,7 @@ public class StoredTrans {
             // Prepares keyNodes.
             {
                 int prevPosIndex = 0;
-                for (int i = 0; i < transNodes.keySize; i++) {
+                for (int i = 0; i < transNodes.keyCount; i++) {
                     KeyNode node = transNodes.keyNodes[i];
                     prevPos[prevPosIndex++] = node.spos;
                     node.spos = currentPos;
@@ -384,7 +424,7 @@ public class StoredTrans {
             topAndKeySize = totalSize;
 
             // Prepares valueNodes.
-            for (int i = 0; i < transNodes.valueSize; i++) {
+            for (int i = 0; i < transNodes.valueCount; i++) {
                 ValueNode node = transNodes.valueNodes[i];
                 long[] key = transNodes.keys[i];
                 node.setSpos(currentPos);
@@ -446,12 +486,12 @@ public class StoredTrans {
             int offset = 0;
             int prevPosIndex = 0;
 
-            for (int i = 0; i < transNodes.topSize; i++) {
+            for (int i = 0; i < transNodes.topCount; i++) {
                 TopNode topNode = transNodes.topNodes[i];
                 longOffset += StoredTopNode.toLongs(topNode, longBuffer, longOffset);
             }
 
-            for (int i = 0; i < transNodes.keySize; i++) {
+            for (int i = 0; i < transNodes.keyCount; i++) {
                 KeyNode keyNode = transNodes.keyNodes[i];
                 longOffset += StoredKeyNode.toLongs(keyNode, longBuffer, longOffset,
                         prevPos[prevPosIndex++]);
@@ -460,7 +500,7 @@ public class StoredTrans {
             // Copies from longBuffer to byteBuffer, top nodes and value nodes.
             offset = copyLongBufferToByteBuffer(longOffset, offset);
 
-            for (int i = 0; i < transNodes.valueSize; i++) {
+            for (int i = 0; i < transNodes.valueCount; i++) {
                 ValueNode n = transNodes.valueNodes[i];
                 long[] skey = transNodes.keys[i];
                 offset += StoredValueNode.toBytes(n, skey, byteBuffer, offset);
@@ -502,14 +542,14 @@ public class StoredTrans {
             // 10007 is a prime.
 
             if (counter % 10007 == 0) {
-                int newSize = Math.max(INIT_SIZE_OF_PREV_POS, transNodes.keySize);
+                int newSize = Math.max(INIT_SIZE_OF_PREV_POS, transNodes.keyCount);
                 if (prevPos.length != newSize) {
                     prevPos = new long[newSize];
                 }
             }
 
-            if (this.prevPos.length < transNodes.keySize) {
-                this.prevPos = new long[(int) (transNodes.keySize * 1.20)];
+            if (this.prevPos.length < transNodes.keyCount) {
+                this.prevPos = new long[(int) (transNodes.keyCount * 1.20)];
             }
         }
 

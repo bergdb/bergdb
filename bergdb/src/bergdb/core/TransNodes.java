@@ -24,113 +24,29 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
     private static final int INITIAL_SIZE = 64;
     private int counter;
     
-    public int topSize;
+    public int topCount;
     public TopNode[] topNodes;
     
-    public int keySize;
+    public int keyCount;
     public KeyNode[] keyNodes;
     
-    public int valueSize;
+    public int valueCount;
     public ValueNode[] valueNodes;
     public long[][] keys;         // key (segmented key) for each value node, size = valueSize
     
     public TransNodes() {
         topNodes = new TopNode[INITIAL_SIZE];
-        topSize = 0;
+        topCount = 0;
         
         keyNodes = new KeyNode[INITIAL_SIZE];
-        keySize = 0;
+        keyCount = 0;
         
         valueNodes = new ValueNode[INITIAL_SIZE];
-        valueSize = 0;
+        valueCount = 0;
         
         keys = new long[INITIAL_SIZE][];
         
         counter = 0;
-    }
-    
-    public final int size() {
-        return topSize + keySize + valueSize;
-    }
-    
-    public final long sumMemSize() {
-        long sum = 0;
-        
-        for (int i = 0; i < topSize; i++) {
-            sum += topNodes[i].getMemSize();
-        }
-        
-        for (int i = 0; i < keySize; i++) {
-            sum += keyNodes[i].getMemSize();
-        }
-        
-        for (int i = 0; i < valueSize; i++) {
-            sum += valueNodes[i].getMemSize();
-        }
-        
-        return sum;
-    }
-    
-    /**
-     * Checks whether the collection of nodes contains the given node 
-     * (compare by reference).
-     */
-    public boolean contains(INode node) {
-        boolean result = false;
-        
-        outer: {
-            for (int i = 0; i < topSize; i++) {
-                if (topNodes[i] == node) {
-                    result = true;
-                    break outer;
-                }
-            }
-            
-            for (int i = 0; i < keySize; i++) {
-                if (keyNodes[i] == node) {
-                    result = true;
-                    break outer;
-                }
-            }
-            
-            for (int i = 0; i < valueSize; i++) {
-                if (valueNodes[i] == node) {
-                    result = true;
-                    break outer;
-                }
-            }
-        }
-        
-        return result;
-    }
-
-    /** Sets isDirty = false for all index nodes. */
-    public void clean() {
-        for (int i = 0; i < topSize; i++) {
-            topNodes[i].isDirty = false;
-        }
-        
-        for (int i = 0; i < keySize; i++) {
-            keyNodes[i].isDirty = false;
-        }
-    }
-    
-    /**
-     * For highest performance iterate directly on the three arrays: topNodes, keyNodes, valueNodes
-     * which allows for type-specific optimizations.
-     */
-    public final INode get(int index) {
-        INode result;
-        
-        if (index < topSize) {
-            result = topNodes[index];
-        } else if (index < (topSize + keySize)) {
-            result = keyNodes[index - topSize];
-        } else {
-            result = valueNodes[index - (topSize + keySize)];
-        }
-        
-        return result;
     }
     
     public final void addTopNode(TopNode node) {
@@ -139,50 +55,37 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
             
             node.isInTransNodes = true;
             
-            if (topSize == topNodes.length) {
+            if (topCount == topNodes.length) {
                 TopNode[] newNodes = new TopNode[topNodes.length * 2];
                 System.arraycopy(topNodes, 0, newNodes, 0, topNodes.length);
                 topNodes = newNodes;
             }
             
-            topNodes[topSize] = node;
-            topSize++;
+            topNodes[topCount] = node;
+            topCount++;
         }
     }
-    
-    /** Assert that there is no existing top node with same top node id. */
-    private boolean assertNoDuplicateTopNodeId(TopNode node) {
-        int id1 = node.topNodeId;
-        for (int i = 0; i < topSize; i++) {
-            int id2 = topNodes[i].topNodeId;
-            if (id2 == id1) {
-                throw new AssertionError("Cannot add TopNode with same topNodeId as existing one, " 
-                        + "existing: " + topNodes[i] + ", to add: " + node);
-            }
-        }
-        return true;
-    }
-    
+
     public final void addKeyNode(KeyNode node) {
         if (!node.isInTransNodes) {
             node.isInTransNodes = true;
             
-            if (keySize == keyNodes.length) {
+            if (keyCount == keyNodes.length) {
                 KeyNode[] newNodes = new KeyNode[keyNodes.length * 2];
                 System.arraycopy(keyNodes, 0, newNodes, 0, keyNodes.length);
                 keyNodes = newNodes;
             }
             
-            keyNodes[keySize] = node;
-            keySize++;
+            keyNodes[keyCount] = node;
+            keyCount++;
         }
     }
-    
+
     public final void addValueNode(ValueNode node, long[] key) {
         if (!node.isInTransactionNodes) {
             node.isInTransactionNodes = true;
             
-            if (valueSize == valueNodes.length) {
+            if (valueCount == valueNodes.length) {
                 assert keys.length == valueNodes.length : keys.length + " != " + valueNodes.length;
                 
                 int newSize = valueNodes.length * 2;
@@ -195,54 +98,40 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
                 keys = newKeys;
             }
             
-            valueNodes[valueSize] = node;
-            keys[valueSize] = key;
-            valueSize++;
+            valueNodes[valueCount] = node;
+            keys[valueCount] = key;
+            valueCount++;
         }
     }
     
-    /**
-     * Checks for no duplicates.
-     *  
-     * @throws AssertionError  
-     *              If there are duplicates.
-     * @return true  
-     *              Always returns true when the method returns normally.
-     */
-    public boolean assertNoDuplicates() {
-        for (int i = 0; i < topSize; i++) {
-            TopNode n = topNodes[i];
-            for (int j = i+1; j < topSize; j++) {
-                if (topNodes[j] == n) {
-                    throw new AssertionError("Duplicate TopNode, " + i + ", " + j 
-                            + ", topSize: " + topSize);
-                }
-            }
+    public final void addIndexNode(INode node) {
+        switch (node.getType()) {
+        case INode.TYPE_TOP_NODE:
+            addTopNode((TopNode) node);
+            break;
+        case INode.TYPE_KEY_NODE:
+            addKeyNode((KeyNode) node);
+            break;
+        default:
+            throw new IllegalStateException("Unsupported type, node.getType()");
         }
-        
-        for (int i = 0; i < keySize; i++) {
-            KeyNode n = keyNodes[i];
-            for (int j = i+1; j < keySize; j++) {
-                if (keyNodes[j] == n) {
-                    throw new AssertionError("Duplicate KeyNode, " + i + ", " + j 
-                            + ", keySize: " + keySize);
-                }
-            }
-        }
-        
-        for (int i = 0; i < valueSize; i++) {
-            ValueNode n = valueNodes[i];
-            for (int j = i+1; j < valueSize; j++) {
-                if (valueNodes[j] == n) {
-                    throw new AssertionError("Duplicate ValueNode, " + i + ", " + j 
-                            + ", valueSize: " + valueSize);
-                }
-            }
-        }
-        
-        return true;
     }
-    
+
+    public final int size() {
+        return topCount + keyCount + valueCount;
+    }
+
+    /** Sets isDirty = false for all index nodes. */
+    public void clean() {
+        for (int i = 0; i < topCount; i++) {
+            topNodes[i].isDirty = false;
+        }
+        
+        for (int i = 0; i < keyCount; i++) {
+            keyNodes[i].isDirty = false;
+        }
+    }
+
     /**
      * Clears the set of transaction nodes so it becomes empty.
      * Caller must hold DB.writeLock.
@@ -258,9 +147,9 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         
         // TopNodes
         
-        assert topSize <= topNodes.length;
+        assert topCount <= topNodes.length;
         
-        for (int i = 0; i < topSize; i++) {
+        for (int i = 0; i < topCount; i++) {
             topNodes[i].isInTransNodes = false;
             topNodes[i] = null;
         }
@@ -269,13 +158,13 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
             topNodes = new TopNode[INITIAL_SIZE];
         }
         
-        this.topSize = 0;
+        this.topCount = 0;
         
         // KeyNodes
         
-        assert keySize <= keyNodes.length;
+        assert keyCount <= keyNodes.length;
         
-        for (int i = 0; i < keySize; i++) {
+        for (int i = 0; i < keyCount; i++) {
             keyNodes[i].isInTransNodes = false;
             keyNodes[i] = null;
         }
@@ -284,13 +173,13 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
             keyNodes = new KeyNode[INITIAL_SIZE];
         }
         
-        this.keySize = 0;
+        this.keyCount = 0;
         
         // ValueNodes
         
-        assert valueSize <= valueNodes.length;
+        assert valueCount <= valueNodes.length;
         
-        for (int i = 0; i < valueSize; i++) {
+        for (int i = 0; i < valueCount; i++) {
             valueNodes[i].isInTransactionNodes = false;
             valueNodes[i] = null;
             keys[i] = null;
@@ -301,32 +190,144 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
             keys = new long[INITIAL_SIZE][];
         }
         
-        this.valueSize = 0;
+        this.valueCount = 0;
+    }
+
+    /**
+     * Checks whether the collection of nodes contains the given node 
+     * (compare by reference).
+     */
+    public boolean contains(INode node) {
+        boolean result = false;
+        
+        outer: {
+            for (int i = 0; i < topCount; i++) {
+                if (topNodes[i] == node) {
+                    result = true;
+                    break outer;
+                }
+            }
+            
+            for (int i = 0; i < keyCount; i++) {
+                if (keyNodes[i] == node) {
+                    result = true;
+                    break outer;
+                }
+            }
+            
+            for (int i = 0; i < valueCount; i++) {
+                if (valueNodes[i] == node) {
+                    result = true;
+                    break outer;
+                }
+            }
+        }
+        
+        return result;
+    }
+
+    public final long sumMemSize() {
+        long sum = 0;
+        
+        for (int i = 0; i < topCount; i++) {
+            sum += topNodes[i].getMemSize();
+        }
+        
+        for (int i = 0; i < keyCount; i++) {
+            sum += keyNodes[i].getMemSize();
+        }
+        
+        for (int i = 0; i < valueCount; i++) {
+            sum += valueNodes[i].getMemSize();
+        }
+        
+        return sum;
     }
     
+    /**
+     * For highest performance iterate directly on the three arrays: topNodes, keyNodes, valueNodes
+     * which allows for type-specific optimizations; otherwise the user of this
+     * class can iterate all nodes using size() and get() methods.
+     */
+    public final INode get(int index) {
+        INode result;
+        
+        if (index < topCount) {
+            result = topNodes[index];
+        } else if (index < (topCount + keyCount)) {
+            result = keyNodes[index - topCount];
+        } else {
+            result = valueNodes[index - (topCount + keyCount)];
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Checks for no duplicates.
+     *  
+     * @throws AssertionError  
+     *              If there are duplicates.
+     * @return true  
+     *              Always returns true when the method returns normally.
+     */
+    public boolean assertNoDuplicates() {
+        for (int i = 0; i < topCount; i++) {
+            TopNode n = topNodes[i];
+            for (int j = i+1; j < topCount; j++) {
+                if (topNodes[j] == n) {
+                    throw new AssertionError("Duplicate TopNode, " + i + ", " + j 
+                            + ", topSize: " + topCount);
+                }
+            }
+        }
+        
+        for (int i = 0; i < keyCount; i++) {
+            KeyNode n = keyNodes[i];
+            for (int j = i+1; j < keyCount; j++) {
+                if (keyNodes[j] == n) {
+                    throw new AssertionError("Duplicate KeyNode, " + i + ", " + j 
+                            + ", keySize: " + keyCount);
+                }
+            }
+        }
+        
+        for (int i = 0; i < valueCount; i++) {
+            ValueNode n = valueNodes[i];
+            for (int j = i+1; j < valueCount; j++) {
+                if (valueNodes[j] == n) {
+                    throw new AssertionError("Duplicate ValueNode, " + i + ", " + j 
+                            + ", valueSize: " + valueCount);
+                }
+            }
+        }
+        
+        return true;
+    }
+
     public String toString() {
-        return "node counts: " + topSize + ", " + keySize + ", " + valueSize;
+        return "node counts: " + topCount + ", " + keyCount + ", " + valueCount;
     }
     
     public String print() {
         StringBuilder b = new StringBuilder();
-        if (topSize > 0) {
+        if (topCount > 0) {
             b.append("-- Top nodes --\n");
-            for (int i = 0; i < topSize; i++) {
+            for (int i = 0; i < topCount; i++) {
                 b.append(topNodes[i].toString() + "\n");
             }
         }
         
-        if (keySize > 0) {
+        if (keyCount > 0) {
             b.append("-- Key nodes --\n");
-            for (int i = 0; i < keySize; i++) {
+            for (int i = 0; i < keyCount; i++) {
                 b.append(keyNodes[i].print() + "\n");
             }
         }
         
-        if (valueSize > 0) {
+        if (valueCount > 0) {
             b.append("-- Value nodes --\n");
-            for (int i = 0; i < valueSize; i++) {
+            for (int i = 0; i < valueCount; i++) {
                 b.append(valueNodes[i].toString() + "\n");
             }
         }
@@ -334,8 +335,22 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         return b.toString();
     }
     
-    // ---- Testing ----
     
+    // ======== Testing ========
+    
+    /** Assert that there is no existing top node with same top node id. */
+    private boolean assertNoDuplicateTopNodeId(TopNode node) {
+        int id1 = node.topNodeId;
+        for (int i = 0; i < topCount; i++) {
+            int id2 = topNodes[i].topNodeId;
+            if (id2 == id1) {
+                throw new AssertionError("Cannot add TopNode with same topNodeId as existing one, " 
+                        + "existing: " + topNodes[i] + ", to add: " + node);
+            }
+        }
+        return true;
+    }
+
     @Nano
     public static void test1() {
         // Tests simple create, add, get, size.
@@ -344,12 +359,12 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         ValueNode v1 = ValueNode.createDelete();
         ValueNode v2 = ValueNode.createDelete();
         
-        Assert.assertEquals(0, nodes.valueSize);
+        Assert.assertEquals(0, nodes.valueCount);
         nodes.addValueNode(v1, null);
         nodes.addValueNode(v2, null);
         Assert.assertEquals(v1, nodes.valueNodes[0]);
         Assert.assertEquals(v2, nodes.valueNodes[1]);
-        Assert.assertEquals(2, nodes.valueSize);
+        Assert.assertEquals(2, nodes.valueCount);
     }
     
     @Nano
@@ -367,11 +382,11 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
             nodes.addValueNode(value, null);
         }
         
-        Assert.assertEquals(count, nodes.valueSize);
+        Assert.assertEquals(count, nodes.valueCount);
         Assert.assertEquals(v, nodes.valueNodes[index]);
         
         nodes.clear();
-        Assert.assertEquals(0, nodes.valueSize);
+        Assert.assertEquals(0, nodes.valueCount);
     }
     
     @Nano
@@ -387,7 +402,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
             nodes.addValueNode(value, null);
         }
         
-        Assert.assertEquals(count, nodes.valueSize);
+        Assert.assertEquals(count, nodes.valueCount);
         
         for (int i = 0; i < 1100; i++) {
             nodes.clear();

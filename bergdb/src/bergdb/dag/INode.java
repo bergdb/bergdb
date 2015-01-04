@@ -81,5 +81,8 @@ public interface INode {
 
     public boolean isKeyNode();
     public boolean isTopNode();
+    
     public boolean isValueNode();
+    
+    public boolean isInTransNodes();
 }

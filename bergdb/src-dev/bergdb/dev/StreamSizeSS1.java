@@ -9,16 +9,16 @@ import bergdb.stream.MemoryStream;
 /**
  * Executable class that determines total stream size for Scenario SS1.
  * Fixed scenario without parameters. 100M of raw kv data (key+value size)
- * and 100k kvs each 1 kB. Each trans with one single kv.
+ * and 100k kvs each 1 kB. Each trans with 100 KVs.
  * Some key ordering, not random.
  * 
  * @author Frans Lundberg
  */
 public class StreamSizeSS1 {
-    int transCount = 100*1000;
     int keySize = 10;
     int valueSize = 1000 - keySize;
-    int kvsPerTrans = 1;
+    int kvsPerTrans = 100;
+    int transCount = 100*1000 / kvsPerTrans;
     Db db;
     
     public void go() {
@@ -57,8 +57,8 @@ public class StreamSizeSS1 {
         double factor = ((double) length) / dataSize;
         
         System.out.printf("Factor: %.2f\n", factor);
-        System.out.printf("(dataSize: %.1fM, kv size: %d, stream length: %.1fM)\n", 
-                1e-6 * dataSize, keySize + valueSize, 1e-6 * length);
+        System.out.printf("(dataSize: %.1fM, kv size: %d, stream length: %.1fM, kvsPerTrans:%d)\n", 
+                1e-6 * dataSize, keySize + valueSize, 1e-6 * length, kvsPerTrans);
     }
 
     public static void main(String[] args) {
@@ -67,9 +67,5 @@ public class StreamSizeSS1 {
 }
 
 /*
-
-150103 Frans: Result. Factor: 1.21.
-
-Result for SS1/2/3, 150103: 1.21, 1.15, 2.02.
 
 */

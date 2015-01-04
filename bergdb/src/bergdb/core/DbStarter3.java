@@ -94,17 +94,6 @@ public class DbStarter3 {
         }
     }
 
-    private void doOrdinaryStartup() {
-        createMaps();
-        updateStreamPointers();
-        changeKeyNodesToPreviousState();
-        checkStreamPointers();
-        createMemoryPointers();
-        findSuperRoot();
-        prepareDb();
-        rerunTransactions();
-    }
-
     private void doPrimordialStartup() {
         StoredNode[] nodes = transactions.get(0).nodes;
         checkPrimordialTransaction(nodes);
@@ -125,6 +114,18 @@ public class DbStarter3 {
         
         assert keyNode.isDirty() == false;
         assert superRoot.isDirty() == false;
+    }
+
+    private void doOrdinaryStartup() {
+        createMaps();
+        updateStreamPointers();
+        changeKeyNodesToPreviousState();
+        checkStreamPointers();
+        createMemoryPointers();
+        findSuperRoot();
+        prepareDb();
+        rerunTransactions();
+        postStartupCheck();
     }
 
     private void createMaps() {
@@ -292,6 +293,10 @@ public class DbStarter3 {
                 }
             }
         }
+    }
+
+    private void postStartupCheck() {
+        db.checkNodes();
     }
 
     /**

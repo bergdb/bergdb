@@ -6,7 +6,6 @@ public class Pack implements IPack {
         Bytes.class,
         EventToWaitFor.class,
         FrequencySensor.class,
-        HashCodeUtil.class,
         Bug.class,
         MemoryOutputStream.class,
         MyLongSet.class,
