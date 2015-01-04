@@ -5,17 +5,17 @@ package bergdb.nanotest;
  * 
  * @author Frans Lundberg
  */
-public class TestThread extends Thread {
+public class TestableThread extends Thread {
     // Maybe publish to blog.franslundberg.com when tested more.
     
     private final Object sync = new Object();
     private volatile String breakName;
     
-    public TestThread() {
+    public TestableThread() {
         super();
     }
     
-    public TestThread(Runnable r) {
+    public TestableThread(Runnable r) {
         super(r);
     }
     
@@ -46,8 +46,8 @@ public class TestThread extends Thread {
         }
         
         Thread t = Thread.currentThread();
-        if (t instanceof TestThread) {
-            TestThread my = (TestThread) t;
+        if (t instanceof TestableThread) {
+            TestableThread my = (TestableThread) t;
             synchronized (my.sync) {
                 if (my.breakName != null && my.breakName.equals(breakName)) {
                     try {
@@ -66,11 +66,11 @@ public class TestThread extends Thread {
      * Try running with and without -ea.
      */
     public static void main(String[] args) throws InterruptedException {
-        TestThread t1 = new TestThread(new Runnable() {
+        TestableThread t1 = new TestableThread(new Runnable() {
             public void run() {
                 for (int i = 0; i < 3; i++) {
                     System.out.println("t1: Before " + i);
-                    assert TestThread.breakpoint("break-" + i);
+                    assert TestableThread.breakpoint("break-" + i);
                     System.out.println("t1: After " + i);
                     System.out.println();
                 }
