@@ -1,10 +1,12 @@
-package bergdb.dev;
+package bergdb.dev.props;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
+
 import bergdb.common.Util;
 import bergdb.core.BuildInfo;
 import bergdb.test.Get;
@@ -32,13 +34,16 @@ import bergdb.test.Set;
  * @author Frans Lundberg
  */
 public class CorePerf {
-    private Map<String, Double> result;
-    private Map<String, Double> baseline1;
-    private Map<String, Double> baseline2;
-    private boolean printDots = false;
+    Map<String, Double> resultMap;
+    Map<String, Double> baseline1;
+    Map<String, Double> baseline2;
+    boolean printDots = false;
+    boolean verbose = false;
+    boolean beShort = true;
+    Result result;
     
     public CorePerf() {
-        result = new TreeMap<String, Double>();
+        resultMap = new TreeMap<String, Double>();
         baseline1 = new TreeMap<String, Double>();
         baseline2 = new TreeMap<String, Double>();
     }
@@ -54,11 +59,31 @@ public class CorePerf {
             printDots = true;
         }
         
+        if (args.length >= 1 && args[0].equals("verbose")) {
+            verbose = true;
+        }
+        
+        if (args.length >= 1 && args[0].equals("short")) {
+            beShort = true;
+        }
+        
+        
         printHeader();
+        go();
+        
+        if (beShort) {
+            System.out.println("\n" + result.shortReport);
+        } else {
+            System.out.println("\n" + result.longReport);
+        }
+    }
+    
+    public double go() {
         createBaselines();
         List<PerfMethod> methods = createMethods();
         runMethods(methods);
-        handleResult();
+        computeResult();
+        return result.geoMean;
     }
     
     private List<PerfMethod> createMethods() {
@@ -122,39 +147,42 @@ public class CorePerf {
         double time = method.runPerf();
         String name = method.name();
         
-        if (!result.containsKey(name)) {
-            result.put(name, Double.MAX_VALUE);
+        if (!resultMap.containsKey(name)) {
+            resultMap.put(name, Double.MAX_VALUE);
         }
         
-        double current = result.get(name);
+        double current = resultMap.get(name);
         if (time < current) {
-            result.put(name, time);
+            resultMap.put(name, time);
         }
 
         double normalized1 = time / (baseline1.get(name));
         double normalized2 = time / (baseline2.get(name));
         
-        if (printDots) {
-            System.out.print(".");
-        } else {
-            // 1305 Frans: following printf does not work for GCJ build.
-            //System.out.printf(Locale.US, "%-10s %.3g  %.2f  %.2f\n", shortName, value, normalized1, normalized2);
-            
+        if (verbose) {
             String s = Util.spaceFill(name + ":", 10) 
                     + Util.twoDecimals(normalized1) + "   " 
                     + Util.twoDecimals(normalized2) + "   " + time;
             System.out.println(s);
+        } else if (printDots) {
+            System.out.print(".");
         }
     }
     
-    private void handleResult() throws Error {
-        System.out.println("\n---- Result ----");
+    private double computeResult() {
+        result = new Result();
+        
+        StringBuilder shortReport = new StringBuilder();
+        StringBuilder longReport = new StringBuilder();
+        
+        longReport.append("---- Result ----\n");
         double product = 1.0;
         double productGeo1 = 1.0;
         double productGeo2 = 1.0;
         int count = 0;
+        boolean isFirst = true;
         
-        for (Map.Entry<String, Double> entry : result.entrySet()) {
+        for (Map.Entry<String, Double> entry : resultMap.entrySet()) {
             double value = entry.getValue();
             String name = entry.getKey();
             product = product * value;
@@ -167,7 +195,15 @@ public class CorePerf {
             String s = Util.spaceFill(name + ":", 10) 
                     + Util.twoDecimals(normalized1) + ",  " 
                     + Util.twoDecimals(normalized2) + ",  " + value;
-            System.out.println(s);
+            
+            longReport.append(s + "\n");
+            
+            if (isFirst) {
+                isFirst = false;
+            } else {
+                shortReport.append(", ");
+            }
+            shortReport.append(Util.twoDecimals(normalized1));
         }
         
         if (count < 2) {
@@ -177,18 +213,21 @@ public class CorePerf {
         double normalizedGeoMean1 = Math.pow(productGeo1, 1.0 / count);
         double normalizedGeoMean2 = Math.pow(productGeo2, 1.0 / count);
         
-        System.out.println();
         String s = "GEO MEAN: " + Util.twoDecimals(normalizedGeoMean1) + ",  " 
                 + Util.twoDecimals(normalizedGeoMean2);
-        System.out.println(s);
+        longReport.append(s + "\n");
         
-        System.out.println();
+        result.shortReport = String.format(Locale.US, "CorePerf:%.2f", normalizedGeoMean1)
+                + " (" + shortReport.toString() + ")";
+        result.longReport = longReport.toString();
+        result.geoMean = normalizedGeoMean1;
+        
+        return result.geoMean;
     }
-
-
+    
     private void printHeader() {
         System.out.println("\n======== " + CorePerf.class.getName() + " ========");
-        String computer = Util.getComputerName();
+        String computer = Util.hostname();
         System.out.println("Running on " + computer + ", " + new Date() 
                 + ". BergDB " + BuildInfo.RELEASE + ".");
         System.out.println("JVM: " + System.getProperty("java.vm.name") + " " 
@@ -203,7 +242,7 @@ public class CorePerf {
     private void printHelp() {
         System.out.println("Standard set of performance tests for Core.");
         System.out.println("These tests form a standard performance test suit.");
-        System.out.println("Use no arguments to run the tests, or one argument 'dots' to reduced printed output.");
+        System.out.println("Argument: dots/verbose, or none.");
     }
 
     private void createBaselines() {
@@ -219,10 +258,6 @@ public class CorePerf {
         baseline2.put("getmany", 0.26e-6);
         baseline2.put("set",     8.00e-6);
     }
-        
-    public static void main(String[] args) {
-        new CorePerf().go(args);
-    }
     
     interface PerfMethod {
         /**
@@ -232,6 +267,17 @@ public class CorePerf {
         public double runPerf();
         
         public String name();
+    }
+    
+    static class Result {
+        double geoMean;
+        String shortReport;
+        String longReport;
+    }
+    
+    public static void main(String[] args) {
+        CorePerf c = new CorePerf();
+        c.go(args);
     }
 }
 

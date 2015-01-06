@@ -10,8 +10,10 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Locale;
@@ -538,13 +540,7 @@ public class Util {
      * Returns the name of this computer (localhost) or "unknown" if not known.
      */
     public static String getComputerName() {
-        String computer = "'unknown'";
-        try {
-            computer = InetAddress.getLocalHost().getHostName();
-        } catch (UnknownHostException e) {
-            // empty
-        }
-        return computer;
+        return hostname();
     }
     
     /**
@@ -1051,5 +1047,27 @@ public class Util {
             name = "unknown";
         }
         return name;
+    }
+
+    
+    private static SimpleDateFormat compactDateFormat = new SimpleDateFormat("yyMMdd");
+    private static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+    
+    /**
+     * Returns the current date formatted as "YYYY-MM-DD".
+     * The timezone of the to default locale is used.
+     */
+    public static String today() {
+        long now = System.currentTimeMillis();
+        return dateFormat.format(new Date(now));
+    }
+
+    /**
+     * Returns the current date formatted as "YYMMDD".
+     * The timezone of the to default locale is used.
+     */
+    public static String todayCompact() {
+        long now = System.currentTimeMillis();
+        return compactDateFormat.format(new Date(now));
     }
 }

@@ -2,9 +2,7 @@ package bergdb.coredev;
 
 import java.util.Date;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
-
 import bergdb.common.IPack;
 import bergdb.common.Util;
 import bergdb.nanotest.ClassFilter;
@@ -12,8 +10,7 @@ import bergdb.nanotest.MethodFilter;
 import bergdb.nanotest.TestRunner;
 
 /**
- * This class has a main method used to run the unit tests for the BergDB classes.
- * Run this class before every commit. All tests should run within 30 s.
+ * This class has a main method used to run the unit tests for the Core BergDB classes.
  * 
  * @author Frans Lundberg
  */
@@ -50,7 +47,7 @@ public class CoreUnit {
     private String getHeader() {
         StringBuilder b = new StringBuilder();
         b.append("\n======== " + this.getClass().getName() + " ========\n");
-        String computer = Util.getComputerName();
+        String computer = Util.hostname();
         b.append("'unit' tests on " + computer + ", " + new Date() + ".\n");
         return b.toString();
     }
@@ -123,66 +120,6 @@ public class CoreUnit {
         Set<String> groups = new HashSet<String>();
         groups.add("unit");
         return groups;
-    }
-    
-    /**
-     * A special hack to print stack traces of all threads.
-     */
-    @SuppressWarnings("unused")
-    private void printStacks() {
-        Map<Thread, StackTraceElement[]> map = Thread.getAllStackTraces();
-        System.out.println("JVM thread count: " + map.size());
-        
-        for (Map.Entry<Thread, StackTraceElement[]> element : map.entrySet()) {
-            System.out.println("---- " + element.getKey().getName() + "----");
-            StackTraceElement[] trace = element.getValue();
-            for (StackTraceElement traceElement : trace) {
-                System.out.println("    " + traceElement);
-            }
-        }
-    }
-    
-    /**
-     * Very special hack, rarely used.
-     */
-    @SuppressWarnings("unused")
-    private int bufferedStreamThreadCount() {
-        if (Util.runsIkvm() || Util.runsGcj()) {
-            // The getAllStackTraces() method is not available when running IKVM .NET.
-            // or the GCJ VM.
-            return 0;
-        }
-        
-        Map<Thread, StackTraceElement[]> map = Thread.getAllStackTraces();
-        int count = 0;
-        
-        for (Map.Entry<Thread, StackTraceElement[]> element : map.entrySet()) {
-            String name = element.getKey().getName();
-            if (name.startsWith("BufferedStream-")) {
-                count++;
-            }
-        }
-        return count;
-    }
-    
-    /**
-     * Very special hack.
-     */
-    @SuppressWarnings("unused")
-    private void printBufferedStreamStacks() {
-        Map<Thread, StackTraceElement[]> map = Thread.getAllStackTraces();
-        System.out.println("JVM thread count: " + map.size());
-        
-        for (Map.Entry<Thread, StackTraceElement[]> element : map.entrySet()) {
-            String name = element.getKey().getName();
-            if (name.startsWith("BufferedStream-")) {
-                System.out.println("---- " + element.getKey().getName() + "----");
-                StackTraceElement[] trace = element.getValue();
-                for (StackTraceElement traceElement : trace) {
-                    System.out.println("    " + traceElement);
-                }
-            }
-        }
     }
     
     /**

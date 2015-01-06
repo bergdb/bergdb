@@ -510,21 +510,23 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
     
 
     /**
-     * T2 key node with 8 children, one of which has 8 children itself. 
-     * One child and one grandchild have spos set.
+     * Mixed, advanced case.
      */
     @Nano
     public static void testAddUnstoredDescendents4Recursive() {
         KeyNode t2 = new KeyNodeTester().createT2();
-        t2.pointers[3] = new KeyNodeTester().createT2();     // one child with 8 children
+        
         t2.pointers[2].setSpos(10);
-        ((KeyNode) t2.pointers[3]).pointers[4].setSpos(20);
+        t2.pointers[3] = new KeyNodeTester().createT2(); 
+        t2.pointers[4] = new KeyNodeTester().createT2();
+        t2.pointers[4].setSpos(20);
+        ((KeyNode) t2.pointers[3]).pointers[5].setSpos(20);
         
         TransNodes transNodes = new TransNodes();
         transNodes.addKeyNode(t2);
         Assert.assertEquals(1, transNodes.size());
         
         transNodes.addUnstoredDescendents();
-        Assert.assertEquals(1+8+8-2, transNodes.size());
+        Assert.assertEquals(1+8+8+8-1-9-1, transNodes.size());
     }
 }

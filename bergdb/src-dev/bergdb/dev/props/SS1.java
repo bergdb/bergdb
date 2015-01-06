@@ -1,4 +1,4 @@
-package bergdb.dev;
+package bergdb.dev.props;
 
 import bergdb.core.Db;
 import bergdb.core.SyncLevel;
@@ -14,17 +14,24 @@ import bergdb.stream.MemoryStream;
  * 
  * @author Frans Lundberg
  */
-public class StreamSizeSS1 {
+public class SS1 {
     int keySize = 10;
     int valueSize = 1000 - keySize;
     int kvsPerTrans = 100;
     int transCount = 100*1000 / kvsPerTrans;
     Db db;
     
-    public void go() {
+    double factor;
+    long dataSize;
+    long length;
+    
+    /**
+     * Runs the stream size test and returns the result.
+     */
+    public double go() {
         createDb();
         runTransactions();
-        reportResult();
+        return computeResult();
     }
 
     private void createDb() {
@@ -48,24 +55,29 @@ public class StreamSizeSS1 {
         }
         
         db.sync(SyncLevel.ORDINARY);
-        
+    }
+    
+    private double computeResult() {
+        length = db.getStreamLength();
+        dataSize = transCount * kvsPerTrans * (keySize + valueSize);
+        factor = ((double) length) / dataSize;
+        return factor;
     }
 
-    private void reportResult() {
-        long length = db.getStreamLength();
-        long dataSize = transCount * kvsPerTrans * (keySize + valueSize);
-        double factor = ((double) length) / dataSize;
-        
+    void reportResult() {
         System.out.printf("Factor: %.2f\n", factor);
         System.out.printf("(dataSize: %.1fM, kv size: %d, stream length: %.1fM, kvsPerTrans:%d)\n", 
                 1e-6 * dataSize, keySize + valueSize, 1e-6 * length, kvsPerTrans);
     }
 
     public static void main(String[] args) {
-        new StreamSizeSS1().go();
+        SS1 ss1 = new SS1();
+        ss1.go();
+        ss1.reportResult();
     }
 }
 
 /*
+150105 Frans: got Factor 1.25.
 
 */

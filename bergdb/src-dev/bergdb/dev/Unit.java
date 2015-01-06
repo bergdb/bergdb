@@ -3,8 +3,9 @@ package bergdb.dev;
 import bergdb.common.IPack;
 
 /**
+ * Runs unit tests for the project. Run them before every commit.
  * Almost identical to bergdb.coredev.CoreUnit, but ipacks array contains a larger set of 
- * packages to test. Run the unit tests before every commit.
+ * packages.
  * 
  * @author Frans Lundberg
  */

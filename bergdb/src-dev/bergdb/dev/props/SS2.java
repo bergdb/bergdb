@@ -1,4 +1,4 @@
-package bergdb.dev;
+package bergdb.dev.props;
 
 /**
  * Executable class that determines total stream size for Scenario SS2.
@@ -8,20 +8,27 @@ package bergdb.dev;
  * 
  * @author Frans Lundberg
  */
-public class StreamSizeSS2 {
+public class SS2 extends SS1 {
+    
+    public double go() {
+        kvsPerTrans = 1;
+        transCount = 100*1000 / kvsPerTrans;
+        keySize = 10;
+        valueSize = 1000 - keySize;
+        
+        return super.go();
+    }
     
     public static void main(String[] args) {
-        StreamSizeSS1 s = new StreamSizeSS1();
-        s.kvsPerTrans = 1;
-        s.transCount = 100*1000 / s.kvsPerTrans;
-        s.keySize = 10;
-        s.valueSize = 1000 - s.keySize;
+        SS2 s = new SS2();
         s.go();
+        s.reportResult();
     }
 }
 
 /*
- 
-  
+
+150105 Frans: got Factor 1.34.
+
 */
 
