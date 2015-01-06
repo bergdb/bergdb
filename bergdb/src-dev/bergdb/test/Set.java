@@ -16,7 +16,7 @@ import bergdb.nanotest.BasicTestEnvironment;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.TestClock;
-import bergdb.stream.NullStream;
+import bergdb.stream.DummyStream;
 
 /**
  * Performance writing small transactions.
@@ -44,7 +44,7 @@ public class Set {
     }
 
     public Db createDB(boolean enableWrite) {
-        NullStream nullStream = new NullStream();
+        DummyStream nullStream = new DummyStream();
         
         DbBuilder b = Db.builder()
                 .clock(new TestClock())

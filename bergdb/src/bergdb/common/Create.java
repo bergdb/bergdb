@@ -12,7 +12,7 @@ public class Create {
     private Create() {}
     
     /**
-     * Creates and returns a set of strings from the given strings.
+     * Creates and returns a set of strings from the given string parameters.
      */
     public static Set<String> setOfStrings(String... strings) {
         HashSet<String> set = new HashSet<String>(strings.length);

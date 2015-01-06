@@ -31,7 +31,7 @@ import bergdb.pub.WBuilder;
 import bergdb.pubimp.DatabaseBuilderImp;
 import bergdb.pubimp.DatabaseImp;
 import bergdb.stream.AppendOnlyStream;
-import bergdb.stream.NullStream;
+import bergdb.stream.DummyStream;
 
 /**
  * Tests the concurrency of the database.
@@ -50,7 +50,7 @@ public class Concurrency {
         // Exception from any started thread.
     
     public Concurrency() throws Exception {
-        AppendOnlyStream stream = new NullStream();
+        AppendOnlyStream stream = new DummyStream();
         DatabaseBuilderImp builder = (DatabaseBuilderImp) Factory.database();
         builder.mainStream(stream);
         builder.evictBoss(new FixedDurationEvictBoss());

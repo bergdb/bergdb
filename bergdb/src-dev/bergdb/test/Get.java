@@ -11,7 +11,7 @@ import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
-import bergdb.stream.NullStream;
+import bergdb.stream.DummyStream;
 
 /**
  * Performance of get operations.
@@ -39,7 +39,7 @@ public class Get {
         EvictBoss boss = new FixedDurationEvictBoss();
         
         db = Db.builder()
-                .stream("main", new NullStream())
+                .stream("main", new DummyStream())
                 .systemClock()
                 .retainForever().evictBoss(boss).start();
         

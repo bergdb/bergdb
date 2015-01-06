@@ -9,7 +9,7 @@ import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.TestClock;
 import bergdb.stream.AppendOnlyStream;
-import bergdb.stream.NullStream;
+import bergdb.stream.DummyStream;
 
 
 /**
@@ -26,7 +26,7 @@ public class Concurrency2 {
     private volatile Exception exception = null;
     
     public Concurrency2() {
-        AppendOnlyStream stream = new NullStream();
+        AppendOnlyStream stream = new DummyStream();
         db = Db.builder().clock(new TestClock()).retainForever().noEvict().mainStream(stream).start();
     }
     

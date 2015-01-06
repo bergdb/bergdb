@@ -8,26 +8,29 @@ import bergdb.core.DbUtil;
 import bergdb.core.Trans;
 import bergdb.nanotest.BasicTestEnvironment;
 import bergdb.nanotest.TestEnvironment;
-import bergdb.stream.MemoryStream;
-
+import bergdb.stream.DummyStream;
 
 /**
- * Let's use check memory with VisualVM or something.
- * Builds key-value map and just waits.
+ * Executable class that created 1M small KVs and analyses total
+ * memory usage per KV. The main method does not exit, it keeps
+ * running. Suitable for analysis the live in-memory structure 
+ * with VisualVM.
+ * 
+ * @author Frans Lundberg
  */
 public class MemPerf {
      
     public static void get(TestEnvironment c) {
-        int n = 100000;
+        int n = 1000*1000;
         int valueSize = 0;
         PrintStream out = c.out();
         Runtime rt = Runtime.getRuntime();        
-        Db db = Db.builder().testSetup().mainStream(new MemoryStream()).start();
+        Db db = Db.builder().testSetup().mainStream(new DummyStream()).start();
         
         System.gc(); System.gc(); System.gc();
         long emptyMem = rt.totalMemory() - rt.freeMemory();
         
-        int batchSize = 1000;
+        int batchSize = 100;
         for (int i = 0; i < n/batchSize; i++) {
             Trans.Builder b = db.trans();
             for (int j = 0; j < batchSize; j++) {
@@ -76,7 +79,6 @@ public class MemPerf {
 
 /*
 
-150103 Frans: memPerKv: 258 (Cissi, Oracles JVM 7).
-
+150106 Frans: memPerKv: 161 (cissi, Oracle JVM 7, 1M KVs)
 
 */

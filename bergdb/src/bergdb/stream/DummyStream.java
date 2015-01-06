@@ -6,13 +6,15 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * Dummy AppendOnlyStream that sometimes is useful for testing.
- * Only stores the 10,000 first bytes in memory, the rest of the appended bytes are discarded.
+ * Dummy AppendOnlyStream that does not really store the actual stream bytes.
+ * An instance of this class only stores the 10,000 first bytes in memory, 
+ * the rest of the appended bytes are discarded. 
+ * This is sometimes useful for testing.
  * Throws IOException if an attempt is made to read bytes beyond the stored data.
  * 
  * @author Frans Lundberg
  */
-public class NullStream implements AppendOnlyStream {   
+public class DummyStream implements AppendOnlyStream {   
     private static final int bufferSize = 10*1000;
     private byte[] buffer;
     private long length;
@@ -21,7 +23,7 @@ public class NullStream implements AppendOnlyStream {
     /**
      * Creates new empty (stream size = 0) write-once stream.
      */
-    public NullStream() {
+    public DummyStream() {
         synchronized (this) {
             length = 0;
             firstPos = 0;
@@ -85,14 +87,14 @@ public class NullStream implements AppendOnlyStream {
     
     @Nano
     public static void test1() {
-        NullStream s = new NullStream();
+        DummyStream s = new DummyStream();
         Assert.assertEquals(0, s.getLength());
     }
     
     @Nano
     public static void testRead1() throws IOException {
         // Reads in the beginning of the stream.
-        NullStream s = new NullStream();
+        DummyStream s = new DummyStream();
         byte[] data = new byte[100];
         data[0] = 12;
         s.append(data, 0, 100);
@@ -106,7 +108,7 @@ public class NullStream implements AppendOnlyStream {
     @Nano
     public static void testRead2() throws IOException {
         // Reads in non-existant part of the stream.
-        NullStream s = new NullStream();
+        DummyStream s = new DummyStream();
         byte[] data = new byte[20000];
         data[0] = 12;
         s.append(data, 0, data.length);
@@ -126,7 +128,7 @@ public class NullStream implements AppendOnlyStream {
     
     @Nano
     public static void testSize() throws IOException {
-        NullStream s = new NullStream();
+        DummyStream s = new DummyStream();
         Assert.assertEquals(0, s.getLength());
         s.append(new byte[100], 0, 100);
         Assert.assertEquals(100, s.getLength());
@@ -134,9 +136,5 @@ public class NullStream implements AppendOnlyStream {
         s.pretruncate(50);
         Assert.assertEquals(100, s.getLength());
         Assert.assertEquals(50, s.getFirstPos());
-    }
-    
-    public static void main(String[] args) throws IOException {
-        testRead1();
     }
 }

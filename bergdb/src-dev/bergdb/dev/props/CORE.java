@@ -1,14 +1,12 @@
 package bergdb.dev.props;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
 import bergdb.common.Util;
-import bergdb.core.BuildInfo;
 import bergdb.test.Get;
 import bergdb.test.GetThreaded;
 import bergdb.test.PerfGetMany;
@@ -33,7 +31,7 @@ import bergdb.test.Set;
  * 
  * @author Frans Lundberg
  */
-public class CorePerf {
+public class CORE {
     Map<String, Double> resultMap;
     Map<String, Double> baseline1;
     Map<String, Double> baseline2;
@@ -42,7 +40,7 @@ public class CorePerf {
     boolean beShort = true;
     Result result;
     
-    public CorePerf() {
+    public CORE() {
         resultMap = new TreeMap<String, Double>();
         baseline1 = new TreeMap<String, Double>();
         baseline2 = new TreeMap<String, Double>();
@@ -217,7 +215,7 @@ public class CorePerf {
                 + Util.twoDecimals(normalizedGeoMean2);
         longReport.append(s + "\n");
         
-        result.shortReport = String.format(Locale.US, "CorePerf:%.2f", normalizedGeoMean1)
+        result.shortReport = String.format(Locale.US, "CORE:%.2f", normalizedGeoMean1)
                 + " (" + shortReport.toString() + ")";
         result.longReport = longReport.toString();
         result.geoMean = normalizedGeoMean1;
@@ -226,13 +224,14 @@ public class CorePerf {
     }
     
     private void printHeader() {
-        System.out.println("\n======== " + CorePerf.class.getName() + " ========");
+        System.out.println("\n==== " + CORE.class.getName() + " ====");
+        
         String computer = Util.hostname();
-        System.out.println("Running on " + computer + ", " + new Date() 
-                + ". BergDB " + BuildInfo.RELEASE + ".");
-        System.out.println("JVM: " + System.getProperty("java.vm.name") + " " 
-                + System.getProperty("java.vm.version") 
-                + ", java " + System.getProperty("java.version"));
+        String today = Util.today();
+        String jvm = Util.jvm();
+        
+        System.out.println(today + ", " + computer);
+        System.out.println(jvm);
         
         if (!printDots) {
             System.out.println();
@@ -276,7 +275,7 @@ public class CorePerf {
     }
     
     public static void main(String[] args) {
-        CorePerf c = new CorePerf();
+        CORE c = new CORE();
         c.go(args);
     }
 }
@@ -285,6 +284,10 @@ public class CorePerf {
 
 Log 
 ===
+
+== 150106 ==
+cissi, Java HotSpot(TM) 64-Bit Server VM 24.65-b04, java 1.7.0_67
+CORE:0.77 (0.78, 0.98, 0.85, 0.54)
 
 == 141109 ==
 Running on cissi, BergDB 2014.2. JVM: Java HotSpot(TM) 64-Bit Server VM 24.65-b04, java 1.7.0_67.

@@ -1070,4 +1070,15 @@ public class Util {
         long now = System.currentTimeMillis();
         return compactDateFormat.format(new Date(now));
     }
+    
+    /**
+     * Returns a one-line description of the JVM running this code.
+     */
+    public static String jvm() {
+        String jvm = System.getProperty("java.vm.name") + " " 
+                + System.getProperty("java.vm.version");
+        String javaVersion = "java " + System.getProperty("java.version");
+        
+        return jvm + ", " + javaVersion;
+    }
 }

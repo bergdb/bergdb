@@ -7,7 +7,7 @@ public class Pack implements IPack {
         FileStream.class,
         MemoryStream.class,
         MemoryStream.Tester.class,
-        NullStream.class,
+        DummyStream.class,
         OneFileStream.class,
         Pack.class,
         SalsaStream.class
