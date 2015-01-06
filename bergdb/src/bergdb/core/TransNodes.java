@@ -3,6 +3,9 @@ package bergdb.core;
 import bergdb.dag.IDirtyNodes;
 import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
+import bergdb.dag.KeyNodeTester;
+import bergdb.dag.Pointer;
+import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
@@ -121,7 +124,9 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         return topCount + keyCount + valueCount;
     }
 
-    /** Sets isDirty = false for all index nodes. */
+    /** 
+     * Sets isDirty = false for all index nodes.
+     */
     public void clean() {
         for (int i = 0; i < topCount; i++) {
             topNodes[i].isDirty = false;
@@ -134,7 +139,6 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
 
     /**
      * Clears the set of transaction nodes so it becomes empty.
-     * Caller must hold DB.writeLock.
      */
     public final void clear() {
         //
@@ -191,6 +195,49 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         }
         
         this.valueCount = 0;
+    }
+
+    // TODO test addUnstoredDescendents
+    
+    /**
+     * Adds the descendent nodes that have never been stored to this set of nodes.
+     * All stream pointers of all nodes in this node set should have valid stream
+     * pointers after this method has been run.
+     */
+    public void addUnstoredDescendents() {
+        // Added 2015-01-04, resulted in a somewhat larger stream, but CorePerf is intact.
+        
+        int count = size();
+        Pointer p = new Pointer();
+        
+        for (int i = 0; i < count; i++) {
+            INode node = get(i);
+            if (!node.isIndexNode()) {
+                continue;
+            }
+            
+            addUnstoredDescendents(node, p);
+        }
+    }
+    
+    /**
+     * Adds unstored pointees to transNodes, node must be an index node.
+     * This is done recursively.
+     */
+    private void addUnstoredDescendents(INode node, Pointer p) {
+        int pointerCount = node.getPointerCount();
+        for (int j = 0; j < pointerCount; j++) {
+            node.getPointer(j, p);
+            
+            if (p.isMem()) {
+                INode pointee = p.getNode();
+                assert pointee != null;
+                if (!pointee.isInTransNodes() && Spos.isNull(pointee.getSpos())) {
+                    addIndexNode(pointee);
+                    addUnstoredDescendents(pointee, p);
+                }
+            }
+        }
     }
 
     /**
@@ -409,5 +456,75 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         }
         
         Assert.assertEquals(INITIAL_SIZE, nodes.valueNodes.length);
+    }
+    
+    /**
+     * T2 key node, 8 children with spos == Spos.NULL. All children should be added.
+     */
+    @Nano
+    public static void testAddUnstoredDescendents1() {
+        KeyNode t2 = new KeyNodeTester().createT2();
+        
+        TransNodes transNodes = new TransNodes();
+        transNodes.addKeyNode(t2);
+        Assert.assertEquals(1, transNodes.size());
+        
+        transNodes.addUnstoredDescendents();
+        Assert.assertEquals(9, transNodes.size());
+    }
+    
+
+    /**
+     * T2 key node, 6 children with spos == Spos.NULL and two with a 
+     * valid spos.
+     */
+    @Nano
+    public static void testAddUnstoredDescendents2() {
+        KeyNode t2 = new KeyNodeTester().createT2();
+        t2.pointers[3].setSpos(100);
+        t2.pointers[5].setSpos(200);
+        
+        TransNodes transNodes = new TransNodes();
+        transNodes.addKeyNode(t2);
+        Assert.assertEquals(1, transNodes.size());
+        
+        transNodes.addUnstoredDescendents();
+        Assert.assertEquals(1+6, transNodes.size());
+    }
+    
+    /**
+     * T2 key node with 8 children, one of which has 8 children itself.
+     */
+    @Nano
+    public static void testAddUnstoredDescendents3Recursive() {
+        KeyNode t2 = new KeyNodeTester().createT2();
+        t2.pointers[3] = new KeyNodeTester().createT2();     // one child with 8 children
+        
+        TransNodes transNodes = new TransNodes();
+        transNodes.addKeyNode(t2);
+        Assert.assertEquals(1, transNodes.size());
+        
+        transNodes.addUnstoredDescendents();
+        Assert.assertEquals(1+8+8, transNodes.size());
+    }
+    
+
+    /**
+     * T2 key node with 8 children, one of which has 8 children itself. 
+     * One child and one grandchild have spos set.
+     */
+    @Nano
+    public static void testAddUnstoredDescendents4Recursive() {
+        KeyNode t2 = new KeyNodeTester().createT2();
+        t2.pointers[3] = new KeyNodeTester().createT2();     // one child with 8 children
+        t2.pointers[2].setSpos(10);
+        ((KeyNode) t2.pointers[3]).pointers[4].setSpos(20);
+        
+        TransNodes transNodes = new TransNodes();
+        transNodes.addKeyNode(t2);
+        Assert.assertEquals(1, transNodes.size());
+        
+        transNodes.addUnstoredDescendents();
+        Assert.assertEquals(1+8+8-2, transNodes.size());
     }
 }

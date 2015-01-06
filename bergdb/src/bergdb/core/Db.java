@@ -15,7 +15,6 @@ import bergdb.dag.GetMany;
 import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
 import bergdb.dag.NodeVisitor;
-import bergdb.dag.Pointer;
 import bergdb.dag.PutData;
 import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
@@ -1132,7 +1131,7 @@ public class Db {
         transSeq.removeBefore(sp);
         
         if (!x.trans.isStartupRerun) {
-            addUnstoredDescendents(x.transNodes);
+            x.transNodes.addUnstoredDescendents();
             nodeStream.appendNodes(x.transNodes, x.trans);
         }
         
@@ -1145,45 +1144,6 @@ public class Db {
         
         x.transNodes.clean();
         x.startupPos.set(sp);
-    }
-    
-    /**
-     * Adds pointees that have never been stored to the set of
-     * transaction nodes. All stream pointers should be valid.
-     */
-    private void addUnstoredDescendents(TransNodes transNodes) {
-        // Added 2015-01-04, resulted in a somewhat larger stream, but CorePerf is intact.
-        
-        int count = transNodes.size();
-        Pointer p = new Pointer();
-        
-        for (int i = 0; i < count; i++) {
-            INode node = transNodes.get(i);
-            if (!node.isIndexNode()) {
-                continue;
-            }
-            
-            addUnstoredDescendents(transNodes, node, p);
-        }
-    }
-    
-    /**
-     * Adds unstored pointees to transNodes, node must be an index node.
-     * This is done recursively.
-     */
-    private void addUnstoredDescendents(TransNodes transNodes, INode node, Pointer p) {
-        int pointerCount = node.getPointerCount();
-        for (int j = 0; j < pointerCount; j++) {
-            node.getPointer(j, p);
-            
-            if (p.isMem()) {
-                INode pointee = p.getNode();
-                if (!pointee.isInTransNodes() && Spos.isNull(pointee.getSpos())) {
-                    transNodes.addIndexNode(pointee);
-                    addUnstoredDescendents(transNodes, pointee, p);
-                }
-            }
-        }
     }
 
     /**

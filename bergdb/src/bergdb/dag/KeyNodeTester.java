@@ -15,14 +15,6 @@ public class KeyNodeTester {
      * Returns a test key node called T2.
      * 
      * <pre>
-     * The T2 supernode graph looks like this:
-     * 
-     * a  dP gP k  m
-     * pP       rP a  dP
-     * aP       a  g
-     *          mP eP
-     *            
-     * P = the previous character has a pointer.
      * These are the "keys" that have pointers:
      *   ap    - P0
      *   apa   - P1
@@ -32,7 +24,6 @@ public class KeyNodeTester {
      *   kram  - P5
      *   mage  - P6
      *   md    - P7
-     *   
      * </pre>
      */
     public KeyNode createT2() {
