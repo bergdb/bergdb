@@ -11,9 +11,6 @@ import bergdb.pub.IllegalDbStateException;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 
-// TODO LATER Consider: should cache eviction be here or in Db? Caching is in this class
-// (followPointer). Maybe cache eviction should be too?
-
 // TODO LATER does it work to change maxNodeSize from large to small? Will we just have 
 // lots of splits to start with, or will it fail? Is it something to fix per created database?
 // Actually, this setting is currently (2014-09) not even exposed to Pub API user.

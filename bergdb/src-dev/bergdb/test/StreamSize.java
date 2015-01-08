@@ -5,6 +5,7 @@ import bergdb.core.DbBuilder;
 import bergdb.core.KeyFactory;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
+import bergdb.nanotest.BasicTestEnvironment;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
@@ -109,50 +110,10 @@ public class StreamSize {
             c.report("averageSize-" + sizes[idb], (sum / n));
         }
     }
+    
+    public static void main(String[] args) {
+        //transStreamOverhead(new BasicTestEnvironment());
+        //kvStreamOverhead(new BasicTestEnvironment());
+        t3(new BasicTestEnvironment());
+    }
 }
-
-
-/*
-
-======== 130403 ========
-
-Testing transaction stream size with varying maxNodeSize.
-The node id is still written to stream for each KeyNode/TopNode.
-We could save 8 bytes per transaction (1 KeyNode and 1 ValueNode) by removing KeyNode.id, 
-TopNode.id. Not worth it! Keep it for KeyNode and TopNode.
-
-maxNodeSize  average trans size
-8            416
-14           352
-30           439
-62           713
-
-Conclusion: the current maxNodeSize of 30 is reasonable. Shorter is slower, but
-could decrease overhead slightly.
-
-Max trans size before split is at i = 14 (538 bytes).
-Then we have 15*2 = 30 klongs. We have 2x8 bytes per klong (klong and pos): 480 bytes.
-Plus other data. Makes sense, seems rights.
-
-kvStreamOverhead - overhead is 28 bytes. 
-Theoretical computation:
-  Overhead of KeyNode is 2x8 = 16 bytes.
-  Overhead of ValueNode is: 12 bytes.
-    4 - byte size of node      (NodeStream.addNode())
-    4 - header                 (ValueNode.toBytes())
-    4 - value length           (ValueNode.toBytes())
-
-Yes, makes sense.
-
-
-======== 120418 ========
-
-DAY12-67. Fri. Tested stream size overhead with ..test.StreamSize class.
-Minimum stream overhead per KV (same trans) is 40 bytes, and 460 bytes for a 
-transaction. KV overhead seems reasonable. Could be slightly reduced. We do not
-need "previousSSPos" for ValueNodes in stream. Maybe 30 bytes is attainable.
-The transaction overhead seems too large. My theoretical calculations show that
-around half (230 bytes) should be enough. Less if we store
-incremental changes of an index node, instead of the whole node.
-
-*/

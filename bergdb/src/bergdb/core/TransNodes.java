@@ -196,8 +196,6 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         
         this.valueCount = 0;
     }
-
-    // TODO test addUnstoredDescendents
     
     /**
      * Adds the descendent nodes that have never been stored to this set of nodes.
