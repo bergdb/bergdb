@@ -179,10 +179,10 @@ public class ConnectionImp implements Connection {
      * @param object
      *            The object to store. Cannot be null.
      * @throws DbException
-     *             If the transaction could not be processed because the
-     *             database is faulty.
+     *            If the transaction could not be processed because the
+     *            database is faulty.
      * @throws IllegalArgumentException
-     *             If 'key' is null or otherwise invalid, or if object is null.
+     *            If 'key' is null or otherwise invalid, or if object is null.
      */
     public Transaction put(String key, Object object) {
         return w().put(key, object).execute();
@@ -208,6 +208,10 @@ public class ConnectionImp implements Connection {
      */
     public Transaction put(Object object) {
         return w().put(object).execute();
+    }
+    
+    public Transaction delete(String key) {
+        return w().delete(key).execute();
     }
 
     /**

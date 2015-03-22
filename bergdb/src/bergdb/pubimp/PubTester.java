@@ -846,6 +846,7 @@ public class PubTester {
         c.get("/key", String.class);
         Time time = c.getLookupTime();
         Assert.assertEquals(Time.millis(1000), time);
+        d.stop();
     }
     
     @Nano
@@ -857,6 +858,7 @@ public class PubTester {
         Time time1 = Time.resolve(Time.UTC, dbTime, "00:01");
         Time time2 = Time.millis(60 * 1000);
         Assert.assertEquals(time2, time1);
+        d.stop();
     }
     
     @Nano
@@ -870,6 +872,7 @@ public class PubTester {
         Time transTime = t.getTime();
         
         Assert.assertTrue(transTime.isBetween(t0, t1));
+        d.stop();
     }
     
     @Nano
@@ -890,5 +893,103 @@ public class PubTester {
         Assert.assertEquals("v2", c.get("/key", String.class));
         c.setLookupTime(t3);
         Assert.assertEquals("v3", c.get("/key", String.class));
+        
+        database.stop();
+    }
+    
+    // ---- Tests Connection.delete() ----
+    
+    @Nano
+    public static void testThatSimpleDeleteWorks() {
+        Database database = Factory.database().memory().start();
+        Connection c = database.connection();
+        
+        String key = "/key";
+        c.put(key, "v1");
+        Assert.assertTrue(c.exists(key));
+        c.delete(key);
+        Assert.assertFalse(c.exists(key));
+        
+        database.stop();
+    }
+    
+    @Nano
+    public static void testDeleteWithNullNotPossible() {
+        Database database = Factory.database().memory().start();
+        Connection c = database.connection();
+        
+        String key = "/key";
+        c.put(key, "v1");
+        Assert.assertTrue(c.exists(key));
+        
+        IllegalArgumentException ex = null;
+        try {
+            c.put(key, null);
+        } catch (IllegalArgumentException e) {
+            ex = e;
+        }
+        
+        Assert.assertTrue(ex != null);
+        database.stop();
+    }
+    
+    @Nano
+    public static void testDeleteInW() {
+        Database database = Factory.database().memory().start();
+        Connection c = database.connection();
+        
+        c.w().put("/k1", "v1").put("/k2", "v2").execute();
+        c.w().put("/k3", "v3").delete("/k1").execute();
+        
+        Assert.assertFalse(c.exists("/k1"));
+        Assert.assertTrue(c.exists("/k2"));
+        Assert.assertTrue(c.exists("/k3"));
+        
+        database.stop();
+    }
+    
+    @Nano
+    public static void testDeleteInRW() {
+        Database database = Factory.database().memory().start();
+        Connection c = database.connection();
+        
+        c.w().put("/k1", "v1").put("/k2", "v2").execute();
+        
+        c.rw(new Action() {
+            public void run(RwEnvironment env) {
+                env.delete("/k2");
+                env.delete("/k9");
+            }
+        });
+        
+        Assert.assertTrue(c.exists("/k1"));
+        Assert.assertFalse(c.exists("/k2"));
+        Assert.assertEquals(1, countEntries(c));
+        
+        database.stop();
+    }
+    
+    @SuppressWarnings("unused")
+    private static int countEntries(Connection c) {
+        int count = 0;
+        
+        for (byte[] value : c.usePrimary(byte[].class).dir("/").objects()) {
+            count++;
+        }
+        
+        return count;
+    }
+    
+    @Nano
+    public static void testDeleteOfNonExistantEntry() {
+        Database database = Factory.database().memory().start();
+        Connection c = database.connection();
+        
+        c.w().put("/k1", "v1").put("/k2", "v2").execute();
+        c.delete("/k1");
+        c.delete("/k5");
+        
+        Assert.assertEquals(1, countEntries(c));
+        database.stop();
     }
 }

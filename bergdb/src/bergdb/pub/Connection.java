@@ -127,7 +127,7 @@ public interface Connection extends ReadInterface {
     public <TYPE> TYPE get(String key, Class<TYPE> clazz);
 
     /**
-     * Puts one key-object entry to the database. If an entry with the given key
+     * Puts a key-value entry to the database. If an entry with the given key
      * already exists, it is overwritten. The transaction is executed
      * immediately in this method.
      * 
@@ -151,8 +151,8 @@ public interface Connection extends ReadInterface {
      * immediately in this method.
      * 
      * @param object
-     *            The object to store. Cannot be null and must have a String
-     *            field named 'key'.
+     *             The object to store. Cannot be null and must have a String
+     *             field named 'key'.
      * @throws DbException
      *             If the transaction could not be processed because the
      *             database is faulty.
@@ -163,6 +163,20 @@ public interface Connection extends ReadInterface {
      *             object is null.
      */
     public Transaction put(Object object);
+
+    /**
+     * Deletes a key-value entry from the database. If an entry with the given key
+     * does not exists this method does nothing.
+     * 
+     * @param key
+     *             The key of the key-value entry. Must begin with "/".
+     * @throws DbException
+     *             If the transaction could not be processed because the
+     *             database is faulty.
+     * @throws IllegalArgumentException
+     *             If 'key' is null or otherwise invalid.
+     */
+    public Transaction delete(String key);   
 
     /**
      * Creates a builder object used to build a write-only transaction.
