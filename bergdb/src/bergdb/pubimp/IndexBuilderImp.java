@@ -133,6 +133,43 @@ public class IndexBuilderImp implements IndexBuilder {
         return this;
     }
     
+    /**
+     * @param fieldSpec String with dots to separate the parts.
+     */
+    public IndexBuilder nestedField(String fieldSpec) {
+        if (fieldSpec == null) {
+            throw new IllegalArgumentException("fieldSpec == null not allowed");
+        }
+        
+        String[] parts = fieldSpec.split("\\.");
+        return nestedField(parts);
+    }
+    
+    public IndexBuilder nestedField(String[] fieldParts) {
+        if (fieldParts == null) {
+            throw new IllegalArgumentException("fieldParts == null not allowed");
+        }
+        
+        if (fieldParts.length == 0) {
+            throw new IllegalArgumentException("The empty array for 'fieldParts' is not allowed.");
+        }
+        
+        if (currentPart == null) {
+            throw new IllegalStateException("Call type() before field().");
+        }
+        
+        if (currentPart.fields.size() >= 127) {
+            throw new IllegalArgumentException("To many fields, more than 127 is not allowed.");
+        }
+        
+        if (createInited) {
+            throw new IllegalStateException("Field cannot be added when index creation started.");
+        }
+        
+        currentPart.fields.add(new FieldRef(fieldParts));
+        return this;
+    }
+    
     public void bunchSize(int size) {
         if (size < 1) {
             throw new IllegalArgumentException("Bad bunch size: " + size + ".");

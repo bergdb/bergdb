@@ -70,7 +70,7 @@ public class PubTesterNestedFields {
         d3.personA = p3;
         d3.personB = p1;
         
-        db.indexBuilder("i1").type("long").dir("/dialogs/").field("personB.id").createFast();
+        db.indexBuilder("i1").type("long").dir("/dialogs/").nestedField("personB.id").createFast();
         
         c.put("/dialogs/d1", d1);
         c.put("/dialogs/d2", d2);
@@ -98,7 +98,7 @@ public class PubTesterNestedFields {
         Database db = Factory.database().memory().start();
         Connection c = db.connection();
         
-        db.indexBuilder("i1").type("long").dir("/tops/").field("nested1.nested2.value").createFast();    
+        db.indexBuilder("i1").type("long").dir("/tops/").nestedField("nested1.nested2.value").createFast();    
         c.put("/tops/t1", new Top(20));
         c.put("/tops/t2", new Top(10));
         c.put("/tops/t3", new Top(30));

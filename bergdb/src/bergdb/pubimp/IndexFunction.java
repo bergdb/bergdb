@@ -7,8 +7,7 @@ package bergdb.pubimp;
  * @author Frans Lundberg
  */
 public interface IndexFunction {
-    // The idea is that this one day we could allow user to implement
-    // computeSortBytes (maybe better with "computeIndexEntries").
+    // The idea is that one day we could allow user to implement createIndexEntries.
     
     /**
      * Returns the types of the potentially composite index.

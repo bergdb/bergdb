@@ -188,11 +188,26 @@ public interface IndexBuilder {
     
     /**
      * Adds a field to the fields to index.
-     * At least one call to this method is required per composite part.
+     * At least one call to a field method is required per composite part.
      * 
      * @param field  The field name, null or the empty string is not allowed.
      */
     public IndexBuilder field(String field);
+    
+    /**
+     * Adds a nested field to the fields to index.
+     * This is a utility methods using dots to separate the parts.
+     * 
+     * @param fieldSpec  A string with dots to separate the parts. Example: "car.dimensions.length".
+     */
+    public IndexBuilder nestedField(String fieldSpec);
+    
+    /**
+     * Adds a nested field to the fields to index.
+     * 
+     * @param fieldParts  Example: new String[]{"car", "dimensions", "length"}.
+     */
+    public IndexBuilder nestedField(String[] fieldParts);
     
     /** 
      * Creates this index immediately and makes it active without adding index entries for existing 
