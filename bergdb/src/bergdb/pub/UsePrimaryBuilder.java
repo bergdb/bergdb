@@ -71,22 +71,22 @@ Would look like this:
   c.index("payments-from", Payment.class).stringValue(EQ, "1001").desc().objects();  // decreasing desc()/asc(), SQL terms
   c.index("amount", Payment.class).longValue(GTE, 1000).objects();
   
--- Compound --
+-- composite --
 
-Is there a general way to express this also for compound indexes?
+Is there a general way to express this also for composite indexes?
 
 Lets focus on index usage for now. 
-Note that the primary key is always part of the index. So in a way, all indexes are compound
+Note that the primary key is always part of the index. So in a way, all indexes are composite
 indexes.
 
-Limitation: for compound index a,b,c. We can search a, (a,b) or (a,b,c) specified. The restraint
+Limitation: for composite index a,b,c. We can search a, (a,b) or (a,b,c) specified. The restraint
 for the last can be one of EQ, GT, GTE, LT, LTE, while the other ones must have EQ restraint.
 The tricky thing is that we have 3 types of indexed values (string/long/double), 5 compare operations,
-and 2+ parts of the compound index.
+and 2+ parts of the composite index.
 
   c.index("account-from", c).select(EQ, "1001")..                    // First part by default
   
-3-part compound index:
+3-part composite index:
 
   c.index("a", c).select(0, EQ, 1001).select(1, EQ, "130101").select(2, GTE, "a")..
   c.index("a", c).select(EQ, 1001).select(EQ, "130101").select(GTE, "a")..            
