@@ -18,7 +18,8 @@ public interface IndexFunction {
     public String[] getTypes();
     
     /**
-     * Computes sortBytes for the given DbObject.
+     * Creates index entries (zero or more) for the given DbObject
+     * by calling appropriate methods of 'b'.
      */
-    public void computeSortBytes(DbObject dbo, SortBytesBuilder b);
+    public void createIndexEntries(DbObject dbo, IndexEntryBuilder b);
 }

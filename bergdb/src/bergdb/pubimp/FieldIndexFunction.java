@@ -36,18 +36,17 @@ public class FieldIndexFunction implements IndexFunction {
         return typeStrings;
     }
 
-    public void computeSortBytes(DbObject dbo, SortBytesBuilder b) {
+    public void createIndexEntries(DbObject dbo, IndexEntryBuilder b) {
         for (int i = 0; i < fieldCombinations.length; i++) {
-            computeSortBytes(i, dbo, b);
+            createIndexEntry(i, dbo, b);
         }
     }
     
     /**
-     * Returns the the sort bytes for a particular Index, entry index, and DbObject.
-     * This method determines what index entries an object should have when written to the database.
+     * Creates the index entry (sort bytes) for the given field combination.
+     * Creates zero or one entry.
      */
-    private void computeSortBytes(int combinationIndex, 
-            DbObject dbo, SortBytesBuilder b) {
+    private void createIndexEntry(int combinationIndex, DbObject dbo, IndexEntryBuilder b) {
         // Both long and int fields are indexed in a "long" index.
         // Both double and float fields are indexed in a "double" index.
 

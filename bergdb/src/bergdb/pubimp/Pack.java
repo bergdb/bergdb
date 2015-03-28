@@ -29,7 +29,7 @@ public class Pack implements IPack {
         PubTesterNestedFields.class,
         PubTesterPrimary.class,
         PubUtil.class,
-        SortBytesBuilder.class,
+        IndexEntryBuilder.class,
         WBuilderImp.class,
         TimeResolver.class,
         WTransaction.class,

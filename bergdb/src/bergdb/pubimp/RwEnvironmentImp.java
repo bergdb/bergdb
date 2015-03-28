@@ -518,8 +518,8 @@ public class RwEnvironmentImp implements RwEnvironment {
         // Lets iterate field combinations and add one entry for each combination for which all
         // fields exist in 'to'.
         
-        SortBytesBuilder b = new SortBytesBuilder();
-        index.function.computeSortBytes(dbo, b);
+        IndexEntryBuilder b = new IndexEntryBuilder();
+        index.function.createIndexEntries(dbo, b);
         byte[][] sortByteEntries = b.done();
         
         for (int i = 0; i < sortByteEntries.length; i++) {

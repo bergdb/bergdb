@@ -7,15 +7,15 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * Helper to build sort bytes used by the indexing.
+ * Helper to build index entries (the sort bytes; the "middle part").
  * 
  * @author Frans Lundberg
  */
-public class SortBytesBuilder {
+public class IndexEntryBuilder {
     private ArrayList<byte[]> entries;
     private ArrayList<byte[]> current;
     
-    public SortBytesBuilder() {
+    public IndexEntryBuilder() {
         entries = new ArrayList<byte[]>();
         current = new ArrayList<byte[]>();
     }
@@ -23,32 +23,32 @@ public class SortBytesBuilder {
     /**
      * Adds sort bytes; advanced low-level method.
      */
-    public SortBytesBuilder addBytes(byte[] bytes) {
+    public IndexEntryBuilder addBytes(byte[] bytes) {
         current.add(bytes);
         return this;
     }
     
-    public SortBytesBuilder addLong(long value) {
+    public IndexEntryBuilder addLong(long value) {
         current.add(sortBytesFromLong(value));
         return this;
     }
     
-    public SortBytesBuilder addDouble(double value) {
-        current.add(SortBytesBuilder.sortBytesFromDouble(value));
+    public IndexEntryBuilder addDouble(double value) {
+        current.add(IndexEntryBuilder.sortBytesFromDouble(value));
         return this;
     }
     
-    public SortBytesBuilder addString(String value) {
+    public IndexEntryBuilder addString(String value) {
         addString(value, UnicodeCollator.INSTANCE);
         return this;
     }
     
-    public SortBytesBuilder addString(String value, KCollator collator) {
+    public IndexEntryBuilder addString(String value, KCollator collator) {
         addBytes(sortBytesFromString(collator, value));
         return this;
     }
     
-    public SortBytesBuilder clearEntry() {
+    public IndexEntryBuilder clearEntry() {
         current.clear();
         return this;
     }
@@ -57,7 +57,7 @@ public class SortBytesBuilder {
      * Called to indicate that the current index entry is done. 
      * Start defining the next one.
      */
-    public SortBytesBuilder entryDone() {
+    public IndexEntryBuilder entryDone() {
         byte[] entryBytes = concat(current);
         entries.add(entryBytes);        
         current.clear();
@@ -99,7 +99,7 @@ public class SortBytesBuilder {
         //
         
         long x = Double.doubleToLongBits(doubleValue);
-        long twosComplement = (x & SortBytesBuilder.SIGNBIT) == 0 ? x : -(x & ~SortBytesBuilder.SIGNBIT);
+        long twosComplement = (x & IndexEntryBuilder.SIGNBIT) == 0 ? x : -(x & ~IndexEntryBuilder.SIGNBIT);
         return sortBytesFromLong(twosComplement);
     }
 
@@ -122,7 +122,7 @@ public class SortBytesBuilder {
         // Seems correct :-)
         //
         
-        long sortValue = (longValue + SortBytesBuilder.LONGMAX) + 1;
+        long sortValue = (longValue + IndexEntryBuilder.LONGMAX) + 1;
         byte[] bytes = new byte[8];
         Bytes.longToBytesBE(sortValue, bytes, 0);
         return bytes;
@@ -157,7 +157,7 @@ public class SortBytesBuilder {
     
     @Nano
     private static void testSanity() {
-        SortBytesBuilder b = new SortBytesBuilder();
+        IndexEntryBuilder b = new IndexEntryBuilder();
         
         b.addBytes(new byte[]{10});
         b.addBytes(new byte[]{20});
@@ -173,7 +173,7 @@ public class SortBytesBuilder {
     
     @Nano
     private static void testTwoEntries() {
-        SortBytesBuilder b = new SortBytesBuilder();
+        IndexEntryBuilder b = new IndexEntryBuilder();
         
         b.addBytes(new byte[]{10});
         b.entryDone();
@@ -191,7 +191,7 @@ public class SortBytesBuilder {
     
     @Nano
     public static void testUnicodeString() throws UnsupportedEncodingException {
-        SortBytesBuilder b = new SortBytesBuilder();
+        IndexEntryBuilder b = new IndexEntryBuilder();
         b.addString("Natalia");
         b.entryDone();
         byte[][] result = b.done();
