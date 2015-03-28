@@ -39,12 +39,10 @@ public class FieldRef {
         return b.toString();
     }
     
-    public int getPartCount() {
-        return parts.length;
-    }
-    
-    public String getPart(int index) {
-        return parts[index];
+    public String[] getNameParts() {
+        // A little bad style, but good for permformance to 
+        // give directly to DbObject.has(String[]) / get().
+        return parts;
     }
     
     public String toString() {

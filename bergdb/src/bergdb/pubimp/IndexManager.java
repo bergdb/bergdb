@@ -681,8 +681,6 @@ public class IndexManager {
             this.name = name;
             this.dirs = dirs.clone();
             this.typeStrings = typeStrings.clone();
-            
-            // TODO A. Remove "fields"!?
             this.fields = fields.clone();
             
             this.state = STATE_CREATING;

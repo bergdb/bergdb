@@ -16,10 +16,29 @@ public class Data {
      * Class used for storing index info as internal data.
      */
     public static class Index {
+        //
+        // NOTE this will not handle DbObject fields that contain "," or ".".
+        // These characters are used as special characters to separate strings.
+        // Would be better to change this to use String[][] for fields, 
+        // or even String[][][] for nested fields. Not backward-compatible however.
+        //
+        
         public String[] dirs;
-        public String[] fields;     // An array of fields names for each composite level. Comma-separated.
+        
+        /**
+         * An array of fields names for each composite level; comma-separated and those
+         * values may be dot-separated (for nested fields).
+         */
+        public String[] fields;
+        
         public String[] typeStrings;
+        
         public String state;        // One of "creating" / "active" / "deleting".
+        
+        /**
+         * Field added for 2015.2 release, set to 1.
+         */
+        public int version = 1;     
         
         public Index() {}
         
@@ -151,7 +170,7 @@ public class Data {
         for (int i = 0; i < index.fields.length; i++) {
             StringBuilder b = new StringBuilder();
             for (int j = 0; j < index.fields[i].length; j++) {
-                b.append(index.fields[i][j]);
+                b.append(index.fields[i][j].getName());
                 if (i != index.fields[i].length - 1) {
                     b.append(",");         // Comma-separated list of field names.
                 }
@@ -172,9 +191,12 @@ public class Data {
         FieldRef[][] fields = new FieldRef[indexDo.fields.length][];
         for (int i = 0; i < indexDo.fields.length; i++) {
             String[] parts = indexDo.fields[i].split(",");
+            
             fields[i] = new FieldRef[parts.length];
             for (int j = 0; j < parts.length; j++) {
-                fields[i][j] = new FieldRef(parts[j]);
+                String part = parts[j];
+                String[] bits = part.split("\\.");
+                fields[i][j] = new FieldRef(bits);
             }
         }
         

@@ -55,32 +55,32 @@ public class FieldIndexFunction implements IndexFunction {
 
         for (int j = 0; j < levelCount; j++) {
             FieldRef field = fieldCombination[j];
-            String fieldName = field.getName();
+            String[] nameParts = field.getNameParts();
             
             char type = types[j];
             boolean fieldUsed = false;
 
             switch (type) {
             case Index.TYPE_LONG:
-                if (dbo.has(fieldName, 'l')) {
-                    b.addLong(dbo.getLong(fieldName));
+                if (dbo.has(nameParts, 'l')) {
+                    b.addLong(dbo.getLong(nameParts));
                     fieldUsed = true;
-                } else if (dbo.has(fieldName, 'i')) {
-                    b.addLong(dbo.getInt(fieldName));
+                } else if (dbo.has(nameParts, 'i')) {
+                    b.addLong(dbo.getInt(nameParts));
                     fieldUsed = true;
                 }
                 break;
 
             case Index.TYPE_DOUBLE:
-                if (dbo.has(fieldName, 'd')) {
-                    b.addDouble(dbo.getDouble(fieldName));
+                if (dbo.has(nameParts, 'd')) {
+                    b.addDouble(dbo.getDouble(nameParts));
                     fieldUsed = true;
                 }
                 break;
 
             case Index.TYPE_STRING:
-                if (dbo.has(fieldName, 's')) {
-                    String stringValue = dbo.getString(fieldName);
+                if (dbo.has(nameParts, 's')) {
+                    String stringValue = dbo.getString(nameParts);
                     b.addString(stringValue, kcollators[j]);
                     fieldUsed = true;
                 }

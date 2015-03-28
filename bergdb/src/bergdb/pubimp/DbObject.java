@@ -3,7 +3,6 @@ package bergdb.pubimp;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -14,9 +13,6 @@ import bergdb.common.ByteArrayComparator;
 import bergdb.common.Bytes;
 import bergdb.common.Util;
 import bergdb.pub.BadFormatException;
-
-// TODO We should probably not use "." for nested get. Keys could include "." in them.
-// The DbObject is not necessarily created from a Java object.
 
 /**
  * <p>An immutable object with a map of named and typed fields.
@@ -219,33 +215,41 @@ public class DbObject extends DbValue {
      * Returns true iff the typeless object has a field with the given name and type.
      */
     public boolean has(String name, char type) {
-        return internalGet(name, type) != null;
-    }
-
-    private NameAndType internalGet(String name, char type) {
-        boolean hasDot = name.indexOf('.') != -1;
-        return hasDot ? internalNestedGet(name, type) : internalSimpleGet(name, type);
+        return internalSimpleGet(name, type) != null;
     }
     
-    private NameAndType internalNestedGet(String name, char type) {
-        int index = name.indexOf('.');
-        if (index == -1) {
-            throw new Bug("never happens, name = " + name);
+    /**
+     * Returns true iff the typeless object has a nested field with the 
+     * given name parts and the given type.
+     */
+    public boolean has(String[] nameParts, char type) {
+        return internalGet(nameParts, 0, type) != null;
+    }
+   
+    private NameAndType internalGet(String[] parts, int offset, char type) {
+        assert offset >= 0;
+        assert parts.length - offset > 0;
+        
+        boolean isNested = (parts.length - offset) > 1;
+        if (isNested) {
+            return internalNestedGet(parts, offset, type);
+        } else {
+            return internalSimpleGet(parts[offset], type);
+        }
+    }
+    
+    private NameAndType internalNestedGet(String[] parts, int offset, char type) {
+        if (parts.length - offset < 2) {
+            throw new Bug("parts.length = " + parts.length + ", offset: " + offset);
         }
         
-        if (index == 0 || index == name.length() - 1) {
-            return null;
-        }
-        
-        String firstPart = name.substring(0, index);
-        String remainingPart = name.substring(index + 1);
-        
+        String firstPart = parts[offset];
         boolean hasFirstPart = (internalSimpleGet(firstPart, DbObject.OBJECT) != null);
         if (!hasFirstPart) {
             return null;
         }
         
-        return getObject(firstPart).internalGet(remainingPart, type);
+        return getObject(firstPart).internalGet(parts, offset + 1, type);
     }
     
     private NameAndType internalSimpleGet(String name, char type) {
@@ -260,7 +264,6 @@ public class DbObject extends DbValue {
             nat.name = KEY_FIELD;
             nat.type = DbObject.STRING;
             nat.valueOffset = -1;
-            nat.fieldOffset = -1;
             nat.object = this;
             return nat;
         }
@@ -500,28 +503,6 @@ public class DbObject extends DbValue {
         return result;
     }
     
-    private static interface FieldVisitor {
-        public void visited(NameAndType n);
-    }
-    
-    /**
-     * Iterates the fields. The special "key" field is not included.
-     */
-    private void iterateFields(String name, FieldVisitor v) {
-        short hash = hash(name);
-        for (int i = 0; i < fieldCount; i++) {
-            if (hash == hashes[i]) {
-                NameAndType n = new NameAndType();
-                readFieldInfo(i, n);
-                
-                if (n.name.equals(name) && n.type == 'n') {
-                    v.visited(n);
-                    break;
-                }
-            }
-        }
-    }
-    
     /**
      * Returns the DbValue of a field with a specified name.
      */
@@ -548,65 +529,47 @@ public class DbObject extends DbValue {
         return result;
     }
     
-    // ---- getType(name) methods ----
     
-    // TODO A. Refactor get method to use internalGet(). See getLong().
+    // ======== getType(name) methods ========
     
     public boolean getBoolean(String name) {
-        // Not sure if this implementation is significantly less ugly than getByte for example.
-        
-        final boolean[] result = new boolean[1];
-        
-        iterateFields(name, new FieldVisitor() {
-            public void visited(NameAndType n) {
-                result[0] = DbBoolean.parseToBoolean(bytes, n.valueOffset);
-            }
-        });
-        
-        return result[0];
+        NameAndType n = internalSimpleGet(name, DbObject.BOOLEAN);
+        return n == null ? false : DbBoolean.parseToBoolean(n.object.bytes, n.valueOffset);
+    }
+    
+    public boolean getBoolean(String[] nameParts) {
+        NameAndType n = internalGet(nameParts, 0, DbObject.BOOLEAN);
+        return n == null ? false : DbBoolean.parseToBoolean(n.object.bytes, n.valueOffset);
     }
     
     public int getInt(String name) {
-        short hash = hash(name);
-        int result = Integer.MIN_VALUE;
-        
-        for (int i = 0; i < fieldCount; i++) {
-            if (hash == hashes[i]) {
-                NameAndType n = new NameAndType();
-                readFieldInfo(i, n);
-                
-                if (n.name.equals(name) && n.type == 'i') {
-                    result = DbInt.parseToInt(bytes, n.valueOffset);
-                    break;
-                }
-            }
-        }
-        
-        return result;
+        NameAndType n = internalSimpleGet(name, DbObject.INT);
+        return n == null ? 0 : DbInt.parseToInt(n.object.bytes, n.valueOffset);
+    }
+    
+    public int getInt(String[] nameParts) {
+        NameAndType n = internalGet(nameParts, 0, DbObject.INT);
+        return n == null ? 0 : DbInt.parseToInt(n.object.bytes, n.valueOffset);
     }
 
     public long getLong(String name) {
-        NameAndType n = internalGet(name, DbObject.LONG);
+        NameAndType n = internalSimpleGet(name, DbObject.LONG);
+        return n == null ? 0 : DbLong.parseToLong(n.object.bytes, n.valueOffset);
+    }
+    
+    public long getLong(String[] nameParts) {
+        NameAndType n = internalGet(nameParts, 0, DbObject.LONG);
         return n == null ? 0 : DbLong.parseToLong(n.object.bytes, n.valueOffset);
     }
     
     public double getDouble(String name) {
-        short hash = hash(name);
-        double result = Double.NaN;
-        
-        for (int i = 0; i < fieldCount; i++) {
-            if (hash == hashes[i]) {
-                NameAndType n = new NameAndType();
-                readFieldInfo(i, n);
-                
-                if (n.name.equals(name) && n.type == 'd') {
-                    result = DbDouble.parseToDouble(bytes, n.valueOffset);
-                    break;
-                }
-            }
-        }
-        
-        return result;
+        NameAndType n = internalSimpleGet(name, DbObject.DOUBLE);
+        return n == null ? 0.0 : DbDouble.parseToDouble(n.object.bytes, n.valueOffset);
+    }
+    
+    public double getDouble(String[] nameParts) {
+        NameAndType n = internalGet(nameParts, 0, DbObject.DOUBLE);
+        return n == null ? 0.0 : DbDouble.parseToDouble(n.object.bytes, n.valueOffset);
     }
 
     /**
@@ -614,85 +577,45 @@ public class DbObject extends DbValue {
      */
     public String getString(String name) {
         short hash = hash(name);
-        String result = null;
-        
         if (hash == KEY_FIELD_HASH && this.key != null && name.equals(KEY_FIELD)) {
             return this.key;
         }
         
-        for (int i = 0; i < fieldCount; i++) {
-            if (hash == hashes[i]) {
-                NameAndType n = new NameAndType();
-                readFieldInfo(i, n);
-                
-                if (n.name.equals(name) && n.type == 's') {
-                    result = DbString.parseToString(bytes, n.valueOffset);
-                    break;
-                }
-            }
-        }
-        
-        return result;
+        NameAndType n = internalSimpleGet(name, DbObject.STRING);
+        return n == null ? null : DbString.parseToString(n.object.bytes, n.valueOffset);
+    }
+    
+    public String getString(String[] nameParts) {
+        NameAndType n = internalGet(nameParts, 0, DbObject.STRING);
+        return n == null ? null : DbString.parseToString(n.object.bytes, n.valueOffset);
     }
     
     public byte[] getByteArray(String name) {
-        short hash = hash(name);
-        byte[] result = null;
-        
-        for (int i = 0; i < fieldCount; i++) {
-            if (hash == hashes[i]) {
-                NameAndType n = new NameAndType();
-                readFieldInfo(i, n);
-                
-                if (n.name.equals(name) && n.type == 'b') {
-                    result = DbByteArray.parseToByteArray(bytes, n.valueOffset);
-                    break;
-                }
-            }
-        }
-        
-        return result;
+        NameAndType n = internalSimpleGet(name, DbObject.BYTE_ARRAY);
+        return n == null ? null : DbByteArray.parseToByteArray(n.object.bytes, n.valueOffset);
+    }
+    
+    public byte[] getByteArray(String[] nameParts) {
+        NameAndType n = internalGet(nameParts, 0, DbObject.BYTE_ARRAY);
+        return n == null ? null : DbByteArray.parseToByteArray(n.object.bytes, n.valueOffset);
     }
     
     public DbArray getArray(String name) {
-        short hash = hash(name);
-        DbArray result = null;
-        
-        for (int i = 0; i < fieldCount; i++) {
-            if (hash == hashes[i]) {
-                NameAndType n = new NameAndType();
-                readFieldInfo(i, n);
-                
-                if (n.name.equals(name) && n.type == 'a') {
-                    result = (DbArray) DbField.parse(bytes, n.fieldOffset).getValue();
-                    break;
-                }
-            }
-        }
-        
-        return result;
+        NameAndType n = internalSimpleGet(name, DbObject.ARRAY);
+        return n == null ? null : DbArray.parse(n.object.bytes, n.valueOffset);
+    }
+    
+    public DbArray getArray(String[] nameParts) {
+        NameAndType n = internalGet(nameParts, 0, DbObject.ARRAY);
+        return n == null ? null : DbArray.parse(n.object.bytes, n.valueOffset);
     }
     
     public DbObject getObject(String name) {
-        short hash = hash(name);
-        DbObject result = null;
-        
-        for (int i = 0; i < fieldCount; i++) {
-            if (hash == hashes[i]) {
-                NameAndType n = new NameAndType();
-                readFieldInfo(i, n);
-                
-                if (n.name.equals(name) && n.type == DbObject.OBJECT) {
-                    result = DbObject.parse(bytes, n.valueOffset);
-                    break;
-                }
-            }
-        }
-        
-        return result;
+        NameAndType n = internalSimpleGet(name, DbObject.OBJECT);
+        return n == null ? null : DbObject.parse(n.object.bytes, n.valueOffset);
     }
     
-
+    // ====
 
     /**
      * Reads field name and type.
@@ -708,9 +631,7 @@ public class DbObject extends DbValue {
         System.arraycopy(bytes, offset, nameBytes, 0, nameSize);
         offset += nameSize;
         n.name = Util.toString(nameBytes);
-        
         n.valueOffset = offset;
-        n.fieldOffset = fieldOffset;
         n.object = this;
     }
     
@@ -731,18 +652,6 @@ public class DbObject extends DbValue {
     
     public int getByteSize() {
         return 4 + bytes.length;
-    }
-    
-    /**
-     * @deprecated
-     */
-    public void write(ByteBuffer b) {
-        if (bytes == null) {
-            b.putInt(-1);
-        } else {
-            b.putInt(bytes.length);
-            b.put(bytes);
-        }
     }
     
     public int write(byte[] b, int offset) {
@@ -818,10 +727,6 @@ public class DbObject extends DbValue {
             return offset;
         }
         
-        public final DbValue getValue() {
-            return value;
-        }
-        
         @SuppressWarnings("unused")
         public String getName() {
             return name;
@@ -886,7 +791,6 @@ public class DbObject extends DbValue {
     private static class NameAndType {
         String name;
         int valueOffset;
-        int fieldOffset;
         char type;
         
         /** Object in which the matching field was found. */

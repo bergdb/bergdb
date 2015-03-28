@@ -761,7 +761,7 @@ public class PubTesterIndex {
     }
     
     @Nano
-    public static void testInt1() {
+    public static void testIntAndLongMixed() {
         // long and int fields mixed in same "long" index.
         
         Object[] objects = new Object[] {
@@ -916,6 +916,58 @@ public class PubTesterIndex {
         for (int i = 0; i < expected.length; i++) {
             Assert.assertTrue(iter.hasNext());
             Assert.assertEquals(expected[i], iter.next().amount);
+        }
+        Assert.assertFalse(iter.hasNext());
+        db2.stop();
+    }
+    
+    private static class Name {
+        String first;
+        String last;
+    }
+    
+    private static class NestClass {
+        Name name;
+    }
+    
+    @Nano
+    public static void testRestartWithNestedFieldIndex() {
+        MemoryStream stream = new MemoryStream();
+        DatabaseBuilder builder = Factory.database();
+        ((DatabaseBuilderImp) builder).getDbBuilder().mainStream(stream);
+        Database db = builder.start();
+        Connection c = db.newConnection();
+        
+        db.indexBuilder("name-last").type("string/unicode").dir("/d/").nestedField("name.last").createFast();
+        
+        c.w().put("/d/1", new NestClass() {{
+            name = new Name() {{ first = "Fredrik"; last = "Andersson"; }};
+        }}).put("/d/2", new NestClass() {{
+            name = new Name() {{ first = "John"; last = "Wickersson"; }};
+        }}).put("/d/3", new NestClass() {{
+            name = new Name() {{ first = "Amy"; last = "Dimeon"; }};
+        }}).execute();
+        
+        db.sync();
+        db.stop();
+        db = null;
+        c = null;
+        builder = null;
+        
+        // Restarts the database.
+        
+        DatabaseBuilder builder2 = Factory.database();
+        ((DatabaseBuilderImp) builder2).getDbBuilder().mainStream(stream);
+        Database db2 = builder2.start();
+        Connection c2 = db2.newConnection();
+        
+        Iterator<NestClass> iter = c2.useIndex("name-last", NestClass.class).objects().iterator();
+        String[] expected = new String[] { "Andersson", "Dimeon", "Wickersson" };
+        
+        for (int i = 0; i < expected.length; i++) {
+            Assert.assertTrue(iter.hasNext());
+            String lastName = iter.next().name.last;
+            Assert.assertEquals(expected[i], lastName);
         }
         Assert.assertFalse(iter.hasNext());
         db2.stop();

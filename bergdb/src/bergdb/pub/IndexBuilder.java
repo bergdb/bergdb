@@ -197,15 +197,19 @@ public interface IndexBuilder {
     /**
      * Adds a nested field to the fields to index.
      * This is a utility methods using dots to separate the parts.
+     * If a dot could be part of a field name itself, do not use this method.
      * 
-     * @param fieldSpec  A string with dots to separate the parts. Example: "car.dimensions.length".
+     * @param fieldSpec  
+     *      A string with dots to separate the parts. Example: "car.dimensions.length".
      */
     public IndexBuilder nestedField(String fieldSpec);
     
     /**
      * Adds a nested field to the fields to index.
      * 
-     * @param fieldParts  Example: new String[]{"car", "dimensions", "length"}.
+     * @param fieldParts 
+     *      The parts of the nested field. 
+     *      Example: new String[]{"car", "dimensions", "length"}.
      */
     public IndexBuilder nestedField(String[] fieldParts);
     

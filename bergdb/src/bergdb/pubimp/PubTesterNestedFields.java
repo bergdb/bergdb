@@ -70,7 +70,8 @@ public class PubTesterNestedFields {
         d3.personA = p3;
         d3.personB = p1;
         
-        db.indexBuilder("i1").type("long").dir("/dialogs/").nestedField("personB.id").createFast();
+        db.indexBuilder("i1").type("long").dir("/dialogs/")
+            .nestedField(new String[]{"personB", "id"}).createFast();
         
         c.put("/dialogs/d1", d1);
         c.put("/dialogs/d2", d2);
@@ -112,6 +113,86 @@ public class PubTesterNestedFields {
             index++;
         }
         
+        Assert.assertEquals(4, index);
+        
         db.stop();
-    }  
+    }
+    
+    @Nano
+    @SuppressWarnings("unused")
+    public static void testWithDoubles() {        
+        Database db = Factory.database().memory().start();
+        Connection c = db.connection();
+        
+        db.indexBuilder("i1").type("double").dir("/d/").nestedField("f.value").createFast();    
+        c.put("/d/1", new Object() {
+            public Object f = new Object() {
+                public double value = 12.3;
+            };
+        });
+        
+        c.put("/d/2", new Object() {
+            public Object f = new Object() {
+                public double value = -1.2;
+            };
+        });
+        
+        c.put("/d/3", new Object() {
+            public Object f = new Object() {
+                public double value = 0.0;
+            };
+        });
+        
+        double[] expected = new double[]{-1.2, 0.0, 12.3};
+        int index = 0;
+        
+        for (DbObject dbo : c.useIndex("i1", DbObject.class).objects()) {
+            Assert.assertEquals(expected[index], dbo.getObject("f").getDouble("value"));
+            Assert.assertEquals(expected[index], dbo.getDouble(new String[]{"f", "value"}));
+            index++;
+        }
+        
+        Assert.assertEquals(3, index);
+        
+        db.stop();
+    }
+    
+    @Nano
+    @SuppressWarnings("unused")
+    public static void testWithStrings() {        
+        Database db = Factory.database().memory().start();
+        Connection c = db.connection();
+        
+        db.indexBuilder("i1").type("string").dir("/d/").nestedField("f.value").createFast();    
+        c.put("/d/1", new Object() {
+            public Object f = new Object() {
+                public String value = "anna";
+            };
+        });
+        
+        c.put("/d/2", new Object() {
+            public Object f = new Object() {
+                public String value = "zebra";
+            };
+        });
+        
+        c.put("/d/3", new Object() {
+            public Object f = new Object() {
+                public String value = "cecilia";
+            };
+        });
+        
+        String[] expected = new String[]{"anna", "cecilia", "zebra"};
+        int index = 0;
+        
+        for (DbObject dbo : c.useIndex("i1", DbObject.class).objects()) {
+            Assert.assertEquals(expected[index], dbo.getObject("f").getString("value"));
+            Assert.assertEquals(expected[index], dbo.getString(new String[]{"f", "value"}));
+            index++;
+        }
+        
+        Assert.assertEquals(3, index);
+        
+        db.stop();
+    }
 }

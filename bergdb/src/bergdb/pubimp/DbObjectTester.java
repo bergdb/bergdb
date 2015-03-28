@@ -1066,13 +1066,13 @@ public class DbObjectTester {
     public static void testNestedField1() {
         DbObject o1 = new DbObject.Builder().addLong("count", 120L).build();
         DbObject o2 = new DbObject.Builder().addObject("obj", o1).build();
-        Assert.assertTrue(o2.has("obj.count", DbObject.LONG));
+        Assert.assertTrue(o2.has(new String[]{"obj", "count"}, DbObject.LONG));
     }
     
     @Nano
     public static void testNestedField2() {
         DbObject o1 = new DbObject.Builder().addLong("count", 120L).build();
-        Assert.assertFalse(o1.has("obj.count", DbObject.LONG));
+        Assert.assertFalse(o1.has(new String[]{"obj", "count"}, DbObject.LONG));
         Assert.assertFalse(o1.has(".count", DbObject.LONG));
         Assert.assertFalse(o1.has("count.", DbObject.LONG));
         Assert.assertTrue(o1.has("count", DbObject.LONG));
@@ -1085,11 +1085,11 @@ public class DbObjectTester {
         DbObject o3 = new DbObject.Builder().addObject("o2", o2).build();
         
         Assert.assertTrue(o1.has("count", DbObject.LONG));
-        Assert.assertTrue(o2.has("obj.count", DbObject.LONG));
-        Assert.assertTrue(o3.has("o2.obj.count", DbObject.LONG));
+        Assert.assertTrue(o2.has(new String[]{"obj", "count"}, DbObject.LONG));
+        Assert.assertTrue(o3.has(new String[]{"o2", "obj", "count"}, DbObject.LONG));
         Assert.assertTrue(o2.has("obj", DbObject.OBJECT));
         Assert.assertTrue(o3.has("o2", DbObject.OBJECT));
-        Assert.assertTrue(o3.has("o2.obj", DbObject.OBJECT));
+        Assert.assertTrue(o3.has(new String[]{"o2", "obj"}, DbObject.OBJECT));
     }
     
     @Nano
@@ -1099,7 +1099,7 @@ public class DbObjectTester {
         DbObject o1 = new DbObject.Builder().addLong("count", 120L).build();
         DbObject o2 = new DbObject.Builder().addObject("obj", o1).build();
         
-        Assert.assertEquals(120L, o2.getLong("obj.count"));
+        Assert.assertEquals(120L, o2.getLong(new String[]{"obj", "count"}));
     }
     
     @Nano
@@ -1110,7 +1110,7 @@ public class DbObjectTester {
         DbObject o2 = new DbObject.Builder().addObject("obj", o1).build();
         DbObject o3 = new DbObject.Builder().addObject("o2", o2).build();
         
-        long value = o3.getLong("o2.obj.nonExistant");
+        long value = o3.getLong(new String[]{"o2", "obj", "nonExistant"});
         Assert.assertEquals(0, value);
     }
 }
