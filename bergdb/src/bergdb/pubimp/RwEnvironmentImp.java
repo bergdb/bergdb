@@ -3,8 +3,6 @@ package bergdb.pubimp;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-
-import bergdb.common.Bug;
 import bergdb.common.MyLongSet;
 import bergdb.common.Util;
 import bergdb.core.Db;
@@ -20,7 +18,6 @@ import bergdb.pub.BadFormatException;
 import bergdb.pub.DataFormatException;
 import bergdb.pub.MissingKeyFieldException;
 import bergdb.pub.RwEnvironment;
-import bergdb.pubimp.IndexManager.Index;
 
 /**
  * Environment for a transaction.
@@ -506,7 +503,6 @@ public class RwEnvironmentImp implements RwEnvironment {
     public static void setIndexEntry(DbObject dbo, String keyname, IndexManager.Index index,
             int dirId, RwEnvironmentImp.IndexSetter setter, boolean useKeyReplace) {
         assert index != null : "index == null";
-        assert index.fields != null : "index.index.fields == null";
         assert dirId < 127;
         
         KeyTransformation kt = useKeyReplace ? getKeyTransformation(keyname) : null;
@@ -523,81 +519,13 @@ public class RwEnvironmentImp implements RwEnvironment {
         // fields exist in 'to'.
         
         SortBytesBuilder b = new SortBytesBuilder();
+        index.function.computeSortBytes(dbo, b);
+        byte[][] sortByteEntries = b.done();
         
-        for (int i = 0; i < index.fieldCombinations.length; i++) {
-            computeSortBytes(index, i, dbo, b);
-        }
-        
-        byte[][] sortBytesEntries = b.done();
-        
-        for (int i = 0; i < sortBytesEntries.length; i++) {
-            byte[] middlePart = sortBytesEntries[i];            
+        for (int i = 0; i < sortByteEntries.length; i++) {
+            byte[] middlePart = sortByteEntries[i];            
             byte[] indexKeyBytes = concat(firstPart, middlePart, lastPart);
             setter.setIndexKey(indexKeyBytes, kt);
-        }
-    }
-    
-    /**
-     * Returns the the sort bytes for a particular Index, entry index, and DbObject.
-     * This method determines what index entries an object should have when written to the database.
-     */
-    private static void computeSortBytes(IndexManager.Index index, int combinationIndex, 
-            DbObject dbo, SortBytesBuilder b) {
-        // Both long and int fields are indexed in a "long" index.
-        // Both double and float fields are indexed in a "double" index.
-
-        byte[][] parts = new byte[index.parts][];
-        final String[] fieldCombination = index.fieldCombinations[combinationIndex];
-        boolean gotAnEntry = true;
-
-        for (int j = 0; j < index.parts; j++) {
-            String field = fieldCombination[j];
-            char type = index.types[j];
-            boolean fieldUsed = false;
-
-            // Switch will set parts[j] if field exist.
-
-            parts[j] = null;
-
-            switch (type) {
-            case Index.TYPE_LONG:
-                if (dbo.has(field, 'l')) {
-                    b.addLong(dbo.getLong(field));
-                    fieldUsed = true;
-                } else if (dbo.has(field, 'i')) {
-                    b.addLong(dbo.getInt(field));
-                    fieldUsed = true;
-                }
-                break;
-
-            case Index.TYPE_DOUBLE:
-                if (dbo.has(field, 'd')) {
-                    b.addDouble(dbo.getDouble(field));
-                    fieldUsed = true;
-                }
-                break;
-
-            case Index.TYPE_STRING:
-                if (dbo.has(field, 's')) {
-                    String stringValue = dbo.getString(field);
-                    b.addString(stringValue, index.kcollators[j]);
-                    fieldUsed = true;
-                }
-                break;
-
-            default:
-                throw new Bug("Bad index type: " + type + ".");
-            }
-
-            if (!fieldUsed) {
-                gotAnEntry = false;
-                b.clearEntry();
-                break;
-            }
-        }
-        
-        if (gotAnEntry) {
-            b.entryDone();
         }
     }
     

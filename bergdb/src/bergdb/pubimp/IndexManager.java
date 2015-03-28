@@ -663,14 +663,13 @@ public class IndexManager {
         final String[] dirs;
         private final byte[][] dirBytes; // 'dirs' as bytes, for performance.
         final String[][] fields;
+        final IndexFunction function;
         final String[] typeStrings;
         final char[] types;              // TYPE_x
         final KCollator[] kcollators;    // Non-null when type == TYPE_STRING;
         private int state;
         final long keyHash;
-        final int parts;       // Number of user-specified composite parts 
-        final String[][] fieldCombinations;
-        final int combinationCount;
+        final int levelCount;       // Number of user-specified composite parts
         private final Object lock;
         
         /**
@@ -680,33 +679,33 @@ public class IndexManager {
          */
         public Index(String name, String[] dirs, String[][] fields, String[] typeStrings, 
                 IndexManager indexManager) {
-            KCollator kc = null;      // local variable
             this.name = name;
             this.dirs = dirs.clone();
-            this.fields = fields.clone();
             this.typeStrings = typeStrings.clone();
+            
+            // TODO A. Remove "fields"!?
+            this.fields = fields.clone();
+            
             this.state = STATE_CREATING;
             this.keyHash = Keys.hash(Keys.toSegments(indexManager.getIndexInfoKeyAsBytes(name)));
-            this.parts = typeStrings.length;
+            this.levelCount = typeStrings.length;
             this.lock = indexManager.lock;
-            typeStrings = typeStrings.clone();
             
-            assert parts >= 1;
+            assert levelCount >= 1;
             assert dirs != null;
-            assert fields.length == parts;
+            assert fields.length == levelCount;
             assert typeStrings != null;
             
             for (int i = 0; i < typeStrings.length; i++) {
                 assert indexManager.typeSupported(typeStrings[i]);
             }
             
-            this.combinationCount = computeCombinationCount();
-            this.fieldCombinations = computeFieldCombinations(fields);
-            this.types = new char[parts];
-            this.kcollators = new KCollator[parts];
+            this.function = new FieldIndexFunction(fields, typeStrings, indexManager.collatorFactory);
+            this.types = new char[levelCount];
+            this.kcollators = new KCollator[levelCount];
             this.dirBytes = new byte[dirs.length][];
             
-            handleIndexLevels(indexManager, kc);
+            createIndexLevels(indexManager);
             
             if (name.equals(PRIMARY)) {
                 // The primary index is a special case. 
@@ -715,15 +714,16 @@ public class IndexManager {
             }
         }
 
-        private void handleIndexLevels(IndexManager indexManager, KCollator kc) {
+        private void createIndexLevels(IndexManager indexManager) {
             
             for (int i = 0; i < dirs.length; i++) {
                 dirBytes[i] = Keys.toBytes(dirs[i]);
             }
             
-            for (int level = 0; level < parts; level++) {
+            for (int level = 0; level < levelCount; level++) {
                 String typeString = typeStrings[level];
                 char type = 'X';
+                KCollator kc = null;
             
                 char first = typeString.charAt(0);
                 switch (first) {
@@ -761,66 +761,11 @@ public class IndexManager {
             }
         }
         
-        private int computeCombinationCount() {
-            int cCount = 1;
-            for (int i = 0; i < parts; i++) {
-                cCount = cCount * fields[i].length;
-            }
-            return cCount;
-        }
-
-        private String[][] computeFieldCombinations(String[][] fields) {
-            String[][] fieldComb = new String[combinationCount][];
-            int[] indexArray = new int[parts];
-            int[] sizeArray = new int[parts];
-            for (int i = 0; i < parts; i++) {
-                sizeArray[i] = fields[i].length;
-            }
-            int combinationIndex = 0;
-            
-            for (int i = 0; i < combinationCount; i++) {
-                String[] combination = new String[parts];
-                for (int j = 0; j < parts; j++) {
-                    combination[j] = fields[j][indexArray[j]];
-                }
-                
-                fieldComb[combinationIndex++] = combination;
-                
-                boolean increased = nextIndexArray(indexArray, sizeArray);
-                if (i < combinationCount - 1) {
-                    assert increased : "'increased' was false, levels=" + parts + ", i=" + i;
-                }
-            }
-            
-            return fieldComb;
-        }
-        
-        private boolean nextIndexArray(int[] indexArray, int[] sizeArray) {
-            int levels = indexArray.length;
-            assert sizeArray.length == levels;
-            boolean increased = false;
-            
-            for (int i = levels - 1; i >= 0; i--) {
-                if (indexArray[i] == sizeArray[i] - 1) {
-                    continue;
-                } else {
-                    indexArray[i]++;
-                    for (int j = i + 1; j < levels; j++) {
-                        indexArray[j] = 0;
-                    }
-                    
-                    increased = true;
-                    break;
-                }
-            }
-            return increased;
-        }
-        
         /**
          * Returns the number of user composite index levels.
          */
         public final int getLevels() {
-            return this.parts;
+            return this.levelCount;
         }
         
         public final String getName() {
@@ -861,7 +806,7 @@ public class IndexManager {
             
             b.append("name: " + this.name + ". ");
             
-            b.append("levels: " + this.parts + ". ");
+            b.append("levels: " + this.levelCount + ". ");
             
             b.append("dirs: ");
             for (int i = 0; i < dirs.length; i++) {
@@ -1054,37 +999,6 @@ public class IndexManager {
         private Tester() {}
         
         @Nano
-        public static void testIndexConstructor1() {
-            IndexManager m = new IndexManager(new BergCollatorFactory());
-            IndexManager.Index index = new Index("index1", new String[] {"d/testGetKey/"}, 
-                    new String[][] {{"account"}, {"time"}}, new String[] {"long", "long"}, m);
-            
-            Assert.assertEquals(1, index.combinationCount);
-        }
-        
-        @Nano
-        public static void testIndexConstructor2() {
-            IndexManager m = new IndexManager(new BergCollatorFactory());
-            IndexManager.Index index = new Index("index1", new String[] {"d/testGetKey/"}, 
-                    new String[][] {{"from", "to"}, {"time", "rTime"}}, new String[] {"long", "long"}, m);
-            
-            Assert.assertEquals(4, index.combinationCount);
-            Assert.assertEquals(4, index.fieldCombinations.length);
-            
-            Assert.assertEquals("from", index.fieldCombinations[0][0]);
-            Assert.assertEquals("time", index.fieldCombinations[0][1]);
-            
-            Assert.assertEquals("from", index.fieldCombinations[1][0]);
-            Assert.assertEquals("rTime", index.fieldCombinations[1][1]);
-            
-            Assert.assertEquals("to", index.fieldCombinations[2][0]);
-            Assert.assertEquals("time", index.fieldCombinations[2][1]);
-            
-            Assert.assertEquals("to", index.fieldCombinations[3][0]);
-            Assert.assertEquals("rTime", index.fieldCombinations[3][1]);
-        }
-        
-        @Nano
         public static void testCheckType1() {
             String[] types =     {"long", "double", "string", "a", "", "longs", "doublex", "string/"};
             boolean[] expected = {true,   true,     true,     false, false, false, false,  false};
@@ -1095,10 +1009,6 @@ public class IndexManager {
                 Assert.assertEquals(expected[i], m.typeSupported(types[i]));
             }
         }
-    }
-    
-    public static void main(String[] args) {
-        Tester.testIndexConstructor2();
     }
 }
 

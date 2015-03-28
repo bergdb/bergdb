@@ -16,6 +16,7 @@ public class Pack implements IPack {
         DbObject.class,
         DbValue.class,
         Entries.class,
+        FieldIndexFunction.Tester.class,
         IndexManager.class,
         IndexManager.Tester.class,
         UseIndexBuilderImp.class,

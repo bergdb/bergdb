@@ -84,7 +84,7 @@ public class PubTesterComposite {
         
         IndexManager.Index index = ((DatabaseImp) database).getIndexManager().getIndex("i0");
         Assert.assertTrue(index != null);
-        Assert.assertEquals(2, index.parts);
+        Assert.assertEquals(2, index.levelCount);
         
         database.stop();
     }
