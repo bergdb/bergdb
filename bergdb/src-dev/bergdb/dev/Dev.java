@@ -1,10 +1,6 @@
 package bergdb.dev;
 
 //
-// TODO Consider - email 150322 - indexing for "subfields".
-// Looks like we could add support for changing mostly DbObject.getLong(String name) etc.
-// Allow field name like "Date.timeInMillis" - a dot separates parts of field, allows getting subfield.
-//
 // TODO LATER Add support for JSON. Pub API and changes to DbObject, I guess.
 // "Promised" to Stefan Edlich 150109.
 //
