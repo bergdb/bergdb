@@ -4,7 +4,7 @@ import bergdb.core.InternalDataException;
 
 /**
  * Inner classes of this class is used to store data in the database.
- * Static conversion method are used to convert between ordinary Java objects and data objects.
+ * Static conversion methods are used to convert between ordinary Java objects and data objects.
  * 
  * @author Frans Lundberg
  */
@@ -17,9 +17,9 @@ public class Data {
      */
     public static class Index {
         public String[] dirs;
-        public String[] fields;     // An array of fields names for each composite level.
+        public String[] fields;     // An array of fields names for each composite level. Comma-separated.
         public String[] typeStrings;
-        public String state;       // One of "creating" / "active" / "deleting".
+        public String state;        // One of "creating" / "active" / "deleting".
         
         public Index() {}
         
@@ -169,9 +169,13 @@ public class Data {
             IndexManager indexManager) throws InternalDataException {
         // Input params should have been checked already.
         
-        String[][] fields = new String[indexDo.fields.length][];
+        FieldRef[][] fields = new FieldRef[indexDo.fields.length][];
         for (int i = 0; i < indexDo.fields.length; i++) {
-            fields[i] = indexDo.fields[i].split(",");
+            String[] parts = indexDo.fields[i].split(",");
+            fields[i] = new FieldRef[parts.length];
+            for (int j = 0; j < parts.length; j++) {
+                fields[i][j] = new FieldRef(parts[j]);
+            }
         }
         
         IndexManager.Index index = new IndexManager.Index(indexName, indexDo.dirs, fields, 

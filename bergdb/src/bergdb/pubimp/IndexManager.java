@@ -106,7 +106,7 @@ public class IndexManager {
         nameToIndex = new HashMap<String, Index>();
         
         Index primaryIndex = new Index(IndexManager.PRIMARY, new String[]{"DUMMY"}, 
-                new String[][] {new String[0]}, 
+                new FieldRef[][] {new FieldRef[0]}, 
                 new String[]{"string"}, this);
         assert primaryIndex.kcollators.length == 1;
         
@@ -293,7 +293,7 @@ public class IndexManager {
      * @throws IllegalArgumentException  If type not supported, or...
      */
     public IndexManager.Index addIndex(ConnectionImp connection, String indexName, String[] dirs, 
-            String[][] fields, String[] types) throws IndexAlreadyExistsException {
+            FieldRef[][] fields, String[] types) throws IndexAlreadyExistsException {
         assert indexName != null;
         assert indexName.length() > 0;
         assert dirs != null;
@@ -308,11 +308,10 @@ public class IndexManager {
         assert fields.length == levels;
         
         for (int i = 0; i < levels; i++) {
-            String[] levelFields = fields[i];
+            FieldRef[] levelFields = fields[i];
             
-            for (String field : levelFields) {
+            for (FieldRef field : levelFields) {
                 assert field != null;
-                assert field.length() > 0;
             }
             
             assert types[i] != null;
@@ -662,7 +661,7 @@ public class IndexManager {
         private final String name;     // Unique name of the index.
         final String[] dirs;
         private final byte[][] dirBytes; // 'dirs' as bytes, for performance.
-        final String[][] fields;
+        final FieldRef[][] fields;
         final IndexFunction function;
         final String[] typeStrings;
         final char[] types;              // TYPE_x
@@ -677,7 +676,7 @@ public class IndexManager {
          * Parameters should have been checked already. 
          * Only asserts (not IllegalArgumentException) used in this constructor.
          */
-        public Index(String name, String[] dirs, String[][] fields, String[] typeStrings, 
+        public Index(String name, String[] dirs, FieldRef[][] fields, String[] typeStrings, 
                 IndexManager indexManager) {
             this.name = name;
             this.dirs = dirs.clone();

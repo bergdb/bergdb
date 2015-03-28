@@ -12,15 +12,15 @@ import bergdb.pubimp.IndexManager.Index;
  */
 public class FieldIndexFunction implements IndexFunction {
     private String[] typeStrings;
-    private String[][] fields;
-    private String[][] fieldCombinations;
+    private FieldRef[][] fields;
+    private FieldRef[][] fieldCombinations;
     private int combinationCount;
     private final int levelCount;
     final char[] types;              // TYPE_x
     final KCollator[] kcollators;    // Non-null when type == TYPE_STRING;
     private final CollatorFactory collatorFactory;
     
-    public FieldIndexFunction(String[][] fields, String[] typeStrings, CollatorFactory collatorFactory) {
+    public FieldIndexFunction(FieldRef[][] fields, String[] typeStrings, CollatorFactory collatorFactory) {
         this.fields = fields;
         this.typeStrings = typeStrings;
         this.levelCount = typeStrings.length;
@@ -51,35 +51,37 @@ public class FieldIndexFunction implements IndexFunction {
         // Both long and int fields are indexed in a "long" index.
         // Both double and float fields are indexed in a "double" index.
 
-        final String[] fieldCombination = fieldCombinations[combinationIndex];
+        final FieldRef[] fieldCombination = fieldCombinations[combinationIndex];
         boolean gotAnEntry = true;
 
         for (int j = 0; j < levelCount; j++) {
-            String field = fieldCombination[j];
+            FieldRef field = fieldCombination[j];
+            String fieldName = field.getName();
+            
             char type = types[j];
             boolean fieldUsed = false;
 
             switch (type) {
             case Index.TYPE_LONG:
-                if (dbo.has(field, 'l')) {
-                    b.addLong(dbo.getLong(field));
+                if (dbo.has(fieldName, 'l')) {
+                    b.addLong(dbo.getLong(fieldName));
                     fieldUsed = true;
-                } else if (dbo.has(field, 'i')) {
-                    b.addLong(dbo.getInt(field));
+                } else if (dbo.has(fieldName, 'i')) {
+                    b.addLong(dbo.getInt(fieldName));
                     fieldUsed = true;
                 }
                 break;
 
             case Index.TYPE_DOUBLE:
-                if (dbo.has(field, 'd')) {
-                    b.addDouble(dbo.getDouble(field));
+                if (dbo.has(fieldName, 'd')) {
+                    b.addDouble(dbo.getDouble(fieldName));
                     fieldUsed = true;
                 }
                 break;
 
             case Index.TYPE_STRING:
-                if (dbo.has(field, 's')) {
-                    String stringValue = dbo.getString(field);
+                if (dbo.has(fieldName, 's')) {
+                    String stringValue = dbo.getString(fieldName);
                     b.addString(stringValue, kcollators[j]);
                     fieldUsed = true;
                 }
@@ -110,8 +112,8 @@ public class FieldIndexFunction implements IndexFunction {
         return cCount;
     }
 
-    private String[][] computeFieldCombinations() {
-        String[][] fieldComb = new String[combinationCount][];
+    private FieldRef[][] computeFieldCombinations() {
+        FieldRef[][] fieldComb = new FieldRef[combinationCount][];
         int[] indexArray = new int[levelCount];
         int[] sizeArray = new int[levelCount];
         for (int i = 0; i < levelCount; i++) {
@@ -120,7 +122,7 @@ public class FieldIndexFunction implements IndexFunction {
         int combinationIndex = 0;
         
         for (int i = 0; i < combinationCount; i++) {
-            String[] combination = new String[levelCount];
+            FieldRef[] combination = new FieldRef[levelCount];
             for (int j = 0; j < levelCount; j++) {
                 combination[j] = fields[j][indexArray[j]];
             }
@@ -205,9 +207,8 @@ public class FieldIndexFunction implements IndexFunction {
         @Nano
         public static void testConstructor1() {
             BergCollatorFactory f = new BergCollatorFactory();
-            String[][] fields = {{"account"}, {"time"}};
+            FieldRef[][] fields = {{new FieldRef("account")}, {new FieldRef("time")}};
             String[] types = {"long", "long"};
-            
             
             FieldIndexFunction function = new FieldIndexFunction(fields, types, f);            
             Assert.assertEquals(1, function.combinationCount);
@@ -216,24 +217,28 @@ public class FieldIndexFunction implements IndexFunction {
         @Nano
         public static void testConstructor2() {
             BergCollatorFactory f = new BergCollatorFactory();
-            String[][] fields = {{"from", "to"}, {"time", "rTime"}};
+            FieldRef[][] fields = {
+                    {new FieldRef("from"), new FieldRef("to")}, 
+                    {new FieldRef("time"), new FieldRef("rTime")}
+            };
+            
             String[] types = {"long", "long"};
             
             FieldIndexFunction function = new FieldIndexFunction(fields, types, f); 
             Assert.assertEquals(4, function.combinationCount);
             Assert.assertEquals(4, function.fieldCombinations.length);
             
-            Assert.assertEquals("from", function.fieldCombinations[0][0]);
-            Assert.assertEquals("time", function.fieldCombinations[0][1]);
+            Assert.assertEquals("from", function.fieldCombinations[0][0].getName());
+            Assert.assertEquals("time", function.fieldCombinations[0][1].getName());
             
-            Assert.assertEquals("from", function.fieldCombinations[1][0]);
-            Assert.assertEquals("rTime", function.fieldCombinations[1][1]);
+            Assert.assertEquals("from", function.fieldCombinations[1][0].getName());
+            Assert.assertEquals("rTime", function.fieldCombinations[1][1].getName());
             
-            Assert.assertEquals("to", function.fieldCombinations[2][0]);
-            Assert.assertEquals("time", function.fieldCombinations[2][1]);
+            Assert.assertEquals("to", function.fieldCombinations[2][0].getName());
+            Assert.assertEquals("time", function.fieldCombinations[2][1].getName());
             
-            Assert.assertEquals("to", function.fieldCombinations[3][0]);
-            Assert.assertEquals("rTime", function.fieldCombinations[3][1]);
+            Assert.assertEquals("to", function.fieldCombinations[3][0].getName());
+            Assert.assertEquals("rTime", function.fieldCombinations[3][1].getName());
         }
     }
 }

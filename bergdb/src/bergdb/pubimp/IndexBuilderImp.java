@@ -129,7 +129,7 @@ public class IndexBuilderImp implements IndexBuilder {
             		"field: " + field + ".");
         }
         
-        currentPart.fields.add(field);
+        currentPart.fields.add(new FieldRef(field));
         return this;
     }
     
@@ -181,13 +181,13 @@ public class IndexBuilderImp implements IndexBuilder {
      */
     IndexCreateState createInit() throws IndexAlreadyExistsException {
         String[] dirs = dirList.toArray(new String[0]);
-        String[][] fields = new String[parts.size()][];
+        FieldRef[][] fields = new FieldRef[parts.size()][];
         String[] typeStrings = new String[parts.size()];
         
         for (int i = 0; i < parts.size(); i++) {
             CompositePart part = parts.get(i);
             assert part != null;
-            fields[i] = part.fields.toArray(new String[0]);
+            fields[i] = part.fields.toArray(new FieldRef[0]);
             assert fields[i].length > 0;
             typeStrings[i] = part.typeString;
             assert part.typeString != null;
@@ -432,11 +432,11 @@ public class IndexBuilderImp implements IndexBuilder {
     
     private static class CompositePart {
         String typeString;
-        List<String> fields;
+        List<FieldRef> fields;
         
         public CompositePart() {
             this.typeString = null;
-            this.fields = new ArrayList<String>();
+            this.fields = new ArrayList<FieldRef>();
         }
     }
     

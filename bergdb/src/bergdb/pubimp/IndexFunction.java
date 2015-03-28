@@ -7,6 +7,9 @@ package bergdb.pubimp;
  * @author Frans Lundberg
  */
 public interface IndexFunction {
+    // The idea is that this one day we could allow user to implement
+    // computeSortBytes (maybe better with "computeIndexEntries").
+    
     /**
      * Returns the types of the potentially composite index.
      * One type for each composite level.
@@ -15,8 +18,7 @@ public interface IndexFunction {
     public String[] getTypes();
     
     /**
-     * Returns a list of sort bytes for the index entries curresponding
-     * to the given DbObject.
+     * Computes sortBytes for the given DbObject.
      */
     public void computeSortBytes(DbObject dbo, SortBytesBuilder b);
 }
