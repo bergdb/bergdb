@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 
 import bergdb.common.Bug;
-import bergdb.common.Bytes;
 import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.DbConstants;
@@ -558,63 +557,6 @@ public class IndexManager {
         return result;
     }
     
-    private static final long LONGMAX = 9223372036854775807L;   // 2^63-1
-    
-    /**
-     * Returns a long composite index part to an index entry key.
-     */
-    public static byte[] indexKeyPartFromLong(long longValue) {
-        //
-        // 'longValue' is converted. Range of Java's "long" is: 
-        // [-9,223,372,036,854,775,808 to +9,223,372,036,854,775,807]
-        // That is: [-2^63 to 2^63-1].
-        // To add 2^63 (mod 2^64), we add 2^63-1 first and then we add 1.
-        // This converts like this:
-        // Long.MIN_VALUE (-2^63)  -> 0.
-        // 0                       -> 2^63
-        // Long.MAX_VALUE (2^63-1) -> 2^64 (if considered unsigned).
-        // Seems correct :-)
-        //
-        
-        long sortValue = (longValue + LONGMAX) + 1;
-        byte[] bytes = new byte[8];
-        Bytes.longToBytesBE(sortValue, bytes, 0);
-        return bytes;
-    }
-    
-    private static final long signBit = 0x8000000000000000L;
-    
-    public static byte[] indexKeyPartFromDouble(double doubleValue) {
-        //
-        // From http://www.cygnus-software.com/papers/comparingfloats/comparingfloats.htm:
-        // The IEEE float and double formats were designed so that the numbers are lexicographically
-        // ordered, which – in the words of IEEE architect William Kahan means 
-        // "if two floating-point numbers in the same format are ordered ( say x < y ), then they 
-        // are ordered the same way when their bits are reinterpreted as Sign-Magnitude integers."
-        //
-        // Note, we do not store a long "Sign-Magnitude", but in two's-complement representation.
-        // So, we *cannot* simply do:
-        //     return createIndexKey(index, keyname, Double.doubleToLongBits(doubleValue));
-        // 
-        // See http://stackoverflow.com/questions/7534230/converting-from-sign-magnitude-to-twos-complement.
-        //
-        // Note, this will not sort -0.0 before 0.0. They are considered the same.
-        // Sorting Double.POSITIVE_INFINITY and Double.NEGATIVE_INFINITY works as expected.
-        //
-        
-        long x = Double.doubleToLongBits(doubleValue);
-        long twosComplement = (x & signBit) == 0 ? x : -(x & ~signBit);
-        return indexKeyPartFromLong(twosComplement);
-    }
-    
-    public static byte[] indexKeyPartFromString(KCollator collator, String stringValue) {
-        assert collator != null : "collator is null";
-        assert stringValue != null: "stringValue is null";
-        
-        byte[] sortBytes = collator.getSortBytes(stringValue);
-        return sortBytes;
-    }
-    
     /**
      * Given the full index key, this method returns the corresponding
      * object key (the key to the indexed object).
@@ -719,7 +661,7 @@ public class IndexManager {
         
         private final String name;     // Unique name of the index.
         final String[] dirs;
-        private final byte[][] dirBytes;  // 'dirs' as bytes, for performance.
+        private final byte[][] dirBytes; // 'dirs' as bytes, for performance.
         final String[][] fields;
         final String[] typeStrings;
         final char[] types;              // TYPE_x

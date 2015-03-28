@@ -15,6 +15,9 @@ import bergdb.common.Bytes;
 import bergdb.common.Util;
 import bergdb.pub.BadFormatException;
 
+// TODO We should probably not use "." for nested get. Keys could include "." in them.
+// The DbObject is not necessarily created from a Java object.
+
 /**
  * <p>An immutable object with a map of named and typed fields.
  * The fields are typed, but the object itself has no particular schema.
@@ -65,16 +68,26 @@ public class DbObject extends DbValue {
     // Special handling of field KEY_FIELD makes this class BergDB specific.
     // Otherwise, it could be used as a general purpose way to serialize/deserialize Java objects.
     //
-    // 1304 Frans: Little-ending-first (LE) byte order is used to follow the byte ordering used 
+    // 1304 Frans: Little-endian-first (LE) byte order is used to follow the byte ordering used 
     // in the db stream.
     // 1309 Frans: Added support for Java arrays; they are wrapped field 'v' of a DbObject.
-    // 1311 Frans: Change byte signature to start with "bergo", then byte value 1 for version.
+    // 1311 Frans: Changed byte signature to start with "bergo", then byte value 1 for version.
     //
     
     private static final int HEADER_SIZE = 8;
     
     /** The byte signature; the first bytes of the DbObject when serialized. */
     public static final byte[] MAGIC = new byte[]{'b', 'e', 'r', 'g', 'o'};
+    
+    public static final char BOOLEAN = 'n';
+    public static final char INT = 'i';
+    public static final char LONG = 'l';
+    public static final char DOUBLE = 'd';
+    public static final char STRING = 's';
+    public static final char BYTE_ARRAY = 'b';
+    public static final char ARRAY = 'a';
+    public static final char OBJECT = 'o';
+    public static final char ZERO = 'z';
     
     private static final int MAGIC_SIZE = MAGIC.length;
     private static final int FIELD_INFO_SIZE = 6;
@@ -205,13 +218,51 @@ public class DbObject extends DbValue {
     /**
      * Returns true iff the typeless object has a field with the given name and type.
      */
-    public boolean has(final String name, final char type) {
-        final short hash = hash(name);
-        boolean result = false;
-        NameAndType n = null;
+    public boolean has(String name, char type) {
+        return internalGet(name, type) != null;
+    }
+
+    private NameAndType internalGet(String name, char type) {
+        boolean hasDot = name.indexOf('.') != -1;
+        return hasDot ? internalNestedGet(name, type) : internalSimpleGet(name, type);
+    }
+    
+    private NameAndType internalNestedGet(String name, char type) {
+        int index = name.indexOf('.');
+        if (index == -1) {
+            throw new Bug("never happens, name = " + name);
+        }
         
-        if (this.key != null && hash == KEY_FIELD_HASH && name.equals(KEY_FIELD)) {
-            return true;
+        if (index == 0 || index == name.length() - 1) {
+            return null;
+        }
+        
+        String firstPart = name.substring(0, index);
+        String remainingPart = name.substring(index + 1);
+        
+        boolean hasFirstPart = (internalSimpleGet(firstPart, DbObject.OBJECT) != null);
+        if (!hasFirstPart) {
+            return null;
+        }
+        
+        return getObject(firstPart).internalGet(remainingPart, type);
+    }
+    
+    private NameAndType internalSimpleGet(String name, char type) {
+        final short hash = hash(name);
+        NameAndType n = null;
+        boolean gotMatch = false;
+        
+        if (type == DbObject.STRING 
+                && this.key != null 
+                && hash == KEY_FIELD_HASH && name.equals(KEY_FIELD)) {
+            NameAndType nat = new NameAndType();
+            nat.name = KEY_FIELD;
+            nat.type = DbObject.STRING;
+            nat.valueOffset = -1;
+            nat.fieldOffset = -1;
+            nat.object = this;
+            return nat;
         }
         
         for (int i = 0; i < fieldCount; i++) {
@@ -223,7 +274,7 @@ public class DbObject extends DbValue {
                 readFieldInfo(i, n);
                 
                 if (n.name.equals(name) && n.type == type) {
-                    result = true;
+                    gotMatch = true;
                     break;      
                     
                     // Always break here, we matched name, no more match possible.
@@ -232,7 +283,7 @@ public class DbObject extends DbValue {
             }
         }
         
-        return result;
+        return gotMatch ? n : null;
     }
     
     private static final int NOT_ELIGIBLE = Modifier.FINAL | Modifier.STATIC | Modifier.TRANSIENT;
@@ -499,6 +550,8 @@ public class DbObject extends DbValue {
     
     // ---- getType(name) methods ----
     
+    // TODO A. Refactor get method to use internalGet(). See getLong().
+    
     public boolean getBoolean(String name) {
         // Not sure if this implementation is significantly less ugly than getByte for example.
         
@@ -533,22 +586,8 @@ public class DbObject extends DbValue {
     }
 
     public long getLong(String name) {
-        short hash = hash(name);
-        long result = Long.MIN_VALUE;
-        
-        for (int i = 0; i < fieldCount; i++) {
-            if (hash == hashes[i]) {
-                NameAndType n = new NameAndType();
-                readFieldInfo(i, n);
-                
-                if (n.name.equals(name) && n.type == 'l') {
-                    result = DbLong.parseToLong(bytes, n.valueOffset);
-                    break;
-                }
-            }
-        }
-        
-        return result;
+        NameAndType n = internalGet(name, DbObject.LONG);
+        return n == null ? 0 : DbLong.parseToLong(n.object.bytes, n.valueOffset);
     }
     
     public double getDouble(String name) {
@@ -643,7 +682,7 @@ public class DbObject extends DbValue {
                 NameAndType n = new NameAndType();
                 readFieldInfo(i, n);
                 
-                if (n.name.equals(name) && n.type == 'o') {
+                if (n.name.equals(name) && n.type == DbObject.OBJECT) {
                     result = DbObject.parse(bytes, n.valueOffset);
                     break;
                 }
@@ -672,6 +711,7 @@ public class DbObject extends DbValue {
         
         n.valueOffset = offset;
         n.fieldOffset = fieldOffset;
+        n.object = this;
     }
     
     private int readFieldOffset(int fieldIndex) {
@@ -848,6 +888,9 @@ public class DbObject extends DbValue {
         int valueOffset;
         int fieldOffset;
         char type;
+        
+        /** Object in which the matching field was found. */
+        DbObject object;
     }
     
     /**

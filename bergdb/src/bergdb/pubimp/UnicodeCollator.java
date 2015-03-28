@@ -8,9 +8,10 @@ import java.io.UnsupportedEncodingException;
  * @author Frans Lundberg
  */
 public class UnicodeCollator implements KCollator {
+    public static final UnicodeCollator INSTANCE = new UnicodeCollator();
     
-    public UnicodeCollator() {
-    }
+    /** No need to create new instances. One is enough. */
+    private UnicodeCollator() {}
 
     public final byte[] getSortBytes(String s) {
         //
@@ -19,7 +20,7 @@ public class UnicodeCollator implements KCollator {
         // 2 is added to each UTF-8 byte. This is possible since valid UTF-8 bytes never have the
         // value 0xfe or 0xff.
         //
-        // NOTE It would be possible to improve performance. Currently, there is double mem alloc.
+        // It would be possible to improve performance. Currently, there is double mem alloc.
         //
         assert s != null;
         byte[] bytes;

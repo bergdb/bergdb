@@ -175,7 +175,7 @@ public class IndexBuilderImp implements IndexBuilder {
     }
     
     /**
-     * Package access is for testing only. Otherwise should have been private access.
+     * Package access is for testing only. Otherwise would have been private.
      * 
      * @throws IndexAlreadyExistsException
      */

@@ -85,6 +85,8 @@ public class PubTesterComposite {
         IndexManager.Index index = ((DatabaseImp) database).getIndexManager().getIndex("i0");
         Assert.assertTrue(index != null);
         Assert.assertEquals(2, index.parts);
+        
+        database.stop();
     }
     
     @Nano
@@ -112,6 +114,8 @@ public class PubTesterComposite {
             Assert.assertEquals(expected[i], p.time);
         }
         Assert.assertFalse(iter.hasNext());
+        
+        database.stop();
     }
     
     @Nano

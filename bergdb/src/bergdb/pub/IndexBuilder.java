@@ -11,8 +11,8 @@ package bergdb.pub;
  * 
  * <code>database.indexBuilder("employee-salary").dir("employees/").type("long").field("salary").createFast();</code>
  * 
- * <p>The builder supports the creation of ordinary non-composite indexes, but also composite
- * indexes that consists of multiple composite parts. To create a composite index, call type()
+ * <p>The builder supports the creation of ordinary indexes, but also composite
+ * indexes that consists of multiple parts. To create a composite index, call type()
  * followed by field() more than once before eventually calling createFast() or 
  * start(). The call to type() starts a new composite index level. The following calls to 
  * field() apply to the nearest preceding call to type().</p>
@@ -56,7 +56,7 @@ public interface IndexBuilder {
      * that sorts strings according to the conventions of the Swedish language.</p>
      * 
      * <p>A specific way to sort strings is often called a "collation". BergDB uses ICU
-     * (http://icu-project.org/) for collation support (release 50.1, Dec 2012). 
+     * (http://icu-project.org/) for collation support (release 50.1). 
      * ICU has a large collection of collation implementations that follows the UCA (Unicode 
      * Collation Algorithm) standard, available at http://www.unicode.org/reports/tr10/.</p>
      * 
@@ -171,9 +171,10 @@ public interface IndexBuilder {
      *   string/pl        - Polish language, comparison level L1.
      * </pre>
      * 
-     * <p>Note, builds of BergDB may not include ICU support and therefore will only support the
-     * "string/unicode" collator. This means that indexes created with ICU collators may be 
-     * impossible to use in constrained BergDB environments.</p>
+     * <p>Note, alternative builds of BergDB may exclude ICU support and therefore will 
+     * only support the "string/unicode" collator. This means that indexes created with ICU 
+     * collators with a standard BergDB build, can be impossible to use by software using 
+     * an alternative (constrained) BergDB library.</p>
      */
     public IndexBuilder type(String indexTypeString);
     

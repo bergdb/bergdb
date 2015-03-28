@@ -139,7 +139,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                     + index.typeStrings[0] + ". Cannot call eq(String).");
         }
         
-        byte[] toAdd = IndexManager.indexKeyPartFromString(index.kcollators[level], string);
+        byte[] toAdd = SortBytesBuilder.sortBytesFromString(index.kcollators[level], string);
         eqValue = Util.concat(eqValue, toAdd);
         
         levelEqCalled = true;
@@ -170,7 +170,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                     + index.typeStrings[0] + ". Cannot call eq(long).");
         }
         
-        byte[] toAdd = IndexManager.indexKeyPartFromLong(value);
+        byte[] toAdd = SortBytesBuilder.sortBytesFromLong(value);
         eqValue = Util.concat(eqValue, toAdd);
         
         levelEqCalled = true;
@@ -201,7 +201,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                     + index.typeStrings[0] + ". Cannot call eq(double).");
         }
         
-        byte[] toAdd = IndexManager.indexKeyPartFromDouble(value);
+        byte[] toAdd = SortBytesBuilder.sortBytesFromDouble(value);
         eqValue = Util.concat(eqValue, toAdd);
         
         levelEqCalled = true;
@@ -239,7 +239,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         }
         
         startValue = Util.concat(startValue, 
-                IndexManager.indexKeyPartFromString(index.kcollators[level], string));        
+                SortBytesBuilder.sortBytesFromString(index.kcollators[level], string));        
         startAtCalled = true;
         levelStartAtCalled = true;
         return this;
@@ -266,7 +266,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                     + index.typeStrings[0] + ". Cannot call startAt(long).");
         }
         
-        startValue = Util.concat(startValue, IndexManager.indexKeyPartFromLong(value));        
+        startValue = Util.concat(startValue, SortBytesBuilder.sortBytesFromLong(value));        
         startAtCalled = true;
         levelStartAtCalled = true;
         
@@ -294,7 +294,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                     + index.typeStrings[0] + ". Cannot call startAt(double).");
         }
         
-        startValue = Util.concat(startValue, IndexManager.indexKeyPartFromDouble(value));        
+        startValue = Util.concat(startValue, SortBytesBuilder.sortBytesFromDouble(value));        
         startAtCalled = true;
         levelStartAtCalled = true;
         

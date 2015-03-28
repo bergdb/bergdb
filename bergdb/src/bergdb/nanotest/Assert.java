@@ -32,12 +32,6 @@ public class Assert {
         }
     }
 
-    public static void assertFalse(boolean actual) {
-        if (actual) {
-            throw new AssertionError("Expected actual == false, was true.");
-        }
-    }
-
     public static void assertEquals(long expected, long actual) {
         if (actual != expected) {
             throw new AssertionError("Expected " + expected + ", got " + actual + ".");
@@ -388,6 +382,18 @@ public class Assert {
     public static void assertTrue(boolean b) {
         if (!b) {
             throw new AssertionError("Expected true, but was false.");
+        }
+    }
+    
+    public static void assertFalse(String message, boolean actual) {
+        if (actual == true) {
+            throw new AssertionError(message + ", expected false, but was true.");
+        }
+    }
+
+    public static void assertFalse(boolean actual) {
+        if (actual == true) {
+            throw new AssertionError("Expected actual == false, was true.");
         }
     }
 

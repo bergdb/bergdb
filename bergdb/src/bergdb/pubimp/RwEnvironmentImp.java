@@ -491,10 +491,10 @@ public class RwEnvironmentImp implements RwEnvironment {
         assert transTime >= Klong.MIN_TIME && transTime <= Klong.MAX_TIME;
         return String.format(Locale.US, "%018d", transTime);
     }
-
+    
     /**
-     * The core code for creating one (or more) index entries in the database for a 
-     * given DbObject and a given index.
+     * The core code for creating one or more index entries in the database for a 
+     * given DbObject and a given Index.
      * 
      * @param dbo  The object to index.
      * @param keyname  Database key name of the object.
@@ -522,32 +522,38 @@ public class RwEnvironmentImp implements RwEnvironment {
         // Lets iterate field combinations and add one entry for each combination for which all
         // fields exist in 'to'.
         
-        for (int i = 0; i < index.fieldCombinations.length; i++) {
-            byte[] middlePart = indexKeyMiddlePart(index, i, dbo);
+        SortBytesBuilder b = new SortBytesBuilder();
         
-            if (middlePart != null) {
-                byte[] indexKey = concat(firstPart, middlePart, lastPart);
-                setter.setIndexKey(indexKey, kt);
-            }
+        for (int i = 0; i < index.fieldCombinations.length; i++) {
+            computeSortBytes(index, i, dbo, b);
+        }
+        
+        byte[][] sortBytesEntries = b.done();
+        
+        for (int i = 0; i < sortBytesEntries.length; i++) {
+            byte[] middlePart = sortBytesEntries[i];            
+            byte[] indexKeyBytes = concat(firstPart, middlePart, lastPart);
+            setter.setIndexKey(indexKeyBytes, kt);
         }
     }
     
     /**
-     * Returns the middle part of the compound index key name.
+     * Returns the the sort bytes for a particular Index, entry index, and DbObject.
      * This method determines what index entries an object should have when written to the database.
      */
-    private static byte[] indexKeyMiddlePart(IndexManager.Index index, int combinationIndex, 
-            DbObject dbo) {
+    private static void computeSortBytes(IndexManager.Index index, int combinationIndex, 
+            DbObject dbo, SortBytesBuilder b) {
         // Both long and int fields are indexed in a "long" index.
         // Both double and float fields are indexed in a "double" index.
 
-        byte[] result = null;
         byte[][] parts = new byte[index.parts][];
         final String[] fieldCombination = index.fieldCombinations[combinationIndex];
+        boolean gotAnEntry = true;
 
         for (int j = 0; j < index.parts; j++) {
             String field = fieldCombination[j];
             char type = index.types[j];
+            boolean fieldUsed = false;
 
             // Switch will set parts[j] if field exist.
 
@@ -556,42 +562,43 @@ public class RwEnvironmentImp implements RwEnvironment {
             switch (type) {
             case Index.TYPE_LONG:
                 if (dbo.has(field, 'l')) {
-                    parts[j] = IndexManager.indexKeyPartFromLong(dbo.getLong(field));
+                    b.addLong(dbo.getLong(field));
+                    fieldUsed = true;
                 } else if (dbo.has(field, 'i')) {
-                    parts[j] = IndexManager.indexKeyPartFromLong(dbo.getInt(field));
+                    b.addLong(dbo.getInt(field));
+                    fieldUsed = true;
                 }
                 break;
 
             case Index.TYPE_DOUBLE:
                 if (dbo.has(field, 'd')) {
-                    parts[j] = IndexManager.indexKeyPartFromDouble(dbo.getDouble(field));
+                    b.addDouble(dbo.getDouble(field));
+                    fieldUsed = true;
                 }
                 break;
 
             case Index.TYPE_STRING:
                 if (dbo.has(field, 's')) {
                     String stringValue = dbo.getString(field);
-                    parts[j] = IndexManager
-                            .indexKeyPartFromString(index.kcollators[j], stringValue);
+                    b.addString(stringValue, index.kcollators[j]);
+                    fieldUsed = true;
                 }
                 break;
 
             default:
                 throw new Bug("Bad index type: " + type + ".");
-
             }
 
-            if (parts[j] == null) {
+            if (!fieldUsed) {
+                gotAnEntry = false;
+                b.clearEntry();
                 break;
             }
-
-            if (j == index.parts - 1) {
-                // Last part, create complete indexKey.
-                result = concat(parts);
-            }
         }
-
-        return result;
+        
+        if (gotAnEntry) {
+            b.entryDone();
+        }
     }
     
     private static byte[] concat(byte[] arr1, byte[] arr2, byte[] arr3) {
@@ -610,26 +617,6 @@ public class RwEnvironmentImp implements RwEnvironment {
         System.arraycopy(arr3, 0, result, offset, arr3.length);
         
         return result;
-    }
-    
-    private static byte[] concat(byte[][] arrays) {
-        assert arrays != null;
-        assert arrays.length > 0;
-        
-        int totalSize = 0;
-        for (int i = 0; i < arrays.length; i++) {
-            assert arrays[i] != null;
-            assert arrays[i].length > 0;
-            totalSize += arrays[i].length;
-        }
-        
-        byte[] total = new byte[totalSize];
-        int offset = 0;
-        for (int i = 0; i < arrays.length; i++) {
-            System.arraycopy(arrays[i], 0, total, offset, arrays[i].length);
-            offset += arrays[i].length;
-        }
-        return total;
     }
 
     private static class ObjectInfo {

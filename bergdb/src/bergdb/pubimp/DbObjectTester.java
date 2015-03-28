@@ -1026,12 +1026,14 @@ public class DbObjectTester {
         }
     }
     
+    @Nano
     public static void testPrimitive0() {
         DbObject dbo1 = DbObject.toDbObject(1234);
         Integer theInt = dbo1.toJavaObject(Integer.class, new KvToObjectImp());
         Assert.assertEquals(1234, theInt.intValue());
     }
     
+    @Nano
     public static void testPrimitive1() {
         // Same as previous, but uses int.class instead of Integer.class.
         DbObject dbo1 = DbObject.toDbObject(1234);
@@ -1039,24 +1041,76 @@ public class DbObjectTester {
         Assert.assertEquals(1234, theInt);
     }
     
+    @Nano
     public static void testPrimitive2() {
         DbObject dbo1 = DbObject.toDbObject(true);
         boolean result = dbo1.toJavaObject(boolean.class, new KvToObjectImp());
         Assert.assertEquals(true, result);
     }
     
+    @Nano
     public static void testPrimitive3() {
         DbObject dbo1 = DbObject.toDbObject(123.45);
         double result = dbo1.toJavaObject(double.class, new KvToObjectImp());
         Assert.assertEquals(123.45, result);
     }
     
+    @Nano
     public static void testPrimitive4() {
         DbObject dbo1 = DbObject.toDbObject(Double.NaN);
         double result = dbo1.toJavaObject(double.class, new KvToObjectImp());
         Assert.assertTrue(Double.isNaN(result));
     }
     
-    public static void main(String[] args) {
+    @Nano
+    public static void testNestedField1() {
+        DbObject o1 = new DbObject.Builder().addLong("count", 120L).build();
+        DbObject o2 = new DbObject.Builder().addObject("obj", o1).build();
+        Assert.assertTrue(o2.has("obj.count", DbObject.LONG));
+    }
+    
+    @Nano
+    public static void testNestedField2() {
+        DbObject o1 = new DbObject.Builder().addLong("count", 120L).build();
+        Assert.assertFalse(o1.has("obj.count", DbObject.LONG));
+        Assert.assertFalse(o1.has(".count", DbObject.LONG));
+        Assert.assertFalse(o1.has("count.", DbObject.LONG));
+        Assert.assertTrue(o1.has("count", DbObject.LONG));
+    }
+    
+    @Nano
+    public static void testNestedField3() {
+        DbObject o1 = new DbObject.Builder().addLong("count", 120L).build();
+        DbObject o2 = new DbObject.Builder().addObject("obj", o1).build();
+        DbObject o3 = new DbObject.Builder().addObject("o2", o2).build();
+        
+        Assert.assertTrue(o1.has("count", DbObject.LONG));
+        Assert.assertTrue(o2.has("obj.count", DbObject.LONG));
+        Assert.assertTrue(o3.has("o2.obj.count", DbObject.LONG));
+        Assert.assertTrue(o2.has("obj", DbObject.OBJECT));
+        Assert.assertTrue(o3.has("o2", DbObject.OBJECT));
+        Assert.assertTrue(o3.has("o2.obj", DbObject.OBJECT));
+    }
+    
+    @Nano
+    public static void testNestedField4() {
+        // Tests getLong().
+        
+        DbObject o1 = new DbObject.Builder().addLong("count", 120L).build();
+        DbObject o2 = new DbObject.Builder().addObject("obj", o1).build();
+        
+        Assert.assertEquals(120L, o2.getLong("obj.count"));
+    }
+    
+    @Nano
+    public static void testNestedField5() {
+        // Tests getLong() with non-existant field.
+        
+        DbObject o1 = new DbObject.Builder().addLong("count", 120L).build();
+        DbObject o2 = new DbObject.Builder().addObject("obj", o1).build();
+        DbObject o3 = new DbObject.Builder().addObject("o2", o2).build();
+        
+        long value = o3.getLong("o2.obj.nonExistant");
+        Assert.assertEquals(0, value);
     }
 }

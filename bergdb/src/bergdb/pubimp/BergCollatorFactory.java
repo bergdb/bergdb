@@ -14,7 +14,7 @@ public class BergCollatorFactory implements CollatorFactory {
         KCollator result = null;
   
         if (typeString.equals("string") || typeString.equals("string/unicode")) {
-            result = new UnicodeCollator();
+            result = UnicodeCollator.INSTANCE;
         }
         
         return result;

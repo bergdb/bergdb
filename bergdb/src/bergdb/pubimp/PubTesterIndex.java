@@ -1,5 +1,6 @@
 package bergdb.pubimp;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 
 import bergdb.common.EventToWaitFor;
@@ -141,6 +142,28 @@ public class PubTesterIndex {
         db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from")
             .createFast();
         
+        c.w().put("/payments/2", new Payment("10", "pelle", 46))
+             .put("/payments/1", new Payment("20", "jöns", 90))
+             .execute();
+        
+        ArrayList<Payment> list = new ArrayList<Payment>();
+        for (Payment p : c.useIndex("payments-from", Payment.class).objects()) {
+            list.add(p);
+        }
+        
+        db.stop();
+        
+        Assert.assertEquals("10", list.get(0).from);
+        Assert.assertEquals("20", list.get(1).from);
+    }
+    
+    @Nano
+    public static void test2() {
+        Database db = Factory.database().memory().start();
+        Connection c = db.newConnection();
+        db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from")
+            .createFast();
+        
         final Payment p1 = new Payment("1001", "1002", 20);
         final Payment p2 = new Payment("1002", "1009", 30);
         final Payment p3 = new Payment("1001", "1009", 40);
@@ -152,20 +175,20 @@ public class PubTesterIndex {
         Iterable<Payment> payments = c.useIndex("payments-from", Payment.class).eq("1001").objects();
         Iterator<Payment> iter = payments.iterator();
         
-        Assert.assertTrue(iter.hasNext());
+        Assert.assertTrue("has next 1", iter.hasNext());
         Payment p = iter.next();
         Assert.assertTrue("p != null check", p != null);
         Assert.assertEquals(20, p.amount);
         Assert.assertEquals("1001", p.from);
         Assert.assertEquals("1002", p.to);
         
-        Assert.assertTrue(iter.hasNext());
+        Assert.assertTrue("has next 2", iter.hasNext());
         p = iter.next();
         Assert.assertEquals(40, p.amount);
         Assert.assertEquals("1001", p.from);
         Assert.assertEquals("1009", p.to);
         
-        Assert.assertFalse(iter.hasNext());
+        Assert.assertFalse("has next 3", iter.hasNext());
         
         db.stop();
     }
