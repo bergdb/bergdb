@@ -18,7 +18,6 @@ import bergdb.nanotest.Nano;
 import bergdb.pub.Clock;
 import bergdb.stream.MemoryStream;
 
-
 /**
  * Static utility methods related to Db; Db help functions.
  * Useful for a Core Layer user.
@@ -99,7 +98,7 @@ public class DbUtil {
     
     /**
      * Equivalent to: checksum(db, Long.MAX_VALUE, true).
-     * Checksum of latest database state (key-value-time tupple set).
+     * Checksum of latest database state (key-value).
      */
     public static long checksum(Db db) {
         return checksum(db, Long.MAX_VALUE, true);
@@ -146,6 +145,65 @@ public class DbUtil {
         g.lookupTime = dbTime;
         g.stopCondition = condition;
         g.startKey = null;
+        db.getMany(g);
+        
+        assert g.result != null : "g.result == null";
+        assert g.result.size() == 0 : "unexpected, " + g.result.size();
+        
+        return sum.getValue();
+    }
+    
+    /**
+     * Computes a CRC32 checksum of the state of the database in a certain interval. 
+     * All KVs are included, also internal KVs. Time of KVs are optionally included.
+     * 
+     * @param dbTime  Lookup time to use. Can be Long.MAX_VALUE.
+     * @param from    Key to start checksum computation from (inclusive).
+     * @param to      End of interval key (exclusive).
+     * @param includeKvTime  If true, the database write time of each KV is included in the result.
+     * @return The checksum.
+     */
+    public static long checksumOfRange(Db db, final long dbTime, byte[] from, byte[] to, final boolean includeKvTime) {
+        // This method uses a special StopCondition to compute the checksum.
+        // No Kvs are added to the result.
+        
+        final Checksum sum = new CRC32();
+        
+        final long[] fromKey = from == null ? null : Keys.toSegments(from);
+        final long[] toKey = to == null ? null : Keys.toSegments(to);
+        
+        GetMany.StopCondition condition = new GetMany.StopCondition() {
+            public int handleKvt(Kvt kvt) {
+                
+                if (toKey != null && Keys.compareKeys(kvt.key, toKey) >= 0) {
+                    return GetMany.StopCondition.STOP;
+                }
+                
+                byte[] bkey = Keys.toBytes(kvt.key);
+                byte[] value = kvt.value;
+                
+                sum.update(bkey, 0, bkey.length);
+                sum.update(value, 0, value.length);
+                
+                if (includeKvTime) {
+                    byte[] timeBytes = new byte[8];
+                    Bytes.longToBytesLE(kvt.time, timeBytes, 0);
+                    sum.update(timeBytes, 0, timeBytes.length);
+                }
+                
+                return GetMany.StopCondition.CONTINUE;
+            }
+            
+            public void eod() {
+                // empty
+            }
+        };
+        
+
+        GetMany g = db.newGetMany();
+        g.lookupTime = dbTime;
+        g.stopCondition = condition;
+        g.startKey = fromKey;
         db.getMany(g);
         
         assert g.result != null : "g.result == null";
@@ -273,5 +331,41 @@ public class DbUtil {
         long c2 = DbUtil.checksum(db2, t, true);
         
         Assert.assertTrue(c1 == c2);
+    }
+    
+    @Nano 
+    private static void testChecksumOfRange1() {
+        Db db1 = createEmptyDb();
+        
+        db1.execute(db1.trans().put("/key1", "v1"));
+        
+        byte[] from = Keys.toBytes("/a");
+        byte[] to = Keys.toBytes("/z");
+        long t = Long.MAX_VALUE;
+        
+        long c1 = DbUtil.checksum(db1, t, true);
+        long c2 = DbUtil.checksumOfRange(db1, t, from, to, true);
+        
+        Assert.assertEquals(c1, c2);
+    }
+    
+    
+    @Nano 
+    private static void testChecksumOfRange2() {
+        // Checks that /key30 is exclusive and /key20 inclusive.
+        
+        long t = Long.MAX_VALUE;
+        Db db1 = createEmptyDb();
+        
+        db1.execute(db1.trans().put("/key10", "v10"));
+        db1.execute(db1.trans().put("/key20", "v20"));
+        
+        long c1 = DbUtil.checksum(db1, t, true);
+        
+        db1.execute(db1.trans().put("/key30", "v30"));
+        
+        long c2 = DbUtil.checksumOfRange(db1, t, Keys.toBytes("/key10"), Keys.toBytes("/key30"), true);
+        
+        Assert.assertEquals(c1, c2);
     }
 }

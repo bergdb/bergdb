@@ -454,7 +454,9 @@ public class Db {
         nodeStream.recover();
         handleStartParams(params, listener);
         
-        ArrayList<StoredTrans> transactions = readTransactions(x.startupPos.get());
+        long startupPos = x.startupPos.get();
+        
+        ArrayList<StoredTrans> transactions = readTransactions(startupPos);
         listener.reportStartupTransactions(transactions);
         setLastTransTimeOfDbClock(transactions);
         
@@ -1130,7 +1132,7 @@ public class Db {
         x.transNodes.clean();
         x.startupPos.set(sp);
         
-        // TODO A. Analys startupPos - line below added.
+        // TODO A. Analys startupPos - line below added. Correct?
         // TODO B. Add tests for startupPos.
         nodeStream.getMetaBlock().setStartupPos(sp);
     }
