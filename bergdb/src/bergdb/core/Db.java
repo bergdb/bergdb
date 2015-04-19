@@ -414,23 +414,8 @@ public class Db {
      *             If start() has been called already.
      * @throws BadReplicaException
      */
-    public void start() {
-        start(StartParams.NULL, Db.StartListener.DO_NOTHING);
-    }
-    
-    public static class StartParams {
-        public static final StartParams NULL = new StartParams();
-        public long startupPos;
-        public int startupDistance;
-        
-        public StartParams() {
-            startupPos = Spos.NULL;
-            startupDistance = -1;
-        }
-        
-        public boolean isNull() {
-            return this == NULL;
-        }
+    public void start() {        
+        start(StartParams.NULL, StartListener.DO_NOTHING);
     }
     
     /**
@@ -1144,6 +1129,10 @@ public class Db {
         
         x.transNodes.clean();
         x.startupPos.set(sp);
+        
+        // TODO A. Analys startupPos - line below added.
+        // TODO B. Add tests for startupPos.
+        nodeStream.getMetaBlock().setStartupPos(sp);
     }
 
     /**
@@ -1439,6 +1428,21 @@ public class Db {
             dirtyFraction1000  = 0.999 * aux.dirtyFraction1000 +  0.001 * dirtyFraction;
             
             cachedMemoryValue.addAndGet(x.transNodes.sumMemSize());
+        }
+    }
+    
+    public static class StartParams {
+        public static final StartParams NULL = new StartParams();
+        public long startupPos;
+        public int startupDistance;
+        
+        public StartParams() {
+            startupPos = Spos.NULL;
+            startupDistance = -1;
+        }
+        
+        public boolean isNull() {
+            return this == NULL;
         }
     }
     

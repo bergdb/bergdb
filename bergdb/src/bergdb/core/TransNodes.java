@@ -116,7 +116,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
             addKeyNode((KeyNode) node);
             break;
         default:
-            throw new IllegalStateException("Unsupported type, node.getType()");
+            throw new IllegalStateException("Not an index node, node.getType(), " + node.getType());
         }
     }
 
