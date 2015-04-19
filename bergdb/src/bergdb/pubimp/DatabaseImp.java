@@ -81,7 +81,7 @@ public class DatabaseImp implements Database {
         
         long t0 = System.nanoTime();
         db.start();
-        double startTime = (t0 - System.nanoTime()) * 1e-9;
+        double startTime = (System.nanoTime() - t0) * 1e-9;
         
         ConnectionImp connection = new ConnectionImp(database);
         database.indexManager.initFromDatabase(connection);

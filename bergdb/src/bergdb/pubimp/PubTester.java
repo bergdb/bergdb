@@ -992,4 +992,13 @@ public class PubTester {
         Assert.assertEquals(1, countEntries(c));
         database.stop();
     }
+    
+    @Nano
+    public static void testStartupInfoTime() {
+        Database database = Factory.database().memory().start();        
+        double time = database.getStartInfo().getStartTime();
+        Assert.assertTrue("time:" + time, time > 0.0);
+        
+        database.stop();
+    }
 }
