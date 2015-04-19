@@ -22,6 +22,7 @@ public class Pack implements IPack {
         RerunException.class,
         Reclaim.class,
         Reclaim.Tester.class,
+        Reclaim.IterationInfo.class,
         StoredNode.class,
         StoredKeyNode.class,
         StoredTopNode.class,

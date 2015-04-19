@@ -416,7 +416,7 @@ public class Reclaim implements Db.TransactionListener {
      * Information about an iteration, completed (done=true) or ongoing (done=false). 
      * The information can be serialized to a string and parse back from such a string.
      */
-    final class IterationInfo {
+    public static final class IterationInfo {
         long pStart;
         long tStart;
         long tEnd;
@@ -506,9 +506,9 @@ public class Reclaim implements Db.TransactionListener {
                 throw new InternalDataException("Missing 'done' in " + TABLE_KEY_NAME);
             }
             
-            if ( !("true".equals(doneString)) || "false".equals(doneString)) {
+            if (!(  ("true".equals(doneString)) || "false".equals(doneString)  )) {
                 throw new InternalDataException("Bad value of 'done' in " + TABLE_KEY_NAME 
-                        + ", " + doneString);
+                        + ", '" + doneString + "'.");
             }
             
             if (doneString.equals("true")) {
@@ -522,6 +522,75 @@ public class Reclaim implements Db.TransactionListener {
                         + TABLE_KEY_NAME + ". Table string map: " + m.serialize());
             }
             return m.getLong(key);
+        }
+        
+        @Nano
+        private static void testSerialize1() {
+            IterationInfo i1 = new IterationInfo();
+            i1.done = true;
+            i1.kvCount = 10;
+            i1.lastKey = new long[]{123};
+            i1.pStart = 1000;
+            i1.tEnd = 20*1000;
+            i1.tStart = 10*1000;
+            
+            String s = i1.serialize();            
+            IterationInfo i2 = new IterationInfo();
+            i2.deserialize(s);
+            
+            Assert.assertEquals(i1.done, i2.done);
+            Assert.assertEquals(i1.kvCount, i2.kvCount);
+            Assert.assertArrayEquals(i1.lastKey, i2.lastKey);
+            Assert.assertEquals(i1.pStart, i2.pStart);
+            Assert.assertEquals(i1.tEnd, i2.tEnd);
+            Assert.assertEquals(i1.tStart, i2.tStart);
+        }
+        
+        @Nano
+        private static void testSerialize2() {
+            IterationInfo i1 = new IterationInfo();
+            i1.done = false;
+            i1.kvCount = 10;
+            i1.lastKey = new long[]{123};
+            i1.pStart = 1000;
+            i1.tEnd = 20*1000;
+            i1.tStart = 10*1000;
+            
+            String s = i1.serialize();            
+            IterationInfo i2 = new IterationInfo();
+            i2.deserialize(s);
+            
+            Assert.assertEquals(i1.done, i2.done);
+            Assert.assertEquals(i1.kvCount, i2.kvCount);
+            Assert.assertArrayEquals(i1.lastKey, i2.lastKey);
+            Assert.assertEquals(i1.pStart, i2.pStart);
+            Assert.assertEquals(i1.tEnd, i2.tEnd);
+            Assert.assertEquals(i1.tStart, i2.tStart);
+        }
+        
+        @Nano
+        private static void testDeserializeWithBadString() {
+            IterationInfo i1 = new IterationInfo();
+            i1.done = false;
+            i1.kvCount = 10;
+            i1.lastKey = new long[]{123};
+            i1.pStart = 1000;
+            i1.tEnd = 20*1000;
+            i1.tStart = 10*1000;
+            
+            String s = i1.serialize();            
+            s = s.replace("false", "fALse");
+            
+            IterationInfo i2 = new IterationInfo();
+            
+            InternalDataException ex = null;
+            try {
+                i2.deserialize(s);
+            } catch (InternalDataException e) {
+                ex = e;
+            }
+            
+            Assert.assertTrue("ex should be non-null", ex != null);
         }
     }
     
@@ -780,6 +849,11 @@ public class Reclaim implements Db.TransactionListener {
             
             Assert.assertTrue("" + ints[0], ints[0] > 0);
             Assert.assertTrue("" + ints[1], ints[1] > value.length);
+        }
+        
+        @Nano
+        public static void testIterationInfo() {
+            
         }
     }
 }
