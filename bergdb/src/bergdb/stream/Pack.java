@@ -10,6 +10,7 @@ public class Pack implements IPack {
         DummyStream.class,
         OneFileStream.class,
         Pack.class,
+        ReadOnlyStream.class,
         SalsaStream.class
     };
    
