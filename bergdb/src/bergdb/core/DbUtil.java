@@ -59,9 +59,9 @@ public class DbUtil {
         return db.getOne(lookupTime, Keys.toSegments(key), db.newGetData());
     }
     
-    public static byte[] get(Db db, long lookupTime, String key) {
+    public static byte[] get(Db db, long lookupTime, String ikey) {
         assert db != null : "db == null not allowed";
-        return db.getOne(lookupTime, Keys.toSegments(key), db.newGetData());
+        return db.getOne(lookupTime, Keys.toSegments(ikey), db.newGetData());
     }
     
     /**
@@ -77,8 +77,8 @@ public class DbUtil {
         return db.getOne(Long.MAX_VALUE, Keys.toSegments(key), db.newGetData());
     }
     
-    public static String getString(Db db, String key) {
-        byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(key), db.newGetData());
+    public static String getString(Db db, String ikey) {
+        byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(ikey), db.newGetData());
         return value == null ? null : Util.toString(value);
     }
     

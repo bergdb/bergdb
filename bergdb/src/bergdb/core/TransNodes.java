@@ -230,7 +230,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
             if (p.isMem()) {
                 INode pointee = p.getNode();
                 assert pointee != null;
-                if (!pointee.isInTransNodes() && Spos.isNull(pointee.getSpos())) {
+                if (pointee.isIndexNode() && !pointee.isInTransNodes() && Spos.isNull(pointee.getSpos())) {
                     addIndexNode(pointee);
                     addUnstoredDescendents(pointee, p);
                 }

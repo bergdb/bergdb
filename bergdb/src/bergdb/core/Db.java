@@ -778,8 +778,8 @@ public class Db {
     }
 
     /**
-     * Gets a value given a key. This is the primary and fastest GET method with
-     * no memory allocation.
+     * Gets a value given an exact match with a key. This is the primary and fastest 
+     * GET method with no memory allocation.
      * 
      * @param lookupTime
      *            The DB time for which to make the GET operation. Use

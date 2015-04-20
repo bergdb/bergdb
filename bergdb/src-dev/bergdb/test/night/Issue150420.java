@@ -5,19 +5,26 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import bergdb.core.Db;
 import bergdb.core.DbScan;
+import bergdb.core.SyncLevel;
+import bergdb.dag.Dag;
+import bergdb.dag.GetMany;
+import bergdb.dag.KeyNode;
+import bergdb.dag.Keys;
+import bergdb.dag.Klong;
+import bergdb.dag.Kvt;
+import bergdb.dag.NodeVisitor;
+import bergdb.dag.TopNode;
+import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
+import bergdb.nanotest.BasicTestEnvironment;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
-import bergdb.pub.Connection;
-import bergdb.pub.Database;
-import bergdb.pub.DatabaseBuilder;
-import bergdb.pub.Factory;
-import bergdb.pubimp.DatabaseBuilderImp;
-import bergdb.pubimp.DatabaseImp;
+import bergdb.pubimp.PubKeys;
 import bergdb.stream.MemoryStream;
 
 /**
@@ -41,36 +48,57 @@ public class Issue150420 {
         
         MemoryStream stream = new MemoryStream();
         
-        DatabaseBuilder builder = Factory.database();
-        ((DatabaseBuilderImp) builder).getDbBuilder().startupDistance(100*1000);
-        ((DatabaseBuilderImp) builder).getDbBuilder().mainStream(stream);
-        Database database = builder.start();
-        Connection connection = database.connection();
+        Db db1 = Db.builder().startupDistance(100*1000).mainStream(stream).start();
         
         for (String key : keys) {
-            connection.put(key, new byte[10*1000]);
+            String ikey = PubKeys.u2i(key);
+            db1.execute(db1.trans().put(ikey, new byte[10*1000]));
         }
-        connection.sync();
         
-        Db db = ((DatabaseImp) database).getDb();
-        DbScan.Result r1 = new DbScan(db).scan();
+        db1.sync(SyncLevel.ORDINARY);
+        DbScan.Result r1 = new DbScan(db1).scan();
+        //System.out.println("---- db1 ----");
+        //db1.printGraph(System.out);
         
-        MemoryStream stream2 = stream.copy();
-        stream = null;
-        db = null;
-        connection = null;
-        database = null;
+        stream = stream.copy();
+        Db db2 = Db.builder().mainStream(stream).start();
+        DbScan.Result r2 = new DbScan(db2).scan();
         
-        builder = Factory.database();
-        ((DatabaseBuilderImp) builder).getDbBuilder().mainStream(stream2);
-        database = builder.start();
-        connection = database.connection();
+        //System.out.println("---- db2 ----");
+        //db2.printGraph(System.out);
         
-        db = ((DatabaseImp) database).getDb();
-        DbScan.Result r2 = new DbScan(db).scan();
+        Collection<String> one = getKeys(db1);
+        Collection<String> two = getKeys(db2);
+        one.removeAll(two);
+        
+        if (one.size() > 0) {
+            env.out().println("DIFF:");
+            for (String s : one) {
+                env.out().println(s);
+            }
+        }
         
         Assert.assertEquals("kv count", r1.kvCount, r2.kvCount);
         Assert.assertEquals("checksum", r1.checksum, r2.checksum);
+        
+        db1.stop();
+        db2.stop();
+    }
+        
+    private List<String> getKeys(Db db) {
+        GetMany g = db.newGetMany();
+        g.lookupTime = Long.MAX_VALUE;
+        g.startKey = null;
+        g.stopCondition = new GetMany.DontStop();
+        
+        db.getMany(g);
+        
+        List<String> keys = new ArrayList<String>();
+        
+        for (Kvt kvt : g.result) {
+            keys.add(Keys.toString(kvt.key));
+        }
+        return keys;
     }
 
     private List<String> readKeys() throws IOException {
@@ -92,5 +120,9 @@ public class Issue150420 {
         }
         
         return list;
+    }
+    
+    public static void main(String[] args) throws Exception {
+        Issue150420.runTest(new BasicTestEnvironment());
     }
 }
