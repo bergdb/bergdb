@@ -10,6 +10,7 @@ import bergdb.common.Util;
 import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.OneFileStream;
@@ -565,20 +566,54 @@ public class DbTesterStream {
     }
     
     @Nano
-    public static void testDbWithReadOnlyStream() {
-        MemoryStream stream = new MemoryStream();
-        Db db = Db.builder().testSetup(stream).start();
+    public static void testReadOnlyStream1() {
+        MemoryStream s1 = new MemoryStream();
+        Db db = Db.builder().testSetup(s1).start();
         db.execute(db.trans().put("my-string-key", new byte[0]));
         
         long c1 = DbUtil.checksum(db);
         db.sync(SyncLevel.ORDINARY);
         db.stop();
         
-        ReadOnlyStream s2 = new ReadOnlyStream(stream);
-        Db db2 = Db.builder().testSetup().mainStream(s2).start();
+        ReadOnlyStream s2 = new ReadOnlyStream(s1);
+        Db db2 = Db.builder().testSetup(s2).start();
         long c2 = DbUtil.checksum(db2);
         db2.stop();
         
         Assert.assertEquals(c1, c2);
+    }
+    
+    @Nano
+    public static void testReadOnlyStream2() {
+        // Test to write to read-only Db. Should throw exception.
+        // Because of BufferedStream, the actual append to underlying stream
+        // is done in a separate thread. That is the reason why the io exception
+        // is not visible until the next write.
+        // NOTE This is problematic! And why does sync() work? We should at 
+        // least be able to query or something? To check whether transaction
+        // was successful.
+        
+        MemoryStream s1 = new MemoryStream();
+        Db db1 = Db.builder().testSetup(s1).start();
+        db1.execute(db1.trans().put("my-string-key", new byte[0]));
+        db1.sync(SyncLevel.ORDINARY);
+        db1.stop();
+        
+        ReadOnlyStream s2 = new ReadOnlyStream(s1);
+        Db db2 = Db.builder().testSetup(s2).start();
+        
+        db2.execute(db2.trans().put("my-string-key-2", new byte[0]));
+        db2.sync(SyncLevel.ORDINARY);
+        
+        StreamIoException ex = null;
+        try {
+            db2.execute(db2.trans().put("my-string-key-3", new byte[0]));
+        } catch (StreamIoException e) {
+            ex = e;
+        }
+        
+        Assert.assertTrue(ex != null);
+        
+        db2.stop();
     }
 }

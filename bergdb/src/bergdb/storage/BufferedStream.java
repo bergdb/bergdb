@@ -465,6 +465,8 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             this.stop = true;
         }
     }
+    
+    // ======== Test ========
 
     @Nano
     public static void test1() throws IOException, InterruptedException {

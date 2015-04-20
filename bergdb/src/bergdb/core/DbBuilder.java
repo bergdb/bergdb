@@ -282,11 +282,8 @@ public class DbBuilder {
      * Short buffer time (10 ms) for fast tests.
      */
     public DbBuilder testSetup() {
-        clock(new CoreTestClock());
-        evictBoss(new NoEvictBoss());
+        testSetupExceptStream();
         stream("main", new MemoryStream(), 100*1000, 10);
-        retainForever();
-        testId();
         return this;
     }
     
@@ -295,9 +292,17 @@ public class DbBuilder {
      * Short buffer time (10 ms) for fast tests.
      */
     public DbBuilder testSetup(AppendOnlyStream stream) {
-        testSetup();
+        testSetupExceptStream();
         stream("main", stream, 100*1000, 10);
         return this;
+    }
+    
+    private void testSetupExceptStream() {
+        // Test setup except for stream.
+        clock(new CoreTestClock());
+        evictBoss(new NoEvictBoss());
+        retainForever();
+        testId();
     }
 
     public Db build() {
