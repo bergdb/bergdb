@@ -64,10 +64,10 @@ JAVADOC
 <p><b>Testing</b>. Use Nanotest (com.bergdb.nanotest). Use it for unit tests
 (nanotest group <b>unit</b>) and functional tests (<b>f</b>) 
 A major reason for using Nanotest is to be able to self-test easily (even when compiled with GCJ, 
-IKVM, ..). Nanotest is very simple and small compare to JUnit and it allows test methods directly
+IKVM, ..). Nanotest is very simple and small compared to JUnit and it allows test methods directly
 in the classes to be tested. I like when the test follows the testee with moves/renaming/deletion.
 A "unit" test should run within 0.1 s, an "f" test should run within 10 s.
-The difference between "unit" tests and "f" tests is not strictly functional, but about 
+The difference between "unit" tests and "f" tests is not strictly functional, but mainly about 
 execution time. Both of the test types, test that the code is working properly.</p>
 
 <pre>
@@ -76,7 +76,6 @@ execution time. Both of the test types, test that the code is working properly.<
     unit          0.1 s     Unit        Fast tests, typically unit tests. Run before every commit.
     f            10.0 s     F           Slower tests. Run every week.
     night      1000.0 s     Night       Long-running test, often needs filesystem. Run over night.
-    perf        100.0 s     Perf        Performance tests.
     
     Above test are automatic tests. Additionally, the package bergdb.test.man contains manual
     tests. Tests that required interaction or manual inspection of the result.

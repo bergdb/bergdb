@@ -12,8 +12,8 @@ import bergdb.nanotest.Nano;
  * 
  * @author Frans Lundberg
  */
-public class ReadOnlyStream implements AppendOnlyStream {
-    private AppendOnlyStream stream;
+public final class ReadOnlyStream implements AppendOnlyStream {
+    private final AppendOnlyStream stream;
     
     /**
      * Creates a new instance by wrapping the provided stream.

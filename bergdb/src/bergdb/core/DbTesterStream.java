@@ -13,6 +13,7 @@ import bergdb.nanotest.Nano;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.OneFileStream;
+import bergdb.stream.ReadOnlyStream;
 
 /**
  * Tests the database with a stream.
@@ -546,8 +547,6 @@ public class DbTesterStream {
         db.execute(db.trans().put("/small2", "v-small2"));
         db.sync(SyncLevel.ORDINARY);
         
-        //System.out.println("---- Before restart ----");
-        //db.printGraph(System.out);
         db = null;
         
         // ---- Restart
@@ -555,10 +554,6 @@ public class DbTesterStream {
         s = s.copy();
         db = Db.builder().testSetup().mainStream(s).build();
         db.start();
-        //System.out.println("Stream length: " + s.getLength());
-        
-        //System.out.println("---- After restart ----");
-        //db.printGraph(System.out);
         
         Assert.assertEquals("v-small1", DbUtil.getString(db, "/small1"));
         Assert.assertEquals("v-small2", DbUtil.getString(db, "/small2"));
@@ -567,5 +562,23 @@ public class DbTesterStream {
             byte[] value = DbUtil.get(db, Long.MAX_VALUE, Keys.toBytes("/large-" + i));
             Assert.assertEquals(valueSize + i, value.length);
         }
+    }
+    
+    @Nano
+    public static void testDbWithReadOnlyStream() {
+        MemoryStream stream = new MemoryStream();
+        Db db = Db.builder().testSetup(stream).start();
+        db.execute(db.trans().put("my-string-key", new byte[0]));
+        
+        long c1 = DbUtil.checksum(db);
+        db.sync(SyncLevel.ORDINARY);
+        db.stop();
+        
+        ReadOnlyStream s2 = new ReadOnlyStream(stream);
+        Db db2 = Db.builder().testSetup().mainStream(s2).start();
+        long c2 = DbUtil.checksum(db2);
+        db2.stop();
+        
+        Assert.assertEquals(c1, c2);
     }
 }
