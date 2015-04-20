@@ -132,7 +132,7 @@ public class DbStarter3 {
         //
         // * Creates nextMap.
         // * Creates posMap
-        //      Only latest version of nodes added. Nodes creates after startupTime, not added.
+        //      Only latest version of nodes added. Nodes created after startupTime, not added.
         //
         
         int transCount = transactions.size();

@@ -446,7 +446,10 @@ public class Db {
      * @throws BadReplicaException
      * @throws IllegalDbStateException
      */
-    private void startInner(StartParams params, StartListener listener) {        
+    private void startInner(StartParams params, StartListener listener) {       
+        // TODO B. Consider startupPos - take it from meta block or last committed transaction?
+        // I suppose there is a reason what startupPos is written with each transaction.
+        
         assertStateIsZero();
 
         syncStreams();
