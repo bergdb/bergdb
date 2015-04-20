@@ -13,14 +13,17 @@ public class DbConstants {
 
     /** 
      * IKP, Internal Key Prefix; prefix of keys used to store internal database data.
-     * Keys with this prefix must not be used by a user directly.
+     * Keys with this prefix must not be used by an ordinary user.
      * The Pub Layer enforces this; the Core Layer does not.
+     * The string is an ikey (not ukey).
      */
-    public static final String INTERNAL_KEY_PREFIX = Util.identity("/#i/");
+    public static final String INTERNAL_PREFIX = Util.identity("/#i/");
+    
+    public static final long[] INTERNAL_PREFIX_SKEY = Keys.toSegments(INTERNAL_PREFIX);
     
     /** Minimum possible cacheMemoryValue. */
     public static final long MIN_CACHE_MEMORY_VALUE = Constants.MIN_CACHE_MEMORY_VALUE;
     
     /** Used for internal dummy writes. */
-    static final long[] DUMMY_KEY = Keys.toSegments(INTERNAL_KEY_PREFIX + "-dummy");
+    static final long[] DUMMY_KEY = Keys.toSegments(INTERNAL_PREFIX + "-dummy");
 }

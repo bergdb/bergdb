@@ -54,20 +54,20 @@ public class IndexManager {
     /** 
      * ikey for where to store index entries, constant database directory. 
      */
-    private static final byte[] INDEX_DIR_BYTES = Keys.toBytes(DbConstants.INTERNAL_KEY_PREFIX + "di/");
+    private static final byte[] INDEX_DIR_BYTES = Keys.toBytes(DbConstants.INTERNAL_PREFIX + "di/");
 
-    private static final String INDEX_INFO_DIR = Util.identity(DbConstants.INTERNAL_KEY_PREFIX + "dii/");
+    private static final String INDEX_INFO_DIR = Util.identity(DbConstants.INTERNAL_PREFIX + "dii/");
     
     /** 
      * bkey for where to store index info entries (Data.Index objects).
      */
-    private static final byte[] INDEX_INFO_DIR_BYTES = Keys.toBytes(DbConstants.INTERNAL_KEY_PREFIX + "dii/");
+    private static final byte[] INDEX_INFO_DIR_BYTES = Keys.toBytes(DbConstants.INTERNAL_PREFIX + "dii/");
     
     /** 
      * ikey for a virtual key directory. 
      * Just a prefix. Nothing actually stored here.
      */
-    private static final String INDEX_VDIR = Util.identity(DbConstants.INTERNAL_KEY_PREFIX + "div/");
+    private static final String INDEX_VDIR = Util.identity(DbConstants.INTERNAL_PREFIX + "div/");
     
     /**
      * Map from database directory to array of active/creating indexes for the directory.

@@ -43,6 +43,27 @@ public class DbTesterRestart {
         Assert.assertArrayEquals(Util.toBytes("Sanna"), value);
     }
     
+
+    @Nano
+    public static void testRestartOfEmptyDatabase() {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup(stream).clock(clock).testId().start();
+        clock.setTime(10);
+        db.sync(SyncLevel.ORDINARY);
+        
+        long c1 = DbUtil.checksum(db);
+        
+        stream = stream.copy();
+        
+        db = null;
+        Db db2 = Db.builder().testSetup().mainStream(stream).start();
+        
+        long c2 = DbUtil.checksum(db2);
+        
+        Assert.assertEquals(c1, c2);
+    }
+    
     @Nano
     public static void longerThanStartup() {
         // Stream is longer than startupDistance, single key, value updated many times.

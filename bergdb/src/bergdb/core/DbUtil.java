@@ -97,11 +97,12 @@ public class DbUtil {
     }
     
     /**
-     * Equivalent to: checksum(db, Long.MAX_VALUE, true).
-     * Checksum of latest database state (key-value).
+     * Equivalent to: checksum(db, Long.MAX_VALUE, false, false).
+     * Checksum of latest database state (key-value). KV time and internal
+     * KVs are not included in the checksum.
      */
     public static long checksum(Db db) {
-        return checksum(db, Long.MAX_VALUE, true);
+        return checksum(db, Long.MAX_VALUE, false, false);
     }
     
     /**
@@ -112,45 +113,8 @@ public class DbUtil {
      * @param includeKvTime  If true, the database write time of each KV is included in the result.
      * @return The checksum.
      */
-    public static long checksum(Db db, final long dbTime, final boolean includeKvTime) {
-        // This method uses a special StopCondition to compute the checksum.
-        // No Kvs are added to the result.
-        
-        final Checksum sum = new CRC32();
-        
-        GetMany.StopCondition condition = new GetMany.StopCondition() {
-            public int handleKvt(Kvt kvt) {
-                byte[] bkey = Keys.toBytes(kvt.key);
-                byte[] value = kvt.value;
-                
-                sum.update(bkey, 0, bkey.length);
-                sum.update(value, 0, value.length);
-                
-                if (includeKvTime) {
-                    byte[] timeBytes = new byte[8];
-                    Bytes.longToBytesLE(kvt.time, timeBytes, 0);
-                    sum.update(timeBytes, 0, timeBytes.length);
-                }
-                
-                return GetMany.StopCondition.CONTINUE;
-            }
-            
-            public void eod() {
-                // empty
-            }
-        };
-        
-
-        GetMany g = db.newGetMany();
-        g.lookupTime = dbTime;
-        g.stopCondition = condition;
-        g.startKey = null;
-        db.getMany(g);
-        
-        assert g.result != null : "g.result == null";
-        assert g.result.size() == 0 : "unexpected, " + g.result.size();
-        
-        return sum.getValue();
+    public static long checksum(Db db, final long dbTime, final boolean includeKvTime, boolean includeInternal) {
+        return checksumOfRange(db, dbTime, includeKvTime, includeInternal, null, null);
     }
     
     /**
@@ -163,7 +127,8 @@ public class DbUtil {
      * @param includeKvTime  If true, the database write time of each KV is included in the result.
      * @return The checksum.
      */
-    public static long checksumOfRange(Db db, final long dbTime, byte[] from, byte[] to, final boolean includeKvTime) {
+    public static long checksumOfRange(Db db, final long dbTime, 
+            final boolean includeKvTime, boolean includeInternal, byte[] from, byte[] to) {
         // This method uses a special StopCondition to compute the checksum.
         // No Kvs are added to the result.
         
@@ -177,6 +142,11 @@ public class DbUtil {
                 
                 if (toKey != null && Keys.compareKeys(kvt.key, toKey) >= 0) {
                     return GetMany.StopCondition.STOP;
+                }
+                
+                boolean isInternal = Keys.isPrefix(DbConstants.INTERNAL_PREFIX_SKEY, kvt.key);
+                if (isInternal) {
+                    return GetMany.StopCondition.CONTINUE;
                 }
                 
                 byte[] bkey = Keys.toBytes(kvt.key);
@@ -234,8 +204,8 @@ public class DbUtil {
         Db db2 = createEmptyDb();
         
         long t = Long.MAX_VALUE;
-        long c1 = DbUtil.checksum(db1, t, true);
-        long c2 = DbUtil.checksum(db2, t, true);
+        long c1 = DbUtil.checksum(db1, t, true, true);
+        long c2 = DbUtil.checksum(db2, t, true, true);
         
         Assert.assertEquals(c1, c2);
     }
@@ -249,8 +219,8 @@ public class DbUtil {
         db2.execute(db2.trans().put("/key1", "v1"));
         
         long t = Long.MAX_VALUE;
-        long c1 = DbUtil.checksum(db1, t, true);
-        long c2 = DbUtil.checksum(db2, t, true);
+        long c1 = DbUtil.checksum(db1, t, true, true);
+        long c2 = DbUtil.checksum(db2, t, true, true);
         
         Assert.assertEquals(c1, c2);
     }
@@ -264,8 +234,8 @@ public class DbUtil {
         db2.execute(db2.trans().put("/key1", "v2"));   // <-- diff in value
         
         long t = Long.MAX_VALUE;
-        long c1 = DbUtil.checksum(db1, t, true);
-        long c2 = DbUtil.checksum(db2, t, true);
+        long c1 = DbUtil.checksum(db1, t, true, true);
+        long c2 = DbUtil.checksum(db2, t, true, true);
         
         Assert.assertTrue(c1 != c2);
     }
@@ -279,8 +249,8 @@ public class DbUtil {
         db2.execute(db2.trans().put("/key2", "v1"));   // <-- diff in key
         
         long t = Long.MAX_VALUE;
-        long c1 = DbUtil.checksum(db1, t, true);
-        long c2 = DbUtil.checksum(db2, t, true);
+        long c1 = DbUtil.checksum(db1, t, true, true);
+        long c2 = DbUtil.checksum(db2, t, true, true);
         
         Assert.assertTrue(c1 != c2);
     }
@@ -294,8 +264,8 @@ public class DbUtil {
         db2.execute(db2.trans().put("/key1", "v1"));
         
         long t = Long.MAX_VALUE;
-        long c1 = DbUtil.checksum(db1, t, true);
-        long c2 = DbUtil.checksum(db2, t, true);
+        long c1 = DbUtil.checksum(db1, t, true, true);
+        long c2 = DbUtil.checksum(db2, t, true, true);
         
         Assert.assertTrue(c1 != c2);
     }
@@ -311,8 +281,8 @@ public class DbUtil {
         db2.execute(db2.trans().put("/key1", "v1"));
         
         long t = Long.MAX_VALUE;
-        long c1 = DbUtil.checksum(db1, t, false);
-        long c2 = DbUtil.checksum(db2, t, false);
+        long c1 = DbUtil.checksum(db1, t, false, true);
+        long c2 = DbUtil.checksum(db2, t, false, true);
         
         Assert.assertTrue(c1 == c2);
     }
@@ -327,8 +297,8 @@ public class DbUtil {
         db2.execute(db2.trans().put("/key2", "v2"));
         
         long t = Long.MAX_VALUE;
-        long c1 = DbUtil.checksum(db1, t, true);
-        long c2 = DbUtil.checksum(db2, t, true);
+        long c1 = DbUtil.checksum(db1, t, true, true);
+        long c2 = DbUtil.checksum(db2, t, true, true);
         
         Assert.assertTrue(c1 == c2);
     }
@@ -343,16 +313,15 @@ public class DbUtil {
         byte[] to = Keys.toBytes("/z");
         long t = Long.MAX_VALUE;
         
-        long c1 = DbUtil.checksum(db1, t, true);
-        long c2 = DbUtil.checksumOfRange(db1, t, from, to, true);
+        long c1 = DbUtil.checksum(db1, t, true, true);
+        long c2 = DbUtil.checksumOfRange(db1, t, true, true, from, to);
         
         Assert.assertEquals(c1, c2);
     }
     
-    
     @Nano 
     private static void testChecksumOfRange2() {
-        // Checks that /key30 is exclusive and /key20 inclusive.
+        // Key /key30 is exclusive and /key20 inclusive.
         
         long t = Long.MAX_VALUE;
         Db db1 = createEmptyDb();
@@ -360,11 +329,25 @@ public class DbUtil {
         db1.execute(db1.trans().put("/key10", "v10"));
         db1.execute(db1.trans().put("/key20", "v20"));
         
-        long c1 = DbUtil.checksum(db1, t, true);
+        long c1 = DbUtil.checksum(db1, t, true, true);
         
         db1.execute(db1.trans().put("/key30", "v30"));
         
-        long c2 = DbUtil.checksumOfRange(db1, t, Keys.toBytes("/key10"), Keys.toBytes("/key30"), true);
+        long c2 = DbUtil.checksumOfRange(db1, t, true, true, 
+                Keys.toBytes("/key10"), Keys.toBytes("/key30"));
+        
+        Assert.assertEquals(c1, c2);
+    }
+    
+    @Nano
+    private static void testThatInternalKvNotIncluded() {
+        Db db = createEmptyDb();
+        
+        db.execute(db.trans().put("/key10", "v10"));
+        long c1 = DbUtil.checksum(db, Long.MAX_VALUE, false, false);
+        
+        db.execute(db.trans().put(DbConstants.INTERNAL_PREFIX + "/200", "internal"));
+        long c2 = DbUtil.checksum(db, Long.MAX_VALUE, false, false);
         
         Assert.assertEquals(c1, c2);
     }

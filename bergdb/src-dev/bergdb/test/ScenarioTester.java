@@ -163,7 +163,7 @@ public class ScenarioTester {
         db.execute(db.trans().put("/z1", new byte[200*1000]));
         db.execute(db.trans().put("/direct/key2", "v2"));     
         db.execute(db.trans().put("/z2", new byte[200*1000]));
-        long sum1 = DbUtil.checksum(db, Long.MAX_VALUE, true);
+        long sum1 = DbUtil.checksum(db, Long.MAX_VALUE, true, true);
         db.sync(SyncLevel.STRONG);
         
         //System.out.println("==== printGraph");
@@ -175,7 +175,7 @@ public class ScenarioTester {
         
         db = Db.builder().testSetup().mainStream(stream).clock(clock).build();
         db.start();
-        long sum2 = DbUtil.checksum(db, Long.MAX_VALUE, true);
+        long sum2 = DbUtil.checksum(db, Long.MAX_VALUE, true, true);
         
         assertEquals(100*1000, db.getStartupDistance());
         assertEquals(sum1, sum2);
@@ -204,7 +204,7 @@ public class ScenarioTester {
             db.execute(trans);
         }
         
-        long sum1 = DbUtil.checksum(db, Long.MAX_VALUE, true);
+        long sum1 = DbUtil.checksum(db, Long.MAX_VALUE, true, true);
         db.sync(SyncLevel.STRONG);
         
         db = null;
@@ -213,7 +213,7 @@ public class ScenarioTester {
         stream = stream.copy();
         db = Db.builder().testSetup().mainStream(stream).clock(clock).build();
         db.start();
-        long sum2 = DbUtil.checksum(db, Long.MAX_VALUE, true);
+        long sum2 = DbUtil.checksum(db, Long.MAX_VALUE, true, true);
         
         assertEquals(sum1, sum2);
     }

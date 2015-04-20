@@ -1133,7 +1133,7 @@ public class Db {
         x.startupPos.set(sp);
         
         // TODO A. Analys startupPos - line below added. Correct?
-        // TODO B. Add tests for startupPos.
+        // TODO B. Add more tests for startupPos.
         nodeStream.getMetaBlock().setStartupPos(sp);
     }
 
