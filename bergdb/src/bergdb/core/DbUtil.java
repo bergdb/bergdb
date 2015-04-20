@@ -16,7 +16,9 @@ import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.Clock;
+import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
+import bergdb.stream.ReadOnlyStream;
 
 /**
  * Static utility methods related to Db; Db help functions.
@@ -183,8 +185,39 @@ public class DbUtil {
         return sum.getValue();
     }
     
+    /**
+     * Compares db1 with db1 restarted. Same stream is used; the restarted 
+     * database uses it read-only.
+     * 
+     * @throws AssertionError If the databases have different kv count or different checksums.
+     */
+    public static void compareWithRestarted(Db db1) {
+        AppendOnlyStream stream = db1.internal().getMainStream();
+        ReadOnlyStream ro = new ReadOnlyStream(stream);        
+        Db db2 = Db.builder().mainStream(ro).start();
+        
+        DbScan.Result r1 = new DbScan(db1).scan();
+        DbScan.Result r2 = new DbScan(db2).scan();
+        
+        db2.stop();
+        
+        if (r1.kvCount != r2.kvCount) {
+            String message = "Restarted Db has different kv count, orig: " 
+                    + r1.kvCount + ", restarted: " + r2.kvCount;
+            System.out.println("#### " + message);
+            //throw new AssertionError(message);
+        }
+        
+        if (r1.checksum != r2.checksum) {
+            String message = "Restarted Db has different checksum, " 
+                    + "orig: " + r1.kvCount + ", restarted: " + r2.kvCount;
+            System.out.println("#### " + message);
+            //throw new AssertionError(message);
+        }
+    }
     
-    // ======== Testing ========
+    
+    // ======== Test ========
     
     private static Db createEmptyDb() {
         return createEmptyDb(100);

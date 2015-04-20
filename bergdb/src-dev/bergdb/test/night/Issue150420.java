@@ -10,6 +10,7 @@ import java.util.List;
 
 import bergdb.core.Db;
 import bergdb.core.DbScan;
+import bergdb.core.DbUtil;
 import bergdb.core.SyncLevel;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
@@ -44,9 +45,16 @@ public class Issue150420 {
         
         Db db1 = Db.builder().startupDistance(100*1000).mainStream(stream).start();
         
+        int index = 0;
+        
         for (String key : keys) {
             String ikey = PubKeys.u2i(key);
             db1.execute(db1.trans().put(ikey, new byte[10*1000]));
+            
+            System.out.println("index: " + index);
+            DbUtil.compareWithRestarted(db1);
+            
+            index++;
         }
         
         db1.sync(SyncLevel.ORDINARY);

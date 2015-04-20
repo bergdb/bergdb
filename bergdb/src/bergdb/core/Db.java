@@ -1323,6 +1323,10 @@ public class Db {
         public Aux aux() { return aux; }
         
         public Evictor evictor() { return evictor; }
+
+        public AppendOnlyStream getMainStream() {
+            return storageManager.getMainStream();
+        }
     }
     
     /**

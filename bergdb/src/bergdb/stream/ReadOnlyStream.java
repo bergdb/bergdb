@@ -14,15 +14,29 @@ import bergdb.nanotest.Nano;
  */
 public final class ReadOnlyStream implements AppendOnlyStream {
     private final AppendOnlyStream stream;
+    private final boolean enableClose;
     
     /**
      * Creates a new instance by wrapping the provided stream.
      */
     public ReadOnlyStream(AppendOnlyStream stream) {
+        this(stream, false);
+    }
+    
+    /**
+     * Creates a new instance by wrapping the provided stream.
+     * 
+     * @param stream The stream to wrap.
+     * @param enableClose If true, enable close() method. Default is to do
+     * nothing in the close() method; if enabled, close() will close the 
+     * wrapped stream.
+     */
+    public ReadOnlyStream(AppendOnlyStream stream, boolean enableClose) {
         if (stream == null) {
             throw new IllegalArgumentException("stream == null not allowed");
         }
         this.stream = stream;
+        this.enableClose = enableClose;
     }
 
     public long getLength() {
@@ -56,7 +70,9 @@ public final class ReadOnlyStream implements AppendOnlyStream {
     }
 
     public void close() throws IOException {
-        stream.close();
+        if (enableClose) {
+            stream.close();
+        }
     }
     
     public static class ReadOnlyException extends IOException {

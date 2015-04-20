@@ -874,6 +874,10 @@ public class StorageManager implements AppendOnlyStream {
         throw new UnsupportedOperationException("This class does not support setListener().");
     }
     
+    public AppendOnlyStream getMainStream() {
+        return mainStream;
+    }
+    
     /**
      * Builds a DBStorageManager.
      */
