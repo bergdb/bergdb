@@ -25,6 +25,7 @@ import bergdb.stream.MemoryStream;
  * @author Frans Lundberg
  */
 public class DbUtil {
+    // NOTE The checksum functionality could be moved to DbScan.
     
     private DbUtil() {}
     
@@ -264,8 +265,8 @@ public class DbUtil {
         db2.execute(db2.trans().put("/key1", "v1"));
         
         long t = Long.MAX_VALUE;
-        long c1 = DbUtil.checksum(db1, t, true, true);
-        long c2 = DbUtil.checksum(db2, t, true, true);
+        long c1 = DbUtil.checksum(db1, t, true, false);
+        long c2 = DbUtil.checksum(db2, t, true, false);
         
         Assert.assertTrue(c1 != c2);
     }
