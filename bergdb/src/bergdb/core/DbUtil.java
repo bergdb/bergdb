@@ -203,15 +203,12 @@ public class DbUtil {
         
         if (r1.kvCount != r2.kvCount) {
             String message = "Restarted Db has different kv count, orig: " 
-                    + r1.kvCount + ", restarted: " + r2.kvCount;
-            System.out.println("#### " + message);
+                    + r1.kvCount + ", restarted (diff): " + (r2.kvCount - r1.kvCount);
+            System.out.println("## " + message);
             //throw new AssertionError(message);
-        }
-        
-        if (r1.checksum != r2.checksum) {
-            String message = "Restarted Db has different checksum, " 
-                    + "orig: " + r1.kvCount + ", restarted: " + r2.kvCount;
-            System.out.println("#### " + message);
+        } else if (r1.checksum != r2.checksum) {
+            String message = "Restarted Db has same kv count but different checksums.";
+            System.out.println("## " + message);
             //throw new AssertionError(message);
         }
     }

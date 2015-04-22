@@ -134,7 +134,7 @@ public class StartupDistanceTester {
             sum += Long.parseLong(s);
         }
         
-        Assert.assertEquals(sum, 0);
+        Assert.assertEquals(0, sum);
     }
     
     private void createAccounts() {

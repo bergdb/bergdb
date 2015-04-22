@@ -446,15 +446,13 @@ public class Db {
      * @throws BadReplicaException
      * @throws IllegalDbStateException
      */
-    private void startInner(StartParams params, StartListener listener) {       
-        // TODO B. Consider startupPos - take it from meta block or last committed transaction?
-        // I suppose there is a reason what startupPos is written with each transaction.
-        
+    private void startInner(StartParams params, StartListener listener) {
         assertStateIsZero();
 
         syncStreams();
         handleEmptyStream();
         nodeStream.recover();
+        
         handleStartParams(params, listener);
         
         long startupPos = x.startupPos.get();
@@ -487,11 +485,18 @@ public class Db {
      * @param listener
      */
     private void handleStartParams(StartParams params, StartListener listener) {
+        // params.isNull() is normally true, can be overridden for test purposes.
+        
         if (params.isNull()) {
             params = new StartParams();
             MetaBlock meta = nodeStream.getMetaBlock();
-            params.startupPos = getStartupPosFromMetaBlock(meta);
-            params.startupDistance = getStartupDistanceFromMetaBlock(meta);
+            meta.checkFormat();
+            
+            // TODO A. startupPos from last trans or from from meta block?
+            // From meta saves 8 bytes per trans (4% stream space trans with one kv of size 10-90).
+            //params.startupPos = getStartupPosFromLastTransaction(meta.getLastTransSpos());
+            params.startupPos = meta.getStartupPos();
+            params.startupDistance = meta.getStartupDistance();
         }
         
         startupDistance = params.startupDistance;
@@ -500,22 +505,33 @@ public class Db {
         listener.reportStartPos(x.startupPos.get());
     }
 
-    private long getStartupPosFromMetaBlock(MetaBlock meta) {
-        long pos = meta.getStartupPos();
-        if (pos < 0) {
-            throw new StreamFormatException("Bad value of startupPos in meta " +
-                    "block of stream: " + pos + ".");
+    /**
+     * Returns the startupPos stored in the last successful transaction
+     * by iterating from transPos to the end of the stream.
+     */
+    @SuppressWarnings("unused")
+    private long getStartupPosFromLastTransaction(long transPos) {
+        // This approach was used from 150422 instead of the previous approach to use
+        // the startPos from the last valid meta block.
+        
+        if (transPos == Spos.NULL) {
+            transPos = 0;
         }
-        return pos;
-    }
-
-    private int getStartupDistanceFromMetaBlock(MetaBlock meta) {
-        int distance = meta.getStartupDistance();
-        if (distance <= 0) {
-            throw new StreamFormatException("Bad value of startupDistance in meta " +
-                    "block of stream: " + distance + ".");
+        
+        assert transPos >= 0 : "bad transPos: " + transPos;
+        
+        NodeStream.TransIterator iter = nodeStream.createTransIterator(transPos);
+        long result = transPos;
+        
+        while (iter.next()) {
+            if (!iter.transOk) continue;
+            
+            StoredTrans storedTrans = iter.getStoredTrans();
+            result = storedTrans.startupPos;            
+            assert result >= 0 : "Bad storedTrans.startupPos: " + storedTrans.startupPos;
         }
-        return distance;
+        
+        return result;
     }
     
     /** Reads transactions from DB stream starting at startPos. */
@@ -658,6 +674,7 @@ public class Db {
         Trans trans = this.trans().build();
         trans.time = tt;
         trans.isInternal = true;
+        trans.startupPos = 0;
         
         TransNodes transNodes = new TransNodes();
         transNodes.addKeyNode(root);
@@ -1135,8 +1152,7 @@ public class Db {
         x.transNodes.clean();
         x.startupPos.set(sp);
         
-        // TODO A. Analys startupPos - line below added. Correct?
-        // TODO B. Add more tests for startupPos.
+        // TODO B. Analys startupPos - line below added. Correct?
         nodeStream.getMetaBlock().setStartupPos(sp);
     }
 

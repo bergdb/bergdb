@@ -335,7 +335,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         /**
          * Advances iterator to next transaction. Returns true if there was an item, false if not.
          * 
-         * Caller must hold DB.writeLock.
+         * Caller must hold Db.writeLock.
          */
         public boolean next() {
 

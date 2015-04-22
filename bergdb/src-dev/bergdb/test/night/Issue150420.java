@@ -42,19 +42,13 @@ public class Issue150420 {
         env.out().println("keys.size : " + keys.size());
         
         MemoryStream stream = new MemoryStream();
-        
         Db db1 = Db.builder().startupDistance(100*1000).mainStream(stream).start();
-        
-        int index = 0;
         
         for (String key : keys) {
             String ikey = PubKeys.u2i(key);
             db1.execute(db1.trans().put(ikey, new byte[10*1000]));
             
-            System.out.println("index: " + index);
             DbUtil.compareWithRestarted(db1);
-            
-            index++;
         }
         
         db1.sync(SyncLevel.ORDINARY);
@@ -128,3 +122,10 @@ public class Issue150420 {
         Issue150420.runTest(new BasicTestEnvironment());
     }
 }
+
+/*
+
+First error: 
+#### Restarted Db has different kv count, orig: 345, restarted: 343
+
+*/

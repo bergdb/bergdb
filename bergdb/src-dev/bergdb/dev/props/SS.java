@@ -31,3 +31,9 @@ public class SS {
         System.out.println(ss.longResultText);
     }
 }
+
+/*
+
+150422 got: SS:1.56 (1.25, 1.34, 1.66, 2.12)
+
+*/

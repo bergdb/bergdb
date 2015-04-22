@@ -35,7 +35,7 @@ public class CORE {
     Map<String, Double> resultMap;
     Map<String, Double> baseline1;
     Map<String, Double> baseline2;
-    boolean printDots = false;
+    boolean printDots = true;
     boolean verbose = false;
     boolean beShort = true;
     Result result;
@@ -285,9 +285,13 @@ public class CORE {
 Log 
 ===
 
+== 150422 ==
+cissi, Java HotSpot(TM) 64-Bit Server VM 24.65-b04, java 1.7.0_67
+CORE:0.75 (0.76, 0.96, 0.81, 0.55).
+
 == 150106 ==
 cissi, Java HotSpot(TM) 64-Bit Server VM 24.65-b04, java 1.7.0_67
-CORE:0.77 (0.78, 0.98, 0.85, 0.54)
+CORE:0.77 (0.78, 0.98, 0.85, 0.54).
 
 == 141109 ==
 Running on cissi, BergDB 2014.2. JVM: Java HotSpot(TM) 64-Bit Server VM 24.65-b04, java 1.7.0_67.
