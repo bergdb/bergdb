@@ -492,10 +492,9 @@ public class Db {
             MetaBlock meta = nodeStream.getMetaBlock();
             meta.checkFormat();
             
-            // TODO A. startupPos from last trans or from from meta block?
             // From meta saves 8 bytes per trans (4% stream space trans with one kv of size 10-90).
-            //params.startupPos = getStartupPosFromLastTransaction(meta.getLastTransSpos());
-            params.startupPos = meta.getStartupPos();
+            params.startupPos = getStartupPosFromLastTransaction(meta.getLastTransSpos());
+            //params.startupPos = meta.getStartupPos();
             params.startupDistance = meta.getStartupDistance();
         }
         
@@ -509,7 +508,6 @@ public class Db {
      * Returns the startupPos stored in the last successful transaction
      * by iterating from transPos to the end of the stream.
      */
-    @SuppressWarnings("unused")
     private long getStartupPosFromLastTransaction(long transPos) {
         // This approach was used from 150422 instead of the previous approach to use
         // the startPos from the last valid meta block.
@@ -1125,17 +1123,18 @@ public class Db {
     }
     
     private void store() {
-        long sp;
+        long currentSp = x.startupPos.get();
+        long newSp;
         
         if (x.trans.isStartupRerun) {
-            sp = x.trans.startupPos;
+            newSp = x.trans.startupPos;
         } else {
-            sp = computeNewStartupPos();
-            x.trans.startupPos = sp;
+            newSp = computeNewStartupPos(currentSp);
+            x.trans.startupPos = newSp;
         }
         
-        transSeq.addToTransNodes(sp, x.transNodes);
-        transSeq.removeBefore(sp);
+        transSeq.addToTransNodes(newSp, x.transNodes);
+        transSeq.removeBefore(newSp);
         
         if (!x.trans.isStartupRerun) {
             x.transNodes.addUnstoredDescendents();
@@ -1150,10 +1149,10 @@ public class Db {
         transSeq.add(x.transInfo);
         
         x.transNodes.clean();
-        x.startupPos.set(sp);
+        x.startupPos.set(newSp);
         
-        // TODO B. Analys startupPos - line below added. Correct?
-        nodeStream.getMetaBlock().setStartupPos(sp);
+        // TODO B. Analys startupPos - line below added. Can be removed, I think.
+        nodeStream.getMetaBlock().setStartupPos(newSp);
     }
 
     /**
@@ -1204,10 +1203,11 @@ public class Db {
     /** 
      * Computes a new startupPos based on the current current startupPos,
      * the stream length and the startupPosUpdater.
+     * 
+     * @param current  The current startup pos.
      */
-    private long computeNewStartupPos() {
+    private long computeNewStartupPos(long current) {
         assert transSeq != null : "kvTransSeq is null";
-        long current = x.startupPos.get();
         long length = nodeStream.getLength();
         return startupPosUpdater.newStartupPos(
                 current, length, startupDistance, (PosOfTransBeforeFunction) transSeq);

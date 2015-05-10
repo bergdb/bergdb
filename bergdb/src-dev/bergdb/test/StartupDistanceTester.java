@@ -71,6 +71,7 @@ public class StartupDistanceTester {
         
         payTillStreamSize(6.5e6);
         checkAccountSum(db);
+        
         Assert.assertEquals(500*1000, db.getStartupDistance());
         out.println("StartupDistanceTester: stream length: " + db.getStreamLength());
         out.println("Calling sync()...");
@@ -134,7 +135,7 @@ public class StartupDistanceTester {
             sum += Long.parseLong(s);
         }
         
-        Assert.assertEquals(0, sum);
+        Assert.assertEquals("sum of all " + noOfAccounts + " accounts", 0, sum);
     }
     
     private void createAccounts() {

@@ -20,6 +20,7 @@ public class F {
     public static void main(String[] args) {
         ConsoleUI ui = ConsoleUI.builder()
                 .printStart(true).printProps(false).printMethods(true)
+                //.printTestOutput(true)   // TODO A. working here
                 .build();
         printHeader();
         
