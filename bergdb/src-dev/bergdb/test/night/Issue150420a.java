@@ -77,9 +77,10 @@ public class Issue150420a {
         }
         
         System.out.println("\nError count: " + errorCount);
+        if (errorCount == 0) {
+            return;
+        }
         
-        db1.sync(SyncLevel.ORDINARY);
-        DbScan.Result r1 = new DbScan(db1).scan();
         //System.out.println("---- db1 ----");
         //db1.printGraph(System.out);
         

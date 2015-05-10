@@ -67,50 +67,36 @@ public class Issue150420 {
             kvCompare(db1);
             //dagCompare(db1);
             
-            if (errorCount > 0) {
-                break;
-            }
+            //if (errorCount > 0) {
+            //    break;
+            //}
             
             index++;
         }
         
         System.out.println("\nError count: " + errorCount);
         
-        db1.sync(SyncLevel.ORDINARY);
-        DbScan.Result r1 = new DbScan(db1).scan();
-        //System.out.println("---- db1 ----");
-        //db1.printGraph(System.out);
-        
-        stream = stream.copy();
-        Db db2 = Db.builder().mainStream(stream).start();
-        DbScan.Result r2 = new DbScan(db2).scan();
-        
-        //System.out.println("---- db2 ----");
-        //db2.printGraph(System.out);
-        
-        diff(db1, db2);
-        
-        Assert.assertEquals("kv count", r1.kvCount, r2.kvCount);
-        Assert.assertEquals("checksum", r1.checksum, r2.checksum);
-        
         db1.stop();
-        db2.stop();
     }
 
-    private void kvCompare(Db db1) {
+    private boolean kvCompare(Db db1) {
         boolean kvCompare = KvComparison.comparisonWithRestarted(db1).compare();
         if (kvCompare == false) {
             errorCount++;
             env.out().println("index: " + index + " KV COMPARE ERROR.");
         }
+        
+        return kvCompare;
     }
 
-    private void dagCompare(Db db1) {
+    private boolean dagCompare(Db db1) {
         boolean dagCompare = DagComparison.comparisonWithRestarted(db1).compare();
         if (dagCompare == false) {
             errorCount++;
             env.out().println("index: " + index + " DAG COMPARE ERROR.");
         }
+        
+        return dagCompare;
     }
     
     private void diff(Db db1, Db db2) {

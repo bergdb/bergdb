@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import bergdb.common.Bug;
+import bergdb.core.NextMap;
 import bergdb.dag.GetMany.StopCondition;
 import bergdb.pub.DbException;
 import bergdb.pub.IllegalDbStateException;
@@ -57,6 +58,10 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     private final int POINTER_LOCKS_LENGTH = 128;
     private final PointerLock[] pointerLocks;
     
+    private NextMap nextMap = new NextMap();
+    private boolean rerunMode;
+    private long startupTime;   
+    
     public Dag(NodeReader nodeReader, TopDs topDs, int maxNodeSize) {
         this.nodeReader = nodeReader;
         this.topDs = topDs;
@@ -77,6 +82,20 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         this.topDs = TopDs.createFromFirstRoot(time, new KeyNode(), AccessData.DEFAULT_ACCESS_DATA);
         this.maxNodeSize = maxNodeSize;
         this.pointerLocks = createPointerLocks();
+    }
+    
+    public Dag setNextMap(NextMap nextMap) {
+        this.nextMap = nextMap;
+        return this;
+    }
+    
+    public Dag setStartupTime(long startupTime) {
+        this.startupTime = startupTime;
+        return this;
+    }
+    
+    public void setRerunMode(boolean rerunMode) {
+        this.rerunMode = rerunMode;
     }
 
     private PointerLock[] createPointerLocks() {
@@ -261,10 +280,10 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
 
         synchronized (lock) {
             INode pointerNode = predecessor.getPointerNode(pointerIndex);
-            long pointerPos = predecessor.getPointerPos(pointerIndex);
+            long pointerPos1 = predecessor.getPointerPos(pointerIndex);
 
-            assert !Pointer.isNull(pointerNode, pointerPos) : "Pointer is null: " + pointerNode
-                    + ", " + pointerPos;
+            assert !Pointer.isNull(pointerNode, pointerPos1) : "Pointer is null: " + pointerNode
+                    + ", " + pointerPos1;
 
             if (Pointer.isMem(pointerNode)) {
                 result = pointerNode;
@@ -275,17 +294,18 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                         predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
             
             } else {
-                assert pointerPos > 0 : "bad pointerPos, " + pointerPos 
+                assert pointerPos1 > 0 : "bad pointerPos, " + pointerPos1 
                         + ", pointerIndex:" + pointerIndex + ", predecessor:" + predecessor;
+                assert nextMap != null : "nextMap is null";
                 
-                // XXX
-                //if (pointerPos == 1339984) {
-                //    System.out.println("######=============== 1339984 ========");
-                //    System.out.println("######======== dumpStack: ");
-                //    Thread.currentThread().dumpStack();
-                //}
+                long pointerPos2 = nextMap.forward(pointerPos1);
                 
-                result = nodeReader.readNode(pointerPos);
+                result = nodeReader.readNode(pointerPos2);
+                
+                if (this.rerunMode && result.isKeyNode()) {
+                    KeyNode keyNode = (KeyNode) result;
+                    keyNode.toPreviousState(this.startupTime);
+                }
                 
                 pointerListener.pointerFollowed(
                         predecessor, pointerIndex, result, Pointer.TYPE_STREAM);
@@ -1109,4 +1129,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     public static final SplitListener DO_NOTHING_SPLIT_LISTENER = new SplitListener() {
         public void nodeSplit(int splitType) {}
     };
+
+
 }

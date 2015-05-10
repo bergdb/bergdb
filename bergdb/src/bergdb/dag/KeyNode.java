@@ -662,7 +662,9 @@ public class KeyNode implements INode {
         // Synch action, ensures that published previous writes are visible.
         sz = this.size;             
         
-        assert lastTimeIndex == -1 || time >= klongs[lastTimeIndex];
+        assert lastTimeIndex == -1 || time >= klongs[lastTimeIndex] : 
+            "lastTimeIndex=" + lastTimeIndex + ", lastTime: " + klongs[lastTimeIndex] 
+            + ", time=" + time + ", keyNode: " + this.print();
         assert Klong.getType(klong) != Klong.TYPE_TIME : "Time klongs not supported.";
         
         int addCount = 1;
