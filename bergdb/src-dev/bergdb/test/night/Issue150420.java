@@ -122,10 +122,3 @@ public class Issue150420 {
         Issue150420.runTest(new BasicTestEnvironment());
     }
 }
-
-/*
-
-First error: 
-#### Restarted Db has different kv count, orig: 345, restarted: 343
-
-*/

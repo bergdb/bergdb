@@ -1134,6 +1134,8 @@ public class Db {
             x.trans.startupPos = sp;
         }
         
+        // XXX place of work, "sp" or "sp - 1" here?
+        
         transSeq.addToTransNodes(sp, x.transNodes);
         transSeq.removeBefore(sp);
         
