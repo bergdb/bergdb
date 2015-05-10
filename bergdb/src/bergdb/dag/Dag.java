@@ -906,12 +906,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             pd.nodeChangeListener.keyNodeCreated(newRoot);
             
             long secondKlong = node.firstAndSecond(tt, last, toInsert, first, second);
-            //pd.nodeChangeListener.keyNodeChanged(first);
-            //pd.nodeChangeListener.keyNodeChanged(second);
-            
             newRoot.addKlong(tt, Klong.EMPTY_KEY, first, pd.accessData);
             newRoot.addKlong(tt, secondKlong, second, pd.accessData);
-            //pd.nodeChangeListener.keyNodeChanged(newRoot);
 
             topDs.newSuperRoot(tt, newRoot, pd.accessData);
             pd.nodeChangeListener.topNodeCreated(topDs.getSuperRoot());
@@ -928,12 +924,9 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             KeyNode newSegmentRoot = new KeyNode(false);
             pd.nodeChangeListener.keyNodeCreated(newSegmentRoot);
             long secondKlong = node.firstAndSecond(tt, last, toInsert, first, second);
-            //pd.nodeChangeListener.keyNodeChanged(first);
-            //pd.nodeChangeListener.keyNodeChanged(second);
 
             newSegmentRoot.addKlong(tt, Klong.EMPTY_KEY, first, pd.accessData);
             newSegmentRoot.addKlong(tt, secondKlong, second, pd.accessData);
-            //pd.nodeChangeListener.keyNodeChanged(newSegmentRoot);
 
             long klong1 = pd.keyAccessPath.getKlong(depth);
             assert klong1 != Klong.NULL : "Missing klong in keyAccessPath, " + depth;

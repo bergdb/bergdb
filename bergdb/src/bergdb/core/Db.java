@@ -494,7 +494,6 @@ public class Db {
             
             // From meta saves 8 bytes per trans (4% stream space trans with one kv of size 10-90).
             params.startupPos = getStartupPosFromLastTransaction(meta.getLastTransSpos());
-            //params.startupPos = meta.getStartupPos();
             params.startupDistance = meta.getStartupDistance();
         }
         
@@ -666,7 +665,6 @@ public class Db {
         MetaBlock meta = nodeStream.getMetaBlock();
         meta.setId(databaseId.getBytes());
         meta.setStartupDistance(startupDistance);
-        meta.setStartupPos(0);
         meta.setTime(tt);
         
         Trans trans = this.trans().build();
@@ -1150,9 +1148,6 @@ public class Db {
         
         x.transNodes.clean();
         x.startupPos.set(newSp);
-        
-        // TODO B. Analys startupPos - line below added. Can be removed, I think.
-        nodeStream.getMetaBlock().setStartupPos(newSp);
     }
 
     /**

@@ -23,7 +23,7 @@ import bergdb.nanotest.Nano;
  *                 before the meta block.
  * 24     16       Database ID. 128 random bits, used as unique database ID.
  * 40      4       startupDistance in bytes. Typically 20M (LE-first byte order).
- * 44     52       startupPos. Stream position to startup from (LE-first byte order).
+ * 44     52       startupPos. Stream position to startup from (LE-first byte order). DEPRECATED FROM 2015-05-10!
  * 53     75       Reserved, must be set to zero.
  * 127     1       META_BLOCK_LAST_BYTE. Used to indicate that the block is valid.
  * </pre>
@@ -109,11 +109,6 @@ public class MetaBlock {
         long time = this.getTime();
         if (time < 0) {
             throw new StreamFormatException("Meta block, bad time, " + time + ".");
-        }
-        
-        long startupPos = this.getStartupPos();
-        if (startupPos < 0) {
-            throw new StreamFormatException("Meta block, bad startupPos, " + startupPos + ".");
         }
         
         checkEndZeros();
@@ -218,10 +213,16 @@ public class MetaBlock {
         Bytes.intToBytesLE(startupDistance, block, 40);
     }
     
+    /**
+     * @deprecated since 2015-05-10.
+     */
     public long getStartupPos() {
         return Bytes.bytesToLongLE(block, 44);
     }
     
+    /**
+     * @deprecated since 2015-05-10.
+     */
     public void setStartupPos(long pos) {
         Bytes.longToBytesLE(pos, block, 44);
     }
@@ -250,14 +251,7 @@ public class MetaBlock {
      */
     public static class Tester {
         private Tester() {}
-        
-        @Nano
-        public static void tStartupPos() {
-            MetaBlock b = new MetaBlock();
-            b.setStartupPos(3111222333444L);
-            Assert.assertEquals(3111222333444L, b.getStartupPos());
-        }
-        
+                
         @Nano
         public static void time() {
             MetaBlock b = new MetaBlock();

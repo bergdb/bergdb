@@ -30,6 +30,7 @@ import bergdb.stream.MemoryStream;
  * 
  * @author Frans Lundberg
  */
+@SuppressWarnings("unused")
 public class Issue150420 {
     private int errorCount;
     private int index;
@@ -54,6 +55,8 @@ public class Issue150420 {
                 .clock(new TestClock())
                 .startupDistance(100*1000)
                 .mainStream(stream)
+                .noEvict()
+                .retainForever()
                 .start();
         
         for (String key : keys) {
@@ -89,6 +92,7 @@ public class Issue150420 {
         return kvCompare;
     }
 
+    
     private boolean dagCompare(Db db1) {
         boolean dagCompare = DagComparison.comparisonWithRestarted(db1).compare();
         if (dagCompare == false) {

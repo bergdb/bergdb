@@ -1,16 +1,11 @@
 package bergdb.test.night;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 import bergdb.core.DagComparison;
 import bergdb.core.Db;
-import bergdb.core.DbScan;
 import bergdb.core.KvComparison;
 import bergdb.core.StoredNode;
 import bergdb.core.StoredTrans;
@@ -19,7 +14,6 @@ import bergdb.core.TestClock;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
-import bergdb.nanotest.Assert;
 import bergdb.nanotest.BasicTestEnvironment;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
@@ -129,6 +123,7 @@ public class Issue150420a {
         }
     }
 
+    @SuppressWarnings("unused")
     private void dagCompare(Db db1) {
         boolean dagCompare = DagComparison.comparisonWithRestarted(db1).compare();
         if (dagCompare == false) {
