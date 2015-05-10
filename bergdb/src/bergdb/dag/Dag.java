@@ -277,6 +277,14 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             } else {
                 assert pointerPos > 0 : "bad pointerPos, " + pointerPos 
                         + ", pointerIndex:" + pointerIndex + ", predecessor:" + predecessor;
+                
+                // XXX
+                //if (pointerPos == 1339984) {
+                //    System.out.println("######=============== 1339984 ========");
+                //    System.out.println("######======== dumpStack: ");
+                //    Thread.currentThread().dumpStack();
+                //}
+                
                 result = nodeReader.readNode(pointerPos);
                 
                 pointerListener.pointerFollowed(
