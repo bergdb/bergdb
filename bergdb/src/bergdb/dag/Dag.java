@@ -192,7 +192,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     }
     
     /**
-     * Creates a PutData object suitable for use with as a parameter to Graph.putKv().
+     * Creates a PutData object suitable for use with as a parameter to Dag.putKv().
      * Use Db.newPutData() instead if you want to use the PutData object as a 
      * parameter with methods of Db.
      */
@@ -495,7 +495,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     public void putKv(long[] key, byte[] value, PutData pd) {
         //
         // in:   time, key, value.
-        // out:  changes to graph, 
+        // out:  changes to dag, 
         //       changed/new nodes reported to pd.nodeChangeListener.
         //       accessed nodes ensured "dirty"
         
@@ -896,7 +896,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             // space-split-2:
             // 'node' is a segment root since parent is a segment leaf.
             //
-
+            
             KeyNode newSegmentRoot = new KeyNode(false);
             pd.nodeChangeListener.keyNodeCreated(newSegmentRoot);
             long secondKlong = node.firstAndSecond(tt, last, toInsert, first, second);
@@ -925,6 +925,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             // space-split-1:
             // 'node' is not a segment root since parent is not a segment leaf.
             //
+            
             long secondKlong = node.firstAndSecond(tt, last, toInsert, first, second);
             pd.nodeChangeListener.keyNodeChanged(first);
             pd.nodeChangeListener.keyNodeChanged(second);
@@ -1058,14 +1059,14 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         public void keyNodeCreated(KeyNode node);
         
         /**
-         * Reports that an existing KeyNode was modified.
-         */
-        public void keyNodeChanged(KeyNode node);
-        
-        /**
          * Reports that a ValueNode was created.
          */
         public void valueNodeCreated(ValueNode node, long[] key);
+        
+        /**
+         * Reports that an existing KeyNode was appended to.
+         */
+        public void keyNodeChanged(KeyNode node);
     }
     
     public static final NodeChangeListener DO_NOTHING_NODE_CHANGE_LISTENER = new NodeChangeListener() {

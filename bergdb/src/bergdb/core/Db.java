@@ -773,10 +773,11 @@ public class Db {
     }
     
     /**
-     * Prints the in memory part of the DB graph. Useful for test and
+     * Prints the in memory part of the dag. Useful for test and
      * development.
      */
-    public void printGraph(PrintStream out) {
+    public void printDag(PrintStream out) {
+        assertDbStateIsActive("printDag");
         dag.printGraph(out);
     }
     
@@ -799,9 +800,8 @@ public class Db {
      * GET method with no memory allocation.
      * 
      * @param lookupTime
-     *            The DB time for which to make the GET operation. Use
-     *            Long.MAX_VALUE to lookup the state at the latest possible
-     *            time.
+     *            The requested lookup time. The time for which to make the lookup. 
+     *            Use Long.MAX_VALUE to lookup the state at the latest possible time.
      * @throws IllegalDbStateException
      *             If start() has not been called or stop()/stopFast() has been called. 
      *             The database is not in the active state.

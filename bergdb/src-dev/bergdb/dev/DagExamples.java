@@ -8,11 +8,13 @@ import bergdb.dag.Keys;
 import bergdb.dag.PutData;
 
 /**
- * Dag examples for the 2015-algos document (and doc/2013/2013-graph.odt).
+ * Dag examples for a document.
  * 
  * @author Frans Lundberg
  */
 public class DagExamples {
+    // See frans.DagExamples, possibility to merge.
+    
     private static final int MAX_NODE_SIZE = 30;
     
     private static final NodeReader DUMMY_NODE_READER = new NodeReader() {

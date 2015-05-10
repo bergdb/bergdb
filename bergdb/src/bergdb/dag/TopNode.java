@@ -8,7 +8,7 @@ import bergdb.nanotest.Nano;
 
 /**
  * A TopNode is a node in the data structure (a type of Skip List) 
- * used to find the root space root node given a lookup time.
+ * used to find the space root node given a lookup time.
  * 
  * @author Frans Lundberg
  */

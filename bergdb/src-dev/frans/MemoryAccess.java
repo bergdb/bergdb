@@ -165,8 +165,7 @@ public class MemoryAccess {
 131106
 ======
 
-"sequential" / "random" access are better terms. Now used.
-Refactored. Result:
+Result:
 
     Test        Access time
     cacheSeq     0.33 ns,  0.69 cycles
