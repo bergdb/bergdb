@@ -7,11 +7,12 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
+import bergdb.core.DagComparison;
 import bergdb.core.Db;
 import bergdb.core.DbScan;
-import bergdb.core.DbUtil;
+import bergdb.core.KvComparison;
 import bergdb.core.SyncLevel;
+import bergdb.core.TestClock;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
@@ -30,6 +31,9 @@ import bergdb.stream.MemoryStream;
  * @author Frans Lundberg
  */
 public class Issue150420 {
+    private int errorCount;
+    private int index;
+    private TestEnvironment env;
 
     @Nano("night")
     private static void runTest(TestEnvironment env) throws Exception {
@@ -37,19 +41,40 @@ public class Issue150420 {
     }
     
     private void go(TestEnvironment env) throws Exception {
+        index = 0;
+        errorCount = 0;
+        this.env = env;
+        
         List<String> keys = readKeys();
         
         env.out().println("keys.size : " + keys.size());
         
         MemoryStream stream = new MemoryStream();
-        Db db1 = Db.builder().startupDistance(100*1000).mainStream(stream).start();
+        Db db1 = Db.builder()
+                .clock(new TestClock())
+                .startupDistance(100*1000)
+                .mainStream(stream)
+                .start();
         
         for (String key : keys) {
-            String ikey = PubKeys.u2i(key);
-            db1.execute(db1.trans().put(ikey, new byte[10*1000]));
+            //env.out().println("index: " + index);
+            if (index % 10 == 0) env.out().print(".");
             
-            DbUtil.compareWithRestarted(db1);
+            String ikey = PubKeys.u2i(key);
+            db1.execute(db1.trans().put(ikey, new byte[10*1000 + index]));
+            db1.sync(SyncLevel.ORDINARY);
+            
+            kvCompare(db1);
+            //dagCompare(db1);
+            
+            if (errorCount > 0) {
+                break;
+            }
+            
+            index++;
         }
+        
+        System.out.println("\nError count: " + errorCount);
         
         db1.sync(SyncLevel.ORDINARY);
         DbScan.Result r1 = new DbScan(db1).scan();
@@ -63,6 +88,32 @@ public class Issue150420 {
         //System.out.println("---- db2 ----");
         //db2.printGraph(System.out);
         
+        diff(db1, db2);
+        
+        Assert.assertEquals("kv count", r1.kvCount, r2.kvCount);
+        Assert.assertEquals("checksum", r1.checksum, r2.checksum);
+        
+        db1.stop();
+        db2.stop();
+    }
+
+    private void kvCompare(Db db1) {
+        boolean kvCompare = KvComparison.comparisonWithRestarted(db1).compare();
+        if (kvCompare == false) {
+            errorCount++;
+            env.out().println("index: " + index + " KV COMPARE ERROR.");
+        }
+    }
+
+    private void dagCompare(Db db1) {
+        boolean dagCompare = DagComparison.comparisonWithRestarted(db1).compare();
+        if (dagCompare == false) {
+            errorCount++;
+            env.out().println("index: " + index + " DAG COMPARE ERROR.");
+        }
+    }
+    
+    private void diff(Db db1, Db db2) {
         Collection<String> one = getKeys(db1);
         Collection<String> two = getKeys(db2);
         one.removeAll(two);
@@ -73,12 +124,6 @@ public class Issue150420 {
                 env.out().println(s);
             }
         }
-        
-        Assert.assertEquals("kv count", r1.kvCount, r2.kvCount);
-        Assert.assertEquals("checksum", r1.checksum, r2.checksum);
-        
-        db1.stop();
-        db2.stop();
     }
         
     private List<String> getKeys(Db db) {
@@ -97,9 +142,9 @@ public class Issue150420 {
         return keys;
     }
 
-    private List<String> readKeys() throws IOException {
+    public static List<String> readKeys() throws IOException {
         String resourceName = Issue150420.class.getSimpleName() + "-data.txt";
-        InputStream in = this.getClass().getResourceAsStream(resourceName);
+        InputStream in = Issue150420.class.getResourceAsStream(resourceName);
         if (in == null) {
             throw new IllegalStateException("Unexpected, could not find resource " + resourceName);
         }

@@ -3,6 +3,7 @@ package bergdb.core;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
+import bergdb.common.Bytes;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
@@ -20,12 +21,28 @@ import bergdb.stream.MemoryStream;
 public class DbScan {
     private Db db;
     private boolean includeInternal = false;
+    private boolean includeKvTime = false;
     private long[] from = null;
     private long[] to = null;
     private long lookupTime = Long.MAX_VALUE;
     
     public DbScan(Db db) {
         this.db = db;
+    }
+    
+    public DbScan includeInternal(boolean b) {
+        this.includeInternal = b;
+        return this;
+    }
+    
+    public DbScan includeKvTime(boolean b) {
+        this.includeKvTime = b;
+        return this;
+    }
+    
+    public DbScan lookupTime(long lookupTime) {
+        this.lookupTime = lookupTime;
+        return this;
     }
     
     public Result scan() {
@@ -54,6 +71,13 @@ public class DbScan {
                 
                 sum.update(bkey, 0, bkey.length);
                 sum.update(value, 0, value.length);
+                
+                if (includeKvTime) {
+                    byte[] timeBytes = new byte[8];
+                    Bytes.longToBytesLE(kvt.time, timeBytes, 0);
+                    sum.update(timeBytes, 0, timeBytes.length);
+                }
+                
                 result.kvCount++;
                 
                 return GetMany.StopCondition.CONTINUE;
