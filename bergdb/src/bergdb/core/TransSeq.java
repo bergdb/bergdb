@@ -66,39 +66,18 @@ public class TransSeq implements PosOfTransBeforeFunction {
     }
     
     /**
-     * Removes all TransInfos with a tpos <= limit.
+     * Takes dirty index nodes from the trans seq and adds to trans nodes.
      * 
-     * @return The number of sets removed from the list.
+     * @param tposLimit  Takes all nodes of transactions with tpos LTE tposLimit.
+     * @param transNodes  For output.
      */
-    public int removeBefore(long limit) {
-        int result = 0;
-        
+    public void take(final long tposLimit, final TransNodesForMe transNodes) {
         if (isEmpty()) {
-            return 0;
+            return;
         }
         
-        while (first != null && first.tpos <= limit) {
-            first = first.next;
-            size -= 1;
-            result += 1;
-        }
-        
-        if (first == null) {
-            
-            // To avoid a possible memory leak, last is set to null.
-            last = null;
-        }
-        
-        return result;
-    }
-
-    /**
-     * Adds index nodes with a tpos <= limit to transNodes.
-     */
-    public void addToTransNodes(final long limit, final TransNodesForMe transNodes) {
-        
-        visitGotDirtyNodes(limit, new Visitor() {
-            public void node(INode node) {
+        while (first != null && first.tpos <= tposLimit) {
+            for (INode node : first.gotDirtyNodes) {
                 int type = node.getType();
                 switch (type) {
                 case INode.TYPE_TOP_NODE:
@@ -107,12 +86,19 @@ public class TransSeq implements PosOfTransBeforeFunction {
                 case INode.TYPE_KEY_NODE:
                     transNodes.addKeyNode((KeyNode) node);
                     break;
-                default:
-                    throw new IllegalStateException("Unexpected node type in " 
-                            + this.getClass().getSimpleName() + ", nodeType: " + node.getType());
                 }
+                
+                assert node.isIndexNode() : "non-index node in trans seq, " + node.toString();
             }
-        });
+            
+            first = first.next;
+            size -= 1;
+        }
+        
+        if (first == null) {
+            // To avoid a potential memory leak
+            last = null;
+        }
     }
     
     /**
@@ -198,6 +184,16 @@ public class TransSeq implements PosOfTransBeforeFunction {
         return info;
     }
     
+    /** Test TransInfo object with one node. */
+    private static TransInfo newTransInfo(long tpos, long lastPos, INode node) {
+        TransInfo info = new TransInfo();
+        info.tpos = tpos;
+        info.lastPos = lastPos;
+        info.tt = -1;
+        info.gotDirtyNodes.add(node);
+        return info;
+    }
+    
     @Nano
     public static void test0() {
         TransSeq s = new TransSeq();
@@ -233,29 +229,6 @@ public class TransSeq implements PosOfTransBeforeFunction {
     }
     
     @Nano
-    public static void testRemoveBefore() {
-        
-        TransSeq s = new TransSeq();
-        TransInfo info1 = newTransInfo(100, 120);
-        TransInfo info2 = newTransInfo(200, 220);
-        
-        s.add(info1);
-        s.add(info2);
-        
-        Assert.assertEquals(2, s.getSize());
-        
-        s.removeBefore(99);
-        Assert.assertEquals(2, s.getSize());
-        
-        s.removeBefore(100);
-        Assert.assertEquals(1, s.getSize());
-        
-        s.removeBefore(400);
-        Assert.assertEquals(0, s.getSize());
-        Assert.assertTrue(s.isEmpty());
-    }
-    
-    @Nano
     private static void testPosOfTransBefore() {        
         TransSeq s = new TransSeq();
         TransInfo info1 = newTransInfo(100, 120);
@@ -279,5 +252,72 @@ public class TransSeq implements PosOfTransBeforeFunction {
         assertEquals(-1, s.posOfTransBefore(99));
         assertEquals(-1, s.posOfTransBefore(Long.MAX_VALUE));
         assertEquals(-1, s.posOfTransBefore(Long.MIN_VALUE));
+    }
+    
+    @Nano
+    public static void testTake1() {
+        TransSeq s = new TransSeq();
+        KeyNode n1 = new KeyNode();
+        KeyNode n2 = new KeyNode();
+        TransInfo info1 = newTransInfo(100, 120, n1);
+        TransInfo info2 = newTransInfo(200, 220, n2);
+        
+        s.add(info1);
+        s.add(info2);
+        
+        final ArrayList<INode> nodes = new ArrayList<INode>();
+        
+        TransNodesForMe transNodes = new TransNodesForMe() {
+            public void addTopNode(TopNode node) {
+                nodes.add(node);
+            }
+
+            public void addKeyNode(KeyNode node) {
+                nodes.add(node);
+            }
+        };
+        
+        s.take(99, transNodes);
+        Assert.assertEquals(0, nodes.size());
+        
+        s.take(100, transNodes);
+        Assert.assertEquals(1, nodes.size());
+        Assert.assertTrue(nodes.contains(n1));
+        
+        s.take(200, transNodes);
+        Assert.assertEquals(2, nodes.size());
+        Assert.assertTrue(nodes.get(0) == n1);
+        Assert.assertTrue(nodes.get(1) == n2);
+        Assert.assertTrue(s.isEmpty());
+    }
+    
+    @Nano
+    public static void testTake2() {
+        TransSeq s = new TransSeq();
+        KeyNode n1 = new KeyNode();
+        KeyNode n2 = new KeyNode();
+        TransInfo info1 = newTransInfo(100, 120, n1);
+        TransInfo info2 = newTransInfo(200, 220, n2);
+        
+        s.add(info1);
+        s.add(info2);
+        
+        final ArrayList<INode> nodes = new ArrayList<INode>();
+        
+        TransNodesForMe transNodes = new TransNodesForMe() {
+            public void addTopNode(TopNode node) {
+                nodes.add(node);
+            }
+
+            public void addKeyNode(KeyNode node) {
+                nodes.add(node);
+            }
+        };
+        
+        s.take(200, transNodes);
+        Assert.assertEquals(2, nodes.size());
+        Assert.assertTrue(nodes.get(0) == n1);
+        Assert.assertTrue(nodes.get(1) == n2);
+        Assert.assertTrue(s.isEmpty());
     }
 }

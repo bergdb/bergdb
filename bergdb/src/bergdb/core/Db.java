@@ -1131,8 +1131,7 @@ public class Db {
             x.trans.startupPos = newSp;
         }
         
-        transSeq.addToTransNodes(newSp, x.transNodes);
-        transSeq.removeBefore(newSp);
+        transSeq.take(newSp, (TransSeq.TransNodesForMe) x.transNodes);
         
         if (!x.trans.isStartupRerun) {
             x.transNodes.addUnstoredDescendents();
