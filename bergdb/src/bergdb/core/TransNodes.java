@@ -210,11 +210,9 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         
         for (int i = 0; i < count; i++) {
             INode node = get(i);
-            if (!node.isIndexNode()) {
-                continue;
+            if (node.isIndexNode()) {
+                addUnstoredDescendents(node, p);
             }
-            
-            addUnstoredDescendents(node, p);
         }
     }
     

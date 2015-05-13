@@ -54,11 +54,9 @@ public class Issue150420a {
             
             String ikey = PubKeys.u2i(key);
             db1.execute(db1.trans().put(ikey, new byte[10*1000 + index]));
-            db1.sync(SyncLevel.ORDINARY);
             
-            if (index == 144) {
-                env.out().println("index: " + index);
-                
+            if (index == 298) {
+                env.out().println("index: " + index);                
                 kvCompare(db1);
                 //dagCompare(db1);
                 
@@ -110,6 +108,7 @@ public class Issue150420a {
     }
 
     private void kvCompare(Db db1) {
+        db1.sync(SyncLevel.ORDINARY);
         AppendOnlyStream stream = db1.internal().getMainStream();
         ReadOnlyStream ro = new ReadOnlyStream(stream, false);
         Db db2 = Db.builder().mainStream(ro).start();

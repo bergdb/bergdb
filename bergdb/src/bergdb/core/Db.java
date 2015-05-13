@@ -1133,8 +1133,9 @@ public class Db {
         
         transSeq.take(newSp, (TransSeq.TransNodesForMe) x.transNodes);
         
+        x.transNodes.addUnstoredDescendents();
+        
         if (!x.trans.isStartupRerun) {
-            x.transNodes.addUnstoredDescendents();
             nodeStream.appendNodes(x.transNodes, x.trans);
         }
         
