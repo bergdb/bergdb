@@ -1,7 +1,9 @@
 package bergdb.core;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 import java.util.zip.CRC32;
@@ -9,16 +11,18 @@ import java.util.zip.Checksum;
 
 import bergdb.common.Bytes;
 import bergdb.common.Util;
+import bergdb.dag.Dag;
 import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
+import bergdb.dag.INode;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
+import bergdb.dag.TopNode;
+import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.Clock;
-import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
-import bergdb.stream.ReadOnlyStream;
 
 /**
  * Static utility methods related to Db; Db help functions.
@@ -185,34 +189,27 @@ public class DbUtil {
         return sum.getValue();
     }
     
-    /**
-     * Compares db1 with db1 restarted. Same stream is used; the restarted 
-     * database uses it read-only.
-     * 
-     * @throws AssertionError If the databases have different kv count or different checksums.
-     */
-    public static void compareWithRestarted(Db db1) {
-        AppendOnlyStream stream = db1.internal().getMainStream();
-        ReadOnlyStream ro = new ReadOnlyStream(stream);        
-        Db db2 = Db.builder().mainStream(ro).start();
+    public static List<INode> getNodesOnPathToKv(Db db, String key) {
+        final ArrayList<INode> nodes = new ArrayList<INode>();
+        final GetData gd = db.newGetData();
+        final Dag.PointerListener origListener = gd.pointerListener;
         
-        DbScan.Result r1 = new DbScan(db1).scan();
-        DbScan.Result r2 = new DbScan(db2).scan();
+        gd.pointerListener = new Dag.PointerListener() {
+            public void superRootAccessed(TopNode superRoot) {
+                origListener.superRootAccessed(superRoot);
+                nodes.add(superRoot);
+            }
+            
+            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
+                origListener.pointerFollowed(predecessor, pointerIndex, result, pointerType);
+                nodes.add(result);
+            }
+        };
         
-        db2.stop();
+        db.getOne(Long.MAX_VALUE, Keys.toSegments(key), gd);
         
-        if (r1.kvCount != r2.kvCount) {
-            String message = "Restarted Db has different kv count, orig: " 
-                    + r1.kvCount + ", restarted (diff): " + (r2.kvCount - r1.kvCount);
-            System.out.println("## " + message);
-            //throw new AssertionError(message);
-        } else if (r1.checksum != r2.checksum) {
-            String message = "Restarted Db has same kv count but different checksums.";
-            System.out.println("## " + message);
-            //throw new AssertionError(message);
-        }
+        return nodes;
     }
-    
     
     // ======== Test ========
     
@@ -381,5 +378,26 @@ public class DbUtil {
         long c2 = DbUtil.checksum(db, Long.MAX_VALUE, false, false);
         
         Assert.assertEquals(c1, c2);
+    }
+    
+    @Nano
+    private static void testGetNodesOnPathToKv1() {
+        Db db = createEmptyDb();
+        List<INode> nodes = DbUtil.getNodesOnPathToKv(db, "dummy");
+        Assert.assertTrue(nodes.get(0).isTopNode());
+        Assert.assertTrue(nodes.get(1).isKeyNode());
+    }
+    
+    @Nano
+    private static void testGetNodesOnPathToKv2() {
+        Db db = createEmptyDb();
+        db.execute(db.trans().put("prefix-key", "value"));
+        List<INode> nodes = DbUtil.getNodesOnPathToKv(db, "prefix-key");
+        
+        Assert.assertTrue(nodes.get(0).isTopNode());
+        Assert.assertTrue(nodes.get(1).isKeyNode());
+        Assert.assertTrue(nodes.get(2).isKeyNode());
+        Assert.assertTrue(nodes.get(3).isValueNode());
+        Assert.assertArrayEquals(Util.toBytes("value"), ((ValueNode) nodes.get(3)).value);
     }
 }

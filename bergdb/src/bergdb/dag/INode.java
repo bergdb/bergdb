@@ -1,7 +1,7 @@
 package bergdb.dag;
 
 /**
- * <p>A node of the DB graph. An INode can be serialized with toBytes(). 
+ * <p>A node of the db graph. An INode can be serialized with toBytes(). 
  * Each INode implementation should also have a
  * "static KeyNode fromBytes(...) {" method that handles deserialization. 
  * That cannot be enforced with the interface (but with this documentation).</p>
@@ -38,6 +38,22 @@ public interface INode {
      */
     public long getId();
     
+    /**
+     * Returns the pointer count; note that this is not exactly the total
+     * number of out-bound pointers. It actually returns the max pointer index + 1.
+     * getPointer() may return a null pointer for some indexes between 0 and getPointerCount() - 1.
+     * 
+     * Common usage:
+     * <pre>
+     * int count = node.getPointerCount();
+     * for (int i = 0; i &lt; count; i++) {
+     *     node.getPointer(i, p);
+     *     if (!p.isNull()) {
+     *         // do something with pointer here
+     *     }
+     * }
+     *</pre>
+     */
     public int getPointerCount();
     
     /**
@@ -69,6 +85,11 @@ public interface INode {
      * Good for debug to complement toString().
      */
     public String print();
+    
+    /**
+     * Like print(), but with indentation.
+     */
+    public String print(String indent);
     
     public void setPointerAccessData(int pointerIndex, long time);
     public long getPointerAccessData(int pointerIndex);

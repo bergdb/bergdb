@@ -84,6 +84,36 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         this.pointerLocks = createPointerLocks();
     }
     
+    /** 
+     * Checks invariant "inv-forward-pointers".
+     * 
+     * @throws AssertionError
+     */
+    public boolean checkForwardPointerInvariant(final long startupPos) {
+        PointerVisitor visitor = new PointerVisitor() {
+            public void visit(INode from, Pointer pointer) {
+                INode to = pointer.getNode();
+                long fromPos = from.getSpos();
+                long toPos = to.getSpos();
+                
+                if (fromPos != Spos.NULL && toPos != Spos.NULL) {
+                    boolean isForwardPointer = to.getSpos() > from.getSpos();
+                    if (isForwardPointer) {
+                        if (from.getSpos() < startupPos) {
+                            throw new AssertionError(
+                                    "inv-forward-pointer broken, from: " + from + ", to: " + to
+                                    + ", forward pointers must start in startup section, startup pos: " 
+                                    + startupPos);
+                        }
+                    }
+                }
+            }
+        };
+        
+        this.visitMemoryPointers(visitor);
+        return true;
+    }
+    
     public Dag setNextMap(NextMap nextMap) {
         this.nextMap = nextMap;
         return this;
@@ -117,6 +147,29 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         top.printGraph(out, "", 0);
     }
     
+    /**
+     * Visits all memory pointers.
+     */
+    public void visitMemoryPointers(PointerVisitor visitor) {
+        INode superRoot = topDs.getSuperRoot();
+        visitMemoryPointersFromNode(superRoot, visitor);
+    }
+    
+    private void visitMemoryPointersFromNode(INode node, PointerVisitor visitor) {
+        int count = node.getPointerCount();
+        
+        for (int i = 0; i < count; i++) {
+            Pointer p = new Pointer();
+            node.getPointer(i, p);
+            if (!p.isNull() && p.isMem()) {
+                visitor.visit(node, p);
+                
+                INode child = p.getNode();
+                visitMemoryPointersFromNode(child, visitor);
+            }
+        }
+    }
+
     /**
      * Visits all nodes cached in memory.
      */

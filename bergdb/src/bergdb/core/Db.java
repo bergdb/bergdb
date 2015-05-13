@@ -1118,6 +1118,9 @@ public class Db {
             // belong to the block.
             reclaimTransactionListener.transactionCompleted(t);    
         }
+        
+        // TODO A. Work on inv-forward-pointers.
+        // assert dag.checkForwardPointerInvariant(x.startupPos.get());
     }
     
     private void store() {
@@ -1129,6 +1132,9 @@ public class Db {
         } else {
             newSp = computeNewStartupPos(currentSp);
             x.trans.startupPos = newSp;
+            
+            // Temp note 150513, line below fixes f:bergdb.test.StartupDistanceTester.
+            //x.trans.startupPos = currentSp;
         }
         
         transSeq.take(newSp, (TransSeq.TransNodesForMe) x.transNodes);

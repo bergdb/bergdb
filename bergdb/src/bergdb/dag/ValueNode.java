@@ -131,7 +131,11 @@ public final class ValueNode implements INode {
     }
     
     public String print() {
-        return toString();
+        return print("");
+    }
+    
+    public String print(String indent) {
+        return indent + toString() + "\n";
     }
     
     public String toString() {

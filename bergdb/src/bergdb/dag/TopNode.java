@@ -275,7 +275,11 @@ public final class TopNode implements INode {
     }
     
     public String print() {
-        return toString() + "\n";
+        return print("");
+    }
+    
+    public String print(String indent) {
+        return indent + toString() + "\n";
     }
 
     

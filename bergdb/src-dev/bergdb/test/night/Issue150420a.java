@@ -6,12 +6,12 @@ import java.util.List;
 
 import bergdb.core.DagComparison;
 import bergdb.core.Db;
+import bergdb.core.DbUtil;
 import bergdb.core.KvComparison;
-import bergdb.core.StoredNode;
-import bergdb.core.StoredTrans;
 import bergdb.core.SyncLevel;
 import bergdb.core.TestClock;
 import bergdb.dag.GetMany;
+import bergdb.dag.INode;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.nanotest.BasicTestEnvironment;
@@ -22,10 +22,12 @@ import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.ReadOnlyStream;
 
+@SuppressWarnings("unused")
 public class Issue150420a {
     private int errorCount;
     private int index;
     private TestEnvironment env;
+    private Db db2;
 
     @Nano("night")
     private static void runTest(TestEnvironment env) throws Exception {
@@ -50,7 +52,7 @@ public class Issue150420a {
         
         for (String key : keys) {
             //env.out().println("index: " + index);
-            if (index % 10 == 0) env.out().print(".");
+            //if (index % 10 == 0) env.out().print(".");
             
             String ikey = PubKeys.u2i(key);
             db1.execute(db1.trans().put(ikey, new byte[10*1000 + index]));
@@ -73,9 +75,7 @@ public class Issue150420a {
             return;
         }
         
-        //System.out.println("---- db1 ----");
-        //db1.printGraph(System.out);
-        
+        /*
         stream = stream.copy();
         Db db2 = Db.builder().mainStream(stream).build();
         
@@ -96,10 +96,7 @@ public class Issue150420a {
                     }
                 }
             }
-        });
-        
-        //System.out.println("---- db2 ----");
-        //db2.printDag(System.out);
+        });*/
         
         diff(db1, db2);
         
@@ -111,7 +108,10 @@ public class Issue150420a {
         db1.sync(SyncLevel.ORDINARY);
         AppendOnlyStream stream = db1.internal().getMainStream();
         ReadOnlyStream ro = new ReadOnlyStream(stream, false);
-        Db db2 = Db.builder().mainStream(ro).start();
+        
+        System.out.println("Starting db2...");
+        db2 = Db.builder().mainStream(ro).start();
+        System.out.println("  db2 started.");
         
         KvComparison c = new KvComparison(db1, db2);
         boolean kvCompare = c.compare();
@@ -122,7 +122,6 @@ public class Issue150420a {
         }
     }
 
-    @SuppressWarnings("unused")
     private void dagCompare(Db db1) {
         boolean dagCompare = DagComparison.comparisonWithRestarted(db1).compare();
         if (dagCompare == false) {
@@ -136,12 +135,39 @@ public class Issue150420a {
         Collection<String> two = getKeys(db2);
         one.removeAll(two);
         
+        String firstDiffKey = null;
+        
         if (one.size() > 0) {
             env.out().println("DIFF:");
             for (String s : one) {
+                if (firstDiffKey == null) {
+                    firstDiffKey = s;
+                }
                 env.out().println(s);
             }
         }
+             
+        //env.out().println("==== path1 ====");
+        //printPath(db1, firstDiffKey);
+        
+        //env.out().println("==== path2 ====");
+        //printPath(db2, firstDiffKey);
+        
+        //System.out.println("Stream node @2950792:\n" + getNodeAt(db1, 2950792L).print("    "));
+    }
+    
+    private void printPath(Db db, String key) {
+        List<INode> path = DbUtil.getNodesOnPathToKv(db, key);
+        String indent = "";
+        for (INode n : path) {
+            env.out().println(n.print(indent));
+            indent = indent + "    ";
+        }
+    }
+    
+    
+    private INode getNodeAt(Db db, long spos) {
+        return db.getStream().readNode(spos);
     }
         
     private List<String> getKeys(Db db) {
