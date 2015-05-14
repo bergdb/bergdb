@@ -1390,10 +1390,7 @@ public class Db {
         }
         
         public final void increaseNextVpos() {
-            nextVpos++;
-            if (nextVpos % 8 == 0) {
-                nextVpos++;
-            }
+            x.nextVpos = Spos.nextVpos(x.nextVpos);
         }
 
         /** 

@@ -157,7 +157,7 @@ public class Evictor {
         //
         
         long spos = node.getSpos();
-        if (!Spos.isValid(spos) || spos >= ed.startupPos) {
+        if (!Spos.isValidSpos(spos) || spos >= ed.startupPos) {
             return;
         }
         
@@ -169,6 +169,7 @@ public class Evictor {
                 if (pointee != null) {
                     long pointeePos = pointee.getSpos();
                     if (pointeePos != Spos.NULL
+                            && pointeePos % 8 == 0  // NOTE this condition added with "vpos" approach ("vpos" branch)
                             && pointeePos < ed.startupPos
                             && AccessData.getAccessTime(node.getPointerAccessData(i)) 
                                     <= ed.accessTimeLimit) {

@@ -201,6 +201,8 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
      * Adds descendents that have never been stored to this set of trans nodes.
      * All stream pointers for all trans nodes should have valid stream
      * pointers after this method has been executed.
+     * 
+     * @deprecated
      */
     public void addUnstoredDescendents() {
         // Method added 2015-01-04, resulted in a somewhat larger stream, but CorePerf is intact.
@@ -219,6 +221,8 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
     /**
      * Adds unstored pointees to transNodes, node must be an index node.
      * This is done recursively.
+     * 
+     * @deprecated
      */
     private void addUnstoredDescendents(INode node, Pointer p) {
         int pointerCount = node.getPointerCount();

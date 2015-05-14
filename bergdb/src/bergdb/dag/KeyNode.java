@@ -1335,7 +1335,7 @@ public class KeyNode implements INode {
                 if (pointers[i] == null) {
                     long spos = pos[i];
                     
-                    if (!Spos.isValid(spos)) {
+                    if (!Spos.isValidSposOrVpos(spos)) {
                         throw new AssertionError("Bad spos of pointer " + i + " of node " 
                                 + this + ". Spos: " + spos);
                     }
@@ -1445,7 +1445,7 @@ public class KeyNode implements INode {
                                     + this + ".");
                         }
                     } else {
-                        if (!Spos.isValid(spos)) {
+                        if (!Spos.isValidSposOrVpos(spos)) {
                             throw new StreamFormatException("Bad spos of pointer " + i + " of node " 
                                     + this + ".");
                         }

@@ -50,16 +50,25 @@ public class Pointer {
         return node;
     }
     
-    /**
-     * Returns true if this object is not a memory pointer, nor a valid stream pointer.
-     */
+    
     public final boolean isNull() {
         // Manual inline of: return isNull(node, pos);
         return node == null && pos == Spos.NULL;
     }
     
+    /**
+     * A pointer "is null" if it is not a memory pointer (node == null)
+     * and pos is not a valid physical spos.
+     */
+    
+    //public static final boolean isNull(INode node, long pos) {
+    //    return (node == null) && (pos == Spos.NULL || (pos % 8 != 0));
+    //}
+    
+    // XXX work
     public static final boolean isNull(INode node, long pos) {
-        return node == null && pos == Spos.NULL;
+        return (node == null) && (pos == Spos.NULL);
+        //return (node == null) && (pos == Spos.NULL || (pos % 8 != 0));
     }
     
     public static final boolean isMem(INode node) {
@@ -71,7 +80,7 @@ public class Pointer {
     @Nano
     public static void test1() {
         Pointer p = new Pointer();
-        p.pos = 1234L;
+        p.pos = 80L;
         p.node = null;
         p.index = -1;
         

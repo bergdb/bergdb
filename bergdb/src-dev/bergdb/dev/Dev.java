@@ -1,7 +1,5 @@
 package bergdb.dev;
 
-// TODO A. Test the "vpos" idea!
-//
 // TODO C. Rename Trans.time -> tt. Trans.pos -> tpos. "tt" and "tpos" have become "words" now.
 //
 // TODO B. Keep working with inv-forward-pointer.

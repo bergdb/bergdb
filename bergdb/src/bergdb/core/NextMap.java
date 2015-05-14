@@ -23,11 +23,11 @@ public class NextMap {
             return;
         }
         
-        if (!Spos.isValid(pos)) {
+        if (!Spos.isValidSposOrVpos(pos)) {
             throw new IllegalArgumentException("bad pos: " + pos);
         }
         
-        if (!Spos.isValid(nextPos)) {
+        if (!Spos.isValidSposOrVpos(nextPos)) {
             throw new IllegalArgumentException("bad nextPos: " + nextPos);
         }
         

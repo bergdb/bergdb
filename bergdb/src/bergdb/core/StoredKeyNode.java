@@ -112,7 +112,7 @@ public class StoredKeyNode implements StoredNode {
         offset += 2; // checksum bytes
 
         long prevPos = Bytes.bytesToLongLE(buffer, offset);
-        if (prevPos != Spos.NULL && prevPos < 0) {
+        if (!Spos.isValidOrNull(prevPos)) {
             throw new StreamFormatException("Bad KeyNode, prevPos is illegal: " + prevPos + ".");
         }
         offset += 8;

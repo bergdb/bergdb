@@ -13,7 +13,7 @@ import bergdb.nanotest.Nano;
  */
 abstract public class Spos {
     // Note, set NULL to -2 to test if used everywhere where it should be used.
-    // But, consider on-disk, at-customer data.
+    // But, consider on-disk, at-user data.
     
     /**
      * Used to indicate "no spos", not considered a "valid" Spos.
@@ -24,14 +24,30 @@ abstract public class Spos {
     private Spos() {}
     
     /**
-     * Returns true if the long is a valid stream position (is non-negative).
+     * Returns true if the long is a valid non-virtual stream position.
      */
-    public static final boolean isValid(long spos) {
+    public static final boolean isValidSpos(long spos) {
+        return (spos >= 0) && ((spos % 8) == 0);
+    }
+    
+    public static final boolean isValidSposOrVpos(long spos) {
         return spos >= 0;
     }
     
+    public static final boolean isVpos(long pos) {
+        return pos >= 0 && (pos % 8 != 0);
+    }
+    
+    public static final long nextVpos(long vpos) {
+        long result = vpos + 1;
+        if (vpos % 8 != 0) {
+            result++;
+        }
+        return result;
+    }
+    
     /**
-     * Returns true if spos is a valid stream position (is non-negative) or NULL.
+     * Returns true if spos is a valid stream position or NULL.
      */
     public static final boolean isValidOrNull(long spos) {
         return spos >= 0 || spos == NULL;
@@ -57,10 +73,10 @@ abstract public class Spos {
     
     @Nano
     public static void testIsValid() {
-        assertTrue(isValid(1200));
-        assertTrue(isValid(0));
-        assertFalse(isValid(-1234));
-        assertFalse(isValid(NULL));
+        assertTrue(isValidSpos(1200));
+        assertTrue(isValidSpos(0));
+        assertFalse(isValidSpos(-1234));
+        assertFalse(isValidSpos(NULL));
     }
     
     @Nano

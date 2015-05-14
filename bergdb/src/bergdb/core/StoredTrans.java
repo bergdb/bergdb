@@ -349,7 +349,7 @@ public class StoredTrans {
                         INode pointee = keyNode.pointers[j];
                         long spos = pointee == null ? pos : pointee.getSpos();
                         
-                        if (!Spos.isValid(spos)) {
+                        if (!Spos.isValidSposOrVpos(spos)) {
                             String message = "Bad stream pointer of KeyNode, index " + j + ", " + pos 
                                     + ", trans at t=" + transTime + " tpos=" + transStartPos 
                                     + ", node:\n" + keyNode.print();
