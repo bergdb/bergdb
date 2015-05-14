@@ -15,6 +15,7 @@ import bergdb.dag.GetMany;
 import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
 import bergdb.dag.NodeVisitor;
+import bergdb.dag.Pointer;
 import bergdb.dag.PutData;
 import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
@@ -671,7 +672,7 @@ public class Db {
         meta.setTime(tt);
         
         Trans trans = this.trans().build();
-        trans.time = tt;
+        trans.tt = tt;
         trans.isInternal = true;
         trans.startupPos = 0;
         
@@ -1092,7 +1093,7 @@ public class Db {
             stmCheckConflicts(t);
 
             try {
-                if (!t.isStartupRerun) t.time = dbClock.transactionBegin();
+                if (!t.isStartupRerun) t.tt = dbClock.transactionBegin();
                 
                 putKvs();
 
@@ -1147,23 +1148,64 @@ public class Db {
         
         transSeq.take(newSp, (TransSeq.TransNodesForMe) x.transNodes);
         
-        // NOTE branch "vpos": Removed addUnstoredDescendents()!
-        //x.transNodes.addUnstoredDescendents();
-        
         if (!x.trans.isStartupRerun) {
             nodeStream.appendNodes(x.transNodes, x.trans);
         }
         
+        x.transNodes.clean();
+        handleNodesWithUnstoredPointees();
+        
         x.trans.nodeCount = x.transNodes.size();
         
-        x.transInfo.tpos = x.trans.pos;
+        x.transInfo.tpos = x.trans.tpos;
         x.transInfo.lastPos = x.trans.lastPos;
-        x.transInfo.tt = x.trans.time;
+        x.transInfo.tt = x.trans.tt;
         x.transInfo.startupPos = newSp;
-        transSeq.add(x.transInfo);
         
-        x.transNodes.clean();
+        transSeq.add(x.transInfo);      // adds to end of transSeq queue
+        
         x.startupPos.set(newSp);
+    }
+    
+    /**
+     * Adds nodes with unstored pointees to the got-dirty nodes
+     * of the current transaction.
+     */
+    private void handleNodesWithUnstoredPointees() {
+        // TODO C. Can we unit test this?
+        
+        TransNodes nodes = x.transNodes;
+        int topCount = nodes.topCount;
+        int keyCount = nodes.keyCount;
+        
+        for (int i = 0; i < topCount; i++) {
+            TopNode node = nodes.topNodes[i];
+            addToGotDirtyIfAppropriate(node);
+        }
+        
+        for (int i = 0; i < keyCount; i++) {
+            KeyNode node = nodes.keyNodes[i];
+            addToGotDirtyIfAppropriate(node);
+        }
+    }
+
+    private void addToGotDirtyIfAppropriate(INode node) {
+        Pointer p = new Pointer();
+        int count = node.getPointerCount();
+        
+        A: for (int j = 0; j < count; j++) {
+            node.getPointer(j, p);
+            
+            INode pointee = p.node;
+            if (pointee != null) {
+                long spos = pointee.getSpos();
+                
+                if (spos > 0 && spos % 8 != 0) {
+                    makeDirtyIfNeeded(node);
+                    break A;
+                }
+            }
+        }
     }
 
     /**
@@ -1188,7 +1230,7 @@ public class Db {
         // Note, possible refactoring: Extract stm methods to Stm class, or merge with KeyModSet.
         
         for (int i = 0; i < t.writeKeyHashes.length; i++) {
-            keyModSet.add(t.time, t.writeKeyHashes[i]);
+            keyModSet.add(t.tt, t.writeKeyHashes[i]);
         }
     }
     
@@ -1238,7 +1280,7 @@ public class Db {
     private final void putKvs() {
         assert Thread.holdsLock(writeLock);
         final int length = x.trans.kvs.length;        
-        x.putData.tt = x.trans.time;
+        x.putData.tt = x.trans.tt;
 
         for (int i = 0; i < length; i++) {
             Kv kv = x.trans.kvs[i];
@@ -1248,8 +1290,8 @@ public class Db {
             }
 
             if (kv.valueTransformation != null) {
-                final byte[] previousValue = this.getOne(x.trans.time, kv.getKey(), x.getData);
-                kv.transformValue(x.trans.time, previousValue);
+                final byte[] previousValue = this.getOne(x.trans.tt, kv.getKey(), x.getData);
+                kv.transformValue(x.trans.tt, previousValue);
             }
 
             dag.putKv(kv.getKey(), kv.getValue(), x.putData);
@@ -1382,7 +1424,7 @@ public class Db {
         public long lastSposOfLastTrans;
 
         /** The vpos to assign to next index node that is created. */
-        private long nextVpos;
+        private long nextVpos;    // TODO A. check nextVpos. How used for rerun transactions?
         
         private ExecuteData() {
             startupPos = new StartupPos(0);
@@ -1402,7 +1444,7 @@ public class Db {
             
             this.trans = trans;
             transInfo = new TransSeq.TransInfo();
-            x.nextVpos = nodeStream.getNextPos() + 1;
+            x.nextVpos = nodeStream.getNextPos() + 1;       // TODO A. Not correct for rerun transaction, is it?
             x.putData.spaceSplitCount = 0;
         }
         

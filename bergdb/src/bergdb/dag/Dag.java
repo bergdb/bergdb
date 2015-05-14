@@ -91,19 +91,21 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      * @throws AssertionError
      */
     public boolean checkForwardPointerInvariantApprox(final long startupPos, final long minTransSize) {
+        // NOTE Pointers from dirty nodes are not checked. Correct, I hope.
+        
         PointerVisitor visitor = new PointerVisitor() {
             public void visit(INode from, Pointer pointer) {
                 INode to = pointer.getNode();
                 long fromPos = from.getSpos();
                 long toPos = to.getSpos();
                 
-                if (fromPos != Spos.NULL && toPos != Spos.NULL) {
+                if (!from.isDirty() && fromPos != Spos.NULL && toPos != Spos.NULL) {
                     boolean isProbablyForwardPointer = to.getSpos() > (from.getSpos() + minTransSize);
                     if (isProbablyForwardPointer) {
                         if (from.getSpos() < startupPos) {
                             String message = 
-                                    "inv-forward-pointer broken, from: " + from + ", to: " + to
-                                    + ", forward pointers must start in startup section, startup pos: " 
+                                    "inv-forward-pointer violated, from: " + from + ", to: " + to
+                                    + ", forward pointers must start in startup section, stpos: " 
                                     + startupPos;
                             
                             //System.out.println("WARNING! " + message);

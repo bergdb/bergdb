@@ -80,19 +80,12 @@ public class TransSeq implements PosOfTransBeforeFunction {
             for (INode node : first.gotDirtyNodes) {
                 int type = node.getType();
                 
-                // TODO B. Use ifDirty statements or not? could have been cleaned in advance due 
-                // to addUnstoredDescendent.
-                
                 switch (type) {
                 case INode.TYPE_TOP_NODE:
-                    //if (node.isDirty()) {
-                        transNodes.addTopNode((TopNode) node);
-                    //}
+                    transNodes.addTopNode((TopNode) node);
                     break;
                 case INode.TYPE_KEY_NODE:
-                    //if (node.isDirty()) {
-                        transNodes.addKeyNode((KeyNode) node);
-                    //}
+                    transNodes.addKeyNode((KeyNode) node);
                     break;
                 }
                 
@@ -133,18 +126,17 @@ public class TransSeq implements PosOfTransBeforeFunction {
         TransInfo next = null;
         
         /** Transaction stream position. */
-        long tpos;
+        public long tpos;
         
         /** Last stream position of the transaction. */
-        long lastPos;
+        public long lastPos;
         
-        long tt;
+        public long tt;
         
         public long startupPos;
         
         /** Index nodes (top nodes, key nodes) that got dirty while the transaction executed. */
-        ArrayList<INode> gotDirtyNodes = new ArrayList<INode>();
-
+        public ArrayList<INode> gotDirtyNodes = new ArrayList<INode>();
 
         TransInfo() {}
         

@@ -79,9 +79,9 @@ public class StoredTrans {
         
         Trans trans = b.build();
         trans.isInternal = true;
-        trans.pos = tpos;
+        trans.tpos = tpos;
         trans.lastPos = lastPos;
-        trans.time = tt;
+        trans.tt = tt;
         trans.isStartupRerun = true;
         trans.startupPos = startupPos;
         

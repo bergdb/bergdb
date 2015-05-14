@@ -7,6 +7,8 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
+
 import bergdb.core.DagComparison;
 import bergdb.core.Db;
 import bergdb.core.DbScan;
@@ -58,8 +60,8 @@ public class Issue150420 {
                 .start();
         
         for (String key : keys) {
-            //env.out().println("index: " + index);
-            if (index % 10 == 0) env.out().print(".");
+            env.out().println("index: " + index);
+            //if (index % 10 == 0) env.out().print(".");
             
             String ikey = PubKeys.u2i(key);
             db1.execute(db1.trans().put(ikey, new byte[10*1000 + index]));
@@ -146,6 +148,30 @@ public class Issue150420 {
                 break;
             }
             list.add(line);
+        }
+        
+        return list;
+    }
+
+    public static List<String> testKeys() {
+        int n = 1000;
+        ArrayList<String> list = new ArrayList<String>(n);
+        
+        for (int i = 0; i < n; i++) {
+            String key = String.format(Locale.US, "/mydir/key%03d", i);
+            list.add(key);
+        }
+        
+        return list;
+    }
+    
+    public static List<String> testKeysBackwards() {
+        int n = 1000;
+        ArrayList<String> list = new ArrayList<String>(n);
+        
+        for (int i = 0; i < n; i++) {
+            String key = String.format(Locale.US, "/mydir/key%03d", (n - 1 - i));
+            list.add(key);
         }
         
         return list;

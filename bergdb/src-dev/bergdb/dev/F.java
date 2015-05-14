@@ -3,6 +3,7 @@ package bergdb.dev;
 import java.util.Date;
 import java.util.Set;
 
+import bergdb.common.AssertStatus;
 import bergdb.common.Create;
 import bergdb.common.Util;
 import bergdb.nanotest.ClassFilter;
@@ -30,6 +31,10 @@ public class F {
                 .printTestOutput(verbose)
                 .build();
         printHeader();
+        
+        if (!AssertStatus.enabled()) {
+            System.out.println("Assertions (-ea) NOT ENABLED.");
+        }
         
         String classPatternString = ".*";
         if (c.has("c")) {

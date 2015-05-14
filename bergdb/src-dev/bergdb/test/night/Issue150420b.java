@@ -7,13 +7,18 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
+
 import bergdb.core.DagComparison;
 import bergdb.core.Db;
 import bergdb.core.DbScan;
 import bergdb.core.KvComparison;
 import bergdb.core.SyncLevel;
 import bergdb.core.TestClock;
+import bergdb.core.Trans;
+import bergdb.core.Db.ExecuteData;
 import bergdb.dag.GetMany;
+import bergdb.dag.INode;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
@@ -23,10 +28,8 @@ import bergdb.nanotest.TestEnvironment;
 import bergdb.pubimp.PubKeys;
 import bergdb.stream.MemoryStream;
 
-/**
- * Analysis illegal forward pointer at index = 21.
- * Violates inv-forward-pointer.
- */
+// TODO B. work on this one.
+
 @SuppressWarnings("unused")
 public class Issue150420b {
     private int errorCount;
@@ -44,6 +47,8 @@ public class Issue150420b {
         this.env = env;
         
         List<String> keys = Issue150420.readKeys();
+        //List<String> keys = Issue150420.testKeys();
+        //List<String> keys = Issue150420.testKeysBackwards();
         
         MemoryStream stream = new MemoryStream();
         Db db1 = Db.builder()
@@ -54,35 +59,69 @@ public class Issue150420b {
                 .retainForever()
                 .start();
         
+        Trans.Listener listener = new Trans.Listener() {
+            public void transExecuted(ExecuteData x) {
+                System.out.println("== (" + index + ") t" + x.trans.tt + ", tpos:" + x.trans.tpos 
+                        + ", stpos:" + x.transInfo.startupPos);
+                int size = x.transNodes.size();
+                for (int i = 0; i < size; i++) {
+                    System.out.println(x.transNodes.get(i));
+                }
+                
+                if (x.transInfo.gotDirtyNodes.size() > 0) {
+                    System.out.print("Got dirty: ");
+                    for (INode node : x.transInfo.gotDirtyNodes) {
+                        System.out.print(node + "; ");
+                    }
+                    System.out.println();
+                }
+                
+                System.out.println();
+            }
+        };
+        
         for (String key : keys) {
-            //env.out().println("index: " + index);
-            //if (index % 10 == 0) env.out().print(".");
-            
-            System.out.println("---- index " + index + ", key: " + key);
-            
             String ikey = PubKeys.u2i(key);
-            db1.execute(db1.trans().put(ikey, new byte[10*1000 + index]));
+            Trans t = db1.trans().put(ikey, new byte[10*1000 + index]).build();
+            t.listener = listener;
+            
+            db1.execute(t);
             db1.sync(SyncLevel.ORDINARY);
             
             //if (index == 21) {
             //    db1.printDag(System.out);
             //}
             
-            db1.internal().dag().checkForwardPointerInvariantApprox(db1.internal().getStartupPos(), 15000);
-            
-            //kvCompare(db1);
+            kvCompare(db1);
             //dagCompare(db1);
-            
-            //if (errorCount > 0) {
-            //    break;
-            //}
+            checkPointerInvariant(db1);
             
             index++;
+            
+            if (errorCount > 0) {
+                break;
+            }
+            
         }
         
         System.out.println("\nError count: " + errorCount);
         
+        //System.out.println("==== db1 ====");
+        //db1.printDag(System.out);
+        
         db1.stop();
+    }
+
+    private boolean checkPointerInvariant(Db db) {
+        try {
+            db.internal().dag().checkForwardPointerInvariantApprox(db.internal().getStartupPos(), 15000);
+        } catch (AssertionError e) {
+            errorCount++;
+            env.out().println("index: " + index + ", inv-forward-pointer\n" + e.getMessage());
+            return false;
+        }
+        
+        return true;
     }
 
     private boolean kvCompare(Db db1) {

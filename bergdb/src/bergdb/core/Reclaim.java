@@ -218,7 +218,7 @@ public class Reclaim implements Db.TransactionListener {
                 
                 if (iteration.done) {
                     this.iterationCount++;
-                    iteration.tEnd = t.time;
+                    iteration.tEnd = t.tt;
 
                     IterationInfo info = table.rows.get(table.rows.size() - 1);
                    
@@ -249,7 +249,7 @@ public class Reclaim implements Db.TransactionListener {
                                 + e.getMessage());
                     }
                     
-                    pretruncateIfPossible(t.time);
+                    pretruncateIfPossible(t.tt);
                     
                     iteration = null;
                 }
@@ -262,7 +262,7 @@ public class Reclaim implements Db.TransactionListener {
         
         if (!isInternal && streamSize - this.sposAtLastPretruncateCall > 2 * initialStartupDistance) {
             this.sposAtLastPretruncateCall = streamSize;
-            pretruncateIfPossible(t.time);
+            pretruncateIfPossible(t.tt);
             
             if (iteration != null && table.rows.size() > 0) {
                 
@@ -672,7 +672,7 @@ public class Reclaim implements Db.TransactionListener {
         
         public Iteration(Trans t, double internalFraction) {
             pStart = t.nextPos;
-            tStart = t.time;
+            tStart = t.tt;
             tEnd = -1;
             kvCount = 0;
             lastKey = null;
@@ -685,13 +685,13 @@ public class Reclaim implements Db.TransactionListener {
         }
         
         public final void gotInternal(Trans t) {
-            totalInternalTransactionSize += (t.lastPos - t.pos + 1);
+            totalInternalTransactionSize += (t.lastPos - t.tpos + 1);
         }
         
         public final void gotExternal(Trans t) {
             // reclaimSize is the size currently allowed for space reclaim transactions.
             
-            totalExternalTransactionSize += (t.lastPos - t.pos + 1);
+            totalExternalTransactionSize += (t.lastPos - t.tpos + 1);
             long total = totalExternalTransactionSize + totalInternalTransactionSize;
             
             long reclaimSize = (long) ((total * internalFractionForIteration) - totalInternalTransactionSize);

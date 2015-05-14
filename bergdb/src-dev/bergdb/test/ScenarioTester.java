@@ -126,7 +126,7 @@ public class ScenarioTester {
         
         Trans.Listener listener = new Trans.Listener() {
             public void transExecuted(ExecuteData x) {
-                System.out.println("t" + x.trans.time + ", tpos:" + x.trans.pos 
+                System.out.println("t" + x.trans.tt + ", tpos:" + x.trans.tpos 
                         + ", start:" + x.transInfo.startupPos);
                 for (int i = 0; i < x.transNodes.size(); i++) {
                     System.out.println(x.transNodes.get(i));
@@ -253,7 +253,7 @@ public class ScenarioTester {
         db1.execute(t1);
         
         clock.setTime(200);
-        startupPos = t1.pos;
+        startupPos = t1.tpos;
         updater.setNextPos(startupPos);
         Trans t2 = db1.trans().put("/key2", "v2").build();
         db1.execute(t2);
@@ -304,7 +304,7 @@ public class ScenarioTester {
         Trans t2 = db.trans().put("/dir200/key2", "v2").build();
         db.execute(t2);
         
-        startupPos = t2.pos;
+        startupPos = t2.tpos;
         updater.setNextPos(startupPos);
         Trans t3 = db.trans().put("/z", "zzz5").build();
         db.execute(t3);
@@ -344,7 +344,7 @@ public class ScenarioTester {
         Trans t1 = db.trans().put("/key1-suffix1", Util.toBytes("v1")).build();
         db.execute(t1);
         
-        updater.setNextPos(t1.pos);
+        updater.setNextPos(t1.tpos);
         Trans t2 = db.trans().put("/key2-suffix2", Util.toBytes("v2")).build();
         db.execute(t2);
         

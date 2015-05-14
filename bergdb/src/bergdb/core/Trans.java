@@ -51,9 +51,9 @@ public class Trans {
     
     // -- Output --
     
-    public long time;               // Transaction time, used internally and as output.
+    public long tt;                 // Transaction time, used internally and as output.
     public int splitCount;          // Number of node splits made during execute().
-    public long pos;                // Stream position of the first byte of the transaction. Available after execute().
+    public long tpos;               // Stream position of the first byte of the transaction. Available after execute().
     public long lastPos;            // Stream position of the last byte of the transaction. Available after execute().
     public long nextPos;            // Stream position of the first byte of the next transaction. Available after execute().
     public int nodeCount;           // Number of nodes written to stream. Useful for testing/debug.
@@ -86,7 +86,7 @@ public class Trans {
     }
     
     public String toString() {
-        String s = "tt:" + time + ", pos:" + pos;
+        String s = "tt:" + tt + ", pos:" + tpos;
         s = isInternal ? s + ", internal" : s;
         return s;
     }
@@ -96,7 +96,7 @@ public class Trans {
      */
     public String print() {
         StringBuilder b = new StringBuilder();
-        b.append("pos: " + pos + "\n");
+        b.append("pos: " + tpos + "\n");
         b.append("isRerun: " + isStartupRerun + "\n");
         b.append("storedNewStartupPos: " + startupPos + "\n");
         b.append("readKeyHashes: ");

@@ -124,7 +124,7 @@ public class DbTester {
         t = db.trans().put("e", "e-value").build();
         db.execute(t);
 
-        Assert.assertEquals(true, t.time >= 20);
+        Assert.assertEquals(true, t.tt >= 20);
         Assert.assertArrayEquals(Util.toBytes("e-value"), DbUtil.get(db, 999, "e"));
 
         byte[] value = DbUtil.get(db, 10, "e");
@@ -1255,7 +1255,7 @@ public class DbTester {
             public void transform(Trans trans, int index) {
                 long[] key = trans.kvs[index].getKey();
                 String keyString = Keys.toString(key);
-                keyString = keyString.replace("<transactionTime>", "" + trans.time);
+                keyString = keyString.replace("<transactionTime>", "" + trans.tt);
                 long[] newKey = Keys.toSegments(keyString);
                 trans.kvs[index].setKey(newKey);
                 trans.writeKeyHashes[index] = Keys.hash(newKey);
@@ -1280,7 +1280,7 @@ public class DbTester {
             public void transform(Trans trans, int index) {
                 long[] key = trans.kvs[index].getKey();
                 String keyString = Keys.toString(key);
-                keyString = keyString.replace("<transactionTime>", "" + trans.time);
+                keyString = keyString.replace("<transactionTime>", "" + trans.tt);
                 long[] newKey = Keys.toSegments(keyString);
                 //trans.kvs[index].keySegments = newKey;
                 trans.kvs[index].setKey(newKey);
@@ -1577,7 +1577,7 @@ public class DbTester {
         for (int i = 0; i < n; i++) {
             Trans t = db.trans().put("/k", new byte[10*1000]).build();
             db.execute(t);
-            tpos[i] = t.pos;
+            tpos[i] = t.tpos;
             sp[i] = db.internal().getStartupPos();
         }
         

@@ -62,7 +62,7 @@ public class StreamSize {
             }
             Trans trans = b.build();
             db.execute(trans);
-            long size1 = trans.lastPos - trans.pos + 1;
+            long size1 = trans.lastPos - trans.tpos + 1;
             
             
             m = new MemoryStream();
@@ -73,7 +73,7 @@ public class StreamSize {
             }
             trans = b.build();
             db.execute(trans);
-            long size2 = trans.lastPos - trans.pos + 1;
+            long size2 = trans.lastPos - trans.tpos + 1;
             
             c.report("overhead-" + n, size2 - size1);
         }
@@ -103,7 +103,7 @@ public class StreamSize {
             for (int i = 0; i < n; i++) {
                 Trans trans = db.trans().put("" + i, value).build();
                 db.execute(trans);
-                long size = (trans.lastPos - trans.pos + 1);
+                long size = (trans.lastPos - trans.tpos + 1);
                 sum += size;
             }
             

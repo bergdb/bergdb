@@ -453,7 +453,7 @@ public class RwEnvironmentImp implements RwEnvironment {
         
         public void transform(Trans trans, int index) {
             byte[] bytes = Keys.toBytes(trans.kvs[index].getKey());
-            byte[] timeBytes = Keys.toBytes(transTimeToString(trans.time));
+            byte[] timeBytes = Keys.toBytes(transTimeToString(trans.tt));
             assert timeBytes.length == REPLACE_ME_LENGTH;
             boolean found = false;
             

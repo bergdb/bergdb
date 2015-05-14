@@ -291,9 +291,6 @@ public class DbStarter3 {
                 db.internal().executeInner(t);
             }
             
-            
-            // TODO A. Below looks suspicious, is it correct?
-            
             for (StoredNode stored : trans.nodes) {
                 INode n = stored.getNode();
                 if (n.isIndexNode()) {

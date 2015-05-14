@@ -100,16 +100,16 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
 
     void appendNodes(TransNodes nodes, Trans trans) {                
         long pos = getNextPos();
-        serializer.serialize(nodes, trans.time, pos, trans.startupPos);
+        serializer.serialize(nodes, trans.tt, pos, trans.startupPos);
 
-        trans.pos = pos;
+        trans.tpos = pos;
         trans.lastPos = serializer.getOutputLastSpos();
         trans.nextPos = serializer.getOutputNextSpos();
 
         byte[] buffer = serializer.getTransBuffer();
         int bufferSize = serializer.getOutputTransSize();
 
-        rstream.append(buffer, 0, bufferSize, true, trans.time);
+        rstream.append(buffer, 0, bufferSize, true, trans.tt);
         rstream.getMetaBlock().setLastTransSpos(pos);
     }
     

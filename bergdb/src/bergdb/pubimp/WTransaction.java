@@ -54,7 +54,7 @@ public class WTransaction implements Transaction {
     }
     
     public Time getTime() {
-        return Time.units(trans.time);
+        return Time.units(trans.tt);
     }
     
     /**

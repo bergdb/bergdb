@@ -52,23 +52,12 @@ public class Pointer {
     
     
     public final boolean isNull() {
-        // Manual inline of: return isNull(node, pos);
-        return node == null && pos == Spos.NULL;
+        // NOTE consider inlining for performance.
+        return isNull(node, pos);
     }
     
-    /**
-     * A pointer "is null" if it is not a memory pointer (node == null)
-     * and pos is not a valid physical spos.
-     */
-    
-    //public static final boolean isNull(INode node, long pos) {
-    //    return (node == null) && (pos == Spos.NULL || (pos % 8 != 0));
-    //}
-    
-    // XXX work
     public static final boolean isNull(INode node, long pos) {
         return (node == null) && (pos == Spos.NULL);
-        //return (node == null) && (pos == Spos.NULL || (pos % 8 != 0));
     }
     
     public static final boolean isMem(INode node) {

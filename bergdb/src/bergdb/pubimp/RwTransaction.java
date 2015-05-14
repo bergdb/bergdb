@@ -51,7 +51,7 @@ public class RwTransaction implements Transaction {
     }
     
     public Time getTime() {
-        return Time.units(trans.time);
+        return Time.units(trans.tt);
     }
     
     public String getOutputStream(String key) {

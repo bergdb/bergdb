@@ -27,7 +27,7 @@ public class DbTesterRestart {
         Trans trans = db.trans().put("admin1", "Sanna").build();
         db.execute(trans);
         db.sync(SyncLevel.ORDINARY);
-        long tt = trans.time;
+        long tt = trans.tt;
         stream = stream.copy();
         
         db = null;
