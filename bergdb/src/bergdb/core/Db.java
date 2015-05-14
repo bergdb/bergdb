@@ -572,11 +572,13 @@ public class Db {
                 // This method call assumes new nodes are not dirty.
                 
                 assert node.isDirty == false : "node is dirty, " + node;
+                setVpos(node);
                 makeDirtyIfNeeded(node);
             }
             
             public void keyNodeCreated(KeyNode node) {
-                keyNodeChanged(node);
+                setVpos(node);
+                makeDirtyIfNeeded(node);
             }
             
             public void keyNodeChanged(KeyNode node) {
@@ -681,6 +683,15 @@ public class Db {
         
         // This is needed to be able to use sync() method.
         x.lastSposOfLastTrans = trans.lastPos;
+    }
+    
+    private void setVpos(INode node) {
+        assert node.isIndexNode();
+        
+        long vpos = x.nextVpos;
+        node.setId(vpos);
+        node.setSpos(vpos);
+        x.increaseNextVpos();
     }
 
     private void makeDirtyIfNeeded(INode node) {
@@ -1132,15 +1143,12 @@ public class Db {
         } else {
             newSp = computeNewStartupPos(currentSp);
             x.trans.startupPos = newSp;
-            
-            // Temp note 150513: line below fixes f:bergdb.test.StartupDistanceTester.
-            //x.trans.startupPos = currentSp;
         }
         
         transSeq.take(newSp, (TransSeq.TransNodesForMe) x.transNodes);
         
-        // A. Consider removing to go with "vpos" idea instead.
-        x.transNodes.addUnstoredDescendents();
+        // NOTE branch "vpos": Removed addUnstoredDescendents()!
+        //x.transNodes.addUnstoredDescendents();
         
         if (!x.trans.isStartupRerun) {
             nodeStream.appendNodes(x.transNodes, x.trans);
@@ -1349,7 +1357,7 @@ public class Db {
     }
     
     /**
-     * Collection of operation-scope variables for method Db.execute().
+     * Collection of operation-scope data for method Db.execute().
      * All access must be from thread holding Db.writeLock.
      */
     public class ExecuteData {
@@ -1370,24 +1378,35 @@ public class Db {
         
         public TransSeq.TransInfo transInfo;
         
-        /** End stream position of last transaction; used by Db.sync(). */
+        /** Last stream position of last transaction; used by Db.sync(). */
         public long lastSposOfLastTrans;
+
+        /** The vpos to assign to next index node that is created. */
+        private long nextVpos;
         
         private ExecuteData() {
             startupPos = new StartupPos(0);
             transNodes = new TransNodes();
         }
         
+        public final void increaseNextVpos() {
+            nextVpos++;
+            if (nextVpos % 8 == 0) {
+                nextVpos++;
+            }
+        }
+
         /** 
          * Called before transaction executes, just after Db.writeLock held. 
          * Allows ExecuteData to prepare for new transaction.
          */
         private void begin(Trans trans) {
+            assert x.putData != null;
+            
             this.trans = trans;
             transInfo = new TransSeq.TransInfo();
-            if (x.putData != null) {
-                x.putData.spaceSplitCount = 0;
-            }
+            x.nextVpos = nodeStream.getNextPos() + 1;
+            x.putData.spaceSplitCount = 0;
         }
         
         /**

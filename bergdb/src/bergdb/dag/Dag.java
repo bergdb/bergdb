@@ -1046,7 +1046,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         public INode readNode(long spos);
     }
     
-    
     /**
      * A PointerListener is used to listen to pointer-followed events
      * and super-root-node-accessed events.

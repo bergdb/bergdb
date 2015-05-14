@@ -94,8 +94,12 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         return rstream.getPosOfLastValidMetaBlock();
     }
 
+    public final long getNextPos() {
+        return rstream.getNextSpos();
+    }
+
     void appendNodes(TransNodes nodes, Trans trans) {                
-        long pos = rstream.getNextSpos();
+        long pos = getNextPos();
         serializer.serialize(nodes, trans.time, pos, trans.startupPos);
 
         trans.pos = pos;
@@ -164,6 +168,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      */
     public INode readNode(long spos) {
         assert spos >= RecoverableStream.META_BLOCK_SIZE : "bad spos, " + spos;
+        assert spos % 8 == 0 : "bad spos, " + spos + ", mod8: " + (spos % 8);
         
         byte[] buffer = new byte[1024];      
         rstream.read(spos, buffer, 0, 4);

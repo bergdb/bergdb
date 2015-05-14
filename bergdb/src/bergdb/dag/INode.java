@@ -30,13 +30,8 @@ public interface INode {
     public boolean isDirty();
     public void setDirty(boolean isDirty);
     
-    /**
-     * Sets a unique ID of the node. This ID does not change as the node
-     * is appended to or written to stream.
-     * Note, currently (2013-04) the ID is only used for debug and
-     * assert reasons; it might be removed in the future.
-     */
     public long getId();
+    public void setId(long id);
     
     /**
      * Returns the pointer count; note that this is not exactly the total

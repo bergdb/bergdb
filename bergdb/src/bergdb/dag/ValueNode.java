@@ -122,8 +122,18 @@ public final class ValueNode implements INode {
         return 0;
     }
 
+    /**
+     * Returns spos; value nodes do not have a read id attribute 
+     * distinct from spos.
+     */
     public final long getId() {
         return spos;
+    }
+    
+    /**
+     * This method does nothing. Value nodes have no id attribute.
+     */
+    public final void setId(long spos) {
     }
     
     public final boolean isDelete() {
