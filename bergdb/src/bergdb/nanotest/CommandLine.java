@@ -13,65 +13,20 @@ import java.util.List;
  * @author Frans Lundberg
  */
 public class CommandLine {
-    // There are more capable implementations, but this class avoids a dependency.
+    // There are more capable implementations in external libraries.
+    // This class avoids a dependency.
     
-    private HashMap<String, String[]> map;
     private static final String[] empty = new String[0];
-    private String[] args;
-    
-    private CommandLine() {
-        map = new HashMap<String, String[]>();
-    }
-    
-    public static CommandLine parse(String[] args) {
-        CommandLine c = new CommandLine();
-        c.args = args;
-        c.parseInternal(args);
-        return c;
-    }
+    private final HashMap<String, String[]> map;
+    private final String[] args;
     
     /**
-     * Has zero of more values with the given option name.
+     * Creates an immutable CommandLine object from args.
      */
-    public boolean has(String name) {
-        return valueCount(name) > 0;
-    }
-    
-    public boolean hasOneOrMore(String name) {
-        return valueCount(name) >= 1;
-    }
-    
-    public boolean hasOne(String name) {
-        return valueCount(name) == 1;
-    }
-    
-    public String[] get(String name) {
-        return map.get(name);
-    }
-    
-    public String getOne(String name) {
-        return valueCount(name) > 0 ? get(name)[0] : null;
-    }
-    
-    public int valueCount(String name) {
-        String[] arr = map.get(name);
-        return arr == null ? 0 : arr.length;
-    }
-    
-    public int optionCount() {
-        return map.size();
-    }
-    
-    public String toString() {
-        StringBuilder b = new StringBuilder();
-        for (String s : args) {
-            b.append(s + " ");
-        }
+    public CommandLine(String[] args) {
+        this.args = args.clone();
+        map = new HashMap<String, String[]>();
         
-        return b.toString().trim();
-    }
-
-    private void parseInternal(String[] args) {
         String name = null;
         List<String> values = null;
         
@@ -89,6 +44,48 @@ public class CommandLine {
         }
         
         putOptionToMap(name, values);
+    }
+    
+    /**
+     * Has zero of more values with the given option name.
+     */
+    public boolean has(String name) {
+        return valueCount(name) >= 0;
+    }
+    
+    public boolean hasOne(String name) {
+        return valueCount(name) == 1;
+    }
+    
+    public String[] get(String name) {
+        return map.get(name);
+    }
+    
+    public String getOne(String name) {
+        return valueCount(name) > 0 ? get(name)[0] : null;
+    }
+    
+    /**
+     * Number of values given option name.
+     * 
+     * @return The number of values or -1 if the option does not exist.
+     */
+    public int valueCount(String name) {
+        String[] arr = map.get(name);
+        return arr == null ? -1 : arr.length;
+    }
+    
+    public int optionCount() {
+        return map.size();
+    }
+    
+    public String toString() {
+        StringBuilder b = new StringBuilder();
+        for (String s : args) {
+            b.append(s + " ");
+        }
+        
+        return b.toString().trim();
     }
 
     private void putOptionToMap(String name, List<String> values) {
@@ -111,15 +108,15 @@ public class CommandLine {
     
     @Nano
     private static void testNoOptions() {
-        CommandLine line = CommandLine.parse(new String[0]);
+        CommandLine line = new CommandLine(new String[0]);
         
-        Assert.assertEquals(0, line.valueCount("opt"));
+        Assert.assertEquals(-1, line.valueCount("opt"));
         Assert.assertEquals(0, line.optionCount());
     }
     
     @Nano
     private static void testOneOption() {
-        CommandLine line = CommandLine.parse(new String[]{"-groups", "unit"});
+        CommandLine line = new CommandLine(new String[]{"-groups", "unit"});
         
         Assert.assertEquals("valueCount", 1, line.valueCount("groups"));
         Assert.assertEquals("optionCount", 1, line.optionCount());
@@ -129,7 +126,7 @@ public class CommandLine {
     
     @Nano
     private static void testMultipleValues() {
-        CommandLine line = CommandLine.parse(new String[]{"-groups", "unit", "f"});
+        CommandLine line = new CommandLine(new String[]{"-groups", "unit", "f"});
         
         Assert.assertEquals(2, line.valueCount("groups"));
         Assert.assertEquals(1, line.optionCount());
@@ -140,7 +137,7 @@ public class CommandLine {
     
     @Nano
     public static void valuesWithNoOptionShouldBeIgnored() {
-        CommandLine line = CommandLine.parse(new String[]{"value1", "value2"});
+        CommandLine line = new CommandLine(new String[]{"value1", "value2"});
         Assert.assertEquals(0, line.optionCount());
     }
 }

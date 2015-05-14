@@ -1084,7 +1084,7 @@ public class Db {
         // This is handled by dbClock.
         //
         
-        warmup(t);
+        if (!t.isStartupRerun) warmup(t);
         
         synchronized (writeLock) {
             x.begin(t);

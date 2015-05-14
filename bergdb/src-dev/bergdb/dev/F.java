@@ -2,9 +2,11 @@ package bergdb.dev;
 
 import java.util.Date;
 import java.util.Set;
+
 import bergdb.common.Create;
 import bergdb.common.Util;
 import bergdb.nanotest.ClassFilter;
+import bergdb.nanotest.CommandLine;
 import bergdb.nanotest.ConsoleUI;
 import bergdb.nanotest.MethodFilter;
 import bergdb.nanotest.TestRunner;
@@ -18,19 +20,25 @@ import bergdb.nanotest.TestRunner;
  */
 public class F {
     public static void main(String[] args) {
+        CommandLine c = new CommandLine(args);
+        boolean verbose = c.has("v");
+        
         ConsoleUI ui = ConsoleUI.builder()
-                .printStart(true).printProps(false).printMethods(true)
+                .printStart(true)
+                .printMethods(true)
+                .printProps(verbose)
+                .printTestOutput(verbose)
                 .build();
         printHeader();
         
         String classPatternString = ".*";
-        if (args.length >= 1) {
-            classPatternString = args[0];
+        if (c.has("c")) {
+            classPatternString = c.getOne("c");
         }
         
         String methodPatternString = ".*";
-        if (args.length >= 2) {
-            methodPatternString = args[1];
+        if (c.has("m")) {
+            methodPatternString = c.getOne("m");
         }
         
         Set<Class<?>> classes = new ClassFilter(classPatternString).filter(TestClasses.getClasses());
