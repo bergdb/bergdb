@@ -85,11 +85,12 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     }
     
     /** 
-     * Checks invariant "inv-forward-pointers".
+     * Attempts to check invariant "inv-forward-pointers".
+     * Not an exact check since INode:s have no tpos.
      * 
      * @throws AssertionError
      */
-    public boolean checkForwardPointerInvariant(final long startupPos) {
+    public boolean checkForwardPointerInvariantApprox(final long startupPos, final long minTransSize) {
         PointerVisitor visitor = new PointerVisitor() {
             public void visit(INode from, Pointer pointer) {
                 INode to = pointer.getNode();
@@ -97,13 +98,16 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                 long toPos = to.getSpos();
                 
                 if (fromPos != Spos.NULL && toPos != Spos.NULL) {
-                    boolean isForwardPointer = to.getSpos() > from.getSpos();
-                    if (isForwardPointer) {
+                    boolean isProbablyForwardPointer = to.getSpos() > (from.getSpos() + minTransSize);
+                    if (isProbablyForwardPointer) {
                         if (from.getSpos() < startupPos) {
-                            throw new AssertionError(
+                            String message = 
                                     "inv-forward-pointer broken, from: " + from + ", to: " + to
                                     + ", forward pointers must start in startup section, startup pos: " 
-                                    + startupPos);
+                                    + startupPos;
+                            
+                            //System.out.println("WARNING! " + message);
+                            throw new AssertionError(message);
                         }
                     }
                 }

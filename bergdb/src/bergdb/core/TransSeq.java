@@ -81,10 +81,14 @@ public class TransSeq implements PosOfTransBeforeFunction {
                 int type = node.getType();
                 switch (type) {
                 case INode.TYPE_TOP_NODE:
-                    transNodes.addTopNode((TopNode) node);
+                    //if (node.isDirty()) {   // TODO A. Use if here? could have been cleaned in advance due to addUnstoredDescendent
+                        transNodes.addTopNode((TopNode) node);
+                    //}
                     break;
                 case INode.TYPE_KEY_NODE:
-                    transNodes.addKeyNode((KeyNode) node);
+                    //if (node.isDirty()) {   // TODO A. Use if here? could have been cleaned in advance due to addUnstoredDescendent
+                        transNodes.addKeyNode((KeyNode) node);
+                    //}
                     break;
                 }
                 
@@ -104,7 +108,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
     /**
      * Accepts a visitor which will visit all gotDirtyNodes with a tpos <= limit.
      */
-    public void visitGotDirtyNodes(long limit, Visitor visitor) {
+    public void visitGotDirtyNodes(long limit, NodeVisitor visitor) {
         if (isEmpty()) {
             return;
         }
@@ -112,7 +116,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
         TransInfo info = first;
         while (info != null && info.tpos <= limit) {
             for (INode node : info.gotDirtyNodes) {
-                visitor.node(node);
+                visitor.node(node, info.tpos, info.lastPos);
             }
             info = info.next;
         }
@@ -132,8 +136,12 @@ public class TransSeq implements PosOfTransBeforeFunction {
         
         long tt;
         
+        long startupPos;
+
+        
         /** Index nodes (top nodes, key nodes) that got dirty while the transaction executed. */
         ArrayList<INode> gotDirtyNodes = new ArrayList<INode>();
+
 
         TransInfo() {}
         
@@ -165,8 +173,12 @@ public class TransSeq implements PosOfTransBeforeFunction {
         public void addKeyNode(KeyNode node);
     }
     
-    public static interface Visitor {
-        public void node(INode node);
+    public static interface NodeVisitor {
+        /**
+         * @param tpos  Transaction pos, that is the first stream pos of the transaction.
+         * @param lastPos  Last pos of the transaction.
+         */
+        public void node(INode node, long tpos, long lastTpos);
     }
     
     
@@ -257,8 +269,12 @@ public class TransSeq implements PosOfTransBeforeFunction {
     @Nano
     public static void testTake1() {
         TransSeq s = new TransSeq();
+        
         KeyNode n1 = new KeyNode();
+        n1.setDirty(true);
         KeyNode n2 = new KeyNode();
+        n2.setDirty(true);
+        
         TransInfo info1 = newTransInfo(100, 120, n1);
         TransInfo info2 = newTransInfo(200, 220, n2);
         
@@ -295,7 +311,9 @@ public class TransSeq implements PosOfTransBeforeFunction {
     public static void testTake2() {
         TransSeq s = new TransSeq();
         KeyNode n1 = new KeyNode();
+        n1.setDirty(true);
         KeyNode n2 = new KeyNode();
+        n2.setDirty(true);
         TransInfo info1 = newTransInfo(100, 120, n1);
         TransInfo info2 = newTransInfo(200, 220, n2);
         

@@ -48,8 +48,6 @@ public class Issue150420 {
         
         List<String> keys = readKeys();
         
-        env.out().println("keys.size : " + keys.size());
-        
         MemoryStream stream = new MemoryStream();
         Db db1 = Db.builder()
                 .clock(new TestClock())
@@ -67,14 +65,12 @@ public class Issue150420 {
             db1.execute(db1.trans().put(ikey, new byte[10*1000 + index]));
             db1.sync(SyncLevel.ORDINARY);
             
-            db1.internal().dag().checkForwardPointerInvariant(db1.internal().getStartupPos());
-            
             kvCompare(db1);
             //dagCompare(db1);
             
-            //if (errorCount > 0) {
-            //    break;
-            //}
+            if (errorCount > 0) {
+                break;
+            }
             
             index++;
         }

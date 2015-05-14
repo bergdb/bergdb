@@ -160,7 +160,7 @@ public class StoredTopNode implements StoredNode {
         l = ((long) node.pointersLength) | (node.topNodeId << (2 * 8));
         checksum ^= l;
         buffer[offset++] = l;
-        // 1 + 2 bytes not used
+        // 2 bytes not used
 
         checksum ^= node.id;
         buffer[offset++] = node.getId();

@@ -583,6 +583,7 @@ public class Db {
                 // The gotDirty code in the PointerListener is not enough for
                 // the case when new key nodes are created.
                 // This method call assumes new nodes are not dirty.
+                
                 makeDirtyIfNeeded(node);
             }
             
@@ -1118,9 +1119,6 @@ public class Db {
             // belong to the block.
             reclaimTransactionListener.transactionCompleted(t);    
         }
-        
-        // TODO A. Work on inv-forward-pointers.
-        // assert dag.checkForwardPointerInvariant(x.startupPos.get());
     }
     
     private void store() {
@@ -1150,6 +1148,7 @@ public class Db {
         x.transInfo.tpos = x.trans.pos;
         x.transInfo.lastPos = x.trans.lastPos;
         x.transInfo.tt = x.trans.time;
+        x.transInfo.startupPos = newSp;
         transSeq.add(x.transInfo);
         
         x.transNodes.clean();

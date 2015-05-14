@@ -22,6 +22,9 @@ import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.ReadOnlyStream;
 
+/**
+ * Problem at index = 298.
+ */
 @SuppressWarnings("unused")
 public class Issue150420a {
     private int errorCount;
@@ -56,6 +59,9 @@ public class Issue150420a {
             
             String ikey = PubKeys.u2i(key);
             db1.execute(db1.trans().put(ikey, new byte[10*1000 + index]));
+            
+            // TODO A - place of work
+            //db1.internal().dag().checkForwardPointerInvariant(db1.internal().getStartupPos());
             
             if (index == 298) {
                 env.out().println("index: " + index);                

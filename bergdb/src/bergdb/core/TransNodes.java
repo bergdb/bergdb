@@ -134,6 +134,10 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         
         for (int i = 0; i < keyCount; i++) {
             keyNodes[i].isDirty = false;
+            
+            //if (keyNodes[i].getId() == 101312 || keyNodes[i].getId() == 102176) {
+            //    System.out.println("GOT CLEAN (written to stream): " + keyNodes[i]);
+            //}
         }
     }
 
@@ -230,6 +234,9 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
                 assert pointee != null;
                 if (pointee.isIndexNode() && !pointee.isInTransNodes() && Spos.isNull(pointee.getSpos())) {
                     addIndexNode(pointee);
+                    
+                    //System.out.println("    addUnstoredDescendents, node: " + pointee);
+                    
                     addUnstoredDescendents(pointee, p);
                 }
             }

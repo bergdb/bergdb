@@ -60,7 +60,7 @@ public class StoredKeyNode implements StoredNode {
         // 2 bytes available for checksum
         buffer[offset++] = prevPos;
         buffer[offset++] = ((long) (node.isSegmentLeaf() ? 1 : 0)) | sz << (1 * 8);
-        // 5 zero bytes available...
+        // 6 zero bytes available...
         buffer[offset++] = node.getId();
 
         System.arraycopy(node.klongs, 0, buffer, offset, sz);
