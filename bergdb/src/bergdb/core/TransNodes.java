@@ -134,10 +134,6 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         
         for (int i = 0; i < keyCount; i++) {
             keyNodes[i].isDirty = false;
-            
-            //if (keyNodes[i].getId() == 101312 || keyNodes[i].getId() == 102176) {
-            //    System.out.println("GOT CLEAN (written to stream): " + keyNodes[i]);
-            //}
         }
     }
 
@@ -202,12 +198,12 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
     }
     
     /**
-     * Adds the descendent nodes that have never been stored to this set of nodes.
-     * All stream pointers of all nodes in this node set should have valid stream
-     * pointers after this method has been run.
+     * Adds descendents that have never been stored to this set of trans nodes.
+     * All stream pointers for all trans nodes should have valid stream
+     * pointers after this method has been executed.
      */
     public void addUnstoredDescendents() {
-        // Added 2015-01-04, resulted in a somewhat larger stream, but CorePerf is intact.
+        // Method added 2015-01-04, resulted in a somewhat larger stream, but CorePerf is intact.
         
         int count = size();
         Pointer p = new Pointer();

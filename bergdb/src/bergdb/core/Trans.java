@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.TreeMap;
 
 import bergdb.common.Util;
+import bergdb.core.Db.ExecuteData;
 import bergdb.dag.Dag;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
@@ -13,14 +14,13 @@ import bergdb.nanotest.Nano;
 
 /**
  * Data for executing a transaction. Input, output and some working data.
- * The KVs of the transaction are defined in this class.
- * This class is designed to suit class Db and achieve high performance.
+ * The KVs of the transaction are defined in this class; the transaction description.
  * This class is defined in the most preferred, most efficient form for the Db class, 
- * not for the client using Db;it is not especially user-friendly.
+ * not for the client using Db; it is not especially user-friendly.
  * 
  * To save memory allocation costs, a Trans object may be reused for multiple 
  * transactions run by the same thread. This is however only recommended when 
- * there is a significant performance benefit. 
+ * there is a significant performance benefit of doing so.
  * 
  * @author Frans Lundberg
  */
@@ -57,7 +57,8 @@ public class Trans {
     public long lastPos;            // Stream position of the last byte of the transaction. Available after execute().
     public long nextPos;            // Stream position of the first byte of the next transaction. Available after execute().
     public int nodeCount;           // Number of nodes written to stream. Useful for testing/debug.
-          
+    public Listener listener;       // Low-level listener, for development/debugging typically.
+
     // -- Other --
     
     /** True if transaction is executed on behalf of the database itself. */
@@ -77,6 +78,7 @@ public class Trans {
      */
     private Trans() {
         readKeyHashes = new long[0];
+        listener = Listener.DO_NOTHING;
     }
     
     public boolean isInternal() {
@@ -114,22 +116,27 @@ public class Trans {
         return b.toString();
     }
     
+    
+    
     /**
      * Listens to what happens to a transaction; suitable for testing.
      */
     public static interface Listener {
         /**
-         * Reports that the nodes were written to stream.
+         * The default trans listener that does nothing. 
+         * The object can be shared freely, it is thread-safe.
          */
-        public void nodesWritten(TransNodes nodes);
+        public static final Listener DO_NOTHING = new Listener() {
+            public final void transExecuted(ExecuteData x) {}
+        };
+        
+        /**
+         * Reports that a transaction was executed.
+         * The x object is owned by the caller; it must not
+         * be modified by the callee. Also, it is mutable.
+         */
+        public void transExecuted(Db.ExecuteData x);
     }
-    
-    /**
-     * A listener that does nothing.
-     */
-    public static final Listener NO_ACTION_LISTENER = new Listener() {
-        public void nodesWritten(TransNodes nodes) {}
-    };
     
     /**
      * Used to create a transaction; use Db.builder() to create a new instance.

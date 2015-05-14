@@ -60,7 +60,7 @@ public class Issue150420a {
             String ikey = PubKeys.u2i(key);
             db1.execute(db1.trans().put(ikey, new byte[10*1000 + index]));
             
-            // TODO A - place of work
+            // TODO A. A place to work
             //db1.internal().dag().checkForwardPointerInvariant(db1.internal().getStartupPos());
             
             if (index == 298) {

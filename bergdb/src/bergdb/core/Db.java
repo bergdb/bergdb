@@ -1108,6 +1108,8 @@ public class Db {
             
             x.startupPos.releaseForEvict();
             
+            x.trans.listener.transExecuted(x);
+            
             x.end();
 
             // The synch statement guarantees that the writes are visible to all readers 
@@ -1131,12 +1133,13 @@ public class Db {
             newSp = computeNewStartupPos(currentSp);
             x.trans.startupPos = newSp;
             
-            // Temp note 150513, line below fixes f:bergdb.test.StartupDistanceTester.
+            // Temp note 150513: line below fixes f:bergdb.test.StartupDistanceTester.
             //x.trans.startupPos = currentSp;
         }
         
         transSeq.take(newSp, (TransSeq.TransNodesForMe) x.transNodes);
         
+        // A. Consider removing to go with "vpos" idea instead.
         x.transNodes.addUnstoredDescendents();
         
         if (!x.trans.isStartupRerun) {

@@ -79,14 +79,18 @@ public class TransSeq implements PosOfTransBeforeFunction {
         while (first != null && first.tpos <= tposLimit) {
             for (INode node : first.gotDirtyNodes) {
                 int type = node.getType();
+                
+                // TODO B. Use ifDirty statements or not? could have been cleaned in advance due 
+                // to addUnstoredDescendent.
+                
                 switch (type) {
                 case INode.TYPE_TOP_NODE:
-                    //if (node.isDirty()) {   // TODO A. Use if here? could have been cleaned in advance due to addUnstoredDescendent
+                    //if (node.isDirty()) {
                         transNodes.addTopNode((TopNode) node);
                     //}
                     break;
                 case INode.TYPE_KEY_NODE:
-                    //if (node.isDirty()) {   // TODO A. Use if here? could have been cleaned in advance due to addUnstoredDescendent
+                    //if (node.isDirty()) {
                         transNodes.addKeyNode((KeyNode) node);
                     //}
                     break;
@@ -136,8 +140,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
         
         long tt;
         
-        long startupPos;
-
+        public long startupPos;
         
         /** Index nodes (top nodes, key nodes) that got dirty while the transaction executed. */
         ArrayList<INode> gotDirtyNodes = new ArrayList<INode>();

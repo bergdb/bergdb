@@ -3,6 +3,7 @@ package bergdb.test;
 import bergdb.common.Util;
 import bergdb.core.CoreTestClock;
 import bergdb.core.Db;
+import bergdb.core.Db.ExecuteData;
 import bergdb.core.Db.StartParams;
 import bergdb.core.DbUtil;
 import bergdb.core.StartupPosUpdater;
@@ -97,6 +98,57 @@ public class ScenarioTester {
             Trans t = db.trans().put(key, value).build();
             db.execute(t);
         }
+        
+        GetMany g = db.newGetMany();
+        g.lookupTime = Long.MAX_VALUE;
+        g.startKey = null;
+        db.getMany(g);
+        
+        Assert.assertTrue(g.result.size() == n);
+    }
+    
+    /**
+     * Playing with 101.
+     */
+    private static void scenario101b() {
+        // Removing Db.store()/addUnstoredDescendants()... testing. Bad pointer at i=32.
+        
+        CoreTestClock clock = new CoreTestClock();
+        clock.setTime(10);
+        MemoryStream stream = new MemoryStream();
+        byte[] value = new byte[10*1000];
+        int n = 16;
+        
+        Db db = Db.builder().testSetup().mainStream(stream)
+                .clock(clock).noEvict().startupDistance(100*1000)
+                .maxNodeSize8()
+                .start();
+        
+        Trans.Listener listener = new Trans.Listener() {
+            public void transExecuted(ExecuteData x) {
+                System.out.println("t" + x.trans.time + ", tpos:" + x.trans.pos 
+                        + ", start:" + x.transInfo.startupPos);
+                for (int i = 0; i < x.transNodes.size(); i++) {
+                    System.out.println(x.transNodes.get(i));
+                }
+            }
+        };
+        
+        for (int i = 0; i < n; i++) {
+            long time = 100 + i;
+            clock.setTime(time);
+            String key = key101(i);
+            
+            System.out.println("\n== i:" + i + ", " + key + " ==");
+            
+            Trans t = db.trans().put(key, value).build();
+            t.listener = listener;
+            
+            db.execute(t);
+        }
+        
+        System.out.println("==== db ====");
+        db.printDag(System.out);
         
         GetMany g = db.newGetMany();
         g.lookupTime = Long.MAX_VALUE;

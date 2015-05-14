@@ -332,8 +332,8 @@ public class StoredTrans {
         /**
          * Checks that stream pointers from key nodes are not Spos.NULL.
          * They should be valid after prepareToSerialized has been run.
-         * Call this method, only if assertions are enabled (-ea).
-         * This method may degrade performance.
+         * Call this method, only if assertions are enabled (-ea) since it may
+         * degrade performance.
          * 
          * @throws AssertionError
          */

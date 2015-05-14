@@ -1,6 +1,9 @@
 package bergdb.dev;
 
-// TODO A Keep working with inv-forward-pointer.
+//
+// TODO B. Rename Trans.time -> tt. Trans.pos -> tpos. "tt" and "tpos" have become "words" now.
+//
+// TODO A. Keep working with inv-forward-pointer.
 //
 // TODO LATER Add support for JSON. Pub API and changes to DbObject, I guess.
 // "Promised" to Stefan Edlich 150109.
