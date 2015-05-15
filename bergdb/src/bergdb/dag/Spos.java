@@ -14,12 +14,12 @@ import bergdb.nanotest.Nano;
 abstract public class Spos {
     // Note, set NULL to -2 to test if used everywhere where it should be used.
     // But, consider on-disk, at-user data.
-    // Note 150515, note that index nodes have spos % 8 == 0. BUT, this is not
-    // currently the case for value nodes. They can start at any mod8 value.
+    // Note 150515, index nodes have spos % 8 == 0. BUT, this is not
+    // the case for value nodes. They can start at any mod8 value.
     //
     
     /**
-     * Used to indicate "no spos", not considered a "valid" Spos.
+     * Used to indicate "no spos", not considered a valid spos.
      */
     public static final long NULL = -1;
     
@@ -27,19 +27,11 @@ abstract public class Spos {
     private Spos() {}
     
     /**
-     * Returns true if the long is a valid stream position, that is a non-negative value.
-     * XXX
+     * Returns true if the long is a valid stream position
+     * (that is, a non-negative value).
      */
-    public static final boolean isValidSpos(long spos) {
-        return (spos >= 0) && ((spos % 8) == 0);
-    }
-    
-    public static final boolean isValidSposOrVpos(long spos) {
+    public static final boolean isValid(long spos) {
         return spos >= 0;
-    }
-    
-    public static final boolean isVpos(long pos) {
-        return pos >= 0 && (pos % 8 != 0);
     }
     
     public static final long nextVpos(long vpos) {
@@ -77,10 +69,10 @@ abstract public class Spos {
     
     @Nano
     public static void testIsValid() {
-        assertTrue(isValidSpos(1200));
-        assertTrue(isValidSpos(0));
-        assertFalse(isValidSpos(-1234));
-        assertFalse(isValidSpos(NULL));
+        assertTrue(isValid(1200));
+        assertTrue(isValid(0));
+        assertFalse(isValid(-1234));
+        assertFalse(isValid(NULL));
     }
     
     @Nano

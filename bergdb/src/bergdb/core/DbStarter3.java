@@ -144,7 +144,7 @@ public class DbStarter3 {
                 long pos = storedNode.getNode().getSpos();
                 long prevPos = storedNode.getPrevPos();
                 
-                if (Spos.isValidSposOrVpos(prevPos)) {          
+                if (Spos.isValid(prevPos)) {          
                     nextMap.put(prevPos, pos);                    
                 }
             }
@@ -443,7 +443,7 @@ public class DbStarter3 {
         }
         
         long spos = node.getSpos();
-        if (!Spos.isValidSposOrVpos(spos)) {
+        if (!Spos.isValid(spos)) {
             throw new StreamFormatException("Bad spos of node, spos=" + spos + ", node: " + node);
         }
         
@@ -519,7 +519,7 @@ public class DbStarter3 {
         private HashMap<Long, Long> map = new HashMap<Long, Long>();
         
         void put(long pos, long previousPos) {
-            if (!Spos.isValidSposOrVpos(pos)) {
+            if (!Spos.isValid(pos)) {
                 throw new IllegalArgumentException("bad pos: " + pos);
             }
             

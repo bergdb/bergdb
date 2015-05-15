@@ -157,7 +157,7 @@ public class Evictor {
         //
         
         long spos = node.getSpos();
-        if (!Spos.isValidSpos(spos) || spos >= ed.startupPos) {
+        if (!Spos.isValid(spos) || spos >= ed.startupPos) {
             return;
         }
         
