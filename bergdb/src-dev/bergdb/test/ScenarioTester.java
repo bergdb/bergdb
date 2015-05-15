@@ -2,6 +2,7 @@ package bergdb.test;
 
 import bergdb.common.Util;
 import bergdb.core.CoreTestClock;
+import bergdb.core.DagComparison;
 import bergdb.core.Db;
 import bergdb.core.Db.ExecuteData;
 import bergdb.core.Db.StartParams;
@@ -10,6 +11,7 @@ import bergdb.core.StartupPosUpdater;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.GetMany;
+import bergdb.dag.INode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.TestEnvironment;
 import static bergdb.nanotest.Assert.assertEquals;
@@ -17,9 +19,9 @@ import bergdb.nanotest.Nano;
 import bergdb.stream.MemoryStream;
 
 /**
- * Numbered scenarios that can be references. Referred to as ScenarioNNN.
+ * Numbered scenarios that can be referenced. Referred to as ScenarioNNN, or SNNN.
  * Written test scenarios are not much changed; they should be thought of
- * as static, but may have to evolve as the database evolves.
+ * as static, but may have to evolve slowly as the database evolves.
  * 
  * @author Frans Lundberg
  */
@@ -98,57 +100,6 @@ public class ScenarioTester {
             Trans t = db.trans().put(key, value).build();
             db.execute(t);
         }
-        
-        GetMany g = db.newGetMany();
-        g.lookupTime = Long.MAX_VALUE;
-        g.startKey = null;
-        db.getMany(g);
-        
-        Assert.assertTrue(g.result.size() == n);
-    }
-    
-    /**
-     * Playing with 101.
-     */
-    private static void scenario101b() {
-        // Removing Db.store()/addUnstoredDescendants()... testing. Bad pointer at i=32.
-        
-        CoreTestClock clock = new CoreTestClock();
-        clock.setTime(10);
-        MemoryStream stream = new MemoryStream();
-        byte[] value = new byte[10*1000];
-        int n = 16;
-        
-        Db db = Db.builder().testSetup().mainStream(stream)
-                .clock(clock).noEvict().startupDistance(100*1000)
-                .maxNodeSize8()
-                .start();
-        
-        Trans.Listener listener = new Trans.Listener() {
-            public void transExecuted(ExecuteData x) {
-                System.out.println("t" + x.trans.tt + ", tpos:" + x.trans.tpos 
-                        + ", start:" + x.transInfo.startupPos);
-                for (int i = 0; i < x.transNodes.size(); i++) {
-                    System.out.println(x.transNodes.get(i));
-                }
-            }
-        };
-        
-        for (int i = 0; i < n; i++) {
-            long time = 100 + i;
-            clock.setTime(time);
-            String key = key101(i);
-            
-            System.out.println("\n== i:" + i + ", " + key + " ==");
-            
-            Trans t = db.trans().put(key, value).build();
-            t.listener = listener;
-            
-            db.execute(t);
-        }
-        
-        System.out.println("==== db ====");
-        db.printDag(System.out);
         
         GetMany g = db.newGetMany();
         g.lookupTime = Long.MAX_VALUE;
@@ -372,5 +323,90 @@ public class ScenarioTester {
         db.stop();
         
         Assert.assertEquals(sum1, sum2);
+    }
+    
+    /**
+     * Scenario with few transaction that demonstrates a dag diff
+     * before we fixed it.
+     */
+    @Nano
+    private static void scenario107() throws InterruptedException {
+        
+        System.out.println("======== scenario107 ========");
+        
+        // TODO B. This is simple and interesting. Study restarted dag. 
+        // V-nodes of restarted dag has spos = -1. It that OK? How about index nodes -1?
+        
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        
+        Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(10*1000).start();
+        
+        String[] keys = new String[] {
+                "/seven1/seven2/key1",
+                "/seven1/seven2/seven3/key2",
+                "/whatever1"};
+        
+        int[] sizes = new int[] {
+                5002, 
+                5003, 
+                5004};
+        
+        Trans[] trans = new Trans[keys.length];
+        
+        Trans.Listener listener = new Trans.Listener() {
+            public void transExecuted(ExecuteData x) {
+                System.out.println("== t" + x.trans.tt + ", tpos:" + x.trans.tpos 
+                        + ", stpos:" + x.transInfo.startupPos);
+                int size = x.transNodes.size();
+                for (int i = 0; i < size; i++) {
+                    System.out.println(x.transNodes.get(i));
+                }
+                
+                if (x.transInfo.gotDirtyNodes.size() > 0) {
+                    System.out.print("Got dirty: ");
+                    for (INode node : x.transInfo.gotDirtyNodes) {
+                        System.out.print(node + "; ");
+                    }
+                    System.out.println();
+                }
+                
+                System.out.println();
+            }
+        };
+        
+        for (int i = 0; i < trans.length; i++) {
+            Trans t = db.trans().put(keys[i], new byte[sizes[i]]).build();
+            t.listener = listener;
+            db.execute(t);
+        }
+        db.sync(SyncLevel.ORDINARY);
+        
+        // Here, without "redirty" algorithm, seven2 would be clean, but it would
+        // point to seven3 which is dirty. Restart would fail.
+        
+        System.out.println("---- printGraph ----");
+        db.printDag(System.out);
+        System.out.println("Stream length: " + db.getStreamLength());
+        
+        long sum1 = DbUtil.checksum(db);
+        db.stop();
+        
+        // Restart
+        
+        Db db2 = Db.builder().testSetup(stream).build();
+        db2.start();
+        
+        System.out.println("---- printGraph db2 ----");
+        db2.printDag(System.out);
+        System.out.println("Stream length: " + db2.getStreamLength());
+        
+        
+        long sum2 = DbUtil.checksum(db2);
+        db2.stop();
+        Assert.assertEquals(sum1, sum2);
+        
+        boolean equal = new DagComparison(db.internal().dag(), db2.internal().dag()).printDiffs(true).compare();
+        Assert.assertTrue("dags equal?", equal);
     }
 }

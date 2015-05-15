@@ -695,11 +695,20 @@ public class Db {
         x.increaseNextVpos();
     }
 
-    private void makeDirtyIfNeeded(INode node) {
+    /**
+     * If 'node' is not dirty, it is added to the gotDirty nodes and
+     * it dirty flag is set.
+     * 
+     * @return True if 'node' got dirty.
+     */
+    private boolean makeDirtyIfNeeded(INode node) {
         if (!node.isDirty() && node.isIndexNode()) {
             node.setDirty(true);
             x.transInfo.gotDirtyNodes.add(node);
+            return true;
         }
+        
+        return false;
     }
 
     /**
@@ -1153,7 +1162,21 @@ public class Db {
         }
         
         x.transNodes.clean();
-        handleNodesWithUnstoredPointees();
+        
+        // Loop needed, nodes in transNodes may point to each other.
+        //int gotDirtyCount;
+        //do {
+        //    gotDirtyCount = handleNodesWithDirtyPointees();
+        //} while (gotDirtyCount > 0);
+        
+        // TEMP notes, assertions enabled. Unit always works. Result:
+        // 0 times - u0f4, issue150420:fails
+        // 1 time  - u0f1, issue150420:fails
+        // 4 times - u0f5, issue150420:ok
+        
+        // TODO A. Issue. If handleNodesWithDirtyPointees() is called multiple
+        // times, 4 f-tests fail. If called once only, issue150420/kvCompare fails.
+        handleNodesWithDirtyPointees();       
         
         x.trans.nodeCount = x.transNodes.size();
         
@@ -1170,42 +1193,57 @@ public class Db {
     /**
      * Adds nodes with unstored pointees to the got-dirty nodes
      * of the current transaction.
+     * 
+     * @return Number of nodes that got dirty.
      */
-    private void handleNodesWithUnstoredPointees() {
-        // TODO C. Can we unit test this?
-        
+    private int handleNodesWithDirtyPointees() {
         TransNodes nodes = x.transNodes;
         int topCount = nodes.topCount;
         int keyCount = nodes.keyCount;
+        int gotDirtyCount = 0;
+        boolean gotDirty;
         
         for (int i = 0; i < topCount; i++) {
             TopNode node = nodes.topNodes[i];
-            addToGotDirtyIfAppropriate(node);
+            gotDirty = addToGotDirtyIfAppropriate(node);
+            if (gotDirty) gotDirtyCount++;
         }
         
         for (int i = 0; i < keyCount; i++) {
             KeyNode node = nodes.keyNodes[i];
-            addToGotDirtyIfAppropriate(node);
+            gotDirty = addToGotDirtyIfAppropriate(node);
+            if (gotDirty) gotDirtyCount++;
         }
+        
+        return gotDirtyCount;
     }
 
-    private void addToGotDirtyIfAppropriate(INode node) {
+    private boolean addToGotDirtyIfAppropriate(INode node) {
         Pointer p = new Pointer();
         int count = node.getPointerCount();
+        boolean gotDirty = false;
         
         A: for (int j = 0; j < count; j++) {
             node.getPointer(j, p);
             
             INode pointee = p.node;
             if (pointee != null) {
+                if (pointee.isDirty()) {
+                    gotDirty = makeDirtyIfNeeded(node);
+                    break A;
+                }
+                
+                /*
                 long spos = pointee.getSpos();
                 
                 if (spos > 0 && spos % 8 != 0) {
                     makeDirtyIfNeeded(node);
                     break A;
-                }
+                }*/
             }
         }
+        
+        return gotDirty;
     }
 
     /**
@@ -1424,7 +1462,7 @@ public class Db {
         public long lastSposOfLastTrans;
 
         /** The vpos to assign to next index node that is created. */
-        private long nextVpos;    // TODO A. check nextVpos. How used for rerun transactions?
+        private long nextVpos;
         
         private ExecuteData() {
             startupPos = new StartupPos(0);
@@ -1432,6 +1470,7 @@ public class Db {
         }
         
         public final void increaseNextVpos() {
+            // NOTE Consider using only odd vpos values. For easier debugging.
             x.nextVpos = Spos.nextVpos(x.nextVpos);
         }
 
@@ -1444,7 +1483,11 @@ public class Db {
             
             this.trans = trans;
             transInfo = new TransSeq.TransInfo();
-            x.nextVpos = nodeStream.getNextPos() + 1;       // TODO A. Not correct for rerun transaction, is it?
+            if (trans.isStartupRerun) {
+                x.nextVpos = trans.tpos + 1;
+            } else {
+                x.nextVpos = nodeStream.getNextPos() + 1;
+            }
             x.putData.spaceSplitCount = 0;
         }
         

@@ -60,8 +60,8 @@ public class Issue150420 {
                 .start();
         
         for (String key : keys) {
-            env.out().println("index: " + index);
-            //if (index % 10 == 0) env.out().print(".");
+            //env.out().println("index: " + index);
+            if (index % 10 == 0) env.out().print(".");
             
             String ikey = PubKeys.u2i(key);
             db1.execute(db1.trans().put(ikey, new byte[10*1000 + index]));

@@ -142,20 +142,31 @@ public class DagComparison {
             return compareKeyNodes((KeyNode) n1, (KeyNode) n2);
         case INode.TYPE_VALUE:
         case INode.TYPE_DELETE:
-            return compareKeyNodes((ValueNode) n1, (ValueNode) n2);
+            return compareValueNodes((ValueNode) n1, (ValueNode) n2);
         default:
             throw new Error("Bad node type, " + n1);
         }
     }
 
-    private String compareKeyNodes(ValueNode n1, ValueNode n2) {
+    private String compareValueNodes(ValueNode n1, ValueNode n2) {
+        // NOTE, do we want to compare spos too?
+        
         boolean equal = Arrays.equals(n1.value, n2.value);
         return equal ? null : "Values not equal, " + n1 + ", " + n2;
     }
 
     private String compareKeyNodes(KeyNode n1, KeyNode n2) {
+        // NOTE we could compare more...
+        
         int s1 = n1.size;
         int s2 = n2.size;
+        long id1 = n1.getId();
+        long id2 = n2.getId();
+        
+        if (id1 != id2) {
+            return "KeyNode.id differs, " + n1 + " != " + n2 
+                    + "\n" + keyNodePairToString(n1, n2);
+        }
         
         if (s1 != s2) {
             return "KeyNode.size differs, " + s1 + " != " + s2 + ", " + n1 + ", " + n2 
@@ -167,8 +178,6 @@ public class DagComparison {
                 return "KeyNode.klongs differ at " + i + ", " + n1 + ", " + n2;
             }
         }
-        
-        // could do more... pos, pointers?
         
         return null;
     }

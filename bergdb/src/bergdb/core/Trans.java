@@ -56,6 +56,7 @@ public class Trans {
     public long tpos;               // Stream position of the first byte of the transaction. Available after execute().
     public long lastPos;            // Stream position of the last byte of the transaction. Available after execute().
     public long nextPos;            // Stream position of the first byte of the next transaction. Available after execute().
+    //public long startupPos;         // Startup stream position.
     public int nodeCount;           // Number of nodes written to stream. Useful for testing/debug.
     public Listener listener;       // Low-level listener, for development/debugging typically.
 
@@ -67,8 +68,8 @@ public class Trans {
     /** True if used at startup for transaction rerun. */
     boolean isStartupRerun;
     
-    /** startupPos stored in stream with transaction or Spos.NULL for "no update". */
-    long startupPos = Spos.NULL;
+    /** startupPos stored in stream with transaction. */
+    public long startupPos = Spos.NULL;
     
     /** GetData for Db.warmup() method. */
     GetData warmupGetData;
