@@ -14,6 +14,9 @@ import bergdb.nanotest.Nano;
 abstract public class Spos {
     // Note, set NULL to -2 to test if used everywhere where it should be used.
     // But, consider on-disk, at-user data.
+    // Note 150515, note that index nodes have spos % 8 == 0. BUT, this is not
+    // currently the case for value nodes. They can start at any mod8 value.
+    //
     
     /**
      * Used to indicate "no spos", not considered a "valid" Spos.
@@ -24,7 +27,8 @@ abstract public class Spos {
     private Spos() {}
     
     /**
-     * Returns true if the long is a valid non-virtual stream position.
+     * Returns true if the long is a valid stream position, that is a non-negative value.
+     * XXX
      */
     public static final boolean isValidSpos(long spos) {
         return (spos >= 0) && ((spos % 8) == 0);

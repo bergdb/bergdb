@@ -151,6 +151,13 @@ public class DagComparison {
     private String compareValueNodes(ValueNode n1, ValueNode n2) {
         // NOTE, do we want to compare spos too?
         
+        long p1 = n1.getSpos();
+        long p2 = n2.getSpos();
+        
+        if (p1 != p2) {
+            return "pos of value nodes differ: " + p1 + " != " + p2;
+        }
+        
         boolean equal = Arrays.equals(n1.value, n2.value);
         return equal ? null : "Values not equal, " + n1 + ", " + n2;
     }

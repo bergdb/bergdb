@@ -986,8 +986,7 @@ public class Db {
     }
     
     /**
-     * This method visits all nodes in memory to check that there state is consistent
-     * and that they are not too dirty.
+     * This method visits all nodes in memory to check that the state is consistent.
      * This method locks on both writeLock and readSynch. Use for testing only.
      */
     public void checkNodes() throws AssertionError {
@@ -1174,9 +1173,12 @@ public class Db {
         // 1 time  - u0f1, issue150420:fails
         // 4 times - u0f5, issue150420:ok
         
-        // TODO A. Issue. If handleNodesWithDirtyPointees() is called multiple
+        // TODO B. Issue. If handleNodesWithDirtyPointees() is called multiple
         // times, 4 f-tests fail. If called once only, issue150420/kvCompare fails.
-        handleNodesWithDirtyPointees();       
+        handleNodesWithDirtyPointees();
+        //handleNodesWithDirtyPointees();
+        //handleNodesWithDirtyPointees();
+        //handleNodesWithDirtyPointees();
         
         x.trans.nodeCount = x.transNodes.size();
         

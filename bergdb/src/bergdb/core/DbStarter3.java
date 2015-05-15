@@ -4,12 +4,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import bergdb.core.Db.ExecuteData;
 import bergdb.dag.Dag.NodeReader;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Klong;
+import bergdb.dag.NodeVisitor;
 import bergdb.dag.Pointer;
 import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
@@ -28,10 +30,8 @@ import bergdb.storage.StreamFormatException;
 public class DbStarter3 {
     //
     // DbStarter3 -- focus on last state (again). No dummy writes to node stream.
-    // Status 141109: Seems to work :-)
-    //
     // This implementation is not optimized for CPU performance. Clean code takes precedence.
-    // Startup is not that performance-sensitive and its likely I/O bound anyway.
+    // Startup is not that performance-sensitive and it is likely I/O bound.
     //
     
     private final TransSeq transSeq = new TransSeq();
@@ -285,13 +285,32 @@ public class DbStarter3 {
         int count = transactions.size();
         
         for (int i = 0; i < count; i++) {
-            StoredTrans trans = transactions.get(i);
+            final StoredTrans storedTrans = transactions.get(i);
+            
+            Trans.Listener listener = new Trans.Listener() {
+                public void transExecuted(ExecuteData x) {
+                    int valueCount = x.transNodes.valueCount;
+                    
+                    for (int i = 0; i < valueCount; i++) {
+                        ValueNode v = x.transNodes.valueNodes[i];
+                        long[] key = x.transNodes.keys[i];
+                        
+                        ValueNode v2 = storedTrans.getValueNode(key);
+                        assert v2 != null : "Could not find value node for given key";
+                        assert v2.getSpos() >= 0 : "v2 spos: " + v2.getSpos();
+                        
+                        v.setSpos(v2.getSpos());
+                    }
+                }
+            };
+            
             if (i > 0) {
-                Trans t = trans.createRerunTransaction(db.trans());
+                Trans t = storedTrans.createRerunTransaction(db.trans());
+                t.listener = listener;
                 db.internal().executeInner(t);
             }
             
-            for (StoredNode stored : trans.nodes) {
+            for (StoredNode stored : storedTrans.nodes) {
                 INode n = stored.getNode();
                 if (n.isIndexNode()) {
                     n.setDirty(false);
@@ -302,8 +321,29 @@ public class DbStarter3 {
         dag.setRerunMode(false);
     }
 
+    /**
+     * @throws AssertionError
+     */
     private void postStartupCheck() {
+        checkThatValueNodesHaveSpos();
         db.checkNodes();
+    }
+    
+    private void checkThatValueNodesHaveSpos() {
+        dag.visitMemoryNodes(new NodeVisitor() {
+            public void visit(TopNode node) {
+            }
+
+            public void visit(KeyNode node) {
+            }
+
+            public void visit(ValueNode node) {
+                long pos = node.getSpos();
+                if (!(pos >= 0)) {
+                    throw new AssertionError("value node got no spos during startup, " + node);
+                }
+            }
+        });
     }
 
     /**

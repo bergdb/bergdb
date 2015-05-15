@@ -50,3 +50,10 @@ public class MEM {
         System.out.println(m.report);
     }
 }
+
+/*
+
+150515, MEM:161 on cissi and JVM 1.7.0_76 from Oracle.
+
+
+*/

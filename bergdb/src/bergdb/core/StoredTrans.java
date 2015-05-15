@@ -40,10 +40,18 @@ public class StoredTrans {
     public final long lastPos;
     
     /** The nodes of the transaction. */
-    public final StoredNode[] nodes;
+    public StoredNode[] nodes;
     
     public final long startupPos;
 
+    private StoredTrans() {
+        // for testing
+        tt = 0;
+        tpos = 0;
+        lastPos = 99;
+        startupPos = 0;
+    }
+    
     private StoredTrans(Parser d) {
         tt = d.transactionTime;
         tpos = d.tpos;
@@ -96,6 +104,27 @@ public class StoredTrans {
                 break;
             }
         }
+        return result;
+    }
+    
+    /**
+     * Returns a value node matching the given key, or null if no
+     * match is found. Linear search is used.
+     */
+    public ValueNode getValueNode(long[] key) {
+        ValueNode result = null;
+        
+        for (int i = 0; i < nodes.length; i++) {
+            StoredNode stored = nodes[i];
+            if (stored instanceof StoredValueNode) {
+                StoredValueNode storedValueNode = (StoredValueNode) stored;
+                long[] storedKey = storedValueNode.getKey();
+                if (Keys.areEqual(key, storedKey)) {
+                    result = storedValueNode.getNode();
+                }
+            }
+        }
+        
         return result;
     }
 
@@ -744,5 +773,23 @@ public class StoredTrans {
         assertEquals(1, trans.kvs.length);
         assertArrayEquals(new byte[]{1, 2, 3}, trans.kvs[0].getValue());
         assertArrayEquals(Keys.toSegments("key1"), trans.kvs[0].getKey());
+    }
+    
+    @Nano
+    private static void testGetValueNode() {
+        StoredTrans s = new StoredTrans();
+        
+        s.nodes = new StoredNode[2];
+        s.nodes[0] = StoredValueNode.create(new ValueNode(new byte[1]), Keys.toSegments("adam"));
+        s.nodes[1] = StoredValueNode.create(new ValueNode(new byte[2]), Keys.toSegments("eve"));
+        
+        ValueNode v = s.getValueNode(Keys.toSegments("kalle"));
+        Assert.assertNull(v);
+        
+        v = s.getValueNode(Keys.toSegments("adam"));
+        Assert.assertEquals(1, v.getValue().length);
+        
+        v = s.getValueNode(Keys.toSegments("eve"));
+        Assert.assertEquals(2, v.getValue().length);
     }
 }

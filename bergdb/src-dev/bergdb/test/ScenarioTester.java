@@ -327,15 +327,12 @@ public class ScenarioTester {
     
     /**
      * Scenario with few transaction that demonstrates a dag diff
-     * before we fixed it.
+     * before we fixed an issue.
      */
+    @SuppressWarnings("unused")
     @Nano
     private static void scenario107() throws InterruptedException {
-        
-        System.out.println("======== scenario107 ========");
-        
-        // TODO B. This is simple and interesting. Study restarted dag. 
-        // V-nodes of restarted dag has spos = -1. It that OK? How about index nodes -1?
+        // Created 2015-05.
         
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
@@ -354,7 +351,7 @@ public class ScenarioTester {
         
         Trans[] trans = new Trans[keys.length];
         
-        Trans.Listener listener = new Trans.Listener() {
+        Trans.Listener printListener = new Trans.Listener() {
             public void transExecuted(ExecuteData x) {
                 System.out.println("== t" + x.trans.tt + ", tpos:" + x.trans.tpos 
                         + ", stpos:" + x.transInfo.startupPos);
@@ -377,17 +374,13 @@ public class ScenarioTester {
         
         for (int i = 0; i < trans.length; i++) {
             Trans t = db.trans().put(keys[i], new byte[sizes[i]]).build();
-            t.listener = listener;
+            //t.listener = printListener;
             db.execute(t);
         }
         db.sync(SyncLevel.ORDINARY);
         
-        // Here, without "redirty" algorithm, seven2 would be clean, but it would
-        // point to seven3 which is dirty. Restart would fail.
-        
-        System.out.println("---- printGraph ----");
-        db.printDag(System.out);
-        System.out.println("Stream length: " + db.getStreamLength());
+        //System.out.println("---- printGraph ----");
+        //db.printDag(System.out);
         
         long sum1 = DbUtil.checksum(db);
         db.stop();
@@ -397,14 +390,13 @@ public class ScenarioTester {
         Db db2 = Db.builder().testSetup(stream).build();
         db2.start();
         
-        System.out.println("---- printGraph db2 ----");
-        db2.printDag(System.out);
-        System.out.println("Stream length: " + db2.getStreamLength());
-        
+        //System.out.println("---- printGraph db2 ----");
+        //db2.printDag(System.out);
         
         long sum2 = DbUtil.checksum(db2);
         db2.stop();
-        Assert.assertEquals(sum1, sum2);
+        
+        Assert.assertEquals("kv checksums equal?", sum1, sum2);
         
         boolean equal = new DagComparison(db.internal().dag(), db2.internal().dag()).printDiffs(true).compare();
         Assert.assertTrue("dags equal?", equal);

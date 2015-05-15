@@ -41,6 +41,17 @@ public class StoredValueNode implements StoredNode {
     public String toString() {
         return "p:" + getPrevPos() + ", n:" + node.toString();
     }
+    
+    /**
+     * Creates instance given a ValueNode and its key.
+     * Useful for testing.
+     */
+    public static StoredValueNode create(ValueNode node, long[] key) {
+        StoredValueNode result = new StoredValueNode();
+        result.node = node;
+        result.key = key;
+        return result;
+    }
 
     /**
      * Creates a StoredValueNode by parsing the provided byte buffer.

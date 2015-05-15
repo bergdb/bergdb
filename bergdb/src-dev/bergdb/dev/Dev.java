@@ -1,5 +1,10 @@
 package bergdb.dev;
 
+// TODO A. When rerunning transactions, match up spos of value nodes in startup section with
+// those create when rerunning the kv transactions.
+// I guess DbStarter could store the value spos:s for each transaction.
+// Just a list per trans. Or map key -> value spos ?
+//
 // TODO LATER Add support for JSON. Pub API and changes to DbObject, I guess.
 // "Promised" to Stefan Edlich 150109.
 //
