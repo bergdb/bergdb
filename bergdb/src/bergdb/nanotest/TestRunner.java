@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Locale;
@@ -79,19 +80,27 @@ public class TestRunner {
      * The result is collected by 'collector'.
      */
     public static void runClassTests(Class<?> c, TestRunConsumer consumer, TestEnvironment testEnv, 
-            MethodFilter filter) {
-        consumer.classAboutToRun(c);
-        
+            MethodFilter filter) {        
         Method[] methods = c.getDeclaredMethods();
         sort(methods);
         
+        ArrayList<Method> methodsToRun = new ArrayList<Method>(methods.length);
+        
         for (Method m : methods) {
             if (filter.include(m)) {
-                invokeTestMethod(m, consumer, testEnv);
+                methodsToRun.add(m);
             }
         }
         
-        consumer.classDone();
+        if (methodsToRun.size() > 0) {
+            consumer.classAboutToRun(c);
+    
+            for (Method m : methodsToRun) {
+                invokeTestMethod(m, consumer, testEnv);
+            }
+            
+            consumer.classDone();
+        }
     }
     
     /**

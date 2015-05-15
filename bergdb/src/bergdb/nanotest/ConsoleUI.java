@@ -20,20 +20,74 @@ public class ConsoleUI implements TestRunConsumer {
     protected long nanoTime;
     protected double exeTime;  // Time in sec to execute test method.
     protected double totalExeTime = 0.0;
-    private final Builder b;
+    protected PrintStream baseOut;
+    private PrintStream testOut;
+    private Class<?> currentClass;
     
-    protected final PrintStream baseOut;
-    private final PrintStream testOut;
+    // verbose levels
     
+    private final int LEVEL_SILENT = 0;
+    private final int LEVEL_DOTS = 1;
+    private final int LEVEL_CLASSES = 2;
+    private final int LEVEL_METHODS = 3;
+    private final int LEVEL_PROPS = 4;
+    private final int LEVEL_MAX = 5;
+    private int level;
     
-    protected ConsoleUI(Builder b) {
-        this.b = b;
-        this.baseOut = b.baseOut;
-        this.testOut = b.testOut;
+    /**
+     * ConsoleIO with default settings.
+     */
+    public ConsoleUI() {
+        this.level = LEVEL_CLASSES;
+        output(System.out);
+        this.testOut = new NullPrintStream();
     }
     
-    public boolean getPrintMethods() {
-        return b.printMethods;
+    private ConsoleUI output(PrintStream out) {
+        this.baseOut = out;
+        return this;
+    }
+    
+    public ConsoleUI testOutput(PrintStream out) {
+        this.testOut = out;
+        return this;
+    }
+    
+    /**
+     * Print only result summary, very silent.
+     */
+    public ConsoleUI silent() {
+        this.level = LEVEL_SILENT;
+        return this;
+    }
+    
+    /** Prints less than default, just a dot per test. */
+    public ConsoleUI dots() {
+        this.level = LEVEL_DOTS;
+        return this;
+    }
+    
+    /** Prints more than default, prints each method name. */
+    public ConsoleUI printMethods() {
+        this.level = LEVEL_METHODS;
+        return this;
+    }
+    
+    public ConsoleUI maxVerbose() {
+        this.level = LEVEL_MAX;
+        return this;
+    }
+    
+    /**
+     * Applies the options from a CommandLine.
+     */
+    public ConsoleUI applyOptions(CommandLine c) {
+        if (c.has("s")) silent();
+        if (c.has("dots")) dots();
+        if (c.has("d")) dots();
+        if (c.has("v")) printMethods();
+        if (c.has("vv")) maxVerbose();
+        return this;
     }
     
     public void report(String name, Object value) {
@@ -42,24 +96,40 @@ public class ConsoleUI implements TestRunConsumer {
         p.value = value;
         props.add(p);
         
-        if (b.printProps) {
+        if (level >= LEVEL_PROPS) {
             baseOut.println("* " + p.name + ": " + p.value);
         }
     }
+
+    public void aboutToRun(int classCount) {
+    }
+
+    public void done() {
+        if (level == LEVEL_DOTS) {
+            baseOut.println();
+        }
+        baseOut.print(this.getReport());
+    }
     
     public void classAboutToRun(Class<?> clazz) {
-        // empty
+        currentClass = clazz;
+        
+        if (level > LEVEL_DOTS && level < LEVEL_METHODS) {
+            baseOut.print(currentClass.getName() + " ");
+        }
     }
     
     public void classDone() {
-        // empty
+        if (level == LEVEL_CLASSES) {
+            baseOut.println();
+        }
     }
     
     public void testAboutToRun(String longMethodName) {
         currentMethodName = longMethodName;
         currentTempDirs.clear();
         
-        if (b.printStart) {
+        if (level >= LEVEL_PROPS) {
             baseOut.println("==== " + longMethodName + " ====");
         }
         nanoTime = System.nanoTime();
@@ -69,19 +139,18 @@ public class ConsoleUI implements TestRunConsumer {
         exeTime = 1e-9 * (System.nanoTime() - nanoTime);
         report("exeTime", exeTime);
         totalExeTime += exeTime;
-        
         deleteTempDirs();
-        
         total++;
         
         if (t == null) {
             // if test OK
-            if (b.printMethods) {
-                long rounded = Math.round(exeTime * 1000.0);
-                if (currentMethodName == null) {
-                    baseOut.println("Time (ms): " + rounded);
-                } else {
+            
+            if (level > LEVEL_SILENT) {
+                if (level >= LEVEL_METHODS) {
+                    long rounded = Math.round(exeTime * 1000.0);
                     baseOut.println(currentMethodName + ": " + rounded);    // milliseconds
+                } else {
+                    baseOut.print(".");
                 }
             }
         } else {
@@ -92,13 +161,15 @@ public class ConsoleUI implements TestRunConsumer {
                 exception = t.getCause();
             }
             
-            if (currentMethodName == null) {
-                baseOut.println("FAILED!");
-            } else {
-                baseOut.println("FAILED! " + currentMethodName);
+            if (level > LEVEL_SILENT) {
+                if (currentMethodName == null) {
+                    baseOut.println("FAILED!");
+                } else {
+                    baseOut.println("FAILED! " + currentMethodName);
+                }
+                
+                exception.printStackTrace(baseOut);
             }
-            
-            exception.printStackTrace(baseOut);
         }
     }
     
@@ -234,67 +305,6 @@ public class ConsoleUI implements TestRunConsumer {
         
         public String toString() {
             return name + ": " + value;
-        }
-    }
-
-    public void aboutToRun(int classCount) {
-    }
-
-    public void done() {
-        baseOut.print(this.getReport());
-    }
-    
-    public static Builder builder() {
-        return new Builder(System.out);
-    }
-    
-    public static Builder builder(PrintStream s) {
-        return new Builder(s);
-    }
-    
-    public static class Builder {
-        private boolean printProps = true;
-        private boolean printMethods = true;
-        private boolean printStart = false;
-        private PrintStream baseOut;
-        private PrintStream testOut;
-        
-        private Builder(PrintStream s) {
-            if (s == null) {
-                baseOut = System.out;
-            } else {
-                baseOut = s;
-            }
-            
-            testOut = new NullPrintStream();
-        }
-        
-        public Builder printTestOutput(boolean b) {
-            if (b) {
-                testOut = baseOut;
-            } else {
-                testOut = new NullPrintStream();
-            }
-            return this;
-        }
-        
-        public Builder printProps(boolean b) {
-            printProps = b;
-            return this;
-        }
-        
-        public Builder printMethods(boolean b) {
-            printProps = b;
-            return this;
-        }
-        
-        public Builder printStart(boolean b) {
-            printProps = b;
-            return this;
-        }
-        
-        public ConsoleUI build() {
-            return new ConsoleUI(this);
         }
     }
 }

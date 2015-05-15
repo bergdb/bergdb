@@ -3,9 +3,15 @@ package bergdb.coredev;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
+
+import bergdb.common.AssertStatus;
+import bergdb.common.Create;
 import bergdb.common.IPack;
 import bergdb.common.Util;
+import bergdb.dev.TestClasses;
 import bergdb.nanotest.ClassFilter;
+import bergdb.nanotest.CommandLine;
+import bergdb.nanotest.ConsoleUI;
 import bergdb.nanotest.MethodFilter;
 import bergdb.nanotest.TestRunner;
 
@@ -55,12 +61,16 @@ public class CoreUnit {
     private String getHelp() {
         StringBuilder b = new StringBuilder();
         b.append("---- help ----\n");
-        b.append("Use args: [<classPattern> [<methodPattern>]]\n");
-        b.append("  <classPattern> is a regexp for the name of the classes to include.\n");
-        b.append("  <methodPattern> is a regexp for the method names to include.\n");
+        b.append("Use options:\n");
+        b.append("-c <classPattern> is a regexp for the name of the classes to include.\n");
+        b.append("-m <methodPattern> is a regexp for the method names to include.\n");
+        b.append("-d   Print dots.\n");
+        b.append("-s   Be silent\n");
+        b.append("-v   Be verbose\n");
+        b.append("-vv  Be max verbose\n");
         b.append("\n");
         b.append("If methodPattern is missing, all test methods of the selected classes will run.\n");
-        b.append("If classPattern is missing, all classes will be tested.\n");
+        b.append("If classPattern is missing, all classes with test methods will be tested.\n");
         return b.toString();
     }
     
@@ -68,46 +78,35 @@ public class CoreUnit {
      * Called from main().
      */
     public void go(String[] args) {
-        BergDBTestRunConsumer c = new BergDBTestRunConsumer();
-        
-        System.out.println(getHeader());
-        
-        if (args.length >= 1 && args[0].equals("help")) {
+        if (args.length > 0 && args[0].equals("help")) {
             System.out.println(getHelp());
             return;
         }
         
+        CommandLine c = new CommandLine(args);        
+        ConsoleUI ui = new ConsoleUI();
+        ui.applyOptions(c);
+        
+        System.out.println(getHeader());
+        
+        if (!AssertStatus.enabled()) {
+            System.out.println("Assertions (-ea) NOT ENABLED.");
+        }
+        
         String classPatternString = ".*";
-        if (args.length >= 1) {
-            classPatternString = args[0];
+        if (c.has("c")) {
+            classPatternString = c.getOne("c");
         }
         
         String methodPatternString = ".*";
-        if (args.length >= 2) {
-            methodPatternString = args[1];
+        if (c.has("m")) {
+            methodPatternString = c.getOne("m");
         }
         
-        go(c, classPatternString, methodPatternString);
-    }
-    
-    /**
-     * Runs unit tests (bergdb.nanotest, group "unit") on all method specified with the
-     * given class and method patterns (regex).
-     * This method is for general use - used by both main method and other callers.
-     * 
-     * @param consumer The test result consumer.
-     * @param classPatternString Regex for classname.
-     * @param methodPatternString Regex for method name.
-     */
-    public void go(BergDBTestRunConsumer consumer, 
-            String classPatternString, 
-            String methodPatternString) {
-        Set<Class<?>> classes = new ClassFilter(classPatternString).filter(getClasses());
+        Set<Class<?>> classes = new ClassFilter(classPatternString).filter(TestClasses.getClasses());
+        MethodFilter methodFilter = new MethodFilter(methodPatternString, Create.setOfStrings("unit"));
         
-        consumer.setClassCount(classes.size());
-        MethodFilter methodFilter = new MethodFilter(methodPatternString, getGroups());
-        
-        TestRunner testRunner = new TestRunner(consumer, classes, methodFilter);
+        TestRunner testRunner = new TestRunner(ui, classes, methodFilter);
         testRunner.run();
     }
     

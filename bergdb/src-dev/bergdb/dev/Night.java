@@ -2,12 +2,17 @@ package bergdb.dev;
 
 import java.util.Date;
 import java.util.Set;
+
+import bergdb.common.AssertStatus;
 import bergdb.common.Create;
 import bergdb.common.Util;
 import bergdb.nanotest.ClassFilter;
+import bergdb.nanotest.CommandLine;
 import bergdb.nanotest.ConsoleUI;
 import bergdb.nanotest.MethodFilter;
 import bergdb.nanotest.TestRunner;
+
+// TODO D. f/unit/night - use same class.
 
 /**
  * Runs nightly tests, Nano test group 'night'.
@@ -18,19 +23,24 @@ import bergdb.nanotest.TestRunner;
  */
 public class Night {
     public static void main(String[] args) {
-        ConsoleUI ui = ConsoleUI.builder()
-                .printStart(true).printProps(true).printMethods(true)
-                .build();
+        CommandLine c = new CommandLine(args);
+        ConsoleUI ui = new ConsoleUI();
+        ui.applyOptions(c);
+        
         printHeader();
         
+        if (!AssertStatus.enabled()) {
+            System.out.println("Assertions (-ea) NOT ENABLED.");
+        }
+        
         String classPatternString = ".*";
-        if (args.length >= 1) {
-            classPatternString = args[0];
+        if (c.has("c")) {
+            classPatternString = c.getOne("c");
         }
         
         String methodPatternString = ".*";
-        if (args.length >= 2) {
-            methodPatternString = args[1];
+        if (c.has("m")) {
+            methodPatternString = c.getOne("m");
         }
         
         Set<Class<?>> classes = new ClassFilter(classPatternString).filter(TestClasses.getClasses());

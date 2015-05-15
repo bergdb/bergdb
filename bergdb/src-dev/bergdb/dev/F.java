@@ -12,6 +12,8 @@ import bergdb.nanotest.ConsoleUI;
 import bergdb.nanotest.MethodFilter;
 import bergdb.nanotest.TestRunner;
 
+//TODO D. f/unit/night - use same class.
+
 /**
  * Runs functional tests ("f").
  * Run this class without arguments every week and after every major change.
@@ -22,14 +24,9 @@ import bergdb.nanotest.TestRunner;
 public class F {
     public static void main(String[] args) {
         CommandLine c = new CommandLine(args);
-        boolean verbose = c.has("v");
+        ConsoleUI ui = new ConsoleUI();
+        ui.applyOptions(c);
         
-        ConsoleUI ui = ConsoleUI.builder()
-                .printStart(true)
-                .printMethods(true)
-                .printProps(verbose)
-                .printTestOutput(verbose)
-                .build();
         printHeader();
         
         if (!AssertStatus.enabled()) {
