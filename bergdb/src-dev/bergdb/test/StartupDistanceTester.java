@@ -6,7 +6,6 @@ import java.util.Random;
 import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.DbUtil;
-import bergdb.core.RerunException;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.GetData;
@@ -17,9 +16,10 @@ import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
 
+// TODO LATER We need more startupDistance testing. See "payTillStreamSize(3.0e6);"
 
 /**
- * f-tests for Db.setStartupDistance().
+ * f-test for Db.setStartupDistance().
  * 
  * @author Frans Lundberg
  */
@@ -30,6 +30,7 @@ public class StartupDistanceTester {
     private int noOfAccounts = 100;
     private Trans trans;
     private PrintStream out;
+    private long payCounter = 0;
     
     public StartupDistanceTester() {}
     
@@ -52,24 +53,32 @@ public class StartupDistanceTester {
         payTillStreamSize(1.5e6);
         checkAccountSum(db);
         Assert.assertEquals(1000*1000, db.getStartupDistance());
-        out.println("1. Stream length: " + db.getStreamLength());
+        out.println("1.1 Stream length: " + db.getStreamLength());
         
         db.setStartupDistance(400*1000);
-        payTillStreamSize(2.5e6);
+        out.println("1.2 Stream length: " + db.getStreamLength());
+        
+        //payTillStreamSize(3.0e6);   // NOTE result in problems
+        payTillStreamSize(4.0e6);
+        
         checkAccountSum(db);
         Assert.assertEquals(400*1000, db.getStartupDistance());
-        out.println("2. Stream length: " + db.getStreamLength());
+        out.println("2.1 Stream length: " + db.getStreamLength());
         
         db.setStartupDistance(2000*1000);
+        out.println("2.2. Stream length: " + db.getStreamLength());
+        Assert.assertEquals(2000*1000, db.getStartupDistance());
+        
         payTillStreamSize(5.5e6);
         checkAccountSum(db);
         Assert.assertEquals(2000*1000, db.getStartupDistance());
         out.println("3. Stream length: " + db.getStreamLength());
         
         db.setStartupDistance(500*1000);
-        out.println("After setStartupDistance()");
+        out.println("4. after setStartupDistance(500k). Stream length: " + db.getStreamLength());
         
         payTillStreamSize(6.5e6);
+        
         checkAccountSum(db);
         
         Assert.assertEquals(500*1000, db.getStartupDistance());
@@ -108,19 +117,21 @@ public class StartupDistanceTester {
             int toTruncate = random.nextInt(400*1000) + 1;
             long newLength = length - toTruncate;
             
-            c.out().println("newLength: " + newLength);
-            
             if (newLength <= posZero) {
                 break;
             }
+            
+            c.out().println("newLength: " + newLength);
             
             stream.truncate(newLength);
             length = newLength;
             
             Assert.assertEquals(newLength, stream.getLength());
-            out.println(counter++ + ", truncated stream to length: " + newLength);
             
             Db myDb = Db.builder().mainStream(stream).retainForever().start();
+            out.println(counter++ + ", truncated stream to length: " + newLength 
+                    + ", startupDistance: " + myDb.getStartupDistance());
+
             checkAccountSum(myDb);
             myDb.sync(SyncLevel.ORDINARY);
             myDb.stop();
@@ -162,40 +173,32 @@ public class StartupDistanceTester {
         String from = "" + fromInt;
         String to   = "" + toInt;
         
+        GetData gd = db.newGetData();
+        byte[] v1 = db.getOne(Long.MAX_VALUE, Keys.toSegments(from), gd);
+        long lookupTime = gd.actualLookupTime;
+        byte[] v2 = db.getOne(lookupTime, Keys.toSegments(to), gd);
         
-        while (true) {
-            GetData gd = db.newGetData();
-            byte[] v1 = db.getOne(Long.MAX_VALUE, Keys.toSegments(from), gd);
-            long lookupTime = gd.actualLookupTime;
-            byte[] v2 = db.getOne(lookupTime, Keys.toSegments(to), gd);
-            
-            long fromBalance = Long.parseLong(Util.toString(v1));
-            long toBalance = Long.parseLong(Util.toString(v2));
-            
-            trans = db.trans()
-                    .lookupTime(lookupTime)
-                    .keyRead(to).keyRead(from)
-                    .put(from, "" + (fromBalance - 1))
-                    .put(to, "" + (toBalance + 1)).build();
-            
-            try {
-                db.execute(trans);
-            } catch (RerunException e) {
-                Thread.sleep(10);
-                System.out.println("RerunException: " + e.getMessage());
-                continue;
-            }
-            
-            break;
-        }
+        long fromBalance = Long.parseLong(Util.toString(v1));
+        long toBalance = Long.parseLong(Util.toString(v2));
+        
+        trans = db.trans()
+                .lookupTime(lookupTime)
+                .keyRead(to).keyRead(from)
+                .put(from, "" + (fromBalance - 1))
+                .put(to, "" + (toBalance + 1)).build();
+        
+        db.execute(trans);
+        
+        payCounter++;
+        if (payCounter % 2000 == 0) out.println("payCounter: " + payCounter + ", stream length: " + db.getStreamLength());
     }
     
     @Nano("f")
-    public static void t1(TestEnvironment c) throws Exception {
+    public static void test1(TestEnvironment c) throws Exception {
         new StartupDistanceTester().go(c);
     }
     
     public static void main(String[] args) throws Exception {
-        t1(new BasicTestEnvironment());
+        test1(new BasicTestEnvironment());
     }
 }

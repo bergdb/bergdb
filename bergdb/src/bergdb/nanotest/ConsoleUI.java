@@ -39,18 +39,8 @@ public class ConsoleUI implements TestRunConsumer {
      */
     public ConsoleUI() {
         this.level = LEVEL_CLASSES;
-        output(System.out);
+        this.baseOut = System.out;
         this.testOut = new NullPrintStream();
-    }
-    
-    private ConsoleUI output(PrintStream out) {
-        this.baseOut = out;
-        return this;
-    }
-    
-    public ConsoleUI testOutput(PrintStream out) {
-        this.testOut = out;
-        return this;
     }
     
     /**
@@ -58,23 +48,27 @@ public class ConsoleUI implements TestRunConsumer {
      */
     public ConsoleUI silent() {
         this.level = LEVEL_SILENT;
+        this.testOut = new NullPrintStream();
         return this;
     }
     
     /** Prints less than default, just a dot per test. */
     public ConsoleUI dots() {
         this.level = LEVEL_DOTS;
+        this.testOut = new NullPrintStream();
         return this;
     }
     
     /** Prints more than default, prints each method name. */
     public ConsoleUI printMethods() {
         this.level = LEVEL_METHODS;
+        this.testOut = new NullPrintStream();
         return this;
     }
     
     public ConsoleUI maxVerbose() {
         this.level = LEVEL_MAX;
+        this.testOut = baseOut;
         return this;
     }
     

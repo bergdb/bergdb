@@ -39,7 +39,7 @@ public class Nano {
         ConsoleUI ui = new ConsoleUI();
         ui.applyOptions(c);
         
-        System.out.println(getHeader());
+        System.out.print(getHeader());
         
         if (!AssertStatus.enabled()) {
             System.out.println("Assertions (-ea) NOT ENABLED.");
