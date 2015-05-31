@@ -14,8 +14,8 @@ import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.ReadOnlyStream;
 
 /**
- * Used to compare whether two Dags are equal.
- * For testing.
+ * This class is used to compare whether two Dags are equal.
+ * Useful for testing.
  * 
  * @author Frans Lundberg
  */
@@ -42,10 +42,11 @@ public class DagComparison {
         Db db2 = Db.builder().mainStream(ro).start();
         
         return new DagComparison(db1.internal().dag(), db2.internal().dag())
-            .printDiffs(true).stopAtDiff(true).toStop(db2);
+            .printDiffs(true).stopAtDiff(true).dbToStop(db2);
     }
     
-    public DagComparison toStop(Db db2) {
+    public DagComparison dbToStop(Db db2) {
+        // A more general post-compare callback could possibly be better.
         this.db2 = db2;
         return this;
     }
@@ -149,13 +150,11 @@ public class DagComparison {
     }
 
     private String compareValueNodes(ValueNode n1, ValueNode n2) {
-        // NOTE, do we want to compare spos too?
-        
         long p1 = n1.getSpos();
         long p2 = n2.getSpos();
         
         if (p1 != p2) {
-            return "pos of value nodes differ: " + p1 + " != " + p2;
+            return "spos of value nodes differ: " + p1 + " != " + p2;
         }
         
         boolean equal = Arrays.equals(n1.value, n2.value);
@@ -163,10 +162,17 @@ public class DagComparison {
     }
 
     private String compareKeyNodes(KeyNode n1, KeyNode n2) {
-        // NOTE we could compare more...
+        //
+        // Note that key nodes can have different sizes and still be 
+        // considered equal. A key node can exist in different parts of the graph
+        // and have different sizes as long as it is long enough to match the
+        // largest possible lookup time that can be used to access it.
+        // This is because of the fact that a node (with a specific id) at two different
+        // locations in the graph may be represented with one Java object or two 
+        // distinct Java objects (if read from two different stream locations).
+        //
         
-        int s1 = n1.size;
-        int s2 = n2.size;
+        int minSize = Math.min(n1.size, n2.size);
         long id1 = n1.getId();
         long id2 = n2.getId();
         
@@ -175,12 +181,7 @@ public class DagComparison {
                     + "\n" + keyNodePairToString(n1, n2);
         }
         
-        if (s1 != s2) {
-            return "KeyNode.size differs, " + s1 + " != " + s2 + ", " + n1 + ", " + n2 
-                    + "\n" + keyNodePairToString(n1, n2);
-        }
-        
-        for (int i = 0; i < s1; i++) {
+        for (int i = 0; i < minSize; i++) {
             if (n1.klongs[i] != n2.klongs[i]) {
                 return "KeyNode.klongs differ at " + i + ", " + n1 + ", " + n2;
             }

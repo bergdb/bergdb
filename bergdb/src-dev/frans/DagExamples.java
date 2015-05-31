@@ -9,7 +9,7 @@ import bergdb.stream.MemoryStream;
  */
 @SuppressWarnings("unused")
 public class DagExamples {
-    // See class dev.DagExamples.
+    // See also class dev.DagExamples.
     
     private void go(String[] args) {
         //primordial();

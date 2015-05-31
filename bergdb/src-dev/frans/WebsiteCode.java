@@ -11,7 +11,7 @@ import bergdb.pub.Time;
  * 
  * @author Frans Lundberg
  */
-public class WebCode {
+public class WebsiteCode {
     void m1() {
         System.out.println("== m1() ==");
         
@@ -90,7 +90,7 @@ public class WebCode {
     }
     
     public static void main(String[] args) {
-        WebCode w = new WebCode();
+        WebsiteCode w = new WebsiteCode();
         w.m1();
         w.m2();
         w.m3();

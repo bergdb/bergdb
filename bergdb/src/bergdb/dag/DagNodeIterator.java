@@ -10,7 +10,10 @@ import bergdb.nanotest.Nano;
 /**
  * Iterates all nodes in a DAG including those stored in the stream.
  * Nodes may be iterated several times, a tree search is used.
- *  
+ * 
+ * NOTE currently all pointers are followed, including "impossible" pointers; 
+ * that is, pointers that won't ever be followed while performing normal db operations.
+ * 
  * @author Frans Lundberg
  */
 public class DagNodeIterator {

@@ -26,13 +26,16 @@ import bergdb.nanotest.BasicTestEnvironment;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pubimp.PubKeys;
+import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
+import bergdb.stream.ReadOnlyStream;
 
 @SuppressWarnings("unused")
 public class Issue150420b {
     private int errorCount;
     private int index;
     private TestEnvironment env;
+    private Db db1;
 
     @Nano("night")
     private static void runTest(TestEnvironment env) throws Exception {
@@ -45,11 +48,9 @@ public class Issue150420b {
         this.env = env;
         
         List<String> keys = Issue150420.readKeys();
-        //List<String> keys = Issue150420.testKeys();
-        //List<String> keys = Issue150420.testKeysBackwards();
         
         MemoryStream stream = new MemoryStream();
-        Db db1 = Db.builder()
+        db1 = Db.builder()
                 .clock(new TestClock())
                 .startupDistance(100*1000)
                 .mainStream(stream)
@@ -78,21 +79,30 @@ public class Issue150420b {
             }
         };
         
+        int indexToStudy = 167;
+        
         for (String key : keys) {
+            if (index % 10 == 0) {
+                System.out.print(".");
+            }
+            
             String ikey = PubKeys.u2i(key);
             Trans t = db1.trans().put(ikey, new byte[10*1000 + index]).build();
-            t.listener = listener;
+            
+            if (index == indexToStudy) {
+                t.listener = listener;
+            }
             
             db1.execute(t);
             db1.sync(SyncLevel.ORDINARY);
             
-            //if (index == 21) {
-            //    db1.printDag(System.out);
-            //}
+            if (index == indexToStudy) {
+                //db1.printDag(System.out);
             
-            kvCompare(db1);
-            //dagCompare(db1);
-            //checkPointerInvariant(db1);
+                kvCompare(db1);
+                dagCompare(db1);
+                checkPointerInvariant(db1);
+            }
             
             index++;
             
@@ -104,10 +114,23 @@ public class Issue150420b {
         
         System.out.println("\nError count: " + errorCount);
         
-        //System.out.println("==== db1 ====");
-        //db1.printDag(System.out);
+        printDatabases();
         
         db1.stop();
+    }
+    
+    /** Prints database and restarted version of it. */
+    private void printDatabases() {
+        System.out.println("==== db1 ====");
+        db1.printDag(System.out);
+        
+        AppendOnlyStream stream = db1.internal().getMainStream();
+        ReadOnlyStream ro = new ReadOnlyStream(stream, false);
+        Db db2 = Db.builder().mainStream(ro).start();
+        
+        System.out.println("==== db2 ====");
+        db2.printDag(System.out);
+        db2.stop();
     }
 
     private boolean checkPointerInvariant(Db db) {

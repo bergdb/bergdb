@@ -1,6 +1,10 @@
 package bergdb.dev;
 
+import java.io.IOException;
+
 import bergdb.common.Util;
+import bergdb.core.Db;
+import bergdb.core.TestClock;
 import bergdb.dag.Dag;
 import bergdb.dag.Dag.NodeReader;
 import bergdb.dag.INode;
@@ -97,9 +101,44 @@ public class DagExamples {
         
         g.printGraph(System.out);
     }
+    
+    /**
+     * Smallest example of a key node split.
+     */
+    public static void split() {
+        Dag g = dag(8);
+        
+        for (int i = 0; i < 5; i++) {
+            PutData pd = g.newPutData();
+            pd.tt = 100 + i;
+            g.putKv(Keys.toSegments("/firstx/k" + i), Util.toBytes("v" + i), pd);
+        }
+        
+        g.printGraph(System.out);
+    }
+    
+    /**
+     * Example of Dag including a key node with multiple predecessors.
+     */
+    public static void noTree() throws IOException {
+        TestClock clock = new TestClock();
+        Db db = Db.builder().testSetup().clock(clock).maxNodeSize8().start();
+        
+        for (int i = 0; i < 10; i++) {
+            db.execute(db.trans().put(Keys.toSegments("/firstx/k" + i), Util.toBytes("v" + i)));
+        }
+        
+        db.execute(db.trans().put(Keys.toSegments("/firstx/k3-10"), Util.toBytes("v10")));
+        
+        Dag dag = db.internal().dag();
+        dag.printGraph(System.out);
+        
+        //new VizFigure().go(dag, "no-tree.gv", false);
+    }
+
 
     
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         System.out.println("==== empty() ====");
         empty();
         
@@ -117,5 +156,11 @@ public class DagExamples {
         
         System.out.println("==== prefixDemo() ====");
         prefixDemo();
+        
+        System.out.println("==== split() ====");
+        split();
+        
+        System.out.println("==== noTree() ====");
+        noTree();
     }
 }

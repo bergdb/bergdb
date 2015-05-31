@@ -28,12 +28,13 @@ import bergdb.stream.MemoryStream;
 /**
  * Recreates issue with restart (ISSUE-150420-1). Found issue when trying database with 
  * data from ARX. Data used by this class is a small version of it without confidential data.
- * This class uses a resource.
  * 
  * @author Frans Lundberg
  */
 @SuppressWarnings("unused")
 public class Issue150420 {
+    // This class uses a resource: Issue150420-data.txt.
+    //
     private int errorCount;
     private int index;
     private TestEnvironment env;
@@ -68,7 +69,8 @@ public class Issue150420 {
             db1.sync(SyncLevel.ORDINARY);
             
             kvCompare(db1);
-            //dagCompare(db1);
+            dagCompare(db1);
+            checkPointerInvariant(db1);
             
             if (errorCount > 0) {
                 break;
@@ -101,6 +103,18 @@ public class Issue150420 {
         }
         
         return dagCompare;
+    }
+
+    private boolean checkPointerInvariant(Db db) {
+        try {
+            db.internal().dag().checkForwardPointerInvariantApprox(db.internal().getStartupPos(), 15000);
+        } catch (AssertionError e) {
+            errorCount++;
+            env.out().println("index: " + index + ", inv-forward-pointer\n" + e.getMessage());
+            return false;
+        }
+        
+        return true;
     }
     
     private void diff(Db db1, Db db2) {

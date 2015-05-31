@@ -22,14 +22,14 @@ public class VizFigureSet {
     public void emptyDb() throws IOException {
         Db db = Db.builder().testSetup().start();
         VizFigure f = new VizFigure();
-        f.go(db, filename("emptyDb.gv"), true);
+        f.go(db.internal().dag(), filename("emptyDb.gv"), true);
     }
     
     public void oneKv() throws IOException {
         Db db = Db.builder().testSetup().start();
         db.execute(db.trans().put("k", "v").build());
         VizFigure f = new VizFigure();
-        f.go(db, filename("oneKv.gv"), true);
+        f.go(db.internal().dag(), filename("oneKv.gv"), true);
     }
     
     public void tenShortInOneTrans() throws IOException {
@@ -40,7 +40,7 @@ public class VizFigureSet {
         }
         db.execute(b.build());
         VizFigure f = new VizFigure();
-        f.go(db, filename("tenShortInOneTrans.gv"), true);
+        f.go(db.internal().dag(), filename("tenShortInOneTrans.gv"), true);
     }
     
     public void tenShortInTenTrans() throws IOException {
@@ -49,7 +49,7 @@ public class VizFigureSet {
             db.execute(db.trans().put("k" + i, "v" + i).build());
         }
         VizFigure f = new VizFigure();
-        f.go(db, filename("tenShortInTenTrans.gv"), true);
+        f.go(db.internal().dag(), filename("tenShortInTenTrans.gv"), true);
     }
     
     public void addedAndDeleted() throws IOException {
@@ -57,7 +57,7 @@ public class VizFigureSet {
         db.execute(db.trans().put("a", "v-a").build());
         db.execute(db.trans().delete("a").build());
         VizFigure f = new VizFigure();
-        f.go(db, filename("addedAndDeleted.gv"), true);
+        f.go(db.internal().dag(), filename("addedAndDeleted.gv"), true);
     }
     
     public void go(String[] args) throws IOException {

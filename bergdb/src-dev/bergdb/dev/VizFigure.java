@@ -9,6 +9,7 @@ import java.util.Set;
 
 import bergdb.core.Db;
 import bergdb.core.Trans;
+import bergdb.dag.Dag;
 import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Klong;
@@ -27,14 +28,13 @@ import bergdb.dag.ValueNode;
  *   dot -Tsvg -O 1.gv
  *   
  * Run java and create SVG file:
- *   $ java -cp ./p/BergDB/ com.bergdb.db.VizFigure; dot -Tsvg -O 1.gv
+ *   j bergdb.db.VizFigure; dot -Tsvg -O 1.gv
  * </pre>
  */
 public class VizFigure {
-    Db db;
+    Dag dag;
     Writer writer;
     boolean includeValues;
-    // NOTE IDEA We could print old edges dashed, never used for last time.
     
     /** 
      * Creates a new object; use a new object for every dot-file generation.
@@ -46,9 +46,9 @@ public class VizFigure {
     /**
      * Creates the GraphViz dot file.
      */
-    public void go(Db db, String filename, boolean includeValues) throws IOException {
+    public void go(Dag dag, String filename, boolean includeValues) throws IOException {
         FileOutputStream fout = new FileOutputStream(filename);
-        this.db = db;
+        this.dag = dag;
         this.includeValues = includeValues;
         
         try {
@@ -70,7 +70,7 @@ public class VizFigure {
         //
         
         Set<INode> nodes = new HashSet<INode>();
-        addNodes(nodes, db.internal().superRoot());
+        addNodes(nodes, dag.getSuperRoot());
         
         String line = "digraph BergDB { node [fontsize=\"10\"]; graph [rankdir=\"LR\"]; \n";
         writer.write(line);
@@ -190,7 +190,7 @@ public class VizFigure {
             db.execute(b.build());
         }
         
-        new VizFigure().go(db, "1.gv", false);
+        new VizFigure().go(db.internal().dag(), "1.gv", false);
     }
     
     public static void main(String[] args) throws Exception {
