@@ -1163,22 +1163,19 @@ public class Db {
         x.transNodes.clean();
         
         // Loop needed, nodes in transNodes may point to each other.
-        //int gotDirtyCount;
-        //do {
-        //    gotDirtyCount = handleNodesWithDirtyPointees();
-        //} while (gotDirtyCount > 0);
         
-        // TEMP notes, assertions enabled. Unit always works. Result:
-        // 0 times - u0f4, issue150420:fails
-        // 1 time  - u0f1, issue150420:fails
-        // 4 times - u0f5, issue150420:ok
+        int gotDirtyCount;
+        do {
+            gotDirtyCount = handleNodesWithDirtyPointees();
+        } while (gotDirtyCount > 0);
         
-        // TODO B. Issue. If handleNodesWithDirtyPointees() is called multiple
-        // times, 4 f-tests fail. If called once only, issue150420/kvCompare fails.
-        handleNodesWithDirtyPointees();
-        //handleNodesWithDirtyPointees();
-        //handleNodesWithDirtyPointees();
-        //handleNodesWithDirtyPointees();
+        // TODO A. Analyze Db.handleNodesWithDirtyPointees(). Why does f-tests start to fail 
+        // when called repeatedly?
+        //
+        // TEMP notes 150531 Frans:
+        // 0 times: u0f3, issue150420 fails.
+        // 1 times: u0f0, issue150420 fails.
+        // loop:    u0f5, issue150420 works (without checkPointerInvariant).
         
         x.trans.nodeCount = x.transNodes.size();
         
@@ -1206,21 +1203,35 @@ public class Db {
         boolean gotDirty;
         
         for (int i = 0; i < topCount; i++) {
+            gotDirty = false;
+            
             TopNode node = nodes.topNodes[i];
-            gotDirty = addToGotDirtyIfAppropriate(node);
-            if (gotDirty) gotDirtyCount++;
+            if (!node.isDirty) {
+                gotDirty = addToGotDirtyIfAppropriate(node);
+                if (gotDirty) {
+                    gotDirtyCount++;
+                }
+            }
         }
         
         for (int i = 0; i < keyCount; i++) {
             KeyNode node = nodes.keyNodes[i];
-            gotDirty = addToGotDirtyIfAppropriate(node);
-            if (gotDirty) gotDirtyCount++;
+            if (!node.isDirty) {
+                gotDirty = addToGotDirtyIfAppropriate(node);
+                if (gotDirty) {
+                    gotDirtyCount++;
+                }
+            }
         }
         
         return gotDirtyCount;
     }
 
     private boolean addToGotDirtyIfAppropriate(INode node) {
+        // TODO A. Should we consider unstored pointees only, or any dirty pointee?
+        
+        if (node.isDirty()) return false;
+        
         Pointer p = new Pointer();
         int count = node.getPointerCount();
         boolean gotDirty = false;
@@ -1230,18 +1241,21 @@ public class Db {
             
             INode pointee = p.node;
             if (pointee != null) {
+                
+                /*
                 if (pointee.isDirty()) {
                     gotDirty = makeDirtyIfNeeded(node);
                     break A;
                 }
+                */
                 
-                /*
                 long spos = pointee.getSpos();
+                assert spos > 0 : "bad spos: " + spos;
                 
-                if (spos > 0 && spos % 8 != 0) {
+                if (spos % 8 != 0) {
                     makeDirtyIfNeeded(node);
                     break A;
-                }*/
+                }
             }
         }
         
@@ -1472,7 +1486,6 @@ public class Db {
         }
         
         public final void increaseNextVpos() {
-            // NOTE Consider using only odd vpos values. For easier debugging.
             x.nextVpos = Spos.nextVpos(x.nextVpos);
         }
 

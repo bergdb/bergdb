@@ -139,16 +139,19 @@ public class Klong {
     }
     
     /**
-     * Sets one delete bit.
+     * Sets one delete bit of a DELETE_BITMAP klong.
      */
-    public static final long delete(long klong, int index) {
-        assert index >= 0 && index < 62 : "index out of range: " + index;
-        return klong | DELETE_BITS[index];
+    public static final long delete(long klong, int bitIndex) {
+        assert bitIndex >= 0 && bitIndex < 62 : "index out of range: " + bitIndex;
+        return klong | DELETE_BITS[bitIndex];
     }
     
-    public static final boolean isDeleted(long klong, int index) {
-        assert index >= 0 && index < 62 : "index out of range: " + index;
-        return (klong & DELETE_BITS[index]) != 0;
+    /**
+     * Queries a DELETE_BITMAP klong.
+     */
+    public static final boolean isDeleted(long klong, int bitIndex) {
+        assert bitIndex >= 0 && bitIndex < 62 : "index out of range: " + bitIndex;
+        return (klong & DELETE_BITS[bitIndex]) != 0;
     }
     
     /**

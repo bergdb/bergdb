@@ -201,6 +201,10 @@ public final class ValueNode implements INode {
     public final int getPointerCount() {
         return 0;
     }
+    
+    public final int getPointerCountAtTime(long lookupTime) {
+        return getPointerCount();
+    }
 
     /**
      * This method should never be called. Always throws a Bug.

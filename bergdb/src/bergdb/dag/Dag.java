@@ -325,6 +325,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      * the pointer (when was it last used). The access data is used by the 
      * cache eviction algorithm.
      * 
+     * @param accessData  The AccessData value or 0 to signal that no update should be 
+     *              made to the access data of the pointer.
      * @throws StreamFormatException
      * @throws StreamIoException
      */

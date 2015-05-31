@@ -941,6 +941,64 @@ public class KeyNodeTester {
         Assert.assertEquals(10, node.getFirstTime());
     }
     
+    @Nano private static void testGetPointerCount0() {
+        KeyNode node = new KeyNode();
+        addKlong(node, 10, "a");
+        Assert.assertEquals(2, node.getPointerCount());
+    }
+    
+    @Nano private static void testGetPointerCount1() {
+        KeyNode node = new KeyNode();
+        addKlong(node, 10, "a");
+        addKlong(node, 10, "b");
+        Assert.assertEquals(3, node.getPointerCount());
+    }
+    
+    @Nano private static void testGetPointerCount2() {
+        KeyNode node = new KeyNode();
+        addKlong(node, 10, "a");
+        addKlong(node, 20, "b");
+        Assert.assertEquals(4, node.getPointerCount());
+    }
+    
+    @Nano private static void testGetPointerCount3() {
+        KeyNode node = new KeyNode();
+        addKlong(node, 10, "a");
+        addKlong(node, 20, "b");
+        Assert.assertEquals(0, node.getPointerCountAtTime(9));
+        Assert.assertEquals(2, node.getPointerCountAtTime(10));
+        Assert.assertEquals(2, node.getPointerCountAtTime(11));
+        Assert.assertEquals(2, node.getPointerCountAtTime(19));
+        Assert.assertEquals(4, node.getPointerCountAtTime(20));
+        Assert.assertEquals(4, node.getPointerCountAtTime(Long.MAX_VALUE));
+    }
+    
+    @Nano private static void testMaxValidTime0() {
+        KeyNode node = new KeyNode();
+        addKlong(node, 10, "a");
+        Assert.assertEquals(Long.MAX_VALUE, node.getMaxValidTime(1));
+    }
+    
+    @Nano private static void testMaxValidTime1() {
+        KeyNode node = new KeyNode();
+        addKlong(node, 10, "a");     // index 1
+        addKlong(node, 20, "a");     // index 3
+        Assert.assertEquals(19, node.getMaxValidTime(1));
+        Assert.assertEquals(Long.MAX_VALUE, node.getMaxValidTime(3));
+    }
+    
+    @Nano private static void testMaxValidTimeWithDelete() {
+        KeyNode node = new KeyNode();
+        addKlong(node, 10, "a");     // index 1
+        addKlong(node, 20, "b");     // index 3
+        
+        long deleteKlong = node.getDeleteBitmap(Klong.createCompareValue(Util.toBytes("a")));
+        node.addKlong(30, deleteKlong, null, AccessData.DEFAULT_ACCESS_DATA);
+        
+        Assert.assertEquals(29, node.getMaxValidTime(1));
+        Assert.assertEquals(Long.MAX_VALUE, node.getMaxValidTime(3));
+    }
+    
     public static void main(String[] args) throws Exception {
         testGt1();
     }

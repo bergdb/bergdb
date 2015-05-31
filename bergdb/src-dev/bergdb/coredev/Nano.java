@@ -42,7 +42,7 @@ public class Nano {
         System.out.print(getHeader());
         
         if (!AssertStatus.enabled()) {
-            System.out.println("Assertions (-ea) NOT ENABLED.");
+            System.out.println("NOTE: assertions disabled, use -ea to enable.");
         }
         
         String classPatternString = ".*";
@@ -67,7 +67,8 @@ public class Nano {
      */
     public String getHeader() {
         StringBuilder b = new StringBuilder();
-        b.append("\n======== " + this.getClass().getName() + " ========\n");
+        
+        b.append("\n======== " + this.getClass().getSimpleName() + ": " + groupsToString() + " ========\n");
         String computer = Util.hostname();
         b.append("Tests on " + computer + ", " + new Date() + ".\n");
         return b.toString();
@@ -90,6 +91,15 @@ public class Nano {
         b.append("If methodPattern is missing, all test methods of the selected classes will run.\n");
         b.append("If classPattern is missing, all classes with test methods will be tested.\n");
         return b.toString();
+    }
+    
+    private String groupsToString() {
+        StringBuilder b = new StringBuilder();
+        for (String g : groups) {
+            b.append(g + " ");
+        }
+        
+        return b.toString().trim();
     }
     
     private Set<Class<?>> createSetOfClasses(IPack[] ipacks) {

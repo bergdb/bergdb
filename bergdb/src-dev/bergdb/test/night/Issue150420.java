@@ -28,12 +28,14 @@ import bergdb.stream.MemoryStream;
 /**
  * Recreates issue with restart (ISSUE-150420-1). Found issue when trying database with 
  * data from ARX. Data used by this class is a small version of it without confidential data.
+ * The startupDistance set to 100k to decrease problem size.
  * 
  * @author Frans Lundberg
  */
 @SuppressWarnings("unused")
 public class Issue150420 {
-    // This class uses a resource: Issue150420-data.txt.
+    //
+    // This class uses resource: Issue150420-data.txt.
     //
     private int errorCount;
     private int index;
@@ -61,7 +63,6 @@ public class Issue150420 {
                 .start();
         
         for (String key : keys) {
-            //env.out().println("index: " + index);
             if (index % 10 == 0) env.out().print(".");
             
             String ikey = PubKeys.u2i(key);
@@ -71,6 +72,9 @@ public class Issue150420 {
             kvCompare(db1);
             dagCompare(db1);
             checkPointerInvariant(db1);
+            
+            // kvCompare() is the primary test.
+            // dagCompare() and checkPointerInvariant() are helper test.
             
             if (errorCount > 0) {
                 break;

@@ -33,8 +33,11 @@ public interface INode {
     public long getId();
     public void setId(long id);
     
+    
+    // TODO D. Change name getPointerCount() to getSize(), getPointerCountAtTime() to getSizeAtTime().
+    
     /**
-     * Returns the pointer count; note that this is not exactly the total
+     * Returns the pointer count; note that this is not necessarily the total
      * number of out-bound pointers. It actually returns the max pointer index + 1.
      * getPointer() may return a null pointer for some indexes between 0 and getPointerCount() - 1.
      * 
@@ -50,6 +53,13 @@ public interface INode {
      *</pre>
      */
     public int getPointerCount();
+    
+    /**
+     * Returns pointer count for the given lookup time.
+     * 
+     * @see #getPointerCount()
+     */
+    public int getPointerCountAtTime(long lookupTime);
     
     /**
      * Returns pointer data in 'pointer' parameter.

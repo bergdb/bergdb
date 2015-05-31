@@ -211,6 +211,10 @@ public final class TopNode implements INode {
     public final int getPointerCount() {
         return pointerCount;
     }
+    
+    public final int getPointerCountAtTime(long lookupTime) {
+        return getPointerCount();
+    }
 
     public final void getPointer(int index, Pointer pointer) {
         if (index == 0) {

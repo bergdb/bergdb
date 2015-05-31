@@ -146,6 +146,33 @@ public class KeyNode implements INode {
         return size;
     }
     
+    /**
+     * Returns 'size' as it was at the given time.
+     */
+    public final int getPointerCountAtTime(long lookupTime) {
+        //
+        // Not used for product, does not have to be optimized.
+        //
+        
+        final int sz = this.size;
+        final long[] klongs = this.klongs;
+        long klong;
+        int result = sz;
+        
+        for (int index = 0; index < sz; index++) {
+            klong = klongs[index];
+            if (Klong.isTime(klong)) {
+                long klongTime = Klong.getTime(klong);
+                if (klongTime > lookupTime) {
+                    result = index;
+                    break;
+                }
+            }
+        }
+        
+        return result;
+    }
+    
     public final void getPointer(int index, Pointer pointer) {
         pointer.node = pointers[index];
         pointer.pos = pos[index];
@@ -242,7 +269,7 @@ public class KeyNode implements INode {
             
             klong = klongs[index];
             
-            // Not inlinded: klongType = Klong.getIntType(klong);
+            // Not inlined: klongType = Klong.getIntType(klong);
             klongType = (int) ((klong & 0xc000000000000000L) >>> 62);
             
             switch (klongType) {
@@ -1635,5 +1662,42 @@ public class KeyNode implements INode {
         }
         
         return time;
+    }
+
+    /**
+     * Returns the maximum lookup time for which the pointer at the given
+     * pointer index is valid. The klong may be deleted or overwritten later
+     * in the key node klongs.
+     */
+    public long getMaxValidTime(int pointerIndex) {
+        long klongAtIndex = this.klongs[pointerIndex];
+        assert Klong.isKey(klongAtIndex);
+        long time = 0;
+        long maxValidTime = Long.MAX_VALUE;
+        
+        int sz = this.size;
+        A: for (int i = pointerIndex; i < sz; i++) {
+            long klong = klongs[i];
+            
+            switch (Klong.getIntType(klong)) {
+            case Klong.INT_TYPE_TIME:
+                time = Klong.getTime(klong);
+                break;
+            case Klong.INT_TYPE_KEY:
+                if (klong == klongAtIndex && time != 0) {
+                    maxValidTime = time - 1;
+                    break A;
+                }
+                break;
+            case Klong.INT_TYPE_DELETE_BITMAP:
+                if (Klong.isDeleted(klong, pointerIndex) && time != 0) {
+                    maxValidTime = time - 1;
+                    break A;
+                }
+                break;
+            }
+        }
+        
+        return maxValidTime;
     }
 }

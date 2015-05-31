@@ -3,16 +3,15 @@ package bergdb.dag;
 import java.util.ArrayList;
 import java.util.List;
 
+import bergdb.common.Pair;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * Iterates all nodes in a DAG including those stored in the stream.
- * Nodes may be iterated several times, a tree search is used.
- * 
- * NOTE currently all pointers are followed, including "impossible" pointers; 
- * that is, pointers that won't ever be followed while performing normal db operations.
+ * Iterates all nodes in a DAG including those stored in the stream
+ * using valid paths from the super root node.
+ * Nodes may be iterated several times, a depth-first tree search algorithm is used.
  * 
  * @author Frans Lundberg
  */
@@ -24,15 +23,18 @@ public class DagNodeIterator {
     private boolean rootAdded = false;
     private int nextPointerIndex = 0;
     private DagNodeIterator iter;
+    private long maxLookupTime;
     
     public DagNodeIterator(Dag dag) {
         this.dag = dag;
         this.root = dag.getSuperRoot();
+        this.maxLookupTime = Long.MAX_VALUE;
     }
     
-    private DagNodeIterator(Dag dag, INode root) {
+    private DagNodeIterator(Dag dag, INode root, long maxLookupTime) {
         this.dag = dag;
         this.root = root;
+        this.maxLookupTime = maxLookupTime;
     }
     
     /**
@@ -40,7 +42,7 @@ public class DagNodeIterator {
      */
     public INode next() {
         if (!rootAdded) {
-            createChildIter();
+            createChildIter(maxLookupTime);
             rootAdded = true;
             return root;
         } else {
@@ -48,7 +50,7 @@ public class DagNodeIterator {
             
             INode next = iter.next();
             if (next == null) {
-                createChildIter();
+                createChildIter(maxLookupTime);
                 return next();
             } else {
                 return next;
@@ -66,39 +68,53 @@ public class DagNodeIterator {
         }
     }
 
-    private void createChildIter() {
-        INode child = getChild(nextPointerIndex);
+    private void createChildIter(long maxLookupTime) {
+        Pair<Long, INode> result = getChild(nextPointerIndex, maxLookupTime);
+        maxLookupTime = result.getValue0();
+        INode child = result.getValue1();
+        
         if (child == null) {
             iter = null;
         } else {
-            iter = new DagNodeIterator(dag, child);
+            iter = new DagNodeIterator(dag, child, maxLookupTime);
             nextPointerIndex++;
         }
     }
     
     /**
-     * Gets the next child.
+     * Gets new maxLookupTime and next child.
      */
-    private INode getChild(int index) {
-        int n = root.getPointerCount();
+    private Pair<Long, INode> getChild(int pointerIndex, long maxLookupTime) {
+        int n = root.getPointerCountAtTime(maxLookupTime);
         
         Pointer p = new Pointer();
         
-        while (index < n) {
-            root.getPointer(index, p);
+        while (pointerIndex < n) {
+            root.getPointer(pointerIndex, p);
             if (!p.isNull()) {
-                nextPointerIndex = index;
+                nextPointerIndex = pointerIndex;
                 break;
             }
-            index++;
+            pointerIndex++;
         }
         
         if (p.isNull()) {
-            return null;
+            return new Pair<Long, INode>(maxLookupTime, null);
         }
         
-        return dag.followPointer(root, index, 0, 
+        long newMaxLookupTime = maxLookupTime;
+        if (root.isKeyNode()) {
+            KeyNode keyNode = (KeyNode) root;
+            long maxValidTime = keyNode.getMaxValidTime(pointerIndex);
+            if (maxValidTime < maxLookupTime) {
+                newMaxLookupTime = maxValidTime;
+            }
+        }
+        
+        INode child = dag.followPointer(root, pointerIndex, 0, 
                 Dag.DO_NOTHING_POINTER_LISTENER, Dag.CACHE_NOTHING);
+        
+        return new Pair<Long, INode>(newMaxLookupTime, child);
     }
     
     // ======== Test ========

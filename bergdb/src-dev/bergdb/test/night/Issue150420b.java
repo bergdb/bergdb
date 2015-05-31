@@ -114,7 +114,7 @@ public class Issue150420b {
         
         System.out.println("\nError count: " + errorCount);
         
-        printDatabases();
+        //printDatabases();
         
         db1.stop();
     }
