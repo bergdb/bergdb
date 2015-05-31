@@ -1,25 +1,16 @@
 package bergdb.dev;
 
-import bergdb.common.IPack;
+import bergdb.common.Create;
+import bergdb.coredev.Nano;
 
 /**
  * Runs unit tests for the project. Run them before every commit.
- * Almost identical to bergdb.coredev.CoreUnit, but ipacks array contains a larger set of 
- * packages.
  * 
  * @author Frans Lundberg
  */
-public class Unit extends bergdb.coredev.CoreUnit {
-    
-    @Override
-    public IPack[] getIPacks() {
-        return TestClasses.getIPacksStatic();
-    }
-
-    /**
-     * Runs the unit tests (nano tests in group "unit").
-     */
+public class Unit {
     public static void main(String[] args) {
-        new Unit().go(args);
+        Nano nano = new Nano(args, TestClasses.getIPacksStatic(), Create.setOfStrings("unit"));
+        nano.go();
     }
 }
