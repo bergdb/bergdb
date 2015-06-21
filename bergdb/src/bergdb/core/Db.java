@@ -1169,13 +1169,16 @@ public class Db {
             gotDirtyCount = handleNodesWithDirtyPointees();
         } while (gotDirtyCount > 0);
         
-        // TODO A. Analyze Db.handleNodesWithDirtyPointees(). Why does f-tests start to fail 
-        // when called repeatedly?
+        // TODO A. Analyze Db.handleNodesWithDirtyPointees().
+        // * when called repeatedly?
+        // * is the method call really needed, or are we trying to fix 
+        //     an error with something else?
         //
         // TEMP notes 150531 Frans:
         // 0 times: u0f3, issue150420 fails.
         // 1 times: u0f0, issue150420 fails.
         // loop:    u0f5, issue150420 works (without checkPointerInvariant).
+        //
         
         x.trans.nodeCount = x.transNodes.size();
         

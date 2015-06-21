@@ -806,7 +806,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                     KeyNode last = node.lastVersionGivenDel(sz, tTime, union);
                     pd.nodeChangeListener.keyNodeCreated(last);
                     
-                    handleLastVersionOfFullNode(node, depth, ZERO_LONG_KWP, tTime, last, pd);
+                    handleFullNode(node, depth, ZERO_LONG_KWP, tTime, last, pd);
                 }
             }
         }
@@ -831,13 +831,10 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     private void appendKlongs(final KeyNode node, final int depth, 
             final KlongWithPointer[] toAppend, PutData pd) {
         //
-        // This should be the only way the DB adds klongs to KeyNodes. It is the
+        // This should be the only way the db adds klongs to KeyNodes. It is the
         // central point of code for node splitting.
         //
         // Implementation note: we allow memory allocation for a split, avoid it otherwise.
-        //
-        // For performance, we use special code for the most common case of
-        // inserting exactly one klong to a non-full node.
         //
 
         assert toAppend.length < 3 : "toAppend.length = " + toAppend.length;
@@ -863,20 +860,19 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             pd.nodeChangeListener.keyNodeCreated(last);
             
             assert last.assertOk(maxNodeSize);
-            handleLastVersionOfFullNode(node, depth, toAppend, pd.tt, last, pd);
+            handleFullNode(node, depth, toAppend, pd.tt, last, pd);
         }
     }
     
     /**
      * This is a central and important method. 
-     * All calls to splitNode() and replaceNodeWithLastVersion() goes through this method.
-     * This is an "hourglass method" - multiple callers and multiple callees.
+     * All calls to splitNode() and replaceNodeWithLastVersion() go through this method.
      * appendKlongs()/appendDelete() methods call this method.
-     * If last.size > maxNodeSize / 2, then 'node' is split into two nodes 
-     * a space-split is made.
-     * Otherwise, 'node' is replaced by the last version of it, a time-split.
+     * If last.size > maxNodeSize / 2, then 'node' is split into two nodes -
+     * a space-split is made. Otherwise, 'node' is replaced by the last version 
+     * of it, a time-split.
      */
-    private void handleLastVersionOfFullNode(final KeyNode node, final int depth,
+    private void handleFullNode(final KeyNode node, final int depth,
             final KlongWithPointer[] toInsert, final long tTime, KeyNode last, PutData pd) {
         if (last.size > this.maxNodeSize / 2) {
             spaceSplit(node, last, depth, toInsert, pd);
