@@ -42,7 +42,7 @@ public final class TopNode implements INode {
     private static final int MAX_HEIGHT = 30;
     
     /**
-     * This constructor should only be called from TopDS and from this class itself.
+     * This constructor should only be called from TopDs and from this class itself.
      */
     public TopNode(int topNodeId, KeyNode rootPointer, long rootPointerPos, long rootTime, long spos) {
         this.rootPointer = rootPointer;
@@ -66,6 +66,13 @@ public final class TopNode implements INode {
             pointersPos[i] = Spos.NULL;
             pointersTime[i] = -1;
         }
+    }
+    
+    /**
+     * Useful for testing only.
+     */
+    public static TopNode createDummy() {
+        return new TopNode(1, new KeyNode(), 100, 1, 100);
     }
     
     public final byte getType() {

@@ -9,7 +9,7 @@ import bergdb.nanotest.Nano;
  * Tests for class KeyNode.
  */
 public class KeyNodeTester {
-    KeyNode[] t2Pointers;
+    public KeyNode[] t2Pointers;
     
     /**
      * Returns a test key node called T2.

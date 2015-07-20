@@ -122,7 +122,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
     /**
      * Information about a transaction and a linked-list pointer.
      */
-    public static class TransInfo {
+    public static class TransInfo implements NodeSink {
         TransInfo next = null;
         
         /** Transaction stream position. */
@@ -135,10 +135,14 @@ public class TransSeq implements PosOfTransBeforeFunction {
         
         public long startupPos;
         
-        /** Index nodes (top nodes, key nodes) that got dirty while the transaction executed. */
+        /** Index nodes that got dirty while the transaction executed. */
         public ArrayList<INode> gotDirtyNodes = new ArrayList<INode>();
 
         TransInfo() {}
+        
+        public void addNode(INode node) {
+            gotDirtyNodes.add(node);
+        }
         
         public String toString() {
             return "tt:" + tt + ", tpos:" + tpos + ", gotDirtyCount:" + gotDirtyNodes.size();
@@ -174,6 +178,10 @@ public class TransSeq implements PosOfTransBeforeFunction {
          * @param lastPos  Last pos of the transaction.
          */
         public void node(INode node, long tpos, long lastTpos);
+    }
+    
+    public static interface NodeSink {
+        public void addNode(INode node);
     }
     
     

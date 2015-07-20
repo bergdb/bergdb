@@ -15,7 +15,6 @@ import bergdb.dag.GetMany;
 import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
 import bergdb.dag.NodeVisitor;
-import bergdb.dag.Pointer;
 import bergdb.dag.PutData;
 import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
@@ -704,7 +703,7 @@ public class Db {
     private boolean makeDirtyIfNeeded(INode node) {
         if (!node.isDirty() && node.isIndexNode()) {
             node.setDirty(true);
-            x.transInfo.gotDirtyNodes.add(node);
+            x.transInfo.addNode(node);
             return true;
         }
         
@@ -1162,26 +1161,9 @@ public class Db {
         
         x.transNodes.clean();
         
-        // Loop needed, nodes in transNodes may point to each other.
-        
-        int gotDirtyCount;
-        do {
-            gotDirtyCount = handleNodesWithDirtyPointees();
-        } while (gotDirtyCount > 0);
-        
-        // TODO A. Analyze Db.handleNodesWithDirtyPointees().
-        // * when called repeatedly?
-        // * is the method call really needed, or are we trying to fix 
-        //     an error with something else?
-        //
-        // TEMP notes 150531 Frans:
-        // 0 times: u0f3, issue150420 fails.
-        // 1 times: u0f0, issue150420 fails.
-        // loop:    u0f5, issue150420 works (without checkPointerInvariant).
-        //
+        handleStillDirtyNodes();
         
         x.trans.nodeCount = x.transNodes.size();
-        
         x.transInfo.tpos = x.trans.tpos;
         x.transInfo.lastPos = x.trans.lastPos;
         x.transInfo.tt = x.trans.tt;
@@ -1191,80 +1173,22 @@ public class Db {
         
         x.startupPos.set(newSp);
     }
+
+    private void handleStillDirtyNodes() {
+        // TODO A. Place of thought..  handleStillDirtyNodes().
+        
+        // NOTES 150720
+        // about above loop (handleStillDirtyNodes).
+        // loop:   u0f5, 150420 works
+        // 1 time: u0f0, 150420 fails
+        // 0 time: u0f3, 150420 fails
+        
+        int stillDirtyCount;
+        do {
+            stillDirtyCount = DbHelper.handleStillDirtyNodes(x.transNodes.indexNodeIterator(), x.transInfo);
+        } while (stillDirtyCount > 0);
+    }
     
-    /**
-     * Adds nodes with unstored pointees to the got-dirty nodes
-     * of the current transaction.
-     * 
-     * @return Number of nodes that got dirty.
-     */
-    private int handleNodesWithDirtyPointees() {
-        TransNodes nodes = x.transNodes;
-        int topCount = nodes.topCount;
-        int keyCount = nodes.keyCount;
-        int gotDirtyCount = 0;
-        boolean gotDirty;
-        
-        for (int i = 0; i < topCount; i++) {
-            gotDirty = false;
-            
-            TopNode node = nodes.topNodes[i];
-            if (!node.isDirty) {
-                gotDirty = addToGotDirtyIfAppropriate(node);
-                if (gotDirty) {
-                    gotDirtyCount++;
-                }
-            }
-        }
-        
-        for (int i = 0; i < keyCount; i++) {
-            KeyNode node = nodes.keyNodes[i];
-            if (!node.isDirty) {
-                gotDirty = addToGotDirtyIfAppropriate(node);
-                if (gotDirty) {
-                    gotDirtyCount++;
-                }
-            }
-        }
-        
-        return gotDirtyCount;
-    }
-
-    private boolean addToGotDirtyIfAppropriate(INode node) {
-        // TODO A. Should we consider unstored pointees only, or any dirty pointee?
-        
-        if (node.isDirty()) return false;
-        
-        Pointer p = new Pointer();
-        int count = node.getPointerCount();
-        boolean gotDirty = false;
-        
-        A: for (int j = 0; j < count; j++) {
-            node.getPointer(j, p);
-            
-            INode pointee = p.node;
-            if (pointee != null) {
-                
-                /*
-                if (pointee.isDirty()) {
-                    gotDirty = makeDirtyIfNeeded(node);
-                    break A;
-                }
-                */
-                
-                long spos = pointee.getSpos();
-                assert spos > 0 : "bad spos: " + spos;
-                
-                if (spos % 8 != 0) {
-                    makeDirtyIfNeeded(node);
-                    break A;
-                }
-            }
-        }
-        
-        return gotDirty;
-    }
-
     /**
      * Returns to caller with a RerunException if any key was modified after 
      * the read time of the transaction. This is the essence of the 

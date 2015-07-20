@@ -1,5 +1,7 @@
 package bergdb.core;
 
+import java.util.Iterator;
+
 import bergdb.dag.IDirtyNodes;
 import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
@@ -216,6 +218,27 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
                 addUnstoredDescendents(node, p);
             }
         }
+    }
+    
+    public Iterator<INode> indexNodeIterator() {
+        return new Iterator<INode>() {
+            private int index = 0;
+            private final int total = topCount + keyCount;
+
+            public boolean hasNext() {
+                return index < total;
+            }
+
+            public INode next() {
+                INode node = get(index);
+                index++;
+                return node;
+            }
+
+            public void remove() {
+                throw new UnsupportedOperationException("remove() not supported");
+            }
+        };
     }
     
     /**
@@ -531,5 +554,53 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         
         transNodes.addUnstoredDescendents();
         Assert.assertEquals(1+8+8+8-1-9-1, transNodes.size());
+    }
+    
+    @Nano
+    public static void testIndexNodeIterator1() {
+        KeyNode k1 = new KeyNode();
+        KeyNode k2 = new KeyNode();
+        INode[] expected = new INode[]{k1, k2};
+        
+        TransNodes transNodes = new TransNodes();
+        transNodes.addKeyNode(k1);
+        transNodes.addKeyNode(k2);
+        
+        int index = 0;
+        Iterator<INode> nodes = transNodes.indexNodeIterator();
+        while (nodes.hasNext()) {
+            Assert.assertEquals(expected[index], nodes.next());
+            index++;
+        }
+        
+        Assert.assertEquals(expected.length, index);
+    }
+    
+    @Nano
+    public static void testIndexNodeIterator2() {
+        TransNodes transNodes = new TransNodes();
+        Assert.assertFalse(transNodes.indexNodeIterator().hasNext());
+    }
+    
+    @Nano
+    public static void testIndexNodeIterator3() {
+        KeyNode k1 = new KeyNode();
+        KeyNode k2 = new KeyNode();
+        TopNode t1 = TopNode.createDummy();
+        INode[] expected = new INode[]{t1, k1, k2};
+        
+        TransNodes transNodes = new TransNodes();
+        transNodes.addKeyNode(k1);
+        transNodes.addKeyNode(k2);
+        transNodes.addTopNode(t1);
+        
+        int index = 0;
+        Iterator<INode> nodes = transNodes.indexNodeIterator();
+        while (nodes.hasNext()) {
+            Assert.assertEquals(expected[index], nodes.next());
+            index++;
+        }
+        
+        Assert.assertEquals(expected.length, index);
     }
 }

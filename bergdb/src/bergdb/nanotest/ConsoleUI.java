@@ -276,9 +276,9 @@ public class ConsoleUI implements TestRunConsumer {
         double rounded = Math.round(10.0 * totalExeTime) / 10.0;
         
         if (failed == 0 && total > 0) {
-            result = "RESULT: SUCCESS. " + total + " successful tests in " + rounded + " s.\n";
+            result = "SUCCESS, " + total + " successful tests in " + rounded + " s.\n";
         } else {
-            result = "RESULT: FAILED. Total: " + total + ", failed: " + failed 
+            result = "FAILURE, total: " + total + ", failed: " + failed 
                     + ". Time: " + rounded + " s.\n";
         }
         

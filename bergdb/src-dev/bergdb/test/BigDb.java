@@ -110,13 +110,16 @@ public class BigDb {
         // Tests the restarted database (db2).
         
         byte[] expectedValue = new byte[valueSize];
+        int index = 0;
         
         for (String keyString : KeyFactory.shortRandomKeys(n)) {
             byte[] key = Util.toBytes(keyString);
             expectedValue[0] = (byte) keyString.hashCode();
             
             byte[] value = DbUtil.get(db2, 4*1000*1000, key);
-            Assert.assertArrayEquals(expectedValue, value);
+            Assert.assertArrayEquals("index=" + index + ", keyString=" + keyString, expectedValue, value);
+            
+            index++;
         }
         
         long sum2 = DbUtil.checksum(db2);
