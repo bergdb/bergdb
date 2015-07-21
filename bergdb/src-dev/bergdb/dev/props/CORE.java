@@ -14,7 +14,7 @@ import bergdb.test.Set;
 
 /**
  * <p>An executable class that runs a fixed set of performance tests of Core Layer.
- * Use this class to quickly detect how code changes affect performance.
+ * Use this class to detect how code changes affect performance.
  * Should run within 3 minutes on an ordinary development computer.
  * Run the executable class with no arguments, or a single argument 'dots' to 
  * reduce printed output.</p>

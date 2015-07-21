@@ -266,10 +266,8 @@ public class Util {
      * @throws NullPointerException if s == null.
      */
     public static final byte[] toBytes(String s) {
-        // result = s.getBytes(utf8);      
-        // Above code not allowed, since it requires Java 1.6.
         //
-        // NOTE We could improve performance by using code in
+        // NOTE We could possibly improve performance by using code in
         // http://javasourcecode.org/html/open-source/jdk/jdk-5.0/sun/nio/cs/UTF_8.java.html
         // (Method encodeArrayLoop()).
         //

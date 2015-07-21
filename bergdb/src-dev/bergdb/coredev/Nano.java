@@ -84,7 +84,7 @@ public class Nano {
         b.append("-c <classPattern> is a regexp for the name of the classes to include.\n");
         b.append("-m <methodPattern> is a regexp for the method names to include.\n");
         b.append("-s Be silent (quiet)\n");
-        b.append("-d Print dots.\n");
+        b.append("-d Print less, only dots and result.\n");
         b.append("-v Be verbose\n");
         b.append("-vv Be max verbose\n");
         b.append("\n");

@@ -1,10 +1,19 @@
 package bergdb.core;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 import bergdb.common.Bug;
+import bergdb.common.Create;
 import bergdb.common.ProgressListener;
 import bergdb.common.Util;
+import bergdb.dag.INode;
+import bergdb.dag.KeyNode;
+import bergdb.dag.KeyNodeTester;
+import bergdb.dag.Pointer;
+import bergdb.nanotest.Assert;
+import bergdb.nanotest.Nano;
 import bergdb.pub.BadReplicaException;
 import bergdb.pub.Job;
 import bergdb.pub.JobStatus;
@@ -167,5 +176,81 @@ public class DbHelper {
             
             return job;
         }
+    }
+
+    /**
+     * Returns true if the node has at least one in-memory child
+     * that is dirty.
+     */
+    static boolean hasDirtyChild(INode node) {
+        int count = node.getPointerCount();
+        Pointer p = new Pointer();
+        
+        for (int i = 0; i < count; i++) {
+            node.getPointer(i, p);
+            if (!p.isNull()) {
+                INode child = node.getPointerNode(i);
+                if (child != null && child.isDirty()) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Adds nodes that are still dirty to got-dirty nodes.
+     * A node is still dirty after being written to stream if any of its 
+     * children is dirty.
+     */
+    static int handleStillDirtyNodes(Iterator<INode> input, TransSeq.NodeSink output) {
+        int stillDirtyCount = 0;
+        
+        while (input.hasNext()) {
+            INode node = input.next();
+            
+            if (!node.isDirty() && hasDirtyChild(node)) {
+                node.setDirty(true);
+                output.addNode(node);
+                stillDirtyCount++;
+            }
+        }
+        
+        return stillDirtyCount;
+    }
+    
+    
+    // ======== Testing ========
+    
+    @Nano private static void testHandleStillDirtyNodes1() {
+        KeyNodeTester tester = new KeyNodeTester();
+        KeyNode k1 = tester.createT2();
+        KeyNode k2 = tester.t2Pointers[0];   // child of k1
+        KeyNode k3 = tester.t2Pointers[1];   // child of k1
+        KeyNode k4 = new KeyNode();
+        
+        k1.setDirty(false);
+        k2.setDirty(true);
+        k3.setDirty(false);
+        k4.setDirty(false);
+        
+        Iterator<INode> iter = Create.list((INode) k1, k2, k3, k4).iterator();
+        final ArrayList<INode> nodes = new ArrayList<INode>();
+        
+        TransSeq.NodeSink output = new TransSeq.NodeSink() {
+            public void addNode(INode node) {
+                nodes.add(node);
+            }
+        };
+        
+        handleStillDirtyNodes(iter, output);
+        
+        Assert.assertEquals(1, nodes.size());
+        Assert.assertEquals(k1, nodes.get(0));
+        Assert.assertTrue(k1.isDirty());
+        Assert.assertTrue(k2.isDirty());
+        Assert.assertFalse(k3.isDirty());
+        Assert.assertFalse(k4.isDirty());
     }
 }

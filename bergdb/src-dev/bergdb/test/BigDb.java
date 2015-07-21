@@ -1,6 +1,5 @@
 package bergdb.test;
 
-import bergdb.common.Util;
 import bergdb.core.*;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
@@ -81,10 +80,9 @@ public class BigDb {
         int i = 0;
         for (String keyString : KeyFactory.shortRandomKeys(n)) {
             clock.setTime(1*1000000 + i);
-            byte[] key = Util.toBytes(keyString);
             byte[] value = new byte[valueSize];
             value[0] = (byte) keyString.hashCode();
-            Trans t = db.trans().put(key, value).build();
+            Trans t = db.trans().put(keyString, value).build();
             db.execute(t);
             i++;
         }
@@ -94,29 +92,39 @@ public class BigDb {
         c.report("memory-used-after-100MB-of-data", getMem());
         
         db.sync(SyncLevel.ORDINARY);
+         
+        //System.out.println("\n==== db");
+        //db.printDag(System.out);
+        
         db.stop();
         db = null;
         c.report("memory-use-after-db-null", toMB(getMem()));
         
         Db db2 = Db.builder().testSetup(ms).build();
         long t = System.nanoTime();
+        //db2.start(StartParams.NULL, new Db.PrintStartListener());
         db2.start();
+        
         t = System.nanoTime() - t;
         clock.setTime(3*1000000);
         
         c.report("startup-time", 1e-9 * t);
         c.report("memory-after-restart", toMB(getMem()));
         
+        //System.out.println("\n==== db2");
+        //db2.printDag(System.out);
+        
         // Tests the restarted database (db2).
         
         byte[] expectedValue = new byte[valueSize];
+        int index = 0;
         
         for (String keyString : KeyFactory.shortRandomKeys(n)) {
-            byte[] key = Util.toBytes(keyString);
             expectedValue[0] = (byte) keyString.hashCode();
-            
-            byte[] value = DbUtil.get(db2, 4*1000*1000, key);
-            Assert.assertArrayEquals(expectedValue, value);
+            byte[] value = DbUtil.get(db2, 4*1000*1000, keyString);
+            Assert.assertArrayEquals(
+                    "index=" + index + ", keyString=" + keyString, expectedValue, value);
+            index++;
         }
         
         long sum2 = DbUtil.checksum(db2);
