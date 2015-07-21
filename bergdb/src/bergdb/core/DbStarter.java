@@ -1,15 +1,20 @@
 package bergdb.core;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import bergdb.common.Util;
 import bergdb.core.Db.ExecuteData;
+import bergdb.core.StoredTrans.Parser;
+import bergdb.core.StoredTrans.Serializer;
 import bergdb.dag.Dag.NodeReader;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.INode;
 import bergdb.dag.KeyNode;
+import bergdb.dag.Keys;
 import bergdb.dag.Klong;
 import bergdb.dag.NodeVisitor;
 import bergdb.dag.Pointer;
@@ -23,13 +28,12 @@ import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
 
 /**
- * A function-class for the database startup algorithm.
+ * A function-class for the database startup algorithm; see start().
  * 
  * @author Frans Lundberg
  */
-public class DbStarter3 {
+public class DbStarter {
     //
-    // DbStarter3 -- focus on last state (again). No dummy writes to node stream.
     // This implementation is not optimized for CPU performance. Clean code takes precedence.
     // Startup is not that performance-sensitive and it is likely I/O bound.
     //
@@ -49,7 +53,7 @@ public class DbStarter3 {
     private final long startupPos;
     private final long startupTime;
     
-    private DbStarter3(Db db, List<StoredTrans> transactions, long accessData, 
+    private DbStarter(Db db, List<StoredTrans> transactions, long accessData, 
             NodeReader nodeReader, int maxNodeSize) {
         if (nodeReader == null) throw new IllegalArgumentException("nodeReader == null not allowed");
         if (transactions == null) throw new IllegalArgumentException("transactions == null not allowed");
@@ -74,7 +78,7 @@ public class DbStarter3 {
      */
     public static void start(Db db, List<StoredTrans> transactions, long accessData,
             NodeReader nodeReader, int maxNodeSize) {
-        DbStarter3 s = new DbStarter3(db, transactions, accessData, nodeReader, maxNodeSize);
+        DbStarter s = new DbStarter(db, transactions, accessData, nodeReader, maxNodeSize);
         s.startup();
     }
     
@@ -119,10 +123,10 @@ public class DbStarter3 {
     private void doOrdinaryStartup() {
         createMaps();
         updateStreamPointers();
-        changeKeyNodesToPreviousState();
+        changeKeyNodesToStateAtStartupTime();
         checkStreamPointers();
         createMemoryPointers();
-        findSuperRoot();
+        findSuperNodeAtStartupTime();
         prepareDb();
         rerunTransactions();
         postStartupCheck();
@@ -189,7 +193,7 @@ public class DbStarter3 {
     /**
      * Changes key nodes to state at t = startupTime.
      */
-    private void changeKeyNodesToPreviousState() {
+    private void changeKeyNodesToStateAtStartupTime() {
         for (StoredTrans trans : transactions) {
             for (StoredNode stored : trans.nodes) {
                 INode node = stored.getNode();
@@ -227,7 +231,25 @@ public class DbStarter3 {
         }
     }
 
-    private void findSuperRoot() {
+    private void findSuperNodeAtStartupTime() {
+        TopNode lastSuperNode = findLatestSuperNode(transactions);
+        
+        if (lastSuperNode == null) {
+            throw new StreamFormatException("Could not find super node in startup section, "
+                    + "starting at pos " + startupPos + " and time " + startupTime + ".");
+        }
+        
+        // We found the latest super node, but we need the one at t = startupTime.
+        
+        TopDs tempTopDs = new TopDs(lastSuperNode);
+        Dag tempDag = new Dag(nodeReader, tempTopDs, maxNodeSize);
+        superRoot = tempTopDs.findSuperRootAtTime(tempDag, startupTime, tempDag.newGetData());
+        if (superRoot == null) {
+            throw new StreamFormatException("No super root at time " + startupTime + " was found.");
+        }
+    }
+
+    private static TopNode findLatestSuperNode(List<StoredTrans> transactions) {
         TopNode current = null;
         
         for (StoredTrans trans : transactions) {
@@ -240,6 +262,10 @@ public class DbStarter3 {
                     if (current == null) {
                         current = candidate;
                     } else {
+                        /*
+                        OLD code before 150721 that caused a lot of problems!
+                        Now unit tested. A simple unit test would have save A LOT of time!
+                        
                         if (current.topNodeId > candidate.topNodeId) {
                             current = candidate;
                         } else if (current.topNodeId == candidate.topNodeId) {
@@ -247,24 +273,17 @@ public class DbStarter3 {
                                 current = candidate;
                             }
                         }
+                        */
+                        
+                        if (candidate.topNodeId >= current.topNodeId) {
+                            current = candidate;
+                        }
                     }
                 }
             }
         }
         
-        if (current == null) {
-            throw new StreamFormatException("Could not find super root node in startup section, "
-                    + "starting at pos " + startupPos + " and time " + startupTime + ".");
-        }
-        
-        // We found the latest super root node, but we need the one at t = startupTime.
-        
-        TopDs tempTopDs = new TopDs(current);
-        Dag tempDag = new Dag(nodeReader, tempTopDs, maxNodeSize);
-        superRoot = tempTopDs.findSuperRootAtTime(tempDag, startupTime, tempDag.newGetData());
-        if (superRoot == null) {
-            throw new StreamFormatException("No super root at time " + startupTime + " was found.");
-        }
+        return current;
     }
 
     private void prepareDb() {
@@ -551,6 +570,7 @@ public class DbStarter3 {
     }
     
     
+    // ======== Testing =======
     
     @Nano
     private static void testPrevMap1() {
@@ -592,5 +612,112 @@ public class DbStarter3 {
     private static void testEmptyPrevMap() {
         PrevMap m = new PrevMap();
         Assert.assertEquals(Spos.NULL, m.backtrack(10, 40));
+    }
+    
+    @Nano
+    private static void testFindLatestSuperNode1() {
+        TopNode top = findLatestSuperNode(new ArrayList<StoredTrans>());
+        Assert.assertNull(top);
+    }
+    
+    @Nano
+    private static void testFindLatestSuperNode2() {
+        ArrayList<StoredTrans> transactions = new ArrayList<StoredTrans>();
+        
+        transactions.add(withOneTopNode(1000, 12));
+        transactions.add(trans1(2000));
+        transactions.add(trans2(3000));
+                
+        TopNode top = findLatestSuperNode(transactions);
+        
+        Assert.assertEquals(12, top.getTopNodeId());
+    }
+    
+    @Nano
+    private static void testFindLatestSuperNode3() {
+        ArrayList<StoredTrans> transactions = new ArrayList<StoredTrans>();
+        
+        transactions.add(trans1(1000));
+        transactions.add(trans2(2000));
+        transactions.add(trans1(3000));
+                
+        TopNode top = findLatestSuperNode(transactions);
+        
+        Assert.assertEquals(2, top.getTopNodeId());
+    }
+    
+    @Nano
+    private static void testFindLatestSuperNode4() {
+        ArrayList<StoredTrans> transactions = new ArrayList<StoredTrans>();
+        
+        transactions.add(withOneTopNode(4000, 123));
+        transactions.add(trans1(1000));
+        transactions.add(trans2(2000));
+        transactions.add(trans1(3000));
+                
+        TopNode top = findLatestSuperNode(transactions);
+        
+        Assert.assertEquals(123, top.getTopNodeId());
+    }
+    
+    private static StoredTrans trans1(long tpos) {
+        Serializer serializer = new Serializer();
+        TransNodes transNodes = new TransNodes();
+        
+        ValueNode v0 = new ValueNode(new byte[]{});
+        ValueNode v1 = new ValueNode(new byte[]{12});
+        ValueNode v2 = new ValueNode(new byte[]{13, 14});
+        
+        KeyNode n = new KeyNode();
+        n.addKlong(10, Klong.create(Util.toBytes("a")), v0, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, Klong.create(Util.toBytes("b")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, Klong.create(Util.toBytes("c")), v2, AccessData.DEFAULT_ACCESS_DATA);
+        
+        transNodes.addValueNode(v0, Keys.toSegments("a"));
+        transNodes.addValueNode(v1, Keys.toSegments("b"));
+        transNodes.addValueNode(v2, Keys.toSegments("c"));
+        transNodes.addKeyNode(n);
+        
+        serializer.serialize(transNodes, 100, 200, -1);
+        byte[] buffer = serializer.getTransBuffer();
+        
+        Parser parser = new Parser();
+        parser.parse(tpos, buffer);
+        
+        return new StoredTrans(parser);
+    }
+    
+    private static StoredTrans trans2(long tpos) {
+        Serializer serializer = new Serializer();
+        TransNodes transNodes = new TransNodes();
+        
+        TopNode t1 = TopNode.createDummy(1);
+        TopNode t2 = TopNode.createDummy(2);
+        
+        transNodes.addTopNode(t1);
+        transNodes.addTopNode(t2);
+        
+        serializer.serialize(transNodes, 100, 200, -1);
+        byte[] buffer = serializer.getTransBuffer();
+        
+        Parser parser = new Parser();
+        parser.parse(tpos, buffer);
+        
+        return new StoredTrans(parser);
+    }
+    
+    private static StoredTrans withOneTopNode(long tpos, int topNodeId) {
+        Serializer serializer = new Serializer();
+        TransNodes transNodes = new TransNodes();
+        
+        transNodes.addTopNode(TopNode.createDummy(topNodeId));
+        
+        serializer.serialize(transNodes, 100, 200, -1);
+        byte[] buffer = serializer.getTransBuffer();
+        
+        Parser parser = new Parser();
+        parser.parse(tpos, buffer);
+        
+        return new StoredTrans(parser);
     }
 }

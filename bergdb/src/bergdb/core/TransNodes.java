@@ -586,7 +586,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
     public static void testIndexNodeIterator3() {
         KeyNode k1 = new KeyNode();
         KeyNode k2 = new KeyNode();
-        TopNode t1 = TopNode.createDummy();
+        TopNode t1 = TopNode.createDummy(1);
         INode[] expected = new INode[]{t1, k1, k2};
         
         TransNodes transNodes = new TransNodes();

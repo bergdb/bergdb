@@ -39,6 +39,14 @@ public class Props {
 
 /*
 
+150721
+======
+
+2015-07-21, cissi, Java HotSpot(TM) 64-Bit Server VM 24.76-b04, java 1.7.0_76
+MEM:161
+CORE:0.79 (0.81, 1.01, 0.86, 0.56)
+SS:1.48 (1.16, 1.26, 1.60, 2.06)
+
 150106 Four JVMs
 ================
 
@@ -65,6 +73,6 @@ SS prop is shown once only, since it does not vary between JVMs.
 CONSLUSIONS: HotSpot 7 is faster and uses less memory then HotSpot 5. OpenJDK 1.6
 is very similar to HotSpot 7 in performance (same code base?). IKVM is slower and 
 uses more memory then the others, but I am still impressed by the performance.
-Something within a factor of 2.0 seems good to me for .net transation.
+Something within a factor of 2.0 is impressive.
 
 */

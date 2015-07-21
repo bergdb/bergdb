@@ -74,7 +74,8 @@ public class Issue150420 {
             //checkPointerInvariant(db1);
             
             // kvCompare() is the primary test. If this works, the test works.
-            // dagCompare() and checkPointerInvariant() are helper test.
+            // dagCompare() and checkPointerInvariant() are helper test used to diagnose 
+            // a kvCompare error.
             
             if (errorCount > 0) {
                 break;
@@ -83,9 +84,11 @@ public class Issue150420 {
             index++;
         }
         
-        System.out.println("\nError count: " + errorCount);
-        
         db1.stop();
+        
+        if (errorCount > 0) {
+            throw new AssertionError("errorCount = " + errorCount);
+        }
     }
 
     private boolean kvCompare(Db db1) {

@@ -52,7 +52,7 @@ public class StoredTrans {
         startupPos = 0;
     }
     
-    private StoredTrans(Parser d) {
+    StoredTrans(Parser d) {
         tt = d.transactionTime;
         tpos = d.tpos;
         lastPos = d.lastPos;
@@ -193,7 +193,7 @@ public class StoredTrans {
     /**
      * Parses stream bytes to StoredNode objects.
      */
-    private static class Parser {
+    static class Parser {
         long transactionTime;
         long tpos;
         long lastPos;
@@ -606,7 +606,7 @@ public class StoredTrans {
     }
     
     
-    // ======== Tests ========
+    // ======== Testing ========
     
     @Nano
     private static void testKvSanity() {

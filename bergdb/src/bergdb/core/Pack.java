@@ -10,7 +10,7 @@ public class Pack implements IPack {
         DbClock.class,
         DbHelper.class,
         DbScan.class,
-        DbStarter3.class,
+        DbStarter.class,
         DbTester.class,
         DbTesterGetMany.class,
         DbTesterRestart.class,

@@ -472,7 +472,7 @@ public class Db {
     }
 
     private void startDb(ArrayList<StoredTrans> transactions) {
-        DbStarter3.start(this, transactions, getAccessData(), nodeStream, maxNodeSize);
+        DbStarter.start(this, transactions, getAccessData(), nodeStream, maxNodeSize);
     }
 
     private void createPutAndGetData() {
@@ -1175,14 +1175,6 @@ public class Db {
     }
 
     private void handleStillDirtyNodes() {
-        // TODO A. Place of thought..  handleStillDirtyNodes().
-        
-        // NOTES 150720
-        // about above loop (handleStillDirtyNodes).
-        // loop:   u0f5, 150420 works
-        // 1 time: u0f0, 150420 fails
-        // 0 time: u0f3, 150420 fails
-        
         int stillDirtyCount;
         do {
             stillDirtyCount = DbHelper.handleStillDirtyNodes(x.transNodes.indexNodeIterator(), x.transInfo);
@@ -1536,6 +1528,10 @@ public class Db {
     
     public static class PrintStartListener implements StartListener {
         private PrintStream p;
+        
+        public PrintStartListener() {
+            this(System.out);
+        }
         
         public PrintStartListener(PrintStream out) {
             this.p = out;

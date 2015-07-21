@@ -71,8 +71,18 @@ public final class TopNode implements INode {
     /**
      * Useful for testing only.
      */
-    public static TopNode createDummy() {
-        return new TopNode(1, new KeyNode(), 100, 1, 100);
+    public static TopNode createDummy(int topNodeId) {
+        long keyNodeSpos = 100;
+        
+        KeyNode k = new KeyNode();
+        k.setSpos(keyNodeSpos);
+        k.setId(keyNodeSpos);
+        
+        return new TopNode(topNodeId, k, k.getSpos(), 1, 100);
+    }
+    
+    public int getTopNodeId() {
+        return topNodeId;
     }
     
     public final byte getType() {
