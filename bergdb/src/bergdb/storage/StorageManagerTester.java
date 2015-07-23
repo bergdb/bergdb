@@ -315,6 +315,15 @@ public class StorageManagerTester {
     public static void testAddReplica2() throws IOException, InterruptedException {
         // Creates streams, adds replica, appends to StorageManager, asserts.
         
+        /*
+        NOTE Frans: got non-reproducable unit test error, on Cissi, 150723:
+        FAILED! bergdb.storage.StorageManagerTester.testAddReplica2
+        java.lang.AssertionError: Expected 800, got 1200.
+            at bergdb.nanotest.Assert.assertEquals(Assert.java:37)
+            at bergdb.storage.StorageManagerTester.testAddReplica2(StorageManagerTester.java:359)
+            ...
+        */
+        
         final MemoryStream m1 = new MemoryStream();
         final MemoryStream m2 = new MemoryStream();
         
@@ -353,6 +362,9 @@ public class StorageManagerTester {
         
         manager.append(bytes, 0, 100);
 
+        Assert.assertEquals(700, m1.getLength());
+        Assert.assertEquals(700, m2.getLength());
+        
         manager.close();
         
         Assert.assertEquals(800, m1.getLength());

@@ -168,8 +168,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      */
     public INode readNode(long spos) {
         assert spos >= RecoverableStream.META_BLOCK_SIZE : "bad spos, " + spos;
-        assert spos % 8 == 0 : "trying to read node at bad spos, " + spos + ", mod8: " + (spos % 8);
-        
+
         byte[] buffer = new byte[1024];      
         rstream.read(spos, buffer, 0, 4);
         
@@ -184,13 +183,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         }
         
         rstream.read(spos, buffer, 0, size);
-        
         INode node = bytesToNode(spos, buffer, 0, size).getNode();
-        
-        //if (spos % 8 != 0) {
-        //    System.out.println("Read node at " + spos + ", not %8=0! node:\n" + node.print("  "));
-        //}
-        
         return node;
     }
     
