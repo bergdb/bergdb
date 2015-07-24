@@ -29,6 +29,8 @@ To test the generated jar file:
 Files
 -----
 
+in       - Non-source input for build.
+out      - Output from build.
 src      - The main Java source code directory.
 src-icu  - Source code for package bergdb.pubimpicu.
 src-dev  - Development and test packages not needed in production 

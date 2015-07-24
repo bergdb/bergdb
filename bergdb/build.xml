@@ -115,6 +115,30 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
     </jar>
 	
 	<copy todir="${base}/${release}/more/" file="out/bergdb-no-icu.jar" overwrite="true"/>
+	
+	<!-- bergdb-versioned.jar -->
+	
+	<delete file="out/bergdb-versioned-${releaseInt}.jar" failonerror="false"/>
+	
+	<manifest file="out/MANIFEST-versioned.MF">
+        <attribute name="Main-Class" value="bergdb${releaseInt}.dev.Run"/>
+        <attribute name="Copyright" value="Frans Lundberg"/>
+        <attribute name="Author" value="Frans Lundberg"/>
+        <attribute name="Ant-Version" value=""/>    
+        <attribute name="Created-By" value=""/>     
+        <attribute name="release" value="${release}"/>
+        <attribute name="build" value="${build}"/>
+    </manifest>
+	
+	<taskdef name="jarjar" classname="com.tonicsystems.jarjar.JarJarTask"
+	        classpath="in/jarjar-1.4.jar"/>
+    <jarjar jarfile="out/bergdb-versioned-${releaseInt}.jar" manifest="out/MANIFEST-versioned.MF">
+    	<zipfileset src="out/bergdb.jar"/>
+    	<rule pattern="bergdb.**" result="bergdb${releaseInt}.@1"/>
+    </jarjar>
+	
+	<copy todir="${base}/${release}/more/" file="out/bergdb-versioned-${releaseInt}.jar" overwrite="true"/>
+	
 </target>
 
 <!-- 
