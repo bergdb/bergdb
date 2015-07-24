@@ -483,6 +483,8 @@ public class StoredTrans {
 
             transLastSpos = RecoverableStream.getSpos(transStartPos, totalSize - 1);
             transNextSpos = RecoverableStream.getSpos(transStartPos, totalSize);
+            
+            resizeBuffersIfNeeded();
         }
 
         private void serializeToBuffer() {
@@ -496,7 +498,6 @@ public class StoredTrans {
             int longOffset = 0;
             int byteOffset;
 
-            resizeBuffersIfNeeded();
             longOffset = serializeHeader(longOffset);
             byteOffset = serializeNodes(longOffset);
             byteOffset = serializeEnd(byteOffset);

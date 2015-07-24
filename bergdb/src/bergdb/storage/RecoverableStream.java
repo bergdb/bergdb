@@ -451,6 +451,9 @@ public class RecoverableStream {
      * @throws StreamIoException
      */
     static MetaBlock readValidMetaBlock(AppendOnlyStream aos, long spos) {
+        // TODO D. Read meta block version earlier. Avoid using too many assumptions for the 
+        // serial format of a meta block. See stream-format.txt.
+       
         long metaIndex;
         byte[] metaBytes = new byte[RecoverableStream.META_BLOCK_SIZE];
         MetaBlock result = null;

@@ -127,7 +127,7 @@ with Java byte code, of course. Also it is build to native machine code and to .
 
 <h3>Java JAR</h3>
 
-<p>The source is built to one jar: "bergdb.jar". Source files are not included in this jar.</p>
+<p>The source is built to one jar: "bergdb.jar".</p>
 
 
 <h3>Android</h3>
@@ -152,7 +152,7 @@ The version ID and the version int are available from the class db.BuildInfo.
 The year (2013, 2014) is the <i>major version number</i>, and the second number if the 
 <i>minor version number</i>.</p>
 
-<p>New methods and features may be marked with "since" in Javadoc, example: "@since 2013.2".</p>
+<p>New methods and features can be marked with "since" in Javadoc, example: "@since 2013.2".</p>
 
 <p>A BergDB software release is one single zip file made available from bergdb.com.</p>
 
@@ -167,9 +167,6 @@ The year (2013, 2014) is the <i>major version number</i>, and the second number 
 <p>All documentation needed to use and modify BergDB should be included in the Javadoc files
 (possibly by including files in doc-files/ directories). HTML and TXT files are allowed.
 JPEG/PNG images are also allowed.<p>
-
-<p>Avoid separate documentation. The bergdb.com website should mostly simply link to 
-Javadoc (bergdb.com/2014.1/...).</p>
 
 
 <!-- ====================================================================== -->
@@ -196,23 +193,38 @@ for indexed directories.
 
 
 <!-- ====================================================================== -->
-<h1>Link collection</h1>
+<h1>Internal Links</h1>
+
+<p><a href="../core/doc-files/stream-format.txt">stream-format.txt</a></p>
+
+
+<!-- ====================================================================== -->
+<h1>External Links</h1>
 
 <p><a href="http://docs.oracle.com/javase/1.5.0/docs/api/">Java 1.5 API</a>, 
    <a href="http://javasourcecode.org/html/open-source/jdk/jdk-5.0/index.html">Source</a></p>
 <p><a href="http://demo.icu-project.org/icu-bin/locexp">ICU Demo: Locales/collations</a></p>
 
 
+
 <!-- ====================================================================== -->
 <h1>Project Dev Log</h1>
 
-<p>Most changes documented by git version control.</p>
+<p>Changes are in general documented by git version control. Also see
+bergdb.com/log.html for public log of major events.</p>
 
 <pre>
+150724
+======
+
+Dropped support for bergdb-core.jar. 
+Added support for bergdb-versioned.jar.
+
+
 140721
 ======
 
-Enums are now allowed! GCJ not supported, so there is no reason not to use enums.
+Enums are now allowed! GCJ no longer supported, so there is no reason not to use enums.
 Nice! :-)
 </pre>
 

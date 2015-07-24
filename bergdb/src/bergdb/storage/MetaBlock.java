@@ -5,27 +5,28 @@ import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
+// TODO Remove startup pos and change version to 154.
 // TODO LATER How is "time" used? What exactly is it? Is it used, is it necessary?
 
 /**
  * An instance of this class represents a meta information block in the 
  * db stream (RecoverableStream). The meta information includes 
  * the spos of the last successful transaction.
- * Little-endian byte order is used.
+ * Little-endian-first byte order is used.
  *
  * <pre>
  * FORMAT OF A META BLOCK, v133
  * Offset  Size    Description
  * 0       4       Magic bytes, meta block signature. Always the bytes for ASCII "berg".
  * 4       4       Version of BergDB stream format as an int (currently 133).
- * 8       8       time, database time as a long (Little-endian-first byte order).
+ * 8       8       time, database time as a long.
  * 16      8       lastTrans, spos of last valid transaction completely written
  *                 before the meta block.
  * 24     16       Database ID. 128 random bits, used as unique database ID.
- * 40      4       startupDistance in bytes. Typically 20M (LE-first byte order).
- * 44     52       startupPos. Stream position to startup from (LE-first byte order). DEPRECATED FROM 2015-05-10!
- * 53     75       Reserved, must be set to zero.
- * 127     1       META_BLOCK_LAST_BYTE. Used to indicate that the block is valid.
+ * 40      4       startupDistance in bytes. Typically 20M.
+ * 44      8       startupPos. Stream position to startup from. DEPRECATED FROM 2015-05-10!
+ * 52     75       Reserved, must be set to zero.
+ * 127     1       META_BLOCK_LAST_BYTE. 1 is used to indicate that the block is valid.
  * </pre>
  */
 public class MetaBlock {    
@@ -96,6 +97,7 @@ public class MetaBlock {
         checkMagic();
         
         long version = getVersion();
+        
         if (version != STREAM_FORMAT_VERSION) {
             throw new StreamFormatException("Meta block version " + version + " not supported by " +
             		"this software.");
