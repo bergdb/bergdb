@@ -13,8 +13,8 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
 
 	
 <target name="init" description="Initializes properties and prints version, release, and build.">
-    <property name="release" value="2015.3"/>                     <!-- CHANGEIT for new release. -->
-    <property name="releaseInt" value="153"/>                     <!-- CHANGEIT for new release. -->
+    <property name="release" value="2015.4"/>                     <!-- CHANGEIT for new release. -->
+    <property name="releaseInt" value="154"/>                     <!-- CHANGEIT for new release. -->
 
     <tstamp>
         <format property="dateString" pattern="yyMMdd" />

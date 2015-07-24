@@ -175,7 +175,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
     public static interface NodeVisitor {
         /**
          * @param tpos  Transaction pos, that is the first stream pos of the transaction.
-         * @param lastPos  Last pos of the transaction.
+         * @param lastTpos  Last pos of the transaction.
          */
         public void node(Node node, long tpos, long lastTpos);
     }
