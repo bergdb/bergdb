@@ -52,6 +52,7 @@ public class StoredTopNode implements StoredNode {
         offset += 4; // Skip size bytes
         byte type = buffer[offset];
         offset += 1;
+        
         if (type != Node.TYPE_TOP_NODE) {
             throw new Bug("Bad node type byte, " + ((int) type)
                     + ", should have been checked already.");
@@ -59,9 +60,10 @@ public class StoredTopNode implements StoredNode {
 
         byte version = buffer[offset];
         offset += 1;
-        if (version != 1) {
-            throw new StreamFormatException("Can only handle TopNode of "
-                    + "version 1, got version " + version + ".");
+        
+        if (version != 2) {
+            throw new StreamFormatException("Cannot parse top node of "
+                    + "format version " + version + ".");
         }
 
         offset += 2; // checksum bytes, checked later.
@@ -150,9 +152,14 @@ public class StoredTopNode implements StoredNode {
         int offset = firstOffset;
         long checksum = 0;
         long l;
+        final long FORMAT_VERSION = 2;     // serial format version (one byte)
+        
         assert byteSize % 8 == 0 : "byteSize=" + byteSize;
 
-        l = ((long) byteSize) | (((long) Node.TYPE_TOP_NODE) << (4 * 8)) | (1L << (5 * 8));
+        l = ((long) byteSize) 
+                | (((long) Node.TYPE_TOP_NODE) << (4 * 8)) 
+                | (FORMAT_VERSION << (5 * 8));
+        
         // Room for 2 checksum bytes.
         checksum ^= l;
         buffer[offset++] = l;

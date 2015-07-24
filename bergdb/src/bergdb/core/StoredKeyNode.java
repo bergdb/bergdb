@@ -52,11 +52,13 @@ public class StoredKeyNode implements StoredNode {
         int sz = node.size;
         int byteSize = getByteSize(node);
         int offset = firstOffset;
+        final long FORMAT_VERSION = 2;     // serial format version (one byte)
 
         buffer[offset++] = 
                   ((long) byteSize) 
                 | (((long) Node.TYPE_KEY_NODE) << (4 * 8))
-                | (1L << (5 * 8));
+                | (FORMAT_VERSION << (5 * 8));
+        
         // 2 bytes available for checksum
         buffer[offset++] = prevPos;
         buffer[offset++] = ((long) (node.isSegmentLeaf() ? 1 : 0)) | sz << (1 * 8);
@@ -103,10 +105,12 @@ public class StoredKeyNode implements StoredNode {
         }
 
         byte version = buffer[offset];
-        if (version != 1) {
-            throw new StreamFormatException("Bad Node stream format version, expected 1, was "
-                    + ((int) version) + ".");
+        
+        if (version != 2) {
+            throw new StreamFormatException("Cannot parse key node of format version "
+                    + version + ".");
         }
+        
         offset += 1;
 
         offset += 2; // checksum bytes

@@ -71,9 +71,9 @@ public class StoredValueNode implements StoredNode {
         byte version = buffer[offset];
         offset += 1;
         
-        if (version != 1) {
-            throw new StreamFormatException("Can only handle ValueNode of "
-                    + "version 1, got version " + version + ".");
+        if (version != 2) {
+            throw new StreamFormatException("Cannot parse value node of "
+                    + "format version " + version + ".");
         }
         
         offset += 2; // two bytes not used
@@ -127,9 +127,13 @@ public class StoredValueNode implements StoredNode {
         int offset = firstOffset;
         int byteSize = getByteSize(node, key);
         long myLong;
+        final long FORMAT_VERSION = 2L;    // serial format version (one byte)
         long nodeType = node.value == null ? Node.TYPE_DELETE : Node.TYPE_VALUE;
 
-        myLong = ((long) byteSize) | (nodeType << (4 * 8)) | (1L << (5 * 8));
+        myLong = ((long) byteSize) 
+                | (nodeType << (4 * 8)) 
+                | (FORMAT_VERSION << (5 * 8));
+        
         Bytes.longToBytesLE(myLong, buffer, offset);
         offset += 8;
         // Room for 2 checksum bytes.

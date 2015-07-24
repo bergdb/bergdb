@@ -25,7 +25,7 @@ import bergdb.storage.StreamFormatException;
 /**
  * This class and its inner classes are responsible serializing transactions to bytes
  * and to parse transactions from raw bytes.
- * For this class, performance is important enough that it may take precedence over pretty code.
+ * For this class, performance is important enough to take precedence over pretty code.
  * 
  * @author Frans Lundberg
  */
@@ -233,7 +233,15 @@ public class StoredTrans {
                         + byteSize + ", buffer size: " + buffer.length + ".");
             }
             
-            offset += 4; // 4 unused bytes
+            byte version = buffer[offset];
+            offset++;
+            
+            if (version != 2) {
+                throw new StreamFormatException("Cannot parse stored transaction of "
+                        + "format version " + version + ".");
+            }
+
+            offset += 3;     // three unused bytes
             
             transactionTime = Bytes.bytesToLongLE(buffer, offset);
             offset += 8;
@@ -498,8 +506,9 @@ public class StoredTrans {
         }
 
         private int serializeHeader(int longOffset) {
+            final long FORMAT_VERSION = 2L;    // serial format version (one byte).
             long int0 = totalSize;
-            long int1 = 0;
+            long int1 = FORMAT_VERSION;
             
             longBuffer[longOffset] = int0 | (int1 << 32);
             longOffset += 1;
