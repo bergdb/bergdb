@@ -5,7 +5,7 @@ import bergdb.nanotest.Nano;
 
 /**
  * A general-purpose pointer class. Used to represent both memory pointers and stream pointers.
- * Useful in method calls like INode.getPointer(int index, Pointer p). 
+ * Useful in method calls like Node.getPointer(int index, Pointer p). 
  * Used as output parameter for efficiency. Used in Db.follow(Pointer p).
  * Typically used for temporary storage, method calls, output parameters.
  * 
@@ -18,7 +18,7 @@ public class Pointer {
     /** Stream pointer type. */
     public static final int TYPE_STREAM = 2;
     
-    public INode node;
+    public Node node;
     public long pos;
     public int index;    // pointer index, not always used
     
@@ -46,7 +46,7 @@ public class Pointer {
         return pos;
     }
     
-    public final INode getNode() {
+    public final Node getNode() {
         return node;
     }
     
@@ -56,11 +56,11 @@ public class Pointer {
         return isNull(node, pos);
     }
     
-    public static final boolean isNull(INode node, long pos) {
+    public static final boolean isNull(Node node, long pos) {
         return (node == null) && (pos == Spos.NULL);
     }
     
-    public static final boolean isMem(INode node) {
+    public static final boolean isMem(Node node) {
         return node != null;
     }
     

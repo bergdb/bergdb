@@ -12,7 +12,7 @@ import bergdb.nanotest.Nano;
  * 
  * @author Frans Lundberg
  */
-public final class TopNode implements INode {
+public final class TopNode implements Node {
     public final TopNode[] pointers;
         // Backward pointers in skip list.
     public final long[] pointersPos;     
@@ -86,7 +86,7 @@ public final class TopNode implements INode {
     }
     
     public final byte getType() {
-        return INode.TYPE_TOP_NODE;
+        return Node.TYPE_TOP_NODE;
     }
     
     public final boolean isIndexNode() {
@@ -225,12 +225,12 @@ public final class TopNode implements INode {
         this.isDirty = isDirty;
     }
 
-    public final int getPointerCount() {
+    public final int getSize() {
         return pointerCount;
     }
     
-    public final int getPointerCountAtTime(long lookupTime) {
-        return getPointerCount();
+    public final int getSizeAtTime(long lookupTime) {
+        return getSize();
     }
 
     public final void getPointer(int index, Pointer pointer) {
@@ -248,7 +248,7 @@ public final class TopNode implements INode {
         return index == 0 ? rootTime : pointersTime[index - 1];
     }
     
-    public final INode getPointerNode(int index) {
+    public final Node getPointerNode(int index) {
         return index == 0 ? rootPointer : pointers[index - 1];
     }
     
@@ -256,7 +256,7 @@ public final class TopNode implements INode {
         return index == 0 ? rootPointerPos : pointersPos[index - 1];
     }
     
-    public final void setPointer(int index, INode node, long spos) {
+    public final void setPointer(int index, Node node, long spos) {
         if (index == 0) {
             rootPointer = (KeyNode) node;
             rootPointerPos = spos;

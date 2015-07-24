@@ -52,20 +52,20 @@ public class TopTester {
         GetData gd = new GetData();
         
         gd.pointerListener = new Dag.PointerListener() {
-            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
+            public void pointerFollowed(Node predecessor, int pointerIndex, Node result, int pointerType) {
             }
 
             public void superRootAccessed(TopNode superRoot) {}
         };
         
         gd.cachePolicy = new Dag.CachePolicy() {
-            public boolean shouldCache(INode node) {
+            public boolean shouldCache(Node node) {
                 return false;
             }
         };
         
         DagForMe g = new DagForMe() {
-            public INode followPointer(INode predecessor, int pointerIndex, long accessData,
+            public Node followPointer(Node predecessor, int pointerIndex, long accessData,
                     PointerListener walker, CachePolicy cachPolicy) {
                 return predecessor.getPointerNode(pointerIndex);
             }

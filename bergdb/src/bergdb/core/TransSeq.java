@@ -2,7 +2,7 @@ package bergdb.core;
 
 import java.util.ArrayList;
 
-import bergdb.dag.INode;
+import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
@@ -77,14 +77,14 @@ public class TransSeq implements PosOfTransBeforeFunction {
         }
         
         while (first != null && first.tpos <= tposLimit) {
-            for (INode node : first.gotDirtyNodes) {
+            for (Node node : first.gotDirtyNodes) {
                 int type = node.getType();
                 
                 switch (type) {
-                case INode.TYPE_TOP_NODE:
+                case Node.TYPE_TOP_NODE:
                     transNodes.addTopNode((TopNode) node);
                     break;
-                case INode.TYPE_KEY_NODE:
+                case Node.TYPE_KEY_NODE:
                     transNodes.addKeyNode((KeyNode) node);
                     break;
                 }
@@ -112,7 +112,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
         
         TransInfo info = first;
         while (info != null && info.tpos <= limit) {
-            for (INode node : info.gotDirtyNodes) {
+            for (Node node : info.gotDirtyNodes) {
                 visitor.node(node, info.tpos, info.lastPos);
             }
             info = info.next;
@@ -136,11 +136,11 @@ public class TransSeq implements PosOfTransBeforeFunction {
         public long startupPos;
         
         /** Index nodes that got dirty while the transaction executed. */
-        public ArrayList<INode> gotDirtyNodes = new ArrayList<INode>();
+        public ArrayList<Node> gotDirtyNodes = new ArrayList<Node>();
 
         TransInfo() {}
         
-        public void addNode(INode node) {
+        public void addNode(Node node) {
             gotDirtyNodes.add(node);
         }
         
@@ -155,7 +155,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
                 b.append(", no gotDirtyNodes");
             } else {
                 b.append(", gotDirtyNodes:\n");
-                for (INode n : gotDirtyNodes) {
+                for (Node n : gotDirtyNodes) {
                     b.append("  " + n.toString() + "\n");
                 }
             }
@@ -177,11 +177,11 @@ public class TransSeq implements PosOfTransBeforeFunction {
          * @param tpos  Transaction pos, that is the first stream pos of the transaction.
          * @param lastPos  Last pos of the transaction.
          */
-        public void node(INode node, long tpos, long lastTpos);
+        public void node(Node node, long tpos, long lastTpos);
     }
     
     public static interface NodeSink {
-        public void addNode(INode node);
+        public void addNode(Node node);
     }
     
     
@@ -200,7 +200,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
     }
     
     /** Test TransInfo object with one node. */
-    private static TransInfo newTransInfo(long tpos, long lastPos, INode node) {
+    private static TransInfo newTransInfo(long tpos, long lastPos, Node node) {
         TransInfo info = new TransInfo();
         info.tpos = tpos;
         info.lastPos = lastPos;
@@ -284,7 +284,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
         s.add(info1);
         s.add(info2);
         
-        final ArrayList<INode> nodes = new ArrayList<INode>();
+        final ArrayList<Node> nodes = new ArrayList<Node>();
         
         TransNodesForMe transNodes = new TransNodesForMe() {
             public void addTopNode(TopNode node) {
@@ -323,7 +323,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
         s.add(info1);
         s.add(info2);
         
-        final ArrayList<INode> nodes = new ArrayList<INode>();
+        final ArrayList<Node> nodes = new ArrayList<Node>();
         
         TransNodesForMe transNodes = new TransNodesForMe() {
             public void addTopNode(TopNode node) {

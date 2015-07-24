@@ -2,7 +2,7 @@ package bergdb.core;
 
 import bergdb.common.Bug;
 import bergdb.common.Bytes;
-import bergdb.dag.INode;
+import bergdb.dag.Node;
 import bergdb.dag.Keys;
 import bergdb.dag.Spos;
 import bergdb.dag.ValueNode;
@@ -63,7 +63,7 @@ public class StoredValueNode implements StoredNode {
         offset += 4; // Skips byte size.
         byte type = buffer[offset];
         offset += 1;
-        if (type != INode.TYPE_VALUE && type != INode.TYPE_DELETE) {
+        if (type != Node.TYPE_VALUE && type != Node.TYPE_DELETE) {
             throw new Bug("Bad node type byte, " + ((int) type)
                     + ", should have been checked already.");
         }
@@ -80,7 +80,7 @@ public class StoredValueNode implements StoredNode {
         
         byte[] value = null;
         
-        if (type == INode.TYPE_VALUE) {
+        if (type == Node.TYPE_VALUE) {
             int valueSize = Bytes.bytesToIntLE(buffer, offset);
             offset += 4;
             value = new byte[valueSize];
@@ -127,14 +127,14 @@ public class StoredValueNode implements StoredNode {
         int offset = firstOffset;
         int byteSize = getByteSize(node, key);
         long myLong;
-        long nodeType = node.value == null ? INode.TYPE_DELETE : INode.TYPE_VALUE;
+        long nodeType = node.value == null ? Node.TYPE_DELETE : Node.TYPE_VALUE;
 
         myLong = ((long) byteSize) | (nodeType << (4 * 8)) | (1L << (5 * 8));
         Bytes.longToBytesLE(myLong, buffer, offset);
         offset += 8;
         // Room for 2 checksum bytes.
 
-        if (nodeType == INode.TYPE_VALUE) {
+        if (nodeType == Node.TYPE_VALUE) {
             // DELETE nodes have no value.
             
             Bytes.intToBytesLE(node.value.length, buffer, offset);

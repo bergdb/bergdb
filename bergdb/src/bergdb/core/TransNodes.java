@@ -3,7 +3,7 @@ package bergdb.core;
 import java.util.Iterator;
 
 import bergdb.dag.IDirtyNodes;
-import bergdb.dag.INode;
+import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.KeyNodeTester;
 import bergdb.dag.Pointer;
@@ -109,12 +109,12 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         }
     }
     
-    public final void addIndexNode(INode node) {
+    public final void addIndexNode(Node node) {
         switch (node.getType()) {
-        case INode.TYPE_TOP_NODE:
+        case Node.TYPE_TOP_NODE:
             addTopNode((TopNode) node);
             break;
-        case INode.TYPE_KEY_NODE:
+        case Node.TYPE_KEY_NODE:
             addKeyNode((KeyNode) node);
             break;
         default:
@@ -213,15 +213,15 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         Pointer p = new Pointer();
         
         for (int i = 0; i < count; i++) {
-            INode node = get(i);
+            Node node = get(i);
             if (node.isIndexNode()) {
                 addUnstoredDescendents(node, p);
             }
         }
     }
     
-    public Iterator<INode> indexNodeIterator() {
-        return new Iterator<INode>() {
+    public Iterator<Node> indexNodeIterator() {
+        return new Iterator<Node>() {
             private int index = 0;
             private final int total = topCount + keyCount;
 
@@ -229,8 +229,8 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
                 return index < total;
             }
 
-            public INode next() {
-                INode node = get(index);
+            public Node next() {
+                Node node = get(index);
                 index++;
                 return node;
             }
@@ -247,13 +247,13 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
      * 
      * @deprecated
      */
-    private void addUnstoredDescendents(INode node, Pointer p) {
-        int pointerCount = node.getPointerCount();
+    private void addUnstoredDescendents(Node node, Pointer p) {
+        int pointerCount = node.getSize();
         for (int j = 0; j < pointerCount; j++) {
             node.getPointer(j, p);
             
             if (p.isMem()) {
-                INode pointee = p.getNode();
+                Node pointee = p.getNode();
                 assert pointee != null;
                 if (pointee.isIndexNode() && !pointee.isInTransNodes() && Spos.isNull(pointee.getSpos())) {
                     addIndexNode(pointee);
@@ -270,7 +270,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
      * Checks whether the collection of nodes contains the given node 
      * (compare by reference).
      */
-    public boolean contains(INode node) {
+    public boolean contains(Node node) {
         boolean result = false;
         
         outer: {
@@ -322,8 +322,8 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
      * which allows for type-specific optimizations; otherwise the user of this
      * class can iterate all nodes using size() and get() methods.
      */
-    public final INode get(int index) {
-        INode result;
+    public final Node get(int index) {
+        Node result;
         
         if (index < topCount) {
             result = topNodes[index];
@@ -560,14 +560,14 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
     public static void testIndexNodeIterator1() {
         KeyNode k1 = new KeyNode();
         KeyNode k2 = new KeyNode();
-        INode[] expected = new INode[]{k1, k2};
+        Node[] expected = new Node[]{k1, k2};
         
         TransNodes transNodes = new TransNodes();
         transNodes.addKeyNode(k1);
         transNodes.addKeyNode(k2);
         
         int index = 0;
-        Iterator<INode> nodes = transNodes.indexNodeIterator();
+        Iterator<Node> nodes = transNodes.indexNodeIterator();
         while (nodes.hasNext()) {
             Assert.assertEquals(expected[index], nodes.next());
             index++;
@@ -587,7 +587,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         KeyNode k1 = new KeyNode();
         KeyNode k2 = new KeyNode();
         TopNode t1 = TopNode.createDummy(1);
-        INode[] expected = new INode[]{t1, k1, k2};
+        Node[] expected = new Node[]{t1, k1, k2};
         
         TransNodes transNodes = new TransNodes();
         transNodes.addKeyNode(k1);
@@ -595,7 +595,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         transNodes.addTopNode(t1);
         
         int index = 0;
-        Iterator<INode> nodes = transNodes.indexNodeIterator();
+        Iterator<Node> nodes = transNodes.indexNodeIterator();
         while (nodes.hasNext()) {
             Assert.assertEquals(expected[index], nodes.next());
             index++;

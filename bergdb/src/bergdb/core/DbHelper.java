@@ -8,7 +8,7 @@ import bergdb.common.Bug;
 import bergdb.common.Create;
 import bergdb.common.ProgressListener;
 import bergdb.common.Util;
-import bergdb.dag.INode;
+import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.KeyNodeTester;
 import bergdb.dag.Pointer;
@@ -182,14 +182,14 @@ public class DbHelper {
      * Returns true if the node has at least one in-memory child
      * that is dirty.
      */
-    static boolean hasDirtyChild(INode node) {
-        int count = node.getPointerCount();
+    static boolean hasDirtyChild(Node node) {
+        int count = node.getSize();
         Pointer p = new Pointer();
         
         for (int i = 0; i < count; i++) {
             node.getPointer(i, p);
             if (!p.isNull()) {
-                INode child = node.getPointerNode(i);
+                Node child = node.getPointerNode(i);
                 if (child != null && child.isDirty()) {
                     return true;
                 }
@@ -204,11 +204,11 @@ public class DbHelper {
      * A node is still dirty after being written to stream if any of its 
      * children is dirty.
      */
-    static int handleStillDirtyNodes(Iterator<INode> input, TransSeq.NodeSink output) {
+    static int handleStillDirtyNodes(Iterator<Node> input, TransSeq.NodeSink output) {
         int stillDirtyCount = 0;
         
         while (input.hasNext()) {
-            INode node = input.next();
+            Node node = input.next();
             
             if (!node.isDirty() && hasDirtyChild(node)) {
                 node.setDirty(true);
@@ -235,11 +235,11 @@ public class DbHelper {
         k3.setDirty(false);
         k4.setDirty(false);
         
-        Iterator<INode> iter = Create.list((INode) k1, k2, k3, k4).iterator();
-        final ArrayList<INode> nodes = new ArrayList<INode>();
+        Iterator<Node> iter = Create.list((Node) k1, k2, k3, k4).iterator();
+        final ArrayList<Node> nodes = new ArrayList<Node>();
         
         TransSeq.NodeSink output = new TransSeq.NodeSink() {
-            public void addNode(INode node) {
+            public void addNode(Node node) {
                 nodes.add(node);
             }
         };

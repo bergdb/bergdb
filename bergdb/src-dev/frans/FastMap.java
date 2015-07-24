@@ -1,28 +1,28 @@
 package frans;
 
 import java.util.Random;
-import bergdb.dag.INode;
+import bergdb.dag.Node;
 import bergdb.dag.ValueNode;
 
 /**
  * Testing performance of high-performance map from
- * long to INode.
+ * long to Node.
  * 
  * @author Frans Lundberg
  */
 public class FastMap {
-    final INode[][] bins;
+    final Node[][] bins;
     
     public FastMap(int binCount) {
-        this.bins = new INode[binCount][];
+        this.bins = new Node[binCount][];
     }
     
-    public void put(long id, INode node) {
+    public void put(long id, Node node) {
         int binIndex = Math.abs((int)(id % bins.length));
         
-        INode[] arr = bins[binIndex];
+        Node[] arr = bins[binIndex];
         if (arr == null) {
-            arr = new INode[4];
+            arr = new Node[4];
             arr[0] = node;
             bins[binIndex] = arr;
             
@@ -37,12 +37,12 @@ public class FastMap {
         }
     }
     
-    public INode get(long id) {
-        INode result = null;
-        INode[] arr = bins[Math.abs((int)(id % bins.length))];
+    public Node get(long id) {
+        Node result = null;
+        Node[] arr = bins[Math.abs((int)(id % bins.length))];
         if (arr != null) {
             for (int i = 0; i < arr.length; i++) {
-                INode node = arr[i];
+                Node node = arr[i];
                 if (node == null) {
                     break;
                 }
@@ -78,7 +78,7 @@ public class FastMap {
         
         for (int i = 0; i < reps; i++) {
             for (int j = 0; j < ids.length; j++) {
-                INode n = m.get(ids[j]);
+                Node n = m.get(ids[j]);
                 if (n != null) count++;
             }
         }
@@ -95,7 +95,7 @@ public class FastMap {
 
 140721:
 Got 0.12 us per lookup. 1M bins, 2M ids.
-This test the possibility of using a separate cache. id -> INode. Instead of
+This test the possibility of using a separate cache. id -> Node. Instead of
 the current in-tree cache approach. In-tree cache is super fast, but more dependent
 on the rest of the code.
 

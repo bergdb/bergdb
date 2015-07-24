@@ -14,7 +14,7 @@ import bergdb.common.Util;
 import bergdb.dag.Dag;
 import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
-import bergdb.dag.INode;
+import bergdb.dag.Node;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.dag.TopNode;
@@ -189,8 +189,8 @@ public class DbUtil {
         return sum.getValue();
     }
     
-    public static List<INode> getNodesOnPathToKv(Db db, String key) {
-        final ArrayList<INode> nodes = new ArrayList<INode>();
+    public static List<Node> getNodesOnPathToKv(Db db, String key) {
+        final ArrayList<Node> nodes = new ArrayList<Node>();
         final GetData gd = db.newGetData();
         final Dag.PointerListener origListener = gd.pointerListener;
         
@@ -200,7 +200,7 @@ public class DbUtil {
                 nodes.add(superRoot);
             }
             
-            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
+            public void pointerFollowed(Node predecessor, int pointerIndex, Node result, int pointerType) {
                 origListener.pointerFollowed(predecessor, pointerIndex, result, pointerType);
                 nodes.add(result);
             }
@@ -383,7 +383,7 @@ public class DbUtil {
     @Nano
     private static void testGetNodesOnPathToKv1() {
         Db db = createEmptyDb();
-        List<INode> nodes = DbUtil.getNodesOnPathToKv(db, "dummy");
+        List<Node> nodes = DbUtil.getNodesOnPathToKv(db, "dummy");
         Assert.assertTrue(nodes.get(0).isTopNode());
         Assert.assertTrue(nodes.get(1).isKeyNode());
     }
@@ -392,7 +392,7 @@ public class DbUtil {
     private static void testGetNodesOnPathToKv2() {
         Db db = createEmptyDb();
         db.execute(db.trans().put("prefix-key", "value"));
-        List<INode> nodes = DbUtil.getNodesOnPathToKv(db, "prefix-key");
+        List<Node> nodes = DbUtil.getNodesOnPathToKv(db, "prefix-key");
         
         Assert.assertTrue(nodes.get(0).isTopNode());
         Assert.assertTrue(nodes.get(1).isKeyNode());

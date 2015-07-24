@@ -12,7 +12,7 @@ public class DagTester {
     private static final int MAX_NODE_SIZE = 30;
     
     private static final NodeReader DUMMY_NODE_READER = new NodeReader() {
-        public INode readNode(long spos) {
+        public Node readNode(long spos) {
             throw new IllegalStateException("No nodeReader was set, use "
                     + Dag.class.getName() + ".setNodeReader().");
         }
@@ -40,7 +40,7 @@ public class DagTester {
         final ArrayList<Integer> choices = new ArrayList<Integer>();
         
         gd.pointerListener = new Dag.PointerListener() {
-            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
+            public void pointerFollowed(Node predecessor, int pointerIndex, Node result, int pointerType) {
                 choices.add(pointerIndex);
             }
 

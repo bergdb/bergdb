@@ -5,7 +5,7 @@ import java.util.Random;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.EvictData;
-import bergdb.dag.INode;
+import bergdb.dag.Node;
 import bergdb.dag.Pointer;
 import bergdb.dag.Spos;
 
@@ -79,9 +79,9 @@ public class Evictor {
         
         final Pointer pointer = ed.tempPointer;
 
-        INode node = dag.getSuperRoot();
-        INode next1;
-        INode next2;
+        Node node = dag.getSuperRoot();
+        Node next1;
+        Node next2;
         long limit = aux.cachedMemoryValue.get() - evictBoss.getCacheDuration();
         
         ed.accessTimeLimit = limit < 0 ? 0 : limit;
@@ -121,8 +121,8 @@ public class Evictor {
         evictPointers(node, ed);
     }
     
-    private void getEvictPointer(INode node, int rand, Pointer p) {
-        int length = node.getPointerCount();
+    private void getEvictPointer(Node node, int rand, Pointer p) {
+        int length = node.getSize();
         int index;
         p.node = null;
         p.index = -1;
@@ -147,7 +147,7 @@ public class Evictor {
     /**
      * Evicts all evictable pointers from 'node'.
      */
-    private void evictPointers(INode node, EvictData ed) {
+    private void evictPointers(Node node, EvictData ed) {
         //
         // Iterates the pointers and evicts a pointee that fullfills all conditions:
         // * pointee != null (is a memory pointer)
@@ -161,10 +161,10 @@ public class Evictor {
             return;
         }
         
-        int count = node.getPointerCount();
+        int count = node.getSize();
         for (int i = 0; i < count; i++) {
             synchronized (dag.getPointerLock(node, i)) {
-                INode pointee = node.getPointerNode(i); 
+                Node pointee = node.getPointerNode(i); 
                 
                 if (pointee != null) {
                     long pointeePos = pointee.getSpos();

@@ -7,7 +7,7 @@ import bergdb.core.Db;
 import bergdb.core.TestClock;
 import bergdb.dag.Dag;
 import bergdb.dag.Dag.NodeReader;
-import bergdb.dag.INode;
+import bergdb.dag.Node;
 import bergdb.dag.Keys;
 import bergdb.dag.PutData;
 
@@ -22,7 +22,7 @@ public class DagExamples {
     private static final int MAX_NODE_SIZE = 30;
     
     private static final NodeReader DUMMY_NODE_READER = new NodeReader() {
-        public INode readNode(long spos) {
+        public Node readNode(long spos) {
             throw new IllegalStateException("No nodeReader was set, use "
                     + Dag.class.getName() + ".setNodeReader().");
         }

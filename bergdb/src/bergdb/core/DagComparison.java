@@ -6,7 +6,7 @@ import java.util.Arrays;
 import bergdb.common.Pair;
 import bergdb.dag.Dag;
 import bergdb.dag.DagNodeIterator;
-import bergdb.dag.INode;
+import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
@@ -25,7 +25,7 @@ public class DagComparison {
     private boolean printDiffs = false;
     private boolean printAll = false;
     private boolean stopAtDiff = true;
-    private Pair<INode, INode> pair;
+    private Pair<Node, Node> pair;
     private PrintStream out = System.out;
     private Db db2 = null;    // database to stop.
     
@@ -76,8 +76,8 @@ public class DagComparison {
         NodePairIterator iter = new NodePairIterator(dag1, dag2);
         
         while ((pair = iter.next()) != null) {
-            INode n1 = pair.getValue0();
-            INode n2 = pair.getValue1();
+            Node n1 = pair.getValue0();
+            Node n2 = pair.getValue1();
             
             String s = compare(n1, n2);
             if (s != null) {
@@ -109,11 +109,11 @@ public class DagComparison {
         return equal;
     }
     
-    public Pair<INode, INode> getLastPair() {
+    public Pair<Node, Node> getLastPair() {
         return pair;
     }
     
-    private String compare(INode n1, INode n2) {
+    private String compare(Node n1, Node n2) {
         
         if (n1 == null && n2 == null) {
             return null;
@@ -136,13 +136,13 @@ public class DagComparison {
         }
         
         switch (n1.getType()) {
-        case INode.TYPE_TOP_NODE:
+        case Node.TYPE_TOP_NODE:
             String diffString = compareTopNodes((TopNode) n1, (TopNode) n2);
             return diffString;
-        case INode.TYPE_KEY_NODE:
+        case Node.TYPE_KEY_NODE:
             return compareKeyNodes((KeyNode) n1, (KeyNode) n2);
-        case INode.TYPE_VALUE:
-        case INode.TYPE_DELETE:
+        case Node.TYPE_VALUE:
+        case Node.TYPE_DELETE:
             return compareValueNodes((ValueNode) n1, (ValueNode) n2);
         default:
             throw new Error("Bad node type, " + n1);
@@ -230,13 +230,13 @@ public class DagComparison {
             this(new DagNodeIterator(d1), new DagNodeIterator(d2));
         }
         
-        public Pair<INode, INode> next() {
+        public Pair<Node, Node> next() {
             if (done) {
                 return null;
             }
             
-            INode n1 = iter1.next();
-            INode n2 = iter2.next();
+            Node n1 = iter1.next();
+            Node n2 = iter2.next();
             
             if (n1 == null && n2 == null) {
                 done = true;
@@ -247,7 +247,7 @@ public class DagComparison {
                 done = true;
             }
             
-            return new Pair<INode, INode>(n1, n2);
+            return new Pair<Node, Node>(n1, n2);
         }
     }
 }

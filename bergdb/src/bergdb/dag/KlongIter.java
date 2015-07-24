@@ -15,5 +15,5 @@ public interface KlongIter {
      */
     public long next();
     
-    public INode getNode();
+    public Node getNode();
 }

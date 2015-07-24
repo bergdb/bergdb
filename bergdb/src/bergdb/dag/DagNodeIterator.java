@@ -19,7 +19,7 @@ public class DagNodeIterator {
     // Depth-first DAG traversial.
     
     private Dag dag;
-    private INode root;
+    private Node root;
     private boolean rootAdded = false;
     private int nextPointerIndex = 0;
     private DagNodeIterator iter;
@@ -31,7 +31,7 @@ public class DagNodeIterator {
         this.maxLookupTime = Long.MAX_VALUE;
     }
     
-    private DagNodeIterator(Dag dag, INode root, long maxLookupTime) {
+    private DagNodeIterator(Dag dag, Node root, long maxLookupTime) {
         this.dag = dag;
         this.root = root;
         this.maxLookupTime = maxLookupTime;
@@ -40,7 +40,7 @@ public class DagNodeIterator {
     /**
      * Returns node or null when done.
      */
-    public INode next() {
+    public Node next() {
         if (!rootAdded) {
             createChildIter(maxLookupTime);
             rootAdded = true;
@@ -48,7 +48,7 @@ public class DagNodeIterator {
         } else {
             if (iter == null) return null;
             
-            INode next = iter.next();
+            Node next = iter.next();
             if (next == null) {
                 createChildIter(maxLookupTime);
                 return next();
@@ -61,17 +61,17 @@ public class DagNodeIterator {
     /**
      * Utility method, adds all nodes to a list.
      */
-    public void addToList(List<INode> list) {
-        INode node;
+    public void addToList(List<Node> list) {
+        Node node;
         while ((node = next()) != null) {
             list.add(node);
         }
     }
 
     private void createChildIter(long maxLookupTime) {
-        Pair<Long, INode> result = getChild(nextPointerIndex, maxLookupTime);
+        Pair<Long, Node> result = getChild(nextPointerIndex, maxLookupTime);
         maxLookupTime = result.getValue0();
-        INode child = result.getValue1();
+        Node child = result.getValue1();
         
         if (child == null) {
             iter = null;
@@ -84,8 +84,8 @@ public class DagNodeIterator {
     /**
      * Gets new maxLookupTime and next child.
      */
-    private Pair<Long, INode> getChild(int pointerIndex, long maxLookupTime) {
-        int n = root.getPointerCountAtTime(maxLookupTime);
+    private Pair<Long, Node> getChild(int pointerIndex, long maxLookupTime) {
+        int n = root.getSizeAtTime(maxLookupTime);
         
         Pointer p = new Pointer();
         
@@ -99,7 +99,7 @@ public class DagNodeIterator {
         }
         
         if (p.isNull()) {
-            return new Pair<Long, INode>(maxLookupTime, null);
+            return new Pair<Long, Node>(maxLookupTime, null);
         }
         
         long newMaxLookupTime = maxLookupTime;
@@ -111,10 +111,10 @@ public class DagNodeIterator {
             }
         }
         
-        INode child = dag.followPointer(root, pointerIndex, 0, 
+        Node child = dag.followPointer(root, pointerIndex, 0, 
                 Dag.DO_NOTHING_POINTER_LISTENER, Dag.CACHE_NOTHING);
         
-        return new Pair<Long, INode>(newMaxLookupTime, child);
+        return new Pair<Long, Node>(newMaxLookupTime, child);
     }
     
     // ======== Test ========
@@ -123,7 +123,7 @@ public class DagNodeIterator {
     private static void testEmptyDag() {
         Dag g = DagTester.emptyDag(10);
         DagNodeIterator iter = new DagNodeIterator(g);
-        ArrayList<INode> list = new ArrayList<INode>();
+        ArrayList<Node> list = new ArrayList<Node>();
         iter.addToList(list);
         
         Assert.assertEquals(2, list.size());
@@ -140,7 +140,7 @@ public class DagNodeIterator {
         g.putKv(Keys.toSegments("key"), Util.toBytes("value"), pd);
         
         DagNodeIterator iter = new DagNodeIterator(g);
-        ArrayList<INode> list = new ArrayList<INode>();
+        ArrayList<Node> list = new ArrayList<Node>();
         iter.addToList(list);
         
         Assert.assertEquals(3, list.size());

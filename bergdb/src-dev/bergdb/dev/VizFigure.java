@@ -10,7 +10,7 @@ import java.util.Set;
 import bergdb.core.Db;
 import bergdb.core.Trans;
 import bergdb.dag.Dag;
-import bergdb.dag.INode;
+import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Klong;
 import bergdb.dag.TopNode;
@@ -69,7 +69,7 @@ public class VizFigure {
         // * Print a line to GraphViz file for each memory pointer.
         //
         
-        Set<INode> nodes = new HashSet<INode>();
+        Set<Node> nodes = new HashSet<Node>();
         addNodes(nodes, dag.getSuperRoot());
         
         String line = "digraph BergDB { node [fontsize=\"10\"]; graph [rankdir=\"LR\"]; \n";
@@ -77,13 +77,13 @@ public class VizFigure {
         
         // Node output:
         
-        for (INode node : nodes) {
+        for (Node node : nodes) {
             String label;
             
             switch (node.getType()) {
-            case INode.TYPE_TOP_NODE: {
+            case Node.TYPE_TOP_NODE: {
                 TopNode t = (TopNode) node;
-                int pCount = t.getPointerCount();
+                int pCount = t.getSize();
                 StringBuffer b = new StringBuffer();
                 b.append("<a> T" + node.getId() + " t=" + t.getRootTime());
                 for (int i = 0; i < pCount; i++) {
@@ -93,7 +93,7 @@ public class VizFigure {
                 break;
             }
             
-            case INode.TYPE_KEY_NODE: {
+            case Node.TYPE_KEY_NODE: {
                 KeyNode k = (KeyNode) node;
                 StringBuffer b = new StringBuffer();
                 b.append("<a> K");
@@ -102,7 +102,7 @@ public class VizFigure {
                 }
                 b.append("" + k.getId());
                 
-                for (int i = 0; i < k.getPointerCount(); i++) {
+                for (int i = 0; i < k.getSize(); i++) {
                     long klong = k.getKlong(i);
                     b.append(" | <" + i + ">" + i + ":" + Klong.toString(klong));
                 }
@@ -110,8 +110,8 @@ public class VizFigure {
                 break;
             }
             
-            case INode.TYPE_VALUE:
-            case INode.TYPE_DELETE:
+            case Node.TYPE_VALUE:
+            case Node.TYPE_DELETE:
                 if (!includeValues) {
                     continue;
                 }
@@ -129,15 +129,15 @@ public class VizFigure {
         
         // Link output:
         
-        for (INode node : nodes) {
+        for (Node node : nodes) {
             if (!includeValues) {
                 if (node instanceof ValueNode) {
                     continue;
                 }
             }
             
-            for (int i = 0; i < node.getPointerCount(); i++) {
-                INode pointerNode = node.getPointerNode(i);
+            for (int i = 0; i < node.getSize(); i++) {
+                Node pointerNode = node.getPointerNode(i);
                 if (pointerNode == null) {
                     continue;
                 }
@@ -159,13 +159,13 @@ public class VizFigure {
     /**
      * Adds 'node' and its children recursively to the 'nodes' collection.
      */
-    private void addNodes(Set<INode> nodes, INode node) {
+    private void addNodes(Set<Node> nodes, Node node) {
         nodes.add(node);
         
-        int pointerCount = node.getPointerCount();
+        int pointerCount = node.getSize();
         
         for (int i = 0; i < pointerCount; i++) {
-            INode pointerNode = node.getPointerNode(i);
+            Node pointerNode = node.getPointerNode(i);
             if (pointerNode != null) {
                 addNodes(nodes, pointerNode);
             }

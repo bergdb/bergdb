@@ -6,13 +6,13 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * A ValueNode is an INode that contains the value of the KV in the database.
+ * A ValueNode is an Node that contains the value of the KV in the database.
  * The internal byte[] value is immutable.
  * 
  * @author Frans Lundberg
  */
-public final class ValueNode implements INode {
-    // NOTE 141024, the INode.TYPE_VALUE/DELETE is confusing!
+public final class ValueNode implements Node {
+    // NOTE 141024, the Node.TYPE_VALUE/DELETE is confusing!
     // In this class, the value node is considered a delete if value == null.
     
     public final byte[] value;
@@ -44,7 +44,7 @@ public final class ValueNode implements INode {
     }
     
     public final byte getType() {
-        return value == null ? INode.TYPE_DELETE : INode.TYPE_VALUE;
+        return value == null ? Node.TYPE_DELETE : Node.TYPE_VALUE;
     }
     
     public final boolean isIndexNode() {
@@ -198,12 +198,12 @@ public final class ValueNode implements INode {
     /**
      * Always returns 0 since there are no outbound pointers from a ValueNode.
      */
-    public final int getPointerCount() {
+    public final int getSize() {
         return 0;
     }
     
-    public final int getPointerCountAtTime(long lookupTime) {
-        return getPointerCount();
+    public final int getSizeAtTime(long lookupTime) {
+        return getSize();
     }
 
     /**
@@ -213,7 +213,7 @@ public final class ValueNode implements INode {
         throw new Bug("A ValueNode has no pointers, " + this.toString());
     }
     
-    public INode getPointerNode(int index) {
+    public Node getPointerNode(int index) {
         throw new Bug("A ValueNode has no pointers, " + this.toString());
     }
     
@@ -231,14 +231,14 @@ public final class ValueNode implements INode {
     /**
      * This method should never be called. Always throws a Bug.
      */
-    public void setPointer(int index, INode node, long spos) {
+    public void setPointer(int index, Node node, long spos) {
         throw new Bug("A ValueNode has no pointers to set, " + this.toString());
     }
 
     /**
      * Always returns 'null'.
      */
-    public final INode getEvictPointer(int rand) {
+    public final Node getEvictPointer(int rand) {
         return null;
     }
 
@@ -269,7 +269,7 @@ public final class ValueNode implements INode {
         
         ValueNode v = ValueNode.createDelete();
         
-        Assert.assertEquals(0, v.getPointerCount());
+        Assert.assertEquals(0, v.getSize());
         Assert.assertEquals(0, v.getMemoryPointerCount());
         Assert.assertEquals(true, v.isDelete());
         Assert.assertEquals(false, v.isDirty());

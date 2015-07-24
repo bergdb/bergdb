@@ -1,8 +1,8 @@
 package bergdb.dag;
 
 /**
- * <p>A node of the db graph. An INode can be serialized with toBytes(). 
- * Each INode implementation should also have a
+ * <p>A node of the db graph. A Node can be serialized with toBytes(). 
+ * Each Node implementation should also have a
  * "static KeyNode fromBytes(...) {" method that handles deserialization. 
  * That cannot be enforced with the interface (but with this documentation).</p>
  * 
@@ -14,7 +14,7 @@ package bergdb.dag;
  * 
  * @author Frans Lundberg
  */
-public interface INode {
+public interface Node {
     public static final byte TYPE_TOP_NODE = 10;
     public static final byte TYPE_KEY_NODE = 20;
     public static final byte TYPE_VALUE = 30;
@@ -33,17 +33,15 @@ public interface INode {
     public long getId();
     public void setId(long id);
     
-    
-    // TODO D. Change name getPointerCount() to getSize(), getPointerCountAtTime() to getSizeAtTime().
-    
     /**
-     * Returns the pointer count; note that this is not necessarily the total
+     * Returns the pointer size; note that this is not necessarily the total
      * number of out-bound pointers. It actually returns the max pointer index + 1.
-     * getPointer() may return a null pointer for some indexes between 0 and getPointerCount() - 1.
+     * getPointer() may return a null pointer for some indexes between 0 and 
+     * getPointerCount() - 1.
      * 
-     * Common usage:
+     * Common usage (iterating pointers of a node):
      * <pre>
-     * int count = node.getPointerCount();
+     * int count = node.getSize();
      * for (int i = 0; i &lt; count; i++) {
      *     node.getPointer(i, p);
      *     if (!p.isNull()) {
@@ -52,27 +50,27 @@ public interface INode {
      * }
      *</pre>
      */
-    public int getPointerCount();
+    public int getSize();
     
     /**
      * Returns pointer count for the given lookup time.
      * 
-     * @see #getPointerCount()
+     * @see #getSize()
      */
-    public int getPointerCountAtTime(long lookupTime);
+    public int getSizeAtTime(long lookupTime);
     
     /**
      * Returns pointer data in 'pointer' parameter.
      */
     public void getPointer(int index, Pointer pointer);
     
-    public INode getPointerNode(int index);
+    public Node getPointerNode(int index);
     public long getPointerPos(int index);
     
     /**
      * Sets pointer node and spos (accessData) at a given pointer index.
      */
-    public void setPointer(int index, INode node, long spos);
+    public void setPointer(int index, Node node, long spos);
     
     /**
      * Calls visitor.visit().

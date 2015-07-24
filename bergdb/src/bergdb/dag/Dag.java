@@ -86,7 +86,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     
     /** 
      * Attempts to check invariant "inv-forward-pointers".
-     * Not an exact check since INode:s have no tpos.
+     * Not an exact check since Node:s have no tpos.
      * 
      * @throws AssertionError
      */
@@ -94,8 +94,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         // NOTE Pointers from dirty nodes are not checked. Correct, I hope.
         
         PointerVisitor visitor = new PointerVisitor() {
-            public void visit(INode from, Pointer pointer) {
-                INode to = pointer.getNode();
+            public void visit(Node from, Pointer pointer) {
+                Node to = pointer.getNode();
                 long fromPos = from.getSpos();
                 long toPos = to.getSpos();
                 
@@ -157,12 +157,12 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      * Visits all memory pointers.
      */
     public void visitMemoryPointers(PointerVisitor visitor) {
-        INode superRoot = topDs.getSuperRoot();
+        Node superRoot = topDs.getSuperRoot();
         visitMemoryPointersFromNode(superRoot, visitor);
     }
     
-    private void visitMemoryPointersFromNode(INode node, PointerVisitor visitor) {
-        int count = node.getPointerCount();
+    private void visitMemoryPointersFromNode(Node node, PointerVisitor visitor) {
+        int count = node.getSize();
         
         for (int i = 0; i < count; i++) {
             Pointer p = new Pointer();
@@ -170,7 +170,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             if (!p.isNull() && p.isMem()) {
                 visitor.visit(node, p);
                 
-                INode child = p.getNode();
+                Node child = p.getNode();
                 visitMemoryPointersFromNode(child, visitor);
             }
         }
@@ -180,12 +180,12 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      * Visits all nodes cached in memory.
      */
     public void visitMemoryNodes(NodeVisitor visitor) {
-        Set<INode> visited = new HashSet<INode>();
-        INode start = topDs.getSuperRoot();
+        Set<Node> visited = new HashSet<Node>();
+        Node start = topDs.getSuperRoot();
         visitNodeWithChildren(visitor, visited, start);
     }
     
-    private void visitNodeWithChildren(NodeVisitor visitor, Set<INode> visited, INode node) {
+    private void visitNodeWithChildren(NodeVisitor visitor, Set<Node> visited, Node node) {
         if (visited.contains(node)) {
             return;
         } else {
@@ -196,7 +196,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         
         Pointer p = new Pointer();
         
-        int count = node.getPointerCount();
+        int count = node.getSize();
         for (int i = 0; i < count; i++) {
             node.getPointer(i, p);
             if (p.isMem()) {
@@ -213,12 +213,12 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         return topDs.getSuperRoot();
     }
 
-    public INode findNode(int[] choices, GetData gd) {        
+    public Node findNode(int[] choices, GetData gd) {        
         if (choices == null) {
             throw new IllegalArgumentException("choices == null not allowed");
         }
         
-        INode node = this.getSuperRoot();
+        Node node = this.getSuperRoot();
         
         for (int i = 0; i < choices.length; i++) {
             int choice = choices[i];
@@ -241,7 +241,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         
         g.pointerListener = new Dag.PointerListener() {
             public void pointerFollowed(
-                    INode predecessor, int pointerIndex, INode result, int pointerType) {
+                    Node predecessor, int pointerIndex, Node result, int pointerType) {
                 switch (pointerType) {
                 case Pointer.TYPE_MEMORY:
                     g.followMemoryPointerCount++;
@@ -279,12 +279,12 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         
         p.pointerListener = new Dag.PointerListener() {
             public void pointerFollowed(
-                    INode predecessor, int pointerIndex, INode result, int pointerType) { 
+                    Node predecessor, int pointerIndex, Node result, int pointerType) { 
                 if (result != null) {
-                    if (result.getType() == INode.TYPE_KEY_NODE) {
-                        if (predecessor.getType() == INode.TYPE_TOP_NODE) {
+                    if (result.getType() == Node.TYPE_KEY_NODE) {
+                        if (predecessor.getType() == Node.TYPE_TOP_NODE) {
                             p.keyAccessPath.add(Klong.NULL, (KeyNode) result); 
-                        } else if (predecessor.getType() == INode.TYPE_KEY_NODE) {
+                        } else if (predecessor.getType() == Node.TYPE_KEY_NODE) {
                             KeyNode pre = (KeyNode) predecessor;
                             KeyNode res = (KeyNode) result;
                             p.keyAccessPath.add(pre.getKlong(pointerIndex), res);
@@ -330,9 +330,9 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      * @throws StreamFormatException
      * @throws StreamIoException
      */
-    public final INode followPointer(final INode predecessor, int pointerIndex, long accessData, 
+    public final Node followPointer(final Node predecessor, int pointerIndex, long accessData, 
             PointerListener pointerListener, CachePolicy cachePolicy) {
-        INode result;
+        Node result;
         assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
         assert predecessor != null : "predecessor is null";
         assert accessData == 0 || AccessData.isValid(accessData);
@@ -340,7 +340,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         final Object lock = getPointerLock(predecessor, pointerIndex);
 
         synchronized (lock) {
-            INode pointerNode = predecessor.getPointerNode(pointerIndex);
+            Node pointerNode = predecessor.getPointerNode(pointerIndex);
             long pointerPos1 = predecessor.getPointerPos(pointerIndex);
 
             assert !Pointer.isNull(pointerNode, pointerPos1) : "Pointer is null: " + pointerNode
@@ -382,7 +382,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     /**
      * Returns a lock for the pointerIndex'th pointer of node 'node'.
      */
-    public final Object getPointerLock(final INode node, final int pointerIndex) {
+    public final Object getPointerLock(final Node node, final int pointerIndex) {
         int value = (node.hashCode() + 13 * pointerIndex);
         value = (value < 0) ? -value : value;
         return pointerLocks[value % POINTER_LOCKS_LENGTH];
@@ -408,7 +408,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             return null;
         }
         
-        INode item;
+        Node item;
         KeyNode node;
         final int segmentCount = keySegments.length;
         final int lastIndex = keySegments.length - 1;
@@ -457,11 +457,11 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      * @throws StreamFormatException
      * @throws StreamIoException
      */
-    private final INode getEqNodeInSegment(long time, KeyNode segmentRoot, long compareValue,
+    private final Node getEqNodeInSegment(long time, KeyNode segmentRoot, long compareValue,
             GetData gd) {
         final KlongWithPointer kwi = gd.kwi;
         KeyNode current = segmentRoot;
-        INode result;
+        Node result;
 
         while (true) {
             if (current.isSegmentLeaf()) {
@@ -1043,7 +1043,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
          * @throws StreamFormatException
          * @throws StreamIoException
          */
-        public INode readNode(long spos);
+        public Node readNode(long spos);
     }
     
     /**
@@ -1063,11 +1063,11 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
          * @param pointerType One of Pointer.TYPE_MEMORY, Pointer.TYPE_STREAM.
          */
         public void pointerFollowed(
-                INode predecessor, int pointerIndex, INode result, int pointerType);
+                Node predecessor, int pointerIndex, Node result, int pointerType);
     }
     
     public static final PointerListener DO_NOTHING_POINTER_LISTENER = new PointerListener() {
-        public void pointerFollowed(INode predecessor, int pointerIndex, INode result,
+        public void pointerFollowed(Node predecessor, int pointerIndex, Node result,
                 int pointerType) {}
 
         public void superRootAccessed(TopNode mySuperRoot) {}
@@ -1088,17 +1088,17 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
          * @param node  A node that was just read from the stream.
          * @return True to cache the node.
          */
-        public boolean shouldCache(INode node);
+        public boolean shouldCache(Node node);
     }
     
     public static final CachePolicy CACHE_ALL = new CachePolicy() {
-        public boolean shouldCache(INode node) {
+        public boolean shouldCache(Node node) {
             return true;
         }
     };
     
     public static final CachePolicy CACHE_NOTHING = new CachePolicy() {
-        public boolean shouldCache(INode node) {
+        public boolean shouldCache(Node node) {
             return false;
         }
     };
@@ -1108,10 +1108,10 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      * than 1 MiB.
      */
     public static final CachePolicy CACHE_ALL_EXCEPT_LARGE_VALUE_NODES = new CachePolicy() {
-        public boolean shouldCache(INode node) {
+        public boolean shouldCache(Node node) {
             boolean result;
             int type = node.getType();
-            if (type == INode.TYPE_VALUE) {
+            if (type == Node.TYPE_VALUE) {
                 result = ((ValueNode) node).getValue().length <= 1024*1024;
             } else {
                 result = true;
@@ -1158,7 +1158,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         /**
          * Reports that a node was accessed.
          */
-        public void nodeAccessed(INode node);
+        public void nodeAccessed(Node node);
     }
     
     

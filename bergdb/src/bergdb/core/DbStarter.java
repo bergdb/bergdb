@@ -12,7 +12,7 @@ import bergdb.core.StoredTrans.Serializer;
 import bergdb.dag.Dag.NodeReader;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
-import bergdb.dag.INode;
+import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Keys;
 import bergdb.dag.Klong;
@@ -40,7 +40,7 @@ public class DbStarter {
     
     private final TransSeq transSeq = new TransSeq();
     private final HashMap<Long, StoredNode> posMap = new HashMap<Long, StoredNode>();
-    private final HashMap<Long, INode> posMap2 = new HashMap<Long, INode>();
+    private final HashMap<Long, Node> posMap2 = new HashMap<Long, Node>();
     private final NextMap nextMap = new NextMap();
     private final Db db;
     private final List<StoredTrans> transactions;
@@ -102,8 +102,8 @@ public class DbStarter {
         StoredNode[] nodes = transactions.get(0).nodes;
         checkPrimordialTransaction(nodes);
         
-        INode n0 = nodes[0].getNode();
-        INode n1 = nodes[1].getNode();
+        Node n0 = nodes[0].getNode();
+        Node n1 = nodes[1].getNode();
         
         superRoot = (TopNode) n0;
         KeyNode keyNode = (KeyNode) n1;
@@ -171,12 +171,12 @@ public class DbStarter {
         Pointer p = new Pointer();
         
         for (Map.Entry<Long, StoredNode> entry : posMap.entrySet()) {
-            INode node = entry.getValue().getNode();
+            Node node = entry.getValue().getNode();
             long key = entry.getKey();
             
             assert key == node.getSpos() : "key:" + key + ", pos:" + node.getSpos();
     
-            int pointerCount = node.getPointerCount();
+            int pointerCount = node.getSize();
             for (int i = 0; i < pointerCount; i++) {
                 node.getPointer(i, p);
                 if (p.isNull()) {
@@ -196,8 +196,8 @@ public class DbStarter {
     private void changeKeyNodesToStateAtStartupTime() {
         for (StoredTrans trans : transactions) {
             for (StoredNode stored : trans.nodes) {
-                INode node = stored.getNode();
-                if (node.getType() == INode.TYPE_KEY_NODE) {
+                Node node = stored.getNode();
+                if (node.getType() == Node.TYPE_KEY_NODE) {
                     KeyNode k = (KeyNode) node;
                     k.toPreviousState(startupTime);
                 }
@@ -212,8 +212,8 @@ public class DbStarter {
         Pointer p = new Pointer();
     
         for (StoredNode storedNode : posMap.values()) {
-            INode node = storedNode.getNode();
-            int pointerCount = node.getPointerCount();
+            Node node = storedNode.getNode();
+            int pointerCount = node.getSize();
             for (int i = 0; i < pointerCount; i++) {
                 node.getPointer(i, p);
                 if (p.isNull()) {
@@ -222,7 +222,7 @@ public class DbStarter {
     
                 StoredNode storedPointee = posMap.get(p.pos);
                 if (storedPointee != null) {
-                    INode pointee = storedPointee.getNode();
+                    Node pointee = storedPointee.getNode();
                     node.setPointer(i, pointee, accessData);
                     
                     //System.out.println("*** mem pointer created: " + node + " ==> " + pointee);
@@ -254,7 +254,7 @@ public class DbStarter {
         
         for (StoredTrans trans : transactions) {
             for (StoredNode storedNode : trans.nodes) {
-                INode node = storedNode.getNode();
+                Node node = storedNode.getNode();
                 
                 if (node.isTopNode()) {
                     TopNode candidate = (TopNode) node;
@@ -330,7 +330,7 @@ public class DbStarter {
             }
             
             for (StoredNode stored : storedTrans.nodes) {
-                INode n = stored.getNode();
+                Node n = stored.getNode();
                 if (n.isIndexNode()) {
                     n.setDirty(false);
                 }
@@ -370,26 +370,26 @@ public class DbStarter {
      * in the startup section, but not in the first transaction of the startup section.
      */
     private boolean wasCreatedInRerunSection(StoredNode storedNode) {
-        INode node = storedNode.getNode();
+        Node node = storedNode.getNode();
         boolean result = false;
         
         switch (node.getType()) {
-        case INode.TYPE_TOP_NODE:
+        case Node.TYPE_TOP_NODE:
             TopNode top = (TopNode) node;
             if (top.rootTime > startupTime) {
                 result = true;
             }
             break;
             
-        case INode.TYPE_KEY_NODE:
+        case Node.TYPE_KEY_NODE:
             KeyNode key = (KeyNode) node;
             if (key.getFirstTime() > startupTime) {
                 result = true;
             }
             break;
             
-        case INode.TYPE_VALUE:
-        case INode.TYPE_DELETE:
+        case Node.TYPE_VALUE:
+        case Node.TYPE_DELETE:
             ValueNode valueNode = (ValueNode) node;
             if (valueNode.getSpos() > firstTrans.lastPos) {
                 result = true;
@@ -456,7 +456,7 @@ public class DbStarter {
     }
 
     private void validateNode(StoredNode stored, long initTime) {
-        INode node = stored.getNode();
+        Node node = stored.getNode();
         if (node == null) {
             throw new StreamFormatException("getNode() returned null");
         }
@@ -467,11 +467,11 @@ public class DbStarter {
         }
         
         switch (node.getType()) {
-        case INode.TYPE_KEY_NODE:
+        case Node.TYPE_KEY_NODE:
             KeyNode knode = (KeyNode) node;
             knode.validateStreamNode(initTime);
             break;
-        case INode.TYPE_TOP_NODE:
+        case Node.TYPE_TOP_NODE:
             break;
             
         }
@@ -481,7 +481,7 @@ public class DbStarter {
      * @throws StreamFormatException
      */
     private void checkStreamPointers() {
-        for (INode node : posMap2.values()) {
+        for (Node node : posMap2.values()) {
             if (node.isKeyNode()) {
                 KeyNode k = (KeyNode) node;
                 
@@ -497,7 +497,7 @@ public class DbStarter {
                 }
             } else {
                 Pointer p = new Pointer();
-                int count = node.getPointerCount();
+                int count = node.getSize();
                 for (int i = 0; i < count; i++) {
                     node.getPointer(i, p);
                     if (!p.isNull()) {
@@ -519,8 +519,8 @@ public class DbStarter {
             throw new StreamFormatException("expected 2, got " + nodes.length + " nodes.");
         }
         
-        INode n0 = nodes[0].getNode();
-        INode n1 = nodes[1].getNode();
+        Node n0 = nodes[0].getNode();
+        Node n1 = nodes[1].getNode();
         
         if (!n0.isTopNode()) {
             throw new StreamFormatException("Expected TopNode, got " + n0);

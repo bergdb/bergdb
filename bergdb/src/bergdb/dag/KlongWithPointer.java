@@ -13,7 +13,7 @@ public class KlongWithPointer {
     public long klong;         // The klong.
     public int pointerIndex;   // Index of pointer.
     public long klongTime;     // Time of the klong. Last TIME klong before the found klong. Added 120612.
-    public INode node;         // pointer (INode).
+    public Node node;         // pointer (Node).
     public long pos;           // pos - accessData or spos.
     
     public KlongWithPointer() {

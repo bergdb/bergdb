@@ -524,7 +524,7 @@ public class KeyNodeTester {
     public static void testGetPointers() {
         KeyNodeTester t = new KeyNodeTester();
         KeyNode node = t.createT2();
-        int pointerCount = node.getPointerCount();
+        int pointerCount = node.getSize();
         Pointer p = new Pointer();
 
         for (int j = 0; j < pointerCount; j++) {
@@ -915,7 +915,7 @@ public class KeyNodeTester {
         KeyNode node = KeyNode.nodeWithTime(123);
         
         Assert.assertEquals(1, node.size);
-        Assert.assertEquals(1, node.getPointerCount());
+        Assert.assertEquals(1, node.getSize());
         Pointer p = new Pointer();
         node.getPointer(0, p);
         Assert.assertTrue(p.isNull());
@@ -944,33 +944,33 @@ public class KeyNodeTester {
     @Nano private static void testGetPointerCount0() {
         KeyNode node = new KeyNode();
         addKlong(node, 10, "a");
-        Assert.assertEquals(2, node.getPointerCount());
+        Assert.assertEquals(2, node.getSize());
     }
     
     @Nano private static void testGetPointerCount1() {
         KeyNode node = new KeyNode();
         addKlong(node, 10, "a");
         addKlong(node, 10, "b");
-        Assert.assertEquals(3, node.getPointerCount());
+        Assert.assertEquals(3, node.getSize());
     }
     
     @Nano private static void testGetPointerCount2() {
         KeyNode node = new KeyNode();
         addKlong(node, 10, "a");
         addKlong(node, 20, "b");
-        Assert.assertEquals(4, node.getPointerCount());
+        Assert.assertEquals(4, node.getSize());
     }
     
     @Nano private static void testGetPointerCount3() {
         KeyNode node = new KeyNode();
         addKlong(node, 10, "a");
         addKlong(node, 20, "b");
-        Assert.assertEquals(0, node.getPointerCountAtTime(9));
-        Assert.assertEquals(2, node.getPointerCountAtTime(10));
-        Assert.assertEquals(2, node.getPointerCountAtTime(11));
-        Assert.assertEquals(2, node.getPointerCountAtTime(19));
-        Assert.assertEquals(4, node.getPointerCountAtTime(20));
-        Assert.assertEquals(4, node.getPointerCountAtTime(Long.MAX_VALUE));
+        Assert.assertEquals(0, node.getSizeAtTime(9));
+        Assert.assertEquals(2, node.getSizeAtTime(10));
+        Assert.assertEquals(2, node.getSizeAtTime(11));
+        Assert.assertEquals(2, node.getSizeAtTime(19));
+        Assert.assertEquals(4, node.getSizeAtTime(20));
+        Assert.assertEquals(4, node.getSizeAtTime(Long.MAX_VALUE));
     }
     
     @Nano private static void testMaxValidTime0() {

@@ -7,7 +7,7 @@ import bergdb.common.AssertStatus;
 import bergdb.common.Bytes;
 import bergdb.common.Util;
 import bergdb.dag.AccessData;
-import bergdb.dag.INode;
+import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Keys;
 import bergdb.dag.Klong;
@@ -133,7 +133,7 @@ public class StoredTrans {
         
         for (StoredNode n : nodes) {
             byte type = n.getNode().getType();
-            if (type == INode.TYPE_VALUE || type == INode.TYPE_DELETE) {
+            if (type == Node.TYPE_VALUE || type == Node.TYPE_DELETE) {
                 storedValueNodes.add((StoredValueNode) n);
             }
         }
@@ -375,7 +375,7 @@ public class StoredTrans {
                     long klong = keyNode.klongs[j];
                     if (Klong.getType(klong) == Klong.TYPE_KEY) {
                         long pos = keyNode.pos[j];
-                        INode pointee = keyNode.pointers[j];
+                        Node pointee = keyNode.pointers[j];
                         long spos = pointee == null ? pos : pointee.getSpos();
                         
                         if (!Spos.isValid(spos)) {
@@ -661,10 +661,10 @@ public class StoredTrans {
         assertEquals(4, parser.nodes.length);
         assertEquals(100, parser.transactionTime);
         assertEquals(200, parser.tpos);
-        assertEquals(INode.TYPE_KEY_NODE, parser.nodes[0].getNode().getType());
-        assertEquals(INode.TYPE_VALUE, parser.nodes[1].getNode().getType());
-        assertEquals(INode.TYPE_VALUE, parser.nodes[2].getNode().getType());
-        assertEquals(INode.TYPE_VALUE, parser.nodes[3].getNode().getType());
+        assertEquals(Node.TYPE_KEY_NODE, parser.nodes[0].getNode().getType());
+        assertEquals(Node.TYPE_VALUE, parser.nodes[1].getNode().getType());
+        assertEquals(Node.TYPE_VALUE, parser.nodes[2].getNode().getType());
+        assertEquals(Node.TYPE_VALUE, parser.nodes[3].getNode().getType());
         
         byte[] value1 = ((ValueNode) parser.nodes[2].getNode()).value.clone();
         Assert.assertArrayEquals(new byte[]{12}, value1);
@@ -686,7 +686,7 @@ public class StoredTrans {
         
         StoredNode[] stored = parser.nodes;
         assertEquals(1, stored.length);
-        assertEquals(INode.TYPE_DELETE, stored[0].getNode().getType());
+        assertEquals(Node.TYPE_DELETE, stored[0].getNode().getType());
         
     }
 
@@ -735,7 +735,7 @@ public class StoredTrans {
         parser.parse(200, buffer);
         
         assertEquals(2, parser.nodes.length);
-        assertEquals(INode.TYPE_VALUE, parser.nodes[1].getNode().getType());
+        assertEquals(Node.TYPE_VALUE, parser.nodes[1].getNode().getType());
         assertArrayEquals(Keys.toSegments("a"), ((StoredValueNode) parser.nodes[1]).getKey());
     }
     
@@ -754,7 +754,7 @@ public class StoredTrans {
         parser.parse(transPos, serializer.getTransBuffer());
         
         assertEquals(1, parser.nodes.length);
-        assertEquals(INode.TYPE_VALUE, parser.nodes[0].getNode().getType());
+        assertEquals(Node.TYPE_VALUE, parser.nodes[0].getNode().getType());
         StoredValueNode node = (StoredValueNode) parser.nodes[0];
         assertArrayEquals(Keys.toSegments("a"), node.getKey());
     }

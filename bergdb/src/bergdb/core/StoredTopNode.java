@@ -2,7 +2,7 @@ package bergdb.core;
 
 import bergdb.common.Bug;
 import bergdb.common.Bytes;
-import bergdb.dag.INode;
+import bergdb.dag.Node;
 import bergdb.dag.Klong;
 import bergdb.dag.Spos;
 import bergdb.dag.StreamChecksumException;
@@ -52,7 +52,7 @@ public class StoredTopNode implements StoredNode {
         offset += 4; // Skip size bytes
         byte type = buffer[offset];
         offset += 1;
-        if (type != INode.TYPE_TOP_NODE) {
+        if (type != Node.TYPE_TOP_NODE) {
             throw new Bug("Bad node type byte, " + ((int) type)
                     + ", should have been checked already.");
         }
@@ -152,7 +152,7 @@ public class StoredTopNode implements StoredNode {
         long l;
         assert byteSize % 8 == 0 : "byteSize=" + byteSize;
 
-        l = ((long) byteSize) | (((long) INode.TYPE_TOP_NODE) << (4 * 8)) | (1L << (5 * 8));
+        l = ((long) byteSize) | (((long) Node.TYPE_TOP_NODE) << (4 * 8)) | (1L << (5 * 8));
         // Room for 2 checksum bytes.
         checksum ^= l;
         buffer[offset++] = l;
@@ -175,7 +175,7 @@ public class StoredTopNode implements StoredNode {
         buffer[offset++] = spos;
 
         for (int i = 0; i < node.pointersLength; i++) {
-            INode pointersNode = node.pointers[i];
+            Node pointersNode = node.pointers[i];
             spos = pointersNode == null ? node.pointersPos[i] : pointersNode.getSpos();
             checksum ^= spos;
             buffer[offset++] = spos;

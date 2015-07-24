@@ -8,7 +8,7 @@ import bergdb.nanotest.Assert;
 import bergdb.storage.StreamFormatException;
 
 /**
- * <p>A key node has an array of "klongs" and corresponding INode references.</p>
+ * <p>A key node has an array of "klongs" and corresponding Node references.</p>
  * 
  * <p>Conceptually, we define "write access". An object of this class allows multiple concurrent
  * readers all the time; also when a writer has access to the object.
@@ -26,7 +26,7 @@ import bergdb.storage.StreamFormatException;
  * 
  * @author Frans Lundberg
  */
-public class KeyNode implements INode {
+public class KeyNode implements Node {
     public long spos;
         // The stream position of the node when it was last written to the stream.
         // Synch note: see get/set methods. Synched by read/write to volatile field this.size.
@@ -53,7 +53,7 @@ public class KeyNode implements INode {
         // Synch note: Writes to "klongs" and its elements published by a write to this.size.
         // Readers should first read this.size, before accessing klongs or elements in klongs.
     
-    public INode[] pointers;           
+    public Node[] pointers;           
         // Memory pointers to value nodes or other key nodes. Elements can be null.
         // Synch note: access protected by "this" lock and used atomically with "pos".
     public long[] pos;
@@ -64,7 +64,7 @@ public class KeyNode implements INode {
     private static final int[] ARRAY_SIZES = new int[]{2, 8-2, 16-2, 32-2, 64-2, 128-2};
     
     private static final long[] EMPTY_LONG_ARRAY = new long[0];
-    private static final INode[] EMPTY_INODE_ARRAY = new INode[0];
+    private static final Node[] EMPTY_INODE_ARRAY = new Node[0];
     
     /**
      * Creates an empty node with zero klongs. isSegmentLeaf is set to true.
@@ -101,7 +101,7 @@ public class KeyNode implements INode {
     }
     
     public final byte getType() {
-        return INode.TYPE_KEY_NODE;
+        return Node.TYPE_KEY_NODE;
     }
     
     public final boolean isIndexNode() {
@@ -142,14 +142,14 @@ public class KeyNode implements INode {
         return klongs[index];
     }
     
-    public final int getPointerCount() {
+    public final int getSize() {
         return size;
     }
     
     /**
      * Returns 'size' as it was at the given time.
      */
-    public final int getPointerCountAtTime(long lookupTime) {
+    public final int getSizeAtTime(long lookupTime) {
         //
         // Not used for product, does not have to be optimized.
         //
@@ -179,7 +179,7 @@ public class KeyNode implements INode {
         pointer.index = index;
     }
     
-    public final INode getPointerNode(int index) {
+    public final Node getPointerNode(int index) {
         assert index < pointers.length : "bad index, " + index + ", length:" + pointers.length;
         return pointers[index];
     }
@@ -188,7 +188,7 @@ public class KeyNode implements INode {
         return pos[index];
     }
     
-    public final void setPointer(int index, INode node, long spos) {
+    public final void setPointer(int index, Node node, long spos) {
         // Besides Db startup, only called from Db.evictPointers() and Dag.followPointer().
         
         pointers[index] = node;
@@ -683,7 +683,7 @@ public class KeyNode implements INode {
      * Adds a klong with a pointer and accessData to the end of the key node.
      * If needed, a time klong is added before 'klong'.
      */
-    public void addKlong(long time, long klong, INode pointer, long accessData) {
+    public void addKlong(long time, long klong, Node pointer, long accessData) {
         short sz;
         
         // Synch action, ensures that published previous writes are visible.
@@ -734,7 +734,7 @@ public class KeyNode implements INode {
      * 
      * @return true if a klong was replaced.
      */
-    public boolean replaceKlong(long time, long klong1, INode pointer, long accessData) {
+    public boolean replaceKlong(long time, long klong1, Node pointer, long accessData) {
         final int sz; 
         final long[] klongs;
         int index = 0;
@@ -798,7 +798,7 @@ public class KeyNode implements INode {
             }
             
             long[] klongs = new long[newSize];
-            INode[] pointers = new INode[newSize];
+            Node[] pointers = new Node[newSize];
             long[] pos = new long[newSize];
             
             System.arraycopy(this.klongs, 0, klongs, 0, sz);
@@ -815,7 +815,7 @@ public class KeyNode implements INode {
      * Adds a klong and its pointer to the end of the arrays.
      * No checking is used. Write access required.
      */
-    public void addToEnd(long klongToAdd, INode pointerToAdd, long posToAdd) {
+    public void addToEnd(long klongToAdd, Node pointerToAdd, long posToAdd) {
         int sz = this.size;             // Synch action make previous writes visible.
         if (klongs.length + 1 > sz) {
             ensureCapacity(sz + 1);
@@ -916,7 +916,7 @@ public class KeyNode implements INode {
             }
             
             long klongToAdd = Klong.NULL;
-            INode pointerToAdd = null;
+            Node pointerToAdd = null;
             long posToAdd = Spos.NULL;
     
             if (type == Klong.TYPE_TIME) {
@@ -999,7 +999,7 @@ public class KeyNode implements INode {
      * @param pointerToAdd
      * @param posToAdd
      */
-    private void addToSorted(long klongToAdd, INode pointerToAdd, long posToAdd) {
+    private void addToSorted(long klongToAdd, Node pointerToAdd, long posToAdd) {
         assert Klong.getType(klongToAdd) == Klong.TYPE_KEY;
         
         long compareValue = Klong.getCompareValue(klongToAdd);
@@ -1217,7 +1217,7 @@ public class KeyNode implements INode {
             case Klong.INT_TYPE_KEY:
                 String keyString = getKeyString(klong);
                 out.print(String.format("%-15s", keyString));
-                INode child = pointers[i];
+                Node child = pointers[i];
                 boolean isMem = child != null;
                 
                 if (isMem) {
@@ -1513,7 +1513,7 @@ public class KeyNode implements INode {
                 return klong;
             }
             
-            public INode getNode() {
+            public Node getNode() {
                 return KeyNode.this.pointers[offset];
             }
         };

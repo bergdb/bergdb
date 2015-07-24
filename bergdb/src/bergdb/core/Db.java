@@ -12,7 +12,7 @@ import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
-import bergdb.dag.INode;
+import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.NodeVisitor;
 import bergdb.dag.PutData;
@@ -604,7 +604,7 @@ public class Db {
                 makeDirtyIfNeeded(superRoot);
             }
             
-            public void pointerFollowed(INode predecessor, int pointerIndex, INode result, int pointerType) {
+            public void pointerFollowed(Node predecessor, int pointerIndex, Node result, int pointerType) {
                 pListener.pointerFollowed(predecessor, pointerIndex, result, pointerType);
                 makeDirtyIfNeeded(result);
             }
@@ -685,7 +685,7 @@ public class Db {
         x.lastSposOfLastTrans = trans.lastPos;
     }
     
-    private void setVpos(INode node) {
+    private void setVpos(Node node) {
         assert node.isIndexNode();
         
         long vpos = x.nextVpos;
@@ -700,7 +700,7 @@ public class Db {
      * 
      * @return True if 'node' got dirty.
      */
-    private boolean makeDirtyIfNeeded(INode node) {
+    private boolean makeDirtyIfNeeded(Node node) {
         if (!node.isDirty() && node.isIndexNode()) {
             node.setDirty(true);
             x.transInfo.addNode(node);
@@ -879,7 +879,7 @@ public class Db {
      * Follows the pointers in the Db graph from the super top node using the given 
      * node index choices. Useful for testing.
      */
-    public INode findNode(int[] choices, GetData gd) {
+    public Node findNode(int[] choices, GetData gd) {
         return dag.findNode(choices, gd);
     }
 

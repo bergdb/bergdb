@@ -3,7 +3,7 @@ package bergdb.core;
 import java.io.PrintStream;
 
 import bergdb.common.Bytes;
-import bergdb.dag.INode;
+import bergdb.dag.Node;
 import bergdb.dag.Spos;
 import bergdb.dag.StreamChecksumException;
 import bergdb.storage.MetaBlock;
@@ -166,7 +166,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * @throws StreamFormatException
      * @throws StreamIoException
      */
-    public INode readNode(long spos) {
+    public Node readNode(long spos) {
         assert spos >= RecoverableStream.META_BLOCK_SIZE : "bad spos, " + spos;
 
         byte[] buffer = new byte[1024];      
@@ -183,7 +183,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         }
         
         rstream.read(spos, buffer, 0, size);
-        INode node = bytesToNode(spos, buffer, 0, size).getNode();
+        Node node = bytesToNode(spos, buffer, 0, size).getNode();
         return node;
     }
     
@@ -251,14 +251,14 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         StoredNode stored;
 
         switch (nodeType) {
-        case INode.TYPE_KEY_NODE:
+        case Node.TYPE_KEY_NODE:
             stored = StoredKeyNode.parse(buffer, offset, spos);
             break;
-        case INode.TYPE_TOP_NODE:
+        case Node.TYPE_TOP_NODE:
             stored = StoredTopNode.parse(buffer, offset, spos);
             break;
-        case INode.TYPE_VALUE:
-        case INode.TYPE_DELETE:
+        case Node.TYPE_VALUE:
+        case Node.TYPE_DELETE:
             stored = StoredValueNode.parse(buffer, offset, spos);
             break;
         default:
@@ -288,7 +288,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
                 out.println("* p:" + s.getPrevPos());
                 out.println(s.getNode().print().replace("\n", "\n  "));
                 /*
-                INode node = s.getNode();
+                Node node = s.getNode();
                 out.println("-- " + node.getClass().getSimpleName() + " prev:"
                         + s.getPrevPos() + " --");
                 out.println(node.toString());*/

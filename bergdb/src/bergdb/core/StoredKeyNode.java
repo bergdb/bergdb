@@ -6,7 +6,7 @@ package bergdb.core;
 import bergdb.common.Bug;
 import bergdb.common.Bytes;
 import bergdb.common.Util;
-import bergdb.dag.INode;
+import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Klong;
 import bergdb.dag.Spos;
@@ -55,7 +55,7 @@ public class StoredKeyNode implements StoredNode {
 
         buffer[offset++] = 
                   ((long) byteSize) 
-                | (((long) INode.TYPE_KEY_NODE) << (4 * 8))
+                | (((long) Node.TYPE_KEY_NODE) << (4 * 8))
                 | (1L << (5 * 8));
         // 2 bytes available for checksum
         buffer[offset++] = prevPos;
@@ -97,7 +97,7 @@ public class StoredKeyNode implements StoredNode {
         offset += 4; // Skip size.
         byte type = buffer[offset];
         offset += 1;
-        if (type != INode.TYPE_KEY_NODE) {
+        if (type != Node.TYPE_KEY_NODE) {
             throw new Bug("Bad node type byte, " + ((int) type)
                     + ", should have been checked already.");
         }

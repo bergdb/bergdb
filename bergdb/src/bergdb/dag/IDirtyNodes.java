@@ -15,9 +15,9 @@ public interface IDirtyNodes {
     public int getSize();
     
     /**
-     * Adds an spos-to-INode mapping if spos != Spos.NULL.
+     * Adds an spos-to-Node mapping if spos != Spos.NULL.
      */
-    public void put(long spos, INode node);
+    public void put(long spos, Node node);
     
     /**
      * Removes one mapping.

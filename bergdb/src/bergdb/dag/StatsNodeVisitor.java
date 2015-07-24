@@ -23,5 +23,5 @@ public class StatsNodeVisitor implements NodeVisitor {
     /**
      * Override for common action for all node types.
      */
-    public void handle(INode node) {}
+    public void handle(Node node) {}
 }

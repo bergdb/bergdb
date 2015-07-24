@@ -13,7 +13,7 @@ public class TopDs {
     private volatile TopNode superRoot;
     
     public interface DagForMe {
-        public INode followPointer(final INode predecessor, int pointerIndex, 
+        public Node followPointer(final Node predecessor, int pointerIndex, 
                 long accessData, PointerListener walker, CachePolicy cachPolicy);
     }
     

@@ -98,7 +98,7 @@ public class GetMany {
      * Limited access to Graph.
      */
     public interface DagForMe {
-        public INode followPointer(final INode predecessor, int pointerIndex, long accessData, 
+        public Node followPointer(final Node predecessor, int pointerIndex, long accessData, 
                 PointerListener pointerListener, CachePolicy cachePolicy);
     }
     
@@ -271,7 +271,7 @@ public class GetMany {
                     break;
                 }
                 
-                INode next = graph.followPointer(node, kwi.pointerIndex, GetMany.this.gd.accessData, 
+                Node next = graph.followPointer(node, kwi.pointerIndex, GetMany.this.gd.accessData, 
                         GetMany.this.gd.pointerListener, GetMany.this.gd.cachePolicy);
                 
                 assert next instanceof KeyNode : "next=" + next;
@@ -367,7 +367,7 @@ public class GetMany {
                 linkCompareValue = Klong.getCompareValue(kwi.klong);
                 setLinkCompareValue(linkCompareValue);
                 
-                INode next = graph.followPointer(linkNode, kwi.pointerIndex, GetMany.this.gd.accessData, 
+                Node next = graph.followPointer(linkNode, kwi.pointerIndex, GetMany.this.gd.accessData, 
                         GetMany.this.gd.pointerListener, GetMany.this.gd.cachePolicy);
                 
                 if (next instanceof ValueNode) {

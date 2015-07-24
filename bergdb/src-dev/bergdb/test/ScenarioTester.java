@@ -11,7 +11,7 @@ import bergdb.core.StartupPosUpdater;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.GetMany;
-import bergdb.dag.INode;
+import bergdb.dag.Node;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.TestEnvironment;
 import static bergdb.nanotest.Assert.assertEquals;
@@ -362,7 +362,7 @@ public class ScenarioTester {
                 
                 if (x.transInfo.gotDirtyNodes.size() > 0) {
                     System.out.print("Got dirty: ");
-                    for (INode node : x.transInfo.gotDirtyNodes) {
+                    for (Node node : x.transInfo.gotDirtyNodes) {
                         System.out.print(node + "; ");
                     }
                     System.out.println();
