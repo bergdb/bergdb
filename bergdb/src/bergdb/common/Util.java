@@ -1053,7 +1053,7 @@ public class Util {
     
     /**
      * Returns the current date formatted as "YYYY-MM-DD".
-     * The timezone of the to default locale is used.
+     * The timezone of the default locale is used.
      */
     public static String today() {
         long now = System.currentTimeMillis();
@@ -1061,12 +1061,23 @@ public class Util {
     }
 
     /**
-     * Returns the current date formatted as "YYMMDD".
-     * The timezone of the to default locale is used.
+     * Returns the current date formatted as "yyMMdd".
+     * The timezone of the default locale is used.
      */
     public static String todayCompact() {
         long now = System.currentTimeMillis();
         return compactDateFormat.format(new Date(now));
+    }
+    
+    private static SimpleDateFormat dateAndTimeFormat = new SimpleDateFormat("yyMMdd HH:mm");
+    
+    /**
+     * Returns current date and time formatted as yyMMdd HH:mm.
+     * The timezone of the default locale is used.
+     */
+    public static String dateAndTime() {
+        long now = System.currentTimeMillis();
+        return dateAndTimeFormat.format(new Date(now));
     }
     
     /**
@@ -1078,5 +1089,9 @@ public class Util {
         String javaVersion = "java " + System.getProperty("java.version");
         
         return jvm + ", " + javaVersion;
+    }
+    
+    public static void main(String[] args) {
+        System.out.println(dateAndTime());
     }
 }

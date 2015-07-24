@@ -69,8 +69,17 @@ public class Nano {
         StringBuilder b = new StringBuilder();
         
         b.append("\n======== " + this.getClass().getSimpleName() + ": " + groupsToString() + " ========\n");
+        
         String computer = Util.hostname();
-        b.append("Tests on " + computer + ", " + new Date() + ".\n");
+        String time = Util.dateAndTime();
+        String jvm = System.getProperty("java.vm.name") + " " + System.getProperty("java.runtime.version");
+        
+        if (jvm.startsWith("Java HotSpot")) {
+            jvm = jvm.substring(5);
+        }
+        
+        b.append("On " + computer + " " + time + ", " + jvm + "\n");
+        
         return b.toString();
     }
     
