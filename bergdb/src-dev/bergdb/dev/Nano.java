@@ -1,4 +1,4 @@
-package bergdb.coredev;
+package bergdb.dev;
 
 import java.util.Date;
 import java.util.HashSet;

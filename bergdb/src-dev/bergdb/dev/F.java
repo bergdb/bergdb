@@ -1,7 +1,6 @@
 package bergdb.dev;
 
 import bergdb.common.Create;
-import bergdb.coredev.Nano;
 
 /**
  * Runs functional tests ("f").
