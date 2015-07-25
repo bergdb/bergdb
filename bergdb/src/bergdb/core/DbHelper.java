@@ -8,6 +8,8 @@ import bergdb.common.Bug;
 import bergdb.common.Create;
 import bergdb.common.ProgressListener;
 import bergdb.common.Util;
+import bergdb.dag.AccessData;
+import bergdb.dag.Klong;
 import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.KeyNodeTester;
@@ -204,7 +206,7 @@ public class DbHelper {
      * A node is still dirty after being written to stream if any of its 
      * children is dirty.
      */
-    static int handleStillDirtyNodes(Iterator<Node> input, TransSeq.NodeSink output) {
+    static int handleStillDirtyNodes(Iterator<? extends Node> input, TransSeq.NodeSink output) {
         int stillDirtyCount = 0;
         
         while (input.hasNext()) {
@@ -254,6 +256,56 @@ public class DbHelper {
         Assert.assertFalse(k4.isDirty());
     }
     
-    // TODO A. Add test of handleStillDirtyNodes() with grandchild that is dirty.
+    @Nano private static void testHandleStillDirtyNodes2() {
+        //
+        //  k0  k4
+        //  |\ /  \
+        //  | /\   k5
+        //  |/  \
+        //  k1   k3
+        //  |
+        //  k2
+        //
+        // Only k4 is dirty first. 
+        // This will make k0, k1, and k4 dirty, but not the other nodes.
+        //
+        
+        KeyNode[] k = new KeyNode[6];
+        for (int i = 0; i < k.length; i++) {
+            k[i] = new KeyNode();
+            k[i].setDirty(false);
+        }
+        
+        addPointer(k[0], k[1], "01");
+        addPointer(k[0], k[3], "03");
+        addPointer(k[1], k[2], "12");
+        addPointer(k[4], k[1], "41");
+        addPointer(k[4], k[5], "45");
+        
+        k[2].setDirty(true);
+        
+        int stillDirtyCount;
+        do {
+            stillDirtyCount = DbHelper.handleStillDirtyNodes(Create.list(k).iterator(), NullNodeSink.INSTANCE);
+        } while (stillDirtyCount > 0);
+        
+        Assert.assertTrue(k[0].isDirty() == true);
+        Assert.assertTrue(k[1].isDirty() == true);
+        Assert.assertTrue(k[2].isDirty() == true);
+        Assert.assertTrue(k[3].isDirty() == false);
+        Assert.assertTrue(k[4].isDirty() == true);
+        Assert.assertTrue(k[5].isDirty() == false);
+    }
     
+    private static class NullNodeSink implements TransSeq.NodeSink {
+        public static final NullNodeSink INSTANCE = new NullNodeSink();
+        public void addNode(Node node) {}
+    }
+    
+    private static void addPointer(KeyNode from, KeyNode to, String label) {
+        long time = 10;
+        long ad = AccessData.DEFAULT_ACCESS_DATA;
+        long klong = Klong.create(Util.toBytes(label));
+        from.addKlong(time, klong, to, ad);
+    }
 }

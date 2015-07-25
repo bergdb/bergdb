@@ -2,6 +2,8 @@ package bergdb.dag;
 
 /**
  * Specialized data structure for storing accessed top nodes.
+ * 
+ * @author Frans Lundberg
  */
 public class TopAccessPath {
     int size;
@@ -9,7 +11,7 @@ public class TopAccessPath {
     
     public TopAccessPath() {
         size = 0;
-        nodes = new TopNode[2];  // NOTE, small for now to test enlargement
+        nodes = new TopNode[8];
     }
     
     public final int getSize() {

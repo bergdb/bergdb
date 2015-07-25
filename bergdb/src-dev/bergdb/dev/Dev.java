@@ -1,6 +1,5 @@
 package bergdb.dev;
 
-// Just merged "vpos" branch into "main".
 //
 // TODO LATER Add support for JSON. Pub API and changes to DbObject, I guess.
 // "Promised" to Stefan Edlich 150109.
