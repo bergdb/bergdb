@@ -302,6 +302,32 @@ public class MemoryStream implements AppendOnlyStream {
         stop();
     }
     
+    /**
+     * Modifies existing stream data, for testing only, inefficient implementation.
+     */
+    private synchronized void write(byte[] bytes, long spos) throws IOException {
+        for (int i = 0; i < bytes.length; i++) {
+            write(spos + i, bytes[i]);
+        }
+    }
+    
+    /**
+     * Modifies existing stream data, for testing only.
+     */
+    private synchronized void write(long spos, byte b) throws IOException {
+        int arrayIndex = (int) (spos / ARRAY_SIZE);
+        byte[] array = getArray(arrayIndex, spos);
+        int offset = (int) (spos % ARRAY_SIZE);
+        
+        array[offset] = (byte) b;
+    }
+    
+    public static class TestAccess {
+        public static void write(MemoryStream stream, byte[] bytes, long spos) throws IOException {
+            stream.write(bytes, spos);
+        }
+    }
+    
     public static class Tester {
         public Tester() {}
         

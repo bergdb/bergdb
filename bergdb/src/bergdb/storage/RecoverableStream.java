@@ -1,7 +1,6 @@
 package bergdb.storage;
 
 import java.io.IOException;
-
 import bergdb.common.Bytes;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
@@ -398,7 +397,7 @@ public class RecoverableStream {
         long length = aos.getLength();
         long spos = length - META_BLOCK_SIZE;
         spos = spos < 0 ? 0 : spos;        
-        MetaBlock block = readValidMetaBlock(aos, spos);
+        MetaBlock block = readAValidMetaBlock(aos, spos);
         if (block == null) {
             return null;
         }
@@ -434,7 +433,7 @@ public class RecoverableStream {
         // last valid transaction, just any recent transaction completely written before
         // stream position 'spos'.
         
-        MetaBlock meta = readValidMetaBlock(aos, spos);
+        MetaBlock meta = readAValidMetaBlock(aos, spos);
         long result = meta.getLastTransSpos();
         if (result == Constants.SposNULL) {
             if (aos.getLength() > RecoverableStream.META_BLOCK_SIZE) {
@@ -450,24 +449,14 @@ public class RecoverableStream {
      * 
      * @throws StreamIoException
      */
-    static MetaBlock readValidMetaBlock(AppendOnlyStream aos, long spos) {
-        // TODO D. Read meta block version earlier. Avoid using too many assumptions of the serial format of a meta block. See stream-format.txt.
-       
+    static MetaBlock readAValidMetaBlock(AppendOnlyStream aos, long spos) {
         long metaIndex;
-        byte[] metaBytes = new byte[RecoverableStream.META_BLOCK_SIZE];
         MetaBlock result = null;
-        long blockPos;
         
         metaIndex = spos / META_BLOCK_DISTANCE;
         for (long i = metaIndex; i >= 0; i--) {
-            try {
-                blockPos = i * META_BLOCK_DISTANCE;
-                aos.read(blockPos, metaBytes, 0, metaBytes.length);
-            } catch (IOException e) {
-                throw new StreamIoException(e);
-            }
-            
-            result = new MetaBlock(metaBytes, blockPos);
+        	long blockPos = i * META_BLOCK_DISTANCE;
+            result = readMetaBlock(aos, blockPos);
             if (result.isValid()) {
                 result.checkFormat();
                 break;
@@ -477,6 +466,42 @@ public class RecoverableStream {
         }
         
         return result;
+    }
+    
+    /**
+     * Returns the MetaBlock at the given stream position.
+     * The block may be invalid, caller should check it.
+     * 
+     * @throws StreamFormatException
+     * @thrown StreamIoException
+     * @throws VersioningStreamException
+     */
+    private static MetaBlock readMetaBlock(AppendOnlyStream aos, long blockPos) {
+        byte[] header = new byte[6];
+        
+        try {
+            aos.read(blockPos, header, 0, header.length);
+        } catch (IOException e) {
+            throw new StreamIoException(e);
+        }
+        
+        int version = Bytes.bytesToUShortLE(header, 4);
+        
+        if (version != MetaBlock.VERSION_133 && version != MetaBlock.VERSION_154) {
+            throw new VersioningStreamException("Cannot read meta block with of version " 
+                    + version + ". Versions supported: " 
+                    + MetaBlock.VERSION_133 + ", " + MetaBlock.VERSION_154);
+        }
+        
+        byte[] metaBytes = new byte[RecoverableStream.META_BLOCK_SIZE];
+        
+        try {
+            aos.read(blockPos, metaBytes, 0, metaBytes.length);
+        } catch (IOException e) {
+            throw new StreamIoException(e);
+        }
+        
+        return new MetaBlock(metaBytes, blockPos);
     }
     
     /**
@@ -742,7 +767,7 @@ public class RecoverableStream {
         }
         
         @Nano
-        public static void crashInlargeTransaction() throws IOException {
+        public static void crashInLargeTransaction() throws IOException {
             MemoryStream mstream = new MemoryStream();
             RecoverableStream r1 = new RecoverableStream(mstream, new MetaBlock());
             
@@ -844,6 +869,76 @@ public class RecoverableStream {
         @Nano
         public static void testConstantInFileStream() {
             Assert.assertTrue(FileStream.getSmallestFileSize() % META_BLOCK_DISTANCE == 0);
+        }
+        
+        @Nano
+        public static void testMetaBlockDistance() {
+            // META_BLOCK_DISTANCE cannot be changed without serious stream data
+            // compatibility issues.
+            
+            Assert.assertEquals(200*1000, META_BLOCK_DISTANCE);
+        }
+        
+        @Nano
+        public static void testReadMetaBlock1() {
+            MemoryStream mstream = new MemoryStream();
+            MetaBlock meta1 = new MetaBlock();
+            meta1.setLastTransSpos(1234L);
+            RecoverableStream r1 = new RecoverableStream(mstream, meta1);
+            
+            byte[] bytes = new byte[1000];
+            r1.append(bytes, 0, bytes.length, false, 1234L);
+            mstream.close();
+            
+            MetaBlock meta2 = RecoverableStream.readMetaBlock(mstream.copy(), 0);
+            
+            meta2.checkFormat();
+            Assert.assertTrue(meta2.isValid());
+            Assert.assertEquals(1234L, meta2.getLastTransSpos());
+        }
+        
+        @Nano
+        public static void testReadMetaBlock2() throws IOException {
+            // Version 22 should result in VersioningStreamException.
+            
+            MemoryStream mstream = new MemoryStream();
+            MetaBlock meta = new MetaBlock();            
+            RecoverableStream r1 = new RecoverableStream(mstream, meta);
+            
+            byte[] bytes = new byte[1000];
+            r1.append(bytes, 0, bytes.length, false, 1234L);
+            mstream.close();
+            
+            MemoryStream m = mstream.copy();
+            MemoryStream.TestAccess.write(m, new byte[]{22, 0}, 4);
+            
+            VersioningStreamException ex = null;
+            try {
+                RecoverableStream.readMetaBlock(m, 0);
+            } catch (VersioningStreamException e) {
+                ex = e;
+            }
+            
+            Assert.assertTrue(ex != null);
+            Assert.assertTrue(ex.getMessage().contains("22"));
+        }
+        
+        @Nano
+        public static void testReadMetaBlock3() throws IOException {
+            // Version 133 should work.
+            
+            MemoryStream mstream = new MemoryStream();
+            MetaBlock meta = new MetaBlock();            
+            RecoverableStream r1 = new RecoverableStream(mstream, meta);
+            
+            byte[] bytes = new byte[1000];
+            r1.append(bytes, 0, bytes.length, false, 1234L);
+            mstream.close();
+            
+            MemoryStream m = mstream.copy();
+            MemoryStream.TestAccess.write(m, new byte[]{(byte) 133, 0}, 4);
+            
+            RecoverableStream.readMetaBlock(m, 0);
         }
     }
 }

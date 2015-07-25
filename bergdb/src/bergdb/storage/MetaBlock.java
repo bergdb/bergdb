@@ -5,9 +5,6 @@ import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
-// TODO Remove startup pos and change version to 154.
-// TODO LATER How is "time" used? What exactly is it? Is it used, is it necessary?
-
 /**
  * An instance of this class represents a meta information block in the 
  * db stream (RecoverableStream). The meta information includes 
@@ -15,24 +12,26 @@ import bergdb.nanotest.Nano;
  * Little-endian-first byte order is used.
  *
  * <pre>
- * FORMAT OF A META BLOCK, v133
+ * FORMAT OF A META BLOCK, v154
  * Offset  Size    Description
  * 0       4       Magic bytes, meta block signature. Always the bytes for ASCII "berg".
- * 4       4       Version of BergDB stream format as an int (currently 133).
+ * 4       4       Version of BergDB stream format as an int (154 for this version).
  * 8       8       time, database time as a long.
  * 16      8       lastTrans, spos of last valid transaction completely written
  *                 before the meta block.
  * 24     16       Database ID. 128 random bits, used as unique database ID.
  * 40      4       startupDistance in bytes. Typically 20M.
- * 44      8       startupPos. Stream position to startup from. DEPRECATED FROM 2015-05-10!
- * 52     75       Reserved, must be set to zero.
+ * 44     83       Reserved, must be set to zero.
  * 127     1       META_BLOCK_LAST_BYTE. 1 is used to indicate that the block is valid.
  * </pre>
  */
 public class MetaBlock {    
     private static final byte META_BLOCK_LAST_BYTE = (byte) Util.identity(10);
     private static final byte[] MAGIC = new byte[] {'b', 'e', 'r', 'g'};
-    private static final int STREAM_FORMAT_VERSION = Util.identity(133);    
+    public static final int VERSION_133 = Util.identity(133);
+    public static final int VERSION_154 = Util.identity(154);
+    private static final int CURRENT_VERSION = VERSION_154;
+    
     private byte[] block;
     private long pos;         // stream pos, only used sometimes
     
@@ -47,12 +46,11 @@ public class MetaBlock {
 
     private void initBlock() {
         System.arraycopy(MAGIC, 0, block, 0, 4);
-        Bytes.intToBytesLE(STREAM_FORMAT_VERSION, block, 4);
+        Bytes.intToBytesLE(CURRENT_VERSION, block, 4);
         
         block[RecoverableStream.META_BLOCK_SIZE - 1] = META_BLOCK_LAST_BYTE;
             // last byte set to indicate successful meta block
         setLastTransSpos(Constants.SposNULL);
-        setStartupPos(0);
     }
     
     /**
@@ -90,18 +88,15 @@ public class MetaBlock {
      * @throws StreamFormatException  If invalid byte format detected.
      */
     public void checkFormat() {
+        //
+        // Version is not checked here, it should have been checked already.
+        //
+        
         if (!isValid(block)) {
             return;
         }
         
         checkMagic();
-        
-        long version = getVersion();
-        
-        if (version != STREAM_FORMAT_VERSION) {
-            throw new StreamFormatException("Meta block version " + version + " not supported by " +
-            		"this software.");
-        }
         
         long last = getLastTransSpos();
         if (last < 0 && last != Constants.SposNULL) {
@@ -112,8 +107,6 @@ public class MetaBlock {
         if (time < 0) {
             throw new StreamFormatException("Meta block, bad time, " + time + ".");
         }
-        
-        checkEndZeros();
     }
 
     private void checkMagic() {
@@ -121,16 +114,6 @@ public class MetaBlock {
             if (block[i] != MAGIC[i]) {
                 throw new StreamFormatException("Illegal first bytes of block, offset=" + i 
                         + ", value=" + ((int) block[i]) + ".");
-            }
-        }
-    }
-    
-    private void checkEndZeros() {
-        for (int offset = 44+8; offset < RecoverableStream.META_BLOCK_SIZE - 1; offset++) {
-            int b = block[offset];
-            if (block[offset] != 0) {
-                throw new StreamFormatException("Meta block, expected byte to be 0 at offset " 
-                        + offset + ", was " + b + ".");
             }
         }
     }
@@ -157,7 +140,7 @@ public class MetaBlock {
      * Returns the version of the stream format.
      */
     public int getVersion() {
-        return Bytes.bytesToIntLE(block, 4);
+        return Bytes.bytesToUShortLE(block, 4);
     }
     
     public void setTime(long time) {
@@ -216,20 +199,6 @@ public class MetaBlock {
     }
     
     /**
-     * @deprecated since 2015-05-10.
-     */
-    public long getStartupPos() {
-        return Bytes.bytesToLongLE(block, 44);
-    }
-    
-    /**
-     * @deprecated since 2015-05-10.
-     */
-    public void setStartupPos(long pos) {
-        Bytes.longToBytesLE(pos, block, 44);
-    }
-    
-    /**
      * Returns true if the last byte is META_BLOCK_LAST_BYTE.
      */
     public boolean isValid() {
@@ -266,7 +235,7 @@ public class MetaBlock {
         @Nano
         public static void version() {
             MetaBlock b = new MetaBlock();
-            Assert.assertEquals(133, b.getVersion());
+            Assert.assertEquals(154, b.getVersion());
         }
         
         @Nano

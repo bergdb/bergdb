@@ -28,18 +28,26 @@ the overall stream with the meta blocks and surrounding space for transactions.
 The meta block version is not changed if the format for encoding transaction or
 nodes will change.
 
-Independent of the meta format version, we can assume:
-  
-* There is a meta block in the stream at every stream position 
-    n x 200000 where n is a non-negative integer.
-* A meta-block is at least 128 bytes long.
-* The four first bytes of a meta block is ASCII for 'b', 'e', 'r', 'g'.
-    This functions as "magic" bytes for the database files.
-* The meta version is stored as it is for BergDB release 2015.3.
-    That is: byte offset 4, value 133 for release 2015.3.
-    At least two bytes are used for this.
-    
-See MetaBlock and RecoverableStream.
+Independent of the meta format version, we can assume the follow header
+for meta blocks:
+
+    Offset  Size    Description
+    0       4       The bytes 'b', 'e', 'r', 'g'.
+    4       2       Meta block format version. Range [133, 2^16-1].
+
+Actually, we even limit assumption to only assume that bytes 4..5 
+contain the version. Once the version is known, further assumptions can 
+be made. Little-endian first byte order is used.
+
+We also assume that there is a meta block in the stream at every stream 
+position, n x 200000, where n is a non-negative integer.
+
+The current version has meta blocks of size 128. The version is assumed
+to correspond to the releaseInt of the BergDB release that introduced the
+version.
+
+See class MetaBlock for the authoritative specification of the current
+version. Also see class RecoverableStream.
 
 
 Trans Version
@@ -58,6 +66,9 @@ Independent of trans format version, we can assume a the following header:
 Little-endian-first byte order is used. The total byte size of the 
 transaction does not include any meta block bytes that could possibly 
 be interspersed within the transaction.
+
+See class StoredTrans for the authoritative specification of the current 
+version of the format.
 
 
 Node Versions
@@ -81,6 +92,9 @@ following header.
 
 Little-endian-first byte order is used.
 
+See classes StoredTopNode, StoredKeyNode, and StoredValueNode for the
+authoritative specicification of the current serialization format.
+
 
 Releases
 ========
@@ -103,13 +117,20 @@ software of the particular release.
 
 First release with documented versioning.
 
-            Meta    Trans   Top     Key     Value
-    Write   133     2       2       2       2
-    Read    133     2       2       2       2
+            Meta        Trans   Top     Key     Value
+    Write   133         2       2       2       2
+    Read    133         2       2       2       2
 
     
     
 2015.4
 ------
 
-Blah, blah...
+            Meta        Trans   Top     Key     Value
+    Write   154         2       2       2       2
+    Read    133,154     2       2       2       2
+
+Changes:
+
+* Meta version updated, 133 to 154. StartupPos of the meta block was removed.
+
