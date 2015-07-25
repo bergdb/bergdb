@@ -330,14 +330,14 @@ public class Util {
         // new String(bytes, utf8);   // Cannot be used until Java 1.6.
         // NOTE The behavior of "new String(bytes, "UTF-8")" for illegal bytes is not specified
         // according to Java 5 API.
-        // TODO LATER Consider custom explicit code for bytes-to-utf8-string conversion.
+        // NOTE Consider custom explicit code for bytes-to-utf8-string conversion.
         // We would like to control behavior for bad input data. Also for string-to-bytes, we 
         // would like to know result size without need to allocate space for result.
         
         try {
             return bytes == null ? null : new String(bytes, "UTF-8");
         } catch (UnsupportedEncodingException e) {
-            throw new Error("Never happens, UTF-8 must be supported by a JVM.");
+            throw new Error("Never happens, UTF-8 must be supported by any JVM.");
         }
     }
     

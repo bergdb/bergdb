@@ -153,8 +153,8 @@ public class StoredValueNode implements StoredNode {
         offset += 8 * key.length;
         
 
-        // Checksum, XOR of all bytes to buffer[firstOffset + 6], 0 -> 1. 0 used as no checksum
-        // indicator.
+        // Checksum, XOR of all bytes to buffer[firstOffset + 6], 0 -> 1. 
+        // 0 used as no checksum indicator.
 
         int checksum = 0;
         for (int i = 0; i < byteSize; i++) {

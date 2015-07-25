@@ -307,6 +307,14 @@ public class Bytes {
         return bytes;
     }
 
+    /**
+     * Returns an int in range [0, 255] given a byte.
+     * The byte is considered unsigned instead of the ordinary signed 
+     * interpretation in Java.
+     */
+    public static int unsigned(byte b) {
+        return b & 0x000000ff;
+    }
     
     // ======== Testing ========
     
@@ -615,5 +623,12 @@ public class Bytes {
         }
         t1 = System.nanoTime();
         System.out.println("longToBytesBE " + 1e-9*(t1-t0)/n);
+    }
+
+    @Nano private static void testUnsigned() {
+        Assert.assertEquals(123, unsigned((byte) 123));
+        Assert.assertEquals(255, unsigned((byte) -1));
+        Assert.assertEquals(127, unsigned((byte) 127));
+        Assert.assertEquals(128, unsigned((byte) -128));
     }
 }

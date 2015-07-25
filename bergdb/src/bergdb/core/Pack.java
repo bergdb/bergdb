@@ -18,6 +18,7 @@ public class Pack implements IPack {
         DbUtil.class,
         KeyModSet.class,
         Kv.class,
+        NodeChecksum.class,
         NodeStream.class,
         NodeStreamTester.class,
         Pack.class,

@@ -60,6 +60,7 @@ public class StoredKeyNode implements StoredNode {
                 | (FORMAT_VERSION << (5 * 8));
         
         // 2 bytes available for checksum
+        
         buffer[offset++] = prevPos;
         buffer[offset++] = ((long) (node.isSegmentLeaf() ? 1 : 0)) | sz << (1 * 8);
         // 6 zero bytes available...
@@ -73,7 +74,7 @@ public class StoredKeyNode implements StoredNode {
             buffer[offset++] = spos;
         }
 
-        // Checksum, XOR of all bytes.
+        // Checksum, XOR of all bytes per long. Really fast!
 
         long checksum = 0;
         for (int i = firstOffset; i < offset; i++) {
