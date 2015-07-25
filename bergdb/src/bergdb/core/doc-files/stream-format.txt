@@ -57,11 +57,15 @@ The transation format version is stored in the header of each
 transaction in the stream. The code in StoredTrans.Serializer.serialize() is the 
 definite definition of the format.
 
-Independent of trans format version, we can assume a the following header:
+Independent of trans format version number, we can assume a the 
+following format:
 
     Offset  Size    Description
     0       4       The total byte size of the transaction. Range: [5, 2^31-1].
     4       1       Trans format version. One byte, range: [0, 127].
+    ..
+    last    1       The last byte is always 10 (RecoverableStream.LAST_BYTE) for
+                    a valid transaction.
 
 Little-endian-first byte order is used. The total byte size of the 
 transaction does not include any meta block bytes that could possibly 

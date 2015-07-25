@@ -136,6 +136,9 @@ public class RecoverableStream {
      * @param spos  The stream position of a transaction in the stream.
      */
     private void fixLastTransactionIfNeeded(long spos) {
+        // TODO B. Fix needed! Consider e.g. one byte of trans only, its value 1. 
+        // Our zero-fill would make trans size equal to 1. Impossible! Trans size cannot be
+        // less than 6 for any trans format version number.
         
         while (true) {
             long remaining = getRemainingTransBytes(spos, aos.getLength());
@@ -226,8 +229,6 @@ public class RecoverableStream {
         return result;
     }
     
-    
-    
     /**
      * Returns the maximum number of bytes a transaction can have that starts at 'spos' given 
      * the current size of the stream (aos.getSize()).
@@ -261,7 +262,7 @@ public class RecoverableStream {
             }
         }
     }
-     
+    
     /**
      * Reads transaction bytes from the WriteOnceStream into 'buffer'.
      * 
@@ -887,11 +888,17 @@ public class RecoverableStream {
         }
         
         @Nano
-        public static void testMetaBlockDistance() {
+        public static void testConstantMetaBlockDistance() {
             // META_BLOCK_DISTANCE cannot be changed without serious stream data
             // compatibility issues.
             
             Assert.assertEquals(200*1000, META_BLOCK_DISTANCE);
+        }
+        
+        @Nano
+        public static void testConstantLastByte() {
+            // RecoverableStream.LAST_BYTE cannot easily be changed.
+            Assert.assertEquals(10, RecoverableStream.LAST_BYTE);
         }
         
         @Nano
