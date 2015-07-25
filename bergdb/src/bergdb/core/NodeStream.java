@@ -217,36 +217,17 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * @throws StreamIoException
      */
     static StoredNode bytesToNode(long spos, byte[] buffer, int offset, int size) {
+        //
+        // * Assumption: node type byte always stored at same location 
+        //   (for all versions, all node types)
+        // * Assumption: Checksums always computed the same way for all node types
+        //   and version.
+        //
+        
         assert buffer.length > offset + 5 : "offset=" + offset + ", buffer.length=" + buffer.length;
         byte nodeType = buffer[offset + 4];
-        // Node type byte always has this location for all node types.
-
-        {
-            // Checksum computation. Same for all node types.
-
-            if (buffer[offset + 7] != 0) {
-                throw new StreamChecksumException("spos: " + spos + ", buffer[7]: "
-                        + ((int) buffer[7]) + ", nodeType: " + nodeType);
-            }
-            int sumInData = (buffer[offset + 6]) & 0x000000ff;
-
-            if (sumInData != 0) {
-                buffer[offset + 6] = 0;
-                int computedSum = 0;
-                for (int i = 0; i < size; i++) {
-                    computedSum ^= buffer[offset + i];
-                    // This works, lowest 8 bits do not change for byte-to-int conversion.
-                }
-                computedSum = computedSum & 0x000000ff;
-                computedSum = computedSum == 0 ? 1 : computedSum;
-
-                if (computedSum != sumInData) {
-                    throw new StreamChecksumException("spos: " + spos + ", sumInData: "
-                            + ((int) sumInData) + ", computedSum: " + ((int) computedSum)
-                            + ", nodeType: " + nodeType);
-                }
-            }
-        }
+        
+        checkChecksum(spos, buffer, offset, size, nodeType);
         
         StoredNode stored;
 
@@ -269,8 +250,17 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
 
         return stored;
     }
-    
 
+    private static void checkChecksum(long spos, byte[] buffer, int offset, int size, byte nodeType) {
+        int computedSum = NodeChecksum.sumWithZeroReplace(buffer, offset, size, offset + 6);
+        int storedSum = Bytes.bytesToUShortLE(buffer, offset + 6);
+        
+        if (computedSum != storedSum) {
+            throw new StreamChecksumException("spos: " + spos + ", storedSum: "
+                    + storedSum + ", computedSum: " + computedSum + ", nodeType: " + nodeType);
+        }
+    }
+    
     public void print(PrintStream out) {
         print(out, 0);
     }

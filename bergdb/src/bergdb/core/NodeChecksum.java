@@ -89,12 +89,25 @@ public class NodeChecksum {
         Assert.assertEquals(0x0403, sum);
     }
     
-    @Nano private static void testWithLongArray() {
+    @Nano private static void testWithLongArray1() {
         byte[] data = new byte[]{0x01, 0x02, (byte) 0xff, 0x10, 0x00, 0x01, 0x02, 0x03};
         int sum1 = sum(data, 0, data.length);
         
         long l = Bytes.bytesToLongLE(data, 0);
         int sum2 = sum(new long[]{l}, 0, 1);
+        
+        Assert.assertEquals(sum1, sum2);
+    }
+    
+    @Nano private static void testWithLongArray2() {
+        byte[] data = new byte[]{
+                0x01, 0x02, (byte) 0xff, 0x10, 0x20, 0x21, 0x23, 0x24,
+                (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, 0x0f, 0x0f, 0x0f, 0x0f};
+        
+        int sum1 = sum(data, 0, data.length);
+        
+        long[] longs = new long[]{Bytes.bytesToLongLE(data, 0), Bytes.bytesToLongLE(data, 8)};
+        int sum2 = sum(longs, 0, 2);
         
         Assert.assertEquals(sum1, sum2);
     }

@@ -152,17 +152,8 @@ public class StoredValueNode implements StoredNode {
         Bytes.longsToBytesLE(key, 0, key.length, buffer, offset);
         offset += 8 * key.length;
         
-
-        // Checksum, XOR of all bytes to buffer[firstOffset + 6], 0 -> 1. 
-        // 0 used as no checksum indicator.
-
-        int checksum = 0;
-        for (int i = 0; i < byteSize; i++) {
-            checksum ^= buffer[firstOffset + i];
-        }
-        checksum = checksum & 0x000000ff;
-        checksum = checksum == 0 ? 1 : checksum;
-        buffer[firstOffset + 6] = (byte) checksum;
+        int checksum = NodeChecksum.sum(buffer, firstOffset, byteSize);
+        Bytes.ushortToBytesLE(checksum, buffer, firstOffset + 6);
 
         assert offset - firstOffset == byteSize 
                 : "offset:" + offset + ", firstOffset:" + firstOffset + ", byteSize: " + byteSize;

@@ -1,8 +1,5 @@
 package bergdb.core;
 
-// TODO LATER Refactor checksum computation. StoredKeyNode, StoredTopNode, StoredValueNode.
-// TODO LATER Use checksum checking for StoredKeyNode, StoredTopNode, StoredValueNode.
-
 import bergdb.common.Bug;
 import bergdb.common.Bytes;
 import bergdb.common.Util;
@@ -73,19 +70,8 @@ public class StoredKeyNode implements StoredNode {
             long spos = node.pointers[i] == null ? node.pos[i] : node.pointers[i].getSpos();             
             buffer[offset++] = spos;
         }
-
-        // Checksum, XOR of all bytes per long. Really fast!
-
-        long checksum = 0;
-        for (int i = firstOffset; i < offset; i++) {
-            checksum ^= buffer[i];
-        }
-
-        checksum = 0x000000ff & (
-                  (checksum >>>  0) ^ (checksum >>>  8) ^ (checksum >>> 16) ^ (checksum >>> 24) ^ 
-                  (checksum >>> 32) ^ (checksum >>> 40) ^ (checksum >>> 48) ^ (checksum >>> 56) );
         
-        checksum = checksum == 0 ? 1 : checksum;
+        long checksum = NodeChecksum.sum(buffer, firstOffset, offset - firstOffset);
         buffer[firstOffset] = buffer[firstOffset] | (checksum << (6 * 8));
 
         assert (offset - firstOffset) * 8 == byteSize;

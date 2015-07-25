@@ -487,10 +487,9 @@ public class RecoverableStream {
         
         int version = Bytes.bytesToUShortLE(header, 4);
         
-        if (version != MetaBlock.VERSION_133 && version != MetaBlock.VERSION_154) {
-            throw new VersioningStreamException("Cannot read meta block with of version " 
-                    + version + ". Versions supported: " 
-                    + MetaBlock.VERSION_133 + ", " + MetaBlock.VERSION_154);
+        if (version != MetaBlock.VERSION_154) {
+            throw new VersioningStreamException("Cannot read meta block with version " 
+                    + version + ". Version supported: " + MetaBlock.VERSION_154);
         }
         
         byte[] metaBytes = new byte[RecoverableStream.META_BLOCK_SIZE];

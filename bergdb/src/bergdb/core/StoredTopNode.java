@@ -143,14 +143,13 @@ public class StoredTopNode implements StoredNode {
     public static final int getByteSize(TopNode node) {
         return 40 + 16 * node.pointersLength;
     }
-
+    
     /**
      * Serializes the node to a long array.
      */
     public static int toLongs(TopNode node, long[] buffer, final int firstOffset) {
         int byteSize = getByteSize(node);
         int offset = firstOffset;
-        long checksum = 0;
         long l;
         final long FORMAT_VERSION = 2;     // serial format version (one byte)
         
@@ -161,43 +160,35 @@ public class StoredTopNode implements StoredNode {
                 | (FORMAT_VERSION << (5 * 8));
         
         // Room for 2 checksum bytes.
-        checksum ^= l;
+        
         buffer[offset++] = l;
 
         l = ((long) node.pointersLength) | (node.topNodeId << (2 * 8));
-        checksum ^= l;
         buffer[offset++] = l;
         // 2 bytes not used
 
-        checksum ^= node.id;
         buffer[offset++] = node.getId();
 
-        checksum ^= node.rootTime;
         buffer[offset++] = node.rootTime;
 
         // spos for the pointers
 
         long spos = node.rootPointer == null ? node.rootPointerPos : node.rootPointer.getSpos();
-        checksum ^= spos;
+        
         buffer[offset++] = spos;
 
         for (int i = 0; i < node.pointersLength; i++) {
             Node pointersNode = node.pointers[i];
             spos = pointersNode == null ? node.pointersPos[i] : pointersNode.getSpos();
-            checksum ^= spos;
             buffer[offset++] = spos;
 
             long time = pointersNode == null ? -1 : node.pointersTime[i];
-            checksum ^= time;
             buffer[offset++] = time;
         }
-
-        checksum = 0x000000ff & 
-                 ((checksum >>>  0) ^ (checksum >>>  8) ^ (checksum >>> 16) ^ (checksum >>> 24) ^ 
-                  (checksum >>> 32) ^ (checksum >>> 40) ^ (checksum >>> 48) ^ (checksum >>> 56) );
-        checksum = checksum == 0 ? 1 : checksum; // 0 used as "no checksum" indication
-
+        
+        long checksum = NodeChecksum.sum(buffer, firstOffset, offset - firstOffset);
         buffer[firstOffset] = buffer[firstOffset] | (checksum << (6 * 8));
+        
         assert (offset - firstOffset) * 8 == byteSize : "offset-firstOffset="
                 + (offset - firstOffset) + ", byteSize=" + byteSize;
         return byteSize / 8;

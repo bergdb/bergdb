@@ -128,9 +128,10 @@ First release with documented versioning.
 
             Meta        Trans   Top     Key     Value
     Write   154         2       2       2       2
-    Read    133,154     2       2       2       2
+    Read    154         2       2       2       2
 
 Changes:
 
-* Meta version updated, 133 to 154. StartupPos of the meta block was removed.
-
+* Meta version updated, 133 to 154 because: 
+    * StartupPos of the meta block was removed.
+    * Checksum algorithm for nodes was improved (now Fletcher-16).
