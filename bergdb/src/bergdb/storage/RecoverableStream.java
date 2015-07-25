@@ -109,7 +109,7 @@ public class RecoverableStream {
                     + "At least the very first meta block must be valid in a db stream.");
         }
         
-        this.metaBlock.setFromOtherMetaBlock(lastBlock);
+        metaBlock.setFromOtherMetaBlock(lastBlock);
         
         long spos;
         if (lastBlock.getLastTransSpos() == Constants.SposNULL) {
@@ -244,8 +244,6 @@ public class RecoverableStream {
         return transPos2 - transPos1;
     }
     
-    
-
     private void fixMetaBlockIfNeeded() {
         long size = aos.getLength();
         
@@ -254,9 +252,10 @@ public class RecoverableStream {
         
         if (blockPos > 0 && blockPos < RecoverableStream.META_BLOCK_SIZE) {
             // If in the middle of writing a meta block.
-            int zeroByteCount = RecoverableStream.META_BLOCK_SIZE - blockPos;
+            
+            int byteCount = RecoverableStream.META_BLOCK_SIZE - blockPos;
             try {
-                aos.append(zeros, 0, zeroByteCount);
+                aos.append(MetaBlock.FILL_OUT_TEMPLATE, blockPos, byteCount);
             } catch (IOException e) {
                 throw new StreamIoException(e);
             }
@@ -776,13 +775,30 @@ public class RecoverableStream {
             r1.append(transBytes, 0, transBytes.length - 10, false, 1);   
                 // last 10 bytes missing
             
-            long expectedSize = 3 * RecoverableStream.META_BLOCK_DISTANCE + 20 + 4 * RecoverableStream.META_BLOCK_SIZE - 10;
+            long expectedSize = 3 * RecoverableStream.META_BLOCK_DISTANCE + 20 
+                    + 4 * RecoverableStream.META_BLOCK_SIZE - 10;
             Assert.assertEquals(expectedSize, mstream.getLength());
             
             RecoverableStream r2 = new RecoverableStream(mstream, new MetaBlock());
             r2.recover();
             
             Assert.assertEquals(expectedSize + 10, mstream.getLength());
+        }
+        
+        @Nano
+        public static void crashInMetaBlockHeader() {
+            MemoryStream stream = new MemoryStream();
+            MetaBlock metaBlock = new MetaBlock();
+            RecoverableStream r1 = new RecoverableStream(stream, metaBlock);
+            byte[] transBytes = new byte[200001];
+            transBytes[transBytes.length - 1] = RecoverableStream.LAST_BYTE;
+            Bytes.intToBytesLE(transBytes.length, transBytes, 0);
+            
+            r1.append(transBytes, 0, transBytes.length, true, 1000);
+            stream.truncate(200003);
+            
+            RecoverableStream r2 = new RecoverableStream(stream, metaBlock);
+            r2.recover();
         }
         
         @Nano
@@ -924,7 +940,7 @@ public class RecoverableStream {
         
         @Nano
         public static void testReadMetaBlock3() throws IOException {
-            // Version 133 should work.
+            // Version 154 should work.
             
             MemoryStream mstream = new MemoryStream();
             MetaBlock meta = new MetaBlock();            
@@ -935,7 +951,7 @@ public class RecoverableStream {
             mstream.close();
             
             MemoryStream m = mstream.copy();
-            MemoryStream.TestAccess.write(m, new byte[]{(byte) 133, 0}, 4);
+            MemoryStream.TestAccess.write(m, new byte[]{(byte) 154, 0}, 4);
             
             RecoverableStream.readMetaBlock(m, 0);
         }

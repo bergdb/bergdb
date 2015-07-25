@@ -32,6 +32,14 @@ public class MetaBlock {
     public static final int VERSION_154 = Util.identity(154);
     private static final int CURRENT_VERSION = VERSION_154;
     
+    /** Bytes to fill-out meta block in case of a stream crash in meta block. */
+    static final byte[] FILL_OUT_TEMPLATE = new byte[RecoverableStream.META_BLOCK_SIZE];
+    
+    static {
+        System.arraycopy(MAGIC, 0, FILL_OUT_TEMPLATE, 0, 4);
+        Bytes.ushortToBytesLE(CURRENT_VERSION, FILL_OUT_TEMPLATE, 4);
+    }
+    
     private byte[] block;
     private long pos;         // stream pos, only used sometimes
     
