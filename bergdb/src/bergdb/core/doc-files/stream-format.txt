@@ -20,8 +20,8 @@ Version Numbers
 There are several stream format version numbers.
 
 
-Meta Block Version
-------------------
+Meta Format Version
+-------------------
 
 The meta block format version is the version for the format of
 the overall stream with the meta blocks and surrounding space for transactions.
@@ -50,8 +50,8 @@ See class MetaBlock for the authoritative specification of the current
 version. Also see class RecoverableStream.
 
 
-Trans Version
--------------
+Trans Format Version
+--------------------
 
 The transation format version is stored in the header of each
 transaction in the stream. The code in StoredTrans.Serializer.serialize() is the 
@@ -62,7 +62,7 @@ following format:
 
     Offset  Size    Description
     0       4       The total byte size of the transaction. Range: [5, 2^31-1].
-    4       1       Trans format version. One byte, range: [0, 127].
+    4       1       Trans format version. One byte, range: [2, 127].
     ..
     last    1       The last byte is always 10 (RecoverableStream.LAST_BYTE) for
                     a valid transaction.
@@ -75,8 +75,8 @@ See class StoredTrans for the authoritative specification of the current
 version of the format.
 
 
-Node Versions
--------------
+Node Format Versions
+--------------------
 
 Top nodes, key nodes and value nodes all have independent stream format
 version numbers. See code in StoredTopNode, StoredKeyNode, StoredValueNode.
@@ -92,7 +92,7 @@ following header.
                         20 for a key node and 30 or 40 for a value node.
                         40 is used for a delete value node.
     5       1       version - Node format version. Independent version for
-                        top nodes, key nodes and value nodes.
+                        top nodes, key nodes and value nodes. Range: [2, 127].
 
 Little-endian-first byte order is used.
 

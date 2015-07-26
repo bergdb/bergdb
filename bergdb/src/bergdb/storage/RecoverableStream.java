@@ -1,7 +1,10 @@
 package bergdb.storage;
 
 import java.io.IOException;
+
 import bergdb.common.Bytes;
+import bergdb.common.Util;
+import bergdb.core.StoredTrans;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.stream.AppendOnlyStream;
@@ -136,9 +139,6 @@ public class RecoverableStream {
      * @param spos  The stream position of a transaction in the stream.
      */
     private void fixLastTransactionIfNeeded(long spos) {
-        // TODO B. Fix needed! Consider e.g. one byte of trans only, its value 1. 
-        // Our zero-fill would make trans size equal to 1. Impossible! Trans size cannot be
-        // less than 6 for any trans format version number.
         
         while (true) {
             long remaining = getRemainingTransBytes(spos, aos.getLength());
@@ -148,10 +148,15 @@ public class RecoverableStream {
             
             assert remaining > 0 : "remaining = " + remaining;
             
-            if (remaining < 4) {
-                // Special case, transaction size not completely written.
-                // Add zero bytes to complete 4-byte size.
-                appendZeros(4 - remaining);
+            if (remaining < 5) {
+                // Special case, transaction header not completely written.
+                
+                byte[] existingBytes = new byte[(int) remaining];
+                read(spos, existingBytes, 0, existingBytes.length);
+                
+                byte[] bytesToAppend = transHeaderFixBytes(existingBytes);
+                append(bytesToAppend, 0, bytesToAppend.length, false, -1);
+                
                 remaining = getRemainingTransBytes(spos, aos.getLength());
             }
             
@@ -171,6 +176,38 @@ public class RecoverableStream {
             
             spos = getSpos(spos, transSize);
         }
+    }
+
+    private static byte[] transHeaderFixBytes(byte[] existingBytes) {
+        // If existing bytes (zero-filled) is large enough, zero-fill it.
+        // If not, add 1 and then zeros.
+        
+        byte[] fixBytes;
+        int bytesToAdd = 5 - existingBytes.length;
+        
+        if (existingBytes.length < 1 || existingBytes.length >= 5) {
+            throw new IllegalArgumentException("existingBytes: " + Util.toHexString(existingBytes));
+        }
+        
+        byte[] buffer = new byte[5];
+        System.arraycopy(existingBytes, 0, buffer, 0, existingBytes.length);
+        
+        int sizeFromBuffer = Bytes.bytesToIntLE(buffer, 0);
+        
+        boolean existingSizeTooSmall = sizeFromBuffer < 6;
+        
+        fixBytes = new byte[bytesToAdd];
+        fixBytes[fixBytes.length - 1] = StoredTrans.CURRENT_FORMAT_VERSION;
+        
+        for (int i = 0; i < bytesToAdd - 1; i++) {
+            if (existingSizeTooSmall) {
+                fixBytes[i] = (i == 0) ? (byte) 1 :  (byte) 0;
+            } else {
+                fixBytes[i] = 0;
+            }
+        }
+        
+        return fixBytes;
     }
 
     private void appendZeros(long zeroCount) {
@@ -801,6 +838,107 @@ public class RecoverableStream {
             RecoverableStream r2 = new RecoverableStream(stream, metaBlock);
             r2.recover();
         }
+        
+        @Nano
+        public static void crashInTransHeader1() {
+            // Crash in trans header when just one byte of size has been
+            // written. This bytes is 1, so size would not work if filling out
+            // with zeros only.
+            
+            MemoryStream stream = new MemoryStream();
+            MetaBlock metaBlock = new MetaBlock();
+            RecoverableStream r1 = new RecoverableStream(stream, metaBlock);
+            byte[] transBytes = new byte[1025];    // 0x00000401
+            
+            Bytes.intToBytesLE(transBytes.length, transBytes, 0);
+            transBytes[4] = StoredTrans.CURRENT_FORMAT_VERSION;
+            transBytes[transBytes.length - 1] = RecoverableStream.LAST_BYTE;
+            
+            r1.append(transBytes, 0, transBytes.length, true, 10);
+            
+            stream.truncate(META_BLOCK_SIZE + 1);
+            
+            RecoverableStream r2 = new RecoverableStream(stream, metaBlock);
+            r2.recover();
+        }
+        
+        @Nano
+        public static void crashInTransHeader2() {
+            // Crash in trans header when just two bytes of the trans size field
+            // has been written. These bytes are 1 and 0, so the size would not 
+            // work if filling out with zeros only. The trans size must be large
+            // enough to fit trans header + last byte. It must be at least 6 bytes.
+            
+            MemoryStream stream = new MemoryStream();
+            MetaBlock metaBlock = new MetaBlock();
+            RecoverableStream r1 = new RecoverableStream(stream, metaBlock);
+            byte[] transBytes = new byte[0x00010002];    // 65536 + 2
+            
+            Bytes.intToBytesLE(transBytes.length, transBytes, 0);
+            transBytes[4] = StoredTrans.CURRENT_FORMAT_VERSION;
+            transBytes[transBytes.length - 1] = RecoverableStream.LAST_BYTE;
+            
+            r1.append(transBytes, 0, transBytes.length, true, 10);
+            
+            stream.truncate(META_BLOCK_SIZE + 2);
+            
+            RecoverableStream r2 = new RecoverableStream(stream, metaBlock);
+            r2.recover();
+        }
+        
+        @Nano
+        public static void testTransHeaderFixBytes1() {
+            // Test with one existing byte that is 0.
+            
+            byte[] existing = new byte[]{0};
+            byte[] fix = transHeaderFixBytes(existing);
+            
+            byte[] total = Util.concat(existing, fix);
+            int size = Bytes.bytesToIntLE(total, 0);
+            
+            Assert.assertEquals(256, size);
+        }
+        
+        @Nano
+        public static void testTransHeaderFixBytes2() {
+            // Test with one existing byte that is large enough.
+            
+            byte[] existing = new byte[]{10};
+            byte[] fix = transHeaderFixBytes(existing);
+            
+            byte[] total = Util.concat(existing, fix);
+            int size = Bytes.bytesToIntLE(total, 0);
+            
+            Assert.assertEquals(10, size);
+        }
+        
+        @Nano
+        public static void testTransHeaderFixBytes3() {
+            // Test with two existing bytes. Size large enough as is.
+            
+            byte[] existing = new byte[]{2, 1};
+            byte[] fix = transHeaderFixBytes(existing);
+            
+            byte[] total = Util.concat(existing, fix);
+            int size = Bytes.bytesToIntLE(total, 0);
+            
+            Assert.assertEquals(256 + 2, size);
+        }
+        
+        
+        @Nano
+        public static void testTransHeaderFixBytes4() {
+            // Test with two existing bytes. Size large too small (3).
+            
+            byte[] existing = new byte[]{3, 0};
+            byte[] fix = transHeaderFixBytes(existing);
+            
+            byte[] total = Util.concat(existing, fix);
+            int size = Bytes.bytesToIntLE(total, 0);
+            
+            Assert.assertEquals(3*1 + 0*256 + 1*(256*256), size);
+        }
+        
         
         @Nano
         public static void recoverFromMiddleOfStream() {

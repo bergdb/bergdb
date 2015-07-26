@@ -30,6 +30,8 @@ import bergdb.storage.StreamFormatException;
  * @author Frans Lundberg
  */
 public class StoredTrans {
+    public final static byte CURRENT_FORMAT_VERSION = 2;    // serial format version (one byte).
+    
     /** Transaction time. */
     public final long tt;
 
@@ -507,7 +509,7 @@ public class StoredTrans {
         }
 
         private int serializeHeader(int longOffset) {
-            final long FORMAT_VERSION = 2L;    // serial format version (one byte).
+            final long FORMAT_VERSION = 2L;    // current serial format version (one byte).
             long int0 = totalSize;
             long int1 = FORMAT_VERSION;
             
