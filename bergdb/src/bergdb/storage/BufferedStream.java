@@ -11,7 +11,7 @@ import bergdb.stream.MemoryStream;
 
 /**
  * An active buffer for an AppendOnlyStream that outputs the data to an
- * underlying output stream in a separate thread once a certain time has passed
+ * underlying AppendOnlyStream in a separate thread once a certain time has passed
  * or the size of the buffered data is large enough. This object is used to
  * increase throughput by "bunch-up" of small writes into larger chunks of data.
  * It is similar to Nagle's algorithm for TCP/IP traffic. The user of the object
@@ -39,7 +39,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     private long streamLength; // underlying stream length
     private long totalLength; // total length: buffered in memory + stream
                               // length
-    private final AppendOnlyStream stream;
+    private final AppendOnlyStream stream;   // underlying stream
     private final Thread consumer;
     private long pStart; // offset for producer (absolute coordinate)
     private long cStart; // offset for consumer (absolute coordinate)
@@ -122,6 +122,10 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
      */
     public void start() {
         consumer.start();
+    }
+    
+    public AppendOnlyStream getUnderlyingStream() {
+        return stream;
     }
 
     private void runConsumer() {

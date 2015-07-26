@@ -36,6 +36,20 @@ public class CryptoKey {
         this.algo = algo;
         this.keyData = keyData;
     }
+
+    /**
+     * Returns the name of the crypto algorithm ('salsa').
+     */
+    public String getAlgo() {
+        return algo;
+    }
+    
+    /**
+     * Returns the key data specific for the algorithm used.
+     */
+    public byte[] getKeyData() {
+        return keyData;
+    }
     
     /**
      * Generates a new 256-bit key.

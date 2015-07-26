@@ -68,6 +68,10 @@ public class SalsaStream implements AppendOnlyStream {
         
         synchronized (readLock) {}    // Could be needed, in theory.
     }
+    
+    public AppendOnlyStream getUnderlyingStream() {
+        return stream;
+    }
 
     public long getLength() {
         return length;
@@ -81,7 +85,9 @@ public class SalsaStream implements AppendOnlyStream {
         synchronized (readLock) {
             long blockPos = (position / Salsa.BLOCK_SIZE) * Salsa.BLOCK_SIZE;
             long blockOffset = position % Salsa.BLOCK_SIZE;
-            assert blockPos * Salsa.BLOCK_SIZE + blockOffset == position;
+            // XXX
+            //assert blockPos * Salsa.BLOCK_SIZE + blockOffset == position 
+            //        : "pos:" + position + ", blockPos:" + blockPos + ", blockOffset:" + blockOffset;
             long lengthToRead = blockOffset + length;
             if (lengthToRead > Integer.MAX_VALUE) {
                 throw new Error("lengthToRead is too large: " + lengthToRead + ".");

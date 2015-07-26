@@ -11,7 +11,7 @@ import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
 
 /**
- * An object of this class is used to properly build a DB object.
+ * An object of this class is used to properly build a Db object.
  */
 public class DbBuilder {
     Clock clock;
@@ -61,6 +61,18 @@ public class DbBuilder {
      */
     static DbBuilder createForDb() {
         return new DbBuilder();
+    }
+    
+    public int getStreamCount() {
+        return streamInfos.size();
+    }
+    
+    public AppendOnlyStream getMainStream() {
+        if (streamInfos.size() == 0) {
+            return null;
+        } else {
+            return streamInfos.get(0).stream;
+        }
     }
 
     /**
@@ -307,7 +319,7 @@ public class DbBuilder {
 
     public Db build() {
         //
-        // At this time, we know all DB settings. Time to create the DB object.
+        // At this time, we know all Db settings. Time to create the Db object.
         //
 
         if (streamInfos.size() == 0) {

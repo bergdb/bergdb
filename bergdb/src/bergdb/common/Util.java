@@ -568,6 +568,22 @@ public class Util {
         return result;
     }
     
+    public static byte[] subarray(byte[] arr, int offset, int size) {
+        byte[] result = new byte[size];
+        System.arraycopy(arr, offset, result, 0, size);
+        return result;
+    }
+    
+    @Nano private static void testSubarray1() {
+        byte[] bytes = new byte[]{1, 2, 3, 4, 5};
+        Assert.assertArrayEquals(new byte[]{2, 3}, subarray(bytes, 1, 2));
+    }
+    
+    @Nano private static void testSubarray2() {
+        byte[] bytes = new byte[]{1, 2, 3, 4, 5};
+        Assert.assertArrayEquals(new byte[]{}, subarray(bytes, 1, 0));
+    }
+    
     private static boolean runsIkvm = false;
     private static volatile boolean runsIkvmSet = false;
     

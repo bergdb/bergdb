@@ -3,10 +3,12 @@ package bergdb.pubimp;
 import java.io.File;
 import java.io.IOException;
 
+import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.DbBuilder;
 import bergdb.core.EvictBoss;
 import bergdb.pub.Clock;
+import bergdb.pub.CryptoKey;
 import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.Duration;
@@ -15,6 +17,7 @@ import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
+import bergdb.stream.SalsaStream;
 
 /**
  * This class is used to build a Database instance.
@@ -25,6 +28,7 @@ import bergdb.stream.MemoryStream;
  */
 public class DatabaseBuilderImp implements DatabaseBuilder {
     private final DbBuilder dbBuilder;
+    private CryptoKey cryptoKey = null;
     
     public DatabaseBuilderImp() {
         dbBuilder = Db.builder();
@@ -47,6 +51,11 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     
     public DatabaseBuilder memory() {
         dbBuilder.mainStream(new MemoryStream());
+        return this;
+    }
+    
+    public DatabaseBuilder cryptoKey(CryptoKey cryptoKey) {
+        this.cryptoKey = cryptoKey;
         return this;
     }
     
@@ -115,6 +124,37 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     }
     
     public Database start() {
-        return DatabaseImp.createAndStart(dbBuilder.build());
+        if (cryptoKey != null) {
+            if (dbBuilder.getStreamCount() == 0) {
+                throw new IllegalStateException("no streams, please provide a database stream");
+            }
+            
+            AppendOnlyStream aos = dbBuilder.getMainStream();
+            String algo = cryptoKey.getAlgo();
+            
+            if (!algo.equals("salsa")) {
+                throw new IllegalStateException("Cannot encrypt with algorithm '" + algo + "'. Not supported.");
+            }
+            
+            byte[] keyData = cryptoKey.getKeyData();
+            if (keyData.length != 40) {
+                throw new IllegalStateException("Unexpected keyData length, " + keyData.length + ".");
+            }
+            
+            SalsaStream salsa;
+            
+            try {
+                salsa = new SalsaStream(aos, Util.subarray(keyData, 0, 8), Util.subarray(keyData, 8, 32));
+            } catch (IOException e) {
+                // XXX
+                throw new Error(e);
+            }
+            
+            // XXX include buffer options, possibly used in previous call...
+            dbBuilder.mainStream(salsa);
+        }
+        
+        Db db = dbBuilder.build();
+        return DatabaseImp.createAndStart(db);
     }
 }

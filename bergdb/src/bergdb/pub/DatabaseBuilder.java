@@ -27,6 +27,12 @@ public interface DatabaseBuilder {
     public DatabaseBuilder memory();
     
     /**
+     * Provide a CryptoKey to use an existing encrypted database, or start a
+     * new one using the provided encryption key.
+     */
+    public DatabaseBuilder cryptoKey(CryptoKey cryptoKey);
+    
+    /**
      * Adds a replica to the sets of database replicas.
      * 
      * @param name  Name of the storage replica.

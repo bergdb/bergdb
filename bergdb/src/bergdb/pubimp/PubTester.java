@@ -1,14 +1,18 @@
 package bergdb.pubimp;
 
+import java.io.IOException;
 import java.util.Iterator;
 
 import bergdb.common.EventToWaitFor;
+import bergdb.common.Util;
+import bergdb.core.Db;
 import bergdb.core.SyncLevel;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.Action;
 import bergdb.pub.BadReplicaException;
 import bergdb.pub.Connection;
+import bergdb.pub.CryptoKey;
 import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.Duration;
@@ -19,7 +23,9 @@ import bergdb.pub.TestClock;
 import bergdb.pub.Time;
 import bergdb.pub.Transaction;
 import bergdb.pub.WBuilder;
+import bergdb.storage.BufferedStream;
 import bergdb.stream.MemoryStream;
+import bergdb.stream.SalsaStream;
 
 /**
  * General test class for Layer Pub.
@@ -1000,5 +1006,67 @@ public class PubTester {
         Assert.assertTrue("time:" + time, time > 0.0);
         
         database.stop();
+    }
+    
+    @Nano
+    public static void testEncrypted1() throws IOException {
+        // Creates an encrypted database, makes sure beginning of encrypted bytes not
+        // same as unencrypted bytes.
+        
+        CryptoKey cryptoKey = CryptoKey.parse("8184a9f2-salsa-75ac20b68ccdbf95b9999287bc4da0caf67b4c8edc40d7615bebf1beae3578b800cfc3dfbaad319c");
+        
+        Database database = Factory.database().memory().cryptoKey(cryptoKey).start();
+        
+        DatabaseImp imp = (DatabaseImp) database;
+        BufferedStream buffered = (BufferedStream) imp.getDb().internal().getMainStream();
+        SalsaStream salsa = (SalsaStream) buffered.getUnderlyingStream();
+        MemoryStream memory = (MemoryStream) salsa.getUnderlyingStream();
+        
+        Connection c = database.connection();
+        c.put("/s1", "Hej!");
+        c.sync();
+        
+        byte[] firstEncryptedBytes = new byte[8];
+        memory.read(0, firstEncryptedBytes, 0, firstEncryptedBytes.length);
+        
+        byte[] firstUnencryptedBytes = new byte[8];
+        salsa.read(0, firstUnencryptedBytes, 0, firstUnencryptedBytes.length);
+        
+        String magic = new String(firstUnencryptedBytes, 0, 4, "UTF-8");
+        
+        Assert.assertEquals("berg", magic);
+        Assert.assertFalse(Util.areEqual(firstUnencryptedBytes, firstEncryptedBytes));
+    }
+    
+    @Nano
+    public static void testEncrypted2() throws IOException {
+        // Creates an encrypted database, writes to it, closes it, and reopens it.
+        
+        CryptoKey cryptoKey = CryptoKey.parse("8184a9f2-salsa-75ac20b68ccdbf95b9999287bc4da0caf67b4c8edc40d7615bebf1beae3578b800cfc3dfbaad319c");
+        
+        Database database = Factory.database().memory().cryptoKey(cryptoKey).start();
+        
+        DatabaseImp imp = (DatabaseImp) database;
+        BufferedStream buffered = (BufferedStream) imp.getDb().internal().getMainStream();
+        SalsaStream salsa = (SalsaStream) buffered.getUnderlyingStream();
+        MemoryStream memory = (MemoryStream) salsa.getUnderlyingStream();
+        
+        Connection c = database.connection();
+        c.put("/s1", "Hej!");
+        c.sync();
+        
+        database.stop();
+        
+        // --- Re-opens database
+        
+        MemoryStream m = memory.copy();
+        DatabaseBuilderImp builder = (DatabaseBuilderImp) Factory.database();
+        builder.stream("main", m);
+        builder.cryptoKey(CryptoKey.parse("8184a9f2-salsa-75ac20b68ccdbf95b9999287bc4da0caf67b4c8edc40d7615bebf1beae3578b800cfc3dfbaad319c"));
+        Database database2 = builder.start();
+        
+        String s = database2.connection().get("/s1", String.class);
+        
+        Assert.assertEquals("Hej!", s);
     }
 }
