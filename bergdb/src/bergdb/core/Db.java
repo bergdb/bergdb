@@ -20,11 +20,13 @@ import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
+import bergdb.pub.BadCryptoKey;
 import bergdb.pub.BadReplicaException;
 import bergdb.pub.IllegalDbStateException;
 import bergdb.pub.Job;
 import bergdb.pub.LookupTimeNotAvailableException;
 import bergdb.pub.StorageInfo;
+import bergdb.storage.BadMagicBytes;
 import bergdb.storage.BufferedStream;
 import bergdb.storage.MetaBlock;
 import bergdb.storage.RecoverableStream;
@@ -445,13 +447,20 @@ public class Db {
      * @throws StreamFormatException
      * @throws BadReplicaException
      * @throws IllegalDbStateException
+     * @throws BadCryptoKey
      */
     private void startInner(StartParams params, StartListener listener) {
         assertStateIsZero();
 
         syncStreams();
         handleEmptyStream();
-        nodeStream.recover();
+        
+        try {
+            nodeStream.recover();
+        } catch (BadMagicBytes e) {
+            throw new BadCryptoKey("Wrong crypto key used (most likely)."
+                    + " Invalid magic bytes in stream.");
+        }
         
         handleStartParams(params, listener);
         

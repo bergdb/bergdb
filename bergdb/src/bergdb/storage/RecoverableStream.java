@@ -522,6 +522,14 @@ public class RecoverableStream {
             throw new StreamIoException(e);
         }
         
+        byte[] expectedMagic = MetaBlock.MAGIC;
+        byte[] actualMagic = Util.subarray(header, 0, 4);
+        
+        if (!Util.areEqual(expectedMagic, actualMagic)) {
+            throw new BadMagicBytes("Expected magic bytes: " 
+                    + Util.toHexString(expectedMagic) + ", got: " + Util.toHexString(actualMagic));
+        }
+        
         int version = Bytes.bytesToUShortLE(header, 4);
         
         if (version != MetaBlock.VERSION_154) {

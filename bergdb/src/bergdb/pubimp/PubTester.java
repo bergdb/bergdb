@@ -5,11 +5,11 @@ import java.util.Iterator;
 
 import bergdb.common.EventToWaitFor;
 import bergdb.common.Util;
-import bergdb.core.Db;
 import bergdb.core.SyncLevel;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.Action;
+import bergdb.pub.BadCryptoKey;
 import bergdb.pub.BadReplicaException;
 import bergdb.pub.Connection;
 import bergdb.pub.CryptoKey;
@@ -1068,5 +1068,43 @@ public class PubTester {
         String s = database2.connection().get("/s1", String.class);
         
         Assert.assertEquals("Hej!", s);
+    }
+    
+    @Nano
+    public static void testEncrypted3() throws IOException {
+        // Creates an encrypted database, writes to it, closes it, and reopens it
+        // with the wrong crypto key. BadCryptoKey should be thrown.
+        
+        CryptoKey cryptoKey = CryptoKey.parse("8184a9f2-salsa-75ac20b68ccdbf95b9999287bc4da0caf67b4c8edc40d7615bebf1beae3578b800cfc3dfbaad319c");
+        
+        Database database = Factory.database().memory().cryptoKey(cryptoKey).start();
+        
+        DatabaseImp imp = (DatabaseImp) database;
+        BufferedStream buffered = (BufferedStream) imp.getDb().internal().getMainStream();
+        SalsaStream salsa = (SalsaStream) buffered.getUnderlyingStream();
+        MemoryStream memory = (MemoryStream) salsa.getUnderlyingStream();
+        
+        Connection c = database.connection();
+        c.put("/s1", "Hej!");
+        c.sync();
+        
+        database.stop();
+        
+        // --- Re-opens database
+        
+        MemoryStream m = memory.copy();
+        DatabaseBuilderImp builder = (DatabaseBuilderImp) Factory.database();
+        builder.stream("main", m);
+        builder.cryptoKey(CryptoKey.parse("8184a9f2-salsa-222222b68ccdbf95b9999287bc4da0caf67b4c8edc40d7615bebf1beae3578b800cfc3dfbaad319c"));
+        
+        BadCryptoKey ex = null;
+        
+        try { 
+            builder.start();
+        } catch (BadCryptoKey e) {
+            ex = e;
+        }
+        
+        Assert.assertTrue(ex != null);
     }
 }

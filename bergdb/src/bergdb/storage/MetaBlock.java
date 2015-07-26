@@ -27,7 +27,7 @@ import bergdb.nanotest.Nano;
  */
 public class MetaBlock {    
     private static final byte META_BLOCK_LAST_BYTE = (byte) Util.identity(10);
-    private static final byte[] MAGIC = new byte[] {'b', 'e', 'r', 'g'};
+    public static final byte[] MAGIC = new byte[] {'b', 'e', 'r', 'g'};
     public static final int VERSION_133 = Util.identity(133);
     public static final int VERSION_154 = Util.identity(154);
     private static final int CURRENT_VERSION = VERSION_154;

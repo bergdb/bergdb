@@ -62,6 +62,9 @@ public interface DatabaseBuilder {
      *             If the replica provided when creating the Database object
      *             is not a valid replica of the database. The database ID in
      *             the stream may be wrong, for example.
+     * @throws BadCryptoKey
+     *             If the wrong crypto key is used, or none is used with an encrypted
+     *             database or a crypto key is used with an unencrypted database.
      */
     public abstract Database start();
 }
