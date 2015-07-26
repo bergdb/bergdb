@@ -1,11 +1,16 @@
 package bergdb.pubimp;
 
 import bergdb.common.IPack;
+import bergdb.pub.CryptoKey;
 
 public class Pack implements IPack {
+    // It's OK to include classes from bergdb.pub. Don't want
+    // Pack class in the public Javadoc API description.
+    
     private static Class<?>[] classes = new Class<?>[] {
         BlankConstructorFactory.class,
         ConnectionImp.class,
+        CryptoKey.class,
         DatabaseImp.class,
         DbArray.class,
         DbBoolean.class,

@@ -242,7 +242,7 @@ public class Util {
     
     /**
      * Copies data from in to out as long as there is still data to read from
-     * in. The streams are never closed by this method.
+     * in. The streams are not closed by this method.
      */
     public static void copyStream(InputStream in, OutputStream out)
             throws IOException {
@@ -431,6 +431,13 @@ public class Util {
      * Returns a hex string (two lowercase hex chars per byte) given a byte array.
      */
     public static String toHexString(byte[] bytes, int offset, int length) {
+        return new String(toHexCharArray(bytes, offset, length));
+    }
+    
+    /**
+     * Returns a char array (string) with hex chars of given a byte array.
+     */
+    public static char[] toHexCharArray(byte[] bytes, int offset, int length) {
         char[] hexArray = Util.HEX_ARRAY;
         char[] hexChars = new char[length * 2];
         int v;
@@ -439,7 +446,7 @@ public class Util {
             hexChars[i*2] = hexArray[v/16];
             hexChars[i*2 + 1] = hexArray[v%16];
         }
-        return new String(hexChars);
+        return hexChars;
     }
 
     /**
