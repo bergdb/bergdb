@@ -125,36 +125,41 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     
     public Database start() {
         if (cryptoKey != null) {
-            if (dbBuilder.getStreamCount() == 0) {
-                throw new IllegalStateException("no streams, please provide a database stream");
-            }
-            
-            AppendOnlyStream aos = dbBuilder.getMainStream();
-            String algo = cryptoKey.getAlgo();
-            
-            if (!algo.equals("salsa")) {
-                throw new IllegalStateException("Cannot encrypt with algorithm '" + algo + "'. Not supported.");
-            }
-            
-            byte[] keyData = cryptoKey.getKeyData();
-            if (keyData.length != 40) {
-                throw new IllegalStateException("Unexpected keyData length, " + keyData.length + ".");
-            }
-            
-            SalsaStream salsa;
-            
-            try {
-                salsa = new SalsaStream(aos, Util.subarray(keyData, 0, 8), Util.subarray(keyData, 8, 32));
-            } catch (IOException e) {
-                // XXX
-                throw new Error(e);
-            }
-            
-            // XXX include buffer options, possibly used in previous call...
-            dbBuilder.mainStream(salsa);
+            handleCryptoKey();
         }
         
         Db db = dbBuilder.build();
         return DatabaseImp.createAndStart(db);
+    }
+
+    private void handleCryptoKey() {
+        if (dbBuilder.getStreamCount() == 0) {
+            throw new IllegalStateException("no streams, please provide a database stream");
+        }
+        
+        AppendOnlyStream aos = dbBuilder.getMainStream();
+        String algo = cryptoKey.getAlgo();
+        
+        if (!algo.equals("salsa")) {
+            throw new IllegalStateException("Cannot encrypt with algorithm '" + algo + "'. Not supported.");
+        }
+        
+        byte[] keyData = cryptoKey.getKeyData();
+        if (keyData.length != 40) {
+            throw new IllegalStateException("Unexpected keyData length, " + keyData.length + ".");
+        }
+        
+        SalsaStream salsa;
+        
+        try {
+            salsa = new SalsaStream(aos, Util.subarray(keyData, 0, 8), Util.subarray(keyData, 8, 32));
+        } catch (IOException e) {
+            throw new StreamIoException(e);
+        }
+        
+        // Note, that we do not handle buffer size, buffer time. Using defaults.
+        // This is fine now (July 2015) since those parameters are not yet exposed to Pub API.
+        
+        dbBuilder.mainStream(salsa);
     }
 }
