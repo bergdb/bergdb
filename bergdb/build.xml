@@ -181,7 +181,8 @@ Only used for developement purpose only.
             windowtitle="BergDB ${release} Pub API"
             footer="&lt;a href=&quot;http://bergdb.com/&quot;>BergDB&lt;a> release: ${release}. Copyright Frans Lundberg."
             encoding="utf-8"
-    	    stylesheetfile="in/style.css">
+    	    stylesheetfile="in/style.css"
+    	    author="no">
     	
         <packageset dir="src" defaultexcludes="yes">
             <include name="bergdb/pub/**"/>
@@ -201,7 +202,8 @@ Only used for developement purpose only.
             footer="&lt;a href=&quot;http://bergdb.com/&quot;>BergDB&lt;a> release: ${release}. Copyright Frans Lundberg."
             encoding="utf-8"
     	    linksource="no"
-	        stylesheetfile="in/style.css">
+	        stylesheetfile="in/style.css"
+    	    author="no">
     	
     	<packageset dir="src" defaultexcludes="yes">
     	    <include name="bergdb/**"/>

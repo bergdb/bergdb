@@ -69,8 +69,15 @@ public class DatabaseId {
         return result;
     }
     
-    public String toString() {
+    /**
+     * Standard way of representing the database ID as a string.
+     */
+    public String idToString() {
         return Util.toHexString(id);
+    }
+    
+    public String toString() {
+        return idToString();
     }
     
     public boolean equals(DatabaseId that) {

@@ -124,42 +124,55 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     }
     
     public Database start() {
-        if (cryptoKey != null) {
-            handleCryptoKey();
-        }
+        handleCryptoKeyAndCreatedTxt();
         
         Db db = dbBuilder.build();
         return DatabaseImp.createAndStart(db);
     }
 
-    private void handleCryptoKey() {
+    private void handleCryptoKeyAndCreatedTxt() {
+        // Note, that we do not handle buffer size, buffer time. Using defaults.
+        // This is fine now (July 2015) since those parameters are not yet exposed to Pub API.
+        
         if (dbBuilder.getStreamCount() == 0) {
             throw new IllegalStateException("no streams, please provide a database stream");
         }
         
         AppendOnlyStream aos = dbBuilder.getMainStream();
-        String algo = cryptoKey.getAlgo();
         
-        if (!algo.equals("salsa")) {
-            throw new IllegalStateException("Cannot encrypt with algorithm '" + algo + "'. Not supported.");
+        if (this.cryptoKey == null) {
+            if (aos instanceof FileStream) {
+                FileStream fileStream = (FileStream) aos;
+                dbBuilder.createdTxt(fileStream.getDir(), null);
+            }
+        } else {
+            String algo = cryptoKey.getAlgo();
+            
+            if (!algo.equals("salsa")) {
+                throw new IllegalStateException("Cannot encrypt with algorithm '" + algo + "'. Not supported.");
+            }
+            
+            byte[] keyData = cryptoKey.getKeyData();
+            if (keyData.length != 40) {
+                throw new IllegalStateException("Unexpected keyData length, " + keyData.length + ".");
+            }
+            
+            SalsaStream salsa;
+            
+            try {
+                byte[] nonce = Util.subarray(keyData, 0, 8);
+                byte[] key = Util.subarray(keyData, 8, 32);
+                salsa = new SalsaStream(aos, nonce, key);
+            } catch (IOException e) {
+                throw new StreamIoException(e);
+            }
+            
+            if (aos instanceof FileStream) {
+                FileStream fileStream = (FileStream) aos;
+                dbBuilder.createdTxt(fileStream.getDir(), cryptoKey.toStringWithMaskedKey());
+            }
+            
+            dbBuilder.mainStream(salsa);
         }
-        
-        byte[] keyData = cryptoKey.getKeyData();
-        if (keyData.length != 40) {
-            throw new IllegalStateException("Unexpected keyData length, " + keyData.length + ".");
-        }
-        
-        SalsaStream salsa;
-        
-        try {
-            salsa = new SalsaStream(aos, Util.subarray(keyData, 0, 8), Util.subarray(keyData, 8, 32));
-        } catch (IOException e) {
-            throw new StreamIoException(e);
-        }
-        
-        // Note, that we do not handle buffer size, buffer time. Using defaults.
-        // This is fine now (July 2015) since those parameters are not yet exposed to Pub API.
-        
-        dbBuilder.mainStream(salsa);
     }
 }

@@ -1117,4 +1117,17 @@ public class Util {
     public static void main(String[] args) {
         System.out.println(dateAndTime());
     }
+    
+    /**
+     * Writes bytes to new file.
+     */
+    public static void bytesToFile(byte[] bytes, File file) throws IOException {
+        FileOutputStream out = new FileOutputStream(file);
+        
+        try {
+            out.write(bytes);
+        } finally {
+            out.close();
+        }
+    }
 }

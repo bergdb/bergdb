@@ -120,12 +120,16 @@ public class CryptoKey {
         return b.toString();
     }
     
-    public String toString() {
+    public String toStringWithMaskedKey() {
         StringBuilder b = new StringBuilder();
         b.append(name);
         b.append("-" + algo);
         b.append("-****");
         return b.toString();
+    }
+    
+    public String toString() {
+        return toStringWithMaskedKey();
     }
     
     public boolean equals(Object thatObject) {

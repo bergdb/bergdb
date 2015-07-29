@@ -1,5 +1,6 @@
 package bergdb.core;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -7,6 +8,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import bergdb.common.Bug;
 import bergdb.common.NullProgressListener;
+import bergdb.common.Util;
 import bergdb.core.DbHelper.AddReplicaClass;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
@@ -137,6 +139,9 @@ public class Db {
         }
     };
 
+    private File createdTxtDir;
+    private String createdTxtCryptoKeyInfo;
+
 
     /**
      * Constructor takes a DbBuilder; it wires dependencies based on builder settings.
@@ -167,6 +172,9 @@ public class Db {
         reclaim.setRetainDuration(b.retainDurationInTimeUnits);
         
         this.databaseIdFromBuilder = b.id;
+        
+        this.createdTxtDir = b.createdTxtDir;
+        this.createdTxtCryptoKeyInfo = b.createdTxtCryptoKeyInfo;
         
         //
         // Synch note: Synchronized blocks make sure the writes in constructor are
@@ -637,11 +645,14 @@ public class Db {
      * If the stream is empty, this method creates the database id 
      * (if not given in the database builder)
      * and writes the first metablock and the primordial transaction to the stream.
+     * 
+     * @throws StreamIoException
      */
     private void handleEmptyStream() {
         if (nodeStream.getLength() == 0) {
             determineDatabaseId();            
             writePrimordialTransaction();
+            writeCreatedTxt();
         }
     }
     
@@ -692,6 +703,37 @@ public class Db {
         
         // This is needed to be able to use sync() method.
         x.lastSposOfLastTrans = trans.lastPos;
+    }
+    
+    /** 
+     * Writes created.txt if createdTxt parameters has been set in DbBuilder.
+     * 
+     * @throws StreamIoException 
+     */
+    private void writeCreatedTxt() {
+        if (createdTxtDir == null) {
+            return;
+        }
+        
+        String keyInfo = createdTxtCryptoKeyInfo == null ? 
+                "none (not encrypted)" : createdTxtCryptoKeyInfo;
+        
+        StringBuilder b = new StringBuilder();
+        b.append("This directory contains a BergDB database (see bergdb.com).\n");
+        b.append("\n");
+        b.append("creation date: " + Util.today() + "\n");
+        b.append("created with:  BergDB " + BuildInfo.RELEASE + "\n");
+        b.append("database ID:   " + databaseId.idToString() + "\n");
+        b.append("crypto key:    " + keyInfo + "\n");
+        b.append("\n");
+        
+        try {
+            byte[] stringBytes = b.toString().getBytes("UTF-8");
+            Util.bytesToFile(stringBytes, new File(createdTxtDir, "created.txt"));
+        } catch (IOException e) {
+            throw new StreamIoException(e);
+        }
+        
     }
     
     private void setVpos(Node node) {

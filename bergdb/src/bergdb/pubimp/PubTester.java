@@ -1,5 +1,6 @@
 package bergdb.pubimp;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 
@@ -8,6 +9,7 @@ import bergdb.common.Util;
 import bergdb.core.SyncLevel;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Action;
 import bergdb.pub.BadCryptoKey;
 import bergdb.pub.BadReplicaException;
@@ -1106,5 +1108,41 @@ public class PubTester {
         }
         
         Assert.assertTrue(ex != null);
+    }
+    
+    @Nano
+    private static void testCreatedTxt1(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        
+        File dir = env.createTempDir();
+        CryptoKey cryptoKey = CryptoKey.parse("8184a9f2-salsa-75ac20b68ccdbf95b9999287bc4da0caf67b4c8edc40d7615bebf1beae3578b800cfc3dfbaad319c");
+        
+        Database database = Factory.database().dir(dir.getPath()).cryptoKey(cryptoKey).start();
+        database.stop();
+        
+        File file = new File(dir, "created.txt");
+        Assert.assertTrue(file.exists());
+        
+        String s = new String(Util.fileToBytes(file.getPath()), "UTF-8");
+        Assert.assertTrue(s.contains("8184a9f2"));
+    }
+    
+    @Nano
+    private static void testCreatedTxt2(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        
+        File dir = env.createTempDir();
+        Database database = Factory.database().dir(dir.getPath()).start();
+        database.stop();
+        
+        File file = new File(dir, "created.txt");
+        Assert.assertTrue(file.exists());
+        
+        String s = new String(Util.fileToBytes(file.getPath()), "UTF-8");
+        Assert.assertTrue(s.contains("creation date"));
     }
 }

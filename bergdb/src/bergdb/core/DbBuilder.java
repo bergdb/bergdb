@@ -1,5 +1,6 @@
 package bergdb.core;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,6 +22,8 @@ public class DbBuilder {
     long retainDurationInTimeUnits;
     DatabaseId id;
     List<DbBuilder.StreamInfo> streamInfos = new ArrayList<DbBuilder.StreamInfo>();
+    File createdTxtDir;
+    String createdTxtCryptoKeyInfo;
     
     static class StreamInfo {
         String name;
@@ -285,6 +288,19 @@ public class DbBuilder {
             streamInfos.set(index, info);     // replaces previous value
         }
         
+        return this;
+    }
+    
+    /**
+     * If called, the database will (of possible) create a created.txt file in the
+     * database directory.
+     * 
+     * @param dir  The directory to create the file in.
+     * @param cryptoKeyInfo  Information about the crypto key used or null if encryption is not used.
+     */
+    public DbBuilder createdTxt(File dir, String cryptoKeyInfo) {
+        this.createdTxtDir = dir;
+        this.createdTxtCryptoKeyInfo = cryptoKeyInfo;
         return this;
     }
 

@@ -10,8 +10,10 @@ import bergdb.common.Util;
 import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
+import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.OneFileStream;
 import bergdb.stream.ReadOnlyStream;
@@ -389,6 +391,7 @@ public class DbTesterStream {
         }
     }
     
+    @Nano
     public static void testDbOnFileMultipleTransactions() throws FileNotFoundException, IOException {
         
         if (Util.runsAndroid()) {
@@ -423,6 +426,29 @@ public class DbTesterStream {
         Assert.assertNull(value);
         
         f.delete();
+    }
+    
+    @Nano
+    private static void testCreatedTxt(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        
+        File dir = env.createTempDir();
+        
+        FileStream fileStream = new FileStream(dir);
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup(fileStream).clock(clock).createdTxt(dir, null).start();
+        clock.setTime(10);
+        db.execute(db.trans().put("k", "k-value"));
+        db.sync(SyncLevel.ORDINARY);
+        db = null;
+        
+        File file = new File(dir, "created.txt");
+        Assert.assertTrue(file.exists());
+        
+        String s = new String(Util.fileToBytes(file.getPath()), "UTF-8");
+        Assert.assertTrue(s.toLowerCase().contains("crypto key"));
     }
     
     public static void testOverwriteAndRestart() {

@@ -7,10 +7,6 @@ package bergdb.pub;
  */
 public interface StartupInfo {
     
-    // TODO D. Add wasCreated().
-    // TODO D. Add getDatabaseId() [if not available from Db directly]
-    
-    
     /**
      * Returns the startup jobs if any.
      */
@@ -20,5 +16,4 @@ public interface StartupInfo {
      * Returns the number of seconds it took to start the database.
      */
     public double getStartupDuration();
-    
 }

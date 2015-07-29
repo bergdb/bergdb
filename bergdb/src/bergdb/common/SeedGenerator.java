@@ -138,8 +138,14 @@ public class SeedGenerator {
     }
     
     private void addData(String s) {
-        for (int i = 0; i < s.length(); i++) {
-            addData(s.charAt(i));
+        // 123456 is completely arbitrary.
+        
+        if (s == null) {
+            addData(123456);
+        } else {
+            for (int i = 0; i < s.length(); i++) {
+                addData(s.charAt(i));
+            }
         }
     }
 

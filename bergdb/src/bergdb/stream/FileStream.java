@@ -53,7 +53,7 @@ public class FileStream implements AppendOnlyStream {
     /** File size index for 2G. */
     private static final int INDEX_2G = 6;
     
-    private File dir;
+    private final File dir;
     private long firstPos = 0;
     private long length = 0;
     private int fileSizeIndex = 0;
@@ -68,12 +68,6 @@ public class FileStream implements AppendOnlyStream {
     
     /** If null, this stream should be considered faulty and not used any further. */
     private volatile IOException ioException = null;
-    
-    /**
-     * We do not want to use constructors for this (for better naming possibility), 
-     * so we make the default one private.
-     */
-    private FileStream() {};
     
     /**
      * Creates a new stream if it does not exist or opens an existing one if it exists.
@@ -95,20 +89,8 @@ public class FileStream implements AppendOnlyStream {
         handleFiles();
     }
     
-    /**
-     * @deprecated
-     */
-    public static FileStream create(File dir) throws IOException {
-        if (dir == null) {
-            throw new IllegalArgumentException("dir == null not allowed");
-        }
-        
-        FileStream f = new FileStream();
-        f.dir = dir;
-        f.createDirIfNeeded();
-        f.handleFiles();
-        
-        return f;
+    public File getDir() {
+        return dir;
     }
     
     /**
@@ -835,7 +817,7 @@ public class FileStream implements AppendOnlyStream {
         // Simple test.
         File dir = c.createTempDir();
         assert dir != null : "dir is null";
-        FileStream f = FileStream.create(dir);
+        FileStream f = new FileStream(dir);
         Assert.assertEquals(0, f.getFirstPos());
         Assert.assertEquals(0, f.getLength());
         f.close();
@@ -846,7 +828,7 @@ public class FileStream implements AppendOnlyStream {
         // Like test0() but appends a single byte and reads it back.
         byte[] bytes = new byte[] {123};
         File dir = c.createTempDir();
-        FileStream f = FileStream.create(dir);
+        FileStream f = new FileStream(dir);
         f.append(bytes, 0, bytes.length);
         Assert.assertEquals(0, f.getFirstPos());
         Assert.assertEquals(1, f.getLength());
@@ -860,12 +842,12 @@ public class FileStream implements AppendOnlyStream {
     public static void testRestart0(TestEnvironment c) throws IOException {
         byte[] bytes = new byte[] {123};
         File dir = c.createTempDir();
-        FileStream f = FileStream.create(dir);
+        FileStream f = new FileStream(dir);
         f.append(bytes, 0, bytes.length);
         f.close();
         f = null;
         
-        FileStream f2 = FileStream.create(dir);
+        FileStream f2 = new FileStream(dir);
         byte[] b = new byte[1];
         f2.read(0, b, 0, 1);
         f2.close();
@@ -877,7 +859,7 @@ public class FileStream implements AppendOnlyStream {
         // Tests starting a FileStream in directory with a missing file.
         byte[] bytes = new byte[500*1000];     // 3 stream files
         File dir = c.createTempDir();
-        FileStream f = FileStream.create(dir);
+        FileStream f = new FileStream(dir);
         f.append(bytes, 0, bytes.length);
         f.close();
         f = null;
@@ -890,7 +872,7 @@ public class FileStream implements AppendOnlyStream {
         
         Exception ex = null;
         try {
-            FileStream f2 = FileStream.create(dir);
+            FileStream f2 = new FileStream(dir);
             f2.close();
         } catch (BadDirStateException e) {
             ex = e;
@@ -903,7 +885,7 @@ public class FileStream implements AppendOnlyStream {
     public static void testBigAppend0(TestEnvironment c) throws IOException {
         byte[] bytes = new byte[10*1000];
         File dir = c.createTempDir();
-        FileStream f = FileStream.create(dir);
+        FileStream f = new FileStream(dir);
         f.append(bytes, 0, bytes.length);
         bytes = new byte[234*1000];
         f.append(bytes, 0, bytes.length);
@@ -925,7 +907,7 @@ public class FileStream implements AppendOnlyStream {
     
     @Nano
     public static void testSeekFirstPos0(TestEnvironment c) throws IOException {
-        FileStream f = FileStream.create(c.createTempDir());
+        FileStream f = new FileStream(c.createTempDir());
         f.seekFirstPos(200*1000 * 30);
         Assert.assertEquals(200*1000 * 30, f.getLength());
         Assert.assertEquals(200*1000 * 30, f.getFirstPos());
@@ -935,7 +917,7 @@ public class FileStream implements AppendOnlyStream {
     @Nano
     public static void testSeekFirstPos1(TestEnvironment c) throws IOException {
         byte[] bytes = new byte[300*1000];
-        FileStream f = FileStream.create(c.createTempDir());
+        FileStream f = new FileStream(c.createTempDir());
         f.append(bytes, 0, bytes.length);
         f.seekFirstPos(200*1000 * 5);
         Assert.assertEquals(200*1000 * 5, f.getLength());
@@ -950,7 +932,7 @@ public class FileStream implements AppendOnlyStream {
     
     @Nano
     public static void testPretruncate0(TestEnvironment c) throws Exception {
-        FileStream f = FileStream.create(c.createTempDir());            
+        FileStream f = new FileStream(c.createTempDir());            
         byte[] bytes = new byte[500*1000];
         f.append(bytes, 0, bytes.length);
         Assert.assertEquals(3, f.dbFiles.length);
@@ -969,7 +951,7 @@ public class FileStream implements AppendOnlyStream {
         byte[] bytes1 = new byte[201*1000];
         r.nextBytes(bytes1);
         
-        FileStream f = FileStream.create(dir);
+        FileStream f = new FileStream(dir);
         f.append(bytes1, 0, bytes1.length);
         
         byte[] bytes2 = new byte[bytes1.length];
@@ -986,7 +968,7 @@ public class FileStream implements AppendOnlyStream {
         byte[] bytes1 = new byte[201*1000];
         r.nextBytes(bytes1);
         
-        FileStream f = FileStream.create(dir);
+        FileStream f = new FileStream(dir);
         f.append(bytes1, 0, bytes1.length);
         
         byte[] bytes2 = new byte[bytes1.length - 10];
@@ -1003,7 +985,7 @@ public class FileStream implements AppendOnlyStream {
     public static void tFileSizeIncrease(TestEnvironment c) throws IOException {
         File dir = c.createTempDir();
         byte[] bytes = new byte[100*1000];
-        FileStream f = FileStream.create(dir);
+        FileStream f = new FileStream(dir);
         
         for (int i = 0; i < 50; i++) {
             f.append(bytes, 0, bytes.length);
@@ -1019,7 +1001,7 @@ public class FileStream implements AppendOnlyStream {
     public static void main(String[] args) throws IOException, InterruptedException {
         File dir = new File("temp-FileStream");
         byte[] bytes = new byte[100*1000];
-        FileStream f = FileStream.create(dir);
+        FileStream f = new FileStream(dir);
         
         for (int i = 0; i < 50; i++) {
             f.append(bytes, 0, bytes.length);
