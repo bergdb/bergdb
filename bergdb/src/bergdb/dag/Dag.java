@@ -12,10 +12,6 @@ import bergdb.pub.IllegalDbStateException;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 
-// TODO LATER does it work to change maxNodeSize from large to small? Will we just have 
-// lots of splits to start with, or will it fail? Is it something to fix per created database?
-// Actually, this setting is currently (2014-09) not even exposed to Pub API user.
-
 /**
  * <p>The DAG (directed acyclic graph) is the main data structure of the database.
  * An instance of this class handles the in-memory (cached) part of the DAG.</p>

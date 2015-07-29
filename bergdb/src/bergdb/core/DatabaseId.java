@@ -8,7 +8,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * A 16-byte (128-bit) database ID. An immutable class.
+ * Immutable 16-byte (128-bit) database ID.
  * 
  * @author Frans Lundberg
  */
@@ -77,7 +77,7 @@ public class DatabaseId {
         return Util.areEqual(this.id, that.id);
     }
     
-    public boolean isCreateLaterMarker() {
+    boolean isCreateLaterMarker() {
         return type == Type.CREATE_LATER;
     }
     

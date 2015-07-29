@@ -3,14 +3,14 @@ package bergdb.pubimp;
 import java.util.List;
 
 import bergdb.pub.Job;
-import bergdb.pub.StartInfo;
+import bergdb.pub.StartupInfo;
 
 /**
  * Information about the database startup.
  * 
  * @author Frans Lundberg
  */
-public class StartInfoImp implements StartInfo {
+public class StartInfoImp implements StartupInfo {
     private Job[] startJobs;
     private double startTime;
     
@@ -19,11 +19,11 @@ public class StartInfoImp implements StartInfo {
         this.startTime = startTime;
     }
     
-    public Job[] getStartJobs() {
+    public Job[] getStartupJobs() {
         return startJobs.clone();
     }
     
-    public double getStartTime() {
+    public double getStartupDuration() {
        return startTime;
     }
 }

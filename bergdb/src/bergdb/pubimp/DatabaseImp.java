@@ -17,7 +17,7 @@ import bergdb.pub.IndexAlreadyExistsException;
 import bergdb.pub.IndexBuilder;
 import bergdb.pub.Job;
 import bergdb.pub.JobStatus;
-import bergdb.pub.StartInfo;
+import bergdb.pub.StartupInfo;
 import bergdb.pub.StorageInfo;
 import bergdb.pub.Time;
 import bergdb.storage.StorageManager;
@@ -37,7 +37,7 @@ public class DatabaseImp implements Database {
     // initializing state that can be customized by the Pub user. But is it required?
     //
     private final Db db;
-    private StartInfoImp startInfo;
+    private StartInfoImp startupInfo;
     private final IndexManager indexManager;
     private final ConnectionInitializer connectionInitializer;
         // "final" for now. Could become a setting.
@@ -86,7 +86,7 @@ public class DatabaseImp implements Database {
         ConnectionImp connection = new ConnectionImp(database);
         database.indexManager.initFromDatabase(connection);
         List<Job> jobs = database.indexManager.finishOngoingJobs(database);        
-        database.startInfo = new StartInfoImp(jobs, startTime);
+        database.startupInfo = new StartInfoImp(jobs, startTime);
         
         return database;
     }
@@ -146,8 +146,8 @@ public class DatabaseImp implements Database {
         db.sync(0, syncLevel);
     }
     
-    public StartInfo getStartInfo() {
-        return startInfo;
+    public StartupInfo getStartupInfo() {
+        return startupInfo;
     }
     
     public synchronized void stop() {

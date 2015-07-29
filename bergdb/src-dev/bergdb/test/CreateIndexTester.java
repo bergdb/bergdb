@@ -141,7 +141,7 @@ public class CreateIndexTester {
         database = builder.start();
         c = database.connection();
         
-        Job[] jobs = database.getStartInfo().getStartJobs();
+        Job[] jobs = database.getStartupInfo().getStartupJobs();
         Assert.assertEquals("start() jobs.size()", 1, jobs.length);
         job = jobs[0];
         coll.out().println("Job status: " + job.getStatus().note());

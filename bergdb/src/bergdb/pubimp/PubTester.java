@@ -1002,7 +1002,7 @@ public class PubTester {
     @Nano
     public static void testStartupInfoTime() {
         Database database = Factory.database().memory().start();        
-        double time = database.getStartInfo().getStartTime();
+        double time = database.getStartupInfo().getStartupDuration();
         Assert.assertTrue("time:" + time, time > 0.0);
         
         database.stop();

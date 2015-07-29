@@ -24,7 +24,7 @@ public interface Database {
     /**
      * Returns information about the startup of this database.
      */
-    public StartInfo getStartInfo();
+    public StartupInfo getStartupInfo();
 
     /**
      * <p>Stops the database - requests that resources allocated by this Database are eventually
