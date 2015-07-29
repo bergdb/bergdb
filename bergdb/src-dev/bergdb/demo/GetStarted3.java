@@ -1,11 +1,6 @@
 package bergdb.demo;
 import bergdb.pub.*;
 
-/**
- * Demo class, iterates the objects stored with GetStarted2.
- * 
- * @author Frans Lundberg
- */
 public class GetStarted3 {
     public static void main(String[] args) throws java.io.IOException {
         Database db = Factory.database().dir("db-GetStarted2").start();
@@ -29,3 +24,9 @@ public class GetStarted3 {
         }
     }
 }
+
+/*
+ * Demo class.
+ * 
+ * @author Frans Lundberg
+ */

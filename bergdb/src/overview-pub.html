@@ -3,9 +3,63 @@
 <body>
 
 <p>The Pub API is a small, but powerful API that should make it easy for you
-to store Java/.NET objects directly from your code.</p>
+to store data. The goal is to keep things simple so that you can focus on your
+specific application rather than on struggling with database issues. 
+BergDB is a database library, it is used in-process together with your 
+application code.</p>
 
-<p>BergDB is a database library, it is used in-process together with your specific domain code.</p>
+<pre>
+// Example code:
+// A complete program to put/get/delete a string under the name (key) "/a".
+
+package bergdb.demo;
+
+import bergdb.pub.Connection;
+import bergdb.pub.Database;
+import bergdb.pub.Factory;
+
+class Demo {
+    private static void put() {
+        Connection c = createDatabase();
+        c.put("/a", "value");
+        c.sync();
+    }
+    
+    private static void get() {
+        Connection c = createDatabase();
+        System.out.println(c.get("/a", String.class));
+    }
+
+    private static void delete() {
+        Connection c = createDatabase();
+        c.delete("/a");
+        c.sync();        
+    }
+    
+    private static Connection createDatabase() {
+        Database database = Factory.database().dir("db-demo").start();
+        return database.connection();
+    }
+    
+    public static void main(String[] args) {
+        if (args.length == 0) {
+            System.out.println("Use one of: put, get, delete.");
+            return;
+        }
+        
+        if (args[0].equals("put")) {
+            put();
+        } else if (args[0].equals("get")) {
+            get();
+        } else if (args[0].equals("delete")) {
+            delete();
+        } else {
+            System.out.println("Bad command.");
+        }
+    }
+}
+</pre>
+
 
 <p>&nbsp;</p>
 
