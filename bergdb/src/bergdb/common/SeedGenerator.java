@@ -66,7 +66,23 @@ public class SeedGenerator {
     }
     
     private void addStackTrace() {
-        Map<Thread, StackTraceElement[]> traces = Thread.getAllStackTraces();
+        // The strange try-clause is needed for it to work with IKVM.
+        
+        Map<Thread, StackTraceElement[]> traces = null;
+        
+        try {
+            traces = Thread.getAllStackTraces();
+        } catch (Throwable e) {
+            // IKVM (sometimes) says:
+            // "cli.System.NotImplementedException: The requested feature is not implemented."
+            
+            if (!e.getClass().getSimpleName().equals("NotImplementedException")) {
+                throw new RuntimeException(e);
+            }
+            
+            return;
+        }
+        
         Set<Thread> threads = traces.keySet();
         
         addData(threads.size());
