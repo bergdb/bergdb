@@ -58,11 +58,7 @@ public class Info {
         out.println("---- Runtime ----");
         
         Runtime r = Runtime.getRuntime();
-        out.println("availableProcessors: " + r.availableProcessors());
-        out.println("freeMemory: " + r.freeMemory());
-        out.println("totalMemory: " + r.totalMemory());
-        out.println("maxMemory: " + r.maxMemory());
-        
+        out.println("availableProcessors: " + r.availableProcessors());        
         out.println("Util.runsIkvm(): " + Util.runsIkvm());
         out.println("Util.runsGcj(): " + Util.runsGcj());
         out.println("Util.runsAndroid(): " + Util.runsAndroid());
