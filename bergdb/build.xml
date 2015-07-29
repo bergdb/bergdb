@@ -60,9 +60,21 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
 
 	<javac srcdir="src" destdir="out/classes" source="1.5" target="1.5" includeantruntime="false"
 	       fork="true" executable="${javac}"/>
+	<copy todir="out/classes">
+	    <fileset dir="src">
+	        <exclude name="**/*.html"/>
+	    	<exclude name="**/*.java"/>
+	    </fileset>
+	</copy>
 
 	<javac srcdir="src-dev" destdir="out/classes" source="1.5" target="1.5" includeantruntime="false"
 	       fork="true" executable="${javac}"/>
+	<copy todir="out/classes">
+        <fileset dir="src-dev">
+		    <exclude name="**/*.html"/>
+        	<exclude name="**/*.java"/>
+	    </fileset>
+	</copy>
 
 	<javac srcdir="src-icu" destdir="out/classes" source="1.5" target="1.5" includeantruntime="false"
 	       fork="true" executable="${javac}"
@@ -92,7 +104,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
 
     <jar jarfile="out/bergdb.jar" manifest="out/MANIFEST.MF">
         <fileset dir="out/classes">
-            <include name="bergdb/**/*.class"/>   <!-- Only classfiles, no resources. -->
+            <include name="bergdb/**"/>
         </fileset>
         <zipfileset src="in/icu-for-bergdb.jar"/>
     </jar>
@@ -109,7 +121,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
     <jar jarfile="out/bergdb-no-icu.jar"
             manifest="out/MANIFEST.MF">
         <fileset dir="out/classes">
-            <include name="bergdb/**/*.class"/>     <!-- Only classfiles. -->
+            <include name="bergdb/**.class"/>
             <exclude name="bergdb/pubimpicu/**"/>   <!-- Must be omitted. -->
         </fileset>
     </jar>
