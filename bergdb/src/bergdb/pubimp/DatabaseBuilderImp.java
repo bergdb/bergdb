@@ -7,6 +7,8 @@ import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.DbBuilder;
 import bergdb.core.EvictBoss;
+import bergdb.nanotest.Assert;
+import bergdb.nanotest.Nano;
 import bergdb.pub.Clock;
 import bergdb.pub.CryptoKey;
 import bergdb.pub.Database;
@@ -123,6 +125,19 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         return this;
     }
     
+    public DatabaseBuilder startupDistanceInMb(int startupDistanceInMb) {
+        if (startupDistanceInMb < 5) {
+            startupDistanceInMb = 5;
+        }
+        
+        if (startupDistanceInMb > 1000) {
+            startupDistanceInMb = 1000;
+        }
+        
+        dbBuilder.startupDistance(startupDistanceInMb * 1000000);
+        return this;
+    }
+    
     public Database start() {
         handleCryptoKeyAndCreatedTxt();
         
@@ -174,5 +189,20 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
             
             dbBuilder.mainStream(salsa);
         }
+    }
+    
+    
+    // ======== Testing ========
+    
+    @Nano private static void testStartupDistance1() {
+        DatabaseBuilderImp b = new DatabaseBuilderImp();
+        b.startupDistanceInMb(7);
+        Assert.assertEquals(7*1000000, b.getDbBuilder().getStartupDistance());
+    }
+    
+    @Nano private static void testStartupDistance2() {
+        DatabaseBuilderImp b = new DatabaseBuilderImp();
+        b.startupDistanceInMb(2);
+        Assert.assertEquals(5*1000000, b.getDbBuilder().getStartupDistance());
     }
 }

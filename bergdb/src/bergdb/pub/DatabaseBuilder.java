@@ -51,6 +51,17 @@ public interface DatabaseBuilder {
      * Sets the wanted retain duration.
      */
     public DatabaseBuilder retainDuration(Duration duration);
+    
+    /**
+     * Sests the startup distance to a non-default value.
+     * A small startup distance may decrease database startup time; while a larger
+     * startup distance may improve the overall database performance.
+     * For a low-end PC, a value of 5 is reasonable, while a high-end server may use 50.
+     * 
+     * @param startupDistanceInMb    The startup distance in megabytes (mega = 1000000). 
+     *                               Value should be between 5 and 80.
+     */
+    public DatabaseBuilder startupDistanceInMb(int startupDistanceInMb);
 
     /**
      * Starts the database. When this method returns, connections to the

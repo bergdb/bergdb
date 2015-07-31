@@ -157,6 +157,10 @@ public class DbBuilder {
         this.startupDistance = startupDistance;
         return this;
     }
+    
+    public int getStartupDistance() {
+        return this.startupDistance;
+    }
 
     /**
      * Use the system clock (System.currentTimeMillis()) as the database

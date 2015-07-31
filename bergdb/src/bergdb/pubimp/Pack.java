@@ -11,6 +11,7 @@ public class Pack implements IPack {
         BlankConstructorFactory.class,
         ConnectionImp.class,
         CryptoKey.class,
+        DatabaseBuilderImp.class,
         DatabaseImp.class,
         DbArray.class,
         DbBoolean.class,
