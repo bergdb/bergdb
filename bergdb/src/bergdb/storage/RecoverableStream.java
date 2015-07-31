@@ -186,7 +186,7 @@ public class RecoverableStream {
         int bytesToAdd = 5 - existingBytes.length;
         
         if (existingBytes.length < 1 || existingBytes.length >= 5) {
-            throw new IllegalArgumentException("existingBytes: " + Util.toHexString(existingBytes));
+            throw new IllegalArgumentException("existingBytes: " + Util.toHex(existingBytes));
         }
         
         byte[] buffer = new byte[5];
@@ -527,7 +527,7 @@ public class RecoverableStream {
         
         if (!Util.areEqual(expectedMagic, actualMagic)) {
             throw new BadMagicBytes("Expected magic bytes: " 
-                    + Util.toHexString(expectedMagic) + ", got: " + Util.toHexString(actualMagic));
+                    + Util.toHex(expectedMagic) + ", got: " + Util.toHex(actualMagic));
         }
         
         int version = Bytes.bytesToUShortLE(header, 4);

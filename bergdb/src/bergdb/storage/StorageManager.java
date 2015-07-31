@@ -214,8 +214,8 @@ public class StorageManager implements AppendOnlyStream {
                 }
                                         
                 if (!Util.areEqual(mainId, replicaId)) {
-                    throw new BadReplicaException("ID of replica stream (" + Util.toHexString(replicaId)
-                            + ") does not match database ID (" + Util.toHexString(mainId) + ").");
+                    throw new BadReplicaException("ID of replica stream (" + Util.toHex(replicaId)
+                            + ") does not match database ID (" + Util.toHex(mainId) + ").");
                 }
             }
         }

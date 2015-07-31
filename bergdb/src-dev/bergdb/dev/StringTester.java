@@ -49,7 +49,7 @@ public class StringTester {
         System.out.println("Prints ASCII control chars, 0 - 34.");
         for (int i = 0; i <= 34; i++) {
             byte b = (byte) i;
-            String hex = Util.toHexString(new byte[]{b});
+            String hex = Util.toHex(new byte[]{b});
             hex = "0x" + hex;
             System.out.println(i + ", " + hex + ", BEFORE'" + ((char) i + "'AFTER"));
         }

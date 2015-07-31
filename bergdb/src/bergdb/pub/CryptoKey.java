@@ -59,7 +59,7 @@ public class CryptoKey {
         
         byte[] nameBytes = new byte[4];
         random.nextBytes(nameBytes);
-        String name = Util.toHexString(nameBytes);
+        String name = Util.toHex(nameBytes);
         
         String algo = "salsa";
         
@@ -116,7 +116,7 @@ public class CryptoKey {
         StringBuilder b = new StringBuilder();
         b.append(name);
         b.append("-" + algo);
-        b.append("-" + Util.toHexString(keyData));
+        b.append("-" + Util.toHex(keyData));
         return b.toString();
     }
     

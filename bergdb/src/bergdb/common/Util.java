@@ -420,17 +420,17 @@ public class Util {
     /**
      * Returns a hex string (two lowercase hex chars per byte) given a byte array.
      */
-    public static String toHexString(byte[] bytes) {
+    public static String toHex(byte[] bytes) {
         if (bytes == null) {
             throw new IllegalArgumentException("bytes == null not allowed");
         }
-        return toHexString(bytes, 0, bytes.length);
+        return toHex(bytes, 0, bytes.length);
     }
     
     /**
      * Returns a hex string (two lowercase hex chars per byte) given a byte array.
      */
-    public static String toHexString(byte[] bytes, int offset, int length) {
+    public static String toHex(byte[] bytes, int offset, int length) {
         return new String(toHexCharArray(bytes, offset, length));
     }
     
@@ -455,7 +455,7 @@ public class Util {
     public static String toHexString(long l) {
         byte[] bytes = new byte[8];
         Bytes.longToBytesBE(l, bytes, 0);
-        return toHexString(bytes);
+        return toHex(bytes);
     }
     
     private static int hexCharToInt(char c) {
@@ -519,7 +519,7 @@ public class Util {
         arrays[2] = b;
         
         for (int i = 0; i < arrays.length; i++) {
-            String hex = Util.toHexString(arrays[i]);
+            String hex = Util.toHex(arrays[i]);
             byte[] back = Util.hexStringToBytes(hex);
             Assert.assertArrayEquals(arrays[i], back);
         }

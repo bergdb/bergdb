@@ -73,7 +73,7 @@ public class DatabaseId {
      * Standard way of representing the database ID as a string.
      */
     public String idToString() {
-        return Util.toHexString(id);
+        return Util.toHex(id);
     }
     
     public String toString() {

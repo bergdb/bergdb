@@ -53,6 +53,7 @@ public class DbStarter {
     private final long startupPos;
     private final long startupTime;
     
+    
     private DbStarter(Db db, List<StoredTrans> transactions, long accessData, 
             NodeReader nodeReader, int maxNodeSize) {
         if (nodeReader == null) throw new IllegalArgumentException("nodeReader == null not allowed");

@@ -433,11 +433,11 @@ public class Salsa {
         
         Salsa s0 = new Salsa(nonce, key);
         s0.append(data3, 0, out0, 0, 3);
-        String res0 = Util.toHexString(out0, 0, 3);
+        String res0 = Util.toHex(out0, 0, 3);
         
         Salsa s1 = new Salsa(nonce, key);
         s1.append(data, 0, out1, 0, data.length);
-        String res1 = Util.toHexString(out1, 0, 3);
+        String res1 = Util.toHex(out1, 0, 3);
         
         Assert.assertEquals("first 3 bytes", res0, res1);
     }

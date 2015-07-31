@@ -186,9 +186,9 @@ public final class ValueNode implements Node {
                 }
             } else {
                 if (value.length <= 10) {
-                    result = Util.toHexString(value);
+                    result = Util.toHex(value);
                 } else {
-                    result = Util.toHexString(value, 0, 10) + "...(" + value.length + ")";
+                    result = Util.toHex(value, 0, 10) + "...(" + value.length + ")";
                 }
             }
         }

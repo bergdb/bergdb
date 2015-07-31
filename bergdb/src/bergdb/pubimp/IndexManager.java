@@ -577,22 +577,22 @@ public class IndexManager {
         
         if (separatorIndex == -1) {
             throw new InternalDataException("Bad index key: " + Util.toString(keyBytes) + ", " 
-                    + Util.toHexString(keyBytes));
+                    + Util.toHex(keyBytes));
         }
         
         if (separatorIndex == 0 || separatorIndex == keyBytes.length - 1) {
             throw new InternalDataException("Bad index key (separatorIndex): " 
-                    + Util.toString(keyBytes) + ", " + Util.toHexString(keyBytes));
+                    + Util.toString(keyBytes) + ", " + Util.toHex(keyBytes));
         }
         
         int dirId = keyBytes[separatorIndex + 1] - 1;
         if (dirId < 0) {
             throw new InternalDataException("Bad index key (bad dirId): " 
-                    + Util.toString(keyBytes) + ", " + Util.toHexString(keyBytes));
+                    + Util.toString(keyBytes) + ", " + Util.toHex(keyBytes));
         }
         if (dirId >= index.dirs.length) {
             throw new InternalDataException("Bad index key (bad dirId, too big): " 
-                    + Util.toString(keyBytes) + ", " + Util.toHexString(keyBytes));
+                    + Util.toString(keyBytes) + ", " + Util.toHex(keyBytes));
         }
         
         int length = keyBytes.length - (separatorIndex + 2);

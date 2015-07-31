@@ -1265,7 +1265,7 @@ public class KeyNode implements Node {
             if (Keys.isPrintableAscii(bytes)) {
                 result = Keys.toString(bytes);
             } else {
-                result = "#" + Util.toHexString(bytes);
+                result = "#" + Util.toHex(bytes);
             }
         }
         

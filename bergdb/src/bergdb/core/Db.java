@@ -473,8 +473,8 @@ public class Db {
         handleStartParams(params, listener);
         
         long startupPos = x.startupPos.get();
-        
         ArrayList<StoredTrans> transactions = readTransactions(startupPos);
+        
         listener.reportStartupTransactions(transactions);
         setLastTransTimeOfDbClock(transactions);
         
@@ -1567,11 +1567,13 @@ public class Db {
         public void reportStartupDistance(long startupDistance);
         public void reportStartPos(long startPos);
         public void reportStartupTransactions(ArrayList<StoredTrans> transactions);
+        public void log(String message);
         
         public static final StartListener DO_NOTHING = new StartListener() {
             public void reportStartupDistance(long startupDistance) {}
             public void reportStartPos(long startPos) {}
             public void reportStartupTransactions(ArrayList<StoredTrans> transactions) {}
+            public void log(String message) {}
         };
     }
     
@@ -1604,6 +1606,19 @@ public class Db {
                     p.println("  " + n);
                 }
             }
+        }
+        
+        public void log(String message) {
+            p.println(message);
+        }
+    }
+    
+    public static class PrintLogStartListener implements StartListener {
+        public void reportStartupDistance(long startupDistance) {}
+        public void reportStartPos(long startPos) {}
+        public void reportStartupTransactions(ArrayList<StoredTrans> transactions) {}
+        public void log(String message) {
+            System.out.println(message);
         }
     }
     
