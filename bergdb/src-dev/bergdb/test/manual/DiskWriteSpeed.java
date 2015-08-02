@@ -134,7 +134,8 @@ public class DiskWriteSpeed {
     }
 
     private void printHelp() {
-        System.out.println("Options:\n");
+        System.out.println("Options:");
+        System.out.println("  -help  Print help.");
         System.out.println("  -time  Number of seconds to write data.");
         System.out.println("  -mb    MB of data to write (use one of 'time' and 'mb').");
         System.out.println("  -sync  true/false, use / don't use sync system command.");
