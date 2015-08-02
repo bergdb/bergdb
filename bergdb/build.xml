@@ -83,14 +83,13 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
 </target>
 
 	
-<target name="jar" depends="init, compile" description="Creates out/bergdb.jar and bergdb-no-icu.jar.">
+<target name="jar" depends="init, compile" description="Creates jar files">
 	<mkdir dir="out/classes"/>
 	
 	<!-- bergdb.jar -->
 		
 	<delete file="out/MANIFEST.MF" failonerror="false"/>
 	<delete file="out/bergdb.jar" failonerror="false"/>
-	<delete file="src/bergdb/db/BuildInfo.java" failonerror="false"/>
 	
     <manifest file="out/MANIFEST.MF">
         <attribute name="Main-Class" value="bergdb.dev.Run"/>
@@ -100,6 +99,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
         <attribute name="Created-By" value=""/>     
         <attribute name="release" value="${release}"/>
         <attribute name="build" value="${build}"/>
+    	<attribute name="buildVariant" value="bergdb.jar"/>
     </manifest>
 
     <jar jarfile="out/bergdb.jar" manifest="out/MANIFEST.MF">
@@ -109,24 +109,35 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
         <zipfileset src="in/icu-for-bergdb.jar"/>
     </jar>
 	
-    <copy tofile="${base}/${release}/bergdb.jar" 
+    <copy todir="${base}/${release}" 
             file="out/bergdb.jar" overwrite="true"/>
 	<copy todir="${base}/${release}/more/dev/dotnet/" 
 	        file="out/bergdb.jar" overwrite="true"/>
 
     <!-- bergdb-no-icu.jar -->
 
-    <delete file="out/bergdb-no-icu.jar" failonerror="false"/>
+	<delete file="out/MANIFEST-no-icu.MF" failonerror="false"/>
+	<delete file="out/bergdb-no-icu.jar" failonerror="false"/>
 	
-    <jar jarfile="out/bergdb-no-icu.jar"
-            manifest="out/MANIFEST.MF">
+	<manifest file="out/MANIFEST-no-icu.MF">
+        <attribute name="Main-Class" value="bergdb.dev.Run"/>
+        <attribute name="Copyright" value="Frans Lundberg"/>
+        <attribute name="Author" value="Frans Lundberg"/>
+        <attribute name="Ant-Version" value=""/>    
+        <attribute name="Created-By" value=""/>     
+        <attribute name="release" value="${release}"/>
+        <attribute name="build" value="${build}"/>
+		<attribute name="buildVariant" value="bergdb-no-icu.jar"/>
+    </manifest>
+	
+	<jar jarfile="out/bergdb-no-icu.jar" manifest="out/MANIFEST-no-icu.MF">
         <fileset dir="out/classes">
-            <include name="bergdb/**.class"/>
-            <exclude name="bergdb/pubimpicu/**"/>   <!-- Must be omitted. -->
+            <include name="bergdb/**"/>
         </fileset>
     </jar>
-	
-	<copy todir="${base}/${release}/more/" file="out/bergdb-no-icu.jar" overwrite="true"/>
+    
+    <copy todir="${base}/${release}/more" 
+            file="out/bergdb-no-icu.jar" overwrite="true"/>
 	
 	<!-- bergdb-versioned.jar -->
 	
@@ -140,6 +151,7 @@ CHANGEIT Change properties "base" and "javac" to match your environment.
         <attribute name="Created-By" value=""/>     
         <attribute name="release" value="${release}"/>
         <attribute name="build" value="${build}"/>
+		<attribute name="buildVariant" value="bergdb-versioned.jar"/>
     </manifest>
 	
 	<taskdef name="jarjar" classname="com.tonicsystems.jarjar.JarJarTask"
