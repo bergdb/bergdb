@@ -15,6 +15,8 @@ public class DiskWriteSpeed {
     private double testTime;
     private boolean useSync;
     private String filename;
+    private int testMb;
+    private boolean delete;
     
     void go(String[] args) throws IOException, InterruptedException {
         CommandLine line = new CommandLine(args);
@@ -34,25 +36,29 @@ public class DiskWriteSpeed {
      */
     private void runTest() throws IOException, InterruptedException {
         File file = new File(filename);
-        file.deleteOnExit();
-        
         byte[] buffer = new byte[1*1000000];
         
         callSyncIfAppropriate();
         
         long t0 = System.nanoTime();
         double elapsed;
-        long size = 0;
+        long bytesWritten = 0;
         
         FileOutputStream out = new FileOutputStream(file);
         try {
             while (true) {
                 out.write(buffer, 0, buffer.length);
                 elapsed = 1e-9 * (System.nanoTime() - t0);
-                size += buffer.length;
+                bytesWritten += buffer.length;
                 
-                if (elapsed > testTime) {
-                    break;
+                if (useMb()) {
+                    if (bytesWritten >= testMb * 1000000L) {
+                        break;
+                    }
+                } else {
+                    if (elapsed > testTime) {
+                        break;
+                    }
                 }
             }
         } finally {
@@ -61,13 +67,19 @@ public class DiskWriteSpeed {
         
         callSyncIfAppropriate();
         
-        testTime = (System.nanoTime() - t0) * 1e-9;
-        double mb = size * 1e-6;
+        elapsed = 1e-9 * (System.nanoTime() - t0);
+        double mb = bytesWritten * 1e-6;
         double mbPerSec = mb / elapsed;
         
-        System.out.format("%.1f MB in %.1f s, %.1f MB/s.\n", mb, testTime, mbPerSec);
+        System.out.format("%.1f MB in %.1f s, %.1f MB/s.\n", mb, elapsed, mbPerSec);
         
-        file.delete();
+        if (delete) {
+            file.delete();
+        }
+    }
+    
+    private boolean useMb() {
+        return testMb != 0;
     }
 
     private void callSyncIfAppropriate() throws IOException, InterruptedException {
@@ -96,17 +108,38 @@ public class DiskWriteSpeed {
             filename = line.getOne("file");
         }
         
+        testMb = 0;
+        if (line.hasOne("mb")) {
+            testMb = Integer.parseInt(line.getOne("mb"));
+        }
+        
+        delete = true;
+        if (line.hasOne("delete")) {
+            if (line.getOne("delete").equals("false")) {
+                delete = false;
+            }
+        }
+        
         System.out.println("Options used:");
-        System.out.println("  test time: " + testTime + "s.");
+        
+        if (testMb == 0) {
+            System.out.println("  test time: " + testTime + "s.");
+        } else {
+            System.out.println("  mb: " + testMb);
+        }
+        
         System.out.println("  use sync: " + useSync);
         System.out.println("  test file: " + filename);
+        System.out.println("  delete: " + delete);
     }
 
     private void printHelp() {
         System.out.println("Options:\n");
         System.out.println("  -time  Number of seconds to write data.");
+        System.out.println("  -mb    MB of data to write (use one of 'time' and 'mb').");
         System.out.println("  -sync  true/false, use / don't use sync system command.");
         System.out.println("  -file  Name of file to create when writing.");
+        System.out.println("  -delete true/false, to delete file when done, default is true.");
     }
 
     private void sync() throws IOException, InterruptedException {
@@ -122,3 +155,15 @@ public class DiskWriteSpeed {
         new DiskWriteSpeed().go(args);
     }
 }
+
+/*
+
+150802 Frans:
+Speed, Samsung 16 Pro SD card (class 10, microSDHC UHS-I Card, read speed up to 90 MB/s, 
+write speed up to 50 MB/s).
+  $ j bergdb.test.manual.DiskWriteSpeed -mb 1000 -file /media/f/9016-4EF8/t3.dat -delete false
+  -->
+  1000.0 MB in 88.7 s, 11.3 MB/s
+11 MB/s is much lower than what Samsung brags about. Built-in card reader in cissi used (and Ubuntu).
+
+*/
