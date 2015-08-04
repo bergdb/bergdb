@@ -366,6 +366,8 @@ public class StoredTrans {
             if (AssertStatus.enabled()) checkStreamPointersOfKeyNodes();
             
             serializeToBuffer();
+            
+            counter++;
         }
 
         /**
@@ -582,7 +584,7 @@ public class StoredTrans {
         private void resizePrevPosIfNeeded() {
             // 10007 is a prime.
 
-            if (counter % 10007 == 0) {
+            if (counter % 10007 == 10006) {
                 int newSize = Math.max(INIT_SIZE_OF_PREV_POS, transNodes.keyCount);
                 if (prevPos.length != newSize) {
                     prevPos = new long[newSize];
@@ -595,24 +597,49 @@ public class StoredTrans {
         }
 
         private void resizeBuffersIfNeeded() {
-            if (counter % 10007 == 0) {
+            
+            if (counter % 10007 == 10006) {
                 int newSize = Math.max(INIT_SIZE_OF_BYTE_BUFFER, totalSize);
                 if (byteBuffer.length != newSize) {
-                    byteBuffer = new byte[newSize];
+                    try {
+                        byteBuffer = new byte[newSize];
+                    } catch (OutOfMemoryError e) {
+                        throw new OutOfMemoryError(e.getMessage() 
+                                + ", tried to allocate " + newSize + " bytes for byte[], counter is " + counter);
+                    }
                 }
 
                 newSize = Math.max(INIT_SIZE_OF_LONG_BUFFER, topAndKeySize / 8);
                 if (longBuffer.length != newSize) {
-                    longBuffer = new long[newSize];
+                    try {
+                        longBuffer = new long[newSize];
+                    } catch (OutOfMemoryError e) {
+                        throw new OutOfMemoryError(e.getMessage() 
+                                + ", tried to allocate " + (newSize*8) + " bytes for long[], counter is " + counter);
+                    }
                 }
             }
 
-            if (this.byteBuffer.length < totalSize) {
-                this.byteBuffer = new byte[(int) (totalSize * 1.10)];
+            if (byteBuffer.length < totalSize) {
+                int newSize = (int) (totalSize * 1.10);
+                
+                try {
+                    byteBuffer = new byte[newSize];
+                } catch (OutOfMemoryError e) {
+                    throw new OutOfMemoryError(e.getMessage() 
+                            + ", tried to allocate " + newSize + " bytes (byte[])");
+                }
             }
 
-            if (this.longBuffer.length < (topAndKeySize / 8) + 8) {
-                this.longBuffer = new long[(int) (topAndKeySize / 8 + 8)];
+            if (longBuffer.length < (topAndKeySize / 8) + 8) {
+                int newSize = (int) (topAndKeySize / 8 + 8);
+                
+                try {
+                    longBuffer = new long[newSize];
+                } catch (OutOfMemoryError e) {
+                    throw new OutOfMemoryError(e.getMessage() 
+                            + ", tried to allocate " + (newSize * 8) + " bytes (long[])");
+                }
             }
         }
     }
