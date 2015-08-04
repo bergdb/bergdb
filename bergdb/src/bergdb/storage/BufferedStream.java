@@ -22,14 +22,10 @@ import bergdb.stream.MemoryStream;
 public class BufferedStream implements AppendOnlyStream, Closeable {
     //
     // 1212 Frans: Implementation note: I tried to implement finalize() to stop
-    // the consumer thread.
-    // This is *not possible*. Threads are never garbage collected, they are
-    // always considered
-    // reachable (a thread is a garbage collector "root object"). This is true
-    // also for
-    // daemon threads. The thread "consumer" has a reference to this object. We
-    // must rely
-    // on the user of this class to call close().
+    // the consumer thread. This is *not possible*. Threads are never garbage collected, they are
+    // always considered reachable (a thread is a garbage collector "root object"). 
+    // This is true also for daemon threads. The thread "consumer" has a reference 
+    // to this object. We must rely on the user of this class to call close().
     //
     private final byte[] buffer;
     private final int bufferCapacity;
@@ -95,8 +91,8 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         this.stream = stream;
         this.bufferCapacity = bufferCapacity;
         this.tenPercentOfBufferCapacity = bufferCapacity / 10;
-        this.fiftyPercentOfBufferCapacity = bufferCapacity / 2;
         this.twentyFivePercentOfBufferCapacity = bufferCapacity / 4;
+        this.fiftyPercentOfBufferCapacity = bufferCapacity / 2;
         this.waitTime = bufferTime / 4;
         this.waitsBeforeFlush = 4;
         buffer = new byte[bufferCapacity];
@@ -151,8 +147,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 }
 
                 cSize = (int) (pStart - cStart);
-                // Here, we have a reserved interval [cStart, cStart + cSize -
-                // 1] for the
+                // Here, we have a reserved interval [cStart, cStart + cSize - 1] for the
                 // consumer that the producer must respect (must not use).
 
                 assert cSize <= bufferCapacity : "Bad cSize " + cSize + ", bufferCapacity="
@@ -194,6 +189,8 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
 
         final int sizeToFlush = cSize > fiftyPercentOfBufferCapacity ? fiftyPercentOfBufferCapacity
                 : cSize;
+        
+        assert sizeToFlush > 0 : "bad sizeToFlush: " + sizeToFlush;
 
         int index1 = (int) (cStart % bufferCapacity);
         int index2 = (int) ((cStart + sizeToFlush - 1) % bufferCapacity);

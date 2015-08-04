@@ -18,6 +18,7 @@ public class SalsaStream implements AppendOnlyStream {
     private final Salsa decrypt;
     private long length;
     private final Object readLock = new Object();
+    private final byte[] appendBuffer = new byte[100*1024];
     
     /**
      * Creates an instead by wrapping an underlying stream.
@@ -104,10 +105,25 @@ public class SalsaStream implements AppendOnlyStream {
         }
     }
 
+    /**
+     * Encrypts and appends data to the stream.
+     */
     public void append(byte[] source, int sourceOffset, int length) throws IOException {
-        byte[] b = new byte[length];    // We hope for high performance with stack allocation
-        encrypt.append(source, sourceOffset, b, 0, length);
-        stream.append(b, 0, length);
+        // 150804 Frans: Memory management substantially improved.
+        // no memory allocation in this method.
+        
+        int remainingBytes = length;
+        int offset = sourceOffset;
+        
+        while (remainingBytes > 0) {
+            int chunkLength = remainingBytes > appendBuffer.length ? appendBuffer.length : remainingBytes;
+            
+            encrypt.append(source, offset, appendBuffer, 0, chunkLength);
+            stream.append(appendBuffer, 0, chunkLength);
+            
+            offset += chunkLength;
+            remainingBytes -= chunkLength;
+        }
     }
 
     public void pretruncate(long position) throws IOException {

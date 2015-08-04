@@ -1,5 +1,6 @@
 package bergdb.test.manual;
 
+import java.io.IOException;
 import java.util.Random;
 
 import bergdb.common.Bytes;
@@ -26,6 +27,7 @@ public class CcDbTest {
     CommandLine commandLine;
     boolean encrypt = true;
     int[] permutation;
+    boolean waitForEnter = false;
     
     private void go(String[] args) {
         System.out.println("==== " + CcDbTest.class.getName() + " ====");
@@ -37,6 +39,7 @@ public class CcDbTest {
             b.append("Help for " + CcDbTest.class.getSimpleName() + ". Options:\n");
             b.append("-n  Number of cards to simulate (default = 100000)\n");
             b.append("-noEncrypt  Don't encrypt database (encrypted by default).\n");
+            b.append("-press  Pause till ENTER pressed while adding cards.\n");
             
             System.out.println(b.toString());
             return;
@@ -49,6 +52,9 @@ public class CcDbTest {
         if (commandLine.has("noEncrypt")) {
             encrypt = false;
         }
+        
+        waitForEnter = commandLine.has("press");
+        
         
         if (n > MAX) {
             System.out.println("n too large, MAX = " + MAX + ".");
@@ -166,6 +172,9 @@ public class CcDbTest {
             
             if (addedCounter % 10000 == 0) {
                 System.out.println("Added " + addedCounter + " cards.");
+                if (commandLine.has("press")) {
+                    waitForEnter();
+                }
             }
         }
         
@@ -175,6 +184,15 @@ public class CcDbTest {
                 addedCounter, time, (time / addedCounter) * 1000.0);
         c.sync();
         
+    }
+    
+    private void waitForEnter() {
+        System.out.print("Press ENTER to continue...");
+        try {
+            System.in.read();
+        } catch (IOException e) {
+            // empty
+        }
     }
     
     /** Database key string of a card with given index. */
