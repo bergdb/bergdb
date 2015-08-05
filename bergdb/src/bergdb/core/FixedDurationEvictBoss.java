@@ -1,6 +1,7 @@
 package bergdb.core;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import bergdb.dag.EvictData;
 
@@ -14,6 +15,7 @@ import bergdb.dag.EvictData;
 public class FixedDurationEvictBoss implements EvictBoss {
     private final long cacheDuration;
     private AtomicInteger counter = new AtomicInteger(0);
+    private AtomicLong totalEvictCount = new AtomicLong(0);
     
     /**
      * @param cacheDuration  Cache duration in cache time-scale units
@@ -47,7 +49,7 @@ public class FixedDurationEvictBoss implements EvictBoss {
         return duration;
     }
     
-    public long getCacheDuration() {
+    public final long getCacheDuration() {
         // Sync note: No need to synchronize, cacheDuration is final.
         return cacheDuration;
     }
@@ -58,18 +60,14 @@ public class FixedDurationEvictBoss implements EvictBoss {
      */
     public final boolean shouldEvict() {
         int c = counter.getAndIncrement();
-        return c % 100 == 23;
-        
-        //return c++ % 1 == 0;
-        //return c++ % 10 == 0;
-        //return c++ % 1000 == 0;
+        return c % 101 == 100;
     }
     
     /**
      * The implementation in this class does nothing.
      */
     public final void reportEvict(EvictData ed) {
-        // Empty.
+        totalEvictCount.addAndGet(ed.evictCount);
     }
 }
 

@@ -907,9 +907,7 @@ public class Db {
 
         gd.accessData = getAccessData();
 
-        if (gd.evictData.enableEvict) {
-            evictor.possiblyEvict(gd.evictData);
-        }
+        evictor.possiblyEvict(gd.evictData);
 
         byte[] result = null;
 
@@ -972,7 +970,7 @@ public class Db {
         }
         
         g.gd.accessData = getAccessData();
-        evictor.possiblyEvict(g.gd.evictData);
+        evictor.possiblyEvict(g.gd.evictData);    // TODO D. Consider calling possiblyEvict once per KV.
 
         g.actualLookupTime = dbClock.lookupTime(g.lookupTime);
             // Limits lookup time so it strictly less than the transaction time of
@@ -1070,20 +1068,19 @@ public class Db {
     }
     
     /**
-     * Same as "execute(b.build());", AVOID using this method in new code, 
-     * use execute(Trans).
-     * Db is selfish, should provide minimal interface, not convinience methods.
+     * Same as "execute(b.build())"; AVOID using this method.
      */
     public final void execute(Trans.Builder b) {
         //
-        // This little method does not comply with the minimal Core Layer API rule.
-        // Should be be avoided, but is currently (2012-12) called from over 100 places.
+        // This little method does not comply with the Minimal Core Layer rule.
+        // Should be be avoided, but is currently (2015-08) called from 90 places.
         //
         execute(b.build());
     }
 
     /**
-     * Executes a transaction using the STM approach. Assumes: t.kvs is sorted.
+     * Executes a transaction using the STM approach. 
+     * Assumption: t.kvs is sorted.
      * 
      * @throws IllegalDbStateException
      *             If start() has not been called or database is stopping.
@@ -1262,11 +1259,11 @@ public class Db {
      * Reads the KVs as warm-up; aims to avoid lengthy disk reads and cache
      * misses while synchronizing on this.writeLock. We want to minimize the time holding
      * this.writeLock. However, if we do write transactions from a single thread anyway, it
-     * would be better to void these get operations (would save 10-20% CPU for execute()).
-     * This is a trade-off. Of course, we could have optimization setting for this:
+     * would be better to avoid these get operations (would save 10-20% CPU for execute()).
+     * This is a trade-off. Of course, we could easily have an optimization setting for this:
      * [enum ThreadOptimization { SINGLE_WRITE_THREAD, MULTIPLE_WRITE_THREADS }].
      * But, until proven important enough, we keep variability as low as possible and focus
-     * on best "worst-case" performance.
+     * on good worst-case performance.
      */
     private final void warmup(Trans t) {
         final long readTime = dbClock.lookupTime(Long.MAX_VALUE);
@@ -1494,7 +1491,7 @@ public class Db {
     /**
      * Private auxilliary database state; counters, statistics, ...
      */
-    class Aux {
+    public class Aux {
         
         /**
          * The cachedMemoryValue is an estimate of the total amount of memory cached
@@ -1542,6 +1539,10 @@ public class Db {
             dirtyFraction1000  = 0.999 * aux.dirtyFraction1000 +  0.001 * dirtyFraction;
             
             cachedMemoryValue.addAndGet(x.transNodes.sumMemSize());
+        }
+        
+        public long getCachedMemoryValue() {
+            return cachedMemoryValue.get();
         }
     }
     

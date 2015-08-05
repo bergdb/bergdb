@@ -18,6 +18,10 @@ import bergdb.pub.WBuilder;
  * @author Frans Lundberg
  */
 public class CcDbTest {
+    //
+    // Frans: naming inspired by ASSAABLOY CC project.
+    //
+    //
     static final int MAX = 1 * 1000000;
     Database database;
     Connection c;
@@ -176,7 +180,6 @@ public class CcDbTest {
         System.out.format("Added %d cards in %.1f s. %.3f ms per card.\n", 
                 addedCounter, time, (time / addedCounter) * 1000.0);
         c.sync();
-        
     }
     
     private void waitForEnter() {

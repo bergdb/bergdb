@@ -158,7 +158,7 @@ public class Trans {
             builderLookupTime = Long.MAX_VALUE;
 
             warmupGetData = new GetData();
-            warmupGetData.evictData.enableEvict = false;
+            warmupGetData.evictData.enableEvict = true;
             warmupGetData.pointerListener = Dag.DO_NOTHING_POINTER_LISTENER;        
             warmupGetData.cachePolicy = Dag.CACHE_ALL;
         }
@@ -324,10 +324,6 @@ public class Trans {
         static class ForDb {
             static Builder create() {
                 return new Trans.Builder();
-            }
-            
-            static void setWarmupGetData(Trans.Builder b, GetData warmupGetData) {
-                b.warmupGetData = warmupGetData;
             }
         }
     }

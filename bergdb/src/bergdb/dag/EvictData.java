@@ -9,12 +9,16 @@ package bergdb.dag;
  * @author Frans Lundberg
  */
 public class EvictData {
-    public boolean enableEvict;
-    public Pointer tempPointer;     // temporary data
-    public int evictCount;          // number of evicted pointers
-    public int pointerCount;        // number of pointers processed
-    public long startupPos;         // Index nodes with spos >= dirtyLimit must not be evicted
-    public long accessTimeLimit;    // A node with access time >= accessTimeLimit is not evictable.
+    public boolean enableEvict;     // Set by user.
+    public Pointer tempPointer;     // Temporary data.
+    public int evictCount;          // Set by Evictor. Number of evicted pointers
+    public int totalCount;          // Set by Evictor. Total number of pointers processed
+    public long startupPos;         // Set and used by Evictor.
+    public long accessTimeLimit;    // Set and used by Evictor. 
+                                    // A node with access time >= accessTimeLimit is not evictable.
+    public int reasonAccessTime;
+    public int reasonDirty;
+    public int reasonNotMem;
     
     public EvictData() {
         tempPointer = new Pointer();

@@ -42,9 +42,9 @@ public class Evictor {
     }
 
     public final void possiblyEvict(EvictData ed) {
-        // Synch note: concurrent access is supported.
+        // Synch note: concurrent access is and must be supported.
 
-        if (evictBoss.shouldEvict()) {
+        if (ed.enableEvict && evictBoss.shouldEvict()) {
             evict(ed);
         }
     }
@@ -59,8 +59,12 @@ public class Evictor {
         // by this method. The implement can assume that the EvictData, ed, 
         // is specific for each thread. 'ed' is not shared between concurrent threads.
         
-        ed.pointerCount = 0;
+        ed.totalCount = 0;
         ed.evictCount = 0;
+        ed.reasonAccessTime = 0;
+        ed.reasonDirty = 0;
+        ed.reasonNotMem = 0;
+        
         ed.startupPos = x.startupPos.getForEvict();
         evictInner(ed);
         evictBoss.reportEvict(ed);
@@ -96,8 +100,6 @@ public class Evictor {
 
         if (next1 == null) {
             // Only superRoot is cached, nothing to evict.
-            assert node.getMemoryPointerCount() == 0 : "Count is " + node.getMemoryPointerCount()
-                    + " for node " + node + ".";
             return;
         }
 
@@ -107,6 +109,7 @@ public class Evictor {
             next2 = pointer.node;
 
             if (next2 == null) {
+                // If this happens, next1 has no cached child.
                 break;
             }
 
@@ -121,6 +124,10 @@ public class Evictor {
         evictPointers(node, ed);
     }
     
+    /**
+     * Fills out the result object 'p' with an evict pointer; the first
+     * memory pointer available starting from a random pointer index.
+     */
     private void getEvictPointer(Node node, int rand, Pointer p) {
         int length = node.getSize();
         int index;
@@ -128,7 +135,7 @@ public class Evictor {
         p.index = -1;
         
         for (int i = 0; i < length; i++) {
-            index = rand % length;
+            index = (rand + i) % length;
             assert index >= 0 && index < length;
             
             synchronized (dag.getPointerLock(node, index)) {
@@ -139,8 +146,6 @@ public class Evictor {
                 p.index = index;
                 break;
             }
-            
-            rand += 1;
         }
     }
 
@@ -149,41 +154,24 @@ public class Evictor {
      */
     private void evictPointers(Node node, EvictData ed) {
         //
-        // Iterates the pointers and evicts a pointee that fullfills all conditions:
+        // Iterates the pointers and evicts a pointee if it fullfills the conditions:
         // * pointee != null (is a memory pointer)
         // * pointee is not dirty
-        // * Spos of pointee is smaller than the startup pos.
         // * Access time of pointer is LTE ed.accessTimeLimit (pointer not recently accessed).
         //
         
-        long spos = node.getSpos();
-        if (!Spos.isValid(spos) || spos >= ed.startupPos) {
-            return;
-        }
+        // 150805 removed code below. Why was it here?
+        //long spos = node.getSpos();
+        //if (!Spos.isValid(spos) || spos >= ed.startupPos) {
+        //    return;
+        //}
         
         final Pointer pointer = ed.tempPointer;    // temporary pointer to avoid memory allocation
         
         int count = node.getSize();
         for (int i = 0; i < count; i++) {
+            
             synchronized (dag.getPointerLock(node, i)) {
-                /* Before 150805:
-                Node pointee = node.getPointerNode(i); 
-                
-                if (pointee != null) {
-                    long pointeePos = pointee.getSpos();
-                    if (pointeePos != Spos.NULL
-                            && pointeePos % 8 == 0  // NOTE this condition added with "vpos" approach ("vpos" branch)
-                            && pointeePos < ed.startupPos
-                            && AccessData.getAccessTime(node.getPointerAccessData(i)) 
-                                    <= ed.accessTimeLimit) {
-                        
-                        node.setPointer(i, null, pointeePos);
-                        ed.evictCount += 1;
-                    }
-                }*/
-                
-                // From 150805:
-                
                 node.getPointer(i, pointer);
                 
                 if (pointer.isMem()) {
@@ -194,14 +182,22 @@ public class Evictor {
                         
                         assert pointeePos != Spos.NULL : "bad pointee, " + pointee;
                         
-                        if (pointeePos < ed.startupPos
-                                && AccessData.getAccessTime(pointer.getAccessData()) 
-                                   <= ed.accessTimeLimit) {
+                        long pointerAccessTime = AccessData.getAccessTime(pointer.getAccessData());
+                        
+                        if (pointerAccessTime <= ed.accessTimeLimit) {
                             node.setPointer(i, null, pointeePos);
-                            ed.evictCount += 1;
+                            ed.evictCount++;
+                        } else {
+                            ed.reasonAccessTime++;
                         }
+                    } else {
+                        ed.reasonDirty++;
                     }
+                } else {
+                    ed.reasonNotMem++;
                 }
+                
+                ed.totalCount++;
             }
         }
     }
