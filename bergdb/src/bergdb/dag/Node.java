@@ -61,6 +61,7 @@ public interface Node {
     
     /**
      * Returns pointer data in 'pointer' parameter.
+     * pointer.node, pointer.pos, pointer.index are set.
      */
     public void getPointer(int index, Pointer pointer);
     

@@ -10,7 +10,11 @@ import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.Evictor;
 import bergdb.core.FixedDurationEvictBoss;
+import bergdb.dag.Dag;
 import bergdb.dag.EvictData;
+import bergdb.dag.Node;
+import bergdb.dag.Pointer;
+import bergdb.dag.PointerVisitor;
 import bergdb.nanotest.CommandLine;
 import bergdb.pub.Connection;
 import bergdb.pub.CryptoKey;
@@ -30,8 +34,8 @@ import bergdb.test.manual.CcDbTest.Stats;
  * @author Frans Lundberg
  */
 public class Interactive {
-    private String dirname = "Interactive-db";
-    private CryptoKey cryptoKey = CryptoKey.NULL;
+    private String dirname;
+    private CryptoKey cryptoKey;
     private Database database;
     private Db db;
     private BufferedReader reader;
@@ -43,11 +47,35 @@ public class Interactive {
     private void go(String[] args) throws Exception {
         CommandLine line = new CommandLine(args);
         
-        handleCommandLine(line);
+        if (line.has("help")) {
+            printHelp();
+            return;
+        }
+        
+        handleOptions(line);
         start();
         runInteractively();
     }
     
+    private void printHelp() {
+        System.out.println("Options:");
+        System.out.println("  -dir <db-dir>");
+        System.out.println("  -encrypt <true-or-false>  // default is false");
+    }
+
+    private void handleOptions(CommandLine line) {
+        dirname = "Interactive-db";
+        cryptoKey = CryptoKey.NULL;
+        
+        if (line.hasOne("dir")) {
+            this.dirname = line.getOne("dir");
+        }
+        
+        if (line.hasOne("encrypt") && line.getOne("encrypt").equals("true")) {
+            cryptoKey = CryptoKey.parse("3925eedf-salsa-9624ae53f2484c7fa8db33141910222b94aa2224ef225bd092d4701d30aa35dbde13575d66982ff9");
+        }
+    }
+
     private void runInteractively() throws IOException {
         reader = new BufferedReader(new InputStreamReader(System.in, "UTF-8"));
         
@@ -84,6 +112,8 @@ public class Interactive {
             runGc(options);
         } else if(commandName.equals("evict")) {
             runEvict(options);
+        } else if(commandName.equals("evictMax")) {
+            runEvictMax(options);
         } else {
             System.out.println("Unknown command.");
         }
@@ -162,6 +192,47 @@ public class Interactive {
                 1e-6 * db.internal().getStartupPos());
     }
     
+    private void runEvictMax(CommandLine options) {
+        // TODO A. Work on evict. Bulk evict is of interest, a pointer can be processed
+        // in 0.25 us.
+        
+        final Dag dag = db.internal().dag();
+        final long[] counters = new long[5];
+        long t0 = System.nanoTime();
+        
+        dag.visitMemoryPointers(new PointerVisitor() {
+            public void visit(Node from, Pointer pointer) {
+                synchronized (dag.getPointerLock(from, pointer.index)) {
+                    Node pointee = pointer.node;
+                    
+                    if (pointee != null && !pointee.isDirty()) {
+                        from.setPointer(pointer.index, null, pointee.getSpos());
+                        
+                        counters[1]++;
+                        
+                        if (pointee.isValueNode()) {
+                            counters[4]++;
+                        } else if (pointee.isKeyNode()) {
+                            counters[3]++;
+                        } else if (pointee.isTopNode()) {
+                            counters[2]++;
+                        }
+                    }
+                    
+                    counters[0]++;
+                }
+            }
+        });
+        
+        double time = 1e-9 * (System.nanoTime() - t0);
+        
+        System.out.format("Evicted %d pointers out of %d visited.\n", counters[1], counters[0]);
+        System.out.format("In %.3f s, %.2f us per pointer visited, %.2f us per evicted pointer.\n",
+                time, 1e6 * time / counters[0], 1e6 * time / counters[1]);
+        System.out.format("Evicted node types, top: %d, key: %d, value: %d.\n", 
+                counters[2], counters[3], counters[4]);
+    }
+    
     private long memUsed() {
         Runtime r = Runtime.getRuntime();
         long maxMem = r.maxMemory();
@@ -202,16 +273,6 @@ public class Interactive {
         }
     }
 
-    private void handleCommandLine(CommandLine line) {
-        if (line.hasOne("dir")) {
-            this.dirname = line.getOne("dir");
-        }
-        
-        if (line.hasOne("encrypt") && line.getOne("encrypt").equals("true")) {
-            cryptoKey = CryptoKey.parse("3925eedf-salsa-9624ae53f2484c7fa8db33141910222b94aa2224ef225bd092d4701d30aa35dbde13575d66982ff9");
-        }
-    }
-    
     private void computePermutationIfNeeded() {
         if (permutation != null) {
             return;

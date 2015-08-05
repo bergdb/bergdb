@@ -970,7 +970,7 @@ public class Db {
         }
         
         g.gd.accessData = getAccessData();
-        evictor.possiblyEvict(g.gd.evictData);    // TODO D. Consider calling possiblyEvict once per KV.
+        evictor.possiblyEvict(g.gd.evictData);    // TODO A. Consider calling possiblyEvict once per KV.
 
         g.actualLookupTime = dbClock.lookupTime(g.lookupTime);
             // Limits lookup time so it strictly less than the transaction time of

@@ -105,6 +105,10 @@ public class DbScan {
     public static class Result {
         public long checksum;
         public long kvCount;
+        
+        public String toString() {
+            return "checksum: " + checksum + ", kv count: " + kvCount;
+        }
     }
     
     

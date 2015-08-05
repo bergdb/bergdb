@@ -233,14 +233,15 @@ public final class TopNode implements Node {
         return getSize();
     }
 
-    public final void getPointer(int index, Pointer pointer) {
+    public final void getPointer(final int index, Pointer pointer) {
+        pointer.index = index;
+        
         if (index == 0) {
             pointer.node = rootPointer;
             pointer.pos = rootPointerPos;
         } else {
-            index -= 1;
-            pointer.node = pointers[index];
-            pointer.pos = pointersPos[index];
+            pointer.node = pointers[index - 1];
+            pointer.pos = pointersPos[index - 1];
         }
     }
     

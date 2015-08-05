@@ -153,21 +153,21 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      * Visits all memory pointers.
      */
     public void visitMemoryPointers(PointerVisitor visitor) {
+        Pointer pointer = new Pointer();   // mutable memory to avoid mem alloc.
         Node superRoot = topDs.getSuperRoot();
-        visitMemoryPointersFromNode(superRoot, visitor);
+        visitMemoryPointersFromNode(superRoot, visitor, pointer);
     }
     
-    private void visitMemoryPointersFromNode(Node node, PointerVisitor visitor) {
+    private void visitMemoryPointersFromNode(Node node, PointerVisitor visitor, Pointer pointer) {
         int count = node.getSize();
         
         for (int i = 0; i < count; i++) {
-            Pointer p = new Pointer();
-            node.getPointer(i, p);
-            if (!p.isNull() && p.isMem()) {
-                visitor.visit(node, p);
+            node.getPointer(i, pointer);
+            if (!pointer.isNull() && pointer.isMem()) {
+                visitor.visit(node, pointer);
                 
-                Node child = p.getNode();
-                visitMemoryPointersFromNode(child, visitor);
+                Node child = pointer.getNode();
+                visitMemoryPointersFromNode(child, visitor, pointer);
             }
         }
     }
