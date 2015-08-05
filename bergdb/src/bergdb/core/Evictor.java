@@ -44,7 +44,7 @@ public class Evictor {
     public final void possiblyEvict(EvictData ed) {
         // Synch note: concurrent access is supported.
 
-        if (evictBoss.evictShouldRun()) {
+        if (evictBoss.shouldEvict()) {
             evict(ed);
         }
     }

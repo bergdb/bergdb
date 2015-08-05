@@ -53,7 +53,7 @@ public class Concurrency {
         AppendOnlyStream stream = new DummyStream();
         DatabaseBuilderImp builder = (DatabaseBuilderImp) Factory.database();
         builder.mainStream(stream);
-        builder.evictBoss(new FixedDurationEvictBoss());
+        builder.evictBoss(new FixedDurationEvictBoss(100L*1000000));
         
         Db db = ((DatabaseImp) database).getDb();
         db.setRetainDuration(10 * Clock.UNITS_PER_SEC);

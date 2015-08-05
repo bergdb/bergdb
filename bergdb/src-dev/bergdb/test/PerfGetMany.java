@@ -33,7 +33,7 @@ public class PerfGetMany {
         this.n = n;
         this.done = false;
         
-        EvictBoss boss = new FixedDurationEvictBoss();
+        EvictBoss boss = new FixedDurationEvictBoss(100L*1000000);
         
         db = Db.builder().stream("m", new MemoryStream())
                 .clock(new SystemClock())

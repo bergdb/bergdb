@@ -19,7 +19,7 @@ public class NoEvictBoss implements EvictBoss {
     public void reportEvict(EvictData ed) {}
 
     /** Always returns false. */
-    public boolean evictShouldRun() {
+    public boolean shouldEvict() {
         return false;
     }
 }

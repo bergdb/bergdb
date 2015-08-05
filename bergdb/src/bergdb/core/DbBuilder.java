@@ -38,13 +38,13 @@ public class DbBuilder {
         // A NULL id is replaced by Db when Db is started.
         id = DatabaseId.CREATE_LATER_MARKER;
         
-        applyDefaultSettings();
+        defaultSettings();
     }
     
     /**
      * Default database settings are specified in this method.
      */
-    private void applyDefaultSettings() {
+    private void defaultSettings() {
         //
         // 150103 Frans: keeping maxNodeSize30() after renewed investigation. 
         //      See end comments of Db class.
@@ -53,7 +53,10 @@ public class DbBuilder {
         
         startupDistance = 20 * 1000000;
         clock = new SystemClock();
-        evictBoss = new FixedDurationEvictBoss();
+        
+        long cacheDuration = FixedDurationEvictBoss.suggestCacheDurationBasedOnJvm();
+        evictBoss = new FixedDurationEvictBoss(cacheDuration);
+        
         maxNodeSize30();
         retainDurationInTimeUnits = Long.MAX_VALUE;
     }

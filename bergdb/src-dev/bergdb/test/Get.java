@@ -36,7 +36,7 @@ public class Get {
         this.n = n;
         done = false;
         
-        EvictBoss boss = new FixedDurationEvictBoss();
+        EvictBoss boss = new FixedDurationEvictBoss(100L * 1000000);
         
         db = Db.builder()
                 .stream("main", new DummyStream())
