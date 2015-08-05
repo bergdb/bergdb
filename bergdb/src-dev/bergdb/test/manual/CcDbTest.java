@@ -9,10 +9,8 @@ import bergdb.nanotest.CommandLine;
 import bergdb.pub.Connection;
 import bergdb.pub.CryptoKey;
 import bergdb.pub.Database;
-import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.Factory;
 import bergdb.pub.WBuilder;
-import bergdb.pubimp.DatabaseBuilderImp;
 
 /**
  * Up to 1M cards in a database. Lookup speed, disk size.
@@ -120,18 +118,13 @@ public class CcDbTest {
         // in Pub API for BergDB 2015.4.
         
         String dir = "./" + CcDbTest.class.getSimpleName();
-        DatabaseBuilder b = Factory.database().dir(dir);
+        CryptoKey key = CryptoKey.NULL;
         if (encrypt) {
-            CryptoKey key = CryptoKey.parse(
+            key = CryptoKey.parse(
                     "7bcf4b7c-salsa-15fc30dde0914feb075a2c1f1fb95640da3e3d04da10fe9c349ad99a50deaab4aa803d057a0186cc");
-            b.cryptoKey(key);
         }
         
-        int startupDistance = 5 * 1000000;
-        DatabaseBuilderImp imp = (DatabaseBuilderImp) b;
-        imp.getDbBuilder().startupDistance(startupDistance);
-        
-        database = b.start();
+        database = Factory.database().dir(dir).cryptoKey(key).startupDistanceInMb(5).start();
         
         double time = database.getStartupInfo().getStartupDuration();
         System.out.format("Db started in %.2f seconds.\n", time);

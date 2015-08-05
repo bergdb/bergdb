@@ -605,7 +605,8 @@ public class StoredTrans {
                         byteBuffer = new byte[newSize];
                     } catch (OutOfMemoryError e) {
                         throw new OutOfMemoryError(e.getMessage() 
-                                + ", tried to allocate " + newSize + " bytes for byte[], counter is " + counter);
+                                + ", tried to allocate " + newSize 
+                                + " bytes for byte[], counter is " + counter);
                     }
                 }
 
@@ -615,7 +616,8 @@ public class StoredTrans {
                         longBuffer = new long[newSize];
                     } catch (OutOfMemoryError e) {
                         throw new OutOfMemoryError(e.getMessage() 
-                                + ", tried to allocate " + (newSize*8) + " bytes for long[], counter is " + counter);
+                                + ", tried to allocate " + (newSize*8) 
+                                + " bytes for long[], counter is " + counter);
                     }
                 }
             }

@@ -19,8 +19,13 @@ public class CryptoKey {
     // Some consider this less secure than using char[]. However, clean
     // code is also important for security. Also, the user of this class
     // is likely to create String:s with key data in it anyway.
-    // So, KISS took precedence.
+    // So, KISS takes precedence.
     //
+    
+    /**
+     * A CryptoKey instance that represents 'null' - no crypto key.
+     */
+    public static final CryptoKey NULL = new CryptoKey("null", null, new byte[0]);
     
     /** Algorithm name, currently always 'salsa'. */
     private final String algo;
@@ -42,6 +47,10 @@ public class CryptoKey {
      */
     public String getAlgo() {
         return algo;
+    }
+    
+    public boolean isNull() {
+        return algo == null;
     }
     
     /**
@@ -200,5 +209,15 @@ public class CryptoKey {
         }
         
         Assert.assertTrue(ex != null);
+    }
+    
+    @Nano private static void testNull1() {
+        Assert.assertTrue(CryptoKey.NULL.isNull());
+        
+    }
+    
+    @Nano private static void testNull2() {
+        CryptoKey key = CryptoKey.parse("7bcf4b7c-salsa-15fc30dde0914feb075a2c1f1fb95640da3e3d04da10fe9c349ad99a50deaab4aa803d057a0186cc");
+        Assert.assertFalse(key.isNull());
     }
 }

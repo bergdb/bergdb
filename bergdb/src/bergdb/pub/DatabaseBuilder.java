@@ -29,6 +29,9 @@ public interface DatabaseBuilder {
     /**
      * Provide a CryptoKey to use an existing encrypted database, or start a
      * new one using the provided encryption key.
+     * 
+     * @param cryptoKey  
+     *      The crypto key to use or CryptoKey.NULL to not use any encryption.
      */
     public DatabaseBuilder cryptoKey(CryptoKey cryptoKey);
     

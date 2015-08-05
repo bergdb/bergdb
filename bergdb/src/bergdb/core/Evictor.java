@@ -151,8 +151,8 @@ public class Evictor {
         //
         // Iterates the pointers and evicts a pointee that fullfills all conditions:
         // * pointee != null (is a memory pointer)
-        // * Spos of pointee is not Spos.NULL
-        // * Spos of pointee is smaller than current startup pos of database.
+        // * pointee is not dirty
+        // * Spos of pointee is smaller than the startup pos.
         // * Access time of pointer is LTE ed.accessTimeLimit (pointer not recently accessed).
         //
         
@@ -161,9 +161,12 @@ public class Evictor {
             return;
         }
         
+        final Pointer pointer = ed.tempPointer;    // temporary pointer to avoid memory allocation
+        
         int count = node.getSize();
         for (int i = 0; i < count; i++) {
             synchronized (dag.getPointerLock(node, i)) {
+                /* Before 150805:
                 Node pointee = node.getPointerNode(i); 
                 
                 if (pointee != null) {
@@ -176,6 +179,27 @@ public class Evictor {
                         
                         node.setPointer(i, null, pointeePos);
                         ed.evictCount += 1;
+                    }
+                }*/
+                
+                // From 150805:
+                
+                node.getPointer(i, pointer);
+                
+                if (pointer.isMem()) {
+                    Node pointee = pointer.node;
+                    
+                    if (!pointee.isDirty()) {
+                        long pointeePos = pointee.getSpos();
+                        
+                        assert pointeePos != Spos.NULL : "bad pointee, " + pointee;
+                        
+                        if (pointeePos < ed.startupPos
+                                && AccessData.getAccessTime(pointer.getAccessData()) 
+                                   <= ed.accessTimeLimit) {
+                            node.setPointer(i, null, pointeePos);
+                            ed.evictCount += 1;
+                        }
                     }
                 }
             }

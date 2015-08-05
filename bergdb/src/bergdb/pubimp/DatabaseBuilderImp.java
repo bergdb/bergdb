@@ -57,7 +57,10 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     }
     
     public DatabaseBuilder cryptoKey(CryptoKey cryptoKey) {
-        this.cryptoKey = cryptoKey;
+        if (!cryptoKey.isNull()) {
+            this.cryptoKey = cryptoKey;
+        }
+        
         return this;
     }
     

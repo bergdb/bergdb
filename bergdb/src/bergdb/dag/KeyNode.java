@@ -188,8 +188,14 @@ public class KeyNode implements Node {
         return pos[index];
     }
     
+    /**
+     * Sets a pointer, can be used to evict a pointer.
+     * Concurrency: after startup, synchronized (dag.getPointerLock(node, i)) must be held
+     * by caller.
+     */
     public final void setPointer(int index, Node node, long spos) {
-        // Besides Db startup, only called from Db.evictPointers() and Dag.followPointer().
+        // Besides Db startup, only called from Evictor.evictPointers() and
+        // Dag.followPointer().
         
         pointers[index] = node;
         pos[index] = spos;

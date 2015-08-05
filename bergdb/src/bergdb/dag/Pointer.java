@@ -4,10 +4,11 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * A general-purpose pointer class. Used to represent both memory pointers and stream pointers.
+ * A pointer from a Node to another Node. Used to represent both memory pointers and stream pointers.
  * Useful in method calls like Node.getPointer(int index, Pointer p). 
  * Used as output parameter for efficiency. Used in Db.follow(Pointer p).
  * Typically used for temporary storage, method calls, output parameters.
+ * Mutable for performance requirements (to be able to avoid memory allocation).
  * 
  * @author Frans Lundberg
  */
@@ -42,14 +43,28 @@ public class Pointer {
         return node != null;
     }
     
+    /**
+     * Gets the pos value of the pointer. 
+     * Note that this value is a stream position only when isMem() == false
+     * and isNull() == false.
+     */
     public final long getPos() {
+        return pos;
+    }
+    
+    /**
+     * Returns the access data of the pointer.
+     * This is a valid access data value only when isMem() == true; that is
+     * when this pointer is a memory pointer.
+     */
+    public final long getAccessData() {
+        assert isMem() : "getAccessData called, but pointer.isMem() is false, " + this;
         return pos;
     }
     
     public final Node getNode() {
         return node;
     }
-    
     
     public final boolean isNull() {
         // NOTE consider inlining for performance.
@@ -60,6 +75,9 @@ public class Pointer {
         return (node == null) && (pos == Spos.NULL);
     }
     
+    /**
+     * Returns true if this is a memory pointer.
+     */
     public static final boolean isMem(Node node) {
         return node != null;
     }
