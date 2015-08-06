@@ -257,14 +257,12 @@ This depends. See http://stackoverflow.com/questions/175532/should-a-retrieval-m
 I like exceptions in general. But in some cases, the condition that there is
 no such object is normal, not exceptional. Can be tested with exists(), but that requires
 two method calls. java.util.Map.get(key) returns null if the map contains no mapping for the key.
-Conclusion 2013: Use exception.
 
 == Index iterators ==
 
 Should index() return empty iterators, or throw an exception if index does not exist for the 
 lookup time? In a way, it makes sense to return an empty iterator. On the other hand, for most 
 cases, the caller expects an existing index and throwing an explicit exception would be best
-to report the error condition as early as possible. 
-Conclusion 2012-10: Use exceptions!
+to report the error condition as early as possible. Conclusion 2012-10: Use exceptions!
 
 */

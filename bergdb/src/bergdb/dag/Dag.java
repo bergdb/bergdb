@@ -90,7 +90,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         // NOTE Pointers from dirty nodes are not checked. Correct, I hope.
         
         PointerVisitor visitor = new PointerVisitor() {
-            public void visit(Node from, Pointer pointer) {
+            public void visitPointer(Node from, Pointer pointer) {
                 Node to = pointer.getNode();
                 long fromPos = from.getSpos();
                 long toPos = to.getSpos();
@@ -110,6 +110,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                     }
                 }
             }
+
+            public void visitNode(Node node) {}
         };
         
         this.visitMemoryPointers(visitor);
@@ -150,7 +152,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     }
     
     /**
-     * Visits all memory pointers.
+     * Visits all memory pointers. Pointers may be visited several times
+     * since we deal with a DAG, not a tree.
      */
     public void visitMemoryPointers(PointerVisitor visitor) {
         Pointer pointer = new Pointer();   // mutable memory to avoid mem alloc.
@@ -163,11 +166,41 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         
         for (int i = 0; i < count; i++) {
             node.getPointer(i, pointer);
-            if (!pointer.isNull() && pointer.isMem()) {
-                visitor.visit(node, pointer);
+            if (pointer.isMem()) {
+                visitor.visitPointer(node, pointer);
                 
                 Node child = pointer.getNode();
                 visitMemoryPointersFromNode(child, visitor, pointer);
+            }
+        }
+    }
+    
+    public void visitMemoryPointersOnce(PointerVisitor visitor) {
+        HashSet<Node> visited = new HashSet<Node>();
+        
+        Pointer pointer = new Pointer();   // mutable memory to avoid mem alloc.
+        Node superRoot = topDs.getSuperRoot();
+        visitMemoryPointersOnceFromNode(superRoot, visitor, pointer, visited);
+    }
+    
+    private void visitMemoryPointersOnceFromNode(Node node, PointerVisitor visitor, 
+            Pointer pointer, HashSet<Node> visited) {
+        if (visited.contains(node)) {
+            return;
+        }
+        
+        visited.add(node);
+        visitor.visitNode(node);
+        
+        int size = node.getSize();
+        
+        for (int i = 0; i < size; i++) {
+            node.getPointer(i, pointer);
+            if (pointer.isMem()) {
+                visitor.visitPointer(node, pointer);
+                
+                Node child = pointer.getNode();
+                visitMemoryPointersOnceFromNode(child, visitor, pointer, visited);
             }
         }
     }
@@ -192,8 +225,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         
         Pointer p = new Pointer();
         
-        int count = node.getSize();
-        for (int i = 0; i < count; i++) {
+        int size = node.getSize();
+        for (int i = 0; i < size; i++) {
             node.getPointer(i, p);
             if (p.isMem()) {
                 visitNodeWithChildren(visitor, visited, p.getNode());

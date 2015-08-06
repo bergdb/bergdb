@@ -197,11 +197,12 @@ public class Interactive {
         // in 0.25 us.
         
         final Dag dag = db.internal().dag();
-        final long[] counters = new long[5];
+        final long[] counters = new long[7];
         long t0 = System.nanoTime();
         
-        dag.visitMemoryPointers(new PointerVisitor() {
-            public void visit(Node from, Pointer pointer) {
+        PointerVisitor visitor = new PointerVisitor() {
+            
+            public void visitPointer(Node from, Pointer pointer) {
                 synchronized (dag.getPointerLock(from, pointer.index)) {
                     Node pointee = pointer.node;
                     
@@ -210,25 +211,47 @@ public class Interactive {
                         
                         counters[1]++;
                         
-                        if (pointee.isValueNode()) {
-                            counters[4]++;
-                        } else if (pointee.isKeyNode()) {
-                            counters[3]++;
-                        } else if (pointee.isTopNode()) {
+                        switch (pointee.getType()) {
+                        case Node.TYPE_TOP_NODE:
                             counters[2]++;
+                            break;
+                        case Node.TYPE_KEY_NODE:
+                            counters[3]++;
+                            break;
+                        case Node.TYPE_VALUE:
+                            counters[4]++;
+                            break;
                         }
                     }
                     
                     counters[0]++;
                 }
             }
-        });
+
+            public void visitNode(Node node) {
+                counters[5]++;
+                
+                if (node.isIndexNode()) {
+                    counters[6]++;
+                }
+            }
+        };
+        
+        //dag.visitMemoryPointers(visitor);
+        dag.visitMemoryPointersOnce(visitor);
+        
+        // Note, the visitMemoryPointersOnce() is actually faster (-20%).
+        // No need to traverse DAG and allow duplicate visits.
         
         double time = 1e-9 * (System.nanoTime() - t0);
         
         System.out.format("Evicted %d pointers out of %d visited.\n", counters[1], counters[0]);
         System.out.format("In %.3f s, %.2f us per pointer visited, %.2f us per evicted pointer.\n",
                 time, 1e6 * time / counters[0], 1e6 * time / counters[1]);
+        System.out.format("Nodes visited: %d (%.2f us per node)\n", 
+                counters[5], 1e6 * time / counters[5]);
+        System.out.format("Index nodes visited: %d (%.2f us per index node)\n",
+                counters[6], 1e6 * time / counters[6]);
         System.out.format("Evicted node types, top: %d, key: %d, value: %d.\n", 
                 counters[2], counters[3], counters[4]);
     }

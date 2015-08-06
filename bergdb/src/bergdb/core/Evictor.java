@@ -160,12 +160,6 @@ public class Evictor {
         // * Access time of pointer is LTE ed.accessTimeLimit (pointer not recently accessed).
         //
         
-        // 150805 removed code below. Why was it here?
-        //long spos = node.getSpos();
-        //if (!Spos.isValid(spos) || spos >= ed.startupPos) {
-        //    return;
-        //}
-        
         final Pointer pointer = ed.tempPointer;    // temporary pointer to avoid memory allocation
         
         int count = node.getSize();

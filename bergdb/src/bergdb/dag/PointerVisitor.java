@@ -1,5 +1,11 @@
 package bergdb.dag;
 
 public interface PointerVisitor {
-    public void visit(Node from, Pointer pointer);
+    /** 
+     * Called once when a node is visited before any call to visitPointer 
+     * for that node.
+     */
+    public void visitNode(Node node);
+    
+    public void visitPointer(Node from, Pointer pointer);
 }
