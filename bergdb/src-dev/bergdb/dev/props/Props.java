@@ -3,7 +3,7 @@ package bergdb.dev.props;
 import bergdb.common.Util;
 
 /**
- * An executable that computes the main properties of the projecct.
+ * An executable that measures the main performance properties of the projecct.
  * 
  * @author Frans Lundberg
  */
@@ -20,7 +20,7 @@ public class Props {
         System.out.println(jvm);
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         printHeader();
         
         MEM mem = new MEM();

@@ -130,22 +130,24 @@ public class Db {
     private DatabaseId databaseId;
     private final TransactionListener reclaimTransactionListener;
     private final Internal internal;
+    private final PointerLocks pointerLocks;
     
-    // TODO A. make a class "PointerLocks".
-    private final int POINTER_LOCKS_LENGTH = 128;
-    private final PointerLock[] pointerLocks;
+    // XXX private final int POINTER_LOCKS_LENGTH = 128;
+    // XXX private final PointerLock[] pointerLocks;
     
     /** Special type for pointer lock object; useful for debug. */
-    public static class PointerLock {}
+    //public static class PointerLock {}
     
     /**
      * Returns a lock for the pointerIndex'th pointer of node 'node'.
      */
+    /*
+    XXX
     public final Object getPointerLock(final Node node, final int pointerIndex) {
         int value = (node.hashCode() + 13 * pointerIndex);
         value = (value < 0) ? -value : value;
         return pointerLocks[value % POINTER_LOCKS_LENGTH];
-    }
+    }*/
     
     private StartupPosUpdater startupPosUpdater = new StartupPosUpdater() {
         public long newStartupPos(long current, long streamLength, int startupDistance, 
@@ -172,11 +174,7 @@ public class Db {
         readSync = new ReadSync();
         x = new ExecuteData();
         keyModSet = new KeyModSet();
-        
-        pointerLocks = new PointerLock[POINTER_LOCKS_LENGTH];
-        for (int i = 0; i < POINTER_LOCKS_LENGTH; i++) {
-            pointerLocks[i] = new PointerLock();
-        }
+        pointerLocks = new PointerLocks();
  
         this.maxNodeSize = b.maxNodeSize;
         this.startupDistance = b.startupDistance;
@@ -522,7 +520,7 @@ public class Db {
                 assert predecessor != null : "predecessor is null";
                 assert accessData == 0 || AccessData.isValid(accessData);
 
-                final Object lock = getPointerLock(predecessor, pointerIndex);
+                final Object lock = pointerLocks.getLock(predecessor, pointerIndex);
 
                 synchronized (lock) {
                     Node pointerNode = predecessor.getPointerNode(pointerIndex);
@@ -1490,10 +1488,8 @@ public class Db {
         /**
          * Returns a lock for the pointerIndex'th pointer of node 'node'.
          */
-        public final Object getPointerLock(final Node node, final int pointerIndex) {
-            int value = (node.hashCode() + 13 * pointerIndex);
-            value = (value < 0) ? -value : value;
-            return pointerLocks[value % POINTER_LOCKS_LENGTH];
+        public final Object getPointerLock(Node node, int pointerIndex) {
+            return pointerLocks.getLock(node, pointerIndex);
         }
     }
     

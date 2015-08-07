@@ -1,6 +1,9 @@
 package bergdb.dev.props;
+import java.io.IOException;
+
 import bergdb.core.Db;
 import bergdb.core.Trans;
+import bergdb.nanotest.CommandLine;
 import bergdb.stream.DummyStream;
 
 /**
@@ -12,7 +15,11 @@ import bergdb.stream.DummyStream;
 public class MEM {
     String report;
 
-    public double go() {
+    public double go() throws Exception {
+        return go(new CommandLine(new String[0]));
+    }
+    
+    private double go(CommandLine line) throws Exception {
         int n = 1000*1000;
         int valueSize = 0;
         Runtime rt = Runtime.getRuntime();
@@ -39,14 +46,25 @@ public class MEM {
         double memPerKv = (double)(fullMem - emptyMem) / (double) n;
         report = String.format("MEM:%.0f", memPerKv);
         
+        if (line.has("wait")) {
+            System.out.println("Waiting for ENTER.");
+            waitForEnter();
+        }
+        
         db.stop();
         
         return memPerKv;
     }
     
-    public static void main(String[] args) {
+    private void waitForEnter() throws IOException {
+        System.in.read();
+    }
+    
+    public static void main(String[] args) throws Exception {
+        CommandLine line = new CommandLine(args);
+        
         MEM m = new MEM();
-        m.go();
+        m.go(line);
         System.out.println(m.report);
     }
 }

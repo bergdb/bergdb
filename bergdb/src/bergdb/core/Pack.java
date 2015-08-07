@@ -23,6 +23,7 @@ public class Pack implements IPack {
         NodeStream.class,
         NodeStreamTester.class,
         Pack.class,
+        PointerLocks.class,
         RerunException.class,
         Reclaim.class,
         Reclaim.Tester.class,
