@@ -11,6 +11,8 @@ import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
 
+// TODO D. Remove referece to core.StoredTrans, storage -> core not allowed.
+
 /**
  * <p>This class adds transactional support to an underlying AppendOnlyStream.
  * An instance of the class can be used to recover a stream that crashed at any point in the stream.
