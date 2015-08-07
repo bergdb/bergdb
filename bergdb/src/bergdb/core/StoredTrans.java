@@ -584,7 +584,7 @@ public class StoredTrans {
         private void resizePrevPosIfNeeded() {
             // 10007 is a prime.
 
-            if (counter % 10007 == 10006) {
+            if (/* TODO A. counter % 10007 == 10006 */ true) {
                 int newSize = Math.max(INIT_SIZE_OF_PREV_POS, transNodes.keyCount);
                 if (prevPos.length != newSize) {
                     prevPos = new long[newSize];
@@ -597,8 +597,10 @@ public class StoredTrans {
         }
 
         private void resizeBuffersIfNeeded() {
+            // TODO A. Investigate why "the real" if-statements result in property MEM:265
+            // instead of MEM:161 with the always true version.
             
-            if (counter % 10007 == 10006) {
+            if (/* TODO A. counter % 10007 == 10006*/ true) {
                 int newSize = Math.max(INIT_SIZE_OF_BYTE_BUFFER, totalSize);
                 if (byteBuffer.length != newSize) {
                     try {

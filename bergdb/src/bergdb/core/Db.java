@@ -132,23 +132,6 @@ public class Db {
     private final Internal internal;
     private final PointerLocks pointerLocks;
     
-    // XXX private final int POINTER_LOCKS_LENGTH = 128;
-    // XXX private final PointerLock[] pointerLocks;
-    
-    /** Special type for pointer lock object; useful for debug. */
-    //public static class PointerLock {}
-    
-    /**
-     * Returns a lock for the pointerIndex'th pointer of node 'node'.
-     */
-    /*
-    XXX
-    public final Object getPointerLock(final Node node, final int pointerIndex) {
-        int value = (node.hashCode() + 13 * pointerIndex);
-        value = (value < 0) ? -value : value;
-        return pointerLocks[value % POINTER_LOCKS_LENGTH];
-    }*/
-    
     private StartupPosUpdater startupPosUpdater = new StartupPosUpdater() {
         public long newStartupPos(long current, long streamLength, int startupDistance, 
                 PosOfTransBeforeFunction posFunction) { 
