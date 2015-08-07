@@ -193,7 +193,7 @@ public class Interactive {
     }
     
     private void runEvictMax(CommandLine options) {
-        // TODO A. Work on evict. Bulk evict is of interest, a pointer can be processed
+        // TODO B. Work on evict. Bulk evict is of interest, a pointer can be processed
         // in 0.25 us.
         
         final Dag dag = db.internal().dag();
@@ -203,7 +203,7 @@ public class Interactive {
         PointerVisitor visitor = new PointerVisitor() {
             
             public void visitPointer(Node from, Pointer pointer) {
-                synchronized (dag.getPointerLock(from, pointer.index)) {
+                synchronized (db.internal().getPointerLock(from, pointer.index)) {
                     Node pointee = pointer.node;
                     
                     if (pointee != null && !pointee.isDirty()) {

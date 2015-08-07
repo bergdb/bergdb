@@ -3,7 +3,8 @@ package bergdb.dag;
 import java.util.ArrayList;
 
 import bergdb.common.Util;
-import bergdb.dag.Dag.NodeReader;
+import bergdb.dag.Dag.CachePolicy;
+import bergdb.dag.Dag.PointerListener;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
@@ -11,15 +12,38 @@ public class DagTester {
     
     private static final int MAX_NODE_SIZE = 30;
     
-    private static final NodeReader DUMMY_NODE_READER = new NodeReader() {
-        public Node readNode(long spos) {
-            throw new IllegalStateException("No nodeReader was set, use "
-                    + Dag.class.getName() + ".setNodeReader().");
+    private static final PointerFollower DUMMY_POINTER_FOLLOWER = new PointerFollower() {
+        public Node followPointer(Node predecessor, int pointerIndex, long accessData,
+                PointerListener pointerListener, CachePolicy cachePolicy) {
+            Node result;
+            assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
+            assert predecessor != null : "predecessor is null";
+            assert accessData == 0 || AccessData.isValid(accessData);
+
+            Node pointerNode = predecessor.getPointerNode(pointerIndex);
+            long pointerPos1 = predecessor.getPointerPos(pointerIndex);
+
+            assert !Pointer.isNull(pointerNode, pointerPos1) : "Pointer is null: " + pointerNode
+                    + ", " + pointerPos1;
+
+            if (Pointer.isMem(pointerNode)) {
+                result = pointerNode;
+                if (accessData != 0) {
+                    predecessor.setPointerAccessData(pointerIndex, accessData);
+                }
+                pointerListener.pointerFollowed(
+                        predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
+            
+            } else {
+                throw new IllegalStateException("This NodeFollower does not support stream pointers.");
+            }
+
+            return result;
         }
     };
     
     public static Dag emptyDag(long time) {        
-        return Dag.createEmpty(time, MAX_NODE_SIZE, DUMMY_NODE_READER);
+        return Dag.createEmpty(time, MAX_NODE_SIZE, DUMMY_POINTER_FOLLOWER);
     }
     
     @Nano
@@ -107,7 +131,7 @@ public class DagTester {
         String[] kvs = new String[] {
                 "/k1", "v1", "/k2", "v2", "/k3", "v3", "/k4", "v4", "/k0", "v0"
         };
-        Dag g = Dag.createEmpty(0, 6, DUMMY_NODE_READER);
+        Dag g = Dag.createEmpty(0, 6, DUMMY_POINTER_FOLLOWER);
         
         PutData pd = g.newPutData();
         pd.tt = 10;
@@ -135,7 +159,7 @@ public class DagTester {
     public static void testTimeSplit1a() {
         // Tests a time-split-1.
 
-        Dag g = Dag.createEmpty(0, 6, DUMMY_NODE_READER);
+        Dag g = Dag.createEmpty(0, 6, DUMMY_POINTER_FOLLOWER);
         
         PutData pd = g.newPutData();
         

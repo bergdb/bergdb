@@ -11,20 +11,16 @@ import bergdb.pub.IllegalDbStateException;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 
-// TODO C. Consider injection of pointer-following code instead of NodeReader.
-
 /**
  * <p>The DAG (directed acyclic graph) is the main data structure of the database.
  * An instance of this class handles the in-memory (cached) part of the DAG.</p>
  * 
  * <p>Features/scope:</p>
  * <ul>
- * <li>Walking the Dag, followPointer()</li>
+ * <li>Walking the Dag.</li>
  * <li>getOne(), getMany(), putOne()</li>
  * <li>Dag testable in isolation</li>
- * <li>Cache: adding nodes to cache (read from stream, memory pointer)</li>
  * <li>Reads nodes (from interface NodeReader instance)</li>
- * <li>Pointer locks</li>
  * <li>Factory methods: newGetData(), newGetMany(), new PutData().</li>
  * </ul>
  * 
@@ -36,6 +32,8 @@ import bergdb.storage.StreamIoException;
  * to stream, ...</li>
  * <li>STM implementation</li>
  * <li>TransSeq</li>
+ * <li>followPointer() implementation</li>
+ * <li>node caching</li>
  * </ul>
  * 
  * <p>This class was created in September 2013 during a heavy refactoring.
@@ -47,36 +45,29 @@ import bergdb.storage.StreamIoException;
  */
 public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     /** Empty array of KlongWithPointer (new KlongWithPointer[0]). */
-    private static final KlongWithPointer[] ZERO_LONG_KWP = new KlongWithPointer[0];
-    
+    private static final KlongWithPointer[] ZERO_LONG_KWP = new KlongWithPointer[0];    
     private final TopDs topDs;
-    private final NodeReader nodeReader;
+    private final PointerFollower pointerFollower;
     private final int maxNodeSize;
-    private final int POINTER_LOCKS_LENGTH = 128;
-    private final PointerLock[] pointerLocks;
-    private boolean rerunMode;
-    private long startupTime;   
     
-    public Dag(NodeReader nodeReader, TopDs topDs, int maxNodeSize) {
-        this.nodeReader = nodeReader;
+    public Dag(PointerFollower pointerFollower, TopDs topDs, int maxNodeSize) {
+        this.pointerFollower = pointerFollower;
         this.topDs = topDs;
         this.maxNodeSize = maxNodeSize;
-        this.pointerLocks = createPointerLocks();
     }
     
     /**
      * Factory method to create minimal Dag with two nodes: a top node and a key node.
      * The database is empty; no KVs.
      */
-    public static Dag createEmpty(long time, int maxNodeSize, NodeReader nodeReader) {
-        return new Dag(time, maxNodeSize, nodeReader);
+    public static Dag createEmpty(long time, int maxNodeSize, PointerFollower pointerFollower) {
+        return new Dag(time, maxNodeSize, pointerFollower);
     }
     
-    private Dag(long time, int maxNodeSize, NodeReader nodeReader) {
-        this.nodeReader = nodeReader;
+    private Dag(long time, int maxNodeSize, PointerFollower pointerFollower) {
+        this.pointerFollower = pointerFollower;
         this.topDs = TopDs.createFromFirstRoot(time, new KeyNode(), AccessData.DEFAULT_ACCESS_DATA);
         this.maxNodeSize = maxNodeSize;
-        this.pointerLocks = createPointerLocks();
     }
     
     /** 
@@ -115,25 +106,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         
         this.visitMemoryPointers(visitor);
         return true;
-    }
-    
-    public Dag setStartupTime(long startupTime) {
-        this.startupTime = startupTime;
-        return this;
-    }
-    
-    public void setRerunMode(boolean rerunMode) {
-        this.rerunMode = rerunMode;
-    }
-
-    private PointerLock[] createPointerLocks() {
-        PointerLock[] locks = new PointerLock[POINTER_LOCKS_LENGTH];
-        for (int i = 0; i < POINTER_LOCKS_LENGTH; i++) {
-            locks[i] = new PointerLock();
-        }
-        return locks;
-    }
-    
+    }   
         
     // ======== General utility methods ========
     
@@ -355,6 +328,10 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      */
     public final Node followPointer(final Node predecessor, int pointerIndex, long accessData, 
             PointerListener pointerListener, CachePolicy cachePolicy) {
+        return pointerFollower.followPointer(predecessor, pointerIndex, accessData, 
+                pointerListener, cachePolicy);
+        
+        /*
         Node result;
         assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
         assert predecessor != null : "predecessor is null";
@@ -398,17 +375,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         }
 
         return result;
+        */
     }
-    
-    /**
-     * Returns a lock for the pointerIndex'th pointer of node 'node'.
-     */
-    public final Object getPointerLock(final Node node, final int pointerIndex) {
-        int value = (node.hashCode() + 13 * pointerIndex);
-        value = (value < 0) ? -value : value;
-        return pointerLocks[value % POINTER_LOCKS_LENGTH];
-    }
-
     
     // ==== getOne() with helpers ========
     
@@ -1047,9 +1015,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
 
     
     // ======== Inner types ========
-    
-    /** Special type for pointer lock object; useful for debug. */
-    public static class PointerLock {}
     
     /**
      * A NodeReader has method readNode() that can read a node from the DB stream

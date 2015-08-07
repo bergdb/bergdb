@@ -20,6 +20,7 @@ public class Evictor {
     Random evictRandom;
     Db.ExecuteData x;
     Db.Aux aux;
+    Db.Internal internal;
     
     /**
      * Dag must be set later.
@@ -28,6 +29,7 @@ public class Evictor {
         evictRandom = new Random(0);      // pseudo-random, but deterministic
         dag = internal.dag();
         this.evictBoss = evictBoss;
+        this.internal = internal;
         x = internal.x();
         aux = internal.aux();
         
@@ -138,7 +140,7 @@ public class Evictor {
             index = (rand + i) % length;
             assert index >= 0 && index < length;
             
-            synchronized (dag.getPointerLock(node, index)) {
+            synchronized (internal.getPointerLock(node, index)) {
                 node.getPointer(index, p);
             }
             
@@ -165,7 +167,7 @@ public class Evictor {
         int count = node.getSize();
         for (int i = 0; i < count; i++) {
             
-            synchronized (dag.getPointerLock(node, i)) {
+            synchronized (internal.getPointerLock(node, i)) {
                 node.getPointer(i, pointer);
                 
                 if (pointer.isMem()) {

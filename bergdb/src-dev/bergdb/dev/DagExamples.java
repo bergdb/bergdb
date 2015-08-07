@@ -6,9 +6,13 @@ import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.TestClock;
 import bergdb.dag.Dag;
-import bergdb.dag.Dag.NodeReader;
+import bergdb.dag.Dag.CachePolicy;
+import bergdb.dag.Dag.PointerListener;
+import bergdb.dag.AccessData;
 import bergdb.dag.Node;
 import bergdb.dag.Keys;
+import bergdb.dag.Pointer;
+import bergdb.dag.PointerFollower;
 import bergdb.dag.PutData;
 
 /**
@@ -21,10 +25,33 @@ public class DagExamples {
     
     private static final int MAX_NODE_SIZE = 30;
     
-    private static final NodeReader DUMMY_NODE_READER = new NodeReader() {
-        public Node readNode(long spos) {
-            throw new IllegalStateException("No nodeReader was set, use "
-                    + Dag.class.getName() + ".setNodeReader().");
+    private static final PointerFollower DUMMY_POINTER_FOLLOWER = new PointerFollower() {
+        public Node followPointer(Node predecessor, int pointerIndex, long accessData,
+                PointerListener pointerListener, CachePolicy cachePolicy) {
+            Node result;
+            assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
+            assert predecessor != null : "predecessor is null";
+            assert accessData == 0 || AccessData.isValid(accessData);
+
+            Node pointerNode = predecessor.getPointerNode(pointerIndex);
+            long pointerPos1 = predecessor.getPointerPos(pointerIndex);
+
+            assert !Pointer.isNull(pointerNode, pointerPos1) : "Pointer is null: " + pointerNode
+                    + ", " + pointerPos1;
+
+            if (Pointer.isMem(pointerNode)) {
+                result = pointerNode;
+                if (accessData != 0) {
+                    predecessor.setPointerAccessData(pointerIndex, accessData);
+                }
+                pointerListener.pointerFollowed(
+                        predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
+            
+            } else {
+                throw new IllegalStateException("This NodeFollower does not support stream pointers.");
+            }
+
+            return result;
         }
     };
     
@@ -32,14 +59,14 @@ public class DagExamples {
      * Default Dag created at time 10 with the default max node size.
      */
     public static Dag dag() {        
-        return Dag.createEmpty(10, MAX_NODE_SIZE, DUMMY_NODE_READER);
+        return Dag.createEmpty(10, MAX_NODE_SIZE, DUMMY_POINTER_FOLLOWER);
     }
     
     /**
      * Creates an empty Dag with the specified max node size.
      */
     public static Dag dag(int maxNodeSize) {        
-        return Dag.createEmpty(10, maxNodeSize, DUMMY_NODE_READER);
+        return Dag.createEmpty(10, maxNodeSize, DUMMY_POINTER_FOLLOWER);
     }
     
     private DagExamples() {}

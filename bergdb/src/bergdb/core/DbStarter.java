@@ -9,7 +9,6 @@ import bergdb.common.Util;
 import bergdb.core.Db.ExecuteData;
 import bergdb.core.StoredTrans.Parser;
 import bergdb.core.StoredTrans.Serializer;
-import bergdb.dag.Dag.NodeReader;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.Node;
@@ -18,6 +17,7 @@ import bergdb.dag.Keys;
 import bergdb.dag.Klong;
 import bergdb.dag.NodeVisitor;
 import bergdb.dag.Pointer;
+import bergdb.dag.PointerFollower;
 import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
@@ -47,7 +47,7 @@ public class DbStarter {
     private final StoredTrans firstTrans;
     private TopNode superRoot;
     private final long accessData;
-    private NodeReader nodeReader;
+    private PointerFollower pointerFollower;
     private int maxNodeSize;
     private Dag dag;
     private final long startupPos;
@@ -55,8 +55,8 @@ public class DbStarter {
     
     
     private DbStarter(Db db, List<StoredTrans> transactions, long accessData, 
-            NodeReader nodeReader, int maxNodeSize) {
-        if (nodeReader == null) throw new IllegalArgumentException("nodeReader == null not allowed");
+            PointerFollower pointerFollower, int maxNodeSize) {
+        if (pointerFollower == null) throw new IllegalArgumentException("pointerFollower == null not allowed");
         if (transactions == null) throw new IllegalArgumentException("transactions == null not allowed");
         if (transactions.size() == 0) throw new IllegalArgumentException("transactions.size() == 0");
         
@@ -65,7 +65,7 @@ public class DbStarter {
         this.firstTrans = transactions.get(0);
         this.accessData = accessData;
         this.superRoot = null;
-        this.nodeReader = nodeReader;
+        this.pointerFollower = pointerFollower;
         this.maxNodeSize = maxNodeSize;
         this.startupPos = firstTrans.tpos;
         this.startupTime = firstTrans.tt;
@@ -78,8 +78,8 @@ public class DbStarter {
      * @param accessData    The access data for the in-memory pointers that are created.
      */
     public static void start(Db db, List<StoredTrans> transactions, long accessData,
-            NodeReader nodeReader, int maxNodeSize) {
-        DbStarter s = new DbStarter(db, transactions, accessData, nodeReader, maxNodeSize);
+            PointerFollower pointerFollower, int maxNodeSize) {
+        DbStarter s = new DbStarter(db, transactions, accessData, pointerFollower, maxNodeSize);
         s.startup();
     }
     
@@ -112,7 +112,7 @@ public class DbStarter {
         superRoot.setPointer(0, keyNode, AccessData.DEFAULT_ACCESS_DATA);
         
         TopDs topDs = new TopDs(superRoot);
-        dag = new Dag(nodeReader, topDs, maxNodeSize);
+        dag = new Dag(pointerFollower, topDs, maxNodeSize);
         db.internal().setDag(dag);
         db.internal().setKvTransSeq(transSeq);
         db.internal().createPutAndGetData();
@@ -243,7 +243,7 @@ public class DbStarter {
         // We found the latest super node, but we need the one at t = startupTime.
         
         TopDs tempTopDs = new TopDs(lastSuperNode);
-        Dag tempDag = new Dag(nodeReader, tempTopDs, maxNodeSize);
+        Dag tempDag = new Dag(pointerFollower, tempTopDs, maxNodeSize);
         superRoot = tempTopDs.findSuperRootAtTime(tempDag, startupTime, tempDag.newGetData());
         if (superRoot == null) {
             throw new StreamFormatException("No super root at time " + startupTime + " was found.");
@@ -289,7 +289,7 @@ public class DbStarter {
 
     private void prepareDb() {
         TopDs topDs = new TopDs(superRoot);
-        dag = new Dag(nodeReader, topDs, maxNodeSize);        
+        dag = new Dag(pointerFollower, topDs, maxNodeSize);        
         db.internal().setDag(dag);
         db.internal().setKvTransSeq(transSeq);
         db.internal().createPutAndGetData();
@@ -297,8 +297,6 @@ public class DbStarter {
 
     private void rerunTransactions() {
         // Reruns transactions, except the first one.
-        
-        dag.setRerunMode(true);
         
         int count = transactions.size();
         
@@ -335,8 +333,6 @@ public class DbStarter {
                 }
             }
         }
-        
-        dag.setRerunMode(false);
     }
 
     /**

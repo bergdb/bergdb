@@ -12,11 +12,15 @@ import bergdb.common.Util;
 import bergdb.core.DbHelper.AddReplicaClass;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
+import bergdb.dag.Dag.CachePolicy;
+import bergdb.dag.Dag.PointerListener;
 import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
 import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.NodeVisitor;
+import bergdb.dag.Pointer;
+import bergdb.dag.PointerFollower;
 import bergdb.dag.PutData;
 import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
@@ -127,6 +131,22 @@ public class Db {
     private final TransactionListener reclaimTransactionListener;
     private final Internal internal;
     
+    // TODO A. make a class "PointerLocks".
+    private final int POINTER_LOCKS_LENGTH = 128;
+    private final PointerLock[] pointerLocks;
+    
+    /** Special type for pointer lock object; useful for debug. */
+    public static class PointerLock {}
+    
+    /**
+     * Returns a lock for the pointerIndex'th pointer of node 'node'.
+     */
+    public final Object getPointerLock(final Node node, final int pointerIndex) {
+        int value = (node.hashCode() + 13 * pointerIndex);
+        value = (value < 0) ? -value : value;
+        return pointerLocks[value % POINTER_LOCKS_LENGTH];
+    }
+    
     private StartupPosUpdater startupPosUpdater = new StartupPosUpdater() {
         public long newStartupPos(long current, long streamLength, int startupDistance, 
                 PosOfTransBeforeFunction posFunction) { 
@@ -152,6 +172,11 @@ public class Db {
         readSync = new ReadSync();
         x = new ExecuteData();
         keyModSet = new KeyModSet();
+        
+        pointerLocks = new PointerLock[POINTER_LOCKS_LENGTH];
+        for (int i = 0; i < POINTER_LOCKS_LENGTH; i++) {
+            pointerLocks[i] = new PointerLock();
+        }
  
         this.maxNodeSize = b.maxNodeSize;
         this.startupDistance = b.startupDistance;
@@ -489,7 +514,51 @@ public class Db {
     }
 
     private void startDb(ArrayList<StoredTrans> transactions) {
-        DbStarter.start(this, transactions, getAccessData(), nodeStream, maxNodeSize);
+        PointerFollower pointerFollower = new PointerFollower() {
+            public Node followPointer(Node predecessor, int pointerIndex, long accessData,
+                    PointerListener pointerListener, CachePolicy cachePolicy) {
+                Node result;
+                assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
+                assert predecessor != null : "predecessor is null";
+                assert accessData == 0 || AccessData.isValid(accessData);
+
+                final Object lock = getPointerLock(predecessor, pointerIndex);
+
+                synchronized (lock) {
+                    Node pointerNode = predecessor.getPointerNode(pointerIndex);
+                    long pointerPos1 = predecessor.getPointerPos(pointerIndex);
+
+                    assert !Pointer.isNull(pointerNode, pointerPos1) : "Pointer is null: " + pointerNode
+                            + ", " + pointerPos1;
+
+                    if (Pointer.isMem(pointerNode)) {
+                        result = pointerNode;
+                        if (accessData != 0) {
+                            predecessor.setPointerAccessData(pointerIndex, accessData);
+                        }
+                        pointerListener.pointerFollowed(
+                                predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
+                    
+                    } else {
+                        assert pointerPos1 > 0 : "bad pointerPos, " + pointerPos1 
+                                + ", pointerIndex:" + pointerIndex + ", predecessor:" + predecessor;
+                        
+                        result = nodeStream.readNode(pointerPos1);
+                        
+                        pointerListener.pointerFollowed(
+                                predecessor, pointerIndex, result, Pointer.TYPE_STREAM);
+                        
+                        if (cachePolicy.shouldCache(result)) {
+                            predecessor.setPointer(pointerIndex, result, accessData);
+                        }
+                    }
+                }
+
+                return result;
+            }
+        };
+        
+        DbStarter.start(this, transactions, getAccessData(), pointerFollower, maxNodeSize);
     }
 
     private void createPutAndGetData() {
@@ -970,7 +1039,7 @@ public class Db {
         }
         
         g.gd.accessData = getAccessData();
-        evictor.possiblyEvict(g.gd.evictData);    // TODO A. Consider calling possiblyEvict once per KV.
+        evictor.possiblyEvict(g.gd.evictData);    // TODO B. Consider calling possiblyEvict once per KV.
 
         g.actualLookupTime = dbClock.lookupTime(g.lookupTime);
             // Limits lookup time so it strictly less than the transaction time of
@@ -1416,6 +1485,15 @@ public class Db {
 
         public AppendOnlyStream getMainStream() {
             return storageManager.getMainStream();
+        }
+        
+        /**
+         * Returns a lock for the pointerIndex'th pointer of node 'node'.
+         */
+        public final Object getPointerLock(final Node node, final int pointerIndex) {
+            int value = (node.hashCode() + 13 * pointerIndex);
+            value = (value < 0) ? -value : value;
+            return pointerLocks[value % POINTER_LOCKS_LENGTH];
         }
     }
     
