@@ -258,9 +258,7 @@ public class Interactive {
     
     private long memUsed() {
         Runtime r = Runtime.getRuntime();
-        long maxMem = r.maxMemory();
-        long freeMem = r.freeMemory();
-        return maxMem - freeMem;
+        return r.totalMemory() - r.freeMemory();
     }
 
     private void runAddCards(CommandLine options) {

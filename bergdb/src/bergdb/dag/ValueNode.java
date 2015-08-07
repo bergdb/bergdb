@@ -134,6 +134,7 @@ public final class ValueNode implements Node {
      * This method does nothing. Value nodes have no id attribute.
      */
     public final void setId(long spos) {
+        // TODO D. Investigate: should we throw exception instead?
     }
     
     public final boolean isDelete() {

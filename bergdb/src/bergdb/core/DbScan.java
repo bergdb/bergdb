@@ -113,7 +113,7 @@ public class DbScan {
     
     
     
-    // ======== Test ========
+    // ======== Tests ========
     
     private static Db createEmptyDb() {
         return createEmptyDb(100);

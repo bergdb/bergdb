@@ -1130,4 +1130,9 @@ public class Util {
             out.close();
         }
     }
+    
+    public static long memoryUsed() {
+        Runtime r = Runtime.getRuntime();
+        return (r.totalMemory() - r.freeMemory());
+    }
 }

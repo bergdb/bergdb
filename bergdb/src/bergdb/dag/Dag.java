@@ -399,6 +399,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                 
                 pointerListener.pointerFollowed(
                         predecessor, pointerIndex, result, Pointer.TYPE_STREAM);
+                
                 if (cachePolicy.shouldCache(result)) {
                     predecessor.setPointer(pointerIndex, result, accessData);
                 }
