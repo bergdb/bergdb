@@ -5,12 +5,13 @@ import java.util.HashSet;
 import java.util.Set;
 
 import bergdb.common.Bug;
-import bergdb.core.NextMap;
 import bergdb.dag.GetMany.StopCondition;
 import bergdb.pub.DbException;
 import bergdb.pub.IllegalDbStateException;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
+
+// TODO C. Consider injection of pointer-following code instead of NodeReader.
 
 /**
  * <p>The DAG (directed acyclic graph) is the main data structure of the database.
@@ -53,8 +54,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     private final int maxNodeSize;
     private final int POINTER_LOCKS_LENGTH = 128;
     private final PointerLock[] pointerLocks;
-    
-    private NextMap nextMap = new NextMap();
     private boolean rerunMode;
     private long startupTime;   
     
@@ -116,11 +115,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         
         this.visitMemoryPointers(visitor);
         return true;
-    }
-    
-    public Dag setNextMap(NextMap nextMap) {
-        this.nextMap = nextMap;
-        return this;
     }
     
     public Dag setStartupTime(long startupTime) {
@@ -386,11 +380,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             } else {
                 assert pointerPos1 > 0 : "bad pointerPos, " + pointerPos1 
                         + ", pointerIndex:" + pointerIndex + ", predecessor:" + predecessor;
-                assert nextMap != null : "nextMap is null";
                 
-                long pointerPos2 = nextMap.forward(pointerPos1);
-                
-                result = nodeReader.readNode(pointerPos2);
+                result = nodeReader.readNode(pointerPos1);
                 
                 if (this.rerunMode && result.isKeyNode()) {
                     KeyNode keyNode = (KeyNode) result;

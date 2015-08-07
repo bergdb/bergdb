@@ -87,14 +87,14 @@ public class CacheMap {
     }
     
     private HashMap<Long, NodeReference> indexMap(long id) {
-        // XXX improve this
+        // TODO A. improve this
         int myInt = (int) (id / 8);
         assert myInt >= 0;
         return indexMaps[myInt % INDEX_MAP_COUNT];
     }
     
     private HashMap<Long, NodeReference> valueMap(long id) {
-        // XXX improve this
+        // TODO A. improve this
         int myInt = (int) id;
         assert myInt >= 0 : "myInt: " + myInt;
         return valueMaps[myInt % VALUE_MAP_COUNT];
@@ -105,7 +105,7 @@ public class CacheMap {
      * value was garbage collected.
      */
     private void cleanup() {
-        // XXX is synchronized used ok here? Deadlock possible? Think some more.
+        // TODO A. is synchronized used ok here? Deadlock possible? Think some more.
         //   What if a node eviction is in progress?
         //   An alternative is to use a lock that can be queried (tryLock), 
         //   java.util.concurrent.locks.Lock.

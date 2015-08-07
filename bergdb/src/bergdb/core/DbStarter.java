@@ -289,9 +289,7 @@ public class DbStarter {
 
     private void prepareDb() {
         TopDs topDs = new TopDs(superRoot);
-        dag = new Dag(nodeReader, topDs, maxNodeSize);
-        dag.setNextMap(nextMap).setStartupTime(startupTime);
-        
+        dag = new Dag(nodeReader, topDs, maxNodeSize);        
         db.internal().setDag(dag);
         db.internal().setKvTransSeq(transSeq);
         db.internal().createPutAndGetData();
@@ -421,7 +419,7 @@ public class DbStarter {
      *      if the db stream was tampered with.
      */
     private void validateTransactions(List<StoredTrans> transactions, long startupTime) {
-        // NOTE t.version --- stream format version. We should check that this
+        // TODO D. check: t.version --- stream format version. We should check that this
         // software supports the version of the transactions in the stream.
         
         if (transactions.size() == 0) {

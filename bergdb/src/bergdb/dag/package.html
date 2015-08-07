@@ -1,21 +1,19 @@
 <html><head><title>Package graph</title></head><body>
 
-<p>This packages implements the core in-memory data structure.
+<p>This packages implements the main in-memory data structure.
 It is a DAG (directed acyclic graph), implemented in class Dag
 and the TransSeq sequence of transaction information in the startup section.
 This is the in-memory data structure used by the database.
 This is a low-level package. Lower-level than bergdb.core.
-Core uses this package and this package is not allowed to use core.</p>
+Package bergd.core uses this package and this package is not allowed to use core.</p>
 
 <p>Scope: traverse the graph (DAG), support get / getMany / putKv operations.
 Testable (without Db).</p>
 
 <p>Anti-scope: db clock, locking, STM, statistics.</p>
 
-<p>Inject what is needed and work with call-backs. This package 
-does not depend on core.</p>
-
-<p>This package is testable in isolation. That is, without higher-level packages:
+<p>Inject what is needed and work with call-backs. This package does not depend on core.
+This package is testable in isolation. That is, without higher-level packages:
 bergdb.pubimp, bergdb.core.</p>
 
 <p>Allowed package dependencies: common, nanotest, storage, possibly stream.</p>
