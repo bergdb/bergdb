@@ -22,11 +22,10 @@ public class MEM {
     private double go(CommandLine line) throws Exception {
         int n = 1000*1000;
         int valueSize = 0;
-        Runtime rt = Runtime.getRuntime();
         Db db = Db.builder().testSetup().mainStream(new DummyStream()).start();
         
         System.gc(); System.gc(); System.gc();
-        long emptyMem = rt.totalMemory() - rt.freeMemory();
+        long emptyMem = usedMem();
         
         int batchSize = 100;
         for (int i = 0; i < n/batchSize; i++) {
@@ -41,7 +40,7 @@ public class MEM {
         }
         
         System.gc(); System.gc(); System.gc();
-        long fullMem = rt.totalMemory() - rt.freeMemory();
+        long fullMem = usedMem();
         
         double memPerKv = (double)(fullMem - emptyMem) / (double) n;
         report = String.format("MEM:%.0f", memPerKv);
@@ -54,6 +53,13 @@ public class MEM {
         db.stop();
         
         return memPerKv;
+    }
+    
+    private long usedMem() {
+        Runtime rt = Runtime.getRuntime();
+        System.gc(); System.gc(); System.gc();
+        long mem = rt.totalMemory() - rt.freeMemory();
+        return mem;
     }
     
     private void waitForEnter() throws IOException {
