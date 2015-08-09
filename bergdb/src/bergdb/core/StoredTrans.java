@@ -580,11 +580,18 @@ public class StoredTrans {
             }
             return offset;
         }
+        
+        
 
         private void resizePrevPosIfNeeded() {
-            // 10007 is a prime.
+            // Increases prevPos length if needed.
+            // Decreases it every PRIME'th time if possible to avoid memory leak
+            // after a large transaction.
+            
+            final int PRIME = 97;
+            final int PRIME_MINUS_ONE = 96;
 
-            if (/* TODO A. counter % 10007 == 10006 */ true) {
+            if (counter % PRIME == PRIME_MINUS_ONE) {
                 int newSize = Math.max(INIT_SIZE_OF_PREV_POS, transNodes.keyCount);
                 if (prevPos.length != newSize) {
                     prevPos = new long[newSize];
@@ -597,35 +604,44 @@ public class StoredTrans {
         }
 
         private void resizeBuffersIfNeeded() {
-            // TODO A. Investigate why "the real" if-statements result in property MEM:265
-            // instead of MEM:161 with the always true version.
+            // Increases buffer sizes of byteBuffer and longBuffer if required.
+            // Decreases buffer sizes every PRIME'th transaction if possible.
             
-            if (/* TODO A. counter % 10007 == 10006*/ true) {
-                int newSize = Math.max(INIT_SIZE_OF_BYTE_BUFFER, totalSize);
-                if (byteBuffer.length != newSize) {
+            final int PRIME = 97;
+            final int PRIME_MINUS_ONE = 96;
+            
+            // TODO A. Investigate or at least document HUGE trans when running prop.MEM.
+            //if (totalSize > 10*1000000) {
+            //    System.out.format("totalSize: %d (%.1f MB)\n", totalSize, 1e-6 * totalSize);
+            //    System.out.println("  " + transNodes.topCount + " " + transNodes.keyCount + " " + transNodes.valueCount);
+            //}
+            
+            if (counter % PRIME == PRIME_MINUS_ONE) {
+                int newByteSize = Math.max(INIT_SIZE_OF_BYTE_BUFFER, totalSize);
+                if (byteBuffer.length != newByteSize) {
                     try {
-                        byteBuffer = new byte[newSize];
+                        byteBuffer = new byte[newByteSize];
                     } catch (OutOfMemoryError e) {
                         throw new OutOfMemoryError(e.getMessage() 
-                                + ", tried to allocate " + newSize 
+                                + ", tried to allocate " + newByteSize 
                                 + " bytes for byte[], counter is " + counter);
                     }
                 }
 
-                newSize = Math.max(INIT_SIZE_OF_LONG_BUFFER, topAndKeySize / 8);
-                if (longBuffer.length != newSize) {
+                int newLongSize = Math.max(INIT_SIZE_OF_LONG_BUFFER, topAndKeySize / 8);
+                if (longBuffer.length != newLongSize) {
                     try {
-                        longBuffer = new long[newSize];
+                        longBuffer = new long[newLongSize];
                     } catch (OutOfMemoryError e) {
                         throw new OutOfMemoryError(e.getMessage() 
-                                + ", tried to allocate " + (newSize*8) 
+                                + ", tried to allocate " + (newLongSize*8) 
                                 + " bytes for long[], counter is " + counter);
                     }
                 }
             }
 
             if (byteBuffer.length < totalSize) {
-                int newSize = (int) (totalSize * 1.10);
+                int newSize = (int) (totalSize * 1.20);
                 
                 try {
                     byteBuffer = new byte[newSize];
