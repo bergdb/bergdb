@@ -1,20 +1,16 @@
 package bergdb.test;
 
-import bergdb.common.Util;
+import static bergdb.nanotest.Assert.assertEquals;
 import bergdb.core.CoreTestClock;
 import bergdb.core.DagComparison;
 import bergdb.core.Db;
 import bergdb.core.Db.ExecuteData;
-import bergdb.core.Db.StartParams;
 import bergdb.core.DbUtil;
-import bergdb.core.StartupPosUpdater;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.GetMany;
 import bergdb.dag.Node;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.TestEnvironment;
-import static bergdb.nanotest.Assert.assertEquals;
 import bergdb.nanotest.Nano;
 import bergdb.stream.MemoryStream;
 
@@ -188,143 +184,6 @@ public class ScenarioTester {
         assertEquals(sum1, sum2);
     }
     
-    @Nano
-    private static void scenario104() {        
-        MemoryStream stream = new MemoryStream();
-        StartupPosUpdater.TestUpdater updater = new StartupPosUpdater.TestUpdater();
-        long startupPos;
-        
-        CoreTestClock clock = new CoreTestClock();
-        Db db1 = Db.builder().testSetup().mainStream(stream).clock(clock).build();
-        db1.internal().setStartupPosUpdater(updater);
-        db1.start();
-        
-        clock.setTime(100);
-        Trans t1 = db1.trans().put("/key1", "v1").build();
-        db1.execute(t1);
-        
-        clock.setTime(200);
-        startupPos = t1.tpos;
-        updater.setNextPos(startupPos);
-        Trans t2 = db1.trans().put("/key2", "v2").build();
-        db1.execute(t2);
-        long sum1 = DbUtil.checksum(db1);
-        db1.sync(SyncLevel.ORDINARY);
-        
-        // Restart
-        
-        Db db2 = Db.builder().testSetup().mainStream(stream.copy()).build();
-        
-        StartParams params = new StartParams();
-        params.startupDistance = 20*1000000;
-        params.startupPos = startupPos;
-        
-        db2.start(params, Db.PrintStartListener.DO_NOTHING);
-        long sum2 = DbUtil.checksum(db2);
-        
-        //System.out.println("== db1:");
-        //db1.printGraph(System.out);
-        //System.out.println("== db2:");
-        //db2.printGraph(System.out);
-        
-        //db2.getStream().print(System.out);
-        
-        db1.stop();
-        db2.stop();
-        
-        Assert.assertEquals("checksum", sum1, sum2);
-    }
-    
-    @Nano
-    private static void scenario105() {
-        // Demonstrates bug 141027:
-        // bergdb.storage.StreamFormatException: Bad spos (-1) of Pointer 3 from key node
-        // At startup time.
-
-        MemoryStream stream = new MemoryStream();
-        StartupPosUpdater.TestUpdater updater = new StartupPosUpdater.TestUpdater();
-        long startupPos;
-        
-        Db db = Db.builder().testSetup().mainStream(stream).clock(new CoreTestClock()).build();
-        db.internal().setStartupPosUpdater(updater);
-        db.start();
-        
-        Trans t1 = db.trans().put("/dir100/key1", "v1").build();
-        db.execute(t1);
-        
-        Trans t2 = db.trans().put("/dir200/key2", "v2").build();
-        db.execute(t2);
-        
-        startupPos = t2.tpos;
-        updater.setNextPos(startupPos);
-        Trans t3 = db.trans().put("/z", "zzz5").build();
-        db.execute(t3);
-        db.sync(SyncLevel.ORDINARY);
-        long sum1 = DbUtil.checksum(db);
-        db.stop();
-        
-        // Restart
-        
-        StartParams params = new StartParams();
-        params.startupDistance = 20*1000000;
-        params.startupPos = startupPos;
-        
-        db = Db.builder().testSetup().mainStream(stream.copy()).build();
-        db.start(params, Db.StartListener.DO_NOTHING);
-        long sum2 = DbUtil.checksum(db);
-        db.stop();
-        
-        Assert.assertEquals(sum1, sum2);
-    }
-    
-    /**
-     * Two transactions with multi-klong keys: t1, t2. t2 sets startup pos to t1.pos.
-     */
-    @Nano
-    private static void scenario106(TestEnvironment c) throws InterruptedException {
-        
-        //System.out.println("======== testScenario106 ========");
-        
-        MemoryStream stream = new MemoryStream();
-        CoreTestClock clock = new CoreTestClock();
-        StartupPosUpdater.TestUpdater updater = new StartupPosUpdater.TestUpdater();
-        
-        Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(5*1000).start();
-        db.internal().setStartupPosUpdater(updater);
-        
-        Trans t1 = db.trans().put("/key1-suffix1", Util.toBytes("v1")).build();
-        db.execute(t1);
-        
-        updater.setNextPos(t1.tpos);
-        Trans t2 = db.trans().put("/key2-suffix2", Util.toBytes("v2")).build();
-        db.execute(t2);
-        
-        //System.out.println("---- printGraph ----");
-        //db.printGraph(System.out);
-        long sum1 = DbUtil.checksum(db);
-        
-        db.sync(SyncLevel.ORDINARY);
-        
-        //System.out.println("\nSTREAM: [[");
-        //db.getStream().print(System.out);
-        //System.out.println("]]");
-        
-        db.stop();
-        
-        // Restart
-        
-        db = Db.builder().testSetup(stream).build();
-        db.start();
-        
-        //System.out.println("---- printGraph ----");
-        //db.printGraph(System.out);
-        
-        long sum2 = DbUtil.checksum(db);
-        db.stop();
-        
-        Assert.assertEquals(sum1, sum2);
-    }
-    
     /**
      * Scenario with few transaction that demonstrates a dag diff
      * before we fixed an issue.
@@ -402,3 +261,13 @@ public class ScenarioTester {
         Assert.assertTrue("dags equal?", equal);
     }
 }
+
+
+/*
+
+LOG
+
+150809 Removed Scenarios 104, 105, 106 because they use the now obsolete 
+db.internal().setStartupPosUpdater(updater). Interface core.StartupPosUpdater has been removed.
+
+*/

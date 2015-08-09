@@ -1,11 +1,9 @@
 package bergdb.core;
 
 import java.util.Iterator;
-
 import bergdb.dag.IDirtyNodes;
 import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
-import bergdb.dag.KeyNodeTester;
 import bergdb.dag.Pointer;
 import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
@@ -28,6 +26,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
     
     private static final int INITIAL_SIZE = 64;
     private int counter;
+    public long kvSize;    // total byte size of keys plus values
     
     public int topCount;
     public TopNode[] topNodes;
@@ -38,6 +37,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
     public int valueCount;
     public ValueNode[] valueNodes;
     public long[][] keys;         // key (segmented key) for each value node, size = valueSize
+    
     
     public TransNodes() {
         topNodes = new TopNode[INITIAL_SIZE];
@@ -52,6 +52,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         keys = new long[INITIAL_SIZE][];
         
         counter = 0;
+        kvSize = 0;
     }
     
     public final void addTopNode(TopNode node) {
@@ -105,7 +106,14 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
             
             valueNodes[valueCount] = node;
             keys[valueCount] = key;
+            
             valueCount++;
+            kvSize += key.length * 8;
+            if (node.value == null) {
+                kvSize += 16;
+            } else {
+                kvSize += node.value.length;
+            }
         }
     }
     
@@ -145,11 +153,10 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
     public final void clear() {
         //
         // The arrays are reset to initialSize once in a while if they are long to 
-        // avoid memory leak.
-        // Prime numbers around 1000: 1009   1013  1019   1021   1031
-        // Prime numbers around 100:   101    103   107    109    113 
+        // avoid memory leak. Prime numbers are used.
         
         counter++;
+        kvSize = 0;
         
         // TopNodes
         
@@ -160,7 +167,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
             topNodes[i] = null;
         }
         
-        if (counter % 1009 == 0 && topNodes.length > INITIAL_SIZE * 4) {
+        if (counter % 997 == 0 && topNodes.length > INITIAL_SIZE * 4) {
             topNodes = new TopNode[INITIAL_SIZE];
         }
         
@@ -175,7 +182,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
             keyNodes[i] = null;
         }
         
-        if (counter % 1013 == 0 && keyNodes.length > INITIAL_SIZE * 4) {
+        if (counter % 991 == 0 && keyNodes.length > INITIAL_SIZE * 4) {
             keyNodes = new KeyNode[INITIAL_SIZE];
         }
         
@@ -191,7 +198,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
             keys[i] = null;
         }
         
-        if (counter % 1019 == 0 && valueNodes.length > INITIAL_SIZE * 4) {
+        if (counter % 983 == 0 && valueNodes.length > INITIAL_SIZE * 4) {
             valueNodes = new ValueNode[INITIAL_SIZE];
             keys = new long[INITIAL_SIZE][];
         }
@@ -433,8 +440,8 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         ValueNode v2 = ValueNode.createDelete();
         
         Assert.assertEquals(0, nodes.valueCount);
-        nodes.addValueNode(v1, null);
-        nodes.addValueNode(v2, null);
+        nodes.addValueNode(v1, new long[0]);
+        nodes.addValueNode(v2, new long[0]);
         Assert.assertEquals(v1, nodes.valueNodes[0]);
         Assert.assertEquals(v2, nodes.valueNodes[1]);
         Assert.assertEquals(2, nodes.valueCount);
@@ -452,7 +459,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
             if (i == index) {
                 v = value;
             }
-            nodes.addValueNode(value, null);
+            nodes.addValueNode(value, new long[0]);
         }
         
         Assert.assertEquals(count, nodes.valueCount);
@@ -472,7 +479,7 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         
         for (int i = 0; i < count; i++) {
             ValueNode value = ValueNode.createDelete();
-            nodes.addValueNode(value, null);
+            nodes.addValueNode(value, new long[0]);
         }
         
         Assert.assertEquals(count, nodes.valueCount);
@@ -482,78 +489,6 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         }
         
         Assert.assertEquals(INITIAL_SIZE, nodes.valueNodes.length);
-    }
-    
-    /**
-     * T2 key node, 8 children with spos == Spos.NULL. All children should be added.
-     */
-    @Nano
-    public static void testAddUnstoredDescendents1() {
-        KeyNode t2 = new KeyNodeTester().createT2();
-        
-        TransNodes transNodes = new TransNodes();
-        transNodes.addKeyNode(t2);
-        Assert.assertEquals(1, transNodes.size());
-        
-        transNodes.addUnstoredDescendents();
-        Assert.assertEquals(9, transNodes.size());
-    }
-    
-
-    /**
-     * T2 key node, 6 children with spos == Spos.NULL and two with a 
-     * valid spos.
-     */
-    @Nano
-    public static void testAddUnstoredDescendents2() {
-        KeyNode t2 = new KeyNodeTester().createT2();
-        t2.pointers[3].setSpos(100);
-        t2.pointers[5].setSpos(200);
-        
-        TransNodes transNodes = new TransNodes();
-        transNodes.addKeyNode(t2);
-        Assert.assertEquals(1, transNodes.size());
-        
-        transNodes.addUnstoredDescendents();
-        Assert.assertEquals(1+6, transNodes.size());
-    }
-    
-    /**
-     * T2 key node with 8 children, one of which has 8 children itself.
-     */
-    @Nano
-    public static void testAddUnstoredDescendents3Recursive() {
-        KeyNode t2 = new KeyNodeTester().createT2();
-        t2.pointers[3] = new KeyNodeTester().createT2();     // one child with 8 children
-        
-        TransNodes transNodes = new TransNodes();
-        transNodes.addKeyNode(t2);
-        Assert.assertEquals(1, transNodes.size());
-        
-        transNodes.addUnstoredDescendents();
-        Assert.assertEquals(1+8+8, transNodes.size());
-    }
-    
-
-    /**
-     * Mixed, advanced case.
-     */
-    @Nano
-    public static void testAddUnstoredDescendents4Recursive() {
-        KeyNode t2 = new KeyNodeTester().createT2();
-        
-        t2.pointers[2].setSpos(10);
-        t2.pointers[3] = new KeyNodeTester().createT2(); 
-        t2.pointers[4] = new KeyNodeTester().createT2();
-        t2.pointers[4].setSpos(20);
-        ((KeyNode) t2.pointers[3]).pointers[5].setSpos(20);
-        
-        TransNodes transNodes = new TransNodes();
-        transNodes.addKeyNode(t2);
-        Assert.assertEquals(1, transNodes.size());
-        
-        transNodes.addUnstoredDescendents();
-        Assert.assertEquals(1+8+8+8-1-9-1, transNodes.size());
     }
     
     @Nano

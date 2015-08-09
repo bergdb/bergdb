@@ -131,22 +131,8 @@ public class Db {
     private final TransactionListener reclaimTransactionListener;
     private final Internal internal;
     private final PointerLocks pointerLocks;
-    
-    private StartupPosUpdater startupPosUpdater = new StartupPosUpdater() {
-        public long newStartupPos(long current, long streamLength, int startupDistance, 
-                PosOfTransBeforeFunction posFunction) { 
-            assert posFunction != null : "posFunction is null";
-            long candidate = streamLength - startupDistance;
-            candidate = candidate < 0 ? 0 : candidate;
-            long pos = posFunction.posOfTransBefore(candidate);
-            long updated = pos == -1 ? current : pos;
-            return updated;
-        }
-    };
-
     private File createdTxtDir;
     private String createdTxtCryptoKeyInfo;
-
 
     /**
      * Constructor takes a DbBuilder; it wires dependencies based on builder settings.
@@ -1247,11 +1233,13 @@ public class Db {
         if (x.trans.isStartupRerun) {
             newSp = x.trans.startupPos;
         } else {
-            newSp = computeNewStartupPos(currentSp);
+            long maxSp = nodeStream.getLength() - startupDistance;
+            
+            newSp = transSeq.take(currentSp, maxSp, x.transNodes.valueCount, x.transNodes.kvSize, x.transNodes);
+            
             x.trans.startupPos = newSp;
         }
         
-        transSeq.take(newSp, (TransSeq.TransNodesForMe) x.transNodes);
         
         if (!x.trans.isStartupRerun) {
             nodeStream.appendNodes(x.transNodes, x.trans);
@@ -1322,19 +1310,6 @@ public class Db {
         for (Kv kv : t.kvs) {
             this.getOneInternal(readTime, kv.getKey(), gd);
         }
-    }
-
-    /** 
-     * Computes a new startupPos based on the current current startupPos,
-     * the stream length and the startupPosUpdater.
-     * 
-     * @param current  The current startup pos.
-     */
-    private long computeNewStartupPos(long current) {
-        assert transSeq != null : "kvTransSeq is null";
-        long length = nodeStream.getLength();
-        return startupPosUpdater.newStartupPos(
-                current, length, startupDistance, (PosOfTransBeforeFunction) transSeq);
     }
 
     /**
@@ -1444,11 +1419,13 @@ public class Db {
         
         public ExecuteData x() { return x; }
         
+        /*
         public void setStartupPosUpdater(StartupPosUpdater u) {
             synchronized (writeLock) {
                 startupPosUpdater = u;
             }
         }
+        */
         
         public void executeInner(Trans t) { Db.this.executeInner(t); }
         

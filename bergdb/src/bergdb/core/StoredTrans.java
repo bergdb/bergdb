@@ -610,12 +610,6 @@ public class StoredTrans {
             final int PRIME = 97;
             final int PRIME_MINUS_ONE = 96;
             
-            // TODO A. Investigate or at least document HUGE trans when running prop.MEM.
-            //if (totalSize > 10*1000000) {
-            //    System.out.format("totalSize: %d (%.1f MB)\n", totalSize, 1e-6 * totalSize);
-            //    System.out.println("  " + transNodes.topCount + " " + transNodes.keyCount + " " + transNodes.valueCount);
-            //}
-            
             if (counter % PRIME == PRIME_MINUS_ONE) {
                 int newByteSize = Math.max(INIT_SIZE_OF_BYTE_BUFFER, totalSize);
                 if (byteBuffer.length != newByteSize) {

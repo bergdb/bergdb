@@ -48,6 +48,8 @@ public class MEM {
         if (line.has("wait")) {
             System.out.println("Waiting for ENTER.");
             waitForEnter();
+            
+            System.out.println("Stream length: " + db.getStreamLength() + ", startupDistance: " + db.getStartupDistance());
         }
         
         db.stop();

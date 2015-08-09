@@ -67,30 +67,65 @@ public class TransSeq implements PosOfTransBeforeFunction {
     
     /**
      * Takes dirty index nodes from the trans seq and adds to trans nodes.
+     * Also computes a new startup pos (sp).
      * 
-     * @param tposLimit  Takes all nodes of transactions with tpos LTE tposLimit.
-     * @param transNodes  For output.
+     * @param currentSp  Current startup pos (sp).
+     * @param maxSp  Maximum currently allowed startup pos (sp).
+     * @param valueCount  Number of value nodes in the current transaction.
+     * @param transNodes  Output parameters; nodes are added to transNodes.
+     * @return The new startup pos (sp).
      */
-    public void take(final long tposLimit, final TransNodesForMe transNodes) {
+    public long take(long currentSp, long maxSp, 
+            final int valueCount, final long kvSize, 
+            final TransNodesForMe transNodes) {
+        //
+        // Takes nodes from TransSeq queue until 1. the queue is empty, or 2. the maxSp would be
+        // exceed if we would continue, or 3. the index node limit has been reached.
+        // The index node limit (nodeCountLimit) is used for some fairness. Large kv transactions
+        // should include more index nodes that small kv transactions.
+        // Since we always process 2 transaction before considering the limit, the startup
+        // pos updates should never fall exceedingly behind.
+        //
+        // TODO D. Consider / test: increase nodeCountLimit by a factor (of 4.0 perhaps) 
+        // if startup pos is falling behind (with more than 2.0 * startupDistance perhaps).
+        //
+        
+        long newSp = currentSp;
+        int nodeCount = 0;
+        int transCount = 0;
+        
         if (isEmpty()) {
-            return;
+            return newSp;
         }
         
-        while (first != null && first.tpos <= tposLimit) {
+        final long nodeCountLimitLong = valueCount * 4 + kvSize / 1024;
+        final int nodeCountLimit = nodeCountLimitLong > Integer.MAX_VALUE ? 
+                Integer.MAX_VALUE : (int) nodeCountLimitLong;
+        
+        while (first != null 
+                && first.tpos <= maxSp 
+                && (nodeCount < nodeCountLimit || transCount < 2)) {
+            
+            newSp = first.tpos;
+            
             for (Node node : first.gotDirtyNodes) {
                 int type = node.getType();
                 
                 switch (type) {
                 case Node.TYPE_TOP_NODE:
                     transNodes.addTopNode((TopNode) node);
+                    nodeCount++;
                     break;
                 case Node.TYPE_KEY_NODE:
                     transNodes.addKeyNode((KeyNode) node);
+                    nodeCount++;
                     break;
                 }
                 
                 assert node.isIndexNode() : "non-index node in trans seq, " + node.toString();
             }
+            
+            transCount++;
             
             first = first.next;
             size -= 1;
@@ -100,6 +135,8 @@ public class TransSeq implements PosOfTransBeforeFunction {
             // To avoid a potential memory leak
             last = null;
         }
+        
+        return newSp;
     }
     
     /**
@@ -296,14 +333,14 @@ public class TransSeq implements PosOfTransBeforeFunction {
             }
         };
         
-        s.take(99, transNodes);
+        s.take(0, 99, Integer.MAX_VALUE, Integer.MAX_VALUE, transNodes);
         Assert.assertEquals(0, nodes.size());
         
-        s.take(100, transNodes);
+        s.take(0, 100, Integer.MAX_VALUE, Integer.MAX_VALUE, transNodes);
         Assert.assertEquals(1, nodes.size());
         Assert.assertTrue(nodes.contains(n1));
         
-        s.take(200, transNodes);
+        s.take(0, 200, Integer.MAX_VALUE, Integer.MAX_VALUE, transNodes);
         Assert.assertEquals(2, nodes.size());
         Assert.assertTrue(nodes.get(0) == n1);
         Assert.assertTrue(nodes.get(1) == n2);
@@ -335,7 +372,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
             }
         };
         
-        s.take(200, transNodes);
+        s.take(0, 200, Integer.MAX_VALUE, Integer.MAX_VALUE, transNodes);
         Assert.assertEquals(2, nodes.size());
         Assert.assertTrue(nodes.get(0) == n1);
         Assert.assertTrue(nodes.get(1) == n2);
