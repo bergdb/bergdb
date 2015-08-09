@@ -513,6 +513,8 @@ public class Db {
                         assert pointerPos1 > 0 : "bad pointerPos, " + pointerPos1 
                                 + ", pointerIndex:" + pointerIndex + ", predecessor:" + predecessor;
                         
+                        // TODO A. Introduce CacheMap GET here.
+                        
                         result = nodeStream.readNode(pointerPos1);
                         
                         pointerListener.pointerFollowed(
@@ -520,6 +522,8 @@ public class Db {
                         
                         if (cachePolicy.shouldCache(result)) {
                             predecessor.setPointer(pointerIndex, result, accessData);
+                            
+                            // TODO A. Introduce CacheMap PUT here.
                         }
                     }
                 }
@@ -1253,7 +1257,7 @@ public class Db {
         
         handleStillDirtyNodes();
         
-        // TODO A. Enable addToCacheMap()...
+        // TODO A. Enable addToCacheMap(), CacheMap PUT
         //addToCacheMap();
         
         x.trans.nodeCount = x.transNodes.size();

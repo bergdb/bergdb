@@ -159,6 +159,8 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     public long getLastTransSpos() {
         return rstream.getMetaBlock().getLastTransSpos();
     }
+    
+    // TODO A. Implement a readNodeHeader() method. We need node type and id (when possible).
 
     /**
      * Reads a node from the stream given its spos.

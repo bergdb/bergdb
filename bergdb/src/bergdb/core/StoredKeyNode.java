@@ -101,6 +101,8 @@ public class StoredKeyNode implements StoredNode {
         offset += 1;
 
         offset += 2; // checksum bytes
+        
+        // -- First 8 bytes parsed
 
         long prevPos = Bytes.bytesToLongLE(buffer, offset);
         if (!Spos.isValidOrNull(prevPos)) {
@@ -123,6 +125,8 @@ public class StoredKeyNode implements StoredNode {
 
         // 5 zero bytes
         offset += 5;
+        
+        // -- Offset should be 24 here
 
         long id = Bytes.bytesToLongLE(buffer, offset);
         offset += 8;
