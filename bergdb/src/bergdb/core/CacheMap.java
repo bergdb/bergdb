@@ -6,6 +6,7 @@ import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 
+import bergdb.common.Bytes;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Node;
 import bergdb.dag.ValueNode;
@@ -29,6 +30,9 @@ public class CacheMap {
     
     private static final int INDEX_MAP_COUNT = 100;
     private static final int VALUE_MAP_COUNT = 100;
+    private static final long RANDOM_MASK = Bytes.bytesToLongBE(
+            new byte[]{0x51, (byte)0xc3, (byte)0x9c, (byte)0xcb, 0x50, 0x03, (byte)0xf7, 0x5b}, 0);
+            // Random bytes from random.org.
     
     private final HashMap<Long, NodeReference>[] indexMaps;
     private final HashMap<Long, NodeReference>[] valueMaps;
@@ -87,17 +91,28 @@ public class CacheMap {
     }
     
     private HashMap<Long, NodeReference> indexMap(long id) {
-        // TODO B. improve this
-        int myInt = (int) (id / 8);
-        assert myInt >= 0;
-        return indexMaps[myInt % INDEX_MAP_COUNT];
+        return indexMaps[getMapIndex(id, INDEX_MAP_COUNT)];
     }
     
     private HashMap<Long, NodeReference> valueMap(long id) {
-        // TODO B. improve this
-        int myInt = (int) id;
-        assert myInt >= 0 : "myInt: " + myInt;
-        return valueMaps[myInt % VALUE_MAP_COUNT];
+        return valueMaps[getMapIndex(id, VALUE_MAP_COUNT)];
+    }
+    
+    private final int getMapIndex(long id, int mapCount) {
+        // TODO D. Study distribution of real ids and real map indexes. 
+        // I have a feeling we might need something better than the current code.
+        
+        long a;
+        int b;
+        
+        a = id;
+        a = RANDOM_MASK ^ id;
+        a = (a >>> 32) ^ a;     // 32 bits used
+        a = (a >>> 16) ^ a;     // 16 bits used, assumes INDEX_MAP_COUNT and VALUE_MAP_COUNT much less than 2^15.
+        
+        b = (int) (a & 0x0000ffffL);
+        assert b >= 0;
+        return b % mapCount;
     }
     
     /**
@@ -173,6 +188,20 @@ public class CacheMap {
         Assert.assertEquals("getValueNode non-existant", m.getValueNode(1222L), null);
     }
     
+    @SuppressWarnings("unused")
+    @Nano private static void testMapCount() {
+        // Checks the assumption that map count is << 2^15 (~32000).
+        
+        if (INDEX_MAP_COUNT > 2000) {
+            throw new IllegalStateException("Bad INDEX_MAP_COUNT, " + INDEX_MAP_COUNT);
+        }
+        
+        if (VALUE_MAP_COUNT > 2000) {
+            throw new IllegalStateException("Bad VALUE_MAP_COUNT, " + VALUE_MAP_COUNT);
+        }
+        
+    }
+    
     @Nano("f") 
     private static void testGc() throws InterruptedException {
         // This test could fail, but seems to work on cissi / Oracle JVM 7.
@@ -199,10 +228,12 @@ public class CacheMap {
     }
     
     public static void main(String[] args) throws Exception {
-        memTest();
+        manualMemTest();
     }
     
-    public static void memTest() throws InterruptedException, IOException {
+    public static void manualMemTest() throws InterruptedException, IOException {
+        // Manual memory testing. Use with jvisualvm or something.
+        
         System.out.println("CacheMap.memTest()");
         
         int mapCount = 1*1000;

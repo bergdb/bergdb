@@ -285,6 +285,10 @@ public class CORE {
 Log 
 ===
 
+== 150809 ==
+cissi, Java HotSpot(TM) 64-Bit Server VM 24.76-b04, java 1.7.0_76
+CORE:0.78 (0.77, 1.01, 0.82, 0.58)
+
 == 150805 ==
 cissi, Java HotSpot(TM) 64-Bit Server VM 24.76-b04, java 1.7.0_76
 CORE:0.77 (0.77, 0.96, 0.85, 0.57)

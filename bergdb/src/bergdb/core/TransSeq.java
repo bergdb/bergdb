@@ -16,6 +16,8 @@ import bergdb.nanotest.Nano;
  * The information is needed to be able to append dirty nodes to the end of the
  * stream before so they will not become too dirty.
  * 
+ * The algorithm for updating startup pos is included in this.take().
+ * 
  * @author Frans Lundberg
  */
 public class TransSeq implements PosOfTransBeforeFunction {

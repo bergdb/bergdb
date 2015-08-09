@@ -21,7 +21,6 @@ public class CcDbTest {
     //
     // Frans: naming inspired by ASSAABLOY CC project.
     //
-    //
     static final int MAX = 1 * 1000000;
     Database database;
     Connection c;

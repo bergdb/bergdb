@@ -79,7 +79,8 @@ public class MEM {
 
 /*
 
-150515, MEM:161 on cissi and JVM 1.7.0_76 from Oracle.
+150809, MEM:159 on cissi, Oracle JVM 1.7.0_76.
 
+150515, MEM:161 on cissi, Oracle JVM 1.7.0_76.
 
 */
