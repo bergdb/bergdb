@@ -304,19 +304,13 @@ public class DbStarter {
             final StoredTrans storedTrans = transactions.get(i);
             
             Trans.Listener listener = new Trans.Listener() {
-                public void transExecuted(ExecuteData x) {
-                    int valueCount = x.transNodes.valueCount;
-                    
-                    for (int i = 0; i < valueCount; i++) {
-                        ValueNode v = x.transNodes.valueNodes[i];
-                        long[] key = x.transNodes.keys[i];
-                        
-                        ValueNode v2 = storedTrans.getValueNode(key);
-                        assert v2 != null : "Could not find value node for given key";
-                        assert v2.getSpos() >= 0 : "v2 spos: " + v2.getSpos();
-                        
-                        v.setSpos(v2.getSpos());
-                    }
+                public void transExecuted(ExecuteData x) {}
+
+                public void valueNodeCreated(ValueNode node, long[] key) {
+                    ValueNode v = storedTrans.getValueNode(key);
+                    assert v != null : "Could not find value node for given key";
+                    assert v.getSpos() >= 0 : "v2 spos: " + v.getSpos();
+                    node.setSpos(v.getSpos());
                 }
             };
             

@@ -4,8 +4,6 @@ import java.util.Iterator;
 import bergdb.dag.IDirtyNodes;
 import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
-import bergdb.dag.Pointer;
-import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
@@ -206,27 +204,6 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
         this.valueCount = 0;
     }
     
-    /**
-     * Adds descendents that have never been stored to this set of trans nodes.
-     * All stream pointers for all trans nodes should have valid stream
-     * pointers after this method has been executed.
-     * 
-     * @deprecated
-     */
-    public void addUnstoredDescendents() {
-        // Method added 2015-01-04, resulted in a somewhat larger stream, but CorePerf is intact.
-        
-        int count = size();
-        Pointer p = new Pointer();
-        
-        for (int i = 0; i < count; i++) {
-            Node node = get(i);
-            if (node.isIndexNode()) {
-                addUnstoredDescendents(node, p);
-            }
-        }
-    }
-    
     public Iterator<Node> indexNodeIterator() {
         return new Iterator<Node>() {
             private int index = 0;
@@ -246,31 +223,6 @@ public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNo
                 throw new UnsupportedOperationException("remove() not supported");
             }
         };
-    }
-    
-    /**
-     * Adds unstored pointees to transNodes, node must be an index node.
-     * This is done recursively.
-     * 
-     * @deprecated
-     */
-    private void addUnstoredDescendents(Node node, Pointer p) {
-        int pointerCount = node.getSize();
-        for (int j = 0; j < pointerCount; j++) {
-            node.getPointer(j, p);
-            
-            if (p.isMem()) {
-                Node pointee = p.getNode();
-                assert pointee != null;
-                if (pointee.isIndexNode() && !pointee.isInTransNodes() && Spos.isNull(pointee.getSpos())) {
-                    addIndexNode(pointee);
-                    
-                    //System.out.println("    addUnstoredDescendents, node: " + pointee);
-                    
-                    addUnstoredDescendents(pointee, p);
-                }
-            }
-        }
     }
 
     /**

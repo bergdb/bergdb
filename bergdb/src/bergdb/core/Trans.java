@@ -10,6 +10,7 @@ import bergdb.dag.Dag;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.dag.Spos;
+import bergdb.dag.ValueNode;
 import bergdb.nanotest.Nano;
 
 /**
@@ -56,7 +57,6 @@ public class Trans {
     public long tpos;               // Stream position of the first byte of the transaction. Available after execute().
     public long lastPos;            // Stream position of the last byte of the transaction. Available after execute().
     public long nextPos;            // Stream position of the first byte of the next transaction. Available after execute().
-    //public long startupPos;         // Startup stream position.
     public int nodeCount;           // Number of nodes written to stream. Useful for testing/debug.
     public Listener listener;       // Low-level listener, for development/debugging typically.
 
@@ -129,6 +129,7 @@ public class Trans {
          */
         public static final Listener DO_NOTHING = new Listener() {
             public final void transExecuted(ExecuteData x) {}
+            public final void valueNodeCreated(ValueNode node, long[] key) {}
         };
         
         /**
@@ -137,6 +138,8 @@ public class Trans {
          * be modified by the callee. Also, it is mutable.
          */
         public void transExecuted(Db.ExecuteData x);
+
+        public void valueNodeCreated(ValueNode node, long[] key);
     }
     
     /**

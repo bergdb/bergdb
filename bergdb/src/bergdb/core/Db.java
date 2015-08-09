@@ -133,6 +133,8 @@ public class Db {
     private final PointerLocks pointerLocks;
     private File createdTxtDir;
     private String createdTxtCryptoKeyInfo;
+    private CacheMap cacheMap;
+    
 
     /**
      * Constructor takes a DbBuilder; it wires dependencies based on builder settings.
@@ -144,6 +146,7 @@ public class Db {
         x = new ExecuteData();
         keyModSet = new KeyModSet();
         pointerLocks = new PointerLocks();
+        cacheMap = new CacheMap();
  
         this.maxNodeSize = b.maxNodeSize;
         this.startupDistance = b.startupDistance;
@@ -644,6 +647,7 @@ public class Db {
             
             public void valueNodeCreated(ValueNode node, long[] key) {
                 x.transNodes.addValueNode(node, key);
+                x.trans.listener.valueNodeCreated(node, key);
             }
         };
         
@@ -1249,6 +1253,9 @@ public class Db {
         
         handleStillDirtyNodes();
         
+        // TODO A. Enable addToCacheMap()...
+        //addToCacheMap();
+        
         x.trans.nodeCount = x.transNodes.size();
         x.transInfo.tpos = x.trans.tpos;
         x.transInfo.lastPos = x.trans.lastPos;
@@ -1258,6 +1265,32 @@ public class Db {
         transSeq.add(x.transInfo);      // adds to end of transSeq queue
         
         x.startupPos.set(newSp);
+    }
+
+    /**
+     * Adds clean nodes to cache map.
+     */
+    private void addToCacheMap() {
+        TransNodes nodes = x.transNodes;
+        
+        for (int i = 0; i < nodes.topCount; i++) {
+            TopNode node = nodes.topNodes[i];
+            if (!node.isDirty) {
+                cacheMap.putIndexNode(node);
+            }
+        }
+        
+        for (int i = 0; i < nodes.keyCount; i++) {
+            KeyNode node = nodes.keyNodes[i];
+            if (!node.isDirty) {
+                cacheMap.putIndexNode(node);
+            }
+        }
+        
+        for (int i = 0; i < nodes.valueCount; i++) {
+            ValueNode node = nodes.valueNodes[i];
+            cacheMap.putValueNode(node);
+        }
     }
 
     private void handleStillDirtyNodes() {
@@ -1418,14 +1451,6 @@ public class Db {
         public Object getReadSynch() { return readSync; }
         
         public ExecuteData x() { return x; }
-        
-        /*
-        public void setStartupPosUpdater(StartupPosUpdater u) {
-            synchronized (writeLock) {
-                startupPosUpdater = u;
-            }
-        }
-        */
         
         public void executeInner(Trans t) { Db.this.executeInner(t); }
         

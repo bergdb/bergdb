@@ -10,6 +10,7 @@ import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.GetMany;
 import bergdb.dag.Node;
+import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.stream.MemoryStream;
@@ -229,6 +230,8 @@ public class ScenarioTester {
                 
                 System.out.println();
             }
+
+            public void valueNodeCreated(ValueNode node, long[] key) {}
         };
         
         for (int i = 0; i < trans.length; i++) {

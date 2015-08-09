@@ -64,7 +64,7 @@ public class CacheMap {
     public void putValueNode(ValueNode node) {
         cleanup();
         long id = node.getId();
-        assert id >= 0;
+        assert id >= 0 : "value node, node.getId() = " + id;
         valueMap(id).put(id, new NodeReference(node, refQ, id, false));
     }
     
