@@ -75,7 +75,7 @@ public class Trans {
     GetData warmupGetData;
     
     /**
-     * Private constructor, use the builder: Trans.builder().
+     * Private constructor, use the builder: new Trans.Builder().
      */
     private Trans() {
         readKeyHashes = new long[0];
@@ -143,7 +143,7 @@ public class Trans {
     }
     
     /**
-     * Used to create a transaction; use Db.builder() to create a new instance.
+     * Used to create a transaction. Normally, use Db.builder() to create a new instance.
      */
     public static class Builder {
         // Note This class does not enforce uniqueness of elements in keyReadSet, kvs, vkeyHashes.
@@ -154,7 +154,7 @@ public class Trans {
         private ArrayList<Long> virtualWriteHashes;    // virtual key hashes for virtual writes
         private GetData warmupGetData;
         
-        private Builder() {
+        public Builder() {
             kvs = new ArrayList<Kv>();
             readHashes = new ArrayList<Long>();
             virtualWriteHashes = new ArrayList<Long>();

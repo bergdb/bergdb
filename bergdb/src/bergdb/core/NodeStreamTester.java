@@ -1,9 +1,17 @@
 package bergdb.core;
 
 import java.io.UnsupportedEncodingException;
+
 import bergdb.common.Util;
+import bergdb.dag.KeyNode;
+import bergdb.dag.Keys;
+import bergdb.dag.Node;
+import bergdb.dag.TopNode;
+import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.storage.MetaBlock;
+import bergdb.storage.RecoverableStream;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
 
@@ -113,5 +121,72 @@ public class NodeStreamTester {
         Assert.assertTrue(stored.nodes[0] instanceof StoredValueNode);
         StoredValueNode storedValue = (StoredValueNode) stored.nodes[0];
         Assert.assertEquals("a1", new String(storedValue.getNode().getValue(), "UTF-8"));
+    }
+    
+    private static NodeStream createTestNodeStream() {
+        AppendOnlyStream stream = new MemoryStream();
+        MetaBlock metaBlock = new MetaBlock();
+        RecoverableStream rstream = new RecoverableStream(stream, metaBlock);
+        NodeStream nodeStream = new NodeStream(rstream, new Object());
+        return nodeStream;
+    }
+    
+    @Nano
+    private static void testReadNodeHeader1() {
+        // Tests reading a TopNode header.
+        
+        NodeStream nodeStream = createTestNodeStream();
+        TransNodes transNodes = new TransNodes();
+        Trans trans = new Trans.Builder().build();
+        
+        TopNode n1 = TopNode.createDummy(5);
+        n1.setId(12L);
+        transNodes.addIndexNode(n1);
+        
+        nodeStream.appendNodes(transNodes, trans);
+        Assert.assertTrue(n1.getSpos() > 0);
+        
+        NodeHeader header1 = nodeStream.readNodeHeader(n1.getSpos());
+        Assert.assertEquals(Node.TYPE_TOP_NODE, header1.getType());
+        Assert.assertEquals("id", 12L, header1.getId());
+    }
+    
+    @Nano
+    private static void testReadNodeHeader2() {
+        // Tests reading a KeyNode header.
+        
+        NodeStream nodeStream = createTestNodeStream();
+        TransNodes transNodes = new TransNodes();
+        Trans trans = new Trans.Builder().build();
+        
+        KeyNode node = new KeyNode();
+        node.setId(13L);
+        transNodes.addIndexNode(node);
+        
+        nodeStream.appendNodes(transNodes, trans);
+        Assert.assertTrue(node.getSpos() > 0);
+        
+        NodeHeader header = nodeStream.readNodeHeader(node.getSpos());
+        Assert.assertEquals("type", Node.TYPE_KEY_NODE, header.getType());
+        Assert.assertEquals(13L, header.getId());
+    }
+    
+    @Nano
+    private static void testReadNodeHeader3() {
+        // Tests reading a ValueNode header.
+        
+        NodeStream nodeStream = createTestNodeStream();
+        TransNodes transNodes = new TransNodes();
+        Trans trans = new Trans.Builder().build();
+        
+        ValueNode node = new ValueNode(new byte[1]);
+        transNodes.addValueNode(node, Keys.toSegments("/-ddir"));
+        
+        nodeStream.appendNodes(transNodes, trans);
+        Assert.assertTrue(node.getSpos() > 0);
+        
+        NodeHeader header = nodeStream.readNodeHeader(node.getSpos());
+        Assert.assertEquals("type", Node.TYPE_VALUE, header.getType());
+        Assert.assertEquals(0L, header.getId());
     }
 }

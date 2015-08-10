@@ -67,6 +67,8 @@ public class StoredTopNode implements StoredNode {
         }
 
         offset += 2; // checksum bytes, checked later.
+        
+        // offset == 8 here
 
         int pointerCount = buffer[offset];
         offset += 1;
@@ -76,6 +78,8 @@ public class StoredTopNode implements StoredNode {
         int topNodeId = Bytes.bytesToIntLE(buffer, offset);
         offset += 4;
         offset += 2; // Added, 2 zero bytes.
+        
+        // offset == 16 here
 
         if (topNodeId < 0) {
             throw new StreamFormatException("Bad TopNode ID of TopNode in stream, " + topNodeId);

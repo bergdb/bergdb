@@ -513,7 +513,7 @@ public class Db {
                         assert pointerPos1 > 0 : "bad pointerPos, " + pointerPos1 
                                 + ", pointerIndex:" + pointerIndex + ", predecessor:" + predecessor;
                         
-                        // TODO A. Introduce CacheMap GET here.
+                        // TODO A. Introduce CacheMap GET here (use readNodeHeader())
                         
                         result = nodeStream.readNode(pointerPos1);
                         

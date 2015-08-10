@@ -3,6 +3,7 @@ package bergdb.core;
 import java.io.PrintStream;
 
 import bergdb.common.Bytes;
+import bergdb.common.Util;
 import bergdb.dag.Node;
 import bergdb.dag.Spos;
 import bergdb.dag.StreamChecksumException;
@@ -160,7 +161,35 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         return rstream.getMetaBlock().getLastTransSpos();
     }
     
-    // TODO A. Implement a readNodeHeader() method. We need node type and id (when possible).
+    public NodeHeader readNodeHeader(long spos) {
+        // Assumes: node type at offset 4.
+        // Assumes: id at offset 16 for TYPE_TOP_NODE.
+        // Assumes: id at offset 24 for TYPE_KEY_NODE.
+        // Assumes: length of key node >= 32.
+        
+        byte[] buffer = new byte[32];
+        rstream.read(spos, buffer, 0, 8);
+        
+        byte type = buffer[4];   // assumed same for all node types
+        long id;
+        
+        if (type == Node.TYPE_TOP_NODE || type == Node.TYPE_KEY_NODE) {
+            rstream.read(spos + 8, buffer, 8, 32-8);
+            
+            if (type == Node.TYPE_TOP_NODE) {
+                id = Bytes.bytesToLongLE(buffer, 16);
+            } else {
+                id = Bytes.bytesToLongLE(buffer, 24);
+            }
+        } else if (type == Node.TYPE_VALUE || type == Node.TYPE_DELETE) {
+            id = 0;
+        } else {
+            throw new StreamFormatException("unknown node type, " + ((int) type) 
+                    + ", first header bytes: " + Util.toHex(buffer, 0, 8));
+        }
+        
+        return new NodeHeader(type, id);
+    }
 
     /**
      * Reads a node from the stream given its spos.
