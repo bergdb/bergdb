@@ -7,6 +7,7 @@ import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import bergdb.common.AssertStatus;
 import bergdb.common.Bytes;
 import bergdb.dag.AccessData;
 import bergdb.dag.KeyNode;
@@ -131,8 +132,20 @@ public class Cache {
         
         synchronized (map) {
             cleanupIndexRefQ(index, 10);
-            assert !map.containsKey(id) : "there is an index node with id " + id + " in Cache already";
-            map.put(id, new NodeReference(node, indexRefQueues[index], id, true));
+            NodeReference oldValue = map.put(id, new NodeReference(node, indexRefQueues[index], id, true));
+            if (AssertStatus.enabled()) {
+                if (oldValue != null) {
+                    throw new AlreadyHasNode("id:" + id + ", index node already in cache");
+                }
+            }
+        }
+    }
+    
+    public static class AlreadyHasNode extends AssertionError {
+        private static final long serialVersionUID = 1L;
+        
+        public AlreadyHasNode(String message) {
+            super(message);
         }
     }
     
@@ -161,9 +174,13 @@ public class Cache {
         
         HashMap<Long, NodeReference> map = valueMaps[index];
         synchronized (map) {
-            assert !map.containsKey(id) : "there is a value node with id " + id + " in Cache already";
             cleanupValueRefQ(index, 10);
-            map.put(id, new NodeReference(node, valueRefQueues[index], id, false));
+            NodeReference oldValue = map.put(id, new NodeReference(node, valueRefQueues[index], id, false));
+            if (AssertStatus.enabled()) {
+                if (oldValue != null) {
+                    throw new AlreadyHasNode("id:" + id + ", value node already in cache");
+                }
+            }
         }
     }
     
@@ -333,6 +350,44 @@ public class Cache {
         if (VALUE_MAP_COUNT > 2000) {
             throw new IllegalStateException("Bad VALUE_MAP_COUNT, " + VALUE_MAP_COUNT);
         }
+    }
+    
+    @Nano private static void testDuplicateValueNodes() {
+        Cache m = new Cache();
+        ValueNode node = new ValueNode(new byte[0]);
+        node.setSpos(1234L);
+        assert node.getId() == 1234L;
+        m.internalPutValueNode(node);
+        AlreadyHasNode ex = null;
+        
+        if (AssertStatus.enabled()) {
+            try {
+                m.internalPutValueNode(node);
+            } catch (Cache.AlreadyHasNode e) {
+                ex = e;
+            }
+            
+            Assert.assertTrue(ex != null);
+        }
+    }
+    
+    @Nano private static void testDuplicateIndexNodes() {
+        Cache m = new Cache();
+        KeyNode node = new KeyNode();
+        node.setId(222L);
+        assert node.getId() == 222L;
+        m.putIndexNode(node);
+        AlreadyHasNode ex = null;
+        
+        if (AssertStatus.enabled()) {
+            try {
+                m.putIndexNode(node);
+            } catch (Cache.AlreadyHasNode e) {
+                ex = e;
+            }
+            
+            Assert.assertTrue(ex != null);
+        }
         
     }
     
@@ -378,10 +433,6 @@ public class Cache {
                 cleanupValueRefQ(i, Integer.MAX_VALUE);
             }
         }
-    }
-
-    public static void main(String[] args) throws Exception {
-        manualMemTest();
     }
     
     public static void manualMemTest() throws InterruptedException, IOException {
@@ -447,6 +498,10 @@ public class Cache {
                 1e-6 * total, 1e-6 * free, 1e-6 * (total-free));
         
         return used;
+    }
+    
+    public static void main(String[] args) throws Exception {
+        manualMemTest();
     }
 }
 
