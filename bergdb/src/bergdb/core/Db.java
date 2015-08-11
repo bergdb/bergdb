@@ -533,7 +533,7 @@ public class Db {
                                                 "but NodeStream.readNode() read node: " + result);
                                     }
                                     
-                                    cacheMap.putValueNodeConditionally((ValueNode) result);
+                                    cacheMap.putValueNode((ValueNode) result);
                                 } else {
                                     cacheMap.putIndexNode(result);
                                 }
@@ -651,11 +651,13 @@ public class Db {
                 assert node.isDirty == false : "node is dirty, " + node;
                 setVpos(node);
                 makeDirtyIfNeeded(node);
+                cacheMap.putIndexNode(node);
             }
             
             public void keyNodeCreated(KeyNode node) {
                 setVpos(node);
                 makeDirtyIfNeeded(node);
+                cacheMap.putIndexNode(node);
             }
             
             public void keyNodeChanged(KeyNode node) {
@@ -1031,7 +1033,7 @@ public class Db {
         }
         
         g.gd.accessData = getAccessData();
-        evictor.possiblyEvict(g.gd.evictData);    // TODO B. Consider calling possiblyEvict once per KV.
+        evictor.possiblyEvict(g.gd.evictData);    // TODO C. Consider calling possiblyEvict once per KV.
 
         g.actualLookupTime = dbClock.lookupTime(g.lookupTime);
             // Limits lookup time so it strictly less than the transaction time of
@@ -1274,7 +1276,7 @@ public class Db {
         
         handleStillDirtyNodes();
         
-        addNodesToCacheMap();
+        addValueNodesToCache();
         
         x.trans.nodeCount = x.transNodes.size();
         x.transInfo.tpos = x.trans.tpos;
@@ -1287,31 +1289,16 @@ public class Db {
         x.startupPos.set(newSp);
     }
 
-    /**
-     * Adds clean nodes to cache map.
-     * Value nodes are always cached when written.
-     */
-    private void addNodesToCacheMap() {
+    private void addValueNodesToCache() {
         // Value nodes are always cached with the current implementation.
         // This could be handled differently. The CachePolicy could be used.
-        // Or a special cache policy for new nodes. Maybe hardcoded: 
-        // very large values (say > 6 MB) not cached.
+        // Or a special cache policy for new nodes.
         
         TransNodes nodes = x.transNodes;
         
-        for (int i = 0; i < nodes.topCount; i++) {
-            TopNode node = nodes.topNodes[i];
-            cacheMap.putIndexNode(node);
-        }
-        
-        for (int i = 0; i < nodes.keyCount; i++) {
-            KeyNode node = nodes.keyNodes[i];
-            cacheMap.putIndexNode(node);
-        }
-        
         for (int i = 0; i < nodes.valueCount; i++) {
             ValueNode node = nodes.valueNodes[i];
-            cacheMap.putValueNodeConditionally(node);
+            cacheMap.putValueNode(node);
         }
     }
 

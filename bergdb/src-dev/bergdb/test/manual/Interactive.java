@@ -201,8 +201,7 @@ public class Interactive {
     }
 
     private void runEvictMax(CommandLine options) {
-        // TODO B. Work on evict. Bulk evict is of interest, a pointer can be processed
-        // in 0.25 us.
+        // Bulk evict is of interest, a pointer can be processed in 0.25 us.
         
         final Dag dag = db.internal().dag();
         final long[] counters = new long[7];

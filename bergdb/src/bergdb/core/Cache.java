@@ -5,10 +5,14 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import bergdb.common.Bytes;
+import bergdb.dag.AccessData;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Node;
+import bergdb.dag.Pointer;
+import bergdb.dag.Spos;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
@@ -35,6 +39,13 @@ public class Cache {
     private final ReferenceQueue<Node>[] indexRefQueues;
     private final ReferenceQueue<Node>[] valueRefQueues;
     
+    private int cacheStepIndex = 0;     // index to next index map for evictStep().
+    private static final long INITIAL_CACHE_SIZE = INDEX_MAP_COUNT * 500 + VALUE_MAP_COUNT * 500;
+    
+    // TODO A. implement this.
+    private AtomicLong totalSize;       // estimate of current total cache size
+    private AtomicLong putSize;         // total size of all node put to cache, always increasing
+    
     @SuppressWarnings("unchecked")
     public Cache() {
         indexMaps = (HashMap<Long, NodeReference>[]) new HashMap<?, ?>[INDEX_MAP_COUNT];
@@ -56,7 +67,59 @@ public class Cache {
         for (int i = 0; i < VALUE_MAP_COUNT; i++) {
             valueRefQueues[i] = new ReferenceQueue<Node>();
         }
+        
+        totalSize = new AtomicLong(INITIAL_CACHE_SIZE);
+        putSize = new AtomicLong(0L);
     }
+    
+    public void evictStep() {
+        int index = cacheStepIndex;
+        long accessTimeLimit = Long.MAX_VALUE;   // TODO A. work on this, Long.MAX_VALUE not ok
+        
+        HashMap<Long, NodeReference> map = indexMaps[index];
+        synchronized (map) {
+            for (NodeReference ref : map.values()) {
+                Node node = ref.get();
+                if (node != null) {                    
+                    evictNodePointers(node, accessTimeLimit);
+                }
+            }
+            
+            cleanupIndexRefQ(index, Integer.MAX_VALUE);
+        }
+        
+        cacheStepIndex = (index + 1) % INDEX_MAP_COUNT;
+    }
+    
+    /**
+     * Evicts all evicable out-bound pointers of 'node'.
+     */
+    private void evictNodePointers(Node node, final long accessTimeLimit) {
+        // See Evictor.evictPointers().
+        
+        Pointer pointer = new Pointer();    // input/output, temp storage
+        
+        int count = node.getSize();
+        for (int i = 0; i < count; i++) {
+            node.getPointer(i, pointer);
+            if (pointer.isMem()) {
+                Node pointee = pointer.node;
+                
+                if (!pointee.isDirty()) {
+                    long pointeePos = pointee.getSpos();
+                    
+                    assert pointeePos != Spos.NULL : "bad pointee, " + pointee;
+                    
+                    long pointerAccessTime = AccessData.getAccessTime(pointer.getAccessData());
+                    
+                    if (pointerAccessTime <= accessTimeLimit) {
+                        node.setPointer(i, null, pointeePos);
+                    }
+                }
+            }
+        }
+    }
+
     
     public void putIndexNode(Node node) {
         assert node.isIndexNode();
@@ -67,32 +130,40 @@ public class Cache {
         HashMap<Long, NodeReference> map = indexMaps[index];
         
         synchronized (map) {
-            cleanupIndexRefQ(index);
+            cleanupIndexRefQ(index, 10);
+            
+            //node.getMemSize();
+            
             map.put(id, new NodeReference(node, indexRefQueues[index], id, true));
         }
     }
     
-    public void putValueNodeConditionally(ValueNode node) {
+    public void putValueNode(ValueNode node) {
+        // TODO B. Phantom references for value nodes?
+        // Could allow us to keep track of memory use also for unmanged ValueNode
+        // objects.  
+        // TODO B. Consider "unmanaged value nodes" - value nodes that
+        // are not necessarily canonical. Allow duplicates for small values (<100 bytes or so).
+        //
+        
         if (node.value != null) {
-            if (node.value.length > 100) {
-                putValueNode(node);
-            } else {
-                // TODO B. Phantom references for value nodes?
-                // Could allow us to keep track of memory use also for unmanged ValueNode
-                // objects.
-                //new PhantomReference<ValueNode>(node, refQ);                
-            }
+            internalPutValueNode(node);
+            //if (node.value.length > 100) {
+            //    putValueNode(node);
+            //} else {
+            //    //new PhantomReference<ValueNode>(node, refQ);                
+            //}
         }
     }
     
-    private void putValueNode(ValueNode node) {
+    private void internalPutValueNode(ValueNode node) {
         long id = node.getId();
         assert id >= 0 : "value node, node.getId() = " + id;
         int index = getMapIndex(id, VALUE_MAP_COUNT);
         
         HashMap<Long, NodeReference> map = valueMaps[index];
         synchronized (map) {
-            cleanupValueRefQ(index);
+            cleanupValueRefQ(index, 10);
             map.put(id, new NodeReference(node, valueRefQueues[index], id, false));
         }
     }
@@ -104,7 +175,7 @@ public class Cache {
         HashMap<Long, NodeReference> map = indexMaps[index];
         
         synchronized (map) {
-            cleanupIndexRefQ(index);
+            cleanupIndexRefQ(index, 10);
             ref = map.get(id);
             result = ref == null ? null : ref.get();
         }
@@ -119,7 +190,7 @@ public class Cache {
         HashMap<Long, NodeReference> map = valueMaps[index];
         
         synchronized (map) {
-            cleanupValueRefQ(index);
+            cleanupValueRefQ(index, 10);
             ref = map.get(id);        
             result = ref == null ? null : (ValueNode) ref.get();
         }
@@ -175,8 +246,7 @@ public class Cache {
     /**
      * Caller must hold lock on indexMaps[mapIndex].
      */
-    private void cleanupIndexRefQ(int mapIndex) {
-        final int MAX_POLL = 10;
+    private void cleanupIndexRefQ(int mapIndex, final int pollLimit) {
         int pollCount = 0;
         Reference<? extends Node> ref;
         ReferenceQueue<Node> refQ = indexRefQueues[mapIndex];
@@ -186,7 +256,7 @@ public class Cache {
         ref = refQ.poll();
         pollCount++;
         
-        while (ref != null && pollCount <= MAX_POLL) {
+        while (ref != null && pollCount <= pollLimit) {
             NodeReference nodeRef = (NodeReference) ref;
             assert nodeRef.isIndexNode : "not an index node ref: " + nodeRef.get();
             
@@ -199,17 +269,16 @@ public class Cache {
     /**
      * Caller should hold lock on valueMaps[mapIndex].
      */
-    private void cleanupValueRefQ(int mapIndex) {
+    private void cleanupValueRefQ(int mapIndex, final int pollLimit) {
         assert Thread.holdsLock(valueMaps[mapIndex]) : "caller must hold lock for valueMap " + mapIndex;
         
-        final int MAX_POLL = 10;
         int pollCount = 0;
         Reference<? extends Node> ref;
         ReferenceQueue<Node> refQ = valueRefQueues[mapIndex];
         ref = refQ.poll();
         pollCount++;
         
-        while (ref != null && pollCount <= MAX_POLL) {
+        while (ref != null && pollCount <= pollLimit) {
             NodeReference nodeRef = (NodeReference) ref;
             assert !nodeRef.isIndexNode;
             
@@ -248,7 +317,7 @@ public class Cache {
         ValueNode node = new ValueNode(new byte[0]);
         node.setSpos(1234L);
         assert node.getId() == 1234L;
-        m.putValueNode(node);
+        m.internalPutValueNode(node);
         
         Assert.assertEquals("getValueNode existant", node, m.getValueNode(1234L));
         Assert.assertEquals("getValueNode non-existant", m.getValueNode(1222L), null);
@@ -301,13 +370,13 @@ public class Cache {
         
         for (int i = 0; i < INDEX_MAP_COUNT; i++) {
             synchronized (indexMaps[i]) {
-                cleanupIndexRefQ(i);
+                cleanupIndexRefQ(i, Integer.MAX_VALUE);
             }
         }
         
         for (int i = 0; i < VALUE_MAP_COUNT; i++) {
             synchronized (valueMaps[i]) {
-                cleanupValueRefQ(i);
+                cleanupValueRefQ(i, Integer.MAX_VALUE);
             }
         }
     }
