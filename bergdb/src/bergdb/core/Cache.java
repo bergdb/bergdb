@@ -14,6 +14,7 @@ import bergdb.dag.KeyNode;
 import bergdb.dag.Node;
 import bergdb.dag.Pointer;
 import bergdb.dag.Spos;
+import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
@@ -42,9 +43,9 @@ public class Cache {
     
     private int cacheStepIndex = 0;     // index to next index map for evictStep().
     private static final long INITIAL_CACHE_SIZE = INDEX_MAP_COUNT * 500 + VALUE_MAP_COUNT * 500;
+    private static final long NODE_MEM_OVERHEAD = 100;
     
-    // TODO A. implement this.
-    private AtomicLong totalSize;       // estimate of current total cache size
+    private AtomicLong totalSize;       // current total cache size (estimate of memory byte size)
     private AtomicLong putSize;         // total size of all node put to cache, always increasing
     
     @SuppressWarnings("unchecked")
@@ -74,10 +75,10 @@ public class Cache {
     }
     
     public void evictStep() {
-        int index = cacheStepIndex;
-        long accessTimeLimit = Long.MAX_VALUE;   // TODO A. work on this, Long.MAX_VALUE not ok
+        int mapIndex = cacheStepIndex;        
+        long accessTimeLimit = Long.MAX_VALUE;   // TODO B. work on this, Long.MAX_VALUE not correct
         
-        HashMap<Long, NodeReference> map = indexMaps[index];
+        HashMap<Long, NodeReference> map = indexMaps[mapIndex];
         synchronized (map) {
             for (NodeReference ref : map.values()) {
                 Node node = ref.get();
@@ -86,10 +87,15 @@ public class Cache {
                 }
             }
             
-            cleanupIndexRefQ(index, Integer.MAX_VALUE);
+            cleanupIndexRefQ(mapIndex, Integer.MAX_VALUE);
         }
         
-        cacheStepIndex = (index + 1) % INDEX_MAP_COUNT;
+        HashMap<Long, NodeReference> valueMap = valueMaps[mapIndex];
+        synchronized (valueMap) {
+            cleanupValueRefQ(mapIndex, Integer.MAX_VALUE);
+        }
+        
+        cacheStepIndex = (mapIndex + 1) % INDEX_MAP_COUNT;
     }
     
     /**
@@ -123,6 +129,9 @@ public class Cache {
 
     
     public void putIndexNode(Node node) {
+        // getMemSize() is constant for a particular TopNode instance.
+        // But *not* for a KeyNode instance.
+        
         assert node.isIndexNode();
         
         long id = node.getId();
@@ -130,30 +139,32 @@ public class Cache {
         int index = getMapIndex(id, INDEX_MAP_COUNT);
         HashMap<Long, NodeReference> map = indexMaps[index];
         
+        int memSize = node.getMemSize();
+        
         synchronized (map) {
             cleanupIndexRefQ(index, 10);
-            NodeReference oldValue = map.put(id, new NodeReference(node, indexRefQueues[index], id, true));
+            
+            NodeReference ref = new NodeReference(node, indexRefQueues[index], id, true);
+            ref.memSize = memSize;
+            
+            NodeReference oldValue = map.put(id, ref);
             if (AssertStatus.enabled()) {
                 if (oldValue != null) {
                     throw new AlreadyHasNode("id:" + id + ", index node already in cache");
                 }
             }
         }
-    }
-    
-    public static class AlreadyHasNode extends AssertionError {
-        private static final long serialVersionUID = 1L;
         
-        public AlreadyHasNode(String message) {
-            super(message);
-        }
+        long totalMemSize = totalMemSize(memSize);
+        totalSize.addAndGet(totalMemSize);
+        putSize.addAndGet(totalMemSize);
     }
     
     public void putValueNode(ValueNode node) {
         // TODO B. Phantom references for value nodes?
         // Could allow us to keep track of memory use also for unmanged ValueNode
         // objects.  
-        // TODO B. Consider "unmanaged value nodes" - value nodes that
+        // TODO C. Consider "unmanaged value nodes" - value nodes that
         // are not necessarily canonical. Allow duplicates for small values (<100 bytes or so).
         //
         
@@ -166,26 +177,46 @@ public class Cache {
             //}
         }
     }
-    
+
     private void internalPutValueNode(ValueNode node) {
         long id = node.getId();
         assert id >= 0 : "value node, node.getId() = " + id;
-        int index = getMapIndex(id, VALUE_MAP_COUNT);
+        int mapIndex = getMapIndex(id, VALUE_MAP_COUNT);
+        int memSize = node.getMemSize();
         
-        HashMap<Long, NodeReference> map = valueMaps[index];
+        HashMap<Long, NodeReference> map = valueMaps[mapIndex];
         synchronized (map) {
-            cleanupValueRefQ(index, 10);
-            NodeReference oldValue = map.put(id, new NodeReference(node, valueRefQueues[index], id, false));
+            cleanupValueRefQ(mapIndex, 10);
+            NodeReference ref = new NodeReference(node, valueRefQueues[mapIndex], id, false);
+            ref.memSize = memSize;
+            
+            NodeReference oldValue = map.put(id, ref);
             if (AssertStatus.enabled()) {
                 if (oldValue != null) {
                     throw new AlreadyHasNode("id:" + id + ", value node already in cache");
                 }
             }
         }
+        
+        long totalMemSize = totalMemSize(memSize);        
+        totalSize.addAndGet(totalMemSize);
+        putSize.addAndGet(totalMemSize);
+    }
+
+    public static class AlreadyHasNode extends AssertionError {
+        private static final long serialVersionUID = 1L;
+        
+        public AlreadyHasNode(String message) {
+            super(message);
+        }
+    }
+    
+    private final long totalMemSize(int memSize) {
+        return memSize + NODE_MEM_OVERHEAD;
     }
     
     public Node getIndexNode(long id) {
-        WeakReference<Node> ref;
+        NodeReference ref;
         Node result;
         int index = getMapIndex(id, INDEX_MAP_COUNT);
         HashMap<Long, NodeReference> map = indexMaps[index];
@@ -200,7 +231,7 @@ public class Cache {
     }
     
     public ValueNode getValueNode(long id) {
-        WeakReference<Node> ref;
+        NodeReference ref;
         ValueNode result;
         int index = getMapIndex(id, VALUE_MAP_COUNT);
         HashMap<Long, NodeReference> map = valueMaps[index];
@@ -226,14 +257,22 @@ public class Cache {
         return VALUE_MAP_COUNT;
     }
     
-    public Object getIndexSyncObject(long id) {
+    public Object getIndexLockObject(long id) {
         return indexMap(id);
     }
     
-    public Object getValueSyncObject(long id) {
+    public Object getValueLockObject(long id) {
         return valueMap(id);
     }
     
+    public long totalSize() {
+        return totalSize.get();
+    }
+
+    public long putSize() {
+        return putSize.get();
+    }
+
     private HashMap<Long, NodeReference> indexMap(long id) {
         return indexMaps[getMapIndex(id, INDEX_MAP_COUNT)];
     }
@@ -277,6 +316,7 @@ public class Cache {
             assert nodeRef.isIndexNode : "not an index node ref: " + nodeRef.get();
             
             indexMaps[mapIndex].remove(nodeRef.id);
+            totalSize.addAndGet(-totalMemSize(nodeRef.memSize));
             ref = refQ.poll();
             pollCount++;
         }
@@ -299,14 +339,17 @@ public class Cache {
             assert !nodeRef.isIndexNode;
             
             valueMaps[mapIndex].remove(nodeRef.id);
+            totalSize.addAndGet(-totalMemSize(nodeRef.memSize));
+            
             ref = refQ.poll();
             pollCount++;
         }
     }
     
     public static class NodeReference extends WeakReference<Node> {
-        public final long id;
-        public final boolean isIndexNode;
+        final long id;
+        final boolean isIndexNode;
+        int memSize;
         
         public NodeReference(Node node, ReferenceQueue<Node> q, long id, boolean isIndexNode) {
             super(node, q);
@@ -324,7 +367,7 @@ public class Cache {
         node.setId(1234L);
         m.putIndexNode(node);
         
-        Assert.assertTrue(node == m.getIndexNode(1234L));
+        Assert.assertTrue("getIndexNode (existing)", node == m.getIndexNode(1234L));
         Assert.assertTrue(m.getIndexNode(1222L) == null);
     }
     
@@ -388,7 +431,32 @@ public class Cache {
             
             Assert.assertTrue(ex != null);
         }
+    }
+    
+    @Nano private static void testTotalSize1() {
+        Cache cache = new Cache();
+        ValueNode node = new ValueNode(new byte[10]);
+        node.setSpos(222L);
+        int memSize = node.getMemSize();
         
+        long mem1 = cache.totalSize.get();
+        cache.putValueNode(node);
+        long mem2 = cache.totalSize.get();
+        
+        Assert.assertEquals(memSize + Cache.NODE_MEM_OVERHEAD, mem2 - mem1);
+    }
+    
+    @Nano private static void testTotalSize2() {
+        Cache cache = new Cache();
+        TopNode node = TopNode.createDummy(2);
+        node.setId(222L);
+        int memSize = node.getMemSize();
+        
+        long mem1 = cache.totalSize.get();
+        cache.putIndexNode(node);
+        long mem2 = cache.totalSize.get();
+        
+        Assert.assertEquals(memSize + Cache.NODE_MEM_OVERHEAD, mem2 - mem1);
     }
     
     @Nano("f") 

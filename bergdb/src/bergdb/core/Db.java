@@ -133,7 +133,7 @@ public class Db {
     private final PointerLocks pointerLocks;
     private File createdTxtDir;
     private String createdTxtCryptoKeyInfo;
-    private Cache cacheMap;
+    private Cache cache;
     
 
     /**
@@ -146,7 +146,7 @@ public class Db {
         x = new ExecuteData();
         keyModSet = new KeyModSet();
         pointerLocks = new PointerLocks();
-        cacheMap = new Cache();
+        cache = new Cache();
  
         this.maxNodeSize = b.maxNodeSize;
         this.startupDistance = b.startupDistance;
@@ -487,6 +487,16 @@ public class Db {
         PointerFollower pointerFollower = new PointerFollower() {
             public Node followPointer(Node predecessor, int pointerIndex, long accessData,
                     PointerListener pointerListener, CachePolicy cachePolicy) {
+                //
+                // Note, there may be a way to limit pointer lock scope to avoid
+                // holding lock while reading from stream.
+                //
+                // It is possible that concurrent threads will read same node 
+                // from stream and add to cache. That is why we need to take existing 
+                // node from cache if there is one there. See [synchronized (cacheLock)]
+                // clauses in this method.
+                //
+                
                 Node result;
                 assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
                 assert predecessor != null : "predecessor is null";
@@ -518,7 +528,7 @@ public class Db {
                         long id = header.id();
                         
                         result = isValueNode ? 
-                                cacheMap.getValueNode(id) : cacheMap.getIndexNode(id);
+                                cache.getValueNode(id) : cache.getIndexNode(id);
                         
                         if (result == null) {
                             result = nodeStream.readNode(pointerPos);
@@ -529,7 +539,6 @@ public class Db {
                                     : "types differ, " + result.getType() + ", " + header.type();
                             
                             if (cachePolicy.shouldCache(result)) {
-                                predecessor.setPointer(pointerIndex, result, accessData);
                                 
                                 if (isValueNode) {
                                     if (!result.isValueNode()) {
@@ -538,10 +547,29 @@ public class Db {
                                                 "but NodeStream.readNode() read node: " + result);
                                     }
                                     
-                                    cacheMap.putValueNode((ValueNode) result);
+                                    Object cacheLock = cache.getValueLockObject(id);
+                                    synchronized (cacheLock) {                                        
+                                        ValueNode existingNode = cache.getValueNode(id);
+                                        if (existingNode == null) {
+                                            cache.putValueNode((ValueNode) result);
+                                        } else {
+                                            result = existingNode;
+                                        }
+                                    }
+                                    
                                 } else {
-                                    cacheMap.putIndexNode(result);
+                                    Object cacheLock = cache.getIndexLockObject(id);
+                                    synchronized (cacheLock) {
+                                        Node existingNode = cache.getValueNode(id);
+                                        if (existingNode == null) {
+                                            cache.putIndexNode(result);
+                                        } else {
+                                            result = existingNode;
+                                        }
+                                    }
                                 }
+                                
+                                predecessor.setPointer(pointerIndex, result, accessData);
                             }
                             
                             pointerListener.pointerFollowed(
@@ -656,13 +684,13 @@ public class Db {
                 assert node.isDirty == false : "node is dirty, " + node;
                 setVpos(node);
                 makeDirtyIfNeeded(node);
-                cacheMap.putIndexNode(node);
+                cache.putIndexNode(node);
             }
             
             public void keyNodeCreated(KeyNode node) {
                 setVpos(node);
                 makeDirtyIfNeeded(node);
-                cacheMap.putIndexNode(node);
+                cache.putIndexNode(node);
             }
             
             public void keyNodeChanged(KeyNode node) {
@@ -1272,7 +1300,6 @@ public class Db {
             x.trans.startupPos = newSp;
         }
         
-        
         if (!x.trans.isStartupRerun) {
             nodeStream.appendNodes(x.transNodes, x.trans);
         }
@@ -1296,14 +1323,12 @@ public class Db {
 
     private void addValueNodesToCache() {
         // Value nodes are always cached with the current implementation.
-        // This could be handled differently. The CachePolicy could be used.
-        // Or a special cache policy for new nodes.
         
         TransNodes nodes = x.transNodes;
         
         for (int i = 0; i < nodes.valueCount; i++) {
             ValueNode node = nodes.valueNodes[i];
-            cacheMap.putValueNode(node);
+            cache.putValueNode(node);
         }
     }
 
@@ -1478,7 +1503,7 @@ public class Db {
         
         public Evictor evictor() { return evictor; }
         
-        public Cache cacheMap() { return cacheMap; }
+        public Cache cache() { return cache; }
 
         public AppendOnlyStream getMainStream() {
             return storageManager.getMainStream();

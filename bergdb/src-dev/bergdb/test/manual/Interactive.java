@@ -115,12 +115,18 @@ public class Interactive {
             runInfo(options);
         } else if(commandName.equals("gc")) {
             runGc(options);
+        } else if(commandName.equals("gc2")) {
+            runGc2(options);
         } else if(commandName.equals("evict")) {
             runEvict(options);
         } else if(commandName.equals("evictMax")) {
             runEvictMax(options);
         } else if(commandName.equals("e2")) {
             runE2(options);
+        } else if(commandName.equals("step")) {
+            runStep(options);
+        } else if(commandName.equals("addBig")) {
+            runAddBig(options);
         } else {
             System.out.println("Unknown command.");
         }
@@ -133,6 +139,21 @@ public class Interactive {
         
         for (int i = 0; i < 4; i++) {
             System.gc();
+        }
+        
+        long used2 = memUsed();
+        
+        System.out.format("Used mem: %.1f MB to %.1f MB.\n",
+                1e-6 * (used2 - used1), 
+                1e-6 * used2);
+    }
+    
+    private void runGc2(CommandLine options) {
+        long used1 = memUsed();
+        
+        for (int i = 0; i < 4; i++) {
+            System.gc();
+            db.internal().cache().cleanupAll();
         }
         
         long used2 = memUsed();
@@ -156,6 +177,9 @@ public class Interactive {
                 1e-6 * db.getStreamLength(),
                 1e-6 * db.getStartupDistance(),
                 1e-6 * db.internal().getStartupPos());
+        System.out.format("Cache, totalSize: %d, putSize: %d\n", 
+                db.internal().cache().totalSize(), 
+                db.internal().cache().putSize());
     }
     
     private void runEvict(CommandLine options) {
@@ -274,7 +298,7 @@ public class Interactive {
         for (int i = 0; i < n; i++) {
             //System.out.println("  cacheMapIndex: " + cacheMapIndex);
             
-            Cache cacheMap = db.internal().cacheMap();
+            Cache cacheMap = db.internal().cache();
             HashMap<Long, NodeReference> map = cacheMap.getIndexNodeMap(cacheMapIndex);
             
             synchronized (map) {
@@ -291,6 +315,41 @@ public class Interactive {
             cacheMapIndex = (cacheMapIndex + 1) % cacheMap.getIndexMapCount();
         }
         
+    }
+    
+    // evict step
+    private void runStep(CommandLine options) {
+        int n = 1;
+        
+        if (options.hasOne("n")) {
+            n = Integer.parseInt(options.getOne("n"));
+        }
+        
+        for (int i = 0; i < n; i++) {
+            db.internal().cache().evictStep();
+        }
+    }
+    
+    private void runAddBig(CommandLine options) {
+        int n = 1;
+        int size = 1*1000000;
+        
+        if (options.hasOne("n")) {
+            n = Integer.parseInt(options.getOne("n"));
+        }
+        
+        if (options.hasOne("size")) {
+            size = Integer.parseInt(options.getOne("size"));
+        }
+        
+        for (int i = 0; i < n; i++) {
+            String key = "/big/" + i;
+            byte[] value = new byte[size];
+            System.out.println("Adding big KV, " + key + " -> size:" + value.length);
+            c.put(key, value);
+        }
+        
+        c.sync();
     }
 
     /**
