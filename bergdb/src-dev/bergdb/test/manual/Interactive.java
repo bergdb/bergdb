@@ -16,14 +16,10 @@ import bergdb.core.FixedDurationEvictBoss;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.EvictData;
-import bergdb.dag.KeyNode;
 import bergdb.dag.Node;
-import bergdb.dag.NodeVisitor;
 import bergdb.dag.Pointer;
 import bergdb.dag.PointerVisitor;
 import bergdb.dag.Spos;
-import bergdb.dag.TopNode;
-import bergdb.dag.ValueNode;
 import bergdb.nanotest.CommandLine;
 import bergdb.pub.Connection;
 import bergdb.pub.CryptoKey;
@@ -290,7 +286,7 @@ public class Interactive {
                     }
                 }
                 
-                cacheMap.cleanup();
+                cacheMap.cleanupAll();
             }
             
             cacheMapIndex = (cacheMapIndex + 1) % cacheMap.getIndexMapCount();

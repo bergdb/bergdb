@@ -1,7 +1,6 @@
 package bergdb.core;
 
 import java.io.IOException;
-import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
@@ -13,8 +12,6 @@ import bergdb.dag.Node;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
-
-// TODO B. Consided sync and clean. Should we have one ref q per map instead?
 
 /**
  * An object with mappings from node ids to Node objects.
@@ -39,12 +36,11 @@ public class CacheMap {
     
     private final HashMap<Long, NodeReference>[] indexMaps;
     private final HashMap<Long, NodeReference>[] valueMaps;
-    private final ReferenceQueue<Node> refQ;
+    private final ReferenceQueue<Node>[] indexRefQueues;
+    private final ReferenceQueue<Node>[] valueRefQueues;
     
     @SuppressWarnings("unchecked")
     public CacheMap() {
-        refQ = new ReferenceQueue<Node>();
-        
         indexMaps = (HashMap<Long, NodeReference>[]) new HashMap<?, ?>[INDEX_MAP_COUNT];
         for (int i = 0; i < INDEX_MAP_COUNT; i++) {
             indexMaps[i] = new HashMap<Long, NodeReference>();
@@ -54,23 +50,35 @@ public class CacheMap {
         for (int i = 0; i < VALUE_MAP_COUNT; i++) {
             valueMaps[i] = new HashMap<Long, NodeReference>();
         }
+        
+        indexRefQueues = new ReferenceQueue[INDEX_MAP_COUNT];
+        for (int i = 0; i < INDEX_MAP_COUNT; i++) {
+            indexRefQueues[i] = new ReferenceQueue<Node>();
+        }
+        
+        valueRefQueues = new ReferenceQueue[VALUE_MAP_COUNT];
+        for (int i = 0; i < VALUE_MAP_COUNT; i++) {
+            valueRefQueues[i] = new ReferenceQueue<Node>();
+        }
     }
     
     public void putIndexNode(Node node) {
         assert node.isIndexNode();
-        cleanup();
+        
         long id = node.getId();
         assert id >= 0;
+        int index = getMapIndex(id, INDEX_MAP_COUNT);
+        HashMap<Long, NodeReference> map = indexMaps[index];
         
-        HashMap<Long, NodeReference> map = indexMap(id);
         synchronized (map) {
-            map.put(id, new NodeReference(node, refQ, id, true));
+            cleanupIndexRefQ(index);
+            map.put(id, new NodeReference(node, indexRefQueues[index], id, true));
         }
     }
     
     public void putValueNodeConditionally(ValueNode node) {
         if (node.value != null) {
-            if (node.value.length > 99) {
+            if (node.value.length > 100) {
                 putValueNode(node);
             } else {
                 // TODO B. Phantom references for value nodes. Which Q.
@@ -80,24 +88,25 @@ public class CacheMap {
     }
     
     private void putValueNode(ValueNode node) {
-        cleanup();
         long id = node.getId();
         assert id >= 0 : "value node, node.getId() = " + id;
+        int index = getMapIndex(id, VALUE_MAP_COUNT);
         
-        HashMap<Long, NodeReference> map = valueMap(id);
+        HashMap<Long, NodeReference> map = valueMaps[index];
         synchronized (map) {
-            map.put(id, new NodeReference(node, refQ, id, false));
+            cleanupValueRefQ(index);
+            map.put(id, new NodeReference(node, valueRefQueues[index], id, false));
         }
     }
     
     public Node getIndexNode(long id) {
         WeakReference<Node> ref;
         Node result;
+        int index = getMapIndex(id, INDEX_MAP_COUNT);
+        HashMap<Long, NodeReference> map = indexMaps[index];
         
-        cleanup();
-        
-        HashMap<Long, NodeReference> map = indexMap(id);
         synchronized (map) {
+            cleanupIndexRefQ(index);
             ref = map.get(id);
             result = ref == null ? null : ref.get();
         }
@@ -108,11 +117,11 @@ public class CacheMap {
     public ValueNode getValueNode(long id) {
         WeakReference<Node> ref;
         ValueNode result;
+        int index = getMapIndex(id, VALUE_MAP_COUNT);
+        HashMap<Long, NodeReference> map = valueMaps[index];
         
-        cleanup();
-        
-        HashMap<Long, NodeReference> map = valueMap(id);
         synchronized (map) {
+            cleanupValueRefQ(index);
             ref = map.get(id);        
             result = ref == null ? null : (ValueNode) ref.get();
         }
@@ -122,11 +131,6 @@ public class CacheMap {
     
     public HashMap<Long, NodeReference> getIndexNodeMap(int index) {
         return indexMaps[index];
-    }
-    
-    public HashMap<Long, NodeReference> getValueNodeMap(int index) {
-        // NOTE Is this method needed?
-        return valueMaps[index];
     }
     
     public final int getIndexMapCount() {
@@ -171,38 +175,47 @@ public class CacheMap {
     }
     
     /**
-     * Removes entries on the map that cannot be used because the
-     * value was garbage collected.
+     * Caller must hold lock on indexMaps[mapIndex].
      */
-    public void cleanup() {
-        // TODO B. is synchronized used ok here? Deadlock possible? Think some more.
-        //   What if a node eviction is in progress?
-        //   An alternative is to use a lock that can be queried (tryLock), 
-        //   java.util.concurrent.locks.Lock.
-        
+    private void cleanupIndexRefQ(int mapIndex) {
         final int MAX_POLL = 10;
         int pollCount = 0;
         Reference<? extends Node> ref;
+        ReferenceQueue<Node> refQ = indexRefQueues[mapIndex];
+        
+        assert Thread.holdsLock(indexMaps[mapIndex]) : "caller does not hold required lock";
         
         ref = refQ.poll();
         pollCount++;
         
         while (ref != null && pollCount <= MAX_POLL) {
             NodeReference nodeRef = (NodeReference) ref;
-            long id = nodeRef.id;
+            assert nodeRef.isIndexNode : "not an index node ref: " + nodeRef.get();
             
-            if (nodeRef.isIndexNode) {
-                HashMap<Long, NodeReference> map = indexMap(id);
-                synchronized (map) {
-                    map.remove(id);
-                }
-            } else {
-                HashMap<Long, NodeReference> map = valueMap(id);
-                synchronized (map) {
-                    map.remove(id);
-                }
-            }
+            indexMaps[mapIndex].remove(nodeRef.id);
+            ref = refQ.poll();
+            pollCount++;
+        }
+    }
+    
+    /**
+     * Caller should hold lock on valueMaps[mapIndex].
+     */
+    private void cleanupValueRefQ(int mapIndex) {
+        assert Thread.holdsLock(valueMaps[mapIndex]) : "caller must hold lock for valueMap " + mapIndex;
+        
+        final int MAX_POLL = 10;
+        int pollCount = 0;
+        Reference<? extends Node> ref;
+        ReferenceQueue<Node> refQ = valueRefQueues[mapIndex];
+        ref = refQ.poll();
+        pollCount++;
+        
+        while (ref != null && pollCount <= MAX_POLL) {
+            NodeReference nodeRef = (NodeReference) ref;
+            assert !nodeRef.isIndexNode;
             
+            valueMaps[mapIndex].remove(nodeRef.id);
             ref = refQ.poll();
             pollCount++;
         }
@@ -276,12 +289,31 @@ public class CacheMap {
         System.gc();
         
         Thread.sleep(1000);
-        m.cleanup();
+        m.cleanupAll();
         
         Assert.assertFalse("contains test", m.indexMap(1234L).containsKey(1234L));
         Assert.assertTrue("get result should be null", m.getIndexNode(1234L) == null);
     }
     
+    /**
+     * Used for testing.
+     */
+    public void cleanupAll() {
+        // For testing only, concurrency not considered.
+        
+        for (int i = 0; i < INDEX_MAP_COUNT; i++) {
+            synchronized (indexMaps[i]) {
+                cleanupIndexRefQ(i);
+            }
+        }
+        
+        for (int i = 0; i < VALUE_MAP_COUNT; i++) {
+            synchronized (valueMaps[i]) {
+                cleanupValueRefQ(i);
+            }
+        }
+    }
+
     public static void main(String[] args) throws Exception {
         manualMemTest();
     }
@@ -354,10 +386,12 @@ public class CacheMap {
 
 /*
 
-Extra Memory Use
-================
 
-150807 Frans. How much extra memory used by this approach?
+
+150807 Memory Use
+=================
+
+Frans: How much extra memory used by this approach?
 
 On cissi + JVM 7. An empty HashMap uses 50 bytes of memory.
 Using jvisualvm for checking memory usage.
