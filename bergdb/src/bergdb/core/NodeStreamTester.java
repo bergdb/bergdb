@@ -147,8 +147,8 @@ public class NodeStreamTester {
         Assert.assertTrue(n1.getSpos() > 0);
         
         NodeHeader header1 = nodeStream.readNodeHeader(n1.getSpos());
-        Assert.assertEquals(Node.TYPE_TOP_NODE, header1.getType());
-        Assert.assertEquals("id", 12L, header1.getId());
+        Assert.assertEquals(Node.TYPE_TOP_NODE, header1.type());
+        Assert.assertEquals("id", 12L, header1.id());
     }
     
     @Nano
@@ -167,8 +167,8 @@ public class NodeStreamTester {
         Assert.assertTrue(node.getSpos() > 0);
         
         NodeHeader header = nodeStream.readNodeHeader(node.getSpos());
-        Assert.assertEquals("type", Node.TYPE_KEY_NODE, header.getType());
-        Assert.assertEquals(13L, header.getId());
+        Assert.assertEquals("type", Node.TYPE_KEY_NODE, header.type());
+        Assert.assertEquals(13L, header.id());
     }
     
     @Nano
@@ -186,7 +186,7 @@ public class NodeStreamTester {
         Assert.assertTrue(node.getSpos() > 0);
         
         NodeHeader header = nodeStream.readNodeHeader(node.getSpos());
-        Assert.assertEquals("type", Node.TYPE_VALUE, header.getType());
-        Assert.assertEquals(0L, header.getId());
+        Assert.assertEquals("type", Node.TYPE_VALUE, header.type());
+        Assert.assertEquals(0L, header.id());
     }
 }

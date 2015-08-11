@@ -3,18 +3,27 @@ package bergdb.test.manual;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.HashMap;
 import java.util.Random;
 
 import bergdb.common.Bytes;
 import bergdb.common.Util;
+import bergdb.core.CacheMap;
+import bergdb.core.CacheMap.NodeReference;
 import bergdb.core.Db;
 import bergdb.core.Evictor;
 import bergdb.core.FixedDurationEvictBoss;
+import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.EvictData;
+import bergdb.dag.KeyNode;
 import bergdb.dag.Node;
+import bergdb.dag.NodeVisitor;
 import bergdb.dag.Pointer;
 import bergdb.dag.PointerVisitor;
+import bergdb.dag.Spos;
+import bergdb.dag.TopNode;
+import bergdb.dag.ValueNode;
 import bergdb.nanotest.CommandLine;
 import bergdb.pub.Connection;
 import bergdb.pub.CryptoKey;
@@ -114,6 +123,8 @@ public class Interactive {
             runEvict(options);
         } else if(commandName.equals("evictMax")) {
             runEvictMax(options);
+        } else if(commandName.equals("e2")) {
+            runE2(options);
         } else {
             System.out.println("Unknown command.");
         }
@@ -121,6 +132,36 @@ public class Interactive {
         return shouldExit;
     }
 
+    private void runGc(CommandLine options) {
+        long used1 = memUsed();
+        
+        for (int i = 0; i < 4; i++) {
+            System.gc();
+        }
+        
+        long used2 = memUsed();
+        
+        System.out.format("Used mem: %.1f MB to %.1f MB.\n",
+                1e-6 * (used2 - used1), 
+                1e-6 * used2);
+    }
+
+    private void runInfo(CommandLine options) {
+        int cardCount = getCardCount();
+        Runtime runtime = Runtime.getRuntime();
+        long totalMem = runtime.totalMemory();
+        long freeMem = runtime.freeMemory();
+        long maxMem = runtime.maxMemory();
+        
+        System.out.println("cardCount: " + cardCount);
+        System.out.format("JVM memory (MB), max: %.1f, used: %.1f.\n", 
+                1e-6 * maxMem, 1e-6 * (totalMem - freeMem));
+        System.out.format("Stream length: %.1f, startupDistance: %.1f, startupPos: %.1f.\n", 
+                1e-6 * db.getStreamLength(),
+                1e-6 * db.getStartupDistance(),
+                1e-6 * db.internal().getStartupPos());
+    }
+    
     private void runEvict(CommandLine options) {
         EvictData ed = new EvictData();
         int count = 1000;
@@ -163,35 +204,6 @@ public class Interactive {
                 totalReasonAccessTime, totalReasonDirty, totalReasonNotMem);
     }
 
-    private void runGc(CommandLine options) {
-        long used1 = memUsed();
-        
-        for (int i = 0; i < 4; i++) {
-            System.gc();
-        }
-        
-        long used2 = memUsed();
-        
-        System.out.format("Used mem: %.1f MB to %.1f MB.\n",
-                1e-6 * (used2 - used1), 
-                1e-6 * used2);
-    }
-
-    private void runInfo(CommandLine options) {
-        int cardCount = getCardCount();
-        Runtime runtime = Runtime.getRuntime();
-        long maxMem = runtime.maxMemory();
-        long freeMem = runtime.freeMemory();
-        
-        System.out.println("cardCount: " + cardCount);
-        System.out.format("JVM memory (MB), max: %.1f, free: %.1f, used: %.1f.\n", 
-                1e-6 * maxMem, 1e-6 * freeMem, 1e-6 * (maxMem - freeMem));
-        System.out.format("Stream length: %.1f, startupDistance: %.1f, startupPos: %.1f.\n", 
-                1e-6 * db.getStreamLength(),
-                1e-6 * db.getStartupDistance(),
-                1e-6 * db.internal().getStartupPos());
-    }
-    
     private void runEvictMax(CommandLine options) {
         // TODO B. Work on evict. Bulk evict is of interest, a pointer can be processed
         // in 0.25 us.
@@ -237,7 +249,6 @@ public class Interactive {
             }
         };
         
-        //dag.visitMemoryPointers(visitor);
         dag.visitMemoryPointersOnce(visitor);
         
         // Note, the visitMemoryPointersOnce() is actually faster (-20%).
@@ -256,6 +267,67 @@ public class Interactive {
                 counters[2], counters[3], counters[4]);
     }
     
+    private int cacheMapIndex = 0;
+    
+    private void runE2(CommandLine options) {
+        int n = 1;
+        
+        if (options.hasOne("n")) {
+            n = Integer.parseInt(options.getOne("n"));
+        }
+        
+        for (int i = 0; i < n; i++) {
+            //System.out.println("  cacheMapIndex: " + cacheMapIndex);
+            
+            CacheMap cacheMap = db.internal().cacheMap();
+            HashMap<Long, NodeReference> map = cacheMap.getIndexNodeMap(cacheMapIndex);
+            
+            synchronized (map) {
+                for (NodeReference ref : map.values()) {
+                    Node node = ref.get();
+                    if (node != null) {                    
+                        evictNodePointers(node);
+                    }
+                }
+                
+                cacheMap.cleanup();
+            }
+            
+            cacheMapIndex = (cacheMapIndex + 1) % cacheMap.getIndexMapCount();
+        }
+        
+    }
+
+    /**
+     * Evicts all evicable out-bound pointers of 'node'.
+     */
+    private void evictNodePointers(Node node) {
+        // See Evictor.evictPointers().
+        
+        final long accessTimeLimit = Long.MAX_VALUE;
+        Pointer pointer = new Pointer();    // input/output, temp storage
+        
+        int count = node.getSize();
+        for (int i = 0; i < count; i++) {
+            node.getPointer(i, pointer);
+            if (pointer.isMem()) {
+                Node pointee = pointer.node;
+                
+                if (!pointee.isDirty()) {
+                    long pointeePos = pointee.getSpos();
+                    
+                    assert pointeePos != Spos.NULL : "bad pointee, " + pointee;
+                    
+                    long pointerAccessTime = AccessData.getAccessTime(pointer.getAccessData());
+                    
+                    if (pointerAccessTime <= accessTimeLimit) {
+                        node.setPointer(i, null, pointeePos);
+                    }
+                }
+            }
+        }
+    }
+
     private long memUsed() {
         Runtime r = Runtime.getRuntime();
         return r.totalMemory() - r.freeMemory();

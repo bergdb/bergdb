@@ -1,6 +1,7 @@
 package bergdb.core;
 
 import java.io.IOException;
+import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
@@ -12,6 +13,8 @@ import bergdb.dag.Node;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+
+// TODO B. Consided sync and clean. Should we have one ref q per map instead?
 
 /**
  * An object with mappings from node ids to Node objects.
@@ -58,28 +61,80 @@ public class CacheMap {
         cleanup();
         long id = node.getId();
         assert id >= 0;
-        indexMap(id).put(id, new NodeReference(node, refQ, id, true));
+        
+        HashMap<Long, NodeReference> map = indexMap(id);
+        synchronized (map) {
+            map.put(id, new NodeReference(node, refQ, id, true));
+        }
     }
     
-    public void putValueNode(ValueNode node) {
+    public void putValueNodeConditionally(ValueNode node) {
+        if (node.value != null) {
+            if (node.value.length > 99) {
+                putValueNode(node);
+            } else {
+                // TODO B. Phantom references for value nodes. Which Q.
+                //new PhantomReference<ValueNode>(node, refQ);  
+            }
+        }
+    }
+    
+    private void putValueNode(ValueNode node) {
         cleanup();
         long id = node.getId();
         assert id >= 0 : "value node, node.getId() = " + id;
-        valueMap(id).put(id, new NodeReference(node, refQ, id, false));
+        
+        HashMap<Long, NodeReference> map = valueMap(id);
+        synchronized (map) {
+            map.put(id, new NodeReference(node, refQ, id, false));
+        }
     }
     
     public Node getIndexNode(long id) {
+        WeakReference<Node> ref;
+        Node result;
+        
         cleanup();
-        WeakReference<Node> ref = indexMap(id).get(id);
-        Node result = ref == null ? null : ref.get();
+        
+        HashMap<Long, NodeReference> map = indexMap(id);
+        synchronized (map) {
+            ref = map.get(id);
+            result = ref == null ? null : ref.get();
+        }
+        
         return result;
     }
     
     public ValueNode getValueNode(long id) {
+        WeakReference<Node> ref;
+        ValueNode result;
+        
         cleanup();
-        WeakReference<Node> ref = valueMap(id).get(id);        
-        ValueNode result = ref == null ? null : (ValueNode) ref.get();
+        
+        HashMap<Long, NodeReference> map = valueMap(id);
+        synchronized (map) {
+            ref = map.get(id);        
+            result = ref == null ? null : (ValueNode) ref.get();
+        }
+        
         return result;
+    }
+    
+    public HashMap<Long, NodeReference> getIndexNodeMap(int index) {
+        return indexMaps[index];
+    }
+    
+    public HashMap<Long, NodeReference> getValueNodeMap(int index) {
+        // NOTE Is this method needed?
+        return valueMaps[index];
+    }
+    
+    public final int getIndexMapCount() {
+        return INDEX_MAP_COUNT;
+    }
+    
+    public final int getValueMapCount() {
+        return VALUE_MAP_COUNT;
     }
     
     public Object getIndexSyncObject(long id) {
@@ -119,7 +174,7 @@ public class CacheMap {
      * Removes entries on the map that cannot be used because the
      * value was garbage collected.
      */
-    private void cleanup() {
+    public void cleanup() {
         // TODO B. is synchronized used ok here? Deadlock possible? Think some more.
         //   What if a node eviction is in progress?
         //   An alternative is to use a lock that can be queried (tryLock), 

@@ -6,7 +6,7 @@ package bergdb.core;
  * 
  * @author Frans Lundberg
  */
-public class NodeHeader {
+public final class NodeHeader {
     private final byte type;
     private final long id;
     
@@ -15,11 +15,11 @@ public class NodeHeader {
         this.id = id;
     }
     
-    public byte getType() {
+    public final byte type() {
         return type;
     }
     
-    public long getId() {
+    public final long id() {
         return id;
     }
 }

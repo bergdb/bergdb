@@ -185,7 +185,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
             id = 0;
         } else {
             throw new StreamFormatException("unknown node type, " + ((int) type) 
-                    + ", first header bytes: " + Util.toHex(buffer, 0, 8));
+                    + ", spos: " + spos + ", node header bytes: " + Util.toHex(buffer, 0, 8));
         }
         
         return new NodeHeader(type, id);

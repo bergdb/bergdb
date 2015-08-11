@@ -496,10 +496,10 @@ public class Db {
 
                 synchronized (lock) {
                     Node pointerNode = predecessor.getPointerNode(pointerIndex);
-                    long pointerPos1 = predecessor.getPointerPos(pointerIndex);
+                    long pointerPos = predecessor.getPointerPos(pointerIndex);
 
-                    assert !Pointer.isNull(pointerNode, pointerPos1) : "Pointer is null: " + pointerNode
-                            + ", " + pointerPos1;
+                    assert !Pointer.isNull(pointerNode, pointerPos) : "Pointer is null: " + pointerNode
+                            + ", " + pointerPos;
 
                     if (Pointer.isMem(pointerNode)) {
                         result = pointerNode;
@@ -510,20 +510,37 @@ public class Db {
                                 predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
                     
                     } else {
-                        assert pointerPos1 > 0 : "bad pointerPos, " + pointerPos1 
+                        assert pointerPos > 0 : "bad pointerPos, " + pointerPos 
                                 + ", pointerIndex:" + pointerIndex + ", predecessor:" + predecessor;
                         
-                        // TODO A. Introduce CacheMap GET here (use readNodeHeader())
+                        NodeHeader header = nodeStream.readNodeHeader(pointerPos);
+                        boolean isValueNode = header.type() == Node.TYPE_VALUE;
+                        long id = header.id();
                         
-                        result = nodeStream.readNode(pointerPos1);
+                        result = isValueNode ? 
+                                cacheMap.getValueNode(id) : cacheMap.getIndexNode(id);
                         
-                        pointerListener.pointerFollowed(
-                                predecessor, pointerIndex, result, Pointer.TYPE_STREAM);
-                        
-                        if (cachePolicy.shouldCache(result)) {
-                            predecessor.setPointer(pointerIndex, result, accessData);
+                        if (result == null) {
+                            result = nodeStream.readNode(pointerPos);
                             
-                            // TODO A. Introduce CacheMap PUT here.
+                            if (cachePolicy.shouldCache(result)) {
+                                predecessor.setPointer(pointerIndex, result, accessData);
+                                
+                                if (isValueNode) {
+                                    if (!result.isValueNode()) {
+                                        throw new StreamFormatException(
+                                                "NodeStream.readHeader() says node type: value, " +
+                                                "but NodeStream.readNode() read node: " + result);
+                                    }
+                                    
+                                    cacheMap.putValueNodeConditionally((ValueNode) result);
+                                } else {
+                                    cacheMap.putIndexNode(result);
+                                }
+                            }
+                            
+                            pointerListener.pointerFollowed(
+                                    predecessor, pointerIndex, result, Pointer.TYPE_STREAM);
                         }
                     }
                 }
@@ -1257,8 +1274,7 @@ public class Db {
         
         handleStillDirtyNodes();
         
-        // TODO A. Enable addToCacheMap(), CacheMap PUT
-        //addToCacheMap();
+        addNodesToCacheMap();
         
         x.trans.nodeCount = x.transNodes.size();
         x.transInfo.tpos = x.trans.tpos;
@@ -1273,27 +1289,29 @@ public class Db {
 
     /**
      * Adds clean nodes to cache map.
+     * Value nodes are always cached when written.
      */
-    private void addToCacheMap() {
+    private void addNodesToCacheMap() {
+        // Value nodes are always cached with the current implementation.
+        // This could be handled differently. The CachePolicy could be used.
+        // Or a special cache policy for new nodes. Maybe hardcoded: 
+        // very large values (say > 6 MB) not cached.
+        
         TransNodes nodes = x.transNodes;
         
         for (int i = 0; i < nodes.topCount; i++) {
             TopNode node = nodes.topNodes[i];
-            if (!node.isDirty) {
-                cacheMap.putIndexNode(node);
-            }
+            cacheMap.putIndexNode(node);
         }
         
         for (int i = 0; i < nodes.keyCount; i++) {
             KeyNode node = nodes.keyNodes[i];
-            if (!node.isDirty) {
-                cacheMap.putIndexNode(node);
-            }
+            cacheMap.putIndexNode(node);
         }
         
         for (int i = 0; i < nodes.valueCount; i++) {
             ValueNode node = nodes.valueNodes[i];
-            cacheMap.putValueNode(node);
+            cacheMap.putValueNodeConditionally(node);
         }
     }
 
@@ -1440,6 +1458,8 @@ public class Db {
      * Access to the internal structure of the Db object.
      * Do NOT use these methods for normal operation, they are available
      * for developement, testing, and internal use.
+     * An instance of this class separates external usage from internal usage
+     * of the Db object.
      */
     public class Internal {
         public TopNode superRoot() { return dag.getSuperRoot(); }
@@ -1462,13 +1482,11 @@ public class Db {
 
         public void setKvTransSeq(TransSeq seq) { Db.this.transSeq = seq; }
         
-        public void setCachedMemoryValue(long cachedMemoryValue) {
-            Db.this.aux.cachedMemoryValue.set(cachedMemoryValue);
-        }
-        
         public Aux aux() { return aux; }
         
         public Evictor evictor() { return evictor; }
+        
+        public CacheMap cacheMap() { return cacheMap; }
 
         public AppendOnlyStream getMainStream() {
             return storageManager.getMainStream();
@@ -1486,7 +1504,7 @@ public class Db {
      * Collection of operation-scope data for method Db.execute().
      * All access must be from thread holding Db.writeLock.
      */
-    public class ExecuteData {
+    public final class ExecuteData {
         /** Current transaction while writeLock is held. */
         public Trans trans;
         
@@ -1554,7 +1572,7 @@ public class Db {
     /**
      * Private auxilliary database state; counters, statistics, ...
      */
-    public class Aux {
+    public final class Aux {
         
         /**
          * The cachedMemoryValue is an estimate of the total amount of memory cached

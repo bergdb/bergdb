@@ -16,7 +16,7 @@ import bergdb.nanotest.Nano;
  * 
  * @author Frans Lundberg
  */
-public class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNodesForMe {
+public final class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.TransNodesForMe {
     //
     // The class must support the same node added to it several times without causing duplicates.
     // Should be a set of unique nodes.
