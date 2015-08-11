@@ -127,6 +127,8 @@ public class Interactive {
             runStep(options);
         } else if(commandName.equals("addBig")) {
             runAddBig(options);
+        } else if(commandName.equals("addSmall")) {
+            runAddSmall(options);
         } else {
             System.out.println("Unknown command.");
         }
@@ -346,6 +348,23 @@ public class Interactive {
             String key = "/big/" + i;
             byte[] value = new byte[size];
             System.out.println("Adding big KV, " + key + " -> size:" + value.length);
+            c.put(key, value);
+        }
+        
+        c.sync();
+    }
+    
+    private void runAddSmall(CommandLine options) {
+        int n = 1000;
+        
+        if (options.hasOne("n")) {
+            n = Integer.parseInt(options.getOne("n"));
+        }
+        
+        for (int i = 0; i < n; i++) {
+            String key = "/small/" + i;
+            byte[] value = new byte[10];
+            //System.out.println("Adding small KV, " + key + " -> size:" + value.length);
             c.put(key, value);
         }
         

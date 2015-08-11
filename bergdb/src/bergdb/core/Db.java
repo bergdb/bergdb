@@ -540,13 +540,7 @@ public class Db {
                             
                             if (cachePolicy.shouldCache(result)) {
                                 
-                                if (isValueNode) {
-                                    if (!result.isValueNode()) {
-                                        throw new StreamFormatException(
-                                                "NodeStream.readHeader() says node type: value, " +
-                                                "but NodeStream.readNode() read node: " + result);
-                                    }
-                                    
+                                if (isValueNode) {                                    
                                     Object cacheLock = cache.getValueLockObject(id);
                                     synchronized (cacheLock) {                                        
                                         ValueNode existingNode = cache.getValueNode(id);
@@ -560,10 +554,11 @@ public class Db {
                                 } else {
                                     Object cacheLock = cache.getIndexLockObject(id);
                                     synchronized (cacheLock) {
-                                        Node existingNode = cache.getValueNode(id);
+                                        Node existingNode = cache.getIndexNode(id);
                                         if (existingNode == null) {
                                             cache.putIndexNode(result);
                                         } else {
+                                            assert existingNode.isIndexNode();
                                             result = existingNode;
                                         }
                                     }

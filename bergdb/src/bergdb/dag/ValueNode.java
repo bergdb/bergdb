@@ -12,7 +12,7 @@ import bergdb.nanotest.Nano;
  * @author Frans Lundberg
  */
 public final class ValueNode implements Node {
-    // NOTE 141024, the Node.TYPE_VALUE/DELETE is confusing!
+    // NOTE the Node.TYPE_VALUE/DELETE is confusing!
     // In this class, the value node is considered a delete if value == null.
     
     public final byte[] value;

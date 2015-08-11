@@ -1,6 +1,7 @@
 package bergdb.core;
 
 import java.io.IOException;
+import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
@@ -136,20 +137,20 @@ public class Cache {
         
         long id = node.getId();
         assert id >= 0;
-        int index = getMapIndex(id, INDEX_MAP_COUNT);
-        HashMap<Long, NodeReference> map = indexMaps[index];
+        int mapIndex = getMapIndex(id, INDEX_MAP_COUNT);
+        HashMap<Long, NodeReference> map = indexMaps[mapIndex];
         
         int memSize = node.getMemSize();
         
         synchronized (map) {
-            cleanupIndexRefQ(index, 10);
+            cleanupIndexRefQ(mapIndex, 10);
             
-            NodeReference ref = new NodeReference(node, indexRefQueues[index], id, true);
+            NodeReference ref = new NodeReference(node, indexRefQueues[mapIndex], id, true);
             ref.memSize = memSize;
             
-            NodeReference oldValue = map.put(id, ref);
+            NodeReference oldRef = map.put(id, ref);
             if (AssertStatus.enabled()) {
-                if (oldValue != null) {
+                if (oldRef != null && oldRef.get() != null) {
                     throw new AlreadyHasNode("id:" + id + ", index node already in cache");
                 }
             }
@@ -161,24 +162,13 @@ public class Cache {
     }
     
     public void putValueNode(ValueNode node) {
-        // TODO B. Phantom references for value nodes?
-        // Could allow us to keep track of memory use also for unmanged ValueNode
-        // objects.  
         // TODO C. Consider "unmanaged value nodes" - value nodes that
         // are not necessarily canonical. Allow duplicates for small values (<100 bytes or so).
-        //
         
-        if (node.value != null) {
-            internalPutValueNode(node);
-            //if (node.value.length > 100) {
-            //    putValueNode(node);
-            //} else {
-            //    //new PhantomReference<ValueNode>(node, refQ);                
-            //}
+        if (node.value == null) {
+            return;
         }
-    }
-
-    private void internalPutValueNode(ValueNode node) {
+        
         long id = node.getId();
         assert id >= 0 : "value node, node.getId() = " + id;
         int mapIndex = getMapIndex(id, VALUE_MAP_COUNT);
@@ -190,9 +180,9 @@ public class Cache {
             NodeReference ref = new NodeReference(node, valueRefQueues[mapIndex], id, false);
             ref.memSize = memSize;
             
-            NodeReference oldValue = map.put(id, ref);
+            NodeReference oldRef = map.put(id, ref);
             if (AssertStatus.enabled()) {
-                if (oldValue != null) {
+                if (oldRef != null && oldRef.get() != null) {
                     throw new AlreadyHasNode("id:" + id + ", value node already in cache");
                 }
             }
@@ -358,6 +348,22 @@ public class Cache {
         }
     }
     
+    /**
+     * Reference to an unmanaged value node.
+     */
+    public static final class UnmanagedReference extends PhantomReference<ValueNode> {
+        final int memSize;
+        
+        public UnmanagedReference(ValueNode node, ReferenceQueue<ValueNode> q, int memSize) {
+            super(node, q);
+            this.memSize = memSize;
+        }
+        
+        public final int getMemSize() {
+            return memSize;
+        }
+    }
+    
     
     // ======== Tests ========
     
@@ -376,7 +382,7 @@ public class Cache {
         ValueNode node = new ValueNode(new byte[0]);
         node.setSpos(1234L);
         assert node.getId() == 1234L;
-        m.internalPutValueNode(node);
+        m.putValueNode(node);
         
         Assert.assertEquals("getValueNode existant", node, m.getValueNode(1234L));
         Assert.assertEquals("getValueNode non-existant", m.getValueNode(1222L), null);
@@ -397,21 +403,23 @@ public class Cache {
     
     @Nano private static void testDuplicateValueNodes() {
         Cache m = new Cache();
-        ValueNode node = new ValueNode(new byte[0]);
+        ValueNode node = new ValueNode(new byte[1000]);
         node.setSpos(1234L);
         assert node.getId() == 1234L;
-        m.internalPutValueNode(node);
+        m.putValueNode(node);
         AlreadyHasNode ex = null;
         
         if (AssertStatus.enabled()) {
             try {
-                m.internalPutValueNode(node);
+                m.putValueNode(node);
             } catch (Cache.AlreadyHasNode e) {
                 ex = e;
             }
             
             Assert.assertTrue(ex != null);
         }
+        
+        
     }
     
     @Nano private static void testDuplicateIndexNodes() {
@@ -488,8 +496,6 @@ public class Cache {
      * Used for testing.
      */
     public void cleanupAll() {
-        // For testing only, concurrency not considered.
-        
         for (int i = 0; i < INDEX_MAP_COUNT; i++) {
             synchronized (indexMaps[i]) {
                 cleanupIndexRefQ(i, Integer.MAX_VALUE);
