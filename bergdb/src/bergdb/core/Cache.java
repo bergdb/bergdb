@@ -14,20 +14,16 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * An object with mappings from node ids to Node objects.
- * An instance of this class is used to ensure there is only one Node object for 
- * a given node id. It is a canonicalizing mapping.
- * It uses weak references to allow Node objects to be garbage collected.
- * 
- * Concurrency: external synchronization is required.
+ * An instance of this class handles the node caching for the database.
+ * It has mappings from node ids to Node objects.
+ * It ensures there is only one Node object for a given node id. 
+ * It is a canonicalizing mapping.
+ * It uses weak references to allow Node objects to be garbage collected when 
+ * no longer used.
  * 
  * @author Frans Lundberg
  */
-public class CacheMap {
-    // Note, we likely want a separate map for value nodes later.
-    // And maybe 100 or 1000 maps? To limit synchronization time... to be able to
-    // synchronize over the whole map object.
-    
+public class Cache {    
     private static final int INDEX_MAP_COUNT = 100;
     private static final int VALUE_MAP_COUNT = 100;
     private static final long RANDOM_MASK = Bytes.bytesToLongBE(
@@ -40,7 +36,7 @@ public class CacheMap {
     private final ReferenceQueue<Node>[] valueRefQueues;
     
     @SuppressWarnings("unchecked")
-    public CacheMap() {
+    public Cache() {
         indexMaps = (HashMap<Long, NodeReference>[]) new HashMap<?, ?>[INDEX_MAP_COUNT];
         for (int i = 0; i < INDEX_MAP_COUNT; i++) {
             indexMaps[i] = new HashMap<Long, NodeReference>();
@@ -81,8 +77,10 @@ public class CacheMap {
             if (node.value.length > 100) {
                 putValueNode(node);
             } else {
-                // TODO B. Phantom references for value nodes. Which Q.
-                //new PhantomReference<ValueNode>(node, refQ);  
+                // TODO B. Phantom references for value nodes?
+                // Could allow us to keep track of memory use also for unmanged ValueNode
+                // objects.
+                //new PhantomReference<ValueNode>(node, refQ);                
             }
         }
     }
@@ -236,7 +234,7 @@ public class CacheMap {
     // ======== Tests ========
     
     @Nano private static void testSanity1() {
-        CacheMap m = new CacheMap();
+        Cache m = new Cache();
         KeyNode node = new KeyNode();
         node.setId(1234L);
         m.putIndexNode(node);
@@ -246,7 +244,7 @@ public class CacheMap {
     }
     
     @Nano private static void testSanity2() {
-        CacheMap m = new CacheMap();
+        Cache m = new Cache();
         ValueNode node = new ValueNode(new byte[0]);
         node.setSpos(1234L);
         assert node.getId() == 1234L;
@@ -276,7 +274,7 @@ public class CacheMap {
         // There is no guarantee that garbage collection is actually run when System.gc() 
         // is called. Also, there is no guarantee when references are added the reference queue.
         
-        CacheMap m = new CacheMap();
+        Cache m = new Cache();
         KeyNode k = new KeyNode();
         k.setId(1234L);
         

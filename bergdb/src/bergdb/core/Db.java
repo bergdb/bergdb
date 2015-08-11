@@ -133,7 +133,7 @@ public class Db {
     private final PointerLocks pointerLocks;
     private File createdTxtDir;
     private String createdTxtCryptoKeyInfo;
-    private CacheMap cacheMap;
+    private Cache cacheMap;
     
 
     /**
@@ -146,7 +146,7 @@ public class Db {
         x = new ExecuteData();
         keyModSet = new KeyModSet();
         pointerLocks = new PointerLocks();
-        cacheMap = new CacheMap();
+        cacheMap = new Cache();
  
         this.maxNodeSize = b.maxNodeSize;
         this.startupDistance = b.startupDistance;
@@ -1486,7 +1486,7 @@ public class Db {
         
         public Evictor evictor() { return evictor; }
         
-        public CacheMap cacheMap() { return cacheMap; }
+        public Cache cacheMap() { return cacheMap; }
 
         public AppendOnlyStream getMainStream() {
             return storageManager.getMainStream();

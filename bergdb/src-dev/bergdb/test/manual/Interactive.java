@@ -8,8 +8,8 @@ import java.util.Random;
 
 import bergdb.common.Bytes;
 import bergdb.common.Util;
-import bergdb.core.CacheMap;
-import bergdb.core.CacheMap.NodeReference;
+import bergdb.core.Cache;
+import bergdb.core.Cache.NodeReference;
 import bergdb.core.Db;
 import bergdb.core.Evictor;
 import bergdb.core.FixedDurationEvictBoss;
@@ -275,7 +275,7 @@ public class Interactive {
         for (int i = 0; i < n; i++) {
             //System.out.println("  cacheMapIndex: " + cacheMapIndex);
             
-            CacheMap cacheMap = db.internal().cacheMap();
+            Cache cacheMap = db.internal().cacheMap();
             HashMap<Long, NodeReference> map = cacheMap.getIndexNodeMap(cacheMapIndex);
             
             synchronized (map) {
