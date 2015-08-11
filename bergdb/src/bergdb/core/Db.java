@@ -523,6 +523,11 @@ public class Db {
                         if (result == null) {
                             result = nodeStream.readNode(pointerPos);
                             
+                            assert result.getId() == header.id() 
+                                    : "ids differ, " + result.getId() + " != " + header.id();
+                            assert result.getType() == header.type()
+                                    : "types differ, " + result.getType() + ", " + header.type();
+                            
                             if (cachePolicy.shouldCache(result)) {
                                 predecessor.setPointer(pointerIndex, result, accessData);
                                 

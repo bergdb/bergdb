@@ -182,7 +182,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
                 id = Bytes.bytesToLongLE(buffer, 24);
             }
         } else if (type == Node.TYPE_VALUE || type == Node.TYPE_DELETE) {
-            id = 0;
+            id = spos;
         } else {
             throw new StreamFormatException("unknown node type, " + ((int) type) 
                     + ", spos: " + spos + ", node header bytes: " + Util.toHex(buffer, 0, 8));

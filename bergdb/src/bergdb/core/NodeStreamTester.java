@@ -187,6 +187,6 @@ public class NodeStreamTester {
         
         NodeHeader header = nodeStream.readNodeHeader(node.getSpos());
         Assert.assertEquals("type", Node.TYPE_VALUE, header.type());
-        Assert.assertEquals(0L, header.id());
+        Assert.assertEquals(node.getSpos(), header.id());
     }
 }

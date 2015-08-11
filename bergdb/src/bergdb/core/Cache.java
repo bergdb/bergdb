@@ -131,9 +131,7 @@ public class Cache {
         
         synchronized (map) {
             cleanupIndexRefQ(index, 10);
-            
-            //node.getMemSize();
-            
+            assert !map.containsKey(id) : "there is an index node with id " + id + " in Cache already";
             map.put(id, new NodeReference(node, indexRefQueues[index], id, true));
         }
     }
@@ -163,6 +161,7 @@ public class Cache {
         
         HashMap<Long, NodeReference> map = valueMaps[index];
         synchronized (map) {
+            assert !map.containsKey(id) : "there is a value node with id " + id + " in Cache already";
             cleanupValueRefQ(index, 10);
             map.put(id, new NodeReference(node, valueRefQueues[index], id, false));
         }
