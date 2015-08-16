@@ -11,11 +11,9 @@ import bergdb.common.Util;
 import bergdb.core.Cache;
 import bergdb.core.Cache.NodeReference;
 import bergdb.core.Db;
-import bergdb.core.Evictor;
 import bergdb.core.FixedDurationEvictBoss;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
-import bergdb.dag.EvictData;
 import bergdb.dag.Node;
 import bergdb.dag.Pointer;
 import bergdb.dag.PointerVisitor;
@@ -117,8 +115,6 @@ public class Interactive {
             runGc(options);
         } else if(commandName.equals("gc2")) {
             runGc2(options);
-        } else if(commandName.equals("evict")) {
-            runEvict(options);
         } else if(commandName.equals("evictMax")) {
             runEvictMax(options);
         } else if(commandName.equals("e2")) {
@@ -184,48 +180,6 @@ public class Interactive {
                 db.internal().cache().putSize());
     }
     
-    private void runEvict(CommandLine options) {
-        EvictData ed = new EvictData();
-        int count = 1000;
-        
-        if (options.hasOne("n")) {
-            count = Integer.parseInt(options.getOne("n"));
-        }
-        
-        Evictor evictor = db.internal().evictor();
-        long totalEvictCount = 0;
-        long totalPointerCount = 0;
-        
-        long totalReasonAccessTime = 0;
-        long totalReasonDirty = 0;
-        long totalReasonNotMem = 0;
-        
-        long t0 = System.nanoTime();
-        
-        for (int i = 0; i < count; i++) {
-            evictor.evict(ed);
-            totalEvictCount += ed.evictCount;
-            totalPointerCount += ed.totalCount;
-            
-            totalReasonAccessTime += ed.reasonAccessTime;
-            totalReasonDirty += ed.reasonDirty;
-            totalReasonNotMem += ed.reasonNotMem;
-        }
-        
-        double time = 1e-9 * (System.nanoTime() - t0);
-        
-        System.out.format("count:%d, evicted: %d (of %d)\n", count, totalEvictCount, totalPointerCount);
-        System.out.format("time per evict call: %.1f us.\n", 1e6 * (time / count));
-        System.out.format("startupPos: %.1f | %.1f, stream length: %.1f, accessTimeLimit: %.1f.\n", 
-                1e-6 * db.internal().getStartupPos(), 
-                1e-6 * ed.startupPos, 
-                1e-6 * db.getStreamLength(), 
-                1e-6 * ed.accessTimeLimit);
-        System.out.format("cachedMemoryValue: %.1f\n", 1e-6 * db.internal().aux().getCachedMemoryValue());
-        System.out.format("not evicted reasons, access time: %d, dirty: %d, not mem: %d.\n", 
-                totalReasonAccessTime, totalReasonDirty, totalReasonNotMem);
-    }
-
     private void runEvictMax(CommandLine options) {
         // Bulk evict is of interest, a pointer can be processed in 0.25 us.
         

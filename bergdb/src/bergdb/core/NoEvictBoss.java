@@ -7,6 +7,7 @@ import bergdb.dag.EvictData;
  * production use, of course. Cache grows without limit.
  * 
  * @author Frans Lundberg
+ * @deprecated
  */
 public class NoEvictBoss implements EvictBoss {
     

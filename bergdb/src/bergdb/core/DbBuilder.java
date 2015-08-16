@@ -18,7 +18,8 @@ public class DbBuilder {
     Clock clock;
     int maxNodeSize;
     int startupDistance;
-    EvictBoss evictBoss;
+    long targetCacheSize;
+    EvictBoss evictBoss;  // XXX EvictBoss
     long retainDurationInTimeUnits;
     DatabaseId id;
     List<DbBuilder.StreamInfo> streamInfos = new ArrayList<DbBuilder.StreamInfo>();
@@ -37,7 +38,6 @@ public class DbBuilder {
         // DatabaseId.createRandom() is not used because it can be slow. 
         // A NULL id is replaced by Db when Db is started.
         id = DatabaseId.CREATE_LATER_MARKER;
-        
         defaultSettings();
     }
     
@@ -52,6 +52,7 @@ public class DbBuilder {
         //
         
         startupDistance = 20 * 1000000;
+        targetCacheSize = 10 * startupDistance;
         clock = new SystemClock();
         
         long cacheDuration = FixedDurationEvictBoss.suggestCacheDurationBasedOnJvm();
@@ -161,6 +162,14 @@ public class DbBuilder {
         return this;
     }
     
+    /**
+     * Target cache memory size in bytes.
+     */
+    public DbBuilder targetCacheSize(long targetCacheSize) {
+        this.targetCacheSize = targetCacheSize;
+        return this;
+    }
+    
     public int getStartupDistance() {
         return this.startupDistance;
     }
@@ -204,7 +213,8 @@ public class DbBuilder {
     }
 
     public DbBuilder noEvict() {
-        this.evictBoss = new NoEvictBoss();
+        // XXX this.evictBoss = new NoEvictBoss();
+        this.targetCacheSize = Long.MAX_VALUE;
         return this;
     }
     
@@ -335,7 +345,7 @@ public class DbBuilder {
     private void testSetupExceptStream() {
         // Test setup except for stream.
         clock(new CoreTestClock());
-        evictBoss(new NoEvictBoss());
+        noEvict();
         retainForever();
         testId();
     }

@@ -33,7 +33,14 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     private CryptoKey cryptoKey = null;
     
     public DatabaseBuilderImp() {
+        // By default, half of max memory used by database cache.
+        
         dbBuilder = Db.builder();
+        
+        long max = Runtime.getRuntime().maxMemory();
+        if (max != Long.MAX_VALUE) {
+            dbBuilder.targetCacheSize(max / 2);
+        }
     }
     
     /**
@@ -138,6 +145,17 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         }
         
         dbBuilder.startupDistance(startupDistanceInMb * 1000000);
+        return this;
+    }
+    
+    public DatabaseBuilder targetCacheSizeInMb(int targetCacheSizeInMb) {
+        // Note: we might want to clamp depending on startupDistance? 2 x startupDistance perhaps.
+        
+        if (targetCacheSizeInMb < 10) {
+            targetCacheSizeInMb = 10;
+        }
+        
+        dbBuilder.targetCacheSize(targetCacheSizeInMb * 1000000L);
         return this;
     }
     

@@ -8,7 +8,6 @@ import bergdb.test.manual.TransThroughput;
 public class Pack implements IPack {
     private static Class<?>[] classes = new Class<?>[] {
         BigDb.class,
-        BigDbEvict.class,
         BigDbWithDeletes.class,
         Bug130924.class,
         Bug141109.class,

@@ -21,6 +21,9 @@ import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
+// TODO synchronization needs work. Do we need all the Atomics? Evict thread, put threads, 
+// get threads, setTargetSize thread. All can be concurrent.
+
 /**
  * An instance of this class handles the node caching for the database.
  * It has mappings from node ids to Node objects.
@@ -37,6 +40,8 @@ public class Cache {
     private static final long RANDOM_MASK = Bytes.bytesToLongBE(
             new byte[]{0x51, (byte)0xc3, (byte)0x9c, (byte)0xcb, 0x50, 0x03, (byte)0xf7, 0x5b}, 0);
             // Random bytes from random.org.
+    private static final long INITIAL_CACHE_SIZE = INDEX_MAP_COUNT * 500 + VALUE_MAP_COUNT * 500;
+    private static final long NODE_MEM_OVERHEAD = 100;
     
     private final HashMap<Long, NodeReference>[] indexMaps;
     private final HashMap<Long, NodeReference>[] valueMaps;
@@ -44,16 +49,16 @@ public class Cache {
     private final ReferenceQueue<Node>[] valueRefQueues;
     private final Evictor evictor;
     
-    private int cacheStepIndex = 0;     // index to next index map for evictStep().
-    private static final long INITIAL_CACHE_SIZE = INDEX_MAP_COUNT * 500 + VALUE_MAP_COUNT * 500;
-    private static final long NODE_MEM_OVERHEAD = 100;
-    
-    private AtomicLong targetSize;      // target total cache size, set by user
-    private AtomicLong totalSize;       // current total cache size (estimate of memory byte size)
-    private AtomicLong putSize;         // total size of all node put to cache, always increasing
+    private long targetSize;                // target total cache size, set by user
+    private final AtomicLong totalSize;     // current total cache size (estimate of memory byte size)
+    private final AtomicLong putSize;       // total size of all node put to cache, always increasing
+    private final PointerLocks pointerLocks;
+    private final Object targetSizeLock = new Object();
     
     @SuppressWarnings("unchecked")
-    public Cache() {
+    public Cache(PointerLocks pointerLocks) {
+        this.pointerLocks = pointerLocks;
+        
         indexMaps = (HashMap<Long, NodeReference>[]) new HashMap<?, ?>[INDEX_MAP_COUNT];
         for (int i = 0; i < INDEX_MAP_COUNT; i++) {
             indexMaps[i] = new HashMap<Long, NodeReference>();
@@ -76,69 +81,21 @@ public class Cache {
         
         totalSize = new AtomicLong(INITIAL_CACHE_SIZE);
         putSize = new AtomicLong(0L);
-        targetSize = new AtomicLong(10L * 1000000L);
-        
+        targetSize = 10L * 1000000L;        
         evictor = new Evictor();
+        
+        synchronized (targetSizeLock) {};     // needed, at least in theory
     }
     
+    // TODO B. setTargetSize() - should it change noEvictLimit immediately?
     public void setTargetSize(long targetSize) {
         assert targetSize > 0;
-        this.targetSize.set(targetSize);
+        this.targetSize = targetSize;
     }
     
     public void evictStep() {
-        int mapIndex = cacheStepIndex;        
-        long accessTimeLimit = Long.MAX_VALUE;   // TODO B. work on this, Long.MAX_VALUE not correct
-        
-        HashMap<Long, NodeReference> map = indexMaps[mapIndex];
-        synchronized (map) {
-            for (NodeReference ref : map.values()) {
-                Node node = ref.get();
-                if (node != null) {                    
-                    evictNodePointers(node, accessTimeLimit);
-                }
-            }
-            
-            cleanupIndexRefQ(mapIndex, Integer.MAX_VALUE);
-        }
-        
-        HashMap<Long, NodeReference> valueMap = valueMaps[mapIndex];
-        synchronized (valueMap) {
-            cleanupValueRefQ(mapIndex, Integer.MAX_VALUE);
-        }
-        
-        cacheStepIndex = (mapIndex + 1) % INDEX_MAP_COUNT;
+        evictor.evictStep();
     }
-    
-    /**
-     * Evicts all evicable out-bound pointers of 'node'.
-     */
-    private void evictNodePointers(Node node, final long accessTimeLimit) {
-        // See Evictor.evictPointers().
-        
-        Pointer pointer = new Pointer();    // input/output, temp storage
-        
-        int count = node.getSize();
-        for (int i = 0; i < count; i++) {
-            node.getPointer(i, pointer);
-            if (pointer.isMem()) {
-                Node pointee = pointer.node;
-                
-                if (!pointee.isDirty()) {
-                    long pointeePos = pointee.getSpos();
-                    
-                    assert pointeePos != Spos.NULL : "bad pointee, " + pointee;
-                    
-                    long pointerAccessTime = AccessData.getAccessTime(pointer.getAccessData());
-                    
-                    if (pointerAccessTime <= accessTimeLimit) {
-                        node.setPointer(i, null, pointeePos);
-                    }
-                }
-            }
-        }
-    }
-
     
     public void putIndexNode(Node node) {
         // getMemSize() is constant for a particular TopNode instance.
@@ -388,6 +345,9 @@ public class Cache {
         }
     }
     
+    // TODO B. Work on synchronization here! For example noEvictDistance can be 
+    // used by concurrent threads, not protected.
+    
     /**
      * State of evict, last evict.
      */
@@ -409,7 +369,7 @@ public class Cache {
             putSize0 = Cache.this.putSize.get();
             nextMapIndex = 0;
             targetSize = 100L*1000000;
-            noEvictDistance = Cache.this.targetSize.get() * 0.25;
+            noEvictDistance = Cache.this.targetSize * 0.25;
             isEvicting = new AtomicBoolean(false);
         }
         
@@ -420,7 +380,7 @@ public class Cache {
             
             putSize = Cache.this.putSize.get();
             totalSize = Cache.this.totalSize.get();
-            targetSize = Cache.this.targetSize.get();
+            targetSize = Cache.this.targetSize;
             fillFactor = totalSize / targetSize;
             deltaPutSize = putSize - putSize0;
             double ratio = (double) deltaPutSize / targetSize;
@@ -469,13 +429,17 @@ public class Cache {
             // Control theory - regulating noEvictDistance based on 
             // cache fill factor.
             
+            double change;
+            
             if (fillFactor > 0.90) {
-                noEvictDistance = 0.95 * noEvictDistance;
+                change = 0.95;
             } else if (fillFactor > 0.70) {
-                noEvictDistance = 0.99 * noEvictDistance;
+                change = 0.99;
             } else {
-                noEvictDistance = 1.01 * noEvictDistance;
+                change = 1.01;
             }
+            
+            noEvictDistance = noEvictDistance * change;
             
             accessTimeLimit = putSize - (long) noEvictDistance;
         }
@@ -499,23 +463,29 @@ public class Cache {
          * Evicts all evicable out-bound pointers of 'node'.
          */
         private void evictNodePointers(Node node) {
-            
+            // It is possible to get pointeePos == Spos.NULL for value nodes.
+            // A value node does not get an spos when created, but later when
+            // written to stream.
             
             int count = node.getSize();
+            
             for (int i = 0; i < count; i++) {
-                node.getPointer(i, pointer);
-                if (pointer.isMem()) {
-                    Node pointee = pointer.node;
-                    
-                    if (!pointee.isDirty()) {
-                        long pointeePos = pointee.getSpos();
+                Object lock = pointerLocks.getLock(node, i);
+                synchronized (lock) {
+                    node.getPointer(i, pointer);
+                    if (pointer.isMem()) {
+                        Node pointee = pointer.node;
                         
-                        assert pointeePos != Spos.NULL : "bad pointee, " + pointee;
-                        
-                        long pointerAccessTime = AccessData.getAccessTime(pointer.getAccessData());
-                        
-                        if (pointerAccessTime <= accessTimeLimit) {
-                            node.setPointer(i, null, pointeePos);
+                        if (!pointee.isDirty()) {
+                            long pointeePos = pointee.getSpos();
+                            
+                            if (pointeePos != Spos.NULL) {
+                                long pointerAccessTime = AccessData.getAccessTime(pointer.getAccessData());
+                                
+                                if (pointerAccessTime <= accessTimeLimit) {
+                                    node.setPointer(i, null, pointeePos);
+                                }
+                            }
                         }
                     }
                 }
@@ -527,7 +497,7 @@ public class Cache {
     // ======== Tests ========
     
     @Nano private static void testSanity1() {
-        Cache m = new Cache();
+        Cache m = new Cache(new PointerLocks());
         KeyNode node = new KeyNode();
         node.setId(1234L);
         m.putIndexNode(node);
@@ -537,7 +507,7 @@ public class Cache {
     }
     
     @Nano private static void testSanity2() {
-        Cache m = new Cache();
+        Cache m = new Cache(new PointerLocks());
         ValueNode node = new ValueNode(new byte[0]);
         node.setSpos(1234L);
         assert node.getId() == 1234L;
@@ -561,7 +531,7 @@ public class Cache {
     }
     
     @Nano private static void testDuplicateValueNodes() {
-        Cache m = new Cache();
+        Cache m = new Cache(new PointerLocks());
         ValueNode node = new ValueNode(new byte[1000]);
         node.setSpos(1234L);
         assert node.getId() == 1234L;
@@ -582,7 +552,7 @@ public class Cache {
     }
     
     @Nano private static void testDuplicateIndexNodes() {
-        Cache m = new Cache();
+        Cache m = new Cache(new PointerLocks());
         KeyNode node = new KeyNode();
         node.setId(222L);
         assert node.getId() == 222L;
@@ -601,7 +571,7 @@ public class Cache {
     }
     
     @Nano private static void testTotalSize1() {
-        Cache cache = new Cache();
+        Cache cache = new Cache(new PointerLocks());
         ValueNode node = new ValueNode(new byte[10]);
         node.setSpos(222L);
         int memSize = node.getMemSize();
@@ -614,7 +584,7 @@ public class Cache {
     }
     
     @Nano private static void testTotalSize2() {
-        Cache cache = new Cache();
+        Cache cache = new Cache(new PointerLocks());
         TopNode node = TopNode.createDummy(2);
         node.setId(222L);
         int memSize = node.getMemSize();
@@ -632,7 +602,7 @@ public class Cache {
         // There is no guarantee that garbage collection is actually run when System.gc() 
         // is called. Also, there is no guarantee when references are added the reference queue.
         
-        Cache m = new Cache();
+        Cache m = new Cache(new PointerLocks());
         KeyNode k = new KeyNode();
         k.setId(1234L);
         

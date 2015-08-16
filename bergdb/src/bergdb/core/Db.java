@@ -103,7 +103,7 @@ public class Db {
     /** The reclaim algorithm. */
     private final Reclaim reclaim;
     
-    private final Evictor evictor;
+    //private final Evictor evictor;
     
     /** 
      * State of the database. Synch note: writes published by readSync.
@@ -146,7 +146,8 @@ public class Db {
         x = new ExecuteData();
         keyModSet = new KeyModSet();
         pointerLocks = new PointerLocks();
-        cache = new Cache();
+        cache = new Cache(pointerLocks);
+        cache.setTargetSize(b.targetCacheSize);
  
         this.maxNodeSize = b.maxNodeSize;
         this.startupDistance = b.startupDistance;
@@ -161,7 +162,7 @@ public class Db {
         this.nodeStream.getMetaBlock().setStartupDistance(b.startupDistance);
         
         this.dbClock = new DbClock(b.clock);
-        this.evictor = new Evictor(internal(), b.evictBoss);
+        // XXX this.evictor = new Evictor(internal(), b.evictBoss);
         this.reclaim = new Reclaim(this, aos);
         this.reclaimTransactionListener = reclaim;
         reclaim.setRetainDuration(b.retainDurationInTimeUnits);
@@ -477,7 +478,7 @@ public class Db {
         
         createPutAndGetData();
         
-        evictor.setDag(dag);
+        //evictor.setDag(dag);
         
         this.state = DbState.ACTIVE;
         reclaim.initFromDb();
@@ -1005,7 +1006,7 @@ public class Db {
 
         gd.accessData = getAccessData();
 
-        evictor.possiblyEvict(gd.evictData);
+        //evictor.possiblyEvict(gd.evictData);
 
         byte[] result = null;
 
@@ -1068,7 +1069,7 @@ public class Db {
         }
         
         g.gd.accessData = getAccessData();
-        evictor.possiblyEvict(g.gd.evictData);    // TODO C. Consider calling possiblyEvict once per KV.
+        // XXX evictor.possiblyEvict(g.gd.evictData);    // TODO C. Consider calling possiblyEvict once per KV.
 
         g.actualLookupTime = dbClock.lookupTime(g.lookupTime);
             // Limits lookup time so it strictly less than the transaction time of
@@ -1503,7 +1504,7 @@ public class Db {
         
         public Aux aux() { return aux; }
         
-        public Evictor evictor() { return evictor; }
+        // XXX public Evictor evictor() { return evictor; }
         
         public Cache cache() { return cache; }
 

@@ -7,6 +7,7 @@ package bergdb.dag;
  * An object must not be used by multiple concurrent threads.
  * 
  * @author Frans Lundberg
+ * @deprecated
  */
 public class EvictData {
     public boolean enableEvict;     // Set by user.

@@ -51,8 +51,10 @@ public class DummyStream implements AppendOnlyStream {
     public synchronized void read(long position, byte[] dest, int destPos, int length) 
             throws IOException {
         if (position + length > bufferSize) {
-            throw new IOException("Cannot read " + length + " bytes at position " + position + ".");
+            throw new IOException("DummyStream, cannot read " + length 
+                    + " bytes at position " + position + ".");
         }
+        
         System.arraycopy(buffer, (int) position, dest, destPos, length);
     }
 

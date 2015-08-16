@@ -59,7 +59,7 @@ public class BigDbWithDeletes {
     private static void run(int n, TestEnvironment c) throws InterruptedException {
         MemoryStream ms = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().mainStream(ms).clock(clock).evictBoss(new NoEvictBoss()).start();
+        Db db = Db.builder().mainStream(ms).clock(clock).noEvict().start();
         final int valueSize = 100 * 1000*1000 / n;
         
         c.report("empty-db-memory-use", toMb(getMem()));
