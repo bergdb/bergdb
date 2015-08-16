@@ -1,8 +1,6 @@
 package bergdb.test;
 
 import bergdb.core.Db;
-import bergdb.core.FixedDurationEvictBoss;
-import bergdb.core.EvictBoss;
 import bergdb.core.KeyFactory;
 import bergdb.core.SystemClock;
 import bergdb.core.Trans;
@@ -33,11 +31,8 @@ public class PerfGetMany {
         this.n = n;
         this.done = false;
         
-        EvictBoss boss = new FixedDurationEvictBoss(100L*1000000);
-        
         db = Db.builder().stream("m", new MemoryStream())
-                .clock(new SystemClock())
-                .evictBoss(boss).retainForever().build();
+                .clock(new SystemClock()).retainForever().build();
         db.start();
         
         int batchSize = 10000;

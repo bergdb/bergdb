@@ -944,7 +944,7 @@ public class DbTester {
             }
         };
         
-        Db db = Db.builder().clock(clock).mainStream(s).evictBoss(new NoEvictBoss()).start();
+        Db db = Db.builder().clock(clock).mainStream(s).noEvict().start();
         
         // Creates some KVs, 0 - 999.
         
@@ -1074,7 +1074,7 @@ public class DbTester {
     private static Db testDb(AppendOnlyStream stream) {
         DbBuilder b = Db.builder();
         b.clock(new TestClock());
-        b.evictBoss(new NoEvictBoss());
+        b.noEvict();
         b.retainForever();
         b.id(DatabaseId.TEST_ID);
         b.stream("main", stream, 10*1000, 10);

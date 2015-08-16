@@ -161,7 +161,6 @@ public class Trans {
             builderLookupTime = Long.MAX_VALUE;
 
             warmupGetData = new GetData();
-            warmupGetData.evictData.enableEvict = true;
             warmupGetData.pointerListener = Dag.DO_NOTHING_POINTER_LISTENER;        
             warmupGetData.cachePolicy = Dag.CACHE_ALL;
         }

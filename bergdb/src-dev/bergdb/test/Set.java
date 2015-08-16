@@ -9,7 +9,6 @@ import bergdb.common.Bytes;
 import bergdb.common.NullPrintStream;
 import bergdb.core.Db;
 import bergdb.core.DbBuilder;
-import bergdb.core.NoEvictBoss;
 import bergdb.core.Trans;
 import bergdb.dag.Keys;
 import bergdb.nanotest.BasicTestEnvironment;
@@ -49,7 +48,7 @@ public class Set {
         DbBuilder b = Db.builder()
                 .clock(new TestClock())
                 .retainForever()
-                .evictBoss(new NoEvictBoss())
+                .noEvict()
                 .stream("main", nullStream);
         
         //db.setRetainDuration(Long.MAX_VALUE);  --> // 30 us

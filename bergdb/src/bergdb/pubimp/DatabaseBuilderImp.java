@@ -6,7 +6,6 @@ import java.io.IOException;
 import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.DbBuilder;
-import bergdb.core.EvictBoss;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.Clock;
@@ -127,11 +126,6 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
      */
     public DatabaseBuilder noReclaim() {
         dbBuilder.retainForever();
-        return this;
-    }
-    
-    public DatabaseBuilder evictBoss(EvictBoss evictBoss) {
-        dbBuilder.evictBoss(evictBoss);
         return this;
     }
     

@@ -11,7 +11,6 @@ import bergdb.common.Util;
 import bergdb.core.Cache;
 import bergdb.core.Cache.NodeReference;
 import bergdb.core.Db;
-import bergdb.core.FixedDurationEvictBoss;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.Node;
@@ -374,9 +373,6 @@ public class Interactive {
                 Factory.database().dir(dirname).cryptoKey(cryptoKey)
                 .startupDistanceInMb(5);
         
-        //imp.evictBoss(new FixedDurationEvictBoss(FixedDurationEvictBoss.suggestCacheDurationBasedOnJvm()));
-        //imp.evictBoss(new FixedDurationEvictBoss(25*1000000));
-        imp.evictBoss(new FixedDurationEvictBoss(0));
         database = imp.start();
         
         db = ((DatabaseImp) database).getDb();

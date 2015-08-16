@@ -10,7 +10,6 @@ import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.Jmx;
 import bergdb.core.KeyFactory;
-import bergdb.core.NoEvictBoss;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.nanotest.BasicTestEnvironment;
@@ -76,7 +75,7 @@ public class TransThroughput {
         
         FileStream stream = new FileStream(dir);
         TestClock clock = new TestClock();
-        db = Db.builder().mainStream(stream).retainForever().evictBoss(new NoEvictBoss()).clock(clock).start();
+        db = Db.builder().mainStream(stream).retainForever().noEvict().clock(clock).start();
         
         startJmxSilently();
         System.out.println("JMX started, starting in a few seconds.");

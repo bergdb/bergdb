@@ -5,8 +5,6 @@ import java.io.PrintStream;
 import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.DbUtil;
-import bergdb.core.FixedDurationEvictBoss;
-import bergdb.core.EvictBoss;
 import bergdb.core.CoreTestClock;
 import bergdb.core.KeyFactory;
 import bergdb.core.SyncLevel;
@@ -34,13 +32,11 @@ public class Crazy {
         PrintStream out = c.out();
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        EvictBoss boss = new FixedDurationEvictBoss(20*1000000);
         int n = 50;
         
         out.println("---- Crazy.run ----");
         
-        Db db = Db.builder().clock(clock).startupDistance(10*1000000).mainStream(s)
-                .evictBoss(boss).start();
+        Db db = Db.builder().clock(clock).startupDistance(10*1000000).mainStream(s).start();
         
         // Creates some KVs, 0 - 999.
         
@@ -167,8 +163,7 @@ public class Crazy {
             // Makes sure we do not use a stream that may be closed soon (when db garbage collected).
         
         out.println("Restarting database");
-        db = Db.builder().clock(clock).startupDistance(10*1000000).mainStream(s)
-                .evictBoss(boss).build();
+        db = Db.builder().clock(clock).startupDistance(10*1000000).mainStream(s).build();
         long t = System.nanoTime();
         db.start();
         t = System.nanoTime() - t;

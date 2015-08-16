@@ -19,7 +19,6 @@ public class DbBuilder {
     int maxNodeSize;
     int startupDistance;
     long targetCacheSize;
-    EvictBoss evictBoss;  // XXX EvictBoss
     long retainDurationInTimeUnits;
     DatabaseId id;
     List<DbBuilder.StreamInfo> streamInfos = new ArrayList<DbBuilder.StreamInfo>();
@@ -54,9 +53,6 @@ public class DbBuilder {
         startupDistance = 20 * 1000000;
         targetCacheSize = 10 * startupDistance;
         clock = new SystemClock();
-        
-        long cacheDuration = FixedDurationEvictBoss.suggestCacheDurationBasedOnJvm();
-        evictBoss = new FixedDurationEvictBoss(cacheDuration);
         
         maxNodeSize30();
         retainDurationInTimeUnits = Long.MAX_VALUE;
@@ -203,17 +199,7 @@ public class DbBuilder {
         return retainDuration(Long.MAX_VALUE);
     }
 
-    /**
-     * Sets a non-default evict boss. The evict boss decides when to evict
-     * nodes from memory.
-     */
-    public DbBuilder evictBoss(EvictBoss evictBoss) {
-        this.evictBoss = evictBoss;
-        return this;
-    }
-
     public DbBuilder noEvict() {
-        // XXX this.evictBoss = new NoEvictBoss();
         this.targetCacheSize = Long.MAX_VALUE;
         return this;
     }

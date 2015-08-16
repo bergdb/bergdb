@@ -25,8 +25,6 @@ public class GetData {
         // Depth in space node tree (TopNodes not counted). Output and working data.
     public long accessData; 
         // "Time" of the get operation measured in an internal time scale.
-    public final EvictData evictData;
-        // Internal data for Db.evict().
     
     // -- Output --
     
@@ -43,7 +41,6 @@ public class GetData {
     public GetData() {
         kwi = new KlongWithPointer();
         tempPointer = new Pointer();
-        evictData = new EvictData();
         pointerListener = Dag.DO_NOTHING_POINTER_LISTENER;        
         cachePolicy = Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES;
     }

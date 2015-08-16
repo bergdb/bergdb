@@ -2,10 +2,8 @@ package bergdb.test.manual;
 
 import java.io.PrintStream;
 import java.util.Random;
-
 import bergdb.core.Db;
 import bergdb.core.KeyFactory;
-import bergdb.core.NoEvictBoss;
 import bergdb.core.Trans;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
@@ -37,7 +35,7 @@ public class StreamSizeVsStartupDistance {
         AppendOnlyStream stream = new MemoryStream();
         //AppendOnlyStream stream = new NullStream();
         Db db = Db.builder().mainStream(stream).startupDistance(startupDistance)
-                .evictBoss(new NoEvictBoss()).retainForever().start();
+                .noEvict().retainForever().start();
         
         int n = 1000*1000;
         int batchSize = 100;

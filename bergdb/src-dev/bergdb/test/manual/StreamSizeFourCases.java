@@ -4,7 +4,6 @@ import java.io.PrintStream;
 
 import bergdb.core.Db;
 import bergdb.core.KeyFactory;
-import bergdb.core.NoEvictBoss;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.stream.MemoryStream;
@@ -32,7 +31,7 @@ public class StreamSizeFourCases {
     
     void createDatabase() {
         MemoryStream stream = new MemoryStream();
-        db = Db.builder().mainStream(stream).evictBoss(new NoEvictBoss()).retainForever().start();
+        db = Db.builder().mainStream(stream).noEvict().retainForever().start();
     }
     
     void createKeysForCase1() {

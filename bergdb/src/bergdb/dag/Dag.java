@@ -330,52 +330,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             PointerListener pointerListener, CachePolicy cachePolicy) {
         return pointerFollower.followPointer(predecessor, pointerIndex, accessData, 
                 pointerListener, cachePolicy);
-        
-        /*
-        Node result;
-        assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
-        assert predecessor != null : "predecessor is null";
-        assert accessData == 0 || AccessData.isValid(accessData);
-
-        final Object lock = getPointerLock(predecessor, pointerIndex);
-
-        synchronized (lock) {
-            Node pointerNode = predecessor.getPointerNode(pointerIndex);
-            long pointerPos1 = predecessor.getPointerPos(pointerIndex);
-
-            assert !Pointer.isNull(pointerNode, pointerPos1) : "Pointer is null: " + pointerNode
-                    + ", " + pointerPos1;
-
-            if (Pointer.isMem(pointerNode)) {
-                result = pointerNode;
-                if (accessData != 0) {
-                    predecessor.setPointerAccessData(pointerIndex, accessData);
-                }
-                pointerListener.pointerFollowed(
-                        predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
-            
-            } else {
-                assert pointerPos1 > 0 : "bad pointerPos, " + pointerPos1 
-                        + ", pointerIndex:" + pointerIndex + ", predecessor:" + predecessor;
-                
-                result = nodeReader.readNode(pointerPos1);
-                
-                if (this.rerunMode && result.isKeyNode()) {
-                    KeyNode keyNode = (KeyNode) result;
-                    keyNode.toPreviousState(this.startupTime);
-                }
-                
-                pointerListener.pointerFollowed(
-                        predecessor, pointerIndex, result, Pointer.TYPE_STREAM);
-                
-                if (cachePolicy.shouldCache(result)) {
-                    predecessor.setPointer(pointerIndex, result, accessData);
-                }
-            }
-        }
-
-        return result;
-        */
     }
     
     // ==== getOne() with helpers ========

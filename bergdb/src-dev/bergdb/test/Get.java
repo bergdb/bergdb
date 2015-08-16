@@ -3,8 +3,6 @@ package bergdb.test;
 import java.util.Random;
 
 import bergdb.core.Db;
-import bergdb.core.FixedDurationEvictBoss;
-import bergdb.core.EvictBoss;
 import bergdb.core.KeyFactory;
 import bergdb.core.Trans;
 import bergdb.dag.GetData;
@@ -36,12 +34,10 @@ public class Get {
         this.n = n;
         done = false;
         
-        EvictBoss boss = new FixedDurationEvictBoss(100L * 1000000);
-        
         db = Db.builder()
                 .stream("main", new DummyStream())
                 .systemClock()
-                .retainForever().evictBoss(boss).start();
+                .retainForever().start();
         
         int bs = 10000;   // batch size
         if (bs > n) {
