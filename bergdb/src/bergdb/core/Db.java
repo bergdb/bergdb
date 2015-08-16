@@ -488,13 +488,20 @@ public class Db {
             public Node followPointer(Node predecessor, int pointerIndex, long accessData,
                     PointerListener pointerListener, CachePolicy cachePolicy) {
                 //
-                // Note, there may be a way to limit pointer lock scope to avoid
-                // holding lock while reading from stream.
-                //
                 // It is possible that concurrent threads will read same node 
-                // from stream and add to cache. That is why we need to take existing 
+                // from stream and try to add it to the cache. That is why we need to use existing 
                 // node from cache if there is one there. See [synchronized (cacheLock)]
                 // clauses in this method.
+                //
+                // Note, it is possible to avoid holding 'lock' while reading from stream, 
+                // I believe. The node in the stream is immutable. 
+                // So, the algo would be to first acquire 'lock', then if pointer is
+                // a memory pointer (isMem() == true), just set access data and call 
+                // listener.pointerFollowed().
+                // If it is a stream pointer, release 'lock', read node, and acquire lock 
+                // again. Then do the same, if isMem() do the same as above, else handle
+                // the stream pointer case, but not we have read the node already and can 
+                // quickly do what we should without blocking I/O call while holding 'lock'.
                 //
                 
                 Node result;

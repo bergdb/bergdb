@@ -13,6 +13,7 @@ import bergdb.dag.Spos;
  * Handles node eviction for Db. Tightly coupled with Db. Performance-sensitive.
  * 
  * @author Frans Lundberg
+ * @deprecated
  */
 public class Evictor {
     Dag dag;

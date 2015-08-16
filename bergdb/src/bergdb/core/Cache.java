@@ -6,6 +6,7 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import bergdb.common.AssertStatus;
@@ -41,11 +42,13 @@ public class Cache {
     private final HashMap<Long, NodeReference>[] valueMaps;
     private final ReferenceQueue<Node>[] indexRefQueues;
     private final ReferenceQueue<Node>[] valueRefQueues;
+    private final Evictor evictor;
     
     private int cacheStepIndex = 0;     // index to next index map for evictStep().
     private static final long INITIAL_CACHE_SIZE = INDEX_MAP_COUNT * 500 + VALUE_MAP_COUNT * 500;
     private static final long NODE_MEM_OVERHEAD = 100;
     
+    private AtomicLong targetSize;      // target total cache size, set by user
     private AtomicLong totalSize;       // current total cache size (estimate of memory byte size)
     private AtomicLong putSize;         // total size of all node put to cache, always increasing
     
@@ -73,6 +76,14 @@ public class Cache {
         
         totalSize = new AtomicLong(INITIAL_CACHE_SIZE);
         putSize = new AtomicLong(0L);
+        targetSize = new AtomicLong(10L * 1000000L);
+        
+        evictor = new Evictor();
+    }
+    
+    public void setTargetSize(long targetSize) {
+        assert targetSize > 0;
+        this.targetSize.set(targetSize);
     }
     
     public void evictStep() {
@@ -159,11 +170,13 @@ public class Cache {
         long totalMemSize = totalMemSize(memSize);
         totalSize.addAndGet(totalMemSize);
         putSize.addAndGet(totalMemSize);
+        
+        possiblyEvict();
     }
     
     public void putValueNode(ValueNode node) {
         // TODO C. Consider "unmanaged value nodes" - value nodes that
-        // are not necessarily canonical. Allow duplicates for small values (<100 bytes or so).
+        // are not necessarily canonical; duplicates allowed for small values (<100 bytes or so).
         
         if (node.value == null) {
             return;
@@ -191,6 +204,8 @@ public class Cache {
         long totalMemSize = totalMemSize(memSize);        
         totalSize.addAndGet(totalMemSize);
         putSize.addAndGet(totalMemSize);
+        
+        possiblyEvict();
     }
 
     public static class AlreadyHasNode extends AssertionError {
@@ -261,6 +276,15 @@ public class Cache {
 
     public long putSize() {
         return putSize.get();
+    }
+    
+    private void possiblyEvict() {
+        // Consider synchronization approach. 
+        // One evict step thread at a time, I guess.
+        
+        if (evictor.shouldDoEvictStep()) {
+            evictor.evictStep();
+        }
     }
 
     private HashMap<Long, NodeReference> indexMap(long id) {
@@ -361,6 +385,141 @@ public class Cache {
         
         public final int getMemSize() {
             return memSize;
+        }
+    }
+    
+    /**
+     * State of evict, last evict.
+     */
+    private final class Evictor {
+        long putSize0;     // putSize when last evict was done
+        long putSize;
+        long deltaPutSize;
+        long totalSize;
+        long targetSize;
+        int nextMapIndex;
+        double noEvictDistance;
+        final AtomicBoolean isEvicting;
+        double fillFactor;
+        boolean isCritical;
+        long accessTimeLimit;
+        final Pointer pointer = new Pointer();    // input/output, temp storage
+        
+        Evictor() {
+            putSize0 = Cache.this.putSize.get();
+            nextMapIndex = 0;
+            targetSize = 100L*1000000;
+            noEvictDistance = Cache.this.targetSize.get() * 0.25;
+            isEvicting = new AtomicBoolean(false);
+        }
+        
+        boolean shouldDoEvictStep() {
+            if (isEvicting.get()) {
+                return false;
+            }
+            
+            putSize = Cache.this.putSize.get();
+            totalSize = Cache.this.totalSize.get();
+            targetSize = Cache.this.targetSize.get();
+            fillFactor = totalSize / targetSize;
+            deltaPutSize = putSize - putSize0;
+            double ratio = (double) deltaPutSize / targetSize;
+            
+            isCritical = fillFactor > 0.90;
+            return (ratio > 0.02 && fillFactor > 0.50) || isCritical;
+        }
+        
+        void evictStep() {
+            // Assumption: shouldDoEvictStep() just called before the call
+            // to this method. Fields putSize, totalSize, targetSize, deltaPutSize are up to date.
+            
+            boolean wasSet = isEvicting.compareAndSet(false, true);
+            if (!wasSet) {
+                return;
+            }
+            
+            try {
+                long amountToProcess = deltaPutSize * 3;
+                long cacheSizePerMap = (totalSize + INDEX_MAP_COUNT) / INDEX_MAP_COUNT;
+                assert cacheSizePerMap >= 1;
+                int mapsToProcess = (int) (amountToProcess / cacheSizePerMap);
+                
+                mapsToProcess = mapsToProcess < 1 ? 1 : mapsToProcess;
+                mapsToProcess = mapsToProcess > INDEX_MAP_COUNT ? INDEX_MAP_COUNT : mapsToProcess;
+                
+                updateNoEvictDistance();
+                
+                for (int i = 0; i < mapsToProcess; i++) {
+                    int mapIndex = (nextMapIndex + i) % INDEX_MAP_COUNT;
+                    evictPointersInMap(mapIndex);
+                }
+                
+                nextMapIndex = (nextMapIndex + mapsToProcess) % INDEX_MAP_COUNT;
+                
+                if (isCritical) {
+                    System.gc();
+                }
+                
+            } finally {
+                isEvicting.set(false);
+            }
+        }
+
+        private void updateNoEvictDistance() {
+            // Control theory - regulating noEvictDistance based on 
+            // cache fill factor.
+            
+            if (fillFactor > 0.90) {
+                noEvictDistance = 0.95 * noEvictDistance;
+            } else if (fillFactor > 0.70) {
+                noEvictDistance = 0.99 * noEvictDistance;
+            } else {
+                noEvictDistance = 1.01 * noEvictDistance;
+            }
+            
+            accessTimeLimit = putSize - (long) noEvictDistance;
+        }
+
+        private void evictPointersInMap(int mapIndex) {
+            HashMap<Long, NodeReference> map = getIndexNodeMap(mapIndex);
+            
+            synchronized (map) {
+                for (NodeReference ref : map.values()) {
+                    Node node = ref.get();
+                    if (node != null) {                    
+                        evictNodePointers(node);
+                    }
+                }
+                
+                cleanupIndexRefQ(mapIndex, Integer.MAX_VALUE);
+            }
+        }
+        
+        /**
+         * Evicts all evicable out-bound pointers of 'node'.
+         */
+        private void evictNodePointers(Node node) {
+            
+            
+            int count = node.getSize();
+            for (int i = 0; i < count; i++) {
+                node.getPointer(i, pointer);
+                if (pointer.isMem()) {
+                    Node pointee = pointer.node;
+                    
+                    if (!pointee.isDirty()) {
+                        long pointeePos = pointee.getSpos();
+                        
+                        assert pointeePos != Spos.NULL : "bad pointee, " + pointee;
+                        
+                        long pointerAccessTime = AccessData.getAccessTime(pointer.getAccessData());
+                        
+                        if (pointerAccessTime <= accessTimeLimit) {
+                            node.setPointer(i, null, pointeePos);
+                        }
+                    }
+                }
+            }
         }
     }
     
