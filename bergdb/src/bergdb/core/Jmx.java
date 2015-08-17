@@ -43,7 +43,11 @@ public class Jmx {
         public double getActualRetainDurationInDays();
         public long getFirstLookupTime();
         public String getFirstLookupTimeH();
-        public long getCachedMemoryValue();
+        public long getCachePutSize();
+        public long getCacheTargetSize();
+        public void setCacheTargetSize(long targetSize);
+        public long getCacheTotalSize();
+        public double getCacheFillFactor();
         public long getKvCount();
         public long getTransactionCount();
         public long getGetOpCount();
@@ -61,7 +65,7 @@ public class Jmx {
      * @author Frans Lundberg
      */
     public static class DbMonitor implements DbMonitorMBean {
-        private Db db;
+        private final Db db;
         private MBeanServer mbs;
         
         public DbMonitor(Db db) {
@@ -69,6 +73,22 @@ public class Jmx {
                 throw new IllegalArgumentException("db == null not allowed");
             }
             this.db = db;
+        }
+        
+        /**
+         * Registers the MBean with the default platform MBean server.
+         * 
+         * @throws InstanceAlreadyExistsException
+         * @throws MBeanRegistrationException
+         * @throws NotCompliantMBeanException
+         * @throws MalformedObjectNameException
+         * @throws NullPointerException
+         */
+        public void register() throws InstanceAlreadyExistsException, 
+                MBeanRegistrationException, NotCompliantMBeanException, 
+                MalformedObjectNameException, NullPointerException {
+            mbs = ManagementFactory.getPlatformMBeanServer();
+            mbs.registerMBean(this, new ObjectName("bergdb.core.Db:type=Jmx.DBMonitor"));
         }
         
         /**
@@ -164,8 +184,25 @@ public class Jmx {
             return DbUtil.dbTimeToUtc(time);
         }
         
-        public long getCachedMemoryValue() {
-            return db.getCachedMemoryValue();
+        public long getCachePutSize() {
+            return db.getCachePutSize();
+        }
+        
+        public long getCacheTargetSize() {
+            return db.internal().cache().targetSize();
+        }
+        
+        public void setCacheTargetSize(long targetSize) {
+            db.internal().cache().setTargetSize(targetSize);
+        }
+        
+        public long getCacheTotalSize() {
+            return db.internal().cache().totalSize();
+        }
+        
+        public double getCacheFillFactor() {
+            Cache2 c = db.internal().cache();
+            return c.totalSize() / (double) c.targetSize();
         }
         
         public long getKvCount() {
@@ -198,22 +235,6 @@ public class Jmx {
          */
         public String[] getDummyStrings() {
             return new String[] {"first", "second"};
-        }
-        
-        /**
-         * Registers the MBean with the default platform MBean server.
-         * 
-         * @throws InstanceAlreadyExistsException
-         * @throws MBeanRegistrationException
-         * @throws NotCompliantMBeanException
-         * @throws MalformedObjectNameException
-         * @throws NullPointerException
-         */
-        public void register() throws InstanceAlreadyExistsException, 
-                MBeanRegistrationException, NotCompliantMBeanException, 
-                MalformedObjectNameException, NullPointerException {
-            mbs = ManagementFactory.getPlatformMBeanServer();
-            mbs.registerMBean(this, new ObjectName("com.bergdb.db:type=Jmx.DBMonitor"));
         }
     }
     
@@ -317,7 +338,7 @@ public class Jmx {
                 long time = System.nanoTime();
                 
                 long streamSize = db.getStreamLength();
-                long cachedMemoryValue = db.getCachedMemoryValue();
+                long cachedMemoryValue = db.getCachePutSize();
                 long transactionCount = db.getTransactionCount();
                 long kvCount = db.getKvCount();
                 long getCount = db.getGetOpCount();
@@ -338,7 +359,7 @@ public class Jmx {
                 double secs = time * 1e-9;
                 
                 streamSizeSpeed = (db.getStreamLength() - streamSize) / secs;
-                cachedMemoryValueSpeed = (db.getCachedMemoryValue() - cachedMemoryValue) / secs;
+                cachedMemoryValueSpeed = (db.getCachePutSize() - cachedMemoryValue) / secs;
                 kvSpeed = (db.getKvCount() - kvCount) / secs;
                 transactionSpeed = (db.getTransactionCount() - transactionCount) / secs;
                 getSpeed = (db.getGetOpCount() - getCount) / secs;

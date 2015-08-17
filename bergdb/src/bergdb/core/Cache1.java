@@ -21,9 +21,6 @@ import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
-// TODO synchronization needs work. Do we need all the Atomics? Evict thread, put threads, 
-// get threads, setTargetSize thread. All can be concurrent.
-
 /**
  * An instance of this class handles the node caching for the database.
  * It has mappings from node ids to Node objects.
@@ -34,7 +31,14 @@ import bergdb.nanotest.Nano;
  * 
  * @author Frans Lundberg
  */
-public class Cache {    
+public class Cache1 {
+    //
+    // Sync notes. There is one instance of this class for a Db instance.
+    // It is access by: the put thread (holds Db.writeLock), get threads, and
+    // any calling setTargetSize(). The evictStep() method can run in a user thread
+    // that does a db put or a db get. It may, or may not hold the db.writeLock.
+    //
+    
     private static final int INDEX_MAP_COUNT = 100;
     private static final int VALUE_MAP_COUNT = 100;
     private static final long RANDOM_MASK = Bytes.bytesToLongBE(
@@ -49,14 +53,13 @@ public class Cache {
     private final ReferenceQueue<Node>[] valueRefQueues;
     private final Evictor evictor;
     
-    private long targetSize;                // target total cache size, set by user
+    private final AtomicLong targetSize;    // target total cache size, set by user
     private final AtomicLong totalSize;     // current total cache size (estimate of memory byte size)
     private final AtomicLong putSize;       // total size of all node put to cache, always increasing
     private final PointerLocks pointerLocks;
-    private final Object targetSizeLock = new Object();
     
     @SuppressWarnings("unchecked")
-    public Cache(PointerLocks pointerLocks) {
+    public Cache1(PointerLocks pointerLocks) {
         this.pointerLocks = pointerLocks;
         
         indexMaps = (HashMap<Long, NodeReference>[]) new HashMap<?, ?>[INDEX_MAP_COUNT];
@@ -80,23 +83,20 @@ public class Cache {
         }
         
         totalSize = new AtomicLong(INITIAL_CACHE_SIZE);
-        putSize = new AtomicLong(0L);
-        targetSize = 10L * 1000000L;        
+        putSize = new AtomicLong(INITIAL_CACHE_SIZE);
+        targetSize = new AtomicLong(10L * 1000000L);       
         evictor = new Evictor();
-        
-        synchronized (targetSizeLock) {};     // needed, at least in theory
     }
     
     // TODO B. setTargetSize() - should it change noEvictLimit immediately?
     public void setTargetSize(long targetSize) {
         assert targetSize > 0;
-        this.targetSize = targetSize;
+        this.targetSize.set(targetSize);
     }
     
-    public void evictStep() {
-        evictor.evictStep();
-    }
-    
+    /* (non-Javadoc)
+     * @see bergdb.core.Cache#putIndexNode(bergdb.dag.Node)
+     */
     public void putIndexNode(Node node) {
         // getMemSize() is constant for a particular TopNode instance.
         // But *not* for a KeyNode instance.
@@ -131,6 +131,9 @@ public class Cache {
         possiblyEvict();
     }
     
+    /* (non-Javadoc)
+     * @see bergdb.core.Cache#putValueNode(bergdb.dag.ValueNode)
+     */
     public void putValueNode(ValueNode node) {
         // TODO C. Consider "unmanaged value nodes" - value nodes that
         // are not necessarily canonical; duplicates allowed for small values (<100 bytes or so).
@@ -177,6 +180,9 @@ public class Cache {
         return memSize + NODE_MEM_OVERHEAD;
     }
     
+    /* (non-Javadoc)
+     * @see bergdb.core.Cache#getIndexNode(long)
+     */
     public Node getIndexNode(long id) {
         NodeReference ref;
         Node result;
@@ -192,6 +198,9 @@ public class Cache {
         return result;
     }
     
+    /* (non-Javadoc)
+     * @see bergdb.core.Cache#getValueNode(long)
+     */
     public ValueNode getValueNode(long id) {
         NodeReference ref;
         ValueNode result;
@@ -205,10 +214,6 @@ public class Cache {
         }
         
         return result;
-    }
-    
-    public HashMap<Long, NodeReference> getIndexNodeMap(int index) {
-        return indexMaps[index];
     }
     
     public final int getIndexMapCount() {
@@ -227,21 +232,23 @@ public class Cache {
         return valueMap(id);
     }
     
+    public long targetSize() {
+        return targetSize.get();
+    }
+    
     public long totalSize() {
         return totalSize.get();
     }
 
+    /* (non-Javadoc)
+     * @see bergdb.core.Cache#putSize()
+     */
     public long putSize() {
         return putSize.get();
     }
     
-    private void possiblyEvict() {
-        // Consider synchronization approach. 
-        // One evict step thread at a time, I guess.
-        
-        if (evictor.shouldDoEvictStep()) {
-            evictor.evictStep();
-        }
+    private final void possiblyEvict() {
+        evictor.possiblyEvict();
     }
 
     private HashMap<Long, NodeReference> indexMap(long id) {
@@ -352,6 +359,10 @@ public class Cache {
      * State of evict, last evict.
      */
     private final class Evictor {
+        //
+        // Most fields are protected by isEvicting; only used while isEvicting == true.
+        //
+        
         long putSize0;     // putSize when last evict was done
         long putSize;
         long deltaPutSize;
@@ -366,32 +377,26 @@ public class Cache {
         final Pointer pointer = new Pointer();    // input/output, temp storage
         
         Evictor() {
-            putSize0 = Cache.this.putSize.get();
+            putSize0 = Cache1.this.putSize.get();
             nextMapIndex = 0;
             targetSize = 100L*1000000;
-            noEvictDistance = Cache.this.targetSize * 0.25;
+            noEvictDistance = Cache1.this.targetSize.get() * 0.25;
             isEvicting = new AtomicBoolean(false);
         }
         
-        boolean shouldDoEvictStep() {
-            if (isEvicting.get()) {
-                return false;
-            }
-            
-            putSize = Cache.this.putSize.get();
-            totalSize = Cache.this.totalSize.get();
-            targetSize = Cache.this.targetSize;
-            fillFactor = totalSize / targetSize;
-            deltaPutSize = putSize - putSize0;
-            double ratio = (double) deltaPutSize / targetSize;
-            
-            isCritical = fillFactor > 0.90;
-            return (ratio > 0.02 && fillFactor > 0.50) || isCritical;
+        /**
+         * Use result for debug only, no sync - could be invalid.
+         */
+        double getNoEvictDistance() {
+            return noEvictDistance;
         }
         
-        void evictStep() {
-            // Assumption: shouldDoEvictStep() just called before the call
-            // to this method. Fields putSize, totalSize, targetSize, deltaPutSize are up to date.
+        void possiblyEvict() {
+            // If is evicting now, return immediately.
+            // If process less than 0.02 of targetSize since last evict step, return.
+            // Else, do evict processing.
+            
+            double putRatio;
             
             boolean wasSet = isEvicting.compareAndSet(false, true);
             if (!wasSet) {
@@ -399,32 +404,53 @@ public class Cache {
             }
             
             try {
-                long amountToProcess = deltaPutSize * 3;
-                long cacheSizePerMap = (totalSize + INDEX_MAP_COUNT) / INDEX_MAP_COUNT;
-                assert cacheSizePerMap >= 1;
-                int mapsToProcess = (int) (amountToProcess / cacheSizePerMap);
+                putSize = Cache1.this.putSize.get();
+                totalSize = Cache1.this.totalSize.get();
+                targetSize = Cache1.this.targetSize.get();
+                fillFactor = ((double) totalSize) / targetSize;
+                deltaPutSize = putSize - putSize0;
+                putRatio = (double) deltaPutSize / targetSize;
+                isCritical = fillFactor > 0.90;
                 
-                mapsToProcess = mapsToProcess < 1 ? 1 : mapsToProcess;
-                mapsToProcess = mapsToProcess > INDEX_MAP_COUNT ? INDEX_MAP_COUNT : mapsToProcess;
+                //System.out.format("Cache, putRatio: %.6f, deltaPutSize: %d, putSize0: %d\n", 
+                //        putRatio, deltaPutSize, putSize0);
+                //System.out.format("Cache fillFactor: %.3f\n", fillFactor);
                 
-                updateNoEvictDistance();
-                
-                for (int i = 0; i < mapsToProcess; i++) {
-                    int mapIndex = (nextMapIndex + i) % INDEX_MAP_COUNT;
-                    evictPointersInMap(mapIndex);
+                boolean evictCondition = putRatio > 0.02 && fillFactor > 0.50;
+                if (evictCondition) {
+                    evict();
+                    if (isCritical) {
+                        System.gc();
+                        cleanupAll();
+                    }
                 }
-                
-                nextMapIndex = (nextMapIndex + mapsToProcess) % INDEX_MAP_COUNT;
-                
-                if (isCritical) {
-                    System.gc();
-                }
-                
             } finally {
+                assert isEvicting.get() == true : "isEvicting not true while evicting";
                 isEvicting.set(false);
             }
         }
-
+        
+        /** Private inner method; only called from possiblyEvict. */
+        private void evict() {
+            long amountToProcess = deltaPutSize * 4;
+            long cacheSizePerMap = (totalSize + INDEX_MAP_COUNT) / INDEX_MAP_COUNT;
+            assert cacheSizePerMap >= 1;
+            int mapsToProcess = (int) (amountToProcess / cacheSizePerMap);
+            
+            mapsToProcess = mapsToProcess < 1 ? 1 : mapsToProcess;
+            mapsToProcess = mapsToProcess > INDEX_MAP_COUNT ? INDEX_MAP_COUNT : mapsToProcess;
+            
+            //System.out.println("Cache.evictor.evict(), mapsToProcess: " + mapsToProcess);
+            
+            updateNoEvictDistance();
+            
+            for (int i = 0; i < mapsToProcess; i++) {
+                evictPointersInOneMap();
+            }
+            
+            putSize0 = putSize;
+        }
+        
         private void updateNoEvictDistance() {
             // Control theory - regulating noEvictDistance based on 
             // cache fill factor.
@@ -443,9 +469,18 @@ public class Cache {
             
             accessTimeLimit = putSize - (long) noEvictDistance;
         }
+        
+        /**
+         * Evicts pointers from the nodes in one index node map
+         * and increases nextMapIndex to the next map to process.
+         */
+        private void evictPointersInOneMap() {
+            evictPointersInMap(nextMapIndex);
+            nextMapIndex = (nextMapIndex + 1) % INDEX_MAP_COUNT;
+        }
 
         private void evictPointersInMap(int mapIndex) {
-            HashMap<Long, NodeReference> map = getIndexNodeMap(mapIndex);
+            HashMap<Long, NodeReference> map = indexMaps[mapIndex];
             
             synchronized (map) {
                 for (NodeReference ref : map.values()) {
@@ -497,7 +532,7 @@ public class Cache {
     // ======== Tests ========
     
     @Nano private static void testSanity1() {
-        Cache m = new Cache(new PointerLocks());
+        Cache1 m = new Cache1(new PointerLocks());
         KeyNode node = new KeyNode();
         node.setId(1234L);
         m.putIndexNode(node);
@@ -507,7 +542,7 @@ public class Cache {
     }
     
     @Nano private static void testSanity2() {
-        Cache m = new Cache(new PointerLocks());
+        Cache1 m = new Cache1(new PointerLocks());
         ValueNode node = new ValueNode(new byte[0]);
         node.setSpos(1234L);
         assert node.getId() == 1234L;
@@ -531,7 +566,7 @@ public class Cache {
     }
     
     @Nano private static void testDuplicateValueNodes() {
-        Cache m = new Cache(new PointerLocks());
+        Cache1 m = new Cache1(new PointerLocks());
         ValueNode node = new ValueNode(new byte[1000]);
         node.setSpos(1234L);
         assert node.getId() == 1234L;
@@ -541,7 +576,7 @@ public class Cache {
         if (AssertStatus.enabled()) {
             try {
                 m.putValueNode(node);
-            } catch (Cache.AlreadyHasNode e) {
+            } catch (Cache1.AlreadyHasNode e) {
                 ex = e;
             }
             
@@ -552,7 +587,7 @@ public class Cache {
     }
     
     @Nano private static void testDuplicateIndexNodes() {
-        Cache m = new Cache(new PointerLocks());
+        Cache1 m = new Cache1(new PointerLocks());
         KeyNode node = new KeyNode();
         node.setId(222L);
         assert node.getId() == 222L;
@@ -562,7 +597,7 @@ public class Cache {
         if (AssertStatus.enabled()) {
             try {
                 m.putIndexNode(node);
-            } catch (Cache.AlreadyHasNode e) {
+            } catch (Cache1.AlreadyHasNode e) {
                 ex = e;
             }
             
@@ -571,7 +606,7 @@ public class Cache {
     }
     
     @Nano private static void testTotalSize1() {
-        Cache cache = new Cache(new PointerLocks());
+        Cache1 cache = new Cache1(new PointerLocks());
         ValueNode node = new ValueNode(new byte[10]);
         node.setSpos(222L);
         int memSize = node.getMemSize();
@@ -580,11 +615,11 @@ public class Cache {
         cache.putValueNode(node);
         long mem2 = cache.totalSize.get();
         
-        Assert.assertEquals(memSize + Cache.NODE_MEM_OVERHEAD, mem2 - mem1);
+        Assert.assertEquals(memSize + Cache1.NODE_MEM_OVERHEAD, mem2 - mem1);
     }
     
     @Nano private static void testTotalSize2() {
-        Cache cache = new Cache(new PointerLocks());
+        Cache1 cache = new Cache1(new PointerLocks());
         TopNode node = TopNode.createDummy(2);
         node.setId(222L);
         int memSize = node.getMemSize();
@@ -593,7 +628,7 @@ public class Cache {
         cache.putIndexNode(node);
         long mem2 = cache.totalSize.get();
         
-        Assert.assertEquals(memSize + Cache.NODE_MEM_OVERHEAD, mem2 - mem1);
+        Assert.assertEquals(memSize + Cache1.NODE_MEM_OVERHEAD, mem2 - mem1);
     }
     
     @Nano("f") 
@@ -602,7 +637,7 @@ public class Cache {
         // There is no guarantee that garbage collection is actually run when System.gc() 
         // is called. Also, there is no guarantee when references are added the reference queue.
         
-        Cache m = new Cache(new PointerLocks());
+        Cache1 m = new Cache1(new PointerLocks());
         KeyNode k = new KeyNode();
         k.setId(1234L);
         
@@ -706,11 +741,13 @@ public class Cache {
     public static void main(String[] args) throws Exception {
         manualMemTest();
     }
+
+    public double getNoEvictDistance() {
+        return evictor.getNoEvictDistance();
+    }
 }
 
 /*
-
-
 
 150807 Memory Use
 =================

@@ -24,7 +24,7 @@ public class GetData {
     public int nodeDepth;
         // Depth in space node tree (TopNodes not counted). Output and working data.
     public long accessData; 
-        // "Time" of the get operation measured in an internal time scale.
+        // "Time" of the get operation measured in an internal time scale (Cache.putSize).
     
     // -- Output --
     

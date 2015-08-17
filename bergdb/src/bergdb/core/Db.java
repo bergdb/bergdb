@@ -103,8 +103,6 @@ public class Db {
     /** The reclaim algorithm. */
     private final Reclaim reclaim;
     
-    //private final Evictor evictor;
-    
     /** 
      * State of the database. Synch note: writes published by readSync.
      */
@@ -133,7 +131,7 @@ public class Db {
     private final PointerLocks pointerLocks;
     private File createdTxtDir;
     private String createdTxtCryptoKeyInfo;
-    private Cache cache;
+    private Cache2 cache;
     
 
     /**
@@ -146,7 +144,7 @@ public class Db {
         x = new ExecuteData();
         keyModSet = new KeyModSet();
         pointerLocks = new PointerLocks();
-        cache = new Cache(pointerLocks);
+        cache = new Cache2(pointerLocks);
         cache.setTargetSize(b.targetCacheSize);
  
         this.maxNodeSize = b.maxNodeSize;
@@ -162,7 +160,6 @@ public class Db {
         this.nodeStream.getMetaBlock().setStartupDistance(b.startupDistance);
         
         this.dbClock = new DbClock(b.clock);
-        // XXX this.evictor = new Evictor(internal(), b.evictBoss);
         this.reclaim = new Reclaim(this, aos);
         this.reclaimTransactionListener = reclaim;
         reclaim.setRetainDuration(b.retainDurationInTimeUnits);
@@ -266,8 +263,8 @@ public class Db {
         }
     }
     
-    public long getCachedMemoryValue() {
-        return aux.cachedMemoryValue.get();
+    public long getCachePutSize() {
+        return cache.putSize();
     }
 
     public long getRetainDuration() {
@@ -1069,8 +1066,7 @@ public class Db {
         }
         
         g.gd.accessData = getAccessData();
-        // XXX evictor.possiblyEvict(g.gd.evictData);    // TODO C. Consider calling possiblyEvict once per KV.
-
+        
         g.actualLookupTime = dbClock.lookupTime(g.lookupTime);
             // Limits lookup time so it strictly less than the transaction time of
             // any currently running or any future transaction.
@@ -1402,6 +1398,7 @@ public class Db {
         assert Thread.holdsLock(writeLock);
         final int length = x.trans.kvs.length;        
         x.putData.tt = x.trans.tt;
+        x.putData.accessData = getAccessData();
 
         for (int i = 0; i < length; i++) {
             Kv kv = x.trans.kvs[i];
@@ -1428,7 +1425,7 @@ public class Db {
      * The 'access data' is a negative value.
      */
     public long getAccessData() {
-        return -aux.cachedMemoryValue.get();
+        return -cache.putSize();
     }
 
     /**
@@ -1504,9 +1501,7 @@ public class Db {
         
         public Aux aux() { return aux; }
         
-        // XXX public Evictor evictor() { return evictor; }
-        
-        public Cache cache() { return cache; }
+        public Cache2 cache() { return cache; }
 
         public AppendOnlyStream getMainStream() {
             return storageManager.getMainStream();
@@ -1594,14 +1589,6 @@ public class Db {
      */
     public final class Aux {
         
-        /**
-         * The cachedMemoryValue is an estimate of the total amount of memory cached
-         * since the database process was started (in bytes). 
-         * It works as a time-scale for the cache and defines the "cache time-scale".
-         * Starting from MIN_CACHE_MEMORY_VALUE (10) instead of 0 has importance.
-         */
-        final AtomicLong cachedMemoryValue = new AtomicLong(DbConstants.MIN_CACHE_MEMORY_VALUE);
-        
         /** Number of get operations processed since startup of Db. */
         private final AtomicLong getOpCount = new AtomicLong(0);
         
@@ -1638,12 +1625,6 @@ public class Db {
             double dirtyFraction = ((double) dirtyNodeCount) / totalNodeCount;
             dirtyFraction100   = 0.99  * aux.dirtyFraction100  +  0.01  * dirtyFraction;
             dirtyFraction1000  = 0.999 * aux.dirtyFraction1000 +  0.001 * dirtyFraction;
-            
-            cachedMemoryValue.addAndGet(x.transNodes.sumMemSize());
-        }
-        
-        public long getCachedMemoryValue() {
-            return cachedMemoryValue.get();
         }
     }
     

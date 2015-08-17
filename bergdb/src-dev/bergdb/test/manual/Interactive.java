@@ -3,20 +3,15 @@ package bergdb.test.manual;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.HashMap;
 import java.util.Random;
-
 import bergdb.common.Bytes;
 import bergdb.common.Util;
-import bergdb.core.Cache;
-import bergdb.core.Cache.NodeReference;
 import bergdb.core.Db;
-import bergdb.dag.AccessData;
+import bergdb.core.Jmx;
 import bergdb.dag.Dag;
 import bergdb.dag.Node;
 import bergdb.dag.Pointer;
 import bergdb.dag.PointerVisitor;
-import bergdb.dag.Spos;
 import bergdb.nanotest.CommandLine;
 import bergdb.pub.Connection;
 import bergdb.pub.CryptoKey;
@@ -103,7 +98,7 @@ public class Interactive {
         boolean shouldExit = false;
         
         if (commandName.equals("help")) {
-            System.out.println("Help...");
+            System.out.println("Help... try one of addCards, exit, info, gc, gc2, evictMax, addBig, addSmall");
         } else if (commandName.equals("addCards")) {
             runAddCards(options);
         } else if(commandName.equals("exit")) {
@@ -116,10 +111,6 @@ public class Interactive {
             runGc2(options);
         } else if(commandName.equals("evictMax")) {
             runEvictMax(options);
-        } else if(commandName.equals("e2")) {
-            runE2(options);
-        } else if(commandName.equals("step")) {
-            runStep(options);
         } else if(commandName.equals("addBig")) {
             runAddBig(options);
         } else if(commandName.equals("addSmall")) {
@@ -150,7 +141,7 @@ public class Interactive {
         
         for (int i = 0; i < 4; i++) {
             System.gc();
-            db.internal().cache().cleanupAll();
+            db.internal().cache().cleanupAllRefQueues();
         }
         
         long used2 = memUsed();
@@ -241,50 +232,6 @@ public class Interactive {
                 counters[2], counters[3], counters[4]);
     }
     
-    private int cacheMapIndex = 0;
-    
-    private void runE2(CommandLine options) {
-        int n = 1;
-        
-        if (options.hasOne("n")) {
-            n = Integer.parseInt(options.getOne("n"));
-        }
-        
-        for (int i = 0; i < n; i++) {
-            //System.out.println("  cacheMapIndex: " + cacheMapIndex);
-            
-            Cache cacheMap = db.internal().cache();
-            HashMap<Long, NodeReference> map = cacheMap.getIndexNodeMap(cacheMapIndex);
-            
-            synchronized (map) {
-                for (NodeReference ref : map.values()) {
-                    Node node = ref.get();
-                    if (node != null) {                    
-                        evictNodePointers(node);
-                    }
-                }
-                
-                cacheMap.cleanupAll();
-            }
-            
-            cacheMapIndex = (cacheMapIndex + 1) % cacheMap.getIndexMapCount();
-        }
-        
-    }
-    
-    // evict step
-    private void runStep(CommandLine options) {
-        int n = 1;
-        
-        if (options.hasOne("n")) {
-            n = Integer.parseInt(options.getOne("n"));
-        }
-        
-        for (int i = 0; i < n; i++) {
-            db.internal().cache().evictStep();
-        }
-    }
-    
     private void runAddBig(CommandLine options) {
         int n = 1;
         int size = 1*1000000;
@@ -300,7 +247,7 @@ public class Interactive {
         for (int i = 0; i < n; i++) {
             String key = "/big/" + i;
             byte[] value = new byte[size];
-            System.out.println("Adding big KV, " + key + " -> size:" + value.length);
+            //System.out.println("Adding big KV, " + key + " -> size:" + value.length);
             c.put(key, value);
         }
         
@@ -317,41 +264,10 @@ public class Interactive {
         for (int i = 0; i < n; i++) {
             String key = "/small/" + i;
             byte[] value = new byte[10];
-            //System.out.println("Adding small KV, " + key + " -> size:" + value.length);
             c.put(key, value);
         }
         
         c.sync();
-    }
-
-    /**
-     * Evicts all evicable out-bound pointers of 'node'.
-     */
-    private void evictNodePointers(Node node) {
-        // See Evictor.evictPointers().
-        
-        final long accessTimeLimit = Long.MAX_VALUE;
-        Pointer pointer = new Pointer();    // input/output, temp storage
-        
-        int count = node.getSize();
-        for (int i = 0; i < count; i++) {
-            node.getPointer(i, pointer);
-            if (pointer.isMem()) {
-                Node pointee = pointer.node;
-                
-                if (!pointee.isDirty()) {
-                    long pointeePos = pointee.getSpos();
-                    
-                    assert pointeePos != Spos.NULL : "bad pointee, " + pointee;
-                    
-                    long pointerAccessTime = AccessData.getAccessTime(pointer.getAccessData());
-                    
-                    if (pointerAccessTime <= accessTimeLimit) {
-                        node.setPointer(i, null, pointeePos);
-                    }
-                }
-            }
-        }
     }
 
     private long memUsed() {
@@ -368,10 +284,10 @@ public class Interactive {
         this.addCardsIfNeeded();
     }
 
-    private void start() {
+    private void start() throws Exception {
         DatabaseBuilderImp imp = (DatabaseBuilderImp)
                 Factory.database().dir(dirname).cryptoKey(cryptoKey)
-                .startupDistanceInMb(5);
+                .startupDistanceInMb(5).targetCacheSizeInMb(50);
         
         database = imp.start();
         
@@ -387,6 +303,8 @@ public class Interactive {
             s.cards = 0;
             c.put("/stats", s);
         }
+        
+        new Jmx.DbMonitor(db).register();
     }
 
     private void computePermutationIfNeeded() {

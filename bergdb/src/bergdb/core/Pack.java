@@ -4,7 +4,7 @@ import bergdb.common.IPack;
 
 public class Pack implements IPack {
     private static Class<?>[] classes = new Class<?>[] {
-        Cache.class,
+        Cache1.class,
         DatabaseId.class,
         Db.class,
         DbClock.class,
