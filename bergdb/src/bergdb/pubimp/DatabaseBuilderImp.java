@@ -37,8 +37,10 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         dbBuilder = Db.builder();
         
         long max = Runtime.getRuntime().maxMemory();
-        if (max != Long.MAX_VALUE) {
-            dbBuilder.targetCacheSize(max / 2);
+        if (max == Long.MAX_VALUE) {
+            dbBuilder.targetCacheSize(100*1000000);
+        } else {
+            dbBuilder.targetCacheSize(max / 4);
         }
     }
     
