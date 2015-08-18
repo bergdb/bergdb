@@ -30,6 +30,7 @@ import bergdb.nanotest.Nano;
  * no longer used.
  * 
  * @author Frans Lundberg
+ * @deprecated
  */
 public class Cache1 {
     //
@@ -253,9 +254,6 @@ public class Cache1 {
     }
     
     private final int getMapIndex(long id, int mapCount) {
-        // TODO D. Study distribution of real ids and real map indexes. 
-        // I have a feeling we might need something better than the current code.
-        
         long a;
         int b;
         

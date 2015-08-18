@@ -43,12 +43,11 @@ public class Cache2 {
     // that does a db put or a db get. It may, or may not hold the db.writeLock.
     //
     
-    private static final int INDEX_MAP_COUNT = 100;
-    private static final int VALUE_MAP_COUNT = 100;
+    private static final int MAP_COUNT = 100;
     private static final long RANDOM_MASK = Bytes.bytesToLongBE(
             new byte[]{0x51, (byte)0xc3, (byte)0x9c, (byte)0xcb, 0x50, 0x03, (byte)0xf7, 0x5b}, 0);
             // Random bytes from random.org.
-    private static final long INITIAL_CACHE_SIZE = INDEX_MAP_COUNT * 500 + VALUE_MAP_COUNT * 500;
+    private static final long INITIAL_CACHE_SIZE = MAP_COUNT * 500 + MAP_COUNT * 500;
     private static final long NODE_MEM_OVERHEAD = 100;
     
     private final HashMap<Long, NodeReference>[] indexMaps;
@@ -66,23 +65,23 @@ public class Cache2 {
     public Cache2(PointerLocks pointerLocks) {
         this.pointerLocks = pointerLocks;
         
-        indexMaps = (HashMap<Long, NodeReference>[]) new HashMap<?, ?>[INDEX_MAP_COUNT];
-        for (int i = 0; i < INDEX_MAP_COUNT; i++) {
+        indexMaps = (HashMap<Long, NodeReference>[]) new HashMap<?, ?>[MAP_COUNT];
+        for (int i = 0; i < MAP_COUNT; i++) {
             indexMaps[i] = new HashMap<Long, NodeReference>();
         }
         
-        valueMaps = (HashMap<Long, NodeReference>[]) new HashMap<?, ?>[VALUE_MAP_COUNT];
-        for (int i = 0; i < VALUE_MAP_COUNT; i++) {
+        valueMaps = (HashMap<Long, NodeReference>[]) new HashMap<?, ?>[MAP_COUNT];
+        for (int i = 0; i < MAP_COUNT; i++) {
             valueMaps[i] = new HashMap<Long, NodeReference>();
         }
         
-        indexRefQueues = new ReferenceQueue[INDEX_MAP_COUNT];
-        for (int i = 0; i < INDEX_MAP_COUNT; i++) {
+        indexRefQueues = new ReferenceQueue[MAP_COUNT];
+        for (int i = 0; i < MAP_COUNT; i++) {
             indexRefQueues[i] = new ReferenceQueue<Node>();
         }
         
-        valueRefQueues = new ReferenceQueue[VALUE_MAP_COUNT];
-        for (int i = 0; i < VALUE_MAP_COUNT; i++) {
+        valueRefQueues = new ReferenceQueue[MAP_COUNT];
+        for (int i = 0; i < MAP_COUNT; i++) {
             valueRefQueues[i] = new ReferenceQueue<Node>();
         }
         
@@ -105,7 +104,7 @@ public class Cache2 {
         
         long id = node.getId();
         assert id >= 0;
-        int mapIndex = getMapIndex(id, INDEX_MAP_COUNT);
+        int mapIndex = mapIndex(id);
         HashMap<Long, NodeReference> map = indexMaps[mapIndex];
         
         int memSize = node.getMemSize();
@@ -160,7 +159,7 @@ public class Cache2 {
     private void putLargeValueNode(ValueNode node) {
         long id = node.getId();
         assert id >= 0 : "value node, node.getId() = " + id;
-        int mapIndex = getMapIndex(id, VALUE_MAP_COUNT);
+        int mapIndex = mapIndex(id);
         int memSize = node.getMemSize();
         
         HashMap<Long, NodeReference> map = valueMaps[mapIndex];
@@ -198,7 +197,7 @@ public class Cache2 {
     public Node getIndexNode(long id) {
         NodeReference ref;
         Node result;
-        int index = getMapIndex(id, INDEX_MAP_COUNT);
+        int index = mapIndex(id);
         HashMap<Long, NodeReference> map = indexMaps[index];
         
         synchronized (map) {
@@ -213,7 +212,7 @@ public class Cache2 {
     public ValueNode getValueNode(long id) {
         NodeReference ref;
         ValueNode result;
-        int index = getMapIndex(id, VALUE_MAP_COUNT);
+        int index = mapIndex(id);
         HashMap<Long, NodeReference> map = valueMaps[index];
         
         synchronized (map) {
@@ -223,14 +222,6 @@ public class Cache2 {
         }
         
         return result;
-    }
-    
-    public final int getIndexMapCount() {
-        return INDEX_MAP_COUNT;
-    }
-    
-    public final int getValueMapCount() {
-        return VALUE_MAP_COUNT;
     }
     
     public Object getIndexLockObject(long id) {
@@ -254,13 +245,13 @@ public class Cache2 {
     }
     
     public void cleanupAllRefQueues() {
-        for (int i = 0; i < INDEX_MAP_COUNT; i++) {
+        for (int i = 0; i < MAP_COUNT; i++) {
             synchronized (indexMaps[i]) {
                 cleanupIndexRefQ(i, Integer.MAX_VALUE);
             }
         }
         
-        for (int i = 0; i < VALUE_MAP_COUNT; i++) {
+        for (int i = 0; i < MAP_COUNT; i++) {
             synchronized (valueMaps[i]) {
                 cleanupValueRefQ(i, Integer.MAX_VALUE);
             }
@@ -268,28 +259,36 @@ public class Cache2 {
     }
 
     private HashMap<Long, NodeReference> indexMap(long id) {
-        return indexMaps[getMapIndex(id, INDEX_MAP_COUNT)];
+        return indexMaps[mapIndex(id)];
     }
     
     private HashMap<Long, NodeReference> valueMap(long id) {
-        return valueMaps[getMapIndex(id, VALUE_MAP_COUNT)];
+        return valueMaps[mapIndex(id)];
     }
     
-    private final int getMapIndex(long id, int mapCount) {
-        // TODO D. Study distribution of real ids and real map indexes. 
-        // I have a feeling we might need something better than the current code.
+    /**
+     * Computes a hash value between 0 and MAP_COUNT-1 from 'id'.
+     */
+    private static final int mapIndex(long id) {
+        //
+        // Assumption: INDEX_MAP_COUNT is less than 256.
+        //
+        // 150818 Frans: did a study of a real case distribution 
+        // of size of the maps. Looked good. Looked completely random to me.
+        //
         
         long a;
         int b;
         
         a = id;
         a = RANDOM_MASK ^ id;
-        a = (a >>> 32) ^ a;     // 32 bits used
-        a = (a >>> 16) ^ a;     // 16 bits used, assumes INDEX_MAP_COUNT and VALUE_MAP_COUNT much less than 2^15.
+        a = (a >>> 32) ^ a;
+        a = (a >>> 16) ^ a;
+        a = (a >>> 8) ^ a;
         
         b = (int) (a & 0x0000ffffL);
         assert b >= 0;
-        return b % mapCount;
+        return b % MAP_COUNT;
     }
     
     /**
@@ -337,6 +336,24 @@ public class Cache2 {
             
             ref = refQ.poll();
             pollCount++;
+        }
+    }
+    
+    public static class TestAccess {
+        public static int indexMapSize(Cache2 c, int mapIndex) {
+            return c.indexMaps[mapIndex].size();
+        }
+        
+        public static int indexMapCount() {
+            return Cache2.MAP_COUNT;
+        }
+
+        public static int valueMapSize(Cache2 c, int mapIndex) {
+            return c.valueMaps[mapIndex].size();
+        }
+        
+        public static int valueMapCount() {
+            return Cache2.MAP_COUNT;
         }
     }
     
@@ -423,9 +440,9 @@ public class Cache2 {
         private void evict() {
             // NOTE 4.0 is "magic" here. What is optimal?
             
-            int mapsToProcess = (int) (4.0 * putRatio * INDEX_MAP_COUNT);
+            int mapsToProcess = (int) (4.0 * putRatio * MAP_COUNT);
             mapsToProcess = mapsToProcess < 1 ? 1 : mapsToProcess;
-            mapsToProcess = mapsToProcess > INDEX_MAP_COUNT ? INDEX_MAP_COUNT : mapsToProcess;
+            mapsToProcess = mapsToProcess > MAP_COUNT ? MAP_COUNT : mapsToProcess;
             
             //System.out.println("Cache2.evictor.evict(), mapsToProcess: " + mapsToProcess);
             
@@ -446,7 +463,7 @@ public class Cache2 {
          */
         private void evictPointersInOneMap() {
             evictPointersInMap(nextMapIndex);
-            nextMapIndex = (nextMapIndex + 1) % INDEX_MAP_COUNT;
+            nextMapIndex = (nextMapIndex + 1) % MAP_COUNT;
         }
 
         private void evictPointersInMap(int mapIndex) {
@@ -511,7 +528,7 @@ public class Cache2 {
     
     @Nano private static void testSanity2() {
         Cache2 m = new Cache2(new PointerLocks());
-        ValueNode node = new ValueNode(new byte[0]);
+        ValueNode node = new ValueNode(new byte[200]);
         node.setSpos(1234L);
         assert node.getId() == 1234L;
         m.putValueNode(node);
@@ -522,14 +539,10 @@ public class Cache2 {
     
     @SuppressWarnings("unused")
     @Nano private static void testMapCount() {
-        // Checks the assumption that map count is << 2^15 (~32000).
+        // Checks assumption of method getMapIndex().
         
-        if (INDEX_MAP_COUNT > 2000) {
-            throw new IllegalStateException("Bad INDEX_MAP_COUNT, " + INDEX_MAP_COUNT);
-        }
-        
-        if (VALUE_MAP_COUNT > 2000) {
-            throw new IllegalStateException("Bad VALUE_MAP_COUNT, " + VALUE_MAP_COUNT);
+        if (MAP_COUNT > 256) {
+            throw new IllegalStateException("Bad MAP_COUNT, " + MAP_COUNT);
         }
     }
     
@@ -550,8 +563,6 @@ public class Cache2 {
             
             Assert.assertTrue(ex != null);
         }
-        
-        
     }
     
     @Nano private static void testDuplicateIndexNodes() {
@@ -575,7 +586,7 @@ public class Cache2 {
     
     @Nano private static void testTotalSize1() {
         Cache2 cache = new Cache2(new PointerLocks());
-        ValueNode node = new ValueNode(new byte[10]);
+        ValueNode node = new ValueNode(new byte[200]);
         node.setSpos(222L);
         int memSize = node.getMemSize();
         
@@ -720,7 +731,7 @@ Using long[] and Object[] arrays. Would reduce mem per node from 103 to 60.
 
 CONCLUSIONS 
 1. We have 103 bytes extra RAM usage per cached node with the 
-   CacheMap approach. This significant, but acceptable.
+   current approach. This significant, but acceptable.
 2. We can likely reduce memory usage to 60 bytes / node by special long-to-Object hash map.
 3. Using many maps is not a problem. Memory overhead of an empty HashMap is only 50 bytes.
 
