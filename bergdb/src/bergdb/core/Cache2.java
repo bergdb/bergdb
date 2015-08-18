@@ -128,17 +128,36 @@ public class Cache2 {
         totalSize.addAndGet(totalMemSize);
         putSize.addAndGet(totalMemSize);
         
-        possiblyEvict();
+        evictor.possiblyEvict();
     }
     
     public void putValueNode(ValueNode node) {
-        // TODO C. Consider "unmanaged value nodes" - value nodes that
-        // are not necessarily canonical; duplicates allowed for small values (<100 bytes or so).
+        byte[] value = node.value;
         
-        if (node.value == null) {
+        if (value == null) {
             return;
         }
         
+        if (value.length < 100) {
+            putSmallValueNode(node);
+        } else {
+            putLargeValueNode(node);
+        }
+    }
+    
+    /**
+     * Small value nodes are "unmanaged". They are not added to a map.
+     * Small duplicates are preferred considering the overhead with an 
+     * entry in the cache (around 100 byte memory used overhead).
+     */
+    private void putSmallValueNode(ValueNode node) {
+        int memSize = node.getMemSize();
+        totalSize.addAndGet(memSize);
+        putSize.addAndGet(memSize);
+        evictor.possiblyEvict();
+    }
+
+    private void putLargeValueNode(ValueNode node) {
         long id = node.getId();
         assert id >= 0 : "value node, node.getId() = " + id;
         int mapIndex = getMapIndex(id, VALUE_MAP_COUNT);
@@ -161,8 +180,7 @@ public class Cache2 {
         long totalMemSize = totalMemSize(memSize);        
         totalSize.addAndGet(totalMemSize);
         putSize.addAndGet(totalMemSize);
-        
-        possiblyEvict();
+        evictor.possiblyEvict();
     }
 
     public static class AlreadyHasNode extends AssertionError {
@@ -247,10 +265,6 @@ public class Cache2 {
                 cleanupValueRefQ(i, Integer.MAX_VALUE);
             }
         }
-    }
-
-    private final void possiblyEvict() {
-        evictor.possiblyEvict();
     }
 
     private HashMap<Long, NodeReference> indexMap(long id) {
@@ -380,8 +394,9 @@ public class Cache2 {
         }
         
         void possiblyEvict() {
+            // NOTE 0.01 is "magic" here. What is optimal?
             // If is evicting now, return immediately.
-            // If process less than 0.02 of targetSize since last evict step, return.
+            // If processed less than 0.01 of targetSize since last evict step, return.
             // Else, do evict processing.
             
             boolean wasSet = isEvicting.compareAndSet(false, true);
@@ -394,10 +409,6 @@ public class Cache2 {
                 targetSize = Cache2.this.targetSize.get();
                 deltaPutSize = putSize - putSize0;
                 putRatio = (double) deltaPutSize / targetSize;
-                
-                //System.out.format("Cache, putRatio: %.6f, deltaPutSize: %d, putSize0: %d\n", 
-                //        putRatio, deltaPutSize, putSize0);
-                //System.out.format("Cache fillFactor: %.3f\n", fillFactor);
                 
                 if (putRatio > 0.01) {
                     evict();
@@ -448,9 +459,6 @@ public class Cache2 {
                         evictNodePointers(node);
                     }
                 }
-                
-                // TODO A. consider this...
-                //cleanupIndexRefQ(mapIndex, Integer.MAX_VALUE);
             }
         }
         

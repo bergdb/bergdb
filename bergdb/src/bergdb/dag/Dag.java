@@ -587,9 +587,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             }
             
         } else {
-            // TODO B. Consider IDEA: could we count total ValueNode size in cache here?
-            // Or only for value nodes too small to keep in Cache? "Unmanaged value nodes".
-            
             ValueNode valueNode = new ValueNode(value);
             pd.nodeChangeListener.valueNodeCreated(valueNode, key);
             

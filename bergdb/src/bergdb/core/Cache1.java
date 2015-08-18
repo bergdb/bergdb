@@ -88,7 +88,6 @@ public class Cache1 {
         evictor = new Evictor();
     }
     
-    // TODO B. setTargetSize() - should it change noEvictLimit immediately?
     public void setTargetSize(long targetSize) {
         assert targetSize > 0;
         this.targetSize.set(targetSize);
@@ -131,13 +130,7 @@ public class Cache1 {
         possiblyEvict();
     }
     
-    /* (non-Javadoc)
-     * @see bergdb.core.Cache#putValueNode(bergdb.dag.ValueNode)
-     */
     public void putValueNode(ValueNode node) {
-        // TODO C. Consider "unmanaged value nodes" - value nodes that
-        // are not necessarily canonical; duplicates allowed for small values (<100 bytes or so).
-        
         if (node.value == null) {
             return;
         }
@@ -351,9 +344,6 @@ public class Cache1 {
             return memSize;
         }
     }
-    
-    // TODO B. Work on synchronization here! For example noEvictDistance can be 
-    // used by concurrent threads, not protected.
     
     /**
      * State of evict, last evict.
