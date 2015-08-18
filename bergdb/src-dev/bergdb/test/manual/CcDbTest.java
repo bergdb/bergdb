@@ -25,6 +25,7 @@ public class CcDbTest {
     Database database;
     Connection c;
     int n = 100*1000;   // wanted number of cards
+    String dir;
     CommandLine commandLine;
     boolean encrypt = true;
     int[] permutation;
@@ -39,6 +40,7 @@ public class CcDbTest {
             StringBuilder b = new StringBuilder();
             b.append("Help for " + CcDbTest.class.getSimpleName() + ". Options:\n");
             b.append("-n  Number of cards to simulate (default = 100000)\n");
+            b.append("-dir  Database data directory (default = CcDbTest).\n");
             b.append("-noEncrypt  Don't encrypt database (encrypted by default).\n");
             b.append("-press  Pause till ENTER pressed while adding cards.\n");
             
@@ -48,6 +50,10 @@ public class CcDbTest {
         
         if (commandLine.hasOne("n")) {
             n = Integer.parseInt(commandLine.getOne("n"));
+        }
+        
+        if (commandLine.hasOne("dir")) {
+            dir = commandLine.getOne("dir");
         }
         
         if (commandLine.has("noEncrypt")) {
@@ -74,6 +80,30 @@ public class CcDbTest {
         measurePerformance();
         
         count();
+    }
+
+    private void createDb() {
+        if (dir == null) {
+            dir = "./" + CcDbTest.class.getSimpleName();
+        }
+        
+        CryptoKey key = CryptoKey.NULL;
+        if (encrypt) {
+            key = CryptoKey.parse(
+                    "7bcf4b7c-salsa-15fc30dde0914feb075a2c1f1fb95640da3e3d04da10fe9c349ad99a50deaab4aa803d057a0186cc");
+        }
+        
+        database = Factory.database()
+                .dir(dir)
+                .cryptoKey(key)
+                .startupDistanceInMb(5)
+                .start();
+        
+        double time = database.getStartupInfo().getStartupDuration();
+        System.out.format("Db started in %.2f seconds, dir:%s\n", time, dir);
+        
+        c = database.connection();
+        initDb();
     }
 
     private void computePermutation() {
@@ -116,26 +146,6 @@ public class CcDbTest {
         database.stop();
     }
     
-    private void createDb() {
-        // Setting startup distance is a a hack since it is not exposed 
-        // in Pub API for BergDB 2015.4.
-        
-        String dir = "./" + CcDbTest.class.getSimpleName();
-        CryptoKey key = CryptoKey.NULL;
-        if (encrypt) {
-            key = CryptoKey.parse(
-                    "7bcf4b7c-salsa-15fc30dde0914feb075a2c1f1fb95640da3e3d04da10fe9c349ad99a50deaab4aa803d057a0186cc");
-        }
-        
-        database = Factory.database().dir(dir).cryptoKey(key).startupDistanceInMb(5).start();
-        
-        double time = database.getStartupInfo().getStartupDuration();
-        System.out.format("Db started in %.2f seconds.\n", time);
-        
-        c = database.connection();
-        initDb();
-    }
-
     private void addCardsIfNeeded() {
         final int existingCardCount = getCardCount();
         int toAdd = n - existingCardCount;
@@ -210,18 +220,29 @@ public class CcDbTest {
     private void measurePerformance() {
         Random random = new Random(0);
         int count = 10*1000;
+        int missing = 0;
         
         long t0 = System.nanoTime();
         for (int i = 0; i < count; i++) {
-            String key = cardIndexToKey(random.nextInt(n));
+            int cardIndex = random.nextInt(n);
+            String key = cardIndexToKey(cardIndex);
             byte[] value = c.get(key, byte[].class);
             if (value == null) {
-                throw new IllegalStateException("Missing card data, key: " + key);
+                String message = "Missing card data, key: " 
+                        + key + ", cardIndex: " + cardIndex + ", permutation: " + permutation[cardIndex];
+                //throw new IllegalStateException(message);
+                
+                missing++;
+                System.out.println(message);
             }
         }
         
         double time = (System.nanoTime() - t0) * 1e-9;
         double timePerLookup = time / count;
+        
+        if (missing > 0) {
+            System.out.println("Missing " + missing + " cards.");
+        }
         
         System.out.format("Lookup of %d cards in %.3f s, per lookup: %.3f ms.\n", count, time, timePerLookup * 1000.0);
     }
