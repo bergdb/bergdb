@@ -209,3 +209,35 @@ public class CcDbNightTest {
         }
     }
 }
+
+/*
+
+TODO A. work in this issue.
+
+150818 Issue
+============
+
+Frans: Detected this issue for the new cache code. Key nodes seem to be evicted when
+they should not be. When increasing cache size, the issue disappears.
+
+Tested to introduce spos limit, only nodes with spos < startupPos evict.
+  --> No improvement.
+  
+Tested to call possiblyEvict() only from this class (not internally).
+  --> No improvement.
+
+Tested to add [... if (node.isDirty()) return;] to beginning of method 
+Cache2.Evictor.evictNodePointers().
+  --> Works!
+  Yes, but this does not seem right.
+  
+Tested if statement:
+    if (pointerAccessTime < accessTimeLimit && (pointee.isValueNode() || !node.isDirty())) {
+        node.setPointer(i, null, pointeePos);
+    }
+  --> Works!
+
+Problem seems to occur when 'node' is a dirty key node and pointee is a clean key node.
+Why is that a problem?
+
+*/

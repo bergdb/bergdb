@@ -1,6 +1,5 @@
 package bergdb.core;
 
-import java.io.IOException;
 import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
@@ -142,6 +141,8 @@ public class Cache2 {
         } else {
             putLargeValueNode(node);
         }
+        
+        evictor.possiblyEvict();
     }
     
     /**
@@ -153,7 +154,6 @@ public class Cache2 {
         int memSize = node.getMemSize();
         totalSize.addAndGet(memSize);
         putSize.addAndGet(memSize);
-        evictor.possiblyEvict();
     }
 
     private void putLargeValueNode(ValueNode node) {
@@ -179,7 +179,6 @@ public class Cache2 {
         long totalMemSize = totalMemSize(memSize);        
         totalSize.addAndGet(totalMemSize);
         putSize.addAndGet(totalMemSize);
-        evictor.possiblyEvict();
     }
 
     public static class AlreadyHasNode extends AssertionError {
@@ -539,6 +538,12 @@ public class Cache2 {
                                 if (pointerAccessTime < accessTimeLimit) {
                                     node.setPointer(i, null, pointeePos);
                                 }
+                                
+                                // TODO B. Consider this code.
+                                // Below code fixes Issue: CcDbNightTest.
+                                //if (pointerAccessTime < accessTimeLimit && (pointee.isValueNode() || !node.isDirty())) {
+                                //    node.setPointer(i, null, pointeePos);
+                                //}
                             }
                         }
                     }
@@ -671,75 +676,6 @@ public class Cache2 {
         
         Assert.assertFalse("contains test", m.indexMap(1234L).containsKey(1234L));
         Assert.assertTrue("get result should be null", m.getIndexNode(1234L) == null);
-    }
-    
-    public static void manualMemTest() throws InterruptedException, IOException {
-        // Manual memory testing. Use with jvisualvm or something.
-        
-        System.out.println("CacheMap.memTest()");
-        
-        int mapCount = 1*1000;
-        int nodesPerMap = 1*1000;
-        ReferenceQueue<Node> refQ = new ReferenceQueue<Node>();
-        
-        KeyNode[] keyNodes = new KeyNode[mapCount * nodesPerMap];
-        
-        for (int i = 0; i < keyNodes.length; i++) {
-            keyNodes[i] = new KeyNode();
-            keyNodes[i].setId(i);
-        }
-        
-        gc();
-        long mem0 = memUsed();
-        System.out.format("mem0: %.1f MB\n", 1e-6*mem0);
-        waitForEnter();
-        
-        @SuppressWarnings("unchecked")
-        HashMap<Long, NodeReference>[] maps = (HashMap<Long, NodeReference>[]) new HashMap[mapCount];
-        for (int i = 0; i < mapCount; i++) {
-            maps[i] = new HashMap<Long, NodeReference>();
-            
-            for (int j = 0; j < nodesPerMap; j++) {
-                long id = i * nodesPerMap + j;
-                maps[i].put(id, new NodeReference(keyNodes[(int) id], refQ, id, true));
-            }
-        }
-        
-        gc();
-        
-        long mem1 = memUsed();
-        long memDelta = mem1 - mem0;
-        
-        System.out.format("mem1: %.1f MB\n", 1e-6*mem1);
-        System.out.format("Mem used delta, %.1f MB, per node: %.1f B.\n", 1e-6 * memDelta, 1.0 * memDelta / keyNodes.length);
-        System.out.println("maps.length: " + maps.length);
-        System.out.println("nodes: " + keyNodes.length);
-        
-        waitForEnter();
-    }
-    
-    private static void waitForEnter() throws IOException {
-        System.in.read();
-    }
-
-    public static void gc() {
-        System.gc(); System.gc(); System.gc();
-    }
-    
-    public static long memUsed() {        
-        Runtime r = Runtime.getRuntime();
-        long total = r.totalMemory();
-        long free = r.freeMemory();
-        long used = total - free;
-        
-        System.out.format("memUsed(), total: %.1f, free: %.1f, total-free: %.1f MB.\n", 
-                1e-6 * total, 1e-6 * free, 1e-6 * (total-free));
-        
-        return used;
-    }
-    
-    public static void main(String[] args) throws Exception {
-        manualMemTest();
     }
 }
 
