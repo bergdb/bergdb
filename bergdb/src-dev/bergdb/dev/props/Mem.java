@@ -12,7 +12,7 @@ import bergdb.stream.DummyStream;
  * 
  * @author Frans Lundberg.
  */
-public class MEM {
+public class Mem {
     String report;
 
     public double go() throws Exception {
@@ -71,7 +71,7 @@ public class MEM {
     public static void main(String[] args) throws Exception {
         CommandLine line = new CommandLine(args);
         
-        MEM m = new MEM();
+        Mem m = new Mem();
         m.go(line);
         System.out.println(m.report);
     }

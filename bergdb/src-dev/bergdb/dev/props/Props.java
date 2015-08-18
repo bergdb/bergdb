@@ -23,11 +23,11 @@ public class Props {
     public static void main(String[] args) throws Exception {
         printHeader();
         
-        MEM mem = new MEM();
+        Mem mem = new Mem();
         mem.go();
         System.out.println(mem.report);
         
-        CORE corePerf = new CORE();
+        Core corePerf = new Core();
         corePerf.go();
         System.out.println(corePerf.result.shortReport);
         

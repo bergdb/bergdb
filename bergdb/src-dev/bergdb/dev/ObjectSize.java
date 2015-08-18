@@ -3,6 +3,7 @@ package bergdb.dev;
 import java.lang.instrument.Instrumentation;
 
 import bergdb.dag.KeyNode;
+import bergdb.dag.ValueNode;
 
 /**
  * Executable class that prints the JVM memory sizes of different objects.
@@ -18,7 +19,7 @@ public class ObjectSize {
         inst = MyInstrumentation.getInstrumentation();
         if (inst == null) {
             throw new IllegalStateException(
-                    "KissInstrumentation.getInstrumentation() returned null. Use -javaagent properly.");
+                    "MyInstrumentation.getInstrumentation() returned null. Use -javaagent properly.");
         }
     }
     
@@ -28,7 +29,8 @@ public class ObjectSize {
     
     public void go() {
         System.out.println("Object: " + getObjectSize(new Object()));
-        System.out.println("Node: " + getObjectSize(new KeyNode()));
+        System.out.println("KeyNode: " + getObjectSize(new KeyNode()));
+        System.out.println("ValueNode (empty): " + getObjectSize(new ValueNode(new byte[0])));
         System.out.println("A: " + getObjectSize(new A()));
         System.out.println("NonStatic: " + getObjectSize(new ObjectSize().new NonStatic()));
         System.out.println("B1: " + getObjectSize(new B1()));

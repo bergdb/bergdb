@@ -31,7 +31,7 @@ import bergdb.test.Set;
  * 
  * @author Frans Lundberg
  */
-public class CORE {
+public class Core {
     Map<String, Double> resultMap;
     Map<String, Double> baseline1;
     Map<String, Double> baseline2;
@@ -40,7 +40,7 @@ public class CORE {
     boolean beShort = true;
     Result result;
     
-    public CORE() {
+    public Core() {
         resultMap = new TreeMap<String, Double>();
         baseline1 = new TreeMap<String, Double>();
         baseline2 = new TreeMap<String, Double>();
@@ -224,7 +224,7 @@ public class CORE {
     }
     
     private void printHeader() {
-        System.out.println("\n==== " + CORE.class.getName() + " ====");
+        System.out.println("\n==== " + Core.class.getName() + " ====");
         
         String computer = Util.hostname();
         String today = Util.today();
@@ -275,7 +275,7 @@ public class CORE {
     }
     
     public static void main(String[] args) {
-        CORE c = new CORE();
+        Core c = new Core();
         c.go(args);
     }
 }
