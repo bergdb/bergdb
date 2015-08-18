@@ -70,6 +70,7 @@ public interface Node {
     
     /**
      * Sets pointer node and spos (accessData) at a given pointer index.
+     * Caller should synchronize on "pointer lock" (Db.pointerLocks).
      */
     public void setPointer(int index, Node node, long spos);
     

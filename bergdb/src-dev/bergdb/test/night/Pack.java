@@ -4,7 +4,7 @@ import bergdb.common.IPack;
 
 public class Pack implements IPack {
     private static Class<?>[] classes = new Class<?>[] {
-        CcDbTest.class,
+        CcDbNightTest.class,
         Issue150420.class,
         PayTest.class
     };

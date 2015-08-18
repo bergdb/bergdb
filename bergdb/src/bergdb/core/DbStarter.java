@@ -166,7 +166,7 @@ public class DbStarter {
     }
 
     /** 
-     * Updates stream pointers to point to laster node version.
+     * Updates stream pointers to point to last node version.
      */
     private void updateStreamPointers() {
         Pointer p = new Pointer();

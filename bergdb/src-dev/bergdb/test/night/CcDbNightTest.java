@@ -20,7 +20,7 @@ import bergdb.pub.WBuilder;
  * 
  * @author Frans Lundberg
  */
-public class CcDbTest {
+public class CcDbNightTest {
     //
     // 150818, copied original CcDbTest to here (bergdb.test.night) and adapted
     // for automatic testing (night test).
@@ -30,29 +30,25 @@ public class CcDbTest {
     static final int MAX = 1 * 1000000;
     Database database;
     Connection c;
-    int n = 100*1000;   // wanted number of cards
+    int n;   // wanted number of cards
     String dir;
     boolean encrypt = true;
     int[] permutation;
     PrintStream out;
     
     private void go() {
-        out.println("==== " + CcDbTest.class.getName() + " ====");
-        
         computePermutation();
         
         createDb();
         
-        addCardsIfNeeded();
-        
-        measurePerformance();
+        addCards();
         
         count();
     }
 
     private void createDb() {
         if (dir == null) {
-            dir = "./" + CcDbTest.class.getSimpleName();
+            dir = "./" + CcDbNightTest.class.getSimpleName();
         }
         
         CryptoKey key = CryptoKey.NULL;
@@ -109,13 +105,17 @@ public class CcDbTest {
         
         out.format("Actual card count: %d. Counted in %.3f seconds (%.3f ms per card).\n", 
                 counter, time, time / counter * 1000.0);
+        
+        if (counter != n) {
+            throw new AssertionError("Missing cards, found " + counter + " cards out of " + n + ".");
+        }
     }
 
     protected void finalize() {
         database.stop();
     }
     
-    private void addCardsIfNeeded() {
+    private void addCards() {
         final int existingCardCount = getCardCount();
         int toAdd = n - existingCardCount;
         
@@ -173,34 +173,6 @@ public class CcDbTest {
         String key = "/cards/" + Util.toHex(bytes);
         return key;
     }
-
-    private void measurePerformance() {
-        Random random = new Random(0);
-        int count = 10*1000;
-        int missing = 0;
-        
-        long t0 = System.nanoTime();
-        for (int i = 0; i < count; i++) {
-            int cardIndex = random.nextInt(n);
-            String key = cardIndexToKey(cardIndex);
-            byte[] value = c.get(key, byte[].class);
-            if (value == null) {
-                String message = "Missing card data, key: " 
-                        + key + ", cardIndex: " + cardIndex + ", permutation: " + permutation[cardIndex];
-                missing++;
-                out.println(message);
-            }
-        }
-        
-        double time = (System.nanoTime() - t0) * 1e-9;
-        double timePerLookup = time / count;
-        
-        if (missing > 0) {
-            throw new AssertionError("Missing " + missing + " cards.");
-        }
-        
-        out.format("Lookup of %d cards in %.3f s, per lookup: %.3f ms.\n", count, time, timePerLookup * 1000.0);
-    }
     
     private void initDb() {
         if (!c.exists("/stats")) {
@@ -218,7 +190,7 @@ public class CcDbTest {
     private static void testIt(TestEnvironment env) throws IOException {
         File tempDir = env.createTempDir();
         
-        CcDbTest t = new CcDbTest();
+        CcDbNightTest t = new CcDbNightTest();
         t.dir = tempDir.getAbsolutePath();
         t.n = 400000;
         t.encrypt = false;

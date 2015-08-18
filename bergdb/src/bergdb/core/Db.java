@@ -507,9 +507,9 @@ public class Db {
                 assert predecessor != null : "predecessor is null";
                 assert accessData == 0 || AccessData.isValid(accessData);
 
-                final Object lock = pointerLocks.getLock(predecessor, pointerIndex);
+                final Object pointerLock = pointerLocks.getLock(predecessor, pointerIndex);
 
-                synchronized (lock) {
+                synchronized (pointerLock) {
                     Node pointerNode = predecessor.getPointerNode(pointerIndex);
                     long pointerPos = predecessor.getPointerPos(pointerIndex);
 

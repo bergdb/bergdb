@@ -201,7 +201,6 @@ public class Cache2 {
         HashMap<Long, NodeReference> map = indexMaps[index];
         
         synchronized (map) {
-            cleanupIndexRefQ(index, 10);
             ref = map.get(id);
             result = ref == null ? null : ref.get();
         }
@@ -216,7 +215,6 @@ public class Cache2 {
         HashMap<Long, NodeReference> map = valueMaps[index];
         
         synchronized (map) {
-            cleanupValueRefQ(index, 10);
             ref = map.get(id);        
             result = ref == null ? null : (ValueNode) ref.get();
         }
@@ -298,8 +296,9 @@ public class Cache2 {
         int pollCount = 0;
         Reference<? extends Node> ref;
         ReferenceQueue<Node> refQ = indexRefQueues[mapIndex];
+        HashMap<Long, NodeReference> map = indexMaps[mapIndex];
         
-        assert Thread.holdsLock(indexMaps[mapIndex]) : "caller does not hold required lock";
+        assert Thread.holdsLock(map) : "caller does not hold required lock for index node map " + mapIndex;
         
         ref = refQ.poll();
         pollCount++;
@@ -308,7 +307,11 @@ public class Cache2 {
             NodeReference nodeRef = (NodeReference) ref;
             assert nodeRef.isIndexNode : "not an index node ref: " + nodeRef.get();
             
-            indexMaps[mapIndex].remove(nodeRef.id);
+            NodeReference existingRef = map.get(nodeRef.id);
+            if (existingRef == nodeRef) {
+                map.remove(nodeRef.id);
+            }
+            
             totalSize.addAndGet(-totalMemSize(nodeRef.memSize));
             ref = refQ.poll();
             pollCount++;
@@ -324,6 +327,10 @@ public class Cache2 {
         int pollCount = 0;
         Reference<? extends Node> ref;
         ReferenceQueue<Node> refQ = valueRefQueues[mapIndex];
+        HashMap<Long, NodeReference> map = valueMaps[mapIndex];
+        
+        assert Thread.holdsLock(map) : "caller does not hold required lock for map " + mapIndex;
+        
         ref = refQ.poll();
         pollCount++;
         
@@ -331,7 +338,11 @@ public class Cache2 {
             NodeReference nodeRef = (NodeReference) ref;
             assert !nodeRef.isIndexNode;
             
-            valueMaps[mapIndex].remove(nodeRef.id);
+            NodeReference existingRef = map.get(nodeRef.id);
+            if (existingRef == nodeRef) {
+                map.remove(nodeRef.id);
+            }
+            
             totalSize.addAndGet(-totalMemSize(nodeRef.memSize));
             
             ref = refQ.poll();
@@ -366,6 +377,29 @@ public class Cache2 {
             super(node, q);
             this.id = id;
             this.isIndexNode = isIndexNode;
+        }
+        
+        public String toString() {
+            String superToString = super.toString();
+            String s;
+            
+            int index = superToString.indexOf('@');
+            if (index == -1 && index == superToString.length() - 1) {
+                s = superToString;
+            } else {
+                s = superToString.substring(index + 1);
+            }
+            
+            s = s + "-" + id;
+            if (isIndexNode) {
+                s += "-index";
+            } else {
+                s += "-value";
+            }
+            
+            s += "-" + memSize;
+            
+            return s;
         }
     }
     
@@ -490,8 +524,8 @@ public class Cache2 {
             int count = node.getSize();
             
             for (int i = 0; i < count; i++) {
-                Object lock = pointerLocks.getLock(node, i);
-                synchronized (lock) {
+                Object pointerLock = pointerLocks.getLock(node, i);
+                synchronized (pointerLock) {
                     node.getPointer(i, pointer);
                     if (pointer.isMem()) {
                         Node pointee = pointer.node;
@@ -502,7 +536,7 @@ public class Cache2 {
                             if (pointeePos != Spos.NULL) {
                                 long pointerAccessTime = AccessData.getAccessTime(pointer.getAccessData());
                                 
-                                if (pointerAccessTime <= accessTimeLimit) {
+                                if (pointerAccessTime < accessTimeLimit) {
                                     node.setPointer(i, null, pointeePos);
                                 }
                             }
