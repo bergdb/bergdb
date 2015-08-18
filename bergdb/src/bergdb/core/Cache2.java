@@ -550,8 +550,12 @@ public class Cache2 {
     
     // ======== Tests ========
     
+    private static Cache2 testObject() {
+        return new Cache2(new PointerLocks());
+    }
+    
     @Nano private static void testSanity1() {
-        Cache2 m = new Cache2(new PointerLocks());
+        Cache2 m = testObject();
         KeyNode node = new KeyNode();
         node.setId(1234L);
         m.putIndexNode(node);
@@ -561,7 +565,7 @@ public class Cache2 {
     }
     
     @Nano private static void testSanity2() {
-        Cache2 m = new Cache2(new PointerLocks());
+        Cache2 m = testObject();
         ValueNode node = new ValueNode(new byte[200]);
         node.setSpos(1234L);
         assert node.getId() == 1234L;
@@ -581,7 +585,7 @@ public class Cache2 {
     }
     
     @Nano private static void testDuplicateValueNodes() {
-        Cache2 m = new Cache2(new PointerLocks());
+        Cache2 m = testObject();
         ValueNode node = new ValueNode(new byte[1000]);
         node.setSpos(1234L);
         assert node.getId() == 1234L;
@@ -600,7 +604,7 @@ public class Cache2 {
     }
     
     @Nano private static void testDuplicateIndexNodes() {
-        Cache2 m = new Cache2(new PointerLocks());
+        Cache2 m = testObject();
         KeyNode node = new KeyNode();
         node.setId(222L);
         assert node.getId() == 222L;
@@ -619,7 +623,7 @@ public class Cache2 {
     }
     
     @Nano private static void testTotalSize1() {
-        Cache2 cache = new Cache2(new PointerLocks());
+        Cache2 cache = testObject();
         ValueNode node = new ValueNode(new byte[200]);
         node.setSpos(222L);
         int memSize = node.getMemSize();
@@ -632,7 +636,7 @@ public class Cache2 {
     }
     
     @Nano private static void testTotalSize2() {
-        Cache2 cache = new Cache2(new PointerLocks());
+        Cache2 cache = testObject();
         TopNode node = TopNode.createDummy(2);
         node.setId(222L);
         int memSize = node.getMemSize();
@@ -650,7 +654,7 @@ public class Cache2 {
         // There is no guarantee that garbage collection is actually run when System.gc() 
         // is called. Also, there is no guarantee when references are added the reference queue.
         
-        Cache2 m = new Cache2(new PointerLocks());
+        Cache2 m = testObject();
         KeyNode k = new KeyNode();
         k.setId(1234L);
         
