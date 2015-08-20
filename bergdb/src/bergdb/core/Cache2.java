@@ -59,10 +59,15 @@ public class Cache2 {
     private final AtomicLong totalSize;     // current total cache size (estimate of memory byte size)
     private final AtomicLong putSize;       // total size of all node put to cache, always increasing
     private final PointerLocks pointerLocks;
+    private final DbInfo dbInfo;
     
     @SuppressWarnings("unchecked")
-    public Cache2(PointerLocks pointerLocks) {
+    public Cache2(PointerLocks pointerLocks, DbInfo dbInfo) {
+        assert pointerLocks != null;
+        assert dbInfo != null;
+        
         this.pointerLocks = pointerLocks;
+        this.dbInfo = dbInfo;
         
         indexMaps = (HashMap<Long, NodeReference>[]) new HashMap<?, ?>[MAP_COUNT];
         for (int i = 0; i < MAP_COUNT; i++) {
@@ -349,6 +354,14 @@ public class Cache2 {
         }
     }
     
+    /**
+     * Source of dynamic information about the database state.
+     * Easy to mock.
+     */
+    public static interface DbInfo {
+        public long getStartupPosForEvict();
+    }
+    
     public static class TestAccess {
         public static int indexMapSize(Cache2 c, int mapIndex) {
             return c.indexMaps[mapIndex].size();
@@ -426,6 +439,7 @@ public class Cache2 {
         // Most fields are protected by isEvicting; only used while isEvicting == true.
         //
         
+        long startupPos;
         long putSize0;     // putSize when last evict was done
         long putSize;
         long deltaPutSize;
@@ -455,6 +469,7 @@ public class Cache2 {
             }
             
             try {
+                startupPos = dbInfo.getStartupPosForEvict();
                 putSize = Cache2.this.putSize.get();
                 targetSize = Cache2.this.targetSize.get();
                 deltaPutSize = putSize - putSize0;
@@ -506,7 +521,7 @@ public class Cache2 {
                 for (NodeReference ref : map.values()) {
                     Node node = ref.get();
                     if (node != null) {                    
-                        evictNodePointers(node);
+                        evictNodePointers1(node);
                     }
                 }
             }
@@ -515,10 +530,51 @@ public class Cache2 {
         /**
          * Evicts all evicable out-bound pointers of 'node'.
          */
-        private void evictNodePointers(Node node) {
+        private void evictNodePointers1(Node node) {
             // It is possible to get pointeePos == Spos.NULL for value nodes.
             // A value node does not get an spos when created, but later when
             // written to stream.
+            
+            int count = node.getSize();
+            
+            for (int i = 0; i < count; i++) {
+                Object pointerLock = pointerLocks.getLock(node, i);
+                synchronized (pointerLock) {
+                    node.getPointer(i, pointer);
+                    if (pointer.isMem()) {
+                        Node pointee = pointer.node;
+                        
+                        if (!pointee.isDirty()) {
+                            long pointeePos = pointee.getSpos();
+                            
+                            if (pointeePos != Spos.NULL) {
+                                long pointerAccessTime = AccessData.getAccessTime(pointer.getAccessData());
+                                
+                                if (pointerAccessTime < accessTimeLimit) {
+                                    node.setPointer(i, null, pointeePos);
+                                }
+                                
+                                // TODO B. Consider this code.
+                                // Below code fixes Issue: CcDbNightTest.
+                                //if (pointerAccessTime < accessTimeLimit && (pointee.isValueNode() || !node.isDirty())) {
+                                //    node.setPointer(i, null, pointeePos);
+                                //}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        /**
+         * Evicts all evicable out-bound pointers of 'node'.
+         */
+        private void evictNodePointers2(Node node) {
+            // It is possible to get pointeePos == Spos.NULL for value nodes.
+            // A value node does not get an spos when created, but later when
+            // written to stream.
+            
+            // XXX
             
             int count = node.getSize();
             
@@ -556,7 +612,13 @@ public class Cache2 {
     // ======== Tests ========
     
     private static Cache2 testObject() {
-        return new Cache2(new PointerLocks());
+        DbInfo mockDbInfo = new DbInfo() {
+            public long getStartupPosForEvict() {
+                return Long.MAX_VALUE;
+            }
+        };
+        
+        return new Cache2(new PointerLocks(), mockDbInfo);
     }
     
     @Nano private static void testSanity1() {

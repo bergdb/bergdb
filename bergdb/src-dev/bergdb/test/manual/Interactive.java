@@ -168,7 +168,7 @@ public class Interactive {
         System.out.format("Stream length: %.1f, startupDistance: %.1f, startupPos: %.1f.\n", 
                 1e-6 * db.getStreamLength(),
                 1e-6 * db.getStartupDistance(),
-                1e-6 * db.internal().getStartupPos());
+                1e-6 * db.internal().getStartupPosForEvict());
         System.out.format("Cache, totalSize: %d, putSize: %d\n", 
                 db.internal().cache().totalSize(), 
                 db.internal().cache().putSize());

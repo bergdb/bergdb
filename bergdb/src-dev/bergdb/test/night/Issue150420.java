@@ -112,7 +112,7 @@ public class Issue150420 {
 
     private boolean checkPointerInvariant(Db db) {
         try {
-            db.internal().dag().checkForwardPointerInvariantApprox(db.internal().getStartupPos(), 15000);
+            db.internal().dag().checkForwardPointerInvariantApprox(db.internal().getStartupPosForEvict(), 15000);
         } catch (AssertionError e) {
             errorCount++;
             env.out().println("index: " + index + ", inv-forward-pointer\n" + e.getMessage());

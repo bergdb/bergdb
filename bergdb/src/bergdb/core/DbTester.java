@@ -1578,7 +1578,7 @@ public class DbTester {
             Trans t = db.trans().put("/k", new byte[10*1000]).build();
             db.execute(t);
             tpos[i] = t.tpos;
-            sp[i] = db.internal().getStartupPos();
+            sp[i] = db.internal().getStartupPosForEvict();
         }
         
         assertEquals(0, sp[0]);

@@ -144,7 +144,14 @@ public class Db {
         x = new ExecuteData();
         keyModSet = new KeyModSet();
         pointerLocks = new PointerLocks();
-        cache = new Cache2(pointerLocks);
+        
+        Cache2.DbInfo dbInfo = new Cache2.DbInfo() {
+            public long getStartupPosForEvict() {
+                return x.startupPos.getForEvict();
+            }
+        };
+        
+        cache = new Cache2(pointerLocks, dbInfo);
         cache.setTargetSize(b.targetCacheSize);
  
         this.maxNodeSize = b.maxNodeSize;
@@ -1485,7 +1492,7 @@ public class Db {
         
         public void setDag(Dag d) { dag = d; }
 
-        public long getStartupPos() { return x.startupPos.get(); }
+        public long getStartupPosForEvict() { return x.startupPos.get(); }
 
         public Object getWriteLock() { return writeLock; }
         
