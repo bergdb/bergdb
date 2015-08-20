@@ -1019,7 +1019,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      * This interface enables us to easily set a cache policy such as:
      * cache all nodes read from stream, cache no nodes, cache only KeyNodes, cache all
      * KeyNodes and all ValueNodes that are smaller than 400k in size.
-     * Cache policy can be set per get operation (or even per call to DbGraph.followPointer()).
+     * Cache policy can be set per get operation.
      */
     public static interface CachePolicy {
         /**

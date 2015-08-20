@@ -134,7 +134,7 @@ public class CcDbNightTest {
             
             for (int i = 0; i < 100; i++) {
                 String key = cardIndexToKey(existingCardCount + addedCounter);
-                b.put(key, new byte[100]);
+                b.put(key, new byte[100]);  // XXX   99 or 100
                 
                 addedCounter++;
                 if (addedCounter >= toAdd) {
@@ -148,12 +148,17 @@ public class CcDbNightTest {
             if (addedCounter % 10000 == 0) {
                 out.println("Added " + addedCounter + " cards.");
             }
+            
+            if (addedCounter % 100000 == 0) {
+                System.gc();
+            }
         }
         
         double time = (System.nanoTime() - t0) * 1e-9;
         
         out.format("Added %d cards in %.1f s. %.3f ms per card.\n", 
                 addedCounter, time, (time / addedCounter) * 1000.0);
+        
         c.sync();
     }
     

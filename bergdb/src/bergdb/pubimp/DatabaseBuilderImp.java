@@ -20,10 +20,7 @@ import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.SalsaStream;
 
-// TODO Introduce term "cache size mark value". cacheSizeMarkInMb() or similar.
-
-// TODO C. Consider sizeS(), sizeM(), sizeL() methods, and/or size(String) for [size("L")].
-// Or an enum (DatabaseBuilder.Size perhaps).
+// TODO D. Introduce term "cache size mark value". cacheSizeMarkInMb() or similar.
 
 
 /**

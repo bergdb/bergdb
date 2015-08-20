@@ -1,6 +1,5 @@
 package bergdb.core;
 
-import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
@@ -170,11 +169,15 @@ public class Cache2 {
         HashMap<Long, NodeReference> map = valueMaps[mapIndex];
         synchronized (map) {
             cleanupValueRefQ(mapIndex, 10);
+            
             NodeReference ref = new NodeReference(node, valueRefQueues[mapIndex], id, false);
             ref.memSize = memSize;
             
             NodeReference oldRef = map.put(id, ref);
             if (AssertStatus.enabled()) {
+                // TODO B. consider: what happens when old NodeReference becomes eligable for
+                // garbage collection? Might never be put on refQ? What if? Is that ok?
+                
                 if (oldRef != null && oldRef.get() != null) {
                     throw new AlreadyHasNode("id:" + id + ", value node already in cache");
                 }
@@ -222,6 +225,8 @@ public class Cache2 {
             ref = map.get(id);        
             result = ref == null ? null : (ValueNode) ref.get();
         }
+        
+        assert result == null || result.getId() == id;
         
         return result;
     }
@@ -326,8 +331,6 @@ public class Cache2 {
      * Caller should hold lock on valueMaps[mapIndex].
      */
     private void cleanupValueRefQ(int mapIndex, final int pollLimit) {
-        assert Thread.holdsLock(valueMaps[mapIndex]) : "caller must hold lock for valueMap " + mapIndex;
-        
         int pollCount = 0;
         Reference<? extends Node> ref;
         ReferenceQueue<Node> refQ = valueRefQueues[mapIndex];
@@ -416,22 +419,6 @@ public class Cache2 {
     }
     
     /**
-     * Reference to an unmanaged value node.
-     */
-    public static final class UnmanagedReference extends PhantomReference<ValueNode> {
-        final int memSize;
-        
-        public UnmanagedReference(ValueNode node, ReferenceQueue<ValueNode> q, int memSize) {
-            super(node, q);
-            this.memSize = memSize;
-        }
-        
-        public final int getMemSize() {
-            return memSize;
-        }
-    }
-    
-    /**
      * State of evict, last evict.
      */
     private final class Evictor {
@@ -449,12 +436,15 @@ public class Cache2 {
         final AtomicBoolean isEvicting;
         long accessTimeLimit;
         final Pointer pointer = new Pointer();    // input/output, temp storage
+        @SuppressWarnings("unused")
+        long evictCount;
         
         Evictor() {
             putSize0 = Cache2.this.putSize.get();
             nextMapIndex = 0;
             targetSize = 100L*1000000;
             isEvicting = new AtomicBoolean(false);
+            evictCount = 0;
         }
         
         void possiblyEvict() {
@@ -488,6 +478,8 @@ public class Cache2 {
         private void evict() {
             // NOTE 4.0 is "magic" here. What is optimal?
             
+            cleanupAllRefQueues();
+            
             int mapsToProcess = (int) (4.0 * putRatio * MAP_COUNT);
             mapsToProcess = mapsToProcess < 1 ? 1 : mapsToProcess;
             mapsToProcess = mapsToProcess > MAP_COUNT ? MAP_COUNT : mapsToProcess;
@@ -520,8 +512,8 @@ public class Cache2 {
             synchronized (map) {
                 for (NodeReference ref : map.values()) {
                     Node node = ref.get();
-                    if (node != null) {                    
-                        evictNodePointers1(node);
+                    if (node != null) {
+                        evictNodePointers2(node);
                     }
                 }
             }
@@ -547,18 +539,12 @@ public class Cache2 {
                         if (!pointee.isDirty()) {
                             long pointeePos = pointee.getSpos();
                             
-                            if (pointeePos != Spos.NULL) {
+                            if (pointeePos != Spos.NULL) { 
                                 long pointerAccessTime = AccessData.getAccessTime(pointer.getAccessData());
                                 
                                 if (pointerAccessTime < accessTimeLimit) {
                                     node.setPointer(i, null, pointeePos);
                                 }
-                                
-                                // TODO B. Consider this code.
-                                // Below code fixes Issue: CcDbNightTest.
-                                //if (pointerAccessTime < accessTimeLimit && (pointee.isValueNode() || !node.isDirty())) {
-                                //    node.setPointer(i, null, pointeePos);
-                                //}
                             }
                         }
                     }
@@ -570,44 +556,43 @@ public class Cache2 {
          * Evicts all evicable out-bound pointers of 'node'.
          */
         private void evictNodePointers2(Node node) {
+            //
             // It is possible to get pointeePos == Spos.NULL for value nodes.
             // A value node does not get an spos when created, but later when
             // written to stream.
+            //
+            // The condition [pointeePos%8 == 0] is needed, vpos approach. But why
+            // needed, can we have virtual pos when pos < startupPos.
+            //
+            // XXX place of work
+            //
             
-            // XXX
+            assert node.isIndexNode();
+            
+            long spos = node.getSpos();
+            assert Spos.isValid(spos);
             
             int count = node.getSize();
-            
             for (int i = 0; i < count; i++) {
-                Object pointerLock = pointerLocks.getLock(node, i);
-                synchronized (pointerLock) {
-                    node.getPointer(i, pointer);
-                    if (pointer.isMem()) {
-                        Node pointee = pointer.node;
+                synchronized (pointerLocks.getLock(node, i)) {
+                    Node pointee = node.getPointerNode(i); 
+                    
+                    if (pointee != null) {
+                        long pointeePos = pointee.getSpos();
                         
-                        if (!pointee.isDirty()) {
-                            long pointeePos = pointee.getSpos();
+                        if (pointeePos != Spos.NULL
+                                && pointeePos < startupPos
+                                && AccessData.getAccessTime(node.getPointerAccessData(i)) 
+                                        <= accessTimeLimit) {
                             
-                            if (pointeePos != Spos.NULL) {
-                                long pointerAccessTime = AccessData.getAccessTime(pointer.getAccessData());
-                                
-                                if (pointerAccessTime < accessTimeLimit) {
-                                    node.setPointer(i, null, pointeePos);
-                                }
-                                
-                                // TODO B. Consider this code.
-                                // Below code fixes Issue: CcDbNightTest.
-                                //if (pointerAccessTime < accessTimeLimit && (pointee.isValueNode() || !node.isDirty())) {
-                                //    node.setPointer(i, null, pointeePos);
-                                //}
-                            }
+                            node.setPointer(i, null, pointeePos);
+                            evictCount++;
                         }
                     }
                 }
             }
         }
     }
-    
     
     // ======== Tests ========
     
