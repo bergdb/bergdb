@@ -379,6 +379,10 @@ public class Cache2 {
         public static int valueMapCount() {
             return Cache2.MAP_COUNT;
         }
+        
+        public static Evictor evictor(Cache2 c) {
+            return c.evictor;
+        }
     }
     
     public static class NodeReference extends WeakReference<Node> {
@@ -419,7 +423,7 @@ public class Cache2 {
     /**
      * State of evict, last evict.
      */
-    private final class Evictor {
+    public final class Evictor {
         //
         // Most fields are protected by isEvicting; only used while isEvicting == true.
         //
@@ -433,8 +437,6 @@ public class Cache2 {
         int nextMapIndex;
         final AtomicBoolean isEvicting;
         long accessTimeLimit;
-        final Pointer pointer = new Pointer();    // input/output, temp storage
-        @SuppressWarnings("unused")
         long evictCount;
         
         Evictor() {
@@ -482,8 +484,6 @@ public class Cache2 {
             mapsToProcess = mapsToProcess < 1 ? 1 : mapsToProcess;
             mapsToProcess = mapsToProcess > MAP_COUNT ? MAP_COUNT : mapsToProcess;
             
-            //System.out.println("Cache2.evictor.evict(), mapsToProcess: " + mapsToProcess);
-            
             accessTimeLimit = putSize - targetSize;
             
             for (int i = 0; i < mapsToProcess; i++) {
@@ -493,6 +493,10 @@ public class Cache2 {
             cleanupAllRefQueues();
             
             putSize0 = putSize;
+        }
+        
+        public long getEvictCount() {
+            return evictCount;
         }
         
         /**
@@ -526,13 +530,16 @@ public class Cache2 {
             // A value node does not get an spos when created, but later when
             // written to stream.
             //
-            // TODO A. Analyse - it is not safe to call isDirty() from read threads like in this method.
+            // TODO A. Analyse, is evict condition OK? Do we need if !isDirty?
             //
             
             assert node.isIndexNode();
+            assert Spos.isValid(node.getSpos());
             
-            long spos = node.getSpos();
-            assert Spos.isValid(spos);
+            // TODO A.
+            //if (node.isDirty()) {
+            //    return;
+            //}
             
             int count = node.getSize();
             for (int i = 0; i < count; i++) {
@@ -547,10 +554,8 @@ public class Cache2 {
                                 && AccessData.getAccessTime(node.getPointerAccessData(i)) 
                                         <= accessTimeLimit) {
                             
-                            if (pointee.isDirty()) {
-                                node.setPointer(i, null, pointeePos);
-                                evictCount++;
-                            }
+                            node.setPointer(i, null, pointeePos);
+                            evictCount++;
                         }
                     }
                 }

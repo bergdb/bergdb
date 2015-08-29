@@ -7,6 +7,8 @@ import java.util.Random;
 
 import bergdb.common.Bytes;
 import bergdb.common.Util;
+import bergdb.core.Cache2;
+import bergdb.core.Db;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Connection;
@@ -14,6 +16,7 @@ import bergdb.pub.CryptoKey;
 import bergdb.pub.Database;
 import bergdb.pub.Factory;
 import bergdb.pub.WBuilder;
+import bergdb.pubimp.DatabaseImp;
 
 /**
  * Up to 1M cards in a database. Lookup speed, disk size.
@@ -35,6 +38,8 @@ public class CcDbNightTest {
     boolean encrypt = true;
     int[] permutation;
     PrintStream out;
+    Cache2.Evictor evictor;
+    
     
     private void go() {
         computePermutation();
@@ -43,7 +48,10 @@ public class CcDbNightTest {
         
         addCards();
         
-        count();
+        Db db = ((DatabaseImp) database).getDb();
+        evictor = Cache2.TestAccess.evictor(db.internal().cache());
+        
+        checkCount();
     }
 
     private void createDb() {
@@ -91,7 +99,7 @@ public class CcDbNightTest {
     }
 
     @SuppressWarnings("unused") 
-    private void count() {
+    private void checkCount() {
         // Scan of /cards/ to count all cards.
         
         out.println("Counting all cards...");
@@ -105,6 +113,7 @@ public class CcDbNightTest {
         
         out.format("Actual card count: %d. Counted in %.3f seconds (%.3f ms per card).\n", 
                 counter, time, time / counter * 1000.0);
+        out.format("evictCount: %d.\n", evictor.getEvictCount());
         
         if (counter != n) {
             throw new AssertionError("Missing cards, found " + counter + " cards out of " + n + ".");
@@ -202,6 +211,8 @@ public class CcDbNightTest {
         t.out = env.out();
         
         t.go();
+        
+        env.out().println("Evict count: " + t.evictor.getEvictCount());
     }
     
     public static class Stats {
