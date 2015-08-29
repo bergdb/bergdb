@@ -60,8 +60,8 @@ public interface DatabaseBuilder {
      * A small startup distance can decrease database startup time; while a larger
      * startup distance can improve the overall database performance.
      * For a low-end PC with 0.5 GB of RAM, a value of 5 is reasonable, while a 
-     * high-end server may use 50.
-     * The value should be seen as a proposal, if the database considers the value
+     * high-end server may use 50. The value should be seen as a proposal, 
+     * to the database. If the database considers the value
      * too small or to high, it may clamp it to an internally permitted range.
      * 
      * @param startupDistanceInMb    The startup distance in megabytes (mega = 1000000). 
@@ -70,13 +70,16 @@ public interface DatabaseBuilder {
     public DatabaseBuilder startupDistanceInMb(int startupDistanceInMb);
     
     /**
-     * Sets the target database cache size.
-     * A small value will leave more available memory for the rest of the JVM application;
-     * a larget value improves that database performance.
+     * Sets a cache size indicator in MB.
+     * A small value will leave more available memory for the rest of the JVM application,
+     * while a larger value likely improves database performance.
+     * The actual resulting cache size depends on application code, 
+     * the operating system and the JVM. 
+     * Typical actual cache memory use is in the range [0.5 * cacheSizeInMb, 2.0 * cacheSizeInMb].
      * 
-     * @param cacheTargetSizeInMb  The target cache size in megabytes (mega = 1000000).
+     * @param cacheSizeInMb  The cache size indicator in megabytes (mega = 1000000).
      */
-    public DatabaseBuilder targetCacheSizeInMb(int cacheTargetSizeInMb);
+    public DatabaseBuilder cacheSizeInMb(int cacheSizeInMb);
 
     /**
      * Starts the database. When this method returns, connections to the

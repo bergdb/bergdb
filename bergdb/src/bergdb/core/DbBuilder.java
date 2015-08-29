@@ -18,7 +18,7 @@ public class DbBuilder {
     Clock clock;
     int maxNodeSize;
     int startupDistance;
-    long targetCacheSize;
+    long cacheSizeIndicator;
     long retainDurationInTimeUnits;
     DatabaseId id;
     List<DbBuilder.StreamInfo> streamInfos = new ArrayList<DbBuilder.StreamInfo>();
@@ -45,13 +45,15 @@ public class DbBuilder {
      */
     private void defaultSettings() {
         //
+        // DatabaseBuilderImp (Pub API) is used, its defaults apply.
+        //
         // 150103 Frans: keeping maxNodeSize30() after renewed investigation. 
         //      See end comments of Db class.
         // 130707 Frans: default retain duration = forever. Was one week before.
         //
         
         startupDistance = 20 * 1000000;
-        targetCacheSize = 10 * startupDistance;
+        cacheSizeIndicator = 10 * startupDistance;
         clock = new SystemClock();
         
         maxNodeSize30();
@@ -158,18 +160,11 @@ public class DbBuilder {
         return this;
     }
     
-    /**
-     * Target cache memory size in bytes.
-     */
-    public DbBuilder targetCacheSize(long targetCacheSize) {
-        this.targetCacheSize = targetCacheSize;
+    public DbBuilder cacheSizeIndicator(long cacheSizeIndicator) {
+        this.cacheSizeIndicator = cacheSizeIndicator;
         return this;
     }
     
-    public int getStartupDistance() {
-        return this.startupDistance;
-    }
-
     /**
      * Use the system clock (System.currentTimeMillis()) as the database
      * time.
@@ -200,7 +195,7 @@ public class DbBuilder {
     }
 
     public DbBuilder noEvict() {
-        this.targetCacheSize = Long.MAX_VALUE;
+        this.cacheSizeIndicator = Long.MAX_VALUE;
         return this;
     }
     

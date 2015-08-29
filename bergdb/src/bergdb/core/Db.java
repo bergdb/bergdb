@@ -152,7 +152,7 @@ public class Db {
         };
         
         cache = new Cache2(pointerLocks, dbInfo);
-        cache.setTargetSize(b.targetCacheSize);
+        cache.setSizeIndicator(b.cacheSizeIndicator);
  
         this.maxNodeSize = b.maxNodeSize;
         this.startupDistance = b.startupDistance;

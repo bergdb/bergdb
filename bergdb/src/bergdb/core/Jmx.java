@@ -44,8 +44,8 @@ public class Jmx {
         public long getFirstLookupTime();
         public String getFirstLookupTimeH();
         public long getCachePutSize();
-        public long getCacheTargetSize();
-        public void setCacheTargetSize(long targetSize);
+        public long getCacheSizeIndicator();
+        public void setCacheSizeIndicator(long sizeIndicator);
         public long getCacheTotalSize();
         public double getCacheFillFactor();
         public long getKvCount();
@@ -188,12 +188,12 @@ public class Jmx {
             return db.getCachePutSize();
         }
         
-        public long getCacheTargetSize() {
-            return db.internal().cache().targetSize();
+        public long getCacheSizeIndicator() {
+            return db.internal().cache().getSizeIndicator();
         }
         
-        public void setCacheTargetSize(long targetSize) {
-            db.internal().cache().setTargetSize(targetSize);
+        public void setCacheSizeIndicator(long sizeIndicator) {
+            db.internal().cache().setSizeIndicator(sizeIndicator);
         }
         
         public long getCacheTotalSize() {
@@ -202,7 +202,7 @@ public class Jmx {
         
         public double getCacheFillFactor() {
             Cache2 c = db.internal().cache();
-            return c.totalSize() / (double) c.targetSize();
+            return c.totalSize() / (double) c.getSizeIndicator();
         }
         
         public long getKvCount() {

@@ -158,7 +158,7 @@ public class OneGig {
         c.report("transaction-count", n);
         c.report("kv-size", valueSize + 4);
         
-        Db db = Db.builder().mainStream(s).targetCacheSize(500*1000000L).start();
+        Db db = Db.builder().mainStream(s).cacheSizeIndicator(500*1000000L).start();
         
         long t = System.nanoTime();
         

@@ -12,7 +12,6 @@ import bergdb.common.Bytes;
 import bergdb.dag.AccessData;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Node;
-import bergdb.dag.Pointer;
 import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
@@ -39,6 +38,12 @@ public class Cache2 {
     // that does a db put or a db get. It may, or may not hold the db.writeLock.
     //
     
+    /**
+     * Factor that converts from cache size as indicated by user
+     * to internally used "cache size value".
+     */
+    public static final double SIZE_INDICATOR_TO_SIZE_VALUE = 0.40;
+    
     private static final int MAP_COUNT = 100;
     private static final long RANDOM_MASK = Bytes.bytesToLongBE(
             new byte[]{0x51, (byte)0xc3, (byte)0x9c, (byte)0xcb, 0x50, 0x03, (byte)0xf7, 0x5b}, 0);
@@ -52,11 +57,15 @@ public class Cache2 {
     private final ReferenceQueue<Node>[] valueRefQueues;
     private final Evictor evictor;
     
-    private final AtomicLong targetSize;    // target total cache size, set by user
-    private final AtomicLong totalSize;     // current total cache size (estimate of memory byte size)
-    private final AtomicLong putSize;       // total size of all node put to cache, always increasing
+    private final AtomicLong sizeValue;    
+        // Cache "size value"; smaller than actual cache size, but roughly proportional to it.
+    private final AtomicLong totalSize;    
+        // Estimate of current total cache size (estimate of memory byte size).
+    private final AtomicLong putSize;      
+        // Total size of all nodes put to cache, always increasing. Uses as a time unit.
     private final PointerLocks pointerLocks;
     private final DbInfo dbInfo;
+    
     
     @SuppressWarnings("unchecked")
     public Cache2(PointerLocks pointerLocks, DbInfo dbInfo) {
@@ -88,13 +97,22 @@ public class Cache2 {
         
         totalSize = new AtomicLong(INITIAL_CACHE_SIZE);
         putSize = new AtomicLong(INITIAL_CACHE_SIZE);
-        targetSize = new AtomicLong(10L * 1000000L);       
+        sizeValue = new AtomicLong(20L * 1000000L);       
         evictor = new Evictor();
     }
     
-    public void setTargetSize(long targetSize) {
-        assert targetSize > 0;
-        this.targetSize.set(targetSize);
+    public void setSizeIndicator(long sizeIndicator) {
+        assert sizeIndicator > 0;
+        
+        if (sizeIndicator < 4*1000000) {
+            sizeIndicator = 4*1000000;
+        }
+        
+        this.sizeValue.set((long) (sizeIndicator * SIZE_INDICATOR_TO_SIZE_VALUE));
+    }
+    
+    public long getSizeIndicator() {
+        return (long) (sizeValue.get() / SIZE_INDICATOR_TO_SIZE_VALUE);
     }
     
     public void putIndexNode(Node node) {
@@ -235,10 +253,6 @@ public class Cache2 {
     
     public Object getValueLockObject(long id) {
         return valueMap(id);
-    }
-    
-    public long targetSize() {
-        return targetSize.get();
     }
     
     public long totalSize() {
@@ -433,7 +447,7 @@ public class Cache2 {
         long putSize;
         long deltaPutSize;
         double putRatio;
-        long targetSize;
+        long sizeValue;
         int nextMapIndex;
         final AtomicBoolean isEvicting;
         long accessTimeLimit;
@@ -442,7 +456,6 @@ public class Cache2 {
         Evictor() {
             putSize0 = Cache2.this.putSize.get();
             nextMapIndex = 0;
-            targetSize = 100L*1000000;
             isEvicting = new AtomicBoolean(false);
             evictCount = 0;
         }
@@ -461,9 +474,9 @@ public class Cache2 {
             try {
                 startupPos = dbInfo.getStartupPosForEvict();
                 putSize = Cache2.this.putSize.get();
-                targetSize = Cache2.this.targetSize.get();
+                sizeValue = Cache2.this.sizeValue.get();
                 deltaPutSize = putSize - putSize0;
-                putRatio = (double) deltaPutSize / targetSize;
+                putRatio = (double) deltaPutSize / sizeValue;
                 
                 if (putRatio > 0.01) {
                     evict();
@@ -484,7 +497,7 @@ public class Cache2 {
             mapsToProcess = mapsToProcess < 1 ? 1 : mapsToProcess;
             mapsToProcess = mapsToProcess > MAP_COUNT ? MAP_COUNT : mapsToProcess;
             
-            accessTimeLimit = putSize - targetSize;
+            accessTimeLimit = putSize - sizeValue;
             
             for (int i = 0; i < mapsToProcess; i++) {
                 evictPointersInOneMap();
@@ -530,16 +543,14 @@ public class Cache2 {
             // A value node does not get an spos when created, but later when
             // written to stream.
             //
-            // TODO A. Analyse, is evict condition OK? Do we need if !isDirty?
-            //
             
+            long nodePos = node.getSpos();
             assert node.isIndexNode();
-            assert Spos.isValid(node.getSpos());
+            assert Spos.isValid(nodePos);
             
-            // TODO A.
-            //if (node.isDirty()) {
-            //    return;
-            //}
+            if (nodePos > startupPos) {
+                return;
+            }
             
             int count = node.getSize();
             for (int i = 0; i < count; i++) {
@@ -696,6 +707,48 @@ public class Cache2 {
 }
 
 /*
+
+150829 
+======
+
+Evict code from Release 2014.4:
+
+    private void evictPointers(Node node, EvictData ed) {
+        //
+        // Iterates the pointers and evicts a pointee that fullfills all conditions:
+        // * pointee != null (is a memory pointer)
+        // * Spos of pointee is not Spos.NULL
+        // * Spos of pointee is smaller than current startup pos of database.
+        // * Access time of pointer is LTE ed.accessTimeLimit (pointer not recently accessed).
+        //
+        
+        long spos = node.getSpos();
+        if (!Spos.isValid(spos) || spos >= ed.startupPos) {
+            return;
+        }
+        
+        int count = node.getSize();
+        for (int i = 0; i < count; i++) {
+            synchronized (dag.getPointerLock(node, i)) {
+                Node pointee = node.getPointerNode(i); 
+                
+                if (pointee != null) {
+                    long pointeePos = pointee.getSpos();
+                    if (pointeePos != Spos.NULL
+                            && pointeePos % 8 == 0  // NOTE this condition added with "vpos" approach ("vpos" branch)
+                            && pointeePos < ed.startupPos
+                            && AccessData.getAccessTime(node.getPointerAccessData(i)) 
+                                    <= ed.accessTimeLimit) {
+                        
+                        node.setPointer(i, null, pointeePos);
+                        ed.evictCount += 1;
+                    }
+                }
+            }
+        }
+    }
+    
+
 
 150807 Memory Use
 =================

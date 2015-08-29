@@ -42,6 +42,8 @@ public class Interactive {
     static final int MAX = 1 * 1000000;
     private Connection c;
     int n = 100*1000;   // wanted number of cards
+    private int cacheSize = 100;         // in MB
+    private int startupDistance = 5;     // in MB
     
     private void go(String[] args) throws Exception {
         CommandLine line = new CommandLine(args);
@@ -60,6 +62,7 @@ public class Interactive {
         System.out.println("Options:");
         System.out.println("  -dir <db-dir>");
         System.out.println("  -encrypt <true-or-false>  // default is false");
+        System.out.println("  -cacheSize <cache size indicator in MB> // default is 100 MB.");
     }
 
     private void handleOptions(CommandLine line) {
@@ -73,6 +76,40 @@ public class Interactive {
         if (line.hasOne("encrypt") && line.getOne("encrypt").equals("true")) {
             cryptoKey = CryptoKey.parse("3925eedf-salsa-9624ae53f2484c7fa8db33141910222b94aa2224ef225bd092d4701d30aa35dbde13575d66982ff9");
         }
+        
+        if (line.hasOne("cacheSize")) {
+            cacheSize = Integer.parseInt(line.getOne("cacheSize"));
+        }
+        
+        if (line.hasOne("startupDistance")) {
+            startupDistance = Integer.parseInt(line.getOne("startupDistance"));
+        }
+    }
+
+    private void start() throws Exception {
+        DatabaseBuilderImp imp = (DatabaseBuilderImp)
+                Factory.database().dir(dirname).cryptoKey(cryptoKey)
+                .startupDistanceInMb(startupDistance).cacheSizeInMb(cacheSize);
+        
+        database = imp.start();
+        
+        db = ((DatabaseImp) database).getDb();
+        
+        System.out.format("Database started in %.1f s, dir: %s.\n",
+                database.getStartupInfo().getStartupDuration(), dirname);
+        
+        System.out.println("cacheSize: " + cacheSize);
+        System.out.println("size indicator: " + db.internal().cache().getSizeIndicator());
+        
+        c = database.connection();
+        
+        if (!c.exists("/stats")) {
+            Stats s = new Stats();
+            s.cards = 0;
+            c.put("/stats", s);
+        }
+        
+        new Jmx.DbMonitor(db).register();
     }
 
     private void runInteractively() throws IOException {
@@ -329,29 +366,6 @@ public class Interactive {
         this.addCardsIfNeeded();
     }
 
-    private void start() throws Exception {
-        DatabaseBuilderImp imp = (DatabaseBuilderImp)
-                Factory.database().dir(dirname).cryptoKey(cryptoKey)
-                .startupDistanceInMb(5).targetCacheSizeInMb(50);
-        
-        database = imp.start();
-        
-        db = ((DatabaseImp) database).getDb();
-        
-        System.out.format("Database started in %.1f s, dir: %s.\n",
-                database.getStartupInfo().getStartupDuration(), dirname);
-        
-        c = database.connection();
-        
-        if (!c.exists("/stats")) {
-            Stats s = new Stats();
-            s.cards = 0;
-            c.put("/stats", s);
-        }
-        
-        new Jmx.DbMonitor(db).register();
-    }
-
     private void computePermutationIfNeeded() {
         if (permutation != null) {
             return;
@@ -405,7 +419,7 @@ public class Interactive {
             b.put("/stats", new Stats(existingCardCount + addedCounter));
             b.execute();
             
-            if (addedCounter % 10000 == 0 && addedCounter > 0) {
+            if (addedCounter % 20000 == 0 && addedCounter > 0) {
                 System.out.println("Added " + addedCounter + " cards.");
             }
         }

@@ -46,10 +46,12 @@ public class CcDbNightTest {
         
         createDb();
         
-        addCards();
-        
         Db db = ((DatabaseImp) database).getDb();
         evictor = Cache2.TestAccess.evictor(db.internal().cache());
+        
+        addCards();
+        
+        out.format("evictCount: %d.\n", evictor.getEvictCount());
         
         checkCount();
     }
@@ -69,7 +71,7 @@ public class CcDbNightTest {
                 .dir(dir)
                 .cryptoKey(key)
                 .startupDistanceInMb(5)
-                .targetCacheSizeInMb(50)
+                .cacheSizeInMb(100)
                 .start();
         
         double time = database.getStartupInfo().getStartupDuration();
@@ -154,7 +156,7 @@ public class CcDbNightTest {
             b.put("/stats", new Stats(existingCardCount + addedCounter));
             b.execute();
             
-            if (addedCounter % 10000 == 0) {
+            if (addedCounter % 20000 == 0) {
                 out.println("Added " + addedCounter + " cards.");
             }
             
@@ -209,10 +211,7 @@ public class CcDbNightTest {
         t.n = 400000;
         t.encrypt = false;
         t.out = env.out();
-        
         t.go();
-        
-        env.out().println("Evict count: " + t.evictor.getEvictCount());
     }
     
     public static class Stats {

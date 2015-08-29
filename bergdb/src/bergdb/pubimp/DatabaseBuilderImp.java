@@ -20,9 +20,6 @@ import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.SalsaStream;
 
-// TODO D. Introduce term "cache size mark value". cacheSizeMarkInMb() or similar.
-
-
 /**
  * This class is used to build a Database instance.
  * Use like this: <code>Database d = Builder.database().settingX().start();</code>
@@ -33,18 +30,27 @@ import bergdb.stream.SalsaStream;
 public class DatabaseBuilderImp implements DatabaseBuilder {
     private final DbBuilder dbBuilder;
     private CryptoKey cryptoKey = null;
+    private int cacheSizeInMb;         // cache size indicator from user
+    private int startupDistanceInMb;
+    
     
     public DatabaseBuilderImp() {
-        // By default, half of max memory used by database cache.
+        // Sets some default values.
         
         dbBuilder = Db.builder();
         
         long max = Runtime.getRuntime().maxMemory();
         if (max == Long.MAX_VALUE) {
-            dbBuilder.targetCacheSize(100*1000000);
+            cacheSizeInMb = 100;
         } else {
-            dbBuilder.targetCacheSize(max / 4);
+            int maxMb = (int) (max / 1000000);
+            cacheSizeInMb = maxMb / 5;
+            if (cacheSizeInMb < 2) {
+                cacheSizeInMb = 2;
+            }
         }
+        
+        startupDistanceInMb = 20;
     }
     
     /**
@@ -143,22 +149,33 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
             startupDistanceInMb = 1000;
         }
         
-        dbBuilder.startupDistance(startupDistanceInMb * 1000000);
+        this.startupDistanceInMb = startupDistanceInMb;
         return this;
     }
     
-    public DatabaseBuilder targetCacheSizeInMb(int targetCacheSizeInMb) {
+    public DatabaseBuilder cacheSizeInMb(int cacheSizeInMb) {
         // Note: we might want to clamp depending on startupDistance? 2 x startupDistance perhaps.
         
-        if (targetCacheSizeInMb < 10) {
-            targetCacheSizeInMb = 10;
+        if (cacheSizeInMb < 4) {
+            cacheSizeInMb = 4;
         }
         
-        dbBuilder.targetCacheSize(targetCacheSizeInMb * 1000000L);
+        if (cacheSizeInMb > 100*1000) {
+            // Limit to max 100 GB memory for cache
+            cacheSizeInMb = 100*1000;
+        }
+        
+        this.cacheSizeInMb = cacheSizeInMb;
         return this;
     }
     
     public Database start() {
+        long cacheSizeIndicator = this.cacheSizeInMb * 1000000;
+        int startupDistance = this.startupDistanceInMb * 1000000;
+        
+        dbBuilder.startupDistance(startupDistance);
+        dbBuilder.cacheSizeIndicator(cacheSizeIndicator);
+        
         handleCryptoKeyAndCreatedTxt();
         
         Db db = dbBuilder.build();
@@ -216,13 +233,24 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     
     @Nano private static void testStartupDistance1() {
         DatabaseBuilderImp b = new DatabaseBuilderImp();
-        b.startupDistanceInMb(7);
-        Assert.assertEquals(7*1000000, b.getDbBuilder().getStartupDistance());
+        b.startupDistanceInMb(7).memory();
+        Database database = b.start();
+        long startupDistance = ((DatabaseImp) database).getDb().getStartupDistance();
+        database.stop();
+        
+        Assert.assertEquals(7*1000000, startupDistance);
     }
     
     @Nano private static void testStartupDistance2() {
+        //
+        // Tests clamping to minimum startup distance.
+        //
         DatabaseBuilderImp b = new DatabaseBuilderImp();
-        b.startupDistanceInMb(2);
-        Assert.assertEquals(5*1000000, b.getDbBuilder().getStartupDistance());
+        b.startupDistanceInMb(1).memory();
+        Database database = b.start();
+        long startupDistance = ((DatabaseImp) database).getDb().getStartupDistance();
+        database.stop();
+        
+        Assert.assertEquals(5*1000000, startupDistance);
     }
 }
