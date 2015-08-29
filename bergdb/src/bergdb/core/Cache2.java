@@ -511,7 +511,7 @@ public class Cache2 {
                 for (NodeReference ref : map.values()) {
                     Node node = ref.get();
                     if (node != null) {
-                        evictNodePointers2(node);
+                        evictNodePointers(node);
                     }
                 }
             }
@@ -520,49 +520,13 @@ public class Cache2 {
         /**
          * Evicts all evicable out-bound pointers of 'node'.
          */
-        private void evictNodePointers1(Node node) {
-            // It is possible to get pointeePos == Spos.NULL for value nodes.
-            // A value node does not get an spos when created, but later when
-            // written to stream.
-            
-            int count = node.getSize();
-            
-            for (int i = 0; i < count; i++) {
-                Object pointerLock = pointerLocks.getLock(node, i);
-                synchronized (pointerLock) {
-                    node.getPointer(i, pointer);
-                    if (pointer.isMem()) {
-                        Node pointee = pointer.node;
-                        
-                        if (!pointee.isDirty()) {
-                            long pointeePos = pointee.getSpos();
-                            
-                            if (pointeePos != Spos.NULL) { 
-                                long pointerAccessTime = AccessData.getAccessTime(pointer.getAccessData());
-                                
-                                if (pointerAccessTime < accessTimeLimit) {
-                                    node.setPointer(i, null, pointeePos);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        /**
-         * Evicts all evicable out-bound pointers of 'node'.
-         */
-        private void evictNodePointers2(Node node) {
+        private void evictNodePointers(Node node) {
             //
             // It is possible to get pointeePos == Spos.NULL for value nodes.
             // A value node does not get an spos when created, but later when
             // written to stream.
             //
-            // The condition [pointeePos%8 == 0] is needed, vpos approach. But why
-            // needed, can we have virtual pos when pos < startupPos.
-            //
-            // TODO B. place of work
+            // TODO A. Analyse - it is not safe to call isDirty() from read threads like in this method.
             //
             
             assert node.isIndexNode();
@@ -583,8 +547,10 @@ public class Cache2 {
                                 && AccessData.getAccessTime(node.getPointerAccessData(i)) 
                                         <= accessTimeLimit) {
                             
-                            node.setPointer(i, null, pointeePos);
-                            evictCount++;
+                            if (pointee.isDirty()) {
+                                node.setPointer(i, null, pointeePos);
+                                evictCount++;
+                            }
                         }
                     }
                 }

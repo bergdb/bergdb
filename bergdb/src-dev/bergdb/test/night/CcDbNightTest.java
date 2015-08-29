@@ -134,7 +134,7 @@ public class CcDbNightTest {
             
             for (int i = 0; i < 100; i++) {
                 String key = cardIndexToKey(existingCardCount + addedCounter);
-                b.put(key, new byte[100]);  // TODO B. 99 or 100, work here
+                b.put(key, new byte[100]);
                 
                 addedCounter++;
                 if (addedCounter >= toAdd) {
@@ -217,7 +217,13 @@ public class CcDbNightTest {
 
 /*
 
-TODO A. work on this issue.
+150829
+======
+
+Added node evict condition [if (pointee.isDirty()) ]. Now this test works!
+However, isDirty() is not thread-safe. The isDirty state of a node changes while putKv()
+is executing.
+
 
 150829
 ======
