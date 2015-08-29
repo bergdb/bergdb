@@ -42,7 +42,8 @@ public final class TopNode implements Node {
     private static final int MAX_HEIGHT = 30;
     
     /**
-     * This constructor should only be called from TopDs and from this class itself.
+     * This constructor should only be called from TopDs, from this class itself,
+     * and when parsing a top node.
      */
     public TopNode(int topNodeId, KeyNode rootPointer, long rootPointerPos, long rootTime, long spos) {
         this.rootPointer = rootPointer;

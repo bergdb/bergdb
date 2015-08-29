@@ -60,13 +60,15 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      * Factory method to create minimal Dag with two nodes: a top node and a key node.
      * The database is empty; no KVs.
      */
-    public static Dag createEmpty(long time, int maxNodeSize, PointerFollower pointerFollower) {
-        return new Dag(time, maxNodeSize, pointerFollower);
+    public static Dag createEmpty(long time, int maxNodeSize, PointerFollower pointerFollower, 
+            Dag.PointerCreatedListener pointerCreationListener) {
+        return new Dag(time, maxNodeSize, pointerFollower, pointerCreationListener);
     }
     
-    private Dag(long time, int maxNodeSize, PointerFollower pointerFollower) {
+    private Dag(long time, int maxNodeSize, PointerFollower pointerFollower, Dag.PointerCreatedListener pointerCreationListener) {
         this.pointerFollower = pointerFollower;
-        this.topDs = TopDs.createFromFirstRoot(time, new KeyNode(), AccessData.DEFAULT_ACCESS_DATA);
+        this.topDs = TopDs.createFromFirstRoot(time, new KeyNode(), AccessData.DEFAULT_ACCESS_DATA,
+                pointerCreationListener);
         this.maxNodeSize = maxNodeSize;
     }
     
@@ -518,7 +520,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      * 
      * <p>This method runs with exclusive write access to the data structure 
      * (synchronized on Db.writeLock). However, there may be concurrent readers 
-     * that read with a lookup time strictly less than the transaction time.</p>
+     * that read with a lookup time strictly less than the transaction time
+     * of the current transaction.</p>
      * 
      * @param key     The key (as segments).
      * @param value   The value; null for delete operation.
@@ -530,10 +533,16 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         // out:  changes to dag, 
         //       changed/new nodes reported to pd.nodeChangeListener.
         //       accessed nodes ensured "dirty"
+        //
+        // All modifications (appends) to the DAG is done through this method.
+        // The call graph has recursion; appendKlongs() is called by successors of appendKlong()
+        // on call graph.
+        //
         
         assert pd.tt >= 0;
         assert pd.nodeChangeListener != null;
         assert pd.pointerListener != null;
+        assert pd.pointerCreatedListener != null;
         assert key != null && key.length > 0 : "key not non-null and with length > 0";
         
         Pointer tempPointer = new Pointer();
@@ -578,26 +587,25 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         }
 
         if (value == null) {
-            // A delete operation. Inserts a delete klong if needed.
+            // A delete operation. A ValueNode (of delete type) is created
+            // only for the pd.nodeChangeListener.
             
             boolean isNoop = appendDeleteKlong(node, pd.keyAccessPath.size - 1, compareValue, pd);
             if (!isNoop) {
-                ValueNode valueNode = ValueNode.createDelete();
-                pd.nodeChangeListener.valueNodeCreated(valueNode, key);
+                pd.nodeChangeListener.valueNodeCreated(ValueNode.createDelete(), key);
             }
             
         } else {
             ValueNode valueNode = new ValueNode(value);
             pd.nodeChangeListener.valueNodeCreated(valueNode, key);
             
-            // We need to be able to fit two more klongs. A TIME klong might be needed.
-            // This is sub-optimal. Sometimes a node can be added without adding a TIME klong.
-            // Little to gain from optimizing this, however.
-            // "+1" needed, there may be a need to insert a TIME klong too.
+            // "+1" is needed. We need to be able to fit two more klongs. 
+            // A TIME klong may be needed.
             
             if (node.size + 1 < this.maxNodeSize) {
                 node.addKlong(pd.tt, Klong.compareValueToKeyKlong(compareValue),
                         valueNode, pd.accessData);
+                pd.pointerCreatedListener.pointerCreated(node, node.size - 1, valueNode);
                 pd.nodeChangeListener.keyNodeChanged(node);
             } else {
                 pd.oneKwi[0].klong = Klong.compareValueToKeyKlong(compareValue);
@@ -644,6 +652,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             if (current.size + 1 < this.maxNodeSize) {
                 current.addKlong(pd.tt, Klong.compareValueToKeyKlong(compareValue),
                         child, pd.accessData);
+                pd.pointerCreatedListener.pointerCreated(current, current.size-1, child);
                 pd.nodeChangeListener.keyNodeChanged(current);
             } else {
                 pd.oneKwi[0].klong = Klong.compareValueToKeyKlong(compareValue);
@@ -665,7 +674,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     
 
     /**
-     * Appends a delete klong to 'node' if needed to delete the klong with the
+     * Appends a delete klong to 'node' if needed to delete the node with the
      * given compare value.
      * 
      * @return True if the operation is a noop (no operation).
@@ -678,7 +687,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         // If no such key klong exists, or if it is already deleted, no action
         // is taken (it is a NOOP).
         // If 'node' ends with a delete klong of the current transaction (same transaction time), 
-        // the delete klong is updated to set a delete bit for the specified compareValue.
+        // said delete klong is updated to set a delete bit for the specified compareValue.
         //
         // -- Implementation notes --
         // Loop through. Is it a noop? If not, can it be added to existing
@@ -737,8 +746,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                 // Direct modification, but still OK. A reader will always have a lookup
                 // time < trans.transTime. So, a reader is guaranteed not to see
                 // the delete at trans.transTime before the transaction completes.
-                // No need to add 'node' to transaction nodes. It is there
-                // already since it has a delete klong for transationTime.
                 
             } else {                
                 if (node.size + 1 < this.maxNodeSize) {
@@ -747,8 +754,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                     
                 } else {                    
                     KeyNode last = node.lastVersionGivenDel(sz, tTime, union);
-                    pd.nodeChangeListener.keyNodeCreated(last);
-                    
                     handleFullNode(node, depth, ZERO_LONG_KWP, tTime, last, pd);
                 }
             }
@@ -777,8 +782,11 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         // This should be the only way the db adds klongs to KeyNodes. It is the
         // central point of code for node splitting.
         //
-        // Implementation note: we allow memory allocation for a split, avoid it otherwise.
+        // Recursion is used, this method is called from methods called directly or 
+        // indirectly from this method (method call graph has directed cycles).
         //
+        // Implementation note: we allow memory allocation for a split, avoid it otherwise.
+        // 
 
         assert toAppend.length < 3 : "toAppend.length = " + toAppend.length;
         assert toAppend.length > 0 : "toAppend.length = " + toAppend.length;
@@ -791,6 +799,9 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             for (int i = 0; i < toAppend.length; i++) {
                 KlongWithPointer kwi = toAppend[i];
                 node.addKlong(pd.tt, kwi.klong, kwi.node, pd.accessData);
+                if (kwi.node != null) {
+                    pd.pointerCreatedListener.pointerCreated(node, node.size - 1, kwi.node);
+                }
             }
             pd.nodeChangeListener.keyNodeChanged(node);
             assert node.assertOk(maxNodeSize);
@@ -798,9 +809,15 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         } else {
             // 'node' is full. We cannot append 'toInsert' to it.
             // It is either space-full or time-full.
+            //
+            // 'last' is created, but note this is not always a node
+            // that will be used in the DAG. If 'node' is space-full, 
+            // 'first' and 'second' nodes will be used instead.
+            // Therefore, pd.nodeChangeListener.keyNodeCreated()
+            // is not called here for 'last'.
+            //
             
             KeyNode last = node.lastVersion(pd.tt);
-            pd.nodeChangeListener.keyNodeCreated(last);
             
             assert last.assertOk(maxNodeSize);
             handleFullNode(node, depth, toAppend, pd.tt, last, pd);
@@ -808,15 +825,18 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     }
     
     /**
-     * This is a central and important method. 
-     * All calls to splitNode() and replaceNodeWithLastVersion() go through this method.
-     * appendKlongs()/appendDelete() methods call this method.
+     * This is an important method.
      * If last.size > maxNodeSize / 2, then 'node' is split into two nodes -
      * a space-split is made. Otherwise, 'node' is replaced by the last version 
-     * of it, a time-split.
+     * of it - a time-split.
      */
     private void handleFullNode(final KeyNode node, final int depth,
             final KlongWithPointer[] toInsert, final long tTime, KeyNode last, PutData pd) {
+        //
+        // When this method is called, 'last' has not been added reported as a new node
+        // (pd.nodeChangeListener.keyNodeChanged(last) not called).
+        //
+        
         if (last.size > this.maxNodeSize / 2) {
             spaceSplit(node, last, depth, toInsert, pd);
         } else {
@@ -830,9 +850,10 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      */
     private void timeSplit(final long tTime, KeyNode last, final int depth,
             KlongWithPointer[] toAppend, PutData pd) {
+        //
         // 131005, added the last.replaceKlong() method call. A bit of a hack.
-        //   See Graph.testTimeSplit1a.
-        //   TODO LATER. Consider other solution. Maybe last should include toInsert.
+        //   See Graph.testTimeSplit1a().
+        //   TODO LATER. Consider other solution. Maybe last should include toAppend.
         //
         // Last version is small enough not to split into two nodes, but not empty.
         //
@@ -844,20 +865,23 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             boolean replaced = last.replaceKlong(tTime, kwi.klong, kwi.node, pd.accessData);
             if (!replaced) last.addKlong(tTime, kwi.klong, kwi.node, pd.accessData);
         }
-        pd.nodeChangeListener.keyNodeChanged(last);
-
+        
+        reportNewPointers(last, pd.pointerCreatedListener);
+        pd.nodeChangeListener.keyNodeCreated(last);
+        
         if (parent == null) {
             // time-split-2:
-            // 'node' is the current space root. Replace it with 'last'.
+            // No parent, 'last' is the new super root.
             
-            topDs.newSuperRoot(tTime, last, pd.accessData);
+            topDs.newSuperRoot(tTime, last, pd.accessData, pd.pointerCreatedListener);
+            
             pd.nodeChangeListener.topNodeCreated(topDs.getSuperRoot());
             pd.splitListener.nodeSplit(Dag.TIME_SPLIT_2);
             assert last.checkWithMessage() == null;
             
         } else {
             // time-split-1:
-            // 'node' is an ordinary node (not space root).
+            // There is a parent.
             
             long klong1 = pd.keyAccessPath.getKlong(depth);
             assert klong1 != Klong.NULL : "time-split-1, missing klong in keyAccessPath, " + depth;
@@ -865,6 +889,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             pd.oneKwi[0].klong = klong1;
             pd.oneKwi[0].node = last;
             pd.oneKwi[0].pos = pd.accessData;
+            
             appendKlongs(parent, depth - 1, pd.oneKwi, pd);
             
             pd.splitListener.nodeSplit(Dag.TIME_SPLIT_1);
@@ -887,6 +912,13 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      */
     private void spaceSplit(final KeyNode node, KeyNode last, final int depth,
             final KlongWithPointer[] toInsert, PutData pd) {
+        //
+        // Note 1508 Frans: should we have code:
+        // [pd.nodeChangeListener.keyNodeChanged(first);
+        //  pd.nodeChangeListener.keyNodeChanged(second);]
+        // Is it needed when keyNodeCreated() also called?
+        //
+        
         final long tt = pd.tt;
         final boolean isSegmentLeaf = node.isSegmentLeaf();
         final KeyNode first = new KeyNode(isSegmentLeaf);
@@ -906,10 +938,18 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             pd.nodeChangeListener.keyNodeCreated(newRoot);
             
             long secondKlong = node.firstAndSecond(tt, last, toInsert, first, second);
+            reportNewPointers(first, pd.pointerCreatedListener);
+            reportNewPointers(second, pd.pointerCreatedListener);
+            
             newRoot.addKlong(tt, Klong.EMPTY_KEY, first, pd.accessData);
+            pd.pointerCreatedListener.pointerCreated(newRoot, newRoot.size - 1, first);
             newRoot.addKlong(tt, secondKlong, second, pd.accessData);
+            pd.pointerCreatedListener.pointerCreated(newRoot, newRoot.size - 1, second);
+            
+            pd.nodeChangeListener.keyNodeChanged(first);
+            pd.nodeChangeListener.keyNodeChanged(second);
 
-            topDs.newSuperRoot(tt, newRoot, pd.accessData);
+            topDs.newSuperRoot(tt, newRoot, pd.accessData, pd.pointerCreatedListener);
             pd.nodeChangeListener.topNodeCreated(topDs.getSuperRoot());
                      
             pd.splitListener.nodeSplit(Dag.SPACE_SPLIT_3);
@@ -924,9 +964,16 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             KeyNode newSegmentRoot = new KeyNode(false);
             pd.nodeChangeListener.keyNodeCreated(newSegmentRoot);
             long secondKlong = node.firstAndSecond(tt, last, toInsert, first, second);
-
+            reportNewPointers(first, pd.pointerCreatedListener);
+            reportNewPointers(second, pd.pointerCreatedListener);
+            
             newSegmentRoot.addKlong(tt, Klong.EMPTY_KEY, first, pd.accessData);
+            pd.pointerCreatedListener.pointerCreated(newSegmentRoot, newSegmentRoot.size - 1, first);
             newSegmentRoot.addKlong(tt, secondKlong, second, pd.accessData);
+            pd.pointerCreatedListener.pointerCreated(newSegmentRoot, newSegmentRoot.size - 1, second);
+            
+            pd.nodeChangeListener.keyNodeChanged(first);
+            pd.nodeChangeListener.keyNodeChanged(second);
 
             long klong1 = pd.keyAccessPath.getKlong(depth);
             assert klong1 != Klong.NULL : "Missing klong in keyAccessPath, " + depth;
@@ -948,6 +995,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             //
             
             long secondKlong = node.firstAndSecond(tt, last, toInsert, first, second);
+            reportNewPointers(first, pd.pointerCreatedListener);
+            reportNewPointers(second, pd.pointerCreatedListener);
             pd.nodeChangeListener.keyNodeChanged(first);
             pd.nodeChangeListener.keyNodeChanged(second);
             
@@ -967,6 +1016,16 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         }
     }
 
+    private void reportNewPointers(KeyNode node, PointerCreatedListener listener) {
+        int size = node.size;
+        for (int i = 0; i < size; i++) {
+            Node pointee = node.pointers[i];
+            if (pointee != null) {
+                listener.pointerCreated(node, i, pointee);
+            }
+        }
+    }
+    
     
     // ======== Inner types ========
     
@@ -1012,6 +1071,21 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
 
         public void superRootAccessed(TopNode mySuperRoot) {}
     };
+    
+    
+    public static interface PointerCreatedListener {
+        /**
+         * Reports that a node from 'from' to 'to' was created.
+         * 
+         * @param index  Pointer index of pointer created.
+         */
+        public void pointerCreated(Node from, int index, Node to);
+    }
+    
+    public static final PointerCreatedListener DO_NOTHING_POINTER_CREATED_LISTENER = 
+        new PointerCreatedListener() {
+            public void pointerCreated(Node from, int index, Node to) {}
+        };
     
     
     /**
@@ -1118,6 +1192,4 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     public static final SplitListener DO_NOTHING_SPLIT_LISTENER = new SplitListener() {
         public void nodeSplit(int splitType) {}
     };
-
-
 }

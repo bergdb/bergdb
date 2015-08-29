@@ -1,9 +1,5 @@
 package bergdb.dag;
 
-import bergdb.dag.Dag.CachePolicy;
-import bergdb.dag.Dag.NodeChangeListener;
-import bergdb.dag.Dag.PointerListener;
-
 /**
  * Common for one put operation, or a set of put operations (a transaction).
  * Is reused between transactions for performance reasons.
@@ -24,6 +20,7 @@ public class PutData {
     /** Counter of time splits. */
     public long timeSplitCount;
     
+    
     // ---- Temp data ---
     
     /** Temporary working data. */
@@ -38,17 +35,22 @@ public class PutData {
     /** Temporary working data, length == 2. */
     public final KlongWithPointer[] twoKwis;
     
-    public NodeChangeListener nodeChangeListener;
     
-    // ---- Listeners, cache policy and more ----
+    // ---- Listeners, cache policy ----
     
-    public PointerListener pointerListener;
+    public Dag.NodeChangeListener nodeChangeListener;
     
-    public CachePolicy cachePolicy;
+    public Dag.PointerListener pointerListener;
+    
+    public Dag.PointerCreatedListener pointerCreatedListener;
+    
+    public Dag.CachePolicy cachePolicy;
     
     public KeyAccessPath keyAccessPath;
     
     public Dag.SplitListener splitListener;
+    
+    
     
     /**
      * Creates a new PutData object directly.
@@ -70,6 +72,7 @@ public class PutData {
         
         nodeChangeListener = Dag.DO_NOTHING_NODE_CHANGE_LISTENER;
         pointerListener = Dag.DO_NOTHING_POINTER_LISTENER;
+        pointerCreatedListener = Dag.DO_NOTHING_POINTER_CREATED_LISTENER;
         cachePolicy = Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES;
         splitListener = Dag.DO_NOTHING_SPLIT_LISTENER;
     }

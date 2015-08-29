@@ -134,7 +134,7 @@ public class CcDbNightTest {
             
             for (int i = 0; i < 100; i++) {
                 String key = cardIndexToKey(existingCardCount + addedCounter);
-                b.put(key, new byte[100]);  // XXX   99 or 100
+                b.put(key, new byte[100]);  // TODO B. 99 or 100, work here
                 
                 addedCounter++;
                 if (addedCounter >= toAdd) {
@@ -217,7 +217,21 @@ public class CcDbNightTest {
 
 /*
 
-TODO A. work in this issue.
+TODO A. work on this issue.
+
+150829
+======
+
+Reproducible error, now we get:
+java.lang.AssertionError: Missing cards, found 399998 cards out of 400000.
+Always the same amount of missing cards.
+
+Before when Dag.appendKlongs() included code: [pd.nodeChangeListener.keyNodeCreated(last);]
+we got:
+    java.lang.AssertionError: Missing cards, found 399757 cards out of 400000.
+
+So, it *does* matter.
+
 
 150818 Issue
 ============

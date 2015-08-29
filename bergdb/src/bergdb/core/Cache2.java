@@ -20,10 +20,8 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * An instance of this class handles the node caching for the database.
- * It has mappings from node ids to Node objects.
- * It ensures there is only one Node object for a given node id. 
- * It is a canonicalizing mapping.
+ * A node cache that uses weak references to for a canonicalizing node map.
+ * It ensures there is only one Node object for a given node id.
  * It uses weak references to allow Node objects to be garbage collected when 
  * no longer used.
  * 
@@ -564,7 +562,7 @@ public class Cache2 {
             // The condition [pointeePos%8 == 0] is needed, vpos approach. But why
             // needed, can we have virtual pos when pos < startupPos.
             //
-            // XXX place of work
+            // TODO B. place of work
             //
             
             assert node.isIndexNode();

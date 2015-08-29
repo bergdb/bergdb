@@ -1,6 +1,8 @@
 package bergdb.dag;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 import bergdb.common.Util;
 import bergdb.dag.Dag.CachePolicy;
@@ -43,7 +45,11 @@ public class DagTester {
     };
     
     public static Dag emptyDag(long time) {        
-        return Dag.createEmpty(time, MAX_NODE_SIZE, DUMMY_POINTER_FOLLOWER);
+        return Dag.createEmpty(time, MAX_NODE_SIZE, DUMMY_POINTER_FOLLOWER, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+    }
+    
+    private static Dag emptyDag(long time, Dag.PointerCreatedListener listener) {
+        return Dag.createEmpty(time, MAX_NODE_SIZE, DUMMY_POINTER_FOLLOWER, listener);
     }
     
     @Nano
@@ -131,7 +137,7 @@ public class DagTester {
         String[] kvs = new String[] {
                 "/k1", "v1", "/k2", "v2", "/k3", "v3", "/k4", "v4", "/k0", "v0"
         };
-        Dag g = Dag.createEmpty(0, 6, DUMMY_POINTER_FOLLOWER);
+        Dag g = Dag.createEmpty(0, 6, DUMMY_POINTER_FOLLOWER, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
         
         PutData pd = g.newPutData();
         pd.tt = 10;
@@ -159,7 +165,7 @@ public class DagTester {
     public static void testTimeSplit1a() {
         // Tests a time-split-1.
 
-        Dag g = Dag.createEmpty(0, 6, DUMMY_POINTER_FOLLOWER);
+        Dag g = Dag.createEmpty(0, 6, DUMMY_POINTER_FOLLOWER, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
         
         PutData pd = g.newPutData();
         
@@ -213,6 +219,68 @@ public class DagTester {
         Assert.assertEquals(4, v.valueCount);
     }
     
+    @Nano
+    private static void testPointerCreationListener1() {
+        testPointerCreationListener(200);
+    }
+    
+    @Nano("f")
+    private static void testPointerCreationListener2() {
+        testPointerCreationListener(10*1000);
+    }
+    
+    @SuppressWarnings("unchecked")
+    private static void testPointerCreationListener(int n) {
+        final HashMap<Node, Node> map1 = new HashMap<Node, Node>();
+        final HashMap<Node, Node> map2 = new HashMap<Node, Node>();
+        
+        Dag.PointerCreatedListener listener = new Dag.PointerCreatedListener() {
+            public void pointerCreated(Node from, int index, Node to) {
+                map1.put(from, to);
+            }
+        };
+        
+        Dag dag = emptyDag(10, listener);
+        PutData pd = dag.newPutData();
+        pd.tt = 20;
+        pd.pointerCreatedListener = listener;
+        
+        for (int i = 0; i < n; i++) {
+            dag.putKv(Keys.toSegments("/prefix-" + i), Util.toBytes("v" + i), pd);
+            if (i % 10 == 9) {
+                pd.tt += 10;
+            }
+        }
+        
+        dag.visitMemoryPointersOnce(new PointerVisitor() {
+            public void visitNode(Node node) {
+            }
+
+            public void visitPointer(Node from, Pointer pointer) {
+                map2.put(from, pointer.node);
+            }
+        });
+        
+        //printMap("map1", map1);
+        //printMap("map2", map2);
+        
+        HashMap<Node, Node> diff = (HashMap<Node, Node>) map1.clone();
+        
+        diff.entrySet().removeAll(map2.entrySet());
+        
+        Assert.assertTrue(map1.size() > 0);
+        Assert.assertEquals("map sizes", map1.size(), map2.size());
+        Assert.assertEquals("diff size", 0, diff.size());
+    }
+    
+    @SuppressWarnings("unused")
+    private static void printMap(String name, HashMap<Node, Node> map) {
+        System.out.println("---- " + name + " ----");
+        for (Map.Entry<Node, Node> en : map.entrySet()) {
+            System.out.println(en.getKey() + " --> " + en.getValue());
+        }
+    }
+
     public static void main(String[] args) {
         Dag g = emptyDag(10);
         PutData pd = g.newPutData();

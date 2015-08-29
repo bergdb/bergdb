@@ -776,7 +776,7 @@ public class Db {
      */
     private void writePrimordialTransaction() {
         //
-        // Created node instances should *not* leak from this method.
+        // Created node instances should not "leak" from this method.
         // The startup process will create the node instance from the stream.
         // We do not want duplicates. Just append the nodes to stream, 
         // this method should not change in-memory state.
@@ -790,7 +790,8 @@ public class Db {
         }
         
         KeyNode root = KeyNode.nodeWithTime(tt);
-        TopNode superRoot = TopDs.createSuperRootFromFirstKeyNode(tt, root, AccessData.DEFAULT_ACCESS_DATA);
+        TopNode superRoot = TopDs.createSuperRootFromFirstKeyNode(tt, root, 
+                AccessData.DEFAULT_ACCESS_DATA, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
         
         MetaBlock meta = nodeStream.getMetaBlock();
         meta.setId(databaseId.getBytes());

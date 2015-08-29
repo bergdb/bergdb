@@ -872,12 +872,6 @@ public class KeyNode implements Node {
      * @param time The time to get the last version.
      */
     public final KeyNode lastVersion(long time) {
-        //
-        // A simple brute-force method that scales with n^2, n = this.size.
-        // Could still be faster than sorting first because of limited size.
-        // Write access is *not* required.
-        //
-        
         short sz = this.size;
         long deleteBitmap = this.getLastDeleteBitmap(sz);
         return lastVersionGivenDel(sz, time, deleteBitmap);
@@ -893,8 +887,7 @@ public class KeyNode implements Node {
     public KeyNode lastVersionGivenDel(final short sz, long time, long del) {
         //
         // A simple brute-force method that scales with n^2, n = this.size.
-        // Could still be faster than sorting first because of limited size.
-        // Write access is *not* required.
+        // Likely still faster than sorting first because of limited size.
         //
         
         KeyNode result;
@@ -1107,7 +1100,6 @@ public class KeyNode implements Node {
         assert secondKlong != Klong.NULL;
         assert first.size > 0;
         assert second.size > 0;
-        assert last.checkWithMessage() == null;
         
         KeyNode insertTo = first;
         if (insert.length > 0 && Klong.getCompareValue(insert[0].klong) >= Klong.getCompareValue(secondKlong)) {

@@ -59,14 +59,16 @@ public class DagExamples {
      * Default Dag created at time 10 with the default max node size.
      */
     public static Dag dag() {        
-        return Dag.createEmpty(10, MAX_NODE_SIZE, DUMMY_POINTER_FOLLOWER);
+        return Dag.createEmpty(10, MAX_NODE_SIZE, DUMMY_POINTER_FOLLOWER, 
+                Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
     }
     
     /**
      * Creates an empty Dag with the specified max node size.
      */
     public static Dag dag(int maxNodeSize) {        
-        return Dag.createEmpty(10, maxNodeSize, DUMMY_POINTER_FOLLOWER);
+        return Dag.createEmpty(10, maxNodeSize, DUMMY_POINTER_FOLLOWER,
+                Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
     }
     
     private DagExamples() {}

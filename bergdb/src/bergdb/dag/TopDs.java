@@ -28,14 +28,16 @@ public class TopDs {
      * Creates a TopDS from the transaction time and the very first 
      * space root node.
      */
-    public static TopDs createFromFirstRoot(long firstTime, KeyNode firstRoot, long accessData) {
-        TopNode first = createSuperRootFromFirstKeyNode(firstTime, firstRoot, accessData);
+    public static TopDs createFromFirstRoot(long firstTime, KeyNode firstRoot, long accessData,
+            Dag.PointerCreatedListener pointerCreationListener) {
+        TopNode first = createSuperRootFromFirstKeyNode(firstTime, firstRoot, accessData, pointerCreationListener);
         return new TopDs(first);
     }
     
     public static TopNode createSuperRootFromFirstKeyNode(long firstTime, KeyNode firstRoot, 
-            long accessData) {
+            long accessData, Dag.PointerCreatedListener pointerCreationListener) {
         TopNode first = new TopNode(0, firstRoot, accessData, firstTime, Spos.NULL);
+        pointerCreationListener.pointerCreated(first, 0, firstRoot);
         return first;
     }
     
@@ -45,11 +47,15 @@ public class TopDs {
      * 
      * @param time  The transaction time.
      */
-    public void newSuperRoot(long time, KeyNode newRoot, long accessData) {
+    public void newSuperRoot(long time, KeyNode newRoot, long accessData, 
+            Dag.PointerCreatedListener pointerCreationListener) {
+        
         TopNode newSuperRoot = new TopNode(superRoot.topNodeId + 1, newRoot, accessData, time, 
                 Spos.NULL);
         final int h = newSuperRoot.pointersLength;
         final int id = newSuperRoot.topNodeId;
+        
+        pointerCreationListener.pointerCreated(newSuperRoot, 0, newRoot);
         
         for (int i = 0; i < h; i++) {
             if ((id & TopNode.power2(i)) != 0) {
@@ -73,6 +79,8 @@ public class TopDs {
                 } else {
                     newSuperRoot.pointersTime[i] = pointer.rootTime;
                     newSuperRoot.pointersPos[i] = accessData;
+                    
+                    pointerCreationListener.pointerCreated(newSuperRoot, i + 1, pointer);
                 }
             }
         }
@@ -106,65 +114,6 @@ public class TopDs {
         }
         return (KeyNode) dag.followPointer(n, 0, accessData, pointerListener, cachePolicy);
     }
-    
-    /*
-    public final KeyNode findRoot(DagForMe dag, long time, long accessData, 
-            Pointer tempPointer, PointerListener pointerListener, CachePolicy cachePolicy) {
-        //
-        // The common case of getting the last space root is treated as a 
-        // special case for performance.
-        //
-        // 130123 Frans: Fixed concurrency bug.
-        // The volatile read in the beginning of this method is important. It makes memory writes
-        // by writer visible and it makes sure we are using the same superRoot instance
-        // throughout this method. this.superRoot can change concurrently.
-        //
-        
-        assert pointerListener != null;
-        assert cachePolicy != null;
-        
-        TopNode mySuperRoot = this.superRoot;     // volatile read make writes visible.
-        
-        pointerListener.superRootAccessed(mySuperRoot);
-        
-        if (time >= mySuperRoot.rootTime) {
-            return (KeyNode) dag.followPointer(mySuperRoot, 0, accessData, pointerListener, cachePolicy);
-        }
-        
-        TopNode n = mySuperRoot;
-        
-        // Finds right-most pointer with time >= 'time'.
-        
-        Pointer pt = tempPointer;
-        
-        while (true) {
-            rightMostGte(n, time, pt);
-            if (pt.isNull()) {
-                break;
-            }
-            
-            n = (TopNode) dag.followPointer(n, pt.index, accessData, pointerListener, cachePolicy);
-        }
-        
-        
-        if (n.rootTime == time) {
-            return (KeyNode) dag.followPointer(n, 0, accessData, pointerListener, cachePolicy);
-        }
-        
-        // Find left-most pointer
-        
-        pt.reset();
-        leftMost(n, time, pt);
-        
-        if (pt.isNull()) {
-            return null;  // No old-enough node exists
-        }
-        
-        TopNode n2 = (TopNode) dag.followPointer(n, pt.index, accessData, pointerListener, cachePolicy);
-        assert n2 != null : "n2 is unexpectedly null, n: " + n;
-        
-        return (KeyNode) dag.followPointer(n2, 0, accessData, pointerListener, cachePolicy);
-    }*/
     
     /**
      * Convenience method for when GetData is used.
