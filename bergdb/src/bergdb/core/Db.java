@@ -508,9 +508,6 @@ public class Db {
                 // the stream pointer case, but not we have read the node already and can 
                 // quickly do what we should without blocking I/O call while holding 'lock'.
                 //
-                // TODO D. Affect of cachePolicy needs testing.
-                //
-                //
                 
                 Node result;
                 assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;

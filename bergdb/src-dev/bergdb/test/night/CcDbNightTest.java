@@ -39,6 +39,7 @@ public class CcDbNightTest {
     int[] permutation;
     PrintStream out;
     Cache2.Evictor evictor;
+    int cacheSizeInMb = 100;
     
     
     private void go() {
@@ -71,7 +72,7 @@ public class CcDbNightTest {
                 .dir(dir)
                 .cryptoKey(key)
                 .startupDistanceInMb(5)
-                .cacheSizeInMb(100)
+                .cacheSizeInMb(cacheSizeInMb)
                 .start();
         
         double time = database.getStartupInfo().getStartupDuration();
@@ -203,12 +204,26 @@ public class CcDbNightTest {
     }
     
     @Nano("night")
-    private static void testIt(TestEnvironment env) throws IOException {
+    private static void testIt1(TestEnvironment env) throws IOException {
         File tempDir = env.createTempDir();
         
         CcDbNightTest t = new CcDbNightTest();
         t.dir = tempDir.getAbsolutePath();
-        t.n = 400000;
+        t.n = 400*1000;
+        t.cacheSizeInMb = 100;
+        t.encrypt = false;
+        t.out = env.out();
+        t.go();
+    }
+    
+    @Nano("night")
+    private static void testIt2(TestEnvironment env) throws IOException {
+        File tempDir = env.createTempDir();
+        
+        CcDbNightTest t = new CcDbNightTest();
+        t.dir = tempDir.getAbsolutePath();
+        t.n = 1*1000000;
+        t.cacheSizeInMb = 50;
         t.encrypt = false;
         t.out = env.out();
         t.go();
@@ -226,14 +241,6 @@ public class CcDbNightTest {
 }
 
 /*
-
-150829
-======
-
-Added node evict condition [if (pointee.isDirty()) ]. Now this test works!
-However, isDirty() is not thread-safe. The isDirty state of a node changes while putKv()
-is executing.
-
 
 150829
 ======

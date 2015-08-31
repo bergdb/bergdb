@@ -11,11 +11,12 @@ import java.io.IOException;
  * 
  * <p>CONCURRENCY.
  * Implementations can assume that the interface user adheres to the following concurrency rules:
- * 1. Method calls to read() are made by multiple concurrent threads not synchronized by the user. 
+ * 1. Method calls to read() are made by multiple concurrent threads. 
  * 2. Method calls to all other methods (including constructors) are made from threads holding the
- * same lock (the "write lock"). Put briefly, we allow a single writer and a multiple 
- * readers (calling read()). In particular, calling getSize() and getFirstPos() requires holding the
- * write lock.
+ * same lock (the "write lock"). 
+ * Put briefly, we allow a single writer and a multiple 
+ * readers (calling read()). In particular, calling getSize() and getFirstPos() 
+ * requires holding the write lock.
  * It is the responsibility of the implementations of this interface that the changes
  * by the writer thread are visible to the readers calling read().</p>
  * 

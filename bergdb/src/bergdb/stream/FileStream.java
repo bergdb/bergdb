@@ -24,11 +24,6 @@ import bergdb.pub.BadFormatException;
  * @author Frans Lundberg
  */
 public class FileStream implements AppendOnlyStream {
-    //
-    // 130818, removed use of lock file "lock". Did not work reliably on IKVM.
-    // 131016, fixed serious error, integer overflow, BYTES_PER_INDEX_UNIT now a long.
-    //
-    
     private static final String SUFFIX = Util.identity(".bergdb");
     private static final long BYTES_PER_INDEX_UNIT = Util.identity(100*1000);
     private static final long M = 1000000L;
@@ -482,7 +477,6 @@ public class FileStream implements AppendOnlyStream {
             destOffset += actuallyRead;
             length -= actuallyRead;
         }
-        
     }
 
     public void append(byte[] source, int sourceOffset, int len) throws IOException {
@@ -524,16 +518,14 @@ public class FileStream implements AppendOnlyStream {
             }
             
             if (dbFiles.length > 0) {
-                // last file is opened for RW, close and reopen for R only.
+                // last file is opened for RW, close and reopen for read only.
                 DbFile k = dbFiles[dbFiles.length - 1];
-                k.close();     
-                dbFiles[dbFiles.length - 1] = openForR(k.spos, k.file);
+                reopenForReadOnly(k);
             }
             
             long index = this.length / BYTES_PER_INDEX_UNIT;
             File file = new File(dir, indexToString(index) + SUFFIX);
             
-            // Change file size if it should be changed.
             applyFileSizeChangeRules();
             
             DbFile newFile = openForRw(length, file, FILE_SIZES[fileSizeIndex]);
@@ -606,7 +598,7 @@ public class FileStream implements AppendOnlyStream {
     
     private DbFile findFile(long spos) {
         // Find file with largest spos that is <= spos.
-        // Yes, we use linear search. Should be faster in this case then an O(log N) data structure
+        // Yes, we use linear search. Likely faster in this case then an O(log N) data structure
         // since number of files should not exceed 100.
         
         DbFile result = null;
@@ -651,6 +643,15 @@ public class FileStream implements AppendOnlyStream {
         k.maxSize = maxSize;
         synchronized (k) {}
         return k;
+    }
+    
+    private void reopenForReadOnly(DbFile dbFile) throws IOException {
+        synchronized (dbFile) {
+            dbFile.close();
+            dbFile.rfile = new RandomAccessFile(dbFile.file, "r");
+            dbFile.isRw = false;
+            dbFile.isClosed = false;
+        }
     }
     
     /**

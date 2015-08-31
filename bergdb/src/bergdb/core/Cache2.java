@@ -552,6 +552,11 @@ public class Cache2 {
                 return;
             }
             
+            // TODO A. What is the evict condition?
+            if (node.isDirty()) {
+                return;
+            }
+            
             int count = node.getSize();
             for (int i = 0; i < count; i++) {
                 synchronized (pointerLocks.getLock(node, i)) {
@@ -565,8 +570,11 @@ public class Cache2 {
                                 && AccessData.getAccessTime(node.getPointerAccessData(i)) 
                                         <= accessTimeLimit) {
                             
-                            node.setPointer(i, null, pointeePos);
-                            evictCount++;
+                            // TODO A. What is the evict condition?
+                            if (!pointee.isDirty()) {
+                                node.setPointer(i, null, pointeePos);
+                                evictCount++;
+                            }
                         }
                     }
                 }
