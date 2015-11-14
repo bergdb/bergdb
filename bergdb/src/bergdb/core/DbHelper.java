@@ -214,7 +214,7 @@ public class DbHelper {
             
             if (!node.isDirty() && hasDirtyChild(node)) {
                 node.setDirty(true);
-                output.addNode(node);
+                output.addDirtyNode(node);
                 stillDirtyCount++;
             }
         }
@@ -241,7 +241,7 @@ public class DbHelper {
         final ArrayList<Node> nodes = new ArrayList<Node>();
         
         TransSeq.NodeSink output = new TransSeq.NodeSink() {
-            public void addNode(Node node) {
+            public void addDirtyNode(Node node) {
                 nodes.add(node);
             }
         };
@@ -299,7 +299,7 @@ public class DbHelper {
     
     private static class NullNodeSink implements TransSeq.NodeSink {
         public static final NullNodeSink INSTANCE = new NullNodeSink();
-        public void addNode(Node node) {}
+        public void addDirtyNode(Node node) {}
     }
     
     private static void addPointer(KeyNode from, KeyNode to, String label) {

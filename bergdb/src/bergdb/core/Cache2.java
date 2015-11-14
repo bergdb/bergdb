@@ -19,7 +19,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * A node cache that uses weak references to for a canonicalizing node map.
+ * A node cache that uses weak references to form a canonicalizing node map.
  * It ensures there is only one Node object for a given node id.
  * It uses weak references to allow Node objects to be garbage collected when 
  * no longer used.
@@ -552,7 +552,7 @@ public class Cache2 {
                 return;
             }
             
-            // TODO A. What is the evict condition?
+            // TODO B. What is the evict condition?
             if (node.isDirty()) {
                 return;
             }
@@ -570,7 +570,7 @@ public class Cache2 {
                                 && AccessData.getAccessTime(node.getPointerAccessData(i)) 
                                         <= accessTimeLimit) {
                             
-                            // TODO A. What is the evict condition?
+                            // TODO B. What is the evict condition?
                             if (!pointee.isDirty()) {
                                 node.setPointer(i, null, pointeePos);
                                 evictCount++;

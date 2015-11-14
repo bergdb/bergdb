@@ -4,6 +4,7 @@ import bergdb.pub.Connection;
 import bergdb.pub.Database;
 import bergdb.pub.Duration;
 import bergdb.pub.Factory;
+import bergdb.pub.TestClock;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,21 +17,30 @@ public class DbTest
   {
     int id = 0;
 
+    if (args.length == 0) {
+        System.out.println("first arg: path-to-db");
+        return;
+    }
+    
     while (true)
     {
-      id = runJob(id + 1);
-      Thread.sleep(10000);
+      id = runJob(id + 1, args[0]);
+      // Orig:
+      // Thread.sleep(10000);
+      Thread.sleep(100);
     }
   }
 
-  public static int runJob(final int startId)
+  public static int runJob(final int startId, String path)
   {
     final int count = 10000;
-    final String path = "/a/bryan";
     final int lastId = startId + count;
     int currentId = startId;
 
-    Database db = Factory.database().dir(path).retainDuration(Duration.seconds(10.0)).start();
+    // Orig:
+    // Database db = Factory.database().dir(path).retainDuration(Duration.seconds(10.0)).start();
+    Database db = Factory.database().dir(path).retainDuration(Duration.seconds(10.0)).clock(new TestClock()).start();
+    
     Connection conn = db.connection();
 
     //
@@ -49,7 +59,7 @@ public class DbTest
     //
     for (Integer id : list)
     {
-      conn.delete(Foobar.toStr(id));
+      conn.delete(Foobar.toString(id));
     }
 
     System.out.println(String.format("Deleted: %d items", list.size()));

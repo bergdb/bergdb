@@ -41,8 +41,8 @@ public interface Node {
      * 
      * Common usage (iterating pointers of a node):
      * <pre>
-     * int count = node.getSize();
-     * for (int i = 0; i &lt; count; i++) {
+     * int size = node.getSize();
+     * for (int i = 0; i &lt; size; i++) {
      *     node.getPointer(i, p);
      *     if (!p.isNull()) {
      *         // do something with pointer here

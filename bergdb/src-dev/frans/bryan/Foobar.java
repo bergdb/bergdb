@@ -75,10 +75,10 @@ public class Foobar
   @Override
   public String toString()
   {
-    return Foobar.toStr(this.getId());
+    return Foobar.toString(this.getId());
   }
 
-  public static String toStr(int id)
+  public static String toString(int id)
   {
     return String.format("/%d", id);
   }

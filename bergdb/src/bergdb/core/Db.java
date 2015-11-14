@@ -535,12 +535,17 @@ public class Db {
                         assert pointerPos > 0 : "bad pointerPos, " + pointerPos 
                                 + ", pointerIndex:" + pointerIndex + ", predecessor:" + predecessor;
                         
+                        // 151114 Note, Frans: 
+                        // Can we have nodes with spos % 8 != 0 here?
+                        // Yes, "Bryan" bug indicates so (at DB startup).
+                        
+                        // TODO B. should'n we check cache *first* before reading from stream?
+                        
                         NodeHeader header = nodeStream.readNodeHeader(pointerPos);
                         boolean isValueNode = header.type() == Node.TYPE_VALUE;
                         long id = header.id();
                         
-                        result = isValueNode ? 
-                                cache.getValueNode(id) : cache.getIndexNode(id);
+                        result = isValueNode ? cache.getValueNode(id) : cache.getIndexNode(id);
                         
                         if (result == null) {
                             result = nodeStream.readNode(pointerPos);
@@ -847,6 +852,7 @@ public class Db {
         long vpos = x.nextVpos;
         node.setId(vpos);
         node.setSpos(vpos);
+        
         x.increaseNextVpos();
     }
 
@@ -856,14 +862,15 @@ public class Db {
      * 
      * @return True if 'node' got dirty.
      */
-    private boolean makeDirtyIfNeeded(Node node) {
-        if (!node.isDirty() && node.isIndexNode()) {
-            node.setDirty(true);
-            x.transInfo.addNode(node);
-            return true;
+    private void makeDirtyIfNeeded(final Node node) {
+        if (!node.isIndexNode()) {
+            return;
         }
         
-        return false;
+        if (!node.isDirty()) {
+            node.setDirty(true);
+            x.transInfo.addDirtyNode(node);
+        }
     }
 
     /**
@@ -1521,6 +1528,10 @@ public class Db {
          */
         public final Object getPointerLock(Node node, int pointerIndex) {
             return pointerLocks.getLock(node, pointerIndex);
+        }
+        
+        public void handleStillDirtyNodes() {
+            Db.this.handleStillDirtyNodes();
         }
     }
     

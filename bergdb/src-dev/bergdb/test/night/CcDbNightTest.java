@@ -41,7 +41,6 @@ public class CcDbNightTest {
     Cache2.Evictor evictor;
     int cacheSizeInMb = 100;
     
-    
     private void go() {
         computePermutation();
         
@@ -223,7 +222,7 @@ public class CcDbNightTest {
         CcDbNightTest t = new CcDbNightTest();
         t.dir = tempDir.getAbsolutePath();
         t.n = 1*1000000;
-        t.cacheSizeInMb = 50;
+        t.cacheSizeInMb = 100;
         t.encrypt = false;
         t.out = env.out();
         t.go();
@@ -241,6 +240,13 @@ public class CcDbNightTest {
 }
 
 /*
+
+151114
+======
+
+Now, testIt1() works (400k entries) while testIt2() fails:
+"java.lang.AssertionError: Missing cards, found 987062 cards out of 1000000."
+
 
 150829
 ======

@@ -36,7 +36,7 @@ public final class TopNode implements Node {
         // May be removed in future versions. For debug only.
     public boolean isInTransNodes;
         // Synch note: protected by Db.writeLock.
-    public boolean isDirty;
+    public boolean isDirty = false;
         // Synch note: access from threads holding Db.writeLock only.
     
     private static final int MAX_HEIGHT = 30;

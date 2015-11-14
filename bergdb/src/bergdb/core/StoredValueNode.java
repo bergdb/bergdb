@@ -16,6 +16,11 @@ import bergdb.storage.StreamFormatException;
  * @author Frans Lundberg
  */
 public class StoredValueNode implements StoredNode {
+    //
+    // 151114, from today size of StoredValueNode % 4 == 0.
+    // We need alignment to allow for spos to determine node type.
+    //
+    
     private ValueNode node;
     private long[] key;
 
@@ -113,9 +118,10 @@ public class StoredValueNode implements StoredNode {
     }
 
     public static int getByteSize(ValueNode node, long[] key) {
-        return node.value == null ? 
+        int size = node.value == null ? 
                 8 +                         4 + 8 * key.length
               : 8 + 4 + node.value.length + 4 + 8 * key.length;
+        return size + Spos.addToAlign(size, 4);
     }
 
     /**
@@ -155,7 +161,8 @@ public class StoredValueNode implements StoredNode {
         int checksum = NodeChecksum.sum(buffer, firstOffset, byteSize);
         Bytes.ushortToBytesLE(checksum, buffer, firstOffset + 6);
 
-        assert offset - firstOffset == byteSize 
+        int sizeHere = offset - firstOffset;
+        assert sizeHere + Spos.addToAlign(sizeHere, 4) == byteSize
                 : "offset:" + offset + ", firstOffset:" + firstOffset + ", byteSize: " + byteSize;
         return byteSize;
     }

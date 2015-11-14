@@ -31,8 +31,7 @@ public class KeyNode implements Node {
         // The stream position of the node when it was last written to the stream.
         // Synch note: see get/set methods. Synched by read/write to volatile field this.size.
     public long id;            
-        // id is used for debug purpose. It is the first spos of the node.
-        // Synch note: synch issues not properly considered since it could be removed.
+        // id is the first spos of the node.
     private short lastTimeIndex = -1;
         // -1 or array index to the last time.
         // Synch note: this field should only be accessed by a writer. Access by a reader is not
@@ -42,7 +41,7 @@ public class KeyNode implements Node {
     public boolean isInTransNodes = false;
         // Synch note: no need for volatile or something since all access is from threads 
         // holding Db.writeLock.
-    public boolean isDirty;
+    private boolean isDirty;
         // Synch note: read/write access only from threads holding Db.writeLock.
     
     public volatile short size;
@@ -83,6 +82,7 @@ public class KeyNode implements Node {
         pos = EMPTY_LONG_ARRAY;
         spos = Spos.NULL;
         id = Spos.NULL;
+        isDirty = false;
         this.size = 0;    
             // Synch action to make constructor writes are visible to others threads that reads the
             // field this.size.

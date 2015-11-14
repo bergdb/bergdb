@@ -8,7 +8,7 @@ package bergdb.core;
  */
 public class Cache3 {
     // KISS - start with very simple implementation where
-    // stop-the-work (synch on all) is allowed. Can be improved later.
+    // stop-the-world (synch on all) is allowed. Can be improved later.
     
     // TODO D. implement this approach. Test pointer-created listener first.
 }

@@ -179,7 +179,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
 
         TransInfo() {}
         
-        public void addNode(Node node) {
+        public void addDirtyNode(Node node) {
             gotDirtyNodes.add(node);
         }
         
@@ -220,7 +220,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
     }
     
     public static interface NodeSink {
-        public void addNode(Node node);
+        public void addDirtyNode(Node node);
     }
     
     

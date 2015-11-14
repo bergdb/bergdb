@@ -35,11 +35,16 @@ abstract public class Spos {
     }
     
     public static final long nextVpos(long vpos) {
-        long result = vpos + 1;
-        if (vpos % 8 != 0) {
-            result++;
-        }
-        return result;
+        // Next odd integer
+        return vpos % 2 == 0 ? vpos + 1 : vpos + 2;
+    }
+    
+    /**
+     * @param spos  An spos of an index node.
+     * @return true if the spos is a vpos (virtual spos).
+     */
+    public static final boolean isVpos(long spos) {
+        return spos % 2 == 1;
     }
     
     /**
@@ -53,8 +58,34 @@ abstract public class Spos {
         return spos == NULL;
     }
     
+    /**
+     * Integer needed to add to 'a' so (a + result) % mod == 0.
+     */
+    public static final int addToAlign(int a, int mod) {
+        return (mod - (a % mod)) % mod;
+    }
     
     // ======== Tests ========
+    
+    @Nano
+    private static void testAlign1() {
+        assertEquals(0, addToAlign(0, 4));
+        assertEquals(3, addToAlign(1, 4));
+        assertEquals(2, addToAlign(2, 4));
+        assertEquals(1, addToAlign(3, 4));
+        assertEquals(0, addToAlign(4, 4));
+        assertEquals(3, addToAlign(5, 4));
+    }
+    
+    @Nano
+    private static void testAlign2() {
+        assertEquals(0, addToAlign(0, 3));
+        assertEquals(2, addToAlign(1, 3));
+        assertEquals(1, addToAlign(2, 3));
+        assertEquals(0, addToAlign(3, 3));
+        assertEquals(2, addToAlign(4, 3));
+        assertEquals(1, addToAlign(5, 3));
+    }
     
     @Nano
     public static void testConstantCopy() {
@@ -81,5 +112,25 @@ abstract public class Spos {
         assertTrue(isValidOrNull(0));
         assertFalse(isValidOrNull(-1234));
         assertTrue(isValidOrNull(NULL));
+    }
+    
+    @Nano
+    public static void testNextVpos1() {
+        assertEquals(1, Spos.nextVpos(0));
+        assertEquals(5, Spos.nextVpos(3));
+        assertEquals(11, Spos.nextVpos(9));
+    }
+    
+    @Nano
+    public static void testNextVpos2() {
+        long vpos = 123456L;
+        for (int i = 0; i < 40; i++) {
+            long next = Spos.nextVpos(vpos);
+            vpos++;
+            
+            if (next % 8 == 0) {
+                throw new AssertionError("bad vpos, " + next);
+            }
+        }
     }
 }

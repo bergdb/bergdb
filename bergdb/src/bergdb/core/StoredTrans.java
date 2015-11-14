@@ -1,6 +1,7 @@
 package bergdb.core;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import bergdb.common.AssertStatus;
@@ -11,6 +12,7 @@ import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Keys;
 import bergdb.dag.Klong;
+import bergdb.dag.Pointer;
 import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
@@ -363,7 +365,10 @@ public class StoredTrans {
 
             prepareToSerialize();
             
-            if (AssertStatus.enabled()) checkStreamPointersOfKeyNodes();
+            if (AssertStatus.enabled()) {
+                checkStreamPointersOfKeyNodes();
+                checkStreamPointers();
+            }
             
             serializeToBuffer();
             
@@ -400,6 +405,49 @@ public class StoredTrans {
                             }
                             
                             throw new AssertionError(message);
+                        }
+                    }
+                }
+            }
+        }
+        
+        /**
+         * Checks that stream pointers are not Spos.NULL or vpos.
+         * They should be valid after prepareToSerialized has been run.
+         * Call this method, only if assertions are enabled (-ea) since it
+         * degrades performance.
+         * 
+         * @throws AssertionError
+         */
+        private void checkStreamPointers() {
+            Iterator<Node> iter = transNodes.indexNodeIterator();
+            Pointer p = new Pointer();
+
+            while (iter.hasNext()) {
+                Node node = iter.next();
+                
+                long spos = node.getSpos();
+                if (Spos.isNull(spos)) {
+                    throw new AssertionError("Spos of node is NULL, node: " + node.toString());
+                }
+                
+                if (Spos.isVpos(spos)) {
+                    throw new AssertionError("Spos of index node (" + spos 
+                            + ") is vpos, node: " + node.toString());
+                }
+                
+                int count = node.getSize();
+                for (int i = 0; i < count; i++) {
+                    node.getPointer(i, p);
+                    if (!p.isNull()) {
+                        spos = p.pos;
+                        if (Spos.isNull(spos)) {
+                            throw new AssertionError("spos of node pointer is NULL, index: " + i + ", node: " + node.toString());
+                        }
+                        
+                        if (Spos.isVpos(spos)) {
+                            throw new AssertionError("spos of index node pointer (" + spos 
+                                    + ") is vpos, index: " + i + ", node: " + node.toString());
                         }
                     }
                 }

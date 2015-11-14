@@ -137,11 +137,11 @@ public final class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.T
      */
     public void clean() {
         for (int i = 0; i < topCount; i++) {
-            topNodes[i].isDirty = false;
+            topNodes[i].setDirty(false);
         }
         
         for (int i = 0; i < keyCount; i++) {
-            keyNodes[i].isDirty = false;
+            keyNodes[i].setDirty(false);
         }
     }
 

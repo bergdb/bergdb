@@ -67,7 +67,7 @@ public class Pointer {
     }
     
     public final boolean isNull() {
-        // NOTE consider inlining for performance.
+        // Note, consider inlining for performance.
         return isNull(node, pos);
     }
     
