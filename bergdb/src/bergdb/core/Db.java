@@ -1307,12 +1307,11 @@ public class Db {
             newSp = x.trans.startupPos;
         } else {
             long maxSp = nodeStream.getLength() - startupDistance;
-            
             newSp = transSeq.take(currentSp, maxSp, x.transNodes.valueCount, x.transNodes.kvSize, x.transNodes);
-            
             x.trans.startupPos = newSp;
         }
         
+        // TODO A. Now: appendNodes does things beyond writing to stream, sets spos for example. Needed for rerun too?
         if (!x.trans.isStartupRerun) {
             nodeStream.appendNodes(x.transNodes, x.trans);
         }

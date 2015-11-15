@@ -319,15 +319,6 @@ public class DbStarter {
                 t.listener = listener;
                 db.internal().executeInner(t);
             }
-            
-            // TODO B. consider this node cleaning. Not same as NodeStream cleaning, see Db.handleStillDirtyNodes();
-            
-            for (StoredNode stored : storedTrans.nodes) {
-                Node n = stored.getNode();
-                if (n.isIndexNode()) {
-                    n.setDirty(false);
-                }
-            }
         }
     }
 
