@@ -424,8 +424,8 @@ public class Db {
      *             If start() has been called already.
      * @throws BadReplicaException
      */
-    public void start() {        
-        start(StartParams.NULL, StartListener.DO_NOTHING);
+    public StartInfo start() {        
+        return start(StartParams.NULL);
     }
     
     /**
@@ -440,10 +440,10 @@ public class Db {
      *          If start() has been called already.
      * @throws BadReplicaException
      */
-    public void start(StartParams params, StartListener listener) {
+    public StartInfo start(StartParams params) {
         synchronized (writeLock) {
             synchronized (readSync) {
-                startInner(params, listener);
+                return startInner(params);
             }
         }
     }
@@ -457,7 +457,7 @@ public class Db {
      * @throws IllegalDbStateException
      * @throws BadCryptoKey
      */
-    private void startInner(StartParams params, StartListener listener) {
+    private StartInfo startInner(StartParams params) {
         assertStateIsZero();
 
         syncStreams();
@@ -470,12 +470,11 @@ public class Db {
                     + " Invalid magic bytes in stream.");
         }
         
-        handleStartParams(params, listener);
+        handleStartParams(params);
         
         long startupPos = x.startupPos.get();
         ArrayList<StoredTrans> transactions = readTransactions(startupPos);
         
-        listener.reportStartupTransactions(transactions);
         setLastTransTimeOfDbClock(transactions);
         
         startDb(transactions);
@@ -484,6 +483,15 @@ public class Db {
         
         this.state = DbState.ACTIVE;
         reclaim.initFromDb();
+        
+        StartInfo result = new StartInfo();
+        result.startPos = startupPos;
+        result.startupDistance = params.startupDistance;
+        result.startTime = transactions.get(0).tt;
+        result.transCount = transactions.size();
+        result.lastPos = transactions.get(transactions.size() - 1).lastPos;
+        
+        return result;
     }
 
     private void startDb(ArrayList<StoredTrans> transactions) {
@@ -530,14 +538,15 @@ public class Db {
                                 predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
                     
                     } else {
-                        assert pointerPos > 0 : "bad pointerPos, " + pointerPos 
-                                + ", pointerIndex:" + pointerIndex + ", predecessor:" + predecessor;
                         
-                        // 151114 Note, Frans: 
-                        // Can we have nodes with spos % 8 != 0 here?
-                        // Yes, "Bryan" bug indicates so (at DB startup).
+                        if (pointerPos < 0 || pointerPos % 2 == 1) {
+                            throw new AssertionError("bad pointerPos (" + pointerPos 
+                                    + "), cannot read from stream"
+                                    + ", pointerIndex:" + pointerIndex 
+                                    + ", predecessor:" + predecessor.print());
+                        }
                         
-                        // TODO B. should'n we check cache *first* before reading from stream?
+                        // TODO D. should'n we check cache first before reading from stream?
                         
                         NodeHeader header = nodeStream.readNodeHeader(pointerPos);
                         boolean isValueNode = header.type() == Node.TYPE_VALUE;
@@ -605,7 +614,7 @@ public class Db {
      * @throws StreamFormatException
      * @param listener
      */
-    private void handleStartParams(StartParams params, StartListener listener) {
+    private void handleStartParams(StartParams params) {
         // params.isNull() is normally true, can be overridden for test purposes.
         
         if (params.isNull()) {
@@ -620,8 +629,6 @@ public class Db {
         
         startupDistance = params.startupDistance;
         x.startupPos.set(params.startupPos);
-        listener.reportStartupDistance(startupDistance);
-        listener.reportStartPos(x.startupPos.get());
     }
 
     /**
@@ -652,7 +659,9 @@ public class Db {
         return result;
     }
     
-    /** Reads transactions from DB stream starting at startPos. */
+    /** 
+     * Reads transactions from DB stream starting at startPos. 
+     */
     private ArrayList<StoredTrans> readTransactions(long startupPos) {
         if (startupPos == 0) {
             startupPos = RecoverableStream.META_BLOCK_SIZE;
@@ -849,6 +858,9 @@ public class Db {
         
         long vpos = x.nextVpos;
         node.setId(vpos);
+        
+        // TODO A. Would it be better to set id, but not spos of index nodes. Not before actually written to stream.
+        // consider: node.setSpos(Spos.NULL);
         node.setSpos(vpos);
         
         x.increaseNextVpos();
@@ -1311,9 +1323,22 @@ public class Db {
             x.trans.startupPos = newSp;
         }
         
-        // TODO A. Now: appendNodes does things beyond writing to stream, sets spos for example. Needed for rerun too?
+        // Note: appendNodes does things beyond writing to stream, it sets spos of node.
+        // This is not needed for rerun transactions, however. They have value nodes only
+        // and there spos:es are set elsewhere.
+        
         if (!x.trans.isStartupRerun) {
             nodeStream.appendNodes(x.transNodes, x.trans);
+        }
+        
+        if (x.trans.isStartupRerun) {
+            if (x.transNodes.keyCount > 0) {
+                throw new AssertionError("key nodes in rerun trans, " + x.transNodes.keyCount);
+            }
+            
+            if (x.transNodes.topCount > 0) {
+                throw new AssertionError("top nodes in rerun trans, " + x.transNodes.topCount);
+            }
         }
         
         x.transNodes.clean();
@@ -1710,15 +1735,6 @@ public class Db {
         
         public void log(String message) {
             p.println(message);
-        }
-    }
-    
-    public static class PrintLogStartListener implements StartListener {
-        public void reportStartupDistance(long startupDistance) {}
-        public void reportStartPos(long startPos) {}
-        public void reportStartupTransactions(ArrayList<StoredTrans> transactions) {}
-        public void log(String message) {
-            System.out.println(message);
         }
     }
     

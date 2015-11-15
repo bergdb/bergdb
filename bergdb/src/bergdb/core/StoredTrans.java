@@ -376,7 +376,7 @@ public class StoredTrans {
         }
 
         /**
-         * Checks that stream pointers from key nodes are not Spos.NULL.
+         * Checks that stream pointers of key nodes are not Spos.NULL.
          * They should be valid after prepareToSerialized has been run.
          * Call this method, only if assertions are enabled (-ea) since it may
          * degrade performance.
@@ -396,7 +396,7 @@ public class StoredTrans {
                         long spos = pointee == null ? pos : pointee.getSpos();
                         
                         if (!Spos.isValid(spos)) {
-                            String message = "Bad stream pointer of KeyNode, index " + j + ", " + pos 
+                            String message = "Bad stream pointer of KeyNode, index " + j + ", spos: " + spos 
                                     + ", trans at t=" + transTime + " tpos=" + transStartPos 
                                     + ", node:\n" + keyNode.print();
                                     
@@ -474,7 +474,7 @@ public class StoredTrans {
 
         /**
          * Prepares for serialization by computing sizes; sets totalSize, transLastSpos,
-         * transNextSpos. Sets spos for the nodes. This solves the inter-transaction stream
+         * transNextSpos, sets spos of nodes! This solves the inter-transaction stream
          * pointer issue. Inter-transaction stream pointers will work, even when stream pointers 
          * point forward within the transaction.
          */
@@ -541,10 +541,11 @@ public class StoredTrans {
 
         private void serializeToBuffer() {
             //
-            // Code to serialize causes significant execution time (30-40%) for PUT operations.
+            // Note, code to serialize causes significant execution time (30-40%) for PUT operations.
             // We could possibly return quickly and let another thread serialize nodes.
             // Possibly the thread that handles flushing the buffer could be used, or a separate
             // one. KeyNode.size and order of transactions would need to be handled.
+            // Low complexity vs performance.
             //
 
             int longOffset = 0;

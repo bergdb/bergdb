@@ -263,19 +263,6 @@ public class DbStarter {
                     if (current == null) {
                         current = candidate;
                     } else {
-                        /*
-                        OLD code before 150721 that caused a lot of problems!
-                        Now unit tested. A simple unit test would have save A LOT of time!
-                        
-                        if (current.topNodeId > candidate.topNodeId) {
-                            current = candidate;
-                        } else if (current.topNodeId == candidate.topNodeId) {
-                            if (candidate.getSpos() > current.getSpos()) {
-                                current = candidate;
-                            }
-                        }
-                        */
-                        
                         if (candidate.topNodeId >= current.topNodeId) {
                             current = candidate;
                         }
@@ -471,7 +458,7 @@ public class DbStarter {
                     long klong = k.klongs[i];
                     if (Klong.isKey(klong)) {
                         long pos = node.getSpos();
-                        if (pos == Spos.NULL) {
+                        if (Spos.isNull(pos) || Spos.isVpos(pos)) {
                             throw new StreamFormatException("Unexpected stream pointer, was " 
                                     + pos + ", index " + i + ", node: " + node);
                         }
@@ -483,9 +470,10 @@ public class DbStarter {
                 for (int i = 0; i < count; i++) {
                     node.getPointer(i, p);
                     if (!p.isNull()) {
-                        if (Spos.isNull(p.getPos())) {
+                        long pos = p.getPos();
+                        if (Spos.isNull(pos) || Spos.isVpos(pos)) {
                             throw new StreamFormatException("Unexpected stream pointer, was " 
-                                    + p.getPos() + ", index " + i + ", node: " + node);
+                                    + pos + ", index " + i + ", node: " + node);
                         }
                     }
                 }

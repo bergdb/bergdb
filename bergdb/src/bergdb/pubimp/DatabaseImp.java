@@ -7,6 +7,7 @@ import java.util.List;
 
 import bergdb.core.Db;
 import bergdb.core.DbStoppingException;
+import bergdb.core.StartInfo;
 import bergdb.core.SyncLevel;
 import bergdb.pub.Clock;
 import bergdb.pub.Connection;
@@ -77,10 +78,12 @@ public class DatabaseImp implements Database {
      * @throws BadReplicaException
      */
     public static synchronized DatabaseImp createAndStart(final Db db) {
+        @SuppressWarnings("unused")
+        StartInfo startInfo;
         DatabaseImp database = new DatabaseImp(db);
         
         long t0 = System.nanoTime();
-        db.start();
+        startInfo = db.start();
         double startTime = (System.nanoTime() - t0) * 1e-9;
         
         ConnectionImp connection = new ConnectionImp(database);

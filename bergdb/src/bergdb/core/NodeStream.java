@@ -1,7 +1,6 @@
 package bergdb.core;
 
 import java.io.PrintStream;
-
 import bergdb.common.Bytes;
 import bergdb.common.Util;
 import bergdb.dag.Node;
@@ -99,10 +98,10 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         return rstream.getNextSpos();
     }
 
-    void appendNodes(TransNodes nodes, Trans trans) {                
+    void appendNodes(TransNodes nodes, Trans trans) {
         long pos = getNextPos();
         serializer.serialize(nodes, trans.tt, pos, trans.startupPos);
-
+        
         trans.tpos = pos;
         trans.lastPos = serializer.getOutputLastSpos();
         trans.nextPos = serializer.getOutputNextSpos();
@@ -143,7 +142,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     private String printDiff(long transPos, byte[] transBytes, byte[] streamBytes) {
         String s1 = printTransGivenBuffer(transPos, transBytes);
         String s2 = printTransGivenBuffer(transPos, streamBytes);
-        return "From transBytes:\n  " + s1 + "\nFrom streamBytes:\n  " + s2;
+        return "---- Trans@" + transPos + " ----\n" + "From transBytes:\n  " + s1 + "From streamBytes:\n  " + s2;
     }
     
     private String printTransGivenBuffer(long tpos, byte[] buffer) {

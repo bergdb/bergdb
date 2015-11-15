@@ -61,36 +61,40 @@ public class BryanIssue {
 
         DatabaseBuilder builder = Factory.database();
         initDb(builder);
-        Database db = builder.start();
         
-        out.format("---- STARTED ----\n");
-
-        Connection c = db.connection();
-
-        // Iterates existing data
-        List<Integer> list = new ArrayList<Integer>();
-        for (Dummy f : c.usePrimary(Dummy.class).objects()) {
-            list.add(f.id);
+        Database db = builder.start();
+        try {
+            out.format("---- STARTED ----\n");
+            
+            Connection c = db.connection();
+            
+            out.println("db time: " + c.currentTime().units());
+    
+            // Iterates existing data
+            List<Integer> list = new ArrayList<Integer>();
+            for (Dummy f : c.usePrimary(Dummy.class).objects()) {
+                list.add(f.id);
+            }
+            out.println(String.format("Iterated: %d items", list.size()));
+    
+            // Deletes existing entries
+            for (Integer id : list) {
+                c.delete(toKey(id));
+            }
+            out.println(String.format("Deleted: %d items", list.size()));
+    
+            // Creates more entries
+            while (currentId < lastId) {
+                Dummy f = createDummy(currentId);
+                c.put(toKey(f.id), f);
+                currentId++;
+            }
+            db.sync();
+            out.println(String.format("Created: %d items", n));
+        } finally {
+            db.stop();
+            out.println(String.format("STOP lastId = %d", lastId));
         }
-        out.println(String.format("Iterated: %d items", list.size()));
-
-        // Deletes existing entries
-        for (Integer id : list) {
-            c.delete(toKey(id));
-        }
-        out.println(String.format("Deleted: %d items", list.size()));
-
-        // Creates more entries
-        while (currentId < lastId) {
-            Dummy f = createDummy(currentId);
-            c.put(toKey(f.id), f);
-            currentId++;
-        }
-        out.println(String.format("Created: %d items", n));
-
-        db.sync();
-        db.stop();
-        out.println(String.format("STOP lastId = %d", lastId));
 
         return lastId;
     }
@@ -125,7 +129,7 @@ What we know:
 * Always a vpos (odd spos).
 * Could not reduce to less than 3 db startups.
 * Does not depend on evict.
-* Identical error reproduced with in-memory database (this code).
-
+* The followPointer when exception is thrown is from a vpos KeyNode to a vpos node.
+* Happens at db startup (DbStarter.rerunTransactions() included in stack).
 
 */
