@@ -7,7 +7,6 @@ package bergdb.dev;
 //  Proportional to number of KVs gotten? Does not seem fair to getOne() to just
 //  call possiblyEvict for an operation that might retrieve 1000 KVs. The operation 
 //  might cause a large increase of the cache size.
-//
 
 /**
  * Dummy test code; for development only.

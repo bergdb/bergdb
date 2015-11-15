@@ -4,12 +4,17 @@ import java.util.Locale;
 
 /**
  * An instance of this class represents a duration of time (immutable, non-negative).
- * The resolution is 100 nanoseconds and the duration is stored as
- * a long internally.
+ * The resolution is 100 nanoseconds and the duration is stored as a long internally.
  * 
  * @author Frans Lundberg
  */
 public class Duration {
+    
+    /**
+     * Longest possible duration. Equals Long.MAX_VALUE * 100 nanoseconds = 29 000 years.
+     */
+    public static final Duration MAX = new Duration(Long.MAX_VALUE);
+    
     private static final double UNITS_PER_SECOND = (double) Clock.UNITS_PER_SEC;
     private static final double UNITS_PER_MINUTE = UNITS_PER_SECOND * 60.0;
     private static final double UNITS_PER_HOUR = UNITS_PER_MINUTE * 60.0;

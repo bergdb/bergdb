@@ -30,21 +30,18 @@ with atomic operations on "long" and "double".</p>
 
 
 <!-- ====================================================================== -->
-<h1>Coding</h1>
+<h1>Developement</h1>
 
 <pre>
 GENERAL
 * Use Java 1.5.
 * Generics is allowed.
 * Annotations are only allowed for non-production code (test code).
-* Do not use weak references because of GCJ issues.
-* Be careful with printf/String.format() because of GCJ issues. And to have one less IKVM DLL.
-* Do not use resource files because of GCJ issues and complexity in general.
 
 CODE STYLE
 * Follow Sun's (Oracle's) Java code style unless otherwise
-    specified here. Deviations are allowed if useful.
-* Use 100 column max line width instead of 80 (same as Android).
+    specified here. Deviations that are useful and deliberate are allowed.
+* Use 100 column max line width (same as Android project) instead of 80.
 * Treat acronyms as words. Eg.: getId(), getHtml(), setUrl() (same as Android).
 * Android has a good code style almost identical to Sun's original at
     http://source.android.com/source/code-style.html
@@ -53,15 +50,16 @@ CODE STYLE
     (This follows JDK approach, see Integer.parseInt() as example.)
 
 JAVADOC
-* Use Javadoc. Class comments, method comments. Use few tags: @deprecated, @param, @throws, @author.
+* Use Javadoc. Class comments, method comments. Use few tags: @param, @return, @throws, @author, @deprecated
 * Use Javadoc "@author firstName lastName" for top-level classes/interfaces.
-* ALL classes/interface/methods of the Pub API must be have Javadoc comments.
+* ALL classes/interfaces of the Pub API must be have Javadoc comments. Most methods too.
 * ALL packages/classes/interfaces should have Javadoc comments.
 * See Oracle's: "How to Write Doc Comments for the Javadoc Tool".
   http://www.oracle.com/technetwork/java/javase/documentation/index-137868.html
+  
 </pre>
 
-<p><b>Testing</b>. Use Nanotest (com.bergdb.nanotest). Use it for unit tests
+<p><b>TESTING</b>. Use Nanotest (com.bergdb.nanotest). Use it for unit tests
 (nanotest group <b>unit</b>) and functional tests (<b>f</b>) 
 A major reason for using Nanotest is to be able to self-test easily (even when compiled with GCJ, 
 IKVM, ..). Nanotest is very simple and small compared to JUnit and it allows test methods directly
@@ -83,15 +81,14 @@ execution time. Both of the test types, test that the code is working properly.<
 </pre>
 
 <p><b>Code markers</b>. Use NOTE in addition to TODO and XXX. NOTE is used for something we may want 
-to modify at in the future. Possible improvements, considerations. 
-NOTEs can be kept in the code indefinitely, while XXX are temporary and
-should be gone before each commit. Most TODOs should be gone before a release.
-Use backlog for future tasks.</p>
+to modify at in the future. Possible improvements, considerations. NOTEs can be kept in the code 
+indefinitely, while XXX are temporary and should be gone before each commit. Most TODOs should 
+be gone before a release. Use backlog for future tasks.</p>
 
 <p><b>Access rules</b>. "protected" keyword is not allowed and package access 
-is seldom used. This is to keep things simple, and make it work with GCJ.
-We need more advanced access rules anyway; they cannot be enforced by the Java compiler. 
-Instead, allowed access is determined by the allowed package dependencies.</p>
+is seldom used. This is to keep things simple. We need more advanced access rules anyway; 
+they cannot be enforced by the Java compiler. Instead, allowed access is determined 
+by the specified allowed package dependencies.</p>
 
 <p><b>package.html</b>. Use Javadoc package.html files to document the Java packages.
 Each package should specify its allowed package dependencies with a statement like:

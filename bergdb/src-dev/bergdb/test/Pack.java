@@ -9,6 +9,7 @@ public class Pack implements IPack {
     private static Class<?>[] classes = new Class<?>[] {
         BigDb.class,
         BigDbWithDeletes.class,
+        BryanIssue.class,
         Bug130924.class,
         Bug141109.class,
         Concurrency2.class,

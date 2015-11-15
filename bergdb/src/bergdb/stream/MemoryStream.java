@@ -3,7 +3,6 @@ package bergdb.stream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.util.ArrayList;
-
 import bergdb.common.Bug;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
@@ -17,13 +16,14 @@ import bergdb.nanotest.Nano;
  */
 public class MemoryStream implements AppendOnlyStream {
     //
-    // Synch note: no effort is made to allow truly concurrent readers. This class is for testing
-    // only and reads/appends will be very fast anyway. Therefore all methods are synchronized.
+    // Synch note: no effort is made to allow truly concurrent readers. This 
+    // class is for testing only and reads/appends will be very fast anyway. 
+    // Therefore essentially all methods are synchronized.
     //
     
     private long streamLength;
     private static final int ARRAY_SIZE = Util.identity(1 * 1000000);
-    private int firstArrayIndex;    // NOTE Consider: maybe a long?
+    private int firstArrayIndex;
     private ArrayList<byte[]> arrays;
     private long firstValidPos;
     private boolean closed = false;
@@ -64,6 +64,18 @@ public class MemoryStream implements AppendOnlyStream {
                 : copy.arrays.size() + " != " + this.arrays.size();
         assert copy.assertOk();
         
+        return copy;
+    }
+    
+    /**
+     * Makes a shallow copy, stream data is not copied.
+     */
+    public synchronized MemoryStream copyShallow() {
+        MemoryStream copy = new MemoryStream();
+        copy.streamLength = this.streamLength;
+        copy.firstValidPos = this.firstValidPos;
+        copy.firstArrayIndex = this.firstArrayIndex;
+        copy.arrays = this.arrays;
         return copy;
     }
     
@@ -234,7 +246,6 @@ public class MemoryStream implements AppendOnlyStream {
         }
         
         firstValidPos = firstArrayIndex * ARRAY_SIZE;
-        //this.firstValidPos = spos;   // <-- code before 130326
     }
     
     public synchronized void seekFirstPos(long pos) {

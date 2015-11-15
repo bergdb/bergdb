@@ -323,7 +323,10 @@ public class DbBuilder {
         return this;
     }
     
-    private void testSetupExceptStream() {
+    /**
+     * Tests setup except stream; test clock, no evict, retain forever and testId().
+     */
+    public void testSetupExceptStream() {
         // Test setup except for stream.
         clock(new CoreTestClock());
         noEvict();

@@ -466,7 +466,7 @@ public class Db {
         try {
             nodeStream.recover();
         } catch (BadMagicBytes e) {
-            throw new BadCryptoKey("Wrong crypto key used (most likely)."
+            throw new BadCryptoKey("Likely, the wrong crypto key was used."
                     + " Invalid magic bytes in stream.");
         }
         
@@ -481,8 +481,6 @@ public class Db {
         startDb(transactions);
         
         createPutAndGetData();
-        
-        //evictor.setDag(dag);
         
         this.state = DbState.ACTIVE;
         reclaim.initFromDb();
