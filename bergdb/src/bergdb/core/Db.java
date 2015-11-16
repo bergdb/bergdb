@@ -541,7 +541,7 @@ public class Db {
                         
                         if (pointerPos < 0 || pointerPos % 2 == 1) {
                             throw new AssertionError("bad pointerPos (" + pointerPos 
-                                    + "), cannot read from stream"
+                                    + "), to read from stream"
                                     + ", pointerIndex:" + pointerIndex 
                                     + ", predecessor:" + predecessor.print());
                         }
@@ -597,7 +597,7 @@ public class Db {
                         }
                     }
                 }
-
+                
                 return result;
             }
         };
@@ -858,9 +858,6 @@ public class Db {
         
         long vpos = x.nextVpos;
         node.setId(vpos);
-        
-        // TODO A. Would it be better to set id, but not spos of index nodes. Not before actually written to stream.
-        // consider: node.setSpos(Spos.NULL);
         node.setSpos(vpos);
         
         x.increaseNextVpos();
@@ -1323,9 +1320,9 @@ public class Db {
             x.trans.startupPos = newSp;
         }
         
-        // Note: appendNodes does things beyond writing to stream, it sets spos of node.
+        // Note: nodeStream.appendNodes() does things beyond writing to stream, it sets spos of nodes.
         // This is not needed for rerun transactions, however. They have value nodes only
-        // and there spos:es are set elsewhere.
+        // and their spos:es are set elsewhere.
         
         if (!x.trans.isStartupRerun) {
             nodeStream.appendNodes(x.transNodes, x.trans);

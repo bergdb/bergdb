@@ -34,13 +34,13 @@ import bergdb.storage.StreamFormatException;
  */
 public class DbStarter {
     //
-    // This implementation is not optimized for CPU performance. Clean code takes precedence.
-    // Startup is not that performance-sensitive and it is likely I/O bound.
+    // This implementation is not optimized for CPU performance. Clean code 
+    // takes precedence. Startup is not that performance-sensitive and is 
+    // likely I/O bound anyway.
     //
     
     private final TransSeq transSeq = new TransSeq();
     private final HashMap<Long, StoredNode> posMap = new HashMap<Long, StoredNode>();
-    private final HashMap<Long, Node> posMap2 = new HashMap<Long, Node>();
     private final NextMap nextMap = new NextMap();
     private final Db db;
     private final List<StoredTrans> transactions;
@@ -149,8 +149,8 @@ public class DbStarter {
                 long pos = storedNode.getNode().getSpos();
                 long prevPos = storedNode.getPrevPos();
                 
-                if (Spos.isValid(prevPos)) {          
-                    nextMap.put(prevPos, pos);                    
+                if (Spos.isValid(prevPos)) {
+                    nextMap.put(prevPos, pos);
                 }
             }
         }
@@ -281,13 +281,13 @@ public class DbStarter {
         db.internal().setKvTransSeq(transSeq);
         db.internal().createPutAndGetData();
     }
-
+    
     private void rerunTransactions() {
         // Reruns transactions, except the first one.
         
         int count = transactions.size();
         
-        for (int i = 0; i < count; i++) {
+        for (int i = 1; i < count; i++) {
             final StoredTrans storedTrans = transactions.get(i);
             
             Trans.Listener listener = new Trans.Listener() {
@@ -301,11 +301,9 @@ public class DbStarter {
                 }
             };
             
-            if (i > 0) {
-                Trans t = storedTrans.createRerunTransaction(db.trans());
-                t.listener = listener;
-                db.internal().executeInner(t);
-            }
+            Trans t = storedTrans.createRerunTransaction(db.trans());
+            t.listener = listener;
+            db.internal().executeInner(t);
         }
     }
 
@@ -431,7 +429,7 @@ public class DbStarter {
         }
         
         long spos = node.getSpos();
-        if (!Spos.isValid(spos)) {
+        if (!Spos.isValid(spos) || Spos.isVpos(spos)) {
             throw new StreamFormatException("Bad spos of node, spos=" + spos + ", node: " + node);
         }
         
@@ -442,7 +440,6 @@ public class DbStarter {
             break;
         case Node.TYPE_TOP_NODE:
             break;
-            
         }
     }
 
@@ -450,7 +447,8 @@ public class DbStarter {
      * @throws StreamFormatException
      */
     private void checkStreamPointers() {
-        for (Node node : posMap2.values()) {
+        for (StoredNode storedNode : posMap.values()) {
+            Node node = storedNode.getNode();
             if (node.isKeyNode()) {
                 KeyNode k = (KeyNode) node;
                 

@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
-
 import bergdb.core.DbBuilder;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
@@ -50,7 +49,6 @@ public class BryanIssue {
         DbBuilder b = ((DatabaseBuilderImp) builder).getDbBuilder();
         b.mainStream(memoryStream);
         b.testSetupExceptStream();
-        b.startupDistance(Integer.MAX_VALUE);
         b.retainForever();
     }   
 
@@ -125,7 +123,7 @@ Does not depende on startup distance 10M and 1000M gives same result:
     bergdb.storage.StreamFormatException: unknown node type, 0, spos: 20119641, node header bytes: 0000000200000094
 
 What we know:
-* Does not depend on startupDistance.
+* Happens when stream bigger than startup distance.
 * Always a vpos (odd spos).
 * Could not reduce to less than 3 db startups.
 * Does not depend on evict.
