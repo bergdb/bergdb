@@ -809,7 +809,7 @@ public class Db {
         transNodes.addKeyNode(root);
         transNodes.addTopNode(superRoot);
         
-        nodeStream.appendNodes(transNodes, trans);
+        nodeStream.appendNodes(transNodes, trans, new ArrayList<Node>());
         
         // This is needed to be able to use sync() method.
         x.lastSposOfLastTrans = trans.lastPos;
@@ -1317,8 +1317,11 @@ public class Db {
         // This is not needed for rerun transactions, however. They have value nodes only
         // and their spos:es are set elsewhere.
         
+        x.transNodes.clean();
+        handleStillDirtyNodes();
+        
         if (!x.trans.isStartupRerun) {
-            nodeStream.appendNodes(x.transNodes, x.trans);
+            nodeStream.appendNodes(x.transNodes, x.trans, x.transInfo.gotDirtyNodes);
         }
         
         if (x.trans.isStartupRerun) {
@@ -1330,10 +1333,6 @@ public class Db {
                 throw new AssertionError("top nodes in rerun trans, " + x.transNodes.topCount);
             }
         }
-        
-        x.transNodes.clean();
-        
-        handleStillDirtyNodes();
         
         addValueNodesToCache();
         

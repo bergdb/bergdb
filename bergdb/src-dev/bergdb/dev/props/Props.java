@@ -39,10 +39,18 @@ public class Props {
 
 /*
 
+151228
+======
+
+cissi, Java HotSpot(TM) 64-Bit Server VM 24.76-b04, java 1.7.0_76
+MEM:169
+CORE:0.81 (0.82, 0.99, 0.87, 0.60)
+SS:1.47 (1.13, 1.22, 1.57, 2.15)
+
 150721
 ======
 
-2015-07-21, cissi, Java HotSpot(TM) 64-Bit Server VM 24.76-b04, java 1.7.0_76
+cissi, Java HotSpot(TM) 64-Bit Server VM 24.76-b04, java 1.7.0_76
 MEM:161
 CORE:0.79 (0.81, 1.01, 0.86, 0.56)
 SS:1.48 (1.16, 1.26, 1.60, 2.06)

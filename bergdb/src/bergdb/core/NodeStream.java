@@ -1,6 +1,8 @@
 package bergdb.core;
 
 import java.io.PrintStream;
+import java.util.ArrayList;
+
 import bergdb.common.Bytes;
 import bergdb.common.Util;
 import bergdb.dag.Node;
@@ -98,9 +100,12 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         return rstream.getNextSpos();
     }
 
-    void appendNodes(TransNodes nodes, Trans trans) {
+    /**
+     * Appends a transaction to the node stream.
+     */
+    void appendNodes(TransNodes nodes, Trans trans, ArrayList<Node> gotDirtyNodes) {
         long pos = getNextPos();
-        serializer.serialize(nodes, trans.tt, pos, trans.startupPos);
+        serializer.serialize(nodes, trans.tt, pos, trans.startupPos, gotDirtyNodes);
         
         trans.tpos = pos;
         trans.lastPos = serializer.getOutputLastSpos();

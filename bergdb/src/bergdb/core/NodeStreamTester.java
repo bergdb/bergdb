@@ -1,6 +1,7 @@
 package bergdb.core;
 
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 
 import bergdb.common.Util;
 import bergdb.dag.KeyNode;
@@ -143,7 +144,7 @@ public class NodeStreamTester {
         n1.setId(12L);
         transNodes.addIndexNode(n1);
         
-        nodeStream.appendNodes(transNodes, trans);
+        nodeStream.appendNodes(transNodes, trans, new ArrayList<Node>());
         Assert.assertTrue(n1.getSpos() > 0);
         
         NodeHeader header1 = nodeStream.readNodeHeader(n1.getSpos());
@@ -163,7 +164,7 @@ public class NodeStreamTester {
         node.setId(13L);
         transNodes.addIndexNode(node);
         
-        nodeStream.appendNodes(transNodes, trans);
+        nodeStream.appendNodes(transNodes, trans, new ArrayList<Node>());
         Assert.assertTrue(node.getSpos() > 0);
         
         NodeHeader header = nodeStream.readNodeHeader(node.getSpos());
@@ -182,7 +183,7 @@ public class NodeStreamTester {
         ValueNode node = new ValueNode(new byte[1]);
         transNodes.addValueNode(node, Keys.toSegments("/-ddir"));
         
-        nodeStream.appendNodes(transNodes, trans);
+        nodeStream.appendNodes(transNodes, trans, new ArrayList<Node>());
         Assert.assertTrue(node.getSpos() > 0);
         
         NodeHeader header = nodeStream.readNodeHeader(node.getSpos());

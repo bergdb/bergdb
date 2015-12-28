@@ -47,7 +47,10 @@ public class StoredTrans {
     public StoredNode[] nodes;
     
     public final long startupPos;
+    
+    public long[] gotDirtyIds;
 
+    
     private StoredTrans() {
         // for testing
         tt = 0;
@@ -62,6 +65,7 @@ public class StoredTrans {
         lastPos = d.lastPos;
         nodes = d.nodes;
         startupPos = d.startupPos;
+        gotDirtyIds = d.gotDirtyIds;
     }
     
     public boolean isPrimordial() {
@@ -203,6 +207,7 @@ public class StoredTrans {
         long lastPos;
         long startupPos;
         StoredNode[] nodes;
+        long[] gotDirtyIds;
 
         int offset = 0;
 
@@ -263,6 +268,22 @@ public class StoredTrans {
                 }
 
                 nodeList.add(stored);
+            }
+            
+            // Parse got-dirty node ids
+            
+            int gotDirtyCount = Bytes.bytesToIntLE(buffer, offset);
+            offset += 4;
+            
+            if (gotDirtyCount < 0) {
+                throw new StreamFormatException("bad gotDirtyCount, " + gotDirtyCount);
+            }
+            
+            this.gotDirtyIds = new long[gotDirtyCount];
+            
+            for (int i = 0; i < gotDirtyCount; i++) {
+                gotDirtyIds[i] = Bytes.bytesToLongLE(buffer, offset);
+                offset += 8;
             }
 
             nodes = nodeList.toArray(new StoredNode[nodeList.size()]);
@@ -332,6 +353,7 @@ public class StoredTrans {
 
         /** Number of times serialize() has been called. */
         private long counter;
+        private ArrayList<Node> gotDirtyNodes;
         
         /**
          * Allocates memory for the serialization.
@@ -353,7 +375,8 @@ public class StoredTrans {
          *            The spos of the first byte of the transaction.
          * @param startupPos
          */
-        public void serialize(TransNodes transNodes, long transTime, long transStartPos, long startupPos) {
+        public void serialize(TransNodes transNodes, long transTime, long transStartPos, 
+                long startupPos, ArrayList<Node> gotDirtyNodes) {
             assert transNodes != null;
             assert transTime >= 0;
             assert transStartPos >= 0;
@@ -362,6 +385,7 @@ public class StoredTrans {
             this.transStartPos = transStartPos;
             this.transTime = transTime;
             this.startupPos = startupPos;
+            this.gotDirtyNodes = gotDirtyNodes;
 
             prepareToSerialize();
             
@@ -523,6 +547,12 @@ public class StoredTrans {
 
             // Marker for end of nodes
             totalSize += 4;
+            
+            // Number of got dirty node ids
+            totalSize += 4;
+            
+            // Got-dirty node ids
+            totalSize += 8 * gotDirtyNodes.size();
 
             // Room for RecoverableStream.LAST_BYTE.
             totalSize += 1;
@@ -604,6 +634,15 @@ public class StoredTrans {
             // Zero to indicate end of nodes.
             Bytes.intToBytesLE(0, byteBuffer, offset);
             offset += 4;
+            
+            Bytes.intToBytesLE(gotDirtyNodes.size(), byteBuffer, offset);
+            offset += 4;
+            
+            for (int i = 0; i < gotDirtyNodes.size(); i++) {
+                long id = gotDirtyNodes.get(i).getId();
+                Bytes.longToBytesLE(id, byteBuffer, offset);
+                offset += 8;
+            }
 
             System.arraycopy(NodeStream.ZEROS64, 0, byteBuffer, offset, extraZeros);
             offset += extraZeros;
@@ -724,7 +763,7 @@ public class StoredTrans {
     private static void testSerialize1() {
         Serializer serializer = new Serializer();
         TransNodes transNodes = new TransNodes();
-        serializer.serialize(transNodes, 100, 200, -1);
+        serializer.serialize(transNodes, 100, 200, -1, new ArrayList<Node>());
         byte[] buffer = serializer.getTransBuffer();
         
         Parser parser = new Parser();
@@ -754,7 +793,7 @@ public class StoredTrans {
         transNodes.addValueNode(v2, Keys.toSegments("c"));
         transNodes.addKeyNode(n);
         
-        serializer.serialize(transNodes, 100, 200, -1);
+        serializer.serialize(transNodes, 100, 200, -1, new ArrayList<Node>());
         byte[] buffer = serializer.getTransBuffer();
         
         Parser parser = new Parser();
@@ -776,11 +815,36 @@ public class StoredTrans {
     }
     
     @Nano
+    private static void testSerializeWithGotDirtyIds() {
+        Serializer serializer = new Serializer();
+        TransNodes transNodes = new TransNodes();
+        ArrayList<Node> gotDirty = new ArrayList<Node>();
+        
+        KeyNode n1 = new KeyNode();
+        n1.setId(1000L);
+        KeyNode n2 = new KeyNode();
+        n2.setId(2000L);
+        
+        gotDirty.add(n1);
+        gotDirty.add(n2);
+        
+        serializer.serialize(transNodes, 100, 200, -1, gotDirty);
+        byte[] buffer = serializer.getTransBuffer();
+        
+        Parser parser = new Parser();
+        parser.parse(200, buffer);
+        
+        assertEquals(2, parser.gotDirtyIds.length);
+        assertEquals(1000L, parser.gotDirtyIds[0]);
+        assertEquals(2000L, parser.gotDirtyIds[1]);
+    }
+    
+    @Nano
     public static void testSerializeTransWithDelete() {
         Serializer s = new Serializer();
         TransNodes transNodes = new TransNodes();
         transNodes.addValueNode(ValueNode.createDelete(), Keys.toSegments("key1"));
-        s.serialize(transNodes, 100, 200, -1);
+        s.serialize(transNodes, 100, 200, -1, new ArrayList<Node>());
         byte[] buffer = s.getTransBuffer();
         
         Parser parser = new Parser();
@@ -788,15 +852,14 @@ public class StoredTrans {
         
         StoredNode[] stored = parser.nodes;
         assertEquals(1, stored.length);
-        assertEquals(Node.TYPE_DELETE, stored[0].getNode().getType());
-        
+        assertEquals(Node.TYPE_DELETE, stored[0].getNode().getType());   
     }
 
     @Nano
     private static void testSerializeWithNewStartupPos1() {
         Serializer serializer = new Serializer();
         TransNodes transNodes = new TransNodes();
-        serializer.serialize(transNodes, 100, 200, 12345);
+        serializer.serialize(transNodes, 100, 200, 12345, new ArrayList<Node>());
         byte[] buffer = serializer.getTransBuffer();
         
         Parser parser = new Parser();
@@ -809,7 +872,7 @@ public class StoredTrans {
     private static void testSerializeWithNewStartupPos2() {
         Serializer serializer = new Serializer();
         TransNodes transNodes = new TransNodes();
-        serializer.serialize(transNodes, 100, 200, -1);
+        serializer.serialize(transNodes, 100, 200, -1, new ArrayList<Node>());
         byte[] buffer = serializer.getTransBuffer();
         
         Parser parser = new Parser();
@@ -831,7 +894,7 @@ public class StoredTrans {
         transNodes.addValueNode(v0, Keys.toSegments("a"));
         transNodes.addKeyNode(n);
         
-        serializer.serialize(transNodes, 100, 200, -1);
+        serializer.serialize(transNodes, 100, 200, -1, new ArrayList<Node>());
         byte[] buffer = serializer.getTransBuffer();
         Parser parser = new Parser();
         parser.parse(200, buffer);
@@ -851,7 +914,7 @@ public class StoredTrans {
         
         long time = 120;
         long transPos = 0;
-        serializer.serialize(transNodes, time, transPos, -1);
+        serializer.serialize(transNodes, time, transPos, -1, new ArrayList<Node>());
         Parser parser = new Parser();
         parser.parse(transPos, serializer.getTransBuffer());
         
@@ -866,7 +929,7 @@ public class StoredTrans {
         Serializer serializer = new Serializer();
         TransNodes nodes = new TransNodes();
         nodes.addValueNode(new ValueNode(new byte[]{1, 2, 3}), Keys.toSegments("key1"));
-        serializer.serialize(nodes, 101, 0, -1);
+        serializer.serialize(nodes, 101, 0, -1, new ArrayList<Node>());
         byte[] buffer = serializer.getTransBuffer();
         
         StoredTrans stored = StoredTrans.parse(0, buffer);

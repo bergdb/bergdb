@@ -646,7 +646,7 @@ public class DbStarter {
         transNodes.addValueNode(v2, Keys.toSegments("c"));
         transNodes.addKeyNode(n);
         
-        serializer.serialize(transNodes, 100, 200, -1);
+        serializer.serialize(transNodes, 100, 200, -1, new ArrayList<Node>());
         byte[] buffer = serializer.getTransBuffer();
         
         Parser parser = new Parser();
@@ -665,7 +665,7 @@ public class DbStarter {
         transNodes.addTopNode(t1);
         transNodes.addTopNode(t2);
         
-        serializer.serialize(transNodes, 100, 200, -1);
+        serializer.serialize(transNodes, 100, 200, -1, new ArrayList<Node>());
         byte[] buffer = serializer.getTransBuffer();
         
         Parser parser = new Parser();
@@ -680,7 +680,7 @@ public class DbStarter {
         
         transNodes.addTopNode(TopNode.createDummy(topNodeId));
         
-        serializer.serialize(transNodes, 100, 200, -1);
+        serializer.serialize(transNodes, 100, 200, -1, new ArrayList<Node>());
         byte[] buffer = serializer.getTransBuffer();
         
         Parser parser = new Parser();
