@@ -62,12 +62,12 @@ public class IsDeterministic {
             
             if (i == 0) {
                 first = m;
-                firstNodeStream = (NodeStream) db.getStream();
+                firstNodeStream = db.internal().nodeStream();
             } else {
                 try {
                     compareStreams(first, m, i);
                 } catch (AssertionError e) {
-                    NodeStream mNodeStream = (NodeStream) db.getStream();
+                    NodeStream mNodeStream = db.internal().nodeStream();
                     
                     c.out().println("======== IsDeterministic.testOneKV, first ========");
                     firstNodeStream.print(System.out);
@@ -108,12 +108,12 @@ public class IsDeterministic {
             
             if (i == 0) {
                 first = m;
-                firstNodeStream = (NodeStream) db.getStream();
+                firstNodeStream = db.internal().nodeStream();
             } else {
                 try {
                     compareStreams(first, m, i);
                 } catch (AssertionError e) {
-                    NodeStream mNodeStream = (NodeStream) db.getStream();
+                    NodeStream mNodeStream = (NodeStream) db.internal().nodeStream();
                     
                     c.out().println("======== IsDeterministic.testMultipleTransactions, first ========");
                     firstNodeStream.print(System.out);

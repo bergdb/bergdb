@@ -13,7 +13,7 @@ import bergdb.storage.StreamFormatException;
 
 /**
  * This class is responsible for how to store a KeyNode in the stream. Serialization/deserialization
- * and the extra prevPos field that is only available in the stored node.
+ * and the extra prevPos field.
  * 
  * @author Frans Lundberg
  */

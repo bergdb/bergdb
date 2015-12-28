@@ -10,6 +10,7 @@ public class Pack implements IPack {
         BigDb.class,
         BigDbWithDeletes.class,
         BryanIssue.class,
+        BryanIssueMod.class,
         Bug130924.class,
         Bug141109.class,
         Concurrency2.class,

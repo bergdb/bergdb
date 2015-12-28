@@ -63,7 +63,7 @@ public class BryanIssue {
     }   
 
     public int runJob(final int startId) throws Exception {
-        final int n = 1000;
+        final int n = 1000;        
         final int lastId = startId + n;
         int currentId = startId;
         
@@ -72,7 +72,7 @@ public class BryanIssue {
         
         Database d = builder.start();
         try {
-            out.format("---- STARTED ----\n");
+            out.format("\n---- STARTED ----\n");
             out.println(String.format("Db checksum: %d", dbChecksum(d)));
             out.println(String.format("Dag checksum: %d", dagChecksum(d)));
             compareDags(d);

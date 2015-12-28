@@ -391,13 +391,6 @@ public class Db {
     public StorageInfo[] getStorageInfos() {
         return storageManager.getStorageInfos();
     }
-
-    /**
-     * For internal use.
-     */
-    public final NodeStream getStream() {
-        return nodeStream;
-    }
     
     /**
      * @see bergdb.core.DbClock
@@ -1535,6 +1528,8 @@ public class Db {
         public void setTransSeq(TransSeq seq) { Db.this.transSeq = seq; }
         
         public TransSeq transSeq() { return transSeq; }
+        
+        public NodeStream nodeStream() { return nodeStream; }
         
         public Aux aux() { return aux; }
         

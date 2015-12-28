@@ -1,5 +1,7 @@
 package bergdb.core;
 
+// TODO D. study: should we have prevPos field in StoredTopNode like for StoredKeyNode.
+
 import bergdb.common.Bug;
 import bergdb.common.Bytes;
 import bergdb.dag.Node;

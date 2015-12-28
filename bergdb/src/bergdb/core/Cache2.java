@@ -191,7 +191,7 @@ public class Cache2 {
             
             NodeReference oldRef = map.put(id, ref);
             if (AssertStatus.enabled()) {
-                // TODO C. consider: what happens when old NodeReference becomes eligable for
+                // TODO D. consider: what happens when old NodeReference becomes eligable for
                 // garbage collection? Might never be put on refQ? What if? Is that ok?
                 
                 if (oldRef != null && oldRef.get() != null) {
@@ -552,7 +552,7 @@ public class Cache2 {
                 return;
             }
             
-            // TODO C. What is the evict condition?
+            // TODO D. What is the evict condition?
             if (node.isDirty()) {
                 return;
             }
@@ -570,7 +570,7 @@ public class Cache2 {
                                 && AccessData.getAccessTime(node.getPointerAccessData(i)) 
                                         <= accessTimeLimit) {
                             
-                            // TODO C. What is the evict condition?
+                            // TODO D. What is the evict condition?
                             if (!pointee.isDirty()) {
                                 node.setPointer(i, null, pointeePos);
                                 evictCount++;

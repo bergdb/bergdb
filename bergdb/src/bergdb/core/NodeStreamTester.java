@@ -112,7 +112,7 @@ public class NodeStreamTester {
         db.execute(db.trans().put("admin3", "a3"));
         db.execute(db.trans().put("admin4", "a4"));
         
-        NodeStream.TransIterator ti = db.getStream().createTransIterator(0);
+        NodeStream.TransIterator ti = db.internal().nodeStream().createTransIterator(0);
         ti.next();
         ti.next();
         StoredTrans stored = ti.getStoredTrans();
