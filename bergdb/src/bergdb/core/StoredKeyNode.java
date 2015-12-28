@@ -171,7 +171,7 @@ public class StoredKeyNode implements StoredNode {
     private static void testSerialize() {
         KeyNode node = new KeyNode();
         long k0 = Klong.createTime(5000);
-        long k1 = Klong.create(Util.toBytes("key"));
+        long k1 = Klong.createKey(Util.toBytes("key"));
         node.addToEnd(k0, null, Spos.NULL);
         node.addToEnd(k1, null, 1234);
         

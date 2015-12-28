@@ -68,7 +68,7 @@ public class Keys {
      * Converts a bkey to an ikey.
      * If bytes != null, this method will always return a String 
      * (not throw an exception).
-     * bytes == 'null' is not allowed.
+     * bytes == null is not allowed.
      */
     public static final String toString(byte[] bytes) {
         assert bytes != null;

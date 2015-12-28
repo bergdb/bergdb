@@ -774,10 +774,11 @@ public class KeyNode implements Node {
                     break A;
                 }
                 break;
-            case Klong.INT_TYPE_DELETE:
             case Klong.INT_TYPE_DELETE_BITMAP:
                 throw new IllegalStateException("This method is cannot be used for "
                         + "KeyNode with delete klongs.");
+            default:
+                throw new IllegalStateException("unexpected klong type, " + klongType);
             }
         }
         return result;
@@ -1308,7 +1309,7 @@ public class KeyNode implements Node {
                 }
                 lastCompareValue = klong;
                 break;
-            case Klong.INT_TYPE_DELETE:
+            case Klong.INT_TYPE_DELETE_BITMAP:
                 if (compareValue != lastCompareValue) {
                     uniqueKeyCount++;
                 }
@@ -1578,7 +1579,7 @@ public class KeyNode implements Node {
      * @param sz Size of this.klongs according to caller.
      */
     long getLastDeleteBitmap(short sz) {
-        long del = Klong.createDeleteBitmap();
+        long del = Klong.createDelete();
         int s;
         long[] klongs;
         int index = 0;

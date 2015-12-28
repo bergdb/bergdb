@@ -305,7 +305,7 @@ public class DbHelper {
     private static void addPointer(KeyNode from, KeyNode to, String label) {
         long time = 10;
         long ad = AccessData.DEFAULT_ACCESS_DATA;
-        long klong = Klong.create(Util.toBytes(label));
+        long klong = Klong.createKey(Util.toBytes(label));
         from.addKlong(time, klong, to, ad);
     }
 }

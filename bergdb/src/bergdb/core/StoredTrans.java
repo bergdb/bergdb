@@ -745,9 +745,9 @@ public class StoredTrans {
         ValueNode v2 = new ValueNode(new byte[]{13, 14});
         
         KeyNode n = new KeyNode();
-        n.addKlong(10, Klong.create(Util.toBytes("a")), v0, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(20, Klong.create(Util.toBytes("b")), v1, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(30, Klong.create(Util.toBytes("c")), v2, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.createKey(Util.toBytes("a")), v0, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, Klong.createKey(Util.toBytes("b")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, Klong.createKey(Util.toBytes("c")), v2, AccessData.DEFAULT_ACCESS_DATA);
         
         transNodes.addValueNode(v0, Keys.toSegments("a"));
         transNodes.addValueNode(v1, Keys.toSegments("b"));
@@ -826,7 +826,7 @@ public class StoredTrans {
         
         ValueNode v0 = new ValueNode(new byte[]{});
         KeyNode n = new KeyNode();
-        n.addKlong(10, Klong.create(Util.toBytes("a")), v0, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.createKey(Util.toBytes("a")), v0, AccessData.DEFAULT_ACCESS_DATA);
         
         transNodes.addValueNode(v0, Keys.toSegments("a"));
         transNodes.addKeyNode(n);

@@ -699,8 +699,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         assert sz <= this.maxNodeSize : "Bad node size: " + sz;
         long arrayTime = -1;
         long tTime = pd.tt;
-        long arrayDel = Klong.createDeleteBitmap();
-        long del = Klong.createDeleteBitmap();
+        long arrayDel = Klong.createDelete();
+        long del = Klong.createDelete();
         boolean hasTransDel = false;
             // Set to true if last klong is a delete for the same time as this transaction.
 

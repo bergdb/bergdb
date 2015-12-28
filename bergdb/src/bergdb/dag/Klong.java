@@ -40,7 +40,7 @@ import bergdb.nanotest.Nano;
  * TYPE, 2 bits at 7:6-7:7
  * 0 - time, indicates new version
  * 1 - key, 0-7 characters of key. Klong has a pointer to a key node or a value node.
- * 2 - DEPRECATED! delete, delete operation of value corresponding to the key 
+ * 2 - DEPRECATED! not used
  * 3 - delete bitmap. 62 bits at 0:0-7:5 are deleted-or-not bits for klongs at index 0 to 61.
  * 
  * TIME KLONG
@@ -62,15 +62,10 @@ public class Klong {
     
     public static final long TYPE_TIME   = 0L << (7*8 + 6);
     public static final long TYPE_KEY    = 1L << (7*8 + 6);
-    
-    // TODO B. remove Klong.TYPE_DELETE
-    /** @deprecated */
-    public static final long TYPE_DELETE = 2L << (7*8 + 6);
-    
     public static final long TYPE_DELETE_BITMAP = 3L << (7*8 + 6);
+    
     public static final int INT_TYPE_TIME   = 0;
     public static final int INT_TYPE_KEY    = 1;
-    public static final int INT_TYPE_DELETE = 2;
     public static final int INT_TYPE_DELETE_BITMAP = 3;
     
     public static final int MAX_VERSION = 7;
@@ -82,7 +77,7 @@ public class Klong {
     public static final long NULL = privateCreateTime(MAX_TIME + 1);
     
     /** A KEY klong with the empty (zero-length) key and version = 0. */
-    public static final long EMPTY_KEY = create(new byte[0]);
+    public static final long EMPTY_KEY = createKey(new byte[0]);
     
     /** A delete bitmap klong with no delete bits set. */
     public static final long DELETE_NONE_BITMAP = TYPE_DELETE_BITMAP;
@@ -106,7 +101,7 @@ public class Klong {
     private Klong() {}
     
     /**
-     * 7 bytes time value.
+     * Creates a 7 byte TIME klong.
      */
     public static final long createTime(long time) {
         assert time >= MIN_TIME;
@@ -121,24 +116,17 @@ public class Klong {
     }
     
     /**
-     * Creates a KEY/DELETE klong given a key.
-     */
-    private static final long create(byte[] key, boolean delete) {
-        return create(key, 0, key.length, delete);
-    }
-    
-    /**
      * Creates a KEY klong given the key as a byte array.
      */
-    public static final long create(byte[] key) {
+    public static final long createKey(byte[] key) {
         assert key.length <= MAX_SIZE;
-        return create(key, 0, key.length, false);
+        return createKey(key, 0, key.length);
     }
     
     /**
-     * Returns an empty delete bitmap. No bits have been set, no deletes made.
+     * Returns an empty DELETE bitmap klong. No bits have been set, no deletes made.
      */
-    public static final long createDeleteBitmap() {
+    public static final long createDelete() {
         return DELETE_NONE_BITMAP;
     }
     
@@ -159,9 +147,9 @@ public class Klong {
     }
     
     /**
-     * Creates a KEY/DELETE klong.
+     * Creates a KEY klong.
      */
-    private static final long create(byte[] key, int keyOffset, int keyLength, boolean isDelete) {
+    private static final long createKey(byte[] key, int keyOffset, int keyLength) {
         long value = 0;
         int shift = 6*8 + 6;
         assert keyLength < 8;
@@ -172,25 +160,17 @@ public class Klong {
         }
         
         // Before inline: 
-        // value = setHeader(value, isDelete ? TYPE_DELETE : TYPE_KEY, keyLength);
-        value = ((isDelete ? TYPE_DELETE : TYPE_KEY) | ((long) keyLength << 3)) 
-                | (value & 0x3fffffffffffffc0L);
+        //value = setHeader(value, TYPE_KEY, keyLength);
+        value = (TYPE_KEY | ((long) keyLength << 3)) | (value & 0x3fffffffffffffc0L);
         return value;
     }
     
     /**
-     * Simple method useful for quick debug and testing. For faster processing,
-     * use byte arrays.
+     * Creates a key klong from an ikey.
+     * Useful for testing, normally byte arrays should be used.
      */
-    private static long create(String key, boolean isDelete) {
-        return create(Util.toBytes(key), isDelete);
-    }
-    
-    /**
-     * Slow, use for testing.
-     */
-    private static long create(String key) {
-        return create(Keys.toBytes(key), false);
+    private static long createKey(String key) {
+        return createKey(Keys.toBytes(key));
     }
     
     /**
@@ -242,6 +222,7 @@ public class Klong {
     
     /**
      * Slow test method for getting a UTF-8 string key.
+     * Converts from bkey to ikey.
      */
     public static String getKeyString(long value) {
         byte[] bytes = new byte[getLength(value)];
@@ -281,34 +262,7 @@ public class Klong {
     }
     
     /**
-     * The sort value of a klong defines the sort order of klongs.
-     * TIME klongs are sorted before KEY/DELETE klongs.
-     * TIME klongs are sorted in increasing time order.
-     * KEY/DELETE klongs are sorted in lexicographilcal order (including length),
-     * then in version order, then according to type (KEY before DELETE).
-     */
-    public static final long getSortValue(long value) {
-        switch (getIntType(value)) {
-        case INT_TYPE_KEY:
-            value &= 0x3fffffffffffffffL;    // 0011 1111 = 3f, clears type bits
-            value <<= 1;
-            break;
-        case INT_TYPE_DELETE:
-            value &= 0x3fffffffffffffffL;    // 0011 1111 = 3f, clears type bits
-            value <<= 1;
-            value |= 1;     // sets Bit 0.
-            break;
-        case INT_TYPE_TIME:
-            value |= 0x8000000000000000L; 
-            // 1000 0000 = 80, sets Bit 63.
-            // Will always be a negative value (long is signed).
-            break;
-        }
-        return value;
-    }
-    
-    /**
-     * Returns the compare value of a klong. The compare value contains the key 
+     * Returns the compare value of a key klong. The compare value contains the key 
      * characters (0-7 characters in 7*8 bits) and their length (3 bits)
      * at the end. Version is not included.
      * A compare value is in the range [0, 2^(56+3)].
@@ -363,10 +317,6 @@ public class Klong {
     
     public static long compareValueToKeyKlong(long compareValue) {
         return compareValue | TYPE_KEY;
-    }
-    
-    public static long compareValueToDeleteKlong(long compareValue) {
-        return compareValue | TYPE_DELETE;
     }
     
     public static String toString(final long klong) {
@@ -468,24 +418,23 @@ public class Klong {
     
     
     // =========================== Testing =================
-    // Nanotests are used.
     
     @Nano
     public static void testPrefixLength1() {
-        long k1 = create(Util.toBytes("ab1"), false);
-        long k2 = create(Util.toBytes("ab2"), false);
+        long k1 = createKey(Util.toBytes("ab1"));
+        long k2 = createKey(Util.toBytes("ab2"));
         Assert.assertEquals(2, prefixLength(k1, k2));
         Assert.assertEquals(2, prefixLength(k2, k1));
     }
     
     @Nano
     public static void testPrefixLength2() {
-        long k1 = create(Util.toBytes("abc"), false);
-        long k2 = create(Util.toBytes("abcd11"), false);
-        long k3 = create(Util.toBytes(""), false);
-        long k4 = create(Util.toBytes("abcdefg"), false);
-        long k5 = create(Util.toBytes("abcdefg"), true);
-        long k6 = create(Util.toBytes("Prag"), true);
+        long k1 = createKey(Util.toBytes("abc"));
+        long k2 = createKey(Util.toBytes("abcd11"));
+        long k3 = createKey(Util.toBytes(""));
+        long k4 = createKey(Util.toBytes("abcdefg"));
+        long k5 = createKey(Util.toBytes("abcdefg"));
+        long k6 = createKey(Util.toBytes("Prag"));
         
         Assert.assertEquals(3, prefixLength(k1, k2));
         Assert.assertEquals(3, prefixLength(k2, k1));
@@ -501,8 +450,8 @@ public class Klong {
     
     @Nano
     public static void testPrefixLength3() {
-        long k1 = create(Util.toBytes("a1"), false);
-        long k2 = create(Util.toBytes("a2"), false);
+        long k1 = createKey(Util.toBytes("a1"));
+        long k2 = createKey(Util.toBytes("a2"));
         Assert.assertEquals(1, prefixLength(k1, k2));
         Assert.assertEquals(1, prefixLength(k2, k1));
     }
@@ -534,50 +483,68 @@ public class Klong {
     
     @Nano
     public static void testHeader() {
-        long v = create("abc");
+        long v = createKey("abc");
         Assert.assertEquals(3, getLength(v));
         Assert.assertEquals(TYPE_KEY, getType(v));
         
-        v = create("a");        
+        v = createKey("a");        
         Assert.assertEquals(1, getLength(v));
         Assert.assertEquals(TYPE_KEY, getType(v));
         
-        v = create("1234567", true);        
+        v = createKey("1234567");        
         Assert.assertEquals(7, getLength(v));
-        Assert.assertEquals(TYPE_DELETE, getType(v));
     }
     
     @Nano
     public static void testIntType() {
-        long v = create("abc");
+        long v = createKey("abc");
         Assert.assertEquals(INT_TYPE_KEY, getIntType(v));
         
         v = createTime(1);  
         Assert.assertEquals(INT_TYPE_TIME, getIntType(v));
         
-        v = create(Util.toBytes("abc"), true);
-        Assert.assertEquals(INT_TYPE_DELETE, getIntType(v));
+        v = Klong.createDelete();
+        Assert.assertEquals(Klong.INT_TYPE_DELETE_BITMAP, Klong.getIntType(v));
     }
     
     @Nano
-    public static void testKey() {
-        long v = create("aaa");
+    public static void testKey1() {
+        long v = createKey("aaa");
         String s = getKeyString(v);
         Assert.assertEquals("aaa", s);
-        
-        v = create("z");
-        s = getKeyString(v);
+    }
+    
+    @Nano
+    public static void testKey2() {
+        long v = createKey("z");
+        String s = getKeyString(v);
         Assert.assertEquals("z", s);
-        
-        v = create("1234567");
-        s = getKeyString(v);
+    }
+
+    @Nano
+    public static void testKey3() {   
+        long v = createKey("1234567");
+        String s = getKeyString(v);
         Assert.assertEquals("1234567", s);
-        
+    }
+    
+    @Nano
+    public static void testKey4() {
         byte[] bytes = new byte[]{0, 1, 3, 127, (byte) 200, (byte) 255};
-        v = create(bytes, 0, bytes.length, false);
+        long v = createKey(bytes, 0, bytes.length);
         byte[] output = new byte[bytes.length];
         int length = getKey(v, output);
         Assert.assertEquals(bytes.length, length);
+        Assert.assertArrayEquals(bytes, output);
+    }
+    
+    @Nano
+    public static void testKey5() {
+        byte[] bytes = new byte[]{3};
+        long v = createKey(bytes, 0, bytes.length);
+        byte[] output = new byte[1];
+        int length = getKey(v, output);
+        Assert.assertEquals(1, length);
         Assert.assertArrayEquals(bytes, output);
     }
     
@@ -607,65 +574,10 @@ public class Klong {
         
         Comparator<byte[]> comp2 = new Comparator<byte[]>() {
             public int compare(byte[] arr1, byte[] arr2) {
-                long v1 = create(arr1, 0, arr1.length, false);
-                long v2 = create(arr2, 0, arr2.length, false);
+                long v1 = createKey(arr1, 0, arr1.length);
+                long v2 = createKey(arr2, 0, arr2.length);
                 v1 = getCompareValue(v1);
                 v2 = getCompareValue(v2);
-                long diff = v1 - v2;
-                int result = diff > 0 ? +1 : 0;
-                //
-                // Note, Buggy line before 2012-05-24: "result = diff < 0 ? -1 : 0;"
-                // However, unit test successful on Rose, 32-bit.
-                //   Java(TM) SE Runtime Environment (build 1.7.0_02-b13)
-                //   Java HotSpot(TM) Server VM (build 22.0-b10, mixed mode)
-                // Test failed on Linda, Java(TM) SE Runtime Environment (build 1.6.0_22-b04)
-                //   Java HotSpot(TM) 64-Bit Server VM (build 17.1-b03, mixed mode)
-                // Test also failed on Rose when compiled with GCJ.
-                //
-                
-                result = diff < 0 ? -1 : result;
-                return result;
-            }
-        };
-        
-        Collections.sort(keys1, comp1);
-        Collections.sort(keys2, comp2);
-        
-        for (int i = 0; i < keys1.size(); i++) {
-            Assert.assertEquals(Util.toString(keys1.get(i)), Util.toString(keys2.get(i)));
-        }
-    }
-
-    @Nano
-    public static void testSortOrder2() throws UnsupportedEncodingException {
-        //
-        // Two sort methods compared
-        //
-        
-        String[] stringKeys = new String[]{"gust", "", "bertil", "abc", "frasse", "gustav", "a", "gu"};
-        ArrayList<byte[]> keys1 = new ArrayList<byte[]>();
-        
-        for (String s : stringKeys) {
-            keys1.add(s.getBytes("UTF-8"));
-        }
-        
-        keys1.add(new byte[]{'a', 0, 0});
-        keys1.add(new byte[]{'a', 0});
-        keys1.add(new byte[]{0, 1});
-        
-        ArrayList<byte[]> keys2 = new ArrayList<byte[]>();
-        for (byte[] key : keys1) {
-            keys2.add(key);
-        }
-        
-        Comparator<byte[]> comp1 = new ByteArrayComparator();
-        
-        Comparator<byte[]> comp2 = new Comparator<byte[]>() {
-            public int compare(byte[] arr1, byte[] arr2) {
-                long v1 = create(arr1, 0, arr1.length, false);
-                long v2 = create(arr2, 0, arr2.length, false);
-                v1 = getSortValue(v1);
-                v2 = getSortValue(v2);
                 long diff = v1 - v2;
                 int result = diff > 0 ? +1 : 0;
                 result = diff < 0 ? -1 : result;
@@ -688,8 +600,8 @@ public class Klong {
         byte[] bytes1 = new byte[2];
         bytes1[0] = 1;
         
-        long k0 = Klong.create(bytes0, 0, 2, false);
-        long k1 = Klong.create(bytes1, 0, 2, false);
+        long k0 = Klong.createKey(bytes0, 0, 2);
+        long k1 = Klong.createKey(bytes1, 0, 2);
         
         long c0 = Klong.getCompareValue(k0);
         long c1 = Klong.getCompareValue(k1);
@@ -710,7 +622,7 @@ public class Klong {
             r.nextBytes(buffer);
             long c1 = Klong.createCompareValue(buffer, 0, length);
             long c2 = Klong.getCompareValue(
-                    Klong.create(buffer, 0, length, false));
+                    Klong.createKey(buffer, 0, length));
             Assert.assertEquals("i=" + i, c1, c2);
         }
     }
@@ -726,7 +638,7 @@ public class Klong {
     
     @Nano
     public static void tDelete1() {
-        long k = createDeleteBitmap();
+        long k = createDelete();
         k = Klong.delete(k, 5);
         k = Klong.delete(k, 33);
         
@@ -741,7 +653,7 @@ public class Klong {
     
     @Nano
     public static void testIsKey() {
-        long k1 = Klong.create(new byte[]{1, 2, 3});
+        long k1 = Klong.createKey(new byte[]{1, 2, 3});
         Assert.assertTrue(Klong.isKey(k1));
         long k2 = Klong.createTime(1000);
         Assert.assertFalse(Klong.isKey(k2));
