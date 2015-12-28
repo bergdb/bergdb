@@ -685,11 +685,16 @@ public class KeyNode implements Node {
         }
     }
     
+    public void addDeleteKlong(long time, long klong) {
+        assert Klong.getType(klong) == Klong.TYPE_DELETE_BITMAP;
+        addKlong(time, klong, null, Spos.NULL);
+    }
+    
     /**
-     * Adds a klong with a pointer and accessData to the end of the key node.
+     * Adds a klong with a pointer/null and accessData/spos to the end of the key node.
      * If needed, a time klong is added before 'klong'.
      */
-    public void addKlong(long time, long klong, Node pointer, long accessData) {
+    public void addKlong(long time, long klong, Node pointer, long accessDataOrSpos) {
         short sz;
         
         // Synch action, ensures that published previous writes are visible.
@@ -726,7 +731,7 @@ public class KeyNode implements Node {
         
         this.klongs[newSize] = klong;
         this.pointers[newSize] = pointer;
-        this.pos[newSize] = accessData;
+        this.pos[newSize] = accessDataOrSpos;
         newSize++;
         
         // Synch action, line below makes changes visible to readers (that read this.size).

@@ -999,6 +999,28 @@ public class KeyNodeTester {
         Assert.assertEquals(Long.MAX_VALUE, node.getMaxValidTime(3));
     }
     
+    @Nano private static void testAddDeleteKlong() {
+        // Checks that pointer corresponding to delete klong is null (Pointer.isNull() == true).
+        
+        KeyNode node = new KeyNode();
+        addKlong(node, 10, "a");                                // index 1
+        node.addDeleteKlong(40, Klong.createDeleteBitmap());    // index 3
+        
+        Pointer p = new Pointer();
+        
+        node.getPointer(0, p);
+        Assert.assertEquals(true, p.isNull());
+        
+        node.getPointer(1, p);
+        Assert.assertEquals(false, p.isNull());
+        
+        node.getPointer(2, p);
+        Assert.assertEquals(true, p.isNull());
+        
+        node.getPointer(3, p);
+        Assert.assertEquals(true, p.isNull());
+    }
+    
     public static void main(String[] args) throws Exception {
         testGt1();
     }

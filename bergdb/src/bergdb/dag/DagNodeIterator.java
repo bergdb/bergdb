@@ -95,6 +95,7 @@ public class DagNodeIterator {
                 nextPointerIndex = pointerIndex;
                 break;
             }
+            
             pointerIndex++;
         }
         
@@ -105,6 +106,13 @@ public class DagNodeIterator {
         long newMaxLookupTime = maxLookupTime;
         if (root.isKeyNode()) {
             KeyNode keyNode = (KeyNode) root;
+            
+            long klong = keyNode.klongs[pointerIndex];
+            if (Klong.getType(klong) != Klong.TYPE_KEY) {
+                throw new Error("pointer not null but klong type is not TYPE_KEY, klong: " 
+                        + Klong.toString(klong) + ", p: " + p.toString());
+            }
+            
             long maxValidTime = keyNode.getMaxValidTime(pointerIndex);
             if (maxValidTime < maxLookupTime) {
                 newMaxLookupTime = maxValidTime;

@@ -749,9 +749,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                 
             } else {                
                 if (node.size + 1 < this.maxNodeSize) {
-                    node.addKlong(tTime, union, null, pd.accessData);
+                    node.addDeleteKlong(tTime, union);
                     pd.nodeChangeListener.keyNodeChanged(node);
-                    
                 } else {                    
                     KeyNode last = node.lastVersionGivenDel(sz, tTime, union);
                     handleFullNode(node, depth, ZERO_LONG_KWP, tTime, last, pd);

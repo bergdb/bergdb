@@ -103,7 +103,7 @@ public class BryanIssue {
             }
             d.sync();
             out.println(String.format("Created: %d items", n));
-            out.println("Before stop():");
+            out.println("---- Before stop():");
             out.println(String.format("Db checksum: %d", dbChecksum(d)));
             out.println(String.format("Dag checksum: %d", dagChecksum(d)));
         } finally {

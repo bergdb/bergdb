@@ -62,7 +62,11 @@ public class Klong {
     
     public static final long TYPE_TIME   = 0L << (7*8 + 6);
     public static final long TYPE_KEY    = 1L << (7*8 + 6);
+    
+    // TODO B. remove Klong.TYPE_DELETE
+    /** @deprecated */
     public static final long TYPE_DELETE = 2L << (7*8 + 6);
+    
     public static final long TYPE_DELETE_BITMAP = 3L << (7*8 + 6);
     public static final int INT_TYPE_TIME   = 0;
     public static final int INT_TYPE_KEY    = 1;

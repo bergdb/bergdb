@@ -82,6 +82,18 @@ public class Pointer {
         return node != null;
     }
     
+    public String toString() {
+        if (isNull()) {
+            return "null";
+        }
+        
+        if (isMem()) {
+            return "mem->" + node.toString();
+        } else {
+            return "stream->" + pos;
+        }
+    }
+    
     // ======== Tests ========
     
     @Nano
