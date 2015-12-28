@@ -71,6 +71,9 @@ public class DagComparison {
         return this;
     }
     
+    /**
+     * Returns true if dags are equal.
+     */
     public boolean compare() {
         boolean equal = true;
         NodePairIterator iter = new NodePairIterator(dag1, dag2);

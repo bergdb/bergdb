@@ -1532,7 +1532,9 @@ public class Db {
         
         public void createPutAndGetData() { Db.this.createPutAndGetData(); }
 
-        public void setKvTransSeq(TransSeq seq) { Db.this.transSeq = seq; }
+        public void setTransSeq(TransSeq seq) { Db.this.transSeq = seq; }
+        
+        public TransSeq transSeq() { return transSeq; }
         
         public Aux aux() { return aux; }
         

@@ -1,7 +1,9 @@
 package bergdb.core;
 
 import java.util.ArrayList;
+import java.util.zip.CRC32;
 
+import bergdb.common.MyChecksum;
 import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Spos;
@@ -14,7 +16,7 @@ import bergdb.nanotest.Nano;
  * An in-memory data structure that keeps information about the transactions
  * that belongs to the startup section of the database stream.
  * The information is needed to be able to append dirty nodes to the end of the
- * stream before so they will not become too dirty.
+ * stream so they will not become too dirty.
  * 
  * The algorithm for updating startup pos is included in this.take().
  * 
@@ -139,6 +141,31 @@ public class TransSeq implements PosOfTransBeforeFunction {
         }
         
         return newSp;
+    }
+    
+    /**
+     * Computes and returns a checksum of the TransSeq state.
+     */
+    public long checksum() {
+        MyChecksum sum = new MyChecksum(new CRC32());
+        sum.updateWithLong(this.size);
+        
+        TransInfo info = first;
+        while (info != null) {
+            sum.updateWithLong(info.lastPos);
+            sum.updateWithLong(info.tt);
+            sum.updateWithLong(info.tpos);
+            sum.updateWithLong(info.startupPos);
+            
+            for (Node node : info.gotDirtyNodes) {
+                sum.update(node.getType());
+                sum.updateWithLong(node.getId());
+            }
+            
+            info = info.next;
+        }
+        
+        return sum.getValue();
     }
     
     /**

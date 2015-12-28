@@ -114,7 +114,7 @@ public class DbStarter {
         TopDs topDs = new TopDs(superRoot);
         dag = new Dag(pointerFollower, topDs, maxNodeSize);
         db.internal().setDag(dag);
-        db.internal().setKvTransSeq(transSeq);
+        db.internal().setTransSeq(transSeq);
         db.internal().createPutAndGetData();
         
         assert keyNode.isDirty() == false;
@@ -278,7 +278,7 @@ public class DbStarter {
         TopDs topDs = new TopDs(superRoot);
         dag = new Dag(pointerFollower, topDs, maxNodeSize);        
         db.internal().setDag(dag);
-        db.internal().setKvTransSeq(transSeq);
+        db.internal().setTransSeq(transSeq);
         db.internal().createPutAndGetData();
     }
     

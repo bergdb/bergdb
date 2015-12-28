@@ -552,7 +552,7 @@ public class Cache2 {
                 return;
             }
             
-            // TODO B. What is the evict condition?
+            // TODO C. What is the evict condition?
             if (node.isDirty()) {
                 return;
             }
@@ -570,7 +570,7 @@ public class Cache2 {
                                 && AccessData.getAccessTime(node.getPointerAccessData(i)) 
                                         <= accessTimeLimit) {
                             
-                            // TODO B. What is the evict condition?
+                            // TODO C. What is the evict condition?
                             if (!pointee.isDirty()) {
                                 node.setPointer(i, null, pointeePos);
                                 evictCount++;

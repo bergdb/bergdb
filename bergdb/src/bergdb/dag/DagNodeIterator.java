@@ -31,7 +31,7 @@ public class DagNodeIterator {
         this.maxLookupTime = Long.MAX_VALUE;
     }
     
-    private DagNodeIterator(Dag dag, Node root, long maxLookupTime) {
+    public DagNodeIterator(Dag dag, Node root, long maxLookupTime) {
         this.dag = dag;
         this.root = root;
         this.maxLookupTime = maxLookupTime;

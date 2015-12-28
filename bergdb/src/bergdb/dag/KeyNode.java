@@ -1669,7 +1669,8 @@ public class KeyNode implements Node {
      */
     public long getMaxValidTime(int pointerIndex) {
         long klongAtIndex = this.klongs[pointerIndex];
-        assert Klong.isKey(klongAtIndex);
+        assert Klong.isKey(klongAtIndex) 
+                : "klong not of KEY type as expected, " + Klong.toString(klongAtIndex);
         long time = 0;
         long maxValidTime = Long.MAX_VALUE;
         
