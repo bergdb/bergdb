@@ -539,8 +539,6 @@ public class Db {
                                     + ", predecessor:" + predecessor.print());
                         }
                         
-                        // TODO D. should'n we check cache first before reading from stream?
-                        
                         NodeHeader header = nodeStream.readNodeHeader(pointerPos);
                         boolean isValueNode = header.type() == Node.TYPE_VALUE;
                         long id = header.id();

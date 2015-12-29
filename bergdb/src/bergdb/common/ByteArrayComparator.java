@@ -2,8 +2,13 @@ package bergdb.common;
 
 import java.util.Comparator;
 
+import bergdb.nanotest.Assert;
+import bergdb.nanotest.Nano;
+
 /**
  * Compares two byte arrays in lexicographical order.
+ * 
+ * @author Frans Lundberg
  */
 public class ByteArrayComparator implements Comparator<byte[]> {
     public int compare(byte[] arr1, byte[] arr2) {
@@ -23,5 +28,35 @@ public class ByteArrayComparator implements Comparator<byte[]> {
         }
         
         return arr1.length == arr2.length ? 0 : (firstShorter ? -1 : +1);
+    }
+    
+    @Nano
+    private static void test0() {
+        int result = ByteArrayComparator.compareArrays(new byte[]{1}, new byte[]{2});
+        Assert.assertEquals(true, result < 0);
+    }
+    
+    @Nano
+    private static void test1() {
+        int result = ByteArrayComparator.compareArrays(new byte[]{100}, new byte[]{2});
+        Assert.assertEquals(true, result > 0);
+    }
+    
+    @Nano
+    private static void test2() {
+        int result = ByteArrayComparator.compareArrays(new byte[]{-100}, new byte[]{-100});
+        Assert.assertEquals(true, result == 0);
+    }
+    
+    @Nano
+    private static void testLengthDiff() {
+        int result = ByteArrayComparator.compareArrays(new byte[]{1, 2}, new byte[]{1, 2, 0});
+        Assert.assertEquals(true, result < 0);
+    }
+    
+    @Nano
+    private static void testEmptyFirst() {
+        int result = ByteArrayComparator.compareArrays(new byte[]{0}, new byte[]{});
+        Assert.assertEquals(true, result > 0);
     }
 }
