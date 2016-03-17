@@ -79,6 +79,8 @@ public class Mem {
 
 /*
 
+160317, Mem:169 on cisso, Oracle JVM 1.7.0_76.
+
 150818, Mem:185 on cissi, Oracle JVM 1.7.0_76.
     Now using more advanced caching (Cache2 class).
 
