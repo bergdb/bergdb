@@ -5,6 +5,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import bergdb.common.AssertStatus;
 import bergdb.core.DagComparison;
 import bergdb.core.DbBuilder;
 import bergdb.core.DbUtil;
@@ -171,7 +172,9 @@ public class BryanIssueMod {
                 }
                 
                 String message = "WARNING: Restarted TransSeq NOT equal to prevTransSeq";
-                throw new AssertionError(message);
+                if (AssertStatus.enabled()) {
+                    throw new AssertionError(message);
+                }
             }
             
             out.println("  TransSeq checksums: " + c1 + ", " + c2);

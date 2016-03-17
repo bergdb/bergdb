@@ -782,7 +782,7 @@ Using long[] and Object[] arrays. Would reduce mem per node from 103 to 60.
 
 CONCLUSIONS 
 1. We have 103 bytes extra RAM usage per cached node with the 
-   current approach. This significant, but acceptable.
+   current approach. This is significant, but acceptable.
 2. We can likely reduce memory usage to 60 bytes / node by special long-to-Object hash map.
 3. Using many maps is not a problem. Memory overhead of an empty HashMap is only 50 bytes.
 

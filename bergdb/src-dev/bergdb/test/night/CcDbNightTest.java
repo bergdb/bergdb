@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Random;
-
 import bergdb.common.Bytes;
 import bergdb.common.Util;
 import bergdb.core.Cache2;

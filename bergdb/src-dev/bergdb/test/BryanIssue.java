@@ -185,7 +185,7 @@ public class BryanIssue {
 151115
 ======
 
-Does not depende on startup distance 10M and 1000M gives same result: 
+Does not depend on startup distance 10M and 1000M gives same result: 
     bergdb.storage.StreamFormatException: unknown node type, 0, spos: 20119641, node header bytes: 0000000200000094
 
 What we know:
