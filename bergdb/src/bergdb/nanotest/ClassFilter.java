@@ -5,6 +5,8 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import bergdb.common.Create;
+
 /** 
  * A filter for classes based on a regular expression applied to the
  * class names.
@@ -40,5 +42,36 @@ public class ClassFilter {
         Matcher m = pattern.matcher(className);
         boolean result = m.find();
         return result;
+    }
+    
+    
+    // ======== Tests ========
+    
+    private class TestClassAlice {}
+    private class TestClassBob {}
+    private class TstClassCharlie {}
+    
+    @Nano
+    static void test0() {
+        @SuppressWarnings("unchecked")
+        Set<Class<?>> classes = Create.set(TestClassAlice.class, TestClassBob.class, TstClassCharlie.class);
+        classes = new ClassFilter(".*").filter(classes);
+        Assert.assertEquals(3, classes.size());
+    }
+    
+    @Nano
+    static void test1() {
+        @SuppressWarnings("unchecked")
+        Set<Class<?>> classes = Create.set(TestClassAlice.class, TestClassBob.class, TstClassCharlie.class);
+        classes = new ClassFilter("TestClass").filter(classes);
+        Assert.assertEquals(2, classes.size());
+    }
+    
+    @Nano
+    static void test2() {
+        @SuppressWarnings("unchecked")
+        Set<Class<?>> classes = Create.set(TestClassAlice.class, TestClassBob.class, TstClassCharlie.class);
+        classes = new ClassFilter("Bob").filter(classes);
+        Assert.assertEquals(1, classes.size());
     }
 }

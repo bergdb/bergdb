@@ -11,7 +11,8 @@ import bergdb.common.Create;
  */
 public class F {
     public static void main(String[] args) {
-        NanotestForBergDB nano = new NanotestForBergDB(args, TestClasses.getIPacksStatic(), Create.setOfStrings("f"));
+        NanotestForBergDB nano = new NanotestForBergDB(args, 
+                TestClasses.getIPacksStatic(), Create.set("f"));
         nano.go();
     }
 }

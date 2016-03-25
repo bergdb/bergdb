@@ -404,4 +404,48 @@ public class Assert {
             throw new AssertionError("Expected " + expected + ", got " + actual + ".");
         }
     }
+    
+    
+    // ======== Tests ========
+    
+    @Nano
+    private static void testStringAssert1() {
+        assertEquals("hej", "hej");
+    }
+    
+    @Nano
+    private static void testStringAssert2() {
+        AssertionError error = null;
+        
+        try {
+            assertEquals("hej", "hej då");
+        } catch (AssertionError e) {
+            error = e;
+        }
+        
+        if (error == null) {
+            throw new RuntimeException("expected AssertionError, was not thrown");
+        }
+    }
+    
+    @Nano
+    private static void testByteArrayAssert1() {
+        assertArrayEquals(new byte[]{1, -30, 127}, new byte[]{1, -30, 127});
+        assertArrayEquals(new byte[]{}, new byte[]{});
+    }
+    
+    @Nano
+    private static void testByteArrayAssert2() {
+        AssertionError error = null;
+        
+        try {
+            assertArrayEquals(new byte[]{33}, new byte[]{22});
+        } catch (AssertionError e) {
+            error = e;
+        }
+        
+        if (error == null) {
+            throw new RuntimeException("no AssertionError thrown");
+        }
+    }
 }

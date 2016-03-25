@@ -14,20 +14,20 @@ public class Create {
     private Create() {}
     
     /**
-     * Creates and returns a set of strings from the given parameters.
+     * Creates and returns set of items.
      */
-    public static Set<String> setOfStrings(String... strings) {
-        HashSet<String> set = new HashSet<String>(strings.length);
+    public static <T> Set<T> set(T... items) {
+        HashSet<T> set = new HashSet<T>(items.length);
         
-        for (String s : strings) {
-            set.add(s);
+        for (T item : items) {
+            set.add(item);
         }
         
         return set;
     }
     
     /**
-     * Creates and returns a list of items given as parameters.
+     * Creates and returns a list of items.
      */
     public static <T> List<T> list(T... items) {
         ArrayList<T> list = new ArrayList<T>(items.length);

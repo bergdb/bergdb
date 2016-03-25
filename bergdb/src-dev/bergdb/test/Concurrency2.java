@@ -4,7 +4,7 @@ import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
-import bergdb.nanotest.BasicTestEnvironment;
+import bergdb.nanotest.SimpleTestEnvironment;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.TestClock;
@@ -113,6 +113,6 @@ public class Concurrency2 {
     
     public static void main(String[] args) throws Throwable {
         Concurrency2 c = new Concurrency2();
-        c.go(new BasicTestEnvironment(), 100);
+        c.go(new SimpleTestEnvironment(), 100);
     }
 }

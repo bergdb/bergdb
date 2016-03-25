@@ -1,6 +1,6 @@
 package bergdb.core;
 
-import bergdb.common.IPack;
+import bergdb.nanotest.IPack;
 
 public class Pack implements IPack {
     private static Class<?>[] classes = new Class<?>[] {

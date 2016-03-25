@@ -1,10 +1,17 @@
 package bergdb.test;
 
-import bergdb.common.IPack;
 import bergdb.dev.MemPerf;
+import bergdb.nanotest.IPack;
 import bergdb.test.manual.StreamSizeVsStartupDistance;
 import bergdb.test.manual.TransThroughput;
 
+/**
+ * Pack class for bergdb.nanotest package. 
+ * Cannot be included in bergdb.nanotest itself since IPack interface not included
+ * in bergdb.nanotest package.
+ * 
+ * @author Frans 
+ */
 public class Pack implements IPack {
     private static Class<?>[] classes = new Class<?>[] {
         BigDb.class,

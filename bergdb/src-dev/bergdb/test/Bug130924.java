@@ -7,7 +7,7 @@ import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.BasicTestEnvironment;
+import bergdb.nanotest.SimpleTestEnvironment;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Connection;
@@ -114,9 +114,8 @@ public class Bug130924 {
     }
     
     public static void main(String[] args) throws Exception {
-        BasicTestEnvironment c = new BasicTestEnvironment();
+        SimpleTestEnvironment c = new SimpleTestEnvironment();
         c.setPrintOutput(true);
-        c.setPrintStart(true);
         test1(c);
     }
 }

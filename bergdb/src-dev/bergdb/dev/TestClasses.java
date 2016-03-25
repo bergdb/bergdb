@@ -3,7 +3,7 @@ package bergdb.dev;
 import java.util.HashSet;
 import java.util.Set;
 
-import bergdb.common.IPack;
+import bergdb.nanotest.IPack;
 
 /**
  * Methods related to the collection of test classes.
@@ -18,6 +18,7 @@ public class TestClasses {
         new bergdb.dag.Pack(),
         new bergdb.storage.Pack(),
         new bergdb.test.Pack(),
+        new bergdb.nanotest.Pack(),
         new bergdb.test.java.Pack(),
         new bergdb.test.night.Pack(),
         new bergdb.pubimp.Pack(),

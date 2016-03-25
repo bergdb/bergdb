@@ -13,9 +13,7 @@ public class DummyTestClass {
     public static void t1() {}
     
     @Nano("unit perf")
-    public static void t2() {
-        throw new MyRuntimeException();
-    }
+    public static void t2() {}
     
     public static void testWithParameter(TestEnvironment t) {}
     
@@ -32,8 +30,4 @@ public class DummyTestClass {
     public static int testNotAValidTestBecauseReturnInt() { return 0; }
     
     public static void testNotAValidTestBecauseParams(int p1) { }
-    
-    private static class MyRuntimeException extends RuntimeException {
-        private static final long serialVersionUID = 1L;
-    }
 }

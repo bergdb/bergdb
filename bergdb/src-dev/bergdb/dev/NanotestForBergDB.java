@@ -2,12 +2,13 @@ package bergdb.dev;
 
 import java.util.HashSet;
 import java.util.Set;
+
 import bergdb.common.AssertStatus;
-import bergdb.common.IPack;
 import bergdb.common.Util;
 import bergdb.nanotest.ClassFilter;
 import bergdb.nanotest.CommandLine;
 import bergdb.nanotest.ConsoleUI;
+import bergdb.nanotest.IPack;
 import bergdb.nanotest.MethodFilter;
 import bergdb.nanotest.TestRunner;
 

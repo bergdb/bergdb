@@ -2,7 +2,7 @@ package bergdb.test;
 
 import bergdb.core.Db;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.BasicTestEnvironment;
+import bergdb.nanotest.SimpleTestEnvironment;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Connection;
@@ -188,6 +188,6 @@ public class CreateIndexTester {
     }
     
     public static void main(String[] args) throws InterruptedException {
-        testRestart(new BasicTestEnvironment());
+        testRestart(new SimpleTestEnvironment());
     }
 }

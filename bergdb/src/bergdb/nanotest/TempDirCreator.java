@@ -6,8 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-// TODO A. Code duplication with BasicTestEnvironment
-
 public class TempDirCreator {
     private List<File> currentTempDirs = new ArrayList<File>();
     private File tmpDir;

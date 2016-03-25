@@ -1,5 +1,7 @@
 package bergdb.common;
 
+import bergdb.nanotest.IPack;
+
 public class Pack implements IPack {
     private static Class<?>[] classes = new Class<?>[] {
         ByteArrayComparator.class,

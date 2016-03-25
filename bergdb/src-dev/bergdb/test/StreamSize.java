@@ -5,7 +5,7 @@ import bergdb.core.DbBuilder;
 import bergdb.core.KeyFactory;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
-import bergdb.nanotest.BasicTestEnvironment;
+import bergdb.nanotest.SimpleTestEnvironment;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
@@ -114,6 +114,6 @@ public class StreamSize {
     public static void main(String[] args) {
         //transStreamOverhead(new BasicTestEnvironment());
         //kvStreamOverhead(new BasicTestEnvironment());
-        t3(new BasicTestEnvironment());
+        t3(new SimpleTestEnvironment());
     }
 }

@@ -19,7 +19,7 @@ import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.BasicTestEnvironment;
+import bergdb.nanotest.SimpleTestEnvironment;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pubimp.PubKeys;
@@ -197,6 +197,6 @@ public class Issue150420 {
     }
     
     public static void main(String[] args) throws Exception {
-        Issue150420.runTest(new BasicTestEnvironment());
+        Issue150420.runTest(new SimpleTestEnvironment());
     }
 }

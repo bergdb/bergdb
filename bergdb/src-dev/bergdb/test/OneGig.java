@@ -12,7 +12,7 @@ import bergdb.core.Trans;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.BasicTestEnvironment;
+import bergdb.nanotest.SimpleTestEnvironment;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.AppendOnlyStream;
@@ -239,7 +239,7 @@ public class OneGig {
     }
     
     public static void main(String[] args) throws Exception {
-        t1mem(new BasicTestEnvironment());
+        t1mem(new SimpleTestEnvironment());
     }
 }
 

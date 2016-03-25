@@ -6,7 +6,7 @@ import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.DbUtil;
 import bergdb.core.Trans;
-import bergdb.nanotest.BasicTestEnvironment;
+import bergdb.nanotest.SimpleTestEnvironment;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.DummyStream;
 
@@ -73,7 +73,7 @@ public class MemPerf {
     }
     
     public static void main(String[] args) throws Exception {
-        get(new BasicTestEnvironment());
+        get(new SimpleTestEnvironment());
     }
 }
 

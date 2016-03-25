@@ -10,7 +10,7 @@ import bergdb.common.Create;
 public class Unit {
     public static void main(String[] args) {
         NanotestForBergDB nano = new NanotestForBergDB(args, TestClasses.getIPacksStatic(), 
-                Create.setOfStrings("unit"));
+                Create.set("unit"));
         nano.go();
     }
 }

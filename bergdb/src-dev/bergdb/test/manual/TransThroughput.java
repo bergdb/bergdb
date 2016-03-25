@@ -12,7 +12,7 @@ import bergdb.core.Jmx;
 import bergdb.core.KeyFactory;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
-import bergdb.nanotest.BasicTestEnvironment;
+import bergdb.nanotest.SimpleTestEnvironment;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.TestClock;
@@ -185,7 +185,7 @@ public class TransThroughput {
     
     public static void main(String[] args) throws IOException, InterruptedException {
         TransThroughput t = new TransThroughput();
-        t.run(new BasicTestEnvironment(), 4);
+        t.run(new SimpleTestEnvironment(), 4);
     }
 }
 

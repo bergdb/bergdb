@@ -1,6 +1,6 @@
 package bergdb.test.java;
 
-import bergdb.common.IPack;
+import bergdb.nanotest.IPack;
 
 /**
  * Information about this package.

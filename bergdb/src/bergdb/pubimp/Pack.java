@@ -1,6 +1,6 @@
 package bergdb.pubimp;
 
-import bergdb.common.IPack;
+import bergdb.nanotest.IPack;
 import bergdb.pub.CryptoKey;
 
 public class Pack implements IPack {

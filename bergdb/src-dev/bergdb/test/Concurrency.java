@@ -15,7 +15,7 @@ import javax.management.ObjectName;
 import bergdb.core.Db;
 import bergdb.core.Jmx;
 import bergdb.nanotest.Assert;
-import bergdb.nanotest.BasicTestEnvironment;
+import bergdb.nanotest.SimpleTestEnvironment;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Action;
@@ -274,7 +274,7 @@ public class Concurrency {
         Monitor m = new Monitor(c);
         m.register();
         
-        c.go(new BasicTestEnvironment(), Integer.MAX_VALUE);
+        c.go(new SimpleTestEnvironment(), Integer.MAX_VALUE);
     }
     
     public static class Monitor implements MonitorMBean {
