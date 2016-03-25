@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+// TODO A. Code duplication with BasicTestEnvironment
+
 public class TempDirCreator {
     private List<File> currentTempDirs = new ArrayList<File>();
     private File tmpDir;
@@ -18,7 +20,7 @@ public class TempDirCreator {
         
         File tmp = new File("/tmp");
         if (tmp.exists() && tmp.isDirectory()) {
-            File file = new File(tmp, "bergdb-BasicCollector-" + System.currentTimeMillis() + ".temp");
+            File file = new File(tmp, "bergdb-TempDirCreator-" + System.currentTimeMillis() + ".temp");
             file.deleteOnExit();
             
             try {

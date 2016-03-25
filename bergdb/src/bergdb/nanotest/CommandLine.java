@@ -9,6 +9,10 @@ import java.util.List;
  * Example: -group a -verbose -users alan peter
  * Three options, one with a single value (-group), one with zero values (-verbose)
  * and one with two values (-users).
+ * There are more capable implementations in external libraries.
+ * This class can be used to avoid a dependency.
+ * 
+ * Also see https://github.com/franslundberg/java-cut/blob/master/src/cut/CommandLine.java.
  * 
  * @author Frans Lundberg
  */

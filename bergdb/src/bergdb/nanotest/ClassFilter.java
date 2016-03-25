@@ -5,29 +5,40 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/** 
+ * A filter for classes based on a regular expression applied to the
+ * class names.
+ * 
+ * @author Frans Lundberg
+ */
 public class ClassFilter {
     private Pattern pattern;
     
     /**
-     * @param regex  Regular expression to match any substring of full classname.
+     * @param regex  Regular expression to match any substring of the full classname.
      */
     public ClassFilter(String regex) {
         pattern = Pattern.compile(regex);
-    }
-    
-    public boolean include(Class<?> c) {
-        Matcher m = pattern.matcher(c.getName());
-        boolean result = m.find();
-        return result;
     }
 
     public Set<Class<?>> filter(Set<Class<?>> classes) {
         Set<Class<?>> result = new HashSet<Class<?>>();
         for (Class<?> c : classes) {
-            if (include(c)) {
+            if (include(c.getName())) {
                 result.add(c);
             }
         }
+        return result;
+    }
+    
+    /**
+     * The predicate function.
+     * 
+     * @return True if the class, c, should be included in the result set.
+     */
+    private boolean include(String className) {
+        Matcher m = pattern.matcher(className);
+        boolean result = m.find();
         return result;
     }
 }

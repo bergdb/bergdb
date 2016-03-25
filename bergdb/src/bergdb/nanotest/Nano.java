@@ -8,8 +8,9 @@ import java.lang.annotation.RetentionPolicy;
 /**
  * Indicates that the annotated method is a Nanotest method.
  * This is optional, any static void method with a name that starts with "test"
- * and takes zero parameters or one TestEnvironment parameter
- * is considered a Nanotest method.
+ * and takes zero parameters or one TestEnvironment parameter is considered a Nanotest method.
+ * 
+ * @author Frans Lundberg
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)

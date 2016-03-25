@@ -5,7 +5,7 @@ import java.io.PrintStream;
 /**
  * Useful to decorate a existing TestRunConsumer by overriding a method or two.
  * 
- * @author Frans Lundberg
+ * @author Frans Lundberg 
  */
 public class ConsumerDecorator implements TestRunConsumer {
     private final TestRunConsumer base;

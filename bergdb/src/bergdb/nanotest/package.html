@@ -1,28 +1,61 @@
 <html><head><title>Package nanotest</title></head><body>
 
-<p>This package is the implementation of Nanotest -- a very small,
-and powerful test framework.</p>
+<p>This package is the implementation of Nanotest -- a very small and still 
+powerful test framework.</p>
 
-<p>Depends on: nothing. The package is self-contained, only depends on Java 1.5.</p>
+<p>Depends on: nothing. The package is self-contained, only depends on JVM (5 or later).</p>
 
 <pre>
 Properties of Nanotest
+======================
 
+* Small and simple.
 * Suitable for post-deploy self-testing.
-* Small.
-* Code to be tested need not be dependent on Nanotest. Just use convention "public static void testXxx()".
-* Supports unit tests, longer-running functional tests and also performance tests.
+* Code to be tested need not be dependent on Nanotest. Just use convention "static void testXxx()".
+* Suitable for unit tests, longer-running functional tests and also performance tests.
 * Test are easy to group. For example into "unit", "functional", 
   "perf". Testing is started by selecting a set of test groups to run and a set of classes/methods.
-* Tests can report arbitrary key-value pairs to the test runner while the test is running.
+* Testing with files supported. Files are automatically removed at end of test.
 * A test is successful if it does not throw an exception.
-* Deterministic thread testing supported.
 * Suitable for being embedded in created software.
+  End users can run test suit to ensure working software on their particular 
+  platform / JVM.
 
----- Dependencies ----
-None allowed. This package should be self-contained.
+Usage: create tests
+===================
 
----- Log ----
+To create a Nanotest do either one of:
+
+1. Create a static void method with a name that starts with "test". 
+   Example: [public static void testMe()].
+2. Create a static void method annotated with the Nano annotation. 
+   Example: [@Nano public static myTestMethod()].
+
+The first alternative is allowed to create tests that are completely independent of
+the Nanotest library. Any test run library could be used to run the tests.
+The second alternative is good when one want to group tests together.
+For example: [@Nano("unit perf") public static void t2()] defines a test that belongs
+to groups "unit" and "perf". By default, tests belong to the "unit" group.
+
+Test methods either take no argument, or one argument of type 
+
+
+Usage: run tests
+================
+
+Use the TestRunner class. The BergDB software (bergdb.dev.NanotestForBergDB) can be
+used as a template.
+
+
+Dependencies
+============
+
+None. This package is self-contained.
+
+Log
+===
+
+160325: minor refactoring. / Frans
 141212: Changed annotation name to Nano and did some refactoring.
 141118: Added MyThread class.
 130221: Changes. Two interface TestCollector used by individual tests and TestRunnerCollector

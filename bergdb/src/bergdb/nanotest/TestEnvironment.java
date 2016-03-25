@@ -5,10 +5,11 @@ import java.io.IOException;
 import java.io.PrintStream;
 
 /**
- * A test method may have a TestEnvironment instance as its single parameter.
+ * A test method can take a TestEnvironment instance as a parameter.
  * This allows the test to report back information to the test runner
- * while the test is running. This allows for more advanced testing than unit tests.
- * Long-running tests may have the need to report to the UI while it is running.
+ * while the test is running. The TestEnvironment allows for more advanced 
+ * testing than ordinary unit tests. For example, 
+ * long-running tests may have the need to report to the UI while it is running.
  * 
  * @author Frans Lundberg
  */

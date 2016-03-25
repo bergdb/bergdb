@@ -11,7 +11,7 @@ import bergdb.common.Create;
  */
 public class Night {
     public static void main(String[] args) {
-        Nano nano = new Nano(args, TestClasses.getIPacksStatic(), Create.setOfStrings("night"));
+        NanotestForBergDB nano = new NanotestForBergDB(args, TestClasses.getIPacksStatic(), Create.setOfStrings("night"));
         nano.go();
     }
 }

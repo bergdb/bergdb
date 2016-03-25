@@ -2,6 +2,7 @@ package bergdb.nanotest;
 
 /**
  * Static utility methods to assert expected conditions.
+ * Very similar to corresponding JUnit functionality.
  * 
  * @author Frans Lundberg
  */

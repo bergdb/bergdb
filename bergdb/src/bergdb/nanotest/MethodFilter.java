@@ -8,6 +8,12 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * A method filter that includes methods that are Nanotests and
+ * belongs to one of the specified groups.
+ * 
+ * @author Frans Lundberg
+ */
 public class MethodFilter {
     private Pattern pattern;
     private Set<String> groups;

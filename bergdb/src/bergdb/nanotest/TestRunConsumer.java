@@ -29,3 +29,4 @@ public interface TestRunConsumer {
     /** Reports that test run has completed. */
     public void done();
 }
+

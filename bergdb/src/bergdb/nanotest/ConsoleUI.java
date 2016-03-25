@@ -268,9 +268,7 @@ public class ConsoleUI implements TestRunConsumer {
     }
     
     public String getReport() {
-        //
         // Because of GCJ problems, String.format and printf are avoided.
-        //
         
         String result;
         double rounded = Math.round(10.0 * totalExeTime) / 10.0;

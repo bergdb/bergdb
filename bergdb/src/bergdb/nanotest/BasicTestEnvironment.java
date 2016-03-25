@@ -5,10 +5,9 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 /**
- * Basic, simple test environment.
+ * A simple, basic, test environment. Can be used to easily run a single test.
  * 
  * @author Frans Lundberg
  */
@@ -24,17 +23,15 @@ public class BasicTestEnvironment implements TestEnvironment {
     protected boolean printProps = true;
     protected boolean printMethods = true;
     protected boolean printStart = false;
-    private File tmpDir;
-    private Random random;
     protected PrintStream baseOut;
     private PrintStream testOut;
+    private TempDirCreator tempDirCreator;
     
     public BasicTestEnvironment() {
         this(System.out);
     }
     
     public BasicTestEnvironment(PrintStream output) {
-        random = new Random();
         if (output == null) {
             throw new IllegalArgumentException("output == null not allowed");
         }
@@ -43,23 +40,7 @@ public class BasicTestEnvironment implements TestEnvironment {
         this.testOut = baseOut;
         this.printMethods = true;
         this.printProps = true;
-        
-        // Sets this.tmpDir.
-        
-        File tmp = new File("/tmp");
-        if (tmp.exists() && tmp.isDirectory()) {
-            File file = new File(tmp, "bergdb-BasicCollector-" + System.currentTimeMillis() + ".temp");
-            file.deleteOnExit();
-            
-            try {
-                file.createNewFile();
-                tmpDir = tmp;
-            } catch (IOException e) {
-                // Empty
-            } finally {
-                file.delete();
-            }
-        }
+        this.tempDirCreator = new TempDirCreator();
     }
     
     public void setPrintProps(boolean printProps) {
@@ -125,7 +106,7 @@ public class BasicTestEnvironment implements TestEnvironment {
         total++;
         
         if (t == null) {
-            // if test OK
+            // if test is OK
             if (printMethods) {
                 long rounded = Math.round(exeTime * 1000.0);
                 if (currentMethodName == null) {
@@ -200,9 +181,6 @@ public class BasicTestEnvironment implements TestEnvironment {
         }
     }
     
-    /* (non-Javadoc)
-     * @see bergdb.nanotest.TestRunnerCollector#reportOK()
-     */
     public void reportOK() {
         testDone(null);
     }
@@ -291,25 +269,6 @@ public class BasicTestEnvironment implements TestEnvironment {
     }
 
     public File createTempDir() throws IOException {
-        int randomInt;
-        File file;
-        
-        randomInt = Math.abs(random.nextInt());
-        
-        if (tmpDir != null) {
-            // Using /tmp directory on Unix-like system.
-            file = new File(tmpDir, "temp-bergdb-" + randomInt);
-        } else {
-            // Using current directory
-            file = new File("temp-bergdb-" + randomInt);
-        }
-        
-        boolean created = file.mkdir();
-        if (!created) {
-            throw new IOException("Could not create " + file.getPath() + ".");
-        }
-        
-        currentTempDirs.add(file);
-        return file;
+        return tempDirCreator.createTempDir();
     }
 }

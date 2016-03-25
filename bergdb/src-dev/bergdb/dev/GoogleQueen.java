@@ -85,12 +85,10 @@ public class GoogleQueen {
      */
     private class IterStopCondition implements GetMany.StopCondition {
         private static final int maxCount = 1000;
-        private boolean isFirst;
         private int count = 0;
         private boolean gotEod = false;
         
         public IterStopCondition() {
-            isFirst = true;
             gotEod = false;
         }
         

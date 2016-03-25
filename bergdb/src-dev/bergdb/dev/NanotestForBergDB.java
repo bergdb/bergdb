@@ -16,12 +16,12 @@ import bergdb.nanotest.TestRunner;
  * 
  * @author Frans Lundberg
  */
-public class Nano {
+public class NanotestForBergDB {
     private final String[] args;
     private final Set<Class<?>> classes;
     private final Set<String> groups;
     
-    public Nano(String[] args, IPack[] ipacks, Set<String> groups) {
+    public NanotestForBergDB(String[] args, IPack[] ipacks, Set<String> groups) {
         this.args = args;
         this.classes = createSetOfClasses(ipacks);
         this.groups = groups;

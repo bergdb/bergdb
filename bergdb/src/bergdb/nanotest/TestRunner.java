@@ -104,7 +104,7 @@ public class TestRunner {
     }
     
     /**
-     * @param groups   If empty, run method no matter what.
+     * @param groups If empty, run method no matter what.
      */
     private static void invokeTestMethod(Method m, TestRunConsumer consumer, TestEnvironment testEnv) {
         Object object = null;
@@ -124,7 +124,8 @@ public class TestRunner {
                     params[0] = testEnv;
                 }
                 
-                // Can run private methods, useful feature.
+                // Can run private methods too. 
+                // It should, methods like "private static testMethod()" are supported.
                 m.setAccessible(true);
             }
             
