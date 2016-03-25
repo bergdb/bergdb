@@ -18,4 +18,10 @@ public class AssertStatus {
     public static boolean enabled() {
         return assertOn;
     }
+    
+    // ======== Tests ========
+    
+    public static void test0() {
+        if (assertOn != enabled()) throw new AssertionError();
+    }
 }

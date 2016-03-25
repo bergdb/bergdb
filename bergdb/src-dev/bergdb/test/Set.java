@@ -6,7 +6,7 @@ import java.io.PrintStream;
 import java.util.Random;
 
 import bergdb.common.Bytes;
-import bergdb.common.NullPrintStream;
+import bergdb.nanotest.NullPrintStream;
 import bergdb.core.Db;
 import bergdb.core.DbBuilder;
 import bergdb.core.Trans;

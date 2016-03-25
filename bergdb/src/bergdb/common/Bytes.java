@@ -4,11 +4,8 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Random;
-
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
-import bergdb.nanotest.TestEnvironment;
-
 
 /**
  * Utility class for storing primitive types: long, double, int, short, ushort in byte arrays.
@@ -487,145 +484,8 @@ public class Bytes {
         }
     }
     
-    @Nano("perf")
-    public static void perfBytesToLongBE(TestEnvironment c) {
-        byte[] arr = new byte[]{0, 0, 1, 2, 3, 4, 5, 6, 3, 3, 3, 3, 3, 3, 3, 3};
-        long t0, t1;
-        int n = 100*1000*1000;
-        
-        t0 = System.nanoTime();
-        for (int i = 0; i < n/5; i++) {
-            Bytes.bytesToLongBE(arr, 0);
-            Bytes.bytesToLongBE(arr, 1);
-            Bytes.bytesToLongBE(arr, 2);
-            Bytes.bytesToLongBE(arr, 3);
-            Bytes.bytesToLongBE(arr, 4);
-            arr[0] = (byte) i;
-        }
-        t1 = System.nanoTime();
-        
-        c.report("timePerLong",  1e-9*(t1-t0)/n);
-        c.report("n", n);
-    }
-    
-    @Nano("perf")
-    public static void perfBytesToLongLE(TestEnvironment c) {
-        byte[] arr = new byte[]{0, 0, 1, 2, 3, 4, 5, 6, 3, 3, 3, 3, 3, 3, 3};
-        long t0, t1;
-        int n = 100*1000*1000;
-        
-        t0 = System.nanoTime();
-        for (int i = 0; i < n/5; i++) {
-            Bytes.bytesToLongLE(arr, 0);
-            Bytes.bytesToLongLE(arr, 1);
-            Bytes.bytesToLongLE(arr, 2);
-            Bytes.bytesToLongLE(arr, 3);
-            Bytes.bytesToLongLE(arr, 4);
-            arr[0] = (byte) i;
-        }
-        t1 = System.nanoTime();
-        
-        c.report("timePerLong",  1e-9*(t1-t0)/n);
-        c.report("n", n);
-    }
-    
-    @Nano("perf")
-    public static void perfLongToBytesBE(TestEnvironment c) {
-        byte[] arr = new byte[16];
-        long t0, t1;
-        int n = 20*1000*1000;
-        
-        t0 = System.nanoTime();
-        for (int i = 0; i < n/5; i++) {
-            Bytes.longToBytesBE(444333222111L, arr, 0);
-            Bytes.longToBytesBE(444333222111L, arr, 1);
-            Bytes.longToBytesBE(444333222111L, arr, 2);
-            Bytes.longToBytesBE(444333222111L, arr, 3);
-            Bytes.longToBytesBE(444333222111L, arr, 4);
-            arr[0] = (byte) i;
-        }
-        t1 = System.nanoTime();
-        
-        c.report("timePerLong",  1e-9*(t1-t0)/n);
-        c.report("n", n);
-    }
-    
-    @Nano("perf")
-    public static void perfLongToBytesLE(TestEnvironment c) {
-        byte[] arr = new byte[16];
-        long t0, t1;
-        int n = 20*1000*1000;
-        
-        t0 = System.nanoTime();
-        for (int i = 0; i < n/5; i++) {
-            Bytes.longToBytesLE(444333222111L, arr, 0);
-            Bytes.longToBytesLE(444333222111L, arr, 1);
-            Bytes.longToBytesLE(444333222111L, arr, 2);
-            Bytes.longToBytesLE(444333222111L, arr, 3);
-            Bytes.longToBytesLE(444333222111L, arr, 4);
-            arr[0] = (byte) i;
-        }
-        t1 = System.nanoTime();
-        
-        c.report("timePerLong",  1e-9*(t1-t0)/n);
-        c.report("n", n);
-    }
-    
-    /**
-     * Performance testing.
-     */
-    public static void main(String[] args) {
-        byte[] arr = new byte[]{0, 0, 1, 2, 3, 4, 5, 6, 3, 3, 3, 3, 3, 3, 3, 3};
-        long t0, t1;
-        int n = 100*1000*1000;
-        
-        t0 = System.nanoTime();
-        for (int i = 0; i < n; i++) {
-            Bytes.bytesToLongBE(arr, 0);
-            arr[0] = (byte) i;
-        }
-        t1 = System.nanoTime();
-        System.out.println("bytesToLongBE " + 1e-9*(t1-t0)/n);
-        
-        t0 = System.nanoTime();
-        for (int i = 0; i < n/5; i++) {
-            Bytes.bytesToLongLE(arr, 0);
-            Bytes.bytesToLongLE(arr, 1);
-            Bytes.bytesToLongLE(arr, 2);
-            Bytes.bytesToLongLE(arr, 3);
-            Bytes.bytesToLongLE(arr, 4);
-            arr[0] = (byte) i;
-        }
-        t1 = System.nanoTime();
-        System.out.println("bytesToLongLE " + 1e-9*(t1-t0)/n);
-        
-        
-        t0 = System.nanoTime();
-        for (int i = 0; i < n/5; i++) {
-            Bytes.longToBytesLE(444333222111L, arr, 0);
-            Bytes.longToBytesLE(444333222111L, arr, 1);
-            Bytes.longToBytesLE(444333222111L, arr, 2);
-            Bytes.longToBytesLE(444333222111L, arr, 3);
-            Bytes.longToBytesLE(444333222111L, arr, 4);
-            arr[0] = (byte) i;
-        }
-        t1 = System.nanoTime();
-        System.out.println("longToBytesLE " + 1e-9*(t1-t0)/n);
-        
-        t0 = System.nanoTime();
-        for (int i = 0; i < n/5; i++) {
-            Bytes.longToBytesBE(444333222111L, arr, 0);
-            Bytes.longToBytesBE(444333222111L, arr, 1);
-            Bytes.longToBytesBE(444333222111L, arr, 2);
-            Bytes.longToBytesBE(444333222111L, arr, 3);
-            Bytes.longToBytesBE(444333222111L, arr, 4);
-            arr[0] = (byte) i;
-        }
-        t1 = System.nanoTime();
-        System.out.println("longToBytesBE " + 1e-9*(t1-t0)/n);
-    }
-
-    @Nano private static void testUnsigned() {
+    @Nano 
+    private static void testUnsigned() {
         Assert.assertEquals(123, unsigned((byte) 123));
         Assert.assertEquals(255, unsigned((byte) -1));
         Assert.assertEquals(127, unsigned((byte) 127));
