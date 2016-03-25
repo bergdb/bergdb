@@ -9,7 +9,6 @@ public class Pack implements IPack {
         EventToWaitFor.class,
         FrequencySensor.class,
         Bug.class,
-        MemoryOutputStream.class,
         MyLongSet.class,
         NullOutputStream.class,
         NullReportHandler.class,

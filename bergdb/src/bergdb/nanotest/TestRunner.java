@@ -47,7 +47,6 @@ public class TestRunner {
         TestRunConsumer myConsumer = new ConsumerDecorator(consumer) {
             public void testDone(Throwable t) {
                 tempDirCreator.deleteTempDirs();
-                tempDirCreator.clearTempDirs();
                 super.testDone(t);
             }
         };

@@ -6,15 +6,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+/**
+ * Creator for temporary test directories removed when test ends.
+ * 
+ * @author Frans Lundberg
+ */
 public class TempDirCreator {
     private List<File> currentTempDirs = new ArrayList<File>();
-    private File tmpDir;
+    private File tmpDir = null;
     private Random random;
     
     public TempDirCreator() {
-        random = new Random();
-        
         // Sets this.tmpDir if possible.
+        
+        random = new Random();
         
         File tmp = new File("/tmp");
         if (tmp.exists() && tmp.isDirectory()) {
@@ -57,10 +62,6 @@ public class TempDirCreator {
         return file;
     }
     
-    public void clearTempDirs() {
-        currentTempDirs.clear();
-    }
-    
     public void deleteTempDirs() {
         for (File dir : currentTempDirs) {
             try {
@@ -69,6 +70,8 @@ public class TempDirCreator {
                 // Nothing we can do.
             }
         }
+        
+        currentTempDirs.clear();
     }
     
     /**
@@ -107,5 +110,14 @@ public class TempDirCreator {
                 throw new IOException("Cannot delete file " + file + ".");
             }
         }
+    }
+    
+    // ======== Tests ========
+    
+    static void test0() throws IOException {
+        TempDirCreator c = new TempDirCreator();
+        c.createTempDir();
+        c.createTempDir();
+        c.deleteTempDirs();
     }
 }

@@ -444,8 +444,24 @@ public class Assert {
             error = e;
         }
         
-        if (error == null) {
-            throw new RuntimeException("no AssertionError thrown");
+        if (error == null) throw new RuntimeException("no AssertionError thrown");
+    }
+    
+    @Nano
+    private static void testAssertTrue1() {
+        assertTrue(true);
+    }
+    
+    @Nano
+    private static void testAssertTrue2() {
+        AssertionError error = null;
+        
+        try {
+            assertTrue(false);
+        } catch (AssertionError e) {
+            error = e;
         }
+        
+        if (error == null) throw new RuntimeException("no AssertionError thrown");
     }
 }
