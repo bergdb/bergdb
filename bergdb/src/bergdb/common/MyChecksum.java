@@ -1,10 +1,13 @@
 package bergdb.common;
 
+import java.util.zip.CRC32;
 import java.util.zip.Checksum;
+import bergdb.nanotest.Assert;
+import bergdb.nanotest.Nano;
 
 /**
  * An enhanced Checksum implementation that can be 
- * updated based on other values than byte values.
+ * updated based on other values types (long, boolean) than byte values.
  * 
  * @author Frans Lundberg
  */
@@ -42,5 +45,20 @@ public class MyChecksum implements Checksum {
 
     public void reset() {
         wrapped.reset();
+    }
+    
+    @Nano
+    public static void test0() {
+        Checksum sum1 = new CRC32();
+        Checksum sum2 = new CRC32();
+        MyChecksum my = new MyChecksum(sum2);
+        
+        sum1.update(1);
+        my.updateWithBoolean(true);
+        
+        sum1.update(new byte[]{1, 2, 0, 0, 0, 0, 0, 0}, 0, 8);
+        my.updateWithLong(1 + 2*256);
+        
+        Assert.assertEquals(sum1.getValue(), my.getValue());
     }
 }

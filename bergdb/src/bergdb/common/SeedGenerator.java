@@ -3,21 +3,28 @@ package bergdb.common;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.lang.management.ClassLoadingMXBean;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.util.Enumeration;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
+import bergdb.nanotest.Nano;
+
 /**
  * This class is able to generate random data (not evenly distributed) with
  * enough entropy to use it as a seed for a random number generator. The reason
  * for creating this class is that /dev/random on some Linux systems may not 
- * generate new random data fast enough and block seeding from SecureRandom and Random classes.
+ * generate new random data fast enough and block seeding for SecureRandom and Random classes.
  * 
  * @author Frans Lundberg
  */
 public class SeedGenerator {
-    // 
+    //
+    // 1603 Frans: JMX stuff added back again
+    // 1603 Frans: note, the actual amount of entropy generated has not been studied.
     // 1402 Frans: now using stack traces for *all* threads.
     // 1302 Frans: addJMXData() no longer used because of IKVM issues. We want to avoid
     // the dependency of one more IKVM DLL.
@@ -33,10 +40,12 @@ public class SeedGenerator {
     public SeedGenerator() {
         seed = new byte[128];
         addTimeData();
+        addMachineData();
         addRandomOffset();
         addRuntimeData();
         addTimeData();
         addRandomOffset();
+        addJmxData();
         addRuntimeData();
         addTimeData();
         addRuntimeData();
@@ -48,23 +57,49 @@ public class SeedGenerator {
      */
     public synchronized void moreEntropy() {
         addTimeData();
-        addMachineData();
+        addRandomOffset();
+        addRuntimeData();
+        addJmxData();
         
         addTimeData();
         addRandomOffset();
         addRuntimeData();
-        
-        addTimeData();
-        addRandomOffset();
-        addRuntimeData();
+        addJmxData();
         
         addTimeData();
         addRuntimeData();
         addStackTrace();
-        
         addTimeData();
     }
+
+    /**
+     * Adds some entropy and returns a copy of the current seed data (128 byte array).
+     */
+    public synchronized byte[] getSeed() {
+        addTimeData();
+        addRandomOffset();
+        return (byte[]) seed.clone();
+    }
+
+    /**
+     * Adds data based on system clock and system counter.
+     */
+    private void addTimeData() {
+        addData(System.nanoTime());
+        addData(System.currentTimeMillis());
+        addData(System.nanoTime());
+    }
     
+    /**
+     * Adds data from Runtime state.
+     */
+    private void addRuntimeData() {
+        Runtime rt = Runtime.getRuntime();
+        addData(rt.freeMemory());
+        addData(rt.maxMemory());
+        addData(rt.totalMemory());
+    }
+
     private void addStackTrace() {
         // The strange try-clause is needed for it to work with IKVM.
         
@@ -100,25 +135,6 @@ public class SeedGenerator {
     }
 
     /**
-     * Just to avoid not writing much to certain offsets.
-     */
-    private void addRandomOffset() {
-        offset = offset + (int) (Math.random() * 8.0);
-        if (offset >= seed.length) {
-            offset = offset % seed.length;
-        }
-    }
-
-    /**
-     * Adds data based on system clock and system counter.
-     */
-    private void addTimeData() {
-        addData(System.nanoTime());
-        addData(System.currentTimeMillis());
-        addData(System.nanoTime());
-    }
-
-    /**
      * Adds data specific to this machine.
      */
     private void addMachineData() {
@@ -142,15 +158,34 @@ public class SeedGenerator {
 
         addData(bout.toByteArray());
     }
-
+    
     /**
-     * Adds data from Runtime state.
+     * Adds data from a JMX - java management extension objects.
      */
-    private void addRuntimeData() {
-        Runtime rt = Runtime.getRuntime();
-        addData(rt.freeMemory());
-        addData(rt.maxMemory());
-        addData(rt.totalMemory());
+    private void addJmxData() {
+        ClassLoadingMXBean clBean;
+        ThreadMXBean tBean;
+        long[] ids;
+
+        clBean = ManagementFactory.getClassLoadingMXBean();
+        tBean = ManagementFactory.getThreadMXBean();
+
+        addData(clBean.getTotalLoadedClassCount());
+        addData(clBean.getUnloadedClassCount());
+        addData(clBean.getLoadedClassCount());
+
+        addData(tBean.getCurrentThreadCpuTime());
+        addData(tBean.getCurrentThreadUserTime());
+        addData(tBean.getTotalStartedThreadCount());
+        addData(tBean.getDaemonThreadCount());
+        addData(tBean.getPeakThreadCount());
+        addData(tBean.getThreadCount());
+        addRandomOffset();
+
+        ids = tBean.getAllThreadIds();
+        for (int i = 0; i < ids.length; i++) {
+            addData(ids[i]);
+        }
     }
     
     private void addData(String s) {
@@ -182,26 +217,20 @@ public class SeedGenerator {
     }
 
     /**
-     * Adds some entropy and returns a copy of the current seed data (128 byte array).
+     * Just to avoid not writing much to certain offsets.
      */
-    public synchronized byte[] getSeed() {
-        addTimeData();
-        addRandomOffset();
-        return (byte[]) seed.clone();
-    }
-
-    /**
-     * For testing.
-     */
-    public static void main(String[] args) {
-        int n = 10;
-        long t = System.nanoTime();
-        
-        for (int i = 0; i < n; i++) {
-            new SeedGenerator().getSeed();
+    private void addRandomOffset() {
+        offset = offset + (int) (Math.random() * 8.0);
+        if (offset >= seed.length) {
+            offset = offset % seed.length;
         }
-        
-        t = System.nanoTime() - t;
-        System.out.println("Time per run: " + (1e-9*t / n));
+    }
+    
+    @Nano
+    public static void testSanity() {
+        SeedGenerator g = new SeedGenerator();
+        g.moreEntropy();
+        g.moreEntropy();
+        g.getSeed();
     }
 }

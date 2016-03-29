@@ -5,13 +5,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import bergdb.common.IWarner;
-
-
-// NOTE 1305 Frans: We could make this stream more useful for real applications. For saving settings
-// or something like that, we really would like a single, small file. 
-// It may be enough to shrink file at startup.
-
 /**
  * A simple AppendOnlyStream stored in a single file.
  * Good for testing, but not useful for most real applications since the file grows forever.
@@ -26,7 +19,6 @@ public class OneFileStream implements AppendOnlyStream {
     private RandomAccessFile rfile;
     private Object sizeSynch = new Object();
     private long size;
-    private IWarner warner;
     
     /**
      * Creates a new write-once storage, or opens existing one.
@@ -73,27 +65,13 @@ public class OneFileStream implements AppendOnlyStream {
             try {
                 rfile.close();
             } catch (IOException e) {
-                warn("Error when closing file.", e);
+                // empty, nothing we can do
             }
         }
     }
     
     public void close() {
         stop();
-    }
-    
-    private void warn(String message, Throwable t) {
-        IWarner w = this.warner;
-        if (w != null) {
-            w.warn(message, t);
-        }
-    }
-    
-    public void setWarner(IWarner warner) {
-        if (warner == null) {
-            throw new IllegalArgumentException("warner == null not allowed");
-        }
-        this.warner = warner;
     }
 
     /**

@@ -8,7 +8,7 @@ import bergdb.nanotest.Nano;
 /**
  * <p>This class implements Salsa20 encryption with a 256 bit key.
  * Salsa20 encrypts in 64 byte blocks. It supports access to the encrypted
- * stream at each 64 byte block. It is a stream cipher, so it can write 
+ * stream at each 64-byte block. It is a stream cipher, so it can write 
  * bytes one by one.</p>
  * 
  * <p>Original code idea taken from estreamJ (http://www.hotpixel.net/software.html).</p>
@@ -489,19 +489,3 @@ public class Salsa {
         testFirst3();
     }
 }
-
-/*
-== 130504 Frans ==
-Added method append(). More flexible then process(), handles non-64 appends.
-
-== Old source history ==
-- Original code idea from estreamJ (http://www.hotpixel.net/software.html).
-- Only supports 32 byte (256 bit) key. Fine with me :)
-- Mode removed since not used.
-- Offset for key and nonce arrays removed
-- setupBlockCounter added.
-- removed reset, changed code standard
-- Changed to final fields.
-- Added Nanotests to this source file.
-- Created constructor that takes nonce and key.
-*/

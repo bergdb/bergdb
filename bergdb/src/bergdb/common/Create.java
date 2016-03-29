@@ -5,6 +5,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import bergdb.nanotest.Assert;
+import bergdb.nanotest.Nano;
+
 /**
  * Utility methods for creating objects.
  * 
@@ -36,5 +39,21 @@ public class Create {
         }
         
         return list;
+    }
+    
+    // ======== Tests ========
+    
+    @Nano
+    public static void testSet() {
+        Set<String> strings = Create.set("hello", "hi", "hej");
+        Assert.assertEquals(3, strings.size());
+        Assert.assertTrue(strings.contains("hej"));
+    }
+    
+    @Nano
+    public static void testList() {
+        List<String> strings = Create.list("hello", "hi");
+        Assert.assertEquals(2, strings.size());
+        Assert.assertEquals("hi", strings.get(1));
     }
 }

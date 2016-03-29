@@ -4,9 +4,14 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * An event that a thread can wait for.
+ * An event that a thread can wait for to happen.
+ * Simple thread synchronization.
+ * 
+ * @author Frans Lundberg
  */
 public class EventToWaitFor {
+    // Also see version in Github, java-cut.
+    
     private boolean hasHappened = false;
 
     /**
@@ -42,7 +47,7 @@ public class EventToWaitFor {
                 }
             }
         } catch (InterruptedException e) {
-            // silently ignore. We were stopped by another thread
+            // Silently ignore. We were stopped by another thread
         }
     }
 

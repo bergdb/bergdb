@@ -79,8 +79,8 @@ public class DagComparison {
         NodePairIterator iter = new NodePairIterator(dag1, dag2);
         
         while ((pair = iter.next()) != null) {
-            Node n1 = pair.getValue0();
-            Node n2 = pair.getValue1();
+            Node n1 = pair.value0();
+            Node n2 = pair.value1();
             
             String s = compare(n1, n2);
             if (s != null) {

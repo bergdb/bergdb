@@ -17,15 +17,15 @@ public class Triplet<T0, T1, T2> {
         this.v2 = v2;
     }
     
-    public final T0 getValue0() {
+    public final T0 value0() {
         return v0;
     }
     
-    public final T1 getValue1() {
+    public final T1 value1() {
         return v1;
     }
     
-    public final T2 getValue2() {
+    public final T2 value2() {
         return v2;
     }
 }

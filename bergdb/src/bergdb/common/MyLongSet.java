@@ -6,10 +6,10 @@ import java.util.Iterator;
 import bergdb.nanotest.Assert;
 
 /**
- * An specialized, limited (add/iterate/clear) implementation of a set of long values.
- * Efficient for sets no larger then 128 values. When the number of values exceeds 128, this class 
- * becomes a simple wrapper around java.util.HashSet.
- * The class is not thread safe.
+ * A specialized, limited (add/iterate/clear) implementation of a set of long values.
+ * For performance, uses linear access for sets no larger then 128 values. 
+ * When the number of values exceeds 128, this class becomes a simple 
+ * wrapper around java.util.HashSet with Long values.
  * 
  * @author Frans Lundberg
  */
@@ -63,11 +63,11 @@ public final class MyLongSet implements Iterable<Long> {
     }
     
     public final int size() {
-        return size;
+        return isHash() ? hash.size() : size;
     }
 
     public final boolean isEmpty() {
-        return size == 0;
+        return size() == 0;
     }
 
     public final boolean contains(long value) {
@@ -86,11 +86,13 @@ public final class MyLongSet implements Iterable<Long> {
     }
 
     public boolean add(long value) {
+        // TODO A. this seems wrong, iterating whole array rather than 0..size-1.
+        
         if (isHash()) {
             return hash.add(value);
         } else {
-            final int length = array.length;
-            for (int i = 0; i < length; i++) {
+            final int s = size;
+            for (int i = 0; i < s; i++) {
                 if (array[i] == value) {
                     return false;
                 }
@@ -155,6 +157,8 @@ public final class MyLongSet implements Iterable<Long> {
         };
     }
     
+    // ======== Tests ========
+    
     public static void test1() {
         MyLongSet s = new MyLongSet();
         s.add(1);
@@ -170,7 +174,7 @@ public final class MyLongSet implements Iterable<Long> {
     }
     
     public static void test2() {
-        // A larger set (exceeds 128).
+        // A larger set (exceeds MAX_ARRAY_SIZE).
         
         MyLongSet s = new MyLongSet();
         for (int i = 0; i < 200; i++) {
@@ -184,6 +188,53 @@ public final class MyLongSet implements Iterable<Long> {
         }
         
         Assert.assertEquals(199*100, sum);
+    }
+    
+    public static void testClearingLargeSet() {
+        MyLongSet s = new MyLongSet();
+        for (int i = 0; i < MAX_ARRAY_SIZE + 10; i++) {
+            s.add(i);
+        }
+        
+        Assert.assertTrue(s.isHash());
+        Assert.assertEquals(MAX_ARRAY_SIZE + 10, s.size());
+        
+        s.clear();
+        
+        Assert.assertFalse(s.isHash());
+        Assert.assertEquals(0, s.size());
+    }
+    
+    public static void testSize0() {
+        MyLongSet s = new MyLongSet();
+        Assert.assertEquals(0, s.size());
+    }
+    
+    public static void testSize1() {
+        MyLongSet s = new MyLongSet();
+        s.add(123);
+        s.add(222);
+        s.add(333);
+        Assert.assertEquals(3, s.size());
+    }
+    
+    public static void testSize2() {
+        MyLongSet s = new MyLongSet();
+        for (int i = 0; i < 5; i++) {
+            s.add(i);
+        }
+        
+        Assert.assertEquals(5, s.size());
+    }
+    
+    public static void testSize3() {
+        MyLongSet s = new MyLongSet();
+        for (int i = 0; i < 200; i++) {
+            s.add(i);
+        }
+        
+        Assert.assertTrue(s.isHash());
+        Assert.assertEquals(200, s.size());
     }
     
     public static void test3() {

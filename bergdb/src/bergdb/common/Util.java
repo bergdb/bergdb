@@ -17,15 +17,15 @@ import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Locale;
-import java.util.Random;
 import java.util.TimeZone;
-
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
 /**
  * Static utility methods for general-purpose.
+ * 
+ * @author Frans Lundberg
  */
 public class Util {
 
@@ -71,18 +71,25 @@ public class Util {
         }
     }
     
+    @Nano
+    private static void testDelete(TestEnvironment env) throws IOException {
+        File dir = env.createTempDir();
+        File dir2 = new File(dir, "dir2");
+        dir2.mkdir();
+        File file = new File(dir2, "file1");
+        FileOutputStream out = new FileOutputStream(file);
+        out.write(1);
+        out.close();
+        
+        Util.delete(dir2);
+        Assert.assertFalse(file.exists());
+    }
+    
     public static byte[] getTestBytes(int size) {
         byte[] result = new byte[size];
         for (int i = 0; i < size; i++) {
             result[i] = (byte) i;
         }
-        return result;
-    }
-    
-    public static byte[] getRandomTestBytes(int size) {
-        Random r = new Random(0);
-        byte[] result = new byte[size];
-        r.nextBytes(result);
         return result;
     }
     
@@ -174,70 +181,6 @@ public class Util {
         Assert.assertEquals("2", wholeNumber(1.93456));
         Assert.assertEquals("2", wholeNumber(2.29999));
         Assert.assertEquals("2", wholeNumber(2.00001));
-    }
-    
-    /**
-     * Loads a UTF-8 string from a resource.
-     * 
-     * @param clazz
-     *            Class to used when getting the resource.
-     *            clazz.getResourceAsStream is used.
-     * @param name
-     *            Name of the resource to load.
-     * @return The String or 'null' if there is no such resource.
-     * @throws IOException
-     */
-    public static String resourceToString(Class< ? > clazz, String name)
-            throws IOException {
-        byte[] bytes = resourceToBytes(clazz, name);
-        if (bytes == null) {
-            return null;
-        }
-        return new String(bytes, "UTF-8");
-    }
-    
-    /**
-     * Loads a resource to a byte array.
-     * 
-     * @param clazz
-     *            Class to used when getting the resource.
-     *            clazz.getResourceAsStream is used.
-     * @param name
-     *            Name of the resource to load.
-     * @return The bytes or 'null' if there is no such resource.
-     * @throws IOException
-     */
-    public static byte[] resourceToBytes(Class< ? > clazz, String name)
-            throws IOException {
-        InputStream in = null;
-        ByteArrayOutputStream out = null;
-
-        if (clazz == null) {
-            throw new IllegalArgumentException("clazz == null");
-        }
-
-        try {
-            out = new ByteArrayOutputStream();
-            in = clazz.getResourceAsStream(name);
-            if (in == null) {
-                return null;
-            }
-            copyStream(in, out);
-        } finally {
-            if (out != null) {
-                try {
-                    out.close();
-                } catch (IOException e) {}
-            }
-            
-            if (in != null) {
-                try {
-                    in.close();
-                } catch (IOException e) {}
-            }
-        }
-
-        return out.toByteArray();
     }
     
     /**
@@ -341,37 +284,10 @@ public class Util {
         }
     }
     
-    /**
-     * Converts UTF-8 bytes to a String.
-     * If 'bytes' is null, null will be returned.
-     * Note: use core.Keys for DB keys.
-     */
-    public static final String toString(byte[] bytes, int offset, int length) {
-        //return bytes == null ? null : new String(bytes, offset, length, utf8);
-        // Above code requires Java 1.6.
-        
-        try {
-            return bytes == null ? null : new String(bytes, offset, length, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            throw new Error("Never happens, UTF-8 must be supported by a JVM.");
-        }
-    }
-    
-    public static String toString(long[] array) {
-        if (array == null) {
-            return "null";
-        }
-        
-        StringBuilder b = new StringBuilder();
-        b.append('[');
-        for (int i = 0; i < array.length; i++) {
-            b.append(Long.toString(array[i]));
-            if (i != array.length - 1) {
-                b.append(' ');
-            }
-        }
-        b.append(']');
-        return b.toString();
+    @Nano
+    private static void testToString() throws UnsupportedEncodingException {
+        byte[] bytes = "hello!".getBytes("UTF-8");
+        Assert.assertEquals("hello!", Util.toString(bytes));
     }
     
     public static boolean isPrintableAscii(byte[] bytes) {
@@ -928,41 +844,6 @@ public class Util {
         Assert.assertEquals(true, isSuffix(new byte[]{'a'}, new byte[]{'a'}));
         Assert.assertEquals(false, isSuffix(new byte[]{1, 1}, new byte[]{1}));
         Assert.assertEquals(true, isSuffix(new byte[]{-23, 10}, new byte[]{123, 122, -23, 10}));
-    }
-    
-    /**
-     * Returns the index to the last occurrence of byte value 'b' in 'bytes', or -1 if no
-     * such byte exists.
-     */
-    public static int lastIndexOf(byte[] bytes, int b) {
-        assert bytes != null;
-        int result = -1;
-        
-        for (int i = bytes.length - 1; i >= 0; i--) {
-            if (bytes[i] == b) {
-                result = i;
-                break;
-            }
-        }
-        return result;
-    }
-    
-    /** Returns a deep copy. */
-    public static byte[][] copy(byte[][] bytes) {
-        if (bytes == null) {
-            return null;
-        }
-        
-        byte[][] copy = new byte[bytes.length][];
-        for (int i = 0; i < bytes.length; i++) {
-            if (bytes[i] == null) {
-                copy[i] = null;
-            } else {
-                copy[i] = new byte[bytes[i].length];
-                System.arraycopy(bytes, 0, copy, 0, bytes.length);
-            }
-        }
-        return copy;
     }
     
     /**

@@ -1,7 +1,7 @@
 package bergdb.common;
 
 /**
- * A ProgressListener that does nothing with the reported progress.
+ * A ProgressListener that does nothing.
  * 
  * @author Frans Lundberg
  */

@@ -12,15 +12,23 @@ import bergdb.common.Create;
 
 /**
  * A method filter that includes methods that are Nanotests and
- * belongs to one of the specified groups.
+ * belongs to one of the specified groups and has a name matching
+ * a given regular expression.
  * 
  * @author Frans Lundberg
  */
 public class MethodFilter {
+    //
+    // NOTE Likely a good idea to separate filtering of which methods
+    // that are tests as one filter (fixed) and the user filter that is based
+    // on name and regexp.
+    //
     private Pattern pattern;
     private Set<String> groups;
     
-    /** Filter that represents all unit test (nanotests belonging to "unit" group). */
+    /** 
+     * Filter that represents all unit test (nanotests belonging to "unit" group). 
+     */
     public static final MethodFilter UNIT_TESTS = new MethodFilter(Create.set("unit"));
     
     public MethodFilter(Set<String> groups) {
@@ -65,7 +73,7 @@ public class MethodFilter {
     }
     
     private boolean isNanoTestByAnnotation(Method m) {
-        return m.isAnnotationPresent(Nano.class);
+        return m.isAnnotationPresent(Nano.class) && Modifier.isStatic(m.getModifiers());
     }
     
     private boolean isNanoTestByConvention(Method m) {

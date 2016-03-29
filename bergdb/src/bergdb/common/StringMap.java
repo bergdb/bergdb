@@ -13,12 +13,18 @@ import bergdb.nanotest.Nano;
  * @author Frans Lundberg
  */
 public class StringMap {
-    private Map<String, String> map;
+    private final Map<String, String> map;
     
+    /**
+     * Creates an empty string map.
+     */
     public StringMap() {
         map = new HashMap<String, String>();
     }
-    
+
+    /**
+     * Creates a StringMap instance based on parsing the string 's'.
+     */
     public StringMap(String s) {
         this();
         parse(s);
@@ -101,6 +107,9 @@ public class StringMap {
         
         return b.toString();
     }
+    
+    
+    // ======== Tests ========
     
     @Nano
     public static void test1() {

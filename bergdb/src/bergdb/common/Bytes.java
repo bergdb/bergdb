@@ -14,13 +14,12 @@ import bergdb.nanotest.Nano;
  */
 public class Bytes {
     //
-    // My testing (bergdb.common.perf.BytesToLong) show that this class is faster
-    // to use instead of Java's ByteBuffer.
+    // My testing shows that this class is
+    // significantly faster than using instead of Java's ByteBuffer.
     //
     
     /** No reason to create instances. */
-    private Bytes() {
-    }
+    private Bytes() {}
     
     // --- long ----
     

@@ -70,8 +70,8 @@ public class DagNodeIterator {
 
     private void createChildIter(long maxLookupTime) {
         Pair<Long, Node> result = getChild(nextPointerIndex, maxLookupTime);
-        maxLookupTime = result.getValue0();
-        Node child = result.getValue1();
+        maxLookupTime = result.value0();
+        Node child = result.value1();
         
         if (child == null) {
             iter = null;

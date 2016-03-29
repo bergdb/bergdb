@@ -50,4 +50,4 @@ public class NullOutputStream extends OutputStream {
         out.close();
         Assert.assertEquals(10 + 1 + 5, out.getByteCount());
     }
-}
+} 

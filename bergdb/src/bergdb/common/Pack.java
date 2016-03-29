@@ -5,16 +5,18 @@ import bergdb.nanotest.IPack;
 public class Pack implements IPack {
     private static Class<?>[] classes = new Class<?>[] {
         AssertStatus.class,
+        Bug.class,
         ByteArrayComparator.class,
         Bytes.class,
+        Create.class,
         EventToWaitFor.class,
-        FrequencySensor.class,
-        Bug.class,
+        MyChecksum.class,
         MyLongSet.class,
         NullOutputStream.class,
         Pack.class,
-        ReportHandler.class,
+        Pair.class,
         Salsa.class,
+        SeedGenerator.class,
         StringMap.class,
         Util.class,
     };
