@@ -3,7 +3,8 @@ package bergdb.stream;
 import java.io.IOException;
 
 /**
- * Thrown to indicate that the files in the directory are in an invalid state.
+ * Thrown to indicate that the files in the directory if a FileStream 
+ * are in an invalid state.
  * The files have been modified by other software in an incompatible way.
  * 
  * @author Frans Lundberg

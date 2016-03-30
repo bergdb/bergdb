@@ -3,6 +3,7 @@ package bergdb.stream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.util.ArrayList;
+
 import bergdb.common.Bug;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
@@ -27,7 +28,6 @@ public class MemoryStream implements AppendOnlyStream {
     private ArrayList<byte[]> arrays;
     private long firstValidPos;
     private boolean closed = false;
-    private boolean appendHasBeenCalled = false;
     
     /**
      * Creates new empty (stream size = 0) write-once stream.
@@ -112,8 +112,6 @@ public class MemoryStream implements AppendOnlyStream {
 
     public synchronized void append(byte[] source, int off, int len) 
             throws IOException {
-        this.appendHasBeenCalled = true;
-        
         if (closed) {
             throw new IOException("Cannot append to closed stream.");
         }
@@ -249,27 +247,8 @@ public class MemoryStream implements AppendOnlyStream {
     }
     
     public synchronized void seekFirstPos(long pos) {
-        if (appendHasBeenCalled) {
-            throw new IllegalStateException("Cannot call seekTo() after append() has been called.");
-        }
-        
-        long length = getLength();
-        if (length > pos) {
-            throw new IllegalStateException("pos > getLength, pos = " + pos + ", length = " + length);
-        }
-        
-        if (pos % ARRAY_SIZE != 0) {
-            throw new IllegalArgumentException("pos = " + pos + ", cannot seek to that pos, pos % "
-                    + ARRAY_SIZE + " != 0.");
-        }
-        
-        streamLength = pos;
-        if (pos / ARRAY_SIZE > Integer.MAX_VALUE) {
-            throw new Bug("Unexpected, ARRAY_SIZE = " + ARRAY_SIZE + ", pos = " + pos + ".");
-        }
-        firstArrayIndex = (int) (pos / ARRAY_SIZE);
-        arrays = new ArrayList<byte[]>();
-        firstValidPos = pos;
+        // A new instance always has length == 0, no need to call this method.
+        throw new UnsupportedOperationException("should be no need to call MemoryStream.seekFirstPos()");
     }
     
     /**
@@ -333,161 +312,157 @@ public class MemoryStream implements AppendOnlyStream {
         array[offset] = (byte) b;
     }
     
+    
+    // ======== Tests ========
+    
+    /** Class to mark test access. */
     public static class TestAccess {
         public static void write(MemoryStream stream, byte[] bytes, long spos) throws IOException {
             stream.write(bytes, spos);
         }
     }
-    
-    public static class Tester {
-        public Tester() {}
+
+    @Nano
+    private static void testSize1() throws IOException {
+        MemoryStream s = new MemoryStream();
         
-        @Nano
-        public static void testSize1() throws IOException {
-            MemoryStream s = new MemoryStream();
-            
-            s.append(new byte[0], 0, 0);
-            s.append(new byte[123], 0, 123);
-            Assert.assertEquals("size", 123L, s.getLength());
-        }
-        
-        @Nano
-        public static void testOneByte() throws IOException {
-            MemoryStream s = new MemoryStream();
-            byte[] dest = new byte[1024];
-            s.append(new byte[]{1}, 0, 1);
-            s.read(0, dest, 0, 1);
-            Assert.assertEquals("size", 1L, s.getLength());
-            Assert.assertEquals("first byte", (byte) 1, dest[0]);
-        }
-        
-        @Nano
-        public static void testSize2() throws IOException {
-            MemoryStream s = new MemoryStream();
-            byte[] bytes = new byte[1024 * 1024 + 1];
-            for (int i : bytes) {
-                bytes[i] = 1;
-            }
-            s.append(bytes, 0, bytes.length);
-            Assert.assertEquals("size", (long) bytes.length, s.getLength());
-            s.append(bytes, 0, bytes.length);
-            
-            Assert.assertEquals("size appended", bytes.length * 2L, s.getLength());
-        }
-        
-        @Nano
-        public static void testArrays() throws IOException {
-            MemoryStream s = new MemoryStream();
-            byte[] bytes = new byte[1024 * 1024 + 1];
-            for (int i = 0; i < bytes.length; i++) {
-                bytes[i] = 1;
-            }
-            s.append(bytes, 0, bytes.length);
-            for (int i = 0; i < bytes.length; i++) {
-                bytes[i] = 2;
-            }
-            s.append(bytes, 0, bytes.length);
-            
-            byte[] dest = new byte[10];
-            s.read(1000, dest, 0, dest.length);
-            Assert.assertEquals("byte0", (byte) 1, dest[0]);
-            Assert.assertEquals("byte7", (byte) 1, dest[7]);
-            s.read(1024*1024, dest, 0, 10);
-            Assert.assertEquals("byte0", (byte) 1, dest[0]);
-            Assert.assertEquals("byte1", (byte) 2, dest[1]);
-        }
-        
-        @Nano
-        public static void testTruncate1() throws IOException {
-            MemoryStream s = new MemoryStream();
-            byte[] bytes = Util.getTestBytes(1024 * 1024);
-            
-            s.append(bytes, 0, bytes.length);
-            s.append(bytes, 0, bytes.length);
-            
-            s.truncate(1024 * 1024 + 38);
-            Assert.assertEquals("size", 1024 * 1024 + 38L, s.getLength());
-            
-            s.truncate(123456);
-            Assert.assertEquals("size2", 123456L, s.getLength());
-        }
-        
-        @Nano
-        public static void testTruncate2() throws IOException {
-            MemoryStream s = new MemoryStream();
-            byte[] bytes = Util.getTestBytes(1000000 + 123);
-            
-            s.append(bytes, 0, bytes.length);
-            
-            s.truncate(1000000 + 64);
-            Assert.assertEquals("size", 1000000 + 64, s.getLength());
-            
-            byte[] buffer = new byte[100];
-            s.read(0, buffer, 0, buffer.length);
-            Assert.assertEquals(bytes[0], buffer[0]);
-            Assert.assertEquals(bytes[92], buffer[92]);
-            
-            s.read(1000000 + 64 - 100, buffer, 0, buffer.length);
-            Assert.assertEquals(bytes[1000064 - 100], buffer[0]);
-            Assert.assertEquals(bytes[1000064 - 10], buffer[90]);
-        }
-        
-        @Nano
-        public static void testPretruncate1() throws IOException {
-            MemoryStream s = new MemoryStream();
-            byte[] bytes = Util.getTestBytes(MemoryStream.ARRAY_SIZE);
-            
-            Assert.assertEquals(0, s.firstArrayIndex);
-            
-            s.append(bytes, 0, bytes.length);
-            s.append(bytes, 0, bytes.length);
-            s.append(bytes, 0, bytes.length);
-            
-            s.pretruncate(1 * MemoryStream.ARRAY_SIZE);
-            Assert.assertEquals(1, s.firstArrayIndex);
-            
-            s.pretruncate(1 * MemoryStream.ARRAY_SIZE);
-            Assert.assertEquals(1, s.firstArrayIndex);
-            
-            s.pretruncate(1 * MemoryStream.ARRAY_SIZE + 1);
-            Assert.assertEquals(1, s.firstArrayIndex);
-            
-            s.pretruncate(0);
-            Assert.assertEquals(1, s.firstArrayIndex);
-        }
-        
-        @Nano
-        public static void testPretruncate2() throws IOException {
-            MemoryStream s = new MemoryStream();
-            byte[] bytes = Util.getTestBytes(MemoryStream.ARRAY_SIZE);
-            
-            Assert.assertEquals(0, s.firstArrayIndex);
-            
-            s.append(bytes, 0, bytes.length);
-            s.append(bytes, 0, bytes.length);
-            s.append(bytes, 0, bytes.length);
-            
-            s.pretruncate(1 * MemoryStream.ARRAY_SIZE - 1);
-            Assert.assertEquals(0, s.firstArrayIndex);
-            
-            s.pretruncate(1 * MemoryStream.ARRAY_SIZE);
-            Assert.assertEquals(1, s.firstArrayIndex);
-            
-            s.pretruncate(1 * MemoryStream.ARRAY_SIZE + 1);
-            Assert.assertEquals(1, s.firstArrayIndex);
-            
-            s.pretruncate(2 * MemoryStream.ARRAY_SIZE - 1);
-            Assert.assertEquals(1, s.firstArrayIndex);
-            
-            s.pretruncate(2 * MemoryStream.ARRAY_SIZE);
-            Assert.assertEquals(2, s.firstArrayIndex);
-            
-            s.pretruncate(2 * MemoryStream.ARRAY_SIZE + 1);
-            Assert.assertEquals(2, s.firstArrayIndex);
-        }
+        s.append(new byte[0], 0, 0);
+        s.append(new byte[123], 0, 123);
+        Assert.assertEquals("size", 123L, s.getLength());
     }
     
-    public static void main(String[] args) throws Exception {
-        MemoryStream.Tester.testPretruncate1();
+    @Nano
+    private static void testOneByte() throws IOException {
+        MemoryStream s = new MemoryStream();
+        byte[] dest = new byte[1024];
+        s.append(new byte[]{1}, 0, 1);
+        s.read(0, dest, 0, 1);
+        Assert.assertEquals("size", 1L, s.getLength());
+        Assert.assertEquals("first byte", (byte) 1, dest[0]);
+    }
+    
+    @Nano
+    private static void testSize2() throws IOException {
+        MemoryStream s = new MemoryStream();
+        byte[] bytes = new byte[1024 * 1024 + 1];
+        for (int i : bytes) {
+            bytes[i] = 1;
+        }
+        s.append(bytes, 0, bytes.length);
+        Assert.assertEquals("size", (long) bytes.length, s.getLength());
+        s.append(bytes, 0, bytes.length);
+        
+        Assert.assertEquals("size appended", bytes.length * 2L, s.getLength());
+    }
+    
+    @Nano
+    private static void testArrays() throws IOException {
+        MemoryStream s = new MemoryStream();
+        byte[] bytes = new byte[1024 * 1024 + 1];
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = 1;
+        }
+        s.append(bytes, 0, bytes.length);
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = 2;
+        }
+        s.append(bytes, 0, bytes.length);
+        
+        byte[] dest = new byte[10];
+        s.read(1000, dest, 0, dest.length);
+        Assert.assertEquals("byte0", (byte) 1, dest[0]);
+        Assert.assertEquals("byte7", (byte) 1, dest[7]);
+        s.read(1024*1024, dest, 0, 10);
+        Assert.assertEquals("byte0", (byte) 1, dest[0]);
+        Assert.assertEquals("byte1", (byte) 2, dest[1]);
+    }
+    
+    @Nano
+    private static void testTruncate1() throws IOException {
+        MemoryStream s = new MemoryStream();
+        byte[] bytes = Util.getTestBytes(1024 * 1024);
+        
+        s.append(bytes, 0, bytes.length);
+        s.append(bytes, 0, bytes.length);
+        
+        s.truncate(1024 * 1024 + 38);
+        Assert.assertEquals("size", 1024 * 1024 + 38L, s.getLength());
+        
+        s.truncate(123456);
+        Assert.assertEquals("size2", 123456L, s.getLength());
+    }
+    
+    @Nano
+    private static void testTruncate2() throws IOException {
+        MemoryStream s = new MemoryStream();
+        byte[] bytes = Util.getTestBytes(1000000 + 123);
+        
+        s.append(bytes, 0, bytes.length);
+        
+        s.truncate(1000000 + 64);
+        Assert.assertEquals("size", 1000000 + 64, s.getLength());
+        
+        byte[] buffer = new byte[100];
+        s.read(0, buffer, 0, buffer.length);
+        Assert.assertEquals(bytes[0], buffer[0]);
+        Assert.assertEquals(bytes[92], buffer[92]);
+        
+        s.read(1000000 + 64 - 100, buffer, 0, buffer.length);
+        Assert.assertEquals(bytes[1000064 - 100], buffer[0]);
+        Assert.assertEquals(bytes[1000064 - 10], buffer[90]);
+    }
+    
+    @Nano
+    private static void testPretruncate1() throws IOException {
+        MemoryStream s = new MemoryStream();
+        byte[] bytes = Util.getTestBytes(MemoryStream.ARRAY_SIZE);
+        
+        Assert.assertEquals(0, s.firstArrayIndex);
+        
+        s.append(bytes, 0, bytes.length);
+        s.append(bytes, 0, bytes.length);
+        s.append(bytes, 0, bytes.length);
+        
+        s.pretruncate(1 * MemoryStream.ARRAY_SIZE);
+        Assert.assertEquals(1, s.firstArrayIndex);
+        
+        s.pretruncate(1 * MemoryStream.ARRAY_SIZE);
+        Assert.assertEquals(1, s.firstArrayIndex);
+        
+        s.pretruncate(1 * MemoryStream.ARRAY_SIZE + 1);
+        Assert.assertEquals(1, s.firstArrayIndex);
+        
+        s.pretruncate(0);
+        Assert.assertEquals(1, s.firstArrayIndex);
+    }
+    
+    @Nano
+    private static void testPretruncate2() throws IOException {
+        MemoryStream s = new MemoryStream();
+        byte[] bytes = Util.getTestBytes(MemoryStream.ARRAY_SIZE);
+        
+        Assert.assertEquals(0, s.firstArrayIndex);
+        
+        s.append(bytes, 0, bytes.length);
+        s.append(bytes, 0, bytes.length);
+        s.append(bytes, 0, bytes.length);
+        
+        s.pretruncate(1 * MemoryStream.ARRAY_SIZE - 1);
+        Assert.assertEquals(0, s.firstArrayIndex);
+        
+        s.pretruncate(1 * MemoryStream.ARRAY_SIZE);
+        Assert.assertEquals(1, s.firstArrayIndex);
+        
+        s.pretruncate(1 * MemoryStream.ARRAY_SIZE + 1);
+        Assert.assertEquals(1, s.firstArrayIndex);
+        
+        s.pretruncate(2 * MemoryStream.ARRAY_SIZE - 1);
+        Assert.assertEquals(1, s.firstArrayIndex);
+        
+        s.pretruncate(2 * MemoryStream.ARRAY_SIZE);
+        Assert.assertEquals(2, s.firstArrayIndex);
+        
+        s.pretruncate(2 * MemoryStream.ARRAY_SIZE + 1);
+        Assert.assertEquals(2, s.firstArrayIndex);
     }
 }

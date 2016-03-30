@@ -2,11 +2,12 @@ package bergdb.stream;
 
 import java.io.IOException;
 
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * Dummy AppendOnlyStream that does not really store the actual stream bytes.
+ * A dummy AppendOnlyStream that does not really store the actual stream bytes.
  * An instance of this class only stores the 10,000 first bytes in memory, 
  * the rest of the appended bytes are discarded. 
  * This is sometimes useful for testing.
@@ -16,7 +17,7 @@ import bergdb.nanotest.Nano;
  */
 public class DummyStream implements AppendOnlyStream {   
     private static final int bufferSize = 10*1000;
-    private byte[] buffer;
+    private final byte[] buffer;
     private long length;
     private long firstPos;
     
@@ -68,14 +69,8 @@ public class DummyStream implements AppendOnlyStream {
         }
     }
     
-    public synchronized void seekFirstPos(long pos) throws IOException {
-        long length = getLength();
-        if (pos < length) {
-            throw new IllegalStateException("pos = " + pos + ", length = " + length);
-        }
-        
-        this.firstPos = pos;
-        this.length = pos;
+    public void seekFirstPos(long pos) throws IOException {
+        throw new NotImplementedException();
     }
     
     public synchronized void stop() {
@@ -86,15 +81,16 @@ public class DummyStream implements AppendOnlyStream {
         stop();
     }
     
+    // ======== Tests ========
     
     @Nano
-    public static void test1() {
+    private static void test1() {
         DummyStream s = new DummyStream();
         Assert.assertEquals(0, s.getLength());
     }
     
     @Nano
-    public static void testRead1() throws IOException {
+    private static void testRead1() throws IOException {
         // Reads in the beginning of the stream.
         DummyStream s = new DummyStream();
         byte[] data = new byte[100];
@@ -108,7 +104,7 @@ public class DummyStream implements AppendOnlyStream {
     }
     
     @Nano
-    public static void testRead2() throws IOException {
+    private static void testRead2() throws IOException {
         // Reads in non-existant part of the stream.
         DummyStream s = new DummyStream();
         byte[] data = new byte[20000];
@@ -129,7 +125,7 @@ public class DummyStream implements AppendOnlyStream {
     }
     
     @Nano
-    public static void testSize() throws IOException {
+    private static void testSize() throws IOException {
         DummyStream s = new DummyStream();
         Assert.assertEquals(0, s.getLength());
         s.append(new byte[100], 0, 100);

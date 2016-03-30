@@ -8,7 +8,8 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * A decorator for an AppendOnlyStream that adds Salsa20 encryption to the stream.
+ * A decorator for an AppendOnlyStream that adds Salsa20 encryption to 
+ * the underlying stream.
  * 
  * @author Frans Lundberg
  */
@@ -138,8 +139,10 @@ public class SalsaStream implements AppendOnlyStream {
         stream.close();
     }
     
+    // ======== Tests ========
+    
     @Nano
-    public static void test0() throws IOException {
+    private static void test0() throws IOException {
         // Writes 128 bytes of data to SalsaStream and reads it back.
         
         byte[] data = new byte[128];
@@ -162,7 +165,7 @@ public class SalsaStream implements AppendOnlyStream {
     }
     
     @Nano
-    public static void test1() throws IOException {
+    private static void test1() throws IOException {
         // Writes 128 bytes of data to SalsaStream and reads it back using another Salsa object.
         
         Random r = new Random(0);
@@ -185,7 +188,7 @@ public class SalsaStream implements AppendOnlyStream {
     }
     
     @Nano
-    public static void testMultiAppend() throws IOException {
+    private static void testMultiAppend() throws IOException {
         Random r = new Random(0);
         byte[] data = new byte[64];
         r.nextBytes(data);
@@ -207,7 +210,7 @@ public class SalsaStream implements AppendOnlyStream {
     }
     
     @Nano
-    public static void testReadPartOfBlock1() throws IOException {
+    private static void testReadPartOfBlock1() throws IOException {
         // Writes 128 bytes of data to SalsaStream and reads part of it back.
         
         byte[] data = new byte[128];
@@ -233,7 +236,7 @@ public class SalsaStream implements AppendOnlyStream {
     }
     
     @Nano
-    public static void testNon64a() throws IOException {
+    private static void testNon64a() throws IOException {
         Random r = new Random(123);
         byte[] data = new byte[100];
         r.nextBytes(data);
@@ -258,7 +261,7 @@ public class SalsaStream implements AppendOnlyStream {
     }
     
     @Nano
-    public static void testNon64b() throws IOException {
+    private static void testNon64b() throws IOException {
         // Multiple append operations. Appends 5+5 bytes, read by another Salsa object.
         
         Random r = new Random(0);
@@ -286,7 +289,7 @@ public class SalsaStream implements AppendOnlyStream {
     }
     
     @Nano
-    public static void testNon64c() throws IOException {
+    private static void testNon64c() throws IOException {
         // Writes 100 + 100 bytes of data to SalsaStream and reads it back.
         
         Random r = new Random(123);

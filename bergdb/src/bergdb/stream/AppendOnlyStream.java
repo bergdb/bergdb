@@ -3,10 +3,10 @@ package bergdb.stream;
 import java.io.IOException;
 
 /**
- * <p>An append-only stream is append-only storage of a stream of bytes.
+ * <p>An append-only stream is an append-only storage of a stream of bytes.
  * The stream can be appended to with: <code>append()</code>, and read with <code>read()</code>.
  * Existing bytes that have already been appended to the stream will never be modified.
- * Additionally an AppendOnlyStream has the method <code>pretruncate()</code> that truncates the
+ * Additionally, an AppendOnlyStream has the method <code>pretruncate()</code> that truncates the
  * stream from the beginning of it, that is, it removes the first bytes of the stream.</p>
  * 
  * <p>CONCURRENCY.
@@ -27,7 +27,7 @@ public interface AppendOnlyStream {
     /**
      * Returns the length of the stream; the length of an AppendOnlyStream is the total number 
      * of bytes ever appended to the stream. The length always increases.
-     * Calls to pretruncate will *not* reduce the length of the stream.
+     * Thus, calls to pretruncate will *not* reduce the length of the stream.
      */
     public long getLength();
     
@@ -83,6 +83,8 @@ public interface AppendOnlyStream {
      * data in the stream before 'position' and to set the length of the stream to 'position'.
      * The getFirstPos() method will return 'position' and getLength() will return 'position' after 
      * this method returns. This method must be called before any calls to append().
+     * 
+     * This method was added to support replication.
      * 
      * @param position
      * @throws IOException

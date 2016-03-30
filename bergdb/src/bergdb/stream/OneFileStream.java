@@ -7,21 +7,18 @@ import java.io.RandomAccessFile;
 
 /**
  * A simple AppendOnlyStream stored in a single file.
- * Good for testing, but not useful for most real applications since the file grows forever.
+ * Good for testing, but not useful for most real applications since 
+ * the file grows indefinitely.
  * 
  * @author Frans Lundberg
  */
 public class OneFileStream implements AppendOnlyStream {
-    //
-    // We assume the file is not changed by other threads/processes while this object has
-    // opened it. The size of the file is computed in this class.
-    //
     private RandomAccessFile rfile;
     private Object sizeSynch = new Object();
     private long size;
     
     /**
-     * Creates a new write-once storage, or opens existing one.
+     * Creates a new append-only storage, or opens existing one.
      * The stream size is assumed to equal the file size.
      */
     public OneFileStream(File file) throws FileNotFoundException, IOException {

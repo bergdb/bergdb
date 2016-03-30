@@ -1,7 +1,6 @@
 package bergdb.stream;
 
 import java.io.IOException;
-
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 

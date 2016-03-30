@@ -17,9 +17,12 @@ import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.BadFormatException;
 
 /**
- * <p>An object of this class is an AppendOnlyStream that stores the stream data 
+ * An object of this class is an AppendOnlyStream that stores the stream data 
  * in one directory in the filesystem.
- * Multiple files are used to be able pretruncate the stream to reclaim disk space.</p>
+ * Multiple files are used to be able pretruncate the stream and reclaim disk space.
+ * 
+ * Files of sizes 200*1000, 1*M, 5*M, 20*M, 100*M, 500*M, 2*G, 10*G, 50*G, 200*G
+ * are used to store the stream (4-5 factor log factor). Decimal factors, M = 1,000,000 bytes.
  * 
  * @author Frans Lundberg
  */
@@ -35,7 +38,9 @@ public class FileStream implements AppendOnlyStream {
      */
     private static final long SMALLEST_FILE_SIZE = Util.identity(200*1000);
     
-    /** File sizes, x5-x4-x5 log scale, always a multiple of BYTES_PER_INDEX_UNIT. */
+    /** 
+     * File sizes, x5-x4-x5 log scale, always a multiple of BYTES_PER_INDEX_UNIT. 
+     */
     private static final long FILE_SIZES[] = new long[] {
         200*1000, 1*M, 5*M, 20*M, 100*M, 500*M, 2*G, 10*G, 50*G, 200*G
     };
@@ -61,18 +66,21 @@ public class FileStream implements AppendOnlyStream {
     /** The .bergdb files of the directory. Protected by this. */
     private DbFile[] dbFiles;
     
-    /** If null, this stream should be considered faulty and not used any further. */
+    /** If not null, this stream should be considered faulty and not used any further. */
     private volatile IOException ioException = null;
     
     /**
      * Creates a new stream if it does not exist or opens an existing one if it exists.
-     * If the directory 'dir' does not exist an attempt is made to create it.
+     * If the directory 'dir' does not exist an attempt to create it is made.
      * 
-     * @param dir  The directory to use.
-     * @throws IOException  If existing directory cannot be read from / written to, or if 
-     * 'dir' does not exist and cannot be created.
-     * @throws BadDirStateException  If the directory exists but the files in the directory
-     * are not in a valid state. The files in the directory were modified by some other software.
+     * @param dir
+     *      The directory to use.
+     * @throws IOException
+     *      If existing directory cannot be read from / written to, or if 
+     *      'dir' does not exist and cannot be created.
+     * @throws BadDirStateException
+     *      If the directory exists but the files in the directory
+     *      are not in a valid state. The files in the directory were modified by some other software.
      */
     public FileStream(File dir) throws IOException {
         if (dir == null) {
@@ -81,9 +89,77 @@ public class FileStream implements AppendOnlyStream {
         
         this.dir = dir;
         createDirIfNeeded();
-        handleFiles();
+        handleExistingFiles();
     }
     
+    public void read(long spos, byte[] dest, int destOffset, int length) throws IOException {
+        //
+        // Sync comments. Multiple concurrent reads are allowed, but only if made from different
+        // files (needed since we use RandomAccessFile.seek()).
+        //
+        checkIOException();
+        
+        int actuallyRead;
+        int leftToRead;
+        
+        while (true) {
+            DbFile k = findFile(spos);
+            if (k == null) {
+                this.ioException = new IOException("No file found for reading at spos " + spos + ".");
+                throw ioException;
+            }
+    
+            actuallyRead = k.read(spos, dest, destOffset, length);
+            leftToRead = length - actuallyRead;
+            if (leftToRead == 0) {
+                break;
+            }
+            
+            spos += actuallyRead;
+            destOffset += actuallyRead;
+            length -= actuallyRead;
+        }
+    }
+
+    public void append(byte[] source, int sourceOffset, int len) throws IOException {
+        checkIOException();
+        
+        int actuallyAppended;
+        int leftToAppend;
+        
+        while (true) {
+            DbFile k = findLastFile();
+            actuallyAppended = k.append(source, sourceOffset, len);
+            length += actuallyAppended;
+            leftToAppend = len - actuallyAppended;
+            if (leftToAppend == 0) {
+                break;
+            } else {
+                newFile();
+            }
+            
+            sourceOffset += actuallyAppended;
+            len -= actuallyAppended;
+        }
+    }
+
+    public synchronized long getLength() {
+        return length;
+    }
+
+    public void close() throws IOException {
+        checkIOException();
+        
+        synchronized (this) {
+            for (int i = 0; i < dbFiles.length; i++) {
+                dbFiles[i].close();
+            }
+        }
+    }
+
+    /**
+     * Returns the directory where the stream files are stored.
+     */
     public File getDir() {
         return dir;
     }
@@ -110,6 +186,88 @@ public class FileStream implements AppendOnlyStream {
         }
     }
     
+    public synchronized long getFirstPos() {
+        return firstPos;
+    }
+
+    public synchronized void seekFirstPos(long pos) throws IOException {
+        checkIOException();
+        
+        long len = this.length;
+        
+        if (pos < len) {
+            throw new IllegalStateException("Cannot seek to " + pos 
+                    + ", pos less than stream length (" + len + ").");
+        }
+        
+        if (pos % SMALLEST_FILE_SIZE != 0) {
+            throw new IllegalArgumentException("pos (" + pos 
+                    + ") is not a multiple of " + SMALLEST_FILE_SIZE + ".");
+        }
+        
+        deleteAllFiles();
+        
+        this.length = pos;
+        this.firstPos = pos;
+        
+        dbFiles = new DbFile[0];
+        dbFilePositions = new long[0];
+        newFile();
+    }
+
+    public synchronized void pretruncate(long pos) throws IOException {
+        checkIOException();
+        
+        int index = -1;      // index of last file to delete
+        
+        long len = getLength();
+        if (pos > len) {
+            throw new IllegalArgumentException("pos > length of stream (" + len + ").");
+        }
+        
+        for (int i = 0; i < dbFiles.length; i++) {
+            DbFile k = dbFiles[i];
+            if (k.spos + k.fileLength - 1 < pos) {
+                index = i;
+            } else {
+                break;
+            }
+        }
+        
+        if (index != -1) {
+            for (int i = 0; i <= index; i++) {
+                dbFiles[i].delete();
+            }
+            
+            int newSize = dbFiles.length - (index + 1);
+            if (newSize < 1) {
+                throw new Bug("Unexpected newSize: " + newSize + ". pos=" + pos 
+                        + ", kfiles.length=" + dbFiles.length);
+            }
+            
+            DbFile[] newFiles = new DbFile[newSize];
+            long[] newPositions = new long[newSize];
+            
+            System.arraycopy(dbFiles, index + 1, newFiles, 0, newSize);
+            System.arraycopy(dbFilePositions, index + 1, newPositions, 0, newSize);
+            
+            this.dbFiles = newFiles;
+            this.dbFilePositions = newPositions;
+            this.firstPos = dbFiles[0].spos;
+        }
+    }
+
+    /**
+     * Returns the smallest possible file size.
+     */
+    public static long getSmallestFileSize() {
+        // This is a method that we want to have (public), but it should not be part of the API.
+        // Requires some special tool. See
+        // See http://stackoverflow.com/questions/15812349/is-there-a-way-to-produce-javadoc-for-a-subset-of-public-methods.
+        
+        return FileStream.SMALLEST_FILE_SIZE;
+    }
+
     /**
      * @throws IOException  If directory does not exist and cannot be created.
      */
@@ -144,14 +302,10 @@ public class FileStream implements AppendOnlyStream {
      * @throws IOException
      * @thrown BadDirStateException
      */
-    private void handleFiles() throws IOException, BadDirStateException {
-        
+    private void handleExistingFiles() throws IOException, BadDirStateException {
         File[] bergdbFiles = getSortedDbFiles();
-        
         long currentSpos = checkDbFiles(bergdbFiles);
-        
-        determineFileSizeIndex(bergdbFiles);
-        
+        determineFileSizeIndexFromFiles(bergdbFiles);
         createDbFileObjects(bergdbFiles, currentSpos);
     }
 
@@ -206,7 +360,7 @@ public class FileStream implements AppendOnlyStream {
     /**
      * Computes and sets this.fileSizeIndex.
      */
-    private void determineFileSizeIndex(File[] bergdbFiles) {
+    private void determineFileSizeIndexFromFiles(File[] bergdbFiles) {
         if (bergdbFiles.length == 0) {
             this.fileSizeIndex = 0;
         } else {
@@ -342,50 +496,6 @@ public class FileStream implements AppendOnlyStream {
         return result;
     }
     
-    /**
-     * Returns the smallest possible file size.
-     */
-    public static long getSmallestFileSize() {
-        // This is a method that we want to have (public), but it should not be part of the API.
-        // Requires some special tool. See
-        // See http://stackoverflow.com/questions/15812349/is-there-a-way-to-produce-javadoc-for-a-subset-of-public-methods.
-        
-        return FileStream.SMALLEST_FILE_SIZE;
-    }
-    
-    public synchronized long getLength() {
-        return length;
-    }
-
-    public synchronized long getFirstPos() {
-        return firstPos;
-    }
-    
-    public synchronized void seekFirstPos(long pos) throws IOException {
-        checkIOException();
-        
-        long len = this.length;
-        
-        if (pos < len) {
-            throw new IllegalStateException("Cannot seek to " + pos 
-                    + ", pos less than stream length (" + len + ").");
-        }
-        
-        if (pos % SMALLEST_FILE_SIZE != 0) {
-            throw new IllegalArgumentException("pos (" + pos 
-                    + ") is not a multiple of " + SMALLEST_FILE_SIZE + ".");
-        }
-        
-        deleteAllFiles();
-        
-        this.length = pos;
-        this.firstPos = pos;
-        
-        dbFiles = new DbFile[0];
-        dbFilePositions = new long[0];
-        newFile();
-    }
-    
     private synchronized void deleteAllFiles() throws IOException {
         try {
             for (int i = 0; i < dbFiles.length; i++) {
@@ -394,48 +504,6 @@ public class FileStream implements AppendOnlyStream {
         } catch (IOException e) {
             ioException = e;
             throw e;
-        }
-    }
-    
-    public synchronized void pretruncate(long pos) throws IOException {
-        checkIOException();
-        
-        int index = -1;      // index of last file to delete
-        
-        long len = getLength();
-        if (pos > len) {
-            throw new IllegalArgumentException("pos > length of stream (" + len + ").");
-        }
-        
-        for (int i = 0; i < dbFiles.length; i++) {
-            DbFile k = dbFiles[i];
-            if (k.spos + k.fileLength - 1 < pos) {
-                index = i;
-            } else {
-                break;
-            }
-        }
-        
-        if (index != -1) {
-            for (int i = 0; i <= index; i++) {
-                dbFiles[i].delete();
-            }
-            
-            int newSize = dbFiles.length - (index + 1);
-            if (newSize < 1) {
-                throw new Bug("Unexpected newSize: " + newSize + ". pos=" + pos 
-                        + ", kfiles.length=" + dbFiles.length);
-            }
-            
-            DbFile[] newFiles = new DbFile[newSize];
-            long[] newPositions = new long[newSize];
-            
-            System.arraycopy(dbFiles, index + 1, newFiles, 0, newSize);
-            System.arraycopy(dbFilePositions, index + 1, newPositions, 0, newSize);
-            
-            this.dbFiles = newFiles;
-            this.dbFilePositions = newPositions;
-            this.firstPos = dbFiles[0].spos;
         }
     }
     
@@ -450,67 +518,6 @@ public class FileStream implements AppendOnlyStream {
         }
     }
 
-    public void read(long spos, byte[] dest, int destOffset, int length) throws IOException {
-        //
-        // Sync comments. Multiple concurrent reads are allowed, but only if made from different
-        // files (needed since we use RandomAccessFile.seek()).
-        //
-        checkIOException();
-        
-        int actuallyRead;
-        int leftToRead;
-        
-        while (true) {
-            DbFile k = findFile(spos);
-            if (k == null) {
-                this.ioException = new IOException("No file found for reading at spos " + spos + ".");
-                throw ioException;
-            }
-    
-            actuallyRead = k.read(spos, dest, destOffset, length);
-            leftToRead = length - actuallyRead;
-            if (leftToRead == 0) {
-                break;
-            }
-            
-            spos += actuallyRead;
-            destOffset += actuallyRead;
-            length -= actuallyRead;
-        }
-    }
-
-    public void append(byte[] source, int sourceOffset, int len) throws IOException {
-        checkIOException();
-        
-        int actuallyAppended;
-        int leftToAppend;
-        
-        while (true) {
-            DbFile k = findLastFile();
-            actuallyAppended = k.append(source, sourceOffset, len);
-            length += actuallyAppended;
-            leftToAppend = len - actuallyAppended;
-            if (leftToAppend == 0) {
-                break;
-            } else {
-                newFile();
-            }
-            
-            sourceOffset += actuallyAppended;
-            len -= actuallyAppended;
-        }
-    }
-
-    public void close() throws IOException {
-        checkIOException();
-        
-        synchronized (this) {
-            for (int i = 0; i < dbFiles.length; i++) {
-                dbFiles[i].close();
-            }
-        }
-    }
-    
     private void newFile() throws IOException {
         synchronized (this) {
             if (this.length % BYTES_PER_INDEX_UNIT != 0) {
@@ -551,14 +558,21 @@ public class FileStream implements AppendOnlyStream {
         }
     }
 
+    /**
+     * Possibly increases or decreases the stream file size for the new file to be created.
+     */
     private void applyFileSizeChangeRules() {
-        // Possibly increase or decreases the stream file size for the new file to be created.
-        
+        long streamLength = getLength();
+        long streamSize = streamLength - getFirstPos();
+        this.fileSizeIndex = determineFileSizeIndex(this.fileSizeIndex, streamLength, streamSize);
+    }
+    
+    private int determineFileSizeIndex(int currentFileSizeIndex, long streamLength, long streamSize) {
         long currentSize = FILE_SIZES[this.fileSizeIndex];
-        long streamSize = getLength() - getFirstPos();
         long size = streamSize / 4;
         long foundSize = FILE_SIZES[0];
         int foundIndex = 0;
+        int result = currentFileSizeIndex;
         
         for (int i = 1; i < FILE_SIZES.length; i++) {
             long s = FILE_SIZES[i];
@@ -570,30 +584,28 @@ public class FileStream implements AppendOnlyStream {
             }
         }
         
-        if (foundIndex != this.fileSizeIndex) {
+        if (foundIndex != currentFileSizeIndex) {
             if (foundSize > currentSize) {
                 boolean isMaxIndex = max2G ? 
-                          fileSizeIndex >= INDEX_2G 
-                          : fileSizeIndex == FILE_SIZES.length - 1;
+                          currentFileSizeIndex >= INDEX_2G 
+                        : currentFileSizeIndex == FILE_SIZES.length - 1;
                 
                 if (!isMaxIndex) {
-                    long oneUpSize = FILE_SIZES[fileSizeIndex + 1];
-                    
-                    // Only set when multiple of next larger size. This makes indexes easier 
-                    // to read. Increases can occur every 4 or 5 files.
-                    
-                    if (this.length % oneUpSize == 0) {
-                        this.fileSizeIndex = foundIndex;
+                    long oneUpSize = FILE_SIZES[currentFileSizeIndex + 1];
+                    if (streamLength % oneUpSize == 0) {
+                        result = foundIndex;
                     }
                 }
             } else {
-                this.fileSizeIndex = foundIndex;
+                result = foundIndex;
             }
         }
         
-        if (max2G && fileSizeIndex > INDEX_2G) {
-            fileSizeIndex = INDEX_2G;
+        if (max2G && currentFileSizeIndex > INDEX_2G) {
+            result = INDEX_2G;
         }
+        
+        return result;
     }
     
     private DbFile findFile(long spos) {
@@ -811,11 +823,11 @@ public class FileStream implements AppendOnlyStream {
         }
     }
     
-    // ----------------------- Tests ---------------------------------------------------------------
+    // ======== Tests ========
 
     @Nano
     public static void test0(TestEnvironment c) throws IOException {
-        // Simple test.
+        // Simple sanity test.
         File dir = c.createTempDir();
         assert dir != null : "dir is null";
         FileStream f = new FileStream(dir);
@@ -837,6 +849,49 @@ public class FileStream implements AppendOnlyStream {
         f.read(0, b, 0, 1);
         f.close();
         Assert.assertEquals((byte) 123, b[0]);
+    }
+    
+    @Nano
+    public static void testFileSizeRules0(TestEnvironment c) throws IOException {
+        int newIndex;
+        long size;
+        File dir = c.createTempDir();
+        assert dir != null : "dir is null";
+        FileStream f = new FileStream(dir);
+        
+        size = 5 * 1000000L;
+        newIndex = f.determineFileSizeIndex(0, size, size);
+        Assert.assertEquals(1, newIndex);
+        
+        size = 3 * 1000000L;
+        newIndex = f.determineFileSizeIndex(0, size, size);
+        Assert.assertEquals(0, newIndex);
+        
+        f.close();
+    }
+    
+    @Nano
+    public static void testFileSizeRules1(TestEnvironment c) throws IOException {
+        // Tests the max2G setting.
+        // Sizes: .., 500*M, 2*G, 10*G, 50*G, ...
+        
+        int newIndex;
+        long size;
+        File dir = c.createTempDir();
+        assert dir != null : "dir is null";
+        FileStream f = new FileStream(dir);
+        
+        size = 50*G;
+        
+        f.setMax2G(false);
+        newIndex = f.determineFileSizeIndex(INDEX_2G, size, size);
+        Assert.assertEquals(INDEX_2G + 1, newIndex);
+        
+        f.setMax2G(true);
+        newIndex = f.determineFileSizeIndex(INDEX_2G, size, size);
+        Assert.assertEquals(INDEX_2G, newIndex);
+        
+        f.close();
     }
     
     @Nano
@@ -998,43 +1053,4 @@ public class FileStream implements AppendOnlyStream {
         
         f.close();
     }
-
-    public static void main(String[] args) throws IOException, InterruptedException {
-        File dir = new File("temp-FileStream");
-        byte[] bytes = new byte[100*1000];
-        FileStream f = new FileStream(dir);
-        
-        for (int i = 0; i < 50; i++) {
-            f.append(bytes, 0, bytes.length);
-        }
-        
-        f.close();
-    }
 }
-
-/*
-
-== FileStream ==
-
-1305 Frans: Re-implementation for cleaner code and adaptable file size. 
-Only parameter to create a FileStream should be the directory. Can be existing 
-stream or new one - same constructor.
-
-* Single dir as constructor param (possible other constructor for testing).
-* Adaptable file sizes: 0.2M, 1M, 5M, 20M, 100M, 500M, 2G (x4-x5 log scale).
-    Possibly higher... 10G, 50G, 200G, 1T (not supported by all filesystems).
-* File size increase rule: if last 20 files is of size == S, increase size one step
-* File size increase rule: if all files are of size == S, and S > 0.2M, 
-    and there are <= 2 files, decrease size one step.
-* Add lock file. lock.json - or something. Could contain a time that is 
-    updated every 30 seconds from System.currentTime. Lock only valid within
-    60 seconds after it was written.
-    Can be write process id + time to it? Java - get process id. How?
-* Cached file system structure:
-    Assumes no one else writes to dir (lock file should protect), throws some
-    subtype of IOException (UnexpectedFileSystemStateException) if dir changed by someone else.
-* All files are open. The last is open in mode "rws", the other files in mode "
-
-Max index: Long.MAX_VALUE / 100000 = number-with-14-digits.
-
-*/
