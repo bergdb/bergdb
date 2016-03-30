@@ -1,4 +1,4 @@
-package bergdb.pub;
+package bergdb.pub.util;
 
 /**
  * A database clock with high resolution used to timestamp transactions.

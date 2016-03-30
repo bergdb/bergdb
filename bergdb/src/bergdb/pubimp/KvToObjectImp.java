@@ -6,8 +6,8 @@ import java.util.HashMap;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
-import bergdb.pub.BadFormatException;
 import bergdb.pub.ObjectCreationException;
+import bergdb.pub.util.BadFormatException;
 
 /**
  * Default implementation of KvToObject.

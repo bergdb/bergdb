@@ -1,5 +1,7 @@
 package bergdb.pub;
 
+import bergdb.pub.util.DbException;
+
 /**
  * Thrown when data in the database has an illegal format.
  * 

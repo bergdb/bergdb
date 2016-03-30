@@ -1,4 +1,5 @@
-package bergdb.pub;
+package bergdb.pub.util;
+
 
 /**
  * Thrown to indicate that the crypto key is missing or the

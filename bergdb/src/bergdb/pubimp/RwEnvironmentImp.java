@@ -3,6 +3,7 @@ package bergdb.pubimp;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+
 import bergdb.common.MyLongSet;
 import bergdb.common.Util;
 import bergdb.core.Db;
@@ -14,10 +15,10 @@ import bergdb.dag.Klong;
 import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
-import bergdb.pub.BadFormatException;
 import bergdb.pub.DataFormatException;
 import bergdb.pub.MissingKeyFieldException;
 import bergdb.pub.RwEnvironment;
+import bergdb.pub.util.BadFormatException;
 
 /**
  * Environment for a transaction.

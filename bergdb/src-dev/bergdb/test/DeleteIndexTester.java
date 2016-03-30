@@ -10,10 +10,10 @@ import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
 import bergdb.pub.Factory;
-import bergdb.pub.Job;
-import bergdb.pub.JobStatus;
 import bergdb.pub.NoSuchIndexException;
 import bergdb.pub.Time;
+import bergdb.pub.util.Job;
+import bergdb.pub.util.JobStatus;
 import bergdb.pubimp.DatabaseImp;
 import bergdb.pubimp.PubKeys;
 

@@ -1,5 +1,7 @@
 package bergdb.pub;
 
+import bergdb.pub.util.Job;
+
 /**
  * <p>A builder to create a database index.
  * It is mandatory to call the three methods: dir(), type(), and field()  

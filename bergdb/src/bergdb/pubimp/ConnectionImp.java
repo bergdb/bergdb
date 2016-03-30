@@ -239,7 +239,6 @@ public class ConnectionImp implements Connection {
      * @throws IllegalArgumentException
      *             if indexName == null, or type == null.
      * @throws NoSuchIndexException
-     * @see bergdb.pub.Connection
      */
     public <TYPE> UseIndexBuilder<TYPE> useIndex(String indexName, Class<TYPE> type) {
         if (indexName == null) {

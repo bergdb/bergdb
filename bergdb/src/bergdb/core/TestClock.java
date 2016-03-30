@@ -1,7 +1,7 @@
 package bergdb.core;
 
 import bergdb.dag.Klong;
-import bergdb.pub.Clock;
+import bergdb.pub.util.Clock;
 
 
 /**

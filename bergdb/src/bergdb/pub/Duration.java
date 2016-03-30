@@ -2,6 +2,8 @@ package bergdb.pub;
 
 import java.util.Locale;
 
+import bergdb.pub.util.Clock;
+
 /**
  * An instance of this class represents a duration of time (immutable, non-negative).
  * The resolution is 100 nanoseconds and the duration is stored as a long internally.

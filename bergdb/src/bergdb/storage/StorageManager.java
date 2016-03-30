@@ -10,8 +10,8 @@ import bergdb.common.Bug;
 import bergdb.common.NullProgressListener;
 import bergdb.common.ProgressListener;
 import bergdb.common.Util;
-import bergdb.pub.BadReplicaException;
-import bergdb.pub.StorageInfo;
+import bergdb.pub.util.BadReplicaException;
+import bergdb.pub.util.StorageInfo;
 import bergdb.stream.AppendOnlyStream;
 
 /**

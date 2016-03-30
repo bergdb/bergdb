@@ -1,4 +1,4 @@
-package bergdb.pub;
+package bergdb.pub.util;
 
 /**
  * Thrown to indicate that the replica state is illegal.

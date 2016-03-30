@@ -1,5 +1,7 @@
 package bergdb.pub;
 
+import bergdb.pub.util.DbException;
+
 
 /**
  * An interface common to both RwEnvironment and to Connection that makes it possible to

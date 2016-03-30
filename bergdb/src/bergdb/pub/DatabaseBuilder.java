@@ -2,6 +2,11 @@ package bergdb.pub;
 
 import java.io.IOException;
 
+import bergdb.pub.util.BadCryptoKey;
+import bergdb.pub.util.BadReplicaException;
+import bergdb.pub.util.Clock;
+import bergdb.pub.util.DbException;
+
 /**
  * A DatabaseBuilder is used to create a Database.
  * Use the settings methods (dir, memory, replica, clock, ...) and then 

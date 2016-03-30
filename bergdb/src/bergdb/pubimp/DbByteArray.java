@@ -3,7 +3,7 @@ package bergdb.pubimp;
 import bergdb.common.Bytes;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
-import bergdb.pub.BadFormatException;
+import bergdb.pub.util.BadFormatException;
 
 /**
  * The DbObject type for a byte array.

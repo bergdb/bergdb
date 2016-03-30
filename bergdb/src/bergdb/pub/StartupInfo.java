@@ -1,5 +1,7 @@
 package bergdb.pub;
 
+import bergdb.pub.util.Job;
+
 /**
  * Immutable information about the start of the database.
  * 

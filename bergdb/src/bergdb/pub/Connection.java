@@ -1,6 +1,7 @@
 package bergdb.pub;
 
 import bergdb.core.SyncLevel;
+import bergdb.pub.util.DbException;
 
 /**
  * A connection to a Database is used to put and get data stored in the

@@ -1,10 +1,10 @@
-package bergdb.pub;
+package bergdb.pub.util;
 
 /**
  * Thrown when a serious error condition occurred in the database.
  * This exception should be considered fatal to the database unless otherwise documented
  * for the method that throws the exception.
- * That means that after a DBException, the database should not be considered functional and should
+ * That means that after a DbException, the database should not be considered functional and should
  * not be used anymore.
  * 
  * @author Frans Lundberg

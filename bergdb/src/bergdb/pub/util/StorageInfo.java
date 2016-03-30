@@ -1,4 +1,4 @@
-package bergdb.pub;
+package bergdb.pub.util;
 
 /**
  * Information about the status of a stream storage.
@@ -6,9 +6,6 @@ package bergdb.pub;
  * @author Frans Lundberg
  */
 public interface StorageInfo {
-    // 1301 Frans: Yes, enums would be better, but we are not allowed to use them because of 
-    // cross-compiling issues.
-    
     /** The storage is initializing. */
     public static final int STATUS_INITIALIZING = 1;
     

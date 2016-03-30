@@ -1,6 +1,6 @@
 package bergdb.core;
 
-import bergdb.pub.Clock;
+import bergdb.pub.util.Clock;
 
 /**
  * Clock based on system clock.

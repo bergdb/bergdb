@@ -1,5 +1,6 @@
 package bergdb.pub;
 
+import bergdb.pub.util.Clock;
 import bergdb.pubimp.ClockConstants;
 
 /**

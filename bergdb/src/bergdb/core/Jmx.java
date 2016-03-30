@@ -8,7 +8,8 @@ import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
-import bergdb.pub.Clock;
+
+import bergdb.pub.util.Clock;
 
 
 /**

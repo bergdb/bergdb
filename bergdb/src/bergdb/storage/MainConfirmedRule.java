@@ -1,6 +1,6 @@
 package bergdb.storage;
 
-import bergdb.pub.StorageInfo;
+import bergdb.pub.util.StorageInfo;
 
 public class MainConfirmedRule implements DurabilityRule {
     

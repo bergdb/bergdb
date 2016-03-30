@@ -14,7 +14,7 @@ import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
-import bergdb.pub.BadFormatException;
+import bergdb.pub.util.BadFormatException;
 
 /**
  * An object of this class is an AppendOnlyStream that stores the stream data 

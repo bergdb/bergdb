@@ -1,6 +1,6 @@
 package bergdb.storage;
 
-import bergdb.pub.DbException;
+import bergdb.pub.util.DbException;
 
 /**
  * Thrown when there is an error in the underlying stream of

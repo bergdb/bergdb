@@ -3,7 +3,7 @@ package bergdb.pubimp;
 import bergdb.common.Bug;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
-import bergdb.pub.BadFormatException;
+import bergdb.pub.util.BadFormatException;
 
 //TODO LATER Review what exception to throw? Make it consistent. Consider throwing IllegalArgumentException or subclass of it.
 

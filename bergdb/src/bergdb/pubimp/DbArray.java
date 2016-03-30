@@ -6,7 +6,7 @@ import java.util.Iterator;
 
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
-import bergdb.pub.BadFormatException;
+import bergdb.pub.util.BadFormatException;
 
 
 /**

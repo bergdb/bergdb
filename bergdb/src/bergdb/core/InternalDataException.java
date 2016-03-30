@@ -1,6 +1,6 @@
 package bergdb.core;
 
-import bergdb.pub.DbException;
+import bergdb.pub.util.DbException;
 
 /**
  * Thrown when data is missing from INTERNAL_PREFIX key space or if the data located there 

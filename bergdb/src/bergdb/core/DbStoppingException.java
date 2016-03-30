@@ -1,6 +1,6 @@
 package bergdb.core;
 
-import bergdb.pub.IllegalDbStateException;
+import bergdb.pub.util.IllegalDbStateException;
 
 /**
  * Thrown when an attempt is made to use the database when it is stopping.

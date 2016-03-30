@@ -9,7 +9,7 @@ import bergdb.common.ProgressListener;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
-import bergdb.pub.StorageInfo;
+import bergdb.pub.util.StorageInfo;
 import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
 

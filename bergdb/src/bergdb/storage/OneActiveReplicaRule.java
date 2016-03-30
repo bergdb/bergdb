@@ -1,6 +1,6 @@
 package bergdb.storage;
 
-import bergdb.pub.StorageInfo;
+import bergdb.pub.util.StorageInfo;
 
 /**
  * With this rule, data is considered durable when it has been written to the main storage 

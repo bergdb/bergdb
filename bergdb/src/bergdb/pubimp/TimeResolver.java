@@ -9,8 +9,8 @@ import bergdb.common.Util;
 import bergdb.core.SystemClock;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
-import bergdb.pub.BadFormatException;
-import bergdb.pub.Clock;
+import bergdb.pub.util.BadFormatException;
+import bergdb.pub.util.Clock;
 
 /**
  * <p>The methods resolve() and resolveAbsolute() resolve a <i>time string</i> to a time value

@@ -1,4 +1,4 @@
-package bergdb.pub;
+package bergdb.pub.util;
 
 /**
  * Thrown to indicate that the supplied lookup time is too small (too long ago); the data

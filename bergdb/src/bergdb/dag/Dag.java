@@ -6,8 +6,8 @@ import java.util.Set;
 
 import bergdb.common.Bug;
 import bergdb.dag.GetMany.StopCondition;
-import bergdb.pub.DbException;
-import bergdb.pub.IllegalDbStateException;
+import bergdb.pub.util.DbException;
+import bergdb.pub.util.IllegalDbStateException;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 

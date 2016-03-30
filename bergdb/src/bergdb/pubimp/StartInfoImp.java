@@ -2,8 +2,8 @@ package bergdb.pubimp;
 
 import java.util.List;
 
-import bergdb.pub.Job;
 import bergdb.pub.StartupInfo;
+import bergdb.pub.util.Job;
 
 /**
  * Information about the database startup.

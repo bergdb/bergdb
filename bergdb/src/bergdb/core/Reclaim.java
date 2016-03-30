@@ -13,7 +13,7 @@ import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
-import bergdb.pub.Clock;
+import bergdb.pub.util.Clock;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;

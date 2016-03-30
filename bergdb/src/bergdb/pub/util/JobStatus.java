@@ -1,7 +1,7 @@
-package bergdb.pub;
+package bergdb.pub.util;
 
 /**
- * Job status, immutable.
+ * Job status, implementations must be immutable.
  * 
  * @see Job
  * @author Frans Lundberg

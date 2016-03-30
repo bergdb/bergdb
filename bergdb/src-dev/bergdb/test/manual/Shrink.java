@@ -7,7 +7,7 @@ import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
-import bergdb.pub.Clock;
+import bergdb.pub.util.Clock;
 import bergdb.stream.FileStream;
 
 /**

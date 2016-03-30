@@ -4,7 +4,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import bergdb.pub.Clock;
+import bergdb.pub.util.Clock;
 import bergdb.storage.StorageManager;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;

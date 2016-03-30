@@ -2,7 +2,7 @@ package bergdb.core;
 
 import static bergdb.nanotest.Assert.assertEquals;
 import bergdb.nanotest.Nano;
-import bergdb.pub.Clock;
+import bergdb.pub.util.Clock;
 
 /**
  * <p>A special clock for Db that implements a lookup time / transaction time concept. 

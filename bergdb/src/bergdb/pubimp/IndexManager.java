@@ -16,12 +16,12 @@ import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
-import bergdb.pub.BadFormatException;
 import bergdb.pub.IndexAlreadyExistsException;
-import bergdb.pub.Job;
-import bergdb.pub.JobStatus;
 import bergdb.pub.Kv;
 import bergdb.pub.NoSuchIndexException;
+import bergdb.pub.util.BadFormatException;
+import bergdb.pub.util.Job;
+import bergdb.pub.util.JobStatus;
 import bergdb.pubimp.IndexBuilderImp.IndexCreateState;
 
 /**

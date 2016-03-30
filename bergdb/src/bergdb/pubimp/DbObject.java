@@ -12,7 +12,7 @@ import bergdb.common.Bug;
 import bergdb.common.ByteArrayComparator;
 import bergdb.common.Bytes;
 import bergdb.common.Util;
-import bergdb.pub.BadFormatException;
+import bergdb.pub.util.BadFormatException;
 
 /**
  * <p>An immutable object with a map of named and typed fields.

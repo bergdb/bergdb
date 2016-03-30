@@ -9,7 +9,7 @@ import java.util.Arrays;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
-import bergdb.pub.BadFormatException;
+import bergdb.pub.util.BadFormatException;
 
 /**
  * Class that tests DbObject and company (DbValue, DbBoolean, DbInt, ...).

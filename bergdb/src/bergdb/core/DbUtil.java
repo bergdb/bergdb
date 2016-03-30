@@ -21,7 +21,7 @@ import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
-import bergdb.pub.Clock;
+import bergdb.pub.util.Clock;
 import bergdb.stream.MemoryStream;
 
 /**

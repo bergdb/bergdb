@@ -1,6 +1,6 @@
 package bergdb.storage;
 
-import bergdb.pub.StorageInfo;
+import bergdb.pub.util.StorageInfo;
 
 /**
  * A durability rule computes the durable stream size based on data from the main storage 

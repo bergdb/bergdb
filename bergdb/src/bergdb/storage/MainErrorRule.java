@@ -1,6 +1,6 @@
 package bergdb.storage;
 
-import bergdb.pub.StorageInfo;
+import bergdb.pub.util.StorageInfo;
 
 /**
  * This error rule says that the storage system works if the main storage is up 

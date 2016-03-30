@@ -1,6 +1,6 @@
 package bergdb.storage;
 
-import bergdb.pub.StorageInfo;
+import bergdb.pub.util.StorageInfo;
 
 /**
  * A rule that determine whether the storage system as a whole should be 

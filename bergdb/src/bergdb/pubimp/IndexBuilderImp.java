@@ -11,13 +11,13 @@ import bergdb.dag.GetMany.StopCondition;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.pub.Action;
-import bergdb.pub.BadFormatException;
 import bergdb.pub.DataFormatException;
 import bergdb.pub.IndexAlreadyExistsException;
 import bergdb.pub.IndexBuilder;
-import bergdb.pub.Job;
-import bergdb.pub.JobStatus;
 import bergdb.pub.RwEnvironment;
+import bergdb.pub.util.BadFormatException;
+import bergdb.pub.util.Job;
+import bergdb.pub.util.JobStatus;
 import bergdb.storage.StreamIoException;
 
 /**

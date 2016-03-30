@@ -1,7 +1,8 @@
-package bergdb.pub;
+package bergdb.pub.util;
 
 /**
- * Long-running database jobs performed in background.
+ * An instance of this class represents a long-running 
+ * job performed in the background.
  * 
  * @author Frans Lundberg
  */
