@@ -1,7 +1,7 @@
 package bergdb.core;
 
 import java.util.Iterator;
-import bergdb.dag.IDirtyNodes;
+
 import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.TopNode;

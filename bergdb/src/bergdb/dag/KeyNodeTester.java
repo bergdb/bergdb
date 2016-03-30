@@ -4,9 +4,10 @@ import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
-
 /**
  * Tests for class KeyNode.
+ * 
+ * @author Frans Lundberg
  */
 public class KeyNodeTester {
     public KeyNode[] t2Pointers;

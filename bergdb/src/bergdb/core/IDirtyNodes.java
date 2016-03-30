@@ -1,4 +1,8 @@
-package bergdb.dag;
+package bergdb.core;
+
+import bergdb.dag.KeyNode;
+import bergdb.dag.Node;
+import bergdb.dag.TopNode;
 
 /**
  * Interface to the collection of dirty nodes.

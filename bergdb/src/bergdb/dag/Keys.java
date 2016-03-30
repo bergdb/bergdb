@@ -7,11 +7,11 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * <p>This class has static methods used for handling database keys.
+ * This class has static methods used for handling database keys.
  * They include methods for converting a key between three key formats:
  * ikey, bkey, and skey.
  * This class should always be used to convert a key between these representations.
- * See doc/2013-key-encoding.txt.</p>
+ * See bergdb.core/doc-files/key-encoding.md.
  * 
  * @author Frans Lundberg
  */
@@ -452,28 +452,3 @@ public class Keys {
         testPrefix2();
     }
 }
-
-/*
-
--- 2012-08 --
-
-Hmmm, compare value definition may have changed. It is always non-negative and limited to range 
-[0, 2^59].
-
--- 2011 --
-
-See http://www.javamex.com/java_equivalents/unsigned_arithmetic.shtml
-
-public static boolean isLessThanUnsigned(long n1, long n2) {
-  boolean comp = (n1 < n2);
-  if ((n1 < 0) != (n2 < 0)) {
-    comp = !comp;
-  }
-  return comp;
-}
-
-public static boolean isLessThanUnsigned(long n1, long n2) {
-    return (n1 < n2) ^ ((n1 < 0) != (n2 < 0));
-}
-
-*/

@@ -2,7 +2,6 @@ package bergdb.stream;
 
 import java.io.IOException;
 
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
@@ -70,7 +69,7 @@ public class DummyStream implements AppendOnlyStream {
     }
     
     public void seekFirstPos(long pos) throws IOException {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException("seekFirstPos not implemented for DummyStream");
     }
     
     public synchronized void stop() {
