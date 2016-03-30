@@ -5,8 +5,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import bergdb.common.Create;
-
 /** 
  * A filter for classes based on a regular expression applied to the
  * class names.
@@ -54,7 +52,8 @@ public class ClassFilter {
     @Nano
     static void test0() {
         @SuppressWarnings("unchecked")
-        Set<Class<?>> classes = Create.set(TestClassAlice.class, TestClassBob.class, TstClassCharlie.class);
+        Set<Class<?>> classes = NanoUtil.createSet(
+                TestClassAlice.class, TestClassBob.class, TstClassCharlie.class);
         classes = new ClassFilter(".*").filter(classes);
         Assert.assertEquals(3, classes.size());
     }
@@ -62,7 +61,8 @@ public class ClassFilter {
     @Nano
     static void test1() {
         @SuppressWarnings("unchecked")
-        Set<Class<?>> classes = Create.set(TestClassAlice.class, TestClassBob.class, TstClassCharlie.class);
+        Set<Class<?>> classes = NanoUtil.createSet(
+                TestClassAlice.class, TestClassBob.class, TstClassCharlie.class);
         classes = new ClassFilter("TestClass").filter(classes);
         Assert.assertEquals(2, classes.size());
     }
@@ -70,7 +70,8 @@ public class ClassFilter {
     @Nano
     static void test2() {
         @SuppressWarnings("unchecked")
-        Set<Class<?>> classes = Create.set(TestClassAlice.class, TestClassBob.class, TstClassCharlie.class);
+        Set<Class<?>> classes = NanoUtil.createSet(
+                TestClassAlice.class, TestClassBob.class, TstClassCharlie.class);
         classes = new ClassFilter("Bob").filter(classes);
         Assert.assertEquals(1, classes.size());
     }

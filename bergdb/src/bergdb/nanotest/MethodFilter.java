@@ -8,8 +8,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import bergdb.common.Create;
-
 /**
  * A method filter that includes methods that are Nanotests and
  * belongs to one of the specified groups and has a name matching
@@ -29,7 +27,7 @@ public class MethodFilter {
     /** 
      * Filter that represents all unit test (nanotests belonging to "unit" group). 
      */
-    public static final MethodFilter UNIT_TESTS = new MethodFilter(Create.set("unit"));
+    public static final MethodFilter UNIT_TESTS = new MethodFilter(NanoUtil.createSet("unit"));
     
     public MethodFilter(Set<String> groups) {
         this(".*", groups);
@@ -118,7 +116,7 @@ public class MethodFilter {
     }
     
     static void testImplicitUnitGroup() throws SecurityException, NoSuchMethodException {
-        MethodFilter f = new MethodFilter(Create.set("unit"));
+        MethodFilter f = new MethodFilter(NanoUtil.createSet("unit"));
         Method m = TestClassA.class.getDeclaredMethod("test1");
         Assert.assertTrue(m != null);
         Assert.assertEquals(true, f.include(m));
@@ -132,7 +130,7 @@ public class MethodFilter {
     }
     
     static void testBamse() throws SecurityException, NoSuchMethodException {
-        MethodFilter f = new MethodFilter("bamse", Create.set("unit"));
+        MethodFilter f = new MethodFilter("bamse", NanoUtil.createSet("unit"));
         Method m = TestClassA.class.getDeclaredMethod("bamseStor");
         Assert.assertTrue(m != null);
         Assert.assertEquals(true, f.include(m));
