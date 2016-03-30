@@ -88,11 +88,6 @@ abstract public class Spos {
     }
     
     @Nano
-    public static void testConstantCopy() {
-        assertEquals(NULL, bergdb.storage.Constants.SposNULL);
-    }
-    
-    @Nano
     public static void testIsNull() {
         assertTrue(isNull(NULL));
         assertFalse(isNull(12345));

@@ -1,7 +1,5 @@
 package bergdb.pub.util;
 
-
-
 /**
  * Thrown when an attempt is made to use the database before it has been started
  * or when it is stopping.

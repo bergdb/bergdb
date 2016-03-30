@@ -2,10 +2,8 @@ package bergdb.dag;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
-import bergdb.storage.StreamFormatException;
 
 /**
  * <p>A key node has an array of "klongs" and corresponding Node references.</p>
@@ -1437,16 +1435,15 @@ public class KeyNode implements Node {
     
     /**
      * Validates this node. Pointers for time > initTime are 
-     * allowed to be NULL (-1).
-     * Size must be > 0.
+     * allowed to be NULL (-1). Size must be > 0.
      * 
-     * @throws StreamFormatException
+     * @throws Invalid
      */
     public void validateStreamNode(long initTime) {
         short sz = this.size;
         
         if (sz < 1) {
-            throw new StreamFormatException("Key node with size " + sz + ", " + toString() + ".");
+            throw new Invalid("Key node with size " + sz + ", " + toString() + ".");
         }
         
         try {
@@ -1454,7 +1451,7 @@ public class KeyNode implements Node {
             checkLastTimeIndex();
             checkIncreasingTime();
         } catch (AssertionError e) {
-            throw new StreamFormatException(e.getMessage());
+            throw new Invalid(e.getMessage());
         }
         
         long klongTime = 0;
@@ -1472,13 +1469,12 @@ public class KeyNode implements Node {
                     
                     if (klongTime > initTime) {
                         if (!Spos.isValidOrNull(spos)) {
-                            throw new StreamFormatException("Bad spos of pointer " + i + " of node " 
+                            throw new Invalid("Bad spos of pointer " + i + " of node " 
                                     + this + ".");
                         }
                     } else {
                         if (!Spos.isValid(spos)) {
-                            throw new StreamFormatException("Bad spos of pointer " + i + " of node " 
-                                    + this + ".");
+                            throw new Invalid("Bad spos of pointer " + i + " of node " + this + ".");
                         }
                     }
                 } else {
@@ -1616,10 +1612,6 @@ public class KeyNode implements Node {
      * If no such klong is found, a delete bitmap klong with no delete bits set is returned.
      */
     public final long getDeleteBitmapAtTime(long time, int sz) {
-        //
-        // Perf note 2012-06: Tried loop unroll but did not improve performance on JVM 7.
-        //
-        
         long del = Klong.DELETE_NONE_BITMAP;
         final long[] klongs = this.klongs;
         long klong;
@@ -1704,5 +1696,16 @@ public class KeyNode implements Node {
         }
         
         return maxValidTime;
+    }
+    
+    /**
+     * Thrown to indicate that a KeyNode is not in a valid state.
+     */
+    public static class Invalid extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+        
+        public Invalid(String message) {
+            super(message);
+        }
     }
 }

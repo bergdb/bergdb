@@ -1,4 +1,4 @@
-package bergdb.dag;
+package bergdb.core;
 
 import bergdb.storage.StreamFormatException;
 

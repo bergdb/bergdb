@@ -422,6 +422,9 @@ public class DbStarter {
         }
     }
 
+    /**
+     * @throws StreamFormatException
+     */
     private void validateNode(StoredNode stored, long initTime) {
         Node node = stored.getNode();
         if (node == null) {
@@ -436,7 +439,13 @@ public class DbStarter {
         switch (node.getType()) {
         case Node.TYPE_KEY_NODE:
             KeyNode knode = (KeyNode) node;
-            knode.validateStreamNode(initTime);
+            
+            try {
+                knode.validateStreamNode(initTime);
+            } catch (KeyNode.Invalid e) {
+                throw new StreamFormatException(e.getMessage());
+            }
+            
             break;
         case Node.TYPE_TOP_NODE:
             break;

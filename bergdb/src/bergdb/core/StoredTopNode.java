@@ -7,7 +7,6 @@ import bergdb.common.Bytes;
 import bergdb.dag.Node;
 import bergdb.dag.Klong;
 import bergdb.dag.Spos;
-import bergdb.dag.StreamChecksumException;
 import bergdb.dag.TopNode;
 import bergdb.dag.TopTester;
 import bergdb.nanotest.Assert;

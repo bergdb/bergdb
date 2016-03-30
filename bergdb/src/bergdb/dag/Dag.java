@@ -3,13 +3,9 @@ package bergdb.dag;
 import java.io.PrintStream;
 import java.util.HashSet;
 import java.util.Set;
-
 import bergdb.common.Bug;
 import bergdb.dag.GetMany.StopCondition;
 import bergdb.pub.util.DbException;
-import bergdb.pub.util.IllegalDbStateException;
-import bergdb.storage.StreamFormatException;
-import bergdb.storage.StreamIoException;
 
 /**
  * <p>The DAG (directed acyclic graph) is the main data structure of the database.
@@ -457,8 +453,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      *            Input and output parameters. The GetMany object should have been createed
      *            with the newGetMany() factory method.
      * @see GetMany
-     * @throws IllegalDbStateException
-     *             If start() has not been called.
      * @throws StreamFormatException
      *             If the database stream is corrupt.
      * @throws StreamIoException
