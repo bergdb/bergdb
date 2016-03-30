@@ -602,8 +602,8 @@ public class DbStarter {
         ArrayList<StoredTrans> transactions = new ArrayList<StoredTrans>();
         
         transactions.add(withOneTopNode(1000, 12));
-        transactions.add(trans1(2000));
-        transactions.add(trans2(3000));
+        transactions.add(testTrans1(2000));
+        transactions.add(testTrans2(3000));
                 
         TopNode top = findLatestSuperNode(transactions);
         
@@ -614,9 +614,9 @@ public class DbStarter {
     private static void testFindLatestSuperNode3() {
         ArrayList<StoredTrans> transactions = new ArrayList<StoredTrans>();
         
-        transactions.add(trans1(1000));
-        transactions.add(trans2(2000));
-        transactions.add(trans1(3000));
+        transactions.add(testTrans1(1000));
+        transactions.add(testTrans2(2000));
+        transactions.add(testTrans1(3000));
                 
         TopNode top = findLatestSuperNode(transactions);
         
@@ -628,16 +628,16 @@ public class DbStarter {
         ArrayList<StoredTrans> transactions = new ArrayList<StoredTrans>();
         
         transactions.add(withOneTopNode(4000, 123));
-        transactions.add(trans1(1000));
-        transactions.add(trans2(2000));
-        transactions.add(trans1(3000));
+        transactions.add(testTrans1(1000));
+        transactions.add(testTrans2(2000));
+        transactions.add(testTrans1(3000));
                 
         TopNode top = findLatestSuperNode(transactions);
         
         Assert.assertEquals(123, top.getTopNodeId());
     }
     
-    private static StoredTrans trans1(long tpos) {
+    private static StoredTrans testTrans1(long tpos) {
         Serializer serializer = new Serializer();
         TransNodes transNodes = new TransNodes();
         
@@ -664,7 +664,7 @@ public class DbStarter {
         return new StoredTrans(parser);
     }
     
-    private static StoredTrans trans2(long tpos) {
+    private static StoredTrans testTrans2(long tpos) {
         Serializer serializer = new Serializer();
         TransNodes transNodes = new TransNodes();
         

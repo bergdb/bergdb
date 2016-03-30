@@ -61,7 +61,7 @@ public class Keys {
      * @param key  The key segments, null is not allowed.
      */
     public static final String toString(long[] key) {
-        return toString(toBytes(key));
+        return bkey2ikey(toBytes(key));
     }
 
     /**
@@ -70,7 +70,7 @@ public class Keys {
      * (not throw an exception).
      * bytes == null is not allowed.
      */
-    public static final String toString(byte[] bytes) {
+    public static final String bkey2ikey(byte[] bytes) {
         assert bytes != null;
         byte[] bytes2 = toStringBytes(bytes);
         return Util.toString(bytes2);

@@ -32,6 +32,8 @@ public class GetData {
         // The actual lookup time used. Can be less than the requested lookup time.
     public long kvTime;
         // Set to the time the found kv was written to the database.
+    public long tpos;
+        // Set to the tpos of the transaction that wrote the value.
     public long followMemoryPointerCount;
     public long followStreamPointerCount;
     

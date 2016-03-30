@@ -227,7 +227,7 @@ public class Klong {
     public static String getKeyString(long value) {
         byte[] bytes = new byte[getLength(value)];
         getKey(value, bytes);
-        String result = Keys.toString(bytes);
+        String result = Keys.bkey2ikey(bytes);
         return result;
     }
     

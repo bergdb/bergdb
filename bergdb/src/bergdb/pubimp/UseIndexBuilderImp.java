@@ -13,6 +13,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.Kv;
 import bergdb.pub.NoSuchIndexException;
+import bergdb.pub.Time;
 import bergdb.pub.UseIndexBuilder;
 
 /**
@@ -609,6 +610,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         public Kv<TYPE> next() {
             byte[] value;
             byte[] objectKey;
+            long kvTime;
             
             A: while (true) {           // Used for "continue A;"
                 if (!hasNext()) {
@@ -616,6 +618,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                 }
                 
                 final Kvt kvt = g.result.get(resultIndex);
+                kvTime = kvt.time;
                 if (isPrimary) {
                     objectKey = Keys.toBytes(kvt.key);
                     value = kvt.value;
@@ -642,7 +645,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                 break;
             }
             
-            final String ikey = Keys.toString(objectKey);
+            final String ikey = Keys.bkey2ikey(objectKey);
             
             String ukey;
             try {
@@ -653,7 +656,9 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
             final String finalUkey = ukey;
             
             final TYPE finalObject = connection.getDatabaseImp()
-                    .getKvToObject().createObject(type, ikey, value);
+                    .getKvToObjectConverter().createObject(type, ikey, value);
+            
+            final long finalKvTime = kvTime;
             
             assert finalObject != null : "finalObject is null";
             
@@ -668,6 +673,10 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                 
                 public TYPE value() {
                     return finalObject;
+                }
+                
+                public Time time() {
+                    return Time.units(finalKvTime);
                 }
             };
         }

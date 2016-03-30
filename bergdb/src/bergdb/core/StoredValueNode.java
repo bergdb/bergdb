@@ -17,6 +17,7 @@ import bergdb.storage.StreamFormatException;
  */
 public class StoredValueNode implements StoredNode {
     //
+    // 160330, added offsetFromTrans.
     // 151114, from today size of StoredValueNode % 4 == 0.
     // We need alignment to allow for spos to determine node type.
     //
@@ -76,12 +77,15 @@ public class StoredValueNode implements StoredNode {
         byte version = buffer[offset];
         offset += 1;
         
-        if (version != 2) {
+        if (version != 3) {
             throw new StreamFormatException("Cannot parse value node of "
                     + "format version " + version + ".");
         }
         
         offset += 2; // two bytes not used
+        
+        int offsetFromTrans = Bytes.bytesToIntLE(buffer, offset);
+        offset += 4;
         
         byte[] value = null;
         
@@ -113,27 +117,32 @@ public class StoredValueNode implements StoredNode {
         StoredValueNode stored = new StoredValueNode();
         stored.node = valueNode;
         stored.key = key;
-
+        valueNode.offsetFromTrans = offsetFromTrans;
         return stored;
     }
 
     public static int getByteSize(ValueNode node, long[] key) {
         int size = node.value == null ? 
-                8 +                         4 + 8 * key.length
-              : 8 + 4 + node.value.length + 4 + 8 * key.length;
+                8 + 4 +                         4 + 8 * key.length
+              : 8 + 4 + 4 + node.value.length + 4 + 8 * key.length;
         return size + Spos.addToAlign(size, 4);
     }
 
     /**
      * The value is serialized to the byte buffer.
+     * node.offsetFromTrans is set.
      * 
-     * @return The number of bytes required to store the value node.
+     * @param bufferOffset
+     *      Offset in buffer to start writing to. Also, offset from start of transaction.
+     *      Assumed to be the same (easy to change if/when needed).
+     * @return 
+     *      The number of bytes required to store the value node.
      */
-    public static int toBytes(ValueNode node, long[] key, byte[] buffer, final int firstOffset) {
-        int offset = firstOffset;
+    public static int toBytes(ValueNode node, long[] key, byte[] buffer, final int bufferOffset) {
+        int offset = bufferOffset;
         int byteSize = getByteSize(node, key);
         long myLong;
-        final long FORMAT_VERSION = 2L;    // serial format version (one byte)
+        final long FORMAT_VERSION = 3L;     // serial format version (one byte)
         long nodeType = node.value == null ? Node.TYPE_DELETE : Node.TYPE_VALUE;
 
         myLong = ((long) byteSize) 
@@ -143,9 +152,13 @@ public class StoredValueNode implements StoredNode {
         Bytes.longToBytesLE(myLong, buffer, offset);
         offset += 8;
         // Room for 2 checksum bytes.
+        
+        int offsetFromTrans = bufferOffset;
+        Bytes.intToBytesLE(offsetFromTrans, buffer, offset);
+        offset += 4;
 
         if (nodeType == Node.TYPE_VALUE) {
-            // DELETE nodes have no value.
+            // only TYPE_VALUE (not TYPE_DELETE) have value
             
             Bytes.intToBytesLE(node.value.length, buffer, offset);
             offset += 4;
@@ -158,12 +171,14 @@ public class StoredValueNode implements StoredNode {
         Bytes.longsToBytesLE(key, 0, key.length, buffer, offset);
         offset += 8 * key.length;
         
-        int checksum = NodeChecksum.sum(buffer, firstOffset, byteSize);
-        Bytes.ushortToBytesLE(checksum, buffer, firstOffset + 6);
+        int checksum = NodeChecksum.sum(buffer, bufferOffset, byteSize);
+        Bytes.ushortToBytesLE(checksum, buffer, bufferOffset + 6);
 
-        int sizeHere = offset - firstOffset;
+        int sizeHere = offset - bufferOffset;
         assert sizeHere + Spos.addToAlign(sizeHere, 4) == byteSize
-                : "offset:" + offset + ", firstOffset:" + firstOffset + ", byteSize: " + byteSize;
+                : "offset:" + offset + ", firstOffset:" + bufferOffset + ", byteSize: " + byteSize;
+        
+        node.offsetFromTrans = offsetFromTrans;
         return byteSize;
     }
 
@@ -216,7 +231,16 @@ public class StoredValueNode implements StoredNode {
         Assert.assertEquals(spos, node2.getSpos());
     }
     
-    public static void main(String[] args) {
-        testToBytesAndBack();
+    @Nano
+    private static void testOffsetFromTrans() {
+        byte[] value = new byte[10];
+        long[] key = Keys.toSegments("/-mykey.txt");
+
+        ValueNode node = new ValueNode(value, Spos.NULL);
+        byte[] buffer = new byte[120 + getByteSize(node, key)];
+        StoredValueNode.toBytes(node, key, buffer, 120);
+
+        StoredValueNode stored = parse(buffer, 120, 222);
+        Assert.assertEquals(120, stored.getNode().getOffsetFromTrans());
     }
 }

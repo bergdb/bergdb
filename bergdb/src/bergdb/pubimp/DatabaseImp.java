@@ -42,7 +42,7 @@ public class DatabaseImp implements Database {
     private final IndexManager indexManager;
     private final ConnectionInitializer connectionInitializer;
         // "final" for now. Could become a setting.
-    private final KvToObject kvToObject;
+    private final KvToObjectConverter kvToObjectConverter;
         // "final" for now, could become a setting.
     private final ClassToObject classToObject;
         // "final" for now, could become a setting.
@@ -66,7 +66,7 @@ public class DatabaseImp implements Database {
             };
             
             KvToObjectImp k = new KvToObjectImp();
-            this.kvToObject = k;
+            this.kvToObjectConverter = k;
             this.classToObject = k;
         }
     }
@@ -105,8 +105,8 @@ public class DatabaseImp implements Database {
         return indexManager;
     }
     
-    final KvToObject getKvToObject() {
-        return this.kvToObject;
+    final KvToObjectConverter getKvToObjectConverter() {
+        return this.kvToObjectConverter;
     }
     
     final ClassToObject getClassToObject() {

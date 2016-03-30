@@ -246,13 +246,6 @@ public class KeyNode implements Node {
      *      state.
      */
     public final void searchEq(long time, long compareValue, KlongWithPointer kwi) {
-        //
-        // Should we have two searchEQ method, one for value pointers, one for key node pointers?
-        // I suppose the caller does know what he is looking for.
-        //
-        // Perf note 2012-06: Inlining did not improve performance significantly.
-        //
-        
         final int sz; 
         final long[] klongs;
         int index = 0;
@@ -1265,7 +1258,7 @@ public class KeyNode implements Node {
             result = "null";
         } else {
             if (Keys.isPrintableAscii(bytes)) {
-                result = Keys.toString(bytes);
+                result = Keys.bkey2ikey(bytes);
             } else {
                 result = "#" + Util.toHex(bytes);
             }

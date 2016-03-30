@@ -16,11 +16,11 @@ public final class ValueNode implements Node {
     // In this class, the value node is considered a delete if value == null.
     
     public final byte[] value;
-        // Synch note: final - no problem.
     public volatile long spos;
         // Synch note: "volatile" needed here to publish writes. Should not affect performance much.
         // Seldom written (when written to stream or read from stream). Reads are more common.
         // Reads of volative are noop on x86, I heard.
+    public int offsetFromTrans;
     public boolean isInTransactionNodes = false;
         // Synch note: this field must only be accessed from threads holding DB.writeLock.
     
@@ -31,16 +31,25 @@ public final class ValueNode implements Node {
         return new ValueNode(null, Spos.NULL);
     }
     
+    public ValueNode(byte[] value, long spos) {
+        this.value = value;
+        this.spos = spos;
+    }
+    
     /**
      * Creates a new ValueNode with the given value and spos = Spos.NULL.
+     * Useful for testing. Use the other constructor when possible.
      */
     public ValueNode(byte[] value) {
         this(value, Spos.NULL);
     }
     
-    public ValueNode(byte[] value, long spos) {
-        this.value = value;
-        this.spos = spos;
+    public long getTpos() {
+        return Spos.isNull(spos) ? Spos.NULL : spos - offsetFromTrans;
+    }
+    
+    public int getOffsetFromTrans() {
+        return offsetFromTrans;
     }
     
     public final byte getType() {

@@ -1059,13 +1059,13 @@ public class DbTester {
         Assert.assertEquals(null, key);
         
         key = DbUtil.getFirstKey(db, 15, gd);
-        Assert.assertEquals("employees/bertilsson", Keys.toString(key));
+        Assert.assertEquals("employees/bertilsson", Keys.bkey2ikey(key));
         
         key = DbUtil.getFirstKey(db, 25, gd);
-        Assert.assertEquals("employees/annasson", Keys.toString(key));
+        Assert.assertEquals("employees/annasson", Keys.bkey2ikey(key));
         
         key = DbUtil.getFirstKey(db, 35, gd);
-        Assert.assertEquals("a", Keys.toString(key));
+        Assert.assertEquals("a", Keys.bkey2ikey(key));
     }
     
     /**

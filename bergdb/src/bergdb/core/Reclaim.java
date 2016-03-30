@@ -3,7 +3,6 @@ package bergdb.core;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
 import bergdb.common.Bug;
 import bergdb.common.StringMap;
 import bergdb.common.Util;

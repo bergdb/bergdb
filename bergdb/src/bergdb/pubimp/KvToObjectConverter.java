@@ -10,7 +10,7 @@ import bergdb.pub.ObjectCreationException;
  * 
  * @author Frans Lundberg
  */
-public interface KvToObject {
+public interface KvToObjectConverter {
     
     /**
      * Creates a new object of a specified class that reflects the data in the

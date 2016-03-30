@@ -296,12 +296,15 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     
     /**
      * Gets one KV value or returns null if it does not exist.
+     * gd.kvTime is set if a value is found.
+     * gd.offsetFromTrans is set if a value is found.
      * 
      * @param time  The lookup time.
      * @throws StreamFormatException
      * @throws StreamIoException
      */
     public byte[] getOne(long time, long[] keySegments, final GetData gd) {
+        // TODO A. should we return ValueNode instead?
         assert gd.pointerListener != null;
         assert gd.cachePolicy != null;
         
@@ -323,7 +326,9 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             if (i == lastIndex) {
                 result = null;
                 if (item != null && item instanceof ValueNode) {
-                    result = ((ValueNode) item).getValue();
+                    ValueNode valueNode = (ValueNode) item;
+                    result = valueNode.getValue();
+                    gd.tpos = valueNode.getTpos();
                 }
                 break;
             } else {
@@ -381,6 +386,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                     result = followPointer(
                             current, kwi.pointerIndex, gd.accessData, 
                             gd.pointerListener, gd.cachePolicy);
+                    gd.kvTime = kwi.klongTime;
                 }
                 break;
 

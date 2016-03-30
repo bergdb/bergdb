@@ -20,6 +20,11 @@ public interface Kv<TYPE> {
      * Returns the value.
      */
     public TYPE value();
+    
+    /**
+     * Returns the time when the value written to the database.
+     */
+    public Time time();
 }
 
 // 1410 Frans: ikey() should probably be hidden from Pub API. Maybe two interface CoreKv and Kv.

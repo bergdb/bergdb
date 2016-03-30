@@ -126,6 +126,19 @@ public interface Connection extends ReadInterface {
      * @return The object created based on 'clazz' and the data in the database.
      */
     public <TYPE> TYPE get(String key, Class<TYPE> clazz);
+    
+    /**
+     * Returns the transaction time of the value retrieved with the get() method.
+     */
+    public Time time();
+    
+    /**
+     * Returns information about the transaction that wrote the last
+     * value retreived with the get() method.
+     * This method call will always require a read from the database
+     * storage, no caching for this query.
+     */
+    public TransactionInfo transactionInfo();
 
     /**
      * Puts a key-value entry to the database. If an entry with the given key

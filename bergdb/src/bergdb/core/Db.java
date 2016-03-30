@@ -28,6 +28,7 @@ import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 import bergdb.pub.util.BadCryptoKey;
 import bergdb.pub.util.BadReplicaException;
+import bergdb.pub.util.DbException;
 import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.LookupTimeNotAvailableException;
@@ -54,6 +55,7 @@ import bergdb.stream.AppendOnlyStream;
  * <ul>
  * <li>getOne()</li>
  * <li>getMany()</li>
+ * <li>getTrans(tpos)</li>
  * <li>execute(Transaction)</li>
  * </ul>
  * 
@@ -1000,6 +1002,19 @@ public class Db {
         return getOneInternal(lookupTime, keySegments, gd);
     }
     
+    public StoredTrans getTrans(long tpos) {
+        // TODO D. DbException or something else?
+        
+        NodeStream.TransIterator ti = nodeStream.createTransIteratorFromExactStartupPos(tpos);
+        boolean gotTrans = ti.next();
+        if (!gotTrans) {
+            throw new DbException("could not find transaction at stream pos " + tpos);
+        }
+        
+        return ti.getStoredTrans();
+    }
+    
+    
     public byte[] getOneInternal(long lookupTime, long[] keySegments, GetData gd) {
         //
         // Few assumptions of previous state of gd are assumed. db.kwi must be non-null, however.
@@ -1016,8 +1031,6 @@ public class Db {
         }
 
         gd.accessData = getAccessData();
-
-        //evictor.possiblyEvict(gd.evictData);
 
         byte[] result = null;
 

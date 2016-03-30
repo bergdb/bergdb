@@ -17,7 +17,7 @@ import bergdb.pub.util.BadFormatException;
  * 
  * @author Frans Lundberg
  */
-public class KvToObjectImp implements KvToObject, ClassToObject {
+public class KvToObjectImp implements KvToObjectConverter, ClassToObject {
     private HashMap<Class<?>, BlankConstructorFactory> factories;
         // Protected by sync on itself.
     

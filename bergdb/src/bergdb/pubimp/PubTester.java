@@ -2,6 +2,7 @@ package bergdb.pubimp;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.Iterator;
 
 import bergdb.common.EventToWaitFor;
@@ -22,6 +23,7 @@ import bergdb.pub.RwEnvironment;
 import bergdb.pub.TestClock;
 import bergdb.pub.Time;
 import bergdb.pub.Transaction;
+import bergdb.pub.TransactionInfo;
 import bergdb.pub.WBuilder;
 import bergdb.pub.util.BadCryptoKey;
 import bergdb.pub.util.BadReplicaException;
@@ -1144,5 +1146,73 @@ public class PubTester {
         
         String s = new String(Util.fileToBytes(file.getPath()), "UTF-8");
         Assert.assertTrue(s.contains("creation date"));
+    }
+    
+    @Nano
+    private static void testKvTime1() {
+        TestClock clock = new TestClock();
+        Database db = Factory.database().clock(clock).memory().start();
+        Connection c = db.connection();
+        
+        clock.setTime(Time.units(1234));
+        Transaction trans = c.w().put("/key1", "value1").execute();
+        Time transTime = trans.getTime();
+        
+        c.get("/key1", byte[].class);
+        Time time = c.time();
+        
+        Assert.assertEquals(transTime.units(), time.units());
+        db.stop();
+    }
+    
+    @Nano
+    private static void testKvTime2() {
+        TestClock clock = new TestClock();
+        Database db = Factory.database().clock(clock).memory().start();
+        Connection c = db.connection();
+        
+        clock.setTime(Time.units(1000));
+        Transaction trans1 = c.w().put("/key1", "value1").execute();
+        Time transTime1 = trans1.getTime();
+        
+        clock.setTime(Time.units(2000));
+        Transaction trans2 = c.w().put("/key1", "value2").execute();
+        Time transTime2 = trans2.getTime();
+        
+        c.get("/key1", byte[].class);
+        Time time1 = c.time();
+        
+        c.setLookupTime(Time.units(1500));
+        c.get("/key1", byte[].class);
+        Time time2 = c.time();
+        
+        db.stop();
+        
+        Assert.assertEquals(transTime2.units(), time1.units());
+        Assert.assertEquals(transTime1.units(), time2.units());
+    }
+    
+    @Nano
+    private static void testTransactionInfo1() throws UnsupportedEncodingException {
+        TestClock clock = new TestClock();
+        Database db = Factory.database().clock(clock).memory().start();
+        Connection c = db.connection();
+        
+        clock.setTime(Time.units(1000));
+        Transaction trans1 = c.w()
+                .put("/key1", "v1")
+                .put("/key2", "v2")
+                .execute();
+        
+        c.get("/key1", byte[].class);
+        TransactionInfo tinfo = c.transactionInfo();
+        db.stop();
+        
+        Assert.assertEquals(trans1.getTime(), tinfo.time());
+        Assert.assertEquals(2, tinfo.kvs().size());
+        Assert.assertArrayEquals("v1".getBytes("UTF-8"), tinfo.kvs().get(0).value());
+        Assert.assertArrayEquals("v2".getBytes("UTF-8"), tinfo.kvs().get(1).value());
+        Assert.assertEquals("/key1", tinfo.kvs().get(0).key());
+        Assert.assertEquals("/key2", tinfo.kvs().get(1).key());
     }
 }

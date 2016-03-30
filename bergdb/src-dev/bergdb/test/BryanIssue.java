@@ -75,8 +75,8 @@ public class BryanIssue {
             out.format("\n---- STARTED ----\n");
             out.println(String.format("Db checksum: %d", dbChecksum(d)));
             out.println(String.format("Dag checksum: %d", dagChecksum(d)));
-            compareDags(d);
-            compareTransSeqs(d);
+            //compareDags(d);
+            //compareTransSeqs(d);
             
             Connection c = d.connection();
             

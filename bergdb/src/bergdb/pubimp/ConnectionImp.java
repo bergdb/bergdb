@@ -1,14 +1,21 @@
 package bergdb.pubimp;
 
+import java.util.ArrayList;
+import java.util.List;
 import bergdb.core.Db;
+import bergdb.core.StoredNode;
+import bergdb.core.StoredTrans;
+import bergdb.core.StoredValueNode;
 import bergdb.core.SyncLevel;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.pub.Action;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
+import bergdb.pub.Kv;
 import bergdb.pub.Time;
 import bergdb.pub.Transaction;
+import bergdb.pub.TransactionInfo;
 import bergdb.pub.UseIndexBuilder;
 import bergdb.pub.UsePrimaryBuilder;
 import bergdb.pub.WBuilder;
@@ -82,13 +89,70 @@ public class ConnectionImp implements Connection {
      *             if no operation has been made with the connection and thus
      *             not actual lookup time is available.
      */
-    public final long getActualLookupTime() {
+    final long getActualLookupTime() {
         long result = getData.actualLookupTime;
         if (result == -1) {
             throw new IllegalStateException("No available actual lookup time, "
-                    + "a call to a read operation must be made before calling this method.");
+                    + "a call to a read operation must be made before calling getActualLookupTime().");
         }
         return result;
+    }
+    
+    public final Time time() {
+        if (getData.actualLookupTime == -1) {
+            throw new IllegalStateException("No available value time, "
+                    + "a call to get() must be made before calling time().");
+        }
+        
+        return Time.units(getData.kvTime);
+    }
+    
+    public TransactionInfo transactionInfo() {
+        if (getData.actualLookupTime == -1) {
+            throw new IllegalStateException("No available transaction info, "
+                    + "a call to get() must be made before calling transactionInfo().");
+        }
+        
+        final StoredTrans storedTrans = db.getTrans(getData.tpos);
+        
+        final ArrayList<Kv<byte[]>> kvs = new ArrayList<Kv<byte[]>>();
+        for (int i = 0; i < storedTrans.nodes.length; i++) {
+            StoredNode storedNode = storedTrans.nodes[i];
+            
+            if (storedNode instanceof StoredValueNode) {
+                final StoredValueNode storedValueNode = (StoredValueNode) storedNode;
+                kvs.add(new Kv<byte[]>() {
+                    public String key() {
+                        // TODO B. NOTE we cannot in general convert keys to ukey (strings).
+                        byte[] bkey = Keys.toBytes(storedValueNode.getKey());
+                        String ukey = PubKeys.i2u(Keys.bkey2ikey(bkey));
+                        return ukey;
+                    }
+
+                    public String ikey() {
+                        throw new UnsupportedOperationException("not implemented");
+                    }
+
+                    public byte[] value() {
+                        return storedValueNode.getValueNode().getValue();
+                    }
+
+                    public Time time() {
+                        return Time.units(storedTrans.tt);
+                    }
+                });
+            }
+        }
+        
+        return new TransactionInfo() {
+            public Time time() {
+                return Time.units(storedTrans.tt);
+            }
+
+            public List<Kv<byte[]>> kvs() {
+                return kvs;
+            }
+        };
     }
 
     /**
@@ -227,7 +291,7 @@ public class ConnectionImp implements Connection {
             this.lookupTime = getData.actualLookupTime;
         }
 
-        TYPE result = database.getKvToObject().createObject(clazz, ikey, value);
+        TYPE result = database.getKvToObjectConverter().createObject(clazz, ikey, value);
         return result;
     }
 
