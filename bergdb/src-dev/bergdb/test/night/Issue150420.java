@@ -109,18 +109,6 @@ public class Issue150420 {
         
         return dagCompare;
     }
-
-    private boolean checkPointerInvariant(Db db) {
-        try {
-            db.internal().dag().checkForwardPointerInvariantApprox(db.internal().getStartupPosForEvict(), 15000);
-        } catch (AssertionError e) {
-            errorCount++;
-            env.out().println("index: " + index + ", inv-forward-pointer\n" + e.getMessage());
-            return false;
-        }
-        
-        return true;
-    }
     
     private void diff(Db db1, Db db2) {
         Collection<String> one = getKeys(db1);
