@@ -1276,7 +1276,7 @@ public class Db {
 
                 // The synch statement below publishes the changes by the writer thread 
                 // (the thread executing this code) to the readers. This is done
-                // before the t.transTime can be used as lookup time, so all readers
+                // before the t.tt can be used as lookup time, so all readers
                 // (that do: "synchronized (readSynch) {}") are guaranteed to see all 
                 // in-memory changes made by the writer.
                 synchronized (readSync) {}
@@ -1285,7 +1285,7 @@ public class Db {
             } finally {
                 
                 // After the call to dbClock.transactionEnd(), read operations may use
-                // t.time as a lookup time.
+                // t.tt as a lookup time.
                 if (!t.isStartupRerun) dbClock.transactionEnd();
             }
             

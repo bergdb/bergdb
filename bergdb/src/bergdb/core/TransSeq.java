@@ -2,7 +2,6 @@ package bergdb.core;
 
 import java.util.ArrayList;
 import java.util.zip.CRC32;
-
 import bergdb.common.MyChecksum;
 import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
@@ -14,11 +13,13 @@ import bergdb.nanotest.Nano;
 
 /**
  * An in-memory data structure that keeps information about the transactions
- * that belongs to the startup section of the database stream.
- * The information is needed to be able to append dirty nodes to the end of the
- * stream so they will not become too dirty.
+ * of the startup section of the database stream.
+ * In particular, it is a collection of all dirty nodes with information 
+ * about for which transaction they got dirty.
  * 
  * The algorithm for updating startup pos is included in this.take().
+ * 
+ * One theory documents, the D data structure corresponds to TransSeq.
  * 
  * @author Frans Lundberg
  */
