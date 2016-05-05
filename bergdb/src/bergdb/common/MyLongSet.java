@@ -86,13 +86,11 @@ public final class MyLongSet implements Iterable<Long> {
     }
 
     public boolean add(long value) {
-        // TODO A. this seems wrong, iterating whole array rather than 0..size-1.
-        
         if (isHash()) {
             return hash.add(value);
         } else {
-            final int s = size;
-            for (int i = 0; i < s; i++) {
+            final int sz = size;
+            for (int i = 0; i < sz; i++) {
                 if (array[i] == value) {
                     return false;
                 }

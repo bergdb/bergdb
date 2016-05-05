@@ -304,7 +304,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      * @throws StreamIoException
      */
     public byte[] getOne(long time, long[] keySegments, final GetData gd) {
-        // TODO A. should we return ValueNode instead?
         assert gd.pointerListener != null;
         assert gd.cachePolicy != null;
         
