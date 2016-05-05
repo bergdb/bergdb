@@ -493,9 +493,9 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         // in:   time, key, value.
         // out:  changes to dag, 
         //       changed/new nodes reported to pd.nodeChangeListener.
-        //       accessed nodes ensured "dirty"
+        //       new pointers reported to pd.pointerCreatedListener.
         //
-        // All modifications (appends) to the DAG is done through this method.
+        // All modifications to the DAG is done through this method.
         // The call graph has recursion; appendKlongs() is called by successors of appendKlong()
         // on call graph.
         //

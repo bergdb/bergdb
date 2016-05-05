@@ -7,6 +7,7 @@ import bergdb.common.EventToWaitFor;
 import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.DbConstants;
+import bergdb.core.NodeStream;
 import bergdb.core.Trans;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
@@ -818,7 +819,7 @@ public class PubTesterIndex {
     public static void testRestart1() {
         MemoryStream stream = new MemoryStream();
         DatabaseBuilder builder = Factory.database();
-        ((DatabaseBuilderImp) builder).getDbBuilder().mainStream(stream);
+        ((DatabaseBuilderImp) builder).getDbBuilder().testSetup(stream);
         Database db = builder.start();
         Connection c = db.newConnection();
         
@@ -856,8 +857,11 @@ public class PubTesterIndex {
         c = null;
         builder = null;
         
+        stream = stream.copy();
+        
+        
         DatabaseBuilder builder2 = Factory.database();
-        ((DatabaseBuilderImp) builder2).getDbBuilder().mainStream(stream);
+        ((DatabaseBuilderImp) builder2).getDbBuilder().testSetup(stream);
         Database db2 = builder2.start();
         Connection c2 = db2.newConnection();
         

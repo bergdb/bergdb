@@ -707,10 +707,6 @@ public class Db {
             }
             
             public void keyNodeChanged(KeyNode node) {
-                // The gotDirty code in the PointerListener is not enough for
-                // the case when new key nodes are created.
-                // This method call assumes new nodes are not dirty.
-                
                 makeDirtyIfNeeded(node);
             }
             
@@ -869,7 +865,7 @@ public class Db {
         
         if (!node.isDirty()) {
             node.setDirty(true);
-            x.transInfo.addDirtyNode(node);
+            x.transInfo.addGotDirtyNode(node);
         }
     }
 
@@ -1395,8 +1391,6 @@ public class Db {
      * Records hash values of the keys for the KVs updated by the transaction, t.
      */
     private void stmRecordKeys(Trans t) {
-        // Note, possible refactoring: Extract stm methods to Stm class, or merge with KeyModSet.
-        
         for (int i = 0; i < t.writeKeyHashes.length; i++) {
             keyModSet.add(t.tt, t.writeKeyHashes[i]);
         }
@@ -1425,7 +1419,7 @@ public class Db {
      * Sets the KVs directly to the in-memory data structure. This method runs with exclusive 
      * write access to the data structure (synchronized (writeLock)). However, there may be
      * concurrent readers that read with a lookup time strictly less than the transaction time
-     * (trans.time).
+     * (x.trans.tt).
      *
      * @throws IllegalDbStateException
      * @throws StreamFormatException

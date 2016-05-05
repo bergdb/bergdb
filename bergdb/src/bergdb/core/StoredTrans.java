@@ -78,7 +78,7 @@ public class StoredTrans {
     }
     
     public Trans createRerunTransaction(Trans.Builder b) {        
-        List<StoredValueNode> storedValueNodes = extractValueNodes();
+        List<StoredValueNode> storedValueNodes = getValueNodes();
         
         for (StoredValueNode n : storedValueNodes) {
             assert n.getKey() != null : "key is null, " + n;
@@ -137,7 +137,10 @@ public class StoredTrans {
         return result;
     }
 
-    private List<StoredValueNode> extractValueNodes() {
+    /**
+     * Creates and returns a list of the value nodes of the transaction.
+     */
+    public List<StoredValueNode> getValueNodes() {
         List<StoredValueNode> storedValueNodes = new ArrayList<StoredValueNode>();
         
         for (StoredNode n : nodes) {

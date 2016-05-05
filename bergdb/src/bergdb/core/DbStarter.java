@@ -4,9 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import bergdb.common.Util;
-import bergdb.core.Db.ExecuteData;
 import bergdb.core.StoredTrans.Parser;
 import bergdb.core.StoredTrans.Serializer;
 import bergdb.dag.AccessData;
@@ -18,6 +16,7 @@ import bergdb.dag.Klong;
 import bergdb.dag.NodeVisitor;
 import bergdb.dag.Pointer;
 import bergdb.dag.PointerFollower;
+import bergdb.dag.PutData;
 import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
@@ -41,6 +40,7 @@ public class DbStarter {
     
     private final TransSeq transSeq = new TransSeq();
     private final HashMap<Long, StoredNode> posMap = new HashMap<Long, StoredNode>();
+    private final HashMap<Long, Node> idMap = new HashMap<Long, Node>();
     private final NextMap nextMap = new NextMap();
     private final Db db;
     private final List<StoredTrans> transactions;
@@ -157,10 +157,12 @@ public class DbStarter {
         
         for (StoredTrans trans : transactions) {
             for (StoredNode storedNode : trans.nodes) {
-                long pos = storedNode.getNode().getSpos();
+                Node node = storedNode.getNode();
+                long pos = node.getSpos();
                 if (!nextMap.containsKey(pos) && !wasCreatedInRerunSection(storedNode)) {
-                    posMap.put(storedNode.getNode().getSpos(), storedNode);
+                    posMap.put(node.getSpos(), storedNode);
                 }
+                idMap.put(node.getId(), node);
             }
         }
     }
@@ -225,8 +227,6 @@ public class DbStarter {
                 if (storedPointee != null) {
                     Node pointee = storedPointee.getNode();
                     node.setPointer(i, pointee, accessData);
-                    
-                    //System.out.println("*** mem pointer created: " + node + " ==> " + pointee);
                 }
             }
         }
@@ -285,25 +285,83 @@ public class DbStarter {
     private void rerunTransactions() {
         // Reruns transactions, except the first one.
         
+        TransSeq transSeq = db.internal().transSeq();
         int count = transactions.size();
         
         for (int i = 1; i < count; i++) {
+            TransSeq.TransInfo tinfo = new TransSeq.TransInfo();
+            
             final StoredTrans storedTrans = transactions.get(i);
+            final long[] vpos = new long[]{Spos.nextVpos(storedTrans.tpos)};
             
-            Trans.Listener listener = new Trans.Listener() {
-                public void transExecuted(ExecuteData x) {}
+            List<StoredValueNode> valueNodes = storedTrans.getValueNodes();
+            
+            PutData pd = dag.newPutData();
+            
+            for (StoredValueNode node : valueNodes) {
+                long[] key = node.getKey();
+                byte[] value = node.getNode().getValue();
+                
+                pd.tt = storedTrans.tt;
+                pd.nodeChangeListener = new Dag.NodeChangeListener() {
+                    public void topNodeCreated(TopNode node) {
+                        node.setId(vpos[0]);
+                        node.setSpos(vpos[0]);
+                        vpos[0] = Spos.nextVpos(vpos[0]);
+                        idMap.put(node.getId(), node);
+                    }
+                    
+                    public void keyNodeCreated(KeyNode node) {
+                        node.setId(vpos[0]);
+                        node.setSpos(vpos[0]);
+                        vpos[0] = Spos.nextVpos(vpos[0]);
+                        idMap.put(node.getId(), node);
+                    }
 
-                public void valueNodeCreated(ValueNode node, long[] key) {
-                    ValueNode v = storedTrans.getValueNode(key);
-                    assert v != null : "Could not find value node for given key";
-                    assert v.getSpos() >= 0 : "v2 spos: " + v.getSpos();
-                    node.setSpos(v.getSpos());
+                    public void valueNodeCreated(ValueNode valueNode, long[] key) {
+                        ValueNode v = storedTrans.getValueNode(key);
+                        assert v != null : "Could not find value node for given key";
+                        assert v.getSpos() >= 0 : "v2 spos: " + v.getSpos();
+                        valueNode.setSpos(v.getSpos());
+                    }
+
+                    public void keyNodeChanged(KeyNode node) {}
+                };
+                
+                dag.putKv(key, value, pd);
+                
+                for (long id : storedTrans.gotDirtyIds) {
+                    // TODO A. HERE - place of work.
+                    
+                    Node gotDirtyNode = idMap.get(id);
+                    if (gotDirtyNode == null) {
+                        String message = "startup error, node with id " + id 
+                                + " not found in startup section, got dirty in trans tt=" 
+                                + storedTrans.tt + ", tpos=" + storedTrans.tpos;
+                        throw new StreamFormatException(message);
+                    } else {
+                        gotDirtyNode.setDirty(true);
+                        tinfo.addGotDirtyNode(gotDirtyNode);
+                    }
                 }
-            };
+                
+                pd.clearFast();
+            }
             
+            tinfo.tt = storedTrans.tt;
+            tinfo.tpos = storedTrans.tpos;
+            tinfo.startupPos = storedTrans.startupPos;
+            tinfo.lastPos = storedTrans.lastPos;            
+            transSeq.add(tinfo);
+            
+            
+            /*
+            
+            Previous approach:
             Trans t = storedTrans.createRerunTransaction(db.trans());
-            t.listener = listener;
+            t.listener = transListener;
             db.internal().executeInner(t);
+            */
         }
     }
 
@@ -466,7 +524,7 @@ public class DbStarter {
                     if (Klong.isKey(klong)) {
                         long pos = node.getSpos();
                         if (Spos.isNull(pos) || Spos.isVpos(pos)) {
-                            throw new StreamFormatException("Unexpected stream pointer, was " 
+                            throw new StreamFormatException("Unexpected stream pointer from KeyNode, was " 
                                     + pos + ", index " + i + ", node: " + node);
                         }
                     }

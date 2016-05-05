@@ -1,7 +1,8 @@
 package bergdb.core;
 
 /**
- * A low-level class to store a key-value pair. Designed for use with Trans.
+ * A low-level class to store a key-value pair as part of 
+ * a transaction specification. Designed for use with Trans.
  * 
  * @see Trans
  * @author Frans Lundberg
