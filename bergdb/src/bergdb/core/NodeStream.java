@@ -309,14 +309,22 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
             out.println(storedTrans.toString());
             
             for (StoredNode s : storedTrans.nodes) {
-                out.println("* p:" + s.getPrevPos());
-                out.println(s.getNode().print().replace("\n", "\n  "));
-                /*
                 Node node = s.getNode();
                 out.println("-- " + node.getClass().getSimpleName() + " prev:"
                         + s.getPrevPos() + " --");
-                out.println(node.toString());*/
+                out.print(node.print());
             }
+        }
+    }
+    
+    public void printGotDirtyLine(PrintStream out, StoredTrans storedTrans) {
+        if (storedTrans.gotDirtyIds.length > 0) {
+            out.print("got dirty: ");
+            long[] d = storedTrans.gotDirtyIds;
+            for (int i = 0; i < d.length; i++) {
+                out.print(d[i] + " ");
+            }
+            out.println();
         }
     }
 

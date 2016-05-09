@@ -859,7 +859,6 @@ public class PubTesterIndex {
         
         stream = stream.copy();
         
-        
         DatabaseBuilder builder2 = Factory.database();
         ((DatabaseBuilderImp) builder2).getDbBuilder().testSetup(stream);
         Database db2 = builder2.start();

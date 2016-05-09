@@ -282,87 +282,79 @@ public class DbStarter {
         db.internal().createPutAndGetData();
     }
     
+    /**
+     * Reruns transactions, except the first one.
+     */
     private void rerunTransactions() {
-        // Reruns transactions, except the first one.
-        
         TransSeq transSeq = db.internal().transSeq();
         int count = transactions.size();
         
         for (int i = 1; i < count; i++) {
             TransSeq.TransInfo tinfo = new TransSeq.TransInfo();
-            
-            final StoredTrans storedTrans = transactions.get(i);
-            final long[] vpos = new long[]{Spos.nextVpos(storedTrans.tpos)};
-            
-            List<StoredValueNode> valueNodes = storedTrans.getValueNodes();
-            
-            PutData pd = dag.newPutData();
-            
-            for (StoredValueNode node : valueNodes) {
-                long[] key = node.getKey();
-                byte[] value = node.getNode().getValue();
-                
-                pd.tt = storedTrans.tt;
-                pd.nodeChangeListener = new Dag.NodeChangeListener() {
-                    public void topNodeCreated(TopNode node) {
-                        node.setId(vpos[0]);
-                        node.setSpos(vpos[0]);
-                        vpos[0] = Spos.nextVpos(vpos[0]);
-                        idMap.put(node.getId(), node);
-                    }
-                    
-                    public void keyNodeCreated(KeyNode node) {
-                        node.setId(vpos[0]);
-                        node.setSpos(vpos[0]);
-                        vpos[0] = Spos.nextVpos(vpos[0]);
-                        idMap.put(node.getId(), node);
-                    }
+            rerunTransaction(tinfo, transactions.get(i));
+            transSeq.add(tinfo);
+        }
+    }
 
-                    public void valueNodeCreated(ValueNode valueNode, long[] key) {
-                        ValueNode v = storedTrans.getValueNode(key);
-                        assert v != null : "Could not find value node for given key";
-                        assert v.getSpos() >= 0 : "v2 spos: " + v.getSpos();
-                        valueNode.setSpos(v.getSpos());
-                    }
-
-                    public void keyNodeChanged(KeyNode node) {}
-                };
-                
-                dag.putKv(key, value, pd);
-                
-                for (long id : storedTrans.gotDirtyIds) {
-                    // TODO A. HERE - place of work.
-                    
-                    Node gotDirtyNode = idMap.get(id);
-                    if (gotDirtyNode == null) {
-                        String message = "startup error, node with id " + id 
-                                + " not found in startup section, got dirty in trans tt=" 
-                                + storedTrans.tt + ", tpos=" + storedTrans.tpos;
-                        throw new StreamFormatException(message);
-                    } else {
-                        gotDirtyNode.setDirty(true);
-                        tinfo.addGotDirtyNode(gotDirtyNode);
-                    }
+    private void rerunTransaction(TransSeq.TransInfo tinfo, final StoredTrans storedTrans) {
+        final long[] vpos = new long[]{Spos.nextVpos(storedTrans.tpos)};
+        
+        List<StoredValueNode> valueNodes = storedTrans.getValueNodes();
+        
+        PutData pd = dag.newPutData();
+        
+        for (StoredValueNode node : valueNodes) {
+            long[] key = node.getKey();
+            byte[] value = node.getNode().getValue();
+            
+            pd.tt = storedTrans.tt;
+            pd.nodeChangeListener = new Dag.NodeChangeListener() {
+                public void topNodeCreated(TopNode node) {
+                    node.setId(vpos[0]);
+                    node.setSpos(vpos[0]);
+                    vpos[0] = Spos.nextVpos(vpos[0]);
+                    idMap.put(node.getId(), node);
                 }
                 
-                pd.clearFast();
-            }
+                public void keyNodeCreated(KeyNode node) {
+                    node.setId(vpos[0]);
+                    node.setSpos(vpos[0]);
+                    vpos[0] = Spos.nextVpos(vpos[0]);
+                    idMap.put(node.getId(), node);
+                }
+
+                public void valueNodeCreated(ValueNode valueNode, long[] key) {
+                    ValueNode v = storedTrans.getValueNode(key);
+                    assert v != null : "Could not find value node for given key";
+                    assert v.getSpos() >= 0 : "v2 spos: " + v.getSpos();
+                    valueNode.setSpos(v.getSpos());
+                }
+
+                public void keyNodeChanged(KeyNode node) {}
+            };
             
-            tinfo.tt = storedTrans.tt;
-            tinfo.tpos = storedTrans.tpos;
-            tinfo.startupPos = storedTrans.startupPos;
-            tinfo.lastPos = storedTrans.lastPos;            
-            transSeq.add(tinfo);
+            dag.putKv(key, value, pd);
             
-            
-            /*
-            
-            Previous approach:
-            Trans t = storedTrans.createRerunTransaction(db.trans());
-            t.listener = transListener;
-            db.internal().executeInner(t);
-            */
+            pd.clearFast();
         }
+        
+        for (long id : storedTrans.gotDirtyIds) {
+            Node gotDirtyNode = idMap.get(id);
+            if (gotDirtyNode == null) {
+                String message = "startup error, node with id " + id 
+                        + " not found in startup section, got dirty in trans tt=" 
+                        + storedTrans.tt + ", tpos=" + storedTrans.tpos;
+                throw new StreamFormatException(message);
+            } else {
+                gotDirtyNode.setDirty(true);
+                tinfo.addGotDirtyNode(gotDirtyNode);
+            }
+        }
+        
+        tinfo.tt = storedTrans.tt;
+        tinfo.tpos = storedTrans.tpos;
+        tinfo.startupPos = storedTrans.startupPos;
+        tinfo.lastPos = storedTrans.lastPos;
     }
 
     /**

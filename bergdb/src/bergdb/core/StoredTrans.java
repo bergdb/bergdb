@@ -168,6 +168,14 @@ public class StoredTrans {
         StringBuilder b = new StringBuilder();
         b.append("tt:" + tt + ", tpos:" + tpos + ", lastPos:" + lastPos + ", startupPos:" + this.startupPos);
         b.append(", nodeCount:" + this.nodes.length);
+        
+        if (gotDirtyIds.length > 0) {
+            b.append("\ngot dirty: ");
+            for (int i = 0; i < gotDirtyIds.length; i++) {
+                b.append(gotDirtyIds[i] + " ");
+            }
+        }
+        
         return b.toString();
     }
     
