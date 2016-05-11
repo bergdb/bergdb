@@ -32,7 +32,8 @@ import bergdb.storage.StreamFormatException;
  * @author Frans Lundberg
  */
 public class StoredTrans {
-    public final static byte CURRENT_FORMAT_VERSION = 3;    // serial format version (one byte).
+    public final static byte CURRENT_FORMAT_VERSION = 4;    // serial format version (one byte).
+        // 160511 - changed to 4. Both id+spos stored with got-dirty node list.
         // 151229 - changed from 2 to 3
     
     /** Transaction time. */
@@ -49,7 +50,7 @@ public class StoredTrans {
     
     public final long startupPos;
     
-    public long[] gotDirtyIds;
+    public long[] gotDirtyIdsAndSpos;
 
     
     private StoredTrans() {
@@ -66,7 +67,7 @@ public class StoredTrans {
         lastPos = d.lastPos;
         nodes = d.nodes;
         startupPos = d.startupPos;
-        gotDirtyIds = d.gotDirtyIds;
+        gotDirtyIdsAndSpos = d.gotDirtyIdsAndSpos;
     }
     
     public boolean isPrimordial() {
@@ -169,10 +170,10 @@ public class StoredTrans {
         b.append("tt:" + tt + ", tpos:" + tpos + ", lastPos:" + lastPos + ", startupPos:" + this.startupPos);
         b.append(", nodeCount:" + this.nodes.length);
         
-        if (gotDirtyIds.length > 0) {
+        if (gotDirtyIdsAndSpos.length > 0) {
             b.append("\ngot dirty: ");
-            for (int i = 0; i < gotDirtyIds.length; i++) {
-                b.append(gotDirtyIds[i] + " ");
+            for (int i = 0; i < gotDirtyIdsAndSpos.length; i++) {
+                b.append(gotDirtyIdsAndSpos[i] + " ");
             }
         }
         
@@ -219,7 +220,7 @@ public class StoredTrans {
         long lastPos;
         long startupPos;
         StoredNode[] nodes;
-        long[] gotDirtyIds;
+        long[] gotDirtyIdsAndSpos;
 
         int offset = 0;
 
@@ -291,10 +292,10 @@ public class StoredTrans {
                 throw new StreamFormatException("bad gotDirtyCount, " + gotDirtyCount);
             }
             
-            this.gotDirtyIds = new long[gotDirtyCount];
+            this.gotDirtyIdsAndSpos = new long[gotDirtyCount * 2];
             
-            for (int i = 0; i < gotDirtyCount; i++) {
-                gotDirtyIds[i] = Bytes.bytesToLongLE(buffer, offset);
+            for (int i = 0; i < gotDirtyCount * 2; i++) {
+                gotDirtyIdsAndSpos[i] = Bytes.bytesToLongLE(buffer, offset);
                 offset += 8;
             }
 
@@ -564,7 +565,7 @@ public class StoredTrans {
             totalSize += 4;
             
             // Got-dirty node ids
-            totalSize += 8 * gotDirtyNodes.size();
+            totalSize += 16 * gotDirtyNodes.size();
 
             // Room for RecoverableStream.LAST_BYTE.
             totalSize += 1;
@@ -651,8 +652,10 @@ public class StoredTrans {
             offset += 4;
             
             for (int i = 0; i < gotDirtyNodes.size(); i++) {
-                long id = gotDirtyNodes.get(i).getId();
-                Bytes.longToBytesLE(id, byteBuffer, offset);
+                Node node = gotDirtyNodes.get(i);
+                Bytes.longToBytesLE(node.getId(), byteBuffer, offset);
+                offset += 8;
+                Bytes.longToBytesLE(node.getSpos(), byteBuffer, offset);
                 offset += 8;
             }
 
@@ -846,9 +849,9 @@ public class StoredTrans {
         Parser parser = new Parser();
         parser.parse(200, buffer);
         
-        assertEquals(2, parser.gotDirtyIds.length);
-        assertEquals(1000L, parser.gotDirtyIds[0]);
-        assertEquals(2000L, parser.gotDirtyIds[1]);
+        assertEquals(4, parser.gotDirtyIdsAndSpos.length);
+        assertEquals(1000L, parser.gotDirtyIdsAndSpos[0]);
+        assertEquals(2000L, parser.gotDirtyIdsAndSpos[2]);
     }
     
     @Nano

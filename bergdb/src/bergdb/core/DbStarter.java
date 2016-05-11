@@ -338,7 +338,25 @@ public class DbStarter {
             pd.clearFast();
         }
         
-        for (long id : storedTrans.gotDirtyIds) {
+        int dirtyCount = storedTrans.gotDirtyIdsAndSpos.length / 2;
+        for (int i = 0; i < dirtyCount; i++) {
+            long id = storedTrans.gotDirtyIdsAndSpos[i*2];
+            long spos = storedTrans.gotDirtyIdsAndSpos[i*2 + 1];
+            // TODO A. HERE
+            
+            Node gotDirtyNode = idMap.get(id);
+            if (gotDirtyNode == null) {
+                String message = "startup error, node with id " + id 
+                        + " not found in startup section, got dirty in trans tt=" 
+                        + storedTrans.tt + ", tpos=" + storedTrans.tpos;
+                throw new StreamFormatException(message);
+            } else {
+                gotDirtyNode.setDirty(true);
+                tinfo.addGotDirtyNode(gotDirtyNode);
+            }
+        }
+        
+        for (long id : storedTrans.gotDirtyIdsAndSpos) {
             Node gotDirtyNode = idMap.get(id);
             if (gotDirtyNode == null) {
                 String message = "startup error, node with id " + id 

@@ -318,9 +318,9 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     }
     
     public void printGotDirtyLine(PrintStream out, StoredTrans storedTrans) {
-        if (storedTrans.gotDirtyIds.length > 0) {
+        if (storedTrans.gotDirtyIdsAndSpos.length > 0) {
             out.print("got dirty: ");
-            long[] d = storedTrans.gotDirtyIds;
+            long[] d = storedTrans.gotDirtyIdsAndSpos;
             for (int i = 0; i < d.length; i++) {
                 out.print(d[i] + " ");
             }

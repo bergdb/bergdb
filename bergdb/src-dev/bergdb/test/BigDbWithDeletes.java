@@ -108,6 +108,12 @@ public class BigDbWithDeletes {
             }
         }
         
+        db.sync(SyncLevel.ORDINARY);
+        
+        // TODO A. HERE XXX
+        db.internal().nodeStream().print(System.out);
+        
+        db.stop();
         db = null;
         c.report("memory-use-after-db-null", toMb(getMem()));
         
