@@ -9,6 +9,8 @@ import bergdb.nanotest.Nano;
 /**
  * Pos-to-next-pos mappings. Used to update stream pointers to latest 
  * stream positions.
+ * 
+ * @author Frans Lundberg
  */
 public class NextMap {
     private HashMap<Long, Long> map = new HashMap<Long, Long>();
@@ -16,7 +18,8 @@ public class NextMap {
     /**
      * Adds pos-to-nextPos mapping.
      * 
-     * @param pos  If pos is Spos.NULL, this method does nothing.
+     * @param pos
+     *      If pos is Spos.NULL, this method does nothing.
      */
     public void put(long pos, long nextPos) {
         if (Spos.isNull(pos)) {
@@ -35,12 +38,20 @@ public class NextMap {
             throw new IllegalArgumentException("nextPos not greater than pos, " + nextPos + ", " + pos);
         }
         
-        Long previousValue = map.put(pos, nextPos);
+        Long previousValue = map.get(pos);
+        if (previousValue != null && previousValue > nextPos) {
+            // do nothing; keep existing value since it is larger than nextPos
+        } else {
+            map.put(pos, nextPos);
+        }
+        
+        /*
         if (previousValue != null) {
             throw new IllegalArgumentException(
                     "There was a mapping for pos " + pos + ", already. " +
                     "previousValue: " + previousValue + ", new value: " + nextPos);
         }
+        */
     }
     
     public boolean containsKey(long pos) {

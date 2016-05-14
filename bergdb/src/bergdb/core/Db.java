@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicLong;
-
 import bergdb.common.Bug;
 import bergdb.common.NullProgressListener;
 import bergdb.common.Util;
@@ -533,13 +532,11 @@ public class Db {
                                 predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
                     
                     } else {
-                        
-                        if (pointerPos < 0 || pointerPos % 2 == 1) {
-                            throw new AssertionError("bad pointerPos (" + pointerPos 
-                                    + "), to read from stream"
-                                    + ", pointerIndex:" + pointerIndex 
-                                    + ", predecessor:" + predecessor.print());
-                        }
+                        assert pointerPos >= 0 && pointerPos % 2 == 0 
+                                : "bad pointerPos (" + pointerPos 
+                                + "), to read from stream"
+                                + ", pointerIndex:" + pointerIndex 
+                                + ", predecessor:" + predecessor.print();
                         
                         NodeHeader header = nodeStream.readNodeHeader(pointerPos);
                         boolean isValueNode = header.type() == Node.TYPE_VALUE;

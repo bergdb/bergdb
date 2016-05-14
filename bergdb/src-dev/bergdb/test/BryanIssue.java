@@ -4,13 +4,10 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
-
-import bergdb.core.DagComparison;
 import bergdb.core.DbBuilder;
 import bergdb.core.DbUtil;
 import bergdb.core.TransSeq;
 import bergdb.dag.Dag;
-import bergdb.dag.DagChecksum;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Connection;
@@ -74,7 +71,7 @@ public class BryanIssue {
         try {
             out.format("\n---- STARTED ----\n");
             out.println(String.format("Db checksum: %d", dbChecksum(d)));
-            out.println(String.format("Dag checksum: %d", dagChecksum(d)));
+            //out.println(String.format("Dag checksum: %d", dagChecksum(d)));
             //compareDags(d);
             //compareTransSeqs(d);
             
@@ -105,7 +102,7 @@ public class BryanIssue {
             out.println(String.format("Created: %d items", n));
             out.println("---- Before stop():");
             out.println(String.format("Db checksum: %d", dbChecksum(d)));
-            out.println(String.format("Dag checksum: %d", dagChecksum(d)));
+            //out.println(String.format("Dag checksum: %d", dagChecksum(d)));
         } finally {
             d.stop();
             out.println(String.format("STOP lastId = %d", lastId));
@@ -116,51 +113,6 @@ public class BryanIssue {
     
     private long dbChecksum(Database d) {
         return DbUtil.checksum(((DatabaseImp) d).getDb());
-    }
-    
-    private long dagChecksum(Database d) {
-        Dag dag = ((DatabaseImp) d).getDb().internal().dag();
-        return new DagChecksum(dag).compute();
-    }
-    
-    private void compareDags(Database d) {
-        Dag dag = ((DatabaseImp) d).getDb().internal().dag();
-        
-        if (prevDag != null) {
-            DagComparison comp = new DagComparison(prevDag, dag);
-            boolean equal = comp.compare();
-            if (equal) {
-                out.println("Restarted dag compared equal to prevDag");
-                
-                long c1 = new DagChecksum(prevDag).compute();
-                long c2 = new DagChecksum(dag).compute();
-                out.println("  dag checksums: " + c1 + ", " + c2);
-                
-            } else {
-                out.println("WARNING: Restarted dag NOT equal to prevDag");
-            }
-        }
-        
-        prevDag = dag;
-    }
-    
-    private void compareTransSeqs(Database d) {
-        TransSeq seq = ((DatabaseImp) d).getDb().internal().transSeq();
-        
-        if (prevTransSeq != null) {
-            long c1 = prevTransSeq.checksum();
-            long c2 = seq.checksum();
-            
-            if (c1 == c2) {
-                out.println("Restarted TransSeq checksum equal to prev");
-            } else {
-                out.println("WARNING: Restarted TransSeq NOT equal to prevTransSeq");
-            }
-            
-            out.println("  TransSeq checksums: " + c1 + ", " + c2);
-        }
-        
-        prevTransSeq = seq;
     }
     
     public static String toKey(int id) {
@@ -181,6 +133,12 @@ public class BryanIssue {
 }
 
 /*
+
+160514
+======
+
+If dagChecksum() not used, the test is successful.
+
 
 151115
 ======

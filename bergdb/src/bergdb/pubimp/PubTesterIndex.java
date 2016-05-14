@@ -2,12 +2,10 @@ package bergdb.pubimp;
 
 import java.util.ArrayList;
 import java.util.Iterator;
-
 import bergdb.common.EventToWaitFor;
 import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.DbConstants;
-import bergdb.core.NodeStream;
 import bergdb.core.Trans;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
