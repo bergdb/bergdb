@@ -110,8 +110,7 @@ public class BigDbWithDeletes {
         
         db.sync(SyncLevel.ORDINARY);
         
-        // TODO A. HERE XXX
-        db.internal().nodeStream().print(System.out);
+        //db.internal().nodeStream().print(System.out);
         
         db.stop();
         db = null;
