@@ -3,7 +3,6 @@ package bergdb.core;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-
 import bergdb.common.AssertStatus;
 import bergdb.common.Bytes;
 import bergdb.common.Util;
@@ -76,34 +75,6 @@ public class StoredTrans {
     
     public boolean hasNewStartupPos() {
         return startupPos != -1;
-    }
-    
-    public Trans createRerunTransaction(Trans.Builder b) {        
-        List<StoredValueNode> storedValueNodes = getValueNodes();
-        
-        for (StoredValueNode n : storedValueNodes) {
-            assert n.getKey() != null : "key is null, " + n;
-            assert n.getKey().length > 0 : "Bad key, zero-length";
-            
-            ValueNode node = n.getValueNode();
-            long[] key = n.getKey();
-            
-            if (node.isDelete()) {
-                b.delete(key);
-            } else {
-                b.put(key, node.getValue());
-            }
-        }
-        
-        Trans trans = b.build();
-        trans.isInternal = true;
-        trans.tpos = tpos;
-        trans.lastPos = lastPos;
-        trans.tt = tt;
-        trans.isStartupRerun = true;
-        trans.startupPos = startupPos;
-        
-        return trans;
     }
     
     public boolean isIndexTransaction() {
@@ -939,6 +910,7 @@ public class StoredTrans {
         assertArrayEquals(Keys.toSegments("a"), node.getKey());
     }
     
+    /*
     @Nano
     private static void testCreateRerunTransaction() {
         Serializer serializer = new Serializer();
@@ -953,7 +925,7 @@ public class StoredTrans {
         assertEquals(1, trans.kvs.length);
         assertArrayEquals(new byte[]{1, 2, 3}, trans.kvs[0].getValue());
         assertArrayEquals(Keys.toSegments("key1"), trans.kvs[0].getKey());
-    }
+    }*/
     
     @Nano
     private static void testGetValueNode() {

@@ -1255,7 +1255,7 @@ public class Db {
         // This is handled by dbClock.
         //
         
-        if (!t.isStartupRerun) warmup(t);
+        warmup(t);
         
         synchronized (writeLock) {
             x.begin(t);
@@ -1263,7 +1263,7 @@ public class Db {
             stmCheckConflicts(t);
 
             try {
-                if (!t.isStartupRerun) t.tt = dbClock.transactionBegin();
+                t.tt = dbClock.transactionBegin();
                 
                 putKvs();
 
@@ -1279,7 +1279,7 @@ public class Db {
                 
                 // After the call to dbClock.transactionEnd(), read operations may use
                 // t.tt as a lookup time.
-                if (!t.isStartupRerun) dbClock.transactionEnd();
+                dbClock.transactionEnd();
             }
             
             stmRecordKeys(t);
@@ -1309,13 +1309,9 @@ public class Db {
         long currentSp = x.startupPos.get();
         long newSp;
         
-        if (x.trans.isStartupRerun) {
-            newSp = x.trans.startupPos;
-        } else {
-            long maxSp = nodeStream.getLength() - startupDistance;
-            newSp = transSeq.take(currentSp, maxSp, x.transNodes.valueCount, x.transNodes.kvSize, x.transNodes);
-            x.trans.startupPos = newSp;
-        }
+        long maxSp = nodeStream.getLength() - startupDistance;
+        newSp = transSeq.take(currentSp, maxSp, x.transNodes.valueCount, x.transNodes.kvSize, x.transNodes);
+        x.trans.startupPos = newSp;
         
         // Note: nodeStream.appendNodes() does things beyond writing to stream, it sets spos of nodes.
         // This is not needed for rerun transactions, however. They have value nodes only
@@ -1323,21 +1319,7 @@ public class Db {
         
         x.transNodes.clean();
         handleStillDirtyNodes();
-        
-        if (!x.trans.isStartupRerun) {
-            nodeStream.appendNodes(x.transNodes, x.trans, x.transInfo.gotDirtyNodes);
-        }
-        
-        if (x.trans.isStartupRerun) {
-            if (x.transNodes.keyCount > 0) {
-                throw new AssertionError("key nodes in rerun trans, " + x.transNodes.keyCount);
-            }
-            
-            if (x.transNodes.topCount > 0) {
-                throw new AssertionError("top nodes in rerun trans, " + x.transNodes.topCount);
-            }
-        }
-        
+        nodeStream.appendNodes(x.transNodes, x.trans, x.transInfo.gotDirtyNodes);        
         addValueNodesToCache();
         
         x.trans.nodeCount = x.transNodes.size();
@@ -1595,14 +1577,9 @@ public class Db {
          */
         private void begin(Trans trans) {
             assert x.putData != null;
-            
             this.trans = trans;
             transInfo = new TransSeq.TransInfo();
-            if (trans.isStartupRerun) {
-                x.nextVpos = trans.tpos + 1;
-            } else {
-                x.nextVpos = nodeStream.getNextPos() + 1;
-            }
+            x.nextVpos = nodeStream.getNextPos() + 1;
             x.putData.spaceSplitCount = 0;
         }
         

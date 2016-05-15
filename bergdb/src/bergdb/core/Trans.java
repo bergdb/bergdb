@@ -33,6 +33,8 @@ public class Trans {
     // Note. It would be good for memory reuse possibilities to use array+size approach.
     // For example; have long[] readKeyHashes *and* int readKeyHashesLength.
     // We would be able to reuse Trans object memory.
+    // 
+    // Startup transaction rerun does not use this class.
     //
     
     private static final Kv[] EMPTY_KV_ARRAY = new Kv[0];
@@ -65,9 +67,6 @@ public class Trans {
     /** True if transaction is executed on behalf of the database itself. */
     boolean isInternal;
     
-    /** True if used at startup for transaction rerun. */
-    boolean isStartupRerun;
-    
     /** startupPos stored in stream with transaction. */
     public long startupPos = Spos.NULL;
     
@@ -98,7 +97,6 @@ public class Trans {
     public String print() {
         StringBuilder b = new StringBuilder();
         b.append("pos: " + tpos + "\n");
-        b.append("isRerun: " + isStartupRerun + "\n");
         b.append("storedNewStartupPos: " + startupPos + "\n");
         b.append("readKeyHashes: ");
         for (int i = 0; i < this.readKeyHashes.length; i++) {
