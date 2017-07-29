@@ -14,19 +14,19 @@ public class BuildInfo {
     private BuildInfo() {}
     
     /**
-     * BergDB release int, for example "172".
+     * BergDB release int, for example "132".
      */
-    public static final int RELEASE_INT = Util.identity(161);
+    public static final int RELEASE_INT = Util.identity(171);
     
     /**
-     * BergDB version ID, for example "2017.2".
+     * BergDB version ID, for example "2013.2".
      */
-    public static final String RELEASE = Util.identity("2016.1");
+    public static final String RELEASE = Util.identity("2017.1");
     
     /**
-     * BergDB build ID, for example "2017.2.130401.1400".
+     * BergDB build ID, for example "2013.2.130401.1400".
      */
-    public static final String BUILD = Util.identity("2016.1.160330.1658");
+    public static final String BUILD = Util.identity("2017.1.170729.1901");
     
     /**
      * Prints build information to System.out.

@@ -518,24 +518,7 @@ public class Util {
         }
         
         return runsIkvm;
-    }
-    
-    private static boolean runsGcj = false;
-    private static volatile boolean runsGcjSet = false;
-    
-    public static boolean runsGcj() {
-        if (!runsGcjSet) {
-            String name = "java.vm.name";
-            String vm = System.getProperty(name);
-            if (vm == null) {
-                throw new Error("Property " + name + " is mandatory and still missing.");
-            }
-            runsGcj = vm.toLowerCase(Locale.US).contains("gcj");
-            runsGcjSet = true;
-        }
-        
-        return runsGcj;
-    }
+    }    
     
     private static boolean runsAndroid = false;
     private static volatile boolean runsAndroidSet = false;

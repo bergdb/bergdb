@@ -3,14 +3,10 @@ package bergdb.common;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.lang.management.ClassLoadingMXBean;
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadMXBean;
 import java.util.Enumeration;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-
 import bergdb.nanotest.Nano;
 
 /**
@@ -23,6 +19,7 @@ import bergdb.nanotest.Nano;
  */
 public class SeedGenerator {
     //
+    // 1707 Frans: removed JMX stuff, to make IKVM work without IKVM.OpenJDK.Management.dll.
     // 1603 Frans: JMX stuff added back again
     // 1603 Frans: note, the actual amount of entropy generated has not been studied.
     // 1402 Frans: now using stack traces for *all* threads.
@@ -45,7 +42,7 @@ public class SeedGenerator {
         addRuntimeData();
         addTimeData();
         addRandomOffset();
-        addJmxData();
+        //addJmxData();
         addRuntimeData();
         addTimeData();
         addRuntimeData();
@@ -59,13 +56,9 @@ public class SeedGenerator {
         addTimeData();
         addRandomOffset();
         addRuntimeData();
-        addJmxData();
-        
         addTimeData();
         addRandomOffset();
         addRuntimeData();
-        addJmxData();
-        
         addTimeData();
         addRuntimeData();
         addStackTrace();
@@ -157,35 +150,6 @@ public class SeedGenerator {
         }
 
         addData(bout.toByteArray());
-    }
-    
-    /**
-     * Adds data from a JMX - java management extension objects.
-     */
-    private void addJmxData() {
-        ClassLoadingMXBean clBean;
-        ThreadMXBean tBean;
-        long[] ids;
-
-        clBean = ManagementFactory.getClassLoadingMXBean();
-        tBean = ManagementFactory.getThreadMXBean();
-
-        addData(clBean.getTotalLoadedClassCount());
-        addData(clBean.getUnloadedClassCount());
-        addData(clBean.getLoadedClassCount());
-
-        addData(tBean.getCurrentThreadCpuTime());
-        addData(tBean.getCurrentThreadUserTime());
-        addData(tBean.getTotalStartedThreadCount());
-        addData(tBean.getDaemonThreadCount());
-        addData(tBean.getPeakThreadCount());
-        addData(tBean.getThreadCount());
-        addRandomOffset();
-
-        ids = tBean.getAllThreadIds();
-        for (int i = 0; i < ids.length; i++) {
-            addData(ids[i]);
-        }
     }
     
     private void addData(String s) {

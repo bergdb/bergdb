@@ -833,7 +833,7 @@ public class DbObjectTester {
      */
     @Nano
     public static void testCircularRefs() {
-        if (Util.runsIkvm() || Util.runsGcj() || Util.runsAndroid()) {
+        if (Util.runsIkvm() || Util.runsAndroid()) {
             return;
         }
         

@@ -60,7 +60,6 @@ public class Info {
         Runtime r = Runtime.getRuntime();
         out.println("availableProcessors: " + r.availableProcessors());        
         out.println("Util.runsIkvm(): " + Util.runsIkvm());
-        out.println("Util.runsGcj(): " + Util.runsGcj());
         out.println("Util.runsAndroid(): " + Util.runsAndroid());
         
         out.println();
