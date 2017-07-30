@@ -274,6 +274,14 @@ public class DbTesterStream {
         db2.stop();
     }
     
+    private static String key(int i) {
+        String key = "" + i;
+        if (i < 10) {
+            key = "0" + key;
+        }
+        return key;
+    }
+    
     public static void testMoreData1() {
         int n = 100;
         MemoryStream stream = new MemoryStream();
@@ -282,13 +290,15 @@ public class DbTesterStream {
         
         for (int i = 0; i < n; i++) {
             clock.setTime(100 + i * 10);
-            Trans t = db.trans().put("" + i, "v" + i).build();
+            String key = key(i);
+            Trans t = db.trans().put(key, "v" + key).build();
             db.execute(t);
         }
         
         for (int i = 0; i < n; i++) {
-            String valueString = Util.toString(DbUtil.get(db, n * 10 + 9999, "" + i));
-            Assert.assertEquals("v" + i, valueString);
+            String key = key(i);
+            String valueString = Util.toString(DbUtil.get(db, n * 10 + 9999, key));
+            Assert.assertEquals("v" + key, valueString);
         }
         
         db.sync(SyncLevel.ORDINARY);
@@ -298,8 +308,9 @@ public class DbTesterStream {
         Db db2 = Db.builder().testSetup(stream).start();
         
         for (int i = 0; i < n; i++) {
-            String valueString = Util.toString(DbUtil.get(db2, n * 10 + 9999, "" + i));
-            Assert.assertEquals("v" + i, valueString);
+            String key = key(i);
+            String valueString = Util.toString(DbUtil.get(db2, n * 10 + 9999, key));
+            Assert.assertEquals("v" + key, valueString);
         }
         db2.stop();
     }

@@ -638,7 +638,7 @@ public class Db {
                 assert !Spos.isNull(to.getId()) : 
                     "to-node has NULL id, from " + from + ", to: " + to;
                 
-                cache.pointerCreated(to);
+                cache.pointerCreated(from, index, to);
             }
         };
         
@@ -1231,9 +1231,6 @@ public class Db {
         x.transNodes.clean();
         handleStillDirtyNodes();
         nodeStream.appendNodes(x.transNodes, x.trans, x.transInfo.gotDirtyNodes);        
-        
-        // TODO A.
-        //addValueNodesToCache();
         
         x.trans.nodeCount = x.transNodes.size();
         x.transInfo.tpos = x.trans.tpos;

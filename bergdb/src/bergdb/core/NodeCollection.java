@@ -15,6 +15,11 @@ import bergdb.dag.PointerFollower;
  * @author Frans Lundberg
  */
 public class NodeCollection implements PointerFollower {
+    //
+    // Idea is to split into 1000 maps and do evict by
+    // map scan (whole map, but that's 1/1000 of whole cache).
+    //
+    
     private NodeStream nodeStream;
     private Cache3 cache;
     private PointerLocks pointerLocks;
@@ -23,10 +28,6 @@ public class NodeCollection implements PointerFollower {
         this.nodeStream = nodeStream;
         this.cache = new Cache3(dbInfo);
         this.pointerLocks = dbInfo.getPointerLocks();
-    }
-    
-    public void pointerCreated(Node to) {
-        cache.pointerCreated(to);
     }
 
     public Node followPointer(Node predecessor, int pointerIndex, long accessData,
@@ -90,7 +91,7 @@ public class NodeCollection implements PointerFollower {
                             : "types differ, " + result.getType() + ", " + header.type();
                     
                     if (cachePolicy.shouldCache(result)) {
-                        cache.pointerCreated(result);
+                        cache.pointerCreated(predecessor, pointerIndex, result);
                         predecessor.setPointer(pointerIndex, result, accessData);
                     }
                     

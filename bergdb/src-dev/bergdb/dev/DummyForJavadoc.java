@@ -18,7 +18,10 @@ public class DummyForJavadoc {
 }
 
 /*
-== 130404 ==
+
+130404
+======
+
 Thought on API doc. How to select subset of public methods for an API. 
 It would be nice to be able to have multiple APIs from same code. Multiple
 subsets of included methods.

@@ -999,4 +999,12 @@ public class Util {
         Runtime r = Runtime.getRuntime();
         return (r.totalMemory() - r.freeMemory());
     }
+    
+    public static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            // empty
+        }
+    }
 }
