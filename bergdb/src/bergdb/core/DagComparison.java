@@ -157,7 +157,8 @@ public class DagComparison {
         long p2 = n2.getSpos();
         
         if (p1 != p2) {
-            return "spos of value nodes differ: " + p1 + " != " + p2;
+            return "spos of value nodes differ: " + p1 + " != " + p2 
+                    + ", ids: " + n1.getId() + " " + n2.getId();
         }
         
         boolean equal = Arrays.equals(n1.value, n2.value);

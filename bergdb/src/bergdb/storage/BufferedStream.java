@@ -190,7 +190,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         final int sizeToFlush = cSize > fiftyPercentOfBufferCapacity ? fiftyPercentOfBufferCapacity
                 : cSize;
         
-        assert sizeToFlush > 0 : "bad sizeToFlush: " + sizeToFlush;
+        assert sizeToFlush >= 0 : "bad sizeToFlush: " + sizeToFlush;
 
         int index1 = (int) (cStart % bufferCapacity);
         int index2 = (int) ((cStart + sizeToFlush - 1) % bufferCapacity);

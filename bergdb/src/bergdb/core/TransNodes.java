@@ -114,19 +114,6 @@ public final class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.T
             }
         }
     }
-    
-    public final void addIndexNode(Node node) {
-        switch (node.getType()) {
-        case Node.TYPE_TOP_NODE:
-            addTopNode((TopNode) node);
-            break;
-        case Node.TYPE_KEY_NODE:
-            addKeyNode((KeyNode) node);
-            break;
-        default:
-            throw new IllegalStateException("Not an index node, node.getType(), " + node.getType());
-        }
-    }
 
     public final int size() {
         return topCount + keyCount + valueCount;

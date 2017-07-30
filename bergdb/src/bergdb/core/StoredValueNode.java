@@ -22,6 +22,8 @@ public class StoredValueNode implements StoredNode {
     // We need alignment to allow for spos to determine node type.
     //
     
+    public static final int ID_OFFSET = 8;
+    
     private ValueNode node;
     private long[] key;
 
@@ -77,12 +79,15 @@ public class StoredValueNode implements StoredNode {
         byte version = buffer[offset];
         offset += 1;
         
-        if (version != 3) {
+        if (version != 4) {
             throw new StreamFormatException("Cannot parse value node of "
                     + "format version " + version + ".");
         }
         
         offset += 2; // two bytes not used
+        
+        long id = Bytes.bytesToLongLE(buffer, offset);
+        offset += 8;
         
         int offsetFromTrans = Bytes.bytesToIntLE(buffer, offset);
         offset += 4;
@@ -114,6 +119,7 @@ public class StoredValueNode implements StoredNode {
         }
         
         ValueNode valueNode = new ValueNode(value, spos);
+        valueNode.setId(id);
         StoredValueNode stored = new StoredValueNode();
         stored.node = valueNode;
         stored.key = key;
@@ -123,8 +129,8 @@ public class StoredValueNode implements StoredNode {
 
     public static int getByteSize(ValueNode node, long[] key) {
         int size = node.value == null ? 
-                8 + 4 +                         4 + 8 * key.length
-              : 8 + 4 + 4 + node.value.length + 4 + 8 * key.length;
+                8 + 8 + 4 +                         4 + 8 * key.length
+              : 8 + 8 + 4 + 4 + node.value.length + 4 + 8 * key.length;
         return size + Spos.addToAlign(size, 4);
     }
 
@@ -142,7 +148,7 @@ public class StoredValueNode implements StoredNode {
         int offset = bufferOffset;
         int byteSize = getByteSize(node, key);
         long myLong;
-        final long FORMAT_VERSION = 3L;     // serial format version (one byte)
+        final long FORMAT_VERSION = 4L;     // serial format version (one byte)
         long nodeType = node.value == null ? Node.TYPE_DELETE : Node.TYPE_VALUE;
 
         myLong = ((long) byteSize) 
@@ -152,6 +158,9 @@ public class StoredValueNode implements StoredNode {
         Bytes.longToBytesLE(myLong, buffer, offset);
         offset += 8;
         // Room for 2 checksum bytes.
+        
+        Bytes.longToBytesLE(node.getId(), buffer, offset);
+        offset += 8;
         
         int offsetFromTrans = bufferOffset;
         Bytes.intToBytesLE(offsetFromTrans, buffer, offset);

@@ -1,16 +1,26 @@
 package bergdb.dag;
 
 /**
- * <p>A node of the db graph. A Node can be serialized with toBytes(). 
- * Each Node implementation should also have a
- * "static KeyNode fromBytes(...) {" method that handles deserialization. 
- * That cannot be enforced with the interface (but with this documentation).</p>
+ * <p>A node in the Dag. There are three types of nodes: TopNode, KeyNode, 
+ * and ValueNode. Top nodes and key nodes are called <i>index nodes</i> 
+ * since that are used to index the value nodes.</p>
  * 
- * <p>There are three types of nodes: TopNode, KeyNode, and ValueNode. Top nodes and key
- * nodes are called <i>index nodes</i> since that are used to index the value nodes.</p>
+ * <p>A node has a number of pointers to other nodes. They can be iterated
+ * with code like this:
  * 
- * <p>Concurrency. The methods setPointer(), getMemSize() may be run from concurrent read 
- * operation threads.</p>
+ * <pre>
+ * for (int i = 0; i &lt; node.getSize(); i++) {
+ *     node.getPointer(i, p);
+ *     if (!p.isNull()) {
+ *         // do something with pointer here
+ *     }
+ * }
+ * </pre>
+ * 
+ * <p>The Pointer object, p, is re-used for performance.</p>
+ * 
+ * <p>Concurrency: The methods setPointer(), getMemSize() are allowed to 
+ * run from concurrent read operation threads.</p>
  * 
  * @author Frans Lundberg
  */
@@ -34,21 +44,7 @@ public interface Node {
     public void setId(long id);
     
     /**
-     * Returns the pointer size; note that this is not necessarily the total
-     * number of out-bound pointers. It actually returns the max pointer index + 1.
-     * getPointer() may return a null pointer for some indexes between 0 and 
-     * getPointerCount() - 1.
-     * 
-     * Common usage (iterating pointers of a node):
-     * <pre>
-     * int size = node.getSize();
-     * for (int i = 0; i &lt; size; i++) {
-     *     node.getPointer(i, p);
-     *     if (!p.isNull()) {
-     *         // do something with pointer here
-     *     }
-     * }
-     *</pre>
+     * Returns the number of pointers of this node.
      */
     public int getSize();
     

@@ -25,11 +25,11 @@ import bergdb.nanotest.Assert;
  * @author Frans Lundberg
  */
 public class KeyNode implements Node {
+    public long id;            
+        // id is a vpos created by Db when node is created in memory
     public long spos;
         // The stream position of the node when it was last written to the stream.
         // Synch note: see get/set methods. Synched by read/write to volatile field this.size.
-    public long id;            
-        // id is the first spos of the node.
     private short lastTimeIndex = -1;
         // -1 or array index to the last time.
         // Synch note: this field should only be accessed by a writer. Access by a reader is not
@@ -1427,12 +1427,12 @@ public class KeyNode implements Node {
     }
     
     /**
-     * Validates this node. Pointers for time > initTime are 
-     * allowed to be NULL (-1). Size must be > 0.
+     * Validates this node. Stream pointers for time > startupTime are 
+     * allowed to be Spos.NULL (-1).
      * 
      * @throws Invalid
      */
-    public void validateStreamNode(long initTime) {
+    public void validateStreamNode(long startupTime) {
         short sz = this.size;
         
         if (sz < 1) {
@@ -1460,14 +1460,14 @@ public class KeyNode implements Node {
                     // if stream pointer...
                     long spos = pos[i];
                     
-                    if (klongTime > initTime) {
+                    if (klongTime > startupTime) {
                         if (!Spos.isValidOrNull(spos)) {
                             throw new Invalid("Bad spos of pointer " + i + " of node " 
                                     + this + ".");
                         }
                     } else {
                         if (!Spos.isValid(spos)) {
-                            throw new Invalid("Bad spos of pointer " + i + " of node " + this + ".");
+                            throw new Invalid("Bad spos of pointer " + i + " of node " + this.print() + ". Startup time: " + startupTime);
                         }
                     }
                 } else {

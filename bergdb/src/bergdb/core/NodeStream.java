@@ -165,27 +165,24 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     }
     
     public NodeHeader readNodeHeader(long spos) {
-        // Assumes: node type at offset 4.
-        // Assumes: id at offset 16 for TYPE_TOP_NODE.
-        // Assumes: id at offset 24 for TYPE_KEY_NODE.
-        // Assumes: length of key node >= 32.
+        // Assumes: node type at buffer[4]
+        // Assumes: id at offset StoredTopNode.ID_OFFSET for TYPE_TOP_NODE.
+        // Assumes: id at offset StoredKeyNode.ID_OFFSET for TYPE_KEY_NODE.
+        // Assumes: id at offset StoredValueNode.ID_OFFSET for TYPE_VALUE/TYPE_DELETE.
+        // Assumes: byte size of node >= 32.
         
         byte[] buffer = new byte[32];
-        rstream.read(spos, buffer, 0, 8);
+        rstream.read(spos, buffer, 0, 32);
         
-        byte type = buffer[4];   // assumed same for all node types
+        byte type = buffer[4];
         long id;
         
-        if (type == Node.TYPE_TOP_NODE || type == Node.TYPE_KEY_NODE) {
-            rstream.read(spos + 8, buffer, 8, 32-8);
-            
-            if (type == Node.TYPE_TOP_NODE) {
-                id = Bytes.bytesToLongLE(buffer, 16);
-            } else {
-                id = Bytes.bytesToLongLE(buffer, 24);
-            }
+        if (type == Node.TYPE_TOP_NODE) {
+            id = Bytes.bytesToLongLE(buffer, StoredTopNode.ID_OFFSET);
+        } else if (type == Node.TYPE_KEY_NODE) {
+            id = Bytes.bytesToLongLE(buffer, StoredKeyNode.ID_OFFSET);
         } else if (type == Node.TYPE_VALUE || type == Node.TYPE_DELETE) {
-            id = spos;
+            id = Bytes.bytesToLongLE(buffer, StoredValueNode.ID_OFFSET);
         } else {
             throw new StreamFormatException("unknown node type, " + ((int) type) 
                     + ", spos: " + spos + ", node header bytes: " + Util.toHex(buffer, 0, 8));

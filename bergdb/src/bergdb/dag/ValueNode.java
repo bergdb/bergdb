@@ -12,15 +12,19 @@ import bergdb.nanotest.Nano;
  * @author Frans Lundberg
  */
 public final class ValueNode implements Node {
-    // NOTE the Node.TYPE_VALUE/DELETE is confusing!
+    // NOTE The Node.TYPE_VALUE/DELETE is confusing!
     // In this class, the value node is considered a delete if value == null.
     
-    public final byte[] value;
-    public volatile long spos;
+    private long id;
+        // the if of the node is a vpos assigned to the node when it is created
+    private volatile long spos;
         // Synch note: "volatile" needed here to publish writes. Should not affect performance much.
         // Seldom written (when written to stream or read from stream). Reads are more common.
-        // Reads of volative are noop on x86, I heard.
+        // Reads of volatile are noop on x86, I heard.
+    public final byte[] value;
+    
     public int offsetFromTrans;
+    
     public boolean isInTransactionNodes = false;
         // Synch note: this field must only be accessed from threads holding DB.writeLock.
     
@@ -70,9 +74,7 @@ public final class ValueNode implements Node {
     /**
      * Sets the stream position, spos, of the node.
      */
-    public final void setSpos(long spos) {
-        // Called from: NodeStream.addNodes (DB.writeLock held) and from NodeStream.bytesToNode
-        // when uncached node is read.        
+    public final void setSpos(long spos) { 
         this.spos = spos;
     }
     
@@ -132,18 +134,18 @@ public final class ValueNode implements Node {
     }
 
     /**
-     * Returns spos; value nodes do not have a read id attribute 
-     * distinct from spos.
+     * Returns the node id.
      */
     public final long getId() {
-        return spos;
+        return id;
     }
     
     /**
-     * This method does nothing. Value nodes have no id attribute.
+     * Sets the id of this node. Should only be done once when and 
+     * when this object is created.
      */
-    public final void setId(long spos) {
-        // TODO D. Investigate: should we throw exception instead?
+    public final void setId(long id) {
+        this.id = id;
     }
     
     public final boolean isDelete() {

@@ -576,7 +576,7 @@ public class Cache2 implements Cache {
                 return;
             }
             
-            // TODO B. What is the evict condition?
+            // TODO D. What is the evict condition?
             if (node.isDirty()) {
                 return;
             }
@@ -594,7 +594,7 @@ public class Cache2 implements Cache {
                                 && AccessData.getAccessTime(node.getPointerAccessData(i)) 
                                         <= accessTimeLimit) {
                             
-                            // TODO B. What is the evict condition?
+                            // TODO D. What is the evict condition?
                             if (!pointee.isDirty()) {
                                 node.setPointer(i, null, pointeePos);
                                 evictCount++;
@@ -628,42 +628,12 @@ public class Cache2 implements Cache {
         Assert.assertTrue(m.getIndexNode(1222L) == null);
     }
     
-    @Nano private static void testSanity2() {
-        Cache m = testObject();
-        ValueNode node = new ValueNode(new byte[200]);
-        node.setSpos(1234L);
-        assert node.getId() == 1234L;
-        m.putValueNode(node);
-        
-        Assert.assertEquals("getValueNode existant", node, m.getValueNode(1234L));
-        Assert.assertEquals("getValueNode non-existant", m.getValueNode(1222L), null);
-    }
-    
     @SuppressWarnings("unused")
     @Nano private static void testMapCount() {
         // Checks assumption of method getMapIndex().
         
         if (MAP_COUNT > 256) {
             throw new IllegalStateException("Bad MAP_COUNT, " + MAP_COUNT);
-        }
-    }
-    
-    @Nano private static void testDuplicateValueNodes() {
-        Cache m = testObject();
-        ValueNode node = new ValueNode(new byte[1000]);
-        node.setSpos(1234L);
-        assert node.getId() == 1234L;
-        m.putValueNode(node);
-        AlreadyHasNode ex = null;
-        
-        if (AssertStatus.enabled()) {
-            try {
-                m.putValueNode(node);
-            } catch (Cache2.AlreadyHasNode e) {
-                ex = e;
-            }
-            
-            Assert.assertTrue(ex != null);
         }
     }
     

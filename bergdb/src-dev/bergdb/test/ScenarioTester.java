@@ -4,13 +4,10 @@ import static bergdb.nanotest.Assert.assertEquals;
 import bergdb.core.CoreTestClock;
 import bergdb.core.DagComparison;
 import bergdb.core.Db;
-import bergdb.core.Db.ExecuteData;
 import bergdb.core.DbUtil;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.GetMany;
-import bergdb.dag.Node;
-import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.stream.MemoryStream;
@@ -189,7 +186,6 @@ public class ScenarioTester {
      * Scenario with few transaction that demonstrates a dag diff
      * before we fixed an issue.
      */
-    @SuppressWarnings("unused")
     @Nano
     private static void scenario107() throws InterruptedException {
         // Created 2015-05.
@@ -211,6 +207,7 @@ public class ScenarioTester {
         
         Trans[] trans = new Trans[keys.length];
         
+        /*
         Trans.Listener printListener = new Trans.Listener() {
             public void transExecuted(ExecuteData x) {
                 System.out.println("== t" + x.trans.tt + ", tpos:" + x.trans.tpos 
@@ -233,6 +230,7 @@ public class ScenarioTester {
 
             public void valueNodeCreated(ValueNode node, long[] key) {}
         };
+        */
         
         for (int i = 0; i < trans.length; i++) {
             Trans t = db.trans().put(keys[i], new byte[sizes[i]]).build();
@@ -264,13 +262,3 @@ public class ScenarioTester {
         Assert.assertTrue("dags equal?", equal);
     }
 }
-
-
-/*
-
-LOG
-
-150809 Removed Scenarios 104, 105, 106 because they use the now obsolete 
-db.internal().setStartupPosUpdater(updater). Interface core.StartupPosUpdater has been removed.
-
-*/

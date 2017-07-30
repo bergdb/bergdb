@@ -152,10 +152,6 @@ public class Db {
             }
         };
         
-        // TODO A. now
-        //cache = new Cache2(pointerLocks, dbInfo);
-        //cache.setSizeIndicator(b.cacheSizeIndicator);
-        
         cache = new Cache3(pointerLocks, dbInfo);
         cache.setSizeIndicator(b.cacheSizeIndicator);
  
@@ -697,13 +693,13 @@ public class Db {
                 // This method call assumes new nodes are not dirty.
                 
                 assert node.isDirty == false : "node is dirty, " + node;
-                setVpos(node);
+                setIdOfNode(node);
                 makeDirtyIfNeeded(node);
                 cache.putIndexNode(node);
             }
             
             public void keyNodeCreated(KeyNode node) {
-                setVpos(node);
+                setIdOfNode(node);
                 makeDirtyIfNeeded(node);
                 cache.putIndexNode(node);
             }
@@ -713,6 +709,7 @@ public class Db {
             }
             
             public void valueNodeCreated(ValueNode node, long[] key) {
+                setIdOfNode(node);
                 x.transNodes.addValueNode(node, key);
                 x.trans.listener.valueNodeCreated(node, key);
             }
@@ -740,7 +737,11 @@ public class Db {
                 // However, note that id of from, id of to not necessarily known here, not
                 // known until transaction done and nodes written to stream.
                 
-                assert !Spos.isNull(from.getId()) : "Db, pointer from.getId() == Spos.NULL, from: " + from.print("  ");
+                assert !Spos.isNull(from.getId()) : 
+                    "Db, pointer from.getId() == Spos.NULL, from: " + from + ", to: " + to;
+                assert !Spos.isNull(to.getId()) : 
+                    "Db, XXX, to-node has no id, pointer from " + from + ", to: " + to;
+                
             }
         };
         
@@ -854,13 +855,15 @@ public class Db {
         
     }
     
-    private void setVpos(Node node) {
-        assert node.isIndexNode();
-        
+    /**
+     * Sets node id to next available vpos, also sets node spos to the same vpos.
+     * New nodes use the node id (vpos) for the spos value until the first
+     * time they are written to stream.
+     */
+    private void setIdOfNode(Node node) {
         long vpos = x.nextVpos;
         node.setId(vpos);
         node.setSpos(vpos);
-        
         x.increaseNextVpos();
     }
 

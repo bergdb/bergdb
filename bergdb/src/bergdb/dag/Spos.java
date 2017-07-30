@@ -34,8 +34,10 @@ abstract public class Spos {
         return spos >= 0;
     }
     
+    /**
+     * Returns the next vpos, always an odd integer greater than vpos.
+     */
     public static final long nextVpos(long vpos) {
-        // Next odd integer
         return vpos % 2 == 0 ? vpos + 1 : vpos + 2;
     }
     

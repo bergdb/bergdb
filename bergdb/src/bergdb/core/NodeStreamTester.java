@@ -142,7 +142,7 @@ public class NodeStreamTester {
         
         TopNode n1 = TopNode.createDummy(5);
         n1.setId(12L);
-        transNodes.addIndexNode(n1);
+        transNodes.addTopNode(n1);
         
         nodeStream.appendNodes(transNodes, trans, new ArrayList<Node>());
         Assert.assertTrue(n1.getSpos() > 0);
@@ -162,7 +162,7 @@ public class NodeStreamTester {
         
         KeyNode node = new KeyNode();
         node.setId(13L);
-        transNodes.addIndexNode(node);
+        transNodes.addKeyNode(node);
         
         nodeStream.appendNodes(transNodes, trans, new ArrayList<Node>());
         Assert.assertTrue(node.getSpos() > 0);
@@ -181,6 +181,7 @@ public class NodeStreamTester {
         Trans trans = new Trans.Builder().build();
         
         ValueNode node = new ValueNode(new byte[1]);
+        node.setId(1234L);
         transNodes.addValueNode(node, Keys.toSegments("/-ddir"));
         
         nodeStream.appendNodes(transNodes, trans, new ArrayList<Node>());
@@ -188,6 +189,7 @@ public class NodeStreamTester {
         
         NodeHeader header = nodeStream.readNodeHeader(node.getSpos());
         Assert.assertEquals("type", Node.TYPE_VALUE, header.type());
-        Assert.assertEquals(node.getSpos(), header.id());
+        Assert.assertEquals(node.getId(), header.id());
+        Assert.assertEquals(1234L, node.getId());
     }
 }

@@ -6,6 +6,7 @@ import bergdb.common.Util;
 import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Klong;
+import bergdb.dag.Pointer;
 import bergdb.dag.Spos;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
@@ -18,6 +19,7 @@ import bergdb.storage.StreamFormatException;
  * @author Frans Lundberg
  */
 public class StoredKeyNode implements StoredNode {
+    public static final int ID_OFFSET = 24;
     private KeyNode node;
     private long prevPos;
 
@@ -67,7 +69,12 @@ public class StoredKeyNode implements StoredNode {
         offset += sz;
 
         for (int i = 0; i < sz; i++) {
-            long spos = node.pointers[i] == null ? node.pos[i] : node.pointers[i].getSpos();             
+            // TODO B. use Pointer code? Also, iterate using node.getSize()... is more generic.
+            //Pointer p = new Pointer();
+            //node.getPointer(i, p);
+            //p.getSposToStore();
+            
+            long spos = node.pointers[i] == null ? node.pos[i] : node.pointers[i].getSpos();
             buffer[offset++] = spos;
         }
         

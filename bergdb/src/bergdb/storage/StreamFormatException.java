@@ -13,4 +13,8 @@ public class StreamFormatException extends StreamException {
     public StreamFormatException(String message) {
         super(message);
     }
+    
+    public StreamFormatException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

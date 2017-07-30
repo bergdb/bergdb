@@ -20,6 +20,8 @@ import bergdb.storage.StreamFormatException;
  * @author Frans Lundberg
  */
 public class StoredTopNode implements StoredNode {
+    public static final int ID_OFFSET = 16;
+    
     private TopNode node;
     
     private StoredTopNode() {}
@@ -85,6 +87,7 @@ public class StoredTopNode implements StoredNode {
         if (topNodeId < 0) {
             throw new StreamFormatException("Bad TopNode ID of TopNode in stream, " + topNodeId);
         }
+        
         if (topNodeId > TopNode.MAX_TOP_NODE_ID_VALUE) {
             throw new StreamFormatException("TopNode ID too large in stream, " + topNodeId);
         }
@@ -97,6 +100,7 @@ public class StoredTopNode implements StoredNode {
         if (rootTime < Klong.MIN_TIME) {
             throw new StreamFormatException("Time too small, " + rootTime + ".");
         }
+        
         if (rootTime > Klong.MAX_TIME) {
             throw new StreamFormatException("Time too large, " + rootTime + ".");
         }
@@ -176,7 +180,7 @@ public class StoredTopNode implements StoredNode {
 
         buffer[offset++] = node.rootTime;
 
-        // spos for the pointers
+        // spos value for the pointers
 
         long spos = node.rootPointer == null ? node.rootPointerPos : node.rootPointer.getSpos();
         

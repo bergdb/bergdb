@@ -15,4 +15,8 @@ public abstract class StreamException extends DbException {
     public StreamException(String message) {
         super(message);
     }
+    
+    public StreamException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

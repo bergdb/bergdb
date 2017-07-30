@@ -26,7 +26,8 @@ import bergdb.storage.StreamFormatException;
 /**
  * This class and its inner classes are responsible serializing transactions to bytes
  * and to parse transactions from raw bytes.
- * For this class, performance is important enough to take precedence over pretty code.
+ * For this class, performance is important enough to sometimes take precedence 
+ * over pretty code.
  * 
  * @author Frans Lundberg
  */
@@ -91,8 +92,13 @@ public class StoredTrans {
     /**
      * Returns a value node matching the given key, or null if no
      * match is found. Linear search is used.
+     * 
+     * @deprecated
      */
     public ValueNode getValueNode(long[] key) {
+        // NOTE is this really OK? What is value written multiple times
+        // in the startup interval? We would have multiple matches.
+        
         ValueNode result = null;
         
         for (int i = 0; i < nodes.length; i++) {
@@ -107,6 +113,20 @@ public class StoredTrans {
         }
         
         return result;
+    }
+    
+    /**
+     * Returns the node with the given id, or null if such a node
+     * does not exist.
+     */
+    public Node findNode(long id) {
+        for (StoredNode stored : nodes) {
+            if (stored.getNode().getId() == id) {
+                return stored.getNode();
+            }
+        }
+        
+        return null;
     }
 
     /**
@@ -382,7 +402,7 @@ public class StoredTrans {
             
             counter++;
         }
-
+        
         /**
          * Checks that stream pointers of key nodes are not Spos.NULL.
          * They should be valid after prepareToSerialized has been run.
@@ -500,7 +520,7 @@ public class StoredTrans {
             for (int i = 0; i < transNodes.topCount; i++) {
                 TopNode node = transNodes.topNodes[i];
                 node.spos = currentPos;
-                node.id = (node.id == Spos.NULL) ? currentPos : node.id;
+                node.id = (node.id == Spos.NULL) ? currentPos : node.id;    // TODO B. why is this needed?
                 totalSize += StoredTopNode.getByteSize(node);
                 currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
             }
@@ -512,7 +532,7 @@ public class StoredTrans {
                     KeyNode node = transNodes.keyNodes[i];
                     prevPos[prevPosIndex++] = node.spos;
                     node.spos = currentPos;
-                    node.id = (node.id == Spos.NULL) ? currentPos : node.id;
+                    node.id = (node.id == Spos.NULL) ? currentPos : node.id;   // TODO B. why is this needed?
                     totalSize += StoredKeyNode.getByteSize(node);
                     currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
                 }
@@ -909,23 +929,6 @@ public class StoredTrans {
         StoredValueNode node = (StoredValueNode) parser.nodes[0];
         assertArrayEquals(Keys.toSegments("a"), node.getKey());
     }
-    
-    /*
-    @Nano
-    private static void testCreateRerunTransaction() {
-        Serializer serializer = new Serializer();
-        TransNodes nodes = new TransNodes();
-        nodes.addValueNode(new ValueNode(new byte[]{1, 2, 3}), Keys.toSegments("key1"));
-        serializer.serialize(nodes, 101, 0, -1, new ArrayList<Node>());
-        byte[] buffer = serializer.getTransBuffer();
-        
-        StoredTrans stored = StoredTrans.parse(0, buffer);
-        Trans trans = stored.createRerunTransaction(Trans.Builder.ForDb.create());
-        
-        assertEquals(1, trans.kvs.length);
-        assertArrayEquals(new byte[]{1, 2, 3}, trans.kvs[0].getValue());
-        assertArrayEquals(Keys.toSegments("key1"), trans.kvs[0].getKey());
-    }*/
     
     @Nano
     private static void testGetValueNode() {

@@ -312,27 +312,32 @@ public class DbStarter {
             pd.tt = storedTrans.tt;
             pd.nodeChangeListener = new Dag.NodeChangeListener() {
                 public void topNodeCreated(TopNode node) {
-                    node.setId(vpos[0]);
-                    node.setSpos(vpos[0]);
-                    vpos[0] = Spos.nextVpos(vpos[0]);
-                    idMap.put(node.getId(), node);
+                    nodeCreated(node);
                 }
                 
                 public void keyNodeCreated(KeyNode node) {
-                    node.setId(vpos[0]);
-                    node.setSpos(vpos[0]);
-                    vpos[0] = Spos.nextVpos(vpos[0]);
-                    idMap.put(node.getId(), node);
+                    nodeCreated(node);
                 }
 
-                public void valueNodeCreated(ValueNode valueNode, long[] key) {
-                    ValueNode v = storedTrans.getValueNode(key);
-                    assert v != null : "Could not find value node for given key";
-                    assert v.getSpos() >= 0 : "v2 spos: " + v.getSpos();
-                    valueNode.setSpos(v.getSpos());
+                public void valueNodeCreated(ValueNode node, long[] key) {
+                    nodeCreated(node);
                 }
 
                 public void keyNodeChanged(KeyNode node) {}
+                
+                private void nodeCreated(Node node) {
+                    long id = vpos[0];
+                    vpos[0] = Spos.nextVpos(vpos[0]);
+                    
+                    node.setId(id);
+                    node.setSpos(id);         // initially, we use vpos as spos
+                    idMap.put(id, node);
+                    
+                    Node n = storedTrans.findNode(id);
+                    if (n != null) {
+                        node.setSpos(n.getSpos());
+                    }
+                }
             };
             
             dag.putKv(key, value, pd);
@@ -355,7 +360,7 @@ public class DbStarter {
                 }
                 
                 gotDirtyNode = this.db.internal().nodeStream().readNode(spos);
-                // TODO B. this is not OK considering caching; we need *one* 
+                // TODO C. this is not OK considering caching; we need *one* 
                 // common way of reading nodes from stream that includes caching.
             }
             
@@ -487,14 +492,14 @@ public class DbStarter {
     /**
      * @throws StreamFormatException
      */
-    private void validateNode(StoredNode stored, long initTime) {
+    private void validateNode(StoredNode stored, long startupTime) {
         Node node = stored.getNode();
         if (node == null) {
             throw new StreamFormatException("getNode() returned null");
         }
         
         long spos = node.getSpos();
-        if (!Spos.isValid(spos) || Spos.isVpos(spos)) {
+        if (!Spos.isValid(spos)) {
             throw new StreamFormatException("Bad spos of node, spos=" + spos + ", node: " + node);
         }
         
@@ -503,9 +508,9 @@ public class DbStarter {
             KeyNode knode = (KeyNode) node;
             
             try {
-                knode.validateStreamNode(initTime);
+                knode.validateStreamNode(startupTime);
             } catch (KeyNode.Invalid e) {
-                throw new StreamFormatException(e.getMessage());
+                throw new StreamFormatException(e.getMessage(), e);
             }
             
             break;

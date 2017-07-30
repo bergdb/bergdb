@@ -9,6 +9,8 @@ import bergdb.nanotest.Nano;
  * Used as output parameter for efficiency. Used in Db.follow(Pointer p).
  * Typically used for temporary storage, method calls, output parameters.
  * Mutable for performance (to be able to avoid memory allocation).
+ * Also has some useful static functions to use when the actual object form of a pointer
+ * is not used (for performance).
  * 
  * @author Frans Lundberg
  */
