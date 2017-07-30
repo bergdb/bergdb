@@ -19,33 +19,32 @@ public class TopTester {
     private TopDs ds3;
     public TopDs ds4;
     
-    
-    
     public void createTestData() {
-        Dag.PointerCreatedListener NOTHING = Dag.DO_NOTHING_POINTER_CREATED_LISTENER;
+        Dag.PointerCreatedListener N1 = Dag.DO_NOTHING_POINTER_CREATED_LISTENER;
+        Dag.NodeChangeListener N2 = Dag.DO_NOTHING_NODE_CHANGE_LISTENER;
         
         long firstTime = 5;
         n1 = new KeyNode();
         n1.setSpos(100);
-        ds1 = TopDs.createFromFirstRoot(firstTime, n1, 0, NOTHING);
+        ds1 = TopDs.createFromFirstRoot(firstTime, n1, 0, N1);
         
         n2 = new KeyNode();
         n2.setSpos(200);
-        ds2 = TopDs.createFromFirstRoot(firstTime, n1, 0, NOTHING);
-        ds2.newSuperRoot(10, n2, 0, NOTHING);
+        ds2 = TopDs.createFromFirstRoot(firstTime, n1, 0, N1);
+        ds2.newSuperRoot(10, n2, 0, N1, N2);
         
         n3 = new KeyNode();
         n3.setSpos(300);
-        ds3 = TopDs.createFromFirstRoot(firstTime, n1, 0, NOTHING);
-        ds3.newSuperRoot(10, n2, 0, NOTHING);
-        ds3.newSuperRoot(20, n3, 0, NOTHING);
+        ds3 = TopDs.createFromFirstRoot(firstTime, n1, 0, N1);
+        ds3.newSuperRoot(10, n2, 0, N1, N2);
+        ds3.newSuperRoot(20, n3, 0, N1, N2);
         
         n4 = new KeyNode(); 
         n4.setSpos(400);
-        ds4 = TopDs.createFromFirstRoot(firstTime, n1, 0, NOTHING);
-        ds4.newSuperRoot(10, n2, 0, NOTHING);
-        ds4.newSuperRoot(20, n3, 0, NOTHING);
-        ds4.newSuperRoot(30, n4, 0, NOTHING);
+        ds4 = TopDs.createFromFirstRoot(firstTime, n1, 0, N1);
+        ds4.newSuperRoot(10, n2, 0, N1, N2);
+        ds4.newSuperRoot(20, n3, 0, N1, N2);
+        ds4.newSuperRoot(30, n4, 0, N1, N2);
     }
     
     /**

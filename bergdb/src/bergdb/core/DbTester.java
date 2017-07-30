@@ -244,7 +244,7 @@ public class DbTester {
         
         // Gets the KeyNode and examines the DELETE_BITMAP at the end.
         
-        KeyNode k = (KeyNode) db.findNode(new int[]{0}, db.newGetData());
+        KeyNode k = (KeyNode) db.internal().findNode(new int[]{0}, db.newGetData());
         
         long klong = k.getKlong(5);
         Assert.assertEquals("check TYPE_DELETE_BITMAP", Klong.getType(klong), Klong.TYPE_DELETE_BITMAP);
@@ -475,7 +475,7 @@ public class DbTester {
     
     @Nano
     public static void testSplit1() {
-        // Parent is a space root node.
+        // Parent is a space root node, time-split
         
         byte[] value;
         long time;
@@ -485,11 +485,8 @@ public class DbTester {
         
         db = Db.builder().testSetup().maxNodeSize14().clock(clock).start();
         
-        //System.out.println("---- DBTester.testSplit2 ----");
-        
         time = 100;
         for (int i = 0; i < n; i++) {
-            //db.setTime(time);   
             clock.setTime(time);
             db.execute(db.trans().put("k" + time, "v" + time).build());
             time += 10;

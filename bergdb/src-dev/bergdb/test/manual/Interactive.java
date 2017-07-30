@@ -4,10 +4,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Random;
-
 import bergdb.common.Bytes;
 import bergdb.common.Util;
-import bergdb.core.Cache2;
 import bergdb.core.Db;
 import bergdb.core.Jmx;
 import bergdb.dag.Dag;
@@ -146,16 +144,12 @@ public class Interactive {
             runInfo(options);
         } else if(commandName.equals("gc")) {
             runGc(options);
-        } else if(commandName.equals("gc2")) {
-            runGc2(options);
         } else if(commandName.equals("evictMax")) {
             runEvictMax(options);
         } else if(commandName.equals("addBig")) {
             runAddBig(options);
         } else if(commandName.equals("addSmall")) {
             runAddSmall(options);
-        } else if(commandName.equals("maps")) {
-            runMaps(options);
         } else {
             System.out.println("Unknown command.");
         }
@@ -168,21 +162,6 @@ public class Interactive {
         
         for (int i = 0; i < 4; i++) {
             System.gc();
-        }
-        
-        long used2 = memUsed();
-        
-        System.out.format("Used mem: %.1f MB to %.1f MB.\n",
-                1e-6 * (used2 - used1), 
-                1e-6 * used2);
-    }
-    
-    private void runGc2(CommandLine options) {
-        long used1 = memUsed();
-        
-        for (int i = 0; i < 4; i++) {
-            System.gc();
-            db.internal().cache().cleanupAllRefQueues();
         }
         
         long used2 = memUsed();
@@ -308,48 +287,6 @@ public class Interactive {
         }
         
         c.sync();
-    }
-    
-    /**
-     * Prints info about the cache maps.
-     */
-    private void runMaps(CommandLine options) {
-        Cache2 c = db.internal().cache();
-        
-        // == index maps ==
-                
-        int count = Cache2.TestAccess.indexMapCount();
-        int[] sizes = new int[count];
-        long total = 0L;
-        
-        for (int i = 0; i < count; i++) {
-            int size = Cache2.TestAccess.indexMapSize(c, i);
-            sizes[i] = size;
-            total += size;
-        }
-        
-        System.out.format("%d index maps, total: %d\n", count, total);
-        for (int i = 0; i < count; i++) {
-            System.out.format("%3d: %.2f  (%d)\n", i, 100.0 * sizes[i] / total, sizes[i]);
-        }
-        
-        // == value maps ==
-        
-        count = Cache2.TestAccess.valueMapCount();
-        sizes = new int[count];
-        total = 0L;
-        
-        for (int i = 0; i < count; i++) {
-            int size = Cache2.TestAccess.valueMapSize(c, i);
-            sizes[i] = size;
-            total += size;
-        }
-        
-        System.out.format("%d value maps, total: %d\n", count, total);
-        for (int i = 0; i < count; i++) {
-            System.out.format("%3d: %.2f  (%d)\n", i, 100.0 * sizes[i] / total, sizes[i]);
-        }
-        
     }
 
     private long memUsed() {

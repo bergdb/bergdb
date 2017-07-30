@@ -8,14 +8,13 @@ import bergdb.dag.GetMany.StopCondition;
 import bergdb.pub.util.DbException;
 
 /**
- * <p>The DAG (directed acyclic graph) is the main data structure of the database.
- * An instance of this class handles the in-memory (cached) part of the DAG.</p>
+ * <p>The Dag (directed acyclic graph) is the main data structure of the database.</p>
  * 
  * <p>Features/scope:</p>
  * <ul>
  * <li>Walking the Dag.</li>
  * <li>getOne(), getMany(), putOne()</li>
- * <li>Dag testable in isolation</li>
+ * <li>Dag testable in isolation (Db instance not needed)</li>
  * <li>Reads nodes (from interface NodeReader instance)</li>
  * <li>Factory methods: newGetData(), newGetMany(), new PutData().</li>
  * </ul>
@@ -178,7 +177,9 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         
         for (int i = 0; i < choices.length; i++) {
             int choice = choices[i];
-            node = this.followPointer(node, choice, 0, gd.pointerListener, gd.cachePolicy);
+            
+            node = this.followPointer(node, choice, gd.accessData, gd.pointerListener, gd.cachePolicy);
+            
             if (node == null) {
                 break;
             }
@@ -817,7 +818,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         //
         // Last version is small enough not to split into two nodes, but not empty.
         //
-        
+                
         final KeyNode parent = pd.getParent(depth);
 
         for (int i = 0; i < toAppend.length; i++) {
@@ -826,16 +827,15 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             if (!replaced) last.addKlong(tTime, kwi.klong, kwi.node, pd.accessData);
         }
         
-        reportNewPointers(last, pd.pointerCreatedListener);
         pd.nodeChangeListener.keyNodeCreated(last);
+        reportNewPointers(last, pd.pointerCreatedListener);
         
         if (parent == null) {
             // time-split-2:
             // No parent, 'last' is the new super root.
             
-            topDs.newSuperRoot(tTime, last, pd.accessData, pd.pointerCreatedListener);
+            topDs.newSuperRoot(tTime, last, pd.accessData, pd.pointerCreatedListener, pd.nodeChangeListener);
             
-            pd.nodeChangeListener.topNodeCreated(topDs.getSuperRoot());
             pd.splitListener.nodeSplit(Dag.TIME_SPLIT_2);
             assert last.checkWithMessage() == null;
             
@@ -872,19 +872,12 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      */
     private void spaceSplit(final KeyNode node, KeyNode last, final int depth,
             final KlongWithPointer[] toInsert, PutData pd) {
-        //
-        // Note 1508 Frans: should we have code:
-        // [pd.nodeChangeListener.keyNodeChanged(first);
-        //  pd.nodeChangeListener.keyNodeChanged(second);]
-        // Is it needed when keyNodeCreated() also called?
-        //
-        
         final long tt = pd.tt;
         final boolean isSegmentLeaf = node.isSegmentLeaf();
         final KeyNode first = new KeyNode(isSegmentLeaf);
         final KeyNode second = new KeyNode(isSegmentLeaf);
         final KeyNode parent = pd.getParent(depth);
-        
+
         pd.nodeChangeListener.keyNodeCreated(first);
         pd.nodeChangeListener.keyNodeCreated(second);
         
@@ -893,7 +886,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             // space-split-3:
             // 'node' is the space root node.
             //
-            
             KeyNode newRoot = new KeyNode(false);
             pd.nodeChangeListener.keyNodeCreated(newRoot);
             
@@ -909,9 +901,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             pd.nodeChangeListener.keyNodeChanged(first);
             pd.nodeChangeListener.keyNodeChanged(second);
 
-            topDs.newSuperRoot(tt, newRoot, pd.accessData, pd.pointerCreatedListener);
-            pd.nodeChangeListener.topNodeCreated(topDs.getSuperRoot());
-                     
+            topDs.newSuperRoot(tt, newRoot, pd.accessData, pd.pointerCreatedListener, pd.nodeChangeListener);
+
             pd.splitListener.nodeSplit(Dag.SPACE_SPLIT_3);
             assert newRoot.checkWithMessage() == null;
 
@@ -1036,6 +1027,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     public static interface PointerCreatedListener {
         /**
          * Reports that a node from 'from' to 'to' was created.
+         * Report this AFTER 'from' and 'to' have been created and the node creation
+         * has been reported to the NodeChangeListener.
          * 
          * @param index  Pointer index of pointer created.
          */
@@ -1095,7 +1088,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     };
     
     /**
-     * Listens to DB graph nodes that are created or changed.
+     * Listens to Db graph nodes that are created or changed.
      */
     public static interface NodeChangeListener {
         

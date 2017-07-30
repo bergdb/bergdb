@@ -10,9 +10,9 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * A specialized, performant collection containing the nodes and keys included in one transaction.
- * The three nodes types: TopNode, KeyNode, ValueNode are kept in separate arrays to allow
- * for type-specific optimizations.
+ * A specialized, highly performant collection containing the nodes and keys 
+ * included in one transaction. The three nodes types: TopNode, KeyNode, ValueNode 
+ * are kept in separate arrays to allow for type-specific optimizations.
  * 
  * @author Frans Lundberg
  */

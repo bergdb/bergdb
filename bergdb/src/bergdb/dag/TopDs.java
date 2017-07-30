@@ -43,18 +43,19 @@ public class TopDs {
     
     /**
      * Creates a new super root node.
-     * Caller must hold DB.writeLock.
+     * Caller must hold Db.writeLock.
      * 
      * @param time  The transaction time.
      */
     public void newSuperRoot(long time, KeyNode newRoot, long accessData, 
-            Dag.PointerCreatedListener pointerCreationListener) {
+            Dag.PointerCreatedListener pointerCreationListener, Dag.NodeChangeListener nodeChangeListener) {
         
         TopNode newSuperRoot = new TopNode(superRoot.topNodeId + 1, newRoot, accessData, time, 
                 Spos.NULL);
         final int h = newSuperRoot.pointersLength;
         final int id = newSuperRoot.topNodeId;
         
+        nodeChangeListener.topNodeCreated(newSuperRoot);
         pointerCreationListener.pointerCreated(newSuperRoot, 0, newRoot);
         
         for (int i = 0; i < h; i++) {

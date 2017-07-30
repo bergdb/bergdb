@@ -1,7 +1,5 @@
 package bergdb.dev;
 
-// TODO LATER Add support for JSON. Pub API and changes to DbObject, I guess.
-// "Promised" to Stefan Edlich 150109.
 //
 // TODO LATER Consider calling Db.possiblyEvict() several times from getMany().
 //  Proportional to number of KVs gotten? Does not seem fair to getOne() to just

@@ -6,7 +6,6 @@ import java.io.PrintStream;
 import java.util.Random;
 import bergdb.common.Bytes;
 import bergdb.common.Util;
-import bergdb.core.Cache2;
 import bergdb.core.Db;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
@@ -37,7 +36,7 @@ public class CcDbNightTest {
     boolean encrypt = true;
     int[] permutation;
     PrintStream out;
-    Cache2.Evictor evictor;
+    //Cache2.Evictor evictor;
     int cacheSizeInMb = 100;
     
     private void go() {
@@ -46,38 +45,13 @@ public class CcDbNightTest {
         createDb();
         
         Db db = ((DatabaseImp) database).getDb();
-        evictor = Cache2.TestAccess.evictor(db.internal().cache());
+        //evictor = CacheInterface.TestAccess.evictor(db.internal().cache());
         
         addCards();
         
-        out.format("evictCount: %d.\n", evictor.getEvictCount());
+        //out.format("evictCount: %d.\n", evictor.getEvictCount());
         
         checkCount();
-    }
-
-    private void createDb() {
-        if (dir == null) {
-            dir = "./" + CcDbNightTest.class.getSimpleName();
-        }
-        
-        CryptoKey key = CryptoKey.NULL;
-        if (encrypt) {
-            key = CryptoKey.parse(
-                    "7bcf4b7c-salsa-15fc30dde0914feb075a2c1f1fb95640da3e3d04da10fe9c349ad99a50deaab4aa803d057a0186cc");
-        }
-        
-        database = Factory.database()
-                .dir(dir)
-                .cryptoKey(key)
-                .startupDistanceInMb(5)
-                .cacheSizeInMb(cacheSizeInMb)
-                .start();
-        
-        double time = database.getStartupInfo().getStartupDuration();
-        out.format("Db started in %.2f seconds, dir:%s\n", time, dir);
-        
-        c = database.connection();
-        initDb();
     }
 
     private void computePermutation() {
@@ -99,32 +73,31 @@ public class CcDbNightTest {
         }
     }
 
-    @SuppressWarnings("unused") 
-    private void checkCount() {
-        // Scan of /cards/ to count all cards.
-        
-        out.println("Counting all cards...");
-        int counter = 0;
-        
-        long t0 = System.nanoTime();
-        for (byte[] v : c.usePrimary(byte[].class).dir("/cards/").objects()) {
-            counter++;
+    private void createDb() {
+        if (dir == null) {
+            dir = "./" + CcDbNightTest.class.getSimpleName();
         }
-        double time = 1e-9 * (System.nanoTime() - t0);
         
-        out.format("Actual card count: %d. Counted in %.3f seconds (%.3f ms per card).\n", 
-                counter, time, time / counter * 1000.0);
-        out.format("evictCount: %d.\n", evictor.getEvictCount());
-        
-        if (counter != n) {
-            throw new AssertionError("Missing cards, found " + counter + " cards out of " + n + ".");
+        CryptoKey key = CryptoKey.NULL;
+        if (encrypt) {
+            key = CryptoKey.parse(
+                    "7bcf4b7c-salsa-15fc30dde0914feb075a2c1f1fb95640da3e3d04da10fe9c349ad99a50deaab4aa803d057a0186cc");
         }
+        
+        database = Factory.database()
+                .dir(dir)
+                .cryptoKey(key)
+                .startupDistanceInMb(5)
+                .cacheSizeInMb(cacheSizeInMb)
+                .start();
+        
+        double time = database.getStartupInfo().getStartupDuration();
+        out.format("Db started in %.3f seconds, dir:%s\n", time, dir);
+        
+        c = database.connection();
+        initDb();
     }
 
-    protected void finalize() {
-        database.stop();
-    }
-    
     private void addCards() {
         final int existingCardCount = getCardCount();
         int toAdd = n - existingCardCount;
@@ -155,7 +128,7 @@ public class CcDbNightTest {
             b.put("/stats", new Stats(existingCardCount + addedCounter));
             b.execute();
             
-            if (addedCounter % 20000 == 0) {
+            if (addedCounter % 100000 == 0) {
                 out.println("Added " + addedCounter + " cards.");
             }
             
@@ -166,12 +139,38 @@ public class CcDbNightTest {
         
         double time = (System.nanoTime() - t0) * 1e-9;
         
+        c.sync();
+        
         out.format("Added %d cards in %.1f s. %.3f ms per card.\n", 
                 addedCounter, time, (time / addedCounter) * 1000.0);
-        
-        c.sync();
     }
-    
+
+    @SuppressWarnings("unused") 
+    private void checkCount() {
+        // Scan of /cards/ to count all cards.
+        
+        out.println("Counting all cards...");
+        int counter = 0;
+        
+        long t0 = System.nanoTime();
+        for (byte[] v : c.usePrimary(byte[].class).dir("/cards/").objects()) {
+            counter++;
+        }
+        double time = 1e-9 * (System.nanoTime() - t0);
+        
+        out.format("Actual card count: %d. Counted in %.3f seconds (%.3f ms per card).\n", 
+                counter, time, time / counter * 1000.0);
+        //out.format("evictCount: %d.\n", evictor.getEvictCount());
+        
+        if (counter != n) {
+            throw new AssertionError("Missing cards, found " + counter + " cards out of " + n + ".");
+        }
+    }
+
+    protected void finalize() {
+        database.stop();
+    }
+
     /** Database key string of a card with given index. */
     private String cardIndexToKey(int index) {
         if (index < 0 || index > n - 1) {
@@ -227,6 +226,33 @@ public class CcDbNightTest {
         t.go();
     }
     
+    
+    @Nano("night")
+    private static void testIt3(TestEnvironment env) throws IOException {
+        File tempDir = env.createTempDir();
+        
+        CcDbNightTest t = new CcDbNightTest();
+        t.dir = tempDir.getAbsolutePath();
+        t.n = 1*1000000;
+        t.cacheSizeInMb = 400;     // note
+        t.encrypt = false;
+        t.out = env.out();
+        t.go();
+    }
+    
+    @Nano("night")
+    private static void testIt4(TestEnvironment env) throws IOException {
+        File tempDir = env.createTempDir();
+        
+        CcDbNightTest t = new CcDbNightTest();
+        t.dir = tempDir.getAbsolutePath();
+        t.n = 100 * 1000;
+        t.cacheSizeInMb = 10;
+        t.encrypt = false;
+        t.out = env.out();
+        t.go();
+    }
+    
     public static class Stats {
         int cards;   // estimated number of cards in database
         
@@ -243,9 +269,9 @@ public class CcDbNightTest {
 170729
 ======
 
-Branch separate-startup-trans-1605.
-
-
+testIt1: ok
+testIt2: java.lang.AssertionError: Missing cards, found 985144 cards out of 1000000.
+testIt3: ok
 
 
 151114

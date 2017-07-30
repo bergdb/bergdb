@@ -6,7 +6,6 @@ import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-
 import bergdb.common.AssertStatus;
 import bergdb.common.Bytes;
 import bergdb.dag.AccessData;
@@ -26,7 +25,7 @@ import bergdb.nanotest.Nano;
  * 
  * @author Frans Lundberg
  */
-public class Cache2 {
+public class Cache2 implements Cache {
     //
     // Cache2, change definition of targetSize. Here, targetSize is the
     // cache distance used to determine accessTimeLimit. 
@@ -62,7 +61,7 @@ public class Cache2 {
     private final AtomicLong totalSize;    
         // Estimate of current total cache size (estimate of memory byte size).
     private final AtomicLong putSize;      
-        // Total size of all nodes put to cache, always increasing. Uses as a time unit.
+        // Total size of all nodes put to cache, always increasing. Used as a time unit.
     private final PointerLocks pointerLocks;
     private final DbInfo dbInfo;
     
@@ -101,6 +100,9 @@ public class Cache2 {
         evictor = new Evictor();
     }
     
+    /* (non-Javadoc)
+     * @see bergdb.core.Cache#setSizeIndicator(long)
+     */
     public void setSizeIndicator(long sizeIndicator) {
         assert sizeIndicator > 0;
         
@@ -111,10 +113,16 @@ public class Cache2 {
         this.sizeValue.set((long) (sizeIndicator * SIZE_INDICATOR_TO_SIZE_VALUE));
     }
     
+    /* (non-Javadoc)
+     * @see bergdb.core.Cache#getSizeIndicator()
+     */
     public long getSizeIndicator() {
         return (long) (sizeValue.get() / SIZE_INDICATOR_TO_SIZE_VALUE);
     }
     
+    /* (non-Javadoc)
+     * @see bergdb.core.Cache#putIndexNode(bergdb.dag.Node)
+     */
     public void putIndexNode(Node node) {
         // getMemSize() is constant for a particular TopNode instance.
         // But *not* for a KeyNode instance.
@@ -149,6 +157,9 @@ public class Cache2 {
         evictor.possiblyEvict();
     }
     
+    /* (non-Javadoc)
+     * @see bergdb.core.Cache#putValueNode(bergdb.dag.ValueNode)
+     */
     public void putValueNode(ValueNode node) {
         byte[] value = node.value;
         
@@ -217,6 +228,9 @@ public class Cache2 {
         return memSize + NODE_MEM_OVERHEAD;
     }
     
+    /* (non-Javadoc)
+     * @see bergdb.core.Cache#getIndexNode(long)
+     */
     public Node getIndexNode(long id) {
         NodeReference ref;
         Node result;
@@ -231,6 +245,9 @@ public class Cache2 {
         return result;
     }
     
+    /* (non-Javadoc)
+     * @see bergdb.core.Cache#getValueNode(long)
+     */
     public ValueNode getValueNode(long id) {
         NodeReference ref;
         ValueNode result;
@@ -247,22 +264,37 @@ public class Cache2 {
         return result;
     }
     
+    /* (non-Javadoc)
+     * @see bergdb.core.Cache#getIndexLockObject(long)
+     */
     public Object getIndexLockObject(long id) {
         return indexMap(id);
     }
     
+    /* (non-Javadoc)
+     * @see bergdb.core.Cache#getValueLockObject(long)
+     */
     public Object getValueLockObject(long id) {
         return valueMap(id);
     }
     
+    /* (non-Javadoc)
+     * @see bergdb.core.Cache#totalSize()
+     */
     public long totalSize() {
         return totalSize.get();
     }
 
+    /* (non-Javadoc)
+     * @see bergdb.core.Cache#putSize()
+     */
     public long putSize() {
         return putSize.get();
     }
     
+    /* (non-Javadoc)
+     * @see bergdb.core.Cache#cleanupAllRefQueues()
+     */
     public void cleanupAllRefQueues() {
         for (int i = 0; i < MAP_COUNT; i++) {
             synchronized (indexMaps[i]) {
@@ -535,7 +567,7 @@ public class Cache2 {
         }
         
         /**
-         * Evicts all evicable out-bound pointers of 'node'.
+         * Evicts all evictable out-bound pointers of 'node'.
          */
         private void evictNodePointers(Node node) {
             //
@@ -552,7 +584,7 @@ public class Cache2 {
                 return;
             }
             
-            // TODO D. What is the evict condition?
+            // TODO B. What is the evict condition?
             if (node.isDirty()) {
                 return;
             }
@@ -570,7 +602,7 @@ public class Cache2 {
                                 && AccessData.getAccessTime(node.getPointerAccessData(i)) 
                                         <= accessTimeLimit) {
                             
-                            // TODO D. What is the evict condition?
+                            // TODO B. What is the evict condition?
                             if (!pointee.isDirty()) {
                                 node.setPointer(i, null, pointeePos);
                                 evictCount++;
@@ -595,7 +627,7 @@ public class Cache2 {
     }
     
     @Nano private static void testSanity1() {
-        Cache2 m = testObject();
+        Cache m = testObject();
         KeyNode node = new KeyNode();
         node.setId(1234L);
         m.putIndexNode(node);
@@ -605,7 +637,7 @@ public class Cache2 {
     }
     
     @Nano private static void testSanity2() {
-        Cache2 m = testObject();
+        Cache m = testObject();
         ValueNode node = new ValueNode(new byte[200]);
         node.setSpos(1234L);
         assert node.getId() == 1234L;
@@ -625,7 +657,7 @@ public class Cache2 {
     }
     
     @Nano private static void testDuplicateValueNodes() {
-        Cache2 m = testObject();
+        Cache m = testObject();
         ValueNode node = new ValueNode(new byte[1000]);
         node.setSpos(1234L);
         assert node.getId() == 1234L;
@@ -644,7 +676,7 @@ public class Cache2 {
     }
     
     @Nano private static void testDuplicateIndexNodes() {
-        Cache2 m = testObject();
+        Cache m = testObject();
         KeyNode node = new KeyNode();
         node.setId(222L);
         assert node.getId() == 222L;
@@ -723,7 +755,7 @@ Evict code from Release 2014.4:
 
     private void evictPointers(Node node, EvictData ed) {
         //
-        // Iterates the pointers and evicts a pointee that fullfills all conditions:
+        // Iterates the pointers and evicts a pointee that fulfills all conditions:
         // * pointee != null (is a memory pointer)
         // * Spos of pointee is not Spos.NULL
         // * Spos of pointee is smaller than current startup pos of database.
@@ -743,7 +775,7 @@ Evict code from Release 2014.4:
                 if (pointee != null) {
                     long pointeePos = pointee.getSpos();
                     if (pointeePos != Spos.NULL
-                            && pointeePos % 8 == 0  // NOTE this condition added with "vpos" approach ("vpos" branch)
+                            && pointeePos % 8 == 0  // Note this condition added with "vpos" approach ("vpos" branch)
                             && pointeePos < ed.startupPos
                             && AccessData.getAccessTime(node.getPointerAccessData(i)) 
                                     <= ed.accessTimeLimit) {

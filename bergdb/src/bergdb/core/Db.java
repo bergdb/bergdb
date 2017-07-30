@@ -132,7 +132,7 @@ public class Db {
     private final PointerLocks pointerLocks;
     private File createdTxtDir;
     private String createdTxtCryptoKeyInfo;
-    private Cache2 cache;
+    private Cache cache;
     
 
     /**
@@ -152,7 +152,11 @@ public class Db {
             }
         };
         
-        cache = new Cache2(pointerLocks, dbInfo);
+        // TODO A. now
+        //cache = new Cache2(pointerLocks, dbInfo);
+        //cache.setSizeIndicator(b.cacheSizeIndicator);
+        
+        cache = new Cache3(pointerLocks, dbInfo);
         cache.setSizeIndicator(b.cacheSizeIndicator);
  
         this.maxNodeSize = b.maxNodeSize;
@@ -505,7 +509,7 @@ public class Db {
                 // listener.pointerFollowed().
                 // If it is a stream pointer, release 'lock', read node, and acquire lock 
                 // again. Then do the same, if isMem() do the same as above, else handle
-                // the stream pointer case, but not we have read the node already and can 
+                // the stream pointer case, but now we have read the node already and can 
                 // quickly do what we should without blocking I/O call while holding 'lock'.
                 //
                 
@@ -685,6 +689,7 @@ public class Db {
         assert dag != null : "dag is null";
         
         PutData putData = dag.newPutData();
+        
         putData.nodeChangeListener = new Dag.NodeChangeListener() {
             public void topNodeCreated(TopNode node) {
                 // The gotDirty code in the PointerListener is not enough for
@@ -726,6 +731,16 @@ public class Db {
             public void pointerFollowed(Node predecessor, int pointerIndex, Node result, int pointerType) {
                 pListener.pointerFollowed(predecessor, pointerIndex, result, pointerType);
                 makeDirtyIfNeeded(result);
+            }
+        };
+        
+        putData.pointerCreatedListener = new Dag.PointerCreatedListener() {
+            public void pointerCreated(Node from, int index, Node to) {
+                // TODO A. tell cache about this!
+                // However, note that id of from, id of to not necessarily known here, not
+                // known until transaction done and nodes written to stream.
+                
+                assert !Spos.isNull(from.getId()) : "Db, pointer from.getId() == Spos.NULL, from: " + from.print("  ");
             }
         };
         
@@ -1038,14 +1053,6 @@ public class Db {
 
         aux.getOpCount.incrementAndGet();
         return result;
-    }
-    
-    /**
-     * Follows the pointers in the Db graph from the super top node using the given 
-     * node index choices. Useful for testing.
-     */
-    public Node findNode(int[] choices, GetData gd) {
-        return dag.findNode(choices, gd);
     }
 
     /**
@@ -1485,9 +1492,7 @@ public class Db {
     /**
      * Access to the internal structure of the Db object.
      * Do NOT use these methods for normal operation, they are available
-     * for developement, testing, and internal use.
-     * An instance of this class separates external usage from internal usage
-     * of the Db object.
+     * for development, testing, and internal use.
      */
     public class Internal {
         public TopNode superRoot() { return dag.getSuperRoot(); }
@@ -1516,7 +1521,7 @@ public class Db {
         
         public Aux aux() { return aux; }
         
-        public Cache2 cache() { return cache; }
+        public Cache cache() { return cache; }
 
         public AppendOnlyStream getMainStream() {
             return storageManager.getMainStream();
@@ -1531,6 +1536,14 @@ public class Db {
         
         public void handleStillDirtyNodes() {
             Db.this.handleStillDirtyNodes();
+        }
+        
+        /**
+         * Follows the pointers in the Db graph from the super top node using the given 
+         * node index choices. Useful for testing.
+         */
+        public Node findNode(int[] choices, GetData gd) {
+            return dag.findNode(choices, gd);
         }
     }
     
@@ -1836,7 +1849,7 @@ Max node size   CorePerf geo mean (get, get4t, getmany, set)
 30              0.77 (0.79, 0.98, 0.86, 0.54)
 62              0.89 (0.86, 1.06, 1.22, 0.60)
 
-The default maxNodeSize = 30 is still a resonable choice.
+The default maxNodeSize = 30 is still a reasonable choice.
 14 is even faster for the CorePerf geo mean, but 30 is best for getOne() 
 performance (one or 4 threads).
 

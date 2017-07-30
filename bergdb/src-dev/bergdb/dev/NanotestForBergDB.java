@@ -34,7 +34,13 @@ public class NanotestForBergDB {
             return;
         }
         
-        CommandLine c = new CommandLine(args);        
+        CommandLine c = new CommandLine(args);
+        
+        if (c.has("help")) {
+            System.out.println(getHelp());
+            return;
+        }
+        
         ConsoleUI ui = new ConsoleUI();
         ui.applyOptions(c);
         
@@ -45,7 +51,7 @@ public class NanotestForBergDB {
         }
         
         String classPatternString = ".*";
-        if (c.has("c")) {
+        if (c.hasOne("c")) {
             classPatternString = c.getOne("c");
         }
         
@@ -89,12 +95,13 @@ public class NanotestForBergDB {
         StringBuilder b = new StringBuilder();
         b.append("---- help ----\n");
         b.append("Options:\n");
-        b.append("-c <classPattern> is a regexp for the name of the classes to include.\n");
-        b.append("-m <methodPattern> is a regexp for the method names to include.\n");
-        b.append("-s Be silent (quiet)\n");
-        b.append("-d Print less, only dots and result.\n");
-        b.append("-v Be verbose\n");
-        b.append("-vv Be max verbose\n");
+        b.append("-c <classPattern>  A regexp for the name of the classes to include.\n");
+        b.append("-m <methodPattern>  A regexp for the method names to include.\n");
+        b.append("-s  Be silent (quiet)\n");
+        b.append("-d  Print less, only dots and result.\n");
+        b.append("-v  Be verbose\n");
+        b.append("-vv  Be max verbose\n");
+        b.append("-help  Print this help\n");
         b.append("\n");
         b.append("If methodPattern is missing, all test methods of the selected classes will run.\n");
         b.append("If classPattern is missing, all classes with test methods will be tested.\n");

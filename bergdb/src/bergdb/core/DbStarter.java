@@ -27,7 +27,8 @@ import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
 
 /**
- * A function-class for the database startup algorithm; see start().
+ * A one-function class for the database startup algorithm; see start().
+ * start() creates the Dag and runs the startup algorithm.
  * 
  * @author Frans Lundberg
  */
@@ -137,7 +138,8 @@ public class DbStarter {
         //
         // * Creates nextMap.
         // * Creates posMap
-        //      Only latest version of nodes added. Nodes created after startupTime, not added.
+        //      Only latest version of nodes added. Nodes created after startupTime
+        //      are not added.
         //
         
         int transCount = transactions.size();
@@ -353,9 +355,8 @@ public class DbStarter {
                 }
                 
                 gotDirtyNode = this.db.internal().nodeStream().readNode(spos);
-                // TODO A. this is not OK considering caching; we need common way...
-                // of reading nodes from stream that includes caching.
-                
+                // TODO B. this is not OK considering caching; we need *one* 
+                // common way of reading nodes from stream that includes caching.
             }
             
             gotDirtyNode.setDirty(true);

@@ -202,7 +202,7 @@ public class Jmx {
         }
         
         public double getCacheFillFactor() {
-            Cache2 c = db.internal().cache();
+            Cache c = db.internal().cache();
             return c.totalSize() / (double) c.getSizeIndicator();
         }
         

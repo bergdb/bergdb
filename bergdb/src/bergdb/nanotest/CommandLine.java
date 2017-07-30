@@ -144,4 +144,13 @@ public class CommandLine {
         CommandLine line = new CommandLine(new String[]{"value1", "value2"});
         Assert.assertEquals(0, line.optionCount());
     }
+    
+    @Nano
+    public static void cOption() {
+        CommandLine line = new CommandLine(new String[]{"-c", "v1"});
+        Assert.assertEquals(1, line.optionCount());
+        Assert.assertEquals(1, line.valueCount("c"));
+        Assert.assertEquals(true, line.has("c"));
+        Assert.assertEquals(true, line.hasOne("c"));
+    }
 }
