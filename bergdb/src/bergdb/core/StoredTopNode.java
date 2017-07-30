@@ -1,7 +1,5 @@
 package bergdb.core;
 
-// TODO D. study: should we have prevPos field in StoredTopNode like for StoredKeyNode.
-
 import bergdb.common.Bug;
 import bergdb.common.Bytes;
 import bergdb.dag.Node;
@@ -187,11 +185,11 @@ public class StoredTopNode implements StoredNode {
         buffer[offset++] = spos;
 
         for (int i = 0; i < node.pointersLength; i++) {
-            Node pointersNode = node.pointers[i];
-            spos = pointersNode == null ? node.pointersPos[i] : pointersNode.getSpos();
+            Node pointerNode = node.pointers[i];
+            spos = pointerNode == null ? node.pointersPos[i] : pointerNode.getSpos();
             buffer[offset++] = spos;
 
-            long time = pointersNode == null ? -1 : node.pointersTime[i];
+            long time = pointerNode == null ? -1 : node.pointersTime[i];
             buffer[offset++] = time;
         }
         

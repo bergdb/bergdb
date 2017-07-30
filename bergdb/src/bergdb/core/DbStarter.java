@@ -360,7 +360,7 @@ public class DbStarter {
                 }
                 
                 gotDirtyNode = this.db.internal().nodeStream().readNode(spos);
-                // TODO C. this is not OK considering caching; we need *one* 
+                // TODO B. this is not OK considering caching; we need *one* 
                 // common way of reading nodes from stream that includes caching.
             }
             
@@ -716,6 +716,7 @@ public class DbStarter {
         n.addKlong(10, Klong.createKey(Util.toBytes("a")), v0, AccessData.DEFAULT_ACCESS_DATA);
         n.addKlong(20, Klong.createKey(Util.toBytes("b")), v1, AccessData.DEFAULT_ACCESS_DATA);
         n.addKlong(30, Klong.createKey(Util.toBytes("c")), v2, AccessData.DEFAULT_ACCESS_DATA);
+        n.setId(103);
         
         transNodes.addValueNode(v0, Keys.toSegments("a"));
         transNodes.addValueNode(v1, Keys.toSegments("b"));

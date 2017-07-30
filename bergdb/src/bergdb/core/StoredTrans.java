@@ -520,7 +520,6 @@ public class StoredTrans {
             for (int i = 0; i < transNodes.topCount; i++) {
                 TopNode node = transNodes.topNodes[i];
                 node.spos = currentPos;
-                node.id = (node.id == Spos.NULL) ? currentPos : node.id;    // TODO B. why is this needed?
                 totalSize += StoredTopNode.getByteSize(node);
                 currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
             }
@@ -532,7 +531,6 @@ public class StoredTrans {
                     KeyNode node = transNodes.keyNodes[i];
                     prevPos[prevPosIndex++] = node.spos;
                     node.spos = currentPos;
-                    node.id = (node.id == Spos.NULL) ? currentPos : node.id;   // TODO B. why is this needed?
                     totalSize += StoredKeyNode.getByteSize(node);
                     currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
                 }
@@ -790,6 +788,7 @@ public class StoredTrans {
         ValueNode v2 = new ValueNode(new byte[]{13, 14});
         
         KeyNode n = new KeyNode();
+        n.setId(101);
         n.addKlong(10, Klong.createKey(Util.toBytes("a")), v0, AccessData.DEFAULT_ACCESS_DATA);
         n.addKlong(20, Klong.createKey(Util.toBytes("b")), v1, AccessData.DEFAULT_ACCESS_DATA);
         n.addKlong(30, Klong.createKey(Util.toBytes("c")), v2, AccessData.DEFAULT_ACCESS_DATA);
@@ -895,6 +894,7 @@ public class StoredTrans {
         
         ValueNode v0 = new ValueNode(new byte[]{});
         KeyNode n = new KeyNode();
+        n.setId(101);
         n.addKlong(10, Klong.createKey(Util.toBytes("a")), v0, AccessData.DEFAULT_ACCESS_DATA);
         
         transNodes.addValueNode(v0, Keys.toSegments("a"));

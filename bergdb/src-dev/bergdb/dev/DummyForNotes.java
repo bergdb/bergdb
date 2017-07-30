@@ -13,6 +13,8 @@ Only interfaces and exceptions should be there, no real implementation - just in
 needed to quickly share things without the need for pubimp to convert everything between types.
 Would be tedious to replace every exception thrown from core in pubimp.
 
+TODO LATER. study: should we have prevPos field in StoredTopNode like for StoredKeyNode.
+ 
 */
 
 /**

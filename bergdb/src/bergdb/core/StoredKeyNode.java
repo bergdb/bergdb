@@ -67,15 +67,12 @@ public class StoredKeyNode implements StoredNode {
 
         System.arraycopy(node.klongs, 0, buffer, offset, sz);
         offset += sz;
-
+        
+        Pointer p = new Pointer();
+        
         for (int i = 0; i < sz; i++) {
-            // TODO B. use Pointer code? Also, iterate using node.getSize()... is more generic.
-            //Pointer p = new Pointer();
-            //node.getPointer(i, p);
-            //p.getSposToStore();
-            
-            long spos = node.pointers[i] == null ? node.pos[i] : node.pointers[i].getSpos();
-            buffer[offset++] = spos;
+            node.getPointer(i, p);
+            buffer[offset++] = p.getSposForStream();
         }
         
         long checksum = NodeChecksum.sum(buffer, firstOffset, offset - firstOffset);

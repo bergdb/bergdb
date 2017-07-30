@@ -79,7 +79,10 @@ public final class TopNode implements Node {
         k.setSpos(keyNodeSpos);
         k.setId(keyNodeSpos);
         
-        return new TopNode(topNodeId, k, k.getSpos(), 1, 100);
+        TopNode result = new TopNode(topNodeId, k, k.getSpos(), 1, 100);
+        result.setId(103);
+        
+        return result;
     }
     
     public int getTopNodeId() {

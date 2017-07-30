@@ -1,9 +1,9 @@
 package bergdb.core;
 
 import java.util.Iterator;
-
 import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
+import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
@@ -54,6 +54,8 @@ public final class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.T
     }
     
     public final void addTopNode(TopNode node) {
+        assert !Spos.isNull(node.getId()) : "bad node id, addTopNode(), " + node.toString();
+        
         if (!node.isInTransNodes) {
             assert assertNoDuplicateTopNodeId(node);
             
@@ -71,6 +73,8 @@ public final class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.T
     }
 
     public final void addKeyNode(KeyNode node) {
+        assert !Spos.isNull(node.getId()) : "bad node id, addKeyNode(), " + node.toString();
+        
         if (!node.isInTransNodes) {
             node.isInTransNodes = true;
             
@@ -86,6 +90,8 @@ public final class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.T
     }
 
     public final void addValueNode(ValueNode node, long[] key) {
+        assert !Spos.isNull(node.getId()) : "bad node id, addValueNode(), " + node.toString();
+        
         if (!node.isInTransactionNodes) {
             node.isInTransactionNodes = true;
             
@@ -432,8 +438,8 @@ public final class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.T
     
     @Nano
     public static void testIndexNodeIterator1() {
-        KeyNode k1 = new KeyNode();
-        KeyNode k2 = new KeyNode();
+        KeyNode k1 = k1();
+        KeyNode k2 = k2();
         Node[] expected = new Node[]{k1, k2};
         
         TransNodes transNodes = new TransNodes();
@@ -458,8 +464,8 @@ public final class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.T
     
     @Nano
     public static void testIndexNodeIterator3() {
-        KeyNode k1 = new KeyNode();
-        KeyNode k2 = new KeyNode();
+        KeyNode k1 = k1();
+        KeyNode k2 = k2();
         TopNode t1 = TopNode.createDummy(1);
         Node[] expected = new Node[]{t1, k1, k2};
         
@@ -476,5 +482,17 @@ public final class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.T
         }
         
         Assert.assertEquals(expected.length, index);
+    }
+    
+    private static KeyNode k1() {
+        KeyNode k = new KeyNode();
+        k.setId(101);
+        return k;
+    }
+    
+    private static KeyNode k2() {
+        KeyNode k = new KeyNode();
+        k.setId(103);
+        return k;
     }
 }

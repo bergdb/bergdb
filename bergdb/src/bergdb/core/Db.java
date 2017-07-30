@@ -734,14 +734,11 @@ public class Db {
         putData.pointerCreatedListener = new Dag.PointerCreatedListener() {
             public void pointerCreated(Node from, int index, Node to) {
                 // TODO A. tell cache about this!
-                // However, note that id of from, id of to not necessarily known here, not
-                // known until transaction done and nodes written to stream.
                 
                 assert !Spos.isNull(from.getId()) : 
-                    "Db, pointer from.getId() == Spos.NULL, from: " + from + ", to: " + to;
+                    "from-node has NULL id, from: " + from + ", to: " + to;
                 assert !Spos.isNull(to.getId()) : 
-                    "Db, XXX, to-node has no id, pointer from " + from + ", to: " + to;
-                
+                    "to-node has NULL id, from " + from + ", to: " + to;
             }
         };
         
@@ -783,14 +780,15 @@ public class Db {
     }
 
     /**
-     * Creates the two primordial transaction nodes and writes them to db stream.
+     * Creates the two nodes for the primordial transaction and writes them to
+     * the db stream. This is a special case treated as such.
      */
     private void writePrimordialTransaction() {
         //
         // Created node instances should not "leak" from this method.
-        // The startup process will create the node instance from the stream.
+        // The startup process will create the node instances from the stream.
         // We do not want duplicates. Just append the nodes to stream, 
-        // this method should not change in-memory state.
+        // this method should not change the in-memory state.
         //
         
         long tt;
@@ -803,6 +801,9 @@ public class Db {
         KeyNode root = KeyNode.nodeWithTime(tt);
         TopNode superRoot = TopDs.createSuperRootFromFirstKeyNode(tt, root, 
                 AccessData.DEFAULT_ACCESS_DATA, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+        
+        setIdOfNode(root);
+        setIdOfNode(superRoot);
         
         MetaBlock meta = nodeStream.getMetaBlock();
         meta.setId(databaseId.getBytes());

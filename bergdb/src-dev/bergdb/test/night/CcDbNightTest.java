@@ -6,7 +6,6 @@ import java.io.PrintStream;
 import java.util.Random;
 import bergdb.common.Bytes;
 import bergdb.common.Util;
-import bergdb.core.Db;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Connection;
@@ -14,7 +13,6 @@ import bergdb.pub.CryptoKey;
 import bergdb.pub.Database;
 import bergdb.pub.Factory;
 import bergdb.pub.WBuilder;
-import bergdb.pubimp.DatabaseImp;
 
 /**
  * Up to 1M cards in a database. Lookup speed, disk size.
@@ -44,7 +42,7 @@ public class CcDbNightTest {
         
         createDb();
         
-        Db db = ((DatabaseImp) database).getDb();
+        //Db db = ((DatabaseImp) database).getDb();
         //evictor = CacheInterface.TestAccess.evictor(db.internal().cache());
         
         addCards();

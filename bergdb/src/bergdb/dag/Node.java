@@ -3,7 +3,14 @@ package bergdb.dag;
 /**
  * <p>A node in the Dag. There are three types of nodes: TopNode, KeyNode, 
  * and ValueNode. Top nodes and key nodes are called <i>index nodes</i> 
- * since that are used to index the value nodes.</p>
+ * since that are used to index the value nodes.<p>
+ * 
+ * <p>Node ID. Each node has a unique node id (node.getId()). It is set when the node is
+ * created. Db sets the id to a vpos (virtual stream position).</p>
+ * 
+ * <p>Node spos. Each node has an spos field value. When the node is created, 
+ * this is set to the id of the node (the vpos given to it). Once the node
+ * has been written to stream, the actual real stream position is used for the spos field.</p>
  * 
  * <p>A node has a number of pointers to other nodes. They can be iterated
  * with code like this:

@@ -1,14 +1,6 @@
 package bergdb.core;
 
-import java.lang.ref.ReferenceQueue;
 import java.util.HashMap;
-import java.util.concurrent.atomic.AtomicLong;
-
-import bergdb.common.AssertStatus;
-import bergdb.core.Cache.DbInfo;
-import bergdb.core.Cache2.AlreadyHasNode;
-import bergdb.core.Cache2.Evictor;
-import bergdb.core.Cache2.NodeReference;
 import bergdb.dag.Node;
 import bergdb.dag.ValueNode;
 
@@ -28,8 +20,8 @@ public class Cache3 implements Cache {
     //
     
     private static final long INITIAL_CACHE_SIZE = 10*1000;
-    private final PointerLocks pointerLocks;
-    private final Cache.DbInfo dbInfo;
+    //private final PointerLocks pointerLocks;
+    //private final Cache.DbInfo dbInfo;
     private final Object lock;
     private long sizeIndicator;
     private long totalSize;     // total cache size estimation, in bytes
@@ -41,8 +33,8 @@ public class Cache3 implements Cache {
         assert dbInfo != null;
         
         this.lock = new Object();
-        this.pointerLocks = pointerLocks;
-        this.dbInfo = dbInfo;
+        //this.pointerLocks = pointerLocks;
+        //this.dbInfo = dbInfo;
         this.totalSize = INITIAL_CACHE_SIZE;
         this.putSize = INITIAL_CACHE_SIZE;
         this.map = new HashMap<Long, Node>();

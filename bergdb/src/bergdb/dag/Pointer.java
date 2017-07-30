@@ -69,8 +69,17 @@ public class Pointer {
     }
     
     public final boolean isNull() {
-        // Note, consider inlining for performance.
         return isNull(node, pos);
+    }
+    
+    /**
+     * Returns the spos-value to store in the node stream.
+     * This is the pointee's spos for a memory pointer and the pos value
+     * for a stream pointer.
+     * If the pointer is null (pos == Spos.NULL) this value is returned.
+     */
+    public long getSposForStream() {
+        return isMem() ? node.getSpos() : pos;
     }
     
     public static final boolean isNull(Node node, long pos) {
