@@ -48,7 +48,6 @@ public class Jmx {
         public long getCacheSizeIndicator();
         public void setCacheSizeIndicator(long sizeIndicator);
         public long getCacheTotalSize();
-        public double getCacheFillFactor();
         public long getKvCount();
         public long getTransactionCount();
         public long getGetOpCount();
@@ -199,11 +198,6 @@ public class Jmx {
         
         public long getCacheTotalSize() {
             return db.internal().cache().totalSize();
-        }
-        
-        public double getCacheFillFactor() {
-            Cache c = db.internal().cache();
-            return c.totalSize() / (double) c.getSizeIndicator();
         }
         
         public long getKvCount() {

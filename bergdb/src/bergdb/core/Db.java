@@ -11,14 +11,11 @@ import bergdb.common.Util;
 import bergdb.core.DbHelper.AddReplicaClass;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
-import bergdb.dag.Dag.CachePolicy;
-import bergdb.dag.Dag.PointerListener;
 import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
 import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.NodeVisitor;
-import bergdb.dag.Pointer;
 import bergdb.dag.PointerFollower;
 import bergdb.dag.PutData;
 import bergdb.dag.Spos;
@@ -81,6 +78,8 @@ public class Db {
     
     private Dag dag;
     
+    private final NodeCollection nodeCollection;
+    
     private final NodeStream nodeStream;
     
     private TransSeq transSeq;
@@ -132,7 +131,7 @@ public class Db {
     private final PointerLocks pointerLocks;
     private File createdTxtDir;
     private String createdTxtCryptoKeyInfo;
-    private Cache cache;
+    private Cache3 cache;
     
 
     /**
@@ -150,9 +149,13 @@ public class Db {
             public long getStartupPosForEvict() {
                 return x.startupPos.getForEvict();
             }
+
+            public PointerLocks getPointerLocks() {
+                return pointerLocks;
+            }
         };
         
-        cache = new Cache3(pointerLocks, dbInfo);
+        cache = new Cache3(dbInfo);
         cache.setSizeIndicator(b.cacheSizeIndicator);
  
         this.maxNodeSize = b.maxNodeSize;
@@ -166,6 +169,8 @@ public class Db {
         RecoverableStream rstream = new RecoverableStream(aos, metaBlock);
         this.nodeStream = new NodeStream(rstream, writeLock);
         this.nodeStream.getMetaBlock().setStartupDistance(b.startupDistance);
+        
+        this.nodeCollection = new NodeCollection(dbInfo, nodeStream);
         
         this.dbClock = new DbClock(b.clock);
         this.reclaim = new Reclaim(this, aos);
@@ -489,110 +494,7 @@ public class Db {
     }
 
     private void startDb(ArrayList<StoredTrans> transactions) {
-        PointerFollower pointerFollower = new PointerFollower() {
-            public Node followPointer(Node predecessor, int pointerIndex, long accessData,
-                    PointerListener pointerListener, CachePolicy cachePolicy) {
-                //
-                // It is possible that concurrent threads will read same node 
-                // from stream and try to add it to the cache. That is why we need to use existing 
-                // node from cache if there is one there. See [synchronized (cacheLock)]
-                // clauses in this method.
-                //
-                // Note, it is possible to avoid holding 'lock' while reading from stream, 
-                // I believe. The node in the stream is immutable. 
-                // So, the algo would be to first acquire 'lock', then if pointer is
-                // a memory pointer (isMem() == true), just set access data and call 
-                // listener.pointerFollowed().
-                // If it is a stream pointer, release 'lock', read node, and acquire lock 
-                // again. Then do the same, if isMem() do the same as above, else handle
-                // the stream pointer case, but now we have read the node already and can 
-                // quickly do what we should without blocking I/O call while holding 'lock'.
-                //
-                
-                Node result;
-                assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
-                assert predecessor != null : "predecessor is null";
-                assert accessData == 0 || AccessData.isValid(accessData);
-
-                final Object pointerLock = pointerLocks.getLock(predecessor, pointerIndex);
-
-                synchronized (pointerLock) {
-                    Node pointerNode = predecessor.getPointerNode(pointerIndex);
-                    long pointerPos = predecessor.getPointerPos(pointerIndex);
-
-                    assert !Pointer.isNull(pointerNode, pointerPos) : "Pointer is null: " + pointerNode
-                            + ", " + pointerPos;
-
-                    if (Pointer.isMem(pointerNode)) {
-                        result = pointerNode;
-                        if (accessData != 0) {
-                            predecessor.setPointerAccessData(pointerIndex, accessData);
-                        }
-                        pointerListener.pointerFollowed(
-                                predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
-                    
-                    } else {
-                        assert pointerPos >= 0 && pointerPos % 2 == 0 
-                                : "bad pointerPos (" + pointerPos 
-                                + "), to read from stream"
-                                + ", pointerIndex:" + pointerIndex 
-                                + ", predecessor:" + predecessor.print();
-                        
-                        NodeHeader header = nodeStream.readNodeHeader(pointerPos);
-                        boolean isValueNode = header.type() == Node.TYPE_VALUE;
-                        long id = header.id();
-                        
-                        result = isValueNode ? cache.getValueNode(id) : cache.getIndexNode(id);
-                        
-                        if (result == null) {
-                            result = nodeStream.readNode(pointerPos);
-                            
-                            assert result.getId() == header.id() 
-                                    : "ids differ, " + result.getId() + " != " + header.id();
-                            assert result.getType() == header.type()
-                                    : "types differ, " + result.getType() + ", " + header.type();
-                            
-                            if (cachePolicy.shouldCache(result)) {
-                                
-                                if (isValueNode) {                                    
-                                    Object cacheLock = cache.getValueLockObject(id);
-                                    synchronized (cacheLock) {                                        
-                                        ValueNode existingNode = cache.getValueNode(id);
-                                        if (existingNode == null) {
-                                            cache.putValueNode((ValueNode) result);
-                                        } else {
-                                            assert existingNode.isValueNode();
-                                            result = existingNode;
-                                        }
-                                    }
-                                    
-                                } else {
-                                    Object cacheLock = cache.getIndexLockObject(id);
-                                    synchronized (cacheLock) {
-                                        Node existingNode = cache.getIndexNode(id);
-                                        if (existingNode == null) {
-                                            cache.putIndexNode(result);
-                                        } else {
-                                            assert existingNode.isIndexNode();
-                                            result = existingNode;
-                                        }
-                                    }
-                                }
-                                
-                                predecessor.setPointer(pointerIndex, result, accessData);
-                            }
-                            
-                            pointerListener.pointerFollowed(
-                                    predecessor, pointerIndex, result, Pointer.TYPE_STREAM);
-                        }
-                    }
-                }
-                
-                return result;
-            }
-        };
-        
-        DbStarter.start(this, transactions, getAccessData(), pointerFollower, maxNodeSize);
+        DbStarter.start(this, transactions, getAccessData(), (PointerFollower) nodeCollection, maxNodeSize);
     }
 
     private void createPutAndGetData() {
@@ -1525,7 +1427,7 @@ public class Db {
         
         public Aux aux() { return aux; }
         
-        public Cache cache() { return cache; }
+        public Cache3 cache() { return cache; }
 
         public AppendOnlyStream getMainStream() {
             return storageManager.getMainStream();

@@ -35,7 +35,9 @@ public interface Cache {
      * Source of dynamic information about the database state
      * needed by the cache implementation. Easy to mock.
      */
-    public static interface DbInfo {
+    public interface DbInfo {
         public long getStartupPosForEvict();
+        public PointerLocks getPointerLocks();
     }
+    
 }

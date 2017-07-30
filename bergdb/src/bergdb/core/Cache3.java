@@ -11,7 +11,7 @@ import bergdb.dag.ValueNode;
  * 
  * @author Frans Lundberg
  */
-public class Cache3 implements Cache {
+public class Cache3 {
     //
     // Simple, non-optimal implementation to start with. 
     // Cache-global locking to start with.
@@ -20,21 +20,19 @@ public class Cache3 implements Cache {
     //
     
     private static final long INITIAL_CACHE_SIZE = 10*1000;
-    //private final PointerLocks pointerLocks;
-    //private final Cache.DbInfo dbInfo;
+    @SuppressWarnings("unused")
+    private final Cache.DbInfo dbInfo;
     private final Object lock;
     private long sizeIndicator;
     private long totalSize;     // total cache size estimation, in bytes
     private long putSize;
     private final HashMap<Long, Node> map;
 
-    public Cache3(PointerLocks pointerLocks, Cache.DbInfo dbInfo) {
-        assert pointerLocks != null;
+    public Cache3(Cache.DbInfo dbInfo) {
         assert dbInfo != null;
         
         this.lock = new Object();
-        //this.pointerLocks = pointerLocks;
-        //this.dbInfo = dbInfo;
+        this.dbInfo = dbInfo;
         this.totalSize = INITIAL_CACHE_SIZE;
         this.putSize = INITIAL_CACHE_SIZE;
         this.map = new HashMap<Long, Node>();

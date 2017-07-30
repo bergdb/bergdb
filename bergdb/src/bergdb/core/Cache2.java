@@ -613,6 +613,10 @@ public class Cache2 implements Cache {
             public long getStartupPosForEvict() {
                 return Long.MAX_VALUE;
             }
+
+            public PointerLocks getPointerLocks() {
+                return null;
+            }
         };
         
         return new Cache2(new PointerLocks(), mockDbInfo);
