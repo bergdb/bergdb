@@ -146,7 +146,7 @@ public class Db {
         keyModSet = new KeyModSet();
         pointerLocks = new PointerLocks();
         
-        Cache2.DbInfo dbInfo = new Cache2.DbInfo() {
+        Cache.DbInfo dbInfo = new Cache.DbInfo() {
             public long getStartupPosForEvict() {
                 return x.startupPos.getForEvict();
             }

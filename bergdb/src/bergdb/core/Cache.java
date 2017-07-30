@@ -30,4 +30,12 @@ public interface Cache {
     public long totalSize();
 
     public long putSize();
+
+    /**
+     * Source of dynamic information about the database state
+     * needed by the cache implementation. Easy to mock.
+     */
+    public static interface DbInfo {
+        public long getStartupPosForEvict();
+    }
 }

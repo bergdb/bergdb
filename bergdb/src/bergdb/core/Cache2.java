@@ -63,11 +63,11 @@ public class Cache2 implements Cache {
     private final AtomicLong putSize;      
         // Total size of all nodes put to cache, always increasing. Used as a time unit.
     private final PointerLocks pointerLocks;
-    private final DbInfo dbInfo;
+    private final Cache.DbInfo dbInfo;
     
     
     @SuppressWarnings("unchecked")
-    public Cache2(PointerLocks pointerLocks, DbInfo dbInfo) {
+    public Cache2(PointerLocks pointerLocks, Cache.DbInfo dbInfo) {
         assert pointerLocks != null;
         assert dbInfo != null;
         
@@ -401,14 +401,6 @@ public class Cache2 implements Cache {
         }
     }
     
-    /**
-     * Source of dynamic information about the database state.
-     * Easy to mock.
-     */
-    public static interface DbInfo {
-        public long getStartupPosForEvict();
-    }
-    
     public static class TestAccess {
         public static int indexMapSize(Cache2 c, int mapIndex) {
             return c.indexMaps[mapIndex].size();
@@ -617,7 +609,7 @@ public class Cache2 implements Cache {
     // ======== Tests ========
     
     private static Cache2 testObject() {
-        DbInfo mockDbInfo = new DbInfo() {
+        Cache.DbInfo mockDbInfo = new Cache.DbInfo() {
             public long getStartupPosForEvict() {
                 return Long.MAX_VALUE;
             }
