@@ -597,13 +597,11 @@ public class Db {
                 assert node.isDirty == false : "node is dirty, " + node;
                 setIdOfNode(node);
                 makeDirtyIfNeeded(node);
-                cache.putIndexNode(node);
             }
             
             public void keyNodeCreated(KeyNode node) {
                 setIdOfNode(node);
                 makeDirtyIfNeeded(node);
-                cache.putIndexNode(node);
             }
             
             public void keyNodeChanged(KeyNode node) {
@@ -635,12 +633,12 @@ public class Db {
         
         putData.pointerCreatedListener = new Dag.PointerCreatedListener() {
             public void pointerCreated(Node from, int index, Node to) {
-                // TODO A. tell cache about this!
-                
                 assert !Spos.isNull(from.getId()) : 
                     "from-node has NULL id, from: " + from + ", to: " + to;
                 assert !Spos.isNull(to.getId()) : 
                     "to-node has NULL id, from " + from + ", to: " + to;
+                
+                cache.pointerCreated(to);
             }
         };
         
@@ -1233,7 +1231,9 @@ public class Db {
         x.transNodes.clean();
         handleStillDirtyNodes();
         nodeStream.appendNodes(x.transNodes, x.trans, x.transInfo.gotDirtyNodes);        
-        addValueNodesToCache();
+        
+        // TODO A.
+        //addValueNodesToCache();
         
         x.trans.nodeCount = x.transNodes.size();
         x.transInfo.tpos = x.trans.tpos;
@@ -1244,17 +1244,6 @@ public class Db {
         transSeq.add(x.transInfo);      // adds to end of transSeq queue
         
         x.startupPos.set(newSp);
-    }
-
-    private void addValueNodesToCache() {
-        // Value nodes are always cached with the current implementation.
-        
-        TransNodes nodes = x.transNodes;
-        
-        for (int i = 0; i < nodes.valueCount; i++) {
-            ValueNode node = nodes.valueNodes[i];
-            cache.putValueNode(node);
-        }
     }
 
     private void handleStillDirtyNodes() {

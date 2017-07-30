@@ -2,7 +2,6 @@ package bergdb.core;
 
 import java.util.HashMap;
 import bergdb.dag.Node;
-import bergdb.dag.ValueNode;
 
 /**
  * A deterministic node cache; size is known, weak references are *not* used.
@@ -26,7 +25,7 @@ public class Cache3 {
     private long sizeIndicator;
     private long totalSize;     // total cache size estimation, in bytes
     private long putSize;
-    private final HashMap<Long, Node> map;
+    private final HashMap<Long, CacheEntry> map;
 
     public Cache3(Cache.DbInfo dbInfo) {
         assert dbInfo != null;
@@ -35,7 +34,7 @@ public class Cache3 {
         this.dbInfo = dbInfo;
         this.totalSize = INITIAL_CACHE_SIZE;
         this.putSize = INITIAL_CACHE_SIZE;
-        this.map = new HashMap<Long, Node>();
+        this.map = new HashMap<Long, CacheEntry>();
         
         synchronized (lock) {}
     }
@@ -60,32 +59,18 @@ public class Cache3 {
             return sizeIndicator;
         }
     }
-
-    public void cleanupAllRefQueues() {
-        // not applicable for this implementation.
-    }
-    
-    public void putIndexNode(Node node) {
-        putNode(node);
-    }
-    
-    public void putValueNode(ValueNode node) {
-        putNode(node);
-    }
     
     public Node getIndexNode(long id) {
         return getNode(id);
     }
     
-    public ValueNode getValueNode(long id) {
-        return (ValueNode) getNode(id);
-    }
-    
-    public Object getIndexLockObject(long id) {
-        return lock;
-    }
-    
-    public Object getValueLockObject(long id) {
+    /**
+     * Gets a lock object for one specific node.
+     * 
+     * @param id
+     *      Node ID.
+     */
+    public Object getLock(long id) {
         return lock;
     }
     
@@ -101,26 +86,34 @@ public class Cache3 {
         }
     }
     
-    private void putNode(Node node) {
-        // Note that memory size *does* change for key nodes.
-        
-        int memorySize = node.getMemSize();
-        long id = node.getId();
+    public void pointerCreated(Node to) {
+        long id = to.getId();
         
         synchronized (lock) {
-            Node previous = map.put(id, node);
-            if (previous != null) {
-                throw new AlreadyHasNode("Already has node with id " + id);
-            }
+            CacheEntry entry = internalGet(id);
             
-            totalSize += memorySize;
+            if (entry == null) {
+                entry = CacheEntry.countOne(to);
+                internalPut(id, entry);
+            } else {
+                entry.count++;
+            }
         }
     }
     
-    private Node getNode(long id) {
+    public Node getNode(long id) {
         synchronized (lock) {
-            return map.get(id);
+            CacheEntry entry = internalGet(id);
+            return entry == null ? null : entry.node;
         }
+    }
+    
+    private void internalPut(long id, CacheEntry entry) {
+        map.put(id, entry);
+    }
+    
+    private CacheEntry internalGet(long id) {
+        return map.get(id);
     }
     
     public static class AlreadyHasNode extends AssertionError {
@@ -128,6 +121,24 @@ public class Cache3 {
         
         public AlreadyHasNode(String message) {
             super(message);
+        }
+    }
+    
+    public static class CacheEntry {
+        public Node node;
+        public short count;
+        
+        private CacheEntry() {
+        }
+        
+        /**
+         * Creates and returns a CacheEntry with cound equal to 1.
+         */
+        public static CacheEntry countOne(Node node) {
+            CacheEntry entry = new CacheEntry();
+            entry.node = node;
+            entry.count = 1;
+            return entry;
         }
     }
 }

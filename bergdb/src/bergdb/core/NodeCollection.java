@@ -6,7 +6,6 @@ import bergdb.dag.AccessData;
 import bergdb.dag.Node;
 import bergdb.dag.Pointer;
 import bergdb.dag.PointerFollower;
-import bergdb.dag.ValueNode;
 
 /**
  * A node collection for Db to use.
@@ -24,6 +23,10 @@ public class NodeCollection implements PointerFollower {
         this.nodeStream = nodeStream;
         this.cache = new Cache3(dbInfo);
         this.pointerLocks = dbInfo.getPointerLocks();
+    }
+    
+    public void pointerCreated(Node to) {
+        cache.pointerCreated(to);
     }
 
     public Node followPointer(Node predecessor, int pointerIndex, long accessData,
@@ -64,21 +67,19 @@ public class NodeCollection implements PointerFollower {
                 if (accessData != 0) {
                     predecessor.setPointerAccessData(pointerIndex, accessData);
                 }
+                
                 pointerListener.pointerFollowed(
                         predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
             
             } else {
                 assert pointerPos >= 0 && pointerPos % 2 == 0 
-                        : "bad pointerPos (" + pointerPos 
-                        + "), to read from stream"
-                        + ", pointerIndex:" + pointerIndex 
-                        + ", predecessor:" + predecessor.print();
+                        : "bad pointerPos (" + pointerPos + "), to read from stream"
+                          + ", pointerIndex:" + pointerIndex + ", predecessor:" + predecessor.print();
                 
                 NodeHeader header = nodeStream.readNodeHeader(pointerPos);
-                boolean isValueNode = header.type() == Node.TYPE_VALUE;
                 long id = header.id();
                 
-                result = isValueNode ? cache.getValueNode(id) : cache.getIndexNode(id);
+                result = cache.getNode(id);
                 
                 if (result == null) {
                     result = nodeStream.readNode(pointerPos);
@@ -89,32 +90,7 @@ public class NodeCollection implements PointerFollower {
                             : "types differ, " + result.getType() + ", " + header.type();
                     
                     if (cachePolicy.shouldCache(result)) {
-                        
-                        if (isValueNode) {                                    
-                            Object cacheLock = cache.getValueLockObject(id);
-                            synchronized (cacheLock) {                                        
-                                ValueNode existingNode = cache.getValueNode(id);
-                                if (existingNode == null) {
-                                    cache.putValueNode((ValueNode) result);
-                                } else {
-                                    assert existingNode.isValueNode();
-                                    result = existingNode;
-                                }
-                            }
-                            
-                        } else {
-                            Object cacheLock = cache.getIndexLockObject(id);
-                            synchronized (cacheLock) {
-                                Node existingNode = cache.getIndexNode(id);
-                                if (existingNode == null) {
-                                    cache.putIndexNode(result);
-                                } else {
-                                    assert existingNode.isIndexNode();
-                                    result = existingNode;
-                                }
-                            }
-                        }
-                        
+                        cache.pointerCreated(result);
                         predecessor.setPointer(pointerIndex, result, accessData);
                     }
                     
