@@ -113,8 +113,7 @@ public class DbStarter {
         
         superRoot.setPointer(0, keyNode, AccessData.DEFAULT_ACCESS_DATA);
         
-        TopDs topDs = new TopDs(superRoot);
-        dag = new Dag(pointerFollower, topDs, maxNodeSize);
+        dag = new Dag(superRoot, pointerFollower, maxNodeSize);
         db.internal().setDag(dag);
         db.internal().setTransSeq(transSeq);
         db.internal().createPutAndGetData();
@@ -236,7 +235,7 @@ public class DbStarter {
     }
 
     private void findSuperNodeAtStartupTime() {
-        TopNode lastSuperNode = findLatestSuperNode(transactions);
+        TopNode lastSuperNode = findLatestSuperRoot(transactions);
         
         if (lastSuperNode == null) {
             throw new StreamFormatException("Could not find super node in startup section, "
@@ -246,14 +245,14 @@ public class DbStarter {
         // We found the latest super node, but we need the one at t = startupTime.
         
         TopDs tempTopDs = new TopDs(lastSuperNode);
-        Dag tempDag = new Dag(pointerFollower, tempTopDs, maxNodeSize);
+        Dag tempDag = new Dag(lastSuperNode, pointerFollower, maxNodeSize);
         superRoot = tempTopDs.findSuperRootAtTime(tempDag, startupTime, tempDag.newGetData());
         if (superRoot == null) {
             throw new StreamFormatException("No super root at time " + startupTime + " was found.");
         }
     }
 
-    private static TopNode findLatestSuperNode(List<StoredTrans> transactions) {
+    private static TopNode findLatestSuperRoot(List<StoredTrans> transactions) {
         TopNode current = null;
         
         for (StoredTrans trans : transactions) {
@@ -278,8 +277,7 @@ public class DbStarter {
     }
 
     private void prepareDb() {
-        TopDs topDs = new TopDs(superRoot);
-        dag = new Dag(pointerFollower, topDs, maxNodeSize);        
+        dag = new Dag(superRoot, pointerFollower, maxNodeSize);        
         db.internal().setDag(dag);
         db.internal().setTransSeq(transSeq);
         db.internal().createPutAndGetData();
@@ -661,7 +659,7 @@ public class DbStarter {
     
     @Nano
     private static void testFindLatestSuperNode1() {
-        TopNode top = findLatestSuperNode(new ArrayList<StoredTrans>());
+        TopNode top = findLatestSuperRoot(new ArrayList<StoredTrans>());
         Assert.assertNull(top);
     }
     
@@ -673,7 +671,7 @@ public class DbStarter {
         transactions.add(testTrans1(2000));
         transactions.add(testTrans2(3000));
                 
-        TopNode top = findLatestSuperNode(transactions);
+        TopNode top = findLatestSuperRoot(transactions);
         
         Assert.assertEquals(12, top.getTopNodeId());
     }
@@ -686,7 +684,7 @@ public class DbStarter {
         transactions.add(testTrans2(2000));
         transactions.add(testTrans1(3000));
                 
-        TopNode top = findLatestSuperNode(transactions);
+        TopNode top = findLatestSuperRoot(transactions);
         
         Assert.assertEquals(2, top.getTopNodeId());
     }
@@ -700,7 +698,7 @@ public class DbStarter {
         transactions.add(testTrans2(2000));
         transactions.add(testTrans1(3000));
                 
-        TopNode top = findLatestSuperNode(transactions);
+        TopNode top = findLatestSuperRoot(transactions);
         
         Assert.assertEquals(123, top.getTopNodeId());
     }

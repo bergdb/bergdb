@@ -45,9 +45,9 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     private final PointerFollower pointerFollower;
     private final int maxNodeSize;
     
-    public Dag(PointerFollower pointerFollower, TopDs topDs, int maxNodeSize) {
+    public Dag(TopNode superRoot, PointerFollower pointerFollower, int maxNodeSize) {
+        this.topDs = new TopDs(superRoot);
         this.pointerFollower = pointerFollower;
-        this.topDs = topDs;
         this.maxNodeSize = maxNodeSize;
     }
     
