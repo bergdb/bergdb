@@ -15,11 +15,6 @@ import bergdb.dag.PointerFollower;
  * @author Frans Lundberg
  */
 public class NodeCollection2 implements PointerFollower {
-    //
-    // Idea is to split into 1000 maps and do evict by
-    // map scan (whole map, but that's 1/1000 of whole cache).
-    //
-    
     private NodeStream nodeStream;
     private Cache3 cache;
     private PointerLocks pointerLocks;
