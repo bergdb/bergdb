@@ -12,6 +12,9 @@ package bergdb.dag;
  * this is set to the id of the node (the vpos given to it). Once the node
  * has been written to stream, the actual real stream position is used for the spos field.</p>
  * 
+ * <p>node.next(), the next()/setNext() methods are used internally for
+ * fast map storage.</p>
+ * 
  * <p>A node has a number of pointers to other nodes. They can be iterated
  * with code like this:
  * 
@@ -49,6 +52,9 @@ public interface Node {
     
     public long getId();
     public void setId(long id);
+    
+    public Node next();
+    public void setNext(Node nextNode);
     
     /**
      * Returns the number of pointers of this node.

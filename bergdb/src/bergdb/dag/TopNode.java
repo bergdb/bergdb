@@ -182,6 +182,16 @@ public final class TopNode implements Node {
         this.spos = spos;
     }
     
+    private Node next;
+
+    public final Node next() {
+        return next;
+    }
+
+    public final void setNext(Node nextNode) {
+        this.next = nextNode;
+    }
+    
     public final int getMemSize() {
         // 
         // * 16 - overhead of this object.

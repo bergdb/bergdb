@@ -19,6 +19,7 @@ public class Pack implements IPack {
         KeyModSet.class,
         Kv.class,
         NodeChecksum.class,
+        NodeMap.class,
         NodeStream.class,
         NodeStreamTester.class,
         Pack.class,

@@ -78,6 +78,16 @@ public final class ValueNode implements Node {
         this.spos = spos;
     }
     
+    private Node next;
+
+    public final Node next() {
+        return next;
+    }
+
+    public final void setNext(Node nextNode) {
+        this.next = nextNode;
+    }
+    
     /**
      * Caller must hold DB.writeLock.
      */
@@ -276,7 +286,7 @@ public final class ValueNode implements Node {
     // ======== Tests ========
     
     @Nano
-    public static void testDummy() {
+    private static void testDummy() {
         // Mostly just to "mark" methods as tested.
         
         ValueNode v = ValueNode.createDelete();

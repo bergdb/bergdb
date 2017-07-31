@@ -121,6 +121,16 @@ public class KeyNode implements Node {
         this.size = this.size;      // Synch action to publish change from writer to readers.
     }
     
+    private Node next;
+
+    public final Node next() {
+        return next;
+    }
+
+    public final void setNext(Node nextNode) {
+        this.next = nextNode;
+    }
+    
     public final boolean isSegmentLeaf() {
         return isSegmentLeaf;
     }
