@@ -6,10 +6,8 @@ import bergdb.nanotest.TestEnvironment;
 /**
  * Tests JVM memory usage for Long and a custom class that has a single
  * "long" field.
- * Test run on rose (32-bit machine), results in same memory usage: 
- * 16 bytes for both. For linda.lemonlog.com, we have 24 bytes for both.
- * This is what to expect, 2 pointers (one to object itself, one to class) 
- * + 8 bytes.
+ * 
+ * @author Frans Lundberg
  */
 public class MemoryOfLongVsCustomClass {
     static String dummy;

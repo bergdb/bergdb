@@ -10,6 +10,7 @@ public class Pack implements IPack {
         Bytes.class,
         Create.class,
         EventToWaitFor.class,
+        HashUtil.class,
         MyChecksum.class,
         MyLongSet.class,
         NullOutputStream.class,

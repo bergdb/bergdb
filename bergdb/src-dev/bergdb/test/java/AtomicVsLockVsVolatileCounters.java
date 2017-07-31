@@ -5,7 +5,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 
-
 /**
  * Compares performance of a counter that uses AtomicLong versus one that uses a lock object
  * and a synchronized block versus one that uses volatile.

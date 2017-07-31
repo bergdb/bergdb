@@ -73,10 +73,10 @@ public class Get {
         }
     }
     
-    private void go(TestEnvironment c) throws InterruptedException {
-        c.report("note", "One thread running get(), db size: 100k.");
+    private void go(TestEnvironment c, int n) throws InterruptedException {
+        c.report("note", "One thread running get(), db size: " + n);
 
-        createDB(100*1000);
+        createDB(n);
         
         Timed tg = new Timed();
         warmup();
@@ -125,7 +125,12 @@ public class Get {
     
     @Nano("perf")
     public static void run(TestEnvironment c) throws InterruptedException {
-        new Get().go(c);
+        new Get().go(c, 100*1000);
+    }
+    
+    @Nano("perf")
+    public static void run1M(TestEnvironment c) throws InterruptedException {
+        new Get().go(c, 1000*1000);
     }
     
     /**
@@ -188,56 +193,53 @@ public class Get {
 
 /*
 
+2017-07-31
+==========
 
-======== 2013-11-24 ========
+On cissi 170731 13:24, OpenJDK 64-Bit Java 8, server, i7 CPU at 2.1 GHz.
+
+    * bergdb.test.Get.run.get-n: 100000
+    * bergdb.test.Get.run.get-time: 0.855e-6
+    * bergdb.test.Get.run1M.get-n: 1000000
+    * bergdb.test.Get.run1M.get-time: 0.996e-6
+
+Nice, still under 1 us for one out of a million.
+
+
+2013-11-24
+==========
+
 Running it from CorePerf on Cissi, the typical get-time is 0.9 us for 100k db size
 and 1.1 us for 1M db size.
 
-======== 2013-04-05 ========
-Tested a variation. Same as before, but only first 1000, 100, 10 kvs read. This increased 
-performance, but not much.
-    1000 - 6.3 us   1.0 %
-    100  - 5.7 us   0.1 %
-    10   - 5.2 us   0.01%
-Code was erased, not so interesting. Small speedup.
 
-======== 2013-04-04 ========
+2013-04-04
+==========
+
 Testing on rose again.
 * get-time: 6.4 us.
 
-======== 2013-01-30 ========
-Changed test to run for 2.0 s instead of 1.0 s. Testing on rose and JVM 1.7 
-from Oracle with -server flag.
-* get-time: 5.9 us.
 
-Then I also changed Get class to use "new FixedDurationEvictBoss()" instead of new NoEvictBoss().
-* get-time: 6.2 us.
+2013-01-21
+==========
 
-======== 2013-01-21 ========
 DB.followPointer() changed to synchronize node pointer access properly. Best get-time:
 * get-time: 6.1 us on Rose.
 The performance degradation is fine. We need to synch to support multiple concurrent readers.
 
-======== 2013-01-16 ========
-* get-time: 5.3 us on Rose.
 
-======== 2012-12-13 ========
-Still getting: "get-time: 5.2 us" on Rose.
-Tip: "sudo nice --19 java -server -cp p/BergDB com.bergdb.test.Get".
-    "sudo nice --19" for highest process priority.
+2012-08-23
+==========
 
-======== 2012-08-23 ========
 Refactored significantly and changed n from 50k to 100k for alignment with GetScalability
 and to be more realistic.
 Changed class name to com.bergdb.test.Get.
 * get-time: 5.2 us (on linode: 1.6 us)
 
-======== 2012-08-22 ========
-Changed to add batches of KVs. 10000 KVs in one transaction. This makes time klongs
-less frequent than before. It improves performance significantly.
-* get-time: 4.5 us.
 
-======== 2012-08-05 ========
+2012-08-05
+==========
+
 $ java -cp p/BergDB/ -server -Xmx1000m com.bergdb.db.perf.PerfDBGet
 ---- com.bergdb.db.perf.PerfDBGet ----
 One thread running get(). DB size: 50000, m=10
@@ -248,7 +250,10 @@ I do not know why get-time increased from 4.14 to 6.40 us. Possibly the delete b
 We need two iterations for KeyNode.searchLTE, first we must find the delete bitmap for the given
 lookup time. Inserts should be faster, however.
 
-======== 2012-05-28 ========
+
+2012-05-28
+==========
+
 $ java -cp p/BergDB/ -server -Xmx1000m com.bergdb.db.perf.PerfDBGet
 ---- com.bergdb.db.perf.PerfDBGet ----
 One thread running get(). DB size: 50000, m=10
@@ -261,26 +266,16 @@ com.bergdb.db.perf.PerfDBGet.get-time = 4.14258754E-6
 Testing the new "Linear" branch (refactoring). Great! Faster, before I even start to optimize :-)
 Probably fewer pointers (no IPointer objects) makes the difference.
 
-======== 2012-05-24 ========
-$ java -cp p/BergDB/ -server com.bergdb.db.perf.PerfDBGet
----- com.bergdb.db.perf.PerfDBGet ----
-One thread running get(). DB size: 50000, m=10
-com.bergdb.db.perf.PerfDBGet Start
-com.bergdb.db.perf.PerfDBGet.node-depth-average = 5.0
-com.bergdb.db.perf.PerfDBGet.get-n = 50000
-com.bergdb.db.perf.PerfDBGet.get-m = 10
-com.bergdb.db.perf.PerfDBGet.get-time = 4.61719511E-6
-com.bergdb.db.perf.PerfDBGet.get-total-time = 2.308597555
 
-Some increase in get time. A small part of this is the accessPath (2-3%) and evictIfNeeded, but
-there is something more that has degraded the performance. Possible, make dirty method or something
-like that. We are still very fine :-). Below 10 us on my notebook is really fine.
+2012-04-06
+==========
 
-======== 2012-04-06 ========
 $ java -server -cp . com.bergdb.klong.PerfDBGet
 com.bergdb.klong.PerfDBGet Start
 com.bergdb.klong.PerfDBGet.get-n = 50000
 com.bergdb.klong.PerfDBGet.get-m = 10
 com.bergdb.klong.PerfDBGet.get-time = 3.554066904E-6
 com.bergdb.klong.PerfDBGet.get-total-time = 1.77703345200000
+
+
 */

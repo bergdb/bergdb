@@ -3,7 +3,7 @@ package bergdb.dev.props;
 import bergdb.common.Util;
 
 /**
- * An executable that measures the main performance properties of the projecct.
+ * An executable that measures the main performance properties of the project.
  * 
  * @author Frans Lundberg
  */
