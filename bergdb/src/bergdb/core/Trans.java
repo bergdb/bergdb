@@ -141,7 +141,7 @@ public class Trans {
     }
     
     /**
-     * Used to create a transaction. Normally, use Db.builder() to create a new instance.
+     * Used to create a transaction.
      */
     public static class Builder {
         // Note This class does not enforce uniqueness of elements in keyReadSet, kvs, vkeyHashes.

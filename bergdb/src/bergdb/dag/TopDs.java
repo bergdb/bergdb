@@ -1,8 +1,5 @@
 package bergdb.dag;
 
-import bergdb.dag.Dag.CachePolicy;
-import bergdb.dag.Dag.PointerListener;
-
 /**
  * The top data structure is used to find the space root node given
  * the the lookup time for the operation.
@@ -11,11 +8,6 @@ import bergdb.dag.Dag.PointerListener;
  */
 public class TopDs {
     private volatile TopNode superRoot;
-    
-    public interface DagForMe {
-        public Node followPointer(final Node predecessor, int pointerIndex, 
-                long accessData, PointerListener walker, CachePolicy cachPolicy);
-    }
     
     public TopDs(TopNode superRoot) {
         if (superRoot == null) {
@@ -95,33 +87,17 @@ public class TopDs {
     }
     
     /**
-     * Convenience method for when GetData is used.
-     */
-    public final KeyNode findRoot(DagForMe dbGraph, long time, GetData gd) {
-        return findRoot(dbGraph, time, gd.accessData, gd.tempPointer, gd.pointerListener, gd.cachePolicy);
-    }
-    
-    /**
      * Finds the space root node for a given lookup time.
      * Returns null if there is no space root that is old enough.
      * 
      * @param accessData Access data for this access.
      */
-    public final KeyNode findRoot(DagForMe dag, long time, long accessData, 
-            Pointer tempPointer, PointerListener pointerListener, CachePolicy cachePolicy) {
-        TopNode n = findSuperRootAtTime(dag, time, accessData, tempPointer, pointerListener, cachePolicy);
+    public final KeyNode findRoot(long time, OpData op) {
+        TopNode n = findSuperRootAtTime(time, op);
         if (n == null) {
             return null;
         }
-        return (KeyNode) dag.followPointer(n, 0, accessData, pointerListener, cachePolicy);
-    }
-    
-    /**
-     * Convenience method for when GetData is used.
-     */
-    public final TopNode findSuperRootAtTime(DagForMe dbGraph, long time, GetData gd) {
-        return findSuperRootAtTime(dbGraph, time, gd.accessData, gd.tempPointer, 
-                gd.pointerListener, gd.cachePolicy);
+        return (KeyNode) op.followPointer(n, 0);
     }
     
     /**
@@ -131,8 +107,7 @@ public class TopDs {
      * 
      * @param accessData Access data for this access.
      */
-    public final TopNode findSuperRootAtTime(DagForMe dag, long time, long accessData, 
-            Pointer tempPointer, PointerListener pointerListener, CachePolicy cachePolicy) {
+    public final TopNode findSuperRootAtTime(long time, OpData op) {
         //
         // 130123 Frans: Fixed concurrency bug.
         // The volatile read in the beginning of this method is important. It makes memory writes
@@ -140,12 +115,9 @@ public class TopDs {
         // throughout this method. this.superRoot can change concurrently.
         //
         
-        assert pointerListener != null;
-        assert cachePolicy != null;
-        
         TopNode mySuperRoot = this.superRoot;     // volatile read make writes visible.
         
-        pointerListener.superRootAccessed(mySuperRoot);
+        op.pointerListener.superRootAccessed(mySuperRoot);
         
         if (time >= mySuperRoot.rootTime) {
             return mySuperRoot;
@@ -155,7 +127,7 @@ public class TopDs {
         
         // Finds right-most pointer with time >= 'time'.
         
-        Pointer pt = tempPointer;
+        Pointer pt = op.tempPointer;
         
         while (true) {
             rightMostGte(n, time, pt);
@@ -163,7 +135,7 @@ public class TopDs {
                 break;
             }
             
-            n = (TopNode) dag.followPointer(n, pt.index, accessData, pointerListener, cachePolicy);
+            n = (TopNode) op.followPointer(n, pt.index);
         }
         
         
@@ -180,7 +152,7 @@ public class TopDs {
             return null;  // No old-enough node exists
         }
         
-        TopNode n2 = (TopNode) dag.followPointer(n, pt.index, accessData, pointerListener, cachePolicy);
+        TopNode n2 = (TopNode) op.followPointer(n, pt.index);
         assert n2 != null : "n2 is unexpectedly null, n: " + n;
         
         return n2;
@@ -228,49 +200,4 @@ public class TopDs {
             break;
         }
     }
-    
-    /**
-     * Prints the top data structure to a multi-line string.
-     */
-    public String print(DagForMe dbGraph) {
-        StringBuilder b = new StringBuilder();
-        TopNode t = this.superRoot;
-        long accessData = 0;
-        Dag.PointerListener pListener = Dag.DO_NOTHING_POINTER_LISTENER;
-        Dag.CachePolicy cachePolicy = Dag.CACHE_NOTHING;
-        
-        while (t != null) {
-            b.append(String.format("%6d", t.topNodeId));
-            b.append(String.format(" (%2d) ", t.rootTime));
-            for (int i = 0; i < t.pointersLength; i++) {
-                if (t.pointers[i] == null) {
-                    b.append(String.format("%3s", " x "));
-                } else {
-                    b.append(String.format("%3s", " | "));
-                }
-            }
-            b.append("\n");
-            
-            TopNode next = null;
-            for (int i = 0; i < t.pointersLength; i++) {
-                if (t.pointers[i] != null && next == null) {
-                    next = (TopNode) dbGraph.followPointer(t, i, 
-                            accessData, pListener, cachePolicy);
-                    break;
-                }
-            }
-            
-            t = next;
-        }
-        
-        return b.toString();
-    }
 }
-
-/*
-
-======== Notes, 2012-05, Frans Lundberg ========
-
-See doc/2012-05-TopDB.txt.
-
-*/

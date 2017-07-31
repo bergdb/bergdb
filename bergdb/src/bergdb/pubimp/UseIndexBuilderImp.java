@@ -567,7 +567,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
             
             IterStopCondition stopCondition = new IterStopCondition(excludeNonObj);
             
-            g = new GetMany();
+            g = connection.getDb().newGetMany();
             g.startKey = this.startKey;
             g.forward = forward;
             g.inclusive = firstBatch ? inclusive2 : false;

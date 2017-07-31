@@ -1,8 +1,5 @@
 package bergdb.dag;
 
-import bergdb.dag.Dag.CachePolicy;
-import bergdb.dag.Dag.PointerListener;
-import bergdb.dag.TopDs.DagForMe;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
@@ -18,6 +15,34 @@ public class TopTester {
     private TopDs ds2;
     private TopDs ds3;
     public TopDs ds4;
+    
+    private static final PointerFollower DUMMY_POINTER_FOLLOWER = new PointerFollower() {
+        public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
+            Node result;
+            assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
+            assert predecessor != null : "predecessor is null";
+
+            Node pointerNode = predecessor.getPointerNode(pointerIndex);
+            long pointerPos1 = predecessor.getPointerPos(pointerIndex);
+
+            assert !Pointer.isNull(pointerNode, pointerPos1) : "Pointer is null: " + pointerNode
+                    + ", " + pointerPos1;
+
+            if (Pointer.isMem(pointerNode)) {
+                result = pointerNode;
+                if (op.accessData != AccessData.ZERO) {
+                    predecessor.setPointerAccessData(pointerIndex, op.accessData);
+                }
+                op.pointerListener.pointerFollowed(predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
+            
+            } else {
+                throw new IllegalStateException("This NodeFollower does not support stream pointers.");
+            }
+
+            return result;
+        }
+    };
+    
     
     public void createTestData() {
         Dag.PointerCreatedListener N1 = Dag.DO_NOTHING_POINTER_CREATED_LISTENER;
@@ -52,6 +77,7 @@ public class TopTester {
      */
     private KeyNode findRoot(TopDs topDs, long time) {
         GetData gd = new GetData();
+        gd.pointerFollower = DUMMY_POINTER_FOLLOWER;
         
         gd.pointerListener = new Dag.PointerListener() {
             public void pointerFollowed(Node predecessor, int pointerIndex, Node result, int pointerType) {
@@ -66,14 +92,7 @@ public class TopTester {
             }
         };
         
-        DagForMe g = new DagForMe() {
-            public Node followPointer(Node predecessor, int pointerIndex, long accessData,
-                    PointerListener walker, CachePolicy cachPolicy) {
-                return predecessor.getPointerNode(pointerIndex);
-            }
-        };
-        
-        return topDs.findRoot(g, time, gd);
+        return topDs.findRoot(time, gd);
     }
     
     @Nano

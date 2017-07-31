@@ -6,11 +6,10 @@ import bergdb.common.StringUtil;
 import bergdb.core.Db;
 import bergdb.core.TestClock;
 import bergdb.dag.Dag;
-import bergdb.dag.Dag.CachePolicy;
-import bergdb.dag.Dag.PointerListener;
 import bergdb.dag.AccessData;
 import bergdb.dag.Node;
 import bergdb.dag.Keys;
+import bergdb.dag.OpData;
 import bergdb.dag.Pointer;
 import bergdb.dag.PointerFollower;
 import bergdb.dag.PutData;
@@ -26,12 +25,11 @@ public class DagExamples {
     private static final int MAX_NODE_SIZE = 30;
     
     private static final PointerFollower DUMMY_POINTER_FOLLOWER = new PointerFollower() {
-        public Node followPointer(Node predecessor, int pointerIndex, long accessData,
-                PointerListener pointerListener, CachePolicy cachePolicy) {
+        public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
             Node result;
             assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
             assert predecessor != null : "predecessor is null";
-            assert accessData == 0 || AccessData.isValid(accessData);
+            assert op.accessData == AccessData.ZERO || AccessData.isValid(op.accessData);
 
             Node pointerNode = predecessor.getPointerNode(pointerIndex);
             long pointerPos1 = predecessor.getPointerPos(pointerIndex);
@@ -41,10 +39,10 @@ public class DagExamples {
 
             if (Pointer.isMem(pointerNode)) {
                 result = pointerNode;
-                if (accessData != 0) {
-                    predecessor.setPointerAccessData(pointerIndex, accessData);
+                if (op.accessData != AccessData.ZERO) {
+                    predecessor.setPointerAccessData(pointerIndex, op.accessData);
                 }
-                pointerListener.pointerFollowed(
+                op.pointerListener.pointerFollowed(
                         predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
             
             } else {

@@ -3,10 +3,7 @@ package bergdb.dag;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-
 import bergdb.common.StringUtil;
-import bergdb.dag.Dag.CachePolicy;
-import bergdb.dag.Dag.PointerListener;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
@@ -15,12 +12,10 @@ public class DagTester {
     private static final int MAX_NODE_SIZE = 30;
     
     private static final PointerFollower DUMMY_POINTER_FOLLOWER = new PointerFollower() {
-        public Node followPointer(Node predecessor, int pointerIndex, long accessData,
-                PointerListener pointerListener, CachePolicy cachePolicy) {
+        public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
             Node result;
             assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
             assert predecessor != null : "predecessor is null";
-            assert accessData == 0 || AccessData.isValid(accessData);
 
             Node pointerNode = predecessor.getPointerNode(pointerIndex);
             long pointerPos1 = predecessor.getPointerPos(pointerIndex);
@@ -30,11 +25,10 @@ public class DagTester {
 
             if (Pointer.isMem(pointerNode)) {
                 result = pointerNode;
-                if (accessData != 0) {
-                    predecessor.setPointerAccessData(pointerIndex, accessData);
+                if (op.accessData != AccessData.ZERO) {
+                    predecessor.setPointerAccessData(pointerIndex, op.accessData);
                 }
-                pointerListener.pointerFollowed(
-                        predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
+                op.pointerListener.pointerFollowed(predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
             
             } else {
                 throw new IllegalStateException("This NodeFollower does not support stream pointers.");
@@ -52,21 +46,31 @@ public class DagTester {
         return Dag.createEmpty(time, MAX_NODE_SIZE, DUMMY_POINTER_FOLLOWER, listener);
     }
     
+    private static GetData gd(Dag dag) {
+        GetData gd = dag.newGetData();
+        gd.pointerFollower = DUMMY_POINTER_FOLLOWER;
+        return gd;
+    }
+    
+    private static PutData pd(Dag dag) {
+        PutData pd = dag.newPutData();
+        pd.pointerFollower = DUMMY_POINTER_FOLLOWER;
+        return pd;
+    }
+    
     @Nano
     public static void test0() {
-        Dag g = emptyDag(0);
-        GetData gd = g.newGetData();
-        
-        byte[] result = g.getOne(0, Keys.toSegments("/-k1"), gd);
-        
+        Dag dag = emptyDag(0);
+        GetData gd = gd(dag);
+        byte[] result = dag.getOne(0, Keys.toSegments("/-k1"), gd);
         Assert.assertTrue(result == null);
     }
     
     @Nano
     public static void test1() {
         // With choices
-        Dag g = emptyDag(0);
-        GetData gd = g.newGetData();
+        Dag dag = emptyDag(0);
+        GetData gd = gd(dag);
         final ArrayList<Integer> choices = new ArrayList<Integer>();
         
         gd.pointerListener = new Dag.PointerListener() {
@@ -78,7 +82,7 @@ public class DagTester {
             }
         };
         
-        byte[] result = g.getOne(0, Keys.toSegments("/-k1"), gd);
+        byte[] result = dag.getOne(0, Keys.toSegments("/-k1"), gd);
         
         Assert.assertTrue(result == null);
         Assert.assertEquals(1, choices.size());
@@ -87,46 +91,46 @@ public class DagTester {
     
     @Nano
     public static void testPut0() {
-        Dag g = emptyDag(0);
-        PutData pd = g.newPutData();
+        Dag dag = emptyDag(0);
+        PutData pd = pd(dag);
         pd.tt = 10;
         
-        g.putKv(Keys.toSegments("/-key"), StringUtil.toBytes("value"), pd);
+        dag.putKv(Keys.toSegments("/-key"), StringUtil.toBytes("value"), pd);
         
         //for (int i = 0; i < pd.keyAccessPath.getSize(); i++) {
         //    System.out.println("keyAccessPath: " + Klong.toString(pd.keyAccessPath.getKlong(i)) 
         //            + "->" + pd.keyAccessPath.get(i));
         //}
         
-        GetData gd = g.newGetData();
-        byte[] value = g.getOne(20, Keys.toSegments("/-key"), gd);
+        GetData gd = gd(dag);
+        byte[] value = dag.getOne(20, Keys.toSegments("/-key"), gd);
         
         Assert.assertTrue(value != null);
         Assert.assertEquals("value", StringUtil.toString(value));
         
-        value = g.getOne(9, Keys.toSegments("/-key"), gd);
+        value = dag.getOne(9, Keys.toSegments("/-key"), gd);
         Assert.assertTrue(value == null);
     }
     
     @Nano
     public static void testPut1() {
-        Dag g = emptyDag(0);
-        PutData pd = g.newPutData();
+        Dag dag = emptyDag(0);
+        PutData pd = pd(dag);
         pd.tt = 10;
         
-        g.putKv(Keys.toSegments("/longerKey1"), StringUtil.toBytes("value"), pd);
+        dag.putKv(Keys.toSegments("/longerKey1"), StringUtil.toBytes("value"), pd);
         
         pd.keyAccessPath.clear();
         
-        g.putKv(Keys.toSegments("/longerKey2"), StringUtil.toBytes("value"), pd);
+        dag.putKv(Keys.toSegments("/longerKey2"), StringUtil.toBytes("value"), pd);
         
-        GetData gd = g.newGetData();
-        byte[] value = g.getOne(20, Keys.toSegments("/longerKey1"), gd);
+        GetData gd = gd(dag);
+        byte[] value = dag.getOne(20, Keys.toSegments("/longerKey1"), gd);
         
         Assert.assertTrue(value != null);
         Assert.assertEquals("value", StringUtil.toString(value));
         
-        value = g.getOne(9, Keys.toSegments("/longerKey"), gd);
+        value = dag.getOne(9, Keys.toSegments("/longerKey"), gd);
         Assert.assertTrue(value == null);
     }
     
@@ -137,26 +141,26 @@ public class DagTester {
         String[] kvs = new String[] {
                 "/k1", "v1", "/k2", "v2", "/k3", "v3", "/k4", "v4", "/k0", "v0"
         };
-        Dag g = Dag.createEmpty(0, 6, DUMMY_POINTER_FOLLOWER, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+        Dag dag = Dag.createEmpty(0, 6, DUMMY_POINTER_FOLLOWER, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
         
-        PutData pd = g.newPutData();
+        PutData pd = pd(dag);
         pd.tt = 10;
         
         for (int i = 0; i < kvs.length; i += 2) {
-            g.putKv(Keys.toSegments(kvs[i]), StringUtil.toBytes(kvs[i + 1]), pd);
+            dag.putKv(Keys.toSegments(kvs[i]), StringUtil.toBytes(kvs[i + 1]), pd);
             pd.clearFast();
         }
         pd.clear();
         
         Assert.assertEquals(1, pd.spaceSplitCount);
-        GetData gd = g.newGetData();
+        GetData gd = gd(dag);
         for (int i = 0; i < kvs.length; i += 2) {
-            byte[] value = g.getOne(10, Keys.toSegments(kvs[i]), gd);
+            byte[] value = dag.getOne(10, Keys.toSegments(kvs[i]), gd);
             Assert.assertEquals(kvs[i + 1], StringUtil.toString(value));
         }
         
         for (int i = 0; i < kvs.length; i += 2) {
-            byte[] value = g.getOne(9, Keys.toSegments(kvs[i]), gd);
+            byte[] value = dag.getOne(9, Keys.toSegments(kvs[i]), gd);
             Assert.assertEquals(null, value);
         }
     }
@@ -165,20 +169,19 @@ public class DagTester {
     public static void testTimeSplit1a() {
         // Tests a time-split-1.
 
-        Dag g = Dag.createEmpty(0, 6, DUMMY_POINTER_FOLLOWER, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
-        
-        PutData pd = g.newPutData();
+        Dag dag = Dag.createEmpty(0, 6, DUMMY_POINTER_FOLLOWER, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+        PutData pd = pd(dag);
         
         for (int i = 0; i < 4; i++) {
             String keyString = "account-id-0";
             pd.tt = 1 + i;
-            g.putKv(Keys.toSegments(keyString), StringUtil.toBytes("v at " + pd.tt), pd);
+            dag.putKv(Keys.toSegments(keyString), StringUtil.toBytes("v at " + pd.tt), pd);
             pd.clearFast();
         }
         
         Assert.assertEquals(1, pd.timeSplitCount);
         
-        KeyNode node = (KeyNode) g.findNode(new int[]{0, 3}, g.newGetData());
+        KeyNode node = (KeyNode) dag.findNode(new int[]{0, 3}, gd(dag));
         KlongWithPointer kwi = new KlongWithPointer();
         node.searchEq(Long.MAX_VALUE, Klong.createCompareValue(Keys.toBytes("-id-0")), kwi);
         
@@ -203,16 +206,16 @@ public class DagTester {
     
     @Nano
     public static void testVisit1() {
-        Dag g = emptyDag(10);
-        PutData pd = g.newPutData();
+        Dag dag = emptyDag(10);
+        PutData pd = pd(dag);
         pd.tt = 20;
         
         for (int i = 0; i < 4; i++) {
-            g.putKv(Keys.toSegments("/prefix-" + i), StringUtil.toBytes("v" + i), pd);
+            dag.putKv(Keys.toSegments("/prefix-" + i), StringUtil.toBytes("v" + i), pd);
         }
         
         StatsNodeVisitor v = new StatsNodeVisitor();
-        g.visitMemoryNodes(v);
+        dag.visitMemoryNodes(v);
         
         Assert.assertEquals(1, v.topCount);
         Assert.assertEquals(2, v.keyCount);
@@ -241,7 +244,7 @@ public class DagTester {
         };
         
         Dag dag = emptyDag(10, listener);
-        PutData pd = dag.newPutData();
+        PutData pd = pd(dag);
         pd.tt = 20;
         pd.pointerCreatedListener = listener;
         

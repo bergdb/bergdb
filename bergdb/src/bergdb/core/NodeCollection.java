@@ -1,9 +1,8 @@
 package bergdb.core;
 
-import bergdb.dag.Dag.CachePolicy;
-import bergdb.dag.Dag.PointerListener;
 import bergdb.dag.AccessData;
 import bergdb.dag.Node;
+import bergdb.dag.OpData;
 import bergdb.dag.Pointer;
 import bergdb.dag.PointerFollower;
 
@@ -30,8 +29,7 @@ public class NodeCollection implements PointerFollower {
         this.pointerLocks = dbInfo.getPointerLocks();
     }
 
-    public Node followPointer(Node predecessor, int pointerIndex, long accessData,
-            PointerListener pointerListener, CachePolicy cachePolicy) {
+    public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
         //
         // It is possible that concurrent threads will read same node 
         // from stream and try to add it to the cache. That is why we need to use existing 
@@ -52,7 +50,7 @@ public class NodeCollection implements PointerFollower {
         Node result;
         assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
         assert predecessor != null : "predecessor is null";
-        assert accessData == 0 || AccessData.isValid(accessData);
+        assert op.accessData == AccessData.ZERO || AccessData.isValid(op.accessData);
 
         final Object pointerLock = pointerLocks.getLock(predecessor, pointerIndex);
 
@@ -65,11 +63,11 @@ public class NodeCollection implements PointerFollower {
 
             if (Pointer.isMem(pointerNode)) {
                 result = pointerNode;
-                if (accessData != 0) {
-                    predecessor.setPointerAccessData(pointerIndex, accessData);
+                if (op.accessData != AccessData.ZERO) {
+                    predecessor.setPointerAccessData(pointerIndex, op.accessData);
                 }
                 
-                pointerListener.pointerFollowed(
+                op.pointerListener.pointerFollowed(
                         predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
             
             } else {
@@ -90,12 +88,12 @@ public class NodeCollection implements PointerFollower {
                     assert result.getType() == header.type()
                             : "types differ, " + result.getType() + ", " + header.type();
                     
-                    if (cachePolicy.shouldCache(result)) {
+                    if (op.cachePolicy.shouldCache(result)) {
                         cache.pointerCreated(predecessor, pointerIndex, result);
-                        predecessor.setPointer(pointerIndex, result, accessData);
+                        predecessor.setPointer(pointerIndex, result, op.accessData);
                     }
                     
-                    pointerListener.pointerFollowed(
+                    op.pointerListener.pointerFollowed(
                             predecessor, pointerIndex, result, Pointer.TYPE_STREAM);
                 }
             }

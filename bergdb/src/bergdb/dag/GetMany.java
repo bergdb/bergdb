@@ -74,8 +74,7 @@ public class GetMany {
     public int getOpCount;
     
     /**
-     * Creates a new instance; use Db.newGetMany() or Dag.newGetMany() instead
-     * when possible.
+     * Creates a new instance; use Db.newGetMany() or Dag.newGetMany() instead when possible.
      */
     public GetMany() {
         result = new ArrayList<Kvt>();
@@ -123,7 +122,6 @@ public class GetMany {
         long[] linkCompareValues;
         long[] keySegments;
         int keySegmentSize;
-        DagForMe graph;
         KlongWithPointer kwi;
         boolean first = true;
         boolean setupEqMatch = false;
@@ -132,10 +130,7 @@ public class GetMany {
         private final boolean chainForward;
         private final boolean chainInclusive;
         
-        public Chain(DagForMe graph) {            
-            assert graph != null;
-            this.graph = graph;
-            
+        public Chain() {
             chainStartKey = GetMany.this.startKey;
             chainForward = GetMany.this.forward;
             chainInclusive = GetMany.this.inclusive;
@@ -271,8 +266,7 @@ public class GetMany {
                     break;
                 }
                 
-                Node next = graph.followPointer(node, kwi.pointerIndex, GetMany.this.gd.accessData, 
-                        GetMany.this.gd.pointerListener, GetMany.this.gd.cachePolicy);
+                Node next = gd.followPointer(node, kwi.pointerIndex);
                 
                 assert next instanceof KeyNode : "next=" + next;
                 
@@ -367,8 +361,7 @@ public class GetMany {
                 linkCompareValue = Klong.getCompareValue(kwi.klong);
                 setLinkCompareValue(linkCompareValue);
                 
-                Node next = graph.followPointer(linkNode, kwi.pointerIndex, GetMany.this.gd.accessData, 
-                        GetMany.this.gd.pointerListener, GetMany.this.gd.cachePolicy);
+                Node next = gd.followPointer(linkNode, kwi.pointerIndex);
                 
                 if (next instanceof ValueNode) {
                     // Found next KV, creates result.

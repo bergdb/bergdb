@@ -2,16 +2,15 @@ package bergdb.dag;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import bergdb.common.Pair;
 import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * Iterates all nodes in a DAG including those stored in the stream
- * using valid paths from the super root node.
+ * Iterates all nodes in a DAG.
  * Nodes may be iterated several times, a depth-first tree search algorithm is used.
+ * Note: the PointerFollower may need to be changed.
  * 
  * @author Frans Lundberg
  */
@@ -24,17 +23,51 @@ public class DagNodeIterator {
     private int nextPointerIndex = 0;
     private DagNodeIterator iter;
     private long maxLookupTime;
+    private GetData gd;
     
     public DagNodeIterator(Dag dag) {
         this.dag = dag;
-        this.root = dag.getSuperRoot();
+        this.root = dag.getTopDs().getSuperRoot();
         this.maxLookupTime = Long.MAX_VALUE;
+        initGd();
     }
     
     public DagNodeIterator(Dag dag, Node root, long maxLookupTime) {
         this.dag = dag;
         this.root = root;
         this.maxLookupTime = maxLookupTime;
+        initGd();
+    }
+    
+    private void initGd() {
+        gd = dag.newGetData();
+        gd.accessData = AccessData.ZERO;
+        gd.pointerFollower = new PointerFollower() {
+            public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
+                Node result;
+                assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
+                assert predecessor != null : "predecessor is null";
+
+                Node pointerNode = predecessor.getPointerNode(pointerIndex);
+                long pointerPos1 = predecessor.getPointerPos(pointerIndex);
+
+                assert !Pointer.isNull(pointerNode, pointerPos1) : "Pointer is null: " + pointerNode
+                        + ", " + pointerPos1;
+
+                if (Pointer.isMem(pointerNode)) {
+                    result = pointerNode;
+                    if (op.accessData != AccessData.ZERO) {
+                        predecessor.setPointerAccessData(pointerIndex, op.accessData);
+                    }
+                    op.pointerListener.pointerFollowed(predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
+                
+                } else {
+                    throw new IllegalStateException("This NodeFollower does not support stream pointers.");
+                }
+
+                return result;
+            }
+        };
     }
     
     /**
@@ -119,8 +152,7 @@ public class DagNodeIterator {
             }
         }
         
-        Node child = dag.followPointer(root, pointerIndex, 0, 
-                Dag.DO_NOTHING_POINTER_LISTENER, Dag.CACHE_NOTHING);
+        Node child = gd.followPointer(root, pointerIndex);
         
         return new Pair<Long, Node>(newMaxLookupTime, child);
     }

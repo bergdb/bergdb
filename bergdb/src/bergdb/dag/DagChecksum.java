@@ -20,7 +20,7 @@ public class DagChecksum {
     
     public DagChecksum(Dag dag, long maxLookupTime) {
         this.dag = dag;
-        this.root = dag.getSuperRoot();
+        this.root = dag.getTopDs().getSuperRoot();
         this.maxLookupTime = maxLookupTime;
         this.sum = new MyChecksum(new CRC32());
     }
@@ -123,16 +123,48 @@ public class DagChecksum {
     private static void testValueDiff() {
         Dag dag1 = DagTester.emptyDag(1);
         PutData pd1 = dag1.newPutData();
+        pd1.pointerFollower = POINTER_FOLLOWER;
         pd1.tt = 10;
         dag1.putKv(Keys.toSegments("/-key"), StringUtil.toBytes("value1"), pd1);
         long s1 = new DagChecksum(dag1).compute();
         
         Dag dag2 = DagTester.emptyDag(1);
         PutData pd2 = dag1.newPutData();
+        pd2.pointerFollower = POINTER_FOLLOWER;
         pd2.tt = 10;
         dag2.putKv(Keys.toSegments("/-key"), StringUtil.toBytes("value2"), pd2);
         long s2 = new DagChecksum(dag2).compute();
         
         Assert.assertEquals(false, s1 == s2);
     }
+    
+    /**
+     * For testing.
+     */
+    private static final PointerFollower POINTER_FOLLOWER = new PointerFollower() {
+        public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
+            Node result;
+            assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
+            assert predecessor != null : "predecessor is null";
+
+            Node pointerNode = predecessor.getPointerNode(pointerIndex);
+            long pointerPos1 = predecessor.getPointerPos(pointerIndex);
+
+            assert !Pointer.isNull(pointerNode, pointerPos1) : "Pointer is null: " + pointerNode
+                    + ", " + pointerPos1;
+
+            if (Pointer.isMem(pointerNode)) {
+                result = pointerNode;
+                if (op.accessData != AccessData.ZERO) {
+                    predecessor.setPointerAccessData(pointerIndex, op.accessData);
+                }
+                op.pointerListener.pointerFollowed(predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
+            
+            } else {
+                throw new IllegalStateException("This NodeFollower does not support stream pointers.");
+            }
+
+            return result;
+        }
+    };
 }

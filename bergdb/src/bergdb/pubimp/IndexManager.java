@@ -400,7 +400,7 @@ public class IndexManager {
         final boolean[] isDone = new boolean[] { false };
         
         while (!isDone[0]) {
-            GetMany g = new GetMany();
+            GetMany g = db.newGetMany();
             g.inclusive = false;
             g.startKey = startKey;
             g.lookupTime = Long.MAX_VALUE;
@@ -451,16 +451,6 @@ public class IndexManager {
     }
     
     void deleteIndexInfo(ConnectionImp connection, IndexManager.Index index) {
-        /*String key = getIndexInfoKey(index.name);
-        WTransactionBuilderImp b = (WTransactionBuilderImp) connection.w();
-        b.internal();   // Allows access to index data.
-        b.delete(key);
-        
-        synchronized (lock) {
-            b.execute();
-            this.nameToIndex.remove(index.name);
-        }*/
-        
         byte[] key = getIndexInfoKeyAsBytes(index.name);
         Db db = connection.getDb();
         Trans trans = db.trans().delete(key).build();

@@ -35,6 +35,12 @@ public class AccessData {
     public static final long DEFAULT_ACCESS_DATA = -10;
     
     /**
+     * Access data value set on OpData to indicate that the 
+     * access data of the nodes should not be set during the operation.
+     */
+    public static final long ZERO = 0;
+    
+    /**
      * Checks whether the access data (a long) is valid.
      */
     public static final boolean isValid(long accessData) {
@@ -46,7 +52,7 @@ public class AccessData {
     }
     
     /**
-     * Returns "access time", given an access data long.
+     * Returns "access time", given an access data value.
      */
     public static final long getAccessTime(long accessData) {
         long result = -accessData;

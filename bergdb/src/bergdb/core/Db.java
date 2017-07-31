@@ -16,7 +16,6 @@ import bergdb.dag.GetMany;
 import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.NodeVisitor;
-import bergdb.dag.PointerFollower;
 import bergdb.dag.PutData;
 import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
@@ -494,11 +493,11 @@ public class Db {
     }
 
     private void startDb(ArrayList<StoredTrans> transactions) {
-        DbStarter.start(this, transactions, getAccessData(), (PointerFollower) nodeCollection, maxNodeSize);
+        DbStarter.start(this, transactions, getAccessData(), maxNodeSize);
     }
 
     private void createPutAndGetData() {
-        x.putData = createPutData();
+        x.putData = newPutData();
         x.getData = newGetData();
     }
     
@@ -583,12 +582,14 @@ public class Db {
         dbClock.setLastTransTime(lastTransTime);
     }
     
-    private PutData createPutData() {
+    private PutData newPutData() {
         assert dag != null : "dag is null";
+        assert this.nodeCollection != null : "Db.nodeCollection is null";
         
-        PutData putData = dag.newPutData();
+        PutData pd = dag.newPutData();
+        pd.pointerFollower = this.nodeCollection;
         
-        putData.nodeChangeListener = new Dag.NodeChangeListener() {
+        pd.nodeChangeListener = new Dag.NodeChangeListener() {
             public void topNodeCreated(TopNode node) {
                 // The gotDirty code in the PointerListener is not enough for
                 // the case when new top nodes are created.
@@ -617,9 +618,9 @@ public class Db {
         
         // Extends existing pointerListener used by Dag.
         
-        final Dag.PointerListener pListener = putData.pointerListener;
+        final Dag.PointerListener pListener = pd.pointerListener;
         
-        putData.pointerListener = new Dag.PointerListener() {
+        pd.pointerListener = new Dag.PointerListener() {
             public void superRootAccessed(TopNode superRoot) {
                 pListener.superRootAccessed(superRoot);
                 makeDirtyIfNeeded(superRoot);
@@ -631,7 +632,7 @@ public class Db {
             }
         };
         
-        putData.pointerCreatedListener = new Dag.PointerCreatedListener() {
+        pd.pointerCreatedListener = new Dag.PointerCreatedListener() {
             public void pointerCreated(Node from, int index, Node to) {
                 assert !Spos.isNull(from.getId()) : 
                     "from-node has NULL id, from: " + from + ", to: " + to;
@@ -642,7 +643,7 @@ public class Db {
             }
         };
         
-        return putData;
+        return pd;
     }
 
     /**
@@ -775,6 +776,10 @@ public class Db {
      * @return True if 'node' got dirty.
      */
     private void makeDirtyIfNeeded(final Node node) {
+        assert x != null : "x is null";
+        
+        if (x.transInfo == null) return;
+        
         if (!node.isIndexNode()) {
             return;
         }
@@ -877,14 +882,19 @@ public class Db {
      * Creates and returns a new GetData object for use with the getOne() method.
      */
     public GetData newGetData() {
-        return dag.newGetData();
+        assert this.nodeCollection != null : "Db.nodeCollection is null";
+        GetData gd = dag.newGetData();
+        gd.pointerFollower = this.nodeCollection;
+        return gd;
     }
     
     /**
      * Creates and returns a new GetMany object for use with the getMany() method.
      */
     public GetMany newGetMany() {
-        return dag.newGetMany();
+        GetMany g = dag.newGetMany();
+        g.gd.pointerFollower = this.nodeCollection;
+        return g;
     }
 
     /**
@@ -1166,6 +1176,7 @@ public class Db {
         // This is handled by dbClock.
         //
         
+        t.warmupGetData.pointerFollower = x.getData.pointerFollower;
         warmup(t);
         
         synchronized (writeLock) {
@@ -1387,7 +1398,7 @@ public class Db {
      * for development, testing, and internal use.
      */
     public class Internal {
-        public TopNode superRoot() { return dag.getSuperRoot(); }
+        public TopNode superRoot() { return dag.getTopDs().getSuperRoot(); }
         
         public Dag dag() { return dag; }
         
@@ -1436,6 +1447,10 @@ public class Db {
          */
         public Node findNode(int[] choices, GetData gd) {
             return dag.findNode(choices, gd);
+        }
+        
+        public PutData newPutData() {
+            return Db.this.newPutData();
         }
     }
     

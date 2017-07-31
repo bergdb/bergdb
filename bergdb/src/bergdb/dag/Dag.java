@@ -38,16 +38,14 @@ import bergdb.pub.util.DbException;
  * 
  * @author Frans Lundberg
  */
-public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
+public class Dag {
     /** Empty array of KlongWithPointer (new KlongWithPointer[0]). */
     private static final KlongWithPointer[] ZERO_LONG_KWP = new KlongWithPointer[0];    
     private final TopDs topDs;
-    private final PointerFollower pointerFollower;
     private final int maxNodeSize;
     
-    public Dag(TopNode superRoot, PointerFollower pointerFollower, int maxNodeSize) {
+    public Dag(TopNode superRoot, int maxNodeSize) {
         this.topDs = new TopDs(superRoot);
-        this.pointerFollower = pointerFollower;
         this.maxNodeSize = maxNodeSize;
     }
     
@@ -61,7 +59,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
     }
     
     private Dag(long time, int maxNodeSize, PointerFollower pointerFollower, Dag.PointerCreatedListener pointerCreationListener) {
-        this.pointerFollower = pointerFollower;
         this.topDs = TopDs.createFromFirstRoot(time, new KeyNode(), AccessData.DEFAULT_ACCESS_DATA,
                 pointerCreationListener);
         this.maxNodeSize = maxNodeSize;
@@ -160,12 +157,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         }
     }
     
-    /**
-     * Returns the super root node.
-     * Use for testing only.
-     */
-    public TopNode getSuperRoot() {
-        return topDs.getSuperRoot();
+    public TopDs getTopDs() {
+        return topDs;
     }
 
     public Node findNode(int[] choices, GetData gd) {        
@@ -173,12 +166,12 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             throw new IllegalArgumentException("choices == null not allowed");
         }
         
-        Node node = this.getSuperRoot();
+        Node node = topDs.getSuperRoot();
         
         for (int i = 0; i < choices.length; i++) {
             int choice = choices[i];
             
-            node = this.followPointer(node, choice, gd.accessData, gd.pointerListener, gd.cachePolicy);
+            node = gd.followPointer(node, choice);
             
             if (node == null) {
                 break;
@@ -194,6 +187,8 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
      * in Db.getOne().
      */
     public GetData newGetData() {
+        // TODO A. We need to set g.pointerFollower somehow, I suppose.
+        
         final GetData g = new GetData();
         
         g.pointerListener = new Dag.PointerListener() {
@@ -271,27 +266,6 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         
         return p;
     }
-
-    
-    // ======== followPointers() and helpers ========
-    
-    /**
-     * Follows a pointer. This method must always be used when a pointer is
-     * followed. This is an essential method. It is used both by get and put operations.
-     * Besides following a pointer, it handles add-to-cache, and sets access data for
-     * the pointer (when was it last used). The access data is used by the 
-     * cache eviction algorithm.
-     * 
-     * @param accessData  The AccessData value or 0 to signal that no update should be 
-     *              made to the access data of the pointer.
-     * @throws StreamFormatException
-     * @throws StreamIoException
-     */
-    public final Node followPointer(final Node predecessor, int pointerIndex, long accessData, 
-            PointerListener pointerListener, CachePolicy cachePolicy) {
-        return pointerFollower.followPointer(predecessor, pointerIndex, accessData, 
-                pointerListener, cachePolicy);
-    }
     
     // ==== getOne() with helpers ========
     
@@ -308,7 +282,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         assert gd.pointerListener != null;
         assert gd.cachePolicy != null;
         
-        KeyNode segmentRoot = topDs.findRoot(this, time, gd);
+        KeyNode segmentRoot = topDs.findRoot(time, gd);
 
         if (segmentRoot == null) {
             return null;
@@ -383,9 +357,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                               + ", KeyNode.searchEq() found result, but there is no pointer "
                               + "(no mem pointer, no stream pointer)";
                     
-                    result = followPointer(
-                            current, kwi.pointerIndex, gd.accessData, 
-                            gd.pointerListener, gd.cachePolicy);
+                    result = gd.followPointer(current, kwi.pointerIndex);
                     gd.kvTime = kwi.klongTime;
                 }
                 break;
@@ -400,8 +372,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
                     assert kwi.node == null || kwi.node instanceof KeyNode 
                             : "Expected a KeyNode, got " + kwi.node;
 
-                    KeyNode nextCurrent = (KeyNode) followPointer(current, kwi.pointerIndex,
-                            gd.accessData, gd.pointerListener, gd.cachePolicy);
+                    KeyNode nextCurrent = (KeyNode) gd.followPointer(current, kwi.pointerIndex);
                     current = nextCurrent;
                 }
             }
@@ -433,13 +404,13 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         // the 'g' object.
         //
 
-        KeyNode root = topDs.findRoot(this, g.actualLookupTime, g.gd);
+        KeyNode root = topDs.findRoot(g.actualLookupTime, g.gd);
         
         if (root == null) {
             return;
         }
 
-        GetMany.Chain chain = g.new Chain((GetMany.DagForMe) this);
+        GetMany.Chain chain = g.new Chain();
         chain.setup(root);
 
         outer: while (true) {
@@ -496,7 +467,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         //       changed/new nodes reported to pd.nodeChangeListener.
         //       new pointers reported to pd.pointerCreatedListener.
         //
-        // All modifications to the DAG is done through this method.
+        // ALL modifications to the Dag are done through this method.
         // The call graph has recursion; appendKlongs() is called by successors of appendKlong()
         // on call graph.
         //
@@ -507,9 +478,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
         assert pd.pointerCreatedListener != null;
         assert key != null && key.length > 0 : "key not non-null and with length > 0";
         
-        Pointer tempPointer = new Pointer();
-        final KeyNode root = topDs.findRoot((TopDs.DagForMe) this, pd.tt, pd.accessData,
-                tempPointer, pd.pointerListener, pd.cachePolicy);
+        final KeyNode root = topDs.findRoot(pd.tt, pd);
         
         if (root == null) {
             throw new DbException("Found no root node at t=" + pd.tt + ", cannot continue put.");
@@ -543,8 +512,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             assert pd.kwi.klong != Klong.NULL : 
                 "pd.kwi.klong is Klong.NULL, non-null expected, node: " + node.print();
             
-            node = (KeyNode) followPointer(node, pd.kwi.pointerIndex, pd.accessData,
-                    pd.pointerListener, pd.cachePolicy);
+            node = (KeyNode) pd.followPointer(node, pd.kwi.pointerIndex);
             assert node != null;
         }
 
@@ -597,8 +565,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             assert pd.kwi.pointerIndex >= 0 
                     : "LTE search found klong, but pointerIndex=" + pd.kwi.pointerIndex;
             
-            current = (KeyNode) followPointer(current, pd.kwi.pointerIndex, pd.accessData,
-                    pd.pointerListener, pd.cachePolicy);
+            current = (KeyNode) pd.followPointer(current, pd.kwi.pointerIndex);
             assert current.assertOk(this.maxNodeSize);
         }
         
@@ -627,8 +594,7 @@ public class Dag implements TopDs.DagForMe, GetMany.DagForMe {
             
         } else {
             // If found
-            result = (KeyNode) followPointer(current, pd.kwi.pointerIndex, pd.accessData, 
-                    pd.pointerListener, pd.cachePolicy);
+            result = (KeyNode) pd.followPointer(current, pd.kwi.pointerIndex);
         }
 
         return result;

@@ -388,7 +388,7 @@ public class IndexBuilderImp implements IndexBuilder {
         final TheStopCondition stopCondition = 
                 new TheStopCondition(dirKey, IndexBuilderImp.this.bunchSize);
         
-        final GetMany g = new GetMany();
+        final GetMany g = connection.getDb().newGetMany();
         g.startKey = createState.startKey;
         g.inclusive = false;
         g.stopCondition = stopCondition;

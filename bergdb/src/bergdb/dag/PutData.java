@@ -1,18 +1,26 @@
 package bergdb.dag;
 
 /**
- * Common for one put operation, or a set of put operations (a transaction).
- * Is reused between transactions for performance reasons.
+ * Common data for one put operation, or a set of put operations (a transaction).
+ * An instance can be reused between transactions for high performance reasons; just
+ * call clear() and clearFast() between ops / between transactions.
  * 
  * @author Frans Lundberg
  */
-public class PutData {
+public class PutData extends OpData {
+    
+    // ==== Input ====
+    
+    public Dag.NodeChangeListener nodeChangeListener;
+    public Dag.PointerCreatedListener pointerCreatedListener;
+    public KeyAccessPath keyAccessPath;
+    public Dag.SplitListener splitListener;
+    
+    
+    // ==== Output ====
     
     /** Transaction time. */
     public long tt;
-    
-    /** Access data. */
-    public long accessData;
     
     /** Counter of space splits. */
     public long spaceSplitCount;
@@ -21,35 +29,14 @@ public class PutData {
     public long timeSplitCount;
     
     
-    // ---- Temp data ---
-    
-    /** Temporary working data. */
-    public final Pointer tempPointer;
-    
-    /** Temporary working data. */
-    public final KlongWithPointer kwi;
+    // ==== Internal ====
+
     
     /** Temporary working data, length == 1. */
     public final KlongWithPointer[] oneKwi;
     
     /** Temporary working data, length == 2. */
     public final KlongWithPointer[] twoKwis;
-    
-    
-    // ---- Listeners, cache policy ----
-    
-    public Dag.NodeChangeListener nodeChangeListener;
-    
-    public Dag.PointerListener pointerListener;
-    
-    public Dag.PointerCreatedListener pointerCreatedListener;
-    
-    public Dag.CachePolicy cachePolicy;
-    
-    public KeyAccessPath keyAccessPath;
-    
-    public Dag.SplitListener splitListener;
-    
     
     
     /**
@@ -62,7 +49,6 @@ public class PutData {
         spaceSplitCount = 0;
         
         tempPointer = new Pointer();
-        kwi = new KlongWithPointer();
         oneKwi = new KlongWithPointer[1];
         oneKwi[0] = new KlongWithPointer();
         twoKwis = new KlongWithPointer[2];

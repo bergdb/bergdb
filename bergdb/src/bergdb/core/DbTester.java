@@ -1079,7 +1079,7 @@ public class DbTester {
     }
     
     @Nano
-    public static void tCrash1() {
+    public static void testCrash1() {
         //
         // Truncate from end, one transaction in addition to the primordial one.
         //

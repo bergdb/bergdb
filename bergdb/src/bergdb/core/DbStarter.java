@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import bergdb.common.StringUtil;
 import bergdb.core.StoredTrans.Parser;
 import bergdb.core.StoredTrans.Serializer;
@@ -16,7 +15,6 @@ import bergdb.dag.Keys;
 import bergdb.dag.Klong;
 import bergdb.dag.NodeVisitor;
 import bergdb.dag.Pointer;
-import bergdb.dag.PointerFollower;
 import bergdb.dag.PutData;
 import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
@@ -49,16 +47,12 @@ public class DbStarter {
     private final StoredTrans firstTrans;
     private TopNode superRoot;
     private final long accessData;
-    private PointerFollower pointerFollower;
     private int maxNodeSize;
     private Dag dag;
     private final long startupPos;
     private final long startupTime;
     
-    
-    private DbStarter(Db db, List<StoredTrans> transactions, long accessData, 
-            PointerFollower pointerFollower, int maxNodeSize) {
-        if (pointerFollower == null) throw new IllegalArgumentException("pointerFollower == null not allowed");
+    private DbStarter(Db db, List<StoredTrans> transactions, long accessData, int maxNodeSize) {
         if (transactions == null) throw new IllegalArgumentException("transactions == null not allowed");
         if (transactions.size() == 0) throw new IllegalArgumentException("transactions.size() == 0");
         
@@ -67,7 +61,6 @@ public class DbStarter {
         this.firstTrans = transactions.get(0);
         this.accessData = accessData;
         this.superRoot = null;
-        this.pointerFollower = pointerFollower;
         this.maxNodeSize = maxNodeSize;
         this.startupPos = firstTrans.tpos;
         this.startupTime = firstTrans.tt;
@@ -79,9 +72,8 @@ public class DbStarter {
      * @param transactions  The stored transactions from the startup section of the db stream.
      * @param accessData    The access data for the in-memory pointers that are created.
      */
-    public static void start(Db db, List<StoredTrans> transactions, long accessData,
-            PointerFollower pointerFollower, int maxNodeSize) {
-        DbStarter s = new DbStarter(db, transactions, accessData, pointerFollower, maxNodeSize);
+    public static void start(Db db, List<StoredTrans> transactions, long accessData, int maxNodeSize) {
+        DbStarter s = new DbStarter(db, transactions, accessData, maxNodeSize);
         s.startup();
     }
     
@@ -113,7 +105,7 @@ public class DbStarter {
         
         superRoot.setPointer(0, keyNode, AccessData.DEFAULT_ACCESS_DATA);
         
-        dag = new Dag(superRoot, pointerFollower, maxNodeSize);
+        dag = new Dag(superRoot, maxNodeSize);
         db.internal().setDag(dag);
         db.internal().setTransSeq(transSeq);
         db.internal().createPutAndGetData();
@@ -244,9 +236,9 @@ public class DbStarter {
         
         // We found the latest super node, but we need the one at t = startupTime.
         
-        TopDs tempTopDs = new TopDs(lastSuperNode);
-        Dag tempDag = new Dag(lastSuperNode, pointerFollower, maxNodeSize);
-        superRoot = tempTopDs.findSuperRootAtTime(tempDag, startupTime, tempDag.newGetData());
+        Dag tempDag = new Dag(lastSuperNode, maxNodeSize);
+        TopDs tempTopDs = tempDag.getTopDs();
+        superRoot = tempTopDs.findSuperRootAtTime(startupTime, tempDag.newGetData());
         if (superRoot == null) {
             throw new StreamFormatException("No super root at time " + startupTime + " was found.");
         }
@@ -277,7 +269,7 @@ public class DbStarter {
     }
 
     private void prepareDb() {
-        dag = new Dag(superRoot, pointerFollower, maxNodeSize);        
+        dag = new Dag(superRoot, maxNodeSize);        
         db.internal().setDag(dag);
         db.internal().setTransSeq(transSeq);
         db.internal().createPutAndGetData();
@@ -296,13 +288,17 @@ public class DbStarter {
             transSeq.add(tinfo);
         }
     }
+    
+    private PutData createPutData() {
+        return db.internal().newPutData();
+    }
 
     private void rerunTransaction(TransSeq.TransInfo tinfo, final StoredTrans storedTrans) {
         final long[] vpos = new long[]{Spos.nextVpos(storedTrans.tpos)};
         
         List<StoredValueNode> valueNodes = storedTrans.getValueNodes();
         
-        PutData pd = dag.newPutData();
+        PutData pd = createPutData();
         
         for (StoredValueNode node : valueNodes) {
             long[] key = node.getKey();

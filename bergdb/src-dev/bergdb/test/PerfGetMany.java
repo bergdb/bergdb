@@ -73,7 +73,7 @@ public class PerfGetMany {
         
         A: while (!done) {
             for (int i = 0; i < loopCount; i++) {
-                GetMany g = new GetMany();
+                GetMany g = db.newGetMany();
                 g.startKey = startKey;
                 g.lookupTime = Long.MAX_VALUE;
                 g.forward = forward;   // direction, forward / backward
