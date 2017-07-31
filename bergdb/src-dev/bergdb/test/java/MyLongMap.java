@@ -53,10 +53,12 @@ public class MyLongMap {
         return null;
     }
     
+    @SuppressWarnings("unused")
     private final int index1(long key) {
         return HashUtil.mHashIndex(key, binCount);
     }
 
+    @SuppressWarnings("unused")
     private final int index2(long x) {
         x = (x ^ (x >>> 30)) * 0xbf58476d1ce4e5b9L;
         x = (x & 0x7fffffff) % binCount;
