@@ -3,6 +3,7 @@ package bergdb.core;
 import java.security.SecureRandom;
 
 import bergdb.common.SeedGenerator;
+import bergdb.common.StringUtil;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
@@ -73,7 +74,7 @@ public class DatabaseId {
      * Standard way of representing the database ID as a string.
      */
     public String idToString() {
-        return Util.toHex(id);
+        return StringUtil.toHex(id);
     }
     
     public String toString() {

@@ -2,7 +2,7 @@ package bergdb.core;
 
 import bergdb.common.Bug;
 import bergdb.common.Bytes;
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Klong;
@@ -175,7 +175,7 @@ public class StoredKeyNode implements StoredNode {
     private static void testSerialize() {
         KeyNode node = new KeyNode();
         long k0 = Klong.createTime(5000);
-        long k1 = Klong.createKey(Util.toBytes("key"));
+        long k1 = Klong.createKey(StringUtil.toBytes("key"));
         node.addToEnd(k0, null, Spos.NULL);
         node.addToEnd(k1, null, 1234);
         

@@ -3,7 +3,7 @@ package bergdb.core;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Keys;
 import bergdb.dag.Node;
@@ -34,7 +34,7 @@ public class NodeStreamTester {
 
         byte[] value;
         value = DbUtil.get(db, 99, "admin1");
-        Assert.assertArrayEquals(Util.toBytes("Sanna"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("Sanna"), value);
         db.sync(SyncLevel.ORDINARY);
         db = null;
         
@@ -42,7 +42,7 @@ public class NodeStreamTester {
         db2.start();
         
         value = DbUtil.get(db2, 99, "admin1");
-        Assert.assertArrayEquals(Util.toBytes("Sanna"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("Sanna"), value);
         
         value = DbUtil.get(db2, 5, "admin1");
         Assert.assertNull(value);
@@ -62,7 +62,7 @@ public class NodeStreamTester {
         db.execute(db.trans().put("admin10", "Sanna").build());
         
         value = DbUtil.get(db, 99, "admin10");
-        Assert.assertArrayEquals(Util.toBytes("Sanna"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("Sanna"), value);
         db.sync(SyncLevel.ORDINARY);
         db = null;
         
@@ -70,7 +70,7 @@ public class NodeStreamTester {
         db2.start();
         
         value = DbUtil.get(db2, 99, "admin10");
-        Assert.assertArrayEquals(Util.toBytes("Sanna"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("Sanna"), value);
         
         value = DbUtil.get(db2, 5, "admin10");
         Assert.assertNull(value);
@@ -94,12 +94,12 @@ public class NodeStreamTester {
         byte[] value;
         
         value = DbUtil.get(db2, 99, "admin1");
-        Assert.assertArrayEquals(Util.toBytes("Sanna1"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("Sanna1"), value);
         value = DbUtil.get(db2, 5, "admin1");
         Assert.assertNull(value);
         
         value = DbUtil.get(db2, 99, "admin2");
-        Assert.assertArrayEquals(Util.toBytes("Sanna2"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("Sanna2"), value);
         value = DbUtil.get(db2, 15, "admin2");
         Assert.assertNull(value);
     }

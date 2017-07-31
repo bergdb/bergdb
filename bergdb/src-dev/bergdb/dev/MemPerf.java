@@ -2,7 +2,7 @@ package bergdb.dev;
 
 import java.io.PrintStream;
 
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.core.Db;
 import bergdb.core.DbUtil;
 import bergdb.core.Trans;
@@ -67,7 +67,7 @@ public class MemPerf {
             }
             
             if (count % 1000 == 999) {
-                DbUtil.get(db, 99999, Util.toBytes("hej!"));
+                DbUtil.get(db, 99999, StringUtil.toBytes("hej!"));
             }
         }
     }

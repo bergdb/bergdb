@@ -3,7 +3,7 @@ package bergdb.test;
 import java.io.PrintStream;
 import java.util.Random;
 
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.core.Db;
 import bergdb.core.DbUtil;
 import bergdb.core.SyncLevel;
@@ -178,8 +178,8 @@ public class StartupDistanceTester {
         long lookupTime = gd.actualLookupTime;
         byte[] v2 = db.getOne(lookupTime, Keys.toSegments(to), gd);
         
-        long fromBalance = Long.parseLong(Util.toString(v1));
-        long toBalance = Long.parseLong(Util.toString(v2));
+        long fromBalance = Long.parseLong(StringUtil.toString(v1));
+        long toBalance = Long.parseLong(StringUtil.toString(v2));
         
         trans = db.trans()
                 .lookupTime(lookupTime)

@@ -10,7 +10,7 @@ import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
 import bergdb.common.Bytes;
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.dag.Dag;
 import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
@@ -85,7 +85,7 @@ public class DbUtil {
     
     public static String getString(Db db, String ikey) {
         byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(ikey), db.newGetData());
-        return value == null ? null : Util.toString(value);
+        return value == null ? null : StringUtil.toString(value);
     }
     
     private static final SimpleDateFormat DATE_FORMAT;
@@ -398,6 +398,6 @@ public class DbUtil {
         Assert.assertTrue(nodes.get(1).isKeyNode());
         Assert.assertTrue(nodes.get(2).isKeyNode());
         Assert.assertTrue(nodes.get(3).isValueNode());
-        Assert.assertArrayEquals(Util.toBytes("value"), ((ValueNode) nodes.get(3)).value);
+        Assert.assertArrayEquals(StringUtil.toBytes("value"), ((ValueNode) nodes.get(3)).value);
     }
 }

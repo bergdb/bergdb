@@ -11,7 +11,7 @@ import java.util.Comparator;
 import bergdb.common.Bug;
 import bergdb.common.ByteArrayComparator;
 import bergdb.common.Bytes;
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.pub.util.BadFormatException;
 
 /**
@@ -630,7 +630,7 @@ public class DbObject extends DbValue {
         byte[] nameBytes = new byte[nameSize];
         System.arraycopy(bytes, offset, nameBytes, 0, nameSize);
         offset += nameSize;
-        n.name = Util.toString(nameBytes);
+        n.name = StringUtil.toString(nameBytes);
         n.valueOffset = offset;
         n.object = this;
     }
@@ -693,7 +693,7 @@ public class DbObject extends DbValue {
             
             this.name = name;
             this.hash = hash(name);
-            this.nameBytes = Util.toBytes(name);
+            this.nameBytes = StringUtil.toBytes(name);
             if (name.length() > Short.MAX_VALUE) {
                 throw new IllegalArgumentException("Name is too large, " + this.nameBytes.length + ".");
             }
@@ -752,7 +752,7 @@ public class DbObject extends DbValue {
             
             offset += nameBytes.length;
             
-            String name = Util.toString(nameBytes);
+            String name = StringUtil.toString(nameBytes);
             DbValue value;
             
             switch (type) {
@@ -957,7 +957,7 @@ public class DbObject extends DbValue {
     public static void main(String[] args) {
         DbObject t = new DbObject.Builder().build();
         System.out.println("size: " + t.getBytes().length);
-        System.out.println("t buffer to string: " + Util.toString(t.getBytes()));
+        System.out.println("t buffer to string: " + StringUtil.toString(t.getBytes()));
     }
 }
 

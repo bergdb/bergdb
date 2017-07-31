@@ -118,7 +118,3 @@ public class DiskReadSpeed {
         new DiskReadSpeed().go(args);
     }
 }
-
-/*
-
-*/

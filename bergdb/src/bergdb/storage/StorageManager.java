@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import bergdb.common.Bug;
 import bergdb.common.NullProgressListener;
 import bergdb.common.ProgressListener;
+import bergdb.common.StringUtil;
 import bergdb.common.Util;
 import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.StorageInfo;
@@ -214,8 +215,8 @@ public class StorageManager implements AppendOnlyStream {
                 }
                                         
                 if (!Util.areEqual(mainId, replicaId)) {
-                    throw new BadReplicaException("ID of replica stream (" + Util.toHex(replicaId)
-                            + ") does not match database ID (" + Util.toHex(mainId) + ").");
+                    throw new BadReplicaException("ID of replica stream (" + StringUtil.toHex(replicaId)
+                            + ") does not match database ID (" + StringUtil.toHex(mainId) + ").");
                 }
             }
         }

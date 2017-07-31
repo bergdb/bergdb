@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import bergdb.common.Pair;
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
@@ -145,7 +145,7 @@ public class DagNodeIterator {
         Dag g = DagTester.emptyDag(10);
         PutData pd = g.newPutData();
         pd.tt = 20;
-        g.putKv(Keys.toSegments("key"), Util.toBytes("value"), pd);
+        g.putKv(Keys.toSegments("key"), StringUtil.toBytes("value"), pd);
         
         DagNodeIterator iter = new DagNodeIterator(g);
         ArrayList<Node> list = new ArrayList<Node>();

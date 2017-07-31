@@ -3,7 +3,7 @@ package bergdb.dag;
 import java.util.zip.CRC32;
 import bergdb.common.Bug;
 import bergdb.common.MyChecksum;
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
@@ -124,13 +124,13 @@ public class DagChecksum {
         Dag dag1 = DagTester.emptyDag(1);
         PutData pd1 = dag1.newPutData();
         pd1.tt = 10;
-        dag1.putKv(Keys.toSegments("/-key"), Util.toBytes("value1"), pd1);
+        dag1.putKv(Keys.toSegments("/-key"), StringUtil.toBytes("value1"), pd1);
         long s1 = new DagChecksum(dag1).compute();
         
         Dag dag2 = DagTester.emptyDag(1);
         PutData pd2 = dag1.newPutData();
         pd2.tt = 10;
-        dag2.putKv(Keys.toSegments("/-key"), Util.toBytes("value2"), pd2);
+        dag2.putKv(Keys.toSegments("/-key"), StringUtil.toBytes("value2"), pd2);
         long s2 = new DagChecksum(dag2).compute();
         
         Assert.assertEquals(false, s1 == s2);

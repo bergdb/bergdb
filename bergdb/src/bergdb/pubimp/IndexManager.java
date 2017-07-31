@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import bergdb.common.Bug;
+import bergdb.common.StringUtil;
 import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.DbConstants;
@@ -576,23 +577,23 @@ public class IndexManager {
         }
         
         if (separatorIndex == -1) {
-            throw new InternalDataException("Bad index key: " + Util.toString(keyBytes) + ", " 
-                    + Util.toHex(keyBytes));
+            throw new InternalDataException("Bad index key: " + StringUtil.toString(keyBytes) + ", " 
+                    + StringUtil.toHex(keyBytes));
         }
         
         if (separatorIndex == 0 || separatorIndex == keyBytes.length - 1) {
             throw new InternalDataException("Bad index key (separatorIndex): " 
-                    + Util.toString(keyBytes) + ", " + Util.toHex(keyBytes));
+                    + StringUtil.toString(keyBytes) + ", " + StringUtil.toHex(keyBytes));
         }
         
         int dirId = keyBytes[separatorIndex + 1] - 1;
         if (dirId < 0) {
             throw new InternalDataException("Bad index key (bad dirId): " 
-                    + Util.toString(keyBytes) + ", " + Util.toHex(keyBytes));
+                    + StringUtil.toString(keyBytes) + ", " + StringUtil.toHex(keyBytes));
         }
         if (dirId >= index.dirs.length) {
             throw new InternalDataException("Bad index key (bad dirId, too big): " 
-                    + Util.toString(keyBytes) + ", " + Util.toHex(keyBytes));
+                    + StringUtil.toString(keyBytes) + ", " + StringUtil.toHex(keyBytes));
         }
         
         int length = keyBytes.length - (separatorIndex + 2);

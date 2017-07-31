@@ -18,6 +18,7 @@ public class Pack implements IPack {
         Salsa.class,
         SeedGenerator.class,
         StringMap.class,
+        StringUtil.class,
         Util.class,
     };
     

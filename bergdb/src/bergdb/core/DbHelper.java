@@ -7,6 +7,7 @@ import java.util.Iterator;
 import bergdb.common.Bug;
 import bergdb.common.Create;
 import bergdb.common.ProgressListener;
+import bergdb.common.StringUtil;
 import bergdb.common.Util;
 import bergdb.dag.AccessData;
 import bergdb.dag.Klong;
@@ -72,8 +73,8 @@ public class DbHelper {
         }
 
         if (!Util.areEqual(mainId, replicaId)) {
-            throw new BadReplicaException("ID of replica stream (" + Util.toHex(replicaId)
-                    + ") does not match database ID (" + Util.toHex(mainId) + ").");
+            throw new BadReplicaException("ID of replica stream (" + StringUtil.toHex(replicaId)
+                    + ") does not match database ID (" + StringUtil.toHex(mainId) + ").");
         }
     }
     
@@ -305,7 +306,7 @@ public class DbHelper {
     private static void addPointer(KeyNode from, KeyNode to, String label) {
         long time = 10;
         long ad = AccessData.DEFAULT_ACCESS_DATA;
-        long klong = Klong.createKey(Util.toBytes(label));
+        long klong = Klong.createKey(StringUtil.toBytes(label));
         from.addKlong(time, klong, to, ad);
     }
 }

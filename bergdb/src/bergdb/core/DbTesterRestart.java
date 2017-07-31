@@ -1,6 +1,6 @@
 package bergdb.core;
 
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.storage.RecoverableStream;
@@ -34,13 +34,13 @@ public class DbTesterRestart {
         Db db2 = Db.builder().testSetup().mainStream(stream).start();
         
         value = DbUtil.get(db2, Long.MAX_VALUE, "admin1");
-        Assert.assertArrayEquals(Util.toBytes("Sanna"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("Sanna"), value);
         
-        value = DbUtil.get(db2, tt-1, Util.toBytes("admin1"));
+        value = DbUtil.get(db2, tt-1, StringUtil.toBytes("admin1"));
         Assert.assertNull(value);
         
         value = DbUtil.get(db2, tt, "admin1");
-        Assert.assertArrayEquals(Util.toBytes("Sanna"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("Sanna"), value);
     }
     
 
@@ -177,7 +177,7 @@ public class DbTesterRestart {
         //db2.printGraph(System.out);
         
         byte[] v1 = DbUtil.get(db2, 15, "k1");
-        Assert.assertArrayEquals(Util.toBytes("k1-value"), v1);
+        Assert.assertArrayEquals(StringUtil.toBytes("k1-value"), v1);
         v1 = DbUtil.get(db2, 25, "k1");
         Assert.assertNull(v1);
     }

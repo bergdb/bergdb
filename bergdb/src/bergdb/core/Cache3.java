@@ -13,9 +13,6 @@ import bergdb.dag.Node;
 public class Cache3 {
     //
     // Simple, non-optimal implementation to start with. 
-    // Cache-global locking to start with.
-    // What synchronization do we need here? Any? Cache-global? Let consumers do it?
-    // Same interface as Cache2 to start with.
     //
     
     private static final long INITIAL_CACHE_SIZE = 10*1000;
@@ -96,7 +93,7 @@ public class Cache3 {
             CacheEntry entry = internalGet(id);
             
             if (entry == null) {
-                entry = CacheEntry.one(to);
+                entry = CacheEntry.oneRef(to);
                 internalPut(id, entry);
             } else {
                 entry.refCount++;
@@ -173,7 +170,7 @@ public class Cache3 {
         /**
          * Creates and returns a CacheEntry with refCount equal to 1.
          */
-        public static CacheEntry one(Node node) {
+        public static CacheEntry oneRef(Node node) {
             CacheEntry entry = new CacheEntry();
             entry.node = node;
             entry.refCount = 1;

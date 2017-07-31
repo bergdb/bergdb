@@ -3,7 +3,7 @@ package bergdb.pubimp;
 import java.nio.ByteBuffer;
 
 import bergdb.common.Bytes;
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
@@ -22,14 +22,14 @@ public class DbString extends DbValue {
     }
     
     public int getByteSize() {
-        return value == null ? 4 : 4 + Util.utf8Size(value);
+        return value == null ? 4 : 4 + StringUtil.utf8Size(value);
     }
     
     public void write(ByteBuffer b) {
         if (value == null) {
             b.putInt(-1);
         } else {
-            byte[] stringBytes = Util.toBytes(value);
+            byte[] stringBytes = StringUtil.toBytes(value);
             int size = stringBytes.length;
             assert size == getByteSize() : size + " != " + getByteSize();
             b.putInt(size);
@@ -42,7 +42,7 @@ public class DbString extends DbValue {
             Bytes.intToBytesLE(-1, b, offset);
             offset += 4;
         } else {
-            byte[] stringBytes = Util.toBytes(value);
+            byte[] stringBytes = StringUtil.toBytes(value);
             assert 4 + stringBytes.length == getByteSize() : stringBytes.length + ", " + getByteSize();
             Bytes.intToBytesLE(stringBytes.length, b, offset);
             offset += 4;
@@ -75,7 +75,7 @@ public class DbString extends DbValue {
         
         byte[] stringBytes = new byte[size];
         System.arraycopy(buffer, offset, stringBytes, 0, size);
-        String value = Util.toString(stringBytes);
+        String value = StringUtil.toString(stringBytes);
         return value;
     }
     

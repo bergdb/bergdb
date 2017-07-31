@@ -5,7 +5,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.Random;
 
 import bergdb.common.Bytes;
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
 import bergdb.dag.KeyNode;
@@ -38,7 +38,7 @@ public class DbTester {
     @Nano
     public static void test1() {
         Db db = Db.builder().testSetup().start();
-        byte[] value = DbUtil.get(db, 99, Util.toBytes("admin1"));
+        byte[] value = DbUtil.get(db, 99, StringUtil.toBytes("admin1"));
         Assert.assertNull(value);
     }
     
@@ -47,7 +47,7 @@ public class DbTester {
         Db db = Db.builder().testSetup().start();
         db.execute(db.trans().put("admin1", "F").build());
         byte[] value = DbUtil.get(db, 99, Keys.toBytes("admin1"));
-        Assert.assertArrayEquals(Util.toBytes("F"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("F"), value);
     }
     
     @Nano
@@ -57,9 +57,9 @@ public class DbTester {
                 .put("admin2", "F2").build());
         
         byte[] value = DbUtil.get(db, 99, Keys.toBytes("admin1"));
-        Assert.assertArrayEquals(Util.toBytes("F1"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("F1"), value);
         value = DbUtil.get(db, 99, Keys.toBytes("admin2"));
-        Assert.assertArrayEquals(Util.toBytes("F2"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("F2"), value);
     }
     
     @Nano
@@ -74,9 +74,9 @@ public class DbTester {
         db.execute(db.trans().put("admin2", "F2").build());
         
         byte[] value = DbUtil.get(db, Long.MAX_VALUE, Keys.toBytes("admin1"));
-        Assert.assertArrayEquals(Util.toBytes("F1"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("F1"), value);
         value = DbUtil.get(db, Long.MAX_VALUE, Keys.toBytes("admin2"));
-        Assert.assertArrayEquals(Util.toBytes("F2"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("F2"), value);
         //db.stop();
     }
 
@@ -87,13 +87,13 @@ public class DbTester {
         Db db = createT2DB(clock);
         
         value = DbUtil.get(db, 999, "apa");
-        Assert.assertArrayEquals(Util.toBytes("P1"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("P1"), value);
 
         value = DbUtil.get(db, 999, "ap");
-        Assert.assertArrayEquals(Util.toBytes("P0"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("P0"), value);
 
         value = DbUtil.get(db, 999, "md");
-        Assert.assertArrayEquals(Util.toBytes("P7"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("P7"), value);
     }
     
     private static Db createT2DB(Clock clock) {
@@ -125,7 +125,7 @@ public class DbTester {
         db.execute(t);
 
         Assert.assertEquals(true, t.tt >= 20);
-        Assert.assertArrayEquals(Util.toBytes("e-value"), DbUtil.get(db, 999, "e"));
+        Assert.assertArrayEquals(StringUtil.toBytes("e-value"), DbUtil.get(db, 999, "e"));
 
         byte[] value = DbUtil.get(db, 10, "e");
         Assert.assertNull(value);
@@ -138,8 +138,8 @@ public class DbTester {
         clock.setTime(20);
         db.execute(db.trans().put("apa", "A").build());
 
-        Assert.assertArrayEquals(Util.toBytes("A"), DbUtil.get(db, 30, "apa"));
-        Assert.assertArrayEquals(Util.toBytes("A"), DbUtil.get(db, 999, "apa"));
+        Assert.assertArrayEquals(StringUtil.toBytes("A"), DbUtil.get(db, 30, "apa"));
+        Assert.assertArrayEquals(StringUtil.toBytes("A"), DbUtil.get(db, 999, "apa"));
     }
     
     @Nano
@@ -150,8 +150,8 @@ public class DbTester {
         //System.out.println("---- DBTester.testLongKey ----");
         //System.out.println(db.findRoot(db.getTime()).printTree());
         
-        Assert.assertNull(DbUtil.get(db, 99, Util.toBytes("rKey")));
-        Assert.assertArrayEquals(Util.toBytes("v1"), DbUtil.get(db, 99, "myLongerKey"));
+        Assert.assertNull(DbUtil.get(db, 99, StringUtil.toBytes("rKey")));
+        Assert.assertArrayEquals(StringUtil.toBytes("v1"), DbUtil.get(db, 99, "myLongerKey"));
     }
     
     @Nano
@@ -162,7 +162,7 @@ public class DbTester {
                 .put(longerKey, "v2")
                 .build());
         
-        Assert.assertArrayEquals(Util.toBytes("v2"),
+        Assert.assertArrayEquals(StringUtil.toBytes("v2"),
                 DbUtil.get(db, 99, longerKey));
     }
     
@@ -175,9 +175,9 @@ public class DbTester {
                 .put("myLongerKey", "v1")
                 .build());
         
-        Assert.assertArrayEquals(Util.toBytes("v2"), DbUtil.get(db, 99, longerKey));
-        Assert.assertArrayEquals(Util.toBytes("v1"), DbUtil.get(db, 99, "myLongerKey"));
-        Assert.assertNull(DbUtil.get(db, 99, Util.toBytes("myLongerX")));
+        Assert.assertArrayEquals(StringUtil.toBytes("v2"), DbUtil.get(db, 99, longerKey));
+        Assert.assertArrayEquals(StringUtil.toBytes("v1"), DbUtil.get(db, 99, "myLongerKey"));
+        Assert.assertNull(DbUtil.get(db, 99, StringUtil.toBytes("myLongerX")));
     }
     
     @Nano
@@ -195,8 +195,8 @@ public class DbTester {
         //System.out.println("---- DBTester.testLongAndShortKeys ----");
         //System.out.println(db.findRoot(db.getTime()).printTree());
         
-        Assert.assertArrayEquals(Util.toBytes("v1"), DbUtil.get(db, 20, "myLongerKey"));
-        Assert.assertArrayEquals(Util.toBytes("v2"), DbUtil.get(db, 20, "nash"));
+        Assert.assertArrayEquals(StringUtil.toBytes("v1"), DbUtil.get(db, 20, "myLongerKey"));
+        Assert.assertArrayEquals(StringUtil.toBytes("v2"), DbUtil.get(db, 20, "nash"));
         Assert.assertNull(DbUtil.get(db, 20, "myLongerX"));
         Assert.assertNull(DbUtil.get(db, 20, "anotherX"));
         Assert.assertNull(DbUtil.get(db, 20, "nas"));
@@ -214,10 +214,10 @@ public class DbTester {
         //System.out.println("---- DBTester.testMultipleKeysWithSamePrefix ----");
         //System.out.println(db.findRoot(db.getTime()).printTree());
         
-        Assert.assertArrayEquals(Util.toBytes("v1"), DbUtil.get(db, 30, "myLongerKey1"));
-        Assert.assertArrayEquals(Util.toBytes("v2"), DbUtil.get(db, 30, "myLongerKey2"));
-        Assert.assertNull(DbUtil.get(db, 30, Util.toBytes("myLongerX")));
-        Assert.assertNull(DbUtil.get(db, 30, Util.toBytes("myLongerKey1b")));
+        Assert.assertArrayEquals(StringUtil.toBytes("v1"), DbUtil.get(db, 30, "myLongerKey1"));
+        Assert.assertArrayEquals(StringUtil.toBytes("v2"), DbUtil.get(db, 30, "myLongerKey2"));
+        Assert.assertNull(DbUtil.get(db, 30, StringUtil.toBytes("myLongerX")));
+        Assert.assertNull(DbUtil.get(db, 30, StringUtil.toBytes("myLongerKey1b")));
     }
     
     @Nano
@@ -272,10 +272,10 @@ public class DbTester {
         Assert.assertNull(value);
         
         value = DbUtil.get(db, 30, Keys.toBytes("b"));
-        Assert.assertArrayEquals(Util.toBytes("b-value"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("b-value"), value);
 
         value = DbUtil.get(db, 15, Keys.toBytes("a"));
-        Assert.assertArrayEquals(Util.toBytes("a-value"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("a-value"), value);
         
         db.stop();
     }
@@ -304,25 +304,25 @@ public class DbTester {
         
         byte[] value;
         value = DbUtil.get(db, Long.MAX_VALUE, "a");
-        Assert.assertArrayEquals(Util.toBytes("a-value-3"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("a-value-3"), value);
         
         value = DbUtil.get(db, 5, "a");
         Assert.assertNull(value);
         
         value = DbUtil.get(db, 15, "a");
-        Assert.assertEquals("a-value", Util.toString(value));
+        Assert.assertEquals("a-value", StringUtil.toString(value));
         
         value = DbUtil.get(db, 25, "a");
         Assert.assertNull(value);
         
         value = DbUtil.get(db, 35, "a");
-        Assert.assertEquals("a-value-2", Util.toString(value));
+        Assert.assertEquals("a-value-2", StringUtil.toString(value));
         
         value = DbUtil.get(db, 45, "a");
         Assert.assertNull(value);
         
         value = DbUtil.get(db, 55, "a");
-        Assert.assertEquals("a-value-3", Util.toString(value));
+        Assert.assertEquals("a-value-3", StringUtil.toString(value));
     }
     
     @Nano
@@ -347,10 +347,10 @@ public class DbTester {
         db.execute(db.trans().delete("anton-and-all-his-friends").build());
         
         byte[] value = DbUtil.get(db, Long.MAX_VALUE, "a");
-        Assert.assertArrayEquals(Util.toBytes("a-value"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("a-value"), value);
         
         value = DbUtil.get(db, Long.MAX_VALUE, "b");
-        Assert.assertArrayEquals(Util.toBytes("b-value"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("b-value"), value);
 
         db.execute(db.trans().delete("a").build());
         db.execute(db.trans().delete("a").build());
@@ -442,7 +442,7 @@ public class DbTester {
         db.execute(db.trans()
                 .put("account1", "1").build());
         
-        byte[] value = DbUtil.get(db, 20, Util.toBytes("account0"));
+        byte[] value = DbUtil.get(db, 20, StringUtil.toBytes("account0"));
         Assert.assertNull(value);
     }
     
@@ -469,7 +469,7 @@ public class DbTester {
         for (int i = 0; i < 10; i++) {
             String keyString = "account-id-" + i;
             value = DbUtil.get(db, 999, keyString);
-            Assert.assertArrayEquals("i=" + i, Util.toBytes("v" + i), value);
+            Assert.assertArrayEquals("i=" + i, StringUtil.toBytes("v" + i), value);
         }
     }
     
@@ -496,7 +496,7 @@ public class DbTester {
         for (int i = 0; i < n; i++) {
             value = DbUtil.get(db, 999, "k" + time);
             Assert.assertArrayEquals("i=" + i + ", time=" + time, 
-                    Util.toBytes("v" + time), value);
+                    StringUtil.toBytes("v" + time), value);
             time += 10;
         }
     }
@@ -524,20 +524,20 @@ public class DbTester {
         //System.out.println("---- DBTester.testSpaceSplit1 ----");
         //System.out.println(db.findRoot(Long.MAX_VALUE).printTree());
         
-        Assert.assertArrayEquals("i=100", Util.toBytes("v100"), 
+        Assert.assertArrayEquals("i=100", StringUtil.toBytes("v100"), 
                 DbUtil.get(db, 101, "admin-accounts-100"));
         
-        Assert.assertArrayEquals("i=100", Util.toBytes("v100"), 
+        Assert.assertArrayEquals("i=100", StringUtil.toBytes("v100"), 
                 DbUtil.get(db, 103, "admin-accounts-100"));
         
-        Assert.assertArrayEquals("i=100", Util.toBytes("v100"), 
+        Assert.assertArrayEquals("i=100", StringUtil.toBytes("v100"), 
                 DbUtil.get(db, 104, "admin-accounts-100"));
         
-        Assert.assertArrayEquals("i=100", Util.toBytes("v100"), 
+        Assert.assertArrayEquals("i=100", StringUtil.toBytes("v100"), 
                 DbUtil.get(db, 199, "admin-accounts-100"));
         
         for (int i = 100; i < 105; i++) {
-            Assert.assertArrayEquals("i=" + i, Util.toBytes("v" + i), 
+            Assert.assertArrayEquals("i=" + i, StringUtil.toBytes("v" + i), 
                     DbUtil.get(db, 199, "admin-accounts-" + i));
         }
     }
@@ -556,7 +556,7 @@ public class DbTester {
         db.execute(b);
         
         for (int i = 0; i < n; i++) {
-            Assert.assertArrayEquals("i=" + i, Util.toBytes("v" + i), 
+            Assert.assertArrayEquals("i=" + i, StringUtil.toBytes("v" + i), 
                     DbUtil.get(db, 20, "admin-accounts-" + getKey(i)));
         }
     }
@@ -579,7 +579,7 @@ public class DbTester {
         //System.out.println(db.printGraph());
         
         for (int i = 0; i < n; i++) {
-            Assert.assertArrayEquals("i=" + i, Util.toBytes("v" + i), 
+            Assert.assertArrayEquals("i=" + i, StringUtil.toBytes("v" + i), 
                     DbUtil.get(db, Long.MAX_VALUE, "admin-accounts-" + getKey(i)));
         }
     }
@@ -602,7 +602,7 @@ public class DbTester {
         //System.out.println(db.findRoot(20).printTree());
        
         for (int i = 0; i <= max; i++) {
-            Assert.assertArrayEquals("i=" + i, Util.toBytes("v" + i), 
+            Assert.assertArrayEquals("i=" + i, StringUtil.toBytes("v" + i), 
                     DbUtil.get(db, 20, "admin-accounts-" + getKey(i)));
         }
     }
@@ -627,7 +627,7 @@ public class DbTester {
         //System.out.println(db.findRoot(Long.MAX_VALUE).printTree());
         
         for (int i = 0; i <= max; i++) {
-            Assert.assertArrayEquals("i=" + i, Util.toBytes("v" + i), 
+            Assert.assertArrayEquals("i=" + i, StringUtil.toBytes("v" + i), 
                     DbUtil.get(db, 999, "k-" + getKey(i)));
         }
     }
@@ -644,7 +644,7 @@ public class DbTester {
             db.execute(db.trans().put(key, "v" + key).build());
             
             byte[] v = DbUtil.get(db, 9999, key);
-            Assert.assertArrayEquals(Util.toBytes("v" + key), v);
+            Assert.assertArrayEquals(StringUtil.toBytes("v" + key), v);
         }
         
         //System.out.println("---- DBTester.testTimeSplitOfRoot ----");
@@ -654,7 +654,7 @@ public class DbTester {
         Assert.assertEquals(true, db.internal().superRoot().rootTime != 0);
         
         for (int i = 1; i <= n; i++) {
-            Assert.assertArrayEquals("i=" + i, Util.toBytes("v" + getKey(i)), 
+            Assert.assertArrayEquals("i=" + i, StringUtil.toBytes("v" + getKey(i)), 
                     DbUtil.get(db, n * 10 + 10, getKey(i)));
         }
     }
@@ -671,23 +671,23 @@ public class DbTester {
         
         //System.out.println("---- DBTester.testManyKeysInOneTransaction ----");
         //System.out.println(db.printTree());
-        Assert.assertArrayEquals(Util.toBytes("v5"), DbUtil.get(db, Long.MAX_VALUE, "admin-account-5"));
-        Assert.assertArrayEquals(Util.toBytes("v14"), DbUtil.get(db, Long.MAX_VALUE, "admin-account-14"));
-        Assert.assertArrayEquals(Util.toBytes("v0"), DbUtil.get(db, Long.MAX_VALUE, "admin-account-0"));
+        Assert.assertArrayEquals(StringUtil.toBytes("v5"), DbUtil.get(db, Long.MAX_VALUE, "admin-account-5"));
+        Assert.assertArrayEquals(StringUtil.toBytes("v14"), DbUtil.get(db, Long.MAX_VALUE, "admin-account-14"));
+        Assert.assertArrayEquals(StringUtil.toBytes("v0"), DbUtil.get(db, Long.MAX_VALUE, "admin-account-0"));
     }
     
     @Nano
     public static void testGet1() {
         Db db = Db.builder().testSetup().start();
         db.execute(db.trans().put("k", "v"));
-        Assert.assertArrayEquals(Util.toBytes("v"), DbUtil.get(db, 999, "k"));
+        Assert.assertArrayEquals(StringUtil.toBytes("v"), DbUtil.get(db, 999, "k"));
     }
     
     @Nano
     public static void testGet2() {
         Db db = Db.builder().testSetup().start();
         db.execute(db.trans().put("longerKey", "v"));
-        Assert.assertArrayEquals(Util.toBytes("v"), DbUtil.get(db, 999, "longerKey"));
+        Assert.assertArrayEquals(StringUtil.toBytes("v"), DbUtil.get(db, 999, "longerKey"));
     }
     
     @Nano
@@ -700,7 +700,7 @@ public class DbTester {
                 .put(longerKey, "v2")
                 .build());
         
-        Assert.assertArrayEquals(Util.toBytes("v2"), DbUtil.get(db, 99, longerKey));
+        Assert.assertArrayEquals(StringUtil.toBytes("v2"), DbUtil.get(db, 99, longerKey));
     }
     
     @Nano
@@ -721,8 +721,8 @@ public class DbTester {
         //System.out.println("---- DBTester.testLongAndShortKeys ----");
         //System.out.println(db.findRoot(db.getTime()).printTree());
         
-        Assert.assertArrayEquals(Util.toBytes("v1"), DbUtil.get(db, 20, "myLongerKey"));
-        Assert.assertArrayEquals(Util.toBytes("v2"), DbUtil.get(db, 20, "nash"));
+        Assert.assertArrayEquals(StringUtil.toBytes("v1"), DbUtil.get(db, 20, "myLongerKey"));
+        Assert.assertArrayEquals(StringUtil.toBytes("v2"), DbUtil.get(db, 20, "nash"));
         Assert.assertNull(DbUtil.get(db, 20, "myLongerX"));
         Assert.assertNull(DbUtil.get(db, 20, "anotherX"));
         Assert.assertNull(DbUtil.get(db, 20, "nas"));
@@ -736,7 +736,7 @@ public class DbTester {
         clock.setTime(10);
         db.execute(db.trans().put("first", "f").build());
         
-        Assert.assertArrayEquals(Util.toBytes("f"), DbUtil.get(db, 99, "first"));
+        Assert.assertArrayEquals(StringUtil.toBytes("f"), DbUtil.get(db, 99, "first"));
         Assert.assertNull(DbUtil.get(db, 5, "first"));
     }
     
@@ -754,7 +754,7 @@ public class DbTester {
             db.execute(t);
             
             byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(key), getData);
-            Assert.assertEquals("i=" + i, "v" + key, Util.toString(value));
+            Assert.assertEquals("i=" + i, "v" + key, StringUtil.toString(value));
         }
         return db;
     }
@@ -808,21 +808,21 @@ public class DbTester {
         for (long i = 100; i < 113; i++) {
             GetData gd = db.newGetData();
             value = db.getOne(Long.MAX_VALUE, Keys.toSegments("four" + i + "end"), gd);
-            Assert.assertEquals("i=" + i, "" + i, Util.toString(value));
+            Assert.assertEquals("i=" + i, "" + i, StringUtil.toString(value));
         }
         
         for (long i = 100; i < 111; i++) {
             value = DbUtil.get(db, Long.MAX_VALUE, Keys.toBytes("four110-" + i));
-            Assert.assertEquals("i=" + i, "v-four110-" + i, Util.toString(value));
+            Assert.assertEquals("i=" + i, "v-four110-" + i, StringUtil.toString(value));
         }
         
         db.checkNodes();
         
         value = DbUtil.get(db, Long.MAX_VALUE, Keys.toBytes("four110-111"));
-        Assert.assertEquals("v-four110-111", Util.toString(value));
+        Assert.assertEquals("v-four110-111", StringUtil.toString(value));
         
         value = DbUtil.get(db, Long.MAX_VALUE, Keys.toBytes("four110-111"));
-        Assert.assertEquals("v-four110-111", Util.toString(value));
+        Assert.assertEquals("v-four110-111", StringUtil.toString(value));
     }
     
     @Nano
@@ -836,10 +836,10 @@ public class DbTester {
                 .put("2/directory2", "v3")
                 .put("r/direct", "v4"));
         
-        Assert.assertEquals("v1", Util.toString(DbUtil.get(db, 999, "r/directory1")));
-        Assert.assertEquals("v2", Util.toString(DbUtil.get(db, 999, "r/direc")));
+        Assert.assertEquals("v1", StringUtil.toString(DbUtil.get(db, 999, "r/directory1")));
+        Assert.assertEquals("v2", StringUtil.toString(DbUtil.get(db, 999, "r/direc")));
         Assert.assertNull(DbUtil.get(db, 999, "2/direc"));
-        Assert.assertEquals("v4", Util.toString(DbUtil.get(db, 999, "r/direct")));
+        Assert.assertEquals("v4", StringUtil.toString(DbUtil.get(db, 999, "r/direct")));
     }
     
     @Nano
@@ -920,7 +920,7 @@ public class DbTester {
             db.execute(trans);
         }
         
-        Assert.assertEquals("version 39", Util.toString(DbUtil.get(db, Long.MAX_VALUE, "key")));
+        Assert.assertEquals("version 39", StringUtil.toString(DbUtil.get(db, Long.MAX_VALUE, "key")));
     }
     
     /**
@@ -947,7 +947,7 @@ public class DbTester {
         
         for (int i = 0; i < n; i++) {
             clock.setTime(1*1000000 + i * 10);
-            Trans t = db.trans().put(ks.getKey(i), Util.toBytes("v" + i)).build();
+            Trans t = db.trans().put(ks.getKey(i), StringUtil.toBytes("v" + i)).build();
             db.execute(t);
         }
         
@@ -955,7 +955,7 @@ public class DbTester {
         
         for (int i = 0; i < n; i++) {
             byte[] value = DbUtil.get(db, Long.MAX_VALUE, ks.getKey(i));
-            Assert.assertEquals("i=" + i, "v" + i, Util.toString(value));
+            Assert.assertEquals("i=" + i, "v" + i, StringUtil.toString(value));
         }
         
         // Removes some of the keys
@@ -977,7 +977,7 @@ public class DbTester {
             if (i % 10 == 0) {
                 Assert.assertNull(value);
             } else {
-                Assert.assertEquals("i=" + i, "v" + i, Util.toString(value));
+                Assert.assertEquals("i=" + i, "v" + i, StringUtil.toString(value));
             }
         }
         
@@ -985,7 +985,7 @@ public class DbTester {
         
         for (int i = 0; i < n; i++) {
             byte[] value = DbUtil.get(db, 2*1000000-1, ks.getKey(i));
-            Assert.assertEquals("Get at 2*1000000-1, i=" + i, "v" + i, Util.toString(value));
+            Assert.assertEquals("Get at 2*1000000-1, i=" + i, "v" + i, StringUtil.toString(value));
         }
     }
     
@@ -1008,7 +1008,7 @@ public class DbTester {
         for (int i = 0; i < n; i++) {
             long time = i * 10 + 5;
             byte[] value = DbUtil.get(db, time, keyBytes);
-            Assert.assertEquals("i=" + i, "v-" + i, Util.toString(value));
+            Assert.assertEquals("i=" + i, "v-" + i, StringUtil.toString(value));
         }
     }
     
@@ -1175,7 +1175,7 @@ public class DbTester {
             mstream2.truncate(newSize);
  
             Db db2 = testDb(mstream);
-            byte[] value = DbUtil.get(db2, Util.toBytes("non-existing-key"));
+            byte[] value = DbUtil.get(db2, StringUtil.toBytes("non-existing-key"));
             Assert.assertTrue(value == null);
             db2.stop();
         }
@@ -1334,7 +1334,7 @@ public class DbTester {
         ValueTransformation vt = new ValueTransformation() {
             public byte[] transform(long transactionTime, byte[] inputValue, byte[] previous) {
                 String s = "tt" + transactionTime;
-                return Util.toBytes(s);
+                return StringUtil.toBytes(s);
             }
         };
         
@@ -1350,7 +1350,7 @@ public class DbTester {
         GetData g = db.newGetData();
         byte[] value = db.getOne(200, Keys.toSegments("t/1.s"), g);
         Assert.assertTrue(value != null);
-        String s = Util.toString(value);
+        String s = StringUtil.toString(value);
         Assert.assertTrue(s.startsWith("tt"));
         long time = Long.parseLong(s.substring("tt".length()));
         Assert.assertTrue(time == 100 || time == 101);

@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.TreeMap;
 
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.core.Db.ExecuteData;
 import bergdb.dag.Dag;
 import bergdb.dag.GetData;
@@ -197,7 +197,7 @@ public class Trans {
         }
         
         public Builder put(String key, String value) {
-            put(Keys.toBytes(key), value == null ? null : Util.toBytes(value));
+            put(Keys.toBytes(key), value == null ? null : StringUtil.toBytes(value));
             return this;
         }
         

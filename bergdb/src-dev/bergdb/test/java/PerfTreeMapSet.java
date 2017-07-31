@@ -1,11 +1,11 @@
-package bergdb.test;
+package bergdb.test.java;
 
 import java.util.Map;
 import java.util.Random;
 import java.util.TreeMap;
 
 import bergdb.common.ByteArrayComparator;
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.nanotest.SimpleTestEnvironment;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
@@ -28,8 +28,8 @@ public class PerfTreeMapSet {
         
         for (int i = 0; i < n; i++) {
             int anInt = random.nextInt();
-            keys[i] = Util.toBytes("" + anInt);
-            values[i] = Util.toBytes("v" + anInt);
+            keys[i] = StringUtil.toBytes("" + anInt);
+            values[i] = StringUtil.toBytes("v" + anInt);
         }
         
         r.out().println("Starting...");

@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.Random;
 
 import bergdb.common.Bytes;
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.nanotest.CommandLine;
 import bergdb.pub.Connection;
 import bergdb.pub.CryptoKey;
@@ -213,7 +213,7 @@ public class CcDbTest {
     private String cardNumberToKey(int cardNumberInt) {
         byte[] bytes = new byte[4];
         Bytes.intToBytesBE(cardNumberInt, bytes, 0);
-        String key = "/cards/" + Util.toHex(bytes);
+        String key = "/cards/" + StringUtil.toHex(bytes);
         return key;
     }
 

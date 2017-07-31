@@ -1,6 +1,6 @@
 package bergdb.test;
 
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.core.Db;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
@@ -96,7 +96,7 @@ public class Concurrency2 {
                 this.errorCount++;
                 
                 System.out.println("---- ERROR: no value for key '0' ----");
-                System.out.println("value2 = " + (value2 == null ? "null" : Util.toString(value2)));
+                System.out.println("value2 = " + (value2 == null ? "null" : StringUtil.toString(value2)));
                 System.out.println("writeCount: " + this.writeCount);
                 System.out.println("readCount: " + this.readCount);
                 System.out.println("errorCount: " + this.errorCount);

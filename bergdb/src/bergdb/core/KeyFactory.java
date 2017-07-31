@@ -4,7 +4,7 @@ import java.util.Iterator;
 import java.util.Random;
 
 import bergdb.common.Bytes;
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.dag.Keys;
 import bergdb.nanotest.Nano;
 
@@ -102,7 +102,7 @@ public class KeyFactory {
         case 4:
         case 5:
             // Case 'I'.
-            key = Util.toBytes(index + "I");
+            key = StringUtil.toBytes(index + "I");
             break;
         case 6:
             // Case 'L' - a longer key

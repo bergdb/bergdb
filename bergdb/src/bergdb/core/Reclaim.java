@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import bergdb.common.Bug;
 import bergdb.common.StringMap;
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
@@ -198,7 +198,7 @@ public class Reclaim implements Db.TransactionListener {
                 table.rows.add(info);
                 
                 String tableString = table.serialize();
-                Trans t2 = db.trans().put(tableKey, Util.toBytes(tableString)).build();
+                Trans t2 = db.trans().put(tableKey, StringUtil.toBytes(tableString)).build();
                 t2.isInternal = true;
                 try {
                     db.execute(t2);
@@ -239,7 +239,7 @@ public class Reclaim implements Db.TransactionListener {
                     }
                     
                     String tableString = table.serialize();
-                    Trans t2 = db.trans().put(tableKey, Util.toBytes(tableString)).build();
+                    Trans t2 = db.trans().put(tableKey, StringUtil.toBytes(tableString)).build();
                     t2.isInternal = true;
                     try {
                         db.execute(t2);
@@ -274,7 +274,7 @@ public class Reclaim implements Db.TransactionListener {
                     System.arraycopy(iteration.lastKey, 0, info.lastKey, 0, iteration.lastKey.length);
                     
                     String tableString = table.serialize();
-                    Trans tt = db.trans().put(tableKey, Util.toBytes(tableString)).build();
+                    Trans tt = db.trans().put(tableKey, StringUtil.toBytes(tableString)).build();
                     tt.isInternal = true;
                     
                     try {
@@ -301,7 +301,7 @@ public class Reclaim implements Db.TransactionListener {
         byte[] value = db.getOne(Long.MAX_VALUE, tableKey, g);
         
         if (value != null) {
-            String s = Util.toString(value);
+            String s = StringUtil.toString(value);
             table.parse(s);  // throws InternalDataException
         }
         

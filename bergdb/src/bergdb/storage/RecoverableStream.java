@@ -3,6 +3,7 @@ package bergdb.storage;
 import java.io.IOException;
 
 import bergdb.common.Bytes;
+import bergdb.common.StringUtil;
 import bergdb.common.Util;
 import bergdb.core.StoredTrans;
 import bergdb.nanotest.Assert;
@@ -188,7 +189,7 @@ public class RecoverableStream {
         int bytesToAdd = 5 - existingBytes.length;
         
         if (existingBytes.length < 1 || existingBytes.length >= 5) {
-            throw new IllegalArgumentException("existingBytes: " + Util.toHex(existingBytes));
+            throw new IllegalArgumentException("existingBytes: " + StringUtil.toHex(existingBytes));
         }
         
         byte[] buffer = new byte[5];
@@ -529,7 +530,7 @@ public class RecoverableStream {
         
         if (!Util.areEqual(expectedMagic, actualMagic)) {
             throw new BadMagicBytes("Expected magic bytes: " 
-                    + Util.toHex(expectedMagic) + ", got: " + Util.toHex(actualMagic));
+                    + StringUtil.toHex(expectedMagic) + ", got: " + StringUtil.toHex(actualMagic));
         }
         
         int version = Bytes.bytesToUShortLE(header, 4);

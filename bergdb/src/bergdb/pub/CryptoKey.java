@@ -3,6 +3,7 @@ package bergdb.pub;
 import java.security.SecureRandom;
 
 import bergdb.common.SeedGenerator;
+import bergdb.common.StringUtil;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
@@ -68,7 +69,7 @@ public class CryptoKey {
         
         byte[] nameBytes = new byte[4];
         random.nextBytes(nameBytes);
-        String name = Util.toHex(nameBytes);
+        String name = StringUtil.toHex(nameBytes);
         
         String algo = "salsa";
         
@@ -106,7 +107,7 @@ public class CryptoKey {
         }
         
         try {
-            keyData = Util.hexStringToBytes(keyDataString);
+            keyData = StringUtil.hexStringToBytes(keyDataString);
         } catch (IllegalArgumentException e) {
             throw new FormatException("Bad keyData format.");
         }
@@ -125,7 +126,7 @@ public class CryptoKey {
         StringBuilder b = new StringBuilder();
         b.append(name);
         b.append("-" + algo);
-        b.append("-" + Util.toHex(keyData));
+        b.append("-" + StringUtil.toHex(keyData));
         return b.toString();
     }
     

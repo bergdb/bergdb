@@ -2,7 +2,7 @@ package bergdb.dev;
 
 import java.io.IOException;
 
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.core.Db;
 import bergdb.core.TestClock;
 import bergdb.dag.Dag;
@@ -82,7 +82,7 @@ public class DagExamples {
         Dag g = dag();
         PutData pd = g.newPutData();
         pd.tt = 20;
-        g.putKv(Keys.toSegments("/myKey"), Util.toBytes("v1"), pd);
+        g.putKv(Keys.toSegments("/myKey"), StringUtil.toBytes("v1"), pd);
         g.printGraph(System.out);
     }
     
@@ -90,7 +90,7 @@ public class DagExamples {
         Dag g = dag();
         PutData pd = g.newPutData();
         pd.tt = 20;
-        g.putKv(Keys.toSegments("/myLongerKey"), Util.toBytes("v1"), pd);
+        g.putKv(Keys.toSegments("/myLongerKey"), StringUtil.toBytes("v1"), pd);
         g.printGraph(System.out);
     }
     
@@ -100,7 +100,7 @@ public class DagExamples {
         pd.tt = 20;
         
         for (int i = 0; i < 3; i++) {
-            g.putKv(Keys.toSegments("/k" + i), Util.toBytes("v" + i), pd);
+            g.putKv(Keys.toSegments("/k" + i), StringUtil.toBytes("v" + i), pd);
         }
         
         g.printGraph(System.out);
@@ -112,7 +112,7 @@ public class DagExamples {
         pd.tt = 20;
         
         for (int i = 2; i >= 0; i--) {
-            g.putKv(Keys.toSegments("/k" + i), Util.toBytes("v" + i), pd);
+            g.putKv(Keys.toSegments("/k" + i), StringUtil.toBytes("v" + i), pd);
         }
         
         g.printGraph(System.out);
@@ -125,7 +125,7 @@ public class DagExamples {
         pd.tt = 20;
         
         for (int i = 0; i < 4; i++) {
-            g.putKv(Keys.toSegments("/prefix-" + i), Util.toBytes("v" + i), pd);
+            g.putKv(Keys.toSegments("/prefix-" + i), StringUtil.toBytes("v" + i), pd);
         }
         
         g.printGraph(System.out);
@@ -140,7 +140,7 @@ public class DagExamples {
         for (int i = 0; i < 5; i++) {
             PutData pd = g.newPutData();
             pd.tt = 100 + i;
-            g.putKv(Keys.toSegments("/firstx/k" + i), Util.toBytes("v" + i), pd);
+            g.putKv(Keys.toSegments("/firstx/k" + i), StringUtil.toBytes("v" + i), pd);
         }
         
         g.printGraph(System.out);
@@ -154,10 +154,10 @@ public class DagExamples {
         Db db = Db.builder().testSetup().clock(clock).maxNodeSize8().start();
         
         for (int i = 0; i < 10; i++) {
-            db.execute(db.trans().put(Keys.toSegments("/firstx/k" + i), Util.toBytes("v" + i)));
+            db.execute(db.trans().put(Keys.toSegments("/firstx/k" + i), StringUtil.toBytes("v" + i)));
         }
         
-        db.execute(db.trans().put(Keys.toSegments("/firstx/k3-10"), Util.toBytes("v10")));
+        db.execute(db.trans().put(Keys.toSegments("/firstx/k3-10"), StringUtil.toBytes("v10")));
         
         Dag dag = db.internal().dag();
         dag.printGraph(System.out);

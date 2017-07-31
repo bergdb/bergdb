@@ -4,7 +4,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 
 import bergdb.common.Bytes;
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.dag.Node;
 import bergdb.dag.Spos;
 import bergdb.storage.MetaBlock;
@@ -185,7 +185,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
             id = Bytes.bytesToLongLE(buffer, StoredValueNode.ID_OFFSET);
         } else {
             throw new StreamFormatException("unknown node type, " + ((int) type) 
-                    + ", spos: " + spos + ", node header bytes: " + Util.toHex(buffer, 0, 8));
+                    + ", spos: " + spos + ", node header bytes: " + StringUtil.toHex(buffer, 0, 8));
         }
         
         return new NodeHeader(type, id);

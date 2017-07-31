@@ -2,7 +2,7 @@ package bergdb.pubimp;
 
 import java.util.Iterator;
 
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.Connection;
@@ -404,7 +404,7 @@ public class PubTesterPrimary {
         Assert.assertEquals(1.2, myDouble.value);
         
         bytes = it.next();
-        String s = Util.toString(bytes);
+        String s = StringUtil.toString(bytes);
         Assert.assertEquals("30.txt - a string", s);
         
         bytes = it.next();

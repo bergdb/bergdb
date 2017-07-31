@@ -2,7 +2,7 @@ package bergdb.test;
 
 import java.io.PrintStream;
 
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.core.Db;
 import bergdb.core.DbUtil;
 import bergdb.core.CoreTestClock;
@@ -42,7 +42,7 @@ public class Crazy {
         
         for (int i = 0; i < n; i++) {
             clock.setTime(1000000 + i * 10 + 1);
-            Trans t = db.trans().put(KeyFactory.crazyKey(i), Util.toBytes("v" + i)).build();
+            Trans t = db.trans().put(KeyFactory.crazyKey(i), StringUtil.toBytes("v" + i)).build();
             db.execute(t);
         }
         db.sync(0, SyncLevel.ORDINARY);
@@ -53,7 +53,7 @@ public class Crazy {
         
         for (int i = 0; i < n; i++) {
             byte[] value = DbUtil.get(db, Long.MAX_VALUE, KeyFactory.crazyKey(i));
-            Assert.assertEquals("i=" + i, "v" + i, Util.toString(value));
+            Assert.assertEquals("i=" + i, "v" + i, StringUtil.toString(value));
         }
         
         out.println("Deletes some of the keys.");
@@ -75,14 +75,14 @@ public class Crazy {
         
         for (int i = 0; i < n; i += 10) {
             byte[] value = DbUtil.get(db, 2000000 - 1, KeyFactory.crazyKey(i));
-            Assert.assertEquals("i=" + i, "v" + i, Util.toString(value));
+            Assert.assertEquals("i=" + i, "v" + i, StringUtil.toString(value));
         }
         
         // Adds deleted keys back again.
         
         for (int i = 0; i < n; i += 10) {
             clock.setTime(3000000 + i * 10 + 1);
-            Trans t = db.trans().put(KeyFactory.crazyKey(i), Util.toBytes("v" + i)).build();
+            Trans t = db.trans().put(KeyFactory.crazyKey(i), StringUtil.toBytes("v" + i)).build();
             db.execute(t);
         }
         
@@ -90,7 +90,7 @@ public class Crazy {
         
         for (int i = 0; i < n; i++) {
             byte[] value = DbUtil.get(db, Long.MAX_VALUE, KeyFactory.crazyKey(i));
-            Assert.assertEquals("i=" + i, "v" + i, Util.toString(value));
+            Assert.assertEquals("i=" + i, "v" + i, StringUtil.toString(value));
         }
         
         out.println("Overwrites some keys with large values.");
@@ -173,7 +173,7 @@ public class Crazy {
         
         for (int i = 124; i < n; i++) {
             value = DbUtil.get(db, Long.MAX_VALUE, KeyFactory.crazyKey(i));
-            Assert.assertEquals("i=" + i, "v" + i, Util.toString(value));
+            Assert.assertEquals("i=" + i, "v" + i, StringUtil.toString(value));
         }
     }
 }

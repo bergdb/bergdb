@@ -1,6 +1,6 @@
 package bergdb.dag;
 
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
@@ -38,7 +38,7 @@ public class KeyNodeTester {
                 "ap", "apa", "d", "g", "kr", "kram", "mage", "md" };
         
         for (int i = 0; i < keys.length; i++) {
-            long klongToAdd = Klong.createKey(Util.toBytes(keys[i]));
+            long klongToAdd = Klong.createKey(StringUtil.toBytes(keys[i]));
             node.addKlong(1, klongToAdd, t2Pointers[i], AccessData.DEFAULT_ACCESS_DATA);
         }
         
@@ -55,7 +55,7 @@ public class KeyNodeTester {
     public static void testSanity2() {
         KeyNodeTester t = new KeyNodeTester();
         KeyNode t2 = t.createT2();
-        long compareValue = createCompareValue(Util.toBytes("ap"));
+        long compareValue = createCompareValue(StringUtil.toBytes("ap"));
         
         KlongWithPointer kwi = new KlongWithPointer();
         t2.searchEq(2000, compareValue, kwi);
@@ -74,20 +74,20 @@ public class KeyNodeTester {
         KeyNode t2 = t.createT2();
         KlongWithPointer kwi = new KlongWithPointer();
         
-        t2.searchEq(2000, createCompareValue(Util.toBytes("ap")), kwi);
+        t2.searchEq(2000, createCompareValue(StringUtil.toBytes("ap")), kwi);
         Assert.assertEquals(t.t2Pointers[0], t2.getPointerNode(kwi.pointerIndex));
         
-        t2.searchEq(2000, createCompareValue(Util.toBytes("apa")), kwi);
+        t2.searchEq(2000, createCompareValue(StringUtil.toBytes("apa")), kwi);
         Assert.assertEquals(true, t2.getPointerNode(kwi.pointerIndex) != null);
         Assert.assertEquals(t.t2Pointers[1], t2.getPointerNode(kwi.pointerIndex));
         
-        t2.searchEq(2000, createCompareValue(Util.toBytes("g")), kwi);
+        t2.searchEq(2000, createCompareValue(StringUtil.toBytes("g")), kwi);
         Assert.assertEquals(t.t2Pointers[3], t2.getPointerNode(kwi.pointerIndex));
         
-        t2.searchEq(2000, createCompareValue(Util.toBytes("mage")), kwi);
+        t2.searchEq(2000, createCompareValue(StringUtil.toBytes("mage")), kwi);
         Assert.assertEquals(t.t2Pointers[6], t2.getPointerNode(kwi.pointerIndex));
         
-        t2.searchEq(2000, createCompareValue(Util.toBytes("md")), kwi);
+        t2.searchEq(2000, createCompareValue(StringUtil.toBytes("md")), kwi);
         Assert.assertEquals(t.t2Pointers[7], t2.getPointerNode(kwi.pointerIndex));
     }
     
@@ -98,13 +98,13 @@ public class KeyNodeTester {
         
         KeyNode t2 = t.createT2();
         
-        t2.addKlong(1020, Klong.createKey(Util.toBytes("a")), t.t2Pointers[7], AccessData.DEFAULT_ACCESS_DATA);
+        t2.addKlong(1020, Klong.createKey(StringUtil.toBytes("a")), t.t2Pointers[7], AccessData.DEFAULT_ACCESS_DATA);
         
-        long compareValue = createCompareValue(Util.toBytes("a"));
+        long compareValue = createCompareValue(StringUtil.toBytes("a"));
         t2.searchEq(2000, compareValue, kwi);
         Assert.assertEquals(t.t2Pointers[7], kwi.node);
         
-        compareValue = createCompareValue(Util.toBytes("mage"));
+        compareValue = createCompareValue(StringUtil.toBytes("mage"));
         t2.searchEq(2000, compareValue, kwi);
         Assert.assertEquals(t.t2Pointers[6], kwi.node);
     }
@@ -114,10 +114,10 @@ public class KeyNodeTester {
         KeyNodeTester t = new KeyNodeTester();
         KlongWithPointer kwi = new KlongWithPointer();
         KeyNode node = t.createT2();
-        long klong = node.getDeleteBitmap(Klong.createCompareValue(Util.toBytes("apa")));
+        long klong = node.getDeleteBitmap(Klong.createCompareValue(StringUtil.toBytes("apa")));
         node.addKlong(1020, klong, null, AccessData.DEFAULT_ACCESS_DATA);
         
-        long compareValue = createCompareValue(Util.toBytes("apa"));
+        long compareValue = createCompareValue(StringUtil.toBytes("apa"));
         node.searchEq(2000, compareValue, kwi);
 
         //System.out.println("---- NodeTester.testEQWithVersionsAndDelete ----");
@@ -126,13 +126,13 @@ public class KeyNodeTester {
         
         Assert.assertEquals(Klong.NULL, kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("apa"));
+        compareValue = createCompareValue(StringUtil.toBytes("apa"));
         node.searchEq(1010, compareValue, kwi);
         Assert.assertEquals(t.t2Pointers[1], kwi.node);
         
-        node.addKlong(1030, Klong.createKey(Util.toBytes("apa")), t.t2Pointers[5], AccessData.DEFAULT_ACCESS_DATA);
+        node.addKlong(1030, Klong.createKey(StringUtil.toBytes("apa")), t.t2Pointers[5], AccessData.DEFAULT_ACCESS_DATA);
         
-        compareValue = createCompareValue(Util.toBytes("apa"));
+        compareValue = createCompareValue(StringUtil.toBytes("apa"));
         node.searchEq(2000, compareValue, kwi);
         Assert.assertEquals(t.t2Pointers[5], kwi.node);
     }
@@ -140,12 +140,12 @@ public class KeyNodeTester {
     @Nano
     public static void testEqBeforeFirstVersion() {
         KeyNode n = new KeyNode();
-        long klongToAdd = Klong.createKey(Util.toBytes("first"));
+        long klongToAdd = Klong.createKey(StringUtil.toBytes("first"));
         n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
         
         n.check();
         KlongWithPointer kwi = new KlongWithPointer();
-        long compareValue = createCompareValue(Util.toBytes("first"));
+        long compareValue = createCompareValue(StringUtil.toBytes("first"));
         
         n.searchEq(20, compareValue, kwi);
         Assert.assertEquals(true, kwi.klong != Klong.NULL);
@@ -157,11 +157,11 @@ public class KeyNodeTester {
     @Nano
     public static void testLte1() {
         KeyNode n = new KeyNode();
-        long klongToAdd = Klong.createKey(Util.toBytes("first"));
+        long klongToAdd = Klong.createKey(StringUtil.toBytes("first"));
         n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
         n.check();
         KlongWithPointer kwi = new KlongWithPointer();
-        long compareValue = createCompareValue(Util.toBytes("first"));
+        long compareValue = createCompareValue(StringUtil.toBytes("first"));
         
         n.searchLte(20, compareValue, kwi);
         Assert.assertEquals(true, kwi.klong != Klong.NULL);
@@ -169,11 +169,11 @@ public class KeyNodeTester {
         n.searchLte(5, compareValue, kwi);
         Assert.assertEquals(true, kwi.klong == Klong.NULL);
         
-        compareValue = createCompareValue(Util.toBytes("fir"));
+        compareValue = createCompareValue(StringUtil.toBytes("fir"));
         n.searchLte(20, compareValue, kwi);
         Assert.assertEquals(true, kwi.klong == Klong.NULL);
         
-        compareValue = createCompareValue(Util.toBytes("g"));
+        compareValue = createCompareValue(StringUtil.toBytes("g"));
         n.searchLte(20, compareValue, kwi);
         Assert.assertEquals(true, kwi.klong != Klong.NULL);
     }
@@ -187,40 +187,40 @@ public class KeyNodeTester {
         
         // Creates KeyNode.
         
-        klongToAdd = Klong.createKey(Util.toBytes("k10"));
+        klongToAdd = Klong.createKey(StringUtil.toBytes("k10"));
         n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
-        klongToAdd = Klong.createKey(Util.toBytes("k20"));
+        klongToAdd = Klong.createKey(StringUtil.toBytes("k20"));
         n.addKlong(20, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
 
         // Tests at time = Long.MAX_VALUE.
         
-        compareValue = createCompareValue(Util.toBytes("k20"));
+        compareValue = createCompareValue(StringUtil.toBytes("k20"));
         n.searchLte(Long.MAX_VALUE, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k20")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k20")), kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k21"));
+        compareValue = createCompareValue(StringUtil.toBytes("k21"));
         n.searchLte(Long.MAX_VALUE, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k20")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k20")), kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k19"));
+        compareValue = createCompareValue(StringUtil.toBytes("k19"));
         n.searchLte(Long.MAX_VALUE, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k10")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k10")), kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k09"));
+        compareValue = createCompareValue(StringUtil.toBytes("k09"));
         n.searchLte(Long.MAX_VALUE, compareValue, kwi);
         Assert.assertEquals(Klong.NULL, kwi.klong);
         
         // Tests at time = 15
         
-        compareValue = createCompareValue(Util.toBytes("k99"));
+        compareValue = createCompareValue(StringUtil.toBytes("k99"));
         n.searchLte(15, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k10")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k10")), kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k10"));
+        compareValue = createCompareValue(StringUtil.toBytes("k10"));
         n.searchLte(15, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k10")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k10")), kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k09"));
+        compareValue = createCompareValue(StringUtil.toBytes("k09"));
         n.searchLte(15, compareValue, kwi);
         Assert.assertEquals(Klong.NULL, kwi.klong);
     }
@@ -237,28 +237,28 @@ public class KeyNodeTester {
         
         // Creates KeyNode.
         
-        klongToAdd = Klong.createKey(Util.toBytes("k10"));
+        klongToAdd = Klong.createKey(StringUtil.toBytes("k10"));
         n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
-        klongToAdd = Klong.createKey(Util.toBytes("k20"));
+        klongToAdd = Klong.createKey(StringUtil.toBytes("k20"));
         n.addKlong(20, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
-        klongToAdd = n.getDeleteBitmap(Klong.createCompareValue(Util.toBytes("k10")));
+        klongToAdd = n.getDeleteBitmap(Klong.createCompareValue(StringUtil.toBytes("k10")));
         n.addKlong(30, klongToAdd, null, AccessData.DEFAULT_ACCESS_DATA);
 
         // Tests at time = Long.MAX_VALUE.
         
-        compareValue = createCompareValue(Util.toBytes("k20"));
+        compareValue = createCompareValue(StringUtil.toBytes("k20"));
         n.searchLte(Long.MAX_VALUE, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k20")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k20")), kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k21"));
+        compareValue = createCompareValue(StringUtil.toBytes("k21"));
         n.searchLte(Long.MAX_VALUE, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k20")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k20")), kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k19"));
+        compareValue = createCompareValue(StringUtil.toBytes("k19"));
         n.searchLte(Long.MAX_VALUE, compareValue, kwi);
         Assert.assertEquals("Got: " + Klong.toString(kwi.klong) + ", " + kwi.klongTime, Klong.NULL, kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k09"));
+        compareValue = createCompareValue(StringUtil.toBytes("k09"));
         n.searchLte(Long.MAX_VALUE, compareValue, kwi);
         Assert.assertEquals(Klong.NULL, kwi.klong);
     }
@@ -266,11 +266,11 @@ public class KeyNodeTester {
     @Nano
     public static void testLt1() {
         KeyNode n = new KeyNode();
-        long klongToAdd = Klong.createKey(Util.toBytes("first"));
+        long klongToAdd = Klong.createKey(StringUtil.toBytes("first"));
         n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
         n.check();
         KlongWithPointer kwi = new KlongWithPointer();
-        long compareValue = createCompareValue(Util.toBytes("first"));
+        long compareValue = createCompareValue(StringUtil.toBytes("first"));
         
         n.searchLt(20, compareValue, kwi);
         Assert.assertTrue(kwi.klong == Klong.NULL);
@@ -278,11 +278,11 @@ public class KeyNodeTester {
         n.searchLt(5, compareValue, kwi);
         Assert.assertTrue(kwi.klong == Klong.NULL);
         
-        compareValue = createCompareValue(Util.toBytes("fir"));
+        compareValue = createCompareValue(StringUtil.toBytes("fir"));
         n.searchLt(20, compareValue, kwi);
         Assert.assertTrue(kwi.klong == Klong.NULL);
         
-        compareValue = createCompareValue(Util.toBytes("g"));
+        compareValue = createCompareValue(StringUtil.toBytes("g"));
         n.searchLt(20, compareValue, kwi);
         Assert.assertTrue(kwi.klong != Klong.NULL);
     }
@@ -296,40 +296,40 @@ public class KeyNodeTester {
         
         // Creates KeyNode.
         
-        klongToAdd = Klong.createKey(Util.toBytes("k10"));
+        klongToAdd = Klong.createKey(StringUtil.toBytes("k10"));
         n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
-        klongToAdd = Klong.createKey(Util.toBytes("k20"));
+        klongToAdd = Klong.createKey(StringUtil.toBytes("k20"));
         n.addKlong(20, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
 
         // Tests at time = Long.MAX_VALUE.
         
-        compareValue = createCompareValue(Util.toBytes("k20"));
+        compareValue = createCompareValue(StringUtil.toBytes("k20"));
         n.searchLt(Long.MAX_VALUE, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k10")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k10")), kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k21"));
+        compareValue = createCompareValue(StringUtil.toBytes("k21"));
         n.searchLt(Long.MAX_VALUE, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k20")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k20")), kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k19"));
+        compareValue = createCompareValue(StringUtil.toBytes("k19"));
         n.searchLt(Long.MAX_VALUE, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k10")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k10")), kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k09"));
+        compareValue = createCompareValue(StringUtil.toBytes("k09"));
         n.searchLt(Long.MAX_VALUE, compareValue, kwi);
         Assert.assertEquals(Klong.NULL, kwi.klong);
         
         // Tests at time = 15
         
-        compareValue = createCompareValue(Util.toBytes("k99"));
+        compareValue = createCompareValue(StringUtil.toBytes("k99"));
         n.searchLt(15, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k10")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k10")), kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k10"));
+        compareValue = createCompareValue(StringUtil.toBytes("k10"));
         n.searchLt(15, compareValue, kwi);
         Assert.assertEquals(Klong.NULL, kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k09"));
+        compareValue = createCompareValue(StringUtil.toBytes("k09"));
         n.searchLt(15, compareValue, kwi);
         Assert.assertEquals(Klong.NULL, kwi.klong);
     }
@@ -346,24 +346,24 @@ public class KeyNodeTester {
         
         // Creates KeyNode.
         
-        klongToAdd = Klong.createKey(Util.toBytes("k10"));
+        klongToAdd = Klong.createKey(StringUtil.toBytes("k10"));
         n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
-        klongToAdd = Klong.createKey(Util.toBytes("k20"));
+        klongToAdd = Klong.createKey(StringUtil.toBytes("k20"));
         n.addKlong(20, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
-        klongToAdd = n.getDeleteBitmap(Klong.createCompareValue(Util.toBytes("k10")));
+        klongToAdd = n.getDeleteBitmap(Klong.createCompareValue(StringUtil.toBytes("k10")));
         n.addKlong(30, klongToAdd, null, AccessData.DEFAULT_ACCESS_DATA);
 
         // Tests at time = Long.MAX_VALUE.
         
-        compareValue = createCompareValue(Util.toBytes("k20"));
+        compareValue = createCompareValue(StringUtil.toBytes("k20"));
         n.searchLt(Long.MAX_VALUE, compareValue, kwi);
         Assert.assertEquals(Klong.NULL, kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k21"));
+        compareValue = createCompareValue(StringUtil.toBytes("k21"));
         n.searchLt(Long.MAX_VALUE, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k20")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k20")), kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k19"));
+        compareValue = createCompareValue(StringUtil.toBytes("k19"));
         n.searchLt(Long.MAX_VALUE, compareValue, kwi);
         Assert.assertEquals("Got: " + Klong.toString(kwi.klong) + ", " + kwi.klongTime, 
                 Klong.NULL, kwi.klong);
@@ -372,19 +372,19 @@ public class KeyNodeTester {
     @Nano
     public static void testGt1() {
         KeyNode n = new KeyNode();
-        long klongToAdd = Klong.createKey(Util.toBytes("key"));
+        long klongToAdd = Klong.createKey(StringUtil.toBytes("key"));
         n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
         n.check();
         KlongWithPointer kwi = new KlongWithPointer();
 
-        long compareValue = createCompareValue(Util.toBytes("a"));
+        long compareValue = createCompareValue(StringUtil.toBytes("a"));
         n.searchGt(20, compareValue, kwi);
         Assert.assertEquals(true, kwi.klong != Klong.NULL);
         
         n.searchGt(5, compareValue, kwi);
         Assert.assertEquals(true, kwi.klong == Klong.NULL);
         
-        compareValue = createCompareValue(Util.toBytes("key"));
+        compareValue = createCompareValue(StringUtil.toBytes("key"));
         n.searchGt(20, compareValue, kwi);
         Assert.assertEquals(true, kwi.klong == Klong.NULL);
     }
@@ -398,42 +398,42 @@ public class KeyNodeTester {
         
         // Creates KeyNode.
         
-        klongToAdd = Klong.createKey(Util.toBytes("k10"));
+        klongToAdd = Klong.createKey(StringUtil.toBytes("k10"));
         n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
-        klongToAdd = Klong.createKey(Util.toBytes("k20"));
+        klongToAdd = Klong.createKey(StringUtil.toBytes("k20"));
         n.addKlong(20, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
 
         // Tests at time = Long.MAX_VALUE.
         
-        compareValue = createCompareValue(Util.toBytes("k19"));
+        compareValue = createCompareValue(StringUtil.toBytes("k19"));
         n.searchGt(Long.MAX_VALUE, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k20")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k20")), kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k10"));
+        compareValue = createCompareValue(StringUtil.toBytes("k10"));
         n.searchGt(Long.MAX_VALUE, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k20")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k20")), kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k20"));
+        compareValue = createCompareValue(StringUtil.toBytes("k20"));
         n.searchGt(Long.MAX_VALUE, compareValue, kwi);
         Assert.assertEquals(Klong.NULL, kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k00"));
+        compareValue = createCompareValue(StringUtil.toBytes("k00"));
         n.searchGt(Long.MAX_VALUE, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k10")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k10")), kwi.klong);
         
         // Tests at time = 15
         
-        compareValue = createCompareValue(Util.toBytes("k15"));
+        compareValue = createCompareValue(StringUtil.toBytes("k15"));
         n.searchGt(15, compareValue, kwi);
         Assert.assertEquals(Klong.NULL, kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k10"));
+        compareValue = createCompareValue(StringUtil.toBytes("k10"));
         n.searchGt(15, compareValue, kwi);
         Assert.assertEquals(Klong.NULL, kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k09"));
+        compareValue = createCompareValue(StringUtil.toBytes("k09"));
         n.searchGt(15, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k10")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k10")), kwi.klong);
     }
     
     
@@ -446,42 +446,42 @@ public class KeyNodeTester {
         
         // Creates KeyNode.
         
-        klongToAdd = Klong.createKey(Util.toBytes("k10"));
+        klongToAdd = Klong.createKey(StringUtil.toBytes("k10"));
         n.addKlong(10, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
-        klongToAdd = Klong.createKey(Util.toBytes("k20"));
+        klongToAdd = Klong.createKey(StringUtil.toBytes("k20"));
         n.addKlong(20, klongToAdd, new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
 
         // Tests at time = Long.MAX_VALUE.
         
-        compareValue = createCompareValue(Util.toBytes("k19"));
+        compareValue = createCompareValue(StringUtil.toBytes("k19"));
         n.searchGte(Long.MAX_VALUE, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k20")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k20")), kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k10"));
+        compareValue = createCompareValue(StringUtil.toBytes("k10"));
         n.searchGte(Long.MAX_VALUE, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k10")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k10")), kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k20"));
+        compareValue = createCompareValue(StringUtil.toBytes("k20"));
         n.searchGte(Long.MAX_VALUE, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k20")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k20")), kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k00"));
+        compareValue = createCompareValue(StringUtil.toBytes("k00"));
         n.searchGte(Long.MAX_VALUE, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k10")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k10")), kwi.klong);
         
         // Tests at time = 15
         
-        compareValue = createCompareValue(Util.toBytes("k15"));
+        compareValue = createCompareValue(StringUtil.toBytes("k15"));
         n.searchGte(15, compareValue, kwi);
         Assert.assertEquals(Klong.NULL, kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k10"));
+        compareValue = createCompareValue(StringUtil.toBytes("k10"));
         n.searchGte(15, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k10")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k10")), kwi.klong);
         
-        compareValue = createCompareValue(Util.toBytes("k09"));
+        compareValue = createCompareValue(StringUtil.toBytes("k09"));
         n.searchGte(15, compareValue, kwi);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("k10")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("k10")), kwi.klong);
     }
     
     
@@ -494,7 +494,7 @@ public class KeyNodeTester {
         t2.searchFirst(2000, kwi);
         Assert.assertEquals(false, kwi.klong == Klong.NULL);
         Assert.assertEquals(t.t2Pointers[0], kwi.node);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("ap")), kwi.klong);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("ap")), kwi.klong);
     }
     
     @Nano
@@ -513,11 +513,11 @@ public class KeyNodeTester {
         KeyNodeTester t = new KeyNodeTester();
         KeyNode node = t.createT2();
         node.check();
-        long klong = node.getDeleteBitmap(Klong.createCompareValue(Util.toBytes("apa")));
+        long klong = node.getDeleteBitmap(Klong.createCompareValue(StringUtil.toBytes("apa")));
         node.addKlong(1020, klong, null, AccessData.DEFAULT_ACCESS_DATA);
         //node.addKlong(1020, Klong.createDelete(Util.toBytes("apa")), null, Spos.DEFAULT_ACCESS_DATA);
         node.check();        
-        node.addKlong(1030, Klong.createKey(Util.toBytes("apa")), t.t2Pointers[5], AccessData.DEFAULT_ACCESS_DATA);
+        node.addKlong(1030, Klong.createKey(StringUtil.toBytes("apa")), t.t2Pointers[5], AccessData.DEFAULT_ACCESS_DATA);
         node.check();
     }
     
@@ -541,9 +541,9 @@ public class KeyNodeTester {
     public static void testLastVersion1() {
         KeyNode n = new KeyNode();
         
-        n.addKlong(10, Klong.createKey(Util.toBytes("a")), new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(20, Klong.createKey(Util.toBytes("b")), new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(30, Klong.createKey(Util.toBytes("c")), new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.createKey(StringUtil.toBytes("a")), new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, Klong.createKey(StringUtil.toBytes("b")), new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, Klong.createKey(StringUtil.toBytes("c")), new ValueNode(new byte[0]), AccessData.DEFAULT_ACCESS_DATA);
         
         KeyNode last = n.lastVersion(100);
         NodeInfo info = new NodeInfo();
@@ -563,13 +563,13 @@ public class KeyNodeTester {
         KeyNode n = new KeyNode();
         ValueNode value = new ValueNode(new byte[0]);
         
-        n.addKlong(10, Klong.createKey(Util.toBytes("a")), value, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(20, Klong.createKey(Util.toBytes("b")), value, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(25, Klong.createKey(Util.toBytes("c")), value, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(30, n.getDeleteBitmap(Klong.createCompareValue(Util.toBytes("b"))), null, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(40, n.getDeleteBitmap(Klong.createCompareValue(Util.toBytes("a"))), null, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.createKey(StringUtil.toBytes("a")), value, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, Klong.createKey(StringUtil.toBytes("b")), value, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(25, Klong.createKey(StringUtil.toBytes("c")), value, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, n.getDeleteBitmap(Klong.createCompareValue(StringUtil.toBytes("b"))), null, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(40, n.getDeleteBitmap(Klong.createCompareValue(StringUtil.toBytes("a"))), null, AccessData.DEFAULT_ACCESS_DATA);
         
-        n.addKlong(50, Klong.createKey(Util.toBytes("b")), value, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(50, Klong.createKey(StringUtil.toBytes("b")), value, AccessData.DEFAULT_ACCESS_DATA);
         
         KeyNode last = n.lastVersion(100);
         NodeInfo info = new NodeInfo();
@@ -583,8 +583,8 @@ public class KeyNodeTester {
         Assert.assertEquals(3, info.klongCount);
         Assert.assertEquals(1, info.timeCount);
         Assert.assertEquals(Klong.createTime(100), last.klongs[0]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("b")), last.klongs[1]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("c")), last.klongs[2]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("b")), last.klongs[1]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("c")), last.klongs[2]);
     }
     
     @Nano
@@ -595,12 +595,12 @@ public class KeyNodeTester {
         
         KeyNode n = new KeyNode();
         ValueNode value = new ValueNode(new byte[0]);
-        n.addKlong(10, Klong.createKey(Util.toBytes("a")), value, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(10, Klong.createKey(Util.toBytes("b")), value, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(20, Klong.createKey(Util.toBytes("c")), value, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(30, n.getDeleteBitmap(Klong.createCompareValue(Util.toBytes("b"))), null, 
+        n.addKlong(10, Klong.createKey(StringUtil.toBytes("a")), value, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.createKey(StringUtil.toBytes("b")), value, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, Klong.createKey(StringUtil.toBytes("c")), value, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, n.getDeleteBitmap(Klong.createCompareValue(StringUtil.toBytes("b"))), null, 
                 AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(40, Klong.createKey(Util.toBytes("d")), value, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(40, Klong.createKey(StringUtil.toBytes("d")), value, AccessData.DEFAULT_ACCESS_DATA);
         n.addKlong(50, Klong.DELETE_ALL_BITMAP, null, AccessData.DEFAULT_ACCESS_DATA);
         
         KeyNode last = n.lastVersion(100);
@@ -614,16 +614,16 @@ public class KeyNodeTester {
     @Nano
     public static void testFirstAndSecond2() {
         KeyNode n = new KeyNode();
-        ValueNode v1 = new ValueNode(Util.toBytes("v1"));
-        n.addKlong(10, Klong.createKey(Util.toBytes("10")), v1, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(20, Klong.createKey(Util.toBytes("20")), v1, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(30, Klong.createKey(Util.toBytes("30")), v1, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(40, Klong.createKey(Util.toBytes("40")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        ValueNode v1 = new ValueNode(StringUtil.toBytes("v1"));
+        n.addKlong(10, Klong.createKey(StringUtil.toBytes("10")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, Klong.createKey(StringUtil.toBytes("20")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, Klong.createKey(StringUtil.toBytes("30")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(40, Klong.createKey(StringUtil.toBytes("40")), v1, AccessData.DEFAULT_ACCESS_DATA);
         
         KeyNode first = new KeyNode();
         KeyNode second = new KeyNode();
         KlongWithPointer[] insert = { new KlongWithPointer() };
-        insert[0].klong = Klong.createKey(Util.toBytes("22"));
+        insert[0].klong = Klong.createKey(StringUtil.toBytes("22"));
         insert[0].node = v1;
         
         n.firstAndSecond(100, n.lastVersion(100), insert, first, second);
@@ -634,32 +634,32 @@ public class KeyNodeTester {
         //System.out.println(second.print());
         
         Assert.assertEquals(Klong.createTime(100), first.klongs[0]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("10")), first.klongs[1]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("20")), first.klongs[2]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("22")), first.klongs[3]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("10")), first.klongs[1]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("20")), first.klongs[2]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("22")), first.klongs[3]);
         Assert.assertEquals(4, first.size);
         
         Assert.assertEquals(Klong.createTime(100), second.klongs[0]);        
-        Assert.assertEquals(Klong.createKey(Util.toBytes("30")), second.klongs[1]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("40")), second.klongs[2]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("30")), second.klongs[1]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("40")), second.klongs[2]);
         Assert.assertEquals(3, second.size);
     }
     
     @Nano
     public static void testFirstAndSecond3() {
         KeyNode n = new KeyNode();
-        ValueNode v1 = new ValueNode(Util.toBytes("v1"));
-        n.addKlong(10, Klong.createKey(Util.toBytes("10")), v1, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(20, Klong.createKey(Util.toBytes("20")), v1, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(30, Klong.createKey(Util.toBytes("30")), v1, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(40, Klong.createKey(Util.toBytes("40")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        ValueNode v1 = new ValueNode(StringUtil.toBytes("v1"));
+        n.addKlong(10, Klong.createKey(StringUtil.toBytes("10")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, Klong.createKey(StringUtil.toBytes("20")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, Klong.createKey(StringUtil.toBytes("30")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(40, Klong.createKey(StringUtil.toBytes("40")), v1, AccessData.DEFAULT_ACCESS_DATA);
         
         KeyNode first = new KeyNode();
         KeyNode second = new KeyNode();
         KlongWithPointer[] insert = { new KlongWithPointer(), new KlongWithPointer() };
-        insert[1].klong = Klong.createKey(Util.toBytes("22"));
+        insert[1].klong = Klong.createKey(StringUtil.toBytes("22"));
         insert[1].node = v1;
-        insert[0].klong = Klong.createKey(Util.toBytes("01"));
+        insert[0].klong = Klong.createKey(StringUtil.toBytes("01"));
         insert[0].node = v1;
         
         KeyNode last = n.lastVersion(100);
@@ -671,15 +671,15 @@ public class KeyNodeTester {
         //System.out.println(second.print());
         
         Assert.assertEquals(Klong.createTime(100), first.klongs[0]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("10")), first.klongs[1]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("20")), first.klongs[2]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("01")), first.klongs[3]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("22")), first.klongs[4]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("10")), first.klongs[1]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("20")), first.klongs[2]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("01")), first.klongs[3]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("22")), first.klongs[4]);
         Assert.assertEquals(5, first.size);
         
         Assert.assertEquals(Klong.createTime(100), second.klongs[0]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("30")), second.klongs[1]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("40")), second.klongs[2]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("30")), second.klongs[1]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("40")), second.klongs[2]);
         Assert.assertEquals(3, second.size);
     }
     
@@ -689,21 +689,21 @@ public class KeyNodeTester {
         //
         
         KeyNode n = new KeyNode();
-        ValueNode v1 = new ValueNode(Util.toBytes("v1"));
-        n.addKlong(10, Klong.createKey(Util.toBytes("10")), v1, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(30, Klong.createKey(Util.toBytes("30")), v1, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(40, Klong.createKey(Util.toBytes("40")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        ValueNode v1 = new ValueNode(StringUtil.toBytes("v1"));
+        n.addKlong(10, Klong.createKey(StringUtil.toBytes("10")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, Klong.createKey(StringUtil.toBytes("30")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(40, Klong.createKey(StringUtil.toBytes("40")), v1, AccessData.DEFAULT_ACCESS_DATA);
         
         KeyNode first = new KeyNode();
         KeyNode second = new KeyNode();
         KlongWithPointer[] insert = { new KlongWithPointer(), new KlongWithPointer(),
                 new KlongWithPointer()};
 
-        insert[0].klong = Klong.createKey(Util.toBytes("21"));
+        insert[0].klong = Klong.createKey(StringUtil.toBytes("21"));
         insert[0].node = v1;
-        insert[1].klong = Klong.createKey(Util.toBytes("22"));
+        insert[1].klong = Klong.createKey(StringUtil.toBytes("22"));
         insert[1].node = v1;
-        insert[2].klong = Klong.createKey(Util.toBytes("23"));
+        insert[2].klong = Klong.createKey(StringUtil.toBytes("23"));
         insert[2].node = v1;
         
         KeyNode last = n.lastVersion(100);
@@ -716,14 +716,14 @@ public class KeyNodeTester {
         
         Assert.assertEquals(5, first.size);
         Assert.assertEquals(Klong.createTime(100), first.klongs[0]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("10")), first.klongs[1]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("21")), first.klongs[2]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("22")), first.klongs[3]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("23")), first.klongs[4]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("10")), first.klongs[1]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("21")), first.klongs[2]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("22")), first.klongs[3]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("23")), first.klongs[4]);
         
         Assert.assertEquals(Klong.createTime(100), second.klongs[0]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("30")), second.klongs[1]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("40")), second.klongs[2]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("30")), second.klongs[1]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("40")), second.klongs[2]);
         Assert.assertEquals(3, second.size);
     }
     
@@ -732,19 +732,19 @@ public class KeyNodeTester {
         // Insert in beginning
         
         KeyNode n = new KeyNode();
-        ValueNode v1 = new ValueNode(Util.toBytes("v1"));
-        n.addKlong(10, Klong.createKey(Util.toBytes("10")), v1, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(10, Klong.createKey(Util.toBytes("20")), v1, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(30, Klong.createKey(Util.toBytes("30")), v1, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(40, Klong.createKey(Util.toBytes("40")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        ValueNode v1 = new ValueNode(StringUtil.toBytes("v1"));
+        n.addKlong(10, Klong.createKey(StringUtil.toBytes("10")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.createKey(StringUtil.toBytes("20")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, Klong.createKey(StringUtil.toBytes("30")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(40, Klong.createKey(StringUtil.toBytes("40")), v1, AccessData.DEFAULT_ACCESS_DATA);
         
         KeyNode first = new KeyNode();
         KeyNode second = new KeyNode();
         KlongWithPointer[] insert = { new KlongWithPointer(), new KlongWithPointer() };
 
-        insert[0].klong = Klong.createKey(Util.toBytes("01"));
+        insert[0].klong = Klong.createKey(StringUtil.toBytes("01"));
         insert[0].node = v1;
-        insert[1].klong = Klong.createKey(Util.toBytes("02"));
+        insert[1].klong = Klong.createKey(StringUtil.toBytes("02"));
         insert[1].node = v1;
         
         KeyNode last = n.lastVersion(100);
@@ -757,14 +757,14 @@ public class KeyNodeTester {
         
         Assert.assertEquals(5, first.size);
         Assert.assertEquals(Klong.createTime(100), first.klongs[0]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("10")), first.klongs[1]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("20")), first.klongs[2]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("01")), first.klongs[3]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("02")), first.klongs[4]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("10")), first.klongs[1]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("20")), first.klongs[2]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("01")), first.klongs[3]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("02")), first.klongs[4]);
         
         Assert.assertEquals(Klong.createTime(100), second.klongs[0]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("30")), second.klongs[1]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("40")), second.klongs[2]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("30")), second.klongs[1]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("40")), second.klongs[2]);
         Assert.assertEquals(3, second.size);
     }
     
@@ -773,19 +773,19 @@ public class KeyNodeTester {
         // Insert more than one at very end.
         
         KeyNode n = new KeyNode();
-        ValueNode v1 = new ValueNode(Util.toBytes("v1"));
-        n.addKlong(10, Klong.createKey(Util.toBytes("10")), v1, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(10, Klong.createKey(Util.toBytes("20")), v1, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(30, Klong.createKey(Util.toBytes("30")), v1, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(40, Klong.createKey(Util.toBytes("40")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        ValueNode v1 = new ValueNode(StringUtil.toBytes("v1"));
+        n.addKlong(10, Klong.createKey(StringUtil.toBytes("10")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.createKey(StringUtil.toBytes("20")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, Klong.createKey(StringUtil.toBytes("30")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(40, Klong.createKey(StringUtil.toBytes("40")), v1, AccessData.DEFAULT_ACCESS_DATA);
         
         KeyNode first = new KeyNode();
         KeyNode second = new KeyNode();
         KlongWithPointer[] insert = { new KlongWithPointer(), new KlongWithPointer() };
 
-        insert[0].klong = Klong.createKey(Util.toBytes("41"));
+        insert[0].klong = Klong.createKey(StringUtil.toBytes("41"));
         insert[0].node = v1;
-        insert[1].klong = Klong.createKey(Util.toBytes("42"));
+        insert[1].klong = Klong.createKey(StringUtil.toBytes("42"));
         insert[1].node = v1;
         
         KeyNode last = n.lastVersion(100);
@@ -798,14 +798,14 @@ public class KeyNodeTester {
         
         Assert.assertEquals(3, first.size);
         Assert.assertEquals(Klong.createTime(100), first.klongs[0]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("10")), first.klongs[1]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("20")), first.klongs[2]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("10")), first.klongs[1]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("20")), first.klongs[2]);
         
         Assert.assertEquals(Klong.createTime(100), second.klongs[0]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("30")), second.klongs[1]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("40")), second.klongs[2]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("41")), second.klongs[3]);
-        Assert.assertEquals(Klong.createKey(Util.toBytes("42")), second.klongs[4]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("30")), second.klongs[1]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("40")), second.klongs[2]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("41")), second.klongs[3]);
+        Assert.assertEquals(Klong.createKey(StringUtil.toBytes("42")), second.klongs[4]);
         Assert.assertEquals(5, second.size);
     }
     
@@ -813,13 +813,13 @@ public class KeyNodeTester {
     public static void testDeleteBitmap1() {
         KeyNode node = new KeyNode();
         ValueNode value = new ValueNode(new byte[0]);
-        node.addKlong(10, Klong.createKey(Util.toBytes("a")), value, AccessData.DEFAULT_ACCESS_DATA);
-        node.addKlong(20, Klong.createKey(Util.toBytes("c")), value, AccessData.DEFAULT_ACCESS_DATA);
+        node.addKlong(10, Klong.createKey(StringUtil.toBytes("a")), value, AccessData.DEFAULT_ACCESS_DATA);
+        node.addKlong(20, Klong.createKey(StringUtil.toBytes("c")), value, AccessData.DEFAULT_ACCESS_DATA);
         
-        long ca = Klong.createCompareValue(Util.toBytes("a"));
-        long cb = Klong.createCompareValue(Util.toBytes("b"));
-        long cc = Klong.createCompareValue(Util.toBytes("c"));
-        long cd = Klong.createCompareValue(Util.toBytes("d"));
+        long ca = Klong.createCompareValue(StringUtil.toBytes("a"));
+        long cb = Klong.createCompareValue(StringUtil.toBytes("b"));
+        long cc = Klong.createCompareValue(StringUtil.toBytes("c"));
+        long cd = Klong.createCompareValue(StringUtil.toBytes("d"));
         
         Assert.assertTrue(node.getDeleteBitmap(ca) != 0);
         Assert.assertTrue(node.getDeleteBitmap(cb) == 0);
@@ -856,19 +856,19 @@ public class KeyNodeTester {
 
     private static void assertNotExists(KeyNode node, String s) {
         KlongWithPointer kwi = new KlongWithPointer();
-        node.searchEq(999, Klong.createCompareValue(Util.toBytes(s)), kwi);
+        node.searchEq(999, Klong.createCompareValue(StringUtil.toBytes(s)), kwi);
         Assert.assertEquals(Klong.NULL, kwi.klong);
     }
     
     private static void assertExists(KeyNode node, String s) {
         KlongWithPointer kwi = new KlongWithPointer();
-        node.searchEq(999, Klong.createCompareValue(Util.toBytes(s)), kwi);
+        node.searchEq(999, Klong.createCompareValue(StringUtil.toBytes(s)), kwi);
         Assert.assertTrue(kwi.klong != Klong.NULL);
     }
     
     private static void addKlong(KeyNode node, long time, String s) {
         ValueNode value = new ValueNode(new byte[0]);
-        node.addKlong(time, Klong.createKey(Util.toBytes(s)), value, AccessData.DEFAULT_ACCESS_DATA);
+        node.addKlong(time, Klong.createKey(StringUtil.toBytes(s)), value, AccessData.DEFAULT_ACCESS_DATA);
     }
     
     /** Changing to state t=5 should remove "b" and "a". */
@@ -993,7 +993,7 @@ public class KeyNodeTester {
         addKlong(node, 10, "a");     // index 1
         addKlong(node, 20, "b");     // index 3
         
-        long deleteKlong = node.getDeleteBitmap(Klong.createCompareValue(Util.toBytes("a")));
+        long deleteKlong = node.getDeleteBitmap(Klong.createCompareValue(StringUtil.toBytes("a")));
         node.addKlong(30, deleteKlong, null, AccessData.DEFAULT_ACCESS_DATA);
         
         Assert.assertEquals(29, node.getMaxValidTime(1));

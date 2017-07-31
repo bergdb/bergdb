@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Random;
 import bergdb.common.Bytes;
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.core.Db;
 import bergdb.core.Jmx;
 import bergdb.dag.Dag;
@@ -385,7 +385,7 @@ public class Interactive {
     private String cardNumberToKey(int cardNumberInt) {
         byte[] bytes = new byte[4];
         Bytes.intToBytesBE(cardNumberInt, bytes, 0);
-        String key = "/cards/" + Util.toHex(bytes);
+        String key = "/cards/" + StringUtil.toHex(bytes);
         return key;
     }
 

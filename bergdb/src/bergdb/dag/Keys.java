@@ -2,7 +2,7 @@ package bergdb.dag;
 
 import java.io.UnsupportedEncodingException;
 
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
@@ -73,7 +73,7 @@ public class Keys {
     public static final String bkey2ikey(byte[] bytes) {
         assert bytes != null;
         byte[] bytes2 = toStringBytes(bytes);
-        return Util.toString(bytes2);
+        return StringUtil.toString(bytes2);
     }
     
     private static final byte[] toStringBytes(byte[] bytes) {
@@ -99,7 +99,7 @@ public class Keys {
      */
     public static final boolean isPrintableAscii(byte[] bytes) {
         byte[] bytes2 = toStringBytes(bytes);
-        return Util.isPrintableAscii(bytes2);
+        return StringUtil.isPrintableAscii(bytes2);
     }
     
     public static final String toDisplayString(long[] skey) {
@@ -124,7 +124,7 @@ public class Keys {
             bytes[i] = b;
         }
         
-        return Util.toString(bytes);
+        return StringUtil.toString(bytes);
     }
     
     public static final String toStringWithSubstitute(long[] segments) {
@@ -148,7 +148,7 @@ public class Keys {
             bytes[i] = b;
         }
         
-        return Util.toString(bytes);
+        return StringUtil.toString(bytes);
     }
 
     /**

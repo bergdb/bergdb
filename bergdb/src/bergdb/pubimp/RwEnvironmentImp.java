@@ -5,6 +5,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import bergdb.common.MyLongSet;
+import bergdb.common.StringUtil;
 import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.KeyTransformation;
@@ -269,7 +270,7 @@ public class RwEnvironmentImp implements RwEnvironment {
             // NOTE, No check here, but we could force suffix != EMPTY.
             setBytes(ikey, (byte[]) object);
         } else if (clazz.equals(String.class)) {
-            setBytes(ikey, Util.toBytes((String) object));
+            setBytes(ikey, StringUtil.toBytes((String) object));
         } else {
             if (!Entries.isObjectKey(ikey)) {
                 throw new IllegalArgumentException(

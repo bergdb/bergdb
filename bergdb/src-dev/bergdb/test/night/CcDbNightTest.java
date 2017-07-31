@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Random;
 import bergdb.common.Bytes;
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Connection;
@@ -182,7 +182,7 @@ public class CcDbNightTest {
     private String cardNumberToKey(int cardNumberInt) {
         byte[] bytes = new byte[4];
         Bytes.intToBytesBE(cardNumberInt, bytes, 0);
-        String key = "/cards/" + Util.toHex(bytes);
+        String key = "/cards/" + StringUtil.toHex(bytes);
         return key;
     }
     

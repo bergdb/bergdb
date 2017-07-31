@@ -5,7 +5,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
@@ -56,7 +56,7 @@ public class DbTesterGetMany {
         assertResultValues(d.result, "3", "2", "1");
         
         Kvt kvt = d.result.get(2);
-        Assert.assertEquals("1", Util.toString(kvt.value));
+        Assert.assertEquals("1", StringUtil.toString(kvt.value));
         Assert.assertTrue(kvt.time >= 30 || kvt.time < 35);
         Assert.assertEquals("a", Keys.toString(kvt.key));
     }
@@ -103,7 +103,7 @@ public class DbTesterGetMany {
         Assert.assertEquals(3, d.result.size());
         
         Kvt kvt = d.result.get(2);
-        Assert.assertEquals("1", Util.toString(kvt.value));
+        Assert.assertEquals("1", StringUtil.toString(kvt.value));
         Assert.assertTrue(kvt.time >= 30 || kvt.time < 35);
         Assert.assertEquals("a", Keys.toString(kvt.key));
     }
@@ -335,7 +335,7 @@ public class DbTesterGetMany {
         
         Trans.Builder b = db.trans();
         for (int i = 0; i < size; i++) {
-            b.put(KeyFactory.crazyKey(i), Util.toBytes("" + i));
+            b.put(KeyFactory.crazyKey(i), StringUtil.toBytes("" + i));
         }
         db.execute(b);
         
@@ -370,7 +370,7 @@ public class DbTesterGetMany {
         
         for (int i = 0; i < size; i++) {
             db.execute(db.trans().put(KeyFactory.binaryIntKey(size - i), 
-                    Util.toBytes("" + (size - i))));
+                    StringUtil.toBytes("" + (size - i))));
             time += 10;
             clock.setTime(time);
         }
@@ -385,7 +385,7 @@ public class DbTesterGetMany {
         
         for (int i = 0; i < size; i++) {
             Kvt kvt = d.result.get(i);
-            Assert.assertEquals("" + (i + 1), Util.toString(kvt.value));
+            Assert.assertEquals("" + (i + 1), StringUtil.toString(kvt.value));
         }
     }
     
@@ -434,9 +434,9 @@ public class DbTesterGetMany {
         
         Assert.assertEquals(2, d.result.size());
         Kvt kvt = d.result.get(0);
-        Assert.assertEquals("2", Util.toString(kvt.value));
+        Assert.assertEquals("2", StringUtil.toString(kvt.value));
         kvt = d.result.get(1);
-        Assert.assertEquals("1", Util.toString(kvt.value));
+        Assert.assertEquals("1", StringUtil.toString(kvt.value));
     }
     
     @Nano
@@ -547,10 +547,10 @@ public class DbTesterGetMany {
         Assert.assertEquals(2, d.result.size());
         Assert.assertTrue(Keys.areEqual(
                 Keys.toSegments("directory/20"), d.result.get(0).key));
-        Assert.assertEquals("20", Util.toString(d.result.get(0).value));
+        Assert.assertEquals("20", StringUtil.toString(d.result.get(0).value));
         Assert.assertTrue(Keys.areEqual(
                 Keys.toSegments("directory/30"), d.result.get(1).key));
-        Assert.assertEquals("30", Util.toString(d.result.get(1).value));
+        Assert.assertEquals("30", StringUtil.toString(d.result.get(1).value));
     }
     
     @Nano
@@ -578,10 +578,10 @@ public class DbTesterGetMany {
         Assert.assertEquals(2, d.result.size());
         Assert.assertEquals(0, Keys.compareKeys(
                 Keys.toSegments("directory/2000"), d.result.get(0).key));
-        Assert.assertEquals("20", Util.toString(d.result.get(0).value));
+        Assert.assertEquals("20", StringUtil.toString(d.result.get(0).value));
         Assert.assertEquals(0, Keys.compareKeys(
                 Keys.toSegments("directory/30"), d.result.get(1).key));
-        Assert.assertEquals("30", Util.toString(d.result.get(1).value));
+        Assert.assertEquals("30", StringUtil.toString(d.result.get(1).value));
     }
     
     @Nano
@@ -621,7 +621,7 @@ public class DbTesterGetMany {
         
         Trans.Builder b = db.trans();
         for (int i = 0; i < size; i++) {
-            b.put(KeyFactory.crazyKey(i), Util.toBytes("" + i));
+            b.put(KeyFactory.crazyKey(i), StringUtil.toBytes("" + i));
         }
         db.execute(b);
         return keys;
@@ -739,7 +739,7 @@ public class DbTesterGetMany {
         
         byte[][] bkeys = new byte[hexKeys.length][];
         for (int i = 0; i < hexKeys.length; i++) {
-            bkeys[i] = Util.hexStringToBytes(hexKeys[i]);
+            bkeys[i] = StringUtil.hexStringToBytes(hexKeys[i]);
         };
         
         long[][] skeys = new long[bkeys.length][];
@@ -752,7 +752,7 @@ public class DbTesterGetMany {
                 .put(skeys[0], new byte[]{0})
                 .put(skeys[1], new byte[]{1}));
         
-        long[] startSkey = Keys.toSegments(Util.hexStringToBytes("00000000000002"));
+        long[] startSkey = Keys.toSegments(StringUtil.hexStringToBytes("00000000000002"));
         GetMany g = db.newGetMany();
         g.inclusive = true;
         g.forward = true;
@@ -782,7 +782,7 @@ public class DbTesterGetMany {
         
         byte[][] bkeys = new byte[hexKeys.length][];
         for (int i = 0; i < hexKeys.length; i++) {
-            bkeys[i] = Util.hexStringToBytes(hexKeys[i]);
+            bkeys[i] = StringUtil.hexStringToBytes(hexKeys[i]);
         };
         
         long[][] skeys = new long[bkeys.length][];
@@ -797,7 +797,7 @@ public class DbTesterGetMany {
                 .put(skeys[2], new byte[]{2}));
         
         long[] startSkey = Keys.toSegments(
-                  Util.hexStringToBytes("00000000000005"));
+                  StringUtil.hexStringToBytes("00000000000005"));
         GetMany g = db.newGetMany();
         g.inclusive = true;
         g.forward = true;
@@ -826,7 +826,7 @@ public class DbTesterGetMany {
         
         byte[][] bkeys = new byte[hexKeys.length][];
         for (int i = 0; i < hexKeys.length; i++) {
-            bkeys[i] = Util.hexStringToBytes(hexKeys[i]);
+            bkeys[i] = StringUtil.hexStringToBytes(hexKeys[i]);
         };
         
         long[][] skeys = new long[bkeys.length][];
@@ -839,7 +839,7 @@ public class DbTesterGetMany {
                 .put(skeys[0], new byte[]{0})
                 .put(skeys[1], new byte[]{1}));
         
-        long[] startSkey = Keys.toSegments(Util.hexStringToBytes("00000000000004"));
+        long[] startSkey = Keys.toSegments(StringUtil.hexStringToBytes("00000000000004"));
         GetMany g = db.newGetMany();
         g.inclusive = true;
         g.forward = true;
@@ -867,7 +867,7 @@ public class DbTesterGetMany {
         
         byte[][] bkeys = new byte[hexKeys.length][];
         for (int i = 0; i < hexKeys.length; i++) {
-            bkeys[i] = Util.hexStringToBytes(hexKeys[i]);
+            bkeys[i] = StringUtil.hexStringToBytes(hexKeys[i]);
         };
         
         long[][] skeys = new long[bkeys.length][];
@@ -880,7 +880,7 @@ public class DbTesterGetMany {
                 .put(skeys[0], new byte[]{0})
                 .put(skeys[1], new byte[]{1}));
         
-        long[] startSkey = Keys.toSegments(Util.hexStringToBytes("00000000000002"));
+        long[] startSkey = Keys.toSegments(StringUtil.hexStringToBytes("00000000000002"));
         
         GetMany g = db.newGetMany();
         g.inclusive = true;
@@ -958,7 +958,7 @@ public class DbTesterGetMany {
     }
     
     private static void assertValueEquals(String expected, byte[] value) {
-        String stringValue = Util.toString(value);
+        String stringValue = StringUtil.toString(value);
         Assert.assertEquals(expected, stringValue);
     }
 }

@@ -5,7 +5,7 @@ import java.util.Iterator;
 import java.util.List;
 import bergdb.common.AssertStatus;
 import bergdb.common.Bytes;
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.dag.AccessData;
 import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
@@ -789,9 +789,9 @@ public class StoredTrans {
         
         KeyNode n = new KeyNode();
         n.setId(101);
-        n.addKlong(10, Klong.createKey(Util.toBytes("a")), v0, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(20, Klong.createKey(Util.toBytes("b")), v1, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(30, Klong.createKey(Util.toBytes("c")), v2, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.createKey(StringUtil.toBytes("a")), v0, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, Klong.createKey(StringUtil.toBytes("b")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, Klong.createKey(StringUtil.toBytes("c")), v2, AccessData.DEFAULT_ACCESS_DATA);
         
         transNodes.addValueNode(v0, Keys.toSegments("a"));
         transNodes.addValueNode(v1, Keys.toSegments("b"));
@@ -895,7 +895,7 @@ public class StoredTrans {
         ValueNode v0 = new ValueNode(new byte[]{});
         KeyNode n = new KeyNode();
         n.setId(101);
-        n.addKlong(10, Klong.createKey(Util.toBytes("a")), v0, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.createKey(StringUtil.toBytes("a")), v0, AccessData.DEFAULT_ACCESS_DATA);
         
         transNodes.addValueNode(v0, Keys.toSegments("a"));
         transNodes.addKeyNode(n);

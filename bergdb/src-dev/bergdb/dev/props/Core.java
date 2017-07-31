@@ -6,6 +6,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
+import bergdb.common.StringUtil;
 import bergdb.common.Util;
 import bergdb.test.Get;
 import bergdb.test.GetThreaded;
@@ -158,9 +159,9 @@ public class Core {
         double normalized2 = time / (baseline2.get(name));
         
         if (verbose) {
-            String s = Util.spaceFill(name + ":", 10) 
-                    + Util.twoDecimals(normalized1) + "   " 
-                    + Util.twoDecimals(normalized2) + "   " + time;
+            String s = StringUtil.spaceFill(name + ":", 10) 
+                    + StringUtil.twoDecimals(normalized1) + "   " 
+                    + StringUtil.twoDecimals(normalized2) + "   " + time;
             System.out.println(s);
         } else if (printDots) {
             System.out.print(".");
@@ -190,9 +191,9 @@ public class Core {
             productGeo1 = productGeo1 * normalized1;
             productGeo2 = productGeo2 * normalized2;
             
-            String s = Util.spaceFill(name + ":", 10) 
-                    + Util.twoDecimals(normalized1) + ",  " 
-                    + Util.twoDecimals(normalized2) + ",  " + value;
+            String s = StringUtil.spaceFill(name + ":", 10) 
+                    + StringUtil.twoDecimals(normalized1) + ",  " 
+                    + StringUtil.twoDecimals(normalized2) + ",  " + value;
             
             longReport.append(s + "\n");
             
@@ -201,7 +202,7 @@ public class Core {
             } else {
                 shortReport.append(", ");
             }
-            shortReport.append(Util.twoDecimals(normalized1));
+            shortReport.append(StringUtil.twoDecimals(normalized1));
         }
         
         if (count < 2) {
@@ -211,8 +212,8 @@ public class Core {
         double normalizedGeoMean1 = Math.pow(productGeo1, 1.0 / count);
         double normalizedGeoMean2 = Math.pow(productGeo2, 1.0 / count);
         
-        String s = "GEO MEAN: " + Util.twoDecimals(normalizedGeoMean1) + ",  " 
-                + Util.twoDecimals(normalizedGeoMean2);
+        String s = "GEO MEAN: " + StringUtil.twoDecimals(normalizedGeoMean1) + ",  " 
+                + StringUtil.twoDecimals(normalizedGeoMean2);
         longReport.append(s + "\n");
         
         result.shortReport = String.format(Locale.US, "CORE:%.2f", normalizedGeoMean1)

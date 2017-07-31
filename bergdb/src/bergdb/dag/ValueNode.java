@@ -1,7 +1,7 @@
 package bergdb.dag;
 
 import bergdb.common.Bug;
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
@@ -176,8 +176,8 @@ public final class ValueNode implements Node {
         if (isDelete()) {
             result += "DELETE";
         } else {
-            if (value.length < 20 && Util.isPrintableAscii(value)) {
-                result += "\"" + Util.toString(value) + "\"";
+            if (value.length < 20 && StringUtil.isPrintableAscii(value)) {
+                result += "\"" + StringUtil.toString(value) + "\"";
             } else {
                 result += value.length;
             }
@@ -190,17 +190,17 @@ public final class ValueNode implements Node {
         if (isDelete()) {
             result = "DELETE";
         } else {
-            if (Util.isPrintableAscii(value)) {
+            if (StringUtil.isPrintableAscii(value)) {
                 if (value.length <= 20) {
-                    result = "'" + Util.toString(value) + "'";
+                    result = "'" + StringUtil.toString(value) + "'";
                 } else {
-                    result = "'" + Util.toString(value).substring(0, 20) + "...'";
+                    result = "'" + StringUtil.toString(value).substring(0, 20) + "...'";
                 }
             } else {
                 if (value.length <= 10) {
-                    result = Util.toHex(value);
+                    result = StringUtil.toHex(value);
                 } else {
-                    result = Util.toHex(value, 0, 10) + "...(" + value.length + ")";
+                    result = StringUtil.toHex(value, 0, 10) + "...(" + value.length + ")";
                 }
             }
         }

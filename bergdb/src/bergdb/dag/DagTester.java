@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.dag.Dag.CachePolicy;
 import bergdb.dag.Dag.PointerListener;
 import bergdb.nanotest.Assert;
@@ -91,7 +91,7 @@ public class DagTester {
         PutData pd = g.newPutData();
         pd.tt = 10;
         
-        g.putKv(Keys.toSegments("/-key"), Util.toBytes("value"), pd);
+        g.putKv(Keys.toSegments("/-key"), StringUtil.toBytes("value"), pd);
         
         //for (int i = 0; i < pd.keyAccessPath.getSize(); i++) {
         //    System.out.println("keyAccessPath: " + Klong.toString(pd.keyAccessPath.getKlong(i)) 
@@ -102,7 +102,7 @@ public class DagTester {
         byte[] value = g.getOne(20, Keys.toSegments("/-key"), gd);
         
         Assert.assertTrue(value != null);
-        Assert.assertEquals("value", Util.toString(value));
+        Assert.assertEquals("value", StringUtil.toString(value));
         
         value = g.getOne(9, Keys.toSegments("/-key"), gd);
         Assert.assertTrue(value == null);
@@ -114,17 +114,17 @@ public class DagTester {
         PutData pd = g.newPutData();
         pd.tt = 10;
         
-        g.putKv(Keys.toSegments("/longerKey1"), Util.toBytes("value"), pd);
+        g.putKv(Keys.toSegments("/longerKey1"), StringUtil.toBytes("value"), pd);
         
         pd.keyAccessPath.clear();
         
-        g.putKv(Keys.toSegments("/longerKey2"), Util.toBytes("value"), pd);
+        g.putKv(Keys.toSegments("/longerKey2"), StringUtil.toBytes("value"), pd);
         
         GetData gd = g.newGetData();
         byte[] value = g.getOne(20, Keys.toSegments("/longerKey1"), gd);
         
         Assert.assertTrue(value != null);
-        Assert.assertEquals("value", Util.toString(value));
+        Assert.assertEquals("value", StringUtil.toString(value));
         
         value = g.getOne(9, Keys.toSegments("/longerKey"), gd);
         Assert.assertTrue(value == null);
@@ -143,7 +143,7 @@ public class DagTester {
         pd.tt = 10;
         
         for (int i = 0; i < kvs.length; i += 2) {
-            g.putKv(Keys.toSegments(kvs[i]), Util.toBytes(kvs[i + 1]), pd);
+            g.putKv(Keys.toSegments(kvs[i]), StringUtil.toBytes(kvs[i + 1]), pd);
             pd.clearFast();
         }
         pd.clear();
@@ -152,7 +152,7 @@ public class DagTester {
         GetData gd = g.newGetData();
         for (int i = 0; i < kvs.length; i += 2) {
             byte[] value = g.getOne(10, Keys.toSegments(kvs[i]), gd);
-            Assert.assertEquals(kvs[i + 1], Util.toString(value));
+            Assert.assertEquals(kvs[i + 1], StringUtil.toString(value));
         }
         
         for (int i = 0; i < kvs.length; i += 2) {
@@ -172,7 +172,7 @@ public class DagTester {
         for (int i = 0; i < 4; i++) {
             String keyString = "account-id-0";
             pd.tt = 1 + i;
-            g.putKv(Keys.toSegments(keyString), Util.toBytes("v at " + pd.tt), pd);
+            g.putKv(Keys.toSegments(keyString), StringUtil.toBytes("v at " + pd.tt), pd);
             pd.clearFast();
         }
         
@@ -208,7 +208,7 @@ public class DagTester {
         pd.tt = 20;
         
         for (int i = 0; i < 4; i++) {
-            g.putKv(Keys.toSegments("/prefix-" + i), Util.toBytes("v" + i), pd);
+            g.putKv(Keys.toSegments("/prefix-" + i), StringUtil.toBytes("v" + i), pd);
         }
         
         StatsNodeVisitor v = new StatsNodeVisitor();
@@ -246,7 +246,7 @@ public class DagTester {
         pd.pointerCreatedListener = listener;
         
         for (int i = 0; i < n; i++) {
-            dag.putKv(Keys.toSegments("/prefix-" + i), Util.toBytes("v" + i), pd);
+            dag.putKv(Keys.toSegments("/prefix-" + i), StringUtil.toBytes("v" + i), pd);
             if (i % 10 == 9) {
                 pd.tt += 10;
             }
@@ -286,8 +286,8 @@ public class DagTester {
         PutData pd = g.newPutData();
         pd.tt = 20;
         
-        g.putKv(Keys.toSegments("/-k1"), Util.toBytes("v1"), pd);
-        g.putKv(Keys.toSegments("/-k2"), Util.toBytes("v2"), pd);
+        g.putKv(Keys.toSegments("/-k1"), StringUtil.toBytes("v1"), pd);
+        g.putKv(Keys.toSegments("/-k2"), StringUtil.toBytes("v2"), pd);
         
         g.printGraph(System.out);
     }

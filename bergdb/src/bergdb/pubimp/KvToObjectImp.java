@@ -3,7 +3,7 @@ package bergdb.pubimp;
 import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.ObjectCreationException;
@@ -80,7 +80,7 @@ public class KvToObjectImp implements KvToObjectConverter, ClassToObject {
 
     /** Converts a database value to a String, UTF-8 encoding assumed. */
     private String entryToString(byte[] value) {
-        return Util.toString(value);
+        return StringUtil.toString(value);
     }
 
     /** Converts an entry to a Java Object when c is Object.class. */

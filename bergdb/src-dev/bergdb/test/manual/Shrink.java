@@ -2,8 +2,7 @@ package bergdb.test.manual;
 
 import java.io.File;
 import java.io.IOException;
-
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.core.Db;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
@@ -44,7 +43,7 @@ public class Shrink {
         db.sync(SyncLevel.ORDINARY);
         
         double time = (System.nanoTime() - t0) * 1e-9;
-        System.out.println("Created " + n + " entries in " + Util.oneDecimal(time) + " s.");
+        System.out.println("Created " + n + " entries in " + StringUtil.oneDecimal(time) + " s.");
         printSize();
         
         // ---- Delete entries
@@ -63,7 +62,7 @@ public class Shrink {
         db.sync(SyncLevel.ORDINARY);
         
         time = (System.nanoTime() - t0) * 1e-9;
-        System.out.println("Deleted all entries in " + Util.oneDecimal(time) + " s.");
+        System.out.println("Deleted all entries in " + StringUtil.oneDecimal(time) + " s.");
         printSize();
         
         // ---- Write something to force stream shrink
@@ -84,7 +83,7 @@ public class Shrink {
         db.sync(SyncLevel.ORDINARY);
         
         time = (System.nanoTime() - t0) * 1e-9;
-        System.out.println("Wrote k0 " + n + " times in " + Util.oneDecimal(time) + " s.");
+        System.out.println("Wrote k0 " + n + " times in " + StringUtil.oneDecimal(time) + " s.");
         printSize();
     }
     
@@ -93,9 +92,9 @@ public class Shrink {
         long firstPos = stream.getFirstPos();
         double streamSize = (length - firstPos) * 1e-6;
         
-        System.out.println("Stream size: " + Util.oneDecimal(streamSize) 
-                + ", length: " + Util.oneDecimal(length * 1e-6)
-                + ", firstSpos: " + Util.oneDecimal(firstPos * 1e-6));
+        System.out.println("Stream size: " + StringUtil.oneDecimal(streamSize) 
+                + ", length: " + StringUtil.oneDecimal(length * 1e-6)
+                + ", firstSpos: " + StringUtil.oneDecimal(firstPos * 1e-6));
     }
     
     public static void main(String[] args) throws IOException, InterruptedException {

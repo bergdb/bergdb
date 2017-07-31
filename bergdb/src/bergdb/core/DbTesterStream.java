@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.Random;
 
 import bergdb.common.Bytes;
+import bergdb.common.StringUtil;
 import bergdb.common.Util;
 import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
@@ -36,7 +37,7 @@ public class DbTesterStream {
         
         db.execute(db.trans().put("admin1", "Sanna").build());
         byte[] value = DbUtil.get(db, 99, "admin1");
-        Assert.assertArrayEquals(Util.toBytes("Sanna"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("Sanna"), value);
     }
     
     public static void testSimpleRestart1() {
@@ -53,9 +54,9 @@ public class DbTesterStream {
         Db db2 = Db.builder().testSetup(stream).start();
         
         value = DbUtil.get(db2, 99, "admin1");
-        Assert.assertArrayEquals(Util.toBytes("Sanna"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("Sanna"), value);
         
-        value = DbUtil.get(db2, 5, Util.toBytes("admin1"));
+        value = DbUtil.get(db2, 5, StringUtil.toBytes("admin1"));
         Assert.assertNull(value);
         db2.stop();
     }
@@ -74,7 +75,7 @@ public class DbTesterStream {
         db.sync(SyncLevel.ORDINARY);
         
         value = DbUtil.get(db, 99, "admin10");
-        Assert.assertArrayEquals(Util.toBytes("Sanna"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("Sanna"), value);
         
         db.stop();
         db = null;
@@ -82,7 +83,7 @@ public class DbTesterStream {
         db2.start();
         
         value = DbUtil.get(db2, 99, "admin10");
-        Assert.assertArrayEquals(Util.toBytes("Sanna"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("Sanna"), value);
         
         value = DbUtil.get(db2, 5, "admin10");
         Assert.assertNull(value);
@@ -108,12 +109,12 @@ public class DbTesterStream {
         byte[] value;
         
         value = DbUtil.get(db2, 99, "admin1");
-        Assert.assertArrayEquals(Util.toBytes("Sanna1"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("Sanna1"), value);
         value = DbUtil.get(db2, 5, "admin1");
         Assert.assertNull(value);
         
         value = DbUtil.get(db2, 99, "admin2");
-        Assert.assertArrayEquals(Util.toBytes("Sanna2"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("Sanna2"), value);
         value = DbUtil.get(db2, 15, "admin2");
         Assert.assertNull(value);
         db2.stop();
@@ -135,9 +136,9 @@ public class DbTesterStream {
         db.execute(db.trans().put("admin20", "Sanna2").build());
         
         value = DbUtil.get(db, 999, "admin10");
-        Assert.assertEquals("Sanna1", Util.toString(value));
+        Assert.assertEquals("Sanna1", StringUtil.toString(value));
         value = DbUtil.get(db, 999, "admin20");
-        Assert.assertEquals("Sanna2", Util.toString(value));
+        Assert.assertEquals("Sanna2", StringUtil.toString(value));
         db.sync(SyncLevel.ORDINARY);
         db.stop();
         db = null;
@@ -146,9 +147,9 @@ public class DbTesterStream {
         db2.start();
         
         value = DbUtil.get(db2, 999, "admin10");
-        Assert.assertEquals("Sanna1", Util.toString(value));
+        Assert.assertEquals("Sanna1", StringUtil.toString(value));
         value = DbUtil.get(db2, 999, "admin20");
-        Assert.assertEquals("Sanna2", Util.toString(value));
+        Assert.assertEquals("Sanna2", StringUtil.toString(value));
         db2.stop();
     }
     
@@ -173,7 +174,7 @@ public class DbTesterStream {
         time = 100;
         for (int i = 0; i < n; i++) {
             value = DbUtil.get(db, 999, "admin" + time);
-            Assert.assertArrayEquals("i=" + i, Util.toBytes("Sanna" + time), value);
+            Assert.assertArrayEquals("i=" + i, StringUtil.toBytes("Sanna" + time), value);
             time += 10;
         }
         
@@ -187,7 +188,7 @@ public class DbTesterStream {
         time = 100;
         for (int i = 0; i < n; i++) {
             value = DbUtil.get(db2, 999, "admin" + time);
-            Assert.assertEquals("i=" + i, "Sanna" + time, Util.toString(value));
+            Assert.assertEquals("i=" + i, "Sanna" + time, StringUtil.toString(value));
             time += 10;
         }
         db2.stop();
@@ -213,7 +214,7 @@ public class DbTesterStream {
         time = 100;
         for (int i = 0; i < n; i++) {
             value = DbUtil.get(db, 999,"a" + time);
-            Assert.assertArrayEquals("i=" + i, Util.toBytes("v" + time), value);
+            Assert.assertArrayEquals("i=" + i, StringUtil.toBytes("v" + time), value);
             time += 10;
         }
         db.sync(SyncLevel.ORDINARY);
@@ -226,7 +227,7 @@ public class DbTesterStream {
         time = 100;
         for (int i = 0; i < n; i++) {
             value = DbUtil.get(db2, 999, "a" + time);
-            Assert.assertEquals("i=" + i, "v" + time, Util.toString(value));
+            Assert.assertEquals("i=" + i, "v" + time, StringUtil.toString(value));
             time += 10;
         }
         db2.stop();
@@ -245,7 +246,7 @@ public class DbTesterStream {
             db.execute(t);
             
             byte[] value = DbUtil.get(db, n * 10 + 999, key);
-            Assert.assertEquals("i=" + i, "v" + key, Util.toString(value));
+            Assert.assertEquals("i=" + i, "v" + key, StringUtil.toString(value));
         }
         return db;
     }
@@ -256,7 +257,7 @@ public class DbTesterStream {
         for (int i = 0; i < n; i++) {
             String key = "" + random.nextInt();
             byte[] value = DbUtil.get(db, n * 10 + 999, key);
-            Assert.assertEquals("i=" + i, "v" + key, Util.toString(value));
+            Assert.assertEquals("i=" + i, "v" + key, StringUtil.toString(value));
         }
     }
     
@@ -297,7 +298,7 @@ public class DbTesterStream {
         
         for (int i = 0; i < n; i++) {
             String key = key(i);
-            String valueString = Util.toString(DbUtil.get(db, n * 10 + 9999, key));
+            String valueString = StringUtil.toString(DbUtil.get(db, n * 10 + 9999, key));
             Assert.assertEquals("v" + key, valueString);
         }
         
@@ -309,7 +310,7 @@ public class DbTesterStream {
         
         for (int i = 0; i < n; i++) {
             String key = key(i);
-            String valueString = Util.toString(DbUtil.get(db2, n * 10 + 9999, key));
+            String valueString = StringUtil.toString(DbUtil.get(db2, n * 10 + 9999, key));
             Assert.assertEquals("v" + key, valueString);
         }
         db2.stop();
@@ -331,7 +332,7 @@ public class DbTesterStream {
         
         for (int i = 0; i < n; i++) {
             int k = i + 100;
-            String valueString = Util.toString(DbUtil.get(db, n * 10 + 9999, "" + k));
+            String valueString = StringUtil.toString(DbUtil.get(db, n * 10 + 9999, "" + k));
             Assert.assertEquals("v" + k, valueString);
         }
         
@@ -342,7 +343,7 @@ public class DbTesterStream {
         
         for (int i = 0; i < n; i++) {
             int k = i + 100;
-            String valueString = Util.toString(DbUtil.get(db2, n * 10 + 9999, "" + k));
+            String valueString = StringUtil.toString(DbUtil.get(db2, n * 10 + 9999, "" + k));
             Assert.assertEquals("v" + k, valueString);
         }   
     }
@@ -360,7 +361,7 @@ public class DbTesterStream {
         Db db2 = Db.builder().testSetup(s).start();
         
         byte[]value = DbUtil.get(db2, 99, "k");
-        Assert.assertArrayEquals(Util.toBytes("k-value"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("k-value"), value);
         
         value = DbUtil.get(db2, 5, "k");
         Assert.assertNull(value);
@@ -393,9 +394,9 @@ public class DbTesterStream {
             Db db2 = Db.builder().testSetup(s2).start();
             
             byte[] value = DbUtil.get(db2, 99, "k");
-            Assert.assertArrayEquals(Util.toBytes("k-value"), value);
+            Assert.assertArrayEquals(StringUtil.toBytes("k-value"), value);
             
-            value = DbUtil.get(db2, 5, Util.toBytes("k"));
+            value = DbUtil.get(db2, 5, StringUtil.toBytes("k"));
             Assert.assertNull(value);
         } finally {
             f.delete();
@@ -427,12 +428,12 @@ public class DbTesterStream {
         Db db2 = Db.builder().testSetup(s2).start();
         
         byte[] value = DbUtil.get(db2, 99, "admin1");
-        Assert.assertArrayEquals(Util.toBytes("Sanna1"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("Sanna1"), value);
         value = DbUtil.get(db2, 5, "admin1");
         Assert.assertNull(value);
         
         value = DbUtil.get(db2, 99, "admin2");
-        Assert.assertArrayEquals(Util.toBytes("Sanna2"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("Sanna2"), value);
         value = DbUtil.get(db2, 15, "admin2");
         Assert.assertNull(value);
         
@@ -483,26 +484,26 @@ public class DbTesterStream {
         // t = 15
         
         byte[] value = DbUtil.get(db2, 15, "k2");
-        Assert.assertArrayEquals(Util.toBytes("k2-value"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("k2-value"), value);
         
         value = DbUtil.get(db2, 15, "k1");
-        Assert.assertArrayEquals(Util.toBytes("k1-value"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("k1-value"), value);
         
         // t = 25
         
         value = DbUtil.get(db2, 25, "k1");
-        Assert.assertArrayEquals(Util.toBytes("k1-value-b"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("k1-value-b"), value);
         
         value = DbUtil.get(db2, 25, "k2");
-        Assert.assertArrayEquals(Util.toBytes("k2-value"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("k2-value"), value);
         
         // t = 35
         
         value = DbUtil.get(db2, 35, "k1");
-        Assert.assertArrayEquals(Util.toBytes("k1-value-b"), value);
+        Assert.assertArrayEquals(StringUtil.toBytes("k1-value-b"), value);
         
         value = DbUtil.get(db2, 35, "k2");
-        Assert.assertEquals("k2-value-b", Util.toString(value));
+        Assert.assertEquals("k2-value-b", StringUtil.toString(value));
     }
 
     @Nano

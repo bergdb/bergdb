@@ -1,6 +1,6 @@
 package bergdb.test;
 
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.core.*;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
@@ -70,7 +70,7 @@ public class BigDbWithDeletes {
             clock.setTime(1*1000000 + i);
             byte[] key = KeyFactory.intKey(i);
             byte[] value = new byte[valueSize];
-            value[0] = (byte) Util.toString(key).hashCode();
+            value[0] = (byte) StringUtil.toString(key).hashCode();
             Trans t = db.trans().put(key, value).build();
             db.execute(t);
         }
@@ -103,7 +103,7 @@ public class BigDbWithDeletes {
                     throw new RuntimeException("value == null, i = " + i + ".");
                 }
                 
-                expectedValue[0] = (byte) Util.toString(key).hashCode();
+                expectedValue[0] = (byte) StringUtil.toString(key).hashCode();
                 Assert.assertEquals("i=" + i, expectedValue[0], value[0]);
             }
         }
@@ -140,7 +140,7 @@ public class BigDbWithDeletes {
                     throw new RuntimeException("value == null, i = " + i + ".");
                 }
                 
-                expectedValue[0] = (byte) Util.toString(key).hashCode();
+                expectedValue[0] = (byte) StringUtil.toString(key).hashCode();
                 Assert.assertEquals("i=" + i, expectedValue[0], value[0]);
             }
         }

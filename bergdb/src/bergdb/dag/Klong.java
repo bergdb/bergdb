@@ -7,7 +7,7 @@ import java.util.Comparator;
 import java.util.Random;
 
 import bergdb.common.ByteArrayComparator;
-import bergdb.common.Util;
+import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
@@ -339,7 +339,7 @@ public class Klong {
             
         case Klong.INT_TYPE_DELETE_BITMAP:
             // 3f = 0011 1111
-            b.append("DEL " + Util.toHexString(klong));
+            b.append("DEL " + StringUtil.toHexString(klong));
             break;
         default:
             assert false : "Bad klong type: " + type;
@@ -421,20 +421,20 @@ public class Klong {
     
     @Nano
     public static void testPrefixLength1() {
-        long k1 = createKey(Util.toBytes("ab1"));
-        long k2 = createKey(Util.toBytes("ab2"));
+        long k1 = createKey(StringUtil.toBytes("ab1"));
+        long k2 = createKey(StringUtil.toBytes("ab2"));
         Assert.assertEquals(2, prefixLength(k1, k2));
         Assert.assertEquals(2, prefixLength(k2, k1));
     }
     
     @Nano
     public static void testPrefixLength2() {
-        long k1 = createKey(Util.toBytes("abc"));
-        long k2 = createKey(Util.toBytes("abcd11"));
-        long k3 = createKey(Util.toBytes(""));
-        long k4 = createKey(Util.toBytes("abcdefg"));
-        long k5 = createKey(Util.toBytes("abcdefg"));
-        long k6 = createKey(Util.toBytes("Prag"));
+        long k1 = createKey(StringUtil.toBytes("abc"));
+        long k2 = createKey(StringUtil.toBytes("abcd11"));
+        long k3 = createKey(StringUtil.toBytes(""));
+        long k4 = createKey(StringUtil.toBytes("abcdefg"));
+        long k5 = createKey(StringUtil.toBytes("abcdefg"));
+        long k6 = createKey(StringUtil.toBytes("Prag"));
         
         Assert.assertEquals(3, prefixLength(k1, k2));
         Assert.assertEquals(3, prefixLength(k2, k1));
@@ -450,8 +450,8 @@ public class Klong {
     
     @Nano
     public static void testPrefixLength3() {
-        long k1 = createKey(Util.toBytes("a1"));
-        long k2 = createKey(Util.toBytes("a2"));
+        long k1 = createKey(StringUtil.toBytes("a1"));
+        long k2 = createKey(StringUtil.toBytes("a2"));
         Assert.assertEquals(1, prefixLength(k1, k2));
         Assert.assertEquals(1, prefixLength(k2, k1));
     }
@@ -589,7 +589,7 @@ public class Klong {
         Collections.sort(keys2, comp2);
         
         for (int i = 0; i < keys1.size(); i++) {
-            Assert.assertEquals(Util.toString(keys1.get(i)), Util.toString(keys2.get(i)));
+            Assert.assertEquals(StringUtil.toString(keys1.get(i)), StringUtil.toString(keys2.get(i)));
         }
     }
     

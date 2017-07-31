@@ -2,7 +2,8 @@ package bergdb.dag;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import bergdb.common.Util;
+
+import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 
 /**
@@ -1178,7 +1179,7 @@ public class KeyNode implements Node {
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         PrintStream out = new PrintStream(bout);
         printInternal(out, indent, 0, false);
-        return Util.toString(bout.toByteArray());
+        return StringUtil.toString(bout.toByteArray());
     }
     
     /**
@@ -1260,7 +1261,7 @@ public class KeyNode implements Node {
             if (Keys.isPrintableAscii(bytes)) {
                 result = Keys.bkey2ikey(bytes);
             } else {
-                result = "#" + Util.toHex(bytes);
+                result = "#" + StringUtil.toHex(bytes);
             }
         }
         

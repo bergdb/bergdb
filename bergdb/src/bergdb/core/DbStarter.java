@@ -4,7 +4,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import bergdb.common.Util;
+
+import bergdb.common.StringUtil;
 import bergdb.core.StoredTrans.Parser;
 import bergdb.core.StoredTrans.Serializer;
 import bergdb.dag.AccessData;
@@ -713,9 +714,9 @@ public class DbStarter {
         ValueNode v2 = new ValueNode(new byte[]{13, 14});
         
         KeyNode n = new KeyNode();
-        n.addKlong(10, Klong.createKey(Util.toBytes("a")), v0, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(20, Klong.createKey(Util.toBytes("b")), v1, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(30, Klong.createKey(Util.toBytes("c")), v2, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(10, Klong.createKey(StringUtil.toBytes("a")), v0, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(20, Klong.createKey(StringUtil.toBytes("b")), v1, AccessData.DEFAULT_ACCESS_DATA);
+        n.addKlong(30, Klong.createKey(StringUtil.toBytes("c")), v2, AccessData.DEFAULT_ACCESS_DATA);
         n.setId(103);
         
         transNodes.addValueNode(v0, Keys.toSegments("a"));

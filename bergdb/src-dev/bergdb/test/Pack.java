@@ -2,6 +2,8 @@ package bergdb.test;
 
 import bergdb.dev.MemPerf;
 import bergdb.nanotest.IPack;
+import bergdb.test.java.PerfTreeMapGet;
+import bergdb.test.java.PerfTreeMapSet;
 import bergdb.test.manual.StreamSizeVsStartupDistance;
 import bergdb.test.manual.TransThroughput;
 
