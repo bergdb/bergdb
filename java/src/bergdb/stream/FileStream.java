@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 import bergdb.common.Bug;
@@ -54,6 +56,7 @@ public class FileStream implements AppendOnlyStream {
     private static final int INDEX_2G = 6;
     
     private final File dir;
+    private final FileStreamIo io;
     private long firstPos = 0;
     private long length = 0;
     private int fileSizeIndex = 0;
@@ -83,13 +86,38 @@ public class FileStream implements AppendOnlyStream {
      *      are not in a valid state. The files in the directory were modified by some other software.
      */
     public FileStream(File dir) throws IOException {
+        this(dir, new FileStreamIo());
+    }
+
+    FileStream(File dir, FileStreamIo io) throws IOException {
         if (dir == null) {
             throw new IllegalArgumentException("dir == null not allowed");
         }
         
         this.dir = dir;
-        createDirIfNeeded();
-        handleExistingFiles();
+        if (io == null) {
+            throw new IllegalArgumentException("io == null not allowed");
+        }
+        this.io = io;
+        try {
+            createDirIfNeeded();
+            handleExistingFiles();
+        } catch (IOException e) {
+            closeAfterFailedOpen(e);
+            throw e;
+        } catch (RuntimeException e) {
+            closeAfterFailedOpen(e);
+            throw e;
+        }
+    }
+
+    private void closeAfterFailedOpen(Throwable failure) {
+        if (dbFiles == null) return;
+        for (DbFile file : dbFiles) {
+            if (file != null && !file.isClosed) {
+                try { file.close(); } catch (IOException e) { failure.addSuppressed(e); }
+            }
+        }
     }
     
     public void read(long spos, byte[] dest, int destOffset, int length) throws IOException {
@@ -155,13 +183,22 @@ public class FileStream implements AppendOnlyStream {
     }
 
     public void close() throws IOException {
-        checkIOException();
-        
+        // An I/O failure must not prevent release of the remaining handles,
+        // including handles left after a partially completed pretruncate.
+        IOException failure = ioException;
         synchronized (this) {
             for (int i = 0; i < dbFiles.length; i++) {
-                dbFiles[i].close();
+                if (!dbFiles[i].isClosed) {
+                    try {
+                        dbFiles[i].close();
+                    } catch (IOException e) {
+                        if (failure == null) failure = e;
+                        else if (failure != e) failure.addSuppressed(e);
+                    }
+                }
             }
         }
+        if (failure != null) throw failure;
     }
 
     /**
@@ -242,8 +279,17 @@ public class FileStream implements AppendOnlyStream {
         }
         
         if (index != -1) {
-            for (int i = 0; i <= index; i++) {
-                dbFiles[i].delete();
+            try {
+                for (int i = 0; i <= index; i++) {
+                    dbFiles[i].delete();
+                    // Persist each prefix removal before the next one. A crash
+                    // must not retain an older file while losing a newer one,
+                    // which would leave a hole before recovery can read the cut table.
+                    io.forceDirectory(dir);
+                }
+            } catch (IOException e) {
+                ioException = e;
+                throw e;
             }
             
             int newSize = dbFiles.length - (index + 1);
@@ -288,7 +334,16 @@ public class FileStream implements AppendOnlyStream {
         }
         
         if (exists) {
+            File parent = dir.getAbsoluteFile().getParentFile();
+            if (parent != null) io.forceDirectory(parent);
             return;
+        }
+
+        // mkdirs() can create several ancestors. Persist every new link,
+        // from the deepest directory towards the pre-existing ancestor.
+        List<File> missing = new ArrayList<File>();
+        for (File f = dir.getAbsoluteFile(); f != null && !f.exists(); f = f.getParentFile()) {
+            missing.add(f);
         }
         
         boolean created;
@@ -300,6 +355,13 @@ public class FileStream implements AppendOnlyStream {
         } catch (SecurityException e) {
             throw new IOException("Directory " + dir.getPath() 
                     + " could not be created because of a SecurityException; " + e.getMessage());
+        }
+        for (File f : missing) {
+            io.forceDirectory(f);
+            File parent = f.getParentFile();
+            if (parent != null) {
+                io.forceDirectory(parent);
+            }
         }
     }
 
@@ -507,6 +569,7 @@ public class FileStream implements AppendOnlyStream {
         try {
             for (int i = 0; i < dbFiles.length; i++) {
                 dbFiles[i].delete();
+                io.forceDirectory(dir);
             }
         } catch (IOException e) {
             ioException = e;
@@ -656,8 +719,22 @@ public class FileStream implements AppendOnlyStream {
     
     private DbFile openForRw(long spos, File file, long maxSize) throws IOException {
         DbFile k = new DbFile(spos, file, maxSize);
-        k.rfile = new RandomAccessFile(file, "rws");
-        k.fileLength = k.rfile.length();
+        k.rfile = io.open(file);
+        try {
+            // Persist both the file and its directory entry before it can
+            // contribute to StorageManager's confirmed (durable) length.
+            io.forceFile(file, k.rfile);
+            io.forceDirectory(dir);
+            k.fileLength = k.rfile.length();
+        } catch (IOException e) {
+            try {
+                k.rfile.close();
+            } catch (IOException closeFailure) {
+                e.addSuppressed(closeFailure);
+            }
+            ioException = e;
+            throw e;
+        }
         k.isRw = true;
         k.maxSize = maxSize;
         synchronized (k) {}
@@ -731,13 +808,13 @@ public class FileStream implements AppendOnlyStream {
             close();
             
             if (renameAsDelete) {
-                boolean ok = file.renameTo(new File(dir, file.getName() + ".deleted"));
+                boolean ok = io.rename(file, new File(dir, file.getName() + ".deleted"));
                 if (!ok) {
                     ioException = new IOException("Could not rename file " + file.getPath() + ".");
                     throw ioException;
                 }
             } else {
-                boolean ok = file.delete();
+                boolean ok = io.delete(file);
                 if (!ok) {
                     ioException = new IOException("Cound not delete file " + file.getPath() + ".");
                     throw ioException;
@@ -827,7 +904,10 @@ public class FileStream implements AppendOnlyStream {
                 }
                 
                 rfile.seek(this.fileLength);
-                rfile.write(bytes, offset, toAppend);
+                if (toAppend > 0) {
+                    io.write(file, rfile, bytes, offset, toAppend);
+                    io.forceFile(file, rfile);
+                }
                 fileLength += toAppend;
                 assert fileLength == rfile.length() : fileLength + " != " + rfile.length();
             } catch (IOException e) {

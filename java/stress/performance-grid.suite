@@ -1,0 +1,19 @@
+# The rest of the grid of docs/level3-plan.md, task 3: hot-set and mostly unchanged data with
+# 100-byte and 10 KB values, finite and infinite retention. Same format and settings as
+# performance.suite. Run with SUITE=grid. Not part of the principal reference.
+
+w-hot-100-inf   write    3   n=1000000 valsize=100 work=hot retain=inf ops=4500000
+w-hot-100-fin   write    3   n=1000000 valsize=100 work=hot retain=1 mincuts=6 ops=4500000 maxops=12000000
+w-cold-100-inf  write    3   n=1000000 valsize=100 work=cold retain=inf ops=4500000
+w-cold-100-fin  write    3   n=1000000 valsize=100 work=cold retain=1 mincuts=6 ops=4500000 maxops=12000000
+w-hot-10k-inf   write    3   n=10000 valsize=10000 work=hot retain=inf ops=300000
+w-hot-10k-fin   write    3   n=10000 valsize=10000 work=hot retain=1 mincuts=6 ops=300000 maxops=2000000
+w-cold-10k-inf  write    3   n=10000 valsize=10000 work=cold retain=inf ops=300000
+w-cold-10k-fin  write    3   n=10000 valsize=10000 work=cold retain=1 mincuts=6 ops=300000 maxops=2000000
+
+# More updates per key within the retention window.
+w-uni-1k-fin-k10  write  3   n=100000 valsize=1000 work=uniform retain=10 mincuts=6 ops=1000000 maxops=8000000
+
+# Several puts per transaction.
+w-uni-1k-ts10-inf write  3   n=100000 valsize=1000 work=uniform tsize=10 retain=inf ops=100000
+w-uni-1k-ts10-fin write  3   n=100000 valsize=1000 work=uniform tsize=10 retain=1 mincuts=6 ops=100000 maxops=600000

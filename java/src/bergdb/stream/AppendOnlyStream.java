@@ -54,6 +54,10 @@ public interface AppendOnlyStream {
      * When this method returns, it is guaranteed that the data just written 
      * can be read by the read method and the new size of the stream is available from
      * getSize().
+     * Persistent streams supplied to StorageManager must also force the bytes
+     * and any newly created backing-file names before append returns: that
+     * completion advances the durable frontier. Memory-backed test streams
+     * do not provide a hardware-durability guarantee.
      * 
      * @throws IllegalArgumentException if 'length' is less than 0 or greater than source.length.
      * @throws IOException if the data could not be added to the stream.

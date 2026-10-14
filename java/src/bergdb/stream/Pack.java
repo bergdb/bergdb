@@ -8,6 +8,7 @@ public class Pack implements IPack {
         BadDirStateException.class,
         DummyStream.class,
         FileStream.class,
+        FileStreamPowerLossTester.class,
         MemoryStream.class,
         OneFileStream.class,
         Pack.class,

@@ -2,7 +2,9 @@
 
 By Codex for Frans Lundberg, 2026-10-14.
 
-Status: planned. Complete these three tasks before implementing Level 4.
+Status: task 1 complete for the tested macOS/APFS and Linux VM FileStream
+paths, under the assumptions in the durability report. Tasks 2 and 3 remain
+planned. Complete all three before implementing Level 4.
 This file replaces the completed 13 October plan. Implementation status and
 review results are in [levels.md](levels.md); the eviction design is in
 [level4-plan.md](level4-plan.md).
@@ -11,10 +13,11 @@ review results are in [levels.md](levels.md); the eviction design is in
 
 Level 3 passes the recorded full Level 1–3 gates, including concurrent
 readers, changing retention, exact cuts, restart invariance and crashes in
-the existing complete-record model. The implementation and independent
-review repairs were committed as `0319caf`; `5650ed7` adds documentation and
-source-comment corrections. These results do not establish hardware
-power-loss safety or performance of a long-running disk workload.
+the existing complete-record model. The local baseline for this work is
+`2e0bfe6`. Earlier commit IDs in the recorded review are historical provenance
+from before this repository. Current power-loss evidence is in
+[level3-durability.md](level3-durability.md); long-running disk performance
+remains to be measured.
 
 Keep the agreed policy:
 
@@ -37,6 +40,12 @@ and 3. Any later production change requires a new matched reference run.
 No Level 4 implementation is part of this plan.
 
 ## 1. Close the power-loss gap
+
+Implemented on the tested FileStream path: explicit file/name forces, a
+directory force after each prefix removal, and propagation of deferred-cut
+failures before durable publication. The bounded fault model includes
+unordered deletion survival and cold recovery. See the
+[durability report](level3-durability.md) for tests, native audits and limits.
 
 The existing durable-cut regression checks that a cut waits for the
 reported durable length. `CutStream.truncate()` refuses to lose bytes before
@@ -231,13 +240,8 @@ production or harness change, record the final source identity and outcomes
 in `levels.md`, and leave Level 4 unimplemented. Update this plan's status
 only after its acceptance criteria are met. Do not commit on Frans's behalf.
 
-The previous plan and detailed independent review remain available in Git:
-
-```sh
-git show 5650ed7:b/007-bergdb-261012/theory/level3-plan.md
-git show 5650ed7:b/007-bergdb-261012/theory/level3-review.md
-```
-
-Historical references to W1–W5 and D1–D3 describe that completed plan.
-Their implementation outcomes and the independent gate results remain in
-`levels.md`; they are not new tasks in this plan.
+The completed W1–W5 implementation and independent review outcomes remain in
+`levels.md`. Older commit IDs describe provenance in the earlier repository;
+they are not local Git commands. The imported work is local commit `2bd52c0`;
+this power-loss task starts from local `2e0bfe6` and records its new source
+identity in `level3-durability.md`.

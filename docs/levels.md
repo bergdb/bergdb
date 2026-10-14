@@ -1,8 +1,9 @@
 BergDB feature levels: what works
 =================================
 
-Draft 6, 2026-10-14. Originally written by Claude for Frans Lundberg.
-Codex consolidated the independent review and added the next validation plan.
+Draft 7, 2026-10-14. Originally written by Claude for Frans Lundberg.
+Codex consolidated the independent review, added the validation plan and
+implemented and tested FileStream power-loss ordering.
 Draft 1, 2026-10-12, tested the 2017 code as is. Draft 3 added level 2 under load and
 crash tests, and the four bugs they found. Draft 4 adds level 3, reclaim.
 Draft 5 adds "Level 3 follow-up": readers and cuts, changes of the retain
@@ -27,8 +28,24 @@ Level 1–3 gates, the reviewed source manifest, and further copy/oracle/test
 repairs committed in `0319caf`. It supersedes the earlier follow-up gate
 snapshot; performance measurements retain their stated versions. The next
 [Level 3 plan](level3-plan.md) covers power loss, a longer disk soak and a
-reproducible performance reference before Level 4. Those tasks are pending;
-this documentation consolidation does not rerun Java or Lean checks.
+reproducible performance reference before Level 4. Task 1 results are below;
+the soak and performance reference remain pending. Java gates were rerun for
+the storage work; the abstract Lean model is unchanged.
+
+
+Power-loss ordering, 14 October
+-------------------------------
+
+The current FileStream ordering work is in
+[level3-durability.md](level3-durability.md): explicit file and namespace forces,
+a force between prefix removals, propagated deferred-cut failures, and handle
+cleanup after errors. The fault model separates readable/forced bytes and
+persistent names; omitted forces and unordered deletions are negative controls.
+Native audits confirm F_FULLFSYNC on the tested macOS/APFS JDK and fsync in the
+Linux VM. Physical power cycling, other providers/Windows and replication are
+not established by these checks. Final gate results are recorded in that report.
+The longer soak and performance reference of [level3-plan.md](level3-plan.md)
+remain pending. Earlier sections retain their historical source scopes.
 
 
 Levels
@@ -39,17 +56,18 @@ Levels
 | 0 | Multiversion map in memory: puts, deletes, latest and historical lookups, scans; no restart | Passes the tests run |
 | 1 | + restart by replaying the whole stream | Passes the tests run; two bugs fixed |
 | 2 | + bounded startup: the startup pos moves, startup reads only the tail | Works in all tests run, also under load and with crashes; the defects of the 2017 code fixed |
-| 3 | + reclaim: cut the front of the stream | Passes the recorded exact-cut, restart, crash, load, concurrent-reader and changing-retention tests; infinite retention is the default, finite retention schedules reclaim; retention pacing, older cut point, index-aware allowance and 16 KB scan target implemented; an overtaken read may expire without harming the database; power-loss validation, a longer disk soak and the performance reference are planned |
+| 3 | + reclaim: cut the front of the stream | Passes the recorded exact-cut, restart, crash, load, concurrent-reader and changing-retention tests; infinite retention is the default, finite retention schedules reclaim; retention pacing, older cut point, index-aware allowance and 16 KB scan target implemented; an overtaken read may expire without harming the database; FileStream power-loss ordering is implemented and audited on the tested platforms; a longer disk soak and the performance reference remain planned |
 | 4 | + eviction: data larger than memory | Not implemented |
 
 Level 3 needs level 2: once the front of the stream is cut, startup can no
 longer replay from the beginning.
 
 Checks, all of which must pass before a change to the code is committed:
-[level1.sh](../java/stress/level1.sh) (about 80 s),
-[level2.sh](../java/stress/level2.sh) (about 2 minutes) and
-[level3.sh](../java/stress/level3.sh) (about 4 minutes). They print `LEVEL 1 OK`,
-`LEVEL 2 OK` and `LEVEL 3 OK`.
+[level1.sh](../java/stress/level1.sh),
+[level2.sh](../java/stress/level2.sh) and
+[level3.sh](../java/stress/level3.sh). They print `LEVEL 1 OK`,
+`LEVEL 2 OK` and `LEVEL 3 OK`. Runtime depends on the cost of the storage
+forces; the old pre-force timing estimates no longer describe these runs.
 
 `level2.sh` also runs [BryanRepro.java](../java/stress/BryanRepro.java), the
 program attached to a bug report of November 2015 (ISSUE151111): start,
@@ -735,11 +753,12 @@ Small items (W5)
   the duration) and 30 rounds of `CrashTest`, 0 failures. No case that needs
   the wait has been found. It is kept, as the safety argument requires it
   (it costs about one startup distance of stream).
-* c. Durable. `StorageManager.getDurableLength()` is the length confirmed
+* c. Durable at the 13 October source. `StorageManager.getDurableLength()` is the length confirmed
   appended to the underlying stream, and `FileStream` writes with mode "rws"
   (synchronous). So a cut that waits for it waits for the data to be written
   through the OS; on macOS that is not `F_FULLFSYNC` (drive cache), a
-  hardware question that remains open (Next, item 4).
+  hardware question at that cutoff. The later explicit-force work and native
+  audits are in [level3-durability.md](level3-durability.md).
   `Reclaim.Tester.testCutIsMadeAfterDecisionIsDurable` fails when the wait is
   removed. `CutStream.truncate` (used by `CrashTest`) never cuts the stream shorter than it was at
   the last cut, which is the model of this.
@@ -1185,9 +1204,10 @@ working, performant database (2026-10-13); theory where it reduces risk.
 Index-aware budgeting and the 16 KB scan target are now part of the
 reviewed `ebe5f77` baseline; the remaining work is below.
 
-1. Follow the new [Level 3 plan](level3-plan.md): close the power-loss and
-   flush/deletion-ordering gap, run the longer file-backed soak, and publish
-   a reproducible performance reference before Level 4. Infinite retention
+1. The FileStream power-loss ordering work is implemented; see
+   [level3-durability.md](level3-durability.md) for the tested scope and gate
+   results. Continue [level3-plan.md](level3-plan.md) with the longer file-backed
+   soak and a reproducible performance reference before Level 4. Infinite retention
    remains the default; finite retention schedules reclaim. The completed
    W1–W5 work and independent review are recorded above. Protected snapshots,
    a reclaim proof and an expert f controller remain separate optional work.

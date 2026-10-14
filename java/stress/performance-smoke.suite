@@ -1,0 +1,11 @@
+# The smoke suite of java/stress/performance.sh: one small scenario of each kind, to check the
+# plumbing and the correctness checks in a few minutes. Its numbers are not measurements of
+# anything. Same format as performance.suite.
+
+read-s          read     2   n=50000 nlong=5000 valsize=100 history=50000 windows=2 gets=300000 timedgets=100000 scans=2000 warmgets=300000
+w-inf-s         write    2   n=20000 valsize=1000 work=uniform retain=inf ops=100000
+w-fin-s         write    2   n=20000 valsize=1000 work=uniform retain=1 sd=2000000 mincuts=3 ops=100000 maxops=1000000
+w-hot-s         write    1   n=20000 valsize=100 work=hot retain=inf tsize=4 ops=20000
+d-t16-s         write    1   n=20000 valsize=1000 commit=durable threads=16 ops=160 warmup=20000
+p-s             write    1   n=20000 valsize=1000 work=uniform retain=inf rate=20000 ops=40000
+r-fin-s         restart  2   n=20000 valsize=1000 work=uniform retain=1 sd=2000000 mincuts=3 ops=100000 maxops=1000000 halt=1 firstgets=50000 mixops=20000

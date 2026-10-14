@@ -1,0 +1,61 @@
+# The principal scenarios of the Level 3 performance reference (docs/level3-plan.md, task 3).
+# Run by java/stress/performance.sh; one scenario per line:
+#
+#   name  mode  runs  [jvm.heap=SIZE]  [parameter=value ...]
+#
+# mode: read (warm resident reads), write (updates, measured), restart (a write run that
+# keeps its directory, then a fresh JVM that restarts on it). The parameters become -Dperf.NAME
+# (Perf.java documents them and their defaults); the effective values are recorded in every
+# result and hashed into its workload id, so a reference and a candidate that differ in any
+# parameter are not compared. A change to this file is a new workload: a new reference.
+#
+# Data sets: live user data about 100 MB each (n keys of valsize bytes), 4-byte keys, the
+# simulated clock of Perf.java (retention R spans K * n updates; retain=K means K updates per
+# key within R, retain=inf infinite retention, the default of the API). Startup distance and
+# the other reclaim settings are the defaults of the database (sd=0: 50 MB, f = 0.25, 16 KB scan
+# target). Values of 100 bytes, 1,000 bytes and 10 KB; uniform, hot (90% of the updates on 1% of
+# the keys) and cold (all updates on 10% of the keys, 90% of the data never changes) updates.
+# Finite retention runs go on until at least 6 physical cuts (files deleted) were made; ops is set
+# above what the pilot runs of 2026-10-14 needed, so that runs of a scenario have equal length, and
+# matched finite and infinite scenarios the same trace (maxops, mincuts only guard the assumption).
+#
+# The runs per scenario are the minimum of the plan: three, and five for warm reads. The
+# scenarios of the rest of the grid are in performance-grid.suite.
+
+# ---- Warm resident reads: latest, historical and long-key gets, scans in both directions, gets from 4 threads.
+# 1M keys of 100 bytes and 100,000 long keys (120 bytes); a history of 1M updates (infinite retention).
+read-100        read     5   n=1000000 nlong=100000 valsize=100 history=1000000
+read-1k         read     3   n=200000 nlong=20000 valsize=1000 history=200000
+read-10k        read     3   n=20000 nlong=2000 valsize=10000 history=20000
+
+# ---- Updates, append commits (execute() returned): uniform, infinite and finite retention, three value sizes.
+w-uni-100-inf   write    3   n=1000000 valsize=100 work=uniform retain=inf ops=4500000
+w-uni-100-fin   write    3   n=1000000 valsize=100 work=uniform retain=1 mincuts=6 ops=4500000 maxops=12000000
+w-uni-1k-inf    write    3   n=100000 valsize=1000 work=uniform retain=inf ops=1000000
+w-uni-1k-fin    write    3   n=100000 valsize=1000 work=uniform retain=1 mincuts=6 ops=1000000 maxops=6000000
+w-uni-10k-inf   write    3   n=10000 valsize=10000 work=uniform retain=inf ops=300000
+w-uni-10k-fin   write    3   n=10000 valsize=10000 work=uniform retain=1 mincuts=6 ops=300000 maxops=2000000
+
+# ---- Hot set and mostly unchanged data, 1,000-byte values.
+w-hot-1k-inf    write    3   n=100000 valsize=1000 work=hot retain=inf ops=1500000
+w-hot-1k-fin    write    3   n=100000 valsize=1000 work=hot retain=1 mincuts=6 ops=1500000 maxops=6000000
+w-cold-1k-inf   write    3   n=100000 valsize=1000 work=cold retain=inf ops=1700000
+w-cold-1k-fin   write    3   n=100000 valsize=1000 work=cold retain=1 mincuts=6 ops=1700000 maxops=6000000
+
+# ---- Durable commits (execute() then sync(ORDINARY)); the buffering and group commit timing are
+# the defaults (buffer time 100 ms): the latency is dominated by it. 1, 16 and 64 committing threads,
+# 100 commits each.
+d-1k-t1         write    3   n=100000 valsize=1000 commit=durable threads=1 ops=100 warmup=100000
+d-1k-t16        write    3   n=100000 valsize=1000 commit=durable threads=16 ops=1600 warmup=100000
+d-1k-t64        write    3   n=100000 valsize=1000 commit=durable threads=64 ops=6400 warmup=100000
+
+# ---- Paced updates: 20,000 commits per second, 1,000-byte values; the delay from the intended
+# arrival to completion is reported, so that a stall is not hidden by fewer requests.
+p-1k-inf        write    3   n=100000 valsize=1000 work=uniform retain=inf rate=20000 ops=700000
+p-1k-fin        write    3   n=100000 valsize=1000 work=uniform retain=1 rate=20000 ops=700000 mincuts=6 maxops=3000000
+
+# ---- Restart: a write run (halted without close after a sync), bounded-startup recovery in a fresh
+# JVM, the first reads (cold node cache), the same reads again, mixed reads and writes, a check of
+# every key. The OS file cache is whatever the runner says (OSCACHE).
+r-1k-inf        restart  3   n=100000 valsize=1000 work=uniform retain=inf ops=1000000 halt=1 firstgets=300000 mixops=300000
+r-1k-fin        restart  3   n=100000 valsize=1000 work=uniform retain=1 mincuts=6 ops=1000000 maxops=6000000 halt=1 firstgets=300000 mixops=300000

@@ -1815,8 +1815,8 @@ public class Reclaim implements Db.TransactionListener {
          * when the front is cut, the underlying stream is at least as long as it was at the
          * decision. CutStream.getLengthAtCut() is the length then, and CrashTest never cuts
          * the stream shorter than that: what a crash may lose is only what came after.
-         * "Durable" is what StorageManager confirms: the bytes were appended to the stream,
-         * for a FileStream written with mode "rws" (synchronous).
+         * "Durable" is what StorageManager confirms: FileStream forces appended bytes
+         * and backing-file names before completion (see docs/level3-durability.md).
          */
         @Nano
         public static void testCutIsMadeAfterDecisionIsDurable() {

@@ -34,6 +34,9 @@
 #      every key after every cut (6 or 7 cuts, 410 MB of stream). This
 #      is the case where the cut must wait until the rewritten nodes are
 #      written (Reclaim, pEnd); the small configurations above do not reach it.
+#   7. PowerLossTest: production FileStream ordering with independent volatile
+#      bytes, forced bytes and durable names, surviving deletion, partial tails,
+#      cold recovery, and weakened data/directory-force negative controls.
 # Logs go to build/level3/. Set JAVA_HOME or PATH for the JDK; the build
 # needs javac too.
 
@@ -43,9 +46,9 @@ JAVA=${JAVA:-java}
 if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
 
 if [ "$1" = quick ]; then
-    QUICK=1; ROUNDS=40; INV_N=800; CRASH_ROUNDS=4; READER_ROUNDS=3
+    QUICK=1; ROUNDS=40; INV_N=800; CRASH_ROUNDS=4; READER_ROUNDS=3; POWER_ROUNDS=1; POWER_TRANS=600; POWER_EVENTS=1
 else
-    QUICK=0; ROUNDS=200; INV_N=2000; CRASH_ROUNDS=20; READER_ROUNDS=12
+    QUICK=0; ROUNDS=200; INV_N=2000; CRASH_ROUNDS=20; READER_ROUNDS=12; POWER_ROUNDS=8; POWER_TRANS=1500; POWER_EVENTS=3
 fi
 
 CP=build/bergdb.jar:build/stress
@@ -134,5 +137,11 @@ if [ $QUICK = 0 ]; then
     grep -q '^LOADTEST OK' $LOG/load.txt || fail "LoadTest with reclaim" $LOG/load.txt
     echo "   $(grep 'restarts with a full check' $LOG/load.txt | sed 's/^ *//')"
 fi
+
+echo "7. PowerLossTest, forced bytes and durable names before deletion"
+$JAVA -ea -Xmx2g -cp $CP bergdb.stream.PowerLossTest 1 $POWER_ROUNDS $POWER_TRANS $POWER_EVENTS \
+    > $LOG/powerloss.txt 2>&1
+grep -q '^POWERLOSS OK' $LOG/powerloss.txt || fail "PowerLossTest" $LOG/powerloss.txt
+grep '^POWERLOSS OK' $LOG/powerloss.txt
 
 echo "LEVEL 3 OK"

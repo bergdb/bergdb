@@ -31,10 +31,11 @@ Status
 | 0 | Multiversion map in memory | Passes the tests run |
 | 1 | + restart by replaying the whole stream | Passes the tests run |
 | 2 | + bounded startup (self-indexed stream) | Passes the tests run, under load and with crashes |
-| 3 | + reclaim: cut the front of the stream | Passes the recorded tests; power-loss validation, a long disk soak and a performance reference are planned |
+| 3 | + reclaim: cut the front of the stream | FileStream power-loss ordering implemented and audited on tested macOS/Linux VM paths; a long disk soak and performance reference remain planned |
 | 4 | + eviction: data larger than memory | Not implemented; design in [docs/level4-plan.md](docs/level4-plan.md) |
 
-Evidence and limits are in [docs/levels.md](docs/levels.md). The Lean proofs
+Evidence and limits are in [docs/levels.md](docs/levels.md), including the
+[FileStream durability report](docs/level3-durability.md). The Lean proofs
 concern the abstract model, not the Java code, reclaim, eviction,
 concurrency or resource bounds. Whether the concept is novel is open; see
 [docs/prior-art.md](docs/prior-art.md).

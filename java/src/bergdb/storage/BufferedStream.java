@@ -216,14 +216,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             // 2026-10-13: the failed bytes were counted as appended, and the
             // listener was told so; a sync then returned as if they were durable. Now the
             // stream stops, and the listener is told of the failure.
-            synchronized (this) {
-                if (this.exception == null) {
-                    this.exception = ex;
-                }
-                stop = true;
-                notifyAll();
-            }
-            appendListener.appendFailed(ex);
+            stopAfterFailure(ex);
             return;
         }
 
@@ -232,7 +225,14 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         // stream, before the cut (BufferedStream.testPretruncateBeyondFlushed failed now
         // and then). And before the listener, which releases syncs.
 
-        applyPendingCut(streamLength + sizeToFlush);
+        try {
+            applyPendingCut(streamLength + sizeToFlush);
+        } catch (IOException e) {
+            // A failed deletion/directory force is a storage failure too.
+            // Do not publish this flush or release durability waiters.
+            stopAfterFailure(e);
+            return;
+        }
 
         final long myStreamSize;
 
@@ -258,6 +258,15 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         }
 
         appendListener.dataAppended(myStreamSize);
+    }
+
+    private void stopAfterFailure(IOException failure) {
+        synchronized (this) {
+            if (this.exception == null) this.exception = failure;
+            stop = true;
+            notifyAll();
+        }
+        appendListener.appendFailed(failure);
     }
 
     public synchronized long getLength() {
@@ -448,7 +457,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
      * Applies a pending pretruncate that the flushed bytes reach; flushedLength is the
      * length of the underlying stream. Consumer only.
      */
-    private void applyPendingCut(long flushedLength) {
+    private void applyPendingCut(long flushedLength) throws IOException {
         long cut = 0;
         synchronized (this) {
             if (pendingCut > 0 && pendingCut <= flushedLength) {
@@ -457,15 +466,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             }
         }
         if (cut > 0) {
-            try {
-                stream.pretruncate(cut);
-            } catch (IOException e) {
-                synchronized (this) {
-                    if (this.exception == null) {
-                        this.exception = e;
-                    }
-                }
-            }
+            stream.pretruncate(cut);
         }
     }
 
