@@ -10,6 +10,9 @@
 #
 #   smoke                      One small scenario of each kind (performance-smoke.suite), one or
 #                              two runs: the plumbing and the correctness checks, a few minutes.
+#   quick [LABEL]              The simple baseline (performance-quick.suite): warm reads, updates with
+#                              infinite and finite retention, restart; 3 runs each, about 15 minutes.
+#                              Enough to see that a later level did not wreck performance.
 #   reference [LABEL]          The principal suite (performance.suite): every scenario, the runs
 #                              it names (3; 5 for warm reads). SUITE=grid for the rest of the
 #                              grid (performance-grid.suite). Prints a summary at the end.
@@ -372,6 +375,7 @@ suite_file() {
         principal) echo "$JAVADIR/stress/performance.suite" ;;
         grid) echo "$JAVADIR/stress/performance-grid.suite" ;;
         smoke) echo "$JAVADIR/stress/performance-smoke.suite" ;;
+        quick) echo "$JAVADIR/stress/performance-quick.suite" ;;
         *) [ -f "$SUITE" ] && echo "$SUITE" || die "unknown SUITE $SUITE" ;;
     esac
 }
@@ -419,7 +423,8 @@ case $cmd in
         [ $rc = 0 ] || die "smoke: the self-comparison reported something (exit $rc), see $SDIR/self-compare.txt"
         echo "PERFORMANCE SMOKE OK ($SDIR)" ;;
 
-    reference)
+    reference|quick)
+        [ "$cmd" = quick ] && SUITE=quick
         b=$(resolve_build "${BUILD:-current}")
         prepare_target R "$b"
         sf=$(suite_file)

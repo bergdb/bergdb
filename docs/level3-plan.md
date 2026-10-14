@@ -162,75 +162,37 @@ zero correctness or storage failures, metrics and raw logs are retained,
 and a report explains the worst observed pauses and any memory growth.
 Observed maxima are measurements, not latency guarantees.
 
-## 3. Establish the performance reference before Level 4
+## 3. Record a simple performance baseline before Level 4
 
-Create a repeatable performance runner, proposed name
-`java/stress/performance.sh`, with a short smoke mode and a full reference mode.
-Reuse and extend [LoadTest.java](../java/stress/LoadTest.java),
-[ReclaimCost.java](../java/stress/ReclaimCost.java) and the reader harness where
-appropriate. This is a performance check alongside the correctness gates;
-results from uncontrolled concurrent benchmark jobs are not a reference.
+The goal is a sanity check, not a regression gate: when Level 4 works, we
+should see that read and write performance did not collapse compared with
+Levels 2 and 3. A more complete baseline is made after Level 4 works.
 
-### Fixed workloads and measurements
+Use `java/stress/performance.sh quick` (suite `performance-quick.suite`; about
+15 minutes, three runs per scenario). It records:
 
-Freeze seeds, operation traces, data sizes, transaction sizes, retention,
-startup distance, JVM/collector settings and benchmark instrumentation.
-The reference suite should cover:
+* Warm resident gets (latest, historical, long keys) and scans in both
+  directions, all resident.
+* Updates with 1,000-byte values, infinite and finite retention: commits per
+  second, bytes appended per user byte, write and store efficiency, latency
+  percentiles and maximum, GC pauses.
+* Restart after finite retention: startup time and first reads.
 
-* Warm resident latest and historical gets, long keys, and scans in both
-  directions. Keep an all-resident case for Level 4's common read path.
-* First reads after a cold database restart and mixed reads/writes. State
-  whether the OS file cache is warm or cold; a fresh JVM alone does not prove
-  cold disk reads.
-* Uniform, hot-set and mostly unchanged-data update workloads, with
-  100-byte, 1,000-byte and 10 KB values; explicit finite and infinite
-  retention. Keep identical traces for matched configurations.
-* Append-only and durable/group-commit workloads, bounded-startup recovery,
-  and reclaim-heavy work over multiple physical cuts.
+Run it on a quiet machine, on the source after task 1, and note the commit, JDK
+and machine. Keep the summary table (`summary.md` of the session) in
+`docs/level3-performance.md`, with the exact command, and the compact results
+with `performance.sh promote`. After Level 4, run the same command and compare
+by eye: a loss of more than about 10-20% in warm reads, or a gross stall,
+needs an explanation. Results of concurrent benchmark jobs are not a baseline.
 
-Capture task 2's latency/GC/storage measures, plus bytes per user operation,
-write/store efficiency and record-byte attribution from `Reclaim.Stats`.
-Record counters describe the record that writes a node, not a proved causal
-accounting of all reclaim work. A paced workload should also report delay
-from intended arrival to completion so stalls are not hidden by reduced
-request generation.
+The fuller machinery (`performance.sh reference`, the grid suite, `ab`,
+`compare`, `calibrate`, thresholds and alerts, see
+[performance-harness.md](performance-harness.md)) exists and is tested, but is
+not required now. Use it for the complete baseline after Level 4 works.
 
-Use at least three independent runs per principal configuration and five
-for the warm-read comparison. Warm up explicitly, record variation and
-sample counts, and retain per-run results rather than only a best result.
-During Level 4, run the preserved reference build and candidate alternately
-on the same machine. Changes needed by both builds belong in a common
-baseline before judging eviction's cost.
-
-### Reusable evidence and regression checking
-
-Produce a tracked `docs/level3-performance.md` after the runs, with source
-identity, environment, exact commands, workload definitions, per-run results,
-latency tails and limitations. Keep compact machine-readable reference
-results in a tracked benchmark-data directory, and raw logs/histograms in
-an ignored run directory identified by commit, timestamp and configuration.
-Include enough generation instructions to reproduce the dataset and trace.
-Do not create placeholder measurements or replace the reference silently.
-
-The runner must compare a candidate with an explicitly selected reference.
-Reject incompatible workload/environment metadata instead of presenting
-misleading percentages. A correctness failure fails the run immediately.
-A performance alert must include both results, sample sizes and variability,
-and be repeated in a matched run before it becomes a regression conclusion.
-
-Keep the existing provisional target of investigating a consistent warm-read
-throughput loss above 5%. Set the remaining throughput and tail-latency alert
-thresholds from measured repeatability, then record and freeze them before
-Level 4 work. Maximum latency and GC outliers need explanations even when
-aggregate throughput passes. Do not turn one noisy microbenchmark into a
-hard correctness gate or claim that the 5% target is already achieved.
-
-**Done when:** full reference runs and a comparison rerun are reproducible,
-the report and machine-readable reference are ready for Frans to commit, and
-`level4-plan.md` step 0 names that exact reference. A later source/configuration
-change must be compared against it or produce an explicitly versioned new
-reference. Data larger than the managed cache remains a separate Level 4
-validation requirement.
+**Done when:** the quick baseline is recorded in `docs/level3-performance.md`
+and named in step 0 of `level4-plan.md`. Data larger than the managed cache
+remains a separate Level 4 validation requirement.
 
 ## Completion and history
 
