@@ -630,6 +630,8 @@ public class DbTesterStream {
         // NOTE This is problematic! And why does sync() work? We should at 
         // least be able to query or something? To check whether transaction
         // was successful.
+        // 2026-10-13: sync() worked because a failed flush was counted as
+        // appended. Now sync() throws.
         
         MemoryStream s1 = new MemoryStream();
         Db db1 = Db.builder().testSetup(s1).start();
@@ -641,7 +643,13 @@ public class DbTesterStream {
         Db db2 = Db.builder().testSetup(s2).start();
         
         db2.execute(db2.trans().put("my-string-key-2", new byte[0]));
-        db2.sync(SyncLevel.ORDINARY);
+        StreamIoException syncEx = null;
+        try {
+            db2.sync(SyncLevel.ORDINARY);
+        } catch (StreamIoException e) {
+            syncEx = e;
+        }
+        Assert.assertTrue(syncEx != null);
         
         StreamIoException ex = null;
         try {

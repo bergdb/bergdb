@@ -1,0 +1,10 @@
+name = "sis"
+version = "0.1.0"
+defaultTargets = ["SIS"]
+
+[[lean_lib]]
+name = "SIS"
+
+[[lean_exe]]
+name = "sistest"
+root = "Test"

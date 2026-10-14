@@ -114,4 +114,16 @@ public interface Node {
     public boolean isValueNode();
     
     public boolean isInTransNodes();
+    
+    /**
+     * True if this object is the canonical object of its node: the one object that holds
+     * the node's whole history and can change. An object read from an older version of
+     * the node, for lookups at older times, is not canonical (a snapshot). Value nodes
+     * never change and are always canonical. See docs/levels.md, level 2.
+     * Synch note: written by the writer, or under the node table's lock.
+     */
+    public boolean isCanonical();
+    
+    /** Sets isCanonical(). No effect for value nodes. */
+    public void setCanonical(boolean isCanonical);
 }

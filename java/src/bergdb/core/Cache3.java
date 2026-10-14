@@ -2,6 +2,8 @@ package bergdb.core;
 
 import java.util.HashMap;
 import bergdb.dag.Node;
+import bergdb.nanotest.Assert;
+import bergdb.nanotest.Nano;
 
 /**
  * A deterministic node cache; size is known, weak references are *not* used.
@@ -97,8 +99,82 @@ public class Cache3 {
                 internalPut(id, entry);
             } else {
                 entry.refCount++;
+                if (entry.node != to && isBetter(to, entry.node)) {
+                    entry.node = to;
+                }
             }
         }
+    }
+    
+    /**
+     * Enters 'node' in the node table, unless the table has a better object for the
+     * node: a canonical object is never replaced; otherwise the newest version wins
+     * (docs/levels.md, level 2). Returns the table's object
+     * for the node after the call.
+     */
+    public Node register(Node node) {
+        long id = node.getId();
+        
+        synchronized (getLock(id)) {
+            CacheEntry entry = internalGet(id);
+            
+            if (entry == null) {
+                entry = CacheEntry.noRef(node);
+                internalPut(id, entry);
+            } else if (entry.node != node && isBetter(node, entry.node)) {
+                entry.node = node;
+            }
+            
+            return entry.node;
+        }
+    }
+    
+    /**
+     * Makes the node of 'node' canonical in the node table: the table's canonical object
+     * if there is one, else the newest of 'node' and the table's object, which is then
+     * marked canonical. Returns that object. Called when the writer reaches a node.
+     */
+    public Node makeCanonical(Node node) {
+        long id = node.getId();
+        
+        synchronized (getLock(id)) {
+            CacheEntry entry = internalGet(id);
+            Node result = node;
+            
+            if (entry != null && entry.node != node) {
+                Node other = entry.node;
+                if (other.isCanonical() || other.getSpos() > node.getSpos()) {
+                    result = other;
+                }
+            }
+            
+            result.setCanonical(true);
+            
+            if (entry == null) {
+                internalPut(id, CacheEntry.noRef(result));
+            } else {
+                entry.node = result;
+            }
+            
+            return result;
+        }
+    }
+    
+    /**
+     * True if 'node' should replace 'old' in the node table: never a canonical object,
+     * otherwise by a canonical object or a newer version.
+     */
+    private static boolean isBetter(Node node, Node old) {
+        if (!node.isIndexNode()) {
+            return false;       // Value nodes have one version.
+        }
+        
+        if (old.isCanonical()) {
+            assert !node.isCanonical() : "two canonical objects for node " + node.getId();
+            return false;
+        }
+        
+        return node.isCanonical() || node.getSpos() > old.getSpos();
     }
     
     public void pointerDestroyed(Node to) {
@@ -146,10 +222,31 @@ public class Cache3 {
         long v = id;
         long temp = (v >>>  0) ^ (v >>>  8) ^ (v >>> 16) ^ (v >>> 24) ^
                     (v >>> 32) ^ (v >>> 40) ^ (v >>> 48) ^ (v >>> 56);
-        int index = ((int) temp) % maps.length;
+        // 2026-10-13 (java/stress/LoadTest.java): was ((int) temp) % maps.length, which is
+        // negative for some ids of 2^31 and more; node ids are stream positions, so every
+        // stream longer than 2.1 GB failed with ArrayIndexOutOfBoundsException.
+        int index = (int) ((temp & Long.MAX_VALUE) % maps.length);
         assert index >= 0 : "index: " + index;
         assert index < maps.length : "index: " + index;
         return index;
+    }
+    
+    // ======== Tests ========
+    
+    /**
+     * Regression test for a bug found 2026-10-13: node ids of 2^31 and more,
+     * stream positions past 2.1 GB, gave a negative map index.
+     */
+    @Nano
+    public static void testLargeIds() {
+        Cache3 cache = new Cache3(new Cache.DbInfo() {
+            public long getStartupPosForEvict() { return 0; }
+            public PointerLocks getPointerLocks() { return null; }
+        });
+        long[] ids = {1L << 31, (1L << 31) + 0x94, (1L << 32) - 1, 5L << 30, 1L << 40, Long.MAX_VALUE};
+        for (long id : ids) {
+            Assert.assertTrue(cache.getNode(id) == null);
+        }
     }
     
     public static class AlreadyHasNode extends AssertionError {
@@ -174,6 +271,16 @@ public class Cache3 {
             CacheEntry entry = new CacheEntry();
             entry.node = node;
             entry.refCount = 1;
+            return entry;
+        }
+        
+        /**
+         * Creates and returns a CacheEntry with refCount equal to 0.
+         */
+        public static CacheEntry noRef(Node node) {
+            CacheEntry entry = new CacheEntry();
+            entry.node = node;
+            entry.refCount = 0;
             return entry;
         }
     }

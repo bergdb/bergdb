@@ -1149,50 +1149,6 @@ public class PubTester {
     }
     
     @Nano
-    private static void testKvTime1() {
-        TestClock clock = new TestClock();
-        Database db = Factory.database().clock(clock).memory().start();
-        Connection c = db.connection();
-        
-        clock.setTime(Time.units(1234));
-        Transaction trans = c.w().put("/key1", "value1").execute();
-        Time transTime = trans.getTime();
-        
-        c.get("/key1", byte[].class);
-        Time time = c.time();
-        
-        Assert.assertEquals(transTime.units(), time.units());
-        db.stop();
-    }
-    
-    @Nano
-    private static void testKvTime2() {
-        TestClock clock = new TestClock();
-        Database db = Factory.database().clock(clock).memory().start();
-        Connection c = db.connection();
-        
-        clock.setTime(Time.units(1000));
-        Transaction trans1 = c.w().put("/key1", "value1").execute();
-        Time transTime1 = trans1.getTime();
-        
-        clock.setTime(Time.units(2000));
-        Transaction trans2 = c.w().put("/key1", "value2").execute();
-        Time transTime2 = trans2.getTime();
-        
-        c.get("/key1", byte[].class);
-        Time time1 = c.time();
-        
-        c.setLookupTime(Time.units(1500));
-        c.get("/key1", byte[].class);
-        Time time2 = c.time();
-        
-        db.stop();
-        
-        Assert.assertEquals(transTime2.units(), time1.units());
-        Assert.assertEquals(transTime1.units(), time2.units());
-    }
-    
-    @Nano
     private static void testTransactionInfo1() throws UnsupportedEncodingException {
         TestClock clock = new TestClock();
         Database db = Factory.database().clock(clock).memory().start();

@@ -3,9 +3,12 @@ package bergdb.dev;
 import bergdb.common.Create;
 
 /**
- * Runs functional tests ("f").
- * Run this class without arguments every week and after every major change.
+ * Runs functional tests ("f") for testing proper function.
+ * These tests have a larger scope then unit tests and are allow 
+ * to run for longer. 
  * Each f-test should run within 10 seconds.
+ * These tests are not performance tests.
+ * Run this class after every major change.
  * 
  * @author Frans Lundberg
  */

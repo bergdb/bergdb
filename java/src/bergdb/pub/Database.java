@@ -114,6 +114,16 @@ public interface Database {
      * <p>
      * 
      * <p>
+     * A finite duration makes the database reclaim stream space: it rewrites live values that
+     * are stored in the front of the stream, and then cuts the front. This costs writes and
+     * space. Measured with the default settings (2026-10-13, see docs/levels.md, "Level 3
+     * cost"): when the duration is short, the write efficiency (user bytes divided by stream
+     * bytes written) is 23 to 38 percent lower than without reclaim, and the stream kept is
+     * several times the data accessible within the duration (store efficiency 0.09 to 0.75,
+     * depending on value size and update pattern). The cost is lower for a long duration.
+     * </p>
+     *
+     * <p>
      * Use Duration.MAX to keep old states available forever. Note, that this will increase the
      * database storage space indefinitely even when data is deleted from the database. This could
      * be a valid setting however. The retain duration can be decreased later, also while the
@@ -126,8 +136,20 @@ public interface Database {
     public void setRetainDuration(Duration duration);
 
     /**
+     * <p>
      * Returns the first (earliest) lookup time that is currently available for making a lookup (get
      * operation).
+     * </p>
+     *
+     * <p>
+     * The time only moves forward, and only when the database reclaims old data (the retain
+     * duration is finite). A read at an earlier lookup time throws
+     * LookupTimeNotAvailableException. The time can move while a read is running: a read that was
+     * accepted may then fail with the same exception, if it needs data that was removed; the
+     * database and other reads are not affected. The database guarantees that lookups work for
+     * every time in [now - retain duration, now] when the time is moved; a read that runs longer
+     * than that may expire. Retry such a read with a later lookup time.
+     * </p>
      */
     public Time getFirstAvailableLookupTime();
 

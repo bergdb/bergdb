@@ -4,6 +4,7 @@ import bergdb.common.Create;
 
 /**
  * Runs unit tests for the project. Run them before every commit.
+ * Each test should be fast, normally max 100 ms.
  * 
  * @author Frans Lundberg
  */

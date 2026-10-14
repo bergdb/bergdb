@@ -1,0 +1,204 @@
+--- a/bergdb/src/bergdb/core/DbStarter.java
++++ b/bergdb/src/bergdb/core/DbStarter.java
+@@ -42,6 +42,8 @@
+     private final HashMap<Long, StoredNode> posMap = new HashMap<Long, StoredNode>();
+     private final HashMap<Long, Node> idMap = new HashMap<Long, Node>();
+     private final NextMap nextMap = new NextMap();
++    private static final boolean EXP4 = Boolean.getBoolean("exp4");
++    private final HashMap<Long, Long> latestById = new HashMap<Long, Long>();
+     private final Db db;
+     private final List<StoredTrans> transactions;
+     private final StoredTrans firstTrans;
+@@ -135,19 +137,41 @@
+         //
+         
+         int transCount = transactions.size();
+-        
++
+         for (int i = 0; i < transCount; i++) {
+             StoredTrans trans = transactions.get(i);
+-            
++
+             for (StoredNode storedNode : trans.nodes) {
+                 long pos = storedNode.getNode().getSpos();
+                 long prevPos = storedNode.getPrevPos();
+-                
++
+                 if (Spos.isValid(prevPos)) {
+                     nextMap.put(prevPos, pos);
+                 }
+             }
+         }
++
++        if (EXP4) {
++            // EXPERIMENT 2026-10-12: top nodes have no prevPos in the stream
++            // (StoredTopNode.getPrevPos() returns NULL), so versions of the same top node
++            // are not chained. Chain them by id here, and remember the latest version of
++            // each index node by id for forwarding of pointers into older versions.
++            HashMap<Long, Long> lastTopPos = new HashMap<Long, Long>();
++            for (StoredTrans trans : transactions) {
++                for (StoredNode storedNode : trans.nodes) {
++                    Node node = storedNode.getNode();
++                    if (!node.isIndexNode()) continue;
++                    long pos = node.getSpos();
++                    Long latest = latestById.get(node.getId());
++                    if (latest == null || latest < pos) latestById.put(node.getId(), pos);
++                    if (node.isTopNode()) {
++                        Long prev = lastTopPos.get(node.getId());
++                        if (prev != null) nextMap.put(prev, pos);
++                        lastTopPos.put(node.getId(), pos);
++                    }
++                }
++            }
++        }
+         
+         for (StoredTrans trans : transactions) {
+             for (StoredNode storedNode : trans.nodes) {
+@@ -182,6 +206,16 @@
+     
+                 long pos = p.getPos();
+                 long newPos = nextMap.forward(pos);
++                if (EXP4 && newPos == pos && Spos.isValid(pos) && !Spos.isVpos(pos)
++                        && pos < startupPos) {
++                    // Pointer into a version written before the startup section:
++                    // forward by id if the node has a later version in the section.
++                    long id = db.internal().nodeStream().readNodeHeader(pos).id();
++                    Long latest = latestById.get(id);
++                    if (latest != null && latest > pos) {
++                        newPos = nextMap.forward(latest);
++                    }
++                }
+                 node.setPointer(i, null, newPos);
+             }
+         }
+@@ -290,7 +324,27 @@
+     }
+     
+     private PutData createPutData() {
+-        return db.internal().newPutData();
++        // EXPERIMENT 2026-10-12: register index nodes loaded from the stream during
++        // rerun in idMap, so got-dirty ids resolve to the Dag's own objects
++        // instead of separate copies read with nodeStream().readNode().
++        PutData pd = db.internal().newPutData();
++        final Dag.PointerListener orig = pd.pointerListener;
++        pd.pointerListener = new Dag.PointerListener() {
++            public void superRootAccessed(TopNode superRoot) {
++                orig.superRootAccessed(superRoot);
++                register(superRoot);
++            }
++            public void pointerFollowed(Node predecessor, int pointerIndex, Node result, int pointerType) {
++                orig.pointerFollowed(predecessor, pointerIndex, result, pointerType);
++                register(result);
++            }
++            private void register(Node node) {
++                if (node.isIndexNode() && !idMap.containsKey(node.getId())) {
++                    idMap.put(node.getId(), node);
++                }
++            }
++        };
++        return pd;
+     }
+ 
+     private void rerunTransaction(TransSeq.TransInfo tinfo, final StoredTrans storedTrans) {
+@@ -359,6 +413,17 @@
+                 // common way of reading nodes from stream that includes caching.
+             }
+             
++            if (Boolean.getBoolean("exp5") && gotDirtyNode.isKeyNode()
++                    && ((KeyNode) gotDirtyNode).size == 0) {
++                throw new IllegalStateException("EXP5: got-dirty node " + id + ":" + spos
++                        + " resolves to an EMPTY key node object (rerun trans tt="
++                        + storedTrans.tt + ", startupTime=" + startupTime + ")");
++            }
++            if (Boolean.getBoolean("exp5") && !gotDirtyNode.isIndexNode()) {
++                throw new IllegalStateException("EXP5: got-dirty node " + id + ":" + spos
++                        + " resolves to a value node (rerun trans tt=" + storedTrans.tt
++                        + "), so rerun ids differ from the original run");
++            }
+             gotDirtyNode.setDirty(true);
+             tinfo.addGotDirtyNode(gotDirtyNode);
+         }
+--- a/bergdb/src/bergdb/core/NodeCollection.java
++++ b/bergdb/src/bergdb/core/NodeCollection.java
+@@ -5,6 +5,7 @@
+ import bergdb.dag.OpData;
+ import bergdb.dag.Pointer;
+ import bergdb.dag.PointerFollower;
++import bergdb.dag.Spos;
+ 
+ /**
+  * A node collection for Db to use.
+@@ -29,6 +30,11 @@
+         this.pointerLocks = dbInfo.getPointerLocks();
+     }
+ 
++    /** EXPERIMENT 2026-10-12: cached node with the given id, or null. */
++    public Node cachedNode(long id) {
++        return cache.getNode(id);
++    }
++
+     public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
+         //
+         // It is possible that concurrent threads will read same node 
+@@ -79,7 +85,25 @@
+                 long id = header.id();
+                 
+                 result = cache.getNode(id);
+-                
++
++                if (result != null && Boolean.getBoolean("exp6")
++                        && Spos.isValid(result.getSpos()) && result.getSpos() < pointerPos) {
++                    // EXPERIMENT 2026-10-12: the cache is keyed by node id, but the cached
++                    // object may come from an older version of the node than the one this
++                    // pointer refers to. Use the newer version instead (not cached).
++                    return nodeStream.readNode(pointerPos);
++                }
++
++                if (result != null && Boolean.getBoolean("exp2")) {
++                    // EXPERIMENT 2026-10-12: on cache hit, also convert this pointer
++                    // to a memory pointer, so every in-memory parent that has followed
++                    // the pointer sees the child (needed by DbHelper.hasDirtyChild).
++                    cache.pointerCreated(predecessor, pointerIndex, result);
++                    predecessor.setPointer(pointerIndex, result, op.accessData);
++                    op.pointerListener.pointerFollowed(
++                            predecessor, pointerIndex, result, Pointer.TYPE_STREAM);
++                }
++
+                 if (result == null) {
+                     result = nodeStream.readNode(pointerPos);
+                     
+--- a/bergdb/src/bergdb/core/Db.java
++++ b/bergdb/src/bergdb/core/Db.java
+@@ -1255,6 +1255,32 @@
+     }
+ 
+     private void handleStillDirtyNodes() {
++        if (Boolean.getBoolean("exp3")) {
++            // EXPERIMENT 2026-10-12: before checking for dirty children, turn stream
++            // pointers of the nodes to be written into memory pointers when the pointee
++            // is in memory, so DbHelper.hasDirtyChild() sees every in-memory child.
++            final java.util.HashMap<Long, Node> mem = new java.util.HashMap<Long, Node>();
++            dag.visitMemoryNodes(new NodeVisitor() {
++                public void visit(TopNode node) { mem.put(node.getId(), node); }
++                public void visit(KeyNode node) { mem.put(node.getId(), node); }
++                public void visit(ValueNode node) {}
++            });
++            java.util.Iterator<? extends Node> it = x.transNodes.indexNodeIterator();
++            while (it.hasNext()) {
++                Node node = it.next();
++                for (int i = 0; i < node.getSize(); i++) {
++                    if (node.getPointerNode(i) != null) continue;
++                    long pos = node.getPointerPos(i);
++                    if (!Spos.isValid(pos) || Spos.isVpos(pos)) continue;
++                    long cid = nodeStream.readNodeHeader(pos).id();
++                    Node c = mem.get(cid);
++                    if (c == null) c = nodeCollection.cachedNode(cid);
++                    if (c != null && c.isIndexNode()) {
++                        node.setPointer(i, c, getAccessData());
++                    }
++                }
++            }
++        }
+         int stillDirtyCount;
+         do {
+             stillDirtyCount = DbHelper.handleStillDirtyNodes(x.transNodes.indexNodeIterator(), x.transInfo);

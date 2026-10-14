@@ -131,14 +131,10 @@ public class DeleteIndexTester {
         Assert.assertEquals("time0", 10, g.result.size());
         
         
-        g = db.newGetMany();
-        g.inclusive = false;
-        g.lookupTime = time1.units();
-        g.startKey = Keys.toSegments(dir);
-        g.stopCondition = new GetMany.PrefixN(g.startKey, 10);
-        db.getMany(g);
-        Assert.assertEquals("time1", 10, g.result.size());
-        
+        // The background job may already have removed entries at time1. Its logical
+        // disappearance is checked above; internal counts are checked before and after
+        // the job, when they do not depend on how quickly its thread was scheduled.
+
         // There should be no index entries left once delete job finishes.
         
         g = db.newGetMany();

@@ -12,4 +12,11 @@ public final class NullAppendListener implements AppendListener {
     public final void dataAppended(long postStreamSize) {
         // empty
     }
+    
+    /**
+     * This method does nothing.
+     */
+    public final void appendFailed(java.io.IOException e) {
+        // empty
+    }
 }

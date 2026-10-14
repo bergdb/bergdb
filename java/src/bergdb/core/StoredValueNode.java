@@ -180,6 +180,12 @@ public class StoredValueNode implements StoredNode {
         Bytes.longsToBytesLE(key, 0, key.length, buffer, offset);
         offset += 8 * key.length;
         
+        // Zeros the alignment padding: the buffer may hold earlier bytes, and the
+        // padding is part of the checksum.
+        for (int i = offset; i < bufferOffset + byteSize; i++) {
+            buffer[i] = 0;
+        }
+
         int checksum = NodeChecksum.sum(buffer, bufferOffset, byteSize);
         Bytes.ushortToBytesLE(checksum, buffer, bufferOffset + 6);
 

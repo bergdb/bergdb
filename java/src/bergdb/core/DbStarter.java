@@ -9,6 +9,7 @@ import bergdb.core.StoredTrans.Parser;
 import bergdb.core.StoredTrans.Serializer;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
+import bergdb.dag.GetData;
 import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Keys;
@@ -40,8 +41,8 @@ public class DbStarter {
     
     private final TransSeq transSeq = new TransSeq();
     private final HashMap<Long, StoredNode> posMap = new HashMap<Long, StoredNode>();
-    private final HashMap<Long, Node> idMap = new HashMap<Long, Node>();
-    private final NextMap nextMap = new NextMap();
+    private final HashMap<Long, Long> newById = new HashMap<Long, Long>();
+    private final HashMap<Long, Long> posToId = new HashMap<Long, Long>();
     private final Db db;
     private final List<StoredTrans> transactions;
     private final StoredTrans firstTrans;
@@ -105,6 +106,12 @@ public class DbStarter {
         
         superRoot.setPointer(0, keyNode, AccessData.DEFAULT_ACCESS_DATA);
         
+        Cache3 nodeTable = db.internal().cache();
+        superRoot.setCanonical(true);
+        keyNode.setCanonical(true);
+        nodeTable.register(superRoot);
+        nodeTable.register(keyNode);
+        
         dag = new Dag(superRoot, maxNodeSize);
         db.internal().setDag(dag);
         db.internal().setTransSeq(transSeq);
@@ -120,6 +127,7 @@ public class DbStarter {
         changeKeyNodesToStateAtStartupTime();
         checkStreamPointers();
         createMemoryPointers();
+        registerSectionNodes();
         findSuperNodeAtStartupTime();
         prepareDb();
         rerunTransactions();
@@ -128,23 +136,31 @@ public class DbStarter {
 
     private void createMaps() {
         //
-        // * Creates nextMap.
+        // * Creates newById, Rule R (docs/sis-model.md, 6.2): the id of each index node
+        //      with a version in the startup section, to the position of its newest
+        //      version there. Top nodes included.
+        // * Creates posToId: the id of each index node version in the section, and of
+        //      the earlier version that a key node version names as its prevPos.
         // * Creates posMap
         //      Only latest version of nodes added. Nodes created after startupTime
         //      are not added.
         //
         
-        int transCount = transactions.size();
-        
-        for (int i = 0; i < transCount; i++) {
-            StoredTrans trans = transactions.get(i);
-            
+        for (StoredTrans trans : transactions) {
             for (StoredNode storedNode : trans.nodes) {
-                long pos = storedNode.getNode().getSpos();
+                Node node = storedNode.getNode();
+                if (!node.isIndexNode()) {
+                    continue;
+                }
+        
+                long id = node.getId();
+                long pos = node.getSpos();
+                newById.put(id, pos);       // in stream order, so the newest version wins
+                posToId.put(pos, id);
+            
                 long prevPos = storedNode.getPrevPos();
-                
                 if (Spos.isValid(prevPos)) {
-                    nextMap.put(prevPos, pos);
+                    posToId.put(prevPos, id);
                 }
             }
         }
@@ -153,16 +169,18 @@ public class DbStarter {
             for (StoredNode storedNode : trans.nodes) {
                 Node node = storedNode.getNode();
                 long pos = node.getSpos();
-                if (!nextMap.containsKey(pos) && !wasCreatedInRerunSection(storedNode)) {
+                boolean isNewest = !node.isIndexNode() || newById.get(node.getId()) == pos;
+                if (isNewest && !wasCreatedInRerunSection(storedNode)) {
                     posMap.put(node.getSpos(), storedNode);
                 }
-                idMap.put(node.getId(), node);
             }
         }
     }
 
     /** 
-     * Updates stream pointers to point to last node version.
+     * Updates stream pointers to point to last node version: Rule R, for the pointers
+     * whose node id is known without reading the stream (a vpos, or a position in
+     * posToId). NodeCollection applies Rule R to the others when they are followed.
      */
     private void updateStreamPointers() {
         Pointer p = new Pointer();
@@ -181,8 +199,11 @@ public class DbStarter {
                 }
     
                 long pos = p.getPos();
-                long newPos = nextMap.forward(pos);
-                node.setPointer(i, null, newPos);
+                Long id = Spos.isVpos(pos) ? Long.valueOf(pos) : posToId.get(pos);
+                Long newPos = id == null ? null : newById.get(id);
+                if (newPos != null && newPos > pos) {
+                    node.setPointer(i, null, newPos);
+                }
             }
         }
     }
@@ -226,6 +247,22 @@ public class DbStarter {
         }
     }
 
+    /**
+     * Makes the nodes of posMap the canonical objects of their nodes, in the node table,
+     * and gives Rule R to the node collection for the rest of the process.
+     */
+    private void registerSectionNodes() {
+        Cache3 nodeTable = db.internal().cache();
+        
+        for (StoredNode storedNode : posMap.values()) {
+            Node node = storedNode.getNode();
+            node.setCanonical(true);
+            nodeTable.register(node);
+        }
+        
+        db.internal().nodeCollection().setStartupSection(newById, startupPos, startupTime);
+    }
+
     private void findSuperNodeAtStartupTime() {
         TopNode lastSuperNode = findLatestSuperRoot(transactions);
         
@@ -238,7 +275,9 @@ public class DbStarter {
         
         Dag tempDag = new Dag(lastSuperNode, maxNodeSize);
         TopDs tempTopDs = tempDag.getTopDs();
-        superRoot = tempTopDs.findSuperRootAtTime(startupTime, tempDag.newGetData());
+        GetData gd = tempDag.newGetData();
+        gd.pointerFollower = db.internal().nodeCollection();
+        superRoot = tempTopDs.findSuperRootAtTime(startupTime, gd);
         if (superRoot == null) {
             throw new StreamFormatException("No super root at time " + startupTime + " was found.");
         }
@@ -326,11 +365,21 @@ public class DbStarter {
                     
                     node.setId(id);
                     node.setSpos(id);         // initially, we use vpos as spos
-                    idMap.put(id, node);
                     
                     Node n = storedTrans.findNode(id);
                     if (n != null) {
                         node.setSpos(n.getSpos());
+                    }
+                    
+                    if (node.isIndexNode()) {
+                        // A node created and written in the section: its spos is the
+                        // position of its newest version, as in the run without restarts.
+                        Long newPos = newById.get(id);
+                        if (newPos != null) {
+                            node.setSpos(newPos);
+                        }
+                        node.setCanonical(true);
+                        db.internal().cache().register(node);
                     }
                 }
             };
@@ -345,18 +394,18 @@ public class DbStarter {
             long id = storedTrans.gotDirtyIdsAndSpos[i*2];
             long spos = storedTrans.gotDirtyIdsAndSpos[i*2 + 1];
 
-            Node gotDirtyNode = idMap.get(id);
+            Node gotDirtyNode = canonicalNode(id, spos);
             if (gotDirtyNode == null) {                
-                if (!Spos.isValid(spos)) {
-                    String message = "startup error, node " + id 
-                            + ":" + spos + " not found, got dirty in trans tt=" 
-                            + storedTrans.tt + ", tpos=" + storedTrans.tpos;
-                    throw new StreamFormatException(message);
-                }
-                
-                gotDirtyNode = this.db.internal().nodeStream().readNode(spos);
-                // TODO B. this is not OK considering caching; we need *one* 
-                // common way of reading nodes from stream that includes caching.
+                Node inTable = db.internal().cache().getNode(id);
+                String message = "startup error, node " + id 
+                        + ":" + spos + " not found, got dirty in trans tt=" 
+                        + storedTrans.tt + ", tpos=" + storedTrans.tpos
+                        + "; startup pos " + startupPos + ", time " + startupTime
+                        + "; in node table: " + (inTable == null ? "no" 
+                                : "a snapshot of " + inTable.getSpos())
+                        + (Spos.isValid(spos) && !Spos.isVpos(spos) ? "; type at " + spos + ": "
+                                + db.internal().nodeStream().readNodeHeader(spos).type() : "");
+                throw new StreamFormatException(message);
             }
             
             gotDirtyNode.setDirty(true);
@@ -367,6 +416,37 @@ public class DbStarter {
         tinfo.tpos = storedTrans.tpos;
         tinfo.startupPos = storedTrans.startupPos;
         tinfo.lastPos = storedTrans.lastPos;
+    }
+
+    /**
+     * Returns the canonical object of a node in D: the node table's; or else the node's
+     * newest version in the startup section, cut back to the startup time; or else
+     * the version at 'spos', the position stored with the got-dirty id, which is then the
+     * node's latest version. Null if none of these. 
+     * 
+     * The rerun does not reach every node in D: a delete of a key that does not exist
+     * makes the nodes on its path dirty, but it is not stored, so it is not rerun. D is
+     * rebuilt from the stored ids (docs/sis-model.md, 6.2, step 2), not from the rerun.
+     */
+    private Node canonicalNode(long id, long spos) {
+        Cache3 nodeTable = db.internal().cache();
+        Node node = nodeTable.getNode(id);
+        if (node != null && node.isCanonical()) {
+            return node;
+        }
+        
+        Long newPos = newById.get(id);
+        if (newPos == null && (!Spos.isValid(spos) || Spos.isVpos(spos))) {
+            return null;
+        }
+        
+        node = db.internal().nodeStream().readNode(newPos != null ? newPos : spos);
+        assert node.getId() == id : "ids differ, " + node.getId() + " != " + id;
+        if (node.getType() == Node.TYPE_KEY_NODE) {
+            ((KeyNode) node).toPreviousState(startupTime);
+        }
+        node.setCanonical(true);
+        return nodeTable.register(node);
     }
 
     /**
@@ -519,31 +599,41 @@ public class DbStarter {
      */
     private void checkStreamPointers() {
         for (StoredNode storedNode : posMap.values()) {
-            Node node = storedNode.getNode();
-            if (node.isKeyNode()) {
-                KeyNode k = (KeyNode) node;
+            checkStreamPointers(storedNode.getNode());
+        }
+    }
                 
-                for (int i = 0; i < k.size; i++) {
-                    long klong = k.klongs[i];
-                    if (Klong.isKey(klong)) {
-                        long pos = node.getSpos();
-                        if (Spos.isNull(pos) || Spos.isVpos(pos)) {
-                            throw new StreamFormatException("Unexpected stream pointer from KeyNode, was " 
-                                    + pos + ", index " + i + ", node: " + node);
-                        }
+    /**
+     * Checks the stream pointers of a node read at startup, after they have been forwarded
+     * and the node has been cut back to its state at the startup time: each must name a
+     * node version in the stream, not be NULL or a vpos.
+     * 
+     * @throws StreamFormatException
+     */
+    static void checkStreamPointers(Node node) {
+        if (node.isKeyNode()) {
+            KeyNode k = (KeyNode) node;
+            
+            for (int i = 0; i < k.size; i++) {
+                long klong = k.klongs[i];
+                if (Klong.isKey(klong) && k.pointers[i] == null) {
+                    long pos = k.pos[i];
+                    if (Spos.isNull(pos) || Spos.isVpos(pos)) {
+                        throw new StreamFormatException("Unexpected stream pointer from KeyNode, was " 
+                                + pos + ", index " + i + ", node: " + node);
                     }
                 }
-            } else {
-                Pointer p = new Pointer();
-                int count = node.getSize();
-                for (int i = 0; i < count; i++) {
-                    node.getPointer(i, p);
-                    if (!p.isNull()) {
-                        long pos = p.getPos();
-                        if (Spos.isNull(pos) || Spos.isVpos(pos)) {
-                            throw new StreamFormatException("Unexpected stream pointer, was " 
-                                    + pos + ", index " + i + ", node: " + node);
-                        }
+            }
+        } else {
+            Pointer p = new Pointer();
+            int count = node.getSize();
+            for (int i = 0; i < count; i++) {
+                node.getPointer(i, p);
+                if (!p.isNull()) {
+                    long pos = p.getPos();
+                    if (Spos.isNull(pos) || Spos.isVpos(pos)) {
+                        throw new StreamFormatException("Unexpected stream pointer, was " 
+                                + pos + ", index " + i + ", node: " + node);
                     }
                 }
             }
@@ -610,6 +700,31 @@ public class DbStarter {
     
     
     // ======== Testing =======
+    
+    /**
+     * A key node read at startup with a key klong that points to an unwritten node (a 
+     * vpos) must be rejected. Regression test for a bug found 2026-10-12 (
+     * level 2): the check tested the node's own position instead of the
+     * pointer's, so it never rejected anything.
+     */
+    @Nano
+    private static void testCheckStreamPointersOfKeyNode() {
+        KeyNode good = KeyNode.nodeWithTime(10);
+        good.addToEnd(Klong.compareValueToKeyKlong(Keys.toSegments("a")[0]), null, 2000);
+        good.setSpos(1000);
+        checkStreamPointers(good);
+        
+        KeyNode bad = KeyNode.nodeWithTime(10);
+        bad.addToEnd(Klong.compareValueToKeyKlong(Keys.toSegments("a")[0]), null, 2001);
+        bad.setSpos(1000);
+        boolean rejected = false;
+        try {
+            checkStreamPointers(bad);
+        } catch (StreamFormatException e) {
+            rejected = true;
+        }
+        Assert.assertTrue("key node pointing to vpos 2001 rejected", rejected);
+    }
     
     @Nano
     private static void testPrevMap1() {

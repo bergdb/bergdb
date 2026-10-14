@@ -80,6 +80,11 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         assert Thread.holdsLock(writeLock);
         return rstream.getLength();
     }
+    
+    /** The first position that can be read; larger than 0 after reclaim cut the stream. */
+    public long getFirstPos() {
+        return rstream.getFirstPos();
+    }
 
     /**
      * Returns the MetaBlock of the underlying RecoverableStream.
@@ -93,6 +98,10 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
 
     public final long getPosOfLastValidMetaBlock() {
         return rstream.getPosOfLastValidMetaBlock();
+    }
+    
+    public final long getLastTransPosOfLastValidMetaBlock() {
+        return rstream.getLastTransSposOfLastValidMetaBlock();
     }
 
     public final long getNextPos() {

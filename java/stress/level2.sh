@@ -1,0 +1,128 @@
+#!/bin/sh
+# Level 2 regression check (docs/levels.md):
+# restart with bounded startup, where startup reads only the tail of the
+# stream. Run it, and level1.sh, before committing any change to
+# java/; both must pass.
+#
+# Usage: java/stress/level2.sh [quick]
+#   full (default): about 2 minutes on 10 cores. quick: about 30 s.
+#
+# Builds with ../java/build.sh, then runs, stopping at the first failure:
+#   1. The unit tests (bergdb.dev.Unit), which include small level 2 tests.
+#   2. RestartStress, random configurations: startup distances from 100
+#      bytes to the default 50 MB, node sizes 8 to 62, 5 to 3000 keys,
+#      deletes, transactions of up to 40 keys, 2 to 26 restarts per round.
+#      Latest and historical values are checked before and after every
+#      restart.
+#   3. RestartStress with a startup distance of 1000 bytes for each node
+#      size, with 3000 keys and with 50 keys (small trees); and, full only,
+#      the default settings on disk past 50 MB with deletes.
+#   4. RestartInvariance: the same transactions with and without restarts
+#      give the same stream, byte for byte (T2 in docs/sis-model.md), and
+#      the same dirty set, node identity and lookups. Startup distances from
+#      100 bytes up, node sizes 8 to 62, long keys, transactions of up to 40
+#      keys, a restart after every transaction; and, full only, about 100 MB
+#      with the default startup distance.
+#   5. CrashTest (INV-CRASH in docs/problem.md): the stream cut at 100
+#      positions per round, a third of them at or next to the end of a
+#      transaction; the database must start in the state after the last
+#      complete transaction, work on, and restart again. Startup distance
+#      2000 bytes, and 500 bytes with node size 8.
+# Logs go to build/level2/. Set JAVA_HOME or PATH for the JDK; the build
+# needs javac too.
+
+cd "$(dirname "$0")/.."
+
+JAVA=${JAVA:-java}
+if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
+
+if [ "$1" = quick ]; then
+    QUICK=1; ROUNDS=40; SIZE_ROUNDS=3; INV_N=600; CRASH_ROUNDS=4
+else
+    QUICK=0; ROUNDS=200; SIZE_ROUNDS=10; INV_N=2000; CRASH_ROUNDS=20
+fi
+
+CP=build/bergdb.jar:build/stress
+LOG=build/level2
+
+fail() {
+    echo "LEVEL 2 FAILED: $1 (log: $2)"
+    exit 1
+}
+
+./build.sh > /dev/null || { echo "LEVEL 2 FAILED: build"; exit 1; }
+# Removes old logs and databases, files only (see build.sh about Finder).
+mkdir -p $LOG/disk
+find $LOG -type f -delete
+
+echo "1. Unit tests"
+$JAVA -ea -cp build/bergdb.jar bergdb.dev.Unit > $LOG/unit.txt 2>&1
+grep -q '^SUCCESS' $LOG/unit.txt || fail "unit tests" $LOG/unit.txt
+grep '^SUCCESS' $LOG/unit.txt
+
+echo "2. RestartStress, random configurations"
+Q=$((ROUNDS / 4))
+for i in 0 1 2 3; do
+    $JAVA -ea -Xmx2g -cp $CP RestartStress $((1 + i * Q)) $Q > $LOG/random-$i.txt 2>&1 &
+done
+wait
+for f in $LOG/random-*.txt; do
+    grep -q '^Done: .* 0 failures' $f || fail "RestartStress" $f
+    echo "   $(basename $f .txt): $(tail -1 $f)"
+done
+
+echo "3. RestartStress, small and default startup distances"
+S1="-ea -Xmx2g -Dsd=1000 -Dsessions=20"
+for m in 8 14 30 62; do
+    $JAVA $S1 -Dmaxnode=$m -Dkeys=3000 -cp $CP RestartStress 1 $SIZE_ROUNDS \
+        > $LOG/sd1000-node$m.txt 2>&1 &
+    $JAVA $S1 -Dmaxnode=$m -Dkeys=50 -cp $CP RestartStress 1 $SIZE_ROUNDS \
+        > $LOG/sd1000-keys50-node$m.txt 2>&1 &
+done
+if [ $QUICK = 0 ]; then
+    $JAVA -ea -Xmx4g -Ddefaults=true -Dfile=true -Ddir=$LOG/disk -Dtrans=10000 -Dvalsize=8000 \
+        -cp $CP RestartStress 1 2 > $LOG/default-disk.txt 2>&1 &
+fi
+wait
+for f in $LOG/sd1000-*.txt $LOG/default-disk.txt; do
+    [ -f $f ] || continue
+    grep -q '^Done: .* 0 failures' $f || fail "RestartStress" $f
+    echo "   $(basename $f .txt): $(tail -1 $f)"
+done
+
+echo "4. RestartInvariance"
+I="-ea -Xmx2g -Ddel=1 -Dn=$INV_N"
+inv() {
+    name=$1; shift
+    $JAVA $I "$@" -cp $CP bergdb.core.RestartInvariance 1 > $LOG/inv-$name.txt 2>&1
+}
+inv sd100 -Dsd=100 -Dkeys=500 -Devery=100 -Dlong=1 -Dbigtrans=20 &
+inv sd1000-node8 -Dsd=1000 -Dkeys=500 -Devery=100 -Dmaxnode=8 -Dlong=1 -Dbigtrans=10 &
+inv sd10000-node14 -Dsd=10000 -Dkeys=500 -Devery=200 -Dmaxnode=14 -Dlong=1 &
+inv sd100000-node62 -Dsd=100000 -Dkeys=1000 -Devery=200 -Dmaxnode=62 -Dbigtrans=40 -Dvalsize=400 &
+inv every1 -Dsd=500 -Dkeys=100 -Devery=1 -Dlong=1 -Dn=$((INV_N / 5)) &
+wait
+if [ $QUICK = 0 ]; then
+    $JAVA -ea -Xmx9g -Dsd=0 -Dn=12000 -Dkeys=3000 -Dvalsize=8000 -Devery=4000 -Ddel=1 \
+        -cp $CP bergdb.core.RestartInvariance 1 > $LOG/inv-default-100MB.txt 2>&1
+fi
+for F in $LOG/inv-*.txt; do
+    grep -q '^STREAM: identical' $F || fail "RestartInvariance, stream not byte for byte the same" $F
+    [ "$(grep -Ec '^(TRANSSEQ|KV CHECKSUM|IDENTITY .*|LOOKUP .*): 0 of' $F)" = 6 ] \
+        || fail "RestartInvariance" $F
+    echo "   $(basename $F .txt): stream identical, all checks OK"
+done
+
+echo "5. CrashTest, the stream cut at random positions"
+C=$((CRASH_ROUNDS / 4))
+for i in 0 1 2 3; do
+    $JAVA -ea -Xmx2g -cp $CP bergdb.core.CrashTest $((1 + i * C)) $C > $LOG/crash-$i.txt 2>&1 &
+done
+$JAVA -ea -Xmx2g -Dmaxnode=8 -Dsd=500 -cp $CP bergdb.core.CrashTest 1001 $C > $LOG/crash-node8.txt 2>&1 &
+wait
+for f in $LOG/crash-*.txt; do
+    grep -q '^Done: .* 0 failures' $f || fail "CrashTest" $f
+    echo "   $(basename $f .txt): $(tail -1 $f)"
+done
+
+echo "LEVEL 2 OK"

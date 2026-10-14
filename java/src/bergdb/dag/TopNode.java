@@ -37,6 +37,7 @@ public final class TopNode implements Node {
     public boolean isInTransNodes;
         // Synch note: protected by Db.writeLock.
     public boolean isDirty = false;
+    public boolean isCanonical = false;     // See Node.isCanonical().
         // Synch note: access from threads holding Db.writeLock only.
     
     private static final int MAX_HEIGHT = 30;
@@ -217,6 +218,14 @@ public final class TopNode implements Node {
         return isInTransNodes;
     }
 
+    public final boolean isCanonical() {
+        return isCanonical;
+    }
+    
+    public final void setCanonical(boolean isCanonical) {
+        this.isCanonical = isCanonical;
+    }
+
     public final void setIsInTransNodes(boolean b) {
         this.isInTransNodes = b;
     }
@@ -237,15 +246,32 @@ public final class TopNode implements Node {
         return getSize();
     }
 
+    /**
+     * Gets the pointer as one coherent pair (node, pos); see KeyNode.getPointer().
+     */
     public final void getPointer(final int index, Pointer pointer) {
         pointer.index = index;
         
-        if (index == 0) {
-            pointer.node = rootPointer;
-            pointer.pos = rootPointerPos;
-        } else {
-            pointer.node = pointers[index - 1];
-            pointer.pos = pointersPos[index - 1];
+        if ((index == 0 ? rootPointer : pointers[index - 1]) != null) {
+            // A memory pointer stays one (no eviction yet).
+            if (index == 0) {
+                pointer.node = rootPointer;
+                pointer.pos = rootPointerPos;
+            } else {
+                pointer.node = pointers[index - 1];
+                pointer.pos = pointersPos[index - 1];
+            }
+            return;
+        }
+
+        synchronized (this) {
+            if (index == 0) {
+                pointer.node = rootPointer;
+                pointer.pos = rootPointerPos;
+            } else {
+                pointer.node = pointers[index - 1];
+                pointer.pos = pointersPos[index - 1];
+            }
         }
     }
     
@@ -262,13 +288,15 @@ public final class TopNode implements Node {
     }
     
     public final void setPointer(int index, Node node, long spos) {
-        if (index == 0) {
-            rootPointer = (KeyNode) node;
-            rootPointerPos = spos;
-        } else {
-            index -= 1;
-            pointers[index] = (TopNode) node;
-            pointersPos[index] = spos;
+        synchronized (this) {   // See getPointer().
+            if (index == 0) {
+                rootPointer = (KeyNode) node;
+                rootPointerPos = spos;
+            } else {
+                index -= 1;
+                pointers[index] = (TopNode) node;
+                pointersPos[index] = spos;
+            }
         }
     }
     

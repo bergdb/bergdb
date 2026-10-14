@@ -412,6 +412,7 @@ public class StoredTrans {
          * @throws AssertionError
          */
         private void checkStreamPointersOfKeyNodes() {
+            Pointer pointer = new Pointer();
             for (int i = 0; i < transNodes.keyCount; i++) {
                 KeyNode keyNode = transNodes.keyNodes[i];
                 int size = keyNode.size;
@@ -419,9 +420,9 @@ public class StoredTrans {
                 for (int j = 0; j < size; j++) {
                     long klong = keyNode.klongs[j];
                     if (Klong.getType(klong) == Klong.TYPE_KEY) {
-                        long pos = keyNode.pos[j];
-                        Node pointee = keyNode.pointers[j];
-                        long spos = pointee == null ? pos : pointee.getSpos();
+                        keyNode.getPointer(j, pointer);     // A coherent pair.
+                        Node pointee = pointer.node;
+                        long spos = pointer.getSposForStream();
                         
                         if (!Spos.isValid(spos)) {
                             String message = "Bad stream pointer of KeyNode, index " + j + ", spos: " + spos 
@@ -930,6 +931,40 @@ public class StoredTrans {
         assertArrayEquals(Keys.toSegments("a"), node.getKey());
     }
     
+    /**
+     * The same transaction must give the same bytes, whatever the serializer serialized
+     * before. Needed for streams that are the same byte for byte with and without
+     * restarts (T2 in docs/sis-model.md). Regression test for a bug found 2026-10-12
+     * (level 2): the alignment padding of value nodes was not
+     * written, so a reused buffer gave other padding bytes and checksums.
+     */
+    @Nano
+    private static void testSameBytesFromReusedSerializer() {
+        Serializer fresh = new Serializer();
+        Serializer reused = new Serializer();
+
+        byte[] earlier = new byte[64];
+        java.util.Arrays.fill(earlier, (byte) 99);
+        reused.serialize(transWithValue(earlier), 10, 1024, 128, new ArrayList<Node>());
+
+        // A value of 1 byte and a key of 1 segment: 3 bytes of padding.
+        reused.serialize(transWithValue(new byte[]{42}), 20, 2048, 128, new ArrayList<Node>());
+        fresh.serialize(transWithValue(new byte[]{42}), 20, 2048, 128, new ArrayList<Node>());
+
+        assertEquals(fresh.getOutputTransSize(), reused.getOutputTransSize());
+        byte[] a = java.util.Arrays.copyOf(fresh.getTransBuffer(), fresh.getOutputTransSize());
+        byte[] b = java.util.Arrays.copyOf(reused.getTransBuffer(), reused.getOutputTransSize());
+        assertArrayEquals(a, b);
+    }
+
+    private static TransNodes transWithValue(byte[] value) {
+        ValueNode node = new ValueNode(value);
+        node.setId(1001);
+        TransNodes transNodes = new TransNodes();
+        transNodes.addValueNode(node, Keys.toSegments("a"));
+        return transNodes;
+    }
+
     @Nano
     private static void testGetValueNode() {
         StoredTrans s = new StoredTrans();

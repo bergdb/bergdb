@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicLong;
 import bergdb.common.Bug;
 import bergdb.common.NullProgressListener;
@@ -15,6 +16,8 @@ import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
 import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
+import bergdb.dag.Keys;
+import bergdb.dag.Kvt;
 import bergdb.dag.NodeVisitor;
 import bergdb.dag.PutData;
 import bergdb.dag.Spos;
@@ -36,6 +39,7 @@ import bergdb.storage.StorageManager;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
+import bergdb.stream.ReadBelowFirstPosException;
 
 /**
  * <p>An object of this class provides access to the data in the database. This
@@ -57,7 +61,7 @@ import bergdb.stream.AppendOnlyStream;
  * <p>These methods are the only ones that need to be used by a consumer of the 
  * Core Layer once the Db has been started and before it is stopped. This API
  * form a narrow "waist" with a large code base under it and potentially a large code
- * base "above" it. These methods are believed to be "feature complete" in the
+ * base above it. These methods are believed to be feature complete in the
  * sense that all features we want from the database can be implemented on top
  * of them. Functionality that can be provided by using the Core Layer API,
  * should not offered by this class.</p>
@@ -169,7 +173,7 @@ public class Db {
         this.nodeStream = new NodeStream(rstream, writeLock);
         this.nodeStream.getMetaBlock().setStartupDistance(b.startupDistance);
         
-        this.nodeCollection = new NodeCollection(dbInfo, nodeStream);
+        this.nodeCollection = new NodeCollection(dbInfo, nodeStream, cache);
         
         this.dbClock = new DbClock(b.clock);
         this.reclaim = new Reclaim(this, aos);
@@ -337,8 +341,21 @@ public class Db {
         return aux.getOpCount.get();
     }
 
+    /** The stream length that has ordinary durability; see SyncLevel.ORDINARY. */
+    public long getDurableLength() {
+        return storageManager.getDurableLength();
+    }
+    
     public final long getPosOfLastValidMetaBlock() {
         return nodeStream.getPosOfLastValidMetaBlock();
+    }
+    
+    /**
+     * The position of the transaction named by the last valid meta block; recovery starts
+     * there. See RecoverableStream.getLastTransSposOfLastValidMetaBlock().
+     */
+    public final long getLastTransPosOfLastValidMetaBlock() {
+        return nodeStream.getLastTransPosOfLastValidMetaBlock();
     }
     
     /**
@@ -530,14 +547,19 @@ public class Db {
         // This approach was used from 150422 instead of the previous approach to use
         // the startPos from the last valid meta block.
         
+        // 2026-10-13 (Reclaim.Tester.testRestartAfterCut): transPos is the position
+        // of a transaction (from the last meta block), so the iteration starts there. It
+        // used to search back for a meta block before transPos, which may have been cut
+        // away by reclaim (pretruncate).
         if (transPos == Spos.NULL) {
-            transPos = 0;
+            transPos = RecoverableStream.META_BLOCK_SIZE;   // The first transaction.
         }
         
         assert transPos >= 0 : "bad transPos: " + transPos;
         
-        NodeStream.TransIterator iter = nodeStream.createTransIterator(transPos);
+        NodeStream.TransIterator iter = nodeStream.createTransIteratorFromExactStartupPos(transPos);
         long result = transPos;
+        long lastTpos = Spos.NULL;
         
         while (iter.next()) {
             if (!iter.transOk) continue;
@@ -545,6 +567,14 @@ public class Db {
             StoredTrans storedTrans = iter.getStoredTrans();
             result = storedTrans.startupPos;            
             assert result >= 0 : "Bad storedTrans.startupPos: " + storedTrans.startupPos;
+            lastTpos = storedTrans.tpos;
+        }
+        
+        // The meta block read at recovery holds the position of the last transaction
+        // before it was written. Set it to the last transaction, as it is without a 
+        // restart, so that the next meta block written is the same.
+        if (lastTpos != Spos.NULL) {
+            nodeStream.getMetaBlock().setLastTransSpos(lastTpos);
         }
         
         return result;
@@ -587,7 +617,7 @@ public class Db {
         assert this.nodeCollection != null : "Db.nodeCollection is null";
         
         PutData pd = dag.newPutData();
-        pd.pointerFollower = this.nodeCollection;
+        pd.pointerFollower = this.nodeCollection.writer();
         
         pd.nodeChangeListener = new Dag.NodeChangeListener() {
             public void topNodeCreated(TopNode node) {
@@ -597,11 +627,13 @@ public class Db {
                 
                 assert node.isDirty == false : "node is dirty, " + node;
                 setIdOfNode(node);
+                registerNewNode(node);
                 makeDirtyIfNeeded(node);
             }
             
             public void keyNodeCreated(KeyNode node) {
                 setIdOfNode(node);
+                registerNewNode(node);
                 makeDirtyIfNeeded(node);
             }
             
@@ -768,6 +800,15 @@ public class Db {
         node.setSpos(vpos);
         x.increaseNextVpos();
     }
+    
+    /**
+     * Makes a node that a put created the canonical object of its node, in the node
+     * table (docs/levels.md, level 2).
+     */
+    private void registerNewNode(Node node) {
+        node.setCanonical(true);
+        cache.register(node);
+    }
 
     /**
      * If 'node' is not dirty, it is added to the gotDirty nodes and
@@ -787,6 +828,12 @@ public class Db {
         if (!node.isDirty()) {
             node.setDirty(true);
             x.transInfo.addGotDirtyNode(node);
+            if (x.trans.touch) {
+                x.trans.dirtiedNodes++;
+                x.trans.dirtiedBytes += node.isTopNode() 
+                        ? StoredTopNode.getByteSize((TopNode) node)
+                        : StoredKeyNode.getByteSize((KeyNode) node);
+            }
         }
     }
 
@@ -963,7 +1010,11 @@ public class Db {
         gd.actualLookupTime = time;
         gd.nodeDepth = 0;
 
-        result = dag.getOne(gd.actualLookupTime, keySegments, gd);
+        try {
+            result = dag.getOne(gd.actualLookupTime, keySegments, gd);
+        } catch (StreamIoException e) {
+            throw expiredIfReadBelowCut(e, time);
+        }
 
         aux.getOpCount.incrementAndGet();
         return result;
@@ -1012,11 +1063,56 @@ public class Db {
             // Limits lookup time so it strictly less than the transaction time of
             // any currently running or any future transaction.
 
-        dag.getMany(g);
+        try {
+            dag.getMany(g);
+        } catch (StreamIoException e) {
+            throw expiredIfReadBelowCut(e, g.actualLookupTime);
+        }
         
         aux.getOpCount.addAndGet(g.getOpCount);
     }
     
+    /**
+     * Decides what a failed read throws. A read that was admitted before reclaim moved the
+     * first available lookup time can still reach bytes that the cut then removed
+     * (docs/levels.md, W1, decision D1 = A: such a read may expire). If the stream
+     * says the bytes are before its first position and the lookup time is now before the
+     * first available lookup time, the read has expired: the caller gets a
+     * LookupTimeNotAvailableException, as if it had asked a moment later. Anything else is
+     * a real failure and is returned unchanged.
+     *
+     * <p>'lookupTime' is the actual lookup time, the snapshot the read uses (see
+     * DbClock.lookupTime()), not the requested one: a read of the latest state, Long.MAX_VALUE,
+     * reads the state at the time of the last transaction, and that snapshot expires when a
+     * cut overtakes it (ReclaimReaderTester.testLatestReaderExpiresWhenCutOvertakesIt).</p>
+     */
+    private RuntimeException expiredIfReadBelowCut(StreamIoException e, long lookupTime) {
+        boolean belowCut = false;
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t instanceof ReadBelowFirstPosException) {
+                belowCut = true;
+                break;
+            }
+            if (t.getCause() == t) {
+                break;
+            }
+        }
+
+        if (belowCut) {
+            synchronized (readSync) {}      // Publishes the first available lookup time.
+            long first = reclaim.getFirstAvailableLookupTime();
+            if (lookupTime < first) {
+                LookupTimeNotAvailableException ex = new LookupTimeNotAvailableException(
+                        "The lookup at time " + lookupTime + " (" + DbUtil.dbTimeToUtc(lookupTime)
+                        + ") expired while it ran: the first time available for lookup is now "
+                        + first + " (" + DbUtil.dbTimeToUtc(first) + "). Retry with a later time.");
+                ex.initCause(e);
+                return ex;
+            }
+        }
+        return e;
+    }
+
     /**
      * Sync method with parametarized sync level.
      * 
@@ -1240,8 +1336,10 @@ public class Db {
         // and their spos:es are set elsewhere.
         
         x.transNodes.clean();
+        resolvePointersOfTakenNodes();
         handleStillDirtyNodes();
         nodeStream.appendNodes(x.transNodes, x.trans, x.transInfo.gotDirtyNodes);        
+        reclaim.recordWritten(x.trans, x.transNodes);       // Statistics, if on.
         
         x.trans.nodeCount = x.transNodes.size();
         x.transInfo.tpos = x.trans.tpos;
@@ -1252,6 +1350,19 @@ public class Db {
         transSeq.add(x.transInfo);      // adds to end of transSeq queue
         
         x.startupPos.set(newSp);
+    }
+
+    /**
+     * Resolves the pointers of the index nodes about to be written by node id, so that
+     * they name the newest versions, and the still-dirty test sees every node in D they
+     * point to (docs/levels.md, level 2).
+     */
+    private void resolvePointersOfTakenNodes() {
+        long accessData = getAccessData();
+        Iterator<Node> iter = x.transNodes.indexNodeIterator();
+        while (iter.hasNext()) {
+            nodeCollection.resolvePointers(iter.next(), accessData);
+        }
     }
 
     private void handleStillDirtyNodes() {
@@ -1321,6 +1432,16 @@ public class Db {
         x.putData.tt = x.trans.tt;
         x.putData.accessData = getAccessData();
 
+        if (x.trans.touch) {
+            // 2026-10-13: was after the puts. Before them, the touch makes dirty 
+            // every index node of the range, so that the value transformation of the row
+            // of a reclaim step, wherever its key sorts, can store what the step made dirty
+            // (Trans.dirtiedBytes). The puts then make dirty only new nodes and nodes
+            // outside the range.
+            touchRange(x.trans.touchFrom, x.trans.touchTo);
+            x.putData.clearFast();
+        }
+
         for (int i = 0; i < length; i++) {
             Kv kv = x.trans.kvs[i];
 
@@ -1339,6 +1460,44 @@ public class Db {
         }
         
         x.putData.clear();
+    }
+
+    /**
+     * Visits, as the writer, every node reachable at the transaction time for the keys in a
+     * range, so that each gets dirty; see Trans.touch. For reclaim (2026-10-13).
+     * 
+     * @param from  The keys after this one (exclusive), or null for the first key.
+     * @param to  The keys up to this one (inclusive), or null for the last key.
+     */
+    private void touchRange(long[] from, final long[] to) {
+        GetMany g = dag.newGetMany();
+        g.gd.pointerFollower = x.putData.pointerFollower;
+        g.gd.pointerListener = x.putData.pointerListener;      // makes nodes dirty
+        Reclaim.TouchCounter counter = null;
+        if (x.trans.touchCount != null) {
+            counter = new Reclaim.TouchCounter(x.trans.touchCount, x.trans.touchOldBefore,
+                    x.putData.pointerListener);
+            g.gd.pointerListener = counter;
+        }
+        g.gd.accessData = x.putData.accessData;
+        g.lookupTime = x.trans.tt;
+        g.actualLookupTime = x.trans.tt;     // Dag.getMany() uses this one.
+        g.startKey = from;
+        g.inclusive = false;
+        g.stopCondition = new GetMany.StopCondition() {
+            public int handleKvt(Kvt kvt) {
+                if (to != null && Keys.compareKeys(kvt.key, to) > 0) {
+                    return STOP;
+                }
+                return CONTINUE;
+            }
+            
+            public void eod() {}
+        };
+        dag.getMany(g);
+        if (counter != null) {
+            counter.finish();
+        }
     }
 
     /**
@@ -1425,6 +1584,10 @@ public class Db {
         public Aux aux() { return aux; }
         
         public Cache3 cache() { return cache; }
+        
+        public Reclaim reclaim() { return reclaim; }
+
+        public NodeCollection nodeCollection() { return nodeCollection; }
 
         public AppendOnlyStream getMainStream() {
             return storageManager.getMainStream();

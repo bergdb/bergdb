@@ -104,7 +104,9 @@ public class CreateIndexTester {
         //
         // Tests that an index creation process survives a database restart.
         //
-        int n = 4*1000;
+        // The index job must still be running at the restart, also through the sync
+        // before it. 10,000 is too few: the job is done in about 150 ms (2026).
+        int n = 100*1000;
         MemoryStream stream = new MemoryStream();
         DatabaseBuilderImp b = (DatabaseBuilderImp) Factory.database();
         Database database = b.mainStream(stream).start();
@@ -124,7 +126,7 @@ public class CreateIndexTester {
         
         Time time1 = database.currentTime();
         
-        Thread.sleep(100);
+        Thread.sleep(20);
         
         JobStatus status = job.getStatus();
         coll.out().println("Index job status = " + status.note());
@@ -160,7 +162,7 @@ public class CreateIndexTester {
             index++;
         }
         
-        // Checks non-existant index at time1 and existing at time4.
+        // Checks non-existant index at time1 and existing at Time.MAX.
         
         c.setLookupTime(time1);
         NoSuchIndexException ex = null;

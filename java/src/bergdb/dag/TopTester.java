@@ -185,6 +185,50 @@ public class TopTester {
         Assert.assertEquals(t.n4, t.findRoot(t.ds4, 30));
     }
     
+    /**
+     * A new super root must get the same skip pointers whether the skip pointers of the
+     * old super root are memory pointers, or stream pointers as after a restart.
+     * Regression test for a bug found 2026-10-12 (level 2): a stream pointer was taken as no pointer, and the new top node pointed
+     * to the old super root instead.
+     */
+    @Nano
+    public static void testNewSuperRootFromStreamPointers() {
+        Dag.PointerCreatedListener N1 = Dag.DO_NOTHING_POINTER_CREATED_LISTENER;
+        Dag.NodeChangeListener N2 = Dag.DO_NOTHING_NODE_CHANGE_LISTENER;
+
+        // Top nodes 0, 1 and 2, at times 10, 20 and 30, written at 100, 200 and 300.
+        TopDs memDs = TopDs.createFromFirstRoot(10, new KeyNode(), 0, N1);
+        memDs.getSuperRoot().setSpos(100);
+        memDs.newSuperRoot(20, new KeyNode(), 0, N1, N2);
+        memDs.getSuperRoot().setSpos(200);
+        memDs.newSuperRoot(30, new KeyNode(), 0, N1, N2);
+        TopNode top2 = memDs.getSuperRoot();
+        top2.setSpos(300);
+
+        // The same top node 2, with its skip pointers as stream pointers.
+        TopNode streamTop2 = new TopNode(top2.topNodeId, top2.rootPointer,
+                top2.rootPointerPos, top2.rootTime, top2.spos);
+        for (int i = 0; i < top2.pointersLength; i++) {
+            TopNode p = top2.pointers[i];
+            streamTop2.setPointer(i + 1, null, p == null ? top2.pointersPos[i] : p.getSpos());
+            streamTop2.pointersTime[i] = top2.pointersTime[i];
+        }
+        TopDs streamDs = new TopDs(streamTop2);
+
+        memDs.newSuperRoot(40, new KeyNode(), 0, N1, N2);
+        streamDs.newSuperRoot(40, new KeyNode(), 0, N1, N2);
+        TopNode a = memDs.getSuperRoot();
+        TopNode b = streamDs.getSuperRoot();
+
+        Assert.assertEquals(a.pointersLength, b.pointersLength);
+        for (int i = 0; i < a.pointersLength; i++) {
+            long aPos = a.pointers[i] == null ? a.pointersPos[i] : a.pointers[i].getSpos();
+            long bPos = b.pointers[i] == null ? b.pointersPos[i] : b.pointers[i].getSpos();
+            Assert.assertEquals("pointer " + i + ", position", aPos, bPos);
+            Assert.assertEquals("pointer " + i + ", time", a.pointersTime[i], b.pointersTime[i]);
+        }
+    }
+
     public static void main(String[] args) { 
         testDS3();
     }

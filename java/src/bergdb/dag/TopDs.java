@@ -41,7 +41,21 @@ public class TopDs {
      */
     public void newSuperRoot(long time, KeyNode newRoot, long accessData, 
             Dag.PointerCreatedListener pointerCreationListener, Dag.NodeChangeListener nodeChangeListener) {
-        
+
+        if (time == superRoot.rootTime) {
+            // A second new space root in the same transaction, for example a time split
+            // of the root followed by a space split. Top node times must be strictly
+            // increasing; findSuperRootAtTime() can return the wrong one of two top nodes
+            // with the same time. The super root was created by this transaction, so it
+            // is not yet written and no reader uses its root pointer (readers have
+            // lookup time < time). Update it instead of creating a new top node.
+            superRoot.setPointer(0, newRoot, accessData);
+            pointerCreationListener.pointerCreated(superRoot, 0, newRoot);
+            return;
+        }
+
+        assert time > superRoot.rootTime : "time " + time + " < " + superRoot.rootTime;
+
         TopNode newSuperRoot = new TopNode(superRoot.topNodeId + 1, newRoot, accessData, time, 
                 Spos.NULL);
         final int h = newSuperRoot.pointersLength;
@@ -49,6 +63,7 @@ public class TopDs {
         
         nodeChangeListener.topNodeCreated(newSuperRoot);
         pointerCreationListener.pointerCreated(newSuperRoot, 0, newRoot);
+        Pointer inherited = new Pointer();
         
         for (int i = 0; i < h; i++) {
             if ((id & TopNode.power2(i)) != 0) {
@@ -56,9 +71,21 @@ public class TopDs {
                 assert superRoot.pointers != null;
                 
                 TopNode pointer = null;
+                long pointerPos = Spos.NULL;
                 
                 if (i < superRoot.pointersLength) {
-                    pointer = superRoot.pointers[i];
+                    superRoot.getPointer(i + 1, inherited);
+                    pointer = (TopNode) inherited.node;
+                    pointerPos = inherited.pos;
+                }
+
+                if (pointer == null && pointerPos != Spos.NULL) {
+                    // A stream pointer, as after a restart: inherited like a memory
+                    // pointer, so that the skip list does not depend on the pointer form.
+                    newSuperRoot.pointers[i] = null;
+                    newSuperRoot.pointersPos[i] = pointerPos;
+                    newSuperRoot.pointersTime[i] = superRoot.pointersTime[i];
+                    continue;
                 }
                 
                 if (pointer == null) {

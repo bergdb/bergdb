@@ -2,7 +2,10 @@ package bergdb.core;
 
 import bergdb.common.Bug;
 import bergdb.common.Bytes;
+import bergdb.dag.AccessData;
+import bergdb.dag.KeyNode;
 import bergdb.dag.Node;
+import bergdb.dag.Pointer;
 import bergdb.dag.Klong;
 import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
@@ -180,16 +183,20 @@ public class StoredTopNode implements StoredNode {
 
         // spos value for the pointers
 
-        long spos = node.rootPointer == null ? node.rootPointerPos : node.rootPointer.getSpos();
+        // Coherent pairs (node, pos): a reader can replace a stream pointer by a memory
+        // pointer at any time (TopNode.getPointer()).
+        Pointer p = new Pointer();
+        node.getPointer(0, p);
+        long spos = p.getSposForStream();
         
         buffer[offset++] = spos;
 
         for (int i = 0; i < node.pointersLength; i++) {
-            Node pointerNode = node.pointers[i];
-            spos = pointerNode == null ? node.pointersPos[i] : pointerNode.getSpos();
+            node.getPointer(i + 1, p);
+            spos = p.getSposForStream();
             buffer[offset++] = spos;
 
-            long time = pointerNode == null ? -1 : node.pointersTime[i];
+            long time = spos == Spos.NULL ? -1 : node.pointersTime[i];
             buffer[offset++] = time;
         }
         
@@ -202,6 +209,45 @@ public class StoredTopNode implements StoredNode {
     }
     
     // ======== Tests ========
+
+    /**
+     * A top node read from the stream has its skip pointers as stream pointers. When it
+     * is written again, the pointer times must be kept, since TopDs uses them to find
+     * the super root for a lookup time. Regression test for a bug found 2026-10-12
+     * (level 2): the time was written as -1 for every
+     * pointer that was not a memory pointer.
+     */
+    @Nano
+    public static void testStreamPointerTimesKept() {
+        KeyNode root = new KeyNode();
+        root.setSpos(80);
+        TopNode top1 = new TopNode(1, root, 80, 20, 100);
+        TopNode top2 = new TopNode(2, root, 80, 30, 200);
+        TopNode top3 = new TopNode(3, root, 80, 40, 300);
+        top3.setPointer(1, top2, AccessData.DEFAULT_ACCESS_DATA);
+        top3.pointersTime[0] = 30;
+        top3.setPointer(2, top1, AccessData.DEFAULT_ACCESS_DATA);
+        top3.pointersTime[1] = 20;
+
+        TopNode read1 = writeAndRead(top3, 400);    // memory pointers written
+        TopNode read2 = writeAndRead(read1, 500);   // stream pointers written
+
+        Assert.assertEquals(200, read1.pointersPos[0]);
+        Assert.assertEquals(100, read1.pointersPos[1]);
+        Assert.assertEquals(30, read1.pointersTime[0]);
+        Assert.assertEquals(20, read1.pointersTime[1]);
+
+        Assert.assertEquals(200, read2.pointersPos[0]);
+        Assert.assertEquals(100, read2.pointersPos[1]);
+        Assert.assertEquals("time of pointer 0, written again", 30, read2.pointersTime[0]);
+        Assert.assertEquals("time of pointer 1, written again", 20, read2.pointersTime[1]);
+    }
+
+    private static TopNode writeAndRead(TopNode node, long spos) {
+        long[] longs = new long[getByteSize(node) / 8];
+        toLongs(node, longs, 0);
+        return parse(Bytes.longsToBytesLE(longs), 0, spos).getNode();
+    }
 
     @Nano
     public static void testTopNodeToLongs2() {

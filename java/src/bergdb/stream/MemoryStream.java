@@ -180,7 +180,7 @@ public class MemoryStream implements AppendOnlyStream {
         }
         
         if (position < firstValidPos) {
-            throw new IOException("Cannot read from position " + position 
+            throw new ReadBelowFirstPosException("Cannot read from position " + position
                     + ", first valid position is " + firstValidPos + ".");
         }
         

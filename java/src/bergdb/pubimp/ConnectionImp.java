@@ -98,15 +98,6 @@ public class ConnectionImp implements Connection {
         return result;
     }
     
-    public final Time time() {
-        if (getData.actualLookupTime == -1) {
-            throw new IllegalStateException("No available value time, "
-                    + "a call to get() must be made before calling time().");
-        }
-        
-        return Time.units(getData.kvTime);
-    }
-    
     public TransactionInfo transactionInfo() {
         if (getData.actualLookupTime == -1) {
             throw new IllegalStateException("No available transaction info, "
@@ -135,10 +126,6 @@ public class ConnectionImp implements Connection {
 
                     public byte[] value() {
                         return storedValueNode.getValueNode().getValue();
-                    }
-
-                    public Time time() {
-                        return Time.units(storedTrans.tt);
                     }
                 });
             }

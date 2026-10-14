@@ -19,6 +19,7 @@ import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.IllegalDbStateException;
 import bergdb.storage.RecoverableStream;
+import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
 
@@ -1244,6 +1245,79 @@ public class DbTester {
         Assert.assertTrue(v2 == null);
         
         db2.stop();
+    }
+    
+    /**
+     * Regression test for a bug found 2026-10-13 (java/stress/CrashTest.java): a crash
+     * after the first byte of a transaction's size, when that byte is 6 to 16. Recovery
+     * completed the size as that byte, a transaction shorter than NodeStream accepts, and
+     * startup failed with "Bad transaction size".
+     */
+    @Nano
+    public static void testCrash6TornSizeBelowMin() throws IOException {
+        MemoryStream mstream = new MemoryStream();
+        Db db = testDb(mstream);
+        Trans trans = db.trans().put("key1", "value1").build();
+        db.execute(trans);
+        db.sync(trans.lastPos, SyncLevel.STRONG);
+        long size1 = mstream.getLength();
+        
+        trans = db.trans().put("key2", "value2").build();
+        db.execute(trans);
+        db.sync(trans.lastPos, SyncLevel.STRONG);
+        db.stop();
+        
+        // The first byte of the size of the second transaction is written, and it is 8.
+        mstream = mstream.copy();       // db.stop() closed mstream.
+        mstream.truncate(size1 + 1);
+        MemoryStream.TestAccess.write(mstream, new byte[]{8}, size1);
+        
+        Db db2 = testDb(mstream);
+        Assert.assertEquals("value1", DbUtil.getString(db2, "key1"));
+        Assert.assertTrue(DbUtil.getString(db2, "key2") == null);
+        trans = db2.trans().put("key3", "value3").build();
+        db2.execute(trans);
+        db2.sync(trans.lastPos, SyncLevel.STRONG);
+        db2.stop();
+        
+        Db db3 = testDb(mstream.copy());
+        Assert.assertEquals("value1", DbUtil.getString(db3, "key1"));
+        Assert.assertEquals("value3", DbUtil.getString(db3, "key3"));
+        db3.stop();
+    }
+    
+    /**
+     * Regression test for a bug found 2026-10-13: when the stream failed (here,
+     * closed under the running database), a sync returned as if the transaction were
+     * durable. Now it throws, and so does the next transaction.
+     */
+    @Nano
+    public static void testSyncAfterStreamFailure() {
+        MemoryStream mstream = new MemoryStream();
+        Db db = testDb(mstream);
+        Trans trans = db.trans().put("key1", "value1").build();
+        db.execute(trans);
+        db.sync(trans.lastPos, SyncLevel.STRONG);
+        
+        mstream.stop();     // Appends to mstream now fail.
+        trans = db.trans().put("key2", "value2").build();
+        db.execute(trans);
+        
+        boolean thrown = false;
+        try {
+            db.sync(trans.lastPos, SyncLevel.STRONG);
+        } catch (StreamIoException e) {
+            thrown = true;
+        }
+        Assert.assertTrue(thrown);
+        
+        thrown = false;
+        try {
+            db.execute(db.trans().put("key3", "value3").build());
+        } catch (RuntimeException e) {
+            thrown = true;
+        }
+        Assert.assertTrue(thrown);
     }
     
     @Nano

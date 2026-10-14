@@ -84,6 +84,14 @@ public final class ValueNode implements Node {
     public final boolean isInTransNodes() {
         return isInTransactionNodes;
     }
+    
+    /** A value node never changes, so any object of it is canonical. */
+    public final boolean isCanonical() {
+        return true;
+    }
+    
+    public final void setCanonical(boolean isCanonical) {
+    }
 
     /**
      * Caller must hold DB.writeLock.

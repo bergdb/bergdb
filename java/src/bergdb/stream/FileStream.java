@@ -105,6 +105,13 @@ public class FileStream implements AppendOnlyStream {
         while (true) {
             DbFile k = findFile(spos);
             if (k == null) {
+                long first = getFirstPos();
+                if (spos < first) {
+                    // 2026-10-13 (docs/levels.md, W1): a read admitted before a
+                    // cut can come here. It fails alone; the stream is not faulty.
+                    throw new ReadBelowFirstPosException("Cannot read at spos " + spos
+                            + ", below the first position, " + first + ".");
+                }
                 this.ioException = new IOException("No file found for reading at spos " + spos + ".");
                 throw ioException;
             }
@@ -678,6 +685,7 @@ public class FileStream implements AppendOnlyStream {
         private long spos;    // spos of first byte in file
         private long maxSize;
         private volatile boolean isClosed = false;
+        private volatile boolean isDeleted = false;     // by pretruncate; see read()
         
         private DbFile(long spos, File file, long maxSize) {
             if (file == null) {
@@ -719,6 +727,7 @@ public class FileStream implements AppendOnlyStream {
          * @throws IOException
          */
         synchronized void delete() throws IOException {
+            isDeleted = true;
             close();
             
             if (renameAsDelete) {
@@ -740,6 +749,13 @@ public class FileStream implements AppendOnlyStream {
          * Reads bytes from the file, returns number of bytes actually read.
          */
         synchronized int read(long spos, byte[] dest, int destOffset, int lengthToRead) throws IOException {
+            if (isDeleted) {
+                // 2026-10-13 (docs/levels.md, W1): a reader found this file
+                // just before pretruncate() deleted it. Only this read fails.
+                throw new ReadBelowFirstPosException("Cannot read at spos " + spos
+                        + ", the file " + file.getPath() + " has been deleted by pretruncate.");
+            }
+
             if (isClosed) {
                 ioException = new IOException("File closed, " + file.getPath() + ".");
                 throw ioException;
@@ -1000,6 +1016,66 @@ public class FileStream implements AppendOnlyStream {
         f.close();
     }
     
+    /**
+     * 2026-10-13 (docs/levels.md, W1). A read of bytes that pretruncate()
+     * removed used to store a permanent IOException: after it, every read and append failed.
+     * Now only the read fails.
+     */
+    @Nano
+    public static void testReadBelowFirstPosDoesNotBreakStream(TestEnvironment c)
+            throws Exception {
+        FileStream f = new FileStream(c.createTempDir());
+        byte[] bytes = new byte[500*1000];
+        new Random(1).nextBytes(bytes);
+        f.append(bytes, 0, bytes.length);
+        f.pretruncate(400*1000);
+        Assert.assertEquals(400*1000, f.getFirstPos());
+
+        byte[] dest = new byte[10];
+        try {
+            f.read(100, dest, 0, dest.length);
+            throw new AssertionError("a read below the first position succeeded");
+        } catch (ReadBelowFirstPosException e) {
+            // Expected.
+        }
+
+        f.read(450*1000, dest, 0, dest.length);
+        Assert.assertEquals(bytes[450*1000], dest[0]);
+        f.append(bytes, 0, 1000);
+        f.read(500*1000, dest, 0, dest.length);
+        Assert.assertEquals(bytes[0], dest[0]);
+        f.close();
+    }
+
+    /**
+     * Same, for a reader that found the file just before pretruncate() deleted it.
+     */
+    @Nano
+    public static void testReadOfFileDeletedMeanwhileDoesNotBreakStream(TestEnvironment c)
+            throws Exception {
+        FileStream f = new FileStream(c.createTempDir());
+        byte[] bytes = new byte[500*1000];
+        new Random(2).nextBytes(bytes);
+        f.append(bytes, 0, bytes.length);
+
+        DbFile file = f.findFile(100);      // What a reader holds when pretruncate() starts.
+        Assert.assertTrue(file != null);
+        f.pretruncate(400*1000);
+
+        try {
+            file.read(100, new byte[10], 0, 10);
+            throw new AssertionError("a read of a deleted file succeeded");
+        } catch (ReadBelowFirstPosException e) {
+            // Expected.
+        }
+
+        byte[] dest = new byte[10];
+        f.append(bytes, 0, 1000);
+        f.read(450*1000, dest, 0, dest.length);
+        Assert.assertEquals(bytes[450*1000], dest[0]);
+        f.close();
+    }
+
     @Nano
     public static void testMultiFileRead0(TestEnvironment c) throws IOException {
         File dir = c.createTempDir();

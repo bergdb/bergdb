@@ -2,7 +2,11 @@ package bergdb.dag;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.TreeMap;
 import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
@@ -132,6 +136,102 @@ public class DagTester {
         
         value = dag.getOne(9, Keys.toSegments("/longerKey"), gd);
         Assert.assertTrue(value == null);
+    }
+    
+    /**
+     * Deleting a key that does not exist is a no-op; it must not create or change any
+     * node. Keys of 7 bytes or more have more than one key segment.
+     * Regression test for a bug found 2026-10-12: the delete created a key node
+     * for a missing segment, the rerun at startup did not, so node ids differed after
+     * a restart.
+     */
+    @Nano
+    public static void testDeleteMissingKey() {
+        Dag dag = emptyDag(0);
+        PutData pd = pd(dag);
+        pd.tt = 10;
+        dag.putKv(Keys.toSegments("/a"), StringUtil.toBytes("value"), pd);
+        pd.clearFast();
+        dag.putKv(Keys.toSegments("/abcdefXX"), StringUtil.toBytes("value"), pd);
+        pd.clearFast();
+
+        final ArrayList<String> changes = new ArrayList<String>();
+        pd.nodeChangeListener = new Dag.NodeChangeListener() {
+            public void topNodeCreated(TopNode node) { changes.add("topNodeCreated"); }
+            public void keyNodeCreated(KeyNode node) { changes.add("keyNodeCreated"); }
+            public void valueNodeCreated(ValueNode node, long[] key) { changes.add("valueNodeCreated"); }
+            public void keyNodeChanged(KeyNode node) { changes.add("keyNodeChanged"); }
+        };
+
+        // One, two and three segments; the first segment of the last key exists.
+        String[] keys = {"/k/100", "/k/1000", "/k/10000000", "/abcdefgh12345"};
+        pd.tt = 20;
+
+        for (String key : keys) {
+            dag.putKv(Keys.toSegments(key), null, pd);
+            pd.clearFast();
+            Assert.assertEquals("changes when deleting missing key " + key, "[]", changes.toString());
+        }
+
+        GetData gd = gd(dag);
+        Assert.assertEquals("value", StringUtil.toString(dag.getOne(30, Keys.toSegments("/abcdefXX"), gd)));
+    }
+
+    /**
+     * Transactions with several keys each, checked against a model at every time.
+     * Regression test for a bug found 2026-10-12: when the space root was
+     * replaced twice in one transaction (a time split, then a space split), two top
+     * nodes got the same time, and TopDs.findSuperRootAtTime() could later return the
+     * older one, which misses the rest of the transaction. One failing seed per node
+     * size, found with java/stress/DagFuzz.java (same random sequence).
+     */
+    @Nano
+    public static void testTwoNewRootsInOneTransaction() {
+        checkRandomTransactions(8, 10, 4, 5, 923);
+        checkRandomTransactions(14, 12, 12, 14, 1);
+        checkRandomTransactions(30, 20, 20, 11, 37);
+    }
+    
+    private static void checkRandomTransactions(int maxNodeSize, int keyCount, int maxOps, 
+            int n, long seed) {
+        Random rnd = new Random(seed);
+        Dag dag = Dag.createEmpty(0, maxNodeSize, DUMMY_POINTER_FOLLOWER, 
+                Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+        PutData pd = pd(dag);
+        GetData gd = gd(dag);
+        Map<String, TreeMap<Long, String>> model = new HashMap<String, TreeMap<Long, String>>();
+        
+        for (int i = 1; i <= n; i++) {
+            long tt = 10 * i;
+            pd.tt = tt;
+            int ops = 1 + rnd.nextInt(maxOps);
+            Set<String> keys = new LinkedHashSet<String>();
+            while (keys.size() < ops) {
+                keys.add("/k/" + rnd.nextInt(keyCount));
+            }
+            
+            for (String key : keys) {
+                String value = rnd.nextInt(4) == 0 ? null : "v" + tt + key;
+                dag.putKv(Keys.toSegments(key), value == null ? null : StringUtil.toBytes(value), pd);
+                pd.clearFast();
+                if (!model.containsKey(key)) {
+                    model.put(key, new TreeMap<Long, String>());
+                }
+                model.get(key).put(tt, value);
+            }
+            pd.clear();
+        }
+        
+        for (String key : model.keySet()) {
+            for (long t = 0; t <= 10 * n; t += 10) {
+                Map.Entry<Long, String> e = model.get(key).floorEntry(t);
+                Object expected = e == null ? null : e.getValue();
+                byte[] bytes = dag.getOne(t, Keys.toSegments(key), gd);
+                Object actual = bytes == null ? null : StringUtil.toString(bytes);
+                Assert.assertEquals("maxNodeSize " + maxNodeSize + ", seed " + seed + ", key " 
+                        + key + " at time " + t, expected, actual);
+            }
+        }
     }
     
     @Nano

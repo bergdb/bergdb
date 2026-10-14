@@ -248,14 +248,26 @@ public class GetMany {
                 } else {
                     if (forward) {
                         node.searchLte(lookupTime, startKeySegment, kwi);
-                    } else {
+                    } else if (node.isSegmentLeaf()) {
                         node.searchGte(lookupTime, startKeySegment, kwi);
+                    } else {
+                        // 2026-10-13 (DbTesterGetMany.testInclusiveStartKeyWithDeepTree
+                        // and testStartKeyRandom): above the leaf, the klong is the lower
+                        // bound of its child, and the child that holds the start key is the
+                        // last one at or before it, as for a forward scan. Searching for the
+                        // first one at or after the start key took the next child, so a
+                        // backward scan from a key in a tree of more than one node level began
+                        // at a key above the start key.
+                        node.searchLte(lookupTime, startKeySegment, kwi);
                     }
                 }
                 
                 
                 if (kwi.klong == Klong.NULL) {
-                    addLink(node, forward ? -1 : Long.MAX_VALUE);                    
+                    // Backward above the leaf: the start key is before every key of the tree,
+                    // so the position is before the first, not after the last.
+                    boolean beforeFirst = !forward && !hasDiff && !node.isSegmentLeaf();
+                    addLink(node, forward || beforeFirst ? -1 : Long.MAX_VALUE);
                     break;  // Done!
                 } else {
                     addLink(node, Klong.getCompareValue(kwi.klong));
@@ -292,26 +304,27 @@ public class GetMany {
 
         /**
          * Returns true if setup results in an exact match.
+         *
+         * <p>2026-10-13 (DbTesterGetMany.testInclusiveStartKeyWithDeepTree): this
+         * compared the number of links, that is, nodes in the chain, with the number of
+         * segments of the start key. The chain has one link for each node level of each
+         * segment tree, so with a segment tree of more than one node (more than about 30
+         * keys) an exact match was never found, and an inclusive start key was not returned.
+         * The key segments passed so far (keySegments) and the last link are the key.</p>
          */
         private boolean eqMatch(long[] start) {
-            boolean result;
-            
-            if (linkSize == start.length) {
-                result = true;
-                for (int i = 0; i < this.linkSize; i++) {
-                    long linkCompareValue = linkCompareValues[i];
-                    long startCompareValue = Klong.getCompareValue(start[i]);
-                    
-                    if (linkCompareValue != startCompareValue) {
-                        result = false;
-                        break;
-                    }
-                }
-            } else {
-                result = false;
+            if (keySegmentSize + 1 != start.length || linkSize == 0) {
+                return false;
             }
             
-            return result;
+            for (int i = 0; i < keySegmentSize; i++) {
+                if (keySegments[i] != Klong.getCompareValue(start[i])) {
+                    return false;
+                }
+            }
+            
+            return linkCompareValues[linkSize - 1]
+                    == Klong.getCompareValue(start[start.length - 1]);
         }
         
         /**

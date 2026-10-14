@@ -14,6 +14,7 @@ import bergdb.common.Util;
 import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.StorageInfo;
 import bergdb.stream.AppendOnlyStream;
+import bergdb.stream.ReadBelowFirstPosException;
 
 /**
  * <p>An object of this class is used to handle multiple storage locations.
@@ -653,6 +654,13 @@ public class StorageManager implements AppendOnlyStream {
     /**
      * Caller must have WriteAccess.
      */
+    /** The stream length that has ordinary durability (D1), as sync() waits for. */
+    public long getDurableLength() {
+        synchronized (d1Lock) {
+            return d1Size;
+        }
+    }
+    
     public long getFirstPos() {
         return mainStream.getFirstPos();
     }
@@ -686,6 +694,11 @@ public class StorageManager implements AppendOnlyStream {
         
         try {
             mainStream.read(position, dest, destOffset, length);
+        } catch (ReadBelowFirstPosException e) {
+            // 2026-10-13 (docs/levels.md, W1): a read admitted before a cut
+            // that reached bytes the cut removed. That read fails; the stream is not faulty,
+            // so it is not closed and the storage does not get an error state.
+            throw e;
         } catch (IOException e) {
             handleStreamException(mainStream, e);
             throw e;
@@ -699,9 +712,11 @@ public class StorageManager implements AppendOnlyStream {
         
         A: while (true) {
             Internal in = internal.get();
+            boolean found = false;
             
             for (int i = 0; i < in.streams.length; i++) {
                 if (in.streams[i] == stream) {
+                    found = true;
                     Internal newIn = in.copy();
                     
                     try {
@@ -717,6 +732,10 @@ public class StorageManager implements AppendOnlyStream {
                         break A;
                     }
                 }
+            }
+            
+            if (!found) {
+                break;      // Already handled, or not one of in.streams.
             }
         }
     
@@ -1006,13 +1025,17 @@ public class StorageManager implements AppendOnlyStream {
         private final String name;
         private final AtomicLong confirmedLength = new AtomicLong();
         
-        public MyStorage(BufferedStream stream, String name) {
+        public MyStorage(final BufferedStream stream, String name) {
             this.name = name;
             this.confirmedLength.set(stream.getLength());
             stream.setAppendListener(new AppendListener() {
                 public void dataAppended(long postStreamSize) {
                     confirmedLength.set(postStreamSize);
                     computeRules();
+                }
+                
+                public void appendFailed(IOException e) {
+                    handleStreamException(stream, e);
                 }
             });
         }

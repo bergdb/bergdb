@@ -67,6 +67,34 @@ public class Trans {
     /** True if transaction is executed on behalf of the database itself. */
     boolean isInternal;
     
+    /**
+     * For internal transactions of reclaim (2026-10-13): before the puts, the
+     * writer visits every node reachable at the transaction time for the keys
+     * after touchFrom (exclusive; null: from the first key) up to touchTo (inclusive; null:
+     * to the last key), as a put visits its path, so that each of them gets dirty and is
+     * written again.
+     * Not stored: startup rebuilds D from the stored got-dirty ids.
+     */
+    boolean touch;
+    long[] touchFrom;
+    long[] touchTo;
+    
+    /**
+     * For a transaction with touch (2026-10-13, docs/levels.md, "Level 3 cost"):
+     * the index nodes it makes dirty, by the puts and the touch, and their size in the
+     * stream when they got dirty, so far; a value transformation can store them.
+     */
+    long dirtiedNodes;
+    long dirtiedBytes;
+
+    /**
+     * Statistics of the touch, or null (2026-10-13, measurements of reclaim): the
+     * index nodes it visits and makes dirty, and of those, the ones stored before
+     * touchOldBefore and their ancestors. See Reclaim.Stats.
+     */
+    Reclaim.TouchCount touchCount;
+    long touchOldBefore;
+
     /** startupPos stored in stream with transaction. */
     public long startupPos = Spos.NULL;
     

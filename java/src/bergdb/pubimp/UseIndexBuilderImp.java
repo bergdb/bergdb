@@ -610,7 +610,6 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         public Kv<TYPE> next() {
             byte[] value;
             byte[] objectKey;
-            long kvTime;
             
             A: while (true) {           // Used for "continue A;"
                 if (!hasNext()) {
@@ -618,7 +617,6 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                 }
                 
                 final Kvt kvt = g.result.get(resultIndex);
-                kvTime = kvt.time;
                 if (isPrimary) {
                     objectKey = Keys.toBytes(kvt.key);
                     value = kvt.value;
@@ -658,8 +656,6 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
             final TYPE finalObject = connection.getDatabaseImp()
                     .getKvToObjectConverter().createObject(type, ikey, value);
             
-            final long finalKvTime = kvTime;
-            
             assert finalObject != null : "finalObject is null";
             
             return new Kv<TYPE>() {
@@ -673,10 +669,6 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                 
                 public TYPE value() {
                     return finalObject;
-                }
-                
-                public Time time() {
-                    return Time.units(finalKvTime);
                 }
             };
         }

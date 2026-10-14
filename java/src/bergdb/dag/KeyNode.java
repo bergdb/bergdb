@@ -42,6 +42,8 @@ public class KeyNode implements Node {
         // holding Db.writeLock.
     private boolean isDirty;
         // Synch note: read/write access only from threads holding Db.writeLock.
+    private boolean isCanonical;
+        // See Node.isCanonical().
     
     public volatile short size;
         // Size of klong array actually used. 
@@ -172,9 +174,29 @@ public class KeyNode implements Node {
         return result;
     }
     
+    /**
+     * Gets the pointer as one coherent pair (node, pos).
+     *
+     * <p>2026-10-13 (docs/levels.md, "Level 3 follow-up"): a reader that follows a stream pointer
+     * replaces it by a memory pointer, setting the node and then the position (access data
+     * instead of a stream position), while the writer serializes this node. A writer that
+     * read the node as null and then the new position took the access data for a stream
+     * position and wrote it or failed the check of the serializer ("Bad stream pointer",
+     * found by java/stress/ReclaimReaders.java). A memory pointer stays one (no eviction yet), so
+     * the common case reads without a lock; a stream pointer is read under the monitor of
+     * the node, which setPointer() holds. Level 4 (eviction) must revisit this.</p>
+     */
     public final void getPointer(int index, Pointer pointer) {
-        pointer.node = pointers[index];
-        pointer.pos = pos[index];
+        Node n = pointers[index];
+        if (n != null) {
+            pointer.node = n;
+            pointer.pos = pos[index];
+        } else {
+            synchronized (this) {
+                pointer.node = pointers[index];
+                pointer.pos = pos[index];
+            }
+        }
         pointer.index = index;
     }
     
@@ -196,8 +218,10 @@ public class KeyNode implements Node {
         // Besides Db startup, only called from Evictor.evictPointers() and
         // Dag.followPointer().
         
-        pointers[index] = node;
-        pos[index] = spos;
+        synchronized (this) {   // See getPointer().
+            pointers[index] = node;
+            pos[index] = spos;
+        }
     }
     
     public final void setPointerAccessData(int pointerIndex, long accessData) {
@@ -778,10 +802,22 @@ public class KeyNode implements Node {
     
     /**
      * Write access required.
-     * Note, writes not synched. The caller should make the writes of this method available to 
-     * other threads by writing to this.size.
+     * Array replacement shares the node monitor with reader swizzling. The caller still
+     * publishes new logical entries to other threads by writing to this.size.
      */
     private void ensureCapacity(int neededSize) {
+        if (neededSize <= klongs.length) {
+            return;
+        }
+        // Readers swizzle under this monitor. Copy and publish all pointer arrays
+        // together so a swizzle cannot be split across the old and new arrays.
+        synchronized (this) {
+            growCapacity(neededSize);
+        }
+    }
+
+    private void growCapacity(int neededSize) {
+        assert Thread.holdsLock(this);
         int sz = this.size;
         
         assert sz <= klongs.length;
@@ -882,7 +918,9 @@ public class KeyNode implements Node {
      * @param time  The time to get the last version.
      * @param del  The delete klong to use.
      */
-    public KeyNode lastVersionGivenDel(final short sz, long time, long del) {
+    public synchronized KeyNode lastVersionGivenDel(final short sz, long time, long del) {
+        // A reader may swizzle an existing slot while the writer takes this copy.
+        // Hold the same monitor as setPointer() for both fields of every copied edge.
         //
         // A simple brute-force method that scales with n^2, n = this.size.
         // Likely still faster than sorting first because of limited size.
@@ -1153,6 +1191,14 @@ public class KeyNode implements Node {
     public final boolean isInTransNodes() {
         // 130117 Frans. Only called from code holding DB.writeLock.
         return isInTransNodes;
+    }
+
+    public final boolean isCanonical() {
+        return isCanonical;
+    }
+    
+    public final void setCanonical(boolean isCanonical) {
+        this.isCanonical = isCanonical;
     }
 
     /**

@@ -51,6 +51,15 @@ public interface Connection extends ReadInterface {
      * freezeLookupTime().
      * </p>
      * 
+     * <p>
+     * A lookup time before Database.getFirstAvailableLookupTime() cannot be read: the read
+     * throws LookupTimeNotAvailableException. This can happen to a read that has already
+     * started, and to later reads with the same lookup time, when the database reclaims
+     * old data (see Database.setRetainDuration()). A reader that needs a state older than
+     * the retain duration must not rely on it staying available; it can catch the exception
+     * and retry with a later time.
+     * </p>
+     *
      * @param lookupTime
      *            The database time to use for read operations. Use
      *            Time.MAX to read the latest database state.
@@ -67,7 +76,9 @@ public interface Connection extends ReadInterface {
      * read operations will be constant. The lookup time of this Connection will
      * not change until setLookupTime() is called or this method is called
      * again. This method is useful for reading a consistent state of the data
-     * at one particular time using multiple read operations.
+     * at one particular time using multiple read operations. The state stays readable
+     * for the retain duration of the database (Database.setRetainDuration()); after that,
+     * reads at the frozen time throw LookupTimeNotAvailableException.
      */
     public void freezeLookupTime();
     
@@ -126,11 +137,6 @@ public interface Connection extends ReadInterface {
      * @return The object created based on 'clazz' and the data in the database.
      */
     public <TYPE> TYPE get(String key, Class<TYPE> clazz);
-    
-    /**
-     * Returns the transaction time of the value retrieved with the get() method.
-     */
-    public Time time();
     
     /**
      * Returns information about the transaction that wrote the last
@@ -242,6 +248,10 @@ public interface Connection extends ReadInterface {
      * for the last transaction started with this connection.
      */
     public void sync(SyncLevel syncLevel);
+    
+    // TODO LATER. Idea, 2026-10-13 (Frans): isDurable() and 
+    // isDurable(SyncLevel) for the last transaction started with this 
+    // connection, as for sync(). See the same idea in Transaction.
 }
 
 /*

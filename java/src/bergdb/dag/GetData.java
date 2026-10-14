@@ -18,7 +18,10 @@ public class GetData extends OpData {
     public long actualLookupTime;
         // The actual lookup time used. Can be less than the requested lookup time.
     public long kvTime;
-        // Set to the time the found kv was written to the database.
+        // The time of the key node entry of the found kv. Internal. NOT the time the kv was
+        // written: after a time split of the key node it is the time of the split, and reclaim
+        // rewrites values in later transactions. Not in the Pub API since 2026-10-13
+        // (docs/problem.md, Q9; docs/levels.md, W3).
     public long tpos;
         // Set to the tpos of the transaction that wrote the value.
     public long followMemoryPointerCount;

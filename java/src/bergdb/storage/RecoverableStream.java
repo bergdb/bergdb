@@ -66,6 +66,13 @@ public class RecoverableStream {
     /** Byte size of transaction header. */
     public static final int TRANS_HEADER_SIZE = 4;
     
+    /** 
+     * Smallest size of a transaction that the layer above reads (NodeStream: a 16-byte 
+     * header and the last byte). A transaction header fixed at recovery must give at 
+     * least this size.
+     */
+    public static final int MIN_TRANS_SIZE = 16 + 1;
+    
     /** If check enabled, append sizes must be a multiple of this value. */
     public static final int TRANS_ALIGNMENT = 8;
     
@@ -75,6 +82,8 @@ public class RecoverableStream {
     private final AppendOnlyStream aos;
     private final MetaBlock metaBlock;
     private long posOfLastValidMetaBlock;
+    private long lastTransSposOfLastValidMetaBlock = -1;
+        // The transaction that recovery starts from (2026-10-13).
     
     /**
      * Creates a new instance from an append-only stream.
@@ -134,6 +143,14 @@ public class RecoverableStream {
     public long getPosOfLastValidMetaBlock() {
         return this.posOfLastValidMetaBlock;
     }
+    
+    /**
+     * Returns the position of the transaction named by the last valid meta block, where
+     * recovery starts, or -1 if unknown or none. The stream must not be cut after it.
+     */
+    public long getLastTransSposOfLastValidMetaBlock() {
+        return this.lastTransSposOfLastValidMetaBlock;
+    }
 
     /**
      * Handles the case when the stream crashed while writing the last transaction.
@@ -184,6 +201,9 @@ public class RecoverableStream {
     private static byte[] transHeaderFixBytes(byte[] existingBytes) {
         // If existing bytes (zero-filled) is large enough, zero-fill it.
         // If not, add 1 and then zeros.
+        // 2026-10-13 (CrashTest): "large enough" was 6, so a cut after one size
+        // byte of 6 to 16 gave a transaction that NodeStream rejected at startup
+        // ("Bad transaction size"). Now it is MIN_TRANS_SIZE.
         
         byte[] fixBytes;
         int bytesToAdd = 5 - existingBytes.length;
@@ -197,7 +217,7 @@ public class RecoverableStream {
         
         int sizeFromBuffer = Bytes.bytesToIntLE(buffer, 0);
         
-        boolean existingSizeTooSmall = sizeFromBuffer < 6;
+        boolean existingSizeTooSmall = sizeFromBuffer < MIN_TRANS_SIZE;
         
         fixBytes = new byte[bytesToAdd];
         fixBytes[fixBytes.length - 1] = StoredTrans.CURRENT_FORMAT_VERSION;
@@ -422,6 +442,7 @@ public class RecoverableStream {
         long metaPos = aos.getLength();
         aos.append(metaBlock.getBlock(), 0, RecoverableStream.META_BLOCK_SIZE);
         this.posOfLastValidMetaBlock = metaPos;
+        this.lastTransSposOfLastValidMetaBlock = metaBlock.getLastTransSpos();
         
         //System.out.println("RecoverableStream, wrote MetaBlock, pos: " + metaPos 
         //        + ", startupPos: " + metaBlock.getStartupPos());
@@ -442,6 +463,7 @@ public class RecoverableStream {
             return null;
         }
         this.posOfLastValidMetaBlock = block.getPos();
+        this.lastTransSposOfLastValidMetaBlock = block.getLastTransSpos();
         
         return block;
     }
@@ -457,6 +479,11 @@ public class RecoverableStream {
     public long getLength() {
         assert aos != null;
         return aos.getLength();
+    }
+    
+    /** The first position that can be read; larger than 0 after a pretruncate. */
+    public long getFirstPos() {
+        return aos.getFirstPos();
     }
     
     /**
@@ -494,7 +521,13 @@ public class RecoverableStream {
         MetaBlock result = null;
         
         metaIndex = spos / META_BLOCK_DISTANCE;
-        for (long i = metaIndex; i >= 0; i--) {
+        
+        // 2026-10-13: the search went down to block 0, also when the front of the
+        // stream had been cut (pretruncate), and then failed reading the cut part. Blocks
+        // before the first position of the stream are not searched.
+        final long firstIndex = (aos.getFirstPos() + META_BLOCK_DISTANCE - 1) / META_BLOCK_DISTANCE;
+        
+        for (long i = metaIndex; i >= firstIndex; i--) {
         	long blockPos = i * META_BLOCK_DISTANCE;
             result = readMetaBlock(aos, blockPos);
             if (result.isValid()) {
@@ -914,13 +947,27 @@ public class RecoverableStream {
         public static void testTransHeaderFixBytes2() {
             // Test with one existing byte that is large enough.
             
+            byte[] existing = new byte[]{40};
+            byte[] fix = transHeaderFixBytes(existing);
+            
+            byte[] total = Util.concat(existing, fix);
+            int size = Bytes.bytesToIntLE(total, 0);
+            
+            Assert.assertEquals(40, size);
+        }
+        
+        @Nano
+        public static void testTransHeaderFixBytesBelowMin() {
+            // One existing byte, 10, below MIN_TRANS_SIZE. Until 2026-10-13, the size
+            // became 10, which NodeStream rejects.
+            
             byte[] existing = new byte[]{10};
             byte[] fix = transHeaderFixBytes(existing);
             
             byte[] total = Util.concat(existing, fix);
             int size = Bytes.bytesToIntLE(total, 0);
             
-            Assert.assertEquals(10, size);
+            Assert.assertEquals(256 + 10, size);
         }
         
         @Nano

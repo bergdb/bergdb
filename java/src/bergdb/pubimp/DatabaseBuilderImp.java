@@ -50,7 +50,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
             }
         }
         
-        startupDistanceInMb = 20;
+        startupDistanceInMb = 50;      // Was 20 (2026-10-13).
     }
     
     /**

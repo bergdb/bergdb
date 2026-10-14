@@ -10,7 +10,7 @@ public class Kvt {
     
     public long[] key;
     public byte[] value;
-    public long time;
+    public long time;       // Time of the key node entry; not the write time (see GetData.kvTime).
     
     /**
      * Stream position of ValueNode.

@@ -65,7 +65,10 @@ public interface DatabaseBuilder {
      * A small startup distance can decrease database startup time; while a larger
      * startup distance can improve the overall database performance.
      * For a low-end PC with 0.5 GB of RAM, a value of 5 is reasonable, while a 
-     * high-end server may use 50. The value should be seen as a proposal, 
+     * high-end server may use 50. The default is 50: startup then takes about 0.6 s
+     * with 1000-byte values and 1.4 s with 100-byte values, on a fast SSD (measured
+     * 2026-10-13). Existing databases keep the startup distance stored in their
+     * stream. The value should be seen as a proposal, 
      * to the database. If the database considers the value
      * too small or to high, it may clamp it to an internally permitted range.
      * 

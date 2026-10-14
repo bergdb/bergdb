@@ -7,6 +7,7 @@ import bergdb.common.Bug;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.stream.AppendOnlyStream;
+import bergdb.stream.CutStream;
 import bergdb.stream.MemoryStream;
 
 /**
@@ -45,6 +46,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     private boolean flushAndClose = false; // can be set to true by
                                            // flushAndStop() only.
     private IOException exception = null;
+    private long pendingCut = 0;    // a pretruncate position not yet flushed; see pretruncate()
     private final int waitTime;
     private final int waitsBeforeFlush;
     private AppendListener appendListener;
@@ -99,8 +101,11 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         streamLength = stream.getLength();
         totalLength = streamLength;
 
-        pStart = 0;
-        cStart = 0;
+        // 2026-10-13 (java/stress/CrashTest.java): pStart and cStart were 0 here, but
+        // readFromBuffer() takes stream positions. For a stream that was not empty, reads
+        // of bytes still in the buffer returned other bytes.
+        pStart = streamLength;
+        cStart = streamLength;
         cSize = 0;
 
         consumer = new Thread(new Runnable() {
@@ -197,7 +202,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         IOException ex = null;
 
         try {
-            if (index2 > index1) {
+            if (index2 >= index1) {     // Was '>', which wrote wrong bytes for a 1-byte flush.
                 stream.append(buffer, index1, sizeToFlush);
             } else {
                 stream.append(buffer, index1, bufferCapacity - index1);
@@ -206,6 +211,28 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         } catch (IOException e) {
             ex = e;
         }
+        
+        if (ex != null) {
+            // 2026-10-13: the failed bytes were counted as appended, and the
+            // listener was told so; a sync then returned as if they were durable. Now the
+            // stream stops, and the listener is told of the failure.
+            synchronized (this) {
+                if (this.exception == null) {
+                    this.exception = ex;
+                }
+                stop = true;
+                notifyAll();
+            }
+            appendListener.appendFailed(ex);
+            return;
+        }
+
+        // 2026-10-13: a pending cut that these bytes reach is made before the
+        // flush is published. It was made after, so close() could return, and close the
+        // stream, before the cut (BufferedStream.testPretruncateBeyondFlushed failed now
+        // and then). And before the listener, which releases syncs.
+
+        applyPendingCut(streamLength + sizeToFlush);
 
         final long myStreamSize;
 
@@ -400,8 +427,46 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         this.totalLength += len;
     }
 
+    /**
+     * Pretruncates the underlying stream. A position past the bytes flushed so far is kept
+     * and applied after the flush that reaches it.
+     * 2026-10-13 (testPretruncateBeyondFlushed): the position was passed on at
+     * once, also when it was still in the buffer; MemoryStream then failed, and the
+     * underlying stream could be cut past its end.
+     */
     public void pretruncate(long position) throws IOException {
+        synchronized (this) {
+            if (position > streamLength) {
+                pendingCut = Math.max(pendingCut, position);
+                return;
+            }
+        }
         stream.pretruncate(position);
+    }
+    
+    /**
+     * Applies a pending pretruncate that the flushed bytes reach; flushedLength is the
+     * length of the underlying stream. Consumer only.
+     */
+    private void applyPendingCut(long flushedLength) {
+        long cut = 0;
+        synchronized (this) {
+            if (pendingCut > 0 && pendingCut <= flushedLength) {
+                cut = pendingCut;
+                pendingCut = 0;
+            }
+        }
+        if (cut > 0) {
+            try {
+                stream.pretruncate(cut);
+            } catch (IOException e) {
+                synchronized (this) {
+                    if (this.exception == null) {
+                        this.exception = e;
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -419,6 +484,8 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         long length = stream.getLength();
         totalLength = length;
         streamLength = length;
+        pStart = length;
+        cStart = length;
     }
 
     public void setAppendListener(AppendListener appendListener) {
@@ -489,6 +556,45 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         } finally {
             b.stop();
         }
+    }
+
+    /**
+     * Regression test for a bug found 2026-10-13: on a stream that was not empty,
+     * a read of bytes still in the buffer returned other bytes.
+     */
+    @Nano
+    public static void testReadFromBufferOfNonEmptyStream() throws IOException {
+        MemoryStream m = new MemoryStream();
+        m.append(new byte[150], 0, 150);
+        BufferedStream b = new BufferedStream(m, 100, 1000);   // Not started: no flush.
+        
+        byte[] bytes = new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+        b.append(bytes, 0, bytes.length);
+        byte[] dest = new byte[bytes.length];
+        b.read(150, dest, 0, dest.length);
+        Assert.assertTrue(java.util.Arrays.equals(bytes, dest));
+        
+        dest = new byte[12];
+        b.read(148, dest, 0, dest.length);   // From the stream and the buffer.
+        Assert.assertEquals((byte) 0, dest[1]);
+        Assert.assertEquals((byte) 1, dest[2]);
+        Assert.assertEquals((byte) 10, dest[11]);
+    }
+
+    /**
+     * Regression test for a bug found 2026-10-13: a pretruncate position that was
+     * still in the buffer was passed on to the underlying stream at once.
+     */
+    @Nano
+    public static void testPretruncateBeyondFlushed() throws IOException {
+        CutStream c = new CutStream();      // Refuses a cut past its end.
+        BufferedStream b = new BufferedStream(c, 1000, 10);
+        b.append(new byte[300], 0, 300);
+        b.pretruncate(200);                 // Not started: nothing flushed.
+        Assert.assertEquals(0L, c.getCut());
+        b.start();
+        b.close();
+        Assert.assertEquals(200L, c.getCut());
     }
 
     @Nano

@@ -679,6 +679,159 @@ public class DbTesterGetMany {
         Assert.assertEquals(10, g.result.size());
     }
     
+    /**
+     * Regression test for a bug found 2026-10-13 (java/stress/ReclaimReaders.java; see
+     * docs/levels.md, "Level 3 follow-up"): with an inclusive start key (the default), the start key itself
+     * was not returned when the tree of its segment had more than one node level, that is,
+     * with more than about 30 keys. The setup of the chain compared the number of nodes in
+     * the chain, not the number of key segments, with the length of the start key.
+     */
+    @Nano
+    public static void testInclusiveStartKeyWithDeepTree() {
+        for (int maxNode : new int[] {0, 8, 14}) {
+            for (boolean longKeys : new boolean[] {false, true}) {
+                for (boolean forward : new boolean[] {true, false}) {
+                    CoreTestClock clock = new CoreTestClock();
+                    DbBuilder b = Db.builder().testSetup().clock(clock).startupDistance(10000);
+                    if (maxNode == 8) b.maxNodeSize8();
+                    if (maxNode == 14) b.maxNodeSize14();
+                    Db db = b.start();
+                    int n = 120;
+                    for (int i = 0; i < n; i++) {
+                        clock.setTime(1000 + i * 10);
+                        String key = longKeys ? "/long/key/" + i : "/k/" + i;
+                        db.execute(db.trans().put(key, new byte[10]).build());
+                    }
+
+                    for (int i = 0; i < n; i++) {
+                        String key = longKeys ? "/long/key/" + i : "/k/" + i;
+                        GetMany g = db.newGetMany();
+                        g.startKey = Keys.toSegments(key);
+                        g.inclusive = true;
+                        g.forward = forward;
+                        db.getMany(g);
+                        String what = "maxNode " + maxNode + ", long " + longKeys + ", forward "
+                                + forward + ", key " + key;
+                        Assert.assertTrue(what + ": no result", g.result.size() > 0);
+                        Assert.assertEquals(what, 0,
+                                Keys.compareKeys(g.startKey, g.result.get(0).key));
+
+                        g = db.newGetMany();
+                        g.startKey = Keys.toSegments(key);
+                        g.inclusive = false;
+                        g.forward = forward;
+                        db.getMany(g);
+                        if (g.result.size() > 0) {
+                            Assert.assertTrue(what + ": exclusive returned the start key",
+                                    Keys.compareKeys(g.startKey, g.result.get(0).key) != 0);
+                        }
+                    }
+                    db.stop();
+                }
+            }
+        }
+    }
+
+    /**
+     * Scans from a random start key, in both directions, inclusive and exclusive, against a
+     * sorted list of the keys: trees of several node levels, keys of one and of several
+     * segments, start keys that exist and that do not (2026-10-13, found by
+     * java/stress/ReclaimReaders.java; see docs/levels.md, "Level 3 follow-up").
+     */
+    @Nano
+    public static void testStartKeyRandom() {
+        for (int seed = 0; seed < 12; seed++) {
+            java.util.Random r = new java.util.Random(seed);
+            int[] nodeSizes = {0, 8, 14};
+            CoreTestClock clock = new CoreTestClock();
+            DbBuilder b = Db.builder().testSetup().clock(clock).startupDistance(10000);
+            if (nodeSizes[seed % 3] == 8) b.maxNodeSize8();
+            if (nodeSizes[seed % 3] == 14) b.maxNodeSize14();
+            Db db = b.start();
+
+            final List<long[]> keys = new ArrayList<long[]>();
+            int n = 20 + r.nextInt(300);
+            long time = 1000;
+            for (int i = 0; i < n; i++) {
+                String key = randomKey(r);
+                long[] segs = Keys.toSegments(key);
+                boolean dup = false;
+                for (long[] k : keys) {
+                    dup |= Keys.compareKeys(k, segs) == 0;
+                }
+                if (dup) {
+                    continue;
+                }
+                keys.add(segs);
+                time += 10;
+                clock.setTime(time);
+                db.execute(db.trans().put(key, new byte[5]).build());
+            }
+            Collections.sort(keys, new Comparator<long[]>() {
+                public int compare(long[] a, long[] c) {
+                    return Keys.compareKeys(a, c);
+                }
+            });
+
+            for (int j = 0; j < 80; j++) {
+                long[] start = r.nextBoolean() ? keys.get(r.nextInt(keys.size()))
+                        : Keys.toSegments(randomKey(r));
+                for (int mode = 0; mode < 4; mode++) {
+                    boolean forward = mode < 2;
+                    boolean inclusive = mode % 2 == 0;
+                    GetMany g = db.newGetMany();
+                    g.startKey = start;
+                    g.inclusive = inclusive;
+                    g.forward = forward;
+                    g.stopCondition = new GetMany.StopCondition() {
+                        private int count = 0;
+                        public int handleKvt(Kvt kvt) {
+                            return ++count >= 5 ? ADD_AND_STOP : ADD;
+                        }
+                        public void eod() {}
+                    };
+                    db.getMany(g);
+
+                    List<long[]> expected = new ArrayList<long[]>();
+                    for (int i = 0; i < keys.size(); i++) {
+                        long[] k = keys.get(forward ? i : keys.size() - 1 - i);
+                        int c = Keys.compareKeys(k, start);
+                        boolean ok = forward ? (inclusive ? c >= 0 : c > 0)
+                                : (inclusive ? c <= 0 : c < 0);
+                        if (ok && expected.size() < 5) {
+                            expected.add(k);
+                        }
+                    }
+
+                    String what = "seed " + seed + ", start " + Keys.bkey2ikey(Keys.toBytes(start))
+                            + ", forward " + forward + ", inclusive " + inclusive;
+                    Assert.assertEquals(what + ": number of results", expected.size(),
+                            g.result.size());
+                    for (int i = 0; i < expected.size(); i++) {
+                        Assert.assertEquals(what + ": result " + i, 0,
+                                Keys.compareKeys(expected.get(i), g.result.get(i).key));
+                    }
+                }
+            }
+            db.stop();
+        }
+    }
+
+    private static String randomKey(java.util.Random r) {
+        // Short keys (one segment) and long ones (several), over a small alphabet so that
+        // keys share prefixes and segments.
+        String[] parts = {"a", "b", "ab", "abc", "k", "/k/", "/long/", "xyz", "q"};
+        StringBuilder b = new StringBuilder();
+        int count = 1 + r.nextInt(r.nextInt(4) == 0 ? 6 : 2);
+        for (int i = 0; i < count; i++) {
+            b.append(parts[r.nextInt(parts.length)]);
+            if (r.nextBoolean()) {
+                b.append(r.nextInt(100));
+            }
+        }
+        return b.toString();
+    }
+
     @Nano
     public static void testFromIndexing1() {
         //

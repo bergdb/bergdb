@@ -2,26 +2,72 @@ package bergdb.core;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 import bergdb.common.Bug;
 import bergdb.common.StringMap;
 import bergdb.common.StringUtil;
+import bergdb.dag.Dag;
 import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
+import bergdb.dag.Node;
+import bergdb.dag.Spos;
+import bergdb.dag.TopNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.Clock;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
+import bergdb.stream.CutStream;
 import bergdb.stream.MemoryStream;
 
 // NOTE Could we make this class more testable (separate from Db?).
 
 /**
  * This class handles stream space reclaim.
+ * 
+ * <p>2026-10-13 (docs/levels.md, level 3): reworked after tests with restarts
+ * and an exact cut (java/stress/ReclaimStress.java). How it works now:</p>
+ * 
+ * <ul>
+ * <li>An iteration starts at an external transaction when the stream has grown by twice
+ * the startup distance since the last iteration started, and a quarter of the retain
+ * duration has passed (ITERATION_SPACING): pStart is the stream length then, tStart the
+ * time. Its cut point pCut is the pStart of the iteration before (the first iteration:
+ * its own pStart).</li>
+ * <li>Each external transaction allows a step when the bytes rewritten so far are below
+ * internalFraction times the stream growth since pStart. A step scans the KVs at time
+ * tStart after lastKey, rewrites each live value stored before pCut, and "touches"
+ * the same key range at the current time (Trans.touch): every index node on the way
+ * gets dirty and is written again, also nodes that hold deleted keys only. The row of the
+ * iteration, with the new lastKey, is stored in the same transaction (CURRENT_KEY_NAME);
+ * the table is stored when an iteration starts, ends, gets safe or is cut.</li>
+ * <li>When the scan reaches the end, the iteration is done; tEnd and pEnd are the time and
+ * position of the last step. Every node and value reachable at times from tEnd on is then
+ * stored at pCut or later (index nodes at pStart or later), or is dirty and will be
+ * written there.</li>
+ * <li>The cut waits until the startup pos has passed pEnd (every touched node written
+ * once), and then passed pSafe, the stream length at that moment (nodes written before
+ * their children and kept dirty by the still-dirty test written once more, now naming the
+ * children's new positions). Then, when tEnd is older than the retention duration, the
+ * stream is cut at pCut, the row is marked cut and the first available lookup time is
+ * tEnd.</li>
+ * <li>All state that decides what reclaim writes is in the table or follows from stream
+ * positions, so a restart changes nothing (INV-RESTART).</li>
+ * <li>The retain duration may change at any time, also by a restart, since it is not stored.
+ * Every cut keeps the guarantee of the duration in force when it is decided (the first
+ * available lookup time is then before the decision time minus the duration); the first
+ * available lookup time never moves back, and a larger duration does not bring back what was
+ * cut (ReclaimRetentionTester, java/stress/ReclaimStress.java; docs/levels.md, W2).</li>
+ * <li>A read admitted before a cut may reach bytes the cut removes. It expires with a
+ * LookupTimeNotAvailableException; the stream and the database are not affected (see
+ * cutIfDurable(); ReclaimReaderTester, java/stress/ReclaimReaders.java; W1).</li>
+ * </ul>
  * 
  * @author Frans Lundberg
  */
@@ -42,23 +88,50 @@ public class Reclaim implements Db.TransactionListener {
     private final AppendOnlyStream aos;
     private final IterationTable table;
     private final long[] tableKey;
-    private Iteration iteration;
-        // Current ongoing iteration or null if none is ongoing.
-    private long lastIterationPStart;
-        // pStart of last iteration that completed, or 0 if no iteration has completed yet.
-        // Used to limit iterations not to start too often.
-    private long sposAtLastPretruncateCall;
     private static final String TABLE_KEY_NAME = DbConstants.INTERNAL_PREFIX + "dreclaim/-table.txt";
+    
+    /**
+     * The row of the iteration in progress, as stored by its last step (2026-10-13,
+     * docs/levels.md, "Level 3 cost"). Steps stored the whole table, which grows by a
+     * row per iteration until a cut; with a long retention about 30 rows, stored at every
+     * step. Newer than the table's row with the same pStart while that row is not done.
+     */
+    private final long[] currentKey;
+    private static final String CURRENT_KEY_NAME = 
+            DbConstants.INTERNAL_PREFIX + "dreclaim/-current.txt";
+    
+    /**
+     * An iteration starts when this fraction of the retain duration has passed since the
+     * last one started (2026-10-13, docs/levels.md, "Level 3 cost"). Before,
+     * iterations ran back to back whatever the retention; with a long retention, many
+     * per retention duration, each rewriting most KVs. A cut point every quarter of the
+     * retention keeps the stream within about 1.25 times what the retention needs.
+     */
+    static final double ITERATION_SPACING = 0.25;
     private final long initialStartupDistance;
     
-    // internalFraction is the fraction of the stream allowed to be occupied by
-    // internal transactions compared to the total stream size while a reclaim iteration is running.
-    // A small internalFraction will reduce the stream writes (reduce lastPos)
-    // but increase the total stream size (lastPos - firstPos + 1).
+    /** A step is made when it may rewrite more than this many bytes. */
+    private static final long MIN_STEP_SIZE = 10 * 1000L;
+    
+    /**
+     * A step scans at most this many bytes of KVs (2026-10-13, docs/levels.md,
+     * "Level 3 cost"). The allowance is a budget for the whole iteration, and the stream
+     * grows in bursts (the writes of nodes made dirty a startup distance earlier), so it
+     * reached a megabyte at times; one step then made 800 index nodes dirty, and since
+     * the writer takes the dirty nodes of a transaction together (TransSeq.take), a user
+     * commit later wrote up to 1100 index nodes.
+     */
+    private static final long MAX_STEP_SIZE = 16 * 1000L;
+    
+    /** Bytes of a value node besides its key and value (StoredValueNode). */
+    private static final int VALUE_NODE_BYTES = 28;
+    
+    // internalFraction: the bytes rewritten by an iteration, compared to the growth of the
+    // stream while it runs. A small internalFraction will reduce the stream writes but 
+    // increase the total stream size.
     
     private static final double DEFAULT_INTERNAL_FRACTION = 0.25;
     private volatile double internalFraction;
-        // internal fraction for the next iteration
     
     private volatile long retainDuration;
     
@@ -68,13 +141,18 @@ public class Reclaim implements Db.TransactionListener {
     private long firstAvailableLookupTime;
     private long firstAvailablePos;
     
-    private volatile long iterationCount;   // The number of iterations completed.
+    private volatile long iterationCount;   // Iterations completed by this object (statistics).
+    
+    private long pendingCut = -1;           // A cut decided but not yet made, or -1.
+    private long pendingCutDurableAt;       // The cut is made when this is durable.
+    
+    private Stats stats;                    // null unless enableStats() was called.
     
     
     public Reclaim(Db db, AppendOnlyStream aos) {
         table = new IterationTable();
         tableKey = Keys.toSegments(TABLE_KEY_NAME);
-        sposAtLastPretruncateCall = 0;
+        currentKey = Keys.toSegments(CURRENT_KEY_NAME);
         if (db == null) {
             throw new IllegalArgumentException("db == null not allowed");
         }
@@ -85,7 +163,6 @@ public class Reclaim implements Db.TransactionListener {
         this.db = db;
         this.aos = aos;
         this.initialStartupDistance = db.getStartupDistance();
-        this.lastIterationPStart = 0;
         
         this.retainDuration = Long.MAX_VALUE;
         this.internalFraction = DEFAULT_INTERNAL_FRACTION;
@@ -141,7 +218,7 @@ public class Reclaim implements Db.TransactionListener {
     }
     
     /**
-     * Sets the internal fraction value to use for next iteration.
+     * Sets the internal fraction value, used from the next step.
      * Must be between 0.001 and 0.90 inclusive.      
      */
     public void setInternalFraction(double internalFraction) {
@@ -163,128 +240,268 @@ public class Reclaim implements Db.TransactionListener {
         return this.iterationCount;
     }
     
+    /** The last completed iteration in the table, or null. For tests. */
+    IterationInfo lastDoneRow() {
+        IterationInfo result = null;
+        for (IterationInfo row : table.rows) {
+            if (row.done) {
+                result = row;
+            }
+        }
+        return result;
+    }
+    
     /**
-     * Called by Db after each transaction completed.
+     * Called by Db after each transaction completed, while it holds the write lock.
+     * Internal transactions are ignored.
      * 
      * @throws StreamFormatException
      * @throws StreamIoException
      * @throws InternalDataException  If DB data "table.txt" is badly formatted.
      */
     public void transactionCompleted(Trans t) {
-        final boolean isInternal = t.isInternal();
-        long streamSize = t.nextPos;
+        if (t.isInternal()) {
+            return;
+        }
+        
+        final long streamSize = t.nextPos;
             // This is correct since meta blocks are written eagerly by RecoverableStream.
+        IterationInfo current = currentIteration();
         
-        if (!isInternal && iteration == null && retainDuration != Long.MAX_VALUE) {
-            // If 
-            //   there is no on-going iteration (iteration == null) 
-            //   AND t is a normal non-internal transaction
-            //   AND streamSize is significantly larger than pStart of last iteration.
-            //   AND retainDuration is not Long.MAX_VALUE.
-            // Then
-            //   Start a new iteration.
-            //
-            
-            if (streamSize > lastIterationPStart + initialStartupDistance * 2) {
-                this.iteration = new Iteration(t, this.internalFraction);
-                
-                // Adds row to iteration table and writes to db.
-                
-                lastIterationPStart = iteration.pStart;
-                IterationInfo info = new IterationInfo();
-                info.tStart = iteration.tStart;
-                info.pStart = iteration.pStart;
-                info.done = false;
-                table.rows.add(info);
-                
-                String tableString = table.serialize();
-                Trans t2 = db.trans().put(tableKey, StringUtil.toBytes(tableString)).build();
-                t2.isInternal = true;
-                try {
-                    db.execute(t2);
-                } catch (RerunException e) {
-                    throw new Bug("Rerun for write-only trans unexpected, " + e.getMessage());
-                }
-                
+        if (current == null && retainDuration != Long.MAX_VALUE
+                && streamSize > lastPStart() + initialStartupDistance * 2
+                && t.tt - lastTStart() >= (long) (ITERATION_SPACING * retainDuration)) {
+            current = new IterationInfo();
+            current.pStart = streamSize;
+            current.tStart = t.tt;
+            current.pCut = table.rows.isEmpty() ? streamSize : lastPStart();
+            table.rows.add(current);
+            storeTable();
+        }
+        
+        if (current != null) {
+            long allowed = (long) (internalFraction * (streamSize - current.pStart)) 
+                    - current.rewritten;
+            if (allowed > MIN_STEP_SIZE) {
+                step(current, Math.min(allowed, MAX_STEP_SIZE));
             }
         }
         
-        if (iteration != null) {
-            if (isInternal) {
-                iteration.gotInternal(t);
+        markSafePositions(streamSize);
+        pretruncateIfPossible(t.tt);
+        cutIfDurable();
+    }
+    
+    /**
+     * Makes the pending cut when the stream is durable up to pendingCutDurableAt: past the
+     * table that marks the cut and the meta block that recovery starts from. Otherwise a
+     * crash could lose them after the front of the stream is gone (2026-10-13).
+     *
+     * <p>The wait does not protect readers. A read admitted before the first available
+     * lookup time moved can still be running, with a lookup time before the new first
+     * available lookup time, and reach bytes this cut removes. Such a read expires: the
+     * stream throws ReadBelowFirstPosException, the stream stays usable, and Db turns the
+     * exception into a LookupTimeNotAvailableException (docs/levels.md, W1,
+     * decision D1 = A; ReclaimReaderTester, java/stress/ReclaimReaders.java). Protected reads
+     * (registration of readers, a wait for them before the cut) are decision D1 = B,
+     * not done.</p>
+     */
+    private void cutIfDurable() {
+        if (pendingCut != -1 && db.getDurableLength() >= pendingCutDurableAt) {
+            pretruncate(pendingCut);
+            pendingCut = -1;
+        }
+    }
+    
+    /** The iteration in progress, the last row of the table if it is not done, or null. */
+    IterationInfo currentIteration() {
+        int size = table.rows.size();
+        if (size == 0) {
+            return null;
+        }
+        IterationInfo last = table.rows.get(size - 1);
+        return last.done ? null : last;
+    }
+    
+    /** pStart of the last iteration started, or 0. */
+    private long lastPStart() {
+        int size = table.rows.size();
+        return size == 0 ? 0 : table.rows.get(size - 1).pStart;
+    }
+    
+    /** tStart of the last iteration started, or Long.MIN_VALUE / 2. */
+    private long lastTStart() {
+        int size = table.rows.size();
+        return size == 0 ? Long.MIN_VALUE / 2 : table.rows.get(size - 1).tStart;
+    }
+    
+    /**
+     * One step of iteration 'it': scans KVs at time tStart after lastKey, about writeSize
+     * bytes of them, rewrites each live value stored before pCut, touches the key range,
+     * and stores the table row as it is after the step; all in one internal transaction.
+     * After the last step (the scan reached the end), the iteration is done, and tEnd and
+     * pEnd are stored.
+     */
+    private void step(final IterationInfo it, final long writeSize) {
+        final long[][] lastKeyOfStep = new long[][] {it.lastKey};
+        final boolean[] eod = new boolean[] {false};
+        
+        GetMany g = db.newGetMany();
+        g.startKey = it.lastKey;
+        assert g.startKey == null || g.startKey.length > 0;
+        g.inclusive = false;
+        g.lookupTime = it.tStart;
+        g.stopCondition = new GetMany.StopCondition() {
+            private long size = 0;
+                // An approximation of the stream space the KVs of the step.
+            
+            public int handleKvt(Kvt kvt) {
+                size += kvt.key.length * 8 + kvt.value.length + 100;
+                lastKeyOfStep[0] = kvt.key;
+                return size > writeSize ? ADD_AND_STOP : ADD;
+            }
+            
+            public void eod() {
+                eod[0] = true;
+            }
+        };
+        db.getMany(g);
+        
+        Trans.Builder b = db.trans();
+        long stepLookupTime = -1;
+        long rewritten = 0;
+        long values = 0, valueBytes = 0;    // For stats.
+        
+        for (Kvt kvt : g.result) {
+            GetData gd = db.newGetData();
+            byte[] value;
+            
+            if (stepLookupTime == -1) {         // BUG Fixed 130131, was "1" instead of "-1".
+                value = db.getOne(Long.MAX_VALUE, kvt.key, gd);
+                stepLookupTime = gd.actualLookupTime;
             } else {
-                iteration.gotExternal(t);
-                
-                if (iteration.done) {
-                    this.iterationCount++;
-                    iteration.tEnd = t.tt;
-
-                    IterationInfo info = table.rows.get(table.rows.size() - 1);
-                   
-                    if (info.tStart != iteration.tStart) {
-                        throw new Bug("tStart should be equal, " + info.tStart + ", " + iteration.tStart);
-                    }
-                    
-                    if (info.pStart != iteration.pStart) {
-                        throw new Bug("pStart should be equal, " + info.pStart + ", " + iteration.pStart);
-                    }
-                    
-                    info.tEnd = iteration.tEnd;
-                    info.kvCount = iteration.kvCount;
-                    info.done = true;
-                    
-                    if (iteration.lastKey != null) {
-                        info.lastKey = new long[iteration.lastKey.length];
-                        System.arraycopy(iteration.lastKey, 0, info.lastKey, 0, iteration.lastKey.length);
-                    }
-                    
-                    String tableString = table.serialize();
-                    Trans t2 = db.trans().put(tableKey, StringUtil.toBytes(tableString)).build();
-                    t2.isInternal = true;
-                    try {
-                        db.execute(t2);
-                    } catch (RerunException e) {
-                        throw new Bug("RerunException for write-only trans unexpected, " 
-                                + e.getMessage());
-                    }
-                    
-                    pretruncateIfPossible(t.tt);
-                    
-                    iteration = null;
-                }
+                value = db.getOne(stepLookupTime, kvt.key, gd);
+            }
+            
+            // If the KV still exists and its value is stored before pStart, it is 
+            // rewritten to the stream.
+            // 2026-10-13 (Reclaim.Tester.testIterationRewritesAllOldValues):
+            // was "gd.kvTime <= tStart". After a time split of the key node, kvTime is
+            // the time of the split, not of the write, so old values were skipped and
+            // then cut away. The position of the value decides what the cut removes.
+            
+            if (value != null && gd.tpos < it.pCut) {
+                b.keyRead(kvt.key);
+                b.put(kvt.key, value);      // Note, no mem copy of key and value.
+                rewritten += kvt.key.length * 8 + value.length + VALUE_NODE_BYTES;
+                values++;
+                valueBytes += kvt.key.length * 8 + value.length;
             }
         }
         
-        // Calls pretruncateIfPossible once in a while. It is not called every time this method
-        // is executed for performance reasons.
-        // Also stores the iteration table at the same time.
+        final IterationInfo next = it.copy();
+        next.lastKey = lastKeyOfStep[0];
+        next.kvCount += g.result.size();
+        next.rewritten += rewritten;
+        final Trans[] stepTrans = new Trans[1];
+        final byte[][] tableBytes = new byte[1][];
+        final long[] dirtiedStored = new long[1];
         
-        if (!isInternal && streamSize - this.sposAtLastPretruncateCall > 2 * initialStartupDistance) {
-            this.sposAtLastPretruncateCall = streamSize;
-            pretruncateIfPossible(t.tt);
-            
-            if (iteration != null && table.rows.size() > 0) {
-                
-                // Updates last key. Used to be able to continue iteration over db restarts.
-                
-                IterationInfo info = table.rows.get(table.rows.size() - 1);
-                
-                if (iteration.lastKey != null) {
-                    info.lastKey = new long[iteration.lastKey.length];
-                    System.arraycopy(iteration.lastKey, 0, info.lastKey, 0, iteration.lastKey.length);
-                    
-                    String tableString = table.serialize();
-                    Trans tt = db.trans().put(tableKey, StringUtil.toBytes(tableString)).build();
-                    tt.isInternal = true;
-                    
-                    try {
-                        db.execute(tt);
-                    } catch (RerunException e) {
-                        throw new Bug("Unexpected to get RerunException for write-only transaction, " 
-                                + e.getMessage());
-                    }
-                }
+        // 2026-10-13 (docs/levels.md, "Level 3 cost"): the allowance counted the
+        // values only, about 100 bytes each for the index; the index nodes the step makes
+        // dirty, by its puts and its touch, were not counted, so reclaim wrote more than
+        // internalFraction. Their size is known during the step only (Trans.dirtiedBytes),
+        // so the row is stored by a value transformation.
+        
+        b.put(currentKey, null, new byte[0], new ValueTransformation() {
+            public byte[] transform(long transTime, byte[] inputValue, byte[] previous) {
+                dirtiedStored[0] = stepTrans[0].dirtiedBytes;
+                next.rewritten += dirtiedStored[0];
+                tableBytes[0] = StringUtil.toBytes(next.serialize());
+                return tableBytes[0];
             }
+        });
+            // Not done yet: done is stored with tEnd and pEnd, below.
+        
+        Trans t = b.build();
+        stepTrans[0] = t;
+        if (stepLookupTime != -1) {
+            t.readTime = stepLookupTime;
+        }
+        t.isInternal = true;
+        
+        // 2026-10-13 (Q7 in docs/problem.md, 
+        // Reclaim.Tester.testDeletedKeysAfterCut): only live values were rewritten. Nodes
+        // that hold deleted keys only, and the segment subtrees of deleted long keys, kept 
+        // their versions before pStart, and lookups still pass through them.
+        t.touch = true;
+        t.touchFrom = it.lastKey;
+        t.touchTo = eod[0] ? null : lastKeyOfStep[0];
+        
+        Stats.Iteration st = stats == null ? null : statsOf(it);
+        if (st != null && stats.countTouch) {
+            t.touchCount = st.touch;
+            t.touchOldBefore = it.pCut;
+        }
+        
+        try {
+            db.execute(t);
+        } catch (RerunException e) {
+            return;     // The same step is tried at a later transaction.
+        }
+        
+        if (st != null) {
+            st.steps++;
+            st.kvs += g.result.size();
+            st.values += values;
+            st.valueBytes += valueBytes;
+            st.recordBytes += t.nextPos - t.tpos;
+            st.tableBytes += tableBytes[0].length;
+            st.dirtiedNodes += t.dirtiedNodes;
+            st.dirtiedStored += dirtiedStored[0];
+            st.dirtiedBytes += t.dirtiedBytes;
+            st.maxStepDirtied = Math.max(st.maxStepDirtied, t.dirtiedNodes);
+            if (eod[0]) {
+                st.tEnd = t.tt;
+                st.pEnd = t.tpos;
+            }
+        }
+        
+        it.set(next);
+        
+        if (eod[0]) {
+            // 2026-10-13: eod() set done at once, so when the rewrite got a
+            // RerunException, the iteration ended without rewriting the last step. And 
+            // tEnd was the time of the external transaction, before the last rewrite.
+            // The row is stored as done together with tEnd and pEnd; before, the step
+            // stored done, and a crash before the next transaction left a done row with
+            // tEnd 0 (Reclaim.Tester.testCrashBeforeIterationEnd). After such a crash, 
+            // the iteration resumes and its next step finds the end at once.
+            it.done = true;
+            it.tEnd = t.tt;
+            it.pEnd = t.tpos;
+            iterationCount++;
+            storeTable();
+        }
+    }
+    
+    /**
+     * Sets pSafe of done iterations whose last step the startup pos has passed: the stream
+     * length now. See the class comment.
+     */
+    private void markSafePositions(long streamSize) {
+        final long startupPos = db.internal().getStartupPosForEvict();
+        boolean changed = false;
+        
+        for (IterationInfo row : table.rows) {
+            if (row.done && row.pSafe == -1 && startupPos >= row.pEnd) {
+                row.pSafe = streamSize;
+                changed = true;
+            }
+        }
+        
+        if (changed) {
+            storeTable();
         }
     }
 
@@ -303,116 +520,348 @@ public class Reclaim implements Db.TransactionListener {
         if (value != null) {
             String s = StringUtil.toString(value);
             table.parse(s);  // throws InternalDataException
-        }
-        
-        if (table.rows.size() > 0) {
-            IterationInfo lastRow = table.rows.get(table.rows.size() - 1);
-            if (!lastRow.done)  {
-                iteration = new Iteration(lastRow, this.internalFraction);
-            }
-        }
-        
-        this.sposAtLastPretruncateCall = db.getStreamLength();
-            // Run a bit before first reclaim iteration.
-        
-        long maxPos = 0;
-        long maxTime = 0;
-        
-        for (int i = 0; i < table.rows.size(); i++) {
-            IterationInfo row = table.rows.get(i);
-            if (row.done) {
-                if (row.pStart > maxPos) {
-                    maxPos = row.pStart;
-                    maxTime = row.tStart;
+            
+            // The progress of the iteration in progress, stored by its last step.
+            byte[] current = db.getOne(Long.MAX_VALUE, currentKey, g);
+            if (current != null) {
+                IterationInfo c = new IterationInfo();
+                c.deserialize(StringUtil.toString(current));
+                for (IterationInfo row : table.rows) {
+                    if (row.pStart == c.pStart && !row.done && !c.done) {
+                        row.set(c);
+                    }
                 }
             }
         }
         
+        // 2026-10-13 (Reclaim.Tester.testFirstAvailableTimeAfterRestart): the first
+        // available lookup time came from the last completed iteration, also when the
+        // stream had not been cut there yet; lookups in the retention window then failed.
+        // Now the table marks the iteration where the stream was cut.
+        
+        IterationInfo cutRow = null;
+        for (IterationInfo row : table.rows) {
+            if (row.cut && (cutRow == null || row.pStart > cutRow.pStart)) {
+                cutRow = row;
+            }
+        }
+        
+        long firstPos = 0;
+        long firstTime = 0;
+        if (cutRow != null) {
+            firstPos = cutRow.pCut;
+            firstTime = cutRow.tEnd;
+            if (aos.getFirstPos() < firstPos) {
+                pretruncate(firstPos);      // A crash came between the table write and the cut.
+            }
+        }
+        
         synchronized (readSynch) {
-            this.firstAvailableLookupTime = maxTime;
-            this.firstAvailablePos = maxPos;
+            this.firstAvailableLookupTime = firstTime;
+            this.firstAvailablePos = firstPos;
         }
     }
     
     /**
+     * Cuts the stream at the pStart of the latest iteration that is done, safe (see the
+     * class comment), ended before the retention window, and starts at or before the
+     * transaction named by the last valid meta block. The table marks that iteration
+     * (cut = true) and is written before the cut, so that a restart knows where the
+     * stream was cut. The cut itself is made by cutIfDurable().
+     * 
      * @throws StreamIoException
      */
     private void pretruncateIfPossible(long timeNow) {
         assert Thread.holdsLock(this.writeLock);
         
         final long tRetain = db.getRetainDuration();
-        final long posOfLastValidMetaBlock = db.getPosOfLastValidMetaBlock();
-        long maxTruncatePos = -1;
-        long newFirstAvailableLookupTime = -1;
+        final long metaTransPos = db.getLastTransPosOfLastValidMetaBlock();
+        final long startupPos = db.internal().getStartupPosForEvict();
+        IterationInfo cutRow = null;
         
-        // Finds max truncate pos if possible to truncate.
+        for (IterationInfo row : table.rows) {
+            // 2026-10-13: the cut must not pass the startup pos, which startup
+            // reads from, and must wait until the nodes are rewritten (pSafe). Neither
+            // was checked.
+            if (row.done && timeNow - tRetain > row.tEnd 
+                    && row.pSafe != -1 && startupPos >= row.pSafe
+                    // 2026-10-13 (testCutKeepsMetaBlockTransaction): recovery
+                    // starts at the transaction the last valid meta block names; the
+                    // cut checked only the position of the meta block itself.
+                    && metaTransPos >= row.pCut
+                    // The first iteration after the first cut has its pCut there.
+                    && row.pCut > firstAvailablePos
+                    && (cutRow == null || row.pStart > cutRow.pStart)) {
+                cutRow = row;
+            }
+        }
+        
+        if (cutRow == null || cutRow.cut) {
+            return;     // Nothing to cut, or already cut there.
+        }
+        
+        // Removes rows no longer needed, marks the cut and stores the table.
         
         for (int i = 0; i < table.rows.size(); i++) {
-            IterationInfo row = table.rows.get(i);
-            
-            if (row.done) {
-                long truncatePos = row.pStart;
-                if (timeNow - tRetain > row.tEnd 
-                        && posOfLastValidMetaBlock >= truncatePos) {
-                    
-                    if (truncatePos > maxTruncatePos) {
-                        maxTruncatePos = truncatePos;
-                        newFirstAvailableLookupTime = row.tStart;
-                    }
+            if (table.rows.get(i).pStart < cutRow.pStart) {
+                table.rows.remove(i);
+                i--;      // we need to run same index again since we removed one
+            }
+        }
+        cutRow.cut = true;
+        storeTable();
+        
+        // 2026-10-13 (Q6 in docs/problem.md, 
+        // Reclaim.Tester.testLookupsFromFirstAvailableTime): the first available lookup 
+        // time was cutRow.tStart. A value not changed since tStart is rewritten later in
+        // the iteration; until then, lookups find the old version, below the cut. The 
+        // states from tEnd on are complete after the cut.
+        
+        synchronized (readSynch) {
+            this.firstAvailableLookupTime = cutRow.tEnd;
+            this.firstAvailablePos = cutRow.pCut;
+        }
+        
+        pendingCut = cutRow.pCut;
+        pendingCutDurableAt = db.getStreamLength();
+        
+        if (stats != null) {
+            Stats.Cut c = new Stats.Cut();
+            c.pos = cutRow.pCut;
+            c.tEnd = cutRow.tEnd;
+            c.decidedAt = pendingCutDurableAt;
+            c.decidedTime = timeNow;
+            c.retain = tRetain;
+            stats.cuts.add(c);
+        }
+    }
+    
+    private void pretruncate(long pos) {
+        try {
+            aos.pretruncate(pos);
+        } catch (IOException e) {
+            throw new StreamIoException(e);
+        }
+    }
+    
+    /** Stores the iteration table in an internal transaction. */
+    private void storeTable() {
+        byte[] tableBytes = StringUtil.toBytes(table.serialize());
+        if (stats != null) {
+            stats.tableBytes += tableBytes.length;
+        }
+        Trans t = db.trans().put(tableKey, tableBytes).build();
+        t.isInternal = true;
+        try {
+            db.execute(t);
+        } catch (RerunException e) {
+            throw new Bug("RerunException for write-only trans unexpected, " + e.getMessage());
+        }
+    }
+
+    /**
+     * Counts what a record in the stream consists of, if statistics are on. Called by Db
+     * after it has written the record of 't'.
+     */
+    void recordWritten(Trans t, TransNodes n) {
+        final Stats st = this.stats;
+        if (st == null) {
+            return;
+        }
+        Stats.Record rec = !t.isInternal ? st.user : (t.touch ? st.step : st.table);
+        rec.records++;
+        rec.bytes += t.nextPos - t.tpos;
+        for (int i = 0; i < n.valueCount; i++) {
+            rec.valueBytes += StoredValueNode.getByteSize(n.valueNodes[i], n.keys[i]);
+        }
+        for (int i = 0; i < n.keyCount; i++) {
+            rec.indexBytes += StoredKeyNode.getByteSize(n.keyNodes[i]);
+        }
+        for (int i = 0; i < n.topCount; i++) {
+            rec.indexBytes += StoredTopNode.getByteSize(n.topNodes[i]);
+        }
+        rec.indexNodes += n.keyCount + n.topCount;
+    }
+
+    /**
+     * Turns on statistics (Stats) and returns them. For measurements; call while holding
+     * the write lock, or from the writer thread.
+     */
+    Stats enableStats() {
+        if (stats == null) {
+            stats = new Stats();
+        }
+        return stats;
+    }
+
+    /** The statistics record of iteration 'it', created at its first step. */
+    private Stats.Iteration statsOf(IterationInfo it) {
+        List<Stats.Iteration> list = stats.iterations;
+        Stats.Iteration last = list.isEmpty() ? null : list.get(list.size() - 1);
+        if (last == null || last.pStart != it.pStart) {
+            last = new Stats.Iteration();
+            last.pStart = it.pStart;
+            last.tStart = it.tStart;
+            list.add(last);
+        }
+        return last;
+    }
+
+    /**
+     * Statistics of reclaim, in memory only, for measurements of its cost (2026-10-13,
+     * java/stress/ReclaimCost.java): per iteration, what it read and wrote; per cut,
+     * where and when. Not stored, so after a restart they cover the new session only.
+     */
+    static final class Stats {
+        final List<Iteration> iterations = new ArrayList<Iteration>();
+        final List<Cut> cuts = new ArrayList<Cut>();
+        boolean countTouch = true;      // Counting the touch costs time in the writer.
+        long tableBytes;                // Bytes of the table stored outside steps.
+
+        /** Records written, by who wrote them (2026-10-13, W4.1; see Record). */
+        final Record user = new Record();       // External (user) transactions.
+        final Record step = new Record();       // Internal transactions of reclaim steps.
+        final Record table = new Record();      // Internal transactions storing the table.
+
+        /**
+         * What the transaction records in the stream consist of. The index nodes in a record
+         * are those the writer took when it wrote the record, not necessarily those that
+         * this transaction made dirty: index nodes that reclaim made dirty are written in
+         * user records too (levels.md, "Level 3 cost"). "Other" is the rest of the record:
+         * headers, the key/value overhead of the value nodes is in valueBytes.
+         */
+        static final class Record {
+            long records;
+            long bytes;                 // Stream bytes of the records (nextPos - tpos).
+            long valueBytes;            // Value nodes: key, value and node overhead.
+            long indexBytes;            // Key nodes and top nodes.
+            long indexNodes;
+
+            long otherBytes() {
+                return bytes - valueBytes - indexBytes;
+            }
+
+            Record copy() {
+                Record r = new Record();
+                r.records = records;
+                r.bytes = bytes;
+                r.valueBytes = valueBytes;
+                r.indexBytes = indexBytes;
+                r.indexNodes = indexNodes;
+                return r;
+            }
+
+            /** This minus 'o', for the records between two moments. */
+            Record minus(Record o) {
+                Record r = new Record();
+                r.records = records - o.records;
+                r.bytes = bytes - o.bytes;
+                r.valueBytes = valueBytes - o.valueBytes;
+                r.indexBytes = indexBytes - o.indexBytes;
+                r.indexNodes = indexNodes - o.indexNodes;
+                return r;
+            }
+        }
+
+        static final class Iteration {
+            long pStart, tStart;
+            long pEnd = -1, tEnd = -1;  // -1 until done.
+            long steps;
+            long kvs;                   // KVs scanned at tStart.
+            long values;                // Values rewritten (stored before pCut).
+            long valueBytes;            // Their key and value bytes.
+            long recordBytes;           // Bytes of the step transactions in the stream.
+            long tableBytes;            // Bytes of the table stored by the steps.
+            long dirtiedNodes;          // Index nodes the steps made dirty (2026-10-13).
+            long dirtiedBytes;          // Their size in the stream then.
+            long maxStepDirtied;        // Most index nodes one step made dirty.
+            long dirtiedStored;         // Bytes of them counted in the allowance.
+            final TouchCount touch = new TouchCount();
+        }
+
+        static final class Cut {
+            long pos;                   // pCut of the iteration cut at.
+            long tEnd;                  // The new first available lookup time.
+            long decidedAt;             // Stream length when the cut was decided.
+            long decidedTime;           // Time then.
+            long retain;                // The retain duration in force then (2026-10-13, W2).
+        }
+    }
+
+    /** What the touches of reclaim did (Trans.touchCount). */
+    static final class TouchCount {
+        long visited;       // Index nodes visited.
+        long dirtied;       // Index nodes made dirty, that is, not dirty before.
+        long old;           // Of those, the ones stored before pCut (touchOldBefore).
+        long minimal;       // Of those made dirty, the old ones and their ancestors: what
+                            // a touch of the old nodes only would make dirty.
+    }
+
+    /**
+     * Counts what a touch does (TouchCount). Wraps the pointer listener that makes the
+     * visited nodes dirty, and looks at each node before it.
+     */
+    static final class TouchCounter implements Dag.PointerListener {
+        private final TouchCount count;
+        private final long oldBefore;
+        private final Dag.PointerListener dirtying;
+        private final IdentityHashMap<Node, Node> parent = new IdentityHashMap<Node, Node>();
+        private final Set<Node> madeDirty =
+                Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+        private final List<Node> oldNodes = new ArrayList<Node>();
+
+        TouchCounter(TouchCount count, long oldBefore, Dag.PointerListener dirtying) {
+            this.count = count;
+            this.oldBefore = oldBefore;
+            this.dirtying = dirtying;
+        }
+
+        public void superRootAccessed(TopNode superRoot) {
+            visit(superRoot, null);
+            dirtying.superRootAccessed(superRoot);
+        }
+
+        public void pointerFollowed(Node predecessor, int pointerIndex, Node result,
+                int pointerType) {
+            if (result != null && result.isIndexNode()) {
+                visit(result, predecessor);
+            }
+            dirtying.pointerFollowed(predecessor, pointerIndex, result, pointerType);
+        }
+
+        private void visit(Node node, Node predecessor) {
+            if (parent.containsKey(node)) {
+                return;
+            }
+            parent.put(node, predecessor);
+            count.visited++;
+            if (!node.isDirty()) {
+                madeDirty.add(node);
+                count.dirtied++;
+                long spos = node.getSpos();
+                if (Spos.isValid(spos) && !Spos.isVpos(spos) && spos < oldBefore) {
+                    oldNodes.add(node);
+                    count.old++;
                 }
             }
         }
-        
-        if (maxTruncatePos != -1) {
-            
-            // Here, we should wait for all get operations to finish before calling
-            // pretruncate(). 
-            // Or rather we would like to wait for any get operation that uses a 
-            // lookupTime < firstAvailableLookupTime if any such operation is executing.
-            // We have no such knowledge.
-            // To solve this, we could schedule a future task of pretruncate. 
-            // This task would execute in a later call to transactionCompleted().
-            
-            synchronized (readSynch) {
-                assert newFirstAvailableLookupTime != -1;
-                this.firstAvailableLookupTime = newFirstAvailableLookupTime;
-                this.firstAvailablePos = maxTruncatePos;
+
+        /** Counts the old nodes and their ancestors; call after the touch. */
+        void finish() {
+            Set<Node> needed = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+            for (Node n : oldNodes) {
+                for (Node a = n; a != null && needed.add(a); a = parent.get(a)) {}
             }
-            
-            try {
-                Thread.sleep(20);
-                    //
-                    // Ugly sleep instead of future task.
-                    // Intends to increase the probability that read operations that have a 
-                    // lookup time < newFirstAvailableLookupTime finish before the pretruncate call.
-                    //
-            } catch (InterruptedException e) {
-                // empty
-            }
-            
-            try {
-                aos.pretruncate(maxTruncatePos);
-            } catch (IOException e) {
-                throw new StreamIoException(e);
-            }
-        }
-        
-        if (maxTruncatePos != -1) {
-            // Removes rows no longer needed.
-            
-            for (int i = 0; i < table.rows.size(); i++) {
-                IterationInfo row = table.rows.get(i);
-                
-                if (row.pStart < maxTruncatePos) {
-                    table.rows.remove(i);
-                    i--;      // we need to run same index again since we removed one
+            for (Node n : needed) {
+                if (madeDirty.contains(n)) {
+                    count.minimal++;
                 }
             }
         }
     }
-    
+
     /**
-     * Information about an iteration, completed (done=true) or ongoing (done=false). 
+     * Information about an iteration, completed (done=true) or ongoing (done=false).
      * The information can be serialized to a string and parse back from such a string.
      */
     public static final class IterationInfo {
@@ -422,6 +871,38 @@ public class Reclaim implements Db.TransactionListener {
         long kvCount;       // total number of KVs in the database for the iteration lookup time
         long[] lastKey;     // Last key that was iterated, or null if none was iterated.
         boolean done;
+        boolean cut;        // The stream was cut at pCut (2026-10-13).
+        long rewritten;     // Approximate bytes rewritten so far (2026-10-13).
+        long pEnd = -1;     // Position of the last step, when done (2026-10-13).
+        long pSafe = -1;    // See the class comment; -1 until known (2026-10-13).
+        
+        /**
+         * The cut point (2026-10-13, docs/levels.md, "Level 3 cost"): values
+         * stored before it are rewritten, and the stream is cut there. It was pStart; now
+         * the pStart of the iteration before, so that the values the users update between
+         * the two need no rewrite. Rows stored before have pCut = pStart.
+         */
+        long pCut;
+        
+        IterationInfo copy() {
+            IterationInfo c = new IterationInfo();
+            c.set(this);
+            return c;
+        }
+        
+        void set(IterationInfo o) {
+            pStart = o.pStart;
+            tStart = o.tStart;
+            tEnd = o.tEnd;
+            kvCount = o.kvCount;
+            lastKey = o.lastKey;
+            done = o.done;
+            cut = o.cut;
+            rewritten = o.rewritten;
+            pEnd = o.pEnd;
+            pSafe = o.pSafe;
+            pCut = o.pCut;
+        }
         
         /**
          * Serializes data to a string.
@@ -431,6 +912,7 @@ public class Reclaim implements Db.TransactionListener {
             
             StringMap m = new StringMap();
             m.put("pStart", "" + pStart);
+            m.put("pCut", "" + pCut);
             m.put("tStart", "" + tStart);
             m.put("tEnd", "" + tEnd);
             m.put("kvCount", "" + kvCount);
@@ -446,6 +928,10 @@ public class Reclaim implements Db.TransactionListener {
             }
             
             m.put("done", done ? "true" : "false");
+            m.put("cut", cut ? "true" : "false");
+            m.put("rewritten", "" + rewritten);
+            m.put("pEnd", "" + pEnd);
+            m.put("pSafe", "" + pSafe);
             
             return m.serialize();
         }
@@ -513,6 +999,13 @@ public class Reclaim implements Db.TransactionListener {
             if (doneString.equals("true")) {
                 done = true;
             }
+            
+            // Missing before 2026-10-13:
+            cut = "true".equals(m.get("cut"));
+            rewritten = m.hasLong("rewritten") ? m.getLong("rewritten") : 0;
+            pEnd = m.hasLong("pEnd") ? m.getLong("pEnd") : pStart;
+            pSafe = m.hasLong("pSafe") ? m.getLong("pSafe") : -1;
+            pCut = m.hasLong("pCut") ? m.getLong("pCut") : pStart;     // Since 2026-10-13.
         }
         
         private long getLong(StringMap m, String key) {
@@ -604,10 +1097,16 @@ public class Reclaim implements Db.TransactionListener {
         }
         
         public String serialize() {
+            return serializeWith(null, null);
+        }
+        
+        /** Serializes the table with row 'replacement' instead of row 'row'. */
+        public String serializeWith(IterationInfo row, IterationInfo replacement) {
             StringBuilder b = new StringBuilder();
             
             for (IterationInfo info : rows) {
-                b.append(info.serialize() + "----next----\n");
+                IterationInfo r = info == row ? replacement : info;
+                b.append(r.serialize() + "----next----\n");
             }
             
             return b.toString();
@@ -631,155 +1130,6 @@ public class Reclaim implements Db.TransactionListener {
             if (rows.size() == 0) {
                 throw new InternalDataException("Error in bergdb data, key: " + TABLE_KEY_NAME);
             }
-        }
-    }
-    
-    /**
-     * Represents a single iteration over all the data in the database.
-     */
-    class Iteration {
-        long pStart;
-        long tStart;
-        long tEnd;
-        long kvCount;       
-            // total number of KVs in the database for the iteration lookup time
-        long[] lastKey;     
-            // Last key that was iterated (key segments), or null if none was iterated.
-            // This array must not have length 0.
-        long totalExternalTransactionSize;
-            // Total stream size occupied by external transactions during this iteration.
-        long totalInternalTransactionSize;
-            // Total stream size occupied by internal transactions during this iteration.
-        boolean done;
-        final double internalFractionForIteration;
-        
-        public Iteration(IterationInfo info, double internalFraction) {
-            pStart = info.pStart;
-            tStart = info.tStart;
-            tEnd = info.tEnd;
-            kvCount = info.kvCount;
-            assert info.lastKey == null || info.lastKey.length > 0 
-                    : "info.lastKey.length = " + info.lastKey.length;
-            lastKey = info.lastKey;
-            totalExternalTransactionSize = 0;
-            totalInternalTransactionSize = 0;
-            done = info.done;
-            assert internalFraction >= 0.001;
-            assert internalFraction <= 0.90;
-            this.internalFractionForIteration = internalFraction;
-        }
-        
-        public Iteration(Trans t, double internalFraction) {
-            pStart = t.nextPos;
-            tStart = t.tt;
-            tEnd = -1;
-            kvCount = 0;
-            lastKey = null;
-            totalExternalTransactionSize = 0;
-            totalInternalTransactionSize = 0;
-            done = false;
-            assert internalFraction >= 0.001;
-            assert internalFraction <= 0.90;
-            this.internalFractionForIteration = internalFraction;
-        }
-        
-        public final void gotInternal(Trans t) {
-            totalInternalTransactionSize += (t.lastPos - t.tpos + 1);
-        }
-        
-        public final void gotExternal(Trans t) {
-            // reclaimSize is the size currently allowed for space reclaim transactions.
-            
-            totalExternalTransactionSize += (t.lastPos - t.tpos + 1);
-            long total = totalExternalTransactionSize + totalInternalTransactionSize;
-            
-            long reclaimSize = (long) ((total * internalFractionForIteration) - totalInternalTransactionSize);
-            
-            // Wait to "bunch up" the transactions a bit. Performance-wise it should make sense.
-            
-            //if (reclaimSize > 100*1000L) {  // 55 us (test.Set)
-            if (reclaimSize > 10*1000L) {     // 
-            //if (reclaimSize > 1*1000L) {      // 49
-                step(reclaimSize);
-            }
-        }
-        
-        private void step(final long writeSize) {
-            final long[][] lastKeyOfStep = new long[][] {this.lastKey};
-                    // final and extra "[]" to be able to use in anonymous class below
-            
-            GetMany g = db.newGetMany();
-            g.startKey = lastKey;
-            assert g.startKey == null || g.startKey.length > 0 
-                    : "g.startKey.length = " + g.startKey.length;
-            g.inclusive = false;
-            g.lookupTime = tStart;
-
-            g.stopCondition = new GetMany.StopCondition() {
-                private long size = 0;
-                    // An approximation of the stream space the KVs of the step.
-                    // Used for get a suitable step chunk size.
-                
-                public int handleKvt(Kvt kvt) {
-                    int result;
-
-                    size += kvt.key.length * 8;     // approximate
-                    size += kvt.value.length;
-                    size += 100;                    // estimated overhead
-                    
-                    kvCount++;
-                    lastKeyOfStep[0] = kvt.key;
-                    result = size > writeSize ? ADD_AND_STOP : ADD;
-                    
-                    return result;
-                }
-                
-                public void eod() {
-                    done = true;
-                }
-            };
-            
-            db.getMany(g);
-            if (g.result.size() == 0) {
-                return;
-            }
-            
-            Trans.Builder b = db.trans();
-            long stepLookupTime = -1;
-            
-            for (Kvt kvt : g.result) {
-                GetData gd = db.newGetData();
-                byte[] value;
-                
-                if (stepLookupTime == -1) {         // BUG Fixed 130131, was "1" instead of "-1".
-                    value = db.getOne(Long.MAX_VALUE, kvt.key, gd);
-                    stepLookupTime = gd.actualLookupTime;
-                } else {
-                    value = db.getOne(stepLookupTime, kvt.key, gd);
-                }
-                
-                // If KV still exists and has not been modified since tStart, it is rewritten
-                // to the stream.
-                
-                if (value != null && gd.kvTime <= tStart) {
-                    b.keyRead(kvt.key);
-                    b.put(kvt.key, kvt.value);  // Note, no mem copy of key and value.
-                }
-            }
-            
-            Trans t = b.build();
-            t.readTime = stepLookupTime;
-            t.isInternal = true;
-            
-            try {
-                db.execute(t);
-            } catch (RerunException e) {
-                // empty, will be run again since lastKey not updated if exception thrown.
-                return;
-            }
-            
-            this.lastKey = lastKeyOfStep[0];
-            assert this.lastKey.length > 0 : "lastKey.length = " + lastKey.length;
         }
     }
     
@@ -833,7 +1183,7 @@ public class Reclaim implements Db.TransactionListener {
             };
             
             byte[] value = new byte[100000];
-            int size = 20;
+            int size = 40;      // Was 20; the cut now waits until the nodes are rewritten.
             
             Db db = Db.builder().testSetup().mainStream(stream).clock(clock)
                     .startupDistance(100*1000).start();
@@ -846,6 +1196,10 @@ public class Reclaim implements Db.TransactionListener {
                 db.execute(t);
             }
             
+            db.sync(SyncLevel.STRONG);    // The cut waits until the table is durable,
+            clock.setTime(size * Clock.UNITS_PER_SEC + 1);
+            db.execute(db.trans().put("k2", value).build());    // and is made at a transaction.
+            db.sync(SyncLevel.STRONG);    // A cut in bytes not yet flushed waits for the flush.
             Assert.assertTrue("" + ints[0], ints[0] > 0);
             Assert.assertTrue("" + ints[1], ints[1] > value.length);
         }
@@ -853,6 +1207,655 @@ public class Reclaim implements Db.TransactionListener {
         @Nano
         public static void testIterationInfo() {
             
+        }
+        
+        /**
+         * Regression test for a bug found 2026-10-13 (java/stress/ReclaimStress.java):
+         * when an iteration is done, every live value must be stored at or after its
+         * pStart, or the cut at pStart removes it. The iteration chose the values to
+         * rewrite by their time, gd.kvTime, but after a time split of the key node that
+         * time is the split time, so old values were skipped.
+         */
+        @Nano
+        public static void testIterationRewritesAllOldValues() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            Db db = Db.builder().testSetup().clock(clock).maxNodeSize8()
+                    .startupDistance(2000).start();
+            db.setRetainDuration(1000 * Clock.UNITS_PER_SEC);    // Iterations, but no cut.
+            
+            java.util.Random r = new java.util.Random(1);
+            java.util.TreeMap<String, byte[]> live = new java.util.TreeMap<String, byte[]>();
+            long checked = 0;
+            
+            for (int i = 0; i < 1000 && checked < 2; i++) {
+                time += Clock.UNITS_PER_SEC;    // Was 0.1 ms; iterations are now a quarter
+                clock.setTime(time);            // of the retain duration apart (2026-10-13).
+                String k = "/k/" + r.nextInt(100);
+                byte[] v = new byte[1 + r.nextInt(30)];
+                r.nextBytes(v);
+                db.execute(db.trans().put(k, v).build());
+                live.put(k, v);
+                
+                if (db.getReclaimIterationCount() > checked) {
+                    checked = db.getReclaimIterationCount();
+                    long pCut = db.internal().reclaim().lastDoneRow().pCut;
+                    for (String key : live.keySet()) {
+                        GetData gd = db.newGetData();
+                        db.getOne(Long.MAX_VALUE, Keys.toSegments(key), gd);
+                        Assert.assertTrue(key + " at " + gd.tpos + ", pCut " + pCut, 
+                                gd.tpos >= pCut);
+                    }
+                }
+            }
+            
+            Assert.assertTrue("iterations: " + checked, checked >= 2);
+            db.stop();
+        }
+        
+        /**
+         * Regression test for a bug found 2026-10-13 (java/stress/ReclaimStress.java):
+         * startup after a cut failed when the meta block before the last transaction's
+         * position was cut away; the search for a meta block went down to position 0.
+         */
+        @Nano
+        public static void testRestartAfterCut() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            CutStream stream = new CutStream();
+            Db db = startForCutTest(stream, clock);
+            java.util.Map<String, byte[]> live = new java.util.HashMap<String, byte[]>();
+            java.util.Random r = new java.util.Random(2);
+            
+            for (int i = 0; i < 3000 && stream.getCut() == 0; i++) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                String k = "/k/" + r.nextInt(50);
+                byte[] v = new byte[1 + r.nextInt(30)];
+                r.nextBytes(v);
+                db.execute(db.trans().put(k, v).build());
+                live.put(k, v);
+            }
+            
+            Assert.assertTrue("no cut", stream.getCut() > 0);
+            db.sync(SyncLevel.STRONG);
+            db.stop();
+            clock = new CoreTestClock();
+            clock.setTime(time);
+            db = startForCutTest(stream.copy(), clock);
+            for (String k : live.keySet()) {
+                Assert.assertArrayEquals(live.get(k), DbUtil.get(db, Long.MAX_VALUE, k));
+            }
+            db.stop();
+        }
+        
+        /**
+         * Regression test for a bug found 2026-10-13 (java/stress/ReclaimStress.java):
+         * after a restart, the first available lookup time was taken from the last
+         * completed iteration, also when the stream had not been cut there yet. Then
+         * lookups in the retention window failed.
+         */
+        @Nano
+        public static void testFirstAvailableTimeAfterRestart() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            CutStream stream = new CutStream();
+            Db db = startForCutTest(stream, clock);
+            java.util.Random r = new java.util.Random(3);
+            int restarts = 0;
+            
+            for (int i = 1; i < 3000 && restarts < 5; i++) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                byte[] v = new byte[1 + r.nextInt(30)];
+                db.execute(db.trans().put("/k/" + r.nextInt(50), v).build());
+                
+                // A restart right after an iteration is done: it is not yet cut there.
+                if (db.getReclaimIterationCount() > 0 && stream.getCut() > 0) {
+                    long first = db.getFirstAvailableLookupTime();
+                    db.sync(SyncLevel.STRONG);
+                    db.stop();
+                    stream = stream.copy();
+                    clock = new CoreTestClock();
+                    clock.setTime(time);
+                    db = startForCutTest(stream, clock);
+                    restarts++;
+                    Assert.assertEquals(first, db.getFirstAvailableLookupTime());
+                }
+            }
+            
+            Assert.assertTrue("restarts: " + restarts, restarts >= 5);
+            db.stop();
+        }
+        
+        /**
+         * Regression test for a bug found 2026-10-13 (java/stress/ReclaimStress.java):
+         * after a cut and a restart, writing an index node failed. Its history has dead
+         * pointers to versions below the cut, and NodeCollection.resolvePointers() read
+         * their headers.
+         */
+        @Nano
+        public static void testWritesAfterCut() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            CutStream stream = new CutStream();
+            Db db = startForCutTest(stream, clock);
+            java.util.Random r = new java.util.Random(4);
+            boolean restarted = false;
+            
+            for (int i = 0; i < 3000; i++) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                byte[] v = new byte[1 + r.nextInt(30)];
+                db.execute(db.trans().put("/k/" + r.nextInt(50), v).build());
+                
+                if (!restarted && stream.getCut() > 0) {
+                    db.sync(SyncLevel.STRONG);
+                    db.stop();
+                    stream = stream.copy();
+                    clock = new CoreTestClock();
+                    clock.setTime(time);
+                    db = startForCutTest(stream, clock);
+                    restarted = true;
+                    i = 2500;       // 500 more transactions
+                }
+            }
+            
+            Assert.assertTrue("no cut", restarted);
+            db.stop();
+        }
+        
+        /**
+         * Regression test for a bug found 2026-10-13 (java/stress/ReclaimStress.java),
+         * Q7 in docs/problem.md: an iteration rewrote live values only. Nodes that hold
+         * only deleted keys, and the segment subtrees of deleted long keys, kept their 
+         * versions below the cut, and lookups and scans still pass through them.
+         */
+        @Nano
+        public static void testDeletedKeysAfterCut() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            CutStream stream = new CutStream();
+            Db db = startForCutTest(stream, clock);
+            
+            for (int i = 0; i < 100; i++) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                db.execute(db.trans().put("/k/" + i, "v").put("/long/" + i, "v").build());
+            }
+            for (int i = 0; i < 60; i++) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                db.execute(db.trans().delete("/k/" + i).delete("/long/" + i).build());
+            }
+            
+            java.util.Random r = new java.util.Random(5);
+            long cut = 0;
+            int cuts = 0;
+            for (int i = 0; i < 4000 && cuts < 3; i++) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                int k = 60 + r.nextInt(40);
+                db.execute(db.trans().put("/k/" + k, "w" + i).build());
+                if (stream.getCut() > cut) {
+                    cut = stream.getCut();
+                    cuts++;
+                }
+            }
+            
+            Assert.assertTrue("cuts: " + cuts, cuts >= 3);
+            db.sync(SyncLevel.STRONG);
+            db.stop();
+            clock = new CoreTestClock();
+            clock.setTime(time);
+            db = startForCutTest(stream.copy(), clock);
+            DbUtil.checksum(db);
+            for (int i = 0; i < 60; i++) {
+                Assert.assertTrue(DbUtil.get(db, Long.MAX_VALUE, "/k/" + i) == null);
+                Assert.assertTrue(DbUtil.get(db, Long.MAX_VALUE, "/long/" + i) == null);
+            }
+            db.stop();
+        }
+        
+        /**
+         * Regression test for a bug found 2026-10-13 (java/stress/ReclaimStress.java):
+         * startup after a cut failed when the last valid meta block named a transaction
+         * before the cut; recovery starts at that transaction. The cut checked only that
+         * the meta block itself came after the cut position.
+         */
+        @Nano("f")
+        public static void testCutKeepsMetaBlockTransaction() {
+            for (int seed = 0; seed < 20; seed++) {
+                CoreTestClock clock = new CoreTestClock();
+                long time = Clock.UNITS_PER_SEC;
+                clock.setTime(time);
+                CutStream stream = new CutStream();
+                Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(10000).start();
+                db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+                java.util.Random r = new java.util.Random(seed);
+                long cut = 0;
+                
+                for (int i = 0; i < 3000; i++) {
+                    time += Clock.UNITS_PER_SEC / 20;
+                    clock.setTime(time);
+                    byte[] v = new byte[1 + r.nextInt(60)];
+                    db.execute(db.trans().put("/k/" + r.nextInt(5), v).build());
+                    if (stream.getCut() > cut) {
+                        cut = stream.getCut();
+                        db.sync(SyncLevel.STRONG);
+                        db.stop();
+                        stream = stream.copy();
+                        clock = new CoreTestClock();
+                        clock.setTime(time);
+                        db = Db.builder().testSetup(stream).clock(clock).startupDistance(10000)
+                                .start();
+                        db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+                    }
+                }
+                db.stop();
+            }
+        }
+        
+        /**
+         * Regression test for a bug found 2026-10-13 (java/stress/CrashTest.java with
+         * reclaim): the last step of an iteration stored the row as done, and tEnd and pEnd
+         * followed in the next transaction. After a crash between the two, the row was 
+         * done with tEnd = 0, and the cut there made 0 the first available lookup time.
+         */
+        @Nano
+        public static void testCrashBeforeIterationEnd() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            CutStream stream = new CutStream();
+            Db db = startForCutTest(stream, clock);
+            java.util.Random r = new java.util.Random(6);
+            java.util.Map<String, java.util.TreeMap<Long, byte[]>> model = 
+                    new java.util.HashMap<String, java.util.TreeMap<Long, byte[]>>();
+            boolean crashed = false;
+            long cutAtCrash = 0;
+            
+            for (int i = 0; i < 2500; i++) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                String k = "/k/" + r.nextInt(50);
+                byte[] v = new byte[1 + r.nextInt(30)];
+                Trans t = db.trans().put(k, v).build();
+                long count = db.getReclaimIterationCount();
+                db.execute(t);
+                if (!model.containsKey(k)) {
+                    model.put(k, new java.util.TreeMap<Long, byte[]>());
+                }
+                model.get(k).put(t.tt, v);
+                
+                if (!crashed && db.getReclaimIterationCount() > count && stream.getCut() > 0) {
+                    // After t come the last step and the table with tEnd; a crash cuts 
+                    // the stream between the two.
+                    NodeStream.TransIterator iter = 
+                            db.internal().nodeStream().createTransIteratorFromExactStartupPos(t.nextPos);
+                    Assert.assertTrue(iter.next());
+                    Assert.assertTrue(iter.next());
+                    long crashPos = iter.getStoredTrans().tpos;
+                    db.sync(SyncLevel.STRONG);
+                    db.stop();
+                    stream = stream.copy();
+                    stream.truncate(crashPos);
+                    clock = new CoreTestClock();
+                    clock.setTime(time);
+                    db = startForCutTest(stream, clock);
+                    crashed = true;
+                    cutAtCrash = stream.getCut();
+                    
+                    // The table after the restart: a done row has its tEnd and pEnd.
+                    for (IterationInfo row : db.internal().reclaim().table.rows) {
+                        Assert.assertTrue("done row without tEnd: " + row.serialize(), 
+                                !row.done || (row.tEnd >= row.tStart && row.pEnd >= row.pStart));
+                    }
+                }
+                
+                // A cut always comes with a first available lookup time after it.
+                if (db.getFirstAvailablePos() > 0) {
+                    Assert.assertTrue("first available lookup time 0, after a cut at " 
+                            + db.getFirstAvailablePos(), db.getFirstAvailableLookupTime() > 0);
+                }
+            }
+            
+            Assert.assertTrue("no crash", crashed);
+            Assert.assertTrue("no cut after the crash", stream.getCut() > cutAtCrash);
+            long first = db.getFirstAvailableLookupTime();
+            Assert.assertTrue("first available: " + first, first > 0);
+            for (long lt = first; lt <= time; lt += Clock.UNITS_PER_SEC / 4) {
+                for (String key : model.keySet()) {
+                    java.util.Map.Entry<Long, byte[]> e = model.get(key).floorEntry(lt);
+                    Assert.assertArrayEquals(e == null ? null : e.getValue(), 
+                            DbUtil.get(db, lt, key));
+                }
+            }
+            db.stop();
+        }
+        
+        private static Db startForCutTest(CutStream stream, CoreTestClock clock) {
+            Db db = Db.builder().testSetup(stream).clock(clock).maxNodeSize8()
+                    .startupDistance(2000).start();
+            db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+            return db;
+        }
+
+        /**
+         * The allowance counts the index nodes a step makes dirty (2026-10-13,
+         * docs/levels.md, "Level 3 cost"): before, 100 bytes per value rewritten, and
+         * reclaim wrote more than internalFraction of the stream.
+         */
+        @Nano
+        public static void testAllowanceCountsIndexNodes() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            Db db = Db.builder().testSetup().clock(clock).maxNodeSize8()
+                    .startupDistance(2000).start();
+            Reclaim reclaim = db.internal().reclaim();
+            Stats stats = reclaim.enableStats();
+            for (int i = 0; i < 3000; i += 100) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                Trans.Builder b = db.trans();
+                for (int j = i; j < i + 100; j++) {
+                    b.put("/k/" + j, new byte[10]);
+                }
+                db.execute(b.build());
+            }
+            db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+            java.util.Random r = new java.util.Random(6);
+            
+            for (int i = 0; i < 5000 && reclaim.getIterationCount() == 0; i++) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                db.execute(db.trans().put("/k/" + r.nextInt(3000), new byte[10]).build());
+            }
+            
+            Assert.assertTrue("no iteration done", reclaim.getIterationCount() > 0);
+            IterationInfo row = reclaim.lastDoneRow();
+            Stats.Iteration st = stats.iterations.get(0);
+            Assert.assertEquals(row.pStart, st.pStart);
+            Assert.assertTrue("steps " + st.steps, st.steps >= 2);
+            Assert.assertTrue("index bytes " + st.dirtiedStored, st.dirtiedStored > 0);
+            Assert.assertEquals(st.valueBytes + VALUE_NODE_BYTES * st.values + st.dirtiedStored,
+                    row.rewritten);
+            db.stop();
+        }
+        
+        /**
+         * The cut point of an iteration is the pStart of the one before (pCut, 2026-10-13,
+         * docs/levels.md, "Level 3 cost"): values stored between the two are not
+         * rewritten, and every live value is stored at pCut or later when it is done.
+         */
+        @Nano
+        public static void testCutPointBeforeScan() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            Db db = Db.builder().testSetup().clock(clock).maxNodeSize8()
+                    .startupDistance(2000).start();
+            db.setRetainDuration(1000 * Clock.UNITS_PER_SEC);    // Iterations, but no cut.
+            Reclaim reclaim = db.internal().reclaim();
+            java.util.Random r = new java.util.Random(5);
+            java.util.TreeMap<String, byte[]> live = new java.util.TreeMap<String, byte[]>();
+            long checked = 0;
+            int spared = 0;
+            
+            for (int i = 0; i < 2000 && checked < 4; i++) {
+                time += Clock.UNITS_PER_SEC;
+                clock.setTime(time);
+                String k = "/k/" + r.nextInt(100);
+                byte[] v = new byte[1 + r.nextInt(30)];
+                r.nextBytes(v);
+                db.execute(db.trans().put(k, v).build());
+                live.put(k, v);
+                
+                if (db.getReclaimIterationCount() > checked) {
+                    checked = db.getReclaimIterationCount();
+                    List<IterationInfo> rows = reclaim.table.rows;
+                    IterationInfo done = reclaim.lastDoneRow();
+                    int index = rows.indexOf(done);
+                    Assert.assertEquals(index == 0 ? done.pStart : rows.get(index - 1).pStart,
+                            done.pCut);
+                    for (String key : live.keySet()) {
+                        GetData gd = db.newGetData();
+                        db.getOne(Long.MAX_VALUE, Keys.toSegments(key), gd);
+                        Assert.assertTrue(key + " at " + gd.tpos + ", pCut " + done.pCut, 
+                                gd.tpos >= done.pCut);
+                        if (gd.tpos < done.pStart) {
+                            spared++;
+                        }
+                    }
+                }
+            }
+            
+            Assert.assertTrue("iterations: " + checked, checked >= 4);
+            Assert.assertTrue("no value was spared", spared > 0);
+            db.stop();
+        }
+        
+        /**
+         * Iterations start a quarter of the retain duration apart (ITERATION_SPACING,
+         * 2026-10-13, docs/levels.md, "Level 3 cost"); before, they ran back
+         * to back whatever the retention.
+         */
+        @Nano
+        public static void testIterationsSpacedByRetention() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            CutStream stream = new CutStream();
+            Db db = Db.builder().testSetup(stream).clock(clock).maxNodeSize8()
+                    .startupDistance(2000).start();
+            final long retain = 20 * Clock.UNITS_PER_SEC;
+            db.setRetainDuration(retain);
+            Reclaim reclaim = db.internal().reclaim();
+            java.util.Random r = new java.util.Random(3);
+            List<Long> starts = new ArrayList<Long>();
+
+            for (int i = 0; i < 2000; i++) {
+                time += Clock.UNITS_PER_SEC / 10;
+                clock.setTime(time);
+                byte[] v = new byte[1 + r.nextInt(30)];
+                r.nextBytes(v);
+                db.execute(db.trans().put("/k/" + r.nextInt(50), v).build());
+                List<IterationInfo> rows = reclaim.table.rows;
+                long tStart = rows.isEmpty() ? -1 : rows.get(rows.size() - 1).tStart;
+                if (tStart != -1 && (starts.isEmpty() || starts.get(starts.size() - 1) != tStart)) {
+                    starts.add(tStart);
+                }
+            }
+
+            Assert.assertTrue("iterations started: " + starts.size(), starts.size() >= 4);
+            Assert.assertTrue("no cut", db.getFirstAvailablePos() > 0);
+            for (int i = 1; i < starts.size(); i++) {
+                Assert.assertTrue("iteration " + i + " started " + (starts.get(i) - starts.get(i - 1))
+                        + " after the one before", starts.get(i) - starts.get(i - 1) >= retain / 4);
+            }
+            db.stop();
+        }
+
+        /**
+         * Steps store only the row of the iteration (CURRENT_KEY_NAME), not the whole table,
+         * and a restart resumes the iteration from that row (2026-10-13).
+         */
+        @Nano
+        public static void testRestartResumesIteration() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            CutStream stream = new CutStream();
+            Db db = startForCutTest(stream, clock);
+            db.setRetainDuration(Long.MAX_VALUE);       // Loads 3000 keys first, so that
+            java.util.Random r = new java.util.Random(4);   // the first iteration has steps.
+            for (int i = 0; i < 3000; i += 100) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                Trans.Builder b = db.trans();
+                for (int j = i; j < i + 100; j++) {
+                    b.put("/k/" + j, new byte[10]);
+                }
+                db.execute(b.build());
+            }
+            db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+            long tableTpos = -1;
+            int steps = 0;
+            IterationInfo before = null;
+
+            for (int i = 0; i < 5000 && steps < 3; i++) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                byte[] v = new byte[1 + r.nextInt(30)];
+                r.nextBytes(v);
+                db.execute(db.trans().put("/k/" + r.nextInt(3000), v).build());
+                IterationInfo current = db.internal().reclaim().currentIteration();
+                if (current == null) {
+                    // The first iteration only: no other iteration gets safe or cut (and
+                    // stores the table) while it runs.
+                    Assert.assertTrue("the first iteration ended", tableTpos == -1);
+                    continue;
+                }
+                GetData gd = db.newGetData();
+                db.getOne(Long.MAX_VALUE, Keys.toSegments(TABLE_KEY_NAME), gd);
+                if (tableTpos == -1) {
+                    tableTpos = gd.tpos;
+                } else {
+                    Assert.assertEquals("the table was stored by a step", tableTpos, gd.tpos);
+                }
+                if (current.lastKey != null && (before == null
+                        || !java.util.Arrays.equals(before.lastKey, current.lastKey))) {
+                    steps++;
+                }
+                before = current.copy();
+            }
+
+            Assert.assertTrue("steps: " + steps, steps >= 3);
+            db.sync(SyncLevel.STRONG);
+            db.stop();
+            clock = new CoreTestClock();
+            clock.setTime(time);
+            db = startForCutTest(stream.copy(), clock);
+            IterationInfo after = db.internal().reclaim().currentIteration();
+            Assert.assertTrue("no iteration after the restart", after != null);
+            Assert.assertEquals(before.serialize(), after.serialize());
+            db.stop();
+        }
+
+        /**
+         * Regression test for a bug found 2026-10-13 (java/stress/ReclaimStress.java),
+         * Q6 in docs/problem.md: after a cut at the pStart of an iteration, the first
+         * available lookup time was the iteration's start time, tStart. But a value not
+         * changed since tStart is rewritten later in the iteration, so between tStart and
+         * the rewrite, lookups find the old version, which was cut away. Only the states
+         * from the end of the iteration, tEnd, are complete after the cut.
+         */
+        @Nano
+        public static void testLookupsFromFirstAvailableTime() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            CutStream stream = new CutStream();
+            Db db = startForCutTest(stream, clock);
+            
+            java.util.Random r = new java.util.Random(1);
+            java.util.Map<String, java.util.TreeMap<Long, byte[]>> model = 
+                    new java.util.HashMap<String, java.util.TreeMap<Long, byte[]>>();
+            int cuts = 0;
+            long lastCut = 0;
+            
+            for (int i = 0; i < 3000 && cuts < 2; i++) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                String k = "/k/" + r.nextInt(50);
+                byte[] v = new byte[1 + r.nextInt(30)];
+                r.nextBytes(v);
+                Trans t = db.trans().put(k, v).build();
+                db.execute(t);
+                if (!model.containsKey(k)) {
+                    model.put(k, new java.util.TreeMap<Long, byte[]>());
+                }
+                model.get(k).put(t.tt, v);
+                
+                if (stream.getCut() > lastCut) {
+                    // A restart, so that values are read from the stream; the running
+                    // database has most of them in memory.
+                    cuts++;
+                    lastCut = stream.getCut();
+                    db.sync(SyncLevel.STRONG);
+                    db.stop();
+                    stream = stream.copy();
+                    clock = new CoreTestClock();
+                    clock.setTime(time);
+                    db = startForCutTest(stream, clock);
+                    long first = db.getFirstAvailableLookupTime();
+                    for (long lt = first; lt <= time; lt += Clock.UNITS_PER_SEC / 40) {
+                        for (String key : model.keySet()) {
+                            java.util.Map.Entry<Long, byte[]> e = model.get(key).floorEntry(lt);
+                            byte[] expected = e == null ? null : e.getValue();
+                            Assert.assertArrayEquals(expected, DbUtil.get(db, lt, key));
+                        }
+                    }
+                }
+            }
+            
+            Assert.assertTrue("cuts: " + cuts, cuts >= 2);
+            db.stop();
+        }
+
+        /**
+         * Theory/levels.md, W5c. The cut is made only when the stream is durable up to the
+         * decision (the table that marks the cut, the meta block that recovery starts from):
+         * when the front is cut, the underlying stream is at least as long as it was at the
+         * decision. CutStream.getLengthAtCut() is the length then, and CrashTest never cuts
+         * the stream shorter than that: what a crash may lose is only what came after.
+         * "Durable" is what StorageManager confirms: the bytes were appended to the stream,
+         * for a FileStream written with mode "rws" (synchronous).
+         */
+        @Nano
+        public static void testCutIsMadeAfterDecisionIsDurable() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            CutStream stream = new CutStream();
+            Db db = startForCutTest(stream, clock);
+            Stats stats = db.internal().reclaim().enableStats();
+            java.util.Random r = new java.util.Random(8);
+            long lastCut = 0;
+            int cuts = 0;
+
+            for (int i = 0; i < 30000 && cuts < 3; i++) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                db.execute(db.trans().put("/k/" + r.nextInt(50), new byte[1 + r.nextInt(30)])
+                        .build());
+                if (i % 7 == 0) {
+                    db.sync(SyncLevel.ORDINARY);
+                }
+                if (stream.getCut() > lastCut) {
+                    lastCut = stream.getCut();
+                    Stats.Cut decided = null;
+                    for (Stats.Cut c : stats.cuts) {
+                        if (c.pos == lastCut) {
+                            decided = c;
+                        }
+                    }
+                    Assert.assertTrue("no decision for the cut at " + lastCut, decided != null);
+                    Assert.assertTrue("the cut at " + lastCut + " was made when the stream was "
+                            + stream.getLengthAtCut() + " bytes, before the decision's "
+                            + decided.decidedAt, stream.getLengthAtCut() >= decided.decidedAt);
+                    cuts++;
+                }
+            }
+
+            Assert.assertTrue("cuts: " + cuts, cuts >= 3);
+            db.stop();
         }
     }
 }

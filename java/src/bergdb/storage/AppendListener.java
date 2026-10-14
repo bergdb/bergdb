@@ -16,4 +16,10 @@ public interface AppendListener {
      * @param postStreamLength  The new stream length after the append operation.
      */
     public void dataAppended(long postStreamLength);
+    
+    /**
+     * Tells listener implementation that an append to the stream failed. The bytes were
+     * not appended, and the stream accepts no more appends.
+     */
+    public void appendFailed(java.io.IOException e);
 }

@@ -10,8 +10,10 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.util.StorageInfo;
+import bergdb.stream.CutStream;
 import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
+import bergdb.stream.ReadBelowFirstPosException;
 
 public class StorageManagerTester {
 
@@ -118,6 +120,33 @@ public class StorageManagerTester {
         manager.stop();
     }
     
+    /**
+     * 2026-10-13 (docs/levels.md, W1). A read of bytes that a cut removed
+     * fails alone. Before, StorageManager closed the stream and set an error state, so that
+     * every later read and append failed: the database stopped.
+     */
+    @Nano
+    public static void testReadBelowFirstPosIsNotAStreamError() throws IOException {
+        CutStream cut = new CutStream();
+        byte[] bytes = new byte[1000];
+        cut.append(bytes, 0, 1000);
+        StorageManager m = new StorageManager.Builder(new Object()).stream("main", cut).build();
+        m.syncStreams(new NullProgressListener());
+        m.pretruncate(600);
+
+        try {
+            m.read(100, new byte[10], 0, 10);
+            throw new AssertionError("a read below the cut succeeded");
+        } catch (ReadBelowFirstPosException e) {
+            // Expected.
+        }
+
+        m.read(700, new byte[10], 0, 10);
+        m.append(bytes, 0, 100);
+        m.read(1000, new byte[10], 0, 10);
+        m.stop();
+    }
+
     @Nano
     public static void testSync4(TestEnvironment c) throws IOException, InterruptedException {
         // Testing with real files.

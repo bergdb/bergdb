@@ -492,7 +492,13 @@ public class Dag {
             if (i == lastSegment) {
                 setValue(segmentRoot, key[i], key, value, pd);
             } else {
-                segmentRoot = setNode(segmentRoot, key[i], pd);
+                segmentRoot = setNode(segmentRoot, key[i], value != null, pd);
+                if (segmentRoot == null) {
+                    // A delete of a key that does not exist, a noop. No node must be
+                    // created; noops are not stored, so the rerun at startup would not
+                    // create it, and node ids would differ after a restart.
+                    return;
+                }
             }
         }
     }
@@ -551,8 +557,10 @@ public class Dag {
      * data structure with 'segmentRoot' as the root node. If it does not exist,
      * a new klong is inserted pointing to a new node. The new node is the
      * segment root of a newly created segment. Returns the next segment root.
+     * If 'create' is false, nothing is created and null is returned if the
+     * node does not exist.
      */
-    private KeyNode setNode(KeyNode segmentRoot, long compareValue, PutData pd) {
+    private KeyNode setNode(KeyNode segmentRoot, long compareValue, boolean create, PutData pd) {
         KeyNode current = segmentRoot;
         KeyNode result;
         
@@ -571,7 +579,10 @@ public class Dag {
         
         current.searchEq(pd.tt, compareValue, pd.kwi);
 
-        if (pd.kwi.klong == Klong.NULL) {
+        if (pd.kwi.klong == Klong.NULL && !create) {
+            result = null;
+
+        } else if (pd.kwi.klong == Klong.NULL) {
             // If not found, create the node
 
             KeyNode child = new KeyNode(true); // New segment leaf node.
