@@ -65,7 +65,7 @@ Notes
   documents say which.
 * Commit ids in the documents (`49aa48d`, `ebe5f77`, ...) name commits in
   Frans's earlier repositories, where the history up to this repository's
-  first commit is kept.
+  first commit is kept. Frans: see F1-007, repo f1.
 * The original 2012 to 2017 design notes and the git history of the 2017
   source are not part of this repository. The four documents that the theory
   builds on are in `docs/sources/`.

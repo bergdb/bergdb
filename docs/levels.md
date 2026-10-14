@@ -51,6 +51,14 @@ Checks, all of which must pass before a change to the code is committed:
 [level3.sh](../java/stress/level3.sh) (about 4 minutes). They print `LEVEL 1 OK`,
 `LEVEL 2 OK` and `LEVEL 3 OK`.
 
+`level2.sh` also runs [BryanRepro.java](../java/stress/BryanRepro.java), the
+program attached to a bug report of November 2015 (ISSUE151111): start,
+delete all objects, create 10,000, stop, repeated, with a retain duration of
+10 s. Checked 2026-10-14: on the unmodified 2017 source it fails when the
+database starts in cycle 12 ("A ValueNode cannot be dirty"); with the current
+code 40 cycles pass, also with the original 10 s pause between cycles (8
+cycles).
+
 The logs of the gates after the follow-up work (see its last paragraph) report
 896 unit tests and 35 f-tests. The reviewed logs of the baseline in ignored
 `java/build/level1/`, `java/build/level2/` and

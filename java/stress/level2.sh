@@ -28,6 +28,10 @@
 #      transaction; the database must start in the state after the last
 #      complete transaction, work on, and restart again. Startup distance
 #      2000 bytes, and 500 bytes with node size 8.
+#   6. BryanRepro: the bug report of November 2015 (ISSUE151111). Start,
+#      read, delete all, create 10000 objects and stop, repeated (15 times
+#      quick, 40 full) with a retain duration of 10 s. The 2017 code fails
+#      to start after about 12 cycles.
 # Logs go to build/level2/. Set JAVA_HOME or PATH for the JDK; the build
 # needs javac too.
 
@@ -37,9 +41,9 @@ JAVA=${JAVA:-java}
 if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
 
 if [ "$1" = quick ]; then
-    QUICK=1; ROUNDS=40; SIZE_ROUNDS=3; INV_N=600; CRASH_ROUNDS=4
+    QUICK=1; ROUNDS=40; SIZE_ROUNDS=3; INV_N=600; CRASH_ROUNDS=4; BRYAN_CYCLES=15
 else
-    QUICK=0; ROUNDS=200; SIZE_ROUNDS=10; INV_N=2000; CRASH_ROUNDS=20
+    QUICK=0; ROUNDS=200; SIZE_ROUNDS=10; INV_N=2000; CRASH_ROUNDS=20; BRYAN_CYCLES=40
 fi
 
 CP=build/bergdb.jar:build/stress
@@ -124,5 +128,11 @@ for f in $LOG/crash-*.txt; do
     grep -q '^Done: .* 0 failures' $f || fail "CrashTest" $f
     echo "   $(basename $f .txt): $(tail -1 $f)"
 done
+
+echo "6. BryanRepro, the bug report of 2015 (restarts with deletes and reclaim)"
+mkdir -p $LOG/bryan
+$JAVA -ea -Xmx2g -cp $CP bergdb.core.BryanRepro $BRYAN_CYCLES 0 $LOG/bryan > $LOG/bryan.txt 2>&1
+grep -q '^Done: .* 0 failures' $LOG/bryan.txt || fail "BryanRepro" $LOG/bryan.txt
+echo "   bryan: $(tail -1 $LOG/bryan.txt)"
 
 echo "LEVEL 2 OK"
