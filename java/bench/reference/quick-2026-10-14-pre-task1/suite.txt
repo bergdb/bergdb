@@ -1,0 +1,8 @@
+# The simple baseline (performance.sh quick): a sanity check that a later level (Level 4) did not
+# wreck performance, not a regression gate. Same format as performance.suite; about 15 minutes.
+# Compare by eye: the summary table of two sessions, with the commit, JDK and machine noted.
+
+read-1k         read     3   n=200000 nlong=20000 valsize=1000 history=200000
+w-uni-1k-inf    write    3   n=100000 valsize=1000 work=uniform retain=inf ops=1000000
+w-uni-1k-fin    write    3   n=100000 valsize=1000 work=uniform retain=1 mincuts=6 ops=1000000 maxops=6000000
+r-1k-fin        restart  3   n=100000 valsize=1000 work=uniform retain=1 mincuts=6 ops=1000000 maxops=6000000 halt=1 firstgets=300000 mixops=300000

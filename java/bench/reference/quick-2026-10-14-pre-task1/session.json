@@ -1,0 +1,50 @@
+{
+  "id": "506510d9-dd36ba4-20261014T112710-quick-g1-8g-baseline1",
+  "createdAt": "2026-10-14T11:27:10+0200",
+  "label": "baseline1",
+  "command": "./stress/performance.sh quick baseline1",
+  "suite": {
+    "name": "quick",
+    "file": "performance-quick.suite",
+    "sha256": "adbbe26a2cc2423978f45b8a2d33149d057de0a3d47bc2d5f96f6c533c06856c"
+  },
+  "runsOverride": "none",
+  "only": "all",
+  "source": {
+    "commit": "506510d9196bbf940a8bf6f4df3d5571699e845b",
+    "branch": "main",
+    "dirty": true,
+    "diffSha256": "d36ba41e4b2f074d8156d087eef22c8505626d6b265152d61d54315ba619c983",
+    "manifestSha256": "fbee5ba77ed9a0b65e96e84498d1fb912bd35e42faf6079d04b8f8ef204f6479",
+    "jarSha256": "c907f156cc020e625373da9c622b7b4f527b1ae78430c2859ebd69b0fef74a73",
+    "buildLabel": "current-506510d9-fbee5ba7",
+    "builtAt": "2026-10-14T11:23:22+0200",
+    "buildDir": "/Users/f/fl/repos/bergdb/java/build/perf/builds/current-506510d9-fbee5ba7"
+  },
+  "harness": {
+    "sha256": "83540329606d18a8886a7ba4ef65ac009f81eb2673a128d0832df4ae672f9f98",
+    "traceVersion": 1
+  },
+  "jvm": {
+    "java": "/opt/homebrew/opt/openjdk/bin/java",
+    "flags": "-XX:+UseG1GC -da -Xms8g -Xmx8g",
+    "gc": "g1",
+    "heap": "8g",
+    "version": "openjdk version \"27\" 2026-09-15;OpenJDK Runtime Environment Homebrew (build 27);OpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing);"
+  },
+  "osCache": "warm",
+  "cooldownSec": 5,
+  "machine": {
+    "model": "MacBookPro18,3",
+    "cpu": "Apple M1 Pro",
+    "cores": 10,
+    "memBytes": 34359738368,
+    "osBuild": "27.0.1 26A434",
+    "power": "Now drawing from AC Power",
+    "thermal": "Note: No thermal warning level has been recorded",
+    "kernel": "Darwin 27.0.0",
+    "host": "f53",
+    "dataVolume": "/System/Volumes/Data",
+    "fsType": "apfs"
+  }
+}
