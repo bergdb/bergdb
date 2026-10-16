@@ -221,6 +221,10 @@ Alignment with the model (F1-008-11, 2026-10-16;
   (T3, T4), reclaim (Level 3) and eviction (Level 4). The gates cover the
   first four.
 
+Since 2026-10-16, `level2.sh` checks the alignment too (its step 7, and
+mostly idle runs in step 4): `A2A3Check2` and the trace checker on the small
+set, so the gate needs Lean (level2-alignment.md, 12).
+
 The startup bug M18, found 2026-10-15 (transactions that change nothing
 could move the startup pos past every top node version, and the database
 then could not start), is fixed by topPos (above, bergdb `01f386a`).

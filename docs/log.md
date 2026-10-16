@@ -457,3 +457,10 @@ point (all six met; T15 not proven, as the proofs did not need it), the
 Level 2 status in `levels.md`, the model changes in `sis-model.md`, and a
 proposal for a conformance step in `level2.sh`, for Frans's checkpoint K4.
 
+2026-10-16. `level2.sh` checks the alignment with the Lean model (Frans's
+decision at K4, `docs/level2-alignment.md`, 12): step 4 also runs
+`RestartInvariance` on mostly idle transactions (seeds 1 and 2), which
+catches M18; a new step 7 runs `A2A3Check2` on three configurations and the
+trace checker on `conformance.sh`'s small set (2 seeds quick, 10 full). The
+gate now needs Lean; it builds the checker with lake.
+

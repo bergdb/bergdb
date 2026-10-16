@@ -903,6 +903,10 @@ model, and the gates cover them.
 
 ## 12. Proposal for checkpoint K4: conformance in the gates
 
+**Adopted 2026-10-16 13:14** (Frans: "Yes, as you propose"): points 1 and 2
+in both modes, point 3 as proposed (10 traces quick, 50 full). Done in
+`level2.sh`: the mostly idle runs in step 4, the rest as step 7.
+
 A step 7 of `level2.sh`, "Conformance with the Lean model", in both modes
 (times measured on F1's runs):
 

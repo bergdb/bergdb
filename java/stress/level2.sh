@@ -5,7 +5,7 @@
 # java/; both must pass.
 #
 # Usage: java/stress/level2.sh [quick]
-#   full (default): about 2 minutes on 10 cores. quick: about 30 s.
+#   full (default): about 17 minutes on 10 cores. quick: about 2 minutes.
 #
 # Builds with ../java/build.sh, then runs, stopping at the first failure:
 #   1. The unit tests (bergdb.dev.Unit), which include small level 2 tests.
@@ -21,8 +21,11 @@
 #      give the same stream, byte for byte (T2 in docs/sis-model.md), and
 #      the same dirty set, node identity and lookups. Startup distances from
 #      100 bytes up, node sizes 8 to 62, long keys, transactions of up to 40
-#      keys, a restart after every transaction; and, full only, about 100 MB
-#      with the default startup distance.
+#      keys, a restart after every transaction; mostly idle runs (30 percent
+#      empty transactions, 20 percent deletes of missing keys, a restart
+#      after every transaction), which caught the startup bug M18 of
+#      docs/level2-alignment.md; and, full only, about 100 MB with the
+#      default startup distance.
 #   5. CrashTest (INV-CRASH in docs/problem.md): the stream cut at 100
 #      positions per round, a third of them at or next to the end of a
 #      transaction; the database must start in the state after the last
@@ -32,8 +35,14 @@
 #      read, delete all, create 10000 objects and stop, repeated (15 times
 #      quick, 40 full) with a retain duration of 10 s. The 2017 code fails
 #      to start after about 12 cycles.
+#   7. Conformance with the Lean model (docs/level2-alignment.md, 12):
+#      A2A3Check2 (a transaction meets the model's A2, A3 and A5, and Db
+#      marks what the model marks) on three configurations; and the trace
+#      checker on conformance.sh's small set (2 seeds quick, 10 full): every
+#      transaction must be a step of the model, every restart invisible.
 # Logs go to build/level2/. Set JAVA_HOME or PATH for the JDK; the build
-# needs javac too.
+# needs javac too. Step 7 needs Lean (elan, with the toolchain of
+# ../lean/lean-toolchain); it builds the checker with lake.
 
 cd "$(dirname "$0")/.."
 
@@ -42,8 +51,10 @@ if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
 
 if [ "$1" = quick ]; then
     QUICK=1; ROUNDS=40; SIZE_ROUNDS=3; INV_N=600; CRASH_ROUNDS=4; BRYAN_CYCLES=15
+    CONF_SEEDS=2
 else
     QUICK=0; ROUNDS=200; SIZE_ROUNDS=10; INV_N=2000; CRASH_ROUNDS=20; BRYAN_CYCLES=40
+    CONF_SEEDS=10
 fi
 
 CP=build/bergdb.jar:build/stress
@@ -105,6 +116,10 @@ inv sd1000-node8 -Dsd=1000 -Dkeys=500 -Devery=100 -Dmaxnode=8 -Dlong=1 -Dbigtran
 inv sd10000-node14 -Dsd=10000 -Dkeys=500 -Devery=200 -Dmaxnode=14 -Dlong=1 &
 inv sd100000-node62 -Dsd=100000 -Dkeys=1000 -Devery=200 -Dmaxnode=62 -Dbigtrans=40 -Dvalsize=400 &
 inv every1 -Dsd=500 -Dkeys=100 -Devery=1 -Dlong=1 -Dn=$((INV_N / 5)) &
+for s in 1 2; do
+    $JAVA $I -Dsd=100 -Dkeys=100 -Devery=1 -Dlong=1 -Dn=400 -Dempty=30 -Dnodel=20 \
+        -cp $CP bergdb.core.RestartInvariance $s > $LOG/inv-idle-$s.txt 2>&1 &
+done
 wait
 if [ $QUICK = 0 ]; then
     $JAVA -ea -Xmx9g -Dsd=0 -Dn=12000 -Dkeys=3000 -Dvalsize=8000 -Devery=4000 -Ddel=1 \
@@ -134,5 +149,22 @@ mkdir -p $LOG/bryan
 $JAVA -ea -Xmx2g -cp $CP bergdb.core.BryanRepro $BRYAN_CYCLES 0 $LOG/bryan > $LOG/bryan.txt 2>&1
 grep -q '^Done: .* 0 failures' $LOG/bryan.txt || fail "BryanRepro" $LOG/bryan.txt
 echo "   bryan: $(tail -1 $LOG/bryan.txt)"
+
+echo "7. Conformance with the Lean model"
+n=0
+for cfg in "-Dops=4 -Ddel=25 -Dlong=1" \
+    "-Dops=40 -Dexact=1 -Dn=50 -Dkeys=1000 -Ddel=25 -Dlong=1" \
+    "-Dmaxnode=62 -Dkeys=1000 -Dn=2000 -Dops=40 -Ddel=20 -Dseeds=3"; do
+    n=$((n + 1))
+    F=$LOG/a2a3-$n.txt
+    $JAVA -ea $cfg -cp $CP bergdb.dag.A2A3Check2 > $F 2>&1
+    grep -q 'violating A3 0, A5 0;' $F && grep -q 'NET (A2): .* not current 0 ' $F \
+        && grep -q 'in step 3 only 0, in model only 0 ' $F || fail "A2A3Check2" $F
+    echo "   a2a3-$n: $(grep -o '^  transactions [0-9]*' $F | sed 's/^ *//'): A2, A3, A5 and marking OK"
+done
+(cd ../lean && lake build) > $LOG/lake.txt 2>&1 || fail "the Lean checker, lake build" $LOG/lake.txt
+sh stress/conformance.sh small $CONF_SEEDS > $LOG/conformance.txt 2>&1
+grep -q '^CONFORMANCE OK' $LOG/conformance.txt || fail "conformance.sh small" $LOG/conformance.txt
+echo "   conformance: $(grep '^   traces:' $LOG/conformance.txt | sed 's/^ *//')"
 
 echo "LEVEL 2 OK"

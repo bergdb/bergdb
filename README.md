@@ -8,7 +8,8 @@ storage, index nodes are written lazily into it, and startup reads only the
 tail of the stream, so startup time does not grow with the size of the
 database.
 
-This repository holds three things that belong together:
+This repository holds three things that belong together, and the work on
+them:
 
 * `docs/`. The theory: the problem statement, the model of self-indexed
   streams, prior art, the feature levels with their test evidence, and the
@@ -17,6 +18,8 @@ This repository holds three things that belong together:
   recovery (T1) and restart invariance (T2). See [lean/README.md](lean/README.md).
 * `java/`. The Java implementation, its build script and the regression and
   stress tests.
+* `items/`. Work items: plans, experiments, progress logs and reports, kept
+  apart from the current state. See [items/readme.md](items/readme.md).
 
 BergDB was developed 2012 to 2017 (until July 2013 under the name KissDB).
 This repository continues from the 2017 source; the work since October 2026
@@ -44,12 +47,12 @@ concurrency or resource bounds. Whether the concept is novel is open; see
 Build and test
 --------------
 
-Needs a JDK (the code is compiled with `--release 8`) and, for the proofs,
-[elan](https://github.com/leanprover/elan).
+Needs a JDK (the code is compiled with `--release 8`) and, for the proofs
+and `level2.sh`, [elan](https://github.com/leanprover/elan).
 
     java/build.sh                  # builds java/build/bergdb.jar and the stress tests
     java/stress/level1.sh          # full replay          (about 80 s)
-    java/stress/level2.sh          # bounded startup      (about 2 minutes)
+    java/stress/level2.sh          # bounded startup      (about 17 minutes; quick: 2)
     java/stress/level3.sh          # reclaim              (about 4 minutes)
     cd lean && lake build          # checks all proofs
 
