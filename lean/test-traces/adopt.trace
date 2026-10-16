@@ -1,0 +1,42 @@
+# Bergdb item 001, WP A4: a child with two current parents, then adopted. Node 5
+# points to 11 and 13; T(1) gives 13 a pointer to 11 too (TREE fails for 11);
+# T(2) deletes 5's pointer to 11, which stays reachable through 13 (A6 fails for
+# 11). The records are the model's; the diagnostics do not fail a trace.
+TRACE 1
+CONFIG adopt
+TX 0
+NEW 0 9 I
+NEW 3 8 I
+NEW 5 3 I
+NEW 11 1 I
+NEW 13 2 I
+ADD 0 0 T 3
+ADD 3 0 R 5
+ADD 5 0 K 10 11
+ADD 5 0 K 20 13
+REC 0 0 0 field
+VER 3 I
+H 0 R 5
+F 5 0
+VER 5 I
+H 0 K 10 11
+H 0 K 20 13
+F 11 0
+F 13 0
+VER 11 I
+VER 13 I
+DIRTY
+END 0
+TX 1
+ADD 13 1 K 30 11
+REC 1 0 0 field
+GD 3 5 13
+DIRTY 3 1 5 1 13 1
+END 1
+TX 2
+ADD 5 2 D 1 10
+REC 2 0 0 field
+GD
+DIRTY 3 1 5 1 13 1
+END 2
+DONE 2

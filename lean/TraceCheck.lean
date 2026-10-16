@@ -22,8 +22,9 @@ Checks, per transaction i (R(0) included):
        gives Java's record R(i) and D (gd and the versions compared as sets)
   C-V  the LIVE lines: Java's live children equal the instance's `live`
   C-R  the PROBE lines of the exporter: restarts, lookups, stream identity
-and the exporter's ERROR lines. Diagnostics: D closed upward, and with --inv,
-INV-2. The last line is TRACECHECK OK or TRACECHECK FAILED.
+and the exporter's ERROR lines. Diagnostics: D closed upward; A6 (no adoption)
+and TREE (one current parent), for Option K of bergdb item 001 (WP A4); and with
+--inv, INV-2. The last line is TRACECHECK OK or TRACECHECK FAILED.
 -/
 import Check.Steps
 
@@ -115,8 +116,9 @@ def main (args : List String) : IO UInt32 := do
       let rlPrev := reachList sp P (i - 1)
       let P' := P.apply i c
       let rlNow := reachList sp P' i
+      let rlNowSet := Std.HashSet.ofList rlNow
       -- C-A
-      let sf := stepFailures sp P i c (Std.HashSet.ofList rlPrev) (Std.HashSet.ofList rlNow) rlNow
+      let sf := stepFailures sp P i c (Std.HashSet.ofList rlPrev) rlNowSet rlNow
       ca := ca.add i (sf.map (fun p => (p.1, s!"{p.1} fails for nodes {showIds p.2}")))
       let badTimes := r.adds.toList.filter (fun a => a.2.1 != i)
       if !badTimes.isEmpty then
@@ -138,15 +140,16 @@ def main (args : List String) : IO UInt32 := do
           | none => []
         if !sameList ml ys then
           cv := cv.add i [("live", s!"live of {x} at {tm}: model {ml}, Java {ys}")]
-      -- diagnostics
+      -- diagnostics, one tally entry per transaction: D closed upward; A6 and
+      -- TREE (bergdb item 001, WP A4); INV-2 with --inv
       let cl := closedFailures sp P' i r.dirty
-      if !cl.isEmpty then
-        diag := diag.add i [("closed", s!"D not closed upward at {showIds cl}")]
-      if o.inv then
-        let S' := jrecs.toList.take (i + 1)
-        let iv := inv2Failures sp S' P' i r.dirty
-        if !iv.isEmpty then
-          diag := diag.add i [("INV-2", s!"dirty index nodes not in D: {showIds iv}")]
+      let a6 := adoptionFailures sp P' i rlNowSet rlNow
+      let tr := treeFailures sp P' i rlNow
+      let iv := if o.inv then inv2Failures sp (jrecs.toList.take (i + 1)) P' i r.dirty else []
+      diag := diag.add i ((if cl.isEmpty then [] else [("closed", s!"D not closed upward at {showIds cl}")]) ++
+        (if a6.isEmpty then [] else [("A6", s!"A6 (no adoption) fails for nodes {showIds a6}")]) ++
+        (if tr.isEmpty then [] else [("TREE", s!"TREE (one current parent) fails for nodes {showIds tr}")]) ++
+        (if iv.isEmpty then [] else [("INV-2", s!"dirty index nodes not in D: {showIds iv}")]))
       P := P'
     let probes := recs.toList.flatMap (fun r => r.probes.toList)
     let probeFails := probes.filter (fun p => !p.2.1)

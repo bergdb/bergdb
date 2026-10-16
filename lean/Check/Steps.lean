@@ -9,6 +9,7 @@ WP C2; since 2026-10-16 (WP E3) without checker-local definitions.
 -/
 import Check.Trace
 import Std.Data.HashSet
+import Std.Data.HashMap
 
 namespace SIS.Check
 
@@ -166,6 +167,33 @@ def closedFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time) (D : Dirty)
     (match P.get? x with
      | some n => (reachFrom sp P i x n).any (fun y => inD D y)
      | none => false))
+
+/-- A6, no adoption (bergdb item 001, WP A4; its plan, 8.5): the index nodes
+reachable at i that a node reachable at i points to, live or dead, without
+being its live child at i. Option K needs none: a pointer that stops being live
+in a node that stays current points to a node that stops being current, or to a
+data node. A diagnostic, not yet an assumption (WP E1 decides). rl holds
+`reachList sp P i`, rlList the same as a list. -/
+def adoptionFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time)
+    (rl : Std.HashSet NodeId) (rlList : List NodeId) : List NodeId :=
+  rlList.eraseDups.flatMap (fun x =>
+    match P.get? x with
+    | some n =>
+      let lv := sp.live (n.hist.upTo i)
+      (pointees sp n.hist).filter (fun y => !lv.contains y && rl.contains y && isIndex P y)
+    | none => [])
+
+/-- TREE, one current parent (bergdb item 001, WP A4; sis-model.md, section 11):
+the nodes reachable at i, the root aside, that are the live child at i of no
+node or of more than one node reachable at i. A diagnostic, as A6. -/
+def treeFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time) (rlList : List NodeId) :
+    List NodeId :=
+  let xs := rlList.eraseDups
+  let counts : Std.HashMap NodeId Nat := xs.foldl (fun m x =>
+    match P.get? x with
+    | some n => (sp.live (n.hist.upTo i)).eraseDups.foldl (fun m y => m.insert y (m.getD y 0 + 1)) m
+    | none => m) {}
+  xs.filter (fun y => y != root && counts.getD y 0 != 1)
 
 /-- INV-2: the dirty index nodes not in D (a virtual root aside). -/
 def inv2Failures (sp : Spec BVal Nat) (S : Stream BVal Nat) (P : Struct BVal) (i : Time)

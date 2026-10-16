@@ -7,8 +7,8 @@ Source commit `75d3c2d`; line numbers below are at that commit, in
 `java/src/bergdb/`.
 
 Status, 2026-10-16: A2's draft. The scope (section 1), a first α for the
-cache (section 2) and the register (section 3), checked against the code.
-To come: the probes of A4 (section 4), the design of E1 (section 5), what
+cache (section 2) and the register (section 3), checked against the code;
+the probes of A4 (section 4). To come: the design of E1 (section 5), what
 Java must do (E7, section 6) and the outcome (F2).
 
 Level 4 is eviction: data and index larger than memory, under a memory
@@ -195,7 +195,7 @@ level2-alignment.md's register, where stage 1 closes them.
 | M31 | One canonical object per node id must survive release and reload | `Cache3.makeCanonical` (137), `isBetter` (167); the `isCanonical` fields of `KeyNode` and `TopNode` | Phys: the node table | Model and code: release clears the table's entry and the flag; the writer's follower makes a reloaded node canonical | 2, 4: E1, J3; o |
 | M39 | Eviction beside concurrent readers | `NodeCollection.followPointer` (93) takes the slot's lock (`PointerLocks`, 128 stripes) on every follow | — (sequential) | Java protocol (Q8) and its tests | 4: J5; o |
 | M40 | Memory accounting is not implemented: `Cache3.totalSize` and `putSize` are set once and never advanced; access data is `-putSize`, the constant -10,000 | `Cache3` fields (lines 25, 26); `Db.getAccessData` (1605); `Cache3.setSizeIndicator`, called from the `Db` constructor (line 173), stores the budget and nothing reads it | — | Code | 4: J1, J7; o |
-| M43 | Option K relies on A6 (no adoption) and TREE (one current parent), which the model does not assume today. By the code: a split makes new nodes and the replaced node stops being current (`timeSplit`, `spaceSplit`), or changes in place a node of the same transaction (`timeSplitInPlace`, `spaceSplitInPlace`); a new top node's skip slots point to older top nodes, which are not current; no path moves a child from one current node to another | `Dag.handleFullNode` (780) and the splits (821, 841, 894, 955); `TopDs.newSuperRoot` (42) | `StepOK` | Checked on Java (A4); an assumption in the model (E1) | 2: A4, E1; o |
+| M43 | Option K relies on A6 (no adoption) and TREE (one current parent), which the model does not assume today. A4: TREE holds on every transaction checked; A6 fails in 5 of 68,901 Java-tier transactions (an in-place split of a new segment root), and the weaker A6' holds in all (section 4). By the code: a split makes new nodes and the replaced node stops being current (`timeSplit`, `spaceSplit`), or changes in place a node of the same transaction (`timeSplitInPlace`, `spaceSplitInPlace`); a new top node's skip slots point to older top nodes, which are not current; no path moves a child from one current node to another | `Dag.handleFullNode` (780) and the splits (821, 841, 894, 955); `TopDs.newSuperRoot` (42) | `StepOK` | Checked on Java (A4: TREE, A6'); an assumption in the model, A6' or A6 (E1) | 2: A4 done, E1; o |
 | M44 | After a restart, a node of D can hold a stream slot to a node of D that is written before it; today the node table gives the newer version, with eviction nothing does (plan, 8.5, the gap) | `DbStarter.canonicalNode` (451); `NodeCollection.resolvePointers` (292) | — | Model and code: the window (Rule R at runtime for the records after the previous startup pos), or startup resolving D's slots against D | 2, 3: E1, R8; o |
 | M45 | **New (A2).** The public API's cache size is computed in `int`: `this.cacheSizeInMb * 1000000` overflows for more than 2,147 MB. The default is a fifth of the JVM's maximum heap, so it overflows with heaps above about 10.7 GB. With `-ea` the `Db` constructor then fails (`Cache3.setSizeIndicator` asserts a positive size); without it, the budget becomes 4 MB. No effect today, since nothing reads the budget (M40); J7 makes it the budget | `pubimp/DatabaseBuilderImp.start`, line 173; `Cache3.setSizeIndicator` (50) | — | Code fix (widen to `long`), with a test, before J7 relies on it | 4: J7; o |
 | M46 | **New (A2, from review-13-claude, 3).** Top node ordinals are bounded by `MAX_TOP_NODE_ID_VALUE`, 2^30 − 1, over the database's whole life; reclaim bounds the stream but not the ordinals. With one hot key (about 15 transactions per top) that is about 186 days at 1,000 transactions per second. At the bound, `TopNode.height` throws from the constructor in `newSuperRoot`, in the middle of a root split, after the Dag has made the new root | `TopNode.height`, `MAX_TOP_NODE_ID_VALUE` (lines 105 to 125); `TopDs.newSuperRoot` (42) | `Spec.topLevel`, levels (level2-alignment.md, 8.4) | Frans: a wider ordinal (the header has 48 bits for it) or a clean refusal before the transaction changes anything. Not urgent | —; o |
@@ -209,8 +209,55 @@ runtime cut-back is not reachable today.
 
 ## 4. Probes
 
-WP A4: the A6 and TREE diagnostics of the checker and the Java tier, on the
-small and medium sets and on the 21 configurations of the Java tier.
+WP A4, 2026-10-16: does Java's Dag have the structure that Option K needs
+(the plan, 8.5)? Two properties, for every transaction i:
+
+* **A6, no adoption**: for every node x reachable at i, every pointee y of x,
+  live or dead, that is not a live child of x at i is a data node or not
+  reachable at i.
+* **TREE, one current parent**: every node reachable at i, the root aside,
+  is the live child at i of exactly one node reachable at i.
+
+They are diagnostics, not assumptions yet (E1 decides): in the checker
+(`adoptionFailures`, `treeFailures` in `lean/Check/Steps.lean`, computed
+with the model's `reachList`, `pointees` and the instance's `live`, and
+reported under "diagnostics"; a test trace, `adopt.trace`, fails both), and
+in the Java tier (`java/stress/A2A3Check2.java`, a new line in its summary;
+`-DdebugA6=1` prints each failure). The Java tier also counts a weaker form,
+**A6'**: such a y is at least reachable at i from x, through live pointers.
+
+| Set | Transactions | A6 | A6' | TREE |
+|---|---|---|---|---|
+| Lean tier, small (`conformance.sh small`, 50 traces) | 3,700 | 0 | — | 0 |
+| Lean tier, medium (`conformance.sh medium`, 9 traces) | 3,360 | 0 | — | 0 |
+| Java tier, the 21 configurations of level2-alignment.md, 10.5 | 68,901 | fails in 5 | 0 | 0 |
+
+The traces are those of A1's run of `level2.sh` (small) and of F1-008-11's
+campaign on `d5c56dd` (medium; production code and exporter unchanged since),
+checked by the checker with A4's diagnostics and C2's fast versions, which
+compute the same as the model's definitions (proven; 31 s for the medium set).
+
+**A6 fails, A6' holds.** The five failures are in two configurations, both
+at node size 8 with two-segment keys and deletes: `-Dmaxnode=8 -Dkeys=1000
+-Dn=50 -Dexact=1 -Dops=40 -Ddel=25 -Dlong=1 -Dseeds=10` (seed 4, T2: one
+transaction) and `-Dmaxnode=8 -Dkeys=500 -Dn=2000 -Dops=10 -Ddel=20
+-Dlong=1 -Dseeds=3` (seed 2, T26 to T29: one dead pointer, seen in four
+transactions). Each time a segment leaf has a dead pointer to a node that
+the same transaction created, and that is still below the segment leaf: the
+transaction created the root of the next key segment's tree and then split it
+in place (`Dag.spaceSplitInPlace` with a segment leaf as the parent, D1 of
+F1-008-11). The parent gets a new klong for the same compare value, to the
+new root above the split node, and its earlier klong of the same transaction,
+to the split node, becomes dead; the split node is now the new root's child.
+So the adopter is a node below the old parent, and A6' holds in every
+transaction checked.
+
+What it means for Option K (for E1): the argument for a dead slot (the
+plan, 8.5) needs that a current node with a dead pointer to y is rewritten
+after every later write of y. With A6', y stays below x: every change below
+y is marked through x, and D is closed upward, so x is in D whenever y is,
+as in the argument for live slots. E1 must decide whether A6' is the
+assumption, and check it in the model.
 
 
 ## 5. The design

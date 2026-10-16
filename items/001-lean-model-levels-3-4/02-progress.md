@@ -115,7 +115,7 @@ Status
 | A1 | Baseline and environment | done | 2026-10-16 |
 | A2 | The registers, checked against the code | done | 2026-10-16 |
 | A3 | The TopNode ordinal defect | done | 2026-10-16 |
-| A4 | Probe H1: no adoption | in progress | 2026-10-16 |
+| A4 | Probe H1: no adoption | done | 2026-10-16 |
 | C1 | Profile the checker | not started | — |
 | C2 | Fast versions, proven equal | not started | — |
 | C3 | Larger sets and parallel runs | not started | — |
@@ -413,4 +413,63 @@ M45, M46.
 
 Open, next: A4 (the medium set with the A6 and TREE diagnostics is running
 on the fast checker of C2).
+
+
+### 2026-10-16 15:48 to 16:45. WP A4, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `75d3c2d` to
+`f6cf45c` (A1 to A2); uncommitted: this WP's files.
+
+Did:
+
+1. The checker (developed in a scratch copy of `lean/`, then copied in):
+   `adoptionFailures` (A6) and `treeFailures` (TREE) in
+   `lean/Check/Steps.lean`, with the model's `reachList`, `pointees` and the
+   instance's `live`; reported in `TraceCheck.lean`'s diagnostics, which now
+   count a transaction once even when several diagnostics fail (before, D's
+   closedness and INV-2 counted separately). A test trace,
+   `test-traces/adopt.trace`, where TREE and then A6 fail.
+2. The Java tier: `java/stress/A2A3Check2.java` counts A6, A6' (the weaker
+   form: the adopted node is at least below the node with the dead pointer)
+   and TREE, prints them on a new summary line (the gate's grep patterns are
+   unchanged), and with `-DdebugA6=1` prints each A6 failure.
+3. Runs. The Lean tier on the small set (A1's traces, 50) and the medium set
+   (F1-008-11's 9 traces on `d5c56dd`; production code and exporter
+   unchanged since): A6 0, TREE 0, in 3,700 and 3,360 transactions. The
+   medium set ran with C2's fast checker, which computes the model's
+   definitions (proven); the slow and the fast checker gave identical outputs
+   on all 50 small traces and on the two medium traces both finished. The
+   Java tier on the 21 configurations of level2-alignment.md, 10.5 (68,901
+   transactions, 80 s): TREE 0; A6 fails in 5 transactions, A6' in 0.
+4. The failures, with `-DdebugA6=1`: a segment leaf with a dead pointer to a
+   node that the same transaction created and then split in place
+   (`Dag.spaceSplitInPlace` with a segment-leaf parent): the parent's new
+   klong points to the new root above the split node, so the split node is
+   still below the parent. Smallest configurations: `-Dmaxnode=8 -Dkeys=1000
+   -Dn=50 -Dexact=1 -Dops=40 -Ddel=25 -Dlong=1` seed 4, T2; and
+   `-Dmaxnode=8 -Dkeys=500 -Dn=2000 -Dops=10 -Ddel=20 -Dlong=1` seed 2,
+   T26 to T29.
+5. `docs/level4-alignment.md`, section 4 "Probes", and M43 updated.
+
+Files changed: `lean/Check/Steps.lean`, `lean/TraceCheck.lean`,
+`lean/test-traces/run.sh`, `lean/test-traces/adopt.trace` (new);
+`java/stress/A2A3Check2.java`; `docs/level4-alignment.md`; this file.
+
+Checks: `java/build.sh` and the gates passed with the new `A2A3Check2`
+(A3's run; level2.sh step 7 runs it); the tool ran on the 21 configurations,
+small to large. Lean, 16:35 to 16:42: `lake build` OK, no warnings; `lake exe
+sistest 20 40` "all checks pass" (410 s); `#print axioms` of the five
+theorems: the standard three; no `sorry`, `admit`, `axiom` or `unsafe` in
+`lean/SIS/` and `lean/Check/`; `sh test-traces/run.sh`: `TRACE TESTS OK`,
+with the two new expectations on `adopt.trace`.
+
+Register: M43 (A4's part done: TREE holds, A6 fails, A6' holds). For E1:
+whether the model assumes A6' instead of A6, and how the dead-slot argument
+of 8.5 goes with A6'. This does not trigger the stop of 5.3 ("A6 refuted and
+no weaker property found"): A6' is the weaker property, so far checked, not
+proved to suffice.
+
+Open, next: commit A4 when its Lean checks pass; then L2 (proved in a
+scratch copy) and C2 (in progress: `markOf`, `writeAll`, `reachList` and
+`step` fast, proven equal; the medium set 88 s instead of 6,770 s).
 

@@ -22,10 +22,18 @@ import bergdb.common.StringUtil;
  *   A5: every node in R(tt) is in R(tt of T(i-1)) or created by T(i).
  *   marked-dead: index nodes that Db would mark (followed, created, changed, super
  *       root accessed) that are not in R(tt).
+ *   A6, no adoption (bergdb item 001, WP A4, 2026-10-16): no index node in R(tt) is a
+ *       child, live or dead, of a node in R(tt) without being its live child at tt.
+ *   TREE, one current parent (the same WP): every node in R(tt) but the super root is
+ *       the live child at tt of exactly one node in R(tt).
+ *   A6', the weaker form: such a node is at least reachable at tt from the node that
+ *       points to it (a dead pointer whose target stays below the same node).
+ *   A6 and TREE are what Option K of item 001's plan (section 8.5) needs; they are
+ *   counted, not yet required. -DdebugA6=1 prints each A6 failure.
  *
  * Properties: maxnode (8), keys (200), n (300), ops (max ops per transaction, 4),
  * exact=1 (exactly ops ops), del (percent deletes, 0), long=1 (two segments for half
- * the keys), unsorted=1 (do not sort the ops), seeds (10).
+ * the keys), unsorted=1 (do not sort the ops), seeds (10), debugA6=1.
  */
 public class A2A3Check2 {
     static final int MAX_NODE = Integer.getInteger("maxnode", 8);
@@ -63,6 +71,8 @@ public class A2A3Check2 {
     // compared with the model's marked set.
     static long netChangedNotCurrent, transNetA2, step3, modelMarked, step3NotModel, modelNotStep3,
             transMarkDiff;
+    // A6 and TREE (bergdb item 001, WP A4): nodes and transactions that fail them.
+    static long adopted, transA6, adoptedNotBelow, transA6w, multiParent, transTree;
 
     /** The live children of a key node at time t: for each compare value, the last
      *  key klong with time <= t that is not deleted at t. */
@@ -106,6 +116,104 @@ public class A2A3Check2 {
             }
         }
         return r;
+    }
+
+    /** The children of a node, live or dead: the nodes its key klongs point to, or a top
+     *  node's root pointer and skip pointers. */
+    static Set<Node> allChildren(Node x) {
+        Set<Node> result = idSet();
+        if (x instanceof KeyNode) {
+            KeyNode k = (KeyNode) x;
+            for (int i = 0; i < k.size; i++) {
+                if (Klong.getType(k.klongs[i]) != Klong.TYPE_KEY) continue;
+                Node child = k.pointers[i];
+                if (child == null) throw new IllegalStateException("no memory pointer");
+                result.add(child);
+            }
+        } else if (x instanceof TopNode) {
+            TopNode t = (TopNode) x;
+            result.add(t.rootPointer);
+            for (TopNode older : t.pointers) {
+                if (older != null) result.add(older);
+            }
+        }
+        return result;
+    }
+
+    /** The live children of an index node at time t (a top node: its root pointer). */
+    static Set<Node> liveSet(Node x, long t) {
+        Set<Node> result = idSet();
+        if (x instanceof KeyNode) result.addAll(liveChildren((KeyNode) x, t));
+        else if (x instanceof TopNode) result.add(((TopNode) x).rootPointer);
+        return result;
+    }
+
+    /** A6: the index nodes in 'now' that a node in 'now' points to, live or dead, without
+     *  being its live child at t. With 'notBelow', only those that are not reachable from
+     *  that node at t either (A6', the weaker form). */
+    static Set<Node> adoptedNodes(Set<Node> now, long t, boolean notBelow, long seed, int i) {
+        Set<Node> result = idSet();
+        for (Node x : now) {
+            if (!x.isIndexNode()) continue;
+            Set<Node> live = liveSet(x, t);
+            Set<Node> below = null;
+            for (Node y : allChildren(x)) {
+                if (y.isIndexNode() && !live.contains(y) && now.contains(y)) {
+                    if (notBelow) {
+                        if (below == null) below = below(x, t);
+                        if (below.contains(y)) continue;
+                    }
+                    result.add(y);
+                    if (DEBUG_A6 && !notBelow) {
+                        if (below == null) below = below(x, t);
+                        System.out.println("A6 seed " + seed + " T" + i + ": " + describe(x, t)
+                                + " has a dead pointer to " + describe(y, t) + ", reachable at t"
+                                + (below.contains(y) ? ", below it" : ", NOT below it"));
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    /** The nodes reachable from x at time t through live pointers, x excluded. */
+    static Set<Node> below(Node x, long t) {
+        Set<Node> r = idSet();
+        Deque<Node> stack = new ArrayDeque<Node>(liveSet(x, t));
+        while (!stack.isEmpty()) {
+            Node y = stack.pop();
+            if (!r.add(y)) continue;
+            stack.addAll(liveSet(y, t));
+        }
+        return r;
+    }
+
+    static String describe(Node x, long t) {
+        if (x instanceof TopNode) return "top node " + ((TopNode) x).topNodeId;
+        KeyNode k = (KeyNode) x;
+        return "key node " + System.identityHashCode(k) + (k.isSegmentLeaf() ? " (segment leaf" : " (internal")
+                + ", first time " + k.getFirstTime() + (k.getFirstTime() == t ? ", new" : "") + ")";
+    }
+
+    static final boolean DEBUG_A6 = "1".equals(System.getProperty("debugA6"));
+
+    /** TREE: the nodes in 'now', the super root aside, that are the live child at t of no
+     *  node or of several nodes in 'now'. */
+    static Set<Node> notOneParent(Set<Node> now, Node superRoot, long t) {
+        IdentityHashMap<Node, Integer> parents = new IdentityHashMap<Node, Integer>();
+        for (Node x : now) {
+            for (Node y : liveSet(x, t)) {
+                Integer p = parents.get(y);
+                parents.put(y, p == null ? 1 : p + 1);
+            }
+        }
+        Set<Node> result = idSet();
+        for (Node y : now) {
+            if (y == superRoot) continue;       // The root's child: the root is not modelled here.
+            Integer p = parents.get(y);
+            if (p == null || p != 1) result.add(y);
+        }
+        return result;
     }
 
     static boolean hasKlongAt(KeyNode k, long t) {
@@ -265,6 +373,19 @@ public class A2A3Check2 {
             for (Node x : s3) if (!mm.contains(x)) { step3NotModel++; diff = true; }
             for (Node x : mm) if (!s3.contains(x)) { modelNotStep3++; diff = true; }
             if (diff) transMarkDiff++;
+            // A6 and TREE (bergdb item 001, WP A4).
+            GetData gdTop = dag.newGetData();
+            gdTop.pointerFollower = FOLLOWER;
+            TopNode superRoot = dag.getTopDs().findSuperRootAtTime(tt, gdTop);
+            Set<Node> ad = adoptedNodes(now, tt, false, seed, i);
+            Set<Node> adNotBelow = adoptedNodes(now, tt, true, seed, i);
+            Set<Node> np = notOneParent(now, superRoot, tt);
+            adopted += ad.size();
+            if (!ad.isEmpty()) transA6++;
+            adoptedNotBelow += adNotBelow.size();
+            if (!adNotBelow.isEmpty()) transA6w++;
+            multiParent += np.size();
+            if (!np.isEmpty()) transTree++;
             if (a2) transA2++;
             if (a3) transA3++;
             if (a5) transA5++;
@@ -297,5 +418,9 @@ public class A2A3Check2 {
         System.out.println("  MARKING: Db's step-3 nodes " + step3 + ", model marked " + modelMarked
                 + ", in step 3 only " + step3NotModel + ", in model only " + modelNotStep3
                 + " (transactions with a difference " + transMarkDiff + ")");
+        System.out.println("  A6 (no adoption): adopted index nodes " + adopted + " (transactions "
+                + transA6 + "), of them not below the old parent (A6') " + adoptedNotBelow
+                + " (transactions " + transA6w + "); TREE (one current parent): nodes without"
+                + " exactly one " + multiParent + " (transactions " + transTree + ")");
     }
 }
