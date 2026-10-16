@@ -8,6 +8,8 @@ virtual root of option (a) (`Spec.virt`). Written 2026-10-15 for F1-008-11,
 WP C2; since 2026-10-16 (WP E3) without checker-local definitions.
 -/
 import Check.Trace
+import Check.Fast
+import Check.R4
 import Std.Data.HashSet
 import Std.Data.HashMap
 
@@ -97,10 +99,16 @@ def virtFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time) (c : Changes 
     | none => false)).map (·.1)
   let rootAdds := if c.adds.filter (fun a => a.1 == root) == tops.map (fun nn => (root, sp.rootVal nn.id))
     then [] else [root]
+  -- R4: the root children of P not in the closure of the new one. Since bergdb item 001,
+  -- WP C2, first the chain test (Check/R4.lean): when it passes, every one is in the
+  -- closure (`r4Fast_sound`), so the filter would give none, and `topClosure`, exponential
+  -- in the number of root children, is not evaluated.
   let r4 := tops.flatMap (fun nn => match P'.get? nn.id with
     | some n =>
-      let cl := topClosure sp P' nn.id n
-      (P.filter (fun p => topNode p && !cl.contains p.1)).map (·.1)
+      if TopBridge.r4Fast sp P P' nn.id then []
+      else
+        let cl := topClosure sp P' nn.id n
+        (allIds P).filter (fun y => isTop sp P y && !cl.contains y)
     | none => [nn.id])
   let dead := (P'.filter topNode).flatMap (fun p =>
     (pointees sp p.2.hist).filter (fun y => topIds.contains y && rlNow.contains y))

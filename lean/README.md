@@ -36,7 +36,16 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.T2_restart
     #print axioms SIS.T13_markExact
 
-Each prints `[propext, Classical.choice, Quot.sound]`.
+Each prints `[propext, Classical.choice, Quot.sound]`. The equalities of
+the checker's fast paths (Check/Fast.lean, Check/R4.lean) are checked the
+same way:
+
+    import Check.Steps
+    #print axioms SIS.Fast.markOf_eq_fast
+    #print axioms SIS.Fast.writeAll_eq_fast
+    #print axioms SIS.Fast.reachList_eq_fast
+    #print axioms SIS.Fast.step_eq_fast
+    #print axioms SIS.TopBridge.r4Fast_sound
 
 
 What to read
@@ -95,6 +104,22 @@ Not trusted, tests only:
   checks traces of Java runs against the model's definitions
   ([../docs/level2-alignment.md](../docs/level2-alignment.md), sections 8.5
   and 9). `sh test-traces/run.sh` runs its tests.
+* Check/Fast.lean and Check/R4.lean, the checker's fast paths (bergdb item
+  001, WP C2). `markOf`, `writeAll`, `reachList` and `step` have fast
+  versions, proven equal to them and marked `@[csimp]` (`markOf_eq_fast`,
+  `writeAll_eq_fast`, `reachList_eq_fast`, `step_eq_fast`), so the compiled
+  checker runs the fast versions where the model's code calls the
+  definitions, which stay as they are: P and the latest versions are looked
+  up through hash maps, and step 3 computes the reachable nodes once per
+  transaction, not once per node. `step_eq_fast` is there because a
+  `@[csimp]` equation changes only code compiled after it: `stepFast` is
+  `step` word for word, compiled again. R4 (`VirtStep.closure`) is tested
+  first through the chain of top node ordinals (`r4Fast`, sound by
+  `r4Fast_sound`; `PredChain` and `mem_topClosure` are from review-13-claude's
+  `R4Bridge.lean`, F1-008-13 in the f1 repository), and the exponential
+  `topClosure` runs only when that test fails. The medium set took 6,770 s and
+  takes 88 s; a trace of 5,000 transactions at node size 30 with 1,000 keys
+  takes 428 s and 128 MB.
 
 Choices made in Lean that the text leaves open:
 

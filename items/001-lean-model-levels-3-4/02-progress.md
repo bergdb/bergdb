@@ -117,7 +117,7 @@ Status
 | A3 | The TopNode ordinal defect | done | 2026-10-16 |
 | A4 | Probe H1: no adoption | done | 2026-10-16 |
 | C1 | Profile the checker | done | 2026-10-16 |
-| C2 | Fast versions, proven equal | not started | — |
+| C2 | Fast versions, proven equal | done | 2026-10-16 |
 | C3 | Larger sets and parallel runs | not started | — |
 | L1 | The physical layer, part 1: loading | not started | — |
 | L2 | Lemma M | not started | — |
@@ -550,4 +550,69 @@ Checks: the session ran every scenario and its correctness checks; the
 documents' links resolve.
 
 Open, next: J1 needs P1 (done) and P2 (the soak, not started).
+
+
+### 2026-10-16 16:30 to 17:15. WP C2, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `d8abf0a`;
+uncommitted: this WP's files.
+
+Did (developed in a scratch copy of `lean/`, then copied in):
+
+1. `lean/Check/Fast.lean`: fast versions of the model's definitions, each
+   proven equal and marked `@[csimp]`: `reachList` (`reachList_eq_fast`; P
+   through a hash map, `nodeMap`, with `nodeMap_get?`), `markOf`
+   (`markOf_eq_fast`: the reachable nodes once per transaction, P, D and the
+   changed nodes through hash maps and sets), `writeAll` (`writeAll_eq_fast`:
+   the stream's latest versions through a hash map built once per call,
+   `lvMap_get?`), and `step` itself (`step_eq_fast`, by `rfl`): a `@[csimp]`
+   equation changes only code compiled after it, and the model's `step` was
+   compiled before, with calls to the slow definitions; `stepFast` is `step`
+   word for word, compiled again. Helpers with proofs: `reachFromG` (lookups
+   through a function), `eraseDupsFast` (= `List.eraseDups`), `allIdsFast`.
+   Of the plan's two routes (C2, point 1), `@[csimp]` equations sufficed; no
+   checker step with an index kept along the trace was needed.
+2. `lean/Check/R4.lean`: R4 in linear time, as review-13-claude, 7.1, asked.
+   `PredChain` and `mem_topClosure` are review-13-claude's `R4Bridge.lean`
+   (F1-008-13, f1), with its proofs; new: `chainB` (the test of the chain
+   through hash maps), `chainB_sound`, `r4Fast`, and `r4Fast_sound`: when the
+   test passes, the list that the checker's R4 check filters is empty, so the
+   checker evaluates `topClosure` only when the test fails. The R4 check in
+   `virtFailures` now goes over the node ids of P with `Struct.get?` (as
+   `VirtStep.closure` says) instead of P's entries; the same for traces, whose
+   ids are distinct.
+3. `lean/README.md`: the fast paths, and the checker's equalities in the
+   axioms check.
+
+Results (the targets of C2: the medium set under 15 minutes; 5,000
+transactions at node size 30 with 1,000 keys under 10 minutes and 2 GB):
+
+| Trace or set | Before | After |
+|---|---|---|
+| `m-mixed-1` (500 transactions) | 265 s | 4.5 s |
+| the medium set, 9 traces (one at a time; CPU) | 6,770 s | 88 s; 31 s on 3 cores |
+| the small set, 50 traces (CPU) | 281 s | 8 s |
+| `hot400` (one hot key, 101 top nodes) | did not finish (R4) | 0.13 s |
+| `long2000` (2,000 transactions, 41 top nodes) | did not finish (R4) | 8.2 s, 30 MB |
+| `big5000` (5,000 transactions, node size 30, 1,000 keys, 10,113 nodes) | — | 428 s, 128 MB |
+
+Regression: on the 50 small traces and the 9 medium traces, the output of the
+final checker equals that of the checker with the model's definitions (the
+50 small and the 2 medium traces it finished) or of C2's first version (the
+other 7 medium ones), apart from the first line (the file name). All 59
+`TRACECHECK OK`.
+
+Files changed: `lean/Check/Fast.lean`, `lean/Check/R4.lean` (new);
+`lean/Check/Steps.lean` (imports; R4's fast path), `lean/README.md`; this
+file.
+
+Checks, 16:56 to 17:03: `lake build` OK, no warnings; `lake exe sistest 20
+40` "all checks pass" (404 s); `#print axioms` of the five model theorems and
+of `markOf_eq_fast`, `writeAll_eq_fast`, `reachList_eq_fast`, `r4Fast_sound`
+(the standard three) and `step_eq_fast` (`propext`, `Quot.sound`); no
+`sorry`, `admit`, `axiom` or `unsafe` in `lean/SIS/` and `lean/Check/`; `sh
+test-traces/run.sh`: `TRACE TESTS OK`.
+
+Open, next: C3 (`conformance.sh` has the large set and `PAR`; running), then
+L2 (proved in scratch) and L1.
 
