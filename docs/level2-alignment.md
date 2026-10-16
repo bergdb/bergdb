@@ -252,7 +252,7 @@ classes and methods in `java/src/bergdb/`, "model" definitions in
 | M5 | References: Java writes for each pointer the position of the newest version it knows (memory pointer: the object's spos; stream pointer: Rule R and the node table); the model writes lv(y), for live and dead pointers alike. | `NodeCollection.resolvePointers`; `Pointer.getSposForStream` (81); `StoredKeyNode`, `StoredTopNode` | `mkVersion` | Argument (7.2), and C-S compares every reference | Checked: every reference agrees (C3), c |
 | M6 | Record order: top nodes, key nodes, value nodes, every position assigned first; the model writes data versions, then index nodes lowest level first, each naming only earlier versions of the record. | `Serializer.prepareToSerialize`, `serializeNodes` | `writeAll`, `byLevel`, `Stream.building` | Argument (7.3); C-S compares versions as a set | Argued and checked (C3), c |
 | M7 | Rule R takes the newest version in R(s), ..., R(k); the model in R(s+1), ..., R(k). | `DbStarter.createMaps`; `followStreamPointer` | `Startup.newest` | Model change with proof (Q6) | E3 done 2026-10-16 (`newest` from R(s); L-SEC with ≤), c |
-| M8 | First touch after a restart: lazy; the newest of the named version and the section version (cut back to the startup time), or the node table's canonical object. The model reads all of P up to s at startup. Lemma M of `levels.md`. | `NodeCollection.followStreamPointer`; `DbStarter.canonicalNode` | `baseStruct`, `readFrom` | Argument (7.4) and C-R (Q8) | Argued (7.4); checked: C-R restarts, lookups and streams agree (C3, D0, F1), and `RestartInvariance` (F1, 10.5); a Lean model of lazy reading is optional follow-up work, c |
+| M8 | First touch after a restart: lazy; the newest of the named version and the section version (cut back to the startup time), or the node table's canonical object. The model reads all of P up to s at startup. Lemma M of `levels.md`. | `NodeCollection.followStreamPointer`; `DbStarter.canonicalNode` | `baseStruct`, `readFrom`; since bergdb item 001, the physical layer (`lean/SIS/Phys.lean`) | Model: the physical layer (13); proofs and C-L | Proved (item 001: LM, T1-L, CC, T2-L, 13.2 to 13.4); checked: C-L, every first touch after a restart follows the rule (13.5), besides C-R and `RestartInvariance`, c |
 | M9 | gd order: Java has step 3's nodes in marking order, then step 7's in loop order; the model sorts step 3's by id, then step 7's lowest level first. | `TransInfo.gotDirtyNodes` | `gotDirtyOf`, `step` | Argument (7.3); C-S compares sets (Q9) | Argued and checked (C3), c |
 | M10 | The startup pos policy uses T(i) (`valueCount`, `kvSize` set the node count limit) and byte lengths. | `Db.store`; `TransSeq.take` | `Algo.policy : Stream → Dirty → Time → Nat` | Model: the policy also gets T(i); bytes are a function of the concrete stream (7.5) | E3 done 2026-10-16 (`Algo.policy` gets T(i)), c |
 | M11 | The root: the model's root 0 is an ordinary node, written and named by top(i); Java has a chain of top nodes and no node 0. | `TopDs`, `TopNode`; `DbStarter.findLatestSuperRoot`, `findSuperNodeAtStartupTime`, `doPrimordialStartup` | `root`, `reachList`, `Record.top`, `readAt`, `init` | Q7 = (a), a virtual root (section 8) | Designed (B2); model: E3 done 2026-10-16 (`Spec.virt`, 8.6); the checker runs the model's definitions; checked on the D1 code (F1, 10.5), c |
@@ -264,7 +264,7 @@ classes and methods in `java/src/bergdb/`, "model" definitions in
 | M17 | Reclaim's touch marks nodes without adding entries. | `Db.touchRange` | — | Level 3, not this plan | —, out of scope |
 | M18 | **A startup bug.** Startup finds the super root by scanning the startup section for the newest top node. A transaction that changes nothing does not mark the super root, so the startup pos can move past the last version of every top node, and the database cannot start ("Could not find super node in startup section"). Reproduced on `a116ec7` (F1-008-11, `probe/`). With 10's change, deletes of missing keys do the same. | `DbStarter.findLatestSuperRoot`, `findSuperNodeAtStartupTime`; `TransSeq.take` | `Record.top`, `readAt` | Code: every record names the position of the latest version of the newest written top node, the model's top(i) (section 8) | D0 done (format 5, topPos), c |
 | M19 | `TransSeq.take` can move the startup pos with transactions that have no got-dirty nodes; the model's policy is clamped only by s(i-1) ≤ s(i) < i, which Java meets. Recorded to make M18's cause explicit; not a mismatch. | `TransSeq.take` | `startupPos` | None | B1, c |
-| M42 | Rule R applies for the whole process: every first touch after startup, also of a pointer to a node written after startup, takes the newest version in the last startup section if it is newer than the version named (item 001, A2). | `NodeCollection.section`, `followStreamPointer` (step 2), `newestInSection` | `follow` (startup only) | Model: Rule R in the physical loader; an argument that it agrees with the latest-version rule | Item 001, stage 1: L1, L5; o |
+| M42 | Rule R applies for the whole process: every first touch after startup, also of a pointer to a node written after startup, takes the newest version in the last startup section if it is newer than the version named (item 001, A2). | `NodeCollection.section`, `followStreamPointer` (step 2), `newestInSection` | `follow` (startup only); `ruleRRef` in the physical layer, for the whole process | Model: Rule R in the physical loader | Item 001: L1 (`ruleRRef`), proved with T1-L and T2-L (L3, L4; the writer after a restart reads from the stream of the startup, 13.4); checked: C-L (L5, 13.5), c |
 | M47 | **New (item 001, L3).** The proof of T1-L assumes of every transaction what BergDB's pointers and splits give (`PhysStep`): a node's new live children are pointees of its new entries (a klong stays live until a later klong of its key), and a new live child of a reachable node that the transaction does not create was, just before, a live child of a reachable node that the transaction changes or replaces (a split's new nodes take the children of the node they split; M43). | `KeyNode` (klongs); `Dag.handleFullNode` and the splits | `PhysStep`, `PhysRunOK` (`lean/SIS/Phys.lean`) | An assumption of the physical layer (13.3). Java: `liveNew` by α (2.4: a key node's child for a compare value is that of its last klong, and a delete only removes); `adopt` from TREE and A5 (13.3), both checked on Java (A4: TREE in 68,901 transactions; A5: C-A). Checked by running on the model's examples (`physRunOKB`) | Item 001: L3, argued (13.3); a direct check in the trace checker is open (L5 or E1), o |
 
 Since 2026-10-16, bergdb item 001 reopens M8 (stage 1, WPs L1 to L5: a Lean
@@ -612,6 +612,28 @@ An entry value is one of (2.4):
     END i                        ends transaction i
     DONE n                       last line: n transactions after R(0)
 
+Format 2 (`TRACE 2`, since 2026-10-16, bergdb item 001, WP L5; the checker
+still reads format 1) adds, from the item's plan (8.2):
+
+    SKIPT j t                    after a top node version's H lines: its skip
+                                 slot j caches time t (the time index of the
+                                 target's root time, Java's pointersTime; M29)
+    FIRST x n r kind cut         run B: a first touch of a stream pointer to
+                                 node x after the restart after T(i) (in TX i,
+                                 up to the next restart, the startup's own
+                                 rerun included): the pointer names record n
+                                 after Rule R (- for a vpos); Java took record
+                                 r (- for a canonical object); kind is
+                                 canonical, version (read from the stream) or
+                                 snapshot (the node table's object); cut is 1
+                                 if the version read was cut back to the
+                                 startup time
+
+FIRST lines come after the `PROBE` lines of their transaction. With `live=1`,
+the root's `LIVE` lines cover every time t ≤ i on each record, at the record's
+own time and at the last Java time before the next record (review-13-claude,
+5.2: so that C-V compares the search's predecessor branch too).
+
 Within `TX i`, the order is: `NEW` lines, `ADD` lines, `REC`, the versions
 (`VER` with its `H` and `F` lines), `GD`, `DIRTY`, `LIVE`, `PROBE` blocks, then
 `END`. `ADD` lines are in the order the entries stand in each node, so that
@@ -944,7 +966,9 @@ depend on Lean. Frans decides (K4); until then, `conformance.sh` and
 **Times, 2026-10-16, after bergdb item 001's WPs C2 and C3** (fast checker, four
 traces at once; `docs/evidence/level2-conformance-c3.txt`): step 7 about 20 seconds
 in full mode (A2A3Check2 4 seconds, `conformance.sh small 10` 16 seconds) and about
-8 seconds in quick mode. The sets by hand: small 16 seconds (50 traces), medium
+8 seconds in quick mode (since bergdb item 001's L5 the small set has a sixth
+configuration, `hot`, one key at node size 8 with the root queried at every
+time: 60 traces, 19 seconds, 12 in quick mode). The sets by hand: small 16 seconds (50 traces), medium
 46 seconds (9 traces; 1 hour 53 minutes before C2), and the new large set
 (`conformance.sh large`: 12 traces, node sizes 8 to 62, 1,000 to 5,000 transactions,
 up to 3,000 keys, two configurations with 133 and 501 top nodes) 60 minutes, of which
@@ -1233,3 +1257,54 @@ lazy restarts, the writer's view is P's, the records are the run's, every
 canonical object is whole, and the memory meets the invariant for the frozen
 run (`memInvB`); 20 seeds of 40 transactions, 9,600 transactions, 0
 failures, before the proof.
+
+### 13.5 Java's first touches checked: C-L (WP L5)
+
+**The exporter** (`java/stress/TraceExport.java`, trace format 2, 9.2): in
+run B, a test-only hook in `NodeCollection.followStreamPointer`
+(`NodeCollection.firstTouchListener`, a static field that is null, and so
+does nothing, unless a test sets it) tells the exporter of every first touch
+of a stream pointer: the node, the position after Rule R, the object Java
+took, whether it read the version, and whether it cut it back. The exporter
+writes a FIRST line for each, from the restart's own rerun up to the next
+restart. It also writes the cached times of the top nodes' skip slots
+(SKIPT, M29) and, with `live=1`, the root at every time.
+
+**The checker** (`lean/Check/Steps.lean`, `firstFailures`, `topFailures`):
+
+* C-L: every FIRST line follows `Phys.lean`'s rule (`Mem.follow`): the record
+  that the pointer names after Rule R holds a version of the node, and is at
+  least the newest of the node in R(s), ..., R(i), the section of that
+  startup (`ruleRRef`; from a vpos, Rule R gives that version if there is
+  one); Java took the node table's canonical object, a snapshot at least as
+  new, or the version named, cut back to the startup time exactly when it is
+  a key node version of R(s) on (`isKeyLevel`).
+* In C-S, for each top node version: its skip slots are the set bits of its
+  ordinal (the level minus `topLevel`), each names the target of the formula
+  (the ordinal with the bits below the slot cleared, minus one), and caches
+  the target's creation time (review-13-claude, 5.2).
+* Test traces: `badfirst.trace` (a version reported as cut back before the
+  startup pos: C-L fails) and `badskip.trace` (a wrong cached time: C-S
+  fails, `skip`).
+
+**Results**, 2026-10-16, bergdb `e24e633` with this WP's changes (the small
+set with a sixth configuration, `hot`: one key at node size 8, the root
+queried at every time):
+
+| Set | Traces | FIRST lines | C-L failing | Other checks |
+|---|---|---|---|---|
+| small | 60 | 252,539 | 0 | `CONFORMANCE OK`; C-V 1,870,868 LIVE lines, no difference; no failing transaction; 19 s |
+| medium | 9 | 43,873 | 0 | `CONFORMANCE OK`; 45 s |
+| l-hot (large set, two seeds) | 2 | 4,961 and 4,920 | 0 | `TRACECHECK OK`; 501 top nodes, 4,425 SKIPT lines each |
+
+Of the small set's first touches, 137,473 found the node table's canonical
+object (a section node, or one the writer made canonical), 22,352 a snapshot
+at least as new, and 92,714 read the version named; the medium set's: 24,784,
+1,911 and 17,178. None was cut back: every key node of the section has a
+canonical object, so Java's runtime cut-back is not reached today (M22), and
+C-L checks that no key node version of the section is read without it.
+
+So M8 and M42 are closed: lazy reading is proved for the model (LM, T1-L,
+CC, T2-L) and Java's first touches after restarts follow the model's rule
+(C-L). What stays open from stage 1: the physical layer's assumptions
+(M47, argued; a direct check in the trace checker is not done).

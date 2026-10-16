@@ -9,6 +9,7 @@ WP C2; since 2026-10-16 (WP E3) without checker-local definitions.
 -/
 import Check.Trace
 import Check.Fast
+import SIS.Phys
 import Check.R4
 import Std.Data.HashSet
 import Std.Data.HashMap
@@ -207,5 +208,89 @@ def treeFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time) (rlList : Lis
 def inv2Failures (sp : Spec BVal Nat) (S : Stream BVal Nat) (P : Struct BVal) (i : Time)
     (D : Dirty) : List NodeId :=
   (allIds P).filter (fun x => isIndex P x && !inD D x && written sp x && dirty sp S P i x)
+
+/-! ## Lazy reading (bergdb item 001, WP L5) -/
+
+/-- C-L: a first touch after the restart after T(i) follows the first-touch rule
+of `SIS/Phys.lean` (`Mem.follow`): the record that the pointer names after Rule R
+holds a version of the node, and is at least the newest in R(s), ..., R(i), the
+section of that startup (`ruleRRef`; from a vpos, Rule R gives that version if
+there is one); Java took the node table's canonical object, or a snapshot at
+least as new, or the version named, which it cut back to the startup time
+exactly when it is a key node version of R(s) on. S is the whole stream; s is
+the startup pos. -/
+def firstFailures (sp : Spec BVal Nat) (S : Stream BVal Nat) (i s : Nat) (f : TFirst) : List String :=
+  let x := f.node
+  let sec := newest (S.take (i + 1)) s x
+  let nFails : List String := match f.named with
+    | some n =>
+      (match S.versionAt n x with
+        | some _ => []
+        | none => [s!"node {x}: R({n}) holds no version of it"]) ++
+      (match sec with
+        | some w0 => if w0.recNo ≤ n then [] else
+            [s!"node {x}: Rule R gives R({w0.recNo}), the pointer R({n})"]
+        | none => [])
+    | none => match sec with
+      | some w0 => [s!"node {x}: a vpos, but Rule R gives R({w0.recNo})"]
+      | none => if f.kind == "version" then [s!"node {x}: a version read from a vpos"] else []
+  let kFails : List String :=
+    if f.kind == "canonical" then
+      if f.took.isNone && !f.cut then [] else [s!"node {x}: a canonical object with a record or cut"]
+    else if f.kind == "snapshot" then
+      match f.took with
+      | some r =>
+        (if (S.versionAt r x).isSome then [] else [s!"node {x}: the snapshot's R({r}) holds no version"]) ++
+        (match f.named with
+          | some n => if n ≤ r then [] else [s!"node {x}: a snapshot of R({r}), older than R({n})"]
+          | none => []) ++
+        (if f.cut then [s!"node {x}: a snapshot reported as cut back"] else [])
+      | none => [s!"node {x}: a snapshot without a record"]
+    else if f.kind == "version" then
+      match f.named, f.took with
+      | some n, some r =>
+        if r != n then [s!"node {x}: read R({r}) for a pointer to R({n})"] else
+        match S.versionAt n x with
+        | some w =>
+          let rule := decide (s ≤ n) && isKeyLevel sp w.isData w.level
+          if rule == f.cut then [] else
+            [s!"node {x}: R({n}) read, cut back {f.cut}, the rule says {rule}"]
+        | none => []
+      | _, _ => [s!"node {x}: a version without a record"]
+    else [s!"node {x}: unknown kind {f.kind}"]
+  nFails ++ kFails
+
+/-- The skip slots of a top node's version (M29; review-13-claude, 5.2): with
+ordinal n (the node's level minus `topLevel`), slot j holds a skip pointer
+exactly when bit j of n is set; its target is top n with the bits below j
+cleared, minus one; and the time the slot caches is the target's creation
+time. P is the structure after the record, lv the levels. -/
+def topFailures (sp : Spec BVal Nat) (P : Struct BVal) (lv : List (NodeId × Nat × Bool))
+    (w : TVer) : List String :=
+  let level := ((lv.lookup w.node).map (·.1)).getD 0
+  if w.isData || w.node == root || level < sp.topLevel then [] else
+  let n := level - sp.topLevel
+  let skips := w.hist.toList.filterMap (fun e => match e.val with
+    | .skip j z => some (j, z)
+    | _ => none)
+  let height := if n == 0 then 0 else n.log2 + 1
+  let popFails := (List.range (height + 1)).filterMap (fun j =>
+    if n.testBit j == skips.any (·.1 == j) then none
+    else some s!"top {w.node} (ordinal {n}): slot {j} {if n.testBit j then "empty" else "populated"}")
+  let extra := skips.filterMap (fun (j, _) =>
+    if j ≤ height then none else some s!"top {w.node}: slot {j} beyond its height")
+  let targetFails := skips.filterMap (fun (j, z) =>
+    let zl := ((lv.lookup z).map (·.1)).getD 0
+    let want := n / 2 ^ j * 2 ^ j - 1
+    if zl ≥ sp.topLevel && zl - sp.topLevel == want then none
+    else some s!"top {w.node} (ordinal {n}): slot {j} points to {z}, not to ordinal {want}")
+  let timeFails := skips.filterMap (fun (j, z) =>
+    match w.skipt.find? (·.1 == j), (P.get? z).bind (·.hist.head?) with
+    | some (_, t), some e => if t == e.time then none
+        else some s!"top {w.node}: slot {j} caches time {t}, its target {z} was created at {e.time}"
+    | none, _ => if w.skipt.isEmpty then none   -- a trace without SKIPT lines
+        else some s!"top {w.node}: no SKIPT line for slot {j}"
+    | some _, none => some s!"top {w.node}: slot {j}'s target {z} has no entries")
+  popFails ++ extra ++ targetFails ++ timeFails
 
 end SIS.Check

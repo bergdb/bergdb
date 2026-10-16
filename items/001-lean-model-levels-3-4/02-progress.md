@@ -123,7 +123,7 @@ Status
 | L2 | Lemma M | done | 2026-10-16 |
 | L3 | Lazy startup and reads: T1-L | done | 2026-10-16 |
 | L4 | The writer after a lazy startup: CC, T2-L | done | 2026-10-16 |
-| L5 | Lazy reading checked against Java | not started | — |
+| L5 | Lazy reading checked against Java | done | 2026-10-16 |
 | E1 | Design: eviction, references, pins | not started | — |
 | E2 | The physical model with eviction, executable | not started | — |
 | E3 | INV-SLOT and the physical writer: T-CACHE | not started | — |
@@ -981,3 +981,84 @@ Open, next: L5 (Java's first touches checked against the rule: a test-only
 hook in `NodeCollection.followStreamPointer`, FIRST and SKIPT lines, trace
 format 2, C-L in the checker; and review-13-claude 7.1's root queries and
 layout check, see the adoptions above).
+
+
+### 2026-10-16 21:17 to 22:08. WP L5, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `e24e633` (L4);
+uncommitted: this WP's files only.
+
+Did:
+
+1. A test-only hook in `java/src/bergdb/core/NodeCollection.java`:
+   `FirstTouchListener` and the static field `firstTouchListener`, null
+   unless a test sets it (then nothing is called; plan 2.1).
+   `followStreamPointer` tells it of each first touch of a stream pointer:
+   the node, the position after Rule R, the object taken, whether the version
+   was read, whether it was cut back. No other change to production code.
+2. `java/stress/TraceExport.java`, trace format 2 (plan 8.2): FIRST lines in
+   run B (from each restart's own rerun up to the next restart, in the
+   restart's `TX` block), SKIPT lines (the skip slots' cached times, M29),
+   and, with `live=1`, the root's LIVE lines at every time t ≤ i on each
+   record, at the record's time and at the last Java time before the next
+   (review-13-claude 7.1 and 5.2, adopted above for L5).
+3. The checker (`lean/Check/Trace.lean`, `Check/Steps.lean`,
+   `TraceCheck.lean`; not trusted): reads format 1 and 2; C-L
+   (`firstFailures`): every FIRST line follows `Phys.lean`'s rule (Rule R
+   from the startup's section, the node table's canonical object or a
+   snapshot at least as new, or the version named, cut back exactly when it
+   is a key node version of R(s) on); in C-S, each top node version's skip
+   slots: the set bits of its ordinal, the formula's targets, the targets'
+   creation times (`topFailures`, failures named `skip`). Test traces
+   `badfirst.trace` and `badskip.trace` (`test-traces/run.sh`).
+4. `java/stress/conformance.sh`: a C-L line in the summary; the small set
+   gets a sixth configuration, `hot` (one key at node size 8, the root
+   queried at every time: about 75 top nodes per trace).
+5. Docs: `docs/level2-alignment.md` (9.2: format 2; register M8 and M42
+   closed; 12: the small set's times; new 13.5: C-L and its results);
+   `docs/level4-alignment.md` (M29: L5's part done); `docs/levels.md`
+   (Level 2: lemma M proved, lazy reading proved and checked; "Argued, not
+   proved" updated); `lean/README.md` (the checker, stage 1 done, "Not
+   done").
+
+Results (bergdb `e24e633` with these changes; `docs/level2-alignment.md`,
+13.5): small set, 60 traces, `CONFORMANCE OK`, C-L 0 of 252,539 FIRST lines
+fail, C-V 1,870,868 LIVE lines with no difference, 19 s; medium set, 9
+traces, `CONFORMANCE OK`, C-L 0 of 43,873, 45 s; the large set's `l-hot`
+configuration (501 top nodes), seeds 1 and 2, `TRACECHECK OK`, 4,425 SKIPT
+lines each, C-L 0 of 4,961 and 0 of 4,920. Of the small set's first touches, 137,473 found a
+canonical object, 22,352 a snapshot and 92,714 read a version; none was cut
+back (M22: not reachable today).
+
+Files changed: `java/src/bergdb/core/NodeCollection.java`;
+`java/stress/TraceExport.java`, `java/stress/conformance.sh`;
+`lean/Check/Trace.lean`, `lean/Check/Steps.lean`, `lean/TraceCheck.lean`,
+`lean/test-traces/run.sh`, new `lean/test-traces/badfirst.trace` and
+`badskip.trace`; `lean/README.md`; `docs/level2-alignment.md`,
+`docs/level4-alignment.md`, `docs/levels.md`; this file.
+
+Checks: the gates on the work tree with these changes, full, one after the
+other (21:34 to 21:54): `LEVEL 1 OK` (91 s), `LEVEL 2 OK` (726 s; its step
+7: 60 traces, `TRACECHECK OK` 60), `LEVEL 3 OK` (342 s); unit tests 911
+successful, F tests 37 successful; StreamDigest against `l34-base`: DIGESTS
+IDENTICAL (36 of 36), so the hook changes no record. The Lean checks of 2.2
+(21:55 to 22:07): `lake build` passes, 86 jobs, no warnings; `lake exe
+sistest 20 40` and `lake exe phystest 20 40`: all checks pass (398 and
+369 s); the axioms as in L4; no `sorry`, `admit`, `axiom` or `unsafe` in
+`SIS/` and `Check/`; `sh test-traces/run.sh`: TRACE TESTS OK, with the two
+new traces. Time: about 1 hour, within M.
+
+Notes for Frans: the small set of `conformance.sh`, which `level2.sh` runs in
+its step 7, now has six configurations (60 traces in full mode, 12 in quick
+mode; K4's adoption said 50 and 10): the new one, `hot`, makes the gate check
+the top nodes' layout and the root search's predecessor branch, and adds
+about 3 seconds. It strengthens the step and changes no other; revert the
+line in `small()` if the old set is wanted.
+
+Register: M8 and M42 closed; M29 (L5's part done, J3's open).
+
+Stage 1 (plan 5.3) is done: LM, T1-L, CC and T2-L proved; C-L passes on the
+small and medium sets; M8 closed by proof.
+
+Open, next: P2 (the Level 3 soak), then P3 and R1; E1 starts stage 2 and its
+time box.

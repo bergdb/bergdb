@@ -22,6 +22,12 @@ Checks, per transaction i (R(0) included):
        gives Java's record R(i) and D (gd and the versions compared as sets)
   C-V  the LIVE lines: Java's live children equal the instance's `live`
   C-R  the PROBE lines of the exporter: restarts, lookups, stream identity
+  C-L  the FIRST lines (trace format 2; bergdb item 001, WP L5): every first
+       touch after a restart follows the rule of SIS/Phys.lean (Rule R, the
+       node table, the version read, cut back to the startup time)
+and in C-S, with SKIPT lines, the top nodes' skip slots: the layout (slot j
+of the top with ordinal n is populated exactly when bit j of n is set, and
+names the formula's target) and the cached times (the target's creation)
 and the exporter's ERROR lines. Diagnostics: D closed upward; A6 (no adoption)
 and TREE (one current parent), for Option K of bergdb item 001 (WP A4); and with
 --inv, INV-2. The last line is TRACECHECK OK or TRACECHECK FAILED.
@@ -97,8 +103,12 @@ def main (args : List String) : IO UInt32 := do
     let mut ca : Tally := {}
     let mut cs : Tally := {}
     let mut cv : Tally := {}
+    let mut clt : Tally := {}
     let mut diag : Tally := {}
     let mut liveCount := 0
+    let mut firstCount := 0
+    let mut firstFail := 0
+    let Sall := jrecs.toList
     -- R(0)
     let initF := initFailures sp
     ca := ca.add 0 (initF.map (fun n => (n, s!"{n} fails for R(0)")))
@@ -131,7 +141,13 @@ def main (args : List String) : IO UInt32 := do
         | _, _ => [("record", "missing")]
       let dfails := if sameList res.D r.dirty then []
         else [("D", s!"D: model only {(res.D.filter (!r.dirty.contains ·)).take 8}, Java only {(r.dirty.filter (!res.D.contains ·)).take 8}")]
-      cs := cs.add i (mfails ++ dfails)
+      let tfails := r.vers.toList.flatMap (fun w => (topFailures sp P' lv w).map (fun m => ("skip", m)))
+      cs := cs.add i (mfails ++ dfails ++ tfails)
+      -- C-L
+      let lfails := r.firsts.toList.flatMap (fun f => firstFailures sp Sall i r.sp f)
+      firstCount := firstCount + r.firsts.size
+      firstFail := firstFail + (r.firsts.toList.filter (fun f => !(firstFailures sp Sall i r.sp f).isEmpty)).length
+      clt := clt.add i (lfails.map (fun m => ("first", m)))
       -- C-V
       for (x, tm, ys) in r.live do
         liveCount := liveCount + 1
@@ -160,11 +176,14 @@ def main (args : List String) : IO UInt32 := do
     for e in cv.examples do IO.println s!"  {e}"
     IO.println s!"C-R probes: {probeFails.length} of {probes.length} fail"
     for p in probeFails.take 8 do IO.println s!"  PROBE {p.1}: {p.2.2}"
+    IO.println s!"C-L first touches: {firstFail} of {firstCount} FIRST lines fail"
+    for e in clt.examples do IO.println s!"  {e}"
     IO.println s!"exporter errors: {t.errors.size}"
     for e in t.errors.toList.take 8 do IO.println s!"  {e}"
     diag.show "diagnostics" total
     let failed := (if ca.failing > 0 then ["C-A"] else []) ++ (if cs.failing > 0 then ["C-S"] else []) ++
       (if cv.failing > 0 then ["C-V"] else []) ++ (if probeFails.length > 0 then ["C-R"] else []) ++
+      (if clt.failing > 0 then ["C-L"] else []) ++
       (if t.errors.size > 0 then ["exporter"] else []) ++
       (if t.done != some (total - 1) then ["incomplete"] else [])
     if failed.isEmpty then

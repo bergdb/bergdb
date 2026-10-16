@@ -136,11 +136,15 @@ How it works in the Java code. Reads of nodes in memory follow Java
 references, as before; the extra work is at startup, at the first touch of
 a node, and when index nodes are written.
 
-* Intended lemma M (monotonicity): a suitable newer version, or the complete
-  node in memory, preserves every lookup time served by an older version.
-  This is the completeness obligation behind swizzling a stream pointer
-  once and then following the Java reference directly. It has not yet been
-  proved for Java; mere recency or presence in the node table is not enough.
+* Lemma M (monotonicity): a suitable newer version, or the complete node in
+  memory, preserves every lookup time served by an older version. This is
+  the completeness obligation behind swizzling a stream pointer once and
+  then following the Java reference directly. Proved for the model since
+  2026-10-16 (bergdb item 001: `LM_newer`, `LM_ruleR`, `LM_cutTo`), with a
+  model of Java's lazy reading in which reads after a lazy startup give P
+  (T1-L), the writer's canonical objects hold their nodes' whole histories
+  (CC) and restarts change no record (T2-L); Java's first touches are
+  checked against that model's rule (C-L). See "Alignment with the model".
 * One node table (Cache3, shared by Db and NodeCollection), with one
   canonical object per node: the one that holds the node's whole history
   and can change. Other objects of a node are snapshots read from older
@@ -203,20 +207,29 @@ Alignment with the model (F1-008-11, 2026-10-16;
   Rule R from R(s), a startup pos policy that sees the transaction, and a
   virtual root with top nodes as in Java; and T13 (marking is exact). Under
   the assumptions A1 to A5 and, for the virtual root, R1 to R4. No `sorry`,
-  only Lean's standard axioms.
+  only Lean's standard axioms. Since 2026-10-16 (bergdb item 001, stage 1)
+  also the physical layer of lazy reading, Java's objects, node table and
+  first touch (`lean/SIS/Phys.lean`): lemma M, T1-L (after a lazy startup,
+  also after a crash, reads at any time give P), CC and T2-L (with lazy
+  restarts, canonical objects hold their nodes' whole histories and the
+  records are the same), under two more assumptions of each transaction
+  (`PhysStep`, M47, argued from α, TREE and A5).
 * Checked, on Java runs: the trace checker runs the model's own `init` and
   `step` on traces of Java runs, and every transaction of 59 traces is a
   step of the model: the same record and the same D, with the assumptions
   met, and restarts and lookups as the model says. The Java tier checks
   A2, A3, A5 and Java's marking against the model's on 68,901 transactions,
   and `RestartInvariance` the same bytes with and without restarts, also
-  with transactions that change nothing. The gates.
+  with transactions that change nothing. The gates. Since bergdb item
+  001's L5 also every first touch after a restart (C-L: 252,539 of the small
+  set and 43,873 of the medium set follow the model's rule), the top nodes'
+  skip slots and cached times, and the root at every time.
 * Argued, not proved: the mapping α itself (level2-alignment.md, section
   2); that Java's references are the latest versions (M5; checked on every
-  record); the order within a record (M6, M9); lemma M, lazy reading after
-  a restart (M8; argued in 7.4 and checked by restarts, but not in the
-  model, which reads all of P at startup); bytes as a function of the
-  stream (M10).
+  record); the order within a record (M6, M9); bytes as a function of the
+  stream (M10); the physical layer's assumptions (M47). Lazy reading after a
+  restart (M8) is proved for the model and checked on Java since bergdb item
+  001 (level2-alignment.md, 13).
 * Not modeled: bytes, torn records, durability, concurrency, the bounds
   (T3, T4), reclaim (Level 3) and eviction (Level 4). The gates cover the
   first four.

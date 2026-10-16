@@ -139,7 +139,11 @@ Not trusted, tests only:
 * Check/ and TraceCheck.lean: the trace checker, `lake exe tracecheck`. It
   checks traces of Java runs against the model's definitions
   ([../docs/level2-alignment.md](../docs/level2-alignment.md), sections 8.5
-  and 9). `sh test-traces/run.sh` runs its tests.
+  and 9). `sh test-traces/run.sh` runs its tests. Since bergdb item 001's L5
+  it reads trace format 2 and checks C-L, every first touch after a restart
+  against the rule of SIS/Phys.lean (`firstFailures`), and in C-S the top
+  nodes' skip slots: their layout and cached times (`topFailures`; section
+  13.5 there).
 * Check/Fast.lean and Check/R4.lean, the checker's fast paths (bergdb item
   001, WP C2). `markOf`, `writeAll`, `reachList` and `step` have fast
   versions, proven equal to them and marked `@[csimp]` (`markOf_eq_fast`,
@@ -459,10 +463,13 @@ from `S.lv`). Computing them from the canonical objects and their slots is
 stage 2 (bergdb item 001, WP E3); so are steps 3 and 7 by the physical
 writer.
 
+Stage 1 of bergdb item 001 is done (2026-10-16): lemma M (`LM_newer`, L2),
+T1-L (`T1_lazy`, L3), CC and T2-L (`CC_canonical`, `T2_lazy`, L4) are proved,
+and Java's first touches after restarts are checked against the model's rule
+(C-L, L5).
+
 Not done:
 
-* Java's first touches checked against the rule (bergdb item 001, WP L5).
-  Lemma M (`LM_newer`, L2), T1-L (`T1_lazy`, L3), CC and T2-L
-  (`CC_canonical`, `T2_lazy`, L4) are proved; the first touch is modeled
-  (L1) and checked by running (phystest).
+* A check of the physical layer's assumptions (`PhysStep`, M47) on Java
+  traces; they are argued (level2-alignment.md, 13.3).
 * The bounds (T3, T4), eviction, reclaim.

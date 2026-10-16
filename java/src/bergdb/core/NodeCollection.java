@@ -55,6 +55,24 @@ public class NodeCollection implements PointerFollower {
         }
     };
     
+    /**
+     * Told of every first touch of a stream pointer; for tests only (bergdb item 001,
+     * WP L5: java/stress/TraceExport.java records them for the trace checker). Null, and
+     * so doing nothing, unless a test sets it.
+     */
+    public interface FirstTouchListener {
+        /**
+         * A first touch of node id through a stream pointer that names position ref after
+         * Rule R. result is the object followed: the node table's (read is false), or the
+         * version just read at ref (read is true; cutBack is true if it was cut back to the
+         * startup time). Called before the writer makes result canonical.
+         */
+        void firstTouch(long id, long ref, Node result, boolean read, boolean cutBack);
+    }
+    
+    /** See FirstTouchListener. For tests only. */
+    public static volatile FirstTouchListener firstTouchListener = null;
+    
     /** Rule R, see setStartupSection(). Immutable. */
     private static final class StartupSection {
         final Map<Long, Long> newById;
@@ -214,6 +232,7 @@ public class NodeCollection implements PointerFollower {
         Node result = cache.getNode(id);
         boolean usable = result != null && (result.isCanonical() 
                 || (!Spos.isVpos(ref) && result.getSpos() >= ref));
+        boolean cutBack = false;
         
         if (!usable) {
             if (Spos.isVpos(ref)) {
@@ -228,9 +247,15 @@ public class NodeCollection implements PointerFollower {
             if (mySection != null && ref >= mySection.startPos 
                     && node.getType() == Node.TYPE_KEY_NODE) {
                 ((KeyNode) node).toPreviousState(mySection.startupTime);
+                cutBack = true;
             }
             
             result = op.cachePolicy.shouldCache(node) ? cache.register(node) : node;
+        }
+        
+        final FirstTouchListener ftl = firstTouchListener;
+        if (ftl != null) {
+            ftl.firstTouch(id, ref, result, !usable, cutBack);
         }
         
         // 4. Swizzle, and make canonical for the writer.

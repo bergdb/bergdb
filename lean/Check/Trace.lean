@@ -68,6 +68,22 @@ structure TVer where
   isData : Bool
   hist : Array (Entry BVal) := #[]
   refs : Array (NodeId × Nat) := #[]
+  /-- A top node's skip slots and the times they cache (SKIPT lines, trace format
+  2; bergdb item 001, WP L5). -/
+  skipt : Array (Nat × Nat) := #[]
+  deriving Inhabited
+
+/-- A first touch after a restart (a FIRST line, trace format 2; bergdb item 001,
+WP L5): the node; the record the pointer names after Rule R (none for a vpos);
+the record Java took (none for a canonical object); the kind (canonical,
+version or snapshot); whether the version read was cut back to the startup
+time. -/
+structure TFirst where
+  node : NodeId
+  named : Option Nat
+  took : Option Nat
+  kind : String
+  cut : Bool
   deriving Inhabited
 
 /-- One transaction of the trace: `TX i` to `END i`. -/
@@ -85,6 +101,8 @@ structure TRec where
   dirty : List (NodeId × Nat) := []
   live : Array (NodeId × Nat × List NodeId) := #[]
   probes : Array (Nat × Bool × String) := #[]
+  /-- The first touches after the restart after this transaction, up to the next. -/
+  firsts : Array TFirst := #[]
   deriving Inhabited
 
 structure Trace where
@@ -131,7 +149,7 @@ def parseLine (t : Trace) (n : Nat) (line : String) : Trace :=
   if line.startsWith "#" then t else
   match toks line with
   | [] => t
-  | "TRACE" :: v :: _ => if v == "1" then t else bad "unknown trace format"
+  | "TRACE" :: v :: _ => if v == "1" || v == "2" then t else bad "unknown trace format"
   | "CONFIG" :: r => { t with config := " ".intercalate r }
   | "ERROR" :: r => { t with errors := t.errors.push (" ".intercalate r) }
   | ["TX", i] => match i.toNat? with
@@ -158,6 +176,16 @@ def parseLine (t : Trace) (n : Nat) (line : String) : Trace :=
   | ["F", y, rr] => match y.toNat?, rr.toNat? with
     | some y, some rr => modVer t (fun w => { w with refs := w.refs.push (y, rr) })
     | _, _ => bad "bad F"
+  | ["SKIPT", j, tm] => match j.toNat?, tm.toNat? with
+    | some j, some tm => modVer t (fun w => { w with skipt := w.skipt.push (j, tm) })
+    | _, _ => bad "bad SKIPT"
+  | ["FIRST", x, nn, rr, k, c] => match x.toNat? with
+    | some x =>
+      if (nn != "-" && nn.toNat?.isNone) || (rr != "-" && rr.toNat?.isNone) || (c != "0" && c != "1") then
+        bad "bad FIRST"
+      else modCur t (fun r =>
+        { r with firsts := r.firsts.push (TFirst.mk x nn.toNat? rr.toNat? k (c == "1")) })
+    | none => bad "bad FIRST"
   | "GD" :: xs => match parseNats xs with
     | some xs => modCur t (fun r => { r with gd := xs })
     | none => bad "bad GD"

@@ -47,6 +47,8 @@ small() {
     echo "big     -Dn=40 -Dkeys=200 -Dmaxnode=8 -Dsd=1000 -Dops=40 -Dexact=1 -Dprobe=10"
     echo "bulk    -Dn=60 -Dkeys=100 -Dmaxnode=8 -Dsd=300 -Dbulk=40 -Dprobe=5"
     echo "idle    -Dn=150 -Dkeys=30 -Dmaxnode=8 -Dsd=100 -Dops=2 -Dempty=30 -Dnodel=20 -Dprobe=1"
+    # Many top nodes (one hot key), the root queried at every time (bergdb item 001, L5).
+    echo "hot     -Dn=300 -Dkeys=1 -Dmaxnode=8 -Dsd=200 -Dops=1 -Dprobe=30 -Dlive=1"
 }
 
 medium() {
@@ -122,6 +124,7 @@ summary() {
             | awk -v k="$k" 'NF==2 {s[$1]+=$2} END {for (n in s) print "   " k ": " n " " s[n]}'
     done
     echo "   C-V: $(grep -h '^C-V' $dir/*.check.txt | awk '{s+=$3} END {print s+0}') transactions with live differences, $(grep -h '^C-V' $dir/*.check.txt | awk '{s+=$7} END {print s+0}') LIVE lines"
+    echo "   C-L: $(grep -h '^C-L' $dir/*.check.txt | awk '{s+=$4} END {print s+0}') of $(grep -h '^C-L' $dir/*.check.txt | awk '{s+=$6} END {print s+0}') FIRST lines fail"
     echo "   C-R: $(grep -h '^C-R' $dir/*.check.txt | awk '{s+=$3} END {print s+0}') failed probes; kinds:"
     grep -h '^  PROBE' $dir/*.check.txt | sed -E 's/[0-9]+/N/g' | sort | uniq -c | sed 's/^/      /'
     echo "   exporter errors: $(grep -h '^exporter errors' $dir/*.check.txt | awk '{s+=$3} END {print s+0}')"

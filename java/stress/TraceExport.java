@@ -165,6 +165,8 @@ public class TraceExport {
         String kind;
         List<Ent> hist = new ArrayList<Ent>();
         TreeMap<Long, Integer> refs = new TreeMap<Long, Integer>();
+        /** A top node's skip slots: slot, and the time its target's root time maps to. */
+        List<int[]> skipTimes = new ArrayList<int[]>();
     }
 
     /** What run A saw for one record. */
@@ -183,6 +185,8 @@ public class TraceExport {
         List<long[]> dirty = new ArrayList<long[]>();       // id, d
         List<String> live = new ArrayList<String>();
         List<String> probes = new ArrayList<String>();
+        /** Run B: the first touches after the restart after this record, until the next. */
+        List<String> firsts = new ArrayList<String>();
         long transSeqSum;
         int puts, deletes;
     }
@@ -418,7 +422,10 @@ public class TraceExport {
                 v.hist = topEntries(tn, false, ns, context);
                 addRef(v, tn.rootPointerPos, ns, context);
                 for (int j = 0; j < tn.pointersLength; j++) {
-                    if (tn.pointersPos[j] != Spos.NULL) addRef(v, tn.pointersPos[j], ns, context);
+                    if (tn.pointersPos[j] != Spos.NULL) {
+                        addRef(v, tn.pointersPos[j], ns, context);
+                        v.skipTimes.add(new int[] {j, timeIndex(tn.pointersTime[j], context)});
+                    }
                 }
                 if (tn.topNodeId >= newestWrittenTopNum) {
                     newestWrittenTopNum = tn.topNodeId;
@@ -514,7 +521,19 @@ public class TraceExport {
     /** LIVE lines: Java's own live children of each node at each of its entry times. */
     void recordLive(Db db, Rec rec) {
         GetData gd = db.newGetData();
+        // The root at every time up to this record (review-13-claude, 5.2: so that the
+        // search's predecessor branch is compared too): at each record's time, and at the
+        // last time before the next record, which the model also calls t.
+        for (int t = 0; t <= rec.index; t++) {
+            long[] tts = t < rec.index && recs.get(t + 1).tt - 1 > recs.get(t).tt
+                    ? new long[] {recs.get(t).tt, recs.get(t + 1).tt - 1} : new long[] {recs.get(t).tt};
+            for (long tt : tts) {
+                TopNode s = db.internal().dag().getTopDs().findSuperRootAtTime(tt, gd);
+                rec.live.add("LIVE 0 " + t + (s == null ? "" : " " + mid(s.getId())));
+            }
+        }
         for (PNode pn : nodes.values()) {
+            if (pn.obj == null) continue;   // the root: above
             TreeSet<Integer> ts = new TreeSet<Integer>();
             for (Ent e : pn.hist) ts.add(e.time);
             ts.add(rec.index);
@@ -522,10 +541,7 @@ public class TraceExport {
                 if (t < 0) continue;
                 long tt = recs.get(t).tt;
                 TreeSet<Long> children = new TreeSet<Long>();
-                if (pn.obj == null) {
-                    TopNode s = db.internal().dag().getTopDs().findSuperRootAtTime(tt, gd);
-                    if (s != null) children.add(mid(s.getId()));
-                } else if (pn.obj instanceof TopNode) {
+                if (pn.obj instanceof TopNode) {
                     if (((TopNode) pn.obj).rootTime > tt) continue;
                     KeyNode r = ((TopNode) pn.obj).rootPointer;
                     if (r != null) children.add(mid(r.getId()));
@@ -630,8 +646,49 @@ public class TraceExport {
         return stream;
     }
 
+    /** The first touches go to this list: that of the last restart's record. */
+    List<String> curFirsts = null;
+
+    /** Records the first touches of run B as FIRST lines (docs/level2-alignment.md, 9.2). */
+    final NodeCollection.FirstTouchListener firstTouches = new NodeCollection.FirstTouchListener() {
+        public void firstTouch(long id, long ref, Node result, boolean read, boolean cutBack) {
+            if (curFirsts == null) return;
+            String n = Spos.isVpos(ref) ? "-" : recordOfPos(ref, "FIRST of node " + mid(id));
+            String line;
+            if (result.isCanonical()) {
+                line = "FIRST " + mid(id) + " " + n + " - canonical 0";
+            } else if (read && result.getSpos() == ref) {
+                line = "FIRST " + mid(id) + " " + n + " " + n + " version " + (cutBack ? 1 : 0);
+            } else {
+                line = "FIRST " + mid(id) + " " + n + " "
+                        + recordOfPos(result.getSpos(), "FIRST of node " + mid(id)) + " snapshot 0";
+            }
+            curFirsts.add(line);
+        }
+    };
+
+    /** The record of the version at stream position pos. */
+    String recordOfPos(long pos, String context) {
+        long[] v = verByPos.get(pos);
+        if (v == null) {
+            error("stream position " + pos + " is not the start of a known version (" + context + ")");
+            return "-";
+        }
+        return "" + v[0];
+    }
+
     /** Run B: the same workload with restarts; compares with run A. */
     void runB(MemoryStream streamA) {
+        try {
+            NodeCollection.firstTouchListener = firstTouches;
+            runB0(streamA);
+        } finally {
+            NodeCollection.firstTouchListener = null;
+            curFirsts = null;
+        }
+    }
+
+    void runB0(MemoryStream streamA) {
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(1);
@@ -663,6 +720,7 @@ public class TraceExport {
             db.sync(SyncLevel.STRONG);
             db.stop();
             stream = stream.copy();
+            curFirsts = recA.firsts;
             try {
                 db = start(stream, clock);
             } catch (RuntimeException e) {
@@ -824,7 +882,7 @@ public class TraceExport {
     void write(String file) throws IOException {
         long[] bounds = levels();
         PrintWriter out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"));
-        out.println("TRACE 1");
+        out.println("TRACE 2");
         out.println("CONFIG seed=" + seed + " n=" + n + " keys=" + keyCount + " maxnode=" + maxNode
                 + " sd=" + startupDistance + " ops=" + ops + " exact=" + exact + " bulk=" + bulk
                 + " del=" + del + " nodel=" + nodel + " empty=" + empty + " long=" + longKeys
@@ -850,6 +908,7 @@ public class TraceExport {
             for (Ver v : rec.vers) {
                 out.println("VER " + v.id + " " + v.kind);
                 for (Ent e : v.hist) out.println("H " + e);
+                for (int[] st : v.skipTimes) out.println("SKIPT " + st[0] + " " + st[1]);
                 for (Map.Entry<Long, Integer> f : v.refs.entrySet()) {
                     out.println("F " + f.getKey() + " " + f.getValue());
                 }
@@ -862,6 +921,7 @@ public class TraceExport {
             out.println(dl);
             for (String s : rec.live) out.println(s);
             for (String s : rec.probes) out.println(s);
+            for (String s : rec.firsts) out.println(s);
             out.println("END " + rec.index);
         }
         out.println("DONE " + n);
