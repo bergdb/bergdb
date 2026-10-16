@@ -1,0 +1,54 @@
+Level 2 conformance with the fast checker, bergdb item 001, WP C3, 2026-10-16
+(docs/level2-alignment.md, sections 10.5 and 12; the item's plan, 8.4).
+bergdb 130f380 to 3782bc8 (C2 committed; the checker and the exported code are the same
+in both), with the work tree's java/stress/conformance.sh (the large set, PAR). Checker:
+lake exe tracecheck (lean/), target mode, with C2's fast versions, proven equal to the
+model's definitions. Four traces at once (PAR=4, the default), in batches of four.
+Machine: Apple M1 Pro, 10 cores, 32 GB; OpenJDK 27; Lean 4 v4.34.1. Time and memory:
+/usr/bin/time -l (real time, maximum RSS). Other work ran beside the sets at times (Lean
+builds of one file at a time, and, for the large set, the item's Lean checks); the times
+are a guide, not a benchmark.
+
+== 1. small: java/stress/conformance.sh small (50 traces: 5 configurations x 10 seeds,
+every transaction; 6 traces also in the unchanged model's mode), 18:07:32 to 18:07:48
+   traces: 50, TRACECHECK OK: 50
+   C-V: 0 transactions with live differences, 127707 LIVE lines; C-R: 0 failed probes;
+   exporter errors: 0
+   export: 38 s in total, 2 s at most, at most 282 MB
+   check: 8 s in total, 1 s at most, at most 13 MB
+CONFORMANCE OK, real 15.6 s (F1-008-11: 5 minutes 20 seconds, one trace at a time)
+
+== 2. medium: java/stress/conformance.sh medium (9 traces: 3 configurations x 3 seeds),
+18:07:48 to 18:08:34
+   traces: 9, TRACECHECK OK: 9; C-V 0, C-R 0, exporter errors 0
+   export: 7 s in total, 1 s at most, at most 245 MB
+   check: 87 s in total, 18 s at most, at most 27 MB
+CONFORMANCE OK, real 46.4 s (F1-008-11: 1 hour 53 minutes)
+
+== 3. large (new): java/stress/conformance.sh large (12 traces: 6 configurations x 2 seeds),
+17:00:51 to 18:01:01
+   l-mixed -Dn=2000 -Dkeys=1000 -Dmaxnode=8 -Dsd=5000 -Dops=4 -Ddel=20 -Dnodel=5 -Dempty=5 -Dprobe=200
+   l-long  -Dn=2000 -Dkeys=3000 -Dmaxnode=30 -Dsd=10000 -Dops=8 -Dlong=1 -Ddel=20 -Dprobe=400
+   l-big62 -Dn=1000 -Dkeys=3000 -Dmaxnode=62 -Dsd=20000 -Dops=20 -Ddel=10 -Dbulk=60 -Dprobe=200
+   l-5000  -Dn=5000 -Dkeys=1000 -Dmaxnode=30 -Dsd=5000 -Dops=4 -Ddel=20 -Dnodel=5 -Dempty=5 -Dprobe=500
+   l-hot   -Dn=2000 -Dkeys=1 -Dmaxnode=8 -Dsd=200 -Dops=1 -Dprobe=200
+   l-few   -Dn=5000 -Dkeys=30 -Dmaxnode=8 -Dsd=500 -Dops=4 -Ddel=20 -Dprobe=500
+   (l-hot has 501 top nodes, l-few 133: review-13-claude, 7.1)
+   traces: 12, TRACECHECK OK: 12; C-V 0, C-R 0, exporter errors 0
+   check, per trace (s): l-mixed 226, 222; l-long 526, 545; l-big62 2690, 2940;
+     l-5000 455, 461; l-hot 5, 5; l-few 89, 92
+   export: 111 s in total, 19 s at most, at most 1640 MB (the exporter's JVM)
+   check: 8256 s in total, 2940 s at most, at most 155 MB
+CONFORMANCE OK, real 60 minutes 10 seconds (the two l-big62 checks, 45 and 49 minutes,
+set the length: a batch waits for its slowest trace)
+
+== 4. level2.sh, step 7 (its commands, as in full mode), 18:10
+   A2A3Check2, the three configurations: 0, 1 and 3 s (3,000, 500 and 6,000 transactions)
+   lake build of the checker: 0 s (built)
+   conformance.sh small 10: 16 s, CONFORMANCE OK
+   step 7, full: about 20 s; quick (conformance.sh small 2): about 8 s
+
+== The plan's targets for C2 (8.4): the medium set in under 15 minutes (46 s); a trace of
+5,000 transactions at node size 30 with 1,000 keys in under 10 minutes (l-5000: 455 and
+461 s); at most 2 GB of memory (the checker 155 MB at most; the exporter's JVM 1.6 GB).
+Node size 62 with 3,000 keys is the slow case: 45 to 49 minutes for 1,000 transactions.

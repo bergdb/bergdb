@@ -100,8 +100,7 @@ Current state
 * Commits of this run (Q2 (b)): see the log entries.
 * Uncommitted work of this plan in bergdb: the files of the WPs in progress,
   named in the last log entry.
-* Long jobs running: C3's large conformance set (`conformance.sh large`,
-  from 16:44), in bergdb's `java/build/traces/large/`.
+* Long jobs running: none.
 * Stage 2's time box (plan, 5.3): not started; 60 hours from the start of
   E1.
 * Preserved builds: `l34-base` (A1; `java/build/perf/builds/l34-base/`,
@@ -119,10 +118,10 @@ Status
 | A4 | Probe H1: no adoption | done | 2026-10-16 |
 | C1 | Profile the checker | done | 2026-10-16 |
 | C2 | Fast versions, proven equal | done | 2026-10-16 |
-| C3 | Larger sets and parallel runs | in progress | 2026-10-16 |
+| C3 | Larger sets and parallel runs | done | 2026-10-16 |
 | L1 | The physical layer, part 1: loading | done | 2026-10-16 |
 | L2 | Lemma M | done | 2026-10-16 |
-| L3 | Lazy startup and reads: T1-L | not started | — |
+| L3 | Lazy startup and reads: T1-L | in progress | 2026-10-16 |
 | L4 | The writer after a lazy startup: CC, T2-L | not started | — |
 | L5 | Lazy reading checked against Java | not started | — |
 | E1 | Design: eviction, references, pins | not started | — |
@@ -740,3 +739,51 @@ reachable ancestor of a changed node is marked), and it is what Option K
 needs too (INV-SLOT, plan 8.5). L3 will develop it as a lemma of the
 logical model that E3 can reuse.
 
+
+### 2026-10-16 16:55 to 18:32. WP C3, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `411b3c4` to
+`3782bc8` (C2, L2 and L1 committed meanwhile; the checker is C2's
+throughout); uncommitted: `java/stress/conformance.sh`, this WP's docs.
+
+Did:
+
+1. `java/stress/conformance.sh`: a `large` set (plan, 8.4): six
+   configurations of two seeds, node sizes 8 to 62, 1,000 to 5,000
+   transactions, up to 3,000 keys; two of them with many top nodes, as
+   review-13-claude 7.1 asks (`l-hot`, one key at node size 8: 501 top
+   nodes; `l-few`, 30 keys: 133). `all` runs the three sets. `PAR=N` checks
+   N traces at once, default 4 (in batches of N: plain `sh` has no `wait -n`,
+   so a batch waits for its slowest trace).
+2. Timed the small, medium and large sets and the commands of `level2.sh`'s
+   step 7; the times are in `docs/level2-alignment.md`, section 12 (and a
+   note in 10.5), and in `docs/evidence/level2-conformance-c3.txt` (new).
+
+Results (all CONFORMANCE OK, no failing check, no exporter error):
+
+| Set | Traces | Time | Before C2 |
+|---|---|---|---|
+| small | 50 | 15.6 s (check 8 s in total) | 5 min 20 s |
+| medium | 9 | 46 s (check 87 s in total, 18 s at most) | 1 h 53 min |
+| large | 12 | 60 min 10 s (check 8,256 s in total) | — |
+| `level2.sh` step 7, full / quick | | about 20 s / 8 s | about 5.5 min |
+
+The large set's per-trace checks: l-mixed 226 and 222 s, l-long 526 and
+545 s, l-5000 455 and 461 s (C2's target, a trace of 5,000 transactions at
+node size 30 with 1,000 keys in under 10 minutes, met again), l-hot 5 s
+each, l-few 89 and 92 s, and l-big62 (node size 62, 3,000 keys, 1,000
+transactions) 2,690 and 2,940 s: the slow case, which sets the set's length.
+Memory: the checker at most 155 MB; the exporter's JVM at most 1.6 GB.
+
+Files changed: `java/stress/conformance.sh`; `docs/level2-alignment.md`
+(sections 10.5 and 12); `docs/evidence/level2-conformance-c3.txt` (new);
+this file.
+
+Checks: the sets above; the gates on the work tree with the new
+`conformance.sh` (`level2.sh` step 7 runs it), 18:10 to 18:30: `LEVEL 1 OK`
+(89 s), `LEVEL 2 OK` (726 s), `LEVEL 3 OK` (343 s); StreamDigest against
+`l34-base`: DIGESTS IDENTICAL (36 of 36).
+
+Register: none.
+
+Open, next: L3 (in progress since 17:35, in a scratch copy of `lean/`).

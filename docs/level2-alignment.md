@@ -851,7 +851,11 @@ or to register.
 The medium set is smaller than 8.5's (C3's choice: the checker's time grows
 fast with the number of versions); the Java tier covers 8.5's medium and
 large sizes instead. The checker checks every transaction of the medium
-traces, not a sample.
+traces, not a sample. Since bergdb item 001's WPs C2 and C3, the Lean tier
+also has a large set (`conformance.sh large`, 12 traces of 1,000 to 5,000
+transactions, node sizes 8 to 62, up to 3,000 keys): all pass, in 60 minutes
+with four traces at once (section 12;
+[evidence/level2-conformance-c3.txt](evidence/level2-conformance-c3.txt)).
 
 ## 11. Outcome (WP F2, 2026-10-16)
 
@@ -926,14 +930,25 @@ A step 7 of `level2.sh`, "Conformance with the Lean model", in both modes
    -Dkeys=1000 -Dn=2000 -Dops=40 -Ddel=20 -Dseeds=3`. Under 5 seconds in all.
    It fails unless the NET line, A3, A5 and the MARKING differences are 0.
 3. The checker on the small set: `conformance.sh small 2` in quick mode
-   (10 traces), `conformance.sh small` in full mode (50 traces, 5 minutes 20 seconds).
-   It needs the checker (`cd lean && lake build`, with Lean 4 v4.34.1); the
-   step would build it, and fail if it cannot.
+   (10 traces), `conformance.sh small` in full mode (50 traces, 5 minutes 20 seconds;
+   16 seconds since bergdb item 001's C2 and C3, with the fast checker and four
+   traces at once). It needs the checker (`cd lean && lake build`, with Lean 4
+   v4.34.1); the step would build it, and fail if it cannot.
 
 Points 1 and 2 need only the JDK and cost seconds. Point 3 is the strongest
 check, since it compares every record with the model's, but it makes the gate
 depend on Lean. Frans decides (K4); until then, `conformance.sh` and
 `A2A3Check2` can be run by hand, as in 10.5.
+
+**Times, 2026-10-16, after bergdb item 001's WPs C2 and C3** (fast checker, four
+traces at once; `docs/evidence/level2-conformance-c3.txt`): step 7 about 20 seconds
+in full mode (A2A3Check2 4 seconds, `conformance.sh small 10` 16 seconds) and about
+8 seconds in quick mode. The sets by hand: small 16 seconds (50 traces), medium
+46 seconds (9 traces; 1 hour 53 minutes before C2), and the new large set
+(`conformance.sh large`: 12 traces, node sizes 8 to 62, 1,000 to 5,000 transactions,
+up to 3,000 keys, two configurations with 133 and 501 top nodes) 60 minutes, of which
+the two traces at node size 62 take 45 and 49 minutes; the trace of 5,000 transactions
+at node size 30 takes under 8 minutes. All CONFORMANCE OK.
 
 
 ## 13. Lazy reading (bergdb item 001, stage 1)

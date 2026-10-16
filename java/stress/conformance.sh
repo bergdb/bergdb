@@ -3,15 +3,18 @@
 # configurations, and checks each trace with the Lean checker (lean/, lake exe
 # tracecheck). Written 2026-10-15 for F1-008-11, WPs C3 and F1.
 #
-# Usage: java/stress/conformance.sh [small|medium|all] [seeds]
+# Usage: java/stress/conformance.sh [small|medium|large|all] [seeds]
 #   small (default): the Lean tier on every transaction, in the target mode
 #   (marking, Java's still-dirty test, the virtual root) and, for the first
 #   three seeds of the first two configurations, in the unchanged model's mode
-#   (--model). medium: larger runs, target mode only. seeds: per configuration
-#   (default 10 small, 3 medium). The checker uses the model's list-based
-#   definitions as they are; its time grows fast with the number of versions,
-#   which limits the sizes here (a node size of 62 with 40-key transactions
-#   takes many minutes per trace).
+#   (--model). medium: larger runs, target mode only. large (2026-10-16, bergdb
+#   item 001, WP C3): up to 5,000 transactions, node sizes 8 to 62, up to 3,000
+#   keys, and runs with hundreds of top nodes. all: the three. seeds: per
+#   configuration (default 10 small, 3 medium, 2 large). The checker computes
+#   the model's own definitions, with fast versions proven equal to them
+#   (lean/Check/Fast.lean, since bergdb item 001, WP C2).
+#
+# PAR=N runs N traces at once (default 4), each an export and its check.
 #
 # Needs java/build (java/build.sh) and the checker (cd lean && lake build).
 # Traces and checker outputs go to java/build/traces/SET/. Prints one line per
@@ -32,6 +35,7 @@ else
     timed() { shift; "$@"; }
 fi
 SET=${1:-small}
+PAR=${PAR:-4}
 LEAN=../lean
 CHECK=${CHECK:-$LEAN/.lake/build/bin/tracecheck}
 [ -x "$CHECK" ] || { echo "CONFORMANCE FAILED: no checker; run lake build in lean/"; exit 1; }
@@ -51,6 +55,33 @@ medium() {
     echo "m-big   -Dn=120 -Dkeys=1000 -Dmaxnode=30 -Dsd=10000 -Dops=20 -Dbulk=60 -Dprobe=30"
 }
 
+large() {
+    # l-hot and l-few have hundreds of top nodes (one hot key; 30 keys at node size 8).
+    echo "l-mixed -Dn=2000 -Dkeys=1000 -Dmaxnode=8 -Dsd=5000 -Dops=4 -Ddel=20 -Dnodel=5 -Dempty=5 -Dprobe=200"
+    echo "l-long  -Dn=2000 -Dkeys=3000 -Dmaxnode=30 -Dsd=10000 -Dops=8 -Dlong=1 -Ddel=20 -Dprobe=400"
+    echo "l-big62 -Dn=1000 -Dkeys=3000 -Dmaxnode=62 -Dsd=20000 -Dops=20 -Ddel=10 -Dbulk=60 -Dprobe=200"
+    echo "l-5000  -Dn=5000 -Dkeys=1000 -Dmaxnode=30 -Dsd=5000 -Dops=4 -Ddel=20 -Dnodel=5 -Dempty=5 -Dprobe=500"
+    echo "l-hot   -Dn=2000 -Dkeys=1 -Dmaxnode=8 -Dsd=200 -Dops=1 -Dprobe=200"
+    echo "l-few   -Dn=5000 -Dkeys=30 -Dmaxnode=8 -Dsd=500 -Dops=4 -Ddel=20 -Dprobe=500"
+}
+
+# One trace: the export and its check (and the unchanged model's mode for the first
+# small traces).
+one_trace() {
+    set_name=$1; name=$2; s=$3; props=$4
+    dir=build/traces/$set_name
+    t=$dir/$name-$s.trace
+    timed $dir/$name-$s.export.time \
+        $JAVA -ea $props -cp $CP bergdb.core.TraceExport $s $t > $dir/$name-$s.export.txt 2>&1 \
+        || echo "TraceExport failed: $(tail -1 $dir/$name-$s.export.txt)" > $dir/$name-$s.check.txt
+    if [ -f $t ]; then
+        timed $dir/$name-$s.check.time "$CHECK" $t > $dir/$name-$s.check.txt 2>&1
+        if [ $set_name = small ] && [ $s -le 3 ] && { [ $name = mixed ] || [ $name = long ]; }; then
+            "$CHECK" $t --model > $dir/$name-$s.model.txt 2>&1
+        fi
+    fi
+}
+
 run_set() {
     set_name=$1
     seeds=$2
@@ -59,19 +90,24 @@ run_set() {
     mkdir -p $dir
     find $dir -type f -delete
     $set_name > $dir/configs.txt
+    # PAR traces at once, in batches.
+    running=0
     while read name props; do
         s=1
         while [ $s -le $seeds ]; do
-            t=$dir/$name-$s.trace
-            timed $dir/$name-$s.export.time \
-                $JAVA -ea $props -cp $CP bergdb.core.TraceExport $s $t > $dir/$name-$s.export.txt 2>&1 \
-                || echo "TraceExport failed: $(tail -1 $dir/$name-$s.export.txt)" > $dir/$name-$s.check.txt
-            if [ -f $t ]; then
-                timed $dir/$name-$s.check.time "$CHECK" $t > $dir/$name-$s.check.txt 2>&1
-                if [ $set_name = small ] && [ $s -le 3 ] && { [ $name = mixed ] || [ $name = long ]; }; then
-                    "$CHECK" $t --model > $dir/$name-$s.model.txt 2>&1
-                fi
+            one_trace $set_name $name $s "$props" &
+            running=$((running + 1))
+            if [ $running -ge $PAR ]; then
+                wait
+                running=0
             fi
+            s=$((s + 1))
+        done
+    done < $dir/configs.txt
+    wait
+    while read name props; do
+        s=1
+        while [ $s -le $seeds ]; do
             echo "   $name-$s: $(tail -1 $dir/$name-$s.check.txt)"
             s=$((s + 1))
         done
@@ -106,8 +142,10 @@ summary() {
 case $SET in
     small) run_set small ${2:-10}; summary small ;;
     medium) run_set medium ${2:-3}; summary medium ;;
-    all) run_set small ${2:-10}; summary small; run_set medium ${2:-3}; summary medium ;;
-    *) echo "usage: $0 [small|medium|all] [seeds]"; exit 2 ;;
+    large) run_set large ${2:-2}; summary large ;;
+    all) run_set small ${2:-10}; summary small; run_set medium ${2:-3}; summary medium
+        run_set large ${2:-2}; summary large ;;
+    *) echo "usage: $0 [small|medium|large|all] [seeds]"; exit 2 ;;
 esac
 
 for set_name in $RAN; do
