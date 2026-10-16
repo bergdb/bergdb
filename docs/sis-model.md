@@ -53,8 +53,9 @@ node that has a version in the section is followed to that node's newest
 version (reconciliation, Rule R). Then it reruns the transactions of the
 section.
 
-The claims below hold for runs meeting the model's assumptions and using
-the exact still-dirty test (section 9). A crash here preserves a prefix of
+The claims below hold for runs meeting the model's assumptions, with step 3
+by testing or by marking, and with the exact or BergDB's still-dirty test;
+with a virtual root, BergDB's (section 9). A crash here preserves a prefix of
 complete abstract records; byte recovery and hardware durability are not modeled.
 
 * T1 Recovery. For any run and any crash, startup gives back the same P, for
@@ -125,7 +126,7 @@ value nodes are data nodes. Every other node is an index node.
 3.4 Assumptions
 ---------------
 
-The theorems hold for every structure with these four properties.
+The theorems hold for every structure with these five properties.
 
 A1 Determinism. T(i) changes P by adding entries at time i and by creating
    nodes. Which entries and nodes, with which ids, is a function of T(i) and
@@ -142,12 +143,22 @@ A4 Levels. Every node has a level, and every pointer goes to a node of a
    lower level. In a B-tree, the level is the height. This lets a
    transaction write children before parents.
 
+A5 No resurrection (since 2026-10-15). A node reachable at time i, after
+   the change, was reachable at time i-1 or was created by T(i). Marking
+   (6.1, step 3) needs it.
+
 The intended multiversion B-tree abstraction uses splits, parent repointing
 and downward levels to meet these properties. That is not a proof that the
 Java Dag satisfies them: A2 and A3 must also be checked for compound
 transactions with transient nodes and multiple root changes. A balanced
 binary tree with rotations does not automatically supply A4 with fixed
 levels, since a child can become its parent's parent.
+
+Since 2026-10-16, BergDB's Java transactions are built to meet A2 and A3
+(F1-008-11, [level2-alignment.md](level2-alignment.md), M1), and the trace
+checker and the Java tier check A2 to A5, with the levels of
+level2-alignment.md, section 8.4, on every transaction of their runs. That is
+a check on many runs, not a proof.
 
 
 4 The stream
@@ -245,7 +256,8 @@ running database knows it, in RAM and in the stream.
 3. Got dirty. Every index node that is not in D and is dirty now gets
    d(x) = i, and its id goes into gd(i).
 4. Startup pos. Choose s(i), with s(i-1) <= s(i) < i, by any policy that
-   depends only on S and D. In BergDB: the last transaction that starts at
+   depends only on S, D and T(i). (T(i) since 2026-10-16: BergDB's limit on
+   the nodes taken depends on the size of the transaction.) In BergDB: the last transaction that starts at
    least the startup distance before the end of the stream.
 5. Take. Remove every node with d(x) <= s(i) from D. These are the taken
    nodes.
@@ -256,13 +268,17 @@ running database knows it, in RAM and in the stream.
 
 Step 3 is stated by what it achieves. An implementation finds these nodes on
 the access path: the nodes created or changed by T(i), and their ancestors
-at time i (section 11).
+at time i (section 11). Since 2026-10-15 the model has both forms
+(`Algo.mark`): testing every index node, as above, and marking the access
+path, BergDB's way. T13 (section 9) shows that they find the same nodes.
 
 Step 7 uses a still-dirty test. The model allows any test that is sound: if
 the node is dirty after step 6, the test must say so. It may depend on P only
 through P@t for t <= i. Two examples: the exact test (the definition in 5.2),
 and "the node points to a node in D, through any pointer". The second is
-easier to implement but costs more (section 11).
+BergDB's (`javaTest`; step 7 tests the taken nodes lowest level first). It is
+easier to implement but costs more (section 11). T1 and T2 are proven for
+both (section 9).
 
 
 6.2 Startup
@@ -273,8 +289,10 @@ Given the stream R(0), ..., R(k), where R(k) is the last complete record:
 1. Section. s = s(k). The startup section is R(s+1), ..., R(k).
 2. D. For each j from s+1 to k, and each id x in gd(j): d(x) = j. Each node
    occurs at most once (INV-1).
-3. Newest versions. Read the section. For each node y with a version there,
-   New(y) is its newest version in the section.
+3. Newest versions. Read R(s), ..., R(k). For each node y with a version
+   there, New(y) is its newest version there. (Since 2026-10-16, as in
+   BergDB, whose startup section begins with R(s); before, R(s+1), ...,
+   R(k). The proofs needed only a < changed to <= in L-SEC.)
 4. Rule R, reconciliation. Whenever the stream is read, a pointer to a
    node y that has a version in the section is followed to New(y),
    whatever reference the version holds for y, also when it holds none (a
@@ -300,6 +318,31 @@ versions written before the section (E4), and it resolves vpos pointers.
 That last part is needed: a version written before its child was first
 written holds no reference for the child, and the child's first version can
 be in the section. The Lean model found this (section 13).
+
+
+6.3 The virtual root
+--------------------
+
+Since 2026-10-16 (F1-008-11, option (a) of
+[level2-alignment.md](level2-alignment.md), sections 8.2 and 8.6), the root
+can be virtual (`Spec.virt`), as in BergDB, which has no root node but a
+chain of top nodes. The root's children are the top nodes; the root is never
+in D and never written. top(i) names the root's child at s(i), the super
+root at the startup time, and the record of its latest version. Startup
+reads the root's children from that version through their pointers, live or
+dead, with Rule R, rebuilds the root from them, and then reads as in 6.2.
+
+The virtual root needs more assumptions (R1 to R4 of level2-alignment.md,
+8.2, and two more): the root's entry for a child points to it; at most one
+new root child per transaction, an index node with entries; a root child
+gets entries only in the transaction that creates it; the root gets exactly
+the entry for the new child; every older root child can be reached from the
+new one through pointers between root children; and a root child that a
+root child points to is not reachable. With a virtual root, T1 and T2 need
+BergDB's still-dirty test. Startup finds an older top node only through the
+references of newer ones, and the exact test can leave a top node with a
+reference to a stale version of an older one: `exactWitness3` in
+lean/SIS/Example.lean is a run where T1 then fails.
 
 
 7 An example
@@ -417,9 +460,11 @@ version can name versions that are no longer good, so startup needs Rule R.
 9 Theorems
 ==========
 
-A run is any sequence of transactions, with a valid startup pos policy and the
-exact still-dirty test, on a structure with A1 to A4. (The model allows any
-sound test; the conservative one is checked by the random tests only.)
+A run is any sequence of transactions on a structure with A1 to A5, with a
+valid startup pos policy, step 3 by testing or by marking, and in step 7
+BergDB's still-dirty test or the exact one; with a virtual root (6.3), also
+its assumptions, and BergDB's test only. (Until 2026-10-15: the exact test,
+step 3 by testing, and A1 to A4.)
 
 T1 Recovery. Let <P, D, S> be the state after T(k) in a run, and let
 startup(S) = <P', D', S>. Then P' ≈ P and D' = D. In fact P' has the same
@@ -454,6 +499,13 @@ the references by S, and the startup pos by S and D. In Lean, step 3 lists
 the nodes by id, so the record does not depend on the order of nodes in the
 list that holds P.
 
+T13 Marking is exact (since 2026-10-15). After the change of T(i), an index
+node that is not in D, other than a virtual root, is marked (on the access
+path of the change) if and only if it is dirty. So both forms of step 3 give
+the same D and the same records (`T13_markExact`). It needs A5: a node that
+becomes reachable again with nothing changed below it could be dirty without
+being on the access path.
+
 
 10 Not in this model
 ====================
@@ -478,6 +530,7 @@ implementation must meet them.
   nodes on the access path. This finds every dirty node only if every
   ancestor, at time i, of a changed node is on the access path, which holds
   if P@i is a tree. In BergDB it is: a node has at most one current parent.
+  The model's marking (6.1) takes every ancestor; T13 shows it exact.
 * The still-dirty test. The conservative test (points to a node in D through
   any pointer) is sound, but a dead node shares children with the node that
   replaced it, and a hot child keeps such a dead node dirty. It is then
@@ -499,7 +552,9 @@ implementation must meet them.
   implementation must not let an object read from an older version stand for
   the node at a later time (G8 in startup-invariants.md).
 * Finding the root. The model stores top(i) in every record. Any way to find
-  lv(root) at startup will do.
+  lv(root) at startup will do. BergDB stores topPos in every record since
+  2026-10-15 (format 5): the position of the super root at the startup time
+  (level2-alignment.md, M18; with a virtual root, top(i) of 6.3).
 
 
 12 Compared with startup.md
@@ -537,6 +592,12 @@ The model in Lean is in [../lean/](../lean/README.md).
   startup without Rule R gets time 2 wrong. A second example has four
   levels, data nodes, and time splits of leaves. A test program checks, on
   pseudo-random runs, that the examples meet the assumptions, and T1 and T2.
+* 2026-10-15 and 2026-10-16 (F1-008-11): A5, marking and T13, BergDB's
+  still-dirty test, Rule R from R(s), a policy that sees T(i), and the
+  virtual root (sections 3.4, 6 and 9; lean/README.md, the changes to the
+  trusted part). The trace checker (lean/Check/, `tracecheck`) runs the
+  model's `init` and `step` on traces of Java runs
+  ([level2-alignment.md](level2-alignment.md), sections 9 and 10).
 
 The lemmas of section 8, by Lean name:
 
@@ -555,6 +616,9 @@ The lemmas of section 8, by Lean name:
 | L-RERUN  | `rerun_sameNodes`                           | Proof/Recovery |
 | T1       | `T1_strong`, `T1_recovery`, `T1_crash`, `T1_nodes` | Proof/Recovery, Theorems |
 | T2       | `step_congr`, `T2_strong`, `T2_restart`     | Proof/Restart, Theorems |
+| T13      | `step_marked_iff`, `T13_markExact`          | Proof/Mark, Theorems |
+| BergDB's still-dirty test | `step_java_child`          | Proof/Still    |
+| The virtual root | `VInv`                              | Proof/Run, Proof/VStep |
 
 
 14 What the proofs changed
@@ -577,6 +641,15 @@ From draft 1 to draft 2, all on 2026-10-12.
 * Step 3 lists the nodes by id, sorted, so that the record does not depend
   on the order of nodes in P. Needed for T2, where P after a restart is
   built in another order.
-* The theorems are proven for the exact still-dirty test. The text allows
-  any sound test; a proof for the conservative test needs INV-2 inside step
-  7, which is more work and not done.
+* The theorems were proven for the exact still-dirty test only. Since
+  2026-10-15 they are proven for BergDB's test too (lean/SIS/Proof/Still.lean).
+  That needed less than expected: only that the test looks at P through its
+  nodes and puts back every taken node that is still dirty, which BergDB's
+  test does because it tests the taken nodes lowest level first. No theorem
+  that D stays closed upward (T15 of F1-008-08) was needed.
+
+From 2026-10-15 to 2026-10-16 (F1-008-11):
+
+* A5, no resurrection, is back: marking needs it (T13).
+* With a virtual root, the exact still-dirty test breaks T1 (6.3).
+* Rule R from R(s), as in BergDB: only a < changed to <= in L-SEC.

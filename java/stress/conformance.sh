@@ -15,13 +15,22 @@
 #
 # Needs java/build (java/build.sh) and the checker (cd lean && lake build).
 # Traces and checker outputs go to java/build/traces/SET/. Prints one line per
-# trace, then the failing checks summed over all traces, and CONFORMANCE OK or
-# CONFORMANCE FAILED. Set JAVA_HOME or PATH for the JDK.
+# trace, then the failing checks summed over all traces, the time and memory of
+# the runs, and CONFORMANCE OK or CONFORMANCE FAILED for the sets run. Set
+# JAVA_HOME or PATH for the JDK.
 
 cd "$(dirname "$0")/.."
 JAVA=${JAVA:-java}
 if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
 CP=build/bergdb.jar:build/stress
+RAN=
+
+# The time and memory of each run, where /usr/bin/time has -l and -o (macOS).
+if /usr/bin/time -l -o /dev/null true 2> /dev/null; then
+    timed() { o=$1; shift; /usr/bin/time -l -o "$o" "$@"; }
+else
+    timed() { shift; "$@"; }
+fi
 SET=${1:-small}
 LEAN=../lean
 CHECK=${CHECK:-$LEAN/.lake/build/bin/tracecheck}
@@ -46,6 +55,7 @@ run_set() {
     set_name=$1
     seeds=$2
     dir=build/traces/$set_name
+    RAN="$RAN $set_name"
     mkdir -p $dir
     find $dir -type f -delete
     $set_name > $dir/configs.txt
@@ -53,10 +63,11 @@ run_set() {
         s=1
         while [ $s -le $seeds ]; do
             t=$dir/$name-$s.trace
-            $JAVA -ea $props -cp $CP bergdb.core.TraceExport $s $t > $dir/$name-$s.export.txt 2>&1 \
+            timed $dir/$name-$s.export.time \
+                $JAVA -ea $props -cp $CP bergdb.core.TraceExport $s $t > $dir/$name-$s.export.txt 2>&1 \
                 || echo "TraceExport failed: $(tail -1 $dir/$name-$s.export.txt)" > $dir/$name-$s.check.txt
             if [ -f $t ]; then
-                "$CHECK" $t > $dir/$name-$s.check.txt 2>&1
+                timed $dir/$name-$s.check.time "$CHECK" $t > $dir/$name-$s.check.txt 2>&1
                 if [ $set_name = small ] && [ $s -le 3 ] && { [ $name = mixed ] || [ $name = long ]; }; then
                     "$CHECK" $t --model > $dir/$name-$s.model.txt 2>&1
                 fi
@@ -79,6 +90,10 @@ summary() {
     grep -h '^  PROBE' $dir/*.check.txt | sed -E 's/[0-9]+/N/g' | sort | uniq -c | sed 's/^/      /'
     echo "   exporter errors: $(grep -h '^exporter errors' $dir/*.check.txt | awk '{s+=$3} END {print s+0}')"
     echo "   traces: $(ls $dir/*.check.txt | wc -l | tr -d ' '), TRACECHECK OK: $(grep -l 'TRACECHECK OK' $dir/*.check.txt | wc -l | tr -d ' ')"
+    for k in export check; do
+        ls $dir/*.$k.time > /dev/null 2>&1 || continue
+        echo "   time and memory, $k: $(awk '/ real /{s+=$1; if ($1>l) l=$1} /maximum resident set size/{if ($1>m) m=$1} END {printf "%.0f s in total, %.0f s at most, at most %.0f MB", s, l, m/1048576}' $dir/*.$k.time)"
+    done
     if ls $dir/*.model.txt > /dev/null 2>&1; then
         echo "Unchanged model's mode (--model), $(ls $dir/*.model.txt | wc -l | tr -d ' ') traces:"
         for k in "C-A assumptions" "C-S steps"; do
@@ -95,8 +110,10 @@ case $SET in
     *) echo "usage: $0 [small|medium|all] [seeds]"; exit 2 ;;
 esac
 
-if grep -L "TRACECHECK OK" build/traces/*/*.check.txt 2>/dev/null | grep -q .; then
-    echo "CONFORMANCE FAILED"
-    exit 1
-fi
+for set_name in $RAN; do
+    if grep -L "TRACECHECK OK" build/traces/$set_name/*.check.txt 2>/dev/null | grep -q .; then
+        echo "CONFORMANCE FAILED"
+        exit 1
+    fi
+done
 echo "CONFORMANCE OK"

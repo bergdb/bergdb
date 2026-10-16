@@ -39,6 +39,8 @@ import bergdb.stream.MemoryStream;
  *   del=1      Include deletes (default 0).
  *   long=1     Half of the keys are /long/N, 7 bytes or more: two key segments.
  *   bigtrans=N One transaction in ten has up to N keys (default: all have 1 to 3).
+ *   empty=P    P percent of the transactions have no keys (default 0).
+ *   nodel=P    P percent of the transactions only delete keys that never exist (default 0).
  *   retain=S   Reclaim on, with a retain duration of S seconds (level 3); transactions
  *              are then 0.01 to 0.2 s apart. Lookups are checked from the first
  *              available lookup time, and the streams from the cut.
@@ -59,6 +61,8 @@ public class RestartInvariance {
     final boolean del = "1".equals(System.getProperty("del"));
     final boolean longKeys = "1".equals(System.getProperty("long"));
     final int bigTrans = Integer.getInteger("bigtrans", 0);
+    final int empty = Integer.getInteger("empty", 0);
+    final int nodel = Integer.getInteger("nodel", 0);
     final int retain = Integer.getInteger("retain", 0);
     final long timeScale = retain > 0 ? bergdb.pub.util.Clock.UNITS_PER_SEC / 100 : 1;
 
@@ -74,6 +78,17 @@ public class RestartInvariance {
         for (int i = 0; i < n; i++) {
             time += (1 + rnd.nextInt(20)) * timeScale;
             times[i] = time;
+            // Transactions that change nothing (F1-008-11, 8.5, for M18). No draw when both
+            // are 0, so that the other workloads stay the same.
+            int idle = empty + nodel > 0 ? rnd.nextInt(100) : 100;
+            if (idle < empty + nodel) {
+                int c = idle < empty ? 0 : 1 + rnd.nextInt(3);
+                String[] ks = new String[c];
+                for (int j = 0; j < c; j++) ks[j] = "/missing/" + i + "/" + j;
+                keys.add(ks);
+                values.add(new byte[c][]);      // DELETED
+                continue;
+            }
             int opCount = 1 + rnd.nextInt(3);
             if (bigTrans > 0 && rnd.nextInt(10) == 0) {
                 opCount = 1 + rnd.nextInt(bigTrans);
@@ -351,7 +366,8 @@ public class RestartInvariance {
 
         System.out.println("seed=" + seed + " n=" + n + " keys=" + keyCount + " sd="
                 + startupDistance + " maxnode=" + maxNode + " every=" + every
-                + " valsize=" + valsize + " del=" + del + " retain=" + retain);
+                + " valsize=" + valsize + " del=" + del + " retain=" + retain
+                + (empty + nodel > 0 ? " empty=" + empty + " nodel=" + nodel : ""));
         if (retain > 0) {
             // The cut decided by reclaim; the physical cut (pretruncate) waits for durability,
             // and MemoryStream drops whole 1 MB arrays only.

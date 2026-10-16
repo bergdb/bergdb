@@ -55,7 +55,7 @@ Levels
 |---|---|---|
 | 0 | Multiversion map in memory: puts, deletes, latest and historical lookups, scans; no restart | Passes the tests run |
 | 1 | + restart by replaying the whole stream | Passes the tests run; two bugs fixed |
-| 2 | + bounded startup: the startup pos moves, startup reads only the tail | Works in all tests run, also under load and with crashes; the defects of the 2017 code fixed |
+| 2 | + bounded startup: the startup pos moves, startup reads only the tail | Works in all tests run, also under load and with crashes; the defects of the 2017 code fixed; aligned with the Lean model, which is proven (2026-10-16, F1-008-11) |
 | 3 | + reclaim: cut the front of the stream | Passes the recorded exact-cut, restart, crash, load, concurrent-reader and changing-retention tests; infinite retention is the default, finite retention schedules reclaim; retention pacing, older cut point, index-aware allowance and 16 KB scan target implemented; an overtaken read may expire without harming the database; FileStream power-loss ordering is implemented and audited on the tested platforms; a longer disk soak and the performance reference remain planned |
 | 4 | + eviction: data larger than memory | Not implemented |
 
@@ -127,7 +127,10 @@ MB). Self-indexed streams.
 Theory: [sis-model.md](sis-model.md), an abstract model with Rule A and Rule
 R, and the theorems T1 (recovery) and T2 (restart invariance), proven in
 Lean ([../lean/](../lean/README.md)). They prove the model, not the Java
-code, under its assumptions A1 to A4 and the exact still-dirty test.
+code. Since 2026-10-16 the model has BergDB's bookkeeping and its virtual
+root, and Java's runs are checked against it, step by step
+([level2-alignment.md](level2-alignment.md), F1-008-11): see "Alignment with
+the model" below.
 
 How it works in the Java code. Reads of nodes in memory follow Java
 references, as before; the extra work is at startup, at the first touch of
@@ -191,22 +194,39 @@ a node, and when index nodes are written.
   could move the startup pos past every top node version, and the database
   could not start.
 
+Alignment with the model (F1-008-11, 2026-10-16;
+[level2-alignment.md](level2-alignment.md), sections 10.5 and 11):
+
+* Proved, in Lean, for the model: T1 (recovery, also after a crash after
+  any transaction) and T2 (restart invariance), with BergDB's bookkeeping:
+  marking in step 3, BergDB's still-dirty test (Rule A over all pointers),
+  Rule R from R(s), a startup pos policy that sees the transaction, and a
+  virtual root with top nodes as in Java; and T13 (marking is exact). Under
+  the assumptions A1 to A5 and, for the virtual root, R1 to R4. No `sorry`,
+  only Lean's standard axioms.
+* Checked, on Java runs: the trace checker runs the model's own `init` and
+  `step` on traces of Java runs, and every transaction of 59 traces is a
+  step of the model: the same record and the same D, with the assumptions
+  met, and restarts and lookups as the model says. The Java tier checks
+  A2, A3, A5 and Java's marking against the model's on 68,901 transactions,
+  and `RestartInvariance` the same bytes with and without restarts, also
+  with transactions that change nothing. The gates.
+* Argued, not proved: the mapping α itself (level2-alignment.md, section
+  2); that Java's references are the latest versions (M5; checked on every
+  record); the order within a record (M6, M9); lemma M, lazy reading after
+  a restart (M8; argued in 7.4 and checked by restarts, but not in the
+  model, which reads all of P at startup); bytes as a function of the
+  stream (M10).
+* Not modeled: bytes, torn records, durability, concurrency, the bounds
+  (T3, T4), reclaim (Level 3) and eviction (Level 4). The gates cover the
+  first four.
+
+The startup bug M18, found 2026-10-15 (transactions that change nothing
+could move the startup pos past every top node version, and the database
+then could not start), is fixed by topPos (above, bergdb `01f386a`).
+
 Open:
 
-* The Lean model and Java (F1-008-11, [level2-alignment.md](level2-alignment.md),
-  the mapping and the register of differences). Since 2026-10-16 the model has
-  Java's bookkeeping (marking the access path, the conservative still-dirty
-  test), Rule R from R(s), a startup pos policy that sees the transaction, and
-  a virtual root with top nodes as in Java, and T1, T2 and T13 are proven for
-  it; the trace checker runs the model's own definitions on Java runs, and
-  the references Java writes agree with the model's on every record checked.
-  Since the same day, a Java transaction is one model transaction, and Java
-  marks what the model marks (M1, M2, above). Still open: lemma M (lazy
-  reading after a restart, M8), argued and checked by restarts, not proven.
-* A startup bug, found 2026-10-15 (level2-alignment.md, M18): transactions
-  that change nothing could move the startup pos past every top node
-  version, and the database then could not start. Fixed the same day (topPos,
-  above); uncommitted until Frans's review.
 * Bounds: the startup section can grow beyond the startup distance when many
   index nodes wait to be written (problem.md, R3 and Q4). The conservative
   still-dirty test may make dead nodes be written again and again. To
