@@ -100,10 +100,10 @@ Current state
 * Commits of this run (Q2 (b)): see the log entries.
 * Uncommitted work of this plan in bergdb: the files of the WPs in progress,
   named in the last log entry.
-* Long jobs running: P2's pilot soak, `java/build/soak/pilot2/` (since
-  22:43, about 40 minutes; see the P2 entry).
-* Stage 2's time box (plan, 5.3): not started; 60 hours from the start of
-  E1.
+* Long jobs running: P2's main soak, `java/build/soak/main1/` (since
+  23:12:41, about three hours; see the P2 entries).
+* Stage 2's time box (plan, 5.3): started with E1 at 2026-10-16 23:14;
+  60 hours, so it ends at 2026-10-19 11:14.
 * Preserved builds: `l34-base` (A1; `java/build/perf/builds/l34-base/`,
   with its digests in `digests-a1.txt`).
 
@@ -125,7 +125,7 @@ Status
 | L3 | Lazy startup and reads: T1-L | done | 2026-10-16 |
 | L4 | The writer after a lazy startup: CC, T2-L | done | 2026-10-16 |
 | L5 | Lazy reading checked against Java | done | 2026-10-16 |
-| E1 | Design: eviction, references, pins | not started | — |
+| E1 | Design: eviction, references, pins | done | 2026-10-16 |
 | E2 | The physical model with eviction, executable | not started | — |
 | E3 | INV-SLOT and the physical writer: T-CACHE | not started | — |
 | E4 | Reads under eviction: T-READ | not started | — |
@@ -1174,4 +1174,124 @@ records (section 5, step 6 allows it).
 
 Open, next: P2 continues (the pilot runs). R2 can start after R1 and C2
 (it needs no K1); R3 waits for K1.
+
+
+### 2026-10-16 23:13. WP P2, in progress: the pilot's result, the main run (written before it)
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `309243b` (R1);
+uncommitted: `java/stress/Soak.java`, `java/stress/soak.sh`.
+
+The pilot (`java/build/soak/pilot2/`, 22:43 to 23:11; one million keys,
+300 transactions a second, `-Xms12g -Xmx12g`): `SOAK OK`, 900 steady
+seconds, 269,179 commits (299.1 a second, 0.90 updates per key per retention
+window), 8,370,238 gets and 4,689,717 scans (234 million KVs) checked at
+their snapshots, no failure, 335,470 reads expired at admission (the reads
+just below the first available lookup time), none during, none unverifiable;
+three physical cuts (one in the warm-up), one restart (started in 0.95 s,
+5,678 transactions rerun; its check, 1,127,000 gets, 13.1 s). What it showed
+for the calibration:
+
+1. Memory grows with the updates and nothing gives it back: the heap after
+   young collections rose by about 4 MB a second, about 1.3 KB per update,
+   cuts or not (Level 3 keeps every node it has ever made or read: `Cache3`
+   entries are never removed, level4-alignment.md M25, M26). A restart starts
+   from a new, lazily loaded database (about 4.4 GB after the check had read
+   every key); the old one is garbage then. In the 12 GB heap the restart's
+   check (the old database not yet collected, the new one loading) ended in
+   a full collection of 2.6 s, the run's longest pause.
+2. The first iteration rewrote the loaded data in about 470 s; later ones
+   took 240 to 270 s, one physical cut each, with the first available lookup
+   time 300 to 750 s old (each cut is decided when tEnd is exactly the
+   retention old; the iteration after the first cut cannot cut until the one
+   after it ends).
+3. The slowest commits (136 and 39 ms) are the physical cuts: the commit
+   whose reclaim call deletes the files (`FileStream.pretruncate`, one
+   directory force per file). Durable commits take 70 to 148 ms (the buffer's
+   flush interval).
+
+The main run, frozen from that (`soak.sh main1`, started 23:12:41): the pilot's
+workload (one million keys plus 1,000 long keys, 1,000-byte values, retention
+300 s, 10 keys a transaction, three readers at 5,000 operations a second,
+one durable commit a second), at 200 transactions a second (about 0.6
+updates per key per retention window, paced), with `-Xms24g -Xmx24g` (the
+plan's limit, 2.4), so that the memory between restarts (about 2.7 MB a
+second) and a restart's transient fit with room; warm-up until the first
+physical cut (at most an hour); 7,200 steady seconds with three cold
+restarts at 30, 60 and 90 minutes, extended up to an hour if it has fewer
+than 10 physical cuts. Expected end: about 02:15. Meanwhile: no gates,
+performance runs or Lean builds; document work (E1).
+
+
+### 2026-10-16 23:14 to 23:27. WP E1, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `309243b`;
+uncommitted: P2's `java/stress/Soak.java` and `soak.sh` (in progress) and
+this WP's files. Written while P2's main soak runs (document work only, plan
+2.7); its inputs were read from 22:59 on, during the pilot. Stage 2's time
+box starts here (23:14).
+
+Did: `docs/level4-alignment.md`, section 5, "The design", from the plan's
+8.5 to 8.8, level4-plan.md (sections 1 to 7 and 10), reference-theory.md
+and `lean/References/SISCase.lean`, F1-008-07 (sections 3, 4, 8), F1-008-08
+(sections 2, 9, 10), Codex's review of 09 (findings 2, 4, 7), A4's probes
+and L1's `Phys.lean`; Java's `TopDs.newSuperRoot`, `KeyNode`'s copies,
+`DbStarter.createMemoryPointers` and `NodeCollection.resolvePointers` at
+`a66e4d9`:
+
+1. The physical layer, part 2 (5.2): the pinned set (D's canonical objects
+   and the root's object); eligibility; unswizzle (the slot names the
+   target's position, so its serialized reference does not change); release;
+   the Level 4 loader of Q7 (the canonical object, or the exact version after
+   Rule R; the node table names canonical objects only; no cut-back after
+   startup); promotion; the physical writer (references from slots and the
+   pinned set by id, Rule R; Rule A by id against the pinned set, which is
+   `javaTest`); startup with rule 4; cache schedules.
+2. Option K worked out (5.4): INV-SLOT made precise, with a second half (a
+   slot to a pinned node that is not a memory slot to its canonical object
+   belongs to an object written no later than that node), which makes
+   unpinning safe. A table of every way a slot changes against the only way
+   lv(y) moves, and the five kinds of slot (live; dead with the pointee
+   current, by A6'; dead with the pointee not current, by Rule A's coupling;
+   historical in D; after a restart). The restart gap of the plan's 8.5
+   (M44) is closed by rule 4, startup linking D's objects by id, which needs
+   no runtime window and gives today's records; the window stays the
+   fallback. Checked by hand: SISCase (excluded by A6 and A6'), the two
+   component cases of level4-plan.md 2.1 (excluded by the loader and
+   resolution rules, and by INV-SLOT).
+3. Found: Java copies slots as pairs (splits; `TopDs.newSuperRoot` inherits
+   a stream skip slot as a stream slot, lines 77 to 90). A copied stream slot
+   to a pinned node would go stale; argued that it cannot happen in Java
+   (case 1 for key node copies; for skip slots, a super root pointing to an
+   older top node in D is itself in D, so rule 4 links it after a restart),
+   to be checked by E2 (example 5: a root split after a restart while an
+   older top node is in D) and by the exporter (C-P).
+4. The assumptions (5.5): TREE and A6' (not A6: A4 found A6 false in 5 of
+   68,901 Java transactions, A6' true in all), per transaction, in a
+   structure of their own (`EvictStep`), not in `StepOK`; D closed upward to
+   be proved in E3 (F1-008-08's T15, for marking and `javaTest`).
+5. The statements of stage 2 in plain English (5.6): T-CACHE, T-READ, T2-C,
+   T-PIN, T-INDEX (the writer reads slots, the pinned set and Rule R's
+   section map only).
+6. What Java must change and keep (5.7), for R8 and the J WPs.
+7. The register: M20, M21, M22, M27, M31, M43 (A6' chosen), M44 (rule 4
+   chosen) updated.
+
+Files changed: `docs/level4-alignment.md`; this file.
+
+Checks: the links of `level4-alignment.md` resolve; statements about code
+name file, method and line at `a66e4d9`. No model or code changed (E1 is a
+design WP; E2 implements it).
+
+Register: M43 resolved for the model (A6' and TREE as assumptions); M20,
+M21, M22, M27, M31 and M44 designed (E1), open for E2 to E6 and R8.
+
+Notes for Frans: K1's automatic pass (plan, section 3) asks that "A6 and
+TREE hold on every Java run checked". A6 does not (A4); the design uses A6',
+which does. Unless Frans accepts A6' in place of A6, K1 will need his
+decision even if every theorem of stage 2 is proved.
+
+Open, next: E2 (the executable physical model with eviction, and its random
+tests): it needs Lean builds, so it waits for the end of P2's measured
+hours (about 02:15); until then, document work (R2's format, or P2's
+report skeleton).
 
