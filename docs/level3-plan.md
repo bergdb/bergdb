@@ -3,8 +3,10 @@
 By Codex for Frans Lundberg, 2026-10-14.
 
 Status: task 1 complete for the tested macOS/APFS and Linux VM FileStream
-paths, under the assumptions in the durability report. Tasks 2 and 3 remain
-planned. Complete all three before implementing Level 4.
+paths, under the assumptions in the durability report. Task 3 complete on
+2026-10-16 (bergdb item 001, WP P1: `quick-2026-10-16-post-task1` in
+[level3-performance.md](level3-performance.md)). Task 2 remains planned.
+Complete all three before implementing Level 4.
 This file replaces the completed 13 October plan. Implementation status and
 review results are in [levels.md](levels.md); the eviction design is in
 [level4-plan.md](level4-plan.md).

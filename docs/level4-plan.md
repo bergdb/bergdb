@@ -804,9 +804,10 @@ work, not files or tests already present.
 
 Complete the three tasks of [level3-plan.md](level3-plan.md) before starting
 cache implementation. Step 0 must name the resulting fixed source and the
-quick baseline in [level3-performance.md](level3-performance.md)
-(`java/bench/reference/quick-2026-10-14-pre-task1`, taken before task 1; use the
-post-task-1 `performance.sh quick` result once it exists). After Level 4, run the
+quick baseline in [level3-performance.md](level3-performance.md):
+`java/bench/reference/quick-2026-10-16-post-task1` (2026-10-16, the source of the
+preserved build `l34-base` of bergdb item 001; the earlier
+`quick-2026-10-14-pre-task1` was taken before task 1). After Level 4, run the
 same command and compare by eye. The older W4 grid is historical evidence.
 
 | Step | Deliverable | Exit criterion |

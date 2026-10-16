@@ -116,7 +116,7 @@ Status
 | A2 | The registers, checked against the code | done | 2026-10-16 |
 | A3 | The TopNode ordinal defect | done | 2026-10-16 |
 | A4 | Probe H1: no adoption | done | 2026-10-16 |
-| C1 | Profile the checker | not started | — |
+| C1 | Profile the checker | done | 2026-10-16 |
 | C2 | Fast versions, proven equal | not started | — |
 | C3 | Larger sets and parallel runs | not started | — |
 | L1 | The physical layer, part 1: loading | not started | — |
@@ -153,7 +153,7 @@ Status
 | F1 | The conformance campaign, all levels | not started | — |
 | F2 | Documents | not started | — |
 | F3 | The final report | not started | — |
-| P1 | The Level 3 quick performance reference | not started | — |
+| P1 | The Level 3 quick performance reference | done | 2026-10-16 |
 | P2 | The Level 3 soak | not started | — |
 | P3 | Bounds, measured | not started | — |
 | P4 | The soak with eviction | not started | — |
@@ -472,4 +472,82 @@ proved to suffice.
 Open, next: commit A4 when its Lean checks pass; then L2 (proved in a
 scratch copy) and C2 (in progress: `markOf`, `writeAll`, `reachList` and
 `step` fast, proven equal; the medium set 88 s instead of 6,770 s).
+
+
+### 2026-10-16 16:10 to 16:30. WP C1, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `75d3c2d`; no
+repository change (the profiler is in scratch).
+
+Did: a scratch copy of `TraceCheck.lean`'s loop (`Profile.lean`, not for
+bergdb), which evaluates the parts of the model's `step` one by one and the
+checker's phases, each timed with `IO.monoNanosNow` (results kept, so that
+nothing is optimized away). On `m-mixed-1` (500 transactions, node size 8,
+1,717 nodes at the end, 12 top nodes, 5,009 versions), with other jobs on
+the machine:
+
+| Part | Time | Share of the step |
+|---|---|---|
+| step 3, `markOf` | 282.7 s | 99.5 % |
+| step 6, `writeAll` (index) | 0.10 s | |
+| step 5, take and `byLevel` | 0.06 s | |
+| step 7, `stillDirtyOf` (`javaTest`) | 0.01 s | |
+| step 2, `writeAll` (data); step 8, `topOf` | 0.01 s | |
+| the whole `step` | 284.2 s | 100 % |
+| C-A: `reachList` before and after | 0.96 s | (outside the step) |
+| C-A: `stepFailures` (of it `topClosure`, R4: 0.04 s) | 0.10 s | |
+| C-S: `diffRecord`, D | 0.01 s | |
+| diagnostics: D closed upward, A6, TREE | 2.4, 0.7, 0.7 s | |
+| parsing the trace | 0.04 s | |
+
+`markOf` dominates because `marked` calls `reachable`, which computes the
+whole `reachList` again for every index node: quadratic in the nodes, with a
+list lookup (`Struct.get?`) for every step of every traversal. `Stream.lv`
+does not matter at 500 records. The review's addition (02-progress, Frans's
+decisions): on two traces with many top nodes, `hot400` (one hot key, node
+size 8, 400 transactions, 101 top nodes) and `long2000` (2,000 transactions,
+node size 8, 20 keys, 41 top nodes), the profiler did not finish in 5 minutes,
+in R4's `topClosure`, as review-13-claude, 5.1, predicts. (`readTops` is not
+evaluated by the checker; only sistest's startups evaluate it, on example 3,
+whose top nodes form a chain.)
+
+Checks: none needed (no repository change).
+
+Open, next: C2.
+
+
+### 2026-10-16 16:08 to 17:00. WP P1, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `eecb513`;
+uncommitted: this WP's files.
+
+Did:
+
+1. The quiet check. 16:08: 86.7 percent idle; another process
+   (`mediaanalysisd`, macOS) used a whole core; not forced (plan, 2.4). 16:46:
+   95.7 percent idle, nothing of this run active.
+2. `BUILD=l34-base java/stress/performance.sh quick post-task1`, 16:46 to
+   16:54 (96.1 percent idle at the start): the preserved build of A1, the code
+   after task 1 and the Level 2 alignment. Session
+   `50a2a7be-d92fa83-20261016T164646-quick-g1-8g-post-task1`; no correctness
+   failure. Promoted as `java/bench/reference/quick-2026-10-16-post-task1`
+   (`promote` needs an absolute session path, since `performance.sh` changes
+   to `java/` first).
+3. `docs/level3-performance.md`: the new reference with its source, command
+   and environment, and a table against the one before task 1: warm latest
+   gets 1.28 M/s (+12 percent), historical 1.26 M/s, 4 threads 3.42 M/s,
+   scans 3.70 / 3.88 M KVs/s, updates 90.1k commits/s (infinite retention) and
+   58.4k (finite), bytes per user byte 1.22 and 1.68, startup 0.65 s, append
+   p50 / p99.9 / max (finite) 9.3 us / 116 us / 271 ms. Nothing collapsed.
+   `docs/level4-plan.md`, section 8, step 0, names it; `docs/level3-plan.md`'s
+   status says task 3 is done.
+
+Files changed: `docs/level3-performance.md`, `docs/level4-plan.md`,
+`docs/level3-plan.md`, `java/bench/reference/quick-2026-10-16-post-task1/`
+(new, 204 KB, the compact results); this file.
+
+Checks: the session ran every scenario and its correctness checks; the
+documents' links resolve.
+
+Open, next: J1 needs P1 (done) and P2 (the soak, not started).
 

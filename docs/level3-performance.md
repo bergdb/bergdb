@@ -8,11 +8,50 @@ eye. A warm-read loss of more than about 10-20%, or a gross stall, needs an expl
 This is not a regression gate and not a complete baseline; the fuller tooling is described
 in [performance-harness.md](performance-harness.md).
 
-**Status: taken before task 1 (power-loss repairs) changed any production source.** It
-describes the Level 3 code as of commit `506510d9`. After task 1, run the command again and
-promote the result under a new name (`quick-DATE-post-task1`); this one stays as the "before".
+**Status, 2026-10-16: the reference is `quick-2026-10-16-post-task1`** (next section), taken
+on the code after task 1 and the Level 2 alignment, for bergdb item 001 (WP P1). The first
+reference, taken before task 1 changed any production source (commit `506510d9`), follows it
+and stays as the "before".
 
-## Reference
+## Reference after task 1, 2026-10-16
+
+* Tracked results: `java/bench/reference/quick-2026-10-16-post-task1/` (`summary.md` has every
+  metric; `session.json` the source, JVM and machine).
+* Source: the preserved build `l34-base` of bergdb item 001 (`performance.sh build`, WP A1):
+  commit `50a2a7be` plus a working-tree diff that changed only test code
+  (`java/stress/StreamDigest.java` and `A2A3Check2.java`); production source as at `d5c56dd`
+  (task 1, D0's topPos, D1's in-place splits). Jar SHA-256 `45037cbae774cb33...`.
+* Command: `BUILD=l34-base JAVA_HOME=/opt/homebrew/opt/openjdk java/stress/performance.sh
+  quick post-task1`, then `performance.sh promote`.
+* Environment: as below (MacBookPro18,3, Apple M1 Pro, 10 cores, 32 GB, OpenJDK 27, G1,
+  `-Xms8g -Xmx8g`, assertions off, OS file cache warm). 96.1% CPU idle at the start. Ran
+  16:46-16:54 CEST.
+
+| Measure | Before task 1 | After task 1 | Change |
+|---|---|---|---|
+| Warm latest gets, 200k keys, resident | 1.14 M/s | 1.28 M/s | +12% |
+| Warm historical gets | 1.10 M/s | 1.26 M/s | +15% |
+| Warm long-key gets (120-byte keys) | 0.87 M/s | 0.95 M/s | +10% |
+| Gets from 4 threads | 2.40 M/s | 3.42 M/s (CV 7.9%) | +42% |
+| Forward / backward scans (100 KVs) | 3.53 / 3.70 M KVs/s | 3.70 / 3.88 M KVs/s | +5% |
+| Updates, infinite retention | 87.6k commits/s | 90.1k commits/s | +3% |
+| Bytes appended per user byte, infinite | 1.22 | 1.22 | 0 |
+| Updates, finite retention | 55.6k commits/s | 58.4k commits/s | +5% |
+| Bytes appended per user byte, finite | 1.69 | 1.68 | -0.4% |
+| Append commit latency, finite: p50 / p99.9 / max | 10.7 us / 128 us / 270 ms | 9.3 us / 116 us / 271 ms | |
+| Startup after restart (50 MB section) | 0.70 s | 0.65 s | -7% |
+| Mean of first 300k reads after restart / same reads again | 2.99 us / 0.65 us | 2.69 us / 0.56 us | -10% |
+| Mixed phase (1 writer, 2 readers): commits/s, gets/s | 42.8k, 1.62 M | 47.3k, 1.86 M | +11%, +15% |
+| Resident set size at the peak: reads, restart, finite writes | 1.63, 1.97, 2.69 GB | 1.62, 1.99, 2.84 GB | |
+
+Nothing collapsed; reads and writes are a little faster. The reasons are not
+established: D1's in-place splits write 1 to 14 percent fewer stream bytes
+(docs/level2-alignment.md, 10.4), and the two sessions ran on different days on the
+same machine and JDK. One session each, so differences under about 10 percent are not
+meaningful. The worst pauses are again G1 young-generation pauses (85 to 162 ms
+maxima), as described below.
+
+## Reference before task 1, 2026-10-14
 
 * Tracked results: `java/bench/reference/quick-2026-10-14-pre-task1/` (`summary.md` has every
   metric; `session.json` the source, JVM and machine; per-run compact results).
