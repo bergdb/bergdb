@@ -43,6 +43,15 @@ def main (args : List String) : IO UInt32 := do
   for seed in [1:seeds + 1] do
     ex := ex + exactFails3 seed n
   IO.println s!"virtual root with the exact still-dirty test (not covered by the theorems): states where startup fails T1: {ex}"
+  -- Lemma M by running (bergdb item 001, WP L2; proved as LM_newer).
+  let mut lmCases := 0
+  let mut lmFails := 0
+  for seed in [1:seeds + 1] do
+    let (c, f) := lemmaMCheck seed n
+    lmCases := lmCases + c
+    lmFails := lmFails + f
+  if lmFails > 0 then bad := bad + 1
+  IO.println s!"lemma M (LM_newer): {lmCases} cases (an older version good, a newer one checked), {lmFails} failures"
   let (wok, wex, wjv) := exactWitness3
   IO.println s!"witness (seed 3, 41 transactions): assumptions {wok}, the exact test fails T1 {wex}, BergDB's test passes T1 {wjv}"
   if !(wok && wex && wjv) then bad := bad + 1

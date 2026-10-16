@@ -407,4 +407,41 @@ def exactWitness3 : Bool × Bool × Bool :=
 #guard runOKB spec3 { policy := fun _ _ i _ => i - 1, stillDirty := javaTest spec3 }
   ((randomTs3 1 12).map (·.1))
 
+/-! ## Lemma M by running (bergdb item 001, WP L2) -/
+
+/-- Lemma M in one state: for every node x with versions in records r ≤ r', and
+every time t up to one past the state's last, if the version in r is good for t,
+the version in r' must be too. Returns the cases (an older version good, a newer
+one tested) and the failures. -/
+def lemmaMState (sp : Spec Val T) (db : DB Val T) : Nat × Nat :=
+  let k := db.S.length - 1
+  (db.P.map (·.1)).foldl (fun acc x =>
+    let rs := (List.range db.S.length).filter (fun r => (db.S.versionAt r x).isSome)
+    rs.foldl (fun acc r =>
+      match db.S.versionAt r x with
+      | none => acc
+      | some v =>
+        (List.range (k + 2)).foldl (fun acc t =>
+          if good sp db.S db.P t v then
+            (rs.filter (fun r' => decide (r ≤ r'))).foldl (fun acc r' =>
+              match db.S.versionAt r' x with
+              | some w => (acc.1 + 1, if good sp db.S db.P t w then acc.2 else acc.2 + 1)
+              | none => acc) acc
+          else acc) acc) acc) (0, 0)
+
+/-- Lemma M along a random run of example 2 and one of example 3 (a virtual
+root), every fourth state: the cases checked and the failures. -/
+def lemmaMCheck (seed n : Nat) : Nat × Nat :=
+  let ts2 := (randomTs seed n).map (·.1)
+  let al2 : Algo Val Tr2 := { policy := fun _ _ i _ => i - 2, stillDirty := javaTest spec2, mark := true }
+  let ts3 := (randomTs3 seed n).map (·.1)
+  let al3 : Algo Val Tr3 :=
+    { policy := fun _ _ i tr => i - 1 - (lcg i / 4096 + tr.n) % 5, stillDirty := javaTest spec3, mark := true }
+  let every4 {α : Type} (l : List α) : List α := (l.zipIdx.filter (fun p => p.2 % 4 == 0)).map (·.1)
+  let a := (every4 (states spec2 al2 ts2)).foldl (fun acc db =>
+    let r := lemmaMState spec2 db; (acc.1 + r.1, acc.2 + r.2)) (0, 0)
+  let b := (every4 (states spec3 al3 ts3)).foldl (fun acc db =>
+    let r := lemmaMState spec3 db; (acc.1 + r.1, acc.2 + r.2)) (0, 0)
+  (a.1 + b.1, a.2 + b.2)
+
 end SIS.Example

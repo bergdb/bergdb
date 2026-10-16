@@ -120,7 +120,7 @@ Status
 | C2 | Fast versions, proven equal | done | 2026-10-16 |
 | C3 | Larger sets and parallel runs | not started | — |
 | L1 | The physical layer, part 1: loading | not started | — |
-| L2 | Lemma M | not started | — |
+| L2 | Lemma M | done | 2026-10-16 |
 | L3 | Lazy startup and reads: T1-L | not started | — |
 | L4 | The writer after a lazy startup: CC, T2-L | not started | — |
 | L5 | Lazy reading checked against Java | not started | — |
@@ -201,7 +201,7 @@ Found while planning, for the WPs that follow:
 Open, next: G0, with Q2 in particular; then A1.
 
 
-### 2026-10-16 15:23 to 16:05. WP A1, done
+### 2026-10-16 15:23 to 16:04. WP A1, done
 
 Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `50a2a7b`
 (Frans's commit of the plan), clean work tree at the start.
@@ -291,7 +291,7 @@ unit tests of the classes concerned; the gates next) and A4 (in progress:
 the diagnostics in a scratch copy of `lean/`, and in `A2A3Check2`).
 
 
-### 2026-10-16 15:57 to 16:35. WP A3, done
+### 2026-10-16 15:57 to 16:33. WP A3, done
 
 Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `75d3c2d`,
 uncommitted: A2's documents and A4's `java/stress/A2A3Check2.java` (named in
@@ -348,7 +348,7 @@ Register: M30 closed (code fix, A3).
 Open, next: commit A3, then A2 (M30 closed there).
 
 
-### 2026-10-16 15:31 to 16:37. WP A2, done
+### 2026-10-16 15:31 to 16:34. WP A2, done
 
 Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `75d3c2d`, then
 `280525a` (A3); uncommitted: A4's `java/stress/A2A3Check2.java`, and this
@@ -415,7 +415,7 @@ Open, next: A4 (the medium set with the A6 and TREE diagnostics is running
 on the fast checker of C2).
 
 
-### 2026-10-16 15:48 to 16:45. WP A4, done
+### 2026-10-16 15:48 to 16:46. WP A4, done
 
 Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `75d3c2d` to
 `f6cf45c` (A1 to A2); uncommitted: this WP's files.
@@ -516,7 +516,7 @@ Checks: none needed (no repository change).
 Open, next: C2.
 
 
-### 2026-10-16 16:08 to 17:00. WP P1, done
+### 2026-10-16 16:08 to 16:55. WP P1, done
 
 Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `eecb513`;
 uncommitted: this WP's files.
@@ -552,7 +552,7 @@ documents' links resolve.
 Open, next: J1 needs P1 (done) and P2 (the soak, not started).
 
 
-### 2026-10-16 16:30 to 17:15. WP C2, done
+### 2026-10-16 16:30 to 17:04. WP C2, done
 
 Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `d8abf0a`;
 uncommitted: this WP's files.
@@ -615,4 +615,58 @@ test-traces/run.sh`: `TRACE TESTS OK`.
 
 Open, next: C3 (`conformance.sh` has the large set and `PAR`; running), then
 L2 (proved in scratch) and L1.
+
+
+### 2026-10-16 16:15 to 17:20. WP L2, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `411b3c4`;
+uncommitted: C3's `java/stress/conformance.sh` (running), and this WP's
+files. Developed in a scratch copy of `lean/`.
+
+Did:
+
+1. The statements (trusted, `lean/SIS/PhysTheorems.lean`, new), each with a
+   comment in plain English: `LM_newer`, in every run with the assumptions,
+   after every transaction, if version v of node x is good for time t, every
+   version w of x written at or after v is good for t; `LM_ruleR`, so is the
+   newest version of y in R(s), ..., R(k), which Rule R follows instead of
+   the version a pointer names (for every s); `LM_cutTo`, a version cut back
+   to s is good for t ≤ s exactly when the whole version is.
+   `Version.cutTo` is in `lean/SIS/Phys.lean` (new, trusted), the start of the
+   physical layer.
+2. The proof (`lean/SIS/Proof/Newer.lean`, new): `Inv.newer`, by induction on
+   the level, from the invariant's `vh` (a version holds its node's history up
+   to its record) and `ref` (its references name the latest versions of the
+   stream as it was when it was written): the newer version's references name
+   versions at or after the older one's (`Inv.ref_mono`), whose node is lower,
+   and the histories agree up to t (`upTo_between`). `newest_ge` for Rule R;
+   `good_cutTo`. It needed no new assumption and no change to the trusted part
+   that was there.
+3. By running: sistest checks lemma M along random runs of examples 2 and 3,
+   every fourth state, every node, every pair of versions and every time
+   (`lemmaMCheck` in `SIS/Example.lean`); 2 seeds of 20 transactions: 13,954
+   cases (an older version good, a newer one checked), 0 failures.
+4. `lean/README.md` (the trusted part, the theorems, the axioms check, the
+   status) and `docs/level2-alignment.md` (lemma M is proved; M8 stays open
+   until L5).
+
+Plan note: the plan (2.3) asks to check a theorem by running before proving
+it; here the proof came first (it went through at once), and the running
+check after.
+
+Files changed: `lean/SIS/Phys.lean`, `lean/SIS/PhysTheorems.lean`,
+`lean/SIS/Proof/Newer.lean` (new); `lean/SIS.lean`, `lean/SIS/Example.lean`,
+`lean/Test.lean`, `lean/README.md`; `docs/level2-alignment.md`; this file.
+
+Checks, 17:09 to 17:19: `lake build` OK, no warnings; `lake exe sistest 20
+40` "all checks pass" (421 s), with lemma M by running: 1,277,099 cases, 0
+failures; `#print axioms`: `LM_newer` and `LM_ruleR` the standard three,
+`LM_cutTo` `propext` and `Quot.sound`, the earlier theorems and the checker's
+equalities as before; no `sorry`, `admit`, `axiom` or `unsafe`; `sh
+test-traces/run.sh`: `TRACE TESTS OK`.
+
+Register: M8 (lemma M proved; the first touch itself is L1 to L5).
+
+Open, next: L1 (the physical layer, part 1; developed in scratch: the
+definitions build and the examples' checks pass), C3 (running).
 

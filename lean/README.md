@@ -30,13 +30,18 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
 `Axioms.lean`, and run `lake env lean Axioms.lean`:
 
     import SIS.Theorems
+    import SIS.PhysTheorems
     #print axioms SIS.T1_recovery
     #print axioms SIS.T1_crash
     #print axioms SIS.T1_nodes
     #print axioms SIS.T2_restart
     #print axioms SIS.T13_markExact
+    #print axioms SIS.LM_newer
+    #print axioms SIS.LM_ruleR
+    #print axioms SIS.LM_cutTo
 
-Each prints `[propext, Classical.choice, Quot.sound]`. The equalities of
+Each prints `[propext, Classical.choice, Quot.sound]`, or a part of it
+(`LM_cutTo` needs no `Classical.choice`). The equalities of
 the checker's fast paths (Check/Fast.lean, Check/R4.lean) are checked the
 same way:
 
@@ -64,6 +69,8 @@ its section in sis-model.md.
 | SIS/Startup.lean | `newest` (R(s) to R(k)), Rule R (`follow`), reading the stream (`readFrom`), where reading starts (`topVersion`, `startVersion`; with a virtual root `readTops`, `topsRead`, `rootVersion`), P up to s (`baseStruct`), `rerun`, `startup` | 6.2 |
 | SIS/Assumptions.lean | Assumptions A2 to A5 and the data node rules (`SpecOK`, `StepOK`, `RunOK`), with a virtual root R1 to R4 (`VirtInit`, `VirtStep`, `topClosure`), `runRestarts` | 3.4 |
 | SIS/Theorems.lean | T1 (`T1_recovery`, `T1_crash`, `T1_nodes`), T2 (`T2_restart`), T13 (`T13_markExact`) | 9 |
+| SIS/Phys.lean | The physical layer, what Java holds in memory (bergdb item 001): so far a version cut back to a time (`Version.cutTo`) | — |
+| SIS/PhysTheorems.lean | Lemma M: a newer version of a node serves every time an older one serves (`LM_newer`), so Rule R's version does (`LM_ruleR`), and a version cut back to s serves the times up to s (`LM_cutTo`) | 5.1 |
 
 The proofs, in SIS/Proof/ (not needed for reading the statements):
 
@@ -83,6 +90,7 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
 | Base | Reading the stream (`Inv.readAt_spec`), P up to s (`Inv.base_get?`) |
 | Recovery | The rerun, and T1 in the strong form (`T1_strong`) |
 | Restart | Every part of a transaction depends on P only through its nodes, and T2 (`T2_strong`) |
+| Newer | Lemma M (`Inv.newer`): references name latest versions, so a newer version's references name versions at least as new; by induction on the level |
 
 Not trusted, tests only:
 
@@ -231,6 +239,11 @@ R1 to R4 (C-A).
 small, 9 medium) a step of the model in the target mode, with no change to
 the model (../docs/level2-alignment.md, 10.5).
 
+2026-10-16. Lemma M (bergdb item 001, WP L2): `LM_newer`, `LM_ruleR` and
+`LM_cutTo` proved; `lake build` passes with no warnings and no `sorry`;
+`#print axioms` shows only Lean's standard axioms; sistest also checks lemma
+M by running.
+
 Changes to the trusted part while proving, all on 2026-10-12:
 
 * A2 (`StepOK.current`): entries only to nodes reachable at time i after
@@ -304,9 +317,25 @@ section 8):
 * T13's statement says "an index node other than a virtual root"
   (`written`).
 
+Changes to the trusted part on 2026-10-16 (bergdb item 001, WP L2;
+[../docs/level2-alignment.md](../docs/level2-alignment.md), M8): two new
+files; nothing that was there changed.
+
+* SIS/Phys.lean, the start of the physical layer: `Version.cutTo`, a version
+  cut back to a time, as BergDB's `KeyNode.toPreviousState` cuts back a
+  version of the startup section to the startup time.
+* SIS/PhysTheorems.lean, lemma M: `LM_newer`, a version of a node written at
+  or after a version that is good for time t is good for t too; `LM_ruleR`,
+  so is the newest version in R(s), ..., R(k), which Rule R follows; and
+  `LM_cutTo`, a version cut back to s is good for a time t ≤ s exactly when
+  the whole version is. Checked by running too: sistest counts the cases
+  (`lemmaMCheck` in SIS/Example.lean).
+
 Not done:
 
 * Lazy reading after a restart, as BergDB reads a node on first touch (lemma
   M of ../docs/levels.md; M8 of ../docs/level2-alignment.md): the model
-  reads all of P up to s at startup.
+  reads all of P up to s at startup. Lemma M is proved (`LM_newer`); the
+  model of the first touch is bergdb item 001's WP L1, and its theorems L3
+  and L4.
 * The bounds (T3, T4), eviction, reclaim.

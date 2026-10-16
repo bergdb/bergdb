@@ -4,4 +4,6 @@ import SIS.Algorithm
 import SIS.Startup
 import SIS.Assumptions
 import SIS.Theorems
+import SIS.Phys
+import SIS.PhysTheorems
 import SIS.Example

@@ -269,7 +269,8 @@ classes and methods in `java/src/bergdb/`, "model" definitions in
 Since 2026-10-16, bergdb item 001 reopens M8 (stage 1, WPs L1 to L5: a Lean
 model of lazy reading, which also closes M42) and M17 (Level 3). The rows of
 Levels 3 and 4, M17 and M20 on, are in [level3-alignment.md](level3-alignment.md)
-and [level4-alignment.md](level4-alignment.md).
+and [level4-alignment.md](level4-alignment.md). Lemma M itself is proved
+(WP L2: `LM_newer`, `LM_ruleR`, `LM_cutTo` in `lean/SIS/PhysTheorems.lean`).
 
 Findings while writing B1, beyond the plan's initial list: M19 (a note), and
 two details of α: delete bitmaps are cumulative and delete every klong of a
