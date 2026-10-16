@@ -13,8 +13,8 @@ variable {T : Type}
 
 /-- The physical read at time t gives P@t: each node it reaches has its history
 at t in P and is reachable at t, and it reaches every node reachable at t. -/
-def readOK (sp : Spec Val T) (db : DB Val T) (l : List (NodeId × History Val)) (t : Time) : Bool :=
-  l.all (fun p => ((view sp db.P t p.1).map (·.hist)) == some p.2) &&
+def readOK (sp : Spec Val T) (db : DB Val T) (l : List (NodeId × Node Val)) (t : Time) : Bool :=
+  l.all (fun p => view sp db.P t p.1 == some p.2) &&
     (reachList sp db.P t).all (fun x => l.any (·.1 == x))
 
 /-- Reads at the times ts, one after the other on the same memory; true if each
@@ -219,6 +219,53 @@ def memInvB (sp : Spec Val T) (db : DB Val T) (m : Mem Val) : Bool :=
     (!((P.get? x).map (fun n => n.hist.any (fun e => decide (s < e.time)))).getD false &&
      !((newest S s x).map (fun w => !w.isData && !(w.hist.upTo s).isEmpty)).getD false))
 
+
+/-! ## The writer after a lazy startup, by running (WP L4) -/
+
+/-- Every canonical object holds its node's whole history, the root's too. -/
+def canonAll (db : DB Val T) (m : Mem Val) : Bool :=
+  m.objs.all (fun p => !p.2.canonical || ((db.P.get? p.2.node).map (·.hist)) == some p.2.hist)
+
+/-- The algorithm with its startup pos frozen after T(k1), as in the proof of T2-L
+(`Proof/PhysFrozen.lean`): from T(k1 + 1) on, the startup pos stays, so the run
+takes no node and writes only the versions of new data nodes. -/
+def frozenB (al : Algo Val T) (k1 : Nat) : Algo Val T :=
+  { al with policy := fun S D i tr => if i ≤ k1 then al.policy S D i tr else lastSp S }
+
+/-- T2-L and CC by running, transaction by transaction of a run with lazy
+restarts (`runLazy`): the writer's view through the physical layer is P's; the
+records are those of the run without restarts; every canonical object holds
+its node's whole history; and the memory meets the proof's invariant
+(`memInvB`) for the frozen run from the last restart. Returns (transactions,
+failures). -/
+def checkLazy [DecidableEq T] (sp : Spec Val T) (al : Algo Val T) (ts : List (T × Bool)) :
+    Nat × Nat :=
+  let ts1 := ts.map (·.1)
+  let r := ts.zipIdx.foldl
+    (fun (acc : (DB Val T × Mem Val × SIS.Stream Val T) × Nat × Nat × Nat) (p, j) =>
+      let ((db, m, S0), k1, n, bad) := acc
+      let before := run sp al (ts1.take j)
+      let v := (m.view sp S0 j).2
+      let ids := allIds before.P ++ ((m.read sp S0 j).2.map (·.1))
+      let viewOK := ids.all (fun x => v x == view sp before.P j x)
+      let (db', m') := lazyTrans sp al S0 db m p.1
+      let after := run sp al (ts1.take (j + 1))
+      let frozen := run sp (frozenB al k1) (ts1.take (j + 1))
+      let ok := viewOK && db'.S == after.S && canonAll after m' && memInvB sp frozen m'
+      let st' := if p.2 then (startup sp db'.S, lazyStartup sp db'.S, db'.S) else (db', m', S0)
+      let ok' := ok && (!p.2 || (canonAll after st'.2.1 && memInvB sp after st'.2.1))
+      (st', if p.2 then j + 1 else k1, n + 1, bad + (if ok' then 0 else 1)))
+    ((init sp, lazyStartup sp (init sp).S, (init sp).S), 0, 0, 0)
+  (r.2.2.1, r.2.2.2)
+
+-- Examples 3 and 2: runs with lazy restarts, checked after every transaction.
+#guard checkLazy spec3
+  { policy := fun _ _ i tr => i - 1 - (lcg i / 4096 + tr.n) % 5, stillDirty := javaTest spec3, mark := true }
+  (randomTs3 1 16) == (16, 0)
+-- (algos2's odd entries are BergDB's still-dirty test, which T2-L is about.)
+#guard [1, 3, 5, 15].all (fun a => match algos2[a]? with
+  | some al => checkLazy spec2 al (randomTs 1 12) == (12, 0)
+  | none => false)
 
 /-! ## Unit examples of the first touch -/
 

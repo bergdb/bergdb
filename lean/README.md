@@ -24,7 +24,7 @@ Needs elan (`brew install elan-init`). The toolchain version is in
     cd lean
     lake build              # checks every file, runs the #guard tests
     lake exe sistest 20 40  # random runs: 20 seeds, 40 transactions each (7 min)
-    lake exe phystest 20 40 # the physical layer on random runs (4.5 min)
+    lake exe phystest 20 40 # the physical layer on random runs (6 min)
 
 `lake build` checks every proof. To see that a theorem depends on nothing but
 Lean's standard axioms (no `sorry`), put this in a file, for example
@@ -41,6 +41,8 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.LM_ruleR
     #print axioms SIS.LM_cutTo
     #print axioms SIS.T1_lazy
+    #print axioms SIS.CC_canonical
+    #print axioms SIS.T2_lazy
 
 Each prints `[propext, Classical.choice, Quot.sound]`, or a part of it
 (`LM_cutTo` needs no `Classical.choice`). The equalities of
@@ -71,8 +73,8 @@ its section in sis-model.md.
 | SIS/Startup.lean | `newest` (R(s) to R(k)), Rule R (`follow`), reading the stream (`readFrom`), where reading starts (`topVersion`, `startVersion`; with a virtual root `readTops`, `topsRead`, `rootVersion`), P up to s (`baseStruct`), `rerun`, `startup` | 6.2 |
 | SIS/Assumptions.lean | Assumptions A2 to A5 and the data node rules (`SpecOK`, `StepOK`, `RunOK`), with a virtual root R1 to R4 (`VirtInit`, `VirtStep`, `topClosure`), `runRestarts` | 3.4 |
 | SIS/Theorems.lean | T1 (`T1_recovery`, `T1_crash`, `T1_nodes`), T2 (`T2_restart`), T13 (`T13_markExact`) | 9 |
-| SIS/Phys.lean | The physical layer, what Java holds in memory (bergdb item 001, WPs L1 and L3): objects (`Obj`), their slots (`Slot`), the memory with the node table (`Mem`); Java's first touch (`Mem.follow`: Rule R, the table, the version read, cut back in the section); reads (`Mem.read`); the lazy startup (`lazyStartup`); a version cut back to a time (`Version.cutTo`); the operations after startup (`Op`, `Mem.step`, admissible: `OpsOK`); the assumptions of the physical layer (`PhysStep`, `PhysRunOK`) | — (docs/level2-alignment.md, 13) |
-| SIS/PhysTheorems.lean | Lemma M: a newer version of a node serves every time an older one serves (`LM_newer`), so Rule R's version does (`LM_ruleR`), and a version cut back to s serves the times up to s (`LM_cutTo`); T1-L (`T1_lazy`): after the lazy startup from the stream of a run, or of a prefix of it (a crash), and any reads and writer follows, a read at any time up to the last record gives P at that time | 5.1, 9 |
+| SIS/Phys.lean | The physical layer, what Java holds in memory (bergdb item 001, WPs L1 and L3): objects (`Obj`), their slots (`Slot`), the memory with the node table (`Mem`); Java's first touch (`Mem.follow`: Rule R, the table, the version read, cut back in the section); reads (`Mem.read`); the lazy startup (`lazyStartup`); a version cut back to a time (`Version.cutTo`); the operations after startup (`Op`, `Mem.step`, admissible: `OpsOK`); the assumptions of the physical layer (`PhysStep`, `PhysRunOK`); the writer after a lazy startup (WP L4: its view through the physical layer, `Mem.view`; its transaction, `lazyTrans`, with the record of `stepWith`, `step` with its change given) and a run with lazy restarts (`runLazy`) | — (docs/level2-alignment.md, 13) |
+| SIS/PhysTheorems.lean | Lemma M: a newer version of a node serves every time an older one serves (`LM_newer`), so Rule R's version does (`LM_ruleR`), and a version cut back to s serves the times up to s (`LM_cutTo`); T1-L (`T1_lazy`): after the lazy startup from the stream of a run, or of a prefix of it (a crash), and any reads and writer follows, a read at any time up to the last record gives P at that time; CC (`CC_canonical`): in a run with lazy restarts, every canonical object holds its node's whole history; T2-L (`T2_lazy`): such a run appends the records of the run without restarts; `step_eq_stepWith` | 5.1, 9 |
 
 The proofs, in SIS/Proof/ (not needed for reading the statements):
 
@@ -95,11 +97,13 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
 | Newer | Lemma M (`Inv.newer`): references name latest versions, so a newer version's references name versions at least as new; by induction on the level |
 | Fresh | Two facts of every run: a clean reachable node's latest version names the latest versions of its live children, which are not in D (`CleanFresh`, with BergDB's still-dirty test); a data node has one version (`DataOnce`) |
 | PhysMem, PhysInv | The memory's operations; the invariant of the proof of T1-L at time K (`MemInv`): canonical objects (`CanonOK`: in the node table, the node's history up to K, slots good at every time the node is reachable and fresh at K), snapshots (`SnapOK`, `SnapSlots`), memory slots (`MemSlotOK`), the nodes that have canonical objects (D, the section, the entries after s) |
-| PhysFollow, PhysRead, PhysWriter | The first touch keeps the invariant (`follow_reader`); reads give P (`MemInv.read_ok`); the writer's follow makes the object canonical (`MemInv.follow_writer`) |
+| PhysFollow, PhysRead, PhysWriter | The first touch keeps the invariant (`follow_reader`); reads give P (`MemInv.read_ok`, also from a stream that agrees on the nodes without canonical objects, `StreamAgree`); the writer's follow makes the object canonical (`MemInv.follow_writer`) |
 | PhysLogic, PhysRun | What the run says of nodes without a canonical object (`KCtx`; `Cover.mg`: their latest version is good; `KCtx.fresh_ref`, `Cover.cf`: its references are fresh) |
 | PhysPath, PhysRerun, PhysApply, PhysStep | The rerun of one transaction: the writer's paths, reached highest level first (`MemInv.reachPath_ok`); the change applied keeps the invariant from K to K + 1 (`MemInv.applyChange_ok`) |
 | PhysLazy, PhysBase | The rerun keeps the invariant (`rerun_fold_ok`); the memory before it meets it at s (`PCtx.base_ok`) |
 | PhysT1 | The operations keep the invariant (`MemInv.ops_ok`); T1-L in the strong form (`T1_lazy_strong`) |
+| PhysFrozen | The frozen run (WP L4): the same transactions with the startup pos frozen after a restart at k1 (`frozenAlgo`); after k1 it takes no node and writes only new data nodes, so its states only grow (`frozen_grow`), and the invariant carries over (`MemInv.transfer`) |
+| PhysT2 | A run with lazy restarts: after every transaction, ⟨P, D, S⟩ is the run's, and the memory meets the invariant for the frozen run from the last restart (`LazyInv`, `lazyInv_all`); CC and T2-L in the strong form (`T2_lazy_strong`) |
 
 Not trusted, tests only:
 
@@ -127,7 +131,11 @@ Not trusted, tests only:
   phystest`: the same on random runs, with random reads and writer walks in
   random order, and startups from prefixes of the stream (crashes); since L3
   it also checks `PhysRunOK`, and the proof's invariant by running
-  (`memInvB`) after the startup and after every operation.
+  (`memInvB`) after the startup and after every operation; since L4, runs
+  with lazy restarts (`checkLazy`, also as `#guard`s): after every
+  transaction the writer's view is P's, the records are the run's, every
+  canonical object is whole, and the memory meets the invariant for the
+  frozen run (`frozenB`).
 * Check/ and TraceCheck.lean: the trace checker, `lake exe tracecheck`. It
   checks traces of Java runs against the model's definitions
   ([../docs/level2-alignment.md](../docs/level2-alignment.md), sections 8.5
@@ -276,6 +284,12 @@ lazy startup and two assumptions of the physical layer, below. `lake build`
 passes with no warnings and no `sorry`; `#print axioms SIS.T1_lazy` shows only
 Lean's standard axioms; `lake exe phystest 20 40` passes.
 
+2026-10-16. CC and T2-L proved (bergdb item 001, WP L4): `CC_canonical` and
+`T2_lazy`, for runs with lazy restarts whose writer works through the physical
+layer (SIS/Proof/PhysFrozen.lean, PhysT2.lean). `lake build` passes with no
+warnings and no `sorry`; `#print axioms` shows only Lean's standard axioms;
+`lake exe phystest 20 40` passes, with runs with lazy restarts.
+
 Changes to the trusted part while proving, all on 2026-10-12:
 
 * A2 (`StepOK.current`): entries only to nodes reachable at time i after
@@ -420,10 +434,35 @@ proofs:
   M43); examples 2 and 3 meet them (`physRunOKB`).
 * T1-L (`T1_lazy`) in SIS/PhysTheorems.lean.
 
+Changes to the trusted part on 2026-10-16 (bergdb item 001, WP L4;
+[../docs/level2-alignment.md](../docs/level2-alignment.md), section 13.4):
+
+* A read returns nodes, not only histories: for each node it reaches, the
+  node that its object gives at the time, with its level and kind
+  (`Mem.readAt`, `Mem.read`, `Obj.nodeAt`), as Java's reads return node
+  contents. So the writer can take its view of P from a read. T1-L's first
+  part now says that a read reaches exactly the nodes reachable at t, each
+  with its node in P@t; before, it gave the histories only.
+* New: `stepWith`, steps 2 to 8 of `step` with the change given (`step` is
+  `stepWith` with step 1's change, `step_eq_stepWith`, by `rfl`); the
+  writer's view through the physical layer (`Mem.view`); one transaction of
+  the writer after a lazy startup (`lazyTrans`: the change from the view the
+  writer reads at i - 1; the writer reaches the nodes of its paths, highest
+  level first, and applies the change to the canonical objects, as the rerun
+  does; Rule R and the versions read come from the stream at the startup, as
+  Java's section map); a run with lazy restarts (`runLazy`).
+* CC (`CC_canonical`) and T2-L (`T2_lazy`) in SIS/PhysTheorems.lean.
+
+What T2-L does not cover yet: the versions and references the writer writes
+still come from ⟨P, D, S⟩ (`mkVersion`: the node's history in P, references
+from `S.lv`). Computing them from the canonical objects and their slots is
+stage 2 (bergdb item 001, WP E3); so are steps 3 and 7 by the physical
+writer.
+
 Not done:
 
-* The writer after a lazy startup proved: CC and T2-L, bergdb item 001's WP
-  L4. Lemma M (`LM_newer`, L2) and T1-L (`T1_lazy`, L3) are proved; the first
-  touch is modeled (L1) and checked by running (phystest); Java's first
-  touches are checked against it in L5.
+* Java's first touches checked against the rule (bergdb item 001, WP L5).
+  Lemma M (`LM_newer`, L2), T1-L (`T1_lazy`, L3), CC and T2-L
+  (`CC_canonical`, `T2_lazy`, L4) are proved; the first touch is modeled
+  (L1) and checked by running (phystest).
 * The bounds (T3, T4), eviction, reclaim.

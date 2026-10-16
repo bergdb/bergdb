@@ -28,7 +28,7 @@ theorem MemInv.ops_ok (hctx : PCtx sp db k) (hk : KCtx sp db dbK k) :
     | read t =>
       unfold OpsOK at hops
       obtain ⟨ht, hops'⟩ := hops
-      exact ih _ (hm.read_ok hctx hk.fixedLe ht).1 hops'
+      exact ih _ (hm.read_ok hctx hk.fixedLe ht (StreamAgree.refl _ _)).1 hops'
     | write h y =>
       unfold OpsOK at hops
       obtain ⟨⟨o, ho, hc, hr, hy⟩, hops'⟩ := hops
@@ -37,11 +37,29 @@ theorem MemInv.ops_ok (hctx : PCtx sp db k) (hk : KCtx sp db dbK k) :
       show MemInv sp db k (m.follow sp db.S h y true).1
       rw [heq]; exact hm'
 
+/-- A node in the list of P's reachable nodes at t has its node at t in P@t. -/
+theorem view_of_mem_reachList {P : Struct V} {t : Time} {z : NodeId} (hz : z ∈ reachList sp P t) :
+    view sp P t z = some (nodeAt P z t) := by
+  have hr : reachable sp P t z = true := by simp [reachable, hz]
+  obtain ⟨n, hn⟩ := Option.isSome_iff_exists.mp (Reach.isSome ((reachable_iff _ _ _ _).mp hr))
+  simp only [view, hr, ↓reduceIte, hn, Option.map_some, nodeAt]
+
+/-- A read whose list is P's reachable nodes at t, each with its node at t:
+it reaches exactly the nodes reachable at t, each with its node in P@t. -/
+theorem read_list_view {P : Struct V} {t : Time} {l : List (NodeId × Node V)}
+    (hl : l = (reachList sp P t).map (fun z => (z, nodeAt P z t))) :
+    l.map (·.1) = reachList sp P t ∧ ∀ p ∈ l, view sp P t p.1 = some p.2 := by
+  subst hl
+  refine ⟨by rw [List.map_map]; exact List.map_id'' (fun _ => rfl) _, ?_⟩
+  intro p hp
+  obtain ⟨z, hz, rfl⟩ := List.mem_map.mp hp
+  exact view_of_mem_reachList hz
+
 /-- What the invariant at the last time k says: reads give P, the objects. -/
 theorem MemInv.t1_facts {m : Mem V} (hm : MemInv sp db k m) (hctx : PCtx sp db k)
     (hk : KCtx sp db dbK k) :
-    (∀ t ≤ k, (m.read sp db.S t).2 =
-      (reachList sp db.P t).map (fun z => (z, ((db.P.get? z).map (·.hist.upTo t)).getD []))) ∧
+    (∀ t ≤ k, (m.read sp db.S t).2.map (·.1) = reachList sp db.P t ∧
+      ∀ p ∈ (m.read sp db.S t).2, view sp db.P t p.1 = some p.2) ∧
     (∀ h o, m.obj? h = some o → o.canonical = true → (db.P.get? o.node).map (·.hist) = some o.hist) ∧
     (∀ h o, m.obj? h = some o → o.canonical = false → ∃ r w, o.pos = some r ∧
       db.S.versionAt r o.node = some w ∧ (o.hist = w.hist ∨ o.hist = w.hist.upTo (lastSp db.S))) ∧
@@ -50,7 +68,8 @@ theorem MemInv.t1_facts {m : Mem V} (hm : MemInv sp db k m) (hctx : PCtx sp db k
         ∃ o', m.obj? h' = some o' ∧ o'.node = y ∧ (o'.canonical = true ∨
           ∃ r w, o'.pos = some r ∧ db.S.versionAt r y = some w ∧
             (o'.hist = w.hist → good sp db.S db.P t w = true))) := by
-  refine ⟨fun t ht => (hm.read_ok hctx hk.fixedLe ht).2.2, ?_, ?_, ?_⟩
+  refine ⟨fun t ht => read_list_view (hm.read_ok hctx hk.fixedLe ht (StreamAgree.refl _ _)).2.2,
+    ?_, ?_, ?_⟩
   · intro h o ho hc
     obtain ⟨-, ⟨n, hn, hh, -, -⟩, -⟩ := hm.canon h o ho hc
     rw [hn, hh, upTo_of_forall _ _ (hctx.inv.times o.node n hn)]

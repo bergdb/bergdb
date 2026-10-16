@@ -1295,4 +1295,56 @@ theorem MemInv.follow_reader {K k : Nat} {m : Mem V} (hm : MemInv sp db K m)
 
 end Reader
 
+/-! ### Streams that agree on the nodes without canonical objects (WP L4) -/
+
+section Agree
+
+variable {sp : Spec V T}
+
+/-- Streams S and S' agree, for the memory m, on every node without a canonical
+object: the same versions, and the same newest version from m.s on (Rule R).
+The physical layer then does the same with either. -/
+def StreamAgree (m : Mem V) (S S' : Stream V T) : Prop :=
+  ∀ y, m.canonicalOf y = none →
+    newest S m.s y = newest S' m.s y ∧ ∀ r, S.versionAt r y = S'.versionAt r y
+
+theorem StreamAgree.refl (m : Mem V) (S : Stream V T) : StreamAgree m S S :=
+  fun _ _ => ⟨rfl, fun _ => rfl⟩
+
+/-- A memory that keeps m's canonical objects and its startup pos keeps the agreement. -/
+theorem StreamAgree.le {m m' : Mem V} {S S' : Stream V T} (h : StreamAgree m S S') (hle : m.Le m')
+    (hs : m'.s = m.s) : StreamAgree m' S S' := by
+  intro y hy
+  have hy0 : m.canonicalOf y = none := by
+    cases hc : m.canonicalOf y with
+    | none => rfl
+    | some h0 => rw [hle.canon y h0 hc] at hy; cases hy
+  rw [hs]
+  exact h y hy0
+
+theorem ruleRRef_congr {S S' : Stream V T} {s : Nat} {y : NodeId} (h : newest S s y = newest S' s y)
+    (r : Option Nat) : ruleRRef S s y r = ruleRRef S' s y r := by
+  unfold ruleRRef; rw [h]
+
+/-- The first touch reads the same from two streams that agree. -/
+theorem follow_congr {m : Mem V} {S S' : Stream V T} (hag : StreamAgree m S S') (hp : Nat)
+    (y : NodeId) (w : Bool) : m.follow sp S hp y w = m.follow sp S' hp y w := by
+  unfold Mem.follow
+  cases hsl : (m.obj? hp).bind (·.slot? y) with
+  | none => rfl
+  | some sl =>
+    cases sl with
+    | mem h => rfl
+    | stream r =>
+      simp only
+      by_cases hc : m.canonicalOf y = none
+      · obtain ⟨hn, hv⟩ := hag y hc
+        rw [ruleRRef_congr hn r]
+        simp only [hv]
+      · obtain ⟨h0, hc0⟩ := Option.ne_none_iff_exists'.mp hc
+        obtain ⟨ht0, o0, ho0, hcan⟩ := (m.canonicalOf_eq_some y h0).mp hc0
+        simp only [ht0, ho0, Obj.usable, hcan, Bool.true_or, ↓reduceIte]
+
+end Agree
+
 end SIS

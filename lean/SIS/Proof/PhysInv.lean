@@ -23,6 +23,13 @@ variable (sp : Spec V T) (db : DB V T)
 def histAt (P : Struct V) (y : NodeId) (t : Time) : History V :=
   ((P.get? y).map (·.hist.upTo t)).getD []
 
+/-- Node y at time t in P: its level and kind, its history at t (an empty node
+if y is not in P). -/
+def nodeAt (P : Struct V) (y : NodeId) (t : Time) : Node V :=
+  match P.get? y with
+  | some n => { n with hist := n.hist.upTo t }
+  | none => { level := 0, isData := false, hist := [] }
+
 /-- Object o holds all of version w, whose entries are up to K. -/
 def Uncut (K : Nat) (o : Obj V) (w : Version V) : Prop :=
   o.hist = w.hist ∧ ∀ e ∈ w.hist, e.time ≤ K

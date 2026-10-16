@@ -5,7 +5,7 @@ SIS/Proof/; the proofs here only connect them.
 -/
 import SIS.Theorems
 import SIS.Proof.Newer
-import SIS.Proof.PhysT1
+import SIS.Proof.PhysT2
 
 namespace SIS
 
@@ -53,8 +53,9 @@ algorithm (`javaTest`) that meets the assumptions of the physical layer
 (`PhysRunOK`), Java's lazy startup (`lazyStartup`) from the stream after T(k)
 (the whole stream, or a prefix of it, which a crash leaves), followed by any
 reads and writer follows (`Op`; admissible: `OpsOK`): a read at any time t up
-to k, through `Phys.lean`'s first-touch rule, gives P at t, each node
-reachable at t with its history at t. Every object in memory is canonical,
+to k, through `Phys.lean`'s first-touch rule, gives P at t: it reaches
+exactly the nodes reachable at t, each with its node at t (level, kind and
+history at t). Every object in memory is canonical,
 with its node's whole history, or holds a version of its node from the
 stream, all of it or cut back to s; a memory slot that a canonical object's
 node uses at a time t (it is reachable at t, the pointee a live child at t)
@@ -68,8 +69,8 @@ theorem T1_lazy (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al
     let S : Stream V T := (run sp al ts).S.take (k + 1)
     let P := (run sp al (ts.take k)).P
     let m := ops.foldl (Mem.step sp S) (lazyStartup sp S)
-    (∀ t ≤ k, (m.read sp S t).2 =
-      (reachList sp P t).map (fun z => (z, ((P.get? z).map (·.hist.upTo t)).getD []))) ∧
+    (∀ t ≤ k, (m.read sp S t).2.map (·.1) = reachList sp P t ∧
+      ∀ p ∈ (m.read sp S t).2, view sp P t p.1 = some p.2) ∧
     (∀ h o, m.obj? h = some o → o.canonical = true → (P.get? o.node).map (·.hist) = some o.hist) ∧
     (∀ h o, m.obj? h = some o → o.canonical = false → ∃ r w, o.pos = some r ∧
       S.versionAt r o.node = some w ∧ (o.hist = w.hist ∨ o.hist = w.hist.upTo (lastSp S))) ∧
@@ -92,5 +93,40 @@ theorem T1_lazy (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al
   have := hm.t1_facts hctx hkk
   simp only [m, hS, hP]
   exact this
+
+/-- `step` is `stepWith` with the change of step 1, T(i)'s change on P@(i - 1)
+(bergdb item 001, WP L4). -/
+theorem step_eq_stepWith (sp : Spec V T) (al : Algo V T) (db : DB V T) (tr : T) :
+    step sp al db tr =
+      stepWith sp al db tr (sp.exec tr db.S.length (view sp db.P (db.S.length - 1))) := rfl
+
+/-- T2-L, restarts with a lazy startup (bergdb item 001, WP L4). A run of
+BergDB's algorithm (`javaTest`) that meets the assumptions, also those of the
+physical layer (`PhysRunOK`), with restarts after any transactions, each a lazy
+startup (`lazyStartup`), and whose writer reads its view of P and reaches the
+nodes of its paths through the physical layer (`lazyTrans`, `runLazy`),
+appends exactly the same records as the run without restarts. -/
+theorem T2_lazy (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool))
+    (hok : RunOK sp al (ts.map (·.1))) (hph : PhysRunOK sp al (ts.map (·.1)))
+    (hj : al.stillDirty = javaTest sp) :
+    (runLazy sp al ts).1.S = (run sp al (ts.map (·.1))).S := by
+  have h := (T2_lazy_strong hok hph hj (j := ts.length) (Nat.le_refl _)).1.1
+  rw [List.take_length] at h
+  have hl : (ts.map (·.1)).length = ts.length := List.length_map _
+  rw [← hl, st_length] at h
+  exact h
+
+/-- CC, canonical objects (bergdb item 001, WP L4). In a run with lazy restarts,
+after any of its transactions, every canonical object in memory, whether the
+startup made it or the writer's follows did, holds its node's whole history:
+that of the node in P of the run without restarts. -/
+theorem CC_canonical (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool))
+    (hok : RunOK sp al (ts.map (·.1))) (hph : PhysRunOK sp al (ts.map (·.1)))
+    (hj : al.stillDirty = javaTest sp) (j : Nat) (hjt : j ≤ ts.length) :
+    ∀ h o, (runLazy sp al (ts.take j)).2.1.obj? h = some o → o.canonical = true →
+      ((run sp al ((ts.take j).map (·.1))).P.get? o.node).map (·.hist) = some o.hist := by
+  have h := (T2_lazy_strong hok hph hj hjt).2
+  rw [List.map_take]
+  exact h
 
 end SIS

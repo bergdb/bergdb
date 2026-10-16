@@ -115,6 +115,68 @@ theorem pairwise_byLevelDesc (P : Struct V) (xs : List NodeId) :
     (by intro a b; simp only [Bool.or_eq_true, decide_eq_true_eq]; omega) xs
   simpa using h
 
+/-- The memory part of one transaction of the rerun, or of the writer after a
+lazy startup (`lazyTrans`): the writer reaches the nodes of the paths, highest
+level first, then the change is applied to the canonical objects; the
+invariant goes from K to K + 1. -/
+theorem rerun_apply_ok (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts)
+    (hj : al.stillDirty = javaTest sp) {k K : Nat} (hk : k ≤ ts.length)
+    (hKk : K < k) {m : Mem V} {P : Struct V}
+    (hm : MemInv sp (st sp al ts k) K m) (hP : SameNodes P (st sp al ts K).P)
+    {tr : T} (htr : ts[K]? = some tr) :
+    MemInv sp (st sp al ts k) (K + 1)
+      ((((pathOf sp P (sp.exec tr (K + 1) (view sp P K)) (K + 1)).mergeSort
+        (fun a b => decide (lev P b ≤ lev P a))).foldl
+        (Mem.reachOnPath sp (st sp al ts k).S P (K + 1)
+          (pathOf sp P (sp.exec tr (K + 1) (view sp P K)) (K + 1))) m).applyChange
+        sp P (K + 1) (sp.exec tr (K + 1) (view sp P K))) := by
+  have hst : AlgOK sp al := algOK_of sp al (Or.inl hj)
+  have hctx := pctx_st hok hst hk
+  have hls : LiveSub sp := hok.1.liveSub
+  have hKt : K < ts.length := by omega
+  have htr' : ts[K] = tr := by
+    rw [List.getElem?_eq_getElem hKt] at htr; exact Option.some.inj htr
+  subst htr'
+  -- The states at K and K + 1.
+  have hkK : KCtx sp (st sp al ts k) (st sp al ts K) K := kctx_st sp al ts hok hj (by omega) hk
+  have hkJ : KCtx sp (st sp al ts k) (st sp al ts (K + 1)) (K + 1) := kctx_st sp al ts hok hj (by omega) hk
+  rw [st_succ sp al ts hKt] at hkJ
+  have hlenK := st_len sp al ts hok hst (j := K) (by omega)
+  -- The change.
+  have hc : sp.exec ts[K] (K + 1) (view sp P K) = (parts sp al (st sp al ts K) ts[K]).c := by
+    rw [parts_c, hlenK, Nat.add_sub_cancel, hP.view K]
+  have hstep : StepOK sp (st sp al ts K).P (K + 1) (parts sp al (st sp al ts K) ts[K]).c := by
+    rw [parts_c, hlenK, Nat.add_sub_cancel]
+    exact hok.2 K hKt
+  have hphs : PhysStep sp (st sp al ts K).P (K + 1) (parts sp al (st sp al ts K) ts[K]).c := by
+    rw [parts_c, hlenK, Nat.add_sub_cancel]
+    exact hph K hKt
+  rw [hc]
+  generalize hcdef : (parts sp al (st sp al ts K) ts[K]).c = c at hstep hphs
+  -- The writer reaches the nodes of the paths.
+  have hpath : ∀ p ∈ pathOf sp P c (K + 1), reachable sp (st sp al ts k).P K p = true := by
+    intro p hp
+    have := (mem_pathOf hp).1
+    rw [Nat.add_sub_cancel, hP.reachable] at this
+    rw [hkK.reachable_eq hls (Nat.le_refl K)]
+    exact this
+  have hparent : ∀ x ∈ pathOf sp P c (K + 1), x ≠ SIS.root →
+      ∃ p ∈ pathOf sp P c (K + 1), ∃ np nx, P.get? p = some np ∧ P.get? x = some nx ∧
+        nx.level < np.level ∧ x ∈ sp.live (np.hist.upTo K) := by
+    intro x hx hxr
+    obtain ⟨p, np, nx, hrp, hnp, hnx, hlt, hxl⟩ := reach_parent (mem_pathOf hx).1 hxr
+    refine ⟨p, pathOf_parent hx hrp hnp hxl hnx hlt, np, nx, hnp, hnx, hlt, ?_⟩
+    simpa using hxl
+  obtain ⟨hm1, -, hcan1⟩ := MemInv.reachPath_ok hctx hkK hP hpath hparent
+    ((pathOf sp P c (K + 1)).mergeSort (fun a b => decide (lev P b ≤ lev P a))) []
+    m hm (by simp) (fun x => by rw [List.nil_append]; exact (List.mergeSort_perm _ _).mem_iff)
+    (by rw [List.nil_append]; exact pairwise_byLevelDesc _ _)
+  -- The change applied.
+  rw [applyChange_congr hP]
+  subst hcdef
+  exact hm1.applyChange_ok hctx hkK hkJ hok.1 hj hstep hphs
+    (fun x hx => hcan1 x (by rw [pathOf_congr hP]; exact hx))
+
 /-- One transaction of the rerun keeps the invariant, from K to K + 1, and
 the structure that directs it is the run's. -/
 theorem rerunStep_ok (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts)
@@ -124,8 +186,6 @@ theorem rerunStep_ok (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts)
     MemInv sp (st sp al ts k) (K + 1) (rerunStep sp (st sp al ts k).S acc (K + 1)).1 ∧
       SameNodes (rerunStep sp (st sp al ts k).S acc (K + 1)).2 (st sp al ts (K + 1)).P := by
   have hst : AlgOK sp al := algOK_of sp al (Or.inl hj)
-  have hctx := pctx_st hok hst hk
-  have hls : LiveSub sp := hok.1.liveSub
   have hKt : K < ts.length := by omega
   -- Record K + 1 and its transaction.
   have htr := st_trans sp al ts hok hst (j := K + 1) (k := k) (by omega) (by omega) hk
@@ -134,56 +194,15 @@ theorem rerunStep_ok (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts)
     cases h : (st sp al ts k).S[K + 1]? with
     | none => rw [h] at htr; cases htr
     | some R => rw [h] at htr; exact ⟨R, rfl, htr⟩
-  -- The states at K and K + 1.
-  have hkK : KCtx sp (st sp al ts k) (st sp al ts K) K := kctx_st sp al ts hok hj (by omega) hk
-  have hkJ : KCtx sp (st sp al ts k) (st sp al ts (K + 1)) (K + 1) := kctx_st sp al ts hok hj (by omega) hk
-  rw [st_succ sp al ts hKt] at hkJ
-  have hlenK := st_len sp al ts hok hst (j := K) (by omega)
-  -- The change.
-  have hc : sp.exec ts[K] (K + 1) (view sp acc.2 (K + 1 - 1)) =
-      (parts sp al (st sp al ts K) ts[K]).c := by
-    rw [parts_c, hlenK, Nat.add_sub_cancel, hP.view K]
-  have hstep : StepOK sp (st sp al ts K).P (K + 1) (parts sp al (st sp al ts K) ts[K]).c := by
-    rw [parts_c, hlenK, Nat.add_sub_cancel]
-    exact hok.2 K hKt
-  have hphs : PhysStep sp (st sp al ts K).P (K + 1) (parts sp al (st sp al ts K) ts[K]).c := by
-    rw [parts_c, hlenK, Nat.add_sub_cancel]
-    exact hph K hKt
-  rw [rerunStep_eq sp _ acc hR hRt, hc]
-  generalize hcdef : (parts sp al (st sp al ts K) ts[K]).c = c at hstep hphs
-  simp only
-  -- The writer reaches the nodes of the paths.
-  have hpath : ∀ p ∈ pathOf sp acc.2 c (K + 1), reachable sp (st sp al ts k).P K p = true := by
-    intro p hp
-    have := (mem_pathOf hp).1
-    rw [Nat.add_sub_cancel, hP.reachable] at this
-    rw [hkK.reachable_eq hls (Nat.le_refl K)]
-    exact this
-  have hparent : ∀ x ∈ pathOf sp acc.2 c (K + 1), x ≠ SIS.root →
-      ∃ p ∈ pathOf sp acc.2 c (K + 1), ∃ np nx, acc.2.get? p = some np ∧ acc.2.get? x = some nx ∧
-        nx.level < np.level ∧ x ∈ sp.live (np.hist.upTo K) := by
-    intro x hx hxr
-    obtain ⟨p, np, nx, hrp, hnp, hnx, hlt, hxl⟩ := reach_parent (mem_pathOf hx).1 hxr
-    refine ⟨p, pathOf_parent hx hrp hnp hxl hnx hlt, np, nx, hnp, hnx, hlt, ?_⟩
-    simpa using hxl
-  obtain ⟨hm1, -, hcan1⟩ := MemInv.reachPath_ok hctx hkK hP hpath hparent
-    ((pathOf sp acc.2 c (K + 1)).mergeSort (fun a b => decide (lev acc.2 b ≤ lev acc.2 a))) []
-    acc.1 hm (by simp) (fun x => by rw [List.nil_append]; exact (List.mergeSort_perm _ _).mem_iff)
-    (by rw [List.nil_append]; exact pairwise_byLevelDesc _ _)
-  -- The change applied.
-  rw [applyChange_congr hP]
-  subst hcdef
-  have hm2 := hm1.applyChange_ok hctx hkK hkJ hok.1 hj hstep hphs
-    (fun x hx => hcan1 x (by rw [pathOf_congr hP]; exact hx))
+  rw [rerunStep_eq sp _ acc hR hRt]
+  simp only [Nat.add_sub_cancel]
+  have hm2 := rerun_apply_ok hok hph hj hk hKk hm hP (tr := ts[K])
+    (List.getElem?_eq_getElem hKt)
   refine ⟨?_, ?_⟩
   · rw [foldl_canonicalNode_noop sp _ _ R.gd
       (fun x hx => hm2.coverGd (K + 1) R x (by omega) (Nat.le_refl _) hR hx)]
     exact hm2
-  · rw [st_P_succ sp al ts hok hst hKt]
-    have : (parts sp al (st sp al ts K) ts[K]).c =
-        sp.exec ts[K] (K + 1) (view sp (st sp al ts K).P K) := by
-      rw [parts_c, hlenK, Nat.add_sub_cancel]
-    rw [this]
+  · rw [st_P_succ sp al ts hok hst hKt, hP.view K]
     exact hP.apply _ _
 
 /-- The rerun keeps the invariant, from the startup pos s to k. -/

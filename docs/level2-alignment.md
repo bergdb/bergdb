@@ -1089,12 +1089,16 @@ What it leaves out, and why:
   memory slot that a canonical object's node uses at a time t (the node
   reachable at t, the pointee a live child then) leads to a canonical object,
   or to one that holds a version good for t if it holds all of it.
-* **CC** (`CC_canonical`, WP L4): every object that becomes canonical, at
-  startup or when the writer reaches it, holds its node's whole history.
-* **T2-L** (`T2_lazy`, WP L4): a run with restarts whose writer works on the
-  canonical objects of the lazy startup appends the same records as the run
-  without restarts. Its references still come from `mkVersion` (`S.lv`);
-  computing them from slots is stage 2 (E3).
+* **CC** (`CC_canonical`, WP L4, proved): in a run with lazy restarts, after
+  any of its transactions, every canonical object in memory, whether the
+  startup made it or the writer's follows did, holds its node's whole
+  history.
+* **T2-L** (`T2_lazy`, WP L4, proved): a run with restarts, each a lazy
+  startup, whose writer reads its view of P and reaches the nodes of its
+  paths through the physical layer, appends exactly the same records as the
+  run without restarts. Its versions and references still come from
+  `mkVersion` (the node's history, `S.lv`); computing them from the canonical
+  objects and their slots is stage 2 (E3).
 
 ### 13.3 The proof of T1-L (WP L3)
 
@@ -1179,3 +1183,53 @@ time (`MemInv.read_ok`). The proof uses L-OUT and L-SEC (`Inv.lout`,
 
 What T1-L does not cover: CC and T2-L (WP L4), and Java's first touches
 checked against the rule (WP L5, C-L).
+
+### 13.4 The writer after a lazy startup (WP L4)
+
+**Model** (`lean/SIS/Phys.lean`, trusted):
+
+* A read returns, for each node it reaches, the node its object gives at the
+  time: level, kind and history (`Mem.readAt`, `Obj.nodeAt`); before, only the
+  history. Java's reads return node contents. The writer's view of P at time
+  t is then a read at t (`Mem.view`).
+* The writer's transaction after a lazy startup (`lazyTrans`): its change
+  comes from the view it reads through the physical layer at i - 1; it
+  reaches the nodes of its paths, highest level first (its follows make them
+  canonical), and applies the change to the canonical objects, as the rerun
+  does; the record is that of `stepWith`, steps 2 to 8 of `step` with the
+  change given (`step_eq_stepWith`). Rule R and the versions that the
+  physical layer reads come from the stream of the last startup: Java's
+  section map is fixed at startup (M42), and every stream slot names a record
+  of that stream.
+* A run with lazy restarts (`runLazy`): after a transaction marked as a
+  restart, the logical startup for ⟨P, D, S⟩ (as `runRestarts`), the lazy
+  startup for the memory.
+
+What stage 1 leaves out: the versions and references the writer writes come
+from ⟨P, D, S⟩ (`mkVersion`), and steps 3 and 7 from P; computing them from
+the canonical objects and their slots is the physical writer of stage 2
+(E1, E3).
+
+**The proof** (`lean/SIS/Proof/PhysFrozen.lean`, `PhysT2.lean`). After a
+lazy startup at k1, the writer's memory after each later transaction j is
+read against another run: the same transactions, with the startup pos frozen
+from k1 on (`frozenAlgo`). That run has the same P at every time; after k1
+it takes no node and writes only versions of new data nodes, so its stream
+says nothing new about the nodes that the memory reads, and its state at j +
+1 only grows from that at j (`frozen_grow`). The memory meets L3's invariant
+for the frozen run's state at j (`LazyInv`): the read of the writer's view
+gives P@j (`MemInv.read_ok`, with the stream of the startup, which agrees
+with the frozen run's on every node without a canonical object,
+`StreamAgree`); the writer reaches the paths (`MemInv.reachPath_ok`); the
+invariant carries over to the frozen state at j + 1 (`MemInv.transfer`); and
+the change applied takes it to j + 1 (`MemInv.applyChange_ok`). At a
+restart the lazy startup meets it again (T1-L). So the view is P's at every
+transaction, the change is the run's, and the records are the run's; and
+every canonical object holds its node's whole history.
+
+**Checks by running**: `checkLazy` in `lean/SIS/PhysExample.lean` (`#guard`s
+on examples 2 and 3) and in `phystest`: after every transaction of runs with
+lazy restarts, the writer's view is P's, the records are the run's, every
+canonical object is whole, and the memory meets the invariant for the frozen
+run (`memInvB`); 20 seeds of 40 transactions, 9,600 transactions, 0
+failures, before the proof.

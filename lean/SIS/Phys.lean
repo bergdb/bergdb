@@ -230,18 +230,24 @@ def Mem.follow (sp : Spec V T) (S : Stream V T) (m : Mem V) (hp : Nat) (y : Node
         else (m2, some h1)
       | none => (m2, some h1)
 
+/-- The node that object o gives at time t: its level and kind, its history
+at t. -/
+def Obj.nodeAt (o : Obj V) (t : Time) : Node V :=
+  { level := o.level, isData := o.isData, hist := o.hist.upTo t }
+
 /-- Read at time t from object h, down (`Dag.getOne`, `getMany`, through the
-readers' follower): each object reached, by node, with its history at t; the
-memory after the first touches on the way. As `readFrom`, a pointer to an
-object that is not on a lower level is not followed. fuel bounds the depth. -/
+readers' follower): each object reached, by node, with the node it gives at t
+(since L4 with its level and kind, not only its history); the memory after the
+first touches on the way. As `readFrom`, a pointer to an object that is not on
+a lower level is not followed. fuel bounds the depth. -/
 def Mem.readAt (sp : Spec V T) (S : Stream V T) : Nat → Mem V → Time → Nat →
-    Mem V × List (NodeId × History V)
+    Mem V × List (NodeId × Node V)
   | 0, m, _, _ => (m, [])
   | fuel + 1, m, t, h =>
     match m.obj? h with
     | none => (m, [])
     | some o =>
-      (sp.live (o.hist.upTo t)).foldl (fun (acc : Mem V × List (NodeId × History V)) y =>
+      (sp.live (o.hist.upTo t)).foldl (fun (acc : Mem V × List (NodeId × Node V)) y =>
         match acc.1.follow sp S h y false with
         | (m1, some h1) =>
           match m1.obj? h1 with
@@ -251,11 +257,11 @@ def Mem.readAt (sp : Spec V T) (S : Stream V T) : Nat → Mem V → Time → Nat
               (r.1, acc.2 ++ r.2)
             else (m1, acc.2)
           | none => (m1, acc.2)
-        | (m1, none) => (m1, acc.2)) (m, [(o.node, o.hist.upTo t)])
+        | (m1, none) => (m1, acc.2)) (m, [(o.node, o.nodeAt t)])
 
 /-- A read at time t from the root's object. -/
 def Mem.read (sp : Spec V T) (S : Stream V T) (m : Mem V) (t : Time) :
-    Mem V × List (NodeId × History V) :=
+    Mem V × List (NodeId × Node V) :=
   match m.obj? m.root with
   | some o => m.readAt sp S (o.level + 1) t m.root
   | none => (m, [])
@@ -527,5 +533,67 @@ def PhysRunOK (sp : Spec V T) (al : Algo V T) (ts : List T) : Prop :=
   ∀ j (h : j < ts.length),
     let db := run sp al (ts.take j)
     PhysStep sp db.P (j + 1) (sp.exec ts[j] (j + 1) (view sp db.P j))
+
+/-! ## The writer after a lazy startup (bergdb item 001, WP L4) -/
+
+/-- Transaction T(i) with its change c given: steps 2 to 8 of `step` (6.1),
+word for word. `step` is `stepWith` with the change of step 1, T(i)'s change
+on P@(i - 1) (`step_eq_stepWith`). The writer after a lazy startup gets its
+change from the view it reads through the physical layer (`lazyTrans`). -/
+def stepWith (sp : Spec V T) (al : Algo V T) (db : DB V T) (tr : T) (c : Changes V) : DB V T :=
+  let i := db.S.length
+  let P := db.P.apply i c
+  let vs0 := writeAll sp db.S i P ((c.new.filter (·.isData)).map (·.id)) []
+  let gd3 := (if al.mark then markOf sp P c db.D i else gotDirtyOf sp (db.S.building vs0) P db.D i).filter
+    (written sp)
+  let D1 : Dirty := db.D ++ gd3.map (fun x => (x, i))
+  let s : Nat := startupPos al db.S D1 i tr
+  let taken := byLevel P ((D1.filter (fun e : NodeId × Nat => decide (e.2 ≤ s))).map (·.1))
+  let D2 : Dirty := D1.filter (fun e : NodeId × Nat => decide (s < e.2))
+  let vs := writeAll sp db.S i P taken vs0
+  let S' : Stream V T := db.S.building vs
+  let r7 := stillDirtyOf al S' P D2 i taken
+  let R : Record V T :=
+    { trans := some tr, sp := s, vers := vs, gd := gd3 ++ r7.2, top := topOf sp P S' s }
+  { P := P, D := r7.1, S := db.S ++ [R] }
+
+/-- The writer's view of P at time t through the physical layer (Java's
+writer reads the tree from the root): a read at t, and for each node the read
+reaches, the node its object gives at t. -/
+def Mem.view (sp : Spec V T) (S : Stream V T) (m : Mem V) (t : Time) : Mem V × View V :=
+  let r := m.read sp S t
+  (r.1, fun x => r.2.lookup x)
+
+/-- One transaction of BergDB's writer after a lazy startup from the stream
+S0 (stage 1): the change comes from the view that the writer reads through
+the physical layer at i - 1; the writer reaches the nodes of its paths,
+highest level first (its follows, which make them canonical), and applies the
+change to the canonical objects, as the rerun of `lazyStartup` does; the
+record is `stepWith`'s. Rule R and the versions that the physical layer reads
+come from S0, the stream at the startup (Java's section map, M42; every
+stream slot names a record of S0). The versions and the references written
+still come from ⟨P, D, S⟩ (`mkVersion`); computing them from the objects and
+their slots is stage 2 (WP E3). -/
+def lazyTrans (sp : Spec V T) (al : Algo V T) (S0 : Stream V T) (db : DB V T) (m : Mem V)
+    (tr : T) : DB V T × Mem V :=
+  let i := db.S.length
+  let r := m.view sp S0 (i - 1)
+  let c := sp.exec tr i r.2
+  let path := pathOf sp db.P c i
+  let path' := path.mergeSort (fun a b => decide
+    (((db.P.get? b).map (·.level)).getD 0 ≤ ((db.P.get? a).map (·.level)).getD 0))
+  let m2 := path'.foldl (Mem.reachOnPath sp S0 db.P i path) r.1
+  (stepWith sp al db tr c, m2.applyChange sp db.P i c)
+
+/-- A run with restarts that starts lazily: R(0) and the lazy startup from it;
+each transaction by `lazyTrans`; after a transaction marked true, a restart:
+the logical startup for ⟨P, D, S⟩ (as `runRestarts`), the lazy startup for the
+memory, and its stream for Rule R. -/
+def runLazy (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool)) :
+    DB V T × Mem V × Stream V T :=
+  ts.foldl (fun (acc : DB V T × Mem V × Stream V T) p =>
+    let r := lazyTrans sp al acc.2.2 acc.1 acc.2.1 p.1
+    if p.2 then (startup sp r.1.S, lazyStartup sp r.1.S, r.1.S) else (r.1, r.2, acc.2.2))
+    (init sp, lazyStartup sp (init sp).S, (init sp).S)
 
 end SIS

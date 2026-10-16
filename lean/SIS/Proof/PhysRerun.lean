@@ -141,6 +141,31 @@ theorem MemInv.reachPath_ok (hctx : PCtx sp db k) (hk : KCtx sp db dbK K) {P : S
       (by simpa using hsort)
     exact ⟨this.1, hle1.trans this.2.1, this.2.2⟩
 
+/-- The writer reaches a node of a path the same way with streams that agree. -/
+theorem reachOnPath_congr_stream {S S' : Stream V T} (hag : StreamAgree m S S') (P : Struct V)
+    (j : Time) (path : List NodeId) (x : NodeId) :
+    m.reachOnPath sp S P j path x = m.reachOnPath sp S' P j path x := by
+  unfold Mem.reachOnPath
+  simp only [follow_congr hag]
+
+/-- The writer reaches the nodes of the paths the same way with a stream S_f that
+agrees with the run's. -/
+theorem MemInv.reachFold_congr (hctx : PCtx sp db k) (hk : KCtx sp db dbK K) {P : Struct V}
+    (hPs : SameNodes P dbK.P) {path : List NodeId}
+    (hpath : ∀ p ∈ path, reachable sp db.P K p = true) {S_f : Stream V T} :
+    ∀ (L : List NodeId) (m : Mem V), MemInv sp db K m → StreamAgree m S_f db.S →
+      L.foldl (Mem.reachOnPath sp S_f P (K + 1) path) m =
+        L.foldl (Mem.reachOnPath sp db.S P (K + 1) path) m := by
+  intro L
+  induction L with
+  | nil => intro m _ _; rfl
+  | cons x L ih =>
+    intro m hm hag
+    simp only [List.foldl_cons]
+    rw [reachOnPath_congr_stream hag]
+    obtain ⟨hm1, hle1, -⟩ := hm.reachOnPath_ok hctx hk hPs hpath x
+    exact ih _ hm1 (hag.le hle1 (by rw [hm1.sEq, hm.sEq]))
+
 end Reach
 
 end SIS

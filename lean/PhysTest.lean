@@ -91,5 +91,27 @@ def main (args : List String) : IO UInt32 := do
     let physOK := (List.range seeds).all (fun i => physRunOKB spec2 al ((randomTs (i + 1) n).map (·.1)))
     if good != reads || canonBad != 0 || !physOK then bad := bad + 1
     IO.println s!"example 2, algorithm {a}: reads {good}/{reads} give P, canonical objects not whole or invariant broken: {canonBad}, PhysRunOK: {physOK}"
+  -- Runs with lazy restarts (WP L4): T2-L, CC, the writer's view, and the invariant
+  -- for the frozen run, after every transaction.
+  for (pol, a) in policies3.zipIdx do
+    let al : Algo Val Tr3 := { policy := pol, stillDirty := javaTest spec3, mark := true }
+    let mut trans := 0
+    let mut fails := 0
+    for seed in [1:seeds + 1] do
+      let (n1, f1) := checkLazy spec3 al (randomTs3 seed n)
+      trans := trans + n1
+      fails := fails + f1
+    if fails != 0 then bad := bad + 1
+    IO.println s!"example 3, policy {a}, lazy restarts: {trans} transactions, {fails} fail T2-L, CC or the invariant"
+  for (al, a) in algos2.zipIdx do
+    if a % 2 == 1 then
+      let mut trans := 0
+      let mut fails := 0
+      for seed in [1:seeds + 1] do
+        let (n1, f1) := checkLazy spec2 al (randomTs seed n)
+        trans := trans + n1
+        fails := fails + f1
+      if fails != 0 then bad := bad + 1
+      IO.println s!"example 2, algorithm {a}, lazy restarts: {trans} transactions, {fails} fail T2-L, CC or the invariant"
   IO.println (if bad == 0 then "all checks pass" else s!"{bad} failures")
   return (if bad == 0 then 0 else 1)

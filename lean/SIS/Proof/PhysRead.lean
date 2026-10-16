@@ -65,24 +65,26 @@ theorem MemInv.snap_slotGood (hm : MemInv sp db K m) (hctx : PCtx sp db k) {o : 
     rw [hr, hr'] at hal
     exact hm.atLeast_readable hctx hal hu' hgu'
 
-/-- What a readable object holds at t: the node's history at t, and its level. -/
+/-- What a readable object holds at t: the node's history at t, its level and
+its kind. -/
 theorem MemInv.readable_facts (hm : MemInv sp db K m) (hctx : PCtx sp db k) {t : Time}
     (ht : t ≤ K) {h : Nat} {y : NodeId} (hrd : Readable sp db m K t h y) {n : Node V}
     (hn : db.P.get? y = some n) :
-    ∃ o, m.obj? h = some o ∧ o.node = y ∧ o.hist.upTo t = n.hist.upTo t ∧ o.level = n.level := by
+    ∃ o, m.obj? h = some o ∧ o.node = y ∧ o.hist.upTo t = n.hist.upTo t ∧ o.level = n.level ∧
+      o.isData = n.isData := by
   obtain ⟨o, ho, hy, hc⟩ := hrd
   refine ⟨o, ho, hy, ?_⟩
   rcases hc with hc | ⟨w, hw, hg⟩
-  · obtain ⟨-, ⟨n', hn', hh, hl, -⟩, -⟩ := hm.canon h o ho hc
+  · obtain ⟨-, ⟨n', hn', hh, hl, hd⟩, -⟩ := hm.canon h o ho hc
     rw [hy, hn, Option.some.injEq] at hn'
     subst hn'
-    exact ⟨by rw [hh, upTo_upTo _ ht], hl⟩
-  · obtain ⟨r, -, hv, hl, -, h5⟩ := hw
+    exact ⟨by rw [hh, upTo_upTo _ ht], hl, hd⟩
+  · obtain ⟨r, -, hv, hl, hd, h5⟩ := hw
     rw [hy] at hv
-    obtain ⟨-, -, n', hn', hwh, hwl, -⟩ := hctx.inv.version_node hv
+    obtain ⟨-, -, n', hn', hwh, hwl, hwd⟩ := hctx.inv.version_node hv
     rw [hn, Option.some.injEq] at hn'
     subst hn'
-    refine ⟨?_, by rw [hl, hwl]⟩
+    refine ⟨?_, by rw [hl, hwl], by rw [hd, hwd]⟩
     rcases h5 with ⟨h6, -⟩ | ⟨h6, -, -, h9⟩
     · have := hg h6
       rw [good_iff] at this
@@ -122,7 +124,7 @@ theorem fold_inv {α : Type} (f : Mem V × List α → NodeId → Mem V × List 
 
 /-- One step of a read's fold over the live children of object o at handle h. -/
 def readStep (sp : Spec V T) (S : Stream V T) (fuel : Nat) (t : Time) (h : Nat) (o : Obj V)
-    (acc : Mem V × List (NodeId × History V)) (y : NodeId) : Mem V × List (NodeId × History V) :=
+    (acc : Mem V × List (NodeId × Node V)) (y : NodeId) : Mem V × List (NodeId × Node V) :=
   match acc.1.follow sp S h y false with
   | (m1, some h1) =>
     match m1.obj? h1 with
@@ -137,27 +139,30 @@ def readStep (sp : Spec V T) (S : Stream V T) (fuel : Nat) (t : Time) (h : Nat) 
 theorem readAt_succ_eq (sp : Spec V T) (S : Stream V T) (fuel : Nat) (m : Mem V) (t : Time)
     (h : Nat) {o : Obj V} (ho : m.obj? h = some o) :
     m.readAt sp S (fuel + 1) t h =
-      (sp.live (o.hist.upTo t)).foldl (readStep sp S fuel t h o) (m, [(o.node, o.hist.upTo t)]) := by
+      (sp.live (o.hist.upTo t)).foldl (readStep sp S fuel t h o) (m, [(o.node, o.nodeAt t)]) := by
   rw [Mem.readAt]; simp only [ho]; rfl
 
 /-- A read at time t from a readable object of a node y reachable at t gives
-the nodes reachable from y at t, each with its history at t; the invariant is
-kept. -/
-theorem MemInv.readAt_ok (hctx : PCtx sp db k) (hfix : FixedLe sp db K) {t : Time} (ht : t ≤ K) :
+the nodes reachable from y at t, each with its node at t; the invariant is
+kept. The read may take its versions from a stream S_f that agrees with the
+run's on the nodes without canonical objects. -/
+theorem MemInv.readAt_ok (hctx : PCtx sp db k) (hfix : FixedLe sp db K) {t : Time} (ht : t ≤ K)
+    (S_f : Stream V T) :
     ∀ (fuel : Nat) (m : Mem V) (h : Nat) (y : NodeId) (n : Node V), MemInv sp db K m →
+      StreamAgree m S_f db.S →
       Readable sp db m K t h y → db.P.get? y = some n → reachable sp db.P t y = true →
       n.level < fuel →
-      MemInv sp db K (m.readAt sp db.S fuel t h).1 ∧ m.Le (m.readAt sp db.S fuel t h).1 ∧
-        m.KeepCore (m.readAt sp db.S fuel t h).1 ∧
-        (m.readAt sp db.S fuel t h).2 =
-          (reachFrom sp db.P t y n).map (fun z => (z, histAt db.P z t)) := by
+      MemInv sp db K (m.readAt sp S_f fuel t h).1 ∧ m.Le (m.readAt sp S_f fuel t h).1 ∧
+        m.KeepCore (m.readAt sp S_f fuel t h).1 ∧
+        (m.readAt sp S_f fuel t h).2 =
+          (reachFrom sp db.P t y n).map (fun z => (z, nodeAt db.P z t)) := by
   intro fuel
   induction fuel with
-  | zero => intro m h y n _ _ _ _ hlt; omega
+  | zero => intro m h y n _ _ _ _ _ hlt; omega
   | succ fuel ih =>
-    intro m h y n hm hrd hn hr hlt
-    obtain ⟨o, ho, hoy, hoh, hol⟩ := hm.readable_facts hctx ht hrd hn
-    rw [readAt_succ_eq sp db.S fuel m t h ho]
+    intro m h y n hm hag hrd hn hr hlt
+    obtain ⟨o, ho, hoy, hoh, hol, hod⟩ := hm.readable_facts hctx ht hrd hn
+    rw [readAt_succ_eq sp S_f fuel m t h ho]
     -- The parent: canonical, or a snapshot of a version good for t.
     have hpar : ∀ (m' : Mem V), MemInv sp db K m' → m.KeepCore m' → m.Le m' →
         ∀ z ∈ sp.live (o.hist.upTo t), ∃ o' sl, m'.obj? h = some o' ∧ o'.core = o.core ∧
@@ -210,11 +215,11 @@ theorem MemInv.readAt_ok (hctx : PCtx sp db k) (hfix : FixedLe sp db K) {t : Tim
         exact ⟨o', sl, ho', hc', hsl, hg'⟩
     -- The fold over the live children.
     have hlive : sp.live (o.hist.upTo t) = sp.live (n.hist.upTo t) := by rw [hoh]
-    obtain ⟨hI, hL⟩ := fold_inv (V := V) (readStep sp db.S fuel t h o)
+    obtain ⟨hI, hL⟩ := fold_inv (V := V) (readStep sp S_f fuel t h o)
       (fun m' => MemInv sp db K m' ∧ m.Le m' ∧ m.KeepCore m')
       (fun z => match db.P.get? z with
         | some nz => if nz.level < n.level then (reachFrom sp db.P t z nz).map
-            (fun z => (z, histAt db.P z t)) else []
+            (fun z => (z, nodeAt db.P z t)) else []
         | none => []) (sp.live (o.hist.upTo t)) (by
         intro acc z hz ⟨hmA, hleA, hkcA⟩
         obtain ⟨o', sl, ho', hc', hsl, hg⟩ := hpar acc.1 hmA hkcA hleA z hz
@@ -235,23 +240,28 @@ theorem MemInv.readAt_ok (hctx : PCtx sp db k) (hfix : FixedLe sp db K) {t : Tim
           omega
         obtain ⟨m1, h1, hev, hm1, hle1, hkc1, hrd1, -, -⟩ :=
           hmA.follow_reader hctx hfix ho' hsl hzne ht hrz hg
-        have hfol : acc.1.follow sp db.S h z false = (m1, some h1) := hev
-        obtain ⟨o1, ho1, -, -, hol1⟩ := hm1.readable_facts hctx ht hrd1 hnz
-        obtain ⟨hI2, hle2, hkc2, hL2⟩ := ih m1 h1 z nz hm1 hrd1 hnz hrz (by omega)
-        have hst : readStep sp db.S fuel t h o acc z =
-            ((Mem.readAt sp db.S fuel m1 t h1).1, acc.2 ++ (Mem.readAt sp db.S fuel m1 t h1).2) := by
+        have hagA : StreamAgree acc.1 S_f db.S := hag.le hleA (by rw [hmA.sEq, hm.sEq])
+        have hfol : acc.1.follow sp S_f h z false = (m1, some h1) := by
+          rw [follow_congr hagA]; exact hev
+        obtain ⟨o1, ho1, -, -, hol1, -⟩ := hm1.readable_facts hctx ht hrd1 hnz
+        obtain ⟨hI2, hle2, hkc2, hL2⟩ := ih m1 h1 z nz hm1
+          (hag.le (hleA.trans hle1) (by rw [hm1.sEq, hm.sEq])) hrd1 hnz hrz (by omega)
+        have hst : readStep sp S_f fuel t h o acc z =
+            ((Mem.readAt sp S_f fuel m1 t h1).1, acc.2 ++ (Mem.readAt sp S_f fuel m1 t h1).2) := by
           unfold readStep
           rw [hfol]
           simp only [ho1, hol1, hol, hlvl, ↓reduceIte]
         rw [hst]
         refine ⟨⟨hI2, (hleA.trans hle1).trans hle2, (hkcA.trans hkc1).trans hkc2⟩, ?_⟩
         simp only [hnz, hlvl, ↓reduceIte]
-        rw [hL2]) (m, [(o.node, o.hist.upTo t)]) ⟨hm, Mem.Le.refl m, Mem.KeepCore.refl m⟩
+        rw [hL2]) (m, [(o.node, o.nodeAt t)]) ⟨hm, Mem.Le.refl m, Mem.KeepCore.refl m⟩
     refine ⟨hI.1, hI.2.1, hI.2.2, ?_⟩
-    rw [hL, reachFrom_eq, List.map_cons, List.map_flatMap, hoy, hoh]
-    unfold histAt
-    rw [hn]
-    simp only [Option.map_some, Option.getD_some, List.singleton_append, List.cons.injEq, true_and]
+    have hnode : o.nodeAt t = nodeAt db.P y t := by
+      unfold Obj.nodeAt nodeAt
+      rw [hn]
+      simp only [hol, hod, hoh]
+    rw [hL, reachFrom_eq, List.map_cons, List.map_flatMap, hoy, hnode, hoh]
+    simp only [List.singleton_append, List.cons.injEq, true_and]
     apply flatMap_congr_mem
     intro z _
     cases hnz : db.P.get? z with
@@ -261,18 +271,20 @@ theorem MemInv.readAt_ok (hctx : PCtx sp db k) (hfix : FixedLe sp db K) {t : Tim
       split <;> rfl
 
 /-- A read at time t from the root's object gives P@t: each node reachable at t,
-with its history at t. The invariant is kept. -/
+with its node at t. The invariant is kept. The read may take its versions
+from a stream S_f that agrees with the run's on the nodes without canonical
+objects. -/
 theorem MemInv.read_ok (hm : MemInv sp db K m) (hctx : PCtx sp db k) (hfix : FixedLe sp db K)
-    {t : Time} (ht : t ≤ K) :
-    MemInv sp db K (m.read sp db.S t).1 ∧ m.Le (m.read sp db.S t).1 ∧
-      (m.read sp db.S t).2 = (reachList sp db.P t).map (fun z => (z, histAt db.P z t)) := by
+    {t : Time} (ht : t ≤ K) {S_f : Stream V T} (hag : StreamAgree m S_f db.S) :
+    MemInv sp db K (m.read sp S_f t).1 ∧ m.Le (m.read sp S_f t).1 ∧
+      (m.read sp S_f t).2 = (reachList sp db.P t).map (fun z => (z, nodeAt db.P z t)) := by
   obtain ⟨-, o, ho, hc, hn⟩ := hm.root
   obtain ⟨n0, hn0⟩ := Option.isSome_iff_exists.mp hctx.inv.rootIn
   have hrd : Readable sp db m K t m.root SIS.root := ⟨o, ho, hn, Or.inl hc⟩
-  obtain ⟨o', ho', -, -, hol⟩ := hm.readable_facts hctx ht hrd hn0
+  obtain ⟨o', ho', -, -, hol, -⟩ := hm.readable_facts hctx ht hrd hn0
   rw [ho, Option.some.injEq] at ho'
   subst ho'
-  have := MemInv.readAt_ok hctx hfix ht (o.level + 1) m m.root SIS.root n0 hm hrd hn0
+  have := MemInv.readAt_ok hctx hfix ht S_f (o.level + 1) m m.root SIS.root n0 hm hag hrd hn0
     (reachable_root hn0 t) (by omega)
   unfold Mem.read
   rw [ho]

@@ -122,7 +122,7 @@ Status
 | L1 | The physical layer, part 1: loading | done | 2026-10-16 |
 | L2 | Lemma M | done | 2026-10-16 |
 | L3 | Lazy startup and reads: T1-L | done | 2026-10-16 |
-| L4 | The writer after a lazy startup: CC, T2-L | not started | — |
+| L4 | The writer after a lazy startup: CC, T2-L | done | 2026-10-16 |
 | L5 | Lazy reading checked against Java | not started | — |
 | E1 | Design: eviction, references, pins | not started | — |
 | E2 | The physical model with eviction, executable | not started | — |
@@ -896,3 +896,88 @@ live transactions too, where Rule R keeps the startup's section while P and
 S grow; L3's invariant has one state for both (the state at the restart), so
 L4 must split it: the startup stream for Rule R and the versions read, the
 current state for P.
+
+
+### 2026-10-16 20:27 to 21:17. WP L4, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `0f7db33` (L3);
+uncommitted: this WP's files only. Developed in the scratch copy of `lean/`
+that L3 used; brought into bergdb when every proof was done there.
+
+Did:
+
+1. The writer after a lazy startup, in `lean/SIS/Phys.lean` (trusted): a
+   read returns, for each node it reaches, the node its object gives at the
+   time, with level and kind (`Mem.readAt`, `Obj.nodeAt`; before, the
+   history only), so the writer's view of P is a read (`Mem.view`);
+   `stepWith`, steps 2 to 8 of `step` with the change given
+   (`step_eq_stepWith`, by `rfl`); the writer's transaction (`lazyTrans`: the
+   change from the view it reads at i - 1; it reaches the nodes of its paths,
+   highest level first, and applies the change to the canonical objects, as
+   the rerun does; Rule R and the versions read from the stream of the last
+   startup, M42); a run with lazy restarts (`runLazy`: the logical startup
+   for ⟨P, D, S⟩, as `runRestarts`, and the lazy startup for the memory).
+2. CC (`CC_canonical`): in a run with lazy restarts, after any transaction,
+   every canonical object holds its node's whole history (that of the run
+   without restarts). T2-L (`T2_lazy`): such a run appends exactly the
+   records of the run without restarts. Both in `lean/SIS/PhysTheorems.lean`,
+   with BergDB's still-dirty test and `PhysRunOK`, as T1-L. T1-L's first
+   part restated for reads that return nodes: a read reaches exactly the
+   nodes reachable at t, each with its node in P@t.
+3. The proof: `lean/SIS/Proof/PhysFrozen.lean` (429 lines) and `PhysT2.lean`
+   (400 lines), and small changes to `PhysInv`, `PhysFollow`, `PhysRead`,
+   `PhysRerun`, `PhysLazy` and `PhysT1`. After a lazy startup at k1 the
+   memory is read against the frozen run: the same transactions with the
+   startup pos frozen from k1 on (`frozenAlgo`), which has the run's P,
+   takes no node after k1 and writes only new data nodes, so its states only
+   grow (`frozen_grow`, `DbGrow`) and L3's invariant carries over to the next
+   one (`MemInv.transfer`). With streams that agree on the nodes without
+   canonical objects (`StreamAgree`, `follow_congr`, `read_ok` and
+   `reachFold_congr` for a follow stream), each transaction keeps the run's
+   invariant (`LazyInv`, `lazyInv_step`): the view read is P's, the paths are
+   reached, and the change applied takes the invariant from j to j + 1; a
+   restart is T1-L. No change to L3's invariant was needed.
+4. Checked by running before the proofs: `checkLazy` in
+   `lean/SIS/PhysExample.lean` (`#guard`s on examples 2 and 3) and in
+   `phystest` (`frozenB`, the frozen algorithm, for `memInvB`): after every
+   transaction of runs with lazy restarts, the writer's view is P's, the
+   records are the run's, every canonical object is whole, and the memory
+   meets the invariant for the frozen run.
+5. `lean/README.md` (the theorems, the axioms list, the proof files, the
+   tests, "Changes to the trusted part" for L4, and what T2-L does not cover
+   yet: the versions and references the writer writes come from `mkVersion`,
+   and steps 3 and 7 from P; from the objects and slots is stage 2, E3);
+   `docs/level2-alignment.md` (13.2: CC and T2-L proved; new 13.4).
+
+Files changed: `lean/SIS/Phys.lean`, `lean/SIS/PhysTheorems.lean`,
+`lean/SIS/PhysExample.lean`, `lean/PhysTest.lean`, `lean/README.md`;
+`lean/SIS/Proof/PhysInv.lean`, `PhysFollow.lean`, `PhysRead.lean`,
+`PhysRerun.lean`, `PhysLazy.lean`, `PhysT1.lean`; new
+`lean/SIS/Proof/PhysFrozen.lean` and `PhysT2.lean`; `docs/level2-alignment.md`;
+this file.
+
+Checks: the Lean checks of 2.2 on bergdb's `lean/` with these files (21:03 to
+21:16): `lake build` passes, 85 jobs, no warnings; `lake exe sistest 20 40`:
+all checks pass (398 s); `lake exe phystest 20 40`: all checks pass (371 s),
+including the runs with lazy restarts: example 3, four policies, and example
+2, the eight algorithms with BergDB's test, 800 transactions each, 0 failing
+T2-L, CC or the invariant (9,600 transactions); the axioms of T1, T2, T13,
+LM_newer, LM_ruleR, T1_lazy, CC_canonical and T2_lazy are `propext`,
+`Classical.choice` and `Quot.sound`, LM_cutTo's `propext` and `Quot.sound`,
+the checker's equalities as before; no `sorry`, `admit`, `axiom` or `unsafe`
+in `SIS/` and `Check/`; `sh test-traces/run.sh`: TRACE TESTS OK. No change
+to `java/`, so no gates. Time: under an hour, within M.
+
+Notes on the plan (not changed): T2-L's "whose writer reaches nodes through
+the physical layer" is formalized as: the writer's change comes from the view
+it reads through the physical layer, and it reaches the nodes of its paths
+through the writer's follows, which make them canonical; steps 2 to 8 of the
+record still use ⟨P, D, S⟩, as the README now says. Stage 1's theorems are
+done (LM, T1-L, CC, T2-L); stage 1 also needs C-L (L5) and M8 closed.
+
+Register: none closed (M8 and M42 close in L5).
+
+Open, next: L5 (Java's first touches checked against the rule: a test-only
+hook in `NodeCollection.followStreamPointer`, FIRST and SKIPT lines, trace
+format 2, C-L in the checker; and review-13-claude 7.1's root queries and
+layout check, see the adoptions above).
