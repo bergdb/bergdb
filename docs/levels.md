@@ -57,7 +57,7 @@ Levels
 | 1 | + restart by replaying the whole stream | Passes the tests run; two bugs fixed |
 | 2 | + bounded startup: the startup pos moves, startup reads only the tail | Works in all tests run, also under load and with crashes; the defects of the 2017 code fixed; aligned with the Lean model, which is proven (2026-10-16, F1-008-11) |
 | 3 | + reclaim: cut the front of the stream | Passes the recorded exact-cut, restart, crash, load, concurrent-reader and changing-retention tests; infinite retention is the default, finite retention schedules reclaim; retention pacing, older cut point, index-aware allowance and 16 KB scan target implemented; an overtaken read may expire without harming the database; FileStream power-loss ordering is implemented and audited on the tested platforms; a longer disk soak and the performance reference remain planned |
-| 4 | + eviction: data larger than memory | Not implemented |
+| 4 | + eviction: data larger than memory | Not implemented; the model first, in bergdb item 001 ([level4-alignment.md](level4-alignment.md)) |
 
 Level 3 needs level 2: once the front of the stream is cut, startup can no
 longer replay from the beginning.
@@ -239,6 +239,9 @@ Open:
 
 Level 3: reclaim
 ================
+
+Alignment with the Lean model: [level3-alignment.md](level3-alignment.md)
+(bergdb item 001, in progress).
 
 Reclaim cuts the front of the stream (pretruncate), so that the stream does
 not grow forever. It is on when a retain duration R is set
@@ -1304,6 +1307,9 @@ reviewed `ebe5f77` baseline; the remaining work is below.
    with the history. Follow the
    [proposed design](level4-plan.md), resolving version authority, coherent
    pointer publication and retirement progress before generic index eviction.
+   Since 2026-10-16, bergdb item 001 does Levels 3 and 4 in the Lean model and
+   in Java; its registers are in [level3-alignment.md](level3-alignment.md)
+   and [level4-alignment.md](level4-alignment.md).
 3. Write overhead with uniform random updates (6 to 10 bytes per user
    byte): measure where the bytes go (key node size, time splits, the
    conservative still-dirty test), and what a larger default startup

@@ -264,6 +264,12 @@ classes and methods in `java/src/bergdb/`, "model" definitions in
 | M17 | Reclaim's touch marks nodes without adding entries. | `Db.touchRange` | — | Level 3, not this plan | —, out of scope |
 | M18 | **A startup bug.** Startup finds the super root by scanning the startup section for the newest top node. A transaction that changes nothing does not mark the super root, so the startup pos can move past the last version of every top node, and the database cannot start ("Could not find super node in startup section"). Reproduced on `a116ec7` (F1-008-11, `probe/`). With 10's change, deletes of missing keys do the same. | `DbStarter.findLatestSuperRoot`, `findSuperNodeAtStartupTime`; `TransSeq.take` | `Record.top`, `readAt` | Code: every record names the position of the latest version of the newest written top node, the model's top(i) (section 8) | D0 done (format 5, topPos), c |
 | M19 | `TransSeq.take` can move the startup pos with transactions that have no got-dirty nodes; the model's policy is clamped only by s(i-1) ≤ s(i) < i, which Java meets. Recorded to make M18's cause explicit; not a mismatch. | `TransSeq.take` | `startupPos` | None | B1, c |
+| M42 | Rule R applies for the whole process: every first touch after startup, also of a pointer to a node written after startup, takes the newest version in the last startup section if it is newer than the version named (item 001, A2). | `NodeCollection.section`, `followStreamPointer` (step 2), `newestInSection` | `follow` (startup only) | Model: Rule R in the physical loader; an argument that it agrees with the latest-version rule | Item 001, stage 1: L1, L5; o |
+
+Since 2026-10-16, bergdb item 001 reopens M8 (stage 1, WPs L1 to L5: a Lean
+model of lazy reading, which also closes M42) and M17 (Level 3). The rows of
+Levels 3 and 4, M17 and M20 on, are in [level3-alignment.md](level3-alignment.md)
+and [level4-alignment.md](level4-alignment.md).
 
 Findings while writing B1, beyond the plan's initial list: M19 (a note), and
 two details of α: delete bitmaps are cumulative and delete every klong of a

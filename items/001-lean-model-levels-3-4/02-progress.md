@@ -113,7 +113,7 @@ Status
 | WP | Title | Status | Updated |
 |---|---|---|---|
 | A1 | Baseline and environment | done | 2026-10-16 |
-| A2 | The registers, checked against the code | in progress | 2026-10-16 |
+| A2 | The registers, checked against the code | done | 2026-10-16 |
 | A3 | The TopNode ordinal defect | done | 2026-10-16 |
 | A4 | Probe H1: no adoption | in progress | 2026-10-16 |
 | C1 | Profile the checker | not started | — |
@@ -346,4 +346,71 @@ IDENTICAL (36 of 36)`.
 Register: M30 closed (code fix, A3).
 
 Open, next: commit A3, then A2 (M30 closed there).
+
+
+### 2026-10-16 15:31 to 16:37. WP A2, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `75d3c2d`, then
+`280525a` (A3); uncommitted: A4's `java/stress/A2A3Check2.java`, and this
+WP's files.
+
+Did:
+
+1. Read the inputs of the plan's A2: `docs/level2-alignment.md` (all),
+   `docs/level4-plan.md` (2, 2.1, 4, 5, 5.1, 6), `docs/reference-theory.md`
+   (1 to 7), Codex's review of 09 (findings 2 and 4 to 7), F1-008-13 (5,
+   5.1), and the Java the plan names: `NodeCollection`, `Cache3`, `DbStarter`,
+   `Db` (the constructor, `startInner`, the listeners, marking, `getOneInternal`,
+   `getMany`, `expiredIfReadBelowCut`, `executeInner`, `store`, `warmup`,
+   `putKvs`, `touchRange`, `getAccessData`), `DbHelper`, `TransSeq`, `Reclaim`
+   (the class comment and the core methods), `Trans`, `StoredKeyNode`,
+   `StoredTopNode`, `DbBuilder` and `pubimp/DatabaseBuilderImp`, `Pointer`,
+   `KeyNode` and `TopNode` (fields and slot methods), `TopDs`, `Dag` (the put
+   path and the splits), `AccessData`, `PointerLocks`, `Node`, `CutStream`,
+   `ReadBelowFirstPosException`, and the cut paths of `FileStream`,
+   `BufferedStream` and `StorageManager`.
+2. `docs/level4-alignment.md` (new): scope; α for the cache (objects:
+   canonical objects, snapshots, temporary objects; slots, memory and stream,
+   and how they change today; the node table; the pins; Rule R for the whole
+   process, `idByPos`, access data, the writer's warm-up reads); the
+   register, M20 to M31, M39, M40, M43 to M46, each with file, method and
+   line at `75d3c2d`. Sections for A4 (probes), E1 (the design) and E7.
+3. `docs/level3-alignment.md` (new): scope; α for reclaim (records, T(i)
+   of a step and a table store, touch(i), fa(i), cuts decided and made, the
+   iteration's positions and times); the register, M17, M32 to M38, M41.
+   Sections for R1 (arguments, the safety argument) and R7 (red list).
+4. Pointers: `docs/levels.md` (the table's Level 4 row, Level 3, Next) and
+   `docs/level2-alignment.md` (a paragraph after the register: M8 and M17
+   reopened, the new documents), and M42 added to level2-alignment.md's
+   register, where stage 1 closes it.
+
+Findings, beyond the plan's register:
+
+* M45 (new): the public API's cache size is computed in `int`
+  (`pubimp/DatabaseBuilderImp.start`, line 173: `cacheSizeInMb * 1000000`):
+  above 2,147 MB it overflows; the default is a fifth of the maximum heap, so
+  with heaps above about 10.7 GB and `-ea` the `Db` constructor fails
+  (`Cache3.setSizeIndicator` asserts a positive size), and without `-ea` the
+  budget becomes 4 MB. No effect today (nothing reads the budget, M40); the
+  fix belongs before J7 relies on it.
+* M46 (from review-13-claude, 3): the ordinal bound 2^30 − 1 over the
+  database's life; for Frans (above).
+* Every transaction reads its keys through the readers' follower first
+  (`Db.warmup`), so readers' first touches and snapshots occur in every run
+  (matters for M21, M27). `TransNodes.clean` clears the dirty flags of the
+  record being written before it is appended (for eviction's eligibility).
+  M22's runtime cut-back is not reachable today, with the reason and lines.
+* M30 is closed by A3 (`280525a`).
+
+Files changed: `docs/level4-alignment.md`, `docs/level3-alignment.md` (new);
+`docs/levels.md`, `docs/level2-alignment.md`; this file.
+
+Checks: the documents' links resolve (checked with the script of the plan's
+session); statements about code cite file, method and line at `75d3c2d`.
+
+Register: M17, M20 to M44 checked and in the new documents (M30 closed); new
+M45, M46.
+
+Open, next: A4 (the medium set with the A6 and TREE diagnostics is running
+on the fast checker of C2).
 
