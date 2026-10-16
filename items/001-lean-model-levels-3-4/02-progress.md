@@ -100,7 +100,8 @@ Current state
 * Commits of this run (Q2 (b)): see the log entries.
 * Uncommitted work of this plan in bergdb: the files of the WPs in progress,
   named in the last log entry.
-* Long jobs running: none.
+* Long jobs running: P2's pilot soak, `java/build/soak/pilot2/` (since
+  22:43, about 40 minutes; see the P2 entry).
 * Stage 2's time box (plan, 5.3): not started; 60 hours from the start of
   E1.
 * Preserved builds: `l34-base` (A1; `java/build/perf/builds/l34-base/`,
@@ -131,7 +132,7 @@ Status
 | E5 | Restarts with eviction: T2-C | not started | — |
 | E6 | Pins and index-freedom | not started | — |
 | E7 | The Java change list; the K1 review | not started | — |
-| R1 | α and the register for reclaim | not started | — |
+| R1 | α and the register for reclaim | done | 2026-10-16 |
 | R2 | Trace format 2; the exporter for reclaim runs | not started | — |
 | R3 | The Level 3 model: touch, first available time, cuts | not started | — |
 | R4 | Recovery and reads after a cut: T8, T9 | not started | — |
@@ -154,7 +155,7 @@ Status
 | F2 | Documents | not started | — |
 | F3 | The final report | not started | — |
 | P1 | The Level 3 quick performance reference | done | 2026-10-16 |
-| P2 | The Level 3 soak | not started | — |
+| P2 | The Level 3 soak | in progress | 2026-10-16 |
 | P3 | Bounds, measured | not started | — |
 | P4 | The soak with eviction | not started | — |
 
@@ -1062,3 +1063,115 @@ small and medium sets; M8 closed by proof.
 
 Open, next: P2 (the Level 3 soak), then P3 and R1; E1 starts stage 2 and its
 time box.
+
+
+### 2026-10-16 22:10. WP P2, in progress (written before the pilot)
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `a66e4d9` (L5);
+uncommitted: `java/stress/Soak.java` and `java/stress/soak.sh` (new).
+
+Did so far:
+
+1. `java/stress/Soak.java`: the soak of level3-plan task 2. A `FileStream`
+   in a disposable directory (a marker file, as `Perf`), the system clock,
+   retention in wall-clock seconds; one paced writer, two to four paced
+   readers (latest and historical gets, also just around the first
+   available lookup time; forward and backward scans at the latest or a
+   historical time); updates, deletes and reinserts; a hot set (half of it
+   long keys) and uniform keys; long keys of 120 bytes. A bounded model
+   (per key, the versions a lookup at or after a "keep" time can see; keep
+   never passes a lookup time a reader has announced), so every successful
+   operation is checked at its actual snapshot, scans for completeness too;
+   expiries counted at admission and during, never in place of a check.
+   Phases: load, warm-up (until the first physical cut), the measured phase
+   (steady seconds, restarts and their checks excluded), the end check.
+   Cold restarts spread over the measured phase, each checked: every key at
+   the latest time, the hot keys and 20,000 others at six times from the
+   first available lookup time to the latest; every key at every time with
+   at most 20,000 keys (the companion case). Streaming histograms
+   (`PerfUtil.Hist`), the slowest commits with whether reclaim stepped or
+   decided a cut in them, reclaim iterations, cut decisions and physical
+   cuts with their uptimes, memory, storage and dirty-node samples.
+2. `java/stress/soak.sh NAME [PROP=VALUE ...]`: runs it from a copy of the
+   build in `java/build/soak/NAME/` (so `build.sh` cannot change it), with
+   the flags of `performance.sh` (G1, fixed heap, assertions off, the same
+   GC and safepoint log), records the source, JVM and machine, then
+   `Soak finish` adds the GC log's pauses per phase and the pauses that
+   overlap the slowest commits.
+3. Tests at a tiny scale (2,100 keys, retention 5 s, a 5 MB startup
+   distance): `SOAK OK`, 90 steady seconds, 19 physical cuts, 3 restarts,
+   337k gets and 189k scans checked, 13,725 expired at admission. An
+   earlier tiny run showed that a durable commit (`sync(ORDINARY)`) takes
+   about 113 ms on this machine, so the default is one durable commit a
+   second, and that the default startup distance (50 MB) spaces reclaim
+   iterations by 100 MB of stream (Reclaim's ITERATION_SPACING).
+
+Running: the pilot (`soak.sh pilot2`, started 22:43; `pilot1`, started
+22:41, was stopped after a minute: its readers spun while pacing, three
+busy cores; they park now): one million keys
+plus 1,000 long keys, 1,000-byte values, retention 300 s, 300 transactions
+a second of 10 keys (about 0.9 updates per key per retention window,
+paced), three readers at 5,000 operations a second each, G1 with
+`-Xms12g -Xmx12g`; warm-up until the first physical cut (at most 40
+minutes), 15 measured minutes with one restart. It calibrates the rate and
+the heap (memory growth, the cut cadence, commit latency) for the main run;
+no gates, performance runs or Lean builds while it runs.
+
+
+### 2026-10-16 22:44 to 22:59. WP R1, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `a66e4d9`;
+uncommitted: P2's `java/stress/Soak.java` and `soak.sh` (in progress, not
+part of this WP) and this WP's files. Written while P2's pilot ran (document
+work only, plan 2.7).
+
+Did: `docs/level3-alignment.md`, sections 2 to 5, from `Reclaim.java`,
+`Db.java`, `DbStarter.java`, `NodeCollection.java`, `FileStream.java` and
+`BufferedStream.java` at `a66e4d9`, levels.md ("Level 3: reclaim"), the
+plan's 8.1 and 8.7, F1-008-07 (sections 5 to 8) and Codex's review of 09
+(findings 2, 5, 6):
+
+1. α for reclaim (section 2): the three kinds of record and their order
+   within one `transactionCompleted` call (zero to five internal records
+   after a user record); T(i) of a step (the rewrites and the current row)
+   and of a table store; touch(i) (the nodes `touchRange` visits over
+   (touchFrom, touchTo], marked before the puts, computed on P@(i-1) at
+   time i); the iteration's positions and times as records and model times;
+   fa(i) as a function of the records (it never decreases and stays before
+   the startup pos); a cut decided at R(d) at c = the record at the row's
+   pCut, f = tEnd, made later, at or below c; what R2's trace needs (2.7).
+2. The register, checked again at `a66e4d9` (line numbers updated:
+   `resolvePointers` 317, `canonicalNode` 455, `topNodeOfLastTransaction`
+   293; `Reclaim.java` and `Db.java` are unchanged since `75d3c2d`).
+3. The arguments (section 4): M32 (Java's startup uses f only after the
+   reconstruction, and reads nothing before c if the cut is safe; the rest
+   is T8, R4) and M38 (the conflict check runs before any change, so a
+   failed step is no transaction; it cannot fail today, since no
+   transaction runs between a step's reads and its check). M35 and M37 are
+   settled by α.
+4. The safety argument of levels.md in the model's terms (section 5), in
+   ten steps against the plan's sketch of CutOK, each marked: checked
+   (order, the take rule, the meta block and durability), assumed (the
+   retention policy; the coverage of a step's range traversal, which R6
+   takes as an assumption on the touch and R2's traces check), to prove
+   (values from f on, index nodes and the root chain, references after
+   pSafe: R6; historical nodes in D, M33 and M34: R5 or R8; T8, T9, T12:
+   R4, R5).
+
+Files changed: `docs/level3-alignment.md`; this file.
+
+Checks: the links of `level3-alignment.md` resolve; every statement about
+code names the file, the method and the line at `a66e4d9`; the test names
+cited exist (`Reclaim.Tester`'s `testIterationRewritesAllOldValues`,
+`testDeletedKeysAfterCut`, `testCutKeepsMetaBlockTransaction`,
+`testLookupsFromFirstAvailableTime`; `ReclaimRetentionTester`). Time: about
+a quarter of an hour of writing on top of the reading, within M.
+
+Register: M32 and M38 argued (R1); M35 and M37 resolved by α (R1), to be
+checked by R2's traces; no new rows. Noted: `pSafe` is the stream length
+after the user record of its call, a little before that call's internal
+records (section 5, step 6 allows it).
+
+Open, next: P2 continues (the pilot runs). R2 can start after R1 and C2
+(it needs no K1); R3 waits for K1.
+
