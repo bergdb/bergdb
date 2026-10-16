@@ -817,3 +817,109 @@ class comment; `TopDs.newSuperRoot`; Db's `markAtEndOfOp`, `endOfOp`,
   r-1k-fin, 81 to 85 ms in every candidate run (in the first run equal to the
   longest GC pause) against medians of 28 to 36 ms in the reference's (with
   CVs of 61 to 85 percent); not an alert.
+* `conformance.sh medium` on the D1 code: `TRACECHECK OK`, 9 of 9 traces
+  (F1, 10.5).
+
+### 10.5 F1, the conformance campaign, 2026-10-16
+
+The full set of 8.5 on the final code and model: bergdb `d5c56dd` (D0 and
+D1), the model of E3. Raw summaries, with the time and memory of each run:
+[evidence/level2-conformance.txt](evidence/level2-conformance.txt).
+
+| Set | What ran | Result |
+|---|---|---|
+| Small, Lean tier | `conformance.sh small`: 50 traces, 3,700 transactions after their R(0) transactions, every one checked (C-A, C-S, C-V, C-R, diagnostics); 6 traces also in the unchanged model's mode | `CONFORMANCE OK`: 50 of 50 traces pass every check. No failing transaction in C-A, C-S or the diagnostics; C-V: 127,707 LIVE lines, no difference; C-R: 2,320 probes, no failure; no exporter error. 5 minutes 20 seconds, at most 237 MB (the exporter) and 12 MB (the checker). The model's own mode differs only by the root (M11) |
+| Medium, Lean tier | `conformance.sh medium`: 9 traces of 120 to 500 transactions, node sizes 8 and 30, up to 3,000 keys, every transaction checked | `CONFORMANCE OK`: 9 of 9 traces, 3,360 transactions after their R(0) and 57 probes, no failure in any check. 1 hour 53 minutes (3 to 21 minutes per trace) on one core |
+| Small, medium and large, Java tier | `A2A3Check2` on 21 configurations, 68,901 transactions: 10's set; node sizes 8 to 62 with 500 to 3,000 keys and 500 to 2,000 transactions; and the sizes of `RestartInvariance`'s configurations in `level2.sh`, up to 12,000 transactions | no A2 (net), A3 or A5 failure; Java's marking equals the model's in every transaction |
+| | `DagFuzz`, 5 configurations, 200 rounds each | 0 failures |
+| Large, restarts | `RestartInvariance` on `level2.sh`'s six configurations, with 10 percent empty transactions and 10 percent deletes of missing keys (new options `empty` and `nodel`) | the same stream bytes, transaction sequence, KVs, node identity and lookups with and without restarts, in every configuration |
+| Transactions that change nothing (M18) | `RestartInvariance` with 30 percent empty transactions and 20 percent deletes of missing keys, a startup distance of 100 bytes, restarts every 1 or 10 transactions; 5 seeds each | on `a116ec7`, before D0: all 10 runs fail ("Could not find super node in startup section"); on `d5c56dd`: all 10 pass |
+| The gates | `level1.sh`, `level2.sh`, `level3.sh` | `LEVEL 1 OK` (908 unit tests; 1.5 minutes), `LEVEL 2 OK` (11 minutes), `LEVEL 3 OK` (5 minutes), on a scratch copy of the final work tree, 11:22 to 11:40 |
+
+Every set includes transactions that change nothing: the small set's
+`mixed` and `idle` configurations, the medium set's `m-mixed`, and the
+`RestartInvariance` runs above. Nothing failed, so there is nothing to fix
+or to register.
+
+The medium set is smaller than 8.5's (C3's choice: the checker's time grows
+fast with the number of versions); the Java tier covers 8.5's medium and
+large sizes instead. The checker checks every transaction of the medium
+traces, not a sample.
+
+## 11. Outcome (WP F2, 2026-10-16)
+
+The outcome of section 1.2 of the plan F1-008-11, point by point, on bergdb
+`d5c56dd` and the model of E3.
+
+1. **Correspondence: done.** α is in section 2; the steps of the model's
+   algorithm and startup are mapped to Java in sections 3 and 4, the
+   assumptions in section 5. Every register row (section 6) is resolved:
+   by a code change (M1, M2: D1; M18: D0), by a model change with proofs
+   (M2: E1; M3: E2; M7, M10, M11: E3), by an argument with checks (M4 to M6,
+   M8, M9, M13 to M16; section 7), by the level function and the check of
+   A4 (M12), or is out of scope (M17, Level 3) or a note (M19). No row
+   needed Frans's acceptance beyond the plan's defaults.
+2. **Java runs meet the assumptions: done.** C-A, on every transaction of the
+   59 traces of 10.5: `SpecOK` for R(0); `StepOK`, that is fresh and distinct
+   ids, A2, the data node rules, A4 and A3; A5; and the virtual root's R1 to
+   R4. No failure. The Java tier, on 68,901 transactions up to node size 62,
+   400 keys per transaction and 12,000 transactions: no A2, A3 or A5
+   failure.
+3. **Java's steps are the model's steps: done.** C-S, on every transaction
+   of the 59 traces: the model's `step`, from α of Java's state before T(i)
+   with Java's startup pos, gives Java's record R(i) (sp, top(i) as node and
+   record, the versions as a set with their histories and references, gd as
+   a set) and Java's D. No difference. The Java tier: Java's marking equals
+   the model's marked set on all 68,901 transactions.
+4. **Restarts: done.** C-R: every probe of the 59 traces (a second
+   database started from the stream after transaction i) gives the P and D
+   of the run without restarts. `RestartInvariance`: the same stream bytes,
+   D, node identity and lookups with and without restarts, in `level2.sh`'s
+   configurations and with transactions that change nothing. Lazy reading
+   after a restart (M8, lemma M) is argued (7.4) and checked by these
+   restarts; the model reads all of P at startup.
+5. **Proofs: done, without T15.** Lean proves T1 (`T1_recovery`,
+   `T1_crash`, `T1_nodes`), T2 (`T2_restart`) and T13 (`T13_markExact`) for
+   the model with marking in step 3 (or testing), BergDB's still-dirty test
+   (or, with a written root, the exact one), the virtual root, Rule R from
+   R(s), and a policy that sees T(i), under the assumptions of point 2.
+   `lake build` gives no warnings and has no `sorry`; `#print axioms` shows
+   only propext, Classical.choice and Quot.sound. T15 (D stays closed
+   upward) is not proved: the proofs of T1 and T2 for BergDB's test did not
+   need it (E2). The property is checked instead: the checker's
+   diagnostics test it on every transaction (no failure).
+6. **No regressions: done.** The gates pass in full on the final code
+   (10.5). The quick performance suite against A1's baseline (`l2a-base`,
+   `a116ec7`), after D0 (10.2) and twice after D1 (10.4): no alerts, the
+   medians within noise. Flagged, not an alert: the slowest single commit of
+   r-1k-fin (81 to 88 ms in every run after D0 and D1, against 23 to 90 ms in the baseline's runs), with
+   an unchanged p99.9. These runs are not reference runs (one had
+   `FORCE=1`).
+
+Not claimed, as in the plan: that every possible Java run is a run of the
+model. α is written down and checked on many runs, not proven; bytes, torn
+records, durability, concurrency and resource bounds stay outside the
+model, and the gates cover them.
+
+## 12. Proposal for checkpoint K4: conformance in the gates
+
+A step 7 of `level2.sh`, "Conformance with the Lean model", in both modes
+(times measured on F1's runs):
+
+1. `RestartInvariance`, mostly idle: `-Dsd=100 -Dkeys=100 -Devery=1
+   -Dlong=1 -Dn=400 -Ddel=1 -Dempty=30 -Dnodel=20`, seeds 1 and 2, checked
+   as step 4 checks its runs. About 5 seconds each. It catches M18: on
+   `a116ec7` every seed fails.
+2. `A2A3Check2` on three configurations: `-Dops=4 -Ddel=25 -Dlong=1`;
+   `-Dops=40 -Dexact=1 -Dn=50 -Dkeys=1000 -Ddel=25 -Dlong=1`; `-Dmaxnode=62
+   -Dkeys=1000 -Dn=2000 -Dops=40 -Ddel=20 -Dseeds=3`. Under 5 seconds in all.
+   It fails unless the NET line, A3, A5 and the MARKING differences are 0.
+3. The checker on the small set: `conformance.sh small 2` in quick mode
+   (10 traces), `conformance.sh small` in full mode (50 traces, 5 minutes 20 seconds).
+   It needs the checker (`cd lean && lake build`, with Lean 4 v4.34.1); the
+   step would build it, and fail if it cannot.
+
+Points 1 and 2 need only the JDK and cost seconds. Point 3 is the strongest
+check, since it compares every record with the model's, but it makes the gate
+depend on Lean. Frans decides (K4); until then, `conformance.sh` and
+`A2A3Check2` can be run by hand, as in 10.5.

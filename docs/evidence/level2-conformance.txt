@@ -1,0 +1,254 @@
+Level 2 conformance, WP F1 of F1-008-11, 2026-10-16 (docs/level2-alignment.md, section 10.5).
+bergdb d5c56dd (D0 and D1 committed), with the work tree's changes to
+java/stress/RestartInvariance.java (options empty and nodel, off by default) and
+java/stress/conformance.sh (time and memory of each run, the verdict per set run).
+Checker: lake exe tracecheck (lean/), target mode (marking in step 3, Java's still-dirty
+test in step 7, the virtual root) unless --model. Machine: Apple, 10 cores, 32 GB;
+OpenJDK 27; Lean 4 v4.34.1. Time and memory: /usr/bin/time -l (real time, maximum RSS).
+
+== 1. The Lean tier, small: java/stress/conformance.sh small (50 traces: 5 configurations
+x 10 seeds, every transaction; 6 traces also in the unchanged model's mode), 11:17:07 to 11:22:27
+   mixed   -Dn=60 -Dkeys=20 -Dmaxnode=8 -Dsd=200 -Dops=4 -Ddel=25 -Dnodel=10 -Dempty=10 -Dprobe=1 -Dlive=1
+   long    -Dn=60 -Dkeys=50 -Dmaxnode=14 -Dsd=500 -Dops=4 -Dlong=1 -Ddel=25 -Dprobe=10 -Dlive=1
+   big     -Dn=40 -Dkeys=200 -Dmaxnode=8 -Dsd=1000 -Dops=40 -Dexact=1 -Dprobe=10
+   bulk    -Dn=60 -Dkeys=100 -Dmaxnode=8 -Dsd=300 -Dbulk=40 -Dprobe=5
+   idle    -Dn=150 -Dkeys=30 -Dmaxnode=8 -Dsd=100 -Dops=2 -Dempty=30 -Dnodel=20 -Dprobe=1
+Summed over the traces of small, target mode: transactions failing, by check
+   C-V: 0 transactions with live differences, 127707 LIVE lines
+   C-R: 0 failed probes; kinds:
+   exporter errors: 0
+   traces: 50, TRACECHECK OK: 50
+   time and memory, export: 33 s in total, 2 s at most, at most 237 MB
+   time and memory, check: 281 s in total, 27 s at most, at most 12 MB
+Unchanged model's mode (--model), 6 traces:
+   C-S steps: versions 6
+   C-S steps: D 360
+   C-S steps: top 366
+   C-S steps: gd 360
+CONFORMANCE OK
+
+== 2. The Lean tier, medium: java/stress/conformance.sh medium (9 traces: 3 configurations
+x 3 seeds, every transaction), 10:53:00 to 12:46:32.
+Started at 10:53 on the work tree that Frans committed unchanged as d5c56dd at 11:03, with
+the conformance.sh of 01f386a (no time and memory per run; the total is at the end).
+   m-mixed -Dn=500 -Dkeys=500 -Dmaxnode=8 -Dsd=2000 -Dops=4 -Ddel=20 -Dnodel=5 -Dempty=5 -Dprobe=50
+   m-long  -Dn=500 -Dkeys=3000 -Dmaxnode=30 -Dsd=5000 -Dops=8 -Dlong=1 -Ddel=20 -Dprobe=100
+   m-big   -Dn=120 -Dkeys=1000 -Dmaxnode=30 -Dsd=10000 -Dops=20 -Dbulk=60 -Dprobe=30
+   m-mixed-1: TRACECHECK OK
+   m-mixed-2: TRACECHECK OK
+   m-mixed-3: TRACECHECK OK
+   m-long-1: TRACECHECK OK
+   m-long-2: TRACECHECK OK
+   m-long-3: TRACECHECK OK
+   m-big-1: TRACECHECK OK
+   m-big-2: TRACECHECK OK
+   m-big-3: TRACECHECK OK
+   traces: 9, TRACECHECK OK: 9
+Summed over the traces of medium, target mode: transactions failing, by check
+   C-V: 0 transactions with live differences, 0 LIVE lines
+   C-R: 0 failed probes; kinds:
+   exporter errors: 0
+   traces: 9, TRACECHECK OK: 9
+CONFORMANCE OK
+sh stress/conformance.sh medium  6770.46s user 17.95s system 99% cpu 1:53:32.44 total
+12:46:32
+Memory, measured afterwards: the checker on m-mixed-1, 265 s, at most 15 MB.
+
+== 3. The Java tier: java/stress/A2A3Check2 (A2 as the NET line, A3, A5 per transaction;
+Db's marking against the model's marked set), 11:11:42 to 11:17:43
+-- small
+maxnode=8 keys=200 n=300 ops=1..1 del=0% long=false sorted=true seeds=10   [0.5 s, 163 MB]
+  transactions 3000: with a changed node not current at the end 0 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 884
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 16480, model marked 16480, in step 3 only 0, in model only 0 (transactions with a difference 0)
+maxnode=8 keys=200 n=300 ops=1..1 del=25% long=true sorted=true seeds=10   [0.5 s, 114 MB]
+  transactions 3000: with a changed node not current at the end 0 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 643
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 13576, model marked 13576, in step 3 only 0, in model only 0 (transactions with a difference 0)
+maxnode=8 keys=200 n=300 ops=1..4 del=0% long=false sorted=true seeds=10   [0.6 s, 239 MB]
+  transactions 3000: with a changed node not current at the end 89 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 1713
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 32789, model marked 32789, in step 3 only 0, in model only 0 (transactions with a difference 0)
+maxnode=8 keys=200 n=300 ops=1..4 del=25% long=true sorted=true seeds=10   [0.4 s, 199 MB]
+  transactions 3000: with a changed node not current at the end 65 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 1456
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 31589, model marked 31589, in step 3 only 0, in model only 0 (transactions with a difference 0)
+maxnode=8 keys=40 n=1 ops=40 del=0% long=false sorted=true seeds=1   [0.1 s, 43 MB]
+  transactions 1: with a changed node not current at the end 0 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 1
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 19, model marked 19, in step 3 only 0, in model only 0 (transactions with a difference 0)
+maxnode=8 keys=1000 n=50 ops=40 del=0% long=false sorted=true seeds=10   [0.3 s, 209 MB]
+  transactions 500: with a changed node not current at the end 397 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 500
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 51688, model marked 51688, in step 3 only 0, in model only 0 (transactions with a difference 0)
+maxnode=8 keys=1000 n=50 ops=40 del=25% long=true sorted=true seeds=10   [0.3 s, 173 MB]
+  transactions 500: with a changed node not current at the end 369 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 500
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 44575, model marked 44575, in step 3 only 0, in model only 0 (transactions with a difference 0)
+maxnode=62 keys=100000 n=20 ops=400 del=0% long=false sorted=true seeds=10   [0.8 s, 473 MB]
+  transactions 200: with a changed node not current at the end 190 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 200
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 95204, model marked 95204, in step 3 only 0, in model only 0 (transactions with a difference 0)
+maxnode=14 keys=300 n=50 ops=40 del=40% long=true sorted=true seeds=10   [0.2 s, 116 MB]
+  transactions 500: with a changed node not current at the end 351 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 495
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 21006, model marked 21006, in step 3 only 0, in model only 0 (transactions with a difference 0)
+maxnode=8 keys=200 n=300 ops=1..4 del=25% long=true sorted=false seeds=10   [0.3 s, 231 MB]
+  transactions 3000: with a changed node not current at the end 63 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 1446
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 31665, model marked 31665, in step 3 only 0, in model only 0 (transactions with a difference 0)
+-- medium
+maxnode=8 keys=500 n=2000 ops=1..4 del=20% long=true sorted=true seeds=3   [2.4 s, 479 MB]
+  transactions 6000: with a changed node not current at the end 29 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 3160
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 95740, model marked 95740, in step 3 only 0, in model only 0 (transactions with a difference 0)
+maxnode=14 keys=1000 n=1000 ops=1..8 del=20% long=false sorted=true seeds=3   [0.7 s, 241 MB]
+  transactions 3000: with a changed node not current at the end 65 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 1606
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 41387, model marked 41387, in step 3 only 0, in model only 0 (transactions with a difference 0)
+maxnode=30 keys=3000 n=1000 ops=1..20 del=20% long=true sorted=true seeds=3   [3.6 s, 474 MB]
+  transactions 3000: with a changed node not current at the end 87 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 1204
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 71697, model marked 71697, in step 3 only 0, in model only 0 (transactions with a difference 0)
+maxnode=62 keys=3000 n=500 ops=1..40 del=20% long=false sorted=true seeds=3   [1.8 s, 294 MB]
+  transactions 1500: with a changed node not current at the end 108 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 454
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 50265, model marked 50265, in step 3 only 0, in model only 0 (transactions with a difference 0)
+maxnode=30 keys=2000 n=500 ops=1..4 del=20% long=true sorted=false seeds=3   [0.3 s, 193 MB]
+  transactions 1500: with a changed node not current at the end 15 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 182
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 9612, model marked 9612, in step 3 only 0, in model only 0 (transactions with a difference 0)
+-- large
+maxnode=30 keys=500 n=2000 ops=1..20 del=20% long=true sorted=true seeds=3   [2.7 s, 264 MB]
+  transactions 6000: with a changed node not current at the end 297 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 3273
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 127565, model marked 127565, in step 3 only 0, in model only 0 (transactions with a difference 0)
+maxnode=8 keys=500 n=2000 ops=1..10 del=20% long=true sorted=true seeds=3   [3.9 s, 350 MB]
+  transactions 6000: with a changed node not current at the end 101 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 4547
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 192885, model marked 192885, in step 3 only 0, in model only 0 (transactions with a difference 0)
+maxnode=14 keys=500 n=2000 ops=1..3 del=20% long=true sorted=true seeds=3   [1.5 s, 246 MB]
+  transactions 6000: with a changed node not current at the end 16 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 1659
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 51365, model marked 51365, in step 3 only 0, in model only 0 (transactions with a difference 0)
+maxnode=62 keys=1000 n=2000 ops=1..40 del=20% long=false sorted=true seeds=3   [1.5 s, 471 MB]
+  transactions 6000: with a changed node not current at the end 1053 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 3110
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 112707, model marked 112707, in step 3 only 0, in model only 0 (transactions with a difference 0)
+maxnode=30 keys=100 n=400 ops=1..3 del=20% long=true sorted=true seeds=3   [0.2 s, 103 MB]
+  transactions 1200: with a changed node not current at the end 8 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 154
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 5418, model marked 5418, in step 3 only 0, in model only 0 (transactions with a difference 0)
+maxnode=30 keys=3000 n=12000 ops=1..3 del=20% long=false sorted=true seeds=1   [14.9 s, 308 MB]
+  transactions 12000: with a changed node not current at the end 1 (A2 is the NET line below), violating A3 0, A5 0; with marked nodes not current at the end 800
+  NET (A2): nodes with a klong at tt not current 0 (transactions 0)
+  MARKING: Db's step-3 nodes 95407, model marked 95407, in step 3 only 0, in model only 0 (transactions with a difference 0)
+
+== 4. DagFuzz (java/stress/DagFuzz.java, 200 rounds per configuration)
+-Dmaxnode=8: Done: 200 rounds, 0 failures.
+-Dmaxnode=8 -Dops=40 -Dkeys=200: Done: 200 rounds, 0 failures.
+-Dmaxnode=14 -Dops=40 -Dkeys=500 -Dn=100: Done: 200 rounds, 0 failures.
+-Dmaxnode=8 -Dops=12 -Dkeys=30: Done: 200 rounds, 0 failures.
+-Dmaxnode=30 -Dops=100 -Dkeys=2000 -Dn=60: Done: 200 rounds, 0 failures.
+
+== 5. RestartInvariance on level2.sh's configurations (n 2000; del), with 10 percent empty
+transactions and 10 percent deletes of missing keys (-Dempty=10 -Dnodel=10), 11:11:42 to 11:11:58
+-- inv-sd100   [1.8 s, 134 MB]
+seed=1 n=2000 keys=500 sd=100 maxnode=0 every=100 valsize=40 del=true retain=0 empty=10 nodel=10
+stream length A=4167864 B=4167864
+STREAM: identical
+TRANSSEQ: 0 of 20 checkpoints differ
+KV CHECKSUM: 0 of 20 checkpoints differ
+IDENTITY A (no restarts): 0 of 20 checkpoints violate
+IDENTITY B (restarts): 0 of 20 checkpoints violate
+LOOKUP A (no restarts): 0 of 20 checkpoints violate
+LOOKUP B (restarts): 0 of 20 checkpoints violate
+-- inv-sd1000-node8   [1.6 s, 146 MB]
+seed=1 n=2000 keys=500 sd=1000 maxnode=8 every=100 valsize=40 del=true retain=0 empty=10 nodel=10
+stream length A=3212368 B=3212368
+STREAM: identical
+TRANSSEQ: 0 of 20 checkpoints differ
+KV CHECKSUM: 0 of 20 checkpoints differ
+IDENTITY A (no restarts): 0 of 20 checkpoints violate
+IDENTITY B (restarts): 0 of 20 checkpoints violate
+LOOKUP A (no restarts): 0 of 20 checkpoints violate
+LOOKUP B (restarts): 0 of 20 checkpoints violate
+-- inv-sd10000-node14   [1.2 s, 96 MB]
+seed=1 n=2000 keys=500 sd=10000 maxnode=14 every=200 valsize=40 del=true retain=0 empty=10 nodel=10
+stream length A=1719984 B=1719984
+STREAM: identical
+TRANSSEQ: 0 of 10 checkpoints differ
+KV CHECKSUM: 0 of 10 checkpoints differ
+IDENTITY A (no restarts): 0 of 10 checkpoints violate
+IDENTITY B (restarts): 0 of 10 checkpoints violate
+LOOKUP A (no restarts): 0 of 10 checkpoints violate
+LOOKUP B (restarts): 0 of 10 checkpoints violate
+-- inv-sd100000-node62   [1.6 s, 103 MB]
+seed=1 n=2000 keys=1000 sd=100000 maxnode=62 every=200 valsize=400 del=true retain=0 empty=10 nodel=10
+stream length A=1933824 B=1933824
+STREAM: identical
+TRANSSEQ: 0 of 10 checkpoints differ
+KV CHECKSUM: 0 of 10 checkpoints differ
+IDENTITY A (no restarts): 0 of 10 checkpoints violate
+IDENTITY B (restarts): 0 of 10 checkpoints violate
+LOOKUP A (no restarts): 0 of 10 checkpoints violate
+LOOKUP B (restarts): 0 of 10 checkpoints violate
+-- inv-every1   [5.4 s, 382 MB]
+seed=1 n=400 keys=100 sd=500 maxnode=0 every=1 valsize=40 del=true retain=0 empty=10 nodel=10
+stream length A=362944 B=362944
+STREAM: identical
+TRANSSEQ: 0 of 400 checkpoints differ
+KV CHECKSUM: 0 of 400 checkpoints differ
+IDENTITY A (no restarts): 0 of 400 checkpoints violate
+IDENTITY B (restarts): 0 of 400 checkpoints violate
+LOOKUP A (no restarts): 0 of 400 checkpoints violate
+LOOKUP B (restarts): 0 of 400 checkpoints violate
+-- inv-default-100MB   [10.0 s, 565 MB]
+seed=1 n=12000 keys=3000 sd=0 maxnode=0 every=4000 valsize=8000 del=true retain=0 empty=10 nodel=10
+stream length A=63138056 B=63138056
+STREAM: identical
+TRANSSEQ: 0 of 3 checkpoints differ
+KV CHECKSUM: 0 of 3 checkpoints differ
+IDENTITY A (no restarts): 0 of 3 checkpoints violate
+IDENTITY B (restarts): 0 of 3 checkpoints violate
+LOOKUP A (no restarts): 0 of 3 checkpoints violate
+LOOKUP B (restarts): 0 of 3 checkpoints violate
+
+== 6. RestartInvariance, mostly idle (M18): -Dempty=30 -Dnodel=20 -Ddel=1; idle1: -Dsd=100
+-Dkeys=100 -Devery=1 -Dlong=1 -Dn=400; idle10: -Dsd=100 -Dkeys=500 -Devery=10 -Dlong=1
+-Dbigtrans=20 -Dn=2000. a116: bergdb a116ec7 (before D0) with this RestartInvariance.java.
+a116 idle1 seed 1: all checks OK: no STARTUP FAILED: restart after trans 33 failed: bergdb.storage.StreamFormatException: Could not find super node in startu
+a116 idle1 seed 2: all checks OK: no STARTUP FAILED: restart after trans 41 failed: bergdb.storage.StreamFormatException: Could not find super node in startu
+a116 idle1 seed 3: all checks OK: no STARTUP FAILED: restart after trans 6 failed: bergdb.storage.StreamFormatException: Could not find super node in startup
+a116 idle1 seed 4: all checks OK: no STARTUP FAILED: restart after trans 10 failed: bergdb.storage.StreamFormatException: Could not find super node in startu
+a116 idle1 seed 5: all checks OK: no STARTUP FAILED: restart after trans 25 failed: bergdb.storage.StreamFormatException: Could not find super node in startu
+a116 idle10 seed 1: all checks OK: no STARTUP FAILED: restart after trans 339 failed: bergdb.storage.StreamFormatException: Could not find super node in start
+a116 idle10 seed 2: all checks OK: no STARTUP FAILED: restart after trans 189 failed: bergdb.storage.StreamFormatException: Could not find super node in start
+a116 idle10 seed 3: all checks OK: no STARTUP FAILED: restart after trans 189 failed: bergdb.storage.StreamFormatException: Could not find super node in start
+a116 idle10 seed 4: all checks OK: no STARTUP FAILED: restart after trans 29 failed: bergdb.storage.StreamFormatException: Could not find super node in startu
+a116 idle10 seed 5: all checks OK: no STARTUP FAILED: restart after trans 979 failed: bergdb.storage.StreamFormatException: Could not find super node in start
+d5c5 idle1 seed 1: all checks OK: yes 
+d5c5 idle1 seed 2: all checks OK: yes 
+d5c5 idle1 seed 3: all checks OK: yes 
+d5c5 idle1 seed 4: all checks OK: yes 
+d5c5 idle1 seed 5: all checks OK: yes 
+d5c5 idle10 seed 1: all checks OK: yes 
+d5c5 idle10 seed 2: all checks OK: yes 
+d5c5 idle10 seed 3: all checks OK: yes 
+d5c5 idle10 seed 4: all checks OK: yes 
+d5c5 idle10 seed 5: all checks OK: yes 
+
+== 7. The gates
+== level1.sh, 11:22:26
+exit 0
+LEVEL 1 OK
+time 89 s, max RSS of one process 1703 MB
+== level2.sh, 11:23:55
+exit 0
+LEVEL 2 OK
+time 638 s, max RSS of one process 2349 MB
+== level3.sh, 11:34:34
+exit 0
+LEVEL 3 OK
+time 308 s, max RSS of one process 5699 MB
+end 11:39:42

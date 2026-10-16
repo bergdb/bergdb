@@ -441,3 +441,19 @@ the change seed 1 no longer does (seeds 2, 8 and 11 did not before); a reader
 that does not reach the cut must end with every KV. The three level checks
 pass; 1.4 to 13.7 percent fewer stream bytes in five workloads.
 
+2026-10-16. Level 2 alignment finished (F1-008-11, WPs D2, F1 and F2;
+`docs/level2-alignment.md`, 10.5, 11 and 12). D2 had nothing left to change.
+F1, the conformance campaign on `d5c56dd`: the trace checker on 50 small
+and 9 medium traces, every transaction a step of the model, every restart
+invisible (`CONFORMANCE OK`); the Java tier (`A2A3Check2`) on 68,901
+transactions up to the gate's sizes, no failure, Java's marking the model's;
+the gates in full. Raw summaries: `docs/evidence/level2-conformance.txt`.
+`RestartInvariance` has two new options, `empty` and `nodel`, for
+transactions that change nothing (off by default; the gate's runs are
+unchanged): mostly idle runs fail on `a116ec7` (M18) and pass now.
+`conformance.sh` records the time and memory of each run and gives its
+verdict only for the sets it ran. F2: the outcome of the plan's 1.2 point by
+point (all six met; T15 not proven, as the proofs did not need it), the
+Level 2 status in `levels.md`, the model changes in `sis-model.md`, and a
+proposal for a conformance step in `level2.sh`, for Frans's checkpoint K4.
+

@@ -201,6 +201,11 @@ and the 8 of the third (the virtual root). The trace checker now runs the
 model's own `init` and `step`, with no checker-local definitions, and checks
 R1 to R4 (C-A).
 
+2026-10-16. The conformance campaign (WP F1 of F1-008-11): on bergdb
+`d5c56dd`, the checker found every transaction of 59 traces of Java runs (50
+small, 9 medium) a step of the model in the target mode, with no change to
+the model (../docs/level2-alignment.md, 10.5).
+
 Changes to the trusted part while proving, all on 2026-10-12:
 
 * A2 (`StepOK.current`): entries only to nodes reachable at time i after
