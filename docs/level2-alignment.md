@@ -934,3 +934,135 @@ Points 1 and 2 need only the JDK and cost seconds. Point 3 is the strongest
 check, since it compares every record with the model's, but it makes the gate
 depend on Lean. Frans decides (K4); until then, `conformance.sh` and
 `A2A3Check2` can be run by hand, as in 10.5.
+
+
+## 13. Lazy reading (bergdb item 001, stage 1)
+
+Work packages L1 to L5 of bergdb item 001
+([../items/001-lean-model-levels-3-4/01-plan.md](../items/001-lean-model-levels-3-4/01-plan.md)),
+from 2026-10-16: what Java holds in memory after a restart, and how it reads a
+node on first touch, as definitions of the model (`lean/SIS/Phys.lean`), and
+the theorems that make M8 (lemma M) a proof. The logical model stays the
+specification; this is the first part of the physical layer, which stage 2
+(eviction, [level4-alignment.md](level4-alignment.md)) extends.
+
+### 13.1 The physical layer, part 1 (WP L1)
+
+**State** (`Obj`, `Slot`, `Mem`):
+
+* An object is a Java `Node` object: its node, level and kind, its history, a
+  canonical flag (`Node.isCanonical`), its position (`pos`, Java's spos: the
+  record of the version it holds, none before its first write), and one slot
+  per pointee of its history, live or dead (Java's `pointers[i]` and
+  `pos[i]`): a memory slot names an object, a stream slot names a record, or
+  none for a vpos.
+* The memory: the objects by handle; the node table (`Cache3`), one object per
+  node; the startup pos s of the last startup (Rule R takes the newest version
+  in R(s), ..., R(k); a key node version of the section read at startup is
+  cut back to s); the root's object.
+
+**The first touch** (`Mem.follow`; `NodeCollection.followPointer` for readers,
+`WriterFollower` for the writer). A memory slot gives its object; the writer
+makes it canonical. A stream slot naming record r:
+
+1. Rule R (`ruleRRef`): the newest version of the pointee in R(s), ..., R(k),
+   if it is newer than r; from a vpos, that version whenever there is one.
+2. The table's object, if it is canonical or a snapshot at least as new
+   (`Obj.usable`).
+3. Otherwise the version is read (`Obj.ofVersion`), cut back to s if it is a
+   key node version of the section (`isKeyLevel`; Java's
+   `toPreviousState(startupTime)`), and entered in the table (`Mem.register`,
+   `Cache3.isBetter`: never over a canonical object, else the newer).
+4. The slot then names the object (it is swizzled), and the writer makes the
+   object canonical (`Mem.makeCanonical`: the table's canonical object, else
+   the newer of the two by position, now canonical and the table's).
+
+Rule R applies for the whole process, at every first touch (M42).
+
+**Reads** (`Mem.read`, `Mem.readAt`): from the root's object at time t, down
+the live children at t, through the readers' follower; each object reached,
+with its history at t.
+
+**Startup** (`lazyStartup`; `DbStarter.doOrdinaryStartup`):
+
+1. The canonical objects of the section's index nodes (`sectionNodes`), each
+   from its newest version in R(s), ..., R(k), cut back to s, with Rule R in
+   its stream slots (`canonOfVersion`; `createMaps`, `updateStreamPointers`,
+   `changeKeyNodesToStateAtStartupTime`, `registerSectionNodes`).
+2. The root's object: with a virtual root, rebuilt from the root children read
+   from top(k), as the logical startup does (`rootVersion`, `topsRead`).
+3. Memory slots between canonical objects (`Mem.linkCanonical`;
+   `createMemoryPointers`).
+4. The rerun of T(s+1), ..., T(k). For each: the writer reaches the nodes of
+   its paths (`pathOf`: the nodes reachable at j - 1 with a node below them that
+   the change changes or that it replaces; `Mem.reachOnPath`), which become
+   canonical; the change is applied to the canonical objects
+   (`Mem.applyChange`: a canonical object for each new node, the entries
+   appended, and for each new pointee a slot: a memory slot to its canonical
+   object, else a copy of the slot of a canonical object whose node had the
+   pointee as a live child at j - 1, as a split copies the split node's
+   pointers, else of any canonical object with a slot for it, as a new top node
+   copies the super root's skip pointers); and the nodes of gd(j) get canonical
+   objects (`Mem.canonicalNode`: the table's, else the newest section version,
+   else the latest version, cut back to s).
+
+What it leaves out, and why:
+
+* The TopDs search: the root's object stands for the skip list. Reads start
+  at the root's live child at their time, as in the logical model; a top node
+  never changes after its transaction, so every version of an older top node
+  has its whole history (`VInv.topVers`).
+* The keys: the writer's paths are given by the change (`pathOf`), not
+  searched by key. Level 2 showed that Java's marking is the model's marked
+  set (A2A3Check2's MARKING line), and Java marks what its put path follows.
+* Which pointer a split copies: any canonical object whose node had the
+  pointee as a live child just before; in BergDB the split node, the only one
+  when TREE holds (level4-alignment.md, 4).
+* The P that directs the rerun's paths is the logical startup's (`baseStruct`
+  and `rerun`), which T1 shows to be the run's P.
+* Smaller differences: Java's posMap includes value nodes and reads them at
+  startup; the model reads them on first touch (they never change, and Java's
+  value nodes are always canonical). Java leaves nodes created in the rerun
+  section out of posMap; the model makes their objects from their newest
+  section version cut back to s (an empty history), and the rerun gives them
+  their entries: the same object in the end.
+* Concurrency, access data, bytes; eviction (stage 2).
+
+**Checks by running** (`lean/SIS/PhysExample.lean`, `#guard`):
+
+* In every state of runs of example 3 (a virtual root) and of example 2 (a
+  written root, four algorithms): the lazy startup, then reads at every time,
+  in increasing and then in decreasing order, give P at that time, and every
+  canonical object holds its node's whole history; also when the writer walks
+  to every reachable node between reads.
+* First touches: Rule R (a slot naming R(0) while R(2), in the section, has a
+  newer version: the newer one is read, and, since the node has no canonical
+  object, cut back to the startup time: Java's runtime cut-back, M22); a newer
+  snapshot in the table serves an older reference; the writer makes it
+  canonical; without it, the version named is read; `canonicalNode` for a node
+  of D without a section version.
+* A node of D that the rerun does not reach: it does not arise in the model. A
+  node gets into D marked on the path of a change, or put back by step 7 after
+  a write in the section. In Java it came from a delete of a key that did not
+  exist, which marked its path and stored nothing to rerun, until F1-008-11's
+  D1. `canonicalNode` still covers it.
+
+### 13.2 The theorems of stage 1, in plain English
+
+* **Lemma M** (WP L2, proved; `lean/SIS/PhysTheorems.lean`): `LM_newer`, in
+  every run, a version of a node written at or after a version that is good
+  for time t is good for t; `LM_ruleR`, so is the newest version in R(s), ...,
+  R(k), which Rule R takes; `LM_cutTo`, a version cut back to s is good for t
+  ≤ s exactly when the whole version is.
+* **T1-L** (`T1_lazy`, WP L3): after the lazy startup from the stream of any
+  run, or from a prefix of it (a crash), and after any sequence of reads and
+  writer follows (the writer following live slots of canonical objects at the
+  last time), a read at any time t up to the last record gives P at t: every
+  object it reaches is canonical, with its node's whole history, or a version
+  of its node that is good for t (or such a version cut back to s, for t ≤ s).
+* **CC** (`CC_canonical`, WP L4): every object that becomes canonical, at
+  startup or when the writer reaches it, holds its node's whole history.
+* **T2-L** (`T2_lazy`, WP L4): a run with restarts whose writer works on the
+  canonical objects of the lazy startup appends the same records as the run
+  without restarts. Its references still come from `mkVersion` (`S.lv`);
+  computing them from slots is stage 2 (E3).

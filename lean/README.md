@@ -24,6 +24,7 @@ Needs elan (`brew install elan-init`). The toolchain version is in
     cd lean
     lake build              # checks every file, runs the #guard tests
     lake exe sistest 20 40  # random runs: 20 seeds, 40 transactions each (7 min)
+    lake exe phystest 20 40 # the physical layer on random runs (30 s)
 
 `lake build` checks every proof. To see that a theorem depends on nothing but
 Lean's standard axioms (no `sorry`), put this in a file, for example
@@ -69,7 +70,7 @@ its section in sis-model.md.
 | SIS/Startup.lean | `newest` (R(s) to R(k)), Rule R (`follow`), reading the stream (`readFrom`), where reading starts (`topVersion`, `startVersion`; with a virtual root `readTops`, `topsRead`, `rootVersion`), P up to s (`baseStruct`), `rerun`, `startup` | 6.2 |
 | SIS/Assumptions.lean | Assumptions A2 to A5 and the data node rules (`SpecOK`, `StepOK`, `RunOK`), with a virtual root R1 to R4 (`VirtInit`, `VirtStep`, `topClosure`), `runRestarts` | 3.4 |
 | SIS/Theorems.lean | T1 (`T1_recovery`, `T1_crash`, `T1_nodes`), T2 (`T2_restart`), T13 (`T13_markExact`) | 9 |
-| SIS/Phys.lean | The physical layer, what Java holds in memory (bergdb item 001): so far a version cut back to a time (`Version.cutTo`) | — |
+| SIS/Phys.lean | The physical layer, what Java holds in memory (bergdb item 001, WP L1): objects (`Obj`), their slots (`Slot`), the memory with the node table (`Mem`); Java's first touch (`Mem.follow`: Rule R, the table, the version read, cut back in the section); reads (`Mem.read`); the lazy startup (`lazyStartup`); a version cut back to a time (`Version.cutTo`) | — (docs/level2-alignment.md, 13) |
 | SIS/PhysTheorems.lean | Lemma M: a newer version of a node serves every time an older one serves (`LM_newer`), so Rule R's version does (`LM_ruleR`), and a version cut back to s serves the times up to s (`LM_cutTo`) | 5.1 |
 
 The proofs, in SIS/Proof/ (not needed for reading the statements):
@@ -108,6 +109,14 @@ Not trusted, tests only:
   by testing or by marking, BergDB's test); and it reports how often the
   exact test fails T1 with the virtual root, which the theorems do not
   cover.
+* SIS/PhysExample.lean and PhysTest.lean (bergdb item 001, WP L1): the
+  physical layer by running. `#guard` checks: in every state of runs of
+  examples 2 and 3, the lazy startup's reads give P at every time, and every
+  canonical object holds its node's whole history, also with the writer's
+  walks between reads; first touches with Rule R, a newer snapshot in the
+  table, the writer's promotion, `canonicalNode`. `lake exe phystest`: the same
+  on random runs, with random reads and writer walks in random order, and
+  startups from prefixes of the stream (crashes).
 * Check/ and TraceCheck.lean: the trace checker, `lake exe tracecheck`. It
   checks traces of Java runs against the model's definitions
   ([../docs/level2-alignment.md](../docs/level2-alignment.md), sections 8.5
@@ -244,6 +253,12 @@ the model (../docs/level2-alignment.md, 10.5).
 `#print axioms` shows only Lean's standard axioms; sistest also checks lemma
 M by running.
 
+2026-10-16. The physical layer, part 1 (bergdb item 001, WP L1): Java's
+first touch and lazy startup in SIS/Phys.lean; `lake build` passes with no
+warnings, with the `#guard` checks of SIS/PhysExample.lean; `lake exe phystest
+20 40` passes (every read gives P, every canonical object whole, also from
+prefixes of the stream).
+
 Changes to the trusted part while proving, all on 2026-10-12:
 
 * A2 (`StepOK.current`): entries only to nodes reachable at time i after
@@ -331,11 +346,35 @@ files; nothing that was there changed.
   the whole version is. Checked by running too: sistest counts the cases
   (`lemmaMCheck` in SIS/Example.lean).
 
+Changes to the trusted part on 2026-10-16 (bergdb item 001, WP L1;
+[../docs/level2-alignment.md](../docs/level2-alignment.md), section 13):
+SIS/Phys.lean gets the physical layer, part 1, as BergDB reads today:
+
+* `Slot`, `Obj`, `Mem`: objects with identity (by handle), their slots
+  (memory or stream), their canonical flag and position; the node table; the
+  startup pos of Rule R; the root's object.
+* Java's first touch, `Mem.follow` (`NodeCollection.followPointer`,
+  `followStreamPointer`, `WriterFollower`): Rule R for the whole process
+  (`ruleRRef`), the node table's object if canonical or at least as new
+  (`Obj.usable`), else the version read (`Obj.ofVersion`), cut back to s if it
+  is a key node version of the section (`isKeyLevel`), entered in the table
+  (`Mem.register`, `Obj.better`); the slot swizzled; the writer's promotion
+  (`Mem.makeCanonical`).
+* Reads, `Mem.read` and `Mem.readAt`: from the root's object at time t, down
+  the live children, through the readers' follower.
+* The lazy startup, `lazyStartup` (`DbStarter.doOrdinaryStartup`): the
+  section's index nodes as canonical objects (`sectionNodes`,
+  `canonOfVersion`), the root's object, memory slots between canonical
+  objects (`Mem.linkCanonical`), and the rerun: the writer's paths (`pathOf`,
+  `Mem.reachOnPath`), the change on the canonical objects (`Mem.applyChange`,
+  `Mem.newSlot`), the nodes of D (`Mem.canonicalNode`).
+
+Nothing that was there changed. What the layer leaves out: section 13.1 of
+level2-alignment.md.
+
 Not done:
 
-* Lazy reading after a restart, as BergDB reads a node on first touch (lemma
-  M of ../docs/levels.md; M8 of ../docs/level2-alignment.md): the model
-  reads all of P up to s at startup. Lemma M is proved (`LM_newer`); the
-  model of the first touch is bergdb item 001's WP L1, and its theorems L3
-  and L4.
+* Lazy reading proved: T1-L (`T1_lazy`), CC and T2-L, bergdb item 001's WPs
+  L3 and L4. Lemma M is proved (`LM_newer`); the first touch is modeled (L1)
+  and checked by running (phystest).
 * The bounds (T3, T4), eviction, reclaim.

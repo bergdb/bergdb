@@ -15,3 +15,7 @@ root = "Test"
 [[lean_exe]]
 name = "tracecheck"
 root = "TraceCheck"
+
+[[lean_exe]]
+name = "phystest"
+root = "PhysTest"

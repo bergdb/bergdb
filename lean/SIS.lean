@@ -7,3 +7,4 @@ import SIS.Theorems
 import SIS.Phys
 import SIS.PhysTheorems
 import SIS.Example
+import SIS.PhysExample

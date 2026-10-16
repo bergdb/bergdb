@@ -100,7 +100,8 @@ Current state
 * Commits of this run (Q2 (b)): see the log entries.
 * Uncommitted work of this plan in bergdb: the files of the WPs in progress,
   named in the last log entry.
-* Long jobs running: none.
+* Long jobs running: C3's large conformance set (`conformance.sh large`,
+  from 16:44), in bergdb's `java/build/traces/large/`.
 * Stage 2's time box (plan, 5.3): not started; 60 hours from the start of
   E1.
 * Preserved builds: `l34-base` (A1; `java/build/perf/builds/l34-base/`,
@@ -118,8 +119,8 @@ Status
 | A4 | Probe H1: no adoption | done | 2026-10-16 |
 | C1 | Profile the checker | done | 2026-10-16 |
 | C2 | Fast versions, proven equal | done | 2026-10-16 |
-| C3 | Larger sets and parallel runs | not started | — |
-| L1 | The physical layer, part 1: loading | not started | — |
+| C3 | Larger sets and parallel runs | in progress | 2026-10-16 |
+| L1 | The physical layer, part 1: loading | done | 2026-10-16 |
 | L2 | Lemma M | done | 2026-10-16 |
 | L3 | Lazy startup and reads: T1-L | not started | — |
 | L4 | The writer after a lazy startup: CC, T2-L | not started | — |
@@ -669,4 +670,73 @@ Register: M8 (lemma M proved; the first touch itself is L1 to L5).
 
 Open, next: L1 (the physical layer, part 1; developed in scratch: the
 definitions build and the examples' checks pass), C3 (running).
+
+
+### 2026-10-16 17:04 to 17:25. WP L1, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `130f380`;
+uncommitted: C3's `java/stress/conformance.sh` (running), and this WP's
+files. Developed in a scratch copy of `lean/`.
+
+Did:
+
+1. The design, `docs/level2-alignment.md`, new section 13 "Lazy reading":
+   the state, Java's first touch, reads, the lazy startup, what is left out
+   and why, the checks by running, and the statements of L2 to L4 in plain
+   English.
+2. `lean/SIS/Phys.lean` (trusted, executable): `Slot`, `Obj`, `Mem`; Java's
+   first touch `Mem.follow` (Rule R for the whole process, M42; the table's
+   object if canonical or at least as new; the version read, cut back in the
+   section; `Mem.register`; the swizzle; the writer's `Mem.makeCanonical`);
+   `Mem.read`; `lazyStartup` (the section's canonical objects, the root's
+   object, memory slots between canonical objects, the rerun with the
+   writer's paths, the change on canonical objects, copied slots for new
+   pointers, `canonicalNode`). Each definition with a comment that names the
+   Java method.
+3. `lean/SIS/PhysExample.lean` (`#guard`, in `lake build`): in every state of
+   runs of example 3 (a virtual root) and example 2 (a written root, four
+   algorithms), reads at every time in increasing and in decreasing order
+   give P, every canonical object holds its node's whole history, also with
+   the writer's walks to every reachable node between reads; unit checks of
+   the first touch (Rule R with Java's runtime cut-back, M22; a newer
+   snapshot in the table; the writer's promotion; the version named read;
+   `canonicalNode`). The plan's example "a node of D that the rerun does not
+   reach" does not arise in the model (section 13.1 says why; in Java it came
+   from deletes of missing keys before F1-008-11's D1); a unit check covers
+   `canonicalNode` instead.
+4. `lean/PhysTest.lean`, `lake exe phystest` (in `lakefile.toml`; L3's random
+   test, written now): random runs, random reads and writer walks in random
+   order after lazy startups, and startups from prefixes of the stream.
+5. `lean/README.md`: the trusted part's change, the tests, how to run them.
+
+One error found by running, in the model, fixed before anything was
+committed: the root's object was not in the node table, so the rerun's
+entries for new top nodes were lost (reads after the last startup pos missed
+the newest top node); `lazyStartup` now enters it.
+
+Files changed: `lean/SIS/Phys.lean`, `lean/SIS.lean`, `lean/lakefile.toml`,
+`lean/README.md`; `lean/SIS/PhysExample.lean`, `lean/PhysTest.lean` (new);
+`docs/level2-alignment.md`; this file.
+
+Checks: `lake exe phystest 20 40`: all checks pass (29 s): example 3, four
+policies, 820 states each, 6,578 reads each give P, no canonical object not
+whole; 820 of 820 prefixes (crashes) read P; example 2, 16 algorithms, 4,363
+reads each. The Lean checks of 2.2 on bergdb's `lean/` with these files
+(17:21 to 17:28): `lake build` passes, 68 jobs, no warnings (the `#guard`s
+of PhysExample.lean included); `lake exe sistest 20 40`: all checks pass
+(421 s); `lake exe phystest 20 40`: all checks pass (28 s); the axioms of
+T1, T2, T13, LM_newer and LM_ruleR are `propext`, `Classical.choice` and
+`Quot.sound`, LM_cutTo's `propext` and `Quot.sound`; no `sorry`, `admit`,
+`axiom` or `unsafe` in `SIS/` and `Check/`; `sh test-traces/run.sh`: TRACE
+TESTS OK.
+
+Register: none closed (M8 and M42 close in L5).
+
+Open, next: L3, T1-L. The proof needs, beyond lemma M, that the stream
+slots of canonical objects name (after Rule R) the latest versions of their
+live children, or lead to canonical objects: for section nodes and for the
+nodes of D this follows from the logical invariants and marking (every
+reachable ancestor of a changed node is marked), and it is what Option K
+needs too (INV-SLOT, plan 8.5). L3 will develop it as a lemma of the
+logical model that E3 can reuse.
 
