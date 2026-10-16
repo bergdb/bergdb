@@ -255,6 +255,32 @@ public class ReclaimReaderTester {
         return outcome;
     }
 
+    /**
+     * Runs the scenario with seeds from firstSeed on, and checks the first one whose reader
+     * reaches the bytes of the cut. Whether a held reader still needs a version below the
+     * cut depends on where the versions lie, which a change of what the writer writes moves:
+     * since 2026-10-16 (a transaction is one model transaction, docs/level2-alignment.md, M1
+     * and M2), seed 1 of the CutStream scenario ends without reaching the cut, as seeds 2, 8
+     * and 11 did before. A reader that does not reach the cut must end with every KV, and the
+     * database must go on.
+     */
+    private static void checkSomeSeed(Kit kit, int valueSize, long firstSeed) throws Exception {
+        for (long seed = firstSeed; seed < firstSeed + 10; seed++) {
+            Outcome o = scenario(kit, valueSize, seed);
+            if (o.readerError == null) {
+                Assert.assertTrue("seed " + seed + ": the reader ended without all KVs: "
+                        + o.readerKvs, o.readerKvs >= 50);
+                Assert.assertTrue("seed " + seed + ": the database failed after the reader: "
+                        + o.failure, o.writesAfter);
+                continue;
+            }
+            check(o);
+            return;
+        }
+        throw new AssertionError("no reader reached the cut, seeds " + firstSeed + " to "
+                + (firstSeed + 9));
+    }
+
     private static void check(Outcome o) {
         Assert.assertTrue("the reader did not expire; it ended with: " + o.readerError
                 + ", KVs: " + o.readerKvs, o.readerError instanceof LookupTimeNotAvailableException);
@@ -381,7 +407,7 @@ public class ReclaimReaderTester {
      */
     @Nano
     public static void testReaderExpiresWhenCutOvertakesIt() throws Exception {
-        check(scenario(new CutKit(), 40, 1));
+        checkSomeSeed(new CutKit(), 40, 1);
     }
 
     /** A default-time scan uses a finite snapshot, which can expire while it is paused. */
@@ -396,6 +422,6 @@ public class ReclaimReaderTester {
      */
     @Nano("f")
     public static void testReaderExpiresWhenFilesAreDeleted(TestEnvironment c) throws Exception {
-        check(scenario(new FileKit(c.createTempDir()), 1000, 2));
+        checkSomeSeed(new FileKit(c.createTempDir()), 1000, 2);
     }
 }

@@ -420,3 +420,24 @@ transaction (M10). The trace checker now runs the model's own `init` and
 `step` and checks R1 to R4 on Java's traces; the exporter writes the node of
 top(i) on the `REC` line.
 
+2026-10-16. A Java transaction is one transaction of the Lean model
+(F1-008-11, WP D1; F1-008-10's prototype in production quality;
+`docs/level2-alignment.md`, M1, M2, 10.4). A transaction applies its keys
+one at a time, and a later key could split a node that an earlier key had
+created or changed: the created node was never reachable, the changed one
+kept klongs no lookup sees. Now a node that the transaction created is split
+in place (`Dag.handleFullNode`), and a node that existed before is replaced
+and then loses its klongs of the transaction (`KeyNode.toPreviousState`; the
+class comment of `KeyNode` says why readers are safe). Marking (step 3)
+happens when an operation ends, and only if it changed something, so a
+delete of a missing key marks nothing; a node that the transaction replaced
+leaves D. Java's step 3 is then the model's marking (T13). Tests:
+`DagTester.testTransactionLeavesNoUnreachableNode` (40 sorted puts, two root
+changes in one transaction), `DbTester.testDeleteOfMissingKeyMarksNothing`,
+`testReplacedNodeLeavesD`; `testPointerCreationListener` follows the new
+contract. `ReclaimReaderTester` now takes the first seed whose held reader
+reaches the cut: whether it does depends on where the versions lie, and with
+the change seed 1 no longer does (seeds 2, 8 and 11 did not before); a reader
+that does not reach the cut must end with every KV. The three level checks
+pass; 1.4 to 13.7 percent fewer stream bytes in five workloads.
+

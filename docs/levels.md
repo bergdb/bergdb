@@ -159,9 +159,29 @@ a node, and when index nodes are written.
   index nodes; the section's nodes registered as canonical; the super root
   at the startup time from the last record's topPos (below); the rerun; and
   D rebuilt from the stored got-dirty ids. A node in D that the rerun does
-  not reach is read from the position stored with its id. Such nodes exist:
-  a delete of a key that does not exist puts the nodes on its path in D,
-  but it is not stored, so it is not rerun.
+  not reach is read from the position stored with its id. Before 2026-10-16
+  such nodes came from deletes of keys that do not exist: such a delete put
+  the nodes on its path in D, but it is not stored, so it is not rerun. Now
+  it marks nothing (below).
+* A transaction is one transaction of the Lean model (2026-10-16,
+  [level2-alignment.md](level2-alignment.md), M1). A transaction applies its
+  keys one at a time; a later key may split a node that an earlier key
+  created or changed. A node that the transaction created is split in place
+  (Dag.handleFullNode): no reader can reach it before the transaction ends.
+  A node that existed before is replaced, as before, and then loses its
+  klongs of the transaction, which its replacement has. So no node that a
+  transaction created is unreachable at its time, and no node that is not
+  reachable at that time has a klong of it (A2 and A3).
+* Marking, step 3 (2026-10-16, M2): the index nodes that an operation (one
+  put or delete) follows, creates or changes get dirty when the operation
+  ends, and only if it changed something; a delete of a key that does not
+  exist marks nothing. At the end of the transaction, a node that the
+  transaction replaced and that got dirty in it is clean again and leaves D:
+  it is not current, and its latest version is good for every earlier time.
+  These are exactly the nodes that the model marks (T13); reclaim's touch
+  transactions keep every mark. Before, every node an operation reached got
+  dirty at once; the change writes 1.4 to 13.7 percent fewer stream bytes in
+  five workloads (level2-alignment.md, 10.4).
 * The super root (2026-10-15, [level2-alignment.md](level2-alignment.md),
   M18): every record stores topPos, the position of the latest version of the
   newest written top node, which is the super root at the record's startup
@@ -180,10 +200,9 @@ Open:
   a virtual root with top nodes as in Java, and T1, T2 and T13 are proven for
   it; the trace checker runs the model's own definitions on Java runs, and
   the references Java writes agree with the model's on every record checked.
-  Still open: a Java transaction applies its keys one at a time, so it is not
-  always one model transaction, and it marks more than the model (M1, M2;
-  10's change, to come in WP D1); and lemma M (lazy reading after a restart,
-  M8), argued and checked by restarts, not proven.
+  Since the same day, a Java transaction is one model transaction, and Java
+  marks what the model marks (M1, M2, above). Still open: lemma M (lazy
+  reading after a restart, M8), argued and checked by restarts, not proven.
 * A startup bug, found 2026-10-15 (level2-alignment.md, M18): transactions
   that change nothing could move the startup pos past every top node
   version, and the database then could not start. Fixed the same day (topPos,

@@ -245,8 +245,8 @@ classes and methods in `java/src/bergdb/`, "model" definitions in
 
 | | Mismatch | Java | Model | Resolution | WP, status |
 |---|---|---|---|---|---|
-| M1 | A transaction applies its keys one at a time, all at tt. A later key can replace (split) a node that an earlier key changed or created: the changed node keeps entries no lookup sees (A2 fails), the created node is never reachable (A3 fails). Measured in F1-008-10. | `Db.putKvs`; `Dag.handleFullNode` (771), `timeSplit` (789), `spaceSplit` (850); `TopDs.newSuperRoot` | `StepOK.current`, `newReachable` | Code: 10's change | D1, o |
-| M2 | Step 3 marks every index node an operation follows, creates or changes: also nodes the same transaction later replaces, and the path of a delete of a missing key, which changes nothing. | `Db.newPutData` listeners; `makeDirtyIfNeeded` | `gotDirtyOf` | Code (10's change 3), and model: marking as a step 3 option, T13 | Model: E1 done (`Algo.mark`, T13); code: D1, o |
+| M1 | A transaction applies its keys one at a time, all at tt. A later key can replace (split) a node that an earlier key changed or created: the changed node keeps entries no lookup sees (A2 fails), the created node is never reachable (A3 fails). Measured in F1-008-10. | `Db.putKvs`; `Dag.handleFullNode` (771), `timeSplit` (789), `spaceSplit` (850); `TopDs.newSuperRoot` | `StepOK.current`, `newReachable` | Code: 10's change | D1 done 2026-10-16 (in-place splits of nodes the transaction created; a replaced node loses the transaction's klongs; 10.4), c |
+| M2 | Step 3 marks every index node an operation follows, creates or changes: also nodes the same transaction later replaces, and the path of a delete of a missing key, which changes nothing. | `Db.newPutData` listeners; `makeDirtyIfNeeded` | `gotDirtyOf` | Code (10's change 3), and model: marking as a step 3 option, T13 | Model: E1 done (`Algo.mark`, T13); code: D1 done 2026-10-16 (marks at the end of an operation that changed something; replaced nodes leave D; 10.4), c |
 | M3 | Step 7 is the conservative test over all pointers, repeated to a fixpoint; T1 and T2 are proved for the exact test only. | `Db.handleStillDirtyNodes`; `DbHelper.hasDirtyChild` | `Algo.stillDirty`, `exactTest` | Model: T1, T2 for Java's test | E2 done (`javaTest`, `Proof/Still.lean`; no T15 needed in the Level 2 model), c |
 | M4 | Java's step 7 sees only children in memory (`getPointerNode`). It relies on every pointer of a written node to a node of D being a memory pointer then. | `DbHelper.hasDirtyChild`; `NodeCollection.resolvePointers` | 08's `ruleA`: all pointees | Argument (7.1) and an assertion in the exporter | Checked: no failure of the assertion in run B (C3, D0), c |
 | M5 | References: Java writes for each pointer the position of the newest version it knows (memory pointer: the object's spos; stream pointer: Rule R and the node table); the model writes lv(y), for live and dead pointers alike. | `NodeCollection.resolvePointers`; `Pointer.getSposForStream` (81); `StoredKeyNode`, `StoredTopNode` | `mkVersion` | Argument (7.2), and C-S compares every reference | Checked: every reference agrees (C3), c |
@@ -772,3 +772,48 @@ top(i) as a node and a record.
   of 8.6: a run of 41 transactions where the exact still-dirty test breaks T1
   with the virtual root, and BergDB's test does not.
 
+
+
+### 10.4 After D1, 2026-10-16
+
+D1 makes 10's change production code (`Dag.handleFullNode`,
+`timeSplitInPlace`, `spaceSplitInPlace`; `KeyNode.setContentFrom` and its
+class comment; `TopDs.newSuperRoot`; Db's `markAtEndOfOp`, `endOfOp`,
+`endOfTrans`). On bergdb `01f386a` plus the work tree:
+
+* **The Java tier** (`java/stress/A2A3Check2`, 10's checker, ported): ten
+  configurations, 16,701 transactions, node sizes 8 to 62, 1 to 400 keys per
+  transaction, deletes, two-segment keys, sorted and unsorted: no node with a
+  klong at tt that is not reachable at tt (A2), no created node that is not
+  reachable (A3), no resurrection (A5), and Db's marking equals the model's
+  marked set in every transaction. DagFuzz: 5 configurations, 200 rounds
+  each, 0 failures.
+* **The checker**, `conformance.sh small`: `TRACECHECK OK`, 50 of 50
+  traces (127,707 LIVE lines). The model's own mode (`--model`) shows only
+  the root (M11), as expected.
+* **Stream bytes** (`java/stress/DbJunk`, 10's five workloads, before D1 =
+  `01f386a`):
+
+  | Workload | Stream bytes, before D1 → D1 | Nodes in D not reachable, average |
+  |---|---|---|
+  | 1 to 3 keys, node size 30 | 3,991,496 → 3,855,424 (−3.4%) | 6 → 4 |
+  | the same with 20% deletes | 3,530,968 → 3,269,528 (−7.4%) | 5 → 4 |
+  | 200 keys | 24,659,712 → 24,305,256 (−1.4%) | 19 → 14 |
+  | 2,000 keys | 108,732,408 → 100,260,160 (−7.8%) | 411 → 257 |
+  | 1 to 40 keys, node size 8, 20% deletes | 33,389,400 → 28,831,048 (−13.7%) | 21 → 4 |
+
+* The gates: `LEVEL 1 OK`, `LEVEL 2 OK`, `LEVEL 3 OK`; 908 unit tests, 37
+  f-tests.
+* **Performance** (`SUITE=quick java/stress/performance.sh ab l2a-base
+  current`, twice, 10:22 to 10:52, against `a116ec7`, so D0's topPos is in
+  the comparison too): no alerts either time. The first run had `FORCE=1` at
+  89 percent idle (three attempts before were refused at 61 to 83 percent
+  idle while the machine was in use), the second started at 95 percent idle.
+  Medians of the second: reads −4.3 to +2.6 percent (get_latest −2.7,
+  get_latest_mt4 −4.3, scans +2.2 to +2.6), writes −1.0 (w-uni-1k-fin) and
+  +0.3 percent (w-uni-1k-inf), startup −0.9 to −2.7 percent. In the first run
+  reads were +0.9 to +7.3 percent and writes −1.3 to +0.3 percent, so the
+  differences are noise. Flagged in both, as after D0: the slowest commit of
+  r-1k-fin, 81 to 85 ms in every candidate run (in the first run equal to the
+  longest GC pause) against medians of 28 to 36 ms in the reference's (with
+  CVs of 61 to 85 percent); not an alert.

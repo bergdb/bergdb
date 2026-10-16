@@ -23,6 +23,19 @@ import bergdb.nanotest.Assert;
  * read the range 0..size-1 of the arrays. Once KeyNode.size is increased by the writer, all writes 
  * are visible for the readers as they read the KeyNode.size field.</p>
  * 
+ * <p>Two exceptions, both for klongs of the current transaction, which no reader sees: readers
+ * use lookup times before the transaction time, and every read stops at the first time klong
+ * after its lookup time (2026-10-16, Dag.handleFullNode):</p>
+ * <ul>
+ * <li>A node that existed before the transaction and that the transaction replaces by a split
+ * loses its klongs of the transaction: its size goes down (toPreviousState). A reader that read
+ * the larger size stops at the time klong of the transaction, before the slots that are now
+ * unused. The writer never adds klongs to the node again: it is not current.</li>
+ * <li>A node with no klongs before the transaction (the transaction created it, or it was
+ * empty) gets new arrays in place when it is split (setContentFrom). Its first klong, before
+ * and after, is the time klong of the transaction, where every reader stops.</li>
+ * </ul>
+ * 
  * @author Frans Lundberg
  */
 public class KeyNode implements Node {
@@ -875,6 +888,7 @@ public class KeyNode implements Node {
     /**
      * Changes the state of this node to the state it was at the given database time.
      * Klongs with time <= 'time' are retained, while klongs with a higher time are discarded.
+     * Lowers the size; see the class comment for when that is safe with concurrent readers.
      */
     public void toPreviousState(long time) {
         short sz = this.size;
@@ -897,6 +911,34 @@ public class KeyNode implements Node {
         }
         
         this.lastTimeIndex = -1;
+    }
+    
+    /**
+     * Replaces the content of this node by the content of 'other'. Write access required.
+     * Only for a node with no klongs before the current transaction, and an 'other' whose
+     * first klong is the time klong of the transaction: readers see none of the klongs, see
+     * the class comment. Used to split such a node in place (Dag.handleFullNode).
+     */
+    void setContentFrom(KeyNode other) {
+        assert other.size > 0 && Klong.getType(other.klongs[0]) == Klong.TYPE_TIME;
+        int sz = other.size;
+        int len = Math.max(sz, other.klongs.length);
+        long[] k = new long[len];
+        Node[] p = new Node[len];
+        long[] ps = new long[len];
+        System.arraycopy(other.klongs, 0, k, 0, sz);
+        System.arraycopy(other.pointers, 0, p, 0, sz);
+        System.arraycopy(other.pos, 0, ps, 0, sz);
+        
+        // The same monitor as ensureCapacity(): a reader that swizzles a pointer must not see
+        // the old pointer arrays with the new klongs.
+        synchronized (this) {
+            this.klongs = k;
+            this.pointers = p;
+            this.pos = ps;
+            this.lastTimeIndex = other.lastTimeIndex;
+        }
+        this.size = (short) sz;         // Synch action that publishes the changes to readers.
     }
     
     /**

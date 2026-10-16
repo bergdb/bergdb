@@ -1,8 +1,14 @@
 package bergdb.dag;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -332,26 +338,61 @@ public class DagTester {
         testPointerCreationListener(10*1000);
     }
     
+    /**
+     * The last pointer reported for a node is the node's last memory pointer, unless the
+     * transaction that reported it replaced the node by a split: a replaced node loses its
+     * klongs of that transaction (Dag.handleFullNode, since 2026-10-16), so then its last
+     * memory pointer is the last one reported in an earlier transaction.
+     */
     @SuppressWarnings("unchecked")
     private static void testPointerCreationListener(int n) {
         final HashMap<Node, Node> map1 = new HashMap<Node, Node>();
         final HashMap<Node, Node> map2 = new HashMap<Node, Node>();
+        final HashMap<Node, Node> earlier = new HashMap<Node, Node>();
+            // the last pointer reported in an earlier transaction, per node
+        final HashMap<Node, Long> timeOfLast = new HashMap<Node, Long>();
+        final long[] now = new long[]{10};      // the time of the current transaction
         
         Dag.PointerCreatedListener listener = new Dag.PointerCreatedListener() {
             public void pointerCreated(Node from, int index, Node to) {
+                Long t = timeOfLast.get(from);
+                if (t != null && t < now[0]) {
+                    earlier.put(from, map1.get(from));
+                }
                 map1.put(from, to);
+                timeOfLast.put(from, now[0]);
             }
         };
         
         Dag dag = emptyDag(10, listener);
         PutData pd = pd(dag);
         pd.tt = 20;
+        now[0] = pd.tt;
         pd.pointerCreatedListener = listener;
+        pd.nodeChangeListener = new Dag.NodeChangeListener() {
+            public void topNodeCreated(TopNode node) {}
+            public void keyNodeCreated(KeyNode node) {}
+            public void keyNodeChanged(KeyNode node) {}
+            public void valueNodeCreated(ValueNode node, long[] key) {}
+            
+            public void keyNodeReplaced(KeyNode node) {
+                Long t = timeOfLast.get(node);
+                if (t != null && t == now[0]) {
+                    Node e = earlier.get(node);
+                    if (e == null) {
+                        map1.remove(node);
+                    } else {
+                        map1.put(node, e);
+                    }
+                }
+            }
+        };
         
         for (int i = 0; i < n; i++) {
             dag.putKv(Keys.toSegments("/prefix-" + i), StringUtil.toBytes("v" + i), pd);
             if (i % 10 == 9) {
                 pd.tt += 10;
+                now[0] = pd.tt;
             }
         }
         
@@ -374,6 +415,115 @@ public class DagTester {
         Assert.assertTrue(map1.size() > 0);
         Assert.assertEquals("map sizes", map1.size(), map2.size());
         Assert.assertEquals("diff size", 0, diff.size());
+    }
+    
+    /**
+     * A transaction of 40 sorted puts into an empty tree at node size 8, then one of 40 puts
+     * between those keys: every node a transaction creates is reachable at its time, and
+     * every node it changed is reachable at its time, or was replaced and has no klong of
+     * the time (assumptions A2 and A3 of the Lean model; docs/level2-alignment.md, M1). The
+     * root changes several times in the first transaction, which makes one top node: the
+     * second root change updates it in place. Before 2026-10-16, 17 of the 39 key nodes that
+     * the first transaction created were never reachable (F1-008-10).
+     */
+    @Nano
+    private static void testTransactionLeavesNoUnreachableNode() {
+        Dag dag = Dag.createEmpty(10, 8, DUMMY_POINTER_FOLLOWER, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+        PutData pd = pd(dag);
+        final Set<Node> created = identitySet(), changed = identitySet(), replaced = identitySet();
+        final int[] topNodes = new int[1];
+        pd.nodeChangeListener = new Dag.NodeChangeListener() {
+            public void topNodeCreated(TopNode node) { created.add(node); topNodes[0]++; }
+            public void keyNodeCreated(KeyNode node) { created.add(node); }
+            public void keyNodeChanged(KeyNode node) { changed.add(node); }
+            public void valueNodeCreated(ValueNode node, long[] key) {}
+            public void keyNodeReplaced(KeyNode node) { replaced.add(node); }
+        };
+        
+        for (int round = 0; round < 2; round++) {
+            created.clear();
+            changed.clear();
+            replaced.clear();
+            topNodes[0] = 0;
+            pd.tt = 20 + 10 * round;
+            for (int i = 0; i < 40; i++) {
+                String key = "/k/" + (1000 + 2 * i + round);
+                dag.putKv(Keys.toSegments(key), StringUtil.toBytes("v" + key), pd);
+                pd.clearFast();
+            }
+            pd.clear();
+            
+            Set<Node> now = reachableAt(dag, pd.tt);
+            for (Node x : created) {
+                Assert.assertTrue("round " + round + ": created and not reachable, " + x,
+                        now.contains(x));
+            }
+            for (Node x : changed) {
+                if (!now.contains(x)) {
+                    Assert.assertTrue("round " + round + ": changed, not reachable, not replaced",
+                            replaced.contains(x));
+                    Assert.assertTrue("round " + round + ": replaced, with a klong of its time",
+                            !hasTimeKlong((KeyNode) x, pd.tt));
+                }
+            }
+            if (round == 0) {
+                Assert.assertEquals("top nodes made by the first transaction", 1, topNodes[0]);
+            }
+        }
+        
+        GetData gd = gd(dag);
+        for (int round = 0; round < 2; round++) {
+            for (int i = 0; i < 40; i++) {
+                String key = "/k/" + (1000 + 2 * i + round);
+                Assert.assertArrayEquals(key, StringUtil.toBytes("v" + key),
+                        dag.getOne(30, Keys.toSegments(key), gd));
+            }
+        }
+    }
+    
+    private static Set<Node> identitySet() {
+        return Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+    }
+    
+    private static boolean hasTimeKlong(KeyNode k, long t) {
+        for (int i = 0; i < k.size; i++) {
+            if (Klong.isTime(k.klongs[i]) && Klong.getTime(k.klongs[i]) == t) return true;
+        }
+        return false;
+    }
+    
+    /**
+     * The nodes reachable at time t: the super root at t, its root key node, and the live
+     * children at t, for each compare value the last key klong up to t that is not deleted.
+     */
+    private static Set<Node> reachableAt(Dag dag, long t) {
+        Set<Node> r = identitySet();
+        TopNode top = dag.getTopDs().findSuperRootAtTime(t, gd(dag));
+        if (top == null) return r;
+        r.add(top);
+        Deque<Node> stack = new ArrayDeque<Node>();
+        stack.push(top.rootPointer);
+        while (!stack.isEmpty()) {
+            Node x = stack.pop();
+            if (!r.add(x) || !(x instanceof KeyNode)) continue;
+            KeyNode k = (KeyNode) x;
+            int sz = k.size;
+            long del = k.getDeleteBitmapAtTime(t, sz);
+            LinkedHashMap<Long, Integer> last = new LinkedHashMap<Long, Integer>();
+            for (int i = 0; i < sz; i++) {
+                long klong = k.klongs[i];
+                if (Klong.isTime(klong)) {
+                    if (Klong.getTime(klong) > t) break;
+                    continue;
+                }
+                if (Klong.getType(klong) == Klong.TYPE_KEY && !Klong.isDeleted(del, i)) {
+                    last.put(Klong.getCompareValue(klong), i);
+                }
+            }
+            List<Integer> indexes = new ArrayList<Integer>(last.values());
+            for (int i : indexes) stack.push(k.pointers[i]);
+        }
+        return r;
     }
     
     @SuppressWarnings("unused")

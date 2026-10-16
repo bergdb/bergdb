@@ -2,6 +2,8 @@ package bergdb.core;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 import bergdb.common.Bytes;
@@ -11,6 +13,7 @@ import bergdb.dag.GetMany;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Keys;
 import bergdb.dag.Klong;
+import bergdb.dag.Node;
 import bergdb.dag.TopNode;
 import bergdb.nanotest.Assert;
 import static bergdb.nanotest.Assert.*;
@@ -1655,6 +1658,95 @@ public class DbTester {
         assertEquals(0, sp[0]);
         for (int i = 1; i < n; i++) {
             assertEquals("i=" + i, tpos[i-1], sp[i]);
+        }
+    }
+    
+    /** The nodes of D: the nodes that got dirty in the transactions of TransSeq. */
+    private static List<Node> nodesOfD(Db db) {
+        final List<Node> result = new ArrayList<Node>();
+        db.internal().transSeq().visitGotDirtyNodes(Long.MAX_VALUE, new TransSeq.NodeVisitor() {
+            public void node(Node node, long tpos, long lastTpos) {
+                result.add(node);
+            }
+        });
+        return result;
+    }
+    
+    /**
+     * A delete of a key that does not exist changes nothing, and marks nothing: no node gets
+     * dirty (step 3 of the Lean model; docs/level2-alignment.md, M2). Before 2026-10-16,
+     * every node on the path of the delete got dirty.
+     */
+    @Nano
+    public static void testDeleteOfMissingKeyMarksNothing() {
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup().startupDistance(100).maxNodeSize8().clock(clock).start();
+        long time = 10;
+        for (int i = 0; i < 30; i++) {
+            clock.setTime(time++);
+            db.execute(db.trans().put("/k/" + getKey(i), "v" + i).build());
+        }
+        // Transactions that change nothing move the startup pos past the puts: every node is
+        // written, and D is empty.
+        for (int i = 0; i < 40; i++) {
+            clock.setTime(time++);
+            db.execute(db.trans().build());
+        }
+        assertEquals("nodes of D before", 0, nodesOfD(db).size());
+        
+        clock.setTime(time++);
+        db.execute(db.trans().delete("/k/missing").delete("/other/missing").build());
+        assertEquals("nodes of D after", 0, nodesOfD(db).size());
+        assertTrue("root key node clean", !db.internal().superRoot().rootPointer.isDirty());
+        
+        for (int i = 0; i < 30; i++) {
+            Assert.assertArrayEquals("i=" + i, StringUtil.toBytes("v" + i),
+                    DbUtil.get(db, Long.MAX_VALUE, "/k/" + getKey(i)));
+        }
+    }
+    
+    /**
+     * A transaction that replaces a node by a split leaves that node clean and out of D,
+     * also when the transaction followed and changed it: it is not current at the
+     * transaction time, and its latest version is good for every earlier time (Db's
+     * endOfTrans; docs/level2-alignment.md, M2). The same for the super root that the
+     * transaction replaces.
+     */
+    @Nano
+    public static void testReplacedNodeLeavesD() {
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup().startupDistance(100).maxNodeSize8().clock(clock).start();
+        long time = 10;
+        for (int i = 0; i < 3; i++) {
+            clock.setTime(time++);
+            db.execute(db.trans().put("/k/" + getKey(i), "v" + i).build());
+        }
+        // Transactions that change nothing move the startup pos past the puts: every node is
+        // written and clean.
+        for (int i = 0; i < 20; i++) {
+            clock.setTime(time++);
+            db.execute(db.trans().build());
+        }
+        TopNode oldTop = db.internal().superRoot();
+        KeyNode oldRoot = oldTop.rootPointer;
+        assertTrue("old root clean before", !oldRoot.isDirty());
+        assertTrue("old top node clean before", !oldTop.isDirty());
+        
+        // Two more keys in one transaction: the root key node, full, is replaced.
+        clock.setTime(time++);
+        db.execute(db.trans().put("/k/" + getKey(10), "v10").put("/k/" + getKey(11), "v11").build());
+        
+        assertTrue("a new super root", db.internal().superRoot() != oldTop);
+        assertTrue("a new root key node", db.internal().superRoot().rootPointer != oldRoot);
+        assertTrue("old root clean after", !oldRoot.isDirty());
+        assertTrue("old top node clean after", !oldTop.isDirty());
+        for (Node n : nodesOfD(db)) {
+            assertTrue("old root in D", n != oldRoot);
+            assertTrue("old top node in D", n != oldTop);
+        }
+        for (int i : new int[]{0, 1, 2, 10, 11}) {
+            Assert.assertArrayEquals("i=" + i, StringUtil.toBytes("v" + i),
+                    DbUtil.get(db, Long.MAX_VALUE, "/k/" + getKey(i)));
         }
     }
 }

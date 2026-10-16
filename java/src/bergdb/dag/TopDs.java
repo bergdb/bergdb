@@ -62,6 +62,7 @@ public class TopDs {
         final int id = newSuperRoot.topNodeId;
         
         nodeChangeListener.topNodeCreated(newSuperRoot);
+        nodeChangeListener.topNodeReplaced(superRoot);  // it existed before this transaction
         pointerCreationListener.pointerCreated(newSuperRoot, 0, newRoot);
         Pointer inherited = new Pointer();
         

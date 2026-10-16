@@ -767,6 +767,15 @@ public class Dag {
      * If last.size > maxNodeSize / 2, then 'node' is split into two nodes -
      * a space-split is made. Otherwise, 'node' is replaced by the last version 
      * of it - a time-split.
+     * 
+     * <p>A node that the current transaction created is not replaced: it is split in place
+     * (timeSplitInPlace, spaceSplitInPlace). A node that existed before is replaced, and then
+     * loses the klongs of the current transaction, which its replacement has. So a
+     * transaction leaves no node that it created unreachable at its time, and no klong of
+     * its time in a node that is not reachable at that time: a whole transaction is one
+     * transaction of the Lean model (assumptions A2 and A3; docs/level2-alignment.md,
+     * M1). Before 2026-10-16, a later key of a transaction could replace a node that an
+     * earlier key had created or changed.</p>
      */
     private void handleFullNode(final KeyNode node, final int depth,
             final KlongWithPointer[] toInsert, final long tTime, KeyNode last, PutData pd) {
@@ -774,11 +783,107 @@ public class Dag {
         // When this method is called, 'last' has not been added reported as a new node
         // (pd.nodeChangeListener.keyNodeChanged(last) not called).
         //
+        // A node with no klong before tTime was created by this transaction (or was empty
+        // before it). No reader can see its klongs: readers use lookup times before tTime,
+        // and it is linked only by klongs of tTime. So it can be changed in place.
+        //
+        
+        final boolean newInTrans = node.getFirstTime() == tTime;
         
         if (last.size > this.maxNodeSize / 2) {
-            spaceSplit(node, last, depth, toInsert, pd);
+            if (newInTrans) {
+                spaceSplitInPlace(node, last, depth, toInsert, pd);
+            } else {
+                spaceSplit(node, last, depth, toInsert, pd);
+            }
         } else {
-            timeSplit(tTime, last, depth, toInsert, pd);
+            if (newInTrans) {
+                timeSplitInPlace(tTime, node, last, toInsert, pd);
+            } else {
+                timeSplit(tTime, last, depth, toInsert, pd);
+            }
+        }
+        
+        if (!newInTrans) {
+            // 'node' is no longer current. Its klongs of tTime are in its replacement
+            // ('last' copies every live klong), and no reader sees them (lookup times are
+            // before tTime), so they go: otherwise the node would keep klongs that no lookup
+            // ever sees. See the class comment of KeyNode about the size of a replaced node.
+            node.toPreviousState(tTime - 1);
+            pd.nodeChangeListener.keyNodeReplaced(node);
+        }
+    }
+    
+    /**
+     * A time split of a node that the current transaction created: the node is compacted
+     * in place to its last version, instead of being replaced by it. See handleFullNode().
+     */
+    private void timeSplitInPlace(final long tTime, final KeyNode node, KeyNode last,
+            KlongWithPointer[] toAppend, PutData pd) {
+        for (int i = 0; i < toAppend.length; i++) {
+            KlongWithPointer kwi = toAppend[i];
+            boolean replaced = last.replaceKlong(tTime, kwi.klong, kwi.node, pd.accessData);
+            if (!replaced) last.addKlong(tTime, kwi.klong, kwi.node, pd.accessData);
+        }
+        
+        node.setContentFrom(last);
+        reportNewPointers(node, pd.pointerCreatedListener);
+        pd.nodeChangeListener.keyNodeChanged(node);
+        pd.splitListener.nodeSplit(Dag.TIME_SPLIT_1);
+        assert node.checkWithMessage() == null : node.checkWithMessage();
+    }
+    
+    /**
+     * A space split of a node that the current transaction created: the node keeps the first
+     * half, in place, and only the second half is a new node. A space root or a segment root
+     * gets a new root above both halves, as in spaceSplit(). See handleFullNode().
+     */
+    private void spaceSplitInPlace(final KeyNode node, KeyNode last, final int depth,
+            final KlongWithPointer[] toInsert, PutData pd) {
+        final long tt = pd.tt;
+        final boolean isSegmentLeaf = node.isSegmentLeaf();
+        final KeyNode first = new KeyNode(isSegmentLeaf);     // only holds the first half
+        final KeyNode second = new KeyNode(isSegmentLeaf);
+        final KeyNode parent = pd.getParent(depth);
+        
+        pd.nodeChangeListener.keyNodeCreated(second);
+        long secondKlong = node.firstAndSecond(tt, last, toInsert, first, second);
+        node.setContentFrom(first);
+        reportNewPointers(node, pd.pointerCreatedListener);
+        reportNewPointers(second, pd.pointerCreatedListener);
+        pd.nodeChangeListener.keyNodeChanged(node);
+        pd.nodeChangeListener.keyNodeChanged(second);
+        
+        if (parent == null || parent.isSegmentLeaf()) {
+            // 'node' is the space root or a segment root: a new root above both halves.
+            KeyNode newRoot = new KeyNode(false);
+            pd.nodeChangeListener.keyNodeCreated(newRoot);
+            newRoot.addKlong(tt, Klong.EMPTY_KEY, node, pd.accessData);
+            pd.pointerCreatedListener.pointerCreated(newRoot, newRoot.size - 1, node);
+            newRoot.addKlong(tt, secondKlong, second, pd.accessData);
+            pd.pointerCreatedListener.pointerCreated(newRoot, newRoot.size - 1, second);
+            
+            if (parent == null) {
+                topDs.newSuperRoot(tt, newRoot, pd.accessData, pd.pointerCreatedListener,
+                        pd.nodeChangeListener);
+                pd.splitListener.nodeSplit(Dag.SPACE_SPLIT_3);
+            } else {
+                long klong1 = pd.keyAccessPath.getKlong(depth);
+                assert klong1 != Klong.NULL : "Missing klong in keyAccessPath, " + depth;
+                pd.oneKwi[0].klong = klong1;
+                pd.oneKwi[0].node = newRoot;
+                pd.oneKwi[0].pos = pd.accessData;
+                appendKlongs(parent, depth - 1, pd.oneKwi, pd);
+                pd.splitListener.nodeSplit(Dag.SPACE_SPLIT_2);
+            }
+            assert newRoot.checkWithMessage() == null;
+        } else {
+            // The parent already points to 'node', the first half.
+            pd.oneKwi[0].klong = secondKlong;
+            pd.oneKwi[0].node = second;
+            pd.oneKwi[0].pos = pd.accessData;
+            appendKlongs(parent, depth - 1, pd.oneKwi, pd);
+            pd.splitListener.nodeSplit(Dag.SPACE_SPLIT_1);
         }
     }
     
@@ -1088,6 +1193,20 @@ public class Dag {
          * Reports that an existing KeyNode was appended to.
          */
         public void keyNodeChanged(KeyNode node);
+        
+        /**
+         * Reports that a KeyNode that existed before the current transaction was replaced by
+         * a split: it is no longer current, and it has no klongs of the transaction
+         * (Dag.handleFullNode). Added 2026-10-16; does nothing by default.
+         */
+        public default void keyNodeReplaced(KeyNode node) {}
+        
+        /**
+         * Reports that the super root, which existed before the current transaction, was
+         * replaced by a new super root (TopDs.newSuperRoot). Added 2026-10-16; does nothing
+         * by default.
+         */
+        public default void topNodeReplaced(TopNode node) {}
     }
     
     public static final NodeChangeListener DO_NOTHING_NODE_CHANGE_LISTENER = new NodeChangeListener() {

@@ -4,7 +4,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import bergdb.common.Bug;
 import bergdb.common.NullProgressListener;
@@ -636,23 +639,35 @@ public class Db {
                 assert node.isDirty == false : "node is dirty, " + node;
                 setIdOfNode(node);
                 registerNewNode(node);
-                makeDirtyIfNeeded(node);
+                markAtEndOfOp(node);
+                opChanged = true;
             }
             
             public void keyNodeCreated(KeyNode node) {
                 setIdOfNode(node);
                 registerNewNode(node);
-                makeDirtyIfNeeded(node);
+                markAtEndOfOp(node);
+                opChanged = true;
             }
             
             public void keyNodeChanged(KeyNode node) {
-                makeDirtyIfNeeded(node);
+                markAtEndOfOp(node);
+                opChanged = true;
             }
             
             public void valueNodeCreated(ValueNode node, long[] key) {
                 setIdOfNode(node);
                 x.transNodes.addValueNode(node, key);
                 x.trans.listener.valueNodeCreated(node, key);
+                opChanged = true;
+            }
+            
+            public void keyNodeReplaced(KeyNode node) {
+                if (x.transInfo != null) replacedInTrans.add(node);
+            }
+            
+            public void topNodeReplaced(TopNode node) {
+                if (x.transInfo != null) replacedInTrans.add(node);
             }
         };
         
@@ -663,12 +678,12 @@ public class Db {
         pd.pointerListener = new Dag.PointerListener() {
             public void superRootAccessed(TopNode superRoot) {
                 pListener.superRootAccessed(superRoot);
-                makeDirtyIfNeeded(superRoot);
+                markAtEndOfOp(superRoot);
             }
             
             public void pointerFollowed(Node predecessor, int pointerIndex, Node result, int pointerType) {
                 pListener.pointerFollowed(predecessor, pointerIndex, result, pointerType);
-                makeDirtyIfNeeded(result);
+                markAtEndOfOp(result);
             }
         };
         
@@ -816,6 +831,64 @@ public class Db {
     private void registerNewNode(Node node) {
         node.setCanonical(true);
         cache.register(node);
+    }
+
+    // ======== Marking: step 3 of a transaction ========
+    //
+    // The index nodes that an operation (one put or delete of the transaction) follows,
+    // creates or changes get dirty when the operation ends, and only if it changed something:
+    // a delete of a key that does not exist marks nothing. At the end of the transaction, a
+    // node that the transaction replaced (Dag.handleFullNode, TopDs.newSuperRoot) is no longer
+    // current; if it got dirty in the transaction, it is clean again and leaves D, since its
+    // latest version is still good for every earlier time. So step 3 marks exactly the nodes
+    // that the Lean model marks: the index nodes current at the transaction time with a node
+    // created or changed by the transaction below them (T13 in lean/; docs/level2-alignment.md,
+    // M2). Before 2026-10-16, every such node got dirty at once, also on the path of a delete
+    // of a missing key and when the transaction replaced the node later. Reclaim's touch
+    // transactions keep every mark (Level 3, Trans.touch).
+    
+    /** The index nodes that the current operation followed, created or changed. */
+    private final ArrayList<Node> opMarks = new ArrayList<Node>();
+    
+    /** Whether the current operation changed the Dag. */
+    private boolean opChanged = false;
+    
+    /** The nodes that the current transaction replaced. */
+    private final Set<Node> replacedInTrans = 
+            Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+    
+    private void markAtEndOfOp(Node node) {
+        if (x.transInfo == null) return;
+        if (node != null && node.isIndexNode()) opMarks.add(node);
+    }
+    
+    /**
+     * Makes the nodes of the operation dirty if it changed something, or always.
+     */
+    private void endOfOp(boolean always) {
+        if (always || opChanged) {
+            for (Node n : opMarks) makeDirtyIfNeeded(n);
+        }
+        opMarks.clear();
+        opChanged = false;
+    }
+    
+    /**
+     * Takes the nodes that the transaction replaced out of the nodes that got dirty in it.
+     */
+    private void endOfTrans() {
+        if (!x.trans.touch && !replacedInTrans.isEmpty()) {
+            ArrayList<Node> kept = new ArrayList<Node>(x.transInfo.gotDirtyNodes.size());
+            for (Node n : x.transInfo.gotDirtyNodes) {
+                if (replacedInTrans.contains(n)) {
+                    n.setDirty(false);
+                } else {
+                    kept.add(n);
+                }
+            }
+            x.transInfo.gotDirtyNodes = kept;
+        }
+        replacedInTrans.clear();
     }
 
     /**
@@ -1450,6 +1523,9 @@ public class Db {
         final int length = x.trans.kvs.length;        
         x.putData.tt = x.trans.tt;
         x.putData.accessData = getAccessData();
+        opMarks.clear();        // in case an earlier transaction ended with an exception
+        opChanged = false;
+        replacedInTrans.clear();
 
         if (x.trans.touch) {
             // 2026-10-13: was after the puts. Before them, the touch makes dirty 
@@ -1458,6 +1534,7 @@ public class Db {
             // (Trans.dirtiedBytes). The puts then make dirty only new nodes and nodes
             // outside the range.
             touchRange(x.trans.touchFrom, x.trans.touchTo);
+            endOfOp(true);
             x.putData.clearFast();
         }
 
@@ -1474,10 +1551,12 @@ public class Db {
             }
 
             dag.putKv(kv.getKey(), kv.getValue(), x.putData);
+            endOfOp(false);
             
             x.putData.clearFast();
         }
         
+        endOfTrans();
         x.putData.clear();
     }
 
