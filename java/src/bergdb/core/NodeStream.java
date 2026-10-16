@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import bergdb.common.Bytes;
 import bergdb.common.StringUtil;
 import bergdb.dag.Node;
+import bergdb.dag.TopNode;
 import bergdb.dag.Spos;
 import bergdb.storage.MetaBlock;
 import bergdb.storage.RecoverableStream;
@@ -112,8 +113,16 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * Appends a transaction to the node stream.
      */
     void appendNodes(TransNodes nodes, Trans trans, ArrayList<Node> gotDirtyNodes) {
+        appendNodes(nodes, trans, gotDirtyNodes, null);
+    }
+    
+    /**
+     * As appendNodes() above; the transaction stores the position of the latest version of
+     * topNode, the newest written top node (StoredTrans.topPos).
+     */
+    void appendNodes(TransNodes nodes, Trans trans, ArrayList<Node> gotDirtyNodes, TopNode topNode) {
         long pos = getNextPos();
-        serializer.serialize(nodes, trans.tt, pos, trans.startupPos, gotDirtyNodes);
+        serializer.serialize(nodes, trans.tt, pos, trans.startupPos, gotDirtyNodes, topNode);
         
         trans.tpos = pos;
         trans.lastPos = serializer.getOutputLastSpos();

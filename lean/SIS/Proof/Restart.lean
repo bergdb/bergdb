@@ -66,7 +66,57 @@ theorem gotDirtyOf_congr (sp : Spec V T) (S : Stream V T) {P P' : Struct V} (h :
   unfold allIds at h1 h2
   rw [h1, h2, h x]
 
-theorem step_congr (sp : Spec V T) (al : Algo V T) (hex : al.stillDirty = exactTest sp)
+/-- `reachFrom` only looks at P through its nodes. -/
+theorem SameNodes.reachFrom {sp : Spec V T} {P P' : Struct V} (h : SameNodes P P') (t : Time) :
+    ∀ (b : Nat) (x : NodeId) (n : Node V), n.level < b →
+      SIS.reachFrom sp P t x n = SIS.reachFrom sp P' t x n := by
+  intro b
+  induction b with
+  | zero => intro x n hb; omega
+  | succ b ih =>
+    intro x n hb
+    rw [reachFrom_eq, reachFrom_eq]
+    congr 1
+    apply flatMap_congr_mem
+    intro y _
+    rw [h y]
+    split
+    · rename_i m _
+      split
+      · exact ih y m (by omega)
+      · rfl
+    · rfl
+
+theorem marked_congr (sp : Spec V T) {P P' : Struct V} (h : SameNodes P P') (c : Changes V)
+    (i : Time) (x : NodeId) : marked sp P c i x = marked sp P' c i x := by
+  unfold marked
+  rw [h.reachable i x, h x]
+  split
+  · rename_i n _
+    rw [h.reachFrom i (n.level + 1) x n (by omega)]
+  · rfl
+
+theorem markOf_congr (sp : Spec V T) {P P' : Struct V} (h : SameNodes P P') (c : Changes V)
+    (D : Dirty) (i : Time) : markOf sp P c D i = markOf sp P' c D i := by
+  unfold markOf
+  have hf : (fun x => isIndex P x && !inD D x && marked sp P c i x) =
+      (fun x => isIndex P' x && !inD D x && marked sp P' c i x) := by
+    funext x; rw [isIndex_congr h x, marked_congr sp h c i x]
+  rw [hf]
+  apply mergeSort_eq_of_mem (nodup_filter (nodup_eraseDups _) _) (nodup_filter (nodup_eraseDups _) _)
+  intro x
+  rw [List.mem_filter, List.mem_filter]
+  have h1 := mem_allIds P x
+  have h2 := mem_allIds P' x
+  unfold allIds at h1 h2
+  rw [h1, h2, h x]
+
+theorem topOf_sameNodes (sp : Spec V T) {P P' : Struct V} (h : SameNodes P P') (S : Stream V T)
+    (s : Nat) : topOf sp P S s = topOf sp P' S s := by
+  unfold topOf topV
+  rw [h root]
+
+theorem step_congr (sp : Spec V T) (al : Algo V T) (hst : AlgOK sp al)
     {db1 db2 : DB V T} (h : Rel db1 db2) (tr : T) : Rel (step sp al db1 tr) (step sp al db2 tr) := by
   obtain ⟨hS, hD, hP⟩ := h
   obtain ⟨P1, D1, S1⟩ := db1
@@ -80,7 +130,13 @@ theorem step_congr (sp : Spec V T) (al : Algo V T) (hex : al.stillDirty = exactT
   have hvs0 : (parts sp al ⟨P1, D1, S1⟩ tr).vs0 = (parts sp al ⟨P2, D1, S1⟩ tr).vs0 := by
     rw [parts_vs0, parts_vs0, hc]; exact writeAll_congr sp _ _ hPP _ _
   have hgd3 : (parts sp al ⟨P1, D1, S1⟩ tr).gd3 = (parts sp al ⟨P2, D1, S1⟩ tr).gd3 := by
-    rw [parts_gd3, parts_gd3, hvs0]; exact gotDirtyOf_congr sp _ hPP _ _
+    rw [parts_gd3, parts_gd3]
+    congr 1
+    by_cases hmk : al.mark = true
+    · simp only [hmk, ↓reduceIte]
+      rw [hc]; exact markOf_congr sp hPP _ _ _
+    · simp only [hmk]
+      rw [hvs0]; exact gotDirtyOf_congr sp _ hPP _ _
   have hD1 : (parts sp al ⟨P1, D1, S1⟩ tr).D1 = (parts sp al ⟨P2, D1, S1⟩ tr).D1 := by
     rw [parts_D1, parts_D1, hgd3]
   have hs : (parts sp al ⟨P1, D1, S1⟩ tr).s = (parts sp al ⟨P2, D1, S1⟩ tr).s := by
@@ -94,21 +150,17 @@ theorem step_congr (sp : Spec V T) (al : Algo V T) (hex : al.stillDirty = exactT
   have hS' : (parts sp al ⟨P1, D1, S1⟩ tr).S' = (parts sp al ⟨P2, D1, S1⟩ tr).S' := by
     rw [parts_S', parts_S', hvs]
   have hr7 : (parts sp al ⟨P1, D1, S1⟩ tr).r7 = (parts sp al ⟨P2, D1, S1⟩ tr).r7 := by
-    rw [parts_r7, parts_r7, hS', hD2, htaken, stillDirtyOf_exact sp al hex,
-      stillDirtyOf_exact sp al hex]
-    have : ∀ x, dirty sp (parts sp al ⟨P2, D1, S1⟩ tr).S' (parts sp al ⟨P1, D1, S1⟩ tr).P
-        (List.length S1) x = dirty sp (parts sp al ⟨P2, D1, S1⟩ tr).S' (parts sp al ⟨P2, D1, S1⟩ tr).P
-        (List.length S1) x := fun x => hPP.dirty _ x
-    simp only [this]
+    rw [parts_r7, parts_r7, hS', hD2, htaken]
+    exact stillDirtyOf_congr al hst.still.congr hPP _ _ _ _
   have hR : (parts sp al ⟨P1, D1, S1⟩ tr).R = (parts sp al ⟨P2, D1, S1⟩ tr).R := by
-    rw [parts_R, parts_R, hs, hvs, hgd3, hr7, hS']
+    rw [parts_R, parts_R, hs, hvs, hgd3, hr7, hS', topOf_sameNodes sp hPP]
   rw [step_eq_parts, step_eq_parts]
   exact ⟨by simp only [hR], by simp only [hr7], hPP⟩
 
 /-! ### Runs with restarts -/
 
 theorem T2_strong (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool))
-    (hok : RunOK sp al (ts.map (·.1))) (hex : al.stillDirty = exactTest sp) :
+    (hok : RunOK sp al (ts.map (·.1))) (hst : AlgOK sp al) :
     ∀ j ≤ ts.length, Rel (runRestarts sp al (ts.take j)) (st sp al (ts.map (·.1)) j) := by
   intro j
   induction j with
@@ -120,8 +172,8 @@ theorem T2_strong (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool))
   | succ j ih =>
     intro hj
     have hj' : j < (ts.map (·.1)).length := by simp; omega
-    have h1 := step_congr sp al hex (ih (by omega)) ts[j].1
-    have hst : st sp al (ts.map (·.1)) (j + 1) = step sp al (st sp al (ts.map (·.1)) j) ts[j].1 := by
+    have h1 := step_congr sp al hst (ih (by omega)) ts[j].1
+    have hsj : st sp al (ts.map (·.1)) (j + 1) = step sp al (st sp al (ts.map (·.1)) j) ts[j].1 := by
       rw [st_succ sp al _ hj']
       simp
     have htake : ts.take (j + 1) = ts.take j ++ [ts[j]] := by
@@ -129,14 +181,14 @@ theorem T2_strong (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool))
     simp only [runRestarts] at ih ⊢
     rw [htake, List.foldl_append]
     simp only [List.foldl_cons, List.foldl_nil]
-    rw [hst]
+    rw [hsj]
     split
     · -- A restart: startup from the stream gives the same state.
       have hS : (step sp al (List.foldl (fun db p =>
             if p.2 = true then startup sp (step sp al db p.1).S else step sp al db p.1) (init sp)
             (List.take j ts)) ts[j].1).S = (step sp al (st sp al (ts.map (·.1)) j) ts[j].1).S := h1.1
-      rw [hS, ← hst]
-      have := T1_strong sp al (ts.map (·.1)) hok hex (k := j + 1) (by simp; omega)
+      rw [hS, ← hsj]
+      have := T1_strong sp al (ts.map (·.1)) hok hst (k := j + 1) (by simp; omega)
       exact ⟨rfl, this.2, this.1⟩
     · exact h1
 

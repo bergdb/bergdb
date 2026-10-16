@@ -46,6 +46,15 @@ structure PFacts (sp : Spec V T) (P : Struct V) (k : Nat) : Prop where
   rootIn : (P.get? root).isSome
   born : ∀ x, (P.get? x).isSome → ∃ t ≤ k, reachable sp P t x = true
 
+/-- No entry points to the root. -/
+theorem PFacts.ptr_ne_root {P : Struct V} {k : Nat} (h : PFacts sp P k) {x : NodeId} {n : Node V}
+    (hx : P.get? x = some n) {e : Entry V} (he : e ∈ n.hist) {y : NodeId}
+    (hy : y ∈ sp.ptrs e.val) : y ≠ root := by
+  obtain ⟨n0, h0⟩ := Option.isSome_iff_exists.mp h.rootIn
+  exact SIS.ptr_ne_root h0 h.ptrs (fun x hx => by
+    obtain ⟨t, -, hr⟩ := h.born x hx
+    exact ⟨t, (reachable_iff _ _ _ _).mp hr⟩) hx he hy
+
 theorem step_pfacts (hok : SpecOK sp) {k : Nat} (hinv : Inv sp db k)
     (hstep : StepOK sp db.P (k + 1) (parts sp al db tr).c) :
     PFacts sp (parts sp al db tr).P (k + 1) := by

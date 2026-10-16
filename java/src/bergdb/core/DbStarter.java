@@ -1,12 +1,8 @@
 package bergdb.core;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import bergdb.common.StringUtil;
-import bergdb.core.StoredTrans.Parser;
-import bergdb.core.StoredTrans.Serializer;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.GetData;
@@ -115,6 +111,7 @@ public class DbStarter {
         dag = new Dag(superRoot, maxNodeSize);
         db.internal().setDag(dag);
         db.internal().setTransSeq(transSeq);
+        db.internal().setNewestWrittenTop(superRoot);
         db.internal().createPutAndGetData();
         
         assert keyNode.isDirty() == false;
@@ -264,14 +261,10 @@ public class DbStarter {
     }
 
     private void findSuperNodeAtStartupTime() {
-        TopNode lastSuperNode = findLatestSuperRoot(transactions);
+        TopNode lastSuperNode = topNodeOfLastTransaction();
         
-        if (lastSuperNode == null) {
-            throw new StreamFormatException("Could not find super node in startup section, "
-                    + "starting at pos " + startupPos + " and time " + startupTime + ".");
-        }
-        
-        // We found the latest super node, but we need the one at t = startupTime.
+        // It is the super root at the startup time (docs/level2-alignment.md, 8.3): a top node
+        // is written only after the startup pos has reached the transaction that created it.
         
         Dag tempDag = new Dag(lastSuperNode, maxNodeSize);
         TopDs tempTopDs = tempDag.getTopDs();
@@ -281,30 +274,57 @@ public class DbStarter {
         if (superRoot == null) {
             throw new StreamFormatException("No super root at time " + startupTime + " was found.");
         }
+        assert superRoot == lastSuperNode : "the newest written top node " + lastSuperNode.getId()
+                + " is not the super root at the startup time, " + superRoot.getId();
+        db.internal().setNewestWrittenTop(lastSuperNode);
     }
 
-    private static TopNode findLatestSuperRoot(List<StoredTrans> transactions) {
-        TopNode current = null;
+    /**
+     * Returns the canonical object of the top node whose latest version the last transaction
+     * names (StoredTrans.topPos): the newest written top node. Before 2026-10-15, startup
+     * scanned the section for the newest top node, which the section need not hold: when the
+     * startup pos moved past every top node version, the database could not start
+     * (docs/level2-alignment.md, M18).
+     */
+    private TopNode topNodeOfLastTransaction() {
+        StoredTrans last = transactions.get(transactions.size() - 1);
+        long pos = last.topPos;
+        if (!Spos.isValid(pos) || Spos.isVpos(pos)) {
+            throw new StreamFormatException("The last transaction, at " + last.tpos
+                    + ", names no top node (topPos " + pos + ").");
+        }
         
-        for (StoredTrans trans : transactions) {
-            for (StoredNode storedNode : trans.nodes) {
-                Node node = storedNode.getNode();
-                
-                if (node.isTopNode()) {
-                    TopNode candidate = (TopNode) node;
-                    
-                    if (current == null) {
-                        current = candidate;
-                    } else {
-                        if (candidate.topNodeId >= current.topNodeId) {
-                            current = candidate;
-                        }
-                    }
-                }
+        Long id = posToId.get(pos);
+        if (id == null) {
+            id = db.internal().nodeStream().readNodeHeader(pos).id();
+        }
+        
+        Long newPos = newById.get(id);     // Rule R; topPos names the latest version anyway
+        assert newPos == null || newPos == pos : "topPos " + pos + " is not the newest version "
+                + newPos + " of top node " + id;
+        long ref = newPos != null && newPos > pos ? newPos : pos;
+        
+        Node node;
+        StoredNode stored = posMap.get(ref);
+        if (stored != null) {
+            node = stored.getNode();        // canonical, registerSectionNodes()
+        } else {
+            Cache3 nodeTable = db.internal().cache();
+            Node inTable = nodeTable.getNode(id);
+            if (inTable != null && inTable.isCanonical()) {
+                node = inTable;
+            } else {
+                node = db.internal().nodeStream().readNode(ref);
+                node.setCanonical(true);
+                node = nodeTable.register(node);
             }
         }
         
-        return current;
+        if (!(node instanceof TopNode)) {
+            throw new StreamFormatException("topPos " + pos + " of the last transaction names a "
+                    + node.getClass().getSimpleName() + ", not a top node.");
+        }
+        return (TopNode) node;
     }
 
     private void prepareDb() {
@@ -768,111 +788,4 @@ public class DbStarter {
         Assert.assertEquals(Spos.NULL, m.backtrack(10, 40));
     }
     
-    @Nano
-    private static void testFindLatestSuperNode1() {
-        TopNode top = findLatestSuperRoot(new ArrayList<StoredTrans>());
-        Assert.assertNull(top);
-    }
-    
-    @Nano
-    private static void testFindLatestSuperNode2() {
-        ArrayList<StoredTrans> transactions = new ArrayList<StoredTrans>();
-        
-        transactions.add(withOneTopNode(1000, 12));
-        transactions.add(testTrans1(2000));
-        transactions.add(testTrans2(3000));
-                
-        TopNode top = findLatestSuperRoot(transactions);
-        
-        Assert.assertEquals(12, top.getTopNodeId());
-    }
-    
-    @Nano
-    private static void testFindLatestSuperNode3() {
-        ArrayList<StoredTrans> transactions = new ArrayList<StoredTrans>();
-        
-        transactions.add(testTrans1(1000));
-        transactions.add(testTrans2(2000));
-        transactions.add(testTrans1(3000));
-                
-        TopNode top = findLatestSuperRoot(transactions);
-        
-        Assert.assertEquals(2, top.getTopNodeId());
-    }
-    
-    @Nano
-    private static void testFindLatestSuperNode4() {
-        ArrayList<StoredTrans> transactions = new ArrayList<StoredTrans>();
-        
-        transactions.add(withOneTopNode(4000, 123));
-        transactions.add(testTrans1(1000));
-        transactions.add(testTrans2(2000));
-        transactions.add(testTrans1(3000));
-                
-        TopNode top = findLatestSuperRoot(transactions);
-        
-        Assert.assertEquals(123, top.getTopNodeId());
-    }
-    
-    private static StoredTrans testTrans1(long tpos) {
-        Serializer serializer = new Serializer();
-        TransNodes transNodes = new TransNodes();
-        
-        ValueNode v0 = new ValueNode(new byte[]{});
-        ValueNode v1 = new ValueNode(new byte[]{12});
-        ValueNode v2 = new ValueNode(new byte[]{13, 14});
-        
-        KeyNode n = new KeyNode();
-        n.addKlong(10, Klong.createKey(StringUtil.toBytes("a")), v0, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(20, Klong.createKey(StringUtil.toBytes("b")), v1, AccessData.DEFAULT_ACCESS_DATA);
-        n.addKlong(30, Klong.createKey(StringUtil.toBytes("c")), v2, AccessData.DEFAULT_ACCESS_DATA);
-        n.setId(103);
-        
-        transNodes.addValueNode(v0, Keys.toSegments("a"));
-        transNodes.addValueNode(v1, Keys.toSegments("b"));
-        transNodes.addValueNode(v2, Keys.toSegments("c"));
-        transNodes.addKeyNode(n);
-        
-        serializer.serialize(transNodes, 100, 200, -1, new ArrayList<Node>());
-        byte[] buffer = serializer.getTransBuffer();
-        
-        Parser parser = new Parser();
-        parser.parse(tpos, buffer);
-        
-        return new StoredTrans(parser);
-    }
-    
-    private static StoredTrans testTrans2(long tpos) {
-        Serializer serializer = new Serializer();
-        TransNodes transNodes = new TransNodes();
-        
-        TopNode t1 = TopNode.createDummy(1);
-        TopNode t2 = TopNode.createDummy(2);
-        
-        transNodes.addTopNode(t1);
-        transNodes.addTopNode(t2);
-        
-        serializer.serialize(transNodes, 100, 200, -1, new ArrayList<Node>());
-        byte[] buffer = serializer.getTransBuffer();
-        
-        Parser parser = new Parser();
-        parser.parse(tpos, buffer);
-        
-        return new StoredTrans(parser);
-    }
-    
-    private static StoredTrans withOneTopNode(long tpos, int topNodeId) {
-        Serializer serializer = new Serializer();
-        TransNodes transNodes = new TransNodes();
-        
-        transNodes.addTopNode(TopNode.createDummy(topNodeId));
-        
-        serializer.serialize(transNodes, 100, 200, -1, new ArrayList<Node>());
-        byte[] buffer = serializer.getTransBuffer();
-        
-        Parser parser = new Parser();
-        parser.parse(tpos, buffer);
-        
-        return new StoredTrans(parser);
-    }
 }

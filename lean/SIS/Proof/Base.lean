@@ -1,7 +1,7 @@
 /-
-Proofs, part 15: what startup reads (readFrom, readAt, baseStruct) and the rerun.
+Proofs, part 15: what startup reads (readAt, baseStruct) and the rerun.
 -/
-import SIS.Proof.Recon
+import SIS.Proof.VRead
 
 set_option linter.unusedSectionVars false
 
@@ -9,74 +9,11 @@ namespace SIS
 
 variable {V T : Type} [DecidableEq V]
 
-theorem readFrom_eq (sp : Spec V T) (S : Stream V T) (s : Nat) (ruleR : Bool) (t : Time)
-    (v : Version V) :
-    readFrom sp S s ruleR t v =
-      (v.node, v) :: (sp.live (v.hist.upTo t)).flatMap (fun y =>
-        match follow S s ruleR y (v.ref? y) with
-        | none => []
-        | some w => if w.level < v.level then readFrom sp S s ruleR t w else []) := by
-  rw [readFrom]; rfl
-
 section Read
 
 variable {sp : Spec V T} {db : DB V T} {k : Nat}
 
-/-- Reading from a version that is good with Rule R gives the nodes reachable
-from its node, each with a version that is good with Rule R. -/
-theorem Inv.read (hinv : Inv sp db k) (t : Time) :
-    ∀ (b : Nat) (v : Version V) (n : Node V), v.level < b →
-      GoodR sp db.S db.P (lastSp db.S) t v → db.P.get? v.node = some n → v.level = n.level →
-      (∃ r, db.S.versionAt r v.node = some v) →
-      (readFrom sp db.S (lastSp db.S) true t v).map (·.1) = reachFrom sp db.P t v.node n ∧
-      ∀ p ∈ readFrom sp db.S (lastSp db.S) true t v,
-        GoodR sp db.S db.P (lastSp db.S) t p.2 ∧ p.2.node = p.1 ∧ ∃ r, db.S.versionAt r p.1 = some p.2 := by
-  intro b
-  induction b with
-  | zero => intro v n h; omega
-  | succ b ih =>
-    intro v n hb hg hn hlev hvS
-    have hg0 := hg
-    cases hg with
-    | mk _ n' hn' hc hsome hlt hgood =>
-    rw [hn] at hn'
-    cases hn'
-    -- The children, one by one.
-    have hch : ∀ y ∈ sp.live (v.hist.upTo t), ∃ w m,
-        follow db.S (lastSp db.S) true y (v.ref? y) = some w ∧ db.P.get? y = some m ∧
-        w.level = m.level ∧ w.level < v.level ∧ GoodR sp db.S db.P (lastSp db.S) t w ∧ w.node = y ∧
-        ∃ r, db.S.versionAt r y = some w := by
-      intro y hy
-      obtain ⟨w, hw⟩ := Option.isSome_iff_exists.mp (hsome y hy)
-      obtain ⟨hwy, r, hr⟩ := follow_spec hw
-      obtain ⟨-, -, m, hm, -, hlevw, -⟩ := hinv.version_node hr
-      exact ⟨w, m, hw, hm, hlevw, hlt y hy w hw, hgood y hy w hw, hwy, r, hr⟩
-    constructor
-    · rw [readFrom_eq, reachFrom_eq]
-      simp only [List.map_cons, List.map_flatMap]
-      rw [← hc]
-      congr 1
-      apply flatMap_congr_mem
-      intro y hy
-      obtain ⟨w, m, hw, hm, hlevw, hltw, hgw, hwy, r, hr⟩ := hch y hy
-      rw [hw, hm]
-      have hlt' : m.level < n.level := by omega
-      simp only [hltw, hlt', ite_true]
-      have := (ih w m (by omega) hgw (by rw [hwy]; exact hm) hlevw ⟨r, by rw [hwy]; exact hr⟩).1
-      rw [hwy] at this
-      exact this
-    · intro p hp
-      rw [readFrom_eq] at hp
-      rcases List.mem_cons.mp hp with rfl | hp
-      · exact ⟨hg0, rfl, hvS⟩
-      · simp only [List.mem_flatMap] at hp
-        obtain ⟨y, hy, hp⟩ := hp
-        obtain ⟨w, m, hw, hm, hlevw, hltw, hgw, hwy, r, hr⟩ := hch y hy
-        rw [hw] at hp
-        simp only [hltw, ite_true] at hp
-        exact (ih w m (by omega) hgw (by rw [hwy]; exact hm) hlevw ⟨r, by rw [hwy]; exact hr⟩).2 p hp
-
-theorem Inv.lv_root (hinv : Inv sp db k) : ∃ u, db.S.lv root = some u := by
+theorem Inv.lv_root (hinv : Inv sp db k) (hv : sp.virt = false) : ∃ u, db.S.lv root = some u := by
   obtain ⟨n0, hn0⟩ := Option.isSome_iff_exists.mp hinv.rootIn
   cases hl : db.S.lv root with
   | some u => exact ⟨u, rfl⟩
@@ -85,7 +22,7 @@ theorem Inv.lv_root (hinv : Inv sp db k) : ∃ u, db.S.lv root = some u := by
     cases hd : n0.isData
     · have hidx : isIndex db.P root = true := by simp [isIndex, hn0, hd]
       have hdirty : dirty sp db.S db.P k root = true := by simp [dirty, hl]
-      obtain ⟨d, hD⟩ := (inD_iff _ _).mp (hinv.inv2 root hidx hdirty)
+      obtain ⟨d, hD⟩ := (inD_iff _ _).mp (hinv.inv2 root hidx (by simp [written, hv]) hdirty)
       have hsd := (sectionD_mem (hinv.inv1 ▸ hD)).1
       have := hinv.inv4 root d hD hl 0 (by omega)
       have hr : reachable sp db.P 0 root = true := (reachable_iff _ _ _ _).mpr (Reach.root n0 hn0)
@@ -93,28 +30,27 @@ theorem Inv.lv_root (hinv : Inv sp db k) : ∃ u, db.S.lv root = some u := by
     · obtain ⟨v, hv, -⟩ := hinv.dataV root n0 hn0 hd
       rw [hl] at hv; simp at hv
 
-theorem reachable_root {P : Struct V} {n : Node V} (h : P.get? root = some n) (t : Time) :
-    reachable sp P t root = true := (reachable_iff _ _ _ _).mpr (Reach.root n h)
-
 /-- Reading the stream at a time t <= s gives exactly the nodes reachable at t,
-each with a version that is good with Rule R (L-RECON). -/
-theorem Inv.readAt_spec (hinv : Inv sp db k) (hls : LiveSub sp) {t : Time} (ht : t ≤ lastSp db.S) :
+each with a version that is good with Rule R (L-RECON), with the root
+written (no virtual root). -/
+theorem Inv.readAt_spec_nv (hinv : Inv sp db k) (hls : LiveSub sp) (hv : sp.virt = false)
+    {t : Time} (ht : t ≤ lastSp db.S) :
     (SIS.readAt sp db.S (lastSp db.S) true t).map (·.1) = reachList sp db.P t ∧
     ∀ p ∈ SIS.readAt sp db.S (lastSp db.S) true t,
-      GoodR sp db.S db.P (lastSp db.S) t p.2 ∧ p.2.node = p.1 ∧
-        ∃ r, db.S.versionAt r p.1 = some p.2 := by
+      GoodR sp db.S db.P (lastSp db.S) t p.2 ∧ p.2.node = p.1 ∧ VersionOf db.P p.1 p.2 := by
   obtain ⟨n0, hn0⟩ := Option.isSome_iff_exists.mp hinv.rootIn
-  obtain ⟨u, hu⟩ := hinv.lv_root
+  obtain ⟨u, hu⟩ := hinv.lv_root hv
   have hsk : lastSp db.S ≤ k := by have := hinv.spLt; omega
   -- The record of root's latest version, from top(k).
-  have htop : db.S.getLast?.bind (·.top) = some u.recNo := by
+  have htop : db.S.getLast?.bind (·.top) = some (root, u.recNo) := by
     cases hl : db.S.getLast? with
     | none =>
       have : db.S = [] := List.getLast?_eq_none_iff.mp hl
       have := hinv.len; simp_all
     | some R =>
       simp only [Option.bind_some]
-      rw [hinv.top R hl, hu]; rfl
+      rw [hinv.top R hl]
+      simp [topOf, hv, hu]
   -- The version of root that startup starts from is good with Rule R.
   have hrecon := hinv.recon hls
   obtain ⟨v0, hf, hg0, hv0S, hv0node⟩ : ∃ v0, follow db.S (lastSp db.S) true root (some u.recNo) = some v0 ∧
@@ -131,29 +67,39 @@ theorem Inv.readAt_spec (hinv : Inv sp db k) (hls : LiveSub sp) {t : Time} (ht :
       have hu' := hinv.lv_at hu
       obtain ⟨huy, -⟩ := hinv.version_node hu'
       have hus : u.recNo ≤ lastSp db.S := by
-        cases Nat.lt_or_ge (lastSp db.S) u.recNo with
-        | inl h =>
+        cases Nat.lt_or_ge u.recNo (lastSp db.S) with
+        | inl h => exact Nat.le_of_lt h
+        | inr h =>
           have := (newest_eq_none_iff _ _ _).mp hnw u.recNo h
           rw [hu'] at this; simp at this
-        | inr h => exact h
       refine ⟨u, by rw [follow_old hnw]; exact hu', ?_, ⟨u.recNo, by rw [huy]; exact hu'⟩, huy⟩
       exact (hrecon (u.level + 1)).2 u.recNo u (by rw [huy]; exact hu') (by omega) t ht
         (by rw [huy]; exact reachable_root hn0 t)
         (hinv.lout hls hu hus ht (reachable_root hn0 t))
   have hread : SIS.readAt sp db.S (lastSp db.S) true t = readFrom sp db.S (lastSp db.S) true t v0 := by
-    unfold SIS.readAt
+    unfold SIS.readAt startVersion topVersion
     rw [htop]
-    simp only
+    simp only [hv, Bool.false_eq_true, ↓reduceIte]
     rw [hf]
   obtain ⟨r0, hr0⟩ := hv0S
   rw [hv0node] at hr0
   obtain ⟨-, -, m, hm, -, hlev, -⟩ := hinv.version_node hr0
   have hR := hinv.read t (v0.level + 1) v0 m (by omega) hg0 (by rw [hv0node]; exact hm) hlev
-    ⟨r0, by rw [hv0node]; exact hr0⟩
+    (by rw [hv0node]; exact hinv.versionOf hr0)
   rw [hread]
   refine ⟨?_, hR.2⟩
   rw [hR.1, hv0node]
   simp only [reachList, hm]
+
+/-- Reading the stream at a time t <= s gives exactly the nodes reachable at t,
+each with a version that is good with Rule R (L-RECON). -/
+theorem Inv.readAt_spec (hinv : Inv sp db k) (hls : LiveSub sp) {t : Time} (ht : t ≤ lastSp db.S) :
+    (SIS.readAt sp db.S (lastSp db.S) true t).map (·.1) = reachList sp db.P t ∧
+    ∀ p ∈ SIS.readAt sp db.S (lastSp db.S) true t,
+      GoodR sp db.S db.P (lastSp db.S) t p.2 ∧ p.2.node = p.1 ∧ VersionOf db.P p.1 p.2 := by
+  cases hv : sp.virt
+  · exact hinv.readAt_spec_nv hls hv ht
+  · exact hinv.readAt_spec_virt hls hv ht
 
 end Read
 
@@ -261,9 +207,8 @@ theorem Inv.base_get? (hinv : Inv sp db k) (hls : LiveSub sp) (x : NodeId) :
       simp at this
     | some u =>
       obtain ⟨t, ht, hmem', hlater⟩ := lookup_rev_flatMap_range _ _ x' u hl
-      obtain ⟨hgu, hux, r, hr⟩ := (hinv.readAt_spec hls (t := t) ht).2 _ hmem'
-      simp only at hgu hux hr
-      obtain ⟨-, hrec, n, hn, huh, hlev, hdata⟩ := hinv.version_node hr
+      obtain ⟨hgu, hux, r, n, hn, huh, hlev, hdata⟩ := (hinv.readAt_spec hls (t := t) ht).2 _ hmem'
+      simp only at hgu hux hn huh hlev hdata
       rw [hn]
       simp only [Option.map_some, Option.some.injEq, cutNode]
       cases hgu with

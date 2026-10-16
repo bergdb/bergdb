@@ -101,20 +101,62 @@ theorem step_D1_mem {k : Nat} (hlen : db.S.length = k + 1) (e : NodeId × Nat) :
       subst h1
       exact Or.inr ⟨x, h2, rfl⟩
 
-theorem step_gd3_mem {k : Nat} (hlen : db.S.length = k + 1) (x : NodeId) :
+/-- What step 3 gives in either way (testing or marking): nodes of P, index
+nodes, not in D. -/
+theorem step_gd3_basic {k : Nat} (hlen : db.S.length = k + 1) (x : NodeId)
+    (hx : x ∈ (parts sp al db tr).gd3) :
+    ((parts sp al db tr).P.get? x).isSome ∧ isIndex (parts sp al db tr).P x = true ∧
+      inD db.D x = false := by
+  rw [parts_gd3, hlen, List.mem_filter] at hx
+  replace hx := hx.1
+  split at hx
+  · simp only [markOf, List.mem_mergeSort, List.mem_filter, mem_allIds, Bool.and_eq_true,
+      Bool.not_eq_true'] at hx
+    exact ⟨hx.1, hx.2.1.1, hx.2.1.2⟩
+  · simp only [gotDirtyOf, List.mem_mergeSort, List.mem_filter, mem_allIds, Bool.and_eq_true,
+      Bool.not_eq_true'] at hx
+    exact ⟨hx.1, hx.2.1.1, hx.2.1.2⟩
+
+/-- Step 3 never gives a virtual root. -/
+theorem step_gd3_written (x : NodeId) (hx : x ∈ (parts sp al db tr).gd3) : written sp x = true := by
+  rw [parts_gd3, List.mem_filter] at hx
+  exact hx.2
+
+/-- Step 3 gives the dirty index nodes not in D, but a virtual root. With
+marking, this needs that marking finds the dirty nodes (hm; T13,
+`step_marked_iff`). -/
+theorem step_gd3_mem {k : Nat} (hlen : db.S.length = k + 1)
+    (hm : al.mark = true → ∀ x, isIndex (parts sp al db tr).P x = true → inD db.D x = false →
+      written sp x = true →
+      marked sp (parts sp al db tr).P (parts sp al db tr).c (k + 1) x =
+        dirty sp (db.S.building (parts sp al db tr).vs0) (parts sp al db tr).P (k + 1) x)
+    (x : NodeId) :
     x ∈ (parts sp al db tr).gd3 ↔
       ((parts sp al db tr).P.get? x).isSome ∧ isIndex (parts sp al db tr).P x = true ∧
-        inD db.D x = false ∧
+        inD db.D x = false ∧ written sp x = true ∧
         dirty sp (db.S.building (parts sp al db tr).vs0) (parts sp al db tr).P (k + 1) x = true := by
-  rw [parts_gd3, hlen]
-  simp only [gotDirtyOf, List.mem_mergeSort, List.mem_filter, mem_allIds, Bool.and_eq_true,
-    Bool.not_eq_true']
-  exact ⟨fun ⟨a, ⟨b, c⟩, d⟩ => ⟨a, b, c, d⟩, fun ⟨a, b, c, d⟩ => ⟨a, ⟨b, c⟩, d⟩⟩
+  rw [parts_gd3, hlen, List.mem_filter]
+  split
+  · rename_i hmark
+    simp only [markOf, List.mem_mergeSort, List.mem_filter, mem_allIds, Bool.and_eq_true,
+      Bool.not_eq_true']
+    constructor
+    · rintro ⟨⟨a, ⟨b, c⟩, d⟩, w⟩
+      exact ⟨a, b, c, w, by rw [← hm hmark x b c w]; exact d⟩
+    · rintro ⟨a, b, c, w, d⟩
+      exact ⟨⟨a, ⟨b, c⟩, by rw [hm hmark x b c w]; exact d⟩, w⟩
+  · simp only [gotDirtyOf, List.mem_mergeSort, List.mem_filter, mem_allIds, Bool.and_eq_true,
+      Bool.not_eq_true']
+    exact ⟨fun ⟨⟨a, ⟨b, c⟩, d⟩, w⟩ => ⟨a, b, c, w, d⟩, fun ⟨a, b, c, w, d⟩ => ⟨⟨a, ⟨b, c⟩, d⟩, w⟩⟩
 
 theorem step_gd3_nodup : (parts sp al db tr).gd3.Nodup := by
   rw [parts_gd3]
-  simp only [gotDirtyOf]
-  exact (List.mergeSort_perm _ _).symm.nodup_iff.mp (nodup_filter (nodup_eraseDups _) _)
+  apply nodup_filter
+  split
+  · simp only [markOf]
+    exact (List.mergeSort_perm _ _).symm.nodup_iff.mp (nodup_filter (nodup_eraseDups _) _)
+  · simp only [gotDirtyOf]
+    exact (List.mergeSort_perm _ _).symm.nodup_iff.mp (nodup_filter (nodup_eraseDups _) _)
 
 theorem step_s_le {k : Nat} (hlen : db.S.length = k + 1) : (parts sp al db tr).s ≤ k := by
   rw [parts_s, hlen]

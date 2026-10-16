@@ -21,15 +21,15 @@ theorem node_cut_eq {n n0 : Node V} {s : Nat} (h1 : n.level = n0.level) (h2 : n.
   rw [h1, h2, h3, h4]
 
 /-- P up to s, as startup reads it, is the run's P after T(s). -/
-theorem base_sameNodes (hok : RunOK sp al ts) (hex : al.stillDirty = exactTest sp) {k : Nat}
+theorem base_sameNodes (hok : RunOK sp al ts) (hst : AlgOK sp al) {k : Nat}
     (hk : k ≤ ts.length) :
     SameNodes (baseStruct sp (st sp al ts k).S (lastSp (st sp al ts k).S) true)
       (st sp al ts (lastSp (st sp al ts k).S)).P := by
-  have hinv := inv_st sp al ts hok hex k hk
+  have hinv := inv_st sp al ts hok hst k hk
   have hls : LiveSub sp := hok.1.liveSub
   have hsk : lastSp (st sp al ts k).S ≤ k := by have := hinv.spLt; omega
-  have hinvs := inv_st sp al ts hok hex _ (Nat.le_trans hsk hk)
-  have hgrow := st_grow sp al ts hok hex hsk hk
+  have hinvs := inv_st sp al ts hok hst _ (Nat.le_trans hsk hk)
+  have hgrow := st_grow sp al ts hok hst hsk hk
   intro x
   rw [hinv.base_get? hls]
   have hreach : ∀ t ≤ lastSp (st sp al ts k).S, ∀ y,
@@ -53,11 +53,11 @@ theorem base_sameNodes (hok : RunOK sp al ts) (hex : al.stillDirty = exactTest s
       exact hex' ⟨t, ht, by rw [hreach t ht x]; exact hr⟩
 
 /-- The rerun of the section gives back the run's P. -/
-theorem rerun_sameNodes (hok : RunOK sp al ts) (hex : al.stillDirty = exactTest sp) {k : Nat}
+theorem rerun_sameNodes (hok : RunOK sp al ts) (hst : AlgOK sp al) {k : Nat}
     (hk : k ≤ ts.length) {P0 : Struct V}
     (h0 : SameNodes P0 (st sp al ts (lastSp (st sp al ts k).S)).P) :
     SameNodes (rerun sp (st sp al ts k).S (lastSp (st sp al ts k).S) P0) (st sp al ts k).P := by
-  have hinv := inv_st sp al ts hok hex k hk
+  have hinv := inv_st sp al ts hok hst k hk
   have hsk : lastSp (st sp al ts k).S ≤ k := by have := hinv.spLt; omega
   generalize hs : lastSp (st sp al ts k).S = s at h0 hsk
   have hidx : sectionIdx (st sp al ts k).S s = List.range' (s + 1) (k - s) := by
@@ -77,10 +77,10 @@ theorem rerun_sameNodes (hok : RunOK sp al ts) (hex : al.stillDirty = exactTest 
       rw [List.range'_concat, List.foldl_append]
       simp only [List.foldl_cons, List.foldl_nil, Nat.one_mul]
       have hj : s + 1 + m = (s + m) + 1 := by omega
-      rw [hj, st_trans sp al ts hok hex (by omega) (by omega) hk]
+      rw [hj, st_trans sp al ts hok hst (by omega) (by omega) hk]
       simp only [Nat.add_sub_cancel]
       have ih' := ih (by omega)
-      rw [show s + (m + 1) = (s + m) + 1 by omega, st_P_succ sp al ts hok hex (by omega),
+      rw [show s + (m + 1) = (s + m) + 1 by omega, st_P_succ sp al ts hok hst (by omega),
         ih'.view (s + m)]
       exact ih'.apply _ _
   have := key (k - s) (Nat.le_refl _)
@@ -88,15 +88,15 @@ theorem rerun_sameNodes (hok : RunOK sp al ts) (hex : al.stillDirty = exactTest 
 
 /-- T1, strong form: startup from the stream of any prefix of a run gives
 back every node of P, and D. -/
-theorem T1_strong (hok : RunOK sp al ts) (hex : al.stillDirty = exactTest sp) {k : Nat}
+theorem T1_strong (hok : RunOK sp al ts) (hst : AlgOK sp al) {k : Nat}
     (hk : k ≤ ts.length) :
     SameNodes (startup sp (st sp al ts k).S).P (st sp al ts k).P ∧
       (startup sp (st sp al ts k).S).D = (st sp al ts k).D := by
-  have hinv := inv_st sp al ts hok hex k hk
+  have hinv := inv_st sp al ts hok hst k hk
   refine ⟨?_, ?_⟩
   · show SameNodes (rerun sp (st sp al ts k).S (lastSp (st sp al ts k).S)
       (baseStruct sp (st sp al ts k).S (lastSp (st sp al ts k).S) true)) (st sp al ts k).P
-    exact rerun_sameNodes sp al ts hok hex hk (base_sameNodes sp al ts hok hex hk)
+    exact rerun_sameNodes sp al ts hok hst hk (base_sameNodes sp al ts hok hst hk)
   · rw [startup, startup_D, hinv.inv1]
 
 end Run

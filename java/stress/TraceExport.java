@@ -1,0 +1,886 @@
+package bergdb.core;
+
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.util.*;
+
+import bergdb.dag.GetData;
+import bergdb.dag.KeyNode;
+import bergdb.dag.Keys;
+import bergdb.dag.Klong;
+import bergdb.dag.KlongWithPointer;
+import bergdb.dag.Node;
+import bergdb.dag.Spos;
+import bergdb.dag.TopNode;
+import bergdb.dag.ValueNode;
+import bergdb.storage.RecoverableStream;
+import bergdb.stream.MemoryStream;
+
+/**
+ * Writes a trace of a Java run in the terms of the Lean model, for the checker in lean/
+ * (lake exe tracecheck). The mapping from Java to the model (α) and the trace format are in
+ * docs/level2-alignment.md, sections 2 and 9. Written 2026-10-15 for F1-008-11, WP C1.
+ *
+ * Run A executes a deterministic workload without restarts and records, after every
+ * transaction, the changes to P, the record R(i) and D. Run B (probe=K) executes the same
+ * workload with a restart after every K transactions, checks the lookups after each restart,
+ * and compares its stream and D with run A's. The trace is written when both runs are done,
+ * because the levels (section 8.4) are computed from the final structure.
+ *
+ * In package bergdb.core to reach Db internals.
+ *
+ * Usage: java [-Dprop=value ...] -cp bergdb.jar:stress bergdb.core.TraceExport seed out.trace
+ *
+ * Properties:
+ *   n=N        transactions after R(0) (default 60)
+ *   keys=N     distinct keys (default 50)
+ *   maxnode=N  node size 8, 14, 30 or 62 (default 8)
+ *   sd=N       startup distance in bytes (default 500)
+ *   ops=N      KVs per transaction, at most (default 4); exact=1: exactly ops
+ *   bulk=N     one transaction in ten puts N new keys in sorted order (default 0)
+ *   del=P      percent of KVs that delete a key of the key space (default 0)
+ *   nodel=P    percent of transactions that delete only keys that never exist (default 0)
+ *   empty=P    percent of transactions without KVs (default 0)
+ *   long=1     half of the keys get two key segments
+ *   valsize=N  value sizes 1..N bytes (default 20)
+ *   probe=K    run B: a restart after every K transactions (default 0: no run B)
+ *   live=1     LIVE lines: Java's own live children, for each node, at each of its times
+ */
+public class TraceExport {
+    final long seed;
+    final int n = Integer.getInteger("n", 60);
+    final int keyCount = Integer.getInteger("keys", 50);
+    final int maxNode = Integer.getInteger("maxnode", 8);
+    final int startupDistance = Integer.getInteger("sd", 500);
+    final int ops = Integer.getInteger("ops", 4);
+    final boolean exact = "1".equals(System.getProperty("exact"));
+    final int bulk = Integer.getInteger("bulk", 0);
+    final int del = Integer.getInteger("del", 0);
+    final int nodel = Integer.getInteger("nodel", 0);
+    final int empty = Integer.getInteger("empty", 0);
+    final boolean longKeys = "1".equals(System.getProperty("long"));
+    final int valsize = Integer.getInteger("valsize", 20);
+    final int probe = Integer.getInteger("probe", 0);
+    final boolean live = "1".equals(System.getProperty("live"));
+
+    // The workload: per transaction, keys and values (null value: delete).
+    final List<String[]> wkeys = new ArrayList<String[]>();
+    final List<byte[][]> wvalues = new ArrayList<byte[][]>();
+    final long[] times;
+
+    final List<String> errors = new ArrayList<String>();
+
+    TraceExport(long seed) {
+        this.seed = seed;
+        Random rnd = new Random(seed);
+        times = new long[n];
+        long time = 10;
+        int nextNew = keyCount;     // keys of bulk loads, beyond the key space
+        for (int i = 0; i < n; i++) {
+            time += 1 + rnd.nextInt(20);
+            times[i] = time;
+            List<String> ks = new ArrayList<String>();
+            List<byte[]> vs = new ArrayList<byte[]>();
+            int r = rnd.nextInt(100);
+            if (r < empty) {
+                // no KVs
+            } else if (r < empty + nodel) {
+                int c = 1 + rnd.nextInt(ops);
+                for (int j = 0; j < c; j++) {
+                    ks.add("/missing/" + i + "/" + j);
+                    vs.add(null);
+                }
+            } else if (bulk > 0 && rnd.nextInt(10) == 0) {
+                List<String> sorted = new ArrayList<String>();
+                for (int j = 0; j < bulk; j++) sorted.add(key(nextNew++));
+                Collections.sort(sorted);
+                for (String k : sorted) {
+                    ks.add(k);
+                    vs.add(value(rnd));
+                }
+            } else {
+                int c = exact ? ops : 1 + rnd.nextInt(ops);
+                Set<String> seen = new HashSet<String>();
+                for (int j = 0; j < c; j++) {
+                    String k = key(rnd.nextInt(keyCount));
+                    if (!seen.add(k)) continue;
+                    ks.add(k);
+                    vs.add(rnd.nextInt(100) < del ? null : value(rnd));
+                }
+            }
+            wkeys.add(ks.toArray(new String[0]));
+            wvalues.add(vs.toArray(new byte[0][]));
+        }
+    }
+
+    String key(int i) {
+        return longKeys && i % 2 == 1 ? "/longer/key/" + i : "/k/" + i;
+    }
+
+    byte[] value(Random rnd) {
+        byte[] v = new byte[1 + rnd.nextInt(valsize)];
+        rnd.nextBytes(v);
+        return v;
+    }
+
+    Db start(MemoryStream stream, CoreTestClock clock) {
+        DbBuilder b = Db.builder().testSetup(stream).clock(clock).startupDistance(startupDistance);
+        if (maxNode == 8) b.maxNodeSize8();
+        if (maxNode == 14) b.maxNodeSize14();
+        if (maxNode == 30) b.maxNodeSize30();
+        if (maxNode == 62) b.maxNodeSize62();
+        return b.start();
+    }
+
+    // ======== The state of run A, in model terms ========
+
+    /** An entry of a history: model time and value tokens (docs, 9.1). */
+    static final class Ent {
+        final int time;
+        final String val;
+        Ent(int time, String val) { this.time = time; this.val = val; }
+        public boolean equals(Object o) {
+            return o instanceof Ent && ((Ent) o).time == time && ((Ent) o).val.equals(val);
+        }
+        public int hashCode() { return time * 31 + val.hashCode(); }
+        public String toString() { return time + " " + val; }
+    }
+
+    /** A node of P: kind and the Java object (null for the root). */
+    static final class PNode {
+        final long id;
+        final Node obj;
+        final int created;      // index of the creating record
+        List<Ent> hist = new ArrayList<Ent>();
+        PNode(long id, Node obj, int created) { this.id = id; this.obj = obj; this.created = created; }
+        boolean isData() { return obj != null && obj.getType() != Node.TYPE_TOP_NODE
+                && obj.getType() != Node.TYPE_KEY_NODE; }
+    }
+
+    /** A version in a record. */
+    static final class Ver {
+        long id;
+        String kind;
+        List<Ent> hist = new ArrayList<Ent>();
+        TreeMap<Long, Integer> refs = new TreeMap<Long, Integer>();
+    }
+
+    /** What run A saw for one record. */
+    static final class Rec {
+        int index;
+        long tt, tpos;
+        int sp;
+        int top = -1;
+        long topNode = -1;      // the node of the version that top names (model id)
+        String topSrc = "derived";
+        List<Long> newNodes = new ArrayList<Long>();
+        List<long[]> addsNode = new ArrayList<long[]>();    // node id, index into adds
+        List<Ent> adds = new ArrayList<Ent>();
+        List<Ver> vers = new ArrayList<Ver>();
+        List<Long> gd = new ArrayList<Long>();
+        List<long[]> dirty = new ArrayList<long[]>();       // id, d
+        List<String> live = new ArrayList<String>();
+        List<String> probes = new ArrayList<String>();
+        long transSeqSum;
+        int puts, deletes;
+    }
+
+    final Map<Long, PNode> nodes = new TreeMap<Long, PNode>();
+    final Map<Long, Integer> idxByTt = new HashMap<Long, Integer>();
+    final Map<Long, Integer> idxByTpos = new HashMap<Long, Integer>();
+    final Map<Long, long[]> verByPos = new HashMap<Long, long[]>();     // position -> {record, id}
+    final List<Rec> recs = new ArrayList<Rec>();
+    final List<TopNode> topNodes = new ArrayList<TopNode>();            // by top node id
+    long newestWrittenTopId = -1;
+    int newestWrittenTopNum = -1;
+    int newestWrittenTopRec = -1;
+
+    int timeIndex(long tt, String context) {
+        Integer i = idxByTt.get(tt);
+        if (i == null) {
+            error("time " + tt + " is not the time of a record (" + context + ")");
+            return -1;
+        }
+        return i;
+    }
+
+    void error(String s) {
+        if (errors.size() < 1000) errors.add(s);
+    }
+
+    /**
+     * The model id of a Java node: its Java id plus one. Java's primordial key node has id 0,
+     * and the model's root has id 0 (docs, 2.2).
+     */
+    static long mid(long javaId) {
+        return javaId + 1;
+    }
+
+    static long hash(byte[] v) {
+        long h = 0xcbf29ce484222325L;
+        for (byte b : v) {
+            h ^= (b & 0xff);
+            h *= 0x100000001b3L;
+        }
+        return h & Long.MAX_VALUE;
+    }
+
+    /** The id of the node a pointer slot names, or -1 for none. */
+    long childId(Node child, long pos, NodeStream ns, String context) {
+        if (child != null) return mid(child.getId());
+        if (pos == Spos.NULL) return -1;
+        if (Spos.isVpos(pos)) return mid(pos);
+        long[] v = verByPos.get(pos);
+        if (v != null) return v[1];
+        error("stream position " + pos + " is not the start of a known version (" + context + ")");
+        return mid(ns.readNodeHeader(pos).id());
+    }
+
+    /** The entries of a key node (docs, 2.4), from its klongs and pointer slots. */
+    List<Ent> keyEntries(KeyNode k, Node[] ptrs, long[] pos, int size, NodeStream ns,
+            boolean memoryOnly, String context) {
+        List<Ent> result = new ArrayList<Ent>();
+        int t = -1;
+        long prevDel = Klong.DELETE_NONE_BITMAP;
+        for (int i = 0; i < size; i++) {
+            long klong = k.klongs[i];
+            switch (Klong.getIntType(klong)) {
+            case Klong.INT_TYPE_TIME:
+                t = timeIndex(Klong.getTime(klong), context);
+                break;
+            case Klong.INT_TYPE_KEY: {
+                Node child = ptrs == null ? null : ptrs[i];
+                long p = pos[i];
+                if (memoryOnly && child == null) {
+                    error("stream pointer in run A, " + context + ", slot " + i);
+                }
+                long y = childId(child, child == null ? p : Spos.NULL, ns, context);
+                result.add(new Ent(t, "K " + Klong.getCompareValue(klong) + " " + y));
+                break;
+            }
+            case Klong.INT_TYPE_DELETE_BITMAP: {
+                long bits = (klong & ~prevDel) & 0x3fffffffffffffffL;
+                prevDel = klong;
+                TreeSet<Long> cs = new TreeSet<Long>();
+                for (int j = 0; j < 62; j++) {
+                    if ((bits & Klong.DELETE_BITS[j]) != 0) {
+                        if (j >= i || Klong.getIntType(k.klongs[j]) != Klong.INT_TYPE_KEY) {
+                            error("delete bit " + j + " of klong " + i + " names no earlier key klong ("
+                                    + context + ")");
+                            continue;
+                        }
+                        cs.add(Klong.getCompareValue(k.klongs[j]));
+                    }
+                }
+                StringBuilder b = new StringBuilder("D " + cs.size());
+                for (long c : cs) b.append(" ").append(c);
+                result.add(new Ent(t, b.toString()));
+                break;
+            }
+            default:
+                error("bad klong type at " + i + " (" + context + ")");
+            }
+        }
+        return result;
+    }
+
+    /** The entries of a top node (docs, 2.4). */
+    List<Ent> topEntries(TopNode tn, boolean memoryOnly, NodeStream ns, String context) {
+        List<Ent> result = new ArrayList<Ent>();
+        int t = timeIndex(tn.rootTime, context);
+        if (memoryOnly && tn.rootPointer == null) error("stream root pointer in run A, " + context);
+        long y = childId(tn.rootPointer, tn.rootPointer == null ? tn.rootPointerPos : Spos.NULL,
+                ns, context);
+        result.add(new Ent(t, "R " + y));
+        for (int j = 0; j < tn.pointersLength; j++) {
+            TopNode z = tn.pointers[j];
+            long p = tn.pointersPos[j];
+            if (z == null && p == Spos.NULL) continue;
+            if (memoryOnly && z == null) error("stream skip pointer in run A, " + context);
+            result.add(new Ent(t, "S " + j + " " + childId(z, z == null ? p : Spos.NULL, ns, context)));
+        }
+        return result;
+    }
+
+    List<Ent> entriesOf(PNode pn, NodeStream ns) {
+        if (pn.obj == null) {
+            List<Ent> result = new ArrayList<Ent>();
+            for (TopNode tn : topNodes) {
+                result.add(new Ent(timeIndex(tn.rootTime, "root"), "T " + mid(tn.getId())));
+            }
+            return result;
+        }
+        switch (pn.obj.getType()) {
+        case Node.TYPE_KEY_NODE: {
+            KeyNode k = (KeyNode) pn.obj;
+            int size = k.size;
+            return keyEntries(k, k.pointers, k.pos, size, ns, true, "node " + pn.id);
+        }
+        case Node.TYPE_TOP_NODE:
+            return topEntries((TopNode) pn.obj, true, ns, "node " + pn.id);
+        default: {
+            List<Ent> result = new ArrayList<Ent>();
+            result.add(new Ent(pn.created, "V " + hash(((ValueNode) pn.obj).getValue())));
+            return result;
+        }
+        }
+    }
+
+    /** Adds every node reachable through memory pointers, live or dead, to 'nodes'. */
+    void walk(Db db, int index) {
+        TopNode superRoot = db.internal().dag().getTopDs().getSuperRoot();
+        Deque<Node> todo = new ArrayDeque<Node>();
+        Set<Node> seen = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+        todo.add(superRoot);
+        while (!todo.isEmpty()) {
+            Node x = todo.poll();
+            if (!seen.add(x)) continue;
+            register(x, index);
+            if (x instanceof TopNode) {
+                TopNode tn = (TopNode) x;
+                if (tn.rootPointer != null) todo.add(tn.rootPointer);
+                for (TopNode z : tn.pointers) if (z != null) todo.add(z);
+            } else if (x instanceof KeyNode) {
+                KeyNode k = (KeyNode) x;
+                int size = k.size;
+                for (int i = 0; i < size; i++) {
+                    if (k.pointers[i] != null) todo.add(k.pointers[i]);
+                }
+            }
+        }
+    }
+
+    void register(Node x, int index) {
+        if (x.getType() == Node.TYPE_DELETE) return;
+        PNode pn = nodes.get(mid(x.getId()));
+        if (pn == null) {
+            nodes.put(mid(x.getId()), new PNode(mid(x.getId()), x, index));
+            if (x instanceof TopNode) {
+                topNodes.add((TopNode) x);
+                Collections.sort(topNodes, new Comparator<TopNode>() {
+                    public int compare(TopNode a, TopNode b) {
+                        return a.topNodeId < b.topNodeId ? -1 : a.topNodeId == b.topNodeId ? 0 : 1;
+                    }
+                });
+            }
+        } else if (pn.obj != x) {
+            error("two objects for node " + mid(x.getId()) + " in run A");
+        }
+    }
+
+    /** Parses R(i) into versions; updates the position map first. */
+    void parseRecord(Db db, Rec rec) {
+        NodeStream ns = db.internal().nodeStream();
+        StoredTrans st = StoredTrans.parse(rec.tpos, ns.readTransBytes(rec.tpos));
+        if (st.tt != rec.tt) error("R(" + rec.index + "): stored time " + st.tt + " != " + rec.tt);
+        for (StoredNode sn : st.nodes) {
+            Node x = sn.getNode();
+            if (x.getType() == Node.TYPE_DELETE) continue;
+            verByPos.put(x.getSpos(), new long[] {rec.index, mid(x.getId())});
+        }
+        Integer sp = idxByTpos.get(st.startupPos);
+        if (sp == null && st.startupPos <= recs.get(0).tpos) sp = 0;     // 0: before R(0)
+        if (sp == null) {
+            error("R(" + rec.index + "): startup pos " + st.startupPos + " is not a record's start");
+            sp = -1;
+        }
+        rec.sp = sp;
+        for (StoredNode sn : st.nodes) {
+            Node x = sn.getNode();
+            String context = "version of " + mid(x.getId()) + " in R(" + rec.index + ")";
+            Ver v = new Ver();
+            v.id = mid(x.getId());
+            switch (x.getType()) {
+            case Node.TYPE_DELETE:
+                rec.deletes++;
+                continue;
+            case Node.TYPE_VALUE:
+                rec.puts++;
+                v.kind = "D";
+                v.hist.add(new Ent(rec.index, "V " + hash(((ValueNode) x).getValue())));
+                break;
+            case Node.TYPE_KEY_NODE: {
+                KeyNode k = (KeyNode) x;
+                v.kind = "I";
+                v.hist = keyEntries(k, null, k.pos, k.size, ns, false, context);
+                for (int i = 0; i < k.size; i++) {
+                    if (Klong.getIntType(k.klongs[i]) == Klong.INT_TYPE_KEY) {
+                        addRef(v, k.pos[i], ns, context);
+                    }
+                }
+                break;
+            }
+            case Node.TYPE_TOP_NODE: {
+                TopNode tn = (TopNode) x;
+                v.kind = "I";
+                v.hist = topEntries(tn, false, ns, context);
+                addRef(v, tn.rootPointerPos, ns, context);
+                for (int j = 0; j < tn.pointersLength; j++) {
+                    if (tn.pointersPos[j] != Spos.NULL) addRef(v, tn.pointersPos[j], ns, context);
+                }
+                if (tn.topNodeId >= newestWrittenTopNum) {
+                    newestWrittenTopNum = tn.topNodeId;
+                    newestWrittenTopId = mid(tn.getId());
+                    newestWrittenTopRec = rec.index;
+                }
+                break;
+            }
+            default:
+                error("unknown node type in " + context);
+                continue;
+            }
+            rec.vers.add(v);
+        }
+        rec.top = newestWrittenTopRec;
+        rec.topNode = newestWrittenTopId;
+        if (Spos.isValid(st.topPos) && !Spos.isVpos(st.topPos)) {
+            // The record's own field (format 5, M18): the latest version of the newest
+            // written top node. It must agree with the exporter's derivation.
+            long[] v = verByPos.get(st.topPos);
+            int fieldRec = v == null ? -1 : (int) v[0];
+            if (fieldRec != newestWrittenTopRec || v == null || v[1] != newestWrittenTopId) {
+                error("R(" + rec.index + "): topPos names R(" + fieldRec + "), the newest written top "
+                        + "node's latest version is in R(" + newestWrittenTopRec + ")");
+            }
+            rec.topSrc = "field";
+            rec.top = fieldRec;
+            rec.topNode = v == null ? -1 : v[1];
+        }
+        for (int j = 0; j < st.gotDirtyIdsAndSpos.length / 2; j++) {
+            rec.gd.add(mid(st.gotDirtyIdsAndSpos[2 * j]));
+        }
+    }
+
+    void addRef(Ver v, long pos, NodeStream ns, String context) {
+        if (pos == Spos.NULL || Spos.isVpos(pos)) return;
+        long[] target = verByPos.get(pos);
+        if (target == null) {
+            error("reference to position " + pos + " that starts no version (" + context + ")");
+            return;
+        }
+        Integer old = v.refs.put(target[1], (int) target[0]);
+        if (old != null && old != (int) target[0]) {
+            error("two references for node " + target[1] + ": R(" + old + ") and R(" + target[0]
+                    + ") (" + context + ")");
+        }
+    }
+
+    void recordDirty(Db db, final Rec rec) {
+        db.internal().transSeq().visitGotDirtyNodes(Long.MAX_VALUE, new TransSeq.NodeVisitor() {
+            public void node(Node node, long tpos, long lastTpos) {
+                Integer d = idxByTpos.get(tpos);
+                if (d == null) {
+                    error("D: tpos " + tpos + " is not a record's start");
+                    d = -1;
+                }
+                rec.dirty.add(new long[] {mid(node.getId()), d});
+            }
+        });
+        rec.transSeqSum = db.internal().transSeq().checksum();
+    }
+
+    /** The changes of T(i): nodes not in 'before', and entries appended at time i. */
+    void recordChanges(Map<Long, List<Ent>> before, Rec rec, NodeStream ns) {
+        for (PNode pn : nodes.values()) {
+            List<Ent> h = entriesOf(pn, ns);
+            List<Ent> old = before.get(pn.id);
+            int from = 0;
+            if (old == null) {
+                rec.newNodes.add(pn.id);
+            } else {
+                if (h.size() < old.size() || !h.subList(0, old.size()).equals(old)) {
+                    error("T(" + rec.index + ") changed or removed entries of node " + pn.id
+                            + ": before " + old + ", after " + h);
+                    pn.hist = h;
+                    continue;
+                }
+                from = old.size();
+            }
+            for (int j = from; j < h.size(); j++) {
+                Ent e = h.get(j);
+                if (e.time != rec.index) {
+                    error("T(" + rec.index + ") added an entry at time " + e.time + " to node "
+                            + pn.id);
+                }
+                rec.addsNode.add(new long[] {pn.id});
+                rec.adds.add(e);
+            }
+            pn.hist = h;
+        }
+    }
+
+    /** LIVE lines: Java's own live children of each node at each of its entry times. */
+    void recordLive(Db db, Rec rec) {
+        GetData gd = db.newGetData();
+        for (PNode pn : nodes.values()) {
+            TreeSet<Integer> ts = new TreeSet<Integer>();
+            for (Ent e : pn.hist) ts.add(e.time);
+            ts.add(rec.index);
+            for (int t : ts) {
+                if (t < 0) continue;
+                long tt = recs.get(t).tt;
+                TreeSet<Long> children = new TreeSet<Long>();
+                if (pn.obj == null) {
+                    TopNode s = db.internal().dag().getTopDs().findSuperRootAtTime(tt, gd);
+                    if (s != null) children.add(mid(s.getId()));
+                } else if (pn.obj instanceof TopNode) {
+                    if (((TopNode) pn.obj).rootTime > tt) continue;
+                    KeyNode r = ((TopNode) pn.obj).rootPointer;
+                    if (r != null) children.add(mid(r.getId()));
+                } else if (pn.obj instanceof KeyNode) {
+                    // Java's own lookup: KeyNode.searchEq for each compare value.
+                    KeyNode k = (KeyNode) pn.obj;
+                    TreeSet<Long> cvs = new TreeSet<Long>();
+                    for (int i = 0; i < k.size; i++) {
+                        if (Klong.getIntType(k.klongs[i]) == Klong.INT_TYPE_KEY) {
+                            cvs.add(Klong.getCompareValue(k.klongs[i]));
+                        }
+                    }
+                    KlongWithPointer kwi = new KlongWithPointer();
+                    for (long cv : cvs) {
+                        k.searchEq(tt, cv, kwi);
+                        if (kwi.klong == Klong.NULL) continue;
+                        if (kwi.node != null) children.add(mid(kwi.node.getId()));
+                        else error("LIVE: stream pointer in run A, node " + pn.id);
+                    }
+                } else {
+                    continue;
+                }
+                StringBuilder b = new StringBuilder("LIVE " + pn.id + " " + t);
+                for (long c : children) b.append(" ").append(c);
+                rec.live.add(b.toString());
+            }
+        }
+    }
+
+    /** Run A: no restarts; records everything. */
+    MemoryStream runA() {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        clock.setTime(1);
+        Db db = start(stream, clock);
+        NodeStream ns = db.internal().nodeStream();
+
+        // R(0), the primordial record.
+        Rec r0 = new Rec();
+        r0.index = 0;
+        r0.tpos = RecoverableStream.META_BLOCK_SIZE;
+        StoredTrans st0 = StoredTrans.parse(r0.tpos, ns.readTransBytes(r0.tpos));
+        r0.tt = st0.tt;
+        idxByTt.put(r0.tt, 0);
+        idxByTpos.put(r0.tpos, 0);
+        recs.add(r0);
+        walk(db, 0);
+        Map<Long, List<Ent>> before = new HashMap<Long, List<Ent>>();
+        nodes.put(0L, new PNode(0L, null, 0));
+        recordChanges(before, r0, ns);
+        parseRecord(db, r0);
+        recordDirty(db, r0);
+        if (live) recordLive(db, r0);
+
+        final List<ValueNode> created = new ArrayList<ValueNode>();
+        final List<Node> gotDirty = new ArrayList<Node>();
+        Trans.Listener listener = new Trans.Listener() {
+            public void transExecuted(Db.ExecuteData x) {
+                gotDirty.addAll(x.transInfo.gotDirtyNodes);
+            }
+            public void valueNodeCreated(ValueNode node, long[] key) {
+                created.add(node);
+            }
+        };
+
+        for (int i = 0; i < n; i++) {
+            before.clear();
+            for (PNode pn : nodes.values()) before.put(pn.id, pn.hist);
+            created.clear();
+            gotDirty.clear();
+
+            clock.setTime(times[i]);
+            Trans.Builder b = db.trans();
+            String[] ks = wkeys.get(i);
+            byte[][] vs = wvalues.get(i);
+            for (int j = 0; j < ks.length; j++) {
+                if (vs[j] == null) b.delete(ks[j]);
+                else b.put(ks[j], vs[j]);
+            }
+            Trans t = b.build();
+            t.listener = listener;
+            db.execute(t);
+
+            Rec rec = new Rec();
+            rec.index = i + 1;
+            rec.tt = t.tt;
+            rec.tpos = t.tpos;
+            if (idxByTt.containsKey(t.tt)) error("two records with time " + t.tt);
+            idxByTt.put(t.tt, rec.index);
+            idxByTpos.put(t.tpos, rec.index);
+            recs.add(rec);
+
+            for (ValueNode v : created) register(v, rec.index);
+            for (Node x : gotDirty) register(x, rec.index);
+            walk(db, rec.index);
+            recordChanges(before, rec, ns);
+            parseRecord(db, rec);
+            recordDirty(db, rec);
+            if (live) recordLive(db, rec);
+        }
+        db.sync(SyncLevel.STRONG);
+        return stream;
+    }
+
+    /** Run B: the same workload with restarts; compares with run A. */
+    void runB(MemoryStream streamA) {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        clock.setTime(1);
+        Db db = start(stream, clock);
+        TreeMap<String, TreeMap<Long, byte[]>> history = new TreeMap<String, TreeMap<Long, byte[]>>();
+        for (int i = 0; i < n; i++) {
+            clock.setTime(times[i]);
+            Trans.Builder b = db.trans();
+            String[] ks = wkeys.get(i);
+            byte[][] vs = wvalues.get(i);
+            for (int j = 0; j < ks.length; j++) {
+                if (vs[j] == null) b.delete(ks[j]);
+                else b.put(ks[j], vs[j]);
+                TreeMap<Long, byte[]> h = history.get(ks[j]);
+                if (h == null) history.put(ks[j], h = new TreeMap<Long, byte[]>());
+                h.put(times[i], vs[j]);
+            }
+            Trans t = b.build();
+            db.execute(t);
+            Rec recA = recs.get(i + 1);
+            if (t.tpos != recA.tpos) {
+                recA.probes.add("PROBE " + (i + 1) + " fail run B wrote R(" + (i + 1) + ") at "
+                        + t.tpos + ", run A at " + recA.tpos);
+            }
+            checkM4(db, recA);
+
+            boolean restart = (i + 1) % probe == 0 && i + 1 < n;
+            if (!restart) continue;
+            db.sync(SyncLevel.STRONG);
+            db.stop();
+            stream = stream.copy();
+            try {
+                db = start(stream, clock);
+            } catch (RuntimeException e) {
+                recA.probes.add("PROBE " + (i + 1) + " fail restart failed: " + oneLine(e));
+                return;
+            }
+            String problem = null;
+            if (db.internal().transSeq().checksum() != recA.transSeqSum) {
+                problem = "D differs after the restart";
+            }
+            if (problem == null) problem = lookupProblem(db, history, i);
+            recA.probes.add("PROBE " + (i + 1) + (problem == null ? " ok" : " fail " + problem));
+        }
+        db.sync(SyncLevel.STRONG);
+        long diff = RestartInvariance.firstDiff(streamA, stream);
+        Rec last = recs.get(recs.size() - 1);
+        last.probes.add("PROBE " + n + (diff < 0 ? " ok streams identical"
+                : " fail streams differ at byte " + diff));
+    }
+
+    /** M4 (docs, 7.1): after T(i), no written node holds a stream pointer to a node in D. */
+    void checkM4(Db db, Rec rec) {
+        Set<Long> inD = new HashSet<Long>();
+        for (long[] p : rec.dirty) inD.add(p[0]);
+        NodeStream ns = db.internal().nodeStream();
+        for (Ver v : rec.vers) {
+            if (!"I".equals(v.kind)) continue;
+            Node x = db.internal().cache().getNode(v.id - 1);
+            if (x == null) continue;
+            for (int j = 0; j < x.getSize(); j++) {
+                if (x.getPointerNode(j) != null) continue;
+                long pos = x.getPointerPos(j);
+                if (pos == Spos.NULL || Spos.isVpos(pos) || pos < 0) continue;
+                if (x instanceof KeyNode && Klong.getIntType(((KeyNode) x).klongs[j]) != Klong.INT_TYPE_KEY) {
+                    continue;
+                }
+                long y = mid(ns.readNodeHeader(pos).id());
+                if (inD.contains(y)) {
+                    rec.probes.add("PROBE " + rec.index + " fail M4: node " + v.id
+                            + " holds a stream pointer to node " + y + ", which is in D");
+                }
+            }
+        }
+    }
+
+    String lookupProblem(Db db, TreeMap<String, TreeMap<Long, byte[]>> history, int i) {
+        Random rnd = new Random(seed * 31 + i);
+        List<String> ks = new ArrayList<String>(history.keySet());
+        int bad = 0;
+        String first = null;
+        for (int j = 0; j < ks.size() + 200; j++) {
+            String k = j < ks.size() ? ks.get(j) : ks.get(rnd.nextInt(ks.size()));
+            long t = j < ks.size() ? Long.MAX_VALUE : times[rnd.nextInt(i + 1)] - rnd.nextInt(2);
+            Map.Entry<Long, byte[]> e = history.get(k).floorEntry(t);
+            byte[] expected = e == null ? null : e.getValue();
+            try {
+                byte[] actual = DbUtil.get(db, t, k);
+                if (!Arrays.equals(expected, actual)) {
+                    bad++;
+                    if (first == null) first = "get(" + k + ", " + t + ") is wrong";
+                }
+            } catch (RuntimeException ex) {
+                bad++;
+                if (first == null) first = "get(" + k + ", " + t + ") failed: " + oneLine(ex);
+            }
+        }
+        return bad == 0 ? null : bad + " bad lookups, first: " + first;
+    }
+
+    static String oneLine(Throwable e) {
+        return String.valueOf(e).replace('\n', ' ');
+    }
+
+    // ======== Levels (docs, 8.4) ========
+
+    final Map<Long, Integer> segment = new HashMap<Long, Integer>();
+    final List<Long> unreached = new ArrayList<Long>();
+    final Map<Long, Integer> height = new HashMap<Long, Integer>();
+
+    long[] levels() {
+        // Segments, from the root key nodes of the top nodes, through all pointers.
+        Deque<KeyNode> todo = new ArrayDeque<KeyNode>();
+        for (TopNode tn : topNodes) {
+            if (tn.rootPointer != null && !segment.containsKey(mid(tn.rootPointer.getId()))) {
+                segment.put(mid(tn.rootPointer.getId()), 0);
+                todo.add(tn.rootPointer);
+            }
+        }
+        while (!todo.isEmpty()) {
+            KeyNode k = todo.poll();
+            int g = segment.get(mid(k.getId()));
+            for (int i = 0; i < k.size; i++) {
+                if (Klong.getIntType(k.klongs[i]) != Klong.INT_TYPE_KEY) continue;
+                Node c = k.pointers[i];
+                if (!(c instanceof KeyNode)) continue;
+                int gc = k.isSegmentLeaf() ? g + 1 : g;
+                Integer old = segment.get(mid(c.getId()));
+                if (old == null) {
+                    segment.put(mid(c.getId()), gc);
+                    todo.add((KeyNode) c);
+                } else if (old != gc) {
+                    error("key node " + mid(c.getId()) + " in segments " + old + " and " + gc);
+                }
+            }
+        }
+        int maxG = 0, maxH = 0;
+        for (PNode pn : nodes.values()) {
+            if (pn.obj instanceof KeyNode) {
+                if (!segment.containsKey(pn.id)) {
+                    // A node that a later key of its transaction replaced (M1): the checker
+                    // reports it as an A3 failure. Its level: as if in the first segment.
+                    unreached.add(pn.id);
+                    segment.put(pn.id, 0);
+                }
+                maxG = Math.max(maxG, segment.get(pn.id));
+                maxH = Math.max(maxH, heightOf((KeyNode) pn.obj));
+            }
+        }
+        long maxTop = 0;
+        for (TopNode tn : topNodes) maxTop = Math.max(maxTop, tn.topNodeId);
+        long keyMax = 1 + (long) maxG * (maxH + 1) + maxH;
+        return new long[] {maxG, maxH, keyMax, maxTop};
+    }
+
+    int heightOf(KeyNode k) {
+        Integer h = height.get(mid(k.getId()));
+        if (h != null) return h;
+        int result = 0;
+        if (!k.isSegmentLeaf()) {
+            int lo = Integer.MAX_VALUE, hi = -1;
+            for (int i = 0; i < k.size; i++) {
+                if (Klong.getIntType(k.klongs[i]) != Klong.INT_TYPE_KEY) continue;
+                Node c = k.pointers[i];
+                if (!(c instanceof KeyNode)) continue;
+                int hc = heightOf((KeyNode) c);
+                lo = Math.min(lo, hc);
+                hi = Math.max(hi, hc);
+            }
+            if (hi >= 0 && lo != hi) error("children of key node " + mid(k.getId()) + " at heights " + lo
+                    + " to " + hi);
+            result = hi + 1;
+        }
+        height.put(mid(k.getId()), result);
+        return result;
+    }
+
+    long levelOf(PNode pn, long[] bounds) {
+        long maxG = bounds[0], maxH = bounds[1], keyMax = bounds[2];
+        if (pn.obj == null) return keyMax + 2 + TopNode.MAX_TOP_NODE_ID_VALUE;
+        if (pn.obj instanceof TopNode) return keyMax + 1 + ((TopNode) pn.obj).topNodeId;
+        if (pn.obj instanceof KeyNode) {
+            return 1 + (maxG - segment.get(pn.id)) * (maxH + 1) + height.get(pn.id);
+        }
+        return 0;
+    }
+
+    // ======== Output ========
+
+    void write(String file) throws IOException {
+        long[] bounds = levels();
+        PrintWriter out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"));
+        out.println("TRACE 1");
+        out.println("CONFIG seed=" + seed + " n=" + n + " keys=" + keyCount + " maxnode=" + maxNode
+                + " sd=" + startupDistance + " ops=" + ops + " exact=" + exact + " bulk=" + bulk
+                + " del=" + del + " nodel=" + nodel + " empty=" + empty + " long=" + longKeys
+                + " valsize=" + valsize + " probe=" + probe + " live=" + live
+                + " segments=" + (bounds[0] + 1) + " height=" + bounds[1]);
+        for (String e : errors) out.println("ERROR " + e);
+        if (!unreached.isEmpty()) {
+            out.println("# key nodes that no top node reaches (A3 failures, M1): " + unreached.size());
+        }
+        for (Rec rec : recs) {
+            out.println("TX " + rec.index);
+            out.println("# tt=" + rec.tt + " tpos=" + rec.tpos + " puts=" + rec.puts + " deletes="
+                    + rec.deletes);
+            for (long id : rec.newNodes) {
+                PNode pn = nodes.get(id);
+                out.println("NEW " + id + " " + levelOf(pn, bounds) + " " + (pn.isData() ? "D" : "I"));
+            }
+            for (int j = 0; j < rec.adds.size(); j++) {
+                out.println("ADD " + rec.addsNode.get(j)[0] + " " + rec.adds.get(j));
+            }
+            out.println("REC " + rec.index + " " + rec.sp + " " + (rec.top < 0 ? "-" : "" + rec.top)
+                    + " " + rec.topSrc + (rec.top < 0 || rec.topNode < 0 ? "" : " " + rec.topNode));
+            for (Ver v : rec.vers) {
+                out.println("VER " + v.id + " " + v.kind);
+                for (Ent e : v.hist) out.println("H " + e);
+                for (Map.Entry<Long, Integer> f : v.refs.entrySet()) {
+                    out.println("F " + f.getKey() + " " + f.getValue());
+                }
+            }
+            StringBuilder gd = new StringBuilder("GD");
+            for (long x : rec.gd) gd.append(" ").append(x);
+            out.println(gd);
+            StringBuilder dl = new StringBuilder("DIRTY");
+            for (long[] p : rec.dirty) dl.append(" ").append(p[0]).append(" ").append(p[1]);
+            out.println(dl);
+            for (String s : rec.live) out.println(s);
+            for (String s : rec.probes) out.println(s);
+            out.println("END " + rec.index);
+        }
+        out.println("DONE " + n);
+        out.close();
+    }
+
+    public static void main(String[] args) throws IOException {
+        if (args.length != 2) {
+            System.out.println("Usage: TraceExport seed out.trace (properties: see the class comment)");
+            System.exit(2);
+        }
+        TraceExport x = new TraceExport(Long.parseLong(args[0]));
+        MemoryStream a = x.runA();
+        if (x.probe > 0) x.runB(a);
+        x.write(args[1]);
+        int probeFails = 0;
+        for (Rec r : x.recs) for (String s : r.probes) if (s.contains(" fail ")) probeFails++;
+        System.out.println("TraceExport seed=" + x.seed + " n=" + x.n + ": " + x.nodes.size()
+                + " nodes, " + x.errors.size() + " errors, " + probeFails + " probe failures; "
+                + args[1]);
+    }
+}

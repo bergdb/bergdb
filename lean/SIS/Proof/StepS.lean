@@ -38,13 +38,13 @@ theorem step_D1_nodup {k : Nat} (hinv : Inv sp db k) :
     subst hab
     simp only [List.mem_map, Function.comp] at hb
     obtain ⟨y, hy, rfl⟩ := hb
-    have := (step_gd3_mem sp al db tr hinv.len y).mp hy
+    have := step_gd3_basic sp al db tr hinv.len y hy
     have h2 : inD db.D y = true := by
       rw [inD_iff]
       simp only [List.mem_map] at ha
       obtain ⟨⟨z, d⟩, hz, rfl⟩ := ha
       exact ⟨d, hz⟩
-    rw [this.2.2.1] at h2
+    rw [this.2.2] at h2
     simp at h2
 
 theorem step_taken_nodup {k : Nat} (hinv : Inv sp db k) : (parts sp al db tr).taken.Nodup := by
@@ -63,7 +63,7 @@ theorem step_taken_index {k : Nat} (hinv : Inv sp db k) {x : NodeId}
       simp only [isIndex] at hi; split at hi <;> simp_all
     rw [step_isIndex_old sp al db tr hinv.len hs]
     exact hi
-  · exact ((step_gd3_mem sp al db tr hinv.len x).mp h).2.1
+  · exact (step_gd3_basic sp al db tr hinv.len x h).2.1
 
 theorem isSome_of_isIndex {P : Struct V} {x : NodeId} (h : isIndex P x = true) :
     (P.get? x).isSome := by
@@ -216,13 +216,14 @@ theorem step_ref {k : Nat} (hinv : Inv sp db k) :
     exact href
 
 theorem step_top :
-    ∀ R, (Snew sp al db tr).getLast? = some R → R.top = ((Snew sp al db tr).lv root).map (·.recNo) := by
+    ∀ R, (Snew sp al db tr).getLast? = some R →
+      R.top = topOf sp (parts sp al db tr).P (Snew sp al db tr) (lastSp (Snew sp al db tr)) := by
   intro R hR
   simp only [Snew, List.getLast?_append, List.getLast?_singleton, Option.some_or] at hR
   cases hR
-  rw [parts_R]
+  rw [parts_R, step_lastSp]
   simp only
-  rw [lv_of_versionAt_eq (Snew_versionAt sp al db tr) root]
+  exact topOf_congr sp _ (fun x => (lv_of_versionAt_eq (Snew_versionAt sp al db tr) x).symm) _
 
 end Step
 

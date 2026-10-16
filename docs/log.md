@@ -387,3 +387,36 @@ about 4 minutes).
 tasks. Consolidated the independent review results into `docs/levels.md`;
 the detailed old plan and review remain in Git at `5650ed7`. Level 4
 implementation awaits the durability checks, soak and performance reference.
+
+2026-10-15. Level 2 alignment of the Java code and the Lean model (F1-008-11,
+repository f1): `docs/level2-alignment.md` (the mapping, the register, the
+red list), the trace exporter `java/stress/TraceExport.java` and
+`conformance.sh`, the trace checker `lean/` `lake exe tracecheck`. Found and
+fixed a startup bug (M18): transactions that change nothing could move the
+startup pos past every top node version, after which the database could not
+start ("Could not find super node in startup section"); reproduced with 10
+empty transactions at a startup distance of 100 bytes. Every record now
+stores topPos, the position of the latest version of the newest written top
+node, and startup starts there; the record format byte is 5 (it was 2; the
+constant `CURRENT_FORMAT_VERSION = 4` was never the stored byte), and older
+streams are refused. Tests: `DbTesterRestart.testRestartAfterTransactionsThatChangeNothing`,
+`StoredTrans` tests for topPos and the old format. The three level checks
+pass. Performance, quick suite against `a116ec7`: no alerts, throughput
+unchanged within noise, the stream 0.7 percent larger (8 bytes per record).
+In Lean: marking the access path in step 3 (`Algo.mark`), A5 as an
+assumption, T13 (marking is exact), and BergDB's still-dirty test
+(`javaTest`); T1, T2 and T13 hold for it and for the exact test.
+
+2026-10-16. Level 2 alignment, the model (F1-008-11, WP E3, repository f1):
+`lean/` gets the virtual root of option (a) (`Spec.virt`, docs
+`level2-alignment.md` 8.6): the root is never in D and never written, top(i)
+names the root's child at s(i), and startup reads the root children through
+their pointers (BergDB's skip pointers) and rebuilds the root. New
+assumptions R1 to R4, and older top nodes are dead. T1, T2 and T13 are proven
+with and without a virtual root; with one they need BergDB's still-dirty
+test, Rule A over all pointers, which keeps the references between top nodes
+fresh. Also Rule R from R(s) on (M7) and a startup pos policy that sees the
+transaction (M10). The trace checker now runs the model's own `init` and
+`step` and checks R1 to R4 on Java's traces; the exporter writes the node of
+top(i) on the `REC` line.
+

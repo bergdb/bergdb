@@ -33,17 +33,17 @@ def parts (sp : Spec V T) (al : Algo V T) (db : DB V T) (tr : T) : Parts V T :=
   let c := sp.exec tr i (view sp db.P (i - 1))
   let P := db.P.apply i c
   let vs0 := writeAll sp db.S i P ((c.new.filter (·.isData)).map (·.id)) []
-  let gd3 := gotDirtyOf sp (db.S.building vs0) P db.D i
+  let gd3 := (if al.mark then markOf sp P c db.D i else gotDirtyOf sp (db.S.building vs0) P db.D i).filter
+    (written sp)
   let D1 : Dirty := db.D ++ gd3.map (fun x => (x, i))
-  let s : Nat := startupPos al db.S D1 i
+  let s : Nat := startupPos al db.S D1 i tr
   let taken := byLevel P ((D1.filter (fun e : NodeId × Nat => decide (e.2 ≤ s))).map (·.1))
   let D2 : Dirty := D1.filter (fun e : NodeId × Nat => decide (s < e.2))
   let vs := writeAll sp db.S i P taken vs0
   let S' : Stream V T := db.S.building vs
   let r7 := stillDirtyOf al S' P D2 i taken
   let R : Record V T :=
-    { trans := some tr, sp := s, vers := vs, gd := gd3 ++ r7.2,
-      top := (S'.lv root).map (·.recNo) }
+    { trans := some tr, sp := s, vers := vs, gd := gd3 ++ r7.2, top := topOf sp P S' s }
   { i := i, c := c, P := P, vs0 := vs0, gd3 := gd3, D1 := D1, s := s, taken := taken,
     D2 := D2, vs := vs, S' := S', r7 := r7, R := R }
 
@@ -64,12 +64,13 @@ theorem parts_vs0 : (parts sp al db tr).vs0 =
     writeAll sp db.S db.S.length (parts sp al db tr).P
       (((parts sp al db tr).c.new.filter (·.isData)).map (·.id)) [] := rfl
 theorem parts_gd3 : (parts sp al db tr).gd3 =
-    gotDirtyOf sp (db.S.building (parts sp al db tr).vs0) (parts sp al db tr).P db.D
-      db.S.length := rfl
+    (if al.mark then markOf sp (parts sp al db tr).P (parts sp al db tr).c db.D db.S.length
+    else gotDirtyOf sp (db.S.building (parts sp al db tr).vs0) (parts sp al db tr).P db.D
+      db.S.length).filter (written sp) := rfl
 theorem parts_D1 : (parts sp al db tr).D1 =
     db.D ++ (parts sp al db tr).gd3.map (fun x => (x, db.S.length)) := rfl
 theorem parts_s : (parts sp al db tr).s =
-    startupPos al db.S (parts sp al db tr).D1 db.S.length := rfl
+    startupPos al db.S (parts sp al db tr).D1 db.S.length tr := rfl
 theorem parts_taken : (parts sp al db tr).taken =
     byLevel (parts sp al db tr).P
       (((parts sp al db tr).D1.filter
@@ -87,7 +88,7 @@ theorem parts_r7 : (parts sp al db tr).r7 =
 theorem parts_R : (parts sp al db tr).R =
     { trans := some tr, sp := (parts sp al db tr).s, vers := (parts sp al db tr).vs,
       gd := (parts sp al db tr).gd3 ++ (parts sp al db tr).r7.2,
-      top := ((parts sp al db tr).S'.lv root).map (·.recNo) } := rfl
+      top := topOf sp (parts sp al db tr).P (parts sp al db tr).S' (parts sp al db tr).s } := rfl
 
 end PartsLemmas
 
@@ -158,6 +159,49 @@ theorem startup_D (sp : Spec V T) (ruleR : Bool) (S : Stream V T) :
 
 /-! ### The invariant -/
 
+/-- With a virtual root: z is a root child of P, with node n, created at time
+c: an index node whose entries, of which there is at least one, are all at c. -/
+def TopAt (sp : Spec V T) (P : Struct V) (z : NodeId) (n : Node V) (c : Time) : Prop :=
+  P.get? z = some n ∧ z ≠ root ∧ sp.topLevel ≤ n.level ∧ n.isData = false ∧ n.hist ≠ [] ∧
+    ∀ e ∈ n.hist, e.time = c
+
+/-- What holds after every transaction k of a run with a virtual root
+(`Spec.virt`; option (a) of Q7). Added 2026-10-16 (F1-008-11, WP E3). -/
+structure VInv (sp : Spec V T) (db : DB V T) (k : Nat) : Prop where
+  /-- R1 (from `VirtInit`, kept here for startup): the root's entry for a
+  child points to that child. -/
+  rootPtrs : ∀ z, sp.ptrs (sp.rootVal z) = [z]
+  /-- The root is never in D and never written. -/
+  rootND : inD db.D root = false
+  rootNV : ∀ (r : Nat) (R : Record V T), db.S[r]? = some R → ∀ v ∈ R.vers, v.node ≠ root
+  /-- The root: an index node, on its initial level. -/
+  rootIdx : ∀ n, db.P.get? root = some n → n.isData = false ∧ n.level = rootLevel sp
+  /-- Every root child was created at some time. -/
+  tops : ∀ z, isTop sp db.P z = true → ∃ n c, TopAt sp db.P z n c
+  /-- A version of a root child has the root child's whole history. -/
+  topVers : ∀ z m c, TopAt sp db.P z m c → ∀ r w, db.S.versionAt r z = some w → w.hist = m.hist
+  /-- The root's history: sorted by time, without two entries at one time; an
+  entry at time c is for the root child created at c; every root child has its
+  entry. -/
+  rootSorted : ∀ n, db.P.get? root = some n → n.hist.Pairwise (fun e e' => e.time < e'.time)
+  rootEntry : ∀ n, db.P.get? root = some n → ∀ e ∈ n.hist,
+    ∃ z m, TopAt sp db.P z m e.time ∧ e.val = sp.rootVal z
+  topEntry : ∀ z m c, TopAt sp db.P z m c → ∀ n, db.P.get? root = some n →
+    (⟨c, sp.rootVal z⟩ : Entry V) ∈ n.hist
+  /-- A root child points only to older root children (among the root children). -/
+  older : ∀ z m c, TopAt sp db.P z m c → ∀ y ∈ pointees sp m.hist, isTop sp db.P y = true →
+    ∃ m' c', TopAt sp db.P y m' c' ∧ c' < c
+  /-- R4 holds now. -/
+  closed : ∀ z m c y m' c', TopAt sp db.P z m c → TopAt sp db.P y m' c' → c' < c →
+    y ∈ topClosure sp db.P z m
+  /-- The latest version of a root child that did not stay dirty when it was
+  written names the latest version of each root child it points to, and these
+  are not in D. BergDB's still-dirty test, which looks at dead pointers too,
+  gives this. -/
+  fresh : ∀ z v, isTop sp db.P z = true → db.S.lv z = some v → (z, v.recNo) ∉ db.D →
+    ∀ y ∈ pointees sp v.hist, isTop sp db.P y = true →
+      inD db.D y = false ∧ v.ref? y = (db.S.lv y).map (·.recNo)
+
 /-- What holds after every transaction k of a run. -/
 structure Inv (sp : Spec V T) (db : DB V T) (k : Nat) : Prop where
   -- The stream.
@@ -171,7 +215,7 @@ structure Inv (sp : Spec V T) (db : DB V T) (k : Nat) : Prop where
   ref : ∀ (r : Nat) (R : Record V T), db.S[r]? = some R → ∀ v ∈ R.vers,
     ∃ pre, pre <+: R.vers ∧ ∀ y, v.ref? y =
       if y ∈ pointees sp v.hist then ((Stream.building (db.S.take r) pre).lv y).map (·.recNo) else none
-  top : ∀ R, db.S.getLast? = some R → R.top = (db.S.lv root).map (·.recNo)
+  top : ∀ R, db.S.getLast? = some R → R.top = topOf sp db.P db.S (lastSp db.S)
   -- The structure.
   times : ∀ x n, db.P.get? x = some n → ∀ e ∈ n.hist, e.time ≤ k
   ptrs : PtrsOK sp db.P
@@ -183,11 +227,14 @@ structure Inv (sp : Spec V T) (db : DB V T) (k : Nat) : Prop where
   inv1 : db.D = sectionD db.S
   dNodup : (db.D.map (·.1)).Nodup
   dIndex : ∀ e ∈ db.D, isIndex db.P e.1 = true
-  inv2 : ∀ x, isIndex db.P x = true → dirty sp db.S db.P k x = true → inD db.D x = true
+  inv2 : ∀ x, isIndex db.P x = true → written sp x = true → dirty sp db.S db.P k x = true →
+    inD db.D x = true
   inv3 : ∀ x d v, (x, d) ∈ db.D → db.S.lv x = some v →
     d ≤ v.recNo ∨ ∀ t < d, reachable sp db.P t x = true → good sp db.S db.P t v = true
   inv4 : ∀ x d, (x, d) ∈ db.D → db.S.lv x = none → ∀ t < d, reachable sp db.P t x = false
   dataV : ∀ x n, db.P.get? x = some n → n.isData = true →
     ∃ v, db.S.lv x = some v ∧ v.hist = n.hist
+  -- A virtual root.
+  vr : sp.virt = true → VInv sp db k
 
 end SIS

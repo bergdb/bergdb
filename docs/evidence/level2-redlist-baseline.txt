@@ -1,0 +1,53 @@
+Level 2 red list, WP C3 of F1-008-11, 2026-10-15 (docs/level2-alignment.md, section 10).
+bergdb a116ec7, production code unchanged; java/stress/TraceExport.java and conformance.sh
+from the work tree. Checker: lake exe tracecheck (lean/), target mode (marking in step 3,
+Java's still-dirty test in step 7, the virtual root) unless --model.
+
+== java/stress/conformance.sh small, unchanged code (50 traces: 5 configurations x 10 seeds)
+Summed over the traces of small, target mode: transactions failing, by check
+   C-A assumptions: A2 579
+   C-A assumptions: A3 100
+   C-S steps: D 1535
+   C-S steps: gd 1535
+   C-V: 0 transactions with live differences, 130683 LIVE lines
+   C-R: 11 failed probes; kinds:
+        11   PROBE N: restart failed: bergdb.storage.StreamFormatException: Could not find super node in startup section, starting at pos N and time N.
+   exporter errors: 0
+   traces: 50, TRACECHECK OK: 0
+Unchanged model's mode (--model), 6 traces:
+   C-A assumptions: A2 16
+   C-S steps: versions 6
+   C-S steps: D 360
+   C-S steps: top 360
+   C-S steps: gd 360
+CONFORMANCE FAILED
+Direction of every gd and D difference in target mode: the node is in Java's gd and D only
+(no "model only" difference in any trace). --model: the root (id 0) in the model's R(0),
+gd, D and top only; self-check (stepWith = step): 0 of 61 transactions fail, 6 traces.
+
+== the same set on F1-008-10's prototype (scratch copy, prototype.diff applied)
+Summed over the traces of small, target mode: transactions failing, by check
+   C-V: 0 transactions with live differences, 127707 LIVE lines
+   C-R: 17 failed probes; kinds:
+        17   PROBE N: restart failed: bergdb.storage.StreamFormatException: Could not find super node in startup section, starting at pos N and time N.
+   exporter errors: 0
+   traces: 50, TRACECHECK OK: 33
+Unchanged model's mode (--model), 6 traces:
+   C-S steps: versions 6
+   C-S steps: D 360
+   C-S steps: top 360
+   C-S steps: gd 360
+CONFORMANCE FAILED
+
+== java/stress/conformance.sh medium, unchanged code (9 traces: 3 configurations x 3 seeds)
+Summed over the traces of medium, target mode: transactions failing, by check
+   C-A assumptions: A2 164
+   C-A assumptions: A3 47
+   C-S steps: D 1504
+   C-S steps: gd 1504
+   C-V: 0 transactions with live differences, 0 LIVE lines
+   C-R: 0 failed probes; kinds:
+   exporter errors: 0
+   traces: 9, TRACECHECK OK: 0
+CONFORMANCE FAILED
+(about 2 minutes)

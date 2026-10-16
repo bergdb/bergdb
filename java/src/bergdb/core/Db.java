@@ -88,6 +88,14 @@ public class Db {
     private TransSeq transSeq;
     
     /**
+     * The newest written top node: the top node with the largest id among those written to
+     * the stream. Every transaction stores the position of its latest version (topPos), from
+     * which startup finds the super root (docs/level2-alignment.md, M18). Set at startup;
+     * accessed by the writer (writeLock) only.
+     */
+    private TopNode newestWrittenTop;
+    
+    /**
      * Global transaction write lock. Held when STM stuff is happening.
      */
     private final WriteLock writeLock;
@@ -752,7 +760,7 @@ public class Db {
         transNodes.addKeyNode(root);
         transNodes.addTopNode(superRoot);
         
-        nodeStream.appendNodes(transNodes, trans, new ArrayList<Node>());
+        nodeStream.appendNodes(transNodes, trans, new ArrayList<Node>(), superRoot);
         
         // This is needed to be able to use sync() method.
         x.lastSposOfLastTrans = trans.lastPos;
@@ -1338,7 +1346,18 @@ public class Db {
         x.transNodes.clean();
         resolvePointersOfTakenNodes();
         handleStillDirtyNodes();
-        nodeStream.appendNodes(x.transNodes, x.trans, x.transInfo.gotDirtyNodes);        
+        
+        TopNode top = newestWrittenTop;
+        for (int i = 0; i < x.transNodes.topCount; i++) {
+            TopNode t = x.transNodes.topNodes[i];
+            if (top == null || t.topNodeId > top.topNodeId) {
+                top = t;
+            }
+        }
+        
+        nodeStream.appendNodes(x.transNodes, x.trans, x.transInfo.gotDirtyNodes, top);
+        newestWrittenTop = top;
+
         reclaim.recordWritten(x.trans, x.transNodes);       // Statistics, if on.
         
         x.trans.nodeCount = x.transNodes.size();
@@ -1576,6 +1595,11 @@ public class Db {
         public void createPutAndGetData() { Db.this.createPutAndGetData(); }
 
         public void setTransSeq(TransSeq seq) { Db.this.transSeq = seq; }
+        
+        /** Sets the newest written top node; for startup (DbStarter). */
+        public void setNewestWrittenTop(TopNode top) { Db.this.newestWrittenTop = top; }
+        
+        public TopNode newestWrittenTop() { return newestWrittenTop; }
         
         public TransSeq transSeq() { return transSeq; }
         

@@ -12,27 +12,27 @@ variable {V T : Type} [DecidableEq V]
 /-! ### Newest versions and following pointers -/
 
 theorem newest_eq (S : Stream V T) (s : Nat) (y : NodeId) :
-    newest S s y = Stream.lv (S.drop (s + 1)) y := rfl
+    newest S s y = Stream.lv (S.drop s) y := rfl
 
 theorem versionAt_drop (S : Stream V T) (s r : Nat) (y : NodeId) :
-    Stream.versionAt (S.drop (s + 1)) r y = S.versionAt (s + 1 + r) y := by
+    Stream.versionAt (S.drop s) r y = S.versionAt (s + r) y := by
   unfold Stream.versionAt
   rw [List.getElem?_drop]
 
 theorem newest_eq_none_iff (S : Stream V T) (s : Nat) (y : NodeId) :
-    newest S s y = none ↔ ∀ r, s < r → S.versionAt r y = none := by
+    newest S s y = none ↔ ∀ r, s ≤ r → S.versionAt r y = none := by
   rw [newest_eq, lv_eq_none_iff]
   constructor
   · intro h r hr
-    have := h (r - (s + 1))
+    have := h (r - s)
     rw [versionAt_drop] at this
-    rwa [show s + 1 + (r - (s + 1)) = r by omega] at this
+    rwa [show s + (r - s) = r by omega] at this
   · intro h r
     rw [versionAt_drop]
     exact h _ (by omega)
 
 theorem newest_some {S : Stream V T} {s : Nat} {y : NodeId} {w : Version V}
-    (h : newest S s y = some w) : ∃ r, s < r ∧ S.versionAt r y = some w := by
+    (h : newest S s y = some w) : ∃ r, s ≤ r ∧ S.versionAt r y = some w := by
   rw [newest_eq] at h
   obtain ⟨r, hr⟩ := lv_versionAt h
   rw [versionAt_drop] at hr
@@ -140,6 +140,30 @@ theorem Inv.good_data (hinv : Inv sp db k) (hls : LiveSub sp) {x : NodeId} {n : 
   rw [this] at hye
   simp at hye
 
+/-- A node with a version is not a virtual root. -/
+theorem Inv.written_of_versionAt (hinv : Inv sp db k) {r : Nat} {x : NodeId} {v : Version V}
+    (h : db.S.versionAt r x = some v) : written sp x = true := by
+  cases hv : sp.virt
+  · simp [written, hv]
+  · obtain ⟨R, hR, hvR, hvx⟩ := versionAt_spec h
+    have := (hinv.vr hv).rootNV r R hR v hvR
+    rw [hvx] at this
+    simp [written, this]
+
+theorem Inv.written_of_lv (hinv : Inv sp db k) {x : NodeId} {v : Version V}
+    (h : db.S.lv x = some v) : written sp x = true := by
+  obtain ⟨r, hr⟩ := lv_versionAt h
+  exact hinv.written_of_versionAt hr
+
+/-- A version points to no root. -/
+theorem Inv.pointee_ne_root (hinv : Inv sp db k) {r : Nat} {x : NodeId} {v : Version V}
+    (h : db.S.versionAt r x = some v) {y : NodeId} (hy : y ∈ pointees sp v.hist) : y ≠ root := by
+  obtain ⟨-, -, n, hn, hvh, -⟩ := hinv.version_node h
+  simp only [pointees, List.mem_eraseDups, List.mem_flatMap] at hy
+  obtain ⟨e, he, hye⟩ := hy
+  rw [hvh] at he
+  exact hinv.ptr_ne_root hn (mem_upTo.mp he).1 hye
+
 /-- L-OUT: a latest version written before the section is good for every
 time up to s at which its node is reachable. -/
 theorem Inv.lout (hinv : Inv sp db k) (hls : LiveSub sp) {x : NodeId} {v : Version V}
@@ -154,7 +178,7 @@ theorem Inv.lout (hinv : Inv sp db k) (hls : LiveSub sp) {x : NodeId} {v : Versi
       have hcl : dirty sp db.S db.P k x = false := by
         cases hc : dirty sp db.S db.P k x
         · rfl
-        · have := hinv.inv2 x hidx hc; rw [hD] at this; simp at this
+        · have := hinv.inv2 x hidx (hinv.written_of_lv hv) hc; rw [hD] at this; simp at this
       rw [dirty_false_iff] at hcl
       obtain ⟨v', hv', hg⟩ := hcl
       rw [hv] at hv'; cases hv'
@@ -224,7 +248,7 @@ theorem reach_child_of_version (hinv : Inv sp db k) (hls : LiveSub sp) {t : Time
 on the level. -/
 theorem Inv.recon (hinv : Inv sp db k) (hls : LiveSub sp) :
     ∀ (b : Nat),
-      (∀ r v, lastSp db.S < r → db.S.versionAt r v.node = some v → v.level < b →
+      (∀ r v, lastSp db.S ≤ r → db.S.versionAt r v.node = some v → v.level < b →
         ∀ t ≤ lastSp db.S, reachable sp db.P t v.node = true →
           GoodR sp db.S db.P (lastSp db.S) t v) ∧
       (∀ r v, db.S.versionAt r v.node = some v → v.level < b →
@@ -286,16 +310,17 @@ theorem Inv.recon (hinv : Inv sp db k) (hls : LiveSub sp) :
             · obtain ⟨v', hv', -⟩ := hinv.dataV y m hm hd
               rw [hly] at hv'; simp at hv'
           have hdirty : dirty sp db.S db.P k y = true := by simp [dirty, hly]
-          obtain ⟨d, hd⟩ := (inD_iff _ _).mp (hinv.inv2 y hidx hdirty)
+          obtain ⟨d, hd⟩ := (inD_iff _ _).mp (hinv.inv2 y hidx
+            (written_of_ne_root sp (hinv.pointee_ne_root hv hyp)) hdirty)
           have hsd := (sectionD_mem (hinv.inv1 ▸ hd)).1
           have := hinv.inv4 y d hd hly t (by omega)
           rw [hry] at this; simp at this
         | some u =>
           have hu := hinv.lv_at hly
           have hus : u.recNo ≤ lastSp db.S := by
-            cases Nat.lt_or_ge (lastSp db.S) u.recNo with
-            | inl h => have := hnone u.recNo h; rw [hu] at this; simp at this
-            | inr h => exact h
+            cases Nat.lt_or_ge u.recNo (lastSp db.S) with
+            | inl h => exact Nat.le_of_lt h
+            | inr h => have := hnone u.recNo h; rw [hu] at this; simp at this
           obtain ⟨huy, -, m', hm', -, hlevu, -⟩ := hinv.version_node hu
           rw [hm] at hm'; cases hm'
           refine ⟨u, ?_, by omega, ?_⟩

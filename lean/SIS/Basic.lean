@@ -77,8 +77,26 @@ structure Spec (V T : Type) where
   exec : T → Time → View V → Changes V
   /-- The initial structure, made by T(0). Its entries have time 0. -/
   init : Struct V
+  /-- Option (a) of Q7: the root is virtual, as in BergDB, which has no root
+  node but a chain of top nodes. The root is never in D and never written;
+  startup rebuilds it from its children, the root children. With false, the
+  root is an ordinary node. Added 2026-10-16 (F1-008-11, WP E3;
+  docs/level2-alignment.md, section 8). -/
+  virt : Bool := false
+  /-- With `virt`: the root children (BergDB's top nodes) are the nodes other
+  than the root on level `topLevel` or above. -/
+  topLevel : Nat := 0
+  /-- With `virt`: the root's entry value for its child z (BergDB's `top(z)`). -/
+  rootVal : NodeId → V
 
 variable {V T : Type}
+
+/-- With `Spec.virt`: x is a root child, a node other than the root on level
+`topLevel` or above (BergDB: a top node). -/
+def isTop (sp : Spec V T) (P : Struct V) (x : NodeId) : Bool :=
+  x != root && match P.get? x with
+    | some n => decide (sp.topLevel ≤ n.level)
+    | none => false
 
 /-- Add entry values at time i to node x. -/
 def Struct.addEntry (P : Struct V) (i : Time) (x : NodeId) (v : V) : Struct V :=

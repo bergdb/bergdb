@@ -105,6 +105,45 @@ theorem reachable_iff (sp : Spec V T) (P : Struct V) (t : Time) (x : NodeId) :
           hym hlt
       · simp at ih
 
+/-- A node reachable at t is the root or on a lower level than the root. -/
+theorem reach_level_root {sp : Spec V T} {P : Struct V} {t : Time} {x : NodeId}
+    (h : Reach sp P t x) {n0 : Node V} (h0 : P.get? root = some n0) :
+    ∀ n, P.get? x = some n → x = root ∨ n.level < n0.level := by
+  induction h with
+  | root n' _ => intro _ _; left; rfl
+  | @child x y nx m _ hxn _ hym hlt ih =>
+    intro n hn
+    right
+    rw [hym] at hn
+    cases hn
+    rcases ih nx hxn with h | h
+    · subst h
+      rw [h0] at hxn
+      cases hxn
+      exact hlt
+    · omega
+
+/-- If every node of P is reachable at some time, no entry points to the
+root. -/
+theorem ptr_ne_root {sp : Spec V T} {P : Struct V} {n0 : Node V} (h0 : P.get? root = some n0)
+    (hp : ∀ x n, P.get? x = some n → ∀ e ∈ n.hist, ∀ y ∈ sp.ptrs e.val,
+      ∃ m, P.get? y = some m ∧ m.level < n.level)
+    (hb : ∀ x, (P.get? x).isSome → ∃ t, Reach sp P t x)
+    {x : NodeId} {n : Node V} (hx : P.get? x = some n) {e : Entry V} (he : e ∈ n.hist)
+    {y : NodeId} (hy : y ∈ sp.ptrs e.val) : y ≠ root := by
+  intro hyr
+  subst hyr
+  obtain ⟨m, hm, hlt⟩ := hp x n hx e he _ hy
+  rw [h0] at hm
+  cases hm
+  obtain ⟨t, hr⟩ := hb x (by rw [hx]; rfl)
+  rcases reach_level_root hr h0 n hx with h | h
+  · subst h
+    rw [h0] at hx
+    cases hx
+    omega
+  · omega
+
 /-- Two structures with the same nodes have the same reachable nodes. -/
 theorem SameNodes.reach {sp : Spec V T} {P P' : Struct V} (h : SameNodes P P') {t : Time}
     {x : NodeId} (hr : Reach sp P t x) : Reach sp P' t x := by

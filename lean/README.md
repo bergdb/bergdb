@@ -23,7 +23,7 @@ Needs elan (`brew install elan-init`). The toolchain version is in
 
     cd lean
     lake build              # checks every file, runs the #guard tests
-    lake exe sistest 20 40  # random runs: 20 seeds, 40 transactions each
+    lake exe sistest 20 40  # random runs: 20 seeds, 40 transactions each (7 min)
 
 `lake build` checks every proof. To see that a theorem depends on nothing but
 Lean's standard axioms (no `sorry`), put this in a file, for example
@@ -34,6 +34,7 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.T1_crash
     #print axioms SIS.T1_nodes
     #print axioms SIS.T2_restart
+    #print axioms SIS.T13_markExact
 
 Each prints `[propext, Classical.choice, Quot.sound]`.
 
@@ -48,12 +49,12 @@ its section in sis-model.md.
 
 | File | Contents | sis-model.md |
 |---|---|---|
-| SIS/Basic.lean | Entries, histories, x@t (`upTo`), nodes, P (`Struct`), changes, the structure's four functions (`Spec`), reachability, P@t (`view`), equivalence (`Equiv`) | 2, 3 |
-| SIS/Stream.lean | Versions, records, the stream, lv(x) (`Stream.lv`), references, `good`, `dirty` | 4, 5 |
-| SIS/Algorithm.lean | DB = <P, D, S>, the policy and the still-dirty test (`Algo`), transaction i (`step`), R(0) (`init`), `run` | 6.1 |
-| SIS/Startup.lean | `newest`, Rule R (`follow`), reading the stream (`readFrom`), P up to s (`baseStruct`), `rerun`, `startup` | 6.2 |
-| SIS/Assumptions.lean | Assumptions A2 to A4 and the data node rules (`SpecOK`, `StepOK`, `RunOK`), `runRestarts` | 3.4 |
-| SIS/Theorems.lean | T1 (`T1_recovery`, `T1_crash`, `T1_nodes`) and T2 (`T2_restart`) | 9 |
+| SIS/Basic.lean | Entries, histories, x@t (`upTo`), nodes, P (`Struct`), changes, the structure's functions (`Spec`, with the virtual root's switch `virt`, `topLevel` and `rootVal`), root children (`isTop`), reachability, P@t (`view`), equivalence (`Equiv`) | 2, 3 |
+| SIS/Stream.lean | Versions, records (top(i) as a node and a record), the stream, lv(x) (`Stream.lv`), references, `good`, `dirty` | 4, 5 |
+| SIS/Algorithm.lean | DB = <P, D, S>, the policy, the still-dirty test and the choice of step 3 (`Algo`), the exact and BergDB's still-dirty tests (`exactTest`, `javaTest`), marking (`changed`, `marked`, `markOf`), what can be in D and written (`written`), top(i) (`topOf`, `topV`), transaction i (`step`), R(0) (`init`), `run` | 6.1 |
+| SIS/Startup.lean | `newest` (R(s) to R(k)), Rule R (`follow`), reading the stream (`readFrom`), where reading starts (`topVersion`, `startVersion`; with a virtual root `readTops`, `topsRead`, `rootVersion`), P up to s (`baseStruct`), `rerun`, `startup` | 6.2 |
+| SIS/Assumptions.lean | Assumptions A2 to A5 and the data node rules (`SpecOK`, `StepOK`, `RunOK`), with a virtual root R1 to R4 (`VirtInit`, `VirtStep`, `topClosure`), `runRestarts` | 3.4 |
+| SIS/Theorems.lean | T1 (`T1_recovery`, `T1_crash`, `T1_nodes`), T2 (`T2_restart`), T13 (`T13_markExact`) | 9 |
 
 The proofs, in SIS/Proof/ (not needed for reading the statements):
 
@@ -63,19 +64,37 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
 | StreamLemmas, Write | Latest versions, `good` and `dirty`, stability (`good_mono`), writing versions |
 | Run | The parts of a transaction, runs, and the invariant `Inv` (INV-1 to INV-4 and the facts about S and P) |
 | Init, Util, StepFacts, StepP, StepS, StepD, StepInv | The invariant holds after T(0) and after every transaction (`inv_st`) |
+| Mark | Marking the access path of the change finds exactly the dirty index nodes not in D (`step_marked_iff`, T13) |
+| Still | What the proofs need of the still-dirty test (`StillOK`), for the exact test and BergDB's (`java_stillOK`) |
+| VStep | With a virtual root, the transaction keeps `VInv` (`step_vinv`): the root children, the root's history, R4, and that the latest version of a root child names the latest versions of the root children it points to (`step_fresh`, which needs BergDB's still-dirty test) |
 | RunFacts | How the states of a run relate |
 | Recon | L-OUT (`Inv.lout`) and L-SEC (`Inv.recon`), reading with Rule R |
+| Read | Reading from a version that is good with Rule R (`Inv.read`) |
+| VRead | With a virtual root, startup reads every root child created up to s, at its latest version, and rebuilds the root (`Inv.readAt_spec_virt`) |
 | Base | Reading the stream (`Inv.readAt_spec`), P up to s (`Inv.base_get?`) |
 | Recovery | The rerun, and T1 in the strong form (`T1_strong`) |
 | Restart | Every part of a transaction depends on P only through its nodes, and T2 (`T2_strong`) |
 
 Not trusted, tests only:
 
-* SIS/Example.lean. The example of section 7, checked with `#guard`, and a
-  second structure with four levels, data nodes and time splits. Also a
-  check by running that a run meets the assumptions (`runOKB`).
+* SIS/Example.lean. The example of section 7, checked with `#guard`; a
+  second structure with four levels, data nodes and time splits; and a third
+  with a virtual root, as in BergDB: top nodes with a dead pointer to the
+  previous one, and root splits that make a new top node. Also a check by
+  running that a run meets the assumptions (`runOKB`, with `virtStepB` for
+  R1 to R4).
 * Test.lean. Runs the second structure on pseudo-random transactions and
-  checks the assumptions, T1 in every state, and T2 with random restarts.
+  checks the assumptions, T1 in every state, and T2 with random restarts,
+  for 16 algorithms (4 policies, the exact and BergDB's still-dirty test,
+  step 3 by testing or by marking), and that marking gives the same records
+  as testing; then the third structure for 8 algorithms (4 policies, step 3
+  by testing or by marking, BergDB's test); and it reports how often the
+  exact test fails T1 with the virtual root, which the theorems do not
+  cover.
+* Check/ and TraceCheck.lean: the trace checker, `lake exe tracecheck`. It
+  checks traces of Java runs against the model's definitions
+  ([../docs/level2-alignment.md](../docs/level2-alignment.md), sections 8.5
+  and 9). `sh test-traces/run.sh` runs its tests.
 
 Choices made in Lean that the text leaves open:
 
@@ -97,8 +116,16 @@ Choices made in Lean that the text leaves open:
   does not depend on the order of the nodes in the list that holds P.
 * `Time` and `NodeId` are notations for `Nat`, so that arithmetic
   automation (`omega`) sees through them.
-* T1 and T2 are stated for the exact still-dirty test. The conservative
-  test is checked by the random runs only.
+* T1 and T2 are stated for the exact still-dirty test and for BergDB's
+  conservative one (`javaTest`), since 2026-10-15; with a virtual root, for
+  BergDB's only (since 2026-10-16).
+* With a virtual root, top(i) is the root's child named by the root's last
+  entry up to s(i), with the record of its latest version (`topV`). BergDB's
+  topPos names the latest version of the newest top node written; the trace
+  checker compares the two (C-S).
+* With a virtual root, startup rebuilds the root's history from the root
+  children read: for each time t <= s, the entry (t, rootVal z) of the root
+  child z whose entries are at t (`rootVersion`).
 
 
 Reading Lean
@@ -148,6 +175,32 @@ proofs; no new theorem or Java validation is implied. `good_mono` is
 stability of a fixed version as the logical structure grows, not the
 unproved Java lemma M about substituting a newer version.
 
+2026-10-15. Marking (WP E1 of F1-008-11, repository f1): A5 added to the
+assumptions, step 3 by marking (`Algo.mark`), T13 proven, and T1 and T2 for
+both ways of step 3. `lake build` passes with no warnings and no `sorry`;
+`lake exe sistest 20 40` passes for 16 algorithms, and marking gives the same
+records as testing for 20/20 seeds; `#print axioms` of T1, T2 and
+`T13_markExact` shows only Lean's standard axioms. Also new: the trace
+checker (Check/, TraceCheck.lean), not part of the trusted part.
+
+2026-10-15. BergDB's still-dirty test (WP E2 of F1-008-11): `javaTest`, Rule
+A over all pointers, as in bergdb's `DbHelper.hasDirtyChild`. T1, T2 and T13
+now hold for both still-dirty tests, the exact one and BergDB's
+(`Proof/Still.lean`: the proofs need only that the test looks at P through
+its nodes and puts back every written node that is still dirty; BergDB's
+test does, because step 7 tests the written nodes lowest level first).
+Together with marking, the model's bookkeeping is now BergDB's. `lake build`
+passes with no warnings and no `sorry`; `#print axioms` as above.
+
+2026-10-16. The remaining Level 2 model changes (WP E3 of F1-008-11): the
+virtual root of option (a), Rule R from R(s) on (M7), and a policy that sees
+the transaction (M10). T1, T2 and T13 hold with and without a virtual root.
+`lake build` passes with no warnings and no `sorry`; `#print axioms` as above;
+`lake exe sistest 20 40` passes for the 16 algorithms of the second structure
+and the 8 of the third (the virtual root). The trace checker now runs the
+model's own `init` and `step`, with no checker-local definitions, and checks
+R1 to R4 (C-A).
+
 Changes to the trusted part while proving, all on 2026-10-12:
 
 * A2 (`StepOK.current`): entries only to nodes reachable at time i after
@@ -164,7 +217,66 @@ Changes to the trusted part while proving, all on 2026-10-12:
   k+1 records of a longer run's stream.
 * `T1_nodes` added: the stronger form of T1.
 
+Changes to the trusted part on 2026-10-15 (F1-008-11, WP E1;
+[../docs/level2-alignment.md](../docs/level2-alignment.md), M2):
+
+* A5, no resurrection (`StepOK.noRes`): a node reachable after a transaction
+  was reachable before it, or is new. Added because marking needs it: a node
+  that becomes reachable again with nothing changed below it could be dirty
+  without being on the access path of the change. BergDB meets it (the trace
+  checker found no failure).
+* Step 3 may mark the access path of the change instead of testing every
+  index node (`Algo.mark`, default false; `changed`, `marked`, `markOf`):
+  BergDB's way. T13 (`T13_markExact`): for an index node not in D, marked is
+  the same as dirty, so both ways give the same records, and T1 and T2 hold
+  for both (their proofs use T13 when `al.mark` is true).
+* BergDB's still-dirty test, `javaTest` (WP E2): a written node goes back
+  into D if one of its pointees, live or dead, is in D. The hypothesis of T1,
+  T2 and T13 changed from `al.stillDirty = exactTest sp` to
+  `al.stillDirty = exactTest sp ∨ al.stillDirty = javaTest sp`: the theorems
+  now cover both tests.
+
+Changes to the trusted part on 2026-10-16 (F1-008-11, WP E3;
+[../docs/level2-alignment.md](../docs/level2-alignment.md), M7, M10, M11 and
+section 8):
+
+* M7: `newest`, and so Rule R, looks at R(s), ..., R(k), as BergDB's
+  `DbStarter.createMaps` does, instead of R(s+1), ..., R(k). The proofs needed
+  only `<` changed to `≤` in L-SEC.
+* M10: the startup pos policy also gets the transaction T(i)
+  (`Algo.policy`, `startupPos`), as BergDB's `TransSeq.take` depends on the
+  transaction's size.
+* M11, option (a) of Q7, the virtual root. `Spec` gets `virt` (default
+  false: the root is an ordinary node, as before), `topLevel` and `rootVal`.
+  With `virt`: step 3 never gives the root (`written`), R(0) does not write it,
+  and top(i) names the root's child at s(i) and the record of its latest
+  version (`topOf`, `topV`); `Record.top` is now a node and a record. Startup
+  reads the root children from that version through their pointers, live or
+  dead (`readTops`, with Rule R), and rebuilds the root (`rootVersion`), then
+  reads as before (`startVersion`).
+* With a virtual root, new assumptions (`VirtInit`, `VirtStep`): R1, the
+  root's entry for child z points to z; at most one initial root child and at
+  most one new root child per transaction, an index node with entries; R3, a
+  root child gets entries only in the transaction that creates it; R2, the
+  root gets exactly the entry for the new root child; R4, every older root
+  child can be reached from the new one through pointers between root
+  children; and a root child that a root child points to is not reachable.
+  BergDB meets them (the trace checker checks them, C-A).
+* The hypothesis of T1, T2 and T13: BergDB's still-dirty test, or, without a
+  virtual root, the exact one. With a virtual root the proofs need BergDB's
+  test: it puts a written top node back into D when an older top node it
+  points to is in D, so the latest version of a top node that stayed clean
+  names the latest versions of the older top nodes it points to
+  (`VInv.fresh`), and startup, which finds older top nodes only through these
+  references, reads them right. With the exact test a top node can keep a
+  reference to a stale version of an older top node: `exactWitness3` in
+  SIS/Example.lean is a run where T1 then fails.
+* T13's statement says "an index node other than a virtual root"
+  (`written`).
+
 Not done:
 
-* T1 and T2 for the conservative still-dirty test, or any sound test.
+* Lazy reading after a restart, as BergDB reads a node on first touch (lemma
+  M of ../docs/levels.md; M8 of ../docs/level2-alignment.md): the model
+  reads all of P up to s at startup.
 * The bounds (T3, T4), eviction, reclaim.

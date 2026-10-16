@@ -35,6 +35,16 @@ public class StoredTrans {
     public final static byte CURRENT_FORMAT_VERSION = 4;    // serial format version (one byte).
         // 160511 - changed to 4. Both id+spos stored with got-dirty node list.
         // 151229 - changed from 2 to 3
+        // 2026-10-15: not the format byte of a stored transaction (see RECORD_FORMAT); the
+        // stored byte stayed 2 through these changes. RecoverableStream uses this constant
+        // for the filler bytes of a torn transaction header.
+    
+    /**
+     * The format byte of a stored transaction, written by Serializer and checked by Parser.
+     * 5 since 2026-10-15: the header holds topPos (docs/level2-alignment.md, M18). Before, 2.
+     * A stream of an older format is refused: new databases only.
+     */
+    public final static byte RECORD_FORMAT = 5;
     
     /** Transaction time. */
     public final long tt;
@@ -50,6 +60,14 @@ public class StoredTrans {
     
     public final long startupPos;
     
+    /**
+     * The position of the latest version of the newest written top node: the super root at
+     * the startup time of this record (docs/level2-alignment.md, 8.3). Spos.NULL if none.
+     * Startup starts from the last record's topPos; before 2026-10-15, it scanned the startup
+     * section for the newest top node, which the section need not hold (M18).
+     */
+    public final long topPos;
+    
     public long[] gotDirtyIdsAndSpos;
 
     
@@ -59,6 +77,7 @@ public class StoredTrans {
         tpos = 0;
         lastPos = 99;
         startupPos = 0;
+        topPos = Spos.NULL;
     }
     
     StoredTrans(Parser d) {
@@ -67,6 +86,7 @@ public class StoredTrans {
         lastPos = d.lastPos;
         nodes = d.nodes;
         startupPos = d.startupPos;
+        topPos = d.topPos;
         gotDirtyIdsAndSpos = d.gotDirtyIdsAndSpos;
     }
     
@@ -158,7 +178,8 @@ public class StoredTrans {
 
     public String toString() {
         StringBuilder b = new StringBuilder();
-        b.append("tt:" + tt + ", tpos:" + tpos + ", lastPos:" + lastPos + ", startupPos:" + this.startupPos);
+        b.append("tt:" + tt + ", tpos:" + tpos + ", lastPos:" + lastPos + ", startupPos:" + this.startupPos
+                + ", topPos:" + this.topPos);
         b.append(", nodeCount:" + this.nodes.length);
         
         if (gotDirtyIdsAndSpos.length > 0) {
@@ -210,6 +231,7 @@ public class StoredTrans {
         long tpos;
         long lastPos;
         long startupPos;
+        long topPos;
         StoredNode[] nodes;
         long[] gotDirtyIdsAndSpos;
 
@@ -249,9 +271,11 @@ public class StoredTrans {
             byte version = buffer[offset];
             offset++;
             
-            if (version != 2) {
+            if (version != RECORD_FORMAT) {
                 throw new StreamFormatException("Cannot parse stored transaction of "
-                        + "format version " + version + ".");
+                        + "format version " + version + "; this version of BergDB reads format "
+                        + RECORD_FORMAT + " only. A database written before 2026-10-15 (format 2) "
+                        + "cannot be opened (docs/level2-alignment.md, M18).");
             }
 
             offset += 3;     // three unused bytes
@@ -260,6 +284,9 @@ public class StoredTrans {
             offset += 8;
             
             startupPos = Bytes.bytesToLongLE(buffer, offset);
+            offset += 8;
+            
+            topPos = Bytes.bytesToLongLE(buffer, offset);
             offset += 8;
             
             // Parse nodes
@@ -351,6 +378,8 @@ public class StoredTrans {
         private long transStartPos;
         private long transTime;
         private long startupPos;
+        private TopNode topNode;
+        private long topPos;
         
         private long transNextSpos;
         private long transLastSpos;
@@ -381,6 +410,16 @@ public class StoredTrans {
          */
         public void serialize(TransNodes transNodes, long transTime, long transStartPos, 
                 long startupPos, ArrayList<Node> gotDirtyNodes) {
+            serialize(transNodes, transTime, transStartPos, startupPos, gotDirtyNodes, null);
+        }
+
+        /**
+         * As serialize() above, with the newest written top node, whose position after this
+         * transaction is stored as topPos (null: Spos.NULL). It may be one of the transaction's
+         * top nodes; its position in this transaction is then stored.
+         */
+        public void serialize(TransNodes transNodes, long transTime, long transStartPos, 
+                long startupPos, ArrayList<Node> gotDirtyNodes, TopNode topNode) {
             assert transNodes != null;
             assert transTime >= 0;
             assert transStartPos >= 0;
@@ -390,8 +429,14 @@ public class StoredTrans {
             this.transTime = transTime;
             this.startupPos = startupPos;
             this.gotDirtyNodes = gotDirtyNodes;
+            this.topNode = topNode;
 
             prepareToSerialize();
+            
+            // After prepareToSerialize(): a top node of this transaction has its new position.
+            this.topPos = topNode == null ? Spos.NULL : topNode.getSpos();
+            assert topNode == null || (Spos.isValid(topPos) && !Spos.isVpos(topPos))
+                    : "the newest written top node has no stream position: " + topPos;
             
             if (AssertStatus.enabled()) {
                 checkStreamPointersOfKeyNodes();
@@ -512,7 +557,8 @@ public class StoredTrans {
             // Also computes totalSize and sets prevPos array for KeyNodes.
             // This is performance-sensitive; pretty code has lower-than-usual prio here.
 
-            totalSize = 24; // Header size, 24 = trans size (4), empty (4), trans time (8), startupPos (8)
+            totalSize = 32; // Header size, 32 = trans size (4), format (4), trans time (8),
+                            // startupPos (8), topPos (8)
             long currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
 
             resizePrevPosIfNeeded();
@@ -593,15 +639,16 @@ public class StoredTrans {
         }
 
         private int serializeHeader(int longOffset) {
-            final long FORMAT_VERSION = 2L;    // current serial format version (one byte).
             long int0 = totalSize;
-            long int1 = FORMAT_VERSION;
+            long int1 = RECORD_FORMAT;
             
             longBuffer[longOffset] = int0 | (int1 << 32);
             longOffset += 1;
             longBuffer[longOffset] = transTime;
             longOffset += 1;
             longBuffer[longOffset] = startupPos;
+            longOffset += 1;
+            longBuffer[longOffset] = topPos;
             longOffset += 1;
             
             return longOffset;
@@ -818,6 +865,54 @@ public class StoredTrans {
         
         byte[] value2 = ((ValueNode) parser.nodes[3].getNode()).value.clone();
         Assert.assertArrayEquals(new byte[]{13, 14}, value2);
+    }
+    
+    /** topPos names the new position of a top node written in the same transaction. */
+    @Nano
+    private static void testTopPosOfTopNodeInTransaction() {
+        Serializer serializer = new Serializer();
+        TransNodes transNodes = new TransNodes();
+        TopNode top = TopNode.createDummy(7);
+        transNodes.addTopNode(top);
+        serializer.serialize(transNodes, 100, 200, -1, new ArrayList<Node>(), top);
+        
+        Parser parser = new Parser();
+        parser.parse(200, serializer.getTransBuffer());
+        
+        assertEquals(top.getSpos(), parser.topPos);
+        assertEquals(parser.nodes[0].getNode().getSpos(), parser.topPos);
+    }
+    
+    /** topPos names the position of a top node written earlier. */
+    @Nano
+    private static void testTopPosOfEarlierTopNode() {
+        Serializer serializer = new Serializer();
+        TopNode top = TopNode.createDummy(7);
+        top.spos = 128;
+        serializer.serialize(new TransNodes(), 100, 200, -1, new ArrayList<Node>(), top);
+        
+        Parser parser = new Parser();
+        parser.parse(200, serializer.getTransBuffer());
+        
+        assertEquals(128, parser.topPos);
+        assertEquals(0, parser.nodes.length);
+    }
+    
+    /** A transaction of the format before 2026-10-15 (2) is refused with a clear message. */
+    @Nano
+    private static void testRefusesOldFormat() {
+        Serializer serializer = new Serializer();
+        serializer.serialize(new TransNodes(), 100, 200, -1, new ArrayList<Node>());
+        byte[] buffer = serializer.getTransBuffer().clone();
+        assertEquals(RECORD_FORMAT, buffer[4]);
+        buffer[4] = 2;
+        
+        try {
+            new Parser().parse(200, buffer);
+            throw new AssertionError("no exception for format 2");
+        } catch (StreamFormatException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 2"));
+        }
     }
     
     @Nano

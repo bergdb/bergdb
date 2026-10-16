@@ -1,7 +1,7 @@
 /-
 Proofs, part 11: one transaction keeps the facts about D.
 -/
-import SIS.Proof.StepS
+import SIS.Proof.Still
 
 set_option linter.unusedSectionVars false
 
@@ -54,9 +54,11 @@ theorem step_lv_index_not_taken {k : Nat} (hinv : Inv sp db k)
   · exact step_not_dataId sp al db tr hinv hstep hx h
   · exact ht h
 
-theorem step_D_eq (hex : al.stillDirty = exactTest sp) {k : Nat} (hinv : Inv sp db k) :
+theorem step_D_eq {k : Nat} (hinv : Inv sp db k) :
     (parts sp al db tr).r7.1 = sectionD (Snew sp al db tr) := by
-  have hr7 := step_r7 sp al db tr hex hinv.len
+  obtain ⟨L, hL⟩ : ∃ L, (parts sp al db tr).r7.2 = L := ⟨_, rfl⟩
+  have hr7 : (parts sp al db tr).r7 = ((parts sp al db tr).D2 ++ L.map (fun x => (x, k + 1)), L) := by
+    rw [(step_r7_shape sp al db tr hinv.len).1, hL]
   have hgd : (parts sp al db tr).R.gd = (parts sp al db tr).gd3 ++ (parts sp al db tr).r7.2 := by
     rw [parts_R]
   have hsp : (parts sp al db tr).R.sp = (parts sp al db tr).s := by rw [parts_R]
@@ -77,9 +79,12 @@ theorem step_D_eq (hex : al.stillDirty = exactTest sp) {k : Nat} (hinv : Inv sp 
   simp
   omega
 
-theorem step_dNodup (hex : al.stillDirty = exactTest sp) {k : Nat} (hinv : Inv sp db k) :
+theorem step_dNodup {k : Nat} (hinv : Inv sp db k) :
     ((parts sp al db tr).r7.1.map (·.1)).Nodup := by
-  rw [step_r7 sp al db tr hex hinv.len]
+  obtain ⟨L, hL⟩ : ∃ L, (parts sp al db tr).r7.2 = L := ⟨_, rfl⟩
+  have hsub : L.Sublist (parts sp al db tr).taken := by
+    rw [← hL]; exact (step_r7_shape sp al db tr hinv.len).2
+  rw [(step_r7_shape sp al db tr hinv.len).1, hL]
   simp only [List.map_append, List.map_map]
   rw [List.nodup_append]
   refine ⟨?_, ?_, ?_⟩
@@ -87,17 +92,20 @@ theorem step_dNodup (hex : al.stillDirty = exactTest sp) {k : Nat} (hinv : Inv s
     exact (List.Sublist.map _ List.filter_sublist).nodup (step_D1_nodup sp al db tr hinv)
   · have : (((·.1) ∘ fun x => (x, k + 1)) : NodeId → NodeId) = id := by funext x; rfl
     rw [this, List.map_id]
-    exact nodup_filter (step_taken_nodup sp al db tr hinv) _
+    exact hsub.nodup (step_taken_nodup sp al db tr hinv)
   · intro a ha b hb hab
     subst hab
     simp only [List.mem_map, Function.comp] at ha hb
     obtain ⟨⟨y, d⟩, hy, rfl⟩ := ha
     obtain ⟨z, hz, rfl⟩ := hb
-    exact step_not_taken_of_D2 sp al db tr hinv hy ((List.mem_filter.mp hz).1)
+    exact step_not_taken_of_D2 sp al db tr hinv hy (hsub.subset hz)
 
-theorem step_dIndex (hex : al.stillDirty = exactTest sp) {k : Nat} (hinv : Inv sp db k) :
+theorem step_dIndex {k : Nat} (hinv : Inv sp db k) :
     ∀ e ∈ (parts sp al db tr).r7.1, isIndex (parts sp al db tr).P e.1 = true := by
-  rw [step_r7 sp al db tr hex hinv.len]
+  obtain ⟨L, hL⟩ : ∃ L, (parts sp al db tr).r7.2 = L := ⟨_, rfl⟩
+  have hsub : L.Sublist (parts sp al db tr).taken := by
+    rw [← hL]; exact (step_r7_shape sp al db tr hinv.len).2
+  rw [(step_r7_shape sp al db tr hinv.len).1, hL]
   intro e he
   simp only [List.mem_append, List.mem_map] at he
   rcases he with he | ⟨x, hx, rfl⟩
@@ -106,19 +114,19 @@ theorem step_dIndex (hex : al.stillDirty = exactTest sp) {k : Nat} (hinv : Inv s
     · have hi := hinv.dIndex _ h
       rw [step_isIndex_old sp al db tr hinv.len (isSome_of_isIndex hi)]
       exact hi
-    · exact ((step_gd3_mem sp al db tr hinv.len _).mp h).2.1
-  · exact step_taken_index sp al db tr hinv ((List.mem_filter.mp hx).1)
+    · exact (step_gd3_basic sp al db tr hinv.len _ h).2.1
+  · exact step_taken_index sp al db tr hinv (hsub.subset hx)
 
-theorem step_inv2 (hex : al.stillDirty = exactTest sp) {k : Nat} (hinv : Inv sp db k)
-    (hstep : StepOK sp db.P (k + 1) (parts sp al db tr).c) :
-    ∀ x, isIndex (parts sp al db tr).P x = true →
+theorem step_inv2 (hst : StillOK sp al) (hok : SpecOK sp) {k : Nat}
+    (hinv : Inv sp db k) (hstep : StepOK sp db.P (k + 1) (parts sp al db tr).c) :
+    ∀ x, isIndex (parts sp al db tr).P x = true → written sp x = true →
       dirty sp (Snew sp al db tr) (parts sp al db tr).P (k + 1) x = true →
         inD (parts sp al db tr).r7.1 x = true := by
-  intro x hx hd
-  rw [step_r7 sp al db tr hex hinv.len, inD_iff]
+  intro x hx hw hd
+  rw [(step_r7_shape sp al db tr hinv.len).1, inD_iff]
   simp only [List.mem_append, List.mem_map, Prod.mk.injEq]
   by_cases ht : x ∈ (parts sp al db tr).taken
-  · exact ⟨k + 1, Or.inr ⟨x, List.mem_filter.mpr ⟨ht, hd⟩, rfl, rfl⟩⟩
+  · exact ⟨k + 1, Or.inr ⟨x, hst.complete db k tr hok hinv hstep x ht hd, rfl, rfl⟩⟩
   · -- x stays in D, or got dirty in step 3, or was clean before the writes of step 6.
     have hs := step_s_le sp al db tr hinv.len
     by_cases hD : inD db.D x = true
@@ -138,8 +146,8 @@ theorem step_inv2 (hex : al.stillDirty = exactTest sp) {k : Nat} (hinv : Inv sp 
           · rfl
           · exfalso
             apply hg
-            rw [step_gd3_mem sp al db tr hinv.len]
-            exact ⟨isSome_of_isIndex hx, hx, by simpa using hD, hc⟩
+            rw [step_gd3_mem' sp al db tr hok hinv hstep]
+            exact ⟨isSome_of_isIndex hx, hx, by simpa using hD, hw, hc⟩
         rw [dirty_false_iff] at hclean
         obtain ⟨v, hv, hgood⟩ := hclean
         have hlvS : (Snew sp al db tr).lv x = some v := by
@@ -177,9 +185,9 @@ theorem step_D2_cases {k : Nat} (hinv : Inv sp db k) {x : NodeId} {d : Nat}
     rw [hinv.len] at this
     omega
   · right
-    exact ⟨h1, h2, ((step_gd3_mem sp al db tr hinv.len x).mp h2).2.2.1⟩
+    exact ⟨h1, h2, (step_gd3_basic sp al db tr hinv.len x h2).2.2⟩
 
-theorem step_inv3 (hex : al.stillDirty = exactTest sp) (hok : SpecOK sp) {k : Nat}
+theorem step_inv3 (hok : SpecOK sp) {k : Nat}
     (hinv : Inv sp db k) (hstep : StepOK sp db.P (k + 1) (parts sp al db tr).c) :
     ∀ x d v, (x, d) ∈ (parts sp al db tr).r7.1 → (Snew sp al db tr).lv x = some v →
       d ≤ v.recNo ∨ ∀ t < d, reachable sp (parts sp al db tr).P t x = true →
@@ -189,13 +197,14 @@ theorem step_inv3 (hex : al.stillDirty = exactTest sp) (hok : SpecOK sp) {k : Na
     fun t ht x => reachable_grow hok.liveSub hinv.ptrs hinv.rootIn hg ht x
   have hext := Snew_ext sp al db tr
   intro x d v hxd hlv
-  rw [step_r7 sp al db tr hex hinv.len] at hxd
+  have hsub := (step_r7_shape sp al db tr hinv.len).2
+  rw [(step_r7_shape sp al db tr hinv.len).1] at hxd
   simp only [List.mem_append, List.mem_map, Prod.mk.injEq] at hxd
   rcases hxd with hxd | ⟨y, hy, rfl, rfl⟩
   · have hnt := step_not_taken_of_D2 sp al db tr hinv hxd
     have hidx : isIndex (parts sp al db tr).P x = true :=
-      step_dIndex sp al db tr hex hinv (x, d) (by
-        rw [step_r7 sp al db tr hex hinv.len]; exact List.mem_append_left _ hxd)
+      step_dIndex sp al db tr hinv (x, d) (by
+        rw [(step_r7_shape sp al db tr hinv.len).1]; exact List.mem_append_left _ hxd)
     rw [step_lv_index_not_taken sp al db tr hinv hstep hidx hnt] at hlv
     rcases step_D2_cases sp al db tr hinv hxd with ⟨hD, hdk⟩ | ⟨rfl, hgd, hnD⟩
     · rcases hinv.inv3 x d v hD hlv with h | h
@@ -215,7 +224,7 @@ theorem step_inv3 (hex : al.stillDirty = exactTest sp) (hok : SpecOK sp) {k : Na
       have hcl : dirty sp db.S db.P k x = false := by
         cases hc : dirty sp db.S db.P k x
         · rfl
-        · have := hinv.inv2 x hidx0 hc
+        · have := hinv.inv2 x hidx0 (step_gd3_written sp al db tr x hgd) hc
           rw [hnD] at this; simp at this
       rw [dirty_false_iff] at hcl
       obtain ⟨v', hv', hgood⟩ := hcl
@@ -226,7 +235,7 @@ theorem step_inv3 (hex : al.stillDirty = exactTest sp) (hok : SpecOK sp) {k : Na
       exact good_mono' sp hext hg (by omega) (hgood t (by omega) hr)
   · -- x stayed dirty after it was written in this transaction.
     left
-    have hyt := (List.mem_filter.mp hy).1
+    have hyt := hsub.subset hy
     obtain ⟨w, hw, hwy⟩ := (step_written_iff sp al db tr hinv hstep y).mpr (Or.inr hyt)
     have := lv_Snew_written sp al db tr (step_vs_nodup sp al db tr hinv hstep) hw
     rw [hwy, hlv] at this
@@ -234,7 +243,7 @@ theorem step_inv3 (hex : al.stillDirty = exactTest sp) (hok : SpecOK sp) {k : Na
     obtain ⟨n, pre, -, -, h, -⟩ := built_mem (step_vs_built sp al db tr hinv.len) hw
     omega
 
-theorem step_inv4 (hex : al.stillDirty = exactTest sp) (hok : SpecOK sp) {k : Nat}
+theorem step_inv4 (hok : SpecOK sp) {k : Nat}
     (hinv : Inv sp db k) (hstep : StepOK sp db.P (k + 1) (parts sp al db tr).c) :
     ∀ x d, (x, d) ∈ (parts sp al db tr).r7.1 → (Snew sp al db tr).lv x = none →
       ∀ t < d, reachable sp (parts sp al db tr).P t x = false := by
@@ -242,13 +251,14 @@ theorem step_inv4 (hex : al.stillDirty = exactTest sp) (hok : SpecOK sp) {k : Na
   have hreach : ∀ t ≤ k, ∀ x, reachable sp (parts sp al db tr).P t x = reachable sp db.P t x :=
     fun t ht x => reachable_grow hok.liveSub hinv.ptrs hinv.rootIn hg ht x
   intro x d hxd hlv
-  rw [step_r7 sp al db tr hex hinv.len] at hxd
+  have hsub := (step_r7_shape sp al db tr hinv.len).2
+  rw [(step_r7_shape sp al db tr hinv.len).1] at hxd
   simp only [List.mem_append, List.mem_map, Prod.mk.injEq] at hxd
   rcases hxd with hxd | ⟨y, hy, rfl, rfl⟩
   · have hnt := step_not_taken_of_D2 sp al db tr hinv hxd
     have hidx : isIndex (parts sp al db tr).P x = true :=
-      step_dIndex sp al db tr hex hinv (x, d) (by
-        rw [step_r7 sp al db tr hex hinv.len]; exact List.mem_append_left _ hxd)
+      step_dIndex sp al db tr hinv (x, d) (by
+        rw [(step_r7_shape sp al db tr hinv.len).1]; exact List.mem_append_left _ hxd)
     rw [step_lv_index_not_taken sp al db tr hinv hstep hidx hnt] at hlv
     rcases step_D2_cases sp al db tr hinv hxd with ⟨hD, hdk⟩ | ⟨rfl, hgd, hnD⟩
     · intro t ht
@@ -269,10 +279,10 @@ theorem step_inv4 (hex : al.stillDirty = exactTest sp) (hok : SpecOK sp) {k : Na
         have hidx0 : isIndex db.P x = true := by
           rw [← step_isIndex_old sp al db tr hinv.len (by simp [hx0])]; exact hidx
         have hdirty : dirty sp db.S db.P k x = true := by simp [dirty, hlv]
-        have := hinv.inv2 x hidx0 hdirty
+        have := hinv.inv2 x hidx0 (step_gd3_written sp al db tr x hgd) hdirty
         rw [hnD] at this; simp at this
   · exfalso
-    have hyt := (List.mem_filter.mp hy).1
+    have hyt := hsub.subset hy
     obtain ⟨w, hw, hwy⟩ := (step_written_iff sp al db tr hinv hstep y).mpr (Or.inr hyt)
     have := lv_Snew_written sp al db tr (step_vs_nodup sp al db tr hinv hstep) hw
     rw [hwy, hlv] at this

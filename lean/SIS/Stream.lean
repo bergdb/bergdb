@@ -35,8 +35,12 @@ structure Record (V T : Type) where
   vers : List (Version V)
   /-- gd(i), the ids of the index nodes that got dirty in T(i). -/
   gd : List NodeId
-  /-- top(i), the record of the latest version of root. -/
-  top : Option Nat
+  /-- top(i), the version that startup reads first, as its node and record:
+  the latest version of root, or, with a virtual root (`Spec.virt`), the
+  latest version of the root's child at s(i) (`topOf`). The node was added
+  2026-10-16 for the virtual root (F1-008-11, WP E3); BergDB's topPos names a
+  version, so both. -/
+  top : Option (NodeId × Nat)
   deriving DecidableEq, Repr
 
 /-- The stream: records R(0), R(1), ..., R(k). Record i is at index i. -/

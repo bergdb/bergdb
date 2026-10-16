@@ -156,21 +156,38 @@ a node, and when index nodes are written.
   that they name the newest versions, a node written in the same record by
   its new position, and the still-dirty test sees every node in D.
 * Startup (DbStarter): Rule R from the startup section by node id, for all
-  index nodes; the section's nodes registered as canonical; the rerun; and
+  index nodes; the section's nodes registered as canonical; the super root
+  at the startup time from the last record's topPos (below); the rerun; and
   D rebuilt from the stored got-dirty ids. A node in D that the rerun does
   not reach is read from the position stored with its id. Such nodes exist:
   a delete of a key that does not exist puts the nodes on its path in D,
   but it is not stored, so it is not rerun.
+* The super root (2026-10-15, [level2-alignment.md](level2-alignment.md),
+  M18): every record stores topPos, the position of the latest version of the
+  newest written top node, which is the super root at the record's startup
+  time (record format 5; streams of the older format 2 are refused).
+  Before, startup scanned the section for the newest top node; transactions
+  that change nothing (no KVs; with 10's change also deletes of missing keys)
+  could move the startup pos past every top node version, and the database
+  could not start.
 
 Open:
 
-* The Lean model does not yet cover Java exactly. Needed: lemma M; that the
-  references Java writes equal the model's (latest versions); a got-dirty
-  set that may be any deterministic superset of the dirty nodes (Java adds
-  the whole access path, including that of a delete of a missing key); and
-  T1 and T2 for any sound still-dirty test, since Java uses the
-  conservative one. Java also takes versions from R(s), the model from
-  R(s+1); justifying that difference is another obligation for lemma M.
+* The Lean model and Java (F1-008-11, [level2-alignment.md](level2-alignment.md),
+  the mapping and the register of differences). Since 2026-10-16 the model has
+  Java's bookkeeping (marking the access path, the conservative still-dirty
+  test), Rule R from R(s), a startup pos policy that sees the transaction, and
+  a virtual root with top nodes as in Java, and T1, T2 and T13 are proven for
+  it; the trace checker runs the model's own definitions on Java runs, and
+  the references Java writes agree with the model's on every record checked.
+  Still open: a Java transaction applies its keys one at a time, so it is not
+  always one model transaction, and it marks more than the model (M1, M2;
+  10's change, to come in WP D1); and lemma M (lazy reading after a restart,
+  M8), argued and checked by restarts, not proven.
+* A startup bug, found 2026-10-15 (level2-alignment.md, M18): transactions
+  that change nothing could move the startup pos past every top node
+  version, and the database then could not start. Fixed the same day (topPos,
+  above); uncommitted until Frans's review.
 * Bounds: the startup section can grow beyond the startup distance when many
   index nodes wait to be written (problem.md, R3 and Q4). The conservative
   still-dirty test may make dead nodes be written again and again. To

@@ -9,10 +9,11 @@ namespace SIS
 
 variable {V T : Type} [DecidableEq V]
 
-/-- The newest version of y in the startup section R(s+1), ..., R(k)
-(6.2, step 3). -/
+/-- The newest version of y in R(s), ..., R(k): the startup section and the
+record at the startup pos, as in BergDB's `DbStarter.createMaps` (6.2, step 3;
+R(s) added 2026-10-16, docs/level2-alignment.md, M7). -/
 def newest (S : Stream V T) (s : Nat) (y : NodeId) : Option (Version V) :=
-  (S.drop (s + 1)).reverse.findSome? (fun R => R.vers.find? (fun v => v.node == y))
+  (S.drop s).reverse.findSome? (fun R => R.vers.find? (fun v => v.node == y))
 
 /-- Follow the pointer of a version to node y, whose reference is ref
 (none if y had not been written, BergDB's vpos) (6.2, step 4). With Rule R
@@ -35,14 +36,55 @@ def readFrom (sp : Spec V T) (S : Stream V T) (s : Nat) (ruleR : Bool) (t : Time
     | some w => if w.level < v.level then readFrom sp S s ruleR t w else [])
 termination_by v.level
 
-/-- Read the stream at time t, from top(k), the latest version of root. -/
+/-- The version that top(k) names, read with Rule R. -/
+def topVersion (S : Stream V T) (s : Nat) (ruleR : Bool) : Option (Version V) :=
+  match S.getLast?.bind (·.top) with
+  | some (z, r) => follow S s ruleR z (some r)
+  | none => none
+
+/-- With a virtual root: the root children read from version v of a root
+child, v included, through the pointers (live or dead) between root children
+(BergDB's skip pointers), with Rule R as in `readFrom`. -/
+def readTops (sp : Spec V T) (S : Stream V T) (s : Nat) (ruleR : Bool) (v : Version V) :
+    List (Version V) :=
+  v :: (pointees sp v.hist).flatMap (fun y =>
+    match follow S s ruleR y (v.ref? y) with
+    | none => []
+    | some w => if sp.topLevel ≤ w.level ∧ w.level < v.level then readTops sp S s ruleR w else [])
+termination_by v.level
+
+/-- The root's level. It never changes. -/
+def rootLevel (sp : Spec V T) : Nat := ((sp.init.get? root).map (·.level)).getD 0
+
+/-- With a virtual root: the root, as startup rebuilds it from the versions ws
+of the root children read. Its history up to s: for each time t ≤ s at which a
+root child read has its entries (it was created then), the entry
+(t, rootVal z); its references: to the version read of each root child. -/
+def rootVersion (sp : Spec V T) (s : Nat) (ws : List (Version V)) : Version V :=
+  { node := root, recNo := s, level := rootLevel sp, isData := false,
+    hist := (List.range (s + 1)).filterMap (fun t =>
+      (ws.find? (fun w => w.hist.any (fun e => e.time == t))).map
+        (fun w => (⟨t, sp.rootVal w.node⟩ : Entry V))),
+    refs := ws.map (fun w => (w.node, w.recNo)) }
+
+/-- With a virtual root: the root children read at startup, from the version
+that top(k) names. -/
+def topsRead (sp : Spec V T) (S : Stream V T) (s : Nat) (ruleR : Bool) : List (Version V) :=
+  match topVersion S s ruleR with
+  | some v => readTops sp S s ruleR v
+  | none => []
+
+/-- The version that startup reads from: top(k)'s, or, with a virtual root,
+the root rebuilt from the root children read from top(k)'s version (6.2;
+docs/level2-alignment.md, 8.2). -/
+def startVersion (sp : Spec V T) (S : Stream V T) (s : Nat) (ruleR : Bool) : Option (Version V) :=
+  if sp.virt then some (rootVersion sp s (topsRead sp S s ruleR)) else topVersion S s ruleR
+
+/-- Read the stream at time t, from the version startup starts from. -/
 def readAt (sp : Spec V T) (S : Stream V T) (s : Nat) (ruleR : Bool) (t : Time) :
     List (NodeId × Version V) :=
-  match S.getLast?.bind (·.top) with
-  | some r =>
-    match follow S s ruleR root (some r) with
-    | some v => readFrom sp S s ruleR t v
-    | none => []
+  match startVersion sp S s ruleR with
+  | some v => readFrom sp S s ruleR t v
   | none => []
 
 /-- P up to time s, as read from the stream (6.2, step 5). Each node gets the

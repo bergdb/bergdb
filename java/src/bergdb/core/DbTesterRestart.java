@@ -563,4 +563,44 @@ public class DbTesterRestart {
         Assert.assertEquals("after restart", lastTpos, 
                 db.internal().nodeStream().getMetaBlock().getLastTransSpos());
     }
+    
+    /**
+     * Transactions that change nothing do not mark the super root; enough of them move the
+     * startup pos past every top node version. Startup must still find the super root, from
+     * the last transaction's topPos. Regression test for M18 of docs/level2-alignment.md,
+     * found 2026-10-15: the database could not start ("Could not find super node in startup
+     * section").
+     */
+    @Nano private static void testRestartAfterTransactionsThatChangeNothing() {
+        for (int mode = 0; mode < 2; mode++) {      // 0: no KVs, 1: deletes of missing keys
+            MemoryStream s = new MemoryStream();
+            CoreTestClock clock = new CoreTestClock();
+            Db db = Db.builder().testSetup(s).clock(clock).startupDistance(100).maxNodeSize8()
+                    .start();
+            long time = 10;
+            for (int i = 0; i < 50; i++) {
+                clock.setTime(time++);
+                db.execute(db.trans().put("/k/" + i, "v" + i).build());
+            }
+            for (int round = 0; round < 3; round++) {
+                for (int i = 0; i < 40; i++) {
+                    clock.setTime(time++);
+                    Trans.Builder b = db.trans();
+                    if (mode == 1) b.delete("/missing/" + round + "/" + i);
+                    db.execute(b.build());
+                }
+                db.sync(SyncLevel.STRONG);
+                db.stop();
+                s = s.copy();
+                db = Db.builder().testSetup(s).clock(clock).startupDistance(100).maxNodeSize8()
+                        .start();
+                for (int i = 0; i < 50; i++) {
+                    Assert.assertArrayEquals("mode " + mode + ", round " + round + ", key " + i,
+                            StringUtil.toBytes("v" + i), DbUtil.get(db, Long.MAX_VALUE, "/k/" + i));
+                }
+                clock.setTime(time++);
+                db.execute(db.trans().put("/k/" + round, "v" + round).build());
+            }
+        }
+    }
 }
