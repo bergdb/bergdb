@@ -274,8 +274,12 @@ public class DbStarter {
         if (superRoot == null) {
             throw new StreamFormatException("No super root at time " + startupTime + " was found.");
         }
-        assert superRoot == lastSuperNode : "the newest written top node " + lastSuperNode.getId()
-                + " is not the super root at the startup time, " + superRoot.getId();
+        // 2026-10-16 (bergdb item 001, WP A3; review-13-claude, 7.1): a check, not an assert,
+        // so that a stream that breaks it is refused also without -ea.
+        if (superRoot != lastSuperNode) {
+            throw new StreamFormatException("The newest written top node " + lastSuperNode.getId()
+                    + " is not the super root at the startup time, " + superRoot.getId() + ".");
+        }
         db.internal().setNewestWrittenTop(lastSuperNode);
     }
 

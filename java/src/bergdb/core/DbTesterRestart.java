@@ -603,4 +603,42 @@ public class DbTesterRestart {
             }
         }
     }
+
+    /**
+     * A database with more than 32,768 top nodes restarts with its history (2026-10-16, bergdb
+     * item 001, WP A3; review-13-claude, section 2, of F1-008-13). One key updated in every
+     * transaction, at node size 8, makes a new top node about every four transactions, so
+     * about 131,000 transactions pass ordinal 32,768. Before the fix of
+     * StoredTopNode.toLongs, the restart failed ("Bad TopNode ID of TopNode in stream").
+     */
+    @Nano private static void testRestartAfterManyTopNodes() {
+        MemoryStream s = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup(s).clock(clock).startupDistance(10000).maxNodeSize8()
+                .start();
+        int n = 0;
+        while (db.internal().newestWrittenTop().topNodeId < 32800) {
+            clock.setTime(10L * (n + 1));
+            db.execute(db.trans().put("/hot", "v" + n).build());
+            n++;
+        }
+        int superRoot = db.internal().superRoot().topNodeId;
+        db.sync(SyncLevel.STRONG);
+        db.stop();
+        s = s.copy();
+        db = Db.builder().testSetup(s).clock(clock).startupDistance(10000).maxNodeSize8().start();
+        Assert.assertEquals("super root after the restart", superRoot,
+                db.internal().superRoot().topNodeId);
+        int[] at = {0, 1, n / 4, n / 2, (3 * n) / 4, n - 2, n - 1};
+        for (int j : at) {
+            Assert.assertArrayEquals("value at the time of transaction " + j,
+                    StringUtil.toBytes("v" + j), DbUtil.get(db, 10L * (j + 1), "/hot"));
+        }
+        while (db.internal().superRoot().topNodeId == superRoot) {
+            clock.setTime(10L * (n + 1));
+            db.execute(db.trans().put("/hot", "v" + n).build());
+            n++;
+        }
+        Assert.assertEquals("the next top node", superRoot + 1, db.internal().superRoot().topNodeId);
+    }
 }

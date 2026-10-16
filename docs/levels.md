@@ -1256,6 +1256,35 @@ reach; and the meta block's last transaction position after a restart. See
 [log.md](log.md).
 
 
+Bugs found by the alignment of Levels 3 and 4
+=============================================
+
+Bergdb item 001 (`items/001-lean-model-levels-3-4/`). Each fix has a unit
+test that fails without it.
+
+1. Top node ordinals from 32,768 on were written wrong (fixed 2026-10-16,
+   WP A3; found by F1-008-13, section 5.1, in the f1 repository, and
+   measured end to end by its review). `StoredTopNode.toLongs` shifted the
+   ordinal as an `int` before widening it, so the stored ordinal was its low
+   16 bits, read as a signed number. A database whose newest written top
+   node had an ordinal with bit 15 set could not start ("Bad TopNode ID");
+   from 65,536 on, with bit 15 clear, it started silently wrong, with the
+   ordinal modulo 65,536 and the wrong height, lost most of its history, and
+   went on writing wrong ordinals. One key updated in every transaction
+   makes a new top node about every 15 transactions at the default node
+   size: 32,768 top nodes in about nine days at one update a second. Now the
+   ordinal is widened first, and the parser refuses a top node whose skip
+   pointers do not fit its ordinal (as many as its height, set exactly at
+   its set bits), so a stream that was written wrong is refused, not read
+   wrong; such streams are not repaired. Streams whose top node ordinals are
+   all below 32,768 are unchanged, byte for byte. Startup also checks,
+   without `-ea`, that the newest written top node is the super root at the
+   startup time. Tests: `StoredTopNode.testOrdinalsRoundTrip` and
+   `testParserRefusesSlotsThatDoNotFit`;
+   `DbTesterRestart.testRestartAfterManyTopNodes`, about 131,000
+   transactions past ordinal 32,768 and a restart, 1.5 s.
+
+
 Next
 ====
 

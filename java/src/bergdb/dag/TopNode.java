@@ -18,7 +18,10 @@ public final class TopNode implements Node {
     public final long[] pointersPos;     
         // stream pos when pointers[x] == null and accessTime when pointers[x] != null.
     public final long[] pointersTime;
-        // Time of pointers. When they were written.
+        // The rootTime of each skip pointer's target, cached here so that a search can choose
+        // a pointer without following it (TopDs.findSuperRootAtTime); -1 for an unused slot.
+        // Set when the top node is made (TopDs.newSuperRoot) and kept when it is written and
+        // read (StoredTopNode). Not the time the pointer or its target was written.
     final short pointerCount;
         // Same as pointers.length + 1.
     public final short pointersLength;
@@ -71,7 +74,11 @@ public final class TopNode implements Node {
     }
     
     /**
-     * Useful for testing only.
+     * Useful for testing only. Since 2026-10-16 (bergdb item 001, WP A3), with the skip
+     * pointers that a top node with this ordinal has in a database (TopDs.newSuperRoot):
+     * one at each set bit of the ordinal, here a stream pointer to a made-up position,
+     * since StoredTopNode.parse refuses a top node whose skip pointers do not fit its
+     * ordinal.
      */
     public static TopNode createDummy(int topNodeId) {
         long keyNodeSpos = 100;
@@ -82,6 +89,12 @@ public final class TopNode implements Node {
         
         TopNode result = new TopNode(topNodeId, k, k.getSpos(), 1, 100);
         result.setId(103);
+        for (int i = 0; i < result.pointersLength; i++) {
+            if ((topNodeId & power2(i)) != 0) {
+                result.pointersPos[i] = 16 * (i + 1);
+                result.pointersTime[i] = 0;
+            }
+        }
         
         return result;
     }

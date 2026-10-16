@@ -464,3 +464,12 @@ catches M18; a new step 7 runs `A2A3Check2` on three configurations and the
 trace checker on `conformance.sh`'s small set (2 seeds quick, 10 full). The
 gate now needs Lean; it builds the checker with lake.
 
+2026-10-16. Bergdb item 001 started: Levels 3 and 4 in the Lean model and in
+Java (`items/001-lean-model-levels-3-4/`). WP A1: the baseline, and
+`java/stress/StreamDigest.java`, which compares the stream bytes of a build
+with those of the preserved build `l34-base`. WP A3: the top node ordinal
+bug of F1-008-13 (levels.md, "Bugs found by the alignment of Levels 3 and
+4") is fixed, with round-trip and restart tests and two parser checks;
+startup checks the super root without `-ea`. Streams with top node ordinals
+below 32,768 are unchanged, byte for byte.
+

@@ -114,7 +114,7 @@ Status
 |---|---|---|---|
 | A1 | Baseline and environment | done | 2026-10-16 |
 | A2 | The registers, checked against the code | in progress | 2026-10-16 |
-| A3 | The TopNode ordinal defect | in progress | 2026-10-16 |
+| A3 | The TopNode ordinal defect | done | 2026-10-16 |
 | A4 | Probe H1: no adoption | in progress | 2026-10-16 |
 | C1 | Profile the checker | not started | — |
 | C2 | Fast versions, proven equal | not started | — |
@@ -289,3 +289,61 @@ Open, next: commit A1. Then A2 (in progress: `docs/level4-alignment.md`,
 `docs/level2-alignment.md`), A3 (in progress: the fix and its tests pass the
 unit tests of the classes concerned; the gates next) and A4 (in progress:
 the diagnostics in a scratch copy of `lean/`, and in `A2A3Check2`).
+
+
+### 2026-10-16 15:57 to 16:35. WP A3, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `75d3c2d`,
+uncommitted: A2's documents and A4's `java/stress/A2A3Check2.java` (named in
+the A1 entry), and this WP's files.
+
+Did, with the points of review-13-claude, 7.1, that Frans asked for (above,
+"Frans's go and decisions"):
+
+1. The tests first, each failing on the unchanged code:
+   `StoredTopNode.testOrdinalsRoundTrip` (ordinals 1, 2, 3, 32,767, 32,768,
+   32,769, 65,535, 65,536, 98,303 and 2^20 through `TopDs.newSuperRoot` from a
+   predecessor built with the layout's slots, and 0 and
+   `MAX_TOP_NODE_ID_VALUE` built directly; ordinal, slot count, every slot's
+   position and cached time, `rootTime` and id compared): failed with
+   "Bad TopNode ID of TopNode in stream, -32768".
+   `StoredTopNode.testParserRefusesSlotsThatDoNotFit` (65,536 stored as 0,
+   98,303 as 32,767, 5 as 4, 6 as 5): failed, "ordinal 65536 stored as 0
+   refused". `DbTesterRestart.testRestartAfterManyTopNodes` (one hot key, node
+   size 8, startup distance 10,000 bytes, until the newest written top node
+   passes ordinal 32,800, then a restart: the super root, seven historical
+   values, and the next top node's ordinal): failed with the same exception,
+   in 1.5 s.
+2. The fix: `StoredTopNode.toLongs` widens the ordinal before the shift.
+   `StoredTopNode.parse` refuses a top node whose slot count is not the
+   ordinal's height, or whose populated slots are not the ordinal's set bits.
+   `DbStarter.findSuperNodeAtStartupTime`: the assert that the newest written
+   top node is the super root at the startup time is a check
+   (`StreamFormatException`). `TopNode.pointersTime`'s comment says what it
+   caches. `TopNode.createDummy` (tests only) gets the layout's slots, and
+   `StoredTopNode.testTopNodeToLongs2` gives TopTester's top nodes positions,
+   since the parser now refuses top nodes without them; no other test needed
+   a change.
+3. Compatibility (`docs/levels.md`, "Bugs found by the alignment of Levels 3
+   and 4"; `docs/log.md`): streams whose top node ordinals are all below
+   32,768 are unchanged, byte for byte; the others could not be read, or were
+   read wrong, and are now refused; no repair (adopted from review-13-claude,
+   7.1, point 5: not done).
+
+Files changed: `java/src/bergdb/core/StoredTopNode.java`, `DbStarter.java`,
+`DbTesterRestart.java`, `java/src/bergdb/dag/TopNode.java`; `docs/levels.md`
+(the bug, a new section), `docs/log.md`.
+
+Checks, on the work tree (`75d3c2d` plus the files above, A2's documents and
+A4's `A2A3Check2.java`), 16:08 to 16:32: `LEVEL 1 OK` (89 s; 911 unit tests),
+`LEVEL 2 OK` (988 s; 911 unit tests; step 7: a2a3-1 to 3 OK, conformance
+small 50 of 50 `TRACECHECK OK`), `LEVEL 3 OK` (317 s; 911 unit tests, 37
+f-tests). A first run stopped at the unit tests (`StoredTrans.
+testTopPosOfTopNodeInTransaction`: `TopNode.createDummy(7)` had no slots),
+fixed as in point 2. The byte comparison against `l34-base`: `DIGESTS
+IDENTICAL (36 of 36)`.
+
+Register: M30 closed (code fix, A3).
+
+Open, next: commit A3, then A2 (M30 closed there).
+
