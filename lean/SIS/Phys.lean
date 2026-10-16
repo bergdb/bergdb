@@ -328,28 +328,47 @@ def Mem.reachOnPath (sp : Spec V T) (S : Stream V T) (P : Struct V) (j : Time)
       | none => m
     | none => m
 
-/-- The slot that a new pointer to y gets (Java: the pointer to an object the
-operation created or reached, or, in a split, a copy of the split node's
-pointer): a memory slot to y's canonical object; else a copy of the slot for
-y of the canonical object of a node that has y as a live child at j - 1; else
-of any canonical object with a slot for y (BergDB's skip pointers, copied from
-the super root); else none. -/
-def Mem.newSlot (sp : Spec V T) (P : Struct V) (j : Time) (m : Mem V) (y : NodeId) :
+/-- Object p (by handle) is one that a new pointer to y may copy its slot from:
+canonical, with a slot for y, of a node reachable at j - 1 that has y as a
+live child then. -/
+def srcOK (sp : Spec V T) (P : Struct V) (j : Time) (y : NodeId) (p : Nat × Obj V) : Bool :=
+  p.2.canonical && (p.2.slot? y).isSome && reachable sp P (j - 1) p.2.node &&
+    match P.get? p.2.node with
+    | some n => (sp.live (n.hist.upTo (j - 1))).contains y
+    | none => false
+
+/-- The slot that a new pointer of object o to y gets (Java: the pointer of a
+new klong, which the writer has in hand: the object it created or reached, or a
+copy of a pointer of a node it reached, as a split copies the split node's
+pointers): a memory slot to y's canonical object; else a copy of the slot for
+y of the canonical object of a node that is reachable at j - 1 and has y as a
+live child then; else o's own slot for y; else a copy of any canonical
+object's slot for y (BergDB's skip pointers, copied from the super root);
+else none. -/
+def Mem.newSlot (sp : Spec V T) (P : Struct V) (j : Time) (m : Mem V) (o : Obj V) (y : NodeId) :
     Option Slot :=
   match m.canonicalOf y with
   | some h => some (Slot.mem h)
   | none =>
-    let src := m.objs.find? (fun p => p.2.canonical && (p.2.slot? y).isSome &&
-      match P.get? p.2.node with
-      | some n => (sp.live (n.hist.upTo (j - 1))).contains y
-      | none => false)
-    match src.or (m.objs.find? (fun p => p.2.canonical && (p.2.slot? y).isSome)) with
+    match m.objs.find? (srcOK sp P j y) with
     | some p => p.2.slot? y
-    | none => none
+    | none =>
+      match o.slot? y with
+      | some sl => some sl
+      | none => (m.objs.find? (fun p => p.2.canonical && (p.2.slot? y).isSome)).bind
+          (fun p => p.2.slot? y)
+
+/-- Give object o the slot sl for pointee y: replace its slot for y, or add one. -/
+def Obj.putSlot (o : Obj V) (y : NodeId) (sl : Slot) : Obj V :=
+  if (o.slot? y).isSome then o.setSlot y sl else { o with slots := o.slots ++ [(y, sl)] }
 
 /-- Apply the change c of transaction j to the canonical objects: a new
-canonical object for each new node, the entries appended, and a slot for each
-new pointee (`Dag.putKv` and its splits, through the writer). -/
+canonical object for each new node, the entries appended, and for each
+pointee of a new entry the slot of a new pointer (`Dag.putKv` and its splits,
+through the writer). The slots that new pointers copy are taken from the
+objects as they were before the entries (m1): a split copies the pointers its
+node had; the pointers the transaction creates are to new or reached objects,
+which are canonical. -/
 def Mem.applyChange (sp : Spec V T) (P : Struct V) (j : Time) (c : Changes V) (m : Mem V) :
     Mem V :=
   let m1 := c.new.foldl (fun (m : Mem V) nn =>
@@ -366,11 +385,10 @@ def Mem.applyChange (sp : Spec V T) (P : Struct V) (j : Time) (c : Changes V) (m
       | none => m
       | some o =>
         let o1 := { o with hist := o.hist ++ [⟨j, a.2⟩] }
-        let o2 := (sp.ptrs a.2).foldl (fun (o : Obj V) y =>
-          if (o.slot? y).isSome then o else
-          match m.newSlot sp P j y with
-          | some sl => { o with slots := o.slots ++ [(y, sl)] }
-          | none => o) o1
+        let o2 := (sp.ptrs a.2).foldl (fun (o' : Obj V) y =>
+          match m1.newSlot sp P j o' y with
+          | some sl => o'.putSlot y sl
+          | none => o') o1
         m.setObj h o2) m1
 
 /-- Make node x of D canonical (`DbStarter.canonicalNode`): the table's
@@ -391,6 +409,10 @@ def Mem.canonicalNode (sp : Spec V T) (S : Stream V T) (m : Mem V) (x : NodeId) 
    versions in R(s), ..., R(k), cut back to s, with Rule R in their slots
    (`createMaps`, `updateStreamPointers`, `changeKeyNodesToStateAtStartupTime`,
    `registerSectionNodes`), linked by memory slots (`createMemoryPointers`);
+   but not the nodes with no entries up to s, which Java leaves out as
+   created in the rerun section (`wasCreatedInRerunSection`: a top node
+   created after s, a key node whose first klong is after s; Java keeps a key
+   node with no klongs at all, which reads the same);
 2. the root's object: with a virtual root, rebuilt from the root children
    read from top(k) (`rootVersion`, `topsRead`), canonical, with memory slots
    to the root children that have canonical objects; otherwise the root's
@@ -404,10 +426,11 @@ The P that directs the writer is the logical startup's (`baseStruct` and
 def lazyStartup (sp : Spec V T) (S : Stream V T) : Mem V :=
   let s := lastSp S
   let m0 : Mem V := { objs := [], table := [], s := s, root := 0, next := 1 }
-  -- 1. The section.
+  -- 1. The section, but the nodes with no entries up to s.
   let m1 := (sectionNodes S s).foldl (fun (m : Mem V) x =>
     match newest S s x with
     | some w =>
+      if (w.hist.upTo s).isEmpty then m else
       let (m', h) := m.addObj (canonOfVersion sp S s w)
       m'.setTable x h
     | none => m) m0
@@ -445,5 +468,64 @@ def lazyStartup (sp : Spec V T) (S : Stream V T) : Mem V :=
       | none => acc
     | none => acc) (m3, baseStruct sp S s true)
   r.1
+
+/-! ## Operations after startup (for the theorems) -/
+
+/-- An operation on the memory after a startup: a read at time t, or the
+writer's follow of the slot for y of object h (the writer's walk down from
+the root, before a transaction changes anything). -/
+inductive Op where
+  | read (t : Time)
+  | write (h : Nat) (y : NodeId)
+
+/-- The memory after operation op. -/
+def Mem.step (sp : Spec V T) (S : Stream V T) (m : Mem V) : Op → Mem V
+  | .read t => (m.read sp S t).1
+  | .write h y => (m.follow sp S h y true).1
+
+/-- The writer may follow the slot for y of object h at time k: h is a
+canonical object of a node reachable at k (in P), and y is a live child of it
+then. -/
+def Mem.writable (sp : Spec V T) (P : Struct V) (k : Time) (m : Mem V) (h : Nat) (y : NodeId) :
+    Prop :=
+  ∃ o, m.obj? h = some o ∧ o.canonical = true ∧ reachable sp P k o.node = true ∧
+    y ∈ sp.live o.hist
+
+/-- The operations ops, applied in turn to memory m, are admissible at time k:
+every read is at a time up to k, and the writer follows only slots it may
+follow. -/
+def OpsOK (sp : Spec V T) (S : Stream V T) (P : Struct V) (k : Time) : Mem V → List Op → Prop
+  | _, [] => True
+  | m, .read t :: ops => t ≤ k ∧ OpsOK sp S P k (m.step sp S (.read t)) ops
+  | m, .write h y :: ops => m.writable sp P k h y ∧ OpsOK sp S P k (m.step sp S (.write h y)) ops
+
+/-! ## The assumptions of the physical layer -/
+
+/-- What the physical layer assumes of one transaction, the changes c made at
+time i to the structure P (bergdb item 001, WP L3). BergDB meets both: a key
+node's pointer (its klong) is live until a later klong of the same key; and a
+split's new nodes take the children of the node they split, which stops being
+current or changes (docs/level4-alignment.md, M43: no path moves a child from
+one current node to another). With TREE and A5, `adopt` follows. -/
+structure PhysStep (sp : Spec V T) (P : Struct V) (i : Time) (c : Changes V) : Prop where
+  /-- A node's new live children at i are pointees of its new entries. -/
+  liveNew : ∀ x n, (P.apply i c).get? x = some n → ∀ y ∈ sp.live (n.hist.upTo i),
+    (∃ n0, P.get? x = some n0 ∧ y ∈ sp.live (n0.hist.upTo (i - 1))) ∨
+      ∃ a ∈ c.adds, a.1 = x ∧ y ∈ sp.ptrs a.2
+  /-- A new live child at i of a node reachable at i, that c does not create,
+  was at i - 1 a live child of a node reachable then that c changes or that is
+  not reachable at i (the node a split takes it from). -/
+  adopt : ∀ x n, reachable sp (P.apply i c) i x = true → (P.apply i c).get? x = some n →
+    ∀ y ∈ sp.live (n.hist.upTo i), (∀ n0, P.get? x = some n0 → y ∉ sp.live (n0.hist.upTo (i - 1))) →
+      y ∉ c.new.map (·.id) →
+      ∃ z nz, P.get? z = some nz ∧ reachable sp P (i - 1) z = true ∧
+        (changed c z = true ∨ reachable sp (P.apply i c) i z = false) ∧
+        y ∈ sp.live (nz.hist.upTo (i - 1))
+
+/-- The assumptions of the physical layer hold for every transaction of a run. -/
+def PhysRunOK (sp : Spec V T) (al : Algo V T) (ts : List T) : Prop :=
+  ∀ j (h : j < ts.length),
+    let db := run sp al (ts.take j)
+    PhysStep sp db.P (j + 1) (sp.exec ts[j] (j + 1) (view sp db.P j))
 
 end SIS

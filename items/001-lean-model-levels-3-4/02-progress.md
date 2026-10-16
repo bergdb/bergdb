@@ -121,7 +121,7 @@ Status
 | C3 | Larger sets and parallel runs | done | 2026-10-16 |
 | L1 | The physical layer, part 1: loading | done | 2026-10-16 |
 | L2 | Lemma M | done | 2026-10-16 |
-| L3 | Lazy startup and reads: T1-L | in progress | 2026-10-16 |
+| L3 | Lazy startup and reads: T1-L | done | 2026-10-16 |
 | L4 | The writer after a lazy startup: CC, T2-L | not started | — |
 | L5 | Lazy reading checked against Java | not started | — |
 | E1 | Design: eviction, references, pins | not started | — |
@@ -787,3 +787,112 @@ Checks: the sets above; the gates on the work tree with the new
 Register: none.
 
 Open, next: L3 (in progress since 17:35, in a scratch copy of `lean/`).
+
+
+### 2026-10-16 17:35 to 20:24. WP L3, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `3782bc8` to
+`e03c2d1` (C3 committed meanwhile); uncommitted: this WP's files only.
+Developed in a scratch copy of `lean/`; brought into bergdb when every proof
+was done there.
+
+Did:
+
+1. T1-L, `T1_lazy` in `lean/SIS/PhysTheorems.lean` (trusted statement):
+   after a run with BergDB's still-dirty test (`javaTest`) that meets the
+   assumptions (`RunOK`, and the new `PhysRunOK`), the lazy startup from the
+   stream after T(k) (the whole stream, or a prefix: a crash), then any reads
+   and writer follows (`Op`, admissible: `OpsOK`): (a) a read at any time
+   t ≤ k gives P at t, each node reachable at t with its history at t;
+   (b) every canonical object holds its node's whole history; (c) every other
+   object holds a version of its node from the stream, all of it or cut back
+   to s; (d) a memory slot that a canonical object's node uses at a time t
+   leads to a canonical object, or to one that holds a version good for t if
+   it holds all of it. The plan's statement ("a version that is good for the
+   times at which its parents use it") is (d) for canonical parents; for
+   snapshot parents it is part of the proof's invariant (`SnapSlots`,
+   `MemInv.snap_slotGood`).
+2. The proof, 15 new files in `lean/SIS/Proof/` (7,070 lines; `Fresh`,
+   `PhysMem`, `PhysInv`, `PhysFollow`, `PhysLogic`, `PhysRead`, `PhysWriter`,
+   `PhysRun`, `PhysPath`, `PhysRerun`, `PhysApply`, `PhysStep`, `PhysLazy`,
+   `PhysBase`, `PhysT1`). An invariant of the memory at time K, relative to
+   the run's final state (`MemInv`): canonical objects in the node table,
+   with the node's history up to K, slots good at every time the node is
+   reachable and fresh at K; other objects versions of their nodes; memory
+   slots to the table's object or an older version; and canonical objects for
+   the nodes of gd(d), s < d ≤ K, the section's index nodes with entries up
+   to s, and the nodes with entries in (s, K]. It holds before the rerun at
+   K = s (`PCtx.base_ok`), each rerun transaction takes it from K to K + 1
+   (`rerunStep_ok`), reads and writer follows keep it (`MemInv.ops_ok`), and
+   under it reads give P (`MemInv.read_ok`). Two new facts of every run of
+   the logical model, in `Fresh.lean`: `CleanFresh` (a clean reachable
+   node's latest version names the latest versions of its live children,
+   which are not in D; with `javaTest`) and `DataOnce` (a data node has one
+   version). `CleanFresh` is the "lemma of the logical model" that L1's entry
+   said L3 would develop; E3 can reuse it for INV-SLOT.
+3. Three refinements of the lazy startup in `lean/SIS/Phys.lean` (trusted;
+   each found while proving, checked by running before it was proved; M8's
+   resolution, "a Lean model of lazy reading"): step 1 leaves out the
+   section's nodes with no entries up to s (Java's
+   `wasCreatedInRerunSection`; before, a node created after s got two
+   canonical objects); a new pointer copies the slot of a canonical object of
+   a node reachable at j - 1 (`srcOK`), else the object's own, else any
+   canonical object's, taken before the transaction's entries; and every
+   pointee of a new entry gets the new pointer's slot (`Obj.putSlot`), also
+   one the object had a slot for.
+4. Two assumptions of the physical layer (`PhysStep`, for every transaction
+   `PhysRunOK`; new register row M47 in `docs/level2-alignment.md`):
+   `liveNew` (a node's new live children are pointees of its new entries)
+   and `adopt` (a new live child that the transaction does not create was a
+   live child of a reachable node that it changes or replaces). On Java:
+   `liveNew` by α (level2-alignment 2.4), `adopt` from TREE and A5, which
+   are checked (A4, C-A); the argument is in level2-alignment 13.3. Not stop
+   rule 4: Java meets both by these arguments and checks.
+5. `lean/SIS/PhysExample.lean`: `physStepB`, `physRunOKB` (with `#guard`s on
+   examples 2 and 3) and `memInvB`, the proof's invariant by running;
+   `lean/PhysTest.lean` checks `memInvB` after the startup and after every
+   operation, and `PhysRunOK`.
+6. `lean/README.md` (the theorem, the axioms list, the proof files, the
+   tests, "Changes to the trusted part" for L3, "Not done");
+   `docs/level2-alignment.md` (register M47; 13.1 updated for the
+   refinements; 13.2, T1-L as proved; new 13.3, the proof).
+
+Also checked by running, in scratch only (not in the repository): `MemInv`
+at the base and after every rerun step, for every state of 20 seeds of 40
+transactions of examples 2 (16 algorithms) and 3 (4 policies): 0 failures
+in 53,625 checks (78 s); and that this check is not vacuous: the final
+memory, checked at K = s, fails it in 48 of 51 states (3 seeds of 16).
+
+Files changed: `lean/SIS/Phys.lean`, `lean/SIS/PhysTheorems.lean`,
+`lean/SIS/PhysExample.lean`, `lean/PhysTest.lean`, `lean/README.md`; 15 new
+files in `lean/SIS/Proof/`; `docs/level2-alignment.md`; this file.
+
+Checks: the Lean checks of 2.2 on bergdb's `lean/` with these files (20:14
+to 20:24): `lake build` passes, 83 jobs, no warnings; `lake exe sistest 20
+40`: all checks pass (398 s); `lake exe phystest 20 40`: all checks pass
+(257 s; was 28 s before `memInvB`): example 3, four policies, 820 states
+each, 6,578 reads each give P, the invariant by running holds after every
+startup and operation, `PhysRunOK` holds; 820 of 820 prefixes (crashes) read
+P; example 2, 16 algorithms, 4,363 reads each; the axioms of T1, T2, T13,
+LM_newer, LM_ruleR and T1_lazy are `propext`, `Classical.choice` and
+`Quot.sound`, LM_cutTo's `propext` and `Quot.sound`, the checker's
+equalities as before; no `sorry`, `admit`, `axiom` or `unsafe` in `SIS/` and
+`Check/`; `sh test-traces/run.sh`: TRACE TESTS OK. No change to `java/`, so
+no gates (2.2). Time: 2 h 49 min, within M (2 to 8 h).
+
+Notes on the plan (not changed): T1-L's hypotheses go beyond the plan's
+statement: BergDB's still-dirty test (`CleanFresh` needs it; T1 and T2 also
+hold for the exact test without a virtual root, T1-L does not claim it) and
+`PhysRunOK` (M47). The writer's follows that `OpsOK` admits are those of a
+walk down from the root at the last time: live slots of canonical objects of
+reachable nodes.
+
+Register: M47 new (argued, a direct check open); M8 and M42 close in L5.
+
+Open, next: L4 (CC, T2-L), on top of `MemInv`. CC is close to T1-L's second
+part (every canonical object holds its node's whole history; for the object
+the writer reaches, `MemInv.follow_writer`). T2-L needs the invariant after
+live transactions too, where Rule R keeps the startup's section while P and
+S grow; L3's invariant has one state for both (the state at the restart), so
+L4 must split it: the startup stream for Rule R and the versions read, the
+current state for P.

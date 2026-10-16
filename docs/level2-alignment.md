@@ -265,6 +265,7 @@ classes and methods in `java/src/bergdb/`, "model" definitions in
 | M18 | **A startup bug.** Startup finds the super root by scanning the startup section for the newest top node. A transaction that changes nothing does not mark the super root, so the startup pos can move past the last version of every top node, and the database cannot start ("Could not find super node in startup section"). Reproduced on `a116ec7` (F1-008-11, `probe/`). With 10's change, deletes of missing keys do the same. | `DbStarter.findLatestSuperRoot`, `findSuperNodeAtStartupTime`; `TransSeq.take` | `Record.top`, `readAt` | Code: every record names the position of the latest version of the newest written top node, the model's top(i) (section 8) | D0 done (format 5, topPos), c |
 | M19 | `TransSeq.take` can move the startup pos with transactions that have no got-dirty nodes; the model's policy is clamped only by s(i-1) ≤ s(i) < i, which Java meets. Recorded to make M18's cause explicit; not a mismatch. | `TransSeq.take` | `startupPos` | None | B1, c |
 | M42 | Rule R applies for the whole process: every first touch after startup, also of a pointer to a node written after startup, takes the newest version in the last startup section if it is newer than the version named (item 001, A2). | `NodeCollection.section`, `followStreamPointer` (step 2), `newestInSection` | `follow` (startup only) | Model: Rule R in the physical loader; an argument that it agrees with the latest-version rule | Item 001, stage 1: L1, L5; o |
+| M47 | **New (item 001, L3).** The proof of T1-L assumes of every transaction what BergDB's pointers and splits give (`PhysStep`): a node's new live children are pointees of its new entries (a klong stays live until a later klong of its key), and a new live child of a reachable node that the transaction does not create was, just before, a live child of a reachable node that the transaction changes or replaces (a split's new nodes take the children of the node they split; M43). | `KeyNode` (klongs); `Dag.handleFullNode` and the splits | `PhysStep`, `PhysRunOK` (`lean/SIS/Phys.lean`) | An assumption of the physical layer (13.3). Java: `liveNew` by α (2.4: a key node's child for a compare value is that of its last klong, and a delete only removes); `adopt` from TREE and A5 (13.3), both checked on Java (A4: TREE in 68,901 transactions; A5: C-A). Checked by running on the model's examples (`physRunOKB`) | Item 001: L3, argued (13.3); a direct check in the trace checker is open (L5 or E1), o |
 
 Since 2026-10-16, bergdb item 001 reopens M8 (stage 1, WPs L1 to L5: a Lean
 model of lazy reading, which also closes M42) and M17 (Level 3). The rows of
@@ -1003,7 +1004,10 @@ with its history at t.
 1. The canonical objects of the section's index nodes (`sectionNodes`), each
    from its newest version in R(s), ..., R(k), cut back to s, with Rule R in
    its stream slots (`canonOfVersion`; `createMaps`, `updateStreamPointers`,
-   `changeKeyNodesToStateAtStartupTime`, `registerSectionNodes`).
+   `changeKeyNodesToStateAtStartupTime`, `registerSectionNodes`); but not the
+   nodes whose newest version has no entries up to s, which Java leaves out
+   as created in the rerun section (`wasCreatedInRerunSection`; since L3,
+   13.3).
 2. The root's object: with a virtual root, rebuilt from the root children read
    from top(k), as the logical startup does (`rootVersion`, `topsRead`).
 3. Memory slots between canonical objects (`Mem.linkCanonical`;
@@ -1013,13 +1017,15 @@ with its history at t.
    the change changes or that it replaces; `Mem.reachOnPath`), which become
    canonical; the change is applied to the canonical objects
    (`Mem.applyChange`: a canonical object for each new node, the entries
-   appended, and for each new pointee a slot: a memory slot to its canonical
-   object, else a copy of the slot of a canonical object whose node had the
-   pointee as a live child at j - 1, as a split copies the split node's
-   pointers, else of any canonical object with a slot for it, as a new top node
-   copies the super root's skip pointers); and the nodes of gd(j) get canonical
-   objects (`Mem.canonicalNode`: the table's, else the newest section version,
-   else the latest version, cut back to s).
+   appended, and for each pointee of a new entry the slot of a new pointer
+   (`Mem.newSlot`): a memory slot to its canonical object, else a copy of the
+   slot of a canonical object whose node was reachable at j - 1 and had the
+   pointee as a live child then, as a split copies the split node's pointers,
+   else the object's own slot, else a copy of any canonical object's slot, as
+   a new top node copies the super root's skip pointers; since L3, 13.3); and
+   the nodes of gd(j) get canonical objects (`Mem.canonicalNode`: the
+   table's, else the newest section version, else the latest version, cut
+   back to s).
 
 What it leaves out, and why:
 
@@ -1038,9 +1044,11 @@ What it leaves out, and why:
 * Smaller differences: Java's posMap includes value nodes and reads them at
   startup; the model reads them on first touch (they never change, and Java's
   value nodes are always canonical). Java leaves nodes created in the rerun
-  section out of posMap; the model makes their objects from their newest
-  section version cut back to s (an empty history), and the rerun gives them
-  their entries: the same object in the end.
+  section out of posMap; since L3 the model leaves out the nodes whose newest
+  section version has no entries up to s, which are the same nodes but for a
+  key node with no klongs at all (Java keeps it, which reads the same: no
+  entries). Before L3 the model made their objects from their newest section
+  version, so a node created after s had two canonical objects.
 * Concurrency, access data, bytes; eviction (stage 2).
 
 **Checks by running** (`lean/SIS/PhysExample.lean`, `#guard`):
@@ -1069,15 +1077,105 @@ What it leaves out, and why:
   for time t is good for t; `LM_ruleR`, so is the newest version in R(s), ...,
   R(k), which Rule R takes; `LM_cutTo`, a version cut back to s is good for t
   ≤ s exactly when the whole version is.
-* **T1-L** (`T1_lazy`, WP L3): after the lazy startup from the stream of any
-  run, or from a prefix of it (a crash), and after any sequence of reads and
-  writer follows (the writer following live slots of canonical objects at the
-  last time), a read at any time t up to the last record gives P at t: every
-  object it reaches is canonical, with its node's whole history, or a version
-  of its node that is good for t (or such a version cut back to s, for t ≤ s).
+* **T1-L** (`T1_lazy`, WP L3, proved; `lean/SIS/PhysTheorems.lean`): after a
+  run with BergDB's still-dirty test that meets the assumptions of the
+  physical layer (`PhysRunOK`, M47), the lazy startup from its stream, or from
+  a prefix of it (a crash), and then any sequence of reads (at times up to
+  the last record) and writer follows (of live slots of canonical objects of
+  nodes reachable at the last time): a read at any time t up to the last
+  record gives P at t, each node reachable at t with its history at t. Every
+  object in memory is canonical, with its node's whole history, or holds a
+  version of its node from the stream, all of it or cut back to s; and a
+  memory slot that a canonical object's node uses at a time t (the node
+  reachable at t, the pointee a live child then) leads to a canonical object,
+  or to one that holds a version good for t if it holds all of it.
 * **CC** (`CC_canonical`, WP L4): every object that becomes canonical, at
   startup or when the writer reaches it, holds its node's whole history.
 * **T2-L** (`T2_lazy`, WP L4): a run with restarts whose writer works on the
   canonical objects of the lazy startup appends the same records as the run
   without restarts. Its references still come from `mkVersion` (`S.lv`);
   computing them from slots is stage 2 (E3).
+
+### 13.3 The proof of T1-L (WP L3)
+
+T1-L is proved (`T1_lazy`; the proofs in `lean/SIS/Proof/Fresh.lean` and
+`lean/SIS/Proof/Phys*.lean`, listed in `lean/README.md`). The proof found
+three places where the lazy startup of 13.1 did not do what Java does, and
+needs two assumptions of every transaction.
+
+**Refinements of the model** (`lean/SIS/Phys.lean`, trusted; each checked by
+running, `phystest`, before the proof was done):
+
+1. Step 1 leaves out a node of the section whose newest version has no
+   entries up to s (Java's `wasCreatedInRerunSection`). Before, a node
+   created after s got two canonical objects: one at startup, and one when
+   the rerun created it.
+2. The slot of a new pointer (`Mem.newSlot`) copies the slot of a canonical
+   object whose node is reachable at j - 1 and has the pointee as a live
+   child then (`srcOK`); before, the node did not have to be reachable, so a
+   slot of a node that a split had already replaced could be copied. Next
+   come the object's own slot and then, as before, any canonical object's
+   (skip pointers). The slots are taken from the objects as they were before
+   the transaction's entries, as a split copies the pointers its node had.
+3. Every pointee of a new entry gets the new pointer's slot (`Obj.putSlot`),
+   also one the object already had a slot for. Before, an old slot stayed: a
+   stream slot naming an old version, when a node got a new pointer to a
+   child it had pointed to before.
+
+**Operations** (`Op`, `Mem.step`, `OpsOK`): what the theorem lets happen
+between the startup and the read: reads at times up to the last record, and
+the writer's follows of live slots of canonical objects of nodes reachable at
+the last time (its walk down from the root).
+
+**Assumptions** (`PhysStep`, for every transaction of the run `PhysRunOK`;
+register M47). For the transaction at time i with change c:
+
+* `liveNew`: a node's live children at i that were not its live children at
+  i - 1 are pointees of its new entries. In BergDB a key node's pointer, its
+  klong, is live until a later klong of the same key; a node gets a new live
+  child only by a new klong.
+* `adopt`: a new live child y at i of a node x reachable at i, which c does
+  not create, was at i - 1 a live child of a node reachable then that c
+  changes or that is not reachable at i. In BergDB a split's new nodes take
+  the children of the node they split, which stops being current (or
+  changes, in an in-place split); no path moves a child from one current node
+  to another (M43). It follows from TREE and A5: y is reachable at i and not
+  new, so by A5 it was reachable at i - 1, the live child then of some
+  reachable node z (TREE at i - 1). If c did not change z and z were still
+  reachable at i, y would still be z's live child at i, and z is not x (y was
+  not x's live child at i - 1): two parents at i, against TREE.
+
+The writer's paths after a restart reach only nodes on the paths of the
+change; `adopt` says where a split's new node gets the slots for the children
+it takes: from the node it splits, which is on a path. Both hold in the
+model's examples 2 and 3 (`physRunOKB`, in `lake build` and in phystest).
+On Java, `liveNew` holds by α (2.4) and `adopt` through TREE and A5, which
+are checked; a direct check of `PhysStep` in the trace checker would need
+nothing new in the traces (P before and after each transaction, and the
+change), and is not done.
+
+**The proof.** An invariant of the memory at time K, with respect to the run's
+final state (`MemInv`, `lean/SIS/Proof/PhysInv.lean`): every canonical object
+is the node table's object of its node and holds the node's history up to
+K, and its slots are good at every time up to K at which the node is
+reachable (they lead to a canonical object, or to a version good for that
+time) and fresh at K (they lead to the latest version, or to a canonical
+object); every other object holds a version of its node, all of it, or cut
+back to s if it is the table's object of a node with no entries up to K; a
+memory slot names the table's object or an older version; and the nodes that
+must have canonical objects have them: the nodes of gd(d) for s < d ≤ K, the
+section's index nodes with entries up to s, and the nodes with entries in
+(s, K]. Nodes without a canonical object are then the ones the logical
+invariants describe: their latest version is good (MG, `Cover.mg`) and, with
+BergDB's still-dirty test, names the latest versions of their live children
+(CF, `KCtx.fresh_ref`; from `CleanFresh`, a new invariant of every run, in
+`Fresh.lean`). The invariant holds after startup's steps 1 and 2 and the
+memory slots, at K = s (`PCtx.base_ok`); each transaction of the rerun takes
+it from K to K + 1 (`rerunStep_ok`: the writer's paths, highest level first,
+then the change); reads and writer follows keep it at the last time
+(`MemInv.ops_ok`); and under it a read at any time up to K gives P at that
+time (`MemInv.read_ok`). The proof uses L-OUT and L-SEC (`Inv.lout`,
+`Inv.recon`, `Inv.ruleR_section`) and lemma M (`Inv.newer`).
+
+What T1-L does not cover: CC and T2-L (WP L4), and Java's first touches
+checked against the rule (WP L5, C-L).

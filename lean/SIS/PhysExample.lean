@@ -107,6 +107,119 @@ def checkWalk3 (seed n : Nat) : Nat × Nat :=
 -- Reads at various times and the writer's walks to every reachable node, in turn.
 #guard checkWalk3 1 14 == (15, 15)
 
+/-! ## The assumptions of the physical layer, by running -/
+
+/-- `PhysStep` by running: for the changes c made at time i to P, both
+assumptions, for every node of P after the change. -/
+def physStepB (sp : Spec Val T) (P : Struct Val) (i : Time) (c : Changes Val) : Bool :=
+  let P' := P.apply i c
+  let liveOld := fun x => match P.get? x with
+    | some n0 => sp.live (n0.hist.upTo (i - 1))
+    | none => []
+  (allIds P').all (fun x => match P'.get? x with
+    | some n =>
+      (sp.live (n.hist.upTo i)).all (fun y => (liveOld x).contains y ||
+        c.adds.any (fun a => a.1 == x && (sp.ptrs a.2).contains y)) &&
+      (!reachable sp P' i x || (sp.live (n.hist.upTo i)).all (fun y =>
+        (liveOld x).contains y || (c.new.map (·.id)).contains y ||
+        (allIds P).any (fun z => match P.get? z with
+          | some nz => reachable sp P (i - 1) z && (changed c z || !reachable sp P' i z) &&
+              (sp.live (nz.hist.upTo (i - 1))).contains y
+          | none => false)))
+    | none => true)
+
+/-- `PhysRunOK` by running. -/
+def physRunOKB (sp : Spec Val T) (al : Algo Val T) (ts : List T) : Bool :=
+  (List.range ts.length).all (fun j =>
+    match ts[j]? with
+    | some tr =>
+      let db := run sp al (ts.take j)
+      physStepB sp db.P (j + 1) (sp.exec tr (j + 1) (view sp db.P j))
+    | none => false)
+
+-- Examples 2 and 3 meet the assumptions of the physical layer.
+#guard physRunOKB spec3
+  { policy := fun _ _ i tr => i - 1 - (lcg i / 4096 + tr.n) % 5, stillDirty := javaTest spec3, mark := true }
+  ((randomTs3 1 16).map (·.1))
+#guard [0, 1, 4, 13].all (fun a => match algos2[a]? with
+  | some al => physRunOKB spec2 al ((randomTs 1 12).map (·.1))
+  | none => false)
+
+/-! ## The invariant of the proof of T1-L, by running (WP L3) -/
+
+/-- The proof's invariant of memory m after a startup from the stream of db, at
+time k, the last record (`SIS.MemInv` in `Proof/PhysInv.lean`), by running:
+canonical objects (in the node table, with the whole history, their slots
+good at every time their node is reachable, and fresh at k); other objects
+(versions, cut back only if empty and the table's, slots at least as new as
+the version's references); memory slots (the table's object, or an older
+version); coverage (D, the section, the entries after s). -/
+def memInvB (sp : Spec Val T) (db : DB Val T) (m : Mem Val) : Bool :=
+  let S := db.S
+  let P := db.P
+  let k := S.length - 1
+  let s := lastSp S
+  let lvRec := fun y => (S.lv y).map (·.recNo)
+  let histAt := fun (y : NodeId) (t : Nat) => ((P.get? y).map (·.hist.upTo t)).getD []
+  let verOf := fun (o : Obj Val) => o.pos.bind (fun r => S.versionAt r o.node)
+  let snapGood := fun (o : Obj Val) (t : Nat) => match verOf o with
+    | some w => good sp S P t w && o.hist.upTo t == w.hist.upTo t
+    | none => false
+  let targetGood := fun (y : NodeId) (sl : Slot) (t : Nat) => match sl with
+    | .mem h' => match m.obj? h' with
+      | some o' => o'.node == y && (o'.canonical || snapGood o' t)
+      | none => false
+    | .stream r => (m.canonicalOf y).isSome || match ruleRRef S s y r with
+      | some r' => match S.versionAt r' y with
+        | some u => good sp S P t u
+        | none => false
+      | none => false
+  let fresh := fun (y : NodeId) (sl : Slot) => match sl with
+    | .mem h' => m.tableOf y == some h' && match m.obj? h' with
+      | some o' => o'.canonical || o'.pos == lvRec y
+      | none => false
+    | .stream r => (m.canonicalOf y).isSome || ruleRRef S s y r == lvRec y
+  m.objs.all (fun p =>
+    let h := p.1
+    let o := p.2
+    (!o.canonical || (m.tableOf o.node == some h &&
+      ((P.get? o.node).map (·.hist)) == some o.hist &&
+      (List.range (k + 1)).all (fun t => !reachable sp P t o.node ||
+        (sp.live (o.hist.upTo t)).all (fun y => match o.slot? y with
+          | some sl => targetGood y sl t
+          | none => false)) &&
+      (!reachable sp P k o.node || (sp.live o.hist).all (fun y => match o.slot? y with
+          | some sl => fresh y sl
+          | none => false)))) &&
+    (o.canonical || match verOf o with
+      | some w => (o.hist == w.hist ||
+          (o.hist == w.hist.upTo s && m.tableOf o.node == some h && histAt o.node k == [])) &&
+        o.slots.all (fun q => match q.2 with
+          | .stream r => r == w.ref? q.1
+          | .mem h' => match m.obj? h' with
+            | some o' => o'.node == q.1 && (o'.canonical ||
+                match o'.pos, ruleRRef S s q.1 (w.ref? q.1) with
+                | some p', some r' => decide (r' ≤ p')
+                | _, _ => false)
+            | none => false)
+      | none => false) &&
+    o.slots.all (fun q => match q.2 with
+      | .mem h' => m.tableOf q.1 == some h' || match m.obj? h', m.tableOf q.1 with
+        | some o', some h0 => match m.obj? h0 with
+          | some o0 => !o'.canonical && (match o'.pos, o0.pos with
+              | some p', some p0 => decide (p' < p0)
+              | _, _ => false) && (match verOf o' with
+              | some w' => o'.hist == w'.hist
+              | none => false)
+          | none => false
+        | _, _ => false
+      | .stream _ => true)) &&
+  db.D.all (fun e => (m.canonicalOf e.1).isSome || histAt e.1 k == []) &&
+  (allIds P).all (fun x => (m.canonicalOf x).isSome ||
+    (!((P.get? x).map (fun n => n.hist.any (fun e => decide (s < e.time)))).getD false &&
+     !((newest S s x).map (fun w => !w.isData && !(w.hist.upTo s).isEmpty)).getD false))
+
+
 /-! ## Unit examples of the first touch -/
 
 /-- Node 5 has a version in R(0) and a newer one in R(2); the startup pos is 1. -/

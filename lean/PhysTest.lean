@@ -24,12 +24,13 @@ def randomOps {T : Type} (sp : Spec Val T) (db : DB Val T) (seed ops : Nat) : Na
       let m' := match pathTo sp db.P k target 4000 root with
         | some p => writerWalk sp db.S m p
         | none => m
-      (m', x1, reads, good, canon + (if canonOK db m' then 1 else 0), n + 1)
+      (m', x1, reads, good, canon + (if canonOK db m' && memInvB sp db m' then 1 else 0), n + 1)
     else
       let t := (x1 / 4096) % (k + 1)
       let (m', l) := m.read sp db.S t
-      (m', x1, reads + 1, good + (if readOK sp db l t then 1 else 0), canon + 1, n + 1))
-    (lazyStartup sp db.S, seed, 0, 0, 0, 0)
+      (m', x1, reads + 1, good + (if readOK sp db l t then 1 else 0),
+        canon + (if memInvB sp db m' then 1 else 0), n + 1))
+    (lazyStartup sp db.S, seed, 0, 0, if memInvB sp db (lazyStartup sp db.S) then 0 else 1000000, 0)
   let (_, _, reads, good, canon, n) := r
   (reads, good, canon, n)
 
@@ -52,8 +53,9 @@ def main (args : List String) : IO UInt32 := do
         reads := reads + r
         good := good + g
         canonBad := canonBad + (o - c)
-    if good != reads || canonBad != 0 then bad := bad + 1
-    IO.println s!"example 3, policy {a}: {nStates} states, reads {good}/{reads} give P, canonical objects not whole: {canonBad}"
+    let physOK := (List.range seeds).all (fun i => physRunOKB spec3 al ((randomTs3 (i + 1) n).map (·.1)))
+    if good != reads || canonBad != 0 || !physOK then bad := bad + 1
+    IO.println s!"example 3, policy {a}: {nStates} states, reads {good}/{reads} give P, canonical objects not whole or invariant broken: {canonBad}, PhysRunOK: {physOK}"
   -- Crashes: startup from the first j + 1 records of the last state's stream gives P after j.
   let mut crashStates := 0
   let mut crashGood := 0
@@ -86,7 +88,8 @@ def main (args : List String) : IO UInt32 := do
         reads := reads + r
         good := good + g
         canonBad := canonBad + (o - c)
-    if good != reads || canonBad != 0 then bad := bad + 1
-    IO.println s!"example 2, algorithm {a}: reads {good}/{reads} give P, canonical objects not whole: {canonBad}"
+    let physOK := (List.range seeds).all (fun i => physRunOKB spec2 al ((randomTs (i + 1) n).map (·.1)))
+    if good != reads || canonBad != 0 || !physOK then bad := bad + 1
+    IO.println s!"example 2, algorithm {a}: reads {good}/{reads} give P, canonical objects not whole or invariant broken: {canonBad}, PhysRunOK: {physOK}"
   IO.println (if bad == 0 then "all checks pass" else s!"{bad} failures")
   return (if bad == 0 then 0 else 1)
