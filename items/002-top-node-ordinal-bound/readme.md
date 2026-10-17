@@ -32,3 +32,5 @@ Log
 unattended at Frans's request. Recommended: widen to 48 bits with a guard at
 the end (no format change); register a related defect (a transaction that
 throws in the middle is half committed); leave the height decrease.
+
+2026-10-17. Frans: left for later, not planned. The item stays open.
