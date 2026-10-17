@@ -141,7 +141,7 @@ J9 (S) and J10 (S to M), about 24 to 114 hours in all, besides machine time
 for the larger-than-memory run (J8) and the soak with eviction (P4). R8
 comes after the Level 3 model (R3 to R7), which also waits for K1; J1 after
 K3. The stage 2 WPs of the model took less than their sizes (E1 to E7: about
-6.5 hours against 16 to 66 planned), but Java work runs the gates (about 20
+6.3 hours against 16 to 66 planned), but Java work runs the gates (about 20
 minutes a time) and the byte comparison for each change.
 
 
@@ -186,4 +186,4 @@ checker lists the diagnostics of each trace.
    loader, the startup). The proofs say the model's rule gives today's
    records; the byte comparison against `l34-base` checks that Java's does.
 5. **Time.** Stage 2's time box of 60 hours started at 2026-10-16 23:14;
-   stage 2 used about 6.5 hours of it (to 05:45).
+   stage 2 used about 6.3 hours of it (to 2026-10-17 05:31).

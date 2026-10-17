@@ -97,7 +97,7 @@ Current state
 -------------
 
 * Checkpoints: G0 given (2026-10-16 15:23). **K1 waits for Frans** since
-  2026-10-17 05:40: E7 is done, and K1 does not pass automatically, since
+  2026-10-17 05:31: E7 is done, and K1 does not pass automatically, since
   A6 fails on Java (the proofs use A6' and A-COPY instead); the review guide
   is [03-k1-review.md](03-k1-review.md). Until K1: R3 to R8 and stage 4
   wait; R2 and P3 may go on. K2 to K5 open.
@@ -1857,7 +1857,7 @@ A-COPY. E7 writes the Java change list and the K1 review guide.
 Open, next: E7.
 
 
-### 2026-10-17 05:12 to 05:40. WP E7, done
+### 2026-10-17 05:12 to 05:31. WP E7, done
 
 Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `03f4eab` (E6);
 uncommitted before this WP's commit: its files, below. Drafted while E6's
@@ -1893,7 +1893,7 @@ changed.
 
 Register: none changed; section 6 lists every Level 4 row with its WP.
 
-Time: E7 is S (up to 2 hours): about 30 minutes.
+Time: E7 is S (up to 2 hours): about 20 minutes.
 
 Notes for Frans: stage 2 is done, and K1 is yours: please read
 [03-k1-review.md](03-k1-review.md), section 1, and record your decision
