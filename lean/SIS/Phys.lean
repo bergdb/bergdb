@@ -300,11 +300,13 @@ def Mem.linkCanonical (m : Mem V) : Mem V :=
 
 /-- The nodes on the writer's paths for the change c at time j, in P before
 it (Java's put path, through `WriterFollower`): the nodes reachable at j - 1
-with a node below them, themselves included, that c changes or that is no
+with a node below them, themselves included, that c changes, that c touches
+(Java's `Db.touchRange`, as the writer; bergdb item 001, WP R3) or that is no
 longer reachable at j (a node the transaction replaces). -/
 def pathOf (sp : Spec V T) (P : Struct V) (c : Changes V) (j : Time) : List NodeId :=
   let P' := P.apply j c
-  let touched := fun z => changed c z || (reachable sp P (j - 1) z && !reachable sp P' j z)
+  let touched := fun z => changed c z || c.touch.contains z ||
+    (reachable sp P (j - 1) z && !reachable sp P' j z)
   ((reachList sp P (j - 1)).eraseDups.filter (fun x => match P.get? x with
     | some n => (reachFrom sp P (j - 1) x n).any touched
     | none => false))
@@ -544,17 +546,17 @@ def stepWith (sp : Spec V T) (al : Algo V T) (db : DB V T) (tr : T) (c : Changes
   let i := db.S.length
   let P := db.P.apply i c
   let vs0 := writeAll sp db.S i P ((c.new.filter (·.isData)).map (·.id)) []
-  let gd3 := (if al.mark then markOf sp P c db.D i else gotDirtyOf sp (db.S.building vs0) P db.D i).filter
-    (written sp)
+  let gd3 := gotDirty3 sp al db.S vs0 P c db.D i
   let D1 : Dirty := db.D ++ gd3.map (fun x => (x, i))
   let s : Nat := startupPos al db.S D1 i tr
+  let fa : Nat := firstAvail al db.S D1 i tr s
   let taken := byLevel P ((D1.filter (fun e : NodeId × Nat => decide (e.2 ≤ s))).map (·.1))
   let D2 : Dirty := D1.filter (fun e : NodeId × Nat => decide (s < e.2))
   let vs := writeAll sp db.S i P taken vs0
   let S' : Stream V T := db.S.building vs
   let r7 := stillDirtyOf al S' P D2 i taken
   let R : Record V T :=
-    { trans := some tr, sp := s, vers := vs, gd := gd3 ++ r7.2, top := topOf sp P S' s }
+    { trans := some tr, sp := s, vers := vs, gd := gd3 ++ r7.2, top := topOf sp P S' s, fa := fa }
   { P := P, D := r7.1, S := db.S ++ [R] }
 
 /-- The writer's view of P at time t through the physical layer (Java's

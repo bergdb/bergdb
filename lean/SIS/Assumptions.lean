@@ -109,6 +109,15 @@ structure StepOK (sp : Spec V T) (P : Struct V) (i : Time) (c : Changes V) : Pro
     reachable sp P (i - 1) y = true ∨ y ∈ c.new.map (·.id)
   /-- With a virtual root: `VirtStep`. -/
   virt : sp.virt = true → VirtStep sp P i c
+  /-- The touch (bergdb item 001, WP R3; `Changes.touch`): the touched nodes
+  are index nodes reachable at time i-1, before the change; and a node
+  reachable then with a touched node below it then (through live pointers) is
+  touched too, or is a virtual root (Java's range traversal walks down from the
+  super root, `Db.touchRange`). Without a touch these say nothing. -/
+  touchIndex : ∀ x ∈ c.touch, isIndex P x = true
+  touchReach : ∀ x ∈ c.touch, reachable sp P (i - 1) x = true
+  touchUp : ∀ x ∈ c.touch, ∀ p np, reachable sp P (i - 1) p = true → P.get? p = some np →
+    x ∈ reachFrom sp P (i - 1) p np → p ∈ c.touch ∨ (sp.virt = true ∧ p = root)
 
 /-- The assumptions hold for a run: for the structure, and for every
 transaction of the run. -/

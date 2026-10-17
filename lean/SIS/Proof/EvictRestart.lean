@@ -473,7 +473,7 @@ theorem D1Of_congr (al : Algo V T) (D : Dirty) (S : Stream V T) (c : Changes V) 
     D1Of sp al ⟨P, D, S⟩ c vs0 = D1Of sp al ⟨P', D, S⟩ c vs0 := by
   have hPP := hP.apply S.length c
   unfold D1Of
-  simp only [markOf_congr sp hPP, gotDirtyOf_congr sp _ hPP]
+  simp only [gotDirty3_congr sp al _ _ hPP]
 
 theorem takenOf_congr (al : Algo V T) (D : Dirty) (S : Stream V T) (tr : T) (c : Changes V)
     (vs0 : List (Version V)) :
@@ -487,7 +487,7 @@ theorem stepOf_congr (al : Algo V T) (hst : AlgOK sp al) (D : Dirty) (S : Stream
     Rel (stepOf sp al ⟨P, D, S⟩ tr c vs0 vs) (stepOf sp al ⟨P', D, S⟩ tr c vs0 vs) := by
   have hPP := hP.apply S.length c
   unfold stepOf
-  simp only [markOf_congr sp hPP, gotDirtyOf_congr sp _ hPP, byLevel_congr hPP,
+  simp only [gotDirty3_congr sp al _ _ hPP, byLevel_congr hPP,
     stillDirtyOf_congr al hst.still.congr hPP, topOf_sameNodes sp hPP]
   exact ⟨rfl, rfl, hPP⟩
 

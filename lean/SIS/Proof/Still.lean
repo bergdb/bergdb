@@ -188,7 +188,7 @@ theorem step_D2_of_dirty (hsp : SpecOK sp) {k : Nat} (hinv : Inv sp db k)
     (ht : y ∉ (parts sp al db tr).taken) : inD (parts sp al db tr).D2 y = true := by
   cases hD : inD db.D y
   · have hg : y ∈ (parts sp al db tr).gd3 :=
-      (step_gd3_mem' sp al db tr hsp hinv hstep y).mpr ⟨isSome_of_isIndex hy, hy, hD, hw, hd⟩
+      (step_gd3_mem' sp al db tr hsp hinv hstep y).mpr ⟨isSome_of_isIndex hy, hy, hD, hw, Or.inl hd⟩
     exact step_D2_of_not_taken sp al db tr
       ((step_D1_mem sp al db tr hinv.len _).mpr (Or.inr ⟨rfl, hg⟩)) ht
   · obtain ⟨d, hd'⟩ := (inD_iff _ _).mp hD

@@ -31,6 +31,14 @@ structure Algo (V T : Type) where
   the two give the same nodes. Added 2026-10-15 (docs/level2-alignment.md,
   M2). -/
   mark : Bool := false
+  /-- The first available time policy, fa(i) (bergdb item 001, WP R3;
+  docs/level3-alignment.md, 2.4): the earliest time that lookups must still
+  answer. It may depend on S, D, i and T(i), as the startup pos policy; the
+  algorithm clamps it so that it never decreases and stays at most the
+  startup pos (`firstAvail`). Java's: the end of the newest iteration of
+  reclaim marked cut in its table. 0 by default: no reclaim. Added
+  2026-10-17. -/
+  faPolicy : Stream V T → Dirty → Time → T → Nat := fun _ _ _ _ => 0
 
 /-- The exact still-dirty test: the definition of dirty (5.2). -/
 def exactTest (sp : Spec V T) : Stream V T → Struct V → Dirty → Time → NodeId → Bool :=
@@ -136,6 +144,33 @@ def topOf (sp : Spec V T) (P : Struct V) (S : Stream V T) (s : Nat) : Option (No
 def startupPos (al : Algo V T) (S : Stream V T) (D : Dirty) (i : Time) (tr : T) : Nat :=
   min (i - 1) (max (lastSp S) (al.policy S D i tr))
 
+/-- The first available time of the last record (bergdb item 001, WP R3). -/
+def lastFa (S : Stream V T) : Nat :=
+  (S.getLast?.map (·.fa)).getD 0
+
+/-- fa(i), with s = s(i): the policy, clamped so that fa(i-1) <= fa(i) <= s(i)
+(bergdb item 001, WP R3). -/
+def firstAvail (al : Algo V T) (S : Stream V T) (D : Dirty) (i : Time) (tr : T) (s : Nat) : Nat :=
+  min s (max (lastFa S) (al.faPolicy S D i tr))
+
+/-- The nodes that the touch of change c marks, besides the nodes `base` that
+step 3 found otherwise: the touched index nodes not in D and not in `base`,
+sorted by id (bergdb item 001, WP R3; Java's `Db.touchRange`, M17). -/
+def touchOf (P : Struct V) (c : Changes V) (D : Dirty) (base : List NodeId) : List NodeId :=
+  (c.touch.eraseDups.filter (fun x => isIndex P x && !inD D x && !base.contains x)).mergeSort
+    (fun a b => decide (a ≤ b))
+
+/-- Step 3: the index nodes that got dirty in T(i), found by testing every index
+node not in D (`gotDirtyOf`) or by marking the access path of the change
+(`markOf`, `Algo.mark`), and the nodes the change's touch marks (`touchOf`);
+never a virtual root. vs0 are the versions of step 2. (A function since
+2026-10-17, bergdb item 001, WP R3, with the touch; before, the same
+expression stood in `step`.) -/
+def gotDirty3 (sp : Spec V T) (al : Algo V T) (S : Stream V T) (vs0 : List (Version V))
+    (P : Struct V) (c : Changes V) (D : Dirty) (i : Time) : List NodeId :=
+  let base := if al.mark then markOf sp P c D i else gotDirtyOf sp (S.building vs0) P D i
+  (base ++ touchOf P c D base).filter (written sp)
+
 /-- Step 7, Rule A: test the taken nodes, lowest level first; each one that is
 still dirty goes back into D with d(x) = i, so that a later test may see it.
 Returns the new D and the nodes that stayed dirty. -/
@@ -153,12 +188,13 @@ def step (sp : Spec V T) (al : Algo V T) (db : DB V T) (tr : T) : DB V T :=
   -- 2. Write data: a version of each data node created by T(i).
   let vs0 := writeAll sp db.S i P ((c.new.filter (·.isData)).map (·.id)) []
   -- 3. Got dirty: index nodes not in D that are dirty now, found by testing
-  -- them, or by marking the access path of the change; never a virtual root.
-  let gd3 := (if al.mark then markOf sp P c db.D i else gotDirtyOf sp (db.S.building vs0) P db.D i).filter
-    (written sp)
+  -- them, or by marking the access path of the change, and the nodes the
+  -- touch marks; never a virtual root.
+  let gd3 := gotDirty3 sp al db.S vs0 P c db.D i
   let D1 : Dirty := db.D ++ gd3.map (fun x => (x, i))
-  -- 4. Startup pos.
+  -- 4. Startup pos, and the first available time.
   let s : Nat := startupPos al db.S D1 i tr
+  let fa : Nat := firstAvail al db.S D1 i tr s
   -- 5. Take every node with d(x) <= s(i).
   let taken := byLevel P ((D1.filter (fun e : NodeId × Nat => decide (e.2 ≤ s))).map (·.1))
   let D2 : Dirty := D1.filter (fun e : NodeId × Nat => decide (s < e.2))
@@ -169,7 +205,7 @@ def step (sp : Spec V T) (al : Algo V T) (db : DB V T) (tr : T) : DB V T :=
   let r7 := stillDirtyOf al S' P D2 i taken
   -- 8. Append R(i).
   let R : Record V T :=
-    { trans := some tr, sp := s, vers := vs, gd := gd3 ++ r7.2, top := topOf sp P S' s }
+    { trans := some tr, sp := s, vers := vs, gd := gd3 ++ r7.2, top := topOf sp P S' s, fa := fa }
   { P := P, D := r7.1, S := db.S ++ [R] }
 
 /-- T(0): the initial structure, all of it written to R(0) (4), but a

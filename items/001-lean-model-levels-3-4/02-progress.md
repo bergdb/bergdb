@@ -107,10 +107,10 @@ Current state
 
 * Checkpoints: G0 given (2026-10-16 15:23); K1 passed (2026-10-17 07:56,
   Frans: Option K under TREE, A6' and A-COPY; above). K2 to K5 open.
-* Next: stage 3, R3 (the Level 3 model), then R7, R4, R5, R6, R8, R9 and K3
-  (plan, 5.1).
+* Next: stage 3: R7 (the red list), then R4, R5, R6, R8, R9 and K3 (plan,
+  5.1). R3 is done (2026-10-17).
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: none (2026-10-17 07:20).
+* Uncommitted work of this plan in bergdb: none (2026-10-17 10:00).
 * Long jobs running: none.
 * Stage 2's time box (plan, 5.3): started with E1 at 2026-10-16 23:14;
   60 hours, so it ends at 2026-10-19 11:14. Stage 2's WPs (E1 to E7) were
@@ -145,7 +145,7 @@ Status
 | E7 | The Java change list; the K1 review | done | 2026-10-17 |
 | R1 | α and the register for reclaim | done | 2026-10-16 |
 | R2 | Trace format 2; the exporter for reclaim runs | done | 2026-10-17 |
-| R3 | The Level 3 model: touch, first available time, cuts | not started | — |
+| R3 | The Level 3 model: touch, first available time, cuts | done | 2026-10-17 |
 | R4 | Recovery and reads after a cut: T8, T9 | not started | — |
 | R5 | Restarts across cuts: T12 | not started | — |
 | R6 | Java's scheme gives safe cuts: T-SCHEME | not started | — |
@@ -2073,3 +2073,112 @@ Checks: none needed (documents only); the links resolve.
 Register: M43 (unchanged: A-COPY holds on every Java run checked).
 
 Open, next: K1 (current state).
+
+
+### 2026-10-17 07:57 to 10:00. WP R3, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `9670c42` (K1
+passed); uncommitted before this WP's commit: its files, below. Worked in a
+scratch copy of `lean/` and copied the result back.
+
+Did:
+
+1. The touch (M17), in the trusted model: `Changes.touch`, the index nodes
+   that a transaction's touch makes dirty without entries (the plan said
+   `Spec.touch`; the touch is part of the changes, a function of T(i), i and
+   P@(i-1) as they are). Step 3 adds the touched index nodes not in D that
+   it did not find otherwise (`touchOf`); step 3 is now one function,
+   `gotDirty3`, in `step`, `stepWith` and `evictTrans`; the writer's paths
+   reach the touched nodes (`pathOf`). The plan's TouchOK is three fields of
+   `StepOK`: the touched nodes are index nodes reachable at i-1, and every
+   node reachable then with a touched node below it is touched too, but a
+   virtual root.
+2. Every existing theorem holds with touches. What the proofs needed: the
+   transitive form of `touchUp` (with only touched live children, a clean
+   node above a touched one stays out of D with a pointee in D); a new
+   invariant, a root child that a root child points to is not reachable
+   (`VInv.deadTops`, kept from `VirtStep.dead`), so no touched root child is
+   pointed to by another; A6' at the time before the change in the stage 2
+   logic (`step_clean`; `EvictRunOK` has it for every time); and `AInv.slots`
+   for objects of nodes reachable before the change too, since a touched node
+   that the change replaces is in D without being reachable after it. No
+   assumption on Java beyond TouchOK.
+3. T13' (`T13_markTouch`, new SIS/ReclaimTheorems.lean), proved: with
+   touches, step 3, by testing or by marking, gives exactly the index nodes
+   not in D (and not a virtual root) that are dirty or touched.
+4. fa(i) (M32, Q5): `Record.fa` and `Algo.faPolicy` (0 by default), clamped
+   so that it never decreases and stays at most s(i) (`firstAvail`).
+5. SIS/Reclaim.lean (new, trusted): version stubs and records cut
+   (`Version.stub`, `Record.cut`), `cutStream`; `CutOK`, the plan's 8.7
+   refined by running (below); `SameFrom`, the same lookups from f on;
+   `PolicyCutOK`, `ExecRootOK`; runs that restart from cut streams,
+   `runRestartsCut` and, with eviction, `runEvictCut`; `cutMax`.
+6. Example 4 and `lake exe reclaimtest` (SIS/ReclaimExample.lean,
+   ReclaimTest.lean, new): F1-008-07's reclaim example on example 3's virtual
+   root and top nodes, one value per leaf, reclaim steps that touch and
+   rewrite the values stored before pCut, f at the end of an iteration once
+   the startup pos has passed it; the largest safe cut by running; T8 and T12
+   by running, logical and with eviction and the four cache schedules (the
+   records, D, reads from f on, also on the cut stream from the running
+   memory, the invariants, the restarts from the cut streams). `#guard`s on
+   a fixed run: the touch makes clean nodes dirty, and without it no cut is
+   safe (an empty leaf keeps its only version in R(0)); T8 and T12 at the
+   safe cut; the pSafe wait (`pSafeWitness`).
+7. Docs: `lean/README.md` (files, checks, the trusted changes, status);
+   `docs/level3-alignment.md` 2.8 (new: the model of R3 and what running
+   found), the register (M17 done; M32, M33, M36, M41: R3's part), section 5
+   (CutOK as defined); `docs/levels.md`, the Level 3 and 4 rows.
+
+Found by running, before any proof (2.8 of level3-alignment.md):
+
+* After a startup from a cut stream, a virtual root lacks its entries for
+  the root children it cannot read (its history is rebuilt from the root
+  children read), so T8's first random runs failed on the root's view
+  alone. Lookups need only the root's live children; `SameFrom` compares the
+  virtual root so, and T12 will need `ExecRootOK` (a transaction sees the
+  root only through its live children, as BergDB's transactions start at
+  the current super root). Java's TopDs after such a restart likewise holds
+  only the top nodes it can read.
+* CutOK's part 3: the sketch asked that no reference below c of a node in D
+  name a node in D. Refined: every such reference names the latest version
+  of its node (so a node not in D). A stale reference below c to a node not
+  in D needs Rule R, which Java cannot apply below the cut (M33), and the
+  startup reaches a node of D that is no longer reachable only through such
+  references (M41). It is the pSafe wait; `pSafeWitness` is a run where only
+  part 3 rules out a cut, until the parent is written again. Without part 2,
+  T8 fails at once; without part 3 or 4 nothing fails in the model, which
+  links slots to D by node id even below the cut (part 3 is for Java; part 4
+  is implied by part 2).
+* 125 of the random runs' cuts had a node in D that is not reachable from f
+  on (the plan's delicate case, M34); the startup from the cut stream rebuilt
+  each right.
+
+Files changed: `lean/SIS/Basic.lean`, `Stream.lean`, `Algorithm.lean`,
+`Assumptions.lean`, `Phys.lean`, `Evict.lean` (trusted), `lean/SIS/Reclaim.lean`
+and `ReclaimTheorems.lean` (new, trusted); `lean/SIS/Proof/` Run, StepFacts,
+StepD, Mark, Fresh, Still, Init, VStep, Restart, PhysPath, PhysStep,
+PhysFrozen, EvictLogic, EvictApply, EvictApplyInv, EvictWrites,
+EvictStepInv, EvictTrans, EvictRestart; `lean/Check/Fast.lean`;
+`lean/SIS/Example.lean` (`stepOKB` checks TouchOK); `lean/SIS/ReclaimExample.lean`,
+`lean/ReclaimTest.lean` (new); `lean/SIS.lean`, `lean/lakefile.toml`
+(`reclaimtest`); `lean/README.md`; `docs/level3-alignment.md`,
+`docs/levels.md`; this file.
+
+Checks, on clean copies of `lean/` (no `.lake`): from 09:42, the build of
+this WP's files, then (09:56 to 09:57) the final ones, which add `SameFrom`
+and `ExecRootOK`: `lake build` 112 jobs, no warnings; no `sorry`, `admit`,
+`axiom` or `unsafe` in SIS/ and Check/; `#print axioms` of the README's list
+and `T13_markTouch`: only Lean's standard axioms; `sh test-traces/run.sh`:
+TRACE TESTS OK; `lake exe reclaimtest 20 30`: all checks pass (31 s). On the
+first copy (the two definitions are not used by them): `lake exe sistest 20
+40`, all checks pass (7 min), and `lake exe phystest 20 40`, all checks pass
+(8.6 min). No change in `java/`, so no gate.
+
+Register: M17 (done: `Changes.touch`, TouchOK, T13'); M32 (fa(i) in
+records); M33 and M41 (CutOK part 3); M36 (`SameFrom`). No new row.
+
+Time: R3 is M (2 to 8 hours): about 2 hours.
+
+Open, next: R7 (the checker reads TOUCH, FA, CUT and PHYSCUT, and runs on
+R2's reclaim traces; the red list), then R4 (T8, T9), R5 (T12, with
+`PolicyCutOK`, `ExecRootOK`, marking and BergDB's still-dirty test) and R6.

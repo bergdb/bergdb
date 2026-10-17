@@ -26,6 +26,7 @@ Needs elan (`brew install elan-init`). The toolchain version is in
     lake exe sistest 20 40  # random runs: 20 seeds, 40 transactions each (7 min)
     lake exe phystest 20 40 # the physical layer on random runs (9 min)
     lake exe phystest 20 40 evict  # its eviction part only (2.5 min)
+    lake exe reclaimtest 20 30     # reclaim: random runs with cuts (1 min)
 
 `lake build` checks every proof. To see that a theorem depends on nothing but
 Lean's standard axioms (no `sorry`), put this in a file, for example
@@ -33,6 +34,7 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
 
     import SIS.Theorems
     import SIS.PhysTheorems
+    import SIS.ReclaimTheorems
     #print axioms SIS.T1_recovery
     #print axioms SIS.T1_crash
     #print axioms SIS.T1_nodes
@@ -50,6 +52,7 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.T2_cache
     #print axioms SIS.TR_view_restarts
     #print axioms SIS.TP_pins
+    #print axioms SIS.T13_markTouch
 
 Each prints `[propext, Classical.choice, Quot.sound]`, or a part of it
 (`LM_cutTo` needs no `Classical.choice`). The equalities of
@@ -74,15 +77,17 @@ its section in sis-model.md.
 
 | File | Contents | sis-model.md |
 |---|---|---|
-| SIS/Basic.lean | Entries, histories, x@t (`upTo`), nodes, P (`Struct`), changes, the structure's functions (`Spec`, with the virtual root's switch `virt`, `topLevel` and `rootVal`), root children (`isTop`), reachability, P@t (`view`), equivalence (`Equiv`) | 2, 3 |
-| SIS/Stream.lean | Versions, records (top(i) as a node and a record), the stream, lv(x) (`Stream.lv`), references, `good`, `dirty` | 4, 5 |
-| SIS/Algorithm.lean | DB = <P, D, S>, the policy, the still-dirty test and the choice of step 3 (`Algo`), the exact and BergDB's still-dirty tests (`exactTest`, `javaTest`), marking (`changed`, `marked`, `markOf`), what can be in D and written (`written`), top(i) (`topOf`, `topV`), transaction i (`step`), R(0) (`init`), `run` | 6.1 |
+| SIS/Basic.lean | Entries, histories, x@t (`upTo`), nodes, P (`Struct`), changes (with the touch, `Changes.touch`), the structure's functions (`Spec`, with the virtual root's switch `virt`, `topLevel` and `rootVal`), root children (`isTop`), reachability, P@t (`view`), equivalence (`Equiv`) | 2, 3 |
+| SIS/Stream.lean | Versions, records (top(i) as a node and a record; fa(i), `Record.fa`), the stream, lv(x) (`Stream.lv`), references, `good`, `dirty` | 4, 5 |
+| SIS/Algorithm.lean | DB = <P, D, S>, the policy, the still-dirty test and the choice of step 3 (`Algo`), the exact and BergDB's still-dirty tests (`exactTest`, `javaTest`), marking (`changed`, `marked`, `markOf`), what can be in D and written (`written`), top(i) (`topOf`, `topV`), the first available time (`Algo.faPolicy`, `lastFa`, `firstAvail`), step 3 with the touch (`touchOf`, `gotDirty3`), transaction i (`step`), R(0) (`init`), `run` | 6.1 |
 | SIS/Startup.lean | `newest` (R(s) to R(k)), Rule R (`follow`), reading the stream (`readFrom`), where reading starts (`topVersion`, `startVersion`; with a virtual root `readTops`, `topsRead`, `rootVersion`), P up to s (`baseStruct`), `rerun`, `startup` | 6.2 |
-| SIS/Assumptions.lean | Assumptions A2 to A5 and the data node rules (`SpecOK`, `StepOK`, `RunOK`), with a virtual root R1 to R4 (`VirtInit`, `VirtStep`, `topClosure`), `runRestarts` | 3.4 |
+| SIS/Assumptions.lean | Assumptions A2 to A5, the data node rules and the touch's (`SpecOK`, `StepOK`, `RunOK`), with a virtual root R1 to R4 (`VirtInit`, `VirtStep`, `topClosure`), `runRestarts` | 3.4 |
 | SIS/Theorems.lean | T1 (`T1_recovery`, `T1_crash`, `T1_nodes`), T2 (`T2_restart`), T13 (`T13_markExact`) | 9 |
-| SIS/Phys.lean | The physical layer, what Java holds in memory (bergdb item 001, WPs L1 and L3): objects (`Obj`), their slots (`Slot`), the memory with the node table (`Mem`); Java's first touch (`Mem.follow`: Rule R, the table, the version read, cut back in the section); reads (`Mem.read`); the lazy startup (`lazyStartup`); a version cut back to a time (`Version.cutTo`); the operations after startup (`Op`, `Mem.step`, admissible: `OpsOK`); the assumptions of the physical layer (`PhysStep`, `PhysRunOK`); the writer after a lazy startup (WP L4: its view through the physical layer, `Mem.view`; its transaction, `lazyTrans`, with the record of `stepWith`, `step` with its change given) and a run with lazy restarts (`runLazy`) | — (docs/level2-alignment.md, 13) |
+| SIS/Phys.lean | The physical layer, what Java holds in memory (bergdb item 001, WPs L1 and L3): objects (`Obj`), their slots (`Slot`), the memory with the node table (`Mem`); Java's first touch (`Mem.follow`: Rule R, the table, the version read, cut back in the section); reads (`Mem.read`); the lazy startup (`lazyStartup`); a version cut back to a time (`Version.cutTo`); the operations after startup (`Op`, `Mem.step`, admissible: `OpsOK`); the assumptions of the physical layer (`PhysStep`, `PhysRunOK`); the writer after a lazy startup (WP L4: its view through the physical layer, `Mem.view`; its transaction, `lazyTrans`, with the record of `stepWith`, `step` with its change given) and a run with lazy restarts (`runLazy`); the writer's paths reach the touched nodes too (`pathOf`, WP R3) | — (docs/level2-alignment.md, 13) |
 | SIS/Evict.lean | The physical layer, part 2, with eviction (bergdb item 001, WP E2; docs/level4-alignment.md, section 5): the pinned objects (`Mem.pinned`), unswizzling (`Mem.unswizzle`) and release (`Mem.release`); the Level 4 loader (`Mem.follow4`: the canonical object, or exactly the version a slot names after Rule R) and reads through it (`Mem.read4`); the writer's path (`Mem.reachOnPath4`) and the change (`Mem.applyChange4`, `Mem.newSlot4`); startup with rule 4 (`evictStartup`, `Mem.linkD`); the physical writer (`Mem.refOf`, `Mem.writeNode`) and its transaction (`evictTrans`); cache schedules (`CacheOp`) and runs (`runEvict`); the assumptions of stage 2 (`EvictStep`: TREE, `treeAt`, and A6', `adoptAt`; A-COPY, `CopyStep`; `EvictRunOK`) | — (docs/level4-alignment.md, 5) |
 | SIS/PhysTheorems.lean | Lemma M: a newer version of a node serves every time an older one serves (`LM_newer`), so Rule R's version does (`LM_ruleR`), and a version cut back to s serves the times up to s (`LM_cutTo`); T1-L (`T1_lazy`): after the lazy startup from the stream of a run, or of a prefix of it (a crash), and any reads and writer follows, a read at any time up to the last record gives P at that time; CC (`CC_canonical`): in a run with lazy restarts, every canonical object holds its node's whole history; T2-L (`T2_lazy`): such a run appends the records of the run without restarts; `step_eq_stepWith`; stage 2 (bergdb item 001, WP E3): D closed upward (`T15_closed`), and T-CACHE (`TC_records`): in a run with eviction and any cache schedule, without restarts, every transaction of the physical writer appends the model's record and leaves the model's D, and INV-CAN, INV-SNAP and INV-SLOT hold; T-READ (`TR_view`, WP E4): in such a run, a read through the Level 4 loader at any time up to the last record gives P at that time; T2-C (`T2_cache`, WP E5): with restarts too, the records and D stay the model's, and the invariants hold for the stream of the last startup; and T-READ with restarts (`TR_view_restarts`, WP E5); T-PIN (`TP_pins`, WP E6): in such runs, every object outside the pinned set may be evicted | 5.1, 9; ../docs/level4-alignment.md, 5.3 to 5.6 |
+| SIS/Reclaim.lean | Level 3, reclaim (bergdb item 001, WP R3): what a cut leaves of a version (`Version.stub`) and of a record (`Record.cut`); the stream after a cut (`cutStream`); when a cut is safe (`CutOK`); the same lookups from f on (`SameFrom`); policies that a cut does not change (`PolicyCutOK`); a virtual root seen only through its live children (`ExecRootOK`); runs that restart from cut streams (`runRestartsCut`, `cutMax`; with eviction, `runEvictCut`) | — (../docs/level3-alignment.md, 5) |
+| SIS/ReclaimTheorems.lean | T13' (`T13_markTouch`, WP R3): with touches, step 3 gives exactly the index nodes not in D (and not a virtual root) that are dirty or touched | — (../docs/level3-alignment.md, 2.2) |
 
 The proofs, in SIS/Proof/ (not needed for reading the statements):
 
@@ -93,6 +98,7 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
 | Run | The parts of a transaction, runs, and the invariant `Inv` (INV-1 to INV-4 and the facts about S and P) |
 | Init, Util, StepFacts, StepP, StepS, StepD, StepInv | The invariant holds after T(0) and after every transaction (`inv_st`) |
 | Mark | Marking the access path of the change finds exactly the dirty index nodes not in D (`step_marked_iff`, T13) |
+| StepFacts, Fresh, VStep, EvictLogic (the touch) | WP R3: what step 3 gives with touches (`mem_touchOf`, `step_gd3_mem`, `step_gd3_of_touch`); the nodes reachable before the change with a touched node below them are touched, so a clean node's live children stay out of D (`step_cleanFresh`) and D stays closed upward (`step_touch_D1`, with A6' also before the change); a root child that a root child points to is not reachable (`VInv.deadTops`), so it is never touched |
 | Still | What the proofs need of the still-dirty test (`StillOK`), for the exact test and BergDB's (`java_stillOK`) |
 | VStep | With a virtual root, the transaction keeps `VInv` (`step_vinv`): the root children, the root's history, R4, and that the latest version of a root child names the latest versions of the root children it points to (`step_fresh`, which needs BergDB's still-dirty test) |
 | RunFacts | How the states of a run relate |
@@ -163,6 +169,21 @@ Not trusted, tests only:
   running (`treeB`, `adoptB`, `copyB`, `evictRunOKB`); example 5 (example 3
   with drops). `lake exe phystest 20 40 evict` runs `checkEvict` on examples
   2, 3 and 5 with every schedule.
+* SIS/ReclaimExample.lean and ReclaimTest.lean (bergdb item 001, WP R3):
+  reclaim by running. Example 4, F1-008-07's reclaim example adapted to
+  BergDB: example 3's virtual root and top nodes, one value per leaf, reclaim
+  steps that touch the nodes their range traversal visits (without entries)
+  and rewrite the values stored before pCut, the first available time at the
+  end of an iteration once the startup pos has passed it. `CutOK` by running
+  (`cutOKB`), the largest safe cut (`safeCut`), T8 by running (`checkT8`),
+  `PolicyCutOK` by running (`policyCutB`), runs with restarts from cut
+  streams (`checkCut`), and with eviction and the four cache schedules
+  (`checkEvictCut`: the records, D, reads from f on, also on the cut stream
+  from the running memory, the invariants, the restarts). `#guard` checks on
+  a fixed run: the touch makes clean nodes dirty, and without it no cut is
+  safe; T8 and T12 at the safe cut, logical and with eviction; the pSafe wait
+  (`pSafeWitness`). `lake exe reclaimtest 20 30`: the same on random runs,
+  for four startup pos policies.
 * Check/ and TraceCheck.lean: the trace checker, `lake exe tracecheck`. It
   checks traces of Java runs against the model's definitions
   ([../docs/level2-alignment.md](../docs/level2-alignment.md), sections 8.5
@@ -198,8 +219,10 @@ Choices made in Lean that the text leaves open:
 * `good` and the reading of the stream do not follow a pointer to a node
   that is not on a lower level. This makes the recursion end, and changes
   nothing for a structure that has A4.
-* gd(i) lists the nodes of step 3 sorted by id, then those of step 7, so
-  that a record does not depend on the order of nodes in P.
+* gd(i) lists the nodes of step 3 sorted by id, then the touched nodes
+  that step 3 did not find otherwise, sorted by id (since WP R3), then those
+  of step 7, so that a record does not depend on the order of nodes in P.
+  The checker compares gd as a set.
 * Step 7 tests the taken nodes lowest level first, adding each still-dirty
   node to D before the next test, so that the conservative test sees
   children that stayed dirty.
@@ -350,6 +373,15 @@ runs: every object outside the pinned set has been written, and unswizzling
 its memory slots and then releasing it removes it. The proofs are in
 SIS/Proof/EvictKeys.lean and EvictPin.lean; `lake build` passes with no
 warnings and no `sorry`; `#print axioms` shows only Lean's standard axioms.
+
+2026-10-17. Level 3, the definitions (bergdb item 001, WP R3): the touch, the
+first available time, cuts, and runs that restart from cut streams; T13'
+proved (`T13_markTouch`); every theorem above holds with touches. `lake
+build` passes with no warnings and no `sorry`; `#print axioms` shows only
+Lean's standard axioms; `lake exe reclaimtest 20 30` passes: for four startup
+pos policies and 20 seeds, the assumptions and `PolicyCutOK`, T8 at every
+restart and T12 hold at the largest safe cut, and with eviction 9,600
+transactions are checked, none fails.
 
 Changes to the trusted part while proving, all on 2026-10-12:
 
@@ -605,16 +637,55 @@ M44):
 Changes to the trusted part on 2026-10-17 (bergdb item 001, WP E6): one new
 statement in SIS/PhysTheorems.lean, T-PIN (`TP_pins`); nothing else.
 
+Changes to the trusted part on 2026-10-17 (bergdb item 001, WP R3;
+[../docs/level3-alignment.md](../docs/level3-alignment.md), register M17,
+M32, M33, M36 and M41, and 2.8):
+
+* The touch (M17, Q6 of the plan): `Changes.touch`, the index nodes that a
+  transaction's touch makes dirty without giving them entries (Java's
+  `Db.touchRange`), none by default. The plan said `Spec.touch`; the touch
+  is part of a transaction's changes, a function of T(i), i and P@(i-1) as
+  the rest of them (A1). Step 3 adds the touched index nodes not in D that
+  it did not find otherwise (`touchOf`), after the others, and never a
+  virtual root; step 3 is now a function, `gotDirty3`, used by `step`,
+  `stepWith` and `evictTrans`. The writer's paths reach the touched nodes
+  (`pathOf`).
+* The touch's assumptions, the plan's TouchOK, in `StepOK`: the touched
+  nodes are index nodes reachable at i-1 (`touchIndex`, `touchReach`), and
+  every node reachable at i-1 with a touched node below it then is touched
+  too, or is a virtual root (`touchUp`): Java's range traversal walks down
+  from the super root. The proofs need `touchUp`, transitively: a clean
+  node with a touched node below it would be outside D with a pointee in D.
+  Without a touch the three say nothing.
+* The first available time (M32, Q5): `Record.fa`, 0 by default, and
+  `Algo.faPolicy`, 0 by default; step 4 clamps the policy so that fa never
+  decreases and stays at most the startup pos (`lastFa`, `firstAvail`).
+* SIS/Reclaim.lean, new: version stubs (`Version.stub`: a cut keeps a
+  version's node, record number, level and kind, as Java's slots keep
+  positions), records cut (`Record.cut`: the stubs, no transaction, no gd
+  list), `cutStream`; `CutOK` (the plan's 8.7 with part 3 refined: every
+  reference below the cut of the latest version of a node in D names the
+  latest version of its node, which is the pSafe wait, M33 and M41; part 4
+  is implied by part 2); `SameFrom`, the same lookups from f on,
+  with a virtual root compared by its live children (a startup from a cut
+  stream rebuilds the root without the root children it cannot read); and,
+  for R4 to R6: `PolicyCutOK`, `ExecRootOK`, `runRestartsCut`, `cutMax`,
+  `runEvictCut`.
+* SIS/ReclaimTheorems.lean, new: T13' (`T13_markTouch`).
+
 Stage 1 of bergdb item 001 is done (2026-10-16): lemma M (`LM_newer`, L2),
 T1-L (`T1_lazy`, L3), CC and T2-L (`CC_canonical`, `T2_lazy`, L4) are proved,
 and Java's first touches after restarts are checked against the model's rule
 (C-L, L5). Stage 2: T-CACHE (`TC_records`, E3) and T-READ (`TR_view`, E4)
 are proved for runs without restarts, and T2-C (`T2_cache`, E5), T-CACHE
 with restarts, T-READ with restarts (`TR_view_restarts`, E5) and T-PIN
-(`TP_pins`, E6) (2026-10-17).
+(`TP_pins`, E6) (2026-10-17). Stage 3: the definitions and T13' (R3,
+2026-10-17).
 
 Not done:
 
 * A check of the physical layer's assumptions (`PhysStep`, M47) on Java
   traces; they are argued (level2-alignment.md, 13.3).
-* The bounds (T3, T4), reclaim.
+* The bounds (T3, T4).
+* Reclaim's theorems: T8 and T9 (R4), T12 (R5), T-SCHEME (R6), checked by
+  running so far (`reclaimtest`); the checker on reclaim traces (R7).

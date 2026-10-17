@@ -341,6 +341,12 @@ theorem vinv_init (hok : SpecOK sp) (hv : sp.virt = true) : VInv sp (init sp) 0 
     cases hn'
     rw [hvh] at hy
     exact (hnoptr z n hn hzr hl y hy hyt).elim
+  · intro z n hz hzt y hy hyt
+    rw [init_P] at hz hzt hyt
+    obtain ⟨hzr, n', hn', hl⟩ := hisTop z hzt
+    rw [hz] at hn'
+    cases hn'
+    exact (hnoptr z n hz hzr hl y hy hyt).elim
 
 theorem inv_init (hok : SpecOK sp) : Inv sp (init sp) 0 := by
   have hB := initVers_built sp

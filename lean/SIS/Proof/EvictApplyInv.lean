@@ -405,11 +405,12 @@ theorem EInv.applyChange4_core (hinv : Inv sp db k) (hls : LiveSub sp) (hm : EIn
       obtain ⟨n, hn, -⟩ := hm.cc h o ho hco
       have hrel : Relevant sp db k o := by
         refine ⟨hco, hw3, ?_⟩
-        rcases hrel3 with hr | hd
+        rcases hrel3 with hr | hd | hr
         · rcases hstep.noRes o.node hr with hr' | hnew
           · rw [hK1] at hr'; exact Or.inl hr'
           · exact absurd hnew (hnotnew _ _ hn)
         · exact Or.inr hd
+        · exact Or.inl hr
       by_cases hin : z ∈ (c.adds.filter (fun a => a.1 == o.node)).flatMap (fun a => sp.ptrs a.2)
       · obtain ⟨sl, hsl, hns⟩ := hslot_upd _ o z (hLadds o.node) hin
         have := hnsok sl hns

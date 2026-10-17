@@ -10,3 +10,6 @@ import SIS.Example
 import SIS.PhysExample
 import SIS.Evict
 import SIS.EvictExample
+import SIS.Reclaim
+import SIS.ReclaimTheorems
+import SIS.ReclaimExample

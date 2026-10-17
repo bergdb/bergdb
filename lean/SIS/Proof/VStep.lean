@@ -465,8 +465,12 @@ theorem step_fresh (hok : SpecOK sp) {k : Nat} (hinv : Inv sp db k)
         rw [hdead] at hrt; simp at hrt
     have hyg : y ∉ (parts sp al db tr).gd3 := by
       intro h
-      have := ((step_gd3_mem' sp al db tr hok hinv hstep y).mp h).2.2.2.2
-      rw [hcl] at this; simp at this
+      rcases ((step_gd3_mem' sp al db tr hok hinv hstep y).mp h).2.2.2.2 with h1 | h1
+      · rw [hcl] at h1; simp at h1
+      · -- A touched node is reachable at k; y is not (VInv.deadTops).
+        have h2 := hstep.touchReach y h1
+        simp only [Nat.add_sub_cancel] at h2
+        rw [hvi.deadTops z nz0 hnz0 hz0 y hyp0 hy0] at h2; cases h2
     have hyD1 : ∀ d, (y, d) ∉ (parts sp al db tr).D1 := by
       intro d hd
       rcases (step_D1_mem sp al db tr hlen _).mp hd with h | ⟨-, h⟩
@@ -523,7 +527,7 @@ theorem step_vinv (hok : SpecOK sp) {k : Nat} (hinv : Inv sp db k)
     exact hinv.times z m h.1 e he
   refine ⟨hvi.rootPtrs, step_rootND sp al db tr hinv hv, step_rootNV sp al db tr hinv hstep hv, ?_,
     step_tops sp al db tr hinv hstep hv, ?_, ?_, ?_, ?_, ?_, ?_,
-    step_fresh sp al db tr hok hinv hstep hv hj⟩
+    step_fresh sp al db tr hok hinv hstep hv hj, ?_⟩
   · -- rootIdx
     intro n hn
     simp only at hn
@@ -616,6 +620,14 @@ theorem step_vinv (hok : SpecOK sp) {k : Nat} (hinv : Inv sp db k)
         rw [← parts_P' sp al db tr hlen] at this
         exact this
       · omega
+  · -- deadTops
+    intro z n hz hzt y hy hyt
+    simp only at hz hzt hyt ⊢
+    have := hvs.dead z n (by rw [← parts_P' sp al db tr hlen]; exact hz)
+      (by rw [← parts_P' sp al db tr hlen]; exact hzt) y hy
+      (by rw [← parts_P' sp al db tr hlen]; exact hyt)
+    rw [← parts_P' sp al db tr hlen] at this
+    exact this
 
 end Step
 

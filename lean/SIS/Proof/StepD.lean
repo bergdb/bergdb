@@ -147,7 +147,7 @@ theorem step_inv2 (hst : StillOK sp al) (hok : SpecOK sp) {k : Nat}
           · exfalso
             apply hg
             rw [step_gd3_mem' sp al db tr hok hinv hstep]
-            exact ⟨isSome_of_isIndex hx, hx, by simpa using hD, hw, hc⟩
+            exact ⟨isSome_of_isIndex hx, hx, by simpa using hD, hw, Or.inl hc⟩
         rw [dirty_false_iff] at hclean
         obtain ⟨v, hv, hgood⟩ := hclean
         have hlvS : (Snew sp al db tr).lv x = some v := by

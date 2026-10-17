@@ -21,6 +21,35 @@ theorem newNodeOf_isSome {c : Changes V} {nn : NewNode} (h : nn ∈ c.new) :
   apply get?_isSome_of_mem
   exact List.mem_map.mpr ⟨nn, h, rfl⟩
 
+/-- The nodes the touch adds in step 3 (bergdb item 001, WP R3). -/
+theorem mem_touchOf {P : Struct V} {c : Changes V} {D : Dirty} {base : List NodeId} {x : NodeId} :
+    x ∈ touchOf P c D base ↔ x ∈ c.touch ∧ isIndex P x = true ∧ inD D x = false ∧ x ∉ base := by
+  unfold touchOf
+  rw [List.mem_mergeSort, List.mem_filter, List.mem_eraseDups]
+  simp only [Bool.and_eq_true, Bool.not_eq_true']
+  constructor
+  · rintro ⟨h1, ⟨h2, h3⟩, h4⟩
+    refine ⟨h1, h2, h3, fun h => ?_⟩
+    have h5 : base.contains x = true := List.contains_iff_mem.mpr h
+    rw [h5] at h4; cases h4
+  · rintro ⟨h1, h2, h3, h4⟩
+    refine ⟨h1, ⟨h2, h3⟩, ?_⟩
+    cases hb : base.contains x with
+    | false => rfl
+    | true => exact absurd (List.contains_iff_mem.mp hb) h4
+
+theorem nodup_touchOf (P : Struct V) (c : Changes V) (D : Dirty) (base : List NodeId) :
+    (touchOf P c D base).Nodup := by
+  unfold touchOf
+  exact (List.mergeSort_perm _ _).symm.nodup_iff.mp (nodup_filter (nodup_eraseDups _) _)
+
+theorem isSome_of_isIndex' {P : Struct V} {x : NodeId} (h : isIndex P x = true) :
+    (P.get? x).isSome := by
+  unfold isIndex at h
+  cases hx : P.get? x with
+  | none => rw [hx] at h; cases h
+  | some n => rfl
+
 section Step
 
 variable (sp : Spec V T) (al : Algo V T) (db : DB V T) (tr : T)
@@ -107,24 +136,53 @@ theorem step_gd3_basic {k : Nat} (hlen : db.S.length = k + 1) (x : NodeId)
     (hx : x ∈ (parts sp al db tr).gd3) :
     ((parts sp al db tr).P.get? x).isSome ∧ isIndex (parts sp al db tr).P x = true ∧
       inD db.D x = false := by
-  rw [parts_gd3, hlen, List.mem_filter] at hx
-  replace hx := hx.1
-  split at hx
-  · simp only [markOf, List.mem_mergeSort, List.mem_filter, mem_allIds, Bool.and_eq_true,
-      Bool.not_eq_true'] at hx
-    exact ⟨hx.1, hx.2.1.1, hx.2.1.2⟩
-  · simp only [gotDirtyOf, List.mem_mergeSort, List.mem_filter, mem_allIds, Bool.and_eq_true,
-      Bool.not_eq_true'] at hx
-    exact ⟨hx.1, hx.2.1.1, hx.2.1.2⟩
+  rw [parts_gd3, hlen, List.mem_filter, List.mem_append] at hx
+  rcases hx.1 with hx | hx
+  · split at hx
+    · simp only [markOf, List.mem_mergeSort, List.mem_filter, mem_allIds, Bool.and_eq_true,
+        Bool.not_eq_true'] at hx
+      exact ⟨hx.1, hx.2.1.1, hx.2.1.2⟩
+    · simp only [gotDirtyOf, List.mem_mergeSort, List.mem_filter, mem_allIds, Bool.and_eq_true,
+        Bool.not_eq_true'] at hx
+      exact ⟨hx.1, hx.2.1.1, hx.2.1.2⟩
+  · obtain ⟨-, h2, h3, -⟩ := mem_touchOf.mp hx
+    exact ⟨isSome_of_isIndex' h2, h2, h3⟩
 
 /-- Step 3 never gives a virtual root. -/
 theorem step_gd3_written (x : NodeId) (hx : x ∈ (parts sp al db tr).gd3) : written sp x = true := by
   rw [parts_gd3, List.mem_filter] at hx
   exact hx.2
 
-/-- Step 3 gives the dirty index nodes not in D, but a virtual root. With
-marking, this needs that marking finds the dirty nodes (hm; T13,
-`step_marked_iff`). -/
+/-- The nodes step 3 finds by testing or marking, before the touch. -/
+theorem step_base_mem {k : Nat} (hlen : db.S.length = k + 1)
+    (hm : al.mark = true → ∀ x, isIndex (parts sp al db tr).P x = true → inD db.D x = false →
+      written sp x = true →
+      marked sp (parts sp al db tr).P (parts sp al db tr).c (k + 1) x =
+        dirty sp (db.S.building (parts sp al db tr).vs0) (parts sp al db tr).P (k + 1) x)
+    (x : NodeId) (hw : written sp x = true) :
+    x ∈ (if al.mark then markOf sp (parts sp al db tr).P (parts sp al db tr).c db.D db.S.length
+      else gotDirtyOf sp (db.S.building (parts sp al db tr).vs0) (parts sp al db tr).P db.D
+        db.S.length) ↔
+      ((parts sp al db tr).P.get? x).isSome ∧ isIndex (parts sp al db tr).P x = true ∧
+        inD db.D x = false ∧
+        dirty sp (db.S.building (parts sp al db tr).vs0) (parts sp al db tr).P (k + 1) x = true := by
+  rw [hlen]
+  split
+  · rename_i hmark
+    simp only [markOf, List.mem_mergeSort, List.mem_filter, mem_allIds, Bool.and_eq_true,
+      Bool.not_eq_true']
+    constructor
+    · rintro ⟨a, ⟨b, c⟩, d⟩
+      exact ⟨a, b, c, by rw [← hm hmark x b c hw]; exact d⟩
+    · rintro ⟨a, b, c, d⟩
+      exact ⟨a, ⟨b, c⟩, by rw [hm hmark x b c hw]; exact d⟩
+  · simp only [gotDirtyOf, List.mem_mergeSort, List.mem_filter, mem_allIds, Bool.and_eq_true,
+      Bool.not_eq_true']
+    exact ⟨fun ⟨a, ⟨b, c⟩, d⟩ => ⟨a, b, c, d⟩, fun ⟨a, b, c, d⟩ => ⟨a, ⟨b, c⟩, d⟩⟩
+
+/-- Step 3 gives the dirty index nodes not in D, and the touched ones (bergdb
+item 001, WP R3), but a virtual root. With marking, this needs that marking
+finds the dirty nodes (hm; T13, `step_marked_iff`). -/
 theorem step_gd3_mem {k : Nat} (hlen : db.S.length = k + 1)
     (hm : al.mark = true → ∀ x, isIndex (parts sp al db tr).P x = true → inD db.D x = false →
       written sp x = true →
@@ -134,29 +192,47 @@ theorem step_gd3_mem {k : Nat} (hlen : db.S.length = k + 1)
     x ∈ (parts sp al db tr).gd3 ↔
       ((parts sp al db tr).P.get? x).isSome ∧ isIndex (parts sp al db tr).P x = true ∧
         inD db.D x = false ∧ written sp x = true ∧
-        dirty sp (db.S.building (parts sp al db tr).vs0) (parts sp al db tr).P (k + 1) x = true := by
-  rw [parts_gd3, hlen, List.mem_filter]
-  split
-  · rename_i hmark
-    simp only [markOf, List.mem_mergeSort, List.mem_filter, mem_allIds, Bool.and_eq_true,
-      Bool.not_eq_true']
-    constructor
-    · rintro ⟨⟨a, ⟨b, c⟩, d⟩, w⟩
-      exact ⟨a, b, c, w, by rw [← hm hmark x b c w]; exact d⟩
-    · rintro ⟨a, b, c, w, d⟩
-      exact ⟨⟨a, ⟨b, c⟩, by rw [hm hmark x b c w]; exact d⟩, w⟩
-  · simp only [gotDirtyOf, List.mem_mergeSort, List.mem_filter, mem_allIds, Bool.and_eq_true,
-      Bool.not_eq_true']
-    exact ⟨fun ⟨⟨a, ⟨b, c⟩, d⟩, w⟩ => ⟨a, b, c, w, d⟩, fun ⟨a, b, c, w, d⟩ => ⟨⟨a, ⟨b, c⟩, d⟩, w⟩⟩
+        (dirty sp (db.S.building (parts sp al db tr).vs0) (parts sp al db tr).P (k + 1) x = true ∨
+          x ∈ (parts sp al db tr).c.touch) := by
+  rw [parts_gd3, List.mem_filter, List.mem_append, mem_touchOf]
+  constructor
+  · rintro ⟨h | ⟨ht, hi, hd, -⟩, hw⟩
+    · obtain ⟨a, b, c, d⟩ := (step_base_mem sp al db tr hlen hm x hw).mp h
+      exact ⟨a, b, c, hw, Or.inl d⟩
+    · exact ⟨isSome_of_isIndex' hi, hi, hd, hw, Or.inr ht⟩
+  · rintro ⟨a, b, c, hw, d | t⟩
+    · exact ⟨Or.inl ((step_base_mem sp al db tr hlen hm x hw).mpr ⟨a, b, c, d⟩), hw⟩
+    · by_cases hb : x ∈ (if al.mark then markOf sp (parts sp al db tr).P (parts sp al db tr).c db.D
+          db.S.length else gotDirtyOf sp (db.S.building (parts sp al db tr).vs0)
+            (parts sp al db tr).P db.D db.S.length)
+      · exact ⟨Or.inl hb, hw⟩
+      · exact ⟨Or.inr ⟨t, b, c, hb⟩, hw⟩
+
+/-- A touched index node not in D is in gd3, but a virtual root (bergdb item
+001, WP R3). -/
+theorem step_gd3_of_touch {x : NodeId} (ht : x ∈ (parts sp al db tr).c.touch)
+    (hi : isIndex (parts sp al db tr).P x = true) (hD : inD db.D x = false)
+    (hw : written sp x = true) : x ∈ (parts sp al db tr).gd3 := by
+  rw [parts_gd3, List.mem_filter, List.mem_append]
+  refine ⟨?_, hw⟩
+  by_cases hb : x ∈ (if al.mark then markOf sp (parts sp al db tr).P (parts sp al db tr).c db.D
+      db.S.length else gotDirtyOf sp (db.S.building (parts sp al db tr).vs0)
+        (parts sp al db tr).P db.D db.S.length)
+  · exact Or.inl hb
+  · exact Or.inr (mem_touchOf.mpr ⟨ht, hi, hD, hb⟩)
 
 theorem step_gd3_nodup : (parts sp al db tr).gd3.Nodup := by
   rw [parts_gd3]
   apply nodup_filter
-  split
-  · simp only [markOf]
-    exact (List.mergeSort_perm _ _).symm.nodup_iff.mp (nodup_filter (nodup_eraseDups _) _)
-  · simp only [gotDirtyOf]
-    exact (List.mergeSort_perm _ _).symm.nodup_iff.mp (nodup_filter (nodup_eraseDups _) _)
+  rw [List.nodup_append]
+  refine ⟨?_, nodup_touchOf _ _ _ _, fun a ha b hb hab => ?_⟩
+  · split
+    · simp only [markOf]
+      exact (List.mergeSort_perm _ _).symm.nodup_iff.mp (nodup_filter (nodup_eraseDups _) _)
+    · simp only [gotDirtyOf]
+      exact (List.mergeSort_perm _ _).symm.nodup_iff.mp (nodup_filter (nodup_eraseDups _) _)
+  · subst hab
+    exact (mem_touchOf.mp hb).2.2.2 ha
 
 theorem step_s_le {k : Nat} (hlen : db.S.length = k + 1) : (parts sp al db tr).s ≤ k := by
   rw [parts_s, hlen]

@@ -661,7 +661,8 @@ structure AInv (sp : Spec V T) (db : DB V T) (S0 : Stream V T) (k : Nat) (c : Ch
   canon : ∀ y, (inD db.D y = true ∨ y ∈ path ∨ y ∈ c.new.map (·.id)) → (m.canonicalOf y).isSome
   snap : ∀ h o, m.obj? h = some o → o.canonical = false → SnapExact sp S0 db m o
   slots : ∀ h o, m.obj? h = some o → o.canonical = true → written sp o.node = true →
-    (reachable sp (db.P.apply (k + 1) c) (k + 1) o.node = true ∨ inD db.D o.node = true) →
+    (reachable sp (db.P.apply (k + 1) c) (k + 1) o.node = true ∨ inD db.D o.node = true ∨
+      reachable sp db.P k o.node = true) →
     ∀ y ∈ pointees sp o.hist, ∃ sl, o.slot? y = some sl ∧
       (inD db.D y = false → slotRefOf S0 m y sl = (db.S.lv y).map (·.recNo) ∧
         (y ∈ c.new.map (·.id) → ∃ h', sl = Slot.mem h' ∧ m.canonicalOf y = some h')) ∧

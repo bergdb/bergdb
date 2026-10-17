@@ -287,17 +287,19 @@ def stepFast [DecidableEq V] (sp : Spec V T) (al : Algo V T) (db : DB V T) (tr :
   let c := sp.exec tr i (view sp db.P (i - 1))
   let P := db.P.apply i c
   let vs0 := writeAll sp db.S i P ((c.new.filter (·.isData)).map (·.id)) []
-  let gd3 := (if al.mark then markOf sp P c db.D i else gotDirtyOf sp (db.S.building vs0) P db.D i).filter
-    (written sp)
+  let gd3 :=
+    let base := if al.mark then markOf sp P c db.D i else gotDirtyOf sp (db.S.building vs0) P db.D i
+    (base ++ touchOf P c db.D base).filter (written sp)
   let D1 : Dirty := db.D ++ gd3.map (fun x => (x, i))
   let s : Nat := startupPos al db.S D1 i tr
+  let fa : Nat := firstAvail al db.S D1 i tr s
   let taken := byLevel P ((D1.filter (fun e : NodeId × Nat => decide (e.2 ≤ s))).map (·.1))
   let D2 : Dirty := D1.filter (fun e : NodeId × Nat => decide (s < e.2))
   let vs := writeAll sp db.S i P taken vs0
   let S' : Stream V T := db.S.building vs
   let r7 := stillDirtyOf al S' P D2 i taken
   let R : Record V T :=
-    { trans := some tr, sp := s, vers := vs, gd := gd3 ++ r7.2, top := topOf sp P S' s }
+    { trans := some tr, sp := s, vers := vs, gd := gd3 ++ r7.2, top := topOf sp P S' s, fa := fa }
   { P := P, D := r7.1, S := db.S ++ [R] }
 
 @[csimp] theorem step_eq_fast : @step = @stepFast := by

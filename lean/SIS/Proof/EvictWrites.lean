@@ -180,7 +180,7 @@ theorem AInv.canon_D1 (hsp : SpecOK sp) (hinv : Inv sp db k) (hmk : al.mark = tr
     (hstep : StepOK sp db.P (k + 1) (parts sp al db tr).c) {m3 : Mem V}
     (ha : AInv sp db S0 k (parts sp al db tr).c (pathOf sp db.P (parts sp al db tr).c (k + 1)) m3)
     {y : NodeId} (hy : inD (parts sp al db tr).D1 y = true) : (m3.canonicalOf y).isSome := by
-  rcases step_D1_cases sp al db tr hmk hinv hy with h | h
+  rcases step_D1_cases sp al db tr hmk hinv hy with h | h | h
   · exact ha.canon y (Or.inl h)
   · by_cases hn : y ∈ (parts sp al db tr).c.new.map (·.id)
     · exact ha.canon y (Or.inr (Or.inr hn))
@@ -188,6 +188,7 @@ theorem AInv.canon_D1 (hsp : SpecOK sp) (hinv : Inv sp db k) (hmk : al.mark = tr
         parts_P' sp al db tr hinv.len
       rw [hP] at h
       exact ha.canon y (Or.inr (Or.inl (step_marked_path sp al db tr hsp hinv hstep h hn)))
+  · exact ha.canon y (Or.inr (Or.inl (step_touched_path sp al db tr hstep h)))
 
 /-- The two loops write the model's versions of the record. -/
 theorem AInv.loops_vs (hsp : SpecOK sp) (hinv : Inv sp db k) (hmk : al.mark = true)
@@ -275,8 +276,8 @@ theorem AInv.loops_vs (hsp : SpecOK sp) (hinv : Inv sp db k) (hmk : al.mark = tr
           obtain ⟨dy, hdy⟩ := (inD_iff _ _).mp hyd
           exact (inD_iff _ _).mpr ⟨dy, (step_D1_mem sp al db tr hinv.len _).mpr (Or.inl hdy)⟩
         rw [this] at hyD1; cases hyD1
-    obtain ⟨sl, hsl, hi⟩ := ha.slots h o ho hco (by rw [hn2]; exact hinv.written_of_D hxD) (Or.inr (by
-      rw [hn2]; exact hxD)) y (by rw [hh]; exact hy)
+    obtain ⟨sl, hsl, hi⟩ := ha.slots h o ho hco (by rw [hn2]; exact hinv.written_of_D hxD) (Or.inr (Or.inl (by
+      rw [hn2]; exact hxD))) y (by rw [hh]; exact hy)
     obtain ⟨hval, hnew⟩ := hi.1 hyD
     by_cases hyn : y ∈ (parts sp al db tr).c.new.map (·.id)
     · obtain ⟨h', hsl', hcy⟩ := hnew hyn

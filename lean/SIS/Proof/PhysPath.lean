@@ -62,7 +62,7 @@ variable {sp : Spec V T}
 theorem mem_pathOf {P : Struct V} {c : Changes V} {j : Time} {x : NodeId}
     (hx : x ∈ pathOf sp P c j) :
     reachable sp P (j - 1) x = true ∧ ∃ n, P.get? x = some n ∧
-      (reachFrom sp P (j - 1) x n).any (fun z => changed c z ||
+      (reachFrom sp P (j - 1) x n).any (fun z => changed c z || c.touch.contains z ||
         (reachable sp P (j - 1) z && !reachable sp (P.apply j c) j z)) = true := by
   unfold pathOf at hx
   rw [List.mem_filter] at hx
@@ -74,7 +74,7 @@ theorem mem_pathOf {P : Struct V} {c : Changes V} {j : Time} {x : NodeId}
 
 theorem pathOf_mem {P : Struct V} {c : Changes V} {j : Time} {x : NodeId} {n : Node V}
     (hr : reachable sp P (j - 1) x = true) (hn : P.get? x = some n)
-    (ht : (reachFrom sp P (j - 1) x n).any (fun z => changed c z ||
+    (ht : (reachFrom sp P (j - 1) x n).any (fun z => changed c z || c.touch.contains z ||
         (reachable sp P (j - 1) z && !reachable sp (P.apply j c) j z)) = true) :
     x ∈ pathOf sp P c j := by
   unfold pathOf
@@ -116,6 +116,16 @@ theorem step_changed_path {k : Nat} (_hinv : Inv sp db k)
   apply pathOf_mem (by simpa using hrk) hnx
   exact List.any_eq_true.mpr ⟨x, self_mem_reachFrom sp _ _ x nx, by simp [hc]⟩
 
+/-- A node that the transaction touches is on a path (bergdb item 001, WP R3). -/
+theorem step_touched_path {k : Nat} (hstep : StepOK sp db.P (k + 1) (parts sp al db tr).c)
+    {x : NodeId} (ht : x ∈ (parts sp al db tr).c.touch) :
+    x ∈ pathOf sp db.P (parts sp al db tr).c (k + 1) := by
+  have hrk := hstep.touchReach x ht
+  obtain ⟨nx, hnx⟩ := Option.isSome_iff_exists.mp (Reach.isSome ((reachable_iff _ _ _ _).mp hrk))
+  apply pathOf_mem hrk hnx
+  exact List.any_eq_true.mpr ⟨x, self_mem_reachFrom sp _ _ x nx,
+    by simp [ht]⟩
+
 /-- A node that the transaction marks, and that it does not create, is on a path. -/
 theorem step_marked_path (hsp : SpecOK sp) {k : Nat} (hinv : Inv sp db k)
     (hstep : StepOK sp db.P (k + 1) (parts sp al db tr).c) {x : NodeId}
@@ -142,6 +152,7 @@ theorem step_marked_path (hsp : SpecOK sp) {k : Nat} (hinv : Inv sp db k)
           { nu with hist := nu.hist ++ addsFor (parts sp al db tr).c (k + 1) u },
         changed (parts sp al db tr).c z = true →
         (reachFrom sp db.P k x nx).any (fun z => changed (parts sp al db tr).c z ||
+          (parts sp al db tr).c.touch.contains z ||
           (reachable sp db.P k z && !reachable sp (db.P.apply (k + 1) (parts sp al db tr).c) (k + 1) z)) = true := by
     intro b
     induction b with

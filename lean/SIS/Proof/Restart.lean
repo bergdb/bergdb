@@ -111,6 +111,20 @@ theorem markOf_congr (sp : Spec V T) {P P' : Struct V} (h : SameNodes P P') (c :
   unfold allIds at h1 h2
   rw [h1, h2, h x]
 
+theorem touchOf_congr {P P' : Struct V} (h : SameNodes P P') (c : Changes V) (D : Dirty)
+    (base : List NodeId) : touchOf P c D base = touchOf P' c D base := by
+  unfold touchOf
+  have hf : (fun x => isIndex P x && !inD D x && !base.contains x) =
+      (fun x => isIndex P' x && !inD D x && !base.contains x) := by
+    funext x; rw [isIndex_congr h x]
+  rw [hf]
+
+theorem gotDirty3_congr (sp : Spec V T) (al : Algo V T) (S : Stream V T) (vs0 : List (Version V))
+    {P P' : Struct V} (h : SameNodes P P') (c : Changes V) (D : Dirty) (i : Time) :
+    gotDirty3 sp al S vs0 P c D i = gotDirty3 sp al S vs0 P' c D i := by
+  unfold gotDirty3
+  simp only [markOf_congr sp h, gotDirtyOf_congr sp _ h, touchOf_congr h]
+
 theorem topOf_sameNodes (sp : Spec V T) {P P' : Struct V} (h : SameNodes P P') (S : Stream V T)
     (s : Nat) : topOf sp P S s = topOf sp P' S s := by
   unfold topOf topV
@@ -130,17 +144,28 @@ theorem step_congr (sp : Spec V T) (al : Algo V T) (hst : AlgOK sp al)
   have hvs0 : (parts sp al ⟨P1, D1, S1⟩ tr).vs0 = (parts sp al ⟨P2, D1, S1⟩ tr).vs0 := by
     rw [parts_vs0, parts_vs0, hc]; exact writeAll_congr sp _ _ hPP _ _
   have hgd3 : (parts sp al ⟨P1, D1, S1⟩ tr).gd3 = (parts sp al ⟨P2, D1, S1⟩ tr).gd3 := by
+    have hbase : (if al.mark then markOf sp (parts sp al ⟨P1, D1, S1⟩ tr).P
+          (parts sp al ⟨P1, D1, S1⟩ tr).c D1 S1.length
+        else gotDirtyOf sp (S1.building (parts sp al ⟨P1, D1, S1⟩ tr).vs0)
+          (parts sp al ⟨P1, D1, S1⟩ tr).P D1 S1.length) =
+        (if al.mark then markOf sp (parts sp al ⟨P2, D1, S1⟩ tr).P
+          (parts sp al ⟨P2, D1, S1⟩ tr).c D1 S1.length
+        else gotDirtyOf sp (S1.building (parts sp al ⟨P2, D1, S1⟩ tr).vs0)
+          (parts sp al ⟨P2, D1, S1⟩ tr).P D1 S1.length) := by
+      by_cases hmk : al.mark = true
+      · simp only [hmk, ↓reduceIte]
+        rw [hc]; exact markOf_congr sp hPP _ _ _
+      · simp only [hmk]
+        rw [hvs0]; exact gotDirtyOf_congr sp _ hPP _ _
     rw [parts_gd3, parts_gd3]
-    congr 1
-    by_cases hmk : al.mark = true
-    · simp only [hmk, ↓reduceIte]
-      rw [hc]; exact markOf_congr sp hPP _ _ _
-    · simp only [hmk]
-      rw [hvs0]; exact gotDirtyOf_congr sp _ hPP _ _
+    dsimp only
+    rw [hbase, hc, touchOf_congr hPP]
   have hD1 : (parts sp al ⟨P1, D1, S1⟩ tr).D1 = (parts sp al ⟨P2, D1, S1⟩ tr).D1 := by
     rw [parts_D1, parts_D1, hgd3]
   have hs : (parts sp al ⟨P1, D1, S1⟩ tr).s = (parts sp al ⟨P2, D1, S1⟩ tr).s := by
     rw [parts_s, parts_s, hD1]
+  have hfa : (parts sp al ⟨P1, D1, S1⟩ tr).fa = (parts sp al ⟨P2, D1, S1⟩ tr).fa := by
+    rw [parts_fa, parts_fa, hD1, hs]
   have htaken : (parts sp al ⟨P1, D1, S1⟩ tr).taken = (parts sp al ⟨P2, D1, S1⟩ tr).taken := by
     rw [parts_taken, parts_taken, hD1, hs, byLevel_congr hPP]
   have hD2 : (parts sp al ⟨P1, D1, S1⟩ tr).D2 = (parts sp al ⟨P2, D1, S1⟩ tr).D2 := by
@@ -153,7 +178,7 @@ theorem step_congr (sp : Spec V T) (al : Algo V T) (hst : AlgOK sp al)
     rw [parts_r7, parts_r7, hS', hD2, htaken]
     exact stillDirtyOf_congr al hst.still.congr hPP _ _ _ _
   have hR : (parts sp al ⟨P1, D1, S1⟩ tr).R = (parts sp al ⟨P2, D1, S1⟩ tr).R := by
-    rw [parts_R, parts_R, hs, hvs, hgd3, hr7, hS', topOf_sameNodes sp hPP]
+    rw [parts_R, parts_R, hs, hvs, hgd3, hr7, hS', topOf_sameNodes sp hPP, hfa]
   rw [step_eq_parts, step_eq_parts]
   exact ⟨by simp only [hR], by simp only [hr7], hPP⟩
 

@@ -156,19 +156,23 @@ section Step
 
 variable (sp : Spec V T) (al : Algo V T) (db : DB V T) (tr : T)
 
-/-- Step 3 gives the marked index nodes not in D, but a virtual root (T13). -/
+/-- Step 3 gives the marked index nodes not in D, and the touched ones, but a
+virtual root (T13). -/
 theorem step_gd3_marked (hsp : SpecOK sp) {k : Nat} (hinv : Inv sp db k)
     (hstep : StepOK sp db.P (k + 1) (parts sp al db tr).c) (x : NodeId) :
     x ∈ (parts sp al db tr).gd3 ↔
       ((parts sp al db tr).P.get? x).isSome ∧ isIndex (parts sp al db tr).P x = true ∧
         inD db.D x = false ∧ written sp x = true ∧
-        marked sp (parts sp al db tr).P (parts sp al db tr).c (k + 1) x = true := by
+        (marked sp (parts sp al db tr).P (parts sp al db tr).c (k + 1) x = true ∨
+          x ∈ (parts sp al db tr).c.touch) := by
   rw [step_gd3_mem' sp al db tr hsp hinv hstep]
   constructor
-  · rintro ⟨a, b, c, d, e⟩
-    exact ⟨a, b, c, d, by rw [step_marked_iff sp al db tr hsp hinv hstep b c d]; exact e⟩
-  · rintro ⟨a, b, c, d, e⟩
-    exact ⟨a, b, c, d, by rw [← step_marked_iff sp al db tr hsp hinv hstep b c d]; exact e⟩
+  · rintro ⟨a, b, c, d, e | e⟩
+    · exact ⟨a, b, c, d, Or.inl (by rw [step_marked_iff sp al db tr hsp hinv hstep b c d]; exact e)⟩
+    · exact ⟨a, b, c, d, Or.inr e⟩
+  · rintro ⟨a, b, c, d, e | e⟩
+    · exact ⟨a, b, c, d, Or.inl (by rw [← step_marked_iff sp al db tr hsp hinv hstep b c d]; exact e)⟩
+    · exact ⟨a, b, c, d, Or.inr e⟩
 
 /-- A node of D after the step: in D before, or got dirty in it, or put back
 (then taken). -/
@@ -347,10 +351,49 @@ theorem step_cleanFresh (hj : al.stillDirty = javaTest sp) (hsp : SpecOK sp) {k 
       exact ⟨n, hn⟩
     have hzg : z ∉ (parts sp al db tr).gd3 := by
       intro hg
-      obtain ⟨-, -, -, -, hmz⟩ := (step_gd3_marked sp al db tr hsp hinv hstep z).mp hg
+      obtain ⟨-, -, -, -, hmz | htz⟩ := (step_gd3_marked sp al db tr hsp hinv hstep z).mp hg
+      rotate_left
+      · -- z is touched: so is y, reachable before the step with z a live child
+        -- then (StepOK.touchUp).
+        apply hyg
+        have hidx0 : isIndex db.P y = true := by
+          rw [hnyy] at hydata; simp [isIndex, hny0]; exact hydata
+        have hcl : dirty sp db.S db.P k y = false := by
+          cases hc : dirty sp db.S db.P k y
+          · rfl
+          · have := hinv.inv2 y hidx0 (hinv.written_of_lv hv) hc
+            rw [hyD] at this; cases this
+        obtain ⟨v', hv', hg'⟩ := (dirty_false_iff sp db.S db.P k y).mp hcl
+        rw [hv] at hv'; cases hv'
+        have hgk := hg' k (Nat.le_refl _) hrk
+        rw [good_iff] at hgk
+        obtain ⟨⟨n', hn', hc⟩, -⟩ := hgk
+        rw [(hinv.version_node (hinv.lv_at hv)).1, hny0, Option.some.injEq] at hn'
+        subst hn'
+        have hvk : v.hist.upTo k = v.hist := by
+          apply upTo_of_forall
+          intro e1 he1
+          rw [hvh0] at he1
+          have := (mem_upTo.mp he1).2
+          have : v.recNo ≤ k := by
+            obtain ⟨R0, hR0, -, -⟩ := versionAt_spec (hinv.lv_at hv)
+            obtain ⟨hlt0, -⟩ := List.getElem?_eq_some_iff.mp hR0
+            omega
+          omega
+        have hzl : z ∈ sp.live (v.hist.upTo k) := by rw [hvk]; exact hz
+        rw [hc] at hzl
+        obtain ⟨e0, he0, hze0⟩ := hls _ _ hzl
+        obtain ⟨nz1, hnz1, hlt1⟩ := hinv.ptrs y ny0 hny0 e0 (mem_upTo.mp he0).1 z hze0
+        have hzy : z ∈ reachFrom sp db.P k y ny0 :=
+          reachFrom_child_sub sp hzl hnz1 hlt1 z (self_mem_reachFrom sp _ _ z nz1)
+        rcases hstep.touchUp z htz y ny0 (by simpa using hrk) hny0 (by simpa using hzy) with h | ⟨h1, h2⟩
+        · exact (step_gd3_marked sp al db tr hsp hinv hstep y).mpr
+            ⟨by rw [hny]; rfl, hyidx, hyD, hinv.written_of_lv hv, Or.inr h⟩
+        · have := hinv.written_of_lv hv
+          rw [h2] at this; simp [written, h1] at this
       apply hyg
       refine (step_gd3_marked sp al db tr hsp hinv hstep y).mpr
-        ⟨by rw [hny]; rfl, hyidx, hyD, hinv.written_of_lv hv, ?_⟩
+        ⟨by rw [hny]; rfl, hyidx, hyD, hinv.written_of_lv hv, Or.inl ?_⟩
       unfold marked at hmz ⊢
       rw [Bool.and_eq_true] at hmz ⊢
       refine ⟨hr, ?_⟩

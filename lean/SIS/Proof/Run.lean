@@ -20,6 +20,7 @@ structure Parts (V T : Type) where
   gd3 : List NodeId
   D1 : Dirty
   s : Nat
+  fa : Nat
   taken : List NodeId
   D2 : Dirty
   vs : List (Version V)
@@ -33,18 +34,18 @@ def parts (sp : Spec V T) (al : Algo V T) (db : DB V T) (tr : T) : Parts V T :=
   let c := sp.exec tr i (view sp db.P (i - 1))
   let P := db.P.apply i c
   let vs0 := writeAll sp db.S i P ((c.new.filter (·.isData)).map (·.id)) []
-  let gd3 := (if al.mark then markOf sp P c db.D i else gotDirtyOf sp (db.S.building vs0) P db.D i).filter
-    (written sp)
+  let gd3 := gotDirty3 sp al db.S vs0 P c db.D i
   let D1 : Dirty := db.D ++ gd3.map (fun x => (x, i))
   let s : Nat := startupPos al db.S D1 i tr
+  let fa : Nat := firstAvail al db.S D1 i tr s
   let taken := byLevel P ((D1.filter (fun e : NodeId × Nat => decide (e.2 ≤ s))).map (·.1))
   let D2 : Dirty := D1.filter (fun e : NodeId × Nat => decide (s < e.2))
   let vs := writeAll sp db.S i P taken vs0
   let S' : Stream V T := db.S.building vs
   let r7 := stillDirtyOf al S' P D2 i taken
   let R : Record V T :=
-    { trans := some tr, sp := s, vers := vs, gd := gd3 ++ r7.2, top := topOf sp P S' s }
-  { i := i, c := c, P := P, vs0 := vs0, gd3 := gd3, D1 := D1, s := s, taken := taken,
+    { trans := some tr, sp := s, vers := vs, gd := gd3 ++ r7.2, top := topOf sp P S' s, fa := fa }
+  { i := i, c := c, P := P, vs0 := vs0, gd3 := gd3, D1 := D1, s := s, fa := fa, taken := taken,
     D2 := D2, vs := vs, S' := S', r7 := r7, R := R }
 
 theorem step_eq_parts (sp : Spec V T) (al : Algo V T) (db : DB V T) (tr : T) :
@@ -64,13 +65,19 @@ theorem parts_vs0 : (parts sp al db tr).vs0 =
     writeAll sp db.S db.S.length (parts sp al db tr).P
       (((parts sp al db tr).c.new.filter (·.isData)).map (·.id)) [] := rfl
 theorem parts_gd3 : (parts sp al db tr).gd3 =
-    (if al.mark then markOf sp (parts sp al db tr).P (parts sp al db tr).c db.D db.S.length
-    else gotDirtyOf sp (db.S.building (parts sp al db tr).vs0) (parts sp al db tr).P db.D
-      db.S.length).filter (written sp) := rfl
+    ((if al.mark then markOf sp (parts sp al db tr).P (parts sp al db tr).c db.D db.S.length
+      else gotDirtyOf sp (db.S.building (parts sp al db tr).vs0) (parts sp al db tr).P db.D
+        db.S.length) ++
+      touchOf (parts sp al db tr).P (parts sp al db tr).c db.D
+        (if al.mark then markOf sp (parts sp al db tr).P (parts sp al db tr).c db.D db.S.length
+        else gotDirtyOf sp (db.S.building (parts sp al db tr).vs0) (parts sp al db tr).P db.D
+          db.S.length)).filter (written sp) := rfl
 theorem parts_D1 : (parts sp al db tr).D1 =
     db.D ++ (parts sp al db tr).gd3.map (fun x => (x, db.S.length)) := rfl
 theorem parts_s : (parts sp al db tr).s =
     startupPos al db.S (parts sp al db tr).D1 db.S.length tr := rfl
+theorem parts_fa : (parts sp al db tr).fa =
+    firstAvail al db.S (parts sp al db tr).D1 db.S.length tr (parts sp al db tr).s := rfl
 theorem parts_taken : (parts sp al db tr).taken =
     byLevel (parts sp al db tr).P
       (((parts sp al db tr).D1.filter
@@ -88,7 +95,8 @@ theorem parts_r7 : (parts sp al db tr).r7 =
 theorem parts_R : (parts sp al db tr).R =
     { trans := some tr, sp := (parts sp al db tr).s, vers := (parts sp al db tr).vs,
       gd := (parts sp al db tr).gd3 ++ (parts sp al db tr).r7.2,
-      top := topOf sp (parts sp al db tr).P (parts sp al db tr).S' (parts sp al db tr).s } := rfl
+      top := topOf sp (parts sp al db tr).P (parts sp al db tr).S' (parts sp al db tr).s,
+      fa := (parts sp al db tr).fa } := rfl
 
 end PartsLemmas
 
@@ -201,6 +209,11 @@ structure VInv (sp : Spec V T) (db : DB V T) (k : Nat) : Prop where
   fresh : ∀ z v, isTop sp db.P z = true → db.S.lv z = some v → (z, v.recNo) ∉ db.D →
     ∀ y ∈ pointees sp v.hist, isTop sp db.P y = true →
       inD db.D y = false ∧ v.ref? y = (db.S.lv y).map (·.recNo)
+  /-- A root child that a root child points to is not reachable at k
+  (`VirtStep.dead`, kept). So a touched root child, which is reachable, is
+  pointed to by no root child (bergdb item 001, WP R3). -/
+  deadTops : ∀ z n, db.P.get? z = some n → isTop sp db.P z = true →
+    ∀ y ∈ pointees sp n.hist, isTop sp db.P y = true → reachable sp db.P k y = false
 
 /-- What holds after every transaction k of a run. -/
 structure Inv (sp : Spec V T) (db : DB V T) (k : Nat) : Prop where

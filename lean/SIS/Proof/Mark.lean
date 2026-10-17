@@ -370,14 +370,15 @@ theorem step_marked_iff (hsp : SpecOK sp) {k : Nat} (hinv : Inv sp db k)
   · exact (step_unmarked_clean sp al db tr hsp hinv hstep hx hD hw hm).symm
   · exact (step_marked_dirty sp al db tr hsp hinv hstep hx hm).symm
 
-/-- Step 3 in either way gives the dirty index nodes not in D (but a virtual
-root). -/
+/-- Step 3 in either way gives the dirty index nodes not in D, and the touched
+ones (but a virtual root). -/
 theorem step_gd3_mem' (hsp : SpecOK sp) {k : Nat} (hinv : Inv sp db k)
     (hstep : StepOK sp db.P (k + 1) (parts sp al db tr).c) (x : NodeId) :
     x ∈ (parts sp al db tr).gd3 ↔
       ((parts sp al db tr).P.get? x).isSome ∧ isIndex (parts sp al db tr).P x = true ∧
         inD db.D x = false ∧ written sp x = true ∧
-        dirty sp (db.S.building (parts sp al db tr).vs0) (parts sp al db tr).P (k + 1) x = true :=
+        (dirty sp (db.S.building (parts sp al db tr).vs0) (parts sp al db tr).P (k + 1) x = true ∨
+          x ∈ (parts sp al db tr).c.touch) :=
   step_gd3_mem sp al db tr hinv.len
     (fun _ _ hy hD hw => step_marked_iff sp al db tr hsp hinv hstep hy hD hw) x
 

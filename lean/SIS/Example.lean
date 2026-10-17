@@ -207,7 +207,14 @@ def stepOKB (sp : Spec Val T) (P : Struct Val) (i : Time) (c : Changes Val) : Bo
     | _, _ => false)) &&
   c.new.all (fun n => reachable sp P' i n.id) &&
   (reachList sp P' i).all (fun y => reachable sp P (i - 1) y || c.new.any (fun n => n.id == y)) &&
-  (!sp.virt || virtStepB sp P i c)
+  (!sp.virt || virtStepB sp P i c) &&
+  -- The touch (bergdb item 001, WP R3): index nodes reachable at i - 1, and every
+  -- node reachable then with a touched node below it is touched, or the virtual root.
+  c.touch.all (fun x => isIndex P x && reachable sp P (i - 1) x) &&
+  (reachList sp P (i - 1)).eraseDups.all (fun p => match P.get? p with
+    | some np => (sp.virt && p == root) || c.touch.contains p ||
+        !(reachFrom sp P (i - 1) p np).any (fun x => c.touch.contains x)
+    | none => true)
 
 /-- The assumptions hold for a run (RunOK), checked by running. -/
 def runOKB (sp : Spec Val T) (al : Algo Val T) (ts : List T) : Bool :=

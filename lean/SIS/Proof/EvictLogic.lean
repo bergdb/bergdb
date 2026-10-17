@@ -224,19 +224,52 @@ theorem step_inD_r7_of_D2 {k : Nat} (hinv : Inv sp db k) {x : NodeId}
   obtain ⟨d, hd⟩ := (inD_iff _ _).mp hx
   exact ⟨d, List.mem_append_left _ hd⟩
 
-/-- A node in D1 is in D, or marked now (with marking). -/
+/-- A node in D1 is in D, or marked now (with marking), or touched. -/
 theorem step_D1_cases (hmk : al.mark = true) {k : Nat} (hinv : Inv sp db k) {x : NodeId}
     (hx : inD (parts sp al db tr).D1 x = true) :
-    inD db.D x = true ∨ marked sp (parts sp al db tr).P (parts sp al db tr).c (k + 1) x = true := by
+    inD db.D x = true ∨ marked sp (parts sp al db tr).P (parts sp al db tr).c (k + 1) x = true ∨
+      x ∈ (parts sp al db tr).c.touch := by
   obtain ⟨d, hd⟩ := (inD_iff _ _).mp hx
   rcases (step_D1_mem sp al db tr hinv.len _).mp hd with h | ⟨-, h⟩
   · exact Or.inl ((inD_iff _ _).mpr ⟨d, h⟩)
   · right
-    rw [parts_gd3, hinv.len, List.mem_filter] at h
-    have h1 := h.1
-    simp only [hmk, ↓reduceIte, markOf, List.mem_mergeSort, List.mem_filter, mem_allIds,
-      Bool.and_eq_true] at h1
-    exact h1.2.2
+    rw [parts_gd3, hinv.len, List.mem_filter, List.mem_append] at h
+    rcases h.1 with h1 | h1
+    · simp only [hmk, ↓reduceIte, markOf, List.mem_mergeSort, List.mem_filter, mem_allIds,
+        Bool.and_eq_true] at h1
+      exact Or.inl h1.2.2
+    · exact Or.inr (mem_touchOf.mp h1).1
+
+/-- With marking, a marked index node not in D is in gd3, but a virtual root. -/
+theorem step_gd3_of_marked (hmk : al.mark = true) {k : Nat} (hlen : db.S.length = k + 1)
+    {x : NodeId} {n : Node V} (hx : (parts sp al db tr).P.get? x = some n)
+    (hi : isIndex (parts sp al db tr).P x = true) (hD : inD db.D x = false)
+    (hw : written sp x = true)
+    (hm : marked sp (parts sp al db tr).P (parts sp al db tr).c (k + 1) x = true) :
+    x ∈ (parts sp al db tr).gd3 := by
+  rw [parts_gd3, List.mem_filter, List.mem_append]
+  refine ⟨Or.inl ?_, hw⟩
+  rw [hlen]
+  simp only [hmk, ↓reduceIte, markOf, List.mem_mergeSort, List.mem_filter, mem_allIds,
+    Bool.and_eq_true]
+  exact ⟨by simp [hx], ⟨hi, by simp [hD]⟩, hm⟩
+
+/-- A node reachable before the step, with a touched node below it then, is in
+D1: it is touched too (StepOK.touchUp; bergdb item 001, WP R3). -/
+theorem step_touch_D1 {k : Nat} (hinv : Inv sp db k)
+    (hstep : StepOK sp db.P (k + 1) (parts sp al db tr).c) {x y : NodeId} {n : Node V}
+    (hw : written sp x = true) (hrk : reachable sp db.P k x = true) (hx0 : db.P.get? x = some n)
+    (hy : y ∈ (parts sp al db tr).c.touch) (hyx : y ∈ reachFrom sp db.P k x n) :
+    inD (parts sp al db tr).D1 x = true := by
+  rcases hstep.touchUp y hy x n (by simpa using hrk) hx0 (by simpa using hyx) with h | ⟨h1, h2⟩
+  · cases hxD : inD db.D x
+    · have hxi : isIndex (parts sp al db tr).P x = true := by
+        rw [step_isIndex_old sp al db tr hinv.len (by simp [hx0])]; exact hstep.touchIndex x h
+      exact (inD_iff _ _).mpr ⟨k + 1, (step_D1_mem sp al db tr hinv.len _).mpr
+        (Or.inr ⟨rfl, step_gd3_of_touch sp al db tr h hxi hxD hw⟩)⟩
+    · obtain ⟨d, hd⟩ := (inD_iff _ _).mp hxD
+      exact (inD_iff _ _).mpr ⟨d, (step_D1_mem sp al db tr hinv.len _).mpr (Or.inl hd)⟩
+  · exfalso; rw [h2] at hw; simp [written, h1] at hw
 
 /-- A node that is not marked now, reachable now: it was reachable before, it
 is the same node, and the nodes below it are those below it before. -/
@@ -353,11 +386,8 @@ theorem step_closed (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) (h
                     obtain ⟨e, he, hze⟩ := hsp.liveSub _ _ hz
                     rw [hpf.data x n hx hd e (mem_upTo.mp he).1] at hze
                     simp at hze
-                have hg : x ∈ (parts sp al db tr).gd3 := by
-                  rw [parts_gd3, hinv.len, List.mem_filter]
-                  simp only [hmk, ↓reduceIte, markOf, List.mem_mergeSort, List.mem_filter, mem_allIds,
-                    Bool.and_eq_true]
-                  exact ⟨⟨by simp [hx], ⟨hxi, by simp [hxD]⟩, h⟩, hw⟩
+                have hg : x ∈ (parts sp al db tr).gd3 :=
+                  step_gd3_of_marked sp al db tr hmk hinv.len hx hxi hxD hw h
                 exact (inD_iff _ _).mpr
                   ⟨k + 1, (step_D1_mem sp al db tr hinv.len _).mpr (Or.inr ⟨rfl, hg⟩)⟩
             obtain ⟨hx0, hrk, hun, hsame⟩ := step_unmarked_old sp al db tr hsp hinv hstep hr hx hmx
@@ -365,7 +395,9 @@ theorem step_closed (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) (h
               reachFrom_child_sub sp hz hm hlt y hyz
             obtain ⟨hy0, -⟩ := hsame y hyfull
             -- y is in D1: in D, or marked; marked would put a changed node below x.
-            rcases step_D1_cases sp al db tr hmk hinv (step_r7_D1 sp al db tr hinv hy) with hyD | hym
+            rcases step_D1_cases sp al db tr hmk hinv (step_r7_D1 sp al db tr hinv hy) with hyD | hym | hyt
+            rotate_right
+            · exact hD1 (step_touch_D1 sp al db tr hinv hstep hw hrk hx0 hyt hy0)
             · rw [hev.closed x n y hw hrk hx0 hyD hy0] at hxD
               simp at hxD
             · unfold marked at hym
@@ -476,7 +508,7 @@ and its latest version names their latest versions. -/
 theorem step_clean (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) (hsp : SpecOK sp)
     {k : Nat} (hinv : Inv sp db k) (hev : EvLogic sp db k)
     (hstep : StepOK sp db.P (k + 1) (parts sp al db tr).c)
-    (hA6 : adoptAt sp (parts sp al db tr).P (k + 1)) :
+    (hA6 : adoptAt sp (parts sp al db tr).P (k + 1)) (hA6k : adoptAt sp db.P k) :
     ∀ x n, written sp x = true → reachable sp (parts sp al db tr).P (k + 1) x = true →
       (parts sp al db tr).P.get? x = some n → inD (parts sp al db tr).r7.1 x = false →
       ∀ y ∈ pointees sp n.hist, inD (parts sp al db tr).r7.1 y = false ∧
@@ -522,11 +554,8 @@ theorem step_clean (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) (hs
             obtain ⟨e, he, hye⟩ := (mem_pointees sp _ y).mp hy
             rw [hpf.data x n hx hd e he] at hye
             simp at hye
-        have hg : x ∈ (parts sp al db tr).gd3 := by
-          rw [parts_gd3, hinv.len, List.mem_filter]
-          simp only [hmk, ↓reduceIte, markOf, List.mem_mergeSort, List.mem_filter, mem_allIds,
-            Bool.and_eq_true]
-          exact ⟨⟨by simp [hx], ⟨hxi, by simp [hxD0]⟩, h⟩, hw⟩
+        have hg : x ∈ (parts sp al db tr).gd3 :=
+          step_gd3_of_marked sp al db tr hmk hinv.len hx hxi hxD0 hw h
         exact (inD_iff _ _).mpr
           ⟨k + 1, (step_D1_mem sp al db tr hinv.len _).mpr (Or.inr ⟨rfl, hg⟩)⟩
     obtain ⟨hx0, hrk, hun, hsame⟩ := step_unmarked_old sp al db tr hsp hinv hstep hr hx hmx
@@ -584,13 +613,29 @@ theorem step_clean (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) (hs
         have := hun w (reachFrom_trans' sp (n.level + 1) x n (Nat.lt_succ_self _) hx y my hyx hmy w hw')
         rw [hcw] at this
         simp at this
-    -- So y is not in D1, hence not in the new D, and not written now.
+    -- So y is not in D1, hence not in the new D, and not written now; were y
+    -- touched, it would be below x before the step (a live child, or by A6'),
+    -- and x touched too.
     have hyD1 : inD (parts sp al db tr).D1 y = false := by
       cases h : inD (parts sp al db tr).D1 y
       · rfl
-      · rcases step_D1_cases sp al db tr hmk hinv h with h1 | h1
+      · rcases step_D1_cases sp al db tr hmk hinv h with h1 | h1 | h1
         · rw [h1] at hyD0; simp at hyD0
         · rw [h1] at hym; simp at hym
+        · exfalso
+          apply hD1
+          obtain ⟨m0, hm0, hlt0⟩ := hinv.ptrs x n hx0 e he y hye
+          have hyx : y ∈ reachFrom sp db.P k x n := by
+            by_cases hl : y ∈ sp.live (n.hist.upTo k)
+            · exact reachFrom_child_sub sp hl hm0 hlt0 y (self_mem_reachFrom sp _ _ y m0)
+            · rcases hA6k x n hrk hx0 y hy hl with ⟨ny, hny, hdy⟩ | hnr | hbelow
+              · have := hstep.touchIndex y h1
+                simp [isIndex, hny, hdy] at this
+              · have := hstep.touchReach y h1
+                simp only [Nat.add_sub_cancel] at this
+                rw [hnr] at this; simp at this
+              · exact hbelow
+          exact step_touch_D1 sp al db tr hinv hstep hw hrk hx0 h1 hyx
     refine ⟨?_, ?_⟩
     · cases h : inD (parts sp al db tr).r7.1 y
       · rfl
@@ -614,7 +659,7 @@ theorem step_clean (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) (hs
 theorem step_evLogic (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) (hsp : SpecOK sp)
     {k : Nat} (hinv : Inv sp db k) (hev : EvLogic sp db k)
     (hstep : StepOK sp db.P (k + 1) (parts sp al db tr).c)
-    (hA6 : adoptAt sp (parts sp al db tr).P (k + 1)) :
+    (hA6 : adoptAt sp (parts sp al db tr).P (k + 1)) (hA6k : adoptAt sp db.P k) :
     EvLogic sp (step sp al db tr) (k + 1) where
   closed := by
     intro x n y hw hr hx hy hyx
@@ -625,7 +670,7 @@ theorem step_evLogic (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) (
     intro x n hw hr hx hxD y hy
     rw [step_D] at hxD ⊢
     rw [step_S]
-    exact step_clean sp al db tr hj hmk hsp hinv hev hstep hA6 x n hw hr hx hxD y hy
+    exact step_clean sp al db tr hj hmk hsp hinv hev hstep hA6 hA6k x n hw hr hx hxD y hy
 
 end Step
 
@@ -701,7 +746,10 @@ theorem evLogic_st (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp
         rw [← step_P]; rw [← st_succ sp al ts (by omega)]; rfl
       rw [h2] at h1
       exact h1
+    have hA6k : adoptAt sp (st sp al ts j).P j := by
+      have h1 := (hev.1 j (by omega)).adopt
+      simpa [st] using h1
     rw [st_succ sp al ts (by omega)]
-    exact step_evLogic sp al (st sp al ts j) ts[j] hj hmk hok.1 hinv (ih (by omega)) hstep hA6
+    exact step_evLogic sp al (st sp al ts j) ts[j] hj hmk hok.1 hinv (ih (by omega)) hstep hA6 hA6k
 
 end SIS

@@ -40,8 +40,10 @@ theorem step_frozen_of_s (al : Algo V T) (k1 : Nat) (db : DB V T) (tr : T)
     rw [parts_S', parts_S', hvs]
   have hr7 : (parts sp (frozenAlgo al k1) db tr).r7 = (parts sp al db tr).r7 := by
     rw [parts_r7, parts_r7, hS', hD2, htaken]; rfl
+  have hfa : (parts sp (frozenAlgo al k1) db tr).fa = (parts sp al db tr).fa := by
+    rw [parts_fa, parts_fa, hs]; rfl
   have hR : (parts sp (frozenAlgo al k1) db tr).R = (parts sp al db tr).R := by
-    rw [parts_R, parts_R, hs, hvs, hr7, hS']; rfl
+    rw [parts_R, parts_R, hs, hvs, hr7, hS', hfa]; rfl
   rw [step_eq_parts, step_eq_parts, hr7, hR]
   rfl
 

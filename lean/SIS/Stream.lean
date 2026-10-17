@@ -41,6 +41,12 @@ structure Record (V T : Type) where
   2026-10-16 for the virtual root (F1-008-11, WP E3); BergDB's topPos names a
   version, so both. -/
   top : Option (NodeId × Nat)
+  /-- fa(i), the first available time (bergdb item 001, WP R3; Q5 of its
+  plan): lookups at times before it are no longer required. It never
+  decreases and stays at most the startup pos (`firstAvail`); 0 without
+  reclaim. Java keeps it in its reclaim table (docs/level3-alignment.md, 2.4).
+  Added 2026-10-17. -/
+  fa : Nat := 0
   deriving DecidableEq, Repr
 
 /-- The stream: records R(0), R(1), ..., R(k). Record i is at index i. -/

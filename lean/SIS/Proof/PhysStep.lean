@@ -581,8 +581,10 @@ theorem MemInv.cover_after (hm : MemInv sp db K mA) (hctx : PCtx sp db k) (hkK :
       rw [parts_R] at hx
       simp only [List.mem_append] at hx
       rcases hx with hx | hx
-      · -- marked: new, or on a path
-        obtain ⟨-, -, -, -, hmk⟩ := (step_gd3_marked sp al dbK tr hsp hkK.inv hstep x).mp hx
+      · -- marked: new, or on a path; touched: on a path
+        obtain ⟨-, -, -, -, hmk | htx⟩ := (step_gd3_marked sp al dbK tr hsp hkK.inv hstep x).mp hx
+        rotate_left
+        · exact hm.canon_after hkK hls hstep (hpath x (step_touched_path sp al dbK tr hstep htx))
         by_cases hxn : x ∈ (parts sp al dbK tr).c.new.map (·.id)
         · obtain ⟨nn, hnn, hid⟩ := List.mem_map.mp hxn
           obtain ⟨h1, -, hc1, -⟩ := after_canon_new (sp := sp) (P := dbK.P) (j := K + 1) (mA := mA)

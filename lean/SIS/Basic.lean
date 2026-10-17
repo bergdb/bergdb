@@ -57,6 +57,15 @@ it adds, all at the transaction's time. -/
 structure Changes (V : Type) where
   new : List NewNode
   adds : List (NodeId × V)
+  /-- The nodes that the transaction's touch marks dirty without giving them
+  entries (bergdb's reclaim steps, `Db.touchRange`; register M17 of
+  docs/level3-alignment.md): as the rest of the changes, a function of T(i),
+  i and P@(i-1) (A1). Step 3 marks them besides the access path of the change
+  (`touchOf`), and the writer reaches them (`pathOf`). `StepOK` asks that they
+  be index nodes reachable at i-1, and that every node reachable then with a
+  touched node below it be touched too, but a virtual root. None by default.
+  Added 2026-10-17 (bergdb item 001, WP R3). -/
+  touch : List NodeId := []
   deriving Repr
 
 /-- What a transaction may read: P@(i-1), as a function from node id to the

@@ -74,19 +74,23 @@ theorem AInv.final_ok (hsp : SpecOK sp) (hinv : Inv sp db k) (hmk : al.mark = tr
       inD db.D y = true ∨ y ∈ pathOf sp db.P (parts sp al db tr).c (k + 1) ∨
         y ∈ (parts sp al db tr).c.new.map (·.id) := by
     intro y hy
-    rcases step_D1_cases sp al db tr hmk hinv hy with h | h
+    rcases step_D1_cases sp al db tr hmk hinv hy with h | h | h
     · exact Or.inl h
     · by_cases hn : y ∈ (parts sp al db tr).c.new.map (·.id)
       · exact Or.inr (Or.inr hn)
       · rw [hP] at h
         exact Or.inr (Or.inl (step_marked_path sp al db tr hsp hinv hstep h hn))
-  -- A node of D1 is reachable at k + 1 (it is in D, which is relevant, or marked).
+    · exact Or.inr (Or.inl (step_touched_path sp al db tr hstep h))
+  -- A node of D1 is in D, which is relevant, or reachable at k + 1 (marked), or
+  -- at k (touched).
   have hD1rel : ∀ y, inD (parts sp al db tr).D1 y = true →
-      reachable sp (db.P.apply (k + 1) (parts sp al db tr).c) (k + 1) y = true ∨ inD db.D y = true := by
+      reachable sp (db.P.apply (k + 1) (parts sp al db tr).c) (k + 1) y = true ∨ inD db.D y = true ∨
+        reachable sp db.P k y = true := by
     intro y hy
-    rcases step_D1_cases sp al db tr hmk hinv hy with h | h
-    · exact Or.inr h
+    rcases step_D1_cases sp al db tr hmk hinv hy with h | h | h
+    · exact Or.inr (Or.inl h)
     · left; rw [hP] at h; unfold marked at h; simp only [Bool.and_eq_true] at h; exact h.1
+    · right; right; have := hstep.touchReach y h; simpa using this
   -- Written in the record: a new data node or a taken node.
   have hnotw : ∀ z, z ∉ dataIds sp al db tr → z ∉ (parts sp al db tr).taken →
       (Snew sp al db tr).lv z = db.S.lv z := by
@@ -253,7 +257,7 @@ theorem AInv.final_ok (hsp : SpecOK sp) (hinv : Inv sp db k) (hmk : al.mark = tr
     have hc3 : o3.canonical = true := by rw [← e5]; exact hc6
     have hcx : m3.canonicalOf o3.node = some h := ha.canonicalOf_of' ho3 hc3
     have hrel3 : reachable sp (db.P.apply (k + 1) (parts sp al db tr).c) (k + 1) o3.node = true ∨
-        inD db.D o3.node = true := by
+        inD db.D o3.node = true ∨ reachable sp db.P k o3.node = true := by
       rcases hr6 with hr | hd
       · left; rw [← hP, ← hP', ← e1]; exact hr
       · rw [e1] at hd; exact hD1rel _ (hD'D1 _ hd)
