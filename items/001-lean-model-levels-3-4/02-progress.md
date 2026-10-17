@@ -99,17 +99,18 @@ Current state
 * Checkpoints: G0 given (2026-10-16 15:23). **K1 waits for Frans** since
   2026-10-17 05:31: E7 is done, and K1 does not pass automatically, since
   A6 fails on Java (the proofs use A6' and A-COPY instead); the review guide
-  is [03-k1-review.md](03-k1-review.md). Until K1: R3 to R8 and stage 4
-  wait; R2 and P3 may go on. K2 to K5 open.
+  is [03-k1-review.md](03-k1-review.md). R2 and P3, which did not wait,
+  are done (2026-10-17); every WP left waits for K1: R3 to R8 and stage 4
+  directly, the rest through them. K2 to K5 open.
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: the files of the WPs in progress,
-  named in the last log entry.
+* Uncommitted work of this plan in bergdb: none (2026-10-17 06:40).
 * Long jobs running: the Lean tier of the A-COPY check on the large trace
   set (`copyFailures`, the entry of 2026-10-17 03:27; started 03:41, in the
   background, at low priority; 10 of its 12 traces done by 05:48, no
   failure; the two l-big62 traces still run).
 * Stage 2's time box (plan, 5.3): started with E1 at 2026-10-16 23:14;
-  60 hours, so it ends at 2026-10-19 11:14.
+  60 hours, so it ends at 2026-10-19 11:14. Stage 2's WPs (E1 to E7) were
+  done by 2026-10-17 05:31, about 6.3 hours of it.
 * Preserved builds: `l34-base` (A1; `java/build/perf/builds/l34-base/`,
   with its digests in `digests-a1.txt`).
 

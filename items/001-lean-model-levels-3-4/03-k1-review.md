@@ -124,8 +124,11 @@ To the checker and the Java tier: the diagnostics A6, TREE and A-COPY
 To `java/src/` in this run: A3's fix of the top node ordinals (`280525a`,
 register M30) and L5's test-only hook for first touches
 (`NodeCollection.FirstTouchListener`, `a66e4d9`, off unless a test sets it);
-neither is K1's subject. Every change of section 6 is still to be made (R8,
-the J WPs).
+and, after E7, R2's and P3's test-only hooks (`Db.TestHooks`, `ad1789d` and
+`8ea39cb`; null unless a test sets them) and a test accessor
+(`Reclaim.lastCutRow`). None of them is K1's subject, and none changes a
+record (the byte comparison against `l34-base` after each). Every change of
+section 6 is still to be made (R8, the J WPs).
 
 The commits of stage 2: `065c21f` (E1), `ca2616c` (E2), `afaa74a` (E3),
 `ddebd06` (E4), `73320ec` (A-COPY on Java), `e2e5bd5` (E5), `03f4eab` (E6),
