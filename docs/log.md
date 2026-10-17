@@ -605,3 +605,18 @@ second (-0.8 and +1.9 percent) nor by the comparison of the second
 reference with both candidates. Gets with 4 threads +8 to +25 percent;
 startup +6 to +8 percent (no threshold). R8 is done. Frans kept R6 part 1b's
 refinement of `CutOK` (no second wait in Java's reclaim).
+
+2026-10-17. Bergdb item 001, WP R5: T12 with eviction proved
+(`T12_evictCut`, `lean/SIS/ReclaimTheorems.lean`). The run with eviction
+that restarts from safe cut streams, with the Level 4 startup at each restart
+and any cache schedules whose reads are from the first available time on,
+appends the records of the run without restarts, with its D and its lookups
+from f on: it has the states of the run without eviction that restarts from
+the same cut streams. The proof compares it with the run with eviction that
+restarts from the whole streams at the same points (T2-C covers it, with
+extra unswizzles of its root's slots before each release): the memories
+differ only in a virtual root's object, rebuilt from the root children that
+the cut stream still has, and where it is in the list of objects; reads from
+f on follow no version before the cut (an invariant on the slots after a
+restart, `NInv`). New proofs `lean/SIS/Proof/CutLater.lean` to
+`CutLaterRun.lean`. Register M34 closed. R5 is done.

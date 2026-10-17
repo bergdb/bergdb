@@ -471,13 +471,16 @@ theorem mem_gotDirty3 (hmk : al.mark = true) {S : Stream V T} {vs : List (Versio
 /-- A transaction on related states (`CutRel`) appends the same record, and the
 states after it are related. BergDB's bookkeeping (marking, `javaTest`); with a
 virtual root, `ExecRootOK` and `VirtLiveOK`; the policies do not look at what a
-cut removes (`PolicyCutOK`). -/
+cut removes (`PolicyCutOK`). The change, the versions of steps 2 and 6, D1 and
+the taken nodes are the same too (for T12 with eviction, WP R5). -/
 theorem step_congr_cut (hsp : SpecOK sp) {db db' : DB V T} {k : Nat} (hinv : Inv sp db k)
     (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) (hex : ExecRootOK sp)
     (hvl : VirtLiveOK sp) (hpol : PolicyCutOK al) {m f : Nat} (h : CutRel sp m f k db' db)
     (hfs : lastFa db.S ≤ lastSp db.S) (tr : T)
     (hstep : StepOK sp db.P (k + 1) (sp.exec tr (k + 1) (view sp db.P k))) :
-    (parts sp al db' tr).R = (parts sp al db tr).R ∧
+    (parts sp al db' tr).R = (parts sp al db tr).R ∧ (parts sp al db' tr).c = (parts sp al db tr).c ∧
+      (parts sp al db' tr).vs0 = (parts sp al db tr).vs0 ∧ (parts sp al db' tr).D1 = (parts sp al db tr).D1 ∧
+      (parts sp al db' tr).taken = (parts sp al db tr).taken ∧ (parts sp al db' tr).vs = (parts sp al db tr).vs ∧
       CutRel sp m f (k + 1) (step sp al db' tr) (step sp al db tr) := by
   have hls : LiveSub sp := hsp.liveSub
   have hlen := hinv.len
@@ -610,7 +613,7 @@ theorem step_congr_cut (hsp : SpecOK sp) {db db' : DB V T} {k : Nat} (hinv : Inv
       (fun hv => by rw [hP1]; exact rootVals_apply sp (hroot hv) (hadds hv) hinv.rootIn)
   have hR : (parts sp al db' tr).R = (parts sp al db tr).R := by
     rw [parts_R, parts_R, hs, hvs, hgd3, hr7, hfa, ← htop]
-  refine ⟨hR, ?_⟩
+  refine ⟨hR, hc, hvs0, hD1, htaken, hvs, ?_⟩
   rw [step_eq_parts, step_eq_parts]
   refine ⟨?_, ?_, ?_, ?_, h.mf, ?_⟩
   · simp only

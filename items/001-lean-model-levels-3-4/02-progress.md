@@ -155,15 +155,14 @@ Current state
   Frans: Option K under TREE, A6' and A-COPY; above). K2 to K5 open; K3 to
   K5 the agent passes itself when their conditions are met (Frans,
   2026-10-17 19:59; above).
-* Next: R5's half with eviction (T12 for `runEvictCut`, with T9's
-  invariant on the slots, `CInv`), and R6's proof of T-SCHEME (its statement
-  holds by running, R6 part 1b; fallback: checked at every cut); then R9 and
-  K3 (plan, 5.1). R3, R4 (T8 and T9), R7 and R8 are done; R5's logical
-  half is done (T12 for `runRestartsCut`, 2026-10-17).
+* Next: R6's proof of T-SCHEME (its statement holds by running, R6 part 1b;
+  fallback: checked at every cut); then R9 and K3 (plan, 5.1). R3, R4 (T8
+  and T9), R5 (T12, also with eviction, 2026-10-17 22:56), R7 and R8 are
+  done.
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): T9 is proved with
   the stronger `CutOK` part 2 (R4, 2026-10-17, before R6's proof, since T9
   assumes `CutOK` only); R6 proves that Java's scheme gives it, and R5's
-  half with eviction uses T9's invariant on the slots. R6 part
+  half with eviction is done (2026-10-17 22:56). R6 part
   1b refined the definition (an exception for put-back versions in D;
   `schemeWitness`; [level3-alignment.md, 2.9](../../docs/level3-alignment.md),
   "Refined"): kept (Frans, 2026-10-17 19:34; above).
@@ -176,7 +175,7 @@ Current state
   it later, and J tests that would hit it leave that case out or mark it as
   a known M49 issue.
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: none (19:47).
+* Uncommitted work of this plan in bergdb: none (22:56).
 * Long jobs: none (18:44). R7's checker on the medium reclaim set's four
   largest traces finished at 17:58, R4's (with C-CUT+) on the whole medium
   set at 18:44; the results are in the T9 entry (2026-10-17 17:50). R8's
@@ -217,7 +216,7 @@ Status
 | R2 | Trace format 2; the exporter for reclaim runs | done | 2026-10-17 |
 | R3 | The Level 3 model: touch, first available time, cuts | done | 2026-10-17 |
 | R4 | Recovery and reads after a cut: T8, T9 | done | 2026-10-17 |
-| R5 | Restarts across cuts: T12 | in progress: the logical half (T12 for `runRestartsCut`) done; with eviction next, with T9's invariant | 2026-10-17 |
+| R5 | Restarts across cuts: T12 | done (T12 for `runRestartsCut`, and with eviction for `runEvictCut`) | 2026-10-17 |
 | R6 | Java's scheme gives safe cuts: T-SCHEME | in progress: part 1, `CutOK`'s part 2 over `ReadsPhys` (M48: (a)), with its exception for put-back versions (1b), done; T-SCHEME holds by running | 2026-10-17 |
 | R7 | The red list on Java's reclaim | done | 2026-10-17 |
 | R8 | Java: the corrections the model requires, before eviction | done (the performance comparison: no regression) | 2026-10-17 |
@@ -3220,3 +3219,83 @@ No check needed: no code changed.
 Time: about half an hour (19:13 to 19:47), mostly machine time.
 
 Open, next: R5's half with eviction (T12 for `runEvictCut`).
+
+### 2026-10-17 19:44 to 22:56. WP R5, the half with eviction: T12 with eviction (`T12_evictCut`), done; R5 done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `38958f1`, then
+`bf84a1d` (Frans's decisions of 19:46 to 19:59, recorded at 20:01);
+uncommitted before this commit: none. Proofs written in a scratch copy of
+`lean/` and copied back.
+
+Did:
+
+1. T12 with eviction (`T12_evictCut`, new statement in
+   `lean/SIS/ReclaimTheorems.lean`): the run with eviction that restarts from
+   safe cut streams (`runEvictCut`, R3's definition: at each restart the
+   logical startup, the Level 4 startup for the memory and the cut stream for
+   Rule R) appends the records of the run without restarts: its stream is
+   that run's, cut at the largest cut; its D and its lookups from the run's
+   first available time on are the run's. Hypotheses: T12's (`RunOK`,
+   marking and `javaTest`, `ExecRootOK`, `VirtLiveOK`, `PolicyCutOK`, and
+   `CutOK` at the largest cut so far at each restart), T2-C's (`PhysRunOK`,
+   `EvictRunOK`: TREE, A6' and A-COPY), and cache schedules whose reads are at
+   times from the first available time on to the current one (a read before
+   f may need a record before the cut).
+2. The proof ([level3-alignment.md, 2.10](../../docs/level3-alignment.md);
+   `lean/SIS/Proof/CutLater.lean` to `CutLaterRun.lean`, new, 8,144 lines)
+   compares the run C (`runEvictCut`) with the run E with eviction that
+   restarts from the whole streams at the same points (`runEvict`), which
+   T2-C covers, with C's cache operations and extra unswizzles of E's root's
+   slots for the root children that only E's root points to, before each
+   release (`esOf`):
+   * after a restart, every slot names a canonical object, or its pointee's
+     latest version in the stream of the last startup, or a record written
+     after it (`NInv`, `CutLater.lean`); so C's reads from f on and its
+     writer's walk follow only versions at the cut or later (`ReadsPhys` in
+     the state of the restart, `Later`) or written after it, and give on the
+     cut streams what E's give on the whole ones (`CutLaterRead.lean`);
+   * C's memory is E's but for the root's object (`RootRel`) and where it is
+     in the list of objects (`RootPerm`); a transaction keeps this and C
+     writes E's record (`evictTrans_sim`); so does a batch of cache
+     operations (`ops_sim`) (`CutLaterSim.lean`, `CutLaterPerm.lean`,
+     `CutLaterTrans.lean`);
+   * the Level 4 startup from the cut stream is the startup from the whole
+     stream with the other root object (`startup_sim`,
+     `CutLaterStart.lean`): with a virtual root, the root rebuilt from the
+     root children that the cut stream still has (`rootObj_rel`); in the
+     rerun, the writer's last resort for a new pointer to a root child that
+     only E's root points to (no canonical object, no source) is the same,
+     since every slot for such a root child is the same stream slot, to its
+     latest version, and A-COPY gives an object other than the root's with
+     one (`anySlot_sim`);
+   * after every prefix C has the states of `runRestartsCut`
+     (`evictCut_restartsCut`, `CutLaterRun.lean`), so T12 gives T12 with
+     eviction (`restartCut_evict`).
+3. On the way (untrusted): `step_congr_cut` also gives that the change, the
+   versions of steps 2 and 6, D1 and the taken nodes are the run's
+   (`CutRestart.lean`; `CutRuns.lean` adapted).
+4. Docs: `lean/README.md` (T12 with eviction in the axiom list and the
+   tables, the new proof files, status, the trusted change: the statement
+   only), `docs/level3-alignment.md` (2.10, section 5's step 10, register
+   M34 closed, M41), `docs/log.md`.
+
+Checks, on bergdb's `lean/` with the files of this commit (22:44 to 22:56):
+`lake build` with no warnings (136 jobs), also on a clean copy (no `.lake`,
+22:48 to 22:49); no `sorry`, `admit`, `axiom` or `unsafe` in SIS/ and Check/;
+`#print axioms` of the README's 22 theorems (`T12_evictCut` added) and the
+checker's 5: only Lean's standard axioms; `sh test-traces/run.sh`: TRACE
+TESTS OK; `lake exe reclaimtest 20 30`: all checks pass (T12 20 of 20 seeds
+for each of the 4 policies; with eviction 9,600 transactions, none fails;
+125 cuts with a node in D that no lookup from f on reaches);
+`lake exe sistest 20 40`: all checks pass (22:45 to 22:52); `lake exe phystest 20 40`: all checks pass (22:45 to 22:54). No change in `java/`, so no gate.
+
+Register: M34 closed (T12 without eviction and with it). M33 and M41: R5's
+part for the model done, notes added; they stay open for what is argued about
+Java.
+
+Time: R5 is L (8 to 24 hours): the logical half about an hour and a half
+(16:27 to 17:49), this half about 3 hours and 10 minutes (19:44 to 22:56);
+about 4.6 hours in all.
+
+Open, next: R6's proof of T-SCHEME (fallback: checked at every cut, C-CUT);
+then R9 and K3.

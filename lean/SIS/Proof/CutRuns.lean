@@ -74,7 +74,7 @@ theorem restartCut_rel (cs : List (T × Option Nat)) (hok : RunOK sp al (cs.map 
       have h1 := hok.2 j hjl'
       rw [htr] at h1
       exact h1
-    obtain ⟨-, hrel1⟩ := step_congr_cut sp al hok.1 hinv hj hmk hex hvl hpol hrel
+    obtain ⟨-, -, -, -, -, -, hrel1⟩ := step_congr_cut sp al hok.1 hinv hj hmk hex hvl hpol hrel
       (st_fa_le sp al _ (by omega)) cs[j].1 hstep
     have hst1 : st sp al (cs.map (·.1)) (j + 1) = step sp al (st sp al (cs.map (·.1)) j) cs[j].1 := by
       rw [st_succ sp al _ hjl', htr]
