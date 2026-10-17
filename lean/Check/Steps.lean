@@ -198,7 +198,8 @@ def readsBelow (sp : Spec BVal Nat) (t c : Nat) (rl : List NodeId) (lvRec : Node
   go fuel start (Std.HashSet.ofList start) []
 
 /-- As `readsBelow`, for the versions that a physical read in the running process may
-follow (bergdb item 001, WP R4, the diagnostic C-CUT+): through a pointer to a live
+follow (bergdb item 001, WP R4, the diagnostic C-CUT+; since WP R6 part of C-CUT,
+`ReadsPhys`): through a pointer to a live
 child, every version of the child at or after the record that the pointer names
 (before Rule R; every version if it names none), since the running memory's Rule
 R is that of its last startup, and its canonical objects and snapshots may be
@@ -226,12 +227,13 @@ def readsBelowPhys (sp : Spec BVal Nat) (t c : Nat) (rl : List NodeId) (lvRec : 
 
 /-- C-CUT (bergdb item 001, WP R7): `CutOK c` of SIS/Reclaim.lean in the state after
 T(i), by running, with the failures by name: c after the first available time f;
-versions that lookups from f to i may read before c, latest ones (the node's latest
+versions that reads from f to i may follow before c, latest ones (the node's latest
 version) and others (through a pointer to an older version); nodes of D with a
 latest version before c, or with a reference before c that does not name its
-node's latest version; top(i) before c. below holds the versions read before c
-(`readsBelow`, at every time from f to i); lvOf gives a node's latest version, as
-its record and references. -/
+node's latest version; top(i) before c. below holds the versions before c that reads
+may follow at every time from f to i: a lookup's (`readsBelow`) and, since WP R6,
+a physical read's (`readsBelowPhys`; `ReadsPhys`); lvOf gives a node's latest
+version, as its record and references. -/
 def cutFailures (c f : Nat) (D : Dirty) (below : List (NodeId × Nat))
     (top : Option (NodeId × Nat)) (lvOf : NodeId → Option (Nat × List (NodeId × Nat))) :
     List (String × String) :=

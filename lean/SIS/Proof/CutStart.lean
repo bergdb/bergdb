@@ -428,7 +428,7 @@ theorem Inv.topsRead_cut_all (hinv : Inv sp db k) (hv : sp.virt = true) (hvl : V
     intro y m cy u hyt hC0 hcy hu
     obtain ⟨t, h1, h2, hr⟩ := hinv.top_reach_from hv hvl h0 hyt hC0
     have h3 : max (lastFa db.S) cy ≤ lastSp db.S := Nat.max_le.mpr ⟨hfs, hcy⟩
-    exact hcut.2.1 t u h1 (by omega) (ReadsAt.latest y u hr hu)
+    exact hcut.2.1 t u h1 (by omega) (ReadsAt.latest y u hr hu).phys
   intro y my cy hyt hC0 hcy
   rcases hinv.topVersion_virt hv h0 with ⟨hnil, htv⟩ | ⟨zs, ms, cs, us, hzt, hcs', hmax, hus, htv⟩
   · exfalso
@@ -623,7 +623,7 @@ theorem Inv.readAt_cut_v (hinv : Inv sp db k) (hv : sp.virt = true) (hvl : VirtL
     rw [hlz, List.mem_singleton] at hy
     rw [hy]
     obtain ⟨u, hu⟩ := hinv.topAt_lv hzt (by omega)
-    have hcu : c ≤ u.recNo := hcut.2.1 t u hft (by omega) (ReadsAt.latest _ u hr hu)
+    have hcu : c ≤ u.recNo := hcut.2.1 t u hft (by omega) (ReadsAt.latest _ u hr hu).phys
     have href : (rootVersion sp (lastSp db.S) (topsRead sp db.S (lastSp db.S) true)).ref? z = some u.recNo := by
       unfold Version.ref?; simp only [rootVersion]
       apply lookup_refs (hspec.2 z m e.time hzt (by omega))

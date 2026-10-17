@@ -140,13 +140,44 @@ def readsAtB (sp : Spec Val T) (S : SIS.Stream Val T) (P : Struct Val) (t : Time
     (start, start.map (fun v => (v.node, v.recNo)))
   res.2
 
-/-- Conditions 1 and 2 of `CutOK` by running: c is at most the first available
-time f, and every version that a lookup at some time from f to k may read is
-at c or later. -/
-def cutReachB (sp : Spec Val T) (c : Nat) (db : DB Val T) (k : Nat) : Bool :=
+/-- The versions that a physical read at time t may follow (`ReadsPhys`), by
+running, as (node, record) pairs: as `readsAtB`, and through a pointer to a live
+child also every version of the child at or after the record that the pointer
+names (every version if it names none). -/
+def readsPhysB (sp : Spec Val T) (S : SIS.Stream Val T) (P : Struct Val) (t : Time) :
+    List (NodeId × Nat) :=
+  let s := lastSp S
+  let start := (reachList sp P t).eraseDups.filterMap (fun x => S.lv x)
+  let fuel := S.foldl (fun n R => n + R.vers.length) 0 + 1
+  let versOf := fun (y : NodeId) (lo : Nat) =>
+    (List.range S.length).filterMap (fun r => if lo ≤ r then S.versionAt r y else none)
+  let res := (List.range fuel).foldl (fun (acc : List (Version Val) × List (NodeId × Nat)) _ =>
+    if acc.1.isEmpty then acc else
+    let next := acc.1.flatMap (fun v =>
+      (sp.live (v.hist.upTo t)).flatMap (fun y =>
+        (follow S s true y (v.ref? y)).toList ++ versOf y ((v.ref? y).getD 0)))
+    let fresh := next.foldl (fun (l : List (Version Val)) w =>
+      if acc.2.contains (w.node, w.recNo) || l.any (fun u => u.node == w.node && u.recNo == w.recNo)
+      then l else l ++ [w]) []
+    (fresh, acc.2 ++ fresh.map (fun w => (w.node, w.recNo))))
+    (start, start.map (fun v => (v.node, v.recNo)))
+  res.2
+
+/-- Conditions 1 and 2 of WP R7's `CutOK` by running: c is at most the first
+available time f, and every version that a lookup at some time from f to k may
+read (`ReadsAt`) is at c or later. -/
+def cutReachAtB (sp : Spec Val T) (c : Nat) (db : DB Val T) (k : Nat) : Bool :=
   let f := lastFa db.S
   decide (c ≤ f) &&
   (List.range' f (k + 1 - f)).all (fun t => (readsAtB sp db.S db.P t).all (fun p => decide (c ≤ p.2)))
+
+/-- Conditions 1 and 2 of `CutOK` by running: c is at most the first available
+time f, and every version that a read at some time from f to k may follow
+(`ReadsPhys`, since WP R6) is at c or later. -/
+def cutReachB (sp : Spec Val T) (c : Nat) (db : DB Val T) (k : Nat) : Bool :=
+  let f := lastFa db.S
+  decide (c ≤ f) &&
+  (List.range' f (k + 1 - f)).all (fun t => (readsPhysB sp db.S db.P t).all (fun p => decide (c ≤ p.2)))
 
 /-- Conditions 3 and 4 of `CutOK` by running: the nodes of D, top(k). -/
 def cutDTopB (c : Nat) (db : DB Val T) : Bool :=
@@ -164,13 +195,17 @@ def cutDTopB (c : Nat) (db : DB Val T) : Bool :=
 def cutOKB (sp : Spec Val T) (c : Nat) (db : DB Val T) (k : Nat) : Bool :=
   cutReachB sp c db k && cutDTopB c db
 
+/-- WP R7's `CutOK` (part 2 over `ReadsAt`) by running. -/
+def cutOKAtB (sp : Spec Val T) (c : Nat) (db : DB Val T) (k : Nat) : Bool :=
+  cutReachAtB sp c db k && cutDTopB c db
+
 /-- The largest c that `CutOK` allows in state db (after T(k)), by running: each
 part of it holds for c exactly when c is at most a bound (the first available
 time, the records of the versions that lookups from it on may read, of the
 latest versions of D's nodes and of their stale references, and of top(k)). -/
 def cutBoundB (sp : Spec Val T) (db : DB Val T) (k : Nat) : Nat :=
   let f := lastFa db.S
-  let reads := (List.range' f (k + 1 - f)).flatMap (fun t => (readsAtB sp db.S db.P t).map (·.2))
+  let reads := (List.range' f (k + 1 - f)).flatMap (fun t => (readsPhysB sp db.S db.P t).map (·.2))
   let dl := db.D.filterMap (fun e => (db.S.lv e.1).map (·.recNo))
   let stale := db.D.flatMap (fun e => match db.S.lv e.1 with
     | some v => (v.refs.filter (fun q => (db.S.lv q.1).map (·.recNo) != some q.2)).map (·.2)
@@ -372,16 +407,19 @@ pos i - 4. After T(7) the first available time is 2 and every node reachable fro
 on has its latest version at 1 or later, but a cut at 1 is not safe: the tree root
 (node 20), written at 5 before its mid node 2 (written at 6) and kept in D by Rule
 A, names node 2's version in R(0). T(9) writes the tree root again, and then a cut
-at 1 is safe. Returns (the assumptions hold, the cut at 1 is not safe after T(7)
-only by condition 3, it is safe after T(9)). -/
-def pSafeWitness : Bool × Bool × Bool :=
+at 1 is safe. Returns (the assumptions hold; by WP R7's `CutOK`, the cut at 1 is
+not safe after T(7) only by condition 3; by `CutOK` since WP R6, whose part 2
+covers the versions that a physical read may follow, not by part 2 either, since
+the tree root's pointer names R(0); it is safe after T(9)). -/
+def pSafeWitness : Bool × Bool × Bool × Bool :=
   let al := algo4 (fun _ _ i _ => i - 4)
   let tr := (randomTs4 11 9).map (·.1)
   let db7 := run spec4 al (tr.take 7)
   let db9 := run spec4 al (tr.take 9)
-  (runOKB spec4 al tr, cutReachB spec4 1 db7 7 && !cutOKB spec4 1 db7 7, cutOKB spec4 1 db9 9)
+  (runOKB spec4 al tr, cutReachAtB spec4 1 db7 7 && !cutOKAtB spec4 1 db7 7,
+    !cutReachB spec4 1 db7 7, cutOKB spec4 1 db9 9)
 
-#guard pSafeWitness == (true, true, true)
+#guard pSafeWitness == (true, true, true, true)
 
 -- The bound gives the same cuts as `CutOK` by running, on the fixed run.
 #guard (states spec4 al4 ts4).zipIdx.all (fun (db, k) =>
@@ -447,26 +485,29 @@ def runEvictWith (sp : Spec Val T) (al : Algo Val T) (ts : List T) (policy seed 
     (init sp, evictStartup sp (init sp).S, (init sp).S)
 
 /-- Returns (the assumptions hold, and the run with eviction appends the run's
-records; `CutOK` allows a cut at 1 after T(6); with every object that may be
-evicted evicted after each transaction (schedule 1), a read at the first
+records; WP R7's `CutOK` allows a cut at 1 after T(6); with every object that may
+be evicted evicted after each transaction (schedule 1), a read at the first
 available time 2 from the running memory, with Rule R of the startup at R(0),
-does not give P on the stream cut at 1; on the whole stream it does). The tree
-root 20, reachable at 2 and replaced at 3, names mid node 2's version of R(0);
-the mid node's latest version is of R(6), in the startup section, so the
-lookups' reads (`ReadsAt`) take that one by Rule R. The running memory's Rule R
-is the startup's, which does not know it, and the mid node's canonical object
-was evicted: the read loads R(0), which the cut removed. Physical reads in the
-running process after a cut need more than `CutOK` (bergdb item 001, WP R4: T9).
-Found on 2026-10-17. -/
-def cutReadWitness : Bool × Bool × Bool × Bool :=
+does not give P on the stream cut at 1; on the whole stream it does; `CutOK`
+since WP R6 does not allow the cut). The tree root 20, reachable at 2 and
+replaced at 3, names mid node 2's version of R(0); the mid node's latest version
+is of R(6), in the startup section, so the lookups' reads (`ReadsAt`) take that
+one by Rule R. The running memory's Rule R is the startup's, which does not know
+it, and the mid node's canonical object was evicted: the read loads R(0), which
+the cut removed. Physical reads in the running process after a cut needed more
+than WP R7's `CutOK` (bergdb item 001, WP R4: T9; register M48); `CutOK`'s part 2
+over `ReadsPhys` (WP R6, M48's option (a), Frans 2026-10-17) covers R(0). Found
+on 2026-10-17. -/
+def cutReadWitness : Bool × Bool × Bool × Bool × Bool :=
   let ts := tsE.take 6
   let db := run spec4e alE ts
   let r := runEvictWith spec4e alE ts 1 1
   let (_, onCut) := reads4 spec4e r.2.2 { r.1 with S := cutStream 1 r.1.S } r.2.1 [2]
   let (_, onWhole) := reads4 spec4e r.2.2 r.1 r.2.1 [2]
-  (runOKB spec4e alE ts && r.1.S == db.S && r.1.D == db.D, cutOKB spec4e 1 db 6, !onCut, onWhole)
+  (runOKB spec4e alE ts && r.1.S == db.S && r.1.D == db.D, cutOKAtB spec4e 1 db 6, !onCut, onWhole,
+    !cutOKB spec4e 1 db 6)
 
-#guard cutReadWitness == (true, true, true, true)
+#guard cutReadWitness == (true, true, true, true, true)
 
 /-! ## Example 4 meets T8's assumptions on its virtual root
 

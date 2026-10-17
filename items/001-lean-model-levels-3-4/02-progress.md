@@ -116,15 +116,17 @@ Current state
 
 * Checkpoints: G0 given (2026-10-16 15:23); K1 passed (2026-10-17 07:56,
   Frans: Option K under TREE, A6' and A-COPY; above). K2 to K5 open.
-* Next: R8's change 4 (E7's list; 6, 2, 1, 3 and 5 are done), R6
-  (T-SCHEME), and R5's logical half (T12 for `runRestartsCut`, which needs
+* Next: R8's change 4 (E7's list; 6, 2, 1, 3 and 5 are done; its gates
+  running), R6's proof (T-SCHEME; its part 1, the stronger `CutOK`, is done),
+  and R5's logical half (T12 for `runRestartsCut`, which needs
   only T8); then R9 and K3 (plan, 5.1). R3 and R7 are done; R4 is done but
   for T9 (2026-10-17).
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): R6 proves the
   stronger `CutOK` part 2 with T-SCHEME, then T9 follows (R4's remainder),
   and R5's half with eviction uses the same invariant on the slots.
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: none (14:49).
+* Uncommitted work of this plan in bergdb: R8's change 4 in `java/`, its gates
+  running (15:03).
 * Long jobs running (scratch copies of `lean/`, at low priority): R7's
   checker on the medium reclaim set's four largest traces, from 2026-10-17
   10:31 (the small set and the two others took 6 and 18 minutes); R4's (R7's,
@@ -165,7 +167,7 @@ Status
 | R3 | The Level 3 model: touch, first available time, cuts | done | 2026-10-17 |
 | R4 | Recovery and reads after a cut: T8, T9 | T8 done; T9 after R6 (M48: (a), Frans) | 2026-10-17 |
 | R5 | Restarts across cuts: T12 | not started | — |
-| R6 | Java's scheme gives safe cuts: T-SCHEME | not started | — |
+| R6 | Java's scheme gives safe cuts: T-SCHEME | in progress: part 1, `CutOK`'s part 2 over `ReadsPhys` (M48: (a)), done | 2026-10-17 |
 | R7 | The red list on Java's reclaim | done | 2026-10-17 |
 | R8 | Java: the corrections the model requires, before eviction | in progress: changes 6 (M17), 2 (M22), 1 (M20, M21, M26, M44), 3 (M27) and 5 (M28) done | 2026-10-17 |
 | R9 | Level 3 conformance; the gate proposal | not started | — |
@@ -2729,3 +2731,74 @@ Time: about 25 minutes (14:24 to 14:49; the gates ran 14:26 to 14:49).
 
 Open, next: R8's change 4 (slots, access data, the access clock); the
 performance comparison for 1, 3 and 4 on a quiet machine.
+
+### 2026-10-17 14:30 to 15:03. WP R6, part 1: `CutOK`'s part 2 over `ReadsPhys` (M48, option (a))
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `059dbf1` (R8's
+change 5); uncommitted before this commit: its files, below; R8's change 4 in
+`java/` (its gates running; its own commit follows); session f1-9c's
+`items/002-top-node-ordinal-bound/` and its line in `items/readme.md`, left
+for Frans. Done in a scratch copy of `lean/` while R8's gates ran, then
+copied in.
+
+Frans chose option (a) of register M48 (2026-10-17 14:07, recorded by
+session f1-9c; above). This is its definition, the first part of R6; the
+proof that Java's scheme gives it (T-SCHEME) is R6's rest, and T9 follows.
+
+Did:
+
+1. The trusted part (`SIS/Reclaim.lean`; lean/README.md, "Changes to the
+   trusted part", WP R6): `ReadsPhys` (new), the versions that a read at
+   time t may follow, a lookup's (`ReadsAt`) or a physical read's in the
+   running process: through a pointer of one of them to a live child, also
+   every version of the child at or after the record that the pointer names
+   (every version if it names none). `CutOK`'s part 2 over `ReadsPhys`
+   instead of `ReadsAt`: stronger. T8's statement is unchanged; its proof
+   takes a version that a lookup reads to `ReadsPhys` (`ReadsAt.phys`, new,
+   `SIS/Proof/CutRead.lean`; three call sites in `CutBase.lean` and
+   `CutStart.lean`).
+2. Example 4 (`SIS/ReclaimExample.lean`, tests): `readsPhysB` and `CutOK` by
+   running with the stronger part 2 (`cutReachB`, `cutOKB`; R7's are kept
+   as `cutReachAtB`, `cutOKAtB`); the bound `cutBoundB` over `readsPhysB`.
+   Two `#guard`s change, as they must: `cutReadWitness` (R7's `CutOK`
+   allowed the cut at 1 after T(6); the stronger one does not, safe cut 0),
+   and `pSafeWitness` (the cut at 1 after T(7) is ruled out by R7's part 3
+   only, by the stronger part 2 too: the tree root's pointer names R(0));
+   the other 18, with the fixed run's safe cut 3, do not.
+3. The checker: C-CUT checks the stronger part 2 (`below`: a lookup's reads,
+   `readsBelow`, and a physical read's, `readsBelowPhys`); R4's diagnostic
+   C-CUT+ is part of it now, and its line is gone. Test trace
+   `test-traces/physcut.trace` (new: `stale.trace` with the startup pos 2 at
+   T(4), so that Rule R redirects the stale pointer for lookups, and only a
+   physical read may follow it): C-CUT fails with CUT-stale; R4's checker
+   passed C-CUT there, and its C-CUT+ counted it.
+4. Docs: `docs/level3-alignment.md` (2.8, 2.9, M48, section 5's part 2),
+   `lean/README.md` (the trusted change, the examples, the checker, the
+   status), `docs/log.md`.
+
+Results:
+
+* The checker with the stronger C-CUT on R2's small reclaim set, made with
+  R8's change 5: 25 of 25 traces `TRACECHECK OK` (14:50 to 14:55), 14,448
+  transactions, 288 cuts: C-CUT, with the stronger part 2, without a failure,
+  as R4's C-CUT+ found; C-S, C-L and C-L4 without a failure too.
+
+Files changed: `lean/SIS/Reclaim.lean`, `lean/SIS/Proof/CutRead.lean`,
+`CutBase.lean`, `CutStart.lean`, `lean/SIS/ReclaimExample.lean`,
+`lean/Check/Steps.lean`, `lean/TraceCheck.lean`, `lean/test-traces/run.sh`,
+`lean/test-traces/physcut.trace` (new), `lean/README.md`;
+`docs/level3-alignment.md`, `docs/log.md`; this file.
+
+Checks: `lake build` in `lean/` and `sh test-traces/run.sh` (TRACE TESTS OK,
+with `physcut.trace`); the Lean checks on a clean copy of the changed `lean/`
+(no `.lake`), 14:39 to 15:02: `lake build` without warnings; no sorry, admit,
+axiom or unsafe in SIS/ and Check/; `#print axioms` of the 19 theorems, the
+standard axioms only; `sh test-traces/run.sh`, TRACE TESTS OK; `lake exe
+reclaimtest 20 30`, `sistest 20 40` and `phystest 20 40` without a failure.
+
+Register: M48: the definition done (option (a)); open: R6's proof, then T9.
+
+Time: about 35 minutes (14:30 to 15:03, beside R8's changes 5 and 4).
+
+Open, next: R8's change 4 (gates running), its commit; then R6's proof
+(T-SCHEME); the performance comparison of R8 waits for a quiet machine.

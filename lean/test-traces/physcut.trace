@@ -1,0 +1,73 @@
+# Bergdb item 001, C-CUT (WP R6): a cut that CutOK's part 2 allows for lookups
+# but not for physical reads (ReadsPhys; register M48, option (a)). As
+# stale.trace, but the startup pos at T(4) is 2, so Rule R redirects 5's pointer
+# to 7's version of R(2), in the section: a lookup at 1 reads only versions at 1
+# or later. A physical read in the running process, whose Rule R can be that of
+# an earlier startup, may follow the pointer to 7's version of R(0), which it
+# names. Expected: C-CUT fails with CUT-stale (before WP R6, C-CUT passed and
+# the diagnostic C-CUT+ counted it).
+TRACE 2
+CONFIG stale
+TX 0
+NEW 0 9 I
+NEW 3 8 I
+NEW 5 3 I
+NEW 7 2 I
+NEW 9 1 I
+ADD 0 0 T 3
+ADD 3 0 R 5
+ADD 5 0 K 10 7
+ADD 7 0 K 1 9
+REC 0 0 0 field 3
+VER 3 I
+H 0 R 5
+F 5 0
+VER 5 I
+H 0 K 10 7
+F 7 0
+VER 7 I
+H 0 K 1 9
+F 9 0
+VER 9 I
+DIRTY
+END 0
+TX 1
+NEW 11 0 D
+ADD 11 1 V 5
+ADD 9 1 K 2 11
+REC 1 0 0 field 3
+VER 11 D
+H 1 V 5
+GD 3 5 7 9
+DIRTY 3 1 5 1 7 1 9 1
+END 1
+TX 2
+REC 2 1 2 field 3
+VER 9 I
+H 1 K 2 11
+F 11 1
+VER 7 I
+H 0 K 1 9
+F 9 2
+VER 5 I
+H 0 K 10 7
+F 7 0
+VER 3 I
+H 0 R 5
+F 5 2
+GD
+DIRTY
+END 2
+TX 3
+REC 3 2 2 field 3
+GD
+DIRTY
+END 3
+TX 4
+REC 4 2 2 field 3
+GD
+DIRTY
+FA 1
+CUT 1 1
+END 4
+DONE 4

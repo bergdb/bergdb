@@ -533,3 +533,13 @@ access data as they are, and keeps what it read for the step, so a version
 is read once per step. Before, both reads swizzled what they read, the
 values too, which then stayed in memory for good. Records: the same
 (StreamDigest, 36 of 36). New test `NodeCollection.testMaintenanceFollower`.
+
+2026-10-17. Bergdb item 001, WP R6, part 1 (register M48 of
+`docs/level3-alignment.md`, option (a), Frans): `CutOK`'s part 2 now covers
+the versions that a physical read in the running process may follow
+(`ReadsPhys`, `lean/SIS/Reclaim.lean`): through a pointer to a live child,
+every version of the child at or after the record that the pointer names, as
+well as what a lookup reads with Rule R. A trusted change; T8 holds as
+before. The trace checker's C-CUT checks the stronger part (R4's diagnostic
+C-CUT+ is part of it now); test trace `physcut.trace`. Example 4:
+`cutReadWitness`'s cut is no longer safe.

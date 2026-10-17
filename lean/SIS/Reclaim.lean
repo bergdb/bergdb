@@ -47,18 +47,43 @@ inductive ReadsAt (sp : Spec V T) (S : Stream V T) (P : Struct V) (t : Time) :
       y ∈ sp.live (v.hist.upTo t) → follow S (lastSp S) true y (v.ref? y) = some w →
       ReadsAt sp S P t w
 
+/-- The versions of the stream S that a physical read in the running process at
+time t may follow, for the structure P (bergdb item 001, register M48, option
+(a), Frans 2026-10-17): those that a lookup may read (`ReadsAt`), and through a
+pointer of one of them to a live child at t, every version of the child at or
+after the record that the pointer names (every version if it names none), and
+so on down. A memory's Rule R is that of its last startup, which can be older
+than the stream's, and its canonical objects and snapshots can be newer than a
+pointer; a version that either gives is at or after the record the pointer
+names (WP R4 found by running that `ReadsAt` alone does not cover them:
+`cutReadWitness` in SIS/ReclaimExample.lean). -/
+inductive ReadsPhys (sp : Spec V T) (S : Stream V T) (P : Struct V) (t : Time) :
+    Version V → Prop
+  | latest (x : NodeId) (v : Version V) : reachable sp P t x = true → S.lv x = some v →
+      ReadsPhys sp S P t v
+  | child (v : Version V) (y : NodeId) (w : Version V) : ReadsPhys sp S P t v →
+      y ∈ sp.live (v.hist.upTo t) →
+      (follow S (lastSp S) true y (v.ref? y) = some w ∨
+        ∃ r, S.versionAt r y = some w ∧ ∀ r0, v.ref? y = some r0 → r0 ≤ r) →
+      ReadsPhys sp S P t w
+
 /-- A cut at c is safe in state db, the state after transaction k (plan, 8.7).
 With f = fa(k), the first available time of the last record:
 1. c <= f (and f <= s(k) by `firstAvail`), so the startup section, and the
    record at the startup pos, are after the cut;
-2. every version that a lookup at some time from f to k may read (`ReadsAt`)
-   is at c or later: the latest versions of the nodes reachable then, and the
-   versions that their pointers to live children lead to. (WP R3 asked this of
-   the latest versions only; WP R7 found by running that a node reachable at
-   f that the change replaces later can name an older version of a child, the
-   child's latest being after the cut and the older one before it, so that a
-   read at f after a restart from the cut stream reads a stub:
-   `staleWitness` in SIS/ReclaimExample.lean.)
+2. every version that a read at some time from f to k may follow, a lookup's
+   or a physical read's in the running process (`ReadsPhys`), is at c or
+   later: the latest versions of the nodes reachable then, and the versions
+   that their pointers to live children lead to, with Rule R or not. (WP R3
+   asked this of the latest versions only; WP R7 found by running that a node
+   reachable at f that the change replaces later can name an older version of
+   a child, the child's latest being after the cut and the older one before
+   it, so that a read at f after a restart from the cut stream reads a stub:
+   `staleWitness` in SIS/ReclaimExample.lean; so R7 asked it of the versions
+   that lookups read, `ReadsAt`. WP R4 found that a physical read in the
+   running process can follow such a pointer without Rule R, with eviction:
+   `cutReadWitness`; so, since WP R6, of `ReadsPhys`, register M48, option (a),
+   Frans 2026-10-17.)
 3. every node in D has its latest version at c or later, or none; and every
    reference below c of that version names the latest version of its node, so
    a node not in D (Java's pSafe wait: a parent written before its child and
@@ -70,7 +95,7 @@ With f = fa(k), the first available time of the last record:
 4. top(k) names a record at c or later (implied by 2; M41). -/
 def CutOK (sp : Spec V T) (c : Nat) (db : DB V T) (k : Nat) : Prop :=
   c ≤ lastFa db.S ∧
-  (∀ t w, lastFa db.S ≤ t → t ≤ k → ReadsAt sp db.S db.P t w → c ≤ w.recNo) ∧
+  (∀ t w, lastFa db.S ≤ t → t ≤ k → ReadsPhys sp db.S db.P t w → c ≤ w.recNo) ∧
   (∀ x, inD db.D x = true → ∀ v, db.S.lv x = some v →
     c ≤ v.recNo ∧ ∀ y r, v.ref? y = some r → r < c → (db.S.lv y).map (·.recNo) = some r) ∧
   (∀ R z r, db.S.getLast? = some R → R.top = some (z, r) → c ≤ r)

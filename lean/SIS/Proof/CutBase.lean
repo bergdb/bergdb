@@ -34,7 +34,7 @@ theorem Inv.readFrom_cut (hinv : Inv sp db k) {c : Nat} (hcut : CutOK sp c db k)
   obtain ⟨w, hw⟩ := Option.isSome_iff_exists.mp hsome
   have hf : follow db.S (lastSp db.S) true y (p.2.ref? y) = some w := by
     rw [hr, follow_old hn]; exact hw
-  have := hcut.2.1 t w hft (by omega) (ReadsAt.child p.2 y w hpR hy hf)
+  have := hcut.2.1 t w hft (by omega) (ReadsAt.child p.2 y w hpR hy hf).phys
   rw [hinv.recNo_of_versionAt hw] at this
   exact this
 

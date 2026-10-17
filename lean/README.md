@@ -128,7 +128,7 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
 | EvictHist, EvictHistTrans, EvictReadT | Stage 2 (WP E4): the invariant for reads at earlier times (`HInv`: every slot of a canonical object for a live child at a time t names an object or a version good for t, or, by INV-SLOT's second half, a node of D), kept by the cache operations and every transaction (`HInv.evictTrans_ok`) and in every run (`HInv.run`); a read at any time up to the last record gives P (`EInv.read4T_ok`) |
 | EvictKeys, EvictPin | Stage 2 (WP E6): no object has two slots for the same pointee, in every memory of every run (`SlotsND`, `slotsND_runEvict`); unswizzling every memory slot to an object, then releasing it, removes it (`Mem.evict_ok`); an object outside the pinned set has been written (`EInv.detachable_of_unpinned`) |
 | EvictRerun, EvictRestart | Stage 2 (WP E5): the startup from the stream after T(k): its rerun keeps `RInv` (every object canonical, every stream slot naming its pointee's latest version after Rule R, a slot for each pointee; `rinv_lazyStartup`), and after the positions and rule 4 the memory has the invariant and the invariant for reads at earlier times (`einv_hinv_startup`); the physical writer depends on P only through its nodes (`evictTrans_congr`); runs with restarts (`EvictInvR`, `evictInvR_all`) |
-| CutStream, CutRead | Stage 3 (WP R4): the stream after a cut (its records, `versionAt`, `newest`, the last record); a pointer followed, or a read from a version, on a stream cut at or before the startup pos gives what it gives on the whole stream if it reads no record before the cut (`follow_cut`, `readFrom_cut`); a read from a version that a lookup may read reaches only such versions (`readFrom_readsAt`) |
+| CutStream, CutRead | Stage 3 (WP R4): the stream after a cut (its records, `versionAt`, `newest`, the last record); a pointer followed, or a read from a version, on a stream cut at or before the startup pos gives what it gives on the whole stream if it reads no record before the cut (`follow_cut`, `readFrom_cut`); a read from a version that a lookup may read reaches only such versions (`readFrom_readsAt`); a version a lookup may read, a physical read may follow (`ReadsAt.phys`, WP R6) |
 | CutAgree, CutRerun | Structures that agree for lookups from f on (`CutAgree`); a transaction's change is the same on both (`exec_cutAgree`, with `ExecRootOK`), and so is the rerun of the startup section (`rerun_cutAgree`, with `VirtLiveOK`) |
 | CutBase, CutTops, CutStart | Startup's reads of a stream cut safely at the times from f to s: without a virtual root, the whole stream's (`Inv.readAt_cut_nv`); with one, the whole stream's but for the root's version, which startup rebuilds from the root children it can read: the root children live from f on are read at their latest versions (`Inv.topsRead_cut_all`), so the rebuilt root has the root's live children from f on (`Inv.cutRoot_live`, `Inv.readAt_cut_v`) |
 | CutRecover | P up to s, read from the cut stream, agrees with P after T(s) for lookups from f to s (`base_cutAgree`); T8 (`recoverCut`) |
@@ -180,7 +180,8 @@ Not trusted, tests only:
   steps that touch the nodes their range traversal visits (without entries)
   and rewrite the values stored before pCut, the first available time at the
   end of an iteration once the startup pos has passed it. `CutOK` by running
-  (`cutOKB`), the largest safe cut (`safeCut`), T8 by running (`checkT8`),
+  (`cutOKB`; WP R7's, with part 2 over `ReadsAt`, `cutOKAtB`), the largest
+  safe cut (`safeCut`), T8 by running (`checkT8`),
   `PolicyCutOK` by running (`policyCutB`), runs with restarts from cut
   streams (`checkCut`), and with eviction and the four cache schedules
   (`checkEvictCut`: the records, D, reads from f on, also on the cut stream
@@ -190,8 +191,9 @@ Not trusted, tests only:
   (`pSafeWitness`); a stale reference that WP R3's `CutOK` let through, after
   which a physical read from the cut stream fails (`staleWitness`, WP R7); a
   read in the running process, with eviction, that follows a pointer of a
-  replaced node to a version before a cut that `CutOK` allows
-  (`cutReadWitness`, WP R4). Proved there (WP R4): example 4 meets T8's
+  replaced node to a version before a cut that WP R7's `CutOK` allows
+  (`cutReadWitness`, WP R4; `CutOK` since WP R6 does not). Proved there (WP
+  R4): example 4 meets T8's
   assumptions on the virtual root (`execRootOK_spec4`, `virtLiveOK_spec4`;
   also `virtLiveOK_spec4e`).
   `lake exe reclaimtest 20 30`: the same on random runs,
@@ -215,7 +217,9 @@ Not trusted, tests only:
   every CUT line, whether a physical read in the running process from f on
   may follow a version before the cut (`readsBelowPhys`: through a pointer to
   a live child, every version of the child at or after the one the pointer
-  names; register M48 of level3-alignment.md). Since R8's change 3, the
+  names; register M48 of level3-alignment.md). Since R6, part of C-CUT,
+  as `CutOK`'s part 2 is (`ReadsPhys`; test trace `physcut.trace`, where
+  only that part fails). Since R8's change 3, the
   diagnostic C-L4: the FIRST lines against the Level 4 loader
   (`loader4Failures`: no snapshot from the node table; section 13.5 of
   level2-alignment.md).
@@ -757,6 +761,25 @@ Changes to the trusted part on 2026-10-17 (bergdb item 001, WP R4;
   section, whose views' roots hold root entries.
 * SIS/ReclaimTheorems.lean: T8 (`T8_recoverCut`), new.
 
+Changes to the trusted part on 2026-10-17 (bergdb item 001, WP R6, part 1;
+register M48 of [../docs/level3-alignment.md](../docs/level3-alignment.md),
+option (a), Frans):
+
+* `ReadsPhys` (new, SIS/Reclaim.lean): the versions that a read at time t may
+  follow, a lookup's (`ReadsAt`) or a physical read's in the running process:
+  through a pointer of one of them to a live child, also every version of the
+  child at or after the record that the pointer names (every version if it
+  names none). A memory's Rule R is that of its last startup, and its objects
+  can be newer than a pointer; a version that either gives is such a one.
+* `CutOK`'s part 2 over `ReadsPhys` instead of `ReadsAt`: a stronger
+  condition. Reason: `cutReadWitness`, a run where R7's `CutOK` holds and a
+  read in the running process with eviction follows a replaced node's pointer
+  to a version before the cut (WP R4, T9 stopped). T8's statement is
+  unchanged (its hypothesis is now stronger); its proof takes each version a
+  lookup reads to `ReadsPhys` (`ReadsAt.phys`). In example 4's fixed run the
+  stronger part rules out that cut and, in `pSafeWitness`, the cut before
+  the pSafe wait already by part 2; the other `#guard`s are unchanged.
+
 Stage 1 of bergdb item 001 is done (2026-10-16): lemma M (`LM_newer`, L2),
 T1-L (`T1_lazy`, L3), CC and T2-L (`CC_canonical`, `T2_lazy`, L4) are proved,
 and Java's first touches after restarts are checked against the model's rule
@@ -764,16 +787,18 @@ and Java's first touches after restarts are checked against the model's rule
 are proved for runs without restarts, and T2-C (`T2_cache`, E5), T-CACHE
 with restarts, T-READ with restarts (`TR_view_restarts`, E5) and T-PIN
 (`TP_pins`, E6) (2026-10-17). Stage 3: the definitions and T13' (R3), the
-checker on Java's reclaim traces with the red list (R7), and T8 (R4)
-(2026-10-17); T9 is stopped (R4, register M48).
+checker on Java's reclaim traces with the red list (R7), T8 (R4), and
+`CutOK`'s part 2 over `ReadsPhys` (R6, part 1: register M48, option (a),
+Frans) (2026-10-17); T9 follows R6.
 
 Not done:
 
 * A check of the physical layer's assumptions (`PhysStep`, M47) on Java
   traces; they are argued (level2-alignment.md, 13.3).
 * The bounds (T3, T4).
-* Reclaim's theorems: T9 (stopped in R4: in the running process, with
-  eviction, physical reads from f on need more than `CutOK`,
-  `cutReadWitness`; Frans's decision,
-  [../docs/level3-alignment.md](../docs/level3-alignment.md), register M48),
-  T12 (R5), T-SCHEME (R6), checked by running so far (`reclaimtest`).
+* Reclaim's theorems: T9 (physical reads from f on in the running process,
+  with eviction; stopped in R4 by `cutReadWitness`, then Frans chose option
+  (a) of register M48 in
+  [../docs/level3-alignment.md](../docs/level3-alignment.md): `CutOK`'s part 2
+  over `ReadsPhys`, R6's part 1; to prove after R6), T12 (R5), T-SCHEME
+  (R6), checked by running so far (`reclaimtest`).

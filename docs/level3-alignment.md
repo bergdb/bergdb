@@ -270,10 +270,13 @@ lines from R7 on.
 * **CutOK** (`SIS/Reclaim.lean`), the plan's sketch with part 3 refined,
   and f the first available time of the last record:
   1. c ≤ f = fa(k) (and f ≤ s by `firstAvail`);
-  2. every version that a lookup at some time from f to k may read is at c
-     or later (`ReadsAt`: the latest versions of the nodes reachable then,
-     and the versions their pointers to live children lead to, with Rule R;
-     R3 asked this of the latest versions only, refined in R7, below);
+  2. every version that a read at some time from f to k may follow is at c
+     or later: a lookup's (`ReadsAt`: the latest versions of the nodes
+     reachable then, and the versions their pointers to live children lead
+     to, with Rule R) and, since R6, a physical read's in the running process
+     (`ReadsPhys`: through a pointer to a live child also every version of
+     the child at or after the record it names). R3 asked this of the latest
+     versions only, refined in R7 and R6, below;
   3. every node in D has its latest version at c or later, or none, and
      every reference below c of that version names the latest version of
      its node (so a node not in D);
@@ -286,7 +289,13 @@ lines from R7 on.
   each node from the read at the latest time it is reached), its physical
   reads do not. With part 2 on every version a lookup from f on may read,
   the cut there is ruled out. In the random runs of `reclaimtest` the two
-  give the same cuts.
+  give the same cuts. R4 found (`cutReadWitness`, 2.9) a run where R7's part
+  2 holds and a read in the running process with eviction, whose Rule R is
+  that of an earlier startup, follows a replaced node's pointer to a version
+  before the cut; since R6 (register M48, option (a), Frans), part 2 covers
+  the versions that such reads may follow (`ReadsPhys`), and the checker's
+  C-CUT checks it (R4's diagnostic C-CUT+ is part of it; test trace
+  `physcut.trace`).
   The sketch's part 3 asked only that no reference below c name a node in
   D. A stale reference below c to a node not in D is as bad for Java: it
   cannot read the target's id below the cut, so it can neither link the
@@ -399,6 +408,13 @@ objects can be evicted.
 stronger one; R6 proves that Java's scheme gives it, then T9 is proved for
 the Level 4 memory with the invariant on the slots.
 
+**Done, the definition** (R6, part 1, 2026-10-17): `ReadsPhys` and `CutOK`'s
+part 2 over it (lean/README.md, "Changes to the trusted part", WP R6). T8 is
+proved as before (`ReadsAt.phys`). In example 4, `cutReadWitness`'s cut at 1
+is no longer safe, and the checker's C-CUT includes the old C-CUT+ (test
+trace `physcut.trace`). R6's proof that Java's scheme gives it, and T9, are
+next.
+
 By running (scratch probes, not kept): example 4's random runs, with the
 four cache schedules and restarts every few transactions or none, reads at
 every time from f on, on the stream cut at the largest safe c, from the
@@ -427,7 +443,7 @@ reopened from level2-alignment.md.
 | M37 | Reclaim stores its table and the current row as values under internal keys (`/#i/dreclaim/-table.txt`, `/#i/dreclaim/-current.txt`), in internal transactions; the row's value is computed by a value transformation during the step | `Reclaim.storeTable` (648); `Reclaim.step` (345), lines 416 to 423 | T(i) | α: ordinary puts; T(i) is what the record stores (2.2) | 3: R1 (α); R2 (the traces have them as ordinary entries, 2.7); the checker from R3 on |
 | M38 | A reclaim step can fail with a `RerunException` (a conflict with its read time) and then writes no record; the step is tried again at a later transaction. A table store cannot fail so (`Bug`) | `Reclaim.step` (345), line 449; `storeTable` (648), line 657; `Db.stmCheckConflicts` (1474), called at line 1362 | — | α: no transaction; nothing to model (argued in 4.2; the exception cannot occur today) | 3: R1 (argued) |
 | M41 | After a restart from a cut stream, startup reads D's nodes at their newest section versions or stored positions, and the root chain from topPos | `DbStarter.canonicalNode` (455), `topNodeOfLastTransaction` (293), `findSuperNodeAtStartupTime` (263) | `startup` | CutOK must cover them. For the root chain, review-13-claude, 4.3: a search at a time q loads, besides its answer, only tops created at or after q; so from tEnd on, the tops created after tEnd and the top live at tEnd (5, steps 4 and 6) | 3: R3 (CutOK parts 3 and 4, 2.8), R4 (T8: the model's startup), R5; o |
-| M48 | **New (R4).** Java cuts while it runs, and reads after the cut go through the objects and slots made before it, with Rule R of the last startup. With eviction, a read at a time from f on can follow the slot of a node that a later change replaced to a version before the cut: the last startup's Rule R does not know the pointee's newer version, and the pointee's canonical object was released. Today nothing is released (M26), so such a pointee has its canonical object | `NodeCollection.followStreamPointer` (184; Rule R from `DbStarter`'s maps); `Reclaim` cuts while the database runs (2.5) | `CutOK` part 2 (`ReadsAt`, Rule R of the current section); `Mem.follow4` (Rule R of the last startup) | `cutReadWitness` (SIS/ReclaimExample.lean): `CutOK` holds, a read at f in the running process fails on the cut stream (2.9). For Frans: (a) part 2 over every version a physical read may follow (every version of a pointee at or after the one the pointer names); Java's scheme gives it, Java's cuts meet it (C-CUT+); (b) the window (M44); (c) T9 after restarts only. Recommended: (a). **Decided: (a)** (Frans, 2026-10-17) | 3, 4: R4 (found; T9 stopped, stop rule 4), Frans ((a), 2026-10-17), R6 (stronger part 2), then T9; o |
+| M48 | **New (R4).** Java cuts while it runs, and reads after the cut go through the objects and slots made before it, with Rule R of the last startup. With eviction, a read at a time from f on can follow the slot of a node that a later change replaced to a version before the cut: the last startup's Rule R does not know the pointee's newer version, and the pointee's canonical object was released. Today nothing is released (M26), so such a pointee has its canonical object | `NodeCollection.followStreamPointer` (184; Rule R from `DbStarter`'s maps); `Reclaim` cuts while the database runs (2.5) | `CutOK` part 2 (`ReadsAt`, Rule R of the current section); `Mem.follow4` (Rule R of the last startup) | `cutReadWitness` (SIS/ReclaimExample.lean): `CutOK` holds, a read at f in the running process fails on the cut stream (2.9). For Frans: (a) part 2 over every version a physical read may follow (every version of a pointee at or after the one the pointer names); Java's scheme gives it, Java's cuts meet it (C-CUT+); (b) the window (M44); (c) T9 after restarts only. Recommended: (a). **Decided: (a)** (Frans, 2026-10-17) | 3, 4: R4 (found; T9 stopped, stop rule 4), Frans ((a), 2026-10-17), R6 (stronger part 2: the definition done, 2026-10-17, 2.9; Java's scheme gives it: to prove), then T9; o |
 
 Findings of A2: none beyond the plan's list for Level 3. Noted for R1: the
 touch marks the super root of the step's time (through
@@ -524,9 +540,11 @@ marked **proved** (with the theorem), **to prove** (with the WP),
 (2.8), the plan's sketch (8.7) with part 3 refined:
 
 1. c ≤ the record of f ≤ s, the startup pos;
-2. every version that a lookup at some time from f on may read (`ReadsAt`)
-   is at c or later: the latest versions of the nodes reachable then, and the
-   versions their pointers to live children lead to (with Rule R);
+2. every version that a read at some time from f on may follow is at c or
+   later: a lookup's (`ReadsAt`), the latest versions of the nodes reachable
+   then and the versions their pointers to live children lead to (with Rule
+   R), and since R6 a physical read's (`ReadsPhys`), also every version of a
+   live child at or after the record that the pointer names;
 3. every node in D has its latest version at c or later, or none, and every
    reference below c of that version names the latest version of its node
    (so no node of D: M33);
