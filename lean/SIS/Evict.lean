@@ -22,7 +22,8 @@ needs:
 * the physical writer: each version from its node's canonical object, with
   references from its slots and, for pinned pointees, from their canonical
   objects (Java's `resolvePointers` at Level 4);
-* startup with rule 4: the slots of D's objects linked by node id;
+* startup with rule 4: the slots of the pinned objects (D's and the root's)
+  linked by node id;
 * runs with any cache operations (reads, unswizzles, releases) between
   transactions.
 
@@ -256,14 +257,22 @@ def Mem.sectionPos (m : Mem V) (S : Stream V T) : Mem V :=
       | some w => (p.1, { p.2 with pos := some w.recNo })
       | none => p) }
 
-/-- Rule 4: each stream slot of a canonical object of a node of D that names a
-node with a canonical object becomes a memory slot to it. Java's startup links
-the section's objects by exact position only (`createMemoryPointers`); rule 4
-links D's objects by node id, as Java's `resolvePointers` does today at every
-write, with a node table that never forgets. -/
+/-- Rule 4: each stream slot of a pinned object (the canonical object of a node
+of D, or the root's object) that names a node with a canonical object becomes
+a memory slot to it. Java's startup links the section's objects by exact
+position only (`createMemoryPointers`); rule 4 links the pinned objects by node
+id, as Java's `resolvePointers` does today at every write, with a node table
+that never forgets. The root's object is linked too since WP E5 (2026-10-17),
+so that its live slot to a super root in D is a memory slot to the canonical
+object, as a D object's live slot to a node of D must be: the startup's rerun
+leaves it so in the examples, but a proof of that would have to follow the
+virtual root's slots through the rerun. Java's virtual root holds its super
+root as a memory reference to the canonical object (`TopDs`, set by
+`DbStarter`'s `prepareDb`). A virtual root is never written, and a written
+root with a pointee in D is in D itself, so this changes no record. -/
 def Mem.linkD (m : Mem V) (D : Dirty) : Mem V :=
   { m with objs := m.objs.map (fun p =>
-      if !(p.2.canonical && inD D p.2.node) then p else
+      if !(p.2.canonical && (inD D p.2.node || p.1 == m.root)) then p else
       (p.1, { p.2 with slots := p.2.slots.map (fun q => match q.2 with
         | Slot.stream _ => match m.canonicalOf q.1 with
           | some h0 => (q.1, Slot.mem h0)
@@ -272,7 +281,7 @@ def Mem.linkD (m : Mem V) (D : Dirty) : Mem V :=
 
 /-- Java's startup from S, Level 4: stage 1's lazy startup, the positions of its
 canonical objects, and rule 4 for D (the D of the model's startup, which is the
-run's: T1). -/
+run's: T1) and the root's object. -/
 def evictStartup (sp : Spec V T) (S : Stream V T) : Mem V :=
   ((lazyStartup sp S).sectionPos S).linkD (startup sp S).D
 

@@ -8,6 +8,7 @@ import SIS.Proof.Newer
 import SIS.Proof.PhysT2
 import SIS.Proof.EvictInit
 import SIS.Proof.EvictReadT
+import SIS.Proof.EvictRestart
 
 namespace SIS
 
@@ -225,5 +226,83 @@ theorem TR_view (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool × List Ca
   have hinv := inv_st sp al (ts.map (·.1)) hok (algOK_of sp al (Or.inl hj)) j (by rw [List.length_map]; exact hjt)
   rw [hst] at e3 hh hinv
   exact read_list_view (e3.read4T_ok hinv hok.1.liveSub hh ht).2.2
+
+/-- T2-C, restarts with eviction (bergdb item 001, WP E5; docs/level4-alignment.md,
+5.13). A run as in `TC_records` (BergDB's algorithm with marking, the
+assumptions, those of the physical layer and of stage 2, the Level 4 startup
+from R(0), any cache schedule), now with restarts after any transactions
+(`runEvict`: after a transaction marked true, the logical startup for
+⟨P, D, S⟩ and the Level 4 startup, `evictStartup`, for the memory, from the
+stream). After every transaction and its cache operations or its restart, the
+state is the run's without restarts: the same records (so restarts change no
+record) and D, and P with the same nodes. The memory meets the invariants of
+`TC_records` for the startup it last made, from the run's stream after some
+earlier transaction k1 (Rule R from that stream's section): INV-CAN, INV-SNAP,
+no dangling slot, INV-SLOT. Right after a restart (k1 = j) they are the
+invariants of the startup's memory. -/
+theorem T2_cache (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool × List CacheOp))
+    (hok : RunOK sp al (ts.map (·.1))) (hph : PhysRunOK sp al (ts.map (·.1)))
+    (hev : EvictRunOK sp al (ts.map (·.1))) (hj : al.stillDirty = javaTest sp)
+    (hmk : al.mark = true) (j : Nat) (hjt : j ≤ ts.length) :
+    let db := run sp al ((ts.take j).map (·.1))
+    let r := runEvict sp al (ts.take j)
+    let m := r.2.1
+    r.1.S = db.S ∧ r.1.D = db.D ∧ (∀ x, r.1.P.get? x = db.P.get? x) ∧
+    ∃ k1, k1 ≤ j ∧ r.2.2 = (run sp al ((ts.take k1).map (·.1))).S ∧
+    (∀ h o, m.obj? h = some o → o.canonical = true →
+      m.canonicalOf o.node = some h ∧
+      (∃ n, db.P.get? o.node = some n ∧ o.hist = n.hist ∧ o.level = n.level ∧ o.isData = n.isData) ∧
+      o.pos = (db.S.lv o.node).map (·.recNo)) ∧
+    (∀ y, inD db.D y = true → (m.canonicalOf y).isSome) ∧
+    (∀ h o, m.obj? h = some o → o.canonical = false → ∃ r w, o.pos = some r ∧
+      db.S.versionAt r o.node = some w ∧ o.hist = w.hist ∧ o.level = w.level ∧ o.isData = w.isData) ∧
+    (∀ h o y h', m.obj? h = some o → o.slot? y = some (Slot.mem h') →
+      ∃ o', m.obj? h' = some o' ∧ o'.node = y) ∧
+    (∀ h o, m.obj? h = some o → o.canonical = true → written sp o.node = true →
+      (reachable sp db.P j o.node = true ∨ inD db.D o.node = true) →
+      ∀ y ∈ pointees sp o.hist, (o.slot? y).isSome ∧
+        m.refOf r.2.2 db.D o y = (db.S.lv y).map (·.recNo) ∧
+        (inD db.D y = true → (∃ h', o.slot? y = some (Slot.mem h') ∧ m.canonicalOf y = some h') ∨
+          (inD db.D o.node = true ∧ ∃ a b, (o.node, a) ∈ db.D ∧ (y, b) ∈ db.D ∧ a ≤ b))) := by
+  intro db r m
+  obtain ⟨k1, hk1, hS0, hrel, hm, -⟩ := evictInvR_all hok hph hev hj hmk j hjt
+  have hst : st sp al (ts.map (·.1)) j = db := by
+    show run sp al ((ts.map (·.1)).take j) = run sp al ((ts.take j).map (·.1))
+    rw [List.map_take]
+  have hst1 : st sp al (ts.map (·.1)) k1 = run sp al ((ts.take k1).map (·.1)) := by
+    show run sp al ((ts.map (·.1)).take k1) = run sp al ((ts.take k1).map (·.1))
+    rw [List.map_take]
+  rw [hst] at hrel hm
+  rw [hst1] at hS0 hm
+  rw [← hS0] at hm
+  obtain ⟨e1, e2, e3⟩ := hrel
+  exact ⟨e1, e2, e3, k1, hk1, hS0, hm.tc_facts⟩
+
+/-- T-READ with restarts (bergdb item 001, WP E5; docs/level4-alignment.md,
+5.13). In a run as in `T2_cache` (with restarts after any transactions), after
+any transaction and its cache operations or its restart, a read through the
+Level 4 loader (`Mem.read4`, with Rule R from the stream of the last startup)
+at any time t up to the last record gives P at t: it reaches exactly the nodes
+reachable at t, each with its node at t. With `TR_view`, which is the case
+without restarts, this is T-READ for every state a run with eviction can
+reach. -/
+theorem TR_view_restarts (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool × List CacheOp))
+    (hok : RunOK sp al (ts.map (·.1))) (hph : PhysRunOK sp al (ts.map (·.1)))
+    (hev : EvictRunOK sp al (ts.map (·.1))) (hj : al.stillDirty = javaTest sp)
+    (hmk : al.mark = true) (j : Nat) (hjt : j ≤ ts.length) (t : Time) (ht : t ≤ j) :
+    let db := run sp al ((ts.take j).map (·.1))
+    let r := runEvict sp al (ts.take j)
+    let m := r.2.1
+    (m.read4 sp r.2.2 db.S t).2.map (·.1) = reachList sp db.P t ∧
+      ∀ p ∈ (m.read4 sp r.2.2 db.S t).2, view sp db.P t p.1 = some p.2 := by
+  intro db r m
+  obtain ⟨k1, -, hS0, -, hm, hh⟩ := evictInvR_all hok hph hev hj hmk j hjt
+  have hst : st sp al (ts.map (·.1)) j = db := by
+    show run sp al ((ts.map (·.1)).take j) = run sp al ((ts.take j).map (·.1))
+    rw [List.map_take]
+  have hinv := inv_st sp al (ts.map (·.1)) hok (algOK_of sp al (Or.inl hj)) j (by rw [List.length_map]; exact hjt)
+  rw [hst] at hm hh hinv
+  rw [← hS0] at hm hh
+  exact read_list_view (hm.read4T_ok hinv hok.1.liveSub hh ht).2.2
 
 end SIS

@@ -74,16 +74,6 @@ theorem init_lazyStartup (sp : Spec V T) : lazyStartup sp (init sp).S = lazyBase
 
 theorem init_startup_D (sp : Spec V T) : (startup sp (init sp).S).D = [] := rfl
 
-theorem Mem.linkD_nil (m : Mem V) : m.linkD [] = m := by
-  unfold Mem.linkD
-  cases m with
-  | mk objs table s root next =>
-    simp only [Mem.mk.injEq, and_true]
-    conv => rhs; rw [← List.map_id objs]
-    apply List.map_congr_left
-    intro p _
-    simp [inD]
-
 theorem secStep_tblNodup (sp : Spec V T) (S : Stream V T) (m : Mem V) (x : NodeId)
     (h : (m.table.map (·.1)).Nodup) : ((secStep sp S m x).table.map (·.1)).Nodup := by
   unfold secStep
@@ -405,12 +395,248 @@ theorem einv_lazyBase (hsp : SpecOK sp) : EInv sp (init sp) (init sp).S 0 (lazyB
     unfold LiveInv
     exact ⟨fun hD => absurd hD (by rw [init_inD]; simp), fun _ => href⟩
 
+/-! ### Rule 4 keeps the invariant -/
+
+/-- A slot as rule 4 leaves it: a stream slot to a node with a canonical object
+becomes a memory slot to it. -/
+def linkSlot (m : Mem V) (q : NodeId × Slot) : NodeId × Slot :=
+  match q.2 with
+  | Slot.stream _ => match m.canonicalOf q.1 with
+    | some h0 => (q.1, Slot.mem h0)
+    | none => q
+  | _ => q
+
+/-- Object o at handle h as rule 4 leaves it. -/
+def linkObjD (m : Mem V) (D : Dirty) (h : Nat) (o : Obj V) : Obj V :=
+  if !(o.canonical && (inD D o.node || h == m.root)) then o else { o with slots := o.slots.map (linkSlot m) }
+
+theorem Mem.linkD_obj? (m : Mem V) (D : Dirty) (h : Nat) :
+    (m.linkD D).obj? h = (m.obj? h).map (linkObjD m D h) := by
+  have hf : (m.linkD D).objs = m.objs.map (fun p => (p.1, linkObjD m D p.1 p.2)) := by
+    unfold Mem.linkD linkObjD
+    apply List.map_congr_left
+    intro p _
+    cases (!(p.2.canonical && (inD D p.2.node || p.1 == m.root)))
+    · simp only [Bool.false_eq_true, ↓reduceIte]
+      rfl
+    · simp only [↓reduceIte]
+  unfold Mem.obj?
+  rw [hf]
+  exact lookup_map_key (fun p => (p.1, linkObjD m D p.1 p.2)) (fun _ => rfl) h m.objs
+
+theorem linkSlot_fst (m : Mem V) (q : NodeId × Slot) : (linkSlot m q).1 = q.1 := by
+  unfold linkSlot
+  split
+  · split <;> rfl
+  · rfl
+
+theorem linkObjD_core (m : Mem V) (D : Dirty) (h : Nat) (o : Obj V) : (linkObjD m D h o).core = o.core := by
+  unfold linkObjD
+  split <;> rfl
+
+theorem linkObjD_slot (m : Mem V) (D : Dirty) (h : Nat) (o : Obj V) (y : NodeId) :
+    (linkObjD m D h o).slot? y = o.slot? y ∨
+      ∃ sl h0, o.slot? y = some sl ∧ (linkObjD m D h o).slot? y = some (Slot.mem h0) ∧
+        m.canonicalOf y = some h0 := by
+  unfold linkObjD
+  split
+  · exact Or.inl rfl
+  · unfold Obj.slot?
+    simp only
+    rw [lookup_map_key (linkSlot m) (linkSlot_fst m) y o.slots]
+    cases hs : List.lookup y o.slots with
+    | none => exact Or.inl rfl
+    | some sl =>
+      simp only [Option.map_some]
+      unfold linkSlot
+      simp only
+      cases sl with
+      | stream r =>
+        simp only
+        cases hc : m.canonicalOf y with
+        | none => exact Or.inl rfl
+        | some h0 => exact Or.inr ⟨_, h0, rfl, rfl, rfl⟩
+      | mem h' => exact Or.inl rfl
+
+theorem Mem.linkD_table (m : Mem V) (D : Dirty) : (m.linkD D).table = m.table := rfl
+
+theorem Mem.linkD_keys (m : Mem V) (D : Dirty) : (m.linkD D).objs.map (·.1) = m.objs.map (·.1) := by
+  unfold Mem.linkD
+  simp only [List.map_map]
+  apply List.map_congr_left
+  intro p _
+  simp only [Function.comp]
+  split <;> rfl
+
+/-- The invariant survives a change of slots into memory slots to the pointees'
+canonical objects, the objects' cores, the node table and the rest staying. -/
+theorem EInv.relink {sp : Spec V T} {db : DB V T} {S0 : Stream V T} {k : Nat} {m m' : Mem V}
+    (hm : EInv sp db S0 k m) (hfw : ∀ h o, m.obj? h = some o → ∃ o', m'.obj? h = some o')
+    (hbk : ∀ h o', m'.obj? h = some o' → ∃ o, m.obj? h = some o ∧ o'.core = o.core ∧
+      ∀ y, o'.slot? y = o.slot? y ∨ ∃ sl h0, o.slot? y = some sl ∧ o'.slot? y = some (Slot.mem h0) ∧
+        m.canonicalOf y = some h0)
+    (htab : m'.table = m.table) (hs : m'.s = m.s) (hroot : m'.root = m.root) (hnext : m'.next = m.next)
+    (hnd : (m'.objs.map (·.1)).Nodup) : EInv sp db S0 k m' := by
+  -- The cores, and the canonical objects, are m's.
+  have hcore : ∀ h, (m'.obj? h).map Obj.core = (m.obj? h).map Obj.core := by
+    intro h
+    cases ho' : m'.obj? h with
+    | none =>
+      cases ho : m.obj? h with
+      | none => rfl
+      | some o => obtain ⟨o', ho''⟩ := hfw h o ho; rw [ho'] at ho''; cases ho''
+    | some o' =>
+      obtain ⟨o, ho, hc, -⟩ := hbk h o' ho'
+      rw [ho]; simp [hc]
+  have htabOf : ∀ y, m'.tableOf y = m.tableOf y := by intro y; unfold Mem.tableOf; rw [htab]
+  have hcan : ∀ y, m'.canonicalOf y = m.canonicalOf y := by
+    intro y
+    unfold Mem.canonicalOf
+    rw [htabOf]
+    cases m.tableOf y with
+    | none => rfl
+    | some h =>
+      simp only
+      have := hcore h
+      cases ho : m.obj? h with
+      | none =>
+        cases ho' : m'.obj? h with
+        | none => rfl
+        | some o' => rw [ho, ho'] at this; cases this
+      | some o =>
+        cases ho' : m'.obj? h with
+        | none => rw [ho, ho'] at this; cases this
+        | some o' =>
+          rw [ho, ho'] at this
+          simp only [Option.map_some, Option.some.injEq] at this
+          have : o'.canonical = o.canonical := congrArg (fun c => c.2.2.2.2.1) this
+          simp only [this]
+  have hce : m.CoreEq m' := ⟨hcore, hcan, hs⟩
+  -- The slots of m' that differ name canonical objects, at the latest version.
+  have hnew : ∀ {h0 : Nat} {y : NodeId} {o : Obj V}, m.canonicalOf y = some h0 →
+      (SlotInv S0 db m' o y (Slot.mem h0) ∧ LiveInv S0 db m' y (Slot.mem h0)) ∧
+        ∃ o0, m'.obj? h0 = some o0 ∧ o0.node = y ∧ o0.canonical = true := by
+    intro h0 y o hc
+    obtain ⟨o0, ho0, hc0, hn0⟩ := hm.obj_of_canonicalOf hc
+    have hpos := hm.pos.lv0 hc ho0
+    obtain ⟨o0', ho0', e1, -, -, -, e5, e6⟩ := hce.obj ho0
+    have hc' : m'.canonicalOf y = some h0 := by rw [hcan]; exact hc
+    refine ⟨⟨⟨fun _ => ?_, fun _ => Or.inl ⟨h0, rfl, hc'⟩⟩, fun _ => ⟨h0, rfl, hc'⟩, fun _ => ?_⟩,
+      o0', ho0', by rw [e1, hn0], by rw [e5, hc0]⟩
+    · simp only [slotRefOf, ho0', Option.bind_some]; rw [e6]; exact hpos
+    · simp only [slotRefOf, ho0', Option.bind_some]; rw [e6]; exact hpos
+  have hbk' : ∀ h o', m'.obj? h = some o' → ∃ o, m.obj? h = some o ∧ o'.node = o.node ∧
+      o'.level = o.level ∧ o'.isData = o.isData ∧ o'.hist = o.hist ∧ o'.canonical = o.canonical ∧
+      o'.pos = o.pos ∧ ∀ y, o'.slot? y = o.slot? y ∨ ∃ sl h0, o.slot? y = some sl ∧
+        o'.slot? y = some (Slot.mem h0) ∧ m.canonicalOf y = some h0 := by
+    intro h o' ho'
+    obtain ⟨o, ho, hc, hsl⟩ := hbk h o' ho'
+    simp only [Obj.core, Prod.mk.injEq] at hc
+    exact ⟨o, ho, hc.1, hc.2.1, hc.2.2.1, hc.2.2.2.1, hc.2.2.2.2.1, hc.2.2.2.2.2, hsl⟩
+  refine ⟨hm.len, hm.pre, by rw [hs]; exact hm.sEq, fun h hh => ?_, hnd, ?_, by rw [htab]; exact hm.tblNodup,
+    ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · cases ho' : m'.obj? h with
+    | none => rfl
+    | some o' =>
+      obtain ⟨o, ho, -⟩ := hbk h o' ho'
+      rw [hm.fresh h (by rw [← hnext]; exact hh)] at ho; cases ho
+  · obtain ⟨o, ho, hc, hn⟩ := hm.root
+    obtain ⟨o', ho', e1, -, -, -, e5, -⟩ := hce.obj ho
+    exact ⟨o', by rw [hroot]; exact ho', by rw [e5, hc], by rw [e1, hn]⟩
+  · intro y h ht
+    rw [htabOf] at ht
+    obtain ⟨o, ho, hn⟩ := hm.tbl y h ht
+    obtain ⟨o', ho', e1, -⟩ := hce.obj ho
+    exact ⟨o', ho', by rw [e1, hn]⟩
+  · intro h o' ho' y h' hsl
+    obtain ⟨o, ho, -, -, -, -, -, -, hsl'⟩ := hbk' h o' ho'
+    rcases hsl' y with he | ⟨sl, h0, -, hs0, hc⟩
+    · rw [he] at hsl
+      obtain ⟨o2, ho2, hn2⟩ := hm.slotsNode h o ho y h' hsl
+      obtain ⟨o2', ho2', e1, -⟩ := hce.obj ho2
+      exact ⟨o2', ho2', by rw [e1, hn2]⟩
+    · rw [hs0, Option.some.injEq, Slot.mem.injEq] at hsl
+      subst hsl
+      obtain ⟨-, o0, ho0, hn0, -⟩ := hnew (o := o) hc
+      exact ⟨o0, ho0, hn0⟩
+  · intro y h ht
+    rw [htabOf] at ht
+    obtain ⟨o, ho, hc⟩ := hm.tblCanon y h ht
+    obtain ⟨o', ho', -, -, -, -, e5, -⟩ := hce.obj ho
+    exact ⟨o', ho', by rw [e5, hc]⟩
+  · intro h o' ho' hc
+    obtain ⟨o, ho, e1, -, -, -, e5, -⟩ := hbk' h o' ho'
+    rw [htabOf, e1]
+    exact hm.canonTbl h o ho (by rw [← e5]; exact hc)
+  · intro h o' ho' hc
+    obtain ⟨o, ho, e1, e2, e3, e4, e5, -⟩ := hbk' h o' ho'
+    rw [e1, e2, e3, e4]
+    exact hm.cc h o ho (by rw [← e5]; exact hc)
+  · intro z h o' hz ho'
+    obtain ⟨o, ho, -, -, -, -, -, e6, -⟩ := hbk' h o' ho'
+    rw [hcan] at hz
+    rw [e6]
+    exact hm.pos z h o hz ho
+  · intro y hy
+    rw [hcan]; exact hm.dCanon y hy
+  · intro h o' ho' hc
+    obtain ⟨o, ho, e1, e2, e3, e4, e5, e6, hsl⟩ := hbk' h o' ho'
+    have hc0 : o.canonical = false := by rw [← e5]; exact hc
+    obtain ⟨r, w, h1, h2, h3, h4, h5, h6, h7⟩ := hm.snap h o ho hc0
+    refine ⟨r, w, by rw [e6]; exact h1, by rw [e1]; exact h2, by rw [e4]; exact h3, by rw [e2]; exact h4,
+      by rw [e3]; exact h5, fun y hy => ?_, fun y sl hy => ?_⟩
+    · rcases hsl y with he | ⟨sl, h0, -, hs0, -⟩
+      · rw [he]; exact h6 y (by rw [← e4]; exact hy)
+      · rw [hs0]; rfl
+    · rcases hsl y with he | ⟨sl0, h0, -, hs0, hc'⟩
+      · rw [he] at hy
+        exact (h7 y sl hy).congr hce
+      · rw [hs0, Option.some.injEq] at hy
+        subst hy
+        obtain ⟨-, o0, ho0, hn0, hc00⟩ := hnew (o := o) hc'
+        exact Or.inr (Or.inr ⟨h0, o0, rfl, ho0, hn0, Or.inl hc00⟩)
+  · intro h o' ho' hr y hy
+    obtain ⟨o, ho, e1, -, -, e4, e5, -, hsl⟩ := hbk' h o' ho'
+    obtain ⟨hrc, hrw, hrr⟩ := hr
+    obtain ⟨sl, hsl0, hi⟩ := hm.slots h o ho ⟨by rw [← e5]; exact hrc, by rw [← e1]; exact hrw,
+      by rw [← e1]; exact hrr⟩ y (by rw [← e4]; exact hy)
+    rcases hsl y with he | ⟨sl', h0, -, hs0, hc'⟩
+    · refine ⟨sl, by rw [he]; exact hsl0, ?_⟩
+      have := hi.congr hce
+      unfold SlotInv at this ⊢
+      rw [e1]; exact this
+    · exact ⟨Slot.mem h0, hs0, (hnew (o := o') hc').1.1⟩
+  · intro h o' ho' hc hr y hy
+    obtain ⟨o, ho, e1, -, -, e4, e5, -, hsl⟩ := hbk' h o' ho'
+    obtain ⟨sl, hsl0, hi⟩ := hm.live h o ho (by rw [← e5]; exact hc) (by rw [← e1]; exact hr) y
+      (by rw [← e4]; exact hy)
+    rcases hsl y with he | ⟨sl', h0, -, hs0, hc'⟩
+    · exact ⟨sl, by rw [he]; exact hsl0, hi.congr hce⟩
+    · exact ⟨Slot.mem h0, hs0, (hnew (o := o') hc').1.2⟩
+
+/-- Rule 4 keeps the invariant. -/
+theorem EInv.linkD {sp : Spec V T} {db : DB V T} {S0 : Stream V T} {k : Nat} {m : Mem V}
+    (hm : EInv sp db S0 k m) (D : Dirty) : EInv sp db S0 k (m.linkD D) := by
+  apply hm.relink
+  · intro h o ho
+    exact ⟨_, by rw [Mem.linkD_obj?, ho]; rfl⟩
+  · intro h o' ho'
+    rw [Mem.linkD_obj?] at ho'
+    obtain ⟨o, ho, rfl⟩ := Option.map_eq_some_iff.mp ho'
+    exact ⟨o, ho, linkObjD_core m D h o, linkObjD_slot m D h o⟩
+  · rfl
+  · rfl
+  · rfl
+  · rfl
+  · rw [Mem.linkD_keys]; exact hm.objNodup
+
 /-- The Level 4 startup from R(0) gives a memory with the invariant. -/
 theorem einv_init (hsp : SpecOK sp) : EInv sp (init sp) (init sp).S 0 (evictStartup sp (init sp).S) := by
   have h0 := einv_lazyBase hsp
-  have he : evictStartup sp (init sp).S = (lazyBase sp (init sp).S).sectionPos (init sp).S := by
+  have he : evictStartup sp (init sp).S =
+      ((lazyBase sp (init sp).S).sectionPos (init sp).S).linkD (init sp).D := by
     unfold evictStartup
-    rw [init_lazyStartup, init_startup_D, Mem.linkD_nil]
+    rw [init_lazyStartup, init_startup_D]; rfl
   rw [he]
   have hs : (lazyBase sp (init sp).S).Same ((lazyBase sp (init sp).S).sectionPos (init sp).S) := by
     apply Mem.sectionPos_same
@@ -418,7 +644,7 @@ theorem einv_init (hsp : SpecOK sp) : EInv sp (init sp) (init sp).S 0 (evictStar
     rw [h0.sEq, init_lastSp, init_newest] at hw
     rw [h0.pos.lv0 (h0.canonicalOf_of ho hc) ho, hw]
     rfl
-  exact h0.same hs h0.tblNodup (by rw [Mem.sectionPos_keys]; exact h0.objNodup)
+  exact (h0.same hs h0.tblNodup (by rw [Mem.sectionPos_keys]; exact h0.objNodup)).linkD _
 
 end Init
 

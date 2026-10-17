@@ -100,7 +100,9 @@ Current state
 * Commits of this run (Q2 (b)): see the log entries.
 * Uncommitted work of this plan in bergdb: the files of the WPs in progress,
   named in the last log entry.
-* Long jobs running: none.
+* Long jobs running: the Lean tier of the A-COPY check on the large trace
+  set (`copyFailures`, the entry of 2026-10-17 03:27; started 03:41, in the
+  background, at low priority; 7 of its 12 traces done by 05:07, no failure).
 * Stage 2's time box (plan, 5.3): started with E1 at 2026-10-16 23:14;
   60 hours, so it ends at 2026-10-19 11:14.
 * Preserved builds: `l34-base` (A1; `java/build/perf/builds/l34-base/`,
@@ -128,7 +130,7 @@ Status
 | E2 | The physical model with eviction, executable | done | 2026-10-17 |
 | E3 | INV-SLOT and the physical writer: T-CACHE | done | 2026-10-17 |
 | E4 | Reads under eviction: T-READ | done | 2026-10-17 |
-| E5 | Restarts with eviction: T2-C | not started | — |
+| E5 | Restarts with eviction: T2-C | done | 2026-10-17 |
 | E6 | Pins and index-freedom | not started | — |
 | E7 | The Java change list; the K1 review | not started | — |
 | R1 | α and the register for reclaim | done | 2026-10-16 |
@@ -1671,3 +1673,103 @@ holds on every Java transaction checked, and only A6 fails (A4). K1 still
 needs your decision on A6' in place of A6.
 
 Open, next: E5.
+
+
+### 2026-10-17 03:44 to 05:09. WP E5, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `73320ec`
+(A-COPY on Java); uncommitted before this WP's commit: its files, below. The
+design and the first probe ran while the A-COPY checks did (03:44 to 03:59).
+
+Did:
+
+1. T2-C, stated in the trusted `lean/SIS/PhysTheorems.lean` as `T2_cache`:
+   in the runs of `TC_records` (BergDB's algorithm with marking, the
+   assumptions, those of the physical layer and of stage 2, the Level 4
+   startup from R(0), any cache schedule), now with restarts after any
+   transactions (`runEvict`: the logical startup and the Level 4 startup,
+   both from the stream), after every transaction and its cache operations
+   or its restart: the stream and D are the run's without restarts, so
+   restarts change no record; P has the run's nodes; and the memory meets
+   the invariants of `TC_records` (INV-CAN, INV-SNAP, no dangling slot,
+   INV-SLOT) for the stream of the last startup, after some earlier
+   transaction k1. Right after a restart they are the startup memory's: the
+   plan's "the physical state after startup has INV-SLOT".
+2. T-READ with restarts, `TR_view_restarts` (same file): in the same runs, a
+   read through the Level 4 loader at any time up to the last record gives
+   P at that time. Not in E5's statement, but T-READ's (plan, 1.4) is "for
+   any reachable cache state", and `TR_view` (E4) covers the runs without
+   restarts only; with this, every state a run with eviction reaches.
+3. The proofs, `lean/SIS/Proof/EvictRerun.lean` and `EvictRestart.lean`
+   (new, about 1,800 lines), and the lemmas of rule 4 in `EvictInit.lean`
+   (`EInv.linkD`, which `einv_init` now uses too). The startup's rerun keeps
+   `RInv` (every object canonical; every stream slot names, after Rule R of
+   the section, its pointee's latest version; a slot for each pointee); the
+   positions and rule 4 then give E3's invariant and E4's invariant for
+   reads at earlier times (`einv_hinv_startup`); the physical writer depends
+   on P only through its nodes (`evictTrans_congr`), so the transactions
+   after a restart, from the logical startup's state, append the run's
+   records; the run, by induction with the last restart (`evictInvR_all`).
+   Outline in `level4-alignment.md`, 5.13 (new).
+4. A change to the trusted part, under M44 (rule 4, "model and code"): rule
+   4 (`Mem.linkD`) links the root's object's slots too, so the whole pinned
+   set. The invariant needs a current canonical object's live slot to a node
+   of D to be a memory slot to its canonical object; rule 4 gives it for
+   D's objects, and a virtual root's object is never in D. The rerun leaves
+   that slot a memory slot in every startup of the examples (probe 12,
+   below), but a proof of that would follow the virtual root's slots
+   through the rerun. Java does the same already: its virtual root's one
+   slot, `TopDs.superRoot`, is a memory reference to the super root's
+   canonical object. No record changes. `lean/README.md` lists it under
+   "Changes to the trusted part". `lake exe phystest 20 40 evict` passed
+   with the change (04:00 to 04:03), before the proof relied on it.
+5. Checked by running before the proof. Probe 11 (03:46 to 03:48, scratch):
+   after every transaction of 24 random runs of 40 transactions (examples 3
+   and 5, 8 seeds each; example 2 with two of its algorithms, 4 seeds each),
+   the startup from the stream, at every step of its rerun: every object
+   canonical, every stream slot names its pointee's latest version after
+   Rule R, every memory slot a canonical object of its pointee, and after
+   the positions every canonical object is at its node's latest record. No
+   failure. Rule R is needed for it: in each run of examples 3 and 5, 7 to
+   39 references of section versions name an older version than the
+   pointee's latest, before Rule R. Probe 12 (04:41): after the rerun and the
+   positions, before rule 4, the root's live slots to nodes of D: 623 in the
+   656 startups of examples 3 and 5, none a stream slot. T-READ with
+   restarts: E2's runs check reads at three times after every transaction,
+   with restarts, and E3's probe checked `HInv` after every operation with
+   restarts.
+6. `lean/README.md`: the files, the statements, the axioms list, the
+   trusted change, the history; its "Not done" list lost the A-COPY check
+   (done in the previous entry). `docs/level4-alignment.md`: the status
+   line, 5.1 and 5.2 (rule 4), 5.6 (T2-C and T-READ with restarts proved),
+   5.7 (item 4), 5.11, 5.13 (new), M20 and M44.
+
+Files changed: `lean/SIS/Evict.lean` (trusted: rule 4),
+`lean/SIS/PhysTheorems.lean` (trusted: two statements);
+`lean/SIS/Proof/EvictInit.lean`; `lean/SIS/Proof/EvictRerun.lean`,
+`EvictRestart.lean` (new); `lean/README.md`; `docs/level4-alignment.md`;
+this file.
+
+Checks (plan, 2.2), on a clean copy (bergdb's `lean/` at `73320ec` with this
+WP's 5 files), 04:50 to 05:06: `lake build` exit 0, no warnings (the two new
+files elaborated alone too, in scratch: no message); `lake exe sistest 20
+40`: all checks pass (04:57); `lake exe phystest 20 40`: all checks pass
+(05:06); `#print axioms` of the theorem list with `T2_cache` and
+`TR_view_restarts`: standard axioms only; no `sorry`, `admit`, `axiom` or
+`unsafe` in `SIS/` and `Check/`; `sh test-traces/run.sh`: TRACE TESTS OK.
+The documents' links resolve. No Java change, so no gate.
+
+Register: M44 (rule 4 extended to the root's object; proved with restarts,
+`T2_cache`); M20 (its status: E4, E5).
+
+Time: E5 is M (2 to 8 hours): about 1 hour 25 minutes.
+
+Notes for Frans: E5 changed the trusted model once: rule 4 now links the
+root's object as well as D's (M44, 5.13). It asks nothing of Java and
+changes no record; please look at it at K1. With E5, T-CACHE, T-READ and
+T2-C are proved for runs with eviction, any cache schedules and restarts;
+of stage 2's theorems T-PIN (E6) remains.
+
+Open, next: E6 (T-PIN, T-INDEX), whose design and first probe ran during
+these checks (the next entry); the A-COPY Lean tier on the large set still
+runs (current state).

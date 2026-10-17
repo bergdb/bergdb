@@ -6,10 +6,11 @@ Work package A2 and later of bergdb item 001
 Source commit `75d3c2d`; line numbers below are at that commit, in
 `java/src/bergdb/`.
 
-Status, 2026-10-16: A2's draft. The scope (section 1), a first α for the
-cache (section 2) and the register (section 3), checked against the code;
-the probes of A4 (section 4); the design of E1 (section 5). To come: what
-Java must do (E7, section 6) and the outcome (F2).
+Status, 2026-10-17: the scope (section 1), a first α for the cache (section
+2) and the register (section 3), checked against the code (A2); the probes
+of A4 and the A-COPY checks (section 4); the design of E1, and what E2 to
+E5 ran and proved (section 5). To come: what Java must do (E7, section 6)
+and the outcome (F2).
 
 Level 4 is eviction: data and index larger than memory, under a memory
 budget, with readers, reclaim, crashes and restarts. The plan of item 001
@@ -181,7 +182,7 @@ level2-alignment.md's register, where stage 1 closes them.
 
 | | Mismatch or open question | Java | Model | Proposed resolution | Stage, WP, status |
 |---|---|---|---|---|---|
-| M20 | With eviction, the writer cannot find lv(y) for a dead pointer without a table of all nodes (reference-theory.md, 5.1; `lean/References/SISCase.lean`). Today it finds y's canonical object by id in the node table, which holds every node (M26) | `NodeCollection.resolvePointers` (292), lines 317 to 333; `Cache3.getNode` (198) | `mkVersion` (`S.lv`) | Option K: A6 and INV-SLOT, references from slots and the pinned set (plan, 8.5); fallback Option F (K1) | 2: A4, E1 (designed: 5.4), E2 (run), E3 (proved without restarts: `TC_records`, 5.11), E4 to E6; K1; o |
+| M20 | With eviction, the writer cannot find lv(y) for a dead pointer without a table of all nodes (reference-theory.md, 5.1; `lean/References/SISCase.lean`). Today it finds y's canonical object by id in the node table, which holds every node (M26) | `NodeCollection.resolvePointers` (292), lines 317 to 333; `Cache3.getNode` (198) | `mkVersion` (`S.lv`) | Option K: A6 and INV-SLOT, references from slots and the pinned set (plan, 8.5); fallback Option F (K1) | 2: A4, E1 (designed: 5.4), E2 (run), E3 (proved without restarts: `TC_records`, 5.11), E4 (`TR_view`, 5.12), E5 (with restarts: `T2_cache`, 5.13), E6; K1; o |
 | M21 | `resolvePointers` may take a newer snapshot from the node table (`usable`: canonical, or `getSpos() >= ref`), so the reference written can depend on what readers left in the table (level4-plan.md, 2.1, second case). Confirmed: lines 324 to 330. Readers include the writer's own warm-up reads (2.5) | `NodeCollection.resolvePointers` (292) | — | Code: resolve by id against the pinned set, Rule R and the slot; no window (E1, 5.2 and 5.4); INV-SLOT says the result is lv(y) | 2, 3: E1 (designed), E3 (the model's writer proved, 5.11), R8; o |
 | M22 | A runtime first touch of a key node version in the startup section is cut back to the startup time (line 228; level4-plan.md, 2.1, first case). Not reachable today: every index node with a version in the section has a canonical object from startup on (`registerSectionNodes` for the nodes of R(s), the rerun's `nodeCreated` for the others), so step 3 of `followStreamPointer` finds it. Reachable once canonical objects can be released | `NodeCollection.followStreamPointer` (184), lines 228 to 231; `KeyNode.toPreviousState` (893) | — | Code: cut back only during reconstruction (startup), never at runtime (E1, 5.2: the Level 4 loader) | 3: E1 (designed), R8; o |
 | M23 | A memory slot keeps access data in its position field, so the slot's position is lost while the slot is a memory slot (`setPointer(i, node, accessData)` at every swizzle) | `KeyNode.pos` (field, line 72), `setPointerAccessData` (240); `TopNode.pointersPos`, `rootPointerPos` (lines 18, 28), `setPointerAccessData` (303); `NodeCollection.followStreamPointer`, line 240; `AccessData` | — | Code: unswizzling writes the target's position; the access clock kept apart from the position, or updated only under the slot's lock with a recheck | 3, 4: R8, J1; o |
@@ -196,7 +197,7 @@ level2-alignment.md's register, where stage 1 closes them.
 | M39 | Eviction beside concurrent readers | `NodeCollection.followPointer` (93) takes the slot's lock (`PointerLocks`, 128 stripes) on every follow | — (sequential) | Java protocol (Q8) and its tests | 4: J5; o |
 | M40 | Memory accounting is not implemented: `Cache3.totalSize` and `putSize` are set once and never advanced; access data is `-putSize`, the constant -10,000 | `Cache3` fields (lines 25, 26); `Db.getAccessData` (1605); `Cache3.setSizeIndicator`, called from the `Db` constructor (line 173), stores the budget and nothing reads it | — | Code | 4: J1, J7; o |
 | M43 | Option K relies on A6 (no adoption) and TREE (one current parent), which the model does not assume today. A4: TREE holds on every transaction checked; A6 fails in 5 of 68,901 Java-tier transactions (an in-place split of a new segment root), and the weaker A6' holds in all (section 4). By the code: a split makes new nodes and the replaced node stops being current (`timeSplit`, `spaceSplit`), or changes in place a node of the same transaction (`timeSplitInPlace`, `spaceSplitInPlace`); a new top node's skip slots point to older top nodes, which are not current; no path moves a child from one current node to another | `Dag.handleFullNode` (780) and the splits (821, 841, 894, 955); `TopDs.newSuperRoot` (42) | `StepOK` | Checked on Java (A4: TREE, A6'); E1: the model assumes TREE and A6' (not A6), in `EvictStep` (5.5); E3: also A-COPY for a transaction's new pointers (`CopyStep`, 5.10); E3's proof uses all three (5.11) | 2: A4 done, E1 done (A6'), E2 checked TREE, A6' and A-COPY by running, E3 proved T-CACHE from them; A-COPY checked on Java (section 4: no failure); o |
-| M44 | After a restart, a node of D can hold a stream slot to a node of D that is written before it; today the node table gives the newer version, with eviction nothing does (plan, 8.5, the gap) | `DbStarter.canonicalNode` (451); `NodeCollection.resolvePointers` (292) | — | Model and code: E1 chose startup linking by id (rule 4, 5.4), which gives today's records; the window is the fallback | 2, 3: E1 (designed), R8; o |
+| M44 | After a restart, a node of D can hold a stream slot to a node of D that is written before it; today the node table gives the newer version, with eviction nothing does (plan, 8.5, the gap) | `DbStarter.canonicalNode` (451); `NodeCollection.resolvePointers` (292) | — | Model and code: E1 chose startup linking by id (rule 4, 5.4), which gives today's records; E5 extended it to the root's object, which Java's `TopDs` holds by reference already (5.13); the window is the fallback | 2, 3: E1 (designed), E5 (proved with restarts: `T2_cache`, 5.13), R8; o |
 | M45 | **New (A2).** The public API's cache size is computed in `int`: `this.cacheSizeInMb * 1000000` overflows for more than 2,147 MB. The default is a fifth of the JVM's maximum heap, so it overflows with heaps above about 10.7 GB. With `-ea` the `Db` constructor then fails (`Cache3.setSizeIndicator` asserts a positive size); without it, the budget becomes 4 MB. No effect today, since nothing reads the budget (M40); J7 makes it the budget | `pubimp/DatabaseBuilderImp.start`, line 173; `Cache3.setSizeIndicator` (50) | — | Code fix (widen to `long`), with a test, before J7 relies on it | 4: J7; o |
 | M46 | **New (A2, from review-13-claude, 3).** Top node ordinals are bounded by `MAX_TOP_NODE_ID_VALUE`, 2^30 − 1, over the database's whole life; reclaim bounds the stream but not the ordinals. With one hot key (about 15 transactions per top) that is about 186 days at 1,000 transactions per second. At the bound, `TopNode.height` throws from the constructor in `newSuperRoot`, in the middle of a root split, after the Dag has made the new root | `TopNode.height`, `MAX_TOP_NODE_ID_VALUE` (lines 105 to 125); `TopDs.newSuperRoot` (42) | `Spec.topLevel`, levels (level2-alignment.md, 8.4) | Frans: a wider ordinal (the header has 48 bits for it) or a clean refusal before the transaction changes anything. Not urgent | —; o |
 
@@ -310,8 +311,9 @@ level2-alignment.md, 13.1) with eviction, and settles the reference rule
   pointer to a node with a resident canonical object is a memory slot to it;
   (3) a memory slot is unswizzled only when its target is clean, unpinned and
   written, and becomes a stream slot naming the target's position; (4) after
-  startup, every stream slot of an object of D's nodes that names a node
-  with a canonical object becomes a memory slot to it.
+  startup, every stream slot of an object of D's nodes (and, since E5, of
+  the root's object; 5.13) that names a node with a canonical object becomes
+  a memory slot to it.
 * **Assumptions**: TREE (one current parent) and **A6'** (no adoption, the
   weaker form that A4 found to hold on Java where A6 fails in 5 of 68,901
   transactions), per transaction, in a structure of their own beside
@@ -383,9 +385,10 @@ and a policy for the loader.
   model's `javaTest`, and Java's `hasDirtyChild` after `resolvePointers`
   made a memory slot to every pinned pointee (level2-alignment.md, 7.1).
 * **Startup**, as stage 1 (`lazyStartup`), with rule 4 at the end: each
-  stream slot of a canonical object of a node of D that names a node with a
-  canonical object becomes a memory slot to it (Java's
-  `createMemoryPointers` links by exact position; rule 4 links by id).
+  stream slot of a pinned object (a canonical object of a node of D, or the
+  root's object, since E5: 5.13) that names a node with a canonical object
+  becomes a memory slot to it (Java's `createMemoryPointers` links by exact
+  position; rule 4 links by id).
   Reconstruction keeps its cut-back to the startup time (`canonOfVersion`);
   only runtime loads lose it.
 * **Reads**, as stage 1 (`Mem.readAt`), through the Level 4 loader.
@@ -548,14 +551,17 @@ For runs that meet the Level 2 assumptions (`RunOK`), the physical layer's
   physical writer appends exactly the model's record R(i) and leaves the
   model's D; INV-CAN, INV-SNAP and INV-SLOT hold after every operation.
   Proved (E3, 2026-10-17) for runs from the startup from R(0) without
-  restarts (5.11); restarts are T2-C's.
+  restarts (5.11); restarts are T2-C's (5.13).
 * **T-READ** (`TR_view`, E4). In every state reachable as above, a physical
   read at any time up to the last record gives P at that time: every node
   reached, with its content then. Proved (E4, 2026-10-17) for the runs of
-  T-CACHE (5.12).
+  T-CACHE (5.12), and with restarts (E5, `TR_view_restarts`, 5.13).
 * **T2-C** (`T2_cache`, E5). A run with restarts, lazy startups (with rule 4)
   and any cache schedules appends the same records as the logical run; after
-  each startup the invariants hold again.
+  each startup the invariants hold again. Proved (E5, 2026-10-17; 5.13):
+  after every transaction and its cache operations or its restart, the
+  records and D are the run's, P has the run's nodes, and the invariants of
+  T-CACHE hold for the stream of the last startup.
 * **T-PIN** (`TP_pins`, E6). Every eligible object may be released at any
   transaction boundary (after its incoming memory slots are unswizzled), and
   the theorems above still hold: the pinned set is what must stay.
@@ -581,7 +587,10 @@ against `l34-base`) and the J WPs (eviction):
    exporter (C-P) on runs with root splits after restarts while older tops
    are in D, and change the copy only if the check fails. R8 or J3.
 4. **Startup** (`DbStarter`): link D's objects by id (rule 4, M44), not only
-   by exact position (`createMemoryPointers`). R8.
+   by exact position (`createMemoryPointers`). R8. Rule 4 also links the
+   root's object (E5, 5.13), which asks nothing of Java: its virtual root's
+   one slot, `TopDs.superRoot`, is a memory reference to the super root's
+   canonical object.
 5. **Unswizzle** writes the target's position into the slot, under the slot's
    lock, after rechecking that the target is clean, unpinned and written
    (M23, M24, Q8). The access clock moves out of the position field (M23,
@@ -730,9 +739,8 @@ The proof keeps one invariant, `EInv` (5.10), through every operation:
 4. The startup from R(0) gives the invariant (`einv_init`): D is empty, and
    every slot names its pointee's latest version.
 
-Not covered yet: restarts (E5: the invariant after a startup from any
-stream, where D is not empty and rule 4 links D's objects), reads at earlier
-times (T-READ, E4; 5.12), and Java (the J WPs).
+Not covered by E3: restarts (T2-C, E5; 5.13), reads at earlier times
+(T-READ, E4; 5.12), and Java (the J WPs).
 
 ### 5.12 E4: T-READ, proved
 
@@ -775,6 +783,98 @@ INV-SLOT's live part gives `HInv`. A probe checked `HInv` by running before
 the proof (the E3 entry in the progress log). The read then goes as stage 1's
 (T1-L): every object it reaches is canonical, or the snapshot of a version
 good for t.
+
+### 5.13 E5: T2-C, proved
+
+`T2_cache` (`lean/SIS/PhysTheorems.lean`, WP E5, 2026-10-17) is T-CACHE with
+restarts. In a run as in 5.11 (BergDB's algorithm with marking, the
+assumptions, those of the physical layer and of stage 2, the Level 4 startup
+from R(0), any cache schedule), now with restarts after any transactions
+(`runEvict`: the logical startup for ⟨P, D, S⟩ and the Level 4 startup,
+`evictStartup`, for the memory, both from the stream), after every
+transaction and its cache operations or its restart:
+
+* the stream and D are the run's without restarts, so restarts change no
+  record; P has the run's nodes;
+* the memory meets the invariants of 5.11 (INV-CAN, INV-SNAP, no dangling
+  slot, INV-SLOT) for the startup it last made, from the run's stream after
+  some earlier transaction k1, with Rule R of that stream's section. Right
+  after a restart (k1 = j) they are the invariants of the startup's memory.
+
+`TR_view_restarts` (the same file and WP) is T-READ for the same runs: a read
+through the Level 4 loader, with Rule R from the stream of the last startup,
+at any time up to the last record gives P at that time. With `TR_view`, T-READ
+then holds in every state that a run with eviction reaches.
+
+Only Lean's standard axioms; the proofs are in
+`lean/SIS/Proof/EvictRerun.lean` and `EvictRestart.lean` (about 1,800
+lines), with the lemmas of rule 4 in `EvictInit.lean`.
+
+1. **The rerun** (`rinv_lazyStartup`). The startup from the stream after
+   T(k) is stage 1's (`lazyStartup`): the objects of the section's start,
+   then the rerun of the section's transactions, which keeps stage 1's
+   invariant (`MemInv`, `lazy_ok`). It also keeps `RInv`: every object is
+   canonical; every stream slot names, after Rule R of the section, its
+   pointee's latest version at k; every memory slot names an object of its
+   pointee; every object has a slot for each pointee of its history. A
+   stream slot comes from a version: a version of the section names the
+   latest version before it, which Rule R moves to the newest in the section;
+   a latest version written before the section, of a node current and clean
+   at the section's start, names latest versions already (`EvLogic`'s clean
+   nodes). A new pointer of the rerun gets a memory slot to its pointee's
+   canonical object, or a copy of a slot of a node that the rerun's writer
+   reached (A-COPY). The node table has no repeated keys.
+2. **Positions and rule 4** (`einv_hinv_startup`). The startup then gives each
+   canonical object its node's newest record in the section as its position
+   (`Mem.sectionPos`), or keeps the one it has (`RInv`: the latest record),
+   and rule 4 links the pinned objects. Every node of D has a canonical
+   object (it got dirty in the section, which the startup covers). The
+   invariant of 5.11 then holds at k: INV-SLOT's first half by `RInv`; its
+   second half because a slot of a relevant object to a node of D is a
+   memory slot to the canonical object: the object is pinned (of a node of
+   D, or the root's), or of a node current, written and not in D, which has
+   no pointee in D (`EvLogic`). So for a current canonical object's live
+   slot to a node of D: its object is in D (D is closed upward), or is the
+   root's. And E4's invariant for reads at earlier times (`HInv`, 5.12)
+   holds at k: a memory slot names a canonical object; a stream slot names
+   its pointee's latest version, which is good at every time t at which the
+   pointee is a live child: the pointee is clean (INV-2), or it is in D and
+   then the slot's object is not pinned, so its node is clean too, and its
+   latest version names a version of the pointee good for t, which lemma M
+   carries to the latest.
+3. **Transactions from the logical startup's state** (`evictTrans_congr`).
+   After a restart the logical state is the logical startup's, with the
+   run's stream and D and the run's nodes (T1, `T1_strong`), but not the
+   run's structure as a term. The physical writer depends on P only through
+   its nodes, as the logical step does (stage 1's T2, `step_congr`), so it
+   appends the same record and leaves the same D and the same memory.
+4. **The run** (`evictInvR_all`), by induction over the transactions with the
+   last restart, as stage 1's T2-L (`LazyInv`), but without its frozen run:
+   the invariants take the stream of the last startup as a parameter. E3's
+   and E4's steps (`EInv.run_step`, `HInv.run_step`) carry them through each
+   transaction and its cache operations; each restart starts them again.
+
+**The model change: rule 4 links the root's object.** E1's rule 4 linked D's
+objects only. The invariant needs every live slot to a node of D of a
+current canonical object to be a memory slot to the canonical object (5.10:
+the writer's walk and INV-SLOT's second half rely on it); rule 4 gives it
+for D's objects. A virtual root is never written, so its object is not in
+D, and its live slot to a super root in D is left to the startup's rerun.
+The rerun leaves it a memory slot in every startup of E2's examples 3 and 5
+(a probe: 0 stream slots among the 623 such slots of 656 startups), but a
+proof of that would have to follow the virtual root's slots, whose dead ones
+go stale, through the rerun. Since E5, rule 4 links the pinned objects, D's
+canonical objects and the root's object (`Mem.linkD`, `lean/SIS/Evict.lean`;
+the pinned set of 5.2), which gives it directly. Java needs nothing for it:
+its virtual root's one slot, `TopDs.superRoot`, is a memory reference to the
+super root's canonical object, set at startup (`DbStarter.prepareDb`, line
+335: `new Dag(superRoot, ...)`, whose constructor makes the `TopDs`,
+`Dag.java` line 48) and by `TopDs.newSuperRoot` (line 109), at `73320ec`.
+It changes no record: a virtual root is never written, and a written root
+with a pointee in D is in D itself. E2's runs with restarts pass with the
+change (`phystest 20 40 evict`).
+
+Not covered by E5: Java (the J WPs).
 
 
 ## 6. What Java must do
