@@ -333,7 +333,7 @@ lookups from f on and the same D) and T12 for the run (the stream is the
 run's, cut at the largest cut; the same D; the same lookups from f on); with
 eviction and the four cache schedules, 9,600 transactions, each followed by
 the records and D, reads from f on (also on the cut stream from the running
-memory, as T9 will say), the invariants, and the restarts from the cut
+memory, as T9 says, 2.9), the invariants, and the restarts from the cut
 streams: none fails. 125 of the cuts had a node in D that is not reachable
 from f on (the delicate case of the plan's 8.7, M34): the startup from the
 cut stream rebuilt it right in every one (proved in R5, 2.10). Without CutOK's part 2, T8 fails at
@@ -392,8 +392,8 @@ What T9 needed was Frans's decision (M48; decided: (a), below):
   finds no version before the cut that a physical read from f on may follow
   at any of the 288 cuts of the small set, nor at the 47 of the medium set's
   two mixed traces (its four largest were still in the checker at R4's
-  commit). In the random runs of example 4 it lowers the largest safe cut
-  in 28 of 1,600 states. Then T9 is to prove for the Level 4 memory, with an
+  commit; later, none at any of the set's 174 cuts, 2.8). In the random
+  runs of example 4 it lowers the largest safe cut in 28 of 1,600 states. Then T9 is to prove for the Level 4 memory, with an
   invariant on the slots (the record a slot names, after the last startup's
   Rule R, is at or after the one that the latest version of the slot's node
   names), which T12 with eviction (R5) needs too.
@@ -453,6 +453,52 @@ Example 4's reclaim writes every node reachable at f after the cut point, so
 its pointers are fresh; the witness needs an empty subtree (spec4e: keys 2
 and 3 have no values yet at f) and a fixed f.
 
+**T9 is proved** (`T9_readCut`, R4, 2026-10-17): in a run with eviction as in
+T2-C (any cache schedules, restarts after any transactions), after any
+transaction and its cache operations or its restart, with `CutOK` at c in the
+run's state, a read through the Level 4 loader in the running process, at any
+time from f to the last record, gives the same on the stream cut at c as on
+the whole stream, so it needs no record before the cut; and it gives P at
+that time (`TR_view_restarts`). The proof (lean/SIS/Proof/CutPhys.lean,
+CutPhysTrans.lean, CutPhysRun.lean) is the invariant on the slots that (a)
+asked for (`CInv`):
+
+1. A canonical object of a written node not in D names, for each pointee, a
+   canonical object or a record at or after the one that the node's latest
+   version names for it.
+2. A canonical object of a node of D names a pointee of D in its history, if
+   by a memory slot to a snapshot, at the pointee's latest version.
+3. With a virtual root, the root's object names its root children of D by
+   memory slots to their canonical objects, and the others at their latest
+   versions.
+4. No snapshot is of a version that Rule A put back and that is still in D.
+
+A read at t from f on then follows only canonical objects and versions that
+`ReadsPhys` covers (`CInv.slotCut`): from a clean node, its latest version
+(good for t) and, by 1, records at or after its pointers; from a node of D,
+by INV-SLOT, a pointee not in D at its latest version and one of D by its
+canonical object or, by 2, a snapshot of its latest version; and by 4 no
+snapshot is of a version that the exception of the refinement above leaves
+out. So the loader gives the same on the cut stream (`CInv.read4_cut`). The
+startup gives the invariant (every object canonical, every slot naming its
+pointee's latest version, rule 4's links); the cache operations keep it, and
+so does every transaction (`CInv.evictTrans_ok`): the walk, the change (a new
+slot names a canonical object, or copies one that names the pointee's latest
+version), and the writes: a taken node's new version names its pointees'
+latest versions, and its slots name these or canonical objects; a node that
+stays in D names a pointee that the record writes only by the pointee's
+canonical object, since its other slots for pointees of D are for pointees
+that got dirty no earlier (INV-SLOT's second half, by Rule A's order), which
+the record writes only with the node. With a virtual root, the writer's walk names the
+root children on its paths by their canonical objects (`EInv.rootSlots_change`:
+such a child's parent on the path is the root, as a parent above the top
+level would be a root child, and a root child that a root child points to is
+not reachable, `VInv.deadTops`).
+
+M48's decision ordered R6's proof that Java's scheme gives the stronger part
+2 before T9; T9 came first, since it assumes `CutOK` only and R6 has a
+fallback (checked at every cut). K3 needs both.
+
 ### 2.10 Restarts across cuts (R5)
 
 **Done, the logical half** (R5, 2026-10-17): T12 (`T12_restartCut`,
@@ -509,8 +555,8 @@ By running: `lake exe reclaimtest 20 30` (T12 at the largest safe cut; 125
 cuts with a node in D that no lookup from f on reaches) and example 4's
 `tsCut4`, with T12's assumption on the cuts (a `#guard`).
 
-Open: T12 with eviction (`runEvictCut`, any cache schedules) after T9, with
-the invariant on the slots (2.9).
+Open: T12 with eviction (`runEvictCut`, any cache schedules), with T9's
+invariant on the slots (`CInv`, 2.9).
 
 
 ## 3. The register
@@ -525,13 +571,13 @@ reopened from level2-alignment.md.
 | M17 | Reclaim's touch marks nodes without adding entries: every index node the range traversal follows, and the super root, get dirty; the marks stay when the transaction replaces a node | `Db.touchRange` (1570); `endOfOp(true)` (868) in `putKvs` (1521), lines 1530 to 1538; `endOfTrans` (879) skips touch transactions | step 3 (`markOf`) | Model: `Changes.touch`, TouchOK in `StepOK`, T13' (α: 2.2). R7: Java's `endOfTrans` keeps every mark of a touch transaction, so the nodes that the step's puts mark and replace stay in D, which the model does not mark (red list, section 6): a Java change, R8 | 3: R3 (2.8: done, T13' proved); R7 (red list); R8 (done: `Db.endOfTrans`, 2026-10-17); c |
 | M32 | Java keeps the first available time in the reclaim table, a value in the database, and reads it after startup (Codex's review of 09, finding 5): `Db.startInner` calls `DbStarter.start` (through `startDb`) and then `reclaim.initFromDb` (line 511), which reads the table through the reconstructed database | `Reclaim.initFromDb` (516); `Db.startInner` (486), line 511; `Reclaim.pretruncateIfPossible` (574) | — | Model: fa(i) in records, by α (2.4, Q5); argued in 4.1 that Java's startup needs f only after reconstruction, if it reads nothing before c (T8, R4) | 3: R1 (argued), R3 (`Record.fa`, 2.8), R4; o |
 | M33 | After a cut, Java cannot read the id of a slot's target below the cut: a stored key node holds child positions, not ids, so the id is read from the target's header, and `resolvePointers` skips a stream slot below the stream's first position (Codex's review of 09, finding 2) | `NodeCollection.resolvePointers` (317), line 337; `StoredKeyNode.toLongs` (50) | `javaTest` (by id) | Model: version stubs keep positions; CutOK must imply that no such slot of a node in D names a node in D; otherwise a code change (5, step 7) | 3: R3 (CutOK part 3: every reference below c of a node in D names its node's latest version, 2.8), R5 (T12 for the model, proved 2026-10-17: startup reads every node of D at its newest version in the section or by T8's agreement, never through a slot below the cut; by part 3 such a slot of a node of D names no node of D, so Java's skip of it leaves Rule A's test as the model's: argued, 2.10); o |
-| M34 | Java writes every taken node, also nodes that no lookup from f on reaches (F1-008-08's "needed" nodes) | `Db.store` (1407); `TransSeq.take` (83) | step 6 | Model: show that it changes no record after a safe cut (T12), or a needed test in code (5, step 7) | 3: R5 (T12 for `runRestartsCut`, proved 2026-10-17: such a node is written again with the run's content, 2.10; with eviction after T9); o |
+| M34 | Java writes every taken node, also nodes that no lookup from f on reaches (F1-008-08's "needed" nodes) | `Db.store` (1407); `TransSeq.take` (83) | step 6 | Model: show that it changes no record after a safe cut (T12), or a needed test in code (5, step 7) | 3: R5 (T12 for `runRestartsCut`, proved 2026-10-17: such a node is written again with the run's content, 2.10; with eviction, with T9's invariant, next); o |
 | M35 | A cut is decided (in the table, with the first available time and position) before it is made (when the stream is durable past the table); `FileStream` deletes whole files, `MemoryStream` whole 1 MB arrays; `CutStream` (a test stream) refuses reads below the exact cut | `Reclaim.pretruncateIfPossible` (574), `cutIfDurable` (309); `stream/FileStream.pretruncate` (262); `storage/BufferedStream.pretruncate` (446); `stream/CutStream.read` (60) | `cutStream` | α: the model's cut is the decided position; the physical cut comes later, at the same or a lower position (2.5) | 3: R1 (α); R2 (the exporter checks it on every trace: no failure in 31, 2.7) |
 | M36 | Reads before f are refused (`LookupTimeNotAvailableException`), and an admitted read may expire when a cut overtakes it (D1 = A): a `ReadBelowFirstPosException` below the cut becomes an expiry if the read's actual time is now before f | `Db.getOneInternal` (1068), lines 1073 to 1080; `Db.getMany` (1116), lines 1131 to 1138; `Db.expiredIfReadBelowCut` (1170) | `view` (every time) | Model: reads required from f on; expiry is concurrency, outside the model (2.6) | 3: R3 (`SameFrom`, 2.8), R4; o |
 | M37 | Reclaim stores its table and the current row as values under internal keys (`/#i/dreclaim/-table.txt`, `/#i/dreclaim/-current.txt`), in internal transactions; the row's value is computed by a value transformation during the step | `Reclaim.storeTable` (648); `Reclaim.step` (345), lines 416 to 423 | T(i) | α: ordinary puts; T(i) is what the record stores (2.2) | 3: R1 (α); R2 (the traces have them as ordinary entries, 2.7); the checker from R3 on |
 | M38 | A reclaim step can fail with a `RerunException` (a conflict with its read time) and then writes no record; the step is tried again at a later transaction. A table store cannot fail so (`Bug`) | `Reclaim.step` (345), line 449; `storeTable` (648), line 657; `Db.stmCheckConflicts` (1474), called at line 1362 | — | α: no transaction; nothing to model (argued in 4.2; the exception cannot occur today) | 3: R1 (argued) |
 | M41 | After a restart from a cut stream, startup reads D's nodes at their newest section versions or stored positions, and the root chain from topPos | `DbStarter.canonicalNode` (455), `topNodeOfLastTransaction` (293), `findSuperNodeAtStartupTime` (263) | `startup` | CutOK must cover them. For the root chain, review-13-claude, 4.3: a search at a time q loads, besides its answer, only tops created at or after q; so from tEnd on, the tops created after tEnd and the top live at tEnd (5, steps 4 and 6) | 3: R3 (CutOK parts 3 and 4, 2.8), R4 (T8: the model's startup), R5 (T12: the model's startup gives every node of D the run's node, also those that no lookup from f on reaches, 2.10); o |
-| M48 | **New (R4).** Java cuts while it runs, and reads after the cut go through the objects and slots made before it, with Rule R of the last startup. With eviction, a read at a time from f on can follow the slot of a node that a later change replaced to a version before the cut: the last startup's Rule R does not know the pointee's newer version, and the pointee's canonical object was released. Today nothing is released (M26), so such a pointee has its canonical object | `NodeCollection.followStreamPointer` (184; Rule R from `DbStarter`'s maps); `Reclaim` cuts while the database runs (2.5) | `CutOK` part 2 (`ReadsAt`, Rule R of the current section); `Mem.follow4` (Rule R of the last startup) | `cutReadWitness` (SIS/ReclaimExample.lean): `CutOK` holds, a read at f in the running process fails on the cut stream (2.9). For Frans: (a) part 2 over every version a physical read may follow (every version of a pointee at or after the one the pointer names); Java's scheme gives it, Java's cuts meet it (C-CUT+); (b) the window (M44); (c) T9 after restarts only. Recommended: (a). **Decided: (a)** (Frans, 2026-10-17) | 3, 4: R4 (found; T9 stopped, stop rule 4), Frans ((a), 2026-10-17), R6 (stronger part 2: the definition done, 2026-10-17, refined for versions that Rule A put back, `schemeWitness`, 2.9; Java's scheme gives it: to prove), then T9; o |
+| M48 | **New (R4).** Java cuts while it runs, and reads after the cut go through the objects and slots made before it, with Rule R of the last startup. With eviction, a read at a time from f on can follow the slot of a node that a later change replaced to a version before the cut: the last startup's Rule R does not know the pointee's newer version, and the pointee's canonical object was released. Today nothing is released (M26), so such a pointee has its canonical object | `NodeCollection.followStreamPointer` (184; Rule R from `DbStarter`'s maps); `Reclaim` cuts while the database runs (2.5) | `CutOK` part 2 (`ReadsAt`, Rule R of the current section); `Mem.follow4` (Rule R of the last startup) | `cutReadWitness` (SIS/ReclaimExample.lean): `CutOK` holds, a read at f in the running process fails on the cut stream (2.9). For Frans: (a) part 2 over every version a physical read may follow (every version of a pointee at or after the one the pointer names); Java's scheme gives it, Java's cuts meet it (C-CUT+); (b) the window (M44); (c) T9 after restarts only. Recommended: (a). **Decided: (a)** (Frans, 2026-10-17) | 3, 4: R4 (found; T9 stopped, stop rule 4), Frans ((a), 2026-10-17), R6 (stronger part 2: the definition done, 2026-10-17, refined for versions that Rule A put back, `schemeWitness`, 2.9; Java's scheme gives it: to prove), R4 (T9 proved with it, 2026-10-17, 2.9); o |
 
 Findings of A2: none beyond the plan's list for Level 3. Noted for R1: the
 touch marks the super root of the step's time (through
@@ -724,18 +770,20 @@ The steps:
     from the cut stream gives the same lookups from f on and the same D (T8,
     **proved** in R4, 2.9; 4.1 for Java's order); physical reads from f on in
     the running process need more once objects can be evicted (T9,
-    **stopped** in R4: `cutReadWitness`, M48; Frans chose (a), so **to
-    prove** after R6); and a run with restarts and
-    cuts writes the same records as the run without them (T12, **proved**
-    in R5 for runs without eviction, 2.10; with eviction after T9). Java:
+    **stopped** in R4 by `cutReadWitness`, M48; Frans chose (a);
+    **proved** in R4 with `CutOK`'s part 2 over `ReadsPhys`, 2.9); and a
+    run with restarts and cuts writes the same records as the run without
+    them (T12, **proved** in R5 for runs without eviction, 2.10; with
+    eviction next). Java:
     **checked** by `RestartInvariance` with reclaim (the same stream byte
     for byte, with and without restarts), `ReclaimStress`, `CrashTest` with
     reclaim, `level3.sh`, and the soak's checks after cold restarts
     (WP P2).
 
 What is left to prove, in short: steps 2 to 4 and 6 (R6, T-SCHEME: Java's
-scheme gives CutOK) and step 10 (T9 after R6's stronger part 2 (M48: (a));
-T12 with eviction, after T9). Step 7 is proved (R5).
+scheme gives CutOK) and step 10's T12 with eviction (R5, with T9's
+invariant on the slots). Step 7 is proved (R5), and step 10's T8 and T9
+(R4).
 What is assumed: the policies of steps 8 and 9, and that a step's range
 traversal visits every node whose key range meets the range (step 3), which
 R6 takes as an assumption on the touch, and checks on Java (R2's traces
@@ -754,11 +802,19 @@ the CUT's first available time is the record's, and that every PHYSCUT is at
 or below the decided cut (M35). Run on R2's reclaim traces (2.7): small, 25
 traces, 14,448 transactions, 288 cuts; medium, 2 of its 6 traces (rm-mixed-1
 and rm-mixed-2: 4,415 transactions, 47 cuts); its four largest (rm-5000-1 and
-2, rm-long-1 and 2) were still in the checker at R7's commit.
+2, rm-long-1 and 2) were still in the checker at R7's commit. They finished
+later the same day (10:31 to 17:58; traces made before R8's change): C-S
+fails only as in the row below (52, 51, 22 and 23 transactions), with no C-A
+or C-CUT failure at their 127 cuts; so on the whole medium set (22,448
+transactions, 174 cuts) `CutOK` holds at every cut Java decided. R4's
+checker, with the diagnostic C-CUT+ (part 2 over every version a physical
+read from f on may follow, without the exception of 2.9's refinement), on the
+whole medium set (12:08 to 18:44): the same, and no C-CUT+ failure at the 174
+cuts, so `CutOK` as now defined holds there too.
 
 | Failure | Where | Row | Smallest | Resolution |
 |---|---|---|---|---|
-| C-S, gd and D: in a reclaim step, Java's gd(i) has nodes that the model's has not: index nodes on the access path of the step's puts (the current row's value, outside the step's range) that the puts replace (a split), so not reachable after the step, and not touched. The model marks the touched nodes (`touchOf`, kept if replaced, as Java keeps them) and the access path of the change after it (`markOf`); Java's `endOfTrans` keeps every mark of a touch transaction (`if (!x.trans.touch && ...)`, Db.java 892; d5c56dd: "reclaim's touch transactions keep every mark"), the put paths' too | 29 transactions of 11 small traces; 43 transactions of 2 medium traces | M17 | r-del-4, T(189): nodes 1300 and 41514, which the step's put replaces by 224726 and 224724 | R8, a Java change: in a touch transaction, `endOfTrans` takes out of D the replaced nodes that the puts marked, and keeps those the touch marked (the touch's marks are the first `gotDirtyNodes`, made by `endOfOp(true)` after `touchRange`). Then Java's gd(i) is the model's. The other way, a model change (step 3 of a transaction with a touch also marks the put paths' replaced nodes), would add to the model what the Level 2 alignment took out of Java (d5c56dd, M2); and the replaced nodes are dead: writing them later serves no read |
+| C-S, gd and D: in a reclaim step, Java's gd(i) has nodes that the model's has not: index nodes on the access path of the step's puts (the current row's value, outside the step's range) that the puts replace (a split), so not reachable after the step, and not touched. The model marks the touched nodes (`touchOf`, kept if replaced, as Java keeps them) and the access path of the change after it (`markOf`); Java's `endOfTrans` keeps every mark of a touch transaction (`if (!x.trans.touch && ...)`, Db.java 892; d5c56dd: "reclaim's touch transactions keep every mark"), the put paths' too | 29 transactions of 11 small traces; 191 transactions of the 6 medium traces | M17 | r-del-4, T(189): nodes 1300 and 41514, which the step's put replaces by 224726 and 224724 | R8, a Java change: in a touch transaction, `endOfTrans` takes out of D the replaced nodes that the puts marked, and keeps those the touch marked (the touch's marks are the first `gotDirtyNodes`, made by `endOfOp(true)` after `touchRange`). Then Java's gd(i) is the model's. The other way, a model change (step 3 of a transaction with a touch also marks the put paths' replaced nodes), would add to the model what the Level 2 alignment took out of Java (d5c56dd, M2); and the replaced nodes are dead: writing them later serves no read |
 
 Nothing else fails: no C-A failure (TouchOK holds for every touch: the
 touched nodes are index nodes reachable before the change, and every node

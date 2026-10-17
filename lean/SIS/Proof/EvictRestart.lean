@@ -59,11 +59,25 @@ section Startup
 variable {sp : Spec V T} {al : Algo V T} {ts : List T}
 
 /-- T2-C's startup: the Level 4 startup from the stream after T(k) gives a memory
-with the invariant, and with the invariant for reads at earlier times. -/
-theorem einv_hinv_startup (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hj : al.stillDirty = javaTest sp)
-    (hmk : al.mark = true) (hev : EvictRunOK sp al ts) {k : Nat} (hk : k ≤ ts.length) :
+with the invariant, and with the invariant for reads at earlier times; every
+object is canonical, every slot serializes its pointee's latest version, a
+stream slot for a node of D is in no pinned object, and a memory slot names
+its pointee's canonical object (what T9's invariant needs, bergdb item 001, WP
+R4). -/
+theorem einv_hinv_startup_facts (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts)
+    (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) (hev : EvictRunOK sp al ts) {k : Nat}
+    (hk : k ≤ ts.length) :
     EInv sp (st sp al ts k) (st sp al ts k).S k (evictStartup sp (st sp al ts k).S) ∧
-      HInv sp (st sp al ts k) (st sp al ts k).S k (evictStartup sp (st sp al ts k).S) := by
+      HInv sp (st sp al ts k) (st sp al ts k).S k (evictStartup sp (st sp al ts k).S) ∧
+      (∀ h o, (evictStartup sp (st sp al ts k).S).obj? h = some o → o.canonical = true) ∧
+      (∀ h o y sl, (evictStartup sp (st sp al ts k).S).obj? h = some o → o.slot? y = some sl →
+        slotRefOf (st sp al ts k).S (evictStartup sp (st sp al ts k).S) y sl =
+          ((st sp al ts k).S.lv y).map (·.recNo)) ∧
+      (∀ h o y r, (evictStartup sp (st sp al ts k).S).obj? h = some o → o.slot? y = some (Slot.stream r) →
+        inD (st sp al ts k).D y = true →
+          inD (st sp al ts k).D o.node = false ∧ h ≠ (evictStartup sp (st sp al ts k).S).root) ∧
+      (∀ h o y h', (evictStartup sp (st sp al ts k).S).obj? h = some o → o.slot? y = some (Slot.mem h') →
+        (evictStartup sp (st sp al ts k).S).canonicalOf y = some h') := by
   have hst : AlgOK sp al := algOK_of sp al (Or.inl hj)
   have hls : LiveSub sp := hok.1.liveSub
   have hinv := inv_st sp al ts hok hst k hk
@@ -267,7 +281,9 @@ theorem einv_hinv_startup (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hj 
     rcases hsl' y with he | ⟨sl, h0, -, hs2, -⟩
     · exact ⟨sl0, by rw [he, hsl0]⟩
     · exact ⟨_, hs2⟩
-  refine ⟨⟨hinv.len, List.prefix_refl _, hs0, ?_, ?_, ?_, hnd0, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩, ?_⟩
+  refine ⟨⟨hinv.len, List.prefix_refl _, hs0, ?_, ?_, ?_, hnd0, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩, ?_,
+    fun h o2 ho2 => (hshape h o2 ho2).choose_spec.2.2.2.2.2.1, hser, hpinned,
+    fun h o2 y h' ho2 hsl => by rw [hcan2]; exact (hmemslot h o2 y h' ho2 hsl).choose_spec.2.2.1⟩
   · -- fresh
     intro h hh
     rw [hobj2, hobj1, hm.fresh h hh]; rfl
@@ -426,6 +442,12 @@ theorem einv_hinv_startup (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hj 
 
 /-- T2-C's startup: the Level 4 startup from the stream after T(k) gives a memory
 with the invariant. -/
+theorem einv_hinv_startup (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hj : al.stillDirty = javaTest sp)
+    (hmk : al.mark = true) (hev : EvictRunOK sp al ts) {k : Nat} (hk : k ≤ ts.length) :
+    EInv sp (st sp al ts k) (st sp al ts k).S k (evictStartup sp (st sp al ts k).S) ∧
+      HInv sp (st sp al ts k) (st sp al ts k).S k (evictStartup sp (st sp al ts k).S) :=
+  ⟨(einv_hinv_startup_facts hok hph hj hmk hev hk).1, (einv_hinv_startup_facts hok hph hj hmk hev hk).2.1⟩
+
 theorem einv_startup (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hj : al.stillDirty = javaTest sp)
     (hmk : al.mark = true) (hev : EvictRunOK sp al ts) {k : Nat} (hk : k ≤ ts.length) :
     EInv sp (st sp al ts k) (st sp al ts k).S k (evictStartup sp (st sp al ts k).S) :=

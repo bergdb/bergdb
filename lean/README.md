@@ -54,6 +54,7 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.TP_pins
     #print axioms SIS.T13_markTouch
     #print axioms SIS.T8_recoverCut
+    #print axioms SIS.T9_readCut
     #print axioms SIS.T12_restartCut
 
 Each prints `[propext, Classical.choice, Quot.sound]`, or a part of it
@@ -89,7 +90,7 @@ its section in sis-model.md.
 | SIS/Evict.lean | The physical layer, part 2, with eviction (bergdb item 001, WP E2; docs/level4-alignment.md, section 5): the pinned objects (`Mem.pinned`), unswizzling (`Mem.unswizzle`) and release (`Mem.release`); the Level 4 loader (`Mem.follow4`: the canonical object, or exactly the version a slot names after Rule R) and reads through it (`Mem.read4`); the writer's path (`Mem.reachOnPath4`) and the change (`Mem.applyChange4`, `Mem.newSlot4`); startup with rule 4 (`evictStartup`, `Mem.linkD`); the physical writer (`Mem.refOf`, `Mem.writeNode`) and its transaction (`evictTrans`); cache schedules (`CacheOp`) and runs (`runEvict`); the assumptions of stage 2 (`EvictStep`: TREE, `treeAt`, and A6', `adoptAt`; A-COPY, `CopyStep`; `EvictRunOK`) | — (docs/level4-alignment.md, 5) |
 | SIS/PhysTheorems.lean | Lemma M: a newer version of a node serves every time an older one serves (`LM_newer`), so Rule R's version does (`LM_ruleR`), and a version cut back to s serves the times up to s (`LM_cutTo`); T1-L (`T1_lazy`): after the lazy startup from the stream of a run, or of a prefix of it (a crash), and any reads and writer follows, a read at any time up to the last record gives P at that time; CC (`CC_canonical`): in a run with lazy restarts, every canonical object holds its node's whole history; T2-L (`T2_lazy`): such a run appends the records of the run without restarts; `step_eq_stepWith`; stage 2 (bergdb item 001, WP E3): D closed upward (`T15_closed`), and T-CACHE (`TC_records`): in a run with eviction and any cache schedule, without restarts, every transaction of the physical writer appends the model's record and leaves the model's D, and INV-CAN, INV-SNAP and INV-SLOT hold; T-READ (`TR_view`, WP E4): in such a run, a read through the Level 4 loader at any time up to the last record gives P at that time; T2-C (`T2_cache`, WP E5): with restarts too, the records and D stay the model's, and the invariants hold for the stream of the last startup; and T-READ with restarts (`TR_view_restarts`, WP E5); T-PIN (`TP_pins`, WP E6): in such runs, every object outside the pinned set may be evicted | 5.1, 9; ../docs/level4-alignment.md, 5.3 to 5.6 |
 | SIS/Reclaim.lean | Level 3, reclaim (bergdb item 001, WP R3): what a cut leaves of a version (`Version.stub`) and of a record (`Record.cut`); the stream after a cut (`cutStream`); the versions that a lookup at a time may read (`ReadsAt`, WP R7); when a cut is safe (`CutOK`); the same lookups from f on (`SameFrom`); policies that a cut does not change (`PolicyCutOK`); a virtual root seen only through its live children (`ExecRootOK`), whose live children are those of its last entry (`VirtLiveOK`, WP R4); runs that restart from cut streams (`runRestartsCut`, `cutMax`; with eviction, `runEvictCut`) | — (../docs/level3-alignment.md, 5) |
-| SIS/ReclaimTheorems.lean | T13' (`T13_markTouch`, WP R3): with touches, step 3 gives exactly the index nodes not in D (and not a virtual root) that are dirty or touched; T8 (`T8_recoverCut`, WP R4): after a safe cut, startup from the cut stream gives the same lookups at every time from the first available time on (`SameFrom`), and the same D; T12 (`T12_restartCut`, WP R5): a run that restarts from safe cut streams appends the records of the run without restarts (its stream is that run's, cut at the largest cut), with that run's D and lookups from the first available time on | — (../docs/level3-alignment.md, 2.2, 2.10) |
+| SIS/ReclaimTheorems.lean | T13' (`T13_markTouch`, WP R3): with touches, step 3 gives exactly the index nodes not in D (and not a virtual root) that are dirty or touched; T8 (`T8_recoverCut`, WP R4): after a safe cut, startup from the cut stream gives the same lookups at every time from the first available time on (`SameFrom`), and the same D; T9 (`T9_readCut`, WP R4): in a run with eviction as in T2-C, after a safe cut, a read through the Level 4 loader in the running process at any time from the first available time on gives the same on the cut stream as on the whole stream, and gives P; T12 (`T12_restartCut`, WP R5): a run that restarts from safe cut streams appends the records of the run without restarts (its stream is that run's, cut at the largest cut), with that run's D and lookups from the first available time on | — (../docs/level3-alignment.md, 2.2, 2.9, 2.10) |
 
 The proofs, in SIS/Proof/ (not needed for reading the statements):
 
@@ -128,7 +129,7 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
 | EvictStepInv, EvictTrans, EvictRun, EvictInit | The memory after the record has the next state's invariant (`AInv.final_ok`); one transaction (`EInv.evictTrans_ok`); runs (`TC_run`); the startup from R(0) (`einv_init`); the invariant in the terms of `TC_records` (`EInv.tc_facts`) |
 | EvictHist, EvictHistTrans, EvictReadT | Stage 2 (WP E4): the invariant for reads at earlier times (`HInv`: every slot of a canonical object for a live child at a time t names an object or a version good for t, or, by INV-SLOT's second half, a node of D), kept by the cache operations and every transaction (`HInv.evictTrans_ok`) and in every run (`HInv.run`); a read at any time up to the last record gives P (`EInv.read4T_ok`) |
 | EvictKeys, EvictPin | Stage 2 (WP E6): no object has two slots for the same pointee, in every memory of every run (`SlotsND`, `slotsND_runEvict`); unswizzling every memory slot to an object, then releasing it, removes it (`Mem.evict_ok`); an object outside the pinned set has been written (`EInv.detachable_of_unpinned`) |
-| EvictRerun, EvictRestart | Stage 2 (WP E5): the startup from the stream after T(k): its rerun keeps `RInv` (every object canonical, every stream slot naming its pointee's latest version after Rule R, a slot for each pointee; `rinv_lazyStartup`), and after the positions and rule 4 the memory has the invariant and the invariant for reads at earlier times (`einv_hinv_startup`); the physical writer depends on P only through its nodes (`evictTrans_congr`); runs with restarts (`EvictInvR`, `evictInvR_all`) |
+| EvictRerun, EvictRestart | Stage 2 (WP E5): the startup from the stream after T(k): its rerun keeps `RInv` (every object canonical, every stream slot naming its pointee's latest version after Rule R, a slot for each pointee; `rinv_lazyStartup`), and after the positions and rule 4 the memory has the invariant and the invariant for reads at earlier times (`einv_hinv_startup`; with what T9's invariant needs, `einv_hinv_startup_facts`); the physical writer depends on P only through its nodes (`evictTrans_congr`); runs with restarts (`EvictInvR`, `evictInvR_all`) |
 | CutStream, CutRead | Stage 3 (WP R4): the stream after a cut (its records, `versionAt`, `newest`, the last record); a pointer followed, or a read from a version, on a stream cut at or before the startup pos gives what it gives on the whole stream if it reads no record before the cut (`follow_cut`, `readFrom_cut`); a read from a version that a lookup may read reaches only such versions (`readFrom_readsAt`); a version a lookup may read, a physical read may follow (`ReadsAt.phys`, WP R6) |
 | CutAgree, CutRerun | Structures that agree for lookups from f on (`CutAgree`); a transaction's change is the same on both (`exec_cutAgree`, with `ExecRootOK`), and so is the rerun of the startup section (`rerun_cutAgree`, with `VirtLiveOK`), which keeps every node it starts with the run's (`rerun_cutAgree_nodes`, WP R5) |
 | CutBase, CutTops, CutStart | Startup's reads of a stream cut safely at the times from f to s: without a virtual root, the whole stream's (`Inv.readAt_cut_nv`); with one, the whole stream's but for the root's version, which startup rebuilds from the root children it can read: the root children live from f on are read at their latest versions (`Inv.topsRead_cut_all`), so the rebuilt root has the root's live children from f on (`Inv.cutRoot_live`, `Inv.readAt_cut_v`) |
@@ -137,6 +138,7 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
 | CutHist | WP R5: the nodes of D that no lookup from f on may reach (M33, M34): every node of D was reachable at a time at which its ancestors (it included) are in D, each with an entry from just after that time or a version in the record of its entry, put back by Rule A (`DAnchor`, `dAnchor_st`: Rule A with BergDB's test along the path, `step_anc_persist`, and D closed upward, `dClosed_st`); with a virtual root, every root child created after a root child of D is in D (`TopsD`, `topsD_st`) |
 | CutHistRead | WP R5: after a safe cut, startup reads such a node at that time through its ancestors' versions in the startup section (Rule R), at its newest version, from the cut stream as from the whole stream (`Inv.baseCut_get?_hist`; with a virtual root, the root children from its root child then on are read, `Inv.topsRead_cut_from`); T8 with D's nodes (`recoverCut_dNodes`) |
 | CutRuns | WP R5: the relation after every prefix of a run with restarts from cut streams (`restartCut_rel`), and T12 (`restartCut`) |
+| CutPhys, CutPhysTrans, CutPhysRun | WP R4, T9: the invariant on the slots (`CInv`: a canonical object of a clean node names, for each pointee, a canonical object or a record at or after the one its node's latest version names; one of a node of D names a pointee of D by a snapshot only of the pointee's latest version; a virtual root's object names its root children of D by their canonical objects and the others at their latest versions; no snapshot of a version that Rule A put back and that is still in D); with it a read at a time from f on follows only canonical objects and versions that `ReadsPhys` covers, so it gives the same on a stream cut safely (`CInv.read4_cut`); the cache operations, the writer's walk and change, and the writes keep it (`CInv.evictTrans_ok`); the startup gives it (`cinv_startup`); runs with restarts (`EvictInvC`, `evictInvC_all`), and T9 (`readCut`) |
 
 Not trusted, tests only:
 
@@ -433,7 +435,9 @@ the marks of the nodes that the step's puts mark and replace (the red list,
 [../docs/level3-alignment.md](../docs/level3-alignment.md), section 6). On the
 way, `CutOK`'s part 2 was changed, found by running (`staleWitness`, below).
 `lake build` passes with no warnings and no `sorry`; `#print axioms` shows
-only Lean's standard axioms; the trace tests pass.
+only Lean's standard axioms; the trace tests pass. The medium set's four
+largest traces finished later the same day: the same, with `CutOK` at every
+one of the set's 174 cuts.
 
 2026-10-17. T8 proved (bergdb item 001, WP R4): `T8_recoverCut`, after a
 safe cut, startup from the cut stream gives the same lookups at every time
@@ -823,6 +827,25 @@ lookup from f on reaches). T12 with eviction (`runEvictCut`) follows T9.
 Changes to the trusted part on 2026-10-17 (bergdb item 001, WP R5): T12
 (`T12_restartCut`, SIS/ReclaimTheorems.lean), new. No definition changed.
 
+2026-10-17. T9 proved (bergdb item 001, WP R4): `T9_readCut`, in a run with
+eviction as in T2-C (any cache schedules, restarts after any transactions),
+after any transaction and its cache operations or its restart, with `CutOK`
+at c: a read through the Level 4 loader in the running process, at any time
+from the first available time to the last record, gives the same on the
+stream cut at c as on the whole stream, so it needs no record before the cut,
+and gives P at that time. The proof is an invariant on the slots (`CInv`,
+the table above): a read from f on follows only canonical objects and
+versions that `CutOK`'s part 2 covers (`ReadsPhys`). The proofs are in
+SIS/Proof/CutPhys.lean, CutPhysTrans.lean and CutPhysRun.lean. `lake build`
+passes with no warnings and no `sorry`; `#print axioms` shows only Lean's
+standard axioms; `lake exe reclaimtest 20 30` passes (its runs with eviction
+read from f on, on the cut stream, from the running memory).
+
+Changes to the trusted part on 2026-10-17 (bergdb item 001, WP R4, T9): T9
+(`T9_readCut`, SIS/ReclaimTheorems.lean), new; SIS/ReclaimTheorems.lean
+imports SIS/PhysTheorems.lean (T9's second half is `TR_view_restarts`). No
+definition changed.
+
 Stage 1 of bergdb item 001 is done (2026-10-16): lemma M (`LM_newer`, L2),
 T1-L (`T1_lazy`, L3), CC and T2-L (`CC_canonical`, `T2_lazy`, L4) are proved,
 and Java's first touches after restarts are checked against the model's rule
@@ -832,17 +855,13 @@ with restarts, T-READ with restarts (`TR_view_restarts`, E5) and T-PIN
 (`TP_pins`, E6) (2026-10-17). Stage 3: the definitions and T13' (R3), the
 checker on Java's reclaim traces with the red list (R7), T8 (R4),
 `CutOK`'s part 2 over `ReadsPhys` (R6, part 1: register M48, option (a),
-Frans), and T12 for runs without eviction (R5) (2026-10-17); T9 follows R6.
+Frans), T12 for runs without eviction (R5), and T9 (R4) (2026-10-17).
 
 Not done:
 
 * A check of the physical layer's assumptions (`PhysStep`, M47) on Java
   traces; they are argued (level2-alignment.md, 13.3).
 * The bounds (T3, T4).
-* Reclaim's theorems: T9 (physical reads from f on in the running process,
-  with eviction; stopped in R4 by `cutReadWitness`, then Frans chose option
-  (a) of register M48 in
-  [../docs/level3-alignment.md](../docs/level3-alignment.md): `CutOK`'s part 2
-  over `ReadsPhys`, R6's part 1; to prove after R6), T12 with eviction
-  (`runEvictCut`, R5, after T9), T-SCHEME
-  (R6), checked by running so far (`reclaimtest`).
+* Reclaim's theorems: T12 with eviction (`runEvictCut`, R5, with T9's
+  invariant on the slots), T-SCHEME (R6), checked by running so far
+  (`reclaimtest`).

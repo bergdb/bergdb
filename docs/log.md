@@ -583,3 +583,16 @@ through these with Rule R, so they are written again with the run's content.
 New proofs `lean/SIS/Proof/CutRestart.lean`, `CutHist.lean`,
 `CutHistRead.lean`, `CutRuns.lean`; `step_closed` needs only D closed upward
 (`DClosed`), not A6'. T12 with eviction follows T9.
+
+2026-10-17. Bergdb item 001, WP R4: T9 proved (`T9_readCut`,
+`lean/SIS/ReclaimTheorems.lean`). In a run with eviction, any cache
+schedules and restarts, after a safe cut, a read through the Level 4 loader
+in the running process at any time from the first available time on gives
+the same on the cut stream as on the whole stream, and gives P at that time.
+The proof is the invariant on the slots of register M48's option (a)
+(`CInv`, `lean/SIS/Proof/CutPhys.lean` to `CutPhysRun.lean`): a read from f
+on follows only canonical objects and versions that `CutOK`'s part 2 covers
+(`ReadsPhys`). On R2's medium reclaim set, now checked in full (22,448
+transactions, 174 cuts): `CutOK` holds at every cut Java decided, and so
+does the diagnostic C-CUT+; C-S fails only in register M17's pattern, which
+R8's change 6 fixed.

@@ -7,8 +7,10 @@ only connect them.
 -/
 import SIS.Theorems
 import SIS.Reclaim
+import SIS.PhysTheorems
 import SIS.Proof.CutRecover
 import SIS.Proof.CutRuns
+import SIS.Proof.CutPhysRun
 
 namespace SIS
 
@@ -65,6 +67,35 @@ theorem T8_recoverCut (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK
     SameFrom sp (lastFa db.S) k (startup sp (cutStream c db.S)).P db.P ∧
       (startup sp (cutStream c db.S)).D = db.D :=
   recoverCut sp al ts hok (algOK_of sp al hst) hk hex hvl hcut
+
+/-- T9 (bergdb item 001, WP R4): in a run with eviction as in `T2_cache`
+(BergDB's algorithm with marking, the assumptions, those of the physical layer
+and of stage 2, the Level 4 startup, any cache schedules, restarts after any
+transactions), after any transaction and its cache operations or its restart,
+with a safe cut (`CutOK`) at c in the run's state: a read through the Level 4
+loader (`Mem.read4`, with Rule R from the stream of the last startup) at any
+time t from the first available time f to the last record gives the same on
+the stream cut at c as on the whole stream, so it needs no record before the
+cut; and it gives P at t (`TR_view_restarts`): exactly the nodes reachable at
+t, each with its node at t. The cut is made while the process runs: the
+memory keeps the objects and slots made before it. -/
+theorem T9_readCut (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool × List CacheOp))
+    (hok : RunOK sp al (ts.map (·.1))) (hph : PhysRunOK sp al (ts.map (·.1)))
+    (hev : EvictRunOK sp al (ts.map (·.1))) (hj : al.stillDirty = javaTest sp)
+    (hmk : al.mark = true) (j c : Nat) (hjt : j ≤ ts.length)
+    (hcut : CutOK sp c (run sp al ((ts.take j).map (·.1))) j) (t : Time)
+    (hft : lastFa (run sp al ((ts.take j).map (·.1))).S ≤ t) (ht : t ≤ j) :
+    let db := run sp al ((ts.take j).map (·.1))
+    let r := runEvict sp al (ts.take j)
+    let m := r.2.1
+    m.read4 sp r.2.2 (cutStream c db.S) t = m.read4 sp r.2.2 db.S t ∧
+      (m.read4 sp r.2.2 (cutStream c db.S) t).2.map (·.1) = reachList sp db.P t ∧
+      ∀ p ∈ (m.read4 sp r.2.2 (cutStream c db.S) t).2, view sp db.P t p.1 = some p.2 := by
+  intro db r m
+  have he : m.read4 sp r.2.2 (cutStream c db.S) t = m.read4 sp r.2.2 db.S t :=
+    readCut ts hok hph hev hj hmk j hjt hcut hft ht
+  rw [he]
+  exact ⟨rfl, TR_view_restarts sp al ts hok hph hev hj hmk j hjt t ht⟩
 
 /-- T12 (bergdb item 001, WP R5): a run that restarts from safe cut streams
 (`runRestartsCut`: after a transaction marked some c, a restart from the stream
