@@ -116,11 +116,11 @@ Current state
 
 * Checkpoints: G0 given (2026-10-16 15:23); K1 passed (2026-10-17 07:56,
   Frans: Option K under TREE, A6' and A-COPY; above). K2 to K5 open.
-* Next: T9 (R4's remainder, for the stronger `CutOK`), R6's proof
-  (T-SCHEME; its part 1, the stronger `CutOK`, is done), and R5's logical
-  half (T12 for `runRestartsCut`, which needs
-  only T8); then R9 and K3 (plan, 5.1). R3 and R7 are done; R4 is done but
-  for T9 (2026-10-17).
+* Next: R5's logical half (T12 for `runRestartsCut`: it needs only T8, so
+  not the choice that R6's part 1b leaves to Frans), then T9 (R4's
+  remainder) and R6's proof of T-SCHEME (its statement holds by running,
+  R6 part 1b); then R9 and K3 (plan, 5.1). R3, R7 and R8 (but its
+  performance comparison) are done; R4 is done but for T9 (2026-10-17).
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): R6 proves the
   stronger `CutOK` part 2 with T-SCHEME, then T9 follows (R4's remainder),
   and R5's half with eviction uses the same invariant on the slots. R6 part
@@ -144,7 +144,12 @@ Current state
   8 of the 10 cores, so R8's performance comparison waits for them; at 14:30
   stopping them was not permitted to the agent (the permission classifier),
   so it waits for them or for Frans (processes `runset3.sh` and `runset4.sh`
-  with their `tracecheck` children).
+  with their `tracecheck` children). At 16:25: of R7's four, rm-5000-1 and
+  rm-5000-2 are done (4.9 and 5.1 hours; traces made with Java before R8's
+  change 6): C-S fails in 52 and 51 of 5,581 and 5,598 transactions, in the
+  examples shown reclaim steps with an extra got-dirty node in Java, M17's
+  pattern, which R8's change 6 fixed; C-A, C-V, C-R, C-L and C-CUT (45 and 46
+  cuts) without a failure. rm-long-1 and -2 and R4's four still run.
 * Stage 2's time box (plan, 5.3): started with E1 at 2026-10-16 23:14;
   60 hours, so it ends at 2026-10-19 11:14. Stage 2's WPs (E1 to E7) were
   done by 2026-10-17 05:31, about 6.3 hours of it.
