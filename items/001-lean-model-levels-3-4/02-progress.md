@@ -122,13 +122,39 @@ Frans's go and decisions
     error or an `Error` (out of memory) inside it should stop the process
     fast, never roll back in memory, and `store()` must never run for a
     half-done `putKvs`. Do not start a fix of M49 until Frans decides.
+* **2026-10-17 19:46 to 19:59 CEST, Frans** (in session f1-51, relayed by it
+  to this session; recorded here by this session):
+  * 19:46: M49 (item 003) postponed; Frans will think about it later.
+  * 19:52: **M49 blocks nothing, J3 included**: the register's "fix before
+    J3" is lifted. Reason (Frans): it does not happen in practice; it needs
+    an I/O error, an out-of-memory error or a transformation that throws.
+    Item 003 deals with it later. A J WP's test that would hit M49 (for
+    example a read error injected during puts) leaves that case out or marks
+    it as a known M49 issue.
+  * 19:54: "you can now continue without my attention, possibly through the
+    whole 001. 002 and 003 are for later." So this session works unattended
+    through item 001's remaining WPs; items 002 (M46) and 003 (M49) are
+    left alone.
+  * 19:59: "Why wait for me? If things work as expected. I would like the
+    Work 001 session to go on all night, at least." So no checkpoint waits
+    for Frans when things work as expected: when K3's, K4's or K5's
+    conditions are met, the agent passes it with the plan's recommended
+    option (K3 with the new conformance step in `level3.sh`; K4 with
+    `level4.sh` a required gate and eviction on by default, Q10), recording
+    the evidence and "passed by the agent on Frans's 19:59 go" here. It stops
+    and waits only when things do not work as expected: a gate or proof that
+    cannot be made to pass, a change of the stream format or the public API,
+    a Java change outside the agreed list that a checkpoint would need Frans
+    to accept, or a choice for which the plan has no recommendation.
 
 
 Current state
 -------------
 
 * Checkpoints: G0 given (2026-10-16 15:23); K1 passed (2026-10-17 07:56,
-  Frans: Option K under TREE, A6' and A-COPY; above). K2 to K5 open.
+  Frans: Option K under TREE, A6' and A-COPY; above). K2 to K5 open; K3 to
+  K5 the agent passes itself when their conditions are met (Frans,
+  2026-10-17 19:59; above).
 * Next: R5's half with eviction (T12 for `runEvictCut`, with T9's
   invariant on the slots, `CInv`), and R6's proof of T-SCHEME (its statement
   holds by running, R6 part 1b; fallback: checked at every cut); then R9 and
@@ -145,10 +171,10 @@ Current state
   002, `items/002-top-node-ordinal-bound/02-report.md`, section 8;
   [level4-alignment.md](../../docs/level4-alignment.md)): a transaction that
   throws inside `Db.putKvs` is half committed (its time readable, its nodes
-  written by the next transaction, their ids reused). Stage 4 relies on a
-  fix before J3 (with eviction, loads during puts can fail). Not blocking
-  stage 3. Under discussion with Frans (2026-10-17 19:34; above): no fix
-  until he decides.
+  written by the next transaction, their ids reused). Not blocking: Frans
+  lifted the "fix before J3" (2026-10-17 19:52; above); item 003 deals with
+  it later, and J tests that would hit it leave that case out or mark it as
+  a known M49 issue.
 * Commits of this run (Q2 (b)): see the log entries.
 * Uncommitted work of this plan in bergdb: none (19:47).
 * Long jobs: none (18:44). R7's checker on the medium reclaim set's four
