@@ -129,6 +129,7 @@ public class DbStarter {
         prepareDb();
         rerunTransactions();
         postStartupCheck();
+        db.internal().nodeCollection().endReconstruction();
     }
 
     private void createMaps() {

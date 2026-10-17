@@ -154,8 +154,10 @@ a node, and when index nodes are written.
 * First touch (NodeCollection, following a stream pointer): the node
   table's canonical object if there is one; else the newest of the version
   the pointer names, the node's newest version in the startup section (Rule
-  R, also for a vpos) and a snapshot in the node table. A version from the
-  startup section is cut back to the startup time. The pointer listener is
+  R, also for a vpos) and a snapshot in the node table. During startup's
+  reconstruction, a version from the startup section is cut back to the
+  startup time; at runtime never (2026-10-17, bergdb item 001, R8: M22 of
+  [level4-alignment.md](level4-alignment.md)). The pointer listener is
   called on every follow. Puts and the rerun use a writer follower that
   makes every node it reaches canonical.
 * Writing (Db.store): before index nodes are written, their pointers to

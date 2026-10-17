@@ -107,7 +107,7 @@ Current state
 
 * Checkpoints: G0 given (2026-10-16 15:23); K1 passed (2026-10-17 07:56,
   Frans: Option K under TREE, A6' and A-COPY; above). K2 to K5 open.
-* Next: R8's changes 1 to 5 (E7's list; its change 6, M17, is done), R6
+* Next: R8's changes 1, 3, 4 and 5 (E7's list; 6 and 2 are done), R6
   (T-SCHEME), and R5's logical half (T12 for `runRestartsCut`, which needs
   only T8); then R9 and K3 (plan, 5.1). R3 and R7 are done; R4 is done but
   for T9, which waits for Frans's decision on register M48 (below, R4's
@@ -118,8 +118,7 @@ Current state
   recommended: Java's scheme gives it, Java's cuts meet it), or the window
   (b), or T9 only after restarts (c). Not urgent for stage 3's other WPs.
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: R8's change 2 (M22), in `java/`
-  (2026-10-17 12:57).
+* Uncommitted work of this plan in bergdb: none (13:27).
 * Long jobs running (scratch copies of `lean/`, at low priority): R7's
   checker on the medium reclaim set's four largest traces, from 2026-10-17
   10:31 (the small set and the two others took 6 and 18 minutes); R4's (R7's,
@@ -162,7 +161,7 @@ Status
 | R5 | Restarts across cuts: T12 | not started | — |
 | R6 | Java's scheme gives safe cuts: T-SCHEME | not started | — |
 | R7 | The red list on Java's reclaim | done | 2026-10-17 |
-| R8 | Java: the corrections the model requires, before eviction | in progress: change 6 (M17) done | 2026-10-17 |
+| R8 | Java: the corrections the model requires, before eviction | in progress: changes 6 (M17) and 2 (M22) done | 2026-10-17 |
 | R9 | Level 3 conformance; the gate proposal | not started | — |
 | J1 | Registry, pins and audits | not started | — |
 | J2 | Eviction of values | not started | — |
@@ -2423,9 +2422,10 @@ Results:
   configurations the same, byte for byte (no touch there); 10 of the 12 of
   the Level 3 ones (reclaim on) differ, as they must: the records of reclaim
   steps have fewer got-dirty ids. Stream lengths: l3-every1 1,789,400 to
-  1,788,344 bytes, l3-node8 7,006,600 to 6,876,752, l3-node14 the same (its
-  content from the first available position is the same; its physical cut
-  came later), l3-node62 8,872,320 to 9,086,496 (+2.4 percent; reclaim's
+  1,788,344 bytes, l3-node8 7,006,600 to 6,876,752, l3-node14 the same (the
+  bytes from its first available position are the same; that run deleted
+  its first megabyte physically, `firstPos`, which other runs did not, a
+  matter of timing), l3-node62 8,872,320 to 9,086,496 (+2.4 percent; reclaim's
   timing changes with D: its last first available time is earlier,
   2,024,400,011 against 2,046,800,011). Not a record the model disagrees
   with (below); the performance of reclaim is P's, not measured here.
@@ -2452,3 +2452,51 @@ Time: part of R8 (M, 2 to 8 hours): about 35 minutes for this change (12:20 to
 
 Open, next: R8's changes 1 to 5 (E7's list), one at a time, with the
 performance comparison on a quiet machine for 1, 3 and 4.
+
+### 2026-10-17 12:56 to 13:27. WP R8, change 2: no cut back at runtime (M22), done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `d6fade1`;
+uncommitted before this change's commit: its files, below.
+
+Did:
+
+1. `NodeCollection.followStreamPointer`: a key node version of the startup
+   section that a pointer leads to is cut back to the startup time only
+   while `DbStarter` reconstructs the database, from `setStartupSection` to
+   the new `endReconstruction`, which `DbStarter.doOrdinaryStartup` calls
+   after the rerun and its checks. At runtime a version read is never cut
+   back, as the Level 4 loader has it (`Mem.follow4`; E7's list, row 2,
+   register M22). Not reachable today: every node with a version in the
+   section has a canonical object from startup on, so the table serves it.
+2. Test `NodeCollection.testNoCutBackAfterReconstruction` (new): after
+   `endReconstruction`, Rule R still leads an old pointer to the section's
+   newest version, and that version is read whole (6 klongs, not the 4 of
+   the startup time); `testFollowRuleR` (during the reconstruction: cut back)
+   unchanged.
+
+Results: StreamDigest, twice: 36 of 36 digests the same as each other, and
+the same as with change 6 but for the physical cut of l3-node14's plain run
+(its first megabyte deleted in change 6's run only: `firstPos`, a matter of
+timing; the bytes from the first available position are the same); against
+`l34-base`, the 9 digests of change 6 differ (reclaim on), the other 27 are
+the same. No record changes.
+
+Files changed: `java/src/bergdb/core/NodeCollection.java`,
+`java/src/bergdb/core/DbStarter.java`; `docs/levels.md` (first touch),
+`docs/level4-alignment.md` (M22 closed), `docs/log.md`; this file.
+
+Checks: `java/build.sh`; the unit tests: 913 successful (912 and the new one);
+StreamDigest twice (above); the gates, 13:00 to 13:27, on a machine busy with
+the checker's runs: `LEVEL 1 OK` (132 s), `LEVEL 2 OK` (765 s; step 7:
+conformance small 60 of 60 traces TRACECHECK OK); `level3.sh` failed twice on
+one unit test, `StorageManagerTester.testAddReplica2` ("Expected 700, got
+200": a race in replica syncing that its own comment of 2015 reports; the
+storage tests fail 1 time in 12 also with `l34-base`'s jar), then `LEVEL 3 OK`
+(399 s; 913 unit tests).
+
+Register: M22 closed.
+
+Time: about 30 minutes (12:56 to 13:27; the gates ran 13:00 to 13:27).
+
+Open, next: R8's change 1 (`resolvePointers`: the pinned set by node id, any
+other pointee from its slot).

@@ -47,6 +47,14 @@ public class NodeCollection implements PointerFollower {
     private final PointerFollower writer = new WriterFollower();
     private volatile StartupSection section;
     
+    /**
+     * True from setStartupSection() until endReconstruction(): while DbStarter rebuilds the
+     * database. Only then is a key node version of the startup section that a pointer leads
+     * to cut back to the startup time; a load at runtime never is (bergdb item 001, WP R8,
+     * change 2; docs/level4-alignment.md, M22: the Level 4 loader, `Mem.follow4`).
+     */
+    private volatile boolean reconstructing = false;
+    
     /** Node ids read from node headers, by position; see idOf(). */
     @SuppressWarnings("serial")
     private final Map<Long, Long> idByPos = new LinkedHashMap<Long, Long>(1024, 0.75f, true) {
@@ -227,7 +235,8 @@ public class NodeCollection implements PointerFollower {
         }
         
         // 3. The node table's object, if it is canonical or at least as new as ref.
-        //    Otherwise, read version ref.
+        //    Otherwise, read version ref; during the reconstruction only, a key node
+        //    version of the section is cut back to the startup time (M22).
         
         Node result = cache.getNode(id);
         boolean usable = result != null && (result.isCanonical() 
@@ -244,7 +253,7 @@ public class NodeCollection implements PointerFollower {
             Node node = nodeStream.readNode(ref);
             assert node.getId() == id : "ids differ, " + node.getId() + " != " + id;
             
-            if (mySection != null && ref >= mySection.startPos 
+            if (reconstructing && mySection != null && ref >= mySection.startPos 
                     && node.getType() == Node.TYPE_KEY_NODE) {
                 ((KeyNode) node).toPreviousState(mySection.startupTime);
                 cutBack = true;
@@ -296,6 +305,15 @@ public class NodeCollection implements PointerFollower {
             long startupTime) {
         this.section = new StartupSection(new HashMap<Long, Long>(newById), sectionStartPos,
                 startupTime);
+        this.reconstructing = true;
+    }
+    
+    /**
+     * Ends the reconstruction (DbStarter): from now on, a version read through a pointer is
+     * never cut back to the startup time (M22). Rule R stays.
+     */
+    public void endReconstruction() {
+        this.reconstructing = false;
     }
     
     /** The position of the newest version of node 'id' in the startup section, or null. */
@@ -488,7 +506,7 @@ public class NodeCollection implements PointerFollower {
     /**
      * Rule R: a pointer to an old version of a node that has a version in the startup 
      * section, or a vpos for it, is followed to the node's newest version in the 
-     * section, cut back to the startup time.
+     * section, cut back to the startup time during the reconstruction.
      */
     @Nano
     private static void testFollowRuleR() {
@@ -507,6 +525,28 @@ public class NodeCollection implements PointerFollower {
         
         Node b = c.followPointer(testParent(501, 101), 0, op);
         Assert.assertTrue("vpos followed to the same object", a == b);
+    }
+    
+    /**
+     * After the reconstruction, Rule R stays, and a version read is not cut back to the
+     * startup time (bergdb item 001, WP R8, change 2: M22). Before 2026-10-17 it was, also
+     * at runtime.
+     */
+    @Nano
+    private static void testNoCutBackAfterReconstruction() {
+        TestStream stream = new TestStream();
+        stream.nodes.put(100L, testKeyNode(101, 100, 10));
+        stream.nodes.put(300L, testKeyNode(101, 300, 10, 20, 30));
+        NodeCollection c = new NodeCollection(testDbInfo(), stream);
+        Map<Long, Long> newById = new HashMap<Long, Long>();
+        newById.put(101L, 300L);
+        c.setStartupSection(newById, 250, 25);
+        c.endReconstruction();
+        GetData op = testGetData(new int[1]);
+        
+        Node a = c.followPointer(testParent(401, 100), 0, op);
+        Assert.assertEquals("old version followed to the newest", 300, a.getSpos());
+        Assert.assertEquals("not cut back", 6, a.getSize());
     }
     
     /**

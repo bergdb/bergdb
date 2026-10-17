@@ -484,3 +484,13 @@ the 24 digests of the Level 2 configurations the same, byte for byte, and 10
 of the 12 of the Level 3 ones (reclaim on) different. The trace checker on
 R2's small reclaim set made again with the change: 25 of 25 traces TRACECHECK OK (14,448 transactions, 288 cuts; C-CUT and C-CUT+ without a failure), every transaction
 a step of the model.
+
+2026-10-17. Bergdb item 001, WP R8, change 2 (E7's list, register M22 of
+`docs/level4-alignment.md`): a version that a pointer leads to is cut back to
+the startup time only while `DbStarter` reconstructs the database
+(`NodeCollection.endReconstruction`); a load at runtime never is, as the Level
+4 loader of the Lean model has it (`Mem.follow4`). Not reachable today, since
+every node with a version in the startup section has a canonical object, so
+no record changes (StreamDigest: the same as with change 6). New test
+`NodeCollection.testNoCutBackAfterReconstruction` (a runtime load of a section
+version after `endReconstruction`, not cut back).
