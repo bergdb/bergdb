@@ -100,8 +100,7 @@ Current state
 * Commits of this run (Q2 (b)): see the log entries.
 * Uncommitted work of this plan in bergdb: the files of the WPs in progress,
   named in the last log entry.
-* Long jobs running: P2's main soak, `java/build/soak/main1/` (since
-  23:12:41, about three hours; see the P2 entries).
+* Long jobs running: none.
 * Stage 2's time box (plan, 5.3): started with E1 at 2026-10-16 23:14;
   60 hours, so it ends at 2026-10-19 11:14.
 * Preserved builds: `l34-base` (A1; `java/build/perf/builds/l34-base/`,
@@ -126,8 +125,8 @@ Status
 | L4 | The writer after a lazy startup: CC, T2-L | done | 2026-10-16 |
 | L5 | Lazy reading checked against Java | done | 2026-10-16 |
 | E1 | Design: eviction, references, pins | done | 2026-10-16 |
-| E2 | The physical model with eviction, executable | not started | — |
-| E3 | INV-SLOT and the physical writer: T-CACHE | not started | — |
+| E2 | The physical model with eviction, executable | in progress | 2026-10-17 |
+| E3 | INV-SLOT and the physical writer: T-CACHE | in progress | 2026-10-17 |
 | E4 | Reads under eviction: T-READ | not started | — |
 | E5 | Restarts with eviction: T2-C | not started | — |
 | E6 | Pins and index-freedom | not started | — |
@@ -155,7 +154,7 @@ Status
 | F2 | Documents | not started | — |
 | F3 | The final report | not started | — |
 | P1 | The Level 3 quick performance reference | done | 2026-10-16 |
-| P2 | The Level 3 soak | in progress | 2026-10-16 |
+| P2 | The Level 3 soak | done | 2026-10-17 |
 | P3 | Bounds, measured | not started | — |
 | P4 | The soak with eviction | not started | — |
 
@@ -1222,7 +1221,7 @@ than 10 physical cuts. Expected end: about 02:15. Meanwhile: no gates,
 performance runs or Lean builds; document work (E1).
 
 
-### 2026-10-16 23:14 to 23:27. WP E1, done
+### 2026-10-16 23:14 to 23:25. WP E1, done
 
 Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `309243b`;
 uncommitted: P2's `java/stress/Soak.java` and `soak.sh` (in progress) and
@@ -1295,3 +1294,98 @@ tests): it needs Lean builds, so it waits for the end of P2's measured
 hours (about 02:15); until then, document work (R2's format, or P2's
 report skeleton).
 
+
+### 2026-10-17 01:31. WP P2, in progress: the main run's result, the companion (written before it)
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `065c21f` (E1);
+uncommitted: P2's `java/stress/Soak.java` and `soak.sh`, `docs/level3-soak.md`
+(draft), this file.
+
+The main run (`java/build/soak/main1/`, 23:12:41 to 01:30:02, exit 0):
+`SOAK OK`, 7,200 steady seconds, 1,438,664 commits (199.8 a second),
+67,378,447 gets and 37,733,061 scans checked at their snapshots, no failure,
+19 physical cuts in the measured phase, three cold restarts with their checks
+(1,127,000 gets each), 2,696,284 reads expired at admission and none during;
+in the measured phase 143 GC pauses, 25.3 s in all, the longest 3.3 s (to be
+analysed in the report). During the main run, other work ran at the lowest
+priority (`nice -n 19`, one core at a time): single Lean files of E2 and E3
+in a scratch copy, and E2's random tests (`phystest 20 40 evict`, 00:36 to
+00:38). The plan's rule for the measured hours (no gates, performance runs or
+full Lean builds) allows it; the 23:13 entry said "no Lean builds", which was
+stricter than the plan and not kept. The report checks the slowest commits
+against those times.
+
+Next, the companion (`soak.sh comp1`, started now): 20,000 keys and 200 long
+keys, retention 60 s, 100 transactions a second, `-Xms4g -Xmx4g`, 1,200
+steady seconds, three restarts, at least ten physical cuts, every key checked
+at 11 times at every restart and at the end (the exhaustive check of a small
+key space). Expected end: about 02:10. Meanwhile: the report, Lean work in
+scratch at `nice -n 19`.
+
+
+### 2026-10-16 21:17 to 2026-10-17 02:02. WP P2, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `065c21f` (E1);
+uncommitted before this WP's commit: its files, below.
+
+Did: the soak of level3-plan task 2 (the entries at 22:10, 23:13 and 01:31
+record the tool, the pilot and the runs as they went).
+
+1. `java/stress/Soak.java` and `java/stress/soak.sh` (new; 22:10 entry).
+2. The pilot (`pilot2`, 22:43 to 23:11, `SOAK OK`) calibrated the main run:
+   memory grows by about 1.3 KB per update and only restarts give it back,
+   so the main run kept the pilot's scale and workload at 200 transactions
+   a second in a 24 GB heap (23:13 entry).
+3. The main run (`main1`, 23:12:41 to 01:30:02): `SOAK OK`. Two steady hours
+   at one million keys and a five-minute retention, 1,438,664 commits (199.8
+   a second), 19 physical cuts, three cold restarts with their checks;
+   67,378,447 gets and 37,733,061 scans checked at their snapshots, no wrong
+   result, 2,696,284 reads expired at admission and none during.
+4. The companion (`comp1`, 01:31:15 to 01:54:37): `SOAK OK`. 20,000 keys, a
+   one-minute retention, 1,200 steady seconds, 12 physical cuts, three
+   restarts; every key at 11 times after each restart and at the end
+   (exhaustive), 11,246,785 gets and 6,301,138 scans checked, no wrong
+   result.
+5. `docs/level3-soak.md`: the report (result, what runs, the pilot and the
+   scale, the main run, latency, the worst pauses, memory and storage,
+   restarts, the companion, what it does not show, where the data is), with
+   the runs' `source.txt`, `stdout.txt` and trimmed `result.json` in
+   `docs/evidence/level3-soak/`. `docs/level3-plan.md`: task 2 done.
+
+Findings (the report has the numbers):
+
+* Reclaim bounds the stream: 3.6 to 6.7 GB on disk while 28.8 GB were
+  appended; one iteration (320 to 480 s, rewriting 140,000 to 600,000 live
+  values) and one cut, decided when the iteration's end was the retention
+  old; the first available lookup time 303 to 1,069 s old.
+* Commits: 0.26 ms at the median, 0.59 ms at p99. In the main run the tail
+  (up to 208 ms) is G1's young collections; the commits that delete files
+  (`FileStream.pretruncate`, a directory force per file) take 59 to 111 ms
+  and are the slowest in the companion and the pilot.
+* The longest pauses (3.3 s, and two Remark pauses of 1.6 s) come within
+  three minutes after a restart and are mostly system time (8.4 s of system
+  time in the 3.3 s pause): page faults of a heap that is not pretouched, I
+  think. P4 should pretouch its heap (`-XX:+AlwaysPreTouch`), to separate
+  this from collection work.
+* Memory grows by 2.6 to 2.9 MB a second between restarts; at that rate the
+  24 GB heap would have run out after about two hours without restarts.
+  Level 4's eviction is what is to bound it; P4 measures that.
+
+Checks: `build.sh` passes with `Soak.java` (02:00; java/stress only, so no
+gate is required); the tool ran on tiny configurations (t1 to t4), the
+companion (small), the pilot and the main run (the plan's scale).
+
+Not as planned: the 23:13 entry said "no Lean builds" during the main run,
+which was stricter than the plan's rule (no gates, performance runs or full
+Lean builds) and was not kept: single Lean files of E2 and E3 and E2's random
+tests (`phystest 20 40 evict`, 00:36 to 00:38) ran at `nice -n 19`, one core
+at a time. None of the slowest commits or the long pauses falls in the
+random tests' window; the report says the effect is not measured.
+
+Time: P2 is M (2 to 8 hours) plus machine time: about 2.5 hours of agent
+work over 4.7 hours, and 3.6 hours of runs.
+
+Register: none changed (the measurements are for P3, P4 and J7).
+
+Open, next: E2's Lean checks and commit (its model was revised during E3,
+see the next entries), then E3.

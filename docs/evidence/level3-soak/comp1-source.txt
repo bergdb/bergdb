@@ -1,0 +1,13 @@
+name comp1
+commit 065c21f2a583bdcb70143af9e73006501cc25000
+changed files (java/src, java/src-dev, java/stress):
+  ?? java/stress/Soak.java
+  ?? java/stress/soak.sh
+jar sha256 939d3f755a9c916e5a48e17abc1c045b203f04966692493539e9f94b7ccda14f
+java /opt/homebrew/opt/openjdk/bin/java: openjdk version "27" 2026-09-15 OpenJDK Runtime Environment Homebrew (build 27) OpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing) 
+flags -XX:+UseG1GC -da -Xms4g -Xmx4g -Xlog:gc*,safepoint:file=gc.log:uptime,level,tags
+properties n=20000 nlong=200 hotkeys=400 retain=60 rate=100 warmup=60 warmupmax=1200 measure=1200 restarts=3 mincuts=10 extend=1200 checktimes=11
+machine MacBookPro18,3 Apple M1 Pro, 10 cores, 34359738368 bytes, 27.0.1
+disk free 677 GB
+started 2026-10-17 01:31:15 CEST
+ended 2026-10-17 01:54:37 CEST, exit code 0
