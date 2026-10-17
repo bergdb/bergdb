@@ -57,7 +57,7 @@ Levels
 | 1 | + restart by replaying the whole stream | Passes the tests run; two bugs fixed |
 | 2 | + bounded startup: the startup pos moves, startup reads only the tail | Works in all tests run, also under load and with crashes; the defects of the 2017 code fixed; aligned with the Lean model, which is proven (2026-10-16, F1-008-11) |
 | 3 | + reclaim: cut the front of the stream | Passes the recorded exact-cut, restart, crash, load, concurrent-reader and changing-retention tests; infinite retention is the default, finite retention schedules reclaim; retention pacing, older cut point, index-aware allowance and 16 KB scan target implemented; an overtaken read may expire without harming the database; FileStream power-loss ordering is implemented and audited on the tested platforms; a longer disk soak and the performance reference remain planned |
-| 4 | + eviction: data larger than memory | Not implemented; the model first, in bergdb item 001 ([level4-alignment.md](level4-alignment.md)) |
+| 4 | + eviction: data larger than memory | Not implemented; the model first, in bergdb item 001 ([level4-alignment.md](level4-alignment.md)): its Lean model with eviction is proved (2026-10-17: with any cache schedule and restarts, the physical writer appends the model's records and reads give P; every object outside the pinned set may be evicted), and the design waits for Frans's review (the item's K1) |
 
 Level 3 needs level 2: once the front of the stream is cut, startup can no
 longer replay from the beginning.
@@ -1123,6 +1123,58 @@ OS file cache was warm):
   (the cut waits for the startup pos). A slower machine or disk may be 2
   to 5 times slower. Small devices need a much smaller value (1 to 5 MB).
 * Existing databases keep the startup distance stored in their stream.
+
+
+Bounds, measured
+================
+
+Measured 2026-10-17 for bergdb item 001, WP P3 (problem.md, R3 and Q4;
+sis-model.md, sections 10 and 11; input for the reserve of Level 4's
+capacity controller, J7), with [LoadTest.java](../java/stress/LoadTest.java)
+as above: 1M keys of 4 bytes, values of 100 bytes, a load of 100 keys per
+transaction, then 2M single-put transactions (uniform, or 90 percent on 1
+percent of the keys) or 100,000 transactions of 40 puts, on a FileStream,
+the default node size. Counted: the startup section, its length after each
+transaction; D, sampled every 10,000 transactions, in nodes and in bytes in
+memory (`Node.getMemSize`), the memory that eviction must keep (Level 4's
+pinned set); and the index nodes written that are no longer current
+(replaced by a split or a new super root, seen through `Db`'s test hooks),
+and of those, the ones written again after a write since they were
+replaced. The machine was not quiet (other checks ran), so the times here
+are not a reference; the counts do not depend on it. All runs passed the
+full check.
+
+| Workload | Startup distance | Startup section, max | D, max | D in memory, max | Index nodes written per transaction | Of them no longer current | Written again since replaced |
+|---|---|---|---|---|---|---|---|
+| uniform, 1 put | 50 MB | 1.00 x sd | 90,000 nodes | 72 MB | 0.68 | 20.0 % | 11.0 % |
+| hot, 1 put | 50 MB | 1.00 x sd | 72,000 | 49 MB | 0.28 | 46.0 % | 10.6 % |
+| uniform, 40 puts | 50 MB | 1.22 x sd | 119,000 | 95 MB | 22.9 | 22.9 % | 10.2 % |
+| uniform, 1 put | 5 MB | 1.67 x sd | 20,000 | 16 MB | 1.97 | 5.3 % | 4.6 % |
+| hot, 1 put | 5 MB | 1.22 x sd | 7,600 | 5.6 MB | 0.40 | 32.9 % | 9.0 % |
+
+Findings:
+
+* The startup section stayed at the startup distance with single puts and
+  the default 50 MB (at most 1.00 x sd), and went past it with 40-put
+  transactions (1.22 x) and with a small distance (1.67 x at 5 MB, uniform):
+  the take catches up a few transactions late, which matters more when the
+  distance is small. Not a proven bound (problem.md, Q4).
+* D, the memory that Level 4 cannot evict, follows the startup distance:
+  at most 72 MB (uniform) to 95 MB (40-put transactions) at 50 MB, and 5.6
+  to 16 MB at 5 MB, that is 1.0 to 3.2 times the startup distance in
+  memory. A reserve of twice the startup distance covers the runs at 50 MB,
+  not the uniform run at 5 MB (3.2 times): J7's reserve needs a floor in
+  bytes, or a measure of D itself.
+* The conservative still-dirty test (Rule A over all pointers,
+  sis-model.md, section 11) writes nodes that are no longer current: 20 to
+  46 percent of the index nodes written at 50 MB, most with a hot set, whose
+  dead nodes share hot children. About 10 percent of all index node writes
+  (4.6 percent at 5 MB, uniform) are of a dead node that had been written
+  already since it died: its history no longer changes, and only its
+  references to newer versions of its children do, which the reads it
+  serves do not need (lemma M). The exact test (the model's `exactTest`,
+  proved for structures without a virtual root) would skip them, but it
+  changes the records; BergDB keeps the conservative test (`javaTest`).
 
 
 Crash tests

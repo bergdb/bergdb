@@ -648,6 +648,7 @@ public class TraceExport {
             public void nodeTouched(Node node) {
                 touched.add(node);
             }
+            public void nodeReplaced(Node node) {}
         };
 
         Db.testHooks = hooks;

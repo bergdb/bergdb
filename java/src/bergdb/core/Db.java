@@ -668,10 +668,18 @@ public class Db {
             
             public void keyNodeReplaced(KeyNode node) {
                 if (x.transInfo != null) replacedInTrans.add(node);
+                final TestHooks hooks = testHooks;
+                if (hooks != null) {
+                    hooks.nodeReplaced(node);
+                }
             }
             
             public void topNodeReplaced(TopNode node) {
                 if (x.transInfo != null) replacedInTrans.add(node);
+                final TestHooks hooks = testHooks;
+                if (hooks != null) {
+                    hooks.nodeReplaced(node);
+                }
             }
         };
         
@@ -1959,6 +1967,12 @@ public class Db {
          * index node; the super root included.
          */
         public void nodeTouched(Node node);
+
+        /**
+         * The transaction being executed replaced an index node (a split, a new super root):
+         * the node is no longer current (bergdb item 001, WP P3).
+         */
+        public void nodeReplaced(Node node);
     }
 
     /** The test-only hooks, or null. See TestHooks. */

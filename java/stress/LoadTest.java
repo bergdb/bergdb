@@ -12,7 +12,12 @@ import bergdb.stream.FileStream;
  * Level 2 under load, written 2026-10-13: write and read speed, commit
  * latency, the length of the startup section, the dirty set D, the bytes
  * appended per user byte, and the startup time, on a FileStream on disk.
- * See docs/levels.md, level 2, and problem.md, R3, R4 and R6.
+ * See docs/levels.md, level 2, and problem.md, R3, R4 and R6. Since
+ * 2026-10-17 (bergdb item 001, WP P3; docs/levels.md, "Bounds, measured"):
+ * also D's bytes in memory, and the index nodes written that are no longer
+ * current (replaced by a split or a new super root, seen through Db's test
+ * hooks), which the conservative still-dirty test keeps writing while a
+ * child stays dirty (sis-model.md, section 11).
  *
  * Phases:
  *   1. Load: n keys in random order, `batch` keys per transaction.
@@ -86,6 +91,11 @@ public class LoadTest {
     final Stats stats = new Stats();
     long keptMax;
 
+    /** The index nodes replaced so far, no longer current (Db.TestHooks.nodeReplaced), and
+     *  those of them written since they were replaced. */
+    final Set<Node> replaced = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+    final Set<Node> writtenDead = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+
     LoadTest() {
         version = new int[n];
     }
@@ -93,12 +103,23 @@ public class LoadTest {
     /** Per-transaction measurements, taken in the transaction listener. */
     class Stats implements Trans.Listener {
         long trans, kvBytes, indexNodes, maxIndexNodes;
+        long deadNodes, maxDeadNodes;     // index nodes written that are no longer current
+        long deadAgain;                   // of them, written again since they were replaced
         long maxSection, sumSection;
         long firstPos = -1, lastPos;
 
         public void transExecuted(Db.ExecuteData x) {
             TransNodes tn = x.transNodes;
             int index = tn.topCount + tn.keyCount;
+            int dead = 0;
+            for (int j = 0; j < tn.topCount + tn.keyCount; j++) {
+                Node w = j < tn.topCount ? tn.topNodes[j] : tn.keyNodes[j - tn.topCount];
+                if (!replaced.contains(w)) continue;
+                dead++;
+                if (!writtenDead.add(w)) deadAgain++;
+            }
+            deadNodes += dead;
+            if (dead > maxDeadNodes) maxDeadNodes = dead;
             trans++;
             kvBytes += tn.kvSize;
             indexNodes += index;
@@ -117,6 +138,7 @@ public class LoadTest {
 
         void reset() {
             trans = kvBytes = indexNodes = maxIndexNodes = maxSection = sumSection = 0;
+            deadNodes = maxDeadNodes = deadAgain = 0;
             firstPos = -1;
         }
     }
@@ -185,6 +207,14 @@ public class LoadTest {
                 + " sd=" + sdProp + " maxnode=" + maxNode + " sync=" + syncEach);
         db = start(true);
         db.start();
+        Db.testHooks = new Db.TestHooks() {
+            public void transExecuted(Db.ExecuteData x) {}
+            public void valueNodeCreated(bergdb.dag.ValueNode node, long[] key) {}
+            public void nodeTouched(Node node) {}
+            public void nodeReplaced(Node node) {
+                replaced.add(node);
+            }
+        };
         int sd = db.getStartupDistance();
         System.out.println("startupDistance " + sd);
 
@@ -222,7 +252,7 @@ public class LoadTest {
         long[] lat = new long[updates];
         int maxLatAt = -1;
         int maxLatIndex = 0;
-        long dirtyMax = 0, transSeqMax = 0;
+        long dirtyMax = 0, transSeqMax = 0, dirtyBytesMax = 0;
         keptMax = 0;
         long sectionSampleMax = 0;
         int[] slowIndex = new int[updates];
@@ -253,6 +283,7 @@ public class LoadTest {
                 long[] d = dirtyCount();
                 dirtyMax = Math.max(dirtyMax, d[0]);
                 transSeqMax = Math.max(transSeqMax, d[1]);
+                dirtyBytesMax = Math.max(dirtyBytesMax, d[2]);
                 long len = stats.lastPos;
                 long sp = db.internal().getStartupPosForEvict();
                 sectionSampleMax = Math.max(sectionSampleMax, len - sp);
@@ -260,8 +291,9 @@ public class LoadTest {
                 keptMax = Math.max(keptMax, kept);
                 if ((i + 1) % (sample * 10) == 0 || i + 1 == updates) {
                     System.out.printf("  update %d: stream %.1f MB, section %.2f MB (%.2f x sd), "
-                            + "D %d nodes in %d transactions%s%n",
-                            i + 1, len / 1e6, (len - sp) / 1e6, (double) (len - sp) / sd, d[0], d[1],
+                            + "D %d nodes (%.1f MB) in %d transactions%s%n",
+                            i + 1, len / 1e6, (len - sp) / 1e6, (double) (len - sp) / sd, d[0],
+                            d[2] / 1e6, d[1],
                             retain == 0 ? "" : String.format(", kept after the cut %.1f MB, "
                                     + "on disk %.1f MB", kept / 1e6,
                                     (len - fileStream.getFirstPos()) / 1e6));
@@ -280,7 +312,13 @@ public class LoadTest {
         System.out.printf("  startup section: mean %.2f MB, max %.2f MB (%.2f x sd)%n",
                 stats.sumSection / 1e6 / stats.trans, stats.maxSection / 1e6,
                 (double) stats.maxSection / sd);
-        System.out.printf("  D: max %d nodes, max %d transactions (sampled)%n", dirtyMax, transSeqMax);
+        System.out.printf("  D: max %d nodes, max %.1f MB in memory, max %d transactions (sampled)%n",
+                dirtyMax, dirtyBytesMax / 1e6, transSeqMax);
+        System.out.printf("  index nodes written that are no longer current: %d of %d (%.2f%%), "
+                + "max %d in one transaction; written again after a write since they were "
+                + "replaced: %d (%.2f%%)%n", stats.deadNodes, stats.indexNodes,
+                100.0 * stats.deadNodes / Math.max(1, stats.indexNodes), stats.maxDeadNodes,
+                stats.deadAgain, 100.0 * stats.deadAgain / Math.max(1, stats.indexNodes));
         if (cutCheck) {
             System.out.println("  restarts with a full check after a cut: " + cutChecks);
         }
@@ -299,6 +337,9 @@ public class LoadTest {
                 + countOver(slowIndex, 100) + ", more than 1000: " + countOver(slowIndex, 1000));
         lat = null;
         slowIndex = null;
+        Db.testHooks = null;
+        replaced.clear();
+        writtenDead.clear();
         System.out.printf("HEAP after updates %.0f MB%n", heapMB());
 
         long streamLength = db.getStreamLength();
@@ -375,13 +416,17 @@ public class LoadTest {
         System.out.printf("READ %s: %d gets, %.0f ns per get%n", what, count, 1e9 * sec / count);
     }
 
-    /** Returns {number of nodes in D, number of transactions in the TransSeq}. */
+    /** Returns {number of nodes in D, number of transactions in the TransSeq, D's bytes in
+     *  memory (Node.getMemSize)}. */
     long[] dirtyCount() {
-        final long[] c = new long[2];
+        final long[] c = new long[3];
         synchronized (db.internal().getWriteLock()) {
             TransSeq seq = db.internal().transSeq();
             seq.visitGotDirtyNodes(Long.MAX_VALUE, new TransSeq.NodeVisitor() {
-                public void node(Node node, long tpos, long lastTpos) { c[0]++; }
+                public void node(Node node, long tpos, long lastTpos) {
+                    c[0]++;
+                    c[2] += node.getMemSize();
+                }
             });
             c[1] = seq.getSize();
         }

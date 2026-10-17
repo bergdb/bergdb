@@ -162,7 +162,7 @@ Status
 | F3 | The final report | not started | — |
 | P1 | The Level 3 quick performance reference | done | 2026-10-16 |
 | P2 | The Level 3 soak | done | 2026-10-17 |
-| P3 | Bounds, measured | not started | — |
+| P3 | Bounds, measured | done | 2026-10-17 |
 | P4 | The soak with eviction | not started | — |
 
 Status values: not started, in progress, partial, blocked, done, dropped.
@@ -1909,7 +1909,7 @@ runs) and P3 (bounds, measured); the A-COPY Lean tier on the large set still
 runs (current state).
 
 
-### 2026-10-17 05:31 to 06:07. WP R2, done
+### 2026-10-17 05:31 to 06:05. WP R2, done
 
 Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `9eb146c` (E7);
 uncommitted before this WP's commit: its files, below. K1 waits for Frans;
@@ -1983,3 +1983,62 @@ Time: R2 is M (2 to 8 hours): about 35 minutes.
 Open, next: P3 (bounds, measured), which needs one more test hook (the nodes
 a transaction replaces, to count the writes of nodes that are not current).
 R3 to R8 wait for K1.
+
+
+### 2026-10-17 06:05 to 06:35. WP P3, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `ad1789d` (R2);
+uncommitted before this WP's commit: its files, below.
+
+Did:
+
+1. One more test-only hook: `Db.TestHooks.nodeReplaced`, for every index
+   node a transaction replaces (a split, a new super root; from the Dag's
+   `keyNodeReplaced` and `topNodeReplaced`). Null hooks, the default, change
+   nothing.
+2. `java/stress/LoadTest.java`: D's bytes in memory (`Node.getMemSize`) in
+   each sample and at most; the index nodes written that are no longer
+   current, and of those the ones written again after a write since they
+   were replaced.
+3. Runs (06:08 to 06:12; LoadTest, 1M keys, 100-byte values, a FileStream,
+   the default node size): 2M single-put transactions, uniform and hot (90
+   percent on 1 percent of the keys), and 100,000 transactions of 40 puts,
+   at the default startup distance of 50 MB; and the single-put workloads
+   at 5 MB. All passed the full check.
+
+   | Workload | sd | Section, max | D, max | D in memory | Index nodes per transaction | No longer current | Again since replaced |
+   |---|---|---|---|---|---|---|---|
+   | uniform, 1 put | 50 MB | 1.00 x sd | 90,048 | 72.0 MB | 0.68 | 273,857 of 1,366,968 (20.0 %) | 150,915 (11.0 %) |
+   | hot, 1 put | 50 MB | 1.00 x sd | 72,026 | 48.7 MB | 0.28 | 258,007 of 560,614 (46.0 %) | 59,444 (10.6 %) |
+   | uniform, 40 puts | 50 MB | 1.22 x sd | 119,167 | 95.3 MB | 22.93 | 525,091 of 2,292,519 (22.9 %) | 232,763 (10.2 %) |
+   | uniform, 1 put | 5 MB | 1.67 x sd | 20,036 | 15.8 MB | 1.97 | 207,227 of 3,933,752 (5.3 %) | 180,343 (4.6 %) |
+   | hot, 1 put | 5 MB | 1.22 x sd | 7,560 | 5.6 MB | 0.40 | 264,859 of 805,718 (32.9 %) | 72,474 (9.0 %) |
+
+4. `docs/levels.md`: "Bounds, measured" (new), with the table and the
+   findings: the startup section stays at the startup distance with single
+   puts at 50 MB and goes past it with larger transactions and a small
+   distance (up to 1.67 x); D in memory is 1.0 to 3.2 times the startup
+   distance, so a reserve of twice the startup distance covers the runs at
+   50 MB, not the uniform run at 5 MB (input for J7); about 10 percent of all
+   index node
+   writes are of dead nodes written again since they died, the cost of the
+   conservative still-dirty test (sis-model.md, 11). Also the levels
+   table's Level 4 row: its model is proved, the design waits for K1.
+
+Files changed: `java/src/bergdb/core/Db.java`; `java/stress/LoadTest.java`,
+`java/stress/TraceExport.java` (the hook's new method); `docs/levels.md`;
+this file.
+
+Checks: `java/build.sh` passes; the gates on the work tree with this WP's
+files, full, one after the other (06:13 to 06:33): `LEVEL 1 OK` (94 s),
+`LEVEL 2 OK` (707 s; step 7: a2a3-1 to 3 OK, conformance small 60 of 60
+traces `TRACECHECK OK`), `LEVEL 3 OK` (341 s); unit tests 911 successful, F
+tests 37 successful; StreamDigest against `l34-base`: DIGESTS IDENTICAL (36
+of 36). The documents' links resolve.
+
+Register: none (the findings are input for J7's reserve and for M40).
+
+Time: P3 is S to M (up to 8 hours): about 30 minutes.
+
+Open, next: every WP that does not wait for K1 is done (R1, R2, P1 to P3,
+stages 0 and 1). The rest waits for Frans's K1 (current state).
