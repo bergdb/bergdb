@@ -71,8 +71,8 @@ theorem readFrom_cut (sp : Spec V T) (S : Stream V T) {c s : Nat} (hcs : c ≤ s
 
 /-- A version that a lookup may read, a physical read may follow (WP R6: `CutOK`'s
 part 2 over `ReadsPhys`). -/
-theorem ReadsAt.phys {sp : Spec V T} {S : Stream V T} {P : Struct V} {t : Time} {v : Version V}
-    (h : ReadsAt sp S P t v) : ReadsPhys sp S P t v := by
+theorem ReadsAt.phys {sp : Spec V T} {S : Stream V T} {P : Struct V} {D : Dirty} {t : Time}
+    {v : Version V} (h : ReadsAt sp S P t v) : ReadsPhys sp S P D t v := by
   induction h with
   | latest x v hr hl => exact ReadsPhys.latest x v hr hl
   | child v y w _ hy hf ih => exact ReadsPhys.child v y w ih hy (Or.inl hf)

@@ -559,3 +559,14 @@ advances by one at every node read from the stream and every node the writer
 makes; `Db.getAccessData` is minus it and takes no lock (before, the node
 table's lock). Records: the same (StreamDigest, 36 of 36). New test
 `NodeCollection.testAccessData`.
+
+2026-10-17. Bergdb item 001, WP R6, part 1b: T-SCHEME tried by running
+before proving (scratch probes of example 4's random runs, about 1.2 million
+states):
+with `CutOK`'s part 2 over every pointer (part 1), Java's scheme does not
+always give it; witness `schemeWitness` (`lean/SIS/ReclaimExample.lean`): a
+stale chain of versions that Rule A put back during the settling, still in D
+at the decision, leads below the cut, while the running memory reads through
+the pinned canonical objects and is right. `ReadsPhys` now takes D and does
+not extend through such versions (a trusted change); the checker's C-CUT
+likewise. With it the scheme gives part 2 in every state checked.

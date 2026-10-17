@@ -123,9 +123,13 @@ Current state
   for T9 (2026-10-17).
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): R6 proves the
   stronger `CutOK` part 2 with T-SCHEME, then T9 follows (R4's remainder),
-  and R5's half with eviction uses the same invariant on the slots.
+  and R5's half with eviction uses the same invariant on the slots. R6 part
+  1b refined the definition (an exception for put-back versions in D;
+  `schemeWitness`; [level3-alignment.md, 2.9](../../docs/level3-alignment.md),
+  "Refined"): for Frans to keep (recommended) or to replace by a second wait
+  in Java's reclaim; not blocking.
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: none (15:22).
+* Uncommitted work of this plan in bergdb: none (16:19).
 * Long jobs running (scratch copies of `lean/`, at low priority): R7's
   checker on the medium reclaim set's four largest traces, from 2026-10-17
   10:31 (the small set and the two others took 6 and 18 minutes); R4's (R7's,
@@ -170,7 +174,7 @@ Status
 | R3 | The Level 3 model: touch, first available time, cuts | done | 2026-10-17 |
 | R4 | Recovery and reads after a cut: T8, T9 | T8 done; T9 after R6 (M48: (a), Frans) | 2026-10-17 |
 | R5 | Restarts across cuts: T12 | not started | — |
-| R6 | Java's scheme gives safe cuts: T-SCHEME | in progress: part 1, `CutOK`'s part 2 over `ReadsPhys` (M48: (a)), done | 2026-10-17 |
+| R6 | Java's scheme gives safe cuts: T-SCHEME | in progress: part 1, `CutOK`'s part 2 over `ReadsPhys` (M48: (a)), with its exception for put-back versions (1b), done; T-SCHEME holds by running | 2026-10-17 |
 | R7 | The red list on Java's reclaim | done | 2026-10-17 |
 | R8 | Java: the corrections the model requires, before eviction | changes 1 to 6 done; the performance comparison of 1, 3 and 4 waits for a quiet machine | 2026-10-17 |
 | R9 | Level 3 conformance; the gate proposal | not started | — |
@@ -2878,3 +2882,100 @@ not quiet (R7's and R4's checker runs on the medium reclaim set, at
 CPU-hours each, and another session's runs), and stopping the checker runs
 was not permitted to me (the permission classifier); it waits for them or
 for Frans.
+
+### 2026-10-17 15:25 to 16:19. WP R6, part 1b: T-SCHEME by running; `ReadsPhys`'s exception for put-back versions
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `5b1abdd` (R8's
+change 4); uncommitted before this commit: its files, below, and session
+f1-9c's `items/002-top-node-ordinal-bound/` with its line in
+`items/readme.md`, left for Frans. Probes in a scratch copy of `lean/`, not
+kept.
+
+Before proving T-SCHEME I checked its statement by running (a scratch
+program on example 4's random runs; the plan's 8.7 and level3-alignment.md,
+section 5): for each iteration (its first step after pStart, its last at
+tEnd, its rewrites below pCut), the scheme's conditions (the touches of the
+steps cover every index node reachable at tEnd whose latest version is at
+pStart or before, `touchCoverB`; every data node reachable at tEnd is at pCut
+or later, `rewritesB`), and at every later state k whose startup pos is past
+j0, the transaction at which the startup pos first passed tEnd, and whose
+first available time is at least tEnd: `CutOK` at pCut.
+
+Found:
+
+1. With part 2 of `CutOK` as part 1 of R6 had it (over every pointer of a
+   version a read may follow) and the waits as I first wrote them (j0: the
+   startup pos at tEnd or past it), 1 failing state of 22,832 (startup pos
+   policy 2, seed 14, 60 transactions): a node of D whose latest version, put
+   back by Rule A during the settling, names a version written while its
+   child was in D, which names a version before the cut. With Java's strict
+   waits (past tEnd, then past j0), none in 222,857 states (100 runs of 100
+   transactions, the 4 policies) and 161,731 more (60 runs of 80, 8 policies,
+   4 of them erratic), but a search for the pattern gave a witness with the
+   strict waits too: `schemeWitness` (`SIS/ReclaimExample.lean`, a `#guard`):
+   an iteration of steps at 1 and 3 (pStart 0, pCut 1), a put to key 3
+   between them, puts to key 0 after, and a startup pos that lags (0, 0, 0, 0,
+   1, 2, 4, 4, 5, 6, 8). The tree root is put back at 5 (its mid node in D),
+   the mid node at 6 (a leaf in D, the leaf's version of R(0) named), the
+   leaf written at 7, the tree root put back again at 9 naming the mid node's
+   version of R(6); after T(11) (startup pos 8, past j0 = 7) the tree root is
+   still in D, and part 2 over every pointer reaches the leaf's R(0), before
+   the cut at 1. The model's running memory, with every cache schedule, reads
+   the tree root through its canonical object, which names the mid node's
+   latest version, and gets P on the cut stream at every time from 3 to 11;
+   so do Java's (D is pinned). So T-SCHEME with part 1's definition is false.
+2. Through a version that Rule A put back and that is still in D ((x, r) ∈ D,
+   r the version's record: the node was written and put back in r and not
+   taken since) the running memory never reads the stream version: it holds
+   the node's canonical object since then, and no snapshot of the version
+   exists. With `ReadsPhys` not extending through such versions (beyond what
+   lookups read), the scheme gives part 2 in every state checked, with the
+   waits not strict as well: 444,220 states (100 runs of 100 transactions, 8
+   policies) and 166,150 (60 runs of 80), and the witness. A broader
+   exception (the latest version of any node of D) also holds by running,
+   but would not cover old snapshots of a node's last clean version, which T9
+   will meet. A second wait in Java (the startup pos past the point where it
+   passed j0) also cures the witness without the exception.
+
+Did:
+
+1. The trusted part (`SIS/Reclaim.lean`; lean/README.md, "Changes to the
+   trusted part", WP R6, part 1b): `ReadsPhys` takes D; its child rule's
+   second case (every version at or after the record named) needs
+   `(v.node, v.recNo) ∉ D`. `CutOK`'s part 2 passes `db.D`. A weaker `CutOK`;
+   T8 unchanged (`ReadsAt.phys` uses the lookups' case).
+2. Example 4: `readsPhysB` with the exception (`all := true`: without it);
+   `schemeWitness` (new); `pSafeWitness`: its cut before the wait is ruled
+   out by part 3 only again (as by R7's `CutOK`), and part 2 without the
+   exception fails there too (through the tree root's version put back at 5).
+   The other `#guard`s unchanged, among them `cutReadWitness` (M48's run):
+   `CutOK` does not allow its cut, with the exception too.
+3. The checker: `readsBelowPhys` takes D (and Rule R's section): through a
+   version in D that Rule A put back, only what lookups read.
+4. Docs: `docs/level3-alignment.md` (2.8, 2.9: "Refined", the decision for
+   Frans; M48), `lean/README.md`, `docs/log.md`.
+
+Results: the checker with the exception on R2's small reclaim set made with
+R8's change 4: 25 of 25 traces `TRACECHECK OK` (16:00 to 16:05), 14,448
+transactions, 288 cuts, C-CUT without a failure.
+
+For Frans (2.9, "Refined"): keep this refinement (recommended: no change in
+Java, and it follows what the running memory reads), or instead a second
+wait in Java's reclaim before a cut, without the exception.
+
+Files changed: `lean/SIS/Reclaim.lean`, `lean/SIS/Proof/CutRead.lean`,
+`lean/SIS/ReclaimExample.lean`, `lean/Check/Steps.lean`,
+`lean/TraceCheck.lean`, `lean/README.md`; `docs/level3-alignment.md`,
+`docs/log.md`; this file.
+
+Checks: `lake build` in `lean/` and `sh test-traces/run.sh` (TRACE TESTS OK);
+the Lean checks on a clean copy of the changed `lean/` (no `.lake`), 16:01 to
+16:19: `lake build` without warnings; no sorry, admit, axiom or unsafe in SIS/
+and Check/; `#print axioms` of the 19 theorems, the standard axioms only; `sh
+test-traces/run.sh`, TRACE TESTS OK; `lake exe reclaimtest 20 30`, `sistest 20
+40` and `phystest 20 40` without a failure.
+
+Time: about an hour (15:25 to 16:19).
+
+Open, next: R6's proof of T-SCHEME, now with a statement that holds by
+running (above); then T9 and R5.

@@ -143,9 +143,11 @@ def readsAtB (sp : Spec Val T) (S : SIS.Stream Val T) (P : Struct Val) (t : Time
 /-- The versions that a physical read at time t may follow (`ReadsPhys`), by
 running, as (node, record) pairs: as `readsAtB`, and through a pointer to a live
 child also every version of the child at or after the record that the pointer
-names (every version if it names none). -/
-def readsPhysB (sp : Spec Val T) (S : SIS.Stream Val T) (P : Struct Val) (t : Time) :
-    List (NodeId × Nat) :=
+names (every version if it names none), but not through a version that Rule A
+put back and that is still in D ((x, r) ∈ D). With all = true, also through such
+versions (`ReadsPhys` as WP R6 first had it, for `schemeWitness`). -/
+def readsPhysB (sp : Spec Val T) (S : SIS.Stream Val T) (P : Struct Val) (D : Dirty) (t : Time)
+    (all : Bool := false) : List (NodeId × Nat) :=
   let s := lastSp S
   let start := (reachList sp P t).eraseDups.filterMap (fun x => S.lv x)
   let fuel := S.foldl (fun n R => n + R.vers.length) 0 + 1
@@ -155,7 +157,8 @@ def readsPhysB (sp : Spec Val T) (S : SIS.Stream Val T) (P : Struct Val) (t : Ti
     if acc.1.isEmpty then acc else
     let next := acc.1.flatMap (fun v =>
       (sp.live (v.hist.upTo t)).flatMap (fun y =>
-        (follow S s true y (v.ref? y)).toList ++ versOf y ((v.ref? y).getD 0)))
+        (follow S s true y (v.ref? y)).toList ++
+          (if all || !D.contains (v.node, v.recNo) then versOf y ((v.ref? y).getD 0) else [])))
     let fresh := next.foldl (fun (l : List (Version Val)) w =>
       if acc.2.contains (w.node, w.recNo) || l.any (fun u => u.node == w.node && u.recNo == w.recNo)
       then l else l ++ [w]) []
@@ -173,11 +176,13 @@ def cutReachAtB (sp : Spec Val T) (c : Nat) (db : DB Val T) (k : Nat) : Bool :=
 
 /-- Conditions 1 and 2 of `CutOK` by running: c is at most the first available
 time f, and every version that a read at some time from f to k may follow
-(`ReadsPhys`, since WP R6) is at c or later. -/
-def cutReachB (sp : Spec Val T) (c : Nat) (db : DB Val T) (k : Nat) : Bool :=
+(`ReadsPhys`, since WP R6) is at c or later. With all = true, part 2 also through
+the versions of D that Rule A put back (`schemeWitness`). -/
+def cutReachB (sp : Spec Val T) (c : Nat) (db : DB Val T) (k : Nat) (all : Bool := false) : Bool :=
   let f := lastFa db.S
   decide (c ≤ f) &&
-  (List.range' f (k + 1 - f)).all (fun t => (readsPhysB sp db.S db.P t).all (fun p => decide (c ≤ p.2)))
+  (List.range' f (k + 1 - f)).all (fun t =>
+    (readsPhysB sp db.S db.P db.D t all).all (fun p => decide (c ≤ p.2)))
 
 /-- Conditions 3 and 4 of `CutOK` by running: the nodes of D, top(k). -/
 def cutDTopB (c : Nat) (db : DB Val T) : Bool :=
@@ -191,9 +196,9 @@ def cutDTopB (c : Nat) (db : DB Val T) : Bool :=
      | none => true
    | none => true)
 
-/-- `CutOK` by running. -/
-def cutOKB (sp : Spec Val T) (c : Nat) (db : DB Val T) (k : Nat) : Bool :=
-  cutReachB sp c db k && cutDTopB c db
+/-- `CutOK` by running (with all = true, part 2 as WP R6 first had it). -/
+def cutOKB (sp : Spec Val T) (c : Nat) (db : DB Val T) (k : Nat) (all : Bool := false) : Bool :=
+  cutReachB sp c db k all && cutDTopB c db
 
 /-- WP R7's `CutOK` (part 2 over `ReadsAt`) by running. -/
 def cutOKAtB (sp : Spec Val T) (c : Nat) (db : DB Val T) (k : Nat) : Bool :=
@@ -205,7 +210,7 @@ time, the records of the versions that lookups from it on may read, of the
 latest versions of D's nodes and of their stale references, and of top(k)). -/
 def cutBoundB (sp : Spec Val T) (db : DB Val T) (k : Nat) : Nat :=
   let f := lastFa db.S
-  let reads := (List.range' f (k + 1 - f)).flatMap (fun t => (readsPhysB sp db.S db.P t).map (·.2))
+  let reads := (List.range' f (k + 1 - f)).flatMap (fun t => (readsPhysB sp db.S db.P db.D t).map (·.2))
   let dl := db.D.filterMap (fun e => (db.S.lv e.1).map (·.recNo))
   let stale := db.D.flatMap (fun e => match db.S.lv e.1 with
     | some v => (v.refs.filter (fun q => (db.S.lv q.1).map (·.recNo) != some q.2)).map (·.2)
@@ -407,19 +412,21 @@ pos i - 4. After T(7) the first available time is 2 and every node reachable fro
 on has its latest version at 1 or later, but a cut at 1 is not safe: the tree root
 (node 20), written at 5 before its mid node 2 (written at 6) and kept in D by Rule
 A, names node 2's version in R(0). T(9) writes the tree root again, and then a cut
-at 1 is safe. Returns (the assumptions hold; by WP R7's `CutOK`, the cut at 1 is
-not safe after T(7) only by condition 3; by `CutOK` since WP R6, whose part 2
-covers the versions that a physical read may follow, not by part 2 either, since
-the tree root's pointer names R(0); it is safe after T(9)). -/
-def pSafeWitness : Bool × Bool × Bool × Bool :=
+at 1 is safe. Returns (the assumptions hold; the cut at 1 is not safe after T(7)
+only by condition 3, by WP R7's `CutOK` and by `CutOK` since WP R6, whose part 2
+does not extend through the tree root's version of R(5), which Rule A put back;
+part 2 without that exception, as WP R6 first had it, fails after T(7) too; the
+cut is safe after T(9)). -/
+def pSafeWitness : Bool × Bool × Bool × Bool × Bool :=
   let al := algo4 (fun _ _ i _ => i - 4)
   let tr := (randomTs4 11 9).map (·.1)
   let db7 := run spec4 al (tr.take 7)
   let db9 := run spec4 al (tr.take 9)
   (runOKB spec4 al tr, cutReachAtB spec4 1 db7 7 && !cutOKAtB spec4 1 db7 7,
-    !cutReachB spec4 1 db7 7, cutOKB spec4 1 db9 9)
+    cutReachB spec4 1 db7 7 && !cutOKB spec4 1 db7 7, !cutReachB spec4 1 db7 7 true,
+    cutOKB spec4 1 db9 9)
 
-#guard pSafeWitness == (true, true, true, true)
+#guard pSafeWitness == (true, true, true, true, true)
 
 -- The bound gives the same cuts as `CutOK` by running, on the fixed run.
 #guard (states spec4 al4 ts4).zipIdx.all (fun (db, k) =>
@@ -508,6 +515,82 @@ def cutReadWitness : Bool × Bool × Bool × Bool × Bool :=
     !cutOKB spec4e 1 db 6)
 
 #guard cutReadWitness == (true, true, true, true, true)
+
+/-! ### Java's scheme and part 2 of `CutOK` (WP R6)
+
+T-SCHEME, by running before proving: in example 4's random runs, with the
+scheme's conditions (the touches of an iteration's steps cover the index nodes
+reachable at its end that have no version after pStart, `touchCoverB`; its
+rewrites leave every data node reachable at its end at pCut or later,
+`rewritesB`; the startup pos passed tEnd at a transaction j0, the decision
+needs it past j0), part 2 of `CutOK` held in every state when it extends
+through every version that a physical read may follow, but in one of about
+22,000 (policy 2, seed 14, n = 60) when the wait for tEnd was not strict. A
+search for the pattern gave this witness, with Java's strict waits: an iteration
+of steps at 1 and 3 (pStart 0, pCut 1), a put to key 3 between them, then puts
+to key 0, and a startup pos that lags. The tree root 20 is put back by Rule A at
+5 (mid node 2 in D), mid node 2 at 6 (leaf 5 in D, its version of R(0) named),
+leaf 5 written at 7, the tree root put back again at 9 (mid node 2 in D still),
+naming mid node 2's version of R(6); mid node 2 written at 10. After T(11) (startup
+pos 8, past j0 = 7, where it first passed tEnd = 3), part 2 without the exception
+fails: the tree root's version of R(9), in D, leads to mid node 2's of R(6) and so
+to leaf 5's of R(0), before the cut at 1. The running memory reads through the
+tree root's canonical object, whose slot names mid node 2's latest version: with
+every cache schedule, the reads from 3 to 11 give P on the stream cut at 1. Hence
+the exception in `ReadsPhys`. -/
+
+/-- The touches of transactions pStart + 1 to tEnd cover every index node
+reachable at tEnd whose latest version then is at pStart or before. -/
+def touchCoverB (sp : Spec Val Tr4) (al : Algo Val Tr4) (ts : List Tr4) (pStart tEnd : Nat) : Bool :=
+  let db := run sp al (ts.take tEnd)
+  (allIds db.P).all (fun x =>
+    if isIndex db.P x && written sp x && reachable sp db.P tEnd x then
+      match db.S.lv x with
+      | some v => !(decide (v.recNo ≤ pStart)) ||
+          (List.range' (pStart + 1) (tEnd - pStart)).any (fun i =>
+            match ts[i - 1]? with
+            | some tr => (sp.exec tr i (view sp (run sp al (ts.take (i - 1))).P (i - 1))).touch.contains x
+            | none => false)
+      | none => true
+    else true)
+
+/-- Every data node reachable at tEnd has its version at pCut or later. -/
+def rewritesB (sp : Spec Val Tr4) (al : Algo Val Tr4) (ts : List Tr4) (pCut tEnd : Nat) : Bool :=
+  let db := run sp al (ts.take tEnd)
+  (allIds db.P).all (fun x =>
+    match db.P.get? x with
+    | some n => !(n.isData && reachable sp db.P tEnd x) ||
+        ((db.S.lv x).map (fun v => decide (pCut ≤ v.recNo))).getD false
+    | none => true)
+
+/-- The witness's startup pos, by transaction. -/
+def spW : List Nat := [0, 0, 0, 0, 0, 1, 2, 4, 4, 5, 6, 8]
+
+def alW : Algo Val Tr4 := algo4 (fun _ _ i _ => spW.getD i (i - 1))
+
+def tsW : List Tr4 :=
+  [.step 0 1 false 1, .put 3 50, .step 2 3 true 1, .put 0 60, .put 0 61, .put 0 62, .put 0 63,
+   .put 0 64, .put 0 65, .put 0 66, .put 0 67]
+
+/-- Returns (the assumptions hold; the scheme's conditions: the touches cover,
+the rewrites, the startup pos passed tEnd = 3 first at T(7) and is past 7 at T(11),
+and the first available time is 3; part 2 without the exception for put-back
+versions fails at 1 after T(11); `CutOK` holds at 1 after T(11), and so does WP
+R7's; with every cache schedule, the reads from the running memory at every time
+from 3 to 11 give P on the stream cut at 1). -/
+def schemeWitness : Bool × Bool × Bool × Bool × Bool :=
+  let db := run spec4 alW tsW
+  let sps := (List.range 12).map (fun j => lastSp (run spec4 alW (tsW.take j)).S)
+  let reads := [0, 1, 2, 3].all (fun sched =>
+    let r := runEvictWith spec4 alW tsW sched 1
+    r.1.S == db.S && (List.range' 3 9).all (fun t =>
+      (reads4 spec4 r.2.2 { r.1 with S := cutStream 1 r.1.S } r.2.1 [t]).2))
+  (runOKB spec4 alW tsW,
+    touchCoverB spec4 alW tsW 0 3 && rewritesB spec4 alW tsW 1 3 &&
+      sps.findIdx? (fun s => decide (3 < s)) == some 7 && decide (7 < lastSp db.S) && lastFa db.S == 3,
+    !cutReachB spec4 1 db 11 true, cutOKB spec4 1 db 11 && cutOKAtB spec4 1 db 11, reads)
+
+#guard schemeWitness == (true, true, true, true, true)
 
 /-! ## Example 4 meets T8's assumptions on its virtual root
 

@@ -199,14 +199,16 @@ def readsBelow (sp : Spec BVal Nat) (t c : Nat) (rl : List NodeId) (lvRec : Node
 
 /-- As `readsBelow`, for the versions that a physical read in the running process may
 follow (bergdb item 001, WP R4, the diagnostic C-CUT+; since WP R6 part of C-CUT,
-`ReadsPhys`): through a pointer to a live
-child, every version of the child at or after the record that the pointer names
-(before Rule R; every version if it names none), since the running memory's Rule
-R is that of its last startup, and its canonical objects and snapshots may be
-newer. recsOf gives the records of a node's versions so far. -/
+`ReadsPhys`): through a pointer to a live child, every version of the child at or after
+the record that the pointer names (before Rule R; every version if it names none),
+since the running memory's Rule R is that of its last startup, and its canonical objects
+and snapshots may be newer; but through a version that Rule A put back and that is still
+in D ((x, r) ∈ D), only what a lookup reads (Rule R: newestSec, else the record named),
+since the memory holds that node's canonical object. recsOf gives the records of a
+node's versions so far. -/
 def readsBelowPhys (sp : Spec BVal Nat) (t c : Nat) (rl : List NodeId) (lvRec : NodeId → Option Nat)
     (verAt : Nat → NodeId → Option (Version BVal)) (recsOf : NodeId → List Nat)
-    (fuel : Nat) : List (NodeId × Nat) :=
+    (newestSec : NodeId → Option Nat) (D : Dirty) (fuel : Nat) : List (NodeId × Nat) :=
   let start := rl.eraseDups.filterMap (fun x => (lvRec x).map (fun r => (x, r)))
   let rec go : Nat → List (NodeId × Nat) → Std.HashSet (NodeId × Nat) → List (NodeId × Nat) →
       List (NodeId × Nat)
@@ -217,7 +219,13 @@ def readsBelowPhys (sp : Spec BVal Nat) (t c : Nat) (rl : List NodeId) (lvRec : 
       match verAt r x with
       | none => go fuel rest seen below
       | some v =>
+        let putBack := D.contains (x, r)
         let kids := (sp.live (v.hist.upTo t)).flatMap (fun y =>
+          if putBack then
+            match newestSec y with
+            | some r' => [(y, r')]
+            | none => ((v.ref? y).map (fun r' => (y, r'))).toList
+          else
           match v.ref? y with
           | some r' => ((recsOf y).filter (fun q => decide (r' ≤ q))).map (fun q => (y, q))
           | none => (recsOf y).map (fun q => (y, q)))

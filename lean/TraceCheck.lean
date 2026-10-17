@@ -32,7 +32,8 @@ Checks, per transaction i (R(0) included):
        CUT line, in the model's state after its transaction, and the CUT's
        first available time is the record's; the physical cut (PHYSCUT) is at
        or below the decided one. Since WP R6, part 2 covers the versions that
-       a physical read may follow (ReadsPhys; before, the diagnostic C-CUT+)
+       a physical read may follow (ReadsPhys; before, the diagnostic C-CUT+),
+       but for the versions of D that Rule A put back
 With reclaim, also: C-A checks TouchOK (`StepOK.touchIndex`, `touchReach`,
 `touchUp`) for the TOUCH lines; C-S compares fa(i) (FA lines; the model clamps
 Java's value, `firstAvail`), and from a CUT on runs the model's step on the
@@ -194,7 +195,7 @@ def main (args : List String) : IO UInt32 := do
           readsBelow sp tm cc (reachList sp P' tm) (fun x => (m.get? x).map (·.1)) verAt
             (fun y => sec.get? y) fuel ++
           readsBelowPhys sp tm cc (reachList sp P' tm) (fun x => (m.get? x).map (·.1)) verAt
-            (fun y => (rm.getD y #[]).toList) fuel)
+            (fun y => (rm.getD y #[]).toList) (fun y => sec.get? y) r.dirty fuel)
         let cf := cutFailures cc f r.dirty below.eraseDups (jrecs.getD i r0).top (fun x => m.get? x)
         ccut := ccut.add i (faFail ++ cf)
         if cutNow < cc then

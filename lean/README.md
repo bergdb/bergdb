@@ -192,7 +192,9 @@ Not trusted, tests only:
   which a physical read from the cut stream fails (`staleWitness`, WP R7); a
   read in the running process, with eviction, that follows a pointer of a
   replaced node to a version before a cut that WP R7's `CutOK` allows
-  (`cutReadWitness`, WP R4; `CutOK` since WP R6 does not). Proved there (WP
+  (`cutReadWitness`, WP R4; `CutOK` since WP R6 does not); Java's scheme,
+  and a stale chain of put-back versions that only the exception of
+  `ReadsPhys` for them lets through (`schemeWitness`, WP R6). Proved there (WP
   R4): example 4 meets T8's
   assumptions on the virtual root (`execRootOK_spec4`, `virtLiveOK_spec4`;
   also `virtLiveOK_spec4e`).
@@ -218,8 +220,9 @@ Not trusted, tests only:
   may follow a version before the cut (`readsBelowPhys`: through a pointer to
   a live child, every version of the child at or after the one the pointer
   names; register M48 of level3-alignment.md). Since R6, part of C-CUT,
-  as `CutOK`'s part 2 is (`ReadsPhys`; test trace `physcut.trace`, where
-  only that part fails). Since R8's change 3, the
+  as `CutOK`'s part 2 is (`ReadsPhys`, with its exception for the versions
+  of D that Rule A put back; test trace `physcut.trace`, where only that part
+  fails). Since R8's change 3, the
   diagnostic C-L4: the FIRST lines against the Level 4 loader
   (`loader4Failures`: no snapshot from the node table; section 13.5 of
   level2-alignment.md).
@@ -779,6 +782,23 @@ option (a), Frans):
   lookup reads to `ReadsPhys` (`ReadsAt.phys`). In example 4's fixed run the
   stronger part rules out that cut and, in `pSafeWitness`, the cut before
   the pSafe wait already by part 2; the other `#guard`s are unchanged.
+
+Changes to the trusted part on 2026-10-17 (bergdb item 001, WP R6, part 1b;
+[../docs/level3-alignment.md](../docs/level3-alignment.md), 2.9):
+
+* `ReadsPhys` takes D, and does not extend through a version that Rule A put
+  back and that is still in D ((x, r) ∈ D, r the version's record): through
+  it, only what a lookup reads (Rule R). The running memory has held that
+  node's canonical object since it wrote the version (D is pinned), and
+  reads through its slots, which name the latest versions; no snapshot of
+  the version exists. Reason: T-SCHEME, tried by running before proving,
+  fails without it (`schemeWitness`, SIS/ReclaimExample.lean): a run of
+  example 4 that meets Java's scheme, with its strict waits, where a stale
+  chain of put-back versions during the settling (tree root, mid node, leaf)
+  leads below the cut, while the running memory's reads, with every cache
+  schedule, give P on the cut stream. `CutOK` is weaker by this; T8 is
+  unchanged (`ReadsAt.phys` uses the lookups' part). `pSafeWitness`'s cut
+  before the wait is ruled out by part 3 only again, as by R7's `CutOK`.
 
 Stage 1 of bergdb item 001 is done (2026-10-16): lemma M (`LM_newer`, L2),
 T1-L (`T1_lazy`, L3), CC and T2-L (`CC_canonical`, `T2_lazy`, L4) are proved,
