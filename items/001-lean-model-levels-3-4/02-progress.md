@@ -176,7 +176,9 @@ Current state
   a known M49 issue.
 * Commits of this run (Q2 (b)): see the log entries.
 * Uncommitted work of this plan in bergdb: none (22:56).
-* Long jobs: none (18:44). R7's checker on the medium reclaim set's four
+* Long jobs: R9's Lean tier, the checker on the reclaim sets made again
+  with the current Java, from 23:00, expected done about 06:00 (its entry).
+  Before: none (18:44). R7's checker on the medium reclaim set's four
   largest traces finished at 17:58, R4's (with C-CUT+) on the whole medium
   set at 18:44; the results are in the T9 entry (2026-10-17 17:50). R8's
   performance comparison ran from 19:12 to 19:41 (no regression; its
@@ -220,7 +222,7 @@ Status
 | R6 | Java's scheme gives safe cuts: T-SCHEME | in progress: part 1, `CutOK`'s part 2 over `ReadsPhys` (M48: (a)), with its exception for put-back versions (1b), done; T-SCHEME holds by running | 2026-10-17 |
 | R7 | The red list on Java's reclaim | done | 2026-10-17 |
 | R8 | Java: the corrections the model requires, before eviction | done (the performance comparison: no regression) | 2026-10-17 |
-| R9 | Level 3 conformance; the gate proposal | not started | — |
+| R9 | Level 3 conformance; the gate proposal | in progress: the Lean tier's runs | 2026-10-17 |
 | J1 | Registry, pins and audits | not started | — |
 | J2 | Eviction of values | not started | — |
 | J3 | Eviction of index nodes | not started | — |
@@ -3299,3 +3301,15 @@ about 4.6 hours in all.
 
 Open, next: R6's proof of T-SCHEME (fallback: checked at every cut, C-CUT);
 then R9 and K3.
+
+### 2026-10-17 23:00. WP R9, in progress: the Lean tier's runs (written before them)
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `970c996` (R5).
+R9's machine work does not depend on R6's proof, so it runs now, beside R6:
+the reclaim traces of R2's small and medium sets made again with the current
+Java (`java/` as at `5b1abdd`, R8's last change; the medium set's traces were
+R2's, from before R8), then the checker (`lean/`'s `tracecheck` at
+`970c996`, copied) on every trace, 4 small traces at once, then the 6 medium
+ones at once. The medium set's two largest traces took about 6.5 hours each
+in R4. Script, log and outputs in the session's scratch directory
+(`r9/leantier.sh`, not edited while running). Expected done about 06:00.
