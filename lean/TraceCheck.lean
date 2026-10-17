@@ -25,6 +25,14 @@ Checks, per transaction i (R(0) included):
   C-L  the FIRST lines (trace format 2; bergdb item 001, WP L5): every first
        touch after a restart follows the rule of SIS/Phys.lean (Rule R, the
        node table, the version read, cut back to the startup time)
+  C-CUT with reclaim (bergdb item 001, WP R7): CutOK (SIS/Reclaim.lean) at every
+       CUT line, in the model's state after its transaction, and the CUT's
+       first available time is the record's; the physical cut (PHYSCUT) is at
+       or below the decided one
+With reclaim, also: C-A checks TouchOK (`StepOK.touchIndex`, `touchReach`,
+`touchUp`) for the TOUCH lines; C-S compares fa(i) (FA lines; the model clamps
+Java's value, `firstAvail`), and from a CUT on runs the model's step on the
+stream cut there (`cutStream`: version stubs before the cut).
 and in C-S, with SKIPT lines, the top nodes' skip slots: the layout (slot j
 of the top with ordinal n is populated exactly when bit j of n is set, and
 names the formula's target) and the cached times (the target's creation)
@@ -97,14 +105,25 @@ def main (args : List String) : IO UInt32 := do
     let chs := recs.map changesOf
     let p0 := Struct.apply (V := BVal) [] 0 (chs.getD 0 { new := [], adds := [] })
     let sp := bspec chs p0 o.virtual
-    let jrecs := recs.map (toRecord lv)
+    let fas := faSeq recs
+    let jrecs := (recs.toList.zipIdx.map (fun (r, i) => toRecord lv (fas.getD i 0) r)).toArray
     let pol := fun (j : Nat) => (recs.getD j default).sp
-    let al := algoOf sp o pol
+    let al := algoOf sp o pol (fun j => fas.getD j 0)
+    let r0 : Record BVal Nat := { trans := none, sp := 0, vers := [], gd := [], top := none }
     let mut ca : Tally := {}
     let mut cs : Tally := {}
     let mut cv : Tally := {}
     let mut clt : Tally := {}
     let mut diag : Tally := {}
+    let mut ccut : Tally := {}
+    let mut cutCount := 0
+    -- The stream as the model sees it from a CUT on: version stubs before the cut.
+    let mut Sc := jrecs
+    let mut cutNow := 0
+    -- The latest version of each node so far: its record and references (C-CUT).
+    let mut lvMap : Std.HashMap NodeId (Nat × List (NodeId × Nat)) :=
+      ((jrecs.getD 0 r0).vers.foldl (fun m w => m.insert w.node (0, w.refs)) {})
+    let fuel := jrecs.foldl (fun n R => n + R.vers.length) 0 + 1
     let mut liveCount := 0
     let mut firstCount := 0
     let mut firstFail := 0
@@ -128,13 +147,14 @@ def main (args : List String) : IO UInt32 := do
       let rlNow := reachList sp P' i
       let rlNowSet := Std.HashSet.ofList rlNow
       -- C-A
-      let sf := stepFailures sp P i c (Std.HashSet.ofList rlPrev) rlNowSet rlNow
+      let rlPrevSet := Std.HashSet.ofList rlPrev
+      let sf := stepFailures sp P i c rlPrevSet rlNowSet rlNow ++ touchFailures sp P i c rlPrev rlPrevSet
       ca := ca.add i (sf.map (fun p => (p.1, s!"{p.1} fails for nodes {showIds p.2}")))
       let badTimes := r.adds.toList.filter (fun a => a.2.1 != i)
       if !badTimes.isEmpty then
         ca := ca.add i [("time", s!"entries not at time {i}")]
       -- C-S
-      let db : DB BVal Nat := { P := P, D := (recs.getD (i - 1) default).dirty, S := (jrecs.toList.take i) }
+      let db : DB BVal Nat := { P := P, D := (recs.getD (i - 1) default).dirty, S := (Sc.toList.take i) }
       let res := step sp al db i
       let mfails := match res.S.getLast?, jrecs[i]? with
         | some m, some j => diffRecord m j
@@ -143,6 +163,34 @@ def main (args : List String) : IO UInt32 := do
         else [("D", s!"D: model only {(res.D.filter (!r.dirty.contains ·)).take 8}, Java only {(r.dirty.filter (!res.D.contains ·)).take 8}")]
       let tfails := r.vers.toList.flatMap (fun w => (topFailures sp P' lv w).map (fun m => ("skip", m)))
       cs := cs.add i (mfails ++ dfails ++ tfails)
+      -- C-CUT
+      for w in (jrecs.getD i r0).vers do
+        lvMap := lvMap.insert w.node (i, w.refs)
+      match r.cut with
+      | some (cc, f) =>
+        cutCount := cutCount + 1
+        let faFail := if f == fas.getD i 0 then [] else
+          [("CUT-fa", s!"CUT's first available time {f}, the record's {fas.getD i 0}")]
+        let m := lvMap
+        -- The newest record of each node in R(s), ..., R(i), for Rule R.
+        let sec : Std.HashMap NodeId Nat := (List.range' r.sp (i + 1 - r.sp)).foldl (fun mm q =>
+          (jrecs.getD q r0).vers.foldl (fun mm w => mm.insert w.node q) mm) {}
+        let verAt := fun (q : Nat) (y : NodeId) => (jrecs.getD q r0).vers.find? (·.node == y)
+        let below := (List.range' f (i + 1 - f)).flatMap (fun tm =>
+          readsBelow sp tm cc (reachList sp P' tm) (fun x => (m.get? x).map (·.1)) verAt
+            (fun y => sec.get? y) fuel)
+        let cf := cutFailures cc f r.dirty below (jrecs.getD i r0).top (fun x => m.get? x)
+        ccut := ccut.add i (faFail ++ cf)
+        if cutNow < cc then
+          for q in [cutNow:cc] do
+            Sc := Sc.modify q Record.cut
+          cutNow := cc
+      | none => pure ()
+      match r.physcut with
+      | some pc =>
+        if cutNow < pc then
+          ccut := ccut.add i [("PHYSCUT", s!"the physical cut at R({pc}), above the decided one, R({cutNow})")]
+      | none => pure ()
       -- C-L
       let lfails := r.firsts.toList.flatMap (fun f => firstFailures sp Sall i r.sp f)
       firstCount := firstCount + r.firsts.size
@@ -183,10 +231,15 @@ def main (args : List String) : IO UInt32 := do
     for e in clt.examples do IO.println s!"  {e}"
     IO.println s!"exporter errors: {t.errors.size}"
     for e in t.errors.toList.take 8 do IO.println s!"  {e}"
+    if cutCount > 0 || ccut.failing > 0 then
+      IO.println (s!"C-CUT cuts: {ccut.failing} of {cutCount} CUT lines (and PHYSCUT lines) fail" ++
+        (if ccut.byName.isEmpty then "" else s!" ({", ".intercalate (ccut.byName.map (fun p => s!"{p.1} {p.2}"))})"))
+      for e in ccut.examples do IO.println s!"  {e}"
     diag.show "diagnostics" total
     let failed := (if ca.failing > 0 then ["C-A"] else []) ++ (if cs.failing > 0 then ["C-S"] else []) ++
       (if cv.failing > 0 then ["C-V"] else []) ++ (if probeFails.length > 0 then ["C-R"] else []) ++
       (if clt.failing > 0 then ["C-L"] else []) ++
+      (if ccut.failing > 0 then ["C-CUT"] else []) ++
       (if t.errors.size > 0 then ["exporter"] else []) ++
       (if t.done != some (total - 1) then ["incomplete"] else [])
     if failed.isEmpty then

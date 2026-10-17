@@ -10,6 +10,7 @@ WP C2; since 2026-10-16 (WP E3) without checker-local definitions.
 import Check.Trace
 import Check.Fast
 import SIS.Phys
+import SIS.Reclaim
 import Check.R4
 import Std.Data.HashSet
 import Std.Data.HashMap
@@ -33,10 +34,12 @@ structure Opts where
   inv : Bool := false
 
 /-- The model's algorithm with the checker's switches; pol gives the startup
-pos that Java chose for transaction j. -/
-def algoOf (sp : Spec BVal Nat) (o : Opts) (pol : Nat → Nat) : Algo BVal Nat :=
+pos that Java chose for transaction j, and faPol its first available time
+(bergdb item 001, WP R7; the model clamps it, `firstAvail`). -/
+def algoOf (sp : Spec BVal Nat) (o : Opts) (pol : Nat → Nat) (faPol : Nat → Nat := fun _ => 0) :
+    Algo BVal Nat :=
   { policy := fun _ _ j _ => pol j, stillDirty := if o.java7 then javaTest sp else exactTest sp,
-    mark := o.mark }
+    mark := o.mark, faPolicy := fun _ _ j _ => faPol j }
 
 /-! ## Comparisons -/
 
@@ -56,6 +59,7 @@ compared as a set by node, gd as a set (docs, 7.3). The node of top is compared
 when the trace gives it (node 0 otherwise). -/
 def diffRecord (m j : Record BVal Nat) : List (String × String) :=
   let sp := if m.sp == j.sp then [] else [("sp", s!"sp: model {m.sp}, Java {j.sp}")]
+  let fa := if m.fa == j.fa then [] else [("fa", s!"fa: model {m.fa}, Java {j.fa}")]
   let topOk := m.top.map (·.2) == j.top.map (·.2) &&
     (j.top.map (·.1) == some 0 || m.top.map (·.1) == j.top.map (·.1))
   let top := if topOk then []
@@ -80,7 +84,7 @@ def diffRecord (m j : Record BVal Nat) : List (String × String) :=
       else if a.level != b.level || a.isData != b.isData then some ("kind", s!"level or kind of node {x}")
       else none
     | _, _ => none)
-  sp ++ top ++ gdDup ++ gd ++ vset ++ vdiff
+  sp ++ fa ++ top ++ gdDup ++ gd ++ vset ++ vdiff
 
 /-! ## The assumptions, by running (SIS/Assumptions.lean; Example.lean has the
 same checks for its examples) -/
@@ -141,6 +145,93 @@ def stepFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time) (c : Changes 
    ("dataFixed", dataFixed.eraseDups), ("dataNoPtrs", dataNoPtrs.eraseDups), ("A4", a4.eraseDups),
    ("A3", a3.eraseDups), ("A5", a5.eraseDups)].filter (fun p => !p.2.isEmpty) ++
   (if sp.virt then virtFailures sp P i c rlNow else [])
+
+/-- TouchOK (`StepOK.touchIndex`, `touchReach` and `touchUp`; bergdb item 001,
+WPs R3 and R7), by name: the touched nodes that are no index nodes of P, or not
+reachable at i - 1; and the nodes reachable at i - 1 with a touched node below
+them, through live pointers to lower levels as `reachFrom`, that are not touched
+themselves, a virtual root aside. Lowest level first, as `copyFailures`. rlPrev
+holds `reachList sp P (i - 1)`, rlPrevSet the same as a set. -/
+def touchFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time) (c : Changes BVal)
+    (rlPrev : List NodeId) (rlPrevSet : Std.HashSet NodeId) : List (String × List NodeId) :=
+  if c.touch.isEmpty then [] else
+  let tset : Std.HashSet NodeId := Std.HashSet.ofList c.touch
+  let notIndex := c.touch.filter (fun x => !isIndex P x)
+  let notReach := c.touch.filter (fun x => !rlPrevSet.contains x)
+  let lv := fun x => ((P.get? x).map (·.level)).getD 0
+  let xs := rlPrev.eraseDups.mergeSort (fun a b => decide (lv a ≤ lv b))
+  let below : Std.HashMap NodeId Bool := xs.foldl (fun m x =>
+    match P.get? x with
+    | some n => m.insert x (tset.contains x || (sp.live (n.hist.upTo (i - 1))).any (fun y =>
+        match P.get? y with
+        | some ny => decide (ny.level < n.level) && m.getD y false
+        | none => false))
+    | none => m) {}
+  let up := xs.filter (fun x => below.getD x false && !tset.contains x && !(sp.virt && x == root))
+  [("touchIndex", notIndex), ("touchReach", notReach), ("touchUp", up)].filter (fun p => !p.2.isEmpty)
+
+/-- The versions, as (node, record), that a lookup at time t may read (`ReadsAt` of
+SIS/Reclaim.lean, bergdb item 001, WP R7) and that are before c: from the latest
+version of every node of rl (the nodes reachable at t), through the pointers to
+live children at t, with Rule R (newestSec gives a node's newest record in R(s), ...,
+R(i)). lvRec gives a node's latest record, verAt the version of a node in a record;
+fuel bounds the versions visited. -/
+def readsBelow (sp : Spec BVal Nat) (t c : Nat) (rl : List NodeId) (lvRec : NodeId → Option Nat)
+    (verAt : Nat → NodeId → Option (Version BVal)) (newestSec : NodeId → Option Nat)
+    (fuel : Nat) : List (NodeId × Nat) :=
+  let start := rl.eraseDups.filterMap (fun x => (lvRec x).map (fun r => (x, r)))
+  let rec go : Nat → List (NodeId × Nat) → Std.HashSet (NodeId × Nat) → List (NodeId × Nat) →
+      List (NodeId × Nat)
+    | 0, _, _, below => below
+    | _, [], _, below => below
+    | fuel + 1, (x, r) :: rest, seen, below =>
+      let below := if r < c then (x, r) :: below else below
+      match verAt r x with
+      | none => go fuel rest seen below
+      | some v =>
+        let kids := (sp.live (v.hist.upTo t)).filterMap (fun y =>
+          match newestSec y with
+          | some r' => some (y, r')
+          | none => (v.ref? y).map (fun r' => (y, r')))
+        let fresh := (kids.filter (fun p => !seen.contains p)).eraseDups
+        go fuel (fresh ++ rest) (fresh.foldl (fun s p => s.insert p) seen) below
+  go fuel start (Std.HashSet.ofList start) []
+
+/-- C-CUT (bergdb item 001, WP R7): `CutOK c` of SIS/Reclaim.lean in the state after
+T(i), by running, with the failures by name: c after the first available time f;
+versions that lookups from f to i may read before c, latest ones (the node's latest
+version) and others (through a pointer to an older version); nodes of D with a
+latest version before c, or with a reference before c that does not name its
+node's latest version; top(i) before c. below holds the versions read before c
+(`readsBelow`, at every time from f to i); lvOf gives a node's latest version, as
+its record and references. -/
+def cutFailures (c f : Nat) (D : Dirty) (below : List (NodeId × Nat))
+    (top : Option (NodeId × Nat)) (lvOf : NodeId → Option (Nat × List (NodeId × Nat))) :
+    List (String × String) :=
+  let order := if c ≤ f then [] else [("CUT-order", s!"cut at {c}, after the first available time {f}")]
+  let old := (below.filter (fun p => (lvOf p.1).map (·.1) == some p.2)).map (·.1)
+  let stale := below.filter (fun p => (lvOf p.1).map (·.1) != some p.2)
+  let dOld := D.filterMap (fun e => match lvOf e.1 with
+    | some (r, _) => if r < c then some e.1 else none
+    | none => none)
+  let dRef := D.filterMap (fun e => match lvOf e.1 with
+    | some (r, refs) =>
+      if r < c then none
+      else if refs.all (fun q => decide (c ≤ q.2) || (lvOf q.1).map (·.1) == some q.2) then none
+      else some e.1
+    | none => none)
+  let topOld := match top with
+    | some (_, r) => if c ≤ r then [] else [("CUT-top", s!"top(i) names R({r}), before the cut")]
+    | none => []
+  order ++
+    (if old.isEmpty then [] else
+      [("CUT-reach", s!"reachable from {f} on, latest version before {c}: {showIds (old.eraseDups.mergeSort (· ≤ ·))}")]) ++
+    (if stale.isEmpty then [] else
+      [("CUT-stale", s!"read from {f} on through a pointer to an older version before {c}: {(stale.eraseDups.take 8)}")]) ++
+    (if dOld.isEmpty then [] else [("CUT-D", s!"in D, latest version before {c}: {showIds dOld}")]) ++
+    (if dRef.isEmpty then [] else
+      [("CUT-Dref", s!"in D, a reference before {c} to a version that is not its node's latest: {showIds dRef}")]) ++
+    topOld
 
 /-- The failures of `SpecOK` for the initial structure, with `VirtInit` for a
 virtual root. -/
@@ -209,7 +300,8 @@ pointers of transaction i's new entries, as (node, pointee), that name a node th
 transaction does not create, not on the writer's paths, and not a pointee of a
 node of the paths (written, or a live child of a virtual root at i - 1). The
 paths are `pathOf`'s: the nodes reachable at i - 1 with a node below them,
-themselves included, that the change touches or that is not reachable at i;
+themselves included, that the change gives entries, creates or touches (its
+touch, since bergdb item 001, WP R3) or that is not reachable at i;
 here computed lowest level first (checker-local). rlPrev holds
 `reachList sp P (i - 1)`, rlNowSet the nodes reachable at i after the change. A
 diagnostic, as A6. -/
@@ -217,7 +309,9 @@ def copyFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time) (c : Changes 
     (rlPrev : List NodeId) (rlNowSet : Std.HashSet NodeId) : List (NodeId × NodeId) :=
   let newIds : Std.HashSet NodeId := Std.HashSet.ofList (c.new.map (·.id))
   let addIds : Std.HashSet NodeId := Std.HashSet.ofList (c.adds.map (·.1))
-  let touched := fun z => newIds.contains z || addIds.contains z || !rlNowSet.contains z
+  let touchIds : Std.HashSet NodeId := Std.HashSet.ofList c.touch
+  let touched := fun z => newIds.contains z || addIds.contains z || touchIds.contains z ||
+    !rlNowSet.contains z
   let lv := fun x => ((P.get? x).map (·.level)).getD 0
   let xs := rlPrev.eraseDups.mergeSort (fun a b => decide (lv a ≤ lv b))
   let below : Std.HashMap NodeId Bool := xs.foldl (fun m x =>

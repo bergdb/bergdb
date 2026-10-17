@@ -1,0 +1,37 @@
+Level 3 red list, WP R7 of bergdb item 001, 2026-10-17 (docs/level3-alignment.md, section 6).
+Medium: 2 of 6 traces here; the four largest were still in the checker at R7's commit.
+bergdb 20e0aa2 (R3), java/ unchanged; R2's reclaim sets (java/stress/reclaimtraces.sh, made
+2026-10-17 05:41 to 05:43). Checker: lake exe tracecheck (lean/, with R7's changes: TOUCH, FA,
+CUT and PHYSCUT lines, C-CUT), target mode (marking in step 3, Java's still-dirty test, the
+virtual root). Per trace: the verdict; C-A, C-S (with each failing transaction's gd difference,
+Java only: every one is register M17), C-CUT, C-R, C-L, the diagnostics; time and memory.
+
+== reclaim-small: 25 traces, 14448 transactions, 288 cuts; C-S fails in 29 transactions of 11 traces (all M17); TRACECHECK OK 14; 346 s in total, at most 61 MB
+  r-big-1: TRACECHECK FAILED: C-S; C-A 0, C-S 4 of 973 (gd/D: T(290) Java only 311564, T(510) Java only 845748, T(739) Java only 1397732, T(953) Java only 1960004), C-CUT 0 of 27, C-R 0 of 105, C-L 0 of 31252, diagnostics 0; 58.0 s, 61 MB
+  r-big-2: TRACECHECK FAILED: C-S; C-A 0, C-S 4 of 979 (gd/D: T(285) Java only 300132, T(502) Java only 828300, T(717) Java only 1389244, T(939) Java only 1946668), C-CUT 0 of 28, C-R 0 of 107, C-L 0 of 33193, diagnostics 0; 60.1 s, 61 MB
+  r-big-3: TRACECHECK FAILED: C-S; C-A 0, C-S 4 of 979 (gd/D: T(272) Java only 298412, T(496) Java only 826444, T(716) Java only 1386668, T(935) Java only 1936132), C-CUT 0 of 28, C-R 0 of 103, C-L 0 of 31181, diagnostics 0; 59.7 s, 61 MB
+  r-big-4: TRACECHECK FAILED: C-S; C-A 0, C-S 4 of 979 (gd/D: T(271) Java only 297508, T(486) Java only 817236, T(717) Java only 1367508, T(927) Java only 1905804), C-CUT 0 of 28, C-R 0 of 106, C-L 0 of 32499, diagnostics 0; 61.1 s, 61 MB
+  r-big-5: TRACECHECK FAILED: C-S; C-A 0, C-S 4 of 979 (gd/D: T(284) Java only 301948, T(508) Java only 837924, T(720) Java only 1379732, T(940) Java only 1936108), C-CUT 0 of 28, C-R 0 of 101, C-L 0 of 30627, diagnostics 0; 53.6 s, 61 MB
+  r-del-1: TRACECHECK OK; C-A 0, C-S 0 of 571 (gd/D: none), C-CUT 0 of 10, C-R 0 of 60, C-L 0 of 13388, diagnostics 0; 5.8 s, 21 MB
+  r-del-2: TRACECHECK OK; C-A 0, C-S 0 of 564 (gd/D: none), C-CUT 0 of 10, C-R 0 of 58, C-L 0 of 11887, diagnostics 0; 4.6 s, 19 MB
+  r-del-3: TRACECHECK OK; C-A 0, C-S 0 of 573 (gd/D: none), C-CUT 0 of 11, C-R 0 of 61, C-L 0 of 12748, diagnostics 0; 5.3 s, 20 MB
+  r-del-4: TRACECHECK FAILED: C-S; C-A 0, C-S 1 of 572 (gd/D: T(189) Java only 1300 41514), C-CUT 0 of 12, C-R 0 of 60, C-L 0 of 13418, diagnostics 0; 5.2 s, 21 MB
+  r-del-5: TRACECHECK FAILED: C-S; C-A 0, C-S 1 of 568 (gd/D: T(462) Java only 1098 477910 477908), C-CUT 0 of 10, C-R 0 of 58, C-L 0 of 12606, diagnostics 0; 5.1 s, 20 MB
+  r-idle-1: TRACECHECK OK; C-A 0, C-S 0 of 430 (gd/D: none), C-CUT 0 of 4, C-R 0 of 43, C-L 0 of 7694, diagnostics 0; 0.8 s, 12 MB
+  r-idle-2: TRACECHECK OK; C-A 0, C-S 0 of 429 (gd/D: none), C-CUT 0 of 3, C-R 0 of 43, C-L 0 of 7751, diagnostics 0; 0.9 s, 12 MB
+  r-idle-3: TRACECHECK OK; C-A 0, C-S 0 of 430 (gd/D: none), C-CUT 0 of 4, C-R 0 of 44, C-L 0 of 7767, diagnostics 0; 0.8 s, 11 MB
+  r-idle-4: TRACECHECK OK; C-A 0, C-S 0 of 430 (gd/D: none), C-CUT 0 of 4, C-R 0 of 43, C-L 0 of 7505, diagnostics 0; 0.8 s, 11 MB
+  r-idle-5: TRACECHECK OK; C-A 0, C-S 0 of 429 (gd/D: none), C-CUT 0 of 3, C-R 0 of 43, C-L 0 of 8042, diagnostics 0; 0.8 s, 11 MB
+  r-long-1: TRACECHECK FAILED: C-S; C-A 0, C-S 1 of 577 (gd/D: T(563) Java only 708988), C-CUT 0 of 11, C-R 0 of 60, C-L 0 of 12828, diagnostics 0; 3.7 s, 24 MB
+  r-long-2: TRACECHECK OK; C-A 0, C-S 0 of 574 (gd/D: none), C-CUT 0 of 11, C-R 0 of 60, C-L 0 of 12234, diagnostics 0; 3.9 s, 23 MB
+  r-long-3: TRACECHECK FAILED: C-S; C-A 0, C-S 2 of 572 (gd/D: T(254) Java only 41530, T(430) Java only 1348 391356), C-CUT 0 of 11, C-R 0 of 61, C-L 0 of 12385, diagnostics 0; 3.8 s, 23 MB
+  r-long-4: TRACECHECK FAILED: C-S; C-A 0, C-S 2 of 574 (gd/D: T(220) Java only 41730, T(563) Java only 682412), C-CUT 0 of 11, C-R 0 of 59, C-L 0 of 12404, diagnostics 0; 4.0 s, 24 MB
+  r-long-5: TRACECHECK FAILED: C-S; C-A 0, C-S 2 of 573 (gd/D: T(247) Java only 42322, T(417) Java only 1316 392924), C-CUT 0 of 11, C-R 0 of 58, C-L 0 of 12159, diagnostics 0; 4.1 s, 24 MB
+  r-small-1: TRACECHECK OK; C-A 0, C-S 0 of 339 (gd/D: none), C-CUT 0 of 5, C-R 0 of 35, C-L 0 of 6439, diagnostics 0; 0.8 s, 13 MB
+  r-small-2: TRACECHECK OK; C-A 0, C-S 0 of 338 (gd/D: none), C-CUT 0 of 4, C-R 0 of 34, C-L 0 of 5864, diagnostics 0; 0.7 s, 12 MB
+  r-small-3: TRACECHECK OK; C-A 0, C-S 0 of 338 (gd/D: none), C-CUT 0 of 4, C-R 0 of 34, C-L 0 of 5927, diagnostics 0; 0.8 s, 12 MB
+  r-small-4: TRACECHECK OK; C-A 0, C-S 0 of 339 (gd/D: none), C-CUT 0 of 5, C-R 0 of 35, C-L 0 of 6201, diagnostics 0; 0.7 s, 12 MB
+  r-small-5: TRACECHECK OK; C-A 0, C-S 0 of 339 (gd/D: none), C-CUT 0 of 5, C-R 0 of 35, C-L 0 of 6095, diagnostics 0; 0.7 s, 12 MB
+== reclaim-medium: 2 traces, 4415 transactions, 47 cuts; C-S fails in 43 transactions of 2 traces (all M17); TRACECHECK OK 0; 2103 s in total, at most 88 MB
+  rm-mixed-1: TRACECHECK FAILED: C-S; C-A 0, C-S 22 of 2205 (gd/D: T(183) Java only 44858, T(265) Java only 207036, T(345) Java only 237678 340588, T(427) Java only 488412, T(505) Java only 637004, T(581) Java only 284806 4258 641582 796428), C-CUT 0 of 23, C-R 0 of 43, C-L 0 of 31684, diagnostics 0; 1063.4 s, 88 MB
+  rm-mixed-2: TRACECHECK FAILED: C-S; C-A 0, C-S 21 of 2210 (gd/D: T(204) Java only 44866, T(394) Java only 371788, T(474) Java only 438766 524916, T(556) Java only 667340, T(629) Java only 828620, T(768) Java only 1149076), C-CUT 0 of 24, C-R 0 of 44, C-L 0 of 31146, diagnostics 0; 1039.7 s, 86 MB

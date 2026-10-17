@@ -270,12 +270,23 @@ lines from R7 on.
 * **CutOK** (`SIS/Reclaim.lean`), the plan's sketch with part 3 refined,
   and f the first available time of the last record:
   1. c ≤ f = fa(k) (and f ≤ s by `firstAvail`);
-  2. every node reachable at some time from f to k has its latest version
-     at c or later, or none;
+  2. every version that a lookup at some time from f to k may read is at c
+     or later (`ReadsAt`: the latest versions of the nodes reachable then,
+     and the versions their pointers to live children lead to, with Rule R;
+     R3 asked this of the latest versions only, refined in R7, below);
   3. every node in D has its latest version at c or later, or none, and
      every reference below c of that version names the latest version of
      its node (so a node not in D);
   4. top(k) names a record at c or later (implied by 2).
+  R7 found (`staleWitness` in SIS/ReclaimExample.lean) a run where R3's part
+  2 holds and a physical read at f, after a restart from the cut stream,
+  reads a stub: a tree root that is reachable at f and replaced later names
+  an older version of a child, before the cut, while the child's latest
+  version is after it; the model's startup still gets P right there (it takes
+  each node from the read at the latest time it is reached), its physical
+  reads do not. With part 2 on every version a lookup from f on may read,
+  the cut there is ruled out. In the random runs of `reclaimtest` the two
+  give the same cuts.
   The sketch's part 3 asked only that no reference below c name a node in
   D. A stale reference below c to a node not in D is as bad for Java: it
   cannot read the target's id below the cut, so it can neither link the
@@ -329,7 +340,7 @@ reopened from level2-alignment.md.
 
 | | Mismatch or open question | Java | Model | Proposed resolution | Stage, WP, status |
 |---|---|---|---|---|---|
-| M17 | Reclaim's touch marks nodes without adding entries: every index node the range traversal follows, and the super root, get dirty; the marks stay when the transaction replaces a node | `Db.touchRange` (1570); `endOfOp(true)` (868) in `putKvs` (1521), lines 1530 to 1538; `endOfTrans` (879) skips touch transactions | step 3 (`markOf`) | Model: `Changes.touch`, TouchOK in `StepOK`, T13' (α: 2.2) | 3: R3 (2.8: done, T13' proved) |
+| M17 | Reclaim's touch marks nodes without adding entries: every index node the range traversal follows, and the super root, get dirty; the marks stay when the transaction replaces a node | `Db.touchRange` (1570); `endOfOp(true)` (868) in `putKvs` (1521), lines 1530 to 1538; `endOfTrans` (879) skips touch transactions | step 3 (`markOf`) | Model: `Changes.touch`, TouchOK in `StepOK`, T13' (α: 2.2). R7: Java's `endOfTrans` keeps every mark of a touch transaction, so the nodes that the step's puts mark and replace stay in D, which the model does not mark (red list, section 6): a Java change, R8 | 3: R3 (2.8: done, T13' proved); R7 (red list), R8; o |
 | M32 | Java keeps the first available time in the reclaim table, a value in the database, and reads it after startup (Codex's review of 09, finding 5): `Db.startInner` calls `DbStarter.start` (through `startDb`) and then `reclaim.initFromDb` (line 511), which reads the table through the reconstructed database | `Reclaim.initFromDb` (516); `Db.startInner` (486), line 511; `Reclaim.pretruncateIfPossible` (574) | — | Model: fa(i) in records, by α (2.4, Q5); argued in 4.1 that Java's startup needs f only after reconstruction, if it reads nothing before c (T8, R4) | 3: R1 (argued), R3 (`Record.fa`, 2.8), R4; o |
 | M33 | After a cut, Java cannot read the id of a slot's target below the cut: a stored key node holds child positions, not ids, so the id is read from the target's header, and `resolvePointers` skips a stream slot below the stream's first position (Codex's review of 09, finding 2) | `NodeCollection.resolvePointers` (317), line 337; `StoredKeyNode.toLongs` (50) | `javaTest` (by id) | Model: version stubs keep positions; CutOK must imply that no such slot of a node in D names a node in D; otherwise a code change (5, step 7) | 3: R3 (CutOK part 3: every reference below c of a node in D names its node's latest version, 2.8), R5; o |
 | M34 | Java writes every taken node, also nodes that no lookup from f on reaches (F1-008-08's "needed" nodes) | `Db.store` (1407); `TransSeq.take` (83) | step 6 | Model: show that it changes no record after a safe cut (T12), or a needed test in code (5, step 7) | 3: R5; o |
@@ -432,8 +443,9 @@ marked **proved** (with the theorem), **to prove** (with the WP),
 (2.8), the plan's sketch (8.7) with part 3 refined:
 
 1. c ≤ the record of f ≤ s, the startup pos;
-2. every node reachable at some time from f on has its latest version at c
-   or later, or none;
+2. every version that a lookup at some time from f on may read (`ReadsAt`)
+   is at c or later: the latest versions of the nodes reachable then, and the
+   versions their pointers to live children lead to (with Rule R);
 3. every node in D has its latest version at c or later, or none, and every
    reference below c of that version names the latest version of its node
    (so no node of D: M33);
@@ -537,4 +549,33 @@ record the touches, 2.7).
 
 ## 6. Red list
 
-WP R7.
+**R7** (2026-10-17). The checker with R3's definitions (lean/README.md, the
+checker; bergdb item 001, WP R7): C-A checks TouchOK for every TOUCH line;
+C-S compares fa(i) too (FA lines, Java's value clamped by the model's
+`firstAvail`) and, from the first CUT on, runs the model's step on the stream
+cut at the largest cut so far (version stubs before it); C-CUT checks
+`CutOK` at every CUT line, in the model's state after its transaction, that
+the CUT's first available time is the record's, and that every PHYSCUT is at
+or below the decided cut (M35). Run on R2's reclaim traces (2.7): small, 25
+traces, 14,448 transactions, 288 cuts; medium, 2 of its 6 traces (rm-mixed-1
+and rm-mixed-2: 4,415 transactions, 47 cuts); its four largest (rm-5000-1 and
+2, rm-long-1 and 2) were still in the checker at R7's commit.
+
+| Failure | Where | Row | Smallest | Resolution |
+|---|---|---|---|---|
+| C-S, gd and D: in a reclaim step, Java's gd(i) has nodes that the model's has not: index nodes on the access path of the step's puts (the current row's value, outside the step's range) that the puts replace (a split), so not reachable after the step, and not touched. The model marks the touched nodes (`touchOf`, kept if replaced, as Java keeps them) and the access path of the change after it (`markOf`); Java's `endOfTrans` keeps every mark of a touch transaction (`if (!x.trans.touch && ...)`, Db.java 892; d5c56dd: "reclaim's touch transactions keep every mark"), the put paths' too | 29 transactions of 11 small traces; 43 transactions of 2 medium traces | M17 | r-del-4, T(189): nodes 1300 and 41514, which the step's put replaces by 224726 and 224724 | R8, a Java change: in a touch transaction, `endOfTrans` takes out of D the replaced nodes that the puts marked, and keeps those the touch marked (the touch's marks are the first `gotDirtyNodes`, made by `endOfOp(true)` after `touchRange`). Then Java's gd(i) is the model's. The other way, a model change (step 3 of a transaction with a touch also marks the put paths' replaced nodes), would add to the model what the Level 2 alignment took out of Java (d5c56dd, M2); and the replaced nodes are dead: writing them later serves no read |
+
+Nothing else fails: no C-A failure (TouchOK holds for every touch: the
+touched nodes are index nodes reachable before the change, and every node
+reachable then above a touched one is touched, but the virtual root), no
+fa(i) difference, no C-S failure on the cut streams beyond the row above, no
+C-CUT failure (CutOK holds at every cut Java decided, with the first
+available time of the record, and every physical cut at or below the decided
+one), no failing probe of run B (C-R), no C-L failure, and no diagnostic (D
+closed upward, A6, TREE, A-COPY). The Java tier: `level3.sh`'s reclaim checks
+(ReclaimStress, RestartInvariance with reclaim, CrashTest with reclaim,
+ReclaimReaders) passed in P3's gates (2026-10-17 06:13 to 06:33, `8ea39cb`),
+and `java/` has not changed since.
+
+So every failure maps to a register row (M17), and R8 has one more Java
+change. The summary per trace: `docs/evidence/level3-redlist-baseline.txt`.

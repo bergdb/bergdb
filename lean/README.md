@@ -86,7 +86,7 @@ its section in sis-model.md.
 | SIS/Phys.lean | The physical layer, what Java holds in memory (bergdb item 001, WPs L1 and L3): objects (`Obj`), their slots (`Slot`), the memory with the node table (`Mem`); Java's first touch (`Mem.follow`: Rule R, the table, the version read, cut back in the section); reads (`Mem.read`); the lazy startup (`lazyStartup`); a version cut back to a time (`Version.cutTo`); the operations after startup (`Op`, `Mem.step`, admissible: `OpsOK`); the assumptions of the physical layer (`PhysStep`, `PhysRunOK`); the writer after a lazy startup (WP L4: its view through the physical layer, `Mem.view`; its transaction, `lazyTrans`, with the record of `stepWith`, `step` with its change given) and a run with lazy restarts (`runLazy`); the writer's paths reach the touched nodes too (`pathOf`, WP R3) | — (docs/level2-alignment.md, 13) |
 | SIS/Evict.lean | The physical layer, part 2, with eviction (bergdb item 001, WP E2; docs/level4-alignment.md, section 5): the pinned objects (`Mem.pinned`), unswizzling (`Mem.unswizzle`) and release (`Mem.release`); the Level 4 loader (`Mem.follow4`: the canonical object, or exactly the version a slot names after Rule R) and reads through it (`Mem.read4`); the writer's path (`Mem.reachOnPath4`) and the change (`Mem.applyChange4`, `Mem.newSlot4`); startup with rule 4 (`evictStartup`, `Mem.linkD`); the physical writer (`Mem.refOf`, `Mem.writeNode`) and its transaction (`evictTrans`); cache schedules (`CacheOp`) and runs (`runEvict`); the assumptions of stage 2 (`EvictStep`: TREE, `treeAt`, and A6', `adoptAt`; A-COPY, `CopyStep`; `EvictRunOK`) | — (docs/level4-alignment.md, 5) |
 | SIS/PhysTheorems.lean | Lemma M: a newer version of a node serves every time an older one serves (`LM_newer`), so Rule R's version does (`LM_ruleR`), and a version cut back to s serves the times up to s (`LM_cutTo`); T1-L (`T1_lazy`): after the lazy startup from the stream of a run, or of a prefix of it (a crash), and any reads and writer follows, a read at any time up to the last record gives P at that time; CC (`CC_canonical`): in a run with lazy restarts, every canonical object holds its node's whole history; T2-L (`T2_lazy`): such a run appends the records of the run without restarts; `step_eq_stepWith`; stage 2 (bergdb item 001, WP E3): D closed upward (`T15_closed`), and T-CACHE (`TC_records`): in a run with eviction and any cache schedule, without restarts, every transaction of the physical writer appends the model's record and leaves the model's D, and INV-CAN, INV-SNAP and INV-SLOT hold; T-READ (`TR_view`, WP E4): in such a run, a read through the Level 4 loader at any time up to the last record gives P at that time; T2-C (`T2_cache`, WP E5): with restarts too, the records and D stay the model's, and the invariants hold for the stream of the last startup; and T-READ with restarts (`TR_view_restarts`, WP E5); T-PIN (`TP_pins`, WP E6): in such runs, every object outside the pinned set may be evicted | 5.1, 9; ../docs/level4-alignment.md, 5.3 to 5.6 |
-| SIS/Reclaim.lean | Level 3, reclaim (bergdb item 001, WP R3): what a cut leaves of a version (`Version.stub`) and of a record (`Record.cut`); the stream after a cut (`cutStream`); when a cut is safe (`CutOK`); the same lookups from f on (`SameFrom`); policies that a cut does not change (`PolicyCutOK`); a virtual root seen only through its live children (`ExecRootOK`); runs that restart from cut streams (`runRestartsCut`, `cutMax`; with eviction, `runEvictCut`) | — (../docs/level3-alignment.md, 5) |
+| SIS/Reclaim.lean | Level 3, reclaim (bergdb item 001, WP R3): what a cut leaves of a version (`Version.stub`) and of a record (`Record.cut`); the stream after a cut (`cutStream`); the versions that a lookup at a time may read (`ReadsAt`, WP R7); when a cut is safe (`CutOK`); the same lookups from f on (`SameFrom`); policies that a cut does not change (`PolicyCutOK`); a virtual root seen only through its live children (`ExecRootOK`); runs that restart from cut streams (`runRestartsCut`, `cutMax`; with eviction, `runEvictCut`) | — (../docs/level3-alignment.md, 5) |
 | SIS/ReclaimTheorems.lean | T13' (`T13_markTouch`, WP R3): with touches, step 3 gives exactly the index nodes not in D (and not a virtual root) that are dirty or touched | — (../docs/level3-alignment.md, 2.2) |
 
 The proofs, in SIS/Proof/ (not needed for reading the statements):
@@ -182,7 +182,9 @@ Not trusted, tests only:
   from the running memory, the invariants, the restarts). `#guard` checks on
   a fixed run: the touch makes clean nodes dirty, and without it no cut is
   safe; T8 and T12 at the safe cut, logical and with eviction; the pSafe wait
-  (`pSafeWitness`). `lake exe reclaimtest 20 30`: the same on random runs,
+  (`pSafeWitness`); a stale reference that WP R3's `CutOK` let through, after
+  which a physical read from the cut stream fails (`staleWitness`, WP R7).
+  `lake exe reclaimtest 20 30`: the same on random runs,
   for four startup pos policies.
 * Check/ and TraceCheck.lean: the trace checker, `lake exe tracecheck`. It
   checks traces of Java runs against the model's definitions
@@ -193,7 +195,13 @@ Not trusted, tests only:
   nodes' skip slots: their layout and cached times (`topFailures`; section
   13.5 there). Its diagnostics also count A6, TREE (item 001, A4) and A-COPY
   (`copyFailures`, item 001, E2 and E3: the assumption of stage 2 on the
-  pointers of new entries).
+  pointers of new entries). Since item 001's R7 it reads reclaim's lines
+  (TOUCH, FA, CUT, PHYSCUT): C-A checks TouchOK (`touchFailures`), C-S
+  compares fa(i) and, from the first cut on, runs the model's step on the
+  stream cut at the largest cut so far, and C-CUT checks `CutOK` at every CUT
+  line and that every physical cut is at or below the decided one
+  (`cutFailures`; [../docs/level3-alignment.md](../docs/level3-alignment.md),
+  section 6).
 * Check/Fast.lean and Check/R4.lean, the checker's fast paths (bergdb item
   001, WP C2). `markOf`, `writeAll`, `reachList` and `step` have fast
   versions, proven equal to them and marked `@[csimp]` (`markOf_eq_fast`,
@@ -382,6 +390,20 @@ Lean's standard axioms; `lake exe reclaimtest 20 30` passes: for four startup
 pos policies and 20 seeds, the assumptions and `PolicyCutOK`, T8 at every
 restart and T12 hold at the largest safe cut, and with eviction 9,600
 transactions are checked, none fails.
+
+2026-10-17. The checker on Java's reclaim traces (bergdb item 001, WP R7): it
+reads reclaim's lines (TOUCH, FA, CUT, PHYSCUT); C-A checks TouchOK, C-S
+compares fa(i) and runs the steps on the cut stream, and C-CUT (new) checks
+`CutOK` at every cut. On R2's reclaim sets (small: 25 traces, 14,448
+transactions, 288 cuts; medium: rm-mixed-1 and rm-mixed-2, 4,415 transactions,
+47 cuts, while its four largest traces were still in the checker), `CutOK`
+holds at every cut Java decided, and every other failure is of one kind,
+register M17: in a reclaim step, Java's gd(i) keeps
+the marks of the nodes that the step's puts mark and replace (the red list,
+[../docs/level3-alignment.md](../docs/level3-alignment.md), section 6). On the
+way, `CutOK`'s part 2 was changed, found by running (`staleWitness`, below).
+`lake build` passes with no warnings and no `sorry`; `#print axioms` shows
+only Lean's standard axioms; the trace tests pass.
 
 Changes to the trusted part while proving, all on 2026-10-12:
 
@@ -673,14 +695,27 @@ M32, M33, M36 and M41, and 2.8):
   `runEvictCut`.
 * SIS/ReclaimTheorems.lean, new: T13' (`T13_markTouch`).
 
+Changes to the trusted part on 2026-10-17 (bergdb item 001, WP R7;
+[../docs/level3-alignment.md](../docs/level3-alignment.md), 2.8):
+
+* `CutOK`'s part 2: every version that a lookup at some time from f to k may
+  read (`ReadsAt`, new: the latest versions of the nodes reachable then, and
+  the versions that their pointers to live children lead to, with Rule R) is
+  at the cut or later; R3's asked this of the latest versions only. Reason: a
+  run of the model (`staleWitness`) where R3's condition holds and a physical
+  read at the first available time, after a restart from the cut stream,
+  reads a stub: a tree root reachable then, and replaced later, names an
+  older version of a child whose latest version is after the cut. In the
+  random runs of `reclaimtest` the two give the same cuts.
+
 Stage 1 of bergdb item 001 is done (2026-10-16): lemma M (`LM_newer`, L2),
 T1-L (`T1_lazy`, L3), CC and T2-L (`CC_canonical`, `T2_lazy`, L4) are proved,
 and Java's first touches after restarts are checked against the model's rule
 (C-L, L5). Stage 2: T-CACHE (`TC_records`, E3) and T-READ (`TR_view`, E4)
 are proved for runs without restarts, and T2-C (`T2_cache`, E5), T-CACHE
 with restarts, T-READ with restarts (`TR_view_restarts`, E5) and T-PIN
-(`TP_pins`, E6) (2026-10-17). Stage 3: the definitions and T13' (R3,
-2026-10-17).
+(`TP_pins`, E6) (2026-10-17). Stage 3: the definitions and T13' (R3), and
+the checker on Java's reclaim traces with the red list (R7) (2026-10-17).
 
 Not done:
 
@@ -688,4 +723,4 @@ Not done:
   traces; they are argued (level2-alignment.md, 13.3).
 * The bounds (T3, T4).
 * Reclaim's theorems: T8 and T9 (R4), T12 (R5), T-SCHEME (R6), checked by
-  running so far (`reclaimtest`); the checker on reclaim traces (R7).
+  running so far (`reclaimtest`).

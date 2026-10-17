@@ -107,11 +107,15 @@ Current state
 
 * Checkpoints: G0 given (2026-10-16 15:23); K1 passed (2026-10-17 07:56,
   Frans: Option K under TREE, A6' and A-COPY; above). K2 to K5 open.
-* Next: stage 3: R7 (the red list), then R4, R5, R6, R8, R9 and K3 (plan,
-  5.1). R3 is done (2026-10-17).
+* Next: stage 3: R4 (T8, T9), then R5, R6, R8, R9 and K3 (plan, 5.1). R3
+  and R7 are done (2026-10-17).
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: none (2026-10-17 10:00).
-* Long jobs running: none.
+* Uncommitted work of this plan in bergdb: R4's, in a scratch copy of
+  `lean/` (2026-10-17 10:40); R8's first change (M17), in `java/` (12:20).
+* Long jobs running (scratch copies of `lean/`, at low priority): R7's
+  checker on the medium reclaim set's four largest traces, from 2026-10-17
+  10:31 (the small set and the two others took 6 and 18 minutes); R4's (R7's,
+  with the diagnostic C-CUT+) on the whole medium set, from 12:08.
 * Stage 2's time box (plan, 5.3): started with E1 at 2026-10-16 23:14;
   60 hours, so it ends at 2026-10-19 11:14. Stage 2's WPs (E1 to E7) were
   done by 2026-10-17 05:31, about 6.3 hours of it.
@@ -149,7 +153,7 @@ Status
 | R4 | Recovery and reads after a cut: T8, T9 | not started | — |
 | R5 | Restarts across cuts: T12 | not started | — |
 | R6 | Java's scheme gives safe cuts: T-SCHEME | not started | — |
-| R7 | The red list on Java's reclaim | not started | — |
+| R7 | The red list on Java's reclaim | done | 2026-10-17 |
 | R8 | Java: the corrections the model requires, before eviction | not started | — |
 | R9 | Level 3 conformance; the gate proposal | not started | — |
 | J1 | Registry, pins and audits | not started | — |
@@ -2182,3 +2186,92 @@ Time: R3 is M (2 to 8 hours): about 2 hours.
 Open, next: R7 (the checker reads TOUCH, FA, CUT and PHYSCUT, and runs on
 R2's reclaim traces; the red list), then R4 (T8, T9), R5 (T12, with
 `PolicyCutOK`, `ExecRootOK`, marking and BergDB's still-dirty test) and R6.
+
+### 2026-10-17 10:00 to 12:58. WP R7, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `20e0aa2` (R3);
+uncommitted before this WP's commit: its files, below. Worked in a scratch
+copy of `lean/` and copied the result back.
+
+Did:
+
+1. The checker reads reclaim's lines (trace format 2 with `retain`: TOUCH, FA,
+   CUT, PHYSCUT; `Check/Trace.lean`): the touch goes into the changes of its
+   transaction, fa(i) into its record (the last FA line at or before it).
+   C-A checks TouchOK (`touchFailures`: the touched nodes are index nodes
+   reachable before the change, and every node reachable then above a
+   touched one is touched, but the virtual root). C-S compares fa(i) (the
+   model clamps Java's value, `firstAvail`) and, from the first CUT on, runs
+   the model's step on the stream cut at the largest cut so far (version
+   stubs). C-CUT (new) checks `CutOK` at every CUT line, in the model's state
+   after its transaction (`cutFailures`, `readsBelow`), that the CUT's first
+   available time is the record's, and that every PHYSCUT is at or below the
+   decided cut (M35). A-COPY's paths (`copyFailures`) include the touched
+   nodes, as `pathOf` does since R3. Three new test traces (`touch.trace`,
+   `cut.trace`, `stale.trace`) in `test-traces/run.sh`.
+2. A trusted change, found by running while writing C-CUT: R3's `CutOK` part
+   2 (the latest version of every node reachable from f on at the cut or
+   later) is not enough. `staleWitness` (SIS/ReclaimExample.lean) is a run
+   where it holds for a cut at 1 and a physical read at f = 2, after a restart
+   from the cut stream, reads a stub: tree root 20, reachable at 2 and
+   replaced at 3, names mid node 2's version of R(0), whose latest version is
+   of R(6). (The model's startup gets P right there: it takes each node from
+   the read at the latest time it is reached.) Part 2 now asks it of every
+   version a lookup from f on may read (`ReadsAt`, new: from the latest
+   versions of the reachable nodes, through the pointers to live children,
+   with Rule R). Under example 4's reclaim scheme the two give the same cuts
+   (`reclaimtest`: the same largest cut in every seed); on runs without a
+   scheme (puts and splits only, f a fixed distance behind s, 324 cuts), with
+   the new part 2, T8, T12 and the eviction checks pass. `cutOKB`,
+   `cutReachB`, `cutBoundB` (the largest safe cut, in one pass) by running.
+3. Runs (from 10:31), the checker on R2's traces: small, 25 traces, 14,448
+   transactions, 288 cuts; medium, 2 of its 6 traces (rm-mixed-1 and
+   rm-mixed-2: 4,415 transactions, 47 cuts; its four largest, rm-5000-1 and
+   2 and rm-long-1 and 2, were still in the checker at this commit). C-A,
+   C-CUT, C-R, C-L and the diagnostics: no failure in any trace (CutOK, with
+   R7's part 2, holds at every cut Java decided). C-S: 29 transactions of 11
+   small traces (43 transactions of the 2 medium traces) fail on gd and D,
+   all of one kind: in a reclaim step, Java's gd(i) has nodes the model's has
+   not, index nodes that the step's puts mark and replace. Checked for every
+   one of the 34 nodes of the small set, and for the 17 nodes of the 12
+   medium transactions that the checker lists: reachable before the step,
+   not after it, not touched. Java's `endOfTrans` keeps every mark of a
+   touch transaction (d5c56dd, "reclaim's touch transactions keep every
+   mark"); the model keeps the touch's marks only. Register M17; the red
+   list's one row, for R8: a Java change (in a touch transaction, `endOfTrans`
+   takes the replaced nodes that the puts marked out of D, and keeps those the
+   touch marked). The smallest case: r-del-4, T(189).
+4. Regression: `conformance.sh small` with the new checker, 60 of 60 traces
+   TRACECHECK OK, CONFORMANCE OK (the Level 2 traces have no reclaim lines).
+5. Docs: `docs/level3-alignment.md` section 6 (the red list), 2.8 and section
+   5 (CutOK's part 2), the register (M17); `lean/README.md` (the checker, the
+   trusted change, the witness, status);
+   `docs/evidence/level3-redlist-baseline.txt` (new: the result of every
+   trace).
+
+Files changed: `lean/Check/Trace.lean`, `Check/Steps.lean`,
+`lean/TraceCheck.lean`, `lean/test-traces/run.sh` and three new traces;
+`lean/SIS/Reclaim.lean` (trusted: `ReadsAt`, `CutOK`'s part 2);
+`lean/SIS/ReclaimExample.lean`; `lean/README.md`;
+`docs/level3-alignment.md`; `docs/evidence/level3-redlist-baseline.txt`
+(new); this file.
+
+Checks: on a clean copy of `lean/` (no `.lake`), 12:16 to 12:41, with the
+files of this commit: `lake build` 114 jobs, no warnings; no `sorry`, `admit`,
+`axiom` or `unsafe` in SIS/ and Check/; `#print axioms` of the README's 18
+theorems: only Lean's standard axioms; `sh test-traces/run.sh`: TRACE TESTS
+OK; `lake exe reclaimtest 20 30`: all checks pass (42 s); `lake exe sistest 20
+40`: all checks pass (11 min); `lake exe phystest 20 40`: all checks pass
+(11.5 min), on a machine busy with the checker's runs.
+`java/stress/conformance.sh small` with the new checker: 60 of 60 traces
+TRACECHECK OK (10:34). No change in `java/`, so no gate.
+
+Register: M17 (R7: the red list's row; R8). M35 (checked by C-CUT too, no
+failure).
+
+Time: R7 is S (up to 2 hours): about 1.5 hours of work (10:00 to 10:40, and
+12:45 to 12:58 to finish it, with R4 in between), the runs aside: from 10:31,
+the medium set's four largest traces still running at the commit.
+
+Open, next: R4 (T8, T9; with R7's `CutOK`; T12's runs with restarts need
+`ExecRootOK`), R5, R6, then R8 with the red list's change.

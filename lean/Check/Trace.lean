@@ -103,6 +103,14 @@ structure TRec where
   probes : Array (Nat × Bool × String) := #[]
   /-- The first touches after the restart after this transaction, up to the next. -/
   firsts : Array TFirst := #[]
+  /-- With reclaim (trace format 2; bergdb item 001, WPs R2 and R7): the nodes
+  T(i)'s touch visited (TOUCH), fa(i) when it changes (FA), a cut decided at
+  R(i), as the first record kept and the first available time (CUT), and the
+  stream's first record after the physical cut after R(i) (PHYSCUT). -/
+  touch : List NodeId := []
+  fa : Option Nat := none
+  cut : Option (Nat × Nat) := none
+  physcut : Option Nat := none
   deriving Inhabited
 
 structure Trace where
@@ -195,6 +203,18 @@ def parseLine (t : Trace) (n : Nat) (line : String) : Trace :=
   | "LIVE" :: x :: tm :: ys => match x.toNat?, tm.toNat?, parseNats ys with
     | some x, some tm, some ys => modCur t (fun r => { r with live := r.live.push (x, tm, ys) })
     | _, _, _ => bad "bad LIVE"
+  | "TOUCH" :: xs => match parseNats xs with
+    | some xs => modCur t (fun r => { r with touch := xs })
+    | none => bad "bad TOUCH"
+  | ["FA", f] => match f.toNat? with
+    | some f => modCur t (fun r => { r with fa := some f })
+    | none => bad "bad FA"
+  | ["CUT", c, f] => match c.toNat?, f.toNat? with
+    | some c, some f => modCur t (fun r => { r with cut := some (c, f) })
+    | _, _ => bad "bad CUT"
+  | ["PHYSCUT", c] => match c.toNat? with
+    | some c => modCur t (fun r => { r with physcut := some c })
+    | none => bad "bad PHYSCUT"
   | "PROBE" :: i :: res :: r => match i.toNat? with
     | some i => modCur t (fun rr => { rr with probes := rr.probes.push (i, res == "ok", " ".intercalate r) })
     | none => bad "bad PROBE"
@@ -211,10 +231,17 @@ def parseTrace (s : String) : Trace :=
 def levelMap (t : Trace) : List (NodeId × Nat × Bool) :=
   t.recs.toList.flatMap (fun r => r.new.toList)
 
-/-- The changes of transaction i. -/
+/-- The changes of transaction i, its touch included. -/
 def changesOf (r : TRec) : Changes BVal :=
   { new := r.new.toList.map (fun (x, l, d) => ⟨x, l, d⟩),
-    adds := r.adds.toList.map (fun (x, _, v) => (x, v)) }
+    adds := r.adds.toList.map (fun (x, _, v) => (x, v)),
+    touch := r.touch }
+
+/-- fa(i) of every record: the last FA line at or before it, 0 before the first. -/
+def faSeq (recs : Array TRec) : Array Nat :=
+  (recs.foldl (fun (acc : Array Nat × Nat) r =>
+    let f := r.fa.getD acc.2
+    (acc.1.push f, f)) (#[], 0)).1
 
 /-- The level of the root children (top nodes) of a BergDB trace: that of the
 primordial top node, the lowest level of a node with a root pointer (docs,
@@ -242,10 +269,11 @@ def toVersion (lv : List (NodeId × Nat × Bool)) (i : Nat) (w : TVer) : Version
     level := ((lv.lookup w.node).map (·.1)).getD 0,
     isData := w.isData, hist := w.hist.toList, refs := w.refs.toList }
 
-/-- A record of the trace as the model's record. -/
-def toRecord (lv : List (NodeId × Nat × Bool)) (r : TRec) : Record BVal Nat :=
+/-- A record of the trace as the model's record; fa is its first available time
+(`faSeq`). -/
+def toRecord (lv : List (NodeId × Nat × Bool)) (fa : Nat) (r : TRec) : Record BVal Nat :=
   { trans := if r.idx == 0 then none else some r.idx, sp := r.sp,
     vers := r.vers.toList.map (toVersion lv r.idx), gd := r.gd,
-    top := r.top.map (fun j => (r.topNode.getD 0, j)) }
+    top := r.top.map (fun j => (r.topNode.getD 0, j)), fa := fa }
 
 end SIS.Check

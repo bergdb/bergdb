@@ -1,0 +1,47 @@
+# Bergdb item 001, TouchOK (WPs R3 and R7): a touch that misses a node above a
+# touched one. Top node 3 points to root key node 5, which points to 7 and 13;
+# 7 points to 15, 13 to 11. T(1) touches 3, 5 and 15, not 7, which is reachable
+# with 15 below it. Expected: touchUp fails for node 7; the record and D are the
+# model's (the touched nodes get dirty without entries).
+TRACE 2
+CONFIG touch
+TX 0
+NEW 0 9 I
+NEW 3 8 I
+NEW 5 3 I
+NEW 7 2 I
+NEW 13 2 I
+NEW 11 1 I
+NEW 15 1 I
+ADD 0 0 T 3
+ADD 3 0 R 5
+ADD 5 0 K 10 7
+ADD 5 0 K 20 13
+ADD 7 0 K 1 15
+ADD 13 0 K 1 11
+REC 0 0 0 field 3
+VER 3 I
+H 0 R 5
+F 5 0
+VER 5 I
+H 0 K 10 7
+H 0 K 20 13
+F 7 0
+F 13 0
+VER 7 I
+H 0 K 1 15
+F 15 0
+VER 13 I
+H 0 K 1 11
+F 11 0
+VER 11 I
+VER 15 I
+DIRTY
+END 0
+TX 1
+TOUCH 3 5 15
+REC 1 0 0 field 3
+GD 3 5 15
+DIRTY 3 1 5 1 15 1
+END 1
+DONE 1

@@ -1,0 +1,37 @@
+# Bergdb item 001, C-CUT (WP R7): a cut that CutOK does not allow. The nodes of
+# R(0) are reachable at every time, and none is written again; T(2) moves the
+# first available time to 1 and decides a cut at 1. Expected: the record and D
+# are the model's, and the cut fails CutOK's part 2 (CUT-reach).
+TRACE 2
+CONFIG cut
+TX 0
+NEW 0 9 I
+NEW 3 8 I
+NEW 5 3 I
+NEW 7 2 I
+ADD 0 0 T 3
+ADD 3 0 R 5
+ADD 5 0 K 10 7
+REC 0 0 0 field 3
+VER 3 I
+H 0 R 5
+F 5 0
+VER 5 I
+H 0 K 10 7
+F 7 0
+VER 7 I
+DIRTY
+END 0
+TX 1
+REC 1 0 0 field 3
+GD
+DIRTY
+END 1
+TX 2
+REC 2 1 0 field 3
+GD
+DIRTY
+FA 1
+CUT 1 1
+END 2
+DONE 2

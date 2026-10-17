@@ -33,12 +33,32 @@ do not change. A cut at 0 changes nothing. -/
 def cutStream (c : Nat) (S : Stream V T) : Stream V T :=
   S.mapIdx (fun r R => if r < c then R.cut else R)
 
+/-- The versions of the stream S that a lookup at time t may read, for the
+structure P: the latest version of every node reachable at t, and every version
+that a pointer of one of them to a live child at t leads to, with Rule R from
+the startup pos of S (`follow`), and so on down (bergdb item 001, WP R7).
+Startup's reads (`readFrom`) and the physical layer's loads (`Mem.follow4`)
+follow such pointers. -/
+inductive ReadsAt (sp : Spec V T) (S : Stream V T) (P : Struct V) (t : Time) :
+    Version V → Prop
+  | latest (x : NodeId) (v : Version V) : reachable sp P t x = true → S.lv x = some v →
+      ReadsAt sp S P t v
+  | child (v : Version V) (y : NodeId) (w : Version V) : ReadsAt sp S P t v →
+      y ∈ sp.live (v.hist.upTo t) → follow S (lastSp S) true y (v.ref? y) = some w →
+      ReadsAt sp S P t w
+
 /-- A cut at c is safe in state db, the state after transaction k (plan, 8.7).
 With f = fa(k), the first available time of the last record:
 1. c <= f (and f <= s(k) by `firstAvail`), so the startup section, and the
    record at the startup pos, are after the cut;
-2. every node reachable at some time from f to k has its latest version at c
-   or later, or none;
+2. every version that a lookup at some time from f to k may read (`ReadsAt`)
+   is at c or later: the latest versions of the nodes reachable then, and the
+   versions that their pointers to live children lead to. (WP R3 asked this of
+   the latest versions only; WP R7 found by running that a node reachable at
+   f that the change replaces later can name an older version of a child, the
+   child's latest being after the cut and the older one before it, so that a
+   read at f after a restart from the cut stream reads a stub:
+   `staleWitness` in SIS/ReclaimExample.lean.)
 3. every node in D has its latest version at c or later, or none; and every
    reference below c of that version names the latest version of its node, so
    a node not in D (Java's pSafe wait: a parent written before its child and
@@ -50,8 +70,7 @@ With f = fa(k), the first available time of the last record:
 4. top(k) names a record at c or later (implied by 2; M41). -/
 def CutOK (sp : Spec V T) (c : Nat) (db : DB V T) (k : Nat) : Prop :=
   c ≤ lastFa db.S ∧
-  (∀ x t, lastFa db.S ≤ t → t ≤ k → reachable sp db.P t x = true →
-    ∀ v, db.S.lv x = some v → c ≤ v.recNo) ∧
+  (∀ t w, lastFa db.S ≤ t → t ≤ k → ReadsAt sp db.S db.P t w → c ≤ w.recNo) ∧
   (∀ x, inD db.D x = true → ∀ v, db.S.lv x = some v →
     c ≤ v.recNo ∧ ∀ y r, v.ref? y = some r → r < c → (db.S.lv y).map (·.recNo) = some r) ∧
   (∀ R z r, db.S.getLast? = some R → R.top = some (z, r) → c ≤ r)
