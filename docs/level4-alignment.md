@@ -182,13 +182,13 @@ level2-alignment.md's register, where stage 1 closes them.
 
 | | Mismatch or open question | Java | Model | Proposed resolution | Stage, WP, status |
 |---|---|---|---|---|---|
-| M20 | With eviction, the writer cannot find lv(y) for a dead pointer without a table of all nodes (reference-theory.md, 5.1; `lean/References/SISCase.lean`). Today it finds y's canonical object by id in the node table, which holds every node (M26) | `NodeCollection.resolvePointers` (292), lines 317 to 333; `Cache3.getNode` (198) | `mkVersion` (`S.lv`) | Option K: A6 and INV-SLOT, references from slots and the pinned set (plan, 8.5); fallback Option F (K1) | 2: A4, E1 (designed: 5.4), E2 (run), E3 (proved without restarts: `TC_records`, 5.11), E4 (`TR_view`, 5.12), E5 (with restarts: `T2_cache`, 5.13), E6; K1; o |
+| M20 | With eviction, the writer cannot find lv(y) for a dead pointer without a table of all nodes (reference-theory.md, 5.1; `lean/References/SISCase.lean`). Today it finds y's canonical object by id in the node table, which holds every node (M26) | `NodeCollection.resolvePointers` (292), lines 317 to 333; `Cache3.getNode` (198) | `mkVersion` (`S.lv`) | Option K: A6 and INV-SLOT, references from slots and the pinned set (plan, 8.5); fallback Option F (K1) | 2: A4, E1 (designed: 5.4), E2 (run), E3 (proved without restarts: `TC_records`, 5.11), E4 (`TR_view`, 5.12), E5 (with restarts: `T2_cache`, 5.13), E6 (`TP_pins`, T-INDEX: 5.14); K1; o |
 | M21 | `resolvePointers` may take a newer snapshot from the node table (`usable`: canonical, or `getSpos() >= ref`), so the reference written can depend on what readers left in the table (level4-plan.md, 2.1, second case). Confirmed: lines 324 to 330. Readers include the writer's own warm-up reads (2.5) | `NodeCollection.resolvePointers` (292) | — | Code: resolve by id against the pinned set, Rule R and the slot; no window (E1, 5.2 and 5.4); INV-SLOT says the result is lv(y) | 2, 3: E1 (designed), E3 (the model's writer proved, 5.11), R8; o |
 | M22 | A runtime first touch of a key node version in the startup section is cut back to the startup time (line 228; level4-plan.md, 2.1, first case). Not reachable today: every index node with a version in the section has a canonical object from startup on (`registerSectionNodes` for the nodes of R(s), the rerun's `nodeCreated` for the others), so step 3 of `followStreamPointer` finds it. Reachable once canonical objects can be released | `NodeCollection.followStreamPointer` (184), lines 228 to 231; `KeyNode.toPreviousState` (893) | — | Code: cut back only during reconstruction (startup), never at runtime (E1, 5.2: the Level 4 loader) | 3: E1 (designed), R8; o |
 | M23 | A memory slot keeps access data in its position field, so the slot's position is lost while the slot is a memory slot (`setPointer(i, node, accessData)` at every swizzle) | `KeyNode.pos` (field, line 72), `setPointerAccessData` (240); `TopNode.pointersPos`, `rootPointerPos` (lines 18, 28), `setPointerAccessData` (303); `NodeCollection.followStreamPointer`, line 240; `AccessData` | — | Code: unswizzling writes the target's position; the access clock kept apart from the position, or updated only under the slot's lock with a recheck | 3, 4: R8, J1; o |
 | M24 | Readers of a slot's pair assume that a memory slot stays one: `KeyNode.getPointer` reads the object, then `pos[index]` separately, without the lock; `TopNode.getPointer` tests the object and reads it again; `TopNode.setPointerAccessData` and `getPointerAccessData` assert a memory slot. The comments say so ("Level 4 (eviction) must revisit this") | `KeyNode.getPointer` (202), `TopNode.getPointer` (252), `TopNode.setPointerAccessData` (303) | — | Code: capture the slot once; defined behavior for an evicted slot (level4-plan.md, 4.5.1) | 3, 4: R8, J5; o |
 | M25 | `Cache3`'s reference counts are unbalanced: `pointerCreated` is called on swizzles, canonicalization, resolution and Dag pointer creation; `pointerDestroyed` has no caller | `Cache3.pointerCreated` (90), `pointerDestroyed` (180); callers `NodeCollection` lines 239, 258, 329, `Db` line 697 | — | Not used for eviction: the registry and the sweep instead (Q9) | 4: J1; o |
-| M26 | `Cache3` keeps every index node ever read or made, canonical objects and the newest snapshots, for readers and the writer; nothing leaves it | `Cache3.register` (115), `getNode` (198); `NodeCollection.followStreamPointer`, line 233 | — (P is logical) | Physical layer: the table holds resident objects only; the writer needs only the pinned ones (T-INDEX) | 2, 4: E1, J1, J3; o |
+| M26 | `Cache3` keeps every index node ever read or made, canonical objects and the newest snapshots, for readers and the writer; nothing leaves it | `Cache3.register` (115), `getNode` (198); `NodeCollection.followStreamPointer`, line 233 | — (P is logical) | Physical layer: the table holds resident objects only; the writer needs only the pinned ones (T-INDEX) | 2, 4: E1, E6 (T-INDEX by the definitions, 5.14: the model's table holds resident objects only), J1, J3; o |
 | M27 | A first touch swizzles a slot to an object that may be newer than the slot's reference: the version after Rule R, the table's canonical object, or a table snapshot at least as new (`usable`). With a memory slot to a newer snapshot, the slot's serialized reference changes too (2.2) | `NodeCollection.followStreamPointer` (184), lines 202 to 241 | — | Model: allowed by lemma M (stage 1). Level 4 loader: the canonical object, or the exact version the slot names after Rule R (Q7; E1, 5.2) | 1, 2, 3: L1, E1 (designed), R8; o |
 | M28 | Reclaim's scan reads through the readers' path at the old time tStart, and then reads each KV again at the latest time: both swizzle and register what they read (historical snapshots included) | `Reclaim.step` (345): `db.getMany`, line 368, with `Db.newGetMany`'s readers' follower; `db.getOne`, lines 380 and 382 | — | Code: maintenance reads, without admission or swizzling; the value's position from the slot where it suffices (level4-plan.md, 5.1, point 3) | 3, 4: R8, J6; o |
 | M29 | Top node skip slots cache the target's time (`pointersTime`); the trace does not export it, so the checker cannot see a wrong cached time (F1-008-13, 5) | `TopNode.pointersTime` (line 20); `StoredTopNode.toLongs` (160) writes it, `parse` (54) reads it; `java/stress/TraceExport.java`, `topEntries` (line 290) | entries `skip` | Trace: SKIPT lines (plan, 8.2); checker: equal to the target's time; kept on unswizzling | 1, 4: L5 done (SKIPT lines; C-S checks every cached time and the slot layout, level2-alignment.md 13.5), J3 (kept on unswizzling); o |
@@ -564,11 +564,15 @@ For runs that meet the Level 2 assumptions (`RunOK`), the physical layer's
   T-CACHE hold for the stream of the last startup.
 * **T-PIN** (`TP_pins`, E6). Every eligible object may be released at any
   transaction boundary (after its incoming memory slots are unswizzled), and
-  the theorems above still hold: the pinned set is what must stay.
+  the theorems above still hold: the pinned set is what must stay. Proved
+  (E6, 2026-10-17; 5.14), for the runs of T2-C: every object outside the
+  pinned set may be detached, and unswizzling its memory slots and then
+  releasing it removes it.
 * **T-INDEX** (E6, by the definitions). The physical writer reads only the
   slots of the objects it writes, the pinned set by node id, and Rule R's
   section map; never a map from every node id, and never what readers
-  happened to leave in memory.
+  happened to leave in memory. Stated with the definitions it rests on in
+  5.14 (E6, 2026-10-17).
 
 ### 5.7 What Java must change, and what it keeps
 
@@ -875,6 +879,85 @@ with a pointee in D is in D itself. E2's runs with restarts pass with the
 change (`phystest 20 40 evict`).
 
 Not covered by E5: Java (the J WPs).
+
+### 5.14 E6: T-PIN proved, T-INDEX by the definitions
+
+`TP_pins` (`lean/SIS/PhysTheorems.lean`, WP E6, 2026-10-17): in the runs of
+5.13 (any cache schedules, restarts after any transactions), after any
+transaction and its cache operations or its restart, every object in memory
+outside the pinned set (`Mem.pinned`: the canonical objects of the nodes of
+D, and the root's object) may be evicted. It has been written, so it may be
+detached (`Mem.detachable`); unswizzling each slot that is a memory slot to
+it and then releasing it leaves it out of memory. The theorems of 5.11 to
+5.13 hold for every cache schedule, so they hold whatever objects outside
+the pinned set are evicted, in any order, at any transaction boundary. Only
+Lean's standard axioms; the proofs are in `lean/SIS/Proof/EvictKeys.lean`
+and `EvictPin.lean` (about 870 lines).
+
+1. **Outside the pinned set, every object has been written**
+   (`EInv.detachable_of_unpinned`). A snapshot is the version at its
+   position (INV-SNAP). A canonical object outside the pinned set is of a
+   node not in D and not the root (the root's object is pinned): a written
+   node, so clean (INV-2), so it has a latest version, which is the
+   object's position (INV-CAN).
+2. **No object has two slots for the same pointee** (`SlotsND`,
+   `slotsND_runEvict`), in every memory of every run, whatever its
+   assumptions: an object is made with one slot per pointee of a history
+   (`Obj.ofVersion`; the pointees have no repeats) or with none, and the
+   operations change slots in place (`Obj.setSlot`) or add one for a pointee
+   that has none (`Obj.putSlot`). So unswizzling the slot of each object, for
+   each pointee, that is a memory slot to h (`Mem.slotsTo`) leaves no memory
+   slot to h (`Mem.unswizzles_incoming`), and h may then be released
+   (`Mem.evict_ok`).
+
+Checked by running before the proof (a probe, scratch): in the runs of
+examples 3 and 5 with the four cache schedules and restarts (4 seeds of 40
+transactions each, 1,280 states), no object outside the pinned set lacks a
+position, `evictObj` (`lean/SIS/EvictExample.lean`) removes every object that
+may be detached, and no object repeats a pointee in its slots; 21,374
+objects outside the pinned set were seen.
+
+T-PIN does not say that the pinned set must stay: the model never allows a
+pinned object's release (`Mem.eligible`), so the theorems say nothing of
+one. E2's runs show what goes wrong without part of the design (without rule
+4, a wrong record after a restart; 5.10). Java's pins beyond the model's (the
+record being written, the objects of an operation in progress) are atomic in
+the model (5.8).
+
+**T-INDEX, by the definitions.** The physical writer computes each version
+(`Mem.writeNode`) from its node's canonical object (a taken node, from D and
+the nodes the transaction marks, which are pinned during the writes; or a
+data node the transaction creates), and each reference (`Mem.refOf`) from:
+
+* for a pointee in D (pinned), its canonical object by node id
+  (`Mem.canonicalOf`, the node table) and that object's position;
+* otherwise the object's slot for the pointee (`Obj.slot?`): a memory slot
+  gives its object's position (`Obj.pos`); a stream slot its record after
+  Rule R (`ruleRRef`), which reads only `newest S0 s y`, the newest version
+  of y in the startup section R(s), ... of the stream of the last startup.
+
+It reads no map from every node id. `Stream.lv`, the latest version of every
+node, which the logical writer uses (`mkVersion`), appears in the physical
+layer only as the last resort of the startup's `Mem.canonicalNode`, which the
+runs of the theorems never reach (every node of gd(j) has a canonical object
+when the rerun reaches it: `foldl_canonicalNode_noop`, stage 1). The other
+memory reads of a transaction are the loader's (`Mem.follow4`: a memory
+slot's object; else the node table's canonical object of the pointee; else
+the record the slot names after Rule R, read by its position,
+`Stream.versionAt`), the walk's (`Mem.reachOnPath4`), and a new pointer's
+(`Mem.newSlot4`: the pointee's canonical object; else the slot for the
+pointee of a resident canonical object of a node reachable before the change
+that has the pointee in its history, `srcOK4`; else the object's own). The
+node table
+holds resident canonical objects only (`Mem.release` removes the entry), so
+it is bounded by memory, not by the number of nodes; and the records do not
+depend on which objects outside the pinned set are resident, or on what
+readers left in memory, since T-CACHE and T2-C hold for every cache
+schedule. The logical part of a transaction (the change, the paths, marking,
+Rule A and the top: `pathOf`, `markOf`, `stillDirtyOf`, `topOf`) is the
+model's step, which Java computes on its Dag and its D (`TransSeq`); it
+decides which nodes are written, not what their versions name. E1 did not
+adopt the window of 8.5, so there is no other map.
 
 
 ## 6. What Java must do

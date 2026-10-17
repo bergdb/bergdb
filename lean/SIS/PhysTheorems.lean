@@ -9,6 +9,7 @@ import SIS.Proof.PhysT2
 import SIS.Proof.EvictInit
 import SIS.Proof.EvictReadT
 import SIS.Proof.EvictRestart
+import SIS.Proof.EvictPin
 
 namespace SIS
 
@@ -304,5 +305,41 @@ theorem TR_view_restarts (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool �
   rw [hst] at hm hh hinv
   rw [← hS0] at hm hh
   exact read_list_view (hm.read4T_ok hinv hok.1.liveSub hh ht).2.2
+
+/-- T-PIN (bergdb item 001, WP E6; docs/level4-alignment.md, 5.14). In a run as
+in `T2_cache` (BergDB's algorithm with marking, the assumptions, those of the
+physical layer and of stage 2, the Level 4 startup, any cache schedules,
+restarts after any transactions), after any transaction and its cache
+operations or its restart, every object in memory outside the pinned set
+(`Mem.pinned`: the canonical objects of the nodes of D, and the root's object;
+Java pins these, and the record being written and the objects of an operation
+in progress, which the model treats as atomic) may be evicted. It has been
+written, so it may be detached (`Mem.detachable`); and there are slots L, each
+the slot of an object for a pointee that is a memory slot to it, such that
+unswizzling them (`Mem.unswizzle`) and then releasing it (`Mem.release`)
+leaves it out of memory. The theorems above hold for every cache schedule, so
+they hold whatever objects outside the pinned set are evicted, in any order,
+at any transaction boundary: the pinned set is all that must stay. -/
+theorem TP_pins (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool × List CacheOp))
+    (hok : RunOK sp al (ts.map (·.1))) (hph : PhysRunOK sp al (ts.map (·.1)))
+    (hev : EvictRunOK sp al (ts.map (·.1))) (hj : al.stillDirty = javaTest sp)
+    (hmk : al.mark = true) (j : Nat) (hjt : j ≤ ts.length) :
+    let r := runEvict sp al (ts.take j)
+    let m := r.2.1
+    ∀ h o, m.obj? h = some o → m.pinned r.1.D h = false →
+      m.detachable r.1.D h = true ∧
+      ∃ L : List (Nat × NodeId),
+        (∀ q ∈ L, (m.obj? q.1).bind (·.slot? q.2) = some (Slot.mem h)) ∧
+        ((L.map (fun q => CacheOp.unswizzle q.1 q.2) ++ [CacheOp.release h]).foldl
+          (Mem.cacheOp sp r.2.2 r.1.S r.1.D) m).obj? h = none := by
+  intro r m h o ho hp
+  obtain ⟨k1, -, -, hrel, hm, -⟩ := evictInvR_all hok hph hev hj hmk j hjt
+  have hinv := inv_st sp al (ts.map (·.1)) hok (algOK_of sp al (Or.inl hj)) j (by rw [List.length_map]; exact hjt)
+  have hD : r.1.D = (st sp al (ts.map (·.1)) j).D := hrel.2.1
+  have hm' : EInv sp (st sp al (ts.map (·.1)) j) _ j m := hm
+  have hs : SlotsND m := slotsND_runEvict sp al (ts.take j)
+  rw [hD] at hp ⊢
+  have hd := hm'.detachable_of_unpinned hinv hok.1.liveSub ho hp
+  exact ⟨hd, m.slotsTo h, Mem.evict_ok hs hm'.objNodup hd sp r.2.2 r.1.S⟩
 
 end SIS

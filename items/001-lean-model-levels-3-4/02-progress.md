@@ -102,7 +102,7 @@ Current state
   named in the last log entry.
 * Long jobs running: the Lean tier of the A-COPY check on the large trace
   set (`copyFailures`, the entry of 2026-10-17 03:27; started 03:41, in the
-  background, at low priority; 7 of its 12 traces done by 05:07, no failure).
+  background, at low priority; 8 of its 12 traces done by 05:20, no failure).
 * Stage 2's time box (plan, 5.3): started with E1 at 2026-10-16 23:14;
   60 hours, so it ends at 2026-10-19 11:14.
 * Preserved builds: `l34-base` (A1; `java/build/perf/builds/l34-base/`,
@@ -131,7 +131,7 @@ Status
 | E3 | INV-SLOT and the physical writer: T-CACHE | done | 2026-10-17 |
 | E4 | Reads under eviction: T-READ | done | 2026-10-17 |
 | E5 | Restarts with eviction: T2-C | done | 2026-10-17 |
-| E6 | Pins and index-freedom | not started | — |
+| E6 | Pins and index-freedom | done | 2026-10-17 |
 | E7 | The Java change list; the K1 review | not started | — |
 | R1 | α and the register for reclaim | done | 2026-10-16 |
 | R2 | Trace format 2; the exporter for reclaim runs | not started | — |
@@ -1773,3 +1773,81 @@ of stage 2's theorems T-PIN (E6) remains.
 Open, next: E6 (T-PIN, T-INDEX), whose design and first probe ran during
 these checks (the next entry); the A-COPY Lean tier on the large set still
 runs (current state).
+
+
+### 2026-10-17 04:52 to 05:30. WP E6, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `e2e5bd5` (E5);
+uncommitted before this WP's commit: its files, below. The design, the probe
+and most of the proofs ran in a scratch copy while E5's checks did (04:52 to
+05:06).
+
+Did:
+
+1. T-PIN, stated in the trusted `lean/SIS/PhysTheorems.lean` as `TP_pins`:
+   in the runs of `T2_cache` (any cache schedules, restarts after any
+   transactions), after any transaction and its cache operations or its
+   restart, every object in memory outside the pinned set (`Mem.pinned`: the
+   canonical objects of the nodes of D, and the root's object; Java also pins
+   the record being written and the objects of an operation in progress,
+   which the model treats as atomic) may be evicted. It has been written, so
+   it may be detached; and there are slots, each a memory slot to it, such
+   that unswizzling them and then releasing it leaves it out of memory. The
+   theorems of stage 2 hold for every cache schedule, so they hold whatever
+   objects outside the pinned set are evicted, in any order, at any
+   transaction boundary: the plan's "and the theorems above still hold".
+2. The proofs, `lean/SIS/Proof/EvictKeys.lean` and `EvictPin.lean` (new,
+   about 870 lines). No object has two slots for the same pointee, in every
+   memory of every run, whatever its assumptions (`SlotsND`,
+   `slotsND_runEvict`, through every operation of the model, the startups
+   included); so unswizzling every memory slot to an object leaves none
+   (`Mem.unswizzles_incoming`), and it may then be released
+   (`Mem.evict_ok`). With the invariant, an object outside the pinned set
+   has a position (`EInv.detachable_of_unpinned`): a snapshot by INV-SNAP; a
+   canonical one is of a written node not in D, clean by INV-2, at its
+   latest version by INV-CAN.
+3. T-INDEX, by the definitions: `level4-alignment.md`, 5.14, names what the
+   physical writer reads, with the Lean definitions: a version from its
+   node's canonical object (`Mem.writeNode`); each reference (`Mem.refOf`)
+   from a pinned pointee's canonical object by node id, or from the slot (a
+   memory slot's object's position, or a stream slot's record after Rule R,
+   which reads `newest S0 s y` only, bounded by the startup section).
+   `Stream.lv`, a map from every node, appears in the physical layer only in
+   the last resort of the startup's `Mem.canonicalNode`, which the runs of
+   the theorems never reach; the node table holds resident canonical objects
+   only; and by T-CACHE and T2-C the records do not depend on what is
+   resident or on what readers left in memory.
+4. Checked by running before the proof, probe 13 (04:54, scratch): in the
+   runs of examples 3 and 5 with the four cache schedules and restarts (4
+   seeds of 40 transactions each, 1,280 states, 21,374 objects outside the
+   pinned set seen), no object outside the pinned set without a position,
+   every object that may be detached removed by `evictObj` (every memory
+   slot to it unswizzled, then released), no object with two slots for the
+   same pointee.
+5. `lean/README.md`: the files, the statement, the axioms list, the history;
+   its "Not done" list now has no stage 2 item. `docs/level4-alignment.md`:
+   5.6 (T-PIN proved, T-INDEX stated), 5.14 (new), M20, M26.
+
+Files changed: `lean/SIS/PhysTheorems.lean` (trusted: one statement);
+`lean/SIS/Proof/EvictKeys.lean`, `EvictPin.lean` (new); `lean/README.md`;
+`docs/level4-alignment.md`; this file.
+
+Checks (plan, 2.2), on a clean copy (bergdb's `lean/` at `e2e5bd5` with this
+WP's 3 files), 05:11 to 05:28: `lake build` exit 0, no warnings (the two new
+files elaborated alone too, in scratch: no message); `lake exe sistest 20
+40`: all checks pass (05:19); `lake exe phystest 20 40`: all checks pass
+(05:28); `#print axioms` of the theorem list with `TP_pins`: standard axioms
+only; no `sorry`, `admit`, `axiom` or `unsafe` in `SIS/` and `Check/`; `sh
+test-traces/run.sh`: TRACE TESTS OK. The documents' links resolve. No Java
+change, so no gate.
+
+Register: M26 (T-INDEX: the model's node table holds resident objects
+only); M20 (its status: E6).
+
+Time: E6 is S to M (up to 8 hours): about 40 minutes.
+
+Notes for Frans: with E6 every theorem of stage 2 is proved: T-CACHE, T-READ
+(also with restarts), T2-C and T-PIN, for Option K under TREE, A6' and
+A-COPY. E7 writes the Java change list and the K1 review guide.
+
+Open, next: E7.

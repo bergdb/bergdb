@@ -49,6 +49,7 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.TR_view
     #print axioms SIS.T2_cache
     #print axioms SIS.TR_view_restarts
+    #print axioms SIS.TP_pins
 
 Each prints `[propext, Classical.choice, Quot.sound]`, or a part of it
 (`LM_cutTo` needs no `Classical.choice`). The equalities of
@@ -81,7 +82,7 @@ its section in sis-model.md.
 | SIS/Theorems.lean | T1 (`T1_recovery`, `T1_crash`, `T1_nodes`), T2 (`T2_restart`), T13 (`T13_markExact`) | 9 |
 | SIS/Phys.lean | The physical layer, what Java holds in memory (bergdb item 001, WPs L1 and L3): objects (`Obj`), their slots (`Slot`), the memory with the node table (`Mem`); Java's first touch (`Mem.follow`: Rule R, the table, the version read, cut back in the section); reads (`Mem.read`); the lazy startup (`lazyStartup`); a version cut back to a time (`Version.cutTo`); the operations after startup (`Op`, `Mem.step`, admissible: `OpsOK`); the assumptions of the physical layer (`PhysStep`, `PhysRunOK`); the writer after a lazy startup (WP L4: its view through the physical layer, `Mem.view`; its transaction, `lazyTrans`, with the record of `stepWith`, `step` with its change given) and a run with lazy restarts (`runLazy`) | — (docs/level2-alignment.md, 13) |
 | SIS/Evict.lean | The physical layer, part 2, with eviction (bergdb item 001, WP E2; docs/level4-alignment.md, section 5): the pinned objects (`Mem.pinned`), unswizzling (`Mem.unswizzle`) and release (`Mem.release`); the Level 4 loader (`Mem.follow4`: the canonical object, or exactly the version a slot names after Rule R) and reads through it (`Mem.read4`); the writer's path (`Mem.reachOnPath4`) and the change (`Mem.applyChange4`, `Mem.newSlot4`); startup with rule 4 (`evictStartup`, `Mem.linkD`); the physical writer (`Mem.refOf`, `Mem.writeNode`) and its transaction (`evictTrans`); cache schedules (`CacheOp`) and runs (`runEvict`); the assumptions of stage 2 (`EvictStep`: TREE, `treeAt`, and A6', `adoptAt`; A-COPY, `CopyStep`; `EvictRunOK`) | — (docs/level4-alignment.md, 5) |
-| SIS/PhysTheorems.lean | Lemma M: a newer version of a node serves every time an older one serves (`LM_newer`), so Rule R's version does (`LM_ruleR`), and a version cut back to s serves the times up to s (`LM_cutTo`); T1-L (`T1_lazy`): after the lazy startup from the stream of a run, or of a prefix of it (a crash), and any reads and writer follows, a read at any time up to the last record gives P at that time; CC (`CC_canonical`): in a run with lazy restarts, every canonical object holds its node's whole history; T2-L (`T2_lazy`): such a run appends the records of the run without restarts; `step_eq_stepWith`; stage 2 (bergdb item 001, WP E3): D closed upward (`T15_closed`), and T-CACHE (`TC_records`): in a run with eviction and any cache schedule, without restarts, every transaction of the physical writer appends the model's record and leaves the model's D, and INV-CAN, INV-SNAP and INV-SLOT hold; T-READ (`TR_view`, WP E4): in such a run, a read through the Level 4 loader at any time up to the last record gives P at that time; T2-C (`T2_cache`, WP E5): with restarts too, the records and D stay the model's, and the invariants hold for the stream of the last startup; and T-READ with restarts (`TR_view_restarts`, WP E5) | 5.1, 9; ../docs/level4-alignment.md, 5.3 to 5.6 |
+| SIS/PhysTheorems.lean | Lemma M: a newer version of a node serves every time an older one serves (`LM_newer`), so Rule R's version does (`LM_ruleR`), and a version cut back to s serves the times up to s (`LM_cutTo`); T1-L (`T1_lazy`): after the lazy startup from the stream of a run, or of a prefix of it (a crash), and any reads and writer follows, a read at any time up to the last record gives P at that time; CC (`CC_canonical`): in a run with lazy restarts, every canonical object holds its node's whole history; T2-L (`T2_lazy`): such a run appends the records of the run without restarts; `step_eq_stepWith`; stage 2 (bergdb item 001, WP E3): D closed upward (`T15_closed`), and T-CACHE (`TC_records`): in a run with eviction and any cache schedule, without restarts, every transaction of the physical writer appends the model's record and leaves the model's D, and INV-CAN, INV-SNAP and INV-SLOT hold; T-READ (`TR_view`, WP E4): in such a run, a read through the Level 4 loader at any time up to the last record gives P at that time; T2-C (`T2_cache`, WP E5): with restarts too, the records and D stay the model's, and the invariants hold for the stream of the last startup; and T-READ with restarts (`TR_view_restarts`, WP E5); T-PIN (`TP_pins`, WP E6): in such runs, every object outside the pinned set may be evicted | 5.1, 9; ../docs/level4-alignment.md, 5.3 to 5.6 |
 
 The proofs, in SIS/Proof/ (not needed for reading the statements):
 
@@ -118,6 +119,7 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
 | EvictPath, EvictApply, EvictApplyInv | The writer's paths (`EInv.reachPath4_ok`); the change applied, with TREE's one current parent (`treeAt_unique`) and A-COPY (`EInv.applyChange4_ok`) |
 | EvictStepInv, EvictTrans, EvictRun, EvictInit | The memory after the record has the next state's invariant (`AInv.final_ok`); one transaction (`EInv.evictTrans_ok`); runs (`TC_run`); the startup from R(0) (`einv_init`); the invariant in the terms of `TC_records` (`EInv.tc_facts`) |
 | EvictHist, EvictHistTrans, EvictReadT | Stage 2 (WP E4): the invariant for reads at earlier times (`HInv`: every slot of a canonical object for a live child at a time t names an object or a version good for t, or, by INV-SLOT's second half, a node of D), kept by the cache operations and every transaction (`HInv.evictTrans_ok`) and in every run (`HInv.run`); a read at any time up to the last record gives P (`EInv.read4T_ok`) |
+| EvictKeys, EvictPin | Stage 2 (WP E6): no object has two slots for the same pointee, in every memory of every run (`SlotsND`, `slotsND_runEvict`); unswizzling every memory slot to an object, then releasing it, removes it (`Mem.evict_ok`); an object outside the pinned set has been written (`EInv.detachable_of_unpinned`) |
 | EvictRerun, EvictRestart | Stage 2 (WP E5): the startup from the stream after T(k): its rerun keeps `RInv` (every object canonical, every stream slot naming its pointee's latest version after Rule R, a slot for each pointee; `rinv_lazyStartup`), and after the positions and rule 4 the memory has the invariant and the invariant for reads at earlier times (`einv_hinv_startup`); the physical writer depends on P only through its nodes (`evictTrans_congr`); runs with restarts (`EvictInvR`, `evictInvR_all`) |
 
 Not trusted, tests only:
@@ -342,6 +344,12 @@ for the stream of the last startup. And T-READ for the same runs
 EvictRestart.lean; `lake build` passes with no warnings and no `sorry`;
 `#print axioms` shows only Lean's standard axioms; `lake exe phystest 20 40`
 passes.
+
+2026-10-17. T-PIN proved (bergdb item 001, WP E6): `TP_pins`, for the same
+runs: every object outside the pinned set has been written, and unswizzling
+its memory slots and then releasing it removes it. The proofs are in
+SIS/Proof/EvictKeys.lean and EvictPin.lean; `lake build` passes with no
+warnings and no `sorry`; `#print axioms` shows only Lean's standard axioms.
 
 Changes to the trusted part while proving, all on 2026-10-12:
 
@@ -594,17 +602,19 @@ M44):
 * Two new statements in SIS/PhysTheorems.lean, T2-C (`T2_cache`) and T-READ
   with restarts (`TR_view_restarts`).
 
+Changes to the trusted part on 2026-10-17 (bergdb item 001, WP E6): one new
+statement in SIS/PhysTheorems.lean, T-PIN (`TP_pins`); nothing else.
+
 Stage 1 of bergdb item 001 is done (2026-10-16): lemma M (`LM_newer`, L2),
 T1-L (`T1_lazy`, L3), CC and T2-L (`CC_canonical`, `T2_lazy`, L4) are proved,
 and Java's first touches after restarts are checked against the model's rule
 (C-L, L5). Stage 2: T-CACHE (`TC_records`, E3) and T-READ (`TR_view`, E4)
 are proved for runs without restarts, and T2-C (`T2_cache`, E5), T-CACHE
-with restarts, and T-READ with restarts (`TR_view_restarts`, E5)
-(2026-10-17).
+with restarts, T-READ with restarts (`TR_view_restarts`, E5) and T-PIN
+(`TP_pins`, E6) (2026-10-17).
 
 Not done:
 
 * A check of the physical layer's assumptions (`PhysStep`, M47) on Java
   traces; they are argued (level2-alignment.md, 13.3).
-* The bounds (T3, T4), the rest of stage 2 (T-PIN and T-INDEX, E6),
-  reclaim.
+* The bounds (T3, T4), reclaim.
