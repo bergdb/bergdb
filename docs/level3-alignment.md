@@ -619,7 +619,7 @@ reopened from level2-alignment.md.
 | M37 | Reclaim stores its table and the current row as values under internal keys (`/#i/dreclaim/-table.txt`, `/#i/dreclaim/-current.txt`), in internal transactions; the row's value is computed by a value transformation during the step | `Reclaim.storeTable` (648); `Reclaim.step` (345), lines 416 to 423 | T(i) | α: ordinary puts; T(i) is what the record stores (2.2) | 3: R1 (α); R2 (the traces have them as ordinary entries, 2.7); the checker from R3 on |
 | M38 | A reclaim step can fail with a `RerunException` (a conflict with its read time) and then writes no record; the step is tried again at a later transaction. A table store cannot fail so (`Bug`) | `Reclaim.step` (345), line 449; `storeTable` (648), line 657; `Db.stmCheckConflicts` (1474), called at line 1362 | — | α: no transaction; nothing to model (argued in 4.2; the exception cannot occur today) | 3: R1 (argued) |
 | M41 | After a restart from a cut stream, startup reads D's nodes at their newest section versions or stored positions, and the root chain from topPos | `DbStarter.canonicalNode` (455), `topNodeOfLastTransaction` (293), `findSuperNodeAtStartupTime` (263) | `startup` | CutOK must cover them. For the root chain, review-13-claude, 4.3: a search at a time q loads, besides its answer, only tops created at or after q; so from tEnd on, the tops created after tEnd and the top live at tEnd (5, steps 4 and 6) | 3: R3 (CutOK parts 3 and 4, 2.8), R4 (T8: the model's startup), R5 (T12: the model's startup gives every node of D the run's node, also those that no lookup from f on reaches, 2.10; the Level 4 startup from the cut stream is the one from the whole stream but for a virtual root's object, `T12_evictCut`, 2.10); o |
-| M48 | **New (R4).** Java cuts while it runs, and reads after the cut go through the objects and slots made before it, with Rule R of the last startup. With eviction, a read at a time from f on can follow the slot of a node that a later change replaced to a version before the cut: the last startup's Rule R does not know the pointee's newer version, and the pointee's canonical object was released. Today nothing is released (M26), so such a pointee has its canonical object | `NodeCollection.followStreamPointer` (184; Rule R from `DbStarter`'s maps); `Reclaim` cuts while the database runs (2.5) | `CutOK` part 2 (`ReadsAt`, Rule R of the current section); `Mem.follow4` (Rule R of the last startup) | `cutReadWitness` (SIS/ReclaimExample.lean): `CutOK` holds, a read at f in the running process fails on the cut stream (2.9). For Frans: (a) part 2 over every version a physical read may follow (every version of a pointee at or after the one the pointer names); Java's scheme gives it, Java's cuts meet it (C-CUT+); (b) the window (M44); (c) T9 after restarts only. Recommended: (a). **Decided: (a)** (Frans, 2026-10-17) | 3, 4: R4 (found; T9 stopped, stop rule 4), Frans ((a), 2026-10-17), R6 (stronger part 2: the definition done, 2026-10-17, refined for versions that Rule A put back, `schemeWitness`, 2.9; Java's scheme gives it: to prove), R4 (T9 proved with it, 2026-10-17, 2.9); o |
+| M48 | **New (R4).** Java cuts while it runs, and reads after the cut go through the objects and slots made before it, with Rule R of the last startup. With eviction, a read at a time from f on can follow the slot of a node that a later change replaced to a version before the cut: the last startup's Rule R does not know the pointee's newer version, and the pointee's canonical object was released. Today nothing is released (M26), so such a pointee has its canonical object | `NodeCollection.followStreamPointer` (184; Rule R from `DbStarter`'s maps); `Reclaim` cuts while the database runs (2.5) | `CutOK` part 2 (`ReadsAt`, Rule R of the current section); `Mem.follow4` (Rule R of the last startup) | `cutReadWitness` (SIS/ReclaimExample.lean): `CutOK` holds, a read at f in the running process fails on the cut stream (2.9). For Frans: (a) part 2 over every version a physical read may follow (every version of a pointee at or after the one the pointer names); Java's scheme gives it, Java's cuts meet it (C-CUT+); (b) the window (M44); (c) T9 after restarts only. Recommended: (a). **Decided: (a)** (Frans, 2026-10-17) | 3, 4: R4 (found; T9 stopped, stop rule 4), Frans ((a), 2026-10-17), R6 (stronger part 2: the definition done, 2026-10-17, refined for versions that Rule A put back, `schemeWitness`, 2.9; Java's scheme gives it: checked at every cut, not proved, section 5), R4 (T9 proved with it, 2026-10-17, 2.9); o |
 
 Findings of A2: none beyond the plan's list for Level 3. Noted for R1: the
 touch marks the super root of the step's time (through
@@ -673,7 +673,8 @@ reconstruction neither uses f nor reads anything that the cut removed.
    Java-specific part.
 
 Marks: step 1 checked (code, above); step 2 checked (code); step 3: for the
-model's startup proved (T8, R4), that Java's cuts are safe to prove (R6); it
+model's startup proved (T8, R4), that Java's cuts are safe checked, not proved
+(R6, section 5); it
 is also tested, since every test with `CutStream` refuses a
 read below the cut, and `ReclaimStress`, `RestartInvariance` with reclaim and
 `level3.sh` restart after cuts.
@@ -739,9 +740,9 @@ The steps:
    step whose range holds it (at a time before tEnd ≤ t) found it in its
    scan, read the same data node, and rewrote it if that node was stored
    before pCut: a new data node at that step, after c. In every case the
-   data node live at t is at c or later. **To prove** (R6, T-SCHEME), from the
-   coverage of the ranges (2.2) and the rewrite rule (line 393); **checked**
-   by `Reclaim.Tester.testIterationRewritesAllOldValues` and
+   data node live at t is at c or later. **Checked, not proved** (R6's
+   fallback; T-SCHEME below), with steps 3 to 6; and by
+   `Reclaim.Tester.testIterationRewritesAllOldValues` and
    `testLookupsFromFirstAvailableTime`, and by every `CutStream` test.
 3. **Index nodes reachable from f on get an entry or a mark after c.**
    Every index node that is current at the time of the step whose range
@@ -750,21 +751,19 @@ The steps:
    so an index node reachable at a time t ≥ f either existed at the step
    time of every range it meets and was touched, or was created after that.
    Deleted-only nodes and the segment subtrees of deleted long keys are
-   visited by the range traversal too (bug 3 of levels.md). **To prove**
-   (R6, from `Changes.touch` and TouchOK of R3, with the coverage of the
-   ranges and TREE); the B-tree's key ranges are Java's, not the model's: R6
-   states the coverage as an assumption on the touch (as F1-008-07, section
-   8, "Reclaim coverage"). R2's traces record each step's touch (TOUCH lines),
-   but checking the coverage needs each node's key range, which neither the
-   trace nor the model has: a check on the Java side (each node reachable at
-   the step's time whose key range meets the step's range is in its TOUCH
-   line) is left to R6.
+   visited by the range traversal too (bug 3 of levels.md). **Checked, not
+   proved** (R6's fallback; T-SCHEME below). The B-tree's key ranges are
+   Java's, not the model's: the model states the coverage as a condition on
+   the touches (`touchCoverB`; as F1-008-07, section 8, "Reclaim coverage").
+   R2's traces record each step's touch (TOUCH lines), but checking the
+   coverage needs each node's key range, which neither the trace nor the
+   model has; C-CUT checks the conclusion at every cut instead.
 4. **The root chain.** The super root at each step's time is touched
    (`superRootAccessed`); a search at a time q ≥ f loads, besides its
    answer, only tops created at or after q (review-13-claude, 4.3), and its
    answer is the top live at q, which is the super root at some step time,
-   or the top live at tEnd, or created after tEnd. **To prove** (R6, with
-   M41; part 4 of CutOK).
+   or the top live at tEnd, or created after tEnd. **Checked, not proved**
+   (R6's fallback; part 4 of CutOK, with M41).
 5. **Every touched or new node is written after its mark.** A node marked
    (dirty) in record j is taken and written once the startup pos passes j
    (the take rule: step 6 of the model; `TransSeq.take`). The decision
@@ -773,7 +772,8 @@ The steps:
    and so does every node created after it (CutOK part 2 for index nodes).
    The take rule is the model's step 6 (a definition), and Java's take is
    **checked** against it by the Level 2 conformance (level2-alignment.md,
-   section 13); the combination with steps 2 to 4 is **to prove** (R6).
+   section 13); the combination with steps 2 to 4 is **checked, not
+   proved** (R6's fallback).
 6. **References after pSafe.** A parent written after its touch, before
    a child of D was written, names the child's version before the cut; Rule
    A then keeps the parent in D (it points to a node of D), so it is
@@ -782,8 +782,9 @@ The steps:
    of D at that moment got dirty before pSafe, so it is written once the
    startup pos passes pSafe, now naming its children's versions after c.
    This gives CutOK part 3's first half for the nodes reachable from f on,
-   and part 4 for the root children. **To prove** (R6); no test needs the
-   wait for pSafe (levels.md, "Evidence"); it is kept from this argument.
+   and part 4 for the root children. **Checked, not proved** (R6's
+   fallback); in the model a cut before the wait for pSafe can be unsafe
+   (`pSafeWitness`, 2.8).
 7. **Nodes in D that no read from f on reaches.** Rule A can keep an
    historical node in D (a node no longer current, with a child in D); it
    is not reachable from f on, and steps 3 to 6 say nothing about it. Its
@@ -822,13 +823,49 @@ The steps:
     reclaim, `level3.sh`, and the soak's checks after cold restarts
     (WP P2).
 
-What is left to prove, in short: steps 2 to 4 and 6 (R6, T-SCHEME: Java's
-scheme gives CutOK). Step 7 is proved (R5), and step 10: T8 and T9 (R4),
-T12 without eviction and with it (R5).
+Not proved, in short: steps 2 to 6 together, T-SCHEME (Java's scheme gives
+CutOK): checked, not proved (R6, below). Step 7 is proved (R5), and step
+10: T8 and T9 (R4), T12 without eviction and with it (R5).
 What is assumed: the policies of steps 8 and 9, and that a step's range
-traversal visits every node whose key range meets the range (step 3), which
-R6 takes as an assumption on the touch, and checks on Java (R2's traces
-record the touches, 2.7).
+traversal visits every node whose key range meets the range (step 3), a
+condition on the touches in the model.
+
+**T-SCHEME: checked, not proved** (R6, 2026-10-17, the plan's fallback). The
+statement, as R6 part 1b checked it by running: for an iteration whose steps
+are transactions pStart + 1 to tEnd, with pCut ≤ pStart, whose touches cover
+every index node reachable at tEnd with its latest version at pStart or
+before (`touchCoverB`), and whose rewrites leave every data node reachable at
+tEnd with its latest version at pCut or later (`rewritesB`): `CutOK` at pCut
+holds in every later state at which the startup pos is past j0, the first
+transaction at which it passed tEnd (Java's pEnd, then pSafe), and the first
+available time is tEnd or later. Checked:
+
+* by running on example 4 (`lake exe reclaimtest`, `checkSchemeB`): with the
+  default 20 runs of 30 transactions, 304 iterations with the scheme's
+  conditions and 2,356 states past the waits; with 100 runs of 100
+  transactions (`reclaimtest 100 100 scheme`, 9 minutes), 5,156 iterations
+  and 222,857 states, for the 4 startup pos policies: `CutOK` holds in every
+  state;
+* on Java's runs: at every cut Java decides (C-CUT), in R7's and R4's runs
+  of R2's reclaim sets (6), R9's runs of them made again with the current
+  Java, and the conformance step that R9 proposes for `level3.sh`.
+
+Why not proved. Steps 1 and 5, with no resurrection (A5), give that after j0
+every node reachable at some time from tEnd on has its latest version at pCut
+or later, and from that CutOK's parts 1, 3 and 4 and part 2 for the latest
+versions follow. Part 2's physical-read rule (every version of a live child
+at or after the record a pointer names, 2.9) also reaches versions that later
+ones superseded: versions written during the iteration or the settling, while
+a node below was still in D with a version before the cut. A proof must show
+that such a version is reached only from versions that were superseded too,
+up to a node whose latest version names versions written after the settling,
+or from a version that Rule A put back and that is still in D, where only
+Rule R applies (2.9's exception). That needs an invariant over superseded
+versions, the marking of access paths and Rule A that the existing ones
+(`EvLogic`, `DAnchor`, `CInv`) do not give; R6 part 1b found by running that
+the first form of the statement was false, and a proof looked like several
+days with an uncertain outcome. So, as the plan allows, T-SCHEME is checked,
+not proved, and stage 4 goes on; the proof can be taken up later.
 
 
 ## 6. Red list

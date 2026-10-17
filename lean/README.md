@@ -209,12 +209,16 @@ Not trusted, tests only:
   replaced node to a version before a cut that WP R7's `CutOK` allows
   (`cutReadWitness`, WP R4; `CutOK` since WP R6 does not); Java's scheme,
   and a stale chain of put-back versions that only the exception of
-  `ReadsPhys` for them lets through (`schemeWitness`, WP R6). Proved there (WP
+  `ReadsPhys` for them lets through (`schemeWitness`, WP R6); T-SCHEME by
+  running (`checkSchemeB`, WP R6: for every iteration whose scheme conditions
+  hold, `CutOK` at its cut position in every later state past the waits; a
+  `#guard` on the fixed run). Proved there (WP
   R4): example 4 meets T8's
   assumptions on the virtual root (`execRootOK_spec4`, `virtLiveOK_spec4`;
   also `virtLiveOK_spec4e`).
   `lake exe reclaimtest 20 30`: the same on random runs,
-  for four startup pos policies.
+  for four startup pos policies; `lake exe reclaimtest 100 100 scheme`:
+  T-SCHEME only, on larger runs (9 minutes).
 * Check/ and TraceCheck.lean: the trace checker, `lake exe tracecheck`. It
   checks traces of Java runs against the model's definitions
   ([../docs/level2-alignment.md](../docs/level2-alignment.md), sections 8.5
@@ -891,5 +895,7 @@ Not done:
 * A check of the physical layer's assumptions (`PhysStep`, M47) on Java
   traces; they are argued (level2-alignment.md, 13.3).
 * The bounds (T3, T4).
-* Reclaim's theorems: T-SCHEME (R6), checked by running so far
-  (`reclaimtest`).
+* Reclaim's theorems: T-SCHEME (R6), that Java's scheme gives safe cuts:
+  checked, not proved (the plan's fallback; level3-alignment.md, section 5):
+  by running on example 4 (`reclaimtest`, `checkSchemeB`), and at every cut
+  of Java's reclaim traces (C-CUT).

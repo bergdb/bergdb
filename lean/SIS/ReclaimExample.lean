@@ -598,6 +598,46 @@ def schemeWitness : Bool × Bool × Bool × Bool × Bool :=
 
 #guard schemeWitness == (true, true, true, true, true)
 
+/-- The iterations of example 4's transactions ts, as (pStart, pCut, tEnd): an
+iteration's first step at time i1 (so pStart = i1 - 1, the last record before
+it), its last step at tEnd, and the steps' b (pCut, which `randomTs4` sets to the
+previous iteration's first step time). -/
+def schemeIters (ts : List Tr4) : List (Nat × Nat × Nat) :=
+  (ts.zipIdx.foldl (fun (acc : List (Nat × Nat × Nat) × Option Nat) p =>
+    match p.1 with
+    | .step _ _ false _ => (acc.1, some (p.2 + 1))
+    | .step _ _ true b => match acc.2 with
+      | some i1 => (acc.1 ++ [(i1 - 1, b, p.2 + 1)], none)
+      | none => acc
+    | _ => acc) ([], none)).1
+
+/-- T-SCHEME by running (bergdb item 001, WP R6; level3-alignment.md, section 5):
+for each iteration of a run of example 4 whose scheme conditions hold (pCut at
+most pStart, the touches cover, `touchCoverB`, and the rewrites, `rewritesB`),
+`CutOK` at pCut in every later state k at which the startup pos is past j0, the
+first transaction at which it passed tEnd (Java's pEnd, then pSafe), and the
+first available time is tEnd or later. Returns (the iterations whose conditions
+hold, the states checked, the states where `CutOK` fails). -/
+def checkSchemeB (sp : Spec Val Tr4) (al : Algo Val Tr4) (ts : List Tr4) : Nat × Nat × Nat :=
+  let n := ts.length
+  let dbs := (List.range (n + 1)).map (fun j => run sp al (ts.take j))
+  let sps := dbs.map (fun db => lastSp db.S)
+  (schemeIters ts).foldl (fun (acc : Nat × Nat × Nat) it =>
+    let (pStart, pCut, tEnd) := it
+    if !(decide (pCut ≤ pStart) && touchCoverB sp al ts pStart tEnd && rewritesB sp al ts pCut tEnd) then acc
+    else
+      match sps.findIdx? (fun s => decide (tEnd < s)) with
+      | none => (acc.1 + 1, acc.2.1, acc.2.2)
+      | some j0 =>
+        let ks := (List.range (n + 1)).filter (fun k =>
+          decide (j0 < sps.getD k 0) && decide (tEnd ≤ lastFa (dbs.getD k (init sp)).S))
+        let bad := (ks.filter (fun k => !cutOKB sp pCut (dbs.getD k (init sp)) k)).length
+        (acc.1 + 1, acc.2.1 + ks.length, acc.2.2 + bad)) (0, 0, 0)
+
+/- The fixed run: one iteration (steps at 6 and 7, pCut 3), whose conditions
+hold; `CutOK` at 3 holds in every state from the waits on. -/
+#guard (let r := checkSchemeB spec4 al4 ts4; r.1 == 1 && decide (0 < r.2.1) && r.2.2 == 0)
+
 /-! ## Example 4 meets T8's assumptions on its virtual root
 
 The root's entries are `.slot 0 z`. Its live child is the root child of its

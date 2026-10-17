@@ -155,10 +155,11 @@ Current state
   Frans: Option K under TREE, A6' and A-COPY; above). K2 to K5 open; K3 to
   K5 the agent passes itself when their conditions are met (Frans,
   2026-10-17 19:59; above).
-* Next: R6's proof of T-SCHEME (its statement holds by running, R6 part 1b;
-  fallback: checked at every cut); then R9 and K3 (plan, 5.1). R3, R4 (T8
-  and T9), R5 (T12, also with eviction, 2026-10-17 22:56), R7 and R8 are
-  done.
+* Next: R9's documents and K3 when R9's medium set is checked (about
+  05:30), then J1, prepared meanwhile in a scratch copy of `java/`. R3, R4
+  (T8 and T9), R5 (T12, also with eviction, 2026-10-17 22:56), R7 and R8 are
+  done; R6 is partial: T-SCHEME checked, not proved (the plan's fallback,
+  2026-10-18 00:02).
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): T9 is proved with
   the stronger `CutOK` part 2 (R4, 2026-10-17, before R6's proof, since T9
   assumes `CutOK` only); R6 proves that Java's scheme gives it, and R5's
@@ -175,7 +176,7 @@ Current state
   it later, and J tests that would hit it leave that case out or mark it as
   a known M49 issue.
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: none (22:56).
+* Uncommitted work of this plan in bergdb: K3's conformance step in `java/stress/level3.sh` and `conformance.sh`, tested (00:02), committed with K3.
 * Long jobs: R9's Lean tier, the checker on the reclaim sets made again
   with the current Java, from 23:00, expected done about 06:00 (its entry).
   Before: none (18:44). R7's checker on the medium reclaim set's four
@@ -219,7 +220,7 @@ Status
 | R3 | The Level 3 model: touch, first available time, cuts | done | 2026-10-17 |
 | R4 | Recovery and reads after a cut: T8, T9 | done | 2026-10-17 |
 | R5 | Restarts across cuts: T12 | done (T12 for `runRestartsCut`, and with eviction for `runEvictCut`) | 2026-10-17 |
-| R6 | Java's scheme gives safe cuts: T-SCHEME | in progress: part 1, `CutOK`'s part 2 over `ReadsPhys` (M48: (a)), with its exception for put-back versions (1b), done; T-SCHEME holds by running | 2026-10-17 |
+| R6 | Java's scheme gives safe cuts: T-SCHEME | partial: `CutOK`'s part 2 over `ReadsPhys` (M48: (a)) with its exception for put-back versions done; T-SCHEME checked (at every cut, and by running), not proved: the plan's fallback | 2026-10-18 |
 | R7 | The red list on Java's reclaim | done | 2026-10-17 |
 | R8 | Java: the corrections the model requires, before eviction | done (the performance comparison: no regression) | 2026-10-17 |
 | R9 | Level 3 conformance; the gate proposal | in progress: the Lean tier's runs | 2026-10-17 |
@@ -3313,3 +3314,58 @@ R2's, from before R8), then the checker (`lean/`'s `tracecheck` at
 ones at once. The medium set's two largest traces took about 6.5 hours each
 in R4. Script, log and outputs in the session's scratch directory
 (`r9/leantier.sh`, not edited while running). Expected done about 06:00.
+
+### 2026-10-17 22:58 to 2026-10-18 00:02. WP R6, part 2: T-SCHEME checked, not proved (the plan's fallback); R6 partial
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `d7e953a`;
+uncommitted before this commit: K3's conformance step in
+`java/stress/level3.sh` and `conformance.sh`, being tested, which K3 commits
+(its entry). Lean work in a scratch copy of `lean/`, copied in.
+
+Did:
+
+1. The proof of T-SCHEME examined, for the statement as part 1b checked it
+   by running (the touches cover, the rewrites, the waits past tEnd and past
+   j0, the first available time tEnd or later). Steps 1 and 5 of section 5,
+   with A5, give that after j0 every node reachable from tEnd on has its
+   latest version at pCut or later, and from that CutOK's parts 1, 3 and 4
+   and part 2 for latest versions. What stalls is part 2's physical-read
+   rule (every version of a live child at or after the record a pointer
+   names): it reaches superseded versions, written during the iteration or
+   the settling while a node below was in D with a version before the cut,
+   and a proof needs an invariant over them, the marking of access paths and
+   Rule A, which the existing invariants do not give and which I could not
+   state precisely. Part 1b had found the first form of the statement false
+   by running. I judged a proof several days with an uncertain outcome and
+   took the plan's fallback (R6, "Stop if"): T-SCHEME is checked, not
+   proved; stage 4 goes on, and the proof can be taken up later. The reasons
+   are in [level3-alignment.md, section 5](../../docs/level3-alignment.md),
+   "T-SCHEME: checked, not proved".
+2. T-SCHEME by running, kept (part 1b's probe was a scratch program):
+   `checkSchemeB` in `lean/SIS/ReclaimExample.lean` (with `schemeIters`, the
+   iterations of example 4's transactions, and a `#guard` on the fixed run),
+   and in `lake exe reclaimtest`, with an option `scheme` for larger runs.
+   Default (20 runs of 30 transactions, 4 policies): 304 iterations with the
+   scheme's conditions, `CutOK` in all 2,356 states past the waits.
+   `reclaimtest 100 100 scheme` (9 minutes): 5,156 iterations, 222,857
+   states, no failure (part 1b's count with its probe, the same).
+3. On Java: C-CUT at every cut of R9's runs (small set: 288 cuts, no
+   failure; the medium set, running) and in `level3.sh`'s step 8 from K3 on.
+4. Docs: `docs/level3-alignment.md` (section 5's steps 2 to 6 checked, not
+   proved; the paragraph on T-SCHEME; M48), `lean/README.md`.
+
+Checks: on bergdb's `lean/` with the files of this commit (23:50 to
+00:01): `lake build` with no warnings, also on a clean copy (no `.lake`, 23:50
+to 23:51); no `sorry`, `admit`, `axiom` or `unsafe` in SIS/ and Check/;
+`#print axioms` of the README's 22 theorems and the checker's 5: only
+Lean's standard axioms; `sh test-traces/run.sh`: TRACE TESTS OK; `lake exe
+reclaimtest 20 30`: all checks pass (with T-SCHEME, above); `lake exe sistest
+20 40` and `phystest 20 40`: all checks pass. No change in `java/` in this
+commit.
+
+Register: M48: "Java's scheme gives it" checked at every cut, not proved.
+
+Time: R6 is M to L (2 to 24 hours): part 1 35 minutes, part 1b an hour, this
+part about an hour (22:58 to 00:02, beside R9's runs).
+
+Open, next: R9's medium set (running), then R9's documents and K3; then J1.
