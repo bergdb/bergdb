@@ -494,3 +494,18 @@ every node with a version in the startup section has a canonical object, so
 no record changes (StreamDigest: the same as with change 6). New test
 `NodeCollection.testNoCutBackAfterReconstruction` (a runtime load of a section
 version after `endReconstruction`, not cut back).
+
+2026-10-17. Bergdb item 001, WP R8, change 1 (E7's list, rows 1 and 4;
+register M20, M21, M26 and M44 of `docs/level4-alignment.md`): before index
+nodes are written, `NodeCollection.resolvePointers` resolves by node id only
+the pointees in the pinned set (the canonical objects of D's nodes and of the
+record being written, which are dirty: `Db.store` now resolves before it
+cleans the record's nodes), and every other pointee from its slot (a memory
+pointer's object, or a stream pointer's version after Rule R); no snapshot
+or clean canonical object from the node table. At startup, rule 4
+(`DbStarter.linkD`, `NodeCollection.linkToCanonical`) links the stream
+pointers of D's canonical objects to canonical objects by node id, as the
+model's `Mem.linkD`. Without rule 4 the change gave other records after
+restarts (StreamDigest: 3 of the 36 digests, all of runs with restarts);
+with it, the same records as before (36 of 36). New tests
+`NodeCollection.testResolvePointersUnpinned` and `testLinkToCanonical`.

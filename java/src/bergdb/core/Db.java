@@ -1446,8 +1446,10 @@ public class Db {
         // This is not needed for rerun transactions, however. They have value nodes only
         // and their spos:es are set elsewhere.
         
-        x.transNodes.clean();
+        // Before the record's nodes are cleaned: resolvePointers resolves the pinned set
+        // (D's nodes and the record's, dirty) by node id (bergdb item 001, WP R8, change 1).
         resolvePointersOfTakenNodes();
+        x.transNodes.clean();
         handleStillDirtyNodes();
         
         TopNode top = newestWrittenTop;
@@ -1475,9 +1477,9 @@ public class Db {
     }
 
     /**
-     * Resolves the pointers of the index nodes about to be written by node id, so that
-     * they name the newest versions, and the still-dirty test sees every node in D they
-     * point to (docs/levels.md, level 2).
+     * Resolves the pointers of the index nodes about to be written, so that they name the
+     * latest versions, and the still-dirty test sees every node in D they point to
+     * (docs/levels.md, level 2; NodeCollection.resolvePointers).
      */
     private void resolvePointersOfTakenNodes() {
         long accessData = getAccessData();

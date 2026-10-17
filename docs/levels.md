@@ -161,9 +161,16 @@ a node, and when index nodes are written.
   called on every follow. Puts and the rerun use a writer follower that
   makes every node it reaches canonical.
 * Writing (Db.store): before index nodes are written, their pointers to
-  index nodes are resolved by node id (NodeCollection.resolvePointers), so
-  that they name the newest versions, a node written in the same record by
-  its new position, and the still-dirty test sees every node in D.
+  index nodes in the pinned set (D, and the record being written) are
+  resolved by node id (NodeCollection.resolvePointers), so that a node
+  written in the same record is named by its new position and the
+  still-dirty test sees every node in D; every other pointer keeps its slot,
+  which names the latest version (since 2026-10-17, bergdb item 001, R8:
+  before, any canonical object or a newer snapshot in the node table was
+  taken, M21 of [level4-alignment.md](level4-alignment.md)). Startup links
+  the stream pointers of D's canonical objects to canonical objects by node
+  id (rule 4, `DbStarter.linkD`, M44), as the writer did at every write
+  before.
 * Startup (DbStarter): Rule R from the startup section by node id, for all
   index nodes; the section's nodes registered as canonical; the super root
   at the startup time from the last record's topPos (below); the rerun; and

@@ -128,6 +128,7 @@ public class DbStarter {
         findSuperNodeAtStartupTime();
         prepareDb();
         rerunTransactions();
+        linkD();
         postStartupCheck();
         db.internal().nodeCollection().endReconstruction();
     }
@@ -477,6 +478,24 @@ public class DbStarter {
     /**
      * @throws AssertionError
      */
+    /**
+     * Rule 4 (bergdb item 001, WP R8, change 1; the Lean model's `Mem.linkD`;
+     * docs/level4-alignment.md, M44): every stream pointer of the canonical object of a
+     * node of D that names a node with a canonical object becomes a memory pointer to it,
+     * by node id. createMemoryPointers links the section's objects by exact position
+     * only, and NodeCollection.resolvePointers resolves by node id only the pinned set,
+     * so without it a node of D could name an older version of a node written since.
+     * The root needs nothing: TopDs holds its super root by reference.
+     */
+    private void linkD() {
+        final NodeCollection collection = db.internal().nodeCollection();
+        db.internal().transSeq().visitGotDirtyNodes(Long.MAX_VALUE, new TransSeq.NodeVisitor() {
+            public void node(Node node, long tpos, long lastTpos) {
+                collection.linkToCanonical(node, accessData);
+            }
+        });
+    }
+    
     private void postStartupCheck() {
         checkThatValueNodesHaveSpos();
         db.checkNodes();

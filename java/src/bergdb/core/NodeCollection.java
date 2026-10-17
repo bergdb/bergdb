@@ -325,12 +325,17 @@ public class NodeCollection implements PointerFollower {
     
     /**
      * Before an index node is written: makes each of its pointers to an index node name
-     * the newest version of that node known to this process (docs/levels.md,
-     * level 2). If the node has a canonical object, the pointer becomes a memory pointer to
-     * it; so a node written in the same record is named by its new position, and a node
-     * in D is seen by the still-dirty test (DbHelper.hasDirtyChild). Otherwise the
-     * pointer names the newest of its version, the node's newest version in the startup
-     * section, and a snapshot in the node table. Called by the writer.
+     * the latest version of that node (docs/levels.md, level 2; the Lean model's
+     * `Mem.refOf`). A pointee in the pinned set, a node of D or of the record being written
+     * (its canonical object, dirty: the writer calls this before it cleans the record's
+     * nodes), is resolved by node id: the pointer becomes a memory pointer to its
+     * canonical object, so a node written in the same record is named by its new position,
+     * and a node in D is seen by the still-dirty test (DbHelper.hasDirtyChild). Any other
+     * pointee keeps its slot: a memory pointer names its object's position, a stream
+     * pointer the version it names after Rule R. No snapshot from the node table (bergdb
+     * item 001, WP R8, change 1; docs/level4-alignment.md, M20, M21, M26: with the
+     * invariant INV-SLOT, the slot names the latest version, so the references are
+     * today's). Called by the writer.
      */
     public void resolvePointers(Node node, long accessData) {
         final int count = node.getSize();
@@ -358,21 +363,56 @@ public class NodeCollection implements PointerFollower {
                 }
                 
                 long id = child != null ? child.getId() : idOf(pos);
-                long ref = child != null ? child.getSpos() : pos;
-                Long newPos = newestInSection(id);
-                if (newPos != null && newPos > ref) {
-                    ref = newPos;
+                
+                // 1. A pinned pointee, by node id: its canonical object.
+                Node pinned = cache.getNode(id);
+                if (pinned != null && pinned != child && pinned.isCanonical() && pinned.isDirty()) {
+                    cache.pointerCreated(node, i, pinned);
+                    node.setPointer(i, pinned, accessData);
+                    continue;
                 }
                 
-                Node best = cache.getNode(id);
-                boolean usable = best != null && best != child && (best.isCanonical() 
-                        || (!Spos.isVpos(ref) && best.getSpos() >= ref));
-                
-                if (usable) {
-                    cache.pointerCreated(node, i, best);
-                    node.setPointer(i, best, accessData);
-                } else if (child == null ? ref != pos : ref != child.getSpos()) {
-                    node.setPointer(i, null, ref);
+                // 2. Any other: the slot. A stream pointer names the version after Rule R.
+                if (child == null) {
+                    long ref = pos;
+                    Long newPos = newestInSection(id);
+                    if (newPos != null && newPos > ref) {
+                        ref = newPos;
+                    }
+                    if (ref != pos) {
+                        node.setPointer(i, null, ref);
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Rule 4 at startup (DbStarter.linkD; the Lean model's `Mem.linkD`; bergdb item 001,
+     * WP R8, change 1: docs/level4-alignment.md, M44): each stream pointer of 'node' to an
+     * index node that has a canonical object becomes a memory pointer to it, by node id. A
+     * stream pointer below the first position of the stream is left as it is (M33).
+     */
+    public void linkToCanonical(Node node, long accessData) {
+        final int count = node.getSize();
+        
+        for (int i = 0; i < count; i++) {
+            if (!pointsToIndexNode(node, i)) {
+                continue;
+            }
+            synchronized (pointerLocks.getLock(node, i)) {
+                Node child = node.getPointerNode(i);
+                long pos = node.getPointerPos(i);
+                if (child != null || Pointer.isNull(child, pos)) {
+                    continue;
+                }
+                if (!Spos.isVpos(pos) && pos < nodeStream.getFirstPos()) {
+                    continue;
+                }
+                Node canonical = cache.getNode(idOf(pos));
+                if (canonical != null && canonical.isCanonical()) {
+                    cache.pointerCreated(node, i, canonical);
+                    node.setPointer(i, canonical, accessData);
                 }
             }
         }
@@ -598,5 +638,69 @@ public class NodeCollection implements PointerFollower {
         }
         Assert.assertTrue("child written anew", child.getSpos() > 1024);
         Assert.assertEquals("parent names the child's new position", child.getSpos(), written);
+    }
+    
+    /**
+     * A pointee outside the pinned set keeps its slot when its parent is written: the
+     * node table's newer snapshot, or a canonical object that is not dirty, is not taken
+     * (bergdb item 001, WP R8, change 1: M21). Before 2026-10-17 it was.
+     */
+    @Nano
+    private static void testResolvePointersUnpinned() {
+        TestStream stream = new TestStream();
+        stream.nodes.put(100L, testKeyNode(101, 100, 10));
+        stream.nodes.put(150L, testKeyNode(104, 150, 10));
+        NodeCollection c = new NodeCollection(testDbInfo(), stream);
+        
+        // A newer snapshot of node 101, and a clean canonical object of node 104.
+        KeyNode snapshot = testKeyNode(101, 200, 10, 20);
+        c.cache.register(snapshot);
+        KeyNode clean = testKeyNode(104, 150, 10);
+        clean.setCanonical(true);
+        c.cache.register(clean);
+        
+        KeyNode parent = new KeyNode(false);
+        parent.addToEnd(Klong.createTime(10), null, -1);
+        parent.addToEnd(Klong.compareValueToKeyKlong(Keys.toSegments("k")[0]), null, 100);
+        parent.addToEnd(Klong.compareValueToKeyKlong(Keys.toSegments("m")[0]), null, 150);
+        parent.setId(103);
+        parent.setSpos(300);
+        parent.setCanonical(true);
+        
+        c.resolvePointers(parent, AccessData.DEFAULT_ACCESS_DATA);
+        Assert.assertTrue("no snapshot taken", parent.getPointerNode(1) == null);
+        Assert.assertEquals("the slot's version", 100, parent.getPointerPos(1));
+        Assert.assertTrue("no clean canonical object taken", parent.getPointerNode(2) == null);
+        Assert.assertEquals("the slot's version", 150, parent.getPointerPos(2));
+    }
+    
+    /**
+     * Rule 4 at startup: a stream pointer to a node with a canonical object, of any
+     * version, becomes a memory pointer to it, by node id (bergdb item 001, WP R8, change
+     * 1: M44); a pointer to a node without one stays a stream pointer.
+     */
+    @Nano
+    private static void testLinkToCanonical() {
+        TestStream stream = new TestStream();
+        stream.nodes.put(100L, testKeyNode(101, 100, 10));
+        stream.nodes.put(150L, testKeyNode(104, 150, 10));
+        NodeCollection c = new NodeCollection(testDbInfo(), stream);
+        
+        // Node 101's canonical object, written since its version at 100.
+        KeyNode canonical = testKeyNode(101, 200, 10, 20);
+        canonical.setCanonical(true);
+        c.cache.register(canonical);
+        
+        KeyNode parent = new KeyNode(false);
+        parent.addToEnd(Klong.createTime(10), null, -1);
+        parent.addToEnd(Klong.compareValueToKeyKlong(Keys.toSegments("k")[0]), null, 100);
+        parent.addToEnd(Klong.compareValueToKeyKlong(Keys.toSegments("m")[0]), null, 150);
+        parent.setId(103);
+        parent.setCanonical(true);
+        
+        c.linkToCanonical(parent, AccessData.DEFAULT_ACCESS_DATA);
+        Assert.assertTrue("memory pointer to the canonical object", parent.getPointerNode(1) == canonical);
+        Assert.assertTrue("no canonical object, a stream pointer", parent.getPointerNode(2) == null);
+        Assert.assertEquals("its position", 150, parent.getPointerPos(2));
     }
 }

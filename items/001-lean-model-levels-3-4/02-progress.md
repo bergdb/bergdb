@@ -107,7 +107,7 @@ Current state
 
 * Checkpoints: G0 given (2026-10-16 15:23); K1 passed (2026-10-17 07:56,
   Frans: Option K under TREE, A6' and A-COPY; above). K2 to K5 open.
-* Next: R8's changes 1, 3, 4 and 5 (E7's list; 6 and 2 are done), R6
+* Next: R8's changes 3, 5 and 4 (E7's list; 6, 2 and 1 are done), R6
   (T-SCHEME), and R5's logical half (T12 for `runRestartsCut`, which needs
   only T8); then R9 and K3 (plan, 5.1). R3 and R7 are done; R4 is done but
   for T9, which waits for Frans's decision on register M48 (below, R4's
@@ -118,7 +118,7 @@ Current state
   recommended: Java's scheme gives it, Java's cuts meet it), or the window
   (b), or T9 only after restarts (c). Not urgent for stage 3's other WPs.
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: none (13:27).
+* Uncommitted work of this plan in bergdb: none (13:57).
 * Long jobs running (scratch copies of `lean/`, at low priority): R7's
   checker on the medium reclaim set's four largest traces, from 2026-10-17
   10:31 (the small set and the two others took 6 and 18 minutes); R4's (R7's,
@@ -161,7 +161,7 @@ Status
 | R5 | Restarts across cuts: T12 | not started | — |
 | R6 | Java's scheme gives safe cuts: T-SCHEME | not started | — |
 | R7 | The red list on Java's reclaim | done | 2026-10-17 |
-| R8 | Java: the corrections the model requires, before eviction | in progress: changes 6 (M17) and 2 (M22) done | 2026-10-17 |
+| R8 | Java: the corrections the model requires, before eviction | in progress: changes 6 (M17), 2 (M22) and 1 (M20, M21, M26, M44) done | 2026-10-17 |
 | R9 | Level 3 conformance; the gate proposal | not started | — |
 | J1 | Registry, pins and audits | not started | — |
 | J2 | Eviction of values | not started | — |
@@ -2500,3 +2500,70 @@ Time: about 30 minutes (12:56 to 13:27; the gates ran 13:00 to 13:27).
 
 Open, next: R8's change 1 (`resolvePointers`: the pinned set by node id, any
 other pointee from its slot).
+
+### 2026-10-17 13:27 to 13:57. WP R8, change 1: the writer's references (M20, M21, M26, M44), done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `dcf6a4d` (change
+2); uncommitted before this change's commit: its files, below.
+
+Did:
+
+1. `NodeCollection.resolvePointers` (E7's list, row 1): a pointee in the
+   pinned set, a node of D or of the record being written, is resolved by
+   node id, to its canonical object (a memory pointer; a node written in the
+   same record is named by its new position, and the still-dirty test sees
+   D); every other pointee keeps its slot: a memory pointer names its object,
+   a stream pointer the version it names after Rule R. No snapshot from the
+   node table, and no clean canonical object (the model's `Mem.refOf`).
+   Pinned means canonical and dirty: `Db.store` now resolves the record's
+   pointers before it cleans the record's nodes (`TransNodes.clean`), and
+   handles the still-dirty nodes after, as before.
+2. Rule 4 at startup (E7's list, row 4; M44): `DbStarter.linkD`, after the
+   rerun, makes every stream pointer of the canonical object of a node of D
+   that names a node with a canonical object a memory pointer to it, by node
+   id (`NodeCollection.linkToCanonical`; a pointer below the stream's first
+   position stays, M33), as the model's `Mem.linkD`. The plan's R8 change 1
+   lists M44 with it, and the records need it: without rule 4, change 1 gave
+   other records after restarts (StreamDigest against change 2's digests:
+   l2-sd10000-node14, l2-sd100000-node62 and l3-node14, each with restarts,
+   3 of 36), since after a restart a node of D held a stream pointer to an
+   older version of a node written since, which the writer used to resolve
+   from the node table.
+3. Tests (new): `NodeCollection.testResolvePointersUnpinned` (a newer
+   snapshot and a clean canonical object in the table are not taken; the
+   slots stay), `testLinkToCanonical` (rule 4: a stream pointer to a node
+   with a canonical object, of any version, becomes a memory pointer to it;
+   one to a node without stays). `testResolvePointers` (a pinned pointee by
+   node id) unchanged.
+
+Results:
+
+* StreamDigest with the change: 36 of 36 digests the same as with change 2
+  (and so as `l34-base`'s but for the 9 of change 6, reclaim on): no record
+  changes, as E1 designed (5.7: with everything resident the slots and the
+  pinned set give today's references).
+* R2's small reclaim set, made again with the change (13:40 to 13:45, from
+  a copy of the jar): 25 of 25 traces `RECLAIM TRACES OK` and `TRACECHECK
+  OK` (R4's checker), 14,448 transactions, 288 cuts, 353,980 FIRST lines;
+  C-S, C-CUT, C-CUT+ and C-L without a failure.
+
+Files changed: `java/src/bergdb/core/NodeCollection.java`, `Db.java`,
+`DbStarter.java`; `docs/levels.md` (writing), `docs/level4-alignment.md`
+(M21 and M44 closed; M20 and M26: R8's part), `docs/log.md`; this file.
+
+Checks: `java/build.sh`; the unit tests: 915 successful (913 and the two new
+ones); StreamDigest against change 2's digests (above); R2's small reclaim
+set, made again and checked (above); the gates, one after the other, 13:33 to
+13:56, on a machine busy with the checker's runs: `LEVEL 1 OK` (130 s), `LEVEL
+2 OK` (833 s; step 7: conformance small 60 of 60 traces TRACECHECK OK), `LEVEL
+3 OK` (387 s; 915 unit tests). The performance comparison waits for a quiet
+machine (below).
+
+Register: M21 and M44 closed; M20, M26: R8's part done (J1, J3 remain: the
+table of resident objects).
+
+Time: about 30 minutes (13:27 to 13:57; the gates ran 13:33 to 13:56).
+
+Open, next: R8's change 3 (the loader: the canonical object, or exactly the
+version the slot names after Rule R; no snapshot from the table), then 5
+and 4; the performance comparison for 1, 3 and 4 on a quiet machine.
