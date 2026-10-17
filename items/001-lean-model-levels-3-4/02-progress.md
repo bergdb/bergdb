@@ -128,6 +128,13 @@ Current state
   `schemeWitness`; [level3-alignment.md, 2.9](../../docs/level3-alignment.md),
   "Refined"): for Frans to keep (recommended) or to replace by a second wait
   in Java's reclaim; not blocking.
+* **For Frans: register M49** (new, 2026-10-17; from session f1-9c's item
+  002, `items/002-top-node-ordinal-bound/02-report.md`, section 8;
+  [level4-alignment.md](../../docs/level4-alignment.md)): a transaction that
+  throws inside `Db.putKvs` is half committed (its time readable, its nodes
+  written by the next transaction, their ids reused). Stage 4 relies on a
+  fix before J3 (with eviction, loads during puts can fail). Not blocking
+  stage 3.
 * Commits of this run (Q2 (b)): see the log entries.
 * Uncommitted work of this plan in bergdb: none (16:19).
 * Long jobs running (scratch copies of `lean/`, at low priority): R7's
