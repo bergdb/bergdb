@@ -7,6 +7,7 @@ import SIS.Theorems
 import SIS.Proof.Newer
 import SIS.Proof.PhysT2
 import SIS.Proof.EvictInit
+import SIS.Proof.EvictReadT
 
 namespace SIS
 
@@ -196,5 +197,33 @@ theorem TC_records (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool × List
     rw [List.map_take]
   rw [hst] at e1 e3
   exact ⟨e1, e3.tc_facts⟩
+
+/-- T-READ (bergdb item 001, WP E4; docs/level4-alignment.md, 5.6). In a run as
+in `TC_records` (BergDB's algorithm with marking, the assumptions, those of the
+physical layer and of stage 2, the Level 4 startup from R(0), any cache
+schedule, no restart), after any transaction and its cache operations, a read
+through the Level 4 loader (`Mem.read4`) at any time t up to the last record
+gives P at t: it reaches exactly the nodes reachable at t, each with its node
+at t (level, kind and history at t). The schedule being any, this holds for
+every read of a schedule too, the writer's own read at the last time
+included. -/
+theorem TR_view (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool × List CacheOp))
+    (hok : RunOK sp al (ts.map (·.1))) (hph : PhysRunOK sp al (ts.map (·.1)))
+    (hev : EvictRunOK sp al (ts.map (·.1))) (hj : al.stillDirty = javaTest sp)
+    (hmk : al.mark = true) (hnr : ∀ p ∈ ts, p.2.1 = false) (j : Nat) (hjt : j ≤ ts.length)
+    (t : Time) (ht : t ≤ j) :
+    let db := run sp al ((ts.take j).map (·.1))
+    let m := (runEvict sp al (ts.take j)).2.1
+    (m.read4 sp (init sp).S db.S t).2.map (·.1) = reachList sp db.P t ∧
+      ∀ p ∈ (m.read4 sp (init sp).S db.S t).2, view sp db.P t p.1 = some p.2 := by
+  intro db m
+  have hst : st sp al (ts.map (·.1)) j = db := by
+    show run sp al ((ts.map (·.1)).take j) = run sp al ((ts.take j).map (·.1))
+    rw [List.map_take]
+  obtain ⟨-, -, e3⟩ := TC_run_init hok hph hev hj hmk hnr j hjt
+  have hh := HInv.run hok hph hev hj hmk hnr j hjt
+  have hinv := inv_st sp al (ts.map (·.1)) hok (algOK_of sp al (Or.inl hj)) j (by rw [List.length_map]; exact hjt)
+  rw [hst] at e3 hh hinv
+  exact read_list_view (e3.read4T_ok hinv hok.1.liveSub hh ht).2.2
 
 end SIS

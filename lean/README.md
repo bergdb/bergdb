@@ -46,6 +46,7 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.T2_lazy
     #print axioms SIS.T15_closed
     #print axioms SIS.TC_records
+    #print axioms SIS.TR_view
 
 Each prints `[propext, Classical.choice, Quot.sound]`, or a part of it
 (`LM_cutTo` needs no `Classical.choice`). The equalities of
@@ -78,7 +79,7 @@ its section in sis-model.md.
 | SIS/Theorems.lean | T1 (`T1_recovery`, `T1_crash`, `T1_nodes`), T2 (`T2_restart`), T13 (`T13_markExact`) | 9 |
 | SIS/Phys.lean | The physical layer, what Java holds in memory (bergdb item 001, WPs L1 and L3): objects (`Obj`), their slots (`Slot`), the memory with the node table (`Mem`); Java's first touch (`Mem.follow`: Rule R, the table, the version read, cut back in the section); reads (`Mem.read`); the lazy startup (`lazyStartup`); a version cut back to a time (`Version.cutTo`); the operations after startup (`Op`, `Mem.step`, admissible: `OpsOK`); the assumptions of the physical layer (`PhysStep`, `PhysRunOK`); the writer after a lazy startup (WP L4: its view through the physical layer, `Mem.view`; its transaction, `lazyTrans`, with the record of `stepWith`, `step` with its change given) and a run with lazy restarts (`runLazy`) | — (docs/level2-alignment.md, 13) |
 | SIS/Evict.lean | The physical layer, part 2, with eviction (bergdb item 001, WP E2; docs/level4-alignment.md, section 5): the pinned objects (`Mem.pinned`), unswizzling (`Mem.unswizzle`) and release (`Mem.release`); the Level 4 loader (`Mem.follow4`: the canonical object, or exactly the version a slot names after Rule R) and reads through it (`Mem.read4`); the writer's path (`Mem.reachOnPath4`) and the change (`Mem.applyChange4`, `Mem.newSlot4`); startup with rule 4 (`evictStartup`, `Mem.linkD`); the physical writer (`Mem.refOf`, `Mem.writeNode`) and its transaction (`evictTrans`); cache schedules (`CacheOp`) and runs (`runEvict`); the assumptions of stage 2 (`EvictStep`: TREE, `treeAt`, and A6', `adoptAt`; A-COPY, `CopyStep`; `EvictRunOK`) | — (docs/level4-alignment.md, 5) |
-| SIS/PhysTheorems.lean | Lemma M: a newer version of a node serves every time an older one serves (`LM_newer`), so Rule R's version does (`LM_ruleR`), and a version cut back to s serves the times up to s (`LM_cutTo`); T1-L (`T1_lazy`): after the lazy startup from the stream of a run, or of a prefix of it (a crash), and any reads and writer follows, a read at any time up to the last record gives P at that time; CC (`CC_canonical`): in a run with lazy restarts, every canonical object holds its node's whole history; T2-L (`T2_lazy`): such a run appends the records of the run without restarts; `step_eq_stepWith`; stage 2 (bergdb item 001, WP E3): D closed upward (`T15_closed`), and T-CACHE (`TC_records`): in a run with eviction and any cache schedule, without restarts, every transaction of the physical writer appends the model's record and leaves the model's D, and INV-CAN, INV-SNAP and INV-SLOT hold | 5.1, 9; ../docs/level4-alignment.md, 5.3 to 5.6 |
+| SIS/PhysTheorems.lean | Lemma M: a newer version of a node serves every time an older one serves (`LM_newer`), so Rule R's version does (`LM_ruleR`), and a version cut back to s serves the times up to s (`LM_cutTo`); T1-L (`T1_lazy`): after the lazy startup from the stream of a run, or of a prefix of it (a crash), and any reads and writer follows, a read at any time up to the last record gives P at that time; CC (`CC_canonical`): in a run with lazy restarts, every canonical object holds its node's whole history; T2-L (`T2_lazy`): such a run appends the records of the run without restarts; `step_eq_stepWith`; stage 2 (bergdb item 001, WP E3): D closed upward (`T15_closed`), and T-CACHE (`TC_records`): in a run with eviction and any cache schedule, without restarts, every transaction of the physical writer appends the model's record and leaves the model's D, and INV-CAN, INV-SNAP and INV-SLOT hold; T-READ (`TR_view`, WP E4): in such a run, a read through the Level 4 loader at any time up to the last record gives P at that time | 5.1, 9; ../docs/level4-alignment.md, 5.3 to 5.6 |
 
 The proofs, in SIS/Proof/ (not needed for reading the statements):
 
@@ -114,6 +115,7 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
 | EvictFollow, EvictPromote, EvictRead | The Level 4 loader keeps it, so reads and cache schedules do (`EInv.cacheOps`); the writer's follow and promotion (`EInv.follow4_writer`); a read at the last time gives P, the writer's view (`EInv.view4_ok`) |
 | EvictPath, EvictApply, EvictApplyInv | The writer's paths (`EInv.reachPath4_ok`); the change applied, with TREE's one current parent (`treeAt_unique`) and A-COPY (`EInv.applyChange4_ok`) |
 | EvictStepInv, EvictTrans, EvictRun, EvictInit | The memory after the record has the next state's invariant (`AInv.final_ok`); one transaction (`EInv.evictTrans_ok`); runs (`TC_run`); the startup from R(0) (`einv_init`); the invariant in the terms of `TC_records` (`EInv.tc_facts`) |
+| EvictHist, EvictHistTrans, EvictReadT | Stage 2 (WP E4): the invariant for reads at earlier times (`HInv`: every slot of a canonical object for a live child at a time t names an object or a version good for t, or, by INV-SLOT's second half, a node of D), kept by the cache operations and every transaction (`HInv.evictTrans_ok`) and in every run (`HInv.run`); a read at any time up to the last record gives P (`EInv.read4T_ok`) |
 
 Not trusted, tests only:
 
@@ -320,6 +322,12 @@ from R(0); and D closed upward (`T15_closed`, F1-008-08's T15), which the
 proof needs for BergDB's bookkeeping. The proofs are in SIS/Proof/Evict*.lean.
 `lake build` passes with no warnings and no `sorry`; `#print axioms` shows
 only Lean's standard axioms; `lake exe phystest 20 40` passes.
+
+2026-10-17. T-READ proved (bergdb item 001, WP E4): `TR_view`, for the same
+runs: a read through the Level 4 loader at any time up to the last record
+gives P at that time. The proofs are in SIS/Proof/EvictHist.lean,
+EvictHistTrans.lean and EvictReadT.lean; `lake build` passes with no
+warnings and no `sorry`; `#print axioms` shows only Lean's standard axioms.
 
 Changes to the trusted part while proving, all on 2026-10-12:
 
@@ -551,16 +559,19 @@ model (the writer's walk, `Mem.newSlot4` and A-COPY) were made in
 SIS/Evict.lean before E2 was committed (above;
 [../docs/level4-alignment.md](../docs/level4-alignment.md), 5.10).
 
+Changes to the trusted part on 2026-10-17 (bergdb item 001, WP E4): one new
+statement in SIS/PhysTheorems.lean, T-READ (`TR_view`); nothing else.
+
 Stage 1 of bergdb item 001 is done (2026-10-16): lemma M (`LM_newer`, L2),
 T1-L (`T1_lazy`, L3), CC and T2-L (`CC_canonical`, `T2_lazy`, L4) are proved,
 and Java's first touches after restarts are checked against the model's rule
-(C-L, L5). Stage 2: T-CACHE (`TC_records`, E3) is proved for runs without
-restarts (2026-10-17).
+(C-L, L5). Stage 2: T-CACHE (`TC_records`, E3) and T-READ (`TR_view`, E4)
+are proved for runs without restarts (2026-10-17).
 
 Not done:
 
 * A check of the physical layer's assumptions (`PhysStep`, M47) on Java
   traces; they are argued (level2-alignment.md, 13.3).
-* The bounds (T3, T4), the rest of stage 2 (T-READ, T2-C with restarts,
-  T-PIN; E4 to E6), reclaim.
+* The bounds (T3, T4), the rest of stage 2 (T2-C with restarts, T-PIN; E5
+  and E6), reclaim.
 * A check of A-COPY (`CopyStep`) on Java traces.

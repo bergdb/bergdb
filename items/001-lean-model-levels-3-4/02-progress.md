@@ -127,7 +127,7 @@ Status
 | E1 | Design: eviction, references, pins | done | 2026-10-16 |
 | E2 | The physical model with eviction, executable | done | 2026-10-17 |
 | E3 | INV-SLOT and the physical writer: T-CACHE | done | 2026-10-17 |
-| E4 | Reads under eviction: T-READ | not started | — |
+| E4 | Reads under eviction: T-READ | done | 2026-10-17 |
 | E5 | Restarts with eviction: T2-C | not started | — |
 | E6 | Pins and index-freedom | not started | — |
 | E7 | The Java change list; the K1 review | not started | — |
@@ -1561,3 +1561,59 @@ about a virtual root's dead slots. Lemma M and INV-2 (a node not in D is
 clean) give it at each change of a slot. A probe (scratch, 02:47 to 02:57:
 examples 3 and 5 with 8 seeds, example 2 with 4, the four schedules, 40
 transactions each, with restarts) found it true after every operation.
+
+
+### 2026-10-17 02:43 to 03:36. WP E4, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `afaa74a` (E3);
+uncommitted before this WP's commit: its files, below. The design and the
+probe ran while E3's checks did (02:43 to 02:57).
+
+Did:
+
+1. T-READ, stated in the trusted `lean/SIS/PhysTheorems.lean` as `TR_view`:
+   in the runs of `TC_records` (BergDB's algorithm with marking, the
+   assumptions, those of the physical layer and of stage 2, the Level 4
+   startup from R(0), any cache schedule, no restart), after every
+   transaction and its cache operations, a read through the Level 4 loader at
+   any time t up to the last record reaches exactly the nodes reachable at t,
+   each with its node at t. Since the schedule is any, this holds for every
+   read of a schedule too.
+2. The proofs, `lean/SIS/Proof/EvictHist.lean`, `EvictHistTrans.lean` and
+   `EvictReadT.lean` (new, about 1,450 lines). INV-SLOT does not reach the
+   earlier times: it says nothing about the objects of nodes that are neither
+   current nor in D, nor about a virtual root's dead slots. A second
+   invariant, `HInv`, does: every slot of a canonical object for a live child
+   at a time t at which its node is reachable leads, through the loader, to
+   an object or version good for t (or, by INV-SLOT's second half, names a
+   node of D). Lemma M and INV-2 give it at each change of a slot; the cache
+   operations and every transaction keep it (`HInv.evictTrans_ok`), and the
+   read at t then goes as stage 1's. Outline in `level4-alignment.md`, 5.12
+   (new).
+3. Checked by running before the proof: the probe of the E3 entry (`HInv`
+   after every operation, with restarts, examples 2, 3 and 5, the four
+   schedules).
+4. `lean/README.md`: the files, the statement, the axioms list, the history.
+   `docs/level4-alignment.md`: 5.6 (T-READ proved), 5.11, 5.12 (new).
+
+Files changed: `lean/SIS/PhysTheorems.lean`; `lean/SIS/Proof/EvictHist.lean`,
+`EvictHistTrans.lean`, `EvictReadT.lean` (new); `lean/README.md`;
+`docs/level4-alignment.md`; this file.
+
+Checks (plan, 2.2), on a clean copy (bergdb's `lean/` at `afaa74a` with this
+WP's 5 files), 03:18 to 03:33: `lake build` exit 0, no warnings (and each
+new file elaborated alone, 03:19: no message); `lake exe sistest 20 40`: all
+checks pass (03:25); `lake exe phystest 20 40`: all checks pass (03:33);
+`#print axioms` of the theorem list with `TR_view`: standard axioms only; no
+`sorry`, `admit`, `axiom` or `unsafe` in `SIS/` and `Check/`; `sh
+test-traces/run.sh`: TRACE TESTS OK. No Java change, so no gate.
+
+Register: none changed (M39, reads beside the writer, stays for J5: the
+model's reads are sequential).
+
+Time: E4 is M (2 to 8 hours): about 50 minutes.
+
+Open, next: A-COPY on Java's tier (the next entry), then E5 (restarts with
+eviction, T2-C): the invariants after a startup from any stream of a run,
+where D is not empty and rule 4 links D's objects; then the run theorem with
+restarts.

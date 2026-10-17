@@ -526,7 +526,8 @@ For runs that meet the Level 2 assumptions (`RunOK`), the physical layer's
   restarts (5.11); restarts are T2-C's.
 * **T-READ** (`TR_view`, E4). In every state reachable as above, a physical
   read at any time up to the last record gives P at that time: every node
-  reached, with its content then.
+  reached, with its content then. Proved (E4, 2026-10-17) for the runs of
+  T-CACHE (5.12).
 * **T2-C** (`T2_cache`, E5). A run with restarts, lazy startups (with rule 4)
   and any cache schedules appends the same records as the logical run; after
   each startup the invariants hold again.
@@ -705,7 +706,49 @@ The proof keeps one invariant, `EInv` (5.10), through every operation:
 
 Not covered yet: restarts (E5: the invariant after a startup from any
 stream, where D is not empty and rule 4 links D's objects), reads at earlier
-times (T-READ, E4), and Java (the J WPs).
+times (T-READ, E4; 5.12), and Java (the J WPs).
+
+### 5.12 E4: T-READ, proved
+
+`TR_view` (`lean/SIS/PhysTheorems.lean`, WP E4, 2026-10-17): in the runs of
+5.11, after every transaction and its cache operations, a read through the
+Level 4 loader at any time t up to the last record reaches exactly the nodes
+reachable at t, each with its node at t. Only Lean's standard axioms; the
+proofs are in `lean/SIS/Proof/EvictHist.lean`, `EvictHistTrans.lean` and
+`EvictReadT.lean` (about 1,450 lines).
+
+The writer's read at the last time is E3's (`EInv.view4_ok`). Earlier times
+need more than INV-SLOT, which says nothing about the objects of nodes that
+are neither current nor in D, nor about a virtual root's dead slots, and lets
+a slot for a pinned pointee be stale. The proof keeps a second invariant,
+`HInv`: for every canonical object, every time t at which its node is
+reachable, and every live child at t, the slot is a memory slot to an object
+a read at t may use (canonical, or the snapshot of a version good for t), or
+a stream slot that names, after Rule R, a version good for t, or (INV-SLOT's
+second half) a node of D, whose canonical object the loader finds by id.
+Lemma M (a newer version is good whenever an older one is) and INV-2 (a
+written node not in D is clean: its latest version is good at every time at
+which it is reachable) give it at each change of a slot:
+
+* a load swizzles to exactly the version the slot named, or to the canonical
+  object;
+* an unswizzle names the object's position: a clean node's latest version,
+  or a snapshot's version;
+* a new pointer's slot names the pointee's canonical object, or copies a slot
+  that serializes a clean node's latest version;
+* a write makes the slots for pinned pointees memory slots to their canonical
+  objects;
+* a snapshot that the writer promotes is a clean node's latest version, so
+  good at every time at which the node is reachable;
+* when a node leaves D, the slots that relied on INV-SLOT's second half were
+  written away: their object's node was taken in the same record.
+
+A snapshot's slots need no invariant: its version is good for t, so its
+references are, and so is any newer version (lemma M). At the new time k + 1,
+INV-SLOT's live part gives `HInv`. A probe checked `HInv` by running before
+the proof (the E3 entry in the progress log). The read then goes as stage 1's
+(T1-L): every object it reaches is canonical, or the snapshot of a version
+good for t.
 
 
 ## 6. What Java must do
