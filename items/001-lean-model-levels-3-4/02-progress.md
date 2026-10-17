@@ -91,17 +91,24 @@ Frans's go and decisions
     `TopNode.height` throws in the middle of a root split): a wider ordinal
     (48 bits fit the header) or a clean early refusal. Register row M46 in
     `docs/level4-alignment.md`.
+* **K1, passed: 2026-10-17 07:56 CEST, Frans**, in the prompt, on the review
+  guide [03-k1-review.md](03-k1-review.md): "I confirm 1 to 3 as proposed.
+  Continue the work. Work unattended, but report progress." So, from its
+  section 1: (1) the reference rule is Option K, under TREE, A6' and A-COPY
+  instead of A6; (2) the Java changes of
+  [level4-alignment.md, section 6](../../docs/level4-alignment.md) are the
+  list for R8 and the J WPs; (3) E5's change to the trusted model (rule 4
+  links the root's object too) stands. No format or public API change (its
+  point 4). R3 to R8 and stage 4 may start.
 
 
 Current state
 -------------
 
-* Checkpoints: G0 given (2026-10-16 15:23). **K1 waits for Frans** since
-  2026-10-17 05:31: E7 is done, and K1 does not pass automatically, since
-  A6 fails on Java (the proofs use A6' and A-COPY instead); the review guide
-  is [03-k1-review.md](03-k1-review.md). R2 and P3, which did not wait,
-  are done (2026-10-17); every WP left waits for K1: R3 to R8 and stage 4
-  directly, the rest through them. K2 to K5 open.
+* Checkpoints: G0 given (2026-10-16 15:23); K1 passed (2026-10-17 07:56,
+  Frans: Option K under TREE, A6' and A-COPY; above). K2 to K5 open.
+* Next: stage 3, R3 (the Level 3 model), then R7, R4, R5, R6, R8, R9 and K3
+  (plan, 5.1).
 * Commits of this run (Q2 (b)): see the log entries.
 * Uncommitted work of this plan in bergdb: none (2026-10-17 07:20).
 * Long jobs running: none.
