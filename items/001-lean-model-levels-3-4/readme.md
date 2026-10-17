@@ -20,6 +20,9 @@ Files
   implementation and a matching Lean model at every level.
 * [02-progress.md](02-progress.md). 001-02, the progress of the plan:
   Frans's go and decisions, the status of each work package, the log.
+* [03-k1-review.md](03-k1-review.md). 001-03, the K1 review guide: the
+  Level 4 design, what is proved and checked, the Java changes, the
+  decision K1 asks of Frans.
 
 
 Log
@@ -33,3 +36,6 @@ overview of the plan.
 2026-10-16. Claude extended 001-01 into the detailed plan, on Frans's
 request, and added 001-02, its progress file. Work waits for Frans's go
 (G0).
+
+2026-10-17. Claude added 001-03, the K1 review guide (WP E7): stage 2 is
+done, and K1 waits for Frans.

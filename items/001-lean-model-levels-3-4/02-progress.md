@@ -96,7 +96,11 @@ Frans's go and decisions
 Current state
 -------------
 
-* Checkpoints: G0 given (2026-10-16 15:23); K1 to K5 open.
+* Checkpoints: G0 given (2026-10-16 15:23). **K1 waits for Frans** since
+  2026-10-17 05:40: E7 is done, and K1 does not pass automatically, since
+  A6 fails on Java (the proofs use A6' and A-COPY instead); the review guide
+  is [03-k1-review.md](03-k1-review.md). Until K1: R3 to R8 and stage 4
+  wait; R2 and P3 may go on. K2 to K5 open.
 * Commits of this run (Q2 (b)): see the log entries.
 * Uncommitted work of this plan in bergdb: the files of the WPs in progress,
   named in the last log entry.
@@ -132,7 +136,7 @@ Status
 | E4 | Reads under eviction: T-READ | done | 2026-10-17 |
 | E5 | Restarts with eviction: T2-C | done | 2026-10-17 |
 | E6 | Pins and index-freedom | done | 2026-10-17 |
-| E7 | The Java change list; the K1 review | not started | — |
+| E7 | The Java change list; the K1 review | done | 2026-10-17 |
 | R1 | α and the register for reclaim | done | 2026-10-16 |
 | R2 | Trace format 2; the exporter for reclaim runs | not started | — |
 | R3 | The Level 3 model: touch, first available time, cuts | not started | — |
@@ -1851,3 +1855,54 @@ Notes for Frans: with E6 every theorem of stage 2 is proved: T-CACHE, T-READ
 A-COPY. E7 writes the Java change list and the K1 review guide.
 
 Open, next: E7.
+
+
+### 2026-10-17 05:12 to 05:40. WP E7, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `03f4eab` (E6);
+uncommitted before this WP's commit: its files, below. Drafted while E6's
+checks ran (05:12 to 05:28).
+
+Did:
+
+1. `docs/level4-alignment.md`, section 6, "What Java must do" (new): twelve
+   changes, each with the model's definition it must match, the register
+   rows, the WP and its check. Six before eviction (R8: `resolvePointers`,
+   no runtime cut-back, the loader, rule 4 at startup, a slot's pair read
+   once, reclaim's maintenance reads), which keep every record, checked byte
+   for byte against `l34-base`; six for eviction (J1 to J7: the registry and
+   the pins, unswizzle, release, the copies of slots (no change, a check),
+   readers, accounting). What Java keeps, and what is not settled here.
+   Lines at `e2e5bd5`. Also the status line and a pointer in 5.7.
+2. The K1 review guide, 001-03,
+   [03-k1-review.md](03-k1-review.md) (new), linked from the item's readme:
+   what to decide (Option K under TREE, A6' and A-COPY instead of A6; the
+   Java changes of section 6; E5's change to the trusted model; no format or
+   API change), what is proved (the theorems, in plain English), what is
+   assumed and how it was checked (the counts of both tiers), the changes,
+   the Java work estimated (about 24 to 114 hours at the plan's sizes), how
+   to reproduce the decisive checks, and the open risks.
+
+Files changed: `docs/level4-alignment.md`;
+`items/001-lean-model-levels-3-4/03-k1-review.md` (new),
+`items/001-lean-model-levels-3-4/readme.md`; this file.
+
+Checks (plan, 2.2, documents): the links resolve (a script, scratch); the
+statements about code cite file, method and line at `e2e5bd5`. No code
+changed.
+
+Register: none changed; section 6 lists every Level 4 row with its WP.
+
+Time: E7 is S (up to 2 hours): about 30 minutes.
+
+Notes for Frans: stage 2 is done, and K1 is yours: please read
+[03-k1-review.md](03-k1-review.md), section 1, and record your decision
+under "Frans's go and decisions". The recommendation is to confirm Option K
+with A6' and A-COPY, accept the list of section 6 and E5's change to rule 4.
+A finding for you there (its section 7, risk 1): TREE, A6' and A-COPY are
+counted by the Java tier and the checker, but no gate fails when one of
+them fails.
+
+Open, next: while K1 waits, R2 (trace format 2, the exporter for reclaim
+runs) and P3 (bounds, measured); the A-COPY Lean tier on the large set still
+runs (current state).

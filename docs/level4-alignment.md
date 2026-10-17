@@ -9,8 +9,8 @@ Source commit `75d3c2d`; line numbers below are at that commit, in
 Status, 2026-10-17: the scope (section 1), a first α for the cache (section
 2) and the register (section 3), checked against the code (A2); the probes
 of A4 and the A-COPY checks (section 4); the design of E1, and what E2 to
-E5 ran and proved (section 5). To come: what Java must do (E7, section 6)
-and the outcome (F2).
+E6 ran and proved (section 5); what Java must do (E7, section 6). To come:
+the outcome (F2).
 
 Level 4 is eviction: data and index larger than memory, under a memory
 budget, with readers, reclaim, crashes and restarts. The plan of item 001
@@ -577,7 +577,8 @@ For runs that meet the Level 2 assumptions (`RunOK`), the physical layer's
 ### 5.7 What Java must change, and what it keeps
 
 For R8 (before eviction, records unchanged, checked by the byte comparison
-against `l34-base`) and the J WPs (eviction):
+against `l34-base`) and the J WPs (eviction). E7's list, with the register
+rows, the WPs and the checks, is section 6.
 
 1. **The loader** (`NodeCollection.followStreamPointer`): the canonical
    object, or the exact version after Rule R; no snapshot from the table
@@ -962,4 +963,54 @@ adopt the window of 8.5, so there is no other map.
 
 ## 6. What Java must do
 
-WP E7.
+WP E7, 2026-10-17: the Java changes that the Level 4 design (E1, section 5)
+and its proofs (E3 to E6, 5.11 to 5.14) ask for, each with its register row,
+the WP that makes it and its check. Option K holds: no change to the record
+format, to existing databases, to the public API or to a default (eviction
+is on by default from J7 on, Q10). The model that Java must match is
+`lean/SIS/Evict.lean`. Lines are at `e2e5bd5`, in `java/src/bergdb/`.
+
+### 6.1 Before eviction (R8): every record stays the same
+
+These change no record: with everything resident they give today's
+references (5.7). R8 makes them one at a time.
+
+| | Change | The model | Rows | WP | Check |
+|---|---|---|---|---|---|
+| 1 | `NodeCollection.resolvePointers` (317): a pointee in the pinned set (the canonical objects of D's nodes, and of the record being written) by node id, its canonical object's position; any other pointee from the slot: a memory slot's object's position, a stream slot's position after Rule R. No snapshot from the node table (`usable`), no table lookup for an unpinned pointee | `Mem.refOf`, `Mem.writeNode` | M20, M21, M26 | R8, change 1 | The gates; the byte comparison against `l34-base` (8.9), the same stream in every configuration; `conformance.sh small` and the reclaim set; `performance.sh ab l34-base current` on a quiet machine |
+| 2 | Runtime loads are not cut back: only reconstruction at startup cuts a key node version back to the startup time (`followStreamPointer`, lines 247 to 251) | `Obj.ofVersion` with no cut in `Mem.follow4` | M22 | R8, change 2 | As 1 |
+| 3 | The loader, `NodeCollection.followStreamPointer` (202): the pointee's canonical object if there is one; else exactly the version the slot names after Rule R, as a snapshot not entered in the node table; never a newer snapshot from the table (`usable`, line 233) | `Mem.follow4` | M27 (Q7) | R8, change 3 | As 1; the checker's C-L, which compares Java's first touches with stage 1's rule (`Mem.follow`), then compares them with the Level 4 loader |
+| 4 | Startup, rule 4 (`DbStarter.createMemoryPointers`, 226): every stream slot of a canonical object of a node of D that names a node with a canonical object becomes a memory slot to it, by node id, not only by exact position. The root's object needs nothing: the virtual root's one slot, `TopDs.superRoot`, is a memory reference already (5.13) | `Mem.linkD`, `evictStartup` | M44 | R8 | As 1; `RestartInvariance` |
+| 5 | A slot's pair is read once (`KeyNode.getPointer`, 202; `TopNode.getPointer`, 265); access data leaves the position field, or is written only under the slot's lock with a recheck; the access clock becomes a field of its own | Slots are a pair (`Slot`) | M23, M24 | R8, change 4; J1 (the clock) | As 1, with the performance comparison |
+| 6 | Reclaim's scan and its per-KV reads (`Reclaim.step`, 345) are maintenance reads: they neither register nor swizzle what they read; a slot's position stands in for a load where it suffices | — (stage 3) | M28 | R8, change 5; J6 | As 1, with the reclaim set |
+
+### 6.2 Eviction (J1 to J10)
+
+| | Change | The model | Rows | WP | Check |
+|---|---|---|---|---|---|
+| 7 | A registry of resident objects, and the pins: D's canonical objects (`TransSeq`), the record being written (`TransNodes`, whose dirty flags `clean` (131) clears before the record is appended, so "not dirty" is not "written"), the super root, the objects of an operation in progress. Everything else may be evicted (T-PIN) | `Mem.pinned`, `TP_pins` | M25, M26 | J1 | The audit (J1): every pinned object resident and canonical, one canonical object per node id, INV-SLOT against a test-only oracle of latest positions, on every configuration of 8.4 |
+| 8 | Unswizzle: under the slot's lock, after rechecking that the target is clean, unpinned and written, a memory slot becomes a stream slot naming the target's position | `Mem.unswizzle`, `Mem.detachable` | M23, M24 (Q8) | J2 (values), J3 (index nodes) | `EvictionInvariance`: the same stream with the schedules none, every and random; the audit |
+| 9 | Release: the object leaves the registry; the node table's entry goes if it names the object, and its canonical flag is cleared (a reader may still hold it); the writer's follower makes a reloaded node canonical again. The node table then holds resident objects only (T-INDEX) | `Mem.release`, `Mem.promote` | M26, M31 | J3 | As 8, and J3's tests |
+| 10 | Copies of slots (splits; `TopDs.newSuperRoot`, 42): no change. A-COPY holds on every Java run checked (section 4), and a copied stream slot serializes what its source did (5.4). Top node skip slots keep their cached times when unswizzled | `Mem.newSlot4`, `CopyStep` | M29, M43 | J3 (check only) | C-P on Java's physical states (J4); `A2A3Check2`'s A-COPY count |
+| 11 | Readers under eviction: the protocol of Q8 | — (sequential) | M39 | J5 | Interleaving tests; `ReclaimReaders` with a forced schedule |
+| 12 | Memory accounting, the access clock, the capacity controller; the cache size computed in `long` | — | M40, M45 | J1, J7 | J7's tests; a unit test for M45 |
+
+J4 adds the checks with eviction (the exporter's run E, SLOT lines, C-P in
+the checker, an eviction set in `conformance.sh`); J8 to J10 the
+larger-than-memory run, `level4.sh` and the performance comparison.
+
+### 6.3 What Java keeps
+
+The record format and every existing database; Rule R's section map;
+`javaTest` (Rule A over all pointers) and marking; one canonical object per
+node; the readers' path; the copies of slots. And three properties of its Dag
+that the model assumes and that hold on every Java run checked: TREE, A6'
+and A-COPY (section 4). A6, which the plan's 8.5 assumed, fails in 5 of
+68,901 Java-tier transactions; the model does not need it.
+
+### 6.4 Not settled here
+
+M46 (the ordinal bound): Frans, not urgent. The details of Q8's protocol: J5.
+Level 3's corrections come from R7's red list (level3-alignment.md) and go
+into R8 with these. M30 (the top node ordinals) was fixed in A3
+(`280525a`).
