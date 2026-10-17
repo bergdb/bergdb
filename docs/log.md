@@ -543,3 +543,19 @@ well as what a lookup reads with Rule R. A trusted change; T8 holds as
 before. The trace checker's C-CUT checks the stronger part (R4's diagnostic
 C-CUT+ is part of it now); test trace `physcut.trace`. Example 4:
 `cutReadWitness`'s cut is no longer safe.
+
+2026-10-17. Bergdb item 001, WP R8, change 4 (E7's list, row 5; register
+M23 and M24 of `docs/level4-alignment.md`, and M40's clock): slots for
+eviction. `TopNode.getPointer` reads the reference once and decides on it
+(before, it tested the reference and read it again), as `KeyNode.getPointer`
+did. `KeyNode`'s and `TopNode`'s `setPointerAccessData` write access data
+only into a memory pointer (the caller holds the pointer's lock, as for every
+change of a pointer), so that a position written by an unswizzle (stage 4)
+survives a reader that saw a memory pointer; their `getPointerAccessData`
+give `Spos.NULL` for a stream pointer (`TopNode`'s asserted a memory pointer).
+The access clock is a field of its own, `Cache3.accessClock`, which starts at
+10,000 (the old constant, minus `putSize`, which nothing advanced) and
+advances by one at every node read from the stream and every node the writer
+makes; `Db.getAccessData` is minus it and takes no lock (before, the node
+table's lock). Records: the same (StreamDigest, 36 of 36). New test
+`NodeCollection.testAccessData`.

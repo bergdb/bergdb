@@ -308,6 +308,7 @@ public class NodeCollection implements PointerFollower {
             
             Node node = nodeStream.readNode(ref);
             assert node.getId() == id : "ids differ, " + node.getId() + " != " + id;
+            cache.tickAccessClock();
             
             if (reconstructing && mySection != null && ref >= mySection.startPos 
                     && node.getType() == Node.TYPE_KEY_NODE) {
@@ -699,6 +700,48 @@ public class NodeCollection implements PointerFollower {
         
         c.followPointer(testParent(601, 100), 0, op);
         Assert.assertEquals("a reader reads it again", 2, stream.reads);
+    }
+    
+    /**
+     * Access data (bergdb item 001, WP R8, change 4: M23, M24): written only into a memory
+     * pointer, so that a stream pointer's position survives a reader that saw a memory
+     * pointer before an unswizzle; Spos.NULL from a stream pointer; a memory pointer read as
+     * a pair; and the access clock advances at every node read from the stream, not at a
+     * follow of a memory pointer.
+     */
+    @Nano
+    private static void testAccessData() {
+        TopNode top = testParent(301, 100);
+        top.setPointerAccessData(0, AccessData.DEFAULT_ACCESS_DATA);
+        Assert.assertEquals("a top node's stream pointer keeps its position", 100, 
+                top.getPointerPos(0));
+        Assert.assertEquals("no access data", Spos.NULL, top.getPointerAccessData(0));
+        
+        KeyNode parent = new KeyNode(false);
+        parent.addToEnd(Klong.createTime(10), null, -1);
+        parent.addToEnd(Klong.compareValueToKeyKlong(Keys.toSegments("k")[0]), null, 100);
+        parent.setPointerAccessData(1, AccessData.DEFAULT_ACCESS_DATA);
+        Assert.assertEquals("a key node's stream pointer keeps its position", 100, 
+                parent.getPointerPos(1));
+        Assert.assertEquals("no access data", Spos.NULL, parent.getPointerAccessData(1));
+        
+        TestStream stream = new TestStream();
+        stream.nodes.put(100L, testKeyNode(101, 100, 10));
+        NodeCollection c = new NodeCollection(testDbInfo(), stream);
+        long clock = c.cache.accessClock();
+        GetData op = testGetData(new int[1]);
+        Node a = c.followPointer(top, 0, op);
+        Assert.assertEquals("the clock advances at a read", clock + 1, c.cache.accessClock());
+        
+        Pointer p = new Pointer();
+        top.getPointer(0, p);
+        Assert.assertTrue("a memory pointer", p.node == a);
+        Assert.assertEquals("its access data", AccessData.DEFAULT_ACCESS_DATA, p.pos);
+        top.setPointerAccessData(0, AccessData.DEFAULT_ACCESS_DATA - 5);
+        Assert.assertEquals("set", AccessData.DEFAULT_ACCESS_DATA - 5, top.getPointerAccessData(0));
+        
+        Assert.assertTrue("followed from memory", c.followPointer(top, 0, op) == a);
+        Assert.assertEquals("no read, no tick", clock + 1, c.cache.accessClock());
     }
     
     /**

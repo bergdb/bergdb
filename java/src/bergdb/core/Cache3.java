@@ -1,6 +1,7 @@
 package bergdb.core;
 
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import bergdb.dag.Node;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
@@ -25,6 +26,17 @@ public class Cache3 {
     private long totalSize;     // total cache size estimation, in bytes
     private long putSize;
     private final HashMap<Long, CacheEntry>[] maps;
+    
+    /**
+     * The access clock (bergdb item 001, WP R8, change 4; docs/level4-alignment.md, M23 and
+     * M40): it advances by one at every node read from the stream (NodeCollection) and every
+     * node the writer makes (Db), so in read-only workloads too. The access data that an
+     * operation writes into the memory pointers it follows is minus its value
+     * (Db.getAccessData, dag/AccessData.java), for the age policy of eviction (J7). A field of
+     * its own: before 2026-10-17 the access data was minus putSize, which nothing advances,
+     * so the constant -10,000; the clock starts there. Read and advanced without a lock.
+     */
+    private final AtomicLong accessClock = new AtomicLong(INITIAL_CACHE_SIZE);
 
     
     @SuppressWarnings("unchecked")
@@ -81,6 +93,16 @@ public class Cache3 {
         }
     }
 
+    /** The access clock's value; see accessClock. */
+    public long accessClock() {
+        return accessClock.get();
+    }
+    
+    /** Advances the access clock by one; see accessClock. */
+    public void tickAccessClock() {
+        accessClock.incrementAndGet();
+    }
+    
     public long putSize() {
         synchronized (bigLock) {
             return putSize;

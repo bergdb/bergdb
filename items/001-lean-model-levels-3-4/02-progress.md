@@ -116,21 +116,24 @@ Current state
 
 * Checkpoints: G0 given (2026-10-16 15:23); K1 passed (2026-10-17 07:56,
   Frans: Option K under TREE, A6' and A-COPY; above). K2 to K5 open.
-* Next: R8's change 4 (E7's list; 6, 2, 1, 3 and 5 are done; its gates
-  running), R6's proof (T-SCHEME; its part 1, the stronger `CutOK`, is done),
-  and R5's logical half (T12 for `runRestartsCut`, which needs
+* Next: T9 (R4's remainder, for the stronger `CutOK`), R6's proof
+  (T-SCHEME; its part 1, the stronger `CutOK`, is done), and R5's logical
+  half (T12 for `runRestartsCut`, which needs
   only T8); then R9 and K3 (plan, 5.1). R3 and R7 are done; R4 is done but
   for T9 (2026-10-17).
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): R6 proves the
   stronger `CutOK` part 2 with T-SCHEME, then T9 follows (R4's remainder),
   and R5's half with eviction uses the same invariant on the slots.
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: R8's change 4 in `java/`, its gates
-  running (15:03).
+* Uncommitted work of this plan in bergdb: none (15:22).
 * Long jobs running (scratch copies of `lean/`, at low priority): R7's
   checker on the medium reclaim set's four largest traces, from 2026-10-17
   10:31 (the small set and the two others took 6 and 18 minutes); R4's (R7's,
-  with the diagnostic C-CUT+) on the whole medium set, from 12:08.
+  with the diagnostic C-CUT+) on the whole medium set, from 12:08. They hold
+  8 of the 10 cores, so R8's performance comparison waits for them; at 14:30
+  stopping them was not permitted to the agent (the permission classifier),
+  so it waits for them or for Frans (processes `runset3.sh` and `runset4.sh`
+  with their `tracecheck` children).
 * Stage 2's time box (plan, 5.3): started with E1 at 2026-10-16 23:14;
   60 hours, so it ends at 2026-10-19 11:14. Stage 2's WPs (E1 to E7) were
   done by 2026-10-17 05:31, about 6.3 hours of it.
@@ -169,7 +172,7 @@ Status
 | R5 | Restarts across cuts: T12 | not started | — |
 | R6 | Java's scheme gives safe cuts: T-SCHEME | in progress: part 1, `CutOK`'s part 2 over `ReadsPhys` (M48: (a)), done | 2026-10-17 |
 | R7 | The red list on Java's reclaim | done | 2026-10-17 |
-| R8 | Java: the corrections the model requires, before eviction | in progress: changes 6 (M17), 2 (M22), 1 (M20, M21, M26, M44), 3 (M27) and 5 (M28) done | 2026-10-17 |
+| R8 | Java: the corrections the model requires, before eviction | changes 1 to 6 done; the performance comparison of 1, 3 and 4 waits for a quiet machine | 2026-10-17 |
 | R9 | Level 3 conformance; the gate proposal | not started | — |
 | J1 | Registry, pins and audits | not started | — |
 | J2 | Eviction of values | not started | — |
@@ -2802,3 +2805,76 @@ Time: about 35 minutes (14:30 to 15:03, beside R8's changes 5 and 4).
 
 Open, next: R8's change 4 (gates running), its commit; then R6's proof
 (T-SCHEME); the performance comparison of R8 waits for a quiet machine.
+
+### 2026-10-17 14:50 to 15:22. WP R8, change 4: slots and the access clock (M23, M24), done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `39e095f` (R6,
+part 1); uncommitted before this change's commit: its files, below, and
+session f1-9c's `items/002-top-node-ordinal-bound/` with its line in
+`items/readme.md`, left for Frans.
+
+Did (E7's list, row 5; register M23, M24, and M40's clock):
+
+1. `TopNode.getPointer` reads the reference once and decides on that read
+   (M24): before, it tested the reference and then read it again, which,
+   once eviction can clear a slot in between, gives a null node with access
+   data for its position. `KeyNode.getPointer` read it once already; its
+   comment now says why the long field read after it is never taken for a
+   position.
+2. `KeyNode.setPointerAccessData` and `TopNode.setPointerAccessData` write
+   access data only into a memory pointer, rechecked under the pointer's
+   lock, which their callers hold, as every change of a pointer does (M23,
+   the second option of the register: "updated only under the slot's lock
+   with a recheck"). So a position that an unswizzle writes (stage 4) will
+   survive a reader that saw a memory pointer. `TopNode`'s asserted a memory
+   pointer; both now leave a stream pointer as it is, and
+   `getPointerAccessData` gives `Spos.NULL` for one (M24: defined behavior
+   for an evicted slot). No new lock on the readers' path: the pointer lock
+   is the one `NodeCollection.followPointer` holds anyway.
+3. The access clock, a field of its own (`Cache3.accessClock`; the plan's
+   R8, change 4: "for J7"): it starts at 10,000, the access data's old
+   constant (minus `putSize`, which nothing advanced, M40), and advances by
+   one at every node read from the stream (`followStreamPointer`) and every
+   node the writer makes (`Db.registerNewNode`, `valueNodeCreated`), so in
+   read-only workloads too (level4-plan.md, 4.3). `Db.getAccessData` is
+   minus it; it took the node table's lock before (`Cache3.putSize`), now it
+   takes none. J1 and J7 decide its unit and use it for the age policy.
+4. Test `NodeCollection.testAccessData` (new): a stream pointer keeps its
+   position when a reader sets access data (top and key nodes), and gives
+   `Spos.NULL` as access data; a memory pointer is read as a pair; the
+   clock advances at a read from the stream, not at a follow of a memory
+   pointer.
+
+Results:
+
+* StreamDigest: 36 of 36 digests the same as change 5's: no record changes.
+* R2's small reclaim set, made again with the change and checked with R6
+  part 1's checker (15:17 to 15:21): 25 of 25 traces `RECLAIM TRACES OK` and
+  `TRACECHECK OK`, 14,448 transactions, 288 cuts, 375,663 FIRST lines; C-S,
+  C-CUT (the stronger part 2), C-L and C-L4 without a failure.
+
+Files changed: `java/src/bergdb/dag/KeyNode.java`, `TopNode.java`;
+`java/src/bergdb/core/Cache3.java`, `Db.java`, `NodeCollection.java`;
+`docs/levels.md`, `docs/level4-alignment.md` (M23, M24, M40, 2.5),
+`docs/log.md`; this file.
+
+Checks: `java/build.sh`; the unit tests: 918 successful (917 and the new one);
+StreamDigest (above); R2's small reclaim set (above); the gates, 14:52 to
+15:17, on a machine with a load average of 40 to 90 (the checker's runs and
+another session's): `LEVEL 1 OK` (160 s); `level2.sh` failed once on
+`StorageManagerTester.testAddReplica2` (the known race), then `LEVEL 2 OK`
+(830 s; step 7: conformance small 60 of 60 traces TRACECHECK OK, with R6 part
+1's checker); `LEVEL 3 OK` (435 s; 918 unit tests).
+
+Register: M24's R8 part and M23's second half done; M23 stays open for J2
+and J3 (unswizzling writes the target's position), M24 for J5, M40 for J1
+and J7.
+
+Time: about 35 minutes (14:50 to 15:22; the gates ran 14:52 to 15:17).
+
+R8 is done but for the performance comparison of changes 1, 3 and 4
+(`performance.sh ab l34-base current` on a quiet machine): the machine is
+not quiet (R7's and R4's checker runs on the medium reclaim set, at
+CPU-hours each, and another session's runs), and stopping the checker runs
+was not permitted to me (the permission classifier); it waits for them or
+for Frans.

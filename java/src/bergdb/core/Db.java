@@ -657,6 +657,7 @@ public class Db {
             
             public void valueNodeCreated(ValueNode node, long[] key) {
                 setIdOfNode(node);
+                cache.tickAccessClock();
                 x.transNodes.addValueNode(node, key);
                 x.trans.listener.valueNodeCreated(node, key);
                 final TestHooks hooks = testHooks;
@@ -843,6 +844,7 @@ public class Db {
     private void registerNewNode(Node node) {
         node.setCanonical(true);
         cache.register(node);
+        cache.tickAccessClock();
     }
 
     // ======== Marking: step 3 of a transaction ========
@@ -1652,10 +1654,11 @@ public class Db {
 
     /**
      * Returns the current 'access data' that should be written to accessed pointers.
-     * The 'access data' is a negative value.
+     * The 'access data' is a negative value: minus the access clock (Cache3.accessClock;
+     * bergdb item 001, WP R8, change 4; before 2026-10-17, minus the node table's putSize).
      */
     public long getAccessData() {
-        return -cache.putSize();
+        return -cache.accessClock();
     }
 
     /**

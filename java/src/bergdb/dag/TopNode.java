@@ -260,20 +260,19 @@ public final class TopNode implements Node {
     }
 
     /**
-     * Gets the pointer as one coherent pair (node, pos); see KeyNode.getPointer().
+     * Gets the pointer as one coherent pair (node, pos); see KeyNode.getPointer(). The
+     * reference is read once, and a memory pointer is decided on that read (bergdb item 001,
+     * WP R8, change 4: M24 of docs/level4-alignment.md). Before 2026-10-17 it was tested and
+     * then read again, which, once eviction can clear it in between, gives a null node with
+     * access data for its position.
      */
     public final void getPointer(final int index, Pointer pointer) {
         pointer.index = index;
         
-        if ((index == 0 ? rootPointer : pointers[index - 1]) != null) {
-            // A memory pointer stays one (no eviction yet).
-            if (index == 0) {
-                pointer.node = rootPointer;
-                pointer.pos = rootPointerPos;
-            } else {
-                pointer.node = pointers[index - 1];
-                pointer.pos = pointersPos[index - 1];
-            }
+        final Node n = index == 0 ? rootPointer : pointers[index - 1];
+        if (n != null) {
+            pointer.node = n;
+            pointer.pos = index == 0 ? rootPointerPos : pointersPos[index - 1];
             return;
         }
 
@@ -313,28 +312,33 @@ public final class TopNode implements Node {
         }
     }
     
+    /**
+     * Sets the access data of a memory pointer, and leaves a stream pointer's position as it
+     * is; see KeyNode.setPointerAccessData() (bergdb item 001, WP R8, change 4: M23, M24;
+     * before 2026-10-17 it asserted a memory pointer and wrote always). The caller holds the
+     * pointer's lock.
+     */
     public final void setPointerAccessData(int index, long accessData) {
         if (index == 0) {
-            assert rootPointer != null;
-            rootPointerPos = accessData;
+            if (rootPointer != null) {
+                rootPointerPos = accessData;
+            }
         } else {
             index -= 1;
-            assert pointers[index] != null;
-            pointersPos[index] = accessData;
+            if (pointers[index] != null) {
+                pointersPos[index] = accessData;
+            }
         }
     }
     
+    /** The access data of a memory pointer; Spos.NULL for a stream pointer. */
     public final long getPointerAccessData(int index) {
-        long result;
         if (index == 0) {
-            assert rootPointer != null;
-            result = rootPointerPos;
+            return rootPointer != null ? rootPointerPos : Spos.NULL;
         } else {
             index -= 1;
-            assert pointers[index] != null;
-            result = pointersPos[index];
+            return pointers[index] != null ? pointersPos[index] : Spos.NULL;
         }
-        return result;
     }
     
     public void accept(NodeVisitor visitor) {

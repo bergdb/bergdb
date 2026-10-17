@@ -889,7 +889,14 @@ the serializer use them. The original design comment of `KeyNode.pos` ("used
 atomically with pointers") asked for this. Test:
 `ReclaimReaderTester.testPointerPairIsCoherent` fails without the fix after
 about 3600 reads. Level 4 (eviction) must revisit it: it assumes that a memory
-pointer stays one.
+pointer stays one. Since 2026-10-17 (bergdb item 001, R8, change 4: M23 and
+M24 of [level4-alignment.md](level4-alignment.md)) both read the reference
+once and decide on that read; access data is written only into a memory
+pointer (`setPointerAccessData` checks it, under the pointer's lock, which
+every change of a pointer holds), so a position that an unswizzle writes
+will survive a reader that saw a memory pointer; and the access clock is a
+field of its own (`Cache3.accessClock`), advanced at every node read from
+the stream and every node the writer makes.
 
 Found on the way, and fixed: GetMany with an inclusive start key (the default)
 did not return the start key when the tree of its segment had more than one node

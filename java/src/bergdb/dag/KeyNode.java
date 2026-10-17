@@ -198,6 +198,12 @@ public class KeyNode implements Node {
      * found by java/stress/ReclaimReaders.java). A memory pointer stays one (no eviction yet), so
      * the common case reads without a lock; a stream pointer is read under the monitor of
      * the node, which setPointer() holds. Level 4 (eviction) must revisit this.</p>
+     *
+     * <p>2026-10-17 (bergdb item 001, WP R8, change 4: M24 of docs/level4-alignment.md): the
+     * reference is read once, and a memory pointer is decided on that read. Its long field is
+     * then access data, which no caller takes for a position: once eviction can make a memory
+     * pointer a stream pointer again, the field read after the reference can already hold
+     * the position.</p>
      */
     public final void getPointer(int index, Pointer pointer) {
         Node n = pointers[index];
@@ -237,16 +243,24 @@ public class KeyNode implements Node {
         }
     }
     
+    /**
+     * Sets the access data of a memory pointer. 'pos' holds access data while the pointer is
+     * a memory pointer and the position while it is a stream pointer, so the access data is
+     * written only into a memory pointer: with eviction, a reader that saw a memory pointer
+     * must not overwrite the position that an unswizzle wrote since (bergdb item 001, WP R8,
+     * change 4: M23 of docs/level4-alignment.md; before 2026-10-17, written always). The
+     * caller holds the pointer's lock (PointerLocks), as every caller of setPointer() does,
+     * so the pointer cannot change between this check and the write.
+     */
     public final void setPointerAccessData(int pointerIndex, long accessData) {
-        // 'pos' is used for accessData when the pointer is a memory pointer and as a stream pos
-        // when the pointer is a stream pointer.
-        // Only called from DB.followPointer().
-        
-        pos[pointerIndex] = accessData;
+        if (pointers[pointerIndex] != null) {
+            pos[pointerIndex] = accessData;
+        }
     }
     
+    /** The access data of a memory pointer; Spos.NULL for a stream pointer. */
     public final long getPointerAccessData(int pointerIndex) {
-        return pos[pointerIndex];
+        return pointers[pointerIndex] != null ? pos[pointerIndex] : Spos.NULL;
     }
     
     public void accept(NodeVisitor visitor) {
