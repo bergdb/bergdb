@@ -124,6 +124,11 @@ def main (args : List String) : IO UInt32 := do
     let mut lvMap : Std.HashMap NodeId (Nat × List (NodeId × Nat)) :=
       ((jrecs.getD 0 r0).vers.foldl (fun m w => m.insert w.node (0, w.refs)) {})
     let fuel := jrecs.foldl (fun n R => n + R.vers.length) 0 + 1
+    -- The records of each node's versions so far (the diagnostic C-CUT+).
+    let mut recsMap : Std.HashMap NodeId (Array Nat) :=
+      ((jrecs.getD 0 r0).vers.foldl (fun m w => m.insert w.node #[0]) {})
+    let mut physCutFail := 0
+    let mut physCutEx : Array String := #[]
     let mut liveCount := 0
     let mut firstCount := 0
     let mut firstFail := 0
@@ -166,6 +171,7 @@ def main (args : List String) : IO UInt32 := do
       -- C-CUT
       for w in (jrecs.getD i r0).vers do
         lvMap := lvMap.insert w.node (i, w.refs)
+        recsMap := recsMap.insert w.node ((recsMap.getD w.node #[]).push i)
       match r.cut with
       | some (cc, f) =>
         cutCount := cutCount + 1
@@ -181,6 +187,15 @@ def main (args : List String) : IO UInt32 := do
             (fun y => sec.get? y) fuel)
         let cf := cutFailures cc f r.dirty below (jrecs.getD i r0).top (fun x => m.get? x)
         ccut := ccut.add i (faFail ++ cf)
+        -- C-CUT+ (a diagnostic, WP R4): part 2 over the versions physical reads may follow.
+        let rm := recsMap
+        let belowPhys := (List.range' f (i + 1 - f)).flatMap (fun tm =>
+          readsBelowPhys sp tm cc (reachList sp P' tm) (fun x => (m.get? x).map (·.1)) verAt
+            (fun y => (rm.getD y #[]).toList) fuel)
+        if !belowPhys.isEmpty then
+          physCutFail := physCutFail + 1
+          if physCutEx.size < 8 then
+            physCutEx := physCutEx.push s!"T({i}) CUT at {cc}, f {f}: {(belowPhys.eraseDups.take 8)}"
         if cutNow < cc then
           for q in [cutNow:cc] do
             Sc := Sc.modify q Record.cut
@@ -235,6 +250,9 @@ def main (args : List String) : IO UInt32 := do
       IO.println (s!"C-CUT cuts: {ccut.failing} of {cutCount} CUT lines (and PHYSCUT lines) fail" ++
         (if ccut.byName.isEmpty then "" else s!" ({", ".intercalate (ccut.byName.map (fun p => s!"{p.1} {p.2}"))})"))
       for e in ccut.examples do IO.println s!"  {e}"
+    if cutCount > 0 then
+      IO.println s!"C-CUT+ (a diagnostic, not part of CutOK; WP R4): {physCutFail} of {cutCount} CUT lines have a version before the cut that a physical read from f on may follow"
+      for e in physCutEx do IO.println s!"  {e}"
     diag.show "diagnostics" total
     let failed := (if ca.failing > 0 then ["C-A"] else []) ++ (if cs.failing > 0 then ["C-S"] else []) ++
       (if cv.failing > 0 then ["C-V"] else []) ++ (if probeFails.length > 0 then ["C-R"] else []) ++

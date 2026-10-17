@@ -437,4 +437,267 @@ def staleWitness : Bool × Bool × Bool × Bool × Bool :=
 
 #guard staleWitness == (true, true, true, true, true)
 
+/-- A run with eviction (cache schedule `policy`, as in `checkEvict`), without
+restarts: the records and D, the memory, the stream of the last startup. -/
+def runEvictWith (sp : Spec Val T) (al : Algo Val T) (ts : List T) (policy seed : Nat) :
+    DB Val T × Mem Val × SIS.Stream Val T :=
+  ts.zipIdx.foldl (fun (acc : DB Val T × Mem Val × SIS.Stream Val T) p =>
+      let r := evictTrans sp al acc.2.2 acc.1 acc.2.1 p.1
+      (r.1, schedule policy seed p.2 r.1.D r.2, acc.2.2))
+    (init sp, evictStartup sp (init sp).S, (init sp).S)
+
+/-- Returns (the assumptions hold, and the run with eviction appends the run's
+records; `CutOK` allows a cut at 1 after T(6); with every object that may be
+evicted evicted after each transaction (schedule 1), a read at the first
+available time 2 from the running memory, with Rule R of the startup at R(0),
+does not give P on the stream cut at 1; on the whole stream it does). The tree
+root 20, reachable at 2 and replaced at 3, names mid node 2's version of R(0);
+the mid node's latest version is of R(6), in the startup section, so the
+lookups' reads (`ReadsAt`) take that one by Rule R. The running memory's Rule R
+is the startup's, which does not know it, and the mid node's canonical object
+was evicted: the read loads R(0), which the cut removed. Physical reads in the
+running process after a cut need more than `CutOK` (bergdb item 001, WP R4: T9).
+Found on 2026-10-17. -/
+def cutReadWitness : Bool × Bool × Bool × Bool :=
+  let ts := tsE.take 6
+  let db := run spec4e alE ts
+  let r := runEvictWith spec4e alE ts 1 1
+  let (_, onCut) := reads4 spec4e r.2.2 { r.1 with S := cutStream 1 r.1.S } r.2.1 [2]
+  let (_, onWhole) := reads4 spec4e r.2.2 r.1 r.2.1 [2]
+  (runOKB spec4e alE ts && r.1.S == db.S && r.1.D == db.D, cutOKB spec4e 1 db 6, !onCut, onWhole)
+
+#guard cutReadWitness == (true, true, true, true)
+
+/-! ## Example 4 meets T8's assumptions on its virtual root
+
+The root's entries are `.slot 0 z`. Its live child is the root child of its
+last entry (`VirtLiveOK`), and example 4's transactions see the root only through
+it (`ExecRootOK`). -/
+
+theorem foldl_slot_root (k : Nat) : ∀ (h : History Val) (acc : Option NodeId),
+    (∀ e ∈ h, ∃ z, e.val = Val.slot 0 z) →
+    h.foldl (fun acc e => match e.val with
+      | .slot k' y => if k' = k then some y else acc
+      | _ => acc) acc =
+      if k = 0 then (h.getLast?.bind (fun e => (ptrs e.val).head?)).or acc else acc := by
+  intro h
+  induction h with
+  | nil => intro acc _; simp
+  | cons a l ih =>
+    intro acc hh
+    obtain ⟨za, hza⟩ := hh a List.mem_cons_self
+    rw [List.foldl_cons, ih _ (fun e he => hh e (List.mem_cons_of_mem a he))]
+    by_cases hk : k = 0
+    · subst hk
+      simp only [hza, ↓reduceIte]
+      cases hl : l.getLast? with
+      | none =>
+        rw [List.getLast?_eq_none_iff] at hl
+        subst hl
+        simp [hza, ptrs]
+      | some e =>
+        have hne : l ≠ [] := by intro h0; rw [h0] at hl; simp at hl
+        rw [List.getLast?_cons_of_ne_nil hne, hl]
+        obtain ⟨ze, hze⟩ := hh e (List.mem_cons_of_mem a (List.mem_of_getLast? hl))
+        simp [hze, ptrs]
+    · have h0k : (0 = k) = False := by simp; omega
+      simp [hza, hk, h0k]
+
+theorem slotOf_root (h : History Val) (hh : ∀ e ∈ h, ∃ z, e.val = Val.slot 0 z) (k : Nat) :
+    slotOf h k = if k = 0 then h.getLast?.bind (fun e => (ptrs e.val).head?) else none := by
+  unfold slotOf
+  exact (foldl_slot_root k h none hh).trans (by split <;> simp)
+
+theorem filterMap_eq_map_of {α β : Type} (f : α → Option β) (g : α → β) :
+    ∀ (l : List α), (∀ a ∈ l, f a = some (g a)) → l.filterMap f = l.map g := by
+  intro l
+  induction l with
+  | nil => intro _; rfl
+  | cons a l ih =>
+    intro h
+    rw [List.filterMap_cons, h a List.mem_cons_self, List.map_cons,
+      ih (fun b hb => h b (List.mem_cons_of_mem a hb))]
+
+theorem live_root (h : History Val) (hh : ∀ e ∈ h, ∃ z, e.val = Val.slot 0 z) :
+    live h = (h.getLast?.map (fun e => ptrs e.val)).getD [] := by
+  unfold live
+  dsimp only
+  rw [(List.filterMap_eq_nil_iff (l := h)).mpr ?hr]
+  rotate_left
+  · intro e he
+    obtain ⟨z, hz⟩ := hh e he
+    simp [hz]
+  rw [filterMap_eq_map_of _ (fun _ => 0) h ?hs]
+  rotate_left
+  · intro e he
+    obtain ⟨z, hz⟩ := hh e he
+    simp [hz]
+  rw [List.nil_append]
+  cases hl : h.getLast? with
+  | none => rw [List.getLast?_eq_none_iff] at hl; subst hl; rfl
+  | some e =>
+    obtain ⟨z, hz⟩ := hh e (List.mem_of_getLast? hl)
+    have hsl : slotOf h 0 = some z := by
+      rw [slotOf_root h hh 0, hl]; simp [hz, ptrs]
+    obtain ⟨a, l, rfl⟩ : ∃ a l, h = a :: l := by
+      cases h with
+      | nil => simp at hl
+      | cons a l => exact ⟨a, l, rfl⟩
+    have hf : (l.map (fun _ => (0 : Nat))).filter (fun b => !b == 0) = [] := by
+      rw [List.filter_eq_nil_iff]
+      intro b hb
+      obtain ⟨_, _, rfl⟩ := List.mem_map.mp hb
+      simp
+    simp only [List.map_cons, List.eraseDups_cons, hf, List.eraseDups_nil, List.filterMap_cons,
+      List.filterMap_nil, hsl]
+    simp [hz, ptrs]
+
+/-- In a history of root entries, the live child is the one of slot 0. -/
+theorem live_head_root (h : History Val) (hh : ∀ e ∈ h, ∃ z, e.val = Val.slot 0 z) :
+    (live h).head? = slotOf h 0 := by
+  rw [live_root h hh, slotOf_root h hh 0]
+  cases hl : h.getLast? with
+  | none => rfl
+  | some e =>
+    obtain ⟨z, hz⟩ := hh e (List.mem_of_getLast? hl)
+    simp [hz, ptrs]
+
+theorem valOf_root (n : Node Val) (hh : ∀ e ∈ n.hist, ∃ z, e.val = Val.slot 0 z) : valOf n = 0 := by
+  unfold valOf
+  rw [(List.filterMap_eq_nil_iff (l := n.hist)).mpr ?hd]
+  · rfl
+  · intro e he
+    obtain ⟨z, hz⟩ := hh e he
+    simp [hz]
+
+theorem virtLiveOK_spec4 : VirtLiveOK spec4 := fun _ h hh => live_root h hh
+
+theorem virtLiveOK_spec4e : VirtLiveOK spec4e := fun _ h hh => live_root h hh
+
+/-- Two views that example 4's transactions cannot tell apart: the same nodes,
+with the same slots, live pointers and values. -/
+def SameObs (v v' : View Val) : Prop :=
+  ∀ x, ((v x).isSome = (v' x).isSome) ∧ ∀ n n', v x = some n → v' x = some n' →
+    (∀ k, slotOf n.hist k = slotOf n'.hist k) ∧ live n.hist = live n'.hist ∧ valOf n = valOf n'
+
+section Obs
+
+variable {v v' : View Val}
+
+theorem SameObs.cases (h : SameObs v v') (x : NodeId) :
+    (v x = none ∧ v' x = none) ∨ ∃ n n', v x = some n ∧ v' x = some n' ∧
+      (∀ k, slotOf n.hist k = slotOf n'.hist k) ∧ live n.hist = live n'.hist ∧ valOf n = valOf n' := by
+  obtain ⟨hs, hn⟩ := h x
+  cases hv : v x with
+  | none =>
+    cases hv' : v' x with
+    | none => exact Or.inl ⟨rfl, rfl⟩
+    | some n' => rw [hv, hv'] at hs; simp at hs
+  | some n =>
+    cases hv' : v' x with
+    | none => rw [hv, hv'] at hs; simp at hs
+    | some n' => exact Or.inr ⟨n, n', rfl, rfl, hn n n' hv hv'⟩
+
+theorem SameObs.bind_slot (h : SameObs v v') (x : NodeId) (k : Nat) :
+    (v x).bind (fun n => slotOf n.hist k) = (v' x).bind (fun n => slotOf n.hist k) := by
+  rcases h.cases x with ⟨h1, h2⟩ | ⟨n, n', h1, h2, hs, -, -⟩
+  · rw [h1, h2] <;> rfl
+  · rw [h1, h2]; exact hs k
+
+theorem SameObs.bind_live (h : SameObs v v') (x : NodeId) :
+    (v x).bind (fun n => (live n.hist).head?) = (v' x).bind (fun n => (live n.hist).head?) := by
+  rcases h.cases x with ⟨h1, h2⟩ | ⟨n, n', h1, h2, -, hl, -⟩
+  · rw [h1, h2] <;> rfl
+  · rw [h1, h2]; simp only [Option.bind_some]; rw [hl]
+
+theorem SameObs.path4 (h : SameObs v v') (t : NodeId) (k : Nat) :
+    pathOf4 v t k = pathOf4 v' t k := by
+  unfold pathOf4
+  rcases h.cases t with ⟨h1, h2⟩ | ⟨n, n', h1, h2, hs, -, -⟩
+  · rw [h1, h2] <;> rfl
+  · rw [h1, h2]
+    simp only [Option.bind_some]
+    rw [hs (k / 2 % 2)]
+    cases slotOf n'.hist (k / 2 % 2) with
+    | none => rfl
+    | some m =>
+      simp only [Option.bind_some]
+      rcases h.cases m with ⟨g1, g2⟩ | ⟨u, u', g1, g2, gs, -, -⟩
+      · rw [g1, g2] <;> rfl
+      · rw [g1, g2]; simp only [Option.bind_some]; rw [gs (k % 2)]
+
+theorem SameObs.vals (h : SameObs v v') (p : Nat × NodeId × NodeId) (b : Nat) :
+    (v p.2.2).bind (fun ln => (slotOf ln.hist 0).bind (fun d => if d < 10000 + 8 * b then
+      (v d).map (fun dn => (p.1, p.2.2, valOf dn)) else none)) =
+    (v' p.2.2).bind (fun ln => (slotOf ln.hist 0).bind (fun d => if d < 10000 + 8 * b then
+      (v' d).map (fun dn => (p.1, p.2.2, valOf dn)) else none)) := by
+  rcases h.cases p.2.2 with ⟨h1, h2⟩ | ⟨n, n', h1, h2, hs, -, -⟩
+  · rw [h1, h2] <;> rfl
+  · rw [h1, h2]
+    simp only [Option.bind_some]
+    rw [hs 0]
+    cases slotOf n'.hist 0 with
+    | none => rfl
+    | some d =>
+      simp only [Option.bind_some]
+      split
+      · rcases h.cases d with ⟨g1, g2⟩ | ⟨u, u', g1, g2, -, -, gv⟩
+        · rw [g1, g2] <;> rfl
+        · rw [g1, g2]; simp only [Option.map_some]; rw [gv]
+      · rfl
+
+/-- Example 4's transactions give the same changes on views they cannot tell
+apart. -/
+theorem exec4_sameObs (tr : Tr4) (i : Time) (h : SameObs v v') : exec4 tr i v = exec4 tr i v' := by
+  unfold exec4
+  rw [h.bind_slot 0 0]
+  cases (v' 0).bind (fun r => slotOf r.hist 0) with
+  | none => rfl
+  | some z =>
+    simp only
+    rw [h.bind_live z]
+    cases (v' z).bind (fun zn => (live zn.hist).head?) with
+    | none => rfl
+    | some t =>
+      simp only
+      cases tr with
+      | split =>
+        simp only
+        rcases h.cases t with ⟨h1, h2⟩ | ⟨n, n', h1, h2, hs, -, -⟩
+        · rw [h1, h2]
+        · rw [h1, h2]
+          simp only
+          rw [hs 0, hs 1]
+      | put k n =>
+        simp only
+        rw [h.path4 t k]
+      | step lo hi last b =>
+        simp only [h.path4, h.vals]
+
+end Obs
+
+theorem execRootOK_spec4 : ExecRootOK spec4 := by
+  intro _ tr i v v' hr hr' hx hl
+  apply exec4_sameObs
+  intro x
+  by_cases hx0 : x = root
+  · subst hx0
+    refine ⟨?_, ?_⟩
+    · have := congrArg Option.isSome hl
+      simpa using this
+    · intro n n' h1 h2
+      rw [h1, h2] at hl
+      simp only [Option.map_some, Option.some.injEq] at hl
+      have e1 : ∀ e ∈ n.hist, ∃ z, e.val = Val.slot 0 z := hr n h1
+      have e2 : ∀ e ∈ n'.hist, ∃ z, e.val = Val.slot 0 z := hr' n' h2
+      refine ⟨fun k => ?_, hl, by rw [valOf_root n e1, valOf_root n' e2]⟩
+      by_cases hk : k = 0
+      · subst hk
+        rw [← live_head_root n.hist e1, ← live_head_root n'.hist e2]
+        exact congrArg List.head? hl
+      · rw [slotOf_root n.hist e1 k, slotOf_root n'.hist e2 k]
+        simp [hk]
+  · rw [hx x hx0]
+    exact ⟨rfl, fun n n' h1 h2 => by rw [h1] at h2; cases h2; exact ⟨fun _ => rfl, rfl, rfl⟩⟩
+
 end SIS.ReclaimExample

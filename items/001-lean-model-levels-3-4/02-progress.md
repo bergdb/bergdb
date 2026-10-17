@@ -107,11 +107,19 @@ Current state
 
 * Checkpoints: G0 given (2026-10-16 15:23); K1 passed (2026-10-17 07:56,
   Frans: Option K under TREE, A6' and A-COPY; above). K2 to K5 open.
-* Next: stage 3: R4 (T8, T9), then R5, R6, R8, R9 and K3 (plan, 5.1). R3
-  and R7 are done (2026-10-17).
+* Next: R8 (Java: R7's change for M17, then E7's list), R6 (T-SCHEME), and
+  R5's logical half (T12 for `runRestartsCut`, which needs only T8); then R9
+  and K3 (plan, 5.1). R3 and R7 are done; R4 is done but for T9, which waits
+  for Frans's decision on register M48 (below, R4's entry), as does R5's
+  half with eviction (2026-10-17).
+* **Waiting for Frans: register M48** ([level3-alignment.md,
+  2.9](../../docs/level3-alignment.md)): T9 (physical reads in the running
+  process after a cut, with eviction) needs a stronger `CutOK` (option (a),
+  recommended: Java's scheme gives it, Java's cuts meet it), or the window
+  (b), or T9 only after restarts (c). Not urgent for stage 3's other WPs.
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: R4's, in a scratch copy of
-  `lean/` (2026-10-17 10:40); R8's first change (M17), in `java/` (12:20).
+* Uncommitted work of this plan in bergdb: R8's first change (M17), in
+  `java/` (2026-10-17 12:20), its checks passed (gates, 12:26 to 12:52).
 * Long jobs running (scratch copies of `lean/`, at low priority): R7's
   checker on the medium reclaim set's four largest traces, from 2026-10-17
   10:31 (the small set and the two others took 6 and 18 minutes); R4's (R7's,
@@ -150,7 +158,7 @@ Status
 | R1 | α and the register for reclaim | done | 2026-10-16 |
 | R2 | Trace format 2; the exporter for reclaim runs | done | 2026-10-17 |
 | R3 | The Level 3 model: touch, first available time, cuts | done | 2026-10-17 |
-| R4 | Recovery and reads after a cut: T8, T9 | not started | — |
+| R4 | Recovery and reads after a cut: T8, T9 | T8 done; T9 stopped (stop rule 4: M48, Frans) | 2026-10-17 |
 | R5 | Restarts across cuts: T12 | not started | — |
 | R6 | Java's scheme gives safe cuts: T-SCHEME | not started | — |
 | R7 | The red list on Java's reclaim | done | 2026-10-17 |
@@ -2275,3 +2283,110 @@ the medium set's four largest traces still running at the commit.
 
 Open, next: R4 (T8, T9; with R7's `CutOK`; T12's runs with restarts need
 `ExecRootOK`), R5, R6, then R8 with the red list's change.
+
+### 2026-10-17 10:40 to 13:05. WP R4: T8 done; T9 stopped (stop rule 4)
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `26933a6` (R7);
+uncommitted before this WP's commit: its files, below. Worked in a scratch
+copy of `lean/` (R7's, plus this WP), alongside R7's long runs, and copied
+the result back.
+
+Did:
+
+1. T8 (`T8_recoverCut`, new statement in SIS/ReclaimTheorems.lean), proved
+   (SIS/Proof/CutStream.lean, CutRead, CutAgree, CutRerun, CutBase, CutTops,
+   CutStart and CutRecover, new, 1,874 lines): after a safe cut (`CutOK`) in
+   the state after T(k) of a run, startup from the cut stream gives the same
+   lookups at every time from f to k (`SameFrom`) and the same D. The steps:
+   startup's reads of the cut stream at the times from f to s are the whole
+   stream's, since part 2 covers every version they read (`readFrom_cut`,
+   `Inv.readAt_cut_nv`); with a virtual root, the root children live from f
+   on (created at or after the one live at f, `rootC0`) are read at their
+   latest versions, so the root rebuilt from the root children read has the
+   root's live children from f on (`Inv.topsRead_cut_all`, `Inv.cutRoot_live`,
+   `Inv.readAt_cut_v`); so P up to s agrees with P after T(s) for lookups
+   from f to s (`base_cutAgree`), the rerun keeps that to k
+   (`rerun_cutAgree`), and D is the section's (`sectionD_cut`).
+2. The trusted part (lean/README.md, "Changes to the trusted part", R4):
+   `VirtLiveOK` (new: with a virtual root, the live children of a history of
+   root entries are the pointers of its last entry; BergDB's TopDs), which
+   the rebuilt root needs; `ExecRootOK` (R3's) asks its condition only of
+   views whose roots hold root entries, a weaker assumption (as R3 stated
+   it, example 4 could not meet it: its transactions read the root's entries
+   as slots, and a view's root could hold any entries). Both proved for
+   example 4 (`execRootOK_spec4`, `virtLiveOK_spec4`), so T8 covers it; the
+   statement `T8_recoverCut`.
+3. T9, stopped by stop rule 4 (a proof needs a change to the trusted part
+   that the register does not list). While working out the statement, the
+   physical reads in the running process after a cut turned out to need more
+   than `CutOK`: `cutReadWitness` (SIS/ReclaimExample.lean, a `#guard`) is a
+   run of the model, with eviction and no restart since R(0), where `CutOK`
+   allows a cut at 1 and a read at f = 2 from the running memory, on the cut
+   stream, gives mid node 2 without its entries: the tree root 20, reachable
+   at 2 and replaced at 3, names the mid node's version of R(0); its latest
+   version, of R(6), is in the startup section, so lookups' reads
+   (`ReadsAt`) take it by Rule R; but the running memory's Rule R is that of
+   its startup at R(0), and the mid node's canonical object was evicted.
+   Without eviction the same read gives P. Register M48 (new), with the
+   options for Frans ([level3-alignment.md, 2.9](../../docs/level3-alignment.md)):
+   (a) part 2 over every version a physical read from f on may follow (every
+   version of a pointee at or after the one the pointer names), which Java's
+   scheme gives (every index node reachable at tEnd is written after its
+   touch, so the pointers that reads from tEnd on follow name versions after
+   pStart ≥ pCut) and which Java's cuts meet (below); (b) the window, Rule R
+   in the running process over the records since the last startup (M44's
+   fallback; a change in the model and in Java); (c) T9 only after restarts
+   from the cut stream (weaker: Java cuts while it runs). Recommended: (a).
+   With (a), T9 for the Level 4 memory needs an invariant on the slots (the
+   record a slot names, after the last startup's Rule R, is at or after the
+   one the latest version of its node names), which T12 with eviction (R5)
+   needs too.
+4. The checker: a diagnostic, C-CUT+, that does not fail a trace
+   (`readsBelowPhys` in Check/Steps.lean, TraceCheck.lean): at every CUT
+   line, whether a physical read in the running process from f on may follow
+   a version before the cut, in sense (a). On R2's small reclaim set: 0 of
+   288 cuts; C-A, C-S and C-CUT as in R7's run, trace for trace. Medium set:
+   0 of the 47 cuts of the two mixed traces, and C-A, C-S and C-CUT as in
+   R7's run; the four largest were still in the checker at this commit.
+5. By running (scratch probes, not kept): example 4's random runs with the
+   four cache schedules, restarts every few transactions or none, and after
+   every transaction reads at every time from f on, on the stream cut at the
+   largest safe c, from the running memory: 27,040 transactions, and 3,600
+   runs aimed at a state where (a) gives a lower bound; no failure (example
+   4's reclaim writes every node reachable at f after the cut point). In
+   its random runs (a) lowers the largest safe cut in 28 of 1,600 states.
+6. Docs: `lean/README.md` (files, proofs, the witness and the example's
+   proofs, the checker's diagnostic, the trusted changes, status);
+   `docs/level3-alignment.md` 2.9 (new), 4.1, section 5 step 10, the
+   register (M41, M48 new).
+
+Files changed: `lean/SIS/Reclaim.lean` (trusted: `VirtLiveOK`, `ExecRootOK`),
+`lean/SIS/ReclaimTheorems.lean` (trusted: T8); `lean/SIS/Proof/CutStream.lean`,
+`CutRead.lean`, `CutAgree.lean`, `CutRerun.lean`, `CutBase.lean`,
+`CutTops.lean`, `CutStart.lean`, `CutRecover.lean` (new);
+`lean/SIS/ReclaimExample.lean` (`cutReadWitness`, `runEvictWith`, the
+example's proofs); `lean/Check/Steps.lean`, `lean/TraceCheck.lean` (C-CUT+);
+`lean/README.md`; `docs/level3-alignment.md`; this file.
+
+Checks: on a clean copy of `lean/` (no `.lake`), 12:19 to 12:44, with the
+files of this commit: `lake build` 122 jobs, no warnings (built again after a
+docstring fix in SIS/ReclaimTheorems.lean, 12:47, no warnings); no `sorry`,
+`admit`, `axiom` or `unsafe` in SIS/ and Check/; `#print axioms` of the
+README's 19 theorems (T8 added), and of `execRootOK_spec4` and
+`virtLiveOK_spec4`: only Lean's standard axioms; `sh test-traces/run.sh`:
+TRACE TESTS OK; `lake exe reclaimtest 20 30`: all checks pass (46 s); `lake
+exe sistest 20 40`: all checks pass (12 min); `lake exe phystest 20 40`: all
+checks pass (10.3 min), on a machine busy with the checker's runs. No change
+in `java/` in this commit, so no gate.
+
+Register: M48 (new: physical reads in the running process after a cut, with
+eviction; T9 stopped, Frans's decision). M41: T8 covers the model's startup.
+
+Time: R4 is M to L (2 to 24 hours): about 2.5 hours (10:40 to 13:05, alongside
+R7's runs and R8's first change).
+
+Open, next: Frans's decision on M48 (T9; it also bears on T12 with eviction,
+R5's second half). Meanwhile, by the plan's 2.4 (a stopped WP is not a
+stopped session): R5's logical T12 (`runRestartsCut`), R6 (T-SCHEME, which
+can prove (a)'s stronger part 2 too), and R8 (Java: M17's change and E7's
+list).

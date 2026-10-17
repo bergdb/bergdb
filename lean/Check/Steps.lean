@@ -197,6 +197,33 @@ def readsBelow (sp : Spec BVal Nat) (t c : Nat) (rl : List NodeId) (lvRec : Node
         go fuel (fresh ++ rest) (fresh.foldl (fun s p => s.insert p) seen) below
   go fuel start (Std.HashSet.ofList start) []
 
+/-- As `readsBelow`, for the versions that a physical read in the running process may
+follow (bergdb item 001, WP R4, the diagnostic C-CUT+): through a pointer to a live
+child, every version of the child at or after the record that the pointer names
+(before Rule R; every version if it names none), since the running memory's Rule
+R is that of its last startup, and its canonical objects and snapshots may be
+newer. recsOf gives the records of a node's versions so far. -/
+def readsBelowPhys (sp : Spec BVal Nat) (t c : Nat) (rl : List NodeId) (lvRec : NodeId → Option Nat)
+    (verAt : Nat → NodeId → Option (Version BVal)) (recsOf : NodeId → List Nat)
+    (fuel : Nat) : List (NodeId × Nat) :=
+  let start := rl.eraseDups.filterMap (fun x => (lvRec x).map (fun r => (x, r)))
+  let rec go : Nat → List (NodeId × Nat) → Std.HashSet (NodeId × Nat) → List (NodeId × Nat) →
+      List (NodeId × Nat)
+    | 0, _, _, below => below
+    | _, [], _, below => below
+    | fuel + 1, (x, r) :: rest, seen, below =>
+      let below := if r < c then (x, r) :: below else below
+      match verAt r x with
+      | none => go fuel rest seen below
+      | some v =>
+        let kids := (sp.live (v.hist.upTo t)).flatMap (fun y =>
+          match v.ref? y with
+          | some r' => ((recsOf y).filter (fun q => decide (r' ≤ q))).map (fun q => (y, q))
+          | none => (recsOf y).map (fun q => (y, q)))
+        let fresh := (kids.filter (fun p => !seen.contains p)).eraseDups
+        go fuel (fresh ++ rest) (fresh.foldl (fun s p => s.insert p) seen) below
+  go fuel start (Std.HashSet.ofList start) []
+
 /-- C-CUT (bergdb item 001, WP R7): `CutOK c` of SIS/Reclaim.lean in the state after
 T(i), by running, with the failures by name: c after the first available time f;
 versions that lookups from f to i may read before c, latest ones (the node's latest

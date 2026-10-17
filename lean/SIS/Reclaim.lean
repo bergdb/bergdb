@@ -89,13 +89,30 @@ def SameFrom (sp : Spec V T) (f k : Time) (P P' : Struct V) : Prop :=
 
 /-- With a virtual root, a transaction sees the root only through its live
 children (BergDB's transactions start at the current super root of `TopDs`):
-its changes are the same on two views that agree on every other node and on the
-root's live children. A run that restarts from a cut stream needs it (T12, WP
-R5), since its root lacks the entries that the cut made unreadable. -/
+its changes are the same on two views whose roots hold entries for root
+children only, and that agree on every other node and on the root's live
+children. A startup or a run that restarts from a cut stream needs it (T8, WP
+R4; T12, WP R5), since its root lacks the entries that the cut made
+unreadable. (WP R4 added the condition on the roots' entries: without it, a
+spec that reads the root's entries as slots, as example 4 does, could not meet
+it, since a view's root could then hold any entries.) -/
 def ExecRootOK (sp : Spec V T) : Prop :=
-  sp.virt = true → ∀ (tr : T) (i : Time) (v v' : View V), (∀ x, x ≠ root → v x = v' x) →
+  sp.virt = true → ∀ (tr : T) (i : Time) (v v' : View V),
+    (∀ n, v root = some n → ∀ e ∈ n.hist, ∃ z, e.val = sp.rootVal z) →
+    (∀ n, v' root = some n → ∀ e ∈ n.hist, ∃ z, e.val = sp.rootVal z) →
+    (∀ x, x ≠ root → v x = v' x) →
     (v root).map (fun n => sp.live n.hist) = (v' root).map (fun n => sp.live n.hist) →
     sp.exec tr i v = sp.exec tr i v'
+
+/-- With a virtual root, its live children at a time are those of its last entry
+then: for a history of entries for root children, the live pointers are the
+pointers of the last entry (BergDB's TopDs: the super root at time t is the
+newest top node created up to t). A startup from a cut stream rebuilds the root
+without the entries that the cut made unreadable; with this, that changes no
+live child from the first available time on (T8, WP R4). -/
+def VirtLiveOK (sp : Spec V T) : Prop :=
+  sp.virt = true → ∀ h : History V, (∀ e ∈ h, ∃ z, e.val = sp.rootVal z) →
+    sp.live h = (h.getLast?.map (fun e => sp.ptrs e.val)).getD []
 
 /-- The policies give the same startup pos and first available time on a
 stream cut at or before its first available time: they do not depend on what

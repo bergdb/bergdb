@@ -330,6 +330,80 @@ D by node id even below the cut (M33 is Java's limit, part 3 is for Java).
 On a fixed run (`#guard`): without the touch, no cut is safe, since an empty
 leaf keeps its only version in R(0).
 
+### 2.9 Recovery and reads after a cut (R4)
+
+**T8 is proved** (`T8_recoverCut`, 2026-10-17): after a safe cut at c in the
+state after T(k), startup from the cut stream gives the same lookups at every
+time from f to k (`SameFrom`) and the same D. Its reads for the times from f
+to s read no record before c, only versions that `CutOK`'s part 2 covers
+(Rule R uses the startup section, which a cut at or before s leaves whole);
+what its reads for earlier times find of the cut records (stubs) matters only
+before f; and D comes from the records after s. With a virtual root, startup
+rebuilds the root from the root children it can read; those live from f on
+(created at or after the one live at f) are read at their latest versions,
+which part 2 covers, so the rebuilt root has the root's live children from f
+on (`VirtLiveOK`), and the section's transactions, which see the root only
+through its live children (`ExecRootOK`), make the same changes. P up to s
+agrees with P after T(s) for lookups from f to s, and the rerun keeps that to
+k. Both assumptions hold for example 4 (proved), and for BergDB by its
+super root (TopDs).
+
+**T9 is stopped** (the plan's stop rule 4). Physical reads from f on in the
+running process can read a record before a cut that `CutOK` allows.
+`cutReadWitness` (SIS/ReclaimExample.lean) is such a run of the model, with
+eviction (after each transaction every object that may be evicted is) and no
+restart since R(0): the tree root 20, reachable at f = 2 and replaced at 3,
+names mid node 2's version of R(0); the mid node's latest version is of R(6),
+in the startup section after T(6), so lookups' reads (`ReadsAt`) take that
+one by Rule R, and `CutOK` allows a cut at 1. The running memory's Rule R is
+that of its last startup, which does not know the version of R(6), and the
+mid node's canonical object was evicted; so the read at 2 follows the tree
+root's slot to R(0), which the cut removed, and gives the mid node without
+its entries. Without eviction the same read gives P (schedule 0): the mid
+node keeps its canonical object. In general, without eviction, a node without
+a canonical object has no version after the last startup (the writer makes
+every node it writes canonical, and nothing is released), so a read loads the
+version that `ReadsAt` names or the node's latest version, which part 2
+covers (argued, not proved). Java today evicts nothing (M26); with eviction
+(stage 4, J6) it could (register M48).
+
+What T9 needs is Frans's decision (M48):
+
+* (a) `CutOK`'s part 2 over every version that a physical read from f on may
+  follow: through a pointer to a live child, every version of the child at or
+  after the one the pointer names (Rule R of any earlier startup, and objects
+  newer than the pointer, give only those). Java's scheme gives it: every
+  index node reachable at tEnd was touched by the iteration and written
+  after its touch, so the pointers that reads from tEnd on follow name
+  versions written after pStart, and pCut ≤ pStart; R6 would prove it with
+  the rest of T-SCHEME. Java's cuts meet it: the checker's diagnostic C-CUT+
+  finds no version before the cut that a physical read from f on may follow
+  at any of the 288 cuts of the small set, nor at the 47 of the medium set's
+  two mixed traces (its four largest were still in the checker at R4's
+  commit). In the random runs of example 4 it lowers the largest safe cut
+  in 28 of 1,600 states. Then T9 is to prove for the Level 4 memory, with an
+  invariant on the slots (the record a slot names, after the last startup's
+  Rule R, is at or after the one that the latest version of the slot's node
+  names), which T12 with eviction (R5) needs too.
+* (b) The window (M44's fallback): Rule R in the running process also over
+  the records written since the last startup; a change of the physical
+  layer, in the model and in Java (stage 4).
+* (c) T9 only for reads after a restart from the cut stream. Weaker: Java
+  cuts while it runs.
+
+Recommendation: (a). It changes no code, Java's scheme gives it, and it is
+what Java's reads in the running process will rely on after a cut once
+objects can be evicted.
+
+By running (scratch probes, not kept): example 4's random runs, with the
+four cache schedules and restarts every few transactions or none, reads at
+every time from f on, on the stream cut at the largest safe c, from the
+running memory, after every transaction: 27,040 transactions, and 3,600
+runs aimed at a state where the stronger part 2 is lower; no failure.
+Example 4's reclaim writes every node reachable at f after the cut point, so
+its pointers are fresh; the witness needs an empty subtree (spec4e: keys 2
+and 3 have no values yet at f) and a fixed f.
+
 
 ## 3. The register
 
@@ -348,7 +422,8 @@ reopened from level2-alignment.md.
 | M36 | Reads before f are refused (`LookupTimeNotAvailableException`), and an admitted read may expire when a cut overtakes it (D1 = A): a `ReadBelowFirstPosException` below the cut becomes an expiry if the read's actual time is now before f | `Db.getOneInternal` (1068), lines 1073 to 1080; `Db.getMany` (1116), lines 1131 to 1138; `Db.expiredIfReadBelowCut` (1170) | `view` (every time) | Model: reads required from f on; expiry is concurrency, outside the model (2.6) | 3: R3 (`SameFrom`, 2.8), R4; o |
 | M37 | Reclaim stores its table and the current row as values under internal keys (`/#i/dreclaim/-table.txt`, `/#i/dreclaim/-current.txt`), in internal transactions; the row's value is computed by a value transformation during the step | `Reclaim.storeTable` (648); `Reclaim.step` (345), lines 416 to 423 | T(i) | α: ordinary puts; T(i) is what the record stores (2.2) | 3: R1 (α); R2 (the traces have them as ordinary entries, 2.7); the checker from R3 on |
 | M38 | A reclaim step can fail with a `RerunException` (a conflict with its read time) and then writes no record; the step is tried again at a later transaction. A table store cannot fail so (`Bug`) | `Reclaim.step` (345), line 449; `storeTable` (648), line 657; `Db.stmCheckConflicts` (1474), called at line 1362 | — | α: no transaction; nothing to model (argued in 4.2; the exception cannot occur today) | 3: R1 (argued) |
-| M41 | After a restart from a cut stream, startup reads D's nodes at their newest section versions or stored positions, and the root chain from topPos | `DbStarter.canonicalNode` (455), `topNodeOfLastTransaction` (293), `findSuperNodeAtStartupTime` (263) | `startup` | CutOK must cover them. For the root chain, review-13-claude, 4.3: a search at a time q loads, besides its answer, only tops created at or after q; so from tEnd on, the tops created after tEnd and the top live at tEnd (5, steps 4 and 6) | 3: R3 (CutOK parts 3 and 4, 2.8), R4, R5; o |
+| M41 | After a restart from a cut stream, startup reads D's nodes at their newest section versions or stored positions, and the root chain from topPos | `DbStarter.canonicalNode` (455), `topNodeOfLastTransaction` (293), `findSuperNodeAtStartupTime` (263) | `startup` | CutOK must cover them. For the root chain, review-13-claude, 4.3: a search at a time q loads, besides its answer, only tops created at or after q; so from tEnd on, the tops created after tEnd and the top live at tEnd (5, steps 4 and 6) | 3: R3 (CutOK parts 3 and 4, 2.8), R4 (T8: the model's startup), R5; o |
+| M48 | **New (R4).** Java cuts while it runs, and reads after the cut go through the objects and slots made before it, with Rule R of the last startup. With eviction, a read at a time from f on can follow the slot of a node that a later change replaced to a version before the cut: the last startup's Rule R does not know the pointee's newer version, and the pointee's canonical object was released. Today nothing is released (M26), so such a pointee has its canonical object | `NodeCollection.followStreamPointer` (184; Rule R from `DbStarter`'s maps); `Reclaim` cuts while the database runs (2.5) | `CutOK` part 2 (`ReadsAt`, Rule R of the current section); `Mem.follow4` (Rule R of the last startup) | `cutReadWitness` (SIS/ReclaimExample.lean): `CutOK` holds, a read at f in the running process fails on the cut stream (2.9). For Frans: (a) part 2 over every version a physical read may follow (every version of a pointee at or after the one the pointer names); Java's scheme gives it, Java's cuts meet it (C-CUT+); (b) the window (M44); (c) T9 after restarts only. Recommended: (a) | 3, 4: R4 (found; T9 stopped, stop rule 4), Frans, R6 or J6; o |
 
 Findings of A2: none beyond the plan's list for Level 3. Noted for R1: the
 touch marks the super root of the step's time (through
@@ -397,11 +472,13 @@ reconstruction neither uses f nor reads anything that the cut removed.
    that these versions are at c or later. (d) is CutOK's part 3.
 4. So, with CutOK, Java's startup from the cut stream is the model's
    startup from the cut stream with f supplied after the reconstruction,
-   and the order does not matter. That is T8 (WP R4) for Java's startup,
-   with M41 (the root chain and D) as its Java-specific part.
+   and the order does not matter. That is T8 (`T8_recoverCut`, proved in WP
+   R4, 2.9) for Java's startup, with M41 (the root chain and D) as its
+   Java-specific part.
 
-Marks: step 1 checked (code, above); step 2 checked (code); step 3 to prove
-(R4, R6); it is also tested, since every test with `CutStream` refuses a
+Marks: step 1 checked (code, above); step 2 checked (code); step 3: for the
+model's startup proved (T8, R4), that Java's cuts are safe to prove (R6); it
+is also tested, since every test with `CutStream` refuses a
 read below the cut, and `ReclaimStress`, `RestartInvariance` with reclaim and
 `level3.sh` restart after cuts.
 
@@ -529,10 +606,11 @@ The steps:
    or later (condition 3 of 2.5), and the cut waits until the table that
    marks it is durable. Bytes and recovery, outside the model. **Checked**
    (f-test `testCutKeepsMetaBlockTransaction`; level3-durability.md).
-10. **Reads after the cut, and restarts across cuts.** With CutOK: reads
-    from f on through the cut stream give the logical view (T9, **to prove**
-    in R4), startup from the cut stream gives the same lookups from f on and
-    the same D (T8, R4; 4.1 for Java's order), and a run with restarts and
+10. **Reads after the cut, and restarts across cuts.** With CutOK: startup
+    from the cut stream gives the same lookups from f on and the same D (T8,
+    **proved** in R4, 2.9; 4.1 for Java's order); physical reads from f on in
+    the running process need more once objects can be evicted (T9,
+    **stopped** in R4: `cutReadWitness`, M48); and a run with restarts and
     cuts writes the same records as the run without them (T12, R5). Java:
     **checked** by `RestartInvariance` with reclaim (the same stream byte
     for byte, with and without restarts), `ReclaimStress`, `CrashTest` with
@@ -540,7 +618,8 @@ The steps:
     (WP P2).
 
 What is left to prove, in short: steps 2 to 4 and 6 (R6, T-SCHEME: Java's
-scheme gives CutOK), step 7 (R5, or a change in R8), and step 10 (R4, R5).
+scheme gives CutOK), step 7 (R5, or a change in R8), and step 10 (T9 after
+Frans's decision on M48; T12, R5).
 What is assumed: the policies of steps 8 and 9, and that a step's range
 traversal visits every node whose key range meets the range (step 3), which
 R6 takes as an assumption on the touch, and checks on Java (R2's traces
