@@ -367,7 +367,7 @@ version that `ReadsAt` names or the node's latest version, which part 2
 covers (argued, not proved). Java today evicts nothing (M26); with eviction
 (stage 4, J6) it could (register M48).
 
-What T9 needs is Frans's decision (M48):
+What T9 needed was Frans's decision (M48; decided: (a), below):
 
 * (a) `CutOK`'s part 2 over every version that a physical read from f on may
   follow: through a pointer to a live child, every version of the child at or
@@ -394,6 +394,10 @@ What T9 needs is Frans's decision (M48):
 Recommendation: (a). It changes no code, Java's scheme gives it, and it is
 what Java's reads in the running process will rely on after a cut once
 objects can be evicted.
+
+**Decided: (a)** (Frans, 2026-10-17 14:07). `CutOK`'s part 2 becomes the
+stronger one; R6 proves that Java's scheme gives it, then T9 is proved for
+the Level 4 memory with the invariant on the slots.
 
 By running (scratch probes, not kept): example 4's random runs, with the
 four cache schedules and restarts every few transactions or none, reads at
@@ -423,7 +427,7 @@ reopened from level2-alignment.md.
 | M37 | Reclaim stores its table and the current row as values under internal keys (`/#i/dreclaim/-table.txt`, `/#i/dreclaim/-current.txt`), in internal transactions; the row's value is computed by a value transformation during the step | `Reclaim.storeTable` (648); `Reclaim.step` (345), lines 416 to 423 | T(i) | α: ordinary puts; T(i) is what the record stores (2.2) | 3: R1 (α); R2 (the traces have them as ordinary entries, 2.7); the checker from R3 on |
 | M38 | A reclaim step can fail with a `RerunException` (a conflict with its read time) and then writes no record; the step is tried again at a later transaction. A table store cannot fail so (`Bug`) | `Reclaim.step` (345), line 449; `storeTable` (648), line 657; `Db.stmCheckConflicts` (1474), called at line 1362 | — | α: no transaction; nothing to model (argued in 4.2; the exception cannot occur today) | 3: R1 (argued) |
 | M41 | After a restart from a cut stream, startup reads D's nodes at their newest section versions or stored positions, and the root chain from topPos | `DbStarter.canonicalNode` (455), `topNodeOfLastTransaction` (293), `findSuperNodeAtStartupTime` (263) | `startup` | CutOK must cover them. For the root chain, review-13-claude, 4.3: a search at a time q loads, besides its answer, only tops created at or after q; so from tEnd on, the tops created after tEnd and the top live at tEnd (5, steps 4 and 6) | 3: R3 (CutOK parts 3 and 4, 2.8), R4 (T8: the model's startup), R5; o |
-| M48 | **New (R4).** Java cuts while it runs, and reads after the cut go through the objects and slots made before it, with Rule R of the last startup. With eviction, a read at a time from f on can follow the slot of a node that a later change replaced to a version before the cut: the last startup's Rule R does not know the pointee's newer version, and the pointee's canonical object was released. Today nothing is released (M26), so such a pointee has its canonical object | `NodeCollection.followStreamPointer` (184; Rule R from `DbStarter`'s maps); `Reclaim` cuts while the database runs (2.5) | `CutOK` part 2 (`ReadsAt`, Rule R of the current section); `Mem.follow4` (Rule R of the last startup) | `cutReadWitness` (SIS/ReclaimExample.lean): `CutOK` holds, a read at f in the running process fails on the cut stream (2.9). For Frans: (a) part 2 over every version a physical read may follow (every version of a pointee at or after the one the pointer names); Java's scheme gives it, Java's cuts meet it (C-CUT+); (b) the window (M44); (c) T9 after restarts only. Recommended: (a) | 3, 4: R4 (found; T9 stopped, stop rule 4), Frans, R6 or J6; o |
+| M48 | **New (R4).** Java cuts while it runs, and reads after the cut go through the objects and slots made before it, with Rule R of the last startup. With eviction, a read at a time from f on can follow the slot of a node that a later change replaced to a version before the cut: the last startup's Rule R does not know the pointee's newer version, and the pointee's canonical object was released. Today nothing is released (M26), so such a pointee has its canonical object | `NodeCollection.followStreamPointer` (184; Rule R from `DbStarter`'s maps); `Reclaim` cuts while the database runs (2.5) | `CutOK` part 2 (`ReadsAt`, Rule R of the current section); `Mem.follow4` (Rule R of the last startup) | `cutReadWitness` (SIS/ReclaimExample.lean): `CutOK` holds, a read at f in the running process fails on the cut stream (2.9). For Frans: (a) part 2 over every version a physical read may follow (every version of a pointee at or after the one the pointer names); Java's scheme gives it, Java's cuts meet it (C-CUT+); (b) the window (M44); (c) T9 after restarts only. Recommended: (a). **Decided: (a)** (Frans, 2026-10-17) | 3, 4: R4 (found; T9 stopped, stop rule 4), Frans ((a), 2026-10-17), R6 (stronger part 2), then T9; o |
 
 Findings of A2: none beyond the plan's list for Level 3. Noted for R1: the
 touch marks the super root of the step's time (through
@@ -610,7 +614,8 @@ The steps:
     from the cut stream gives the same lookups from f on and the same D (T8,
     **proved** in R4, 2.9; 4.1 for Java's order); physical reads from f on in
     the running process need more once objects can be evicted (T9,
-    **stopped** in R4: `cutReadWitness`, M48); and a run with restarts and
+    **stopped** in R4: `cutReadWitness`, M48; Frans chose (a), so **to
+    prove** after R6); and a run with restarts and
     cuts writes the same records as the run without them (T12, R5). Java:
     **checked** by `RestartInvariance` with reclaim (the same stream byte
     for byte, with and without restarts), `ReclaimStress`, `CrashTest` with
@@ -619,7 +624,7 @@ The steps:
 
 What is left to prove, in short: steps 2 to 4 and 6 (R6, T-SCHEME: Java's
 scheme gives CutOK), step 7 (R5, or a change in R8), and step 10 (T9 after
-Frans's decision on M48; T12, R5).
+R6's stronger part 2 (M48: (a)); T12, R5).
 What is assumed: the policies of steps 8 and 9, and that a step's range
 traversal visits every node whose key range meets the range (step 3), which
 R6 takes as an assumption on the touch, and checks on Java (R2's traces

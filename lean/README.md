@@ -215,7 +215,10 @@ Not trusted, tests only:
   every CUT line, whether a physical read in the running process from f on
   may follow a version before the cut (`readsBelowPhys`: through a pointer to
   a live child, every version of the child at or after the one the pointer
-  names; register M48 of level3-alignment.md).
+  names; register M48 of level3-alignment.md). Since R8's change 3, the
+  diagnostic C-L4: the FIRST lines against the Level 4 loader
+  (`loader4Failures`: no snapshot from the node table; section 13.5 of
+  level2-alignment.md).
 * Check/Fast.lean and Check/R4.lean, the checker's fast paths (bergdb item
   001, WP C2). `markOf`, `writeAll`, `reachList` and `step` have fast
   versions, proven equal to them and marked `@[csimp]` (`markOf_eq_fast`,

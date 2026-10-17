@@ -509,3 +509,16 @@ model's `Mem.linkD`. Without rule 4 the change gave other records after
 restarts (StreamDigest: 3 of the 36 digests, all of runs with restarts);
 with it, the same records as before (36 of 36). New tests
 `NodeCollection.testResolvePointersUnpinned` and `testLinkToCanonical`.
+
+2026-10-17. Bergdb item 001, WP R8, change 3 (E7's list, row 3; register
+M27 of `docs/level4-alignment.md`, plan Q7): the loader
+(`NodeCollection.followStreamPointer`) takes a node's canonical object if it
+has one, else reads exactly the version the pointer names after Rule R, as a
+snapshot that the node table does not get (no `register`, and
+`pointerCreated` only for a canonical object); it never takes a snapshot
+from the table. This is the Level 4 loader, `Mem.follow4`. Records: the same
+(StreamDigest, 36 of 36). The trace checker has a new diagnostic, C-L4: the
+FIRST lines against the Level 4 loader (none takes a snapshot since the
+change); test trace `snapfirst.trace`. New test
+`NodeCollection.testLoaderReadsTheVersionNamed`; `testFollowRuleR` now
+checks that a second pointer reads the version again.

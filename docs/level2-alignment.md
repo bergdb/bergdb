@@ -1331,3 +1331,21 @@ So M8 and M42 are closed: lazy reading is proved for the model (LM, T1-L,
 CC, T2-L) and Java's first touches after restarts follow the model's rule
 (C-L). What stays open from stage 1: the physical layer's assumptions
 (M47, argued; a direct check in the trace checker is not done).
+
+**C-L4, the Level 4 loader** (2026-10-17, bergdb item 001, WP R8, change 3;
+`loader4Failures`): since that change Java's loader is the Level 4 one
+(`Mem.follow4`, `lean/SIS/Evict.lean`): the node table's canonical object,
+or exactly the version the pointer names after Rule R, which the table does
+not get; never a snapshot from the table (register M27 of
+level4-alignment.md). C-L still checks stage 1's rule, which allows such a
+snapshot; the diagnostic C-L4 counts the FIRST lines that took one, and does
+not fail a trace, since traces of Java before the change have them. A cut
+back stays C-L's: Java cuts back only while it reconstructs the database
+(R8, change 2), and the trace does not mark which first touches those are.
+Test trace: `snapfirst.trace` (a snapshot that C-L accepts and C-L4
+counts). With the change, the small set (`level2.sh`, step 7) has
+281,434 FIRST lines, 153,610 of them the canonical object and
+127,824 the version read, none a snapshot (C-L and C-L4: 0 failing);
+R2's small reclaim set, 375,663 (237,824 and 137,839), none a snapshot
+either; before the change, 6 percent of a reclaim trace's FIRST lines took
+one (430 of 6,438 in `r-small-1`).

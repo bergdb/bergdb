@@ -144,7 +144,8 @@ a node, and when index nodes are written.
   model of Java's lazy reading in which reads after a lazy startup give P
   (T1-L), the writer's canonical objects hold their nodes' whole histories
   (CC) and restarts change no record (T2-L); Java's first touches are
-  checked against that model's rule (C-L). See "Alignment with the model".
+  checked against that model's rule (C-L), and since 2026-10-17 against the
+  Level 4 loader's (C-L4, a diagnostic). See "Alignment with the model".
 * One node table (Cache3, shared by Db and NodeCollection), with one
   canonical object per node: the one that holds the node's whole history
   and can change. Other objects of a node are snapshots read from older
@@ -152,9 +153,13 @@ a node, and when index nodes are written.
   still-dirty test only use canonical objects, and decide by node id, never
   by whether a pointer is in memory or in the stream.
 * First touch (NodeCollection, following a stream pointer): the node
-  table's canonical object if there is one; else the newest of the version
-  the pointer names, the node's newest version in the startup section (Rule
-  R, also for a vpos) and a snapshot in the node table. During startup's
+  table's canonical object if there is one; else exactly the version the
+  pointer names after Rule R (the node's newest version in the startup
+  section, if it is newer; also for a vpos), read as a snapshot that the
+  node table does not get (since 2026-10-17, bergdb item 001, R8: M27 of
+  [level4-alignment.md](level4-alignment.md); before, the newest of that
+  version and a snapshot in the node table, and the version read was
+  entered in the table). During startup's
   reconstruction, a version from the startup section is cut back to the
   startup time; at runtime never (2026-10-17, bergdb item 001, R8: M22 of
   [level4-alignment.md](level4-alignment.md)). The pointer listener is

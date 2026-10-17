@@ -71,9 +71,9 @@ public class NodeCollection implements PointerFollower {
     public interface FirstTouchListener {
         /**
          * A first touch of node id through a stream pointer that names position ref after
-         * Rule R. result is the object followed: the node table's (read is false), or the
-         * version just read at ref (read is true; cutBack is true if it was cut back to the
-         * startup time). Called before the writer makes result canonical.
+         * Rule R. result is the object followed: the node table's canonical object (read is
+         * false), or the version just read at ref (read is true; cutBack is true if it was
+         * cut back to the startup time). Called before the writer makes result canonical.
          */
         void firstTouch(long id, long ref, Node result, boolean read, boolean cutBack);
     }
@@ -234,13 +234,16 @@ public class NodeCollection implements PointerFollower {
             }
         }
         
-        // 3. The node table's object, if it is canonical or at least as new as ref.
-        //    Otherwise, read version ref; during the reconstruction only, a key node
-        //    version of the section is cut back to the startup time (M22).
+        // 3. The node's canonical object, if it has one. Otherwise, read exactly version
+        //    ref, a snapshot that is not entered in the node table; during the
+        //    reconstruction only, a key node version of the section is cut back to the
+        //    startup time (M22). Never a snapshot from the table: bergdb item 001, WP R8,
+        //    change 3 (M27), the Level 4 loader, Mem.follow4 in lean/SIS/Evict.lean;
+        //    before 2026-10-17 also the table's snapshot if at least as new as ref, and a
+        //    version read was entered in the table.
         
         Node result = cache.getNode(id);
-        boolean usable = result != null && (result.isCanonical() 
-                || (!Spos.isVpos(ref) && result.getSpos() >= ref));
+        boolean usable = result != null && result.isCanonical();
         boolean cutBack = false;
         
         if (!usable) {
@@ -259,7 +262,7 @@ public class NodeCollection implements PointerFollower {
                 cutBack = true;
             }
             
-            result = op.cachePolicy.shouldCache(node) ? cache.register(node) : node;
+            result = node;
         }
         
         final FirstTouchListener ftl = firstTouchListener;
@@ -267,10 +270,13 @@ public class NodeCollection implements PointerFollower {
             ftl.firstTouch(id, ref, result, !usable, cutBack);
         }
         
-        // 4. Swizzle, and make canonical for the writer.
+        // 4. Swizzle, and make canonical for the writer. Only a canonical object is in
+        //    the node table.
         
         if (op.cachePolicy.shouldCache(result)) {
-            cache.pointerCreated(predecessor, pointerIndex, result);
+            if (result.isCanonical()) {
+                cache.pointerCreated(predecessor, pointerIndex, result);
+            }
             predecessor.setPointer(pointerIndex, result, op.accessData);
         }
         
@@ -461,6 +467,7 @@ public class NodeCollection implements PointerFollower {
     /** A NodeStream that serves the nodes in a map, for tests. */
     private static class TestStream extends NodeStream {
         final Map<Long, Node> nodes = new HashMap<Long, Node>();
+        int reads = 0;
         
         TestStream() {
             super(new RecoverableStream(new MemoryStream(), new MetaBlock()), new Object());
@@ -472,6 +479,7 @@ public class NodeCollection implements PointerFollower {
         }
         
         public Node readNode(long pos) {
+            reads++;
             return nodes.get(pos);
         }
     }
@@ -546,7 +554,10 @@ public class NodeCollection implements PointerFollower {
     /**
      * Rule R: a pointer to an old version of a node that has a version in the startup 
      * section, or a vpos for it, is followed to the node's newest version in the 
-     * section, cut back to the startup time during the reconstruction.
+     * section, cut back to the startup time during the reconstruction. The version read
+     * is not entered in the node table, so a second pointer reads it again (bergdb item
+     * 001, WP R8, change 3: M27); before 2026-10-17 the second pointer got the first's
+     * object from the table.
      */
     @Nano
     private static void testFollowRuleR() {
@@ -563,8 +574,40 @@ public class NodeCollection implements PointerFollower {
         Assert.assertEquals("old version followed to the newest", 300, a.getSpos());
         Assert.assertEquals("cut at startup time 25", 4, a.getSize());
         
+        Assert.assertTrue("not entered in the node table", c.cache.getNode(101) == null);
+        
         Node b = c.followPointer(testParent(501, 101), 0, op);
-        Assert.assertTrue("vpos followed to the same object", a == b);
+        Assert.assertEquals("vpos followed to the same version", 300, b.getSpos());
+        Assert.assertEquals("read again", 2, stream.reads);
+    }
+    
+    /**
+     * The loader takes a node's canonical object, or reads exactly the version the pointer
+     * names: a newer snapshot in the node table is not taken, and the version read is
+     * not entered in the table (bergdb item 001, WP R8, change 3: M27). Before 2026-10-17
+     * the snapshot was taken.
+     */
+    @Nano
+    private static void testLoaderReadsTheVersionNamed() {
+        TestStream stream = new TestStream();
+        stream.nodes.put(100L, testKeyNode(101, 100, 10));
+        NodeCollection c = new NodeCollection(testDbInfo(), stream);
+        KeyNode snapshot = testKeyNode(101, 200, 10, 20);
+        c.cache.register(snapshot);
+        GetData op = testGetData(new int[1]);
+        
+        TopNode parent = testParent(301, 100);
+        Node a = c.followPointer(parent, 0, op);
+        Assert.assertEquals("the version named", 100, a.getSpos());
+        Assert.assertTrue("not the snapshot", a != snapshot);
+        Assert.assertTrue("the table keeps its object", c.cache.getNode(101) == snapshot);
+        Assert.assertTrue("swizzled", parent.getPointerNode(0) == a);
+        
+        // Once the table's object is canonical, the loader takes it, without a read.
+        snapshot.setCanonical(true);
+        Node b = c.followPointer(testParent(401, 100), 0, op);
+        Assert.assertTrue("the canonical object", b == snapshot);
+        Assert.assertEquals("one read", 1, stream.reads);
     }
     
     /**

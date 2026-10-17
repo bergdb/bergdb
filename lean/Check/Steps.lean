@@ -414,6 +414,20 @@ def firstFailures (sp : Spec BVal Nat) (S : Stream BVal Nat) (i s : Nat) (f : TF
     else [s!"node {x}: unknown kind {f.kind}"]
   nFails ++ kFails
 
+/-- C-L4, a diagnostic (bergdb item 001, WP R8, change 3): a first touch follows
+the Level 4 loader (`Mem.follow4`, `SIS/Evict.lean`): the node table's canonical
+object, or exactly the version that the pointer names after Rule R, read and not
+entered in the node table; never a snapshot from the table, which stage 1's rule
+(C-L) allows. C-L checks the rest of the line. A cut back is C-L's alone: since
+R8's change 2, Java cuts back only while it reconstructs the database at
+startup, and the trace does not mark which first touches those are. -/
+def loader4Failures (f : TFirst) : List String :=
+  if f.kind == "snapshot" then
+    match f.took with
+    | some r => [s!"node {f.node}: a snapshot of R({r}) from the node table"]
+    | none => [s!"node {f.node}: a snapshot from the node table"]
+  else []
+
 /-- The skip slots of a top node's version (M29; review-13-claude, 5.2): with
 ordinal n (the node's level minus `topLevel`), slot j holds a skip pointer
 exactly when bit j of n is set; its target is top n with the bits below j

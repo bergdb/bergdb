@@ -25,6 +25,9 @@ Checks, per transaction i (R(0) included):
   C-L  the FIRST lines (trace format 2; bergdb item 001, WP L5): every first
        touch after a restart follows the rule of SIS/Phys.lean (Rule R, the
        node table, the version read, cut back to the startup time)
+  C-L4 a diagnostic, not part of the verdict (bergdb item 001, WP R8, change
+       3): the FIRST lines against the Level 4 loader (`Mem.follow4`,
+       SIS/Evict.lean): no snapshot from the node table
   C-CUT with reclaim (bergdb item 001, WP R7): CutOK (SIS/Reclaim.lean) at every
        CUT line, in the model's state after its transaction, and the CUT's
        first available time is the record's; the physical cut (PHYSCUT) is at
@@ -132,6 +135,8 @@ def main (args : List String) : IO UInt32 := do
     let mut liveCount := 0
     let mut firstCount := 0
     let mut firstFail := 0
+    let mut first4Fail := 0
+    let mut first4Ex : Array String := #[]
     let Sall := jrecs.toList
     -- R(0)
     let initF := initFailures sp
@@ -211,6 +216,12 @@ def main (args : List String) : IO UInt32 := do
       firstCount := firstCount + r.firsts.size
       firstFail := firstFail + (r.firsts.toList.filter (fun f => !(firstFailures sp Sall i r.sp f).isEmpty)).length
       clt := clt.add i (lfails.map (fun m => ("first", m)))
+      -- C-L4
+      let l4 := r.firsts.toList.flatMap loader4Failures
+      first4Fail := first4Fail + l4.length
+      for m in l4 do
+        if first4Ex.size < 8 then
+          first4Ex := first4Ex.push s!"T({i}) {m}"
       -- C-V
       for (x, tm, ys) in r.live do
         liveCount := liveCount + 1
@@ -244,6 +255,8 @@ def main (args : List String) : IO UInt32 := do
     for p in probeFails.take 8 do IO.println s!"  PROBE {p.1}: {p.2.2}"
     IO.println s!"C-L first touches: {firstFail} of {firstCount} FIRST lines fail"
     for e in clt.examples do IO.println s!"  {e}"
+    IO.println s!"C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): {first4Fail} of {firstCount} FIRST lines take a snapshot from the node table"
+    for e in first4Ex do IO.println s!"  {e}"
     IO.println s!"exporter errors: {t.errors.size}"
     for e in t.errors.toList.take 8 do IO.println s!"  {e}"
     if cutCount > 0 || ccut.failing > 0 then

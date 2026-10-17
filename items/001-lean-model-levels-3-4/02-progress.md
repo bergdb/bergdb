@@ -100,6 +100,15 @@ Frans's go and decisions
   list for R8 and the J WPs; (3) E5's change to the trusted model (rule 4
   links the root's object too) stands. No format or public API change (its
   point 4). R3 to R8 and stage 4 may start.
+* **M48: option (a), 2026-10-17 14:07 CEST, Frans**, in the prompt: "I
+  choose (a), as recommended." So `CutOK`'s part 2 is strengthened to every
+  version that a physical read from f on may follow (through a pointer to a
+  live child, every version of the child at or after the one the pointer
+  names); R6 proves that Java's scheme gives it, with the rest of T-SCHEME;
+  then T9 is proved for the Level 4 memory, with the invariant on the slots
+  that R5's T12 with eviction needs too ([level3-alignment.md,
+  2.9](../../docs/level3-alignment.md)). No change in Java. T9 is no longer
+  stopped; it follows R6.
 
 
 Current state
@@ -107,18 +116,15 @@ Current state
 
 * Checkpoints: G0 given (2026-10-16 15:23); K1 passed (2026-10-17 07:56,
   Frans: Option K under TREE, A6' and A-COPY; above). K2 to K5 open.
-* Next: R8's changes 3, 5 and 4 (E7's list; 6, 2 and 1 are done), R6
+* Next: R8's changes 5 and 4 (E7's list; 6, 2, 1 and 3 are done), R6
   (T-SCHEME), and R5's logical half (T12 for `runRestartsCut`, which needs
   only T8); then R9 and K3 (plan, 5.1). R3 and R7 are done; R4 is done but
-  for T9, which waits for Frans's decision on register M48 (below, R4's
-  entry), as does R5's half with eviction (2026-10-17).
-* **Waiting for Frans: register M48** ([level3-alignment.md,
-  2.9](../../docs/level3-alignment.md)): T9 (physical reads in the running
-  process after a cut, with eviction) needs a stronger `CutOK` (option (a),
-  recommended: Java's scheme gives it, Java's cuts meet it), or the window
-  (b), or T9 only after restarts (c). Not urgent for stage 3's other WPs.
+  for T9 (2026-10-17).
+* **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): R6 proves the
+  stronger `CutOK` part 2 with T-SCHEME, then T9 follows (R4's remainder),
+  and R5's half with eviction uses the same invariant on the slots.
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: none (13:57).
+* Uncommitted work of this plan in bergdb: none (14:24).
 * Long jobs running (scratch copies of `lean/`, at low priority): R7's
   checker on the medium reclaim set's four largest traces, from 2026-10-17
   10:31 (the small set and the two others took 6 and 18 minutes); R4's (R7's,
@@ -157,11 +163,11 @@ Status
 | R1 | α and the register for reclaim | done | 2026-10-16 |
 | R2 | Trace format 2; the exporter for reclaim runs | done | 2026-10-17 |
 | R3 | The Level 3 model: touch, first available time, cuts | done | 2026-10-17 |
-| R4 | Recovery and reads after a cut: T8, T9 | T8 done; T9 stopped (stop rule 4: M48, Frans) | 2026-10-17 |
+| R4 | Recovery and reads after a cut: T8, T9 | T8 done; T9 after R6 (M48: (a), Frans) | 2026-10-17 |
 | R5 | Restarts across cuts: T12 | not started | — |
 | R6 | Java's scheme gives safe cuts: T-SCHEME | not started | — |
 | R7 | The red list on Java's reclaim | done | 2026-10-17 |
-| R8 | Java: the corrections the model requires, before eviction | in progress: changes 6 (M17), 2 (M22) and 1 (M20, M21, M26, M44) done | 2026-10-17 |
+| R8 | Java: the corrections the model requires, before eviction | in progress: changes 6 (M17), 2 (M22), 1 (M20, M21, M26, M44) and 3 (M27) done | 2026-10-17 |
 | R9 | Level 3 conformance; the gate proposal | not started | — |
 | J1 | Registry, pins and audits | not started | — |
 | J2 | Eviction of values | not started | — |
@@ -2567,3 +2573,86 @@ Time: about 30 minutes (13:27 to 13:57; the gates ran 13:33 to 13:56).
 Open, next: R8's change 3 (the loader: the canonical object, or exactly the
 version the slot names after Rule R; no snapshot from the table), then 5
 and 4; the performance comparison for 1, 3 and 4 on a quiet machine.
+
+### 2026-10-17 13:57 to 14:24. WP R8, change 3: the Level 4 loader (M27), and C-L4, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `d540066` (change
+1); uncommitted before this change's commit: its files, below, and the
+record of Frans's decision on M48, option (a), that another session (f1-9c)
+wrote at 14:07 on his instruction (`docs/level3-alignment.md`, 2.9, M48 and
+section 5; in this file, "Frans's go and decisions", the current state and
+R4's status row). This commit includes that record, as agreed with that
+session; its new item `items/002-top-node-ordinal-bound/` (M46) and the
+line in `items/readme.md` are left for Frans.
+
+Did:
+
+1. `NodeCollection.followStreamPointer` (E7's list, row 3; register M27,
+   plan Q7): the node's canonical object if the node table has one; else
+   exactly the version the pointer names after Rule R, read as a snapshot
+   that the table does not get (no `register`; `pointerCreated` only for a
+   canonical object; the slot is still swizzled to the snapshot). Never a
+   snapshot from the table: before, a snapshot at least as new as the
+   version named was taken, and every version read was entered. This is the
+   Level 4 loader, `Mem.follow4` (`lean/SIS/Evict.lean`). The writer's
+   follower then makes the version read canonical, as before
+   (`Cache3.makeCanonical`, which finds no snapshot in the table now).
+2. The checker (E7's row 3: "the checker's C-L, which compares Java's first
+   touches with stage 1's rule, then compares them with the Level 4
+   loader"): a new diagnostic, C-L4 (`Check/Steps.lean`, `loader4Failures`;
+   `TraceCheck.lean`): the FIRST lines that took a snapshot from the node
+   table, which stage 1's rule (C-L) allows and the Level 4 loader does not.
+   A diagnostic, not part of the verdict, since traces of Java before the
+   change have such lines; a cut back stays C-L's (Java cuts back only while
+   it reconstructs, change 2, and the trace does not mark those first
+   touches). Test trace `test-traces/snapfirst.trace` (`badfirst.trace` with
+   its wrong line made a snapshot: C-L passes, C-L4 counts 1,
+   `TRACECHECK OK`); `test-traces/run.sh` checks it, and C-L4's 0 on
+   `badfirst.trace`. Not the trusted part.
+3. Tests: `NodeCollection.testLoaderReadsTheVersionNamed` (new: a newer
+   snapshot in the table is not taken, the version named is read and the
+   table keeps its object; once that object is canonical, it is taken
+   without a read); `testFollowRuleR` now checks that the version read is
+   not in the table and that a second pointer (a vpos) reads it again (the
+   test stream counts its reads); before, it checked that the second pointer
+   got the first's object.
+
+Results:
+
+* StreamDigest: 36 of 36 digests the same as change 1's (both of its runs):
+  no record changes.
+* R2's small reclaim set, made again with the change (14:00 to 14:05, from a
+  copy of the jar) and checked with C-L4: 25 of 25 traces `RECLAIM TRACES
+  OK` and `TRACECHECK OK`, 14,448 transactions, 288 cuts, 375,663 FIRST
+  lines (237,824 the canonical object, 137,839 the version read, none a
+  snapshot; before the change, 430 of `r-small-1`'s 6,438 lines took a
+  snapshot); C-S, C-CUT, C-CUT+, C-L and C-L4 without a failure.
+* The small set of `conformance.sh`, in `level2.sh`'s step 7: 60 of 60 traces
+  `TRACECHECK OK`, 281,434 FIRST lines (153,610 the canonical object, 127,824
+  the version read, none a snapshot); C-L and C-L4 without a failure.
+
+Files changed: `java/src/bergdb/core/NodeCollection.java`;
+`lean/Check/Steps.lean`, `lean/TraceCheck.lean`, `lean/test-traces/run.sh`,
+`lean/test-traces/snapfirst.trace` (new), `lean/README.md`;
+`docs/levels.md` (first touch), `docs/level4-alignment.md` (M27 closed, M26),
+`docs/level2-alignment.md` (13.5: C-L4), `docs/log.md`; this file.
+
+Checks: `java/build.sh`; the unit tests: 916 successful (915 and the new one);
+StreamDigest (above); R2's small reclaim set (above); the gates, 13:59 to
+14:24, on a machine busy with the checker's runs: `level1.sh` failed once on
+`StorageManagerTester.testAddReplica2` (the known race of change 2's entry),
+then `LEVEL 1 OK` (130 s); `LEVEL 2 OK` (878 s; its step 7 with the new
+checker, above); `LEVEL 3 OK` (399 s; 916 unit tests). The Lean checks on a
+clean copy of `lean/` (no `.lake`), 14:00 to 14:22: `lake build` without
+warnings; no sorry, admit, axiom or unsafe in SIS/ and Check/; `#print axioms`
+of the 19 theorems, the standard axioms only; `sh test-traces/run.sh`, TRACE
+TESTS OK (with the four new expectations); `lake exe reclaimtest 20 30`,
+`sistest 20 40` and `phystest 20 40` without a failure.
+
+Register: M27 closed; M26: R8's part (the loader enters nothing in the
+table).
+
+Time: about 30 minutes (13:57 to 14:24; the gates ran 13:59 to 14:24).
+
+Open, next: R8's change 5 (reclaim's maintenance reads), then 4; the
+performance comparison for 1, 3 and 4 on a quiet machine.
