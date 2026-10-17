@@ -1,0 +1,525 @@
+Outputs of the probes of bergdb item 002, 002-02 (2026-10-17). Machine: macOS, 10 cores,
+OpenJDK 27 (Homebrew), runs at nice 19 while item 001 ran its own jobs (load 13 to 90).
+Scratch paths are shortened to SCRATCH.
+
+
+==== 2.1 heap (M46Heap)
+
+node=30 tx=500000: heap kept 142.2 MB besides the stream (284 bytes per transaction, 4266 per top node made)
+node=30 tx=1000000: heap kept 251.0 MB besides the stream (251 bytes per transaction, 3765 per top node made)
+node=8 tx=500000: heap kept 219.6 MB besides the stream (439 bytes per transaction, 1756 per top node made)
+
+
+==== 2.3 the bound, one hot key and two keys (M46Bound hot, two; -ea and -da)
+
+=== hot -ea
+m46.firstTop=1073741814, MAX_TOP_NODE_ID_VALUE=1073741823, mode hot
+started: super root ordinal 1073741814
+FAILURE at transaction 149: java.lang.IllegalStateException: Bad id value: 1073741824
+super root ordinal 1073741823, newest written top 1073741814
+read /hot now: v148 (last committed v148)
+  retry 0: java.lang.AssertionError: two canonical objects for node 14179
+  retry 1: java.lang.AssertionError: two canonical objects for node 14179
+  retry 2: java.lang.AssertionError: two canonical objects for node 14179
+  retry 3: java.lang.AssertionError: two canonical objects for node 14179
+  retry 4: java.lang.AssertionError: two canonical objects for node 14179
+  /other: java.lang.AssertionError: two canonical objects for node 14179
+after the failure: 5 more puts of /hot, 5 failed; a put of /other failed
+restart: started; super root ordinal 1073741823
+  reads before the restart: /hot=v148 /other=null 
+  reads after the restart:  /hot=v148 /other=null 
+  a put after the restart FAILED: java.lang.IllegalStateException: Bad id value: 1073741824
+=== two -ea
+m46.firstTop=1073741814, MAX_TOP_NODE_ID_VALUE=1073741823, mode two
+started: super root ordinal 1073741814
+FAILURE at transaction 130: java.lang.IllegalStateException: Bad id value: 1073741824
+super root ordinal 1073741823, newest written top 1073741814
+two-key transactions: 10; the failed one put /a = A130
+read now: /a = A130 (last committed A117), /b = B117 (last committed B117)
+nodes left in the transaction's node list: 2
+restart: started; super root ordinal 1073741823
+  reads before the restart: /a=A130 /b=B117 /c=C129 
+  reads after the restart:  /a=A117 /b=B117 /c=C129 
+  a put after the restart succeeded
+=== hot -da
+m46.firstTop=1073741814, MAX_TOP_NODE_ID_VALUE=1073741823, mode hot
+started: super root ordinal 1073741814
+FAILURE at transaction 149: java.lang.IllegalStateException: Bad id value: 1073741824
+super root ordinal 1073741823, newest written top 1073741814
+read /hot now: v148 (last committed v148)
+  retry 0: java.lang.IllegalStateException: Bad id value: 1073741824
+  retry 1: java.lang.IllegalStateException: Bad id value: 1073741824
+  retry 2: java.lang.IllegalStateException: Bad id value: 1073741824
+  retry 3: java.lang.IllegalStateException: Bad id value: 1073741824
+  retry 4: java.lang.IllegalStateException: Bad id value: 1073741824
+  /other: java.lang.IllegalStateException: Bad id value: 1073741824
+after the failure: 5 more puts of /hot, 5 failed; a put of /other failed
+restart: started; super root ordinal 1073741823
+  reads before the restart: /hot=v148 /other=null 
+  reads after the restart:  /hot=v148 /other=null 
+  a put after the restart FAILED: java.lang.IllegalStateException: Bad id value: 1073741824
+=== two -da
+m46.firstTop=1073741814, MAX_TOP_NODE_ID_VALUE=1073741823, mode two
+started: super root ordinal 1073741814
+FAILURE at transaction 130: java.lang.IllegalStateException: Bad id value: 1073741824
+super root ordinal 1073741823, newest written top 1073741814
+two-key transactions: 10; the failed one put /a = A130
+read now: /a = A130 (last committed A117), /b = B117 (last committed B117)
+nodes left in the transaction's node list: 2
+restart: started; super root ordinal 1073741823
+  reads before the restart: /a=A130 /b=B117 /c=C129 
+  reads after the restart:  /a=A117 /b=B117 /c=C129 
+  a put after the restart succeeded
+
+
+==== 2.3 the bound, 1,000 keys (M46Bound many; -ea with 1 GB and 12,000 transactions; -da with 1 GB)
+
+=== many -ea
+m46.firstTop=1073741819, MAX_TOP_NODE_ID_VALUE=1073741823, mode many
+started: super root ordinal 1073741819
+FAILURE at transaction 1443: java.lang.IllegalStateException: Bad id value: 1073741824
+super root ordinal 1073741823, newest written top 1073741819
+new kind of failure at transaction 1536: java.lang.AssertionError: two canonical objects for node 138859
+  at 2000: committed 1909, failed 92, left-over nodes 1, heap used MB 5
+  at 4000: committed 2335, failed 1666, left-over nodes 38, heap used MB 12
+  at 6000: committed 2342, failed 3659, left-over nodes 1200, heap used MB 7
+  at 8000: committed 2342, failed 5659, left-over nodes 3200, heap used MB 15
+  at 10000: committed 2342, failed 7659, left-over nodes 5200, heap used MB 11
+failure kinds: {AssertionError: two canonical objects for node N=9328, IllegalStateException: Bad id value: N=330}
+many: 12000 transactions, 2342 committed, 9658 failed (the first at transaction 1443); transactions that began with nodes left over from a failed one: 9657
+reads now against the committed values: 0 of 905 differ
+restart FAILED: java.lang.IllegalStateException: Bad id value: 1073741824
+=== many -da
+m46.firstTop=1073741819, MAX_TOP_NODE_ID_VALUE=1073741823, mode many
+started: super root ordinal 1073741819
+FAILURE at transaction 1443: java.lang.IllegalStateException: Bad id value: 1073741824
+super root ordinal 1073741823, newest written top 1073741819
+  at 2000: committed 1911, failed 90, left-over nodes 1, heap used MB 5
+  at 4000: committed 2340, failed 1661, left-over nodes 38, heap used MB 83
+Exception in thread "main" java.lang.OutOfMemoryError: Java heap space
+
+
+==== 2.3 the bound, 1,000 keys, -da, 2 GB heap, 6,000 transactions
+
+m46.firstTop=1073741819, MAX_TOP_NODE_ID_VALUE=1073741823, mode many
+started: super root ordinal 1073741819
+FAILURE at transaction 1443: java.lang.IllegalStateException: Bad id value: 1073741824
+super root ordinal 1073741823, newest written top 1073741819
+  at 2000: committed 1911, failed 90, left-over nodes 1, heap used MB 5
+  at 4000: committed 2340, failed 1661, left-over nodes 38, heap used MB 82
+failure kinds: {IllegalStateException: Bad id value: N=3653}
+many: 6000 transactions, 2347 committed, 3653 failed (the first at transaction 1443); transactions that began with nodes left over from a failed one: 3652
+reads now against the committed values: 0 of 901 differ
+restart FAILED: java.lang.IllegalStateException: Bad id value: 1073741824
+
+
+==== 2.3 the bound, 1,000 keys, -da: restart after N transactions
+
+=== many -da n=1444
+failure kinds: {IllegalStateException: Bad id value: N=1}
+many: 1444 transactions, 1443 committed, 1 failed (the first at transaction 1443); transactions that began with nodes left over from a failed one: 0
+reads now against the committed values: 0 of 781 differ
+restart: started; super root ordinal 1073741823; reads against the committed values: 0 of 781 differ
+=== many -da n=1446
+failure kinds: {IllegalStateException: Bad id value: N=2}
+many: 1446 transactions, 1444 committed, 2 failed (the first at transaction 1443); transactions that began with nodes left over from a failed one: 1
+reads now against the committed values: 0 of 781 differ
+restart FAILED: java.lang.IllegalStateException: Bad id value: 1073741824
+=== many -da n=1450
+failure kinds: {IllegalStateException: Bad id value: N=2}
+many: 1450 transactions, 1448 committed, 2 failed (the first at transaction 1443); transactions that began with nodes left over from a failed one: 2
+reads now against the committed values: 0 of 781 differ
+restart FAILED: java.lang.IllegalStateException: Bad id value: 1073741824
+=== many -da n=1500
+failure kinds: {IllegalStateException: Bad id value: N=7}
+many: 1500 transactions, 1493 committed, 7 failed (the first at transaction 1443); transactions that began with nodes left over from a failed one: 7
+reads now against the committed values: 0 of 789 differ
+restart FAILED: java.lang.IllegalStateException: Bad id value: 1073741824
+
+
+==== 2.3 the bound, 1,000 keys, -da: the record after the failure
+
+m46.firstTop=1073741819, MAX_TOP_NODE_ID_VALUE=1073741823, mode many
+started: super root ordinal 1073741819
+FAILURE at transaction 1443: java.lang.IllegalStateException: Bad id value: 1073741824
+super root ordinal 1073741823, newest written top 1073741819
+the first transaction committed after the failure (1444, put /k/213 = v1444) began with 1 nodes left over; its record holds the values: v1443 v1444 
+failure kinds: {IllegalStateException: Bad id value: N=2}
+many: 1446 transactions, 1444 committed, 2 failed (the first at transaction 1443); transactions that began with nodes left over from a failed one: 1
+reads now against the committed values: 0 of 781 differ
+restart FAILED: java.lang.IllegalStateException: Bad id value: 1073741824
+
+
+==== 3 rates (M46Rate NODE KEYS N RETAIN TICK; one put per transaction)
+
+node=30 keys=1     retain=0 s tx=500000   tx/s=153003   tx/top=15.00   bytes/tx=106.2  (stream first pos 0, length 57934376)
+node=8  keys=1     retain=0 s tx=500000   tx/s=77508    tx/top=4.00    bytes/tx=216.8  (stream first pos 0, length 113504864)
+node=14 keys=1     retain=0 s tx=500000   tx/s=122065   tx/top=7.00    bytes/tx=130.4  (stream first pos 0, length 70145560)
+node=62 keys=1     retain=0 s tx=500000   tx/s=149426   tx/top=31.00   bytes/tx=101.7  (stream first pos 0, length 55660016)
+node=30 keys=10    retain=0 s tx=500000   tx/s=126008   tx/top=10.00   bytes/tx=127.5  (stream first pos 0, length 68639736)
+node=30 keys=1     retain=1 s tx=200000   tx/s=160744   tx/top=15.00   bytes/tx=98.3   (stream first pos 0, length 23514696)
+node=8  keys=1     retain=1 s tx=200000   tx/s=157489   tx/top=4.00    bytes/tx=103.8  (stream first pos 0, length 24884600)
+node=30 keys=10    retain=1 s tx=200000   tx/s=168420   tx/top=10.00   bytes/tx=99.2   (stream first pos 0, length 23760472)
+
+
+==== 3 rates with reclaim cutting (M46Rate ... RETAIN 1, TICK 100000, SD 100000)
+
+node=30 keys=1     retain=0 s tx=300000   tx/s=111651   tx/top=15.00   bytes/tx=150.0  (stream first pos 0, length 52228928; all transactions 350000; first available time 0 of 35000000000)
+node=30 keys=1     retain=1 s tx=300000   tx/s=7605     tx/top=14.00   bytes/tx=2317.7 (stream first pos 794000000, length 795737600; all transactions 368245; first available time 34988700001 of 35000000000)
+node=8  keys=1     retain=0 s tx=300000   tx/s=79024    tx/top=4.00    bytes/tx=218.0  (stream first pos 0, length 75507544; all transactions 350000; first available time 0 of 35000000000)
+node=8  keys=1     retain=1 s tx=300000   tx/s=6962     tx/top=3.00    bytes/tx=2514.5 (stream first pos 887000000, length 888970408; all transactions 367467; first available time 34985000001 of 35000000000)
+node=30 keys=10    retain=1 s tx=300000   tx/s=6730     tx/top=9.98    bytes/tx=2617.2 (stream first pos 896000000, length 897360448; all transactions 369923; first available time 34946400001 of 35000000000)
+node=30 keys=1000  retain=1 s tx=300000   tx/s=27218    tx/top=653.59  bytes/tx=641.2  (stream first pos 226000000, length 227475288; all transactions 365113; first available time 34917500001 of 35000000000)
+node=30 keys=1000  retain=0 s tx=300000   tx/s=74390    tx/top=964.63  bytes/tx=224.0  (stream first pos 0, length 78207920; all transactions 350000; first available time 0 of 35000000000)
+
+
+==== 3 rates, many puts per transaction (M46Rate ... SD 0 PUTS)
+
+node=8  keys=10    retain=0 s tx=200000   tx/s=10291    tx/top=16.00   bytes/tx=1431.5 (stream first pos 0, le
+   (8 10 200000 0 10 0 10)
+node=8  keys=4     retain=0 s tx=200000   tx/s=27468    tx/top=12.00   bytes/tx=523.8  (stream first pos 0, le
+   (8 4 200000 0 10 0 4)
+	at bergdb.core.M46Rate.main(M46Rate.java:56)
+   (8 30 200000 0 10 0 30)
+node=30 keys=30    retain=0 s tx=200000   tx/s=5902     tx/top=139.96  bytes/tx=2629.7 (stream first pos 0, le
+   (30 30 200000 0 10 0 30)
+node=8  keys=100   retain=0 s tx=200000   tx/s=8505     tx/top=101.63  bytes/tx=1841.8 (stream first pos 0, le
+   (8 100 200000 0 10 0 10)
+
+
+==== numbers (numbers.py)
+
+2^30 = 1073741824  2^48 = 281474976710656
+time to 2^30 top nodes
+one hot key, node size 30                    15     51 years       5 years      186 days       19 days      45 hours
+one hot key, node size 30, reclaim on        14     48 years       5 years      174 days       17 days      42 hours
+10 keys, node size 30                        10     34 years       3 years      124 days       12 days      30 hours
+one hot key, node size 8                      4     14 years      497 days       50 days        5 days      12 hours
+one hot key, node size 8, reclaim on          3     10 years      373 days       37 days        4 days       9 hours
+1,000 keys, node size 30, reclaim on        654   2225 years     223 years      22 years       2 years       81 days
+1,000 keys, node size 30                    965   3283 years     328 years      33 years       3 years      120 days
+100,000 keys, node size 30                 7143 2.4e+04 years    2430 years     243 years      24 years       2 years
+full speed node 30, one key    153003 tx/s   10200 tops/s: 2^30 in 29 hours, 2^48 in 874 years
+full speed node 8, one key      77508 tx/s   19377 tops/s: 2^30 in 15 hours, 2^48 in 460 years
+full speed node 14, one key    122065 tx/s   17438 tops/s: 2^30 in 17 hours, 2^48 in 511 years
+full speed node 62, one key    149426 tx/s    4820 tops/s: 2^30 in 3 days, 2^48 in 1850 years
+full speed node 30, 10 keys    126008 tx/s   12601 tops/s: 2^30 in 24 hours, 2^48 in 708 years
+clock end: 2198-05-04 23:50:03.792793
+seconds from 2026-10-17 to the clock end: 5.414e+09 (172 years)
+tops/s needed to use 2^48 before the clock ends: 51994
+heap 8 GB: 3.19e+07 transactions, 2.12e+06 top nodes (2^21.0) at 15 per top
+heap 32 GB: 1.27e+08 transactions, 8.50e+06 top nodes (2^23.0) at 15 per top
+heap 128 GB: 5.10e+08 transactions, 3.40e+07 top nodes (2^25.0) at 15 per top
+heap for 2^30 tops at 15 tx/top and 251 B/tx: 4.0 TB
+height 15: 280 bytes
+height 16: 296 bytes
+height 30: 520 bytes
+height 31: 536 bytes
+height 40: 680 bytes
+height 48: 808 bytes
+
+node 30: 167.5 bytes per transaction at ordinal 2^30, top nodes 21% of them
+   dropped, window 2^16   saves  13.9 bytes per transaction,  8.3%
+   dropped, window 2^20   saves   9.6 bytes per transaction,  5.7%
+   set-only               saves  15.9 bytes per transaction,  9.5%
+   both, window 2^16      saves  23.5 bytes per transaction, 14.0%
+   both, window 2^20      saves  21.3 bytes per transaction, 12.7%
+node 8: 277.6 bytes per transaction at ordinal 2^30, top nodes 48% of them
+   dropped, window 2^16   saves  52.0 bytes per transaction, 18.7%
+   dropped, window 2^20   saves  36.0 bytes per transaction, 13.0%
+   set-only               saves  59.8 bytes per transaction, 21.5%
+   both, window 2^16      saves  88.0 bytes per transaction, 31.7%
+   both, window 2^20      saves  80.0 bytes per transaction, 28.8%
+window 2^16 top nodes at 1,000 tx/s, one key, node size 30: 16 minutes of transactions
+window 2^20 top nodes at 1,000 tx/s, one key, node size 30: 262 minutes of transactions
+
+
+==== 5.2 StreamDigest quick, int against long build at 059dbf1
+
+DIGESTS IDENTICAL (33 of 33)
+exit 0
+
+
+==== 5.2 StreamDigest quick, 5b1abdd against 5b1abdd with widen-48.patch
+
+DIGESTS IDENTICAL (33 of 33)
+
+
+==== 5.2 readers (M46Wide save, then M46Load with each build)
+
+--- ordinals from 1000
+int build:  stream-1000.bin: started; /hot = v599
+long build: stream-1000.bin: started; /hot = v599
+--- ordinals from 1073741827
+int build:  stream-1073741827.bin: refused: bergdb.storage.StreamFormatException: TopNode ID too large in stream, 1073741827
+long build: stream-1073741827.bin: started; /hot = v599
+--- ordinals from 2147483651
+int build:  stream-2147483651.bin: refused: bergdb.storage.StreamFormatException: Bad TopNode ID of TopNode in stream, -2147483645
+long build: stream-2147483651.bin: started; /hot = v599
+--- ordinals from 4294967299
+int build:  stream-4294967299.bin: refused: bergdb.storage.StreamFormatException: TopNode at 160 with ordinal 3 has 33 skip pointers, not 2.
+long build: stream-4294967299.bin: started; /hot = v599
+--- ordinals from 1099511627779
+int build:  stream-1099511627779.bin: refused: bergdb.storage.StreamFormatException: TopNode at 160 with ordinal 3 has 41 skip pointers, not 2.
+long build: stream-1099511627779.bin: started; /hot = v599
+
+
+==== 5.4 unit tests
+
+unit-cur-rep1: SUCCESS, 917 successful tests in 19.6 s.
+unit-cur-rep2: SUCCESS, 917 successful tests in 32.3 s.
+unit-cur-rep3: SUCCESS, 917 successful tests in 17.7 s.
+unit-cur-rep4: SUCCESS, 917 successful tests in 17.6 s.
+unit-cur: SUCCESS, 917 successful tests in 18.2 s.
+unit-headp: SUCCESS, 918 successful tests in 18.2 s.
+unit-wide-rep1: SUCCESS, 917 successful tests in 22.2 s.
+unit-wide-rep2: SUCCESS, 917 successful tests in 20.6 s.
+unit-wide-rep3: SUCCESS, 917 successful tests in 30.2 s.
+unit-wide-rep4: SUCCESS, 917 successful tests in 18.6 s.
+unit-wide: SUCCESS, 917 successful tests in 18.4 s.
+unit-wide2: SUCCESS, 917 successful tests in 27.5 s.
+unit-cur*: 059dbf1 with the int hook (inactive); unit-wide*: 059dbf1 with the widening and the long hook
+(inactive); unit-headp: 5b1abdd with widen-48.patch. One more run of the widened 059dbf1, between
+unit-wide and unit-wide2, printed "FAILURE, total: 917, failed: 1. Time: 36.8 s."; its output was not kept.
+
+
+==== 5.4 gates on 5b1abdd with widen-48.patch
+
+Sat Oct 17 15:26:13 CEST 2026
+level1 exit 0
+Sat Oct 17 15:28:10 CEST 2026
+level3 exit 0
+Sat Oct 17 15:34:49 CEST 2026
+level2 quick exit 1
+Sat Oct 17 15:36:30 CEST 2026
+-- level1
+1. Unit tests
+2. DagFuzz
+   fuzz-14: Done: 300 rounds, 0 failures.
+   fuzz-30: Done: 300 rounds, 0 failures.
+   fuzz-62: Done: 300 rounds, 0 failures.
+   fuzz-8: Done: 300 rounds, 0 failures.
+3. DeleteRepro
+4. RestartStress
+   stress-0: Done: 25 rounds, 0 failures, 73 s.
+   stress-1: Done: 25 rounds, 0 failures, 74 s.
+   stress-2: Done: 25 rounds, 0 failures, 74 s.
+   stress-3: Done: 25 rounds, 0 failures, 72 s.
+   stress-disk: Done: 5 rounds, 0 failures, 27 s.
+   stress-keys50-node14: Done: 10 rounds, 0 failures, 30 s.
+   stress-keys50-node30: Done: 10 rounds, 0 failures, 29 s.
+   stress-keys50-node8: Done: 10 rounds, 0 failures, 32 s.
+   stress-node14: Done: 10 rounds, 0 failures, 39 s.
+   stress-node62: Done: 10 rounds, 0 failures, 39 s.
+   stress-node8: Done: 10 rounds, 0 failures, 42 s.
+   stress-norestart: Done: 25 rounds, 0 failures, 24 s.
+5. RestartInvariance
+   STREAM: identical
+   TRANSSEQ: 0 of 3 checkpoints differ
+   KV CHECKSUM: 0 of 3 checkpoints differ
+   IDENTITY A (no restarts): 0 of 3 checkpoints violate
+   IDENTITY B (restarts): 0 of 3 checkpoints violate
+   LOOKUP A (no restarts): 0 of 3 checkpoints violate
+   LOOKUP B (restarts): 0 of 3 checkpoints violate
+LEVEL 1 OK
+-- level3
+1. Unit tests
+2. ReclaimStress, random configurations
+   reclaim-0: Done: 50 rounds, 0 failures, 50 rounds with a cut, 50 s, 820 exhaustive verifications.
+   reclaim-1: Done: 50 rounds, 0 failures, 50 rounds with a cut, 50 s, 984 exhaustive verifications.
+   reclaim-2: Done: 50 rounds, 0 failures, 50 rounds with a cut, 50 s, 832 exhaustive verifications.
+   reclaim-3: Done: 50 rounds, 0 failures, 50 rounds with a cut, 52 s, 892 exhaustive verifications.
+3. RestartInvariance with reclaim
+   inv-every1: stream identical, same cut, all checks OK
+   inv-node14: stream identical, same cut, all checks OK
+   inv-node62: stream identical, same cut, all checks OK
+   inv-node8: stream identical, same cut, all checks OK
+4. CrashTest with reclaim
+   crash-0: Done: 5 rounds, 0 failures, 20 s.
+   crash-1: Done: 5 rounds, 0 failures, 20 s.
+   crash-2: Done: 5 rounds, 0 failures, 20 s.
+   crash-3: Done: 5 rounds, 0 failures, 20 s.
+   crash-node8: Done: 5 rounds, 0 failures, 22 s.
+5. ReclaimReaders, readers while reclaim cuts
+   readers-0: Done: 12 rounds, 0 failures, 12 rounds with a cut, 14552802 gets and 4940063 scans correct, expired at admission 24, expired during 3, 62 s.
+   readers-1: Done: 12 rounds, 0 failures, 12 rounds with a cut, 17784933 gets and 5998127 scans correct, expired at admission 21, expired during 3, 49 s.
+   readers-disk: Done: 12 rounds, 0 failures, 12 rounds with a cut, 32610686 gets and 10963254 scans correct, expired at admission 35, expired during 2, 126 s.
+6. LoadTest with reclaim, a restart at every cut
+7. PowerLossTest, forced bytes and durable names before deletion
+POWERLOSS OK: 8 seeds, 440 cold recoveries; negative controls caught
+LEVEL 3 OK
+-- level2-quick
+1. Unit tests
+2. RestartStress, random configurations
+   random-0: Done: 10 rounds, 0 failures, 8 s.
+   random-1: Done: 10 rounds, 0 failures, 8 s.
+   random-2: Done: 10 rounds, 0 failures, 11 s.
+   random-3: Done: 10 rounds, 0 failures, 10 s.
+3. RestartStress, small and default startup distances
+   sd1000-keys50-node14: Done: 3 rounds, 0 failures, 4 s.
+   sd1000-keys50-node30: Done: 3 rounds, 0 failures, 4 s.
+   sd1000-keys50-node62: Done: 3 rounds, 0 failures, 4 s.
+   sd1000-keys50-node8: Done: 3 rounds, 0 failures, 4 s.
+   sd1000-node14: Done: 3 rounds, 0 failures, 8 s.
+   sd1000-node30: Done: 3 rounds, 0 failures, 8 s.
+   sd1000-node62: Done: 3 rounds, 0 failures, 9 s.
+   sd1000-node8: Done: 3 rounds, 0 failures, 8 s.
+4. RestartInvariance
+   inv-every1: stream identical, all checks OK
+   inv-idle-1: stream identical, all checks OK
+   inv-idle-2: stream identical, all checks OK
+   inv-sd100: stream identical, all checks OK
+   inv-sd1000-node8: stream identical, all checks OK
+   inv-sd10000-node14: stream identical, all checks OK
+   inv-sd100000-node62: stream identical, all checks OK
+5. CrashTest, the stream cut at random positions
+   crash-0: Done: 1 rounds, 0 failures, 4 s.
+   crash-1: Done: 1 rounds, 0 failures, 4 s.
+   crash-2: Done: 1 rounds, 0 failures, 4 s.
+   crash-3: Done: 1 rounds, 0 failures, 4 s.
+   crash-node8: Done: 1 rounds, 0 failures, 4 s.
+6. BryanRepro, the bug report of 2015 (restarts with deletes and reclaim)
+   bryan: Done: 15 cycles, 0 failures, 17 s.
+7. Conformance with the Lean model
+   a2a3-1: transactions 3000: A2, A3, A5 and marking OK
+   a2a3-2: transactions 500: A2, A3, A5 and marking OK
+   a2a3-3: transactions 6000: A2, A3, A5 and marking OK
+LEVEL 2 FAILED: the Lean checker, lake build (log: build/level2/lake.txt)
+-- level2 quick, step 7 without lake: conformance.sh small 2, with a copy of lean/.lake/build/bin/tracecheck (built 14:49)
+   mixed-1: TRACECHECK OK
+   mixed-2: TRACECHECK OK
+   long-1: TRACECHECK OK
+   long-2: TRACECHECK OK
+   big-1: TRACECHECK OK
+   big-2: TRACECHECK OK
+   bulk-1: TRACECHECK OK
+   bulk-2: TRACECHECK OK
+   idle-1: TRACECHECK OK
+   idle-2: TRACECHECK OK
+   hot-1: TRACECHECK OK
+   hot-2: TRACECHECK OK
+Summed over the traces of small, target mode: transactions failing, by check
+   exporter errors: 0
+   traces: 12, TRACECHECK OK: 12
+   time and memory, export: 14 s in total, 3 s at most, at most 326 MB
+   time and memory, check: 6 s in total, 2 s at most, at most 48 MB
+Unchanged model's mode (--model), 4 traces:
+CONFORMANCE OK
+CHECK=$S/checker/tracecheck PAR=2 nice -n 19 sh stress/conformance.sh small 2  24.90s user 1.62s system 180% cpu 14.728 total
+
+
+==== 5.4 crossing the boundaries (M46Wide cross)
+
+=== cross firstTop=1073741804 sd=1000
+m46.firstTop=1073741804, MAX_TOP_NODE_ID_VALUE=281474976710655, mode cross, startup distance 1000
+before the restart: 600 transactions, super root ordinal 1073741844, newest written top 1073741843; historical lookups: 0 of 600 wrong
+after the restart: 600 transactions, super root ordinal 1073741844, newest written top 1073741843; historical lookups: 0 of 600 wrong
+after the restart, the next top node has ordinal 1073741845 (expected 1073741845)
+=== cross firstTop=1073741804 sd=100000
+m46.firstTop=1073741804, MAX_TOP_NODE_ID_VALUE=281474976710655, mode cross, startup distance 100000
+before the restart: 600 transactions, super root ordinal 1073741844, newest written top 1073741804; historical lookups: 0 of 600 wrong
+after the restart: 600 transactions, super root ordinal 1073741844, newest written top 1073741804; historical lookups: 0 of 600 wrong
+after the restart, the next top node has ordinal 1073741845 (expected 1073741845)
+=== cross firstTop=2147483628 sd=1000
+m46.firstTop=2147483628, MAX_TOP_NODE_ID_VALUE=281474976710655, mode cross, startup distance 1000
+before the restart: 600 transactions, super root ordinal 2147483668, newest written top 2147483667; historical lookups: 0 of 600 wrong
+after the restart: 600 transactions, super root ordinal 2147483668, newest written top 2147483667; historical lookups: 0 of 600 wrong
+after the restart, the next top node has ordinal 2147483669 (expected 2147483669)
+=== cross firstTop=2147483628 sd=100000
+m46.firstTop=2147483628, MAX_TOP_NODE_ID_VALUE=281474976710655, mode cross, startup distance 100000
+before the restart: 600 transactions, super root ordinal 2147483668, newest written top 2147483628; historical lookups: 0 of 600 wrong
+after the restart: 600 transactions, super root ordinal 2147483668, newest written top 2147483628; historical lookups: 0 of 600 wrong
+after the restart, the next top node has ordinal 2147483669 (expected 2147483669)
+=== cross firstTop=4294967276 sd=1000
+m46.firstTop=4294967276, MAX_TOP_NODE_ID_VALUE=281474976710655, mode cross, startup distance 1000
+before the restart: 600 transactions, super root ordinal 4294967316, newest written top 4294967315; historical lookups: 0 of 600 wrong
+after the restart: 600 transactions, super root ordinal 4294967316, newest written top 4294967315; historical lookups: 0 of 600 wrong
+after the restart, the next top node has ordinal 4294967317 (expected 4294967317)
+=== cross firstTop=4294967276 sd=100000
+m46.firstTop=4294967276, MAX_TOP_NODE_ID_VALUE=281474976710655, mode cross, startup distance 100000
+before the restart: 600 transactions, super root ordinal 4294967316, newest written top 4294967276; historical lookups: 0 of 600 wrong
+after the restart: 600 transactions, super root ordinal 4294967316, newest written top 4294967276; historical lookups: 0 of 600 wrong
+after the restart, the next top node has ordinal 4294967317 (expected 4294967317)
+=== cross firstTop=140737488355308 sd=1000
+m46.firstTop=140737488355308, MAX_TOP_NODE_ID_VALUE=281474976710655, mode cross, startup distance 1000
+before the restart: 600 transactions, super root ordinal 140737488355348, newest written top 140737488355347; historical lookups: 0 of 600 wrong
+after the restart: 600 transactions, super root ordinal 140737488355348, newest written top 140737488355347; historical lookups: 0 of 600 wrong
+after the restart, the next top node has ordinal 140737488355349 (expected 140737488355349)
+=== cross firstTop=140737488355308 sd=100000
+m46.firstTop=140737488355308, MAX_TOP_NODE_ID_VALUE=281474976710655, mode cross, startup distance 100000
+before the restart: 600 transactions, super root ordinal 140737488355348, newest written top 140737488355308; historical lookups: 0 of 600 wrong
+after the restart: 600 transactions, super root ordinal 140737488355348, newest written top 140737488355308; historical lookups: 0 of 600 wrong
+after the restart, the next top node has ordinal 140737488355349 (expected 140737488355349)
+
+
+==== 5.5 the guard (M46Wide end, first ordinal 2^48 - 1030)
+
+m46.firstTop=281474976709626, MAX_TOP_NODE_ID_VALUE=281474976710655, mode end, startup distance 1000
+refused at transaction 75: bergdb.pub.util.DbException: The database has used its top node ordinals (up to 281474976709631); it takes no more transactions.
+super root ordinal 281474976709631; nodes left in the transaction's node list: 0; read now: v74 (last committed v74)
+3 more transactions: 3 refused
+before the restart: 75 transactions, super root ordinal 281474976709631, newest written top 281474976709630; historical lookups: 0 of 75 wrong
+after the restart: 75 transactions, super root ordinal 281474976709631, newest written top 281474976709630; historical lookups: 0 of 75 wrong
+a transaction after the restart: bergdb.pub.util.DbException: The database has used its top node ordinals (up to 281474976709631); it takes no more transactions.
+
+
+==== 5.3 hops (hops_window.py)
+
+heads of 21 bits, queries within the last 2^8 tops: at most 8 hops (sampled)
+heads of 21 bits, queries within the last 2^12 tops: at most 12 hops (sampled)
+heads of 21 bits, queries within the last 2^16 tops: at most 16 hops (sampled)
+heads of 31 bits, queries within the last 2^8 tops: at most 8 hops (sampled)
+heads of 31 bits, queries within the last 2^12 tops: at most 12 hops (sampled)
+heads of 31 bits, queries within the last 2^16 tops: at most 16 hops (sampled)
+heads of 41 bits, queries within the last 2^8 tops: at most 8 hops (sampled)
+heads of 41 bits, queries within the last 2^12 tops: at most 12 hops (sampled)
+heads of 41 bits, queries within the last 2^16 tops: at most 16 hops (sampled)
+heads of 48 bits, queries within the last 2^8 tops: at most 8 hops (sampled)
+heads of 48 bits, queries within the last 2^12 tops: at most 12 hops (sampled)
+heads of 48 bits, queries within the last 2^16 tops: at most 16 hops (sampled)
+
+
+==== 7.2, 7.3 height decrease (height_decrease.py 400)
+
+part 1: 383263 searches from heads 1 to 400, every window: the same answer and hops
+part 2: average stored bytes per top node (40 + 16 per stored slot)
+age      window       full  dropped set-only     both
+2^20     2^10          376      232      216      136
+2^20     2^16          376      327      216      184
+2^30     2^10          536      232      297      136
+2^30     2^16          536      328      297      184
+2^30     2^20          536      392      296      216
+2^30     2^24          536      456      296      248
+2^40     2^10          696      232      376      136
+2^40     2^16          696      328      376      184
+2^40     2^20          696      392      376      216
+2^40     2^24          696      456      376      248
+2^47     2^10          808      232      432      136
+2^47     2^16          808      328      432      184
+2^47     2^20          808      392      432      216
+2^47     2^24          808      456      432      248
+
+
+==== 7.3 top node bytes in the stream (M46Bytes NODE KEYS N SD)
+
+node=30 keys=1 tx=400000 sd=1000000: stream 59538328 bytes (148.8 per tx), 400001 records; 26667 tops made, 26227 top versions written (26226 distinct), top bytes 11.5% of the stream (17.0 per tx), slots 360623 (13.8 per version, 47.9% unset), key node bytes 22.6%
+node=8 keys=1 tx=400000 sd=1000000: stream 86168184 bytes (215.4 per tx), 400001 records; 100001 tops made, 98751 top versions written (98750 distinct), top bytes 33.3% of the stream (71.8 per tx), slots 1547679 (15.7 per version, 47.9% unset), key node bytes 18.3%
+node=30 keys=10 tx=400000 sd=1000000: stream 69911336 bytes (174.8 per tx), 400001 records; 40000 tops made, 39439 top versions written (39438 distinct), top bytes 15.2% of the stream (26.6 per tx), slots 565473 (14.3 per version, 48.1% unset), key node bytes 28.0%
+node=30 keys=1000 tx=400000 sd=1000000: stream 64167592 bytes (160.4 per tx), 400001 records; 417 tops made, 1209 top versions written (411 distinct), top bytes 0.3% of the stream (0.5 per tx), slots 9387 (7.8 per version, 46.2% unset), key node bytes 38.5%
+node=30 keys=1 tx=400000 sd=50000000: stream 39278696 bytes (98.2 per tx), 400001 records; 26667 tops made, 1 top versions written (1 distinct), top bytes 0.0% of the stream (0.0 per tx), slots 0 (0.0 per version, NaN% unset), key node bytes 0.0%
+
+
+==== 8 a transaction that throws (M46Throw; -ea and -da)
+
+=== -ea
+transaction 1 threw: java.lang.IllegalStateException: the transformation fails
+after transaction 1: /a = a1, /b = b0; nodes left in the transaction's node list: 1
+transaction 2 (put /c = c2) committed; its record holds the values: a1 c2 
+before the restart: /a = a1, /b = b0, /c = c2
+after the restart: /a = a1, /b = b0, /c = c2
+=== -da
+transaction 1 threw: java.lang.IllegalStateException: the transformation fails
+after transaction 1: /a = a1, /b = b0; nodes left in the transaction's node list: 1
+transaction 2 (put /c = c2) committed; its record holds the values: a1 c2 
+before the restart: /a = a1, /b = b0, /c = c2
+after the restart: /a = a1, /b = b0, /c = c2

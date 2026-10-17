@@ -1,0 +1,29 @@
+diff -ru a/src/bergdb/core/StoredTopNode.java b/src/bergdb/core/StoredTopNode.java
+--- a/src/bergdb/core/StoredTopNode.java	2026-10-17 14:49:32
++++ b/src/bergdb/core/StoredTopNode.java	2026-10-17 14:58:04
+@@ -140,7 +140,10 @@
+             throw new StreamFormatException("TopNode at " + spos + " with ordinal " + topNodeId
+                     + " has " + pointerCount + " skip pointers, not " + t.pointersLength + ".");
+         }
+-        for (int i = 0; i < pointerCount; i++) {
++        // M46 PROBE (bergdb item 002, scratch only): the first top of a probe database has no
++        // older tops, so its slots are unset; the check is skipped for it alone.
++        final boolean m46First = topNodeId == Integer.getInteger("m46.firstTop", 0) && topNodeId != 0;
++        for (int i = 0; i < pointerCount && !m46First; i++) {
+             boolean set = positions[i] != Spos.NULL;
+             if (set != ((topNodeId & (1 << i)) != 0)) {
+                 throw new StreamFormatException("TopNode at " + spos + " with ordinal "
+diff -ru a/src/bergdb/dag/TopDs.java b/src/bergdb/dag/TopDs.java
+--- a/src/bergdb/dag/TopDs.java	2026-10-17 14:49:32
++++ b/src/bergdb/dag/TopDs.java	2026-10-17 14:58:04
+@@ -28,7 +28,9 @@
+     
+     public static TopNode createSuperRootFromFirstKeyNode(long firstTime, KeyNode firstRoot, 
+             long accessData, Dag.PointerCreatedListener pointerCreationListener) {
+-        TopNode first = new TopNode(0, firstRoot, accessData, firstTime, Spos.NULL);
++        // M46 PROBE (bergdb item 002, scratch only): the first top's ordinal, from a property.
++        TopNode first = new TopNode(Integer.getInteger("m46.firstTop", 0), firstRoot, accessData,
++                firstTime, Spos.NULL);
+         pointerCreationListener.pointerCreated(first, 0, firstRoot);
+         return first;
+     }
