@@ -6,6 +6,7 @@ SIS/Proof/; the proofs here only connect them.
 import SIS.Theorems
 import SIS.Proof.Newer
 import SIS.Proof.PhysT2
+import SIS.Proof.EvictInit
 
 namespace SIS
 
@@ -128,5 +129,72 @@ theorem CC_canonical (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool))
   have h := (T2_lazy_strong hok hph hj hjt).2
   rw [List.map_take]
   exact h
+
+/-- D closed upward (F1-008-08's T15; bergdb item 001, WP E3). In a run of
+BergDB's algorithm (`javaTest`, with marking) that meets the assumptions and
+those of stage 2 (`EvictRunOK`), after every transaction: a written node
+current at the last time with a node of D below it is in D; and a current
+written node not in D has no pointee in D, and its latest version names the
+latest version of each of its pointees, live or dead. -/
+theorem T15_closed (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp al ts)
+    (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) (hev : EvictRunOK sp al ts)
+    (j : Nat) (hjt : j ≤ ts.length) :
+    let db := run sp al (ts.take j)
+    (∀ x n y, written sp x = true → reachable sp db.P j x = true → db.P.get? x = some n →
+      inD db.D y = true → y ∈ reachFrom sp db.P j x n → inD db.D x = true) ∧
+    (∀ x n, written sp x = true → reachable sp db.P j x = true → db.P.get? x = some n →
+      inD db.D x = false → ∀ y ∈ pointees sp n.hist,
+        inD db.D y = false ∧ ∃ v, db.S.lv x = some v ∧ v.ref? y = (db.S.lv y).map (·.recNo)) := by
+  intro db
+  have h := evLogic_st sp al ts hok hj hmk hev j hjt
+  exact ⟨h.closed, h.clean⟩
+
+/-- T-CACHE (bergdb item 001, WP E3; docs/level4-alignment.md, 5.3, 5.4 and
+5.6). A run of BergDB's algorithm (`javaTest`, with marking) that meets the
+assumptions, those of the physical layer (`PhysRunOK`) and those of stage 2
+(`EvictRunOK`: TREE, A6' and A-COPY), from the Level 4 startup from R(0)
+(`evictStartup`), with any cache schedule (after each transaction any reads,
+unswizzles and releases, `CacheOp`; `runEvict`) and no restart. After every
+transaction and its cache operations, the physical writer (`evictTrans`) has
+appended exactly the model's records and left the model's D (the state is the
+model's), and the memory meets the invariants. INV-CAN: a canonical object is
+the node table's for its node (so a node has at most one), holds its node's
+whole history, level and kind, and its position is its node's latest record;
+every node of D has one. INV-SNAP: every other object is exactly the version
+at its position. No memory slot dangles. INV-SLOT: a canonical object of a
+written node that is current or in D has a slot for each pointee of its
+history, live or dead; writing it now would give each pointee its latest
+version (`Mem.refOf`); and its slot for a pointee in D that is not a memory
+slot to the pointee's canonical object belongs to a node of D that got dirty
+no later. The schedule being any, this holds after every operation. -/
+theorem TC_records (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool × List CacheOp))
+    (hok : RunOK sp al (ts.map (·.1))) (hph : PhysRunOK sp al (ts.map (·.1)))
+    (hev : EvictRunOK sp al (ts.map (·.1))) (hj : al.stillDirty = javaTest sp)
+    (hmk : al.mark = true) (hnr : ∀ p ∈ ts, p.2.1 = false) (j : Nat) (hjt : j ≤ ts.length) :
+    let db := run sp al ((ts.take j).map (·.1))
+    let m := (runEvict sp al (ts.take j)).2.1
+    (runEvict sp al (ts.take j)).1 = db ∧
+    (∀ h o, m.obj? h = some o → o.canonical = true →
+      m.canonicalOf o.node = some h ∧
+      (∃ n, db.P.get? o.node = some n ∧ o.hist = n.hist ∧ o.level = n.level ∧ o.isData = n.isData) ∧
+      o.pos = (db.S.lv o.node).map (·.recNo)) ∧
+    (∀ y, inD db.D y = true → (m.canonicalOf y).isSome) ∧
+    (∀ h o, m.obj? h = some o → o.canonical = false → ∃ r w, o.pos = some r ∧
+      db.S.versionAt r o.node = some w ∧ o.hist = w.hist ∧ o.level = w.level ∧ o.isData = w.isData) ∧
+    (∀ h o y h', m.obj? h = some o → o.slot? y = some (Slot.mem h') →
+      ∃ o', m.obj? h' = some o' ∧ o'.node = y) ∧
+    (∀ h o, m.obj? h = some o → o.canonical = true → written sp o.node = true →
+      (reachable sp db.P j o.node = true ∨ inD db.D o.node = true) →
+      ∀ y ∈ pointees sp o.hist, (o.slot? y).isSome ∧
+        m.refOf (init sp).S db.D o y = (db.S.lv y).map (·.recNo) ∧
+        (inD db.D y = true → (∃ h', o.slot? y = some (Slot.mem h') ∧ m.canonicalOf y = some h') ∨
+          (inD db.D o.node = true ∧ ∃ a b, (o.node, a) ∈ db.D ∧ (y, b) ∈ db.D ∧ a ≤ b))) := by
+  intro db m
+  obtain ⟨e1, -, e3⟩ := TC_run_init hok hph hev hj hmk hnr j hjt
+  have hst : st sp al (ts.map (·.1)) j = db := by
+    show run sp al ((ts.map (·.1)).take j) = run sp al ((ts.take j).map (·.1))
+    rw [List.map_take]
+  rw [hst] at e1 e3
+  exact ⟨e1, e3.tc_facts⟩
 
 end SIS

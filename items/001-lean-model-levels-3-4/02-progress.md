@@ -126,7 +126,7 @@ Status
 | L5 | Lazy reading checked against Java | done | 2026-10-16 |
 | E1 | Design: eviction, references, pins | done | 2026-10-16 |
 | E2 | The physical model with eviction, executable | done | 2026-10-17 |
-| E3 | INV-SLOT and the physical writer: T-CACHE | in progress | 2026-10-17 |
+| E3 | INV-SLOT and the physical writer: T-CACHE | done | 2026-10-17 |
 | E4 | Reads under eviction: T-READ | not started | — |
 | E5 | Restarts with eviction: T2-C | not started | — |
 | E6 | Pins and index-freedom | not started | — |
@@ -1471,3 +1471,93 @@ and E3's proofs.
 Open, next: E3, in progress in the scratch copy: T-CACHE for runs without
 restarts is proved from the invariant of the startup's memory; next, that
 the startup from R(0) gives it, then E3's checks and commit.
+
+
+### 2026-10-16 23:48 to 2026-10-17 02:57. WP E3, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `065c21f` (E1)
+at the start and `ca2616c` (E2) at the end; uncommitted before this WP's
+commit: its files, below. The proofs were written in the scratch copy of
+E2's model, at the lowest priority during P2's measured hours, and checked
+in full on a clean copy after E2's commit.
+
+Did:
+
+1. T-CACHE, stated in the trusted `lean/SIS/PhysTheorems.lean` as
+   `TC_records`: in a run of BergDB's algorithm (`javaTest`, with marking)
+   that meets the assumptions (`RunOK`), those of the physical layer
+   (`PhysRunOK`) and those of stage 2 (`EvictRunOK`: TREE, A6' and A-COPY),
+   from the Level 4 startup from R(0), with any cache schedule and no
+   restart, after every transaction and its cache operations: the state is
+   the model's (the physical writer appended exactly the model's records and
+   left the model's D), and INV-CAN, INV-SNAP, no dangling slot and INV-SLOT
+   hold (INV-SLOT: writing a relevant object now would give every pointee its
+   latest version, and the second half of `level4-alignment.md` 5.4). Since
+   the schedule is any, this holds after every operation. Restarts are E5's
+   (T2-C).
+2. D closed upward (F1-008-08's T15), which the plan expected E3 to need: it
+   does, and it is stated alone too (`T15_closed`): a written current node
+   with a node of D below it is in D; a current written node not in D has no
+   pointee in D, and its latest version names the latest version of each
+   pointee. Marking and `javaTest` give the first; A6' the second, for dead
+   pointees.
+3. The proofs, `lean/SIS/Proof/Evict*.lean` (14 new files, about 6,600
+   lines): the invariant `EInv` (5.3 made precise; 5.10), kept by the
+   loader, reads, unswizzles and releases, and by each transaction (the
+   writer's view is P; the walk; the change, with TREE and A-COPY; the two
+   loops of writes give the model's versions; INV-SLOT across D's changes);
+   the startup from R(0) gives it (`einv_init`). Outline in
+   `level4-alignment.md`, 5.11 (new).
+4. While proving, three changes to E2's model (the writer's walk follows
+   every slot of its paths; a new pointer's slot comes only from a node
+   reachable before the change, with A-COPY; a fourth cache schedule), each
+   run before a proof relied on it; they are in E2's commit (the E2 entry).
+5. `lean/README.md`: the files, the statements, the axioms list, the
+   history. `docs/level4-alignment.md`: 5.6 (T-CACHE proved without
+   restarts), 5.11 (new), M20, M21, M31, M43.
+
+Files changed: `lean/SIS/PhysTheorems.lean`; `lean/SIS/Proof/EvictLogic.lean`,
+`EvictWrite.lean`, `EvictInv.lean`, `EvictFollow.lean`, `EvictPromote.lean`,
+`EvictPath.lean`, `EvictRead.lean`, `EvictApply.lean`, `EvictApplyInv.lean`,
+`EvictWrites.lean`, `EvictStepInv.lean`, `EvictTrans.lean`, `EvictRun.lean`,
+`EvictInit.lean` (new); `lean/README.md`; `docs/level4-alignment.md`; this
+file.
+
+Checks (plan, 2.2), on a clean copy (bergdb's `lean/` at `ca2616c` with this
+WP's 16 files), 02:34 to 02:49: `lake build` exit 0, no warnings (and each
+of E2's and E3's 17 files elaborated alone, 02:37: no message); `lake exe
+sistest 20 40`: all checks pass (02:41); `lake exe phystest 20 40`: all
+checks pass (02:49); `#print axioms` of the theorem list with
+`T15_closed` and `TC_records`: standard axioms only; no `sorry`, `admit`,
+`axiom` or `unsafe` in `SIS/` and `Check/`; `sh test-traces/run.sh`: TRACE
+TESTS OK. No Java change, so no gate.
+
+Register: M20, M21 and M31 (the model's side proved, for runs without
+restarts); M43 (the proof uses TREE, A6' and A-COPY).
+
+Notes for Frans:
+
+* T-CACHE rests on A6' and A-COPY, not A6 (the E1 and E2 entries): K1 needs
+  both accepted, and A-COPY checked on Java.
+* `TC_records` covers runs without restarts. With restarts (E5) the
+  invariant must hold after a startup from any stream, where D is not empty
+  and rule 4 links D's objects: the largest open piece of stage 2, I think.
+* The statement's INV-SLOT says what Java's writer needs (`Mem.refOf` gives
+  the latest version of every pointee of an object it may write). The
+  proof's invariant has one more part (the live slots of current canonical
+  objects, a virtual root's too), which the statement leaves out.
+
+Time: E3 is L (8 to 24 hours): about three hours, interleaved with P2's runs
+and E2.
+
+Open, next: E4 (T-READ: reads at any time up to the last record). It needs
+one more invariant: for every canonical object and every time t at which its
+node was reachable, its slot for each live child at t is a memory slot to an
+object readable at t (canonical, or the snapshot of a version good for t),
+or a stream slot that names a version good for t (or, for an object that is
+relevant now, a node of D, which the loader finds by id). INV-SLOT says
+nothing about the objects of nodes that are neither current nor in D, nor
+about a virtual root's dead slots. Lemma M and INV-2 (a node not in D is
+clean) give it at each change of a slot. A probe (scratch, 02:47 to 02:57:
+examples 3 and 5 with 8 seeds, example 2 with 4, the four schedules, 40
+transactions each, with restarts) found it true after every operation.
