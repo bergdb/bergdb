@@ -302,8 +302,13 @@ How it works in the reviewed baseline (including items 2 and 3 below):
   rewrites remain outside it, and stream growth includes reclaim itself.
   A step starts when the remaining allowance exceeds 10 KB and scans at
   time tStart with a target of the smaller of that allowance and 16 KB;
-  the final KV can exceed the target. In one internal transaction it first
-  touches the range at the current time (Trans.touch), dirtying its index
+  the final KV can exceed the target. The scan and the step's reads of each
+  KV are maintenance reads (since 2026-10-17, bergdb item 001, R8: M28 of
+  [level4-alignment.md](level4-alignment.md)): they swizzle nothing into
+  the slots, the node table gets nothing, and a step reads a version once
+  (`NodeCollection.maintenance`); before, they swizzled what they read,
+  the values too, which then stayed in memory. In one internal transaction
+  it first touches the range at the current time (Trans.touch), dirtying its index
   nodes, including deleted-only branches; then rewrites each still-live
   value stored before pCut. A value transformation stores progress and the
   index-byte charge under `dreclaim/-current.txt`. The full table is stored when an

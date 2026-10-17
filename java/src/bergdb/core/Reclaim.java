@@ -15,6 +15,7 @@ import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.dag.Node;
+import bergdb.dag.PointerFollower;
 import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
 import bergdb.nanotest.Assert;
@@ -360,7 +361,14 @@ public class Reclaim implements Db.TransactionListener {
         final long[][] lastKeyOfStep = new long[][] {it.lastKey};
         final boolean[] eod = new boolean[] {false};
         
+        // 2026-10-17 (bergdb item 001, WP R8, change 5: M28): the scan and the reads of each
+        // KV are maintenance reads. They swizzled and entered in the node table all they
+        // read, the values too, which then stayed in memory; with eviction they would push
+        // out the application's nodes. The step's follower reads a version once.
+        final PointerFollower maintenance = db.internal().nodeCollection().maintenance();
+        
         GetMany g = db.newGetMany();
+        g.gd.pointerFollower = maintenance;
         g.startKey = it.lastKey;
         assert g.startKey == null || g.startKey.length > 0;
         g.inclusive = false;
@@ -388,6 +396,7 @@ public class Reclaim implements Db.TransactionListener {
         
         for (Kvt kvt : g.result) {
             GetData gd = db.newGetData();
+            gd.pointerFollower = maintenance;
             byte[] value;
             
             if (stepLookupTime == -1) {         // BUG Fixed 130131, was "1" instead of "-1".

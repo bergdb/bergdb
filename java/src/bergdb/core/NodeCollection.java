@@ -115,6 +115,19 @@ public class NodeCollection implements PointerFollower {
     public PointerFollower writer() {
         return writer;
     }
+    
+    /**
+     * Returns a new follower for maintenance reads: reclaim's scan and its reads of each
+     * KV (bergdb item 001, WP R8, change 5: M28; docs/level4-plan.md, 5.1). It loads as
+     * the readers' follower does (the canonical object, or the version the slot names after
+     * Rule R), but it does not swizzle what it reads into the slot, the node table gets
+     * nothing, and it leaves the slots' access data as they are. What it reads stays in a
+     * map of its own, by the slot's position, while the follower is in use (one reclaim
+     * step), so a version is read once per step.
+     */
+    public PointerFollower maintenance() {
+        return new MaintenanceFollower();
+    }
 
     public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
         //
@@ -158,7 +171,8 @@ public class NodeCollection implements PointerFollower {
                         predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
             
             } else {
-                result = followStreamPointer(predecessor, pointerIndex, pointerPos, op, false);
+                result = followStreamPointer(predecessor, pointerIndex, pointerPos, op, false,
+                        false);
             }
         }
         
@@ -195,7 +209,8 @@ public class NodeCollection implements PointerFollower {
                             predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
                 
                 } else {
-                    result = followStreamPointer(predecessor, pointerIndex, pointerPos, op, true);
+                    result = followStreamPointer(predecessor, pointerIndex, pointerPos, op, true,
+                            false);
                 }
             }
             
@@ -203,12 +218,50 @@ public class NodeCollection implements PointerFollower {
         }
     }
     
+    /** The follower for maintenance reads, see maintenance(). */
+    private final class MaintenanceFollower implements PointerFollower {
+        private final Map<Long, Node> read = new HashMap<Long, Node>();
+        
+        public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
+            assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
+            assert predecessor != null : "predecessor is null";
+            
+            final Object pointerLock = pointerLocks.getLock(predecessor, pointerIndex);
+            
+            synchronized (pointerLock) {
+                Node pointerNode = predecessor.getPointerNode(pointerIndex);
+                long pointerPos = predecessor.getPointerPos(pointerIndex);
+                
+                assert !Pointer.isNull(pointerNode, pointerPos) : "Pointer is null: " 
+                        + pointerNode + ", " + pointerPos;
+                
+                if (Pointer.isMem(pointerNode)) {
+                    op.pointerListener.pointerFollowed(
+                            predecessor, pointerIndex, pointerNode, Pointer.TYPE_MEMORY);
+                    return pointerNode;
+                }
+                
+                Node result = read.get(pointerPos);
+                if (result == null) {
+                    result = followStreamPointer(predecessor, pointerIndex, pointerPos, op, 
+                            false, true);
+                    read.put(pointerPos, result);
+                } else {
+                    op.pointerListener.pointerFollowed(
+                            predecessor, pointerIndex, result, Pointer.TYPE_STREAM);
+                }
+                return result;
+            }
+        }
+    }
+    
     /**
      * Follows a stream pointer, the first touch of a node through this pointer
-     * (docs/levels.md, level 2). The caller holds the pointer lock.
+     * (docs/levels.md, level 2). The caller holds the pointer lock. A maintenance read
+     * (isMaintenance) does not swizzle.
      */
     private Node followStreamPointer(Node predecessor, int pointerIndex, long pointerPos, 
-            OpData op, boolean isWriter) {
+            OpData op, boolean isWriter, boolean isMaintenance) {
         
         // 1. The id of the node. A vpos is the id of a node that had not been written
         //    when the pointer was written.
@@ -273,7 +326,7 @@ public class NodeCollection implements PointerFollower {
         // 4. Swizzle, and make canonical for the writer. Only a canonical object is in
         //    the node table.
         
-        if (op.cachePolicy.shouldCache(result)) {
+        if (!isMaintenance && op.cachePolicy.shouldCache(result)) {
             if (result.isCanonical()) {
                 cache.pointerCreated(predecessor, pointerIndex, result);
             }
@@ -608,6 +661,44 @@ public class NodeCollection implements PointerFollower {
         Node b = c.followPointer(testParent(401, 100), 0, op);
         Assert.assertTrue("the canonical object", b == snapshot);
         Assert.assertEquals("one read", 1, stream.reads);
+    }
+    
+    /**
+     * The maintenance follower (bergdb item 001, WP R8, change 5: M28) loads as the
+     * readers' follower does, but leaves the slot a stream pointer and the node table
+     * without the version read; it reads a version once; a memory pointer gives its
+     * object, with the slot's access data unchanged.
+     */
+    @Nano
+    private static void testMaintenanceFollower() {
+        TestStream stream = new TestStream();
+        stream.nodes.put(100L, testKeyNode(101, 100, 10));
+        NodeCollection c = new NodeCollection(testDbInfo(), stream);
+        int[] calls = new int[1];
+        GetData op = testGetData(calls);
+        PointerFollower m = c.maintenance();
+        
+        TopNode parent = testParent(301, 100);
+        Node a = m.followPointer(parent, 0, op);
+        Assert.assertEquals("the version named", 100, a.getSpos());
+        Assert.assertTrue("not swizzled", parent.getPointerNode(0) == null);
+        Assert.assertEquals("the slot's position", 100, parent.getPointerPos(0));
+        Assert.assertTrue("not in the node table", c.cache.getNode(101) == null);
+        
+        Node b = m.followPointer(testParent(401, 100), 0, op);
+        Assert.assertTrue("the same object", a == b);
+        Assert.assertEquals("read once", 1, stream.reads);
+        Assert.assertEquals("listener calls", 2, calls[0]);
+        
+        TopNode memParent = testParent(501, 100);
+        memParent.setPointer(0, a, AccessData.DEFAULT_ACCESS_DATA);
+        op.accessData = AccessData.DEFAULT_ACCESS_DATA - 100;
+        Assert.assertTrue("a memory pointer's object", m.followPointer(memParent, 0, op) == a);
+        Assert.assertEquals("access data unchanged", AccessData.DEFAULT_ACCESS_DATA, 
+                memParent.getPointerAccessData(0));
+        
+        c.followPointer(testParent(601, 100), 0, op);
+        Assert.assertEquals("a reader reads it again", 2, stream.reads);
     }
     
     /**

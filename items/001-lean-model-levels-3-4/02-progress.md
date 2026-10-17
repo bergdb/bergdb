@@ -116,7 +116,7 @@ Current state
 
 * Checkpoints: G0 given (2026-10-16 15:23); K1 passed (2026-10-17 07:56,
   Frans: Option K under TREE, A6' and A-COPY; above). K2 to K5 open.
-* Next: R8's changes 5 and 4 (E7's list; 6, 2, 1 and 3 are done), R6
+* Next: R8's change 4 (E7's list; 6, 2, 1, 3 and 5 are done), R6
   (T-SCHEME), and R5's logical half (T12 for `runRestartsCut`, which needs
   only T8); then R9 and K3 (plan, 5.1). R3 and R7 are done; R4 is done but
   for T9 (2026-10-17).
@@ -124,7 +124,7 @@ Current state
   stronger `CutOK` part 2 with T-SCHEME, then T9 follows (R4's remainder),
   and R5's half with eviction uses the same invariant on the slots.
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: none (14:24).
+* Uncommitted work of this plan in bergdb: none (14:49).
 * Long jobs running (scratch copies of `lean/`, at low priority): R7's
   checker on the medium reclaim set's four largest traces, from 2026-10-17
   10:31 (the small set and the two others took 6 and 18 minutes); R4's (R7's,
@@ -167,7 +167,7 @@ Status
 | R5 | Restarts across cuts: T12 | not started | — |
 | R6 | Java's scheme gives safe cuts: T-SCHEME | not started | — |
 | R7 | The red list on Java's reclaim | done | 2026-10-17 |
-| R8 | Java: the corrections the model requires, before eviction | in progress: changes 6 (M17), 2 (M22), 1 (M20, M21, M26, M44) and 3 (M27) done | 2026-10-17 |
+| R8 | Java: the corrections the model requires, before eviction | in progress: changes 6 (M17), 2 (M22), 1 (M20, M21, M26, M44), 3 (M27) and 5 (M28) done | 2026-10-17 |
 | R9 | Level 3 conformance; the gate proposal | not started | — |
 | J1 | Registry, pins and audits | not started | — |
 | J2 | Eviction of values | not started | — |
@@ -2655,4 +2655,77 @@ table).
 Time: about 30 minutes (13:57 to 14:24; the gates ran 13:59 to 14:24).
 
 Open, next: R8's change 5 (reclaim's maintenance reads), then 4; the
+performance comparison for 1, 3 and 4 on a quiet machine.
+
+### 2026-10-17 14:24 to 14:49. WP R8, change 5: reclaim's maintenance reads (M28), done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `b8bb541` (change
+3); uncommitted before this change's commit: its files, below, and session
+f1-9c's new item `items/002-top-node-ordinal-bound/` with its line in
+`items/readme.md`, left for Frans.
+
+Did:
+
+1. `NodeCollection.maintenance()` (new): a follower for maintenance reads
+   (E7's list, row 6; register M28; `docs/level4-plan.md`, 5.1, point 1).
+   It loads as the readers' follower does (`followStreamPointer`: the
+   canonical object, or the version the slot names after Rule R), but does
+   not swizzle what it reads into the slot (a new parameter of
+   `followStreamPointer`), so the node table gets nothing either (change 3);
+   it follows a memory pointer without updating the slot's access data; and
+   it keeps what it read in a map of its own, by the slot's position, so
+   one follower reads a version once.
+2. `Reclaim.step`: the scan (`GetMany` at tStart) and the reads of each KV
+   (`getOne` at the latest time) use one such follower per step. Before,
+   both used the readers' follower: they swizzled what they read, with
+   historical snapshots, and the values (up to 1 MiB each) into the key
+   nodes' slots, where they stayed for good; with eviction they would push
+   out the application's nodes (level4-plan.md, 5.1). The touch and the
+   rewrites are the writer's, as before.
+3. Point 3 of level4-plan.md, 5.1 (a slot's position in place of a load),
+   examined, not done: the slot gives the value's position, and the
+   rewrite decision could use it (`tpos < pCut` holds exactly when the
+   value's position is below pCut, since pCut is a record boundary,
+   `t.nextPos` of an external transaction). But the scan loads every value
+   anyway, for the byte estimate that ends the step (`handleKvt`), which
+   decides the step's range and so the records; and with the step's map, a
+   per-KV read finds the object the scan read (or the writer's memory
+   pointer to a newer value), so the position would save no read. To read
+   fewer values, the estimate would need the values' lengths from the index
+   nodes, which they do not store: a format question, for J6 if its
+   measurements ask for it.
+4. Test `NodeCollection.testMaintenanceFollower` (new): the version named is
+   read, the slot stays a stream pointer, the table gets nothing; a second
+   pointer to the same version gives the same object without a read; a
+   memory pointer gives its object with the slot's access data unchanged;
+   the readers' follower then reads the version itself.
+
+Results:
+
+* StreamDigest: 36 of 36 digests the same as change 3's: no record changes.
+* R2's small reclaim set, made again with the change and checked: 25 of 25
+  traces `RECLAIM TRACES OK` and `TRACECHECK OK` (14:27 to 14:32), 14,448
+  transactions, 288 cuts, 375,663 FIRST lines (237,823 the canonical object,
+  137,840 the version read; change 3's were 237,824 and 137,839); C-S, C-CUT,
+  C-CUT+, C-L and C-L4 without a failure.
+* R2's medium reclaim set, made again with the change (the exporter's checks
+  only: no ERROR line, no failing PROBE, a cut in each trace): 6 of 6 traces
+  `RECLAIM TRACES OK` (14:32 to 14:34): 22,454 records, 175 cuts decided and
+  made, no exporter error, no failing probe.
+
+Files changed: `java/src/bergdb/core/NodeCollection.java`,
+`java/src/bergdb/core/Reclaim.java`; `docs/levels.md` (Level 3, the step),
+`docs/level4-alignment.md` (M28), `docs/log.md`; this file.
+
+Checks: `java/build.sh`; the unit tests: 917 successful (916 and the new one);
+StreamDigest (above); R2's reclaim sets (above); the gates, one after the
+other, 14:26 to 14:49, on a machine busy with the checker's runs: `LEVEL 1 OK`
+(146 s), `LEVEL 2 OK` (830 s; step 7: conformance small 60 of 60 traces
+TRACECHECK OK), `LEVEL 3 OK` (388 s; 917 unit tests).
+
+Register: M28: R8's part done (J6: under eviction).
+
+Time: about 25 minutes (14:24 to 14:49; the gates ran 14:26 to 14:49).
+
+Open, next: R8's change 4 (slots, access data, the access clock); the
 performance comparison for 1, 3 and 4 on a quiet machine.

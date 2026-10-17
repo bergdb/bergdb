@@ -522,3 +522,14 @@ FIRST lines against the Level 4 loader (none takes a snapshot since the
 change); test trace `snapfirst.trace`. New test
 `NodeCollection.testLoaderReadsTheVersionNamed`; `testFollowRuleR` now
 checks that a second pointer reads the version again.
+
+2026-10-17. Bergdb item 001, WP R8, change 5 (E7's list, row 6; register
+M28 of `docs/level4-alignment.md`): reclaim's scan and its reads of each KV
+(`Reclaim.step`) are maintenance reads, through a follower of the step's own
+(`NodeCollection.maintenance`): it loads as the readers' follower does (the
+canonical object, or the version the slot names after Rule R), but swizzles
+nothing into the slots, enters nothing in the node table, leaves the slots'
+access data as they are, and keeps what it read for the step, so a version
+is read once per step. Before, both reads swizzled what they read, the
+values too, which then stayed in memory for good. Records: the same
+(StreamDigest, 36 of 36). New test `NodeCollection.testMaintenanceFollower`.
