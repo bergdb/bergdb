@@ -165,7 +165,9 @@ Not trusted, tests only:
   it reads trace format 2 and checks C-L, every first touch after a restart
   against the rule of SIS/Phys.lean (`firstFailures`), and in C-S the top
   nodes' skip slots: their layout and cached times (`topFailures`; section
-  13.5 there).
+  13.5 there). Its diagnostics also count A6, TREE (item 001, A4) and A-COPY
+  (`copyFailures`, item 001, E2 and E3: the assumption of stage 2 on the
+  pointers of new entries).
 * Check/Fast.lean and Check/R4.lean, the checker's fast paths (bergdb item
   001, WP C2). `markOf`, `writeAll`, `reachList` and `step` have fast
   versions, proven equal to them and marked `@[csimp]` (`markOf_eq_fast`,

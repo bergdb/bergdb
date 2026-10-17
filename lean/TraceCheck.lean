@@ -157,14 +157,17 @@ def main (args : List String) : IO UInt32 := do
         if !sameList ml ys then
           cv := cv.add i [("live", s!"live of {x} at {tm}: model {ml}, Java {ys}")]
       -- diagnostics, one tally entry per transaction: D closed upward; A6 and
-      -- TREE (bergdb item 001, WP A4); INV-2 with --inv
+      -- TREE (bergdb item 001, WP A4); A-COPY (the same item, WPs E2 and E3);
+      -- INV-2 with --inv
       let cl := closedFailures sp P' i r.dirty
       let a6 := adoptionFailures sp P' i rlNowSet rlNow
       let tr := treeFailures sp P' i rlNow
+      let cp := copyFailures sp P i c rlPrev rlNowSet
       let iv := if o.inv then inv2Failures sp (jrecs.toList.take (i + 1)) P' i r.dirty else []
       diag := diag.add i ((if cl.isEmpty then [] else [("closed", s!"D not closed upward at {showIds cl}")]) ++
         (if a6.isEmpty then [] else [("A6", s!"A6 (no adoption) fails for nodes {showIds a6}")]) ++
         (if tr.isEmpty then [] else [("TREE", s!"TREE (one current parent) fails for nodes {showIds tr}")]) ++
+        (if cp.isEmpty then [] else [("A-COPY", s!"A-COPY fails for pointers {cp.take 8}")]) ++
         (if iv.isEmpty then [] else [("INV-2", s!"dirty index nodes not in D: {showIds iv}")]))
       P := P'
     let probes := recs.toList.flatMap (fun r => r.probes.toList)

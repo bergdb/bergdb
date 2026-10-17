@@ -204,6 +204,39 @@ def treeFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time) (rlList : Lis
     | none => m) {}
   xs.filter (fun y => y != root && counts.getD y 0 != 1)
 
+/-- A-COPY (bergdb item 001, WPs E2 and E3; `CopyStep` in SIS/Evict.lean): the
+pointers of transaction i's new entries, as (node, pointee), that name a node the
+transaction does not create, not on the writer's paths, and not a pointee of a
+node of the paths (written, or a live child of a virtual root at i - 1). The
+paths are `pathOf`'s: the nodes reachable at i - 1 with a node below them,
+themselves included, that the change touches or that is not reachable at i;
+here computed lowest level first (checker-local). rlPrev holds
+`reachList sp P (i - 1)`, rlNowSet the nodes reachable at i after the change. A
+diagnostic, as A6. -/
+def copyFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time) (c : Changes BVal)
+    (rlPrev : List NodeId) (rlNowSet : Std.HashSet NodeId) : List (NodeId × NodeId) :=
+  let newIds : Std.HashSet NodeId := Std.HashSet.ofList (c.new.map (·.id))
+  let addIds : Std.HashSet NodeId := Std.HashSet.ofList (c.adds.map (·.1))
+  let touched := fun z => newIds.contains z || addIds.contains z || !rlNowSet.contains z
+  let lv := fun x => ((P.get? x).map (·.level)).getD 0
+  let xs := rlPrev.eraseDups.mergeSort (fun a b => decide (lv a ≤ lv b))
+  let below : Std.HashMap NodeId Bool := xs.foldl (fun m x =>
+    match P.get? x with
+    | some n => m.insert x (touched x || (sp.live (n.hist.upTo (i - 1))).any (fun y =>
+        match P.get? y with
+        | some ny => decide (ny.level < n.level) && m.getD y false
+        | none => false))
+    | none => m) {}
+  let paths := xs.filter (fun x => below.getD x false)
+  let allowed : Std.HashSet NodeId := paths.foldl (fun s z =>
+    match P.get? z with
+    | some nz =>
+      let ys := if written sp z then pointees sp nz.hist else sp.live (nz.hist.upTo (i - 1))
+      ys.foldl (fun s y => s.insert y) (s.insert z)
+    | none => s.insert z) {}
+  c.adds.flatMap (fun a => ((sp.ptrs a.2).filter (fun y => !newIds.contains y && !allowed.contains y)).map
+    (fun y => (a.1, y)))
+
 /-- INV-2: the dirty index nodes not in D (a virtual root aside). -/
 def inv2Failures (sp : Spec BVal Nat) (S : Stream BVal Nat) (P : Struct BVal) (i : Time)
     (D : Dirty) : List NodeId :=

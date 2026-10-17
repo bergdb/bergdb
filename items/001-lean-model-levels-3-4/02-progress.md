@@ -1617,3 +1617,57 @@ Open, next: A-COPY on Java's tier (the next entry), then E5 (restarts with
 eviction, T2-C): the invariants after a startup from any stream of a run,
 where D is not empty and rule 4 links D's objects; then the run theorem with
 restarts.
+
+
+### 2026-10-17 03:27 to 03:59. A-COPY checked on Java (an addition after E3)
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `ddebd06` (E4);
+uncommitted before this commit: its files, below. Not a WP of the plan: E3
+needed a new assumption, A-COPY (the E2 entry), and stop rule 4 asks whether
+Java meets it; A4 settled the same question for TREE and A6', so this does
+for A-COPY what A4 did for them, before E5 builds on it.
+
+Did:
+
+1. The Java tier: `java/stress/A2A3Check2.java` counts, after every
+   transaction, the pointers of its new entries (key klongs at tt, all key
+   klongs of a node it created, a new top node's root and skip pointers) to
+   nodes it did not create, and those that name neither a node of the
+   writer's paths (the nodes current before it with a changed or replaced
+   node below them) nor a child, live or dead, of one: a new summary line;
+   `-DdebugA6=1` prints each failure.
+2. The Lean tier: `copyFailures` in `lean/Check/Steps.lean`, the model's
+   `CopyStep` (with the model's `pointees` and `live`; the paths computed
+   lowest level first, checker-local), among the checker's diagnostics; a test
+   trace, `lean/test-traces/copy.trace`, in which A-COPY (and TREE) fail.
+3. Runs: the Java tier on the 21 configurations of level2-alignment.md, 10.5
+   (68,901 transactions): 487,786 new pointers, 453,197 of them to a pointee
+   of the paths that is not on them, 0 failures (TREE and A6' 0 too). The Lean
+   tier on the small (60 traces) and medium (9) sets in `java/build/traces/`
+   (10,129 transactions): no failure. The large set (12 traces) runs in the
+   background; its result goes into a later entry.
+4. `docs/level4-alignment.md`: section 4 (A-COPY), 5.9, 5.10, M43;
+   `docs/evidence/level4-acopy.txt` (the counts); `lean/README.md`.
+
+Files changed: `java/stress/A2A3Check2.java`; `lean/Check/Steps.lean`,
+`lean/TraceCheck.lean`, `lean/test-traces/copy.trace` (new),
+`lean/test-traces/run.sh`, `lean/README.md`; `docs/level4-alignment.md`,
+`docs/evidence/level4-acopy.txt` (new); this file.
+
+Checks: `java/build.sh` passes (03:33); the tool ran on the 21
+configurations, small to large (java/stress only, so no gate is required).
+Lean, on a clean copy (bergdb's `lean/` at `ddebd06` with this commit's
+five files), 03:42 to 03:58: `lake build` exit 0, no warnings (the two
+changed files elaborated alone: no message); `lake exe sistest 20 40` and
+`lake exe phystest 20 40`: all checks pass; `#print axioms` of the theorem
+list: standard axioms only; no `sorry`, `admit`, `axiom` or `unsafe`; `sh
+test-traces/run.sh`: TRACE TESTS OK, with the new expectation on
+`copy.trace`.
+
+Register: M43 (A-COPY holds on every Java run checked).
+
+Notes for Frans: with this, every assumption of stage 2 (TREE, A6', A-COPY)
+holds on every Java transaction checked, and only A6 fails (A4). K1 still
+needs your decision on A6' in place of A6.
+
+Open, next: E5.

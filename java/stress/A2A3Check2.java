@@ -30,6 +30,13 @@ import bergdb.common.StringUtil;
  *       points to it (a dead pointer whose target stays below the same node).
  *   A6 and TREE are what Option K of item 001's plan (section 8.5) needs; they are
  *   counted, not yet required. -DdebugA6=1 prints each A6 failure.
+ *   A-COPY (bergdb item 001, WPs E2 and E3, 2026-10-17; docs/level4-alignment.md, 5.10):
+ *       every pointer of a new entry (a key klong at tt, any key klong of a node the
+ *       transaction created, a new top node's root and skip pointers) to a node the
+ *       transaction did not create names a node of the writer's paths, or a child, live
+ *       or dead, of one at tt of T(i-1). The paths: the nodes in R(tt of T(i-1)) with a
+ *       node below them, themselves included, that the transaction changed or that is
+ *       not in R(tt). Counted, not required; -DdebugA6=1 prints each failure.
  *
  * Properties: maxnode (8), keys (200), n (300), ops (max ops per transaction, 4),
  * exact=1 (exactly ops ops), del (percent deletes, 0), long=1 (two segments for half
@@ -73,6 +80,8 @@ public class A2A3Check2 {
             transMarkDiff;
     // A6 and TREE (bergdb item 001, WP A4): nodes and transactions that fail them.
     static long adopted, transA6, adoptedNotBelow, transA6w, multiParent, transTree;
+    // A-COPY (bergdb item 001, WPs E2 and E3): new pointers, and those that fail it.
+    static long newPointers, aCopyFailed, transACopy, aCopyByChild;
 
     /** The live children of a key node at time t: for each compare value, the last
      *  key klong with time <= t that is not deleted at t. */
@@ -186,6 +195,83 @@ public class A2A3Check2 {
             stack.addAll(liveSet(y, t));
         }
         return r;
+    }
+
+    /** The children of a node as of time t: the nodes its key klongs up to t point to,
+     *  or a top node's root pointer and skip pointers. */
+    static Set<Node> childrenAt(Node x, long t) {
+        Set<Node> result = idSet();
+        if (x instanceof KeyNode) {
+            KeyNode k = (KeyNode) x;
+            for (int i = 0; i < k.size; i++) {
+                long klong = k.klongs[i];
+                if (Klong.isTime(klong)) {
+                    if (Klong.getTime(klong) > t) break;
+                    continue;
+                }
+                if (Klong.getType(klong) != Klong.TYPE_KEY) continue;
+                Node child = k.pointers[i];
+                if (child == null) throw new IllegalStateException("no memory pointer");
+                result.add(child);
+            }
+        } else if (x instanceof TopNode) {
+            TopNode tn = (TopNode) x;
+            result.add(tn.rootPointer);
+            for (TopNode older : tn.pointers) {
+                if (older != null) result.add(older);
+            }
+        }
+        return result;
+    }
+
+    /** The pointers of the entries that x got at time tt: its key klongs after a time
+     *  klong of tt, or all its key klongs if the transaction created it; a new top
+     *  node's root pointer and skip pointers. */
+    static List<Node> entryPointers(Node x, long tt, boolean createdNow) {
+        List<Node> result = new ArrayList<Node>();
+        if (x instanceof KeyNode) {
+            KeyNode k = (KeyNode) x;
+            long time = -1;
+            for (int i = 0; i < k.size; i++) {
+                long klong = k.klongs[i];
+                if (Klong.isTime(klong)) {
+                    time = Klong.getTime(klong);
+                    continue;
+                }
+                if (Klong.getType(klong) != Klong.TYPE_KEY) continue;
+                if (createdNow || time == tt) {
+                    Node child = k.pointers[i];
+                    if (child == null) throw new IllegalStateException("no memory pointer");
+                    result.add(child);
+                }
+            }
+        } else if (x instanceof TopNode && createdNow) {
+            TopNode tn = (TopNode) x;
+            result.add(tn.rootPointer);
+            for (TopNode older : tn.pointers) {
+                if (older != null) result.add(older);
+            }
+        }
+        return result;
+    }
+
+    /** The writer's paths: the nodes in 'before' (R at t) with a touched node below them
+     *  at t, themselves included. */
+    static Set<Node> writerPaths(Set<Node> before, long t, Set<Node> touched) {
+        Set<Node> result = idSet();
+        for (Node x : before) {
+            if (touched.contains(x)) {
+                result.add(x);
+                continue;
+            }
+            for (Node y : below(x, t)) {
+                if (touched.contains(y)) {
+                    result.add(x);
+                    break;
+                }
+            }
+        }
+        return result;
     }
 
     static String describe(Node x, long t) {
@@ -386,6 +472,36 @@ public class A2A3Check2 {
             if (!adNotBelow.isEmpty()) transA6w++;
             multiParent += np.size();
             if (!np.isEmpty()) transTree++;
+            // A-COPY (bergdb item 001, WPs E2 and E3).
+            Set<Node> touched = idSet();
+            for (Node x : ch) if (prev.contains(x) && hasKlongAt((KeyNode) x, tt)) touched.add(x);
+            for (Node x : prev) if (!now.contains(x)) touched.add(x);
+            Set<Node> paths = writerPaths(prev, tt - 10, touched);
+            Set<Node> pathChildren = idSet();
+            for (Node z : paths) pathChildren.addAll(childrenAt(z, tt - 10));
+            Set<Node> withEntries = idSet();
+            withEntries.addAll(cr);
+            withEntries.addAll(ch);
+            boolean aCopy = false;
+            for (Node x : withEntries) {
+                for (Node y : entryPointers(x, tt, cr.contains(x))) {
+                    if (cr.contains(y) || crValue.contains(y)) continue;
+                    newPointers++;
+                    if (paths.contains(y)) continue;
+                    if (pathChildren.contains(y)) {
+                        aCopyByChild++;
+                        continue;
+                    }
+                    aCopyFailed++;
+                    aCopy = true;
+                    if (DEBUG_A6) {
+                        System.out.println("A-COPY seed " + seed + " T" + i + ": " + describe(x, tt)
+                                + " points to " + (y instanceof ValueNode ? "a value node" : describe(y, tt))
+                                + ", not on the writer's paths nor a child of one");
+                    }
+                }
+            }
+            if (aCopy) transACopy++;
             if (a2) transA2++;
             if (a3) transA3++;
             if (a5) transA5++;
@@ -422,5 +538,8 @@ public class A2A3Check2 {
                 + transA6 + "), of them not below the old parent (A6') " + adoptedNotBelow
                 + " (transactions " + transA6w + "); TREE (one current parent): nodes without"
                 + " exactly one " + multiParent + " (transactions " + transTree + ")");
+        System.out.println("  A-COPY (a new pointer names a node of the writer's paths or a child of one):"
+                + " new pointers " + newPointers + " (to a child, not a node, of the paths "
+                + aCopyByChild + "), failing " + aCopyFailed + " (transactions " + transACopy + ")");
     }
 }
