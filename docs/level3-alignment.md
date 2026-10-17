@@ -442,7 +442,8 @@ transactions for each of 8 startup pos policies; and 166,150 of 60 runs of
 passed j0) also cures the witness, without the exception. The decision for Frans, if he
 prefers otherwise: this refinement (done; recommended, since it changes
 nothing in Java and follows what the running memory reads) or that wait in
-Java's reclaim.
+Java's reclaim. **Kept** (Frans, 2026-10-17 19:34): no second wait in Java's
+reclaim.
 
 By running (scratch probes, not kept): example 4's random runs, with the
 four cache schedules and restarts every few transactions or none, reads at

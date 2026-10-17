@@ -596,3 +596,12 @@ on follows only canonical objects and versions that `CutOK`'s part 2 covers
 transactions, 174 cuts): `CutOK` holds at every cut Java decided, and so
 does the diagnostic C-CUT+; C-S fails only in register M17's pattern, which
 R8's change 6 fixed.
+
+2026-10-17. Bergdb item 001, WP R8: the performance comparison of changes 1,
+3 and 4 (`SUITE=quick java/stress/performance.sh ab l34-base current`, two
+matched runs on a quiet machine): no regression. The first run's two alerts
+on warm single-thread gets (-5.8 and -6.4 percent) were not confirmed by the
+second (-0.8 and +1.9 percent) nor by the comparison of the second
+reference with both candidates. Gets with 4 threads +8 to +25 percent;
+startup +6 to +8 percent (no threshold). R8 is done. Frans kept R6 part 1b's
+refinement of `CutOK` (no second wait in Java's reclaim).

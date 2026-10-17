@@ -109,6 +109,19 @@ Frans's go and decisions
   that R5's T12 with eviction needs too ([level3-alignment.md,
   2.9](../../docs/level3-alignment.md)). No change in Java. T9 is no longer
   stopped; it follows R6.
+* **2026-10-17 19:34 CEST, Frans** (in session f1-51, recorded by it), on
+  three open points:
+  * **R6 part 1b's refinement: kept, as recommended** ("do as
+    recommended"). `CutOK`'s part 2 keeps its exception for put-back
+    versions in D (`schemeWitness`; level3-alignment.md, 2.9, "Refined");
+    no second wait in Java's reclaim.
+  * **M46, the ordinal bound (item 002): left for later, not planned.** No
+    WP of this plan acts on it.
+  * **M49 (item 003): not decided; to be discussed first.** Frans's
+    direction: `putKvs` must not throw in a working environment; an I/O
+    error or an `Error` (out of memory) inside it should stop the process
+    fast, never roll back in memory, and `store()` must never run for a
+    half-done `putKvs`. Do not start a fix of M49 until Frans decides.
 
 
 Current state
@@ -119,30 +132,30 @@ Current state
 * Next: R5's half with eviction (T12 for `runEvictCut`, with T9's
   invariant on the slots, `CInv`), and R6's proof of T-SCHEME (its statement
   holds by running, R6 part 1b; fallback: checked at every cut); then R9 and
-  K3 (plan, 5.1). R3, R4 (T8 and T9), R7 and R8 (but its performance
-  comparison) are done; R5's logical half is done (T12 for
-  `runRestartsCut`, 2026-10-17).
+  K3 (plan, 5.1). R3, R4 (T8 and T9), R7 and R8 are done; R5's logical
+  half is done (T12 for `runRestartsCut`, 2026-10-17).
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): T9 is proved with
   the stronger `CutOK` part 2 (R4, 2026-10-17, before R6's proof, since T9
   assumes `CutOK` only); R6 proves that Java's scheme gives it, and R5's
   half with eviction uses T9's invariant on the slots. R6 part
   1b refined the definition (an exception for put-back versions in D;
   `schemeWitness`; [level3-alignment.md, 2.9](../../docs/level3-alignment.md),
-  "Refined"): for Frans to keep (recommended) or to replace by a second wait
-  in Java's reclaim; not blocking.
+  "Refined"): kept (Frans, 2026-10-17 19:34; above).
 * **For Frans: register M49** (new, 2026-10-17; from session f1-9c's item
   002, `items/002-top-node-ordinal-bound/02-report.md`, section 8;
   [level4-alignment.md](../../docs/level4-alignment.md)): a transaction that
   throws inside `Db.putKvs` is half committed (its time readable, its nodes
   written by the next transaction, their ids reused). Stage 4 relies on a
   fix before J3 (with eviction, loads during puts can fail). Not blocking
-  stage 3.
+  stage 3. Under discussion with Frans (2026-10-17 19:34; above): no fix
+  until he decides.
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: none (19:12).
+* Uncommitted work of this plan in bergdb: none (19:47).
 * Long jobs: none (18:44). R7's checker on the medium reclaim set's four
   largest traces finished at 17:58, R4's (with C-CUT+) on the whole medium
-  set at 18:44; the results are in the T9 entry (2026-10-17 17:50). So R8's
-  performance comparison can run now.
+  set at 18:44; the results are in the T9 entry (2026-10-17 17:50). R8's
+  performance comparison ran from 19:12 to 19:41 (no regression; its
+  entry).
 * Stage 2's time box (plan, 5.3): started with E1 at 2026-10-16 23:14;
   60 hours, so it ends at 2026-10-19 11:14. Stage 2's WPs (E1 to E7) were
   done by 2026-10-17 05:31, about 6.3 hours of it.
@@ -181,7 +194,7 @@ Status
 | R5 | Restarts across cuts: T12 | in progress: the logical half (T12 for `runRestartsCut`) done; with eviction next, with T9's invariant | 2026-10-17 |
 | R6 | Java's scheme gives safe cuts: T-SCHEME | in progress: part 1, `CutOK`'s part 2 over `ReadsPhys` (M48: (a)), with its exception for put-back versions (1b), done; T-SCHEME holds by running | 2026-10-17 |
 | R7 | The red list on Java's reclaim | done | 2026-10-17 |
-| R8 | Java: the corrections the model requires, before eviction | changes 1 to 6 done; the performance comparison of 1, 3 and 4 waits for a quiet machine | 2026-10-17 |
+| R8 | Java: the corrections the model requires, before eviction | done (the performance comparison: no regression) | 2026-10-17 |
 | R9 | Level 3 conformance; the gate proposal | not started | — |
 | J1 | Registry, pins and audits | not started | — |
 | J2 | Eviction of values | not started | — |
@@ -3126,3 +3139,58 @@ all well within its size.
 Open, next: R5's half with eviction (T12 for `runEvictCut`, with T9's
 invariant on the slots); R6's proof of T-SCHEME (fallback: checked at every
 cut); R9, K3. R8's performance comparison now that the machine is quiet.
+
+### 2026-10-17 19:13 to 19:47. WP R8, the performance comparison of changes 1, 3 and 4: no regression; R8 done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `94a00c1`, then
+`5c53a58` (session f1-51: the items index); `java/` as at `5b1abdd` (R8's
+change 4), unchanged since. Uncommitted before this commit: Frans's
+decisions of 19:34, recorded in this file by session f1-51 ("Frans's go and
+decisions"), with the two lines of "Current state" that they change; they
+are in this commit, as f1-51 asked.
+
+Did:
+
+1. The quiet check. 19:11: the first try stopped at 69.11 percent idle,
+   right after it built the snapshot of the working tree (VS Code's C/C++
+   extension used a core for half a minute); not forced (plan, 2.4). Session
+   f1-51 was told and ran nothing heavy. 19:12: 94.7 percent idle.
+2. `SUITE=quick java/stress/performance.sh ab l34-base
+   current-94a00c14-f422a792` (the snapshot of `94a00c1`, whose `java/` is
+   `5b1abdd`'s), twice, each matched (ABBA): 19:12 to 19:27 and 19:27 to
+   19:41.
+   * First run: two alerts, unconfirmed, warm single-thread gets
+     (`read-1k`): `get_latest` -5.8 percent and `get_historical` -6.4
+     percent, worse in every candidate run.
+   * Second run: no alert (`get_latest` -0.8 percent, `get_historical` +1.9
+     percent).
+   * `performance.sh compare` of the second reference session with both
+     candidate sessions: no alert (`get_latest` -2.7 and -0.8 percent,
+     `get_historical` -1.1 and +1.9 percent). The first run's alerts came
+     from a fast reference session (1.237 M gets/s against 1.197 M in the
+     second), not from the candidate: no regression.
+   * Both runs, the rest: gets with 4 threads +8 to +25 percent
+     (`Db.getAccessData` takes no lock since change 4), the mixed
+     workload's gets +6.5 to +7.3 percent, commits within 1.5 percent,
+     bytes appended per user byte the same (1.22 and 1.68). Startup +6 to
+     +8 percent (0.66 to 0.71 s, with restart 0.58 to 0.62 s), in both runs;
+     no threshold covers startup, so no alert; rule 4 by node id (change 1's
+     `linkD` part) and the loader's checks at startup are candidates, for J10
+     to look at. One maximum append time flagged EXPLAIN (31 ms against 6.7
+     ms; variation over 100 percent in both).
+3. So R8 is done: changes 1 to 6 with their gates and byte comparisons (the
+   entries from 2026-10-17 12:20 on) and this comparison.
+
+Sessions (in `java/build/perf/runs/`, not tracked):
+`50a2a7be-d92fa83-20261017T191225-quick-g1-8g-ref`,
+`94a00c14-20261017T191225-quick-g1-8g-cand`,
+`50a2a7be-d92fa83-20261017T192723-quick-g1-8g-ref`,
+`94a00c14-20261017T192723-quick-g1-8g-cand`.
+
+Files changed: this file (with Frans's decisions, above),
+`docs/level3-alignment.md` (2.9: the refinement kept, Frans), `docs/log.md`.
+No check needed: no code changed.
+
+Time: about half an hour (19:13 to 19:47), mostly machine time.
+
+Open, next: R5's half with eviction (T12 for `runEvictCut`).
