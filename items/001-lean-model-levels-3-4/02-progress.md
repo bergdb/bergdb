@@ -118,7 +118,8 @@ Current state
   recommended: Java's scheme gives it, Java's cuts meet it), or the window
   (b), or T9 only after restarts (c). Not urgent for stage 3's other WPs.
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: none (2026-10-17 13:15).
+* Uncommitted work of this plan in bergdb: R8's change 2 (M22), in `java/`
+  (2026-10-17 12:57).
 * Long jobs running (scratch copies of `lean/`, at low priority): R7's
   checker on the medium reclaim set's four largest traces, from 2026-10-17
   10:31 (the small set and the two others took 6 and 18 minutes); R4's (R7's,
@@ -2194,7 +2195,7 @@ Open, next: R7 (the checker reads TOUCH, FA, CUT and PHYSCUT, and runs on
 R2's reclaim traces; the red list), then R4 (T8, T9), R5 (T12, with
 `PolicyCutOK`, `ExecRootOK`, marking and BergDB's still-dirty test) and R6.
 
-### 2026-10-17 10:00 to 12:58. WP R7, done
+### 2026-10-17 10:00 to 12:53. WP R7, done
 
 Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `20e0aa2` (R3);
 uncommitted before this WP's commit: its files, below. Worked in a scratch
@@ -2277,13 +2278,13 @@ Register: M17 (R7: the red list's row; R8). M35 (checked by C-CUT too, no
 failure).
 
 Time: R7 is S (up to 2 hours): about 1.5 hours of work (10:00 to 10:40, and
-12:45 to 12:58 to finish it, with R4 in between), the runs aside: from 10:31,
+12:45 to 12:53 to finish it, with R4 in between), the runs aside: from 10:31,
 the medium set's four largest traces still running at the commit.
 
 Open, next: R4 (T8, T9; with R7's `CutOK`; T12's runs with restarts need
 `ExecRootOK`), R5, R6, then R8 with the red list's change.
 
-### 2026-10-17 10:40 to 13:05. WP R4: T8 done; T9 stopped (stop rule 4)
+### 2026-10-17 10:40 to 12:55. WP R4: T8 done; T9 stopped (stop rule 4)
 
 Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `26933a6` (R7);
 uncommitted before this WP's commit: its files, below. Worked in a scratch
@@ -2381,8 +2382,8 @@ in `java/` in this commit, so no gate.
 Register: M48 (new: physical reads in the running process after a cut, with
 eviction; T9 stopped, Frans's decision). M41: T8 covers the model's startup.
 
-Time: R4 is M to L (2 to 24 hours): about 2.5 hours (10:40 to 13:05, alongside
-R7's runs and R8's first change).
+Time: R4 is M to L (2 to 24 hours): about 2 hours 15 minutes (10:40 to 12:55,
+alongside R7's runs and R8's first change).
 
 Open, next: Frans's decision on M48 (T9; it also bears on T12 with eviction,
 R5's second half). Meanwhile, by the plan's 2.4 (a stopped WP is not a
@@ -2390,7 +2391,7 @@ stopped session): R5's logical T12 (`runRestartsCut`), R6 (T-SCHEME, which
 can prove (a)'s stronger part 2 too), and R8 (Java: M17's change and E7's
 list).
 
-### 2026-10-17 12:20 to 13:15. WP R8, change 6: M17 (the red list), done
+### 2026-10-17 12:20 to 12:56. WP R8, change 6: M17 (the red list), done
 
 Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `2e00653` (R4);
 uncommitted before this change's commit: its files, below. R8 goes on with
@@ -2446,7 +2447,8 @@ trace checker on the small reclaim set made again (above).
 
 Register: M17 closed (R3: the model; R7: the red list; R8: Java).
 
-Time: part of R8 (M, 2 to 8 hours): about about 1 hour (12:20 to 13:15, with R7's and R4's commits) for this change.
+Time: part of R8 (M, 2 to 8 hours): about 35 minutes for this change (12:20 to
+12:56, with R7's and R4's commits).
 
 Open, next: R8's changes 1 to 5 (E7's list), one at a time, with the
 performance comparison on a quiet machine for 1, 3 and 4.
