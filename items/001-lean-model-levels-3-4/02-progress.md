@@ -103,11 +103,8 @@ Current state
   are done (2026-10-17); every WP left waits for K1: R3 to R8 and stage 4
   directly, the rest through them. K2 to K5 open.
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: none (2026-10-17 06:40).
-* Long jobs running: the Lean tier of the A-COPY check on the large trace
-  set (`copyFailures`, the entry of 2026-10-17 03:27; started 03:41, in the
-  background, at low priority; 10 of its 12 traces done by 05:48, no
-  failure; the two l-big62 traces still run).
+* Uncommitted work of this plan in bergdb: none (2026-10-17 07:20).
+* Long jobs running: none.
 * Stage 2's time box (plan, 5.3): started with E1 at 2026-10-16 23:14;
   60 hours, so it ends at 2026-10-19 11:14. Stage 2's WPs (E1 to E7) were
   done by 2026-10-17 05:31, about 6.3 hours of it.
@@ -2043,3 +2040,29 @@ Time: P3 is S to M (up to 8 hours): about 30 minutes.
 
 Open, next: every WP that does not wait for K1 is done (R1, R2, P1 to P3,
 stages 0 and 1). The rest waits for Frans's K1 (current state).
+
+
+### 2026-10-17 07:18 to 07:21. A-COPY on the large set: no failure
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `904e146`. The
+result that the A-COPY entry (2026-10-17 03:27) left open: the Lean tier on
+C3's large set (12 traces in `java/build/traces/large`), with the checker of
+that entry's commit, in the background from 03:41 to 07:17 at low priority.
+All 12 traces `TRACECHECK OK`, no diagnostic failure in 34,012 transactions:
+no A-COPY, A6 or TREE failure, and D closed upward. The two l-big62 traces
+took about 3.5 hours each with the A-COPY diagnostic, against 45 to 49
+minutes without it (C3).
+
+So A-COPY holds in every transaction checked, in both tiers: the Java tier's
+68,901 and the Lean tier's 44,141 (small, medium and large).
+
+Files changed: `docs/evidence/level4-acopy.txt` (the large set's lines),
+`docs/level4-alignment.md` (section 4's table),
+`items/001-lean-model-levels-3-4/03-k1-review.md` (section 3's table); this
+file.
+
+Checks: none needed (documents only); the links resolve.
+
+Register: M43 (unchanged: A-COPY holds on every Java run checked).
+
+Open, next: K1 (current state).

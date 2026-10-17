@@ -99,3 +99,21 @@ m-mixed-1 | C-S steps: 0 of 501 transactions fail | diagnostics: 0 of 501 transa
 m-mixed-2 | C-S steps: 0 of 501 transactions fail | diagnostics: 0 of 501 transactions fail | TRACECHECK OK
 m-mixed-3 | C-S steps: 0 of 501 transactions fail | diagnostics: 0 of 501 transactions fail | TRACECHECK OK
    total: 69 traces, 10,129 transactions, no diagnostic failure (no A-COPY failure)
+
+== Lean tier: the large set (java/build/traces/large, C3's 12 traces), the same checker, 2026-10-17 03:41 to 07:17
+   (in the background, at low priority, four at a time; the two l-big62 traces took about 3.5 hours each with
+   the A-COPY diagnostic, against 45 to 49 minutes without it in C3)
+   (trace | C-S | diagnostics | outcome)
+l-5000-1 | C-S steps: 0 of 5001 transactions fail | diagnostics: 0 of 5001 transactions fail | TRACECHECK OK
+l-5000-2 | C-S steps: 0 of 5001 transactions fail | diagnostics: 0 of 5001 transactions fail | TRACECHECK OK
+l-big62-1 | C-S steps: 0 of 1001 transactions fail | diagnostics: 0 of 1001 transactions fail | TRACECHECK OK
+l-big62-2 | C-S steps: 0 of 1001 transactions fail | diagnostics: 0 of 1001 transactions fail | TRACECHECK OK
+l-few-1 | C-S steps: 0 of 5001 transactions fail | diagnostics: 0 of 5001 transactions fail | TRACECHECK OK
+l-few-2 | C-S steps: 0 of 5001 transactions fail | diagnostics: 0 of 5001 transactions fail | TRACECHECK OK
+l-hot-1 | C-S steps: 0 of 2001 transactions fail | diagnostics: 0 of 2001 transactions fail | TRACECHECK OK
+l-hot-2 | C-S steps: 0 of 2001 transactions fail | diagnostics: 0 of 2001 transactions fail | TRACECHECK OK
+l-long-1 | C-S steps: 0 of 2001 transactions fail | diagnostics: 0 of 2001 transactions fail | TRACECHECK OK
+l-long-2 | C-S steps: 0 of 2001 transactions fail | diagnostics: 0 of 2001 transactions fail | TRACECHECK OK
+l-mixed-1 | C-S steps: 0 of 2001 transactions fail | diagnostics: 0 of 2001 transactions fail | TRACECHECK OK
+l-mixed-2 | C-S steps: 0 of 2001 transactions fail | diagnostics: 0 of 2001 transactions fail | TRACECHECK OK
+   total: 12 traces, 34,012 transactions, no diagnostic failure (no A-COPY, A6 or TREE failure)

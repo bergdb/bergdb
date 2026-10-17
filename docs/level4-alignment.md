@@ -276,11 +276,12 @@ the paths that is not on them itself).
 |---|---|---|---|---|
 | Lean tier, small (60 traces) | 6,760 | — | — | 0 |
 | Lean tier, medium (9 traces) | 3,369 | — | — | 0 |
+| Lean tier, large (12 traces) | 34,012 | — | — | 0 |
 | Java tier, the 21 configurations of level2-alignment.md, 10.5 | 68,901 | 487,786 | 453,197 | 0 |
 
 The traces are those of L5's runs in `java/build/traces/` (the production
-code that made them is today's); the large set of C3 (12 traces) was still
-being checked when this was written. The Java tier's counts are in
+code that made them is today's), and the large set of C3, checked after the
+others (2026-10-17, 03:41 to 07:17). The counts of both tiers are in
 [evidence/level4-acopy.txt](evidence/level4-acopy.txt). Most new pointers
 are of the second kind: a split copies the split node's pointers to its
 children, which are below the paths, not on them.

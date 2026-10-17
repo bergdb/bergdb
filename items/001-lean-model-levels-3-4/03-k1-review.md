@@ -92,7 +92,7 @@ are checked on Java's runs, not proved for Java.
 | Java tier (`java/stress/A2A3Check2.java`), the 21 configurations of level2-alignment.md, 10.5 | 68,901 | 0 failures | 5 failures | 0 | 0 (of 487,786 new pointers) |
 | Lean tier (the checker), small set | 3,700 (A4); 6,760 (A-COPY) | 0 | 0 | — | 0 |
 | Lean tier, medium set | 3,360 (A4); 3,369 (A-COPY) | 0 | 0 | — | 0 |
-| Lean tier, large set (C3, 12 traces) | 26,012 (8 of the 12 traces; the other 4 still run) | 0 | 0 | — | 0 so far |
+| Lean tier, large set (C3, 12 traces) | 34,012 | 0 | 0 | — | 0 |
 
 The five A6 failures are of one kind: a transaction creates the root of the
 next key segment's tree and splits it in place (`Dag.spaceSplitInPlace`),
