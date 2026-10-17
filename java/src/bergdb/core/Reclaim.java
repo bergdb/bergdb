@@ -252,6 +252,20 @@ public class Reclaim implements Db.TransactionListener {
     }
     
     /**
+     * The newest row of the table marked cut, or null. For tests (bergdb item 001, WP R2:
+     * java/stress/TraceExport.java reads the cuts from it).
+     */
+    IterationInfo lastCutRow() {
+        IterationInfo result = null;
+        for (IterationInfo row : table.rows) {
+            if (row.cut) {
+                result = row;
+            }
+        }
+        return result;
+    }
+    
+    /**
      * Called by Db after each transaction completed, while it holds the write lock.
      * Internal transactions are ignored.
      * 

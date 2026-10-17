@@ -106,7 +106,8 @@ Current state
   named in the last log entry.
 * Long jobs running: the Lean tier of the A-COPY check on the large trace
   set (`copyFailures`, the entry of 2026-10-17 03:27; started 03:41, in the
-  background, at low priority; 8 of its 12 traces done by 05:20, no failure).
+  background, at low priority; 10 of its 12 traces done by 05:48, no
+  failure; the two l-big62 traces still run).
 * Stage 2's time box (plan, 5.3): started with E1 at 2026-10-16 23:14;
   60 hours, so it ends at 2026-10-19 11:14.
 * Preserved builds: `l34-base` (A1; `java/build/perf/builds/l34-base/`,
@@ -138,7 +139,7 @@ Status
 | E6 | Pins and index-freedom | done | 2026-10-17 |
 | E7 | The Java change list; the K1 review | done | 2026-10-17 |
 | R1 | α and the register for reclaim | done | 2026-10-16 |
-| R2 | Trace format 2; the exporter for reclaim runs | not started | — |
+| R2 | Trace format 2; the exporter for reclaim runs | done | 2026-10-17 |
 | R3 | The Level 3 model: touch, first available time, cuts | not started | — |
 | R4 | Recovery and reads after a cut: T8, T9 | not started | — |
 | R5 | Restarts across cuts: T12 | not started | — |
@@ -1906,3 +1907,79 @@ them fails.
 Open, next: while K1 waits, R2 (trace format 2, the exporter for reclaim
 runs) and P3 (bounds, measured); the A-COPY Lean tier on the large set still
 runs (current state).
+
+
+### 2026-10-17 05:31 to 06:07. WP R2, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `9eb146c` (E7);
+uncommitted before this WP's commit: its files, below. K1 waits for Frans;
+R2 does not depend on it.
+
+Did:
+
+1. Test-only hooks in `java/src/bergdb/core/Db.java`: `Db.TestHooks`, set
+   in `Db.testHooks` (null by default, and then nothing changes): after every
+   executed transaction, the internal ones (reclaim's steps and table stores)
+   included, right after its record is appended (`transExecuted`, after
+   `store()`); for every value node a transaction creates; for every index
+   node a touch visits (`touchRange`, the super root included). And a test
+   accessor, `Reclaim.lastCutRow()`, the newest row of the table marked cut.
+2. `java/stress/TraceExport.java` with `retain=S` (reclaim on, the clock
+   scaled as in `RestartInvariance`, the stream a `CutStream`, which refuses
+   every read below the cut): every executed transaction is a record, with
+   `kind=user`, `step` or `table` in its comment line; the new lines of
+   format 2 (plan, 8.2): TOUCH (a step's touched index nodes), FA (fa(i),
+   when it changes), CUT (a cut decided: c and the first available time) and
+   PHYSCUT (the stream's first position moved). Run B also restarts right
+   after each call that decided a cut, looks up from the first available
+   time on, and compares the streams from the cut. The exporter's own checks:
+   every touched node is an index node of P; every stored position is the
+   start of a version; the physical cut is at or below the decided one
+   (M35); Java's first available time is the table's. Without `retain`, the
+   traces are as before: byte for byte the same on four traces of the small
+   and medium sets (mixed-1, long-1, hot-1, m-mixed-1).
+3. `java/stress/reclaimtraces.sh` (new): the plan's reclaim sets (8.4),
+   small (five configurations of five seeds: node sizes 8 and 14, 30 to 200
+   keys, 300 to 800 user transactions, a startup distance of 200 to 1,000
+   bytes, retention 1 and 2 s, deletes 0 and 25 percent, long keys,
+   transactions that change nothing; probes every ten transactions and right
+   after each cut) and medium (three configurations of two seeds, 2,000 to
+   5,000 user transactions); it fails on an exporter error, a failing probe
+   or a trace without a cut.
+4. Results (05:41 to 05:43): small, 25 traces, 3 to 28 cuts decided each, 2
+   to 28 physical cuts, no exporter error, no failing probe (14 s); medium,
+   6 traces, 18 to 46 cuts each, no error, no failing probe (73 s). The
+   number of physical cuts varies from run to run (`cutIfDurable` waits for
+   durability, which a background sync decides); the records do not, and
+   run B's streams equal run A's from the cut in every trace. References of
+   later records to versions before a decided cut are common (10 to 107,000
+   per trace): Option K names the latest version of dead pointees too, and a
+   cut stream keeps stubs for them (plan, 8.7). Today's checker refuses the
+   new lines (`unknown line`); R3 extends it.
+5. Not done here, and moved: the check that a step's touch covers every
+   node whose key range meets the step's range (level3-alignment.md, 5,
+   step 3) needs each node's key range, which neither the trace nor the
+   model has; it is left to R6, on the Java side.
+6. `docs/level2-alignment.md`, 9.2 (the lines); `docs/level3-alignment.md`,
+   2.7 (done), section 5 (step 3 and the summary), M35 and M37.
+
+Files changed: `java/src/bergdb/core/Db.java`, `Reclaim.java`;
+`java/stress/TraceExport.java`, `java/stress/reclaimtraces.sh` (new);
+`docs/level2-alignment.md`, `docs/level3-alignment.md`; this file.
+
+Checks: `java/build.sh` passes; the gates on the work tree with this WP's
+files, full, one after the other (05:44 to 06:04): `LEVEL 1 OK` (95 s),
+`LEVEL 2 OK` (718 s; its step 7: a2a3-1 to 3 OK, conformance small 60 of 60
+traces `TRACECHECK OK`), `LEVEL 3 OK` (341 s); unit tests 911 successful, F
+tests 37 successful; StreamDigest against `l34-base`: DIGESTS IDENTICAL (36
+of 36), so the hooks change no record. The two reclaim sets, as in 4. No
+Lean change.
+
+Register: M35 (the exporter checks it on every trace), M37 (the traces have
+the table and the row as ordinary entries).
+
+Time: R2 is M (2 to 8 hours): about 35 minutes.
+
+Open, next: P3 (bounds, measured), which needs one more test hook (the nodes
+a transaction replaces, to count the writes of nodes that are not current).
+R3 to R8 wait for K1.

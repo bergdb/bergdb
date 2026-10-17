@@ -610,7 +610,9 @@ An entry value is one of (2.4):
                                  end; fail with what went wrong
     ERROR text                   a problem the exporter found (counts as a failure)
     END i                        ends transaction i
-    DONE n                       last line: n transactions after R(0)
+    DONE n                       last line: the last record, R(n) (n transactions
+                                 after R(0); with reclaim, user transactions and
+                                 reclaim's records)
 
 Format 2 (`TRACE 2`, since 2026-10-16, bergdb item 001, WP L5; the checker
 still reads format 1) adds, from the item's plan (8.2):
@@ -628,6 +630,27 @@ still reads format 1) adds, from the item's plan (8.2):
                                  snapshot (the node table's object); cut is 1
                                  if the version read was cut back to the
                                  startup time
+
+With reclaim (the exporter's `retain=S`, since 2026-10-17, bergdb item 001,
+WP R2; level3-alignment.md, 2.7), every executed transaction is a record:
+the user transactions, and reclaim's steps and table stores, each an ordinary
+`TX` block, with `kind=user`, `step` or `table` in its comment line. Format 2
+then also has:
+
+    TOUCH x1 x2 ...              in TX i, after the ADD lines: the index nodes
+                                 T(i)'s touch visited (Db.touchRange), sorted
+    FA t                         in TX i, when it changes: fa(i), the first
+                                 available time, as a model time
+    CUT c t                      in TX i: Java decided a cut at R(i): records
+                                 before c may go; t is the first available time
+    PHYSCUT c                    in TX i: after R(i), the stream's first position
+                                 moved; R(c) is the first record that starts at
+                                 or after it
+
+`FA`, `CUT` and `PHYSCUT` come after `DIRTY`. Run B also restarts right after
+each call that decided a cut, and looks up only from the first available time
+on; its `PROBE` lines are in the block of the last record of the call (the
+user record without reclaim).
 
 FIRST lines come after the `PROBE` lines of their transaction. With `live=1`,
 the root's `LIVE` lines cover every time t ≤ i on each record, at the record's

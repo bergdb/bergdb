@@ -16,6 +16,8 @@ import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 import bergdb.storage.RecoverableStream;
+import bergdb.stream.AppendOnlyStream;
+import bergdb.stream.CutStream;
 import bergdb.stream.MemoryStream;
 
 /**
@@ -47,6 +49,16 @@ import bergdb.stream.MemoryStream;
  *   valsize=N  value sizes 1..N bytes (default 20)
  *   probe=K    run B: a restart after every K transactions (default 0: no run B)
  *   live=1     LIVE lines: Java's own live children, for each node, at each of its times
+ *   retain=S   reclaim on, with a retain duration of S seconds, as RestartInvariance's option
+ *              (default 0: off); transactions are then 0.01 to 0.2 s apart
+ *
+ * With reclaim (bergdb item 001, WP R2; docs/level3-alignment.md, 2.7) every executed
+ * transaction is a record, reclaim's steps and table stores too: run A records each through
+ * Db's test hooks (Db.TestHooks), and the trace has, besides version 1's lines, the touch of
+ * each step (TOUCH), the first available time when it changes (FA), each cut decided (CUT)
+ * and each move of the stream's first position (PHYSCUT; plan 001-01, 8.2). The stream is a
+ * CutStream, which refuses every read below the cut. Run B also restarts right after each cut,
+ * looks up from the first available time on, and compares the streams from the cut.
  */
 public class TraceExport {
     final long seed;
@@ -64,11 +76,16 @@ public class TraceExport {
     final int valsize = Integer.getInteger("valsize", 20);
     final int probe = Integer.getInteger("probe", 0);
     final boolean live = "1".equals(System.getProperty("live"));
+    final int retain = Integer.getInteger("retain", 0);
+    final long timeScale = retain > 0 ? bergdb.pub.util.Clock.UNITS_PER_SEC / 100 : 1;
 
     // The workload: per transaction, keys and values (null value: delete).
     final List<String[]> wkeys = new ArrayList<String[]>();
     final List<byte[][]> wvalues = new ArrayList<byte[][]>();
     final long[] times;
+    /** Run A, for user transaction i: its record, and the last record of its call (the
+     *  same without reclaim; with it, the steps and table stores reclaim runs after it). */
+    final int[] userRec, userLast;
 
     final List<String> errors = new ArrayList<String>();
 
@@ -76,10 +93,12 @@ public class TraceExport {
         this.seed = seed;
         Random rnd = new Random(seed);
         times = new long[n];
+        userRec = new int[n];
+        userLast = new int[n];
         long time = 10;
         int nextNew = keyCount;     // keys of bulk loads, beyond the key space
         for (int i = 0; i < n; i++) {
-            time += 1 + rnd.nextInt(20);
+            time += (1 + rnd.nextInt(20)) * timeScale;
             times[i] = time;
             List<String> ks = new ArrayList<String>();
             List<byte[]> vs = new ArrayList<byte[]>();
@@ -125,13 +144,25 @@ public class TraceExport {
         return v;
     }
 
-    Db start(MemoryStream stream, CoreTestClock clock) {
+    Db start(AppendOnlyStream stream, CoreTestClock clock) {
         DbBuilder b = Db.builder().testSetup(stream).clock(clock).startupDistance(startupDistance);
         if (maxNode == 8) b.maxNodeSize8();
         if (maxNode == 14) b.maxNodeSize14();
         if (maxNode == 30) b.maxNodeSize30();
         if (maxNode == 62) b.maxNodeSize62();
-        return b.start();
+        Db db = b.start();
+        if (retain > 0) db.setRetainDuration(retain * bergdb.pub.util.Clock.UNITS_PER_SEC);
+        return db;
+    }
+
+    /** A new stream: with reclaim a CutStream, which refuses reads below the cut. */
+    AppendOnlyStream newStream() {
+        return retain > 0 ? new CutStream() : new MemoryStream();
+    }
+
+    /** A copy of the stream, for a restart. */
+    static AppendOnlyStream copyOf(AppendOnlyStream s) {
+        return s instanceof CutStream ? ((CutStream) s).copy() : ((MemoryStream) s).copy();
     }
 
     // ======== The state of run A, in model terms ========
@@ -189,6 +220,10 @@ public class TraceExport {
         List<String> firsts = new ArrayList<String>();
         long transSeqSum;
         int puts, deletes;
+        /** With reclaim: user, step or table; a step's touch; FA, CUT and PHYSCUT lines. */
+        String kind = "user";
+        List<Long> touch;
+        List<String> reclaimLines = new ArrayList<String>();
     }
 
     final Map<Long, PNode> nodes = new TreeMap<Long, PNode>();
@@ -467,6 +502,7 @@ public class TraceExport {
             error("reference to position " + pos + " that starts no version (" + context + ")");
             return;
         }
+        if (target[0] < cutRecord) refsBelowCut++;
         Integer old = v.refs.put(target[1], (int) target[0]);
         if (old != null && old != (int) target[0]) {
             error("two references for node " + target[1] + ": R(" + old + ") and R(" + target[0]
@@ -571,17 +607,19 @@ public class TraceExport {
         }
     }
 
-    /** Run A: no restarts; records everything. */
-    MemoryStream runA() {
-        MemoryStream stream = new MemoryStream();
+    /** Run A: no restarts; records everything, each executed transaction through Db's test
+     *  hooks, so that with reclaim its steps and table stores are records too. */
+    AppendOnlyStream runA() {
+        final AppendOnlyStream stream = newStream();
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(1);
-        Db db = start(stream, clock);
-        NodeStream ns = db.internal().nodeStream();
+        final Db db = start(stream, clock);
+        final NodeStream ns = db.internal().nodeStream();
 
         // R(0), the primordial record.
         Rec r0 = new Rec();
         r0.index = 0;
+        r0.kind = "init";
         r0.tpos = RecoverableStream.META_BLOCK_SIZE;
         StoredTrans st0 = StoredTrans.parse(r0.tpos, ns.readTransBytes(r0.tpos));
         r0.tt = st0.tt;
@@ -597,53 +635,146 @@ public class TraceExport {
         if (live) recordLive(db, r0);
 
         final List<ValueNode> created = new ArrayList<ValueNode>();
-        final List<Node> gotDirty = new ArrayList<Node>();
-        Trans.Listener listener = new Trans.Listener() {
+        final List<Node> touched = new ArrayList<Node>();
+        Db.TestHooks hooks = new Db.TestHooks() {
             public void transExecuted(Db.ExecuteData x) {
-                gotDirty.addAll(x.transInfo.gotDirtyNodes);
+                record(db, x, created, touched, ns);
+                created.clear();
+                touched.clear();
             }
             public void valueNodeCreated(ValueNode node, long[] key) {
                 created.add(node);
             }
+            public void nodeTouched(Node node) {
+                touched.add(node);
+            }
         };
 
-        for (int i = 0; i < n; i++) {
-            before.clear();
-            for (PNode pn : nodes.values()) before.put(pn.id, pn.hist);
-            created.clear();
-            gotDirty.clear();
-
-            clock.setTime(times[i]);
-            Trans.Builder b = db.trans();
-            String[] ks = wkeys.get(i);
-            byte[][] vs = wvalues.get(i);
-            for (int j = 0; j < ks.length; j++) {
-                if (vs[j] == null) b.delete(ks[j]);
-                else b.put(ks[j], vs[j]);
+        Db.testHooks = hooks;
+        try {
+            for (int i = 0; i < n; i++) {
+                clock.setTime(times[i]);
+                Trans.Builder b = db.trans();
+                String[] ks = wkeys.get(i);
+                byte[][] vs = wvalues.get(i);
+                for (int j = 0; j < ks.length; j++) {
+                    if (vs[j] == null) b.delete(ks[j]);
+                    else b.put(ks[j], vs[j]);
+                }
+                Trans t = b.build();
+                userRec[i] = recs.size();
+                db.execute(t);
+                userLast[i] = recs.size() - 1;
+                if (userLast[i] < userRec[i] || recs.get(userRec[i]).tt != t.tt) {
+                    error("transaction " + i + ": no record, or not the first of its call");
+                }
+                if (retain > 0) afterCall(db, stream, i);
             }
-            Trans t = b.build();
-            t.listener = listener;
-            db.execute(t);
-
-            Rec rec = new Rec();
-            rec.index = i + 1;
-            rec.tt = t.tt;
-            rec.tpos = t.tpos;
-            if (idxByTt.containsKey(t.tt)) error("two records with time " + t.tt);
-            idxByTt.put(t.tt, rec.index);
-            idxByTpos.put(t.tpos, rec.index);
-            recs.add(rec);
-
-            for (ValueNode v : created) register(v, rec.index);
-            for (Node x : gotDirty) register(x, rec.index);
-            walk(db, rec.index);
-            recordChanges(before, rec, ns);
-            parseRecord(db, rec);
-            recordDirty(db, rec);
-            if (live) recordLive(db, rec);
+        } finally {
+            Db.testHooks = null;
         }
         db.sync(SyncLevel.STRONG);
         return stream;
+    }
+
+    /** Records R(i), the record of transaction x.trans, which Db has just appended. */
+    void record(Db db, Db.ExecuteData x, List<ValueNode> created, List<Node> touched, NodeStream ns) {
+        Map<Long, List<Ent>> before = new HashMap<Long, List<Ent>>();
+        for (PNode pn : nodes.values()) before.put(pn.id, pn.hist);
+        Trans t = x.trans;
+        Rec rec = new Rec();
+        rec.index = recs.size();
+        rec.tt = t.tt;
+        rec.tpos = t.tpos;
+        if (idxByTt.containsKey(t.tt)) error("two records with time " + t.tt);
+        idxByTt.put(t.tt, rec.index);
+        idxByTpos.put(t.tpos, rec.index);
+        recs.add(rec);
+
+        for (ValueNode v : created) register(v, rec.index);
+        for (Node y : x.transInfo.gotDirtyNodes) register(y, rec.index);
+        walk(db, rec.index);
+        recordChanges(before, rec, ns);
+        parseRecord(db, rec);
+        recordDirty(db, rec);
+        if (live) recordLive(db, rec);
+        if (retain > 0) recordReclaim(db, t, touched, rec);
+    }
+
+    // ======== Reclaim (docs/level3-alignment.md, 2.7) ========
+
+    int lastFa = 0;             // the first available time, as a model time
+    long lastCutPStart = -1;    // pStart of the newest row marked cut, or -1
+    long lastFirstPos;          // the stream's first position
+    final Set<Integer> cutCalls = new HashSet<Integer>();   // user transactions after which a cut is decided
+    int refsBelowCut = 0;       // references of records after a cut to versions before it
+    int cutRecord = 0;          // c of the newest cut decided, for the records after it
+
+    /** The kind of R(i), its touch, the first available time and a cut decided at it. */
+    void recordReclaim(Db db, Trans t, List<Node> touched, Rec rec) {
+        rec.kind = !t.isInternal() ? "user" : t.touch ? "step" : "table";
+        if (t.touch) {
+            TreeSet<Long> ids = new TreeSet<Long>();
+            for (Node x : touched) {
+                long id = mid(x.getId());
+                PNode pn = nodes.get(id);
+                if (pn == null || pn.obj == null || pn.isData()) {
+                    error("TOUCH of R(" + rec.index + "): node " + id + " is not an index node of P");
+                }
+                ids.add(id);
+            }
+            rec.touch = new ArrayList<Long>(ids);
+        } else if (!touched.isEmpty()) {
+            error("R(" + rec.index + "), without a touch, touched " + touched.size() + " nodes");
+        }
+        // fa(i): the tEnd of the newest row marked cut in the table as stored at or before
+        // R(i); 0 before the first cut (docs/level3-alignment.md, 2.4).
+        Reclaim.IterationInfo row = db.internal().reclaim().lastCutRow();
+        int fa = row == null ? 0 : timeIndex(row.tEnd, "the first available time at R(" + rec.index + ")");
+        if (fa != lastFa) {
+            rec.reclaimLines.add("FA " + fa);
+            lastFa = fa;
+        }
+        if (row != null && row.pStart != lastCutPStart) {
+            Integer c = idxByTpos.get(row.pCut);
+            if (c == null) error("CUT at R(" + rec.index + "): pCut " + row.pCut + " is not a record's start");
+            rec.reclaimLines.add("CUT " + (c == null ? -1 : c) + " " + fa);
+            lastCutPStart = row.pStart;
+            if (c != null) cutRecord = c;
+        }
+    }
+
+    /** After the call of user transaction i: the cut decided in it, a move of the stream's
+     *  first position (the physical cut, at the call's last record), and Java's first
+     *  available time against the model's. */
+    void afterCall(Db db, AppendOnlyStream stream, int i) {
+        for (int r = userRec[i]; r <= userLast[i]; r++) {
+            for (String line : recs.get(r).reclaimLines) {
+                if (line.startsWith("CUT ")) cutCalls.add(i);
+            }
+        }
+        long javaFa = db.getFirstAvailableLookupTime();
+        long modelFa = lastFa == 0 ? 0 : recs.get(lastFa).tt;
+        if (javaFa != modelFa) {
+            error("after transaction " + i + ": Java's first available lookup time " + javaFa
+                    + ", the table's " + modelFa);
+        }
+        long fp = stream.getFirstPos();
+        if (fp == lastFirstPos) return;
+        lastFirstPos = fp;
+        Rec last = recs.get(userLast[i]);
+        int c = -1;
+        for (Rec r : recs) {
+            if (r.tpos >= fp) {
+                c = r.index;
+                break;
+            }
+        }
+        last.reclaimLines.add("PHYSCUT " + c);
+        if (fp > db.getFirstAvailablePos()) {
+            error("PHYSCUT after R(" + last.index + "): the first position " + fp
+                    + " is above the decided cut, " + db.getFirstAvailablePos());
+        }
     }
 
     /** The first touches go to this list: that of the last restart's record. */
@@ -678,7 +809,7 @@ public class TraceExport {
     }
 
     /** Run B: the same workload with restarts; compares with run A. */
-    void runB(MemoryStream streamA) {
+    void runB(AppendOnlyStream streamA) {
         try {
             NodeCollection.firstTouchListener = firstTouches;
             runB0(streamA);
@@ -688,8 +819,8 @@ public class TraceExport {
         }
     }
 
-    void runB0(MemoryStream streamA) {
-        MemoryStream stream = new MemoryStream();
+    void runB0(AppendOnlyStream streamA) {
+        AppendOnlyStream stream = newStream();
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(1);
         Db db = start(stream, clock);
@@ -708,23 +839,27 @@ public class TraceExport {
             }
             Trans t = b.build();
             db.execute(t);
-            Rec recA = recs.get(i + 1);
-            if (t.tpos != recA.tpos) {
-                recA.probes.add("PROBE " + (i + 1) + " fail run B wrote R(" + (i + 1) + ") at "
-                        + t.tpos + ", run A at " + recA.tpos);
+            // The user record, and the last record of the call (with reclaim, its steps and
+            // table stores follow the user record; without, the two are the same).
+            Rec recU = recs.get(userRec[i]);
+            Rec recA = recs.get(userLast[i]);
+            if (t.tpos != recU.tpos) {
+                recA.probes.add("PROBE " + recA.index + " fail run B wrote R(" + recU.index + ") at "
+                        + t.tpos + ", run A at " + recU.tpos);
             }
             checkM4(db, recA);
 
-            boolean restart = (i + 1) % probe == 0 && i + 1 < n;
+            // A restart after every probe transactions, and right after each cut decided.
+            boolean restart = ((i + 1) % probe == 0 || cutCalls.contains(i)) && i + 1 < n;
             if (!restart) continue;
             db.sync(SyncLevel.STRONG);
             db.stop();
-            stream = stream.copy();
+            stream = copyOf(stream);
             curFirsts = recA.firsts;
             try {
                 db = start(stream, clock);
             } catch (RuntimeException e) {
-                recA.probes.add("PROBE " + (i + 1) + " fail restart failed: " + oneLine(e));
+                recA.probes.add("PROBE " + recA.index + " fail restart failed: " + oneLine(e));
                 return;
             }
             String problem = null;
@@ -732,13 +867,34 @@ public class TraceExport {
                 problem = "D differs after the restart";
             }
             if (problem == null) problem = lookupProblem(db, history, i);
-            recA.probes.add("PROBE " + (i + 1) + (problem == null ? " ok" : " fail " + problem));
+            recA.probes.add("PROBE " + recA.index + (problem == null ? " ok" : " fail " + problem));
         }
         db.sync(SyncLevel.STRONG);
-        long diff = RestartInvariance.firstDiff(streamA, stream);
+        long diff = firstDiff(streamA, stream);
         Rec last = recs.get(recs.size() - 1);
-        last.probes.add("PROBE " + n + (diff < 0 ? " ok streams identical"
+        last.probes.add("PROBE " + last.index + (diff < 0 ? " ok streams identical"
                 : " fail streams differ at byte " + diff));
+    }
+
+    /** The first position at which two streams differ, from the later first position of the
+     *  two (after a cut by reclaim); -1 if they are the same. As RestartInvariance.firstDiff. */
+    static long firstDiff(AppendOnlyStream s1, AppendOnlyStream s2) {
+        long len = Math.min(s1.getLength(), s2.getLength());
+        byte[] b1 = new byte[65536], b2 = new byte[65536];
+        long from = Math.max(s1.getFirstPos(), s2.getFirstPos());
+        try {
+            for (long pos = from; pos < len; pos += b1.length) {
+                int chunk = (int) Math.min(b1.length, len - pos);
+                s1.read(pos, b1, 0, chunk);
+                s2.read(pos, b2, 0, chunk);
+                for (int i = 0; i < chunk; i++) {
+                    if (b1[i] != b2[i]) return pos + i;
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return s1.getLength() == s2.getLength() ? -1 : len;
     }
 
     /** M4 (docs, 7.1): after T(i), no written node holds a stream pointer to a node in D. */
@@ -757,7 +913,8 @@ public class TraceExport {
                 if (x instanceof KeyNode && Klong.getIntType(((KeyNode) x).klongs[j]) != Klong.INT_TYPE_KEY) {
                     continue;
                 }
-                long y = mid(ns.readNodeHeader(pos).id());
+                long[] tv = verByPos.get(pos);      // not read: with reclaim it can be below the cut
+                long y = tv != null ? tv[1] : mid(ns.readNodeHeader(pos).id());
                 if (inD.contains(y)) {
                     rec.probes.add("PROBE " + rec.index + " fail M4: node " + v.id
                             + " holds a stream pointer to node " + y + ", which is in D");
@@ -768,12 +925,14 @@ public class TraceExport {
 
     String lookupProblem(Db db, TreeMap<String, TreeMap<Long, byte[]>> history, int i) {
         Random rnd = new Random(seed * 31 + i);
+        final long fa = db.getFirstAvailableLookupTime();
         List<String> ks = new ArrayList<String>(history.keySet());
         int bad = 0;
         String first = null;
         for (int j = 0; j < ks.size() + 200; j++) {
             String k = j < ks.size() ? ks.get(j) : ks.get(rnd.nextInt(ks.size()));
             long t = j < ks.size() ? Long.MAX_VALUE : times[rnd.nextInt(i + 1)] - rnd.nextInt(2);
+            t = Math.max(t, fa);    // with reclaim, from the first available time on
             Map.Entry<Long, byte[]> e = history.get(k).floorEntry(t);
             byte[] expected = e == null ? null : e.getValue();
             try {
@@ -887,7 +1046,8 @@ public class TraceExport {
                 + " sd=" + startupDistance + " ops=" + ops + " exact=" + exact + " bulk=" + bulk
                 + " del=" + del + " nodel=" + nodel + " empty=" + empty + " long=" + longKeys
                 + " valsize=" + valsize + " probe=" + probe + " live=" + live
-                + " segments=" + (bounds[0] + 1) + " height=" + bounds[1]);
+                + " segments=" + (bounds[0] + 1) + " height=" + bounds[1]
+                + (retain > 0 ? " retain=" + retain : ""));
         for (String e : errors) out.println("ERROR " + e);
         if (!unreached.isEmpty()) {
             out.println("# key nodes that no top node reaches (A3 failures, M1): " + unreached.size());
@@ -895,13 +1055,18 @@ public class TraceExport {
         for (Rec rec : recs) {
             out.println("TX " + rec.index);
             out.println("# tt=" + rec.tt + " tpos=" + rec.tpos + " puts=" + rec.puts + " deletes="
-                    + rec.deletes);
+                    + rec.deletes + (retain > 0 ? " kind=" + rec.kind : ""));
             for (long id : rec.newNodes) {
                 PNode pn = nodes.get(id);
                 out.println("NEW " + id + " " + levelOf(pn, bounds) + " " + (pn.isData() ? "D" : "I"));
             }
             for (int j = 0; j < rec.adds.size(); j++) {
                 out.println("ADD " + rec.addsNode.get(j)[0] + " " + rec.adds.get(j));
+            }
+            if (rec.touch != null) {
+                StringBuilder tl = new StringBuilder("TOUCH");
+                for (long x : rec.touch) tl.append(" ").append(x);
+                out.println(tl);
             }
             out.println("REC " + rec.index + " " + rec.sp + " " + (rec.top < 0 ? "-" : "" + rec.top)
                     + " " + rec.topSrc + (rec.top < 0 || rec.topNode < 0 ? "" : " " + rec.topNode));
@@ -919,12 +1084,13 @@ public class TraceExport {
             StringBuilder dl = new StringBuilder("DIRTY");
             for (long[] p : rec.dirty) dl.append(" ").append(p[0]).append(" ").append(p[1]);
             out.println(dl);
+            for (String s : rec.reclaimLines) out.println(s);
             for (String s : rec.live) out.println(s);
             for (String s : rec.probes) out.println(s);
             for (String s : rec.firsts) out.println(s);
             out.println("END " + rec.index);
         }
-        out.println("DONE " + n);
+        out.println("DONE " + (recs.size() - 1));
         out.close();
     }
 
@@ -934,12 +1100,27 @@ public class TraceExport {
             System.exit(2);
         }
         TraceExport x = new TraceExport(Long.parseLong(args[0]));
-        MemoryStream a = x.runA();
+        AppendOnlyStream a = x.runA();
         if (x.probe > 0) x.runB(a);
         x.write(args[1]);
         int probeFails = 0;
         for (Rec r : x.recs) for (String s : r.probes) if (s.contains(" fail ")) probeFails++;
-        System.out.println("TraceExport seed=" + x.seed + " n=" + x.n + ": " + x.nodes.size()
+        String rc = "";
+        if (x.retain > 0) {
+            int cuts = 0, phys = 0, steps = 0, tables = 0;
+            for (Rec r : x.recs) {
+                for (String s : r.reclaimLines) {
+                    if (s.startsWith("CUT ")) cuts++;
+                    if (s.startsWith("PHYSCUT ")) phys++;
+                }
+                if ("step".equals(r.kind)) steps++;
+                if ("table".equals(r.kind)) tables++;
+            }
+            rc = " (" + (x.recs.size() - 1) + " records: " + steps + " steps, " + tables
+                    + " table stores; " + cuts + " cuts decided, " + phys + " physical; "
+                    + x.refsBelowCut + " references to versions before a cut)";
+        }
+        System.out.println("TraceExport seed=" + x.seed + " n=" + x.n + rc + ": " + x.nodes.size()
                 + " nodes, " + x.errors.size() + " errors, " + probeFails + " probe failures; "
                 + args[1]);
     }

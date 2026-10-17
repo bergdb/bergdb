@@ -659,6 +659,10 @@ public class Db {
                 setIdOfNode(node);
                 x.transNodes.addValueNode(node, key);
                 x.trans.listener.valueNodeCreated(node, key);
+                final TestHooks hooks = testHooks;
+                if (hooks != null) {
+                    hooks.valueNodeCreated(node, key);
+                }
                 opChanged = true;
             }
             
@@ -1390,6 +1394,10 @@ public class Db {
             x.startupPos.releaseForEvict();
             
             x.trans.listener.transExecuted(x);
+            final TestHooks hooks = testHooks;
+            if (hooks != null) {
+                hooks.transExecuted(x);
+            }
             
             x.end();
 
@@ -1576,6 +1584,24 @@ public class Db {
             counter = new Reclaim.TouchCounter(x.trans.touchCount, x.trans.touchOldBefore,
                     x.putData.pointerListener);
             g.gd.pointerListener = counter;
+        }
+        final TestHooks hooks = testHooks;
+        if (hooks != null) {
+            final Dag.PointerListener inner = g.gd.pointerListener;
+            g.gd.pointerListener = new Dag.PointerListener() {
+                public void superRootAccessed(TopNode superRoot) {
+                    hooks.nodeTouched(superRoot);
+                    inner.superRootAccessed(superRoot);
+                }
+
+                public void pointerFollowed(Node predecessor, int pointerIndex, Node result,
+                        int pointerType) {
+                    if (result != null && result.isIndexNode()) {
+                        hooks.nodeTouched(result);
+                    }
+                    inner.pointerFollowed(predecessor, pointerIndex, result, pointerType);
+                }
+            };
         }
         g.gd.accessData = x.putData.accessData;
         g.lookupTime = x.trans.tt;
@@ -1914,6 +1940,29 @@ public class Db {
          */
         public void transactionCompleted(Trans t);
     }
+
+    /**
+     * Test-only hooks (bergdb item 001, WP R2), for java/stress/TraceExport.java: called for
+     * every executed transaction, the internal ones (reclaim's steps and table stores)
+     * included, so that a trace can have a record for each. null, the default, does nothing.
+     * All calls come from the thread that holds the write lock.
+     */
+    public static interface TestHooks {
+        /** The record of x.trans has been appended and D updated (after store()). */
+        public void transExecuted(ExecuteData x);
+
+        /** The transaction being executed created a value node. */
+        public void valueNodeCreated(ValueNode node, long[] key);
+
+        /**
+         * The touch of the transaction being executed (Trans.touchFrom, touchTo) visited an
+         * index node; the super root included.
+         */
+        public void nodeTouched(Node node);
+    }
+
+    /** The test-only hooks, or null. See TestHooks. */
+    public static volatile TestHooks testHooks = null;
 }
 
 
