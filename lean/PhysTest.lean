@@ -3,11 +3,66 @@ Random runs of the physical layer (bergdb item 001, WPs L1 and L3): in states
 of random runs of examples 2 and 3, the lazy startup from the stream, or from
 a prefix of it (a crash), then random reads and writer walks in random order;
 every read must give P at its time, and every canonical object must hold its
-node's whole history. Usage: lake exe phystest [seeds] [n]
+node's whole history. With eviction (WP E2): runs of examples 2, 3 and 5 with
+restarts and the four cache schedules (none; every object that may be
+detached; each with probability 0.3; unswizzles and releases apart), checked
+after every transaction: the
+records and D are the model's, reads give P, and INV-CAN, INV-SNAP and
+INV-SLOT hold. Usage: lake exe phystest [seeds] [n] [evict], where evict runs
+the eviction part only.
 -/
 import SIS.PhysExample
+import SIS.EvictExample
 
-open SIS SIS.Example SIS.PhysExample
+open SIS SIS.Example SIS.PhysExample SIS.EvictExample
+
+/-- The eviction part: (runs, failing transactions), printing a line per
+configuration. -/
+def evictPart (seeds n : Nat) : IO Nat := do
+  let mut bad := 0
+  let pols3 : List (Nat × (SIS.Stream Val Tr3 → Dirty → Time → Tr3 → Nat)) :=
+    [(0, fun _ _ i _ => i - 1), (3, fun _ _ i tr => i - 1 - (lcg i / 4096 + tr.n) % 5)]
+  for (a, pol) in pols3 do
+    let al : Algo Val Tr3 := { policy := pol, stillDirty := javaTest spec3, mark := true }
+    let assum := (List.range seeds).all (fun i => evictRunOKB spec3 al ((randomTs3 (i + 1) n).map (·.1)))
+    for sched in [0, 1, 2, 3] do
+      let mut trans := 0
+      let mut fails := 0
+      for seed in [1:seeds + 1] do
+        let (n1, f1) := checkEvict spec3 al (randomTs3 seed n) sched seed
+        trans := trans + n1
+        fails := fails + f1
+      if fails != 0 || !assum then bad := bad + 1
+      IO.println s!"example 3, policy {a}, schedule {sched}: {trans} transactions, {fails} fail; TREE, A6' and A-COPY: {assum}"
+  let pols5 : List (Nat × (SIS.Stream Val Tr5 → Dirty → Time → Tr5 → Nat)) :=
+    [(0, fun _ _ i _ => i - 1), (3, fun _ _ i tr => i - 1 - (lcg i / 4096 + tr.n) % 5)]
+  for (a, pol) in pols5 do
+    let al : Algo Val Tr5 := { policy := pol, stillDirty := javaTest spec5, mark := true }
+    let assum := (List.range seeds).all (fun i =>
+      let ts := (randomTs5 (i + 1) n).map (·.1)
+      runOKB spec5 al ts && physRunOKB spec5 al ts && evictRunOKB spec5 al ts)
+    for sched in [0, 1, 2, 3] do
+      let mut trans := 0
+      let mut fails := 0
+      for seed in [1:seeds + 1] do
+        let (n1, f1) := checkEvict spec5 al (randomTs5 seed n) sched seed
+        trans := trans + n1
+        fails := fails + f1
+      if fails != 0 || !assum then bad := bad + 1
+      IO.println s!"example 5, policy {a}, schedule {sched}: {trans} transactions, {fails} fail; assumptions: {assum}"
+  for (al, a) in algos2.zipIdx do
+    if a == 1 || a == 3 || a == 5 || a == 15 then
+      let assum := (List.range seeds).all (fun i => evictRunOKB spec2 al ((randomTs (i + 1) n).map (·.1)))
+      for sched in [0, 1, 2, 3] do
+        let mut trans := 0
+        let mut fails := 0
+        for seed in [1:seeds + 1] do
+          let (n1, f1) := checkEvict spec2 al (randomTs seed n) sched seed
+          trans := trans + n1
+          fails := fails + f1
+        if fails != 0 || !assum then bad := bad + 1
+        IO.println s!"example 2, algorithm {a}, schedule {sched}: {trans} transactions, {fails} fail; TREE, A6' and A-COPY: {assum}"
+  return bad
 
 /-- Random operations on the memory after startup from the stream of db: reads at
 random times and the writer's walks to random nodes reachable at the last time.
@@ -37,6 +92,10 @@ def randomOps {T : Type} (sp : Spec Val T) (db : DB Val T) (seed ops : Nat) : Na
 def main (args : List String) : IO UInt32 := do
   let seeds := (args[0]?.bind String.toNat?).getD 10
   let n := (args[1]?.bind String.toNat?).getD 30
+  if args[2]? == some "evict" then
+    let bad ← evictPart seeds n
+    IO.println (if bad == 0 then "all checks pass" else s!"{bad} failures")
+    return (if bad == 0 then 0 else 1)
   let mut bad := 0
   -- Example 3, a virtual root: four policies, every state, and prefixes (crashes).
   for (pol, a) in policies3.zipIdx do
@@ -113,5 +172,6 @@ def main (args : List String) : IO UInt32 := do
         fails := fails + f1
       if fails != 0 then bad := bad + 1
       IO.println s!"example 2, algorithm {a}, lazy restarts: {trans} transactions, {fails} fail T2-L, CC or the invariant"
+  bad := bad + (← evictPart seeds n)
   IO.println (if bad == 0 then "all checks pass" else s!"{bad} failures")
   return (if bad == 0 then 0 else 1)

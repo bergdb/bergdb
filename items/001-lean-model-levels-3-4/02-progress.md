@@ -125,7 +125,7 @@ Status
 | L4 | The writer after a lazy startup: CC, T2-L | done | 2026-10-16 |
 | L5 | Lazy reading checked against Java | done | 2026-10-16 |
 | E1 | Design: eviction, references, pins | done | 2026-10-16 |
-| E2 | The physical model with eviction, executable | in progress | 2026-10-17 |
+| E2 | The physical model with eviction, executable | done | 2026-10-17 |
 | E3 | INV-SLOT and the physical writer: T-CACHE | in progress | 2026-10-17 |
 | E4 | Reads under eviction: T-READ | not started | — |
 | E5 | Restarts with eviction: T2-C | not started | — |
@@ -1389,3 +1389,85 @@ Register: none changed (the measurements are for P3, P4 and J7).
 
 Open, next: E2's Lean checks and commit (its model was revised during E3,
 see the next entries), then E3.
+
+
+### 2026-10-16 23:25 to 2026-10-17 02:23. WP E2, done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `065c21f` (E1)
+at the start and `e5b643b` (P2) at the end; uncommitted before this WP's
+commit: its files, below. The model was written and run in a scratch copy of
+`lean/`, at the lowest priority during P2's measured hours (single files and
+the random tests, no full builds; the 01:31 entry); its full checks ran after
+P2, on a clean copy.
+
+Did:
+
+1. `lean/SIS/Evict.lean` (new, trusted, executable): the physical layer,
+   part 2, as E1 designed it (`docs/level4-alignment.md`, 5.2): the pinned
+   objects, unswizzle and release; the Level 4 loader (`Mem.follow4`) and
+   reads through it; the writer's path and the change; startup with rule 4
+   (`evictStartup`); the physical writer (`Mem.refOf`, `writeNodes`,
+   `evictTrans`); cache schedules (`CacheOp`) and runs with restarts
+   (`runEvict`); the assumptions of stage 2 (`EvictStep`: TREE and A6';
+   `CopyStep`: A-COPY; `EvictRunOK`).
+2. `lean/SIS/EvictExample.lean` (new): the invariants by running (INV-CAN,
+   INV-SNAP, INV-SLOT, no dangling slot), the cache schedules, and
+   `checkEvict` after every transaction of a run: the records and D are
+   `step`'s, reads at the last time, at half of it and at a random time give
+   P at that time, and the invariants hold; TREE, A6' and A-COPY by running;
+   example 5 (example 3 with drops, so that a subtree goes cold).
+   `lean/PhysTest.lean`: the eviction part of `phystest` (also alone:
+   `lake exe phystest 20 40 evict`). `lean/SIS.lean` imports both files;
+   `lean/README.md` describes them.
+3. Revised during E3 (`level4-alignment.md`, 5.10, new), each change run
+   before a proof relied on it: the writer's walk follows every slot of its
+   paths, as Java's `WriterFollower` does; a new pointer's slot comes only
+   from a canonical object of a node reachable before the change (stage 1's
+   last resort, any canonical object's slot, is gone), which needs a new
+   assumption, A-COPY; and a fourth cache schedule, unswizzles and releases
+   apart, since the plan's three never leave an object in memory with some of
+   its slots unswizzled.
+
+Result: examples 2 (8 algorithms), 3 and 5 (2 policies each), with restarts
+and the four schedules, 20 seeds of 40 transactions each: 25,600
+transactions, none fails, and TREE, A6' and A-COPY hold on every run. Before
+the revision, with the plan's three schedules, 19,200 transactions passed
+too (00:36 to 00:38). A mutation shows that the tests see rule 4: without it
+(no linking by node id at startup), example 3 writes a wrong record after a
+restart (seed 8), the gap of the plan's 8.5. No counterexample to Option K
+was found.
+
+Not as planned: example 5 has one root split a transaction, not two root
+changes in one transaction (plan, 8.6): the model's assumptions exclude two
+(every node a transaction creates or changes is reachable after it), and
+Java splits a node of the same transaction in place (F1-008-11's D1).
+
+Files changed: `lean/SIS/Evict.lean`, `lean/SIS/EvictExample.lean` (new);
+`lean/PhysTest.lean`, `lean/SIS.lean`, `lean/README.md`;
+`docs/level4-alignment.md` (5.9, 5.10, M43); this file.
+
+Checks (plan, 2.2), on a clean copy (bergdb's `lean/` at `e5b643b` with
+this WP's five files), 02:04 to 02:20: `lake build` exit 0, no warnings;
+`lake exe sistest 20 40`: all checks pass; `lake exe phystest 20 40` (with
+the eviction part): all checks pass; `#print axioms` of the theorem list:
+standard axioms only; no `sorry`, `admit`, `axiom` or `unsafe` in `SIS/` and
+`Check/`; `sh test-traces/run.sh`: TRACE TESTS OK. No Java change, so no
+gate.
+
+Register: M43 (A-COPY added; holds on the model's runs, not yet checked on
+Java).
+
+Notes for Frans: A-COPY is a new assumption of stage 2, of the same kind as
+A6': the pointer of a new entry names a node the transaction creates, a node
+of the writer's paths, or a pointee of a node of the paths. Java's writer
+meets it by construction, I think (a split copies the split node's pointers,
+`TopDs.newSuperRoot` the old super root's skip pointers), but it is not yet
+checked on Java runs; the trace checker can do it (with R2's exporter, or in
+F1). K1 then needs it accepted together with A6'.
+
+Time: E2 is M (2 to 8 hours): about 2.9 hours, interleaved with P2's runs
+and E3's proofs.
+
+Open, next: E3, in progress in the scratch copy: T-CACHE for runs without
+restarts is proved from the invariant of the startup's memory; next, that
+the startup from R(0) gives it, then E3's checks and commit.

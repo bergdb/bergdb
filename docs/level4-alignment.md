@@ -195,7 +195,7 @@ level2-alignment.md's register, where stage 1 closes them.
 | M31 | One canonical object per node id must survive release and reload | `Cache3.makeCanonical` (137), `isBetter` (167); the `isCanonical` fields of `KeyNode` and `TopNode` | Phys: the node table | Model and code: release clears the table's entry and the flag; the writer's follower makes a reloaded node canonical (E1, 5.2) | 2, 4: E1 (designed), J3; o |
 | M39 | Eviction beside concurrent readers | `NodeCollection.followPointer` (93) takes the slot's lock (`PointerLocks`, 128 stripes) on every follow | — (sequential) | Java protocol (Q8) and its tests | 4: J5; o |
 | M40 | Memory accounting is not implemented: `Cache3.totalSize` and `putSize` are set once and never advanced; access data is `-putSize`, the constant -10,000 | `Cache3` fields (lines 25, 26); `Db.getAccessData` (1605); `Cache3.setSizeIndicator`, called from the `Db` constructor (line 173), stores the budget and nothing reads it | — | Code | 4: J1, J7; o |
-| M43 | Option K relies on A6 (no adoption) and TREE (one current parent), which the model does not assume today. A4: TREE holds on every transaction checked; A6 fails in 5 of 68,901 Java-tier transactions (an in-place split of a new segment root), and the weaker A6' holds in all (section 4). By the code: a split makes new nodes and the replaced node stops being current (`timeSplit`, `spaceSplit`), or changes in place a node of the same transaction (`timeSplitInPlace`, `spaceSplitInPlace`); a new top node's skip slots point to older top nodes, which are not current; no path moves a child from one current node to another | `Dag.handleFullNode` (780) and the splits (821, 841, 894, 955); `TopDs.newSuperRoot` (42) | `StepOK` | Checked on Java (A4: TREE, A6'); E1: the model assumes TREE and A6' (not A6), in `EvictStep` (5.5) | 2: A4 done, E1 done (A6'), E2 checks it by running; o |
+| M43 | Option K relies on A6 (no adoption) and TREE (one current parent), which the model does not assume today. A4: TREE holds on every transaction checked; A6 fails in 5 of 68,901 Java-tier transactions (an in-place split of a new segment root), and the weaker A6' holds in all (section 4). By the code: a split makes new nodes and the replaced node stops being current (`timeSplit`, `spaceSplit`), or changes in place a node of the same transaction (`timeSplitInPlace`, `spaceSplitInPlace`); a new top node's skip slots point to older top nodes, which are not current; no path moves a child from one current node to another | `Dag.handleFullNode` (780) and the splits (821, 841, 894, 955); `TopDs.newSuperRoot` (42) | `StepOK` | Checked on Java (A4: TREE, A6'); E1: the model assumes TREE and A6' (not A6), in `EvictStep` (5.5); E3: also A-COPY for a transaction's new pointers (`CopyStep`, 5.10) | 2: A4 done, E1 done (A6'), E2 checked TREE, A6' and A-COPY by running; A-COPY not yet checked on Java; o |
 | M44 | After a restart, a node of D can hold a stream slot to a node of D that is written before it; today the node table gives the newer version, with eviction nothing does (plan, 8.5, the gap) | `DbStarter.canonicalNode` (451); `NodeCollection.resolvePointers` (292) | — | Model and code: E1 chose startup linking by id (rule 4, 5.4), which gives today's records; the window is the fallback | 2, 3: E1 (designed), R8; o |
 | M45 | **New (A2).** The public API's cache size is computed in `int`: `this.cacheSizeInMb * 1000000` overflows for more than 2,147 MB. The default is a fifth of the JVM's maximum heap, so it overflows with heaps above about 10.7 GB. With `-ea` the `Db` constructor then fails (`Cache3.setSizeIndicator` asserts a positive size); without it, the budget becomes 4 MB. No effect today, since nothing reads the budget (M40); J7 makes it the budget | `pubimp/DatabaseBuilderImp.start`, line 173; `Cache3.setSizeIndicator` (50) | — | Code fix (widen to `long`), with a test, before J7 relies on it | 4: J7; o |
 | M46 | **New (A2, from review-13-claude, 3).** Top node ordinals are bounded by `MAX_TOP_NODE_ID_VALUE`, 2^30 − 1, over the database's whole life; reclaim bounds the stream but not the ordinals. With one hot key (about 15 transactions per top) that is about 186 days at 1,000 transactions per second. At the bound, `TopNode.height` throws from the constructor in `newSuperRoot`, in the middle of a root split, after the Dag has made the new root | `TopNode.height`, `MAX_TOP_NODE_ID_VALUE` (lines 105 to 125); `TopDs.newSuperRoot` (42) | `Spec.topLevel`, levels (level2-alignment.md, 8.4) | Frans: a wider ordinal (the header has 48 bits for it) or a clean refusal before the transaction changes anything. Not urgent | —; o |
@@ -589,8 +589,73 @@ maintenance reads (stage 3).
   historical node sharing a child; E2's example 5 and the random runs test
   it; E3 proves it or finds the missing condition.
 * A6' is checked on Java (A4: 0 failures in 68,901 transactions) and on the
-  model's examples by running; it is an assumption, not a theorem.
+  model's examples by running; it is an assumption, not a theorem. So is
+  A-COPY (5.10), which E3 added; it is not yet checked on Java.
 * The window (8.5) stays the fallback for rule 4.
+
+### 5.10 E2: the model, run, and what E3 changed in it
+
+`lean/SIS/Evict.lean` is 5.2 as a Lean model (WP E2, 2026-10-16 and 17), and
+`lean/SIS/EvictExample.lean` runs it: examples 2 and 3, and a new example 5
+(example 3 with drops: a leaf replaced by an empty one, so that a subtree
+goes cold), each with restarts and four cache schedules (none; every object
+that may be detached, after every transaction; each such object with
+probability 0.3; and unswizzles and releases apart, so that objects stay in
+memory with some of their slots unswizzled). After every transaction the
+records and D are the model's, reads at three times give P, and INV-CAN,
+INV-SNAP and INV-SLOT hold (`checkEvict`). `lake exe phystest 20 40 evict`:
+20 seeds of 40 transactions on every example and schedule, 25,600
+transactions, none fails. Rule 4 is needed: without it (the startup links
+nothing by id) example 3 writes a wrong record after a restart (seed 8),
+the gap of the plan's 8.5. The plan's example 5 also asked for two root
+changes in one transaction; the model's assumptions exclude it (every node
+a transaction creates or changes is reachable after it), and Java splits a
+node of the same transaction in place (F1-008-11's D1), so example 5 has one
+root split a transaction.
+
+While proving T-CACHE (E3) three things of 5.2 changed; each was checked by
+running before a proof relied on it, and the runs above are of the model as
+it is now.
+
+1. **The writer's walk follows every slot of its paths**
+   (`Mem.reachOnPath4`). Stage 1's walk skips a node that has a canonical
+   object already. With eviction the parent's slot for such a node can be a
+   stream slot (unswizzled while the node was clean) or name another object
+   of it; if the node then gets dirty, the live slot of its current parent is
+   not a memory slot to its canonical object, which reads at the last time
+   and INV-SLOT's second half rely on. The old walk kept that only through a
+   further invariant (no live slot of a current canonical object names a
+   snapshot of a node that has a canonical object), which held in the runs
+   but rests on how objects can come back into the writer's reach; the new
+   walk makes it direct. Java's writer walks from the root and follows every
+   pointer on its paths (`NodeCollection.WriterFollower.followPointer`, lines
+   161 to 191 at `e5b643b`), so the model now does what Java does.
+2. **A new pointer's slot comes only from what the writer has in hand**
+   (`Mem.newSlot4`, `Mem.applyChange4`): a memory slot to the pointee's
+   canonical object; else a copy of the slot of a canonical object of a node
+   that was reachable before the change and has the pointee in its history
+   (live there, for a virtual root, whose dead slots go stale since it is
+   never written); else the object's own slot. Stage 1's last resort, a copy
+   of any canonical object's slot for the pointee, is gone: a canonical
+   object of a node no longer current may hold a stale slot, which stage 1
+   never wrote from but the physical writer does. This needs an assumption,
+   **A-COPY** (`CopyStep`, in `EvictRunOK`): a pointer of a new entry names
+   a node the transaction creates, a node of the writer's paths, or a
+   pointee of a node of the paths (written, or a live child of a virtual
+   root). Java's writer meets it by construction (a split copies the split
+   node's pointers, `TopDs.newSuperRoot` the old super root's skip
+   pointers); the examples meet it (`copyB`); the trace checker can check it
+   on Java runs, as A4 checked TREE and A6' (to do, with the exporter of R2
+   or in F1).
+3. **A fourth cache schedule**, unswizzles and releases apart: the three of
+   E2's plan always release an object right after unswizzling every slot to
+   it, so an object with some slots unswizzled was never tested.
+
+The invariant of E3's proofs (`EInv` in `lean/SIS/Proof/EvictInv.lean`, with
+E3) is 5.3 made precise, with one more part for the live slots of a current
+canonical object (a virtual root's too): for a child in D, a memory slot to
+its canonical object; otherwise one that serializes the child's latest
+version. It held after every operation of the runs above, before the proofs.
 
 
 ## 6. What Java must do

@@ -24,7 +24,8 @@ Needs elan (`brew install elan-init`). The toolchain version is in
     cd lean
     lake build              # checks every file, runs the #guard tests
     lake exe sistest 20 40  # random runs: 20 seeds, 40 transactions each (7 min)
-    lake exe phystest 20 40 # the physical layer on random runs (6 min)
+    lake exe phystest 20 40 # the physical layer on random runs (9 min)
+    lake exe phystest 20 40 evict  # its eviction part only (2.5 min)
 
 `lake build` checks every proof. To see that a theorem depends on nothing but
 Lean's standard axioms (no `sorry`), put this in a file, for example
@@ -75,6 +76,7 @@ its section in sis-model.md.
 | SIS/Theorems.lean | T1 (`T1_recovery`, `T1_crash`, `T1_nodes`), T2 (`T2_restart`), T13 (`T13_markExact`) | 9 |
 | SIS/Phys.lean | The physical layer, what Java holds in memory (bergdb item 001, WPs L1 and L3): objects (`Obj`), their slots (`Slot`), the memory with the node table (`Mem`); Java's first touch (`Mem.follow`: Rule R, the table, the version read, cut back in the section); reads (`Mem.read`); the lazy startup (`lazyStartup`); a version cut back to a time (`Version.cutTo`); the operations after startup (`Op`, `Mem.step`, admissible: `OpsOK`); the assumptions of the physical layer (`PhysStep`, `PhysRunOK`); the writer after a lazy startup (WP L4: its view through the physical layer, `Mem.view`; its transaction, `lazyTrans`, with the record of `stepWith`, `step` with its change given) and a run with lazy restarts (`runLazy`) | — (docs/level2-alignment.md, 13) |
 | SIS/PhysTheorems.lean | Lemma M: a newer version of a node serves every time an older one serves (`LM_newer`), so Rule R's version does (`LM_ruleR`), and a version cut back to s serves the times up to s (`LM_cutTo`); T1-L (`T1_lazy`): after the lazy startup from the stream of a run, or of a prefix of it (a crash), and any reads and writer follows, a read at any time up to the last record gives P at that time; CC (`CC_canonical`): in a run with lazy restarts, every canonical object holds its node's whole history; T2-L (`T2_lazy`): such a run appends the records of the run without restarts; `step_eq_stepWith` | 5.1, 9 |
+| SIS/Evict.lean | The physical layer, part 2, with eviction (bergdb item 001, WP E2; docs/level4-alignment.md, section 5): the pinned objects (`Mem.pinned`), unswizzling (`Mem.unswizzle`) and release (`Mem.release`); the Level 4 loader (`Mem.follow4`: the canonical object, or exactly the version a slot names after Rule R) and reads through it (`Mem.read4`); the writer's path (`Mem.reachOnPath4`) and the change (`Mem.applyChange4`, `Mem.newSlot4`); startup with rule 4 (`evictStartup`, `Mem.linkD`); the physical writer (`Mem.refOf`, `Mem.writeNode`) and its transaction (`evictTrans`); cache schedules (`CacheOp`) and runs (`runEvict`); the assumptions of stage 2 (`EvictStep`: TREE, `treeAt`, and A6', `adoptAt`; A-COPY, `CopyStep`; `EvictRunOK`) | — (docs/level4-alignment.md, 5) |
 
 The proofs, in SIS/Proof/ (not needed for reading the statements):
 
@@ -136,6 +138,16 @@ Not trusted, tests only:
   transaction the writer's view is P's, the records are the run's, every
   canonical object is whole, and the memory meets the invariant for the
   frozen run (`frozenB`).
+* SIS/EvictExample.lean (bergdb item 001, WP E2): the physical layer with
+  eviction by running. The invariants of docs/level4-alignment.md, 5.3
+  (`invCanB`, `invSnapB`, `invSlotB`, `noDanglingB`); cache schedules
+  (`schedule`: none, every object that may be detached, each with
+  probability 0.3, unswizzles and releases apart); runs with restarts and a
+  schedule, checked after every transaction (`checkEvict`: the records and D
+  are the model's, reads give P, the invariants hold); TREE, A6' and A-COPY by
+  running (`treeB`, `adoptB`, `copyB`, `evictRunOKB`); example 5 (example 3
+  with drops). `lake exe phystest 20 40 evict` runs `checkEvict` on examples
+  2, 3 and 5 with every schedule.
 * Check/ and TraceCheck.lean: the trace checker, `lake exe tracecheck`. It
   checks traces of Java runs against the model's definitions
   ([../docs/level2-alignment.md](../docs/level2-alignment.md), sections 8.5
@@ -463,6 +475,60 @@ from `S.lv`). Computing them from the canonical objects and their slots is
 stage 2 (bergdb item 001, WP E3); so are steps 3 and 7 by the physical
 writer.
 
+Changes to the trusted part on 2026-10-16 and 17 (bergdb item 001, WP E2;
+[../docs/level4-alignment.md](../docs/level4-alignment.md), section 5, the
+design of E1, and 5.10, what E2 found): a new file, SIS/Evict.lean, the
+physical layer, part 2, with eviction. Nothing that was there changed.
+
+* Pins and eviction: the pinned objects (`Mem.pinned`: the canonical
+  objects of D's nodes, the root's object); objects that may be detached
+  (`Mem.detachable`: not pinned, written) and released (`Mem.eligible`: also
+  no memory slot to them, `Mem.incoming`); unswizzling (`Mem.unswizzle`: a
+  memory slot to a detachable object becomes a stream slot naming its
+  position) and release (`Mem.release`: the object leaves memory and the node
+  table).
+* The Level 4 loader (`Mem.follow4`, Q7 of the plan): the node table's
+  canonical object, else exactly the version the slot names after Rule R,
+  not cut back and not entered in the table; the writer's promotion
+  (`Mem.promote`); reads through it (`Mem.readAt4`, `Mem.read4`,
+  `Mem.view4`) and the writer's path (`Mem.reachOnPath4`, which follows the
+  parent's slot also when the node has a canonical object, as Java's writer
+  walks from the root). Rule R comes from the stream of the last startup,
+  versions from the stream now.
+* The change applied to the canonical objects (`Mem.applyChange4`): as stage
+  1's, with the slot of a new pointer from `Mem.newSlot4`: the pointee's
+  canonical object, else a copy of the slot of a canonical object of a node
+  reachable before the change that has the pointee in its history (`srcOK4`;
+  live there, for a virtual root), else the object's own. Stage 1's last
+  resort, a copy from any canonical object, is gone.
+* Startup, Level 4 (`evictStartup`): stage 1's `lazyStartup`, the positions
+  of its canonical objects as Java sets them (`Mem.sectionPos`), and rule 4,
+  D's objects linked by node id (`Mem.linkD`).
+* The physical writer: the reference for a pointee (`Mem.refOf`: a pinned
+  pointee's canonical object's position, else the slot's), a node's version
+  from its canonical object (`Mem.writeNode`, `writeNodes`), and one
+  transaction (`evictTrans`: as `lazyTrans`, with the record's versions from
+  the objects; the rest is step's).
+* Cache schedules and runs: `CacheOp` (a read, an unswizzle, a release),
+  `Mem.cacheOp`, `runEvict` (transactions, each followed by its cache
+  operations, and restarts).
+* The assumptions of stage 2: TREE (`treeAt`) and A6' (`adoptAt`), in
+  `EvictStep`, after every transaction of a run, and A-COPY (`CopyStep`: the
+  pointer of a new entry names a node of the writer's paths or a pointee of
+  one) for its change (`EvictRunOK`).
+
+Checked by running before any proof (SIS/EvictExample.lean, `phystest`'s
+eviction part): examples 2, 3 and a new example 5 (example 3 with drops, a
+leaf replaced by an empty one, so a subtree goes cold), with restarts and four
+cache schedules (none; every object that may be detached, after every
+transaction; each with probability 0.3; and unswizzles and releases apart,
+so that objects stay with some slots unswizzled): after every transaction the
+records and D are the model's, reads give P, and INV-CAN, INV-SNAP and
+INV-SLOT hold; the examples meet TREE, A6' and A-COPY. 20 seeds of 40
+transactions, 25,600 transactions, none fails. Without rule 4 (the startup
+links nothing by id), example 3 writes a wrong record (seed 8 of 10, after a
+restart): the gap of the plan's 8.5.
+
 Stage 1 of bergdb item 001 is done (2026-10-16): lemma M (`LM_newer`, L2),
 T1-L (`T1_lazy`, L3), CC and T2-L (`CC_canonical`, `T2_lazy`, L4) are proved,
 and Java's first touches after restarts are checked against the model's rule
@@ -472,4 +538,5 @@ Not done:
 
 * A check of the physical layer's assumptions (`PhysStep`, M47) on Java
   traces; they are argued (level2-alignment.md, 13.3).
-* The bounds (T3, T4), eviction, reclaim.
+* The bounds (T3, T4), the proofs of eviction (stage 2: T-CACHE, T-READ,
+  T2-C, T-PIN; E3 to E6), reclaim.

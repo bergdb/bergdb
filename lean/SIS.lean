@@ -8,3 +8,5 @@ import SIS.Phys
 import SIS.PhysTheorems
 import SIS.Example
 import SIS.PhysExample
+import SIS.Evict
+import SIS.EvictExample
