@@ -570,3 +570,16 @@ at the decision, leads below the cut, while the running memory reads through
 the pinned canonical objects and is right. `ReadsPhys` now takes D and does
 not extend through such versions (a trusted change); the checker's C-CUT
 likewise. With it the scheme gives part 2 in every state checked.
+
+2026-10-17. Bergdb item 001, WP R5, the logical half: T12 proved
+(`T12_restartCut`, `lean/SIS/ReclaimTheorems.lean`). A run that restarts from
+safe cut streams appends the records of the run without restarts, cut at the
+largest cut, with its D and its lookups from the first available time on;
+for marking and `javaTest`, with T8's assumptions and `PolicyCutOK`. The
+nodes of D that no lookup from f on reaches (M33, M34, the plan's delicate
+case): their ancestors at a time they were reachable stay in D by Rule A,
+put back with versions in the startup section, and startup reads them
+through these with Rule R, so they are written again with the run's content.
+New proofs `lean/SIS/Proof/CutRestart.lean`, `CutHist.lean`,
+`CutHistRead.lean`, `CutRuns.lean`; `step_closed` needs only D closed upward
+(`DClosed`), not A6'. T12 with eviction follows T9.

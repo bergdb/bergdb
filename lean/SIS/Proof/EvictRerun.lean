@@ -163,12 +163,6 @@ theorem canonOfVersion_stream_eq {sp : Spec V T} {S : Stream V T} {s : Nat} {w :
   simp only [Slot.stream.injEq] at this
   rw [this, ruleRRef_idem]
 
-theorem newest_some_of_versionAt {S : Stream V T} {s r : Nat} {x : NodeId} {w : Version V}
-    (hw : S.versionAt r x = some w) (hr : s ≤ r) : newest S s x ≠ none := by
-  intro hn
-  have := (newest_eq_none_iff S s x).mp hn r hr
-  rw [hw] at this; cases this
-
 section Base
 
 variable {sp : Spec V T} {al : Algo V T} {ts : List T}

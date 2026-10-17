@@ -402,6 +402,12 @@ def tsCut4 : List (Tr4 × Option Nat) :=
 #guard (runRestartsCut spec4 al4 tsCut4).S == cutStream 3 run4.S
 #guard (runRestartsCut spec4 al4 tsCut4).D == run4.D
 #guard equivFromB spec4 7 15 (runRestartsCut spec4 al4 tsCut4).P run4.P
+-- T12's assumption on the cuts (`T12_restartCut`): at each restart, `CutOK` at the
+-- largest cut so far, in the run without restarts then.
+#guard tsCut4.zipIdx.all (fun p => match p.1.2 with
+  | some _ => cutOKB spec4 (cutMax ((tsCut4.take (p.2 + 1)).map (·.2)))
+      (run spec4 al4 ((tsCut4.map (·.1)).take (p.2 + 1))) (p.2 + 1)
+  | none => true)
 -- With eviction and the four cache schedules: the records, D, reads from the first
 -- available time on (on the cut stream from the running memory too, T9), the
 -- invariants, and the restarts from the cut streams.

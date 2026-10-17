@@ -116,11 +116,12 @@ Current state
 
 * Checkpoints: G0 given (2026-10-16 15:23); K1 passed (2026-10-17 07:56,
   Frans: Option K under TREE, A6' and A-COPY; above). K2 to K5 open.
-* Next: R5's logical half (T12 for `runRestartsCut`: it needs only T8, so
-  not the choice that R6's part 1b leaves to Frans), then T9 (R4's
-  remainder) and R6's proof of T-SCHEME (its statement holds by running,
-  R6 part 1b); then R9 and K3 (plan, 5.1). R3, R7 and R8 (but its
-  performance comparison) are done; R4 is done but for T9 (2026-10-17).
+* Next: R6's proof of T-SCHEME (its statement holds by running, R6 part
+  1b), then T9 (R4's remainder; M48's order: R6, then T9), then R5's half
+  with eviction (T12 for `runEvictCut`, with T9's invariant on the slots);
+  then R9 and K3 (plan, 5.1). R3, R7 and R8 (but its performance
+  comparison) are done; R4 is done but for T9; R5's logical half is done
+  (T12 for `runRestartsCut`, 2026-10-17).
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): R6 proves the
   stronger `CutOK` part 2 with T-SCHEME, then T9 follows (R4's remainder),
   and R5's half with eviction uses the same invariant on the slots. R6 part
@@ -136,7 +137,7 @@ Current state
   fix before J3 (with eviction, loads during puts can fail). Not blocking
   stage 3.
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: none (16:19).
+* Uncommitted work of this plan in bergdb: none (17:49).
 * Long jobs running (scratch copies of `lean/`, at low priority): R7's
   checker on the medium reclaim set's four largest traces, from 2026-10-17
   10:31 (the small set and the two others took 6 and 18 minutes); R4's (R7's,
@@ -149,7 +150,7 @@ Current state
   change 6): C-S fails in 52 and 51 of 5,581 and 5,598 transactions, in the
   examples shown reclaim steps with an extra got-dirty node in Java, M17's
   pattern, which R8's change 6 fixed; C-A, C-V, C-R, C-L and C-CUT (45 and 46
-  cuts) without a failure. rm-long-1 and -2 and R4's four still run.
+  cuts) without a failure. rm-long-1 and -2 and R4's four still run (17:50).
 * Stage 2's time box (plan, 5.3): started with E1 at 2026-10-16 23:14;
   60 hours, so it ends at 2026-10-19 11:14. Stage 2's WPs (E1 to E7) were
   done by 2026-10-17 05:31, about 6.3 hours of it.
@@ -185,7 +186,7 @@ Status
 | R2 | Trace format 2; the exporter for reclaim runs | done | 2026-10-17 |
 | R3 | The Level 3 model: touch, first available time, cuts | done | 2026-10-17 |
 | R4 | Recovery and reads after a cut: T8, T9 | T8 done; T9 after R6 (M48: (a), Frans) | 2026-10-17 |
-| R5 | Restarts across cuts: T12 | not started | — |
+| R5 | Restarts across cuts: T12 | in progress: the logical half (T12 for `runRestartsCut`) done; with eviction after T9 | 2026-10-17 |
 | R6 | Java's scheme gives safe cuts: T-SCHEME | in progress: part 1, `CutOK`'s part 2 over `ReadsPhys` (M48: (a)), with its exception for put-back versions (1b), done; T-SCHEME holds by running | 2026-10-17 |
 | R7 | The red list on Java's reclaim | done | 2026-10-17 |
 | R8 | Java: the corrections the model requires, before eviction | changes 1 to 6 done; the performance comparison of 1, 3 and 4 waits for a quiet machine | 2026-10-17 |
@@ -2991,3 +2992,63 @@ Time: about an hour (15:25 to 16:19).
 
 Open, next: R6's proof of T-SCHEME, now with a statement that holds by
 running (above); then T9 and R5.
+
+### 2026-10-17 16:27 to 17:49. WP R5, the logical half: T12 (`T12_restartCut`), done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `08f800e`;
+uncommitted before this commit: its files, below, and session f1-9c's
+`items/002-top-node-ordinal-bound/` with its line in `items/readme.md`, left
+for Frans. Proofs written in a scratch copy of `lean/` and copied back.
+
+Did:
+
+1. T12 for runs without eviction (`T12_restartCut`, new statement in
+   `lean/SIS/ReclaimTheorems.lean`): a run that restarts from safe cut
+   streams (`runRestartsCut`; at each restart `CutOK` at the largest cut so
+   far, in the run without restarts at that point) appends the records of
+   the run without restarts: its stream is that run's, cut at the largest
+   cut; its D is the run's, and so are its lookups from the run's first
+   available time on. Hypotheses: `RunOK`, marking and `javaTest`, T8's
+   `ExecRootOK` and `VirtLiveOK`, `PolicyCutOK`; not A6' or A-COPY.
+2. The proof ([level3-alignment.md, 2.10](../../docs/level3-alignment.md);
+   `lean/SIS/Proof/CutRestart.lean`, `CutHist.lean`, `CutHistRead.lean`,
+   `CutRuns.lean`, new, 1,787 lines): a relation between the states of the
+   two runs (`CutRel`: the run's stream cut at m, its D, its nodes for the
+   lookups from f on and for D), which a transaction keeps while appending
+   the run's record (`step_congr_cut`), and which a restart from the stream
+   cut at c gives again, as a startup from the run's stream cut at the
+   larger of c and m (`recoverCut_dNodes`: T8 with D's nodes).
+3. The nodes of D that no lookup from f on reaches, the plan's delicate case
+   (8.7; M33, M34): every node of D was reachable at a time at which its
+   ancestors then are in D, each with an entry from just after that time or
+   a version in the record of its entry (`DAnchor`, kept by every
+   transaction: D closed upward, and Rule A with BergDB's test along the
+   path, child before parent); with a virtual root, every root child created
+   after a root child of D is in D (`TopsD`). So the ancestors of such a node
+   were put back after the startup pos, with versions in the section, and
+   startup reads the node through them with Rule R, at its newest version,
+   from the cut stream as from the whole stream (`Inv.baseCut_get?_hist`).
+   R3's random runs had met 125 such cuts; `reclaimtest` meets them again
+   (below).
+4. On the way (untrusted): `step_closed` takes only D closed upward
+   (`DClosed`) instead of all of `EvLogic`, so T12 needs no A6';
+   `rerun_cutAgree_nodes` generalizes `rerun_cutAgree` to the nodes the
+   rerun starts with; `Inv.written_of_D` and `newest_some_of_versionAt`
+   moved down (to `Init.lean` and `Recon.lean`) for the cut proofs.
+5. Example 4: a `#guard` that `tsCut4` meets T12's assumption on the cuts.
+6. Docs: `lean/README.md` (T12 in the axiom list and the tables, the new
+   proof files, status, the trusted change: the statement only),
+   `docs/level3-alignment.md` (2.8, 2.10 new, register M33, M34, M41, section
+   5 steps 7 and 10), `docs/log.md`.
+
+Checks: on bergdb's `lean/` and on a clean copy (no `.lake`, 17:37, 126 jobs), with the files of this commit: `lake build` with no warnings; no `sorry`, `admit`, `axiom` or `unsafe` in SIS/ and Check/; `#print axioms` of the README's 20 theorems (T12 added) and the checker's 5: only Lean's standard axioms; `sh test-traces/run.sh`: TRACE TESTS OK; `lake exe reclaimtest 20 30`: all checks pass (T12 20 of 20 seeds for each of the 4 policies; 125 cuts with a node in D that no lookup from f on reaches); `lake exe sistest 20 40`: all checks pass (7 min); `lake exe phystest 20 40`: all checks pass (9 min); 17:31 to 17:49. No change in `java/`, so no gate.
+
+Register: M33, M34, M41: R5's part for the model done (level3-alignment.md);
+M34 stays open for T12 with eviction.
+
+Time: R5 is L (8 to 24 hours): this half about an hour and a half (16:27 to 17:49).
+
+Open, next: T12 with eviction (`runEvictCut`, any cache schedules), with the
+invariant on the slots that T9 needs too. Frans's M48 decision orders R6's
+proof (Java's scheme gives the stronger part 2) before T9; so next R6's
+proof of T-SCHEME, then T9, then R5's second half.

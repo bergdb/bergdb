@@ -156,16 +156,6 @@ section Writes
 
 variable {sp : Spec V T} {al : Algo V T} {db : DB V T} {tr : T} {S0 : Stream V T} {k : Nat}
 
-theorem Inv.written_of_D (hinv : Inv sp db k) {x : NodeId} (hx : inD db.D x = true) :
-    written sp x = true := by
-  unfold written
-  cases hv : sp.virt with
-  | false => rfl
-  | true =>
-    have hr := (hinv.vr hv).rootND
-    have hne : x ≠ root := by intro he; rw [he, hr] at hx; cases hx
-    simp [hne]
-
 /-- The nodes taken are in D. -/
 theorem step_taken_inD {k : Nat} (hinv : Inv sp db k) {x : NodeId}
     (hx : x ∈ (parts sp al db tr).taken) : ∃ d, (x, d) ∈ db.D ∧ d ≤ (parts sp al db tr).s := by

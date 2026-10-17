@@ -38,6 +38,12 @@ theorem newest_some {S : Stream V T} {s : Nat} {y : NodeId} {w : Version V}
   rw [versionAt_drop] at hr
   exact ⟨_, by omega, hr⟩
 
+theorem newest_some_of_versionAt {S : Stream V T} {s r : Nat} {x : NodeId} {w : Version V}
+    (hw : S.versionAt r x = some w) (hr : s ≤ r) : newest S s x ≠ none := by
+  intro hn
+  have := (newest_eq_none_iff S s x).mp hn r hr
+  rw [hw] at this; cases this
+
 /-- A version that a pointer is followed to is a version of that node, in the stream. -/
 theorem follow_spec {S : Stream V T} {s : Nat} {y : NodeId} {ref : Option Nat}
     {w : Version V} (h : follow S s true y ref = some w) :

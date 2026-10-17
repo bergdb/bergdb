@@ -17,6 +17,12 @@ namespace SIS
 
 variable {V T : Type} [DecidableEq V]
 
+/-- D is closed upward at time k: every current ancestor of a node of D is in
+D (`EvLogic.closed`; T12 needs it without A6', bergdb item 001, WP R5). -/
+def DClosed (sp : Spec V T) (db : DB V T) (k : Nat) : Prop :=
+  ∀ x n y, written sp x = true → reachable sp db.P k x = true → db.P.get? x = some n →
+    inD db.D y = true → y ∈ reachFrom sp db.P k x n → inD db.D x = true
+
 /-- The logical facts of stage 2 for state db at time k. -/
 structure EvLogic (sp : Spec V T) (db : DB V T) (k : Nat) : Prop where
   /-- D is closed upward. -/
@@ -328,7 +334,7 @@ theorem step_unmarked_old (hsp : SpecOK sp) {k : Nat} (hinv : Inv sp db k)
 the current ancestors of a changed node, and Rule A puts back a taken node
 with a pointee in the new D, lowest level first. -/
 theorem step_closed (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) (hsp : SpecOK sp)
-    {k : Nat} (hinv : Inv sp db k) (hev : EvLogic sp db k)
+    {k : Nat} (hinv : Inv sp db k) (hcl : DClosed sp db k)
     (hstep : StepOK sp db.P (k + 1) (parts sp al db tr).c) :
     ∀ (b : Nat) (x : NodeId) (n : Node V), n.level < b → written sp x = true →
       reachable sp (parts sp al db tr).P (k + 1) x = true → (parts sp al db tr).P.get? x = some n →
@@ -398,7 +404,7 @@ theorem step_closed (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) (h
             rcases step_D1_cases sp al db tr hmk hinv (step_r7_D1 sp al db tr hinv hy) with hyD | hym | hyt
             rotate_right
             · exact hD1 (step_touch_D1 sp al db tr hinv hstep hw hrk hx0 hyt hy0)
-            · rw [hev.closed x n y hw hrk hx0 hyD hy0] at hxD
+            · rw [hcl x n y hw hrk hx0 hyD hy0] at hxD
               simp at hxD
             · unfold marked at hym
               rw [Bool.and_eq_true] at hym
@@ -664,7 +670,7 @@ theorem step_evLogic (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) (
   closed := by
     intro x n y hw hr hx hy hyx
     rw [step_D] at hy ⊢
-    exact step_closed sp al db tr hj hmk hsp hinv hev hstep (n.level + 1) x n (Nat.lt_succ_self _)
+    exact step_closed sp al db tr hj hmk hsp hinv hev.closed hstep (n.level + 1) x n (Nat.lt_succ_self _)
       hw hr hx y hy hyx
   clean := by
     intro x n hw hr hx hxD y hy

@@ -111,6 +111,17 @@ theorem Inv.ptr_ne_root {sp : Spec V T} {db : DB V T} {k : Nat} (hinv : Inv sp d
     obtain ⟨t, -, hr⟩ := hinv.born x hx
     exact ⟨t, (reachable_iff _ _ _ _).mp hr⟩) hx he hy
 
+/-- A node of D can be written: with a virtual root, the root is never in D. -/
+theorem Inv.written_of_D {sp : Spec V T} {db : DB V T} {k : Nat} (hinv : Inv sp db k) {x : NodeId}
+    (hx : inD db.D x = true) : written sp x = true := by
+  unfold written
+  cases hv : sp.virt with
+  | false => rfl
+  | true =>
+    have hr := (hinv.vr hv).rootND
+    have hne : x ≠ root := by intro he; rw [he, hr] at hx; cases hx
+    simp [hne]
+
 /-- In the initial structure, no entry points to the root. -/
 theorem init_ptr_ne_root (hok : SpecOK sp) {x : NodeId} {n : Node V} (hx : sp.init.get? x = some n)
     {e : Entry V} (he : e ∈ n.hist) {y : NodeId} (hy : y ∈ sp.ptrs e.val) : y ≠ root := by
