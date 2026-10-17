@@ -856,8 +856,11 @@ public class Db {
     // that the Lean model marks: the index nodes current at the transaction time with a node
     // created or changed by the transaction below them (T13 in lean/; docs/level2-alignment.md,
     // M2). Before 2026-10-16, every such node got dirty at once, also on the path of a delete
-    // of a missing key and when the transaction replaced the node later. Reclaim's touch
-    // transactions keep every mark (Level 3, Trans.touch).
+    // of a missing key and when the transaction replaced the node later. A reclaim step's
+    // touch (Level 3, Trans.touch) marks the nodes it visits first, and those marks stay, also
+    // for a node that the step's puts then replace; the puts' marks of replaced nodes go, as
+    // in any transaction (the Lean model's step 3, touchOf; bergdb item 001, WP R8: M17 in
+    // docs/level3-alignment.md). Before 2026-10-17, a touch transaction kept every mark.
     
     /** The index nodes that the current operation followed, created or changed. */
     private final ArrayList<Node> opMarks = new ArrayList<Node>();
@@ -868,6 +871,12 @@ public class Db {
     /** The nodes that the current transaction replaced. */
     private final Set<Node> replacedInTrans = 
             Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+    
+    /**
+     * The number of nodes that the current transaction's touch made dirty: the first ones of
+     * x.transInfo.gotDirtyNodes (0 without a touch).
+     */
+    private int touchMarks = 0;
     
     private void markAtEndOfOp(Node node) {
         if (x.transInfo == null) return;
@@ -886,13 +895,17 @@ public class Db {
     }
     
     /**
-     * Takes the nodes that the transaction replaced out of the nodes that got dirty in it.
+     * Takes the nodes that the transaction replaced out of the nodes that got dirty in it,
+     * but those that its touch made dirty.
      */
     private void endOfTrans() {
-        if (!x.trans.touch && !replacedInTrans.isEmpty()) {
-            ArrayList<Node> kept = new ArrayList<Node>(x.transInfo.gotDirtyNodes.size());
-            for (Node n : x.transInfo.gotDirtyNodes) {
-                if (replacedInTrans.contains(n)) {
+        if (!replacedInTrans.isEmpty() && x.transInfo != null) {
+            final ArrayList<Node> gotDirty = x.transInfo.gotDirtyNodes;
+            final int keep = x.trans.touch ? touchMarks : 0;
+            ArrayList<Node> kept = new ArrayList<Node>(gotDirty.size());
+            for (int i = 0; i < gotDirty.size(); i++) {
+                Node n = gotDirty.get(i);
+                if (i >= keep && replacedInTrans.contains(n)) {
                     n.setDirty(false);
                 } else {
                     kept.add(n);
@@ -901,6 +914,7 @@ public class Db {
             x.transInfo.gotDirtyNodes = kept;
         }
         replacedInTrans.clear();
+        touchMarks = 0;
     }
 
     /**
@@ -1542,6 +1556,7 @@ public class Db {
         opMarks.clear();        // in case an earlier transaction ended with an exception
         opChanged = false;
         replacedInTrans.clear();
+        touchMarks = 0;
 
         if (x.trans.touch) {
             // 2026-10-13: was after the puts. Before them, the touch makes dirty 
@@ -1551,6 +1566,7 @@ public class Db {
             // outside the range.
             touchRange(x.trans.touchFrom, x.trans.touchTo);
             endOfOp(true);
+            touchMarks = x.transInfo == null ? 0 : x.transInfo.gotDirtyNodes.size();
             x.putData.clearFast();
         }
 

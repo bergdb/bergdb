@@ -473,3 +473,14 @@ bug of F1-008-13 (levels.md, "Bugs found by the alignment of Levels 3 and
 startup checks the super root without `-ea`. Streams with top node ordinals
 below 32,768 are unchanged, byte for byte.
 
+2026-10-17. Bergdb item 001, WP R8, change 6 (R7's red list, register M17 of
+`docs/level3-alignment.md`): in a reclaim step, a transaction with a touch,
+`Db.endOfTrans` takes out of D the nodes that the step's puts marked and
+replaced, as in every other transaction, and keeps those that the touch
+marked; before, a touch transaction kept every mark. New test
+`DbTester.testTouchTransactionReplacedNodes`, failing before the change. Only
+runs with reclaim get other records: StreamDigest against `l34-base` finds
+the 24 digests of the Level 2 configurations the same, byte for byte, and 10
+of the 12 of the Level 3 ones (reclaim on) different. The trace checker on
+R2's small reclaim set made again with the change: 25 of 25 traces TRACECHECK OK (14,448 transactions, 288 cuts; C-CUT and C-CUT+ without a failure), every transaction
+a step of the model.

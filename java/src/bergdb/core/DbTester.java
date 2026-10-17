@@ -3,8 +3,11 @@ package bergdb.core;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 import bergdb.common.Bytes;
 import bergdb.common.StringUtil;
@@ -15,6 +18,7 @@ import bergdb.dag.Keys;
 import bergdb.dag.Klong;
 import bergdb.dag.Node;
 import bergdb.dag.TopNode;
+import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import static bergdb.nanotest.Assert.*;
 import bergdb.nanotest.Nano;
@@ -1745,6 +1749,76 @@ public class DbTester {
             assertTrue("old top node in D", n != oldTop);
         }
         for (int i : new int[]{0, 1, 2, 10, 11}) {
+            Assert.assertArrayEquals("i=" + i, StringUtil.toBytes("v" + i),
+                    DbUtil.get(db, Long.MAX_VALUE, "/k/" + getKey(i)));
+        }
+    }
+
+    /**
+     * In a transaction with a touch (a reclaim step), a node that the puts mark and replace
+     * leaves D, as in any other transaction; a node that the touch marked stays in D, also
+     * when the puts replace it, as the Lean model's step 3 has it (`touchOf`; bergdb item
+     * 001, WP R8: register M17 and the red list of docs/level3-alignment.md, section 6).
+     * Before 2026-10-17, a touch transaction kept every mark (Db's endOfTrans).
+     */
+    @Nano
+    public static void testTouchTransactionReplacedNodes() {
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup().startupDistance(100).maxNodeSize8().clock(clock).start();
+        long time = 10;
+        for (int i = 0; i < 30; i++) {
+            clock.setTime(time++);
+            db.execute(db.trans().put("/k/" + getKey(i), "v" + i).build());
+        }
+        // Transactions that change nothing move the startup pos past the puts: every node is
+        // written, and D is empty.
+        for (int i = 0; i < 40; i++) {
+            clock.setTime(time++);
+            db.execute(db.trans().build());
+        }
+        assertEquals("nodes of D before", 0, nodesOfD(db).size());
+        
+        final Set<Node> touched = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+        final Set<Node> replaced = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+        Db.testHooks = new Db.TestHooks() {
+            public void transExecuted(Db.ExecuteData x) {}
+            public void valueNodeCreated(ValueNode node, long[] key) {}
+            public void nodeTouched(Node node) { touched.add(node); }
+            public void nodeReplaced(Node node) { replaced.add(node); }
+        };
+        try {
+            // A touch of the first keys, and puts of new keys after the last ones, enough
+            // to split the nodes on their path, which the touch does not visit.
+            Trans.Builder b = db.trans();
+            for (int i = 30; i < 40; i++) {
+                b.put("/k/" + getKey(i), "v" + i);
+            }
+            Trans t = b.build();
+            t.touch = true;
+            t.touchFrom = null;
+            t.touchTo = Keys.toSegments("/k/" + getKey(2));
+            clock.setTime(time++);
+            db.execute(t);
+        } finally {
+            Db.testHooks = null;
+        }
+        
+        Set<Node> inD = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+        inD.addAll(nodesOfD(db));
+        int putsOnly = 0;
+        for (Node r : replaced) {
+            if (touched.contains(r)) {
+                assertTrue("a node that the touch marked and the puts replaced stays in D",
+                        inD.contains(r));
+            } else {
+                putsOnly++;
+                assertTrue("a node that the puts marked and replaced is out of D",
+                        !inD.contains(r));
+                assertTrue("a node that the puts marked and replaced is clean", !r.isDirty());
+            }
+        }
+        assertTrue("the puts replaced a node that the touch did not visit", putsOnly > 0);
+        for (int i = 0; i < 40; i++) {
             Assert.assertArrayEquals("i=" + i, StringUtil.toBytes("v" + i),
                     DbUtil.get(db, Long.MAX_VALUE, "/k/" + getKey(i)));
         }

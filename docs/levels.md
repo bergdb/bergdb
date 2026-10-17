@@ -185,8 +185,12 @@ a node, and when index nodes are written.
   exist marks nothing. At the end of the transaction, a node that the
   transaction replaced and that got dirty in it is clean again and leaves D:
   it is not current, and its latest version is good for every earlier time.
-  These are exactly the nodes that the model marks (T13); reclaim's touch
-  transactions keep every mark. Before, every node an operation reached got
+  These are exactly the nodes that the model marks (T13). In a reclaim
+  step, the nodes that its touch marked stay in D, also those that the
+  step's puts then replace, as the model's step 3 has it (T13'); before
+  2026-10-17 (bergdb item 001, R8: register M17 of
+  [level3-alignment.md](level3-alignment.md)) a touch transaction kept every
+  mark, the puts' too. Before, every node an operation reached got
   dirty at once; the change writes 1.4 to 13.7 percent fewer stream bytes in
   five workloads (level2-alignment.md, 10.4).
 * The super root (2026-10-15, [level2-alignment.md](level2-alignment.md),

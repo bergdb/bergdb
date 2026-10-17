@@ -107,19 +107,18 @@ Current state
 
 * Checkpoints: G0 given (2026-10-16 15:23); K1 passed (2026-10-17 07:56,
   Frans: Option K under TREE, A6' and A-COPY; above). K2 to K5 open.
-* Next: R8 (Java: R7's change for M17, then E7's list), R6 (T-SCHEME), and
-  R5's logical half (T12 for `runRestartsCut`, which needs only T8); then R9
-  and K3 (plan, 5.1). R3 and R7 are done; R4 is done but for T9, which waits
-  for Frans's decision on register M48 (below, R4's entry), as does R5's
-  half with eviction (2026-10-17).
+* Next: R8's changes 1 to 5 (E7's list; its change 6, M17, is done), R6
+  (T-SCHEME), and R5's logical half (T12 for `runRestartsCut`, which needs
+  only T8); then R9 and K3 (plan, 5.1). R3 and R7 are done; R4 is done but
+  for T9, which waits for Frans's decision on register M48 (below, R4's
+  entry), as does R5's half with eviction (2026-10-17).
 * **Waiting for Frans: register M48** ([level3-alignment.md,
   2.9](../../docs/level3-alignment.md)): T9 (physical reads in the running
   process after a cut, with eviction) needs a stronger `CutOK` (option (a),
   recommended: Java's scheme gives it, Java's cuts meet it), or the window
   (b), or T9 only after restarts (c). Not urgent for stage 3's other WPs.
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: R8's first change (M17), in
-  `java/` (2026-10-17 12:20), its checks passed (gates, 12:26 to 12:52).
+* Uncommitted work of this plan in bergdb: none (2026-10-17 13:15).
 * Long jobs running (scratch copies of `lean/`, at low priority): R7's
   checker on the medium reclaim set's four largest traces, from 2026-10-17
   10:31 (the small set and the two others took 6 and 18 minutes); R4's (R7's,
@@ -162,7 +161,7 @@ Status
 | R5 | Restarts across cuts: T12 | not started | — |
 | R6 | Java's scheme gives safe cuts: T-SCHEME | not started | — |
 | R7 | The red list on Java's reclaim | done | 2026-10-17 |
-| R8 | Java: the corrections the model requires, before eviction | not started | — |
+| R8 | Java: the corrections the model requires, before eviction | in progress: change 6 (M17) done | 2026-10-17 |
 | R9 | Level 3 conformance; the gate proposal | not started | — |
 | J1 | Registry, pins and audits | not started | — |
 | J2 | Eviction of values | not started | — |
@@ -2390,3 +2389,64 @@ R5's second half). Meanwhile, by the plan's 2.4 (a stopped WP is not a
 stopped session): R5's logical T12 (`runRestartsCut`), R6 (T-SCHEME, which
 can prove (a)'s stronger part 2 too), and R8 (Java: M17's change and E7's
 list).
+
+### 2026-10-17 12:20 to 13:15. WP R8, change 6: M17 (the red list), done
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `2e00653` (R4);
+uncommitted before this change's commit: its files, below. R8 goes on with
+E7's changes 1 to 5, one at a time (plan, R8); this one first, since it is
+the red list's only row and needs no performance run.
+
+Did:
+
+1. `Db.endOfTrans`: in a transaction with a touch (a reclaim step), the nodes
+   that the step's puts marked and replaced leave D, as in every other
+   transaction; the nodes that the touch marked (the first ones of
+   `gotDirtyNodes`, counted after `touchRange`'s `endOfOp(true)`, the new
+   field `touchMarks`) stay, also when the puts replace them. Before, a touch
+   transaction kept every mark (d5c56dd). The model's step 3 has it so:
+   `touchOf` keeps the touched nodes, `markOf` does not mark replaced ones
+   (T13'). The comment above the marking code says so.
+2. Test `DbTester.testTouchTransactionReplacedNodes` (new): 30 keys at node
+   size 8, all written; then a touch of the first three keys with puts of ten
+   keys after the last ones, which split nodes the touch does not visit. Every
+   replaced node that the touch did not visit is out of D and clean; every
+   replaced node that it visited stays in D; the values read back. Failing
+   before the change ("a node that the puts marked and replaced is out of D").
+3. Checks (below): the unit tests, the gates, the byte comparison, the trace
+   checker on R2's small reclaim set made again with the change.
+
+Results:
+
+* StreamDigest against `l34-base`: the 24 digests of the Level 2
+  configurations the same, byte for byte (no touch there); 10 of the 12 of
+  the Level 3 ones (reclaim on) differ, as they must: the records of reclaim
+  steps have fewer got-dirty ids. Stream lengths: l3-every1 1,789,400 to
+  1,788,344 bytes, l3-node8 7,006,600 to 6,876,752, l3-node14 the same (its
+  content from the first available position is the same; its physical cut
+  came later), l3-node62 8,872,320 to 9,086,496 (+2.4 percent; reclaim's
+  timing changes with D: its last first available time is earlier,
+  2,024,400,011 against 2,046,800,011). Not a record the model disagrees
+  with (below); the performance of reclaim is P's, not measured here.
+* The trace checker (R4's build, R7's checks) on R2's small reclaim set
+  (`java/stress/reclaimtraces.sh small`, made again into a scratch directory
+  with the change): 25 of 25 traces TRACECHECK OK, 14,448 transactions, 288 cuts, with C-CUT and C-CUT+ without a failure. C-S has no failure: the red list (R7: 29
+  transactions of 11 traces) is empty.
+
+Files changed: `java/src/bergdb/core/Db.java`, `java/src/bergdb/core/DbTester.java`;
+`docs/level3-alignment.md` (M17 closed, section 6), `docs/levels.md` (step 3),
+`docs/log.md`; this file.
+
+Checks: `java/build.sh`; the unit tests: 912 successful (911 and the new one);
+the gates, one after the other, 12:26 to 12:52, on a machine busy with the
+checker's runs: `LEVEL 1 OK` (173 s), `LEVEL 2 OK` (933 s; its step 7: a2a3-1
+to 3 OK, conformance small 60 of 60 traces TRACECHECK OK), `LEVEL 3 OK` (415
+s; 912 unit tests, 37 f-tests); StreamDigest against `l34-base` (above); the
+trace checker on the small reclaim set made again (above).
+
+Register: M17 closed (R3: the model; R7: the red list; R8: Java).
+
+Time: part of R8 (M, 2 to 8 hours): about about 1 hour (12:20 to 13:15, with R7's and R4's commits) for this change.
+
+Open, next: R8's changes 1 to 5 (E7's list), one at a time, with the
+performance comparison on a quiet machine for 1, 3 and 4.

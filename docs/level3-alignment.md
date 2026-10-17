@@ -414,7 +414,7 @@ reopened from level2-alignment.md.
 
 | | Mismatch or open question | Java | Model | Proposed resolution | Stage, WP, status |
 |---|---|---|---|---|---|
-| M17 | Reclaim's touch marks nodes without adding entries: every index node the range traversal follows, and the super root, get dirty; the marks stay when the transaction replaces a node | `Db.touchRange` (1570); `endOfOp(true)` (868) in `putKvs` (1521), lines 1530 to 1538; `endOfTrans` (879) skips touch transactions | step 3 (`markOf`) | Model: `Changes.touch`, TouchOK in `StepOK`, T13' (α: 2.2). R7: Java's `endOfTrans` keeps every mark of a touch transaction, so the nodes that the step's puts mark and replace stay in D, which the model does not mark (red list, section 6): a Java change, R8 | 3: R3 (2.8: done, T13' proved); R7 (red list), R8; o |
+| M17 | Reclaim's touch marks nodes without adding entries: every index node the range traversal follows, and the super root, get dirty; the marks stay when the transaction replaces a node | `Db.touchRange` (1570); `endOfOp(true)` (868) in `putKvs` (1521), lines 1530 to 1538; `endOfTrans` (879) skips touch transactions | step 3 (`markOf`) | Model: `Changes.touch`, TouchOK in `StepOK`, T13' (α: 2.2). R7: Java's `endOfTrans` keeps every mark of a touch transaction, so the nodes that the step's puts mark and replace stay in D, which the model does not mark (red list, section 6): a Java change, R8 | 3: R3 (2.8: done, T13' proved); R7 (red list); R8 (done: `Db.endOfTrans`, 2026-10-17); c |
 | M32 | Java keeps the first available time in the reclaim table, a value in the database, and reads it after startup (Codex's review of 09, finding 5): `Db.startInner` calls `DbStarter.start` (through `startDb`) and then `reclaim.initFromDb` (line 511), which reads the table through the reconstructed database | `Reclaim.initFromDb` (516); `Db.startInner` (486), line 511; `Reclaim.pretruncateIfPossible` (574) | — | Model: fa(i) in records, by α (2.4, Q5); argued in 4.1 that Java's startup needs f only after reconstruction, if it reads nothing before c (T8, R4) | 3: R1 (argued), R3 (`Record.fa`, 2.8), R4; o |
 | M33 | After a cut, Java cannot read the id of a slot's target below the cut: a stored key node holds child positions, not ids, so the id is read from the target's header, and `resolvePointers` skips a stream slot below the stream's first position (Codex's review of 09, finding 2) | `NodeCollection.resolvePointers` (317), line 337; `StoredKeyNode.toLongs` (50) | `javaTest` (by id) | Model: version stubs keep positions; CutOK must imply that no such slot of a node in D names a node in D; otherwise a code change (5, step 7) | 3: R3 (CutOK part 3: every reference below c of a node in D names its node's latest version, 2.8), R5; o |
 | M34 | Java writes every taken node, also nodes that no lookup from f on reaches (F1-008-08's "needed" nodes) | `Db.store` (1407); `TransSeq.take` (83) | step 6 | Model: show that it changes no record after a safe cut (T12), or a needed test in code (5, step 7) | 3: R5; o |
@@ -655,6 +655,13 @@ closed upward, A6, TREE, A-COPY). The Java tier: `level3.sh`'s reclaim checks
 (ReclaimStress, RestartInvariance with reclaim, CrashTest with reclaim,
 ReclaimReaders) passed in P3's gates (2026-10-17 06:13 to 06:33, `8ea39cb`),
 and `java/` has not changed since.
+
+**R8** (2026-10-17): the row's change is made (`Db.endOfTrans`; test
+`DbTester.testTouchTransactionReplacedNodes`, failing before it). On R2's
+small reclaim set made again with it: 25 of 25 traces TRACECHECK OK (14,448 transactions, 288 cuts; C-CUT and C-CUT+ without a failure), C-S without a failure; the red
+list is empty. Only runs with reclaim have other records (StreamDigest
+against `l34-base`: the 24 digests of the Level 2 configurations are the
+same, byte for byte; 10 of the 12 of the Level 3 ones differ).
 
 So every failure maps to a register row (M17), and R8 has one more Java
 change. The summary per trace: `docs/evidence/level3-redlist-baseline.txt`.
