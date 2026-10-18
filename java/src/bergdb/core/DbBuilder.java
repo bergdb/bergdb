@@ -28,6 +28,7 @@ public class DbBuilder {
     long evictionSeed = Eviction.defaultSeed();
     int auditEvery = Audit.EVERY;
     long reclaimStepReserve = Long.getLong("stepreserve", Reclaim.DEFAULT_STEP_RESERVE);
+    long evictionBudget = Long.getLong("evictbudget", -1);
     
     static class StreamInfo {
         String name;
@@ -203,10 +204,11 @@ public class DbBuilder {
     }
 
     /**
-     * A forced eviction schedule, for tests (bergdb item 001, WPs J2 and J3; Eviction):
-     * none; every detachable value after every transaction; every detachable object after
-     * every transaction; or each slot to one with probability 0.3 (seeded). The default is
-     * none, or the system property evict.
+     * The eviction schedule (Eviction; bergdb item 001, WPs J2, J3 and J7): the capacity
+     * controller (budget, the default: the budget is the cache size indicator); or, for
+     * tests, none, every detachable value after every transaction, every detachable object
+     * after every transaction, or each slot to one with probability 0.3 (seeded). The
+     * system property evict sets the default.
      */
     public DbBuilder evictionSchedule(Eviction.Schedule schedule, long seed) {
         this.evictionSchedule = schedule;
@@ -234,6 +236,10 @@ public class DbBuilder {
         return this;
     }
 
+    /**
+     * No eviction: the capacity controller's budget, the cache size indicator, becomes
+     * Long.MAX_VALUE (Eviction, bergdb item 001, WP J7). The test setups use it.
+     */
     public DbBuilder noEvict() {
         this.cacheSizeIndicator = Long.MAX_VALUE;
         return this;

@@ -81,6 +81,30 @@ public class NodeCollection implements PointerFollower {
     /** See FirstTouchListener. For tests only. */
     public static volatile FirstTouchListener firstTouchListener = null;
     
+    /**
+     * Told after a reader followed a stream pointer, when it holds no pointer lock any more
+     * (bergdb item 001, WP J7: the capacity controller's load-triggered sweeps, Eviction).
+     */
+    public interface LoadListener {
+        void loaded();
+    }
+    
+    private volatile LoadListener loadListener = null;
+    
+    /** Loads since the start (the readers', the writer's and maintenance), a metric. */
+    private final java.util.concurrent.atomic.AtomicLong loads =
+            new java.util.concurrent.atomic.AtomicLong();
+    
+    /** See LoadListener. */
+    public void setLoadListener(LoadListener listener) {
+        this.loadListener = listener;
+    }
+    
+    /** The versions read from the stream since the start, by every follower. */
+    public long loads() {
+        return loads.get();
+    }
+    
     /** Rule R, see setStartupSection(). Immutable. */
     private static final class StartupSection {
         final Map<Long, Long> newById;
@@ -154,6 +178,7 @@ public class NodeCollection implements PointerFollower {
         assert op.accessData == AccessData.ZERO || AccessData.isValid(op.accessData);
 
         final Object pointerLock = pointerLocks.getLock(predecessor, pointerIndex);
+        boolean stream = false;
 
         synchronized (pointerLock) {
             Node pointerNode = predecessor.getPointerNode(pointerIndex);
@@ -174,9 +199,15 @@ public class NodeCollection implements PointerFollower {
             } else {
                 result = followStreamPointer(predecessor, pointerIndex, pointerPos, op, false,
                         null);
+                stream = true;
             }
         }
         
+        // The capacity controller (WP J7): outside the pointer lock.
+        if (stream) {
+            final LoadListener l = loadListener;
+            if (l != null) l.loaded();
+        }
         return result;
     }
     
@@ -340,6 +371,7 @@ public class NodeCollection implements PointerFollower {
             Node node = nodeStream.readNode(ref);
             assert node.getId() == id : "ids differ, " + node.getId() + " != " + id;
             cache.tickAccessClock();
+            loads.incrementAndGet();
             if (isMaintenance) maintenance.loaded(node);
             
             if (reconstructing && mySection != null && ref >= mySection.startPos 

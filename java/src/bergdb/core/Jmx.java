@@ -188,16 +188,23 @@ public class Jmx {
             return db.getCachePutSize();
         }
         
+        /** The capacity controller's budget (bergdb item 001, WP J7; Eviction). */
         public long getCacheSizeIndicator() {
-            return db.internal().cache().getSizeIndicator();
+            return db.internal().eviction().budget();
         }
         
+        /** Sets the capacity controller's budget too (bergdb item 001, WP J7). */
         public void setCacheSizeIndicator(long sizeIndicator) {
             db.internal().cache().setSizeIndicator(sizeIndicator);
+            db.internal().eviction().setBudget(sizeIndicator);
         }
         
+        /**
+         * The resident bytes as the capacity controller counts them (Residents; bergdb item
+         * 001, WPs J1 and J7). Before 2026-10-18 Cache3's total size, which never moved (M40).
+         */
         public long getCacheTotalSize() {
-            return db.internal().cache().totalSize();
+            return db.internal().cache().residents().bytes();
         }
         
         public long getKvCount() {

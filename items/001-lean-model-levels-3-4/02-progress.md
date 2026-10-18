@@ -167,7 +167,7 @@ Current state
   Frans: Option K under TREE, A6' and A-COPY; above); K3 passed (by the agent,
   2026-10-18 05:31; above). K4 and K5 open; the agent passes them itself
   when their conditions are met (Frans, 2026-10-17 19:59; above).
-* Next: J7 to J10, prepared in scratch copies of `java/` (the entry of
+* Next: J8 to J10, prepared in scratch copies of `java/` (the entry of
   00:35), committed one WP at a time; then K4, P4 and F1 to F3.
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): T9 is proved with
   the stronger `CutOK` part 2 (R4, 2026-10-17, before R6's proof, since T9
@@ -234,7 +234,7 @@ Status
 | J4 | Eviction invariance; conformance with eviction | done | 2026-10-18 |
 | J5 | Readers under eviction | done | 2026-10-18 |
 | J6 | Reclaim under eviction | done | 2026-10-18 |
-| J7 | The capacity controller | not started | — |
+| J7 | The capacity controller | done | 2026-10-18 |
 | J8 | Larger than memory | not started | — |
 | J9 | `level4.sh` | not started | — |
 | J10 | Performance | not started | — |
@@ -3726,3 +3726,79 @@ rate of a hot set before and after an iteration: in J7's entry (it needs
 the controller).
 
 Time: J6 is M: about 20 minutes of work (01:06 to 01:15, and the runs).
+
+### 2026-10-18 01:15 to 05:34. WP J7, done: the capacity controller; eviction on by default
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `7fcfa9b`.
+
+Did (`docs/level4-alignment.md`, 7.6; M40, M45; Q9, Q10):
+
+1. `Eviction`'s schedule `budget`, the capacity controller: the budget is
+   `DbBuilder.cacheSizeIndicator` (the public API's `cacheSizeInMb`), the
+   high watermark, and three quarters of it the low one; a sweep at a
+   transaction boundary, after startup, and after a reader's load (outside
+   the pointer lock, under the write lock), when the resident bytes are
+   above the trigger; the sweep: what only the node table holds, values (over
+   1 MiB first, then the oldest), then index nodes, the oldest slots first by
+   the access clock, down to the low watermark; a complete sweep if that is
+   not enough; pinned state never taken, a sweep that ends above the budget
+   counted, and the next one waits for growth (no sweep at every transaction
+   when D alone is above the budget). Metrics: `Eviction.stats()`,
+   `NodeCollection.loads()`.
+2. Eviction on by default (Q10, Frans's decision of 2026-10-16): the default
+   schedule is `budget`; `noEvict()` and the test setups make the budget
+   `Long.MAX_VALUE`.
+3. M45: the cache size in `long` (`DatabaseBuilderImp.start`), with a test.
+4. `core/CapacityTester.java`: reads without writes, scans, large puts,
+   stalled readers, pinned state above the budget, the same records as
+   without eviction. `EvictionInvariance` with the schedule `budget`
+   (`budget=B`). `java/stress/ReclaimHitRate.java`: the hit rate of a hot set
+   before and after a reclaim iteration (J6's measurement).
+5. The public API's comment of `DatabaseBuilder.cacheSizeInMb` says what the
+   indicator does now: the cache's budget; pinned state may exceed it.
+6. The exporter's run E with the controller (`rune=budget`, a budget
+   `evictbudget=B`), and two such configurations in `conformance.sh evict`
+   (`e-budget`, 30 kB; `e-r-budget`, with reclaim, 20 kB).
+
+Findings: the scan test found the values that only the node table held
+(fixed in J3's sweeps); a small larger-than-memory trial found that pinned
+state above the budget made every load sweep for nothing (the trigger); and
+J8's run (its entry) found that a sweep counted only the objects it
+released, not those that left the resident set with them, so that after
+reads a sweep could go down to the pinned state. Fixed (2026-10-18 03:50 to
+04:00): the sweep counts what leaves with an object it releases
+(`Eviction.drop`), and takes the deeper of slots of the same age first; in a
+small run of `LargerThanMemory` with an instrumented copy, before: 7 of the
+last 30 sweeps below half the budget, one down to D; after: every sweep
+ends at the low watermark, and the count equals the bytes the resync finds.
+A test (`CapacityTester.testSweepsStopNearLow`) fails without the fix. The
+checks below are of the tree with the fix; the same campaign on the tree
+before it had passed too (02:30 to 03:43), and its first gate run had failed
+only in the known race of `StorageManagerTester.testAddReplica2` (J6's
+entry).
+
+Checks (scratch `j7-campaign2.sh`, 04:26 to 04:43): EvictionInvariance with
+the five schedules on the 12 configurations, without and with restarts, a
+budget of 60 kB for the controller: 24 runs, every one `EVICTION INVARIANCE
+OK` (the stream byte for byte, D, the KV checksums and the lookups the same
+with every schedule), 73,770 audits, none failed; with the controller,
+RestartInvariance (stream identical, 4,567 audits), CrashTest (5 rounds, 0
+failures, 42,781 audits), ReclaimStress (100 rounds, 0 failures, a cut in
+each, 1,804 exhaustive verifications, 406,782 audits) and ReclaimReaders (30
+rounds, 0 failures, 34,680,557 gets and 11,753,108 scans right), no audit
+failed; CapacityTester five times, no failure. The hit rate
+(`ReclaimHitRate`: 20,000 keys of 200 bytes, a hot set of 500 keys, a budget
+of 3 MB, 12,973 updates, then the hot set read; database B with reclaim, one
+iteration, A without): loads per hot read 0.0240 in A and 0.0232 in B, so
+reclaim's maintenance reads do not push the hot set out. `conformance.sh
+evict` on the final tree, with the two configurations of the controller: in
+`level4.sh`'s runs (J9's entry), 30 traces full and 10 quick, every one
+`TRACECHECK OK`, C-P no failure. The gates on the
+final tree, full, with eviction on by default (04:00 to 04:26, under load; the
+comment of `DatabaseBuilder.cacheSizeInMb` was written after levels 1 and 2
+had built, a comment only): `LEVEL 1 OK` (142 s), `LEVEL 2 OK` (798 s),
+`LEVEL 3 OK` (535 s); unit tests 943. StreamDigest: 36 of 36 the same as
+R8's.
+
+Time: J7 is M to L: about an hour and a half of work (01:15 to 02:10, the
+fix 03:40 to 04:00, and the runs).

@@ -658,3 +658,11 @@ writer's own checks now read a pointer under the node's monitor.
 2026-10-18. Bergdb item 001, WP J6: reclaim under eviction. A reclaim step
 pins the index nodes it makes dirty; a reserve (4 MiB by default) splits a
 step that would pin more. No record changes with the default.
+
+2026-10-18. Bergdb item 001, WP J7: the capacity controller, and eviction on
+by default (Frans's decision, Q10). `cacheSizeInMb` is the cache's budget:
+when the resident bytes pass it, a sweep evicts the least recently used
+objects, values first, down to three quarters of it; pinned state is never
+taken. A larger-than-memory run (J8) found that a sweep counted only what it
+released, not what left memory with it, and could empty the cache down to
+the pinned state; fixed. The gates pass with eviction on.

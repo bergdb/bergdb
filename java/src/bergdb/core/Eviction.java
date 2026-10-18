@@ -1,11 +1,16 @@
 package bergdb.core;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Node;
@@ -40,13 +45,20 @@ import bergdb.stream.MemoryStream;
  * cache on a read) is not kept: when eviction is on, it is taken once its record is written,
  * whatever the schedule selects.</p>
  *
- * <p>Which detachable objects eviction takes is a schedule; J7 adds the capacity controller.
+ * <p>Which detachable objects eviction takes is a schedule. <b>budget</b>, the default (WP
+ * J7; the plan's Q9 and Q10): the capacity controller, with the budget of
+ * DbBuilder.cacheSizeIndicator (the public API's cacheSizeInMb) for the resident bytes
+ * (Residents) as its high watermark and LOW of it as its low one: when the resident bytes
+ * pass the budget, at a transaction boundary or after a reader's load (afterLoad), a sweep
+ * (sweep()) takes the oldest detachable objects, values first, down to the low watermark
+ * (counting the objects that leave the resident set with those it takes), and takes every
+ * detachable object if that is not enough; pinned state is never taken.
  * The schedules for tests (the plan's 8.4): none; values (every detachable value after every
  * transaction, WP J2's eviction); every (every detachable object after every transaction);
  * random (each slot to a detachable object, and each object that only the node table holds,
- * with probability 0.3, seeded). The default is none, or the system property evict (values,
- * every or random; evictseed, default 1), so that existing stress programs and the gates can
- * run with eviction.</p>
+ * with probability 0.3, seeded). The system property evict (none, values, every, random or
+ * budget; evictseed, default 1; evictbudget, a budget in bytes) sets the default, so that
+ * existing stress programs and the gates can run with any schedule.</p>
  *
  * <p>The caller holds Db.writeLock, between transactions: after the record is appended and
  * the record's nodes are out of TransNodes, before the next transaction begins. Not during
@@ -68,17 +80,27 @@ import bergdb.stream.MemoryStream;
  * position an unswizzle wrote.</p>
  */
 public final class Eviction {
-    /** The schedule; see the class comment. */
-    public enum Schedule { NONE, VALUES, EVERY, RANDOM }
+    /** The schedule; see the class comment. BUDGET is the capacity controller (WP J7). */
+    public enum Schedule { NONE, VALUES, EVERY, RANDOM, BUDGET }
 
-    /** The default schedule: the system property evict, else none. */
+    /**
+     * The default schedule: the system property evict (none, values, every, random or
+     * budget), else budget, the capacity controller: eviction is on by default (WP J7; the
+     * plan's Q10, Frans's decision of 2026-10-16), with the budget
+     * DbBuilder.cacheSizeIndicator (the public API's cacheSizeInMb). DbBuilder.noEvict()
+     * and the test setups make the budget Long.MAX_VALUE, so that nothing is evicted.
+     */
     public static Schedule defaultSchedule() {
         String s = System.getProperty("evict");
+        if ("none".equals(s)) return Schedule.NONE;
         if ("values".equals(s)) return Schedule.VALUES;
         if ("every".equals(s)) return Schedule.EVERY;
         if ("random".equals(s)) return Schedule.RANDOM;
-        return Schedule.NONE;
+        return Schedule.BUDGET;
     }
+
+    /** The low watermark, as a fraction of the budget (the high one): see sweep(). */
+    static final double LOW = 0.75;
 
     /** The default seed of the random schedule: the system property evictseed, else 1. */
     public static long defaultSeed() {
@@ -88,25 +110,92 @@ public final class Eviction {
     private final Schedule schedule;
     private final Random random;
 
+    /** The capacity controller's watermarks (BUDGET): the budget, and LOW of it. */
+    private volatile long high, low;
+
+    /**
+     * The resident bytes above which the controller sweeps: the budget; after a sweep that
+     * ended above it (pinned state above the budget), that sweep's result plus the gap
+     * between the watermarks, so that the controller does not sweep again and again for
+     * nothing; back to the budget after a sweep that ends below it.
+     */
+    private volatile long trigger;
+
     private long unswizzled = 0;
     private long released = 0;
+
+    // The controller's metrics (BUDGET); see stats().
+    private long sweeps = 0, loadSweeps = 0, completeSweeps = 0, overTarget = 0;
+    private long sweepNanos = 0, maxSweepNanos = 0;
+    private long lastBefore = 0, lastAfter = 0, lastPinned = 0, maxPinned = 0;
 
     /** Slots unswizzled and objects released by every Db of this process; see totals(). */
     private static long allUnswizzled = 0, allReleased = 0;
 
     public Eviction(Schedule schedule, long seed) {
+        this(schedule, seed, Long.MAX_VALUE);
+    }
+
+    /**
+     * @param budget  The capacity controller's target for the resident bytes (Residents),
+     *                its high watermark (BUDGET; DbBuilder.cacheSizeIndicator).
+     */
+    public Eviction(Schedule schedule, long seed, long budget) {
         this.schedule = schedule;
         this.random = new Random(seed);
+        this.high = budget;
+        this.low = budget == Long.MAX_VALUE ? Long.MAX_VALUE : (long) (budget * LOW);
+        this.trigger = budget;
+    }
+
+    /** The budget, the high watermark. */
+    public long budget() {
+        return high;
+    }
+
+    /**
+     * Sets the budget (the cache size indicator, also through JMX: Jmx.DbMonitor); the low
+     * watermark follows. Used from the next transaction boundary or load.
+     */
+    public void setBudget(long budget) {
+        if (budget < 1) throw new IllegalArgumentException("Illegal budget, " + budget);
+        synchronized (this) {
+            this.high = budget;
+            this.low = budget == Long.MAX_VALUE ? Long.MAX_VALUE : (long) (budget * LOW);
+            this.trigger = budget;
+        }
     }
 
     public Schedule schedule() {
         return schedule;
     }
 
-    /** Slots unswizzled and objects released so far. */
+    /** Slots unswizzled and objects released so far; and the controller's metrics. */
     public synchronized String summary() {
-        return "eviction " + schedule + ": " + unswizzled + " slots unswizzled, " + released
+        String s = "eviction " + schedule + ": " + unswizzled + " slots unswizzled, " + released
                 + " objects released";
+        if (schedule == Schedule.BUDGET) s += "; " + stats();
+        return s;
+    }
+
+    /**
+     * The capacity controller's metrics (BUDGET): the budget and the low watermark; the
+     * sweeps, those that a load started, the complete ones (needed when the oldest slots did
+     * not free enough), and those after which the resident bytes stayed above the budget
+     * (pinned state above it); the resident bytes before and after the last sweep, the
+     * pinned bytes then and at most; the time of the sweeps.
+     */
+    public synchronized String stats() {
+        return "budget " + high + " bytes, low " + low + "; " + sweeps + " sweeps (" + loadSweeps
+                + " after loads, " + completeSweeps + " complete, " + overTarget
+                + " above the budget after); last sweep " + lastBefore + " -> " + lastAfter
+                + " bytes, pinned " + lastPinned + " (at most " + maxPinned + "); sweep time "
+                + sweepNanos / 1000000 + " ms in total, " + maxSweepNanos / 1000000 + " ms at most";
+    }
+
+    /** Sweeps, and sweeps after which the resident bytes stayed above the budget. */
+    public synchronized long[] sweepCounts() {
+        return new long[] {sweeps, loadSweeps, completeSweeps, overTarget};
     }
 
     /** Slots unswizzled and objects released by every Db of this process, as a pair. */
@@ -147,6 +236,10 @@ public final class Eviction {
      */
     public void afterTransaction(Db db) {
         if (schedule == Schedule.NONE) return;
+        if (schedule == Schedule.BUDGET) {
+            if (db.internal().cache().residents().bytes() > trigger) sweep(db, false);
+            return;
+        }
         final Db.Internal in = db.internal();
         final Cache3 table = in.cache();
         final TopNode superRoot = in.superRoot();
@@ -217,6 +310,287 @@ public final class Eviction {
 
         // 4. The accounting, exact again: the objects that are still resident.
         table.residents().resync(Residents.walk(superRoot, table.nodes(), dObjects));
+    }
+
+    // ======== The capacity controller (BUDGET; bergdb item 001, WP J7) ========
+
+    /**
+     * After a reader's load (NodeCollection.followPointer, a stream slot followed; the
+     * reader holds no pointer lock then): when the resident bytes are above the budget, a
+     * sweep under the write lock, a load-triggered batch (Q8, Q9), so that reads without
+     * writes stay within the budget. Not inside a transaction (the thread holds the write
+     * lock: the user's own read in a value transformation; the transaction's end sweeps) and
+     * not before the database is active (startup).
+     */
+    public void afterLoad(Db db) {
+        if (schedule != Schedule.BUDGET) return;
+        Db.Internal in = db.internal();
+        if (in.cache().residents().bytes() <= trigger) return;
+        Object writeLock = in.getWriteLock();
+        if (Thread.holdsLock(writeLock) || !in.isActive()) return;
+        synchronized (writeLock) {
+            if (in.cache().residents().bytes() > trigger) sweep(db, true);
+        }
+    }
+
+    /**
+     * A memory slot of a resident index object to a detachable object, its age, and its
+     * place in the walk's breadth-first order (seq).
+     */
+    private static final class Slot {
+        final Node x;
+        final int i;
+        final Node c;
+        final long time;
+        final int seq;
+
+        Slot(Node x, int i, Node c, long time, int seq) {
+            this.x = x;
+            this.i = i;
+            this.c = c;
+            this.time = time;
+            this.seq = seq;
+        }
+    }
+
+    /**
+     * The oldest first; of slots of the same age, the later in the walk's breadth-first order
+     * first, so the deeper: an operation gives every slot it follows the same access data, so
+     * a slot and the slots below it are often of the same age, and the sweep takes the leaves
+     * before the inner nodes above them.
+     */
+    private static final Comparator<Slot> OLDEST_FIRST = new Comparator<Slot>() {
+        public int compare(Slot a, Slot b) {
+            if (a.time != b.time) return a.time < b.time ? -1 : 1;
+            return a.seq > b.seq ? -1 : a.seq < b.seq ? 1 : 0;
+        }
+    };
+
+    /** Large values first (admission: a value over 1 MiB is not kept), then the oldest. */
+    private static final Comparator<Slot> LARGE_THEN_OLDEST = new Comparator<Slot>() {
+        public int compare(Slot a, Slot b) {
+            boolean la = !Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES.shouldCache(a.c);
+            boolean lb = !Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES.shouldCache(b.c);
+            if (la != lb) return la ? -1 : 1;
+            return OLDEST_FIRST.compare(a, b);
+        }
+    };
+
+    /**
+     * One sweep of the capacity controller, down to the low watermark (Q9): first the
+     * objects that only the node table holds, then values (those over 1 MiB first, as a read
+     * does not cache them either: admission), then index nodes, the oldest slots first by
+     * their access time (the access clock when a reader or the writer last followed the
+     * slot), each unswizzled under its pointer lock and its object released when no memory
+     * slot of a resident object names it any more; then the accounting is made exact
+     * (Residents.resync). What the sweep frees is counted as it goes (drop()): an object it
+     * releases, and the objects below it that only it named and that the node table does not
+     * hold, which leave the resident set with it; so a sweep stops near the low watermark
+     * (before 2026-10-18, only the released objects were counted, and a sweep after reads,
+     * whose snapshots hang below the slots it took, could go down to the pinned state: bergdb
+     * item 001, WP J8). If the resident bytes are still above the budget, a complete sweep
+     * follows: every detachable object, whatever its age, so that a working set larger than
+     * the budget cannot stop progress. Pinned state is never taken; if it alone is above the
+     * budget, the sweep is counted as above the budget (stats()), and the next sweep waits
+     * until the resident bytes have grown by the gap between the watermarks (trigger), so
+     * that pinned state above the budget does not make every transaction and every load
+     * sweep. The sweep walks every resident object (Residents.walk), once before and once
+     * after; it runs when the bytes pass the budget and frees at least the gap to the low
+     * watermark, so its cost is paid once per that many bytes loaded. The caller holds
+     * Db.writeLock, between transactions.
+     */
+    void sweep(Db db, boolean afterLoad) {
+        final long t0 = System.nanoTime();
+        final Db.Internal in = db.internal();
+        final Cache3 table = in.cache();
+        final Residents res = table.residents();
+        final TopNode superRoot = in.superRoot();
+        final TopNode newestWritten = in.newestWrittenTop();
+        final ArrayList<Node> dObjects = new ArrayList<Node>();
+        in.transSeq().visitGotDirtyNodes(Long.MAX_VALUE, new TransSeq.NodeVisitor() {
+            public void node(Node node, long tpos, long lastTpos) {
+                dObjects.add(node);
+            }
+        });
+        List<Node> tableObjects = table.nodes();
+        List<Node> resident = Residents.walk(superRoot, tableObjects, dObjects);
+
+        long before = 0, pinned = 0;
+        int seq = 0;
+        IdentityHashMap<Node, int[]> named = new IdentityHashMap<Node, int[]>();
+        ArrayList<Slot> values = new ArrayList<Slot>(), index = new ArrayList<Slot>();
+        for (Node x : resident) {
+            int size = x.getMemSize();
+            before += size;
+            if (x.isIndexNode() && !detachable(x, superRoot, newestWritten)) pinned += size;
+            if (!x.isIndexNode()) continue;
+            int n = x.getSize();
+            for (int i = 0; i < n; i++) {
+                Node c = x.getPointerNode(i);
+                if (c == null) continue;
+                int[] count = named.get(c);
+                if (count == null) named.put(c, count = new int[1]);
+                count[0]++;
+                if (!detachable(c, superRoot, newestWritten)) continue;
+                long acc = x.getPointerAccessData(i);
+                long time = AccessData.isValid(acc) ? AccessData.getAccessTime(acc) : 0;
+                (c.isIndexNode() ? index : values).add(new Slot(x, i, c, time, seq++));
+            }
+        }
+
+        long need = before - low;
+        long freed = 0, n = 0;
+        ArrayList<Node> toRelease = new ArrayList<Node>();
+        // The walk's roots, which stay resident unless released, and the objects that have
+        // left the resident set in this sweep (drop()).
+        Set<Node> roots = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+        roots.add(superRoot);
+        roots.addAll(tableObjects);
+        roots.addAll(dObjects);
+        Set<Node> gone = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+        // 1. Objects that only the node table holds, index nodes and values: no slot names
+        //    them.
+        for (Node c : tableObjects) {
+            if (freed >= need) break;
+            if (named.containsKey(c) || !detachable(c, superRoot, newestWritten)) continue;
+            toRelease.add(c);
+            freed += drop(c, named, roots, gone);
+        }
+        // 2. Values, then index nodes, the oldest slots first. Large values always. A slot
+        //    of an object that has left the resident set is left as it is.
+        for (int pass = 0; pass < 2 && freed < need; pass++) {
+            ArrayList<Slot> list = pass == 0 ? values : index;
+            Collections.sort(list, pass == 0 ? LARGE_THEN_OLDEST : OLDEST_FIRST);
+            for (Slot sl : list) {
+                if (freed >= need) break;
+                if (gone.contains(sl.x)) continue;
+                synchronized (in.getPointerLock(sl.x, sl.i)) {
+                    if (sl.x.getPointerNode(sl.i) != sl.c) continue;
+                    sl.x.setPointer(sl.i, null, sl.c.getSpos());
+                }
+                n++;
+                int[] count = named.get(sl.c);
+                if (--count[0] == 0) {
+                    toRelease.add(sl.c);
+                    freed += drop(sl.c, named, roots, gone);
+                }
+            }
+        }
+        long r = release(table, toRelease);
+        res.resync(Residents.walk(superRoot, table.nodes(), dObjects));
+
+        boolean complete = false;
+        if (res.bytes() > high) {
+            // 3. Under pressure: every detachable object (a complete sweep).
+            complete = true;
+            long[] nr = takeAll(in, table, superRoot, newestWritten, dObjects);
+            n += nr[0];
+            r += nr[1];
+            res.resync(Residents.walk(superRoot, table.nodes(), dObjects));
+        }
+        long after = res.bytes();
+        trigger = after > high ? after + (high - low) : high;
+        long dt = System.nanoTime() - t0;
+        synchronized (this) {
+            unswizzled += n;
+            released += r;
+            sweeps++;
+            if (afterLoad) loadSweeps++;
+            if (complete) completeSweeps++;
+            if (after > high) overTarget++;
+            lastBefore = before;
+            lastAfter = after;
+            lastPinned = pinned;
+            maxPinned = Math.max(maxPinned, pinned);
+            sweepNanos += dt;
+            maxSweepNanos = Math.max(maxSweepNanos, dt);
+        }
+        synchronized (Eviction.class) {
+            allUnswizzled += n;
+            allReleased += r;
+        }
+    }
+
+    /**
+     * Object c leaves the resident set, as the sweep releases it: returns its bytes and those
+     * of the objects that only it named, recursively (their counts of naming memory slots of
+     * resident objects, 'named', reach 0), except the walk's roots (the node table's objects
+     * and D's), which stay resident. Marks them all in 'gone'.
+     */
+    private static long drop(Node c, IdentityHashMap<Node, int[]> named, Set<Node> roots,
+            Set<Node> gone) {
+        long bytes = 0;
+        ArrayDeque<Node> todo = new ArrayDeque<Node>();
+        gone.add(c);
+        todo.add(c);
+        while (!todo.isEmpty()) {
+            Node y = todo.poll();
+            bytes += y.getMemSize();
+            if (!y.isIndexNode()) continue;
+            int size = y.getSize();
+            for (int i = 0; i < size; i++) {
+                Node d = y.getPointerNode(i);
+                if (d == null) continue;
+                int[] count = named.get(d);
+                if (count == null || --count[0] > 0) continue;
+                if (roots.contains(d) || !gone.add(d)) continue;
+                todo.add(d);
+            }
+        }
+        return bytes;
+    }
+
+    /** Releases the objects: the canonical flag cleared (M31), then the node table's entry
+     *  and the registry. Returns how many. */
+    private static long release(Cache3 table, List<Node> objects) {
+        for (Node c : objects) {
+            if (c.isIndexNode() && c.isCanonical()) c.setCanonical(false);
+            table.released(c);
+        }
+        return objects.size();
+    }
+
+    /**
+     * Unswizzles every memory slot of a resident object to a detachable object, and releases
+     * the objects that no memory slot names then, and those that only the node table holds.
+     * Returns the slots unswizzled and the objects released.
+     */
+    private static long[] takeAll(Db.Internal in, Cache3 table, TopNode superRoot,
+            TopNode newestWritten, List<Node> dObjects) {
+        List<Node> tableObjects = table.nodes();
+        List<Node> resident = Residents.walk(superRoot, tableObjects, dObjects);
+        IdentityHashMap<Node, Boolean> stillNamed = new IdentityHashMap<Node, Boolean>();
+        IdentityHashMap<Node, Boolean> detached = new IdentityHashMap<Node, Boolean>();
+        long n = 0;
+        for (Node x : resident) {
+            if (!x.isIndexNode()) continue;
+            int size = x.getSize();
+            for (int i = 0; i < size; i++) {
+                Node c = x.getPointerNode(i);
+                if (c == null) continue;
+                if (detachable(c, superRoot, newestWritten)) {
+                    synchronized (in.getPointerLock(x, i)) {
+                        if (x.getPointerNode(i) == c) {
+                            x.setPointer(i, null, c.getSpos());
+                            n++;
+                        }
+                    }
+                    detached.put(c, Boolean.TRUE);
+                } else {
+                    stillNamed.put(c, Boolean.TRUE);
+                }
+            }
+        }
+        for (Node c : tableObjects) {
+            if (!stillNamed.containsKey(c) && detachable(c, superRoot, newestWritten)) {
+                detached.put(c, Boolean.TRUE);
+            }
+        }
+        ArrayList<Node> objects = new ArrayList<Node>();
+        for (Node c : detached.keySet()) {
+            if (!stillNamed.containsKey(c)) objects.add(c);
+        }
+        return new long[] {n, release(table, objects)};
     }
 
     // ======== Tests ========

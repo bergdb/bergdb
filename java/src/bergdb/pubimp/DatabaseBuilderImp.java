@@ -170,7 +170,10 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     }
     
     public Database start() {
-        long cacheSizeIndicator = this.cacheSizeInMb * 1000000;
+        // In long (bergdb item 001, WP J7: M45 of docs/level4-alignment.md; before 2026-10-18
+        // int times int, which overflowed for more than 2,147 MB, so with heaps above about
+        // 10.7 GB by default). It is the capacity controller's budget (core/Eviction.java).
+        long cacheSizeIndicator = this.cacheSizeInMb * 1000000L;
         int startupDistance = this.startupDistanceInMb * 1000000;
         
         dbBuilder.startupDistance(startupDistance);
@@ -239,6 +242,17 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         database.stop();
         
         Assert.assertEquals(7*1000000, startupDistance);
+    }
+    
+    /** The cache size in bytes, the eviction budget, is computed in long (M45): 3,000 MB. */
+    @Nano private static void testCacheSizeAbove2GB() {
+        DatabaseBuilderImp b = new DatabaseBuilderImp();
+        b.cacheSizeInMb(3000).memory();
+        Database database = b.start();
+        long budget = ((DatabaseImp) database).getDb().internal().eviction().budget();
+        database.stop();
+        
+        Assert.assertEquals(3000L * 1000000, budget);
     }
     
     @Nano private static void testStartupDistance2() {

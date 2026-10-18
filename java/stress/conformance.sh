@@ -16,10 +16,11 @@
 #   from the cut stream); a trace without a cut fails. evict (2026-10-18, bergdb
 #   item 001, WP J4): Level 4, configurations of the small, medium and reclaim
 #   sets with run E (TraceExport's rune: run A's workload with a forced eviction
-#   schedule), whose stream must be run A's, and whose slots (SLOT lines) the
-#   checker's C-P checks against the model's INV-SLOT; a trace without SLOT lines
-#   fails. seeds: per configuration (default 10 small, 3 medium, 2 large, 5
-#   reclaim, 3 evict). The checker computes
+#   schedule, or the capacity controller with a small budget, since J7), whose
+#   stream must be run A's, and whose slots (SLOT lines) the checker's C-P
+#   checks against the model's INV-SLOT; a trace without SLOT lines fails.
+#   seeds: per configuration (default 10 small, 3 medium, 2 large, 5 reclaim, 3
+#   evict). The checker computes
 #   the model's own definitions, with fast versions proven equal to them
 #   (lean/Check/Fast.lean, since bergdb item 001, WP C2).
 #
@@ -79,8 +80,8 @@ reclaim() {
 
 evict() {
     # Run E with the random schedule (each slot to a detachable object with probability
-    # 0.3, seeded by the trace's seed), every and values; SLOT lines after every
-    # transaction (every fifth in e-m-mixed).
+    # 0.3, seeded by the trace's seed), every, values, and the capacity controller; SLOT
+    # lines after every transaction (every fifth in e-m-mixed).
     echo "e-mixed   -Dn=60 -Dkeys=20 -Dmaxnode=8 -Dsd=200 -Dops=4 -Ddel=25 -Dnodel=10 -Dempty=10 -Dprobe=1 -Drune=random"
     echo "e-long    -Dn=60 -Dkeys=50 -Dmaxnode=14 -Dsd=500 -Dops=4 -Dlong=1 -Ddel=25 -Dprobe=10 -Drune=random"
     echo "e-every   -Dn=60 -Dkeys=50 -Dmaxnode=8 -Dsd=500 -Dops=4 -Ddel=25 -Dprobe=10 -Drune=every"
@@ -89,6 +90,9 @@ evict() {
     echo "e-m-mixed -Dn=500 -Dkeys=500 -Dmaxnode=8 -Dsd=2000 -Dops=4 -Ddel=20 -Dnodel=5 -Dempty=5 -Dprobe=50 -Drune=random -Dslotevery=5"
     echo "e-r-small -Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=4 -Dretain=1 -Dprobe=10 -Drune=random"
     echo "e-r-long  -Dn=500 -Dkeys=100 -Dmaxnode=14 -Dsd=500 -Dops=4 -Dlong=1 -Ddel=25 -Dretain=2 -Dprobe=10 -Drune=random"
+    # The capacity controller (bergdb item 001, WP J7) with a budget of 30 kB.
+    echo "e-budget  -Dn=300 -Dkeys=200 -Dmaxnode=8 -Dsd=500 -Dops=4 -Ddel=25 -Dprobe=10 -Drune=budget -Devictbudget=30000"
+    echo "e-r-budget -Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=4 -Dretain=1 -Dprobe=10 -Drune=budget -Devictbudget=20000"
 }
 
 large() {

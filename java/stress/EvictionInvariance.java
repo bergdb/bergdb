@@ -15,7 +15,9 @@ import java.util.TreeSet;
  *
  * <p>Usage: java [-Dprop=value ...] -cp bergdb.jar:. bergdb.core.EvictionInvariance seed.
  * Properties: as RestartInvariance (n, keys, sd, maxnode, every, valsize, del, long,
- * bigtrans, empty, nodel, retain); restarts=1; evictseed (the random schedule's seed).
+ * bigtrans, empty, nodel, retain); restarts=1; evictseed (the random schedule's seed);
+ * budget=B (WP J7): also the capacity controller (Eviction's schedule budget) with a budget
+ * of B bytes (default 100000; 0: not run).
  * Prints a line per schedule, then EVICTION INVARIANCE OK or FAILED.</p>
  */
 public class EvictionInvariance {
@@ -27,16 +29,25 @@ public class EvictionInvariance {
         for (int i = ri.every - 1; i < ri.n; i += ri.every) checkpoints.add(i);
         checkpoints.add(ri.n - 1);
 
-        String[] schedules = {"none", "values", "every", "random"};
+        long budget = Long.getLong("budget", 100 * 1000);
+        String[] schedules = budget > 0 ? new String[] {"none", "values", "every", "random", "budget"}
+                : new String[] {"none", "values", "every", "random"};
         RestartInvariance.Run[] runs = new RestartInvariance.Run[schedules.length];
         String[] evictions = new String[schedules.length];
         for (int s = 0; s < schedules.length; s++) {
             System.setProperty("evict", schedules[s]);
+            if (schedules[s].equals("budget")) System.setProperty("evictbudget", "" + budget);
             long[] before = Eviction.totals();
             runs[s] = ri.run(restarts, checkpoints);
             long[] after = Eviction.totals();
             evictions[s] = "eviction " + schedules[s] + ": " + (after[0] - before[0])
                     + " slots unswizzled, " + (after[1] - before[1]) + " objects released";
+            if (schedules[s].equals("budget")) {
+                long[] c = runs[s].db.internal().eviction().sweepCounts();
+                evictions[s] += " (budget " + budget + " bytes; the last process: " + c[0]
+                        + " sweeps, " + c[1] + " after loads, " + c[2] + " complete)";
+            }
+            System.clearProperty("evictbudget");
         }
         System.setProperty("evict", "none");
 

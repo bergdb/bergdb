@@ -10,7 +10,7 @@ Status, 2026-10-18: the scope (section 1), a first α for the cache (section
 2) and the register (section 3), checked against the code (A2); the probes
 of A4 and the A-COPY checks (section 4); the design of E1, and what E2 to
 E6 ran and proved (section 5); what Java must do (E7, section 6); Level 4 in
-Java (section 7: J1 to J6). To come: J7 to J10, and the outcome (F2).
+Java (section 7: J1 to J7). To come: J8 to J10, and the outcome (F2).
 
 Level 4 is eviction: data and index larger than memory, under a memory
 budget, with readers, reclaim, crashes and restarts. The plan of item 001
@@ -198,10 +198,10 @@ level2-alignment.md's register, where stage 1 closes them.
 | M30 | Top node ordinals of 32,768 and more are written wrong: `node.topNodeId << (2 * 8)` shifts an `int` before it is widened (F1-008-13, 5.1). Confirmed at line 176. The stored ordinal is the low 16 bits, read as a signed number: with bit 15 set the parser refuses it; otherwise, from 65,536 on, it is accepted silently as the ordinal modulo 65,536 with the wrong height, and a restart loses history and goes on with wrong ordinals (review-13-claude, 2). `parse` (54) checks neither the slot count against the ordinal (line 77 against 130 to 145) nor which slots are populated | `StoredTopNode.toLongs` (160), line 176; `StoredTopNode.parse` (54) | — | Code fix, two parser checks, a round-trip test and a restart test (A3, with review-13-claude, 7.1) | A3 done, `280525a`; c |
 | M31 | One canonical object per node id must survive release and reload | `Cache3.makeCanonical` (137), `isBetter` (167); the `isCanonical` fields of `KeyNode` and `TopNode` | Phys: the node table | Model and code: release clears the table's entry and the flag; the writer's follower makes a reloaded node canonical (E1, 5.2) | 2, 4: E1 (designed), E3 (INV-CAN proved, 5.11), J3 (done: a release clears the flag and the table's entry; the writer's follower promotes a reloaded node; the audit checks that a clean canonical object is its node's latest version, 2026-10-18); c |
 | M39 | Eviction beside concurrent readers | `NodeCollection.followPointer` (93) takes the slot's lock (`PointerLocks`, 128 stripes) on every follow | — (sequential) | Java protocol (Q8) and its tests | 4: J5 (done: the protocol of Q8 in `Eviction`, its tests, 7.4, 2026-10-18); c |
-| M40 | Memory accounting is not implemented: `Cache3.totalSize` and `putSize` are set once and never advanced; access data is `-putSize`, the constant -10,000 | `Cache3` fields (lines 25, 26); `Db.getAccessData` (1605); `Cache3.setSizeIndicator`, called from the `Db` constructor (line 173), stores the budget and nothing reads it | — | Code | 4: R8 (the access clock advances, `Cache3.accessClock`: at loads and at the writer's new nodes, 2026-10-17), J1 (done: the registry's accounting, `Residents`, 2026-10-18), J7; o |
+| M40 | Memory accounting is not implemented: `Cache3.totalSize` and `putSize` are set once and never advanced; access data is `-putSize`, the constant -10,000 | `Cache3` fields (lines 25, 26); `Db.getAccessData` (1605); `Cache3.setSizeIndicator`, called from the `Db` constructor (line 173), stores the budget and nothing reads it | — | Code | 4: R8 (the access clock advances, `Cache3.accessClock`: at loads and at the writer's new nodes, 2026-10-17), J1 (done: the registry's accounting, `Residents`, 2026-10-18), J7 (done: the capacity controller, 7.6, 2026-10-18); c |
 | M43 | Option K relies on A6 (no adoption) and TREE (one current parent), which the model does not assume today. A4: TREE holds on every transaction checked; A6 fails in 5 of 68,901 Java-tier transactions (an in-place split of a new segment root), and the weaker A6' holds in all (section 4). By the code: a split makes new nodes and the replaced node stops being current (`timeSplit`, `spaceSplit`), or changes in place a node of the same transaction (`timeSplitInPlace`, `spaceSplitInPlace`); a new top node's skip slots point to older top nodes, which are not current; no path moves a child from one current node to another | `Dag.handleFullNode` (780) and the splits (821, 841, 894, 955); `TopDs.newSuperRoot` (42) | `StepOK` | Checked on Java (A4: TREE, A6'); E1: the model assumes TREE and A6' (not A6), in `EvictStep` (5.5); E3: also A-COPY for a transaction's new pointers (`CopyStep`, 5.10); E3's proof uses all three (5.11) | 2: A4 done, E1 done (A6'), E2 checked TREE, A6' and A-COPY by running, E3 proved T-CACHE from them; A-COPY checked on Java (section 4: no failure); o |
 | M44 | After a restart, a node of D can hold a stream slot to a node of D that is written before it; today the node table gives the newer version, with eviction nothing does (plan, 8.5, the gap) | `DbStarter.canonicalNode` (451); `NodeCollection.resolvePointers` (292) | — | Model and code: E1 chose startup linking by id (rule 4, 5.4), which gives today's records; E5 extended it to the root's object, which Java's `TopDs` holds by reference already (5.13); the window is the fallback | 2, 3: E1 (designed), E5 (proved with restarts: `T2_cache`, 5.13), R8 (done: rule 4, `DbStarter.linkD`, 2026-10-17; without it change 1 gave other records after restarts); c |
-| M45 | **New (A2).** The public API's cache size is computed in `int`: `this.cacheSizeInMb * 1000000` overflows for more than 2,147 MB. The default is a fifth of the JVM's maximum heap, so it overflows with heaps above about 10.7 GB. With `-ea` the `Db` constructor then fails (`Cache3.setSizeIndicator` asserts a positive size); without it, the budget becomes 4 MB. No effect today, since nothing reads the budget (M40); J7 makes it the budget | `pubimp/DatabaseBuilderImp.start`, line 173; `Cache3.setSizeIndicator` (50) | — | Code fix (widen to `long`), with a test, before J7 relies on it | 4: J7; o |
+| M45 | **New (A2).** The public API's cache size is computed in `int`: `this.cacheSizeInMb * 1000000` overflows for more than 2,147 MB. The default is a fifth of the JVM's maximum heap, so it overflows with heaps above about 10.7 GB. With `-ea` the `Db` constructor then fails (`Cache3.setSizeIndicator` asserts a positive size); without it, the budget becomes 4 MB. No effect today, since nothing reads the budget (M40); J7 makes it the budget | `pubimp/DatabaseBuilderImp.start`, line 173; `Cache3.setSizeIndicator` (50) | — | Code fix (widen to `long`), with a test, before J7 relies on it | 4: J7 (done: in `long`, with a test, 2026-10-18); c |
 | M46 | **New (A2, from review-13-claude, 3).** Top node ordinals are bounded by `MAX_TOP_NODE_ID_VALUE`, 2^30 − 1, over the database's whole life; reclaim bounds the stream but not the ordinals. With one hot key (about 15 transactions per top) that is about 186 days at 1,000 transactions per second. At the bound, `TopNode.height` throws from the constructor in `newSuperRoot`, in the middle of a root split, after the Dag has made the new root | `TopNode.height`, `MAX_TOP_NODE_ID_VALUE` (lines 105 to 125); `TopDs.newSuperRoot` (42) | `Spec.topLevel`, levels (level2-alignment.md, 8.4) | Frans: a wider ordinal (the header has 48 bits for it) or a clean refusal before the transaction changes anything. Not urgent | —; o |
 | M49 | **New (bergdb item 002, 2026-10-17, session f1-9c; `items/002-top-node-ordinal-bound/02-report.md`, section 8).** A transaction that throws inside `Db.putKvs` is half committed: `Db.executeInner` skips `store()` and `x.end()`, but `dbClock.transactionEnd()` runs, so the time becomes readable with the klongs of the earlier puts in nodes that existed before; the nodes it made stay in `Cache3` and in the writer's node list, and the next transaction writes them as its own and reuses their ids. A value or key transformation can throw there, a read error when a put loads a node (lazy startup today, eviction in stage 4), and the ordinal bound (M46) | `Db.executeInner`, `Db.putKvs` | — (a transaction is atomic) | Frans: finish what can fail before the first change, or stop the writer on an exception inside `putKvs` (the stream holds committed records only, so a restart is consistent). Stage 4 relied on it: with eviction, loads during puts can fail | 4: before J3 (index nodes evicted: loads in the writer); lifted by Frans (2026-10-17 19:52): it blocks nothing, it does not happen in practice (it needs an I/O error, an out-of-memory error or a transformation that throws); item 003 deals with it later, and J tests that would hit it leave that case out or mark it as a known M49 issue; o |
 
@@ -998,7 +998,7 @@ references (5.7). R8 makes them one at a time.
 | 9 | Release: the object leaves the registry; the node table's entry goes if it names the object, and its canonical flag is cleared (a reader may still hold it); the writer's follower makes a reloaded node canonical again. The node table then holds resident objects only (T-INDEX) | `Mem.release`, `Mem.promote` | M26, M31 | J3 (done, 7.2) | As 8, and J3's tests |
 | 10 | Copies of slots (splits; `TopDs.newSuperRoot`, 42): no change. A-COPY holds on every Java run checked (section 4), and a copied stream slot serializes what its source did (5.4). Top node skip slots keep their cached times when unswizzled | `Mem.newSlot4`, `CopyStep` | M29, M43 | J3 (check only; done, 7.2) | C-P on Java's physical states (J4: done, 7.3); `A2A3Check2`'s A-COPY count |
 | 11 | Readers under eviction: the protocol of Q8 | — (sequential) | M39 | J5 (done, 7.4) | Interleaving tests; `ReclaimReaders` with a forced schedule |
-| 12 | Memory accounting, the access clock, the capacity controller; the cache size computed in `long` | — | M40, M45 | J1, J7 | J7's tests; a unit test for M45 |
+| 12 | Memory accounting, the access clock, the capacity controller; the cache size computed in `long` | — | M40, M45 | J1, J7 (done, 7.1 and 7.6) | J7's tests; a unit test for M45 |
 
 J4 adds the checks with eviction (the exporter's run E, SLOT lines, C-P in
 the checker, an eviction set in `conformance.sh`); J8 to J10 the
@@ -1365,3 +1365,105 @@ check after a cut each.
 
 The measurement the plan asks for, the hit rate of a hot set before and
 after an iteration, needs the capacity controller; it is in 7.6.
+
+### 7.6 J7: the capacity controller
+
+**J7** (bergdb item 001, 2026-10-18; the plan's Q9 and Q10, level4-plan.md,
+section 5; M40, M45): eviction chooses by a budget, and it is on by default.
+In `Eviction`, the schedule `budget`:
+
+* **The budget** is `DbBuilder.cacheSizeIndicator`, from the public API's
+  `cacheSizeInMb` (by default a fifth of the JVM's maximum heap), for the
+  resident bytes as the registry estimates them (`Residents`, M40): the high
+  watermark; the low one is three quarters of it. `DbBuilder.noEvict()` and
+  the test setups make it `Long.MAX_VALUE`, so that the existing tests evict
+  nothing unless they ask. The cache size is now computed in `long` (M45:
+  `DatabaseBuilderImp.start` multiplied two `int`s, which overflowed above
+  2,147 MB, so by default with heaps above about 10.7 GB; a unit test with
+  3,000 MB).
+* **When**: at every transaction boundary (`Db.executeInner`, after the
+  record) and after startup, when the resident bytes are above the budget;
+  and after a reader's load (`NodeCollection.followPointer`, a stream slot
+  followed, the pointer lock released then), so that reads with no writes
+  and long scans stay within the budget: the reader takes the write lock for
+  the sweep, holding no pointer lock (Q8), and not when it holds the write
+  lock already (a read inside a transaction's value transformation: the
+  transaction's end sweeps) or before the database is active.
+* **The sweep** (`Eviction.sweep`): a walk of the resident objects, then, down
+  to the low watermark: the objects that only the node table holds; then
+  values, those over 1 MiB first (admission: a read does not cache them
+  either), then the oldest by the slot's access time (the access clock, R8,
+  when a reader or the writer last followed the slot); then index nodes, the
+  oldest first, and of slots of the same age the deeper first (an operation
+  gives every slot it follows the same access time, so the leaves go before
+  the inner nodes above them). Each slot is unswizzled under its pointer
+  lock, its object released when no memory slot of a resident object names
+  it any more, and the accounting is made exact (`Residents.resync`). The
+  sweep counts what it frees as it goes (`Eviction.drop`): an object it
+  releases, and the objects below it that only it named and that the node
+  table does not hold (the snapshots readers put into its slots), which
+  leave the resident set with it; so it stops at the low watermark. If the resident bytes
+  are still above the budget (a working set larger than the budget, all of
+  it recent), a complete sweep follows: every detachable object, whatever its
+  age, so that the controller always makes progress. Pinned state is never
+  taken; a sweep after which the resident bytes stay above the budget is
+  counted (pinned state above the budget), and nothing fails or waits.
+* **Cost**: a sweep walks every resident object, twice; it runs only when the
+  bytes pass the budget and frees at least a quarter of it, so its cost is
+  paid once per that many bytes loaded. It is not incremental across
+  boundaries; J8 and J10 measure it.
+* **Released but still held**: an object released while a reader holds it is
+  garbage once the reader is done; a reader holds the objects of its current
+  path, so these bytes are bounded by the readers and the tree's height.
+* **Metrics** (`Eviction.stats()`, `sweepCounts()`, in `summary()`): the
+  sweeps, those after loads, the complete ones, those that ended above the
+  budget; the bytes before and after the last sweep; the pinned bytes then
+  and at most; the sweeps' time. `NodeCollection.loads()`: the versions read
+  from the stream. JMX (`Jmx.DbMonitor`): the cache size indicator is the
+  budget, and setting it sets the budget; the cache's total size is the
+  resident bytes (it was `Cache3`'s total size, which never moved, M40).
+* **On by default** (Q10, Frans's decision of 2026-10-16): the default
+  schedule is `budget` (the system property `evict`, or
+  `DbBuilder.evictionSchedule`, chooses another, for tests; `evictbudget` a
+  budget for the stress programs). The public API's comment of
+  `DatabaseBuilder.cacheSizeInMb` says so; the API is unchanged.
+
+Tests (`core/CapacityTester.java`): reads without writes on a cold database
+(the resident bytes after every read at most the budget plus one load's
+worth; the sweeps load-triggered; every value right); scans of a cold
+database much larger than the budget (sampled at every KV: near the budget;
+the result right); large puts (values of 1.5 MiB, a budget of 4 MB: within
+it after every transaction); stalled readers (two slow scans at a snapshot
+while the writer runs 400 transactions with a small budget: no deadlock,
+both scans give their snapshot); pinned state above the budget (D far larger
+than a 20 kB budget: kept, reported, the same stream as without eviction);
+the same records and answers as without eviction with a small budget,
+historical reads and restarts, the audit after every transaction; and the
+budget set through JMX; a sweep stops near the low watermark (reads with no
+writes on a cold database whose index is several times the budget: a scan,
+then every key in order, twice; the resident bytes after the first sweep
+never below half the budget). The scan test found that values that only the
+node table held were never released (`Cache3.pointerCreated` enters values
+too): fixed in J3's sweeps as well, with a test
+(`Eviction.testTableOnlyValueReleased`). J8's run found that a sweep counted
+only the objects it released, not those that left the resident set with
+them, so after reads, with readers' snapshots below the inner nodes it took,
+a sweep could go down to the pinned state (its last sweep did, from 500 MB
+to 22 MB; in a small run of the same program, 7 of the last 30 sweeps went
+below half the budget): fixed by the count above, and the test fails
+without it.
+
+Checks (2026-10-18, on the final tree): `EvictionInvariance` with the
+controller and a budget of 60 kB beside the four forced schedules, on the 12
+configurations of 8.4 without and with restarts: the same stream byte for
+byte, the same D and the same answers as without eviction, every run; 73,770
+audits, none failed (in the runs' last processes the controller swept 9,741
+times, 7,758 of them after loads, 957 complete sweeps: D alone is often
+above so small a budget). `RestartInvariance`, `CrashTest`, `ReclaimStress`
+(100 random configurations, a cut in each) and `ReclaimReaders` (30 rounds)
+with the controller: no failure, no audit failed. The hit rate of a hot set
+across a reclaim iteration (`java/stress/ReclaimHitRate.java`, J6's
+measurement): 0.024 loads per hot read without reclaim and 0.023 with it.
+The gates with eviction on by default: `LEVEL 1 OK`, `LEVEL 2 OK`, `LEVEL 3
+OK`, and every record the same as R8's (`StreamDigest`, 36 of 36).
+Larger than memory: 7.7.

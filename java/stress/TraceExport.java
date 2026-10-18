@@ -52,8 +52,9 @@ import bergdb.stream.MemoryStream;
  *   live=1     LIVE lines: Java's own live children, for each node, at each of its times
  *   retain=S   reclaim on, with a retain duration of S seconds, as RestartInvariance's option
  *              (default 0: off); transactions are then 0.01 to 0.2 s apart
- *   rune=S     run E: run A's workload with the eviction schedule S (values, every or random;
- *              Eviction; default: no run E); slotevery=N: SLOT lines after every N-th
+ *   rune=S     run E: run A's workload with the eviction schedule S (values, every, random,
+ *              or budget, the capacity controller, with the budget evictbudget=B; Eviction;
+ *              default: no run E); slotevery=N: SLOT lines after every N-th
  *              transaction (default 1); evictseed=N: the random schedule's seed (default: the
  *              seed)
  *

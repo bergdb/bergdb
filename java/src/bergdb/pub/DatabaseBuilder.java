@@ -84,6 +84,11 @@ public interface DatabaseBuilder {
      * The actual resulting cache size depends on application code, 
      * the operating system and the JVM. 
      * Typical actual cache memory use is in the range [0.5 * cacheSizeInMb, 2.0 * cacheSizeInMb].
+     * Since 2026-10-18 the cache size indicator is the budget of the database's cache: when
+     * the index nodes and values it holds in memory pass it, it evicts those used least
+     * recently, down to three quarters of it. What the database must keep in memory (the
+     * nodes changed since its startup position, of the order of the startup distance) is
+     * never evicted and may exceed it. The default is a fifth of the JVM's maximum heap.
      * 
      * @param cacheSizeInMb  The cache size indicator in megabytes (mega = 1000000).
      */

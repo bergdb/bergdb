@@ -190,7 +190,10 @@ public class Db {
         
         cache = new Cache3(dbInfo);
         cache.setSizeIndicator(b.cacheSizeIndicator);
-        eviction = new Eviction(b.evictionSchedule, b.evictionSeed);
+        // The capacity controller's budget: the cache size indicator, or for tests the system
+        // property evictbudget (DbBuilder; bergdb item 001, WP J7).
+        eviction = new Eviction(b.evictionSchedule, b.evictionSeed,
+                b.evictionBudget > 0 ? b.evictionBudget : b.cacheSizeIndicator);
         auditEvery = b.auditEvery;
         oracle = auditEvery > 0 ? new Audit.Oracle() : null;
         auditCountdown = auditEvery;
@@ -208,6 +211,11 @@ public class Db {
         this.nodeStream.getMetaBlock().setStartupDistance(b.startupDistance);
         
         this.nodeCollection = new NodeCollection(dbInfo, nodeStream, cache);
+        nodeCollection.setLoadListener(new NodeCollection.LoadListener() {
+            public void loaded() {
+                eviction.afterLoad(Db.this);      // the capacity controller (WP J7)
+            }
+        });
         
         this.dbClock = new DbClock(b.clock);
         this.reclaim = new Reclaim(this, aos);
@@ -533,6 +541,9 @@ public class Db {
         
         this.state = DbState.ACTIVE;
         reclaim.initFromDb();
+        synchronized (writeLock) {
+            eviction.afterTransaction(this);    // the controller, after startup's loads (J7)
+        }
         if (auditEvery > 0) {
             synchronized (writeLock) {
                 audit(true);
@@ -1806,6 +1817,9 @@ public class Db {
          */
         /** The maximum node size. */
         public int maxNodeSize() { return maxNodeSize; }
+
+        /** True when the database is active: started, not stopping. */
+        public boolean isActive() { return state == DbState.ACTIVE; }
 
         public void evictNow(Eviction.Schedule schedule, long seed) {
             synchronized (writeLock) {
