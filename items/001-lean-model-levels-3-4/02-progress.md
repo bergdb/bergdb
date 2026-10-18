@@ -167,6 +167,15 @@ Frans's go and decisions
   passes full and quick; J10 meets Q13's targets; no change to the record
   format or the public API, and no Java change outside the agreed list. The
   review guide: [05-k4-review.md](05-k4-review.md).
+* **K5, 2026-10-18 16:53: the outcome accepted by the agent, on Frans's go of
+  2026-10-17 19:59.** The outcome of the plan's 1.2 holds for Levels 3 and
+  4 (level3-alignment.md, section 7; level4-alignment.md, section 8), with
+  the plan's fallback for T-SCHEME (checked at every cut, not proved: its
+  1.4). Not passed by the agent, as the plan has no recommendation for
+  them: closing the item (R6 is partial, which the plan's 1.3 lets count
+  only with Frans's agreement) and what comes next. The final report, with
+  both and the proposals: [06-final-report.md](06-final-report.md), "For
+  K5".
 
 
 Current state
@@ -174,10 +183,11 @@ Current state
 
 * Checkpoints: G0 given (2026-10-16 15:23); K1 passed (2026-10-17 07:56,
   Frans: Option K under TREE, A6' and A-COPY; above); K3 passed (by the agent,
-  2026-10-18 05:31; above); K4 passed (by the agent, 2026-10-18 06:58; above).
-  K5 open; the agent passes it when its conditions are met (Frans,
-  2026-10-17 19:59; above).
-* Next: F3 (the final report), then K5.
+  2026-10-18 05:31; above); K4 passed (by the agent, 2026-10-18 06:58; above);
+  K5: the outcome accepted by the agent (2026-10-18 16:53; above); closing the
+  item and what comes next wait for Frans.
+* Next: Frans's decisions at K5 (06-final-report.md, "For K5"). Every WP
+  of the plan is done but R6 (partial: T-SCHEME checked, not proved).
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): T9 is proved with
   the stronger `CutOK` part 2 (R4, 2026-10-17, before R6's proof, since T9
   assumes `CutOK` only); R6 proves that Java's scheme gives it, and R5's
@@ -252,7 +262,7 @@ Status
 | J10 | Performance | done | 2026-10-18 |
 | F1 | The conformance campaign, all levels | done | 2026-10-18 |
 | F2 | Documents | done | 2026-10-18 |
-| F3 | The final report | not started | — |
+| F3 | The final report | done | 2026-10-18 |
 | P1 | The Level 3 quick performance reference | done | 2026-10-16 |
 | P2 | The Level 3 soak | done | 2026-10-17 |
 | P3 | Bounds, measured | done | 2026-10-17 |
@@ -4118,3 +4128,28 @@ The proposed change to `AGENTS.md` (four gates) was made at K4.
 Files changed: the above. No code changed, so no gate.
 
 Open, next: F3, the final report, and K5.
+
+### 2026-10-18 16:53. WP F3, done: the final report; K5's outcome accepted (by the agent)
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `070ae23` (F2).
+Not this plan's, left alone: `items/readme.md` and
+`items/004-indirect-swizzling/` (another session, 2026-10-18).
+
+Did: the final report, [06-final-report.md](06-final-report.md): the
+summary; the outcome of 1.2 point by point for Levels 3 and 4; what changed
+in Java, in the model and in the tools; eleven findings; where the work
+differs from the plan; what Frans decides at K5 (accept the outcome; close
+the item or not, R6 being partial; what comes next: the sweep, loads,
+T-SCHEME, items 002 and 003, the gates' time). K5 recorded under "Frans's go
+and decisions": the outcome accepted by the agent; the rest waits for
+Frans. Item 001's readme lists the report.
+
+Files changed: the report, this file, the item's readme, `docs/log.md`. No
+code changed.
+
+Time: F3 is S: about an hour (written beside F1's runs, finished after
+them). The whole plan: 2026-10-16 15:23 to 2026-10-18 16:53, with Claude Opus
+5.5 at Max effort, unattended but for K1 and Frans's decisions of
+2026-10-17.
+
+Open, next: Frans's K5 decisions.

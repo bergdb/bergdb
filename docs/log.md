@@ -710,3 +710,9 @@ outcome of the plan's 1.2 for Level 4 point by point
 ([level4-alignment.md](level4-alignment.md), section 8), Level 4 in
 [levels.md](levels.md), the status in `README.md`, `problem.md` (R5, R6,
 Q10), [sis-model.md](sis-model.md) (section 15) and `lean/README.md`.
+
+2026-10-18. Bergdb item 001, WP F3: the final report
+([../items/001-lean-model-levels-3-4/06-final-report.md](../items/001-lean-model-levels-3-4/06-final-report.md)).
+Levels 3 and 4 are in the Lean model, with proofs, and in Java, aligned with
+it; eviction is on by default. Open for Frans: closing the item (T-SCHEME is
+checked, not proved) and what comes next (the sweep's cost first).

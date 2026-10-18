@@ -29,6 +29,9 @@ Files
 * [05-k4-review.md](05-k4-review.md). 001-05, the K4 review guide: Level 4
   in Java, the evidence, the changes, eviction on by default and
   `level4.sh` a required gate; passed by the agent on Frans's go.
+* [06-final-report.md](06-final-report.md). 001-06, the final report (WP
+  F3): the outcome of the plan for Levels 3 and 4, what changed, the
+  findings, and what Frans decides at K5.
 
 
 Log
@@ -51,3 +54,7 @@ done, and K3 passed (by the agent, on Frans's go of 2026-10-17 19:59).
 
 2026-10-18. Claude added 001-05, the K4 review guide (WP J10): stage 4 is
 done, and K4 passed (by the agent, on Frans's go of 2026-10-17 19:59).
+
+2026-10-18. Claude added 001-06, the final report (WP F3): every WP is done
+but R6 (partial: T-SCHEME checked, not proved); at K5 the agent accepted
+the outcome, and closing the item and what comes next wait for Frans.
