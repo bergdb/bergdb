@@ -69,6 +69,21 @@ Checks, all of which must pass before a change to the code is committed:
 `LEVEL 2 OK` and `LEVEL 3 OK`. Runtime depends on the cost of the storage
 forces; the old pre-force timing estimates no longer describe these runs.
 
+Since 2026-10-18 (bergdb item 001, WP J9), [level4.sh](../java/stress/level4.sh)
+checks Level 4, eviction, and prints `LEVEL 4 OK`: the unit tests (quick: the
+eviction tests); `EvictionInvariance`, the same transactions with every
+eviction schedule (none, values, every, random, and the capacity controller
+with a small budget) giving the same stream byte for byte, the same D and
+right answers, on three configurations quick and nine full, with and
+without restarts and reclaim, the audit (INV-CAN, the pins, INV-SLOT) on;
+`RestartInvariance`, `CrashTest` and `ReclaimStress` with the schedules every
+and random and the audit; `ReclaimReaders` with forced schedules, on a
+`CutStream` and a `FileStream`; `conformance.sh evict`, the checker's C-P on
+Java's physical states (so it needs Lean too); and `LargerThanMemory`, on disk
+in a capped JVM (quick: 500,000 keys, a budget of 20 MB, `-Xmx384m`; full: 2
+million keys, 50 MB, `-Xmx768m`). It takes about 16 minutes full and 4
+quick.
+
 `level2.sh` also runs [BryanRepro.java](../java/stress/BryanRepro.java), the
 program attached to a bug report of November 2015 (ISSUE151111): start,
 delete all objects, create 10,000, stop, repeated, with a retain duration of

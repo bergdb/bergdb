@@ -672,3 +672,8 @@ index of 1.5 GB and 2 GB of values, on disk in a JVM capped at 2 GB with a
 budget of 500 MB: load, updates, gets, scans, reclaim, two cold restarts and
 every key checked, all right; the live heap at most 646 MB
 ([level4-evidence.md](level4-evidence.md)).
+
+2026-10-18. Bergdb item 001, WP J9: `java/stress/level4.sh`, the Level 4
+check (eviction invariance with every schedule, stress with eviction and
+the audit, conformance with eviction, a larger-than-memory run). It passes,
+full and quick.

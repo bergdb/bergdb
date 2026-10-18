@@ -167,8 +167,8 @@ Current state
   Frans: Option K under TREE, A6' and A-COPY; above); K3 passed (by the agent,
   2026-10-18 05:31; above). K4 and K5 open; the agent passes them itself
   when their conditions are met (Frans, 2026-10-17 19:59; above).
-* Next: J9 to J10, prepared in scratch copies of `java/` (the entry of
-  00:35), committed one WP at a time; then K4, P4 and F1 to F3.
+* Next: J10 (the performance comparison, on a quiet machine), then K4, P4
+  and F1 to F3.
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): T9 is proved with
   the stronger `CutOK` part 2 (R4, 2026-10-17, before R6's proof, since T9
   assumes `CutOK` only); R6 proves that Java's scheme gives it, and R5's
@@ -236,7 +236,7 @@ Status
 | J6 | Reclaim under eviction | done | 2026-10-18 |
 | J7 | The capacity controller | done | 2026-10-18 |
 | J8 | Larger than memory | done | 2026-10-18 |
-| J9 | `level4.sh` | not started | — |
+| J9 | `level4.sh` | done | 2026-10-18 |
 | J10 | Performance | not started | — |
 | F1 | The conformance campaign, all levels | not started | — |
 | F2 | Documents | not started | — |
@@ -3848,3 +3848,38 @@ sweeps).
 Time: J8 is M: about an hour and a half of work, and about three hours of
 machine time (the two full runs, the first attempt, the million-key
 comparison).
+
+### 2026-10-18 02:15 to 05:34. WP J9, done: `level4.sh`
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `403edbf`.
+
+Did: `java/stress/level4.sh`, built like the other gates: the unit tests
+(quick: the eviction tests); EvictionInvariance with the five schedules on
+three configurations quick, nine full, with the audit; RestartInvariance,
+CrashTest and ReclaimStress with the schedules every and random and the
+audit; ReclaimReaders with forced schedules (`CutStream` and
+`FileStream`); `conformance.sh evict`; a larger-than-memory run on disk in a
+capped JVM (quick: 500,000 keys, a 20 MB budget, `-Xmx384m`; full: 2 million
+keys, 50 MB, `-Xmx768m`). It prints `LEVEL 4 OK`. `docs/levels.md` describes
+it.
+
+Checks: `level4.sh` full (04:43 to 04:59, under load): `LEVEL 4 OK` in 982
+s (the unit tests, 943; EvictionInvariance on 9 configurations, 25,050
+audits; RestartInvariance, CrashTest, 8 rounds, and ReclaimStress, 60
+rounds, with the schedules every and random, 0 failures, 616,177 audits;
+ReclaimReaders 3 runs of 6 rounds, 36,762,125 gets and 12,398,501 scans
+right; `conformance.sh evict` 30 traces, C-P no failure in 7,794
+transactions; LargerThanMemory 2 million keys, a 107 MB index, the live heap
+at most 82 MB of 805 MB; no audit failed); quick (04:35 to 04:39, under load):
+`LEVEL 4 OK` in 239 s (23 unit tests; EvictionInvariance 3 configurations,
+2,735 audits; RestartInvariance, CrashTest and ReclaimStress with the
+schedules every and random, 6 rounds of ReclaimStress each, 0 failures,
+95,103 audits, none failed; ReclaimReaders 3 runs; `conformance.sh evict`
+10 traces, C-P no failure in 2,602 transactions; LargerThanMemory 500,000
+keys, a 26 MB index, the live heap at most 47 MB of 402 MB). A first quick
+run, with 20 rounds of ReclaimStress per schedule and the schedules one
+after the other, passed in 514 s; so the quick mode now runs 6 rounds, and
+both modes run step 3's two schedules side by side (as in the runs above).
+
+Time: J9 is S: about half an hour of work (02:15 to 02:35, and the quick
+mode at 04:35), and 30 minutes of machine time.

@@ -10,7 +10,7 @@ Status, 2026-10-18: the scope (section 1), a first α for the cache (section
 2) and the register (section 3), checked against the code (A2); the probes
 of A4 and the A-COPY checks (section 4); the design of E1, and what E2 to
 E6 ran and proved (section 5); what Java must do (E7, section 6); Level 4 in
-Java (section 7: J1 to J8). To come: J9 and J10, and the outcome (F2).
+Java (section 7: J1 to J9). To come: J10, and the outcome (F2).
 
 Level 4 is eviction: data and index larger than memory, under a memory
 budget, with readers, reclaim, crashes and restarts. The plan of item 001
@@ -1478,3 +1478,18 @@ restarts and at the end, and the reads between); the resident bytes stayed
 at or below the budget, the live heap at most 646 MB, 30 percent of the cap;
 115 sweeps, each down to the low watermark, none complete; D at most 22 MB.
 Its first run found the fault in the sweep's count that J7 fixed (7.6).
+
+### 7.8 J9: `level4.sh`
+
+**J9** (bergdb item 001, 2026-10-18): `java/stress/level4.sh`, the Level 4
+gate, built like the other three: the unit tests (quick: the eviction
+tests); `EvictionInvariance` with the five schedules (none, values, every,
+random, the controller with a 100 kB budget) on three configurations quick
+and nine full, with and without restarts and reclaim, the audit on;
+`RestartInvariance`, `CrashTest` and `ReclaimStress` with the schedules every
+and random and the audit; `ReclaimReaders` with forced schedules on a
+`CutStream` and a `FileStream`; `conformance.sh evict` (C-P); and
+`LargerThanMemory` on disk in a capped JVM (quick: 500,000 keys, a 20 MB
+budget, `-Xmx384m`; full: 2 million keys, 50 MB, `-Xmx768m`). It prints
+`LEVEL 4 OK`: full in 982 s, quick in 239 s, on this machine with other jobs
+running (2026-10-18).
