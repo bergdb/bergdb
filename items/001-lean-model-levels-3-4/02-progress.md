@@ -177,7 +177,8 @@ Current state
   2026-10-18 05:31; above); K4 passed (by the agent, 2026-10-18 06:58; above).
   K5 open; the agent passes it when its conditions are met (Frans,
   2026-10-17 19:59; above).
-* Next: P4 (the soak with eviction), then F1 to F3 and K5.
+* Next: F1 (the campaign, running since 09:26; its longest checks until
+  about 16:30), F2, F3 and K5.
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): T9 is proved with
   the stronger `CutOK` part 2 (R4, 2026-10-17, before R6's proof, since T9
   assumes `CutOK` only); R6 proves that Java's scheme gives it, and R5's
@@ -253,7 +254,7 @@ Status
 | P1 | The Level 3 quick performance reference | done | 2026-10-16 |
 | P2 | The Level 3 soak | done | 2026-10-17 |
 | P3 | Bounds, measured | done | 2026-10-17 |
-| P4 | The soak with eviction | not started | — |
+| P4 | The soak with eviction | done | 2026-10-18 |
 
 Status values: not started, in progress, partial, blocked, done, dropped.
 
@@ -3978,3 +3979,49 @@ and a capped heap: `HEAP=4g JFLAGS=-Devictbudget=800000000` (a budget of a
 fifth of the heap, as the public API's default), against P2's 24 GB and no
 eviction. About two and a half hours, from 07:05; nothing else runs
 meanwhile (plan, 2.7).
+
+### 2026-10-18 07:02 to 10:06. WP P4, done: the soak with eviction
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `ab60d35` (this
+WP's in-progress entry).
+
+Did:
+
+1. `java/stress/soak.sh`: `JFLAGS`, extra JVM flags (recorded in
+   `source.txt`), for the eviction budget (Soak's database is built with
+   `noEvict()`). `Soak.java`: the resident bytes of the capacity controller
+   in every sample and in the progress lines, and its summary at the end.
+2. The run: P2's main run (`soak.sh main1`'s properties) with eviction on
+   and a capped heap, on the quiet machine. A first attempt (06:59 to 07:03:
+   `HEAP=4g`, a budget of 800 MB, below the latest data) reached about 100
+   of the 200 paced commits a second in its first 200 s and was stopped.
+   The run, `soak.sh p4main2` (07:04 to 09:26: `HEAP=8g
+   JFLAGS=-Devictbudget=1600000000`, a fifth of the heap, the public API's
+   default ratio): `SOAK OK`.
+3. The report: [docs/level4-evidence.md](../../docs/level4-evidence.md),
+   "The soak with eviction (P4)", with P2's figures beside P4's.
+
+Results: 7,201 steady seconds, 889,043 commits (123.5 a second against
+P2's 199.8), 41,479,037 gets and 23,234,277 scans checked at their
+snapshots, no wrong or unverifiable read, 11 physical cuts, three cold
+restarts (0.85 to 1.01 s) with their checks. Memory bounded: the live heap
+1.5 to 1.9 GB for the whole run (P2's grew to 15 GB), the resident bytes 1.2
+to 1.6 GB, D at most 29 MB. GC: 1,646 pauses, 170 s, at most 0.79 s; 81
+full collections (P2: 143 pauses, 25 s, at most 3.3 s, no full collection).
+
+Findings: (1) the sweep's cost: a sweep walks every resident object under
+the write lock, 3.2 s on average at 1.6 GB, about every 9 s with the
+readers' loads, 35 percent of the time, so the paced writer fell behind and
+the readers reached 60 percent of their pace; the maxima of commits, gets
+and scans, about 4.2 s, are the longest sweeps with the full collections
+around them. (2) G1 needs full collections: evicted objects are old by the
+time they are released. Both for K5 (F3's proposals: an incremental sweep,
+or incoming-reference lists).
+
+Checks: the four gates, full, on the tree with these changes (F1, its
+entry: `LEVEL 1 OK` (155 s), `LEVEL 2 OK` (735 s),
+`LEVEL 3 OK` (502 s), `LEVEL 4 OK` (906 s), 09:26 to 10:05, beside the
+campaign's trace checks; StreamDigest 36 of 36 the same as R8's).
+
+Time: P4 is M, plus machine time: about half an hour of work, and 2.5
+hours of machine time.

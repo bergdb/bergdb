@@ -689,3 +689,11 @@ targets); under pressure (a budget of a fifth of the data) reads are 30 to
 agent, on Frans's go), with eviction on by default and `level4.sh` a
 required gate: all four level scripts must pass before a Java change is
 committed (`AGENTS.md`, `README.md`).
+
+2026-10-18. Bergdb item 001, WP P4: the Level 3 soak (P2's main run) with
+eviction on, an 8 GB heap and a budget of 1.6 GB: `SOAK OK`, two hours,
+every read right, the live heap bounded at 1.5 to 1.9 GB (without eviction
+it grew to 15 GB). But the paced writer reached 123.5 of its 200 commits a
+second: a sweep walks every resident object under the write lock, 35
+percent of the time with the readers' loads; and G1 needed 81 full
+collections ([level4-evidence.md](level4-evidence.md)).

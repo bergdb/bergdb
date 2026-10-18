@@ -66,7 +66,9 @@ import bergdb.stream.ReadBelowFirstPosException;
  * windows, throughput, latency histograms (append commits, also split by whether reclaim
  * stepped in the commit; durable commits; the pacing delay; gets and scans), the slowest
  * commits, reclaim iterations, cut decisions and physical cuts with their uptimes, the
- * restarts, memory and storage samples, expiries and failures. "Soak finish OUT" (run by
+ * restarts, memory and storage samples (with the resident bytes that the capacity controller
+ * counts, and its summary at the end: bergdb item 001, WP P4), expiries and failures.
+ * "Soak finish OUT" (run by
  * soak.sh after the JVM exits) adds the GC log's pauses and safepoints per phase and the
  * pauses that overlap the slowest commits. Exit code 0 if the run met its conditions with no
  * failure.
@@ -989,6 +991,7 @@ public class Soak {
         volatile int physicalCuts;
         long firstPosSeen = -1;
         double heapUsedMax, heapAfterMax, rssMax = -1, diskMax, filesMax, keptMax, dirtyMax = -1, dirtyMsMax = -1;
+        double residentMax;
         long lastDirty = System.nanoTime(), lastProgress = System.nanoTime();
         int samples;
 
@@ -1057,7 +1060,9 @@ public class Soak {
                 dirty = dirtyCount(d);
                 dirtyMs = 1e-6 * (System.nanoTime() - lastDirty);
             }
+            double resident = d.internal().cache().residents().bytes() / 1e6;
             samples++;
+            residentMax = Math.max(residentMax, resident);
             heapUsedMax = Math.max(heapUsedMax, heapUsed);
             heapAfterMax = Math.max(heapAfterMax, heapAfter);
             rssMax = Math.max(rssMax, rss);
@@ -1067,7 +1072,7 @@ public class Soak {
             dirtyMax = Math.max(dirtyMax, dirty);
             dirtyMsMax = Math.max(dirtyMsMax, dirtyMs);
             rows.add(new double[] {uptimeSec(), heapUsed, heapAfter, gc[0], gc[1], len / 1e6, firstAvail / 1e6,
-                    disk / 1e6, files, rss, dirty, dirtyMs, commits});
+                    disk / 1e6, files, rss, dirty, dirtyMs, commits, resident});
         }
 
         double dirtyCount(Db d) {
@@ -1097,9 +1102,9 @@ public class Soak {
             Reclaim.Stats rs = rstats;
             System.out.printf(Locale.ROOT, "PROGRESS %.0f s: %d commits (%d in the last minute), stream %.0f MB, kept %.0f MB,"
                     + " on disk %.0f MB in %d files, iterations %d, cut decisions %d, physical cuts %d, first lookup time"
-                    + " %d s old, heap after GC %.0f MB, expired %d + %d, unverifiable %d%n",
+                    + " %d s old, heap after GC %.0f MB, resident %.0f MB, expired %d + %d, unverifiable %d%n",
                     l[0], c, c - commitsAtLastProgress, l[5], l[5] - l[6], l[7], (int) l[8], iterations.size()
-                    + rs.iterations.size(), cutDecisions.size() + rs.cuts.size(), physicalCuts, age, l[2],
+                    + rs.iterations.size(), cutDecisions.size() + rs.cuts.size(), physicalCuts, age, l[2], l[13],
                     expiredAtAdmission.get(), expiredDuring.get(), unverifiable.get());
             System.out.flush();
             commitsAtLastProgress = c;
@@ -1347,11 +1352,16 @@ public class Soak {
             samples.add(l);
         }
         result.put("samples", Arrays.<Object>asList("uptime s, heap used MB, heap after GC MB, GC count, GC ms,"
-                + " stream MB, first available MB, disk MB, files, rss MB, dirty nodes, dirty count ms, commits", samples));
+                + " stream MB, first available MB, disk MB, files, rss MB, dirty nodes, dirty count ms, commits,"
+                + " resident MB", samples));
+        // The capacity controller (bergdb item 001, WP P4): its summary for the last database object.
+        String eviction = db.internal().eviction().summary();
+        result.put("eviction", eviction + "; resident at most " + Math.round(sampler.residentMax) + " MB");
         result.put("histograms_sparse", hists);
         File out = new File(outDir);
         out.mkdirs();
         PerfUtil.writeFile(new File(out, "result.json"), Json.write(result));
+        System.out.printf(Locale.ROOT, "EVICTION %s; resident at most %.0f MB%n", eviction, sampler.residentMax);
         System.out.printf(Locale.ROOT, "SOAK %s: %.0f s steady, %d commits (%.1f/s), %d gets and %d scans checked,"
                 + " %d physical cuts, %d restarts, expired %d at admission and %d during%n",
                 failure.get() == null ? "OK" : "FAILED", measuredSteady, mCommits, mCommits / measuredSteady, getsOk,

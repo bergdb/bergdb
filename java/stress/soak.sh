@@ -16,7 +16,10 @@
 # build during a measured run (bergdb item 001, plan 2.7). Exit code: Soak's (0: SOAK OK).
 #
 # Environment: JAVA_HOME (the JDK; the PATH's otherwise), HEAP=12g (-Xms and -Xmx), GC=g1|zgc,
-# KEEPDATA=1. Needs java/build (java/build.sh).
+# KEEPDATA=1, JFLAGS="..." (extra JVM flags, recorded in source.txt: for example
+# -Devictbudget=N, the capacity controller's budget in bytes, bergdb item 001, WP P4; Soak's
+# database is built with noEvict(), so without it nothing is evicted). Needs java/build
+# (java/build.sh).
 
 cd "$(dirname "$0")/.." || exit 1
 JAVADIR=$(pwd)
@@ -52,7 +55,7 @@ cp build/bergdb.jar "$RUN/bin/" && cp -R build/stress "$RUN/bin/stress" || exit 
     git -C "$ROOT" status --porcelain -- java/src java/src-dev java/stress 2>/dev/null | sed 's/^/  /'
     echo "jar sha256 $(shasum -a 256 "$RUN/bin/bergdb.jar" | cut -d' ' -f1)"
     echo "java $JAVA: $("$JAVA" -version 2>&1 | tr '\n' ' ')"
-    echo "flags $GCFLAGS -da -Xms$HEAP -Xmx$HEAP -Xlog:gc*,safepoint:file=gc.log:uptime,level,tags"
+    echo "flags $GCFLAGS -da -Xms$HEAP -Xmx$HEAP -Xlog:gc*,safepoint:file=gc.log:uptime,level,tags${JFLAGS:+ $JFLAGS}"
     echo "properties $*"
     echo "machine $(sysctl -n hw.model 2>/dev/null) $(sysctl -n machdep.cpu.brand_string 2>/dev/null)," \
         "$(sysctl -n hw.ncpu 2>/dev/null) cores, $(sysctl -n hw.memsize 2>/dev/null) bytes," \
@@ -71,7 +74,7 @@ done
 
 CP=$RUN/bin/bergdb.jar:$RUN/bin/stress
 # shellcheck disable=SC2086
-"$JAVA" $GCFLAGS -da "-Xms$HEAP" "-Xmx$HEAP" "-Xlog:gc*,safepoint:file=$RUN/gc.log:uptime,level,tags" \
+"$JAVA" $GCFLAGS -da "-Xms$HEAP" "-Xmx$HEAP" "-Xlog:gc*,safepoint:file=$RUN/gc.log:uptime,level,tags" ${JFLAGS:-} \
     "-Dsoak.out=$RUN" "-Dsoak.dir=$RUN/data" $PROPS \
     -cp "$CP" bergdb.core.Soak > "$RUN/stdout.txt" 2>&1
 rc=$?

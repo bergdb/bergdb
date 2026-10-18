@@ -126,3 +126,76 @@ budget), and the run's own 160 MB of arrays.
   would let it grow about five times larger. For a small budget the startup
   distance should be smaller (problem.md, R6; levels.md, "Bounds,
   measured").
+
+## The soak with eviction (P4)
+
+WP P4 of the plan: P2's main soak ([level3-soak.md](level3-soak.md)) with
+eviction on and a capped heap. `java/stress/soak.sh p4main2` (2026-10-18
+07:04 to 09:26), the same workload and properties as P2's `main1` (a
+million keys and 1,000 long keys, 1,000-byte values, a retention of five
+minutes, a writer paced at 200 transactions a second of 10 keys, one durable
+commit a second, three readers paced at 5,000 operations a second each, two
+measured hours, three cold restarts, every operation checked at its
+snapshot), with `HEAP=8g` and `JFLAGS=-Devictbudget=1600000000`: a budget
+of a fifth of the heap, as the public API's default would give, against
+P2's 24 GB heap and no eviction. The latest data alone, a million values of
+1,000 bytes with their index, is about 1.1 GB; the readers' historical gets
+and scans need older versions too.
+
+`SOAK OK`: 7,201 steady seconds, 889,043 commits, 41,479,037 gets and
+23,234,277 scans (1.16 billion KVs) checked at their snapshots, no wrong
+result and no unverifiable read; 1,660,508 reads expired at admission, none
+during; 11 physical cuts in the measured phase; three cold restarts (started
+in 0.85 to 1.01 s), each followed by its check of every key and of 21,000
+keys at six earlier times.
+
+| | P2 (no eviction, 24 GB) | P4 (eviction, 8 GB, budget 1.6 GB) |
+|---|---|---|
+| Commits a second (paced at 200) | 199.8 | 123.5 |
+| Reads a second (paced at 15,000) | 14,599 | 8,987 |
+| Heap after collections, its lowest in each 10 minutes | 1.0 GB at the start, 15.2 GB at the end (lower after each restart) | 1.5 to 1.9 GB, no trend |
+| Resident bytes (the controller's count) | — | 1.2 to 1.6 GB after the first fill |
+| Heap in use, at most; RSS at most | 20.9 GB; 14.3 GB | 8.6 GB (the heap); 9.2 GB |
+| GC pauses in the measured phase | 143, 25.3 s, at most 3.3 s | 1,646, 170.5 s, at most 0.79 s |
+| Full collections in the measured phase | none | 81, 22.7 s in all, 0.27 s median |
+| Append commit: p50, p99, p99.9, max | 0.26 ms, 0.59 ms, 2.2 ms, 208 ms | 0.37 ms, 4.4 ms, 333 ms, 4.2 s |
+| Get, latest: p50, p99, max | 1.9 µs, 7.2 µs, 197 ms | 1.9 µs, 50 µs, 4.2 s |
+| Get, historical: p50, p99 | 2.3 µs, 20 µs | 5.1 µs, 61 µs |
+| Scan of 50 keys: p50, p99 | 17 µs, 147 µs | 132 µs, 717 µs |
+| Bytes appended per user byte | 2.09 | 2.07 |
+| On disk, at most | 6.7 GB | 6.2 GB |
+
+What it shows:
+
+1. **Memory is bounded.** P2's memory grew with the updates, 2.6 to 2.9 MB
+   a second between restarts, and nothing gave it back; P4's live heap
+   stayed at 1.5 to 1.9 GB for the 2.4 hours, the resident bytes between the
+   low watermark and the budget, D at most 29 MB.
+2. **Every read was right**, with eviction at work all the time: the last
+   database object alone (the 30 minutes after the third restart) swept 197
+   times, 156 of them after loads, none complete, none ending above the
+   budget, and unswizzled 90 million slots and released 71 million
+   objects.
+3. **Throughput fell to 62 percent.** The writer reached 123.5 of its 200
+   commits a second and the readers 60 percent of their pace. The controller
+   swept every 9 seconds or so, each sweep walking every resident object
+   under the write lock (3.2 s on average at 1.6 GB, 4.0 s at most; 624 s of
+   the last database object's 30 minutes, 35 percent): the readers' loads
+   (historical gets and scans of 1,000-byte values) bring in a quarter of the
+   budget that often. A writer that falls more than a second behind its pace
+   does not catch up (the soak's pacer), so the stalls cost commits. A first
+   attempt with a 4 GB heap and an 800 MB budget, below the latest data,
+   reached about 100 commits a second in its first 200 s and was stopped.
+4. **G1 struggles with the churn.** The evicted objects are old by the
+   time they are released, so the old generation fills with garbage faster
+   than concurrent marking finds it: 81 full collections and 392
+   evacuation failures in the measured phase, each full collection taking
+   the heap from 8 GB back to about 1.5 GB. They and the sweeps make the
+   tail: commits, gets and scans all have a maximum of about 4.2 s, the
+   longest sweep and the full collections around it.
+
+The limit is the sweep (level4-alignment.md, 7.6; the limits above): an
+incremental sweep, or incoming-reference lists, so that a sweep costs in
+proportion to what it frees, would remove most of the stall; a smaller
+budget fraction of the heap, or another collector, would help G1. Neither
+is done here.
