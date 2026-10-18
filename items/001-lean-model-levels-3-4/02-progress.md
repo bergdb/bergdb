@@ -3883,3 +3883,16 @@ both modes run step 3's two schedules side by side (as in the runs above).
 
 Time: J9 is S: about half an hour of work (02:15 to 02:35, and the quick
 mode at 04:35), and 30 minutes of machine time.
+
+### 2026-10-18 05:40. WP J10, in progress: the performance comparison (written before the runs)
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `6f6a7b9` (J1 to
+J9 committed). Uncommitted: `java/stress/performance.sh` gets `JFLAGS`, extra
+JVM flags for every run (recorded with the others), for the eviction budget
+(`-Devictbudget=N`; Perf's databases are built with `noEvict()`). On a quiet
+machine (the scratch campaigns done; nothing else of this session runs):
+`SUITE=quick java/stress/performance.sh ab l34-base current` with eviction
+off, then with a budget of 4 GB (larger than the data: eviction on, no
+pressure), then one quick session with a budget of 40 MB (a fifth of the
+read scenario's latest values), reported without a target. About 45
+minutes.
