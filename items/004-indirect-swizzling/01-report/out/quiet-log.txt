@@ -1,0 +1,16 @@
+waiting from Sun Oct 18 14:56:40 CEST 2026
+quiet at Sun Oct 18 16:30:21 CEST 2026: 16:30  up 6 days, 17:34, 4 users, load averages: 1.39 1.41 1.53
+bench 1 start 16:30  up 6 days, 17:34, 4 users, load averages: 1.39 1.41 1.53
+bench 1 end 16:33  up 6 days, 17:37, 4 users, load averages: 2.19 1.65 1.59
+bench 2 start 16:33  up 6 days, 17:37, 4 users, load averages: 2.19 1.65 1.59
+bench 2 end 16:35  up 6 days, 17:40, 4 users, load averages: 3.32 2.34 1.88
+bench 4 start 16:35  up 6 days, 17:40, 4 users, load averages: 3.32 2.34 1.88
+bench 4 end 16:38  up 6 days, 17:43, 4 users, load averages: 4.04 3.28 2.37
+bench 8 start 16:38  up 6 days, 17:43, 4 users, load averages: 4.04 3.28 2.37
+bench 8 end 16:43  up 6 days, 17:47, 4 users, load averages: 6.78 5.62 3.66
+census start 16:43  up 6 days, 17:47, 4 users, load averages: 6.78 5.62 3.66
+census end 16:49  up 6 days, 17:53, 4 users, load averages: 3.20 3.49 3.28
+census int4 t2 start 16:49  up 6 days, 17:53, 4 users, load averages: 3.20 3.49 3.28
+census int4 t2 end 16:51  up 6 days, 17:55, 4 users, load averages: 2.94 3.25 3.20
+census int4 t8 start 16:51  up 6 days, 17:55, 4 users, load averages: 2.94 3.25 3.20
+census int4 t8 end 16:53  up 6 days, 17:57, 4 users, load averages: 7.06 5.02 3.93

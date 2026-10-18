@@ -1,0 +1,27 @@
+# 1 thread, 2026-10-18 12:18 to 12:22, the machine shared with six trace checks of another session
+# (load averages about 8 to 10 on ten cores).
+openjdk version "27" 2026-09-15
+direct       keys     20000 threads 1 layout -         depth 5  ns/lookup median    74.7 best    72.9  lookups/s  13.39 M
+lockstamp    keys     20000 threads 1 layout -         depth 5  ns/lookup median    95.9 best    93.7  lookups/s  10.43 M
+lock         keys     20000 threads 1 layout -         depth 5  ns/lookup median    94.5 best    90.5  lookups/s  10.58 M
+stamp        keys     20000 threads 1 layout -         depth 5  ns/lookup median    75.7 best    75.3  lookups/s  13.21 M
+handle       keys     20000 threads 1 layout before    depth 5  ns/lookup median    84.7 best    78.7  lookups/s  11.81 M
+handleacq    keys     20000 threads 1 layout before    depth 5  ns/lookup median    86.3 best    82.1  lookups/s  11.59 M
+handleclock  keys     20000 threads 1 layout before    depth 5  ns/lookup median    88.0 best    85.2  lookups/s  11.36 M
+hash         keys     20000 threads 1 layout -         depth 5  ns/lookup median   111.0 best   104.5  lookups/s   9.01 M
+chm          keys     20000 threads 1 layout -         depth 5  ns/lookup median   148.9 best   141.9  lookups/s   6.72 M
+handleacq    keys     20000 threads 1 layout child     depth 5  ns/lookup median    96.6 best    93.4  lookups/s  10.35 M
+handleacq    keys     20000 threads 1 layout parent    depth 5  ns/lookup median    87.3 best    79.9  lookups/s  11.46 M
+handleacq    keys     20000 threads 1 layout scattered depth 5  ns/lookup median    92.1 best    89.2  lookups/s  10.86 M
+direct       keys   8000000 threads 1 layout -         depth 7  ns/lookup median   689.8 best   683.4  lookups/s   1.45 M
+lockstamp    keys   8000000 threads 1 layout -         depth 7  ns/lookup median   772.2 best   748.5  lookups/s   1.29 M
+lock         keys   8000000 threads 1 layout -         depth 7  ns/lookup median   729.1 best   706.3  lookups/s   1.37 M
+stamp        keys   8000000 threads 1 layout -         depth 7  ns/lookup median   732.2 best   694.6  lookups/s   1.37 M
+handle       keys   8000000 threads 1 layout before    depth 7  ns/lookup median   820.8 best   798.6  lookups/s   1.22 M
+handleacq    keys   8000000 threads 1 layout before    depth 7  ns/lookup median   797.9 best   786.1  lookups/s   1.25 M
+handleclock  keys   8000000 threads 1 layout before    depth 7  ns/lookup median   819.9 best   816.2  lookups/s   1.22 M
+hash         keys   8000000 threads 1 layout -         depth 7  ns/lookup median  1265.9 best  1259.9  lookups/s   0.79 M
+chm          keys   8000000 threads 1 layout -         depth 7  ns/lookup median  1556.3 best  1528.9  lookups/s   0.64 M
+handleacq    keys   8000000 threads 1 layout child     depth 7  ns/lookup median   894.0 best   886.2  lookups/s   1.12 M
+handleacq    keys   8000000 threads 1 layout parent    depth 7  ns/lookup median   917.7 best   880.4  lookups/s   1.09 M
+handleacq    keys   8000000 threads 1 layout scattered depth 7  ns/lookup median  1142.5 best  1132.1  lookups/s   0.88 M

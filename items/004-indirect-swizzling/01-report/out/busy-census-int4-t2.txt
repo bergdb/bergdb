@@ -1,0 +1,37 @@
+# 2026-10-18 12:41 to 12:43: int4 with 2 reader threads and no updates (run-census.sh's command with
+# -Dthreads=2 -Dupdates=0); load averages 8.7 at the start, 7.9 at the end, on ten cores.
+IndexCensus: keys 1000000, keytype int4, valsize 8, maxnode 30, updates 0; 27
+load: 1000000 puts in 3.4 s
+census after the load:
+  latest tree: 80183 index nodes (12.47 keys per node), 53.4 MB, 53.4 bytes per key; 1000000 values, 64.0 MB
+  resident: 162499 index objects (0.162 per key; 162499 canonical, 0 snapshots; 80183 current, 82316 not current; 9 top nodes), 119.3 MB; 1000000 values, 64.0 MB
+  pointers of resident index objects: 2741409, memory pointers 2741409
+  in-degree (memory pointers to an object): index objects 1: 50068, 2: 86442, 3-4: 25973, 5-8: 15, 9+: 0 (69.2% more than one)
+  in-degree: values 1: 288420, 2: 352900, 3-4: 266769, 5-8: 85422, 9+: 6489 (71.2% more than one)
+  stream: 2 index node versions written, 2 distinct index nodes written (0.000 per key), 1000000 value nodes; 46.7 MB
+gets after the load, one thread, ns per get (median of 5 rounds of 1000000):
+  as it is                   987.4 (best 968.9)
+  no lock, no stamp          931.0 (best 927.3)
+  stamp, no lock             934.1 (best 926.7)
+  as it is, no readSync      962.6 (best 950.2)
+gets after the load, 2 threads, million gets a second (median of 5 rounds):
+  as it is                   1.54 (best 1.86)
+  no lock, no stamp          2.01 (best 2.09)
+  no lock, no stamp, no readSync   2.27 (best 2.30)
+updates: 0 puts in 0.0 s
+census after the updates:
+  latest tree: 80183 index nodes (12.47 keys per node), 53.4 MB, 53.4 bytes per key; 1000000 values, 64.0 MB
+  resident: 162499 index objects (0.162 per key; 162499 canonical, 0 snapshots; 80183 current, 82316 not current; 9 top nodes), 119.3 MB; 1000000 values, 64.0 MB
+  pointers of resident index objects: 2741409, memory pointers 2741409
+  in-degree (memory pointers to an object): index objects 1: 50068, 2: 86442, 3-4: 25973, 5-8: 15, 9+: 0 (69.2% more than one)
+  in-degree: values 1: 288420, 2: 352900, 3-4: 266769, 5-8: 85422, 9+: 6489 (71.2% more than one)
+  stream: 2 index node versions written, 2 distinct index nodes written (0.000 per key), 1000000 value nodes; 46.7 MB
+gets after the updates, one thread, ns per get (median of 5 rounds of 1000000):
+  as it is                   970.5 (best 957.9)
+  no lock, no stamp          943.3 (best 938.5)
+  stamp, no lock             917.5 (best 897.5)
+  as it is, no readSync      990.8 (best 962.1)
+gets after the updates, 2 threads, million gets a second (median of 5 rounds):
+  as it is                   1.45 (best 1.87)
+  no lock, no stamp          2.11 (best 2.22)
+  no lock, no stamp, no readSync   1.85 (best 2.12)

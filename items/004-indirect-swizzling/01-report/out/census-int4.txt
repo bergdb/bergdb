@@ -1,0 +1,36 @@
+# Quiet machine, 2026-10-18 16:30 to 16:53 (run-when-quiet: no trace checks or other JVMs, 1-minute load below 1.5 for 5 minutes before the start; the loads in log.txt rose only with these runs' own threads).
+IndexCensus: keys 1000000, keytype int4, valsize 8, maxnode 30, updates 1000000; 27
+load: 1000000 puts in 2.8 s
+census after the load:
+  latest tree: 80183 index nodes (12.47 keys per node), 53.4 MB, 53.4 bytes per key; 1000000 values, 64.0 MB
+  resident: 162499 index objects (0.162 per key; 162499 canonical, 0 snapshots; 80183 current, 82316 not current; 9 top nodes), 119.3 MB; 1000000 values, 64.0 MB
+  pointers of resident index objects: 2741409, memory pointers 2741409
+  in-degree (memory pointers to an object): index objects 1: 50068, 2: 86442, 3-4: 25973, 5-8: 15, 9+: 0 (69.2% more than one)
+  in-degree: values 1: 288420, 2: 352900, 3-4: 266769, 5-8: 85422, 9+: 6489 (71.2% more than one)
+  stream: 2 index node versions written, 2 distinct index nodes written (0.000 per key), 1000000 value nodes; 46.7 MB
+gets after the load, one thread, ns per get (median of 5 rounds of 1000000):
+  as it is                   709.4 (best 707.8)
+  no lock, no stamp          670.7 (best 669.6)
+  stamp, no lock             674.7 (best 673.1)
+  as it is, no readSync      711.1 (best 702.3)
+gets after the load, 4 threads, million gets a second (median of 5 rounds):
+  as it is                   3.63 (best 3.67)
+  no lock, no stamp          4.63 (best 4.69)
+  no lock, no stamp, no readSync   5.10 (best 5.12)
+updates: 1000000 puts in 11.5 s
+census after the updates:
+  latest tree: 110727 index nodes (9.03 keys per node), 86.2 MB, 86.2 bytes per key; 1000000 values, 64.0 MB
+  resident: 278789 index objects (0.279 per key; 278789 canonical, 0 snapshots; 110727 current, 168062 not current; 10 top nodes), 220.7 MB; 1999995 values, 128.0 MB
+  pointers of resident index objects: 4973424, memory pointers 4973424
+  in-degree (memory pointers to an object): index objects 1: 77623, 2: 154786, 3-4: 46355, 5-8: 24, 9+: 0 (72.2% more than one)
+  in-degree: values 1: 743124, 2: 667582, 3-4: 440279, 5-8: 138479, 9+: 10531 (62.8% more than one)
+  stream: 376494 index node versions written, 267301 distinct index nodes written (0.267 per key), 1999995 value nodes; 257.5 MB
+gets after the updates, one thread, ns per get (median of 5 rounds of 1000000):
+  as it is                   823.0 (best 817.5)
+  no lock, no stamp          769.4 (best 762.1)
+  stamp, no lock             771.9 (best 761.4)
+  as it is, no readSync      838.1 (best 812.7)
+gets after the updates, 4 threads, million gets a second (median of 5 rounds):
+  as it is                   3.34 (best 3.42)
+  no lock, no stamp          4.19 (best 4.23)
+  no lock, no stamp, no readSync   4.51 (best 4.52)

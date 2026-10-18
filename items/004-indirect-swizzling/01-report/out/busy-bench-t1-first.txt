@@ -1,0 +1,26 @@
+# First run, 2026-10-18 11:57 to 12:14, before the layouts were renamed: layout
+# 'adjacent' here is the layout 'parent' of the final IndirectionBench (handles made when
+# the parent is linked). Superseded by bench-t1.txt; kept for the record.
+openjdk version "27" 2026-09-15
+direct       keys     20000 threads 1 layout adjacent  depth 5  ns/lookup median    72.4 best    71.5  lookups/s  13.81 M
+lockstamp    keys     20000 threads 1 layout adjacent  depth 5  ns/lookup median    97.4 best    96.7  lookups/s  10.26 M
+lock         keys     20000 threads 1 layout adjacent  depth 5  ns/lookup median    89.5 best    88.8  lookups/s  11.17 M
+stamp        keys     20000 threads 1 layout adjacent  depth 5  ns/lookup median    74.1 best    72.9  lookups/s  13.49 M
+handle       keys     20000 threads 1 layout adjacent  depth 5  ns/lookup median    84.1 best    84.0  lookups/s  11.89 M
+handleacq    keys     20000 threads 1 layout adjacent  depth 5  ns/lookup median    84.2 best    83.3  lookups/s  11.87 M
+handleclock  keys     20000 threads 1 layout adjacent  depth 5  ns/lookup median    90.0 best    86.8  lookups/s  11.10 M
+hash         keys     20000 threads 1 layout adjacent  depth 5  ns/lookup median   108.7 best   105.0  lookups/s   9.20 M
+chm          keys     20000 threads 1 layout adjacent  depth 5  ns/lookup median   135.8 best   132.4  lookups/s   7.36 M
+handle       keys     20000 threads 1 layout scattered depth 5  ns/lookup median    90.0 best    89.0  lookups/s  11.11 M
+handleacq    keys     20000 threads 1 layout scattered depth 5  ns/lookup median    90.4 best    84.5  lookups/s  11.06 M
+direct       keys   8000000 threads 1 layout adjacent  depth 7  ns/lookup median   695.2 best   688.0  lookups/s   1.44 M
+lockstamp    keys   8000000 threads 1 layout adjacent  depth 7  ns/lookup median   792.1 best   779.9  lookups/s   1.26 M
+lock         keys   8000000 threads 1 layout adjacent  depth 7  ns/lookup median   732.4 best   710.5  lookups/s   1.37 M
+stamp        keys   8000000 threads 1 layout adjacent  depth 7  ns/lookup median   728.1 best   709.1  lookups/s   1.37 M
+handle       keys   8000000 threads 1 layout adjacent  depth 7  ns/lookup median   903.0 best   872.8  lookups/s   1.11 M
+handleacq    keys   8000000 threads 1 layout adjacent  depth 7  ns/lookup median   868.3 best   860.8  lookups/s   1.15 M
+handleclock  keys   8000000 threads 1 layout adjacent  depth 7  ns/lookup median   903.1 best   858.2  lookups/s   1.11 M
+hash         keys   8000000 threads 1 layout adjacent  depth 7  ns/lookup median  1289.1 best  1272.6  lookups/s   0.78 M
+chm          keys   8000000 threads 1 layout adjacent  depth 7  ns/lookup median  1552.8 best  1509.0  lookups/s   0.64 M
+handle       keys   8000000 threads 1 layout scattered depth 7  ns/lookup median  1138.4 best  1103.4  lookups/s   0.88 M
+handleacq    keys   8000000 threads 1 layout scattered depth 7  ns/lookup median  1121.3 best  1116.2  lookups/s   0.89 M

@@ -1,0 +1,37 @@
+# 2026-10-18 12:32 to 12:41, run-census.sh; the machine shared with six trace checks of another session and macOS
+# mediaanalysisd (load averages 9.5 to 11.5 on ten cores): the 4-thread gets oversubscribe it.
+IndexCensus: keys 1000000, keytype pre16, valsize 8, maxnode 30, updates 1000000; 27
+load: 1000000 puts in 8.0 s
+census after the load:
+  latest tree: 80363 index nodes (12.44 keys per node), 53.5 MB, 53.5 bytes per key; 1000000 values, 64.0 MB
+  resident: 162794 index objects (0.163 per key; 162794 canonical, 0 snapshots; 80363 current, 82431 not current; 1 top nodes), 119.4 MB; 1000000 values, 64.0 MB
+  pointers of resident index objects: 2744284, memory pointers 2744284
+  in-degree (memory pointers to an object): index objects 1: 50549, 2: 86235, 3-4: 25995, 5-8: 14, 9+: 0 (68.9% more than one)
+  in-degree: values 1: 287219, 2: 353662, 3-4: 266974, 5-8: 85667, 9+: 6478 (71.3% more than one)
+  stream: 136799 index node versions written, 132700 distinct index nodes written (0.133 per key), 1000000 value nodes; 120.9 MB
+gets after the load, one thread, ns per get (median of 5 rounds of 1000000):
+  as it is                   997.8 (best 996.5)
+  no lock, no stamp          950.6 (best 938.4)
+  stamp, no lock             949.7 (best 924.9)
+  as it is, no readSync     1011.6 (best 1004.8)
+gets after the load, 4 threads, million gets a second (median of 5 rounds):
+  as it is                   1.52 (best 1.54)
+  no lock, no stamp          3.34 (best 3.40)
+  no lock, no stamp, no readSync   3.81 (best 3.92)
+updates: 1000000 puts in 11.0 s
+census after the updates:
+  latest tree: 110428 index nodes (9.06 keys per node), 86.0 MB, 86.0 bytes per key; 1000000 values, 64.0 MB
+  resident: 278767 index objects (0.279 per key; 278767 canonical, 0 snapshots; 110428 current, 168339 not current; 1 top nodes), 220.7 MB; 1999995 values, 128.0 MB
+  pointers of resident index objects: 4975684, memory pointers 4975684
+  in-degree (memory pointers to an object): index objects 1: 78477, 2: 154588, 3-4: 45680, 5-8: 21, 9+: 0 (71.8% more than one)
+  in-degree: values 1: 741491, 2: 668198, 3-4: 441070, 5-8: 138802, 9+: 10434 (62.9% more than one)
+  stream: 389298 index node versions written, 233371 distinct index nodes written (0.233 per key), 1999995 value nodes; 293.1 MB
+gets after the updates, one thread, ns per get (median of 5 rounds of 1000000):
+  as it is                  1203.1 (best 1165.6)
+  no lock, no stamp         1123.8 (best 1113.2)
+  stamp, no lock            1127.2 (best 1109.7)
+  as it is, no readSync     1209.9 (best 1185.1)
+gets after the updates, 4 threads, million gets a second (median of 5 rounds):
+  as it is                   1.43 (best 1.47)
+  no lock, no stamp          2.88 (best 2.92)
+  no lock, no stamp, no readSync   3.16 (best 3.30)
