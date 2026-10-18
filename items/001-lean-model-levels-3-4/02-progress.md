@@ -167,7 +167,7 @@ Current state
   Frans: Option K under TREE, A6' and A-COPY; above); K3 passed (by the agent,
   2026-10-18 05:31; above). K4 and K5 open; the agent passes them itself
   when their conditions are met (Frans, 2026-10-17 19:59; above).
-* Next: J8 to J10, prepared in scratch copies of `java/` (the entry of
+* Next: J9 to J10, prepared in scratch copies of `java/` (the entry of
   00:35), committed one WP at a time; then K4, P4 and F1 to F3.
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): T9 is proved with
   the stronger `CutOK` part 2 (R4, 2026-10-17, before R6's proof, since T9
@@ -235,7 +235,7 @@ Status
 | J5 | Readers under eviction | done | 2026-10-18 |
 | J6 | Reclaim under eviction | done | 2026-10-18 |
 | J7 | The capacity controller | done | 2026-10-18 |
-| J8 | Larger than memory | not started | — |
+| J8 | Larger than memory | done | 2026-10-18 |
 | J9 | `level4.sh` | not started | — |
 | J10 | Performance | not started | — |
 | F1 | The conformance campaign, all levels | not started | — |
@@ -3802,3 +3802,49 @@ R8's.
 
 Time: J7 is M to L: about an hour and a half of work (01:15 to 02:10, the
 fix 03:40 to 04:00, and the runs).
+
+### 2026-10-18 01:52 to 05:34. WP J8, done: larger than memory
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `ed60789`.
+
+Did: `java/stress/LargerThanMemory.java` (on disk, a capped JVM, the
+controller's budget much smaller than the data and the index; load, uniform
+and hot updates, gets and scans warm and cold, reclaim on, cold restarts,
+every key checked after each restart and at the end; memory sampled every
+second, and the live heap after a full collection at the end of each phase;
+the index's size by a scan that caches nothing); the runs; the report,
+[docs/level4-evidence.md](../../docs/level4-evidence.md).
+
+The run on J7's final tree (2026-10-18 04:00 to 04:58, 57 minutes; `-Xmx2g`,
+a budget of 500 MB, 20 million keys of 100 bytes, node size 30, reclaim on,
+a startup distance of 10 MB): `LARGER THAN MEMORY OK`. The index 1,071 MB
+after the load and 1,525 MB at the end (three times the budget), 26 GB on
+disk; the load, two cycles of 2 million uniform and 2 million hot puts, a
+million gets and 200,000 scanned KVs warm and cold, two cold restarts (593
+and 627 ms), and every key checked after each restart and at the end, all
+right. The resident bytes at most the budget, and after the first fill
+between 374 and 500 MB in every sample; the live heap after a full
+collection 460 to 646 MB of 2,147 MB; 115 sweeps, all after loads, none
+complete, none ending above the budget, each down to the low watermark, 2.2
+s at most; D at most 22 MB. The phases' rates are in the report.
+
+Findings: (1) G1's collection usage (the heap after the last collection of
+each pool) overstates what is live, since a young collection does not
+collect the old generation: it reached 1.8 GB in a first attempt, while a
+histogram of the live objects showed about 650 MB; the run's criterion is
+the heap after a full collection at each phase's end (the first attempt was
+stopped and run again). (2) The first full run (02:14 to 03:36, on J7's
+tree before its last fix) passed too (`LARGER THAN MEMORY OK`; the live heap
+at most 643 MB of 2,147 MB, the resident bytes at most the budget), but its
+last sweep went from 500 MB down to D, 22 MB: a sweep counted only the
+objects it released, not the snapshots that left the resident set with
+them. Fixed in J7 (its entry), and run again. (3) Writes when the index
+does not fit cost several times as much (the report's limits: at a million
+keys, uniform updates 6,209 against 29,698 puts a second with and without
+pressure; samples of the writer's stack: most of it in the loads, each a
+read of the node's header for its id and then of the node, and some in the
+sweeps).
+
+Time: J8 is M: about an hour and a half of work, and about three hours of
+machine time (the two full runs, the first attempt, the million-key
+comparison).

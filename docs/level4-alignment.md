@@ -10,7 +10,7 @@ Status, 2026-10-18: the scope (section 1), a first α for the cache (section
 2) and the register (section 3), checked against the code (A2); the probes
 of A4 and the A-COPY checks (section 4); the design of E1, and what E2 to
 E6 ran and proved (section 5); what Java must do (E7, section 6); Level 4 in
-Java (section 7: J1 to J7). To come: J8 to J10, and the outcome (F2).
+Java (section 7: J1 to J8). To come: J9 and J10, and the outcome (F2).
 
 Level 4 is eviction: data and index larger than memory, under a memory
 budget, with readers, reclaim, crashes and restarts. The plan of item 001
@@ -1467,3 +1467,14 @@ measurement): 0.024 loads per hot read without reclaim and 0.023 with it.
 The gates with eviction on by default: `LEVEL 1 OK`, `LEVEL 2 OK`, `LEVEL 3
 OK`, and every record the same as R8's (`StreamDigest`, 36 of 36).
 Larger than memory: 7.7.
+
+### 7.7 J8: larger than memory
+
+**J8** (bergdb item 001, 2026-10-18): a database of 20 million keys, about
+six times the controller's budget of 500 MB, its index alone three times
+it, on disk in a JVM capped at 2 GB: [level4-evidence.md](level4-evidence.md).
+Every check passed (60 million checks of the whole key space after two cold
+restarts and at the end, and the reads between); the resident bytes stayed
+at or below the budget, the live heap at most 646 MB, 30 percent of the cap;
+115 sweeps, each down to the low watermark, none complete; D at most 22 MB.
+Its first run found the fault in the sweep's count that J7 fixed (7.6).

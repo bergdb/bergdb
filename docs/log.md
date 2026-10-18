@@ -666,3 +666,9 @@ objects, values first, down to three quarters of it; pinned state is never
 taken. A larger-than-memory run (J8) found that a sweep counted only what it
 released, not what left memory with it, and could empty the cache down to
 the pinned state; fixed. The gates pass with eviction on.
+
+2026-10-18. Bergdb item 001, WP J8: larger than memory. 20 million keys, an
+index of 1.5 GB and 2 GB of values, on disk in a JVM capped at 2 GB with a
+budget of 500 MB: load, updates, gets, scans, reclaim, two cold restarts and
+every key checked, all right; the live heap at most 646 MB
+([level4-evidence.md](level4-evidence.md)).
