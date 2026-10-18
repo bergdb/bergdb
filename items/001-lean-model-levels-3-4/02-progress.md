@@ -146,17 +146,29 @@ Frans's go and decisions
     cannot be made to pass, a change of the stream format or the public API,
     a Java change outside the agreed list that a checkpoint would need Frans
     to accept, or a choice for which the plan has no recommendation.
+* **K3 passed, 2026-10-18 05:31, by the agent on Frans's go of 2026-10-17
+  19:59.** Its conditions for an automatic pass (plan, section 3) hold: T8
+  (`T8_recoverCut`), T9 (`T9_readCut`) and T12 (`T12_restartCut`, and with
+  eviction `T12_evictCut`) are proved; T-SCHEME is checked at every cut Java
+  decides and by running on the model's example 4, not proved (R6's
+  fallback); R9's conformance passes (the small and medium reclaim sets made
+  again with the current Java: every record, D and cut the model's, every
+  cut safe, no failing probe; the gates); no Java change beyond E7's list
+  (R8's six). With the recommended option: the conformance step in
+  `level3.sh`, its step 8 (`conformance.sh reclaim`; level3-alignment.md,
+  section 8). The review guide:
+  [04-k3-review.md](04-k3-review.md). Stage 4 may start.
 
 
 Current state
 -------------
 
 * Checkpoints: G0 given (2026-10-16 15:23); K1 passed (2026-10-17 07:56,
-  Frans: Option K under TREE, A6' and A-COPY; above). K2 to K5 open; K3 to
-  K5 the agent passes itself when their conditions are met (Frans,
-  2026-10-17 19:59; above).
-* Next: R9's documents and K3 when R9's medium set is checked (about
-  05:30), then J1, prepared meanwhile in a scratch copy of `java/`. R3, R4
+  Frans: Option K under TREE, A6' and A-COPY; above); K3 passed (by the agent,
+  2026-10-18 05:31; above). K4 and K5 open; the agent passes them itself
+  when their conditions are met (Frans, 2026-10-17 19:59; above).
+* Next: stage 4, J1 to J10, prepared meanwhile in scratch copies of `java/`
+  (the entry of 00:35), committed one WP at a time after K3. R3, R4
   (T8 and T9), R5 (T12, also with eviction, 2026-10-17 22:56), R7 and R8 are
   done; R6 is partial: T-SCHEME checked, not proved (the plan's fallback,
   2026-10-18 00:02).
@@ -176,14 +188,9 @@ Current state
   it later, and J tests that would hit it leave that case out or mark it as
   a known M49 issue.
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: K3's conformance step in `java/stress/level3.sh` and `conformance.sh`, tested (00:02), committed with K3.
-* Long jobs: R9's Lean tier, the checker on the reclaim sets made again
-  with the current Java, from 23:00, expected done about 06:00 (its entry).
-  Before: none (18:44). R7's checker on the medium reclaim set's four
-  largest traces finished at 17:58, R4's (with C-CUT+) on the whole medium
-  set at 18:44; the results are in the T9 entry (2026-10-17 17:50). R8's
-  performance comparison ran from 19:12 to 19:41 (no regression; its
-  entry).
+* Uncommitted work of this plan in bergdb: none.
+* Long jobs: none in bergdb; stage 4's campaigns run in scratch trees.
+  R9's Lean tier ran from 2026-10-17 23:00 to 2026-10-18 05:31 (its entry).
 * Stage 2's time box (plan, 5.3): started with E1 at 2026-10-16 23:14;
   60 hours, so it ends at 2026-10-19 11:14. Stage 2's WPs (E1 to E7) were
   done by 2026-10-17 05:31, about 6.3 hours of it.
@@ -223,7 +230,7 @@ Status
 | R6 | Java's scheme gives safe cuts: T-SCHEME | partial: `CutOK`'s part 2 over `ReadsPhys` (M48: (a)) with its exception for put-back versions done; T-SCHEME checked (at every cut, and by running), not proved: the plan's fallback | 2026-10-18 |
 | R7 | The red list on Java's reclaim | done | 2026-10-17 |
 | R8 | Java: the corrections the model requires, before eviction | done (the performance comparison: no regression) | 2026-10-17 |
-| R9 | Level 3 conformance; the gate proposal | in progress: the Lean tier's runs | 2026-10-17 |
+| R9 | Level 3 conformance; the gate proposal | done; K3 passed | 2026-10-18 |
 | J1 | Registry, pins and audits | not started | — |
 | J2 | Eviction of values | not started | — |
 | J3 | Eviction of index nodes | not started | — |
@@ -3369,3 +3376,93 @@ Time: R6 is M to L (2 to 24 hours): part 1 35 minutes, part 1b an hour, this
 part about an hour (22:58 to 00:02, beside R9's runs).
 
 Open, next: R9's medium set (running), then R9's documents and K3; then J1.
+
+### 2026-10-18 00:35. WPs J1 to J3, in progress in scratch trees, beside R9's runs (written before long jobs)
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `23858eb`. While
+R9's medium set runs (expected done about 05:30), stage 4's first WPs are
+prepared in scratch copies of `java/` (and `lean/`) in the session's scratch
+directory; nothing of them is in bergdb yet, and none is committed before
+R9 and K3. J1 (the registry, the pins, the accounting and the audit): built;
+its campaign of the audit without eviction on the configurations of 8.4
+(`j1/audit-campaign.sh`, not edited while running) has passed its parts 1
+to 3 (RestartInvariance, ReclaimStress, CrashTest: 0 audits failed) and runs
+its part 4 (TraceExport on the conformance sets). J2 and J3 (eviction of
+values and of index nodes, in one tree): unit tests pass; the campaign of
+eviction (`j3/evict-campaign.sh`: EvictionInvariance with the schedules none,
+values, every and random on the configurations of 8.4, without and with
+restarts and reclaim; RestartInvariance, ReclaimStress and CrashTest with a
+schedule; the audit on) started 00:34.
+
+Update, 2026-10-18 02:18: J1 (gates and the byte comparison passed on its
+final tree; its audit campaign is in its last part), J2 and J3 (campaign and
+gates passed after two fixes, below), J4 (the eviction conformance set: 80
+traces, C-P no failure), J5, J6 and J7 (the capacity controller; eviction on
+by default) are built and tested in scratch trees, one on top of the other;
+their gates and stress campaigns run, and J8's larger-than-memory run (20
+million keys, a 500 MB budget, `-Xmx2g`). Fixed on the way: a unit test that
+compared the streams' first positions, which depend on the storage threads'
+timing; values that only the node table held were never released; and
+pinned state above the budget made the controller sweep at every load. R9's
+medium set: four traces still in the checker (about 3 of some 6 CPU-hours
+each). The commits follow R9 and K3, in the plan's order.
+
+Update, 2026-10-18 04:01: J8's run passed (`LARGER THAN MEMORY OK`, 20
+million keys, 82 minutes); J4 to J6 passed their campaigns and gates. J8's
+log showed a fault in J7's controller: a sweep counted only the objects it
+released, not those that left the resident set with them (the snapshots
+below an inner node it unswizzled), so after reads a sweep could go down to
+the pinned state; the last sweep of the run did. Fixed in J7's tree
+(`Eviction.drop`, and of slots of the same age the deeper first), with a test
+that fails without the fix; J7's gates, its campaign and J8's run are being
+redone on it (from 04:00). R9's medium set: two traces still in the checker.
+
+### 2026-10-17 22:58 to 2026-10-18 05:31. WP R9, done; K3 passed (by the agent, on Frans's go of 19:59)
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `23858eb`;
+uncommitted before this commit: K3's conformance step (`java/stress/level3.sh`,
+`conformance.sh`), and this file's in-progress entry of 00:35 (above).
+
+Did:
+
+1. The Lean tier of Level 3 conformance on the current Java (`java/` as at
+   `5b1abdd`, R8's last change; the medium set's earlier traces were from
+   before R8): the reclaim traces of R2's small and medium sets made again
+   (`reclaimtraces.sh`, 22:59 to 23:01), then the checker (`lean/`'s
+   `tracecheck` at `970c996`, copied) on every trace. Small set (5
+   configurations, 5 seeds): 25 of 25 TRACECHECK OK (23:00 to 23:03; 14,448
+   transactions, 288 cuts, C-CUT no failure). Medium set (3 configurations, 2
+   seeds): 6 of 6 TRACECHECK OK (23:02 to 05:30; 22,460 transactions, 175
+   cuts, C-CUT no failure).
+2. The Java tier: the gates, full, on `970c996` (23:04 to 23:24): `LEVEL 1
+   OK` (108 s), `LEVEL 2 OK` (731 s; unit tests 918, F tests 37, A2A3Check2,
+   60 of 60 small traces TRACECHECK OK), `LEVEL 3 OK` (359 s: ReclaimStress
+   200 random configurations, RestartInvariance with reclaim, CrashTest with
+   reclaim, ReclaimReaders, LoadTest with a restart at every cut,
+   PowerLossTest). The checker's diagnostics on every reclaim trace (D closed
+   upward, A6, TREE, A-COPY): no failure.
+3. `docs/level3-alignment.md`, section 7: the outcome of the plan's 1.2 for
+   Level 3, point by point; section 8: the conformance step for `level3.sh`
+   (the gate proposal), adopted.
+4. K3's conformance step (written and tested at 22:58 to 23:25, beside R6's
+   part 2): `level3.sh`'s step 8, `conformance.sh reclaim` (the small reclaim
+   set; 2 seeds quick, 5 full; a trace without a cut fails the set). Tested:
+   `LEVEL 3 OK` full (484 s; the step 125 s, 25 of 25 traces, 288 cuts, no
+   failure) and quick (151 s; the step about 70 s), and `LEVEL 2 OK` with the
+   changed `conformance.sh` (715 s). `docs/levels.md` and `README.md` say so.
+5. The K3 review guide: [04-k3-review.md](04-k3-review.md).
+
+K3's conditions for an automatic pass (plan, section 3) hold: T8, T9 and T12
+proved (R4, R5), T-SCHEME checked at every cut (R6's fallback), R9's
+conformance passes (above), and no Java change beyond E7's list (R8's six
+changes; level4-alignment.md, 6.1). Recorded under "Frans's go and
+decisions".
+
+Register (level3-alignment.md): no new rows; M33, M36, M41 checked by the
+runs (Java's part argued).
+
+Time: R9 is S (under 2 hours of work): about an hour and a half of work, and
+the medium set's checks, 6.5 hours of machine time (22 CPU-hours, six
+traces at once).
+
+Open, next: stage 4, J1 (prepared beside R9's runs; its commit follows).

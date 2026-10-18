@@ -620,3 +620,13 @@ the cut stream still has, and where it is in the list of objects; reads from
 f on follow no version before the cut (an invariant on the slots after a
 restart, `NInv`). New proofs `lean/SIS/Proof/CutLater.lean` to
 `CutLaterRun.lean`. Register M34 closed. R5 is done.
+
+2026-10-18. Bergdb item 001, WP R9 and checkpoint K3: Level 3 conformance on
+the current Java. R2's small and medium reclaim sets made again with the
+Java of R8's last change and checked by the Lean checker: every trace
+`TRACECHECK OK`; every record, D and cut the model's, every cut Java
+decided safe (`CutOK`), no failing probe after restarts from the cut stream.
+K3's conditions for an automatic pass hold, so K3 passed (by the agent, on
+Frans's go of 2026-10-17 19:59), with the recommended option: `level3.sh`
+checks conformance with reclaim (its step 8, `conformance.sh reclaim`).
+The outcome for Level 3: `level3-alignment.md`, sections 7 and 8.

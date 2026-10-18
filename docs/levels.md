@@ -56,7 +56,7 @@ Levels
 | 0 | Multiversion map in memory: puts, deletes, latest and historical lookups, scans; no restart | Passes the tests run |
 | 1 | + restart by replaying the whole stream | Passes the tests run; two bugs fixed |
 | 2 | + bounded startup: the startup pos moves, startup reads only the tail | Works in all tests run, also under load and with crashes; the defects of the 2017 code fixed; aligned with the Lean model, which is proven (2026-10-16, F1-008-11) |
-| 3 | + reclaim: cut the front of the stream | Passes the recorded exact-cut, restart, crash, load, concurrent-reader and changing-retention tests; infinite retention is the default, finite retention schedules reclaim; retention pacing, older cut point, index-aware allowance and 16 KB scan target implemented; an overtaken read may expire without harming the database; FileStream power-loss ordering is implemented and audited on the tested platforms; a longer disk soak and the performance reference remain planned; the Lean model has reclaim's definitions, checked by running (2026-10-17, bergdb item 001, WP R3), its theorems to come ([level3-alignment.md](level3-alignment.md)) |
+| 3 | + reclaim: cut the front of the stream | Passes the recorded exact-cut, restart, crash, load, concurrent-reader and changing-retention tests; infinite retention is the default, finite retention schedules reclaim; retention pacing, older cut point, index-aware allowance and 16 KB scan target implemented; an overtaken read may expire without harming the database; FileStream power-loss ordering is implemented and audited on the tested platforms; the Lean model of reclaim is proved (2026-10-18, bergdb item 001: recovery, reads and restarts after safe cuts; that Java's scheme gives safe cuts is checked at every cut, not proved), and Java's reclaim is aligned with it, a step of `level3.sh` ([level3-alignment.md](level3-alignment.md)) |
 | 4 | + eviction: data larger than memory | Not implemented; the model first, in bergdb item 001 ([level4-alignment.md](level4-alignment.md)): its Lean model with eviction is proved (2026-10-17: with any cache schedule and restarts, the physical writer appends the model's records and reads give P; every object outside the pinned set may be evicted), and the design passed Frans's review (the item's K1, 2026-10-17); the Java work comes after reclaim's model |
 
 Level 3 needs level 2: once the front of the stream is cut, startup can no
@@ -254,7 +254,11 @@ Alignment with the model (F1-008-11, 2026-10-16;
 
 Since 2026-10-16, `level2.sh` checks the alignment too (its step 7, and
 mostly idle runs in step 4): `A2A3Check2` and the trace checker on the small
-set, so the gate needs Lean (level2-alignment.md, 12).
+set, so the gate needs Lean (level2-alignment.md, 12). Since 2026-10-18
+(bergdb item 001, K3), so does `level3.sh`, with reclaim (its step 8): the
+small reclaim set, every record on the cut stream, `CutOK` at every cut
+Java decides, the probes after restarts from the cut stream
+(level3-alignment.md, 8).
 
 The startup bug M18, found 2026-10-15 (transactions that change nothing
 could move the startup pos past every top node version, and the database

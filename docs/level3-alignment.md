@@ -6,12 +6,13 @@ Work packages A2, R1 and later of bergdb item 001
 Source commit `a66e4d9` (R1); line numbers below are at that commit, in
 `java/src/bergdb/`.
 
-Status, 2026-10-17: R1's version, with R2's traces (2.7) and R3's model
-(2.8). The scope (section 1), α for reclaim (section 2), the register
-(section 3, checked against the code at `75d3c2d` in A2 and at `a66e4d9` in
-R1), the arguments for M32 and M38 (section 4) and the safety argument in
-the model's terms, every step marked (section 5). To come: R7 the red list
-(section 6); R9 the outcome.
+Status, 2026-10-18: complete for stage 3. The scope (section 1), α for
+reclaim (section 2, with R2's traces and R3's model), the register (section
+3, checked against the code at `75d3c2d` in A2 and at `a66e4d9` in R1), the
+arguments for M32 and M38 (section 4), the safety argument in the model's
+terms, every step marked (section 5), R7's red list (section 6), the
+outcome of the plan's 1.2 for Level 3 (section 7, R9) and the conformance
+step in `level3.sh` (section 8, K3).
 
 Level 3 is reclaim: the front of the stream is cut, so that the stream does
 not grow forever. How Java does it is in [levels.md](levels.md), "Level 3:
@@ -915,3 +916,84 @@ same, byte for byte; 10 of the 12 of the Level 3 ones differ).
 
 So every failure maps to a register row (M17), and R8 has one more Java
 change. The summary per trace: `docs/evidence/level3-redlist-baseline.txt`.
+
+
+## 7. Conformance: the outcome of 1.2 for Level 3 (R9)
+
+**R9** (2026-10-17). The plan's section 1.2, point by point, for Level 3
+(points 5 and the second half of 7, the cache, are Level 4's:
+[level4-alignment.md](level4-alignment.md), stage 4). The runs: the reclaim
+traces of R2's small and medium sets made again with the current Java
+(`java/` as at `5b1abdd`, R8's last change; the medium set's earlier traces
+were from before R8), the checker at `970c996` on each; and the gates, full,
+on `970c996`.
+
+1. **Correspondence.** α for reclaim is section 2: reclaim's steps and table
+   stores are transactions (2.2, M37), the touch is `Changes.touch` (2.2,
+   M17), fa(i) is `Record.fa` (2.4, M32), a decided cut is the model's cut
+   (2.5, M35), reads from f on only (2.6, M36). Every step of the model is
+   mapped (2.8), and every assumption (the touch's: TouchOK in `StepOK`; T8's
+   `ExecRootOK` and `VirtLiveOK`, which example 4 meets, proved; T12's
+   `PolicyCutOK`, a property of the policies). The register's rows (section
+   3): M17 by a code change (R8), M34 by the model with proofs (T12, also
+   with eviction), M48 by Frans's decision (a) and a model change with proofs
+   (T9); M32, M38 argued (section 4); M35, M37 by α, checked by the exporter
+   and C-CUT; M33, M36, M41: the model's part proved (T8, T12), Java's part
+   argued (2.10, 2.6) and checked by the runs below. None needs a Java change
+   beyond R8's.
+2. **Java runs meet the assumptions, and every cut is safe.** In every
+   transaction of the two sets (C-A: A2 to A5, the touch assumptions, D
+   closed upward, A6, TREE, A-COPY as diagnostics): no failure. At every cut
+   Java decided, `CutOK` holds in the model's state after its transaction,
+   with the record's first available time, and every physical cut is at or
+   below the decided one (C-CUT): no failure. Small: 25 traces, 14,448
+   transactions, 288 cuts. Medium: 6 traces, 22,460 transactions, 175 cuts.
+3. **Java's steps are the model's steps.** C-S, from the first cut on on the
+   stream cut at the largest cut so far: every record (user transactions,
+   reclaim steps, table stores) and D are the model's, in every transaction of
+   both sets (R7's red list is empty since R8's change 6). Java cuts only
+   where the model allows (point 2).
+4. **Restarts.** Run B of each trace restarts every ten transactions and
+   right after each cut, from the cut stream, and looks up at every available
+   time (C-R's probes): no failing probe. `RestartInvariance` with reclaim
+   (`level3.sh`, step 3): the same stream byte for byte with and without
+   restarts, the same cut, D, node identity and lookups. In the model: T8
+   (startup from a stream cut safely), T12 (runs that restart from cut
+   streams append the run's records), also with eviction (`T12_evictCut`).
+6. **Proofs.** T13' (`T13_markTouch`), T8 (`T8_recoverCut`), T9
+   (`T9_readCut`), T12 (`T12_restartCut`) and T12 with eviction
+   (`T12_evictCut`), under the assumptions of point 2: no `sorry`, only
+   Lean's standard axioms (`lean/README.md`). T-SCHEME, that Java's scheme
+   gives safe cuts, is **checked, not proved** (R6's fallback, 2026-10-17):
+   at every cut of every trace (point 2), and by running on example 4
+   (`lake exe reclaimtest`, `checkSchemeB`: every iteration whose scheme
+   conditions hold, `CutOK` at its cut position in every later state past
+   the waits; R6 part 1b's probes besides). Section 5 marks steps 2 to 6
+   checked.
+7. **No regressions.** The gates on `970c996`, full (23:04 to 23:24):
+   `LEVEL 1 OK` (108 s), `LEVEL 2 OK` (731 s; unit tests 918, F tests 37;
+   step 7: A2A3Check2 and 60 of 60 small traces TRACECHECK OK), `LEVEL 3 OK`
+   (359 s). The quick performance suite: R8's comparison against the Level 3
+   reference `l34-base`, no regression (2026-10-17 19:12 to 19:41).
+
+Not claimed for Level 3 (as 1.2 says): every possible Java run; readers
+beside reclaim (`ReclaimReaders` tests them: `level3.sh`, step 5); bytes and
+durability (`PowerLossTest`, level3-durability.md); the policies' timing (5,
+step 8: the retention guarantee is checked by `ReclaimRetentionTester`,
+`ReclaimStress` and the soak).
+
+
+## 8. Proposal for checkpoint K3: conformance in the gate
+
+**Adopted 2026-10-18 05:31** (by the agent, on Frans's go of 19:59 for K3 with
+the conformance step; 02-progress.md). A step 8 of `level3.sh`, "Conformance
+with the Lean model, with reclaim", in both modes: `conformance.sh reclaim`,
+the small reclaim set (R2's configurations, `reclaimtraces.sh small`), 2
+seeds quick (10 traces), 5 full (25 traces): each trace exported with reclaim
+on and checked by the checker (C-A, C-S on the cut stream, C-CUT at every
+cut, C-R's probes after restarts from the cut stream), and every trace must
+have a cut. It catches what R7 and R8 found: M17 (C-S), and a cut that
+`CutOK` does not allow (C-CUT; `stale.trace`, `physcut.trace`). It needs the
+checker, as `level2.sh`'s step 7 does; the step builds it. Times: the step
+about 125 s full (25 traces) and about 70 s quick (10); `level3.sh` with it
+484 s full and 151 s quick on this machine, under load.

@@ -53,7 +53,7 @@ and `level2.sh`, [elan](https://github.com/leanprover/elan).
     java/build.sh                  # builds java/build/bergdb.jar and the stress tests
     java/stress/level1.sh          # full replay          (about 80 s)
     java/stress/level2.sh          # bounded startup      (about 17 minutes; quick: 2)
-    java/stress/level3.sh          # reclaim              (about 4 minutes)
+    java/stress/level3.sh          # reclaim              (about 8 minutes)
     cd lean && lake build          # checks all proofs
 
 Each level script prints `LEVEL n OK` when it passes. All three must pass

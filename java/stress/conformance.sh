@@ -3,14 +3,18 @@
 # configurations, and checks each trace with the Lean checker (lean/, lake exe
 # tracecheck). Written 2026-10-15 for F1-008-11, WPs C3 and F1.
 #
-# Usage: java/stress/conformance.sh [small|medium|large|all] [seeds]
+# Usage: java/stress/conformance.sh [small|medium|large|all|reclaim] [seeds]
 #   small (default): the Lean tier on every transaction, in the target mode
 #   (marking, Java's still-dirty test, the virtual root) and, for the first
 #   three seeds of the first two configurations, in the unchanged model's mode
 #   (--model). medium: larger runs, target mode only. large (2026-10-16, bergdb
 #   item 001, WP C3): up to 5,000 transactions, node sizes 8 to 62, up to 3,000
-#   keys, and runs with hundreds of top nodes. all: the three. seeds: per
-#   configuration (default 10 small, 3 medium, 2 large). The checker computes
+#   keys, and runs with hundreds of top nodes. all: the three. reclaim
+#   (2026-10-17, bergdb item 001, K3): Level 3, the small reclaim set of
+#   reclaimtraces.sh, reclaim on, with the checker's reclaim checks (the touch,
+#   the steps on the cut stream, CutOK at every cut, the probes after restarts
+#   from the cut stream); a trace without a cut fails. seeds: per
+#   configuration (default 10 small, 3 medium, 2 large, 5 reclaim). The checker computes
 #   the model's own definitions, with fast versions proven equal to them
 #   (lean/Check/Fast.lean, since bergdb item 001, WP C2).
 #
@@ -55,6 +59,17 @@ medium() {
     echo "m-mixed -Dn=500 -Dkeys=500 -Dmaxnode=8 -Dsd=2000 -Dops=4 -Ddel=20 -Dnodel=5 -Dempty=5 -Dprobe=50"
     echo "m-long  -Dn=500 -Dkeys=3000 -Dmaxnode=30 -Dsd=5000 -Dops=8 -Dlong=1 -Ddel=20 -Dprobe=100"
     echo "m-big   -Dn=120 -Dkeys=1000 -Dmaxnode=30 -Dsd=10000 -Dops=20 -Dbulk=60 -Dprobe=30"
+}
+
+reclaim() {
+    # The small reclaim set of reclaimtraces.sh (bergdb item 001, WP R2): retain is in
+    # seconds of RestartInvariance's scaled clock; probes every ten transactions and
+    # right after each cut.
+    echo "r-small -Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=4 -Dretain=1 -Dprobe=10"
+    echo "r-del   -Dn=500 -Dkeys=100 -Dmaxnode=8 -Dsd=500 -Dops=4 -Ddel=25 -Dnodel=5 -Dempty=5 -Dretain=1 -Dprobe=10"
+    echo "r-long  -Dn=500 -Dkeys=100 -Dmaxnode=14 -Dsd=500 -Dops=4 -Dlong=1 -Ddel=25 -Dretain=2 -Dprobe=10"
+    echo "r-big   -Dn=800 -Dkeys=200 -Dmaxnode=14 -Dsd=1000 -Dops=8 -Ddel=25 -Dretain=2 -Dprobe=10"
+    echo "r-idle  -Dn=400 -Dkeys=50 -Dmaxnode=8 -Dsd=300 -Dops=2 -Dempty=20 -Dnodel=10 -Dretain=1 -Dprobe=10"
 }
 
 large() {
@@ -124,6 +139,9 @@ summary() {
             | awk -v k="$k" 'NF==2 {s[$1]+=$2} END {for (n in s) print "   " k ": " n " " s[n]}'
     done
     echo "   C-V: $(grep -h '^C-V' $dir/*.check.txt | awk '{s+=$3} END {print s+0}') transactions with live differences, $(grep -h '^C-V' $dir/*.check.txt | awk '{s+=$7} END {print s+0}') LIVE lines"
+    if [ $1 = reclaim ]; then
+        echo "   C-CUT: $(grep -h '^C-CUT cuts' $dir/*.check.txt | awk '{f+=$3; n+=$5} END {print f+0 " of " n+0}') CUT lines fail; traces without a cut: $(grep -L '^CUT ' $dir/*.trace | wc -l | tr -d ' ')"
+    fi
     echo "   C-L: $(grep -h '^C-L' $dir/*.check.txt | awk '{s+=$4} END {print s+0}') of $(grep -h '^C-L' $dir/*.check.txt | awk '{s+=$6} END {print s+0}') FIRST lines fail"
     echo "   C-R: $(grep -h '^C-R' $dir/*.check.txt | awk '{s+=$3} END {print s+0}') failed probes; kinds:"
     grep -h '^  PROBE' $dir/*.check.txt | sed -E 's/[0-9]+/N/g' | sort | uniq -c | sed 's/^/      /'
@@ -148,12 +166,17 @@ case $SET in
     large) run_set large ${2:-2}; summary large ;;
     all) run_set small ${2:-10}; summary small; run_set medium ${2:-3}; summary medium
         run_set large ${2:-2}; summary large ;;
-    *) echo "usage: $0 [small|medium|large|all] [seeds]"; exit 2 ;;
+    reclaim) run_set reclaim ${2:-5}; summary reclaim ;;
+    *) echo "usage: $0 [small|medium|large|all|reclaim] [seeds]"; exit 2 ;;
 esac
 
 for set_name in $RAN; do
     if grep -L "TRACECHECK OK" build/traces/$set_name/*.check.txt 2>/dev/null | grep -q .; then
         echo "CONFORMANCE FAILED"
+        exit 1
+    fi
+    if [ $set_name = reclaim ] && grep -L '^CUT ' build/traces/$set_name/*.trace | grep -q .; then
+        echo "CONFORMANCE FAILED: a reclaim trace without a cut"
         exit 1
     fi
 done

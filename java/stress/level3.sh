@@ -37,6 +37,13 @@
 #   7. PowerLossTest: production FileStream ordering with independent volatile
 #      bytes, forced bytes and durable names, surviving deletion, partial tails,
 #      cold recovery, and weakened data/directory-force negative controls.
+#   8. Conformance with the Lean model, with reclaim (bergdb item 001, K3,
+#      2026-10-17; docs/level3-alignment.md, section 8): conformance.sh reclaim,
+#      the small reclaim set (2 seeds quick, 5 full): each trace's every record
+#      against the model's step on the cut stream, CutOK at every cut Java
+#      decides, the touch assumptions, and the probes after restarts from the
+#      cut stream. It needs the checker (cd ../lean && lake build, Lean 4
+#      v4.34.1), which the step builds.
 # Logs go to build/level3/. Set JAVA_HOME or PATH for the JDK; the build
 # needs javac too.
 
@@ -47,8 +54,10 @@ if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
 
 if [ "$1" = quick ]; then
     QUICK=1; ROUNDS=40; INV_N=800; CRASH_ROUNDS=4; READER_ROUNDS=3; POWER_ROUNDS=1; POWER_TRANS=600; POWER_EVENTS=1
+    CONF_SEEDS=2
 else
     QUICK=0; ROUNDS=200; INV_N=2000; CRASH_ROUNDS=20; READER_ROUNDS=12; POWER_ROUNDS=8; POWER_TRANS=1500; POWER_EVENTS=3
+    CONF_SEEDS=5
 fi
 
 CP=build/bergdb.jar:build/stress
@@ -143,5 +152,11 @@ $JAVA -ea -Xmx2g -cp $CP bergdb.stream.PowerLossTest 1 $POWER_ROUNDS $POWER_TRAN
     > $LOG/powerloss.txt 2>&1
 grep -q '^POWERLOSS OK' $LOG/powerloss.txt || fail "PowerLossTest" $LOG/powerloss.txt
 grep '^POWERLOSS OK' $LOG/powerloss.txt
+
+echo "8. Conformance with the Lean model, with reclaim"
+(cd ../lean && lake build) > $LOG/lake.txt 2>&1 || fail "the Lean checker, lake build" $LOG/lake.txt
+sh stress/conformance.sh reclaim $CONF_SEEDS > $LOG/conformance.txt 2>&1
+grep -q '^CONFORMANCE OK' $LOG/conformance.txt || fail "conformance.sh reclaim" $LOG/conformance.txt
+echo "   conformance: $(grep '^   traces:' $LOG/conformance.txt | sed 's/^ *//'); C-CUT $(grep '^   C-CUT:' $LOG/conformance.txt | sed 's/^ *C-CUT: //')"
 
 echo "LEVEL 3 OK"

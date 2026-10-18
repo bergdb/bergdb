@@ -23,6 +23,9 @@ Files
 * [03-k1-review.md](03-k1-review.md). 001-03, the K1 review guide: the
   Level 4 design, what is proved and checked, the Java changes, the
   decision K1 asks of Frans.
+* [04-k3-review.md](04-k3-review.md). 001-04, the K3 review guide: the
+  Level 3 alignment, what is proved and checked, R9's conformance, the
+  conformance step in `level3.sh`; passed by the agent on Frans's go.
 
 
 Log
@@ -39,3 +42,6 @@ request, and added 001-02, its progress file. Work waits for Frans's go
 
 2026-10-17. Claude added 001-03, the K1 review guide (WP E7): stage 2 is
 done, and K1 waits for Frans.
+
+2026-10-18. Claude added 001-04, the K3 review guide (WP R9): stage 3 is
+done, and K3 passed (by the agent, on Frans's go of 2026-10-17 19:59).
