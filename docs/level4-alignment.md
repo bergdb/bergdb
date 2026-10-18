@@ -10,7 +10,7 @@ Status, 2026-10-18: the scope (section 1), a first α for the cache (section
 2) and the register (section 3), checked against the code (A2); the probes
 of A4 and the A-COPY checks (section 4); the design of E1, and what E2 to
 E6 ran and proved (section 5); what Java must do (E7, section 6); Level 4 in
-Java (section 7: J1 to J10). To come: the outcome (F2).
+Java (section 7: J1 to J10); the outcome (section 8, F2).
 
 Level 4 is eviction: data and index larger than memory, under a memory
 budget, with readers, reclaim, crashes and restarts. The plan of item 001
@@ -199,11 +199,11 @@ level2-alignment.md's register, where stage 1 closes them.
 | M31 | One canonical object per node id must survive release and reload | `Cache3.makeCanonical` (137), `isBetter` (167); the `isCanonical` fields of `KeyNode` and `TopNode` | Phys: the node table | Model and code: release clears the table's entry and the flag; the writer's follower makes a reloaded node canonical (E1, 5.2) | 2, 4: E1 (designed), E3 (INV-CAN proved, 5.11), J3 (done: a release clears the flag and the table's entry; the writer's follower promotes a reloaded node; the audit checks that a clean canonical object is its node's latest version, 2026-10-18); c |
 | M39 | Eviction beside concurrent readers | `NodeCollection.followPointer` (93) takes the slot's lock (`PointerLocks`, 128 stripes) on every follow | — (sequential) | Java protocol (Q8) and its tests | 4: J5 (done: the protocol of Q8 in `Eviction`, its tests, 7.4, 2026-10-18); c |
 | M40 | Memory accounting is not implemented: `Cache3.totalSize` and `putSize` are set once and never advanced; access data is `-putSize`, the constant -10,000 | `Cache3` fields (lines 25, 26); `Db.getAccessData` (1605); `Cache3.setSizeIndicator`, called from the `Db` constructor (line 173), stores the budget and nothing reads it | — | Code | 4: R8 (the access clock advances, `Cache3.accessClock`: at loads and at the writer's new nodes, 2026-10-17), J1 (done: the registry's accounting, `Residents`, 2026-10-18), J7 (done: the capacity controller, 7.6, 2026-10-18); c |
-| M43 | Option K relies on A6 (no adoption) and TREE (one current parent), which the model does not assume today. A4: TREE holds on every transaction checked; A6 fails in 5 of 68,901 Java-tier transactions (an in-place split of a new segment root), and the weaker A6' holds in all (section 4). By the code: a split makes new nodes and the replaced node stops being current (`timeSplit`, `spaceSplit`), or changes in place a node of the same transaction (`timeSplitInPlace`, `spaceSplitInPlace`); a new top node's skip slots point to older top nodes, which are not current; no path moves a child from one current node to another | `Dag.handleFullNode` (780) and the splits (821, 841, 894, 955); `TopDs.newSuperRoot` (42) | `StepOK` | Checked on Java (A4: TREE, A6'); E1: the model assumes TREE and A6' (not A6), in `EvictStep` (5.5); E3: also A-COPY for a transaction's new pointers (`CopyStep`, 5.10); E3's proof uses all three (5.11) | 2: A4 done, E1 done (A6'), E2 checked TREE, A6' and A-COPY by running, E3 proved T-CACHE from them; A-COPY checked on Java (section 4: no failure); o |
+| M43 | Option K relies on A6 (no adoption) and TREE (one current parent), which the model does not assume today. A4: TREE holds on every transaction checked; A6 fails in 5 of 68,901 Java-tier transactions (an in-place split of a new segment root), and the weaker A6' holds in all (section 4). By the code: a split makes new nodes and the replaced node stops being current (`timeSplit`, `spaceSplit`), or changes in place a node of the same transaction (`timeSplitInPlace`, `spaceSplitInPlace`); a new top node's skip slots point to older top nodes, which are not current; no path moves a child from one current node to another | `Dag.handleFullNode` (780) and the splits (821, 841, 894, 955); `TopDs.newSuperRoot` (42) | `StepOK` | Checked on Java (A4: TREE, A6'); E1: the model assumes TREE and A6' (not A6), in `EvictStep` (5.5); E3: also A-COPY for a transaction's new pointers (`CopyStep`, 5.10); E3's proof uses all three (5.11) | 2: A4 done, E1 done (A6'), E2 checked TREE, A6' and A-COPY by running, E3 proved T-CACHE from them; A-COPY checked on Java (section 4: no failure); F1 (done: TREE, A6' and A-COPY in every transaction of the final campaign, section 8, 2026-10-18); c |
 | M44 | After a restart, a node of D can hold a stream slot to a node of D that is written before it; today the node table gives the newer version, with eviction nothing does (plan, 8.5, the gap) | `DbStarter.canonicalNode` (451); `NodeCollection.resolvePointers` (292) | — | Model and code: E1 chose startup linking by id (rule 4, 5.4), which gives today's records; E5 extended it to the root's object, which Java's `TopDs` holds by reference already (5.13); the window is the fallback | 2, 3: E1 (designed), E5 (proved with restarts: `T2_cache`, 5.13), R8 (done: rule 4, `DbStarter.linkD`, 2026-10-17; without it change 1 gave other records after restarts); c |
 | M45 | **New (A2).** The public API's cache size is computed in `int`: `this.cacheSizeInMb * 1000000` overflows for more than 2,147 MB. The default is a fifth of the JVM's maximum heap, so it overflows with heaps above about 10.7 GB. With `-ea` the `Db` constructor then fails (`Cache3.setSizeIndicator` asserts a positive size); without it, the budget becomes 4 MB. No effect today, since nothing reads the budget (M40); J7 makes it the budget | `pubimp/DatabaseBuilderImp.start`, line 173; `Cache3.setSizeIndicator` (50) | — | Code fix (widen to `long`), with a test, before J7 relies on it | 4: J7 (done: in `long`, with a test, 2026-10-18); c |
-| M46 | **New (A2, from review-13-claude, 3).** Top node ordinals are bounded by `MAX_TOP_NODE_ID_VALUE`, 2^30 − 1, over the database's whole life; reclaim bounds the stream but not the ordinals. With one hot key (about 15 transactions per top) that is about 186 days at 1,000 transactions per second. At the bound, `TopNode.height` throws from the constructor in `newSuperRoot`, in the middle of a root split, after the Dag has made the new root | `TopNode.height`, `MAX_TOP_NODE_ID_VALUE` (lines 105 to 125); `TopDs.newSuperRoot` (42) | `Spec.topLevel`, levels (level2-alignment.md, 8.4) | Frans: a wider ordinal (the header has 48 bits for it) or a clean refusal before the transaction changes anything. Not urgent | —; o |
-| M49 | **New (bergdb item 002, 2026-10-17, session f1-9c; `items/002-top-node-ordinal-bound/02-report.md`, section 8).** A transaction that throws inside `Db.putKvs` is half committed: `Db.executeInner` skips `store()` and `x.end()`, but `dbClock.transactionEnd()` runs, so the time becomes readable with the klongs of the earlier puts in nodes that existed before; the nodes it made stay in `Cache3` and in the writer's node list, and the next transaction writes them as its own and reuses their ids. A value or key transformation can throw there, a read error when a put loads a node (lazy startup today, eviction in stage 4), and the ordinal bound (M46) | `Db.executeInner`, `Db.putKvs` | — (a transaction is atomic) | Frans: finish what can fail before the first change, or stop the writer on an exception inside `putKvs` (the stream holds committed records only, so a restart is consistent). Stage 4 relied on it: with eviction, loads during puts can fail | 4: before J3 (index nodes evicted: loads in the writer); lifted by Frans (2026-10-17 19:52): it blocks nothing, it does not happen in practice (it needs an I/O error, an out-of-memory error or a transformation that throws); item 003 deals with it later, and J tests that would hit it leave that case out or mark it as a known M49 issue; o |
+| M46 | **New (A2, from review-13-claude, 3).** Top node ordinals are bounded by `MAX_TOP_NODE_ID_VALUE`, 2^30 − 1, over the database's whole life; reclaim bounds the stream but not the ordinals. With one hot key (about 15 transactions per top) that is about 186 days at 1,000 transactions per second. At the bound, `TopNode.height` throws from the constructor in `newSuperRoot`, in the middle of a root split, after the Dag has made the new root | `TopNode.height`, `MAX_TOP_NODE_ID_VALUE` (lines 105 to 125); `TopDs.newSuperRoot` (42) | `Spec.topLevel`, levels (level2-alignment.md, 8.4) | Frans: a wider ordinal (the header has 48 bits for it) or a clean refusal before the transaction changes anything. Not urgent | — (Frans, 2026-10-17 19:34: left for later, bergdb item 002); o |
+| M49 | **New (bergdb item 002, 2026-10-17, session f1-9c; `items/002-top-node-ordinal-bound/02-report.md`, section 8).** A transaction that throws inside `Db.putKvs` is half committed: `Db.executeInner` skips `store()` and `x.end()`, but `dbClock.transactionEnd()` runs, so the time becomes readable with the klongs of the earlier puts in nodes that existed before; the nodes it made stay in `Cache3` and in the writer's node list, and the next transaction writes them as its own and reuses their ids. A value or key transformation can throw there, a read error when a put loads a node (lazy startup today, eviction in stage 4), and the ordinal bound (M46) | `Db.executeInner`, `Db.putKvs` | — (a transaction is atomic) | Frans: finish what can fail before the first change, or stop the writer on an exception inside `putKvs` (the stream holds committed records only, so a restart is consistent). Stage 4 relied on it: with eviction, loads during puts can fail | 4: before J3 (index nodes evicted: loads in the writer); lifted by Frans (2026-10-17 19:52): it blocks nothing, it does not happen in practice (it needs an I/O error, an out-of-memory error or a transformation that throws); item 003 deals with it later, and J tests that would hit it leave that case out or mark it as a known M49 issue; deferred by Frans to item 003 (section 8); o |
 
 Findings of A2, beyond the plan's list: M45, and M46 from review-13-claude; that reads occur in every run
 through `Db.warmup` (2.5), which matters for M21 and M27; that
@@ -1411,7 +1411,12 @@ In `Eviction`, the schedule `budget`:
 * **Cost**: a sweep walks every resident object, twice; it runs only when the
   bytes pass the budget and frees at least a quarter of it, so its cost is
   paid once per that many bytes loaded. It is not incremental across
-  boundaries; J8 and J10 measure it.
+  boundaries, which the plan's J7 asked for; J8, J10 and P4 measure it.
+  P4's soak (level4-evidence.md, "The soak with eviction"): with readers
+  that load a working set above the budget, a sweep about every 9 s, 3.2 s
+  on average at 1.6 GB, 35 percent of the time under the write lock, and the
+  paced writer at 62 percent of its rate. An incremental sweep, or Q9's
+  incoming-reference lists, is the open step (for Frans, K5).
 * **Released but still held**: an object released while a reader holds it is
   garbage once the reader is done; a reader holds the objects of its current
   path, so these bytes are bounded by the readers and the tree's height.
@@ -1504,3 +1509,77 @@ startup 6.5 to 9.7 percent slower, against 20 allowed), with no alert;
 under a budget of a fifth of the read scenario's data, reads are 30 to 90
 times slower, as they load from the stream:
 [level4-performance.md](level4-performance.md).
+
+
+
+## 8. The outcome for Level 4
+
+Bergdb item 001's plan, section 1.2, point by point for Level 4 (WP F2,
+2026-10-18; Level 3's is in level3-alignment.md, section 7). The final
+campaign (F1) ran on the final code and model, bergdb `899c547`:
+[evidence/level34-conformance.txt](evidence/level34-conformance.txt).
+
+1. **Correspondence.** α covers the cache: the resident objects, their
+   slots, the node table and the pins (section 2, with E1's design in
+   section 5). Every step of the model with eviction (the physical writer,
+   the loader, unswizzle and release, the Level 4 startup) is mapped to Java
+   (sections 5.2 to 5.6 and 7). Every register row is resolved: by a code
+   change (R8's six, J1 to J7), by a model change with proofs (E1 to E6), by
+   an argument with checks (M43: TREE, A6' and A-COPY, checked on every
+   transaction, below), or by Frans's explicit decision (M46 and M49, left
+   for bergdb items 002 and 003; Frans, 2026-10-17 19:34 and 19:52).
+2. **Java runs meet the assumptions.** In every transaction checked, TREE
+   (one current parent), A6' (no adoption, the weaker form that K1
+   accepted) and A-COPY (a new pointer copies a slot only from a current
+   node) hold: the Java tier on the 21 configurations of
+   level2-alignment.md, 10.5 (68,901 transactions, 487,786 new pointers),
+   and the Lean tier on the final campaign's sets (81 Level 2 traces, 31
+   reclaim traces, 30 eviction traces). A6 itself fails in 5 of the 68,901
+   Java-tier transactions, all of one kind (section 4); the proofs do not
+   use it.
+3. **Java's steps are the model's steps, with eviction.** The physical
+   writer's records and D are the model's: C-S on every set (81 Level 2
+   traces with 44,141 transactions, and 31 reclaim traces with 36,908 on
+   the stream cut at the largest cut). With a forced schedule or the
+   capacity controller, C-P checks INV-SLOT on Java's physical states (30
+   traces of the eviction set, 7,794 transactions, 472,829 slots checked, no
+   failure), and the audit checks INV-CAN, the pins and INV-SLOT against an
+   oracle of latest positions in every transaction of the stress runs (J1
+   to J9: about 6 million audits, none failed).
+4. **Restarts.** After restarts, also with eviction and from cut streams,
+   the records and the answers are those of the run without restarts: C-R's
+   probes on every set; `EvictionInvariance` with restarts on the 12
+   configurations of J7's campaign, every schedule; `RestartInvariance`,
+   `CrashTest` and `ReclaimStress` with forced schedules and the controller
+   (J5 to J7, `level4.sh`). Lean: T2-C, and with reclaim T12 for
+   `runEvictCut`.
+5. **Cache invariance.** The same transactions with the schedules none,
+   values, every, random and the capacity controller give the same stream,
+   byte for byte, the same D and the same answers: `EvictionInvariance` on
+   the configurations of the plan's 8.4, without and with restarts and
+   reclaim (24 runs, 73,770 audits, none failed). Lean: T-CACHE
+   (`TC_records`) proves it for every schedule.
+6. **Proofs.** T-CACHE, T-READ, T2-C, T-PIN and T-INDEX (section 5), with
+   stage 1's lemma M, T1-L, CC and T2-L; no `sorry`, only Lean's standard
+   axioms (`#print axioms` of the 22 theorems of lean/README.md and of the
+   checker's 5 equalities, on the final lean/). The Level 2 theorems are
+   kept.
+7. **No regressions, and Level 4 works.** The four gates pass in full on
+   the final tree (`LEVEL 1 OK` to `LEVEL 4 OK`; every record of
+   `StreamDigest`'s 36 runs R8's); the quick performance suite stays within
+   Q13's targets against Level 3, with eviction off and with a budget above
+   the data (J10, [level4-performance.md](level4-performance.md)); a
+   database of 20 million keys, six times the budget, its index three
+   times, runs on disk in a JVM capped at 2 GB with stable memory (J8,
+   [level4-evidence.md](level4-evidence.md)); and the two-hour soak with
+   eviction keeps its memory bounded and every one of its 64 million reads
+   right (P4). Under that soak's read churn, though, the sweeps took 35
+   percent of the time and the paced writer reached 62 percent of its rate
+   (7.6, "Cost"; for Frans, K5).
+
+Not claimed, as the plan says: that every Java run is a run of the model
+(α is checked on many runs, not proved); concurrency (readers beside the
+writer and beside eviction: the protocol of Q8 with targeted tests and
+stress, J5); bytes, torn records and durability; resource bounds (D is
+bounded only loosely by the startup distance); performance under pressure
+(measured, no target: J10, J8, P4).

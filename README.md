@@ -23,7 +23,8 @@ them:
 
 BergDB was developed 2012 to 2017 (until July 2013 under the name KissDB).
 This repository continues from the 2017 source; the work since October 2026
-fixed the bugs that stopped it, formalized the algorithm, and added reclaim.
+fixed the bugs that stopped it, formalized the algorithm, and added reclaim
+and eviction.
 
 
 Status
@@ -34,13 +35,14 @@ Status
 | 0 | Multiversion map in memory | Passes the tests run |
 | 1 | + restart by replaying the whole stream | Passes the tests run |
 | 2 | + bounded startup (self-indexed stream) | Passes the tests run, under load and with crashes |
-| 3 | + reclaim: cut the front of the stream | FileStream power-loss ordering implemented and audited on tested macOS/Linux VM paths; a long disk soak and performance reference remain planned |
-| 4 | + eviction: data larger than memory | Not implemented; design in [docs/level4-plan.md](docs/level4-plan.md) |
+| 3 | + reclaim: cut the front of the stream | Passes the tests run, a two-hour disk soak and the power-loss ordering checks; aligned with the proved Lean model of reclaim |
+| 4 | + eviction: data larger than memory | Passes the tests run, on by default; a database six times its memory budget runs on disk; aligned with the proved Lean model of eviction |
 
 Evidence and limits are in [docs/levels.md](docs/levels.md), including the
 [FileStream durability report](docs/level3-durability.md). The Lean proofs
-concern the abstract model, not the Java code, reclaim, eviction,
-concurrency or resource bounds. Whether the concept is novel is open; see
+concern the abstract model, which since bergdb item 001 includes reclaim and
+eviction; Java's runs are checked against it, not proved, and concurrency and
+resource bounds are not in it. Whether the concept is novel is open; see
 [docs/prior-art.md](docs/prior-art.md).
 
 

@@ -926,7 +926,12 @@ change. The summary per trace: `docs/evidence/level3-redlist-baseline.txt`.
 traces of R2's small and medium sets made again with the current Java
 (`java/` as at `5b1abdd`, R8's last change; the medium set's earlier traces
 were from before R8), the checker at `970c996` on each; and the gates, full,
-on `970c996`.
+on `970c996`. On the final code and model (F1, 2026-10-18, bergdb
+`899c547`, after stage 4's Java), the same two sets made again: small 25
+traces (14,448 transactions, 288 cuts, 1,507 probes) and medium 6 (22,460,
+175, 261), every trace `TRACECHECK OK`, with C-A, C-S on the cut stream,
+C-CUT at every cut and C-R's probes without failure; and the four gates
+([evidence/level34-conformance.txt](evidence/level34-conformance.txt)).
 
 1. **Correspondence.** α for reclaim is section 2: reclaim's steps and table
    stores are transactions (2.2, M37), the touch is `Changes.touch` (2.2,

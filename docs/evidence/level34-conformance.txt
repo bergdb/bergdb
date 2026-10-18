@@ -176,3 +176,35 @@ with restarts (24 runs), the audit on
    level4.sh start 09:49:57
    level4.sh rc=0 906 s: LEVEL 4 OK
    digest: DIGESTS IDENTICAL (36 of 36) 10:05:46
+
+== 7. The Lean model: #print axioms of the README's theorems (lean/README.md, Build and
+run) and of the checker's fast versions, on the final lean/; and no sorry, admit, axiom or
+unsafe in SIS/, Check/ and TraceCheck.lean
+   'SIS.T1_recovery' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.T1_crash' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.T1_nodes' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.T2_restart' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.T13_markExact' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.LM_newer' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.LM_ruleR' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.LM_cutTo' depends on axioms: [propext, Quot.sound]
+   'SIS.T1_lazy' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.CC_canonical' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.T2_lazy' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.T15_closed' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.TC_records' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.TR_view' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.T2_cache' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.TR_view_restarts' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.TP_pins' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.T13_markTouch' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.T8_recoverCut' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.T9_readCut' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.T12_restartCut' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.T12_evictCut' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.Fast.markOf_eq_fast' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.Fast.writeAll_eq_fast' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.Fast.reachList_eq_fast' depends on axioms: [propext, Classical.choice, Quot.sound]
+   'SIS.Fast.step_eq_fast' depends on axioms: [propext, Quot.sound]
+   'SIS.TopBridge.r4Fast_sound' depends on axioms: [propext, Classical.choice, Quot.sound]
+   no sorry, admit, axiom or unsafe (grep)

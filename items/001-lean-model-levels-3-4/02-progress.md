@@ -177,8 +177,7 @@ Current state
   2026-10-18 05:31; above); K4 passed (by the agent, 2026-10-18 06:58; above).
   K5 open; the agent passes it when its conditions are met (Frans,
   2026-10-17 19:59; above).
-* Next: F2 (the documents, written; the outcome sections) and F3 (the final
-  report), then K5.
+* Next: F3 (the final report), then K5.
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): T9 is proved with
   the stronger `CutOK` part 2 (R4, 2026-10-17, before R6's proof, since T9
   assumes `CutOK` only); R6 proves that Java's scheme gives it, and R5's
@@ -195,10 +194,9 @@ Current state
   it later, and J tests that would hit it leave that case out or mark it as
   a known M49 issue.
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: F2's documents (`README.md`,
-  `docs/levels.md`, `problem.md`, `sis-model.md`, `level4-plan.md`,
-  `reference-theory.md`, `level4-alignment.md`, `lean/README.md`), written
-  while F1 runs, committed with F2.
+* Uncommitted work of this plan in bergdb: none. (Not this plan's:
+  `items/readme.md` and `items/004-indirect-swizzling/`, from another
+  session, 2026-10-18; left alone.)
 * Long jobs: none. F1's campaign ran from 2026-10-18 09:26 to 15:56 (its
   entry).
   R9's Lean tier ran from 2026-10-17 23:00 to 2026-10-18 05:31 (its entry).
@@ -253,7 +251,7 @@ Status
 | J9 | `level4.sh` | done | 2026-10-18 |
 | J10 | Performance | done | 2026-10-18 |
 | F1 | The conformance campaign, all levels | done | 2026-10-18 |
-| F2 | Documents | not started | — |
+| F2 | Documents | done | 2026-10-18 |
 | F3 | The final report | not started | — |
 | P1 | The Level 3 quick performance reference | done | 2026-10-16 |
 | P2 | The Level 3 soak | done | 2026-10-17 |
@@ -4089,3 +4087,34 @@ time (the large Level 2 set's biggest traces 4.6 hours each, the medium
 reclaim set's 6.1 hours).
 
 Open, next: F2's outcome sections, then F3 and K5.
+
+### 2026-10-18 10:30 to 16:52. WP F2, done: the documents
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `96b3728` (F1).
+
+Did (written while F1 ran; the outcome after it):
+
+1. `docs/level4-alignment.md`: section 8, the outcome of the plan's 1.2 for
+   Level 4, point by point, with F1's evidence; the status line; the
+   register rows M43 (closed by F1's checks), M46 and M49 (deferred by
+   Frans to items 002 and 003); 7.6's cost bullet with P4's measurement.
+2. `docs/level3-alignment.md`, section 7: F1's runs of the reclaim sets on
+   the final code.
+3. `docs/levels.md`: draft 8; the table's status for Levels 3 and 4; a
+   section "Level 4: eviction" (how it works, the evidence, the limits);
+   "Next" (Levels 3 and 4 done for now; Level 4's limits).
+4. `README.md`: the status table; the scope of the proofs. `docs/problem.md`:
+   R5's and R6's status, Q10 settled. `docs/sis-model.md`: section 15, the
+   physical layer, eviction and reclaim, what is proved and how Java is
+   checked; section 10. `lean/README.md`: the scope of the proofs.
+   `docs/level4-plan.md` and `docs/reference-theory.md`: a status note at
+   the top.
+5. `docs/evidence/level34-conformance.txt`: section 7, the axioms of the
+   theorems on the final lean/ (all standard; no `sorry`, `admit`, `axiom`
+   or `unsafe`).
+
+The proposed change to `AGENTS.md` (four gates) was made at K4.
+
+Files changed: the above. No code changed, so no gate.
+
+Open, next: F3, the final report, and K5.

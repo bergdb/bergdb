@@ -7,10 +7,15 @@ The model of [../docs/sis-model.md](../docs/sis-model.md) in Lean 4:
 the definitions, the assumptions, and the theorems T1 (recovery) and T2
 (restart invariance), with their proofs. See Status.
 
-Reviewed 2026-10-13 at the `ebe5f77` documentation cutoff. Lean source is
-unchanged from the earlier build, randomized and axiom checks. These are proofs
-of the abstract model with the exact still-dirty test, not of Java, reclaim,
-eviction, concurrency, serialization, torn bytes or resource bounds.
+Since bergdb item 001 (2026-10-16 to 18) the model also has the physical
+layer (lazy reading, stage 1), eviction (stage 2) and reclaim (stage 3),
+with their theorems (Status; ../docs/level4-alignment.md, section 5;
+../docs/level3-alignment.md, sections 2 and 5). They are proofs of the
+abstract model, not of Java, concurrency, serialization, torn bytes or
+resource bounds; Java's runs are checked against the model by the trace
+checker (`Check/`, `TraceCheck.lean`). Reviewed 2026-10-13 at the `ebe5f77`
+documentation cutoff, before item 001: the abstract model with the exact
+still-dirty test.
 Java's conservative tracking and reference-resolution obligations are in
 [levels.md](../docs/levels.md).
 

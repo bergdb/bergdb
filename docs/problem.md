@@ -173,9 +173,14 @@ and "Case A": stream between 2 and 4 times the live data at f = 0.5);
 Reclaim.java. Excluded from every theory document: v5, 2014-08-startup,
 2014-08-kv-stream, 2015-algos, startup-1604.md and startup.md.
 
-Status: a design note and code, no proof. Off by default since 2013-07-07
-(retain forever). Tested and reworked 2026-10-13: it works in all tests run,
-with restarts and crashes, and Q6 and Q7 were bugs, now fixed. The initial
+Status, 2026-10-18 (bergdb item 001): Java's reclaim is aligned with a Lean
+model of reclaim whose theorems are proved: recovery, reads and restarts
+after safe cuts (T8, T9, T12; level3-alignment.md); that Java's scheme
+gives safe cuts (T-SCHEME) is checked at every cut, a step of `level3.sh`,
+not proved; the space bound above is measured, not proved. Before: a design
+note and code, no proof. Off by default since 2013-07-07 (retain forever).
+Tested and reworked 2026-10-13: it works in all tests run, with restarts and
+crashes, and Q6 and Q7 were bugs, now fixed. The initial
 repair kept 8 to 12 times the live data in one load experiment. The reviewed
 baseline adds retention pacing, separate current-row storage, an older
 cut point, index-aware budgeting and a 16 KB scan target. Its WE/SE grids
@@ -201,11 +206,17 @@ version, with ownership and in-flight operation requirements satisfied.
 Stated: log 2016-04-12 ("A node may be evicted iff it is clean");
 2012-04-cache-eviction.
 
-Status: Level 4 is not implemented; a refcounting cache was started in
-2017-07. The 13 October load tests show heap growth with history. The
-[Level 4 proposal](level4-plan.md) identifies version authority, coherent
-pointer publication and bounded retirement as design gates. Cleanliness
-alone is not sufficient to release an object. See Q10.
+Status: Level 4 is implemented (2026-10-18, bergdb item 001; levels.md,
+"Level 4: eviction"): values and index nodes are evicted under a budget,
+`cacheSizeInMb`, on by default; D, the root's object and the record being
+written are pinned, never evicted; a released object is reloaded from the
+version its slot names. The Lean model proves that eviction changes no
+record, no D and no answer, with any schedule (level4-alignment.md, section
+5: T-CACHE, T-READ, T2-C, T-PIN), and Java is checked against it. The
+memory for D is bounded only loosely by the startup distance (measured in
+level4-evidence.md); a bound remains open (Q5). Before 2026-10-18: a
+refcounting cache was started in 2017-07, and the 13 October load tests
+showed heap growth with history.
 
 
 R7 Cache-awareness
@@ -327,6 +338,11 @@ users. Not planned. See [levels.md](levels.md), "Kv.time() and Connection.time()
 Q10. Eviction. State and prove INV-EVICT for a Dag with several parents,
 including historical parents. Resolve the version-authority, publication
 and lifetime gates in [level4-plan.md](level4-plan.md) before implementation.
+Settled 2026-10-17 and 2026-10-18 (bergdb item 001): INV-SLOT (every slot of
+a current or dirty object names its pointee's latest version) with the
+theorems of level4-alignment.md, section 5, under TREE, A6' and A-COPY,
+which Java's runs meet (checked, not proved); the gates of level4-plan.md
+are settled in its sections 5 and 6, and Java implements them (section 7).
 
 Q11. Dead parents. When a node changes, only its current ancestors become
 dirty. Old versions of dead parents still point to old versions of shared

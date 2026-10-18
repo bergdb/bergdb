@@ -512,9 +512,9 @@ being on the access path.
 
 * Bounds (T3, T4): the length of the startup section, the memory for D, the
   write overhead. They need a cost model and a policy for s(i).
-* Reclaim: cutting the front of the stream (INV-RECLAIM, level 3).
-* Eviction and the cache (T5, level 4). P is the structure as the database
-  knows it; which clean nodes are in RAM is not modeled.
+* Reclaim: cutting the front of the stream (INV-RECLAIM, level 3), and
+  eviction and the cache (T5, level 4): not in sections 2 to 9; bergdb item
+  001 added both, with their theorems (section 15).
 * Concurrency, sync levels and torn records. A record is assumed complete
   or absent.
 * Bytes. Records are values, not byte strings.
@@ -653,3 +653,90 @@ From 2026-10-15 to 2026-10-16 (F1-008-11):
 * A5, no resurrection, is back: marking needs it (T13).
 * With a virtual root, the exact still-dirty test breaks T1 (6.3).
 * Rule R from R(s), as in BergDB: only a < changed to <= in L-SEC.
+
+
+15 The physical layer, eviction and reclaim
+===========================================
+
+Added 2026-10-18 by Claude (Opus 5.5, Claude Code), bergdb item 001. The
+model of sections 2 to 9 is logical: P, D and the stream. Item 001 added
+what Java holds in memory and how it evicts (Level 4), and how the front of
+the stream is cut (Level 3), each with its theorems, proved in Lean with
+only the standard axioms. The definitions and statements are in
+[../lean/](../lean/README.md) ("What to read"); the design and its reasons
+in [level2-alignment.md](level2-alignment.md), section 13 (the physical
+layer, part 1), [level4-alignment.md](level4-alignment.md), section 5
+(eviction) and [level3-alignment.md](level3-alignment.md), sections 2 and 5
+(reclaim).
+
+15.1 Memory: objects, slots, the node table
+-------------------------------------------
+
+The physical layer (`SIS/Phys.lean`, `SIS/Evict.lean`) is a memory of
+objects: each holds a node's history, either the node's whole history (the
+canonical object, at most one per node, the one in the node table) or a
+version read from the stream (a snapshot). An object has a slot per
+pointee: a memory slot (to another object) or a stream slot (naming a
+record). Reads go through slots; a stream slot is a first touch, which loads
+the canonical object if there is one, else exactly the version the slot
+names after Rule R. The writer makes every node it reaches canonical.
+
+Eviction is two operations, at any time between transactions: unswizzle (a
+memory slot to an object that is not pinned and has been written becomes a
+stream slot naming that object's version, which is what the slot serialized
+before) and release (an object that no memory slot names leaves memory, and
+the node table if it is there). The pinned objects are the root's and the
+canonical objects of D. The physical writer writes from slots and the
+pinned set (`Mem.refOf`): a version names the latest version of each
+pointee (Option K), with no table of all nodes.
+
+15.2 What is proved for it
+--------------------------
+
+* Lemma M (`LM_newer`, `LM_ruleR`, `LM_cutTo`): a newer version of a node
+  serves every time an older one serves, so Rule R's version does.
+* T1-L (`T1_lazy`): after a lazy startup, reads at any time give P. CC and
+  T2-L (`CC_canonical`, `T2_lazy`): a run with lazy restarts appends the
+  records of the run without restarts.
+* T-CACHE (`TC_records`): with any cache schedule (reads, unswizzles,
+  releases), the physical writer appends exactly the model's records and
+  leaves the model's D, and INV-CAN, INV-SNAP and INV-SLOT hold; T-READ
+  (`TR_view`): reads give P; T2-C (`T2_cache`, `TR_view_restarts`): with
+  restarts too; T-PIN (`TP_pins`): every object outside the pinned set may
+  be evicted. They assume three properties of BergDB's tree that Java runs
+  meet: TREE (one current parent), A6' (no adoption, weakened) and A-COPY
+  (a new pointer copies a slot only from a current node).
+
+15.3 Reclaim
+------------
+
+A cut at record c (`SIS/Reclaim.lean`) leaves of every version before c a
+stub (`Version.stub`): its position, no history. A cut is safe (`CutOK`)
+when it is at or before the first available time f, every version a read
+from f on may follow is at c or later, every node of D has its latest
+version at c or later with references below c to latest versions only, and
+the top is after the cut. Then:
+
+* T13' (`T13_markTouch`): with reclaim's touches, step 3 gives exactly the
+  index nodes not in D that are dirty or touched.
+* T8 (`T8_recoverCut`): startup from the cut stream gives the same lookups
+  at every time from f on, and the same D.
+* T9 (`T9_readCut`): with eviction, reads in the running process from f on
+  give the same on the cut stream as on the whole stream.
+* T12 (`T12_restartCut`, and with eviction `T12_evictCut`): a run that
+  restarts from safe cut streams appends the records of the run without
+  restarts.
+
+That Java's reclaim (its touches, rewrites and waits) gives safe cuts
+(T-SCHEME) is checked, not proved: at every cut of every trace the checker
+sees, and by running on the model's example (level3-alignment.md, section
+5).
+
+15.4 Java against it
+--------------------
+
+The trace checker (`lake exe tracecheck`) runs the model's step on traces of
+Java runs and compares every record and D, the first touches after
+restarts (C-L), `CutOK` at every cut Java decides (C-CUT), and INV-SLOT on
+Java's physical states with eviction (C-P). The gates run it:
+`level2.sh` (step 7), `level3.sh` (step 8) and `level4.sh` (step 5).

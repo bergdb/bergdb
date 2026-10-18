@@ -2,6 +2,14 @@
 
 By Codex for Frans Lundberg, 2026-10-14.
 
+**Status, 2026-10-18.** Bergdb item 001 settled the reference rule: Option
+K, today's rule (every version names the latest version of every pointee,
+live or dead), with no change to the records or the format, proved with
+eviction and with reclaim in the Lean model (level4-alignment.md, section 5;
+level3-alignment.md, sections 2 and 5). The explicit backing reference
+proposed here is in effect the slot's position, which an unswizzle keeps
+(INV-SLOT). The text below is the investigation as it was.
+
 Status: theory investigation and proposed direction. This is not an accepted
 replacement algorithm, a Java implementation, or a proof that Level 4 works.
 Source inspected: BergDB `2e0bfe6`, initially with a clean worktree. The

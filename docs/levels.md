@@ -4,7 +4,9 @@ BergDB feature levels: what works
 Draft 7, 2026-10-14. Originally written by Claude for Frans Lundberg.
 Codex consolidated the independent review, added the validation plan and
 implemented and tested FileStream power-loss ordering.
-Draft 1, 2026-10-12, tested the 2017 code as is. Draft 3 added level 2 under load and
+Draft 8, 2026-10-18 (bergdb item 001, by Claude): Level 4, eviction, in Java,
+and Levels 3 and 4 aligned with the Lean model. Draft 1, 2026-10-12, tested
+the 2017 code as is. Draft 3 added level 2 under load and
 crash tests, and the four bugs they found. Draft 4 adds level 3, reclaim.
 Draft 5 adds "Level 3 follow-up": readers and cuts, changes of the retain
 duration, the removal of `Kv.time()`, the attribution of the stream bytes.
@@ -51,13 +53,13 @@ remain pending. Earlier sections retain their historical source scopes.
 Levels
 ======
 
-| Level | Features | Status, 2026-10-14 |
+| Level | Features | Status, 2026-10-18 |
 |---|---|---|
 | 0 | Multiversion map in memory: puts, deletes, latest and historical lookups, scans; no restart | Passes the tests run |
 | 1 | + restart by replaying the whole stream | Passes the tests run; two bugs fixed |
 | 2 | + bounded startup: the startup pos moves, startup reads only the tail | Works in all tests run, also under load and with crashes; the defects of the 2017 code fixed; aligned with the Lean model, which is proven (2026-10-16, F1-008-11) |
-| 3 | + reclaim: cut the front of the stream | Passes the recorded exact-cut, restart, crash, load, concurrent-reader and changing-retention tests; infinite retention is the default, finite retention schedules reclaim; retention pacing, older cut point, index-aware allowance and 16 KB scan target implemented; an overtaken read may expire without harming the database; FileStream power-loss ordering is implemented and audited on the tested platforms; the Lean model of reclaim is proved (2026-10-18, bergdb item 001: recovery, reads and restarts after safe cuts; that Java's scheme gives safe cuts is checked at every cut, not proved), and Java's reclaim is aligned with it, a step of `level3.sh` ([level3-alignment.md](level3-alignment.md)) |
-| 4 | + eviction: data larger than memory | Not implemented; the model first, in bergdb item 001 ([level4-alignment.md](level4-alignment.md)): its Lean model with eviction is proved (2026-10-17: with any cache schedule and restarts, the physical writer appends the model's records and reads give P; every object outside the pinned set may be evicted), and the design passed Frans's review (the item's K1, 2026-10-17); the Java work comes after reclaim's model |
+| 3 | + reclaim: cut the front of the stream | Passes the recorded exact-cut, restart, crash, load, concurrent-reader and changing-retention tests; infinite retention is the default, finite retention schedules reclaim; retention pacing, older cut point, index-aware allowance and 16 KB scan target implemented; an overtaken read may expire without harming the database; FileStream power-loss ordering is implemented and audited on the tested platforms; the Lean model of reclaim is proved (2026-10-18, bergdb item 001: recovery, reads and restarts after safe cuts; that Java's scheme gives safe cuts is checked at every cut, not proved), and Java's reclaim is aligned with it, a step of `level3.sh` ([level3-alignment.md](level3-alignment.md)); a two-hour disk soak passes ([level3-soak.md](level3-soak.md)) |
+| 4 | + eviction: data larger than memory | Works in all tests run, on by default (2026-10-18, bergdb item 001): values and index nodes evicted under a capacity controller whose budget is `cacheSizeInMb`; a database six times the budget, its index three times, runs on disk in a capped JVM ([level4-evidence.md](level4-evidence.md)); within the item's performance targets against Level 3 ([level4-performance.md](level4-performance.md)); the Lean model with eviction is proved (any eviction schedule gives the model's records, D and answers), and Java is checked against it ([level4-alignment.md](level4-alignment.md)); `level4.sh` |
 
 Level 3 needs level 2: once the front of the stream is cut, startup can no
 longer replay from the beginning.
@@ -1403,6 +1405,73 @@ test that fails without it.
    transactions past ordinal 32,768 and a restart, 1.5 s.
 
 
+Level 4: eviction
+=================
+
+Alignment with the Lean model: [level4-alignment.md](level4-alignment.md)
+(bergdb item 001: the model, sections 5 and 6; the Java work, section 7).
+Evidence of a database larger than memory:
+[level4-evidence.md](level4-evidence.md); performance:
+[level4-performance.md](level4-performance.md).
+
+Since 2026-10-18 the database keeps only part of its index and values in
+memory: eviction is on by default. The budget is `cacheSizeInMb`
+(`DbBuilder.cacheSizeIndicator`; by default a fifth of the JVM's maximum
+heap); `DbBuilder.noEvict()` turns it off.
+
+How it works (`core/Eviction.java`, `core/Residents.java`):
+
+* **What is in memory.** The resident objects: the canonical object of a
+  node (the one in the node table, which holds the node's latest version),
+  the snapshots that slots of resident objects name (versions read), and
+  the values. `Residents` counts their bytes (`Node.getMemSize()`), exactly
+  after each sweep (a walk from the super root, the node table and D).
+* **What is pinned** (never evicted): the super root, the canonical objects
+  of D (the nodes dirty since the startup position) and of the record being
+  written, and the newest written top node. Everything else has been
+  written and may be evicted.
+* **Unswizzle and release.** A memory slot to an object that may be evicted
+  becomes a stream slot naming the object's position, under the slot's
+  pointer lock; the slot's serialized reference does not change, so no
+  record does. An object that no resident memory slot names is released:
+  it leaves the node table and the registry, and a canonical object's flag
+  is cleared. A later read loads the version from the slot's position (the
+  Level 4 loader, R8), and the writer makes it canonical again.
+* **The capacity controller.** When the resident bytes pass the budget, at
+  a transaction boundary or after a reader's load (the reader takes the
+  write lock for it, holding no pointer lock), a sweep takes what only the
+  node table holds, then values (those over 1 MiB first), then index nodes,
+  the slots least recently followed first, down to three quarters of the
+  budget, counting the objects that leave memory with those it takes; if
+  that is not enough, every object that may be evicted. Pinned state above
+  the budget is kept and counted; the next sweep then waits for growth.
+* **Readers** (the plan's Q8) take a slot's pointer lock for a whole follow,
+  so they see a slot as a memory slot or as a stream slot, never half of
+  one; a reader may finish with an object that was released meanwhile, as
+  it is the version at its position.
+* **Reclaim** reads with the maintenance follower, which loads but
+  swizzles nothing; a step's dirty index nodes stay pinned until written,
+  and a reserve (4 MiB) splits a step that would pin more.
+
+Evidence: the Lean model proves that with any eviction schedule the
+records, D and the answers are those without eviction (T-CACHE, T-READ,
+T2-C, T-PIN; level4-alignment.md, section 5). Java is checked against it:
+the audit (INV-CAN, the pins, INV-SLOT, test-only), the checker's C-P on
+Java's physical states (`conformance.sh evict`), and `EvictionInvariance`
+(the same stream byte for byte with every schedule, on the configurations
+of the plan's 8.4, with restarts and reclaim). `level4.sh` runs them, with
+stress under eviction and a larger-than-memory run.
+
+Limits (level4-evidence.md, level4-performance.md): writes when the index
+does not fit cost several times as much (each load reads the node's header
+and then the node); a sweep walks every resident object under the write
+lock, so when readers load a working set above the budget the sweeps stall
+the writer (P2's soak with eviction: 35 percent of the time, the paced
+writer at 62 percent of its rate) and G1 needs full collections; the node
+table's entries are not in the budget; D is bounded only loosely by the
+startup distance.
+
+
 Next
 ====
 
@@ -1411,20 +1480,22 @@ working, performant database (2026-10-13); theory where it reduces risk.
 Index-aware budgeting and the 16 KB scan target are now part of the
 reviewed `ebe5f77` baseline; the remaining work is below.
 
-1. The FileStream power-loss ordering work is implemented; see
-   [level3-durability.md](level3-durability.md) for the tested scope and gate
-   results. Continue [level3-plan.md](level3-plan.md) with the longer file-backed
-   soak and a reproducible performance reference before Level 4. Infinite retention
-   remains the default; finite retention schedules reclaim. The completed
-   W1–W5 work and independent review are recorded above. Protected snapshots,
-   a reclaim proof and an expert f controller remain separate optional work.
-2. Level 4 (eviction), after that validation and reference: memory now grows
-   with the history. Follow the
-   [proposed design](level4-plan.md), resolving version authority, coherent
-   pointer publication and retirement progress before generic index eviction.
-   Since 2026-10-16, bergdb item 001 does Levels 3 and 4 in the Lean model and
-   in Java; its registers are in [level3-alignment.md](level3-alignment.md)
-   and [level4-alignment.md](level4-alignment.md).
+1. Levels 3 and 4 are done for now (bergdb item 001, 2026-10-18): the
+   power-loss ordering ([level3-durability.md](level3-durability.md)), the
+   disk soak ([level3-soak.md](level3-soak.md)), the performance reference
+   ([level3-performance.md](level3-performance.md)), eviction, and both
+   levels aligned with the proved Lean model
+   ([level3-alignment.md](level3-alignment.md),
+   [level4-alignment.md](level4-alignment.md)). Infinite retention remains
+   the default; eviction is on by default. Protected snapshots and an expert
+   f controller remain optional work; that Java's reclaim scheme gives safe
+   cuts is checked at every cut, not proved (T-SCHEME).
+2. Level 4's limits ([level4-evidence.md](level4-evidence.md)): a load reads
+   the node's header and then the node (the id could be kept in the
+   unswizzled slot); a sweep walks every resident object, which under read
+   churn costs a third of the time (P4: incremental sweeps, or Q9's
+   incoming-reference lists); the node table's entries are not in the
+   budget; D is bounded only loosely by the startup distance (R6, Q5).
 3. Write overhead with uniform random updates (6 to 10 bytes per user
    byte): measure where the bytes go (key node size, time splits, the
    conservative still-dirty test), and what a larger default startup

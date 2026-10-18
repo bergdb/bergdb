@@ -704,3 +704,9 @@ traces, 463 cuts), the eviction set (30 traces, C-P), every trace
 `TRACECHECK OK`; the Java tier (68,901 transactions); `EvictionInvariance`
 with every schedule (24 runs); the four gates, full, and every record R8's
 ([evidence/level34-conformance.txt](evidence/level34-conformance.txt)).
+
+2026-10-18. Bergdb item 001, WP F2: the documents for Levels 3 and 4: the
+outcome of the plan's 1.2 for Level 4 point by point
+([level4-alignment.md](level4-alignment.md), section 8), Level 4 in
+[levels.md](levels.md), the status in `README.md`, `problem.md` (R5, R6,
+Q10), [sis-model.md](sis-model.md) (section 15) and `lean/README.md`.
