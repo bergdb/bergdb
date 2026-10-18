@@ -654,3 +654,7 @@ failure.
 eviction under the write lock, each slot under its pointer lock, which a
 reader holds for a whole follow; tested step by step and under stress. The
 writer's own checks now read a pointer under the node's monitor.
+
+2026-10-18. Bergdb item 001, WP J6: reclaim under eviction. A reclaim step
+pins the index nodes it makes dirty; a reserve (4 MiB by default) splits a
+step that would pin more. No record changes with the default.

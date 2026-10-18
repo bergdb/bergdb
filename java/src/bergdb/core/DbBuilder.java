@@ -27,6 +27,7 @@ public class DbBuilder {
     Eviction.Schedule evictionSchedule = Eviction.defaultSchedule();
     long evictionSeed = Eviction.defaultSeed();
     int auditEvery = Audit.EVERY;
+    long reclaimStepReserve = Long.getLong("stepreserve", Reclaim.DEFAULT_STEP_RESERVE);
     
     static class StreamInfo {
         String name;
@@ -210,6 +211,16 @@ public class DbBuilder {
     public DbBuilder evictionSchedule(Eviction.Schedule schedule, long seed) {
         this.evictionSchedule = schedule;
         this.evictionSeed = seed;
+        return this;
+    }
+
+    /**
+     * The reserve for a reclaim step's pinned bytes (Reclaim.setStepReserve; bergdb item 001,
+     * WP J6). The default is Reclaim.DEFAULT_STEP_RESERVE, or the system property
+     * stepreserve, so that the stress programs can split the steps.
+     */
+    public DbBuilder reclaimStepReserve(long bytes) {
+        this.reclaimStepReserve = bytes;
         return this;
     }
 

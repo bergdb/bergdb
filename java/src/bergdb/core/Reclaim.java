@@ -149,6 +149,11 @@ public class Reclaim implements Db.TransactionListener {
     
     private Stats stats;                    // null unless enableStats() was called.
     
+    /** The default reserve for a step's pinned bytes, 4 MiB; see setStepReserve(). */
+    public static final long DEFAULT_STEP_RESERVE = 4L << 20;
+    
+    private volatile long stepReserve = DEFAULT_STEP_RESERVE;
+    
     
     public Reclaim(Db db, AppendOnlyStream aos) {
         table = new IterationTable();
@@ -228,6 +233,37 @@ public class Reclaim implements Db.TransactionListener {
         }
         
         this.internalFraction = internalFraction;
+    }
+    
+    /**
+     * Sets the reserve for the pinned bytes of a reclaim step (bergdb item 001, WP J6): the
+     * index nodes that its touch and its rewrites make dirty, which stay pinned until they
+     * are written. A step's scan stops at the KV where the index nodes it has followed
+     * (NodeCollection.MaintenanceFollower, by id) would need more than the reserve, counted
+     * stepNodeBytes() each; so a step that would exceed it is split into smaller ones, and
+     * it exceeds the reserve by at most the nodes of one path. With the default, 4 MiB,
+     * steps are not split in practice (a step scans about 16 kB of KVs). Thread-safe; used
+     * from the next step.
+     */
+    public void setStepReserve(long bytes) {
+        if (bytes < 1) {
+            throw new IllegalArgumentException("Illegal step reserve, " + bytes);
+        }
+        this.stepReserve = bytes;
+    }
+    
+    /** The reserve for a step's pinned bytes; see setStepReserve(). */
+    public long getStepReserve() {
+        return stepReserve;
+    }
+    
+    /**
+     * The bytes counted for an index node in a step's reserve: a key node of the maximum
+     * node size with arrays twice that long (KeyNode.getMemSize). From the node size only,
+     * so that the steps, and so the records, do not depend on what is resident.
+     */
+    long stepNodeBytes() {
+        return 80 + 48L * db.internal().maxNodeSize();
     }
     
     /**
@@ -365,7 +401,12 @@ public class Reclaim implements Db.TransactionListener {
         // KV are maintenance reads. They swizzled and entered in the node table all they
         // read, the values too, which then stayed in memory; with eviction they would push
         // out the application's nodes. The step's follower reads a version once.
-        final PointerFollower maintenance = db.internal().nodeCollection().maintenance();
+        final NodeCollection.MaintenanceFollower maintenance =
+                db.internal().nodeCollection().maintenance();
+        
+        // 2026-10-18 (bergdb item 001, WP J6): the step's reserve, in index nodes followed.
+        final long maxNodes = Math.max(1, stepReserve / stepNodeBytes());
+        final boolean[] split = new boolean[] {false};
         
         GetMany g = db.newGetMany();
         g.gd.pointerFollower = maintenance;
@@ -380,6 +421,10 @@ public class Reclaim implements Db.TransactionListener {
             public int handleKvt(Kvt kvt) {
                 size += kvt.key.length * 8 + kvt.value.length + 100;
                 lastKeyOfStep[0] = kvt.key;
+                if (maintenance.indexNodes() > maxNodes) {
+                    split[0] = true;
+                    return ADD_AND_STOP;
+                }
                 return size > writeSize ? ADD_AND_STOP : ADD;
             }
             
@@ -388,6 +433,7 @@ public class Reclaim implements Db.TransactionListener {
             }
         };
         db.getMany(g);
+        final int scanNodes = maintenance.indexNodes();
         
         Trans.Builder b = db.trans();
         long stepLookupTime = -1;
@@ -484,6 +530,10 @@ public class Reclaim implements Db.TransactionListener {
             st.dirtiedStored += dirtiedStored[0];
             st.dirtiedBytes += t.dirtiedBytes;
             st.maxStepDirtied = Math.max(st.maxStepDirtied, t.dirtiedNodes);
+            st.loads += maintenance.loads();
+            st.loadBytes += maintenance.loadBytes();
+            st.maxStepNodes = Math.max(st.maxStepNodes, scanNodes);
+            if (split[0]) st.splitSteps++;
             if (eod[0]) {
                 st.tEnd = t.tt;
                 st.pEnd = t.tpos;
@@ -799,6 +849,10 @@ public class Reclaim implements Db.TransactionListener {
             long dirtiedBytes;          // Their size in the stream then.
             long maxStepDirtied;        // Most index nodes one step made dirty.
             long dirtiedStored;         // Bytes of them counted in the allowance.
+            long loads;                 // Versions the steps loaded from the stream (WP J6).
+            long loadBytes;             // Their memory size.
+            long maxStepNodes;          // Most index nodes one step's scan followed.
+            long splitSteps;            // Steps that the reserve stopped (setStepReserve).
             final TouchCount touch = new TouchCount();
         }
 
@@ -1830,6 +1884,85 @@ public class Reclaim implements Db.TransactionListener {
             
             Assert.assertTrue("cuts: " + cuts, cuts >= 2);
             db.stop();
+        }
+
+        /**
+         * The reserve for a step's pinned bytes (bergdb item 001, WP J6), with every object
+         * evicted after every transaction: with a reserve of four nodes, each step's scan
+         * stops when the index nodes it followed would need more, so steps are split (more
+         * of them, each following a few nodes, about a path's worth above the reserve); the
+         * iterations still end and cut, the same KVs are kept, and the lookups from the first
+         * available time on are right, also after a restart from the cut stream. With the
+         * default reserve no step is split. Reclaim's loads are counted: after eviction the
+         * steps read from the stream.
+         */
+        @Nano
+        public static void testStepReserveSplitsSteps() {
+            long[] steps = new long[2];
+            long[] maxNodes = new long[2];
+            for (int pass = 0; pass < 2; pass++) {
+                boolean small = pass == 1;
+                CoreTestClock clock = new CoreTestClock();
+                long time = Clock.UNITS_PER_SEC;
+                clock.setTime(time);
+                CutStream stream = new CutStream();
+                DbBuilder builder = Db.builder().testSetup(stream).clock(clock).maxNodeSize8()
+                        .startupDistance(2000).evictionSchedule(Eviction.Schedule.EVERY, 1);
+                if (small) builder.reclaimStepReserve(4 * (80 + 48 * 8));
+                Db db = builder.start();
+                db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+                Reclaim reclaim = db.internal().reclaim();
+                Stats stats = reclaim.enableStats();
+                
+                java.util.Random r = new java.util.Random(1);
+                java.util.Map<String, java.util.TreeMap<Long, byte[]>> model = 
+                        new java.util.HashMap<String, java.util.TreeMap<Long, byte[]>>();
+                for (int i = 0; i < 3000 && stream.getCut() == 0; i++) {
+                    time += Clock.UNITS_PER_SEC / 20;
+                    clock.setTime(time);
+                    String k = "/k/" + r.nextInt(200);
+                    byte[] v = new byte[1 + r.nextInt(30)];
+                    r.nextBytes(v);
+                    Trans t = db.trans().put(k, v).build();
+                    db.execute(t);
+                    if (!model.containsKey(k)) {
+                        model.put(k, new java.util.TreeMap<Long, byte[]>());
+                    }
+                    model.get(k).put(t.tt, v);
+                }
+                Assert.assertTrue("a cut", stream.getCut() > 0);
+                Stats.Iteration st = stats.iterations.get(0);
+                Assert.assertTrue("loads " + st.loads, st.loads > 0 && st.loadBytes > 0);
+                long reserveNodes = reclaim.getStepReserve() / reclaim.stepNodeBytes();
+                if (small) {
+                    Assert.assertEquals(4L, reserveNodes);
+                    Assert.assertTrue("split steps " + st.splitSteps, st.splitSteps > 0);
+                    Assert.assertTrue("nodes " + st.maxStepNodes, st.maxStepNodes <= reserveNodes + 12);
+                } else {
+                    Assert.assertEquals(0L, st.splitSteps);
+                }
+                steps[pass] = st.steps;
+                maxNodes[pass] = st.maxStepNodes;
+                
+                db.sync(SyncLevel.STRONG);
+                db.stop();
+                stream = stream.copy();
+                clock = new CoreTestClock();
+                clock.setTime(time);
+                db = Db.builder().testSetup(stream).clock(clock).maxNodeSize8()
+                        .startupDistance(2000).evictionSchedule(Eviction.Schedule.EVERY, 1).start();
+                long first = db.getFirstAvailableLookupTime();
+                for (long lt = first; lt <= time; lt += Clock.UNITS_PER_SEC / 4) {
+                    for (String key : model.keySet()) {
+                        java.util.Map.Entry<Long, byte[]> e = model.get(key).floorEntry(lt);
+                        byte[] expected = e == null ? null : e.getValue();
+                        Assert.assertArrayEquals(expected, DbUtil.get(db, lt, key));
+                    }
+                }
+                db.stop();
+            }
+            Assert.assertTrue("steps " + steps[0] + ", " + steps[1], steps[1] > steps[0]);
+            Assert.assertTrue("nodes " + maxNodes[0] + ", " + maxNodes[1], maxNodes[1] < maxNodes[0]);
         }
 
         /**

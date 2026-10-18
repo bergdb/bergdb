@@ -167,7 +167,7 @@ Current state
   Frans: Option K under TREE, A6' and A-COPY; above); K3 passed (by the agent,
   2026-10-18 05:31; above). K4 and K5 open; the agent passes them itself
   when their conditions are met (Frans, 2026-10-17 19:59; above).
-* Next: J6 to J10, prepared in scratch copies of `java/` (the entry of
+* Next: J7 to J10, prepared in scratch copies of `java/` (the entry of
   00:35), committed one WP at a time; then K4, P4 and F1 to F3.
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): T9 is proved with
   the stronger `CutOK` part 2 (R4, 2026-10-17, before R6's proof, since T9
@@ -233,7 +233,7 @@ Status
 | J3 | Eviction of index nodes | done | 2026-10-18 |
 | J4 | Eviction invariance; conformance with eviction | done | 2026-10-18 |
 | J5 | Readers under eviction | done | 2026-10-18 |
-| J6 | Reclaim under eviction | not started | — |
+| J6 | Reclaim under eviction | done | 2026-10-18 |
 | J7 | The capacity controller | not started | — |
 | J8 | Larger than memory | not started | — |
 | J9 | `level4.sh` | not started | — |
@@ -3689,3 +3689,40 @@ failure. The gates on the final tree, full (02:40 to 03:10, under load):
 933. StreamDigest: 36 of 36 the same as R8's.
 
 Time: J5 is M: about 40 minutes of work (00:50 to 01:02, and the runs).
+
+### 2026-10-18 01:06 to 05:33. WP J6, done: reclaim under eviction
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `1bb7494`.
+
+Did (`docs/level4-alignment.md`, 7.5; M28):
+
+1. `NodeCollection.MaintenanceFollower`: counts the index nodes it follows,
+   by node id, and the versions it loads, with their memory size.
+2. The step's reserve (`Reclaim.setStepReserve`,
+   `DbBuilder.reclaimStepReserve`, the system property `stepreserve`;
+   default 4 MiB): a step's scan stops when the index nodes it followed would
+   need more, counted from the node size only (so that the records do not
+   depend on what is resident); a step that would exceed it is split.
+3. `Reclaim.Stats.Iteration`: loads, their bytes, the most nodes a step
+   followed, the split steps. A test (`testStepReserveSplitsSteps`).
+
+Checks (02:49 to 03:31): ReclaimStress with the schedules every and
+random, with the default reserve and with a reserve of 2,000 bytes (steps
+split), the audit after every transaction: 400 configurations, 0 failures,
+7,056 exhaustive verifications, 1,944,120 audits, none failed; CrashTest with
+reclaim, split steps and a schedule: 10 rounds, 0 failures, 138,722 audits;
+LoadTest with reclaim, a restart and a full check at every cut and a
+schedule: `LOADTEST OK` both, 16 restarts with a full check after a cut each (a first run with a retention of 1 s failed in the
+test's own historical reads, 20,000 transactions back, 2 s on its clock,
+which reclaim had cut, as it may: the test's reads fit its gate
+configuration, a million updates, only; with 3 s they are in the window).
+The gates on the final tree, full (03:21 to 03:48, under load; a first run
+failed in the known race of `StorageManagerTester.testAddReplica2`, which
+fails about one time in twelve also on `l34-base`, the R8 change 2 entry):
+`LEVEL 1 OK` (159 s), `LEVEL 2 OK` (812 s), `LEVEL 3 OK` (526 s); unit tests
+934. StreamDigest: 36 of 36 the same as R8's (the default reserve splits no
+step). The hit
+rate of a hot set before and after an iteration: in J7's entry (it needs
+the controller).
+
+Time: J6 is M: about 20 minutes of work (01:06 to 01:15, and the runs).

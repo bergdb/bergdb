@@ -211,6 +211,7 @@ public class Db {
         
         this.dbClock = new DbClock(b.clock);
         this.reclaim = new Reclaim(this, aos);
+        reclaim.setStepReserve(b.reclaimStepReserve);
         this.reclaimTransactionListener = reclaim;
         reclaim.setRetainDuration(b.retainDurationInTimeUnits);
         
@@ -1803,6 +1804,9 @@ public class Db {
          * One eviction sweep now, with the given schedule, under the write lock, between
          * transactions; for tests (bergdb item 001, WP J5: EvictionReaderTester).
          */
+        /** The maximum node size. */
+        public int maxNodeSize() { return maxNodeSize; }
+
         public void evictNow(Eviction.Schedule schedule, long seed) {
             synchronized (writeLock) {
                 new Eviction(schedule, seed).afterTransaction(Db.this);

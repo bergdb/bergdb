@@ -123,9 +123,10 @@ public class NodeCollection implements PointerFollower {
      * Rule R), but it does not swizzle what it reads into the slot, the node table gets
      * nothing, and it leaves the slots' access data as they are. What it reads stays in a
      * map of its own, by the slot's position, while the follower is in use (one reclaim
-     * step), so a version is read once per step.
+     * step), so a version is read once per step. It counts what it follows and loads (WP
+     * J6): see MaintenanceFollower.
      */
-    public PointerFollower maintenance() {
+    public MaintenanceFollower maintenance() {
         return new MaintenanceFollower();
     }
 
@@ -172,7 +173,7 @@ public class NodeCollection implements PointerFollower {
             
             } else {
                 result = followStreamPointer(predecessor, pointerIndex, pointerPos, op, false,
-                        false);
+                        null);
             }
         }
         
@@ -210,7 +211,7 @@ public class NodeCollection implements PointerFollower {
                 
                 } else {
                     result = followStreamPointer(predecessor, pointerIndex, pointerPos, op, true,
-                            false);
+                            null);
                 }
             }
             
@@ -218,9 +219,36 @@ public class NodeCollection implements PointerFollower {
         }
     }
     
-    /** The follower for maintenance reads, see maintenance(). */
-    private final class MaintenanceFollower implements PointerFollower {
+    /**
+     * The follower for maintenance reads, see maintenance(). It counts the index nodes it
+     * follows, by node id, which is the same whatever is resident (a reclaim step's reserve,
+     * bergdb item 001, WP J6: these are the nodes its touch makes dirty), and the versions it
+     * loads from the stream, with their memory size (Reclaim.Stats). One thread: the writer.
+     */
+    public final class MaintenanceFollower implements PointerFollower {
         private final Map<Long, Node> read = new HashMap<Long, Node>();
+        private final java.util.HashSet<Long> indexIds = new java.util.HashSet<Long>();
+        private long loads = 0, loadBytes = 0;
+        
+        /** The index nodes followed so far, by id. */
+        public int indexNodes() {
+            return indexIds.size();
+        }
+        
+        /** The versions loaded from the stream so far. */
+        public long loads() {
+            return loads;
+        }
+        
+        /** The memory size of the versions loaded so far (Node.getMemSize()). */
+        public long loadBytes() {
+            return loadBytes;
+        }
+        
+        void loaded(Node node) {
+            loads++;
+            loadBytes += node.getMemSize();
+        }
         
         public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
             assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
@@ -236,6 +264,7 @@ public class NodeCollection implements PointerFollower {
                         + pointerNode + ", " + pointerPos;
                 
                 if (Pointer.isMem(pointerNode)) {
+                    if (pointerNode.isIndexNode()) indexIds.add(pointerNode.getId());
                     op.pointerListener.pointerFollowed(
                             predecessor, pointerIndex, pointerNode, Pointer.TYPE_MEMORY);
                     return pointerNode;
@@ -244,8 +273,9 @@ public class NodeCollection implements PointerFollower {
                 Node result = read.get(pointerPos);
                 if (result == null) {
                     result = followStreamPointer(predecessor, pointerIndex, pointerPos, op, 
-                            false, true);
+                            false, this);
                     read.put(pointerPos, result);
+                    if (result.isIndexNode()) indexIds.add(result.getId());
                 } else {
                     op.pointerListener.pointerFollowed(
                             predecessor, pointerIndex, result, Pointer.TYPE_STREAM);
@@ -258,10 +288,11 @@ public class NodeCollection implements PointerFollower {
     /**
      * Follows a stream pointer, the first touch of a node through this pointer
      * (docs/levels.md, level 2). The caller holds the pointer lock. A maintenance read
-     * (isMaintenance) does not swizzle.
+     * (maintenance not null) does not swizzle, and the maintenance follower counts a load.
      */
     private Node followStreamPointer(Node predecessor, int pointerIndex, long pointerPos, 
-            OpData op, boolean isWriter, boolean isMaintenance) {
+            OpData op, boolean isWriter, MaintenanceFollower maintenance) {
+        final boolean isMaintenance = maintenance != null;
         
         // 1. The id of the node. A vpos is the id of a node that had not been written
         //    when the pointer was written.
@@ -309,6 +340,7 @@ public class NodeCollection implements PointerFollower {
             Node node = nodeStream.readNode(ref);
             assert node.getId() == id : "ids differ, " + node.getId() + " != " + id;
             cache.tickAccessClock();
+            if (isMaintenance) maintenance.loaded(node);
             
             if (reconstructing && mySection != null && ref >= mySection.startPos 
                     && node.getType() == Node.TYPE_KEY_NODE) {

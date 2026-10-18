@@ -10,7 +10,7 @@ Status, 2026-10-18: the scope (section 1), a first α for the cache (section
 2) and the register (section 3), checked against the code (A2); the probes
 of A4 and the A-COPY checks (section 4); the design of E1, and what E2 to
 E6 ran and proved (section 5); what Java must do (E7, section 6); Level 4 in
-Java (section 7: J1 to J5). To come: J6 to J10, and the outcome (F2).
+Java (section 7: J1 to J6). To come: J7 to J10, and the outcome (F2).
 
 Level 4 is eviction: data and index larger than memory, under a memory
 budget, with readers, reclaim, crashes and restarts. The plan of item 001
@@ -193,7 +193,7 @@ level2-alignment.md's register, where stage 1 closes them.
 | M25 | `Cache3`'s reference counts are unbalanced: `pointerCreated` is called on swizzles, canonicalization, resolution and Dag pointer creation; `pointerDestroyed` has no caller | `Cache3.pointerCreated` (90), `pointerDestroyed` (180); callers `NodeCollection` lines 239, 258, 329, `Db` line 697 | — | Not used for eviction: the registry and the sweep instead (Q9) | 4: J1 (done: not used for eviction; the registry and its walk instead, 2026-10-18); c |
 | M26 | `Cache3` keeps every index node ever read or made, canonical objects and the newest snapshots, for readers and the writer; nothing leaves it | `Cache3.register` (115), `getNode` (198); `NodeCollection.followStreamPointer`, line 233 | — (P is logical) | Physical layer: the table holds resident objects only; the writer needs only the pinned ones (T-INDEX) | 2, 4: E1, E6 (T-INDEX by the definitions, 5.14: the model's table holds resident objects only), R8 (the writer no longer takes snapshots from the table, and the loader no longer enters the versions it reads, 2026-10-17), J1 (done: the table names canonical objects only; a split's copied slot could enter a snapshot, which the audit found, 2026-10-18), J3 (done: a release takes the table's entry, so the table holds resident objects only, 2026-10-18); c |
 | M27 | A first touch swizzles a slot to an object that may be newer than the slot's reference: the version after Rule R, the table's canonical object, or a table snapshot at least as new (`usable`). With a memory slot to a newer snapshot, the slot's serialized reference changes too (2.2) | `NodeCollection.followStreamPointer` (184), lines 202 to 241 | — | Model: allowed by lemma M (stage 1). Level 4 loader: the canonical object, or the exact version the slot names after Rule R (Q7; E1, 5.2) | 1, 2, 3: L1, E1 (designed), R8 (done: `followStreamPointer` takes the canonical object or reads exactly the version the slot names after Rule R, which the node table does not get; the checker's C-L4 compares the FIRST lines with the Level 4 loader, level2-alignment.md 13.5; 2026-10-17); c |
-| M28 | Reclaim's scan reads through the readers' path at the old time tStart, and then reads each KV again at the latest time: both swizzle and register what they read (historical snapshots included) | `Reclaim.step` (345): `db.getMany`, line 368, with `Db.newGetMany`'s readers' follower; `db.getOne`, lines 380 and 382 | — | Code: maintenance reads, without admission or swizzling; the value's position from the slot where it suffices (level4-plan.md, 5.1, point 3) | 3, 4: R8 (done: the scan and the per-KV reads use the step's maintenance follower, `NodeCollection.maintenance`, which neither swizzles nor enters what it reads and reads a version once per step, 2026-10-17; the slot's position in place of a load: the decision could use it, since pCut is a record boundary, but the scan loads every value for its byte estimate, which decides the step's range and so the records, and the per-KV read then finds the scan's object, so it would save no read), J6 (under eviction); o |
+| M28 | Reclaim's scan reads through the readers' path at the old time tStart, and then reads each KV again at the latest time: both swizzle and register what they read (historical snapshots included) | `Reclaim.step` (345): `db.getMany`, line 368, with `Db.newGetMany`'s readers' follower; `db.getOne`, lines 380 and 382 | — | Code: maintenance reads, without admission or swizzling; the value's position from the slot where it suffices (level4-plan.md, 5.1, point 3) | 3, 4: R8 (done: the scan and the per-KV reads use the step's maintenance follower, `NodeCollection.maintenance`, which neither swizzles nor enters what it reads and reads a version once per step, 2026-10-17; the slot's position in place of a load: the decision could use it, since pCut is a record boundary, but the scan loads every value for its byte estimate, which decides the step's range and so the records, and the per-KV read then finds the scan's object, so it would save no read), J6 (done: under eviction, with the step's reserve and reclaim's loads counted, 7.5, 2026-10-18); c |
 | M29 | Top node skip slots cache the target's time (`pointersTime`); the trace does not export it, so the checker cannot see a wrong cached time (F1-008-13, 5) | `TopNode.pointersTime` (line 20); `StoredTopNode.toLongs` (160) writes it, `parse` (54) reads it; `java/stress/TraceExport.java`, `topEntries` (line 290) | entries `skip` | Trace: SKIPT lines (plan, 8.2); checker: equal to the target's time; kept on unswizzling | 1, 4: L5 done (SKIPT lines; C-S checks every cached time and the slot layout, level2-alignment.md 13.5), J3 (done: kept on unswizzling, `TopNode.setPointer`, 2026-10-18); c |
 | M30 | Top node ordinals of 32,768 and more are written wrong: `node.topNodeId << (2 * 8)` shifts an `int` before it is widened (F1-008-13, 5.1). Confirmed at line 176. The stored ordinal is the low 16 bits, read as a signed number: with bit 15 set the parser refuses it; otherwise, from 65,536 on, it is accepted silently as the ordinal modulo 65,536 with the wrong height, and a restart loses history and goes on with wrong ordinals (review-13-claude, 2). `parse` (54) checks neither the slot count against the ordinal (line 77 against 130 to 145) nor which slots are populated | `StoredTopNode.toLongs` (160), line 176; `StoredTopNode.parse` (54) | — | Code fix, two parser checks, a round-trip test and a restart test (A3, with review-13-claude, 7.1) | A3 done, `280525a`; c |
 | M31 | One canonical object per node id must survive release and reload | `Cache3.makeCanonical` (137), `isBetter` (167); the `isCanonical` fields of `KeyNode` and `TopNode` | Phys: the node table | Model and code: release clears the table's entry and the flag; the writer's follower makes a reloaded node canonical (E1, 5.2) | 2, 4: E1 (designed), E3 (INV-CAN proved, 5.11), J3 (done: a release clears the flag and the table's entry; the writer's follower promotes a reloaded node; the audit checks that a clean canonical object is its node's latest version, 2026-10-18); c |
@@ -1312,3 +1312,56 @@ rounds each, every round with a cut: 0 failures; 724,727,860 gets and
 244,911,860 scans correct, 428 expired at admission and 6,624 during the
 read, which the rule allows (D1 = A). Before the fix, 27 rounds of the first
 about 200 failed in the writer's check. `EvictionReaderTester` ten times: no failure.
+
+### 7.5 J6: reclaim under eviction
+
+**J6** (bergdb item 001, 2026-10-18; M28; level4-plan.md, 5.1): reclaim's
+steps with eviction.
+
+* **Maintenance reads** (R8's change 5): the step's scan and its reads of
+  each KV use the maintenance follower, which loads as a reader does (the
+  canonical object, or exactly the version the slot names after Rule R) but
+  swizzles nothing and enters nothing in the node table, so reclaim does not
+  fill the cache with what it scans. Under eviction it reads from the stream
+  whatever is not resident. It now counts what it follows and loads
+  (`NodeCollection.MaintenanceFollower`).
+* **The step's reserve** (`Reclaim.setStepReserve`, `DbBuilder
+  .reclaimStepReserve`; default `Reclaim.DEFAULT_STEP_RESERVE`, 4 MiB; the
+  system property `stepreserve` for the stress programs): the index nodes a
+  step makes dirty, by its touch and its rewrites, stay pinned until they are
+  written. A step's scan stops at the KV where the index nodes it has followed
+  (by node id: the same whatever is resident, so the steps and the records do
+  not depend on eviction) would need more than the reserve, counted at
+  `80 + 48 × maxNodeSize` bytes each (a key node of the largest size with
+  arrays twice that long); so a step that would exceed it is split into
+  smaller ones, and it exceeds the reserve by at most the nodes of one path.
+  A step aborted by a `RerunException` is tried again at a later transaction,
+  as before. With the default no step is split in practice (a step scans
+  about 16 kB of KVs), so the records stay the same.
+* **Counted** (`Reclaim.Stats.Iteration`): the versions the steps loaded
+  from the stream and their memory size (`loads`, `loadBytes`), the most
+  index nodes one step's scan followed (`maxStepNodes`), and the steps the
+  reserve stopped (`splitSteps`).
+
+Tests: `Reclaim.Tester.testStepReserveSplitsSteps` (every object evicted
+after every transaction, on a `CutStream`: with a reserve of four nodes the
+steps are split, more of them, each following a few nodes, about a path's
+worth above the reserve; the iterations still end and cut; the lookups from
+the first available time on are right, also after a restart from the cut
+stream; with the default no step is split; the steps load from the
+stream). The campaign (2026-10-18 02:49 to 03:31, scratch
+`j567-campaign.sh`): `ReclaimStress` (reclaim on a `CutStream`, random
+configurations, restarts between sessions) with the schedules every and
+random, 100 configurations each, with the default reserve and with a
+reserve of 2,000 bytes (steps split; the system property `stepreserve`),
+the audit after every transaction: 400 configurations, every round with a
+cut, 0 failures, 7,056 exhaustive verifications, 1,944,120 audits, none
+failed; `CrashTest` with reclaim, split steps and the schedules every and
+random: 10 rounds, 0 failures, 138,722 audits, none failed; `LoadTest`
+with reclaim, a restart and a check of every key at every cut, and the
+schedules every and random (a retention of 3 s on its clock: its reads 2 s
+back must be in the window): `LOADTEST OK` both, 16 restarts with a full
+check after a cut each.
+
+The measurement the plan asks for, the hit rate of a hot set before and
+after an iteration, needs the capacity controller; it is in 7.6.
