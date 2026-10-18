@@ -195,8 +195,14 @@ Current state
   it later, and J tests that would hit it leave that case out or mark it as
   a known M49 issue.
 * Commits of this run (Q2 (b)): see the log entries.
-* Uncommitted work of this plan in bergdb: none.
-* Long jobs: none in bergdb; stage 4's campaigns run in scratch trees.
+* Uncommitted work of this plan in bergdb: F2's documents (`README.md`,
+  `docs/levels.md`, `problem.md`, `sis-model.md`, `level4-plan.md`,
+  `reference-theory.md`, `level4-alignment.md`, `lean/README.md`), written
+  while F1 runs, committed with F2.
+* Long jobs: F1's campaign (scratch `f1-campaign.sh`, two scratch copies of
+  the final work tree), from 2026-10-18 09:26, its longest checks until about
+  16:40 (its entry). Before it: none in bergdb; stage 4's campaigns ran in
+  scratch trees.
   R9's Lean tier ran from 2026-10-17 23:00 to 2026-10-18 05:31 (its entry).
 * Stage 2's time box (plan, 5.3): started with E1 at 2026-10-16 23:14;
   60 hours, so it ends at 2026-10-19 11:14. Stage 2's WPs (E1 to E7) were
@@ -4025,3 +4031,20 @@ campaign's trace checks; StreamDigest 36 of 36 the same as R8's).
 
 Time: P4 is M, plus machine time: about half an hour of work, and 2.5
 hours of machine time.
+
+### 2026-10-18 10:07. WP F1, in progress: the conformance campaign (written during its long checks)
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `899c547` (P4),
+uncommitted: F2's documents (above). The campaign (scratch `f1-campaign.sh`,
+not edited while running) runs on two scratch copies of the final work tree
+(java/ and lean/, the tree P4 committed): the trace sets and the Java tiers
+in one, the four gates in the other. Done so far (09:26 to 10:06): the
+eviction set (`conformance.sh evict`, 30 traces, `TRACECHECK OK` every one,
+C-P no failure in 7,794 transactions), the small reclaim set (25 of 25
+`TRACECHECK OK`), the Java tier (21 configurations, 68,901 transactions:
+TREE, A6', A-COPY, A2, A3, A5 and the marking without failure; A6 fails in
+the 5 known transactions), `EvictionInvariance` (24 runs, every schedule,
+73,770 audits, none failed), and the four gates, full: `LEVEL 1 OK`,
+`LEVEL 2 OK`, `LEVEL 3 OK`, `LEVEL 4 OK`, StreamDigest 36 of 36. Running:
+the Level 2 sets (small, medium, large; the large set's biggest traces take
+about 4.5 hours each) and the medium reclaim set's checks (about 6.5 hours).
