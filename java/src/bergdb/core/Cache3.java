@@ -101,6 +101,21 @@ public class Cache3 {
         return residents;
     }
 
+    /**
+     * Object 'node' is released (bergdb item 001, WP J2 on; the Lean model's Mem.release):
+     * the node table's entry goes if it names it, and the registry forgets it.
+     */
+    public void released(Node node) {
+        long id = node.getId();
+        synchronized (getLock(id)) {
+            CacheEntry entry = internalGet(id);
+            if (entry != null && entry.node == node) {
+                internalRemove(id);
+            }
+        }
+        residents.released(node);
+    }
+
     /** The objects the node table names, for the audit (Audit) and the sweeps (J2 on). */
     public java.util.List<Node> nodes() {
         synchronized (bigLock) {

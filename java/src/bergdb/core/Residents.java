@@ -110,6 +110,53 @@ public final class Residents {
         }
     }
 
+    /** A resident object was released (WP J2 on): its bytes leave the estimate. */
+    public void released(Node node) {
+        if (!node.isIndexNode()) {
+            valueBytes.addAndGet(-node.getMemSize());
+            valueCount.decrementAndGet();
+            return;
+        }
+        int size = counted(node);
+        if (size != 0) {
+            setCounted(node, 0);
+            canonicalBytes.addAndGet(-size);
+            canonicalCount.decrementAndGet();
+        } else {
+            snapshotBytes.addAndGet(-node.getMemSize());
+            snapshotCount.decrementAndGet();
+        }
+    }
+
+    /**
+     * Sets the estimate to the bytes of the resident objects 'objects' (a walk's, after an
+     * eviction sweep), which makes it exact; each canonical object is counted with its size
+     * now. The caller holds Db.writeLock, between transactions.
+     */
+    public void resync(Iterable<Node> objects) {
+        long cb = 0, sb = 0, vb = 0, cc = 0, sc = 0, vc = 0;
+        for (Node n : objects) {
+            int size = n.getMemSize();
+            if (!n.isIndexNode()) {
+                vb += size;
+                vc++;
+            } else if (n.isCanonical()) {
+                setCounted(n, size);
+                cb += size;
+                cc++;
+            } else {
+                sb += size;
+                sc++;
+            }
+        }
+        canonicalBytes.set(cb);
+        snapshotBytes.set(sb);
+        valueBytes.set(vb);
+        canonicalCount.set(cc);
+        snapshotCount.set(sc);
+        valueCount.set(vc);
+    }
+
     /** The estimated bytes of the resident objects. */
     public long bytes() {
         return canonicalBytes.get() + Math.max(0, snapshotBytes.get()) + valueBytes.get();
@@ -133,12 +180,15 @@ public final class Residents {
     }
 
     /**
-     * The resident objects, by identity: every object reachable through memory slots from
-     * the roots, the super root, the node table's objects and D's. For the audit (and the
-     * sweeps of J2 on): it visits every resident slot once. The caller holds Db.writeLock.
+     * The resident objects, each once, in the order a breadth-first walk meets them: every
+     * object reachable through memory slots from the roots, the super root, the node table's
+     * objects and D's. For the audit and the sweeps of eviction. The caller holds
+     * Db.writeLock.
      */
-    public static Set<Node> walk(TopNode superRoot, Iterable<Node> tableObjects, Iterable<Node> dObjects) {
+    public static java.util.List<Node> walk(TopNode superRoot, Iterable<Node> tableObjects,
+            Iterable<Node> dObjects) {
         Set<Node> seen = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+        java.util.ArrayList<Node> order = new java.util.ArrayList<Node>();
         ArrayDeque<Node> todo = new ArrayDeque<Node>();
         if (superRoot != null) todo.add(superRoot);
         for (Node n : tableObjects) todo.add(n);
@@ -146,6 +196,7 @@ public final class Residents {
         while (!todo.isEmpty()) {
             Node x = todo.poll();
             if (!seen.add(x)) continue;
+            order.add(x);
             if (x instanceof TopNode) {
                 TopNode t = (TopNode) x;
                 if (t.rootPointer != null) todo.add(t.rootPointer);
@@ -159,7 +210,7 @@ public final class Residents {
                 }
             }
         }
-        return seen;
+        return order;
     }
 
     // ======== Tests ========

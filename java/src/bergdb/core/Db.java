@@ -148,13 +148,23 @@ public class Db {
     private Cache3 cache;
 
     /**
-     * The audit's oracle of latest positions (bergdb item 001, WP J1; test-only), kept only
-     * when the audit is on (Audit.EVERY > 0); see Audit.
+     * The audit (bergdb item 001, WP J1; test-only): after every auditEvery-th transaction
+     * and at every startup; 0 is off. DbBuilder.audit(), by default the system property
+     * audit (Audit.EVERY).
      */
-    private final Audit.Oracle oracle = Audit.EVERY > 0 ? new Audit.Oracle() : null;
+    private final int auditEvery;
+
+    /**
+     * The audit's oracle of latest positions (test-only), kept only when the audit is on;
+     * see Audit.
+     */
+    private final Audit.Oracle oracle;
 
     /** Transactions since the last audit; see audit(). */
-    private int auditCountdown = Audit.EVERY;
+    private int auditCountdown;
+
+    /** Eviction at transaction boundaries (bergdb item 001, WP J2 on); see Eviction. */
+    private final Eviction eviction;
     
 
     /**
@@ -180,6 +190,10 @@ public class Db {
         
         cache = new Cache3(dbInfo);
         cache.setSizeIndicator(b.cacheSizeIndicator);
+        eviction = new Eviction(b.evictionSchedule, b.evictionSeed);
+        auditEvery = b.auditEvery;
+        oracle = auditEvery > 0 ? new Audit.Oracle() : null;
+        auditCountdown = auditEvery;
  
         this.maxNodeSize = b.maxNodeSize;
         this.startupDistance = b.startupDistance;
@@ -518,7 +532,7 @@ public class Db {
         
         this.state = DbState.ACTIVE;
         reclaim.initFromDb();
-        if (Audit.EVERY > 0) {
+        if (auditEvery > 0) {
             synchronized (writeLock) {
                 audit(true);
             }
@@ -853,12 +867,12 @@ public class Db {
     }
     
     /**
-     * The audit (bergdb item 001, WP J1; test-only, Audit.EVERY > 0): at startup, and after
-     * every Audit.EVERY-th transaction. The caller holds writeLock, between transactions.
+     * The audit (bergdb item 001, WP J1; test-only, auditEvery > 0): at startup, and after
+     * every auditEvery-th transaction. The caller holds writeLock, between transactions.
      */
     private void audit(boolean always) {
         if (!always && --auditCountdown > 0) return;
-        auditCountdown = Audit.EVERY;
+        auditCountdown = auditEvery;
         Audit.record(Audit.check(this), always ? "startup" : "transaction");
     }
 
@@ -1450,7 +1464,8 @@ public class Db {
             
             x.end();
             
-            if (Audit.EVERY > 0) audit(false);
+            eviction.afterTransaction(this);
+            if (auditEvery > 0) audit(false);
 
             // The synch statement guarantees that the writes are visible to all readers 
             // assuming they also do [synchronized(readSync) {}] before they start reading.
@@ -1780,6 +1795,9 @@ public class Db {
         
         /** The audit's oracle, or null if the audit is off; see Audit. */
         public Audit.Oracle oracle() { return oracle; }
+        
+        /** Eviction at transaction boundaries; see Eviction. */
+        public Eviction eviction() { return eviction; }
         
         public Reclaim reclaim() { return reclaim; }
 

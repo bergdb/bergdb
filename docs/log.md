@@ -637,3 +637,10 @@ bytes; the pins), and a test-only audit checks the model's invariants on
 its state (`core/Audit.java`: INV-CAN, the pins, INV-SLOT against an oracle
 of latest positions). The audit found that the node table could name a
 snapshot (a split's copied slot); fixed. No record changes.
+
+2026-10-18. Bergdb item 001, WPs J2 and J3: eviction of values and of index
+nodes at transaction boundaries (`core/Eviction.java`): a memory slot to an
+object that is not pinned and has been written becomes a stream slot naming
+its position, and an object no resident slot names is released; a later
+read loads it again. With every schedule (none, values, every, random) the
+records are byte for byte those without eviction (`EvictionInvariance`).

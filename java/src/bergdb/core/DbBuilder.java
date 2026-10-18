@@ -24,6 +24,9 @@ public class DbBuilder {
     List<DbBuilder.StreamInfo> streamInfos = new ArrayList<DbBuilder.StreamInfo>();
     File createdTxtDir;
     String createdTxtCryptoKeyInfo;
+    Eviction.Schedule evictionSchedule = Eviction.defaultSchedule();
+    long evictionSeed = Eviction.defaultSeed();
+    int auditEvery = Audit.EVERY;
     
     static class StreamInfo {
         String name;
@@ -196,6 +199,28 @@ public class DbBuilder {
     
     public DbBuilder retainForever() {
         return retainDuration(Long.MAX_VALUE);
+    }
+
+    /**
+     * A forced eviction schedule, for tests (bergdb item 001, WPs J2 and J3; Eviction):
+     * none; every detachable value after every transaction; every detachable object after
+     * every transaction; or each slot to one with probability 0.3 (seeded). The default is
+     * none, or the system property evict.
+     */
+    public DbBuilder evictionSchedule(Eviction.Schedule schedule, long seed) {
+        this.evictionSchedule = schedule;
+        this.evictionSeed = seed;
+        return this;
+    }
+
+    /**
+     * The audit (Audit; bergdb item 001, WP J1), for tests: after every 'every'-th
+     * transaction and at every startup, with its oracle; 0 is off. The default is the
+     * system property audit.
+     */
+    public DbBuilder audit(int every) {
+        this.auditEvery = every;
+        return this;
     }
 
     public DbBuilder noEvict() {

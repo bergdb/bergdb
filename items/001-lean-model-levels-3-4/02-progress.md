@@ -167,7 +167,7 @@ Current state
   Frans: Option K under TREE, A6' and A-COPY; above); K3 passed (by the agent,
   2026-10-18 05:31; above). K4 and K5 open; the agent passes them itself
   when their conditions are met (Frans, 2026-10-17 19:59; above).
-* Next: J2 to J10, prepared in scratch copies of `java/` (the entry of
+* Next: J4 to J10, prepared in scratch copies of `java/` (the entry of
   00:35), committed one WP at a time; then K4, P4 and F1 to F3.
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): T9 is proved with
   the stronger `CutOK` part 2 (R4, 2026-10-17, before R6's proof, since T9
@@ -229,8 +229,8 @@ Status
 | R8 | Java: the corrections the model requires, before eviction | done (the performance comparison: no regression) | 2026-10-17 |
 | R9 | Level 3 conformance; the gate proposal | done; K3 passed | 2026-10-18 |
 | J1 | Registry, pins and audits | done | 2026-10-18 |
-| J2 | Eviction of values | not started | — |
-| J3 | Eviction of index nodes | not started | — |
+| J2 | Eviction of values | done | 2026-10-18 |
+| J3 | Eviction of index nodes | done | 2026-10-18 |
 | J4 | Eviction invariance; conformance with eviction | not started | — |
 | J5 | Readers under eviction | not started | — |
 | J6 | Reclaim under eviction | not started | — |
@@ -3530,3 +3530,75 @@ names canonical objects only; J3 makes it hold resident objects only), M40
 
 Time: J1 is M (2 to 8 hours): about an hour and a half of work (23:27 to
 00:12, and the documents), and the campaign's machine time.
+
+### 2026-10-18 00:02 to 05:32. WPs J2 and J3, done: eviction of values and of index nodes
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `c3590ce`. Work in
+scratch copies of `java/` on top of J1, tested there and copied in; J2 and J3
+in one tree and one commit, since J3 generalizes J2's code (the schedule
+`values` keeps J2's eviction as a test option).
+
+Did (`docs/level4-alignment.md`, 7.2; rows 8 and 9 of 6.2):
+
+1. `core/Eviction.java`: eviction at every transaction boundary (the end of
+   `Db.executeInner`, after the record), not during startup. Detachable: a
+   written object, not in the record being written, and for an index object
+   not pinned (the super root, D's canonical objects, the newest written top
+   node that `Db` keeps for the next record). Unswizzle under the slot's
+   pointer lock, with a recheck; a stream slot naming the object's position,
+   which the slot serialized before, so no record changes; top node skip
+   slots keep their cached times (M29). Release: of an object that no memory
+   slot of a resident object names any more, and of an object that only the
+   node table holds (an index node or a value) when the schedule takes it:
+   the canonical flag cleared (M31), the table's entry and the registry.
+   Reload: R8's loader; the writer's follower makes a reloaded node canonical
+   again. After every sweep the accounting is made exact
+   (`Residents.resync`). Admission: a value over 1 MiB is always taken.
+2. The schedules, test-only (8.4): none, values (J2), every, random (0.3,
+   seeded); `DbBuilder.evictionSchedule`, the system properties `evict` and
+   `evictseed`; the audit as a builder option (`DbBuilder.audit`).
+3. The audit checks also that a clean canonical object is its node's latest
+   version (INV-CAN), which a reload must keep.
+4. `java/stress/EvictionInvariance.java` (J2's 4): the workload of
+   `RestartInvariance` with each schedule: the same stream byte for byte (from
+   the cut, with reclaim), the same D and key-value checksum at every
+   checkpoint, no identity or lookup violation; also with restarts and with
+   reclaim.
+5. Unit tests (`Eviction`'s, J2's 5 and J3's 3): the cases of
+   level4-plan.md, section 9, each as a twin (the same transactions without
+   eviction and with the schedules values, every and random, three seeds; the
+   audit after every transaction; the streams byte for byte the same and
+   every key at every time the same): one child with several parents; an old
+   snapshot and a newer canonical object; startup, updates, writeout and
+   eviction; splits and root changes; cold historical parents and shared,
+   updated children (example 5), with long keys; reclaim with misses on a
+   `CutStream`, with restarts; values (J2's list); a value that only the node
+   table holds. Mutations that let eviction take some dirty objects, or keep
+   values that only the table holds, fail them.
+
+Two findings during the work, both fixed before this commit: (1) a twin
+compared the streams' first positions, which depend on the storage threads'
+timing (a decided cut is made once the stream is durable): `level2.sh`'s run
+of the unit tests failed once under load; the twins compare from the later
+first position, as `RestartInvariance` does. (2) Values that only the node
+table held were never released: a reader's load enters a value in the table
+(`Cache3.pointerCreated`, as before) and into a slot of a key node version
+that may leave memory first; J7's scan test found it (the resident bytes grew
+with every scan); the sweeps release them now, with a test.
+
+Checks: the campaign (scratch `j3/evict-campaign.sh`, 01:42 to 01:55, the
+final code): EvictionInvariance on 12 configurations of 8.4, without and with
+restarts (24 runs, all OK; 3,651,991 slots unswizzled, 3,653,584 objects
+released), RestartInvariance with the schedules every and random (6),
+ReclaimStress (100 random configurations a schedule, 4 runs), CrashTest (8
+runs, with and without reclaim): 42 runs, 1,211,792 audits, none failed,
+196,316,352 slots checked. The gates on the final tree, full (01:42 to 02:08):
+`LEVEL 1 OK` (148 s), `LEVEL 2 OK` (846 s), `LEVEL 3 OK` (549 s); unit tests
+928. StreamDigest: 36 of 36 the same as R8's: no record changes.
+
+Register: M23 (unswizzling writes the target's position), M26 (the table
+holds resident objects only), M29 (kept on unswizzling), M31 (release clears
+the flag; the writer promotes a reloaded node): closed.
+
+Time: J2 is M and J3 L; together about two hours and a half of work (00:02
+to 01:55 with the campaign, and the documents).

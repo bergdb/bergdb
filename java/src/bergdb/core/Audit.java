@@ -28,8 +28,10 @@ import bergdb.dag.TopNode;
  * <ol>
  * <li><b>The resident objects</b> (Residents.walk): every object reachable through memory
  * slots from the super root, the node table and D.</li>
- * <li><b>INV-CAN</b>: one canonical object per node id among them, the node table's; and
- * the node table names canonical objects only (bergdb item 001, WP R8, change 3).</li>
+ * <li><b>INV-CAN</b>: one canonical object per node id among them, the node table's; the
+ * node table names canonical objects only (bergdb item 001, WP R8, change 3); and a clean
+ * canonical object is its node's latest version (WP J3: a node released and loaded again
+ * is made canonical from that version only), when the oracle knows the node.</li>
  * <li><b>Pins</b>: every object of D (TransSeq) is resident, canonical, dirty and the node
  * table's; the super root is canonical and the table's; the record being written is empty
  * between transactions; and every dirty resident index object is in D.</li>
@@ -163,7 +165,7 @@ public final class Audit {
 
         // 1. The resident objects.
         final List<Node> tableObjects = table.nodes();
-        final Set<Node> resident = Residents.walk(superRoot, tableObjects, dObjects);
+        final List<Node> resident = Residents.walk(superRoot, tableObjects, dObjects);
         long checked = 0, pinned = 0, unknown = 0;
 
         // 2. INV-CAN.
@@ -177,6 +179,11 @@ public final class Audit {
             if (table.getNode(n.getId()) != n) {
                 fail(failures, "INV-CAN: canonical object of node " + n.getId()
                         + " is not the node table's");
+            }
+            Long latest = oracle == null || n.isDirty() ? null : oracle.latest(n.getId());
+            if (latest != null && n.getSpos() != latest) {
+                fail(failures, "INV-CAN: the clean canonical object of node " + n.getId()
+                        + " is the version at " + n.getSpos() + ", its latest is at " + latest);
             }
         }
         for (Node n : tableObjects) {
