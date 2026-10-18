@@ -1457,13 +1457,24 @@ public class KeyNode implements Node {
         checkStreamPointers(sz);
     }
 
+    // The two checks below read a pointer's pair under the node's monitor, which a reader that
+    // swizzles the pointer holds (setPointer): read apart, the reference and the long field of
+    // a pointer being swizzled could be one old and one new, which the checks took for a bad
+    // pointer (bergdb item 001, WP J5: java/stress/ReclaimReaders.java with eviction, where
+    // readers swizzle the current nodes' pointers after every transaction; before
+    // 2026-10-18 unsynchronized, a race the writer's assertions could lose after a restart too).
+
     private void checkStreamPointers(short sz) throws AssertionError {
         for (int i = 0; i < sz; i++) {
             long klong = klongs[i];
             if (Klong.getType(klong) == Klong.TYPE_KEY) {
-                if (pointers[i] == null) {
-                    long spos = pos[i];
-                    
+                Node pointer;
+                long spos;
+                synchronized (this) {
+                    pointer = pointers[i];
+                    spos = pos[i];
+                }
+                if (pointer == null) {
                     if (!Spos.isValid(spos)) {
                         throw new AssertionError("Bad spos of pointer " + i + " of node " 
                                 + this + ". Spos: " + spos);
@@ -1477,9 +1488,13 @@ public class KeyNode implements Node {
         for (int i = 0; i < sz; i++) {
             long klong = klongs[i];
             if (Klong.getType(klong) == Klong.TYPE_KEY) {
-                if (pointers[i] != null) {
-                    long accessData = pos[i];
-                    
+                Node pointer;
+                long accessData;
+                synchronized (this) {
+                    pointer = pointers[i];
+                    accessData = pos[i];
+                }
+                if (pointer != null) {
                     if (!AccessData.isValidOrNull(accessData)) {
                         throw new AssertionError("Bad access data (" + accessData 
                                 + ") of pointer " + i + " of node " + this + ".");

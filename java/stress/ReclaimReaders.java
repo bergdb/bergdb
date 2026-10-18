@@ -47,6 +47,9 @@ import bergdb.stream.ReadBelowFirstPosException;
  *   sessions=N, keys=N, sd=N, maxnode=N, retain=SECONDS, trans=N, valsize=N  As in
  *               ReclaimStress; valsize is the largest value size (default 60, 1500 on disk).
  *   verbose=1   Print a line per session.
+ *   evict=S     An eviction schedule (values, every or random; evictseed=N its seed), as for
+ *               every stress program (Eviction; bergdb item 001, WP J5): slots change between
+ *               memory and stream while the readers run.
  */
 public class ReclaimReaders {
     static final byte[] DELETED = new byte[0];

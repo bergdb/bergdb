@@ -1798,6 +1798,16 @@ public class Db {
         
         /** Eviction at transaction boundaries; see Eviction. */
         public Eviction eviction() { return eviction; }
+
+        /**
+         * One eviction sweep now, with the given schedule, under the write lock, between
+         * transactions; for tests (bergdb item 001, WP J5: EvictionReaderTester).
+         */
+        public void evictNow(Eviction.Schedule schedule, long seed) {
+            synchronized (writeLock) {
+                new Eviction(schedule, seed).afterTransaction(Db.this);
+            }
+        }
         
         public Reclaim reclaim() { return reclaim; }
 

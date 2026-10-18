@@ -649,3 +649,8 @@ records are byte for byte those without eviction (`EvictionInvariance`).
 run E (a forced eviction schedule) writes SLOT lines, and the checker's C-P
 checks INV-SLOT on Java's physical states: `conformance.sh evict`, no
 failure.
+
+2026-10-18. Bergdb item 001, WP J5: readers under eviction (the plan's Q8):
+eviction under the write lock, each slot under its pointer lock, which a
+reader holds for a whole follow; tested step by step and under stress. The
+writer's own checks now read a pointer under the node's monitor.

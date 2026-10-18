@@ -167,7 +167,7 @@ Current state
   Frans: Option K under TREE, A6' and A-COPY; above); K3 passed (by the agent,
   2026-10-18 05:31; above). K4 and K5 open; the agent passes them itself
   when their conditions are met (Frans, 2026-10-17 19:59; above).
-* Next: J5 to J10, prepared in scratch copies of `java/` (the entry of
+* Next: J6 to J10, prepared in scratch copies of `java/` (the entry of
   00:35), committed one WP at a time; then K4, P4 and F1 to F3.
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): T9 is proved with
   the stronger `CutOK` part 2 (R4, 2026-10-17, before R6's proof, since T9
@@ -232,7 +232,7 @@ Status
 | J2 | Eviction of values | done | 2026-10-18 |
 | J3 | Eviction of index nodes | done | 2026-10-18 |
 | J4 | Eviction invariance; conformance with eviction | done | 2026-10-18 |
-| J5 | Readers under eviction | not started | — |
+| J5 | Readers under eviction | done | 2026-10-18 |
 | J6 | Reclaim under eviction | not started | — |
 | J7 | The capacity controller | not started | — |
 | J8 | Larger than memory | not started | — |
@@ -3649,3 +3649,43 @@ position the same): when a decided cut is made depends on the storage
 threads' timing, here under load.
 
 Time: J4 is M: about an hour (00:38 to 01:18, and the documents).
+
+### 2026-10-18 00:50 to 05:33. WP J5, done: readers under eviction
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `b37cf66`. Work in
+a scratch copy, tested there and copied in.
+
+Did (`docs/level4-alignment.md`, 7.4; M24, M39; Q8):
+
+1. The protocol, in `Eviction`'s class comment: eviction under the write
+   lock, each slot under its pointer lock, which a reader holds for a whole
+   follow; a reader may finish with an object it holds; a sweep waits for a
+   loading reader's lock, and a load never asks for the write lock.
+2. `core/EvictionReaderTester.java`: an access-data update after an
+   unswizzle keeps the position (key node slots, a top node's root and skip
+   slots); the race of a reader and a release, step by step (the reader
+   takes a canonical object from the node table, it is released, the reader
+   puts it into its slot): reads, the audit and the next records right; a
+   reader paused inside a follow, holding the slot's lock, while a sweep of
+   every detachable object runs (no deadlock; whichever order results, all
+   right); a scan in chunks at one snapshot with every object evicted, writes
+   and random sweeps between the chunks; three reader threads while the slots
+   alternate between memory and stream. `Db.Internal.evictNow`: a sweep with
+   a given schedule, for tests.
+3. `ReclaimReaders` with eviction: the system property `evict`, documented.
+4. A fix it found: the writer's own checks (`KeyNode.check`, under `-ea`) read
+   a pointer's pair without the node's monitor, which a reader that swizzles
+   holds, so a pointer being swizzled looked bad ("Bad access data", "Bad
+   spos"; with eviction the readers swizzle the current nodes' pointers after
+   every transaction). They read it under the monitor now. The nodes were
+   never wrong; the writer's copies already read under the monitor.
+
+Checks: `ReclaimReaders` with the schedules every and random, `CutStream`
+and `FileStream`, 100 rounds each (02:24 to 02:49): 0 failures, 724,727,860
+gets and 244,911,860 scans correct; before the fix of the writer's checks
+(below), 27 rounds of the first about 200 failed. EvictionReaderTester ten times: no
+failure. The gates on the final tree, full (02:40 to 03:10, under load):
+`LEVEL 1 OK` (187 s), `LEVEL 2 OK` (915 s), `LEVEL 3 OK` (629 s); unit tests
+933. StreamDigest: 36 of 36 the same as R8's.
+
+Time: J5 is M: about 40 minutes of work (00:50 to 01:02, and the runs).

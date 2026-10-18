@@ -51,6 +51,21 @@ import bergdb.stream.MemoryStream;
  * <p>The caller holds Db.writeLock, between transactions: after the record is appended and
  * the record's nodes are out of TransNodes, before the next transaction begins. Not during
  * startup.</p>
+ *
+ * <p><b>Readers</b> (the plan's Q8; bergdb item 001, WP J5; EvictionReaderTester). Eviction
+ * runs only under the write lock, which readers never take, and changes a slot only under
+ * the slot's pointer lock (PointerLocks), which a reader holds for the whole of a follow,
+ * the load from the stream included (NodeCollection.followPointer); so a reader sees a slot
+ * as a memory slot or as a stream slot, never half of one. A reader that holds an object
+ * (it followed a slot to it before the unswizzle, or took it from the node table before
+ * its release) may finish with it: a released object is the version at its position, so
+ * its answers are right; if the reader then puts it into a slot, the slot names that
+ * version, the node's latest (INV-SLOT holds), and the writer makes it canonical again when
+ * it follows that slot (the accounting misses it until the next sweep's resync). A sweep
+ * that needs a pointer lock that a loading reader holds waits for it; a load never asks for
+ * the write lock, so they cannot deadlock. An access-data update writes only into a memory
+ * slot, under the slot's lock (KeyNode.setPointerAccessData), so it never overwrites the
+ * position an unswizzle wrote.</p>
  */
 public final class Eviction {
     /** The schedule; see the class comment. */
