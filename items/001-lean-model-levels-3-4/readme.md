@@ -26,6 +26,9 @@ Files
 * [04-k3-review.md](04-k3-review.md). 001-04, the K3 review guide: the
   Level 3 alignment, what is proved and checked, R9's conformance, the
   conformance step in `level3.sh`; passed by the agent on Frans's go.
+* [05-k4-review.md](05-k4-review.md). 001-05, the K4 review guide: Level 4
+  in Java, the evidence, the changes, eviction on by default and
+  `level4.sh` a required gate; passed by the agent on Frans's go.
 
 
 Log
@@ -45,3 +48,6 @@ done, and K1 waits for Frans.
 
 2026-10-18. Claude added 001-04, the K3 review guide (WP R9): stage 3 is
 done, and K3 passed (by the agent, on Frans's go of 2026-10-17 19:59).
+
+2026-10-18. Claude added 001-05, the K4 review guide (WP J10): stage 4 is
+done, and K4 passed (by the agent, on Frans's go of 2026-10-17 19:59).

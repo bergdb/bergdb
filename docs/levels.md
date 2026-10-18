@@ -64,9 +64,10 @@ longer replay from the beginning.
 
 Checks, all of which must pass before a change to the code is committed:
 [level1.sh](../java/stress/level1.sh),
-[level2.sh](../java/stress/level2.sh) and
-[level3.sh](../java/stress/level3.sh). They print `LEVEL 1 OK`,
-`LEVEL 2 OK` and `LEVEL 3 OK`. Runtime depends on the cost of the storage
+[level2.sh](../java/stress/level2.sh),
+[level3.sh](../java/stress/level3.sh) and, since 2026-10-18 (bergdb item
+001, K4), [level4.sh](../java/stress/level4.sh). They print `LEVEL 1 OK`,
+`LEVEL 2 OK`, `LEVEL 3 OK` and `LEVEL 4 OK`. Runtime depends on the cost of the storage
 forces; the old pre-force timing estimates no longer describe these runs.
 
 Since 2026-10-18 (bergdb item 001, WP J9), [level4.sh](../java/stress/level4.sh)

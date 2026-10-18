@@ -15,9 +15,10 @@ algorithm. [README.md](README.md) describes the repo; start reading at
 
 ## Code
 
-- All three level scripts (`java/stress/level1.sh`, `level2.sh`, `level3.sh`)
-  must print `LEVEL n OK` before a change to the Java code is committed.
-  `level2.sh` needs Lean (elan) for its step 7.
+- All four level scripts (`java/stress/level1.sh`, `level2.sh`, `level3.sh`,
+  `level4.sh`) must print `LEVEL n OK` before a change to the Java code is
+  committed. `level2.sh`, `level3.sh` and `level4.sh` need Lean (elan) for
+  their conformance steps.
 - Do not edit a shell script while it runs; `sh` reads it as it goes.
 
 ## General

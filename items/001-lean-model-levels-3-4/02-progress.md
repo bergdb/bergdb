@@ -158,6 +158,15 @@ Frans's go and decisions
   `level3.sh`, its step 8 (`conformance.sh reclaim`; level3-alignment.md,
   section 8). The review guide:
   [04-k3-review.md](04-k3-review.md). Stage 4 may start.
+* **K4 passed, 2026-10-18 06:58, by the agent on Frans's go of 2026-10-17
+  19:59**, with the plan's recommended options: eviction on by default (Q10,
+  Frans's decision of 2026-10-16; since J7) and `level4.sh` a required gate
+  (`AGENTS.md`, `README.md`, `docs/levels.md`: all four level scripts must
+  print `LEVEL n OK` before a Java change is committed). Things worked as
+  expected: J1 to J10 done, each with its checks and gates; `level4.sh`
+  passes full and quick; J10 meets Q13's targets; no change to the record
+  format or the public API, and no Java change outside the agreed list. The
+  review guide: [05-k4-review.md](05-k4-review.md).
 
 
 Current state
@@ -165,9 +174,10 @@ Current state
 
 * Checkpoints: G0 given (2026-10-16 15:23); K1 passed (2026-10-17 07:56,
   Frans: Option K under TREE, A6' and A-COPY; above); K3 passed (by the agent,
-  2026-10-18 05:31; above). K4 and K5 open; the agent passes them itself
-  when their conditions are met (Frans, 2026-10-17 19:59; above).
-* Next: K4, then P4 and F1 to F3.
+  2026-10-18 05:31; above); K4 passed (by the agent, 2026-10-18 06:58; above).
+  K5 open; the agent passes it when its conditions are met (Frans,
+  2026-10-17 19:59; above).
+* Next: P4 (the soak with eviction), then F1 to F3 and K5.
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): T9 is proved with
   the stronger `CutOK` part 2 (R4, 2026-10-17, before R6's proof, since T9
   assumes `CutOK` only); R6 proves that Java's scheme gives it, and R5's
@@ -3935,3 +3945,21 @@ failing; its large set's 12 traces all `TRACECHECK OK`).
 
 Time: J10 is S to M: about an hour and a quarter (05:40 to 06:55, mostly
 machine time), and the report.
+
+### 2026-10-18 06:58. Checkpoint K4 passed (by the agent, on Frans's go of 2026-10-17 19:59)
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `70c1801`.
+
+Did: K4 with the plan's recommended options, recorded under "Frans's go and
+decisions": eviction on by default (since J7) and `level4.sh` a required
+gate: `AGENTS.md` (all four level scripts; `level2.sh` to `level4.sh` need
+Lean for their conformance steps), `README.md` (the build and test list),
+`docs/levels.md` (the checks). The review guide,
+[05-k4-review.md](05-k4-review.md): what was decided and why it passed,
+what Level 4 is in Java, the evidence by WP, the changes, how to check it,
+the open risks. Item 001's readme lists it.
+
+No check needed: no code changed.
+
+Open, next: P4, the soak with eviction, on the quiet machine; then F1 to
+F3.

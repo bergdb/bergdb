@@ -48,15 +48,16 @@ Build and test
 --------------
 
 Needs a JDK (the code is compiled with `--release 8`) and, for the proofs
-and `level2.sh`, [elan](https://github.com/leanprover/elan).
+and `level2.sh` to `level4.sh`, [elan](https://github.com/leanprover/elan).
 
     java/build.sh                  # builds java/build/bergdb.jar and the stress tests
     java/stress/level1.sh          # full replay          (about 80 s)
     java/stress/level2.sh          # bounded startup      (about 17 minutes; quick: 2)
     java/stress/level3.sh          # reclaim              (about 8 minutes)
+    java/stress/level4.sh          # eviction             (about 16 minutes; quick: 4)
     cd lean && lake build          # checks all proofs
 
-Each level script prints `LEVEL n OK` when it passes. All three must pass
+Each level script prints `LEVEL n OK` when it passes. All four must pass
 before a change to the Java code is committed. Set `JAVAC` and `JAR` if the
 JDK tools are not on the path.
 

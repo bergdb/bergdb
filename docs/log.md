@@ -684,3 +684,8 @@ larger than the data, warm gets and scans within 5 percent, commits within
 1.2 percent, startup 7 to 10 percent slower, no alert (the plan's Q13
 targets); under pressure (a budget of a fifth of the data) reads are 30 to
 90 times slower ([level4-performance.md](level4-performance.md)).
+
+2026-10-18. Bergdb item 001, checkpoint K4: Level 4 in Java accepted (by the
+agent, on Frans's go), with eviction on by default and `level4.sh` a
+required gate: all four level scripts must pass before a Java change is
+committed (`AGENTS.md`, `README.md`).
