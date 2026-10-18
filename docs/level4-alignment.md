@@ -6,11 +6,11 @@ Work package A2 and later of bergdb item 001
 Source commit `75d3c2d`; line numbers below are at that commit, in
 `java/src/bergdb/`.
 
-Status, 2026-10-17: the scope (section 1), a first α for the cache (section
+Status, 2026-10-18: the scope (section 1), a first α for the cache (section
 2) and the register (section 3), checked against the code (A2); the probes
 of A4 and the A-COPY checks (section 4); the design of E1, and what E2 to
-E6 ran and proved (section 5); what Java must do (E7, section 6). To come:
-the outcome (F2).
+E6 ran and proved (section 5); what Java must do (E7, section 6); Level 4 in
+Java (section 7: J1). To come: J2 to J10, and the outcome (F2).
 
 Level 4 is eviction: data and index larger than memory, under a memory
 budget, with readers, reclaim, crashes and restarts. The plan of item 001
@@ -190,15 +190,15 @@ level2-alignment.md's register, where stage 1 closes them.
 | M22 | A runtime first touch of a key node version in the startup section is cut back to the startup time (line 228; level4-plan.md, 2.1, first case). Not reachable today: every index node with a version in the section has a canonical object from startup on (`registerSectionNodes` for the nodes of R(s), the rerun's `nodeCreated` for the others), so step 3 of `followStreamPointer` finds it. Reachable once canonical objects can be released | `NodeCollection.followStreamPointer` (184), lines 228 to 231; `KeyNode.toPreviousState` (893) | — | Code: cut back only during reconstruction (startup), never at runtime (E1, 5.2: the Level 4 loader) | 3: E1 (designed), R8 (done: `NodeCollection.followStreamPointer` cuts back only while DbStarter reconstructs, 2026-10-17); c |
 | M23 | A memory slot keeps access data in its position field, so the slot's position is lost while the slot is a memory slot (`setPointer(i, node, accessData)` at every swizzle) | `KeyNode.pos` (field, line 72), `setPointerAccessData` (240); `TopNode.pointersPos`, `rootPointerPos` (lines 18, 28), `setPointerAccessData` (303); `NodeCollection.followStreamPointer`, line 240; `AccessData` | — | Code: unswizzling writes the target's position; the access clock kept apart from the position, or updated only under the slot's lock with a recheck | 3, 4: R8 (done: access data is written only into a memory slot, rechecked under the slot's lock, which every change of a slot holds; the access clock is a field of its own, 2026-10-17), J1, J2 and J3 (unswizzling writes the target's position); o |
 | M24 | Readers of a slot's pair assume that a memory slot stays one: `KeyNode.getPointer` reads the object, then `pos[index]` separately, without the lock; `TopNode.getPointer` tests the object and reads it again; `TopNode.setPointerAccessData` and `getPointerAccessData` assert a memory slot. The comments say so ("Level 4 (eviction) must revisit this") | `KeyNode.getPointer` (202), `TopNode.getPointer` (252), `TopNode.setPointerAccessData` (303) | — | Code: capture the slot once; defined behavior for an evicted slot (level4-plan.md, 4.5.1) | 3, 4: R8 (done: `KeyNode.getPointer` and `TopNode.getPointer` read the reference once and decide on it; the access data's setters and getters have a defined result for a stream slot, without asserts, 2026-10-17), J5 (readers under eviction); o |
-| M25 | `Cache3`'s reference counts are unbalanced: `pointerCreated` is called on swizzles, canonicalization, resolution and Dag pointer creation; `pointerDestroyed` has no caller | `Cache3.pointerCreated` (90), `pointerDestroyed` (180); callers `NodeCollection` lines 239, 258, 329, `Db` line 697 | — | Not used for eviction: the registry and the sweep instead (Q9) | 4: J1; o |
-| M26 | `Cache3` keeps every index node ever read or made, canonical objects and the newest snapshots, for readers and the writer; nothing leaves it | `Cache3.register` (115), `getNode` (198); `NodeCollection.followStreamPointer`, line 233 | — (P is logical) | Physical layer: the table holds resident objects only; the writer needs only the pinned ones (T-INDEX) | 2, 4: E1, E6 (T-INDEX by the definitions, 5.14: the model's table holds resident objects only), R8 (the writer no longer takes snapshots from the table, and the loader no longer enters the versions it reads, 2026-10-17), J1, J3; o |
+| M25 | `Cache3`'s reference counts are unbalanced: `pointerCreated` is called on swizzles, canonicalization, resolution and Dag pointer creation; `pointerDestroyed` has no caller | `Cache3.pointerCreated` (90), `pointerDestroyed` (180); callers `NodeCollection` lines 239, 258, 329, `Db` line 697 | — | Not used for eviction: the registry and the sweep instead (Q9) | 4: J1 (done: not used for eviction; the registry and its walk instead, 2026-10-18); c |
+| M26 | `Cache3` keeps every index node ever read or made, canonical objects and the newest snapshots, for readers and the writer; nothing leaves it | `Cache3.register` (115), `getNode` (198); `NodeCollection.followStreamPointer`, line 233 | — (P is logical) | Physical layer: the table holds resident objects only; the writer needs only the pinned ones (T-INDEX) | 2, 4: E1, E6 (T-INDEX by the definitions, 5.14: the model's table holds resident objects only), R8 (the writer no longer takes snapshots from the table, and the loader no longer enters the versions it reads, 2026-10-17), J1 (done: the table names canonical objects only; a split's copied slot could enter a snapshot, which the audit found, 2026-10-18), J3; o |
 | M27 | A first touch swizzles a slot to an object that may be newer than the slot's reference: the version after Rule R, the table's canonical object, or a table snapshot at least as new (`usable`). With a memory slot to a newer snapshot, the slot's serialized reference changes too (2.2) | `NodeCollection.followStreamPointer` (184), lines 202 to 241 | — | Model: allowed by lemma M (stage 1). Level 4 loader: the canonical object, or the exact version the slot names after Rule R (Q7; E1, 5.2) | 1, 2, 3: L1, E1 (designed), R8 (done: `followStreamPointer` takes the canonical object or reads exactly the version the slot names after Rule R, which the node table does not get; the checker's C-L4 compares the FIRST lines with the Level 4 loader, level2-alignment.md 13.5; 2026-10-17); c |
 | M28 | Reclaim's scan reads through the readers' path at the old time tStart, and then reads each KV again at the latest time: both swizzle and register what they read (historical snapshots included) | `Reclaim.step` (345): `db.getMany`, line 368, with `Db.newGetMany`'s readers' follower; `db.getOne`, lines 380 and 382 | — | Code: maintenance reads, without admission or swizzling; the value's position from the slot where it suffices (level4-plan.md, 5.1, point 3) | 3, 4: R8 (done: the scan and the per-KV reads use the step's maintenance follower, `NodeCollection.maintenance`, which neither swizzles nor enters what it reads and reads a version once per step, 2026-10-17; the slot's position in place of a load: the decision could use it, since pCut is a record boundary, but the scan loads every value for its byte estimate, which decides the step's range and so the records, and the per-KV read then finds the scan's object, so it would save no read), J6 (under eviction); o |
 | M29 | Top node skip slots cache the target's time (`pointersTime`); the trace does not export it, so the checker cannot see a wrong cached time (F1-008-13, 5) | `TopNode.pointersTime` (line 20); `StoredTopNode.toLongs` (160) writes it, `parse` (54) reads it; `java/stress/TraceExport.java`, `topEntries` (line 290) | entries `skip` | Trace: SKIPT lines (plan, 8.2); checker: equal to the target's time; kept on unswizzling | 1, 4: L5 done (SKIPT lines; C-S checks every cached time and the slot layout, level2-alignment.md 13.5), J3 (kept on unswizzling); o |
 | M30 | Top node ordinals of 32,768 and more are written wrong: `node.topNodeId << (2 * 8)` shifts an `int` before it is widened (F1-008-13, 5.1). Confirmed at line 176. The stored ordinal is the low 16 bits, read as a signed number: with bit 15 set the parser refuses it; otherwise, from 65,536 on, it is accepted silently as the ordinal modulo 65,536 with the wrong height, and a restart loses history and goes on with wrong ordinals (review-13-claude, 2). `parse` (54) checks neither the slot count against the ordinal (line 77 against 130 to 145) nor which slots are populated | `StoredTopNode.toLongs` (160), line 176; `StoredTopNode.parse` (54) | — | Code fix, two parser checks, a round-trip test and a restart test (A3, with review-13-claude, 7.1) | A3 done, `280525a`; c |
 | M31 | One canonical object per node id must survive release and reload | `Cache3.makeCanonical` (137), `isBetter` (167); the `isCanonical` fields of `KeyNode` and `TopNode` | Phys: the node table | Model and code: release clears the table's entry and the flag; the writer's follower makes a reloaded node canonical (E1, 5.2) | 2, 4: E1 (designed), E3 (INV-CAN proved, 5.11), J3; o |
 | M39 | Eviction beside concurrent readers | `NodeCollection.followPointer` (93) takes the slot's lock (`PointerLocks`, 128 stripes) on every follow | — (sequential) | Java protocol (Q8) and its tests | 4: J5; o |
-| M40 | Memory accounting is not implemented: `Cache3.totalSize` and `putSize` are set once and never advanced; access data is `-putSize`, the constant -10,000 | `Cache3` fields (lines 25, 26); `Db.getAccessData` (1605); `Cache3.setSizeIndicator`, called from the `Db` constructor (line 173), stores the budget and nothing reads it | — | Code | 4: R8 (the access clock advances, `Cache3.accessClock`: at loads and at the writer's new nodes, 2026-10-17), J1, J7; o |
+| M40 | Memory accounting is not implemented: `Cache3.totalSize` and `putSize` are set once and never advanced; access data is `-putSize`, the constant -10,000 | `Cache3` fields (lines 25, 26); `Db.getAccessData` (1605); `Cache3.setSizeIndicator`, called from the `Db` constructor (line 173), stores the budget and nothing reads it | — | Code | 4: R8 (the access clock advances, `Cache3.accessClock`: at loads and at the writer's new nodes, 2026-10-17), J1 (done: the registry's accounting, `Residents`, 2026-10-18), J7; o |
 | M43 | Option K relies on A6 (no adoption) and TREE (one current parent), which the model does not assume today. A4: TREE holds on every transaction checked; A6 fails in 5 of 68,901 Java-tier transactions (an in-place split of a new segment root), and the weaker A6' holds in all (section 4). By the code: a split makes new nodes and the replaced node stops being current (`timeSplit`, `spaceSplit`), or changes in place a node of the same transaction (`timeSplitInPlace`, `spaceSplitInPlace`); a new top node's skip slots point to older top nodes, which are not current; no path moves a child from one current node to another | `Dag.handleFullNode` (780) and the splits (821, 841, 894, 955); `TopDs.newSuperRoot` (42) | `StepOK` | Checked on Java (A4: TREE, A6'); E1: the model assumes TREE and A6' (not A6), in `EvictStep` (5.5); E3: also A-COPY for a transaction's new pointers (`CopyStep`, 5.10); E3's proof uses all three (5.11) | 2: A4 done, E1 done (A6'), E2 checked TREE, A6' and A-COPY by running, E3 proved T-CACHE from them; A-COPY checked on Java (section 4: no failure); o |
 | M44 | After a restart, a node of D can hold a stream slot to a node of D that is written before it; today the node table gives the newer version, with eviction nothing does (plan, 8.5, the gap) | `DbStarter.canonicalNode` (451); `NodeCollection.resolvePointers` (292) | — | Model and code: E1 chose startup linking by id (rule 4, 5.4), which gives today's records; E5 extended it to the root's object, which Java's `TopDs` holds by reference already (5.13); the window is the fallback | 2, 3: E1 (designed), E5 (proved with restarts: `T2_cache`, 5.13), R8 (done: rule 4, `DbStarter.linkD`, 2026-10-17; without it change 1 gave other records after restarts); c |
 | M45 | **New (A2).** The public API's cache size is computed in `int`: `this.cacheSizeInMb * 1000000` overflows for more than 2,147 MB. The default is a fifth of the JVM's maximum heap, so it overflows with heaps above about 10.7 GB. With `-ea` the `Db` constructor then fails (`Cache3.setSizeIndicator` asserts a positive size); without it, the budget becomes 4 MB. No effect today, since nothing reads the budget (M40); J7 makes it the budget | `pubimp/DatabaseBuilderImp.start`, line 173; `Cache3.setSizeIndicator` (50) | — | Code fix (widen to `long`), with a test, before J7 relies on it | 4: J7; o |
@@ -993,7 +993,7 @@ references (5.7). R8 makes them one at a time.
 
 | | Change | The model | Rows | WP | Check |
 |---|---|---|---|---|---|
-| 7 | A registry of resident objects, and the pins: D's canonical objects (`TransSeq`), the record being written (`TransNodes`, whose dirty flags `clean` (131) clears before the record is appended, so "not dirty" is not "written"), the super root, the objects of an operation in progress. Everything else may be evicted (T-PIN) | `Mem.pinned`, `TP_pins` | M25, M26 | J1 | The audit (J1): every pinned object resident and canonical, one canonical object per node id, INV-SLOT against a test-only oracle of latest positions, on every configuration of 8.4 |
+| 7 | A registry of resident objects, and the pins: D's canonical objects (`TransSeq`), the record being written (`TransNodes`, whose dirty flags `clean` (131) clears before the record is appended, so "not dirty" is not "written"), the super root, the objects of an operation in progress. Everything else may be evicted (T-PIN) | `Mem.pinned`, `TP_pins` | M25, M26 | J1 (done, 7.1) | The audit (J1): every pinned object resident and canonical, one canonical object per node id, INV-SLOT against a test-only oracle of latest positions, on every configuration of 8.4 |
 | 8 | Unswizzle: under the slot's lock, after rechecking that the target is clean, unpinned and written, a memory slot becomes a stream slot naming the target's position | `Mem.unswizzle`, `Mem.detachable` | M23, M24 (Q8) | J2 (values), J3 (index nodes) | `EvictionInvariance`: the same stream with the schedules none, every and random; the audit |
 | 9 | Release: the object leaves the registry; the node table's entry goes if it names the object, and its canonical flag is cleared (a reader may still hold it); the writer's follower makes a reloaded node canonical again. The node table then holds resident objects only (T-INDEX) | `Mem.release`, `Mem.promote` | M26, M31 | J3 | As 8, and J3's tests |
 | 10 | Copies of slots (splits; `TopDs.newSuperRoot`, 42): no change. A-COPY holds on every Java run checked (section 4), and a copied stream slot serializes what its source did (5.4). Top node skip slots keep their cached times when unswizzled | `Mem.newSlot4`, `CopyStep` | M29, M43 | J3 (check only) | C-P on Java's physical states (J4); `A2A3Check2`'s A-COPY count |
@@ -1019,3 +1019,77 @@ M46 (the ordinal bound): Frans, not urgent. The details of Q8's protocol: J5.
 Level 3's corrections come from R7's red list (level3-alignment.md) and go
 into R8 with these. M30 (the top node ordinals) was fixed in A3
 (`280525a`).
+
+
+## 7. Level 4 in Java
+
+### 7.1 J1: the registry, the pins and the audit
+
+**J1** (bergdb item 001, 2026-10-18): Java knows what it holds and what it
+must keep, and checks the model's invariants on its own state. No eviction
+yet. In `java/src/bergdb/core/`:
+
+* **The registry** (`Residents`, one per node table, `Cache3.residents()`).
+  The resident objects are the canonical objects (the node table's), the
+  snapshots that slots of resident objects name, and the values;
+  `Residents.walk` finds them all from the super root, the node table and D,
+  through memory slots. Its accounting (M40) estimates their bytes from
+  `Node.getMemSize()`: advanced when an object becomes resident (a node the
+  writer makes, `Db.registerNewNode` and `valueNodeCreated`; a version read
+  and put into a slot, `NodeCollection.followStreamPointer`; an object of
+  startup, `Cache3.register`), when a snapshot becomes canonical
+  (`Cache3.makeCanonical`), and when a canonical object grows (when it is
+  written, `Db.store`); J3 lowers it at release. A snapshot that no slot
+  names any more stays counted until it is released: the estimate is an
+  upper bound, which J7's controller will use.
+* **The pins** (`Residents.isPinned`, the model's `Mem.pinned`): the super
+  root (the model's root object), and the canonical objects of the nodes of
+  D (dirty) and of the record being written (`isInTransNodes`; their dirty
+  flags are cleared before the record is appended). An object being loaded
+  is held under its slot's pointer lock until it is in the slot (J2's
+  unswizzle takes that lock too).
+* **The node table names canonical objects only** (M26). The audit found
+  that it could name snapshots: a split copies its node's memory slots, a
+  slot to a snapshot among them, and reports each new pointer
+  (`Dag.reportNewPointers`); `Cache3.pointerCreated` entered the snapshot
+  when the table had no object for the node. Since R8's change 3 neither the
+  loader nor `resolvePointers` takes a snapshot from the table, but the
+  writer's `Cache3.makeCanonical` took the table's object when it was newer
+  than the one reached, stage 1's rule, which the Level 4 model dropped
+  (5.2). Now `pointerCreated` enters canonical objects only; the writer
+  promotes the object it reached, or the table's canonical object, as the
+  model's `Mem.promote`. No record changes: a current node's slot names its
+  latest version (INV-SLOT), so the table's snapshot was never newer.
+* **The audit** (`Audit`, test-only; the system property `audit=N`, every
+  N-th transaction and at every startup; off by default and in the gates
+  until J9): at a transaction boundary, (1) the resident objects, by the
+  walk; (2) INV-CAN: one canonical object per node id among them, the node
+  table's, and the table names canonical objects only; (3) the pins: every
+  object of D is resident, canonical, dirty and the table's, the super root
+  is canonical and the table's, the record being written is empty, and every
+  dirty resident index object is in D; (4) INV-SLOT: every slot of a
+  resident canonical index object of a node that is current (reachable at
+  the latest time) or in D names, unless its pointee is pinned, the
+  pointee's latest version: a memory slot its object's position, a stream
+  slot its position after Rule R. The latest versions come from an oracle
+  that Db keeps in this mode from the records it appends and from the
+  startup section (Rule R's map, and the values that the rerun meets); a
+  pointee written before the last startup's section is not known to it and
+  is not checked. A slot below the stream's first position (a dead pointer
+  after a cut, M33) is not checked. `RestartInvariance`, `ReclaimStress`,
+  `CrashTest` and `TraceExport` print the audit's summary (`AUDIT: ...`)
+  when it is on.
+
+The audit on the configurations of the plan's 8.4, without eviction
+(2026-10-17 23:50 to 2026-10-18 02:55): `RestartInvariance` on the 10
+configurations of `level2.sh` and `level3.sh` (with reclaim),
+`ReclaimStress` (200 random configurations) and `CrashTest` (10 runs, with
+and without reclaim): 24 runs, 1,233,186 audits, 698,778,215 slots checked;
+`TraceExport` on `conformance.sh`'s sets with the audit: small (60 traces,
+15,880 audits) and medium (9 traces, 738 audits), every trace `TRACECHECK
+OK`; large (12 traces, 1,472 audits); the reclaim sets of R2 (31 traces,
+35,004 audits). No audit failed. On the final build, `RestartInvariance`
+(node size 8, a restart every 100 transactions) with the audit after every
+transaction: 4,021 audits, none failed; at the last audit the estimate was
+550,921 bytes and the walk found 535,995 (the estimate is an upper bound).
+The gates pass, and every record is R8's (`StreamDigest`, 36 of 36).

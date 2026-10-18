@@ -26,6 +26,7 @@ public class Pack implements IPack {
         Pack.class,
         PointerLocks.class,
         RerunException.class,
+        Residents.class,
         Reclaim.class,
         Reclaim.Tester.class,
         ReclaimReaderTester.class,

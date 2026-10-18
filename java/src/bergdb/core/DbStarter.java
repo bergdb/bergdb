@@ -120,6 +120,8 @@ public class DbStarter {
 
     private void doOrdinaryStartup() {
         createMaps();
+        Audit.Oracle oracle = db.internal().oracle();
+        if (oracle != null) oracle.section(newById);       // the audit (WP J1; test-only)
         updateStreamPointers();
         changeKeyNodesToStateAtStartupTime();
         checkStreamPointers();
@@ -395,6 +397,13 @@ public class DbStarter {
                     Node n = storedTrans.findNode(id);
                     if (n != null) {
                         node.setSpos(n.getSpos());
+                    }
+                    
+                    if (!node.isIndexNode()) {
+                        // The resident registry and the audit's oracle (WP J1).
+                        db.internal().cache().residents().added(node);
+                        Audit.Oracle oracle = db.internal().oracle();
+                        if (oracle != null) oracle.value(id, node.getSpos());
                     }
                     
                     if (node.isIndexNode()) {

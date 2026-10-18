@@ -38,6 +38,9 @@ public class Cache3 {
      */
     private final AtomicLong accessClock = new AtomicLong(INITIAL_CACHE_SIZE);
 
+    /** The resident registry's accounting (bergdb item 001, WP J1); see Residents. */
+    private final Residents residents = new Residents();
+
     
     @SuppressWarnings("unchecked")
     public Cache3(Cache.DbInfo dbInfo) {
@@ -93,6 +96,24 @@ public class Cache3 {
         }
     }
 
+    /** The resident registry's accounting; see Residents. */
+    public Residents residents() {
+        return residents;
+    }
+
+    /** The objects the node table names, for the audit (Audit) and the sweeps (J2 on). */
+    public java.util.List<Node> nodes() {
+        synchronized (bigLock) {
+            java.util.ArrayList<Node> result = new java.util.ArrayList<Node>();
+            for (HashMap<Long, CacheEntry> m : maps) {
+                for (CacheEntry e : m.values()) {
+                    result.add(e.node);
+                }
+            }
+            return result;
+        }
+    }
+
     /** The access clock's value; see accessClock. */
     public long accessClock() {
         return accessClock.get();
@@ -110,6 +131,14 @@ public class Cache3 {
     }
     
     public void pointerCreated(Node from, int index, Node to) {
+        // The node table names canonical objects only (bergdb item 001, WP J1; the Lean model's
+        // Level 4 memory, docs/level4-alignment.md, 5.2; WP R8's change 3 for the loader): a
+        // memory slot to a snapshot, which a split copies (Dag.reportNewPointers), does not enter
+        // it. Before 2026-10-18 it did, when the table had no object for the node, and a newer
+        // snapshot replaced an older one; the audit found it.
+        if (!to.isCanonical()) {
+            return;
+        }
         long id = to.getId();
         Object lock = getLock(id);
         
@@ -119,10 +148,12 @@ public class Cache3 {
             if (entry == null) {
                 entry = CacheEntry.oneRef(to);
                 internalPut(id, entry);
+                residents.added(to);
             } else {
                 entry.refCount++;
                 if (entry.node != to && isBetter(to, entry.node)) {
                     entry.node = to;
+                    residents.added(to);
                 }
             }
         }
@@ -143,8 +174,10 @@ public class Cache3 {
             if (entry == null) {
                 entry = CacheEntry.noRef(node);
                 internalPut(id, entry);
+                residents.added(node);
             } else if (entry.node != node && isBetter(node, entry.node)) {
                 entry.node = node;
+                residents.added(node);
             }
             
             return entry.node;
@@ -171,6 +204,7 @@ public class Cache3 {
             }
             
             result.setCanonical(true);
+            residents.promoted(result);
             
             if (entry == null) {
                 internalPut(id, CacheEntry.noRef(result));

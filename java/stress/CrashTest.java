@@ -258,6 +258,7 @@ public class CrashTest {
                 }
             }
         }
+        if (Audit.EVERY > 0) System.out.println(Audit.summary());   // -Daudit=N (WP J1)
         System.out.println("Done: " + rounds + " rounds, " + fails + " failures, "
                 + (System.currentTimeMillis() - t0) / 1000 + " s.");
     }

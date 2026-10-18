@@ -321,6 +321,7 @@ public class ReclaimStress {
                 }
             }
         }
+        if (Audit.EVERY > 0) System.out.println(Audit.summary());   // -Daudit=N (WP J1)
         System.out.println("Done: " + rounds + " rounds, " + fails + " failures, "
                 + withCut + " rounds with a cut, "
                 + (System.currentTimeMillis() - t0) / 1000 + " s, " + exhaustive

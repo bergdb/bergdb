@@ -53,6 +53,10 @@ public class KeyNode implements Node {
     public boolean isInTransNodes = false;
         // Synch note: no need for volatile or something since all access is from threads 
         // holding Db.writeLock.
+    public int countedMemSize = 0;
+        // The size the resident registry counted this canonical object with, 0 if not counted
+        // (bergdb item 001, WP J1; core/Residents.java). Written by the writer, or under the
+        // node table's lock.
     private boolean isDirty;
         // Synch note: read/write access only from threads holding Db.writeLock.
     private boolean isCanonical;

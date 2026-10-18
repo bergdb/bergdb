@@ -146,6 +146,15 @@ public class Db {
     private File createdTxtDir;
     private String createdTxtCryptoKeyInfo;
     private Cache3 cache;
+
+    /**
+     * The audit's oracle of latest positions (bergdb item 001, WP J1; test-only), kept only
+     * when the audit is on (Audit.EVERY > 0); see Audit.
+     */
+    private final Audit.Oracle oracle = Audit.EVERY > 0 ? new Audit.Oracle() : null;
+
+    /** Transactions since the last audit; see audit(). */
+    private int auditCountdown = Audit.EVERY;
     
 
     /**
@@ -509,6 +518,11 @@ public class Db {
         
         this.state = DbState.ACTIVE;
         reclaim.initFromDb();
+        if (Audit.EVERY > 0) {
+            synchronized (writeLock) {
+                audit(true);
+            }
+        }
         
         StartInfo result = new StartInfo();
         result.startPos = startupPos;
@@ -658,6 +672,7 @@ public class Db {
             public void valueNodeCreated(ValueNode node, long[] key) {
                 setIdOfNode(node);
                 cache.tickAccessClock();
+                cache.residents().added(node);
                 x.transNodes.addValueNode(node, key);
                 x.trans.listener.valueNodeCreated(node, key);
                 final TestHooks hooks = testHooks;
@@ -837,6 +852,16 @@ public class Db {
         x.increaseNextVpos();
     }
     
+    /**
+     * The audit (bergdb item 001, WP J1; test-only, Audit.EVERY > 0): at startup, and after
+     * every Audit.EVERY-th transaction. The caller holds writeLock, between transactions.
+     */
+    private void audit(boolean always) {
+        if (!always && --auditCountdown > 0) return;
+        auditCountdown = Audit.EVERY;
+        Audit.record(Audit.check(this), always ? "startup" : "transaction");
+    }
+
     /**
      * Makes a node that a put created the canonical object of its node, in the node
      * table (docs/levels.md, level 2).
@@ -1424,6 +1449,8 @@ public class Db {
             }
             
             x.end();
+            
+            if (Audit.EVERY > 0) audit(false);
 
             // The synch statement guarantees that the writes are visible to all readers 
             // assuming they also do [synchronized(readSync) {}] before they start reading.
@@ -1464,6 +1491,14 @@ public class Db {
         
         nodeStream.appendNodes(x.transNodes, x.trans, x.transInfo.gotDirtyNodes, top);
         newestWrittenTop = top;
+        
+        // The resident registry (bergdb item 001, WP J1): a written index object is counted
+        // with its size now; the audit's oracle learns the record's positions.
+        Iterator<Node> written = x.transNodes.indexNodeIterator();
+        while (written.hasNext()) {
+            cache.residents().grown(written.next());
+        }
+        if (oracle != null) oracle.appended(x.transNodes);
 
         reclaim.recordWritten(x.trans, x.transNodes);       // Statistics, if on.
         
@@ -1742,6 +1777,9 @@ public class Db {
         public Aux aux() { return aux; }
         
         public Cache3 cache() { return cache; }
+        
+        /** The audit's oracle, or null if the audit is off; see Audit. */
+        public Audit.Oracle oracle() { return oracle; }
         
         public Reclaim reclaim() { return reclaim; }
 

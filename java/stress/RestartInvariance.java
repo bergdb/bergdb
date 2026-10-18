@@ -608,5 +608,6 @@ public class RestartInvariance {
 
     public static void main(String[] args) {
         new RestartInvariance(Long.parseLong(args[0])).compare();
+        if (Audit.EVERY > 0) System.out.println(Audit.summary());   // -Daudit=N (WP J1)
     }
 }

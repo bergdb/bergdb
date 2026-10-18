@@ -330,6 +330,8 @@ public class NodeCollection implements PointerFollower {
         if (!isMaintenance && op.cachePolicy.shouldCache(result)) {
             if (result.isCanonical()) {
                 cache.pointerCreated(predecessor, pointerIndex, result);
+            } else if (!usable) {
+                cache.residents().added(result);     // a version read, now a snapshot in a slot
             }
             predecessor.setPointer(pointerIndex, result, op.accessData);
         }

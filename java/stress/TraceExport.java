@@ -1124,5 +1124,6 @@ public class TraceExport {
         System.out.println("TraceExport seed=" + x.seed + " n=" + x.n + rc + ": " + x.nodes.size()
                 + " nodes, " + x.errors.size() + " errors, " + probeFails + " probe failures; "
                 + args[1]);
+        if (Audit.EVERY > 0) System.out.println(Audit.summary());   // -Daudit=N (WP J1)
     }
 }

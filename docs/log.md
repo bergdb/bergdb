@@ -630,3 +630,10 @@ K3's conditions for an automatic pass hold, so K3 passed (by the agent, on
 Frans's go of 2026-10-17 19:59), with the recommended option: `level3.sh`
 checks conformance with reclaim (its step 8, `conformance.sh reclaim`).
 The outcome for Level 3: `level3-alignment.md`, sections 7 and 8.
+
+2026-10-18. Bergdb item 001, WP J1: Java knows what it holds in memory and
+what it must keep (`core/Residents.java`: the resident objects and their
+bytes; the pins), and a test-only audit checks the model's invariants on
+its state (`core/Audit.java`: INV-CAN, the pins, INV-SLOT against an oracle
+of latest positions). The audit found that the node table could name a
+snapshot (a split's copied slot); fixed. No record changes.

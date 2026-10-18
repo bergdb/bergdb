@@ -167,11 +167,8 @@ Current state
   Frans: Option K under TREE, A6' and A-COPY; above); K3 passed (by the agent,
   2026-10-18 05:31; above). K4 and K5 open; the agent passes them itself
   when their conditions are met (Frans, 2026-10-17 19:59; above).
-* Next: stage 4, J1 to J10, prepared meanwhile in scratch copies of `java/`
-  (the entry of 00:35), committed one WP at a time after K3. R3, R4
-  (T8 and T9), R5 (T12, also with eviction, 2026-10-17 22:56), R7 and R8 are
-  done; R6 is partial: T-SCHEME checked, not proved (the plan's fallback,
-  2026-10-18 00:02).
+* Next: J2 to J10, prepared in scratch copies of `java/` (the entry of
+  00:35), committed one WP at a time; then K4, P4 and F1 to F3.
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): T9 is proved with
   the stronger `CutOK` part 2 (R4, 2026-10-17, before R6's proof, since T9
   assumes `CutOK` only); R6 proves that Java's scheme gives it, and R5's
@@ -231,7 +228,7 @@ Status
 | R7 | The red list on Java's reclaim | done | 2026-10-17 |
 | R8 | Java: the corrections the model requires, before eviction | done (the performance comparison: no regression) | 2026-10-17 |
 | R9 | Level 3 conformance; the gate proposal | done; K3 passed | 2026-10-18 |
-| J1 | Registry, pins and audits | not started | — |
+| J1 | Registry, pins and audits | done | 2026-10-18 |
 | J2 | Eviction of values | not started | — |
 | J3 | Eviction of index nodes | not started | — |
 | J4 | Eviction invariance; conformance with eviction | not started | — |
@@ -3466,3 +3463,70 @@ the medium set's checks, 6.5 hours of machine time (22 CPU-hours, six
 traces at once).
 
 Open, next: stage 4, J1 (prepared beside R9's runs; its commit follows).
+
+### 2026-10-17 23:27 to 2026-10-18 05:31. WP J1, done: the registry, the pins, the accounting and the audit
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `4151a80`. Work in
+a scratch copy of `java/` (from `5b1abdd`'s `java/src/`, R8's last change),
+beside R9's runs, tested there and copied in; nothing of it was committed
+before R9 and K3.
+
+Did (`docs/level4-alignment.md`, 7.1):
+
+1. The resident registry (`core/Residents.java`, one per node table,
+   `Cache3.residents()`): the resident objects, found by a walk through memory
+   slots from the super root, the node table and D (`Residents.walk`), and
+   their bytes by `Node.getMemSize()` (M40): canonical objects, snapshots and
+   values counted apart, advanced when an object becomes resident (a new
+   node, a version read, an object of startup), when a snapshot becomes
+   canonical, and when a canonical object grows (it is written); a field
+   `countedMemSize` in `KeyNode` and `TopNode` keeps the size an object was
+   counted with. Between the moments it is exact the estimate is an upper
+   bound.
+2. The pins (`Residents.isPinned`, the model's `Mem.pinned`): the super root,
+   and the canonical objects of D and of the record being written.
+3. The node table names canonical objects only: `Cache3.pointerCreated`
+   entered a snapshot that a split's copied slot named, when the table had
+   no object for the node; the audit found it (M26). No record changes (a
+   current node's slot names its latest version).
+4. The audit (`core/Audit.java`, test-only; the system property `audit=N`:
+   every N-th transaction and at every startup; off by default, and in the
+   gates until J9): the resident objects; INV-CAN (one canonical object per
+   node id, the table's; the table names canonical objects only); the pins;
+   INV-SLOT for every resident canonical object of a node current or in D,
+   against an oracle of latest positions that `Db` keeps in this mode from
+   the records it appends and the startup section (`Audit.Oracle`).
+5. The audit's summary line (`AUDIT: ...`) in `RestartInvariance`,
+   `ReclaimStress`, `CrashTest` and `TraceExport` when it is on.
+
+Checks:
+
+* The audit on the configurations of 8.4 without eviction (scratch
+  `j1/audit-campaign.sh`, from 2026-10-17 23:50, on the build before the
+  accounting's last refactoring): RestartInvariance on the 10 configurations
+  of `level2.sh` and `level3.sh` (with reclaim), ReclaimStress (200 random
+  configurations), CrashTest (10 runs, with and without reclaim): 24 runs,
+  1,233,186 audits, none failed, 698,778,215 slots checked; TraceExport on
+  `conformance.sh`'s sets with the audit: small (60 traces, 15,880 audits,
+  666,187 slots, every trace TRACECHECK OK), medium (9 traces, 738 audits,
+  420,065 slots, TRACECHECK OK), large (12 traces, 1,472 audits, 1,553,662
+  slots; the last four exported apart, on the final build, beside the
+  campaign's checker runs on the large set); the reclaim sets of R2 (31
+  traces, 35,004 audits, 12,190,617 slots, on the final build, 02:52 to
+  02:55). No audit failed. The final build also: RestartInvariance (node
+  size 8, a restart after every 100 transactions) with the audit after
+  every transaction: 4,021 audits, none failed; the accounting at the last
+  audit 550,921 bytes estimated, 535,995 walked. The reclaim traces are R9's,
+  but for where the PHYSCUT lines fall (when a decided cut is made depends
+  on the storage threads' timing).
+* The gates on the final tree, full (2026-10-18 00:47 to 01:12): `LEVEL 1 OK`
+  (118 s), `LEVEL 2 OK` (750 s), `LEVEL 3 OK` (563 s); unit tests 920.
+* StreamDigest: 36 of 36 digests the same as R8's (`r8-c4.txt`): no record
+  changes.
+
+Register: M25 (not used for eviction: the registry instead), M26 (the table
+names canonical objects only; J3 makes it hold resident objects only), M40
+(the accounting; J7 the controller).
+
+Time: J1 is M (2 to 8 hours): about an hour and a half of work (23:27 to
+00:12, and the documents), and the campaign's machine time.
