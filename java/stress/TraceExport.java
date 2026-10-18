@@ -12,6 +12,7 @@ import bergdb.dag.Keys;
 import bergdb.dag.Klong;
 import bergdb.dag.KlongWithPointer;
 import bergdb.dag.Node;
+import bergdb.dag.Pointer;
 import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
@@ -51,6 +52,10 @@ import bergdb.stream.MemoryStream;
  *   live=1     LIVE lines: Java's own live children, for each node, at each of its times
  *   retain=S   reclaim on, with a retain duration of S seconds, as RestartInvariance's option
  *              (default 0: off); transactions are then 0.01 to 0.2 s apart
+ *   rune=S     run E: run A's workload with the eviction schedule S (values, every or random;
+ *              Eviction; default: no run E); slotevery=N: SLOT lines after every N-th
+ *              transaction (default 1); evictseed=N: the random schedule's seed (default: the
+ *              seed)
  *
  * With reclaim (bergdb item 001, WP R2; docs/level3-alignment.md, 2.7) every executed
  * transaction is a record, reclaim's steps and table stores too: run A records each through
@@ -59,6 +64,17 @@ import bergdb.stream.MemoryStream;
  * and each move of the stream's first position (PHYSCUT; plan 001-01, 8.2). The stream is a
  * CutStream, which refuses every read below the cut. Run B also restarts right after each cut,
  * looks up from the first available time on, and compares the streams from the cut.
+ *
+ * Run E (rune=S; bergdb item 001, WP J4; plan 001-01, 8.2) executes run A's workload with a
+ * forced eviction schedule (Eviction), compares its stream with run A's (a PROBE line on the
+ * last record), and records at the end of each user transaction's call, in its last record,
+ * a SLOT line for every slot of every resident canonical index object (the node table's):
+ * the object's node, the pointee, the record the slot serializes, as the writer would write
+ * it (NodeCollection.resolvePointers: a memory slot its object's position, a stream slot the
+ * version it names after Rule R; - for a vpos), and the slot's kind: canon (a memory slot to
+ * the pointee's canonical object), mem (to another object, or to a value), stream, or dead (a
+ * stream slot below the stream's first position, M33). The checker's C-P compares them with
+ * the model's INV-SLOT. Runs A and B run without eviction, whatever the property evict says.
  */
 public class TraceExport {
     final long seed;
@@ -77,6 +93,8 @@ public class TraceExport {
     final int probe = Integer.getInteger("probe", 0);
     final boolean live = "1".equals(System.getProperty("live"));
     final int retain = Integer.getInteger("retain", 0);
+    final String runE = System.getProperty("rune", "");
+    final int slotEvery = Integer.getInteger("slotevery", 1);
     final long timeScale = retain > 0 ? bergdb.pub.util.Clock.UNITS_PER_SEC / 100 : 1;
 
     // The workload: per transaction, keys and values (null value: delete).
@@ -145,7 +163,13 @@ public class TraceExport {
     }
 
     Db start(AppendOnlyStream stream, CoreTestClock clock) {
-        DbBuilder b = Db.builder().testSetup(stream).clock(clock).startupDistance(startupDistance);
+        return start(stream, clock, Eviction.Schedule.NONE);
+    }
+
+    /** With an eviction schedule (run E; the random schedule's seed: evictseed, else seed). */
+    Db start(AppendOnlyStream stream, CoreTestClock clock, Eviction.Schedule schedule) {
+        DbBuilder b = Db.builder().testSetup(stream).clock(clock).startupDistance(startupDistance)
+                .evictionSchedule(schedule, Long.getLong("evictseed", seed));
         if (maxNode == 8) b.maxNodeSize8();
         if (maxNode == 14) b.maxNodeSize14();
         if (maxNode == 30) b.maxNodeSize30();
@@ -218,6 +242,8 @@ public class TraceExport {
         List<String> probes = new ArrayList<String>();
         /** Run B: the first touches after the restart after this record, until the next. */
         List<String> firsts = new ArrayList<String>();
+        /** Run E: the slots of the resident canonical objects after this record (SLOT). */
+        List<String> slots = new ArrayList<String>();
         long transSeqSum;
         int puts, deletes;
         /** With reclaim: user, step or table; a step's touch; FA, CUT and PHYSCUT lines. */
@@ -877,6 +903,102 @@ public class TraceExport {
                 : " fail streams differ at byte " + diff));
     }
 
+    // ======== Run E: eviction (bergdb item 001, WP J4) ========
+
+    int slotLines = 0;
+    String evictionSummary = "";
+
+    /** Run E: run A's workload with the eviction schedule runE; SLOT lines; compares the
+     *  stream with run A's. */
+    void runE(AppendOnlyStream streamA) {
+        Eviction.Schedule schedule = Eviction.Schedule.valueOf(runE.toUpperCase());
+        AppendOnlyStream stream = newStream();
+        CoreTestClock clock = new CoreTestClock();
+        clock.setTime(1);
+        Db db = start(stream, clock, schedule);
+        for (int i = 0; i < n; i++) {
+            clock.setTime(times[i]);
+            Trans.Builder b = db.trans();
+            String[] ks = wkeys.get(i);
+            byte[][] vs = wvalues.get(i);
+            for (int j = 0; j < ks.length; j++) {
+                if (vs[j] == null) b.delete(ks[j]);
+                else b.put(ks[j], vs[j]);
+            }
+            Trans t = b.build();
+            db.execute(t);
+            Rec recU = recs.get(userRec[i]);
+            Rec recA = recs.get(userLast[i]);
+            if (t.tpos != recU.tpos) {
+                recA.probes.add("PROBE " + recA.index + " fail run E wrote R(" + recU.index + ") at "
+                        + t.tpos + ", run A at " + recU.tpos);
+            }
+            if ((i + 1) % slotEvery == 0 || i + 1 == n) {
+                List<String> lines = slots(db, recA);
+                recA.slots.addAll(lines);
+                slotLines += lines.size();
+            }
+        }
+        db.sync(SyncLevel.STRONG);
+        evictionSummary = db.internal().eviction().summary();
+        long diff = firstDiff(streamA, stream);
+        Rec last = recs.get(recs.size() - 1);
+        last.probes.add("PROBE " + last.index + (diff < 0 ? " ok run E (" + runE + "): streams identical"
+                : " fail run E (" + runE + "): streams differ at byte " + diff));
+    }
+
+    /** The SLOT lines of run E's state now, between transactions, after record rec. */
+    List<String> slots(Db db, Rec rec) {
+        Db.Internal in = db.internal();
+        Cache3 table = in.cache();
+        NodeCollection nc = in.nodeCollection();
+        long firstPos = in.nodeStream().getFirstPos();
+        List<String> lines = new ArrayList<String>();
+        for (Node x : table.nodes()) {
+            if (!x.isIndexNode() || !x.isCanonical()) continue;
+            int size = x.getSize();
+            for (int i = 0; i < size; i++) {
+                Node c = x.getPointerNode(i);
+                long pos = x.getPointerPos(i);
+                if (Pointer.isNull(c, pos)) continue;
+                String context = "SLOT of node " + mid(x.getId()) + " after R(" + rec.index + ")";
+                long y;
+                long ref;
+                String kind;
+                if (c != null) {
+                    y = mid(c.getId());
+                    ref = c.getSpos();
+                    kind = c.isIndexNode() && c.isCanonical() && table.getNode(c.getId()) == c
+                            ? "canon" : "mem";
+                } else if (Spos.isVpos(pos)) {
+                    y = mid(pos);
+                    ref = pos;
+                    kind = "stream";
+                } else {
+                    long[] v = verByPos.get(pos);
+                    if (v == null) {
+                        error("stream position " + pos + " is not the start of a known version ("
+                                + context + ")");
+                        continue;
+                    }
+                    y = v[1];
+                    ref = pos;
+                    if (pos < firstPos) {
+                        kind = "dead";
+                    } else {
+                        kind = "stream";
+                        Long newPos = nc.newestInSection(y - 1);
+                        if (newPos != null && newPos > ref) ref = newPos;
+                    }
+                }
+                String r = Spos.isVpos(ref) || !Spos.isValid(ref) ? "-" : recordOfPos(ref, context);
+                lines.add("SLOT " + mid(x.getId()) + " " + y + " " + r + " " + kind);
+            }
+        }
+        Collections.sort(lines);
+        return lines;
+    }
+
     /** The first position at which two streams differ, from the later first position of the
      *  two (after a cut by reclaim); -1 if they are the same. As RestartInvariance.firstDiff. */
     static long firstDiff(AppendOnlyStream s1, AppendOnlyStream s2) {
@@ -1089,6 +1211,7 @@ public class TraceExport {
             for (String s : rec.live) out.println(s);
             for (String s : rec.probes) out.println(s);
             for (String s : rec.firsts) out.println(s);
+            for (String s : rec.slots) out.println(s);
             out.println("END " + rec.index);
         }
         out.println("DONE " + (recs.size() - 1));
@@ -1103,6 +1226,7 @@ public class TraceExport {
         TraceExport x = new TraceExport(Long.parseLong(args[0]));
         AppendOnlyStream a = x.runA();
         if (x.probe > 0) x.runB(a);
+        if (!x.runE.isEmpty()) x.runE(a);
         x.write(args[1]);
         int probeFails = 0;
         for (Rec r : x.recs) for (String s : r.probes) if (s.contains(" fail ")) probeFails++;
@@ -1121,9 +1245,11 @@ public class TraceExport {
                     + " table stores; " + cuts + " cuts decided, " + phys + " physical; "
                     + x.refsBelowCut + " references to versions before a cut)";
         }
-        System.out.println("TraceExport seed=" + x.seed + " n=" + x.n + rc + ": " + x.nodes.size()
-                + " nodes, " + x.errors.size() + " errors, " + probeFails + " probe failures; "
-                + args[1]);
+        String re = x.runE.isEmpty() ? "" : " (run E: " + x.slotLines + " SLOT lines, "
+                + x.evictionSummary + ")";
+        System.out.println("TraceExport seed=" + x.seed + " n=" + x.n + rc + re + ": "
+                + x.nodes.size() + " nodes, " + x.errors.size() + " errors, " + probeFails
+                + " probe failures; " + args[1]);
         if (Audit.EVERY > 0) System.out.println(Audit.summary());   // -Daudit=N (WP J1)
     }
 }

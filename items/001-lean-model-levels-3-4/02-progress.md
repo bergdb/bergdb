@@ -167,7 +167,7 @@ Current state
   Frans: Option K under TREE, A6' and A-COPY; above); K3 passed (by the agent,
   2026-10-18 05:31; above). K4 and K5 open; the agent passes them itself
   when their conditions are met (Frans, 2026-10-17 19:59; above).
-* Next: J4 to J10, prepared in scratch copies of `java/` (the entry of
+* Next: J5 to J10, prepared in scratch copies of `java/` (the entry of
   00:35), committed one WP at a time; then K4, P4 and F1 to F3.
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): T9 is proved with
   the stronger `CutOK` part 2 (R4, 2026-10-17, before R6's proof, since T9
@@ -231,7 +231,7 @@ Status
 | J1 | Registry, pins and audits | done | 2026-10-18 |
 | J2 | Eviction of values | done | 2026-10-18 |
 | J3 | Eviction of index nodes | done | 2026-10-18 |
-| J4 | Eviction invariance; conformance with eviction | not started | — |
+| J4 | Eviction invariance; conformance with eviction | done | 2026-10-18 |
 | J5 | Readers under eviction | not started | — |
 | J6 | Reclaim under eviction | not started | — |
 | J7 | The capacity controller | not started | — |
@@ -3602,3 +3602,50 @@ the flag; the writer promotes a reloaded node): closed.
 
 Time: J2 is M and J3 L; together about two hours and a half of work (00:02
 to 01:55 with the campaign, and the documents).
+
+### 2026-10-18 00:38 to 05:33. WP J4, done: conformance with eviction
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `3e16a4b`. Work in
+scratch copies of `java/` and `lean/`, tested there and copied in.
+
+Did (`docs/level4-alignment.md`, 7.3):
+
+1. `java/stress/TraceExport.java`, run E (`rune=values|every|random`): run
+   A's workload with a forced eviction schedule (the random one seeded by the
+   trace's seed); its stream against run A's (a PROBE line, C-R); SLOT lines
+   at the end of every user transaction's call (`slotevery=N`): for every
+   slot of every resident canonical index object, the record the slot
+   serializes as the writer would write it, and the slot's kind (canon, mem,
+   stream, dead). Runs A and B always without eviction.
+2. The checker (`lean/Check/Trace.lean`, `Check/Steps.lean`, `TraceCheck.lean`;
+   not the trusted part): reads SLOT lines; C-P (`slotFailures`), INV-SLOT on
+   Java's physical states as the model's `invSlotB` states it: for objects of
+   nodes current at i or in D, a pointee not in D named by its latest
+   version, a pointee in D by a memory slot to its canonical object or from
+   a node of D that got dirty no later, a slot for every pointee. Test traces
+   `slot.trace` and `badslot.trace`.
+3. `conformance.sh evict`: eight configurations from the small, medium and
+   reclaim sets with run E (random in six, every and values), three seeds by
+   default; a trace without SLOT lines fails.
+4. `docs/level2-alignment.md`, 9.2: the SLOT lines.
+
+Checks: `conformance.sh evict 10` (01:15 to 01:18): 80 traces, CONFORMANCE
+OK, every trace TRACECHECK OK; C-P: 0 of 19,641 transactions fail, 1,009,344
+SLOT lines, 784,821 checked (of objects current or in D); C-L: 0 of 340,901
+FIRST lines; C-R: no failed probe (run E's streams identical). Mutations of a
+Java trace (a slot changed to an old record; a SLOT line taken out) fail C-P.
+EvictionInvariance on every configuration: J3's campaign (above). The Lean
+checks (02:15 to 02:40, on a copy of the tree's `lean/`): `lake build` without
+warnings, `sistest 20 40`, `phystest 20 40`, `reclaimtest 20 30` pass (602,
+830 and 58 s), the axioms of the README's
+theorems and of the checker's are Lean's standard ones, no `sorry`,
+`admit`, `axiom` or `unsafe` in SIS/ and Check/, `sh test-traces/run.sh`:
+TRACE TESTS OK. The gates on the final tree, full (02:07 to 02:41, under load): `LEVEL 1 OK`
+(141 s), `LEVEL 2 OK` (1,092 s), `LEVEL 3 OK` (735 s); unit tests 928.
+StreamDigest: 36 of 36 the same as R8's in a second run; the first had one
+difference, in the position of the physical cut only (`l3-node14 reads`,
+`firstPos` 1,000,000 against 0, the records from the first available
+position the same): when a decided cut is made depends on the storage
+threads' timing, here under load.
+
+Time: J4 is M: about an hour (00:38 to 01:18, and the documents).

@@ -1,0 +1,45 @@
+# The example with run E's slots (SLOT lines, bergdb item 001, WP J4). Expected: C-P
+# passes, TRACECHECK OK.
+TRACE 2
+CONFIG example
+TX 0
+NEW 0 9 I
+NEW 3 8 I
+NEW 5 1 I
+ADD 0 0 T 3
+ADD 3 0 R 5
+REC 0 0 0 field
+VER 3 I
+H 0 R 5
+F 5 0
+VER 5 I
+DIRTY
+END 0
+TX 1
+NEW 7 0 D
+ADD 7 1 V 123
+ADD 5 1 K 40 7
+REC 1 0 0 field
+VER 7 D
+H 1 V 123
+GD 3 5
+DIRTY 3 1 5 1
+LIVE 5 1 7
+LIVE 0 1 3
+SLOT 3 5 0 canon
+SLOT 5 7 1 mem
+END 1
+TX 2
+REC 2 1 2 field
+VER 3 I
+H 0 R 5
+F 5 2
+VER 5 I
+H 1 K 40 7
+F 7 1
+GD
+DIRTY
+SLOT 3 5 2 canon
+SLOT 5 7 1 stream
+END 2
+DONE 2

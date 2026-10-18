@@ -10,7 +10,7 @@ Status, 2026-10-18: the scope (section 1), a first α for the cache (section
 2) and the register (section 3), checked against the code (A2); the probes
 of A4 and the A-COPY checks (section 4); the design of E1, and what E2 to
 E6 ran and proved (section 5); what Java must do (E7, section 6); Level 4 in
-Java (section 7: J1 to J3). To come: J4 to J10, and the outcome (F2).
+Java (section 7: J1 to J4). To come: J5 to J10, and the outcome (F2).
 
 Level 4 is eviction: data and index larger than memory, under a memory
 budget, with readers, reclaim, crashes and restarts. The plan of item 001
@@ -996,7 +996,7 @@ references (5.7). R8 makes them one at a time.
 | 7 | A registry of resident objects, and the pins: D's canonical objects (`TransSeq`), the record being written (`TransNodes`, whose dirty flags `clean` (131) clears before the record is appended, so "not dirty" is not "written"), the super root, the objects of an operation in progress. Everything else may be evicted (T-PIN) | `Mem.pinned`, `TP_pins` | M25, M26 | J1 (done, 7.1) | The audit (J1): every pinned object resident and canonical, one canonical object per node id, INV-SLOT against a test-only oracle of latest positions, on every configuration of 8.4 |
 | 8 | Unswizzle: under the slot's lock, after rechecking that the target is clean, unpinned and written, a memory slot becomes a stream slot naming the target's position | `Mem.unswizzle`, `Mem.detachable` | M23, M24 (Q8) | J2 (values), J3 (index nodes): done, 7.2 | `EvictionInvariance`: the same stream with the schedules none, every and random; the audit |
 | 9 | Release: the object leaves the registry; the node table's entry goes if it names the object, and its canonical flag is cleared (a reader may still hold it); the writer's follower makes a reloaded node canonical again. The node table then holds resident objects only (T-INDEX) | `Mem.release`, `Mem.promote` | M26, M31 | J3 (done, 7.2) | As 8, and J3's tests |
-| 10 | Copies of slots (splits; `TopDs.newSuperRoot`, 42): no change. A-COPY holds on every Java run checked (section 4), and a copied stream slot serializes what its source did (5.4). Top node skip slots keep their cached times when unswizzled | `Mem.newSlot4`, `CopyStep` | M29, M43 | J3 (check only; done, 7.2) | C-P on Java's physical states (J4); `A2A3Check2`'s A-COPY count |
+| 10 | Copies of slots (splits; `TopDs.newSuperRoot`, 42): no change. A-COPY holds on every Java run checked (section 4), and a copied stream slot serializes what its source did (5.4). Top node skip slots keep their cached times when unswizzled | `Mem.newSlot4`, `CopyStep` | M29, M43 | J3 (check only; done, 7.2) | C-P on Java's physical states (J4: done, 7.3); `A2A3Check2`'s A-COPY count |
 | 11 | Readers under eviction: the protocol of Q8 | — (sequential) | M39 | J5 | Interleaving tests; `ReclaimReaders` with a forced schedule |
 | 12 | Memory accounting, the access clock, the capacity controller; the cache size computed in `long` | — | M40, M45 | J1, J7 | J7's tests; a unit test for M45 |
 
@@ -1198,3 +1198,53 @@ every transaction (every fifth or tenth in the larger configurations): 42
 runs, 1,211,792 audits, none failed, 196,316,352 slots checked. The gates on
 the final code: `LEVEL 1 OK`, `LEVEL 2 OK`, `LEVEL 3 OK` (unit tests 928),
 and the byte comparison: 36 of 36 digests the same as R8's.
+
+### 7.3 J4: conformance with eviction
+
+**J4** (bergdb item 001, 2026-10-18): Java's runs with eviction checked
+against the model, as Level 2's are (level2-alignment.md, section 9), and
+the physical state too:
+
+* **Run E** (`java/stress/TraceExport.java`, `rune=S` with S `values`,
+  `every` or `random`): run A's workload with a forced eviction schedule
+  (the random one seeded by the trace's seed, or `evictseed`). Its stream
+  must be run A's byte for byte, from the cut with reclaim (a `PROBE` line on
+  the last record, so C-R checks it), and so its records are the model's,
+  by C-S on run A's. Runs A and B run without eviction, whatever the
+  property `evict` says.
+* **SLOT lines** (the plan's 8.2; level2-alignment.md, 9.2): at the end of
+  each user transaction's call (`slotevery=N`: every N-th), for every slot
+  of every resident canonical index object, the node table's: the object's
+  node, the pointee, the record the slot serializes as the writer would
+  write it (`NodeCollection.resolvePointers`: a memory slot its object's
+  position, a stream slot the version it names after Rule R; `-` for a
+  vpos), and the slot's kind: `canon` (a memory slot to the pointee's
+  canonical object), `mem` (to another object, or to a value), `stream`, or
+  `dead` (a stream slot below the stream's first position, M33).
+* **C-P** (`lean/Check/Steps.lean`, `slotFailures`; not part of the trusted
+  part): INV-SLOT on Java's physical states, as the model's `invSlotB`
+  (`lean/SIS/EvictExample.lean`) states it and `TC_records` proves it for
+  the model (5.11). For an object of a written node that is current at i or
+  in D: its slot for a pointee not in D names the pointee's latest version,
+  the model's lv from the records; its slot for a pointee in D is a memory
+  slot to the pointee's canonical object, or the object's node is in D and
+  got dirty no later; a dead slot is not checked; and the object has a slot
+  for every pointee of its node's history. Objects that are not resident
+  have nothing to check, and a canonical object of a node that is neither
+  current nor in D may hold stale slots, as in the model. Test traces
+  `slot.trace` (C-P passes) and `badslot.trace` (a slot that names an old
+  version: C-P fails); on Java traces, a slot changed to an old record and a
+  slot line taken out both fail C-P.
+* **The eviction set** (`conformance.sh evict`): eight configurations from
+  the small, medium and reclaim sets, with run E (`random` in six, `every`
+  and `values` in one each), three seeds each by default, with every check
+  of the checker (C-S, C-R with run E's probe, C-L, C-CUT with reclaim,
+  C-P); a trace without SLOT lines fails the set.
+
+The eviction set with ten seeds (2026-10-18 01:15 to 01:18; `conformance.sh
+evict 10`): 80 traces, every one TRACECHECK OK: C-P, 0 of 19,641
+transactions fail, 1,009,344 SLOT lines, 784,821 of them checked (of
+objects current or in D); C-S, C-A and the diagnostics without a failure;
+C-L, 0 of 340,901 FIRST lines; C-R, no failed probe (run E's streams the
+same as run A's); `CONFORMANCE OK`. EvictionInvariance on every
+configuration of 8.4: J3's campaign (7.2).

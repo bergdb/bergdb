@@ -424,6 +424,41 @@ def firstFailures (sp : Spec BVal Nat) (S : Stream BVal Nat) (i s : Nat) (f : TF
     else [s!"node {x}: unknown kind {f.kind}"]
   nFails ++ kFails
 
+/-- C-P, INV-SLOT on Java's physical states (bergdb item 001, WP J4; the
+model's `invSlotB` in SIS/EvictExample.lean, proved in `TC_records`): the SLOT
+lines of T(i), run E's resident canonical objects at the end of T(i). For an
+object of a written node that is current at i (`now`) or in D: its slot for a
+pointee not in D names the pointee's latest version (`lvRec`); its slot for a
+pointee in D is a memory slot to the pointee's canonical object, or the
+object's node is in D with an index at most the pointee's (it is written no
+later); a dead slot (below the stream's first position, M33) is not checked.
+And it has a slot for every pointee of its node's history in P. Also the
+number of slots checked. -/
+def slotFailures (sp : Spec BVal Nat) (P : Struct BVal) (now : Std.HashSet NodeId) (D : Dirty)
+    (lvRec : NodeId → Option Nat) (ss : List TSlot) : List String × Nat :=
+  let dOf : Std.HashMap NodeId Nat := D.foldl (fun m e => m.insert e.1 e.2) {}
+  let checked := ss.filter (fun s => written sp s.node && (now.contains s.node || dOf.contains s.node))
+  let showR := fun (o : Option Nat) => match o with
+    | some r => s!"R({r})"
+    | none => "a vpos"
+  let bad := checked.filterMap (fun s =>
+    if s.kind == "dead" then none
+    else if !dOf.contains s.pointee then
+      if s.ser == lvRec s.pointee then none
+      else some s!"the slot of {s.node} for {s.pointee} names {showR s.ser}, its latest version is {showR (lvRec s.pointee)}"
+    else if s.kind == "canon" then none
+    else match dOf.get? s.node, dOf.get? s.pointee with
+      | some a, some b => if a ≤ b then none
+        else some s!"the slot of {s.node} (in D at {a}) for {s.pointee} (in D at {b}) is not a memory slot to its canonical object"
+      | _, _ => some s!"the slot of {s.node} for {s.pointee}, in D, is not a memory slot to its canonical object, and {s.node} is not in D")
+  let pairs : Std.HashSet (NodeId × NodeId) := checked.foldl (fun m s => m.insert (s.node, s.pointee)) {}
+  let nodes := (checked.map (·.node)).eraseDups
+  let missing := nodes.flatMap (fun x => match P.get? x with
+    | some n => (pointees sp n.hist).filterMap (fun y =>
+        if pairs.contains (x, y) then none else some s!"the object of {x} has no slot for {y}")
+    | none => [s!"SLOT lines for {x}, which is not a node of P"])
+  (bad ++ missing, (checked.filter (·.kind != "dead")).length)
+
 /-- C-L4, a diagnostic (bergdb item 001, WP R8, change 3): a first touch follows
 the Level 4 loader (`Mem.follow4`, `SIS/Evict.lean`): the node table's canonical
 object, or exactly the version that the pointer names after Rule R, read and not

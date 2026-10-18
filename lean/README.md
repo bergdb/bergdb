@@ -244,7 +244,11 @@ Not trusted, tests only:
   fails). Since R8's change 3, the
   diagnostic C-L4: the FIRST lines against the Level 4 loader
   (`loader4Failures`: no snapshot from the node table; section 13.5 of
-  level2-alignment.md).
+  level2-alignment.md). Since J4, C-P: INV-SLOT on Java's physical states,
+  the SLOT lines of the exporter's run E, which runs with a forced eviction
+  schedule (`slotFailures`, after the model's `invSlotB`; test traces
+  `slot.trace` and `badslot.trace`;
+  [../docs/level4-alignment.md](../docs/level4-alignment.md), section 7.3).
 * Check/Fast.lean and Check/R4.lean, the checker's fast paths (bergdb item
   001, WP C2). `markOf`, `writeAll`, `reachList` and `step` have fast
   versions, proven equal to them and marked `@[csimp]` (`markOf_eq_fast`,

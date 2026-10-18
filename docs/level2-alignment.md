@@ -652,6 +652,24 @@ each call that decided a cut, and looks up only from the first available time
 on; its `PROBE` lines are in the block of the last record of the call (the
 user record without reclaim).
 
+With eviction (the exporter's `rune=S`, since 2026-10-18, bergdb item 001,
+WP J4; level4-alignment.md, 7.3), run E executes run A's workload with a
+forced eviction schedule (S: values, every or random; from J7 also budget,
+the capacity controller), and format 2 also has:
+
+    SLOT x y r kind              in TX i, at the end of the call whose last
+                                 record is R(i): run E's resident canonical
+                                 object of node x has a slot for pointee y
+                                 that serializes record r (- for a vpos);
+                                 kind is canon (a memory slot to y's
+                                 canonical object), mem (to another object,
+                                 or to a value), stream, or dead (a stream
+                                 slot below the stream's first position)
+
+SLOT lines come after the FIRST lines of their transaction, sorted. Run E's
+`PROBE` line (its stream against run A's) is in the last record's block. The
+checker's C-P checks the SLOT lines against the model's INV-SLOT.
+
 FIRST lines come after the `PROBE` lines of their transaction. With `live=1`,
 the root's `LIVE` lines cover every time t ≤ i on each record, at the record's
 own time and at the last Java time before the next record (review-13-claude,

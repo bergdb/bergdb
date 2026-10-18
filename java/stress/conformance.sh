@@ -3,7 +3,7 @@
 # configurations, and checks each trace with the Lean checker (lean/, lake exe
 # tracecheck). Written 2026-10-15 for F1-008-11, WPs C3 and F1.
 #
-# Usage: java/stress/conformance.sh [small|medium|large|all|reclaim] [seeds]
+# Usage: java/stress/conformance.sh [small|medium|large|all|reclaim|evict] [seeds]
 #   small (default): the Lean tier on every transaction, in the target mode
 #   (marking, Java's still-dirty test, the virtual root) and, for the first
 #   three seeds of the first two configurations, in the unchanged model's mode
@@ -13,8 +13,13 @@
 #   (2026-10-17, bergdb item 001, K3): Level 3, the small reclaim set of
 #   reclaimtraces.sh, reclaim on, with the checker's reclaim checks (the touch,
 #   the steps on the cut stream, CutOK at every cut, the probes after restarts
-#   from the cut stream); a trace without a cut fails. seeds: per
-#   configuration (default 10 small, 3 medium, 2 large, 5 reclaim). The checker computes
+#   from the cut stream); a trace without a cut fails. evict (2026-10-18, bergdb
+#   item 001, WP J4): Level 4, configurations of the small, medium and reclaim
+#   sets with run E (TraceExport's rune: run A's workload with a forced eviction
+#   schedule), whose stream must be run A's, and whose slots (SLOT lines) the
+#   checker's C-P checks against the model's INV-SLOT; a trace without SLOT lines
+#   fails. seeds: per configuration (default 10 small, 3 medium, 2 large, 5
+#   reclaim, 3 evict). The checker computes
 #   the model's own definitions, with fast versions proven equal to them
 #   (lean/Check/Fast.lean, since bergdb item 001, WP C2).
 #
@@ -70,6 +75,20 @@ reclaim() {
     echo "r-long  -Dn=500 -Dkeys=100 -Dmaxnode=14 -Dsd=500 -Dops=4 -Dlong=1 -Ddel=25 -Dretain=2 -Dprobe=10"
     echo "r-big   -Dn=800 -Dkeys=200 -Dmaxnode=14 -Dsd=1000 -Dops=8 -Ddel=25 -Dretain=2 -Dprobe=10"
     echo "r-idle  -Dn=400 -Dkeys=50 -Dmaxnode=8 -Dsd=300 -Dops=2 -Dempty=20 -Dnodel=10 -Dretain=1 -Dprobe=10"
+}
+
+evict() {
+    # Run E with the random schedule (each slot to a detachable object with probability
+    # 0.3, seeded by the trace's seed), every and values; SLOT lines after every
+    # transaction (every fifth in e-m-mixed).
+    echo "e-mixed   -Dn=60 -Dkeys=20 -Dmaxnode=8 -Dsd=200 -Dops=4 -Ddel=25 -Dnodel=10 -Dempty=10 -Dprobe=1 -Drune=random"
+    echo "e-long    -Dn=60 -Dkeys=50 -Dmaxnode=14 -Dsd=500 -Dops=4 -Dlong=1 -Ddel=25 -Dprobe=10 -Drune=random"
+    echo "e-every   -Dn=60 -Dkeys=50 -Dmaxnode=8 -Dsd=500 -Dops=4 -Ddel=25 -Dprobe=10 -Drune=every"
+    echo "e-values  -Dn=60 -Dkeys=50 -Dmaxnode=8 -Dsd=500 -Dops=4 -Ddel=25 -Dprobe=10 -Drune=values"
+    echo "e-hot     -Dn=300 -Dkeys=1 -Dmaxnode=8 -Dsd=200 -Dops=1 -Dprobe=30 -Drune=random"
+    echo "e-m-mixed -Dn=500 -Dkeys=500 -Dmaxnode=8 -Dsd=2000 -Dops=4 -Ddel=20 -Dnodel=5 -Dempty=5 -Dprobe=50 -Drune=random -Dslotevery=5"
+    echo "e-r-small -Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=4 -Dretain=1 -Dprobe=10 -Drune=random"
+    echo "e-r-long  -Dn=500 -Dkeys=100 -Dmaxnode=14 -Dsd=500 -Dops=4 -Dlong=1 -Ddel=25 -Dretain=2 -Dprobe=10 -Drune=random"
 }
 
 large() {
@@ -142,6 +161,9 @@ summary() {
     if [ $1 = reclaim ]; then
         echo "   C-CUT: $(grep -h '^C-CUT cuts' $dir/*.check.txt | awk '{f+=$3; n+=$5} END {print f+0 " of " n+0}') CUT lines fail; traces without a cut: $(grep -L '^CUT ' $dir/*.trace | wc -l | tr -d ' ')"
     fi
+    if [ $1 = evict ]; then
+        echo "   C-P: $(grep -h '^C-P slots' $dir/*.check.txt | sed -E 's/.*: ([0-9]+) of ([0-9]+) transactions fail; ([0-9]+) SLOT lines, ([0-9]+) checked.*/\1 \2 \3 \4/' | awk '{f+=$1; t+=$2; n+=$3; c+=$4} END {print f+0 " of " t+0 " transactions fail; " n+0 " SLOT lines, " c+0 " checked"}'); traces without SLOT lines: $(grep -L '^SLOT ' $dir/*.trace | wc -l | tr -d ' ')"
+    fi
     echo "   C-L: $(grep -h '^C-L' $dir/*.check.txt | awk '{s+=$4} END {print s+0}') of $(grep -h '^C-L' $dir/*.check.txt | awk '{s+=$6} END {print s+0}') FIRST lines fail"
     echo "   C-R: $(grep -h '^C-R' $dir/*.check.txt | awk '{s+=$3} END {print s+0}') failed probes; kinds:"
     grep -h '^  PROBE' $dir/*.check.txt | sed -E 's/[0-9]+/N/g' | sort | uniq -c | sed 's/^/      /'
@@ -167,7 +189,8 @@ case $SET in
     all) run_set small ${2:-10}; summary small; run_set medium ${2:-3}; summary medium
         run_set large ${2:-2}; summary large ;;
     reclaim) run_set reclaim ${2:-5}; summary reclaim ;;
-    *) echo "usage: $0 [small|medium|large|all|reclaim] [seeds]"; exit 2 ;;
+    evict) run_set evict ${2:-3}; summary evict ;;
+    *) echo "usage: $0 [small|medium|large|all|reclaim|evict] [seeds]"; exit 2 ;;
 esac
 
 for set_name in $RAN; do
@@ -177,6 +200,10 @@ for set_name in $RAN; do
     fi
     if [ $set_name = reclaim ] && grep -L '^CUT ' build/traces/$set_name/*.trace | grep -q .; then
         echo "CONFORMANCE FAILED: a reclaim trace without a cut"
+        exit 1
+    fi
+    if [ $set_name = evict ] && grep -L '^SLOT ' build/traces/$set_name/*.trace | grep -q .; then
+        echo "CONFORMANCE FAILED: an eviction trace without SLOT lines"
         exit 1
     fi
 done

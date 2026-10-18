@@ -86,6 +86,19 @@ structure TFirst where
   cut : Bool
   deriving Inhabited
 
+/-- A slot of a resident canonical object of run E, at the end of the
+transaction (a SLOT line, trace format 2; bergdb item 001, WP J4): the object's
+node, the pointee, the record the slot serializes (none for a vpos), and the
+slot's kind: `canon` (a memory slot to the pointee's canonical object), `mem`
+(to another object, or to a value), `stream`, or `dead` (a stream slot below the
+stream's first position, M33). -/
+structure TSlot where
+  node : NodeId
+  pointee : NodeId
+  ser : Option Nat
+  kind : String
+  deriving Inhabited
+
 /-- One transaction of the trace: `TX i` to `END i`. -/
 structure TRec where
   idx : Nat
@@ -103,6 +116,8 @@ structure TRec where
   probes : Array (Nat × Bool × String) := #[]
   /-- The first touches after the restart after this transaction, up to the next. -/
   firsts : Array TFirst := #[]
+  /-- Run E's slots at the end of this transaction (bergdb item 001, WP J4). -/
+  slots : Array TSlot := #[]
   /-- With reclaim (trace format 2; bergdb item 001, WPs R2 and R7): the nodes
   T(i)'s touch visited (TOUCH), fa(i) when it changes (FA), a cut decided at
   R(i), as the first record kept and the first available time (CUT), and the
@@ -194,6 +209,12 @@ def parseLine (t : Trace) (n : Nat) (line : String) : Trace :=
       else modCur t (fun r =>
         { r with firsts := r.firsts.push (TFirst.mk x nn.toNat? rr.toNat? k (c == "1")) })
     | none => bad "bad FIRST"
+  | ["SLOT", x, y, rr, k] => match x.toNat?, y.toNat? with
+    | some x, some y =>
+      if (rr != "-" && rr.toNat?.isNone) || !(["canon", "mem", "stream", "dead"].contains k) then
+        bad "bad SLOT"
+      else modCur t (fun r => { r with slots := r.slots.push (TSlot.mk x y rr.toNat? k) })
+    | _, _ => bad "bad SLOT"
   | "GD" :: xs => match parseNats xs with
     | some xs => modCur t (fun r => { r with gd := xs })
     | none => bad "bad GD"

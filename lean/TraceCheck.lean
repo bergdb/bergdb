@@ -34,6 +34,13 @@ Checks, per transaction i (R(0) included):
        or below the decided one. Since WP R6, part 2 covers the versions that
        a physical read may follow (ReadsPhys; before, the diagnostic C-CUT+),
        but for the versions of D that Rule A put back
+  C-P  with run E's SLOT lines (bergdb item 001, WP J4): INV-SLOT on Java's
+       physical states (`slotFailures`; the model's `invSlotB`, which
+       `TC_records` proves): every slot of a resident canonical object of a
+       node current at i or in D names the pointee's latest version, or, for a
+       pointee in D, is a memory slot to its canonical object or belongs to a
+       node of D that got dirty no later; the object has a slot for every
+       pointee of its history
 With reclaim, also: C-A checks TouchOK (`StepOK.touchIndex`, `touchReach`,
 `touchUp`) for the TOUCH lines; C-S compares fa(i) (FA lines; the model clamps
 Java's value, `firstAvail`), and from a CUT on runs the model's step on the
@@ -119,6 +126,9 @@ def main (args : List String) : IO UInt32 := do
     let mut cs : Tally := {}
     let mut cv : Tally := {}
     let mut clt : Tally := {}
+    let mut cpt : Tally := {}
+    let mut slotCount := 0
+    let mut slotChecked := 0
     let mut diag : Tally := {}
     let mut ccut : Tally := {}
     let mut cutCount := 0
@@ -203,6 +213,12 @@ def main (args : List String) : IO UInt32 := do
             Sc := Sc.modify q Record.cut
           cutNow := cc
       | none => pure ()
+      -- C-P
+      let lvNow := lvMap
+      let (pf, pn) := slotFailures sp P' rlNowSet r.dirty (fun y => (lvNow.get? y).map (·.1)) r.slots.toList
+      slotCount := slotCount + r.slots.size
+      slotChecked := slotChecked + pn
+      cpt := cpt.add i (pf.map (fun m => ("slot", m)))
       match r.physcut with
       | some pc =>
         if cutNow < pc then
@@ -254,6 +270,9 @@ def main (args : List String) : IO UInt32 := do
     for e in clt.examples do IO.println s!"  {e}"
     IO.println s!"C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): {first4Fail} of {firstCount} FIRST lines take a snapshot from the node table"
     for e in first4Ex do IO.println s!"  {e}"
+    if slotCount > 0 || cpt.failing > 0 then
+      IO.println s!"C-P slots (INV-SLOT on run E's states): {cpt.failing} of {total} transactions fail; {slotCount} SLOT lines, {slotChecked} checked (of objects current or in D)"
+      for e in cpt.examples do IO.println s!"  {e}"
     IO.println s!"exporter errors: {t.errors.size}"
     for e in t.errors.toList.take 8 do IO.println s!"  {e}"
     if cutCount > 0 || ccut.failing > 0 then
@@ -264,6 +283,7 @@ def main (args : List String) : IO UInt32 := do
     let failed := (if ca.failing > 0 then ["C-A"] else []) ++ (if cs.failing > 0 then ["C-S"] else []) ++
       (if cv.failing > 0 then ["C-V"] else []) ++ (if probeFails.length > 0 then ["C-R"] else []) ++
       (if clt.failing > 0 then ["C-L"] else []) ++
+      (if cpt.failing > 0 then ["C-P"] else []) ++
       (if ccut.failing > 0 then ["C-CUT"] else []) ++
       (if t.errors.size > 0 then ["exporter"] else []) ++
       (if t.done != some (total - 1) then ["incomplete"] else [])

@@ -33,4 +33,8 @@ expect cut.trace "C-CUT cuts: 1 of 1 CUT lines (and PHYSCUT lines) fail (CUT-rea
 expect cut.trace "C-S steps: 0 of 3 transactions fail"
 expect stale.trace "C-CUT cuts: 1 of 1 CUT lines (and PHYSCUT lines) fail (CUT-stale 1)"
 expect physcut.trace "C-CUT cuts: 1 of 1 CUT lines (and PHYSCUT lines) fail (CUT-stale 1)"
+expect slot.trace "C-P slots .*: 0 of 3 transactions fail; 4 SLOT lines, 4 checked"
+expect slot.trace "TRACECHECK OK"
+expect badslot.trace "the slot of 3 for 5 names R(0), its latest version is R(2)"
+expect badslot.trace "TRACECHECK FAILED: C-P"
 [ $fail = 0 ] && echo "TRACE TESTS OK" || echo "TRACE TESTS FAILED"

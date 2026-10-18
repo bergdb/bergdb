@@ -644,3 +644,8 @@ object that is not pinned and has been written becomes a stream slot naming
 its position, and an object no resident slot names is released; a later
 read loads it again. With every schedule (none, values, every, random) the
 records are byte for byte those without eviction (`EvictionInvariance`).
+
+2026-10-18. Bergdb item 001, WP J4: conformance with eviction. The exporter's
+run E (a forced eviction schedule) writes SLOT lines, and the checker's C-P
+checks INV-SLOT on Java's physical states: `conformance.sh evict`, no
+failure.
