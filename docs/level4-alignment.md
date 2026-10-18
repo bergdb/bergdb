@@ -10,7 +10,7 @@ Status, 2026-10-18: the scope (section 1), a first α for the cache (section
 2) and the register (section 3), checked against the code (A2); the probes
 of A4 and the A-COPY checks (section 4); the design of E1, and what E2 to
 E6 ran and proved (section 5); what Java must do (E7, section 6); Level 4 in
-Java (section 7: J1 to J9). To come: J10, and the outcome (F2).
+Java (section 7: J1 to J10). To come: the outcome (F2).
 
 Level 4 is eviction: data and index larger than memory, under a memory
 budget, with readers, reclaim, crashes and restarts. The plan of item 001
@@ -1493,3 +1493,14 @@ and random and the audit; `ReclaimReaders` with forced schedules on a
 budget, `-Xmx384m`; full: 2 million keys, 50 MB, `-Xmx768m`). It prints
 `LEVEL 4 OK`: full in 982 s, quick in 239 s, on this machine with other jobs
 running (2026-10-18).
+
+### 7.9 J10: performance
+
+**J10** (bergdb item 001, 2026-10-18): the quick performance suite against
+Level 3's code (`l34-base`), in matched runs on a quiet machine: with
+eviction off and with a budget larger than the data, the plan's Q13 targets
+are met (warm gets and scans within 5 percent, commits within 1.2 percent,
+startup 6.5 to 9.7 percent slower, against 20 allowed), with no alert;
+under a budget of a fifth of the read scenario's data, reads are 30 to 90
+times slower, as they load from the stream:
+[level4-performance.md](level4-performance.md).

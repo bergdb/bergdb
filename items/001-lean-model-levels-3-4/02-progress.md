@@ -167,8 +167,7 @@ Current state
   Frans: Option K under TREE, A6' and A-COPY; above); K3 passed (by the agent,
   2026-10-18 05:31; above). K4 and K5 open; the agent passes them itself
   when their conditions are met (Frans, 2026-10-17 19:59; above).
-* Next: J10 (the performance comparison, on a quiet machine), then K4, P4
-  and F1 to F3.
+* Next: K4, then P4 and F1 to F3.
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): T9 is proved with
   the stronger `CutOK` part 2 (R4, 2026-10-17, before R6's proof, since T9
   assumes `CutOK` only); R6 proves that Java's scheme gives it, and R5's
@@ -237,7 +236,7 @@ Status
 | J7 | The capacity controller | done | 2026-10-18 |
 | J8 | Larger than memory | done | 2026-10-18 |
 | J9 | `level4.sh` | done | 2026-10-18 |
-| J10 | Performance | not started | — |
+| J10 | Performance | done | 2026-10-18 |
 | F1 | The conformance campaign, all levels | not started | — |
 | F2 | Documents | not started | — |
 | F3 | The final report | not started | — |
@@ -3896,3 +3895,43 @@ off, then with a budget of 4 GB (larger than the data: eviction on, no
 pressure), then one quick session with a budget of 40 MB (a fifth of the
 read scenario's latest values), reported without a target. About 45
 minutes.
+
+### 2026-10-18 05:40 to 06:56. WP J10, done: the performance comparison
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `4a2fc72` (J1 to
+J9, and this WP's in-progress entry).
+
+Did:
+
+1. `java/stress/performance.sh`: `JFLAGS`, extra JVM flags for every run,
+   recorded with the others (`jvm.flags`), for the eviction budget
+   (`-Devictbudget=N`; Perf's databases are built with `noEvict()`).
+2. On the quiet machine: `SUITE=quick java/stress/performance.sh ab
+   l34-base current` with eviction off (05:48 to 06:03, 95.9 percent idle at
+   the start) and with a budget of 4 GB, larger than the data (06:03 to
+   06:17, 95.4 percent); then `performance.sh quick` with a budget of 40 MB
+   (06:18 to 06:55), stopped after the read scenario's first run (reads
+   under pressure are 30 to 90 times slower; the whole suite would have
+   taken hours).
+3. The report: [docs/level4-performance.md](../../docs/level4-performance.md).
+
+Results: Q13's targets are met, with eviction off and with the 4 GB budget:
+warm gets -0.2 to +4.4 percent, scans -0.5 to +1.9 percent, commits -1.2
+to +0.2 percent, startup +6.5 to +9.7 percent (the target allows 20); no
+alert in either matched run. Two maxima flagged to explain, neither the
+Level 4 code's: the slowest of the first 300,000 gets after a restart (one
+get; the mean +2 percent, the median the same), and with the budget the
+slowest commit in two of three runs (a young collection of about 165 ms
+that both builds have in every run, there inside a commit). Under
+pressure: latest gets 40,370 a second (1.30 million without), scans 42,427
+KVs a second (3.76 million), every value checked.
+
+The quiet check: the first attempt (05:46) was refused, 69 percent idle
+right after the snapshot's build, and the runner then tried its two other
+runs at once (88.6 and 87.2 percent idle): one attempt, not forced; the
+runner now waits for 95 percent idle and stops at a refusal. The second
+attempt ran (05:48). Before it, J1's audit campaign ended (05:46, 0
+failing; its large set's 12 traces all `TRACECHECK OK`).
+
+Time: J10 is S to M: about an hour and a quarter (05:40 to 06:55, mostly
+machine time), and the report.

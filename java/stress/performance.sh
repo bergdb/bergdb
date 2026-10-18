@@ -46,6 +46,10 @@
 #                 not a reference.    DISKMIN_GB=N  Free disk space needed (default 30).
 #   KEEPDATA=1    Keep the data directories (java/build/perf/data/, deleted after each run otherwise).
 #   COOLDOWN=S    Seconds between runs (default 5).        THRESHOLDS=FILE  (default java/bench/thresholds.json)
+#   JFLAGS="..."  Extra JVM flags for every run, recorded with the others (jvm.flags): for
+#                 example -Devictbudget=N, the capacity controller's budget in bytes (bergdb
+#                 item 001, WP J10; Perf's databases are built with noEvict(), so without it
+#                 nothing is evicted). Sessions with other flags are not compared.
 #
 # Every run is a separate JVM (java/stress/Perf.java) with fixed flags (G1, a fixed heap,
 # assertions off, unified GC and safepoint logging to the run directory). Each result records
@@ -89,7 +93,7 @@ case $GC in
 esac
 # Assertions off (the gates run with them on); the heap is fixed (-Xms = -Xmx, set per run), not pretouched, so
 # that the resident set size shows what the program uses.
-JVMFLAGS="$GCFLAGS -da"
+JVMFLAGS="$GCFLAGS -da${JFLAGS:+ $JFLAGS}"
 
 sha256() { shasum -a 256 | cut -d' ' -f1; }
 

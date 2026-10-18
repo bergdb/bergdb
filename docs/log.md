@@ -677,3 +677,10 @@ every key checked, all right; the live heap at most 646 MB
 check (eviction invariance with every schedule, stress with eviction and
 the audit, conformance with eviction, a larger-than-memory run). It passes,
 full and quick.
+
+2026-10-18. Bergdb item 001, WP J10: Level 4 against Level 3's code, the quick
+performance suite in matched runs: with eviction off and with a budget
+larger than the data, warm gets and scans within 5 percent, commits within
+1.2 percent, startup 7 to 10 percent slower, no alert (the plan's Q13
+targets); under pressure (a budget of a fifth of the data) reads are 30 to
+90 times slower ([level4-performance.md](level4-performance.md)).
