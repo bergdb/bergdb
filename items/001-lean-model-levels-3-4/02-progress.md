@@ -3963,3 +3963,18 @@ No check needed: no code changed.
 
 Open, next: P4, the soak with eviction, on the quiet machine; then F1 to
 F3.
+
+### 2026-10-18 07:02. WP P4, in progress: the soak with eviction (written before the run)
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `95e38e8` (K4).
+Uncommitted, committed with P4's report once F1's gates have run on them:
+`java/stress/soak.sh` gets `JFLAGS` (extra JVM flags, recorded in
+`source.txt`; Soak's database is built with `noEvict()`), and `Soak.java`
+samples the resident bytes the capacity controller counts and prints its
+summary at the end. The run: P2's main run (`soak.sh main1`: a million keys
+of 1,000 bytes, a retention of five minutes, 200 transactions a second,
+three readers, two measured hours, three cold restarts) with eviction on
+and a capped heap: `HEAP=4g JFLAGS=-Devictbudget=800000000` (a budget of a
+fifth of the heap, as the public API's default), against P2's 24 GB and no
+eviction. About two and a half hours, from 07:05; nothing else runs
+meanwhile (plan, 2.7).
