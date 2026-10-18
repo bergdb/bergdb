@@ -177,8 +177,8 @@ Current state
   2026-10-18 05:31; above); K4 passed (by the agent, 2026-10-18 06:58; above).
   K5 open; the agent passes it when its conditions are met (Frans,
   2026-10-17 19:59; above).
-* Next: F1 (the campaign, running since 09:26; its longest checks until
-  about 16:30), F2, F3 and K5.
+* Next: F2 (the documents, written; the outcome sections) and F3 (the final
+  report), then K5.
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): T9 is proved with
   the stronger `CutOK` part 2 (R4, 2026-10-17, before R6's proof, since T9
   assumes `CutOK` only); R6 proves that Java's scheme gives it, and R5's
@@ -199,10 +199,8 @@ Current state
   `docs/levels.md`, `problem.md`, `sis-model.md`, `level4-plan.md`,
   `reference-theory.md`, `level4-alignment.md`, `lean/README.md`), written
   while F1 runs, committed with F2.
-* Long jobs: F1's campaign (scratch `f1-campaign.sh`, two scratch copies of
-  the final work tree), from 2026-10-18 09:26, its longest checks until about
-  16:40 (its entry). Before it: none in bergdb; stage 4's campaigns ran in
-  scratch trees.
+* Long jobs: none. F1's campaign ran from 2026-10-18 09:26 to 15:56 (its
+  entry).
   R9's Lean tier ran from 2026-10-17 23:00 to 2026-10-18 05:31 (its entry).
 * Stage 2's time box (plan, 5.3): started with E1 at 2026-10-16 23:14;
   60 hours, so it ends at 2026-10-19 11:14. Stage 2's WPs (E1 to E7) were
@@ -254,7 +252,7 @@ Status
 | J8 | Larger than memory | done | 2026-10-18 |
 | J9 | `level4.sh` | done | 2026-10-18 |
 | J10 | Performance | done | 2026-10-18 |
-| F1 | The conformance campaign, all levels | not started | — |
+| F1 | The conformance campaign, all levels | done | 2026-10-18 |
 | F2 | Documents | not started | — |
 | F3 | The final report | not started | — |
 | P1 | The Level 3 quick performance reference | done | 2026-10-16 |
@@ -4048,3 +4046,46 @@ the 5 known transactions), `EvictionInvariance` (24 runs, every schedule,
 `LEVEL 2 OK`, `LEVEL 3 OK`, `LEVEL 4 OK`, StreamDigest 36 of 36. Running:
 the Level 2 sets (small, medium, large; the large set's biggest traces take
 about 4.5 hours each) and the medium reclaim set's checks (about 6.5 hours).
+
+### 2026-10-18 09:26 to 16:50. WP F1, done: the conformance campaign, all levels
+
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `cfa50e5`,
+uncommitted: F2's documents (above).
+
+Did: the campaign of the plan's F1 on the final code and model (scratch
+`f1-campaign.sh`, not edited while running; two scratch copies of the work
+tree, java/ and lean/ as committed in P4's `899c547`, one for the trace sets
+and the Java tiers, one for the gates), 09:26 to 15:56. Evidence:
+[docs/evidence/level34-conformance.txt](../../docs/evidence/level34-conformance.txt).
+
+Checks, every one passed:
+
+* Level 2 sets (`conformance.sh all`): small 60 traces (6,760 transactions,
+  2,420 probes), medium 9 (3,369, 57), large 12 (34,012, 100), every trace
+  `TRACECHECK OK`; C-V, C-L and C-R no failure; `CONFORMANCE OK`.
+* Level 3 sets (`reclaimtraces.sh`, made again with the final code, then the
+  checker): small 25 traces (14,448 transactions, 288 cuts, 1,507 probes),
+  medium 6 (22,460, 175, 261), every trace `TRACECHECK OK`; C-A with the
+  touch assumptions, C-S on the cut stream, C-CUT at every cut, C-R, C-L4: no
+  failure.
+* Level 4 set (`conformance.sh evict 3`): 30 traces, every one `TRACECHECK
+  OK`; C-P no failure in 7,794 transactions (472,829 slots checked), C-L no
+  failure in 160,407 first touches.
+* The Java tier (`A2A3Check2`, the 21 configurations of level2-alignment.md,
+  10.5): 68,901 transactions; A2, A3, A5, the marking, TREE, A6' and A-COPY
+  (487,786 new pointers) no failure; A6 fails in the 5 known transactions.
+* `EvictionInvariance` with every schedule on the 12 configurations of J7's
+  campaign, without and with restarts: 24 of 24 OK, 73,770 audits, none
+  failed.
+* The four gates, full, one after the other: `LEVEL 1 OK` (155 s), `LEVEL 2
+  OK` (735 s), `LEVEL 3 OK` (502 s), `LEVEL 4 OK` (906 s); StreamDigest 36 of
+  36 the same as R8's.
+
+Register: M43 resolved by these checks (level4-alignment.md, section 8, with
+F2).
+
+Time: F1 is S to M: about half an hour of work, and 6.5 hours of machine
+time (the large Level 2 set's biggest traces 4.6 hours each, the medium
+reclaim set's 6.1 hours).
+
+Open, next: F2's outcome sections, then F3 and K5.

@@ -697,3 +697,10 @@ it grew to 15 GB). But the paced writer reached 123.5 of its 200 commits a
 second: a sweep walks every resident object under the write lock, 35
 percent of the time with the readers' loads; and G1 needed 81 full
 collections ([level4-evidence.md](level4-evidence.md)).
+
+2026-10-18. Bergdb item 001, WP F1: the conformance campaign on the final code
+and model, all levels: the Level 2 sets (81 traces), the reclaim sets (31
+traces, 463 cuts), the eviction set (30 traces, C-P), every trace
+`TRACECHECK OK`; the Java tier (68,901 transactions); `EvictionInvariance`
+with every schedule (24 runs); the four gates, full, and every record R8's
+([evidence/level34-conformance.txt](evidence/level34-conformance.txt)).

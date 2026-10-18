@@ -1,0 +1,178 @@
+Levels 2 to 4 conformance, all levels, bergdb item 001, WP F1, 2026-10-18 (the plan's
+F1; docs/level3-alignment.md, section 7; docs/level4-alignment.md, section 8).
+The final code and model: bergdb 899c547 (P4), its java/ and lean/ in two scratch copies
+of the work tree, one for the trace sets and the Java tiers, one for the four gates.
+Checker: lean/'s tracecheck (the model's own definitions, with the fast versions proven
+equal to them). Machine: Apple M1 Pro, 10 cores, 32 GB; OpenJDK 27; Lean 4 v4.34.1.
+The sets, the Java tiers and the gates ran side by side (09:26 to 15:56); the times are
+a guide, not a benchmark. Time and memory: /usr/bin/time -l.
+
+== 1. Level 2 sets: java/stress/conformance.sh all (small, medium, large), PAR=3
+   Summed over the traces of small, target mode: transactions failing, by check
+      C-V: 0 transactions with live differences, 1870868 LIVE lines
+      C-L: 0 of 281674 FIRST lines fail
+      C-R: 0 failed probes; kinds:
+      exporter errors: 0
+      traces: 60, TRACECHECK OK: 60
+      time and memory, export: 63 s in total, 2 s at most, at most 332 MB
+      time and memory, check: 29 s in total, 2 s at most, at most 48 MB
+   Unchanged model's mode (--model), 6 traces:
+      C-S steps: versions 6
+      C-S steps: D 360
+      C-S steps: top 366
+      C-S steps: gd 360
+      m-mixed-1: TRACECHECK OK
+      m-mixed-2: TRACECHECK OK
+      m-mixed-3: TRACECHECK OK
+      m-long-1: TRACECHECK OK
+      m-long-2: TRACECHECK OK
+      m-long-3: TRACECHECK OK
+      m-big-1: TRACECHECK OK
+      m-big-2: TRACECHECK OK
+      m-big-3: TRACECHECK OK
+   Summed over the traces of medium, target mode: transactions failing, by check
+      C-V: 0 transactions with live differences, 0 LIVE lines
+      C-L: 0 of 45667 FIRST lines fail
+      C-R: 0 failed probes; kinds:
+      exporter errors: 0
+      traces: 9, TRACECHECK OK: 9
+      time and memory, export: 11 s in total, 2 s at most, at most 248 MB
+      time and memory, check: 391 s in total, 91 s at most, at most 29 MB
+      l-mixed-1: TRACECHECK OK
+      l-mixed-2: TRACECHECK OK
+      l-long-1: TRACECHECK OK
+      l-long-2: TRACECHECK OK
+      l-big62-1: TRACECHECK OK
+      l-big62-2: TRACECHECK OK
+      l-5000-1: TRACECHECK OK
+      l-5000-2: TRACECHECK OK
+      l-hot-1: TRACECHECK OK
+      l-hot-2: TRACECHECK OK
+      l-few-1: TRACECHECK OK
+      l-few-2: TRACECHECK OK
+   Summed over the traces of large, target mode: transactions failing, by check
+      C-V: 0 transactions with live differences, 0 LIVE lines
+      C-L: 0 of 172127 FIRST lines fail
+      C-R: 0 failed probes; kinds:
+      exporter errors: 0
+      traces: 12, TRACECHECK OK: 12
+      time and memory, export: 116 s in total, 20 s at most, at most 1906 MB
+      time and memory, check: 43804 s in total, 16568 s at most, at most 163 MB
+   CONFORMANCE OK
+   84 trace lines TRACECHECK OK
+
+== 2. Level 3 sets: java/stress/reclaimtraces.sh small and medium (made again with the
+final code), then the checker on every trace (C-A with the touch assumptions, C-S on the
+stream cut at the largest cut so far, C-CUT, C-R's probes after restarts from the cut
+stream, C-L and C-L4)
+   traces: RECLAIM TRACES OK; RECLAIM TRACES OK
+   reclaim-small: 25 of 25 TRACECHECK OK; 14,448 transactions, 288 cuts, 1,507 probes, no failure
+      r-big-1: TRACECHECK OK; C-A assumptions: 0 of 973 transactions fail;C-S steps: 0 of 973 transactions fail;C-R probes: 0 of 105 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 32523 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 27 CUT lines (and PHYSCUT lines) fail; 60.49 s
+      r-big-2: TRACECHECK OK; C-A assumptions: 0 of 979 transactions fail;C-S steps: 0 of 979 transactions fail;C-R probes: 0 of 107 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 34411 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 28 CUT lines (and PHYSCUT lines) fail; 63.77 s
+      r-big-3: TRACECHECK OK; C-A assumptions: 0 of 979 transactions fail;C-S steps: 0 of 979 transactions fail;C-R probes: 0 of 103 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 32839 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 28 CUT lines (and PHYSCUT lines) fail; 61.82 s
+      r-big-4: TRACECHECK OK; C-A assumptions: 0 of 979 transactions fail;C-S steps: 0 of 979 transactions fail;C-R probes: 0 of 106 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 33761 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 28 CUT lines (and PHYSCUT lines) fail; 64.44 s
+      r-big-5: TRACECHECK OK; C-A assumptions: 0 of 979 transactions fail;C-S steps: 0 of 979 transactions fail;C-R probes: 0 of 101 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 31870 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 28 CUT lines (and PHYSCUT lines) fail; 59.41 s
+      r-del-1: TRACECHECK OK; C-A assumptions: 0 of 571 transactions fail;C-S steps: 0 of 571 transactions fail;C-R probes: 0 of 60 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 14295 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 10 CUT lines (and PHYSCUT lines) fail; 5.40 s
+      r-del-2: TRACECHECK OK; C-A assumptions: 0 of 564 transactions fail;C-S steps: 0 of 564 transactions fail;C-R probes: 0 of 58 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 12719 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 10 CUT lines (and PHYSCUT lines) fail; 3.97 s
+      r-del-3: TRACECHECK OK; C-A assumptions: 0 of 573 transactions fail;C-S steps: 0 of 573 transactions fail;C-R probes: 0 of 61 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 13653 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 11 CUT lines (and PHYSCUT lines) fail; 4.80 s
+      r-del-4: TRACECHECK OK; C-A assumptions: 0 of 572 transactions fail;C-S steps: 0 of 572 transactions fail;C-R probes: 0 of 61 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 14764 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 12 CUT lines (and PHYSCUT lines) fail; 5.10 s
+      r-del-5: TRACECHECK OK; C-A assumptions: 0 of 568 transactions fail;C-S steps: 0 of 568 transactions fail;C-R probes: 0 of 58 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 13464 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 10 CUT lines (and PHYSCUT lines) fail; 5.16 s
+      r-idle-1: TRACECHECK OK; C-A assumptions: 0 of 430 transactions fail;C-S steps: 0 of 430 transactions fail;C-R probes: 0 of 43 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 8480 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 4 CUT lines (and PHYSCUT lines) fail; 0.96 s
+      r-idle-2: TRACECHECK OK; C-A assumptions: 0 of 429 transactions fail;C-S steps: 0 of 429 transactions fail;C-R probes: 0 of 43 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 8251 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail; 0.96 s
+      r-idle-3: TRACECHECK OK; C-A assumptions: 0 of 430 transactions fail;C-S steps: 0 of 430 transactions fail;C-R probes: 0 of 44 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 8463 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 4 CUT lines (and PHYSCUT lines) fail; 0.79 s
+      r-idle-4: TRACECHECK OK; C-A assumptions: 0 of 430 transactions fail;C-S steps: 0 of 430 transactions fail;C-R probes: 0 of 43 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 8164 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 4 CUT lines (and PHYSCUT lines) fail; 0.75 s
+      r-idle-5: TRACECHECK OK; C-A assumptions: 0 of 429 transactions fail;C-S steps: 0 of 429 transactions fail;C-R probes: 0 of 43 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 8668 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail; 0.76 s
+      r-long-1: TRACECHECK OK; C-A assumptions: 0 of 577 transactions fail;C-S steps: 0 of 577 transactions fail;C-R probes: 0 of 60 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 13837 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 11 CUT lines (and PHYSCUT lines) fail; 3.80 s
+      r-long-2: TRACECHECK OK; C-A assumptions: 0 of 574 transactions fail;C-S steps: 0 of 574 transactions fail;C-R probes: 0 of 60 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 13020 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 11 CUT lines (and PHYSCUT lines) fail; 3.49 s
+      r-long-3: TRACECHECK OK; C-A assumptions: 0 of 572 transactions fail;C-S steps: 0 of 572 transactions fail;C-R probes: 0 of 61 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 13308 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 11 CUT lines (and PHYSCUT lines) fail; 3.42 s
+      r-long-4: TRACECHECK OK; C-A assumptions: 0 of 574 transactions fail;C-S steps: 0 of 574 transactions fail;C-R probes: 0 of 59 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 13139 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 11 CUT lines (and PHYSCUT lines) fail; 3.61 s
+      r-long-5: TRACECHECK OK; C-A assumptions: 0 of 573 transactions fail;C-S steps: 0 of 573 transactions fail;C-R probes: 0 of 58 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 13087 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 11 CUT lines (and PHYSCUT lines) fail; 3.67 s
+      r-small-1: TRACECHECK OK; C-A assumptions: 0 of 339 transactions fail;C-S steps: 0 of 339 transactions fail;C-R probes: 0 of 35 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 7001 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 5 CUT lines (and PHYSCUT lines) fail; 0.72 s
+      r-small-2: TRACECHECK OK; C-A assumptions: 0 of 338 transactions fail;C-S steps: 0 of 338 transactions fail;C-R probes: 0 of 34 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 6283 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 4 CUT lines (and PHYSCUT lines) fail; 0.67 s
+      r-small-3: TRACECHECK OK; C-A assumptions: 0 of 338 transactions fail;C-S steps: 0 of 338 transactions fail;C-R probes: 0 of 34 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 6401 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 4 CUT lines (and PHYSCUT lines) fail; 0.67 s
+      r-small-4: TRACECHECK OK; C-A assumptions: 0 of 339 transactions fail;C-S steps: 0 of 339 transactions fail;C-R probes: 0 of 35 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 6699 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 5 CUT lines (and PHYSCUT lines) fail; 0.69 s
+      r-small-5: TRACECHECK OK; C-A assumptions: 0 of 339 transactions fail;C-S steps: 0 of 339 transactions fail;C-R probes: 0 of 35 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 6563 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 5 CUT lines (and PHYSCUT lines) fail; 0.69 s
+   reclaim-medium: 6 of 6 TRACECHECK OK; 22,460 transactions, 175 cuts, 261 probes, no failure
+      rm-5000-1: TRACECHECK OK; C-A assumptions: 0 of 5581 transactions fail;C-S steps: 0 of 5581 transactions fail;C-R probes: 0 of 55 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 58622 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 45 CUT lines (and PHYSCUT lines) fail; 15070.71 s
+      rm-5000-2: TRACECHECK OK; C-A assumptions: 0 of 5600 transactions fail;C-S steps: 0 of 5600 transactions fail;C-R probes: 0 of 55 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 59076 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 46 CUT lines (and PHYSCUT lines) fail; 14377.13 s
+      rm-long-1: TRACECHECK OK; C-A assumptions: 0 of 3429 transactions fail;C-S steps: 0 of 3429 transactions fail;C-R probes: 0 of 33 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 90835 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 18 CUT lines (and PHYSCUT lines) fail; 20982.97 s
+      rm-long-2: TRACECHECK OK; C-A assumptions: 0 of 3435 transactions fail;C-S steps: 0 of 3435 transactions fail;C-R probes: 0 of 34 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 94087 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 19 CUT lines (and PHYSCUT lines) fail; 22119.45 s
+      rm-mixed-1: TRACECHECK OK; C-A assumptions: 0 of 2205 transactions fail;C-S steps: 0 of 2205 transactions fail;C-R probes: 0 of 43 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 33333 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 23 CUT lines (and PHYSCUT lines) fail; 1000.64 s
+      rm-mixed-2: TRACECHECK OK; C-A assumptions: 0 of 2210 transactions fail;C-S steps: 0 of 2210 transactions fail;C-R probes: 0 of 41 fail;C-L4 (a diagnostic, the Level 4 loader; WP R8, change 3): 0 of 30701 FIRST lines take a snapshot from the node table;C-CUT cuts: 0 of 24 CUT lines (and PHYSCUT lines) fail; 976.25 s
+
+== 3. Level 4 set: java/stress/conformance.sh evict 3 (run E with a forced schedule or
+the capacity controller; C-P, INV-SLOT on Java's physical states)
+   Summed over the traces of evict, target mode: transactions failing, by check
+      C-V: 0 transactions with live differences, 0 LIVE lines
+      C-P: 0 of 7794 transactions fail; 702801 SLOT lines, 472829 checked; traces without SLOT lines: 0
+      C-L: 0 of 160407 FIRST lines fail
+      C-R: 0 failed probes; kinds:
+      exporter errors: 0
+      traces: 30, TRACECHECK OK: 30
+      time and memory, export: 36 s in total, 2 s at most, at most 393 MB
+      time and memory, check: 66 s in total, 18 s at most, at most 44 MB
+   CONFORMANCE OK
+
+== 4. The Java tier: java/stress/A2A3Check2 on the 21 configurations of
+docs/level2-alignment.md, 10.5 (A2 net, A3, A5, the marking, A6, A6', TREE, A-COPY)
+   1 [2 s] maxnode=8 keys=200 n=300 ops=1..1 del=0% long=false sorted=true seeds=10 | transactions 3000: new pointers 5003 (to a child, not a node, of the paths 4390), failing 0 (transactions 0) | A6' 0 TREE 0
+   2 [2 s] maxnode=8 keys=200 n=300 ops=1..1 del=25% long=true sorted=true seeds=10 | transactions 3000: new pointers 3879 (to a child, not a node, of the paths 3553), failing 0 (transactions 0) | A6' 0 TREE 0
+   3 [4 s] maxnode=8 keys=200 n=300 ops=1..4 del=0% long=false sorted=true seeds=10 | transactions 3000: new pointers 9576 (to a child, not a node, of the paths 8273), failing 0 (transactions 0) | A6' 0 TREE 0
+   4 [3 s] maxnode=8 keys=200 n=300 ops=1..4 del=25% long=true sorted=true seeds=10 | transactions 3000: new pointers 9889 (to a child, not a node, of the paths 8833), failing 0 (transactions 0) | A6' 0 TREE 0
+   5 [0 s] maxnode=8 keys=40 n=1 ops=40 del=0% long=false sorted=true seeds=1 | transactions 1: new pointers 2 (to a child, not a node, of the paths 0), failing 0 (transactions 0) | A6' 0 TREE 0
+   6 [2 s] maxnode=8 keys=1000 n=50 ops=40 del=0% long=false sorted=true seeds=10 | transactions 500: new pointers 29382 (to a child, not a node, of the paths 22514), failing 0 (transactions 0) | A6' 0 TREE 0
+   7 [1 s] maxnode=8 keys=1000 n=50 ops=40 del=25% long=true sorted=true seeds=10 | transactions 500: new pointers 27487 (to a child, not a node, of the paths 23113), failing 0 (transactions 0) | A6' 0 TREE 0
+   8 [5 s] maxnode=62 keys=100000 n=20 ops=400 del=0% long=false sorted=true seeds=10 | transactions 200: new pointers 73086 (to a child, not a node, of the paths 68179), failing 0 (transactions 0) | A6' 0 TREE 0
+   9 [1 s] maxnode=14 keys=300 n=50 ops=40 del=40% long=true sorted=true seeds=10 | transactions 500: new pointers 16502 (to a child, not a node, of the paths 14586), failing 0 (transactions 0) | A6' 0 TREE 0
+   10 [3 s] maxnode=8 keys=200 n=300 ops=1..4 del=25% long=true sorted=false seeds=10 | transactions 3000: new pointers 9913 (to a child, not a node, of the paths 8864), failing 0 (transactions 0) | A6' 0 TREE 0
+   11 [24 s] maxnode=8 keys=500 n=2000 ops=1..4 del=20% long=true sorted=true seeds=3 | transactions 6000: new pointers 19023 (to a child, not a node, of the paths 17142), failing 0 (transactions 0) | A6' 0 TREE 0
+   12 [4 s] maxnode=14 keys=1000 n=1000 ops=1..8 del=20% long=false sorted=true seeds=3 | transactions 3000: new pointers 14576 (to a child, not a node, of the paths 13875), failing 0 (transactions 0) | A6' 0 TREE 0
+   13 [39 s] maxnode=30 keys=3000 n=1000 ops=1..20 del=20% long=true sorted=true seeds=3 | transactions 3000: new pointers 30529 (to a child, not a node, of the paths 30005), failing 0 (transactions 0) | A6' 0 TREE 0
+   14 [14 s] maxnode=62 keys=3000 n=500 ops=1..40 del=20% long=false sorted=true seeds=3 | transactions 1500: new pointers 19541 (to a child, not a node, of the paths 19125), failing 0 (transactions 0) | A6' 0 TREE 0
+   15 [3 s] maxnode=30 keys=2000 n=500 ops=1..4 del=20% long=true sorted=false seeds=3 | transactions 1500: new pointers 3806 (to a child, not a node, of the paths 3758), failing 0 (transactions 0) | A6' 0 TREE 0
+   16 [18 s] maxnode=30 keys=500 n=2000 ops=1..20 del=20% long=true sorted=true seeds=3 | transactions 6000: new pointers 57999 (to a child, not a node, of the paths 56696), failing 0 (transactions 0) | A6' 0 TREE 0
+   17 [39 s] maxnode=8 keys=500 n=2000 ops=1..10 del=20% long=true sorted=true seeds=3 | transactions 6000: new pointers 34791 (to a child, not a node, of the paths 31416), failing 0 (transactions 0) | A6' 0 TREE 0
+   18 [10 s] maxnode=14 keys=500 n=2000 ops=1..3 del=20% long=true sorted=true seeds=3 | transactions 6000: new pointers 13780 (to a child, not a node, of the paths 13218), failing 0 (transactions 0) | A6' 0 TREE 0
+   19 [6 s] maxnode=62 keys=1000 n=2000 ops=1..40 del=20% long=false sorted=true seeds=3 | transactions 6000: new pointers 95546 (to a child, not a node, of the paths 92371), failing 0 (transactions 0) | A6' 0 TREE 0
+   20 [1 s] maxnode=30 keys=100 n=400 ops=1..3 del=20% long=true sorted=true seeds=3 | transactions 1200: new pointers 2165 (to a child, not a node, of the paths 2113), failing 0 (transactions 0) | A6' 0 TREE 0
+   21 [103 s] maxnode=30 keys=3000 n=12000 ops=1..3 del=20% long=false sorted=true seeds=1 | transactions 12000: new pointers 11311 (to a child, not a node, of the paths 11173), failing 0 (transactions 0) | A6' 0 TREE 0
+   totals: 68901 transactions; A2 net 0, A3 and A5 0 0, marking differences 0; A6 adopted 5 transactions (A6' 0, TREE 0); A-COPY: 487786 new pointers, failing 0
+
+== 5. EvictionInvariance: the schedules none, values, every, random and the capacity
+controller (a budget of 60 kB), on the 12 configurations of J7's campaign, without and
+with restarts (24 runs), the audit on
+   ei-every1-r0: EVICTION INVARIANCE OK (2005 audits, 0 failed)
+   ei-every1-r1: EVICTION INVARIANCE OK (4000 audits, 0 failed)
+   ei-idle-r0: EVICTION INVARIANCE OK (2005 audits, 0 failed)
+   ei-idle-r1: EVICTION INVARIANCE OK (4000 audits, 0 failed)
+   ei-medium-node30-r0: EVICTION INVARIANCE OK (2505 audits, 0 failed)
+   ei-medium-node30-r1: EVICTION INVARIANCE OK (2600 audits, 0 failed)
+   ei-rec-every1-r0: EVICTION INVARIANCE OK (5725 audits, 0 failed)
+   ei-rec-every1-r1: EVICTION INVARIANCE OK (10720 audits, 0 failed)
+   ei-rec-node14-r0: EVICTION INVARIANCE OK (2145 audits, 0 failed)
+   ei-rec-node14-r1: EVICTION INVARIANCE OK (2310 audits, 0 failed)
+   ei-rec-node62-r0: EVICTION INVARIANCE OK (2565 audits, 0 failed)
+   ei-rec-node62-r1: EVICTION INVARIANCE OK (2620 audits, 0 failed)
+   ei-rec-node8-r0: EVICTION INVARIANCE OK (2265 audits, 0 failed)
+   ei-rec-node8-r1: EVICTION INVARIANCE OK (2370 audits, 0 failed)
+   ei-rec-small-r0: EVICTION INVARIANCE OK (4610 audits, 0 failed)
+   ei-rec-small-r1: EVICTION INVARIANCE OK (5005 audits, 0 failed)
+   ei-sd100-r0: EVICTION INVARIANCE OK (2005 audits, 0 failed)
+   ei-sd100-r1: EVICTION INVARIANCE OK (2100 audits, 0 failed)
+   ei-sd1000-node8-r0: EVICTION INVARIANCE OK (2005 audits, 0 failed)
+   ei-sd1000-node8-r1: EVICTION INVARIANCE OK (2100 audits, 0 failed)
+   ei-sd10000-node14-r0: EVICTION INVARIANCE OK (2005 audits, 0 failed)
+   ei-sd10000-node14-r1: EVICTION INVARIANCE OK (2050 audits, 0 failed)
+   ei-sd100000-node62-r0: EVICTION INVARIANCE OK (2005 audits, 0 failed)
+   ei-sd100000-node62-r1: EVICTION INVARIANCE OK (2050 audits, 0 failed)
+
+== 6. The four gates, full, one after the other, then StreamDigest against R8's digests
+   level1.sh start 09:26:45
+   level1.sh rc=0 155 s: LEVEL 1 OK
+   level2.sh start 09:29:20
+   level2.sh rc=0 735 s: LEVEL 2 OK
+   level3.sh start 09:41:35
+   level3.sh rc=0 502 s: LEVEL 3 OK
+   level4.sh start 09:49:57
+   level4.sh rc=0 906 s: LEVEL 4 OK
+   digest: DIGESTS IDENTICAL (36 of 36) 10:05:46
