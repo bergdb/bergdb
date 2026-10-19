@@ -79,3 +79,5 @@ Index
 * **004-indirect-swizzling** (open). Indirect swizzling (handles, a mapping
   table) for BergDB: the literature, measurements, a design sketch, pros and
   cons.
+* **005-todo** (open). A list of things to do on BergDB: issues to fix,
+  things to investigate, decisions to make; one subitem per entry.
