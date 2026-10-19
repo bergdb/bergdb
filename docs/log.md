@@ -716,3 +716,6 @@ Q10), [sis-model.md](sis-model.md) (section 15) and `lean/README.md`.
 Levels 3 and 4 are in the Lean model, with proofs, and in Java, aligned with
 it; eviction is on by default. Open for Frans: closing the item (T-SCHEME is
 checked, not proved) and what comes next (the sweep's cost first).
+
+2026-10-19. Bergdb item 001 closed (done): Frans accepted the outcome at
+K5, with T-SCHEME checked, not proved (R6).

@@ -1,7 +1,7 @@
 001-lean-model-levels-3-4
 =========================
 
-Created 2026-10-16 by Frans Lundberg. Status: open.
+Created 2026-10-16 by Frans Lundberg. Status: done.
 
 Model Levels 3 (reclaim) and 4 (eviction, data larger than memory) in Lean,
 and align the model with the Java code, as was done for Level 2 in the f1
@@ -58,3 +58,6 @@ done, and K4 passed (by the agent, on Frans's go of 2026-10-17 19:59).
 2026-10-18. Claude added 001-06, the final report (WP F3): every WP is done
 but R6 (partial: T-SCHEME checked, not proved); at K5 the agent accepted
 the outcome, and closing the item and what comes next wait for Frans.
+
+2026-10-19. Frans accepted the outcome (K5), with R6 as it is, and
+closed the item. Status: done.

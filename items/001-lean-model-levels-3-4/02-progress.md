@@ -176,6 +176,10 @@ Frans's go and decisions
   only with Frans's agreement) and what comes next. The final report, with
   both and the proposals: [06-final-report.md](06-final-report.md), "For
   K5".
+* **K5, 2026-10-19 10:26: Frans accepted the outcome and closed the item**,
+  having read the final report (06). R6 is accepted as it is (T-SCHEME
+  checked, not proved). Item 001 is done. What comes next is not decided
+  here.
 
 
 Current state
@@ -184,10 +188,10 @@ Current state
 * Checkpoints: G0 given (2026-10-16 15:23); K1 passed (2026-10-17 07:56,
   Frans: Option K under TREE, A6' and A-COPY; above); K3 passed (by the agent,
   2026-10-18 05:31; above); K4 passed (by the agent, 2026-10-18 06:58; above);
-  K5: the outcome accepted by the agent (2026-10-18 16:53; above); closing the
-  item and what comes next wait for Frans.
-* Next: Frans's decisions at K5 (06-final-report.md, "For K5"). Every WP
-  of the plan is done but R6 (partial: T-SCHEME checked, not proved).
+  K5 passed (Frans, 2026-10-19 10:26; above): the outcome accepted, the
+  item closed.
+* **Item 001 is done.** Every WP of the plan is done but R6 (partial:
+  T-SCHEME checked, not proved), which Frans accepted as it is at K5.
 * **M48 decided: (a)** (Frans, 2026-10-17 14:07; above): T9 is proved with
   the stronger `CutOK` part 2 (R4, 2026-10-17, before R6's proof, since T9
   assumes `CutOK` only); R6 proves that Java's scheme gives it, and R5's
@@ -4153,3 +4157,19 @@ them). The whole plan: 2026-10-16 15:23 to 2026-10-18 16:53, with Claude Opus
 2026-10-17.
 
 Open, next: Frans's K5 decisions.
+
+### 2026-10-19 10:26. K5 passed: the item closed
+
+Agent: Claude, Opus 5.5, Claude Code. bergdb at `fb8250a`.
+
+Frans read the final report (06), accepted the outcome and closed the
+item, R6 as it is. Before closing, checked: `java/` and `lean/` are the
+same as the tree F1's campaign ran on (`899c547`; since then only
+`lean/README.md` and documents changed), where all four gates printed
+`LEVEL n OK` and every trace set passed. Known issues left, outside this
+item by Frans's decisions: M49 (item 003, a transaction that throws inside
+`putKvs` is half committed) and M46 (item 002, the top node ordinal bound);
+the sweep's cost (finding 10) is a performance issue, not a fault.
+
+Files changed: this file, the item's readme, `items/readme.md`,
+`docs/log.md`. No code changed.
