@@ -24,4 +24,4 @@ algorithm. [README.md](README.md) describes the repo; start reading at
 ## General
 
 - Preserve unrelated worktree changes.
-- Frans commits himself; do not commit unless asked.
+- Preserve files in `frans/`.

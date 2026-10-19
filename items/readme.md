@@ -48,6 +48,20 @@ Layout
   index line. Record a change of status in the item's log.
 
 
+Small work
+----------
+
+* Small work is a subitem of the quarter's item, `nnn-yyyy-qn` (such as
+  `006-2026-q4`): a single file or a small directory, finished in about a
+  day. Examples: a summary, a short investigation, a note, a review.
+* Work with a plan, tools or code, several files, or a status that stays
+  open for a while gets an item of its own. A small subitem that grows
+  moves to an item of its own and leaves a link in its place.
+* The quarter's item lists its subitems in a table, one line each, with
+  the ID, the date and what it is. It is done when the quarter ends; the
+  next quarter's item takes the next free number.
+
+
 Items and the current state
 ---------------------------
 
@@ -81,3 +95,5 @@ Index
   cons.
 * **005-todo** (open). A list of things to do on BergDB: issues to fix,
   things to investigate, decisions to make; one subitem per entry.
+* **006-2026-q4** (open). Small pieces of work in October to December
+  2026, one subitem each; see "Small work".
