@@ -1,0 +1,19 @@
+version: 2026-10-19
+commit: 11ea2f6af543b542e51ec419b1e626989dabdfd3
+classes: efcd23e96e3e9625d71c996190451c912bda5c97d3f2e54a26bc9bbb1ec03af0
+label: main
+class: bergdb.dev.props.Props 
+flags: 
+start: 2026-10-19 13:37:05 CEST
+idle: 98.19
+load: { 2.16 2.53 2.46 }
+----
+
+==== bergdb.dev.props.Props ====
+2026-10-19, f53
+OpenJDK 64-Bit Server VM 27, java 27
+MEM:226
+....................CORE:0.30 (0.27, 0.33, 0.26, 0.35)
+SS:1.50 (1.10, 1.19, 1.62, 2.37)
+----
+seconds: 47

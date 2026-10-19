@@ -1,0 +1,19 @@
+version: 2017-08-01
+commit: 195cf8839ca6febb148eb2770109a99e0758a3db
+classes: 911ab737362dd5671490fd7d390bcecd66a5e4842dd0042cae407f006aece0ad
+label: parallel
+class: bergdb.dev.props.Props 
+flags: -XX:+UseParallelGC
+start: 2026-10-19 14:37:53 CEST
+idle: 98.30
+load: { 2.60 2.34 2.33 }
+----
+
+==== bergdb.dev.props.Props ====
+2026-10-19, f53
+OpenJDK 64-Bit Server VM 27, java 27
+MEM:270
+....................CORE:0.31 (0.31, 0.37, 0.24, 0.33)
+SS:1.56 (1.16, 1.25, 1.74, 2.36)
+----
+seconds: 41

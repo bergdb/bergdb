@@ -1,0 +1,19 @@
+version: 2015-12-28
+commit: bc11dbfe737a103eebc3beed0ebfde498e4ec610
+classes: add6f9189a19a81caf80c921ce562bc8fbb6a6976cbebebc82b268327f450e99
+label: cissi
+class: bergdb.dev.props.Props 
+flags: 
+start: 2026-10-19 13:54:37 CEST
+idle: 98.15
+load: { 1.76 2.05 2.15 }
+----
+
+==== bergdb.dev.props.Props ====
+2026-10-19, f53
+OpenJDK 64-Bit Server VM 27, java 27
+MEM:158
+....................CORE:0.28 (0.29, 0.33, 0.27, 0.24)
+SS:1.48 (1.14, 1.23, 1.59, 2.16)
+----
+seconds: 39

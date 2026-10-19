@@ -1,0 +1,28 @@
+version: 2026-10-19-maphash
+commit: 11ea2f6af543b542e51ec419b1e626989dabdfd3 with maphash.patch
+classes: 86abdd81f1a52a15bb3d2612bde116d4c9aac7035f82e4eb94a7ed56235a5f25
+label: histo
+class: Probe006 histo 50000000
+flags: 
+start: 2026-10-19 14:42:43 CEST
+idle: 72.32
+load: { 1.85 2.11 2.22 }
+----
+HISTO: 191.3 bytes per KV in all classes, startupDistance=50000000
+     47.1 bytes,  0.19 objects per KV  [J
+     40.0 bytes,  1.00 objects per KV  bergdb.dag.ValueNode
+     26.3 bytes,  1.10 objects per KV  java.util.HashMap$Node
+     17.5 bytes,  1.10 objects per KV  java.lang.Long
+     17.5 bytes,  1.10 objects per KV  bergdb.core.Cache3$CacheEntry
+     16.1 bytes,  1.00 objects per KV  [B
+     11.9 bytes,  0.10 objects per KV  [Lbergdb.dag.Node;
+      8.4 bytes,  0.00 objects per KV  [Ljava.util.HashMap$Node;
+      4.6 bytes,  0.10 objects per KV  bergdb.dag.KeyNode
+      0.6 bytes,  0.01 objects per KV  [Ljava.lang.Object;
+      0.5 bytes,  0.00 objects per KV  [Ljdk.internal.vm.FillerElement;
+      0.5 bytes,  0.01 objects per KV  bergdb.core.TransSeq$TransInfo
+      0.2 bytes,  0.01 objects per KV  java.util.ArrayList
+      0.0 bytes,  0.00 objects per KV  java.lang.String
+      0.0 bytes,  0.00 objects per KV  java.lang.Class
+----
+seconds: 2

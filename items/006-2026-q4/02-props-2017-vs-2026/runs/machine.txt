@@ -1,0 +1,24 @@
+date: 2026-10-19 13:28:48 CEST
+host: f53
+model: MacBookPro18,3
+cpu: Apple M1 Pro, 10 cores (8 performance, 2 efficiency)
+memory: 32 GB
+os: macOS 27.0.1 (26A434)
+power: Now drawing from 'AC Power'
+java: /opt/homebrew/opt/openjdk/bin/java
+  openjdk version "27" 2026-09-15
+  OpenJDK Runtime Environment Homebrew (build 27)
+  OpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing)
+default flags:
+  -XX:-AOTAdapterCaching -XX:-AOTInvokeDynamicLinking -XX:-AOTRecordTraining -XX:-AOTReplayTraining -XX:-AOTStubCaching -XX:ConcGCThreads=2 -XX:G1ConcRefinementThreads=9 -XX:InitialHeapSize=6815736 -XX:MarkStackSize=4194304 -XX:MaxHeapSize=8589934592 -XX:MinHeapSize=6815736 -XX:+PrintCommandLineFlags -XX:ReservedCodeCacheSize=251658240 -XX:+SegmentedCodeCache -XX:+UseCompressedOops -XX:+UseG1GC 
+  size_t MaxHeapSize                              = 8589934592                                {product} {ergonomic}
+  uint ParallelGCThreads                        = 9                                         {product} {default}
+  bool UseCompactObjectHeaders                  = true                           {product lp64_product} {default}
+  bool UseCompressedOops                        = true                           {product lp64_product} {ergonomic}
+  bool UseG1GC                                  = true                                      {product} {ergonomic}
+  bool UseParallelGC                            = false                                     {product} {default}
+builds:
+  2015-12-28: bc11dbfe737a103eebc3beed0ebfde498e4ec610, classes add6f9189a19a81caf80c921ce562bc8fbb6a6976cbebebc82b268327f450e99
+  2017-07-29: dbf131ae0b2dab1e615068035b5270c73aaed343, classes 454338f3da461af8334d2ff2c4f05516d325f1860e6c52ec5b86c83764523d6d
+  2017-08-01: 195cf8839ca6febb148eb2770109a99e0758a3db, classes 911ab737362dd5671490fd7d390bcecd66a5e4842dd0042cae407f006aece0ad
+  2026-10-19: 11ea2f6af543b542e51ec419b1e626989dabdfd3, classes efcd23e96e3e9625d71c996190451c912bda5c97d3f2e54a26bc9bbb1ec03af0

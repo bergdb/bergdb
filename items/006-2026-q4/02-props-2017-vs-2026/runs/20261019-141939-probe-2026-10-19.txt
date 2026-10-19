@@ -1,0 +1,13 @@
+version: 2026-10-19
+commit: 11ea2f6af543b542e51ec419b1e626989dabdfd3
+classes: efcd23e96e3e9625d71c996190451c912bda5c97d3f2e54a26bc9bbb1ec03af0
+label: probe
+class: Probe006 mem 20000000
+flags: 
+start: 2026-10-19 14:19:39 CEST
+idle: 94.41
+load: { 2.00 2.28 2.48 }
+----
+MEM:226 startupDistance=20000000
+----
+seconds: 3

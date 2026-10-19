@@ -1,0 +1,17 @@
+version: 2017-08-01
+commit: 195cf8839ca6febb148eb2770109a99e0758a3db
+classes: 911ab737362dd5671490fd7d390bcecd66a5e4842dd0042cae407f006aece0ad
+label: probe
+class: Probe006 ss 20000000
+flags: 
+start: 2026-10-19 14:17:56 CEST
+idle: 98.0
+load: { 2.13 2.37 2.54 }
+----
+  kv size 1000, 100 per trans: stream length 115803600, factor 1.1580
+  kv size 1000, 1 per trans: stream length 125265072, factor 1.2527
+  kv size 100, 100 per trans: stream length 174188768, factor 1.7419
+  kv size 100, 1 per trans: stream length 235995872, factor 2.3600
+SS:1.56 (1.16, 1.25, 1.74, 2.36) startupDistance=20000000
+----
+seconds: 8

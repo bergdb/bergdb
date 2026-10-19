@@ -1,0 +1,19 @@
+version: orig-290e766
+commit: 290e76605fd6132525c81a2e4b046bb3edb9778d
+classes: aded8caa1f3b723e83b9cdbe1cd59c26a1953c81f2cc2d6d2837aa982c7dd272
+label: sweep
+class: bergdb.dev.props.Props 
+flags: 
+start: 2026-10-19 14:22:45 CEST
+idle: 93.71
+load: { 2.27 2.24 2.41 }
+----
+
+==== bergdb.dev.props.Props ====
+2026-10-19, f53
+OpenJDK 64-Bit Server VM 27, java 27
+MEM:220
+....................CORE:0.31 (0.31, 0.36, 0.27, 0.30)
+SS:1.56 (1.16, 1.25, 1.74, 2.36)
+----
+seconds: 40

@@ -1,0 +1,19 @@
+version: 2017-07-29
+commit: dbf131ae0b2dab1e615068035b5270c73aaed343
+classes: 454338f3da461af8334d2ff2c4f05516d325f1860e6c52ec5b86c83764523d6d
+label: parallel-nocoh
+class: bergdb.dev.props.Props 
+flags: -XX:+UseParallelGC -XX:-UseCompactObjectHeaders
+start: 2026-10-19 14:12:29 CEST
+idle: 98.6
+load: { 2.30 2.58 2.66 }
+----
+
+==== bergdb.dev.props.Props ====
+2026-10-19, f53
+OpenJDK 64-Bit Server VM 27, java 27
+MEM:169
+....................CORE:0.28 (0.30, 0.34, 0.24, 0.24)
+SS:1.52 (1.15, 1.24, 1.65, 2.26)
+----
+seconds: 38

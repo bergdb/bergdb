@@ -15,6 +15,7 @@ The list
 | ID | Date | What |
 |---|---|---|
 | [006-01](01-work-12-19-october.md) | 2026-10-19 | Summary of the work on BergDB from 12 to 19 October 2026, up to item 005 |
+| [006-02](02-props-2017-vs-2026.md) | 2026-10-19 | Props, the 2013 to 2017 performance suite, on the 2017 and the 2026 code on F53, against cissi's numbers of 2015 and 2017 |
 
 
 Files
@@ -22,6 +23,11 @@ Files
 
 * [01-work-12-19-october.md](01-work-12-19-october.md). 006-01, the summary: the
   work phase by phase, the bugs found, the evidence, and what is open.
+* [02-props-2017-vs-2026.md](02-props-2017-vs-2026.md). 006-02, the report:
+  Props (MEM, CORE, SS) on four versions of the code on F53, the change from
+  2017 to 2026, F53 against cissi, and the node table's tree bins. The plan,
+  the scripts, the probe, an experimental patch and the output of every run
+  are in [02-props-2017-vs-2026/](02-props-2017-vs-2026/).
 
 
 Log
@@ -34,3 +40,16 @@ F1-007 and F1-008.
 
 2026-10-19. Renamed to 006-2026-q4, the item for small subitems of the
 quarter, at Frans's request. The summary stays 006-01.
+
+2026-10-19. 006-02, at Frans's request (as "bergdb 002-02", an ID that item
+002's report has; this is the quarter's next subitem): Props on the 2017 and
+the 2026 code and on the code cissi measured in 2015 and 2017, on F53 with
+JDK 27, run and written by Claude (Opus 5.5, Claude Code) working unattended.
+2026 against 2017: CORE 6 percent better, MEM 16, SS 4 (all of it the startup
+distance); F53 against cissi: CORE 2.6 to 2.9 times better. Found on the way:
+the 2017 import is two days into an unfinished cache rewrite, and the node
+table's maps degenerate into trees, also in 2026; a one-line experimental
+patch gives MEM -16 percent and `set` -11 percent.
+
+2026-10-19. 006-02: section 10 added, MEM from 158 to 227 commit by commit, at
+Frans's request; the tree-bin fix registered as 005-08.

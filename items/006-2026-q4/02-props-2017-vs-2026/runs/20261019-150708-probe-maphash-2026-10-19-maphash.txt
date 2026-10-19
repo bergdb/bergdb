@@ -1,0 +1,18 @@
+version: 2026-10-19-maphash
+commit: 11ea2f6af543b542e51ec419b1e626989dabdfd3 with maphash.patch
+classes: 86abdd81f1a52a15bb3d2612bde116d4c9aac7035f82e4eb94a7ed56235a5f25
+label: probe-maphash
+class: Probe006 set 50000000
+flags: 
+start: 2026-10-19 15:07:08 CEST
+idle: 94.47
+load: { 2.38 2.26 2.26 }
+----
+  set run 1: 1.971 us
+  set run 2: 1.619 us
+  set run 3: 1.598 us
+  set run 4: 1.808 us
+  set run 5: 1.641 us
+set:0.32 (best 1.598 us per transaction) startupDistance=50000000
+----
+seconds: 3

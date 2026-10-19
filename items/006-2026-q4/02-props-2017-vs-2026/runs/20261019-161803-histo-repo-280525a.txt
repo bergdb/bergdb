@@ -1,0 +1,28 @@
+version: repo-280525a
+commit: 280525af3269c984a525a93c0cbcdbb6fc1c1770
+classes: ffb201b2f27b00656bc60a09da2a87723e482b147445030548a87da80a175950
+label: histo
+class: Probe006 histo 50000000
+flags: 
+start: 2026-10-19 16:18:03 CEST
+idle: 74.80
+load: { 7.25 3.05 2.23 }
+----
+HISTO: 227.4 bytes per KV in all classes, startupDistance=50000000
+     61.4 bytes,  1.10 objects per KV  java.util.HashMap$TreeNode
+     47.1 bytes,  0.19 objects per KV  [J
+     40.0 bytes,  1.00 objects per KV  bergdb.dag.ValueNode
+     17.5 bytes,  1.10 objects per KV  java.lang.Long
+     17.5 bytes,  1.10 objects per KV  bergdb.core.Cache3$CacheEntry
+     16.1 bytes,  1.00 objects per KV  [B
+     11.9 bytes,  0.10 objects per KV  [Lbergdb.dag.Node;
+      8.4 bytes,  0.00 objects per KV  [Ljava.util.HashMap$Node;
+      4.6 bytes,  0.10 objects per KV  bergdb.dag.KeyNode
+      1.5 bytes,  0.03 objects per KV  [Ljdk.internal.vm.FillerElement;
+      0.6 bytes,  0.01 objects per KV  [Ljava.lang.Object;
+      0.5 bytes,  0.01 objects per KV  bergdb.core.TransSeq$TransInfo
+      0.2 bytes,  0.01 objects per KV  java.util.ArrayList
+      0.0 bytes,  0.00 objects per KV  java.lang.String
+      0.0 bytes,  0.00 objects per KV  java.util.HashMap$Node
+----
+seconds: 2

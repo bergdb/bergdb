@@ -1,0 +1,24 @@
+--- a/java/src/bergdb/core/Cache3.java	2026-10-19 14:42:23
++++ b/java/src/bergdb/core/Cache3.java	2026-10-19 14:42:23
+@@ -290,15 +290,12 @@
+     }
+     
+     private int mapIndex(long id) {
+-        long v = id;
+-        long temp = (v >>>  0) ^ (v >>>  8) ^ (v >>> 16) ^ (v >>> 24) ^
+-                    (v >>> 32) ^ (v >>> 40) ^ (v >>> 48) ^ (v >>> 56);
+-        // 2026-10-13 (java/stress/LoadTest.java): was ((int) temp) % maps.length, which is
+-        // negative for some ids of 2^31 and more; node ids are stream positions, so every
+-        // stream longer than 2.1 GB failed with ArrayIndexOutOfBoundsException.
+-        int index = (int) ((temp & Long.MAX_VALUE) % maps.length);
+-        assert index >= 0 : "index: " + index;
+-        assert index < maps.length : "index: " + index;
++        // bergdb item 006-02, an experiment: the top 8 bits of id times 2^64 divided by the
++        // golden ratio (Fibonacci hashing). It was the XOR of the id's 8 bytes; that fixes,
++        // for the ids of one map, the low byte of HashMap's bin index (h ^ h >>> 16), so
++        // that about 17 ids share a bin and every bin is a tree (HashMap$TreeNode).
++        int index = (int) ((id * 0x9E3779B97F4A7C15L) >>> 56);
++        assert index >= 0 && index < maps.length : "index: " + index;
+         return index;
+     }
+     

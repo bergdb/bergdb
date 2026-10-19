@@ -21,6 +21,7 @@ The list
 | [005-05](05-bergdb-future.md) | Decide | What to do with BergDB: publish it, when, money, paid work | open |
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
+| [005-08](08-fix-node-table-tree-bins.md) | Fix | The node table's 256 maps make every bin a tree (`Cache3.mapIndex`): 61 bytes per KV, a slower `set` (006-02) | open |
 
 Status values: open, in progress, done, dropped, moved (to an item of its
 own). Kinds: Fix (a known fault), Investigate (find out, then propose),
@@ -31,7 +32,8 @@ Order, as proposed: 005-01 and 005-02 together (both change
 can go any time; 005-03 after 005-01 and 005-02, since it changes the same
 part of Java; 005-05 and 005-06 beside the rest, as they are mostly reading
 and thinking, and 005-06 feeds 005-05. 005-07 is best before or with 005-01
-(where a transaction's go point is) and before 005-03's fix.
+(where a transaction's go point is) and before 005-03's fix. 005-08 is small
+and can go any time, best before 005-03, whose sweeps walk the node table.
 
 
 Files
@@ -52,6 +54,8 @@ Files
 * [07-transaction-synchronization.md](07-transaction-synchronization.md).
   005-07, synchronization of transactions: today's design, from the code and
   F1-007's notes, and what may need to change.
+* [08-fix-node-table-tree-bins.md](08-fix-node-table-tree-bins.md). 005-08,
+  fix the node table's tree bins, found and measured in 006-02.
 
 
 Log
@@ -62,3 +66,6 @@ Defined, not started.
 
 2026-10-19. Added 005-07, synchronization of transactions, at Frans's
 request, with the design notes found in F1-007.
+
+2026-10-19. Added 005-08, the node table's tree bins, at Frans's request,
+from 006-02's finding and its experimental patch.

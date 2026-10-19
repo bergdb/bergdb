@@ -1,0 +1,18 @@
+version: 2017-08-01
+commit: 195cf8839ca6febb148eb2770109a99e0758a3db
+classes: 911ab737362dd5671490fd7d390bcecd66a5e4842dd0042cae407f006aece0ad
+label: probe
+class: Probe006 set 20000000
+flags: 
+start: 2026-10-19 14:19:24 CEST
+idle: 94.13
+load: { 2.01 2.29 2.49 }
+----
+  set run 1: 1.981 us
+  set run 2: 1.840 us
+  set run 3: 1.923 us
+  set run 4: 1.835 us
+  set run 5: 1.765 us
+set:0.35 (best 1.765 us per transaction) startupDistance=20000000
+----
+seconds: 3

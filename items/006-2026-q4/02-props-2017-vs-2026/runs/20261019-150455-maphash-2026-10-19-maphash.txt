@@ -1,0 +1,19 @@
+version: 2026-10-19-maphash
+commit: 11ea2f6af543b542e51ec419b1e626989dabdfd3 with maphash.patch
+classes: 86abdd81f1a52a15bb3d2612bde116d4c9aac7035f82e4eb94a7ed56235a5f25
+label: maphash
+class: bergdb.dev.props.Props 
+flags: 
+start: 2026-10-19 15:04:55 CEST
+idle: 97.73
+load: { 2.10 2.22 2.25 }
+----
+
+==== bergdb.dev.props.Props ====
+2026-10-19, f53
+OpenJDK 64-Bit Server VM 27, java 27
+MEM:191
+....................CORE:0.29 (0.26, 0.33, 0.26, 0.31)
+SS:1.50 (1.10, 1.19, 1.62, 2.37)
+----
+seconds: 45
