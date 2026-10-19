@@ -19,8 +19,11 @@ import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pub.util.Clock;
+import bergdb.pub.util.DbException;
 import bergdb.storage.RecoverableStream;
 import bergdb.stream.AppendOnlyStream;
+import bergdb.stream.CutStream;
 import bergdb.stream.MemoryStream;
 
 /**
@@ -622,7 +625,7 @@ public class DbTesterRestart {
             db.execute(db.trans().put("/hot", "v" + n).build());
             n++;
         }
-        int superRoot = db.internal().superRoot().topNodeId;
+        long superRoot = db.internal().superRoot().topNodeId;
         db.sync(SyncLevel.STRONG);
         db.stop();
         s = s.copy();
@@ -640,5 +643,255 @@ public class DbTesterRestart {
             n++;
         }
         Assert.assertEquals("the next top node", superRoot + 1, db.internal().superRoot().topNodeId);
+    }
+
+    /**
+     * Databases cross the top node ordinals 2^30, 2^31, 2^32 and 2^47, and restart with their
+     * history (bergdb item 005-02, register M46). Until then the ordinal was an int below 2^30,
+     * and at that bound TopNode threw in the middle of a root split (bergdb item 002, 002-02,
+     * section 2). The second top node starts 20 below the boundary (DbBuilder.secondTopOrdinal);
+     * one key updated in every transaction, at node size 8, makes a new top node about every
+     * four transactions. Three setups: a startup distance of 1,000 bytes, so that the restart
+     * reads top nodes above the boundary from the stream; 100,000 bytes, so that the restart
+     * makes them all again; and 1,000 bytes with every evictable object evicted after every
+     * transaction, so that lookups load top nodes. Every historical value is checked before
+     * and after the restart, and the next top node continues the ordinals.
+     */
+    @Nano private static void testOrdinalsAcrossBoundaries() {
+        long[] boundaries = {1L << 30, 1L << 31, 1L << 32, 1L << 47};
+        String[] setups = {"sd1000", "sd100000", "evict"};
+        for (long boundary : boundaries) {
+            for (String setup : setups) {
+                String what = "boundary " + boundary + ", " + setup;
+                MemoryStream s = new MemoryStream();
+                CoreTestClock clock = new CoreTestClock();
+                Db db = startOrdinalTest(s, clock, setup, boundary - 20);
+                int n = 0;
+                while (db.internal().superRoot().topNodeId < boundary + 20) {
+                    Assert.assertTrue(what + ", transactions " + n, n < 1000);
+                    clock.setTime(10L * (n + 1));
+                    db.execute(db.trans().put("/hot", "v" + n).build());
+                    n++;
+                }
+                if (!setup.equals("sd100000")) {
+                    Assert.assertTrue(what + ", a top node above the boundary written",
+                            db.internal().newestWrittenTop().topNodeId >= boundary);
+                }
+                checkHotHistory(db, n, what + ", before the restart");
+                long superRoot = db.internal().superRoot().topNodeId;
+                db.sync(SyncLevel.STRONG);
+                db.stop();
+                s = s.copy();
+                db = startOrdinalTest(s, clock, setup, boundary - 20);
+                Assert.assertEquals(what + ", super root after the restart", superRoot,
+                        db.internal().superRoot().topNodeId);
+                checkHotHistory(db, n, what + ", after the restart");
+                while (db.internal().superRoot().topNodeId == superRoot) {
+                    clock.setTime(10L * (n + 1));
+                    db.execute(db.trans().put("/hot", "v" + n).build());
+                    n++;
+                }
+                Assert.assertEquals(what + ", the next top node", superRoot + 1,
+                        db.internal().superRoot().topNodeId);
+                checkHotHistory(db, n, what + ", at the end");
+                db.stop();
+            }
+        }
+    }
+
+    /**
+     * The end of the top node ordinals (bergdb item 005-02): once the super root's ordinal is
+     * Db.LAST_TOP_ORDINAL, 1,024 below the bound, 2^48 - 1, a user transaction is refused
+     * before it changes anything. The keys keep their values, no node is left in the writer's
+     * list, the history is right, and the database restarts and refuses again. An internal
+     * transaction is not refused: reclaim runs its transactions after a user transaction has
+     * committed, in the margin below the bound.
+     */
+    @Nano private static void testEndOfOrdinals() {
+        MemoryStream s = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db = startOrdinalTest(s, clock, "sd1000", Db.LAST_TOP_ORDINAL - 10);
+        int n = 0;
+        while (db.internal().superRoot().topNodeId < Db.LAST_TOP_ORDINAL) {
+            Assert.assertTrue("transactions " + n, n < 1000);
+            clock.setTime(10L * (n + 1));
+            db.execute(db.trans().put("/hot", "v" + n).build());
+            n++;
+        }
+        for (int round = 0; round < 2; round++) {
+            String what = round == 0 ? "before the restart" : "after the restart";
+            assertRefused(db, db.trans().put("/hot", "x").build(), what);
+            assertRefused(db, db.trans().put("/other", "x").put("/hot", "x").build(), what);
+            Assert.assertEquals(what + ", super root", Db.LAST_TOP_ORDINAL,
+                    db.internal().superRoot().topNodeId);
+            Assert.assertEquals(what + ", nodes in the writer's list", 0,
+                    db.internal().x().transNodes.size());
+            Assert.assertTrue(what + ", /other", DbUtil.get(db, Long.MAX_VALUE, "/other") == null);
+            Assert.assertArrayEquals(what + ", /hot", StringUtil.toBytes("v" + (n - 1)),
+                    DbUtil.get(db, Long.MAX_VALUE, "/hot"));
+            checkHotHistory(db, n, what);
+            db.sync(SyncLevel.STRONG);
+            db.stop();
+            s = s.copy();
+            db = startOrdinalTest(s, clock, "sd1000", Db.LAST_TOP_ORDINAL - 10);
+        }
+        clock.setTime(10L * (n + 1));
+        Trans internal = db.trans().put("/internal", "i").build();
+        internal.isInternal = true;
+        db.execute(internal);
+        Assert.assertArrayEquals("an internal transaction", StringUtil.toBytes("i"),
+                DbUtil.get(db, Long.MAX_VALUE, "/internal"));
+        assertRefused(db, db.trans().put("/hot", "x").build(), "after an internal transaction");
+        db.stop();
+    }
+
+    /**
+     * Top node ordinals across 2^32, and to the end, with reclaim (bergdb item 005-02). One
+     * key updated in every transaction and one written in the first only, which reclaim
+     * rewrites; a new top node about every three transactions. A retention of one second
+     * cuts the front of the stream, from about transaction 900 on, with the first top node
+     * and the second, whose skip pointers name the first. A restart every 150 transactions;
+     * after each, both keys are checked at every transaction's time from the first available
+     * time on. Near the end, reclaim's internal transactions are not refused; their top nodes
+     * stay within Db.TOP_ORDINAL_MARGIN, at most five above Db.LAST_TOP_ORDINAL.
+     */
+    @Nano private static void testOrdinalsWithReclaim() {
+        runOrdinalsWithReclaim((1L << 32) - 400, (1L << 32) + 300);
+        runOrdinalsWithReclaim(Db.LAST_TOP_ORDINAL - 400, Long.MAX_VALUE);
+    }
+
+    /** Runs until the super root's ordinal is 'until' or a transaction is refused. */
+    private static void runOrdinalsWithReclaim(long second, long until) {
+        String what = "second ordinal " + second;
+        CoreTestClock clock = new CoreTestClock();
+        long time = Clock.UNITS_PER_SEC;
+        clock.setTime(time);
+        CutStream s = new CutStream();
+        Db db = startReclaimOrdinalTest(s, clock, second);
+        Map<String, TreeMap<Long, String>> model = new HashMap<String, TreeMap<Long, String>>();
+        List<Long> times = new ArrayList<Long>();
+        long secondTime = -1;       // the time of the transaction that made the second top node
+        boolean refused = false;
+        for (int i = 0; !refused && db.internal().superRoot().topNodeId < until; i++) {
+            Assert.assertTrue(what + ", transactions " + i, i < 5000);
+            time += Clock.UNITS_PER_SEC / 20;
+            clock.setTime(time);
+            String v = "v" + i;
+            Trans.Builder b = db.trans().put("/hot", v);
+            if (i == 0) {
+                b.put("/cold", v);
+            }
+            try {
+                db.execute(b.build());
+            } catch (DbException e) {
+                Assert.assertTrue(what + ", " + e.getMessage(), until == Long.MAX_VALUE
+                        && db.internal().superRoot().topNodeId >= Db.LAST_TOP_ORDINAL);
+                refused = true;
+                continue;
+            }
+            modelPut(model, "/hot", time, v);
+            if (i == 0) {
+                modelPut(model, "/cold", time, v);
+            }
+            times.add(time);
+            if (secondTime == -1 && db.internal().superRoot().topNodeId >= second) {
+                secondTime = time;
+            }
+            if (i % 150 == 149) {
+                db.sync(SyncLevel.STRONG);
+                db.stop();
+                s = s.copy();
+                db = startReclaimOrdinalTest(s, clock, second);
+                checkModel(db, model, times, what + ", after the restart at transaction " + i);
+            }
+        }
+        Assert.assertTrue(what + ", a cut", s.getCut() > 0);
+        Assert.assertTrue(what + ", the second top node cut away: first available time "
+                + db.getFirstAvailableLookupTime() + ", the second's " + secondTime,
+                secondTime != -1 && db.getFirstAvailableLookupTime() > secondTime);
+        long superRoot = db.internal().superRoot().topNodeId;
+        if (until == Long.MAX_VALUE) {
+            Assert.assertTrue(what + ", refused", refused);
+            Assert.assertTrue(what + ", super root " + superRoot, superRoot >= Db.LAST_TOP_ORDINAL
+                    && superRoot <= Db.LAST_TOP_ORDINAL + 5);
+            assertRefused(db, db.trans().put("/hot", "x").build(), what);
+        }
+        checkModel(db, model, times, what + ", at the end");
+        db.sync(SyncLevel.STRONG);
+        db.stop();
+        db = startReclaimOrdinalTest(s.copy(), clock, second);
+        Assert.assertEquals(what + ", super root after the last restart", superRoot,
+                db.internal().superRoot().topNodeId);
+        checkModel(db, model, times, what + ", after the last restart");
+        if (until == Long.MAX_VALUE) {
+            assertRefused(db, db.trans().put("/hot", "x").build(),
+                    what + ", after the last restart");
+        }
+        db.stop();
+    }
+
+    private static Db startOrdinalTest(AppendOnlyStream s, CoreTestClock clock, String setup,
+            long second) {
+        DbBuilder b = Db.builder().testSetup(s).clock(clock).maxNodeSize8()
+                .startupDistance(setup.equals("sd100000") ? 100000 : 1000)
+                .secondTopOrdinal(second);
+        if (setup.equals("evict")) {
+            b.evictionSchedule(Eviction.Schedule.EVERY, 1).audit(1);
+        }
+        return b.start();
+    }
+
+    /** As Reclaim.Tester's databases for cuts. */
+    private static Db startReclaimOrdinalTest(CutStream s, CoreTestClock clock, long second) {
+        Db db = Db.builder().testSetup(s).clock(clock).maxNodeSize8().startupDistance(2000)
+                .secondTopOrdinal(second).start();
+        db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+        return db;
+    }
+
+    /** "/hot" at the time of each of the n transactions, 10 * (k + 1), is "v" + k. */
+    private static void checkHotHistory(Db db, int n, String what) {
+        for (int k = 0; k < n; k++) {
+            Assert.assertArrayEquals(what + ", the value at the time of transaction " + k,
+                    StringUtil.toBytes("v" + k), DbUtil.get(db, 10L * (k + 1), "/hot"));
+        }
+    }
+
+    private static void assertRefused(Db db, Trans t, String what) {
+        String message = null;
+        try {
+            db.execute(t);
+        } catch (DbException e) {
+            message = e.getMessage();
+        }
+        Assert.assertTrue(what + ", refused: " + message, message != null
+                && message.startsWith("The database has used its top node ordinals"));
+    }
+
+    private static void modelPut(Map<String, TreeMap<Long, String>> model, String key, long time,
+            String value) {
+        TreeMap<Long, String> m = model.get(key);
+        if (m == null) {
+            m = new TreeMap<Long, String>();
+            model.put(key, m);
+        }
+        m.put(time, value);
+    }
+
+    /** Every key at every transaction's time from the first available time on. */
+    private static void checkModel(Db db, Map<String, TreeMap<Long, String>> model,
+            List<Long> times, String what) {
+        long first = db.getFirstAvailableLookupTime();
+        for (long t : times) {
+            if (t < first) {
+                continue;
+            }
+            for (Map.Entry<String, TreeMap<Long, String>> e : model.entrySet()) {
+                Map.Entry<Long, String> v = e.getValue().floorEntry(t);
+                Assert.assertArrayEquals(what + ", " + e.getKey() + " at " + t,
+                        v == null ? null : StringUtil.toBytes(v.getValue()),
+                        DbUtil.get(db, t, e.getKey()));
+            }
+        }
     }
 }

@@ -166,6 +166,9 @@ public class Db {
     /** Eviction at transaction boundaries (bergdb item 001, WP J2 on); see Eviction. */
     private final Eviction eviction;
     
+    /** The ordinal of the second top node: 1, or for tests another (DbBuilder.secondTopOrdinal). */
+    private final long secondTopOrdinal;
+    
 
     /**
      * Constructor takes a DbBuilder; it wires dependencies based on builder settings.
@@ -197,6 +200,7 @@ public class Db {
         auditEvery = b.auditEvery;
         oracle = auditEvery > 0 ? new Audit.Oracle() : null;
         auditCountdown = auditEvery;
+        secondTopOrdinal = b.secondTopOrdinal;
  
         this.maxNodeSize = b.maxNodeSize;
         this.startupDistance = b.startupDistance;
@@ -1387,6 +1391,10 @@ public class Db {
      *             If there was an i/o error with the database stream.
      * @throws InternalDataException
      *             If BergDB internal data in the database is corrupt.
+     * @throws DbException
+     *             If the database has used its top node ordinals, after about 2^48 changes
+     *             of the space root: the transaction is refused before it changes anything,
+     *             as is every later one; reads go on (bergdb item 005-02).
      */
     public final void execute(final Trans t) {
         //
@@ -1418,6 +1426,16 @@ public class Db {
     }
     
     /**
+     * The top node ordinals below the bound, TopNode.MAX_TOP_NODE_ID_VALUE, that are left
+     * when user transactions are refused (bergdb item 005-02): room for the internal
+     * transactions that run after a user transaction, reclaim's, at most five today.
+     */
+    private static final long TOP_ORDINAL_MARGIN = 1024;
+    
+    /** The super root's ordinal from which user transactions are refused. */
+    static final long LAST_TOP_ORDINAL = TopNode.MAX_TOP_NODE_ID_VALUE - TOP_ORDINAL_MARGIN;
+    
+    /**
      * Executes a transaction; this is the heart of the transaction handling.
      * 
      * @throws RerunException
@@ -1436,6 +1454,15 @@ public class Db {
         warmup(t);
         
         synchronized (writeLock) {
+            // The end of the top node ordinals (bergdb item 005-02, register M46): checked
+            // before the transaction changes anything. A transaction makes at most one top
+            // node, and reclaim's internal transactions run only after a user transaction,
+            // within the margin; so no transaction reaches the bound, where TopNode throws.
+            // A database that ends here can still be read and restarted.
+            if (!t.isInternal() && dag.getTopDs().getSuperRoot().topNodeId >= LAST_TOP_ORDINAL) {
+                throw new DbException("The database has used its top node ordinals (up to "
+                        + LAST_TOP_ORDINAL + "); it takes no more transactions.");
+            }
             x.begin(t);
             
             stmCheckConflicts(t);
@@ -1776,7 +1803,10 @@ public class Db {
         
         public Dag dag() { return dag; }
         
-        public void setDag(Dag d) { dag = d; }
+        public void setDag(Dag d) {
+            dag = d;
+            d.getTopDs().setSecondOrdinal(secondTopOrdinal);
+        }
 
         public long getStartupPosForEvict() { return x.startupPos.get(); }
 

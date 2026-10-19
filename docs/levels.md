@@ -1403,6 +1403,31 @@ test that fails without it.
    `testParserRefusesSlotsThatDoNotFit`;
    `DbTesterRestart.testRestartAfterManyTopNodes`, about 131,000
    transactions past ordinal 32,768 and a restart, 1.5 s.
+2. Top node ordinals were bounded by 2^30 − 1 over a database's life
+   (fixed 2026-10-19, bergdb item 005-02; register M46, found in WP A2 from
+   review-13-claude; studied in bergdb item 002, 002-02). Every change of the
+   space root makes a top node, at most one per transaction, and reclaim does
+   not bound the ordinals. With eviction on, memory no longer stops a
+   database first: a few hot keys at 1,000 transactions a second would reach
+   the bound in about six months at node size 30 and in five to seven weeks
+   at node size 8, a soak at full speed in 15 to 29 hours. At the bound
+   `TopNode` threw in the middle of a root split: wrong reads, and once one
+   more transaction committed, the database could not start again. Now the
+   ordinal is a `long` in the 48 bits that the stream already had for it
+   (bytes 10 to 15 of a top node; the reader read 32 of them): no format
+   change, the same bytes for every ordinal below 2^30, and older code
+   refuses a top node with a larger ordinal with an error. 2^48 lasts
+   centuries at the fastest rate measured, past the end of the database
+   clock (2198). Near the end, a user transaction is refused before it
+   changes anything (`DbException`, when the super root's ordinal is 1,024
+   below the bound; reclaim's internal transactions use that margin), and
+   the database can still be read and restarted. Tests:
+   `DbTesterRestart.testOrdinalsAcrossBoundaries` (2^30, 2^31, 2^32 and
+   2^47, with restarts that read the top nodes or make them again, and with
+   eviction), `testOrdinalsWithReclaim` (across 2^32 and to the end, with
+   cuts and restarts) and `testEndOfOrdinals`;
+   `StoredTopNode.testOrdinalField`. A test-only option,
+   `DbBuilder.secondTopOrdinal`, starts the ordinals near a boundary.
 
 
 Level 4: eviction

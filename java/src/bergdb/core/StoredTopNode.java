@@ -20,6 +20,14 @@ import bergdb.storage.StreamFormatException;
  * This class is responsible for how to store a TopNode in the stream:
  * serialization/deserialization.
  * 
+ * <p>Format version 2, little-endian, 40 + 16 * h bytes for a top node with h skip pointers
+ * (h is the bit length of its ordinal): bytes 0 to 3, the size; 4, the type; 5, the version;
+ * 6 and 7, the checksum; 8, h; 9, zero; 10 to 15, the ordinal, an unsigned 48-bit number
+ * (bergdb item 005-02; before it, bytes 10 to 13 were read as an int and the ordinal was
+ * below 2^30); 16 to 23, the node id; 24 to 31, the root time; 32 to 39, the root pointer's
+ * position. Then, for each skip pointer, its position and the time it caches, Spos.NULL
+ * and -1 when unset. Skip pointer i is set exactly when bit i of the ordinal is.</p>
+ * 
  * @author Frans Lundberg
  */
 public class StoredTopNode implements StoredNode {
@@ -81,16 +89,14 @@ public class StoredTopNode implements StoredNode {
 
         offset += 1; // rest of header (reserved)
 
-        int topNodeId = Bytes.bytesToIntLE(buffer, offset);
-        offset += 4;
-        offset += 2; // Added, 2 zero bytes.
+        // The ordinal: bytes 10 to 15, an unsigned 48-bit number (bergdb item 005-02,
+        // register M46). Before, bytes 10 to 13 were read as an int, and ordinals were below
+        // 2^30; their bytes are the same.
+        long topNodeId = Bytes.bytesToLongLE(buffer, firstOffset + 8) >>> 16;
+        offset += 6;
         
         // offset == 16 here
 
-        if (topNodeId < 0) {
-            throw new StreamFormatException("Bad TopNode ID of TopNode in stream, " + topNodeId);
-        }
-        
         if (topNodeId > TopNode.MAX_TOP_NODE_ID_VALUE) {
             throw new StreamFormatException("TopNode ID too large in stream, " + topNodeId);
         }
@@ -142,7 +148,7 @@ public class StoredTopNode implements StoredNode {
         }
         for (int i = 0; i < pointerCount; i++) {
             boolean set = positions[i] != Spos.NULL;
-            if (set != ((topNodeId & (1 << i)) != 0)) {
+            if (set != ((topNodeId & (1L << i)) != 0)) {
                 throw new StreamFormatException("TopNode at " + spos + " with ordinal "
                         + topNodeId + ": skip pointer " + i + (set ? " is set" : " is not set")
                         + ", which does not fit the ordinal.");
@@ -195,10 +201,10 @@ public class StoredTopNode implements StoredNode {
 
         // 2026-10-16 (bergdb item 001, WP A3; F1-008-13, 5.1): the ordinal is widened before
         // it is shifted. It was shifted as an int, so the stored ordinal was its low 16 bits,
-        // and ordinals from 32,768 on were written wrong.
-        l = ((long) node.pointersLength) | (((long) node.topNodeId) << (2 * 8));
+        // and ordinals from 32,768 on were written wrong. Since bergdb item 005-02, the
+        // ordinal is a long below 2^48, in bytes 10 to 15; byte 9 stays zero.
+        l = ((long) node.pointersLength) | (node.topNodeId << (2 * 8));
         buffer[offset++] = l;
-        // 2 bytes not used
 
         buffer[offset++] = node.getId();
 
@@ -278,12 +284,15 @@ public class StoredTopNode implements StoredNode {
      * ordinal as an int, so ordinals from 32,768 on were written wrong: refused when bit 15
      * is set, else read as the ordinal modulo 65,536, with the wrong height. The tops are
      * made by TopDs.newSuperRoot from a predecessor that has the slots of the layout,
-     * except the first and the largest ordinal, which are made directly.
+     * except the first and the largest ordinal, which are made directly. Since bergdb item
+     * 005-02 also ordinals from 2^30 to the largest, 2^48 - 1.
      */
     @Nano
     public static void testOrdinalsRoundTrip() {
-        int[] ordinals = {1, 2, 3, 32767, 32768, 32769, 65535, 65536, 98303, 1 << 20};
-        for (int n : ordinals) {
+        long[] ordinals = {1, 2, 3, 32767, 32768, 32769, 65535, 65536, 98303, 1 << 20,
+                (1L << 30) - 1, 1L << 30, (1L << 31) - 1, 1L << 31, (1L << 32) - 1, 1L << 32,
+                (1L << 32) + 5, 1L << 40, (1L << 47) - 1, 1L << 47, (1L << 48) - 2};
+        for (long n : ordinals) {
             TopDs ds = new TopDs(topOfLayout(n - 1));
             KeyNode root = new KeyNode();
             root.setSpos(rootPosOf(n));
@@ -307,12 +316,13 @@ public class StoredTopNode implements StoredNode {
      */
     @Nano
     public static void testParserRefusesSlotsThatDoNotFit() {
-        int[][] cases = {{65536, 0}, {98303, 32767}, {5, 4}, {6, 5}};
-        for (int[] c : cases) {
+        long[][] cases = {{65536, 0}, {98303, 32767}, {5, 4}, {6, 5}, {(1L << 32) + 5, 5},
+                {(1L << 40) + 3, 3}};
+        for (long[] c : cases) {
             long[] longs = new long[getByteSize(topOfLayout(c[0])) / 8];
             toLongs(topOfLayout(c[0]), longs, 0);
             byte[] bytes = Bytes.longsToBytesLE(longs);
-            for (int b = 0; b < 4; b++) {
+            for (int b = 0; b < 6; b++) {
                 bytes[10 + b] = (byte) (c[1] >>> (8 * b));      // The ordinal field.
             }
             boolean refused = false;
@@ -326,16 +336,45 @@ public class StoredTopNode implements StoredNode {
     }
 
     /**
+     * The ordinal's bytes (bergdb item 005-02): bytes 10 to 15, little-endian, byte 9 zero.
+     * An ordinal below 2^30 has the bytes it had when the field was read as an int from
+     * bytes 10 to 13, with bytes 14 and 15 zero: no format change.
+     */
+    @Nano
+    public static void testOrdinalField() {
+        long[] ordinals = {0, 1, 32768, 98303, (1L << 30) - 1, 1L << 30, (1L << 32) + 5,
+                (1L << 40) + 3, TopNode.MAX_TOP_NODE_ID_VALUE};
+        for (long n : ordinals) {
+            TopNode top = topOfLayout(n);
+            long[] longs = new long[getByteSize(top) / 8];
+            toLongs(top, longs, 0);
+            byte[] bytes = Bytes.longsToBytesLE(longs);
+            Assert.assertEquals("ordinal " + n + ", byte 8", top.pointersLength, bytes[8]);
+            Assert.assertEquals("ordinal " + n + ", byte 9", 0, bytes[9]);
+            for (int b = 0; b < 6; b++) {
+                Assert.assertEquals("ordinal " + n + ", byte " + (10 + b),
+                        (byte) (n >>> (8 * b)), bytes[10 + b]);
+            }
+            if (n < (1L << 30)) {
+                Assert.assertEquals("ordinal " + n + " as an int", n,
+                        Bytes.bytesToIntLE(bytes, 10));
+                Assert.assertEquals("ordinal " + n + ", byte 14", 0, bytes[14]);
+                Assert.assertEquals("ordinal " + n + ", byte 15", 0, bytes[15]);
+            }
+        }
+    }
+
+    /**
      * A top node with ordinal n and the slots of the layout (TopDs.newSuperRoot), as stream
      * pointers: slot k is set when bit k of n is, and names the top node whose ordinal is n
      * with bits 0 to k-1 cleared, minus one.
      */
-    private static TopNode topOfLayout(int n) {
+    private static TopNode topOfLayout(long n) {
         TopNode t = new TopNode(n, null, rootPosOf(n), timeOf(n), posOf(n));
         t.setId(posOf(n));
         for (int k = 0; k < t.pointersLength; k++) {
-            if ((n & (1 << k)) != 0) {
-                int target = ((n >>> k) << k) - 1;
+            if ((n & (1L << k)) != 0) {
+                long target = ((n >>> k) << k) - 1;
                 t.pointersPos[k] = posOf(target);
                 t.pointersTime[k] = timeOf(target);
             }
@@ -343,9 +382,9 @@ public class StoredTopNode implements StoredNode {
         return t;
     }
 
-    private static long posOf(int ordinal) { return 1024 + 64L * ordinal; }
-    private static long rootPosOf(int ordinal) { return 1032 + 64L * ordinal; }
-    private static long timeOf(int ordinal) { return 1000 + 3L * ordinal; }
+    private static long posOf(long ordinal) { return 1024 + 64L * ordinal; }
+    private static long rootPosOf(long ordinal) { return 1032 + 64L * ordinal; }
+    private static long timeOf(long ordinal) { return 1000 + 3L * ordinal; }
 
     /** Writes and parses the node, and compares the ordinal, the slots and their times. */
     private static void checkRoundTrip(TopNode top) {
@@ -363,7 +402,7 @@ public class StoredTopNode implements StoredNode {
             long pos = p.getSposForStream();
             Assert.assertEquals(what + ", slot " + i, pos, read.getPointerPos(i));
             if (i > 0) {
-                boolean set = (top.topNodeId & (1 << (i - 1))) != 0;
+                boolean set = (top.topNodeId & (1L << (i - 1))) != 0;
                 Assert.assertTrue(what + ", slot " + i + " set as the bit", set == (pos != Spos.NULL));
                 Assert.assertEquals(what + ", time of slot " + i, set ? top.pointersTime[i - 1] : -1,
                         read.pointersTime[i - 1]);

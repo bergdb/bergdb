@@ -260,7 +260,7 @@ public class TraceExport {
     final List<Rec> recs = new ArrayList<Rec>();
     final List<TopNode> topNodes = new ArrayList<TopNode>();            // by top node id
     long newestWrittenTopId = -1;
-    int newestWrittenTopNum = -1;
+    long newestWrittenTopNum = -1;
     int newestWrittenTopRec = -1;
 
     int timeIndex(long tt, String context) {

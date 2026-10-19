@@ -491,8 +491,8 @@ For a run (Java's structure is finite at any time):
   height;
 * a top node with id k: L + 1 + k, where L = 1 + G × (H + 1) + H is the
   highest key node level;
-* the root: L + 2 + `TopNode.MAX_TOP_NODE_ID_VALUE` (2^30 − 1), above every
-  top node.
+* the root: L + 2 + `TopNode.MAX_TOP_NODE_ID_VALUE` (2^48 − 1 since bergdb
+  005-02, 2026-10-19; 2^30 − 1 before), above every top node.
 
 Every pointer goes strictly down: an internal key node to its children (one
 height less, same segment); a segment leaf to value nodes (0) and to the

@@ -365,9 +365,9 @@ public final class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.T
     
     /** Assert that there is no existing top node with same top node id. */
     private boolean assertNoDuplicateTopNodeId(TopNode node) {
-        int id1 = node.topNodeId;
+        long id1 = node.topNodeId;
         for (int i = 0; i < topCount; i++) {
-            int id2 = topNodes[i].topNodeId;
+            long id2 = topNodes[i].topNodeId;
             if (id2 == id1) {
                 throw new AssertionError("Cannot add TopNode with same topNodeId as existing one, " 
                         + "existing: " + topNodes[i] + ", to add: " + node);

@@ -1,8 +1,10 @@
 package bergdb.core;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import bergdb.dag.Node;
+import bergdb.dag.Spos;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
@@ -19,6 +21,10 @@ public class Cache3 {
     //
     
     private static final long INITIAL_CACHE_SIZE = 10*1000;
+
+    /** The node table is 2^MAP_BITS maps; mapIndex picks one by the node id. */
+    private static final int MAP_BITS = 8;
+
     @SuppressWarnings("unused")
     private final Cache.DbInfo dbInfo;
     private final Object bigLock;
@@ -50,7 +56,7 @@ public class Cache3 {
         this.dbInfo = dbInfo;
         this.totalSize = INITIAL_CACHE_SIZE;
         this.putSize = INITIAL_CACHE_SIZE;
-        this.maps = new HashMap[256];
+        this.maps = new HashMap[1 << MAP_BITS];
         
         for (int i = 0; i < maps.length; i++) {
             maps[i] = new HashMap<Long, CacheEntry>();
@@ -116,7 +122,13 @@ public class Cache3 {
         residents.released(node);
     }
 
-    /** The objects the node table names, for the audit (Audit) and the sweeps (J2 on). */
+    /**
+     * The objects the node table names, for the audit (Audit) and the sweeps (J2 on), in the
+     * order of the maps and their bins, which follows the node ids (mapIndex), not the tree or
+     * the age. The sweeps' choices among equal candidates follow it (Eviction: the objects
+     * that only the table holds, memory pointers of the same age, the random schedule's
+     * draws); the records do not (EvictionInvariance).
+     */
     public java.util.List<Node> nodes() {
         synchronized (bigLock) {
             java.util.ArrayList<Node> result = new java.util.ArrayList<Node>();
@@ -289,17 +301,20 @@ public class Cache3 {
         return maps[mapIndex(id)];
     }
     
-    private int mapIndex(long id) {
-        long v = id;
-        long temp = (v >>>  0) ^ (v >>>  8) ^ (v >>> 16) ^ (v >>> 24) ^
-                    (v >>> 32) ^ (v >>> 40) ^ (v >>> 48) ^ (v >>> 56);
-        // 2026-10-13 (java/stress/LoadTest.java): was ((int) temp) % maps.length, which is
-        // negative for some ids of 2^31 and more; node ids are stream positions, so every
-        // stream longer than 2.1 GB failed with ArrayIndexOutOfBoundsException.
-        int index = (int) ((temp & Long.MAX_VALUE) % maps.length);
-        assert index >= 0 : "index: " + index;
-        assert index < maps.length : "index: " + index;
-        return index;
+    /**
+     * The map of node 'id': the top MAP_BITS bits of id times 2^64 divided by the golden
+     * ratio (Fibonacci hashing), which depend on every bit of the id. HashMap takes the bin
+     * from the low bits of h ^ (h >>> 16), h the Long's hash, so the map and the bin depend
+     * on different bits (bergdb item 005-08; testBinsStaySmall). From 2017-07-31 to
+     * 2026-10-19 the map was the XOR of the id's eight bytes. For the ids of one map that
+     * left the low 16 bits of h ^ (h >>> 16) a function of one byte (the XOR of the id's odd
+     * bytes): at most 256 bins a map, about 17 ids a bin with a million KVs, and HashMap
+     * makes every bin of more than 8 a red-black tree, of 56-byte HashMap$TreeNode entries
+     * instead of 24-byte HashMap$Node ones (bergdb item 006-02, section 4). An unsigned
+     * shift: the index is never negative (the fault of 2026-10-13, testLargeIds).
+     */
+    static int mapIndex(long id) {
+        return (int) ((id * 0x9E3779B97F4A7C15L) >>> (64 - MAP_BITS));
     }
     
     // ======== Tests ========
@@ -319,7 +334,57 @@ public class Cache3 {
             Assert.assertTrue(cache.getNode(id) == null);
         }
     }
-    
+
+    /**
+     * HashMap's bins stay small (bergdb item 005-08): node ids as the writer makes them, in
+     * each transaction consecutive odd numbers from the stream's end (Spos.nextVpos), go into
+     * the maps by mapIndex and into the bins as HashMap puts them: the low bits of
+     * h ^ (h >>> 16), h the Long's hash, the capacity doubled when the size passes three
+     * quarters of it. A put into a bin of 8 makes it a red-black tree (HashMap$TreeNode).
+     * With the XOR of the id's bytes about half the puts of each case below did; now, as with
+     * random hashes, a few in a million at most.
+     */
+    @Nano
+    public static void testBinsStaySmall() {
+        // A million ids each: the first stream position, the nodes and the stream bytes of a
+        // transaction. Props's MEM (100 small KVs a transaction); single puts on a stream past
+        // 4 GB; large transactions far into the stream.
+        long[][] cases = {{0, 110, 5000}, {(1L << 32) + 77, 4, 150}, {(1L << 40) + 12345, 1000, 30000}};
+        int n = 1000 * 1000;
+        for (long[] c : cases) {
+            int[] size = new int[1 << MAP_BITS];
+            long[][] ids = new long[1 << MAP_BITS][16];
+            int[][] bins = new int[1 << MAP_BITS][16];
+            long trees = 0;
+            int largest = 0;
+            int count = 0;
+            for (long pos = c[0]; count < n; pos += c[2]) {
+                long id = Spos.nextVpos(pos);
+                for (int k = 0; k < c[1] && count < n; k++, count++, id += 2) {
+                    int m = mapIndex(id);
+                    int[] b = bins[m];
+                    int i = bin(id, b.length);
+                    if (b[i] >= 8 && b.length >= 64) trees++;
+                    largest = Math.max(largest, ++b[i]);
+                    if (size[m] == ids[m].length) ids[m] = Arrays.copyOf(ids[m], 2 * size[m]);
+                    ids[m][size[m]++] = id;
+                    if (size[m] > b.length / 4 * 3) {          // HashMap.resize()
+                        b = bins[m] = new int[2 * b.length];
+                        for (int j = 0; j < size[m]; j++) b[bin(ids[m][j], b.length)]++;
+                    }
+                }
+            }
+            Assert.assertTrue("puts into a bin of 8: " + trees, trees <= n / 100000);
+            Assert.assertTrue("the largest bin: " + largest, largest <= 10);
+        }
+    }
+
+    /** HashMap's bin of key 'id' in a table of 'capacity' bins, a power of two. */
+    private static int bin(long id, int capacity) {
+        int h = Long.hashCode(id);
+        return (h ^ (h >>> 16)) & (capacity - 1);
+    }
+
     public static class AlreadyHasNode extends AssertionError {
         private static final long serialVersionUID = 1L;
         

@@ -29,6 +29,7 @@ public class DbBuilder {
     int auditEvery = Audit.EVERY;
     long reclaimStepReserve = Long.getLong("stepreserve", Reclaim.DEFAULT_STEP_RESERVE);
     long evictionBudget = Long.getLong("evictbudget", -1);
+    long secondTopOrdinal = 1;
     
     static class StreamInfo {
         String name;
@@ -233,6 +234,18 @@ public class DbBuilder {
      */
     public DbBuilder audit(int every) {
         this.auditEvery = every;
+        return this;
+    }
+
+    /**
+     * For tests (bergdb item 005-02): the database's second top node gets this ordinal, not
+     * 1 (TopDs.setSecondOrdinal), so that a test crosses 2^30, 2^31 or 2^32, or reaches the
+     * end of the ordinals near 2^48, without making as many top nodes. Give it at every
+     * start of the database, as the node size: the startup's rerun makes the top nodes of
+     * the startup section again.
+     */
+    public DbBuilder secondTopOrdinal(long ordinal) {
+        this.secondTopOrdinal = ordinal;
         return this;
     }
 

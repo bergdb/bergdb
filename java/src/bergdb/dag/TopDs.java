@@ -9,6 +9,12 @@ package bergdb.dag;
 public class TopDs {
     private volatile TopNode superRoot;
     
+    /**
+     * The ordinal of the top node after the first: 1, or for tests a larger one
+     * (setSecondOrdinal). Synch note: set at startup, before the first transaction.
+     */
+    private long secondOrdinal = 1;
+    
     public TopDs(TopNode superRoot) {
         if (superRoot == null) {
             throw new IllegalArgumentException("superRoot == null not allowed");
@@ -34,6 +40,19 @@ public class TopDs {
     }
     
     /**
+     * For tests (DbBuilder.secondTopOrdinal; bergdb item 005-02): the top node after the
+     * first gets this ordinal instead of 1, so that a test reaches large ordinals without
+     * making as many top nodes. Its skip pointers name the first top node, as newSuperRoot
+     * does for a skip pointer that the super root lacks.
+     */
+    public void setSecondOrdinal(long ordinal) {
+        if (ordinal < 1 || ordinal > TopNode.MAX_TOP_NODE_ID_VALUE) {
+            throw new IllegalArgumentException("Bad ordinal, " + ordinal + ".");
+        }
+        this.secondOrdinal = ordinal;
+    }
+    
+    /**
      * Creates a new super root node.
      * Caller must hold Db.writeLock.
      * 
@@ -56,10 +75,11 @@ public class TopDs {
 
         assert time > superRoot.rootTime : "time " + time + " < " + superRoot.rootTime;
 
-        TopNode newSuperRoot = new TopNode(superRoot.topNodeId + 1, newRoot, accessData, time, 
-                Spos.NULL);
+        // The ordinal: one more than the super root's (a long below 2^48 since bergdb item
+        // 005-02; TopNode.MAX_TOP_NODE_ID_VALUE).
+        final long id = superRoot.topNodeId == 0 ? secondOrdinal : superRoot.topNodeId + 1;
+        TopNode newSuperRoot = new TopNode(id, newRoot, accessData, time, Spos.NULL);
         final int h = newSuperRoot.pointersLength;
-        final int id = newSuperRoot.topNodeId;
         
         nodeChangeListener.topNodeCreated(newSuperRoot);
         nodeChangeListener.topNodeReplaced(superRoot);  // it existed before this transaction

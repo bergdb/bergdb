@@ -31,7 +31,9 @@ public final class TopNode implements Node {
     public long rootPointerPos;    // stream pointer corresponding to rootPointer.
     public long rootTime;
     
-    public final int topNodeId;
+    public final long topNodeId;
+        // The ordinal: 0 for the first top node, then one more for each (TopDs.newSuperRoot).
+        // At most MAX_TOP_NODE_ID_VALUE, 2^48 - 1; an int below 2^30 before bergdb item 005-02.
     public volatile long spos;
     public volatile long id = Spos.NULL;
         // The original spos of the node functions as its id.
@@ -46,13 +48,14 @@ public final class TopNode implements Node {
     public boolean isCanonical = false;     // See Node.isCanonical().
         // Synch note: access from threads holding Db.writeLock only.
     
-    private static final int MAX_HEIGHT = 30;
+    private static final int MAX_HEIGHT = 48;
     
     /**
      * This constructor should only be called from TopDs, from this class itself,
      * and when parsing a top node.
      */
-    public TopNode(int topNodeId, KeyNode rootPointer, long rootPointerPos, long rootTime, long spos) {
+    public TopNode(long topNodeId, KeyNode rootPointer, long rootPointerPos, long rootTime,
+            long spos) {
         this.rootPointer = rootPointer;
         this.rootPointerPos = rootPointerPos;
         this.rootTime = rootTime;
@@ -83,7 +86,7 @@ public final class TopNode implements Node {
      * since StoredTopNode.parse refuses a top node whose skip pointers do not fit its
      * ordinal.
      */
-    public static TopNode createDummy(int topNodeId) {
+    public static TopNode createDummy(long topNodeId) {
         long keyNodeSpos = 100;
         
         KeyNode k = new KeyNode();
@@ -102,7 +105,7 @@ public final class TopNode implements Node {
         return result;
     }
     
-    public int getTopNodeId() {
+    public long getTopNodeId() {
         return topNodeId;
     }
     
@@ -118,7 +121,7 @@ public final class TopNode implements Node {
         return rootTime;
     }
     
-    private static int height(int id) {
+    private static int height(long id) {
         //
         // power2: 1  2  4  8
         //      i: 0  1  2  3
@@ -137,11 +140,15 @@ public final class TopNode implements Node {
         return i;
     }
     
-    /** Maximum supported value of a TopNode id. */
-    public static final int MAX_TOP_NODE_ID_VALUE = power2(MAX_HEIGHT) - 1;
+    /**
+     * Maximum supported value of a TopNode id, 2^48 - 1: the ordinal has 48 bits in the
+     * stream (StoredTopNode). Db refuses user transactions just below it (Db.executeInner;
+     * bergdb item 005-02). It was 2^30 - 1 before, register M46.
+     */
+    public static final long MAX_TOP_NODE_ID_VALUE = power2(MAX_HEIGHT) - 1;
     
-    public static final int power2(int x) {
-        return 1 << x;
+    public static final long power2(int x) {
+        return 1L << x;
     }
     
     private static final String CLASSNAME = TopNode.class.getName();
@@ -382,6 +389,17 @@ public final class TopNode implements Node {
         //Assert.assertEquals(7, TopNode.height(100));   // 64 = 2^6
         //Assert.assertEquals(20+1, TopNode.height(1024*1024));
         Assert.assertEquals(30, TopNode.height(1024*1024*1024 / 2));
+        Assert.assertEquals(31, TopNode.height(1L << 30));
+        Assert.assertEquals(33, TopNode.height(1L << 32));
+        Assert.assertEquals(48, TopNode.height(1L << 47));
+        Assert.assertEquals(48, TopNode.height(MAX_TOP_NODE_ID_VALUE));
+        boolean refused = false;
+        try {
+            TopNode.height(MAX_TOP_NODE_ID_VALUE + 1);
+        } catch (IllegalStateException e) {
+            refused = true;
+        }
+        Assert.assertTrue("above the bound", refused);
     }
 
     public boolean isKeyNode() { return false; }

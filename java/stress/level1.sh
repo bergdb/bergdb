@@ -4,7 +4,8 @@
 # committing any change to java/; it must pass.
 #
 # Usage: java/stress/level1.sh [quick]
-#   full (default): about 80 s on 10 cores. quick: about 30 s.
+#   full (default): about 2.5 minutes on 10 cores (F53, 2026-10-19). quick:
+#   about 75 s.
 #
 # Builds with ../java/build.sh, then runs, stopping at the first failure:
 #   1. The unit tests (bergdb.dev.Unit).
@@ -18,6 +19,10 @@
 #   5. RestartInvariance: the same transactions with and without restarts
 #      give the same stream, byte for byte (T2 in docs/sis-model.md), and
 #      the same dirty set, node ids and lookups.
+#   6. Props, the 2014-2017 property suite (bergdb.dev.props; bergdb item
+#      006-02): MEM, heap bytes per KV, and SS, stream bytes per user byte,
+#      checked against the limits below; CORE, the speed of four Core tests,
+#      printed and not checked (full only).
 # The startup distance is set to 200 MB, larger than any stream here, so
 # startup always replays the whole stream. Logs go to build/level1/.
 # Set JAVA_HOME or PATH for the JDK; the build needs javac too.
@@ -102,5 +107,43 @@ grep -q '^STREAM: identical' $F || fail "RestartInvariance, stream not byte for 
 [ "$(grep -Ec '^(TRANSSEQ|KV CHECKSUM|IDENTITY .*|LOOKUP .*): 0 of' $F)" = 6 ] \
     || fail "RestartInvariance" $F
 grep -E '^(STREAM: [is]|TRANSSEQ|KV|IDENTITY|LOOKUP)' $F | sed 's/^/   /'
+
+echo "6. Props"
+# Run as in 2014 to 2017, without -ea; numbers to compare with the history in
+# src-dev/bergdb/dev/props and bergdb item 006-02. MEM and SS do not depend on
+# the machine. The limits are the values of 2026-10-19 (11ea2f6) on JDK 27 with
+# its default compact object headers, plus one step for MEM's noise (226 to
+# 227 in 31 runs) and for SS on other machines (0.01). When a change improves
+# MEM or SS, lower the limit; a change that needs a higher one needs a reason
+# in docs/log.md. Without compact object headers (older JDKs, or
+# -XX:-UseCompactObjectHeaders) MEM is about 18 bytes higher for this code: it
+# is then printed, not checked. CORE (1.00 = cissi, July 2013) depends on the machine
+# and on what else runs: printed only.
+MEM_MAX=228
+SS_MAX="1.51 1.11 1.20 1.63 2.38"   # SS, then SS1 to SS4
+$JAVA -cp build/bergdb.jar bergdb.dev.props.Mem > $LOG/props-mem.txt 2>&1 &
+$JAVA -cp build/bergdb.jar bergdb.dev.props.SS > $LOG/props-ss.txt 2>&1 &
+wait
+MEM=$(sed -n 's/^MEM:\([0-9]*\).*/\1/p' $LOG/props-mem.txt)
+[ -n "$MEM" ] || fail "Props MEM" $LOG/props-mem.txt
+if $JAVA -XX:+PrintFlagsFinal -version 2>/dev/null | grep -Eq ' UseCompactObjectHeaders .*= true'; then
+    [ "$MEM" -le $MEM_MAX ] || fail "Props MEM $MEM, more than $MEM_MAX bytes per KV" $LOG/props-mem.txt
+    echo "   MEM:$MEM (at most $MEM_MAX)"
+else
+    echo "   MEM:$MEM (not checked: no compact object headers)"
+fi
+SS=$(grep '^SS:' $LOG/props-ss.txt)
+[ -n "$SS" ] || fail "Props SS" $LOG/props-ss.txt
+echo "$SS" | sed -e 's/[^0-9. ]//g' | awk -v max="$SS_MAX" '
+    { n = split(max, m, " "); if (NF != n) exit 1
+      for (i = 1; i <= n; i++) if ($i > m[i] + 1e-9) exit 1 }' \
+    || fail "Props $SS, more than $SS_MAX" $LOG/props-ss.txt
+echo "   $SS (at most $SS_MAX)"
+if [ "$1" != quick ]; then
+    $JAVA -cp build/bergdb.jar bergdb.dev.props.Core > $LOG/props-core.txt 2>&1
+    CORE=$(grep -o 'CORE:[0-9.]* ([^)]*)' $LOG/props-core.txt)
+    [ -n "$CORE" ] || fail "Props CORE" $LOG/props-core.txt
+    echo "   $CORE (get, get4t, getmany, set; not checked)"
+fi
 
 echo "LEVEL 1 OK"

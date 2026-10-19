@@ -84,7 +84,7 @@ Index
 
 * **001-lean-model-levels-3-4** (done). Model Levels 3 (reclaim) and 4
   (eviction) in Lean and align the model with the Java code.
-* **002-top-node-ordinal-bound** (open). The top node ordinal bound,
+* **002-top-node-ordinal-bound** (done). The top node ordinal bound,
   2^30 − 1 over a database's life (register M46): what Java does at it, and
   what to do about it.
 * **003-transaction-exception-safety** (open). A transaction that throws

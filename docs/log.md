@@ -719,3 +719,23 @@ checked, not proved) and what comes next (the sweep's cost first).
 
 2026-10-19. Bergdb item 001 closed (done): Frans accepted the outcome at
 K5, with T-SCHEME checked, not proved (R6).
+
+2026-10-19. `level1.sh` step 6, Props (bergdb item 006-02): MEM, heap bytes
+per KV, and SS, stream bytes per user byte, are checked against limits (MEM
+at most 228, SS at most 1.51 (1.11, 1.20, 1.63, 2.38): the values of
+`11ea2f6` on JDK 27 plus one step); CORE is printed, not checked, in the full
+run only. A change that improves MEM or SS lowers the limit; one that needs a
+higher limit needs a reason here. Full run 2 min 43 s, quick 75 s, both
+`LEVEL 1 OK`, on a scratch copy of `java/`.
+
+2026-10-19. Bergdb 005-02 (register M46; item 002 closed): top node ordinals
+are longs below 2^48, in the 48 bits the stream already had for them (bytes
+10 to 15 of a top node), of which the reader read 32. No format change: every
+record the same (StreamDigest, 36 of 36 R8's). Near the end, a user
+transaction is refused before it changes anything, 1,024 below the bound;
+reclaim's internal transactions are not. New tests cross 2^30, 2^31, 2^32
+and 2^47 with restarts, eviction and reclaim, and reach the end; the
+test-only `DbBuilder.secondTopOrdinal` starts the ordinals near a boundary.
+The four gates pass, full; `level3.sh` on its second run: the first failed a
+test of item 001's eviction that fails on today's code too, now and then (see
+005-02).

@@ -1,7 +1,7 @@
 002-top-node-ordinal-bound
 ==========================
 
-Created 2026-10-17 by Frans Lundberg. Status: open.
+Created 2026-10-17 by Frans Lundberg. Status: done.
 
 The top node ordinal bound, register row M46 of
 [docs/level4-alignment.md](../../docs/level4-alignment.md): top node
@@ -34,3 +34,9 @@ the end (no format change); register a related defect (a transaction that
 throws in the middle is half committed); leave the height decrease.
 
 2026-10-17. Frans: left for later, not planned. The item stays open.
+
+2026-10-19. Done: fixed as 002-02 recommends, in bergdb 005-02
+([../005-todo/02-fix-m46-ordinal-bound.md](../005-todo/02-fix-m46-ordinal-bound.md)):
+the ordinal is a `long` below 2^48, without a format change, and a user
+transaction is refused before it changes anything 1,024 below the bound. M46
+is closed. The height decrease (002-02, section 7) was left, as recommended.
