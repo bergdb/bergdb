@@ -776,3 +776,18 @@ the old parent's subtree, which fails A6'. conformance.sh's small and evict
 sets have a configuration with A6's kind, `a6` and `e-a6`; a trace of them
 without it fails. The four gates pass, full, on `0597329` with the change
 and on `c6ca623`, where Frans committed it with 005-10's removal.
+
+2026-10-20. Bergdb 005-10, the end: the Pub API's
+`Database.getFirstAvailableLookupTime` returned the current time, not the
+first available lookup time (since the 2017 source; nothing called it). It
+returns the core's now, with two unit tests in `PubTester`. Removed, as
+Frans decided: `Connection.put(Object)` (the demo `GetStarted4` uses
+`put(key, object)` instead), the repeated `RwEnvironment.exists`, and
+`NoFieldsSetException`, which nothing threw; `Connection.get`'s Javadoc
+says that it returns null for a missing key. Replication and transaction
+outputs wait for 005-11 and 005-12. Unit tests 944, f-tests 36; the four
+gates and `lake build` pass.
+
+2026-10-20. The night tests run with `java/night.sh` (Frans's, beside
+`unit.sh`, `f.sh` and `perf.sh`); 005-10's `java/stress/night.sh` is
+removed, at Frans's request.

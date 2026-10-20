@@ -196,9 +196,7 @@ public class ConnectionImp implements Connection {
 
     /**
      * @throws ObjectCreationException
-     * @throws NoFieldsSetException
      * @throws DbException
-     * @throws NoSuchObjectException
      * @throws IllegalArgumentException
      *             If an argument is null or if 'ukey' has an invalid format.
      */
@@ -235,28 +233,6 @@ public class ConnectionImp implements Connection {
         return w().put(key, object).execute();
     }
 
-    /**
-     * Puts a key-object entry to the database; the key is taken from the field
-     * 'key' of the object. The object must have a field of type String and name
-     * 'key', otherwise an exception is thrown. If an entry with the given key
-     * already exists, it is overwritten.
-     * 
-     * @param object
-     *            The object to store. Cannot be null and must have a String
-     *            field named 'key'.
-     * @throws DbException
-     *             If the transaction could not be processed because the
-     *             database is faulty.
-     * @throws MissingKeyFieldException
-     *             If 'object' does not have a String field named 'key'.
-     * @throws IllegalArgumentException
-     *             If the key field string is null or otherwise invalid, or if
-     *             object is null.
-     */
-    public Transaction put(Object object) {
-        return w().put(object).execute();
-    }
-    
     public Transaction delete(String key) {
         return w().delete(key).execute();
     }

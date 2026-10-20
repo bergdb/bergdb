@@ -30,9 +30,10 @@ Open
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-09](09-fix-node-table-snapshot-race.md) | Fix | A race between a reader and a sweep lets the node table name a released object (INV-CAN); a unit test fails now and then (005-02) | open |
-| [005-10](10-unused-code.md) | Investigate | Unused code in `java/` and `lean/`: find it and propose what to remove; nothing is removed without Frans's approval | in progress |
+| [005-10](10-unused-code.md) | Investigate | Unused code in `java/` and `lean/`: find it and propose what to remove; nothing is removed without Frans's approval | done |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
 | [005-12](12-transaction-outputs.md) | Investigate | Transaction outputs (`setOutput`, `getOutput`): study them, then test them or remove them (005-10) | open |
+| [005-13](13-buffer-time.md) | Investigate | The buffer time (100 ms, from the hard-drive era): sweep it on SSD, then decide the default and group commit | open |
 
 
 Closed
@@ -57,7 +58,8 @@ best before or with 005-01 (where a transaction's go point is) and before
 it is fixed. What is left of 005-10 waits for Frans; a removal is best made
 when no other change to `java/` is under way. 005-11 and 005-12 can go any
 time, best before 005-05's decision on publishing, as both concern the Pub
-API.
+API. 005-13's sweep can go any time; its group commit is best after or with
+005-07.
 
 
 Files
@@ -95,6 +97,8 @@ Files
   decision material for Frans.
 * [12-transaction-outputs.md](12-transaction-outputs.md). 005-12,
   transaction outputs: study, then test or remove.
+* [13-buffer-time.md](13-buffer-time.md). 005-13, the buffer time: the
+  sweep and the proposal (group commit).
 
 
 Log
@@ -175,3 +179,14 @@ files stay where they are. 005-08's own status said open: its outcome and
 its files, written on 2026-10-19 in a clone and never copied here, are now
 in the subitem and in
 [08-fix-node-table-tree-bins/](08-fix-node-table-tree-bins/).
+
+2026-10-20. 005-10 done, at Frans's request, by Claude (Opus 5.5, Claude
+Code): the Pub API's `getFirstAvailableLookupTime` returned the current
+time; fixed, with two unit tests. `Connection.put(Object)`, the repeated
+`RwEnvironment.exists` and `NoFieldsSetException` removed; replication and
+transaction outputs are 005-11 and 005-12. The four gates pass.
+
+2026-10-20. Added 005-13, the buffer time, at Frans's request, by Claude
+(Opus 5.5, Claude Code): a sweep of the buffer time on today's source
+first, with the proposal of group commit (a waiting sync starts the
+flush). Defined, not started.

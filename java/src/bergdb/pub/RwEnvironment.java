@@ -9,11 +9,6 @@ package bergdb.pub;
 public interface RwEnvironment extends ReadInterface {
     
     /**
-     * Returns true if a value exists for the given key.
-     */
-    public boolean exists(String key);
-
-    /**
      * @see Connection#get(String, Class)
      */
     public <TYPE> TYPE get(String key, Class<TYPE> clazz);

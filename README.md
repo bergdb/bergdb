@@ -41,13 +41,12 @@ and `level2.sh` to `level4.sh`, [elan](https://github.com/leanprover/elan).
     java/stress/level2.sh          # bounded startup      (about 17 minutes; quick: 2)
     java/stress/level3.sh          # reclaim              (about 8 minutes)
     java/stress/level4.sh          # eviction             (about 16 minutes; quick: 4)
-    java/stress/night.sh           # the night tests      (about 4.5 minutes)
     cd lean && lake build          # checks all proofs
 
 Each level script prints `LEVEL n OK` when it passes. All four must pass
-before a change to the Java code is committed. `night.sh` runs the
-long-running tests of 2013 to 2015 that no level script runs and prints
-`NIGHT OK`; it is not a gate. Set `JAVAC` and `JAR` if the JDK tools are
+before a change to the Java code is committed. `java/night.sh` runs the
+long-running tests of 2013 to 2015 that no level script runs (about 4.5
+minutes); it is not a gate. Set `JAVAC` and `JAR` if the JDK tools are
 not on the path.
 
 

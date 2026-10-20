@@ -34,12 +34,12 @@ public class GetStarted4 {
         
         if (a0 == null) {
             a0 = new Account("/accounts/0", 100);
-            c.put(a0);
+            c.put(a0.key, a0);
         }
         
         if (a1 == null) {
             a1 = new Account("/accounts/1", 100);
-            c.put(a1);
+            c.put(a1.key, a1);
         }
         
         // Performs a payment if there is enough money.

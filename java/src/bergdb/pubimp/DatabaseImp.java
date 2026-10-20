@@ -214,7 +214,7 @@ public class DatabaseImp implements Database {
     }
     
     public final Time getFirstAvailableLookupTime() {
-        return Time.units(db.currentTime());
+        return Time.units(db.getFirstAvailableLookupTime());
     }
     
     public IndexBuilder indexBuilder(String indexName) {

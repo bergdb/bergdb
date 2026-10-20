@@ -1,8 +1,7 @@
 #!/bin/sh
 # The night tests (bergdb.dev.Night, the Nano test group "night"), with
 # assertions on (-ea): long-running tests of 2013 to 2015 that no level
-# script runs, about 4.5 minutes. Not a gate. stress/night.sh runs the
-# same tests with the output in a log only and prints NIGHT OK.
+# script runs, about 4.5 minutes. Not a gate.
 #
 # Usage: java/night.sh [-c classPattern] [-m methodPattern] [-v | -vv | -d | -s]
 #   The options go to the test runner; -c and -m are regular expressions

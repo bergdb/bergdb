@@ -1,8 +1,7 @@
 005-10. Find unused code and propose what to remove
 ===================================================
 
-Status: in progress (removed as Frans decided, but for part of G1, which
-waits for his answer). Kind: investigate. Created 2026-10-19.
+Status: done (2026-10-20). Kind: investigate. Created 2026-10-19.
 
 
 The task
@@ -283,3 +282,39 @@ the current time, not the first available lookup time
 (`DatabaseImp.getFirstAvailableLookupTime` returns `db.currentTime()`, as
 in the 2017 source); returning `db.getFirstAvailableLookupTime()` makes the
 test pass. Not in the main tree yet.
+
+
+The end of G1, and of this entry
+--------------------------------
+
+2026-10-20, Frans: fix and test `getFirstAvailableLookupTime`; a 005 entry
+for replication (005-11) and one for transaction outputs (005-12); and
+remove the rest ("Remove them, please"). Done by Claude (Opus 5.5, Claude
+Code):
+
+* `DatabaseImp.getFirstAvailableLookupTime` returns the core's first
+  available lookup time. Two new unit tests in `PubTester`, which fail
+  without the fix: `testFirstAvailableLookupTime1` (infinite retention:
+  the time stays while the clock moves on) and
+  `testFirstAvailableLookupTime2` (a retain duration of a second: reclaim
+  moves the time forward, never back, and keeps the duration; a lookup at
+  the time works, one before it throws `LookupTimeNotAvailableException`).
+* Removed: `Connection.put(Object)` with `ConnectionImp`'s, the repeated
+  `RwEnvironment.exists` (`ReadInterface` declares it), and
+  `NoFieldsSetException`, which nothing threw. The demo `GetStarted4`
+  called `put(Object)` (the proposal missed it: no script runs the demo);
+  it calls `put(key, object)` now. `Connection.get`'s Javadoc says what it
+  does: null for a missing key, no `NoSuchObjectException` or
+  `NoFieldsSetException`.
+* Not removed, now entries of their own: replication (005-11) and
+  transaction outputs with `NoSuchObjectException` (005-12).
+* Checks, on a clone of `c6ca623` with the change: unit tests 944, f-tests
+  36, `LEVEL 1 OK` to `LEVEL 4 OK`, `lake build`; on `39ab4a8` with the
+  main tree's other changes then, the build and the unit tests. In the
+  main tree, not committed.
+
+So every group has its decision and is carried out: 005-10 is done.
+
+2026-10-20, Frans: keep `java/night.sh` (his, with the runner's options),
+not this entry's `java/stress/night.sh`, which is removed; README.md lists
+the one.

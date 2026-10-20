@@ -7,6 +7,7 @@ import java.util.Iterator;
 
 import bergdb.common.EventToWaitFor;
 import bergdb.common.Util;
+import bergdb.core.Db;
 import bergdb.core.SyncLevel;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
@@ -27,7 +28,9 @@ import bergdb.pub.TransactionInfo;
 import bergdb.pub.WBuilder;
 import bergdb.pub.util.BadCryptoKey;
 import bergdb.pub.util.BadReplicaException;
+import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.storage.BufferedStream;
+import bergdb.stream.CutStream;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.SalsaStream;
 
@@ -357,6 +360,82 @@ public class PubTester {
         
         d.connection().w().put("/key2", "value2").execute();
         Assert.assertEquals(Duration.seconds(21.0), d.getRetainDuration());
+        d.stop();
+    }
+    
+    /**
+     * Database.getFirstAvailableLookupTime() with infinite retention, the default: nothing is
+     * reclaimed, so the time stays while the clock moves on (bergdb 005-10: the method
+     * returned the current time).
+     */
+    @Nano
+    public static void testFirstAvailableLookupTime1() {
+        TestClock clock = new TestClock();
+        Database d = Factory.database().memory().clock(clock).start();
+        Connection c = d.connection();
+        clock.setTime(Time.units(100));
+        c.w().put("/a", "1").execute();
+        Time first = d.getFirstAvailableLookupTime();
+        
+        clock.setTime(Time.units(1000 * 1000));
+        c.w().put("/a", "2").execute();
+        Assert.assertEquals(first, d.getFirstAvailableLookupTime());
+        Assert.assertEquals(((DatabaseImp) d).getDb().getFirstAvailableLookupTime(), 
+                d.getFirstAvailableLookupTime().units());
+        Assert.assertTrue(d.getFirstAvailableLookupTime().units() < d.currentTime().units());
+        
+        c.setLookupTime(Time.units(100));
+        Assert.assertEquals("1", c.get("/a", String.class));
+        d.stop();
+    }
+    
+    /**
+     * Database.getFirstAvailableLookupTime() with a finite retain duration: reclaim moves the
+     * time forward, never back, and keeps the retain duration; a lookup at the time works, one
+     * before it throws LookupTimeNotAvailableException. The database is made with the core's
+     * builder, as the Pub API's sets a startup distance of at least 5 MB, and reclaim only
+     * cuts in front of the startup section: with 2000 bytes the first cut comes soon.
+     */
+    @Nano
+    public static void testFirstAvailableLookupTime2() {
+        TestClock clock = new TestClock();
+        Db db = Db.builder().testSetup(new CutStream()).clock(clock).maxNodeSize8()
+                .startupDistance(2000).build();
+        Database d = DatabaseImp.createAndStart(db);
+        Duration retain = Duration.seconds(1);
+        d.setRetainDuration(retain);
+        Connection c = d.connection();
+        
+        long sec = Duration.seconds(1).units();
+        long time = sec;
+        long last = 0;
+        java.util.Random r = new java.util.Random(1);
+        for (int i = 0; i < 20000 && last == 0; i++) {
+            time += sec / 20;
+            clock.setTime(Time.units(time));
+            c.w().put("/k/" + r.nextInt(50), "v" + i).execute();
+            long first = d.getFirstAvailableLookupTime().units();
+            Assert.assertTrue("moved back: " + first + " < " + last, first >= last);
+            last = first;
+        }
+        
+        Assert.assertTrue("the first available lookup time never moved", last > 0);
+        Assert.assertTrue("the retain duration is not kept: " + last + ", now " + time, 
+                last <= time - retain.units());
+        Assert.assertEquals(db.getFirstAvailableLookupTime(), last);
+        
+        c.setLookupTime(Time.units(last));
+        c.get("/k/0", String.class);
+        
+        c.setLookupTime(Time.units(last - 1));
+        LookupTimeNotAvailableException ex = null;
+        try {
+            c.get("/k/0", String.class);
+        } catch (LookupTimeNotAvailableException e) {
+            ex = e;
+        }
+        Assert.assertTrue("a lookup before the first available lookup time did not throw", 
+                ex != null);
         d.stop();
     }
     

@@ -106,13 +106,11 @@ public interface Connection extends ReadInterface {
     public boolean exists(String key);
 
     /**
-     * Gets a single object stored in the database. If no entry exists for the
-     * key, a NoSuchObjectException is thrown. The caller specifies the class of
-     * the returned object. The class must in general have a no-argement
-     * constructor which will be used to create the object returned. The
-     * matching field of the object create will be set based on the fields of
-     * the DbObject stored in the database. If no fields are set, an exception
-     * is thrown.
+     * Gets a single object stored in the database, or null if no entry exists
+     * for the key. The caller specifies the class of the returned object. The
+     * class must in general have a no-argement constructor which will be used
+     * to create the object returned. The matching field of the object create
+     * will be set based on the fields of the DbObject stored in the database.
      * 
      * @param key
      *            Database key of the object.
@@ -123,18 +121,13 @@ public interface Connection extends ReadInterface {
      *            byte[].class to get the raw bytes as stored in the database.
      *            Use String.class to read a String directly from the raw value
      *            bytes assuming that the value stored consists of UTF-8 bytes.
-     * @throws NoSuchObjectException
-     *             Thrown if there is no object in the database for the given
-     *             key.
-     * @throws NoFieldsSetException
-     *             If no fields of object to be returned were set. Not
-     *             applicable when clazz is String.class or byte[].class.
      * @throws DbException
      *             Thrown if the database is faulty.
      * @throws IllegalArgumentException
      *             If key does not follow the allowed format, or is null. If
      *             'clazz' is null.
-     * @return The object created based on 'clazz' and the data in the database.
+     * @return The object created based on 'clazz' and the data in the database,
+     *             or null if there is no entry for the key.
      */
     public <TYPE> TYPE get(String key, Class<TYPE> clazz);
     
@@ -162,27 +155,6 @@ public interface Connection extends ReadInterface {
      *             If 'key' is null or otherwise invalid, or if object is null.
      */
     public Transaction put(String key, Object object);
-
-    /**
-     * Stores one object to the database using the 'key' field of the
-     * object as the key. The object must have a field of type String and name
-     * 'key', otherwise an exception is thrown. If an entry with the given key
-     * already exists, it is overwritten. The transaction is executed
-     * immediately in this method.
-     * 
-     * @param object
-     *             The object to store. Cannot be null and must have a String
-     *             field named 'key'.
-     * @throws DbException
-     *             If the transaction could not be processed because the
-     *             database is faulty.
-     * @throws MissingKeyFieldException
-     *             If 'object' does not have a String field named 'key'.
-     * @throws IllegalArgumentException
-     *             If the key field string is null or otherwise invalid, or if
-     *             object is null.
-     */
-    public Transaction put(Object object);
 
     /**
      * Deletes a key-value entry from the database. If an entry with the given key
