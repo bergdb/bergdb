@@ -2,8 +2,6 @@ package bergdb.dag;
 
 import java.util.ArrayList;
 import java.util.List;
-import bergdb.dag.Dag.CachePolicy;
-import bergdb.dag.Dag.PointerListener;
 
 /**
  * Input/output to the Graph.getMany() method. Also data structures and algorithms to support that
@@ -92,22 +90,6 @@ public class GetMany {
     }
     
     // ---- Inner classes / interfaces ----
-    
-    /**
-     * Limited access to Graph.
-     */
-    public interface DagForMe {
-        public Node followPointer(final Node predecessor, int pointerIndex, long accessData, 
-                PointerListener pointerListener, CachePolicy cachePolicy);
-    }
-    
-    /**
-     * A link in the node chain.
-     */
-    static class Link {
-        KeyNode node;
-        long compareValue;
-    }
     
     /**
      * Class that implements GetMany functionality. Keeps the node chain for the iteration.
@@ -502,10 +484,6 @@ public class GetMany {
         public void eod() {
             this.eod = true;
         }
-        
-        public boolean getEod() {
-            return eod;
-        }
     }
     
     /**
@@ -529,10 +507,6 @@ public class GetMany {
 
         public void eod() {
             this.eod = true;
-        }
-        
-        public boolean gotEod() {
-            return eod;
         }
     }
     
@@ -564,10 +538,6 @@ public class GetMany {
         public void eod() {
             this.eod = true;
         }
-        
-        public boolean gotEod() {
-            return eod;
-        }
     }
     
     /**
@@ -594,10 +564,6 @@ public class GetMany {
 
         public void eod() {
             this.eod = true;
-        }
-        
-        public boolean gotEod() {
-            return eod;
         }
     }
 }

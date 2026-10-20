@@ -1,0 +1,192 @@
+Bergdb 005-04, option 4: java-tier.sh on a scratch clone of bergdb 0597329, 2026-10-19.
+Configurations 1 to 21: those of docs/level2-alignment.md, 10.5; 22 to 28: large transactions with
+two-segment keys. Per configuration: the transactions, A2A3Check2's A6, A6' and TREE line, A-COPY's
+failures, and the SIG lines counted by kind: split-new, the in-place split of a segment root made in
+the same transaction (step 1 of the outcome); persisting, such a dead pointer kept from an earlier
+transaction (step 2); OTHER, anything else.
+
+1 [0 s] -Dmaxnode=8 -Dkeys=200 -Dn=300 -Dops=1 -Ddel=0 -Dseeds=10 | transactions 3000 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+2 [1 s] -Dmaxnode=8 -Dkeys=200 -Dn=300 -Dops=1 -Ddel=25 -Dlong=1 -Dseeds=10 | transactions 3000 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+3 [1 s] -Dmaxnode=8 -Dkeys=200 -Dn=300 -Dops=4 -Ddel=0 -Dseeds=10 | transactions 3000 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+4 [2 s] -Dmaxnode=8 -Dkeys=200 -Dn=300 -Dops=4 -Ddel=25 -Dlong=1 -Dseeds=10 | transactions 3000 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+5 [0 s] -Dmaxnode=8 -Dkeys=40 -Dn=1 -Dops=40 -Dexact=1 -Ddel=0 -Dseeds=1 | transactions 1 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+6 [1 s] -Dmaxnode=8 -Dkeys=1000 -Dn=50 -Dops=40 -Dexact=1 -Ddel=0 -Dseeds=10 | transactions 500 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+7 [0 s] -Dmaxnode=8 -Dkeys=1000 -Dn=50 -Dops=40 -Dexact=1 -Ddel=25 -Dlong=1 -Dseeds=10 | transactions 500 | A6 adopted index nodes 1 (transactions 1), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+         1 SIG split-new; 
+8 [3 s] -Dmaxnode=62 -Dkeys=100000 -Dn=20 -Dops=400 -Dexact=1 -Ddel=0 -Dseeds=10 | transactions 200 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+9 [0 s] -Dmaxnode=14 -Dkeys=300 -Dn=50 -Dops=40 -Dexact=1 -Ddel=40 -Dlong=1 -Dseeds=10 | transactions 500 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+10 [2 s] -Dmaxnode=8 -Dkeys=200 -Dn=300 -Dops=4 -Ddel=25 -Dlong=1 -Dunsorted=1 -Dseeds=10 | transactions 3000 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+11 [19 s] -Dmaxnode=8 -Dkeys=500 -Dn=2000 -Dops=4 -Ddel=20 -Dlong=1 -Dseeds=3 | transactions 6000 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+12 [3 s] -Dmaxnode=14 -Dkeys=1000 -Dn=1000 -Dops=8 -Ddel=20 -Dseeds=3 | transactions 3000 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+13 [18 s] -Dmaxnode=30 -Dkeys=3000 -Dn=1000 -Dops=20 -Ddel=20 -Dlong=1 -Dseeds=3 | transactions 3000 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+14 [8 s] -Dmaxnode=62 -Dkeys=3000 -Dn=500 -Dops=40 -Ddel=20 -Dseeds=3 | transactions 1500 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+15 [1 s] -Dmaxnode=30 -Dkeys=2000 -Dn=500 -Dops=4 -Ddel=20 -Dlong=1 -Dunsorted=1 -Dseeds=3 | transactions 1500 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+16 [14 s] -Dmaxnode=30 -Dkeys=500 -Dn=2000 -Dops=20 -Ddel=20 -Dlong=1 -Dseeds=3 | transactions 6000 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+17 [31 s] -Dmaxnode=8 -Dkeys=500 -Dn=2000 -Dops=10 -Ddel=20 -Dlong=1 -Dseeds=3 | transactions 6000 | A6 adopted index nodes 4 (transactions 4), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+         3 SIG persisting (older); 
+         1 SIG split-new; 
+18 [9 s] -Dmaxnode=14 -Dkeys=500 -Dn=2000 -Dops=3 -Ddel=20 -Dlong=1 -Dseeds=3 | transactions 6000 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+19 [6 s] -Dmaxnode=62 -Dkeys=1000 -Dn=2000 -Dops=40 -Ddel=20 -Dseeds=3 | transactions 6000 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+20 [0 s] -Dmaxnode=30 -Dkeys=100 -Dn=400 -Dops=3 -Ddel=20 -Dlong=1 -Dseeds=3 | transactions 1200 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+21 [88 s] -Dmaxnode=30 -Dkeys=3000 -Dn=12000 -Dops=3 -Ddel=20 -Dseeds=1 | transactions 12000 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+22 [0 s] -Dmaxnode=62 -Dkeys=1000 -Dn=5 -Dexact=1 -Dops=2000 -Ddel=0 -Dlong=1 -Dseeds=3 | transactions 15 | A6 adopted index nodes 20 (transactions 4), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+         1 SIG persisting (older); 
+        19 SIG split-new; 
+23 [0 s] -Dmaxnode=62 -Dkeys=1000 -Dn=20 -Dexact=1 -Dops=1000 -Ddel=20 -Dlong=1 -Dunsorted=1 -Dseeds=3 | transactions 60 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+24 [1 s] -Dmaxnode=30 -Dkeys=1000 -Dn=20 -Dexact=1 -Dops=400 -Ddel=20 -Dlong=1 -Dseeds=5 | transactions 100 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+25 [0 s] -Dmaxnode=30 -Dkeys=1000 -Dn=20 -Dexact=1 -Dops=400 -Ddel=20 -Dlong=1 -Dunsorted=1 -Dseeds=5 | transactions 100 | A6 adopted index nodes 1 (transactions 1), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+         1 SIG split-new; 
+26 [1 s] -Dmaxnode=14 -Dkeys=1000 -Dn=50 -Dexact=1 -Dops=100 -Ddel=20 -Dlong=1 -Dseeds=5 | transactions 250 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+27 [2 s] -Dmaxnode=14 -Dkeys=300 -Dn=200 -Dops=60 -Ddel=30 -Dlong=1 -Dunsorted=1 -Dseeds=5 | transactions 1000 | A6 adopted index nodes 0 (transactions 0), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+28 [5 s] -Dmaxnode=8 -Dkeys=1000 -Dn=200 -Dops=40 -Ddel=30 -Dlong=1 -Dunsorted=1 -Dseeds=10 | transactions 2000 | A6 adopted index nodes 35 (transactions 35), of them not below the old parent (A6') 0 (transactions 0); TREE (one current parent): nodes without exactly one 0 (transactions 0) | A-COPY failing 0 (transactions 0)
+        34 SIG persisting (older); 
+         1 SIG split-new; 
+totals: A6 failures (SIG lines) 61, of an unknown kind 0, not below the old parent 0
+
+Every A6 failure (-DdebugA6=1) with its SIG line:
+configuration 7:
+  A6 seed 4 T2: key node 453007883 (segment leaf, first time 20, new) has a dead pointer to key node 386201215 (segment leaf, first time 20, new), reachable at t, below it
+  SIG split-new; 
+configuration 17:
+  A6 seed 2 T26: key node 1597594849 (segment leaf, first time 130) has a dead pointer to key node 1476985549 (internal, first time 260, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 2 T27: key node 1597594849 (segment leaf, first time 130) has a dead pointer to key node 1476985549 (internal, first time 260), reachable at t, below it
+  SIG persisting (dead klong of 260, live of 260); 
+  A6 seed 2 T28: key node 1597594849 (segment leaf, first time 130) has a dead pointer to key node 1476985549 (internal, first time 260), reachable at t, below it
+  SIG persisting (dead klong of 260, live of 260); 
+  A6 seed 2 T29: key node 1597594849 (segment leaf, first time 130) has a dead pointer to key node 1476985549 (internal, first time 260), reachable at t, below it
+  SIG persisting (dead klong of 260, live of 260); 
+configuration 22:
+  A6 seed 1 T1: key node 546718765 (segment leaf, first time 10, new) has a dead pointer to key node 534906248 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 1 T1: key node 546718765 (segment leaf, first time 10, new) has a dead pointer to key node 708890004 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 1 T1: key node 546718765 (segment leaf, first time 10, new) has a dead pointer to key node 1653986196 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 1 T1: key node 546718765 (segment leaf, first time 10, new) has a dead pointer to key node 1477657879 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 1 T1: key node 546718765 (segment leaf, first time 10, new) has a dead pointer to key node 125622176 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 1 T1: key node 546718765 (segment leaf, first time 10, new) has a dead pointer to key node 1131316523 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 1 T1: key node 546718765 (segment leaf, first time 10, new) has a dead pointer to key node 523691575 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 1 T1: key node 546718765 (segment leaf, first time 10, new) has a dead pointer to key node 64830413 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 1 T1: key node 546718765 (segment leaf, first time 10, new) has a dead pointer to key node 897074030 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 2 T1: key node 1534765208 (segment leaf, first time 10, new) has a dead pointer to key node 1370169059 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 2 T2: key node 1534765208 (segment leaf, first time 10) has a dead pointer to key node 1370169059 (segment leaf, first time 10), reachable at t, below it
+  SIG persisting (dead klong of 10, live of 10); 
+  A6 seed 3 T1: key node 1967400458 (segment leaf, first time 10, new) has a dead pointer to key node 832152066 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 3 T1: key node 1967400458 (segment leaf, first time 10, new) has a dead pointer to key node 1406696237 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 3 T1: key node 1967400458 (segment leaf, first time 10, new) has a dead pointer to key node 1621729085 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 3 T1: key node 1967400458 (segment leaf, first time 10, new) has a dead pointer to key node 175096252 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 3 T1: key node 1967400458 (segment leaf, first time 10, new) has a dead pointer to key node 55527633 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 3 T1: key node 1967400458 (segment leaf, first time 10, new) has a dead pointer to key node 547964633 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 3 T1: key node 1967400458 (segment leaf, first time 10, new) has a dead pointer to key node 1247492326 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 3 T1: key node 1967400458 (segment leaf, first time 10, new) has a dead pointer to key node 255996780 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 3 T1: key node 1967400458 (segment leaf, first time 10, new) has a dead pointer to key node 949107966 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+configuration 25:
+  A6 seed 5 T1: key node 760493524 (segment leaf, first time 10, new) has a dead pointer to key node 169760655 (segment leaf, first time 10, new), reachable at t, below it
+  SIG split-new; 
+configuration 28:
+  A6 seed 4 T25: key node 388064773 (segment leaf, first time 250, new) has a dead pointer to key node 1313359405 (internal, first time 250, new), reachable at t, below it
+  SIG split-new; 
+  A6 seed 4 T26: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T27: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T28: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T29: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T30: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T31: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T32: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T33: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T34: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T35: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T36: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T37: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T38: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T39: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T40: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T41: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T42: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T43: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T44: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T45: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T46: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T47: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T48: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T49: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T50: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T51: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T52: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T53: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T54: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T55: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T56: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T57: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T58: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+  A6 seed 4 T59: key node 388064773 (segment leaf, first time 250) has a dead pointer to key node 1313359405 (internal, first time 250), reachable at t, below it
+  SIG persisting (dead klong of 250, live of 250); 
+
+A6SplitHalf.java (where the dead klong goes when the leaf is full): T1 puts N one-segment keys, T2
+twelve keys under the new first segment /longer, at node size 8.
+== N = 3
+after T1: root leaf size 4
+node 1804094807 (the root leaf of T1), segment leaf: compare value /longer at [5, 6] of size 7, pointing to 1450495309(segment leaf) 1706377736(internal)
+root leaf of T1 at 20: size 7, reachable true
+== N = 4
+after T1: root leaf size 5
+node 1804094807 (made in T2), segment leaf: compare value /longer at [3, 4] of size 5, pointing to 1450495309(segment leaf) 1706377736(internal)
+root leaf of T1 at 20: size 5, reachable false
+== N = 5
+after T1: root leaf size 6
+node 1804094807 (made in T2), segment leaf: compare value /longer at [3, 4] of size 5, pointing to 1450495309(segment leaf) 1706377736(internal)
+root leaf of T1 at 20: size 6, reachable false
+== N = 6
+after T1: root leaf size 7
+node 1706377736 (made in T2), segment leaf: compare value /longer at [4, 5] of size 6, pointing to 1450495309(segment leaf) 951007336(internal)
+root leaf of T1 at 20: size 7, reachable false

@@ -182,9 +182,6 @@ public class Db {
         pointerLocks = new PointerLocks();
         
         Cache.DbInfo dbInfo = new Cache.DbInfo() {
-            public long getStartupPosForEvict() {
-                return x.startupPos.getForEvict();
-            }
 
             public PointerLocks getPointerLocks() {
                 return pointerLocks;
@@ -276,18 +273,6 @@ public class Db {
     public double getDirtyFraction1000() {
         synchronized (writeLock) {
             return aux.dirtyFraction1000;
-        }
-    }
-    
-    public long getNodesWritten() {
-        synchronized (writeLock) {
-            return aux.nodesWritten;
-        }
-    }
-    
-    public long getOrdinaryNodesWritten() {
-        synchronized (writeLock) {
-            return aux.ordinaryNodesWritten;
         }
     }
     
@@ -391,10 +376,6 @@ public class Db {
     /** The stream length that has ordinary durability; see SyncLevel.ORDINARY. */
     public long getDurableLength() {
         return storageManager.getDurableLength();
-    }
-    
-    public final long getPosOfLastValidMetaBlock() {
-        return nodeStream.getPosOfLastValidMetaBlock();
     }
     
     /**
@@ -1816,8 +1797,6 @@ public class Db {
         
         public ExecuteData x() { return x; }
         
-        public void executeInner(Trans t) { Db.this.executeInner(t); }
-        
         public void createPutAndGetData() { Db.this.createPutAndGetData(); }
 
         public void setTransSeq(TransSeq seq) { Db.this.transSeq = seq; }
@@ -1830,8 +1809,6 @@ public class Db {
         public TransSeq transSeq() { return transSeq; }
         
         public NodeStream nodeStream() { return nodeStream; }
-        
-        public Aux aux() { return aux; }
         
         public Cache3 cache() { return cache; }
         
@@ -1870,10 +1847,6 @@ public class Db {
          */
         public final Object getPointerLock(Node node, int pointerIndex) {
             return pointerLocks.getLock(node, pointerIndex);
-        }
-        
-        public void handleStillDirtyNodes() {
-            Db.this.handleStillDirtyNodes();
         }
         
         /**
@@ -2016,17 +1989,6 @@ public class Db {
      * For listening to what happens at startup. Useful for testing / debugging.
      */
     public static interface StartListener {
-        public void reportStartupDistance(long startupDistance);
-        public void reportStartPos(long startPos);
-        public void reportStartupTransactions(ArrayList<StoredTrans> transactions);
-        public void log(String message);
-        
-        public static final StartListener DO_NOTHING = new StartListener() {
-            public void reportStartupDistance(long startupDistance) {}
-            public void reportStartPos(long startPos) {}
-            public void reportStartupTransactions(ArrayList<StoredTrans> transactions) {}
-            public void log(String message) {}
-        };
     }
     
     public static final PrintStartListener SYSTEM_OUT_START_LISTENER = new PrintStartListener(System.out);
@@ -2040,28 +2002,6 @@ public class Db {
         
         public PrintStartListener(PrintStream out) {
             this.p = out;
-        }
-        
-        public void reportStartupDistance(long startupDistance) {
-            p.println("startupDistance: " + startupDistance);
-        }
-        
-        public void reportStartPos(long startPos) {
-            p.println("startPos: " + startPos);
-        }
-        
-        public void reportStartupTransactions(ArrayList<StoredTrans> transactions) {
-            p.println("---- startupTransactions ----");
-            for (StoredTrans s : transactions) {
-                p.println("StoredTrans: " + s);
-                for (StoredNode n : s.nodes) {
-                    p.println("  " + n);
-                }
-            }
-        }
-        
-        public void log(String message) {
-            p.println(message);
         }
     }
     

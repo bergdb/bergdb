@@ -403,7 +403,6 @@ public final class PerfUtil {
         public final List<double[]> heapAfter = new ArrayList<double[]>(); // {uptime, MB after, MB total}
         public int fullGcs;
         public int concurrentCycles;
-        public String collectorLine;
 
         private static final Pattern UP = Pattern.compile("^\\[(\\d+\\.\\d+)s\\]\\[(\\w+)\\]\\[([\\w,]+)\\s*\\]\\s*(.*)$");
         private static final Pattern PAUSE_MS = Pattern.compile("(?:GC\\(\\d+\\)\\s+)?(Pause .*?)\\s+(\\d+\\.\\d+)ms$");

@@ -1,7 +1,8 @@
 005-10. Find unused code and propose what to remove
 ===================================================
 
-Status: open. Kind: investigate. Created 2026-10-19.
+Status: in progress (removed as Frans decided, but for part of G1, which
+waits for his answer). Kind: investigate. Created 2026-10-19.
 
 
 The task
@@ -170,3 +171,108 @@ M: tools and reading, and machine time for the checks. The proposal can be
 made any time, since it changes nothing. A removal touches many files: best
 made when no other change to `java/` is under way or waiting to be
 committed (such as 005-01's and 005-09's fixes), or made on top of them.
+
+
+The proposal
+------------
+
+Made 2026-10-19 by Claude (Opus 5.5, Claude Code), at Frans's request ("Do
+the 005-10 todo item"), on commit `0597329`:
+[10-unused-code/proposal.md](10-unused-code/proposal.md), with its tables,
+plan, tools and runs in [10-unused-code/](10-unused-code/). Nothing is
+removed.
+
+* About 11,700 lines can go (85 files deleted, 97 edited, and a 120 kB
+  jar). A patch with every recommended removal passes the build, the unit
+  tests (929, from 948), the f-tests (36, from 37), the four gates and
+  `lake build`, on a clone.
+* The groups, by ID: A1 files nothing reaches; A2 and A3 unused members
+  (168); B1 `Cache2`, B2 `DagChecksum`, which only their own tests use; B3
+  tests that never ran (one fails today); C1 manual tests, C2 development
+  tools; D1 tests and benchmarks of Java itself, D2 the perf tests; E1 the
+  2017 Ant build; F1 20 unused Lean lemmas. Not in the patch: C3 `frans/`
+  and C5 the figure printers (for Frans), D3 the night tests (they pass;
+  proposed to be kept and run in a gate), C4 the demos (kept). G1: 25
+  methods and two exceptions of the public API that nothing here uses, a
+  question.
+
+
+Frans's decision
+----------------
+
+2026-10-20, in his words: "remove all recommended; C1 keep; C2 keep; C3
+keep; D1 keep; D2 keep; D3 keep; E1 keep; G1 remove. D3: add script
+night.sh to run these tests."
+
+So to remove: A1, A2, A3, B1, B2, B3, F1 and G1. Kept as they are: C1,
+C2, C3, C4, C5, D1, D2, D3 and E1.
+
+
+The removal
+-----------
+
+Made 2026-10-20 by Claude (Opus 5.5, Claude Code), on `0597329`, but for
+part of G1 (next section). The plan, the lists and the checks are in
+[10-unused-code/applied/](10-unused-code/applied/).
+
+* Deleted: the seven files of A1, `Cache2` (B1), `DagChecksum` (B2) and
+  `java/src-dev/bergdb/test/Concurrency.java` (B3).
+* Removed: 165 unused members (A2 97, A3 68), the five members of B3, the
+  20 Lean lemmas of F1, and eight class methods of the API (G1a). Three of
+  the proposal's A3 stay, as code of the kept groups uses them:
+  `Cache3.getSizeIndicator` and `totalSize`, and a constructor of
+  `BufferedStream`.
+* Added: `DbDouble` to the pubimp pack (B3; its two tests pass), and
+  `java/stress/night.sh` (D3), which builds, runs the night tests and
+  prints `NIGHT OK`; README.md lists it.
+* In all: 103 files, 3,071 lines removed and 49 added; docs/log.md has
+  the entry.
+* Checks, on a clone with the change: the build; the unit tests, 942 pass
+  (948 before: `Cache2`'s 5 and `DagChecksum`'s 3 went, `DbDouble`'s 2
+  came); the f-tests, 36 pass (37: `Cache2`'s); `LEVEL 1 OK` (167 s),
+  `LEVEL 2 OK` (736 s), `LEVEL 3 OK` (469 s), `LEVEL 4 OK` (859 s);
+  `lake build`; `night.sh`, `NIGHT OK` (262 s). The main tree's `java/`,
+  `lean/SIS/`, `lean/Check/`, README.md and docs/level4-plan.md were then
+  made the same as the clone's (`git apply`, compared file by file).
+
+The change is in the main tree, not committed.
+
+
+G1: what was removed, and what waits
+------------------------------------
+
+The proposal said that nothing in the repository uses G1's 25 methods.
+That was true of their declarations in the API, but the proposal looked at
+those only: for some of them, the code behind the declaration is used. So
+G1 is in three parts, and only the first is removed:
+
+* G1a, removed: eight class methods that nothing calls: `Duration.add`,
+  `days`, `hours` and `minutes`; `Time.substract` and `getDate`;
+  `Factory.printHello`; `CryptoKey.main`.
+* G1b, for Frans: nine methods whose implementations nothing uses either,
+  and two exceptions: `Connection.put(Object)`;
+  `Database.getFirstAvailableLookupTime`, `addReplica`, `removeReplica`,
+  `getStorageInfos`; `DatabaseBuilder.replica`; `RwEnvironment.exists`
+  (it repeats `ReadInterface.exists`) and `setOutput`;
+  `Transaction.getOutput`; `NoFieldsSetException` and
+  `NoSuchObjectException`, which only `getOutput`'s implementations throw.
+  Removing them takes out of the API: replication, storing an object
+  under its key field, transaction outputs, and the first available lookup
+  time. The last belongs to the expiry contract: the Javadoc of
+  `Database.setRetainDuration` and `Connection.setLookupTime`, and
+  docs/levels.md, refer to it and would be reworded. On transaction
+  outputs, `RwEnvironment.java` keeps Frans's note of 2013-05-30: "Added
+  setOutput(). It *is* needed." (Found on the way: `Connection.get`'s
+  Javadoc says that it throws the two exceptions; for a missing key it
+  returns null.)
+* G1c, for Frans, proposed to keep: eight methods whose implementations
+  are used: `DatabaseBuilder.cacheSizeInMb` and `startupDistanceInMb`
+  (Level 4's budget and Level 2's startup distance; `DatabaseBuilderImp`'s
+  tests call them), `ReadInterface.exists` and `get` (`Connection`
+  declares both again and `RwEnvironment` `get`; the tests and the demos
+  call those), `UseIndexBuilder.prefix` and `kvs` (`UsePrimaryBuilderImp`
+  calls them), `Connection.getEnableKeyReplace` (`RwEnvironmentImp` calls
+  it) and `Job.join(int)` (each job's `join()` calls it). Removing them
+  would take features that are used out of the API.
+
+Frans's answer on G1b and G1c comes next; this entry is done then.

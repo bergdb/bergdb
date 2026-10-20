@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import bergdb.core.DbBuilder;
 import bergdb.core.DbUtil;
-import bergdb.core.TransSeq;
 import bergdb.dag.Dag;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
@@ -29,7 +28,6 @@ public class BryanIssue {
     protected MemoryStream memoryStream;
     protected TestEnvironment env;
     protected Dag prevDag;
-    protected TransSeq prevTransSeq;
     
     @Nano("f")
     private static void testIt(TestEnvironment env) throws Exception {

@@ -59,19 +59,6 @@ section Keep
 
 variable {sp : Spec V T} {db : DB V T} {S0 : Stream V T} {k : Nat} {m m' m'' : Mem V}
 
-theorem Mem.KeepRead.refl (m : Mem V) : m.KeepRead m := fun _ o ho => ⟨o, ho, rfl, id, fun _ => rfl⟩
-
-theorem Mem.KeepRead.trans (h1 : m.KeepRead m') (h2 : m'.KeepRead m'') : m.KeepRead m'' := by
-  intro h o ho
-  obtain ⟨o', ho', e1, e2, e3⟩ := h1 h o ho
-  obtain ⟨o'', ho'', f1, f2, f3⟩ := h2 h o' ho'
-  refine ⟨o'', ho'', by rw [f1, e1], fun hc => f2 (e2 hc), fun hc => ?_⟩
-  rw [f3 hc]
-  apply e3
-  cases hc' : o'.canonical
-  · rfl
-  · have := f2 hc'; rw [hc] at this; cases this
-
 theorem ReadableT.keep {t : Time} {h : Nat} {y : NodeId} (hr : ReadableT sp db m t h y)
     (hk : m.KeepRead m') : ReadableT sp db m' t h y := by
   obtain ⟨o, ho, hn, hc⟩ := hr

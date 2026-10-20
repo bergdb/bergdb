@@ -30,18 +30,8 @@ public class DbScan {
         this.db = db;
     }
     
-    public DbScan includeInternal(boolean b) {
-        this.includeInternal = b;
-        return this;
-    }
-    
     public DbScan includeKvTime(boolean b) {
         this.includeKvTime = b;
-        return this;
-    }
-    
-    public DbScan lookupTime(long lookupTime) {
-        this.lookupTime = lookupTime;
         return this;
     }
     

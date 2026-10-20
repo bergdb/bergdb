@@ -83,7 +83,6 @@ public class DbObject extends DbValue {
     public static final char BYTE_ARRAY = 'b';
     public static final char ARRAY = 'a';
     public static final char OBJECT = 'o';
-    public static final char ZERO = 'z';
     
     private static final int MAGIC_SIZE = MAGIC.length;
     private static final int FIELD_INFO_SIZE = 6;
@@ -364,19 +363,6 @@ public class DbObject extends DbValue {
         return result;
     }
     
-    public String print() {
-        StringBuilder b = new StringBuilder(DbObject.class.getSimpleName() + ":\n");
-        NameAndType n = new NameAndType();
-        
-        for (int i = 0; i < fieldCount; i++) {
-            readFieldInfo(i, n);
-            String name = n.name;
-            DbValue value = getDbValue(name);
-            b.append("  " + name + ": " + value + "\n");
-        }
-        return b.toString();
-    }
-    
     /**
      * Reads the value of a Java object field and adds a corresponding DbField to the 
      * DbObject builder.
@@ -537,11 +523,6 @@ public class DbObject extends DbValue {
         return n == null ? false : DbBoolean.parseToBoolean(n.object.bytes, n.valueOffset);
     }
     
-    public boolean getBoolean(String[] nameParts) {
-        NameAndType n = internalGet(nameParts, 0, DbObject.BOOLEAN);
-        return n == null ? false : DbBoolean.parseToBoolean(n.object.bytes, n.valueOffset);
-    }
-    
     public int getInt(String name) {
         NameAndType n = internalSimpleGet(name, DbObject.INT);
         return n == null ? 0 : DbInt.parseToInt(n.object.bytes, n.valueOffset);
@@ -595,18 +576,8 @@ public class DbObject extends DbValue {
         return n == null ? null : DbByteArray.parseToByteArray(n.object.bytes, n.valueOffset);
     }
     
-    public byte[] getByteArray(String[] nameParts) {
-        NameAndType n = internalGet(nameParts, 0, DbObject.BYTE_ARRAY);
-        return n == null ? null : DbByteArray.parseToByteArray(n.object.bytes, n.valueOffset);
-    }
-    
     public DbArray getArray(String name) {
         NameAndType n = internalSimpleGet(name, DbObject.ARRAY);
-        return n == null ? null : DbArray.parse(n.object.bytes, n.valueOffset);
-    }
-    
-    public DbArray getArray(String[] nameParts) {
-        NameAndType n = internalGet(nameParts, 0, DbObject.ARRAY);
         return n == null ? null : DbArray.parse(n.object.bytes, n.valueOffset);
     }
     
@@ -727,11 +698,6 @@ public class DbObject extends DbValue {
             return offset;
         }
         
-        @SuppressWarnings("unused")
-        public String getName() {
-            return name;
-        }
-        
         public String toString() {
             return name + ": " + value.toString();
         }
@@ -843,11 +809,6 @@ public class DbObject extends DbValue {
             return this;
         }
         
-        public Builder addBoolean(String name, boolean value) {
-            addField(new DbField(name, new DbBoolean(value)));
-            return this;
-        }
-        
         public Builder addInt(String name, int value) {
             addField(new DbField(name, new DbInt(value)));
             return this;
@@ -858,11 +819,6 @@ public class DbObject extends DbValue {
             return this;
         }
 
-        public Builder addDouble(String name, double value) {
-            addField(new DbField(name, new DbDouble(value)));
-            return this;
-        }
-        
         public Builder addString(String name, String value) {
             addField(new DbField(name, new DbString(value)));
             return this;
@@ -870,11 +826,6 @@ public class DbObject extends DbValue {
         
         public Builder addObject(String name, DbObject value) {
             addField(new DbField(name, value));
-            return this;
-        }
-        
-        public Builder addByteArray(String name, byte[] value) {
-            addField(new DbField(name, new DbByteArray(value)));
             return this;
         }
         

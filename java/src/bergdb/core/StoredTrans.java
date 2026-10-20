@@ -90,25 +90,6 @@ public class StoredTrans {
         gotDirtyIdsAndSpos = d.gotDirtyIdsAndSpos;
     }
     
-    public boolean isPrimordial() {
-        return tpos == RecoverableStream.META_BLOCK_SIZE;
-    }
-    
-    public boolean hasNewStartupPos() {
-        return startupPos != -1;
-    }
-    
-    public boolean isIndexTransaction() {
-        boolean result = true;
-        for (StoredNode stored : nodes) {
-            if (!stored.getNode().isIndexNode()) {
-                result = false;
-                break;
-            }
-        }
-        return result;
-    }
-    
     /**
      * Returns a value node matching the given key, or null if no
      * match is found. Linear search is used.

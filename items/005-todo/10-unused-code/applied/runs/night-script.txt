@@ -1,0 +1,4 @@
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+SUCCESS, 7 successful tests in 257.6 s.
+NIGHT OK

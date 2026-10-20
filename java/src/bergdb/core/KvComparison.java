@@ -29,11 +29,6 @@ public class KvComparison {
         return new KvComparison(db1, db2);
     }
     
-    public KvComparison out(PrintStream out) {
-        this.out = out;
-        return this;
-    }
-    
     public boolean compare() {
         DbScan.Result r1 = new DbScan(db1).includeKvTime(true).scan();
         DbScan.Result r2 = new DbScan(db2).includeKvTime(true).scan();

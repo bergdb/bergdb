@@ -37,9 +37,11 @@
 #      to start after about 12 cycles.
 #   7. Conformance with the Lean model (docs/level2-alignment.md, 12):
 #      A2A3Check2 (a transaction meets the model's A2, A3 and A5, and Db
-#      marks what the model marks) on three configurations; and the trace
-#      checker on conformance.sh's small set (2 seeds quick, 10 full): every
-#      transaction must be a step of the model, every restart invisible.
+#      marks what the model marks; and, since bergdb 005-04, TREE, A6' and
+#      A-COPY, the model's assumptions of stage 2) on three configurations;
+#      and the trace checker on conformance.sh's small set (2 seeds quick, 10
+#      full): every transaction must be a step of the model that meets its
+#      assumptions, every restart invisible.
 # Logs go to build/level2/. Set JAVA_HOME or PATH for the JDK; the build
 # needs javac too. Step 7 needs Lean (elan, with the toolchain of
 # ../lean/lean-toolchain); it builds the checker with lake.
@@ -159,8 +161,13 @@ for cfg in "-Dops=4 -Ddel=25 -Dlong=1" \
     F=$LOG/a2a3-$n.txt
     $JAVA -ea $cfg -cp $CP bergdb.dag.A2A3Check2 > $F 2>&1
     grep -q 'violating A3 0, A5 0;' $F && grep -q 'NET (A2): .* not current 0 ' $F \
-        && grep -q 'in step 3 only 0, in model only 0 ' $F || fail "A2A3Check2" $F
-    echo "   a2a3-$n: $(grep -o '^  transactions [0-9]*' $F | sed 's/^ *//'): A2, A3, A5 and marking OK"
+        && grep -q 'in step 3 only 0, in model only 0 ' $F \
+        && grep -q 'adopted index nodes not below the old parent 0 (transactions 0)' $F \
+        && grep -q 'nodes without exactly one 0 (transactions 0)' $F \
+        && grep -q 'A-COPY .* failing 0 (transactions 0)' $F || fail "A2A3Check2" $F
+    echo "   a2a3-$n: $(grep -o '^  transactions [0-9]*' $F | sed 's/^ *//'): A2, A3, A5, marking," \
+        "TREE, A6' and A-COPY OK; adoptions below the old parent (A6' allows them, A6 not)" \
+        "$(grep -o 'does not (bergdb 005-04), [0-9]*' $F | sed 's/.*, //')"
 done
 (cd ../lean && lake build) > $LOG/lake.txt 2>&1 || fail "the Lean checker, lake build" $LOG/lake.txt
 sh stress/conformance.sh small $CONF_SEEDS > $LOG/conformance.txt 2>&1

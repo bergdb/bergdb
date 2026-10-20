@@ -19,6 +19,10 @@
 #   schedule, or the capacity controller with a small budget, since J7), whose
 #   stream must be run A's, and whose slots (SLOT lines) the checker's C-P
 #   checks against the model's INV-SLOT; a trace without SLOT lines fails.
+#   Since bergdb 005-04 the small and evict sets each have a configuration
+#   with A6's kind, a segment root that a transaction makes and splits in
+#   place (a6, e-a6: two-segment keys, 40 KVs per transaction); a trace of
+#   them without an adoption below the old parent fails.
 #   seeds: per configuration (default 10 small, 3 medium, 2 large, 5 reclaim, 3
 #   evict). The checker computes
 #   the model's own definitions, with fast versions proven equal to them
@@ -59,6 +63,8 @@ small() {
     echo "idle    -Dn=150 -Dkeys=30 -Dmaxnode=8 -Dsd=100 -Dops=2 -Dempty=30 -Dnodel=20 -Dprobe=1"
     # Many top nodes (one hot key), the root queried at every time (bergdb item 001, L5).
     echo "hot     -Dn=300 -Dkeys=1 -Dmaxnode=8 -Dsd=200 -Dops=1 -Dprobe=30 -Dlive=1"
+    # A6's kind: a segment root made and split in place in one transaction (bergdb 005-04).
+    echo "a6      -Dn=40 -Dkeys=200 -Dmaxnode=8 -Dsd=1000 -Dops=40 -Dexact=1 -Dlong=1 -Ddel=25 -Dprobe=10"
 }
 
 medium() {
@@ -93,6 +99,8 @@ evict() {
     # The capacity controller (bergdb item 001, WP J7) with a budget of 30 kB.
     echo "e-budget  -Dn=300 -Dkeys=200 -Dmaxnode=8 -Dsd=500 -Dops=4 -Ddel=25 -Dprobe=10 -Drune=budget -Devictbudget=30000"
     echo "e-r-budget -Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=4 -Dretain=1 -Dprobe=10 -Drune=budget -Devictbudget=20000"
+    # A6's kind with the random schedule (bergdb 005-04).
+    echo "e-a6      -Dn=40 -Dkeys=200 -Dmaxnode=8 -Dsd=1000 -Dops=40 -Dexact=1 -Dlong=1 -Ddel=25 -Dprobe=10 -Drune=random"
 }
 
 large() {
@@ -161,6 +169,7 @@ summary() {
         grep -h "^$k" $dir/*.check.txt | sed -E 's/.*\((.*)\)/\1/' | tr ',' '\n' \
             | awk -v k="$k" 'NF==2 {s[$1]+=$2} END {for (n in s) print "   " k ": " n " " s[n]}'
     done
+    echo "   C-A adoptions below the old parent (A6' allows them, A6 not): $(grep -h '^C-A adoptions below' $dir/*.check.txt | sed -E 's/.*: ([0-9]+) of .*/\1/' | awk '{s+=$1} END {print s+0}') transactions"
     echo "   C-V: $(grep -h '^C-V' $dir/*.check.txt | awk '{s+=$3} END {print s+0}') transactions with live differences, $(grep -h '^C-V' $dir/*.check.txt | awk '{s+=$7} END {print s+0}') LIVE lines"
     if [ $1 = reclaim ]; then
         echo "   C-CUT: $(grep -h '^C-CUT cuts' $dir/*.check.txt | awk '{f+=$3; n+=$5} END {print f+0 " of " n+0}') CUT lines fail; traces without a cut: $(grep -L '^CUT ' $dir/*.trace | wc -l | tr -d ' ')"
@@ -210,5 +219,12 @@ for set_name in $RAN; do
         echo "CONFORMANCE FAILED: an eviction trace without SLOT lines"
         exit 1
     fi
+    for f in build/traces/$set_name/a6-*.check.txt build/traces/$set_name/e-a6-*.check.txt; do
+        [ -f $f ] || continue
+        if ! grep -q '^C-A adoptions below the old parent .*: [1-9][0-9]* of' $f; then
+            echo "CONFORMANCE FAILED: a trace of A6's kind without an adoption below the old parent ($f)"
+            exit 1
+        fi
+    done
 done
 echo "CONFORMANCE OK"

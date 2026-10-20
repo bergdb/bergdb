@@ -526,14 +526,6 @@ public class DagTester {
         return r;
     }
     
-    @SuppressWarnings("unused")
-    private static void printMap(String name, HashMap<Node, Node> map) {
-        System.out.println("---- " + name + " ----");
-        for (Map.Entry<Node, Node> en : map.entrySet()) {
-            System.out.println(en.getKey() + " --> " + en.getValue());
-        }
-    }
-
     public static void main(String[] args) {
         Dag g = emptyDag(10);
         PutData pd = g.newPutData();

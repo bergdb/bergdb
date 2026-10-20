@@ -169,32 +169,6 @@ public class TransSeq implements PosOfTransBeforeFunction {
         return sum.getValue();
     }
     
-    public String print() {
-        StringBuilder b = new StringBuilder();
-        b.append("======== TransSeq ========\n");
-        b.append("size: " + this.size + "\n");
-        
-        TransInfo info = this.first;
-        
-        while (info != null) {
-            b.append("---- TransInfo tt " + info.tt + " ----\n");
-            b.append("tpos: " + info.tpos + "\n");
-            b.append("startupPos: " + info.startupPos + "\n");
-            printDirty(b, info);            
-            info = info.next;
-        }
-        
-        return b.toString();
-    }
-    
-    private void printDirty(StringBuilder b, TransInfo info) {
-        b.append("gotDirty: ");
-        for (Node node : info.gotDirtyNodes) {
-            b.append(node + "; ");
-        }
-        b.append("\n");
-    }
-    
     /**
      * Accepts a visitor which will visit all gotDirtyNodes with a tpos <= limit.
      */
@@ -239,20 +213,6 @@ public class TransSeq implements PosOfTransBeforeFunction {
         
         public String toString() {
             return "tt:" + tt + ", tpos:" + tpos + ", gotDirtyCount:" + gotDirtyNodes.size();
-        }
-        
-        public String print() {
-            StringBuilder b = new StringBuilder();
-            b.append("tt:" + tt + ", tpos:" + tpos);
-            if (gotDirtyNodes.size() == 0) {
-                b.append(", no gotDirtyNodes");
-            } else {
-                b.append(", gotDirtyNodes:\n");
-                for (Node n : gotDirtyNodes) {
-                    b.append("  " + n.toString() + "\n");
-                }
-            }
-            return b.toString();
         }
     }
     

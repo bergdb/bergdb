@@ -231,9 +231,13 @@ Not trusted, tests only:
   it reads trace format 2 and checks C-L, every first touch after a restart
   against the rule of SIS/Phys.lean (`firstFailures`), and in C-S the top
   nodes' skip slots: their layout and cached times (`topFailures`; section
-  13.5 there). Its diagnostics also count A6, TREE (item 001, A4) and A-COPY
-  (`copyFailures`, item 001, E2 and E3: the assumption of stage 2 on the
-  pointers of new entries). Since item 001's R7 it reads reclaim's lines
+  13.5 there). Since bergdb 005-04, C-A also checks the assumptions of stage
+  2 (`EvictRunOK`): TREE (`treeFailures`) and A6' (`adoptFailures`) after
+  every transaction, R(0) included, and A-COPY (`copyFailures`: the pointers
+  of new entries) for each change; it counts the adoptions below the old
+  parent, which A6' allows and A6 does not (test traces `adopt.trace`,
+  `adopt2.trace`, `copy.trace`). Item 001's A4, E2 and E3 had A6, TREE and
+  A-COPY as diagnostics. Since item 001's R7 it reads reclaim's lines
   (TOUCH, FA, CUT, PHYSCUT): C-A checks TouchOK (`touchFailures`), C-S
   compares fa(i) and, from the first cut on, runs the model's step on the
   stream cut at the largest cut so far, and C-CUT checks `CutOK` at every CUT

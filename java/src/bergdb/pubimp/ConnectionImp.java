@@ -154,10 +154,6 @@ public class ConnectionImp implements Connection {
         return db.getOne(lookupTime, key, getData);
     }
 
-    public Database getDatabase() {
-        return database;
-    }
-
     /**
      * @throws IllegalArgumentException
      *             Ff ukey is null or not of a valid format.

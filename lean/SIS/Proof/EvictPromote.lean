@@ -302,11 +302,6 @@ structure WFollow (m m' : Mem V) (hp : Nat) (y : NodeId) (h' : Nat) : Prop where
     o'.hist = o.hist ∧ o'.level = o.level ∧ o'.isData = o.isData ∧ o'.pos = o.pos ∧
     (o.canonical = true → o'.canonical = true) ∧ ∀ z, (h ≠ hp ∨ z ≠ y) → o'.slot? z = o.slot? z
 
-/-- The frame of an object kept as it is. -/
-theorem frame_refl {o : Obj V} : o.node = o.node ∧ o.hist = o.hist ∧ o.level = o.level ∧
-    o.isData = o.isData ∧ o.pos = o.pos ∧ (o.canonical = true → o.canonical = true) :=
-  ⟨rfl, rfl, rfl, rfl, rfl, id⟩
-
 theorem obj_with_canonical_true {o : Obj V} (h : o.canonical = true) : { o with canonical := true } = o := by
   cases o; simp only at h; subst h; rfl
 

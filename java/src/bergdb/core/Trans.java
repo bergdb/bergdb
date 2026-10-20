@@ -55,7 +55,6 @@ public class Trans {
     // -- Output --
     
     public long tt;                 // Transaction time, used internally and as output.
-    public int splitCount;          // Number of node splits made during execute().
     public long tpos;               // Stream position of the first byte of the transaction. Available after execute().
     public long lastPos;            // Stream position of the last byte of the transaction. Available after execute().
     public long nextPos;            // Stream position of the first byte of the next transaction. Available after execute().
@@ -117,30 +116,6 @@ public class Trans {
         String s = "tt:" + tt + ", pos:" + tpos;
         s = isInternal ? s + ", internal" : s;
         return s;
-    }
-    
-    /**
-     * Returns a multi-line string representing this object for debug purpose.
-     */
-    public String print() {
-        StringBuilder b = new StringBuilder();
-        b.append("pos: " + tpos + "\n");
-        b.append("storedNewStartupPos: " + startupPos + "\n");
-        b.append("readKeyHashes: ");
-        for (int i = 0; i < this.readKeyHashes.length; i++) {
-            b.append(readKeyHashes[i] + " ");
-        }
-        b.append("\n");
-        
-        b.append("kv keys:\n");
-        for (int i = 0; i < this.kvs.length; i++) {
-            Kv kv =  kvs[i];
-            b.append("  " + Keys.toStringWithSubstitute(kv.getKey())
-                    + " -> size:" + kv.getValue().length
-                    + ", key hash: " + Keys.hash(kv.getKey()) + "\n");
-        }
-        
-        return b.toString();
     }
     
     
@@ -240,13 +215,6 @@ public class Trans {
             }
             
             this.builderLookupTime = lookupTime;
-            return this;
-        }
-        
-        public Builder keyRead(byte[] key) {
-            long[] segments = Keys.toSegments(key);
-            long hash = Keys.hash(segments);
-            readHashes.add(hash);
             return this;
         }
         

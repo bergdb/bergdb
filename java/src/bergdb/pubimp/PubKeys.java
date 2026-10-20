@@ -17,8 +17,6 @@ public class PubKeys {
     
     private PubKeys() {}
     
-    public static final char INTERNAL_DIR_PREFIX = '#';
-    
     public static final char FILE_PREFIX = '-';
     
     public static final char DIR_PREFIX = 'd';

@@ -21,9 +21,6 @@ public class DbConstants {
     
     public static final long[] INTERNAL_PREFIX_SKEY = Keys.toSegments(INTERNAL_PREFIX);
     
-    /** Minimum possible cacheMemoryValue. */
-    public static final long MIN_CACHE_MEMORY_VALUE = Constants.MIN_CACHE_MEMORY_VALUE;
-    
     /** Used for internal dummy writes. */
     static final long[] DUMMY_KEY = Keys.toSegments(INTERNAL_PREFIX + "-dummy");
 }

@@ -219,17 +219,6 @@ public class FileStream implements AppendOnlyStream {
         }
     }
     
-    /**
-     * Call this method with "true" to disable file deletes.
-     * Instead of actually deleting a stream file, the file will instead be renamed
-     * by adding the suffix ".deleted" to its filename.
-     */
-    public void setRenameAsDelete(boolean b) {
-        synchronized (this) {
-            this.renameAsDelete = b;
-        }
-    }
-    
     public synchronized long getFirstPos() {
         return firstPos;
     }

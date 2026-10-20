@@ -63,9 +63,6 @@ public class RecoverableStream {
     /** The distance between two consecutive meta blocks in the stream. */
     public static final int META_BLOCK_DISTANCE = 200*1000;
     
-    /** Byte size of transaction header. */
-    public static final int TRANS_HEADER_SIZE = 4;
-    
     /** 
      * Smallest size of a transaction that the layer above reads (NodeStream: a 16-byte 
      * header and the last byte). A transaction header fixed at recovery must give at 
@@ -134,14 +131,6 @@ public class RecoverableStream {
         }
         
         fixLastTransactionIfNeeded(spos);
-    }
-    
-    /**
-     * Returns the stream position of the last valid meta block, or
-     * -1 if unknown.
-     */
-    public long getPosOfLastValidMetaBlock() {
-        return this.posOfLastValidMetaBlock;
     }
     
     /**
@@ -585,22 +574,6 @@ public class RecoverableStream {
     }
     
     /**
-     * Returns true if the spos is an allowed position, that is, one that is not negative,
-     * or within a meta block.
-     */
-    static void assertAllowedPos(long spos) {
-        if (spos != Constants.SposNULL) {
-            if (spos < 0) {
-                throw new AssertionError("Bad spos (negative), " + spos + ".");
-            }
-            
-            if ((spos % META_BLOCK_DISTANCE) < RecoverableStream.META_BLOCK_SIZE) {
-                throw new AssertionError("Bad spos (in metablock), " + spos + ".");
-            }
-        }
-    }
-
-    /**
      * Iterates through the transactions starting at a certain spos.
      * The first transaction is the last transaction that completed before
      * 'spos' or if there is no such transaction, the very first transaction
@@ -672,13 +645,6 @@ public class RecoverableStream {
         
         public byte[] getBytes() {
             return bytes;
-        }
-        
-        /**
-         * Only valid if next() returned true.
-         */
-        public long getSSPos() {
-            return transSSPos;
         }
     }
     

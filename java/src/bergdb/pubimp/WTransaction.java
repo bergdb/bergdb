@@ -41,10 +41,6 @@ public class WTransaction implements Transaction {
         return this;
     }
     
-    public final int getActionRunCount() {
-        return runCount;
-    }
-    
     public final Object getOutput(String key) {
         if (key == null) {
             throw new IllegalArgumentException("key == null not allowed");

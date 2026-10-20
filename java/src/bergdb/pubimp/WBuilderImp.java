@@ -42,11 +42,6 @@ public class WBuilderImp implements WBuilder {
         return this;
     }
     
-    public WBuilder vkeyRead(long hash) {
-        env.vkeyRead(hash);
-        return this;
-    }
-
     /**
      * @throws DbException if the database is faulty.
      */

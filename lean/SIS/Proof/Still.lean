@@ -537,12 +537,4 @@ theorem java_stillOK (sp : Spec V T) (al : Algo V T) (hj : al.stillDirty = javaT
     intro db k tr hsp hinv hstep
     exact step_java_complete sp al db tr hj hsp hinv hstep
 
-/-- The still-dirty tests the theorems are stated for: the exact one, and
-BergDB's. -/
-theorem stillOK_of (sp : Spec V T) (al : Algo V T)
-    (h : al.stillDirty = exactTest sp ∨ al.stillDirty = javaTest sp) : StillOK sp al := by
-  rcases h with h | h
-  · exact exact_stillOK sp al h
-  · exact java_stillOK sp al h
-
 end SIS

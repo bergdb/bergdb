@@ -1,0 +1,27 @@
+Bergdb 005-04, option 4: traces.sh on a scratch clone of bergdb 0597329, 2026-10-19.
+Per trace: the checker's verdict; C-S and C-R; C-P with run E (eviction); the diagnostics; the
+transactions where A6 fails (A6's kind: a segment root made and split in place in one transaction).
+
+a6-big-1 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 4 |  | diagnostics: 1 of 41 transactions fail (A6 1) | T(1) A6 
+a6-big-2 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 4 |  | diagnostics: 1 of 41 transactions fail (A6 1) | T(1) A6 
+a6-big-3 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 4 |  | diagnostics: 1 of 41 transactions fail (A6 1) | T(1) A6 
+a6-big14-1 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 4 |  | diagnostics: 2 of 41 transactions fail (A6 2) | T(1) A6 T(2) A6 
+a6-big14-2 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 4 |  | diagnostics: 1 of 41 transactions fail (A6 1) | T(1) A6 
+a6-big14-3 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 4 |  | diagnostics: 1 of 41 transactions fail (A6 1) | T(1) A6 
+a6-random-1 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 5 | C-P slots: 0 of 41 transactions fail; 20687 SLOT lines, 15289 checked | diagnostics: 1 of 41 transactions fail (A6 1) | T(1) A6 
+a6-random-2 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 5 | C-P slots: 0 of 41 transactions fail; 20940 SLOT lines, 15673 checked | diagnostics: 1 of 41 transactions fail (A6 1) | T(1) A6 
+a6-random-3 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 5 | C-P slots: 0 of 41 transactions fail; 20510 SLOT lines, 15032 checked | diagnostics: 1 of 41 transactions fail (A6 1) | T(1) A6 
+a6-every-1 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 5 | C-P slots: 0 of 41 transactions fail; 10947 SLOT lines, 10946 checked | diagnostics: 1 of 41 transactions fail (A6 1) | T(1) A6 
+a6-every-2 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 5 | C-P slots: 0 of 41 transactions fail; 11072 SLOT lines, 11071 checked | diagnostics: 1 of 41 transactions fail (A6 1) | T(1) A6 
+a6-every-3 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 5 | C-P slots: 0 of 41 transactions fail; 10873 SLOT lines, 10872 checked | diagnostics: 1 of 41 transactions fail (A6 1) | T(1) A6 
+a6-budget-1 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 5 | C-P slots: 0 of 41 transactions fail; 12041 SLOT lines, 11646 checked | diagnostics: 1 of 41 transactions fail (A6 1) | T(1) A6 
+a6-budget-2 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 5 | C-P slots: 0 of 41 transactions fail; 11985 SLOT lines, 11607 checked | diagnostics: 1 of 41 transactions fail (A6 1) | T(1) A6 
+a6-budget-3 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 5 | C-P slots: 0 of 41 transactions fail; 11935 SLOT lines, 11509 checked | diagnostics: 1 of 41 transactions fail (A6 1) | T(1) A6 
+a6-14-rand-1 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 5 | C-P slots: 0 of 41 transactions fail; 28944 SLOT lines, 21861 checked | diagnostics: 2 of 41 transactions fail (A6 2) | T(1) A6 T(2) A6 
+a6-14-rand-2 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 5 | C-P slots: 0 of 41 transactions fail; 30034 SLOT lines, 22170 checked | diagnostics: 1 of 41 transactions fail (A6 1) | T(1) A6 
+a6-14-rand-3 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 5 | C-P slots: 0 of 41 transactions fail; 29261 SLOT lines, 22002 checked | diagnostics: 1 of 41 transactions fail (A6 1) | T(1) A6 
+a6-14-every-1 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 5 | C-P slots: 0 of 41 transactions fail; 15430 SLOT lines, 15429 checked | diagnostics: 2 of 41 transactions fail (A6 2) | T(1) A6 T(2) A6 
+a6-14-every-2 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 5 | C-P slots: 0 of 41 transactions fail; 15674 SLOT lines, 15673 checked | diagnostics: 1 of 41 transactions fail (A6 1) | T(1) A6 
+a6-14-every-3 | TRACECHECK OK | C-S steps: 0 of 41 | C-R probes: 0 of 5 | C-P slots: 0 of 41 transactions fail; 15289 SLOT lines, 15288 checked | diagnostics: 1 of 41 transactions fail (A6 1) | T(1) A6 
+
+totals: 21 of 21 traces TRACECHECK OK; A6 fails in 24 transactions; C-P: 15 traces, 226068 pointers checked, 0 transactions failing; run E's stream identical to run A's in 15 traces

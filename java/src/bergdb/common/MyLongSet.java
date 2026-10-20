@@ -66,10 +66,6 @@ public final class MyLongSet implements Iterable<Long> {
         return isHash() ? hash.size() : size;
     }
 
-    public final boolean isEmpty() {
-        return size() == 0;
-    }
-
     public final boolean contains(long value) {
         if (isHash()) {
             return hash.contains(value);

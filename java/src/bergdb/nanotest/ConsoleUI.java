@@ -215,58 +215,6 @@ public class ConsoleUI implements TestRunConsumer {
         }
     }
     
-    public void reportOK() {
-        testDone(null);
-    }
-
-    public int getTotal() {
-        return total;
-    }
-    
-    public int getFailed() {
-        return failed;
-    }
-    
-    public double getTotalExeTime() {
-        return totalExeTime;
-    }
-    
-    public List<Prop> getProps() {
-        return props;
-    }
-    
-    public long getLong(String name) {
-        Object obj = getProp(name);
-        if (obj instanceof Long) {
-            return (Long) obj;
-        } else {
-            throw new IllegalArgumentException("No such Long prop");
-        }
-    }
-    
-    public double getDouble(String name) {
-        Object obj = getProp(name);
-        if (obj instanceof Double) {
-            return (Double) obj;
-        } else {
-            throw new IllegalArgumentException("No such Double prop");
-        }
-    }
-    
-    public Object getProp(String name) {
-        if (name == null) {
-            throw new IllegalArgumentException("name == null not allowed");
-        }
-        
-        for (Prop p : props) {
-            if (p.name.equals(name)) {
-                return p.value;
-            }
-        }
-        
-        return null;
-    }
-    
     public String getReport() {
         // Because of GCJ problems, String.format and printf are avoided.
         

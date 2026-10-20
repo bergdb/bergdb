@@ -1,0 +1,8 @@
+
+======== NanotestForBergDB: night ========
+On f53 261019 21:17, OpenJDK 64-Bit Server VM 27
+bergdb.test.night.BryanIssueNight .
+bergdb.test.night.CcDbNightTest ....
+bergdb.test.night.Issue150420 .
+bergdb.test.night.PayTest .
+SUCCESS, 7 successful tests in 254.8 s.

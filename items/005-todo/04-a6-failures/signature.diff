@@ -1,0 +1,75 @@
+--- java/stress/A2A3Check2.java
++++ java/stress/A2A3Check2.java (005-04: a signature line per A6 failure)
+@@ -178,6 +178,7 @@
+                         System.out.println("A6 seed " + seed + " T" + i + ": " + describe(x, t)
+                                 + " has a dead pointer to " + describe(y, t) + ", reachable at t"
+                                 + (below.contains(y) ? ", below it" : ", NOT below it"));
++                        System.out.println("SIG " + signature(x, y, t));
+                     }
+                 }
+             }
+@@ -185,6 +186,64 @@
+         return result;
+     }
+ 
++    /** 005-04: classifies an A6 failure, x's dead pointer to y at t. "split-new": x is a
++     *  segment leaf whose dead key klong to y and whose live klong of the same compare value
++     *  are both of time t, the live one naming a new internal node z whose EMPTY_KEY child is
++     *  y, also new: the in-place space split of a segment root made in the same transaction
++     *  (Dag.spaceSplitInPlace, parent a segment leaf). "persisting": the dead klong is older
++     *  than t and y is below the live klong's target. Anything else: "OTHER". */
++    static String signature(Node xn, Node y, long t) {
++        if (!(xn instanceof KeyNode)) return "OTHER x not a key node";
++        KeyNode x = (KeyNode) xn;
++        long del = x.getDeleteBitmapAtTime(t, x.size);
++        String out = "";
++        long time = -1;
++        for (int d = 0; d < x.size; d++) {
++            long klong = x.klongs[d];
++            if (Klong.isTime(klong)) { time = Klong.getTime(klong); continue; }
++            if (Klong.getType(klong) != Klong.TYPE_KEY || x.pointers[d] != y) continue;
++            long cv = Klong.getCompareValue(klong);
++            long td = time;
++            int l = -1;
++            long tl = -1, tcur = -1;
++            for (int j = 0; j < x.size; j++) {
++                long k2 = x.klongs[j];
++                if (Klong.isTime(k2)) { tcur = Klong.getTime(k2); if (tcur > t) break; continue; }
++                if (Klong.getType(k2) != Klong.TYPE_KEY || Klong.isDeleted(del, j)) continue;
++                if (Klong.getCompareValue(k2) == cv) { l = j; tl = tcur; }
++            }
++            if (l < 0) { out += "OTHER no live klong for the compare value; "; continue; }
++            Node z = x.pointers[l];
++            boolean zInternal = z instanceof KeyNode && !((KeyNode) z).isSegmentLeaf();
++            boolean yBelowZ = z == y || below(z, t).contains(y);
++            boolean yFirstOfZ = false;
++            if (z instanceof KeyNode) {
++                KeyNode zk = (KeyNode) z;
++                for (int j = 0; j < zk.size; j++) {
++                    if (Klong.getType(zk.klongs[j]) == Klong.TYPE_KEY) {
++                        yFirstOfZ = Klong.getCompareValue(zk.klongs[j])
++                                == Klong.getCompareValue(Klong.EMPTY_KEY) && zk.pointers[j] == y;
++                        break;
++                    }
++                }
++            }
++            boolean xLeaf = x.isSegmentLeaf();
++            boolean yNew = y instanceof KeyNode && ((KeyNode) y).getFirstTime() == t;
++            boolean zNew = z instanceof KeyNode && ((KeyNode) z).getFirstTime() == t;
++            boolean segPtr = (cv & 0x38L) == (7L << 3);    // length 7: a pointer to a segment root
++            if (xLeaf && segPtr && td == t && tl == t && zInternal && zNew && yNew && yFirstOfZ && l > d) {
++                out += "split-new; ";
++            } else if (xLeaf && segPtr && td < t && yBelowZ && l > d) {
++                out += "persisting (dead klong of " + td + ", live of " + tl + "); ";
++            } else {
++                out += "OTHER xLeaf=" + xLeaf + " segPtr=" + segPtr + " td=" + td + " tl=" + tl
++                        + " t=" + t + " zInternal=" + zInternal + " zNew=" + zNew + " yNew=" + yNew
++                        + " yFirstOfZ=" + yFirstOfZ + " yBelowZ=" + yBelowZ + " l>d=" + (l > d) + "; ";
++            }
++        }
++        return out.isEmpty() ? "OTHER no dead klong found" : out;
++    }
++
+     /** The nodes reachable from x at time t through live pointers, x excluded. */
+     static Set<Node> below(Node x, long t) {
+         Set<Node> r = idSet();

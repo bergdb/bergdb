@@ -1,6 +1,5 @@
 package bergdb.dag;
 
-
 /**
  * Access path through the key nodes of the DB graph to access a certain KV.
  * Specialized, fast data structure. No repeated memory allocation, it is reused between
@@ -14,10 +13,6 @@ public final class KeyAccessPath {
     public KeyAccessPath() {
         klongs = new long[16];
         nodes = new KeyNode[16];
-    }
-    
-    public final int getSize() {
-        return size;
     }
     
     /**

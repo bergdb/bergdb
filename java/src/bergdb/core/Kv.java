@@ -53,14 +53,6 @@ public final class Kv {
         return value;
     }
     
-    public boolean hasKeyTransformation() {
-        return keyTransformation != null;
-    }
-    
-    public boolean hasValueTransformation() {
-        return value != null;
-    }
-    
     public KeyTransformation getKeyTransformation() {
         return keyTransformation;
     }

@@ -1,0 +1,42 @@
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+1. Unit tests
+SUCCESS, 929 successful tests in 48.0 s.
+2. RestartStress, random configurations
+   random-0: Done: 50 rounds, 0 failures, 32 s.
+   random-1: Done: 50 rounds, 0 failures, 31 s.
+   random-2: Done: 50 rounds, 0 failures, 30 s.
+   random-3: Done: 50 rounds, 0 failures, 35 s.
+3. RestartStress, small and default startup distances
+   sd1000-keys50-node14: Done: 10 rounds, 0 failures, 8 s.
+   sd1000-keys50-node30: Done: 10 rounds, 0 failures, 7 s.
+   sd1000-keys50-node62: Done: 10 rounds, 0 failures, 7 s.
+   sd1000-keys50-node8: Done: 10 rounds, 0 failures, 9 s.
+   sd1000-node14: Done: 10 rounds, 0 failures, 18 s.
+   sd1000-node30: Done: 10 rounds, 0 failures, 19 s.
+   sd1000-node62: Done: 10 rounds, 0 failures, 22 s.
+   sd1000-node8: Done: 10 rounds, 0 failures, 19 s.
+   default-disk: Done: 2 rounds, 0 failures, 566 s.
+4. RestartInvariance
+   inv-default-100MB: stream identical, all checks OK
+   inv-every1: stream identical, all checks OK
+   inv-idle-1: stream identical, all checks OK
+   inv-idle-2: stream identical, all checks OK
+   inv-sd100: stream identical, all checks OK
+   inv-sd1000-node8: stream identical, all checks OK
+   inv-sd10000-node14: stream identical, all checks OK
+   inv-sd100000-node62: stream identical, all checks OK
+5. CrashTest, the stream cut at random positions
+   crash-0: Done: 5 rounds, 0 failures, 8 s.
+   crash-1: Done: 5 rounds, 0 failures, 9 s.
+   crash-2: Done: 5 rounds, 0 failures, 9 s.
+   crash-3: Done: 5 rounds, 0 failures, 8 s.
+   crash-node8: Done: 5 rounds, 0 failures, 11 s.
+6. BryanRepro, the bug report of 2015 (restarts with deletes and reclaim)
+   bryan: Done: 40 cycles, 0 failures, 54 s.
+7. Conformance with the Lean model
+   a2a3-1: transactions 3000: A2, A3, A5 and marking OK
+   a2a3-2: transactions 500: A2, A3, A5 and marking OK
+   a2a3-3: transactions 6000: A2, A3, A5 and marking OK
+   conformance: traces: 60, TRACECHECK OK: 60
+LEVEL 2 OK

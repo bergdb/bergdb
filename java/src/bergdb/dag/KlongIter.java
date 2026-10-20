@@ -1,6 +1,5 @@
 package bergdb.dag;
 
-
 /**
  * Iterates a sequence of klongs.
  */
@@ -14,6 +13,4 @@ public interface KlongIter {
      * Advances iterator to next slong and returns it.
      */
     public long next();
-    
-    public Node getNode();
 }

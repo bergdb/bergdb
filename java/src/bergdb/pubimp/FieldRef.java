@@ -20,10 +20,6 @@ public class FieldRef {
         this.parts = parts.clone();
     }
     
-    public boolean isNested() {
-        return parts.length > 1;
-    }
-    
     public String getName() {
         if (parts.length == 1) {
             return parts[0];

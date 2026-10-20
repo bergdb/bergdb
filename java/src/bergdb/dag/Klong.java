@@ -68,8 +68,6 @@ public class Klong {
     public static final int INT_TYPE_KEY    = 1;
     public static final int INT_TYPE_DELETE_BITMAP = 3;
     
-    public static final int MAX_VERSION = 7;
-    
     /** The maximum number of key bytes in one klong. */
     public static final int MAX_SIZE = 7;
     
@@ -274,16 +272,6 @@ public class Klong {
     }
     
     /**
-     * Compare value shifted to the far right. Minimizes the magnitude of
-     * the compare value.
-     */
-    public static final long getShiftedCompareValue(long value) {
-        // All, but type in Byte 7 and version in Byte 0
-        // Byte 7 mask: 0011 1111 = 3f, Byte 0 mask: 1111 1000 = f8
-        return (value & 0x3ffffffffffffff8L) >>> 3;
-    }
-    
-    /**
      * Creates a compare value. No checks are made.
      */
     public static final long createCompareValue(byte[] key, int offset, int length) {
@@ -349,10 +337,6 @@ public class Klong {
         return b.toString();
     }
     
-    public static String compareValueToString(long compareValue) {
-        return toString(compareValueToKeyKlong(compareValue));
-    }
-    
     /**
      * Given two KEY klongs, this method returns the length of the common 
      * prefix (0-7).
@@ -395,25 +379,6 @@ public class Klong {
         result = result > length ? length : result;
         
         return result;
-    }
-    
-    /**
-     * Throws AssertionError if deleteKlong contains bits set above index sz-1
-     * and assertions is turned on.
-     * 
-     * @param deleteKlong
-     * @param sz
-     * @return true 
-     */
-    public static boolean assertNoDeleteBitsBeondSize(long deleteKlong, short sz) {
-        assert sz >= 0 && sz <= 62;
-        assert Klong.getType(deleteKlong) == Klong.TYPE_DELETE_BITMAP;
-        
-        for (int i = sz; i < 62; i++) {
-            assert !Klong.isDeleted(deleteKlong, i);
-        }
-        
-        return true;
     }
     
     

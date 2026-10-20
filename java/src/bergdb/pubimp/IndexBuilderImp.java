@@ -47,13 +47,6 @@ public class IndexBuilderImp implements IndexBuilder {
         dirList = new ArrayList<String>();
     }
     
-    /**
-     * Returns the created index; not part of the Pub API.
-     */
-    public IndexManager.Index getIndex() {
-        return index;
-    }
-    
     public IndexBuilder nextCompositeLevel() {
         CompositePart part = new CompositePart();
         parts.add(part);

@@ -68,18 +68,6 @@ public class MemoryStream implements AppendOnlyStream {
     }
     
     /**
-     * Makes a shallow copy, stream data is not copied.
-     */
-    public synchronized MemoryStream copyShallow() {
-        MemoryStream copy = new MemoryStream();
-        copy.streamLength = this.streamLength;
-        copy.firstValidPos = this.firstValidPos;
-        copy.firstArrayIndex = this.firstArrayIndex;
-        copy.arrays = this.arrays;
-        return copy;
-    }
-    
-    /**
      * Useful for testing; checks that the internal state is OK.
      * 
      * @throws AssertionError if state not ok.

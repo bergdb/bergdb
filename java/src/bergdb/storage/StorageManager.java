@@ -834,25 +834,6 @@ public class StorageManager implements AppendOnlyStream {
     }
     
     /**
-     * Sets durability rule D1.
-     */
-    public void setD1(DurabilityRule d1) {
-        if (d1 == null) {
-            throw new IllegalArgumentException("d1 == null not allowed");
-        }
-        
-        // Optimistic locking based on internal.compareAndSet().
-        while (true) {
-            Internal in = internal.get();
-            Internal newIn = in.copy();
-            newIn.d1 = d1;
-            if (internal.compareAndSet(in, newIn)) {
-                break;
-            }
-        }
-    }
-    
-    /**
      * Sets durability rule D2.
      */
     public void setD2(DurabilityRule d2) {
@@ -869,29 +850,6 @@ public class StorageManager implements AppendOnlyStream {
                 break;
             }
         }
-    }
-    
-    /** 
-     * Sets the error rule.
-     */
-    public void setErrorRule(ErrorRule errorRule) {
-        if (errorRule == null) {
-            throw new IllegalArgumentException("errorRule == null not allowed");
-        }
-        
-        // Optimistic locking based on internal.compareAndSet().
-        while (true) {
-            Internal in = internal.get();
-            Internal newIn = in.copy();
-            newIn.errorRule = errorRule;
-            if (internal.compareAndSet(in, newIn)) {
-                break;
-            }
-        }
-    }
-    
-    public void setListener(AppendListener appendListener) {
-        throw new UnsupportedOperationException("This class does not support setListener().");
     }
     
     public AppendOnlyStream getMainStream() {

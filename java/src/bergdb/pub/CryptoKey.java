@@ -182,13 +182,6 @@ public class CryptoKey {
         }
     }
     
-    public static void main(String[] args) {
-        CryptoKey key = CryptoKey.generate();
-        
-        System.out.println("Generated key: " + key);
-        System.out.println("Full serialized key: " + key.serialize());
-    }
-    
     
     // ======== Testing ========
     

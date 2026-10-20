@@ -305,24 +305,38 @@ def closedFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time) (D : Dirty)
      | some n => (reachFrom sp P i x n).any (fun y => inD D y)
      | none => false))
 
-/-- A6, no adoption (bergdb item 001, WP A4; its plan, 8.5): the index nodes
-reachable at i that a node reachable at i points to, live or dead, without
-being its live child at i. Option K needs none: a pointer that stops being live
-in a node that stays current points to a node that stops being current, or to a
-data node. A diagnostic, not yet an assumption (WP E1 decides). rl holds
-`reachList sp P i`, rlList the same as a list. -/
-def adoptionFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time)
-    (rl : Std.HashSet NodeId) (rlList : List NodeId) : List NodeId :=
-  rlList.eraseDups.flatMap (fun x =>
-    match P.get? x with
+/-- A6', no adoption, the weaker form (`adoptAt` in SIS/Evict.lean, an assumption
+of stage 2; docs/level4-alignment.md, 5.5), first: the pairs (x, y) of a node x
+reachable at i and a pointee y of x, live or dead, that is not a live child of x
+at i, is an index node reachable at i, and is not reachable from x at i through
+live pointers. Second, the pairs that fail only A6, the stronger form (bergdb
+item 001, WP A4), which asks that y be a data node or not reachable: y is below
+x. A6' allows them, and Java makes them where a transaction splits in place a
+segment root that it made (bergdb 005-04). Before 005-04 the checker computed A6,
+as a diagnostic. rl holds `reachList sp P i`, rlList the same as a list. P is
+looked up through `nodeMap` (`nodeMap_get?`), and `reachFromG` through it is
+`reachFrom` (`reachFromG_nodeMap`). -/
+def adoptFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time)
+    (rl : Std.HashSet NodeId) (rlList : List NodeId) :
+    List (NodeId × NodeId) × List (NodeId × NodeId) :=
+  let m := SIS.Fast.nodeMap P
+  let adopted := rlList.eraseDups.flatMap (fun x =>
+    match m[x]? with
     | some n =>
       let lv := sp.live (n.hist.upTo i)
-      (pointees sp n.hist).filter (fun y => !lv.contains y && rl.contains y && isIndex P y)
+      ((pointees sp n.hist).filter (fun y => !lv.contains y && rl.contains y &&
+        match m[y]? with
+        | some ny => !ny.isData
+        | none => false)).map (fun y => (x, y))
     | none => [])
+  adopted.partition (fun p => match m[p.1]? with
+    | some n => !(SIS.Fast.reachFromG sp (fun z => m[z]?) i p.1 n).contains p.2
+    | none => true)
 
-/-- TREE, one current parent (bergdb item 001, WP A4; sis-model.md, section 11):
-the nodes reachable at i, the root aside, that are the live child at i of no
-node or of more than one node reachable at i. A diagnostic, as A6. -/
+/-- TREE, one current parent (`treeAt` in SIS/Evict.lean, an assumption of stage 2;
+bergdb item 001, WP A4; sis-model.md, section 11): the nodes reachable at i, the
+root aside, that are the live child at i of no node or of more than one node
+reachable at i. -/
 def treeFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time) (rlList : List NodeId) :
     List NodeId :=
   let xs := rlList.eraseDups
@@ -340,8 +354,8 @@ paths are `pathOf`'s: the nodes reachable at i - 1 with a node below them,
 themselves included, that the change gives entries, creates or touches (its
 touch, since bergdb item 001, WP R3) or that is not reachable at i;
 here computed lowest level first (checker-local). rlPrev holds
-`reachList sp P (i - 1)`, rlNowSet the nodes reachable at i after the change. A
-diagnostic, as A6. -/
+`reachList sp P (i - 1)`, rlNowSet the nodes reachable at i after the change. An
+assumption of stage 2, as TREE and A6'. -/
 def copyFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time) (c : Changes BVal)
     (rlPrev : List NodeId) (rlNowSet : Std.HashSet NodeId) : List (NodeId × NodeId) :=
   let newIds : Std.HashSet NodeId := Std.HashSet.ofList (c.new.map (·.id))

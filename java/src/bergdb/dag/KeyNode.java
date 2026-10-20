@@ -1425,11 +1425,6 @@ public class KeyNode implements Node {
         return true;
     }
     
-    public boolean assertOk() {
-        check();
-        return true;
-    }
-    
     /**
      * Same as check() except for that the node size is also checked against maxNodeSize.
      */
@@ -1628,9 +1623,6 @@ public class KeyNode implements Node {
                 return klong;
             }
             
-            public Node getNode() {
-                return KeyNode.this.pointers[offset];
-            }
         };
     }
 

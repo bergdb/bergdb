@@ -74,30 +74,6 @@ public class Dag {
         top.printGraph(out, "", 0);
     }
     
-    /**
-     * Visits all memory pointers. Pointers may be visited several times
-     * since we deal with a DAG, not a tree.
-     */
-    public void visitMemoryPointers(PointerVisitor visitor) {
-        Pointer pointer = new Pointer();   // mutable memory to avoid mem alloc.
-        Node superRoot = topDs.getSuperRoot();
-        visitMemoryPointersFromNode(superRoot, visitor, pointer);
-    }
-    
-    private void visitMemoryPointersFromNode(Node node, PointerVisitor visitor, Pointer pointer) {
-        int count = node.getSize();
-        
-        for (int i = 0; i < count; i++) {
-            node.getPointer(i, pointer);
-            if (pointer.isMem()) {
-                visitor.visitPointer(node, pointer);
-                
-                Node child = pointer.getNode();
-                visitMemoryPointersFromNode(child, visitor, pointer);
-            }
-        }
-    }
-    
     public void visitMemoryPointersOnce(PointerVisitor visitor) {
         HashSet<Node> visited = new HashSet<Node>();
         
@@ -1216,13 +1192,6 @@ public class Dag {
         public void valueNodeCreated(ValueNode node, long[] key) {}
     };
     
-    
-    public static interface NodeAccessListener {
-        /**
-         * Reports that a node was accessed.
-         */
-        public void nodeAccessed(Node node);
-    }
     
     
     public static final int TIME_SPLIT_1 = 1;

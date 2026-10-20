@@ -54,10 +54,6 @@ public class RwTransaction implements Transaction {
         return Time.units(trans.tt);
     }
     
-    public String getOutputStream(String key) {
-        return (String) getOutput(key);
-    }
-    
     /**
      * @throws StreamIoException
      * @throws StreamFormatException

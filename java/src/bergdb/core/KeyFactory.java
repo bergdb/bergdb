@@ -6,7 +6,6 @@ import java.util.Random;
 import bergdb.common.Bytes;
 import bergdb.common.StringUtil;
 import bergdb.dag.Keys;
-import bergdb.nanotest.Nano;
 
 /**
  * Sets of keys useful for testing the database.
@@ -135,82 +134,5 @@ public class KeyFactory {
         }
         
         return key;
-    }
-    
-    /**
-     * Returns a "crazy" key, all strings. Lots of variation. Different keys for different
-     * indexes is guaranteed. Varying key lengths.
-     * Similar to crazyKey(), but without binary keys.
-     */
-    public static byte[] crazyStringKey(int index) {
-        if (index < 0) {
-            throw new IllegalArgumentException("index < 0 not allowed " + index);
-        }
-        Random r = new Random(index);
-        byte[] key;
-        int type = r.nextInt(10);
-        
-        switch (type) {
-        case 0:
-        case 1:
-        case 2:
-            // Case 'B'
-            StringBuilder b = new StringBuilder("" + (1*1000000 + index));
-            int len = b.length();
-            int stop = len / 2;
-            
-            // Reversing order of chars
-            for (int i = 0; i < stop; i++) {
-                char c = b.charAt(i);
-                b.setCharAt(i, b.charAt(len - 1 - i));
-                b.setCharAt(len - 1- i, c);
-            }
-            b.append("B");
-            key = Keys.toBytes(b.toString());
-            break;
-        case 3:
-        case 4:
-        case 5:
-            // Case 'I'.
-            key = Keys.toBytes(index + "I");
-            break;
-        case 6:
-            // Case 'L' - a longer key
-            int size = r.nextInt(1000) + 20;
-            if (r.nextDouble() < 0.02) {
-                // Very long key
-                size = r.nextInt(10*1000) + 20;
-            }
-            
-            key = new byte[size];
-            key[key.length - 1] = (byte) 'L';
-            int myInt = Math.abs(r.nextInt(1000*1000)) + 10000;
-            Bytes.stringToBytes("" + myInt, key, 0);
-            Bytes.intToBytesBE(index, key, key.length - 5);
-            break;
-        case 7:
-            // Case 'P'.
-            // String key, long same-prefix for many keys.
-            String s = "r/examples/A long directory name/followed by another one/" + index + "-P";
-            key = Keys.toBytes(s);
-            break;
-        case 8:
-        case 9:
-            // Case 'C'.
-            int i = r.nextInt(crazyPrefixes.length);
-            key = Keys.toBytes(crazyPrefixes[i] + index + "-C");
-            break;
-        default:
-            throw new Error();
-        }
-        
-        return key;
-    }
-    
-    @Nano
-    public static void testGettingCrazy() {
-        for (int i = 0; i < 1000; i++) {
-            KeyFactory.crazyKey(i);
-        }
     }
 }

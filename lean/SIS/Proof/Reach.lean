@@ -173,23 +173,12 @@ def Grow (P : Struct V) (k : Time) (P' : Struct V) : Prop :=
 theorem Grow.refl (P : Struct V) (k : Time) : Grow P k P :=
   fun _ n h => ⟨n, h, rfl, rfl, rfl⟩
 
-theorem Grow.mono {P P' : Struct V} {k t : Time} (h : Grow P k P') (ht : t ≤ k) : Grow P t P' := by
-  intro x n hn
-  obtain ⟨n', h1, h2, h3, h4⟩ := h x n hn
-  exact ⟨n', h1, h2, h3, upTo_eq_of_le ht h4⟩
-
 theorem Grow.trans {P P' P'' : Struct V} {k k' : Time} (h : Grow P k P') (h' : Grow P' k' P'')
     (hk : k ≤ k') : Grow P k P'' := by
   intro x n hn
   obtain ⟨n', h1, h2, h3, h4⟩ := h x n hn
   obtain ⟨n'', h1', h2', h3', h4'⟩ := h' x n' h1
   exact ⟨n'', h1', h2'.trans h2, h3'.trans h3, (upTo_eq_of_le hk h4').trans h4⟩
-
-theorem Grow.sameNodes {P P' P'' : Struct V} {k : Time} (h : Grow P k P') (h' : SameNodes P' P'') :
-    Grow P k P'' := by
-  intro x n hn
-  obtain ⟨n', h1, h2, h3, h4⟩ := h x n hn
-  exact ⟨n', by rw [← h']; exact h1, h2, h3, h4⟩
 
 /-- The changes of transaction i extend P up to every earlier time. -/
 theorem grow_apply (P : Struct V) (i : Time) (c : Changes V) {k : Time} (hk : k < i) :
@@ -252,20 +241,5 @@ theorem reachable_grow {sp : Spec V T} {P P' : Struct V} {k t : Time} (hls : Liv
   apply Bool.eq_iff_iff.mpr
   rw [reachable_iff, reachable_iff]
   exact reach_grow_iff hls hp hroot hg ht x
-
-theorem view_grow {sp : Spec V T} {P P' : Struct V} {k t : Time} (hls : LiveSub sp)
-    (hp : PtrsOK sp P) (hroot : (P.get? root).isSome) (hg : Grow P k P') (ht : t ≤ k) :
-    view sp P' t = view sp P t := by
-  funext x
-  simp only [SIS.view, reachable_grow hls hp hroot hg ht x]
-  split
-  · rename_i hr
-    rw [reachable_iff] at hr
-    obtain ⟨n0, h0⟩ := Option.isSome_iff_exists.mp hr.isSome
-    obtain ⟨n', h1, h2, h3, h4⟩ := hg _ _ h0
-    rw [h0, h1]
-    simp only [Option.map_some]
-    rw [upTo_eq_of_le ht h4, h2, h3]
-  · rfl
 
 end SIS

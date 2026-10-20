@@ -614,13 +614,6 @@ theorem RootPerm.unswizzle (hp : RootPerm m1 m2) (D : Dirty) (h : Nat) (y : Node
           · exact hp.setObj (hp.lt_of_obj? hoh) _
           · exact hp
 
-theorem RootPerm.cacheOp {S0 S : Stream V T} (hp : RootPerm m1 m2) (D : Dirty) (op : CacheOp) :
-    RootPerm (m1.cacheOp sp S0 S D op) (m2.cacheOp sp S0 S D op) := by
-  cases op with
-  | read t => exact (hp.read4 (sp := sp) (S0 := S0) (S := S) t).1
-  | unswizzle h y => exact hp.unswizzle D h y
-  | release h => exact hp.release D h
-
 end Change
 
 

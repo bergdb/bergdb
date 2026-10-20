@@ -133,10 +133,6 @@ public class MetaBlock {
         return pos;
     }
     
-    public void setPos(long pos) {
-        this.pos = pos;
-    }
-    
     /**
      * Returns a reference to the byte array block.
      */

@@ -56,18 +56,8 @@ public class DagComparison {
         return this;
     }
     
-    public DagComparison printAll(boolean b) {
-        this.printAll = b;
-        return this;
-    }
-    
     public DagComparison stopAtDiff(boolean b) {
         this.stopAtDiff = b;
-        return this;
-    }
-    
-    public DagComparison out(PrintStream out) {
-        this.out = out;
         return this;
     }
     
@@ -110,10 +100,6 @@ public class DagComparison {
         }
         
         return equal;
-    }
-    
-    public Pair<Node, Node> getLastPair() {
-        return pair;
     }
     
     private String compare(Node n1, Node n2) {

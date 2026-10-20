@@ -94,13 +94,6 @@ public final class ValueNode implements Node {
     }
 
     /**
-     * Caller must hold DB.writeLock.
-     */
-    public final void setIsInTransNodes(boolean b) {
-        this.isInTransactionNodes = b;
-    }
-
-    /**
      * Returns false; a ValueNode cannot be dirty. Every change
      * is written directly to stream and there are no outbound pointers.
      */

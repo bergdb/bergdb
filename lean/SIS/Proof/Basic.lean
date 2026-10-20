@@ -183,8 +183,6 @@ def SameNodes (P P' : Struct V) : Prop := ∀ x, P.get? x = P'.get? x
 
 theorem SameNodes.refl (P : Struct V) : SameNodes P P := fun _ => rfl
 theorem SameNodes.symm {P P' : Struct V} (h : SameNodes P P') : SameNodes P' P := fun x => (h x).symm
-theorem SameNodes.trans {P P' P'' : Struct V} (h : SameNodes P P') (h' : SameNodes P' P'') :
-    SameNodes P P'' := fun x => (h x).trans (h' x)
 
 theorem SameNodes.apply {P P' : Struct V} (h : SameNodes P P') (i : Time) (c : Changes V) :
     SameNodes (P.apply i c) (P'.apply i c) := by

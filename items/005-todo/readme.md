@@ -17,13 +17,13 @@ The list
 | [005-01](01-fix-m49-exception-safety.md) | Fix | M49: a transaction that throws inside `putKvs` is half committed (item 003) | open |
 | [005-02](02-fix-m46-ordinal-bound.md) | Fix | M46: the top node ordinal bound, 2^30 − 1 over a database's life (item 002) | done |
 | [005-03](03-sweep-cost.md) | Investigate | The sweep's cost under read churn (item 001, finding 10) | open |
-| [005-04](04-a6-failures.md) | Decide | A6 fails in 5 Java transactions: is anything to be done? | open |
+| [005-04](04-a6-failures.md) | Decide | A6 fails in 5 Java transactions: is anything to be done? | done |
 | [005-05](05-bergdb-future.md) | Decide | What to do with BergDB: publish it, when, money, paid work | open |
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-08](08-fix-node-table-tree-bins.md) | Fix | The node table's 256 maps make every bin a tree (`Cache3.mapIndex`): 61 bytes per KV, a slower `set` (006-02) | done |
 | [005-09](09-fix-node-table-snapshot-race.md) | Fix | A race between a reader and a sweep lets the node table name a released object (INV-CAN); a unit test fails now and then (005-02) | open |
-| [005-10](10-unused-code.md) | Investigate | Unused code in `java/` and `lean/`: find it and propose what to remove; nothing is removed without Frans's approval | open |
+| [005-10](10-unused-code.md) | Investigate | Unused code in `java/` and `lean/`: find it and propose what to remove; nothing is removed without Frans's approval | in progress |
 
 Status values: open, in progress, done, dropped, moved (to an item of its
 own). Kinds: Fix (a known fault), Investigate (find out, then propose),
@@ -51,7 +51,8 @@ Files
 * [03-sweep-cost.md](03-sweep-cost.md). 005-03, investigate the sweep's
   cost.
 * [04-a6-failures.md](04-a6-failures.md). 005-04, the A6 failures: decide
-  whether anything is to be done.
+  whether anything is to be done; done, with its tools and runs in
+  [04-a6-failures/](04-a6-failures/).
 * [05-bergdb-future.md](05-bergdb-future.md). 005-05, what to do with
   BergDB.
 * [06-publication-literature.md](06-publication-literature.md). 005-06, the
@@ -67,7 +68,10 @@ Files
   005-09, fix the race that lets the node table name a released object,
   found in 005-02.
 * [10-unused-code.md](10-unused-code.md). 005-10, find unused code and
-  propose what to remove, for Frans to approve.
+  propose what to remove, for Frans to approve; the proposal, with its
+  tables, plan, tools and runs, in [10-unused-code/](10-unused-code/), and
+  the removal as Frans decided it in
+  [10-unused-code/applied/](10-unused-code/applied/).
 
 
 Log
@@ -102,3 +106,31 @@ and then).
 2026-10-19. Added 005-10, unused code: find it and propose what to remove,
 at Frans's request. For an AI to do; nothing is removed without Frans's
 approval.
+
+2026-10-19. 005-04 done, at Frans's request ("Do as proposed"), by Claude
+(Opus 5.5, Claude Code): A6 is not a target, the assumption stays A6'. Option
+4's look found one kind of A6 failure only, the in-place split of a segment
+root made by the same transaction, which keeps A6'; 61 Java-tier failures at
+node sizes 8 to 62 are all that kind, and 21 new traces with it pass the
+checker, with eviction too. No change to `java/` or `lean/`. Proposed, not
+done: TREE, A6' and A-COPY as gate checks, and A6' as the checker's
+diagnostic.
+
+2026-10-19. 005-10 in progress, at Frans's request ("Do the 005-10 todo
+item"), by Claude (Opus 5.5, Claude Code): the proposal is written, in
+10-unused-code/proposal.md. About 11,700 lines can go in recommended groups
+(A1 to F1); a patch with all of them passes the build, the unit and
+f-tests, the four gates and `lake build` on a clone. Found on the way:
+tests that never ran, as their classes are in no pack (one fails today),
+and night tests that nothing runs (they pass). Nothing is removed; Frans
+decides by ID.
+
+2026-10-20. 005-10: Frans decided ("remove all recommended; C1 keep; C2
+keep; C3 keep; D1 keep; D2 keep; D3 keep; E1 keep; G1 remove", and a
+script for the night tests). Removed by Claude (Opus 5.5, Claude Code): A1
+to A3, B1 to B3, F1 and part of G1, 3,071 lines in 103 files; added
+`java/stress/night.sh`. The build, the unit and f-tests, the four gates,
+`lake build` and `night.sh` pass on a clone; the change is in the main
+tree, for Frans to commit. The rest of G1 waits: the proposal's G1 was
+wrong for part of it (code behind those API methods is used), see the
+subitem.

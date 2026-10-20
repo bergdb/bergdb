@@ -1,6 +1,5 @@
 package bergdb.pubimp;
 
-import java.nio.ByteBuffer;
 
 import bergdb.common.Bytes;
 import bergdb.common.StringUtil;
@@ -23,18 +22,6 @@ public class DbString extends DbValue {
     
     public int getByteSize() {
         return value == null ? 4 : 4 + StringUtil.utf8Size(value);
-    }
-    
-    public void write(ByteBuffer b) {
-        if (value == null) {
-            b.putInt(-1);
-        } else {
-            byte[] stringBytes = StringUtil.toBytes(value);
-            int size = stringBytes.length;
-            assert size == getByteSize() : size + " != " + getByteSize();
-            b.putInt(size);
-            b.put(stringBytes, 0, stringBytes.length);
-        }
     }
     
     public int write(byte[] b, int offset) {

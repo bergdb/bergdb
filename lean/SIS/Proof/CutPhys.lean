@@ -1107,12 +1107,6 @@ def Mem.KeepPos (m m' : Mem V) : Prop :=
   ∀ h o, m.obj? h = some o → ∃ o', m'.obj? h = some o' ∧ o'.node = o.node ∧ o'.pos = o.pos ∧
     (o.canonical = true → o'.canonical = true)
 
-theorem Mem.KeepCore.keepPos {m' : Mem V} (hk : m.KeepCore m') : m.KeepPos m' := by
-  intro h o ho
-  obtain ⟨o', ho', hcore⟩ := hk h o ho
-  exact ⟨o', ho', congrArg (fun c => c.1) hcore, congrArg (fun c => c.2.2.2.2.2) hcore,
-    fun hc => by rw [show o'.canonical = o.canonical from congrArg (fun c => c.2.2.2.2.1) hcore]; exact hc⟩
-
 theorem slotRefOf_keepPos {m' : Mem V} (hk : m.KeepPos m') (hs : m'.s = m.s) {y : NodeId}
     {sl : Slot} (hsl : ∀ h', sl = Slot.mem h' → (m.obj? h').isSome) :
     slotRefOf S0 m' y sl = slotRefOf S0 m y sl := by

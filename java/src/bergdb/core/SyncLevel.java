@@ -22,8 +22,4 @@ public enum SyncLevel {
     private SyncLevel(int value) {
         this.value = value;
     }
-    
-    public int getValue() {
-        return value;
-    }
 }

@@ -1,0 +1,31 @@
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+1. Unit tests
+SUCCESS, 929 successful tests in 48.1 s.
+2. EvictionInvariance, every schedule, the audit on
+   ei-idle-r: EVICTION INVARIANCE OK, 2000 audits, 0 failed
+   ei-medium: EVICTION INVARIANCE OK, 5005 audits, 0 failed
+   ei-node14: EVICTION INVARIANCE OK, 2005 audits, 0 failed
+   ei-node62-r: EVICTION INVARIANCE OK, 2050 audits, 0 failed
+   ei-node8-r: EVICTION INVARIANCE OK, 2100 audits, 0 failed
+   ei-node8: EVICTION INVARIANCE OK, 2005 audits, 0 failed
+   ei-rec-every1: EVICTION INVARIANCE OK, 5000 audits, 0 failed
+   ei-rec-node62-r: EVICTION INVARIANCE OK, 2620 audits, 0 failed
+   ei-rec-node8: EVICTION INVARIANCE OK, 2265 audits, 0 failed
+3. RestartInvariance, CrashTest and ReclaimStress with forced schedules, the audit on
+   inv-every: stream identical, 4547 audits, 0 failed
+   inv-random: stream identical, 4547 audits, 0 failed
+   crash-every: Done: 8 rounds, 0 failures, 34 s., 68215 audits, 0 failed
+   crash-random: Done: 8 rounds, 0 failures, 33 s., 68219 audits, 0 failed
+   reclaim-every: Done: 60 rounds, 0 failures, 60 rounds with a cut, 440 s, 988 exhaustive verifications., 235292 audits, 0 failed
+   reclaim-random: Done: 60 rounds, 0 failures, 60 rounds with a cut, 438 s, 988 exhaustive verifications., 235292 audits, 0 failed
+4. ReclaimReaders with forced schedules
+   readers-disk: Done: 6 rounds, 0 failures, 6 rounds with a cut, 9718313 gets and 3292300 scans correct, expired at admission 2, expired during 114, 56 s.
+   readers-every: Done: 6 rounds, 0 failures, 6 rounds with a cut, 10861285 gets and 3661866 scans correct, expired at admission 2, expired during 131, 29 s.
+   readers-random: Done: 6 rounds, 0 failures, 6 rounds with a cut, 19001466 gets and 6395792 scans correct, expired at admission 2, expired during 209, 32 s.
+5. Conformance with the Lean model, with eviction
+   conformance: traces: 30, TRACECHECK OK: 30; C-P 0 of 7794 transactions fail; 702185 SLOT lines, 475116 checked; traces without SLOT lines: 0
+6. LargerThanMemory, on disk, a capped JVM
+   the index: 162215 index nodes, 107 MB in memory (11996 ms); the budget 50 MB; on disk 1374 MB
+   at most: live after a full GC 82 MB (at the phases' ends), collection usage 490 MB, heap used 623 MB, of 805 MB; resident 50 MB; 166 s
+LEVEL 4 OK

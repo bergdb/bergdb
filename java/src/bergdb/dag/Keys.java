@@ -17,10 +17,6 @@ import bergdb.nanotest.Nano;
  */
 public class Keys {
     
-    public int compare(long[] arr1, long[] arr2) {
-        return compareArrays(arr1, arr2);
-    }
-    
     /**
      * Returns the hash value for a key. This hash is used in the KeyModSet.
      * 
@@ -102,11 +98,6 @@ public class Keys {
         return StringUtil.isPrintableAscii(bytes2);
     }
     
-    public static final String toDisplayString(long[] skey) {
-        byte[] bkey = toBytes(skey);
-        return toDisplayString(bkey);
-    }
-    
     public static final String toDisplayString(byte[] bytes) {
         assert bytes != null;
         bytes = bytes.clone();
@@ -125,10 +116,6 @@ public class Keys {
         }
         
         return StringUtil.toString(bytes);
-    }
-    
-    public static final String toStringWithSubstitute(long[] segments) {
-        return toStringWithSubstitute(toBytes(segments));
     }
     
     public static final String toStringWithSubstitute(byte[] bytes) {

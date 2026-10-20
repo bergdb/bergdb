@@ -34,12 +34,6 @@ theorem pathOf_congr (c : Changes V) (j : Time) : pathOf sp P c j = pathOf sp P'
   unfold pathOf
   simp only [hP.reachList, hP.reachFrom', hP.reachable, (hP.apply j c).reachable, hP']
 
-theorem reachOnPath_congr (S : Stream V T) (j : Time) (path : List NodeId) (m : Mem V) (x : NodeId) :
-    m.reachOnPath sp S P j path x = m.reachOnPath sp S P' j path x := by
-  have hP' : ∀ x, P.get? x = P'.get? x := hP
-  unfold Mem.reachOnPath
-  simp only [hP']
-
 theorem newSlot_congr (j : Time) (m : Mem V) (o : Obj V) (y : NodeId) :
     m.newSlot sp P j o y = m.newSlot sp P' j o y := by
   have hP' : ∀ x, P.get? x = P'.get? x := hP

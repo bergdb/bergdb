@@ -1,0 +1,30 @@
+# Groups that Frans kept as they are (2026-10-20): their unused members stay.
+# C1, the manual tests.
+java/src-dev/bergdb/test/manual/
+# C2, the development tools.
+java/src-dev/bergdb/Help.java
+java/src-dev/bergdb/dev/Dev.java
+java/src-dev/bergdb/dev/GoogleQueen.java
+java/src-dev/bergdb/dev/Info.java
+java/src-dev/bergdb/dev/MemPerf.java
+java/src-dev/bergdb/dev/MyInstrumentation.java
+java/src-dev/bergdb/dev/ObjectSize.java
+java/src-dev/bergdb/dev/Swing.java
+# D1, the tests and benchmarks of Java itself.
+java/src-dev/bergdb/test/java/
+java/src-dev/bergdb/dev/StringTester.java
+java/src-dev/bergdb/dev/Pack.java
+# D2, the perf tests.
+java/src-dev/bergdb/dev/Perf.java
+java/src-dev/bergdb/test/FileSynchPerformance.java
+java/src-dev/bergdb/test/GetManyScalability.java
+java/src-dev/bergdb/test/GetScalability.java
+java/src-dev/bergdb/test/OneByteToFile.java
+java/src-dev/bergdb/test/OneGig.java
+java/src-dev/bergdb/test/StreamSize.java
+java/src-dev/bergdb/test/Get.java
+java/src-dev/bergdb/test/GetThreaded.java
+java/src-dev/bergdb/test/PerfGetMany.java
+java/src-dev/bergdb/test/Set.java
+java/src-dev/bergdb/test/BigDb.java
+java/src-dev/bergdb/test/BigDbWithDeletes.java

@@ -1,0 +1,36 @@
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+1. Unit tests
+SUCCESS, 942 successful tests in 42.1 s.
+2. DagFuzz
+   fuzz-14: Done: 300 rounds, 0 failures.
+   fuzz-30: Done: 300 rounds, 0 failures.
+   fuzz-62: Done: 300 rounds, 0 failures.
+   fuzz-8: Done: 300 rounds, 0 failures.
+3. DeleteRepro
+4. RestartStress
+   stress-0: Done: 25 rounds, 0 failures, 57 s.
+   stress-1: Done: 25 rounds, 0 failures, 58 s.
+   stress-2: Done: 25 rounds, 0 failures, 57 s.
+   stress-3: Done: 25 rounds, 0 failures, 56 s.
+   stress-disk: Done: 5 rounds, 0 failures, 24 s.
+   stress-keys50-node14: Done: 10 rounds, 0 failures, 22 s.
+   stress-keys50-node30: Done: 10 rounds, 0 failures, 22 s.
+   stress-keys50-node8: Done: 10 rounds, 0 failures, 23 s.
+   stress-node14: Done: 10 rounds, 0 failures, 29 s.
+   stress-node62: Done: 10 rounds, 0 failures, 31 s.
+   stress-node8: Done: 10 rounds, 0 failures, 31 s.
+   stress-norestart: Done: 25 rounds, 0 failures, 19 s.
+5. RestartInvariance
+   STREAM: identical
+   TRANSSEQ: 0 of 3 checkpoints differ
+   KV CHECKSUM: 0 of 3 checkpoints differ
+   IDENTITY A (no restarts): 0 of 3 checkpoints violate
+   IDENTITY B (restarts): 0 of 3 checkpoints violate
+   LOOKUP A (no restarts): 0 of 3 checkpoints violate
+   LOOKUP B (restarts): 0 of 3 checkpoints violate
+6. Props
+   MEM:191 (at most 228)
+   SS:1.50 (1.10, 1.19, 1.62, 2.37) (at most 1.51 1.11 1.20 1.63 2.38)
+   CORE:0.35 (0.27, 0.58, 0.27, 0.36) (get, get4t, getmany, set; not checked)
+LEVEL 1 OK

@@ -992,7 +992,9 @@ A step 7 of `level2.sh`, "Conformance with the Lean model", in both modes
 2. `A2A3Check2` on three configurations: `-Dops=4 -Ddel=25 -Dlong=1`;
    `-Dops=40 -Dexact=1 -Dn=50 -Dkeys=1000 -Ddel=25 -Dlong=1`; `-Dmaxnode=62
    -Dkeys=1000 -Dn=2000 -Dops=40 -Ddel=20 -Dseeds=3`. Under 5 seconds in all.
-   It fails unless the NET line, A3, A5 and the MARKING differences are 0.
+   It fails unless the NET line, A3, A5 and the MARKING differences are 0;
+   since 2026-10-20 (bergdb 005-04) also unless TREE, A6' and A-COPY hold,
+   and the checker's C-A checks them too (point 3).
 3. The checker on the small set: `conformance.sh small 2` in quick mode
    (10 traces), `conformance.sh small` in full mode (50 traces, 5 minutes 20 seconds;
    16 seconds since bergdb item 001's C2 and C3, with the fast checker and four

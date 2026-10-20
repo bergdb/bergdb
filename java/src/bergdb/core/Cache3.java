@@ -260,24 +260,6 @@ public class Cache3 {
         return node.isCanonical() || node.getSpos() > old.getSpos();
     }
     
-    public void pointerDestroyed(Node to) {
-        long id = to.getId();
-        Object lock = this.getLock(id);
-        
-        synchronized (lock) {
-            CacheEntry entry = internalGet(id);
-            
-            if (entry == null) {
-                // ignore, should not happen
-            } else {
-                entry.refCount--;
-                if (entry.refCount == 0) {
-                    internalRemove(id);
-                }
-            }
-        }
-    }
-    
     public Node getNode(long id) {
         synchronized (bigLock) {
             CacheEntry entry = internalGet(id);
@@ -326,7 +308,6 @@ public class Cache3 {
     @Nano
     public static void testLargeIds() {
         Cache3 cache = new Cache3(new Cache.DbInfo() {
-            public long getStartupPosForEvict() { return 0; }
             public PointerLocks getPointerLocks() { return null; }
         });
         long[] ids = {1L << 31, (1L << 31) + 0x94, (1L << 32) - 1, 5L << 30, 1L << 40, Long.MAX_VALUE};
@@ -385,14 +366,6 @@ public class Cache3 {
         return (h ^ (h >>> 16)) & (capacity - 1);
     }
 
-    public static class AlreadyHasNode extends AssertionError {
-        private static final long serialVersionUID = 1L;
-        
-        public AlreadyHasNode(String message) {
-            super(message);
-        }
-    }
-    
     public static class CacheEntry {
         public Node node;
         public int refCount;

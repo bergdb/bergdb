@@ -1,0 +1,10 @@
+# G1, the part of it that is unused also inside: class methods of the API
+# that nothing calls. The rest of G1 waits for Frans (10-unused-code.md).
+bergdb.pub.Duration	add(bergdb.pub.Duration)
+bergdb.pub.Duration	days(double)
+bergdb.pub.Duration	hours(double)
+bergdb.pub.Duration	minutes(double)
+bergdb.pub.Time	substract(bergdb.pub.Duration)
+bergdb.pub.Time	getDate()
+bergdb.pub.Factory	printHello()
+bergdb.pub.CryptoKey	main(java.lang.String[])

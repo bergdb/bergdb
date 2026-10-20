@@ -61,9 +61,6 @@ theorem versionAt_ge_length {S : Stream V T} {r : Nat} (hr : S.length ≤ r) (y 
   unfold Stream.versionAt
   rw [List.getElem?_eq_none hr]
 
-theorem versionAt_cons_zero (R : Record V T) (S : Stream V T) (x : NodeId) :
-    Stream.versionAt (R :: S) 0 x = R.vers.find? (fun v => v.node == x) := rfl
-
 theorem versionAt_cons_succ (R : Record V T) (S : Stream V T) (r : Nat) (x : NodeId) :
     Stream.versionAt (R :: S) (r + 1) x = Stream.versionAt S r x := rfl
 
@@ -151,8 +148,6 @@ theorem lv_versionAt {S : Stream V T} {x : NodeId} {v : Version V} (h : S.lv x =
 first (the record under construction may get more versions). -/
 def SExt (S S' : Stream V T) : Prop :=
   ∀ (r : Nat) (R : Record V T), S[r]? = some R → ∃ R' : Record V T, S'[r]? = some R' ∧ R.vers <+: R'.vers
-
-theorem SExt.refl (S : Stream V T) : SExt S S := fun _ R h => ⟨R, h, List.prefix_refl _⟩
 
 theorem SExt.trans {S S' S'' : Stream V T} (h : SExt S S') (h' : SExt S' S'') : SExt S S'' := by
   intro r R hR

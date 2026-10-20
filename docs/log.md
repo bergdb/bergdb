@@ -739,3 +739,28 @@ test-only `DbBuilder.secondTopOrdinal` starts the ordinals near a boundary.
 The four gates pass, full; `level3.sh` on its second run: the first failed a
 test of item 001's eviction that fails on today's code too, now and then (see
 005-02).
+
+2026-10-19. Bergdb 005-04 (register M43), Frans's decision: A6 is not a
+target; the assumption stays A6', with TREE and A-COPY, as K1 accepted. A
+look at the code found one kind of A6 failure only, the in-place split of a
+segment root made by the same transaction, which keeps A6'
+(level4-alignment.md, section 4). The Java tier's 61 A6 failures, on its 21
+configurations and seven larger ones at node sizes 8 to 62, are all that
+kind; 21 traces that contain it pass the checker, with eviction too. No
+change to `java/` or `lean/`. Not done, proposed in 005-04: TREE, A6' and
+A-COPY as gate checks, and A6' as the checker's diagnostic.
+
+2026-10-20. Bergdb 005-10, unused code, as Frans decided: 3,071 lines
+removed in 103 files. Deleted: seven files that nothing reached (among
+them `NextMap`, `NoReclaim`, `Triplet`, `JavaCollator`), `Cache2` (the cache
+of 2012 to 2017, replaced by `Cache3`), `DagChecksum` and the unregistered
+`Concurrency` test. Removed: 165 unused methods, fields and nested classes
+in files that stay, 20 unused Lean lemmas, three unit tests that never ran
+(one failed on today's code), and eight class methods of the Pub API that
+nothing called (`Duration.add`, `days`, `hours`, `minutes`;
+`Time.substract`, `getDate`; `Factory.printHello`; `CryptoKey.main`).
+`DbDouble`'s two unit tests, never registered, now run. New:
+`java/stress/night.sh`, the night tests (2013 to 2015), not a gate. Unit
+tests 948 to 942, f-tests 37 to 36; the four gates, `lake build` and
+`night.sh` pass. The rest of the Pub API that nothing in the repository
+calls waits for Frans (005-10).

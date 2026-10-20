@@ -4,7 +4,6 @@ import bergdb.nanotest.IPack;
 
 public class Pack implements IPack {
     private static Class<?>[] classes = new Class<?>[] {
-        Cache2.class,
         Cache3.class,
         DatabaseId.class,
         Db.class,

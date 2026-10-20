@@ -1,0 +1,18 @@
+# The removal as Frans decided it on 2026-10-20: "remove all recommended;
+# C1 keep; C2 keep; C3 keep; D1 keep; D2 keep; D3 keep; E1 keep; G1 remove."
+# So A1 to A3, B1 to B3, F1 and G1; A2 and A3 are found again by the member
+# pass (members.py), G1 is in api-remove.txt.
+# A1. Nothing reaches these files.
+java/src/bergdb/common/NullPrintStream.java
+java/src/bergdb/common/Triplet.java
+java/src/bergdb/core/NextMap.java
+java/src/bergdb/core/NoReclaim.java
+java/src/bergdb/pubimp/JavaCollator.java
+java/src-dev/bergdb/dev/DummyForJavadoc.java
+java/src-dev/bergdb/dev/DummyForNotes.java
+# B1. Only its own tests use it: the 2012 to 2017 cache, replaced by Cache3.
+java/src/bergdb/core/Cache2.java
+# B2. Only its own tests use it: a checksum of a Dag's state.
+java/src/bergdb/dag/DagChecksum.java
+# B3. An f-test that is not registered (Concurrency2 is its simpler successor).
+java/src-dev/bergdb/test/Concurrency.java

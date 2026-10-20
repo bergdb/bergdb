@@ -57,14 +57,6 @@ public class DbClock {
     }
     
     /**
-     * Returns the clock that this DbClock is based on; 
-     * the clock passed as a parameter to the constructor.
-     */
-    public Clock getBaseClock() {
-        return this.clock;
-    }
-    
-    /**
      * Returns the actual lookup time to use internally for a read operation given the 
      * lookup time wanted by the database user.
      * The method does not return the current time and does not call clock.getTime() 

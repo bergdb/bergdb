@@ -44,15 +44,6 @@ theorem withRoot_obj?_root {oe : Obj V} (he : m.obj? m.root = some oe) :
     (m.withRoot oc).obj? m.root = some oc := by
   rw [withRoot_obj?]; simp [he]
 
-theorem withRoot_withRoot (oc' : Obj V) : (m.withRoot oc).withRoot oc' = m.withRoot oc' := by
-  unfold Mem.withRoot
-  simp only [List.map_map]
-  congr 1
-  apply List.map_congr_left
-  intro p _
-  simp only [Function.comp]
-  split <;> simp_all
-
 /-- The filter of `setObj` and the map of `withRoot` commute: both keep the handles. -/
 theorem filter_map_root (l : List (Nat × Obj V)) (r h : Nat) (oc : Obj V) :
     (l.map (fun p => if p.1 == r then (r, oc) else p)).filter (fun p => p.1 != h) =
@@ -703,15 +694,6 @@ theorem RootSep.follow4 (hrs : RootSep sp m) (hS : StreamNR sp S) {hp : Nat} {y 
       have := hp3 hy
       rw [hr2] at this
       exact this
-
-theorem follow4_root_ne {hp : Nat} (hne : hp ≠ m.root) (hrs : RootSep sp m) (hS : StreamNR sp S) {y : NodeId}
-    (hy : y ≠ root) (hra : m.obj? m.root = some oe) (w : Bool) :
-    (m.follow4 sp S0 S hp y w).1.obj? m.root = some oe := by
-  have := (follow4_withRoot (S0 := S0) (oc := oe) ⟨hra, by have := hrs.fresh; omega⟩ rfl (Or.inl hne) w
-    (hrs.side (S0 := S0) hS hy hra w)).2.1
-  rw [this]
-  unfold rootAfter
-  simp [hne]
 
 theorem rootAfter_ne {hp root : Nat} (hne : hp ≠ root) (y : NodeId) (r : Option Nat) (o : Obj V) :
     rootAfter hp root y r o = o := by

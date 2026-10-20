@@ -13,13 +13,6 @@ public final class Factory {
     public static DatabaseBuilder database() {
         return new DatabaseBuilderImp();
     }
-    
-    /**
-     * Useful for testing, prints hello message to System.out.
-     */
-    public static void printHello() {
-        System.out.println("Hello from com.bergdb.pub.Factory.");
-    }
 }
 
 /*

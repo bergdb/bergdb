@@ -607,7 +607,6 @@ public class NodeCollection implements PointerFollower {
     private static Cache.DbInfo testDbInfo() {
         return new Cache.DbInfo() {
             final PointerLocks locks = new PointerLocks();
-            public long getStartupPosForEvict() { return 0; }
             public PointerLocks getPointerLocks() { return locks; }
         };
     }

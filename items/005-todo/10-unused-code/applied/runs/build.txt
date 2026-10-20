@@ -1,0 +1,4 @@
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+Built build/bergdb.jar
+Built stress tests in build/stress/

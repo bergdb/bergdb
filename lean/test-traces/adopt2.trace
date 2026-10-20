@@ -1,0 +1,53 @@
+# Bergdb 005-04, A6' (no adoption, the weaker form): an adoption from outside the
+# old parent's subtree, as lean/References/SISCase.lean's. Node 5 points to 7 and
+# 13, 7 to 15, 13 to 11; T(1) gives 13 a pointer to 15 (TREE and A-COPY fail, as
+# in copy.trace); T(2) deletes 7's pointer to 15, which stays reachable through 13
+# but not below 7. Expected: A6' fails for (7, 15), and the trace fails C-A.
+TRACE 1
+CONFIG adopt2
+TX 0
+NEW 0 9 I
+NEW 3 8 I
+NEW 5 3 I
+NEW 7 2 I
+NEW 13 2 I
+NEW 11 1 I
+NEW 15 1 I
+ADD 0 0 T 3
+ADD 3 0 R 5
+ADD 5 0 K 10 7
+ADD 5 0 K 20 13
+ADD 7 0 K 1 15
+ADD 13 0 K 1 11
+REC 0 0 0 field
+VER 3 I
+H 0 R 5
+F 5 0
+VER 5 I
+H 0 K 10 7
+H 0 K 20 13
+F 7 0
+F 13 0
+VER 7 I
+H 0 K 1 15
+F 15 0
+VER 13 I
+H 0 K 1 11
+F 11 0
+VER 11 I
+VER 15 I
+DIRTY
+END 0
+TX 1
+ADD 13 1 K 30 15
+REC 1 0 0 field
+GD 3 5 13
+DIRTY 3 1 5 1 13 1
+END 1
+TX 2
+ADD 7 2 D 1 1
+REC 2 0 0 field
+GD 7
+DIRTY 3 1 5 1 7 2 13 1
+END 2
+DONE 2

@@ -1,0 +1,30 @@
+action	name	kind	module	file	l1	l2
+remove	SIS.Grow.mono	theorem	SIS.Proof.Reach	lean/SIS/Proof/Reach.lean	176	179
+remove	SIS.Grow.sameNodes	theorem	SIS.Proof.Reach	lean/SIS/Proof/Reach.lean	188	192
+remove	SIS.Mem.KeepCore.keepPos	theorem	SIS.Proof.CutPhys	lean/SIS/Proof/CutPhys.lean	1110	1114
+remove	SIS.Mem.KeepRead.refl	theorem	SIS.Proof.EvictHist	lean/SIS/Proof/EvictHist.lean	62	62
+remove	SIS.Mem.KeepRead.trans	theorem	SIS.Proof.EvictHist	lean/SIS/Proof/EvictHist.lean	64	73
+keep (@[simp])	SIS.Mem.addObj_table	theorem	SIS.Proof.PhysMem	lean/SIS/Proof/PhysMem.lean	72	72
+remove	SIS.Mem.linkD_table	theorem	SIS.Proof.EvictInit	lean/SIS/Proof/EvictInit.lean	461	461
+keep (@[simp])	SIS.Mem.setTable_s	theorem	SIS.Proof.PhysMem	lean/SIS/Proof/PhysMem.lean	93	93
+keep (@[simp])	SIS.Obj.setSlot_canonical	theorem	SIS.Proof.PhysMem	lean/SIS/Proof/PhysMem.lean	169	170
+keep (@[simp])	SIS.Obj.setSlot_isData	theorem	SIS.Proof.PhysMem	lean/SIS/Proof/PhysMem.lean	167	167
+keep (@[simp])	SIS.Obj.setSlot_level	theorem	SIS.Proof.PhysMem	lean/SIS/Proof/PhysMem.lean	166	166
+keep (@[simp])	SIS.Obj.setSlot_pos	theorem	SIS.Proof.PhysMem	lean/SIS/Proof/PhysMem.lean	171	171
+remove	SIS.RootPerm.cacheOp	theorem	SIS.Proof.CutLaterPerm	lean/SIS/Proof/CutLaterPerm.lean	617	622
+remove	SIS.SExt.refl	theorem	SIS.Proof.StreamLemmas	lean/SIS/Proof/StreamLemmas.lean	155	155
+remove	SIS.SameNodes.trans	theorem	SIS.Proof.Basic	lean/SIS/Proof/Basic.lean	186	187
+remove	SIS.applyChange4_canonicalOf	theorem	SIS.Proof.EvictApply	lean/SIS/Proof/EvictApply.lean	331	346
+remove	SIS.follow4_root_ne	theorem	SIS.Proof.CutLaterSim	lean/SIS/Proof/CutLaterSim.lean	707	714
+remove	SIS.frame_refl	theorem	SIS.Proof.EvictPromote	lean/SIS/Proof/EvictPromote.lean	305	308
+keep (@[simp])	SIS.get?_nil	theorem	SIS.Proof.Basic	lean/SIS/Proof/Basic.lean	76	76
+remove	SIS.lastFa_cut	theorem	SIS.Proof.CutStream	lean/SIS/Proof/CutStream.lean	119	124
+keep (@[simp])	SIS.linkCanonical_next	theorem	SIS.Proof.PhysBase	lean/SIS/Proof/PhysBase.lean	92	92
+remove	SIS.parts_i	theorem	SIS.Proof.Run	lean/SIS/Proof/Run.lean	60	60
+remove	SIS.reachOnPath_congr	theorem	SIS.Proof.PhysPath	lean/SIS/Proof/PhysPath.lean	37	41
+remove	SIS.stillOK_of	theorem	SIS.Proof.Still	lean/SIS/Proof/Still.lean	540	546
+remove	SIS.stub_node	theorem	SIS.Proof.CutStream	lean/SIS/Proof/CutStream.lean	64	64
+remove	SIS.versionAt_cons_zero	theorem	SIS.Proof.StreamLemmas	lean/SIS/Proof/StreamLemmas.lean	64	65
+remove	SIS.view_grow	theorem	SIS.Proof.Reach	lean/SIS/Proof/Reach.lean	256	269
+keep (@[simp])	SIS.withRoot_table	theorem	SIS.Proof.CutLaterSim	lean/SIS/Proof/CutLaterSim.lean	28	28
+remove	SIS.withRoot_withRoot	theorem	SIS.Proof.CutLaterSim	lean/SIS/Proof/CutLaterSim.lean	47	54

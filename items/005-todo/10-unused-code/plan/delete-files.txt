@@ -1,0 +1,96 @@
+# A1. Nothing reaches these files.
+java/src/bergdb/common/NullPrintStream.java
+java/src/bergdb/common/Triplet.java
+java/src/bergdb/core/NextMap.java
+java/src/bergdb/core/NoReclaim.java
+java/src/bergdb/pubimp/JavaCollator.java
+java/src-dev/bergdb/dev/DummyForJavadoc.java
+java/src-dev/bergdb/dev/DummyForNotes.java
+# B1. Only its own tests use it: the 2012 to 2017 cache, replaced by Cache3.
+java/src/bergdb/core/Cache2.java
+# B2. Only its own tests use it: a checksum of a Dag's state.
+java/src/bergdb/dag/DagChecksum.java
+# B3. An f-test that is not registered (Concurrency2 is its simpler successor).
+java/src-dev/bergdb/test/Concurrency.java
+# C1. Manual tests and measurements that no script, document or item runs.
+java/src-dev/bergdb/test/manual/CcDbTest.java
+java/src-dev/bergdb/test/manual/DiskReadSpeed.java
+java/src-dev/bergdb/test/manual/DiskWriteSpeed.java
+java/src-dev/bergdb/test/manual/Huge.java
+java/src-dev/bergdb/test/manual/Interactive.java
+java/src-dev/bergdb/test/manual/LoadA.java
+java/src-dev/bergdb/test/manual/MultipleWriters.java
+java/src-dev/bergdb/test/manual/NetworkRoundTrip.java
+java/src-dev/bergdb/test/manual/RefQ.java
+java/src-dev/bergdb/test/manual/Shrink.java
+java/src-dev/bergdb/test/manual/StorageOverhead.java
+java/src-dev/bergdb/test/manual/StreamSizeFourCases.java
+java/src-dev/bergdb/test/manual/StreamSizeVsStartupDistance.java
+java/src-dev/bergdb/test/manual/TransThroughput.java
+java/src-dev/bergdb/test/manual/ValueNodeTotalMem.java
+java/src-dev/bergdb/test/manual/package.html
+# C2. Development tools that no script, document or item runs.
+java/src-dev/bergdb/Help.java
+java/src-dev/bergdb/dev/Dev.java
+java/src-dev/bergdb/dev/GoogleQueen.java
+java/src-dev/bergdb/dev/Info.java
+java/src-dev/bergdb/dev/MemPerf.java
+java/src-dev/bergdb/dev/MyInstrumentation.java
+java/src-dev/bergdb/dev/ObjectSize.java
+java/src-dev/bergdb/dev/Swing.java
+# D1. Tests and benchmarks of Java itself, no BergDB code.
+java/src-dev/bergdb/dev/StringTester.java
+java/src-dev/bergdb/dev/Pack.java
+java/src-dev/bergdb/test/java/AllocateByteBuffer.java
+java/src-dev/bergdb/test/java/ArrayVsHash.java
+java/src-dev/bergdb/test/java/AtomicVsLockVsVolatileCounters.java
+java/src-dev/bergdb/test/java/BytesToByteBuffer.java
+java/src-dev/bergdb/test/java/BytesToLong.java
+java/src-dev/bergdb/test/java/ChecksumPerf.java
+java/src-dev/bergdb/test/java/Ciphers.java
+java/src-dev/bergdb/test/java/CloneArray.java
+java/src-dev/bergdb/test/java/CopyBytes.java
+java/src-dev/bergdb/test/java/Environment.java
+java/src-dev/bergdb/test/java/FileSystemCache.java
+java/src-dev/bergdb/test/java/Files.java
+java/src-dev/bergdb/test/java/Hash.java
+java/src-dev/bergdb/test/java/JudyNode.java
+java/src-dev/bergdb/test/java/MacPerf.java
+java/src-dev/bergdb/test/java/MemoryOfLongVsCustomClass.java
+java/src-dev/bergdb/test/java/MethodCalls.java
+java/src-dev/bergdb/test/java/MyChecksum2.java
+java/src-dev/bergdb/test/java/MyLongMap.java
+java/src-dev/bergdb/test/java/NioBuffer.java
+java/src-dev/bergdb/test/java/ObjectMemory.java
+java/src-dev/bergdb/test/java/Pack.java
+java/src-dev/bergdb/test/java/ParseIntegers.java
+java/src-dev/bergdb/test/java/PerfHashMap.java
+java/src-dev/bergdb/test/java/PerfTreeMapGet.java
+java/src-dev/bergdb/test/java/PerfTreeMapSet.java
+java/src-dev/bergdb/test/java/RandomPerf.java
+java/src-dev/bergdb/test/java/ReadFromByteBuffer.java
+java/src-dev/bergdb/test/java/Reflection.java
+java/src-dev/bergdb/test/java/SecureHash.java
+java/src-dev/bergdb/test/java/StringHash.java
+java/src-dev/bergdb/test/java/StringMemory.java
+java/src-dev/bergdb/test/java/SystemClock.java
+java/src-dev/bergdb/test/java/Zip.java
+java/src-dev/bergdb/test/java/ZipDeltaInts.java
+java/src-dev/bergdb/test/java/ZipObject.java
+java/src-dev/bergdb/test/java/package.html
+# D2. The perf tests (group "perf"), which only bergdb.dev.Perf runs; no script runs it.
+# Get, GetThreaded, PerfGetMany and Set stay: Props's Core (level1.sh) uses their
+# corePerfMethod; only their perf test methods go (in the members' pass).
+java/src-dev/bergdb/dev/Perf.java
+java/src-dev/bergdb/test/FileSynchPerformance.java
+java/src-dev/bergdb/test/GetManyScalability.java
+java/src-dev/bergdb/test/GetScalability.java
+java/src-dev/bergdb/test/OneByteToFile.java
+java/src-dev/bergdb/test/OneGig.java
+java/src-dev/bergdb/test/StreamSize.java
+# E1. The 2017 Ant build, replaced by build.sh.
+java/build.xml
+java/readme.txt
+java/in/jarjar-1.4.jar
+java/in/BuildInfoTemplate.txt
+java/in/style.css

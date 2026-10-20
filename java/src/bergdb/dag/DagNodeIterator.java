@@ -1,11 +1,6 @@
 package bergdb.dag;
 
-import java.util.ArrayList;
-import java.util.List;
 import bergdb.common.Pair;
-import bergdb.common.StringUtil;
-import bergdb.nanotest.Assert;
-import bergdb.nanotest.Nano;
 
 /**
  * Iterates all nodes in a DAG.
@@ -91,16 +86,6 @@ public class DagNodeIterator {
         }
     }
     
-    /**
-     * Utility method, adds all nodes to a list.
-     */
-    public void addToList(List<Node> list) {
-        Node node;
-        while ((node = next()) != null) {
-            list.add(node);
-        }
-    }
-
     private void createChildIter(long maxLookupTime) {
         Pair<Long, Node> result = getChild(nextPointerIndex, maxLookupTime);
         maxLookupTime = result.value0();
@@ -158,34 +143,4 @@ public class DagNodeIterator {
     }
     
     // ======== Test ========
-    
-    @Nano
-    private static void testEmptyDag() {
-        Dag g = DagTester.emptyDag(10);
-        DagNodeIterator iter = new DagNodeIterator(g);
-        ArrayList<Node> list = new ArrayList<Node>();
-        iter.addToList(list);
-        
-        Assert.assertEquals(2, list.size());
-        Assert.assertTrue(list.get(0).isTopNode());
-        Assert.assertTrue(list.get(1).isKeyNode());
-    }
-    
-    
-    @Nano
-    private static void testDagWithOneKv() {
-        Dag g = DagTester.emptyDag(10);
-        PutData pd = g.newPutData();
-        pd.tt = 20;
-        g.putKv(Keys.toSegments("key"), StringUtil.toBytes("value"), pd);
-        
-        DagNodeIterator iter = new DagNodeIterator(g);
-        ArrayList<Node> list = new ArrayList<Node>();
-        iter.addToList(list);
-        
-        Assert.assertEquals(3, list.size());
-        Assert.assertTrue(list.get(0).isTopNode());
-        Assert.assertTrue(list.get(1).isKeyNode());
-        Assert.assertTrue(list.get(2).isValueNode());
-    }
 }

@@ -50,15 +50,6 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
     }
     
     /**
-     * Returns the internal serialized form of the DbArray.
-     * The returned array is not a copy, the caller must not modify the bytes.
-     */
-    public byte[] getBytes() {
-        assert bytes != null;
-        return bytes;
-    }
-    
-    /**
      * Returns the number of elements in the array.
      */
     public int getSize() {
@@ -157,20 +148,6 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
         
         for (DbValue v : this) {
             result[index++] = v.toDouble();
-        }
-        return result;
-    }
-    
-    public String[] toStringArray() {
-        if (isNull()) {
-            return null;
-        }
-        
-        String[] result = new String[elementCount];
-        int index = 0;
-        
-        for (DbValue v : this) {
-            result[index++] = v.toString();
         }
         return result;
     }

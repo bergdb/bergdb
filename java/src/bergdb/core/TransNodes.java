@@ -219,57 +219,6 @@ public final class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.T
     }
 
     /**
-     * Checks whether the collection of nodes contains the given node 
-     * (compare by reference).
-     */
-    public boolean contains(Node node) {
-        boolean result = false;
-        
-        outer: {
-            for (int i = 0; i < topCount; i++) {
-                if (topNodes[i] == node) {
-                    result = true;
-                    break outer;
-                }
-            }
-            
-            for (int i = 0; i < keyCount; i++) {
-                if (keyNodes[i] == node) {
-                    result = true;
-                    break outer;
-                }
-            }
-            
-            for (int i = 0; i < valueCount; i++) {
-                if (valueNodes[i] == node) {
-                    result = true;
-                    break outer;
-                }
-            }
-        }
-        
-        return result;
-    }
-
-    public final long sumMemSize() {
-        long sum = 0;
-        
-        for (int i = 0; i < topCount; i++) {
-            sum += topNodes[i].getMemSize();
-        }
-        
-        for (int i = 0; i < keyCount; i++) {
-            sum += keyNodes[i].getMemSize();
-        }
-        
-        for (int i = 0; i < valueCount; i++) {
-            sum += valueNodes[i].getMemSize();
-        }
-        
-        return sum;
-    }
-    
-    /**
      * For highest performance iterate directly on the three arrays: topNodes, keyNodes, valueNodes
      * which allows for type-specific optimizations; otherwise the user of this
      * class can iterate all nodes using size() and get() methods.
@@ -288,76 +237,8 @@ public final class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.T
         return result;
     }
     
-    /**
-     * Checks for no duplicates.
-     *  
-     * @throws AssertionError  
-     *              If there are duplicates.
-     * @return true  
-     *              Always returns true when the method returns normally.
-     */
-    public boolean assertNoDuplicates() {
-        for (int i = 0; i < topCount; i++) {
-            TopNode n = topNodes[i];
-            for (int j = i+1; j < topCount; j++) {
-                if (topNodes[j] == n) {
-                    throw new AssertionError("Duplicate TopNode, " + i + ", " + j 
-                            + ", topSize: " + topCount);
-                }
-            }
-        }
-        
-        for (int i = 0; i < keyCount; i++) {
-            KeyNode n = keyNodes[i];
-            for (int j = i+1; j < keyCount; j++) {
-                if (keyNodes[j] == n) {
-                    throw new AssertionError("Duplicate KeyNode, " + i + ", " + j 
-                            + ", keySize: " + keyCount);
-                }
-            }
-        }
-        
-        for (int i = 0; i < valueCount; i++) {
-            ValueNode n = valueNodes[i];
-            for (int j = i+1; j < valueCount; j++) {
-                if (valueNodes[j] == n) {
-                    throw new AssertionError("Duplicate ValueNode, " + i + ", " + j 
-                            + ", valueSize: " + valueCount);
-                }
-            }
-        }
-        
-        return true;
-    }
-
     public String toString() {
         return "node counts: " + topCount + ", " + keyCount + ", " + valueCount;
-    }
-    
-    public String print() {
-        StringBuilder b = new StringBuilder();
-        if (topCount > 0) {
-            b.append("-- Top nodes --\n");
-            for (int i = 0; i < topCount; i++) {
-                b.append(topNodes[i].toString() + "\n");
-            }
-        }
-        
-        if (keyCount > 0) {
-            b.append("-- Key nodes --\n");
-            for (int i = 0; i < keyCount; i++) {
-                b.append(keyNodes[i].print() + "\n");
-            }
-        }
-        
-        if (valueCount > 0) {
-            b.append("-- Value nodes --\n");
-            for (int i = 0; i < valueCount; i++) {
-                b.append(valueNodes[i].toString() + "\n");
-            }
-        }
-        
-        return b.toString();
     }
     
     

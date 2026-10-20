@@ -1,0 +1,22 @@
+# F1. Lean declarations that no theorem, test, executable or document uses.
+# Not the @[simp] lemmas: simp may use a lemma proved by rfl without naming it.
+SIS.Grow.mono	SIS.Proof.Reach
+SIS.Grow.sameNodes	SIS.Proof.Reach
+SIS.Mem.KeepCore.keepPos	SIS.Proof.CutPhys
+SIS.Mem.KeepRead.refl	SIS.Proof.EvictHist
+SIS.Mem.KeepRead.trans	SIS.Proof.EvictHist
+SIS.Mem.linkD_table	SIS.Proof.EvictInit
+SIS.RootPerm.cacheOp	SIS.Proof.CutLaterPerm
+SIS.SExt.refl	SIS.Proof.StreamLemmas
+SIS.SameNodes.trans	SIS.Proof.Basic
+SIS.applyChange4_canonicalOf	SIS.Proof.EvictApply
+SIS.follow4_root_ne	SIS.Proof.CutLaterSim
+SIS.frame_refl	SIS.Proof.EvictPromote
+SIS.lastFa_cut	SIS.Proof.CutStream
+SIS.parts_i	SIS.Proof.Run
+SIS.reachOnPath_congr	SIS.Proof.PhysPath
+SIS.stillOK_of	SIS.Proof.Still
+SIS.stub_node	SIS.Proof.CutStream
+SIS.versionAt_cons_zero	SIS.Proof.StreamLemmas
+SIS.view_grow	SIS.Proof.Reach
+SIS.withRoot_withRoot	SIS.Proof.CutLaterSim

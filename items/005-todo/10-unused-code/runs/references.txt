@@ -1,0 +1,6 @@
+'BergDB.References.cache_invariance' depends on axioms: [propext]
+'BergDB.References.detach_preserves_read' depends on axioms: [propext]
+'BergDB.References.cut_preserves_path' depends on axioms: [propext]
+'BergDB.References.cache_cut_composition' depends on axioms: [propext]
+'BergDB.References.no_latest_from_anchor_and_tail' does not depend on any axioms
+TMPDIR=$S/tmp sh lean/References/check.sh  1.28s user 1.39s system 38% cpu 7.028 total

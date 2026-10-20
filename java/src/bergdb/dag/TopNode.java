@@ -105,10 +105,6 @@ public final class TopNode implements Node {
         return result;
     }
     
-    public long getTopNodeId() {
-        return topNodeId;
-    }
-    
     public final byte getType() {
         return Node.TYPE_TOP_NODE;
     }
@@ -249,10 +245,6 @@ public final class TopNode implements Node {
         this.isCanonical = isCanonical;
     }
 
-    public final void setIsInTransNodes(boolean b) {
-        this.isInTransNodes = b;
-    }
-    
     public final boolean isDirty() {
         return this.isDirty;
     }

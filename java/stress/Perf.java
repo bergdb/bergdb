@@ -185,10 +185,6 @@ public class Perf {
 
     // ---- Keys and values ----
 
-    boolean isLong(int k) {
-        return k >= n;
-    }
-
     byte[] keyBytes(int k) {
         if (k < n) return KeyFactory.binaryIntKey(k);
         byte[] b = new byte[longlen];

@@ -522,7 +522,6 @@ public class PerfTool {
         double refMedian, candMedian, change, threshold;
         int refN, candN;
         double refCv, candCv;
-        String detail;
     }
 
     static Pattern only;

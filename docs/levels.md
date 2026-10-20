@@ -276,7 +276,12 @@ set, so the gate needs Lean (level2-alignment.md, 12). Since 2026-10-18
 (bergdb item 001, K3), so does `level3.sh`, with reclaim (its step 8): the
 small reclaim set, every record on the cut stream, `CutOK` at every cut
 Java decides, the probes after restarts from the cut stream
-(level3-alignment.md, 8).
+(level3-alignment.md, 8). Since 2026-10-20 (bergdb 005-04) both tiers also
+require TREE, A6' and A-COPY, the model's assumptions of stage 2:
+`A2A3Check2` in `level2.sh`'s step 7, and the checker's C-A on every set the
+gates run; the small and evict sets have a configuration with A6's kind, a
+segment root that a transaction makes and splits in place
+(level4-alignment.md, section 4).
 
 The startup bug M18, found 2026-10-15 (transactions that change nothing
 could move the startup pos past every top node version, and the database

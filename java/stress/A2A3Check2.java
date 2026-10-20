@@ -22,21 +22,24 @@ import bergdb.common.StringUtil;
  *   A5: every node in R(tt) is in R(tt of T(i-1)) or created by T(i).
  *   marked-dead: index nodes that Db would mark (followed, created, changed, super
  *       root accessed) that are not in R(tt).
- *   A6, no adoption (bergdb item 001, WP A4, 2026-10-16): no index node in R(tt) is a
- *       child, live or dead, of a node in R(tt) without being its live child at tt.
+ *   A6', no adoption, the weaker form (bergdb item 001, WP A4, 2026-10-16): every index
+ *       node in R(tt) that a node x in R(tt) points to, live or dead, without being x's
+ *       live child at tt, is reachable at tt from x (below x).
  *   TREE, one current parent (the same WP): every node in R(tt) but the super root is
  *       the live child at tt of exactly one node in R(tt).
- *   A6', the weaker form: such a node is at least reachable at tt from the node that
- *       points to it (a dead pointer whose target stays below the same node).
- *   A6 and TREE are what Option K of item 001's plan (section 8.5) needs; they are
- *   counted, not yet required. -DdebugA6=1 prints each A6 failure.
  *   A-COPY (bergdb item 001, WPs E2 and E3, 2026-10-17; docs/level4-alignment.md, 5.10):
  *       every pointer of a new entry (a key klong at tt, any key klong of a node the
  *       transaction created, a new top node's root and skip pointers) to a node the
  *       transaction did not create names a node of the writer's paths, or a child, live
  *       or dead, of one at tt of T(i-1). The paths: the nodes in R(tt of T(i-1)) with a
  *       node below them, themselves included, that the transaction changed or that is
- *       not in R(tt). Counted, not required; -DdebugA6=1 prints each failure.
+ *       not in R(tt).
+ *   TREE, A6' and A-COPY are assumptions of the model (SIS/Evict.lean, EvictRunOK;
+ *   docs/level4-alignment.md, 5.5), which level2.sh requires (bergdb 005-04). A6, the
+ *   stronger form that item 001's plan assumed (no such index node at all), is not
+ *   assumed: its failures, adoptions below the old parent, are counted for information.
+ *   Java makes them where a transaction splits in place a segment root that it made
+ *   (bergdb 005-04). -DdebugA6=1 prints each adoption and each A-COPY failure.
  *
  * Properties: maxnode (8), keys (200), n (300), ops (max ops per transaction, 4),
  * exact=1 (exactly ops ops), del (percent deletes, 0), long=1 (two segments for half
@@ -78,8 +81,10 @@ public class A2A3Check2 {
     // compared with the model's marked set.
     static long netChangedNotCurrent, transNetA2, step3, modelMarked, step3NotModel, modelNotStep3,
             transMarkDiff;
-    // A6 and TREE (bergdb item 001, WP A4): nodes and transactions that fail them.
-    static long adopted, transA6, adoptedNotBelow, transA6w, multiParent, transTree;
+    // A6' and TREE (bergdb item 001, WP A4): nodes and transactions that fail them; and
+    // the adoptions below the old parent, which A6' allows and A6 does not (bergdb 005-04).
+    static long adoptedNotBelow, transA6w, multiParent, transTree;
+    static long adoptedBelow, transBelow;
     // A-COPY (bergdb item 001, WPs E2 and E3): new pointers, and those that fail it.
     static long newPointers, aCopyFailed, transACopy, aCopyByChild;
 
@@ -459,17 +464,19 @@ public class A2A3Check2 {
             for (Node x : s3) if (!mm.contains(x)) { step3NotModel++; diff = true; }
             for (Node x : mm) if (!s3.contains(x)) { modelNotStep3++; diff = true; }
             if (diff) transMarkDiff++;
-            // A6 and TREE (bergdb item 001, WP A4).
+            // A6' and TREE (bergdb item 001, WP A4), and A6's adoptions below the old parent.
             GetData gdTop = dag.newGetData();
             gdTop.pointerFollower = FOLLOWER;
             TopNode superRoot = dag.getTopDs().findSuperRootAtTime(tt, gdTop);
             Set<Node> ad = adoptedNodes(now, tt, false, seed, i);
             Set<Node> adNotBelow = adoptedNodes(now, tt, true, seed, i);
             Set<Node> np = notOneParent(now, superRoot, tt);
-            adopted += ad.size();
-            if (!ad.isEmpty()) transA6++;
             adoptedNotBelow += adNotBelow.size();
             if (!adNotBelow.isEmpty()) transA6w++;
+            Set<Node> adBelow = idSet();
+            for (Node y : ad) if (!adNotBelow.contains(y)) adBelow.add(y);
+            adoptedBelow += adBelow.size();
+            if (!adBelow.isEmpty()) transBelow++;
             multiParent += np.size();
             if (!np.isEmpty()) transTree++;
             // A-COPY (bergdb item 001, WPs E2 and E3).
@@ -534,12 +541,15 @@ public class A2A3Check2 {
         System.out.println("  MARKING: Db's step-3 nodes " + step3 + ", model marked " + modelMarked
                 + ", in step 3 only " + step3NotModel + ", in model only " + modelNotStep3
                 + " (transactions with a difference " + transMarkDiff + ")");
-        System.out.println("  A6 (no adoption): adopted index nodes " + adopted + " (transactions "
-                + transA6 + "), of them not below the old parent (A6') " + adoptedNotBelow
-                + " (transactions " + transA6w + "); TREE (one current parent): nodes without"
-                + " exactly one " + multiParent + " (transactions " + transTree + ")");
-        System.out.println("  A-COPY (a new pointer names a node of the writer's paths or a child of one):"
-                + " new pointers " + newPointers + " (to a child, not a node, of the paths "
-                + aCopyByChild + "), failing " + aCopyFailed + " (transactions " + transACopy + ")");
+        System.out.println("  A6' (no adoption, an assumption of the model): adopted index nodes not below"
+                + " the old parent " + adoptedNotBelow + " (transactions " + transA6w + "); below it,"
+                + " which A6' allows and A6, not assumed, does not (bergdb 005-04), " + adoptedBelow
+                + " (transactions " + transBelow + ")");
+        System.out.println("  TREE (one current parent, an assumption of the model): nodes without exactly"
+                + " one " + multiParent + " (transactions " + transTree + ")");
+        System.out.println("  A-COPY (an assumption of the model: a new pointer names a node of the writer's"
+                + " paths or a child of one): new pointers " + newPointers + " (to a child, not a node,"
+                + " of the paths " + aCopyByChild + "), failing " + aCopyFailed + " (transactions "
+                + transACopy + ")");
     }
 }

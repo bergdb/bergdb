@@ -13,7 +13,7 @@ import bergdb.stream.DummyStream;
 
 
 /**
- * Simpler version of Concurrency.
+ * Simpler version of the Concurrency test of 2013 (removed in bergdb 005-10).
  * 
  * @author Frans Lundberg
  */

@@ -28,14 +28,6 @@ public class StartupPos {
     }
     
     /**
-     * Returns the last startupPos that has been released for use
-     * by evict.
-     */
-    public final long getForEvict() {
-        return evictPos;
-    }
-    
-    /**
      * Sets the startup pos.
      * The new startup pos is not immediately available for evict. 
      * Call releaseForEvict first.

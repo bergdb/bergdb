@@ -1,7 +1,6 @@
 package bergdb.core;
 
 import bergdb.dag.KeyNode;
-import bergdb.dag.Node;
 import bergdb.dag.TopNode;
 
 /**
@@ -10,38 +9,6 @@ import bergdb.dag.TopNode;
  * @author Frans Lundberg
  */
 public interface IDirtyNodes {
-
-    /**
-     * Returns the number of nodes in the collection.
-     * Caller must hold DB.writeLock.
-     * This method is only used for monitoring.
-     */
-    public int getSize();
-    
-    /**
-     * Adds an spos-to-Node mapping if spos != Spos.NULL.
-     */
-    public void put(long spos, Node node);
-    
-    /**
-     * Removes one mapping.
-     * 
-     * @param spos  The key of the mapping to remove.
-     * @throws AssertionError  If no key 'spos' exists.
-     */
-    public void remove(long spos);
-    
-    /**
-     * Adds all nodes that are "too dirty" to "list". The too dirty nodes are the nodes in the 
-     * collection with spos < dirtyLimit.
-     * Caller must hold DB.writeLock.
-     * The returned entries are removed from the collection and isDirty is set to 
-     * false for all nodes returned.
-     * 
-     * @param dirtyLimit A node with an spos less than this is "too dirty".
-     * @param list The list to add the too dirty nodes to.
-     */
-    public void getAndRemoveTooDirtyNodes(long dirtyLimit, TransNodesForMe list);
 
     
     /**

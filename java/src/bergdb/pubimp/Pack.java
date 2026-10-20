@@ -16,6 +16,7 @@ public class Pack implements IPack {
         DbArray.class,
         DbBoolean.class,
         DbByteArray.class,
+        DbDouble.class,
         DbInt.class,
         DbLong.class,
         DbString.class,

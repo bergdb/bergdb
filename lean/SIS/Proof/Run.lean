@@ -57,7 +57,6 @@ section PartsLemmas
 
 variable (sp : Spec V T) (al : Algo V T) (db : DB V T) (tr : T)
 
-theorem parts_i : (parts sp al db tr).i = db.S.length := rfl
 theorem parts_c : (parts sp al db tr).c =
     sp.exec tr db.S.length (view sp db.P (db.S.length - 1)) := rfl
 theorem parts_P : (parts sp al db tr).P = db.P.apply db.S.length (parts sp al db tr).c := rfl

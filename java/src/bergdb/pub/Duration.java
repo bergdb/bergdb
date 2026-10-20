@@ -39,35 +39,6 @@ public class Duration {
     }
     
     /**
-     * Adds a duration to this duraction and returns the result in a 
-     * new object.
-     */
-    public Duration add(Duration duration) {
-        return new Duration(this.units + duration.units);
-    }
-    
-    /**
-     * Creates a Duration specified in days (24 hour periods).
-     */
-    public static Duration days(double days) {
-        return new Duration(Math.round(days * UNITS_PER_DAY));
-    }
-    
-    /**
-     * Creates a Duration specified in hours.
-     */
-    public static Duration hours(double hours) {
-        return new Duration(Math.round(hours * UNITS_PER_HOUR));
-    }
-    
-    /**
-     * Creates a Duration specified in minutes.
-     */
-    public static Duration minutes(double minutes) {
-        return new Duration(Math.round(minutes * UNITS_PER_MINUTE));
-    }
-    
-    /**
      * Creates a Duration specified in seconds.
      */
     public static Duration seconds(double seconds) {

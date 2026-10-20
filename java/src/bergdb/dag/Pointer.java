@@ -54,16 +54,6 @@ public class Pointer {
         return pos;
     }
     
-    /**
-     * Returns the access data of the pointer.
-     * This is a valid access data value only when isMem() == true; that is
-     * when this pointer is a memory pointer.
-     */
-    public final long getAccessData() {
-        assert isMem() : "getAccessData called, but pointer.isMem() is false, " + this;
-        return pos;
-    }
-    
     public final Node getNode() {
         return node;
     }

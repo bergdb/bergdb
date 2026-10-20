@@ -223,21 +223,6 @@ public class StringUtil {
     }
 
     /**
-     * Replaces characters in string so result is printable ASCII characters
-     * without whitespace.
-     */
-    public static String toPrintableAscii(String s) {
-        char[] chars = s.toCharArray();
-        for (int i = 0; i < chars.length; i++) {
-            char c = chars[i];
-            if (!(c >= ' ' && c <= '~')) {
-                chars[i] = c == ' ' ? '_' : '?';
-            }
-        }
-        return new String(chars);
-    }
-
-    /**
      * Returns a hex string (two lowercase hex chars per byte) given a byte array.
      */
     public static String toHex(byte[] bytes) {

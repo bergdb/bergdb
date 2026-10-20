@@ -1,0 +1,32 @@
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+1. Unit tests
+SUCCESS, 942 successful tests in 42.8 s.
+SUCCESS, 36 successful tests in 79.3 s.
+2. ReclaimStress, random configurations
+   reclaim-0: Done: 50 rounds, 0 failures, 50 rounds with a cut, 36 s, 820 exhaustive verifications.
+   reclaim-1: Done: 50 rounds, 0 failures, 50 rounds with a cut, 35 s, 984 exhaustive verifications.
+   reclaim-2: Done: 50 rounds, 0 failures, 50 rounds with a cut, 36 s, 832 exhaustive verifications.
+   reclaim-3: Done: 50 rounds, 0 failures, 50 rounds with a cut, 37 s, 892 exhaustive verifications.
+3. RestartInvariance with reclaim
+   inv-every1: stream identical, same cut, all checks OK
+   inv-node14: stream identical, same cut, all checks OK
+   inv-node62: stream identical, same cut, all checks OK
+   inv-node8: stream identical, same cut, all checks OK
+4. CrashTest with reclaim
+   crash-0: Done: 5 rounds, 0 failures, 9 s.
+   crash-1: Done: 5 rounds, 0 failures, 9 s.
+   crash-2: Done: 5 rounds, 0 failures, 10 s.
+   crash-3: Done: 5 rounds, 0 failures, 10 s.
+   crash-node8: Done: 5 rounds, 0 failures, 12 s.
+5. ReclaimReaders, readers while reclaim cuts
+   readers-0: Done: 12 rounds, 0 failures, 12 rounds with a cut, 27195422 gets and 9161179 scans correct, expired at admission 7, expired during 1, 46 s.
+   readers-1: Done: 12 rounds, 0 failures, 12 rounds with a cut, 28953807 gets and 9739109 scans correct, expired at admission 7, expired during 0, 37 s.
+   readers-disk: Done: 12 rounds, 0 failures, 12 rounds with a cut, 45478155 gets and 15267251 scans correct, expired at admission 24, expired during 1, 99 s.
+6. LoadTest with reclaim, a restart at every cut
+   restarts with a full check after a cut: 6
+7. PowerLossTest, forced bytes and durable names before deletion
+POWERLOSS OK: 8 seeds, 440 cold recoveries; negative controls caught
+8. Conformance with the Lean model, with reclaim
+   conformance: traces: 25, TRACECHECK OK: 25; C-CUT 0 of 288 CUT lines fail; traces without a cut: 0
+LEVEL 3 OK

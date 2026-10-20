@@ -97,10 +97,6 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         return rstream.getMetaBlock();
     }
 
-    public final long getPosOfLastValidMetaBlock() {
-        return rstream.getPosOfLastValidMetaBlock();
-    }
-    
     public final long getLastTransPosOfLastValidMetaBlock() {
         return rstream.getLastTransSposOfLastValidMetaBlock();
     }
@@ -133,53 +129,6 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
 
         rstream.append(buffer, 0, bufferSize, true, trans.tt);
         rstream.getMetaBlock().setLastTransSpos(pos);
-    }
-    
-    @SuppressWarnings("unused")
-    private void checkEqualBytes(long transPos, byte[] transBytes, int transBytesSize) {
-        boolean equal = true;
-        int diffIndex = -1;
-        
-        byte[] streamBytes = readTransBytes(transPos);
-        
-        if (transBytesSize != streamBytes.length) {
-            equal = false;
-        } else {
-            for (int i = 0; i < transBytesSize; i++) {
-                if (transBytes[i] != streamBytes[i]) {
-                    equal = false;
-                    diffIndex = i;
-                    break;
-                }
-            }
-        }
-        
-        if (!equal) {
-            String diff = printDiff(transPos, transBytes, streamBytes);
-            throw new IllegalStateException(
-                    "transBytes and streamBytes are not equal. " + diffIndex + ", diff:\n" + diff);
-        }
-    }
-
-    private String printDiff(long transPos, byte[] transBytes, byte[] streamBytes) {
-        String s1 = printTransGivenBuffer(transPos, transBytes);
-        String s2 = printTransGivenBuffer(transPos, streamBytes);
-        return "---- Trans@" + transPos + " ----\n" + "From transBytes:\n  " + s1 + "From streamBytes:\n  " + s2;
-    }
-    
-    private String printTransGivenBuffer(long tpos, byte[] buffer) {
-        String s;
-        try {
-            StoredTrans t = StoredTrans.parse(tpos, buffer);
-            s = t.print();
-        } catch (StreamFormatException e) {
-            s = "format exception: " + e.getMessage();
-        }
-        return s;
-    }
-
-    public long getLastTransSpos() {
-        return rstream.getMetaBlock().getLastTransSpos();
     }
     
     public NodeHeader readNodeHeader(long spos) {
@@ -332,28 +281,6 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         }
     }
     
-    public void printGotDirtyLine(PrintStream out, StoredTrans storedTrans) {
-        if (storedTrans.gotDirtyIdsAndSpos.length > 0) {
-            out.print("got dirty: ");
-            long[] d = storedTrans.gotDirtyIdsAndSpos;
-            for (int i = 0; i < d.length; i++) {
-                out.print(d[i] + " ");
-            }
-            out.println();
-        }
-    }
-
-    /**
-     * Returns the spos of the last valid transaction that was completely written before stream
-     * position 'spos'. If there is no such transaction, the spos of the very first valid
-     * transaction is returned instead. If there is no valid transaction at all in the stream,
-     * Spos.NULL is returned. Caller must hold DB.writeLock.
-     */
-    public long getPosOfLastCompletedTrans() {
-        assert Thread.holdsLock(writeLock);
-        return rstream.getPosOfTransCompletedBefore(rstream.getNextSpos());
-    }
-    
     public TransIterator createTransIterator(long startPos) {
         return new TransIterator(startPos, false);
     }
@@ -443,20 +370,6 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
             return true;
         }
 
-        public final long getTransTime() {
-            return transTime;
-        }
-
-        /** Returns the stream pos of the first byte of the transaction. */
-        public final long getTpos() {
-            return tpos;
-        }
-
-        /** Returns the stream pos of the last byte of the transaction. */
-        public final long getLastPos() {
-            return lastPos;
-        }
-        
         public StoredTrans getStoredTrans() {
             return StoredTrans.parse(tpos, transBuffer);
         }

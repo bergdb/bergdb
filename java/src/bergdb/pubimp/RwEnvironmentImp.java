@@ -130,25 +130,6 @@ public class RwEnvironmentImp implements RwEnvironment {
         this.readHashes.add(hash);
     }
     
-    public void vkeyRead(long[] vkey) {
-        this.readHashes.add(Keys.hash(vkey));
-    }
-    
-    public void vkeyRead(long hash) {
-        this.readHashes.add(hash);
-    }
-    
-    public void vkeyWrite(long[] vkey) {
-        vkeyWrite(Keys.hash(vkey));
-    }
-    
-    public void vkeyWrite(long hash) {
-        if (this.vkeyWriteHashes == null) {
-            this.vkeyWriteHashes = new MyLongSet();
-        }
-        this.vkeyWriteHashes.add(hash);
-    }
-    
     public final int getObjectOpsSize() {
         return objectOps.size();
     }
@@ -193,11 +174,6 @@ public class RwEnvironmentImp implements RwEnvironment {
     }
     
     private static final byte[] TRANSACTION_TIME_BYTES = Keys.toBytes("${transactionTime}");
-    
-    @SuppressWarnings("unused")
-    private static KeyTransformation getKeyTransformation(byte[] key) {
-        return Util.contains(TRANSACTION_TIME_BYTES, key) ? replaceTransformation : null;
-    }
     
     private void setBytes(String ikey, byte[] value) {        
         if (value == null) {

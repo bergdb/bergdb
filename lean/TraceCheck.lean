@@ -17,7 +17,11 @@ before, it had checker-local definitions for the switches).
 Checks, per transaction i (R(0) included):
   C-A  the assumptions: SpecOK for R(0); StepOK (A2, A3, A4, fresh and distinct
        ids, data nodes) and A5 for every transaction; with a virtual root also
-       VirtInit and VirtStep (R1 to R4, dead top nodes)
+       VirtInit and VirtStep (R1 to R4, dead top nodes); and those of stage 2
+       (`EvictRunOK`, SIS/Evict.lean; since bergdb 005-04, before diagnostics):
+       TREE and A6' after every transaction, R(0) included, and A-COPY for
+       each change. A6' allows adoptions below the old parent, which A6, the
+       stronger form, does not; they are counted, not a failure
   C-S  the model's step from Java's state before T(i), with Java's startup pos,
        gives Java's record R(i) and D (gd and the versions compared as sets)
   C-V  the LIVE lines: Java's live children equal the instance's `live`
@@ -48,9 +52,8 @@ stream cut there (`cutStream`: version stubs before the cut).
 and in C-S, with SKIPT lines, the top nodes' skip slots: the layout (slot j
 of the top with ordinal n is populated exactly when bit j of n is set, and
 names the formula's target) and the cached times (the target's creation)
-and the exporter's ERROR lines. Diagnostics: D closed upward; A6 (no adoption)
-and TREE (one current parent), for Option K of bergdb item 001 (WP A4); and with
---inv, INV-2. The last line is TRACECHECK OK or TRACECHECK FAILED.
+and the exporter's ERROR lines. Diagnostics: D closed upward; and with --inv,
+INV-2. The last line is TRACECHECK OK or TRACECHECK FAILED.
 -/
 import Check.Steps
 
@@ -143,6 +146,9 @@ def main (args : List String) : IO UInt32 := do
     let mut recsMap : Std.HashMap NodeId (Array Nat) :=
       ((jrecs.getD 0 r0).vers.foldl (fun m w => m.insert w.node #[0]) {})
     let mut liveCount := 0
+    -- The transactions with an adoption below the old parent (A6' allows it, A6 not).
+    let mut belowCount := 0
+    let mut belowEx : Array String := #[]
     let mut firstCount := 0
     let mut firstFail := 0
     let mut first4Fail := 0
@@ -150,7 +156,16 @@ def main (args : List String) : IO UInt32 := do
     let Sall := jrecs.toList
     -- R(0)
     let initF := initFailures sp
-    ca := ca.add 0 (initF.map (fun n => (n, s!"{n} fails for R(0)")))
+    -- The assumptions of stage 2 at time 0 (`EvictRunOK`'s EvictStep for j = 0).
+    let rl0 := reachList sp p0 0
+    let (a60, below0) := adoptFailures sp p0 0 (Std.HashSet.ofList rl0) rl0
+    let tr0 := treeFailures sp p0 0 rl0
+    ca := ca.add 0 (initF.map (fun n => (n, s!"{n} fails for R(0)")) ++
+      (if tr0.isEmpty then [] else [("TREE", s!"TREE (one current parent) fails for nodes {showIds tr0}")]) ++
+      (if a60.isEmpty then [] else [("A6'", s!"A6' (no adoption) fails for pointers {a60.take 8}")]))
+    if !below0.isEmpty then
+      belowCount := belowCount + 1
+      belowEx := belowEx.push s!"T(0) adoptions below the old parent: {below0.take 8}"
     let mi := init sp
     match mi.S.getLast?, jrecs[0]? with
     | some m, some j => cs := cs.add 0 (diffRecord m j)
@@ -166,10 +181,21 @@ def main (args : List String) : IO UInt32 := do
       let P' := P.apply i c
       let rlNow := reachList sp P' i
       let rlNowSet := Std.HashSet.ofList rlNow
-      -- C-A
+      -- C-A, with the assumptions of stage 2: TREE and A6' after the transaction,
+      -- A-COPY for its change (bergdb 005-04)
       let rlPrevSet := Std.HashSet.ofList rlPrev
       let sf := stepFailures sp P i c rlPrevSet rlNowSet rlNow ++ touchFailures sp P i c rlPrev rlPrevSet
-      ca := ca.add i (sf.map (fun p => (p.1, s!"{p.1} fails for nodes {showIds p.2}")))
+      let (a6', belowP) := adoptFailures sp P' i rlNowSet rlNow
+      let tr := treeFailures sp P' i rlNow
+      let cp := copyFailures sp P i c rlPrev rlNowSet
+      ca := ca.add i (sf.map (fun p => (p.1, s!"{p.1} fails for nodes {showIds p.2}")) ++
+        (if tr.isEmpty then [] else [("TREE", s!"TREE (one current parent) fails for nodes {showIds tr}")]) ++
+        (if a6'.isEmpty then [] else [("A6'", s!"A6' (no adoption) fails for pointers {a6'.take 8}")]) ++
+        (if cp.isEmpty then [] else [("A-COPY", s!"A-COPY fails for pointers {cp.take 8}")]))
+      if !belowP.isEmpty then
+        belowCount := belowCount + 1
+        if belowEx.size < 8 then
+          belowEx := belowEx.push s!"T({i}) adoptions below the old parent: {belowP.take 8}"
       let badTimes := r.adds.toList.filter (fun a => a.2.1 != i)
       if !badTimes.isEmpty then
         ca := ca.add i [("time", s!"entries not at time {i}")]
@@ -243,24 +269,19 @@ def main (args : List String) : IO UInt32 := do
           | none => []
         if !sameList ml ys then
           cv := cv.add i [("live", s!"live of {x} at {tm}: model {ml}, Java {ys}")]
-      -- diagnostics, one tally entry per transaction: D closed upward; A6 and
-      -- TREE (bergdb item 001, WP A4); A-COPY (the same item, WPs E2 and E3);
-      -- INV-2 with --inv
+      -- diagnostics, one tally entry per transaction: D closed upward; INV-2 with
+      -- --inv. Before bergdb 005-04 also A6, TREE and A-COPY, now in C-A (A6' for A6).
       let cl := closedFailures sp P' i r.dirty
-      let a6 := adoptionFailures sp P' i rlNowSet rlNow
-      let tr := treeFailures sp P' i rlNow
-      let cp := copyFailures sp P i c rlPrev rlNowSet
       let iv := if o.inv then inv2Failures sp (jrecs.toList.take (i + 1)) P' i r.dirty else []
       diag := diag.add i ((if cl.isEmpty then [] else [("closed", s!"D not closed upward at {showIds cl}")]) ++
-        (if a6.isEmpty then [] else [("A6", s!"A6 (no adoption) fails for nodes {showIds a6}")]) ++
-        (if tr.isEmpty then [] else [("TREE", s!"TREE (one current parent) fails for nodes {showIds tr}")]) ++
-        (if cp.isEmpty then [] else [("A-COPY", s!"A-COPY fails for pointers {cp.take 8}")]) ++
         (if iv.isEmpty then [] else [("INV-2", s!"dirty index nodes not in D: {showIds iv}")]))
       P := P'
     let probes := recs.toList.flatMap (fun r => r.probes.toList)
     let probeFails := probes.filter (fun p => !p.2.1)
     let total := recs.size
     ca.show "C-A assumptions" total
+    IO.println s!"C-A adoptions below the old parent (A6' allows them, A6 not; bergdb 005-04): {belowCount} of {total} transactions"
+    for e in belowEx do IO.println s!"  {e}"
     cs.show "C-S steps" total
     IO.println s!"C-V live: {cv.failing} transactions with differences, {liveCount} LIVE lines"
     for e in cv.examples do IO.println s!"  {e}"

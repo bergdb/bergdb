@@ -458,8 +458,6 @@ theorem linkObjD_slot (m : Mem V) (D : Dirty) (h : Nat) (o : Obj V) (y : NodeId)
         | some h0 => exact Or.inr ⟨_, h0, rfl, rfl, rfl⟩
       | mem h' => exact Or.inl rfl
 
-theorem Mem.linkD_table (m : Mem V) (D : Dirty) : (m.linkD D).table = m.table := rfl
-
 theorem Mem.linkD_keys (m : Mem V) (D : Dirty) : (m.linkD D).objs.map (·.1) = m.objs.map (·.1) := by
   unfold Mem.linkD
   simp only [List.map_map]

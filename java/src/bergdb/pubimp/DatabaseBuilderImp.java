@@ -54,13 +54,6 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     }
     
     /**
-     * Creates and returns a database builder object that is used to create a database.
-     */
-    public static DatabaseBuilder database() {
-        return new DatabaseBuilderImp();
-    }
-    
-    /**
      * Returns the internal Db.Builder object.
      * Not part of Pub API.
      */
@@ -129,14 +122,6 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
      */
     public DatabaseBuilder stream(String name, AppendOnlyStream stream) {
         dbBuilder.stream(name, stream);
-        return this;
-    }
-    
-    /**
-     * Not part of Pub API.
-     */
-    public DatabaseBuilder noReclaim() {
-        dbBuilder.retainForever();
         return this;
     }
     

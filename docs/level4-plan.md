@@ -365,7 +365,8 @@ This is a measured alternative, not a prerequisite for the first version.
 
 The principle follows the original
 2012 eviction note.
-The old [Cache2.java](../java/src/bergdb/core/Cache2.java) implements
+The old Cache2.java (removed in bergdb 005-10; `git show
+0597329:java/src/bergdb/core/Cache2.java`) implements
 an outgoing-pointer sweep; its eligibility and synchronization rules are
 not a validated substitute for the new design.
 

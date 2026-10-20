@@ -162,13 +162,6 @@ public final class Residents {
         return canonicalBytes.get() + Math.max(0, snapshotBytes.get()) + valueBytes.get();
     }
 
-    public String summary() {
-        return "resident: " + bytes() + " bytes; canonical " + canonicalCount.get() + " objects, "
-                + canonicalBytes.get() + " bytes; snapshots " + snapshotCount.get() + ", "
-                + Math.max(0, snapshotBytes.get()) + " bytes; values " + valueCount.get() + ", "
-                + valueBytes.get() + " bytes";
-    }
-
     /**
      * Object 'node' is pinned: eviction may neither unswizzle a slot that names it nor
      * release it. The canonical object of a node of D (dirty) or of the record being written,

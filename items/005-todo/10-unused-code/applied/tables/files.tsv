@@ -1,0 +1,11 @@
+group	file	lines
+A1	java/src-dev/bergdb/dev/DummyForJavadoc.java	55
+A1	java/src-dev/bergdb/dev/DummyForNotes.java	25
+A1	java/src/bergdb/common/NullPrintStream.java	15
+A1	java/src/bergdb/common/Triplet.java	31
+A1	java/src/bergdb/core/NextMap.java	110
+A1	java/src/bergdb/core/NoReclaim.java	21
+A1	java/src/bergdb/pubimp/JavaCollator.java	21
+B1	java/src/bergdb/core/Cache2.java	787
+B2	java/src/bergdb/dag/DagChecksum.java	170
+B3	java/src-dev/bergdb/test/Concurrency.java	339

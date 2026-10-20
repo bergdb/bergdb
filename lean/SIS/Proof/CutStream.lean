@@ -61,7 +61,6 @@ theorem versionAt_cut_lt {r : Nat} (h : r < c) (y : NodeId) :
   | none => rfl
   | some R => simp only [Option.map_some]; exact find?_stub R.vers y
 
-theorem stub_node (v : Version V) : v.stub.node = v.node := rfl
 theorem stub_recNo (v : Version V) : v.stub.recNo = v.recNo := rfl
 theorem stub_level (v : Version V) : v.stub.level = v.level := rfl
 
@@ -111,13 +110,6 @@ theorem getLast?_cut (c : Nat) (S : Stream V T) :
 
 theorem lastSp_cut (c : Nat) (S : Stream V T) : lastSp (cutStream c S) = lastSp S := by
   unfold lastSp
-  rw [getLast?_cut]
-  cases S.getLast? with
-  | none => rfl
-  | some R => simp only [Option.map_some]; split <;> rfl
-
-theorem lastFa_cut (c : Nat) (S : Stream V T) : lastFa (cutStream c S) = lastFa S := by
-  unfold lastFa
   rw [getLast?_cut]
   cases S.getLast? with
   | none => rfl

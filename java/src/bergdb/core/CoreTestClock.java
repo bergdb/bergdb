@@ -14,13 +14,6 @@ public class CoreTestClock implements Clock {
         return time;
     }
 
-    /**
-     * Move clock forward one unit.
-     */
-    public void tick() {
-        time++;
-    }
-    
     public void setTime(long time) {
         if (time <= this.time) {
             throw new IllegalArgumentException("Bad time, must be larger than current time, " 

@@ -166,10 +166,6 @@ public final class Eviction {
         }
     }
 
-    public Schedule schedule() {
-        return schedule;
-    }
-
     /** Slots unswizzled and objects released so far; and the controller's metrics. */
     public synchronized String summary() {
         String s = "eviction " + schedule + ": " + unswizzled + " slots unswizzled, " + released

@@ -161,14 +161,6 @@ public class DatabaseImp implements Database {
         db.stop();
     }
     
-    public synchronized void close() {
-        synchronized (threadLocalConnections) {
-            threadLocalConnections.clear();
-        }
-        
-        db.close();
-    }
-    
     public Job addReplica(String name, String dir) throws IOException {
         if (name == null) {
             throw new IllegalArgumentException("name == null not allowed");

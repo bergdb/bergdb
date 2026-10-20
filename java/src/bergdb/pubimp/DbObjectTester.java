@@ -271,10 +271,6 @@ public class DbObjectTester {
         Assert.assertEquals(-1234567890, o2.field);
     }
     
-    public static class FloatClass {
-        public float field;
-    }
-    
     public static class Nested {
         public int myInt = 11;
         public String myString = "hello";

@@ -112,29 +112,6 @@ public class Util {
     }
     
     /**
-     * Returns how much memory is used (1.0 = all, 0.0 = nothing).
-     * If max memory is not available (set to Long.MAX_VALUE), 1e9 bytes is assumed to be 
-     * max available memory.
-     */
-    public static double getMemoryUse() {
-        Runtime runtime = Runtime.getRuntime();
-        long max = runtime.maxMemory();
-        if (max == Long.MAX_VALUE) {
-            max = 1000L * 1000000;
-        }
-        long used = runtime.totalMemory() - runtime.freeMemory();
-        double result = ((double) used) / max;
-        return result;
-    }
-    
-    /**
-     * Returns the name of this computer (localhost) or "unknown" if not known.
-     */
-    public static String getComputerName() {
-        return hostname();
-    }
-    
-    /**
      * Concatenates two byte arrays.
      */
     public static byte[] concat(byte[] arr1, byte[] arr2) {
@@ -301,27 +278,6 @@ public class Util {
         return a;
     }
     
-    /**
-     * Returns 'a'; useful for avoiding compiler inlining of a final field.
-     */
-    public static long identity(long a) {
-        return a;
-    }
-    
-    /**
-     * Returns 'a'; useful for avoiding compiler inlining of a final field.
-     */
-    public static long[] identity(long[] a) {
-        return a;
-    }
-    
-    /**
-     * Returns 'a'; useful for avoiding compiler inlining of a final field.
-     */
-    public static byte[] identity(byte[] a) {
-        return a;
-    }
-
     public static boolean areEqual(byte[] a1, byte[] a2) {
         if (a1 == null && a2 == null) {
             return true;
@@ -371,16 +327,6 @@ public class Util {
         Assert.assertFalse(areEqual(a1, a4));
         Assert.assertFalse(areEqual(a3, a2));
         Assert.assertTrue(areEqual(a3, a1));
-    }
-    
-    /**
-     * Times the execution of a runnable. Returns number of seconds that elapsed.
-     */
-    public static double time(Runnable r) {
-        long t = System.nanoTime();
-        r.run();
-        double time = (System.nanoTime() - t) * 1e-9;
-        return time;
     }
     
     /**
@@ -617,15 +563,6 @@ public class Util {
         return dateFormat.format(new Date(now));
     }
 
-    /**
-     * Returns the current date formatted as "yyMMdd".
-     * The timezone of the default locale is used.
-     */
-    public static String todayCompact() {
-        long now = System.currentTimeMillis();
-        return compactDateFormat.format(new Date(now));
-    }
-    
     private static SimpleDateFormat dateAndTimeFormat = new SimpleDateFormat("yyMMdd HH:mm");
     
     /**
@@ -662,19 +599,6 @@ public class Util {
             out.write(bytes);
         } finally {
             out.close();
-        }
-    }
-    
-    public static long memoryUsed() {
-        Runtime r = Runtime.getRuntime();
-        return (r.totalMemory() - r.freeMemory());
-    }
-    
-    public static void sleep(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            // empty
         }
     }
 }

@@ -328,23 +328,6 @@ theorem ChangeFacts.canonicalOf {sp : Spec V T} {P : Struct V} {j : Time} {c : C
       simp only [Option.map_some]
       rw [(updAll4_core sp P j _ _ o).2.2.2.2.1]
 
-theorem applyChange4_canonicalOf (sp : Spec V T) (P : Struct V) (j : Time) (c : Changes V)
-    (m : Mem V) (y : NodeId) :
-    (m.applyChange4 sp P j c).canonicalOf y = (c.new.foldl addNew m).canonicalOf y := by
-  have hf := applyFacts4 sp P j c m
-  unfold Mem.canonicalOf Mem.tableOf
-  rw [hf.table]
-  cases List.lookup y (c.new.foldl addNew m).table with
-  | none => rfl
-  | some h =>
-    simp only
-    rw [hf.obj h]
-    cases (c.new.foldl addNew m).obj? h with
-    | none => rfl
-    | some o =>
-      simp only [Option.map_some]
-      rw [(updAll4_core sp P j _ _ o).2.2.2.2.1]
-
 theorem foldl_addNew_tblNodup (N : List NewNode) : ∀ (m : Mem V), (m.table.map (·.1)).Nodup →
     ((N.foldl addNew m).table.map (·.1)).Nodup := by
   induction N with

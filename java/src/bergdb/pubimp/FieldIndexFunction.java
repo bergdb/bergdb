@@ -32,10 +32,6 @@ public class FieldIndexFunction implements IndexFunction {
         handleIndexLevels();
     }
     
-    public String[] getTypes() {
-        return typeStrings;
-    }
-
     public void createIndexEntries(DbObject dbo, IndexEntryBuilder b) {
         for (int i = 0; i < fieldCombinations.length; i++) {
             createIndexEntry(i, dbo, b);

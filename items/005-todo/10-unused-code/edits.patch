@@ -1,0 +1,3173 @@
+diff --git a/docs/level4-plan.md b/docs/level4-plan.md
+index e36f096..36f0c62 100644
+--- a/docs/level4-plan.md
++++ b/docs/level4-plan.md
+@@ -365,7 +365,8 @@ This is a measured alternative, not a prerequisite for the first version.
+ 
+ The principle follows the original
+ 2012 eviction note.
+-The old [Cache2.java](../java/src/bergdb/core/Cache2.java) implements
++The old Cache2.java (removed in bergdb 005-10; `git show
++0597329:java/src/bergdb/core/Cache2.java`) implements
+ an outgoing-pointer sweep; its eligibility and synchronization rules are
+ not a validated substitute for the new design.
+ 
+diff --git a/java/build.sh b/java/build.sh
+index 75df380..e6a9bf2 100755
+--- a/java/build.sh
++++ b/java/build.sh
+@@ -22,7 +22,7 @@ rm -f $OUT/bergdb.jar $OUT/MANIFEST.MF
+ $JAVAC --release 8 -encoding UTF-8 -nowarn -Xlint:-options -d $OUT/classes -cp $ICU \
+     $(find $SRC/src $SRC/src-dev $SRC/src-icu -name '*.java')
+ 
+-# Non-Java resources, as in the original build.xml.
++# Non-Java resources, as the 2017 Ant build copied them.
+ for d in src src-dev; do
+     (cd $SRC/$d && find . -type f ! -name '*.java' ! -name '*.html') |
+         while read f; do
+diff --git a/java/in/readme.txt b/java/in/readme.txt
+index ff4c108..b4ea3f2 100644
+--- a/java/in/readme.txt
++++ b/java/in/readme.txt
+@@ -1,5 +1,3 @@
+-jarjar-1.4.jar is used for the build process only (for building bergdb-versioned.jar). 
+-
+ icu-for-bergdb.jar is ICU 50 (International Components for Unicode, for
+ collation), repackaged in July 2013 under the package bergdb.icu50 so that it
+ cannot clash with another ICU on the class path. It is used by the build
+diff --git a/java/src-dev/bergdb/dev/Run.java b/java/src-dev/bergdb/dev/Run.java
+index ff92513..e5a3cce 100644
+--- a/java/src-dev/bergdb/dev/Run.java
++++ b/java/src-dev/bergdb/dev/Run.java
+@@ -35,11 +35,8 @@ public class Run {
+         out.println("  " + bergdb.dev.Unit.class.getName() + " - Runs 'unit' tests.");
+         out.println("  " + bergdb.dev.F.class.getName() + " - Runs 'f' tests.");
+         out.println("  " + bergdb.dev.Night.class.getName() + " - Runs 'night' tests.");
+-        out.println("  " + bergdb.dev.Perf.class.getName() + " - Runs 'perf' tests.");
+         out.println("  " + bergdb.dev.props.Props.class.getName() + " - Computes project properties (performance, etc).");
+         out.println("  " + bergdb.dev.props.Core.class.getName() + " - Standard performance test for Core.");
+-        out.println("  " + bergdb.dev.Info.class.getName() + " - Prints info about the system.");
+-        out.println("  " + bergdb.dev.Swing.class.getName() + " - Test the graphics environment by displaying a Swing window.");
+         out.println();
+         out.println("Use args: '<nameOfClass> <argsForClass>' to run an executable class.");
+         out.println("Many executable classes print help text, if executed with the single argument 'help'.");
+diff --git a/java/src-dev/bergdb/dev/TestClasses.java b/java/src-dev/bergdb/dev/TestClasses.java
+index 6fe18c3..f7ec917 100644
+--- a/java/src-dev/bergdb/dev/TestClasses.java
++++ b/java/src-dev/bergdb/dev/TestClasses.java
+@@ -1,7 +1,5 @@
+ package bergdb.dev;
+ 
+-import java.util.HashSet;
+-import java.util.Set;
+ 
+ import bergdb.nanotest.IPack;
+ 
+@@ -19,30 +17,13 @@ public class TestClasses {
+         new bergdb.storage.Pack(),
+         new bergdb.test.Pack(),
+         new bergdb.nanotest.Pack(),
+-        new bergdb.test.java.Pack(),
+         new bergdb.test.night.Pack(),
+         new bergdb.pubimp.Pack(),
+         new bergdb.pubimp.PackForPub(),
+-        new bergdb.stream.Pack(),
+-        new bergdb.dev.Pack()
++        new bergdb.stream.Pack()
+     };
+     
+     public static IPack[] getIPacksStatic() {
+         return ipacks;
+     }
+-    
+-    /**
+-     * Creates and returns a set of all classes in the packages
+-     * specified in TestClasses.ipacks.
+-     */
+-    public static Set<Class<?>> getClasses() {
+-        Set<Class<?>> classes = new HashSet<Class<?>>();
+-        IPack[] ipacks = getIPacksStatic();
+-        for (IPack p : ipacks) {
+-            for (Class<?> c : p.getClasses()) {
+-                classes.add(c);
+-            }
+-        }
+-        return classes;
+-    }    
+ }
+diff --git a/java/src-dev/bergdb/test/BigDb.java b/java/src-dev/bergdb/test/BigDb.java
+index 304d237..c77ab24 100644
+--- a/java/src-dev/bergdb/test/BigDb.java
++++ b/java/src-dev/bergdb/test/BigDb.java
+@@ -34,11 +34,6 @@ public class BigDb {
+         runTest(10*1000, c);
+     }
+     
+-    @Nano("perf")
+-    public static void t100000kv(TestEnvironment c) throws InterruptedException {
+-        runTest(100*1000, c);
+-    }
+-    
+     /** 
+      * Returns memory usage in bytes.
+      */
+diff --git a/java/src-dev/bergdb/test/BigDbWithDeletes.java b/java/src-dev/bergdb/test/BigDbWithDeletes.java
+index 8ad799e..9a60d5b 100644
+--- a/java/src-dev/bergdb/test/BigDbWithDeletes.java
++++ b/java/src-dev/bergdb/test/BigDbWithDeletes.java
+@@ -29,11 +29,6 @@ public class BigDbWithDeletes {
+         run(1000, c);
+     }
+     
+-    @Nano("perf")
+-    public static void test100MB10000KV(TestEnvironment c) throws InterruptedException {
+-        run(10000, c);
+-    }
+-    
+     /** 
+      * Returns memory usage in bytes.
+      */
+diff --git a/java/src-dev/bergdb/test/BryanIssue.java b/java/src-dev/bergdb/test/BryanIssue.java
+index 1abbdc6..262418a 100644
+--- a/java/src-dev/bergdb/test/BryanIssue.java
++++ b/java/src-dev/bergdb/test/BryanIssue.java
+@@ -6,7 +6,6 @@ import java.util.ArrayList;
+ import java.util.List;
+ import bergdb.core.DbBuilder;
+ import bergdb.core.DbUtil;
+-import bergdb.core.TransSeq;
+ import bergdb.dag.Dag;
+ import bergdb.nanotest.Nano;
+ import bergdb.nanotest.TestEnvironment;
+@@ -29,7 +28,6 @@ public class BryanIssue {
+     protected MemoryStream memoryStream;
+     protected TestEnvironment env;
+     protected Dag prevDag;
+-    protected TransSeq prevTransSeq;
+     
+     @Nano("f")
+     private static void testIt(TestEnvironment env) throws Exception {
+diff --git a/java/src-dev/bergdb/test/Concurrency2.java b/java/src-dev/bergdb/test/Concurrency2.java
+index fd6e805..00e8fb8 100644
+--- a/java/src-dev/bergdb/test/Concurrency2.java
++++ b/java/src-dev/bergdb/test/Concurrency2.java
+@@ -13,7 +13,7 @@ import bergdb.stream.DummyStream;
+ 
+ 
+ /**
+- * Simpler version of Concurrency.
++ * Simpler version of the Concurrency test of 2013 (removed in bergdb 005-10).
+  * 
+  * @author Frans Lundberg
+  */
+diff --git a/java/src-dev/bergdb/test/Get.java b/java/src-dev/bergdb/test/Get.java
+index ac0c5d1..73a25c6 100644
+--- a/java/src-dev/bergdb/test/Get.java
++++ b/java/src-dev/bergdb/test/Get.java
+@@ -7,8 +7,6 @@ import bergdb.core.KeyFactory;
+ import bergdb.core.Trans;
+ import bergdb.dag.GetData;
+ import bergdb.dag.Keys;
+-import bergdb.nanotest.Nano;
+-import bergdb.nanotest.TestEnvironment;
+ import bergdb.stream.DummyStream;
+ 
+ /**
+@@ -73,26 +71,6 @@ public class Get {
+         }
+     }
+     
+-    private void go(TestEnvironment c, int n) throws InterruptedException {
+-        c.report("note", "One thread running get(), db size: " + n);
+-
+-        createDB(n);
+-        
+-        Timed tg = new Timed();
+-        warmup();
+-        tg.start();
+-        
+-        Thread.sleep(2000);
+-        done = true;
+-        
+-        tg.join();
+-        
+-        c.report("get-n", n);
+-        c.report("get-count", tg.count);
+-        c.report("get-time", tg.time / tg.count);
+-        c.report("get-total-time", tg.time);
+-    }
+-    
+     /**
+      * Used by CorePerf.
+      */
+@@ -123,16 +101,6 @@ public class Get {
+         return result;
+     }
+     
+-    @Nano("perf")
+-    public static void run(TestEnvironment c) throws InterruptedException {
+-        new Get().go(c, 100*1000);
+-    }
+-    
+-    @Nano("perf")
+-    public static void run1M(TestEnvironment c) throws InterruptedException {
+-        new Get().go(c, 1000*1000);
+-    }
+-    
+     /**
+      * Class used to run timed gets until Get.this.done == true.
+      */
+diff --git a/java/src-dev/bergdb/test/GetThreaded.java b/java/src-dev/bergdb/test/GetThreaded.java
+index 818991f..6b11513 100644
+--- a/java/src-dev/bergdb/test/GetThreaded.java
++++ b/java/src-dev/bergdb/test/GetThreaded.java
+@@ -1,8 +1,5 @@
+ package bergdb.test;
+ 
+-import bergdb.nanotest.Nano;
+-import bergdb.nanotest.TestEnvironment;
+-
+ /**
+  * Performance of get operations.
+  */
+@@ -11,20 +8,6 @@ public class GetThreaded extends Get {
+     public GetThreaded() {
+     }
+     
+-    private void go(TestEnvironment c) throws InterruptedException {
+-        c.report("note", "Increasing number of threads running DB.get(), DB size: 100k.");
+-        
+-        createDB(100*1000);
+-        
+-        c.report("n", n);
+-        
+-        int[] threadCount = new int[] {1, 2, 3, 4, 8, 16};
+-        
+-        for (int tCount : threadCount) {
+-            runGetTest(c, tCount);
+-        }
+-    }
+-    
+     public static double corePerfMethod() {
+         int tCount = 4;
+         int n = 100*1000;
+@@ -69,52 +52,4 @@ public class GetThreaded extends Get {
+         double getTime = time / count;
+         return getTime;
+     }
+-    
+-    @Nano("perf")
+-    public static void get4t(TestEnvironment c) throws InterruptedException {
+-        GetThreaded t = new GetThreaded();
+-        t.createDB(100*1000);
+-        t.runGetTest(c, 4);
+-    }
+-
+-    private void runGetTest(TestEnvironment c, int tCount) throws InterruptedException {
+-        Timed[] timed = new Timed[tCount];
+-        for (int i = 0; i < tCount; i++) {
+-            timed[i] = new Timed(i * n/tCount);
+-        }
+-        
+-        warmup();
+-        
+-        this.done = false;
+-        
+-        for (Timed t : timed) {
+-            t.start();
+-        }
+-        
+-        Thread.sleep(1000);
+-        done = true;
+-        
+-        for (Timed t : timed) {
+-            t.join();
+-        }
+-        
+-        long count = 0;
+-        double time = 0.0;
+-        for (Timed t : timed) {
+-            count += t.count;
+-            time += t.time;
+-        }
+-        time = time / tCount;
+-        
+-        c.report("get-count-" + tCount, count);
+-        c.report("time", time);
+-        c.report("get-time-" + tCount, time / count);
+-        
+-        this.done = false;
+-    }
+-
+-    @Nano("perf")
+-    public static void run(TestEnvironment c) throws InterruptedException {
+-        new GetThreaded().go(c);
+-    }
+ }
+diff --git a/java/src-dev/bergdb/test/Pack.java b/java/src-dev/bergdb/test/Pack.java
+index 15455cd..bc6093d 100644
+--- a/java/src-dev/bergdb/test/Pack.java
++++ b/java/src-dev/bergdb/test/Pack.java
+@@ -1,11 +1,6 @@
+ package bergdb.test;
+ 
+-import bergdb.dev.MemPerf;
+ import bergdb.nanotest.IPack;
+-import bergdb.test.java.PerfTreeMapGet;
+-import bergdb.test.java.PerfTreeMapSet;
+-import bergdb.test.manual.StreamSizeVsStartupDistance;
+-import bergdb.test.manual.TransThroughput;
+ 
+ /**
+  * Pack class for bergdb.nanotest package. 
+@@ -25,25 +20,10 @@ public class Pack implements IPack {
+         Crazy.class,
+         CreateIndexTester.class,
+         DeleteIndexTester.class,
+-        FileSynchPerformance.class,
+-        GetScalability.class,
+-        GetManyScalability.class,
+-        Get.class,
+-        GetThreaded.class,
+         IsDeterministic.class,
+-        OneByteToFile.class,
+-        OneGig.class,
+         Pack.class,
+-        MemPerf.class,
+-        PerfGetMany.class,
+-        PerfTreeMapGet.class,
+-        PerfTreeMapSet.class,
+         ScenarioTester.class,
+-        StartupDistanceTester.class,
+-        StreamSizeVsStartupDistance.class,
+-        Set.class,
+-        StreamSize.class,
+-        TransThroughput.class
++        StartupDistanceTester.class
+     };
+     
+     public Class<?>[] getClasses() {
+diff --git a/java/src/bergdb/common/HashUtil.java b/java/src/bergdb/common/HashUtil.java
+index ecadf7b..c5eca3b 100644
+--- a/java/src/bergdb/common/HashUtil.java
++++ b/java/src/bergdb/common/HashUtil.java
+@@ -6,19 +6,6 @@ import bergdb.nanotest.Nano;
+ public class HashUtil {
+ 
+ 
+-    /**
+-     * Hash of long to long.
+-     * Based on (public domain) 
+-     * http://xorshift.di.unimi.it/splitmix64.c
+-     * Also see https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key#12996028
+-     */
+-    public static final long mHash(long x) {
+-        x = (x ^ (x >>> 30)) * 0xbf58476d1ce4e5b9L;
+-        x = (x ^ (x >> 27)) * 0x94d049bb133111ebL;
+-        x = x ^ (x >> 31);
+-        return x;
+-    }
+-    
+     /**
+      * Returns an integer between 0 and upper-1 based
+      * on hashing x.
+diff --git a/java/src/bergdb/common/MyLongSet.java b/java/src/bergdb/common/MyLongSet.java
+index c72f614..f32943a 100644
+--- a/java/src/bergdb/common/MyLongSet.java
++++ b/java/src/bergdb/common/MyLongSet.java
+@@ -66,10 +66,6 @@ public final class MyLongSet implements Iterable<Long> {
+         return isHash() ? hash.size() : size;
+     }
+ 
+-    public final boolean isEmpty() {
+-        return size() == 0;
+-    }
+-
+     public final boolean contains(long value) {
+         if (isHash()) {
+             return hash.contains(value);
+diff --git a/java/src/bergdb/common/Pair.java b/java/src/bergdb/common/Pair.java
+index 62a0e9b..7e09ad5 100644
+--- a/java/src/bergdb/common/Pair.java
++++ b/java/src/bergdb/common/Pair.java
+@@ -5,10 +5,8 @@ import bergdb.nanotest.Nano;
+ 
+ /**
+  * Immutable 2-tuple implementation.
+- * This class and Triplet forms a very simple tuple library for BergDB. 
+  * If we need more, we could switch to http://www.javatuples.org/.
+  * 
+- * @see Triplet
+  * @author Frans Lundberg
+  */
+ public class Pair<T0, T1> {
+diff --git a/java/src/bergdb/common/StringUtil.java b/java/src/bergdb/common/StringUtil.java
+index 4f0c9d0..6788305 100644
+--- a/java/src/bergdb/common/StringUtil.java
++++ b/java/src/bergdb/common/StringUtil.java
+@@ -222,21 +222,6 @@ public class StringUtil {
+         Assert.assertEquals("hello!", toString(bytes));
+     }
+ 
+-    /**
+-     * Replaces characters in string so result is printable ASCII characters
+-     * without whitespace.
+-     */
+-    public static String toPrintableAscii(String s) {
+-        char[] chars = s.toCharArray();
+-        for (int i = 0; i < chars.length; i++) {
+-            char c = chars[i];
+-            if (!(c >= ' ' && c <= '~')) {
+-                chars[i] = c == ' ' ? '_' : '?';
+-            }
+-        }
+-        return new String(chars);
+-    }
+-
+     /**
+      * Returns a hex string (two lowercase hex chars per byte) given a byte array.
+      */
+diff --git a/java/src/bergdb/common/Util.java b/java/src/bergdb/common/Util.java
+index 567943a..6740bc8 100644
+--- a/java/src/bergdb/common/Util.java
++++ b/java/src/bergdb/common/Util.java
+@@ -111,29 +111,6 @@ public class Util {
+         }
+     }
+     
+-    /**
+-     * Returns how much memory is used (1.0 = all, 0.0 = nothing).
+-     * If max memory is not available (set to Long.MAX_VALUE), 1e9 bytes is assumed to be 
+-     * max available memory.
+-     */
+-    public static double getMemoryUse() {
+-        Runtime runtime = Runtime.getRuntime();
+-        long max = runtime.maxMemory();
+-        if (max == Long.MAX_VALUE) {
+-            max = 1000L * 1000000;
+-        }
+-        long used = runtime.totalMemory() - runtime.freeMemory();
+-        double result = ((double) used) / max;
+-        return result;
+-    }
+-    
+-    /**
+-     * Returns the name of this computer (localhost) or "unknown" if not known.
+-     */
+-    public static String getComputerName() {
+-        return hostname();
+-    }
+-    
+     /**
+      * Concatenates two byte arrays.
+      */
+@@ -301,27 +278,6 @@ public class Util {
+         return a;
+     }
+     
+-    /**
+-     * Returns 'a'; useful for avoiding compiler inlining of a final field.
+-     */
+-    public static long identity(long a) {
+-        return a;
+-    }
+-    
+-    /**
+-     * Returns 'a'; useful for avoiding compiler inlining of a final field.
+-     */
+-    public static long[] identity(long[] a) {
+-        return a;
+-    }
+-    
+-    /**
+-     * Returns 'a'; useful for avoiding compiler inlining of a final field.
+-     */
+-    public static byte[] identity(byte[] a) {
+-        return a;
+-    }
+-
+     public static boolean areEqual(byte[] a1, byte[] a2) {
+         if (a1 == null && a2 == null) {
+             return true;
+@@ -373,16 +329,6 @@ public class Util {
+         Assert.assertTrue(areEqual(a3, a1));
+     }
+     
+-    /**
+-     * Times the execution of a runnable. Returns number of seconds that elapsed.
+-     */
+-    public static double time(Runnable r) {
+-        long t = System.nanoTime();
+-        r.run();
+-        double time = (System.nanoTime() - t) * 1e-9;
+-        return time;
+-    }
+-    
+     /**
+      * Converts List of Longs to long[]. list == null input results in null returned.
+      * Null values in the List are converted to 0.
+@@ -617,15 +563,6 @@ public class Util {
+         return dateFormat.format(new Date(now));
+     }
+ 
+-    /**
+-     * Returns the current date formatted as "yyMMdd".
+-     * The timezone of the default locale is used.
+-     */
+-    public static String todayCompact() {
+-        long now = System.currentTimeMillis();
+-        return compactDateFormat.format(new Date(now));
+-    }
+-    
+     private static SimpleDateFormat dateAndTimeFormat = new SimpleDateFormat("yyMMdd HH:mm");
+     
+     /**
+@@ -664,17 +601,4 @@ public class Util {
+             out.close();
+         }
+     }
+-    
+-    public static long memoryUsed() {
+-        Runtime r = Runtime.getRuntime();
+-        return (r.totalMemory() - r.freeMemory());
+-    }
+-    
+-    public static void sleep(long millis) {
+-        try {
+-            Thread.sleep(millis);
+-        } catch (InterruptedException e) {
+-            // empty
+-        }
+-    }
+ }
+diff --git a/java/src/bergdb/core/BuildInfo.java b/java/src/bergdb/core/BuildInfo.java
+index 497aaa8..6e9ae70 100644
+--- a/java/src/bergdb/core/BuildInfo.java
++++ b/java/src/bergdb/core/BuildInfo.java
+@@ -3,8 +3,8 @@ package bergdb.core;
+ import bergdb.common.Util;
+ 
+ /**
+- * Information about the build. BuildInfoTemplate.txt is a source code template for the 
+- * generated file BuildInfo.java. Do not edit BuildInfo.java.
++ * Information about the build: the release of the 2017 source. The 2017 Ant build
++ * generated this file from a template; build.sh compiles it as it is.
+  * 
+  * @author Frans Lundberg
+  */
+diff --git a/java/src/bergdb/core/Cache.java b/java/src/bergdb/core/Cache.java
+index d64a52f..34e0c37 100644
+--- a/java/src/bergdb/core/Cache.java
++++ b/java/src/bergdb/core/Cache.java
+@@ -1,42 +1,12 @@
+ package bergdb.core;
+ 
+-import bergdb.dag.Node;
+-import bergdb.dag.ValueNode;
+-
+ public interface Cache {
+ 
+-    /**
+-     * User-suggested maximum cache size in bytes.
+-     */
+-    public void setSizeIndicator(long sizeIndicator);
+-
+-    /**
+-     * Gets actual suggested maximum cache size (in bytes).
+-     */
+-    public long getSizeIndicator();
+-
+-    public void putIndexNode(Node node);
+-
+-    public void putValueNode(ValueNode node);
+-
+-    public Node getIndexNode(long id);
+-
+-    public ValueNode getValueNode(long id);
+-
+-    public Object getIndexLockObject(long id);
+-
+-    public Object getValueLockObject(long id);
+-
+-    public long totalSize();
+-
+-    public long putSize();
+-
+     /**
+      * Source of dynamic information about the database state
+      * needed by the cache implementation. Easy to mock.
+      */
+     public interface DbInfo {
+-        public long getStartupPosForEvict();
+         public PointerLocks getPointerLocks();
+     }
+     
+diff --git a/java/src/bergdb/core/Cache3.java b/java/src/bergdb/core/Cache3.java
+index 9f753d2..518d36f 100644
+--- a/java/src/bergdb/core/Cache3.java
++++ b/java/src/bergdb/core/Cache3.java
+@@ -80,12 +80,6 @@ public class Cache3 {
+         }
+     }
+     
+-    public long getSizeIndicator() {
+-        synchronized (bigLock) {
+-            return sizeIndicator;
+-        }
+-    }
+-    
+     /**
+      * Gets a lock object for one specific node.
+      * 
+@@ -96,12 +90,6 @@ public class Cache3 {
+         return bigLock;
+     }
+     
+-    public long totalSize() {
+-        synchronized (bigLock) {
+-            return totalSize;
+-        }
+-    }
+-
+     /** The resident registry's accounting; see Residents. */
+     public Residents residents() {
+         return residents;
+@@ -260,24 +248,6 @@ public class Cache3 {
+         return node.isCanonical() || node.getSpos() > old.getSpos();
+     }
+     
+-    public void pointerDestroyed(Node to) {
+-        long id = to.getId();
+-        Object lock = this.getLock(id);
+-        
+-        synchronized (lock) {
+-            CacheEntry entry = internalGet(id);
+-            
+-            if (entry == null) {
+-                // ignore, should not happen
+-            } else {
+-                entry.refCount--;
+-                if (entry.refCount == 0) {
+-                    internalRemove(id);
+-                }
+-            }
+-        }
+-    }
+-    
+     public Node getNode(long id) {
+         synchronized (bigLock) {
+             CacheEntry entry = internalGet(id);
+@@ -326,7 +296,6 @@ public class Cache3 {
+     @Nano
+     public static void testLargeIds() {
+         Cache3 cache = new Cache3(new Cache.DbInfo() {
+-            public long getStartupPosForEvict() { return 0; }
+             public PointerLocks getPointerLocks() { return null; }
+         });
+         long[] ids = {1L << 31, (1L << 31) + 0x94, (1L << 32) - 1, 5L << 30, 1L << 40, Long.MAX_VALUE};
+@@ -385,14 +354,6 @@ public class Cache3 {
+         return (h ^ (h >>> 16)) & (capacity - 1);
+     }
+ 
+-    public static class AlreadyHasNode extends AssertionError {
+-        private static final long serialVersionUID = 1L;
+-        
+-        public AlreadyHasNode(String message) {
+-            super(message);
+-        }
+-    }
+-    
+     public static class CacheEntry {
+         public Node node;
+         public int refCount;
+diff --git a/java/src/bergdb/core/CoreTestClock.java b/java/src/bergdb/core/CoreTestClock.java
+index b3d346d..00703f7 100644
+--- a/java/src/bergdb/core/CoreTestClock.java
++++ b/java/src/bergdb/core/CoreTestClock.java
+@@ -14,13 +14,6 @@ public class CoreTestClock implements Clock {
+         return time;
+     }
+ 
+-    /**
+-     * Move clock forward one unit.
+-     */
+-    public void tick() {
+-        time++;
+-    }
+-    
+     public void setTime(long time) {
+         if (time <= this.time) {
+             throw new IllegalArgumentException("Bad time, must be larger than current time, " 
+diff --git a/java/src/bergdb/core/DagComparison.java b/java/src/bergdb/core/DagComparison.java
+index f3bb5c6..cf1a6c9 100644
+--- a/java/src/bergdb/core/DagComparison.java
++++ b/java/src/bergdb/core/DagComparison.java
+@@ -56,21 +56,11 @@ public class DagComparison {
+         return this;
+     }
+     
+-    public DagComparison printAll(boolean b) {
+-        this.printAll = b;
+-        return this;
+-    }
+-    
+     public DagComparison stopAtDiff(boolean b) {
+         this.stopAtDiff = b;
+         return this;
+     }
+     
+-    public DagComparison out(PrintStream out) {
+-        this.out = out;
+-        return this;
+-    }
+-    
+     /**
+      * Returns true if dags are equal.
+      */
+@@ -112,10 +102,6 @@ public class DagComparison {
+         return equal;
+     }
+     
+-    public Pair<Node, Node> getLastPair() {
+-        return pair;
+-    }
+-    
+     private String compare(Node n1, Node n2) {
+         
+         if (n1 == null && n2 == null) {
+diff --git a/java/src/bergdb/core/Db.java b/java/src/bergdb/core/Db.java
+index 5eb9310..4d37267 100644
+--- a/java/src/bergdb/core/Db.java
++++ b/java/src/bergdb/core/Db.java
+@@ -182,9 +182,6 @@ public class Db {
+         pointerLocks = new PointerLocks();
+         
+         Cache.DbInfo dbInfo = new Cache.DbInfo() {
+-            public long getStartupPosForEvict() {
+-                return x.startupPos.getForEvict();
+-            }
+ 
+             public PointerLocks getPointerLocks() {
+                 return pointerLocks;
+@@ -279,18 +276,6 @@ public class Db {
+         }
+     }
+     
+-    public long getNodesWritten() {
+-        synchronized (writeLock) {
+-            return aux.nodesWritten;
+-        }
+-    }
+-    
+-    public long getOrdinaryNodesWritten() {
+-        synchronized (writeLock) {
+-            return aux.ordinaryNodesWritten;
+-        }
+-    }
+-    
+     /**
+      * Suggests a new startup distance.
+      * If the startup distance is reduced drastically, this method
+@@ -393,10 +378,6 @@ public class Db {
+         return storageManager.getDurableLength();
+     }
+     
+-    public final long getPosOfLastValidMetaBlock() {
+-        return nodeStream.getPosOfLastValidMetaBlock();
+-    }
+-    
+     /**
+      * The position of the transaction named by the last valid meta block; recovery starts
+      * there. See RecoverableStream.getLastTransSposOfLastValidMetaBlock().
+@@ -1816,8 +1797,6 @@ public class Db {
+         
+         public ExecuteData x() { return x; }
+         
+-        public void executeInner(Trans t) { Db.this.executeInner(t); }
+-        
+         public void createPutAndGetData() { Db.this.createPutAndGetData(); }
+ 
+         public void setTransSeq(TransSeq seq) { Db.this.transSeq = seq; }
+@@ -1831,8 +1810,6 @@ public class Db {
+         
+         public NodeStream nodeStream() { return nodeStream; }
+         
+-        public Aux aux() { return aux; }
+-        
+         public Cache3 cache() { return cache; }
+         
+         /** The audit's oracle, or null if the audit is off; see Audit. */
+@@ -1872,10 +1849,6 @@ public class Db {
+             return pointerLocks.getLock(node, pointerIndex);
+         }
+         
+-        public void handleStillDirtyNodes() {
+-            Db.this.handleStillDirtyNodes();
+-        }
+-        
+         /**
+          * Follows the pointers in the Db graph from the super top node using the given 
+          * node index choices. Useful for testing.
+@@ -2016,17 +1989,6 @@ public class Db {
+      * For listening to what happens at startup. Useful for testing / debugging.
+      */
+     public static interface StartListener {
+-        public void reportStartupDistance(long startupDistance);
+-        public void reportStartPos(long startPos);
+-        public void reportStartupTransactions(ArrayList<StoredTrans> transactions);
+-        public void log(String message);
+-        
+-        public static final StartListener DO_NOTHING = new StartListener() {
+-            public void reportStartupDistance(long startupDistance) {}
+-            public void reportStartPos(long startPos) {}
+-            public void reportStartupTransactions(ArrayList<StoredTrans> transactions) {}
+-            public void log(String message) {}
+-        };
+     }
+     
+     public static final PrintStartListener SYSTEM_OUT_START_LISTENER = new PrintStartListener(System.out);
+@@ -2041,28 +2003,6 @@ public class Db {
+         public PrintStartListener(PrintStream out) {
+             this.p = out;
+         }
+-        
+-        public void reportStartupDistance(long startupDistance) {
+-            p.println("startupDistance: " + startupDistance);
+-        }
+-        
+-        public void reportStartPos(long startPos) {
+-            p.println("startPos: " + startPos);
+-        }
+-        
+-        public void reportStartupTransactions(ArrayList<StoredTrans> transactions) {
+-            p.println("---- startupTransactions ----");
+-            for (StoredTrans s : transactions) {
+-                p.println("StoredTrans: " + s);
+-                for (StoredNode n : s.nodes) {
+-                    p.println("  " + n);
+-                }
+-            }
+-        }
+-        
+-        public void log(String message) {
+-            p.println(message);
+-        }
+     }
+     
+     /**
+diff --git a/java/src/bergdb/core/DbClock.java b/java/src/bergdb/core/DbClock.java
+index 177b2bd..1479eae 100644
+--- a/java/src/bergdb/core/DbClock.java
++++ b/java/src/bergdb/core/DbClock.java
+@@ -56,14 +56,6 @@ public class DbClock {
+         this.transactionRunning = false;
+     }
+     
+-    /**
+-     * Returns the clock that this DbClock is based on; 
+-     * the clock passed as a parameter to the constructor.
+-     */
+-    public Clock getBaseClock() {
+-        return this.clock;
+-    }
+-    
+     /**
+      * Returns the actual lookup time to use internally for a read operation given the 
+      * lookup time wanted by the database user.
+diff --git a/java/src/bergdb/core/DbConstants.java b/java/src/bergdb/core/DbConstants.java
+index eb133ef..309b851 100644
+--- a/java/src/bergdb/core/DbConstants.java
++++ b/java/src/bergdb/core/DbConstants.java
+@@ -21,9 +21,6 @@ public class DbConstants {
+     
+     public static final long[] INTERNAL_PREFIX_SKEY = Keys.toSegments(INTERNAL_PREFIX);
+     
+-    /** Minimum possible cacheMemoryValue. */
+-    public static final long MIN_CACHE_MEMORY_VALUE = Constants.MIN_CACHE_MEMORY_VALUE;
+-    
+     /** Used for internal dummy writes. */
+     static final long[] DUMMY_KEY = Keys.toSegments(INTERNAL_PREFIX + "-dummy");
+ }
+diff --git a/java/src/bergdb/core/DbScan.java b/java/src/bergdb/core/DbScan.java
+index 6f3794e..0fdb464 100644
+--- a/java/src/bergdb/core/DbScan.java
++++ b/java/src/bergdb/core/DbScan.java
+@@ -30,21 +30,11 @@ public class DbScan {
+         this.db = db;
+     }
+     
+-    public DbScan includeInternal(boolean b) {
+-        this.includeInternal = b;
+-        return this;
+-    }
+-    
+     public DbScan includeKvTime(boolean b) {
+         this.includeKvTime = b;
+         return this;
+     }
+     
+-    public DbScan lookupTime(long lookupTime) {
+-        this.lookupTime = lookupTime;
+-        return this;
+-    }
+-    
+     public Result scan() {
+         // This method uses a special StopCondition.
+         // No Kvs are added to a result.
+diff --git a/java/src/bergdb/core/Eviction.java b/java/src/bergdb/core/Eviction.java
+index 55c0cf8..75ea723 100644
+--- a/java/src/bergdb/core/Eviction.java
++++ b/java/src/bergdb/core/Eviction.java
+@@ -166,10 +166,6 @@ public final class Eviction {
+         }
+     }
+ 
+-    public Schedule schedule() {
+-        return schedule;
+-    }
+-
+     /** Slots unswizzled and objects released so far; and the controller's metrics. */
+     public synchronized String summary() {
+         String s = "eviction " + schedule + ": " + unswizzled + " slots unswizzled, " + released
+diff --git a/java/src/bergdb/core/IDirtyNodes.java b/java/src/bergdb/core/IDirtyNodes.java
+index ad7b5fe..8c7e11c 100644
+--- a/java/src/bergdb/core/IDirtyNodes.java
++++ b/java/src/bergdb/core/IDirtyNodes.java
+@@ -1,7 +1,6 @@
+ package bergdb.core;
+ 
+ import bergdb.dag.KeyNode;
+-import bergdb.dag.Node;
+ import bergdb.dag.TopNode;
+ 
+ /**
+@@ -11,38 +10,6 @@ import bergdb.dag.TopNode;
+  */
+ public interface IDirtyNodes {
+ 
+-    /**
+-     * Returns the number of nodes in the collection.
+-     * Caller must hold DB.writeLock.
+-     * This method is only used for monitoring.
+-     */
+-    public int getSize();
+-    
+-    /**
+-     * Adds an spos-to-Node mapping if spos != Spos.NULL.
+-     */
+-    public void put(long spos, Node node);
+-    
+-    /**
+-     * Removes one mapping.
+-     * 
+-     * @param spos  The key of the mapping to remove.
+-     * @throws AssertionError  If no key 'spos' exists.
+-     */
+-    public void remove(long spos);
+-    
+-    /**
+-     * Adds all nodes that are "too dirty" to "list". The too dirty nodes are the nodes in the 
+-     * collection with spos < dirtyLimit.
+-     * Caller must hold DB.writeLock.
+-     * The returned entries are removed from the collection and isDirty is set to 
+-     * false for all nodes returned.
+-     * 
+-     * @param dirtyLimit A node with an spos less than this is "too dirty".
+-     * @param list The list to add the too dirty nodes to.
+-     */
+-    public void getAndRemoveTooDirtyNodes(long dirtyLimit, TransNodesForMe list);
+-
+     
+     /**
+      * The method subset of core.TransNodes needed by this class.
+diff --git a/java/src/bergdb/core/KeyFactory.java b/java/src/bergdb/core/KeyFactory.java
+index 7a7322e..6a53986 100644
+--- a/java/src/bergdb/core/KeyFactory.java
++++ b/java/src/bergdb/core/KeyFactory.java
+@@ -6,7 +6,6 @@ import java.util.Random;
+ import bergdb.common.Bytes;
+ import bergdb.common.StringUtil;
+ import bergdb.dag.Keys;
+-import bergdb.nanotest.Nano;
+ 
+ /**
+  * Sets of keys useful for testing the database.
+@@ -136,81 +135,4 @@ public class KeyFactory {
+         
+         return key;
+     }
+-    
+-    /**
+-     * Returns a "crazy" key, all strings. Lots of variation. Different keys for different
+-     * indexes is guaranteed. Varying key lengths.
+-     * Similar to crazyKey(), but without binary keys.
+-     */
+-    public static byte[] crazyStringKey(int index) {
+-        if (index < 0) {
+-            throw new IllegalArgumentException("index < 0 not allowed " + index);
+-        }
+-        Random r = new Random(index);
+-        byte[] key;
+-        int type = r.nextInt(10);
+-        
+-        switch (type) {
+-        case 0:
+-        case 1:
+-        case 2:
+-            // Case 'B'
+-            StringBuilder b = new StringBuilder("" + (1*1000000 + index));
+-            int len = b.length();
+-            int stop = len / 2;
+-            
+-            // Reversing order of chars
+-            for (int i = 0; i < stop; i++) {
+-                char c = b.charAt(i);
+-                b.setCharAt(i, b.charAt(len - 1 - i));
+-                b.setCharAt(len - 1- i, c);
+-            }
+-            b.append("B");
+-            key = Keys.toBytes(b.toString());
+-            break;
+-        case 3:
+-        case 4:
+-        case 5:
+-            // Case 'I'.
+-            key = Keys.toBytes(index + "I");
+-            break;
+-        case 6:
+-            // Case 'L' - a longer key
+-            int size = r.nextInt(1000) + 20;
+-            if (r.nextDouble() < 0.02) {
+-                // Very long key
+-                size = r.nextInt(10*1000) + 20;
+-            }
+-            
+-            key = new byte[size];
+-            key[key.length - 1] = (byte) 'L';
+-            int myInt = Math.abs(r.nextInt(1000*1000)) + 10000;
+-            Bytes.stringToBytes("" + myInt, key, 0);
+-            Bytes.intToBytesBE(index, key, key.length - 5);
+-            break;
+-        case 7:
+-            // Case 'P'.
+-            // String key, long same-prefix for many keys.
+-            String s = "r/examples/A long directory name/followed by another one/" + index + "-P";
+-            key = Keys.toBytes(s);
+-            break;
+-        case 8:
+-        case 9:
+-            // Case 'C'.
+-            int i = r.nextInt(crazyPrefixes.length);
+-            key = Keys.toBytes(crazyPrefixes[i] + index + "-C");
+-            break;
+-        default:
+-            throw new Error();
+-        }
+-        
+-        return key;
+-    }
+-    
+-    @Nano
+-    public static void testGettingCrazy() {
+-        for (int i = 0; i < 1000; i++) {
+-            KeyFactory.crazyKey(i);
+-        }
+-    }
+ }
+diff --git a/java/src/bergdb/core/Kv.java b/java/src/bergdb/core/Kv.java
+index c5ac6ea..f5e60fb 100644
+--- a/java/src/bergdb/core/Kv.java
++++ b/java/src/bergdb/core/Kv.java
+@@ -53,14 +53,6 @@ public final class Kv {
+         return value;
+     }
+     
+-    public boolean hasKeyTransformation() {
+-        return keyTransformation != null;
+-    }
+-    
+-    public boolean hasValueTransformation() {
+-        return value != null;
+-    }
+-    
+     public KeyTransformation getKeyTransformation() {
+         return keyTransformation;
+     }
+diff --git a/java/src/bergdb/core/KvComparison.java b/java/src/bergdb/core/KvComparison.java
+index 9a5f4aa..5a88db4 100644
+--- a/java/src/bergdb/core/KvComparison.java
++++ b/java/src/bergdb/core/KvComparison.java
+@@ -29,11 +29,6 @@ public class KvComparison {
+         return new KvComparison(db1, db2);
+     }
+     
+-    public KvComparison out(PrintStream out) {
+-        this.out = out;
+-        return this;
+-    }
+-    
+     public boolean compare() {
+         DbScan.Result r1 = new DbScan(db1).includeKvTime(true).scan();
+         DbScan.Result r2 = new DbScan(db2).includeKvTime(true).scan();
+diff --git a/java/src/bergdb/core/NodeCollection.java b/java/src/bergdb/core/NodeCollection.java
+index d356166..069d531 100644
+--- a/java/src/bergdb/core/NodeCollection.java
++++ b/java/src/bergdb/core/NodeCollection.java
+@@ -607,7 +607,6 @@ public class NodeCollection implements PointerFollower {
+     private static Cache.DbInfo testDbInfo() {
+         return new Cache.DbInfo() {
+             final PointerLocks locks = new PointerLocks();
+-            public long getStartupPosForEvict() { return 0; }
+             public PointerLocks getPointerLocks() { return locks; }
+         };
+     }
+diff --git a/java/src/bergdb/core/NodeStream.java b/java/src/bergdb/core/NodeStream.java
+index 1513d32..80e5e62 100644
+--- a/java/src/bergdb/core/NodeStream.java
++++ b/java/src/bergdb/core/NodeStream.java
+@@ -97,10 +97,6 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
+         return rstream.getMetaBlock();
+     }
+ 
+-    public final long getPosOfLastValidMetaBlock() {
+-        return rstream.getPosOfLastValidMetaBlock();
+-    }
+-    
+     public final long getLastTransPosOfLastValidMetaBlock() {
+         return rstream.getLastTransSposOfLastValidMetaBlock();
+     }
+@@ -135,53 +131,6 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
+         rstream.getMetaBlock().setLastTransSpos(pos);
+     }
+     
+-    @SuppressWarnings("unused")
+-    private void checkEqualBytes(long transPos, byte[] transBytes, int transBytesSize) {
+-        boolean equal = true;
+-        int diffIndex = -1;
+-        
+-        byte[] streamBytes = readTransBytes(transPos);
+-        
+-        if (transBytesSize != streamBytes.length) {
+-            equal = false;
+-        } else {
+-            for (int i = 0; i < transBytesSize; i++) {
+-                if (transBytes[i] != streamBytes[i]) {
+-                    equal = false;
+-                    diffIndex = i;
+-                    break;
+-                }
+-            }
+-        }
+-        
+-        if (!equal) {
+-            String diff = printDiff(transPos, transBytes, streamBytes);
+-            throw new IllegalStateException(
+-                    "transBytes and streamBytes are not equal. " + diffIndex + ", diff:\n" + diff);
+-        }
+-    }
+-
+-    private String printDiff(long transPos, byte[] transBytes, byte[] streamBytes) {
+-        String s1 = printTransGivenBuffer(transPos, transBytes);
+-        String s2 = printTransGivenBuffer(transPos, streamBytes);
+-        return "---- Trans@" + transPos + " ----\n" + "From transBytes:\n  " + s1 + "From streamBytes:\n  " + s2;
+-    }
+-    
+-    private String printTransGivenBuffer(long tpos, byte[] buffer) {
+-        String s;
+-        try {
+-            StoredTrans t = StoredTrans.parse(tpos, buffer);
+-            s = t.print();
+-        } catch (StreamFormatException e) {
+-            s = "format exception: " + e.getMessage();
+-        }
+-        return s;
+-    }
+-
+-    public long getLastTransSpos() {
+-        return rstream.getMetaBlock().getLastTransSpos();
+-    }
+-    
+     public NodeHeader readNodeHeader(long spos) {
+         // Assumes: node type at buffer[4]
+         // Assumes: id at offset StoredTopNode.ID_OFFSET for TYPE_TOP_NODE.
+@@ -332,28 +281,6 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
+         }
+     }
+     
+-    public void printGotDirtyLine(PrintStream out, StoredTrans storedTrans) {
+-        if (storedTrans.gotDirtyIdsAndSpos.length > 0) {
+-            out.print("got dirty: ");
+-            long[] d = storedTrans.gotDirtyIdsAndSpos;
+-            for (int i = 0; i < d.length; i++) {
+-                out.print(d[i] + " ");
+-            }
+-            out.println();
+-        }
+-    }
+-
+-    /**
+-     * Returns the spos of the last valid transaction that was completely written before stream
+-     * position 'spos'. If there is no such transaction, the spos of the very first valid
+-     * transaction is returned instead. If there is no valid transaction at all in the stream,
+-     * Spos.NULL is returned. Caller must hold DB.writeLock.
+-     */
+-    public long getPosOfLastCompletedTrans() {
+-        assert Thread.holdsLock(writeLock);
+-        return rstream.getPosOfTransCompletedBefore(rstream.getNextSpos());
+-    }
+-    
+     public TransIterator createTransIterator(long startPos) {
+         return new TransIterator(startPos, false);
+     }
+@@ -443,20 +370,6 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
+             return true;
+         }
+ 
+-        public final long getTransTime() {
+-            return transTime;
+-        }
+-
+-        /** Returns the stream pos of the first byte of the transaction. */
+-        public final long getTpos() {
+-            return tpos;
+-        }
+-
+-        /** Returns the stream pos of the last byte of the transaction. */
+-        public final long getLastPos() {
+-            return lastPos;
+-        }
+-        
+         public StoredTrans getStoredTrans() {
+             return StoredTrans.parse(tpos, transBuffer);
+         }
+diff --git a/java/src/bergdb/core/Pack.java b/java/src/bergdb/core/Pack.java
+index 39723bf..d584f0e 100644
+--- a/java/src/bergdb/core/Pack.java
++++ b/java/src/bergdb/core/Pack.java
+@@ -4,7 +4,6 @@ import bergdb.nanotest.IPack;
+ 
+ public class Pack implements IPack {
+     private static Class<?>[] classes = new Class<?>[] {
+-        Cache2.class,
+         Cache3.class,
+         DatabaseId.class,
+         Db.class,
+diff --git a/java/src/bergdb/core/Residents.java b/java/src/bergdb/core/Residents.java
+index 20df316..d6405d4 100644
+--- a/java/src/bergdb/core/Residents.java
++++ b/java/src/bergdb/core/Residents.java
+@@ -162,13 +162,6 @@ public final class Residents {
+         return canonicalBytes.get() + Math.max(0, snapshotBytes.get()) + valueBytes.get();
+     }
+ 
+-    public String summary() {
+-        return "resident: " + bytes() + " bytes; canonical " + canonicalCount.get() + " objects, "
+-                + canonicalBytes.get() + " bytes; snapshots " + snapshotCount.get() + ", "
+-                + Math.max(0, snapshotBytes.get()) + " bytes; values " + valueCount.get() + ", "
+-                + valueBytes.get() + " bytes";
+-    }
+-
+     /**
+      * Object 'node' is pinned: eviction may neither unswizzle a slot that names it nor
+      * release it. The canonical object of a node of D (dirty) or of the record being written,
+diff --git a/java/src/bergdb/core/StartupPos.java b/java/src/bergdb/core/StartupPos.java
+index cbd887e..94e5ad5 100644
+--- a/java/src/bergdb/core/StartupPos.java
++++ b/java/src/bergdb/core/StartupPos.java
+@@ -27,14 +27,6 @@ public class StartupPos {
+         return startupPos.get();
+     }
+     
+-    /**
+-     * Returns the last startupPos that has been released for use
+-     * by evict.
+-     */
+-    public final long getForEvict() {
+-        return evictPos;
+-    }
+-    
+     /**
+      * Sets the startup pos.
+      * The new startup pos is not immediately available for evict. 
+diff --git a/java/src/bergdb/core/StoredTrans.java b/java/src/bergdb/core/StoredTrans.java
+index 90638e5..75972f4 100644
+--- a/java/src/bergdb/core/StoredTrans.java
++++ b/java/src/bergdb/core/StoredTrans.java
+@@ -90,25 +90,6 @@ public class StoredTrans {
+         gotDirtyIdsAndSpos = d.gotDirtyIdsAndSpos;
+     }
+     
+-    public boolean isPrimordial() {
+-        return tpos == RecoverableStream.META_BLOCK_SIZE;
+-    }
+-    
+-    public boolean hasNewStartupPos() {
+-        return startupPos != -1;
+-    }
+-    
+-    public boolean isIndexTransaction() {
+-        boolean result = true;
+-        for (StoredNode stored : nodes) {
+-            if (!stored.getNode().isIndexNode()) {
+-                result = false;
+-                break;
+-            }
+-        }
+-        return result;
+-    }
+-    
+     /**
+      * Returns a value node matching the given key, or null if no
+      * match is found. Linear search is used.
+diff --git a/java/src/bergdb/core/SyncLevel.java b/java/src/bergdb/core/SyncLevel.java
+index 965b27d..c3d4930 100644
+--- a/java/src/bergdb/core/SyncLevel.java
++++ b/java/src/bergdb/core/SyncLevel.java
+@@ -22,8 +22,4 @@ public enum SyncLevel {
+     private SyncLevel(int value) {
+         this.value = value;
+     }
+-    
+-    public int getValue() {
+-        return value;
+-    }
+ }
+diff --git a/java/src/bergdb/core/Trans.java b/java/src/bergdb/core/Trans.java
+index 774696a..f84ce26 100644
+--- a/java/src/bergdb/core/Trans.java
++++ b/java/src/bergdb/core/Trans.java
+@@ -55,7 +55,6 @@ public class Trans {
+     // -- Output --
+     
+     public long tt;                 // Transaction time, used internally and as output.
+-    public int splitCount;          // Number of node splits made during execute().
+     public long tpos;               // Stream position of the first byte of the transaction. Available after execute().
+     public long lastPos;            // Stream position of the last byte of the transaction. Available after execute().
+     public long nextPos;            // Stream position of the first byte of the next transaction. Available after execute().
+@@ -119,30 +118,6 @@ public class Trans {
+         return s;
+     }
+     
+-    /**
+-     * Returns a multi-line string representing this object for debug purpose.
+-     */
+-    public String print() {
+-        StringBuilder b = new StringBuilder();
+-        b.append("pos: " + tpos + "\n");
+-        b.append("storedNewStartupPos: " + startupPos + "\n");
+-        b.append("readKeyHashes: ");
+-        for (int i = 0; i < this.readKeyHashes.length; i++) {
+-            b.append(readKeyHashes[i] + " ");
+-        }
+-        b.append("\n");
+-        
+-        b.append("kv keys:\n");
+-        for (int i = 0; i < this.kvs.length; i++) {
+-            Kv kv =  kvs[i];
+-            b.append("  " + Keys.toStringWithSubstitute(kv.getKey())
+-                    + " -> size:" + kv.getValue().length
+-                    + ", key hash: " + Keys.hash(kv.getKey()) + "\n");
+-        }
+-        
+-        return b.toString();
+-    }
+-    
+     
+     
+     /**
+@@ -243,13 +218,6 @@ public class Trans {
+             return this;
+         }
+         
+-        public Builder keyRead(byte[] key) {
+-            long[] segments = Keys.toSegments(key);
+-            long hash = Keys.hash(segments);
+-            readHashes.add(hash);
+-            return this;
+-        }
+-        
+         public Builder keyRead(long[] key) {
+             long[] segments = key;
+             long hash = Keys.hash(segments);
+diff --git a/java/src/bergdb/core/TransNodes.java b/java/src/bergdb/core/TransNodes.java
+index a08b11f..fb15a50 100644
+--- a/java/src/bergdb/core/TransNodes.java
++++ b/java/src/bergdb/core/TransNodes.java
+@@ -218,57 +218,6 @@ public final class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.T
+         };
+     }
+ 
+-    /**
+-     * Checks whether the collection of nodes contains the given node 
+-     * (compare by reference).
+-     */
+-    public boolean contains(Node node) {
+-        boolean result = false;
+-        
+-        outer: {
+-            for (int i = 0; i < topCount; i++) {
+-                if (topNodes[i] == node) {
+-                    result = true;
+-                    break outer;
+-                }
+-            }
+-            
+-            for (int i = 0; i < keyCount; i++) {
+-                if (keyNodes[i] == node) {
+-                    result = true;
+-                    break outer;
+-                }
+-            }
+-            
+-            for (int i = 0; i < valueCount; i++) {
+-                if (valueNodes[i] == node) {
+-                    result = true;
+-                    break outer;
+-                }
+-            }
+-        }
+-        
+-        return result;
+-    }
+-
+-    public final long sumMemSize() {
+-        long sum = 0;
+-        
+-        for (int i = 0; i < topCount; i++) {
+-            sum += topNodes[i].getMemSize();
+-        }
+-        
+-        for (int i = 0; i < keyCount; i++) {
+-            sum += keyNodes[i].getMemSize();
+-        }
+-        
+-        for (int i = 0; i < valueCount; i++) {
+-            sum += valueNodes[i].getMemSize();
+-        }
+-        
+-        return sum;
+-    }
+-    
+     /**
+      * For highest performance iterate directly on the three arrays: topNodes, keyNodes, valueNodes
+      * which allows for type-specific optimizations; otherwise the user of this
+@@ -288,78 +237,10 @@ public final class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.T
+         return result;
+     }
+     
+-    /**
+-     * Checks for no duplicates.
+-     *  
+-     * @throws AssertionError  
+-     *              If there are duplicates.
+-     * @return true  
+-     *              Always returns true when the method returns normally.
+-     */
+-    public boolean assertNoDuplicates() {
+-        for (int i = 0; i < topCount; i++) {
+-            TopNode n = topNodes[i];
+-            for (int j = i+1; j < topCount; j++) {
+-                if (topNodes[j] == n) {
+-                    throw new AssertionError("Duplicate TopNode, " + i + ", " + j 
+-                            + ", topSize: " + topCount);
+-                }
+-            }
+-        }
+-        
+-        for (int i = 0; i < keyCount; i++) {
+-            KeyNode n = keyNodes[i];
+-            for (int j = i+1; j < keyCount; j++) {
+-                if (keyNodes[j] == n) {
+-                    throw new AssertionError("Duplicate KeyNode, " + i + ", " + j 
+-                            + ", keySize: " + keyCount);
+-                }
+-            }
+-        }
+-        
+-        for (int i = 0; i < valueCount; i++) {
+-            ValueNode n = valueNodes[i];
+-            for (int j = i+1; j < valueCount; j++) {
+-                if (valueNodes[j] == n) {
+-                    throw new AssertionError("Duplicate ValueNode, " + i + ", " + j 
+-                            + ", valueSize: " + valueCount);
+-                }
+-            }
+-        }
+-        
+-        return true;
+-    }
+-
+     public String toString() {
+         return "node counts: " + topCount + ", " + keyCount + ", " + valueCount;
+     }
+     
+-    public String print() {
+-        StringBuilder b = new StringBuilder();
+-        if (topCount > 0) {
+-            b.append("-- Top nodes --\n");
+-            for (int i = 0; i < topCount; i++) {
+-                b.append(topNodes[i].toString() + "\n");
+-            }
+-        }
+-        
+-        if (keyCount > 0) {
+-            b.append("-- Key nodes --\n");
+-            for (int i = 0; i < keyCount; i++) {
+-                b.append(keyNodes[i].print() + "\n");
+-            }
+-        }
+-        
+-        if (valueCount > 0) {
+-            b.append("-- Value nodes --\n");
+-            for (int i = 0; i < valueCount; i++) {
+-                b.append(valueNodes[i].toString() + "\n");
+-            }
+-        }
+-        
+-        return b.toString();
+-    }
+-    
+     
+     // ======== Testing ========
+     
+diff --git a/java/src/bergdb/core/TransSeq.java b/java/src/bergdb/core/TransSeq.java
+index 7b87a53..8beeacd 100644
+--- a/java/src/bergdb/core/TransSeq.java
++++ b/java/src/bergdb/core/TransSeq.java
+@@ -169,32 +169,6 @@ public class TransSeq implements PosOfTransBeforeFunction {
+         return sum.getValue();
+     }
+     
+-    public String print() {
+-        StringBuilder b = new StringBuilder();
+-        b.append("======== TransSeq ========\n");
+-        b.append("size: " + this.size + "\n");
+-        
+-        TransInfo info = this.first;
+-        
+-        while (info != null) {
+-            b.append("---- TransInfo tt " + info.tt + " ----\n");
+-            b.append("tpos: " + info.tpos + "\n");
+-            b.append("startupPos: " + info.startupPos + "\n");
+-            printDirty(b, info);            
+-            info = info.next;
+-        }
+-        
+-        return b.toString();
+-    }
+-    
+-    private void printDirty(StringBuilder b, TransInfo info) {
+-        b.append("gotDirty: ");
+-        for (Node node : info.gotDirtyNodes) {
+-            b.append(node + "; ");
+-        }
+-        b.append("\n");
+-    }
+-    
+     /**
+      * Accepts a visitor which will visit all gotDirtyNodes with a tpos <= limit.
+      */
+@@ -240,20 +214,6 @@ public class TransSeq implements PosOfTransBeforeFunction {
+         public String toString() {
+             return "tt:" + tt + ", tpos:" + tpos + ", gotDirtyCount:" + gotDirtyNodes.size();
+         }
+-        
+-        public String print() {
+-            StringBuilder b = new StringBuilder();
+-            b.append("tt:" + tt + ", tpos:" + tpos);
+-            if (gotDirtyNodes.size() == 0) {
+-                b.append(", no gotDirtyNodes");
+-            } else {
+-                b.append(", gotDirtyNodes:\n");
+-                for (Node n : gotDirtyNodes) {
+-                    b.append("  " + n.toString() + "\n");
+-                }
+-            }
+-            return b.toString();
+-        }
+     }
+     
+     /**
+diff --git a/java/src/bergdb/dag/Dag.java b/java/src/bergdb/dag/Dag.java
+index 9962a84..d16ceb1 100644
+--- a/java/src/bergdb/dag/Dag.java
++++ b/java/src/bergdb/dag/Dag.java
+@@ -74,30 +74,6 @@ public class Dag {
+         top.printGraph(out, "", 0);
+     }
+     
+-    /**
+-     * Visits all memory pointers. Pointers may be visited several times
+-     * since we deal with a DAG, not a tree.
+-     */
+-    public void visitMemoryPointers(PointerVisitor visitor) {
+-        Pointer pointer = new Pointer();   // mutable memory to avoid mem alloc.
+-        Node superRoot = topDs.getSuperRoot();
+-        visitMemoryPointersFromNode(superRoot, visitor, pointer);
+-    }
+-    
+-    private void visitMemoryPointersFromNode(Node node, PointerVisitor visitor, Pointer pointer) {
+-        int count = node.getSize();
+-        
+-        for (int i = 0; i < count; i++) {
+-            node.getPointer(i, pointer);
+-            if (pointer.isMem()) {
+-                visitor.visitPointer(node, pointer);
+-                
+-                Node child = pointer.getNode();
+-                visitMemoryPointersFromNode(child, visitor, pointer);
+-            }
+-        }
+-    }
+-    
+     public void visitMemoryPointersOnce(PointerVisitor visitor) {
+         HashSet<Node> visited = new HashSet<Node>();
+         
+@@ -1217,13 +1193,6 @@ public class Dag {
+     };
+     
+     
+-    public static interface NodeAccessListener {
+-        /**
+-         * Reports that a node was accessed.
+-         */
+-        public void nodeAccessed(Node node);
+-    }
+-    
+     
+     public static final int TIME_SPLIT_1 = 1;
+     public static final int TIME_SPLIT_2 = 2;
+diff --git a/java/src/bergdb/dag/DagNodeIterator.java b/java/src/bergdb/dag/DagNodeIterator.java
+index 72790e5..e735be3 100644
+--- a/java/src/bergdb/dag/DagNodeIterator.java
++++ b/java/src/bergdb/dag/DagNodeIterator.java
+@@ -1,11 +1,6 @@
+ package bergdb.dag;
+ 
+-import java.util.ArrayList;
+-import java.util.List;
+ import bergdb.common.Pair;
+-import bergdb.common.StringUtil;
+-import bergdb.nanotest.Assert;
+-import bergdb.nanotest.Nano;
+ 
+ /**
+  * Iterates all nodes in a DAG.
+@@ -91,16 +86,6 @@ public class DagNodeIterator {
+         }
+     }
+     
+-    /**
+-     * Utility method, adds all nodes to a list.
+-     */
+-    public void addToList(List<Node> list) {
+-        Node node;
+-        while ((node = next()) != null) {
+-            list.add(node);
+-        }
+-    }
+-
+     private void createChildIter(long maxLookupTime) {
+         Pair<Long, Node> result = getChild(nextPointerIndex, maxLookupTime);
+         maxLookupTime = result.value0();
+@@ -158,34 +143,4 @@ public class DagNodeIterator {
+     }
+     
+     // ======== Test ========
+-    
+-    @Nano
+-    private static void testEmptyDag() {
+-        Dag g = DagTester.emptyDag(10);
+-        DagNodeIterator iter = new DagNodeIterator(g);
+-        ArrayList<Node> list = new ArrayList<Node>();
+-        iter.addToList(list);
+-        
+-        Assert.assertEquals(2, list.size());
+-        Assert.assertTrue(list.get(0).isTopNode());
+-        Assert.assertTrue(list.get(1).isKeyNode());
+-    }
+-    
+-    
+-    @Nano
+-    private static void testDagWithOneKv() {
+-        Dag g = DagTester.emptyDag(10);
+-        PutData pd = g.newPutData();
+-        pd.tt = 20;
+-        g.putKv(Keys.toSegments("key"), StringUtil.toBytes("value"), pd);
+-        
+-        DagNodeIterator iter = new DagNodeIterator(g);
+-        ArrayList<Node> list = new ArrayList<Node>();
+-        iter.addToList(list);
+-        
+-        Assert.assertEquals(3, list.size());
+-        Assert.assertTrue(list.get(0).isTopNode());
+-        Assert.assertTrue(list.get(1).isKeyNode());
+-        Assert.assertTrue(list.get(2).isValueNode());
+-    }
+ }
+diff --git a/java/src/bergdb/dag/DagTester.java b/java/src/bergdb/dag/DagTester.java
+index 245e485..ab21b9a 100644
+--- a/java/src/bergdb/dag/DagTester.java
++++ b/java/src/bergdb/dag/DagTester.java
+@@ -526,14 +526,6 @@ public class DagTester {
+         return r;
+     }
+     
+-    @SuppressWarnings("unused")
+-    private static void printMap(String name, HashMap<Node, Node> map) {
+-        System.out.println("---- " + name + " ----");
+-        for (Map.Entry<Node, Node> en : map.entrySet()) {
+-            System.out.println(en.getKey() + " --> " + en.getValue());
+-        }
+-    }
+-
+     public static void main(String[] args) {
+         Dag g = emptyDag(10);
+         PutData pd = g.newPutData();
+diff --git a/java/src/bergdb/dag/GetMany.java b/java/src/bergdb/dag/GetMany.java
+index 09073b7..7d10141 100644
+--- a/java/src/bergdb/dag/GetMany.java
++++ b/java/src/bergdb/dag/GetMany.java
+@@ -2,8 +2,6 @@ package bergdb.dag;
+ 
+ import java.util.ArrayList;
+ import java.util.List;
+-import bergdb.dag.Dag.CachePolicy;
+-import bergdb.dag.Dag.PointerListener;
+ 
+ /**
+  * Input/output to the Graph.getMany() method. Also data structures and algorithms to support that
+@@ -93,22 +91,6 @@ public class GetMany {
+     
+     // ---- Inner classes / interfaces ----
+     
+-    /**
+-     * Limited access to Graph.
+-     */
+-    public interface DagForMe {
+-        public Node followPointer(final Node predecessor, int pointerIndex, long accessData, 
+-                PointerListener pointerListener, CachePolicy cachePolicy);
+-    }
+-    
+-    /**
+-     * A link in the node chain.
+-     */
+-    static class Link {
+-        KeyNode node;
+-        long compareValue;
+-    }
+-    
+     /**
+      * Class that implements GetMany functionality. Keeps the node chain for the iteration.
+      */
+@@ -502,10 +484,6 @@ public class GetMany {
+         public void eod() {
+             this.eod = true;
+         }
+-        
+-        public boolean getEod() {
+-            return eod;
+-        }
+     }
+     
+     /**
+@@ -530,10 +508,6 @@ public class GetMany {
+         public void eod() {
+             this.eod = true;
+         }
+-        
+-        public boolean gotEod() {
+-            return eod;
+-        }
+     }
+     
+     /**
+@@ -564,10 +538,6 @@ public class GetMany {
+         public void eod() {
+             this.eod = true;
+         }
+-        
+-        public boolean gotEod() {
+-            return eod;
+-        }
+     }
+     
+     /**
+@@ -595,9 +565,5 @@ public class GetMany {
+         public void eod() {
+             this.eod = true;
+         }
+-        
+-        public boolean gotEod() {
+-            return eod;
+-        }
+     }
+ }
+diff --git a/java/src/bergdb/dag/KeyAccessPath.java b/java/src/bergdb/dag/KeyAccessPath.java
+index 9ed6e9d..c7d78c3 100644
+--- a/java/src/bergdb/dag/KeyAccessPath.java
++++ b/java/src/bergdb/dag/KeyAccessPath.java
+@@ -1,6 +1,5 @@
+ package bergdb.dag;
+ 
+-
+ /**
+  * Access path through the key nodes of the DB graph to access a certain KV.
+  * Specialized, fast data structure. No repeated memory allocation, it is reused between
+@@ -16,10 +15,6 @@ public final class KeyAccessPath {
+         nodes = new KeyNode[16];
+     }
+     
+-    public final int getSize() {
+-        return size;
+-    }
+-    
+     /**
+      * Sets size to 0. Memory leak warning: node references not set to null.
+      */
+diff --git a/java/src/bergdb/dag/KeyNode.java b/java/src/bergdb/dag/KeyNode.java
+index 826154b..d5c757f 100644
+--- a/java/src/bergdb/dag/KeyNode.java
++++ b/java/src/bergdb/dag/KeyNode.java
+@@ -1425,11 +1425,6 @@ public class KeyNode implements Node {
+         return true;
+     }
+     
+-    public boolean assertOk() {
+-        check();
+-        return true;
+-    }
+-    
+     /**
+      * Same as check() except for that the node size is also checked against maxNodeSize.
+      */
+@@ -1628,9 +1623,6 @@ public class KeyNode implements Node {
+                 return klong;
+             }
+             
+-            public Node getNode() {
+-                return KeyNode.this.pointers[offset];
+-            }
+         };
+     }
+ 
+diff --git a/java/src/bergdb/dag/Keys.java b/java/src/bergdb/dag/Keys.java
+index bda914c..8a1e97c 100644
+--- a/java/src/bergdb/dag/Keys.java
++++ b/java/src/bergdb/dag/Keys.java
+@@ -17,10 +17,6 @@ import bergdb.nanotest.Nano;
+  */
+ public class Keys {
+     
+-    public int compare(long[] arr1, long[] arr2) {
+-        return compareArrays(arr1, arr2);
+-    }
+-    
+     /**
+      * Returns the hash value for a key. This hash is used in the KeyModSet.
+      * 
+@@ -102,11 +98,6 @@ public class Keys {
+         return StringUtil.isPrintableAscii(bytes2);
+     }
+     
+-    public static final String toDisplayString(long[] skey) {
+-        byte[] bkey = toBytes(skey);
+-        return toDisplayString(bkey);
+-    }
+-    
+     public static final String toDisplayString(byte[] bytes) {
+         assert bytes != null;
+         bytes = bytes.clone();
+@@ -127,10 +118,6 @@ public class Keys {
+         return StringUtil.toString(bytes);
+     }
+     
+-    public static final String toStringWithSubstitute(long[] segments) {
+-        return toStringWithSubstitute(toBytes(segments));
+-    }
+-    
+     public static final String toStringWithSubstitute(byte[] bytes) {
+         assert bytes != null;
+         bytes = bytes.clone();
+diff --git a/java/src/bergdb/dag/Klong.java b/java/src/bergdb/dag/Klong.java
+index a4a4d5d..704f5e8 100644
+--- a/java/src/bergdb/dag/Klong.java
++++ b/java/src/bergdb/dag/Klong.java
+@@ -68,8 +68,6 @@ public class Klong {
+     public static final int INT_TYPE_KEY    = 1;
+     public static final int INT_TYPE_DELETE_BITMAP = 3;
+     
+-    public static final int MAX_VERSION = 7;
+-    
+     /** The maximum number of key bytes in one klong. */
+     public static final int MAX_SIZE = 7;
+     
+@@ -273,16 +271,6 @@ public class Klong {
+         return value & 0x3ffffffffffffff8L;
+     }
+     
+-    /**
+-     * Compare value shifted to the far right. Minimizes the magnitude of
+-     * the compare value.
+-     */
+-    public static final long getShiftedCompareValue(long value) {
+-        // All, but type in Byte 7 and version in Byte 0
+-        // Byte 7 mask: 0011 1111 = 3f, Byte 0 mask: 1111 1000 = f8
+-        return (value & 0x3ffffffffffffff8L) >>> 3;
+-    }
+-    
+     /**
+      * Creates a compare value. No checks are made.
+      */
+@@ -349,10 +337,6 @@ public class Klong {
+         return b.toString();
+     }
+     
+-    public static String compareValueToString(long compareValue) {
+-        return toString(compareValueToKeyKlong(compareValue));
+-    }
+-    
+     /**
+      * Given two KEY klongs, this method returns the length of the common 
+      * prefix (0-7).
+@@ -397,25 +381,6 @@ public class Klong {
+         return result;
+     }
+     
+-    /**
+-     * Throws AssertionError if deleteKlong contains bits set above index sz-1
+-     * and assertions is turned on.
+-     * 
+-     * @param deleteKlong
+-     * @param sz
+-     * @return true 
+-     */
+-    public static boolean assertNoDeleteBitsBeondSize(long deleteKlong, short sz) {
+-        assert sz >= 0 && sz <= 62;
+-        assert Klong.getType(deleteKlong) == Klong.TYPE_DELETE_BITMAP;
+-        
+-        for (int i = sz; i < 62; i++) {
+-            assert !Klong.isDeleted(deleteKlong, i);
+-        }
+-        
+-        return true;
+-    }
+-    
+     
+     // =========================== Testing =================
+     
+diff --git a/java/src/bergdb/dag/KlongIter.java b/java/src/bergdb/dag/KlongIter.java
+index c2eee36..8c0b5ac 100644
+--- a/java/src/bergdb/dag/KlongIter.java
++++ b/java/src/bergdb/dag/KlongIter.java
+@@ -1,6 +1,5 @@
+ package bergdb.dag;
+ 
+-
+ /**
+  * Iterates a sequence of klongs.
+  */
+@@ -14,6 +13,4 @@ public interface KlongIter {
+      * Advances iterator to next slong and returns it.
+      */
+     public long next();
+-    
+-    public Node getNode();
+ }
+diff --git a/java/src/bergdb/dag/Pack.java b/java/src/bergdb/dag/Pack.java
+index afbffa4..c15c3d2 100644
+--- a/java/src/bergdb/dag/Pack.java
++++ b/java/src/bergdb/dag/Pack.java
+@@ -6,7 +6,6 @@ public class Pack implements IPack {
+     private static Class<?>[] classes = new Class<?>[] {
+         AccessData.class,
+         GetData.class,
+-        DagChecksum.class,
+         DagTester.class,
+         KeyAccessPath.class,
+         Klong.class,
+diff --git a/java/src/bergdb/dag/Pointer.java b/java/src/bergdb/dag/Pointer.java
+index e2d4969..9a02a23 100644
+--- a/java/src/bergdb/dag/Pointer.java
++++ b/java/src/bergdb/dag/Pointer.java
+@@ -54,16 +54,6 @@ public class Pointer {
+         return pos;
+     }
+     
+-    /**
+-     * Returns the access data of the pointer.
+-     * This is a valid access data value only when isMem() == true; that is
+-     * when this pointer is a memory pointer.
+-     */
+-    public final long getAccessData() {
+-        assert isMem() : "getAccessData called, but pointer.isMem() is false, " + this;
+-        return pos;
+-    }
+-    
+     public final Node getNode() {
+         return node;
+     }
+diff --git a/java/src/bergdb/dag/TopNode.java b/java/src/bergdb/dag/TopNode.java
+index 2e56890..e3023e1 100644
+--- a/java/src/bergdb/dag/TopNode.java
++++ b/java/src/bergdb/dag/TopNode.java
+@@ -105,10 +105,6 @@ public final class TopNode implements Node {
+         return result;
+     }
+     
+-    public long getTopNodeId() {
+-        return topNodeId;
+-    }
+-    
+     public final byte getType() {
+         return Node.TYPE_TOP_NODE;
+     }
+@@ -249,10 +245,6 @@ public final class TopNode implements Node {
+         this.isCanonical = isCanonical;
+     }
+ 
+-    public final void setIsInTransNodes(boolean b) {
+-        this.isInTransNodes = b;
+-    }
+-    
+     public final boolean isDirty() {
+         return this.isDirty;
+     }
+diff --git a/java/src/bergdb/dag/ValueNode.java b/java/src/bergdb/dag/ValueNode.java
+index 5cfd38e..f1e2ec9 100644
+--- a/java/src/bergdb/dag/ValueNode.java
++++ b/java/src/bergdb/dag/ValueNode.java
+@@ -93,13 +93,6 @@ public final class ValueNode implements Node {
+     public final void setCanonical(boolean isCanonical) {
+     }
+ 
+-    /**
+-     * Caller must hold DB.writeLock.
+-     */
+-    public final void setIsInTransNodes(boolean b) {
+-        this.isInTransactionNodes = b;
+-    }
+-
+     /**
+      * Returns false; a ValueNode cannot be dirty. Every change
+      * is written directly to stream and there are no outbound pointers.
+diff --git a/java/src/bergdb/nanotest/Assert.java b/java/src/bergdb/nanotest/Assert.java
+index 6f46e80..89f51f1 100644
+--- a/java/src/bergdb/nanotest/Assert.java
++++ b/java/src/bergdb/nanotest/Assert.java
+@@ -141,28 +141,6 @@ public class Assert {
+         }
+     }
+     
+-    public static boolean arrayEquals(byte[] expected, byte[] actual) {
+-        if (expected == null) {
+-            return actual == null ? true : false;
+-        }
+-        
+-        if (actual == null) {
+-            return false;
+-        }
+-        
+-        if (expected.length != actual.length) {
+-            return false;
+-        }
+-        
+-        for (int i = 0; i < expected.length; i++) {
+-            if (expected[i] != actual[i]) {
+-                return false;
+-            }
+-        }
+-        
+-        return true;
+-    }
+-    
+     public static void assertArrayEquals(char[] expected, char[] actual) {
+         if (expected == null) {
+             if (actual == null) {
+diff --git a/java/src/bergdb/nanotest/ConsoleUI.java b/java/src/bergdb/nanotest/ConsoleUI.java
+index 9f8637a..1345918 100644
+--- a/java/src/bergdb/nanotest/ConsoleUI.java
++++ b/java/src/bergdb/nanotest/ConsoleUI.java
+@@ -215,58 +215,6 @@ public class ConsoleUI implements TestRunConsumer {
+         }
+     }
+     
+-    public void reportOK() {
+-        testDone(null);
+-    }
+-
+-    public int getTotal() {
+-        return total;
+-    }
+-    
+-    public int getFailed() {
+-        return failed;
+-    }
+-    
+-    public double getTotalExeTime() {
+-        return totalExeTime;
+-    }
+-    
+-    public List<Prop> getProps() {
+-        return props;
+-    }
+-    
+-    public long getLong(String name) {
+-        Object obj = getProp(name);
+-        if (obj instanceof Long) {
+-            return (Long) obj;
+-        } else {
+-            throw new IllegalArgumentException("No such Long prop");
+-        }
+-    }
+-    
+-    public double getDouble(String name) {
+-        Object obj = getProp(name);
+-        if (obj instanceof Double) {
+-            return (Double) obj;
+-        } else {
+-            throw new IllegalArgumentException("No such Double prop");
+-        }
+-    }
+-    
+-    public Object getProp(String name) {
+-        if (name == null) {
+-            throw new IllegalArgumentException("name == null not allowed");
+-        }
+-        
+-        for (Prop p : props) {
+-            if (p.name.equals(name)) {
+-                return p.value;
+-            }
+-        }
+-        
+-        return null;
+-    }
+-    
+     public String getReport() {
+         // Because of GCJ problems, String.format and printf are avoided.
+         
+diff --git a/java/src/bergdb/pubimp/ConnectionImp.java b/java/src/bergdb/pubimp/ConnectionImp.java
+index 4c79e54..d91fac7 100644
+--- a/java/src/bergdb/pubimp/ConnectionImp.java
++++ b/java/src/bergdb/pubimp/ConnectionImp.java
+@@ -154,10 +154,6 @@ public class ConnectionImp implements Connection {
+         return db.getOne(lookupTime, key, getData);
+     }
+ 
+-    public Database getDatabase() {
+-        return database;
+-    }
+-
+     /**
+      * @throws IllegalArgumentException
+      *             Ff ukey is null or not of a valid format.
+diff --git a/java/src/bergdb/pubimp/DatabaseBuilderImp.java b/java/src/bergdb/pubimp/DatabaseBuilderImp.java
+index 7e0c267..293e83c 100644
+--- a/java/src/bergdb/pubimp/DatabaseBuilderImp.java
++++ b/java/src/bergdb/pubimp/DatabaseBuilderImp.java
+@@ -53,13 +53,6 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
+         startupDistanceInMb = 50;      // Was 20 (2026-10-13).
+     }
+     
+-    /**
+-     * Creates and returns a database builder object that is used to create a database.
+-     */
+-    public static DatabaseBuilder database() {
+-        return new DatabaseBuilderImp();
+-    }
+-    
+     /**
+      * Returns the internal Db.Builder object.
+      * Not part of Pub API.
+@@ -132,14 +125,6 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
+         return this;
+     }
+     
+-    /**
+-     * Not part of Pub API.
+-     */
+-    public DatabaseBuilder noReclaim() {
+-        dbBuilder.retainForever();
+-        return this;
+-    }
+-    
+     public DatabaseBuilder startupDistanceInMb(int startupDistanceInMb) {
+         if (startupDistanceInMb < 5) {
+             startupDistanceInMb = 5;
+diff --git a/java/src/bergdb/pubimp/DatabaseImp.java b/java/src/bergdb/pubimp/DatabaseImp.java
+index 5a6fc7a..5dc2be9 100644
+--- a/java/src/bergdb/pubimp/DatabaseImp.java
++++ b/java/src/bergdb/pubimp/DatabaseImp.java
+@@ -161,14 +161,6 @@ public class DatabaseImp implements Database {
+         db.stop();
+     }
+     
+-    public synchronized void close() {
+-        synchronized (threadLocalConnections) {
+-            threadLocalConnections.clear();
+-        }
+-        
+-        db.close();
+-    }
+-    
+     public Job addReplica(String name, String dir) throws IOException {
+         if (name == null) {
+             throw new IllegalArgumentException("name == null not allowed");
+diff --git a/java/src/bergdb/pubimp/DbArray.java b/java/src/bergdb/pubimp/DbArray.java
+index 42dd39e..8464756 100644
+--- a/java/src/bergdb/pubimp/DbArray.java
++++ b/java/src/bergdb/pubimp/DbArray.java
+@@ -49,15 +49,6 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
+         this.elementCount = elementCount;
+     }
+     
+-    /**
+-     * Returns the internal serialized form of the DbArray.
+-     * The returned array is not a copy, the caller must not modify the bytes.
+-     */
+-    public byte[] getBytes() {
+-        assert bytes != null;
+-        return bytes;
+-    }
+-    
+     /**
+      * Returns the number of elements in the array.
+      */
+@@ -161,20 +152,6 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
+         return result;
+     }
+     
+-    public String[] toStringArray() {
+-        if (isNull()) {
+-            return null;
+-        }
+-        
+-        String[] result = new String[elementCount];
+-        int index = 0;
+-        
+-        for (DbValue v : this) {
+-            result[index++] = v.toString();
+-        }
+-        return result;
+-    }
+-    
+     public Iterator<DbValue> iterator() {
+         return new ElementIterator(bytes, 0);
+     }
+diff --git a/java/src/bergdb/pubimp/DbObject.java b/java/src/bergdb/pubimp/DbObject.java
+index 5fdc45e..0ac3dcf 100644
+--- a/java/src/bergdb/pubimp/DbObject.java
++++ b/java/src/bergdb/pubimp/DbObject.java
+@@ -83,7 +83,6 @@ public class DbObject extends DbValue {
+     public static final char BYTE_ARRAY = 'b';
+     public static final char ARRAY = 'a';
+     public static final char OBJECT = 'o';
+-    public static final char ZERO = 'z';
+     
+     private static final int MAGIC_SIZE = MAGIC.length;
+     private static final int FIELD_INFO_SIZE = 6;
+@@ -364,19 +363,6 @@ public class DbObject extends DbValue {
+         return result;
+     }
+     
+-    public String print() {
+-        StringBuilder b = new StringBuilder(DbObject.class.getSimpleName() + ":\n");
+-        NameAndType n = new NameAndType();
+-        
+-        for (int i = 0; i < fieldCount; i++) {
+-            readFieldInfo(i, n);
+-            String name = n.name;
+-            DbValue value = getDbValue(name);
+-            b.append("  " + name + ": " + value + "\n");
+-        }
+-        return b.toString();
+-    }
+-    
+     /**
+      * Reads the value of a Java object field and adds a corresponding DbField to the 
+      * DbObject builder.
+@@ -537,11 +523,6 @@ public class DbObject extends DbValue {
+         return n == null ? false : DbBoolean.parseToBoolean(n.object.bytes, n.valueOffset);
+     }
+     
+-    public boolean getBoolean(String[] nameParts) {
+-        NameAndType n = internalGet(nameParts, 0, DbObject.BOOLEAN);
+-        return n == null ? false : DbBoolean.parseToBoolean(n.object.bytes, n.valueOffset);
+-    }
+-    
+     public int getInt(String name) {
+         NameAndType n = internalSimpleGet(name, DbObject.INT);
+         return n == null ? 0 : DbInt.parseToInt(n.object.bytes, n.valueOffset);
+@@ -595,21 +576,11 @@ public class DbObject extends DbValue {
+         return n == null ? null : DbByteArray.parseToByteArray(n.object.bytes, n.valueOffset);
+     }
+     
+-    public byte[] getByteArray(String[] nameParts) {
+-        NameAndType n = internalGet(nameParts, 0, DbObject.BYTE_ARRAY);
+-        return n == null ? null : DbByteArray.parseToByteArray(n.object.bytes, n.valueOffset);
+-    }
+-    
+     public DbArray getArray(String name) {
+         NameAndType n = internalSimpleGet(name, DbObject.ARRAY);
+         return n == null ? null : DbArray.parse(n.object.bytes, n.valueOffset);
+     }
+     
+-    public DbArray getArray(String[] nameParts) {
+-        NameAndType n = internalGet(nameParts, 0, DbObject.ARRAY);
+-        return n == null ? null : DbArray.parse(n.object.bytes, n.valueOffset);
+-    }
+-    
+     public DbObject getObject(String name) {
+         NameAndType n = internalSimpleGet(name, DbObject.OBJECT);
+         return n == null ? null : DbObject.parse(n.object.bytes, n.valueOffset);
+@@ -727,11 +698,6 @@ public class DbObject extends DbValue {
+             return offset;
+         }
+         
+-        @SuppressWarnings("unused")
+-        public String getName() {
+-            return name;
+-        }
+-        
+         public String toString() {
+             return name + ": " + value.toString();
+         }
+@@ -843,11 +809,6 @@ public class DbObject extends DbValue {
+             return this;
+         }
+         
+-        public Builder addBoolean(String name, boolean value) {
+-            addField(new DbField(name, new DbBoolean(value)));
+-            return this;
+-        }
+-        
+         public Builder addInt(String name, int value) {
+             addField(new DbField(name, new DbInt(value)));
+             return this;
+@@ -858,11 +819,6 @@ public class DbObject extends DbValue {
+             return this;
+         }
+ 
+-        public Builder addDouble(String name, double value) {
+-            addField(new DbField(name, new DbDouble(value)));
+-            return this;
+-        }
+-        
+         public Builder addString(String name, String value) {
+             addField(new DbField(name, new DbString(value)));
+             return this;
+@@ -873,11 +829,6 @@ public class DbObject extends DbValue {
+             return this;
+         }
+         
+-        public Builder addByteArray(String name, byte[] value) {
+-            addField(new DbField(name, new DbByteArray(value)));
+-            return this;
+-        }
+-        
+         public Builder addArray(String name, DbArray value) {
+             addField(new DbField(name, value));
+             return this;
+diff --git a/java/src/bergdb/pubimp/DbObjectTester.java b/java/src/bergdb/pubimp/DbObjectTester.java
+index 8e1fa51..194617c 100644
+--- a/java/src/bergdb/pubimp/DbObjectTester.java
++++ b/java/src/bergdb/pubimp/DbObjectTester.java
+@@ -271,10 +271,6 @@ public class DbObjectTester {
+         Assert.assertEquals(-1234567890, o2.field);
+     }
+     
+-    public static class FloatClass {
+-        public float field;
+-    }
+-    
+     public static class Nested {
+         public int myInt = 11;
+         public String myString = "hello";
+diff --git a/java/src/bergdb/pubimp/DbString.java b/java/src/bergdb/pubimp/DbString.java
+index 2d20e87..18403d2 100644
+--- a/java/src/bergdb/pubimp/DbString.java
++++ b/java/src/bergdb/pubimp/DbString.java
+@@ -1,6 +1,5 @@
+ package bergdb.pubimp;
+ 
+-import java.nio.ByteBuffer;
+ 
+ import bergdb.common.Bytes;
+ import bergdb.common.StringUtil;
+@@ -25,18 +24,6 @@ public class DbString extends DbValue {
+         return value == null ? 4 : 4 + StringUtil.utf8Size(value);
+     }
+     
+-    public void write(ByteBuffer b) {
+-        if (value == null) {
+-            b.putInt(-1);
+-        } else {
+-            byte[] stringBytes = StringUtil.toBytes(value);
+-            int size = stringBytes.length;
+-            assert size == getByteSize() : size + " != " + getByteSize();
+-            b.putInt(size);
+-            b.put(stringBytes, 0, stringBytes.length);
+-        }
+-    }
+-    
+     public int write(byte[] b, int offset) {
+         if (value == null) {
+             Bytes.intToBytesLE(-1, b, offset);
+diff --git a/java/src/bergdb/pubimp/FieldIndexFunction.java b/java/src/bergdb/pubimp/FieldIndexFunction.java
+index 88a92a1..9083708 100644
+--- a/java/src/bergdb/pubimp/FieldIndexFunction.java
++++ b/java/src/bergdb/pubimp/FieldIndexFunction.java
+@@ -32,10 +32,6 @@ public class FieldIndexFunction implements IndexFunction {
+         handleIndexLevels();
+     }
+     
+-    public String[] getTypes() {
+-        return typeStrings;
+-    }
+-
+     public void createIndexEntries(DbObject dbo, IndexEntryBuilder b) {
+         for (int i = 0; i < fieldCombinations.length; i++) {
+             createIndexEntry(i, dbo, b);
+diff --git a/java/src/bergdb/pubimp/FieldRef.java b/java/src/bergdb/pubimp/FieldRef.java
+index 89a15a2..2e38304 100644
+--- a/java/src/bergdb/pubimp/FieldRef.java
++++ b/java/src/bergdb/pubimp/FieldRef.java
+@@ -20,10 +20,6 @@ public class FieldRef {
+         this.parts = parts.clone();
+     }
+     
+-    public boolean isNested() {
+-        return parts.length > 1;
+-    }
+-    
+     public String getName() {
+         if (parts.length == 1) {
+             return parts[0];
+diff --git a/java/src/bergdb/pubimp/IndexBuilderImp.java b/java/src/bergdb/pubimp/IndexBuilderImp.java
+index 94fa9a3..fb90997 100644
+--- a/java/src/bergdb/pubimp/IndexBuilderImp.java
++++ b/java/src/bergdb/pubimp/IndexBuilderImp.java
+@@ -47,13 +47,6 @@ public class IndexBuilderImp implements IndexBuilder {
+         dirList = new ArrayList<String>();
+     }
+     
+-    /**
+-     * Returns the created index; not part of the Pub API.
+-     */
+-    public IndexManager.Index getIndex() {
+-        return index;
+-    }
+-    
+     public IndexBuilder nextCompositeLevel() {
+         CompositePart part = new CompositePart();
+         parts.add(part);
+diff --git a/java/src/bergdb/pubimp/IndexFunction.java b/java/src/bergdb/pubimp/IndexFunction.java
+index b6f9483..2198016 100644
+--- a/java/src/bergdb/pubimp/IndexFunction.java
++++ b/java/src/bergdb/pubimp/IndexFunction.java
+@@ -9,13 +9,6 @@ package bergdb.pubimp;
+ public interface IndexFunction {
+     // The idea is that one day we could allow user to implement createIndexEntries.
+     
+-    /**
+-     * Returns the types of the potentially composite index.
+-     * One type for each composite level.
+-     * The method must, of course, always return the same types.
+-     */
+-    public String[] getTypes();
+-    
+     /**
+      * Creates index entries (zero or more) for the given DbObject
+      * by calling appropriate methods of 'b'.
+diff --git a/java/src/bergdb/pubimp/Pack.java b/java/src/bergdb/pubimp/Pack.java
+index 0052e18..ba5ee39 100644
+--- a/java/src/bergdb/pubimp/Pack.java
++++ b/java/src/bergdb/pubimp/Pack.java
+@@ -16,6 +16,7 @@ public class Pack implements IPack {
+         DbArray.class,
+         DbBoolean.class,
+         DbByteArray.class,
++        DbDouble.class,
+         DbInt.class,
+         DbLong.class,
+         DbString.class,
+diff --git a/java/src/bergdb/pubimp/PubKeys.java b/java/src/bergdb/pubimp/PubKeys.java
+index feefb64..2114609 100644
+--- a/java/src/bergdb/pubimp/PubKeys.java
++++ b/java/src/bergdb/pubimp/PubKeys.java
+@@ -17,8 +17,6 @@ public class PubKeys {
+     
+     private PubKeys() {}
+     
+-    public static final char INTERNAL_DIR_PREFIX = '#';
+-    
+     public static final char FILE_PREFIX = '-';
+     
+     public static final char DIR_PREFIX = 'd';
+diff --git a/java/src/bergdb/pubimp/RwEnvironmentImp.java b/java/src/bergdb/pubimp/RwEnvironmentImp.java
+index 35b6631..f7e7b83 100644
+--- a/java/src/bergdb/pubimp/RwEnvironmentImp.java
++++ b/java/src/bergdb/pubimp/RwEnvironmentImp.java
+@@ -130,25 +130,6 @@ public class RwEnvironmentImp implements RwEnvironment {
+         this.readHashes.add(hash);
+     }
+     
+-    public void vkeyRead(long[] vkey) {
+-        this.readHashes.add(Keys.hash(vkey));
+-    }
+-    
+-    public void vkeyRead(long hash) {
+-        this.readHashes.add(hash);
+-    }
+-    
+-    public void vkeyWrite(long[] vkey) {
+-        vkeyWrite(Keys.hash(vkey));
+-    }
+-    
+-    public void vkeyWrite(long hash) {
+-        if (this.vkeyWriteHashes == null) {
+-            this.vkeyWriteHashes = new MyLongSet();
+-        }
+-        this.vkeyWriteHashes.add(hash);
+-    }
+-    
+     public final int getObjectOpsSize() {
+         return objectOps.size();
+     }
+@@ -194,11 +175,6 @@ public class RwEnvironmentImp implements RwEnvironment {
+     
+     private static final byte[] TRANSACTION_TIME_BYTES = Keys.toBytes("${transactionTime}");
+     
+-    @SuppressWarnings("unused")
+-    private static KeyTransformation getKeyTransformation(byte[] key) {
+-        return Util.contains(TRANSACTION_TIME_BYTES, key) ? replaceTransformation : null;
+-    }
+-    
+     private void setBytes(String ikey, byte[] value) {        
+         if (value == null) {
+             throw new IllegalArgumentException("value == null not allowed.");
+diff --git a/java/src/bergdb/pubimp/RwTransaction.java b/java/src/bergdb/pubimp/RwTransaction.java
+index d3038f4..f8bebed 100644
+--- a/java/src/bergdb/pubimp/RwTransaction.java
++++ b/java/src/bergdb/pubimp/RwTransaction.java
+@@ -54,10 +54,6 @@ public class RwTransaction implements Transaction {
+         return Time.units(trans.tt);
+     }
+     
+-    public String getOutputStream(String key) {
+-        return (String) getOutput(key);
+-    }
+-    
+     /**
+      * @throws StreamIoException
+      * @throws StreamFormatException
+diff --git a/java/src/bergdb/pubimp/WBuilderImp.java b/java/src/bergdb/pubimp/WBuilderImp.java
+index c511269..2ea2bd4 100644
+--- a/java/src/bergdb/pubimp/WBuilderImp.java
++++ b/java/src/bergdb/pubimp/WBuilderImp.java
+@@ -42,11 +42,6 @@ public class WBuilderImp implements WBuilder {
+         return this;
+     }
+     
+-    public WBuilder vkeyRead(long hash) {
+-        env.vkeyRead(hash);
+-        return this;
+-    }
+-
+     /**
+      * @throws DbException if the database is faulty.
+      */
+diff --git a/java/src/bergdb/pubimp/WTransaction.java b/java/src/bergdb/pubimp/WTransaction.java
+index bb9ae6d..24deb39 100644
+--- a/java/src/bergdb/pubimp/WTransaction.java
++++ b/java/src/bergdb/pubimp/WTransaction.java
+@@ -41,10 +41,6 @@ public class WTransaction implements Transaction {
+         return this;
+     }
+     
+-    public final int getActionRunCount() {
+-        return runCount;
+-    }
+-    
+     public final Object getOutput(String key) {
+         if (key == null) {
+             throw new IllegalArgumentException("key == null not allowed");
+diff --git a/java/src/bergdb/storage/BufferedStream.java b/java/src/bergdb/storage/BufferedStream.java
+index 197f4c2..738f621 100644
+--- a/java/src/bergdb/storage/BufferedStream.java
++++ b/java/src/bergdb/storage/BufferedStream.java
+@@ -52,20 +52,6 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
+     private AppendListener appendListener;
+     private volatile boolean appendHasBeenCalled = false;
+ 
+-    /**
+-     * Creates a new buffered stream with default buffer size and buffer time.
+-     * 
+-     * @param stream
+-     *            The append-only stream to buffer.
+-     */
+-    public BufferedStream(AppendOnlyStream stream) {
+-        // 10M bufferSize and 100 ms bufferTime are reasonable defaults for a
+-        // rotational drive.
+-        // See doc/reports-2013/performance-vs-buffer-settings.txt.
+-
+-        this(stream, 10 * 1000000, 100);
+-    }
+-
+     /**
+      * Creates a new BufferedStream.
+      * 
+diff --git a/java/src/bergdb/storage/MetaBlock.java b/java/src/bergdb/storage/MetaBlock.java
+index 2f9a287..93b8cb4 100644
+--- a/java/src/bergdb/storage/MetaBlock.java
++++ b/java/src/bergdb/storage/MetaBlock.java
+@@ -133,10 +133,6 @@ public class MetaBlock {
+         return pos;
+     }
+     
+-    public void setPos(long pos) {
+-        this.pos = pos;
+-    }
+-    
+     /**
+      * Returns a reference to the byte array block.
+      */
+diff --git a/java/src/bergdb/storage/RecoverableStream.java b/java/src/bergdb/storage/RecoverableStream.java
+index b5d840e..37a4a6c 100644
+--- a/java/src/bergdb/storage/RecoverableStream.java
++++ b/java/src/bergdb/storage/RecoverableStream.java
+@@ -63,9 +63,6 @@ public class RecoverableStream {
+     /** The distance between two consecutive meta blocks in the stream. */
+     public static final int META_BLOCK_DISTANCE = 200*1000;
+     
+-    /** Byte size of transaction header. */
+-    public static final int TRANS_HEADER_SIZE = 4;
+-    
+     /** 
+      * Smallest size of a transaction that the layer above reads (NodeStream: a 16-byte 
+      * header and the last byte). A transaction header fixed at recovery must give at 
+@@ -136,14 +133,6 @@ public class RecoverableStream {
+         fixLastTransactionIfNeeded(spos);
+     }
+     
+-    /**
+-     * Returns the stream position of the last valid meta block, or
+-     * -1 if unknown.
+-     */
+-    public long getPosOfLastValidMetaBlock() {
+-        return this.posOfLastValidMetaBlock;
+-    }
+-    
+     /**
+      * Returns the position of the transaction named by the last valid meta block, where
+      * recovery starts, or -1 if unknown or none. The stream must not be cut after it.
+@@ -584,22 +573,6 @@ public class RecoverableStream {
+         return new MetaBlock(metaBytes, blockPos);
+     }
+     
+-    /**
+-     * Returns true if the spos is an allowed position, that is, one that is not negative,
+-     * or within a meta block.
+-     */
+-    static void assertAllowedPos(long spos) {
+-        if (spos != Constants.SposNULL) {
+-            if (spos < 0) {
+-                throw new AssertionError("Bad spos (negative), " + spos + ".");
+-            }
+-            
+-            if ((spos % META_BLOCK_DISTANCE) < RecoverableStream.META_BLOCK_SIZE) {
+-                throw new AssertionError("Bad spos (in metablock), " + spos + ".");
+-            }
+-        }
+-    }
+-
+     /**
+      * Iterates through the transactions starting at a certain spos.
+      * The first transaction is the last transaction that completed before
+@@ -673,13 +646,6 @@ public class RecoverableStream {
+         public byte[] getBytes() {
+             return bytes;
+         }
+-        
+-        /**
+-         * Only valid if next() returned true.
+-         */
+-        public long getSSPos() {
+-            return transSSPos;
+-        }
+     }
+     
+     public static class Tester {
+diff --git a/java/src/bergdb/storage/StorageManager.java b/java/src/bergdb/storage/StorageManager.java
+index a0eb79e..35d7c6d 100644
+--- a/java/src/bergdb/storage/StorageManager.java
++++ b/java/src/bergdb/storage/StorageManager.java
+@@ -833,25 +833,6 @@ public class StorageManager implements AppendOnlyStream {
+         return result;
+     }
+     
+-    /**
+-     * Sets durability rule D1.
+-     */
+-    public void setD1(DurabilityRule d1) {
+-        if (d1 == null) {
+-            throw new IllegalArgumentException("d1 == null not allowed");
+-        }
+-        
+-        // Optimistic locking based on internal.compareAndSet().
+-        while (true) {
+-            Internal in = internal.get();
+-            Internal newIn = in.copy();
+-            newIn.d1 = d1;
+-            if (internal.compareAndSet(in, newIn)) {
+-                break;
+-            }
+-        }
+-    }
+-    
+     /**
+      * Sets durability rule D2.
+      */
+@@ -871,29 +852,6 @@ public class StorageManager implements AppendOnlyStream {
+         }
+     }
+     
+-    /** 
+-     * Sets the error rule.
+-     */
+-    public void setErrorRule(ErrorRule errorRule) {
+-        if (errorRule == null) {
+-            throw new IllegalArgumentException("errorRule == null not allowed");
+-        }
+-        
+-        // Optimistic locking based on internal.compareAndSet().
+-        while (true) {
+-            Internal in = internal.get();
+-            Internal newIn = in.copy();
+-            newIn.errorRule = errorRule;
+-            if (internal.compareAndSet(in, newIn)) {
+-                break;
+-            }
+-        }
+-    }
+-    
+-    public void setListener(AppendListener appendListener) {
+-        throw new UnsupportedOperationException("This class does not support setListener().");
+-    }
+-    
+     public AppendOnlyStream getMainStream() {
+         return mainStream;
+     }
+diff --git a/java/src/bergdb/storage/StreamIoException.java b/java/src/bergdb/storage/StreamIoException.java
+index 4afc76f..decaa07 100644
+--- a/java/src/bergdb/storage/StreamIoException.java
++++ b/java/src/bergdb/storage/StreamIoException.java
+@@ -10,14 +10,6 @@ import java.io.IOException;
+ public class StreamIoException extends StreamException {
+     private static final long serialVersionUID = 1L;
+ 
+-    /**
+-     * This constructor sets the "cause" of the exception properly.
+-     */
+-    public StreamIoException(String message, IOException cause) {
+-        super(message);
+-        this.initCause(cause);
+-    }
+-    
+     /**
+      * Uses the message of the provided exception.
+      * This constructor sets the "cause" of the exception properly.
+diff --git a/java/src/bergdb/stream/FileStream.java b/java/src/bergdb/stream/FileStream.java
+index 559e7f7..46a6c23 100644
+--- a/java/src/bergdb/stream/FileStream.java
++++ b/java/src/bergdb/stream/FileStream.java
+@@ -219,17 +219,6 @@ public class FileStream implements AppendOnlyStream {
+         }
+     }
+     
+-    /**
+-     * Call this method with "true" to disable file deletes.
+-     * Instead of actually deleting a stream file, the file will instead be renamed
+-     * by adding the suffix ".deleted" to its filename.
+-     */
+-    public void setRenameAsDelete(boolean b) {
+-        synchronized (this) {
+-            this.renameAsDelete = b;
+-        }
+-    }
+-    
+     public synchronized long getFirstPos() {
+         return firstPos;
+     }
+diff --git a/java/src/bergdb/stream/MemoryStream.java b/java/src/bergdb/stream/MemoryStream.java
+index 7feda3b..2707088 100644
+--- a/java/src/bergdb/stream/MemoryStream.java
++++ b/java/src/bergdb/stream/MemoryStream.java
+@@ -67,18 +67,6 @@ public class MemoryStream implements AppendOnlyStream {
+         return copy;
+     }
+     
+-    /**
+-     * Makes a shallow copy, stream data is not copied.
+-     */
+-    public synchronized MemoryStream copyShallow() {
+-        MemoryStream copy = new MemoryStream();
+-        copy.streamLength = this.streamLength;
+-        copy.firstValidPos = this.firstValidPos;
+-        copy.firstArrayIndex = this.firstArrayIndex;
+-        copy.arrays = this.arrays;
+-        return copy;
+-    }
+-    
+     /**
+      * Useful for testing; checks that the internal state is OK.
+      * 
+diff --git a/java/stress/Perf.java b/java/stress/Perf.java
+index bab9867..00473de 100644
+--- a/java/stress/Perf.java
++++ b/java/stress/Perf.java
+@@ -185,10 +185,6 @@ public class Perf {
+ 
+     // ---- Keys and values ----
+ 
+-    boolean isLong(int k) {
+-        return k >= n;
+-    }
+-
+     byte[] keyBytes(int k) {
+         if (k < n) return KeyFactory.binaryIntKey(k);
+         byte[] b = new byte[longlen];
+diff --git a/java/stress/PerfTool.java b/java/stress/PerfTool.java
+index 96425f7..3991a50 100644
+--- a/java/stress/PerfTool.java
++++ b/java/stress/PerfTool.java
+@@ -522,7 +522,6 @@ public class PerfTool {
+         double refMedian, candMedian, change, threshold;
+         int refN, candN;
+         double refCv, candCv;
+-        String detail;
+     }
+ 
+     static Pattern only;
+diff --git a/java/stress/PerfUtil.java b/java/stress/PerfUtil.java
+index 8be2118..4b8825d 100644
+--- a/java/stress/PerfUtil.java
++++ b/java/stress/PerfUtil.java
+@@ -403,7 +403,6 @@ public final class PerfUtil {
+         public final List<double[]> heapAfter = new ArrayList<double[]>(); // {uptime, MB after, MB total}
+         public int fullGcs;
+         public int concurrentCycles;
+-        public String collectorLine;
+ 
+         private static final Pattern UP = Pattern.compile("^\\[(\\d+\\.\\d+)s\\]\\[(\\w+)\\]\\[([\\w,]+)\\s*\\]\\s*(.*)$");
+         private static final Pattern PAUSE_MS = Pattern.compile("(?:GC\\(\\d+\\)\\s+)?(Pause .*?)\\s+(\\d+\\.\\d+)ms$");
+diff --git a/lean/SIS/Proof/Basic.lean b/lean/SIS/Proof/Basic.lean
+index c5b39a4..181b3d9 100644
+--- a/lean/SIS/Proof/Basic.lean
++++ b/lean/SIS/Proof/Basic.lean
+@@ -183,8 +183,6 @@ def SameNodes (P P' : Struct V) : Prop := ∀ x, P.get? x = P'.get? x
+ 
+ theorem SameNodes.refl (P : Struct V) : SameNodes P P := fun _ => rfl
+ theorem SameNodes.symm {P P' : Struct V} (h : SameNodes P P') : SameNodes P' P := fun x => (h x).symm
+-theorem SameNodes.trans {P P' P'' : Struct V} (h : SameNodes P P') (h' : SameNodes P' P'') :
+-    SameNodes P P'' := fun x => (h x).trans (h' x)
+ 
+ theorem SameNodes.apply {P P' : Struct V} (h : SameNodes P P') (i : Time) (c : Changes V) :
+     SameNodes (P.apply i c) (P'.apply i c) := by
+diff --git a/lean/SIS/Proof/CutLaterPerm.lean b/lean/SIS/Proof/CutLaterPerm.lean
+index c5052a9..e4ab636 100644
+--- a/lean/SIS/Proof/CutLaterPerm.lean
++++ b/lean/SIS/Proof/CutLaterPerm.lean
+@@ -614,13 +614,6 @@ theorem RootPerm.unswizzle (hp : RootPerm m1 m2) (D : Dirty) (h : Nat) (y : Node
+           · exact hp.setObj (hp.lt_of_obj? hoh) _
+           · exact hp
+ 
+-theorem RootPerm.cacheOp {S0 S : Stream V T} (hp : RootPerm m1 m2) (D : Dirty) (op : CacheOp) :
+-    RootPerm (m1.cacheOp sp S0 S D op) (m2.cacheOp sp S0 S D op) := by
+-  cases op with
+-  | read t => exact (hp.read4 (sp := sp) (S0 := S0) (S := S) t).1
+-  | unswizzle h y => exact hp.unswizzle D h y
+-  | release h => exact hp.release D h
+-
+ end Change
+ 
+ 
+diff --git a/lean/SIS/Proof/CutLaterSim.lean b/lean/SIS/Proof/CutLaterSim.lean
+index fe67c0e..7df0780 100644
+--- a/lean/SIS/Proof/CutLaterSim.lean
++++ b/lean/SIS/Proof/CutLaterSim.lean
+@@ -44,15 +44,6 @@ theorem withRoot_obj?_root {oe : Obj V} (he : m.obj? m.root = some oe) :
+     (m.withRoot oc).obj? m.root = some oc := by
+   rw [withRoot_obj?]; simp [he]
+ 
+-theorem withRoot_withRoot (oc' : Obj V) : (m.withRoot oc).withRoot oc' = m.withRoot oc' := by
+-  unfold Mem.withRoot
+-  simp only [List.map_map]
+-  congr 1
+-  apply List.map_congr_left
+-  intro p _
+-  simp only [Function.comp]
+-  split <;> simp_all
+-
+ /-- The filter of `setObj` and the map of `withRoot` commute: both keep the handles. -/
+ theorem filter_map_root (l : List (Nat × Obj V)) (r h : Nat) (oc : Obj V) :
+     (l.map (fun p => if p.1 == r then (r, oc) else p)).filter (fun p => p.1 != h) =
+@@ -704,15 +695,6 @@ theorem RootSep.follow4 (hrs : RootSep sp m) (hS : StreamNR sp S) {hp : Nat} {y
+       rw [hr2] at this
+       exact this
+ 
+-theorem follow4_root_ne {hp : Nat} (hne : hp ≠ m.root) (hrs : RootSep sp m) (hS : StreamNR sp S) {y : NodeId}
+-    (hy : y ≠ root) (hra : m.obj? m.root = some oe) (w : Bool) :
+-    (m.follow4 sp S0 S hp y w).1.obj? m.root = some oe := by
+-  have := (follow4_withRoot (S0 := S0) (oc := oe) ⟨hra, by have := hrs.fresh; omega⟩ rfl (Or.inl hne) w
+-    (hrs.side (S0 := S0) hS hy hra w)).2.1
+-  rw [this]
+-  unfold rootAfter
+-  simp [hne]
+-
+ theorem rootAfter_ne {hp root : Nat} (hne : hp ≠ root) (y : NodeId) (r : Option Nat) (o : Obj V) :
+     rootAfter hp root y r o = o := by
+   unfold rootAfter; simp [hne]
+diff --git a/lean/SIS/Proof/CutPhys.lean b/lean/SIS/Proof/CutPhys.lean
+index 6ca056f..1034aa4 100644
+--- a/lean/SIS/Proof/CutPhys.lean
++++ b/lean/SIS/Proof/CutPhys.lean
+@@ -1107,12 +1107,6 @@ def Mem.KeepPos (m m' : Mem V) : Prop :=
+   ∀ h o, m.obj? h = some o → ∃ o', m'.obj? h = some o' ∧ o'.node = o.node ∧ o'.pos = o.pos ∧
+     (o.canonical = true → o'.canonical = true)
+ 
+-theorem Mem.KeepCore.keepPos {m' : Mem V} (hk : m.KeepCore m') : m.KeepPos m' := by
+-  intro h o ho
+-  obtain ⟨o', ho', hcore⟩ := hk h o ho
+-  exact ⟨o', ho', congrArg (fun c => c.1) hcore, congrArg (fun c => c.2.2.2.2.2) hcore,
+-    fun hc => by rw [show o'.canonical = o.canonical from congrArg (fun c => c.2.2.2.2.1) hcore]; exact hc⟩
+-
+ theorem slotRefOf_keepPos {m' : Mem V} (hk : m.KeepPos m') (hs : m'.s = m.s) {y : NodeId}
+     {sl : Slot} (hsl : ∀ h', sl = Slot.mem h' → (m.obj? h').isSome) :
+     slotRefOf S0 m' y sl = slotRefOf S0 m y sl := by
+diff --git a/lean/SIS/Proof/CutStream.lean b/lean/SIS/Proof/CutStream.lean
+index 7bb7595..8976e29 100644
+--- a/lean/SIS/Proof/CutStream.lean
++++ b/lean/SIS/Proof/CutStream.lean
+@@ -61,7 +61,6 @@ theorem versionAt_cut_lt {r : Nat} (h : r < c) (y : NodeId) :
+   | none => rfl
+   | some R => simp only [Option.map_some]; exact find?_stub R.vers y
+ 
+-theorem stub_node (v : Version V) : v.stub.node = v.node := rfl
+ theorem stub_recNo (v : Version V) : v.stub.recNo = v.recNo := rfl
+ theorem stub_level (v : Version V) : v.stub.level = v.level := rfl
+ 
+@@ -116,13 +115,6 @@ theorem lastSp_cut (c : Nat) (S : Stream V T) : lastSp (cutStream c S) = lastSp
+   | none => rfl
+   | some R => simp only [Option.map_some]; split <;> rfl
+ 
+-theorem lastFa_cut (c : Nat) (S : Stream V T) : lastFa (cutStream c S) = lastFa S := by
+-  unfold lastFa
+-  rw [getLast?_cut]
+-  cases S.getLast? with
+-  | none => rfl
+-  | some R => simp only [Option.map_some]; split <;> rfl
+-
+ /-- The newest version in R(s), ..., R(k) is the same after a cut at or before s. -/
+ theorem newest_cut {s : Nat} (h : c ≤ s) (y : NodeId) : newest (cutStream c S) s y = newest S s y := by
+   rw [newest_eq, newest_eq]
+diff --git a/lean/SIS/Proof/EvictApply.lean b/lean/SIS/Proof/EvictApply.lean
+index 1036b03..8ea426b 100644
+--- a/lean/SIS/Proof/EvictApply.lean
++++ b/lean/SIS/Proof/EvictApply.lean
+@@ -328,23 +328,6 @@ theorem ChangeFacts.canonicalOf {sp : Spec V T} {P : Struct V} {j : Time} {c : C
+       simp only [Option.map_some]
+       rw [(updAll4_core sp P j _ _ o).2.2.2.2.1]
+ 
+-theorem applyChange4_canonicalOf (sp : Spec V T) (P : Struct V) (j : Time) (c : Changes V)
+-    (m : Mem V) (y : NodeId) :
+-    (m.applyChange4 sp P j c).canonicalOf y = (c.new.foldl addNew m).canonicalOf y := by
+-  have hf := applyFacts4 sp P j c m
+-  unfold Mem.canonicalOf Mem.tableOf
+-  rw [hf.table]
+-  cases List.lookup y (c.new.foldl addNew m).table with
+-  | none => rfl
+-  | some h =>
+-    simp only
+-    rw [hf.obj h]
+-    cases (c.new.foldl addNew m).obj? h with
+-    | none => rfl
+-    | some o =>
+-      simp only [Option.map_some]
+-      rw [(updAll4_core sp P j _ _ o).2.2.2.2.1]
+-
+ theorem foldl_addNew_tblNodup (N : List NewNode) : ∀ (m : Mem V), (m.table.map (·.1)).Nodup →
+     ((N.foldl addNew m).table.map (·.1)).Nodup := by
+   induction N with
+diff --git a/lean/SIS/Proof/EvictHist.lean b/lean/SIS/Proof/EvictHist.lean
+index d3b41d6..fb5926f 100644
+--- a/lean/SIS/Proof/EvictHist.lean
++++ b/lean/SIS/Proof/EvictHist.lean
+@@ -59,19 +59,6 @@ section Keep
+ 
+ variable {sp : Spec V T} {db : DB V T} {S0 : Stream V T} {k : Nat} {m m' m'' : Mem V}
+ 
+-theorem Mem.KeepRead.refl (m : Mem V) : m.KeepRead m := fun _ o ho => ⟨o, ho, rfl, id, fun _ => rfl⟩
+-
+-theorem Mem.KeepRead.trans (h1 : m.KeepRead m') (h2 : m'.KeepRead m'') : m.KeepRead m'' := by
+-  intro h o ho
+-  obtain ⟨o', ho', e1, e2, e3⟩ := h1 h o ho
+-  obtain ⟨o'', ho'', f1, f2, f3⟩ := h2 h o' ho'
+-  refine ⟨o'', ho'', by rw [f1, e1], fun hc => f2 (e2 hc), fun hc => ?_⟩
+-  rw [f3 hc]
+-  apply e3
+-  cases hc' : o'.canonical
+-  · rfl
+-  · have := f2 hc'; rw [hc] at this; cases this
+-
+ theorem ReadableT.keep {t : Time} {h : Nat} {y : NodeId} (hr : ReadableT sp db m t h y)
+     (hk : m.KeepRead m') : ReadableT sp db m' t h y := by
+   obtain ⟨o, ho, hn, hc⟩ := hr
+diff --git a/lean/SIS/Proof/EvictInit.lean b/lean/SIS/Proof/EvictInit.lean
+index 72c7ea2..63a2659 100644
+--- a/lean/SIS/Proof/EvictInit.lean
++++ b/lean/SIS/Proof/EvictInit.lean
+@@ -458,8 +458,6 @@ theorem linkObjD_slot (m : Mem V) (D : Dirty) (h : Nat) (o : Obj V) (y : NodeId)
+         | some h0 => exact Or.inr ⟨_, h0, rfl, rfl, rfl⟩
+       | mem h' => exact Or.inl rfl
+ 
+-theorem Mem.linkD_table (m : Mem V) (D : Dirty) : (m.linkD D).table = m.table := rfl
+-
+ theorem Mem.linkD_keys (m : Mem V) (D : Dirty) : (m.linkD D).objs.map (·.1) = m.objs.map (·.1) := by
+   unfold Mem.linkD
+   simp only [List.map_map]
+diff --git a/lean/SIS/Proof/EvictPromote.lean b/lean/SIS/Proof/EvictPromote.lean
+index 3d96b57..0a8db72 100644
+--- a/lean/SIS/Proof/EvictPromote.lean
++++ b/lean/SIS/Proof/EvictPromote.lean
+@@ -302,11 +302,6 @@ structure WFollow (m m' : Mem V) (hp : Nat) (y : NodeId) (h' : Nat) : Prop where
+     o'.hist = o.hist ∧ o'.level = o.level ∧ o'.isData = o.isData ∧ o'.pos = o.pos ∧
+     (o.canonical = true → o'.canonical = true) ∧ ∀ z, (h ≠ hp ∨ z ≠ y) → o'.slot? z = o.slot? z
+ 
+-/-- The frame of an object kept as it is. -/
+-theorem frame_refl {o : Obj V} : o.node = o.node ∧ o.hist = o.hist ∧ o.level = o.level ∧
+-    o.isData = o.isData ∧ o.pos = o.pos ∧ (o.canonical = true → o.canonical = true) :=
+-  ⟨rfl, rfl, rfl, rfl, rfl, id⟩
+-
+ theorem obj_with_canonical_true {o : Obj V} (h : o.canonical = true) : { o with canonical := true } = o := by
+   cases o; simp only at h; subst h; rfl
+ 
+diff --git a/lean/SIS/Proof/PhysPath.lean b/lean/SIS/Proof/PhysPath.lean
+index 29a06ce..64cd3b0 100644
+--- a/lean/SIS/Proof/PhysPath.lean
++++ b/lean/SIS/Proof/PhysPath.lean
+@@ -34,12 +34,6 @@ theorem pathOf_congr (c : Changes V) (j : Time) : pathOf sp P c j = pathOf sp P'
+   unfold pathOf
+   simp only [hP.reachList, hP.reachFrom', hP.reachable, (hP.apply j c).reachable, hP']
+ 
+-theorem reachOnPath_congr (S : Stream V T) (j : Time) (path : List NodeId) (m : Mem V) (x : NodeId) :
+-    m.reachOnPath sp S P j path x = m.reachOnPath sp S P' j path x := by
+-  have hP' : ∀ x, P.get? x = P'.get? x := hP
+-  unfold Mem.reachOnPath
+-  simp only [hP']
+-
+ theorem newSlot_congr (j : Time) (m : Mem V) (o : Obj V) (y : NodeId) :
+     m.newSlot sp P j o y = m.newSlot sp P' j o y := by
+   have hP' : ∀ x, P.get? x = P'.get? x := hP
+diff --git a/lean/SIS/Proof/Reach.lean b/lean/SIS/Proof/Reach.lean
+index 07c63e5..3c8ed65 100644
+--- a/lean/SIS/Proof/Reach.lean
++++ b/lean/SIS/Proof/Reach.lean
+@@ -173,11 +173,6 @@ def Grow (P : Struct V) (k : Time) (P' : Struct V) : Prop :=
+ theorem Grow.refl (P : Struct V) (k : Time) : Grow P k P :=
+   fun _ n h => ⟨n, h, rfl, rfl, rfl⟩
+ 
+-theorem Grow.mono {P P' : Struct V} {k t : Time} (h : Grow P k P') (ht : t ≤ k) : Grow P t P' := by
+-  intro x n hn
+-  obtain ⟨n', h1, h2, h3, h4⟩ := h x n hn
+-  exact ⟨n', h1, h2, h3, upTo_eq_of_le ht h4⟩
+-
+ theorem Grow.trans {P P' P'' : Struct V} {k k' : Time} (h : Grow P k P') (h' : Grow P' k' P'')
+     (hk : k ≤ k') : Grow P k P'' := by
+   intro x n hn
+@@ -185,12 +180,6 @@ theorem Grow.trans {P P' P'' : Struct V} {k k' : Time} (h : Grow P k P') (h' : G
+   obtain ⟨n'', h1', h2', h3', h4'⟩ := h' x n' h1
+   exact ⟨n'', h1', h2'.trans h2, h3'.trans h3, (upTo_eq_of_le hk h4').trans h4⟩
+ 
+-theorem Grow.sameNodes {P P' P'' : Struct V} {k : Time} (h : Grow P k P') (h' : SameNodes P' P'') :
+-    Grow P k P'' := by
+-  intro x n hn
+-  obtain ⟨n', h1, h2, h3, h4⟩ := h x n hn
+-  exact ⟨n', by rw [← h']; exact h1, h2, h3, h4⟩
+-
+ /-- The changes of transaction i extend P up to every earlier time. -/
+ theorem grow_apply (P : Struct V) (i : Time) (c : Changes V) {k : Time} (hk : k < i) :
+     Grow P k (P.apply i c) := by
+@@ -253,19 +242,4 @@ theorem reachable_grow {sp : Spec V T} {P P' : Struct V} {k t : Time} (hls : Liv
+   rw [reachable_iff, reachable_iff]
+   exact reach_grow_iff hls hp hroot hg ht x
+ 
+-theorem view_grow {sp : Spec V T} {P P' : Struct V} {k t : Time} (hls : LiveSub sp)
+-    (hp : PtrsOK sp P) (hroot : (P.get? root).isSome) (hg : Grow P k P') (ht : t ≤ k) :
+-    view sp P' t = view sp P t := by
+-  funext x
+-  simp only [SIS.view, reachable_grow hls hp hroot hg ht x]
+-  split
+-  · rename_i hr
+-    rw [reachable_iff] at hr
+-    obtain ⟨n0, h0⟩ := Option.isSome_iff_exists.mp hr.isSome
+-    obtain ⟨n', h1, h2, h3, h4⟩ := hg _ _ h0
+-    rw [h0, h1]
+-    simp only [Option.map_some]
+-    rw [upTo_eq_of_le ht h4, h2, h3]
+-  · rfl
+-
+ end SIS
+diff --git a/lean/SIS/Proof/Run.lean b/lean/SIS/Proof/Run.lean
+index f8b477e..da47dc4 100644
+--- a/lean/SIS/Proof/Run.lean
++++ b/lean/SIS/Proof/Run.lean
+@@ -57,7 +57,6 @@ section PartsLemmas
+ 
+ variable (sp : Spec V T) (al : Algo V T) (db : DB V T) (tr : T)
+ 
+-theorem parts_i : (parts sp al db tr).i = db.S.length := rfl
+ theorem parts_c : (parts sp al db tr).c =
+     sp.exec tr db.S.length (view sp db.P (db.S.length - 1)) := rfl
+ theorem parts_P : (parts sp al db tr).P = db.P.apply db.S.length (parts sp al db tr).c := rfl
+diff --git a/lean/SIS/Proof/Still.lean b/lean/SIS/Proof/Still.lean
+index 86647ed..d494667 100644
+--- a/lean/SIS/Proof/Still.lean
++++ b/lean/SIS/Proof/Still.lean
+@@ -537,12 +537,4 @@ theorem java_stillOK (sp : Spec V T) (al : Algo V T) (hj : al.stillDirty = javaT
+     intro db k tr hsp hinv hstep
+     exact step_java_complete sp al db tr hj hsp hinv hstep
+ 
+-/-- The still-dirty tests the theorems are stated for: the exact one, and
+-BergDB's. -/
+-theorem stillOK_of (sp : Spec V T) (al : Algo V T)
+-    (h : al.stillDirty = exactTest sp ∨ al.stillDirty = javaTest sp) : StillOK sp al := by
+-  rcases h with h | h
+-  · exact exact_stillOK sp al h
+-  · exact java_stillOK sp al h
+-
+ end SIS
+diff --git a/lean/SIS/Proof/StreamLemmas.lean b/lean/SIS/Proof/StreamLemmas.lean
+index 224bfff..3ed5632 100644
+--- a/lean/SIS/Proof/StreamLemmas.lean
++++ b/lean/SIS/Proof/StreamLemmas.lean
+@@ -61,9 +61,6 @@ theorem versionAt_ge_length {S : Stream V T} {r : Nat} (hr : S.length ≤ r) (y
+   unfold Stream.versionAt
+   rw [List.getElem?_eq_none hr]
+ 
+-theorem versionAt_cons_zero (R : Record V T) (S : Stream V T) (x : NodeId) :
+-    Stream.versionAt (R :: S) 0 x = R.vers.find? (fun v => v.node == x) := rfl
+-
+ theorem versionAt_cons_succ (R : Record V T) (S : Stream V T) (r : Nat) (x : NodeId) :
+     Stream.versionAt (R :: S) (r + 1) x = Stream.versionAt S r x := rfl
+ 
+@@ -152,8 +149,6 @@ first (the record under construction may get more versions). -/
+ def SExt (S S' : Stream V T) : Prop :=
+   ∀ (r : Nat) (R : Record V T), S[r]? = some R → ∃ R' : Record V T, S'[r]? = some R' ∧ R.vers <+: R'.vers
+ 
+-theorem SExt.refl (S : Stream V T) : SExt S S := fun _ R h => ⟨R, h, List.prefix_refl _⟩
+-
+ theorem SExt.trans {S S' S'' : Stream V T} (h : SExt S S') (h' : SExt S' S'') : SExt S S'' := by
+   intro r R hR
+   obtain ⟨R', h1, h2⟩ := h r R hR
