@@ -33,6 +33,7 @@ and `level2.sh` to `level4.sh`, [elan](https://github.com/leanprover/elan).
 
     
     java/build.sh                  # builds java/build/bergdb.jar and the stress tests
+    java/before-commit.sh          # the check before a commit: unit and f-tests (about 2 minutes)
     java/unit.sh                   # runs the unit tests
     java/f.sh                      # runs the f-tests
     java/perf.sh                   # runs the perf-tests
@@ -43,11 +44,14 @@ and `level2.sh` to `level4.sh`, [elan](https://github.com/leanprover/elan).
     java/stress/level4.sh          # eviction             (about 16 minutes; quick: 4)
     cd lean && lake build          # checks all proofs
 
-Each level script prints `LEVEL n OK` when it passes. All four must pass
-before a change to the Java code is committed. `java/night.sh` runs the
-long-running tests of 2013 to 2015 that no level script runs (about 4.5
-minutes); it is not a gate. Set `JAVAC` and `JAR` if the JDK tools are
-not on the path.
+`java/before-commit.sh` must print `BEFORE COMMIT OK` before a change to
+the Java code is committed; it is the only requirement. Each level script
+prints `LEVEL n OK` when it passes; they are deeper checks of their levels,
+run after larger changes, not commit gates. Some tasks need more testing,
+depending on the job; work on performance, for example, runs the
+performance tests. `java/night.sh` runs the long-running tests of 2013 to
+2015 that no level script runs (about 4.5 minutes); it is not a gate. Set
+`JAVAC` and `JAR` if the JDK tools are not on the path.
 
 
 

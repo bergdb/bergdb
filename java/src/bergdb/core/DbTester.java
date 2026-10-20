@@ -1296,9 +1296,10 @@ public class DbTester {
     /**
      * Regression test for a bug found 2026-10-13: when the stream failed (here,
      * closed under the running database), a sync returned as if the transaction were
-     * durable. Now it throws, and so does the next transaction.
+     * durable. Now it throws, and so does the next transaction. An f-test: the sync after
+     * the failure returns at StorageManager's next 500 ms poll, as nothing wakes it.
      */
-    @Nano
+    @Nano("f")
     public static void testSyncAfterStreamFailure() {
         MemoryStream mstream = new MemoryStream();
         Db db = testDb(mstream);

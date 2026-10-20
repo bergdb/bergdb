@@ -252,12 +252,22 @@ public class EvictionReaderTester {
      * meanwhile. A sweep that needs a pointer lock the reader holds (128 stripes) waits for
      * it, and a load never asks for the write lock (Q8), so there is no deadlock; whichever
      * order results, the reader's answers are right, the audit passes, and the writer goes
-     * on with the records it writes without eviction.
+     * on with the records it writes without eviction. The unit test makes one try and gives
+     * the sweep 50 ms to run or wait; the f-test three tries and 500 ms.
      */
     @Nano
     public static void testReaderPausedInsideAFollow() throws Exception {
+        readerPausedInsideAFollow(1, 50);
+    }
+
+    @Nano("f")
+    public static void testReaderPausedInsideAFollowF() throws Exception {
+        readerPausedInsideAFollow(3, 500);
+    }
+
+    private static void readerPausedInsideAFollow(int maxTries, long sweepMillis) throws Exception {
         int tries = 0;
-        for (int attempt = 0; attempt < 8 && tries < 3; attempt++) {
+        for (int attempt = 0; attempt < 8 && tries < maxTries; attempt++) {
             final Pair w = new Pair(attempt);
             List<Object[]> cs = candidates(w.db);
             if (cs.isEmpty()) continue;
@@ -305,7 +315,7 @@ public class EvictionReaderTester {
                         }
                     });
                     evictor.start();
-                    evictor.join(500);
+                    evictor.join(sweepMillis);
                     resume.countDown();
                     evictor.join(20000);
                     Assert.assertTrue("the sweep ended", !evictor.isAlive());

@@ -612,9 +612,10 @@ public class DbTesterRestart {
      * item 001, WP A3; review-13-claude, section 2, of F1-008-13). One key updated in every
      * transaction, at node size 8, makes a new top node about every four transactions, so
      * about 131,000 transactions pass ordinal 32,768. Before the fix of
-     * StoredTopNode.toLongs, the restart failed ("Bad TopNode ID of TopNode in stream").
+     * StoredTopNode.toLongs, the restart failed ("Bad TopNode ID of TopNode in stream"). An
+     * f-test: about 1.4 s.
      */
-    @Nano private static void testRestartAfterManyTopNodes() {
+    @Nano("f") private static void testRestartAfterManyTopNodes() {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(s).clock(clock).startupDistance(10000).maxNodeSize8()

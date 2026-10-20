@@ -265,12 +265,14 @@ public class FileStreamPowerLossTester {
         } finally { stream.close(); remove(dir); }
     }
 
-    @Nano
+    // This and the next two are f-tests: the sync after the failed force returns at
+    // StorageManager's next 500 ms poll, as nothing wakes it.
+    @Nano("f")
     public static void testSyncDoesNotAdvanceAfterFailedFileForce() throws Exception {
         testFailedForce(false);
     }
 
-    @Nano
+    @Nano("f")
     public static void testSyncDoesNotAdvanceAfterFailedDirectoryForce() throws Exception {
         testFailedForce(true);
     }
@@ -337,7 +339,7 @@ public class FileStreamPowerLossTester {
         } finally { release.countDown(); manager.stop(); remove(dir); }
     }
 
-    @Nano
+    @Nano("f")
     public static void testPendingCutForceFailureDoesNotAcknowledgeFlush() throws Exception {
         File dir = Files.createTempDirectory("bergdb-power-pending-cut-").toFile();
         final CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);

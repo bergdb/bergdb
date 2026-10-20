@@ -65,7 +65,7 @@ Done when
   fails on a read error, also with an evicted node; an exception in
   `store()`; no `two canonical objects` with assertions on.
 * No stream changes when nothing throws: StreamDigest identical to R8's.
-* The four gates print `LEVEL n OK`.
+* `java/before-commit.sh` prints `BEFORE COMMIT OK`.
 * M49 is closed in the register, item 003 is closed, `docs/` says what a
   failed transaction does (the public API's documentation included).
 
@@ -83,4 +83,4 @@ Size and order
 
 S to M: the fix is small; the tests with failing reads and appends are most
 of it. Do it together with 005-02, which changes `Db.executeInner` too, as
-one change with one run of the gates, or as two commits in a row.
+one change with one run of `before-commit.sh`, or as two commits in a row.

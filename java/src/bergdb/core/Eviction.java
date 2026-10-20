@@ -600,6 +600,13 @@ public final class Eviction {
     private static final Schedule[] SCHEDULES = {Schedule.VALUES, Schedule.EVERY,
             Schedule.RANDOM, Schedule.RANDOM, Schedule.RANDOM};
 
+    /**
+     * The indexes of SCHEDULES. A case runs as a unit test with one schedule and the
+     * checks of every time only (quick), and as an f-test, its name ending in F, with every
+     * schedule and every check.
+     */
+    private static final int[] ALL = {0, 1, 2, 3, 4};
+
     /** One time step of the twins' clock, 10 ms; 50 ms with reclaim. */
     private static final long STEP = bergdb.pub.util.Clock.UNITS_PER_SEC / 100;
 
@@ -610,12 +617,14 @@ public final class Eviction {
      * stream is durable, which depends on the storage threads' timing), and their answers to
      * lookups of every key at every time so far, from the first available time on, and that
      * no audit failed. The streams are CutStreams, so a read below a cut fails; with reclaim,
-     * retain is in seconds.
+     * retain is in seconds. Quick: check(false) does nothing, as each check waits for the
+     * storage threads.
      */
     private static final class Twin {
         final Schedule schedule;
         final long seed;
         final int retain;
+        final boolean quick;
         final long step;
         final CoreTestClock clock = new CoreTestClock();
         final java.util.ArrayList<Long> times = new java.util.ArrayList<Long>();
@@ -627,10 +636,11 @@ public final class Eviction {
         long time = 100 * STEP;
         int sharedIndex = 0, sharedValues = 0;
 
-        Twin(Schedule schedule, long seed, int retain) {
+        Twin(Schedule schedule, long seed, int retain, boolean quick) {
             this.schedule = schedule;
             this.seed = seed;
             this.retain = retain;
+            this.quick = quick;
             this.step = retain > 0 ? 5 * STEP : STEP;
             ref = start(s1, Schedule.NONE);
             sub = start(s2, schedule);
@@ -703,6 +713,7 @@ public final class Eviction {
 
         /** The comparison, at every time so far (all) or the latest only. */
         void check(boolean all) {
+            if (quick && !all) return;
             ref.sync(SyncLevel.STRONG);
             sub.sync(SyncLevel.STRONG);
             Assert.assertEquals(s1.getLength(), s2.getLength());
@@ -763,8 +774,8 @@ public final class Eviction {
         return java.util.Arrays.equals(b1, b2);
     }
 
-    private static Twin twin(int s) {
-        return new Twin(SCHEDULES[s], 1 + s, 0);
+    private static Twin twin(int s, boolean quick) {
+        return new Twin(SCHEDULES[s], 1 + s, 0, quick);
     }
 
     /**
@@ -775,9 +786,18 @@ public final class Eviction {
      */
     @Nano
     public static void testSharedChild() {
+        sharedChild(true, 2);
+    }
+
+    @Nano("f")
+    public static void testSharedChildF() {
+        sharedChild(false, ALL);
+    }
+
+    private static void sharedChild(boolean quick, int... schedules) {
         int shared = 0;
-        for (int s = 0; s < SCHEDULES.length; s++) {
-            Twin w = twin(s);
+        for (int s : schedules) {
+            Twin w = twin(s, quick);
             for (int i = 0; i < 40; i++) {
                 if (i % 3 == 0) w.trans();
                 else w.trans("a" + (i % 17) + "=" + i, "b=" + i);
@@ -803,8 +823,17 @@ public final class Eviction {
      */
     @Nano
     public static void testOldSnapshotAndNewerCanonical() {
-        for (int s = 0; s < SCHEDULES.length; s++) {
-            Twin w = twin(s);
+        oldSnapshotAndNewerCanonical(true, 1);
+    }
+
+    @Nano("f")
+    public static void testOldSnapshotAndNewerCanonicalF() {
+        oldSnapshotAndNewerCanonical(false, ALL);
+    }
+
+    private static void oldSnapshotAndNewerCanonical(boolean quick, int... schedules) {
+        for (int s : schedules) {
+            Twin w = twin(s, quick);
             for (int i = 0; i < 30; i++) w.trans("k" + (i * 7 % 30) + "=" + i);
             for (int i = 0; i < 20; i++) {
                 w.read(w.times.get(i * 3 % 30));
@@ -818,8 +847,17 @@ public final class Eviction {
     /** Startup, later updates, writeout, eviction; and again after a restart. */
     @Nano
     public static void testStartupUpdatesWriteoutEviction() {
-        for (int s = 0; s < SCHEDULES.length; s++) {
-            Twin w = twin(s);
+        startupUpdatesWriteoutEviction(true, 3);
+    }
+
+    @Nano("f")
+    public static void testStartupUpdatesWriteoutEvictionF() {
+        startupUpdatesWriteoutEviction(false, ALL);
+    }
+
+    private static void startupUpdatesWriteoutEviction(boolean quick, int... schedules) {
+        for (int s : schedules) {
+            Twin w = twin(s, quick);
             for (int i = 0; i < 25; i++) w.trans("k" + i + "=" + i);
             w.restart();
             w.check(true);
@@ -839,9 +877,19 @@ public final class Eviction {
      */
     @Nano
     public static void testSplitsAndRootChanges() {
-        for (int s = 0; s < SCHEDULES.length; s++) {
-            Twin w = twin(s);
-            for (int i = 0; i < 60; i++) {
+        splitsAndRootChanges(true, 1);
+    }
+
+    @Nano("f")
+    public static void testSplitsAndRootChangesF() {
+        splitsAndRootChanges(false, ALL);
+    }
+
+    private static void splitsAndRootChanges(boolean quick, int... schedules) {
+        int n = quick ? 30 : 60;
+        for (int s : schedules) {
+            Twin w = twin(s, quick);
+            for (int i = 0; i < n; i++) {
                 w.trans("k" + (1000 + i) + "=" + i, "j" + (2000 - i) + "=" + i);
                 w.check(i % 20 == 19);
             }
@@ -849,7 +897,7 @@ public final class Eviction {
             for (int i = 0; i < many.length; i++) many[i] = "m" + (3000 + i) + "=" + i;
             w.trans(many);
             w.check(true);
-            for (int i = 0; i < 60; i += 2) {
+            for (int i = 0; i < n; i += 2) {
                 w.trans("-k" + (1000 + i), "-j" + (2000 - i), "-m" + (3000 + i % 40));
                 w.check(i % 20 == 18);
             }
@@ -865,14 +913,23 @@ public final class Eviction {
      */
     @Nano
     public static void testHistoricalParentsAndLongKeys() {
+        historicalParentsAndLongKeys(true, 4);
+    }
+
+    @Nano("f")
+    public static void testHistoricalParentsAndLongKeysF() {
+        historicalParentsAndLongKeys(false, ALL);
+    }
+
+    private static void historicalParentsAndLongKeys(boolean quick, int... schedules) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 300; i++) sb.append((char) ('a' + i % 26));
         String pad = sb.toString();
-        for (int s = 0; s < SCHEDULES.length; s++) {
-            Twin w = twin(s);
+        for (int s : schedules) {
+            Twin w = twin(s, quick);
             for (int i = 0; i < 40; i++) w.trans("p" + i + "=" + i, "L" + (i % 6) + pad + "=" + i);
             long old = w.times.get(10);
-            for (int i = 0; i < 30; i++) {
+            for (int i = 0; i < (quick ? 15 : 30); i++) {
                 w.read(old);
                 w.read(w.times.get(25 + i % 10));
                 if (i % 5 == 2) w.trans("-L" + (i % 6) + pad);
@@ -893,13 +950,22 @@ public final class Eviction {
      */
     @Nano
     public static void testReclaimWithMisses() {
+        reclaimWithMisses(true, 2);
+    }
+
+    @Nano("f")
+    public static void testReclaimWithMissesF() {
+        reclaimWithMisses(false, ALL);
+    }
+
+    private static void reclaimWithMisses(boolean quick, int... schedules) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 1000; i++) sb.append((char) ('a' + i % 26));
         String big = sb.toString();
         long cuts = 0;
-        for (int s = 0; s < SCHEDULES.length; s++) {
-            Twin w = new Twin(SCHEDULES[s], 1 + s, 1);
-            for (int i = 0; i < 200; i++) {
+        for (int s : schedules) {
+            Twin w = new Twin(SCHEDULES[s], 1 + s, 1, quick);
+            for (int i = 0; i < (quick ? 100 : 200); i++) {
                 w.trans("k" + (i * 7 % 40) + "=" + i + big, i % 9 == 0 ? "-k" + (i % 40) : "c=" + i);
                 if (i % 50 == 49) w.restart();
                 w.check(i % 25 == 24);
@@ -907,7 +973,7 @@ public final class Eviction {
             w.check(true);
             if (w.s2.getCut() > 0) cuts++;
         }
-        Assert.assertEquals("a cut in every run", (long) SCHEDULES.length, cuts);
+        Assert.assertEquals("a cut in every run", (long) schedules.length, cuts);
     }
 
     /** A key node object that a memory slot of a resident parent names, and a value in a
@@ -979,7 +1045,16 @@ public final class Eviction {
      */
     @Nano
     public static void testValues() {
-        Twin w = new Twin(Schedule.VALUES, 1, 0);
+        values(true, 0);
+    }
+
+    @Nano("f")
+    public static void testValuesF() {
+        values(false, ALL);
+    }
+
+    private static void values(boolean quick, int... schedules) {
+        Twin w = new Twin(Schedule.VALUES, 1, 0, quick);
         w.trans("a=1", "b=2");
         w.trans("c=3");
         Assert.assertTrue("released", w.released() > 0);
@@ -990,8 +1065,8 @@ public final class Eviction {
             w.check(i % 10 == 9);
         }
         int shared = 0;
-        for (int s = 0; s < SCHEDULES.length; s++) {
-            Twin r = twin(s);
+        for (int s : schedules) {
+            Twin r = twin(s, quick);
             for (int i = 0; i < 30; i++) {
                 r.trans("k" + (i % 10) + "=v" + i);
                 r.read(r.times.get(i / 2));

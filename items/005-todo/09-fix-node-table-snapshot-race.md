@@ -79,8 +79,8 @@ Done when
 
 * A test that fails without the fix and passes with it; the flaky test
   passes many times under load (thousands of runs, not one in 600).
-* No stream changes: StreamDigest the same as R8's; `EvictionInvariance` and
-  the four gates print their OKs.
+* No stream changes: StreamDigest the same as R8's; `EvictionInvariance`
+  prints its OK, and `java/before-commit.sh` prints `BEFORE COMMIT OK`.
 * The register and docs/levels.md say what was found and fixed.
 
 

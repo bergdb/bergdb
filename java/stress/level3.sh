@@ -1,14 +1,15 @@
 #!/bin/sh
 # Level 3 regression check (docs/levels.md): reclaim, which cuts the front
-# of the stream. Run it, with level1.sh and level2.sh, before committing any
-# change to java/; all three must pass.
+# of the stream. Not a commit gate (java/before-commit.sh is, since
+# 2026-10-20); run it after larger changes.
 #
 # Usage: java/stress/level3.sh [quick]
 #   full (default): about 4 minutes on 10 cores. quick: about 1 minute.
 #
 # Builds with ../java/build.sh, then runs, stopping at the first failure:
 #   1. The unit tests (bergdb.dev.Unit), which include the reclaim tests in
-#      Reclaim.Tester; full only, the f-tests (bergdb.dev.F) too.
+#      Reclaim.Tester; then the f-tests (bergdb.dev.F): all of them, or, quick,
+#      those of reclaim and of FileStream's power loss.
 #   2. ReclaimStress, random configurations: retain durations of 1 to 5 s,
 #      startup distances of 1000 to 20,000 bytes, node sizes 8 to 62, 5 to
 #      3000 keys, long keys, deletes, restarts between sessions. The stream
@@ -79,9 +80,13 @@ grep -q '^SUCCESS' $LOG/unit.txt || fail "unit tests" $LOG/unit.txt
 grep '^SUCCESS' $LOG/unit.txt
 if [ $QUICK = 0 ]; then
     $JAVA -ea -cp build/bergdb.jar bergdb.dev.F > $LOG/f.txt 2>&1
-    grep -q '^SUCCESS' $LOG/f.txt || fail "f-tests" $LOG/f.txt
-    grep '^SUCCESS' $LOG/f.txt
+else
+    $JAVA -ea -cp build/bergdb.jar bergdb.dev.F \
+        -c '.*(Reclaim|ReclaimReaderTester|ReclaimRetentionTester|FileStreamPowerLossTester).*' \
+        > $LOG/f.txt 2>&1
 fi
+grep -q '^SUCCESS' $LOG/f.txt || fail "f-tests" $LOG/f.txt
+grep '^SUCCESS' $LOG/f.txt
 
 echo "2. ReclaimStress, random configurations"
 Q=$((ROUNDS / 4))

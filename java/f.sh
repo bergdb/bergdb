@@ -1,8 +1,8 @@
 #!/bin/sh
 # The f-tests (bergdb.dev.F, the Nano test group "f"), with assertions on
 # (-ea): functional tests with a larger scope than the unit tests, each
-# within about 10 seconds. Run them after every major change; level3.sh
-# runs them too.
+# within about 10 seconds. Run them before every commit (before-commit.sh
+# runs them, with the unit tests); level3.sh runs them too.
 #
 # Usage: java/f.sh [-c classPattern] [-m methodPattern] [-v | -vv | -d | -s]
 #   The options go to the test runner; -c and -m are regular expressions

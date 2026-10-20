@@ -1,7 +1,8 @@
 #!/bin/sh
 # The unit tests (bergdb.dev.Unit, the Nano test group "unit"), with
 # assertions on (-ea). Each test should be fast, normally max 100 ms. Run
-# them before every commit; level1.sh to level4.sh run them too.
+# them before every commit (before-commit.sh runs them, with the f-tests);
+# level1.sh to level4.sh run them too.
 #
 # Usage: java/unit.sh [-c classPattern] [-m methodPattern] [-v | -vv | -d | -s]
 #   The options go to the test runner; -c and -m are regular expressions

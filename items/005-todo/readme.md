@@ -54,8 +54,8 @@ which changed `Db.executeInner` too, is done); 005-03 after 005-01, since
 it changes the same part of Java; 005-05 and 005-06 beside the rest, as
 they are mostly reading and thinking, and 005-06 feeds 005-05. 005-07 is
 best before or with 005-01 (where a transaction's go point is) and before
-005-03's fix. 005-09 is small and can go any time; it can fail a gate until
-it is fixed. What is left of 005-10 waits for Frans; a removal is best made
+005-03's fix. 005-09 is small and can go any time; its flaky unit test can
+fail a run of `before-commit.sh` until it is fixed. What is left of 005-10 waits for Frans; a removal is best made
 when no other change to `java/` is under way. 005-11 and 005-12 can go any
 time, best before 005-05's decision on publishing, as both concern the Pub
 API. 005-13's sweep can go any time; its group commit is best after or with

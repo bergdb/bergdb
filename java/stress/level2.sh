@@ -1,8 +1,8 @@
 #!/bin/sh
 # Level 2 regression check (docs/levels.md):
 # restart with bounded startup, where startup reads only the tail of the
-# stream. Run it, and level1.sh, before committing any change to
-# java/; both must pass.
+# stream. Not a commit gate (java/before-commit.sh is, since 2026-10-20);
+# run it after larger changes.
 #
 # Usage: java/stress/level2.sh [quick]
 #   full (default): about 17 minutes on 10 cores. quick: about 2 minutes.

@@ -64,11 +64,14 @@ Levels
 Level 3 needs level 2: once the front of the stream is cut, startup can no
 longer replay from the beginning.
 
-Checks, all of which must pass before a change to the code is committed:
+Checks of the levels:
 [level1.sh](../java/stress/level1.sh),
 [level2.sh](../java/stress/level2.sh),
 [level3.sh](../java/stress/level3.sh) and, since 2026-10-18 (bergdb item
-001, K4), [level4.sh](../java/stress/level4.sh). They print `LEVEL 1 OK`,
+001, K4), [level4.sh](../java/stress/level4.sh). Until 2026-10-20 all four
+had to pass before a change to the code was committed; since then the only
+requirement is [before-commit.sh](../java/before-commit.sh), the unit tests
+and the f-tests (bergdb 006-03). They print `LEVEL 1 OK`,
 `LEVEL 2 OK`, `LEVEL 3 OK` and `LEVEL 4 OK`. Runtime depends on the cost of the storage
 forces; the old pre-force timing estimates no longer describe these runs.
 

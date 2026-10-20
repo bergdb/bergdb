@@ -791,3 +791,17 @@ gates and `lake build` pass.
 2026-10-20. The night tests run with `java/night.sh` (Frans's, beside
 `unit.sh`, `f.sh` and `perf.sh`); 005-10's `java/stress/night.sh` is
 removed, at Frans's request.
+
+2026-10-20. Bergdb 006-03, fast unit tests: the unit tests from 41.5 s to
+10 s (942 tests to 933 on today's code), each changed one under 100 ms warm.
+The slow ones waited for the storage thread: a sync waits for
+`BufferedStream`'s poll, and after a storage failure for `StorageManager`'s
+500 ms poll, as nothing wakes it; or they ran fixed windows or much work.
+Seven Eviction twin cases, two reader tests, two CapacityTester tests and
+`testCutIsMadeAfterDecisionIsDurable` have a small unit test and the full
+version as an f-test (name ending in F); eleven tests moved to the f-tests.
+The Java of BergDB is unchanged. `level3.sh quick` and `level4.sh` run the
+f-tests of their classes. New `java/before-commit.sh`: the unit and f-tests
+in parallel, about 2 minutes, now the only requirement before a commit; the
+level scripts are deeper checks. The four level scripts pass, full, with the
+change on `39ab4a8`; `before-commit.sh` on `9d909cc`.

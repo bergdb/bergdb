@@ -16,6 +16,7 @@ The list
 |---|---|---|
 | [006-01](01-work-12-19-october.md) | 2026-10-19 | Summary of the work on BergDB from 12 to 19 October 2026, up to item 005 |
 | [006-02](02-props-2017-vs-2026.md) | 2026-10-19 | Props, the 2013 to 2017 performance suite, on the 2017 and the 2026 code on F53, against cissi's numbers of 2015 and 2017 |
+| [006-03](03-fast-unit-tests.md) | 2026-10-20 | Fast unit tests (41.5 s to 10 s), the full versions as f-tests; `java/before-commit.sh`, the only commit gate |
 
 
 Files
@@ -28,6 +29,9 @@ Files
   2017 to 2026, F53 against cissi, and the node table's tree bins. The plan,
   the scripts, the probe, an experimental patch and the output of every run
   are in [02-props-2017-vs-2026/](02-props-2017-vs-2026/).
+* [03-fast-unit-tests.md](03-fast-unit-tests.md). 006-03, why the unit tests
+  were slow, what changed, the times before and after, and the check before a
+  commit.
 
 
 Log
@@ -53,3 +57,8 @@ patch gives MEM -16 percent and `set` -11 percent.
 
 2026-10-19. 006-02: section 10 added, MEM from 158 to 227 commit by commit, at
 Frans's request; the tree-bin fix registered as 005-08.
+
+2026-10-20. 006-03, at Frans's request, by Claude (Opus 5.5, Claude Code):
+the unit tests from 41.5 s to 10 s; slow tests split into a small unit test
+and the full f-test, or moved to the f-tests. New `java/before-commit.sh`,
+the unit and f-tests (about 2 minutes), the only check before a commit.

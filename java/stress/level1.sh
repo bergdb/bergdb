@@ -1,7 +1,7 @@
 #!/bin/sh
 # Level 1 regression check (docs/levels.md): BergDB as a multiversion map
-# in memory, with restart by replaying the whole stream. Run it before
-# committing any change to java/; it must pass.
+# in memory, with restart by replaying the whole stream. Not a commit gate
+# (java/before-commit.sh is, since 2026-10-20); run it after larger changes.
 #
 # Usage: java/stress/level1.sh [quick]
 #   full (default): about 2.5 minutes on 10 cores (F53, 2026-10-19). quick:

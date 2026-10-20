@@ -1,7 +1,7 @@
 #!/bin/sh
 # Level 4 regression check (docs/levels.md): eviction, data and index larger than
-# memory. Run it, with level1.sh, level2.sh and level3.sh, before committing any
-# change to java/; all four must pass. Written 2026-10-18 for bergdb item 001, WP J9.
+# memory. Not a commit gate (java/before-commit.sh is, since 2026-10-20); run it after
+# larger changes. Written 2026-10-18 for bergdb item 001, WP J9.
 #
 # Usage: java/stress/level4.sh [quick]
 #   full (default): about 16 minutes on 10 cores. quick: about 4 minutes. (Measured
@@ -11,7 +11,9 @@
 #   1. The unit tests (bergdb.dev.Unit; quick: the eviction tests only):
 #      Eviction (the cases of docs/level4-plan.md, section 9, as twins with and
 #      without eviction), EvictionReaderTester (readers under eviction, Q8),
-#      CapacityTester (the capacity controller) and Residents.
+#      CapacityTester (the capacity controller) and Residents; then the f-tests
+#      of these classes (bergdb.dev.F), their full versions: every schedule,
+#      larger databases (since 2026-10-20 the unit tests are small).
 #   2. EvictionInvariance: the same transactions with each eviction schedule
 #      (none, values, every, random, and the capacity controller with a small
 #      budget) give the same stream, byte for byte, the same dirty set and the
@@ -73,6 +75,10 @@ else
 fi
 grep -q '^SUCCESS' $LOG/unit.txt || fail "unit tests" $LOG/unit.txt
 grep '^SUCCESS' $LOG/unit.txt
+$JAVA -ea -cp build/bergdb.jar bergdb.dev.F -c '.*(Eviction|EvictionReaderTester|CapacityTester|Residents).*' \
+    > $LOG/f.txt 2>&1
+grep -q '^SUCCESS' $LOG/f.txt || fail "f-tests" $LOG/f.txt
+grep '^SUCCESS' $LOG/f.txt
 
 echo "2. EvictionInvariance, every schedule, the audit on"
 E="-ea -Xmx3g -Ddel=1 -Daudit=5 -Dn=$INV_N"

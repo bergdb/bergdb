@@ -360,10 +360,19 @@ public class ReclaimReaderTester {
      * position). The writer reads the pair when it serializes the key node. Read as null and
      * then the new position, it took the access data for a stream position: "Bad stream
      * pointer" (with -ea), or a wrong pointer in the stream. KeyNode.getPointer() must give
-     * a coherent pair.
+     * a coherent pair. The unit test reads for 50 ms, the f-test for 1.5 s.
      */
     @Nano
     public static void testPointerPairIsCoherent() throws Exception {
+        pointerPairIsCoherent(50);
+    }
+
+    @Nano("f")
+    public static void testPointerPairIsCoherentF() throws Exception {
+        pointerPairIsCoherent(1500);
+    }
+
+    private static void pointerPairIsCoherent(long millis) throws Exception {
         final KeyNode parent = KeyNode.nodeWithTime(1);
         final KeyNode child = new KeyNode();
         final long streamPos = 123456;
@@ -383,7 +392,7 @@ public class ReclaimReaderTester {
         flipper.start();
         
         Pointer p = new Pointer();
-        long deadline = System.nanoTime() + 1500L * 1000 * 1000;
+        long deadline = System.nanoTime() + millis * 1000 * 1000;
         long reads = 0;
         try {
             while (System.nanoTime() < deadline) {
@@ -403,15 +412,19 @@ public class ReclaimReaderTester {
 
     /**
      * Exact cut (CutStream). A scan admitted before the next cut reaches bytes of the cut:
-     * it expires, and the database goes on.
+     * it expires, and the database goes on. An f-test: the writer runs until two cuts, about
+     * 0.4 s.
      */
-    @Nano
+    @Nano("f")
     public static void testReaderExpiresWhenCutOvertakesIt() throws Exception {
         checkSomeSeed(new CutKit(), 40, 1);
     }
 
-    /** A default-time scan uses a finite snapshot, which can expire while it is paused. */
-    @Nano
+    /**
+     * A default-time scan uses a finite snapshot, which can expire while it is paused. An
+     * f-test, as the one above.
+     */
+    @Nano("f")
     public static void testLatestReaderExpiresWhenCutOvertakesIt() throws Exception {
         check(scenario(new CutKit(), 40, 1, true));
     }

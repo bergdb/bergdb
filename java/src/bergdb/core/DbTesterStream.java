@@ -621,7 +621,9 @@ public class DbTesterStream {
         Assert.assertEquals(c1, c2);
     }
     
-    @Nano
+    // An f-test: the sync after the failed append returns at StorageManager's next 500 ms
+    // poll, as nothing wakes it.
+    @Nano("f")
     public static void testReadOnlyStream2() {
         // Test to write to read-only Db. Should throw exception.
         // Because of BufferedStream, the actual append to underlying stream

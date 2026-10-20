@@ -1972,10 +1972,21 @@ public class Reclaim implements Db.TransactionListener {
          * decision. CutStream.getLengthAtCut() is the length then, and CrashTest never cuts
          * the stream shorter than that: what a crash may lose is only what came after.
          * "Durable" is what StorageManager confirms: FileStream forces appended bytes
-         * and backing-file names before completion (see docs/level3-durability.md).
+         * and backing-file names before completion (see docs/level3-durability.md). The unit
+         * test waits for two cuts and does not sync; the f-test waits for three and syncs
+         * after every seventh transaction, which waits for the storage thread.
          */
         @Nano
         public static void testCutIsMadeAfterDecisionIsDurable() {
+            cutIsMadeAfterDecisionIsDurable(2, false);
+        }
+
+        @Nano("f")
+        public static void testCutIsMadeAfterDecisionIsDurableF() {
+            cutIsMadeAfterDecisionIsDurable(3, true);
+        }
+
+        private static void cutIsMadeAfterDecisionIsDurable(int wanted, boolean sync) {
             CoreTestClock clock = new CoreTestClock();
             long time = Clock.UNITS_PER_SEC;
             clock.setTime(time);
@@ -1986,12 +1997,12 @@ public class Reclaim implements Db.TransactionListener {
             long lastCut = 0;
             int cuts = 0;
 
-            for (int i = 0; i < 30000 && cuts < 3; i++) {
+            for (int i = 0; i < 30000 && cuts < wanted; i++) {
                 time += Clock.UNITS_PER_SEC / 20;
                 clock.setTime(time);
                 db.execute(db.trans().put("/k/" + r.nextInt(50), new byte[1 + r.nextInt(30)])
                         .build());
-                if (i % 7 == 0) {
+                if (sync && i % 7 == 0) {
                     db.sync(SyncLevel.ORDINARY);
                 }
                 if (stream.getCut() > lastCut) {
@@ -2010,7 +2021,7 @@ public class Reclaim implements Db.TransactionListener {
                 }
             }
 
-            Assert.assertTrue("cuts: " + cuts, cuts >= 3);
+            Assert.assertTrue("cuts: " + cuts, cuts >= wanted);
             db.stop();
         }
     }

@@ -77,18 +77,26 @@ public class CapacityTester {
      * of 200 kB; every key read in random order, three times. After each read the resident
      * bytes are at most the budget plus one load's worth (the controller sweeps after the
      * load that passes the budget, under the write lock, with no writer about); the sweeps
-     * are load-triggered; every value is right.
+     * are load-triggered; every value is right. The unit test is smaller: 1000 keys, a
+     * budget of 50 kB.
      */
     @Nano
     public static void testReadsWithoutWrites() {
+        readsWithoutWrites(1000, 500, 50 * 1000);
+    }
+
+    @Nano("f")
+    public static void testReadsWithoutWritesF() {
+        readsWithoutWrites(4000, 2000, 200 * 1000);
+    }
+
+    private static void readsWithoutWrites(int n, int updates, long budget) {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db db = builder(s, clock, 0).start();
-        int n = 4000;
-        String[] last = load(db, clock, n, 2000, 300);
+        String[] last = load(db, clock, n, updates, 300);
         db.sync(SyncLevel.STRONG);
         db.stop();
-        long budget = 200 * 1000;
         db = builder(s.copy(), clock, budget).start();
         Random r = new Random(2);
         long max = 0;
@@ -194,9 +202,10 @@ public class CapacityTester {
     /**
      * Large puts: values of 1.5 MiB, over the 1 MiB that a read does not cache, with a budget
      * of 4 MB: after every transaction the resident bytes are within the budget (the large
-     * values go first), and the values read back are right.
+     * values go first), and the values read back are right. An f-test: about 1.4 s, most of
+     * it waiting for the storage thread to take the values.
      */
-    @Nano
+    @Nano("f")
     public static void testLargePuts() {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
@@ -224,9 +233,9 @@ public class CapacityTester {
      * snapshot each, while the writer runs 400 transactions with a budget much smaller than
      * the data, so that sweeps unswizzle and release what the readers hold. No deadlock;
      * every scan gives its snapshot; the resident bytes stay near the budget after every
-     * transaction.
+     * transaction. An f-test: the readers' pauses alone take 0.4 s.
      */
-    @Nano
+    @Nano("f")
     public static void testStalledReaders() throws Exception {
         MemoryStream s = new MemoryStream();
         final CoreTestClock clock = new CoreTestClock();
@@ -297,9 +306,9 @@ public class CapacityTester {
      * Pinned state above the budget: a budget of 20 kB, and a startup distance of 2 MB, so
      * that D holds far more than the budget. The pinned objects are kept, the sweeps report
      * the budget exceeded and do not run at every transaction, nothing fails or waits, and
-     * the stream and the answers are those of a database without eviction.
+     * the stream and the answers are those of a database without eviction. An f-test.
      */
-    @Nano
+    @Nano("f")
     public static void testPinnedAboveBudget() {
         MemoryStream s1 = new MemoryStream(), s2 = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
@@ -368,10 +377,19 @@ public class CapacityTester {
     /**
      * The same records and answers as without eviction, with the controller and a small
      * budget, reads at old times among the writes, and restarts; the audit after every
-     * transaction.
+     * transaction. The unit test runs 300 transactions, the f-test 800.
      */
     @Nano
     public static void testSameRecordsAsWithoutEviction() {
+        sameRecordsAsWithoutEviction(300);
+    }
+
+    @Nano("f")
+    public static void testSameRecordsAsWithoutEvictionF() {
+        sameRecordsAsWithoutEviction(800);
+    }
+
+    private static void sameRecordsAsWithoutEviction(int n) {
         MemoryStream s1 = new MemoryStream(), s2 = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db ref = builder(s1, clock, 0).start();
@@ -380,7 +398,7 @@ public class CapacityTester {
         Random r = new Random(5);
         List<Long> times = new ArrayList<Long>();
         long time = 100 * STEP;
-        for (int i = 0; i < 800; i++) {
+        for (int i = 0; i < n; i++) {
             time += STEP;
             clock.setTime(time);
             int k = r.nextInt(500);

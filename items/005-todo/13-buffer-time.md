@@ -135,10 +135,13 @@ Done when
 ---------
 
 The sweep's table is in `13-buffer-time/` with a recommendation, and Frans
-has decided: the default, group commit or not, the Pub API. A change to
-production Java (`java/src`) goes through the four gates as usual and is
-then recorded here; a change only to `Perf` and a suite needs the build
-and the performance smoke suite.
+has decided: the default, group commit or not, the Pub API. Any change to
+`java/` (production code, `Perf` or a suite) needs `java/before-commit.sh`
+to print `BEFORE COMMIT OK` (the unit tests and the f-tests) before it is
+committed. As performance work, this task also needs the performance
+tests: the sweep's suite for the results, and for a change to production
+Java (`java/src`) the suite run again on the changed code, its results
+then recorded here.
 
 
 First step
@@ -152,7 +155,7 @@ buffer time).
 Size and order
 --------------
 
-S for the sweep; M with the group-commit prototype and its gates.
+S for the sweep; M with the group-commit prototype and its tests.
 Related to 005-07 (synchronization of transactions; group commit is on
 its list of what may need to change) and to 005-11 (replicas, D2). The
 sweep can go any time; the group commit is best after or with 005-07.

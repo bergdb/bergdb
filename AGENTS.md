@@ -15,10 +15,16 @@ algorithm. [README.md](README.md) describes the repo; start reading at
 
 ## Code
 
-- All four level scripts (`java/stress/level1.sh`, `level2.sh`, `level3.sh`,
-  `level4.sh`) must print `LEVEL n OK` before a change to the Java code is
-  committed. `level2.sh`, `level3.sh` and `level4.sh` need Lean (elan) for
-  their conformance steps.
+- `java/before-commit.sh` must print `BEFORE COMMIT OK` before a change to
+  the Java code is committed: the unit tests and the f-tests, about 2
+  minutes. It is the only requirement. The level scripts
+  (`java/stress/level1.sh` to `level4.sh`) are deeper checks, not commit
+  gates; `level2.sh`, `level3.sh` and `level4.sh` need Lean (elan) for their
+  conformance steps.
+- Some tasks need more testing than that, depending on the job: work on
+  performance runs the performance tests (`java/stress/performance.sh` with
+  a suite, or `java/perf.sh`); a change to a level's mechanism runs that
+  level's script. The task's item says what it needs.
 - Do not edit a shell script while it runs; `sh` reads it as it goes.
 
 ## General

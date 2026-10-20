@@ -78,9 +78,10 @@ Done when
 ---------
 
 Either the outputs have unit tests for 1 (and the Javadoc is right), with
-the four gates passing; or Frans decides to remove them, and the API's
-methods, their implementations, `NoSuchObjectException` if nothing else
-throws it, and the documents' mentions go. In both cases the reason is
+`java/before-commit.sh` printing `BEFORE COMMIT OK`; or Frans decides to
+remove them, and the API's methods, their implementations,
+`NoSuchObjectException` if nothing else throws it, and the documents'
+mentions go. In both cases the reason is
 recorded here.
 
 
