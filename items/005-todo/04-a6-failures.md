@@ -228,7 +228,8 @@ Follow-up
 2026-10-20, by Claude (Opus 5.5, Claude Code), at Frans's request (to "Shall
 I do these two now, or add them as a todo entry?": "Yes."): both proposals
 above, made and gated in a scratch clone of `0597329`, then copied into the
-work tree, not committed.
+work tree. Frans committed it with 005-10's removal of unused code, in
+`c6ca623`.
 
 1. **The Java tier.** `A2A3Check2` reports A6', TREE and A-COPY as the
    model's assumptions, each with its failures, and A6's failures only as
@@ -269,4 +270,8 @@ s: step 7's three configurations with TREE, A6' and A-COPY; the small set's
 70 traces `TRACECHECK OK`, every `a6` trace with the kind, 11 transactions
 in all); `LEVEL 3 OK` (502 s: 25 reclaim traces, no adoption below the old
 parent); `LEVEL 4 OK` (875 s: 33 eviction traces, C-P on 521,711 pointers,
-the kind in 3 transactions).
+the kind in 3 transactions). Then on the work tree with 005-10's removal, in
+a fresh clone, whose `java/` and `lean/` are those of `c6ca623`: `lake build`
+without warnings, TRACE TESTS OK, and the four gates, full: `LEVEL 1 OK` (170
+s), `LEVEL 2 OK` (747 s), `LEVEL 3 OK` (469 s), `LEVEL 4 OK` (857 s), with the
+same numbers of traces and of adoptions below the old parent.

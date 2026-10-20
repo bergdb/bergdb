@@ -21,10 +21,35 @@ them:
 * `items/`. Work items: plans, experiments, progress logs and reports, kept
   apart from the current state. See [items/readme.md](items/readme.md).
 
-BergDB was developed 2012 to 2017 (until July 2013 under the name KissDB).
-This repository continues from the 2017 source; the work since October 2026
-fixed the bugs that stopped it, formalized the algorithm, and added reclaim
-and eviction.
+BergDB was developed 2012 to 2017. This repository continues from the 2017 source; the work since October 2026 fixed the bugs that stopped it, formalized the algorithm, and added reclaim and eviction.
+
+
+
+Build and test
+--------------
+
+Needs a JDK (the code is compiled with `--release 8`) and, for the proofs
+and `level2.sh` to `level4.sh`, [elan](https://github.com/leanprover/elan).
+
+    
+    java/build.sh                  # builds java/build/bergdb.jar and the stress tests
+    java/unit.sh                   # runs the unit tests with -ea, assertions on
+    java/f.sh                      # runs the f-tests
+    java/perf.sh                   # runs the perf-tests
+    java/night.sh                  # runs the night-tests
+    java/stress/level1.sh          # full replay          (about 80 s)
+    java/stress/level2.sh          # bounded startup      (about 17 minutes; quick: 2)
+    java/stress/level3.sh          # reclaim              (about 8 minutes)
+    java/stress/level4.sh          # eviction             (about 16 minutes; quick: 4)
+    java/stress/night.sh           # the night tests      (about 4.5 minutes)
+    cd lean && lake build          # checks all proofs
+
+Each level script prints `LEVEL n OK` when it passes. All four must pass
+before a change to the Java code is committed. `night.sh` runs the
+long-running tests of 2013 to 2015 that no level script runs and prints
+`NIGHT OK`; it is not a gate. Set `JAVAC` and `JAR` if the JDK tools are
+not on the path.
+
 
 
 Status
@@ -44,27 +69,6 @@ concern the abstract model, which since bergdb item 001 includes reclaim and
 eviction; Java's runs are checked against it, not proved, and concurrency and
 resource bounds are not in it. Whether the concept is novel is open; see
 [docs/prior-art.md](docs/prior-art.md).
-
-
-Build and test
---------------
-
-Needs a JDK (the code is compiled with `--release 8`) and, for the proofs
-and `level2.sh` to `level4.sh`, [elan](https://github.com/leanprover/elan).
-
-    java/build.sh                  # builds java/build/bergdb.jar and the stress tests
-    java/stress/level1.sh          # full replay          (about 80 s)
-    java/stress/level2.sh          # bounded startup      (about 17 minutes; quick: 2)
-    java/stress/level3.sh          # reclaim              (about 8 minutes)
-    java/stress/level4.sh          # eviction             (about 16 minutes; quick: 4)
-    java/stress/night.sh           # the night tests      (about 4.5 minutes)
-    cd lean && lake build          # checks all proofs
-
-Each level script prints `LEVEL n OK` when it passes. All four must pass
-before a change to the Java code is committed. `night.sh` runs the
-long-running tests of 2013 to 2015 that no level script runs and prints
-`NIGHT OK`; it is not a gate. Set `JAVAC` and `JAR` if the JDK tools are
-not on the path.
 
 
 Notes

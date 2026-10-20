@@ -275,4 +275,11 @@ G1 is in three parts, and only the first is removed:
   it) and `Job.join(int)` (each job's `join()` calls it). Removing them
   would take features that are used out of the API.
 
-Frans's answer on G1b and G1c comes next; this entry is done then.
+2026-10-20, Frans on G1c: "Keep these; as proposed." G1b is under
+discussion: replication (remove it or implement it fully), transaction
+outputs, and `getFirstAvailableLookupTime` (keep it and test it). A first
+test of the last, on a scratch clone, found that the API's method returns
+the current time, not the first available lookup time
+(`DatabaseImp.getFirstAvailableLookupTime` returns `db.currentTime()`, as
+in the 2017 source); returning `db.getFirstAvailableLookupTime()` makes the
+test pass. Not in the main tree yet.

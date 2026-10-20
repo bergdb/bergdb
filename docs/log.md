@@ -764,3 +764,15 @@ nothing called (`Duration.add`, `days`, `hours`, `minutes`;
 tests 948 to 942, f-tests 37 to 36; the four gates, `lake build` and
 `night.sh` pass. The rest of the Pub API that nothing in the repository
 calls waits for Frans (005-10).
+
+2026-10-20. Bergdb 005-04's follow-up: TREE, A6' and A-COPY, the model's
+assumptions of stage 2, are gate checks. `A2A3Check2` reports them as
+assumptions, each with its failures, and A6's failures, the adoptions below
+the old parent, as information; `level2.sh` step 7 requires them. The
+checker's C-A checks them (`EvictRunOK`, R(0) included), with A6' (the new
+`adoptFailures`) in place of the diagnostic A6, and counts the adoptions
+below the old parent; a new test trace, `adopt2.trace`, has one from outside
+the old parent's subtree, which fails A6'. conformance.sh's small and evict
+sets have a configuration with A6's kind, `a6` and `e-a6`; a trace of them
+without it fails. The four gates pass, full, on `0597329` with the change
+and on `c6ca623`, where Frans committed it with 005-10's removal.

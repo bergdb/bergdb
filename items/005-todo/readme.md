@@ -24,6 +24,8 @@ The list
 | [005-08](08-fix-node-table-tree-bins.md) | Fix | The node table's 256 maps make every bin a tree (`Cache3.mapIndex`): 61 bytes per KV, a slower `set` (006-02) | done |
 | [005-09](09-fix-node-table-snapshot-race.md) | Fix | A race between a reader and a sweep lets the node table name a released object (INV-CAN); a unit test fails now and then (005-02) | open |
 | [005-10](10-unused-code.md) | Investigate | Unused code in `java/` and `lean/`: find it and propose what to remove; nothing is removed without Frans's approval | in progress |
+| [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
+| [005-12](12-transaction-outputs.md) | Investigate | Transaction outputs (`setOutput`, `getOutput`): study them, then test them or remove them (005-10) | open |
 
 Status values: open, in progress, done, dropped, moved (to an item of its
 own). Kinds: Fix (a known fault), Investigate (find out, then propose),
@@ -39,6 +41,8 @@ and can go any time, best before 005-03, whose sweeps walk the node table.
 005-09 is small and can go any time; it can fail a gate until it is fixed.
 005-10's proposal can go any time, as it changes nothing; a removal that
 Frans approves is best made when no other change to `java/` is under way.
+005-11 and 005-12 can go any time, best before 005-05's decision on
+publishing, as both concern the Pub API.
 
 
 Files
@@ -72,6 +76,10 @@ Files
   tables, plan, tools and runs, in [10-unused-code/](10-unused-code/), and
   the removal as Frans decided it in
   [10-unused-code/applied/](10-unused-code/applied/).
+* [11-replication.md](11-replication.md). 005-11, replication: the
+  decision material for Frans.
+* [12-transaction-outputs.md](12-transaction-outputs.md). 005-12,
+  transaction outputs: study, then test or remove.
 
 
 Log
@@ -134,3 +142,14 @@ to A3, B1 to B3, F1 and part of G1, 3,071 lines in 103 files; added
 tree, for Frans to commit. The rest of G1 waits: the proposal's G1 was
 wrong for part of it (code behind those API methods is used), see the
 subitem.
+
+2026-10-20. 005-04's two proposals done, at Frans's request ("Yes"), by
+Claude (Opus 5.5, Claude Code): TREE, A6' and A-COPY are gate checks, in
+`A2A3Check2` (`level2.sh`, step 7) and in the checker's C-A, where A6'
+replaces the diagnostic A6; the small and evict sets have a configuration
+with A6's kind, whose traces must contain it. The four gates pass, also with
+005-10's removal (`c6ca623`). See 005-04, "Follow-up".
+
+2026-10-20. Added 005-11, replication, and 005-12, transaction outputs, at
+Frans's request, from 005-10's G1 (the Pub API's methods that nothing in
+the repository calls).
