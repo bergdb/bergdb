@@ -111,6 +111,37 @@ configurations, with fixed seeds, could join the check later, within a
 budget of about 5 minutes; the rest belongs to nightly runs.
 
 
+The night run
+-------------
+
+At Frans's request, the checks the level scripts make moved to a night run,
+in one script, `java/night.sh` (before, it ran only the night tests; that is
+now `night.sh tests`). It clones HEAD into `java/build/night/RUN/repo`, with
+`lean/.lake` copied in, and runs, going on after a failure:
+`before-commit.sh`, `level1.sh` to `level4.sh` full, the night tests and
+`conformance.sh medium` (the small set runs in `level2.sh`). It writes
+`report.txt`, one line per step and `NIGHT OK` or `NIGHT FAILED`, keeps the
+`*.txt` logs, and deletes the clone. launchd starts it at 02:00
+(`~/Library/LaunchAgents/local.bergdb.nightly.plist`).
+
+`java/night.sh large` runs the same with `conformance.sh large` too, 12
+traces of 1,000 to 5,000 transactions at node sizes 8 to 62; it is started
+by hand. The large set is the only check against the
+Lean model at node size 62, at thousands of transactions and with hundreds
+of top nodes, and it takes about 5 hours, most of it the two l-big62 traces
+(about 4.5 hours each since item 001's stage 4 checks). Its seeds are fixed,
+so it checks the same traces until Java or the checker changes; it has never
+failed (item 001: C3, A-COPY, F1).
+
+A test run, 2026-10-20, of the night run as first written (with
+`conformance.sh all`), from a scratch clone of `9d909cc` with the change:
+`before-commit.sh` 116 s, `level1.sh` 130 s, `level2.sh` 745 s, `level3.sh`
+464 s, `level4.sh` 877 s, `night.sh` 254 s, all OK; the small and medium
+conformance sets OK (70 and 9 traces; the medium checks 265 s); stopped in
+the large set (the l-mixed traces OK, about 15 minutes each). So the
+night run takes about 45 minutes, and the medium set some 5 more.
+
+
 After
 -----
 

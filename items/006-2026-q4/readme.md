@@ -62,3 +62,7 @@ Frans's request; the tree-bin fix registered as 005-08.
 the unit tests from 41.5 s to 10 s; slow tests split into a small unit test
 and the full f-test, or moved to the f-tests. New `java/before-commit.sh`,
 the unit and f-tests (about 2 minutes), the only check before a commit.
+
+2026-10-20. 006-03: `java/night.sh` is the night run: the level scripts, the
+night tests and the medium conformance set on a clone of HEAD, at 02:00
+(launchd); `night.sh large` adds the large conformance set, by hand.

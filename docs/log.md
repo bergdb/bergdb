@@ -805,3 +805,10 @@ f-tests of their classes. New `java/before-commit.sh`: the unit and f-tests
 in parallel, about 2 minutes, now the only requirement before a commit; the
 level scripts are deeper checks. The four level scripts pass, full, with the
 change on `39ab4a8`; `before-commit.sh` on `9d909cc`.
+
+2026-10-20. Bergdb 006-03: the night run. `java/night.sh` runs, on a clone
+of HEAD, `before-commit.sh`, the four level scripts (full), the night tests
+and `conformance.sh medium`, and writes a report to `java/build/night/`;
+launchd starts it at 02:00. `night.sh large` adds `conformance.sh large`
+(about 5 hours more) and is started by hand; `night.sh tests` runs only the
+night tests, as `night.sh` did before.
