@@ -1,0 +1,11 @@
+machine.model=MacBookPro18,3
+machine.cpu=Apple M1 Pro
+machine.cores=10
+machine.memBytes=34359738368
+machine.osBuild=27.0.1 26A434
+machine.power=Now drawing from AC Power
+machine.thermal=Note: No thermal warning level has been recorded
+machine.kernel=Darwin 27.0.0
+machine.host=f53
+machine.dataVolume=/System/Volumes/Data
+machine.fsType=apfs

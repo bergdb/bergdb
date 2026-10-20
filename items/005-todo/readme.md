@@ -33,7 +33,6 @@ Open
 | [005-10](10-unused-code.md) | Investigate | Unused code in `java/` and `lean/`: find it and propose what to remove; nothing is removed without Frans's approval | done |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
 | [005-12](12-transaction-outputs.md) | Investigate | Transaction outputs (`setOutput`, `getOutput`): study them, then test them or remove them (005-10) | open |
-| [005-13](13-buffer-time.md) | Investigate | The buffer time (100 ms, from the hard-drive era): sweep it on SSD, then decide the default and group commit | open |
 
 
 Closed
@@ -41,6 +40,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-13](13-buffer-time.md) | Investigate | The buffer time (100 ms, from the hard-drive era): sweep it on SSD, then decide the default and group commit; now 20 ms | done | 2026-10-20 |
 | [005-08](08-fix-node-table-tree-bins.md) | Fix | The node table's 256 maps make every bin a tree (`Cache3.mapIndex`): 61 bytes per KV, a slower `set` (006-02) | done | 2026-10-19 |
 | [005-04](04-a6-failures.md) | Decide | A6 fails in 5 Java transactions: is anything to be done? | done | 2026-10-19 |
 | [005-02](02-fix-m46-ordinal-bound.md) | Fix | M46: the top node ordinal bound, 2^30 − 1 over a database's life (item 002) | done | 2026-10-19 |
@@ -58,8 +58,7 @@ best before or with 005-01 (where a transaction's go point is) and before
 fail a run of `before-commit.sh` until it is fixed. What is left of 005-10 waits for Frans; a removal is best made
 when no other change to `java/` is under way. 005-11 and 005-12 can go any
 time, best before 005-05's decision on publishing, as both concern the Pub
-API. 005-13's sweep can go any time; its group commit is best after or with
-005-07.
+API.
 
 
 Files
@@ -98,7 +97,8 @@ Files
 * [12-transaction-outputs.md](12-transaction-outputs.md). 005-12,
   transaction outputs: study, then test or remove.
 * [13-buffer-time.md](13-buffer-time.md). 005-13, the buffer time: the
-  sweep and the proposal (group commit).
+  sweep, and the default changed to 20 ms; done, with its table, tools
+  and runs in [13-buffer-time/](13-buffer-time/).
 
 
 Log
@@ -190,3 +190,13 @@ transaction outputs are 005-11 and 005-12. The four gates pass.
 (Opus 5.5, Claude Code): a sweep of the buffer time on today's source
 first, with the proposal of group commit (a waiting sync starts the
 flush). Defined, not started.
+
+2026-10-20. 005-13 done, at Frans's request ("Just set the default to 20
+ms unless you find a good reason for not to"), by Claude (Opus 5.5, Claude
+Code): the sweep of 10 to 200 ms, three rounds; a sync after a commit
+waits for the timer (122 ms at 100 ms), and writers that do not sync are
+as fast from 10 to 100 ms (about 100,000 puts of 1 KB a second).
+`StorageManager.DEFAULT_BUFFER_TIME` is 20: one syncing thread gets 29
+commits a second instead of 8, p50 35 ms. Group commit and the Pub API's
+buffer time are not done; a storage design for SSD and flash is out of
+scope. `before-commit.sh` passes.

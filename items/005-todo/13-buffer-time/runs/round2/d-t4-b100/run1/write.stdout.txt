@@ -1,0 +1,12 @@
+Perf mode=write scenario=d-t4-b100 workload=d078c186cc77a9c2 {batch=100, bufftime=100, commit=durable, firstgets=300000, gets=2000000, halt=0, history=-1, longlen=120, maxops=0, mincuts=0, mixops=50000, mixreaders=2, mtthreads=4, n=100000, nlong=0, ops=800, rate=0, retain=inf, samplems=1000, scanlen=100, scans=20000, sd=0, seed=1, threads=4, timedgets=1000000, tsize=1, valsize=1000, warmgets=3000000, warmup=100000, windows=5, work=uniform}
+startupDistance 50000000
+PHASE load 1.35 s
+PHASE warmup 1.13 s
+PROGRESS 9 s: 300 commits, stream 228 MB, kept 228 MB, on disk 228 MB in 56 files, 0 physical cuts
+PROGRESS 19 s: 636 commits, stream 228 MB, kept 228 MB, on disk 228 MB in 56 files, 0 physical cuts
+WRITE 800 commits (800 puts) in 24.18 s: 33 commits/s, bytes appended per user byte 1.20, append p50 159.7 us p99.9 20491.5 us max 20.49 ms
+  durable p50 121.6 ms p99 127.9 ms max 129.7 ms
+  buffer time 100 ms: 200 forces, 8.3 a second, 4836 bytes each, 6.32 ms each
+VERIFY 100000 keys after restart: ok (0.71 s)
+PHASE verify 1.36 s
+PERF OK

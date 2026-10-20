@@ -1,0 +1,40 @@
+12:30:09 sweep start, rounds 1 to 3, QUIET=0, 9d909cc
+12:30:12 not waiting (QUIET=0): 73.40 % idle; 84506 /bin/zsh -c source /Users/f/.claude/shell-snapshots/snapshot-zsh-1792480090382-2i4rzp.sh 2>/dev/null || true && setopt NO_EXTENDED_GLOB NO_BARE_ 84512 sh /private/tmp/claude-502/-Users-f-fl-repos-f1/97e8689c-fe57-4f54-9ed3-bbb706623d5e/scratchpad/wt2/java/nightly.sh 92746 sh /private/tmp/claude-502/-Users-f-fl-repos-f1/97e8689c-fe57-4f54-9ed3-bbb706623d5e/scratchpad/wt2/java/nightly.sh 
+12:30:12 force probe 1
+kind      size_bytes  count   mean_ms    p50_ms    p90_ms    p99_ms    max_ms   MB_per_s
+fullfsync         100    200     4.245     4.206     4.450     5.241     7.695        0.0
+fsync             100    200     0.031     0.031     0.038     0.060     0.070        3.2
+fullfsync        4096    200     4.972     4.947     5.170    13.645    14.541        0.8
+fsync            4096    200     0.036     0.036     0.043     0.047     0.048      112.5
+fullfsync       65536    200     6.257     5.039    13.877    19.032    19.158       10.5
+fsync           65536    200     0.056     0.056     0.062     0.071     0.081     1168.8
+fullfsync     1048576     40    11.127     7.404    16.061    17.159    17.159       94.2
+fsync         1048576     40     0.281     0.280     0.289     0.310     0.310     3729.7
+fullfsync     4194304     40    11.795     8.194    18.052    18.939    18.939      355.6
+fsync         4194304     40     1.147     1.143     1.177     1.185     1.185     3655.2
+12:30:19 not waiting (QUIET=0): 78.66 % idle; 84506 /bin/zsh -c source /Users/f/.claude/shell-snapshots/snapshot-zsh-1792480090382-2i4rzp.sh 2>/dev/null || true && setopt NO_EXTENDED_GLOB NO_BARE_ 84512 sh /private/tmp/claude-502/-Users-f-fl-repos-f1/97e8689c-fe57-4f54-9ed3-bbb706623d5e/scratchpad/wt2/java/nightly.sh 92746 sh /private/tmp/claude-502/-Users-f-fl-repos-f1/97e8689c-fe57-4f54-9ed3-bbb706623d5e/scratchpad/wt2/java/nightly.sh 
+12:30:19 round 1
+12:43:05 round 1 exit 0: PERFORMANCE RUN DONE: /private/tmp/claude-502/-Users-f-fl-repos-f1/ba361f20-ac77-4e36-ac93-b7c9a80ed863/scratchpad/bdb/java/build/perf/runs/9d909cc1-d9b8e41-20261020T123038-stress/performance-bufftime.suite-g1-8g-round1 (summary.txt, summary.md)
+12:44:07 not waiting (QUIET=0): 88.26 % idle; 
+12:44:07 round 1
+12:56:29 round 1 exit 0: PERFORMANCE RUN DONE: /private/tmp/claude-502/-Users-f-fl-repos-f1/ba361f20-ac77-4e36-ac93-b7c9a80ed863/scratchpad/bdb/java/build/perf/runs/9d909cc1-d9b8e41-20261020T124415-stress/performance-bufftime.suite-g1-8g-round1 (summary.txt, summary.md)
+12:56:33 not waiting (QUIET=0): 96.4 % idle; 
+12:56:33 round 2
+13:08:56 round 2 exit 0: PERFORMANCE RUN DONE: /private/tmp/claude-502/-Users-f-fl-repos-f1/ba361f20-ac77-4e36-ac93-b7c9a80ed863/scratchpad/bdb/java/build/perf/runs/9d909cc1-d9b8e41-20261020T125641-stress/performance-bufftime.suite-g1-8g-round2 (summary.txt, summary.md)
+13:08:59 not waiting (QUIET=0): 96.44 % idle; 
+13:08:59 round 3
+13:21:44 round 3 exit 0: PERFORMANCE RUN DONE: /private/tmp/claude-502/-Users-f-fl-repos-f1/ba361f20-ac77-4e36-ac93-b7c9a80ed863/scratchpad/bdb/java/build/perf/runs/9d909cc1-d9b8e41-20261020T130907-stress/performance-bufftime.suite-g1-8g-round3 (summary.txt, summary.md)
+13:21:47 not waiting (QUIET=0): 86.43 % idle; 
+13:21:47 force probe 4
+kind      size_bytes  count   mean_ms    p50_ms    p90_ms    p99_ms    max_ms   MB_per_s
+fullfsync         100    200     5.175     5.159     5.957     6.458     8.881        0.0
+fsync             100    200     0.059     0.056     0.075     0.094     0.101        1.7
+fullfsync        4096    200     5.953     5.455     6.257    17.916    20.456        0.7
+fsync            4096    200     0.073     0.071     0.091     0.102     0.133       55.9
+fullfsync       65536    200     7.463     5.955    16.920    20.650    23.014        8.8
+fsync           65536    200     0.094     0.093     0.103     0.116     0.123      695.7
+fullfsync     1048576     40    15.439    10.337    22.960    25.063    25.063       67.9
+fsync         1048576     40     0.552     0.478     0.582     2.459     2.459     1900.1
+fullfsync     4194304     40    16.682    11.616    25.947    31.976    31.976      251.4
+fsync         4194304     40     1.802     1.782     1.941     1.990     1.990     2327.3
+13:21:53 SWEEP DONE

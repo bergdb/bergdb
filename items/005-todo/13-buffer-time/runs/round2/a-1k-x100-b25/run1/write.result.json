@@ -1,0 +1,313 @@
+{
+  "schema": 1,
+  "scenario": "a-1k-x100-b25",
+  "mode": "write",
+  "status": "ok",
+  "workloadId": "45e346045d7fe494",
+  "traceVersion": 1,
+  "workload": {
+    "batch": 100,
+    "bufftime": 25,
+    "commit": "append",
+    "firstgets": 300000,
+    "gets": 2000000,
+    "halt": 0,
+    "history": -1,
+    "longlen": 120,
+    "maxops": 0,
+    "mincuts": 0,
+    "mixops": 50000,
+    "mixreaders": 2,
+    "mtthreads": 4,
+    "n": 100000,
+    "nlong": 0,
+    "ops": 10000,
+    "rate": 0,
+    "retain": "inf",
+    "samplems": 1000,
+    "scanlen": 100,
+    "scans": 20000,
+    "sd": 0,
+    "seed": 1,
+    "threads": 1,
+    "timedgets": 1000000,
+    "tsize": 100,
+    "valsize": 1000,
+    "warmgets": 3000000,
+    "warmup": -1,
+    "windows": 5,
+    "work": "uniform"
+  },
+  "run": {
+    "scenario": "a-1k-x100-b25",
+    "out": "/private/tmp/claude-502/-Users-f-fl-repos-f1/ba361f20-ac77-4e36-ac93-b7c9a80ed863/scratchpad/bdb/java/build/perf/runs/9d909cc1-d9b8e41-20261020T125641-stress/performance-bufftime.suite-g1-8g-round2/a-1k-x100-b25/run1",
+    "dir": "/private/tmp/claude-502/-Users-f-fl-repos-f1/ba361f20-ac77-4e36-ac93-b7c9a80ed863/scratchpad/bdb/java/build/perf/data/9d909cc1-d9b8e41-20261020T125641-stress/performance-bufftime.suite-g1-8g-round2/a-1k-x100-b25-run1",
+    "keep": "0",
+    "oscache": "warm",
+    "source": "9d909cc1-d9b8e41-20261020T125641-stress/performance-bufftime.suite-g1-8g-round2"
+  },
+  "jvm": {
+    "javaRuntimeVersion": "27",
+    "javaVmName": "OpenJDK 64-Bit Server VM",
+    "javaVmVersion": "27",
+    "javaVendor": "Homebrew",
+    "osName": "Mac OS X",
+    "osVersion": "27.0.1",
+    "osArch": "aarch64",
+    "availableProcessors": 10,
+    "maxHeapBytes": 8589934592,
+    "physicalMemoryBytes": 34359738368,
+    "collector": "G1",
+    "gcBeans": ["G1 Young Generation","G1 Concurrent GC","G1 Old Generation"],
+    "vmFlags": ["-XX:+UseG1GC","-da","-Xms8g","-Xmx8g","-Xlog:gc*,safepoint:file=<run>:uptime,level,tags"],
+    "pid": 2136
+  },
+  "derived": {
+    "keys": 100000,
+    "kvBytes": 1004,
+    "liveUserBytes": 100400000,
+    "retentionUnits": 0,
+    "retentionTransactions": 0,
+    "tstepUnits": 10000,
+    "updatesPerKeyPerRetention": 0,
+    "paced": false
+  },
+  "phasesSec": {
+    "load": 1.09240,
+    "warmup": 0.941302,
+    "measure": 9.22042,
+    "verify": 1.35217
+  },
+  "uptimeMs": [2151,11397],
+  "metrics": {
+    "load.puts_per_s": 91541.1,
+    "load.stream_mb": 108.456,
+    "commits": 10000,
+    "puts": 1000000,
+    "measure.sec": 9.22042,
+    "commits_per_s": 1084.55,
+    "puts_per_s": 108455,
+    "user_mb_per_s": 108.889,
+    "commit.append.count": 10000,
+    "commit.append.mean_us": 875.716,
+    "commit.append.p50_us": 872.447,
+    "commit.append.p95_us": 946.175,
+    "commit.append.p99_us": 1007.62,
+    "commit.append.p999_us": 1130.50,
+    "commit.append.max_us": 1292.83,
+    "stream_appended_mb": 1177.02,
+    "bytes_appended_per_put": 1177.02,
+    "bytes_appended_per_user_byte": 1.17233,
+    "we": 0.852999,
+    "index_nodes_per_commit": 30.9800,
+    "max_index_nodes_in_commit": 82,
+    "commits_per_s.slowest_second": 1051,
+    "gc.mxbean.count": 2,
+    "gc.mxbean.time_ms": 72,
+    "alloc.uptime_start_ms": 2151,
+    "alloc.uptime_end_ms": 11397,
+    "buffer_time_ms": 25,
+    "forces": 525,
+    "forces_per_s": 56.9388,
+    "bytes_per_force": 2238340,
+    "force_ms_mean": 7.05565,
+    "force_busy_fraction": 0.401740,
+    "rec.user_bytes_per_put": 1177.02,
+    "rec.user_value_bytes_per_put": 1036,
+    "rec.user_index_bytes_per_put": 134.813,
+    "rec.step_bytes_per_put": 0,
+    "rec.table_bytes_per_put": 0,
+    "rec.other_bytes_per_put": 0,
+    "reclaim.iterations_done": 0,
+    "reclaim.steps": 0,
+    "reclaim.cuts_logical": 0,
+    "reclaim.cuts_physical": 0,
+    "storage.files_max": 74,
+    "storage.disk_mb_max": 1397.86,
+    "heap.after_gc_mb_max": 54.5260,
+    "heap.used_mb_max": 1626.41,
+    "rss_mb_max": 1731.31,
+    "dirty_nodes_max": 13248,
+    "slowest_commit_ms": 1.29283,
+    "final_sync_ms": 18.2225,
+    "durable_len_lag_bytes": 0,
+    "restart.startup_sec": 0.570832,
+    "restart.transactions_rerun": 426,
+    "restart.read_from_mb": 1349.57,
+    "restart.section_mb": 50.1845,
+    "verify.keys": 100000,
+    "verify.sec": 0.780456,
+    "gclog.pause.count": 2,
+    "gclog.pause.total_ms": 78.3530,
+    "gclog.pause.max_ms": 40.7330,
+    "gclog.pause.p99_ms": 40.7330,
+    "gclog.safepoint.count": 2,
+    "gclog.safepoint.total_ms": 78.5811,
+    "gclog.safepoint.max_ms": 40.7775,
+    "gclog.safepoint.p99_ms": 40.7770,
+    "gclog.full_gcs": 0,
+    "gclog.heap_after_gc_max_mb": 667
+  },
+  "info": {
+    "startupDistanceBytes": 50000000,
+    "restart.firstAvailableLookupTime": 0
+  },
+  "finishedAt": "Tue Oct 20 13:07:48 CEST 2026",
+  "gcLog": {
+    "measuredWindowSec": [2.15100,11.3970],
+    "measured": {
+      "pauses": {
+        "count": 2,
+        "totalMs": 78.3530,
+        "maxMs": 40.7330,
+        "p50Ms": 37.6310,
+        "p99Ms": 40.7330,
+        "p999Ms": 40.7330,
+        "longest": [
+          {
+            "uptimeSec": 5.37300,
+            "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+            "ms": 40.7330
+          },
+          {
+            "uptimeSec": 2.91400,
+            "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+            "ms": 37.6200
+          }
+        ]
+      },
+      "safepoints": {
+        "count": 2,
+        "totalMs": 78.5811,
+        "maxMs": 40.7775,
+        "p50Ms": 37.8870,
+        "p99Ms": 40.7770,
+        "p999Ms": 40.7770,
+        "longest": [
+          {
+            "uptimeSec": 5.37300,
+            "what": "G1CollectForAllocation",
+            "ms": 40.7775
+          },
+          {
+            "uptimeSec": 2.91400,
+            "what": "G1CollectForAllocation",
+            "ms": 37.8037
+          }
+        ]
+      },
+      "heapAfterGcMaxMB": 667,
+      "heapCommittedMaxMB": 8192,
+      "fullGcs": 0,
+      "concurrentCycles": 0
+    },
+    "wholeRun": {
+      "pauses": {
+        "count": 3,
+        "totalMs": 173.465,
+        "maxMs": 95.1120,
+        "p50Ms": 40.9590,
+        "p99Ms": 95.1120,
+        "p999Ms": 95.1120,
+        "longest": [
+          {
+            "uptimeSec": 12.2430,
+            "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+            "ms": 95.1120
+          },
+          {
+            "uptimeSec": 5.37300,
+            "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+            "ms": 40.7330
+          },
+          {
+            "uptimeSec": 2.91400,
+            "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+            "ms": 37.6200
+          }
+        ]
+      },
+      "safepoints": {
+        "count": 3,
+        "totalMs": 173.740,
+        "maxMs": 95.1588,
+        "p50Ms": 40.9590,
+        "p99Ms": 95.1590,
+        "p999Ms": 95.1590,
+        "longest": [
+          {
+            "uptimeSec": 12.2430,
+            "what": "G1CollectForAllocation",
+            "ms": 95.1588
+          },
+          {
+            "uptimeSec": 5.37300,
+            "what": "G1CollectForAllocation",
+            "ms": 40.7775
+          },
+          {
+            "uptimeSec": 2.91400,
+            "what": "G1CollectForAllocation",
+            "ms": 37.8037
+          }
+        ]
+      },
+      "heapAfterGcMaxMB": 1523,
+      "heapCommittedMaxMB": 8192,
+      "fullGcs": 0,
+      "concurrentCycles": 0
+    }
+  },
+  "slowestCommits": [
+    {
+      "ms": 1.29283,
+      "atMs": 4833,
+      "uptimeMs": 7010,
+      "indexNodes": 30,
+      "op": 5187,
+      "streamPos": 832686615,
+      "thread": "perf-writer-0",
+      "overlap": "none"
+    },
+    {
+      "ms": 1.21433,
+      "atMs": 3393,
+      "uptimeMs": 5569,
+      "indexNodes": 34,
+      "op": 3631,
+      "streamPos": 649368791,
+      "thread": "perf-writer-0",
+      "overlap": "none"
+    },
+    {
+      "ms": 1.20979,
+      "atMs": 4551,
+      "uptimeMs": 6728,
+      "indexNodes": 30,
+      "op": 4894,
+      "streamPos": 798152975,
+      "thread": "perf-writer-0",
+      "overlap": "none"
+    },
+    {
+      "ms": 1.15271,
+      "atMs": 1428,
+      "uptimeMs": 3605,
+      "indexNodes": 31,
+      "op": 1520,
+      "streamPos": 400801255,
+      "thread": "perf-writer-0",
+      "overlap": "none"
+    },
+    {
+      "ms": 1.13638,
+      "atMs": 4622,
+      "uptimeMs": 6799,
+      "indexNodes": 29,
+      "op": 4967,
+      "streamPos": 806753775,
+      "thread": "perf-writer-0",
+      "overlap": "none"
+    }
+  ]
+}

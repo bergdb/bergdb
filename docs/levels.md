@@ -1141,11 +1141,16 @@ Findings:
   throughput. Commits that write many index nodes (at most 392 at 1M keys,
   923 at 10M) are not among the slow ones.
 * Durable commits: one writer thread that syncs after every transaction
-  gets 9 transactions per second, 116 ms each. This is the 2017 design,
-  kept on purpose (Frans, 2026-10-13): execute() only appends to a buffer,
-  BufferedStream writes the buffer about every 100 ms (the buffer time,
-  set per stream), and a sync waits for that write, so the transactions of
-  many threads share one durable write. The application chooses when to
+  gets 29 transactions per second, p50 35 ms each (9 a second, 116 ms,
+  with the buffer time of 100 ms that was the default until 2026-10-20;
+  bergdb item 005-13). This is the 2017 design, kept on purpose (Frans,
+  2026-10-13): execute() only appends to a buffer, BufferedStream writes
+  the buffer about every 20 ms (the buffer time, set per stream; the
+  default is `StorageManager.DEFAULT_BUFFER_TIME`), and a sync waits for
+  that write, so the transactions of many threads share one durable write
+  (64 threads: 1,800 synced transactions a second). Writers that do not
+  sync are as fast with 10 to 100 ms; one `F_FULLFSYNC` costs about 5 ms
+  on F53 (005-13). The application chooses when to
   sync, and how (ORDINARY: the main storage; STRONG: also a replica, if
   there is one). Neither level flushes at once. For comparison, a sync that
   flushed at once (tried and reverted 2026-10-13) gave 13,000 to 18,000

@@ -1,0 +1,1401 @@
+Session performance-bufftime.suite-g1-8g-round3  (9d909cc18a88e5e19f6f244e048ff6ab72525929 + working-tree diff)
+
+a-100-b10  [write, 1 runs, workload 2e1566c9d1641da4]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1            252.3            252.3            252.3       -
+  bytes_appended_per_user_byte                   1            2.426            2.426            2.426       -
+  commit.append.max_us                           1         69,100.1         69,100.1         69,100.1       -
+  commit.append.mean_us                          1            3.478            3.478            3.478       -
+  commit.append.p50_us                           1            2.431            2.431            2.431       -
+  commit.append.p95_us                           1            6.879            6.879            6.879       -
+  commit.append.p999_us                          1           57.599           57.599           57.599       -
+  commit.append.p99_us                           1           11.455           11.455           11.455       -
+  commits_per_s                                  1        268,709.0        268,709.0        268,709.0       -
+  gclog.pause.max_ms                             1           68.969           68.969           68.969       -
+  gclog.pause.total_ms                           1            116.3            116.3            116.3       -
+  gclog.safepoint.max_ms                         1           69.010           69.010           69.010       -
+  gclog.safepoint.total_ms                       1            116.6            116.6            116.6       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1        268,709.0        268,709.0        268,709.0       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1            252.3            252.3            252.3       -
+  rec.user_index_bytes_per_put                   1           66.057           66.057           66.057       -
+  rec.user_value_bytes_per_put                   1            136.0            136.0            136.0       -
+  restart.startup_sec                            1            1.346            1.346            1.346       -
+  rss_mb_max                                     1            939.3            939.3            939.3       -
+  slowest_commit_ms                              1           69.100           69.100           69.100       -
+  storage.disk_mb_max                            1            283.6            283.6            283.6       -
+  user_mb_per_s                                  1           27.946           27.946           27.946       -
+  we                                             1           0.4122           0.4122           0.4122       -
+  longest GC pauses of run1 (2 in the window, total 116.3 ms): 69.0 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 2.9 s); 47.4 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 1.7 s);
+  slowest commits of run1:
+    69.10 ms at 2023 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 69.0 ms; safepoint G1CollectForAllocation 69.0 ms;
+    47.63 ms at 811 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 47.4 ms; safepoint G1CollectForAllocation 47.6 ms;
+    0.41 ms at 298 ms into the phase, 18 index nodes written; overlapping: none
+    0.37 ms at 296 ms into the phase, 9 index nodes written; overlapping: none
+    0.29 ms at 299 ms into the phase, 14 index nodes written; overlapping: none
+
+a-100-b100  [write, 1 runs, workload 13911ea54c16523f]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1            252.3            252.3            252.3       -
+  bytes_appended_per_user_byte                   1            2.426            2.426            2.426       -
+  commit.append.max_us                           1         62,335.2         62,335.2         62,335.2       -
+  commit.append.mean_us                          1            3.444            3.444            3.444       -
+  commit.append.p50_us                           1            2.431            2.431            2.431       -
+  commit.append.p95_us                           1            6.847            6.847            6.847       -
+  commit.append.p999_us                          1           53.759           53.759           53.759       -
+  commit.append.p99_us                           1           11.199           11.199           11.199       -
+  commits_per_s                                  1        271,856.0        271,856.0        271,856.0       -
+  gclog.pause.max_ms                             1           62.176           62.176           62.176       -
+  gclog.pause.total_ms                           1            116.8            116.8            116.8       -
+  gclog.safepoint.max_ms                         1           62.223           62.223           62.223       -
+  gclog.safepoint.total_ms                       1            117.1            117.1            117.1       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1        271,856.0        271,856.0        271,856.0       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1            252.3            252.3            252.3       -
+  rec.user_index_bytes_per_put                   1           66.057           66.057           66.057       -
+  rec.user_value_bytes_per_put                   1            136.0            136.0            136.0       -
+  restart.startup_sec                            1            1.350            1.350            1.350       -
+  rss_mb_max                                     1            961.1            961.1            961.1       -
+  slowest_commit_ms                              1           62.335           62.335           62.335       -
+  storage.disk_mb_max                            1            282.2            282.2            282.2       -
+  user_mb_per_s                                  1           28.273           28.273           28.273       -
+  we                                             1           0.4122           0.4122           0.4122       -
+  longest GC pauses of run1 (2 in the window, total 116.8 ms): 62.2 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 3.3 s); 54.7 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 2.0 s);
+  slowest commits of run1:
+    62.34 ms at 2003 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 62.2 ms; safepoint G1CollectForAllocation 62.2 ms;
+    54.91 ms at 783 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 54.7 ms; safepoint G1CollectForAllocation 54.8 ms;
+    0.40 ms at 286 ms into the phase, 18 index nodes written; overlapping: none
+    0.37 ms at 284 ms into the phase, 9 index nodes written; overlapping: none
+    0.31 ms at 287 ms into the phase, 14 index nodes written; overlapping: none
+
+a-100-b200  [write, 1 runs, workload e176afe5d9a23fa9]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1            252.3            252.3            252.3       -
+  bytes_appended_per_user_byte                   1            2.426            2.426            2.426       -
+  commit.append.max_us                           1         74,934.5         74,934.5         74,934.5       -
+  commit.append.mean_us                          1            3.422            3.422            3.422       -
+  commit.append.p50_us                           1            2.383            2.383            2.383       -
+  commit.append.p95_us                           1            6.719            6.719            6.719       -
+  commit.append.p999_us                          1           55.295           55.295           55.295       -
+  commit.append.p99_us                           1           11.071           11.071           11.071       -
+  commits_per_s                                  1        269,932.0        269,932.0        269,932.0       -
+  gclog.pause.max_ms                             1           74.779           74.779           74.779       -
+  gclog.pause.total_ms                           1            125.4            125.4            125.4       -
+  gclog.safepoint.max_ms                         1           74.827           74.827           74.827       -
+  gclog.safepoint.total_ms                       1            125.7            125.7            125.7       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1        269,932.0        269,932.0        269,932.0       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1            252.3            252.3            252.3       -
+  rec.user_index_bytes_per_put                   1           66.057           66.057           66.057       -
+  rec.user_value_bytes_per_put                   1            136.0            136.0            136.0       -
+  restart.startup_sec                            1            1.361            1.361            1.361       -
+  rss_mb_max                                     1            941.7            941.7            941.7       -
+  slowest_commit_ms                              1           74.935           74.935           74.935       -
+  storage.disk_mb_max                            1            279.7            279.7            279.7       -
+  user_mb_per_s                                  1           28.073           28.073           28.073       -
+  we                                             1           0.4122           0.4122           0.4122       -
+  longest GC pauses of run1 (2 in the window, total 125.4 ms): 74.8 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 3.4 s); 50.7 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 2.1 s);
+  slowest commits of run1:
+    74.93 ms at 2040 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 74.8 ms; safepoint G1CollectForAllocation 74.8 ms;
+    6.83 ms at 1018 ms into the phase, 0 index nodes written; overlapping: none
+    5.87 ms at 2908 ms into the phase, 2 index nodes written; overlapping: none
+    5.75 ms at 1164 ms into the phase, 0 index nodes written; overlapping: none
+    5.46 ms at 3483 ms into the phase, 0 index nodes written; overlapping: none
+
+a-100-b25  [write, 1 runs, workload 34d004e48331182e]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1            252.3            252.3            252.3       -
+  bytes_appended_per_user_byte                   1            2.426            2.426            2.426       -
+  commit.append.max_us                           1         72,780.8         72,780.8         72,780.8       -
+  commit.append.mean_us                          1            3.515            3.515            3.515       -
+  commit.append.p50_us                           1            2.431            2.431            2.431       -
+  commit.append.p95_us                           1            7.167            7.167            7.167       -
+  commit.append.p999_us                          1           55.807           55.807           55.807       -
+  commit.append.p99_us                           1           12.095           12.095           12.095       -
+  commits_per_s                                  1        266,531.0        266,531.0        266,531.0       -
+  gclog.pause.max_ms                             1           72.636           72.636           72.636       -
+  gclog.pause.total_ms                           1            119.3            119.3            119.3       -
+  gclog.safepoint.max_ms                         1           72.690           72.690           72.690       -
+  gclog.safepoint.total_ms                       1            119.6            119.6            119.6       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1        266,531.0        266,531.0        266,531.0       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1            252.3            252.3            252.3       -
+  rec.user_index_bytes_per_put                   1           66.057           66.057           66.057       -
+  rec.user_value_bytes_per_put                   1            136.0            136.0            136.0       -
+  restart.startup_sec                            1            1.378            1.378            1.378       -
+  rss_mb_max                                     1            945.2            945.2            945.2       -
+  slowest_commit_ms                              1           72.781           72.781           72.781       -
+  storage.disk_mb_max                            1            284.0            284.0            284.0       -
+  user_mb_per_s                                  1           27.719           27.719           27.719       -
+  we                                             1           0.4122           0.4122           0.4122       -
+  longest GC pauses of run1 (2 in the window, total 119.3 ms): 72.6 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 3.0 s); 46.7 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 1.8 s);
+  slowest commits of run1:
+    72.78 ms at 2029 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 72.6 ms; safepoint G1CollectForAllocation 72.7 ms;
+    46.97 ms at 801 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 46.7 ms; safepoint G1CollectForAllocation 46.9 ms;
+    0.39 ms at 299 ms into the phase, 18 index nodes written; overlapping: none
+    0.36 ms at 297 ms into the phase, 9 index nodes written; overlapping: none
+    0.31 ms at 300 ms into the phase, 14 index nodes written; overlapping: none
+
+a-100-b50  [write, 1 runs, workload 2b8123f63421125f]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1            252.3            252.3            252.3       -
+  bytes_appended_per_user_byte                   1            2.426            2.426            2.426       -
+  commit.append.max_us                           1         91,228.1         91,228.1         91,228.1       -
+  commit.append.mean_us                          1            3.629            3.629            3.629       -
+  commit.append.p50_us                           1            2.431            2.431            2.431       -
+  commit.append.p95_us                           1            7.551            7.551            7.551       -
+  commit.append.p999_us                          1           57.599           57.599           57.599       -
+  commit.append.p99_us                           1           12.351           12.351           12.351       -
+  commits_per_s                                  1        258,853.0        258,853.0        258,853.0       -
+  gclog.pause.max_ms                             1           91.099           91.099           91.099       -
+  gclog.pause.total_ms                           1            214.2            214.2            214.2       -
+  gclog.safepoint.max_ms                         1           91.144           91.144           91.144       -
+  gclog.safepoint.total_ms                       1            214.5            214.5            214.5       -
+  heap.after_gc_mb_max                           1           71.303           71.303           71.303       -
+  puts_per_s                                     1        258,853.0        258,853.0        258,853.0       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1            252.3            252.3            252.3       -
+  rec.user_index_bytes_per_put                   1           66.057           66.057           66.057       -
+  rec.user_value_bytes_per_put                   1            136.0            136.0            136.0       -
+  restart.startup_sec                            1            1.261            1.261            1.261       -
+  rss_mb_max                                     1          1,140.9          1,140.9          1,140.9       -
+  slowest_commit_ms                              1           91.228           91.228           91.228       -
+  storage.disk_mb_max                            1            281.8            281.8            281.8       -
+  user_mb_per_s                                  1           26.921           26.921           26.921       -
+  we                                             1           0.4122           0.4122           0.4122       -
+  longest GC pauses of run1 (3 in the window, total 214.2 ms): 91.1 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 4.7 s); 73.0 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 3.0 s); 50.1 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 1.8 s);
+  slowest commits of run1:
+    91.23 ms at 3730 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 91.1 ms; safepoint G1CollectForAllocation 91.1 ms;
+    73.15 ms at 2035 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 73.0 ms; safepoint G1CollectForAllocation 73.1 ms;
+    50.38 ms at 814 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 50.1 ms; safepoint G1CollectForAllocation 50.3 ms;
+    0.40 ms at 296 ms into the phase, 18 index nodes written; overlapping: none
+    0.37 ms at 294 ms into the phase, 9 index nodes written; overlapping: none
+
+a-1k-b10  [write, 1 runs, workload 125a6b4eada9ac32]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,222.7          1,222.7          1,222.7       -
+  bytes_appended_per_user_byte                   1            1.218            1.218            1.218       -
+  commit.append.max_us                           1         58,952.3         58,952.3         58,952.3       -
+  commit.append.mean_us                          1            9.080            9.080            9.080       -
+  commit.append.p50_us                           1            7.679            7.679            7.679       -
+  commit.append.p95_us                           1           13.631           13.631           13.631       -
+  commit.append.p999_us                          1           33.535           33.535           33.535       -
+  commit.append.p99_us                           1           17.279           17.279           17.279       -
+  commits_per_s                                  1        104,208.0        104,208.0        104,208.0       -
+  gclog.pause.max_ms                             1           58.805           58.805           58.805       -
+  gclog.pause.total_ms                           1           90.689           90.689           90.689       -
+  gclog.safepoint.max_ms                         1           58.851           58.851           58.851       -
+  gclog.safepoint.total_ms                       1           90.900           90.900           90.900       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1        104,208.0        104,208.0        104,208.0       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,222.7          1,222.7          1,222.7       -
+  rec.user_index_bytes_per_put                   1            136.8            136.8            136.8       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6640           0.6640           0.6640       -
+  rss_mb_max                                     1          1,249.9          1,249.9          1,249.9       -
+  slowest_commit_ms                              1           58.952           58.952           58.952       -
+  storage.disk_mb_max                            1            838.5            838.5            838.5       -
+  user_mb_per_s                                  1            104.6            104.6            104.6       -
+  we                                             1           0.8211           0.8211           0.8211       -
+  longest GC pauses of run1 (2 in the window, total 90.689 ms): 58.8 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 4.2 s); 31.9 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 2.4 s);
+  slowest commits of run1:
+    58.95 ms at 2058 ms into the phase, 1 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 58.8 ms; safepoint G1CollectForAllocation 58.9 ms;
+    0.12 ms at 4683 ms into the phase, 0 index nodes written; overlapping: none
+    0.11 ms at 4730 ms into the phase, 0 index nodes written; overlapping: none
+    0.11 ms at 4621 ms into the phase, 0 index nodes written; overlapping: none
+    0.11 ms at 4645 ms into the phase, 0 index nodes written; overlapping: none
+
+a-1k-b100  [write, 1 runs, workload 2190e15717386bcd]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,222.7          1,222.7          1,222.7       -
+  bytes_appended_per_user_byte                   1            1.218            1.218            1.218       -
+  commit.append.max_us                           1         57,771.9         57,771.9         57,771.9       -
+  commit.append.mean_us                          1           10.646           10.646           10.646       -
+  commit.append.p50_us                           1            7.679            7.679            7.679       -
+  commit.append.p95_us                           1           13.695           13.695           13.695       -
+  commit.append.p999_us                          1           40.191           40.191           40.191       -
+  commit.append.p99_us                           1           17.535           17.535           17.535       -
+  commits_per_s                                  1         89,589.1         89,589.1         89,589.1       -
+  gclog.pause.max_ms                             1           57.620           57.620           57.620       -
+  gclog.pause.total_ms                           1           88.931           88.931           88.931       -
+  gclog.safepoint.max_ms                         1           57.665           57.665           57.665       -
+  gclog.safepoint.total_ms                       1           89.154           89.154           89.154       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1         89,589.1         89,589.1         89,589.1       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,222.7          1,222.7          1,222.7       -
+  rec.user_index_bytes_per_put                   1            136.8            136.8            136.8       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6841           0.6841           0.6841       -
+  rss_mb_max                                     1          1,245.4          1,245.4          1,245.4       -
+  slowest_commit_ms                              1           57.772           57.772           57.772       -
+  storage.disk_mb_max                            1            832.4            832.4            832.4       -
+  user_mb_per_s                                  1           89.948           89.948           89.948       -
+  we                                             1           0.8211           0.8211           0.8211       -
+  longest GC pauses of run1 (2 in the window, total 88.931 ms): 57.6 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 5.3 s); 31.3 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 3.2 s);
+  slowest commits of run1:
+    57.77 ms at 2352 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 57.6 ms; safepoint G1CollectForAllocation 57.7 ms;
+    17.20 ms at 2591 ms into the phase, 2 index nodes written; overlapping: none
+    16.56 ms at 1097 ms into the phase, 0 index nodes written; overlapping: none
+    15.92 ms at 727 ms into the phase, 0 index nodes written; overlapping: none
+    14.83 ms at 3826 ms into the phase, 0 index nodes written; overlapping: none
+
+a-1k-b200  [write, 1 runs, workload e930ce07f81ecdcf]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,222.7          1,222.7          1,222.7       -
+  bytes_appended_per_user_byte                   1            1.218            1.218            1.218       -
+  commit.append.max_us                           1         47,387.3         47,387.3         47,387.3       -
+  commit.append.mean_us                          1           16.520           16.520           16.520       -
+  commit.append.p50_us                           1            8.191            8.191            8.191       -
+  commit.append.p95_us                           1           14.143           14.143           14.143       -
+  commit.append.p999_us                          1           40.447           40.447           40.447       -
+  commit.append.p99_us                           1           18.175           18.175           18.175       -
+  commits_per_s                                  1         58,305.6         58,305.6         58,305.6       -
+  gclog.pause.max_ms                             1           49.298           49.298           49.298       -
+  gclog.pause.total_ms                           1           78.967           78.967           78.967       -
+  gclog.safepoint.max_ms                         1           49.340           49.340           49.340       -
+  gclog.safepoint.total_ms                       1           79.181           79.181           79.181       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1         58,305.6         58,305.6         58,305.6       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,222.7          1,222.7          1,222.7       -
+  rec.user_index_bytes_per_put                   1            136.8            136.8            136.8       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6762           0.6762           0.6762       -
+  rss_mb_max                                     1          1,239.6          1,239.6          1,239.6       -
+  slowest_commit_ms                              1           47.387           47.387           47.387       -
+  storage.disk_mb_max                            1            832.4            832.4            832.4       -
+  user_mb_per_s                                  1           58.539           58.539           58.539       -
+  we                                             1           0.8211           0.8211           0.8211       -
+  longest GC pauses of run1 (2 in the window, total 78.967 ms): 49.3 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 7.4 s); 29.7 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 4.2 s);
+  slowest commits of run1:
+    47.39 ms at 8142 ms into the phase, 1 index nodes written; overlapping: none
+    43.02 ms at 3933 ms into the phase, 2 index nodes written; overlapping: none
+    42.25 ms at 2209 ms into the phase, 0 index nodes written; overlapping: none
+    41.52 ms at 6746 ms into the phase, 1 index nodes written; overlapping: none
+    41.35 ms at 1087 ms into the phase, 0 index nodes written; overlapping: none
+
+a-1k-b25  [write, 1 runs, workload 78fe62325d917a4d]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,222.7          1,222.7          1,222.7       -
+  bytes_appended_per_user_byte                   1            1.218            1.218            1.218       -
+  commit.append.max_us                           1         47,538.7         47,538.7         47,538.7       -
+  commit.append.mean_us                          1            9.080            9.080            9.080       -
+  commit.append.p50_us                           1            7.679            7.679            7.679       -
+  commit.append.p95_us                           1           13.695           13.695           13.695       -
+  commit.append.p999_us                          1           34.303           34.303           34.303       -
+  commit.append.p99_us                           1           17.535           17.535           17.535       -
+  commits_per_s                                  1        104,356.0        104,356.0        104,356.0       -
+  gclog.pause.max_ms                             1           47.394           47.394           47.394       -
+  gclog.pause.total_ms                           1           75.517           75.517           75.517       -
+  gclog.safepoint.max_ms                         1           47.442           47.442           47.442       -
+  gclog.safepoint.total_ms                       1           75.756           75.756           75.756       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1        104,356.0        104,356.0        104,356.0       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,222.7          1,222.7          1,222.7       -
+  rec.user_index_bytes_per_put                   1            136.8            136.8            136.8       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6540           0.6540           0.6540       -
+  rss_mb_max                                     1          1,239.9          1,239.9          1,239.9       -
+  slowest_commit_ms                              1           47.539           47.539           47.539       -
+  storage.disk_mb_max                            1            837.7            837.7            837.7       -
+  user_mb_per_s                                  1            104.8            104.8            104.8       -
+  we                                             1           0.8211           0.8211           0.8211       -
+  longest GC pauses of run1 (2 in the window, total 75.517 ms): 47.4 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 4.3 s); 28.1 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 2.5 s);
+  slowest commits of run1:
+    47.54 ms at 2048 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 47.4 ms; safepoint G1CollectForAllocation 47.4 ms;
+    0.11 ms at 4584 ms into the phase, 1 index nodes written; overlapping: none
+    0.10 ms at 4683 ms into the phase, 0 index nodes written; overlapping: none
+    0.10 ms at 4775 ms into the phase, 0 index nodes written; overlapping: none
+    0.10 ms at 4772 ms into the phase, 2 index nodes written; overlapping: none
+
+a-1k-b50  [write, 1 runs, workload 347d1a4e5ae2382e]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,222.7          1,222.7          1,222.7       -
+  bytes_appended_per_user_byte                   1            1.218            1.218            1.218       -
+  commit.append.max_us                           1            101.9            101.9            101.9       -
+  commit.append.mean_us                          1            8.928            8.928            8.928       -
+  commit.append.p50_us                           1            7.647            7.647            7.647       -
+  commit.append.p95_us                           1           13.503           13.503           13.503       -
+  commit.append.p999_us                          1           33.535           33.535           33.535       -
+  commit.append.p99_us                           1           17.151           17.151           17.151       -
+  commits_per_s                                  1        104,727.0        104,727.0        104,727.0       -
+  gclog.pause.max_ms                             1           54.029           54.029           54.029       -
+  gclog.pause.total_ms                           1           82.839           82.839           82.839       -
+  gclog.safepoint.max_ms                         1           54.067           54.067           54.067       -
+  gclog.safepoint.total_ms                       1           83.055           83.055           83.055       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1        104,727.0        104,727.0        104,727.0       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,222.7          1,222.7          1,222.7       -
+  rec.user_index_bytes_per_put                   1            136.8            136.8            136.8       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6599           0.6599           0.6599       -
+  rss_mb_max                                     1          1,246.5          1,246.5          1,246.5       -
+  slowest_commit_ms                              1           0.1019           0.1019           0.1019       -
+  storage.disk_mb_max                            1            838.6            838.6            838.6       -
+  user_mb_per_s                                  1            105.1            105.1            105.1       -
+  we                                             1           0.8211           0.8211           0.8211       -
+  longest GC pauses of run1 (2 in the window, total 82.839 ms): 54.0 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 4.4 s); 28.8 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 2.6 s);
+  slowest commits of run1:
+    0.10 ms at 4728 ms into the phase, 1 index nodes written; overlapping: none
+    0.10 ms at 4772 ms into the phase, 0 index nodes written; overlapping: none
+    0.10 ms at 4770 ms into the phase, 0 index nodes written; overlapping: none
+    0.10 ms at 4755 ms into the phase, 2 index nodes written; overlapping: none
+    0.10 ms at 4709 ms into the phase, 0 index nodes written; overlapping: none
+
+a-1k-x100-b10  [write, 1 runs, workload 2f9f34eea1ffe0c3]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,177.0          1,177.0          1,177.0       -
+  bytes_appended_per_user_byte                   1            1.172            1.172            1.172       -
+  commit.append.max_us                           1          1,198.9          1,198.9          1,198.9       -
+  commit.append.mean_us                          1            851.5            851.5            851.5       -
+  commit.append.p50_us                           1            847.9            847.9            847.9       -
+  commit.append.p95_us                           1            909.3            909.3            909.3       -
+  commit.append.p999_us                          1          1,065.0          1,065.0          1,065.0       -
+  commit.append.p99_us                           1            962.6            962.6            962.6       -
+  commits_per_s                                  1          1,119.2          1,119.2          1,119.2       -
+  gclog.pause.max_ms                             1           33.425           33.425           33.425       -
+  gclog.pause.total_ms                           1           66.180           66.180           66.180       -
+  gclog.safepoint.max_ms                         1           33.477           33.477           33.477       -
+  gclog.safepoint.total_ms                       1           66.393           66.393           66.393       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1        111,918.0        111,918.0        111,918.0       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,177.0          1,177.0          1,177.0       -
+  rec.user_index_bytes_per_put                   1            134.8            134.8            134.8       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.5626           0.5626           0.5626       -
+  rss_mb_max                                     1          1,723.7          1,723.7          1,723.7       -
+  slowest_commit_ms                              1            1.199            1.199            1.199       -
+  storage.disk_mb_max                            1          1,399.6          1,399.6          1,399.6       -
+  user_mb_per_s                                  1            112.4            112.4            112.4       -
+  we                                             1           0.8530           0.8530           0.8530       -
+  longest GC pauses of run1 (2 in the window, total 66.180 ms): 33.4 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 5.2 s); 32.8 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 2.8 s);
+  slowest commits of run1:
+    1.20 ms at 3287 ms into the phase, 34 index nodes written; overlapping: none
+    1.18 ms at 4679 ms into the phase, 30 index nodes written; overlapping: none
+    1.10 ms at 4370 ms into the phase, 26 index nodes written; overlapping: none
+    1.09 ms at 4456 ms into the phase, 28 index nodes written; overlapping: none
+    1.08 ms at 4476 ms into the phase, 29 index nodes written; overlapping: none
+
+a-1k-x100-b100  [write, 1 runs, workload ea30c808b5b79d19]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,177.0          1,177.0          1,177.0       -
+  bytes_appended_per_user_byte                   1            1.172            1.172            1.172       -
+  commit.append.max_us                           1         34,793.3         34,793.3         34,793.3       -
+  commit.append.mean_us                          1          1,018.1          1,018.1          1,018.1       -
+  commit.append.p50_us                           1            852.0            852.0            852.0       -
+  commit.append.p95_us                           1            933.9            933.9            933.9       -
+  commit.append.p999_us                          1         16,646.1         16,646.1         16,646.1       -
+  commit.append.p99_us                           1          7,602.2          7,602.2          7,602.2       -
+  commits_per_s                                  1            945.2            945.2            945.2       -
+  gclog.pause.max_ms                             1           37.923           37.923           37.923       -
+  gclog.pause.total_ms                           1           71.716           71.716           71.716       -
+  gclog.safepoint.max_ms                         1           38.127           38.127           38.127       -
+  gclog.safepoint.total_ms                       1           71.962           71.962           71.962       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1         94,516.3         94,516.3         94,516.3       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,177.0          1,177.0          1,177.0       -
+  rec.user_index_bytes_per_put                   1            134.8            134.8            134.8       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.5668           0.5668           0.5668       -
+  rss_mb_max                                     1          1,723.6          1,723.6          1,723.6       -
+  slowest_commit_ms                              1           34.793           34.793           34.793       -
+  storage.disk_mb_max                            1          1,392.0          1,392.0          1,392.0       -
+  user_mb_per_s                                  1           94.894           94.894           94.894       -
+  we                                             1           0.8530           0.8530           0.8530       -
+  longest GC pauses of run1 (2 in the window, total 71.716 ms): 37.9 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 3.7 s); 33.8 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 6.5 s);
+  slowest commits of run1:
+    34.79 ms at 3645 ms into the phase, 27 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 33.8 ms; safepoint G1CollectForAllocation 33.8 ms;
+    20.20 ms at 3276 ms into the phase, 32 index nodes written; overlapping: none
+    19.33 ms at 3468 ms into the phase, 33 index nodes written; overlapping: none
+    19.08 ms at 559 ms into the phase, 28 index nodes written; overlapping: none
+    18.60 ms at 7105 ms into the phase, 29 index nodes written; overlapping: none
+
+a-1k-x100-b200  [write, 1 runs, workload 1f309e7617be0e5e]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,177.0          1,177.0          1,177.0       -
+  bytes_appended_per_user_byte                   1            1.172            1.172            1.172       -
+  commit.append.max_us                           1         47,254.3         47,254.3         47,254.3       -
+  commit.append.mean_us                          1          1,583.9          1,583.9          1,583.9       -
+  commit.append.p50_us                           1            880.6            880.6            880.6       -
+  commit.append.p95_us                           1          1,036.3          1,036.3          1,036.3       -
+  commit.append.p999_us                          1         39,321.6         39,321.6         39,321.6       -
+  commit.append.p99_us                           1         31,064.1         31,064.1         31,064.1       -
+  commits_per_s                                  1            614.3            614.3            614.3       -
+  gclog.pause.max_ms                             1           33.614           33.614           33.614       -
+  gclog.pause.total_ms                           1           66.509           66.509           66.509       -
+  gclog.safepoint.max_ms                         1           33.658           33.658           33.658       -
+  gclog.safepoint.total_ms                       1           66.728           66.728           66.728       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1         61,430.8         61,430.8         61,430.8       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,177.0          1,177.0          1,177.0       -
+  rec.user_index_bytes_per_put                   1            134.8            134.8            134.8       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.5783           0.5783           0.5783       -
+  rss_mb_max                                     1          1,720.0          1,720.0          1,720.0       -
+  slowest_commit_ms                              1           47.254           47.254           47.254       -
+  storage.disk_mb_max                            1          1,392.7          1,392.7          1,392.7       -
+  user_mb_per_s                                  1           61.677           61.677           61.677       -
+  we                                             1           0.8530           0.8530           0.8530       -
+  longest GC pauses of run1 (2 in the window, total 66.509 ms): 33.6 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 9.4 s); 32.9 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 5.0 s);
+  slowest commits of run1:
+    47.25 ms at 595 ms into the phase, 23 index nodes written; overlapping: none
+    45.03 ms at 15021 ms into the phase, 30 index nodes written; overlapping: none
+    44.48 ms at 3925 ms into the phase, 28 index nodes written; overlapping: none
+    44.37 ms at 10896 ms into the phase, 32 index nodes written; overlapping: none
+    43.95 ms at 9504 ms into the phase, 27 index nodes written; overlapping: none
+
+a-1k-x100-b25  [write, 1 runs, workload 45e346045d7fe494]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,177.0          1,177.0          1,177.0       -
+  bytes_appended_per_user_byte                   1            1.172            1.172            1.172       -
+  commit.append.max_us                           1         40,650.5         40,650.5         40,650.5       -
+  commit.append.mean_us                          1            858.3            858.3            858.3       -
+  commit.append.p50_us                           1            852.0            852.0            852.0       -
+  commit.append.p95_us                           1            925.7            925.7            925.7       -
+  commit.append.p999_us                          1          1,122.3          1,122.3          1,122.3       -
+  commit.append.p99_us                           1            987.1            987.1            987.1       -
+  commits_per_s                                  1          1,113.7          1,113.7          1,113.7       -
+  gclog.pause.max_ms                             1           39.613           39.613           39.613       -
+  gclog.pause.total_ms                           1           75.026           75.026           75.026       -
+  gclog.safepoint.max_ms                         1           39.704           39.704           39.704       -
+  gclog.safepoint.total_ms                       1           75.302           75.302           75.302       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1        111,372.0        111,372.0        111,372.0       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,177.0          1,177.0          1,177.0       -
+  rec.user_index_bytes_per_put                   1            134.8            134.8            134.8       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.5634           0.5634           0.5634       -
+  rss_mb_max                                     1          1,728.8          1,728.8          1,728.8       -
+  slowest_commit_ms                              1           40.651           40.651           40.651       -
+  storage.disk_mb_max                            1          1,398.1          1,398.1          1,398.1       -
+  user_mb_per_s                                  1            111.8            111.8            111.8       -
+  we                                             1           0.8530           0.8530           0.8530       -
+  longest GC pauses of run1 (2 in the window, total 75.026 ms): 39.6 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 5.3 s); 35.4 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 2.9 s);
+  slowest commits of run1:
+    40.65 ms at 3075 ms into the phase, 37 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 39.6 ms; safepoint G1CollectForAllocation 39.7 ms;
+    1.29 ms at 4207 ms into the phase, 26 index nodes written; overlapping: none
+    1.21 ms at 4699 ms into the phase, 30 index nodes written; overlapping: none
+    1.18 ms at 6459 ms into the phase, 30 index nodes written; overlapping: none
+    1.18 ms at 6247 ms into the phase, 33 index nodes written; overlapping: none
+
+a-1k-x100-b50  [write, 1 runs, workload 5d03558eabc86b45]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,177.0          1,177.0          1,177.0       -
+  bytes_appended_per_user_byte                   1            1.172            1.172            1.172       -
+  commit.append.max_us                           1          1,220.1          1,220.1          1,220.1       -
+  commit.append.mean_us                          1            849.8            849.8            849.8       -
+  commit.append.p50_us                           1            847.9            847.9            847.9       -
+  commit.append.p95_us                           1            909.3            909.3            909.3       -
+  commit.append.p999_us                          1          1,065.0          1,065.0          1,065.0       -
+  commit.append.p99_us                           1            958.5            958.5            958.5       -
+  commits_per_s                                  1          1,120.8          1,120.8          1,120.8       -
+  gclog.pause.max_ms                             1           34.923           34.923           34.923       -
+  gclog.pause.total_ms                           1           68.804           68.804           68.804       -
+  gclog.safepoint.max_ms                         1           35.086           35.086           35.086       -
+  gclog.safepoint.total_ms                       1           69.008           69.008           69.008       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1        112,082.0        112,082.0        112,082.0       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,177.0          1,177.0          1,177.0       -
+  rec.user_index_bytes_per_put                   1            134.8            134.8            134.8       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.5632           0.5632           0.5632       -
+  rss_mb_max                                     1          1,726.7          1,726.7          1,726.7       -
+  slowest_commit_ms                              1            1.220            1.220            1.220       -
+  storage.disk_mb_max                            1          1,396.3          1,396.3          1,396.3       -
+  user_mb_per_s                                  1            112.5            112.5            112.5       -
+  we                                             1           0.8530           0.8530           0.8530       -
+  longest GC pauses of run1 (2 in the window, total 68.804 ms): 34.9 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 3.1 s); 33.9 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 5.4 s);
+  slowest commits of run1:
+    1.22 ms at 4669 ms into the phase, 30 index nodes written; overlapping: none
+    1.21 ms at 3282 ms into the phase, 34 index nodes written; overlapping: none
+    1.13 ms at 4531 ms into the phase, 30 index nodes written; overlapping: none
+    1.09 ms at 4446 ms into the phase, 28 index nodes written; overlapping: none
+    1.08 ms at 4393 ms into the phase, 41 index nodes written; overlapping: none
+
+d-t1-b10  [write, 1 runs, workload 8cbe2d3eb9cc92d4]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,200.2          1,200.2          1,200.2       -
+  bytes_appended_per_user_byte                   1            1.195            1.195            1.195       -
+  commit.append.max_us                           1            332.4            332.4            332.4       -
+  commit.append.mean_us                          1           71.628           71.628           71.628       -
+  commit.append.p50_us                           1           56.831           56.831           56.831       -
+  commit.append.p95_us                           1            189.4            189.4            189.4       -
+  commit.append.p999_us                          1            332.4            332.4            332.4       -
+  commit.append.p99_us                           1            264.2            264.2            264.2       -
+  commit.durable.max_us                          1         18,463.6         18,463.6         18,463.6       -
+  commit.durable.mean_us                         1         14,951.3         14,951.3         14,951.3       -
+  commit.durable.p50_us                          1         15,073.3         15,073.3         15,073.3       -
+  commit.durable.p95_us                          1         16,121.9         16,121.9         16,121.9       -
+  commit.durable.p999_us                         1         18,463.6         18,463.6         18,463.6       -
+  commit.durable.p99_us                          1         17,956.9         17,956.9         17,956.9       -
+  commits_per_s                                  1           66.496           66.496           66.496       -
+  gclog.pause.max_ms                             1           0.0000           0.0000           0.0000       -
+  gclog.pause.total_ms                           1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.max_ms                         1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.total_ms                       1           0.0000           0.0000           0.0000       -
+  heap.after_gc_mb_max                           1           0.0000           0.0000           0.0000       -
+  puts_per_s                                     1           66.496           66.496           66.496       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,200.2          1,200.2          1,200.2       -
+  rec.user_index_bytes_per_put                   1            114.5            114.5            114.5       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6541           0.6541           0.6541       -
+  rss_mb_max                                     1            509.9            509.9            509.9       -
+  slowest_commit_ms                              1           18.464           18.464           18.464       -
+  storage.disk_mb_max                            1            227.7            227.7            227.7       -
+  user_mb_per_s                                  1           0.0668           0.0668           0.0668       -
+  we                                             1           0.8365           0.8365           0.8365       -
+  slowest commits of run1:
+    18.46 ms at 2045 ms into the phase, 0 index nodes written; overlapping: none
+    17.93 ms at 2109 ms into the phase, 1 index nodes written; overlapping: none
+    17.83 ms at 2380 ms into the phase, 0 index nodes written; overlapping: none
+    17.82 ms at 638 ms into the phase, 0 index nodes written; overlapping: none
+    17.26 ms at 893 ms into the phase, 0 index nodes written; overlapping: none
+
+d-t1-b100  [write, 1 runs, workload b47dddf0023fe761]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,200.2          1,200.2          1,200.2       -
+  bytes_appended_per_user_byte                   1            1.195            1.195            1.195       -
+  commit.append.max_us                           1            864.2            864.2            864.2       -
+  commit.append.mean_us                          1            133.2            133.2            133.2       -
+  commit.append.p50_us                           1            111.1            111.1            111.1       -
+  commit.append.p95_us                           1            272.4            272.4            272.4       -
+  commit.append.p999_us                          1            864.2            864.2            864.2       -
+  commit.append.p99_us                           1            536.6            536.6            536.6       -
+  commit.durable.max_us                          1        129,425.0        129,425.0        129,425.0       -
+  commit.durable.mean_us                         1        120,665.0        120,665.0        120,665.0       -
+  commit.durable.p50_us                          1        121,635.0        121,635.0        121,635.0       -
+  commit.durable.p95_us                          1        126,353.0        126,353.0        126,353.0       -
+  commit.durable.p999_us                         1        129,425.0        129,425.0        129,425.0       -
+  commit.durable.p99_us                          1        128,975.0        128,975.0        128,975.0       -
+  commits_per_s                                  1            8.275            8.275            8.275       -
+  gclog.pause.max_ms                             1           0.0000           0.0000           0.0000       -
+  gclog.pause.total_ms                           1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.max_ms                         1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.total_ms                       1           0.0000           0.0000           0.0000       -
+  heap.after_gc_mb_max                           1           0.0000           0.0000           0.0000       -
+  puts_per_s                                     1            8.275            8.275            8.275       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,200.2          1,200.2          1,200.2       -
+  rec.user_index_bytes_per_put                   1            114.5            114.5            114.5       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6499           0.6499           0.6499       -
+  rss_mb_max                                     1            513.0            513.0            513.0       -
+  slowest_commit_ms                              1            129.4            129.4            129.4       -
+  storage.disk_mb_max                            1            227.7            227.7            227.7       -
+  user_mb_per_s                                  1           0.0083           0.0083           0.0083       -
+  we                                             1           0.8365           0.8365           0.8365       -
+  slowest commits of run1:
+    129.43 ms at 3673 ms into the phase, 0 index nodes written; overlapping: none
+    129.05 ms at 17877 ms into the phase, 6 index nodes written; overlapping: none
+    128.68 ms at 18854 ms into the phase, 0 index nodes written; overlapping: none
+    127.08 ms at 8415 ms into the phase, 0 index nodes written; overlapping: none
+    126.60 ms at 9755 ms into the phase, 0 index nodes written; overlapping: none
+
+d-t1-b200  [write, 1 runs, workload 1bedcd4506b16c70]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,200.2          1,200.2          1,200.2       -
+  bytes_appended_per_user_byte                   1            1.195            1.195            1.195       -
+  commit.append.max_us                           1            324.5            324.5            324.5       -
+  commit.append.mean_us                          1            131.5            131.5            131.5       -
+  commit.append.p50_us                           1            115.2            115.2            115.2       -
+  commit.append.p95_us                           1            247.8            247.8            247.8       -
+  commit.append.p999_us                          1            324.5            324.5            324.5       -
+  commit.append.p99_us                           1            288.8            288.8            288.8       -
+  commit.durable.max_us                          1        228,644.0        228,644.0        228,644.0       -
+  commit.durable.mean_us                         1        220,615.0        220,615.0        220,615.0       -
+  commit.durable.p50_us                          1        221,250.0        221,250.0        221,250.0       -
+  commit.durable.p95_us                          1        225,444.0        225,444.0        225,444.0       -
+  commit.durable.p999_us                         1        228,644.0        228,644.0        228,644.0       -
+  commit.durable.p99_us                          1        227,541.0        227,541.0        227,541.0       -
+  commits_per_s                                  1            4.529            4.529            4.529       -
+  gclog.pause.max_ms                             1           0.0000           0.0000           0.0000       -
+  gclog.pause.total_ms                           1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.max_ms                         1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.total_ms                       1           0.0000           0.0000           0.0000       -
+  heap.after_gc_mb_max                           1           0.0000           0.0000           0.0000       -
+  puts_per_s                                     1            4.529            4.529            4.529       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,200.2          1,200.2          1,200.2       -
+  rec.user_index_bytes_per_put                   1            114.5            114.5            114.5       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6424           0.6424           0.6424       -
+  rss_mb_max                                     1            503.3            503.3            503.3       -
+  slowest_commit_ms                              1            228.6            228.6            228.6       -
+  storage.disk_mb_max                            1            227.7            227.7            227.7       -
+  user_mb_per_s                                  1           0.0045           0.0045           0.0045       -
+  we                                             1           0.8365           0.8365           0.8365       -
+  slowest commits of run1:
+    228.64 ms at 26724 ms into the phase, 0 index nodes written; overlapping: none
+    227.33 ms at 3710 ms into the phase, 0 index nodes written; overlapping: none
+    227.25 ms at 32249 ms into the phase, 1 index nodes written; overlapping: none
+    227.04 ms at 39767 ms into the phase, 0 index nodes written; overlapping: none
+    226.73 ms at 23194 ms into the phase, 0 index nodes written; overlapping: none
+
+d-t1-b25  [write, 1 runs, workload dba60f6dcae431f3]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,200.2          1,200.2          1,200.2       -
+  bytes_appended_per_user_byte                   1            1.195            1.195            1.195       -
+  commit.append.max_us                           1            376.4            376.4            376.4       -
+  commit.append.mean_us                          1           91.693           91.693           91.693       -
+  commit.append.p50_us                           1           86.015           86.015           86.015       -
+  commit.append.p95_us                           1            192.5            192.5            192.5       -
+  commit.append.p999_us                          1            376.4            376.4            376.4       -
+  commit.append.p99_us                           1            252.9            252.9            252.9       -
+  commit.durable.max_us                          1         41,777.1         41,777.1         41,777.1       -
+  commit.durable.mean_us                         1         34,512.3         34,512.3         34,512.3       -
+  commit.durable.p50_us                          1         34,865.2         34,865.2         34,865.2       -
+  commit.durable.p95_us                          1         36,175.9         36,175.9         36,175.9       -
+  commit.durable.p999_us                         1         41,777.1         41,777.1         41,777.1       -
+  commit.durable.p99_us                          1         38,273.0         38,273.0         38,273.0       -
+  commits_per_s                                  1           28.884           28.884           28.884       -
+  gclog.pause.max_ms                             1           0.0000           0.0000           0.0000       -
+  gclog.pause.total_ms                           1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.max_ms                         1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.total_ms                       1           0.0000           0.0000           0.0000       -
+  heap.after_gc_mb_max                           1           0.0000           0.0000           0.0000       -
+  puts_per_s                                     1           28.884           28.884           28.884       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,200.2          1,200.2          1,200.2       -
+  rec.user_index_bytes_per_put                   1            114.5            114.5            114.5       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6578           0.6578           0.6578       -
+  rss_mb_max                                     1            508.3            508.3            508.3       -
+  slowest_commit_ms                              1           41.777           41.777           41.777       -
+  storage.disk_mb_max                            1            227.7            227.7            227.7       -
+  user_mb_per_s                                  1           0.0290           0.0290           0.0290       -
+  we                                             1           0.8365           0.8365           0.8365       -
+  slowest commits of run1:
+    41.78 ms at 6402 ms into the phase, 0 index nodes written; overlapping: none
+    38.36 ms at 847 ms into the phase, 0 index nodes written; overlapping: none
+    38.16 ms at 4186 ms into the phase, 0 index nodes written; overlapping: none
+    37.64 ms at 290 ms into the phase, 0 index nodes written; overlapping: none
+    37.38 ms at 5712 ms into the phase, 0 index nodes written; overlapping: none
+
+d-t1-b50  [write, 1 runs, workload bb6a918cba8d9f15]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,200.2          1,200.2          1,200.2       -
+  bytes_appended_per_user_byte                   1            1.195            1.195            1.195       -
+  commit.append.max_us                           1            720.7            720.7            720.7       -
+  commit.append.mean_us                          1            105.7            105.7            105.7       -
+  commit.append.p50_us                           1           88.063           88.063           88.063       -
+  commit.append.p95_us                           1            214.0            214.0            214.0       -
+  commit.append.p999_us                          1            720.7            720.7            720.7       -
+  commit.append.p99_us                           1            438.3            438.3            438.3       -
+  commit.durable.max_us                          1         68,353.4         68,353.4         68,353.4       -
+  commit.durable.mean_us                         1         63,500.8         63,500.8         63,500.8       -
+  commit.durable.p50_us                          1         63,963.1         63,963.1         63,963.1       -
+  commit.durable.p95_us                          1         66,846.7         66,846.7         66,846.7       -
+  commit.durable.p999_us                         1         68,353.4         68,353.4         68,353.4       -
+  commit.durable.p99_us                          1         67,633.2         67,633.2         67,633.2       -
+  commits_per_s                                  1           15.712           15.712           15.712       -
+  gclog.pause.max_ms                             1           0.0000           0.0000           0.0000       -
+  gclog.pause.total_ms                           1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.max_ms                         1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.total_ms                       1           0.0000           0.0000           0.0000       -
+  heap.after_gc_mb_max                           1           0.0000           0.0000           0.0000       -
+  puts_per_s                                     1           15.712           15.712           15.712       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,200.2          1,200.2          1,200.2       -
+  rec.user_index_bytes_per_put                   1            114.5            114.5            114.5       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6491           0.6491           0.6491       -
+  rss_mb_max                                     1            520.7            520.7            520.7       -
+  slowest_commit_ms                              1           68.353           68.353           68.353       -
+  storage.disk_mb_max                            1            227.7            227.7            227.7       -
+  user_mb_per_s                                  1           0.0158           0.0158           0.0158       -
+  we                                             1           0.8365           0.8365           0.8365       -
+  slowest commits of run1:
+    68.35 ms at 12538 ms into the phase, 0 index nodes written; overlapping: none
+    67.95 ms at 3549 ms into the phase, 0 index nodes written; overlapping: none
+    67.33 ms at 10762 ms into the phase, 1 index nodes written; overlapping: none
+    67.13 ms at 3935 ms into the phase, 0 index nodes written; overlapping: none
+    67.07 ms at 10126 ms into the phase, 0 index nodes written; overlapping: none
+
+d-t16-b10  [write, 1 runs, workload 512c45340f9d3a6f]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,211.3          1,211.3          1,211.3       -
+  bytes_appended_per_user_byte                   1            1.206            1.206            1.206       -
+  commit.append.max_us                           1          1,640.2          1,640.2          1,640.2       -
+  commit.append.mean_us                          1            348.4            348.4            348.4       -
+  commit.append.p50_us                           1            294.9            294.9            294.9       -
+  commit.append.p95_us                           1            856.1            856.1            856.1       -
+  commit.append.p999_us                          1          1,523.7          1,523.7          1,523.7       -
+  commit.append.p99_us                           1          1,056.8          1,056.8          1,056.8       -
+  commit.durable.max_us                          1         27,195.3         27,195.3         27,195.3       -
+  commit.durable.mean_us                         1         17,907.7         17,907.7         17,907.7       -
+  commit.durable.p50_us                          1         17,956.9         17,956.9         17,956.9       -
+  commit.durable.p95_us                          1         20,054.0         20,054.0         20,054.0       -
+  commit.durable.p999_us                         1         26,738.7         26,738.7         26,738.7       -
+  commit.durable.p99_us                          1         22,413.3         22,413.3         22,413.3       -
+  commits_per_s                                  1            891.6            891.6            891.6       -
+  gclog.pause.max_ms                             1           0.0000           0.0000           0.0000       -
+  gclog.pause.total_ms                           1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.max_ms                         1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.total_ms                       1           0.0000           0.0000           0.0000       -
+  heap.after_gc_mb_max                           1           0.0000           0.0000           0.0000       -
+  puts_per_s                                     1            891.6            891.6            891.6       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,211.3          1,211.3          1,211.3       -
+  rec.user_index_bytes_per_put                   1            125.6            125.6            125.6       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6453           0.6453           0.6453       -
+  rss_mb_max                                     1            519.7            519.7            519.7       -
+  slowest_commit_ms                              1           27.195           27.195           27.195       -
+  storage.disk_mb_max                            1            231.3            231.3            231.3       -
+  user_mb_per_s                                  1           0.8952           0.8952           0.8952       -
+  we                                             1           0.8289           0.8289           0.8289       -
+  slowest commits of run1:
+    27.20 ms at 732 ms into the phase, 1 index nodes written; overlapping: none
+    27.03 ms at 732 ms into the phase, 1 index nodes written; overlapping: none
+    26.92 ms at 732 ms into the phase, 1 index nodes written; overlapping: none
+    26.65 ms at 732 ms into the phase, 0 index nodes written; overlapping: none
+    26.45 ms at 732 ms into the phase, 0 index nodes written; overlapping: none
+
+d-t16-b100  [write, 1 runs, workload 03d0e930d14711bf]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,211.3          1,211.3          1,211.3       -
+  bytes_appended_per_user_byte                   1            1.206            1.206            1.206       -
+  commit.append.max_us                           1          1,634.0          1,634.0          1,634.0       -
+  commit.append.mean_us                          1            278.5            278.5            278.5       -
+  commit.append.p50_us                           1            247.8            247.8            247.8       -
+  commit.append.p95_us                           1            659.5            659.5            659.5       -
+  commit.append.p999_us                          1          1,458.2          1,458.2          1,458.2       -
+  commit.append.p99_us                           1            888.8            888.8            888.8       -
+  commit.durable.max_us                          1        150,860.0        150,860.0        150,860.0       -
+  commit.durable.mean_us                         1        130,367.0        130,367.0        130,367.0       -
+  commit.durable.p50_us                          1        131,072.0        131,072.0        131,072.0       -
+  commit.durable.p95_us                          1        143,655.0        143,655.0        143,655.0       -
+  commit.durable.p999_us                         1        150,860.0        150,860.0        150,860.0       -
+  commit.durable.p99_us                          1        148,898.0        148,898.0        148,898.0       -
+  commits_per_s                                  1            122.7            122.7            122.7       -
+  gclog.pause.max_ms                             1           0.0000           0.0000           0.0000       -
+  gclog.pause.total_ms                           1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.max_ms                         1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.total_ms                       1           0.0000           0.0000           0.0000       -
+  heap.after_gc_mb_max                           1           0.0000           0.0000           0.0000       -
+  puts_per_s                                     1            122.7            122.7            122.7       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,211.3          1,211.3          1,211.3       -
+  rec.user_index_bytes_per_put                   1            125.6            125.6            125.6       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6497           0.6497           0.6497       -
+  rss_mb_max                                     1            521.0            521.0            521.0       -
+  slowest_commit_ms                              1            150.9            150.9            150.9       -
+  storage.disk_mb_max                            1            231.3            231.3            231.3       -
+  user_mb_per_s                                  1           0.1232           0.1232           0.1232       -
+  we                                             1           0.8289           0.8289           0.8289       -
+  slowest commits of run1:
+    150.86 ms at 17739 ms into the phase, 0 index nodes written; overlapping: none
+    150.84 ms at 17739 ms into the phase, 0 index nodes written; overlapping: none
+    150.83 ms at 17739 ms into the phase, 0 index nodes written; overlapping: none
+    150.81 ms at 17739 ms into the phase, 1 index nodes written; overlapping: none
+    150.79 ms at 17739 ms into the phase, 0 index nodes written; overlapping: none
+
+d-t16-b200  [write, 1 runs, workload 8b9ba19df4ddb8a7]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,211.3          1,211.3          1,211.3       -
+  bytes_appended_per_user_byte                   1            1.206            1.206            1.206       -
+  commit.append.max_us                           1          2,470.6          2,470.6          2,470.6       -
+  commit.append.mean_us                          1            364.9            364.9            364.9       -
+  commit.append.p50_us                           1            317.4            317.4            317.4       -
+  commit.append.p95_us                           1            852.0            852.0            852.0       -
+  commit.append.p999_us                          1          1,564.7          1,564.7          1,564.7       -
+  commit.append.p99_us                           1          1,155.1          1,155.1          1,155.1       -
+  commit.durable.max_us                          1        252,148.0        252,148.0        252,148.0       -
+  commit.durable.mean_us                         1        234,890.0        234,890.0        234,890.0       -
+  commit.durable.p50_us                          1        235,930.0        235,930.0        235,930.0       -
+  commit.durable.p95_us                          1        245,367.0        245,367.0        245,367.0       -
+  commit.durable.p999_us                         1        252,148.0        252,148.0        252,148.0       -
+  commit.durable.p99_us                          1        247,464.0        247,464.0        247,464.0       -
+  commits_per_s                                  1           68.099           68.099           68.099       -
+  gclog.pause.max_ms                             1           0.0000           0.0000           0.0000       -
+  gclog.pause.total_ms                           1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.max_ms                         1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.total_ms                       1           0.0000           0.0000           0.0000       -
+  heap.after_gc_mb_max                           1           0.0000           0.0000           0.0000       -
+  puts_per_s                                     1           68.099           68.099           68.099       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,211.3          1,211.3          1,211.3       -
+  rec.user_index_bytes_per_put                   1            125.6            125.6            125.6       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6499           0.6499           0.6499       -
+  rss_mb_max                                     1            523.9            523.9            523.9       -
+  slowest_commit_ms                              1            252.1            252.1            252.1       -
+  storage.disk_mb_max                            1            231.3            231.3            231.3       -
+  user_mb_per_s                                  1           0.0684           0.0684           0.0684       -
+  we                                             1           0.8289           0.8289           0.8289       -
+  slowest commits of run1:
+    252.15 ms at 18528 ms into the phase, 1 index nodes written; overlapping: none
+    252.10 ms at 18528 ms into the phase, 0 index nodes written; overlapping: none
+    252.07 ms at 18528 ms into the phase, 0 index nodes written; overlapping: none
+    252.06 ms at 18528 ms into the phase, 0 index nodes written; overlapping: none
+    252.04 ms at 18528 ms into the phase, 0 index nodes written; overlapping: none
+
+d-t16-b25  [write, 1 runs, workload ad407257b1d25f20]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,211.3          1,211.3          1,211.3       -
+  bytes_appended_per_user_byte                   1            1.206            1.206            1.206       -
+  commit.append.max_us                           1          1,557.0          1,557.0          1,557.0       -
+  commit.append.mean_us                          1            314.5            314.5            314.5       -
+  commit.append.p50_us                           1            251.9            251.9            251.9       -
+  commit.append.p95_us                           1            802.8            802.8            802.8       -
+  commit.append.p999_us                          1          1,417.2          1,417.2          1,417.2       -
+  commit.append.p99_us                           1            970.8            970.8            970.8       -
+  commit.durable.max_us                          1         47,980.6         47,980.6         47,980.6       -
+  commit.durable.mean_us                         1         39,418.3         39,418.3         39,418.3       -
+  commit.durable.p50_us                          1         39,845.9         39,845.9         39,845.9       -
+  commit.durable.p95_us                          1         43,253.8         43,253.8         43,253.8       -
+  commit.durable.p999_us                         1         47,972.4         47,972.4         47,972.4       -
+  commit.durable.p99_us                          1         45,350.9         45,350.9         45,350.9       -
+  commits_per_s                                  1            405.4            405.4            405.4       -
+  gclog.pause.max_ms                             1           0.0000           0.0000           0.0000       -
+  gclog.pause.total_ms                           1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.max_ms                         1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.total_ms                       1           0.0000           0.0000           0.0000       -
+  heap.after_gc_mb_max                           1           0.0000           0.0000           0.0000       -
+  puts_per_s                                     1            405.4            405.4            405.4       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,211.3          1,211.3          1,211.3       -
+  rec.user_index_bytes_per_put                   1            125.6            125.6            125.6       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6517           0.6517           0.6517       -
+  rss_mb_max                                     1            525.7            525.7            525.7       -
+  slowest_commit_ms                              1           47.981           47.981           47.981       -
+  storage.disk_mb_max                            1            231.3            231.3            231.3       -
+  user_mb_per_s                                  1           0.4071           0.4071           0.4071       -
+  we                                             1           0.8289           0.8289           0.8289       -
+  slowest commits of run1:
+    47.98 ms at 5311 ms into the phase, 0 index nodes written; overlapping: none
+    47.96 ms at 5311 ms into the phase, 0 index nodes written; overlapping: none
+    47.91 ms at 5311 ms into the phase, 0 index nodes written; overlapping: none
+    47.85 ms at 5311 ms into the phase, 0 index nodes written; overlapping: none
+    47.84 ms at 5311 ms into the phase, 0 index nodes written; overlapping: none
+
+d-t16-b50  [write, 1 runs, workload eee6eddddb4e3d6f]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,211.3          1,211.3          1,211.3       -
+  bytes_appended_per_user_byte                   1            1.206            1.206            1.206       -
+  commit.append.max_us                           1          3,540.9          3,540.9          3,540.9       -
+  commit.append.mean_us                          1            367.8            367.8            367.8       -
+  commit.append.p50_us                           1            284.7            284.7            284.7       -
+  commit.append.p95_us                           1            946.2            946.2            946.2       -
+  commit.append.p999_us                          1          1,671.2          1,671.2          1,671.2       -
+  commit.append.p99_us                           1          1,359.9          1,359.9          1,359.9       -
+  commit.durable.max_us                          1         84,753.9         84,753.9         84,753.9       -
+  commit.durable.mean_us                         1         72,533.6         72,533.6         72,533.6       -
+  commit.durable.p50_us                          1         73,400.3         73,400.3         73,400.3       -
+  commit.durable.p95_us                          1         79,691.8         79,691.8         79,691.8       -
+  commit.durable.p999_us                         1         84,753.9         84,753.9         84,753.9       -
+  commit.durable.p99_us                          1         81,264.6         81,264.6         81,264.6       -
+  commits_per_s                                  1            220.4            220.4            220.4       -
+  gclog.pause.max_ms                             1           0.0000           0.0000           0.0000       -
+  gclog.pause.total_ms                           1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.max_ms                         1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.total_ms                       1           0.0000           0.0000           0.0000       -
+  heap.after_gc_mb_max                           1           0.0000           0.0000           0.0000       -
+  puts_per_s                                     1            220.4            220.4            220.4       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,211.3          1,211.3          1,211.3       -
+  rec.user_index_bytes_per_put                   1            125.6            125.6            125.6       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6496           0.6496           0.6496       -
+  rss_mb_max                                     1            524.3            524.3            524.3       -
+  slowest_commit_ms                              1           84.754           84.754           84.754       -
+  storage.disk_mb_max                            1            231.3            231.3            231.3       -
+  user_mb_per_s                                  1           0.2213           0.2213           0.2213       -
+  we                                             1           0.8289           0.8289           0.8289       -
+  slowest commits of run1:
+    84.75 ms at 12488 ms into the phase, 0 index nodes written; overlapping: none
+    84.63 ms at 12487 ms into the phase, 0 index nodes written; overlapping: none
+    84.58 ms at 12487 ms into the phase, 0 index nodes written; overlapping: none
+    84.47 ms at 12487 ms into the phase, 0 index nodes written; overlapping: none
+    82.01 ms at 12483 ms into the phase, 0 index nodes written; overlapping: none
+
+d-t4-b10  [write, 1 runs, workload e570d34d95024dff]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,209.0          1,209.0          1,209.0       -
+  bytes_appended_per_user_byte                   1            1.204            1.204            1.204       -
+  commit.append.max_us                           1            678.4            678.4            678.4       -
+  commit.append.mean_us                          1            126.5            126.5            126.5       -
+  commit.append.p50_us                           1            108.0            108.0            108.0       -
+  commit.append.p95_us                           1            280.6            280.6            280.6       -
+  commit.append.p999_us                          1            678.4            678.4            678.4       -
+  commit.append.p99_us                           1            368.6            368.6            368.6       -
+  commit.durable.max_us                          1         19,237.2         19,237.2         19,237.2       -
+  commit.durable.mean_us                         1         15,017.4         15,017.4         15,017.4       -
+  commit.durable.p50_us                          1         15,073.3         15,073.3         15,073.3       -
+  commit.durable.p95_us                          1         16,187.4         16,187.4         16,187.4       -
+  commit.durable.p999_us                         1         19,237.2         19,237.2         19,237.2       -
+  commit.durable.p99_us                          1         18,743.3         18,743.3         18,743.3       -
+  commits_per_s                                  1            265.3            265.3            265.3       -
+  gclog.pause.max_ms                             1           0.0000           0.0000           0.0000       -
+  gclog.pause.total_ms                           1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.max_ms                         1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.total_ms                       1           0.0000           0.0000           0.0000       -
+  heap.after_gc_mb_max                           1           0.0000           0.0000           0.0000       -
+  puts_per_s                                     1            265.3            265.3            265.3       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,209.0          1,209.0          1,209.0       -
+  rec.user_index_bytes_per_put                   1            123.8            123.8            123.8       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6381           0.6381           0.6381       -
+  rss_mb_max                                     1            512.0            512.0            512.0       -
+  slowest_commit_ms                              1           19.237           19.237           19.237       -
+  storage.disk_mb_max                            1            228.4            228.4            228.4       -
+  user_mb_per_s                                  1           0.2664           0.2664           0.2664       -
+  we                                             1           0.8304           0.8304           0.8304       -
+  slowest commits of run1:
+    19.24 ms at 1177 ms into the phase, 0 index nodes written; overlapping: none
+    19.10 ms at 1988 ms into the phase, 1 index nodes written; overlapping: none
+    19.00 ms at 1989 ms into the phase, 0 index nodes written; overlapping: none
+    19.00 ms at 1988 ms into the phase, 0 index nodes written; overlapping: none
+    18.96 ms at 2592 ms into the phase, 1 index nodes written; overlapping: none
+
+d-t4-b100  [write, 1 runs, workload d078c186cc77a9c2]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,209.0          1,209.0          1,209.0       -
+  bytes_appended_per_user_byte                   1            1.204            1.204            1.204       -
+  commit.append.max_us                           1          1,081.4          1,081.4          1,081.4       -
+  commit.append.mean_us                          1            175.7            175.7            175.7       -
+  commit.append.p50_us                           1            152.6            152.6            152.6       -
+  commit.append.p95_us                           1            385.0            385.0            385.0       -
+  commit.append.p999_us                          1          1,081.4          1,081.4          1,081.4       -
+  commit.append.p99_us                           1            540.7            540.7            540.7       -
+  commit.durable.max_us                          1        147,748.0        147,748.0        147,748.0       -
+  commit.durable.mean_us                         1        133,785.0        133,785.0        133,785.0       -
+  commit.durable.p50_us                          1        134,218.0        134,218.0        134,218.0       -
+  commit.durable.p95_us                          1        144,703.0        144,703.0        144,703.0       -
+  commit.durable.p999_us                         1        147,748.0        147,748.0        147,748.0       -
+  commit.durable.p99_us                          1        147,748.0        147,748.0        147,748.0       -
+  commits_per_s                                  1           29.878           29.878           29.878       -
+  gclog.pause.max_ms                             1           0.0000           0.0000           0.0000       -
+  gclog.pause.total_ms                           1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.max_ms                         1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.total_ms                       1           0.0000           0.0000           0.0000       -
+  heap.after_gc_mb_max                           1           0.0000           0.0000           0.0000       -
+  puts_per_s                                     1           29.878           29.878           29.878       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,209.0          1,209.0          1,209.0       -
+  rec.user_index_bytes_per_put                   1            123.8            123.8            123.8       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6529           0.6529           0.6529       -
+  rss_mb_max                                     1            514.6            514.6            514.6       -
+  slowest_commit_ms                              1            147.7            147.7            147.7       -
+  storage.disk_mb_max                            1            228.4            228.4            228.4       -
+  user_mb_per_s                                  1           0.0300           0.0300           0.0300       -
+  we                                             1           0.8304           0.8304           0.8304       -
+  slowest commits of run1:
+    147.75 ms at 12820 ms into the phase, 1 index nodes written; overlapping: none
+    147.69 ms at 12820 ms into the phase, 0 index nodes written; overlapping: none
+    147.69 ms at 25829 ms into the phase, 0 index nodes written; overlapping: none
+    147.65 ms at 25829 ms into the phase, 0 index nodes written; overlapping: none
+    147.53 ms at 25829 ms into the phase, 0 index nodes written; overlapping: none
+
+d-t4-b200  [write, 1 runs, workload 564c62ce036373a2]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,209.0          1,209.0          1,209.0       -
+  bytes_appended_per_user_byte                   1            1.204            1.204            1.204       -
+  commit.append.max_us                           1          3,063.0          3,063.0          3,063.0       -
+  commit.append.mean_us                          1            213.9            213.9            213.9       -
+  commit.append.p50_us                           1            179.2            179.2            179.2       -
+  commit.append.p95_us                           1            487.4            487.4            487.4       -
+  commit.append.p999_us                          1          3,063.0          3,063.0          3,063.0       -
+  commit.append.p99_us                           1            815.1            815.1            815.1       -
+  commit.durable.max_us                          1        248,848.0        248,848.0        248,848.0       -
+  commit.durable.mean_us                         1        232,235.0        232,235.0        232,235.0       -
+  commit.durable.p50_us                          1        232,784.0        232,784.0        232,784.0       -
+  commit.durable.p95_us                          1        244,318.0        244,318.0        244,318.0       -
+  commit.durable.p999_us                         1        248,848.0        248,848.0        248,848.0       -
+  commit.durable.p99_us                          1        246,415.0        246,415.0        246,415.0       -
+  commits_per_s                                  1           17.214           17.214           17.214       -
+  gclog.pause.max_ms                             1           0.0000           0.0000           0.0000       -
+  gclog.pause.total_ms                           1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.max_ms                         1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.total_ms                       1           0.0000           0.0000           0.0000       -
+  heap.after_gc_mb_max                           1           0.0000           0.0000           0.0000       -
+  puts_per_s                                     1           17.214           17.214           17.214       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,209.0          1,209.0          1,209.0       -
+  rec.user_index_bytes_per_put                   1            123.8            123.8            123.8       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6475           0.6475           0.6475       -
+  rss_mb_max                                     1            508.2            508.2            508.2       -
+  slowest_commit_ms                              1            248.8            248.8            248.8       -
+  storage.disk_mb_max                            1            228.4            228.4            228.4       -
+  user_mb_per_s                                  1           0.0173           0.0173           0.0173       -
+  we                                             1           0.8304           0.8304           0.8304       -
+  slowest commits of run1:
+    248.85 ms at 9830 ms into the phase, 0 index nodes written; overlapping: none
+    248.76 ms at 9830 ms into the phase, 0 index nodes written; overlapping: none
+    248.49 ms at 9829 ms into the phase, 0 index nodes written; overlapping: none
+    248.44 ms at 9829 ms into the phase, 0 index nodes written; overlapping: none
+    247.25 ms at 18891 ms into the phase, 0 index nodes written; overlapping: none
+
+d-t4-b25  [write, 1 runs, workload f1893f3ccbb878a1]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,209.0          1,209.0          1,209.0       -
+  bytes_appended_per_user_byte                   1            1.204            1.204            1.204       -
+  commit.append.max_us                           1            970.0            970.0            970.0       -
+  commit.append.mean_us                          1            159.4            159.4            159.4       -
+  commit.append.p50_us                           1            142.3            142.3            142.3       -
+  commit.append.p95_us                           1            337.9            337.9            337.9       -
+  commit.append.p999_us                          1            970.0            970.0            970.0       -
+  commit.append.p99_us                           1            532.5            532.5            532.5       -
+  commit.durable.max_us                          1         45,094.5         45,094.5         45,094.5       -
+  commit.durable.mean_us                         1         39,469.7         39,469.7         39,469.7       -
+  commit.durable.p50_us                          1         40,108.0         40,108.0         40,108.0       -
+  commit.durable.p95_us                          1         41,943.0         41,943.0         41,943.0       -
+  commit.durable.p999_us                         1         45,094.5         45,094.5         45,094.5       -
+  commit.durable.p99_us                          1         42,729.5         42,729.5         42,729.5       -
+  commits_per_s                                  1            101.2            101.2            101.2       -
+  gclog.pause.max_ms                             1           0.0000           0.0000           0.0000       -
+  gclog.pause.total_ms                           1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.max_ms                         1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.total_ms                       1           0.0000           0.0000           0.0000       -
+  heap.after_gc_mb_max                           1           0.0000           0.0000           0.0000       -
+  puts_per_s                                     1            101.2            101.2            101.2       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,209.0          1,209.0          1,209.0       -
+  rec.user_index_bytes_per_put                   1            123.8            123.8            123.8       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6422           0.6422           0.6422       -
+  rss_mb_max                                     1            513.2            513.2            513.2       -
+  slowest_commit_ms                              1           45.095           45.095           45.095       -
+  storage.disk_mb_max                            1            228.4            228.4            228.4       -
+  user_mb_per_s                                  1           0.1016           0.1016           0.1016       -
+  we                                             1           0.8304           0.8304           0.8304       -
+  slowest commits of run1:
+    45.09 ms at 6010 ms into the phase, 0 index nodes written; overlapping: none
+    45.06 ms at 6010 ms into the phase, 0 index nodes written; overlapping: none
+    44.82 ms at 6010 ms into the phase, 0 index nodes written; overlapping: none
+    44.81 ms at 6010 ms into the phase, 1 index nodes written; overlapping: none
+    42.97 ms at 2296 ms into the phase, 1 index nodes written; overlapping: none
+
+d-t4-b50  [write, 1 runs, workload 32da60ed7fe732eb]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,209.0          1,209.0          1,209.0       -
+  bytes_appended_per_user_byte                   1            1.204            1.204            1.204       -
+  commit.append.max_us                           1          1,059.1          1,059.1          1,059.1       -
+  commit.append.mean_us                          1            169.9            169.9            169.9       -
+  commit.append.p50_us                           1            144.4            144.4            144.4       -
+  commit.append.p95_us                           1            385.0            385.0            385.0       -
+  commit.append.p999_us                          1          1,059.1          1,059.1          1,059.1       -
+  commit.append.p99_us                           1            569.3            569.3            569.3       -
+  commit.durable.max_us                          1         82,472.3         82,472.3         82,472.3       -
+  commit.durable.mean_us                         1         72,351.0         72,351.0         72,351.0       -
+  commit.durable.p50_us                          1         72,876.0         72,876.0         72,876.0       -
+  commit.durable.p95_us                          1         78,118.9         78,118.9         78,118.9       -
+  commit.durable.p999_us                         1         82,472.3         82,472.3         82,472.3       -
+  commit.durable.p99_us                          1         79,691.8         79,691.8         79,691.8       -
+  commits_per_s                                  1           55.216           55.216           55.216       -
+  gclog.pause.max_ms                             1           0.0000           0.0000           0.0000       -
+  gclog.pause.total_ms                           1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.max_ms                         1           0.0000           0.0000           0.0000       -
+  gclog.safepoint.total_ms                       1           0.0000           0.0000           0.0000       -
+  heap.after_gc_mb_max                           1           0.0000           0.0000           0.0000       -
+  puts_per_s                                     1           55.216           55.216           55.216       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,209.0          1,209.0          1,209.0       -
+  rec.user_index_bytes_per_put                   1            123.8            123.8            123.8       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6414           0.6414           0.6414       -
+  rss_mb_max                                     1            514.7            514.7            514.7       -
+  slowest_commit_ms                              1           82.472           82.472           82.472       -
+  storage.disk_mb_max                            1            228.4            228.4            228.4       -
+  user_mb_per_s                                  1           0.0554           0.0554           0.0554       -
+  we                                             1           0.8304           0.8304           0.8304       -
+  slowest commits of run1:
+    82.47 ms at 8159 ms into the phase, 1 index nodes written; overlapping: none
+    82.38 ms at 8159 ms into the phase, 0 index nodes written; overlapping: none
+    82.38 ms at 8159 ms into the phase, 0 index nodes written; overlapping: none
+    82.25 ms at 8159 ms into the phase, 1 index nodes written; overlapping: none
+    79.46 ms at 4194 ms into the phase, 1 index nodes written; overlapping: none
+
+d-t64-b10  [write, 1 runs, workload 8520e47d633b37f9]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,205.9          1,205.9          1,205.9       -
+  bytes_appended_per_user_byte                   1            1.201            1.201            1.201       -
+  commit.append.max_us                           1          3,149.1          3,149.1          3,149.1       -
+  commit.append.mean_us                          1            530.8            530.8            530.8       -
+  commit.append.p50_us                           1            485.4            485.4            485.4       -
+  commit.append.p95_us                           1          1,400.8          1,400.8          1,400.8       -
+  commit.append.p999_us                          1          3,047.4          3,047.4          3,047.4       -
+  commit.append.p99_us                           1          2,113.5          2,113.5          2,113.5       -
+  commit.durable.max_us                          1         33,693.3         33,693.3         33,693.3       -
+  commit.durable.mean_us                         1         17,407.3         17,407.3         17,407.3       -
+  commit.durable.p50_us                          1         17,170.4         17,170.4         17,170.4       -
+  commit.durable.p95_us                          1         20,054.0         20,054.0         20,054.0       -
+  commit.durable.p999_us                         1         33,693.3         33,693.3         33,693.3       -
+  commit.durable.p99_us                          1         22,020.1         22,020.1         22,020.1       -
+  commits_per_s                                  1          3,626.3          3,626.3          3,626.3       -
+  gclog.pause.max_ms                             1           26.512           26.512           26.512       -
+  gclog.pause.total_ms                           1           26.512           26.512           26.512       -
+  gclog.safepoint.max_ms                         1           27.231           27.231           27.231       -
+  gclog.safepoint.total_ms                       1           27.231           27.231           27.231       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1          3,626.3          3,626.3          3,626.3       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,205.9          1,205.9          1,205.9       -
+  rec.user_index_bytes_per_put                   1            120.5            120.5            120.5       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6280           0.6280           0.6280       -
+  rss_mb_max                                     1            797.5            797.5            797.5       -
+  slowest_commit_ms                              1           33.693           33.693           33.693       -
+  storage.disk_mb_max                            1            235.2            235.2            235.2       -
+  user_mb_per_s                                  1            3.641            3.641            3.641       -
+  we                                             1           0.8326           0.8326           0.8326       -
+  longest GC pauses of run1 (1 in the window, total 26.512 ms): 26.5 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 2.2 s);
+  slowest commits of run1:
+    33.69 ms at 35 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 26.5 ms; safepoint G1CollectForAllocation 27.2 ms;
+    33.69 ms at 35 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 26.5 ms; safepoint G1CollectForAllocation 27.2 ms;
+    33.62 ms at 35 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 26.5 ms; safepoint G1CollectForAllocation 27.2 ms;
+    33.58 ms at 35 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 26.5 ms; safepoint G1CollectForAllocation 27.2 ms;
+    33.57 ms at 35 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 26.5 ms; safepoint G1CollectForAllocation 27.2 ms;
+
+d-t64-b100  [write, 1 runs, workload fede5d225278d4ac]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,205.9          1,205.9          1,205.9       -
+  bytes_appended_per_user_byte                   1            1.201            1.201            1.201       -
+  commit.append.max_us                           1          3,596.8          3,596.8          3,596.8       -
+  commit.append.mean_us                          1            644.9            644.9            644.9       -
+  commit.append.p50_us                           1            391.2            391.2            391.2       -
+  commit.append.p95_us                           1          1,949.7          1,949.7          1,949.7       -
+  commit.append.p999_us                          1          3,407.9          3,407.9          3,407.9       -
+  commit.append.p99_us                           1          2,588.7          2,588.7          2,588.7       -
+  commit.durable.max_us                          1        151,256.0        151,256.0        151,256.0       -
+  commit.durable.mean_us                         1        134,864.0        134,864.0        134,864.0       -
+  commit.durable.p50_us                          1        135,266.0        135,266.0        135,266.0       -
+  commit.durable.p95_us                          1        146,801.0        146,801.0        146,801.0       -
+  commit.durable.p999_us                         1        151,256.0        151,256.0        151,256.0       -
+  commit.durable.p99_us                          1        149,946.0        149,946.0        149,946.0       -
+  commits_per_s                                  1            474.0            474.0            474.0       -
+  gclog.pause.max_ms                             1           27.108           27.108           27.108       -
+  gclog.pause.total_ms                           1           27.108           27.108           27.108       -
+  gclog.safepoint.max_ms                         1           27.920           27.920           27.920       -
+  gclog.safepoint.total_ms                       1           27.920           27.920           27.920       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1            474.0            474.0            474.0       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,205.9          1,205.9          1,205.9       -
+  rec.user_index_bytes_per_put                   1            120.5            120.5            120.5       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6276           0.6276           0.6276       -
+  rss_mb_max                                     1            807.3            807.3            807.3       -
+  slowest_commit_ms                              1            151.3            151.3            151.3       -
+  storage.disk_mb_max                            1            235.2            235.2            235.2       -
+  user_mb_per_s                                  1           0.4758           0.4758           0.4758       -
+  we                                             1           0.8326           0.8326           0.8326       -
+  longest GC pauses of run1 (1 in the window, total 27.108 ms): 27.1 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 2.9 s);
+  slowest commits of run1:
+    151.26 ms at 4589 ms into the phase, 0 index nodes written; overlapping: none
+    151.25 ms at 4589 ms into the phase, 0 index nodes written; overlapping: none
+    151.25 ms at 4589 ms into the phase, 0 index nodes written; overlapping: none
+    151.24 ms at 4589 ms into the phase, 0 index nodes written; overlapping: none
+    151.24 ms at 4589 ms into the phase, 0 index nodes written; overlapping: none
+
+d-t64-b200  [write, 1 runs, workload ea0c3070909c04e1]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,205.9          1,205.9          1,205.9       -
+  bytes_appended_per_user_byte                   1            1.201            1.201            1.201       -
+  commit.append.max_us                           1          2,883.8          2,883.8          2,883.8       -
+  commit.append.mean_us                          1            643.4            643.4            643.4       -
+  commit.append.p50_us                           1            438.3            438.3            438.3       -
+  commit.append.p95_us                           1          1,835.0          1,835.0          1,835.0       -
+  commit.append.p999_us                          1          2,719.7          2,719.7          2,719.7       -
+  commit.append.p99_us                           1          2,195.5          2,195.5          2,195.5       -
+  commit.durable.max_us                          1        253,004.0        253,004.0        253,004.0       -
+  commit.durable.mean_us                         1        233,920.0        233,920.0        233,920.0       -
+  commit.durable.p50_us                          1        234,881.0        234,881.0        234,881.0       -
+  commit.durable.p95_us                          1        244,318.0        244,318.0        244,318.0       -
+  commit.durable.p999_us                         1        253,004.0        253,004.0        253,004.0       -
+  commit.durable.p99_us                          1        249,561.0        249,561.0        249,561.0       -
+  commits_per_s                                  1            273.4            273.4            273.4       -
+  gclog.pause.max_ms                             1           28.435           28.435           28.435       -
+  gclog.pause.total_ms                           1           28.435           28.435           28.435       -
+  gclog.safepoint.max_ms                         1           29.013           29.013           29.013       -
+  gclog.safepoint.total_ms                       1           29.013           29.013           29.013       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1            273.4            273.4            273.4       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,205.9          1,205.9          1,205.9       -
+  rec.user_index_bytes_per_put                   1            120.5            120.5            120.5       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6200           0.6200           0.6200       -
+  rss_mb_max                                     1            795.3            795.3            795.3       -
+  slowest_commit_ms                              1            253.0            253.0            253.0       -
+  storage.disk_mb_max                            1            235.2            235.2            235.2       -
+  user_mb_per_s                                  1           0.2745           0.2745           0.2745       -
+  we                                             1           0.8326           0.8326           0.8326       -
+  longest GC pauses of run1 (1 in the window, total 28.435 ms): 28.4 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 3.9 s);
+  slowest commits of run1:
+    253.00 ms at 473 ms into the phase, 0 index nodes written; overlapping: none
+    253.00 ms at 472 ms into the phase, 1 index nodes written; overlapping: none
+    253.00 ms at 473 ms into the phase, 0 index nodes written; overlapping: none
+    253.00 ms at 473 ms into the phase, 0 index nodes written; overlapping: none
+    253.00 ms at 473 ms into the phase, 0 index nodes written; overlapping: none
+
+d-t64-b25  [write, 1 runs, workload e1e61b6302973018]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,205.9          1,205.9          1,205.9       -
+  bytes_appended_per_user_byte                   1            1.201            1.201            1.201       -
+  commit.append.max_us                           1          3,037.6          3,037.6          3,037.6       -
+  commit.append.mean_us                          1            606.6            606.6            606.6       -
+  commit.append.p50_us                           1            407.6            407.6            407.6       -
+  commit.append.p95_us                           1          1,957.9          1,957.9          1,957.9       -
+  commit.append.p999_us                          1          2,998.3          2,998.3          2,998.3       -
+  commit.append.p99_us                           1          2,375.7          2,375.7          2,375.7       -
+  commit.durable.max_us                          1         51,185.6         51,185.6         51,185.6       -
+  commit.durable.mean_us                         1         39,917.3         39,917.3         39,917.3       -
+  commit.durable.p50_us                          1         39,845.9         39,845.9         39,845.9       -
+  commit.durable.p95_us                          1         44,564.5         44,564.5         44,564.5       -
+  commit.durable.p999_us                         1         51,185.6         51,185.6         51,185.6       -
+  commit.durable.p99_us                          1         46,399.5         46,399.5         46,399.5       -
+  commits_per_s                                  1          1,587.3          1,587.3          1,587.3       -
+  gclog.pause.max_ms                             1           27.379           27.379           27.379       -
+  gclog.pause.total_ms                           1           27.379           27.379           27.379       -
+  gclog.safepoint.max_ms                         1           28.081           28.081           28.081       -
+  gclog.safepoint.total_ms                       1           28.081           28.081           28.081       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1          1,587.3          1,587.3          1,587.3       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,205.9          1,205.9          1,205.9       -
+  rec.user_index_bytes_per_put                   1            120.5            120.5            120.5       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6267           0.6267           0.6267       -
+  rss_mb_max                                     1            795.7            795.7            795.7       -
+  slowest_commit_ms                              1           51.186           51.186           51.186       -
+  storage.disk_mb_max                            1            235.2            235.2            235.2       -
+  user_mb_per_s                                  1            1.594            1.594            1.594       -
+  we                                             1           0.8326           0.8326           0.8326       -
+  longest GC pauses of run1 (1 in the window, total 27.379 ms): 27.4 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 2.3 s);
+  slowest commits of run1:
+    51.19 ms at 1361 ms into the phase, 1 index nodes written; overlapping: none
+    51.18 ms at 1361 ms into the phase, 0 index nodes written; overlapping: none
+    51.18 ms at 1361 ms into the phase, 0 index nodes written; overlapping: none
+    51.17 ms at 1361 ms into the phase, 0 index nodes written; overlapping: none
+    51.17 ms at 1361 ms into the phase, 1 index nodes written; overlapping: none
+
+d-t64-b50  [write, 1 runs, workload e0731032d1dde251]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,205.9          1,205.9          1,205.9       -
+  bytes_appended_per_user_byte                   1            1.201            1.201            1.201       -
+  commit.append.max_us                           1          3,010.5          3,010.5          3,010.5       -
+  commit.append.mean_us                          1            633.3            633.3            633.3       -
+  commit.append.p50_us                           1            432.1            432.1            432.1       -
+  commit.append.p95_us                           1          1,900.5          1,900.5          1,900.5       -
+  commit.append.p999_us                          1          2,998.3          2,998.3          2,998.3       -
+  commit.append.p99_us                           1          2,228.2          2,228.2          2,228.2       -
+  commit.durable.max_us                          1         82,208.8         82,208.8         82,208.8       -
+  commit.durable.mean_us                         1         72,748.5         72,748.5         72,748.5       -
+  commit.durable.p50_us                          1         73,400.3         73,400.3         73,400.3       -
+  commit.durable.p95_us                          1         79,167.5         79,167.5         79,167.5       -
+  commit.durable.p999_us                         1         82,208.8         82,208.8         82,208.8       -
+  commit.durable.p99_us                          1         81,788.9         81,788.9         81,788.9       -
+  commits_per_s                                  1            877.7            877.7            877.7       -
+  gclog.pause.max_ms                             1           27.507           27.507           27.507       -
+  gclog.pause.total_ms                           1           27.507           27.507           27.507       -
+  gclog.safepoint.max_ms                         1           27.769           27.769           27.769       -
+  gclog.safepoint.total_ms                       1           27.769           27.769           27.769       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1            877.7            877.7            877.7       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,205.9          1,205.9          1,205.9       -
+  rec.user_index_bytes_per_put                   1            120.5            120.5            120.5       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6237           0.6237           0.6237       -
+  rss_mb_max                                     1            817.0            817.0            817.0       -
+  slowest_commit_ms                              1           82.209           82.209           82.209       -
+  storage.disk_mb_max                            1            235.2            235.2            235.2       -
+  user_mb_per_s                                  1           0.8812           0.8812           0.8812       -
+  we                                             1           0.8326           0.8326           0.8326       -
+  longest GC pauses of run1 (1 in the window, total 27.507 ms): 27.5 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 2.4 s);
+  slowest commits of run1:
+    82.21 ms at 7291 ms into the phase, 0 index nodes written; overlapping: none
+    82.19 ms at 7291 ms into the phase, 0 index nodes written; overlapping: none
+    82.17 ms at 7291 ms into the phase, 0 index nodes written; overlapping: none
+    82.16 ms at 7291 ms into the phase, 0 index nodes written; overlapping: none
+    82.16 ms at 7291 ms into the phase, 0 index nodes written; overlapping: none

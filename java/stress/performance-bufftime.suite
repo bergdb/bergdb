@@ -1,0 +1,48 @@
+# The buffer time sweep of bergdb item 005-13: the main stream's buffer time (Perf's bufftime=,
+# in ms) against durable commits (sync(ORDINARY) after each transaction, 1 to 64 threads) and
+# append-only writes (no sync, one thread). Same format as performance.suite. Run with
+# SUITE=java/stress/performance-bufftime.suite performance.sh reference LABEL; 005-13 ran it
+# with RUNS=1 three times, so that each round has every buffer time. About 13 minutes a round on F53.
+# Force counts (forces_per_s, bytes_per_force, force_ms_mean) are appends to the FileStream.
+
+d-t1-b10     write    3   n=100000 commit=durable threads=1 ops=200 warmup=100000 valsize=1000 bufftime=10
+d-t1-b25     write    3   n=100000 commit=durable threads=1 ops=200 warmup=100000 valsize=1000 bufftime=25
+d-t1-b50     write    3   n=100000 commit=durable threads=1 ops=200 warmup=100000 valsize=1000 bufftime=50
+d-t1-b100    write    3   n=100000 commit=durable threads=1 ops=200 warmup=100000 valsize=1000 bufftime=100
+d-t1-b200    write    3   n=100000 commit=durable threads=1 ops=200 warmup=100000 valsize=1000 bufftime=200
+
+d-t4-b10     write    3   n=100000 commit=durable threads=4 ops=800 warmup=100000 valsize=1000 bufftime=10
+d-t4-b25     write    3   n=100000 commit=durable threads=4 ops=800 warmup=100000 valsize=1000 bufftime=25
+d-t4-b50     write    3   n=100000 commit=durable threads=4 ops=800 warmup=100000 valsize=1000 bufftime=50
+d-t4-b100    write    3   n=100000 commit=durable threads=4 ops=800 warmup=100000 valsize=1000 bufftime=100
+d-t4-b200    write    3   n=100000 commit=durable threads=4 ops=800 warmup=100000 valsize=1000 bufftime=200
+
+d-t16-b10    write    3   n=100000 commit=durable threads=16 ops=3200 warmup=100000 valsize=1000 bufftime=10
+d-t16-b25    write    3   n=100000 commit=durable threads=16 ops=3200 warmup=100000 valsize=1000 bufftime=25
+d-t16-b50    write    3   n=100000 commit=durable threads=16 ops=3200 warmup=100000 valsize=1000 bufftime=50
+d-t16-b100   write    3   n=100000 commit=durable threads=16 ops=3200 warmup=100000 valsize=1000 bufftime=100
+d-t16-b200   write    3   n=100000 commit=durable threads=16 ops=3200 warmup=100000 valsize=1000 bufftime=200
+
+d-t64-b10    write    3   n=100000 commit=durable threads=64 ops=6400 warmup=100000 valsize=1000 bufftime=10
+d-t64-b25    write    3   n=100000 commit=durable threads=64 ops=6400 warmup=100000 valsize=1000 bufftime=25
+d-t64-b50    write    3   n=100000 commit=durable threads=64 ops=6400 warmup=100000 valsize=1000 bufftime=50
+d-t64-b100   write    3   n=100000 commit=durable threads=64 ops=6400 warmup=100000 valsize=1000 bufftime=100
+d-t64-b200   write    3   n=100000 commit=durable threads=64 ops=6400 warmup=100000 valsize=1000 bufftime=200
+
+a-100-b10    write    3   n=100000 valsize=100 retain=inf ops=1000000 bufftime=10
+a-100-b25    write    3   n=100000 valsize=100 retain=inf ops=1000000 bufftime=25
+a-100-b50    write    3   n=100000 valsize=100 retain=inf ops=1000000 bufftime=50
+a-100-b100   write    3   n=100000 valsize=100 retain=inf ops=1000000 bufftime=100
+a-100-b200   write    3   n=100000 valsize=100 retain=inf ops=1000000 bufftime=200
+
+a-1k-b10     write    3   n=100000 valsize=1000 retain=inf ops=500000 bufftime=10
+a-1k-b25     write    3   n=100000 valsize=1000 retain=inf ops=500000 bufftime=25
+a-1k-b50     write    3   n=100000 valsize=1000 retain=inf ops=500000 bufftime=50
+a-1k-b100    write    3   n=100000 valsize=1000 retain=inf ops=500000 bufftime=100
+a-1k-b200    write    3   n=100000 valsize=1000 retain=inf ops=500000 bufftime=200
+
+a-1k-x100-b10 write    3   n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=10
+a-1k-x100-b25 write    3   n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=25
+a-1k-x100-b50 write    3   n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=50
+a-1k-x100-b100 write    3   n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=100
+a-1k-x100-b200 write    3   n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=200

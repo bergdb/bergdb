@@ -59,11 +59,10 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
      *            The append-only stream to buffer.
      */
     public BufferedStream(AppendOnlyStream stream) {
-        // 10M bufferSize and 100 ms bufferTime are reasonable defaults for a
-        // rotational drive.
-        // See doc/reports-2013/performance-vs-buffer-settings.txt.
+        // The defaults of the main stream (StorageManager); the buffer time was 100 ms,
+        // for a rotational drive, until 2026-10-20 (bergdb item 005-13).
 
-        this(stream, 10 * 1000000, 100);
+        this(stream, StorageManager.DEFAULT_BUFFER_SIZE, StorageManager.DEFAULT_BUFFER_TIME);
     }
 
     /**

@@ -1,7 +1,7 @@
 005-13. The buffer time: should the default change?
 ====================================================
 
-Status: open. Kind: investigate. Created 2026-10-20.
+Status: done (2026-10-20; see Outcome). Kind: investigate. Created 2026-10-20.
 
 
 The task
@@ -159,3 +159,88 @@ S for the sweep; M with the group-commit prototype and its tests.
 Related to 005-07 (synchronization of transactions; group commit is on
 its list of what may need to change) and to 005-11 (replicas, D2). The
 sweep can go any time; the group commit is best after or with 005-07.
+
+
+Outcome
+-------
+
+2026-10-20, by Claude (Opus 5.5, Claude Code), at Frans's request. The
+sweep was run as proposed. Frans then decided (2026-10-20): "keep this very
+simple. Just set the default to 20 ms unless you find a good reason for
+not to." No such reason was found. `StorageManager.DEFAULT_BUFFER_TIME` is
+20 (was 100); `BufferedStream(stream)` takes the same defaults. Group
+commit, a buffer time in the Pub API's builder and the replicas' 2000 ms
+are not done. A redesign of the storage for SSDs and flash, which would
+need disk performance on several targets, embedded included, is out of
+scope (Frans).
+
+**The sweep.** On F53 (M1 Pro, SSD, macOS), commit 9d909cc, three rounds of
+[performance-bufftime.suite](../../java/stress/performance-bufftime.suite),
+each with every buffer time, 12:30 to 13:22. Round 1 began while another
+session's night run had two Lean checks running (78 percent idle; the
+runs are marked not quiet); rounds 2 and 3 were quiet. Medians of the three
+rounds, the full table in [13-buffer-time/table.md](13-buffer-time/table.md):
+
+| buffer time | sync p50, 1 thread | synced commits/s, 1 / 16 / 64 threads | puts/s, no sync, 100 B / 1 KB / 1 KB x100 |
+|---:|---:|---:|---:|
+| 10 ms | 15 ms | 66 / 1,035 / 4,141 | 267k / 104k / 111k |
+| 25 ms | 35 ms | 29 / 458 / 1,815 | 262k / 101k / 109k |
+| 50 ms | 64 ms | 16 / 250 / 995 | 259k / 98k / 109k |
+| 100 ms (was the default) | 122 ms | 8 / 132 / 528 | 266k / 98k / 104k |
+| 200 ms | 221 ms | 5 / 72 / 289 | 261k / 62k / 64k |
+| **20 ms (the new default)** | **35 ms** | **29 / 456 / 1,813** | **271k / 105k / 112k** |
+
+The last row is the changed code with the default (no `bufftime=`), on
+4b459df: [default-check.suite](13-buffer-time/tools/default-check.suite),
+three runs each, in `13-buffer-time/runs/default20/` (86 percent idle, so
+marked not quiet).
+
+**What it shows.**
+
+* Synced commits: a sync waits for the timer, so the latency is the
+  buffer time plus 20 to 50 percent, and the commits a second of N
+  threads are N over that. 20 ms gives 4 times the synced commits of
+  100 ms at every thread count.
+* Writers that do not sync: 260,000 puts a second with 100-byte values
+  and about 100,000 (100 MB/s of user data) with 1 KB values, the same
+  from 10 to 100 ms; the writer's CPU is the limit, not the forces. 100
+  puts per transaction add 7 percent. A shorter buffer time costs no
+  throughput; 20 ms is as fast as 10 and slightly faster than 100.
+* One force (question 3, [tools/ForceProbe.java](13-buffer-time/tools/ForceProbe.java),
+  `runs/forceprobe-*.txt`): `F_FULLFSYNC` of 100 bytes 4.2 to 5.2 ms, of
+  1 to 4 MB 7 to 12 ms (p50); plain fsync, which on macOS does not empty
+  the drive's cache, 0.03 ms. So about 5 ms is the floor of any durable
+  sync here, and a 20 ms timer is still four forces long.
+* At 200 ms, bulk writes of 1 KB values lose 37 percent (62,000 puts a
+  second): the consumer wakes only on its timer (every 50 ms) and flushes
+  at most half the 10 MB buffer, so the buffer fills and the writer waits.
+  Nothing wakes the consumer when the buffer is full. Not fixed; it does
+  not matter at 20 ms.
+* 20 ms gives the same latency as 25 ms (35 ms). The consumer waits
+  bufferTime / 4 four times, and `Object.wait(ms)` on this macOS sleeps
+  longer than asked: wait(5) 7.6 ms, wait(6) 9 ms, wait(25) 32 to 34 ms
+  ([tools/WaitProbe.java](13-buffer-time/tools/WaitProbe.java),
+  `runs/waitprobe.txt`). The buffer time is a rough bound, not a
+  deadline.
+
+**Why not shorter, or a reason against 20 ms.** None strong enough. The
+costs of a shorter time are more forces of small appends when data
+trickles in (at most about 30 a second at 20 ms, against 8 at 100 ms;
+more writes to flash, which matters for the out-of-scope storage design)
+and a consumer thread that wakes every 5 ms instead of 25 ms, also when
+the database is idle (power, on a laptop or a small device). Neither was
+measured as a problem. A side effect: unit tests that sync wait less
+(006-03 found syncs waiting for the poll).
+
+**Tests.** `java/before-commit.sh` printed `BEFORE COMMIT OK` (933 unit
+tests, 59 f-tests) on the changed code. The performance tests for the
+change: the default check above.
+
+**Files.** In [13-buffer-time/](13-buffer-time/): `table.md` (the sweep's
+table, by `tools/table.py`); `tools/run-sweep.sh` (the rounds and the force
+probes), `tools/ForceProbe.java`, `tools/WaitProbe.java`,
+`tools/default-check.suite`; `runs/` (each round's results and runner log,
+`sweep.log`, the probes, `default20/`). In `java/`: `Perf`'s `bufftime=`
+parameter and force counters (`forces_per_s`, `bytes_per_force`,
+`force_ms_mean`, `force_busy_fraction`, also in every other write run),
+and `stress/performance-bufftime.suite`.

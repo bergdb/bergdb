@@ -17,6 +17,7 @@ import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.LookupTimeNotAvailableException;
+import bergdb.storage.StorageManager;
 import bergdb.stream.FileStream;
 
 /**
@@ -72,6 +73,12 @@ public class Perf {
     static int pi(String k, int d) { int v = Integer.getInteger("perf." + k, d); W.put(k, (long) v); return v; }
     static long pl(String k, long d) { long v = Long.getLong("perf." + k, d); W.put(k, v); return v; }
     static String ps(String k, String d) { String v = System.getProperty("perf." + k, d); W.put(k, v); return v; }
+    static int optional(String k) {
+        Integer v = Integer.getInteger("perf." + k);
+        if (v == null) return 0;
+        W.put(k, (long) v);
+        return v;
+    }
     static String rs(String k, String d) { String v = System.getProperty("perf." + k, d); RUN.put(k, v); return v; }
 
     final String mode;
@@ -107,6 +114,9 @@ public class Perf {
     final int mixOps = pi("mixops", 50000);
     final int mixReaders = pi("mixreaders", 2);
     final boolean halt = pi("halt", 0) != 0;                 // write: end without close (a crash-like stop)
+    // The main stream's buffer time in ms (bergdb item 005-13); 0: the default of DbBuilder.
+    // In the workload id only when set, so that the ids of the other scenarios do not change.
+    final int buffTime = optional("bufftime");
 
     final String scenario = rs("scenario", "adhoc");
     final String outDir = rs("out", "build/perf/out");
@@ -135,6 +145,7 @@ public class Perf {
     long midTime;
     Db db;
     FileStream stream;
+    CountingStream counting;
     final Stats stats = new Stats();
     final Map<String, Object> metrics = new LinkedHashMap<String, Object>();
     final Map<String, Object> info = new LinkedHashMap<String, Object>();
@@ -291,9 +302,41 @@ public class Perf {
     Db openDb() throws IOException {
         stream = new FileStream(dir);
         // (FileStream ignores the marker file: it reads only its own files.)
-        DbBuilder b = Db.builder().stream("main", stream).clock(clock).noEvict().retainForever().testId();
+        counting = new CountingStream(stream);
+        DbBuilder b = Db.builder();
+        if (buffTime > 0) b.stream("main", counting, StorageManager.DEFAULT_BUFFER_SIZE, buffTime);
+        else b.stream("main", counting);
+        b.clock(clock).noEvict().retainForever().testId();
         if (sd > 0) b.startupDistance(sd);
         return b.build();
+    }
+
+    /**
+     * The stream under the database's buffer: counts the appends that reach it and their
+     * bytes. FileStream forces the file in each append, so an append is a force (two when a
+     * flush wraps around the ring buffer or crosses a file).
+     */
+    static final class CountingStream implements bergdb.stream.AppendOnlyStream {
+        final FileStream s;
+        final AtomicLong appends = new AtomicLong(), bytes = new AtomicLong(), nanos = new AtomicLong();
+
+        CountingStream(FileStream s) { this.s = s; }
+
+        public long getLength() { return s.getLength(); }
+        public long getFirstPos() { return s.getFirstPos(); }
+        public void read(long position, byte[] dest, int destOffset, int length) throws IOException {
+            s.read(position, dest, destOffset, length);
+        }
+        public void append(byte[] source, int sourceOffset, int length) throws IOException {
+            long t0 = System.nanoTime();
+            s.append(source, sourceOffset, length);
+            nanos.addAndGet(System.nanoTime() - t0);
+            appends.incrementAndGet();
+            bytes.addAndGet(length);
+        }
+        public void pretruncate(long position) throws IOException { s.pretruncate(position); }
+        public void seekFirstPos(long position) throws IOException { s.seekFirstPos(position); }
+        public void close() throws IOException { s.close(); }
     }
 
     /** One transaction at the next time. Returns the index nodes it wrote. */
@@ -684,9 +727,12 @@ public class Perf {
         writers = ws;
         long snapLen = db.getStreamLength();
         long snapFirstAvail = db.getFirstAvailablePos();
+        long forces0 = counting.appends.get(), forceBytes0 = counting.bytes.get(), forceNanos0 = counting.nanos.get();
         for (Writer w : ws) w.start();
         for (Writer w : ws) w.join();
         long endNanos = System.nanoTime();
+        long forces = counting.appends.get() - forces0, forceBytes = counting.bytes.get() - forceBytes0;
+        long forceNanos = counting.nanos.get() - forceNanos0;
         upEndMs = ManagementFactory.getRuntimeMXBean().getUptime();
         long[] gc1 = PerfUtil.gcTotals();
         sampler.finish();
@@ -733,6 +779,12 @@ public class Perf {
         for (int i = 0; i < Math.min(fullSeconds, tps.length); i++) minTps = Math.min(minTps, tps[i]);
         if (minTps != Long.MAX_VALUE && fullSeconds >= 2) metrics.put("commits_per_s.slowest_second", minTps);
         gcMetrics(gc0, gc1);
+        metrics.put("buffer_time_ms", (long) (buffTime > 0 ? Math.max(10, buffTime) : StorageManager.DEFAULT_BUFFER_TIME));
+        metrics.put("forces", forces);
+        metrics.put("forces_per_s", forces / sec);
+        metrics.put("bytes_per_force", forces > 0 ? forceBytes / (double) forces : 0.0);
+        metrics.put("force_ms_mean", forces > 0 ? 1e-6 * forceNanos / forces : 0.0);
+        metrics.put("force_busy_fraction", 1e-9 * forceNanos / sec);
 
         // Reclaim: where the stream bytes went (Reclaim.Stats, ReclaimCost.java).
         Reclaim.Stats.Record u = rstats.user.minus(user0), sr = rstats.step.minus(step0), tr = rstats.table.minus(table0);
@@ -786,6 +838,8 @@ public class Perf {
             System.out.printf(Locale.ROOT, "  durable p50 %.1f ms p99 %.1f ms max %.1f ms%n",
                     dur.percentile(50) / 1e6, dur.percentile(99) / 1e6, dur.max() / 1e6);
         }
+        System.out.printf(Locale.ROOT, "  buffer time %d ms: %d forces, %.1f a second, %.0f bytes each, %.2f ms each%n",
+                metrics.get("buffer_time_ms"), forces, forces / sec, metrics.get("bytes_per_force"), metrics.get("force_ms_mean"));
 
         // The end: sync, and either keep the directory for mode restart or restart here and check every key.
         long t0 = System.nanoTime();

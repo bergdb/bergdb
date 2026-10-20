@@ -46,7 +46,12 @@ public class StorageManager implements AppendOnlyStream {
     public static final int DEFAULT_REPLICA_BUFFER_SIZE = 20 * 1000000;
     public static final int DEFAULT_REPLICA_BUFFER_TIME = 2 * 1000;
     public static final int DEFAULT_BUFFER_SIZE = 10 * 1000000;
-    public static final int DEFAULT_BUFFER_TIME = 100;
+    /**
+     * The main stream's buffer time in ms. 20 since 2026-10-20 (bergdb item 005-13): 100 was
+     * chosen for rotating drives; on an SSD a sync after a commit then waited about 120 ms, and
+     * a shorter time costs no throughput of writers that do not sync.
+     */
+    public static final int DEFAULT_BUFFER_TIME = 20;
     
     private final AtomicReference<Internal> internal;
     private final Object writeLock;

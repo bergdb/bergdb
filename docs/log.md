@@ -812,3 +812,14 @@ and `conformance.sh medium`, and writes a report to `java/build/night/`;
 launchd starts it at 02:00. `night.sh large` adds `conformance.sh large`
 (about 5 hours more) and is started by hand; `night.sh tests` runs only the
 night tests, as `night.sh` did before.
+
+2026-10-20. Bergdb 005-13, the buffer time: the default of the main
+stream is 20 ms, was 100 ms (2012, for rotating drives). A sweep of 10 to
+200 ms on F53 (SSD, `F_FULLFSYNC`): a sync after each commit waits for the
+timer, about the buffer time plus 20 to 50 percent, so one syncing thread
+gets 29 commits a second instead of 8, and 64 threads 1,800 instead of 530;
+writers that do not sync are as fast from 10 to 100 ms (260,000 puts a
+second with 100-byte values, 100,000 with 1 KB). One `F_FULLFSYNC` costs
+about 5 ms. At 200 ms bulk writes lose a third, as the consumer wakes only
+on its timer. `Perf` has `bufftime=` and counts the forces; the suite is
+`java/stress/performance-bufftime.suite`.

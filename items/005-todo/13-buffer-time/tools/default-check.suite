@@ -1,0 +1,8 @@
+# 005-13: the new default buffer time (20 ms), checked on the changed code: the sweep's
+# scenarios without bufftime=, so that the default of DbBuilder is used.
+d-t1-def     write    3   n=100000 commit=durable threads=1 ops=200 warmup=100000 valsize=1000
+d-t16-def    write    3   n=100000 commit=durable threads=16 ops=3200 warmup=100000 valsize=1000
+d-t64-def    write    3   n=100000 commit=durable threads=64 ops=6400 warmup=100000 valsize=1000
+a-100-def    write    3   n=100000 valsize=100 retain=inf ops=1000000
+a-1k-def     write    3   n=100000 valsize=1000 retain=inf ops=500000
+a-1k-x100-def write   3   n=100000 valsize=1000 tsize=100 retain=inf ops=10000

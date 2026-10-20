@@ -1,0 +1,6 @@
+wait(2): p50 3.01 ms, p90 3.03 ms
+wait(5): p50 7.57 ms, p90 7.62 ms
+wait(6): p50 9.08 ms, p90 9.16 ms
+wait(12): p50 18.07 ms, p90 18.17 ms
+wait(25): p50 32.25 ms, p90 35.11 ms
+wait(50): p50 55.94 ms, p90 60.12 ms

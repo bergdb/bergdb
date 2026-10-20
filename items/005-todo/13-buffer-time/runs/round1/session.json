@@ -1,0 +1,50 @@
+{
+  "id": "9d909cc1-d9b8e41-20261020T124415-stress/performance-bufftime.suite-g1-8g-round1",
+  "createdAt": "2026-10-20T12:44:15+0200",
+  "label": "round1",
+  "command": "stress/performance.sh reference round1",
+  "suite": {
+    "name": "stress/performance-bufftime.suite",
+    "file": "performance-bufftime.suite",
+    "sha256": "e0d0935ef5dfae473b0525ff727a12f7832639d91e4d6d0650abdab3c1cf9bbf"
+  },
+  "runsOverride": 1,
+  "only": "all",
+  "source": {
+    "commit": "9d909cc18a88e5e19f6f244e048ff6ab72525929",
+    "branch": "main",
+    "dirty": true,
+    "diffSha256": "9b8e41b3feff1aaf4b923e6e22208e2bbb42d10f550deb9b8b55f1aa96a09910",
+    "manifestSha256": "2fe41c00b78f5d29d60cd8f865721408c5cd817f3f48bf8c0ac8022552d49cf0",
+    "jarSha256": "87354ce16bc766c09a4bc80a733ff571cbf7275f981f7204cb57d6e77358756f",
+    "buildLabel": "current-9d909cc1-2fe41c00",
+    "builtAt": "2026-10-20T12:30:35+0200",
+    "buildDir": "/private/tmp/claude-502/-Users-f-fl-repos-f1/ba361f20-ac77-4e36-ac93-b7c9a80ed863/scratchpad/bdb/java/build/perf/builds/current-9d909cc1-2fe41c00"
+  },
+  "harness": {
+    "sha256": "428d8a4be4e56f3a2eeb8f08f47f3cb6ca00958bd9f1921bb9397e4248236879",
+    "traceVersion": 1
+  },
+  "jvm": {
+    "java": "/opt/homebrew/opt/openjdk/bin/java",
+    "flags": "-XX:+UseG1GC -da -Xms8g -Xmx8g",
+    "gc": "g1",
+    "heap": "8g",
+    "version": "openjdk version \"27\" 2026-09-15;OpenJDK Runtime Environment Homebrew (build 27);OpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing);"
+  },
+  "osCache": "warm",
+  "cooldownSec": 5,
+  "machine": {
+    "model": "MacBookPro18,3",
+    "cpu": "Apple M1 Pro",
+    "cores": 10,
+    "memBytes": 34359738368,
+    "osBuild": "27.0.1 26A434",
+    "power": "Now drawing from AC Power",
+    "thermal": "Note: No thermal warning level has been recorded",
+    "kernel": "Darwin 27.0.0",
+    "host": "f53",
+    "dataVolume": "/System/Volumes/Data",
+    "fsType": "apfs"
+  }
+}
