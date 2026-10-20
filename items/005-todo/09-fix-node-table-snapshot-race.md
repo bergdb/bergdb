@@ -81,6 +81,12 @@ Done when
   passes many times under load (thousands of runs, not one in 600).
 * No stream changes: StreamDigest the same as R8's; `EvictionInvariance`
   prints its OK, and `java/before-commit.sh` prints `BEFORE COMMIT OK`.
+* No loss of performance. Props (`bergdb.dev.props.Props`: MEM, CORE and
+  SS) within noise of the code before the fix, in matched runs (ABBA, as in
+  005-08); so too Core's `get`, `get4t`, `set` and `getmany`. The fix is on
+  the readers' path (a follow's `pointerCreated`), so `get` and `get4t` matter
+  most. `performance.sh`'s quick suite against the code before the fix gives
+  no alerts.
 * The register and docs/levels.md say what was found and fixed.
 
 
