@@ -33,7 +33,7 @@ and `level2.sh` to `level4.sh`, [elan](https://github.com/leanprover/elan).
 
     
     java/build.sh                  # builds java/build/bergdb.jar and the stress tests
-    java/unit.sh                   # runs the unit tests with -ea, assertions on
+    java/unit.sh                   # runs the unit tests
     java/f.sh                      # runs the f-tests
     java/perf.sh                   # runs the perf-tests
     java/night.sh                  # runs the night-tests

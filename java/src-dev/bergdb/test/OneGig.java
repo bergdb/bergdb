@@ -15,7 +15,6 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.SimpleTestEnvironment;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
-import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.OneFileStream;
 
@@ -86,7 +85,7 @@ public class OneGig {
             }
         }
         t = System.nanoTime() - t;
-        s.stop();
+        db.close();    // Flushes the buffered writes and closes s.
         
         c.report("write-time", t*1e-9);
         c.report("stream-size-mb", (db.getStreamLength() * 1e-6));
@@ -149,7 +148,7 @@ public class OneGig {
         //
         
         final PrintStream out = c.out();
-        AppendOnlyStream s = new MemoryStream();
+        MemoryStream s = new MemoryStream();
         
         final int n = 10*1000;   // Number of transactions
             // Normally 10*1000. It makes 0.1 GB. We have 10*n KVs and n transactions.
@@ -195,12 +194,13 @@ public class OneGig {
         c.report("write-time-per-stream-mb", t*1e-9 / (db.getStreamLength() * 1e-6));
         c.report("write-time-per-data-mb", t*1e-9 / (n*0.01));
         
+        db.close();    // Flushes the buffered writes and closes s.
         db = null;
         System.gc();
         
         out.println("Now reads the stream and checks the data.");
         
-        db = Db.builder().mainStream(s).build();
+        db = Db.builder().mainStream(s.copy()).build();    // The copy is not closed.
         
         t = System.nanoTime();
         db.start();

@@ -1,0 +1,8 @@
+seed=1 n=2000 keys=500 sd=1000 maxnode=8 retain=0 restarts=none
+SCHEDULE none: stream identical; TRANSSEQ 0 of 20 checkpoints differ; KV CHECKSUM 0 differ; IDENTITY 0 violate; LOOKUP 0 violate; eviction none: 0 slots unswizzled, 0 objects released
+SCHEDULE values: stream identical; TRANSSEQ 0 of 20 checkpoints differ; KV CHECKSUM 0 differ; IDENTITY 0 violate; LOOKUP 0 violate; eviction values: 20907 slots unswizzled, 20118 objects released
+SCHEDULE every: stream identical; TRANSSEQ 0 of 20 checkpoints differ; KV CHECKSUM 0 differ; IDENTITY 0 violate; LOOKUP 0 violate; eviction every: 62185 slots unswizzled, 60536 objects released
+SCHEDULE random: stream identical; TRANSSEQ 0 of 20 checkpoints differ; KV CHECKSUM 0 differ; IDENTITY 0 violate; LOOKUP 0 violate; eviction random: 30670 slots unswizzled, 45610 objects released
+SCHEDULE budget: stream identical; TRANSSEQ 0 of 20 checkpoints differ; KV CHECKSUM 0 differ; IDENTITY 0 violate; LOOKUP 0 violate; eviction budget: 56765 slots unswizzled, 57200 objects released (budget 100000 bytes; the last process: 453 sweeps, 390 after loads, 0 complete)
+AUDIT: 2005 audits (every 5 transactions and at every startup), 0 failed; 2084539 resident objects, INV-SLOT 1481889 slots checked, 30760 to pinned nodes, 5 to nodes the oracle does not know; accounting at the last audit: estimate 97343 bytes, the resident objects 95705 bytes
+EVICTION INVARIANCE OK

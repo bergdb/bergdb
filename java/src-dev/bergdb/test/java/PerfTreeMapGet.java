@@ -7,6 +7,7 @@ import bergdb.common.ByteArrayComparator;
 import bergdb.common.StringUtil;
 import bergdb.nanotest.SimpleTestEnvironment;
 import bergdb.nanotest.Nano;
+import bergdb.nanotest.TestEnvironment;
 
 /**
  * Performance of get-operation from a TreeMap.
@@ -16,7 +17,7 @@ import bergdb.nanotest.Nano;
 public class PerfTreeMapGet {
     
     @Nano("perf")
-    public static void get(SimpleTestEnvironment r) {
+    public static void get(TestEnvironment r) {
         Random random = new Random(1);
         int n = 1000*1000;
         int m = 5;

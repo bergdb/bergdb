@@ -1,0 +1,20 @@
+build: fix-0508
+COMMIT=8c5a106215a79482dcea5ddb72fee722b3c49c31
+DIRTY=true
+DIFFSHA=385d37e292eb20cf03e9c5763113bf3d6cd430039f5eafdccffb65d39894f40a
+JARSHA=040083f709cf9c668ddc292775315a03e0055ce94cc79ff41a93d74add546be9
+label: core
+class: bergdb.dev.props.Core 
+flags: 
+start: 2026-10-19 17:36:54 CEST
+idle: 97.29
+load: { 1.99 2.47 2.65 }
+----
+
+==== bergdb.dev.props.Core ====
+2026-10-19, f53
+OpenJDK 64-Bit Server VM 27, java 27
+....................
+CORE:0.28 (0.23, 0.34, 0.25, 0.32)
+----
+seconds: 31

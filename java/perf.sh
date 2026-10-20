@@ -1,8 +1,8 @@
 #!/bin/sh
 # The perf-tests (bergdb.dev.Perf, the Nano test group "perf"): the 2013 to
-# 2017 micro benchmarks. Run without -ea, since assertions slow the code
-# down. Other work on the machine disturbs the times; for the reference
-# performance runs, see stress/performance.sh.
+# 2017 micro benchmarks, about 9 minutes. Run without -ea, since assertions
+# slow the code down. Other work on the machine disturbs the times; for the
+# reference performance runs, see stress/performance.sh.
 #
 # Usage: java/perf.sh [-c classPattern] [-m methodPattern] [-v | -vv | -d | -s]
 #   The options go to the test runner; -c and -m are regular expressions

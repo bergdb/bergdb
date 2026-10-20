@@ -1,0 +1,15 @@
+build: fix-0508
+COMMIT=8c5a106215a79482dcea5ddb72fee722b3c49c31
+DIRTY=true
+DIFFSHA=385d37e292eb20cf03e9c5763113bf3d6cd430039f5eafdccffb65d39894f40a
+JARSHA=040083f709cf9c668ddc292775315a03e0055ce94cc79ff41a93d74add546be9
+label: walkorder
+class: bergdb.core.WalkOrder 
+flags: 
+start: 2026-10-19 18:00:26 CEST
+idle: 56.29
+load: { 10.26 7.00 4.88 }
+----
+walk: 7797 objects, 3797 canonical index objects; parent-child pairs 6724, the child first in 3486
+----
+seconds: 0

@@ -1,0 +1,20 @@
+build: fix-0508
+COMMIT=8c5a106215a79482dcea5ddb72fee722b3c49c31
+DIRTY=true
+DIFFSHA=385d37e292eb20cf03e9c5763113bf3d6cd430039f5eafdccffb65d39894f40a
+JARSHA=040083f709cf9c668ddc292775315a03e0055ce94cc79ff41a93d74add546be9
+label: testcheck
+class: TestCheck 
+flags: 
+start: 2026-10-19 18:37:01 CEST
+idle: 56.97
+load: { 15.59 6.08 5.08 }
+----
+old case [0, 110, 5000]: puts into a bin of 8: 478452 (47.8%), largest 26, map sizes 3860..3946, 46 ms
+old case [4294967373, 4, 150]: puts into a bin of 8: 528827 (52.9%), largest 59, map sizes 2525..5688, 53 ms
+old case [1099511640121, 1000, 30000]: puts into a bin of 8: 475712 (47.6%), largest 19, map sizes 3877..3939, 19 ms
+new case [0, 110, 5000]: puts into a bin of 8: 0 (0.0%), largest 7, map sizes 3895..3918, 67 ms
+new case [4294967373, 4, 150]: puts into a bin of 8: 0 (0.0%), largest 7, map sizes 3903..3911, 32 ms
+new case [1099511640121, 1000, 30000]: puts into a bin of 8: 1 (0.0%), largest 9, map sizes 3887..3926, 42 ms
+----
+seconds: 0

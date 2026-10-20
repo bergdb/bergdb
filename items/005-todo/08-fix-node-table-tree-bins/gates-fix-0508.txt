@@ -1,0 +1,154 @@
+005-08: the four gates, full, in a clone of 8c5a106 with the change, 2026-10-19, on F53.
+Levels 1 and 2 built Cache3.java as in the preserved build fix-0508; levels 3 and 4 built it
+after two of its comments were reworded, and one more was reworded after the runs. The code
+is the same.
+StreamDigest compared the preserved builds pre-0508 and fix-0508.
+The times and results as the driver printed them, then each script's output.
+
+StreamDigest start 17:55:43
+StreamDigest compare exit 0 at 17:56:33: DIGESTS IDENTICAL (36 of 36)
+level1 start 17:56:33
+level1 exit 0 at 17:58:39: LEVEL 1 OK
+level2 start 17:58:39
+level2 exit 0 at 18:11:23: LEVEL 2 OK
+level3 start 18:11:23
+level3 exit 0 at 18:19:46: LEVEL 3 OK
+level4 start 18:19:46
+level4 exit 0 at 18:34:15: LEVEL 4 OK
+
+==== level1.sh
+1. Unit tests
+SUCCESS, 944 successful tests in 46.6 s.
+2. DagFuzz
+   fuzz-14: Done: 300 rounds, 0 failures.
+   fuzz-30: Done: 300 rounds, 0 failures.
+   fuzz-62: Done: 300 rounds, 0 failures.
+   fuzz-8: Done: 300 rounds, 0 failures.
+3. DeleteRepro
+4. RestartStress
+   stress-0: Done: 25 rounds, 0 failures, 57 s.
+   stress-1: Done: 25 rounds, 0 failures, 58 s.
+   stress-2: Done: 25 rounds, 0 failures, 57 s.
+   stress-3: Done: 25 rounds, 0 failures, 56 s.
+   stress-disk: Done: 5 rounds, 0 failures, 24 s.
+   stress-keys50-node14: Done: 10 rounds, 0 failures, 22 s.
+   stress-keys50-node30: Done: 10 rounds, 0 failures, 21 s.
+   stress-keys50-node8: Done: 10 rounds, 0 failures, 23 s.
+   stress-node14: Done: 10 rounds, 0 failures, 28 s.
+   stress-node62: Done: 10 rounds, 0 failures, 30 s.
+   stress-node8: Done: 10 rounds, 0 failures, 30 s.
+   stress-norestart: Done: 25 rounds, 0 failures, 20 s.
+5. RestartInvariance
+   STREAM: identical
+   TRANSSEQ: 0 of 3 checkpoints differ
+   KV CHECKSUM: 0 of 3 checkpoints differ
+   IDENTITY A (no restarts): 0 of 3 checkpoints violate
+   IDENTITY B (restarts): 0 of 3 checkpoints violate
+   LOOKUP A (no restarts): 0 of 3 checkpoints violate
+   LOOKUP B (restarts): 0 of 3 checkpoints violate
+LEVEL 1 OK
+
+==== level2.sh
+1. Unit tests
+SUCCESS, 944 successful tests in 46.9 s.
+2. RestartStress, random configurations
+   random-0: Done: 50 rounds, 0 failures, 33 s.
+   random-1: Done: 50 rounds, 0 failures, 32 s.
+   random-2: Done: 50 rounds, 0 failures, 31 s.
+   random-3: Done: 50 rounds, 0 failures, 35 s.
+3. RestartStress, small and default startup distances
+   sd1000-keys50-node14: Done: 10 rounds, 0 failures, 8 s.
+   sd1000-keys50-node30: Done: 10 rounds, 0 failures, 8 s.
+   sd1000-keys50-node62: Done: 10 rounds, 0 failures, 8 s.
+   sd1000-keys50-node8: Done: 10 rounds, 0 failures, 10 s.
+   sd1000-node14: Done: 10 rounds, 0 failures, 19 s.
+   sd1000-node30: Done: 10 rounds, 0 failures, 20 s.
+   sd1000-node62: Done: 10 rounds, 0 failures, 23 s.
+   sd1000-node8: Done: 10 rounds, 0 failures, 20 s.
+   default-disk: Done: 2 rounds, 0 failures, 559 s.
+4. RestartInvariance
+   inv-default-100MB: stream identical, all checks OK
+   inv-every1: stream identical, all checks OK
+   inv-idle-1: stream identical, all checks OK
+   inv-idle-2: stream identical, all checks OK
+   inv-sd100: stream identical, all checks OK
+   inv-sd1000-node8: stream identical, all checks OK
+   inv-sd10000-node14: stream identical, all checks OK
+   inv-sd100000-node62: stream identical, all checks OK
+5. CrashTest, the stream cut at random positions
+   crash-0: Done: 5 rounds, 0 failures, 9 s.
+   crash-1: Done: 5 rounds, 0 failures, 9 s.
+   crash-2: Done: 5 rounds, 0 failures, 9 s.
+   crash-3: Done: 5 rounds, 0 failures, 9 s.
+   crash-node8: Done: 5 rounds, 0 failures, 11 s.
+6. BryanRepro, the bug report of 2015 (restarts with deletes and reclaim)
+   bryan: Done: 40 cycles, 0 failures, 56 s.
+7. Conformance with the Lean model
+   a2a3-1: transactions 3000: A2, A3, A5 and marking OK
+   a2a3-2: transactions 500: A2, A3, A5 and marking OK
+   a2a3-3: transactions 6000: A2, A3, A5 and marking OK
+   conformance: traces: 60, TRACECHECK OK: 60
+LEVEL 2 OK
+
+==== level3.sh
+1. Unit tests
+SUCCESS, 944 successful tests in 46.9 s.
+SUCCESS, 37 successful tests in 87.6 s.
+2. ReclaimStress, random configurations
+   reclaim-0: Done: 50 rounds, 0 failures, 50 rounds with a cut, 42 s, 820 exhaustive verifications.
+   reclaim-1: Done: 50 rounds, 0 failures, 50 rounds with a cut, 41 s, 984 exhaustive verifications.
+   reclaim-2: Done: 50 rounds, 0 failures, 50 rounds with a cut, 42 s, 832 exhaustive verifications.
+   reclaim-3: Done: 50 rounds, 0 failures, 50 rounds with a cut, 43 s, 892 exhaustive verifications.
+3. RestartInvariance with reclaim
+   inv-every1: stream identical, same cut, all checks OK
+   inv-node14: stream identical, same cut, all checks OK
+   inv-node62: stream identical, same cut, all checks OK
+   inv-node8: stream identical, same cut, all checks OK
+4. CrashTest with reclaim
+   crash-0: Done: 5 rounds, 0 failures, 12 s.
+   crash-1: Done: 5 rounds, 0 failures, 12 s.
+   crash-2: Done: 5 rounds, 0 failures, 12 s.
+   crash-3: Done: 5 rounds, 0 failures, 12 s.
+   crash-node8: Done: 5 rounds, 0 failures, 14 s.
+5. ReclaimReaders, readers while reclaim cuts
+   readers-0: Done: 12 rounds, 0 failures, 12 rounds with a cut, 28483680 gets and 9583510 scans correct, expired at admission 13, expired during 3, 54 s.
+   readers-1: Done: 12 rounds, 0 failures, 12 rounds with a cut, 31710517 gets and 10645986 scans correct, expired at admission 14, expired during 0, 44 s.
+   readers-disk: Done: 12 rounds, 0 failures, 12 rounds with a cut, 43608935 gets and 14630862 scans correct, expired at admission 19, expired during 2, 105 s.
+6. LoadTest with reclaim, a restart at every cut
+   restarts with a full check after a cut: 6
+7. PowerLossTest, forced bytes and durable names before deletion
+POWERLOSS OK: 8 seeds, 440 cold recoveries; negative controls caught
+8. Conformance with the Lean model, with reclaim
+   conformance: traces: 25, TRACECHECK OK: 25; C-CUT 0 of 288 CUT lines fail; traces without a cut: 0
+LEVEL 3 OK
+
+==== level4.sh
+1. Unit tests
+SUCCESS, 944 successful tests in 46.5 s.
+2. EvictionInvariance, every schedule, the audit on
+   ei-idle-r: EVICTION INVARIANCE OK, 2000 audits, 0 failed
+   ei-medium: EVICTION INVARIANCE OK, 5005 audits, 0 failed
+   ei-node14: EVICTION INVARIANCE OK, 2005 audits, 0 failed
+   ei-node62-r: EVICTION INVARIANCE OK, 2050 audits, 0 failed
+   ei-node8-r: EVICTION INVARIANCE OK, 2100 audits, 0 failed
+   ei-node8: EVICTION INVARIANCE OK, 2005 audits, 0 failed
+   ei-rec-every1: EVICTION INVARIANCE OK, 5000 audits, 0 failed
+   ei-rec-node62-r: EVICTION INVARIANCE OK, 2620 audits, 0 failed
+   ei-rec-node8: EVICTION INVARIANCE OK, 2265 audits, 0 failed
+3. RestartInvariance, CrashTest and ReclaimStress with forced schedules, the audit on
+   inv-every: stream identical, 4547 audits, 0 failed
+   inv-random: stream identical, 4547 audits, 0 failed
+   crash-every: Done: 8 rounds, 0 failures, 35 s., 68157 audits, 0 failed
+   crash-random: Done: 8 rounds, 0 failures, 34 s., 68221 audits, 0 failed
+   reclaim-every: Done: 60 rounds, 0 failures, 60 rounds with a cut, 447 s, 988 exhaustive verifications., 235292 audits, 0 failed
+   reclaim-random: Done: 60 rounds, 0 failures, 60 rounds with a cut, 443 s, 988 exhaustive verifications., 235292 audits, 0 failed
+4. ReclaimReaders with forced schedules
+   readers-disk: Done: 6 rounds, 0 failures, 6 rounds with a cut, 10180689 gets and 3440781 scans correct, expired at admission 4, expired during 118, 55 s.
+   readers-every: Done: 6 rounds, 0 failures, 6 rounds with a cut, 10635469 gets and 3583570 scans correct, expired at admission 4, expired during 126, 28 s.
+   readers-random: Done: 6 rounds, 0 failures, 6 rounds with a cut, 18487787 gets and 6227317 scans correct, expired at admission 1, expired during 218, 31 s.
+5. Conformance with the Lean model, with eviction
+   conformance: traces: 30, TRACECHECK OK: 30; C-P 0 of 7794 transactions fail; 702185 SLOT lines, 476330 checked; traces without SLOT lines: 0
+6. LargerThanMemory, on disk, a capped JVM
+   the index: 162215 index nodes, 107 MB in memory (12210 ms); the budget 50 MB; on disk 1374 MB
+   at most: live after a full GC 82 MB (at the phases' ends), collection usage 729 MB, heap used 757 MB, of 805 MB; resident 50 MB; 168 s
+LEVEL 4 OK

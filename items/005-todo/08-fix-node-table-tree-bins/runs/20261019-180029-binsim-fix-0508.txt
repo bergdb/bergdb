@@ -1,0 +1,57 @@
+build: fix-0508
+COMMIT=8c5a106215a79482dcea5ddb72fee722b3c49c31
+DIRTY=true
+DIFFSHA=385d37e292eb20cf03e9c5763113bf3d6cd430039f5eafdccffb65d39894f40a
+JARSHA=040083f709cf9c668ddc292775315a03e0055ce94cc79ff41a93d74add546be9
+label: binsim
+class: BinSim 1100000
+flags: -Xmx4g --add-opens java.base/java.util=ALL-UNNAMED
+start: 2026-10-19 18:00:29 CEST
+idle: 68.64
+load: { 9.68 6.94 4.87 }
+----
+dense odd from 1                   n= 1100000 | old: trees  1100000 (1.00/id) longest  17, sim treeify   575712 largest  17 | new: trees      0 longest  5, sim treeify    0 largest  5
+bursts 110/3400 from 0             n= 1100000 | old: trees  1100000 (1.00/id) longest  28, sim treeify   575712 largest  28 | new: trees      0 longest  6, sim treeify    0 largest  6
+bursts 110/5000 from 0             n= 1100000 | old: trees  1089962 (0.99/id) longest  28, sim treeify   576554 largest  28 | new: trees      0 longest  7, sim treeify    0 largest  7
+bursts 110/9000 from 0             n= 1100000 | old: trees  1100000 (1.00/id) longest  26, sim treeify   575712 largest  26 | new: trees      0 longest  7, sim treeify    0 largest  7
+bursts 4/150 from 0                n= 1100000 | old: trees  1077657 (0.98/id) longest  64, sim treeify   625049 largest  64 | new: trees      0 longest  7, sim treeify    0 largest  7
+bursts 1/64 from 0                 n= 1100000 | old: trees  1100000 (1.00/id) longest  17, sim treeify   575712 largest  17 | new: trees      0 longest  4, sim treeify    0 largest  5
+bursts 12/800 from 0               n= 1100000 | old: trees  1100000 (1.00/id) longest  23, sim treeify   575712 largest  23 | new: trees      0 longest  6, sim treeify    0 largest  8
+bursts 1000/30000 from 0           n= 1100000 | old: trees  1100000 (1.00/id) longest  20, sim treeify   575712 largest  20 | new: trees      0 longest  7, sim treeify    0 largest  8
+bursts 50/24000 from 0             n= 1100000 | old: trees  1089230 (0.99/id) longest  38, sim treeify   579198 largest  38 | new: trees      0 longest  6, sim treeify    0 largest  8
+bursts 110/3400 from 2147478648    n= 1100000 | old: trees  1100000 (1.00/id) longest  28, sim treeify   575712 largest  28 | new: trees      0 longest  6, sim treeify    0 largest  6
+bursts 110/5000 from 2147478648    n= 1100000 | old: trees  1089950 (0.99/id) longest  28, sim treeify   576526 largest  28 | new: trees      0 longest  8, sim treeify    0 largest  8
+bursts 110/9000 from 2147478648    n= 1100000 | old: trees  1100000 (1.00/id) longest  25, sim treeify   575712 largest  25 | new: trees      0 longest  6, sim treeify    0 largest  7
+bursts 4/150 from 2147478648       n= 1100000 | old: trees  1077531 (0.98/id) longest  64, sim treeify   625107 largest  64 | new: trees      0 longest  7, sim treeify    0 largest  7
+bursts 1/64 from 2147478648        n= 1100000 | old: trees  1100000 (1.00/id) longest  17, sim treeify   575712 largest  17 | new: trees      0 longest  5, sim treeify    0 largest  5
+bursts 12/800 from 2147478648      n= 1100000 | old: trees  1098808 (1.00/id) longest  27, sim treeify   575832 largest  27 | new: trees      0 longest  6, sim treeify    0 largest  7
+bursts 1000/30000 from 2147478648  n= 1100000 | old: trees  1100000 (1.00/id) longest  20, sim treeify   575712 largest  20 | new: trees      0 longest  6, sim treeify    2 largest  9
+bursts 50/24000 from 2147478648    n= 1100000 | old: trees  1089064 (0.99/id) longest  40, sim treeify   579240 largest  40 | new: trees      0 longest  7, sim treeify    2 largest  9
+bursts 110/3400 from 4294967373    n= 1100000 | old: trees  1100000 (1.00/id) longest  28, sim treeify   575712 largest  28 | new: trees      0 longest  6, sim treeify    0 largest  6
+bursts 110/5000 from 4294967373    n= 1100000 | old: trees  1090118 (0.99/id) longest  28, sim treeify   576654 largest  28 | new: trees      0 longest  7, sim treeify    0 largest  7
+bursts 110/9000 from 4294967373    n= 1100000 | old: trees  1100000 (1.00/id) longest  26, sim treeify   575712 largest  26 | new: trees      0 longest  6, sim treeify    0 largest  7
+bursts 4/150 from 4294967373       n= 1100000 | old: trees  1077607 (0.98/id) longest  64, sim treeify   624983 largest  64 | new: trees      0 longest  7, sim treeify    0 largest  7
+bursts 1/64 from 4294967373        n= 1100000 | old: trees  1100000 (1.00/id) longest  17, sim treeify   575712 largest  17 | new: trees      0 longest  4, sim treeify    0 largest  5
+bursts 12/800 from 4294967373      n= 1100000 | old: trees  1098496 (1.00/id) longest  29, sim treeify   575880 largest  29 | new: trees      0 longest  6, sim treeify    0 largest  7
+bursts 1000/30000 from 4294967373  n= 1100000 | old: trees  1100000 (1.00/id) longest  20, sim treeify   575712 largest  20 | new: trees      0 longest  6, sim treeify    0 largest  8
+bursts 50/24000 from 4294967373    n= 1100000 | old: trees  1088686 (0.99/id) longest  41, sim treeify   579510 largest  41 | new: trees      7 longest  7, sim treeify    2 largest  9
+bursts 110/3400 from 1099511640121 n= 1100000 | old: trees  1099992 (1.00/id) longest  28, sim treeify   575712 largest  28 | new: trees      0 longest  6, sim treeify    0 largest  6
+bursts 110/5000 from 1099511640121 n= 1100000 | old: trees  1089704 (0.99/id) longest  28, sim treeify   576552 largest  28 | new: trees      0 longest  7, sim treeify    0 largest  7
+bursts 110/9000 from 1099511640121 n= 1100000 | old: trees  1100000 (1.00/id) longest  27, sim treeify   575712 largest  27 | new: trees      0 longest  6, sim treeify    0 largest  7
+bursts 4/150 from 1099511640121    n= 1100000 | old: trees  1077560 (0.98/id) longest  64, sim treeify   624936 largest  64 | new: trees      0 longest  8, sim treeify    0 largest  8
+bursts 1/64 from 1099511640121     n= 1100000 | old: trees  1100000 (1.00/id) longest  17, sim treeify   575712 largest  17 | new: trees      0 longest  4, sim treeify    0 largest  5
+bursts 12/800 from 1099511640121   n= 1100000 | old: trees  1098587 (1.00/id) longest  29, sim treeify   575891 largest  29 | new: trees      0 longest  6, sim treeify    0 largest  7
+bursts 1000/30000 from 1099511640121 n= 1100000 | old: trees  1100000 (1.00/id) longest  20, sim treeify   575712 largest  20 | new: trees      0 longest  6, sim treeify    1 largest  9
+bursts 50/24000 from 1099511640121 n= 1100000 | old: trees  1088935 (0.99/id) longest  40, sim treeify   579239 largest  40 | new: trees      0 longest  6, sim treeify    1 largest  9
+bursts 110/3400 from 87960930222080 n= 1100000 | old: trees  1100000 (1.00/id) longest  28, sim treeify   575712 largest  28 | new: trees      0 longest  6, sim treeify    0 largest  6
+bursts 110/5000 from 87960930222080 n= 1100000 | old: trees  1089962 (0.99/id) longest  28, sim treeify   576554 largest  28 | new: trees      0 longest  7, sim treeify    0 largest  7
+bursts 110/9000 from 87960930222080 n= 1100000 | old: trees  1100000 (1.00/id) longest  26, sim treeify   575712 largest  26 | new: trees      0 longest  7, sim treeify    0 largest  8
+bursts 4/150 from 87960930222080   n= 1100000 | old: trees  1077657 (0.98/id) longest  64, sim treeify   625049 largest  64 | new: trees      0 longest  7, sim treeify    0 largest  7
+bursts 1/64 from 87960930222080    n= 1100000 | old: trees  1100000 (1.00/id) longest  17, sim treeify   575712 largest  17 | new: trees      0 longest  4, sim treeify    0 largest  5
+bursts 12/800 from 87960930222080  n= 1100000 | old: trees  1100000 (1.00/id) longest  23, sim treeify   575712 largest  23 | new: trees      0 longest  6, sim treeify    0 largest  8
+bursts 1000/30000 from 87960930222080 n= 1100000 | old: trees  1100000 (1.00/id) longest  20, sim treeify   575712 largest  20 | new: trees      0 longest  7, sim treeify    0 largest  8
+bursts 50/24000 from 87960930222080 n= 1100000 | old: trees  1089230 (0.99/id) longest  38, sim treeify   579198 largest  38 | new: trees      0 longest  6, sim treeify    1 largest  9
+random odd < 2^40                  n= 1100000 | old: trees  1093269 (0.99/id) longest  37, sim treeify   576311 largest  37 | new: trees      0 longest  7, sim treeify    0 largest  8
+random odd < 2^26                  n= 1100000 | old: trees  1075268 (0.98/id) longest  34, sim treeify   576376 largest  35 | new: trees      0 longest  8, sim treeify    3 largest  9
+----
+seconds: 18

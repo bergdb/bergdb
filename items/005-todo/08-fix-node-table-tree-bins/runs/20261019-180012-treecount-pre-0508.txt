@@ -1,0 +1,18 @@
+build: pre-0508
+COMMIT=8c5a106215a79482dcea5ddb72fee722b3c49c31
+DIRTY=false
+DIFFSHA=none
+JARSHA=cd807f0dc859aabeabaa88c7c1282721044d7f62d80eda51290de51079e626f4
+label: treecount
+class: TreeCount 
+flags: 
+start: 2026-10-19 18:00:12 CEST
+idle: 17.59
+load: { 10.80 6.92 4.82 }
+----
+java.util.HashMap$TreeNode: 1095639 objects, 61355784 bytes
+java.util.HashMap$Node: 930 objects, 22320 bytes
+java.lang.Long: 1095709 objects, 17531344 bytes
+bergdb.core.Cache3$CacheEntry: 1095709 objects, 17531344 bytes
+----
+seconds: 2

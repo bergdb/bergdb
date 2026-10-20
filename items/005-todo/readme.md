@@ -12,37 +12,52 @@ entry that grows into real work gets an item of its own, linked from here.
 The list
 ========
 
+Two tables: what is left to do, and what is closed. A subitem's own
+`Status:` line is the source. When an entry closes (done, dropped or
+moved), its row moves from Open to Closed in the same edit, with the date
+it closed; Closed is newest first. Files stay where they are, so links to
+them keep working.
+
+
+Open
+----
+
 | ID | Kind | What | Status |
 |---|---|---|---|
 | [005-01](01-fix-m49-exception-safety.md) | Fix | M49: a transaction that throws inside `putKvs` is half committed (item 003) | open |
-| [005-02](02-fix-m46-ordinal-bound.md) | Fix | M46: the top node ordinal bound, 2^30 − 1 over a database's life (item 002) | done |
 | [005-03](03-sweep-cost.md) | Investigate | The sweep's cost under read churn (item 001, finding 10) | open |
-| [005-04](04-a6-failures.md) | Decide | A6 fails in 5 Java transactions: is anything to be done? | done |
 | [005-05](05-bergdb-future.md) | Decide | What to do with BergDB: publish it, when, money, paid work | open |
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
-| [005-08](08-fix-node-table-tree-bins.md) | Fix | The node table's 256 maps make every bin a tree (`Cache3.mapIndex`): 61 bytes per KV, a slower `set` (006-02) | done |
 | [005-09](09-fix-node-table-snapshot-race.md) | Fix | A race between a reader and a sweep lets the node table name a released object (INV-CAN); a unit test fails now and then (005-02) | open |
 | [005-10](10-unused-code.md) | Investigate | Unused code in `java/` and `lean/`: find it and propose what to remove; nothing is removed without Frans's approval | in progress |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
 | [005-12](12-transaction-outputs.md) | Investigate | Transaction outputs (`setOutput`, `getOutput`): study them, then test them or remove them (005-10) | open |
 
+
+Closed
+------
+
+| ID | Kind | What | Status | Closed |
+|---|---|---|---|---|
+| [005-08](08-fix-node-table-tree-bins.md) | Fix | The node table's 256 maps make every bin a tree (`Cache3.mapIndex`): 61 bytes per KV, a slower `set` (006-02) | done | 2026-10-19 |
+| [005-04](04-a6-failures.md) | Decide | A6 fails in 5 Java transactions: is anything to be done? | done | 2026-10-19 |
+| [005-02](02-fix-m46-ordinal-bound.md) | Fix | M46: the top node ordinal bound, 2^30 − 1 over a database's life (item 002) | done | 2026-10-19 |
+
 Status values: open, in progress, done, dropped, moved (to an item of its
 own). Kinds: Fix (a known fault), Investigate (find out, then propose),
 Decide (a question for Frans, prepared by an investigation).
 
-Order, as proposed: 005-01 and 005-02 together (both change
-`Db.executeInner`, and they are the only known faults); 005-04 is small and
-can go any time; 005-03 after 005-01 and 005-02, since it changes the same
-part of Java; 005-05 and 005-06 beside the rest, as they are mostly reading
-and thinking, and 005-06 feeds 005-05. 005-07 is best before or with 005-01
-(where a transaction's go point is) and before 005-03's fix. 005-08 is small
-and can go any time, best before 005-03, whose sweeps walk the node table.
-005-09 is small and can go any time; it can fail a gate until it is fixed.
-005-10's proposal can go any time, as it changes nothing; a removal that
-Frans approves is best made when no other change to `java/` is under way.
-005-11 and 005-12 can go any time, best before 005-05's decision on
-publishing, as both concern the Pub API.
+Order, as proposed, of what is open: 005-01 first among the fixes (005-02,
+which changed `Db.executeInner` too, is done); 005-03 after 005-01, since
+it changes the same part of Java; 005-05 and 005-06 beside the rest, as
+they are mostly reading and thinking, and 005-06 feeds 005-05. 005-07 is
+best before or with 005-01 (where a transaction's go point is) and before
+005-03's fix. 005-09 is small and can go any time; it can fail a gate until
+it is fixed. What is left of 005-10 waits for Frans; a removal is best made
+when no other change to `java/` is under way. 005-11 and 005-12 can go any
+time, best before 005-05's decision on publishing, as both concern the Pub
+API.
 
 
 Files
@@ -153,3 +168,10 @@ with A6's kind, whose traces must contain it. The four gates pass, also with
 2026-10-20. Added 005-11, replication, and 005-12, transaction outputs, at
 Frans's request, from 005-10's G1 (the Pub API's methods that nothing in
 the repository calls).
+
+2026-10-20. The list split into Open and Closed, at Frans's request, by
+Claude (Opus 5.5, Claude Code), so that what is done shows at a glance; the
+files stay where they are. 005-08's own status said open: its outcome and
+its files, written on 2026-10-19 in a clone and never copied here, are now
+in the subitem and in
+[08-fix-node-table-tree-bins/](08-fix-node-table-tree-bins/).

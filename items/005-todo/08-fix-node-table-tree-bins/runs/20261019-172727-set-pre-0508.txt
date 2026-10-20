@@ -1,0 +1,20 @@
+build: pre-0508
+COMMIT=8c5a106215a79482dcea5ddb72fee722b3c49c31
+DIRTY=false
+DIFFSHA=none
+JARSHA=cd807f0dc859aabeabaa88c7c1282721044d7f62d80eda51290de51079e626f4
+label: set
+class: Probe006 set 50000000
+flags: 
+start: 2026-10-19 17:27:27 CEST
+idle: 90.49
+load: { 2.68 2.62 2.53 }
+----
+  set run 1: 2.150 us
+  set run 2: 1.884 us
+  set run 3: 1.944 us
+  set run 4: 2.139 us
+  set run 5: 2.069 us
+set:0.38 (best 1.884 us per transaction) startupDistance=50000000
+----
+seconds: 3

@@ -1,0 +1,105 @@
+       4 scenarios from performance-quick.suite
+CPU idle before the runs: 93.72%
+Reference session 8c5a1062-20261019T173922-quick-g1-8g-ref
+Candidate session 8c5a1062-d385d37-20261019T173922-quick-g1-8g-cand
+read-1k (read, 3 runs, alternating)
+ [R]
+  read-1k run 1: READ get_latest: 1157713 gets/s (median of 5 windows, 1111095..1214367), p50 667 ns, p99 3759 ns, p99.9 5471 ns|
+ [C]
+  read-1k run 1: READ get_latest: 1037349 gets/s (median of 5 windows, 1024702..1049736), p50 835 ns, p99 2047 ns, p99.9 4383 ns|
+ [C]
+  read-1k run 2: READ get_latest: 1168276 gets/s (median of 5 windows, 1125735..1191082), p50 711 ns, p99 1751 ns, p99.9 2127 ns|
+ [R]
+  read-1k run 2: READ get_latest: 1042580 gets/s (median of 5 windows, 1024091..1047398), p50 791 ns, p99 2047 ns, p99.9 4959 ns|
+ [R]
+  read-1k run 3: READ get_latest: 1244908 gets/s (median of 5 windows, 1186763..1258171), p50 667 ns, p99 1671 ns, p99.9 2047 ns|
+ [C]
+  read-1k run 3: READ get_latest: 1264185 gets/s (median of 5 windows, 1210394..1291932), p50 667 ns, p99 1751 ns, p99.9 4607 ns|
+w-uni-1k-inf (write, 3 runs, alternating)
+ [R]
+  w-uni-1k-inf run 1: WRITE 1000000 commits (1000000 puts) in 12.16 s: 82229 commits/s, bytes appended per user byte 1.22, append p50 8.5 us p99.9 35.3 us max 190.22 ms|
+ [C]
+  w-uni-1k-inf run 1: WRITE 1000000 commits (1000000 puts) in 11.88 s: 84180 commits/s, bytes appended per user byte 1.22, append p50 7.8 us p99.9 31.7 us max 156.11 ms|
+ [C]
+  w-uni-1k-inf run 2: WRITE 1000000 commits (1000000 puts) in 11.99 s: 83403 commits/s, bytes appended per user byte 1.22, append p50 7.9 us p99.9 31.5 us max 145.41 ms|
+ [R]
+  w-uni-1k-inf run 2: WRITE 1000000 commits (1000000 puts) in 12.28 s: 81407 commits/s, bytes appended per user byte 1.22, append p50 8.5 us p99.9 35.3 us max 156.73 ms|
+ [R]
+  w-uni-1k-inf run 3: WRITE 1000000 commits (1000000 puts) in 12.08 s: 82791 commits/s, bytes appended per user byte 1.22, append p50 8.5 us p99.9 34.8 us max 173.38 ms|
+ [C]
+  w-uni-1k-inf run 3: WRITE 1000000 commits (1000000 puts) in 12.10 s: 82613 commits/s, bytes appended per user byte 1.22, append p50 7.9 us p99.9 31.7 us max 62.69 ms|
+w-uni-1k-fin (write, 3 runs, alternating)
+ [R]
+  w-uni-1k-fin run 1: WRITE 1000000 commits (1000000 puts) in 17.84 s: 56040 commits/s, bytes appended per user byte 1.68, append p50 9.3 us p99.9 120.8 us max 291.25 ms|
+ [C]
+  w-uni-1k-fin run 1: WRITE 1000000 commits (1000000 puts) in 17.16 s: 58264 commits/s, bytes appended per user byte 1.68, append p50 8.4 us p99.9 109.1 us max 264.91 ms|
+ [C]
+  w-uni-1k-fin run 2: WRITE 1000000 commits (1000000 puts) in 17.37 s: 57574 commits/s, bytes appended per user byte 1.68, append p50 8.4 us p99.9 111.6 us max 329.56 ms|
+ [R]
+  w-uni-1k-fin run 2: WRITE 1000000 commits (1000000 puts) in 17.83 s: 56073 commits/s, bytes appended per user byte 1.68, append p50 9.2 us p99.9 121.3 us max 308.25 ms|
+ [R]
+  w-uni-1k-fin run 3: WRITE 1000000 commits (1000000 puts) in 17.99 s: 55593 commits/s, bytes appended per user byte 1.68, append p50 9.5 us p99.9 120.8 us max 296.22 ms|
+ [C]
+  w-uni-1k-fin run 3: WRITE 1000000 commits (1000000 puts) in 17.32 s: 57731 commits/s, bytes appended per user byte 1.68, append p50 8.6 us p99.9 109.6 us max 298.16 ms|
+r-1k-fin (restart, 3 runs, alternating)
+ [R]
+  r-1k-fin run 1: STARTUP 0.716 s: 32540 transactions rerun, read from 1864.6 MB, stream 1914.6 MB|MIXED 300000 commits and 12124246 gets in 6.52 s: 45988 commits/s, 1858564 gets/s; commit p99 100.9 us, get p99 2.8 us|
+ [C]
+  r-1k-fin run 1: STARTUP 0.705 s: 32540 transactions rerun, read from 1864.6 MB, stream 1914.6 MB|MIXED 300000 commits and 11599728 gets in 6.35 s: 47261 commits/s, 1827394 gets/s; commit p99 97.3 us, get p99 2.5 us|W
+ [C]
+  r-1k-fin run 2: STARTUP 0.702 s: 32540 transactions rerun, read from 1864.6 MB, stream 1914.6 MB|MIXED 300000 commits and 11598368 gets in 6.34 s: 47296 commits/s, 1828515 gets/s; commit p99 99.8 us, get p99 2.7 us|W
+ [R]
+  r-1k-fin run 2: STARTUP 0.713 s: 32540 transactions rerun, read from 1864.6 MB, stream 1914.6 MB|MIXED 300000 commits and 11727844 gets in 7.21 s: 41616 commits/s, 1626877 gets/s; commit p99 102.4 us, get p99 2.5 us|
+ [R]
+  r-1k-fin run 3: STARTUP 0.727 s: 32540 transactions rerun, read from 1864.6 MB, stream 1914.6 MB|MIXED 300000 commits and 11761001 gets in 6.66 s: 45058 commits/s, 1766406 gets/s; commit p99 107.0 us, get p99 3.2 us|
+ [C]
+  r-1k-fin run 3: STARTUP 0.737 s: 32540 transactions rerun, read from 1864.6 MB, stream 1914.6 MB|MIXED 300000 commits and 10952913 gets in 6.27 s: 47861 commits/s, 1747376 gets/s; commit p99 98.3 us, get p99 2.5 us|W
+COMPARE reference 8c5a1062-20261019T173922-quick-g1-8g-ref [8c5a106215a79482dcea5ddb72fee722b3c49c31, build pre-0508, jar cd807f0d]
+        candidate 8c5a1062-d385d37-20261019T173922-quick-g1-8g-cand [8c5a106215a79482dcea5ddb72fee722b3c49c31+diff 385d37e2, build fix-0508, jar 040083f7]
+thresholds: /private/tmp/claude-502/-Users-f-fl-repos-f1/48066d7d-8887-4e89-8a9b-807abd793e57/scratchpad/bergdb/java/bench/thresholds.json (missing): {warm_read_throughput=0.05}  (NOT FROZEN: only the provisional warm-read target raises alerts)
+
+SCENARIO r-1k-fin [restart] reference 3 runs, candidate 8c5a1062-d385d37-20261019T173922-quick-g1-8g-cand 3 runs
+  metric                                       ref median  ref CV      cand median cand CV    change  status
+  gclog.pause.max_ms                               24.520 13.0% n3           78.021 44.9% n3   +218.2%  EXPLAIN (maximum much larger than the reference's)
+  gclog.safepoint.max_ms                           24.644 13.0% n3           78.126 44.8% n3   +217.0%  EXPLAIN (maximum much larger than the reference's)
+  mix.commit.append.max_us                       29,008.9 82.9% n3         78,237.9 44.8% n3   +169.7%  EXPLAIN (maximum much larger than the reference's)
+  mix.commits_per_s                              45,057.5 5.2% n3         47,295.8 0.7% n3     +5.0%  
+  mix.get.max_us                                 28,938.0 83.5% n3         78,164.7 44.8% n3   +170.1%  EXPLAIN (maximum much larger than the reference's)
+  mix.gets_per_s                                1,766,410 6.7% n3        1,827,390 2.6% n3     +3.5%  
+  mix.puts_per_s                                 45,057.5 5.2% n3         47,295.8 0.7% n3     +5.0%  
+  startup.sec                                      0.7157 1.0% n3           0.7051 2.7% n3     -1.5%  
+  (32 more metrics compared, nothing to report; --all shows them)
+
+SCENARIO read-1k [read] reference 3 runs, candidate 8c5a1062-d385d37-20261019T173922-quick-g1-8g-cand 3 runs
+  metric                                       ref median  ref CV      cand median cand CV    change  status
+  get_historical.ops_per_s                      1,144,330 9.4% n3        1,135,820 12.3% n3     -0.7%  
+  get_latest.ops_per_s                          1,157,710 8.8% n3        1,168,280 9.8% n3     +0.9%  
+  get_latest_mt4.ops_per_s                      2,511,900 37.3% n3        2,592,020 15.1% n3     +3.2%  
+  get_longkey.ops_per_s                         875,620.0 8.9% n3        905,909.0 4.8% n3     +3.5%  
+  scan_back.kvs_per_s                           3,853,000 37.2% n3        3,915,640 2.1% n3     +1.6%  
+  scan_back.scans_per_s                          38,530.0 37.2% n3         39,156.4 2.1% n3     +1.6%  
+  scan_fwd.kvs_per_s                            3,666,650 31.9% n3        3,636,070 3.9% n3     -0.8%  
+  scan_fwd.scans_per_s                           36,666.5 31.9% n3         36,360.7 3.9% n3     -0.8%  
+  scan_fwd_hist.kvs_per_s                       3,488,080 50.3% n3        3,477,010 2.1% n3     -0.3%  
+  scan_fwd_hist.scans_per_s                      34,880.8 50.3% n3         34,770.1 2.1% n3     -0.3%  
+  (42 more metrics compared, nothing to report; --all shows them)
+
+SCENARIO w-uni-1k-fin [write] reference 3 runs, candidate 8c5a1062-d385d37-20261019T173922-quick-g1-8g-cand 3 runs
+  metric                                       ref median  ref CV      cand median cand CV    change  status
+  commits_per_s                                  56,040.4 0.5% n3         57,730.9 0.6% n3     +3.0%  
+  puts_per_s                                     56,040.4 0.5% n3         57,730.9 0.6% n3     +3.0%  
+  restart.startup_sec                              0.6319 1.3% n3           0.6509 1.8% n3     +3.0%  
+  user_mb_per_s                                    56.265 0.5% n3           57.962 0.6% n3     +3.0%  
+  (29 more metrics compared, nothing to report; --all shows them)
+
+SCENARIO w-uni-1k-inf [write] reference 3 runs, candidate 8c5a1062-d385d37-20261019T173922-quick-g1-8g-cand 3 runs
+  metric                                       ref median  ref CV      cand median cand CV    change  status
+  commits_per_s                                  82,228.9 0.8% n3         83,403.2 0.9% n3     +1.4%  
+  puts_per_s                                     82,228.9 0.8% n3         83,403.2 0.9% n3     +1.4%  
+  restart.startup_sec                              0.6595 1.2% n3           0.6611 1.4% n3     +0.2%  
+  user_mb_per_s                                    82.558 0.8% n3           83.737 0.9% n3     +1.4%  
+  (23 more metrics compared, nothing to report; --all shows them)
+
+NO ALERTS
+Comparison exit code 0 (0: no alerts, 1: alerts to repeat in a matched run, 3: incompatible, 4: failed or missing runs)
+exit 0

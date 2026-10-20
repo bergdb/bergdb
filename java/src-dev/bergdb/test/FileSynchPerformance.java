@@ -63,7 +63,7 @@ public class FileSynchPerformance {
         //final int bufferTime = 200;   
         //final int bufferTime = 500;   
         
-        FileStream s = new FileStream(new File("/f/bergdb-storage/test-FileSynchPerformance-" + mode));
+        FileStream s = new FileStream(new File(c.createTempDir(), "test-FileSynchPerformance-" + mode));
         BufferedStream buffered = new BufferedStream(s, bufferSize, bufferTime);
         buffered.start();
         
