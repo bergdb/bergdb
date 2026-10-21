@@ -905,3 +905,9 @@ decided: a put of an object with a reference cycle, or nested 20,000 deep,
 threw `StackOverflowError`. Now `DbObject.toDbObject` refuses a cycle, and
 nesting deeper than 1,000 objects, with an `IllegalArgumentException` that
 names the field path. Three tests, one changed; `before-commit.sh` passes.
+
+2026-10-21. 005-24 done, by Claude (Opus 5.5, Claude Code): a `FileStream`
+read at the end of the stream looped forever, since a bound check compared
+`spos` with `spos + fileLength`; one past it threw
+`IndexOutOfBoundsException`. Now both throw `EOFException` and the stream
+stays usable. A test; `before-commit.sh` passes.

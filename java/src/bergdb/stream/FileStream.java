@@ -145,6 +145,12 @@ public class FileStream implements AppendOnlyStream {
             }
     
             actuallyRead = k.read(spos, dest, destOffset, length);
+            if (actuallyRead == 0 && length > 0) {
+                // 2026-10-21 (bergdb 005-24): a read at the end of the stream read 0 bytes
+                // and tried again forever. It throws, and the stream stays usable.
+                throw new EOFException("Cannot read " + length + " bytes at spos " + spos 
+                        + ", the end of the stream.");
+            }
             leftToRead = length - actuallyRead;
             if (leftToRead == 0) {
                 break;
@@ -834,9 +840,16 @@ public class FileStream implements AppendOnlyStream {
                 throw ioException;
             }
             
-            if (spos < this.spos || spos > spos + fileLength) {
+            if (spos < this.spos) {
                 throw new IllegalArgumentException("Cannot read from spos " + spos 
                         + ", this.spos=" + this.spos + ", length=" + fileLength);
+            }
+            
+            // 2026-10-21 (bergdb 005-24): the check said "spos > spos + fileLength", never
+            // true, and a read past the end threw IndexOutOfBoundsException from readFully.
+            if (spos > this.spos + fileLength) {
+                throw new EOFException("Cannot read at spos " + spos + ", past the end of "
+                        + file.getPath() + " at " + (this.spos + fileLength) + ".");
             }
             
             long fileOffset = spos - this.spos;
@@ -1146,6 +1159,35 @@ public class FileStream implements AppendOnlyStream {
         f.close();
     }
 
+    /**
+     * Regression test for bergdb 005-24: a read at the end of the stream looped forever, and
+     * one past it threw IndexOutOfBoundsException. Now both throw EOFException, and the stream
+     * stays usable.
+     */
+    @Nano
+    public static void testReadPastEnd(TestEnvironment c) throws Exception {
+        FileStream f = new FileStream(c.createTempDir());
+        byte[] bytes = new byte[300 * 1000];        // two files
+        new Random(3).nextBytes(bytes);
+        f.append(bytes, 0, bytes.length);
+        long[] positions = {300 * 1000, 300 * 1000 - 5, 300 * 1000 + 1};
+        for (long pos : positions) {
+            try {
+                f.read(pos, new byte[10], 0, 10);
+                throw new AssertionError("a read past the end at " + pos + " succeeded");
+            } catch (EOFException e) {
+                // Expected.
+            }
+        }
+        byte[] dest = new byte[10];
+        f.read(300 * 1000 - 10, dest, 0, 10);
+        Assert.assertEquals(bytes[300 * 1000 - 10], dest[0]);
+        f.append(bytes, 0, 10);
+        f.read(300 * 1000, dest, 0, 10);
+        Assert.assertEquals(bytes[0], dest[0]);
+        f.close();
+    }
+    
     /**
      * Same, for a reader that found the file just before pretruncate() deleted it.
      */

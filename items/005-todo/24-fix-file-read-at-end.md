@@ -1,7 +1,7 @@
 005-24. Fix: a FileStream read at the end of the stream loops forever
 =====================================================================
 
-Status: open. Kind: fix. Created 2026-10-21.
+Status: done (2026-10-21). Kind: fix. Created 2026-10-21.
 
 Found on 2026-10-21 in the review of the Java code for overflow (not an
 overflow), by Claude (Opus 5.5, Claude Code), at Frans's request; checked
@@ -23,7 +23,7 @@ The fix
 -------
 
 Check against `this.spos + fileLength`, and make `FileStream.read` throw an
-`IOException` (EOF) when a read goes past the end of the stream, without
+`EOFException` when a read goes past the end of the stream, without
 marking the stream as faulty.
 
 
@@ -33,3 +33,21 @@ Done when
 * A unit test: reads at and past the end throw, and the stream is still
   usable.
 * `java/before-commit.sh` prints `BEFORE COMMIT OK`.
+
+
+Outcome
+-------
+
+2026-10-21, by Claude (Opus 5.5, Claude Code). `DbFile.read` checks against
+`this.spos + fileLength` and throws an `EOFException` for a read that starts
+past the end of its file; `FileStream.read` throws an `EOFException` when a
+file returns 0 bytes, which happens only at the end of the stream. Neither
+sets the stream's stored exception, so the stream stays usable. An up-front
+check against the stream length was left out: it would take the stream's
+lock once more for every read. (`StorageManager` still takes any
+`IOException` but `ReadBelowFirstPosException` as a failure of the storage;
+no read in normal operation reaches past the end.)
+
+Test `FileStream.testReadPastEnd`: reads at the end, across it and past it
+throw `EOFException`; reads and appends then work. `before-commit.sh`:
+BEFORE COMMIT OK (959 unit tests, 62 f-tests).
