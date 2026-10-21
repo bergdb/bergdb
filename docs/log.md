@@ -849,3 +849,9 @@ the timer stopped flushing; and a close could flush 0 bytes, which
 appended the whole ring buffer, so that the database failed to start (34
 of 24,000 closes in a test). Unit tests in `BufferedStream`;
 `before-commit.sh` passes.
+
+2026-10-21. 005-15 done, by Claude (Opus 5.5, Claude Code): a long index
+scan's start key (`UseIndexBuilderImp.plusOne`) kept the `0xff` bytes it
+carried past, so a scan after a value whose low byte is `0xff` (255, -1)
+skipped or added entries: `startAt(255).inclusive(false)` missed 256 to
+510. Now they become 0. Two tests; `before-commit.sh` passes.

@@ -1,7 +1,7 @@
 005-15. Fix: long-index range scans skip or add entries
 ======================================================
 
-Status: open. Kind: fix. Created 2026-10-21.
+Status: done (2026-10-21). Kind: fix. Created 2026-10-21.
 
 Found on 2026-10-21 in a review of the Java code for overflow, by Claude
 (Opus 5.5, Claude Code), at Frans's request; checked with a probe through the
@@ -48,3 +48,15 @@ Done when
   `inclusive(false)`, backward, and `eq` backward, fails before and passes
   after.
 * `java/before-commit.sh` prints `BEFORE COMMIT OK`.
+
+
+Outcome
+-------
+
+2026-10-21, by Claude (Opus 5.5, Claude Code). `plusOne` sets the bytes
+after the one it increments to 0. New tests: `UseIndexBuilderImp.testPlusOneCarry`
+and `PubTesterIndex.testStartKeyCarry` (long values around 255, -1 and -257:
+exclusive forward, backward, backward exclusive, `eq` backward); the second
+failed without the fix ("Expected '[256, 257, 300, 510, 511, 512]', got
+'[511, 512]'"). `before-commit.sh`: BEFORE COMMIT OK (940 unit tests, 59
+f-tests).

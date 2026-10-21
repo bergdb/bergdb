@@ -455,6 +455,12 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
             int value = 0xff & bytes[i];
             if (value != 0xff) {
                 bytes[i] = (byte) (value + 1);
+                // 2026-10-21 (bergdb 005-15): the 0xff bytes carried past become 0. They
+                // were kept, so {.., 0x00, 0xff} became {.., 0x01, 0xff}, not {.., 0x01,
+                // 0x00}: a long index skipped entries after startAt(255) exclusive.
+                for (int j = i + 1; j < bytes.length; j++) {
+                    bytes[j] = 0;
+                }
                 handled = true;
                 break;
             }
@@ -752,6 +758,18 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         byte[] bytes = {1, 2, '/'};
         plusOne(bytes);
         Assert.assertArrayEquals(new byte[]{1, 2, '/' + 1}, bytes);
+    }
+    
+    /** Regression test for 005-15: the 0xff bytes carried past become 0. */
+    @Nano
+    public static void testPlusOneCarry() {
+        byte[] bytes = {1, 0, (byte) 0xff};
+        plusOne(bytes);
+        Assert.assertArrayEquals(new byte[]{1, 1, 0}, bytes);
+        
+        bytes = new byte[]{0x7f, (byte) 0xff, (byte) 0xff};
+        plusOne(bytes);
+        Assert.assertArrayEquals(new byte[]{(byte) 0x80, 0, 0}, bytes);
     }
     
     @Nano

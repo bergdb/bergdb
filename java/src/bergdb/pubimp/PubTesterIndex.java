@@ -2100,6 +2100,54 @@ public class PubTesterIndex {
         db.stop();
     }
     
+    /**
+     * Regression test for bergdb 005-15: a long index value whose low byte is 0xff (255,
+     * -1) ends its sort bytes with 0xff, and the start key of an exclusive forward scan, a
+     * backward scan and an eq backward scan skipped or added entries.
+     */
+    @Nano
+    public static void testStartKeyCarry() {
+        Database database = Factory.database().memory().start();
+        Connection c = database.newConnection();
+        database.indexBuilder("amount").type("long").dir("/payments/")
+            .field("amount").start().join();
+        
+        long[] values = {-300, -257, -256, -255, -2, -1, 0, 1, 254, 255, 256, 257, 300, 510, 511, 512};
+        for (long v : values) {
+            c.w().put("/payments/" + v, new Payment("a", "b", v)).execute();
+        }
+        
+        assertAmounts(new long[]{256, 257, 300, 510, 511, 512}, 
+                c.useIndex("amount", Payment.class).startAt(255).inclusive(false).objects());
+        assertAmounts(new long[]{0, 1, 254, 255, 256, 257, 300, 510, 511, 512}, 
+                c.useIndex("amount", Payment.class).startAt(-1).inclusive(false).objects());
+        assertAmounts(new long[]{255, 254, 1, 0, -1, -2, -255, -256, -257, -300}, 
+                c.useIndex("amount", Payment.class).startAt(255).backward().objects());
+        assertAmounts(new long[]{254, 1, 0, -1, -2, -255, -256, -257, -300}, 
+                c.useIndex("amount", Payment.class).startAt(255).backward().inclusive(false)
+                .objects());
+        assertAmounts(new long[]{255}, 
+                c.useIndex("amount", Payment.class).eq(255).backward().objects());
+        assertAmounts(new long[]{-1}, 
+                c.useIndex("amount", Payment.class).eq(-1).backward().objects());
+        assertAmounts(new long[]{-257}, 
+                c.useIndex("amount", Payment.class).eq(-257).backward().objects());
+        
+        database.stop();
+    }
+    
+    private static void assertAmounts(long[] expected, Iterable<Payment> payments) {
+        ArrayList<Long> got = new ArrayList<Long>();
+        for (Payment p : payments) {
+            got.add(p.amount);
+        }
+        ArrayList<Long> want = new ArrayList<Long>();
+        for (long v : expected) {
+            want.add(v);
+        }
+        Assert.assertEquals(want.toString(), got.toString());
+    }
+    
     public static void main(String[] args) {
         //composite1();
     }
