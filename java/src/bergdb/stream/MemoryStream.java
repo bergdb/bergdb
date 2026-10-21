@@ -231,7 +231,9 @@ public class MemoryStream implements AppendOnlyStream {
             firstArrayIndex = firstArrayIndex + diff;
         }
         
-        firstValidPos = firstArrayIndex * ARRAY_SIZE;
+        // In long (2026-10-21, bergdb 005-16): two ints overflowed past 2^31 bytes, and the
+        // first position was negative.
+        firstValidPos = (long) firstArrayIndex * ARRAY_SIZE;
     }
     
     public synchronized void seekFirstPos(long pos) {
@@ -317,6 +319,36 @@ public class MemoryStream implements AppendOnlyStream {
         s.append(new byte[0], 0, 0);
         s.append(new byte[123], 0, 123);
         Assert.assertEquals("size", 123L, s.getLength());
+    }
+    
+    /**
+     * Regression test for bergdb 005-16: after a cut past 2^31 bytes, the first position was
+     * negative (an int product), and a read below the cut threw an IOException that is a
+     * storage failure, not ReadBelowFirstPosException.
+     */
+    @Nano("f")
+    private static void testCutPast2GB() throws IOException {
+        MemoryStream s = new MemoryStream();
+        byte[] mb = new byte[ARRAY_SIZE];
+        long target = 2150L * ARRAY_SIZE;
+        while (s.getLength() < target) {
+            s.append(mb, 0, mb.length);
+            if (s.getLength() % (100L * ARRAY_SIZE) == 0) {
+                s.pretruncate(s.getLength() - 2 * ARRAY_SIZE);      // keeps memory small
+            }
+        }
+        long cut = 2149L * ARRAY_SIZE;
+        s.pretruncate(cut);
+        Assert.assertEquals(cut, s.getFirstPos());
+        
+        byte[] b = new byte[10];
+        try {
+            s.read(cut - 5 * ARRAY_SIZE, b, 0, b.length);
+            throw new AssertionError("a read below the cut succeeded");
+        } catch (ReadBelowFirstPosException e) {
+            // Expected.
+        }
+        s.read(cut + 10, b, 0, b.length);
     }
     
     @Nano

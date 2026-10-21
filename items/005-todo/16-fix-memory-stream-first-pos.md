@@ -1,7 +1,7 @@
 005-16. Fix: an in-memory database with a retain duration fails after 2^31 bytes
 ================================================================================
 
-Status: open. Kind: fix. Created 2026-10-21.
+Status: done (2026-10-21). Kind: fix. Created 2026-10-21.
 
 Found on 2026-10-21 in a review of the Java code for overflow, by Claude
 (Opus 5.5, Claude Code), at Frans's request; checked with a probe.
@@ -41,3 +41,13 @@ Done when
 * A unit test that cuts a `MemoryStream` past 2^31 bytes and checks
   `getFirstPos()` and the exception of a read below the cut.
 * `java/before-commit.sh` prints `BEFORE COMMIT OK`.
+
+
+Outcome
+-------
+
+2026-10-21, by Claude (Opus 5.5, Claude Code). `MemoryStream.pretruncate`
+computes the first position as `(long) firstArrayIndex * ARRAY_SIZE`. New
+f-test `MemoryStream.testCutPast2GB` (a cut at 2,149 MB; 0.2 s): without
+the fix "Expected 2149000000, got -2145967296". `before-commit.sh`: BEFORE
+COMMIT OK (940 unit tests, 60 f-tests).

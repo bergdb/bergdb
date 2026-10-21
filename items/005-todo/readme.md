@@ -32,7 +32,6 @@ Open
 | [005-10](10-unused-code.md) | Investigate | Unused code in `java/` and `lean/`: find it and propose what to remove; nothing is removed without Frans's approval | done |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
 | [005-12](12-transaction-outputs.md) | Investigate | Transaction outputs (`setOutput`, `getOutput`): study them, then test them or remove them (005-10) | open |
-| [005-16](16-fix-memory-stream-first-pos.md) | Fix | An in-memory database with a retain duration fails after 2^31 bytes: `MemoryStream`'s first position in `int` | open |
 | [005-17](17-fix-transaction-size.md) | Fix | A transaction of 1.79 GB or more is half committed and blocks the writer: the record's sizes in `int`, no size limit (M49) | open |
 | [005-18](18-fix-clock-range.md) | Fix | A clock time of 2^56 or more is not checked; the database cannot restart ("Time too large") | open |
 | [005-19](19-fix-file-names.md) | Fix | `FileStream` cannot reopen a stream past 214.7 TB: file names parsed as `int` | open |
@@ -50,6 +49,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-16](16-fix-memory-stream-first-pos.md) | Fix | An in-memory database with a retain duration fails after 2^31 bytes: `MemoryStream`'s first position in `int` | done | 2026-10-21 |
 | [005-15](15-fix-index-scan-carry.md) | Fix | Long-index range scans skip or add entries: `plusOne` does not clear the `0xff` bytes it carries past (startAt(255) exclusive misses 256 to 510) | done | 2026-10-21 |
 | [005-14](14-calm-when-idle.md) | Decide | Calm when idle: an idle database woke 163 times a second at 20 ms; now the consumer sleeps when nothing is buffered; also the wake count's overflow and a close that appended the whole buffer (005-13) | done | 2026-10-21 |
 | [005-09](09-fix-node-table-snapshot-race.md) | Fix | A race between a reader and a sweep lets the node table name a released object (INV-CAN); a unit test fails now and then (005-02) | done | 2026-10-20 |
@@ -279,3 +279,10 @@ scan's start key (`UseIndexBuilderImp.plusOne`) kept the `0xff` bytes it
 carried past, so a scan after a value whose low byte is `0xff` (255, -1)
 skipped or added entries: `startAt(255).inclusive(false)` missed 256 to
 510. Now they become 0. Two tests; `before-commit.sh` passes.
+
+2026-10-21. 005-16 done, by Claude (Opus 5.5, Claude Code):
+`MemoryStream`'s first position was a product of two `int`s and went
+negative after a cut past 2^31 bytes, so an in-memory database with a
+retain duration treated a read below the cut as a storage failure and
+stopped taking transactions. Now in `long`; an f-test; `before-commit.sh`
+passes.
