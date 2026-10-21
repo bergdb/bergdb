@@ -1943,4 +1943,26 @@ public class DbTester {
             assertTrue(e.getMessage(), e.getMessage().contains("outside the range"));
         }
     }
+    
+    /** bergdb 005-20: Jmx's retain duration in days was computed in int. */
+    @Nano
+    public static void testJmxRetainDurationInDays() {
+        Db db = Db.builder().testSetup().start();
+        Jmx.DbMonitor monitor = new Jmx.DbMonitor(db);
+        final long day = 24L * 3600 * Clock.UNITS_PER_SEC;
+        int[] days = {1, 365, 24855, 30000, 50000, 99999, 10675199};
+        for (int d : days) {
+            monitor.setRetainDurationInDays(d);
+            assertEquals(d * day, db.getRetainDuration());
+        }
+        try {
+            monitor.setRetainDurationInDays(10675200);      // more than Long.MAX_VALUE units
+            throw new AssertionError("no exception");
+        } catch (IllegalArgumentException e) {
+            // Expected.
+        }
+        monitor.setRetainDurationInSeconds(Integer.MAX_VALUE);
+        assertEquals(Integer.MAX_VALUE * Clock.UNITS_PER_SEC, db.getRetainDuration());
+        db.stop();
+    }
 }

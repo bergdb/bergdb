@@ -156,12 +156,19 @@ public class Jmx {
         }
         
         public void setRetainDurationInSeconds(int seconds) {
-            long units = seconds * Clock.UNITS_PER_SEC;
+            long units = Math.multiplyExact((long) seconds, Clock.UNITS_PER_SEC);
             setRetainDuration(units);
         }
         
         public void setRetainDurationInDays(int days) {
-            long units = days * 24 * 3600 * Clock.UNITS_PER_SEC;
+            // In long (2026-10-21, bergdb 005-20): days * 24 * 3600 was an int, so 99,999
+            // days gave 578.5 days.
+            long units;
+            try {
+                units = Math.multiplyExact(days * 24L * 3600, Clock.UNITS_PER_SEC);
+            } catch (ArithmeticException e) {
+                throw new IllegalArgumentException("Too many days, " + days + ".");
+            }
             setRetainDuration(units);
         }
         

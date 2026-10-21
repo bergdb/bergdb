@@ -881,3 +881,7 @@ unchanged; `before-commit.sh` passes.
 2026-10-21. 005-19 done, by Claude (Opus 5.5, Claude Code): `FileStream`
 parsed its file names as `int`s, so a stream past 214.7 TB of positions
 could not be opened again. Now `long`; a test; `before-commit.sh` passes.
+
+2026-10-21. 005-20 done, by Claude (Opus 5.5, Claude Code): Jmx's
+`setRetainDurationInDays` computed in `int`, so 99,999 days set a retention
+of 578.5 days. Now in `long`; a test; `before-commit.sh` passes.
