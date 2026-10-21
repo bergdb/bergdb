@@ -32,6 +32,18 @@ Open
 | [005-10](10-unused-code.md) | Investigate | Unused code in `java/` and `lean/`: find it and propose what to remove; nothing is removed without Frans's approval | done |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
 | [005-12](12-transaction-outputs.md) | Investigate | Transaction outputs (`setOutput`, `getOutput`): study them, then test them or remove them (005-10) | open |
+| [005-15](15-fix-index-scan-carry.md) | Fix | Long-index range scans skip or add entries: `plusOne` does not clear the `0xff` bytes it carries past (startAt(255) exclusive misses 256 to 510) | open |
+| [005-16](16-fix-memory-stream-first-pos.md) | Fix | An in-memory database with a retain duration fails after 2^31 bytes: `MemoryStream`'s first position in `int` | open |
+| [005-17](17-fix-transaction-size.md) | Fix | A transaction of 1.79 GB or more is half committed and blocks the writer: the record's sizes in `int`, no size limit (M49) | open |
+| [005-18](18-fix-clock-range.md) | Fix | A clock time of 2^56 or more is not checked; the database cannot restart ("Time too large") | open |
+| [005-19](19-fix-file-names.md) | Fix | `FileStream` cannot reopen a stream past 214.7 TB: file names parsed as `int` | open |
+| [005-20](20-fix-jmx-retain-days.md) | Fix | `Jmx` `setRetainDurationInDays` in `int`: 99,999 days becomes 578.5 | open |
+| [005-21](21-fix-small-overflows.md) | Fix | Smaller overflows: `Time.millis`, `TimeResolver` seconds, `TransSeq.take`, negative key hashes, `DbObject` shorts, corrupt counts | open |
+| [005-22](22-fix-narrowing.md) | Fix | A stored value too large for its Java field is truncated silently | open |
+| [005-23](23-fix-deep-objects.md) | Fix | `StackOverflowError` for a cyclic or deeply nested object at a put | open |
+| [005-24](24-fix-file-read-at-end.md) | Fix | A `FileStream` read at the end of the stream loops forever | open |
+| [005-25](25-fix-buffered-read-past-end.md) | Fix | A `BufferedStream` read one byte past the end returns a stale byte | open |
+| [005-26](26-fix-lone-surrogates.md) | Fix | A string with a lone surrogate cannot be stored in an array: `utf8Size` | open |
 
 
 Closed
@@ -105,6 +117,21 @@ Files
   sleeps when idle, with two faults of `BufferedStream` fixed; done, with
   its table, tools and runs in [14-calm-when-idle/](14-calm-when-idle/).
 
+* [15-fix-index-scan-carry.md](15-fix-index-scan-carry.md) to
+  [26-fix-lone-surrogates.md](26-fix-lone-surrogates.md). 005-15 to 005-26,
+  the findings of the review of the Java code for overflow: 15
+  [index scan carry](15-fix-index-scan-carry.md), 16
+  [MemoryStream first position](16-fix-memory-stream-first-pos.md), 17
+  [transaction size](17-fix-transaction-size.md), 18
+  [clock range](18-fix-clock-range.md), 19
+  [file names](19-fix-file-names.md), 20
+  [Jmx retain days](20-fix-jmx-retain-days.md), 21
+  [smaller overflows](21-fix-small-overflows.md), 22
+  [narrowing](22-fix-narrowing.md), 23
+  [deep objects](23-fix-deep-objects.md), 24
+  [FileStream read at the end](24-fix-file-read-at-end.md), 25
+  [BufferedStream read past the end](25-fix-buffered-read-past-end.md), 26
+  [lone surrogates](26-fix-lone-surrogates.md).
 
 Log
 ===
@@ -236,3 +263,13 @@ of stale bytes, and the database then failed to start (34 of 24,000
 closes in a test before the fix, 0 of 12,000 after). Four unit tests that
 fail without the change; `before-commit.sh` passes; no change under load.
 The change in `java/` is left for Frans to commit.
+
+2026-10-21. Added 005-15 to 005-26, at Frans's request ("Go through it and
+search for overflow issues", then "Write the findings up as 005 entries.
+Then fix each one."), by Claude (Opus 5.5, Claude Code): a review of the
+Java code for overflow. Six faults checked with probes (wrong index scan
+results, an in-memory database that fails after 2^31 bytes, a large
+transaction half committed, an unchecked clock, file names in `int`, Jmx
+retain days in `int`), smaller overflows, and three faults found on the
+way. Frans decided: a value that does not fit its Java field throws, and
+cyclic or too deep objects get clear exceptions.
