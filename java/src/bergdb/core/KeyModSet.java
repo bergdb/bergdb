@@ -140,7 +140,7 @@ public class KeyModSet implements IKeyModSet {
             }
             size++;
             
-            int index = (int) (hash % subSize);
+            int index = (int) ((hash & Long.MAX_VALUE) % subSize);  // never negative (005-21)
             
             Object sub = subBins[index];
             long[] array;
@@ -184,7 +184,7 @@ public class KeyModSet implements IKeyModSet {
          */
         final long getTime(long hash) {
             assert hash >= 0;
-            int index = (int) (hash % subSize);
+            int index = (int) ((hash & Long.MAX_VALUE) % subSize);  // never negative (005-21)
             
             Object sub = subBins[index];
             long[] array;

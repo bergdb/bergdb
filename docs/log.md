@@ -885,3 +885,11 @@ could not be opened again. Now `long`; a test; `before-commit.sh` passes.
 2026-10-21. 005-20 done, by Claude (Opus 5.5, Claude Code): Jmx's
 `setRetainDurationInDays` computed in `int`, so 99,999 days set a retention
 of 578.5 days. Now in `long`; a test; `before-commit.sh` passes.
+
+2026-10-21. 005-21 done, by Claude (Opus 5.5, Claude Code): smaller
+overflows fixed: `Time.millis` (unchecked product), `TimeResolver`
+(seconds cast to `int`, NaN), `TransSeq.take`'s node count limit, negative
+key hashes (`Keys.hash` for `Long.MIN_VALUE`, `KeyModSet`'s index,
+`Trans.Builder`), a `DbObject` field name over 32,767 UTF-8 bytes, and
+corrupt counts that gave `NegativeArraySizeException`. Seven tests;
+streams unchanged; `before-commit.sh` passes.

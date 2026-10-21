@@ -64,7 +64,15 @@ public class Time {
      * that has passed since Unix Epoch.
      */
     public static Time millis(long millis) {
-        return new Time(millis * UNITS_PER_MILLISECOND);
+        // Checked (2026-10-21, bergdb 005-21): the product wrapped, so a large value could
+        // give a time in 1970 instead of an exception.
+        final long units;
+        try {
+            units = Math.multiplyExact(millis, UNITS_PER_MILLISECOND);
+        } catch (ArithmeticException e) {
+            throw new IllegalArgumentException("Time out of range, millis: " + millis + ".");
+        }
+        return new Time(units);
     }
     
     /**

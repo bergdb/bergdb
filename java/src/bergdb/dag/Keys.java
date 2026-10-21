@@ -37,7 +37,8 @@ public class Keys {
         for (long l : keySegments) {
             value = value * 37 + l;
         }
-        value = value < 0 ? -value : value;    // always non-negative
+        value = value < 0 ? -value : value;
+        value &= Long.MAX_VALUE;    // always non-negative, also for Long.MIN_VALUE (005-21)
         assert value >= 0;
         return value;
     }

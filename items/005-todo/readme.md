@@ -32,7 +32,6 @@ Open
 | [005-10](10-unused-code.md) | Investigate | Unused code in `java/` and `lean/`: find it and propose what to remove; nothing is removed without Frans's approval | done |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
 | [005-12](12-transaction-outputs.md) | Investigate | Transaction outputs (`setOutput`, `getOutput`): study them, then test them or remove them (005-10) | open |
-| [005-21](21-fix-small-overflows.md) | Fix | Smaller overflows: `Time.millis`, `TimeResolver` seconds, `TransSeq.take`, negative key hashes, `DbObject` shorts, corrupt counts | open |
 | [005-22](22-fix-narrowing.md) | Fix | A stored value too large for its Java field is truncated silently | open |
 | [005-23](23-fix-deep-objects.md) | Fix | `StackOverflowError` for a cyclic or deeply nested object at a put | open |
 | [005-24](24-fix-file-read-at-end.md) | Fix | A `FileStream` read at the end of the stream loops forever | open |
@@ -45,6 +44,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-21](21-fix-small-overflows.md) | Fix | Smaller overflows: `Time.millis`, `TimeResolver` seconds, `TransSeq.take`, negative key hashes, `DbObject` shorts, corrupt counts | done | 2026-10-21 |
 | [005-20](20-fix-jmx-retain-days.md) | Fix | `Jmx` `setRetainDurationInDays` in `int`: 99,999 days becomes 578.5 | done | 2026-10-21 |
 | [005-19](19-fix-file-names.md) | Fix | `FileStream` cannot reopen a stream past 214.7 TB: file names parsed as `int` | done | 2026-10-21 |
 | [005-18](18-fix-clock-range.md) | Fix | A clock time of 2^56 or more is not checked; the database cannot restart ("Time too large") | done | 2026-10-21 |
@@ -309,3 +309,11 @@ could not be opened again. Now `long`; a test; `before-commit.sh` passes.
 2026-10-21. 005-20 done, by Claude (Opus 5.5, Claude Code): Jmx's
 `setRetainDurationInDays` computed in `int`, so 99,999 days set a retention
 of 578.5 days. Now in `long`; a test; `before-commit.sh` passes.
+
+2026-10-21. 005-21 done, by Claude (Opus 5.5, Claude Code): smaller
+overflows fixed: `Time.millis` (unchecked product), `TimeResolver`
+(seconds cast to `int`, NaN), `TransSeq.take`'s node count limit, negative
+key hashes (`Keys.hash` for `Long.MIN_VALUE`, `KeyModSet`'s index,
+`Trans.Builder`), a `DbObject` field name over 32,767 UTF-8 bytes, and
+corrupt counts that gave `NegativeArraySizeException`. Seven tests;
+streams unchanged; `before-commit.sh` passes.

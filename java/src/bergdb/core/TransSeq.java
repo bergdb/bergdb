@@ -116,9 +116,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
             return newSp;
         }
         
-        final long nodeCountLimitLong = valueCount * 4 + kvSize / 1024;
-        final int nodeCountLimit = nodeCountLimitLong > Integer.MAX_VALUE ? 
-                Integer.MAX_VALUE : (int) nodeCountLimitLong;
+        final int nodeCountLimit = nodeCountLimit(valueCount, kvSize);
         
         long bytes = 0;
         
@@ -165,6 +163,15 @@ public class TransSeq implements PosOfTransBeforeFunction {
         }
         
         return newSp;
+    }
+    
+    /**
+     * The index nodes take() takes, after the first two transactions. In long (2026-10-21,
+     * bergdb 005-21): valueCount * 4 was an int product.
+     */
+    static int nodeCountLimit(int valueCount, long kvSize) {
+        final long limit = valueCount * 4L + kvSize / 1024;
+        return limit > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) limit;
     }
     
     /** The bytes the got-dirty nodes of 'info' may add to a record; see take(). */
@@ -400,6 +407,14 @@ public class TransSeq implements PosOfTransBeforeFunction {
         Assert.assertTrue(nodes.get(0) == n1);
         Assert.assertTrue(nodes.get(1) == n2);
         Assert.assertTrue(s.isEmpty());
+    }
+    
+    /** bergdb 005-21: the node count limit does not wrap. */
+    @Nano
+    public static void testNodeCountLimit() {
+        assertEquals(4 + 1, nodeCountLimit(1, 1024));
+        assertEquals(Integer.MAX_VALUE, nodeCountLimit(Integer.MAX_VALUE, Integer.MAX_VALUE));
+        assertEquals(Integer.MAX_VALUE, nodeCountLimit(600 * 1000 * 1000, 0));   // wrapped
     }
     
     /** take() with a byte budget (bergdb 005-17): whole transactions, as many as fit. */

@@ -86,6 +86,10 @@ public class StoredTopNode implements StoredNode {
 
         int pointerCount = buffer[offset];
         offset += 1;
+        if (pointerCount < 0) {         // 2026-10-21 (bergdb 005-21), before the arrays
+            throw new StreamFormatException("TopNode at " + spos + " with " + pointerCount
+                    + " skip pointers.");
+        }
 
         offset += 1; // rest of header (reserved)
 
@@ -246,6 +250,22 @@ public class StoredTopNode implements StoredNode {
      * (level 2): the time was written as -1 for every
      * pointer that was not a memory pointer.
      */
+    /** bergdb 005-21: a negative skip pointer count is a StreamFormatException. */
+    @Nano
+    public static void testNegativePointerCount() {
+        TopNode top = TopNode.createDummy(5);
+        long[] longs = new long[getByteSize(top) / 8];
+        toLongs(top, longs, 0);
+        byte[] bytes = Bytes.longsToBytesLE(longs);
+        bytes[8] = (byte) -3;
+        try {
+            parse(bytes, 0, 1000);
+            throw new AssertionError("no exception");
+        } catch (StreamFormatException e) {
+            // Expected.
+        }
+    }
+    
     @Nano
     public static void testStreamPointerTimesKept() {
         KeyNode root = new KeyNode();

@@ -231,6 +231,7 @@ public class Trans {
         }
         
         public final Builder addReadHash(long hash) {
+            checkHash(hash);
             readHashes.add(hash);
             return this;
         }
@@ -240,6 +241,7 @@ public class Trans {
                     + ", hashes.length = " + hashes.length;
             
             for (int i = 0; i < length; i++) {
+                checkHash(hashes[i]);
                 readHashes.add(hashes[i]);
             }
             return this;
@@ -263,8 +265,19 @@ public class Trans {
          * Adds a virtual write hash to the list of hashes.
          */
         public Builder addVirtualWriteHash(long hash) {
+            checkHash(hash);
             virtualWriteHashes.add(hash);
             return this;
+        }
+        
+        /**
+         * A key hash is never negative (Keys.hash); KeyModSet uses it as an index
+         * (2026-10-21, bergdb 005-21: a negative write hash threw after the go point).
+         */
+        private static void checkHash(long hash) {
+            if (hash < 0) {
+                throw new IllegalArgumentException("Negative key hash, " + hash + ".");
+            }
         }
         
         private long[] computeWriteHashes(Kv[] kvs) {
@@ -321,6 +334,23 @@ public class Trans {
             static Builder create() {
                 return new Trans.Builder();
             }
+        }
+    }
+    
+    /** bergdb 005-21: a negative key hash is refused when the transaction is built. */
+    @Nano
+    public static void testNegativeHash() {
+        try {
+            new Trans.Builder().addVirtualWriteHash(-1);
+            throw new AssertionError("no exception");
+        } catch (IllegalArgumentException e) {
+            // Expected.
+        }
+        try {
+            new Trans.Builder().addReadHash(Long.MIN_VALUE);
+            throw new AssertionError("no exception");
+        } catch (IllegalArgumentException e) {
+            // Expected.
         }
     }
     

@@ -336,6 +336,12 @@ public class TimeResolver {
             offset += 1;
             
             td.second = parseZeroPaddedDouble(timeString.substring(offset), timeString);
+            
+            // 2026-10-21 (bergdb 005-21): the seconds are cast to an int; from 2^31 on the
+            // cast gave Integer.MAX_VALUE, and NaN gave 0.
+            if (!(td.second >= 0.0 && td.second < Integer.MAX_VALUE)) {
+                throw new BadFormatException("Bad seconds in time string: '" + timeString + "'.");
+            }
         } else {
             td.second = 0.0;
         }
@@ -602,6 +608,35 @@ public class TimeResolver {
         Assert.assertEquals(t3, t2);
     }
 
+    /** bergdb 005-21: seconds that do not fit an int, or are not numbers, are refused. */
+    @Nano
+    private static void testBadSeconds() {
+        String[] bad = {"2013-01-01 00:00:3000000000", "2013-01-01 00:00:1e300",
+                "2013-01-01 00:00:NaN", "2013-01-01 00:00:Infinity", "2013-01-01 00:00:-5"};
+        for (String s : bad) {
+            try {
+                resolveAbsolute(UTC, s);
+                throw new AssertionError("no exception for " + s);
+            } catch (BadFormatException e) {
+                // Expected.
+            }
+        }
+        Assert.assertEquals(resolveAbsolute(UTC, "2013-01-01 00:01:15"), 
+                resolveAbsolute(UTC, "2013-01-01 00:00:75"));
+    }
+    
+    /** bergdb 005-21: Time.millis() refuses a value whose units overflow a long. */
+    @Nano
+    private static void testTimeMillisOverflow() {
+        try {
+            bergdb.pub.Time.millis(1844674407370956L);
+            throw new AssertionError("no exception");
+        } catch (IllegalArgumentException e) {
+            // Expected.
+        }
+        Assert.assertEquals(10000L, bergdb.pub.Time.millis(1).units());
+    }
+    
     @Nano
     private static void testOneUnit() {
         long units = resolveAbsolute(UTC, "1970-01-01 00:00:00.0000001");

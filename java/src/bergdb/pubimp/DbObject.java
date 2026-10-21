@@ -665,8 +665,11 @@ public class DbObject extends DbValue {
             this.name = name;
             this.hash = hash(name);
             this.nameBytes = StringUtil.toBytes(name);
-            if (name.length() > Short.MAX_VALUE) {
-                throw new IllegalArgumentException("Name is too large, " + this.nameBytes.length + ".");
+            // The byte length, as stored, since 2026-10-21 (bergdb 005-21); the char length
+            // was checked, and a longer UTF-8 name was stored with a wrapped short length.
+            if (nameBytes.length > Short.MAX_VALUE) {
+                throw new IllegalArgumentException("Name is too large, " + this.nameBytes.length 
+                        + " bytes.");
             }
             this.type = value.getType();
             this.value = value;
@@ -909,6 +912,21 @@ public class DbObject extends DbValue {
         DbObject t = new DbObject.Builder().build();
         System.out.println("size: " + t.getBytes().length);
         System.out.println("t buffer to string: " + StringUtil.toString(t.getBytes()));
+    }
+    
+    /** bergdb 005-21: a name too long in UTF-8 bytes is refused (the chars were checked). */
+    @bergdb.nanotest.Nano
+    private static void testLongFieldName() {
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < 20000; i++) {
+            b.append('\u00e9');      // two bytes in UTF-8
+        }
+        try {
+            new Builder().addInt(b.toString(), 1).build();
+            throw new AssertionError("no exception");
+        } catch (IllegalArgumentException e) {
+            // Expected.
+        }
     }
 }
 

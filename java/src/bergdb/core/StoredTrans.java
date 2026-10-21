@@ -307,7 +307,7 @@ public class StoredTrans {
             int gotDirtyCount = Bytes.bytesToIntLE(buffer, offset);
             offset += 4;
             
-            if (gotDirtyCount < 0) {
+            if (gotDirtyCount < 0 || gotDirtyCount > (buffer.length - offset) / 16) {
                 throw new StreamFormatException("bad gotDirtyCount, " + gotDirtyCount);
             }
             
@@ -823,6 +823,21 @@ public class StoredTrans {
         Kv kv = new Kv(key, value);
         Assert.assertArrayEquals(new byte[]{1}, kv.key);
         Assert.assertArrayEquals(new byte[]{1, 2}, kv.value);
+    }
+    
+    /** bergdb 005-21: a corrupt got-dirty count is a StreamFormatException. */
+    @Nano
+    private static void testCorruptGotDirtyCount() {
+        Serializer serializer = new Serializer();
+        serializer.serialize(new TransNodes(), 100, 200, -1, new ArrayList<Node>());
+        byte[] buffer = serializer.getTransBuffer().clone();
+        Bytes.intToBytesLE(Integer.MAX_VALUE, buffer, 36);     // after the header and the end marker
+        try {
+            new Parser().parse(200, buffer);
+            throw new AssertionError("no exception");
+        } catch (StreamFormatException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("gotDirtyCount"));
+        }
     }
     
     /** bergdb 005-17: a record above the record limit is refused by the serializer. */
