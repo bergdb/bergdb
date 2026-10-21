@@ -331,7 +331,10 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                                 + exception.getMessage());
             }
 
-            if (pos2 > totalLength) {
+            // ">=" since 2026-10-21 (bergdb 005-25): pos2 is the last byte read, and
+            // totalLength - 1 the last byte there is. A read of the byte after the end gave
+            // a stale byte of the ring buffer.
+            if (pos2 >= totalLength) {
                 throw new IOException("Cannot read " + length + " bytes at position " + position
                         + ", stream size is " + totalLength + ".");
             }
@@ -616,6 +619,31 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         Assert.assertEquals((byte) 10, dest[11]);
     }
 
+    /** Regression test for bergdb 005-25: a read one byte past the end gave a stale byte. */
+    @Nano
+    public static void testReadOneBytePastEnd() throws IOException {
+        BufferedStream b = new BufferedStream(new MemoryStream(), 100, 1000);   // not started
+        b.append(new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, 0, 10);
+        byte[] d = new byte[2];
+        b.read(8, d, 0, 2);
+        Assert.assertEquals((byte) 10, d[1]);
+        try {
+            b.read(9, d, 0, 2);
+            throw new AssertionError("a read past the end succeeded");
+        } catch (IOException e) {
+            // Expected.
+        }
+        try {
+            b.read(10, d, 0, 1);
+            throw new AssertionError("a read past the end succeeded");
+        } catch (IOException e) {
+            // Expected.
+        }
+        b.append(new byte[] {11}, 0, 1);
+        b.read(10, d, 0, 1);
+        Assert.assertEquals((byte) 11, d[0]);
+    }
+    
     /**
      * Regression test for a bug found 2026-10-13: a pretruncate position that was
      * still in the buffer was passed on to the underlying stream at once.

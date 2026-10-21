@@ -911,3 +911,8 @@ read at the end of the stream looped forever, since a bound check compared
 `spos` with `spos + fileLength`; one past it threw
 `IndexOutOfBoundsException`. Now both throw `EOFException` and the stream
 stays usable. A test; `before-commit.sh` passes.
+
+2026-10-21. 005-25 done, by Claude (Opus 5.5, Claude Code):
+`BufferedStream.read` let a read end one byte past the end of the stream,
+and gave a stale byte of the ring buffer; now it throws. A test;
+`before-commit.sh` passes.

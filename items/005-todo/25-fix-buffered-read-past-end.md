@@ -1,7 +1,7 @@
 005-25. Fix: a BufferedStream read one byte past the end returns a stale byte
 =============================================================================
 
-Status: open. Kind: fix. Created 2026-10-21.
+Status: done (2026-10-21). Kind: fix. Created 2026-10-21.
 
 Found on 2026-10-21 in the review of the Java code for overflow (not an
 overflow), by Claude (Opus 5.5, Claude Code), at Frans's request; checked
@@ -28,3 +28,12 @@ Done when
 
 * A unit test: a read that ends one byte past the end throws.
 * `java/before-commit.sh` prints `BEFORE COMMIT OK`.
+
+
+Outcome
+-------
+
+2026-10-21, by Claude (Opus 5.5, Claude Code). `BufferedStream.read`
+refuses a read whose last byte `pos2 >= totalLength`. A read of length 0 at
+the end still passes. Test `BufferedStream.testReadOneBytePastEnd`.
+`before-commit.sh`: BEFORE COMMIT OK (960 unit tests, 62 f-tests).
