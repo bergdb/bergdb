@@ -3,6 +3,7 @@ package bergdb.pubimp;
 import java.lang.reflect.Array;
 
 import bergdb.common.Bug;
+import bergdb.pub.DataFormatException;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
@@ -171,6 +172,7 @@ public abstract class DbValue {
         
         Object result = null;
         char typeChar = getPrimitiveTypeChar(typeName, typeNameHash);
+        checkFits(typeChar, c);
         
         switch (typeChar) {
         case 'Z':
@@ -206,6 +208,51 @@ public abstract class DbValue {
         return (TYPE) result;
     }
 
+    /**
+     * Throws DataFormatException if this number does not fit the primitive type 'typeChar'
+     * (2026-10-21, bergdb 005-22): toInt() and the other conversions cast, so a stored long of
+     * 3,000,000,000 read into an int field was -1,294,967,296. An integral value must be in
+     * the type's range; a double must be in the range of an integral type, and not NaN, and
+     * a finite double within the range of a float. Fractions and the precision of float
+     * and double are converted as before.
+     */
+    private void checkFits(char typeChar, Class<?> c) {
+        final boolean fits;
+        final String value;
+        if (type == 'i' || type == 'l') {
+            final long v = toLong();
+            value = "" + v;
+            switch (typeChar) {
+            case 'B': fits = v >= Byte.MIN_VALUE && v <= Byte.MAX_VALUE; break;
+            case 'C': fits = v >= Character.MIN_VALUE && v <= Character.MAX_VALUE; break;
+            case 'S': fits = v >= Short.MIN_VALUE && v <= Short.MAX_VALUE; break;
+            case 'I': fits = v >= Integer.MIN_VALUE && v <= Integer.MAX_VALUE; break;
+            default: fits = true; break;
+            }
+        } else if (type == 'd') {
+            final double v = toDouble();
+            value = "" + v;
+            switch (typeChar) {
+            case 'B': fits = v >= Byte.MIN_VALUE && v <= Byte.MAX_VALUE; break;
+            case 'C': fits = v >= Character.MIN_VALUE && v <= Character.MAX_VALUE; break;
+            case 'S': fits = v >= Short.MIN_VALUE && v <= Short.MAX_VALUE; break;
+            case 'I': fits = v >= Integer.MIN_VALUE && v <= Integer.MAX_VALUE; break;
+            case 'J': fits = v >= Long.MIN_VALUE && v <= Long.MAX_VALUE; break;
+            case 'F': 
+                fits = Double.isNaN(v) || Double.isInfinite(v) || Math.abs(v) <= Float.MAX_VALUE;
+                break;
+            default: fits = true; break;
+            }
+        } else {
+            return;
+        }
+        
+        if (!fits) {
+            throw new DataFormatException("The value " + value + " does not fit the Java type "
+                    + c.getName() + ".");
+        }
+    }
+    
     /**
      * Returns true if 'c' represents a primitive type (byte.class, short.class, ...) or a 
      * primitive wrapper class (java.lang.Byte, java.lang.Short, ...).

@@ -12,6 +12,7 @@ import bergdb.common.Bug;
 import bergdb.common.ByteArrayComparator;
 import bergdb.common.Bytes;
 import bergdb.common.StringUtil;
+import bergdb.pub.DataFormatException;
 import bergdb.pub.util.BadFormatException;
 
 /**
@@ -449,7 +450,14 @@ public class DbObject extends DbValue {
             final String fieldName = f.getName();
             DbValue dbValue = getDbValue(fieldName);
             if (dbValue != null) {
-                Object javaObject = dbValue.toJavaObject(f.getType(), c2o);
+                Object javaObject;
+                try {
+                    javaObject = dbValue.toJavaObject(f.getType(), c2o);
+                } catch (DataFormatException e) {
+                    // The field's name (2026-10-21, bergdb 005-22).
+                    throw new DataFormatException("Field '" + fieldName + "' of " + c.getName()
+                            + ": " + e.getMessage());
+                }
                 try {
                     f.set(dest, javaObject);
                 } catch (IllegalArgumentException e) {

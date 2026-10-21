@@ -1109,4 +1109,59 @@ public class DbObjectTester {
         long value = o3.getLong(new String[]{"o2", "obj", "nonExistant"});
         Assert.assertEquals(0, value);
     }
+    
+    // ---- bergdb 005-22: a value that does not fit its Java field ----
+    
+    private static class NarrowClass {
+        int i;
+        short s;
+        byte b;
+        char c;
+        long l;
+        float f;
+        int[] ints;
+    }
+    
+    private static NarrowClass narrow(String name, DbValue value) {
+        DbObject dbo = new DbObject.Builder().addDbValue(name, value).build();
+        return dbo.toJavaObject(NarrowClass.class, new KvToObjectImp());
+    }
+    
+    private static void assertDoesNotFit(String name, DbValue value) {
+        try {
+            narrow(name, value);
+            throw new AssertionError("no exception for field " + name + ", value " + value);
+        } catch (bergdb.pub.DataFormatException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("'" + name + "'"));
+        }
+    }
+    
+    @Nano
+    public static void testNarrowingOutOfRange() {
+        assertDoesNotFit("i", new DbLong(3000L * 1000 * 1000));
+        assertDoesNotFit("i", new DbLong(Integer.MIN_VALUE - 1L));
+        assertDoesNotFit("s", new DbInt(444555));
+        assertDoesNotFit("s", new DbLong(-32769));
+        assertDoesNotFit("b", new DbInt(128));
+        assertDoesNotFit("c", new DbInt(-1));
+        assertDoesNotFit("c", new DbInt(65536));
+        assertDoesNotFit("i", new DbDouble(1e10));
+        assertDoesNotFit("l", new DbDouble(Double.NaN));
+        assertDoesNotFit("l", new DbDouble(1e19));
+        assertDoesNotFit("f", new DbDouble(1e300));
+        assertDoesNotFit("ints", DbValue.toDbValue(long[].class, new long[] {1, 1L << 40}));
+    }
+    
+    @Nano
+    public static void testNarrowingInRange() {
+        Assert.assertEquals(Integer.MAX_VALUE, narrow("i", new DbLong(Integer.MAX_VALUE)).i);
+        Assert.assertEquals(-32768, narrow("s", new DbInt(-32768)).s);
+        Assert.assertEquals(-128, narrow("b", new DbLong(-128)).b);
+        Assert.assertEquals(65535, narrow("c", new DbInt(65535)).c);
+        Assert.assertEquals(2, narrow("i", new DbDouble(2.7)).i);
+        Assert.assertEquals(1e30f, narrow("f", new DbDouble(1e30)).f);
+        Assert.assertTrue(Float.isInfinite(narrow("f", new DbDouble(Double.POSITIVE_INFINITY)).f));
+        Assert.assertArrayEquals(new int[] {1, -5}, 
+                narrow("ints", DbValue.toDbValue(long[].class, new long[] {1, -5})).ints);
+    }
 }

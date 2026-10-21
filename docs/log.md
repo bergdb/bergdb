@@ -893,3 +893,9 @@ key hashes (`Keys.hash` for `Long.MIN_VALUE`, `KeyModSet`'s index,
 `Trans.Builder`), a `DbObject` field name over 32,767 UTF-8 bytes, and
 corrupt counts that gave `NegativeArraySizeException`. Seven tests;
 streams unchanged; `before-commit.sh` passes.
+
+2026-10-21. 005-22 done, by Claude (Opus 5.5, Claude Code), as Frans
+decided: reading an object into its class, a stored value that does not fit
+its Java field (a long of 3,000,000,000 into an `int`, a NaN into a `long`)
+was cast silently; now it is a `DataFormatException` that names the field.
+Two tests; `before-commit.sh` passes.
