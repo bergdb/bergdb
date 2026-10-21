@@ -47,6 +47,17 @@ public class Cache3 {
     /** The resident registry's accounting (bergdb item 001, WP J1); see Residents. */
     private final Residents residents = new Residents();
 
+    /**
+     * Told in pointerCreated just before it takes the node table's lock; for tests only
+     * (bergdb item 005-09: EvictionReaderTester.testReleaseBeforeTheTableEntry).
+     */
+    interface EntryListener {
+        void beforeEntry(Node to);
+    }
+
+    /** See EntryListener. Null, and so doing nothing, unless a test sets it. */
+    static volatile EntryListener entryListener = null;
+
     
     @SuppressWarnings("unchecked")
     public Cache3(Cache.DbInfo dbInfo) {
@@ -109,11 +120,14 @@ public class Cache3 {
 
     /**
      * Object 'node' is released (bergdb item 001, WP J2 on; the Lean model's Mem.release):
-     * the node table's entry goes if it names it, and the registry forgets it.
+     * its canonical flag is cleared (M31) and the node table's entry goes if it names it,
+     * one step under the table's lock (bergdb item 005-09, see pointerCreated); the registry
+     * forgets it.
      */
     public void released(Node node) {
         long id = node.getId();
         synchronized (getLock(id)) {
+            node.setCanonical(false);       // No effect for a value node.
             CacheEntry entry = internalGet(id);
             if (entry != null && entry.node == node) {
                 internalRemove(id);
@@ -163,13 +177,25 @@ public class Cache3 {
         // memory slot to a snapshot, which a split copies (Dag.reportNewPointers), does not enter
         // it. Before 2026-10-18 it did, when the table had no object for the node, and a newer
         // snapshot replaced an older one; the audit found it.
+        //
+        // The flag is read again under the table's lock, where a release clears it (released):
+        // a reader's follow (NodeCollection.followStreamPointer) gets here without the write
+        // lock, and a sweep may release 'to' between the first read and the lock. Until
+        // 2026-10-20 only the first read was made, and the table got the released object back,
+        // a snapshot (bergdb item 005-09; EvictionReaderTester.testReleaseBeforeTheTableEntry).
         if (!to.isCanonical()) {
             return;
         }
         long id = to.getId();
         Object lock = getLock(id);
         
+        final EntryListener el = entryListener;
+        if (el != null) el.beforeEntry(to);
+        
         synchronized (lock) {
+            if (!to.isCanonical()) {
+                return;
+            }
             CacheEntry entry = internalGet(id);
             
             if (entry == null) {

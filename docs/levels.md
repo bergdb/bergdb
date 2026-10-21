@@ -1441,6 +1441,26 @@ test that fails without it.
    cuts and restarts) and `testEndOfOrdinals`;
    `StoredTopNode.testOrdinalField`. A test-only option,
    `DbBuilder.secondTopOrdinal`, starts the ordinals near a boundary.
+3. The node table could get back an object that eviction had just released
+   (fixed 2026-10-20, bergdb item 005-09; register M31; found in 005-02,
+   where `EvictionReaderTester.testReaderPausedInsideAFollow` failed about
+   once in 600 runs under load). A reader that follows a stream pointer to
+   a canonical object enters it in the node table (`Cache3.pointerCreated`).
+   It read the canonical flag before it took the table's lock, and a sweep,
+   which readers do not wait for, could release the object in between: the
+   flag cleared, the entry removed. The reader then entered the released
+   object, a snapshot, which INV-CAN forbids. The audit failed ("INV-CAN:
+   the node table names a snapshot of node N"); readers that followed a
+   stream pointer to the node loaded it from the stream again, as the
+   table's object was not canonical, until the writer made an object of the
+   node canonical again. The records, the answers and the one canonical
+   object per node were as without eviction. Now the flag is read again
+   under the table's lock, and a release clears it under the same lock
+   (`Cache3.released`), so that the check and the entry are one step
+   against a release. No record changes. Test:
+   `EvictionReaderTester.testReleaseBeforeTheTableEntry`, in which a hook
+   (`Cache3.EntryListener`) runs a sweep just before the reader takes the
+   lock.
 
 
 Level 4: eviction
@@ -1486,7 +1506,8 @@ How it works (`core/Eviction.java`, `core/Residents.java`):
 * **Readers** (the plan's Q8) take a slot's pointer lock for a whole follow,
   so they see a slot as a memory slot or as a stream slot, never half of
   one; a reader may finish with an object that was released meanwhile, as
-  it is the version at its position.
+  it is the version at its position, but enters it in the node table only
+  if it is still canonical under the table's lock (bergdb item 005-09).
 * **Reclaim** reads with the maintenance follower, which loads but
   swizzles nothing; a step's dirty index nodes stay pinned until written,
   and a reserve (4 MiB) splits a step that would pin more.

@@ -29,7 +29,6 @@ Open
 | [005-05](05-bergdb-future.md) | Decide | What to do with BergDB: publish it, when, money, paid work | open |
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
-| [005-09](09-fix-node-table-snapshot-race.md) | Fix | A race between a reader and a sweep lets the node table name a released object (INV-CAN); a unit test fails now and then (005-02) | open |
 | [005-10](10-unused-code.md) | Investigate | Unused code in `java/` and `lean/`: find it and propose what to remove; nothing is removed without Frans's approval | done |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
 | [005-12](12-transaction-outputs.md) | Investigate | Transaction outputs (`setOutput`, `getOutput`): study them, then test them or remove them (005-10) | open |
@@ -40,6 +39,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-09](09-fix-node-table-snapshot-race.md) | Fix | A race between a reader and a sweep lets the node table name a released object (INV-CAN); a unit test fails now and then (005-02) | done | 2026-10-20 |
 | [005-13](13-buffer-time.md) | Investigate | The buffer time (100 ms, from the hard-drive era): sweep it on SSD, then decide the default and group commit; now 20 ms | done | 2026-10-20 |
 | [005-08](08-fix-node-table-tree-bins.md) | Fix | The node table's 256 maps make every bin a tree (`Cache3.mapIndex`): 61 bytes per KV, a slower `set` (006-02) | done | 2026-10-19 |
 | [005-04](04-a6-failures.md) | Decide | A6 fails in 5 Java transactions: is anything to be done? | done | 2026-10-19 |
@@ -54,8 +54,7 @@ which changed `Db.executeInner` too, is done); 005-03 after 005-01, since
 it changes the same part of Java; 005-05 and 005-06 beside the rest, as
 they are mostly reading and thinking, and 005-06 feeds 005-05. 005-07 is
 best before or with 005-01 (where a transaction's go point is) and before
-005-03's fix. 005-09 is small and can go any time; its flaky unit test can
-fail a run of `before-commit.sh` until it is fixed. What is left of 005-10 waits for Frans; a removal is best made
+005-03's fix. 005-09 is done. What is left of 005-10 waits for Frans; a removal is best made
 when no other change to `java/` is under way. 005-11 and 005-12 can go any
 time, best before 005-05's decision on publishing, as both concern the Pub
 API.
@@ -86,7 +85,8 @@ Files
   [08-fix-node-table-tree-bins/](08-fix-node-table-tree-bins/).
 * [09-fix-node-table-snapshot-race.md](09-fix-node-table-snapshot-race.md).
   005-09, fix the race that lets the node table name a released object,
-  found in 005-02.
+  found in 005-02; done, with its probe, runs and checks in
+  [09-fix-node-table-snapshot-race/](09-fix-node-table-snapshot-race/).
 * [10-unused-code.md](10-unused-code.md). 005-10, find unused code and
   propose what to remove, for Frans to approve; the proposal, with its
   tables, plan, tools and runs, in [10-unused-code/](10-unused-code/), and
@@ -200,3 +200,12 @@ as fast from 10 to 100 ms (about 100,000 puts of 1 KB a second).
 commits a second instead of 8, p50 35 ms. Group commit and the Pub API's
 buffer time are not done; a storage design for SSD and flash is out of
 scope. `before-commit.sh` passes.
+
+2026-10-20. 005-09 done, at Frans's request ("Fix 005-09"), by Claude (Opus
+5.5, Claude Code): `Cache3.pointerCreated` reads the canonical flag again
+under the node table's lock, and `Cache3.released` clears it under the same
+lock, so a reader no longer enters an object that a sweep has just
+released. A deterministic test fails without the fix; the flaky test, under
+load, failed 1 in 2,000 runs before and 0 in 8,000 after. The stream
+unchanged (StreamDigest as R8's), Props and the quick performance suite
+unchanged. The change in `java/` is left for Frans to commit.

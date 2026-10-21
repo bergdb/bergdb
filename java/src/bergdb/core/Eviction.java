@@ -291,8 +291,7 @@ public final class Eviction {
         for (Map.Entry<Node, Boolean> e : detached.entrySet()) {
             Node c = e.getKey();
             if (stillNamed.containsKey(c)) continue;
-            if (c.isIndexNode() && c.isCanonical()) c.setCanonical(false);      // M31
-            table.released(c);
+            table.released(c);                  // and its canonical flag cleared, M31
             r++;
         }
         synchronized (this) {
@@ -536,11 +535,10 @@ public final class Eviction {
         return bytes;
     }
 
-    /** Releases the objects: the canonical flag cleared (M31), then the node table's entry
-     *  and the registry. Returns how many. */
+    /** Releases the objects: the canonical flag cleared (M31) and the node table's entry,
+     *  then the registry (Cache3.released). Returns how many. */
     private static long release(Cache3 table, List<Node> objects) {
         for (Node c : objects) {
-            if (c.isIndexNode() && c.isCanonical()) c.setCanonical(false);
             table.released(c);
         }
         return objects.size();

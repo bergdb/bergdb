@@ -247,6 +247,61 @@ public class EvictionReaderTester {
     }
 
     /**
+     * The race of a reader's entry and a release (bergdb item 005-09): a reader follows a
+     * stream slot to a canonical object that only the node table holds
+     * (NodeCollection.followStreamPointer, steps 3 and 4), and eviction releases the object
+     * just before the reader's Cache3.pointerCreated takes the table's lock. Made
+     * deterministic here: the hook (Cache3.EntryListener) runs a sweep of every detachable
+     * object in the reader's thread, which holds the slot's pointer lock (reentrant). The
+     * table must not get the released object back. Until 2026-10-20 pointerCreated read the
+     * canonical flag before it took the lock and entered the object, by then a snapshot, and
+     * the audit failed (INV-CAN: the node table names a snapshot); testReaderPausedInsideAFollow
+     * met it now and then, when a slow sweep was still running as the reader went on.
+     */
+    @Nano
+    public static void testReleaseBeforeTheTableEntry() {
+        int tries = 0;
+        for (int attempt = 0; attempt < 4; attempt++) {
+            final Pair w = new Pair(attempt);
+            List<Object[]> cs = candidates(w.db);
+            Assert.assertTrue("candidates", !cs.isEmpty());
+            Object[] cand = cs.get(attempt % cs.size());
+            Node p = (Node) cand[0];
+            int i = (Integer) cand[1];
+            final Node c = (Node) cand[2];
+            synchronized (w.db.internal().getPointerLock(p, i)) {
+                p.setPointer(i, null, c.getSpos());         // c: held by the node table only
+            }
+
+            final AtomicBoolean released = new AtomicBoolean(false);
+            Cache3.entryListener = new Cache3.EntryListener() {
+                public void beforeEntry(Node to) {
+                    if (to == c && released.compareAndSet(false, true)) {
+                        w.db.internal().evictNow(Eviction.Schedule.EVERY, 1);
+                    }
+                }
+            };
+            try {
+                for (int k = 0; k < w.keys; k++) {
+                    Assert.assertTrue("get(k" + k + ")", Arrays.equals(DbUtil.get(w.ref, "k" + k),
+                            DbUtil.get(w.db, "k" + k)));
+                }
+            } finally {
+                Cache3.entryListener = null;
+            }
+            // The lookups pass the slot unless it is an old entry's.
+            if (released.get()) {
+                tries++;
+                Assert.assertTrue("released", !c.isCanonical());
+            }
+            List<String> audit = Audit.check(w.db);
+            Assert.assertTrue(audit.toString(), audit.isEmpty());
+            w.goOn();
+        }
+        Assert.assertTrue("tried", tries > 0);
+    }
+
+    /**
      * A reader paused inside a follow, holding the slot's pointer lock, after it took a
      * canonical object from the node table: a sweep of every detachable object runs
      * meanwhile. A sweep that needs a pointer lock the reader holds (128 stripes) waits for

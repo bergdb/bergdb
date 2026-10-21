@@ -1,0 +1,12 @@
+start 2026-10-20 13:32:28, J=4 N=1500 B=4, load { 4.05 3.21 2.88 }
+end 2026-10-20 13:40:37
+pre-0509-1.txt: PROBE runs 1500 failures 0 ms 488707
+pre-0509-2.txt: PROBE runs 1500 failures 0 ms 462611
+pre-0509-3.txt: PROBE runs 1500 failures 0 ms 337642
+pre-0509-4.txt: PROBE runs 1500 failures 0 ms 329578
+TOTAL pre-0509: 6000 runs, 0 failures
+fix-0509-1.txt: PROBE runs 1500 failures 0 ms 484039
+fix-0509-2.txt: PROBE runs 1500 failures 0 ms 488717
+fix-0509-3.txt: PROBE runs 1500 failures 0 ms 489096
+fix-0509-4.txt: PROBE runs 1500 failures 0 ms 489436
+TOTAL fix-0509: 6000 runs, 0 failures

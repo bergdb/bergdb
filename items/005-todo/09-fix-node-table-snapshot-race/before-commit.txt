@@ -1,0 +1,4 @@
+Unit: SUCCESS, 934 successful tests in 9.7 s.
+F:    SUCCESS, 59 successful tests in 109.6 s.
+BEFORE COMMIT OK (114 s)
+nice sh before-commit.sh  87.73s user 5.68s system 82% cpu 1:53.74 total

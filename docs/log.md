@@ -823,3 +823,16 @@ second with 100-byte values, 100,000 with 1 KB). One `F_FULLFSYNC` costs
 about 5 ms. At 200 ms bulk writes lose a third, as the consumer wakes only
 on its timer. `Perf` has `bufftime=` and counts the forces; the suite is
 `java/stress/performance-bufftime.suite`.
+
+2026-10-20. Bergdb 005-09, the race of a reader's entry and a release
+(register M31): a reader that follows a stream pointer to a canonical
+object enters it in the node table (`Cache3.pointerCreated`); it read the
+canonical flag before it took the table's lock, so a sweep's release in
+between left the released object in the table, a snapshot, and the audit
+failed (INV-CAN). Records and reads were not affected. Now the flag is read
+again under the lock, and `Cache3.released` clears it under the same lock.
+New test `EvictionReaderTester.testReleaseBeforeTheTableEntry`, which fails
+without the fix; `testReaderPausedInsideAFollow`'s f-test under load failed
+1 in 2,000 runs before, 0 in 2,000 after. StreamDigest identical to R8's;
+Props and `performance.sh`'s quick suite unchanged; `before-commit.sh` and
+`level4.sh quick` pass.

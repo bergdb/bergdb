@@ -1,0 +1,13 @@
+start 2026-10-20 14:21:58, J=4 N=500 B=4 TEST=F, load { 2.04 2.52 22.71 }
+end 2026-10-20 14:34:50
+pre-0509-1.txt: PROBE runs 500 failures 0 ms 766221
+pre-0509-2.txt: PROBE runs 500 failures 0 ms 764909
+pre-0509-3.txt: PROBE runs 500 failures 0 ms 768599
+pre-0509-4.txt: PROBE runs 500 failures 1 ms 767138
+    FAILURE run 242: java.lang.AssertionError: [INV-CAN: the node table names a snapshot of node 68869], expected true, but was false.
+TOTAL pre-0509: 2000 runs, 1 failures
+fix-0509-1.txt: PROBE runs 500 failures 0 ms 764026
+fix-0509-2.txt: PROBE runs 500 failures 0 ms 768724
+fix-0509-3.txt: PROBE runs 500 failures 0 ms 761178
+fix-0509-4.txt: PROBE runs 500 failures 0 ms 771279
+TOTAL fix-0509: 2000 runs, 0 failures

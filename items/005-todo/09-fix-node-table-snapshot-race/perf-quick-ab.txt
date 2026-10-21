@@ -1,0 +1,102 @@
+       4 scenarios from performance-quick.suite
+CPU idle before the runs: 98.58%
+Reference session 8039d4a2-20261020T140742-quick-g1-8g-ref
+Candidate session 8039d4a2-d823286-20261020T140743-quick-g1-8g-cand
+read-1k (read, 3 runs, alternating)
+ [R]
+  read-1k run 1: READ get_latest: 1304762 gets/s (median of 5 windows, 1271445..1308899), p50 667 ns, p99 1671 ns, p99.9 4479 ns|
+ [C]
+  read-1k run 1: READ get_latest: 1300130 gets/s (median of 5 windows, 1277771..1306996), p50 667 ns, p99 1671 ns, p99.9 1919 ns|
+ [C]
+  read-1k run 2: READ get_latest: 1326437 gets/s (median of 5 windows, 1294327..1331921), p50 627 ns, p99 1631 ns, p99.9 1919 ns|
+ [R]
+  read-1k run 2: READ get_latest: 1329152 gets/s (median of 5 windows, 1314585..1333610), p50 667 ns, p99 3295 ns, p99.9 5087 ns|
+ [R]
+  read-1k run 3: READ get_latest: 1307377 gets/s (median of 5 windows, 1290009..1309845), p50 667 ns, p99 1631 ns, p99.9 1959 ns|
+ [C]
+  read-1k run 3: READ get_latest: 1315420 gets/s (median of 5 windows, 1310561..1318940), p50 667 ns, p99 1631 ns, p99.9 1959 ns|
+w-uni-1k-inf (write, 3 runs, alternating)
+ [R]
+  w-uni-1k-inf run 1: WRITE 1000000 commits (1000000 puts) in 11.16 s: 89586 commits/s, bytes appended per user byte 1.22, append p50 7.7 us p99.9 31.6 us max 17.99 ms|
+ [C]
+  w-uni-1k-inf run 1: WRITE 1000000 commits (1000000 puts) in 11.18 s: 89444 commits/s, bytes appended per user byte 1.22, append p50 7.7 us p99.9 31.7 us max 166.07 ms|
+ [C]
+  w-uni-1k-inf run 2: WRITE 1000000 commits (1000000 puts) in 11.15 s: 89668 commits/s, bytes appended per user byte 1.22, append p50 7.7 us p99.9 32.0 us max 30.61 ms|
+ [R]
+  w-uni-1k-inf run 2: WRITE 1000000 commits (1000000 puts) in 11.00 s: 90913 commits/s, bytes appended per user byte 1.22, append p50 7.7 us p99.9 32.0 us max 158.41 ms|
+ [R]
+  w-uni-1k-inf run 3: WRITE 1000000 commits (1000000 puts) in 11.16 s: 89616 commits/s, bytes appended per user byte 1.22, append p50 7.7 us p99.9 31.6 us max 30.25 ms|
+ [C]
+  w-uni-1k-inf run 3: WRITE 1000000 commits (1000000 puts) in 11.16 s: 89566 commits/s, bytes appended per user byte 1.22, append p50 7.7 us p99.9 32.5 us max 64.50 ms|
+w-uni-1k-fin (write, 3 runs, alternating)
+ [R]
+  w-uni-1k-fin run 1: WRITE 1000000 commits (1000000 puts) in 15.84 s: 63121 commits/s, bytes appended per user byte 1.68, append p50 8.3 us p99.9 107.0 us max 287.05 ms|
+ [C]
+  w-uni-1k-fin run 1: WRITE 1000000 commits (1000000 puts) in 15.81 s: 63259 commits/s, bytes appended per user byte 1.68, append p50 8.2 us p99.9 108.5 us max 291.81 ms|
+ [C]
+  w-uni-1k-fin run 2: WRITE 1000000 commits (1000000 puts) in 15.85 s: 63100 commits/s, bytes appended per user byte 1.68, append p50 8.3 us p99.9 107.0 us max 288.80 ms|
+ [R]
+  w-uni-1k-fin run 2: WRITE 1000000 commits (1000000 puts) in 15.85 s: 63073 commits/s, bytes appended per user byte 1.68, append p50 8.3 us p99.9 107.0 us max 284.69 ms|
+ [R]
+  w-uni-1k-fin run 3: WRITE 1000000 commits (1000000 puts) in 15.89 s: 62931 commits/s, bytes appended per user byte 1.68, append p50 8.3 us p99.9 106.0 us max 281.97 ms|
+ [C]
+  w-uni-1k-fin run 3: WRITE 1000000 commits (1000000 puts) in 15.91 s: 62860 commits/s, bytes appended per user byte 1.68, append p50 8.3 us p99.9 108.5 us max 285.74 ms|
+r-1k-fin (restart, 3 runs, alternating)
+ [R]
+  r-1k-fin run 1: STARTUP 0.696 s: 32540 transactions rerun, read from 1864.6 MB, stream 1914.6 MB|MIXED 300000 commits and 12610996 gets in 5.94 s: 50467 commits/s, 2121460 gets/s; commit p99 91.1 us, get p99 2.2 us|W
+ [C]
+  r-1k-fin run 1: STARTUP 0.711 s: 32540 transactions rerun, read from 1864.6 MB, stream 1914.6 MB|MIXED 300000 commits and 12409749 gets in 5.92 s: 50645 commits/s, 2094962 gets/s; commit p99 92.2 us, get p99 2.2 us|W
+ [C]
+  r-1k-fin run 2: STARTUP 0.697 s: 32540 transactions rerun, read from 1864.6 MB, stream 1914.6 MB|MIXED 300000 commits and 12465660 gets in 6.02 s: 49808 commits/s, 2069643 gets/s; commit p99 91.1 us, get p99 2.4 us|W
+ [R]
+  r-1k-fin run 2: STARTUP 0.694 s: 32540 transactions rerun, read from 1864.6 MB, stream 1914.6 MB|MIXED 300000 commits and 12421181 gets in 5.98 s: 50187 commits/s, 2077930 gets/s; commit p99 93.7 us, get p99 2.5 us|W
+ [R]
+  r-1k-fin run 3: STARTUP 0.697 s: 32540 transactions rerun, read from 1864.6 MB, stream 1914.6 MB|MIXED 300000 commits and 12409147 gets in 5.94 s: 50523 commits/s, 2089835 gets/s; commit p99 91.1 us, get p99 2.3 us|W
+ [C]
+  r-1k-fin run 3: STARTUP 0.698 s: 32540 transactions rerun, read from 1864.6 MB, stream 1914.6 MB|MIXED 300000 commits and 12494577 gets in 5.92 s: 50645 commits/s, 2109286 gets/s; commit p99 91.1 us, get p99 2.3 us|W
+COMPARE reference 8039d4a2-20261020T140742-quick-g1-8g-ref [8039d4a2914e7d1fc68f8aca091e999e72e6d492, build pre-0509, jar 320ea949]
+        candidate 8039d4a2-d823286-20261020T140743-quick-g1-8g-cand [8039d4a2914e7d1fc68f8aca091e999e72e6d492+diff 82328649, build fix-0509, jar a9175ceb]
+thresholds: /private/tmp/claude-502/-Users-f-fl-repos-f1/36b3c7d4-fa32-423e-a433-777403c0a914/scratchpad/bdb/java/bench/thresholds.json (missing): {warm_read_throughput=0.05}  (NOT FROZEN: only the provisional warm-read target raises alerts)
+
+SCENARIO r-1k-fin [restart] reference 3 runs, candidate 8039d4a2-d823286-20261020T140743-quick-g1-8g-cand 3 runs
+  metric                                       ref median  ref CV      cand median cand CV    change  status
+  mix.commits_per_s                              50,466.9 0.4% n3         50,644.8 1.0% n3     +0.4%  
+  mix.gets_per_s                                2,089,840 1.1% n3        2,094,960 1.0% n3     +0.2%  
+  mix.puts_per_s                                 50,466.9 0.4% n3         50,644.8 1.0% n3     +0.4%  
+  startup.sec                                      0.6961 0.3% n3           0.6976 1.2% n3     +0.2%  
+  (36 more metrics compared, nothing to report; --all shows them)
+
+SCENARIO read-1k [read] reference 3 runs, candidate 8039d4a2-d823286-20261020T140743-quick-g1-8g-cand 3 runs
+  metric                                       ref median  ref CV      cand median cand CV    change  status
+  get_historical.ops_per_s                      1,253,960 1.7% n3        1,252,190 1.6% n3     -0.1%  
+  get_latest.ops_per_s                          1,307,380 1.0% n3        1,315,420 1.0% n3     +0.6%  
+  get_latest_mt4.ops_per_s                      3,584,390 1.8% n3        3,559,540 1.1% n3     -0.7%  
+  get_longkey.ops_per_s                         956,540.0 1.9% n3        966,625.0 1.9% n3     +1.1%  
+  scan_back.kvs_per_s                           3,987,100 0.8% n3        4,013,370 0.8% n3     +0.7%  
+  scan_back.scans_per_s                          39,871.0 0.8% n3         40,133.7 0.8% n3     +0.7%  
+  scan_fwd.kvs_per_s                            3,808,450 1.7% n3        3,819,240 0.8% n3     +0.3%  
+  scan_fwd.scans_per_s                           38,084.5 1.7% n3         38,192.4 0.8% n3     +0.3%  
+  scan_fwd_hist.kvs_per_s                       3,505,100 1.1% n3        3,531,790 0.3% n3     +0.8%  
+  scan_fwd_hist.scans_per_s                      35,051.0 1.1% n3         35,317.9 0.3% n3     +0.8%  
+  (42 more metrics compared, nothing to report; --all shows them)
+
+SCENARIO w-uni-1k-fin [write] reference 3 runs, candidate 8039d4a2-d823286-20261020T140743-quick-g1-8g-cand 3 runs
+  metric                                       ref median  ref CV      cand median cand CV    change  status
+  commits_per_s                                  63,072.9 0.2% n3         63,099.6 0.3% n3     +0.0%  
+  puts_per_s                                     63,072.9 0.2% n3         63,099.6 0.3% n3     +0.0%  
+  restart.startup_sec                              0.6243 1.0% n3           0.6232 1.8% n3     -0.2%  
+  user_mb_per_s                                    63.325 0.2% n3           63.352 0.3% n3     +0.0%  
+  (29 more metrics compared, nothing to report; --all shows them)
+
+SCENARIO w-uni-1k-inf [write] reference 3 runs, candidate 8039d4a2-d823286-20261020T140743-quick-g1-8g-cand 3 runs
+  metric                                       ref median  ref CV      cand median cand CV    change  status
+  commit.append.max_us                           30,245.1 112.9% n3         64,500.9 81.0% n3   +113.3%  EXPLAIN (maximum much larger than the reference's)
+  commits_per_s                                  89,615.6 0.8% n3         89,565.9 0.1% n3     -0.1%  
+  puts_per_s                                     89,615.6 0.8% n3         89,565.9 0.1% n3     -0.1%  
+  restart.startup_sec                              0.6414 1.7% n3           0.6435 1.6% n3     +0.3%  
+  slowest_commit_ms                                30.245 112.9% n3           64.501 81.0% n3   +113.3%  EXPLAIN (maximum much larger than the reference's)
+  user_mb_per_s                                    89.974 0.8% n3           89.924 0.1% n3     -0.1%  
+  (21 more metrics compared, nothing to report; --all shows them)
+
+NO ALERTS
+Comparison exit code 0 (0: no alerts, 1: alerts to repeat in a matched run, 3: incompatible, 4: failed or missing runs)
