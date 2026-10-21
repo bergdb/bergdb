@@ -390,7 +390,7 @@ public class FileStream implements AppendOnlyStream {
                 }
                 name = name.substring(0, name.length() - SUFFIX.length());
                 
-                int index;
+                long index;
                 try {
                     index = this.stringToIndex(name);
                 } catch (BadFormatException e) {
@@ -453,7 +453,7 @@ public class FileStream implements AppendOnlyStream {
             
             name = name.substring(0, name.length() - SUFFIX.length());
             
-            int index;
+            long index;
             try {
                 index = this.stringToIndex(name);
             } catch (BadFormatException e) {
@@ -525,9 +525,13 @@ public class FileStream implements AppendOnlyStream {
     }
     
     /**
+     * Parses the index of a file name: its first position divided by BYTES_PER_INDEX_UNIT.
+     * A long since 2026-10-21 (bergdb 005-19): an int could not name the files from
+     * 2^31 * 100,000 bytes (214.7 TB) on, and such a stream could not be opened.
+     * 
      * @throws BadFormatException If not correctly formatted.
      */
-    private int stringToIndex(String s) {
+    private long stringToIndex(String s) {
         int zeroCount = 0;
         int length = s.length();
         
@@ -545,11 +549,14 @@ public class FileStream implements AppendOnlyStream {
         
         s = s.substring(zeroCount);
         
-        int result = 0;
+        long result = 0;
         try {
-            result = Integer.parseInt(s);
+            result = Long.parseLong(s);
         } catch (NumberFormatException e) {
-            throw new BadFormatException("Not an int, '" + s + "'.");
+            throw new BadFormatException("Not a long, '" + s + "'.");
+        }
+        if (result < 0 || result > Long.MAX_VALUE / BYTES_PER_INDEX_UNIT) {
+            throw new BadFormatException("Index out of range, '" + s + "'.");
         }
         return result;
     }
@@ -1053,6 +1060,29 @@ public class FileStream implements AppendOnlyStream {
         Assert.assertEquals(200*1000 * 30, f.getLength());
         Assert.assertEquals(200*1000 * 30, f.getFirstPos());
         f.close();
+    }
+    
+    /**
+     * Regression test for bergdb 005-19: a stream past 2^31 * 100,000 bytes (214.7 TB) could
+     * be written but not opened again; the file names were parsed as ints.
+     */
+    @Nano
+    public static void testReopenPast214TB(TestEnvironment c) throws IOException {
+        File dir = c.createTempDir();
+        long pos = (1L << 31) * BYTES_PER_INDEX_UNIT;
+        FileStream f = new FileStream(dir);
+        f.seekFirstPos(pos);
+        byte[] bytes = new byte[] {1, 2, 3};
+        f.append(bytes, 0, bytes.length);
+        f.close();
+        
+        FileStream f2 = new FileStream(dir);
+        Assert.assertEquals(pos, f2.getFirstPos());
+        Assert.assertEquals(pos + 3, f2.getLength());
+        byte[] b = new byte[3];
+        f2.read(pos, b, 0, 3);
+        Assert.assertArrayEquals(bytes, b);
+        f2.close();
     }
     
     @Nano

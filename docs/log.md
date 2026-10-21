@@ -877,3 +877,7 @@ tests; streams unchanged (StreamDigest), Props unchanged;
 then could not start again ("Time too large"). Now `DbClock` refuses it
 with a `DbException` before the transaction begins. Two tests; streams
 unchanged; `before-commit.sh` passes.
+
+2026-10-21. 005-19 done, by Claude (Opus 5.5, Claude Code): `FileStream`
+parsed its file names as `int`s, so a stream past 214.7 TB of positions
+could not be opened again. Now `long`; a test; `before-commit.sh` passes.
