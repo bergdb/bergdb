@@ -150,9 +150,17 @@ public class StringUtil {
                 count++;
             } else if (ch <= 0x07ff) {
                 count += 2;
-            } else if (Character.isHighSurrogate(ch)) {
-                count += 4;
-                ++i;
+            } else if (Character.isSurrogate(ch)) {
+                // 2026-10-21 (bergdb 005-26): as the encoder writes. A pair is 4 bytes; a
+                // lone surrogate is '?', 1 byte. Every high surrogate counted 4 and skipped
+                // the next char, so the size differed from the bytes written.
+                if (Character.isHighSurrogate(ch) && i + 1 < length 
+                        && Character.isLowSurrogate(s.charAt(i + 1))) {
+                    count += 4;
+                    ++i;
+                } else {
+                    count += 1;
+                }
             } else {
                 count += 3;
             }
@@ -163,7 +171,9 @@ public class StringUtil {
 
     @Nano
     public static void testUtf8Size() throws UnsupportedEncodingException {
-        String[] strings = { "", "a", "å", "Alban", "Snöslask", "być", "العربية", "\u0000abc" };
+        String[] strings = { "", "a", "å", "Alban", "Snöslask", "być", "العربية", "\u0000abc",
+                "x\uD800", "x\uD800y", "\uDC00a", "\uD83D\uDE00", "a\uD83D\uDE00\uD83D", 
+                "\uDC00\uD800", "\uD800\uD800\uDC00" };
             // Last word is "Arabic" in Arabic.
         
         for (int i = 0; i < strings.length; i++) {

@@ -916,3 +916,10 @@ stays usable. A test; `before-commit.sh` passes.
 `BufferedStream.read` let a read end one byte past the end of the stream,
 and gave a stale byte of the ring buffer; now it throws. A test;
 `before-commit.sh` passes.
+
+2026-10-21. 005-26 done, by Claude (Opus 5.5, Claude Code):
+`StringUtil.utf8Size` counted a lone surrogate as 3 or 4 bytes, where the
+encoder writes 1, so an object with such a string in an array could not be
+stored ("Bad type"). Now it counts as the encoder writes. Tests;
+`before-commit.sh` passes. With it, 005-15 to 005-26, the findings of the
+review of the Java code for overflow, are done.

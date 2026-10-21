@@ -1232,4 +1232,26 @@ public class DbObjectTester {
         }
         Assert.assertEquals(DbObject.MAX_DEPTH, n);
     }
+    
+    // ---- bergdb 005-26: strings with lone surrogates ----
+    
+    private static class StringsClass {
+        String[] names;
+        String one;
+        int after;
+    }
+    
+    /** An array with a lone surrogate failed with "Bad type"; '?' replaces it, as in UTF-8. */
+    @Nano
+    public static void testLoneSurrogates() {
+        StringsClass o = new StringsClass();
+        o.names = new String[] {"x\uD800", "y", "\uDC00z", "\uD83D\uDE00"};
+        o.one = "a\uD800b";
+        o.after = 42;
+        StringsClass back = DbObject.toDbObject(o).toJavaObject(StringsClass.class, 
+                new KvToObjectImp());
+        Assert.assertArrayEquals(new String[] {"x?", "y", "?z", "\uD83D\uDE00"}, back.names);
+        Assert.assertEquals("a?b", back.one);
+        Assert.assertEquals(42, back.after);
+    }
 }

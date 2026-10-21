@@ -1,7 +1,7 @@
 005-26. Fix: a string with a lone surrogate cannot be stored in an array
 ========================================================================
 
-Status: open. Kind: fix. Created 2026-10-21.
+Status: done (2026-10-21). Kind: fix. Created 2026-10-21.
 
 Found on 2026-10-21 in the review of the Java code for overflow (a size
 computation, not an overflow), by Claude (Opus 5.5, Claude Code), at
@@ -34,3 +34,19 @@ Done when
   lone and paired surrogates, and an object with such strings in an array
   is stored and read back.
 * `java/before-commit.sh` prints `BEFORE COMMIT OK`.
+
+
+Outcome
+-------
+
+2026-10-21, by Claude (Opus 5.5, Claude Code). `StringUtil.utf8Size`
+counts 4 bytes for a high surrogate followed by a low one, and 1 byte for
+any other surrogate, as Java's UTF-8 encoder writes. Data stored before is
+read as before: in a `DbObject` the old sizes left padding, and arrays with
+such strings could not be stored at all.
+
+Tests: `StringUtil.testUtf8Size` with seven more strings (lone, reversed
+and paired surrogates), and `DbObjectTester.testLoneSurrogates` (an
+object whose `String[]` and `String` fields have lone surrogates is
+stored and read back, with `?` for each). `before-commit.sh`: BEFORE
+COMMIT OK (961 unit tests, 62 f-tests).

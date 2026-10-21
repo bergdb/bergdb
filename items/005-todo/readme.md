@@ -32,7 +32,6 @@ Open
 | [005-10](10-unused-code.md) | Investigate | Unused code in `java/` and `lean/`: find it and propose what to remove; nothing is removed without Frans's approval | done |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
 | [005-12](12-transaction-outputs.md) | Investigate | Transaction outputs (`setOutput`, `getOutput`): study them, then test them or remove them (005-10) | open |
-| [005-26](26-fix-lone-surrogates.md) | Fix | A string with a lone surrogate cannot be stored in an array: `utf8Size` | open |
 
 
 Closed
@@ -40,6 +39,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-26](26-fix-lone-surrogates.md) | Fix | A string with a lone surrogate cannot be stored in an array: `utf8Size` | done | 2026-10-21 |
 | [005-25](25-fix-buffered-read-past-end.md) | Fix | A `BufferedStream` read one byte past the end returns a stale byte | done | 2026-10-21 |
 | [005-24](24-fix-file-read-at-end.md) | Fix | A `FileStream` read at the end of the stream loops forever | done | 2026-10-21 |
 | [005-23](23-fix-deep-objects.md) | Fix | `StackOverflowError` for a cyclic or deeply nested object at a put | done | 2026-10-21 |
@@ -340,3 +340,10 @@ stays usable. A test; `before-commit.sh` passes.
 `BufferedStream.read` let a read end one byte past the end of the stream,
 and gave a stale byte of the ring buffer; now it throws. A test;
 `before-commit.sh` passes.
+
+2026-10-21. 005-26 done, by Claude (Opus 5.5, Claude Code):
+`StringUtil.utf8Size` counted a lone surrogate as 3 or 4 bytes, where the
+encoder writes 1, so an object with such a string in an array could not be
+stored ("Bad type"). Now it counts as the encoder writes. Tests;
+`before-commit.sh` passes. With it, 005-15 to 005-26, the findings of the
+review of the Java code for overflow, are done.
