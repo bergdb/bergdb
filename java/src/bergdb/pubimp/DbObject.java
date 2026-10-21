@@ -325,6 +325,87 @@ public class DbObject extends DbValue {
             return Builder.buildNull();
         }
         
+        // 2026-10-21 (bergdb 005-23): a cycle, or nesting deeper than MAX_DEPTH, is refused
+        // with the field path; the recursion ended in a StackOverflowError.
+        final Path path = PATH.get();
+        path.enter(object);
+        try {
+            return toDbObjectOnPath(object, path);
+        } finally {
+            path.leave();
+        }
+    }
+    
+    /** The deepest nesting of objects toDbObject() converts (bergdb 005-23). */
+    static final int MAX_DEPTH = 1000;
+    
+    private static final ThreadLocal<Path> PATH = new ThreadLocal<Path>() {
+        protected Path initialValue() {
+            return new Path();
+        }
+    };
+    
+    /** The objects toDbObject() is converting on this thread, outermost first, by field. */
+    private static final class Path {
+        private final ArrayList<Object> objects = new ArrayList<Object>();
+        private final ArrayList<String> names = new ArrayList<String>();     // field of each
+        private final java.util.IdentityHashMap<Object, Boolean> set = 
+                new java.util.IdentityHashMap<Object, Boolean>();
+        
+        void enter(Object object) {
+            if (set.containsKey(object)) {
+                int first = 0;
+                for (int i = 0; i < objects.size(); i++) {
+                    if (objects.get(i) == object) {
+                        first = i;
+                        break;
+                    }
+                }
+                throw new IllegalArgumentException("The object has a reference cycle: the "
+                        + object.getClass().getName() + " at " + describe(names.size()) 
+                        + " is also at " + describe(first) + ".");
+            }
+            if (objects.size() >= MAX_DEPTH) {
+                throw new IllegalArgumentException("The object is nested deeper than " 
+                        + MAX_DEPTH + " objects, at " + describe(names.size()) + ".");
+            }
+            objects.add(object);
+            set.put(object, Boolean.TRUE);
+            names.add(null);
+        }
+        
+        void leave() {
+            int last = objects.size() - 1;
+            set.remove(objects.remove(last));
+            names.remove(last);
+        }
+        
+        /** Sets the field being converted in the innermost object. */
+        void field(String name) {
+            names.set(names.size() - 1, name);
+        }
+        
+        /** The field path to the object at depth 'depth' (0: the outermost object). */
+        private String describe(int depth) {
+            if (depth == 0) {
+                return "the top";
+            }
+            StringBuilder b = new StringBuilder();
+            for (int i = 0; i < depth; i++) {
+                if (depth > 12 && i == 5) {
+                    b.append("(" + (depth - 10) + " more).");
+                    i = depth - 5;
+                }
+                b.append(names.get(i));
+                if (i < depth - 1) {
+                    b.append('.');
+                }
+            }
+            return b.toString();
+        }
+    }
+    
+    private static DbObject toDbObjectOnPath(Object object, Path path) {
         DbObject.Builder b = new DbObject.Builder();
         Class<?> clazz = object.getClass();
         
@@ -348,36 +429,25 @@ public class DbObject extends DbValue {
             
             ArrayList<Field> fields = getEligibleFields(clazz);
             for (Field f : fields) {
+                path.field(f.getName());
+                Object fieldValue;
                 try {
-                    DbValue dbValue = fieldToDbValue(object, f);
-                    b.addDbValue(f.getName(), dbValue);
+                    fieldValue = f.get(object);
                 } catch (IllegalArgumentException e) {
                     throw new Bug(e);
                 } catch (IllegalAccessException e) {
                     throw new Bug("Should not happen, " + e.toString());
                 }
+                // Outside the try (bergdb 005-23): an IllegalArgumentException of a nested
+                // object (a cycle, too deep) is not a Bug.
+                DbValue dbValue = DbValue.toDbValue(f.getType(), fieldValue);
+                b.addDbValue(f.getName(), dbValue);
             }
         
         }
         
         DbObject result = b.build();
         return result;
-    }
-    
-    /**
-     * Reads the value of a Java object field and adds a corresponding DbField to the 
-     * DbObject builder.
-     */
-    private static DbValue fieldToDbValue(Object object, Field field) 
-            throws IllegalArgumentException, IllegalAccessException {
-        // See http://docs.oracle.com/javase/1.5.0/docs/api/java/lang/Class.html#getName%28%29
-        // for Java type names.
-        
-        Object fieldValue = field.get(object);
-        Class<?> c = field.getType();
-        DbValue dbValue = DbValue.toDbValue(c, fieldValue);
-        assert dbValue != null;
-        return dbValue;
     }
     
     /**

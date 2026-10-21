@@ -32,7 +32,6 @@ Open
 | [005-10](10-unused-code.md) | Investigate | Unused code in `java/` and `lean/`: find it and propose what to remove; nothing is removed without Frans's approval | done |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
 | [005-12](12-transaction-outputs.md) | Investigate | Transaction outputs (`setOutput`, `getOutput`): study them, then test them or remove them (005-10) | open |
-| [005-23](23-fix-deep-objects.md) | Fix | `StackOverflowError` for a cyclic or deeply nested object at a put | open |
 | [005-24](24-fix-file-read-at-end.md) | Fix | A `FileStream` read at the end of the stream loops forever | open |
 | [005-25](25-fix-buffered-read-past-end.md) | Fix | A `BufferedStream` read one byte past the end returns a stale byte | open |
 | [005-26](26-fix-lone-surrogates.md) | Fix | A string with a lone surrogate cannot be stored in an array: `utf8Size` | open |
@@ -43,6 +42,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-23](23-fix-deep-objects.md) | Fix | `StackOverflowError` for a cyclic or deeply nested object at a put | done | 2026-10-21 |
 | [005-22](22-fix-narrowing.md) | Fix | A stored value too large for its Java field is truncated silently | done | 2026-10-21 |
 | [005-21](21-fix-small-overflows.md) | Fix | Smaller overflows: `Time.millis`, `TimeResolver` seconds, `TransSeq.take`, negative key hashes, `DbObject` shorts, corrupt counts | done | 2026-10-21 |
 | [005-20](20-fix-jmx-retain-days.md) | Fix | `Jmx` `setRetainDurationInDays` in `int`: 99,999 days becomes 578.5 | done | 2026-10-21 |
@@ -323,3 +323,9 @@ decided: reading an object into its class, a stored value that does not fit
 its Java field (a long of 3,000,000,000 into an `int`, a NaN into a `long`)
 was cast silently; now it is a `DataFormatException` that names the field.
 Two tests; `before-commit.sh` passes.
+
+2026-10-21. 005-23 done, by Claude (Opus 5.5, Claude Code), as Frans
+decided: a put of an object with a reference cycle, or nested 20,000 deep,
+threw `StackOverflowError`. Now `DbObject.toDbObject` refuses a cycle, and
+nesting deeper than 1,000 objects, with an `IllegalArgumentException` that
+names the field path. Three tests, one changed; `before-commit.sh` passes.

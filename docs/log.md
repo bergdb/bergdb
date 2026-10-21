@@ -899,3 +899,9 @@ decided: reading an object into its class, a stored value that does not fit
 its Java field (a long of 3,000,000,000 into an `int`, a NaN into a `long`)
 was cast silently; now it is a `DataFormatException` that names the field.
 Two tests; `before-commit.sh` passes.
+
+2026-10-21. 005-23 done, by Claude (Opus 5.5, Claude Code), as Frans
+decided: a put of an object with a reference cycle, or nested 20,000 deep,
+threw `StackOverflowError`. Now `DbObject.toDbObject` refuses a cycle, and
+nesting deeper than 1,000 objects, with an `IllegalArgumentException` that
+names the field path. Three tests, one changed; `before-commit.sh` passes.

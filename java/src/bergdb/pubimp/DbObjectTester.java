@@ -6,7 +6,6 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Arrays;
 
-import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.BadFormatException;
@@ -822,29 +821,24 @@ public class DbObjectTester {
     }
     
     /** 
-     * Circular references will throw StackOverFlowException.
-     * This test on my (Frans's) machine (rose) currently (130529) runs in 80 ms
-     * and the error condition seem not to disturb the rest of the code.
-     * The tests is only run in an ordinary Java environment, not on IKVM, GCJ, Android.
+     * Circular references throw IllegalArgumentException with the field path (since
+     * 2026-10-21, bergdb 005-23; before, StackOverflowError).
      */
     @Nano
     public static void testCircularRefs() {
-        if (Util.runsIkvm() || Util.runsAndroid()) {
-            return;
-        }
-        
         Circular0 obj = new Circular0();
         obj.c = new Circular1();
         obj.c.c = obj;
         
-        StackOverflowError ex = null;
+        IllegalArgumentException ex = null;
         try {
             DbObject.toDbObject(obj);
-        } catch (StackOverflowError e) {
+        } catch (IllegalArgumentException e) {
             ex = e;
         }
         
         Assert.assertTrue(ex != null);
+        Assert.assertTrue(ex.getMessage(), ex.getMessage().contains("at c.c is also at the top"));
     }
     
     private static class SuperOne {
@@ -1163,5 +1157,79 @@ public class DbObjectTester {
         Assert.assertTrue(Float.isInfinite(narrow("f", new DbDouble(Double.POSITIVE_INFINITY)).f));
         Assert.assertArrayEquals(new int[] {1, -5}, 
                 narrow("ints", DbValue.toDbValue(long[].class, new long[] {1, -5})).ints);
+    }
+    
+    // ---- bergdb 005-23: cyclic and deeply nested objects ----
+    
+    private static class Link {
+        int v;
+        Link next;
+        Link[] more;
+    }
+    
+    private static Link list(int length) {
+        Link head = null;
+        for (int i = 0; i < length; i++) {
+            Link n = new Link();
+            n.v = i;
+            n.next = head;
+            head = n;
+        }
+        return head;
+    }
+    
+    @Nano
+    public static void testCycleRefused() {
+        Link a = new Link();
+        Link b = new Link();
+        a.next = b;
+        b.next = a;
+        try {
+            DbObject.toDbObject(a);
+            throw new AssertionError("no exception");
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("cycle")
+                    && e.getMessage().contains("next.next"));
+        }
+        
+        Link c = new Link();            // a cycle through an array
+        c.more = new Link[] {new Link(), c};
+        try {
+            DbObject.toDbObject(c);
+            throw new AssertionError("no exception");
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("cycle"));
+        }
+        
+        Link shared = new Link();       // twice, but not a cycle: stored as before
+        Link d = new Link();
+        d.next = shared;
+        d.more = new Link[] {shared, shared};
+        Link back = DbObject.toDbObject(d).toJavaObject(Link.class, new KvToObjectImp());
+        Assert.assertEquals(2, back.more.length);
+        
+        DbObject.toDbObject(list(3));   // the thread's path is empty again
+    }
+    
+    @Nano
+    public static void testDeepRefused() {
+        try {
+            DbObject.toDbObject(list(2000));
+            throw new AssertionError("no exception");
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("deeper than"));
+        }
+    }
+    
+    /** As deep as allowed: stored and read back (2 s; the nested bytes are copied per level). */
+    @Nano("f")
+    public static void testDeepAtLimit() {
+        Link back = DbObject.toDbObject(list(DbObject.MAX_DEPTH))
+                .toJavaObject(Link.class, new KvToObjectImp());
+        int n = 0;
+        for (Link l = back; l != null; l = l.next) {
+            n++;
+        }
+        Assert.assertEquals(DbObject.MAX_DEPTH, n);
     }
 }
