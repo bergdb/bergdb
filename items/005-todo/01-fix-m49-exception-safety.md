@@ -23,6 +23,9 @@ of a transaction is now an ordinary failure path, not only a lazy-startup
 one. Frans decided on 2026-10-17 that it blocks nothing and is fixed later;
 this is the later.
 
+2026-10-21: a transaction too large for its record was a trigger too; 005-17
+refuses it before the go point.
+
 
 Frans
 -------

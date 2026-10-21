@@ -1824,4 +1824,81 @@ public class DbTester {
                     DbUtil.get(db, Long.MAX_VALUE, "/k/" + getKey(i)));
         }
     }
+    
+    /**
+     * bergdb 005-17: a transaction whose value nodes pass 7/8 of the record limit is refused
+     * before it changes anything, and the database goes on. Before, the record's size wrapped
+     * in store(), after the puts, and every later transaction failed too. The limit is lowered
+     * so that the test needs no 2 GB.
+     */
+    @Nano
+    public static void testTransactionTooLarge() {
+        final long saved = StoredTrans.recordLimit;
+        StoredTrans.recordLimit = 1000 * 1000;
+        try {
+            MemoryStream stream = new MemoryStream();
+            Db db = Db.builder().testSetup(stream).start();
+            db.execute(db.trans().put("/a", "a").build());
+            long length = db.getStreamLength();
+            
+            try {
+                db.execute(db.trans().put("/big", new byte[900 * 1000]).put("/b", "b").build());
+                throw new AssertionError("a transaction above the limit was executed");
+            } catch (bergdb.pub.util.DbException e) {
+                assertTrue(e.getMessage(), e.getMessage().contains("too large"));
+            }
+            assertTrue(DbUtil.get(db, Long.MAX_VALUE, "/big") == null);
+            assertTrue(DbUtil.get(db, Long.MAX_VALUE, "/b") == null);
+            assertEquals(length, db.getStreamLength());
+            
+            db.execute(db.trans().put("/c", new byte[800 * 1000]).build());
+            assertEquals(800 * 1000, DbUtil.get(db, Long.MAX_VALUE, "/c").length);
+            db.stop();
+        } finally {
+            StoredTrans.recordLimit = saved;
+        }
+    }
+    
+    /**
+     * bergdb 005-17: records near the record limit stay within it; the writer takes fewer
+     * dirty index nodes (TransSeq.take's budget), and a restart finds the state.
+     */
+    @Nano("f")
+    public static void testRecordsWithinLimit() {
+        final long saved = StoredTrans.recordLimit;
+        final long limit = 200 * 1000;
+        StoredTrans.recordLimit = limit;
+        try {
+            MemoryStream stream = new MemoryStream();
+            CoreTestClock clock = new CoreTestClock();
+            long time = 1000 * 1000;
+            clock.setTime(time);
+            Db db = Db.builder().testSetup(stream).clock(clock).maxNodeSize8()
+                    .startupDistance(150 * 1000).start();
+            Random r = new Random(17);
+            for (int i = 0; i < 300; i++) {
+                clock.setTime(time += 1000);
+                Trans.Builder b = db.trans().put("/big/" + (i % 7), new byte[170 * 1000]);
+                for (int j = 0; j < 50; j++) {
+                    b.put("/k/" + r.nextInt(3000), "v" + i);
+                }
+                Trans t = b.build();
+                db.execute(t);
+                assertTrue("record of " + (t.nextPos - t.tpos) + " bytes",
+                        t.nextPos - t.tpos <= limit + 2 * RecoverableStream.META_BLOCK_SIZE);
+            }
+            long checksum = DbUtil.checksum(db);
+            db.sync(SyncLevel.STRONG);
+            db.stop();
+            
+            CoreTestClock clock2 = new CoreTestClock();
+            clock2.setTime(time += 1000);
+            Db db2 = Db.builder().testSetup(stream.copy()).clock(clock2).maxNodeSize8()
+                    .startupDistance(150 * 1000).start();
+            assertEquals(checksum, DbUtil.checksum(db2));
+            db2.stop();
+        } finally {
+            StoredTrans.recordLimit = saved;
+        }
+    }
 }

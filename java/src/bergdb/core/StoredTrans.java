@@ -20,6 +20,7 @@ import static bergdb.nanotest.Assert.assertEquals;
 import static bergdb.nanotest.Assert.assertArrayEquals;
 import static bergdb.nanotest.Assert.assertFalse;
 import bergdb.nanotest.Nano;
+import bergdb.pub.util.DbException;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
 
@@ -45,6 +46,25 @@ public class StoredTrans {
      * A stream of an older format is refused: new databases only.
      */
     public final static byte RECORD_FORMAT = 5;
+    
+    /**
+     * The largest record, in bytes (2026-10-21, bergdb 005-17): the record's size field is an
+     * int (RecoverableStream), and the record is serialized to one array, at most about
+     * Integer.MAX_VALUE long.
+     */
+    public static final long MAX_RECORD_SIZE = Integer.MAX_VALUE - 8;
+    
+    /** The record limit in force: MAX_RECORD_SIZE; tests lower it. */
+    static volatile long recordLimit = MAX_RECORD_SIZE;
+    
+    /**
+     * The most bytes the value nodes of a transaction may take: 7/8 of the record limit, so
+     * that its last eighth, 256 MB, is left for the index nodes and the got-dirty list
+     * (Db.checkSize).
+     */
+    static long valueLimit() {
+        return recordLimit / 8 * 7;
+    }
     
     /** Transaction time. */
     public final long tt;
@@ -537,10 +557,12 @@ public class StoredTrans {
             // The three node loops sets new stream pos of nodes, sets ID if needed,
             // Also computes totalSize and sets prevPos array for KeyNodes.
             // This is performance-sensitive; pretty code has lower-than-usual prio here.
+            // 2026-10-21 (bergdb 005-17): the size is added up in a long, and a record above
+            // the record limit is refused; the int sum wrapped for transactions of 2 GB.
 
-            totalSize = 32; // Header size, 32 = trans size (4), format (4), trans time (8),
+            long size = 32; // Header size, 32 = trans size (4), format (4), trans time (8),
                             // startupPos (8), topPos (8)
-            long currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
+            long currentPos = RecoverableStream.getSpos(transStartPos, size);
 
             resizePrevPosIfNeeded();
 
@@ -548,8 +570,8 @@ public class StoredTrans {
             for (int i = 0; i < transNodes.topCount; i++) {
                 TopNode node = transNodes.topNodes[i];
                 node.spos = currentPos;
-                totalSize += StoredTopNode.getByteSize(node);
-                currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
+                size += StoredTopNode.getByteSize(node);
+                currentPos = RecoverableStream.getSpos(transStartPos, size);
             }
 
             // Prepares keyNodes.
@@ -559,37 +581,45 @@ public class StoredTrans {
                     KeyNode node = transNodes.keyNodes[i];
                     prevPos[prevPosIndex++] = node.spos;
                     node.spos = currentPos;
-                    totalSize += StoredKeyNode.getByteSize(node);
-                    currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
+                    size += StoredKeyNode.getByteSize(node);
+                    currentPos = RecoverableStream.getSpos(transStartPos, size);
                 }
             }
 
-            topAndKeySize = totalSize;
+            final long topAndKey = size;
 
             // Prepares valueNodes.
             for (int i = 0; i < transNodes.valueCount; i++) {
                 ValueNode node = transNodes.valueNodes[i];
                 long[] key = transNodes.keys[i];
                 node.setSpos(currentPos);
-                totalSize += StoredValueNode.getByteSize(node, key);
-                currentPos = RecoverableStream.getSpos(transStartPos, totalSize);
+                size += StoredValueNode.getByteSizeLong(node.value, key);
+                currentPos = RecoverableStream.getSpos(transStartPos, size);
             }
 
             // Marker for end of nodes
-            totalSize += 4;
+            size += 4;
             
             // Number of got dirty node ids
-            totalSize += 4;
+            size += 4;
             
             // Got-dirty node ids
-            totalSize += 16 * gotDirtyNodes.size();
+            size += 16L * gotDirtyNodes.size();
 
             // Room for RecoverableStream.LAST_BYTE.
-            totalSize += 1;
+            size += 1;
 
             // For totalSize to be a multiple of TRANS_ALIGNMENT.
-            extraZeros = computeZeroCount(totalSize);
-            totalSize += extraZeros;
+            extraZeros = computeZeroCount(size);
+            size += extraZeros;
+            
+            if (size > recordLimit) {
+                throw new DbException("The record of the transaction would take " + size 
+                        + " bytes, more than the limit, " + recordLimit + " (bergdb 005-17).");
+            }
+            
+            totalSize = (int) size;
+            topAndKeySize = (int) topAndKey;
             
             assert totalSize % NodeStream.TRANS_ALIGNMENT == 0 : totalSize + ", " + extraZeros;
 
@@ -756,7 +786,10 @@ public class StoredTrans {
             }
 
             if (byteBuffer.length < totalSize) {
-                int newSize = (int) (totalSize * 1.20);
+                // At most the record limit (2026-10-21, bergdb 005-17): the int cast gave
+                // Integer.MAX_VALUE, more than the largest array, from 1.79 GB.
+                int newSize = (int) Math.max(totalSize, 
+                        Math.min((long) (totalSize * 1.20), MAX_RECORD_SIZE));
                 
                 try {
                     byteBuffer = new byte[newSize];
@@ -790,6 +823,27 @@ public class StoredTrans {
         Kv kv = new Kv(key, value);
         Assert.assertArrayEquals(new byte[]{1}, kv.key);
         Assert.assertArrayEquals(new byte[]{1, 2}, kv.value);
+    }
+    
+    /** bergdb 005-17: a record above the record limit is refused by the serializer. */
+    @Nano
+    private static void testRecordAboveLimit() {
+        final long saved = recordLimit;
+        recordLimit = 100 * 1000;
+        try {
+            Serializer serializer = new Serializer();
+            serializer.serialize(transWithValue(new byte[90 * 1000]), 100, 200, -1, 
+                    new ArrayList<Node>());
+            try {
+                serializer.serialize(transWithValue(new byte[100 * 1000]), 100, 200, -1, 
+                        new ArrayList<Node>());
+                throw new AssertionError("a record above the limit was serialized");
+            } catch (DbException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("limit"));
+            }
+        } finally {
+            recordLimit = saved;
+        }
     }
     
     @Nano

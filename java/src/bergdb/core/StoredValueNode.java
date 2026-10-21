@@ -133,6 +133,17 @@ public class StoredValueNode implements StoredNode {
               : 8 + 8 + 4 + 4 + node.value.length + 4 + 8 * key.length;
         return size + Spos.addToAlign(size, 4);
     }
+    
+    /**
+     * As getByteSize(), for a value (null for a delete) and a key, computed in long
+     * (2026-10-21, bergdb 005-17): the int sum wraps for a value of close to 2^31 bytes.
+     */
+    public static long getByteSizeLong(byte[] value, long[] key) {
+        long size = value == null ?
+                8 + 8 + 4 +                                4 + 8L * key.length
+              : 8 + 8 + 4 + 4 + (long) value.length + 4 + 8L * key.length;
+        return size + (4 - size % 4) % 4;
+    }
 
     /**
      * The value is serialized to the byte buffer.

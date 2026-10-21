@@ -25,6 +25,7 @@ public final class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.T
     private static final int INITIAL_SIZE = 64;
     private int counter;
     public long kvSize;    // total byte size of keys plus values
+    public long valueRecordBytes;    // bytes of the value nodes in the record (005-17)
     
     public int topCount;
     public TopNode[] topNodes;
@@ -112,6 +113,7 @@ public final class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.T
             keys[valueCount] = key;
             
             valueCount++;
+            valueRecordBytes += StoredValueNode.getByteSizeLong(node.value, key);
             kvSize += key.length * 8;
             if (node.value == null) {
                 kvSize += 16;
@@ -148,6 +150,7 @@ public final class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.T
         
         counter++;
         kvSize = 0;
+        valueRecordBytes = 0;
         
         // TopNodes
         

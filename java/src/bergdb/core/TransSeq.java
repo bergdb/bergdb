@@ -83,6 +83,19 @@ public class TransSeq implements PosOfTransBeforeFunction {
     public long take(long currentSp, long maxSp, 
             final int valueCount, final long kvSize, 
             final TransNodesForMe transNodes) {
+        return take(currentSp, maxSp, valueCount, kvSize, transNodes, Long.MAX_VALUE);
+    }
+    
+    /**
+     * As take() above, and takes nodes for at most 'maxBytes' bytes of the record (2026-10-21,
+     * bergdb 005-17): a node counts its size in the stream and 16 bytes, for its entry in the
+     * got-dirty list if it is still dirty. The transactions are taken whole; the first that
+     * does not fit is not taken, also when fewer than two are. It matters for records near
+     * the record limit only (StoredTrans.recordLimit).
+     */
+    public long take(long currentSp, long maxSp, 
+            final int valueCount, final long kvSize, 
+            final TransNodesForMe transNodes, final long maxBytes) {
         //
         // Takes nodes from TransSeq queue until 1. the queue is empty, or 2. the maxSp would be
         // exceed if we would continue, or 3. the index node limit has been reached.
@@ -107,9 +120,19 @@ public class TransSeq implements PosOfTransBeforeFunction {
         final int nodeCountLimit = nodeCountLimitLong > Integer.MAX_VALUE ? 
                 Integer.MAX_VALUE : (int) nodeCountLimitLong;
         
+        long bytes = 0;
+        
         while (first != null 
                 && first.tpos <= maxSp 
                 && (nodeCount < nodeCountLimit || transCount < 2)) {
+            
+            if (maxBytes != Long.MAX_VALUE) {
+                final long cost = recordBytes(first);
+                if (bytes + cost > maxBytes) {
+                    break;
+                }
+                bytes += cost;
+            }
             
             newSp = first.tpos;
             
@@ -142,6 +165,22 @@ public class TransSeq implements PosOfTransBeforeFunction {
         }
         
         return newSp;
+    }
+    
+    /** The bytes the got-dirty nodes of 'info' may add to a record; see take(). */
+    private static long recordBytes(TransInfo info) {
+        long bytes = 0;
+        for (Node node : info.gotDirtyNodes) {
+            switch (node.getType()) {
+            case Node.TYPE_TOP_NODE:
+                bytes += StoredTopNode.getByteSize((TopNode) node) + 16;
+                break;
+            case Node.TYPE_KEY_NODE:
+                bytes += StoredKeyNode.getByteSize((KeyNode) node) + 16;
+                break;
+            }
+        }
+        return bytes;
     }
     
     /**
@@ -360,6 +399,33 @@ public class TransSeq implements PosOfTransBeforeFunction {
         Assert.assertEquals(2, nodes.size());
         Assert.assertTrue(nodes.get(0) == n1);
         Assert.assertTrue(nodes.get(1) == n2);
+        Assert.assertTrue(s.isEmpty());
+    }
+    
+    /** take() with a byte budget (bergdb 005-17): whole transactions, as many as fit. */
+    @Nano
+    public static void testTakeWithBudget() {
+        TransSeq s = new TransSeq();
+        KeyNode n1 = new KeyNode();
+        KeyNode n2 = new KeyNode();
+        KeyNode n3 = new KeyNode();
+        s.add(newTransInfo(100, 120, n1));
+        s.add(newTransInfo(200, 220, n2));
+        s.add(newTransInfo(300, 320, n3));
+        final long cost = StoredKeyNode.getByteSize(n1) + 16;
+        
+        final ArrayList<Node> nodes = new ArrayList<Node>();
+        TransNodesForMe transNodes = new TransNodesForMe() {
+            public void addTopNode(TopNode node) { nodes.add(node); }
+            public void addKeyNode(KeyNode node) { nodes.add(node); }
+        };
+        
+        Assert.assertEquals(0, s.take(0, 300, 1, 0, transNodes, cost - 1));
+        Assert.assertEquals(0, nodes.size());
+        Assert.assertEquals(200, s.take(0, 300, 1, 0, transNodes, 2 * cost + 1));
+        Assert.assertEquals(2, nodes.size());
+        Assert.assertEquals(300, s.take(200, 300, 1, 0, transNodes, cost));
+        Assert.assertEquals(3, nodes.size());
         Assert.assertTrue(s.isEmpty());
     }
     

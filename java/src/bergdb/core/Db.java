@@ -1431,6 +1431,7 @@ public class Db {
         // This is handled by dbClock.
         //
         
+        checkSize(t);
         t.warmupGetData.pointerFollower = x.getData.pointerFollower;
         warmup(t);
         
@@ -1498,12 +1499,45 @@ public class Db {
         }
     }
     
+    /**
+     * Refuses a transaction whose value nodes would take more than StoredTrans.valueLimit()
+     * bytes of its record, before it changes anything (2026-10-21, bergdb 005-17). Before,
+     * the record's size wrapped in an int, or its buffer could not be made, in store(): after
+     * the transaction had changed the Dag (M49), and every later transaction failed too.
+     *
+     * @throws DbException
+     */
+    private static void checkSize(Trans t) {
+        long bytes = 0;
+        for (Kv kv : t.kvs) {
+            bytes += StoredValueNode.getByteSizeLong(kv.getValue(), kv.getKey());
+        }
+        final long limit = StoredTrans.valueLimit();
+        if (bytes > limit) {
+            throw new DbException("The transaction is too large: its values and keys take " 
+                    + bytes + " bytes in the stream, more than " + limit + ".");
+        }
+    }
+    
     private void store() {
         long currentSp = x.startupPos.get();
         long newSp;
         
+        // The bytes of the record besides the index nodes that take() adds, so that the
+        // record stays within the record limit (bergdb 005-17).
+        final TransNodes tn = x.transNodes;
+        long fixedBytes = 32 + tn.valueRecordBytes + 4 + 4 + 1 + 7
+                + 16L * x.transInfo.gotDirtyNodes.size();
+        for (int i = 0; i < tn.topCount; i++) {
+            fixedBytes += StoredTopNode.getByteSize(tn.topNodes[i]) + 16;
+        }
+        for (int i = 0; i < tn.keyCount; i++) {
+            fixedBytes += StoredKeyNode.getByteSize(tn.keyNodes[i]) + 16;
+        }
+        
         long maxSp = nodeStream.getLength() - startupDistance;
-        newSp = transSeq.take(currentSp, maxSp, x.transNodes.valueCount, x.transNodes.kvSize, x.transNodes);
+        newSp = transSeq.take(currentSp, maxSp, x.transNodes.valueCount, x.transNodes.kvSize,
+                x.transNodes, StoredTrans.recordLimit - fixedBytes);
         x.trans.startupPos = newSp;
         
         // Note: nodeStream.appendNodes() does things beyond writing to stream, it sets spos of nodes.

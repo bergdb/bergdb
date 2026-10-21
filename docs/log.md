@@ -862,3 +862,12 @@ negative after a cut past 2^31 bytes, so an in-memory database with a
 retain duration treated a read below the cut as a storage failure and
 stopped taking transactions. Now in `long`; an f-test; `before-commit.sh`
 passes.
+
+2026-10-21. 005-17 done, by Claude (Opus 5.5, Claude Code): a transaction of
+1.79 GB or more was half committed and blocked the writer, since the
+record's size was added up in an `int` after the go point. Now a
+transaction whose value nodes pass 7/8 of the record limit (2^31 − 9
+bytes) is refused before it changes anything, `TransSeq.take` keeps the
+index nodes within the limit, and the serializer computes in `long`. Four
+tests; streams unchanged (StreamDigest), Props unchanged;
+`before-commit.sh` passes.
