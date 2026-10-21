@@ -1901,4 +1901,46 @@ public class DbTester {
             StoredTrans.recordLimit = saved;
         }
     }
+    
+    /**
+     * bergdb 005-18: a clock time above 2^56 - 1 is refused, before the transaction or the
+     * database's first transaction changes anything. Before, the database took it, and
+     * then could not start again ("Time too large").
+     */
+    @Nano
+    public static void testClockOutOfRange() {
+        final long[] now = {1000 * 1000};
+        Clock clock = new Clock() {
+            public long getTime() {
+                return now[0];
+            }
+        };
+        MemoryStream stream = new MemoryStream();
+        Db db = Db.builder().testSetup(stream).clock(clock).start();
+        db.execute(db.trans().put("/a", "v1").build());
+        long length = db.getStreamLength();
+        
+        now[0] = Klong.MAX_TIME + 1000;
+        try {
+            db.execute(db.trans().put("/a", "v2").build());
+            throw new AssertionError("a transaction with a time out of range was executed");
+        } catch (bergdb.pub.util.DbException e) {
+            assertTrue(e.getMessage(), e.getMessage().contains("outside the range"));
+        }
+        assertArrayEquals(StringUtil.toBytes("v1"), DbUtil.get(db, Long.MAX_VALUE, "/a"));
+        assertEquals(length, db.getStreamLength());
+        
+        now[0] = 2 * 1000 * 1000;
+        db.execute(db.trans().put("/a", "v3").build());
+        assertArrayEquals(StringUtil.toBytes("v3"), DbUtil.get(db, Long.MAX_VALUE, "/a"));
+        db.stop();
+        
+        now[0] = Klong.MAX_TIME + 1;
+        try {
+            Db.builder().testSetup().clock(clock).start();
+            throw new AssertionError("a database with a time out of range was started");
+        } catch (bergdb.pub.util.DbException e) {
+            assertTrue(e.getMessage(), e.getMessage().contains("outside the range"));
+        }
+    }
 }

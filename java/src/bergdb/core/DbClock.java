@@ -1,8 +1,10 @@
 package bergdb.core;
 
 import static bergdb.nanotest.Assert.assertEquals;
+import bergdb.dag.Klong;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.Clock;
+import bergdb.pub.util.DbException;
 
 /**
  * <p>A special clock for Db that implements a lookup time / transaction time concept. 
@@ -118,9 +120,24 @@ public class DbClock {
      */
     public final synchronized long transactionBegin() {
         assert !transactionRunning;
-        long time = clock.getTime();
+        final long clockTime = clock.getTime();
+        long time = clockTime;
         time = time > lastTransactionTime ? time : lastTransactionTime + 1;
         time = time > lastReadTime ? time : lastReadTime + 1;
+        
+        // 2026-10-21 (bergdb 005-18): a time outside 0 to 2^56 - 1 is refused before the
+        // transaction begins. A TIME klong keeps 56 bits, and a top node with a larger time
+        // is refused at startup ("Time too large"), so the database could not start again.
+        if (clockTime < Klong.MIN_TIME || clockTime > Klong.MAX_TIME) {
+            throw new DbException("The clock's time, " + clockTime + ", is outside the range "
+                    + "of database times, 0 to " + Klong.MAX_TIME + " (100 ns units since 1970;"
+                    + " see Clock.getTime). No transaction is executed.");
+        }
+        if (time > Klong.MAX_TIME) {
+            throw new DbException("No database time is left after " + (time - 1) 
+                    + "; the largest is " + Klong.MAX_TIME + ". No transaction is executed.");
+        }
+        
         transactionTime = time;
         transactionRunning = true;
         assert transactionTime > 0;
@@ -185,6 +202,31 @@ public class DbClock {
         assertEquals(1*F, time3);
         assertEquals(1*F + 1, time4);
         assertEquals(1*F + 1, transactionTime);
+    }
+    
+    /** bergdb 005-18: a clock time outside the database's range is refused. */
+    @Nano
+    private static void testClockOutOfRange() {
+        CoreTestClock testClock = new CoreTestClock();
+        DbClock dbClock = new DbClock(testClock);
+        testClock.setTime(Klong.MAX_TIME + 1);
+        try {
+            dbClock.transactionBegin();
+            throw new AssertionError("a time above the range was given");
+        } catch (DbException e) {
+            assertEquals(true, e.getMessage().contains("outside the range"));
+        }
+        
+        CoreTestClock testClock2 = new CoreTestClock();
+        testClock2.setTime(1000);
+        DbClock dbClock2 = new DbClock(testClock2);
+        dbClock2.setLastTransTime(Klong.MAX_TIME);
+        try {
+            dbClock2.transactionBegin();
+            throw new AssertionError("a time above the range was given");
+        } catch (DbException e) {
+            assertEquals(true, e.getMessage().contains("No database time is left"));
+        }
     }
     
     @Nano

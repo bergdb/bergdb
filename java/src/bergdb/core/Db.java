@@ -786,12 +786,10 @@ public class Db {
         // this method should not change the in-memory state.
         //
         
-        long tt;
-        try {
-            tt = dbClock.transactionBegin();
-        } finally {
-            dbClock.transactionEnd();
-        }
+        // transactionBegin() before the try (bergdb 005-18): when it throws, no transaction
+        // has begun, and there is none to end.
+        long tt = dbClock.transactionBegin();
+        dbClock.transactionEnd();
         
         KeyNode root = KeyNode.nodeWithTime(tt);
         TopNode superRoot = TopDs.createSuperRootFromFirstKeyNode(tt, root, 
@@ -1449,9 +1447,11 @@ public class Db {
             
             stmCheckConflicts(t);
 
+            // transactionBegin() refuses a clock out of range (bergdb 005-18); before the try,
+            // so that nothing has begun or changed when it throws.
+            t.tt = dbClock.transactionBegin();
+            
             try {
-                t.tt = dbClock.transactionBegin();
-                
                 putKvs();
 
                 // The synch statement below publishes the changes by the writer thread 

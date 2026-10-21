@@ -871,3 +871,9 @@ bytes) is refused before it changes anything, `TransSeq.take` keeps the
 index nodes within the limit, and the serializer computes in `long`. Four
 tests; streams unchanged (StreamDigest), Props unchanged;
 `before-commit.sh` passes.
+
+2026-10-21. 005-18 done, by Claude (Opus 5.5, Claude Code): a clock time of
+2^56 or more (a clock in nanoseconds, say) was taken, and the database
+then could not start again ("Time too large"). Now `DbClock` refuses it
+with a `DbException` before the transaction begins. Two tests; streams
+unchanged; `before-commit.sh` passes.
