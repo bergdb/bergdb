@@ -1,0 +1,10 @@
+Perf mode=write scenario=d-t1-def workload=c59f0d6ae5b4078e {batch=100, commit=durable, firstgets=300000, gets=2000000, halt=0, history=-1, longlen=120, maxops=0, mincuts=0, mixops=50000, mixreaders=2, mtthreads=4, n=100000, nlong=0, ops=200, rate=0, retain=inf, samplems=1000, scanlen=100, scans=20000, sd=0, seed=1, threads=1, timedgets=1000000, tsize=1, valsize=1000, warmgets=3000000, warmup=100000, windows=5, work=uniform}
+startupDistance 50000000
+PHASE load 1.11 s
+PHASE warmup 1.01 s
+WRITE 200 commits (200 puts) in 5.99 s: 33 commits/s, bytes appended per user byte 1.20, append p50 102.9 us p99.9 537.8 us max 0.54 ms
+  durable p50 30.1 ms p99 34.3 ms max 37.9 ms
+  buffer time 20 ms: 200 forces, 33.4 a second, 1200 bytes each, 5.26 ms each
+VERIFY 100000 keys after restart: ok (0.71 s)
+PHASE verify 1.37 s
+PERF OK

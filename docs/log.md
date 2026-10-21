@@ -836,3 +836,16 @@ without the fix; `testReaderPausedInsideAFollow`'s f-test under load failed
 1 in 2,000 runs before, 0 in 2,000 after. StreamDigest identical to R8's;
 Props and `performance.sh`'s quick suite unchanged; `before-commit.sh` and
 `level4.sh quick` pass.
+
+2026-10-21. Bergdb 005-14, calm when idle: an idle database's storage
+thread woke every bufferTime / 4, 160 times a second at 20 ms (0.3 percent
+of a core, 0.14 mW on F53, against the JVM's own 25 wakes). Now
+`BufferedStream`'s consumer waits without a timeout when nothing has been
+buffered for a buffer time, and an append, `stop()` or `close()` wakes it:
+an idle database wakes as often as the JVM alone, at any buffer time; no
+change under load. Two faults fixed with it: the wake count overflowed
+after 2^31 wakes without a write (about half a year at 20 ms), after which
+the timer stopped flushing; and a close could flush 0 bytes, which
+appended the whole ring buffer, so that the database failed to start (34
+of 24,000 closes in a test). Unit tests in `BufferedStream`;
+`before-commit.sh` passes.

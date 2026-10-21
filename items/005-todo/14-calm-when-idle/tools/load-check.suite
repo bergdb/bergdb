@@ -1,0 +1,6 @@
+# 005-14: the fix under load, at the default buffer time (20 ms), against the code before
+# it: 005-13's scenarios without bufftime=. One run each; load-check.sh alternates the two
+# builds, three rounds.
+d-t1-def     write    1   n=100000 commit=durable threads=1 ops=200 warmup=100000 valsize=1000
+d-t64-def    write    1   n=100000 commit=durable threads=64 ops=6400 warmup=100000 valsize=1000
+a-1k-def     write    1   n=100000 valsize=1000 retain=inf ops=500000

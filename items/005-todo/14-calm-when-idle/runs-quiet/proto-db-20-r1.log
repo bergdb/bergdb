@@ -1,0 +1,6 @@
+READY pid=21849 mode=db bufferMs=20
+T0
+THREAD 0.390 ms main
+THREAD 0.542 ms Signal Dispatcher
+THREAD 0.133 ms Common-Cleaner
+T1 elapsed_s=61.497 java_threads_cpu_ms=1.065

@@ -1150,7 +1150,10 @@ Findings:
   that write, so the transactions of many threads share one durable write
   (64 threads: 1,800 synced transactions a second). Writers that do not
   sync are as fast with 10 to 100 ms; one `F_FULLFSYNC` costs about 5 ms
-  on F53 (005-13). The application chooses when to
+  on F53 (005-13). An idle database does not wake: when nothing has been
+  buffered for a buffer time, the storage thread waits for the next
+  append (bergdb item 005-14; at 20 ms it woke about 160 times a second,
+  0.3 percent of a core). The application chooses when to
   sync, and how (ORDINARY: the main storage; STRONG: also a replica, if
   there is one). Neither level flushes at once. For comparison, a sync that
   flushed at once (tried and reverted 2026-10-13) gave 13,000 to 18,000
@@ -1289,6 +1292,25 @@ is in the level 2 work of 12 October; all are in the 2017 code.
    Now the stream stops, the storage manager is told, and the sync throws.
    Also: a flush of exactly one byte wrote the wrong bytes. Test:
    DbTester.testSyncAfterStreamFailure.
+
+Fixed 2026-10-21 (bergdb item 005-14), also in the 2017 code, each with a
+unit test that fails without the fix:
+
+5. A close could append the whole write buffer to the stream, and the
+   database then failed to start ("Bad transaction size"). close() sets
+   flushAndClose before it stops the storage thread; when the thread woke
+   in between with nothing buffered, it flushed 0 bytes, and for 0 bytes
+   BufferedStream.flushToStream wrote the whole ring buffer: stale bytes
+   after the last transaction, 10 MB for the main stream. 34 of 24,000
+   closes in a test of BufferedStream alone at a buffer time of 10 ms; the
+   chance goes with how often the thread wakes, so at 100 ms it is about a
+   quarter of that at 20 ms. Now nothing is flushed when nothing is
+   buffered. Test: BufferedStream.testNoFlushOfNothingWhenClosing.
+6. The storage thread's count of its wakes overflowed after 2^31 wakes
+   without a write: 124 to 189 days at the buffer time of 20 ms, 1.7 to 2.2
+   years at the former 100 ms. After it, the timer flushed nothing for as
+   long again, and a sync waited until 2.5 MB were buffered. Now the count
+   stops at 4. Test: BufferedStream.testWaitCountStaysSmall.
 
 
 

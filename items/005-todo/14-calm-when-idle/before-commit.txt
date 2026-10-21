@@ -1,0 +1,5 @@
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+Unit: SUCCESS, 938 successful tests in 6.6 s.
+F:    SUCCESS, 59 successful tests in 117.7 s.
+BEFORE COMMIT OK (122 s)

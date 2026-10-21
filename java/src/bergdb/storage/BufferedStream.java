@@ -18,6 +18,10 @@ import bergdb.stream.MemoryStream;
  * It is similar to Nagle's algorithm for TCP/IP traffic. The user of the object
  * must call stop() or close() to stop the internal thread.
  * 
+ * <p>When nothing has been buffered for a whole buffer time, the thread waits until the
+ * next append, stop() or close() (2026-10-21, bergdb item 005-14), so that an idle
+ * stream does not wake it.
+ * 
  * @author Frans Lundberg
  */
 public class BufferedStream implements AppendOnlyStream, Closeable {
@@ -51,6 +55,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     private final int waitsBeforeFlush;
     private AppendListener appendListener;
     private volatile boolean appendHasBeenCalled = false;
+    private boolean idle = false;   // the consumer waits without a timeout, see runConsumer()
 
     /**
      * Creates a new buffered stream with default buffer size and buffer time.
@@ -134,6 +139,19 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         A: while (!stop) {
             synchronized (this) {
                 try {
+                    // 2026-10-21 (bergdb 005-14): when nothing has been buffered for a whole
+                    // buffer time, wait without a timeout until append(), stop() or close()
+                    // wakes us. The thread woke every bufferTime / 4 also when the stream
+                    // was idle. The first flush after it comes one wait later (it came 0 to
+                    // one wait later).
+                    while (pStart == cStart && waitCount >= waitsBeforeFlush && !stop && !flushAndClose) {
+                        idle = true;
+                        wait();
+                    }
+                    idle = false;
+                    if (stop) {
+                        break A;
+                    }
                     wait(waitTime);
                 } catch (InterruptedException e) {
                     if (stop) {
@@ -144,7 +162,12 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                     }
                 }
 
-                waitCount++;
+                // 2026-10-21 (005-14): the count stops at waitsBeforeFlush. It counted every
+                // wake while nothing was written, and after 2^31 wakes (190 days at a buffer
+                // time of 20 ms) it was negative: the timer flushed nothing for as long again.
+                if (waitCount < waitsBeforeFlush) {
+                    waitCount++;
+                }
 
                 if (!shouldFlush()) {
                     continue;
@@ -176,8 +199,14 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     private final boolean shouldFlush() {
         assert Thread.holdsLock(this);
         long sizeAvailableToFlush = pStart - cStart;
-        boolean result = flushAndClose || sizeAvailableToFlush >= twentyFivePercentOfBufferCapacity
-                || (waitCount >= waitsBeforeFlush && sizeAvailableToFlush > 0);
+        // 2026-10-21 (bergdb 005-14): only when something is buffered, also when closing.
+        // close() sets flushAndClose before stop; a consumer that woke between the two with
+        // nothing buffered flushed 0 bytes, and flushToStream() then appended the whole ring
+        // buffer, stale bytes, to the stream: the database failed to start ("Bad
+        // transaction size"). 34 of 24,000 closes in a test (005-14, CloseRace).
+        boolean result = sizeAvailableToFlush > 0 && (flushAndClose
+                || sizeAvailableToFlush >= twentyFivePercentOfBufferCapacity
+                || waitCount >= waitsBeforeFlush);
         return result;
     }
 
@@ -194,7 +223,8 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         final int sizeToFlush = cSize > fiftyPercentOfBufferCapacity ? fiftyPercentOfBufferCapacity
                 : cSize;
         
-        assert sizeToFlush >= 0 : "bad sizeToFlush: " + sizeToFlush;
+        // 0 bytes would append the whole buffer (index2 is then index1 - 1); see shouldFlush().
+        assert sizeToFlush > 0 : "bad sizeToFlush: " + sizeToFlush;
 
         int index1 = (int) (cStart % bufferCapacity);
         int index2 = (int) ((cStart + sizeToFlush - 1) % bufferCapacity);
@@ -410,6 +440,9 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 } else {
                     int len = length <= available ? length : available;
                     appendToBuffer(source, sourceOffset, len);
+                    if (idle) {
+                        notifyAll();    // Wakes the consumer (005-14).
+                    }
                     length -= len;
                     sourceOffset += len;
                 }
@@ -498,6 +531,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     public void close() throws IOException {
         synchronized (this) {
             this.flushAndClose = true;
+            notifyAll();    // Wakes an idle consumer (005-14).
             if (this.exception == null) {
                 this.exception = new IOException("Stream being closed by flushAndClose()");
             }
@@ -531,6 +565,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 this.exception = new IOException("Stream being stopped.");
             }
             this.stop = true;
+            notifyAll();    // Wakes an idle consumer (005-14).
         }
     }
     
@@ -595,6 +630,102 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         b.start();
         b.close();
         Assert.assertEquals(200L, c.getCut());
+    }
+
+    /**
+     * 2026-10-21 (bergdb item 005-14): after a buffer time with nothing buffered, the
+     * consumer waits without a timeout (WAITING, not TIMED_WAITING), and an append wakes it.
+     */
+    @Nano
+    public static void testIdleConsumerWaitsForAppend() throws IOException, InterruptedException {
+        MemoryStream m = new MemoryStream();
+        BufferedStream b = new BufferedStream(m, 1000, 10);
+        b.start();
+        try {
+            b.append(new byte[] { 1, 2 }, 0, 2);
+            awaitIdle(b);
+            Assert.assertEquals(2, m.getLength());
+            b.append(new byte[] { 3 }, 0, 1);
+            long t0 = System.nanoTime();
+            while (m.getLength() < 3) {
+                Assert.assertTrue("an append to an idle stream was not flushed in 2 s",
+                        System.nanoTime() - t0 < 2000000000L);
+                Thread.sleep(1);
+            }
+            awaitIdle(b);
+        } finally {
+            b.close();
+        }
+    }
+
+    /** 2026-10-21 (005-14): stop() and close() end an idle consumer. */
+    @Nano
+    public static void testStopAndCloseEndIdleConsumer() throws IOException, InterruptedException {
+        for (int close = 0; close < 2; close++) {
+            MemoryStream m = new MemoryStream();
+            BufferedStream b = new BufferedStream(m, 1000, 10);
+            b.start();
+            b.append(new byte[] { 1 }, 0, 1);
+            awaitIdle(b);
+            if (close == 1) {
+                b.close();
+            } else {
+                b.stop();
+            }
+            b.consumer.join(2000);
+            Assert.assertTrue(!b.consumer.isAlive());
+            Assert.assertEquals(1, m.getLength());
+        }
+    }
+
+    /**
+     * 2026-10-21 (005-14): the wait count stops at waitsBeforeFlush. It counted every wake
+     * while nothing was written, and overflowed after 2^31 wakes.
+     */
+    @Nano
+    public static void testWaitCountStaysSmall() throws IOException, InterruptedException {
+        MemoryStream m = new MemoryStream();
+        BufferedStream b = new BufferedStream(m, 1000, 10);
+        b.start();
+        try {
+            Thread.sleep(50);       // About 20 wakes of 2 ms (3 ms on macOS) before the fix.
+            synchronized (b) {
+                Assert.assertTrue("waitCount " + b.waitCount, b.waitCount <= b.waitsBeforeFlush);
+            }
+        } finally {
+            b.close();
+        }
+    }
+
+    /**
+     * 2026-10-21 (005-14): no flush when nothing is buffered, also when closing. A flush of
+     * 0 bytes appended the whole ring buffer to the stream.
+     */
+    @Nano
+    public static void testNoFlushOfNothingWhenClosing() throws IOException {
+        MemoryStream m = new MemoryStream();
+        BufferedStream b = new BufferedStream(m, 100, 10);     // Not started: the test is the consumer.
+        b.append(new byte[] { 1, 2, 3, 4, 5, 6, 7 }, 0, 7);
+        synchronized (b) {
+            b.flushAndClose = true;
+            Assert.assertTrue(b.shouldFlush());
+            b.cSize = (int) (b.pStart - b.cStart);
+        }
+        b.flushToStream();
+        Assert.assertEquals(7, m.getLength());
+        synchronized (b) {
+            Assert.assertTrue(!b.shouldFlush());
+        }
+    }
+
+    /** Waits until the consumer waits without a timeout; fails after 2 s. */
+    private static void awaitIdle(BufferedStream b) throws InterruptedException {
+        long t0 = System.nanoTime();
+        while (b.consumer.getState() != Thread.State.WAITING) {
+            Assert.assertTrue("the consumer of an idle stream is " + b.consumer.getState()
+                    + ", not WAITING", System.nanoTime() - t0 < 2000000000L);
+            Thread.sleep(1);
+        }
     }
 
     @Nano

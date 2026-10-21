@@ -39,6 +39,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-14](14-calm-when-idle.md) | Decide | Calm when idle: an idle database woke 163 times a second at 20 ms; now the consumer sleeps when nothing is buffered; also the wake count's overflow and a close that appended the whole buffer (005-13) | done | 2026-10-21 |
 | [005-09](09-fix-node-table-snapshot-race.md) | Fix | A race between a reader and a sweep lets the node table name a released object (INV-CAN); a unit test fails now and then (005-02) | done | 2026-10-20 |
 | [005-13](13-buffer-time.md) | Investigate | The buffer time (100 ms, from the hard-drive era): sweep it on SSD, then decide the default and group commit; now 20 ms | done | 2026-10-20 |
 | [005-08](08-fix-node-table-tree-bins.md) | Fix | The node table's 256 maps make every bin a tree (`Cache3.mapIndex`): 61 bytes per KV, a slower `set` (006-02) | done | 2026-10-19 |
@@ -99,6 +100,10 @@ Files
 * [13-buffer-time.md](13-buffer-time.md). 005-13, the buffer time: the
   sweep, and the default changed to 20 ms; done, with its table, tools
   and runs in [13-buffer-time/](13-buffer-time/).
+* [14-calm-when-idle.md](14-calm-when-idle.md). 005-14, the idle cost of
+  the storage thread's timer, by buffer time, and the fix: the consumer
+  sleeps when idle, with two faults of `BufferedStream` fixed; done, with
+  its table, tools and runs in [14-calm-when-idle/](14-calm-when-idle/).
 
 
 Log
@@ -209,3 +214,25 @@ released. A deterministic test fails without the fix; the flaky test, under
 load, failed 1 in 2,000 runs before and 0 in 8,000 after. The stream
 unchanged (StreamDigest as R8's), Props and the quick performance suite
 unchanged. The change in `java/` is left for Frans to commit.
+
+2026-10-21. Added 005-14, calm when idle, at Frans's request ("I would
+like the database to be calm when not used ... have a look at how 20 vs 50
+vs 100 ms affects this"), by Claude (Opus 5.5, Claude Code), with the
+measurements on F53: an idle database wakes 56, 85 and 163 times a second
+at 100, 50 and 20 ms, against the JVM's own 25 (0.3 percent of a core and
+0.14 mW at 20 ms). A prototype consumer that sleeps when nothing is
+buffered makes it 25, as the JVM alone, at any buffer time. Found on the
+way: the wake count overflows after 190 days without a write at 20 ms.
+For Frans to decide; no change to `java/`.
+
+2026-10-21. 005-14 done, at Frans's request ("OK, do 005-14 as proposed.
+Also fix the overflow problem."), by Claude (Opus 5.5, Claude Code), in
+`BufferedStream`: the consumer sleeps when nothing has been buffered for
+a buffer time (an idle database wakes 26 times a second, as the JVM
+alone, instead of 187); the wake count stops at 4 (it overflowed after
+2^31 wakes without a write); and nothing is flushed when nothing is
+buffered, also when closing: a close could append the whole buffer, 10 MB
+of stale bytes, and the database then failed to start (34 of 24,000
+closes in a test before the fix, 0 of 12,000 after). Four unit tests that
+fail without the change; `before-commit.sh` passes; no change under load.
+The change in `java/` is left for Frans to commit.

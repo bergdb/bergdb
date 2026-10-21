@@ -244,3 +244,6 @@ probes), `tools/ForceProbe.java`, `tools/WaitProbe.java`,
 parameter and force counters (`forces_per_s`, `bytes_per_force`,
 `force_ms_mean`, `force_busy_fraction`, also in every other write run),
 and `stress/performance-bufftime.suite`.
+
+Follow-up, 2026-10-21: what the 20 ms timer costs an idle database (CPU,
+wakeups, energy), and a consumer that sleeps when idle: 005-14.

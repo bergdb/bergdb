@@ -1,0 +1,6 @@
+READY pid=28446 mode=jvm bufferMs=0
+T0
+THREAD 0.363 ms main
+THREAD 0.580 ms Signal Dispatcher
+THREAD 0.183 ms Common-Cleaner
+T1 elapsed_s=61.635 java_threads_cpu_ms=1.126

@@ -1,0 +1,13 @@
+2026-10-21, F53, tools/GarbageTail.java on fdee608: 1000 transactions, close, then the bytes
+that the faulty flush of 0 bytes appends (the ring buffer from the consumer's position to its
+end, zeros here, then from its start), and a restart.
+
+stream 99176 bytes; appended 10000000 bytes as the faulty flush would; now 10099176
+restart FAILED: bergdb.storage.StreamFormatException: Bad transaction size in db stream, 0, spos 99176. Stream length: 10099176
+	at bergdb.storage.RecoverableStream.fixLastTransactionIfNeeded(RecoverableStream.java:177)
+	at bergdb.storage.RecoverableStream.recover(RecoverableStream.java:133)
+	at bergdb.core.NodeStream.recover(NodeStream.java:74)
+	at bergdb.core.Db.startInner(Db.java:510)
+	at bergdb.core.Db.start(Db.java:489)
+	at bergdb.core.Db.start(Db.java:471)
+	at GarbageTail.main(GarbageTail.java:44)

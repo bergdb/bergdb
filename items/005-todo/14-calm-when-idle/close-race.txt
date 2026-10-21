@@ -1,0 +1,24 @@
+2026-10-21, F53, tools/CloseRace.java (8 threads x 1500 closes; a stream of capacity 100 at
+a buffer time of 10 ms, 7 bytes appended and flushed, a pause of 0 to 3 ms, close()).
+
+fdee608, before the fix, first run:
+BAD: length 107 after close, 7 appended
+BAD: length 100 after close, 7 appended
+BAD: length 100 after close, 7 appended
+BAD: length 100 after close, 7 appended
+BAD: length 107 after close, 7 appended
+closes 12000, with more bytes than appended: 12
+
+With the fix (005-14):
+closes 12000, with more bytes than appended: 0
+
+fdee608, before the fix, second run:
+BAD: length 100 after close, 7 appended
+BAD: length 107 after close, 7 appended
+BAD: length 107 after close, 7 appended
+BAD: length 107 after close, 7 appended
+BAD: length 107 after close, 7 appended
+closes 12000, with more bytes than appended: 22
+
+(107: the 7 bytes and the whole buffer of 100 again; 100: the second part of that append
+failed, as close() had closed the stream meanwhile.)

@@ -1,0 +1,10 @@
+tools/SporadicProbe.java, F53, buffer time 20 ms: a commit and a sync after an idle second, 30
+times, then close().
+
+2026-10-21 08:00: fdee608 (cur) and the prototype (proto, tools/idle-consumer.patch):
+cur: bufferMs 20: commit+sync after 1 s idle, 30 times: min 6.8 ms, p50 14.2 ms, max 23.2 ms; consumer threads alive after close: 0
+proto: bufferMs 20: commit+sync after 1 s idle, 30 times: min 13.0 ms, p50 15.6 ms, max 23.8 ms; consumer threads alive after close: 0
+
+2026-10-21 09:22: fdee608 (cur) and the fix (fix):
+cur: bufferMs 20: commit+sync after 1 s idle, 30 times: min 7.3 ms, p50 12.8 ms, max 14.3 ms; consumer threads alive after close: 0
+fix: bufferMs 20: commit+sync after 1 s idle, 30 times: min 12.3 ms, p50 14.5 ms, max 19.0 ms; consumer threads alive after close: 0
