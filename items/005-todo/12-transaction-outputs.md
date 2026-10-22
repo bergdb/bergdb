@@ -1,7 +1,7 @@
 005-12. Transaction outputs: a consistent API, then tests
 =========================================================
 
-Status: open. Kind: decide. Created 2026-10-20.
+Status: done (2026-10-22; see Outcome). Kind: decide. Created 2026-10-20.
 
 
 The task
@@ -284,3 +284,45 @@ Found on the way
   (`Db.executeInner`, `NodeStream.appendNodes`). With outputs, an action
   that only reads and returns a result is natural; whether such a
   transaction should skip the commit is a question of its own.
+
+
+Outcome
+-------
+
+2026-10-22, Frans: "The proposal for 005-12 is good, implement it. Work
+unattended. Add unit tests. Commit when done." Done by Claude (Opus 5.5,
+Claude Code), as proposed, with the optional part:
+
+* `Transaction.getOutput(String name, Class<TYPE> clazz)` in place of
+  `getOutput(String)`: null for a missing output, and for every name of a
+  w-transaction; `IllegalArgumentException` for a null or empty name or a
+  null class; a `ClassCastException` that names the output for a wrong
+  class. `RwTransaction` and `WTransaction` share the code
+  (`RwTransaction.getOutput(Map, String, Class)`), and both methods the
+  check of the name (`RwEnvironmentImp.checkOutputName`).
+* `NoSuchObjectException` removed: nothing throws it any more.
+* An rw-transaction's environment is closed when `rw` returns or throws
+  (`RwEnvironmentImp.close`, called by `RwTransaction.execute`): a later
+  call of a method of `RwEnvironment` throws `IllegalStateException`.
+  The environment of a w-transaction (`WBuilderImp`) is not closed.
+* Javadoc: `RwEnvironment` (the class and `setOutput`),
+  `Transaction.getOutput`, `Action.run` and `Connection.rw`. The first
+  finding on the way is fixed: `Connection`'s class Javadoc says
+  `c.rw(...)`. The other two are not changed.
+* `GetStarted4`, the payment, prints the payer's balance from an output.
+* Seven unit tests in a new tester, `PubTesterOutput` (in `pubimp`'s
+  pack), 0.1 s together: outputs, a name set twice, a superclass; null
+  for a missing output and for w-transactions, also one with an object;
+  the refused arguments; a wrong class; a rerun, after which only the
+  committed run's outputs are there; four threads that increment one
+  counter, whose outputs are 1 to 100, each once; an environment used
+  after its action, also after an action that threw.
+
+Checks, on a scratch clone of `df08546`. Before the change, a probe of
+the old API: the outputs of a run that was run again were cleared, and
+four and eight threads got the values of their own committed runs (100
+and 400 transactions, 106 and 418 runs). With the change: the new tests
+pass, and fail with the clearing at a rerun (`env.clearOutput()`) or the
+closing (`env.close()`) taken out; `GetStarted4` runs; and
+`java/before-commit.sh` prints `BEFORE COMMIT OK` (968 unit tests, 62
+f-tests).

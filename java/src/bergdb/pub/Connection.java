@@ -7,7 +7,7 @@ import bergdb.pub.util.DbException;
  * A connection to a Database is used to put and get data stored in the
  * database. Given a Connection, get operations [<code>c.get(..)</code>], put
  * operations [<code>c.w().put(...execute()</code> or <code>c.put(...)</code>],
- * and rw-transactions [<code>c.rw(...).execute()</code>] can be executed. A
+ * and rw-transactions [<code>c.rw(...)</code>] can be executed. A
  * Connection object assumes it and any objects returned from its methods are
  * accessed from a single thread. For multi-threaded access to the database,
  * create a Connection object for each thread by calling Database.newConnection().
@@ -176,7 +176,10 @@ public interface Connection extends ReadInterface {
     public WBuilder w();
 
     /**
-     * Executes an RW transaction given its action.
+     * Executes an RW transaction given its action, and returns it once it has committed.
+     * The action may run more than once (Action.run()). Its results for the caller go
+     * through outputs: RwEnvironment.setOutput() in the action, Transaction.getOutput()
+     * on the returned transaction.
      */
     public Transaction rw(Action action);
 

@@ -42,6 +42,7 @@ public class RwEnvironmentImp implements RwEnvironment {
     private MyLongSet vkeyWriteHashes;                  // Writes of virtual KVs.
     private final ConnectionImp connection;
     private final boolean enableKeyReplace;
+    private boolean closed;                             // Set by close().
     
     public RwEnvironmentImp(ConnectionImp connection) {
         readHashes = new MyLongSet();
@@ -63,6 +64,7 @@ public class RwEnvironmentImp implements RwEnvironment {
      * @throws IllegalArgumentException
      */
     public <TYPE> TYPE get(String ukey, Class<TYPE> clazz) {
+        checkOpen();
         String ikey = PubKeys.u2i(ukey);
         
         long[] keySegments = Keys.toSegments(ikey);
@@ -94,6 +96,38 @@ public class RwEnvironmentImp implements RwEnvironment {
         return result;
     }
     
+    /**
+     * Ends the environment of an rw-transaction once its action has run for the last time:
+     * a call of a method of RwEnvironment then throws IllegalStateException (bergdb 005-12).
+     * Before, a put() or delete() made then was lost silently, and a setOutput() changed the
+     * outputs of the committed transaction.
+     */
+    public void close() {
+        closed = true;
+    }
+    
+    private void checkOpen() {
+        if (closed) {
+            throw new IllegalStateException("The RwEnvironment is used after the action has "
+                    + "run; it is valid only while Action.run() runs.");
+        }
+    }
+    
+    /**
+     * Checks the name of an output, for setOutput() and Transaction.getOutput().
+     * 
+     * @throws IllegalArgumentException if name is null or empty.
+     */
+    static void checkOutputName(String name) {
+        if (name == null) {
+            throw new IllegalArgumentException("name == null not allowed");
+        }
+        
+        if (name.length() == 0) {
+            throw new IllegalArgumentException("The empty string is not allowed for 'name'.");
+        }
+    }
+    
     public void clearOutput() {
         if (this.output != null) {
             output.clear();
@@ -101,16 +135,11 @@ public class RwEnvironmentImp implements RwEnvironment {
     }
     
     public void setOutput(String name, Object value) {
-        if (name == null) {
-            throw new IllegalArgumentException("name == null not allowed");
-        }
+        checkOpen();
+        checkOutputName(name);
         
         if (value == null) {
             throw new IllegalArgumentException("value == null not allowed");
-        }
-        
-        if (name.length() == 0) {
-            throw new IllegalArgumentException("The empty is not allowed for 'name'.");
         }
         
         if (output == null) {
@@ -195,6 +224,7 @@ public class RwEnvironmentImp implements RwEnvironment {
     public void delete(String ukey) {
         // Null values allowed in a HashMap.
         
+        checkOpen();
         String ikey = PubKeys.u2i(ukey);
 
         if (Entries.isObjectKey(ikey)) {
@@ -210,6 +240,7 @@ public class RwEnvironmentImp implements RwEnvironment {
      * of an invalid format.
      */
     public void put(Object object) throws MissingKeyFieldException {
+        checkOpen();
         if (object == null) {
             throw new IllegalArgumentException("object == null not allowed");
         }
@@ -235,6 +266,7 @@ public class RwEnvironmentImp implements RwEnvironment {
         // Implementation here must match the Java object creation. Currently (June 2013) this
         // is made in pubimp.KvToObjectImp.createObject().
         
+        checkOpen();
         if (object == null) {
             throw new IllegalArgumentException("object == null not allowed");
         }

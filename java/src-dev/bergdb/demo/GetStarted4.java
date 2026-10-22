@@ -42,11 +42,12 @@ public class GetStarted4 {
             c.put(a1.key, a1);
         }
         
-        // Performs a payment if there is enough money.
+        // Performs a payment if there is enough money. The payer's new balance
+        // is an output of the transaction: its result for the caller.
         
         final long amount = 30;
         
-        c.rw(new Action() {
+        Transaction t = c.rw(new Action() {
             public void run(RwEnvironment env) {
                 Account acc0 = env.get("/accounts/0", Account.class);
                 Account acc1 = env.get("/accounts/1", Account.class);
@@ -61,8 +62,13 @@ public class GetStarted4 {
                 
                 env.put(acc0);
                 env.put(acc1);
+                env.setOutput("balance", acc0.balance);
             }
-        }).sync();
+        });
+        t.sync();
+        
+        System.out.println("Balance of /accounts/0 after the payment: " 
+                + t.getOutput("balance", Long.class));
         
         // Lists accounts
         

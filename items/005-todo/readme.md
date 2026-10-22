@@ -30,7 +30,6 @@ Open
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
-| [005-12](12-transaction-outputs.md) | Decide | Transaction outputs (`setOutput`, `getOutput`) stay: a consistent API, proposed for Frans to decide, then tests (005-10) | open |
 
 
 Closed
@@ -38,6 +37,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-12](12-transaction-outputs.md) | Decide | Transaction outputs (`setOutput`, `getOutput`) stay, with a consistent API: typed, null for a missing output, the same checks; an environment refuses calls after its action (005-10) | done | 2026-10-22 |
 | [005-26](26-fix-lone-surrogates.md) | Fix | A string with a lone surrogate cannot be stored in an array: `utf8Size` | done | 2026-10-21 |
 | [005-25](25-fix-buffered-read-past-end.md) | Fix | A `BufferedStream` read one byte past the end returns a stale byte | done | 2026-10-21 |
 | [005-24](24-fix-file-read-at-end.md) | Fix | A `FileStream` read at the end of the stream loops forever | done | 2026-10-21 |
@@ -68,9 +68,9 @@ it changes the same part of Java; 005-05 and 005-06 beside the rest, as
 they are mostly reading and thinking, and 005-06 feeds 005-05. 005-07 is
 best before or with 005-01 (where a transaction's go point is) and before
 005-03's fix. 005-09 is done. What is left of 005-10 waits for Frans; a removal is best made
-when no other change to `java/` is under way. 005-11 and 005-12 can go any
-time, best before 005-05's decision on publishing, as both concern the Pub
-API.
+when no other change to `java/` is under way. 005-11 can go any time, best
+before 005-05's decision on publishing, as it concerns the Pub API; 005-12
+is done.
 
 
 Files
@@ -108,8 +108,8 @@ Files
 * [11-replication.md](11-replication.md). 005-11, replication: the
   decision material for Frans.
 * [12-transaction-outputs.md](12-transaction-outputs.md). 005-12,
-  transaction outputs: they stay; a consistent API, proposed for Frans to
-  decide, then tests.
+  transaction outputs: they stay; the API made consistent, with unit
+  tests; done.
 * [13-buffer-time.md](13-buffer-time.md). 005-13, the buffer time: the
   sweep, and the default changed to 20 ms; done, with its table, tools
   and runs in [13-buffer-time/](13-buffer-time/).
@@ -356,3 +356,12 @@ an API that makes them consistent with `put` and `get` is proposed (null
 for a missing output, typed by a class, the same checks in both methods,
 the rules in the Javadoc; `NoSuchObjectException` goes), then the tests.
 No change to `java/`.
+
+2026-10-22. 005-12 done, at Frans's request ("The proposal for 005-12 is
+good, implement it."), by Claude (Opus 5.5, Claude Code), as proposed:
+`Transaction.getOutput(name, clazz)` is typed and gives null for a missing
+output and for a w-transaction; both methods check the name the same way;
+`NoSuchObjectException` is removed; an rw-transaction's environment
+refuses calls after its action has run (`IllegalStateException`); the
+rules are in the Javadoc; `GetStarted4` shows an output. Seven unit tests
+in `PubTesterOutput`; `before-commit.sh` passes.

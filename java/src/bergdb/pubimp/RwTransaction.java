@@ -1,13 +1,13 @@
 package bergdb.pubimp;
 
 import java.util.HashMap;
+import java.util.Map;
 
 import bergdb.core.InternalDataException;
 import bergdb.core.RerunException;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.pub.Action;
-import bergdb.pub.NoSuchObjectException;
 import bergdb.pub.Time;
 import bergdb.pub.Transaction;
 import bergdb.storage.StreamFormatException;
@@ -34,20 +34,35 @@ public class RwTransaction implements Transaction {
         return runCount;
     }
     
-    public Object getOutput(String key) {
-        if (key == null) {
-            throw new IllegalArgumentException("key == null not allowed");
+    public <TYPE> TYPE getOutput(String name, Class<TYPE> clazz) {
+        return getOutput(output, name, clazz);
+    }
+    
+    /**
+     * Transaction.getOutput() given the outputs, null if there are none.
+     * WTransaction uses it too, with null.
+     * 
+     * @throws IllegalArgumentException
+     * @throws ClassCastException
+     */
+    static <TYPE> TYPE getOutput(Map<String, Object> output, String name, Class<TYPE> clazz) {
+        RwEnvironmentImp.checkOutputName(name);
+        
+        if (clazz == null) {
+            throw new IllegalArgumentException("clazz == null not allowed");
         }
         
-        if (output == null) {
-            throw new NoSuchObjectException("No output object named '" + key + "' exists.");
-        }
-        Object value = output.get(key);
+        Object value = output == null ? null : output.get(name);
         if (value == null) {
-            throw new NoSuchObjectException("No output object named '" + key + "' exists.");
+            return null;
         }
         
-        return value;
+        if (!clazz.isInstance(value)) {
+            throw new ClassCastException("The output '" + name + "' is a " 
+                    + value.getClass().getName() + ", not a " + clazz.getName() + ".");
+        }
+        
+        return clazz.cast(value);
     }
     
     public Time getTime() {
@@ -63,7 +78,11 @@ public class RwTransaction implements Transaction {
             throws StreamFormatException, StreamIoException, InternalDataException {
         assert action != null;
         RwEnvironmentImp env = new RwEnvironmentImp(connection);
-        this.trans = executeRw(env, connection, this);
+        try {
+            this.trans = executeRw(env, connection, this);
+        } finally {
+            env.close();        // Valid only while the action runs (bergdb 005-12).
+        }
         connection.lastSposOfLastTrans = trans.lastPos;
         return this;
     }

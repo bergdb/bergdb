@@ -4,7 +4,6 @@ import bergdb.common.Bug;
 import bergdb.core.RerunException;
 import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
-import bergdb.pub.NoSuchObjectException;
 import bergdb.pub.Time;
 import bergdb.pub.Transaction;
 
@@ -41,12 +40,11 @@ public class WTransaction implements Transaction {
         return this;
     }
     
-    public final Object getOutput(String key) {
-        if (key == null) {
-            throw new IllegalArgumentException("key == null not allowed");
-        }
-        
-        throw new NoSuchObjectException("No output objects for a WTransaction.");
+    /**
+     * A w-transaction has no action and no outputs: null for every name.
+     */
+    public final <TYPE> TYPE getOutput(String name, Class<TYPE> clazz) {
+        return RwTransaction.getOutput(null, name, clazz);
     }
     
     public Time getTime() {

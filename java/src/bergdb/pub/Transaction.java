@@ -17,9 +17,17 @@ import bergdb.pub.util.DbException;
 public interface Transaction {
 
     /**
-     * Returns an output object that the transaction created.
+     * Returns the output that the action of the transaction set with the given name
+     * in the run that committed (RwEnvironment.setOutput()), or null if it set none.
+     * A w-transaction has no action and no outputs: null for every name.
+     * 
+     * @param name The name of the output.
+     * @param clazz The class of the output, or a superclass of it (Long.class for a long,
+     *            which setOutput() gets boxed).
+     * @throws IllegalArgumentException if name is null or empty, or if clazz is null.
+     * @throws ClassCastException if the output is not an instance of clazz.
      */
-    public Object getOutput(String name);
+    public <TYPE> TYPE getOutput(String name, Class<TYPE> clazz);
     
     /**
      * Returns the transaction timestamp of the transaction; 
