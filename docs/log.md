@@ -923,3 +923,17 @@ encoder writes 1, so an object with such a string in an array could not be
 stored ("Bad type"). Now it counts as the encoder writes. Tests;
 `before-commit.sh` passes. With it, 005-15 to 005-26, the findings of the
 review of the Java code for overflow, are done.
+
+2026-10-22. 005-01 done, by Claude (Opus 5.5, Claude Code), as Frans
+decided: a transaction that threw after its go point was half committed
+(M49): its time became readable with its first puts, and the next
+transaction wrote its nodes as its own. Now a `Throwable` after the go
+point in `Db.executeInner` fails the database: the call gets a
+`DbFailedException` with the cause (an `Error` is thrown as it is), the
+time of a transaction whose puts threw never becomes a lookup time, and
+every later transaction and read is refused until a restart, which
+rebuilds the state from the stream. The state is checked again under the
+write lock. No rollback; transformations stay where they are and must not
+throw. No model change ([levels.md](levels.md), "A transaction that
+fails"). Seven tests; streams unchanged (StreamDigest); `before-commit.sh`
+and the four gates pass.

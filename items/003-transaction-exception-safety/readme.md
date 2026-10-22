@@ -1,7 +1,7 @@
 003-transaction-exception-safety
 ================================
 
-Created 2026-10-17 by Frans Lundberg. Status: open.
+Created 2026-10-17 by Frans Lundberg. Status: done.
 
 A transaction that throws inside `Db.putKvs` is half committed: its time
 becomes readable with some of its changes in memory, and the next
@@ -25,3 +25,10 @@ Log
 
 2026-10-17. Created the item. Claude wrote 003-01. Item 001 had already
 registered the defect as M49 (commit `530028d`), with "before J3".
+
+2026-10-22. Done: fixed in bergdb 005-01
+([../005-todo/01-fix-m49-exception-safety.md](../005-todo/01-fix-m49-exception-safety.md)),
+as 003-01 recommends with reads refused too, and without 5.2, as Frans
+decided: a transaction that throws after its go point fails the database,
+which refuses every later transaction and read until it is restarted. M49 is
+closed. Claude added notes of that day to 003-01's sections 3 to 5.

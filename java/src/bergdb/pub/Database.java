@@ -16,6 +16,16 @@ import bergdb.pubimp.IndexManager;
  * be avoided.
  * </p>
  * 
+ * <p>A transaction that the database refuses, such as one that is too large, changes nothing,
+ * and the database goes on. A transaction that fails after it began fails the database: the
+ * storage, the JVM or memory failed (an I/O error, a corrupt stream, an OutOfMemoryError), or
+ * there is a bug. Nothing is rolled back. The call throws a DbFailedException with what
+ * failed as the cause (an Error is thrown as it is), and every later transaction and read
+ * throws one too, until the database is restarted: stop it and start it again. The restart
+ * rebuilds the database from its storage, as after a crash: the failed transaction is there
+ * if it was written before the failure, and otherwise not. An in-memory database is lost.
+ * sync() still works for the transactions before the failure.</p>
+ * 
  * @author Frans Lundberg
  */
 public interface Database {

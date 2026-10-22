@@ -12,6 +12,7 @@ import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
+import bergdb.pub.util.DbFailedException;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.FileStream;
@@ -653,14 +654,27 @@ public class DbTesterStream {
         }
         Assert.assertTrue(syncEx != null);
         
-        StreamIoException ex = null;
+        // Since bergdb 005-01: the append fails in store(), after the transaction's go point,
+        // so the database fails, with the append's StreamIoException as the cause, and
+        // refuses what comes after it.
+        DbFailedException ex = null;
         try {
             db2.execute(db2.trans().put("my-string-key-3", new byte[0]));
-        } catch (StreamIoException e) {
+        } catch (DbFailedException e) {
             ex = e;
         }
         
         Assert.assertTrue(ex != null);
+        Assert.assertTrue(ex.getCause() instanceof StreamIoException);
+        
+        ex = null;
+        try {
+            db2.execute(db2.trans().put("my-string-key-4", new byte[0]));
+        } catch (DbFailedException e) {
+            ex = e;
+        }
+        Assert.assertTrue(ex != null);
+        Assert.assertTrue(ex.getCause() instanceof StreamIoException);
         
         db2.stop();
     }

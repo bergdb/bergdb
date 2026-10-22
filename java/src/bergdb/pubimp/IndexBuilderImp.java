@@ -16,6 +16,7 @@ import bergdb.pub.IndexAlreadyExistsException;
 import bergdb.pub.IndexBuilder;
 import bergdb.pub.RwEnvironment;
 import bergdb.pub.util.BadFormatException;
+import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.JobStatus;
 import bergdb.storage.StreamIoException;
@@ -315,6 +316,11 @@ public class IndexBuilderImp implements IndexBuilder {
                     } catch (DbStoppingException e) {
                         // Empty. This is expected if the database is being stopped.
                         // The index creation will continue when the database is restarted.
+                        break;
+                    } catch (DbFailedException e) {
+                        // Empty. The database has failed (bergdb 005-01); the caller of the
+                        // next transaction or read gets the failure. The index creation
+                        // will continue when the database is restarted.
                         break;
                     }
                     

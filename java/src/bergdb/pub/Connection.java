@@ -2,6 +2,7 @@ package bergdb.pub;
 
 import bergdb.core.SyncLevel;
 import bergdb.pub.util.DbException;
+import bergdb.pub.util.DbFailedException;
 
 /**
  * A connection to a Database is used to put and get data stored in the
@@ -102,6 +103,9 @@ public interface Connection extends ReadInterface {
      *             if 'key' is null.
      * @throws DbException
      *             Thrown if the database is faulty.
+     * @throws DbFailedException
+     *             If the database has failed: it then refuses every transaction and
+     *             read until it is restarted. See Database.
      */
     public boolean exists(String key);
 
@@ -123,6 +127,9 @@ public interface Connection extends ReadInterface {
      *            bytes assuming that the value stored consists of UTF-8 bytes.
      * @throws DbException
      *             Thrown if the database is faulty.
+     * @throws DbFailedException
+     *             If the database has failed: it then refuses every transaction and
+     *             read until it is restarted. See Database.
      * @throws IllegalArgumentException
      *             If key does not follow the allowed format, or is null. If
      *             'clazz' is null.
@@ -151,6 +158,10 @@ public interface Connection extends ReadInterface {
      * @throws DbException
      *             If the transaction could not be processed because the
      *             database is faulty.
+     * @throws DbFailedException
+     *             If the database has failed, in this transaction or before: it then
+     *             refuses every transaction and read until it is restarted. See
+     *             Database.
      * @throws IllegalArgumentException
      *             If 'key' is null or otherwise invalid, or if object is null.
      */
@@ -165,6 +176,10 @@ public interface Connection extends ReadInterface {
      * @throws DbException
      *             If the transaction could not be processed because the
      *             database is faulty.
+     * @throws DbFailedException
+     *             If the database has failed, in this transaction or before: it then
+     *             refuses every transaction and read until it is restarted. See
+     *             Database.
      * @throws IllegalArgumentException
      *             If 'key' is null or otherwise invalid.
      */
@@ -180,6 +195,11 @@ public interface Connection extends ReadInterface {
      * The action may run more than once (Action.run()). Its results for the caller go
      * through outputs: RwEnvironment.setOutput() in the action, Transaction.getOutput()
      * on the returned transaction.
+     * 
+     * @throws DbFailedException
+     *             If the database has failed, in this transaction or before: it then
+     *             refuses every transaction and read until it is restarted. See
+     *             Database.
      */
     public Transaction rw(Action action);
 

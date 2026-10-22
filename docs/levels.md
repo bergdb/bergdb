@@ -110,6 +110,68 @@ belong to the corresponding earlier fixes, including the 885-test
 their logs. The scripts and configurations are the reproduction route.
 
 
+A transaction that fails
+========================
+
+Since 2026-10-22 (bergdb 005-01; register M49 of
+[level4-alignment.md](level4-alignment.md), found in bergdb item 002 and
+studied in item 003). The design is Frans's, from the start: no rollback of
+in-memory state ("Support for rollback? Answer: No. If transactions are
+deterministic, we don't need this, we can always check input data before we
+start to modify data", 2008-08-02), and a database whose environment has
+failed, or that has a bug, does not run on (`FatalDBException`, 2012-08; a
+note of 2013-01). The notes are in the f1 repository's F1-007.
+
+`Db.executeInner` has a go point. Before it, everything that may refuse the
+transaction is checked, and nothing is changed: the STM check
+(`RerunException`), the end of the top node ordinals (005-02), the size of
+the transaction (005-17) and the clock (005-18). The Pub API runs the
+application's code before the transaction too: the action, the index
+functions, the conversion of objects. A refused transaction leaves the
+database as it was, and the database goes on. After the go point nothing
+refuses the transaction and nothing is undone. What can still throw there
+is the environment or a bug: a read error or a corrupt node when a put loads
+an index node (evicted, or not loaded since startup), an append error in
+`store()`, an `Error` (out of memory, an assertion), or reclaim's work after
+the transaction.
+
+When something throws after the go point, the database fails
+(`DbState.FAILED`):
+
+* The call throws a `DbFailedException` with what was thrown as the cause;
+  an `Error` is thrown as it is.
+* When the puts throw, the transaction's time never becomes a lookup time:
+  `dbClock.transactionEnd()` is no longer in a `finally`.
+* Every later transaction and read throws a `DbFailedException` with the
+  first failure as the cause: `Db.execute`, `getOne` and `getMany`, and so
+  the Pub API's writes, gets and index queries. A writer that waited for the
+  write lock is refused when it gets it.
+* Nothing more is appended. `sync()` still works for the transactions
+  before the failure; `stop()` and `close()` work.
+
+The application restarts the database: stops it and starts it again. The
+stream holds whole records only, so the restart rebuilds the state as after
+a crash at the failure: without the failed transaction, or with it if its
+record was appended before the failure (it is then committed, although the
+call threw). An append that fails part way is a torn record at the end of
+the stream, which recovery drops (T1). An in-memory database is lost, as in
+a crash. The Lean model needs no change: its runs have no failing
+transactions, and the stream after a failure is the stream of a run without
+the failed transaction, or with it.
+
+Before 005-01 such a transaction was half committed: its time became
+readable with its first puts in memory, its new nodes stayed in the node
+table and in the writer's node list, and the next transaction wrote them as
+its own and reused their ids. In a probe of the code before the fix, a
+corrupt index node loaded by a put, with the storage healthy, let the next
+transaction commit with the failed one's nodes in its record; after a
+restart neither the failed put nor the next transaction's own value could be
+read. Tests: `DbTesterFailure` (a value transformation that throws, an
+`Error`, a read error and a corrupt node in a put after eviction, an append
+error in `store()`, a writer waiting for the write lock, a refusal before
+the go point) and `DbTesterStream.testReadOnlyStream2`.
+
+
 Level 1: restart by full replay
 ===============================
 
@@ -1485,6 +1547,12 @@ test that fails without it.
    `EvictionReaderTester.testReleaseBeforeTheTableEntry`, in which a hook
    (`Cache3.EntryListener`) runs a sweep just before the reader takes the
    lock.
+4. A transaction that threw after it began was half committed (fixed
+   2026-10-22, bergdb item 005-01; register M49, found in bergdb item 002,
+   002-02, section 8, and studied in item 003): its time became readable
+   with its first puts, and the next transaction wrote its nodes as its own.
+   Now the database fails, and a restart rebuilds it from the stream; see
+   "A transaction that fails" above.
 
 
 Level 4: eviction

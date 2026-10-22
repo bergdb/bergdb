@@ -30,6 +30,7 @@ import bergdb.dag.ValueNode;
 import bergdb.pub.util.BadCryptoKey;
 import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.DbException;
+import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.LookupTimeNotAvailableException;
@@ -121,6 +122,12 @@ public class Db {
      * State of the database. Synch note: writes published by readSync.
      */
     private DbState state = DbState.ZERO;
+    
+    /**
+     * What a transaction threw after its go point, the first time, or null; the state is
+     * then FAILED (bergdb 005-01, fail()). Written under writeLock, before the state.
+     */
+    private volatile Throwable failure = null;
     
     private final ExecuteData x;
     private final Aux aux = new Aux();
@@ -1357,17 +1364,34 @@ public class Db {
      * Executes a transaction using the STM approach. 
      * Assumption: t.kvs is sorted.
      * 
+     * <p>Everything that may refuse the transaction is checked before its go point, and
+     * nothing changes before it: a refused transaction leaves the database as it was, and
+     * the database goes on. After the go point nothing refuses the transaction and nothing
+     * is undone. An exception there means that the storage, the JVM or memory failed, or a
+     * bug, and the database fails (bergdb 005-01): it refuses every later transaction and
+     * read with a DbFailedException until it is restarted. The restart rebuilds it from the
+     * stream, which holds whole records only, as after a crash. stop(), close() and sync()
+     * still work.</p>
+     * 
      * @throws IllegalDbStateException
      *             If start() has not been called or database is stopping.
+     * @throws DbFailedException
+     *             If the database has failed: this transaction threw after its go point (the
+     *             cause), or an earlier one did (the cause is the first failure). Whether
+     *             this transaction is in the stream is known after the restart. An Error
+     *             after the go point, such as an OutOfMemoryError, is thrown as it is, and
+     *             the database fails too.
      * @throws RerunException
      *             Thrown if the transaction was cancelled and should be rerun
      *             because one or more KVs with a key in the read key hash set,
      *             were changed after the read time of the transaction; 
      *             the STM approach.
      * @throws StreamFormatException
-     *             If the database stream is corrupt.
+     *             If the database stream is corrupt; before the go point (the warm-up's
+     *             reads), else the cause of a DbFailedException.
      * @throws StreamIoException
-     *             If there was an i/o error with the database stream.
+     *             If there was an i/o error with the database stream; before the go point,
+     *             else the cause of a DbFailedException.
      * @throws InternalDataException
      *             If BergDB internal data in the database is corrupt.
      * @throws DbException
@@ -1397,6 +1421,9 @@ public class Db {
         if (myState != DbState.ACTIVE) {
             if (myState == DbState.STOPPING) {
                 throw new DbStoppingException("Cannot call " + methodName + "() while DB is stopping.");
+            } else if (myState == DbState.FAILED) {
+                throw new DbFailedException("Cannot call " + methodName + "(): the database "
+                        + "failed in a transaction (the cause) and must be restarted.", failure);
             } else {
                 throw new IllegalDbStateException("Cannot call " + methodName + "() when DB state is " 
                         + myState + ".");
@@ -1417,7 +1444,14 @@ public class Db {
     /**
      * Executes a transaction; this is the heart of the transaction handling.
      * 
+     * <p>The go point (bergdb 005-01, register M49; Frans's design, from 2008: no rollback,
+     * check first). Everything that may refuse the transaction is checked before it, and
+     * nothing is changed before it. After it, the transaction runs to its end without an
+     * exception as long as the storage, the JVM and memory work. If one of them fails, or a
+     * bug throws, nothing is undone: the database fails (fail()) and must be restarted.</p>
+     * 
      * @throws RerunException
+     * @throws DbFailedException
      * @throws StreamFormatException
      * @throws StreamIoException
      * @throws InternalDataException
@@ -1434,6 +1468,10 @@ public class Db {
         warmup(t);
         
         synchronized (writeLock) {
+            // Again under the lock (bergdb 005-01): a writer that waited for the lock while
+            // another one failed must not run on what the failed one left in memory.
+            assertDbStateIsActive("execute");
+            
             // The end of the top node ordinals (bergdb item 005-02, register M46): checked
             // before the transaction changes anything. A transaction makes at most one top
             // node, and reclaim's internal transactions run only after a user transaction,
@@ -1451,6 +1489,8 @@ public class Db {
             // so that nothing has begun or changed when it throws.
             t.tt = dbClock.transactionBegin();
             
+            // The go point. From here nothing refuses the transaction and nothing is undone:
+            // whatever throws fails the database (bergdb 005-01).
             try {
                 putKvs();
 
@@ -1460,43 +1500,85 @@ public class Db {
                 // (that do: "synchronized (readSynch) {}") are guaranteed to see all 
                 // in-memory changes made by the writer.
                 synchronized (readSync) {}
-                    
-                
-            } finally {
                 
                 // After the call to dbClock.transactionEnd(), read operations may use
-                // t.tt as a lookup time.
+                // t.tt as a lookup time. Not in a finally since bergdb 005-01: when putKvs()
+                // throws, t.tt never becomes a lookup time, and a read that comes in before
+                // the database is seen as failed reads the state before the transaction.
                 dbClock.transactionEnd();
-            }
-            
-            stmRecordKeys(t);
+                
+                stmRecordKeys(t);
 
-            store(); 
-            
-            aux.updateStats();
-            
-            x.startupPos.releaseForEvict();
-            
-            x.trans.listener.transExecuted(x);
-            final TestHooks hooks = testHooks;
-            if (hooks != null) {
-                hooks.transExecuted(x);
-            }
-            
-            x.end();
-            
-            eviction.afterTransaction(this);
-            if (auditEvery > 0) audit(false);
+                store(); 
+                
+                aux.updateStats();
+                
+                x.startupPos.releaseForEvict();
+                
+                x.trans.listener.transExecuted(x);
+                final TestHooks hooks = testHooks;
+                if (hooks != null) {
+                    hooks.transExecuted(x);
+                }
+                
+                x.end();
+                
+                eviction.afterTransaction(this);
+                if (auditEvery > 0) audit(false);
 
-            // The synch statement guarantees that the writes are visible to all readers 
-            // assuming they also do [synchronized(readSync) {}] before they start reading.
-            synchronized (readSync) {}
-            
-            // 1301 Frans. The below line moved to inside the synchronized (writeLock) block 
-            // to KISS the reclaim stuff. However, fundamentally, it does not have to 
-            // belong to the block.
-            reclaimTransactionListener.transactionCompleted(t);    
+                // The synch statement guarantees that the writes are visible to all readers 
+                // assuming they also do [synchronized(readSync) {}] before they start reading.
+                synchronized (readSync) {}
+                
+                // 1301 Frans. The below line moved to inside the synchronized (writeLock) block 
+                // to KISS the reclaim stuff. However, fundamentally, it does not have to 
+                // belong to the block.
+                reclaimTransactionListener.transactionCompleted(t);    
+            } catch (Throwable e) {
+                throw fail(t, e);
+            }
         }
+    }
+    
+    /**
+     * Fails the database (bergdb 005-01, register M49) with what a transaction threw after
+     * its go point; called under writeLock. Nothing is undone, as the database is never used
+     * again: it refuses every later transaction and read with a DbFailedException whose cause
+     * is the first failure, until it is restarted. The stream holds whole records only (a
+     * transaction is appended in one piece, NodeStream.appendNodes), and nothing is appended
+     * after a failure, so the restart rebuilds the database as after a crash at this point:
+     * without the failed transaction, or with it if its record was appended before the
+     * failure. stop(), close() and sync() still work.
+     * 
+     * <p>Reclaim's internal transactions run within a user transaction's go point
+     * (transactionCompleted()); one that fails first fails the database, and its
+     * DbFailedException comes here and is returned as it is. While the database is stopping,
+     * a failure is the stop's (stop() closes the storage without the write lock, so an append
+     * of a running transaction can fail) and is thrown as it is, as before.</p>
+     * 
+     * @return The exception for the caller to throw: a DbFailedException, or the exception
+     *      itself while the database is stopping.
+     * @throws Error The Error itself, after the database has failed.
+     */
+    private RuntimeException fail(Trans t, Throwable e) {
+        if (state == DbState.STOPPING) {
+            if (e instanceof Error) throw (Error) e;
+            return e instanceof RuntimeException ? (RuntimeException) e : new DbException(
+                    "The transaction failed while the database was stopping.", e);
+        }
+        
+        if (failure == null) {
+            failure = e;
+            state = DbState.FAILED;
+            synchronized (readSync) {}
+        }
+        
+        if (e instanceof Error) throw (Error) e;
+        if (e instanceof DbFailedException) return (DbFailedException) e;
+        return new DbFailedException("The transaction at time " + t.tt + " failed after it "
+                + "began (the cause); nothing is undone. The database takes no more "
+                + "transactions or reads and must be restarted: the restart rebuilds it from "
+                + "the stream.", e);
     }
     
     /**
@@ -1661,7 +1743,9 @@ public class Db {
         final int length = x.trans.kvs.length;        
         x.putData.tt = x.trans.tt;
         x.putData.accessData = getAccessData();
-        opMarks.clear();        // in case an earlier transaction ended with an exception
+        // Cleared for the puts of startup (DbStarter), which use the same listeners; no
+        // transaction runs after one that threw, which fails the database (bergdb 005-01).
+        opMarks.clear();
         opChanged = false;
         replacedInTrans.clear();
         touchMarks = 0;
@@ -1939,6 +2023,10 @@ public class Db {
          */
         private void begin(Trans trans) {
             assert x.putData != null;
+            // Empty between transactions (bergdb 005-01, M49): a transaction that throws after
+            // its go point fails the database, so no later one writes its nodes as its own.
+            assert transNodes.size() == 0 : "the nodes of another transaction, "
+                    + transNodes.size();
             this.trans = trans;
             transInfo = new TransSeq.TransInfo();
             x.nextVpos = nodeStream.getNextPos() + 1;

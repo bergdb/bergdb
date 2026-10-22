@@ -12,6 +12,7 @@ public class Pack implements IPack {
         DbScan.class,
         DbStarter.class,
         DbTester.class,
+        DbTesterFailure.class,
         DbTesterGetMany.class,
         DbTesterRestart.class,
         DbTesterStream.class,

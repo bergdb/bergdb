@@ -17,6 +17,7 @@ import bergdb.pub.IndexBuilder;
 import bergdb.pub.StartupInfo;
 import bergdb.pub.Time;
 import bergdb.pub.util.Clock;
+import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.JobStatus;
@@ -264,6 +265,9 @@ public class DatabaseImp implements Database {
                     sync(SyncLevel.ORDINARY);
                 } catch (DbStoppingException e) {
                     // empty, delete job will continue when database is started again.
+                } catch (DbFailedException e) {
+                    // empty, the database has failed (bergdb 005-01); the delete job will
+                    // continue when the database is started again.
                 } catch (StreamIoException e) {
                     // empty, this will only happen when database is stopping, so it is
                     // expected. The delete job will continue when database is started again.

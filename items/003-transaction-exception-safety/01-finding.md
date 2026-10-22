@@ -8,6 +8,11 @@ and 8). Register row M49 of
 [docs/level4-alignment.md](../../docs/level4-alignment.md). Line numbers are
 at `a3b4421`. No code was changed.
 
+Fixed on 2026-10-22 by bergdb 005-01
+([../005-todo/01-fix-m49-exception-safety.md](../005-todo/01-fix-m49-exception-safety.md)),
+as 5.1 below with reads refused too; 5.2 was not done (section 5, the
+update). Sections 3 to 5 have notes of that day on where the code had moved.
+
 
 ## 1. The finding
 
@@ -112,6 +117,16 @@ example a `StreamIoException` from `nodeStream.appendNodes`, 1465) comes
 after `dbClock.transactionEnd()`, so the transaction's changes are visible
 while its record may be missing or incomplete, and `x.end()` is skipped.
 
+Update, 2026-10-22 (005-01's first step, at `cbeb9bd`): the causes above
+were all still there. What had moved in `executeInner`: `checkSize(t)`
+(005-17) runs before the warm-up; under the lock, the end of the top node
+ordinals is checked (005-02) before `x.begin(t)`; and
+`t.tt = dbClock.transactionBegin()` is before the `try` (005-18), so a
+refused clock changes nothing. In `putKvs`, a reclaim step's touch runs
+before the puts (2026-10-13). After the `finally`, the same steps as above:
+`stmRecordKeys`, `store()`, the listeners, `x.end()`, eviction and reclaim's
+listener, which runs reclaim's internal transactions.
+
 
 ## 4. What can trigger it
 
@@ -130,6 +145,18 @@ In normal operation none of these happen, which is why no test has met it.
 With Level 4 (item 001, stage 4): evicted index nodes are loaded again by the
 writer during puts, so a read error in the middle of a transaction becomes a
 normal failure path. Item 001's register (M49) puts the fix before J3.
+
+Update, 2026-10-22 (005-01): the ordinal bound is no longer a trigger
+(005-02); a transaction too large for its record was one, and is refused
+before the go point now (005-17), as are a clock out of range (005-18) and a
+negative write hash (005-21). Level 4 is on by default since 2026-10-18. No
+transformation that the Pub API reaches can throw on input:
+`ValueTransformation` is used by reclaim (its table row) and by tests only,
+and the Pub API's one `KeyTransformation`, the `${transactionTime}` key,
+cannot throw. A corrupt node (a checksum error) is a trigger that leaves the
+storage healthy: 005-01's probe showed that on the code before the fix the
+next transaction then committed with the failed one's nodes, and that after
+a restart neither could be read.
 
 
 ## 5. Fix options
@@ -187,6 +214,30 @@ counter does not stop the database: compute them before the first change.
 
 In all cases, also clear `x.transNodes` at `x.begin` (or assert that it is
 empty), so that no path can write another transaction's nodes again.
+
+### 5.5 Update, 2026-10-22: what 005-01 did
+
+5.1, for every `Throwable` after the go point: `putKvs()`, `store()` and the
+rest of the transaction, reclaim's listener included. Reads are refused too,
+as Frans decided, and the call gets a `DbFailedException` with the cause (an
+`Error` is thrown as it is). `x.begin` asserts that `x.transNodes` is empty.
+The state is checked again under the write lock, which the analysis above
+did not see: a writer that waited for the lock while another failed would
+otherwise run on the leftovers.
+
+5.2 was not done, as Frans decided. The check it asked for: a transformation
+does not see the earlier puts of its own transaction, since its previous
+value is read at a lookup time before the transaction (`DbClock.lookupTime`
+caps it at the last transaction's time). So a pure transformation could move
+before the first change and give the same result. But reclaim's reads
+`Trans.dirtiedBytes`, which the touch and the step's earlier puts produce:
+moved, it would store another row, the stream would change and Level 3's
+allowance would be miscounted. And no transformation that the Pub API reaches
+can throw on input (section 4, the update). Instead, both interfaces say
+that a transformation must not throw; one that throws is a bug and fails the
+database.
+
+5.3 was not done.
 
 
 ## 6. Test plan

@@ -1,0 +1,12 @@
+== Case 1: a value transformation that throws
+the transaction threw: IllegalStateException
+a read of /a after it: a1
+the next transaction (/c = c2) committed; the stream grew by 128 bytes
+stream length 424 before, 552 at the close, 552 after it
+after a restart: /a = a1, /c = c2, /k10000 = null, /k11000 = null, /k11990 = null, lookup time 4
+== Case 2: a corrupt index node loaded by a put, after eviction
+the transaction threw: StreamChecksumException
+a read of /a after it: a1
+the next transaction (/c = c2) committed; the stream grew by 2696 bytes
+stream length 652840 before, 655536 at the close, 655536 after it
+after a restart: /a = null, /c = null, /k10000 = v0, /k11000 = v1000, /k11990 = v1990, lookup time 203

@@ -1,0 +1,12 @@
+== Case 1: a value transformation that throws
+the transaction threw: DbFailedException, cause IllegalStateException
+a read of /a after it: DbFailedException
+the next transaction: DbFailedException; the stream grew by 0 bytes
+stream length 424 before, 424 at the close, 424 after it
+after a restart: /a = a0, /c = null, /k10000 = null, /k11000 = null, /k11990 = null, lookup time 2
+== Case 2: a corrupt index node loaded by a put, after eviction
+the transaction threw: DbFailedException, cause StreamChecksumException
+a read of /a after it: DbFailedException
+the next transaction: DbFailedException; the stream grew by 0 bytes
+stream length 652840 before, 652840 at the close, 652840 after it
+after a restart: /a = null, /c = null, /k10000 = v0, /k11000 = v1000, /k11990 = v1990, lookup time 201

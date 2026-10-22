@@ -36,6 +36,11 @@ public interface WBuilder {
     
     /** 
      * Shortcut for <code>build().execute()</code>.
+     * 
+     * @throws bergdb.pub.util.DbFailedException
+     *             If the database has failed, in this transaction or before: it then
+     *             refuses every transaction and read until it is restarted. See
+     *             Database.
      */
     public Transaction execute();
 }

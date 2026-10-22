@@ -24,7 +24,6 @@ Open
 
 | ID | Kind | What | Status |
 |---|---|---|---|
-| [005-01](01-fix-m49-exception-safety.md) | Fix | M49: a transaction that throws inside `putKvs` is half committed (item 003) | open |
 | [005-03](03-sweep-cost.md) | Investigate | The sweep's cost under read churn (item 001, finding 10) | open |
 | [005-05](05-bergdb-future.md) | Decide | What to do with BergDB: publish it, when, money, paid work | open |
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
@@ -37,6 +36,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-01](01-fix-m49-exception-safety.md) | Fix | M49: a transaction that threw after its go point was half committed; now it fails the database, which refuses every transaction and read until it is restarted (item 003) | done | 2026-10-22 |
 | [005-12](12-transaction-outputs.md) | Decide | Transaction outputs (`setOutput`, `getOutput`) stay, with a consistent API: typed, null for a missing output, the same checks; an environment refuses calls after its action (005-10) | done | 2026-10-22 |
 | [005-26](26-fix-lone-surrogates.md) | Fix | A string with a lone surrogate cannot be stored in an array: `utf8Size` | done | 2026-10-21 |
 | [005-25](25-fix-buffered-read-past-end.md) | Fix | A `BufferedStream` read one byte past the end returns a stale byte | done | 2026-10-21 |
@@ -62,12 +62,11 @@ Status values: open, in progress, done, dropped, moved (to an item of its
 own). Kinds: Fix (a known fault), Investigate (find out, then propose),
 Decide (a question for Frans, prepared by an investigation).
 
-Order, as proposed, of what is open: 005-01 first among the fixes (005-02,
-which changed `Db.executeInner` too, is done); 005-03 after 005-01, since
-it changes the same part of Java; 005-05 and 005-06 beside the rest, as
-they are mostly reading and thinking, and 005-06 feeds 005-05. 005-07 is
-best before or with 005-01 (where a transaction's go point is) and before
-005-03's fix. 005-09 is done. What is left of 005-10 waits for Frans; a removal is best made
+Order, as proposed, of what is open: 005-03 next among what changes Java,
+as it changes the same part of it as 005-01 and 005-02, which are done;
+005-05 and 005-06 beside the rest, as they are mostly reading and thinking,
+and 005-06 feeds 005-05. 005-07 is best before 005-03's fix; the go point
+it asks about is in `Db.executeInner` since 005-01. 005-09 is done. What is left of 005-10 waits for Frans; a removal is best made
 when no other change to `java/` is under way. 005-11 can go any time, best
 before 005-05's decision on publishing, as it concerns the Pub API; 005-12
 is done.
@@ -77,7 +76,8 @@ Files
 =====
 
 * [01-fix-m49-exception-safety.md](01-fix-m49-exception-safety.md). 005-01,
-  fix M49.
+  fix M49; done, with its probe, checks and runs in
+  [01-fix-m49-exception-safety/](01-fix-m49-exception-safety/).
 * [02-fix-m46-ordinal-bound.md](02-fix-m46-ordinal-bound.md). 005-02, fix
   M46.
 * [03-sweep-cost.md](03-sweep-cost.md). 005-03, investigate the sweep's
@@ -365,3 +365,18 @@ output and for a w-transaction; both methods check the name the same way;
 refuses calls after its action has run (`IllegalStateException`); the
 rules are in the Javadoc; `GetStarted4` shows an output. Seven unit tests
 in `PubTesterOutput`; `before-commit.sh` passes.
+
+2026-10-22. 005-01 done, at Frans's request ("Do as proposed /
+Recommanded. Implement this and commit it. Refuse both reads and writes
+after failure. Use the wrapper as recommanded. Task 2, as you
+recommend."), by Claude (Opus 5.5, Claude Code): `Db.executeInner` has a
+go point, after the checks and before the first change. A `Throwable`
+after it fails the database (`DbState.FAILED`), which refuses every later
+transaction and read with a `DbFailedException` (the first failure as the
+cause; an `Error` is thrown as it is) until it is restarted. The
+transaction's time does not become readable when its puts throw, and the
+state is checked again under the write lock. No rollback; transformations
+stay after the go point and must not throw. M49 and item 003 closed; no
+model change. Seven tests in `DbTesterFailure`, and
+`DbTesterStream.testReadOnlyStream2` changed; streams unchanged
+(StreamDigest); `before-commit.sh` and the four gates pass.

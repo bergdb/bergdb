@@ -12,6 +12,11 @@ public interface ValueTransformation {
      * Transform the value 'inputValue' to a new byte array as output. The previous value
      * for the key is available and may be used to compute the new value.
      * 
+     * <p>The implementation of this method must not throw any exception, as for
+     * KeyTransformation. It runs after the transaction's go point, in Db.putKvs(), where
+     * nothing refuses a transaction; an exception there fails the database (bergdb 005-01).
+     * The previous value is the one before the transaction.</p>
+     * 
      * @param transTime The time of the transaction. Also functions as a unique transaction
      * ID.
      * @param inputValue The pre-execute() value of the KV.

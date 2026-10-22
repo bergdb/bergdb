@@ -1,0 +1,34 @@
+bergdb 005-01: mutations.sh on the fix (2026-10-22). A: the fix taken out; B: the fail-stop with
+transactionEnd() in a finally, as before; C: no state check under the write lock.
+
+== mutation A
+bergdb.core.DbTesterFailure FAILED! bergdb.core.DbTesterFailure.testCorruptNodeInPut
+bergdb.core.StreamChecksumException: spos: 478656, storedSum: 40600, computedSum: 62445, nodeType: 20
+FAILED! bergdb.core.DbTesterFailure.testErrorIsThrownAsItIs
+java.lang.AssertionError: refused, 0, expected true, but was false.
+FAILED! bergdb.core.DbTesterFailure.testReadErrorInPut
+bergdb.storage.StreamIoException: FaultStream: a read error, as set
+.FAILED! bergdb.core.DbTesterFailure.testValueTransformationThrows
+java.lang.IllegalStateException: the transformation fails
+FAILED! bergdb.core.DbTesterFailure.testWriterWaitingForTheLock
+java.lang.IllegalStateException: the transformation fails
+FAILURE, total: 6, failed: 5. Time: 0.2 s.
+bergdb.core.DbTesterFailure FAILED! bergdb.core.DbTesterFailure.testAppendErrorInStore
+bergdb.storage.StreamIoException: Main storage not active. java.io.IOException: FaultStream: an append error, as set
+bergdb.core.DbTesterStream ...FAILED! bergdb.core.DbTesterStream.testReadOnlyStream2
+bergdb.storage.StreamIoException: Main storage not active. bergdb.stream.ReadOnlyStream$ReadOnlyException: Cannot append to ReadOnlyStream.
+FAILURE, total: 5, failed: 2. Time: 2.9 s.
+== mutation B
+bergdb.core.DbTesterFailure FAILED! bergdb.core.DbTesterFailure.testCorruptNodeInPut
+java.lang.AssertionError: the lookup time, expected 201, got 202.
+.FAILED! bergdb.core.DbTesterFailure.testReadErrorInPut
+java.lang.AssertionError: the lookup time, expected 201, got 202.
+.FAILED! bergdb.core.DbTesterFailure.testValueTransformationThrows
+java.lang.AssertionError: the lookup time, expected 2, got 3.
+FAILURE, total: 6, failed: 3. Time: 0.2 s.
+SUCCESS, 5 successful tests in 2.9 s.
+== mutation C
+bergdb.core.DbTesterFailure .....FAILED! bergdb.core.DbTesterFailure.testWriterWaitingForTheLock
+java.lang.AssertionError: the waiting writer is refused: java.lang.AssertionError: the nodes of another transaction, 1, expected true, but was false.
+FAILURE, total: 6, failed: 1. Time: 0.2 s.
+SUCCESS, 5 successful tests in 2.9 s.
