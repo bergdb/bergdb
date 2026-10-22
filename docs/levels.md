@@ -269,9 +269,11 @@ Alignment with the model (F1-008-11, 2026-10-16;
   stream (M10); the physical layer's assumptions (M47). Lazy reading after a
   restart (M8) is proved for the model and checked on Java since bergdb item
   001 (level2-alignment.md, 13).
-* Not modeled: bytes, torn records, durability, concurrency, the bounds
-  (T3, T4), reclaim (Level 3) and eviction (Level 4). The gates cover the
-  first four.
+* Not modeled: bytes, torn records, durability, concurrency and the bounds
+  (T3, T4). The gates cover the first four. Reclaim (Level 3) and eviction
+  (Level 4) are modeled and proved since bergdb item 001 (2026-10-18;
+  sis-model.md, section 15), except that Java's scheme gives safe cuts
+  (T-SCHEME), which is checked at every cut, not proved.
 
 Since 2026-10-16, `level2.sh` checks the alignment too (its step 7, and
 mostly idle runs in step 4): `A2A3Check2` and the trace checker on the small

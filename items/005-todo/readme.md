@@ -29,9 +29,8 @@ Open
 | [005-05](05-bergdb-future.md) | Decide | What to do with BergDB: publish it, when, money, paid work | open |
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
-| [005-10](10-unused-code.md) | Investigate | Unused code in `java/` and `lean/`: find it and propose what to remove; nothing is removed without Frans's approval | done |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
-| [005-12](12-transaction-outputs.md) | Investigate | Transaction outputs (`setOutput`, `getOutput`): study them, then test them or remove them (005-10) | open |
+| [005-12](12-transaction-outputs.md) | Decide | Transaction outputs (`setOutput`, `getOutput`) stay: a consistent API, proposed for Frans to decide, then tests (005-10) | open |
 
 
 Closed
@@ -52,6 +51,7 @@ Closed
 | [005-16](16-fix-memory-stream-first-pos.md) | Fix | An in-memory database with a retain duration fails after 2^31 bytes: `MemoryStream`'s first position in `int` | done | 2026-10-21 |
 | [005-15](15-fix-index-scan-carry.md) | Fix | Long-index range scans skip or add entries: `plusOne` does not clear the `0xff` bytes it carries past (startAt(255) exclusive misses 256 to 510) | done | 2026-10-21 |
 | [005-14](14-calm-when-idle.md) | Decide | Calm when idle: an idle database woke 163 times a second at 20 ms; now the consumer sleeps when nothing is buffered; also the wake count's overflow and a close that appended the whole buffer (005-13) | done | 2026-10-21 |
+| [005-10](10-unused-code.md) | Investigate | Unused code in `java/` and `lean/`: find it and propose what to remove; nothing is removed without Frans's approval | done | 2026-10-20 |
 | [005-09](09-fix-node-table-snapshot-race.md) | Fix | A race between a reader and a sweep lets the node table name a released object (INV-CAN); a unit test fails now and then (005-02) | done | 2026-10-20 |
 | [005-13](13-buffer-time.md) | Investigate | The buffer time (100 ms, from the hard-drive era): sweep it on SSD, then decide the default and group commit; now 20 ms | done | 2026-10-20 |
 | [005-08](08-fix-node-table-tree-bins.md) | Fix | The node table's 256 maps make every bin a tree (`Cache3.mapIndex`): 61 bytes per KV, a slower `set` (006-02) | done | 2026-10-19 |
@@ -108,7 +108,8 @@ Files
 * [11-replication.md](11-replication.md). 005-11, replication: the
   decision material for Frans.
 * [12-transaction-outputs.md](12-transaction-outputs.md). 005-12,
-  transaction outputs: study, then test or remove.
+  transaction outputs: they stay; a consistent API, proposed for Frans to
+  decide, then tests.
 * [13-buffer-time.md](13-buffer-time.md). 005-13, the buffer time: the
   sweep, and the default changed to 20 ms; done, with its table, tools
   and runs in [13-buffer-time/](13-buffer-time/).
@@ -347,3 +348,11 @@ encoder writes 1, so an object with such a string in an array could not be
 stored ("Bad type"). Now it counts as the encoder writes. Tests;
 `before-commit.sh` passes. With it, 005-15 to 005-26, the findings of the
 review of the Java code for overflow, are done.
+
+2026-10-22. 005-12 changed, at Frans's request, by Claude (Opus 5.5,
+Claude Code): the outputs stay ("Deleting the feature is not an option any
+more"), a feature of their own, not transaction metadata. Now a decision:
+an API that makes them consistent with `put` and `get` is proposed (null
+for a missing output, typed by a class, the same checks in both methods,
+the rules in the Javadoc; `NoSuchObjectException` goes), then the tests.
+No change to `java/`.

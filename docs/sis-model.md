@@ -3,31 +3,40 @@ Self-indexed streams: the model
 
 Draft 2, 2026-10-12. Written by Claude for Frans Lundberg.
 
-An abstract model of self-indexed streams, the algorithm with Rule A, and
-the theorems T1 and T2 in plain English. Each definition here is one
-definition in Lean, and each theorem one Lean theorem, so this text is also
-the guide to reading the Lean files. T1 and T2 are proven in Lean
-([../lean/](../lean/README.md)). Draft 1 was the problem statement before
-the proofs; section 14 lists what the proofs changed.
+A self-indexed stream is a database that keeps all its data, index
+included, in one append-only stream, and that after a crash rebuilds its
+state in RAM by reading only the last part of the stream. This text is an
+abstract model of it: the data structure, the stream, the algorithm that
+writes the stream, and the startup that reads it back. It states two
+theorems in plain English. T1, recovery: after a crash, startup gives back
+the database as it was after the last complete transaction. T2, restart
+invariance: a restart does not change what the database appends to the
+stream. Both are proven in the Lean proof assistant
+([../lean/](../lean/README.md)). Each definition here is one definition in
+Lean, and each theorem one Lean theorem, so this text is also the guide to
+reading the Lean files. Draft 1 was the problem statement before the
+proofs; section 14 lists what the proofs changed.
 
 Builds on Frans's [startup.md](sources/startup.md) and
 [v5](sources/self-indexed_streams_v5_130704.pdf),
 and on [startup-invariants.md](startup-invariants.md). Uses the notation of
-startup.md where it can: DB = <P, D, S>, T(i), s(i), gd(i). In the terms of
-[levels.md](levels.md), this is the theory of level 2, bounded startup.
+startup.md where it can, all defined below: the database state
+DB = <P, D, S>, where P is the data, D the dirty nodes and S the stream;
+the transactions T(i); the startup positions s(i); and the got-dirty sets
+gd(i). In the terms of [levels.md](levels.md), this is the theory of level
+2, bounded startup.
 
 Scope: correctness of the stream and the startup. Nothing here depends on
-klongs, cache-awareness or the Java code. Bounds, eviction and reclaim come
-later (section 10).
+klongs (the 64-bit words that BergDB's nodes are made of), cache-awareness
+or the Java code. Sections 2 to 9 leave out bounds on the costs, eviction
+(dropping nodes from RAM) and reclaim (cutting the front of the stream);
+see section 10. Section 15 adds eviction and reclaim.
 
 Review, 2026-10-13: the model and proof scope are unchanged at `ebe5f77`.
-[levels.md](levels.md) records Java's tested status and the open refinement
-obligations. Fresh Lean build, randomized and axiom checks passed during
-the documentation review; details are in [lean/README.md](../lean/README.md).
-
-Decisions of 2026-10-12: Rule A for a node that stays dirty after it is
-written (it is written again only once per startup section), and Lean 4 for
-the proofs.
+[levels.md](levels.md) records Java's tested status and what remains to
+show that the Java code implements the model. Fresh Lean build, randomized
+and axiom checks passed during the documentation review; details are in
+[lean/README.md](../lean/README.md).
 
 
 1 Summary
@@ -35,33 +44,58 @@ the proofs.
 
 The database has two kinds of storage:
 
-* S, the stream. Durable and append-only, and any record can be read. A
-  crash keeps a prefix of complete records.
+* S, the stream. Durable and append-only, and any record can be read. Each
+  transaction appends one record. A crash keeps a prefix of complete
+  records.
 * RAM. Lost in a crash. It must hold the dirty nodes. Everything else in RAM
   is cache, and the model does not need it.
 
-The data is P, a partially persistent linked structure: nodes that remember
-their history. Data nodes are written to the stream by the transaction that
-creates them. Index nodes are written lazily: each one before its got-dirty
-transaction leaves the startup section. A node that is still dirty after it
-is written goes back to D as if it got dirty in the current transaction
-(Rule A).
+The data is P, a partially persistent linked structure: nodes that point to
+other nodes and remember their history, so a lookup can see P as it was at
+any earlier time. Every lookup starts at one node, the root. Data nodes are
+nodes without pointers that never change, such as BergDB's values; all
+other nodes are index nodes. Nodes are written to the stream as versions. A
+version holds the node's history so far and, for each node it points to, a
+reference to that node's latest version in the stream. An index node is
+dirty when the stream, read from its latest version, does not show the node
+correctly at every time the node has been reachable from the root (5.2). D,
+kept in RAM, holds the dirty index nodes, each with its got-dirty index: the
+transaction in which it got dirty (5.3).
 
-Startup reads the startup section and rebuilds D from the ids stored there.
-It reads P as of the startup pos through the stream, where a reference to a
-node that has a version in the section is followed to that node's newest
-version (reconciliation, Rule R). Then it reruns the transactions of the
-section.
+Each record also holds a startup pos, an earlier transaction index that
+never decreases. The records after the startup pos of the last record are
+the startup section, the part of the stream that startup reads.
 
-The claims below hold for runs meeting the model's assumptions, with step 3
-by testing or by marking, and with the exact or BergDB's still-dirty test;
-with a virtual root, BergDB's (section 9). A crash here preserves a prefix of
-complete abstract records; byte recovery and hardware durability are not modeled.
+Data nodes are written to the stream by the transaction that creates them.
+Index nodes are written lazily: each one before its got-dirty transaction
+leaves the startup section. A node that is still dirty after it is written
+goes back to D as if it got dirty in the current transaction (Rule A).
+
+Startup reads the startup section and rebuilds D from the got-dirty ids
+stored in its records. It reads P as of the startup pos through the stream,
+where a reference to a node that has a version in the section is followed to
+that node's newest version (reconciliation, Rule R). Then it reruns the
+transactions of the section.
+
+The claims below hold for every run, a sequence of transactions, that meets
+the model's assumptions (A1 to A5, section 3.4). They hold whether the
+algorithm finds the nodes that got dirty by testing every index node or by
+marking the nodes on the access path of the change, the changed nodes and
+their ancestors (6.1, step 3), and whether it decides that a written node is
+still dirty by the exact test or by BergDB's simpler, conservative one (6.1,
+step 7). BergDB has no single root node but a chain of top nodes, which the
+model handles as a virtual root (6.3); with a virtual root, the claims need
+BergDB's test. A crash here preserves a prefix of complete abstract records;
+byte recovery and hardware durability are not modeled.
 
 * T1 Recovery. For any run and any crash, startup gives back the same P, for
   every node and every lookup time, and the same D.
 * T2 Restart invariance. After startup, the database appends exactly the
   records it would have appended without the crash.
+
+Decisions of 2026-10-12: Rule A rather than the alternative of section 7, so
+that a node that stays dirty is written only once per startup section, and
+Lean 4 for the proofs.
 
 
 2 Time and transactions
@@ -74,8 +108,8 @@ complete abstract records; byte recovery and hardware durability are not modeled
   model, so all history is kept.
 * Each transaction appends exactly one record to the stream, R(i). In the
   2017 code, this is the user transaction with its piggybacked internal
-  transaction. startup.md describes them as two transactions; one record per
-  transaction is simpler and loses nothing.
+  transaction, which writes index nodes. startup.md describes them as two
+  transactions; one record per transaction is simpler and loses nothing.
 
 
 3 The structure P
@@ -97,9 +131,11 @@ complete abstract records; byte recovery and hardware durability are not modeled
   node, for example, a later klong for a key replaces the earlier one, so
   the pointer in the earlier klong is dead from then on.
 
-Examples from BergDB. A key node: its KEY klongs, each with the time of its
-TIME klong; a DELETE bitmap is an entry too. A top node: all its entries
-are added when it is created. A value node: one entry and no pointers.
+Examples from BergDB. A key node, a node of BergDB's B-tree: its KEY klongs
+(a key and a pointer), each with the time of its TIME klong; a DELETE bitmap
+is an entry too. A top node (BergDB makes one when the B-tree gets a new
+root node; 6.3): all its entries are added when it is created. A value node:
+one entry and no pointers.
 
 
 3.2 Data nodes and index nodes
@@ -113,8 +149,8 @@ value nodes are data nodes. Every other node is an index node.
 ----------------
 
 * The entry node, root, exists from time 0. Every lookup starts there. For
-  BergDB, it stands for the access point to TopDs; the details do not matter
-  here.
+  BergDB, it stands for the entry point to the chain of top nodes (`TopDs`,
+  6.3); the details do not matter here.
 * x is reachable at t if x is root, or x is a child at t of a node that is
   reachable at t.
 * P@t is the set of nodes reachable at t, each with its content at t. A
@@ -148,17 +184,18 @@ A5 No resurrection (since 2026-10-15). A node reachable at time i, after
    (6.1, step 3) needs it.
 
 The intended multiversion B-tree abstraction uses splits, parent repointing
-and downward levels to meet these properties. That is not a proof that the
-Java Dag satisfies them: A2 and A3 must also be checked for compound
-transactions with transient nodes and multiple root changes. A balanced
-binary tree with rotations does not automatically supply A4 with fixed
-levels, since a child can become its parent's parent.
+and downward levels to meet these properties. That is not a proof that
+BergDB's Java B-tree (`Dag`) satisfies them: A2 and A3 must also be checked
+for compound transactions with transient nodes and multiple root changes. A
+balanced binary tree with rotations does not automatically supply A4 with
+fixed levels, since a child can become its parent's parent.
 
 Since 2026-10-16, BergDB's Java transactions are built to meet A2 and A3
-(F1-008-11, [level2-alignment.md](level2-alignment.md), M1), and the trace
-checker and the Java tier check A2 to A5, with the levels of
-level2-alignment.md, section 8.4, on every transaction of their runs. That is
-a check on many runs, not a proof.
+(F1-008-11; mismatch M1 of [level2-alignment.md](level2-alignment.md)). Two
+checkers check A2 to A5, with the levels of level2-alignment.md, section
+8.4, on every transaction of their runs: the trace checker, which runs the
+Lean model on traces of Java runs (section 13), and the Java tier, a Java
+stress test (`A2A3Check2`). That is a check on many runs, not a proof.
 
 
 4 The stream
@@ -186,7 +223,8 @@ A version v of node x, written in record w, holds:
 * a reference for each node y that the history points to, through a live or
   a dead pointer: the latest version of y in the stream at the moment v is
   written (versions earlier in the same record count), or none if y has
-  never been written (BergDB's vpos).
+  never been written. In BergDB, the pointer then holds y's id, a vpos,
+  instead of a stream position.
 
 A reference names a version, (y, record), not just a node. lv(x) is the
 latest version of x in S.
@@ -226,18 +264,21 @@ good for some time t <= i at which x is reachable. Otherwise x is clean.
 This one definition replaces the "Rules of dirtiness" in startup.md. They
 become consequences. If the reference in lv(x) for a child leads to a
 version that is not good, x is dirty. Writing a node does not make its
-ancestors dirty, since their latest versions do not change. Dirtiness
-through stream pointers (INV-CLOSURE in startup-invariants.md) needs no rule
-of its own: the definition does not know about memory pointers.
+ancestors dirty, since their latest versions do not change. An
+implementation has two kinds of pointers: memory pointers, between nodes in
+RAM, and stream pointers, from a version to a version. Dirtiness through
+stream pointers (INV-CLOSURE in startup-invariants.md) needs no rule of its
+own: the definition is about versions and does not know about memory
+pointers.
 
 
 5.3 D
 -----
 
 D is the algorithm's bookkeeping: a map from node id to a got-dirty index
-d(x), a transaction index. Every dirty index node is in D (INV-2 below). D
-may also hold some clean nodes, if the still-dirty test is conservative
-(section 6.1).
+d(x), a transaction index. Every dirty index node is in D (INV-2, section
+8). D may also hold some clean nodes, if the algorithm's test of whether a
+written node is still dirty is conservative (6.1, step 7).
 
 
 6 The algorithm
@@ -257,8 +298,9 @@ running database knows it, in RAM and in the stream.
    d(x) = i, and its id goes into gd(i).
 4. Startup pos. Choose s(i), with s(i-1) <= s(i) < i, by any policy that
    depends only on S, D and T(i). (T(i) since 2026-10-16: BergDB's limit on
-   the nodes taken depends on the size of the transaction.) In BergDB: the last transaction that starts at
-   least the startup distance before the end of the stream.
+   the nodes taken depends on the size of the transaction.) In BergDB: the
+   last transaction that starts at least the startup distance, a configured
+   number of bytes, before the end of the stream.
 5. Take. Remove every node with d(x) <= s(i) from D. These are the taken
    nodes.
 6. Write index. Write a version of each taken node, lowest level first.
@@ -270,7 +312,8 @@ Step 3 is stated by what it achieves. An implementation finds these nodes on
 the access path: the nodes created or changed by T(i), and their ancestors
 at time i (section 11). Since 2026-10-15 the model has both forms
 (`Algo.mark`): testing every index node, as above, and marking the access
-path, BergDB's way. T13 (section 9) shows that they find the same nodes.
+path, BergDB's way. Theorem T13 (section 9) shows that they find the same
+nodes.
 
 Step 7 uses a still-dirty test. The model allows any test that is sound: if
 the node is dirty after step 6, the test must say so. It may depend on P only
@@ -288,11 +331,12 @@ Given the stream R(0), ..., R(k), where R(k) is the last complete record:
 
 1. Section. s = s(k). The startup section is R(s+1), ..., R(k).
 2. D. For each j from s+1 to k, and each id x in gd(j): d(x) = j. Each node
-   occurs at most once (INV-1).
+   occurs at most once (INV-1, section 8).
 3. Newest versions. Read R(s), ..., R(k). For each node y with a version
    there, New(y) is its newest version there. (Since 2026-10-16, as in
    BergDB, whose startup section begins with R(s); before, R(s+1), ...,
-   R(k). The proofs needed only a < changed to <= in L-SEC.)
+   R(k). The proofs needed only a < changed to <= in the lemma L-SEC,
+   section 8.)
 4. Rule R, reconciliation. Whenever the stream is read, a pointer to a
    node y that has a version in the section is followed to New(y),
    whatever reference the version holds for y, also when it holds none (a
@@ -313,7 +357,8 @@ earlier, as in startup.md.
 
 Rule R is the reconciliation of v5 and of startup.md's edit of 2016-04-16,
 made uniform: by node id, for every pointer, top nodes included. It needs
-no prevPos chains (G3 in startup-invariants.md), it covers references in
+no prevPos chains, BergDB's links from a version to the previous version of
+its node (G3 in startup-invariants.md). It covers references in
 versions written before the section (E4), and it resolves vpos pointers.
 That last part is needed: a version written before its child was first
 written holds no reference for the child, and the child's first version can
@@ -326,10 +371,12 @@ be in the section. The Lean model found this (section 13).
 Since 2026-10-16 (F1-008-11, option (a) of
 [level2-alignment.md](level2-alignment.md), sections 8.2 and 8.6), the root
 can be virtual (`Spec.virt`), as in BergDB, which has no root node but a
-chain of top nodes. The root's children are the top nodes; the root is never
-in D and never written. top(i) names the root's child at s(i), the super
-root at the startup time, and the record of its latest version. Startup
-reads the root's children from that version through their pointers, live or
+chain of top nodes. Each top node points to the B-tree's root node of its
+time and to some older top nodes; the newest, the super root, is the entry
+point. In the model, the root's children are the top nodes; the root is
+never in D and never written. top(i) names the root's child at s(i), the
+super root at the startup time, and the record of its latest version.
+Startup reads the root's children from that version through their pointers, live or
 dead, with Rule R, rebuilds the root from them, and then reads as in 6.2.
 
 The virtual root needs more assumptions (R1 to R4 of level2-alignment.md,
@@ -373,9 +420,10 @@ New(B) in R(4) instead, which has it. Without Rule R, a lookup in B at time
 2 would miss the entry. Then T(3) and T(4) are rerun.
 
 This is the cost trade-off of Rule A in small: R is written in T(3) and
-next when s passes 3, once per startup section. The alternative rule would
-have given R d(R) = 2 in T(3), written it again in T(4) together with B, and
-needed no Rule R.
+next when s passes 3, once per startup section. The alternative rule gives
+a node that is still dirty the earliest time its new version is not good
+for, here 2. It would have given R d(R) = 2 in T(3), written it again in
+T(4) together with B, and needed no Rule R.
 
 
 8 Invariants and lemmas
@@ -510,11 +558,13 @@ being on the access path.
 10 Not in this model
 ====================
 
-* Bounds (T3, T4): the length of the startup section, the memory for D, the
-  write overhead. They need a cost model and a policy for s(i).
-* Reclaim: cutting the front of the stream (INV-RECLAIM, level 3), and
-  eviction and the cache (T5, level 4): not in sections 2 to 9; bergdb item
-  001 added both, with their theorems (section 15).
+* Bounds (the planned theorems T3 and T4): the length of the startup
+  section, the memory for D, the write overhead. They need a cost model and
+  a policy for s(i).
+* Reclaim: cutting the front of the stream (INV-RECLAIM of
+  [problem.md](problem.md); level 3 of levels.md), and eviction and the
+  cache (the planned T5; level 4): not in sections 2 to 9; bergdb item 001
+  added both, with their theorems (section 15).
 * Concurrency, sync levels and torn records. A record is assumed complete
   or absent.
 * Bytes. Records are values, not byte strings.
@@ -532,10 +582,13 @@ implementation must meet them.
   if P@i is a tree. In BergDB it is: a node has at most one current parent.
   The model's marking (6.1) takes every ancestor; T13 shows it exact.
 * The still-dirty test. The conservative test (points to a node in D through
-  any pointer) is sound, but a dead node shares children with the node that
-  replaced it, and a hot child keeps such a dead node dirty. It is then
-  written once per section for as long as the child stays hot, and every
-  time split can add one more. The exact test compares, for each pointer,
+  any pointer) is sound, but it can keep dead nodes dirty. A time split in
+  the B-tree copies a node's current entries to a new node; the old node is
+  dead from then on but stays for lookups at earlier times, and it shares
+  children with the new one. A hot child, one that changes often, keeps
+  such a dead node dirty. It is then written once per section for as long
+  as the child stays hot, and every time split can add one more. The exact
+  test compares, for each pointer,
   the time the pointer died with the time the child's latest version stopped
   being good. This matters for the bounds, not for correctness.
 * References for dead pointers. A version must name lv(y) for each node y
@@ -554,7 +607,7 @@ implementation must meet them.
 * Finding the root. The model stores top(i) in every record. Any way to find
   lv(root) at startup will do. BergDB stores topPos in every record since
   2026-10-15 (format 5): the position of the super root at the startup time
-  (level2-alignment.md, M18; with a virtual root, top(i) of 6.3).
+  (level2-alignment.md, mismatch M18; with a virtual root, top(i) of 6.3).
 
 
 12 Compared with startup.md
@@ -580,13 +633,15 @@ implementation must meet them.
 The model in Lean is in [../lean/](../lean/README.md).
 
 * Milestone 1 (2026-10-12): the definitions of sections 3 to 6, the
-  assumptions, and the statements of T1 and T2. The trusted part is the
-  files Basic, Stream, Algorithm, Startup, Assumptions and Theorems, about
-  550 lines with comments.
+  assumptions, and the statements of T1 and T2. The trusted part, the
+  definitions and statements that a reader must check to trust the result
+  (Lean checks the proofs), is the files Basic, Stream, Algorithm, Startup,
+  Assumptions and Theorems, about 550 lines with comments.
 * Milestones 2 to 5 (2026-10-12): the proofs, in lean/SIS/Proof/, about
   3,500 lines. T1_recovery, T1_crash, T1_nodes and T2_restart are proven, and
   `#print axioms` shows only Lean's standard axioms (propext,
-  Classical.choice, Quot.sound): no `sorry`.
+  Classical.choice, Quot.sound): no `sorry`, Lean's placeholder for a
+  missing proof.
 * The definitions can be run. The example of section 7 runs in Lean and
   gives the D, gd(i) and s(i) of section 7; startup gives back P and D; and
   startup without Rule R gets time 2 wrong. A second example has four
@@ -660,8 +715,9 @@ From 2026-10-15 to 2026-10-16 (F1-008-11):
 
 Added 2026-10-18 by Claude (Opus 5.5, Claude Code), bergdb item 001. The
 model of sections 2 to 9 is logical: P, D and the stream. Item 001 added
-what Java holds in memory and how it evicts (Level 4), and how the front of
-the stream is cut (Level 3), each with its theorems, proved in Lean with
+what Java holds in memory and how it evicts (Level 4 of levels.md), and how
+the front of the stream is cut (Level 3), each with its theorems, proved in
+Lean with
 only the standard axioms. The definitions and statements are in
 [../lean/](../lean/README.md) ("What to read"); the design and its reasons
 in [level2-alignment.md](level2-alignment.md), section 13 (the physical
@@ -676,10 +732,12 @@ The physical layer (`SIS/Phys.lean`, `SIS/Evict.lean`) is a memory of
 objects: each holds a node's history, either the node's whole history (the
 canonical object, at most one per node, the one in the node table) or a
 version read from the stream (a snapshot). An object has a slot per
-pointee: a memory slot (to another object) or a stream slot (naming a
-record). Reads go through slots; a stream slot is a first touch, which loads
-the canonical object if there is one, else exactly the version the slot
-names after Rule R. The writer makes every node it reaches canonical.
+pointee; slot is the Lean word for what BergDB calls a pointer. A slot is a
+memory slot (a memory pointer, to another object) or a stream slot (a
+stream pointer, naming a record). Reads go through slots. Following a
+stream slot is a first touch: it loads the canonical object if there is
+one, else exactly the version the slot names after Rule R. The writer, the
+algorithm of 6.1 on this memory, makes every node it reaches canonical.
 
 Eviction is two operations, at any time between transactions: unswizzle (a
 memory slot to an object that is not pinned and has been written becomes a
@@ -688,31 +746,44 @@ before) and release (an object that no memory slot names leaves memory, and
 the node table if it is there). The pinned objects are the root's and the
 canonical objects of D. The physical writer writes from slots and the
 pinned set (`Mem.refOf`): a version names the latest version of each
-pointee (Option K), with no table of all nodes.
+pointee (Option K of [level4-plan.md](level4-plan.md)), with no table of
+all nodes.
 
 15.2 What is proved for it
 --------------------------
 
 * Lemma M (`LM_newer`, `LM_ruleR`, `LM_cutTo`): a newer version of a node
-  serves every time an older one serves, so Rule R's version does.
-* T1-L (`T1_lazy`): after a lazy startup, reads at any time give P. CC and
-  T2-L (`CC_canonical`, `T2_lazy`): a run with lazy restarts appends the
+  serves (is good for, 5.1) every time an older one serves, so Rule R's
+  version does.
+* T1-L (`T1_lazy`): after a lazy startup, reads at any time give P. A lazy
+  startup, like Java's, does not read P up to s at startup (6.2, step 5)
+  but reads each node from the stream when it is first touched.
+* CC (`CC_canonical`): in a run with lazy restarts, every canonical object
+  holds its node's whole history. T2-L (`T2_lazy`): such a run appends the
   records of the run without restarts.
 * T-CACHE (`TC_records`): with any cache schedule (reads, unswizzles,
   releases), the physical writer appends exactly the model's records and
-  leaves the model's D, and INV-CAN, INV-SNAP and INV-SLOT hold; T-READ
-  (`TR_view`): reads give P; T2-C (`T2_cache`, `TR_view_restarts`): with
-  restarts too; T-PIN (`TP_pins`): every object outside the pinned set may
-  be evicted. They assume three properties of BergDB's tree that Java runs
-  meet: TREE (one current parent), A6' (no adoption, weakened) and A-COPY
-  (a new pointer copies a slot only from a current node).
+  leaves the model's D, and three invariants hold: INV-CAN (at most one
+  canonical object per node, named by the node table), INV-SNAP (every other
+  object is exactly the version at its position) and INV-SLOT (what each
+  slot may name; level4-alignment.md, 5.3 and 5.4). T-READ (`TR_view`):
+  reads give P. T2-C (`T2_cache`, `TR_view_restarts`): with restarts too.
+  T-PIN (`TP_pins`): every object outside the pinned set may be evicted.
+  They assume three properties of BergDB's tree that Java runs meet: TREE
+  (every reachable node but the root has exactly one current parent), A6'
+  (no adoption, weakened: a node that x points to without it being x's live
+  child is a data node, unreachable, or reachable from x through live
+  pointers) and A-COPY (a new pointer copies a slot only from a current
+  node).
 
 15.3 Reclaim
 ------------
 
 A cut at record c (`SIS/Reclaim.lean`) leaves of every version before c a
-stub (`Version.stub`): its position, no history. A cut is safe (`CutOK`)
-when it is at or before the first available time f, every version a read
+stub (`Version.stub`): its position, no history. After a cut, lookups are
+supported only from the first available time f on. To make cuts possible,
+reclaim touches index nodes, making them dirty so that they are written
+again. A cut is safe (`CutOK`) when c <= f, every version a read
 from f on may follow is at c or later, every node of D has its latest
 version at c or later with references below c to latest versions only, and
 the top is after the cut. Then:
@@ -738,5 +809,6 @@ sees, and by running on the model's example (level3-alignment.md, section
 The trace checker (`lake exe tracecheck`) runs the model's step on traces of
 Java runs and compares every record and D, the first touches after
 restarts (C-L), `CutOK` at every cut Java decides (C-CUT), and INV-SLOT on
-Java's physical states with eviction (C-P). The gates run it:
+Java's physical states with eviction (C-P). The gates, the test scripts that
+must pass, run it:
 `level2.sh` (step 7), `level3.sh` (step 8) and `level4.sh` (step 5).
