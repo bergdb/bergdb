@@ -17,6 +17,7 @@ The list
 | [006-01](01-work-12-19-october.md) | 2026-10-19 | Summary of the work on BergDB from 12 to 19 October 2026, up to item 005 |
 | [006-02](02-props-2017-vs-2026.md) | 2026-10-19 | Props, the 2013 to 2017 performance suite, on the 2017 and the 2026 code on F53, against cissi's numbers of 2015 and 2017 |
 | [006-03](03-fast-unit-tests.md) | 2026-10-20 | Fast unit tests (41.5 s to 10 s), the full versions as f-tests; `java/before-commit.sh`, the only commit gate |
+| [006-04](04-lean-guided-reading.md) | 2026-10-22 | Guided reading of the Lean model's definitions and theorem statements against sis-model.md, by Frans with Claude: the plan and the log |
 
 
 Files
@@ -32,6 +33,9 @@ Files
 * [03-fast-unit-tests.md](03-fast-unit-tests.md). 006-03, why the unit tests
   were slow, what changed, the times before and after, and the check before a
   commit.
+* [04-lean-guided-reading.md](04-lean-guided-reading.md). 006-04, the plan:
+  five sessions, each a part of sis-model.md against a file of `lean/SIS/`,
+  what to check in the theorems, and the log of the sessions.
 
 
 Log
@@ -66,3 +70,8 @@ the unit and f-tests (about 2 minutes), the only check before a commit.
 2026-10-20. 006-03: `java/night.sh` is the night run: the level scripts, the
 night tests and the medium conformance set on a clone of HEAD, at 02:00
 (launchd); `night.sh large` adds the large conformance set, by hand.
+
+2026-10-22. 006-04, at Frans's request: a guided reading of the trusted part
+of `lean/` (definitions and theorem statements) against `docs/sis-model.md`,
+Frans reading and Claude (Opus 5.5, Claude Code) guiding; the plan, written
+by Claude, and the log of the sessions. First session 2026-10-23.

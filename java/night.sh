@@ -1,8 +1,9 @@
 #!/bin/sh
 # The night run (since 2026-10-20, bergdb 006-03): the checks that
 # before-commit.sh leaves out, on a clean copy of the committed code. Not a
-# gate; read its report in the morning. launchd starts it at 02:00
-# (~/Library/LaunchAgents/local.bergdb.nightly.plist).
+# gate; read its report in the morning. launchd starts it at 02:10
+# (~/Library/LaunchAgents/local.bergdb.nightly.plist, with ProcessType
+# Interactive: without it launchd throttles the job and timing tests fail).
 #
 # Usage: java/night.sh          the night run, about 50 minutes on F53
 #        java/night.sh large    the same and the large conformance set,
