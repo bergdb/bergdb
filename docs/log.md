@@ -956,3 +956,11 @@ than d after every run, also with restarts; no other assumption. BergDB's
 take does not keep up (its node limit); 007-02, found with a probe: a
 transaction whose dirty nodes do not fit in one record stops the startup
 pos for good. `lake build` passes.
+
+2026-10-23. 005-29 done, by Claude (Opus 5.5, Claude Code):
+`MemoryStream.assertOk` expected one array too many for an empty stream
+and at a length that is a multiple of 1,000,000 bytes, so `copy()`, which
+the crash and reclaim tests use through `CutStream`, failed its assertion
+under `-ea`. Now `assertOk`, `truncate` and an append of 0 bytes agree:
+the arrays are exactly those that hold bytes. A test; `before-commit.sh`
+passes.

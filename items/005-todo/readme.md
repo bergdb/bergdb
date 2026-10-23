@@ -30,7 +30,6 @@ Open
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
 | [005-27](27-fix-meta-block-edge.md) | Fix | A crash that ends the stream exactly at a meta block's position, after a transaction that ends there, leaves a database that does not start (005-11, P11) | open |
-| [005-29](29-fix-memory-stream-assert.md) | Fix | `MemoryStream.copy` fails an assertion when the stream is empty or its length a multiple of 1,000,000 bytes (test code; 005-11) | open |
 | [005-30](30-fix-read-failure.md) | Fix | A read that fails on the storage (an I/O error, corrupt data) leaves the database running half dead; make it fail the database, as a transaction does since 005-01 | open |
 
 
@@ -39,6 +38,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-29](29-fix-memory-stream-assert.md) | Fix | `MemoryStream.copy` failed an assertion when the stream was empty or its length a multiple of 1,000,000 bytes (test code; 005-11); now its arrays are exactly those that hold bytes, also after `truncate` and an append of 0 bytes | done | 2026-10-23 |
 | [005-28](28-fix-trans-iterator-loop.md) | Fix | Startup looped for ever when the transaction at its start position was a failed one (a damaged or mixed stream, 005-11's P9, or a crash in a new database's first transaction); now it throws a `StreamFormatException` that names it | done | 2026-10-23 |
 | [005-01](01-fix-m49-exception-safety.md) | Fix | M49: a transaction that threw after its go point was half committed; now it fails the database, which refuses every transaction and read until it is restarted (item 003) | done | 2026-10-22 |
 | [005-12](12-transaction-outputs.md) | Decide | Transaction outputs (`setOutput`, `getOutput`) stay, with a consistent API: typed, null for a missing output, the same checks; an environment refuses calls after its action (005-10) | done | 2026-10-22 |
@@ -74,8 +74,8 @@ it asks about is in `Db.executeInner` since 005-01. 005-09 is done. What is left
 when no other change to `java/` is under way. 005-11 can go any time, best
 before 005-05's decision on publishing, as it concerns the Pub API; 005-12
 is done. 005-27 first of the fixes found in 005-11, as a crash can leave a
-database that does not start; 005-28 is done; 005-29 any time; none of
-them waits for 005-11's decision. 005-30 any time, but not during a timing
+database that does not start; 005-28 and 005-29 are done; none of them
+waits for 005-11's decision. 005-30 any time, but not during a timing
 campaign, as it changes the read path.
 
 
@@ -147,7 +147,8 @@ Files
   to 005-29, faults found in 005-11 outside replication: a crash at a meta
   block's position, the startup's loop on a failed transaction, and
   `MemoryStream.copy`'s assertion. 005-28 is done, with its runs in
-  [28-fix-trans-iterator-loop/](28-fix-trans-iterator-loop/).
+  [28-fix-trans-iterator-loop/](28-fix-trans-iterator-loop/); 005-29 is
+  done.
 * [30-fix-read-failure.md](30-fix-read-failure.md). 005-30, a read that
   fails on the storage fails the database (005-01's follow-up).
 
@@ -443,3 +444,14 @@ history, after a crash in a new database's first transaction; such a
 database now fails to start with that exception. Three tests;
 `before-commit.sh` passes. The change in `java/` is left for Frans to
 commit.
+
+2026-10-23. 005-29 done, at Frans's request ("Fix bergdb 005-29."), by
+Claude (Opus 5.5, Claude Code): `MemoryStream.assertOk` expected one array
+too many for an empty stream and at a length that is a multiple of
+1,000,000 bytes, so `copy()` failed its assertion. The one-line fix
+proposed was not enough, as `truncate` and an append of 0 bytes made that
+extra array; now all three keep exactly the arrays that hold bytes. A
+unit test; `before-commit.sh` passes. Found on the way:
+`DbTester.testCrash3` has never started on its truncated copies; on them
+it meets 005-28's case, as it takes its first length before the new
+database is written. The change in `java/` is left for Frans to commit.

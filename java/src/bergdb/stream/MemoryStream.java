@@ -3,6 +3,7 @@ package bergdb.stream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import bergdb.common.Bug;
 import bergdb.common.Util;
@@ -76,7 +77,10 @@ public class MemoryStream implements AppendOnlyStream {
         // Note, more tests could be useful.
         
         long lastArrayIndex = firstArrayIndex + arrays.size() - 1;
-        long expected = streamLength / ARRAY_SIZE;
+        // The array of the last byte, -1 for an empty stream (2026-10-23, bergdb 005-29):
+        // append() makes an array when its first byte comes, so streamLength / ARRAY_SIZE
+        // expected one array too many at a multiple of ARRAY_SIZE.
+        long expected = Math.floorDiv(streamLength - 1, ARRAY_SIZE);
         if (lastArrayIndex != expected) {
             throw new AssertionError("lastArrayIndex = " + lastArrayIndex 
                     + ", arrays.size()=" + arrays.size() + ", expected = " + expected
@@ -120,6 +124,12 @@ public class MemoryStream implements AppendOnlyStream {
         
         if (firstArray < firstArrayIndex) {
             throw new Bug("firstArray=" + firstArray + ", firstArrayIndex=" + firstArrayIndex);
+        }
+        
+        if (len == 0) {
+            // No array for no bytes (2026-10-23, bergdb 005-29): on an empty stream, last is
+            // -1, and -1 / ARRAY_SIZE is 0, so the loop made an array.
+            return;
         }
         
         for (int i = firstArray; i <= lastArray; i++) {
@@ -260,7 +270,9 @@ public class MemoryStream implements AppendOnlyStream {
         }
         
         this.streamLength = newLength;
-        int lastArrayIndex = (int) ((streamLength / ARRAY_SIZE) - firstArrayIndex);
+        // Up to the array of the last byte (2026-10-23, bergdb 005-29): streamLength /
+        // ARRAY_SIZE kept an empty array after it at a multiple of ARRAY_SIZE.
+        int lastArrayIndex = (int) (Math.floorDiv(streamLength - 1, ARRAY_SIZE) - firstArrayIndex);
         
         while (true) {
             int arrayCount = arrays.size();
@@ -349,6 +361,73 @@ public class MemoryStream implements AppendOnlyStream {
             // Expected.
         }
         s.read(cut + 10, b, 0, b.length);
+    }
+    
+    /**
+     * Regression test for bergdb 005-29: assertOk() expected one array too many when the
+     * length was 0 or a multiple of ARRAY_SIZE, so copy() failed its assertion. Also the
+     * states that truncate() and an append of 0 bytes leave at such a length.
+     */
+    @Nano
+    private static void testCopyAtArrayBoundaries() throws IOException {
+        checkCopy(new MemoryStream());
+        
+        MemoryStream empty = new MemoryStream();
+        empty.append(new byte[0], 0, 0);
+        checkCopy(empty);
+        
+        long a = ARRAY_SIZE;
+        long[][] lengthAndCut = {
+                {1, 0}, {a - 1, 0}, {a, 0}, {a + 1, 0}, {2 * a, 0}, {3 * a, 0},
+                {2 * a + a / 2, 0}, {2 * a + a / 2, 2 * a}, {3 * a, 2 * a}, {3 * a, 3 * a}};
+        for (long[] c : lengthAndCut) {
+            checkCopy(testStream(c[0], c[1]));
+        }
+        
+        long[][] truncatedAndCut = {{0, 0}, {a, 0}, {2 * a, 0}, {2 * a, 2 * a}};
+        for (long[] c : truncatedAndCut) {
+            MemoryStream s = testStream(3 * a, c[1]);
+            s.truncate(c[0]);
+            checkCopy(s);
+        }
+    }
+    
+    /** A stream of Util.getTestBytes(length), cut at 'cut'. */
+    private static MemoryStream testStream(long length, long cut) throws IOException {
+        MemoryStream s = new MemoryStream();
+        byte[] bytes = Util.getTestBytes((int) length);
+        s.append(bytes, 0, bytes.length);
+        s.pretruncate(cut);
+        return s;
+    }
+    
+    /**
+     * Checks a stream of Util.getTestBytes() and its copy: a valid state, the same bytes, and
+     * the copy takes an append.
+     */
+    private static void checkCopy(MemoryStream s) throws IOException {
+        String about = "length " + s.getLength() + ", first position " + s.getFirstPos();
+        s.assertOk();
+        MemoryStream copy = s.copy();       // with -ea, copy() checks assertOk() too
+        copy.assertOk();
+        Assert.assertEquals(about, s.getLength(), copy.getLength());
+        Assert.assertEquals(about, s.getFirstPos(), copy.getFirstPos());
+        
+        int first = (int) s.getFirstPos();
+        int length = (int) s.getLength();
+        byte[] expected = Arrays.copyOfRange(Util.getTestBytes(length), first, length);
+        for (MemoryStream m : new MemoryStream[] {s, copy}) {
+            byte[] b = new byte[length - first];
+            m.read(first, b, 0, b.length);
+            Assert.assertArrayEquals(about, expected, b);
+        }
+        
+        copy.append(new byte[] {1, 2, 3}, 0, 3);
+        copy.assertOk();
+        byte[] b = new byte[3];
+        copy.read(length, b, 0, b.length);
+        Assert.assertArrayEquals(about, new byte[] {1, 2, 3}, b);
+        Assert.assertEquals(about, length, s.getLength());
     }
     
     @Nano
