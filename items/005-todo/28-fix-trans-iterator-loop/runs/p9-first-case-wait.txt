@@ -1,0 +1,14 @@
+005-11's ReplicaProbe, diverge (P9), changed for 005-28: the first case only (more = 0), and
+Thread.sleep(2000) after the start with the main and the replica. On f206e58 with 005-28's fix.
+
+P9. A crash that leaves the replica longer than the main, a restart without the replica, then with it.
+Main cut to 7282616 bytes (2998 of 3000 transactions complete), the replica 7285616 bytes; the main alone runs 0 transactions:
+  main now 7284936 bytes, replica 7285616
+  main and replica before the restart with both: lengths 7284936 and 7285616, first positions 0 and 0; bytes 0 to 7284936 DIFFER first at 7282616
+  start with main and replica: FAILED: StreamFormatException: Transaction at start pos 7273376 is not committed (its last byte is 0).
+  (2 s later)
+  main and replica after it: lengths 7285616 and 7285616, first positions 0 and 0; bytes 0 to 7285616 DIFFER first at 7282616
+  main alone: startup FAILED: StreamFormatException: Transaction at start pos 7273376 is not committed (its last byte is 0).
+  r alone: started; against the main's history (2998 transactions): 900 lookups, 3 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (3 of the failed at the latest time); first: r: /k/93 at 9223372036854775807: expected 62 bytes, got 60 bytes
+    against the history before the crash (3000 transactions): 900 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+DONE diverge in 4.5 s

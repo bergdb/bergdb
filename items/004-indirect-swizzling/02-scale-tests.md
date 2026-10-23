@@ -169,8 +169,10 @@ times the budget, at least 512 MB.
 At 100M, F53 uses R/20 and R/10 (R/4 would need a 27 GB heap), and its C runs are partly D
 (the 28 GB stream does not fit the memory left over), as the device counters will show.
 s1's heaps of at most 2.6 GB cap its budgets at 600 MB. The 10M, 30M and 100M databases
-are loaded with a budget (600 MB and a 2.5 GB heap on s1; 2,660 MB and an 11 GB heap on
-F53), since they do not fit in memory. Repeated, for the spread between runs: on F53 C at
+are loaded with a budget, since they do not fit in memory: 600 MB and a 2.5 GB heap on s1;
+on F53 8,000 MB and a 20 GB heap (4,000 MB and 12 GB if less than 75 percent of the memory
+is free), a budget that holds the latest index, as s1's 10M load with 600 MB took an hour
+(changed 2026-10-23 14:40, before F53's runs; it was 2,660 MB and 11 GB). Repeated, for the spread between runs: on F53 C at
 10M with 133 MB; on s1 C at 1M and D at 10M with 133 MB. The blocks are in
 `plan-f53.sh` and `plan-s1.sh`.
 
@@ -222,6 +224,12 @@ clone; the same jar on both machines, with its commit and SHA-256 in every resul
   1-minute load below 1.5 for 5 minutes, no other Claude session busy
   (`~/.claude/sessions`). Not between 02:00 and 05:00, as `night.sh` starts at 02:10. This
   session stays idle while a timed run is on.
+  Changed 2026-10-23 at 14:10 and 14:40, as nothing could start from 10:58 to 14:30 while
+  Frans worked and six other sessions were busy: a load below 2.0 (while Frans works it
+  stays at 1.5 to 1.9 with little CPU in use); other sessions count only from 05:00 to
+  22:00; a block starts only if its length (estimated generously) ends it before 02:00.
+  Every run's start and end in `runs.txt` record the load and the sessions' states, so
+  that a run beside busy sessions can be told apart; the repeats check the spread.
 * s1: a run that swapped (`vmstat`) or lost more than 2 percent to steal is repeated, with
   a smaller heap if it swapped.
 * A wrong value read stops the work: a correctness problem at scale comes before timing.

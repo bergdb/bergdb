@@ -560,7 +560,13 @@ being on the access path.
 
 * Bounds (the planned theorems T3 and T4): the length of the startup
   section, the memory for D, the write overhead. They need a cost model and
-  a policy for s(i).
+  a policy for s(i). Since 2026-10-23 (bergdb item 007), T3 in a first
+  form: with any cost of a record, and a policy that never asks for a
+  startup pos before the one a startup distance d asks for, the startup
+  section without its last record costs less than d, after every run
+  (`T3_section`, lean/SIS/BoundTheorems.lean). BergDB's take does not keep
+  up with d; the size of the records at the ends of the section (T4) and
+  the rest are open ([../items/007-bounds/](../items/007-bounds/readme.md)).
 * Reclaim: cutting the front of the stream (INV-RECLAIM of
   [problem.md](problem.md); level 3 of levels.md), and eviction and the
   cache (the planned T5; level 4): not in sections 2 to 9; bergdb item 001

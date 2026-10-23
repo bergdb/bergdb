@@ -27,8 +27,15 @@ export QUIETLOAD=${QUIETLOAD:-2.0}
 mkdir -p "$OUT" "$DATA"
 caffeinate -i -s -w $$ &
 P=warm,uniform,hot,threads
+# The blocks' lengths in minutes, generous, so that none overlaps 02:00 to 05:00 (quiet.sh).
+minutes() {
+    case $1 in
+    a) echo 50 ;; b) echo 25 ;; b64) echo 40 ;; c) echo 10 ;; m) echo 60 ;; 50m|30m) echo 40 ;;
+    100m) echo 120 ;; rnd) echo 40 ;; rep) echo 15 ;; *) echo 60 ;;
+    esac
+}
 for block in "$@"; do
-    sh "$HERE/quiet.sh" "$OWN" >> "$OUT/runs.txt"
+    sh "$HERE/quiet.sh" "$OWN" "$(minutes $block)" >> "$OUT/runs.txt"
     echo "$(date '+%F %T') block $block, $(uptime)" >> "$OUT/runs.txt"
     case $block in
     a)
@@ -70,7 +77,15 @@ for block in "$@"; do
         rm -rf "$DATA/key24-30000000"
         ;;
     100m)
-        sb_load f53-l-key24-100m key24 100000000 11g 2660000000 ""
+        # Loaded with a budget that holds the latest index (about 5.4 GB), so that the writer
+        # seldom loads (s1's 10M load with 600 MB took an hour); 4 GB if memory is short.
+        free=$(memory_pressure | awk '/free percentage/ { sub("%", "", $5); print $5 }')
+        echo "$(date '+%F %T') memory free: $free percent" >> "$OUT/runs.txt"
+        if [ "${free:-0}" -ge 75 ]; then
+            sb_load f53-l-key24-100m key24 100000000 20g 8000000000 ""
+        else
+            sb_load f53-l-key24-100m key24 100000000 12g 4000000000 ""
+        fi
         sb_get f53-c-key24-100m-b1330 key24 100000000 5300m 1330000000 C $P
         sb_get f53-c-key24-100m-b2660 key24 100000000 10600m 2660000000 C $P
         ;;

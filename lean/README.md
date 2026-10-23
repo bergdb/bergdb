@@ -19,6 +19,11 @@ still-dirty test.
 Java's conservative tracking and reference-resolution obligations are in
 [levels.md](../docs/levels.md).
 
+Since bergdb item 007 (2026-10-23) the model also has the first bound, T3:
+with any cost of a record and a startup pos policy that keeps up with a
+startup distance, the startup section is bounded (SIS/Bound.lean,
+SIS/BoundTheorems.lean; ../items/007-bounds/01-startup-bound.md).
+
 
 Build and run
 =============
@@ -40,6 +45,7 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     import SIS.Theorems
     import SIS.PhysTheorems
     import SIS.ReclaimTheorems
+    import SIS.BoundTheorems
     #print axioms SIS.T1_recovery
     #print axioms SIS.T1_crash
     #print axioms SIS.T1_nodes
@@ -62,11 +68,16 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.T9_readCut
     #print axioms SIS.T12_restartCut
     #print axioms SIS.T12_evictCut
+    #print axioms SIS.T3_section
+    #print axioms SIS.T3_restarts
+    #print axioms SIS.T3_reads
+    #print axioms SIS.T3_rerun
+    #print axioms SIS.T3_bounded
 
 Each prints `[propext, Classical.choice, Quot.sound]`, or a part of it
-(`LM_cutTo` needs no `Classical.choice`). The equalities of
-the checker's fast paths (Check/Fast.lean, Check/R4.lean) are checked the
-same way:
+(`LM_cutTo`, `T3_section` and `T3_restarts` need no `Classical.choice`).
+The equalities of the checker's fast paths (Check/Fast.lean,
+Check/R4.lean) are checked the same way:
 
     import Check.Steps
     #print axioms SIS.Fast.markOf_eq_fast
@@ -97,6 +108,8 @@ its section in sis-model.md.
 | SIS/PhysTheorems.lean | Lemma M: a newer version of a node serves every time an older one serves (`LM_newer`), so Rule R's version does (`LM_ruleR`), and a version cut back to s serves the times up to s (`LM_cutTo`); T1-L (`T1_lazy`): after the lazy startup from the stream of a run, or of a prefix of it (a crash), and any reads and writer follows, a read at any time up to the last record gives P at that time; CC (`CC_canonical`): in a run with lazy restarts, every canonical object holds its node's whole history; T2-L (`T2_lazy`): such a run appends the records of the run without restarts; `step_eq_stepWith`; stage 2 (bergdb item 001, WP E3): D closed upward (`T15_closed`), and T-CACHE (`TC_records`): in a run with eviction and any cache schedule, without restarts, every transaction of the physical writer appends the model's record and leaves the model's D, and INV-CAN, INV-SNAP and INV-SLOT hold; T-READ (`TR_view`, WP E4): in such a run, a read through the Level 4 loader at any time up to the last record gives P at that time; T2-C (`T2_cache`, WP E5): with restarts too, the records and D stay the model's, and the invariants hold for the stream of the last startup; and T-READ with restarts (`TR_view_restarts`, WP E5); T-PIN (`TP_pins`, WP E6): in such runs, every object outside the pinned set may be evicted | 5.1, 9; ../docs/level4-alignment.md, 5.3 to 5.6 |
 | SIS/Reclaim.lean | Level 3, reclaim (bergdb item 001, WP R3): what a cut leaves of a version (`Version.stub`) and of a record (`Record.cut`); the stream after a cut (`cutStream`); the versions that a lookup at a time may read (`ReadsAt`, WP R7); when a cut is safe (`CutOK`); the same lookups from f on (`SameFrom`); policies that a cut does not change (`PolicyCutOK`); a virtual root seen only through its live children (`ExecRootOK`), whose live children are those of its last entry (`VirtLiveOK`, WP R4); runs that restart from cut streams (`runRestartsCut`, `cutMax`; with eviction, `runEvictCut`) | — (../docs/level3-alignment.md, 5) |
 | SIS/ReclaimTheorems.lean | T13' (`T13_markTouch`, WP R3): with touches, step 3 gives exactly the index nodes not in D (and not a virtual root) that are dirty or touched; T8 (`T8_recoverCut`, WP R4): after a safe cut, startup from the cut stream gives the same lookups at every time from the first available time on (`SameFrom`), and the same D; T9 (`T9_readCut`, WP R4): in a run with eviction as in T2-C, after a safe cut, a read through the Level 4 loader in the running process at any time from the first available time on gives the same on the cut stream as on the whole stream, and gives P; T12 (`T12_restartCut`, WP R5): a run that restarts from safe cut streams appends the records of the run without restarts (its stream is that run's, cut at the largest cut), with that run's D and lookups from the first available time on; T12 with eviction (`T12_evictCut`, WP R5): so does the run with eviction (`runEvictCut`), with any cache schedules whose reads are from the first available time on and the Level 4 startup at each restart | — (../docs/level3-alignment.md, 2.2, 2.9, 2.10) |
+| SIS/Bound.lean | Bounds, part 1 (bergdb item 007): the cost of the records R(a), ..., R(b-1) for any cost of a record (`Stream.cost`); the startup pos that a startup distance d asks for (`sdTarget`); a policy that keeps up with d (`KeepsUp`); the startup distance policy (`sdPolicy`) | 10 (../items/007-bounds/01-startup-bound.md, 3) |
+| SIS/BoundTheorems.lean | T3 (`T3_section`): in every run whose policy keeps up with d, the startup section without its last record costs less than d; also with restarts (`T3_restarts`); what startup reads (`T3_reads`) and reruns (`T3_rerun`), and with records of bounded cost (`T3_bounded`). No assumption but the policy | 10 (../items/007-bounds/01-startup-bound.md, 3) |
 
 The proofs, in SIS/Proof/ (not needed for reading the statements):
 
@@ -151,6 +164,7 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
 | CutLaterTrans | WP R5: one transaction of C, after a restart from a cut stream, and of E, after the restart from the whole stream at the same point: the same record, and memories related again (`SimC`, `evictTrans_sim`); a batch of C's cache operations and E's with extra unswizzles of its root's slots before each release (`augment`, `ExtraOK`, `ops_sim`) |
 | CutLaterStart | WP R5: the Level 4 startup from a stream cut safely is the one from the whole stream but for the root's object (`startup_sim`): the rebuilt virtual root (`rootObj_rel`), the rerun's transactions (`rerunStep_sim`), with the writer's last resort for a root child that only the whole stream's root still points to: every slot for it is the same stream slot (`anySlot_sim`) |
 | CutLaterRun | WP R5: the run with eviction that restarts from cut streams (C) has the states of the run without eviction that restarts from cut streams (`evictCut_restartsCut`), through the run with eviction that restarts from the whole streams at the same points (E) with the schedule `esOf`; T12 with eviction (`restartCut_evict`) |
+| Bound | The cost of a part of the stream (`cost_split`, `cost_append_left`, `cost_ge_count`), the target's maximality (`sdTarget_max`), T3 after one transaction (`section_step`), for runs (`section_run`) and runs with restarts (`section_runRestarts`), and what startup reads and reruns (`reads_of_section`, `rerun_of_section`, `bounded_of_section`); bergdb item 007 |
 
 Not trusted, tests only:
 
@@ -258,6 +272,12 @@ Not trusted, tests only:
   schedule (`slotFailures`, after the model's `invSlotB`; test traces
   `slot.trace` and `badslot.trace`;
   [../docs/level4-alignment.md](../docs/level4-alignment.md), section 7.3).
+* SIS/BoundExample.lean (bergdb item 007): T3 by running. The policy of
+  the example of section 7 is a startup distance of two records; on random
+  runs of example 2 with a cost like bytes (`bytes2`), the section without
+  its last record stays below d with `sdPolicy`, with and without restarts;
+  a sketch of BergDB's take (`javaTake`) with a tight node limit does not
+  keep up.
 * Check/Fast.lean and Check/R4.lean, the checker's fast paths (bergdb item
   001, WP C2). `markOf`, `writeAll`, `reachList` and `step` have fast
   versions, proven equal to them and marked `@[csimp]` (`markOf_eq_fast`,
@@ -891,6 +911,13 @@ eviction): T12 with eviction (`T12_evictCut`, SIS/ReclaimTheorems.lean), new;
 SIS/ReclaimTheorems.lean imports SIS/Proof/CutLaterRun.lean. No definition
 changed.
 
+Changes to the trusted part on 2026-10-23 (bergdb item 007, T3): two new
+files. SIS/Bound.lean: `Stream.cost`, `sdTarget`, `KeepsUp`, `sdPolicy`.
+SIS/BoundTheorems.lean: `T3_section`, `T3_restarts`, `T3_reads`,
+`T3_rerun`, `T3_bounded`. No definition changed. `lake build` passes with
+no warnings and no `sorry`; `#print axioms` shows only Lean's standard
+axioms.
+
 Stage 1 of bergdb item 001 is done (2026-10-16): lemma M (`LM_newer`, L2),
 T1-L (`T1_lazy`, L3), CC and T2-L (`CC_canonical`, `T2_lazy`, L4) are proved,
 and Java's first touches after restarts are checked against the model's rule
@@ -907,7 +934,8 @@ Not done:
 
 * A check of the physical layer's assumptions (`PhysStep`, M47) on Java
   traces; they are argued (level2-alignment.md, 13.3).
-* The bounds (T3, T4).
+* The bounds: T4 (D), and T3 for BergDB's take, which does not keep up
+  (bergdb item 007).
 * Reclaim's theorems: T-SCHEME (R6), that Java's scheme gives safe cuts:
   checked, not proved (the plan's fallback; level3-alignment.md, section 5):
   by running on example 4 (`reclaimtest`, `checkSchemeB`), and at every cut

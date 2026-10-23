@@ -1,0 +1,53 @@
+TakeStuckProbe on bergdb f6bc3ce, 2026-10-23, F53, JDK 27; record limit 200000, startup distance 20000.
+
+== every 20-th key
+before: stream 27578096, startup pos 27558000, section 20096
+big: tpos 27578096, record 138304 bytes, record limit 200000
+after 500: stream 27770264, startup pos 27578008 (before big), section 192256 = 9 x sd
+after 1000: stream 27815224, startup pos 27578008 (before big), section 237216 = 11 x sd
+after 1500: stream 27860024, startup pos 27578008 (before big), section 282016 = 14 x sd
+after 2000: stream 27904840, startup pos 27578008 (before big), section 326832 = 16 x sd
+after 2500: stream 27949672, startup pos 27578008 (before big), section 371664 = 18 x sd
+after 3000: stream 27994504, startup pos 27578008 (before big), section 416496 = 20 x sd
+after 3500: stream 28039464, startup pos 27578008 (before big), section 461456 = 23 x sd
+after 4000: stream 28084280, startup pos 27578008 (before big), section 506272 = 25 x sd
+restart: 57 ms, startup pos 27578008 (the same)
+
+== every 40-th key
+before: stream 27578096, startup pos 27558000, section 20096
+big: tpos 27578096, record 73280 bytes, record limit 200000
+after 500: stream 27705240, startup pos 27578008 (before big), section 127232 = 6 x sd
+after 1000: stream 27750072, startup pos 27578008 (before big), section 172064 = 8 x sd
+after 1500: stream 27794872, startup pos 27578008 (before big), section 216864 = 10 x sd
+after 2000: stream 27839816, startup pos 27578008 (before big), section 261808 = 13 x sd
+after 2500: stream 27884648, startup pos 27578008 (before big), section 306640 = 15 x sd
+after 3000: stream 27929480, startup pos 27578008 (before big), section 351472 = 17 x sd
+after 3500: stream 27974312, startup pos 27578008 (before big), section 396304 = 19 x sd
+after 4000: stream 28019256, startup pos 27578008 (before big), section 441248 = 22 x sd
+restart: 45 ms, startup pos 27578008 (the same)
+
+== every 100-th key
+before: stream 27578096, startup pos 27558000, section 20096
+big: tpos 27578096, record 34288 bytes, record limit 200000
+after 500: stream 27666248, startup pos 27578008 (before big), section 88240 = 4 x sd
+after 1000: stream 27711080, startup pos 27578008 (before big), section 133072 = 6 x sd
+after 1500: stream 27755880, startup pos 27578008 (before big), section 177872 = 8 x sd
+after 2000: stream 27800824, startup pos 27578008 (before big), section 222816 = 11 x sd
+after 2500: stream 27845656, startup pos 27578008 (before big), section 267648 = 13 x sd
+after 3000: stream 27890488, startup pos 27578008 (before big), section 312480 = 15 x sd
+after 3500: stream 27935320, startup pos 27578008 (before big), section 357312 = 17 x sd
+after 4000: stream 27980136, startup pos 27578008 (before big), section 402128 = 20 x sd
+restart: 46 ms, startup pos 27578008 (the same)
+
+== every 200-th key
+before: stream 27578096, startup pos 27558000, section 20096
+big: tpos 27578096, record 17952 bytes, record limit 200000
+after 500: stream 27834168, startup pos 27814048 (past big), section 20120 = 1 x sd
+after 1000: stream 27910472, startup pos 27890000 (past big), section 20472 = 1 x sd
+after 1500: stream 27983968, startup pos 27963864 (past big), section 20104 = 1 x sd
+after 2000: stream 28059104, startup pos 28038984 (past big), section 20120 = 1 x sd
+after 2500: stream 28133576, startup pos 28113448 (past big), section 20128 = 1 x sd
+after 3000: stream 28208376, startup pos 28187712 (past big), section 20664 = 1 x sd
+after 3500: stream 28283360, startup pos 28263240 (past big), section 20120 = 1 x sd
+after 4000: stream 28357168, startup pos 28336768 (past big), section 20400 = 1 x sd
+restart: 13 ms, startup pos 28336768 (the same)

@@ -1,8 +1,10 @@
 package bergdb.core;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 
+import bergdb.common.Bytes;
 import bergdb.common.StringUtil;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Keys;
@@ -13,6 +15,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.storage.MetaBlock;
 import bergdb.storage.RecoverableStream;
+import bergdb.storage.StreamFormatException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
 
@@ -191,5 +194,147 @@ public class NodeStreamTester {
         Assert.assertEquals("type", Node.TYPE_VALUE, header.type());
         Assert.assertEquals(node.getId(), header.id());
         Assert.assertEquals(1234L, node.getId());
+    }
+
+    /**
+     * Bergdb 005-28: a failed transaction where an iterator starts (its last byte is 0, as
+     * recovery's zero fill leaves a torn one). Both iterators went back to it, for ever. Now
+     * the iterator from an exact start pos throws, as a start pos must name a committed
+     * transaction, and the iterator from the last transaction completed before a position
+     * steps on to the next transaction.
+     */
+    @Nano
+    public static void testTransIteratorAtFailedTrans() throws InterruptedException {
+        MemoryStream stream = new MemoryStream();
+        Object writeLock = new Object();
+        final NodeStream nodeStream = new NodeStream(
+                new RecoverableStream(stream, new MetaBlock()), writeLock);
+        final Trans t1 = appendTopNode(nodeStream);
+        stream.truncate(t1.lastPos);        // A crash before t1's last byte,
+        synchronized (writeLock) {
+            nodeStream.recover();           // and recovery zero-fills t1.
+        }
+        Trans t2 = appendTopNode(nodeStream);
+        Assert.assertEquals(t1.nextPos, t2.tpos);
+        
+        Throwable e = thrownWithin10s(new Runnable() {
+            public void run() {
+                nodeStream.createTransIteratorFromExactStartupPos(t1.tpos).next();
+            }
+        });
+        Assert.assertTrue("thrown: " + e, e instanceof StreamFormatException);
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains(" " + t1.tpos + " "));
+        
+        // The first meta block names no transaction, so this one starts at t1.
+        final NodeStream.TransIterator ti = nodeStream.createTransIterator(0);
+        final boolean[] next = new boolean[1];
+        e = thrownWithin10s(new Runnable() {
+            public void run() {
+                next[0] = ti.next();
+            }
+        });
+        Assert.assertTrue("thrown: " + e, e == null && next[0]);
+        Assert.assertEquals("the transaction after t1", t2.tpos, ti.tpos);
+        Assert.assertFalse(ti.next());
+    }
+    
+    /**
+     * Bergdb 005-28, as 005-11's probe P9 found it: the transaction at the startup pos is a
+     * failed one, in a stream that mixes two histories. The main's recovery zero-filled x,
+     * which a replica holds whole, and the replica's next transaction t, copied after it, names
+     * x as its startup pos. Startup looped for ever on x; now it throws.
+     */
+    @Nano
+    public static void testStartupPosAtFailedTrans() throws IOException, InterruptedException {
+        MemoryStream s = new MemoryStream();
+        Db db = Db.builder().testSetup(s).startupDistance(10).start();
+        Trans x = null;
+        Trans t = null;
+        for (int i = 0; i < 4; i++) {
+            x = t;
+            t = db.trans().put("/k" + i, "v" + i).build();
+            db.execute(t);
+        }
+        db.close();
+        Assert.assertEquals("t's startup pos", x.tpos, t.startupPos);
+        Assert.assertEquals("t follows x", x.nextPos, t.tpos);
+        
+        // x as recovery leaves it after a crash before its last byte.
+        MemoryStream mixed = s.copy();      // close() closed s.
+        MemoryStream.TestAccess.write(mixed, new byte[] {0}, x.lastPos);
+        Throwable e = startWithin10s(mixed);
+        Assert.assertTrue("thrown: " + e, e instanceof StreamFormatException);
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains(" " + x.tpos + " "));
+    }
+    
+    /**
+     * Bergdb 005-28 in one history: a crash while the database is created, in its first
+     * transaction (the primordial one). Recovery zero-fills it, and startup, which starts
+     * there as the meta block names no transaction, looped for ever. Now it throws.
+     */
+    @Nano
+    public static void testCrashInPrimordialTrans() throws IOException, InterruptedException {
+        MemoryStream s = new MemoryStream();
+        Db.builder().testSetup(s).start().close();
+        MemoryStream created = s.copy();    // close() closed s.
+        final long first = RecoverableStream.META_BLOCK_SIZE;
+        final long end = created.getLength();
+        byte[] size = new byte[4];
+        created.read(first, size, 0, 4);
+        Assert.assertEquals("one transaction", end - first, Bytes.bytesToIntLE(size, 0));
+        
+        // Cuts after 1, 4 and 5 of its bytes, in the middle and before its last byte.
+        for (long cut : new long[] {first + 1, first + 4, first + 5, (first + end) / 2, end - 1}) {
+            MemoryStream m = created.copy();
+            m.truncate(cut);
+            Throwable e = startWithin10s(m);
+            Assert.assertTrue("cut at " + cut + ", thrown: " + e,
+                    e instanceof StreamFormatException);
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains(" " + first + " "));
+        }
+    }
+    
+    private static Trans appendTopNode(NodeStream nodeStream) {
+        TransNodes transNodes = new TransNodes();
+        TopNode top = TopNode.createDummy(5);
+        top.setId(12L);
+        transNodes.addTopNode(top);
+        Trans trans = new Trans.Builder().build();
+        nodeStream.appendNodes(transNodes, trans, new ArrayList<Node>());
+        return trans;
+    }
+    
+    /** Starts a database on the stream; returns what start() threw, or null. */
+    private static Throwable startWithin10s(AppendOnlyStream stream) throws InterruptedException {
+        final Db db = Db.builder().testSetup(stream).build();
+        Throwable e = thrownWithin10s(new Runnable() {
+            public void run() {
+                db.start();
+            }
+        });
+        db.stop();
+        return e;
+    }
+    
+    /**
+     * Runs r in a daemon thread; returns what it threw, or null. Fails if r has not returned
+     * within 10 s: before bergdb 005-28, it could loop for ever.
+     */
+    private static Throwable thrownWithin10s(final Runnable r) throws InterruptedException {
+        final Throwable[] thrown = new Throwable[1];
+        Thread t = new Thread(new Runnable() {
+            public void run() {
+                try {
+                    r.run();
+                } catch (Throwable e) {
+                    thrown[0] = e;
+                }
+            }
+        });
+        t.setDaemon(true);
+        t.start();
+        t.join(10 * 1000);
+        Assert.assertFalse("still running after 10 s", t.isAlive());
+        return thrown[0];
     }
 }

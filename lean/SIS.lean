@@ -13,3 +13,6 @@ import SIS.EvictExample
 import SIS.Reclaim
 import SIS.ReclaimTheorems
 import SIS.ReclaimExample
+import SIS.Bound
+import SIS.BoundTheorems
+import SIS.BoundExample

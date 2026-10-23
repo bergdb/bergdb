@@ -937,3 +937,22 @@ write lock. No rollback; transformations stay where they are and must not
 throw. No model change ([levels.md](levels.md), "A transaction that
 fails"). Seven tests; streams unchanged (StreamDigest); `before-commit.sh`
 and the four gates pass.
+
+2026-10-23. 005-28 done, by Claude (Opus 5.5, Claude Code): startup looped
+for ever when the transaction at its start position was a failed one,
+zero-filled by recovery: in a stream that mixes two histories (005-11, P9),
+and after a crash in a new database's first transaction.
+`NodeStream.TransIterator` went back to that position and read the same
+transaction again. Now a failed transaction at an exact start position
+throws a `StreamFormatException` that names it, and the iterator from the
+last transaction before a position steps on. Three tests;
+`before-commit.sh` passes.
+
+2026-10-23. Bergdb item 007, bounds, by Claude (Opus 5.5, Claude Code), at
+Frans's request. T3 in Lean (`lean/SIS/Bound.lean`, `BoundTheorems.lean`):
+with any cost of a record, and a startup pos policy that keeps up with a
+startup distance d, the startup section without its last record costs less
+than d after every run, also with restarts; no other assumption. BergDB's
+take does not keep up (its node limit); 007-02, found with a probe: a
+transaction whose dirty nodes do not fit in one record stops the startup
+pos for good. `lake build` passes.

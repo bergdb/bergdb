@@ -292,6 +292,8 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     /**
      * Iterator that iterates through the successful transactions in the stream 
      * from a given start pos.
+     * From an exact start pos, such as a startup pos, the transaction there must be
+     * committed, or next() throws a StreamFormatException (bergdb 005-28).
      */
     public class TransIterator {
         long startPos;
@@ -303,6 +305,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         byte[] transBuffer;
         long transTime;
         boolean exactStartPos;
+        boolean started; // a transaction has been read, committed or not
 
         private TransIterator(long startPos, boolean exactStartPos) {
             this.startPos = startPos;
@@ -317,7 +320,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         public boolean next() {
 
             start: while (true) { // Dummy while-loop just to be able to do "continue start;".
-                if (transCount == 0) {
+                if (!started) {
                     if (exactStartPos) {
                         tpos = startPos;
                     } else {
@@ -357,8 +360,15 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
 
                 lastPos = RecoverableStream.getSpos(tpos, size - 1);
                 nextTransPos = RecoverableStream.getSpos(tpos, size);
+                started = true;
 
                 if (!transOk) {
+                    if (exactStartPos && tpos == startPos) {
+                        // An exact start pos must name a committed transaction (bergdb
+                        // 005-28). Before, next() went back to it and read it again, for ever.
+                        throw new StreamFormatException("Transaction at start pos " + tpos
+                                + " is not committed (its last byte is 0).");
+                    }
                     continue start;
                 }
 

@@ -1,0 +1,42 @@
+
+======== NanotestForBergDB: unit ========
+On f53 261023 14:40, OpenJDK 64-Bit Server VM 27
+FAILED! bergdb.core.NodeStreamTester.testCrashInPrimordialTrans
+java.lang.AssertionError: still running after 10 s, expected false, but was true.
+	at bergdb.nanotest.Assert.assertFalse(Assert.java:369)
+	at bergdb.core.NodeStreamTester.thrownWithin10s(NodeStreamTester.java:337)
+	at bergdb.core.NodeStreamTester.startWithin10s(NodeStreamTester.java:310)
+	at bergdb.core.NodeStreamTester.testCrashInPrimordialTrans(NodeStreamTester.java:290)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:67)
+	at bergdb.dev.Unit.main(Unit.java:15)
+FAILED! bergdb.core.NodeStreamTester.testStartupPosAtFailedTrans
+java.lang.AssertionError: still running after 10 s, expected false, but was true.
+	at bergdb.nanotest.Assert.assertFalse(Assert.java:369)
+	at bergdb.core.NodeStreamTester.thrownWithin10s(NodeStreamTester.java:337)
+	at bergdb.core.NodeStreamTester.startWithin10s(NodeStreamTester.java:310)
+	at bergdb.core.NodeStreamTester.testStartupPosAtFailedTrans(NodeStreamTester.java:265)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:67)
+	at bergdb.dev.Unit.main(Unit.java:15)
+FAILED! bergdb.core.NodeStreamTester.testTransIteratorAtFailedTrans
+java.lang.AssertionError: still running after 10 s, expected false, but was true.
+	at bergdb.nanotest.Assert.assertFalse(Assert.java:369)
+	at bergdb.core.NodeStreamTester.thrownWithin10s(NodeStreamTester.java:337)
+	at bergdb.core.NodeStreamTester.testTransIteratorAtFailedTrans(NodeStreamTester.java:220)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:67)
+	at bergdb.dev.Unit.main(Unit.java:15)
+FAILURE, total: 3, failed: 3. Time: 30.0 s.

@@ -7,6 +7,14 @@
 # Each run writes OUT/NAME.txt (the summary), OUT/NAME.json and OUT/NAME.gc.log, and appends
 # a line to OUT/runs.txt; a run that does not end with SCALEBENCH OK stops the plan.
 
+sb_state() {    # the load, and on F53 the other Claude sessions' states
+    st="load $(uptime | sed 's/.*load averages*: *//')"
+    if [ -d "$HOME/.claude/sessions" ]; then
+        st="$st; sessions $(cat "$HOME"/.claude/sessions/*.json 2>/dev/null | grep -o '"status":"[a-z]*"' | cut -d'"' -f4 | sort | uniq -c | tr -s ' \n' ' ')"
+    fi
+    echo "$st"
+}
+
 sb_jvm() {      # sb_jvm NAME HEAP ARGS...: the JVM with the flags of every run
     name=$1
     heap=$2
@@ -16,14 +24,14 @@ sb_jvm() {      # sb_jvm NAME HEAP ARGS...: the JVM with the flags of every run
         -Dsb.threads=${THREADS:-1,2,4,8} -Dsb.sampled=${SAMPLED:-4} -Dsb.disk=${DISK:-sda} \
         ${PIDIO:+-Dsb.pidio=$PIDIO} -Dsb.label=$name -Dsb.out=$OUT/$name.json \
         -Dsb.gclog=$OUT/$name.gc.log $SBFLAGS "$@" -cp "$CP" bergdb.core.ScaleBench
-    echo "$(date '+%F %T') start $name: $*" >> "$OUT/runs.txt"
+    echo "$(date '+%F %T') start $name ($(sb_state)): $*" >> "$OUT/runs.txt"
     if [ -n "$CGROUP_MAX" ]; then
         systemd-run --scope --quiet -p MemoryMax=$CGROUP_MAX -p MemorySwapMax=0 "$JAVA" "$@" > "$OUT/$name.txt" 2>&1 || true
     else
         "$JAVA" "$@" > "$OUT/$name.txt" 2>&1 || true
     fi
     if tail -n 1 "$OUT/$name.txt" | grep -q 'SCALEBENCH OK'; then
-        echo "$(date '+%F %T') ok $name" >> "$OUT/runs.txt"
+        echo "$(date '+%F %T') ok $name ($(sb_state))" >> "$OUT/runs.txt"
     else
         echo "$(date '+%F %T') FAILED $name" >> "$OUT/runs.txt"
         exit 1
