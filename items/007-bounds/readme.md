@@ -18,7 +18,8 @@ Files
 * [02-take-blocked.md](02-take-blocked.md). 007-02, a finding: a
   transaction whose got-dirty nodes do not fit in one record stops the
   startup pos for good. The probe and its output are in
-  [02-take-blocked/](02-take-blocked/).
+  [02-take-blocked/](02-take-blocked/). Registered as
+  [005-31](../005-todo/31-fix-take-blocked.md).
 
 
 Log
@@ -32,3 +33,5 @@ startup pos policy that keeps up with a startup distance d, the startup
 section without its last record costs less than d after every run, also
 with restarts. BergDB's take does not keep up (4.1 of 007-01); 007-02 is a
 case where it never catches up.
+
+2026-10-23. 007-02 registered as 005-31, at Frans's request.

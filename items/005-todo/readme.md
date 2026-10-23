@@ -31,6 +31,7 @@ Open
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
 | [005-27](27-fix-meta-block-edge.md) | Fix | A crash that ends the stream exactly at a meta block's position, after a transaction that ends there, leaves a database that does not start (005-11, P11) | open |
 | [005-30](30-fix-read-failure.md) | Fix | A read that fails on the storage (an I/O error, corrupt data) leaves the database running half dead; make it fail the database, as a transaction does since 005-01 | open |
+| [005-31](31-fix-take-blocked.md) | Fix | A transaction whose dirty index nodes do not fit in one record stops the startup pos for good: the startup section, startup, D and the stream grow without end (007-02) | open |
 
 
 Closed
@@ -76,7 +77,8 @@ before 005-05's decision on publishing, as it concerns the Pub API; 005-12
 is done. 005-27 first of the fixes found in 005-11, as a crash can leave a
 database that does not start; 005-28 and 005-29 are done; none of them
 waits for 005-11's decision. 005-30 any time, but not during a timing
-campaign, as it changes the read path.
+campaign, as it changes the read path. 005-31 before item 007's deadline
+for `TransSeq.take` (007-01, D1), which needs it.
 
 
 Files
@@ -151,6 +153,10 @@ Files
   done.
 * [30-fix-read-failure.md](30-fix-read-failure.md). 005-30, a read that
   fails on the storage fails the database (005-01's follow-up).
+* [31-fix-take-blocked.md](31-fix-take-blocked.md). 005-31, a transaction
+  whose dirty index nodes do not fit in one record stops the startup pos
+  for good; found in item 007, with the probe in
+  [../007-bounds/02-take-blocked/](../007-bounds/02-take-blocked/).
 
 Log
 ===
@@ -444,6 +450,13 @@ history, after a crash in a new database's first transaction; such a
 database now fails to start with that exception. Three tests;
 `before-commit.sh` passes. The change in `java/` is left for Frans to
 commit.
+
+2026-10-23. Added 005-31, at Frans's request ("Register the bug in 005."),
+by Claude (Opus 5.5, Claude Code), from item 007's finding 007-02: a
+transaction whose got-dirty index nodes need more bytes than one record
+can hold is never taken, so the startup pos stays before it for good.
+Proposed: refuse such a transaction before its go point (option A). No
+change to `java/`.
 
 2026-10-23. 005-29 done, at Frans's request ("Fix bergdb 005-29."), by
 Claude (Opus 5.5, Claude Code): `MemoryStream.assertOk` expected one array

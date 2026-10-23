@@ -2,8 +2,9 @@
 ========================================================
 
 Created 2026-10-23 by Claude (Opus 5.5, Claude Code), found while writing
-007-01 and checked with a probe. Status: found; not registered in 005, not
-fixed.
+007-01 and checked with a probe. Status: registered as
+[005-31](../005-todo/31-fix-take-blocked.md), where the fix is proposed;
+not fixed.
 
 
 The issue

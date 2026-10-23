@@ -289,7 +289,7 @@ Decisions for Frans:
   Recommended: B. It is a small change to the take, T3 then applies to
   Java with d = d_h, and it bounds the rerun, the costly part, whatever the
   debt.
-* D2. The fix of 007-02 (its options).
+* D2. The fix of 007-02, now 005-31 (its options; A is proposed there).
 * D3. The cost of a record for the startup distance: bytes, as now, or an
   estimate of startup time (5.4).
 
