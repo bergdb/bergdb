@@ -11,8 +11,9 @@ public enum DbState {
     ACTIVE,
 
     /**
-     * A transaction threw after its go point (bergdb 005-01): the database refuses every
-     * transaction and read until it is restarted. See Db.execute().
+     * A transaction threw after its go point (bergdb 005-01), or a read or a sync failed on
+     * the storage (bergdb 005-30): the database refuses every transaction and read until it
+     * is restarted. See Db.execute().
      */
     FAILED,
 

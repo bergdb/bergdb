@@ -1,0 +1,47 @@
+bergdb 005-30: mutations.sh on the scratch clone with the fix, on f6bc3ce (2026-10-23, F53).
+
+== mutation A
+bergdb.core.DbTesterFailure .FAILED! bergdb.core.DbTesterFailure.testCorruptNodeInGetMany
+FAILED! bergdb.core.DbTesterFailure.testCorruptNodeInGetOne
+......FAILED! bergdb.core.DbTesterFailure.testReadErrorInGetMany
+FAILED! bergdb.core.DbTesterFailure.testReadErrorInGetOne
+.FAILED! bergdb.core.DbTesterFailure.testReadErrorInWarmup
+FAILURE, total: 16, failed: 5. Time: 0.5 s.
+SUCCESS, 9 successful tests in 6.3 s.
+== mutation B
+bergdb.core.DbTesterFailure FAILED! bergdb.core.DbTesterFailure.testAppendErrorInStore
+FAILED! bergdb.core.DbTesterFailure.testCorruptNodeInGetMany
+FAILED! bergdb.core.DbTesterFailure.testCorruptNodeInGetOne
+FAILED! bergdb.core.DbTesterFailure.testCorruptNodeInPut
+FAILED! bergdb.core.DbTesterFailure.testErrorIsThrownAsItIs
+FAILED! bergdb.core.DbTesterFailure.testGetTrans
+...FAILED! bergdb.core.DbTesterFailure.testReadErrorInGetMany
+FAILED! bergdb.core.DbTesterFailure.testReadErrorInGetOne
+FAILED! bergdb.core.DbTesterFailure.testReadErrorInPut
+FAILED! bergdb.core.DbTesterFailure.testReadErrorInWarmup
+.FAILED! bergdb.core.DbTesterFailure.testValueTransformationThrows
+FAILURE, total: 16, failed: 11. Time: 0.5 s.
+bergdb.core.DbTesterFailure FAILED! bergdb.core.DbTesterFailure.testSyncFails
+FAILURE, total: 9, failed: 1. Time: 6.3 s.
+== mutation C
+SUCCESS, 16 successful tests in 0.6 s.
+bergdb.core.DbTester ..FAILED! bergdb.core.DbTester.testSyncAfterStreamFailure
+bergdb.core.DbTesterFailure FAILED! bergdb.core.DbTesterFailure.testSyncFails
+bergdb.core.DbTesterStream ...FAILED! bergdb.core.DbTesterStream.testReadOnlyStream2
+FAILURE, total: 9, failed: 3. Time: 6.2 s.
+== mutation D
+bergdb.core.DbTesterFailure .......FAILED! bergdb.core.DbTesterFailure.testInterruptedSync
+FAILURE, total: 16, failed: 1. Time: 0.6 s.
+SUCCESS, 9 successful tests in 6.2 s.
+== mutation E
+bergdb.core.DbTesterFailure ........FAILED! bergdb.core.DbTesterFailure.testReadDuringStop
+FAILURE, total: 16, failed: 1. Time: 0.6 s.
+SUCCESS, 9 successful tests in 6.3 s.
+== mutation F
+bergdb.core.DbTesterFailure .....FAILED! bergdb.core.DbTesterFailure.testGetTrans
+FAILURE, total: 16, failed: 1. Time: 0.6 s.
+SUCCESS, 9 successful tests in 6.2 s.
+== mutation G
+bergdb.core.DbTesterFailure ......FAILED! bergdb.core.DbTesterFailure.testGetTransBelowTheCut
+FAILURE, total: 16, failed: 1. Time: 0.6 s.
+SUCCESS, 9 successful tests in 6.3 s.

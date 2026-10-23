@@ -976,3 +976,16 @@ is invalid, and recovery takes the one before it. Two unit tests;
 `CrashTest` also cuts at and next to meta block positions, and at the end
 of each transaction that ends at one. Streams unchanged (StreamDigest);
 `before-commit.sh` and the four gates pass.
+
+2026-10-23. 005-30 done, by Claude (Opus 5.5, Claude Code), as Frans
+decided: a read that failed on the storage (an I/O error, corrupt data)
+threw, and the database stayed active, half dead, as the storage below
+refuses all I/O after an I/O error. Now such a read (`Db.getOne`,
+`getMany`, the warm-up of a transaction, `getTrans`), and a sync that
+fails, fail the database as a transaction does since 005-01
+([levels.md](levels.md), "A transaction or a read that fails"). A read
+that a cut has overtaken still expires; a read while the database stops,
+and an interrupted sync, throw as before. Ten tests; streams unchanged
+(StreamDigest); `before-commit.sh`, `level3.sh` and `level4.sh` pass. Found
+on the way, 005-34: `Connection.transactionInfo()` reads at a wrong
+position for a value after a meta block in its record.

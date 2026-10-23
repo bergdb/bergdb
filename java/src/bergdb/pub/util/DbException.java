@@ -10,10 +10,11 @@ package bergdb.pub.util;
  * 
  * <p>A failure: the storage, the JVM or memory failed, or there is a bug. A failure in
  * a transaction fails the database: every later transaction and read throws a
- * DbFailedException until the database is restarted. A stream error in a read
- * (StreamIoException, StreamFormatException) or corrupt internal data
- * (InternalDataException) means that the storage or the stream does not work; restart
- * the database.</p>
+ * DbFailedException until the database is restarted. So does a stream error in a read
+ * or a sync, an I/O error or corrupt data (bergdb 005-30): the call throws a
+ * DbFailedException with the StreamIoException or the StreamFormatException as the
+ * cause. Corrupt internal data (InternalDataException) means that the stream does not
+ * work either; restart the database.</p>
  * 
  * <p>An application that does not tell the two apart can take any DbException as a
  * reason to stop and restart the database; that is always safe (2026-10-23, bergdb

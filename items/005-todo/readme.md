@@ -29,10 +29,10 @@ Open
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
-| [005-30](30-fix-read-failure.md) | Fix | A read that fails on the storage (an I/O error, corrupt data) leaves the database running half dead; make it fail the database, as a transaction does since 005-01 | open |
 | [005-31](31-fix-take-blocked.md) | Fix | A transaction whose dirty index nodes do not fit in one record stops the startup pos for good: the startup section, startup, D and the stream grow without end (007-02) | open |
 | [005-32](32-fix-failed-start-storage.md) | Fix | A start that throws leaves its storage running: its threads, its open files, and writes of what it appended, also into a database started after it; `BufferedStream.close()` hangs when the last flush fails (005-28) | open |
 | [005-33](33-crashed-creation.md) | Decide | A database whose creation crashed never starts: a clear error, create it again at start, or create it whole or not at all (005-28) | open |
+| [005-34](34-fix-transaction-info-position.md) | Fix | `Connection.transactionInfo()` reads at a wrong position for a value after a meta block in its record, 128 bytes too far; the read can close the storage (found in 005-30) | open |
 
 
 Closed
@@ -40,6 +40,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-30](30-fix-read-failure.md) | Fix | A read or a sync that failed on the storage (an I/O error, corrupt data) left the database running half dead; now it fails the database, as a transaction does since 005-01 | done | 2026-10-23 |
 | [005-27](27-fix-meta-block-edge.md) | Fix | A crash that ended the stream exactly at a meta block's position, after a transaction that ended there, left a database that did not start; now recovery fills out that meta block too, as one partly written (005-11, P11) | done | 2026-10-23 |
 | [005-29](29-fix-memory-stream-assert.md) | Fix | `MemoryStream.copy` failed an assertion when the stream was empty or its length a multiple of 1,000,000 bytes (test code; 005-11); now its arrays are exactly those that hold bytes, also after `truncate` and an append of 0 bytes | done | 2026-10-23 |
 | [005-28](28-fix-trans-iterator-loop.md) | Fix | Startup looped for ever when the transaction at its start position was a failed one (a damaged or mixed stream, 005-11's P9, or a crash in a new database's first transaction); now it throws a `StreamFormatException` that names it | done | 2026-10-23 |
@@ -77,10 +78,9 @@ it asks about is in `Db.executeInner` since 005-01. 005-09 is done. What is left
 when no other change to `java/` is under way. 005-11 can go any time, best
 before 005-05's decision on publishing, as it concerns the Pub API; 005-12
 is done. 005-27, 005-28 and 005-29, the fixes found in 005-11, are done.
-005-30 any time, but not during a timing
-campaign, as it changes the read path. 005-31 before item 007's deadline
-for `TransSeq.take` (007-01, D1), which needs it. 005-32 any time, before
-005-33's change; 005-33 waits for Frans.
+005-30 is done; 005-34, found in it, any time. 005-31 before item
+007's deadline for `TransSeq.take` (007-01, D1), which needs it. 005-32
+any time, before 005-33's change; 005-33 waits for Frans.
 
 
 Files
@@ -155,7 +155,8 @@ Files
   done; 005-27 is done, with its runs, gates and probe in
   [27-fix-meta-block-edge/](27-fix-meta-block-edge/).
 * [30-fix-read-failure.md](30-fix-read-failure.md). 005-30, a read that
-  fails on the storage fails the database (005-01's follow-up).
+  fails on the storage fails the database (005-01's follow-up); done, with
+  its checks and runs in [30-fix-read-failure/](30-fix-read-failure/).
 * [31-fix-take-blocked.md](31-fix-take-blocked.md). 005-31, a transaction
   whose dirty index nodes do not fit in one record stops the startup pos
   for good; found in item 007, with the probe in
@@ -168,6 +169,10 @@ Files
   whose creation crashed: the study and the options, for Frans to decide;
   found in 005-28, with the probe and its runs in
   [33-crashed-creation/](33-crashed-creation/).
+* [34-fix-transaction-info-position.md](34-fix-transaction-info-position.md).
+  005-34, `transactionInfo()`'s wrong position after a meta block, found in
+  005-30; its probe and runs in
+  [34-fix-transaction-info-position/](34-fix-transaction-info-position/).
 
 Log
 ===
@@ -506,3 +511,24 @@ which fail without the fix); P11 again: none of its 13 images fails.
 Streams unchanged (StreamDigest); `before-commit.sh` and the four gates
 pass, on `e2c0dc0` with the change. The change in `java/` is left for
 Frans to commit.
+
+2026-10-23. 005-30 done, at Frans's request ("Fix bergdb 005-30. As
+proposed. Commit when done."), by Claude (Opus 5.5, Claude Code), as
+proposed: a read that fails on the storage (`getOne`, `getMany`, the
+warm-up of a transaction, `getTrans`), or a sync that does, fails the
+database as a transaction does since 005-01: the call throws a
+`DbFailedException` with the failure as the cause, and every later
+transaction and read is refused with it until a restart. A read that a cut
+has overtaken still expires, and a read or a sync while the database
+stops, or an interrupted sync, throws as before. The state changes under
+`readSync`, in `stop()` and `close()` too. In `getTrans` a format error is
+thrown as it is, because of 005-34. Ten tests in `DbTesterFailure`, three
+changed; streams unchanged (StreamDigest); `before-commit.sh`, `level3.sh`
+and `level4.sh` pass; Props unchanged.
+
+2026-10-23. Added 005-34, by Claude (Opus 5.5, Claude Code), found in
+005-30 with a probe: a get gives a transaction position 128 bytes too far
+for a value after a meta block in its record, so `transactionInfo()` reads
+the middle of a record; on the code before 005-30, one such call could
+leave the database half dead. Proposed: keep the value node's offset in
+stream bytes. No change to `java/` for it.

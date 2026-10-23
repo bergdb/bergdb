@@ -1,0 +1,63 @@
+bergdb 005-34: probe.sh on f6bc3ce, before 005-30 (2026-10-23, F53).
+
+== values: zeros
+transaction 18 at 196824 to 208007, across the meta block at 200000
+  value 2: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=196952, stream size: 208008, transCount=0
+  value 3: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=196952, stream size: 208008, transCount=0
+  value 4: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=196952, stream size: 208008, transCount=0
+  value 5: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=196952, stream size: 208008, transCount=0
+  value 6: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=196952, stream size: 208008, transCount=0
+  value 7: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=196952, stream size: 208008, transCount=0
+  value 8: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=196952, stream size: 208008, transCount=0
+  value 9: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=196952, stream size: 208008, transCount=0
+  value 14: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=196952, stream size: 208008, transCount=0
+  value 15: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=196952, stream size: 208008, transCount=0
+  value 16: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=196952, stream size: 208008, transCount=0
+  value 17: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=196952, stream size: 208008, transCount=0
+  value 18: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=196952, stream size: 208008, transCount=0
+  value 19: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=196952, stream size: 208008, transCount=0
+  14 of 20 values with a wrong tpos
+transaction 36 at 395816 to 407031, across the meta block at 400000
+  value 2: tpos 395944, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=395944, stream size: 407032, transCount=0
+  value 3: tpos 395944, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=395944, stream size: 407032, transCount=0
+  value 4: tpos 395944, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=395944, stream size: 407032, transCount=0
+  value 5: tpos 395944, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=395944, stream size: 407032, transCount=0
+  value 6: tpos 395944, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=395944, stream size: 407032, transCount=0
+  value 7: tpos 395944, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=395944, stream size: 407032, transCount=0
+  value 8: tpos 395944, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=395944, stream size: 407032, transCount=0
+  value 9: tpos 395944, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=395944, stream size: 407032, transCount=0
+  value 16: tpos 395944, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=395944, stream size: 407032, transCount=0
+  value 17: tpos 395944, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=395944, stream size: 407032, transCount=0
+  value 18: tpos 395944, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=395944, stream size: 407032, transCount=0
+  value 19: tpos 395944, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=395944, stream size: 407032, transCount=0
+  12 of 20 values with a wrong tpos
+transaction 54 at 594872 to 606087, across the meta block at 600000
+  value 2: tpos 595000, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=595000, stream size: 606088, transCount=0
+  value 3: tpos 595000, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=595000, stream size: 606088, transCount=0
+  value 4: tpos 595000, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=595000, stream size: 606088, transCount=0
+  value 5: tpos 595000, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=595000, stream size: 606088, transCount=0
+  value 6: tpos 595000, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=595000, stream size: 606088, transCount=0
+  value 7: tpos 595000, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=595000, stream size: 606088, transCount=0
+  value 8: tpos 595000, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=595000, stream size: 606088, transCount=0
+  value 9: tpos 595000, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=595000, stream size: 606088, transCount=0
+  value 18: tpos 595000, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=595000, stream size: 606088, transCount=0
+  value 19: tpos 595000, 128 too far; getTrans throws bergdb.storage.StreamFormatException: Bad transaction size, 0, transPos=595000, stream size: 606088, transCount=0
+  10 of 20 values with a wrong tpos
+== values: 1
+transaction 18 at 196824 to 208007, across the meta block at 200000
+  value 2: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamIoException: Cannot read 199872 bytes at position 200128, stream size is 208008.
+  value 3: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamIoException: Main storage not active. java.io.IOException: Cannot read 199872 bytes at position 200128, stream size is 208008.
+  value 4: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamIoException: Main storage not active. java.io.IOException: Cannot read 199872 bytes at position 200128, stream size is 208008.
+  value 5: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamIoException: Main storage not active. java.io.IOException: Cannot read 199872 bytes at position 200128, stream size is 208008.
+  value 6: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamIoException: Main storage not active. java.io.IOException: Cannot read 199872 bytes at position 200128, stream size is 208008.
+  value 7: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamIoException: Main storage not active. java.io.IOException: Cannot read 199872 bytes at position 200128, stream size is 208008.
+  value 8: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamIoException: Main storage not active. java.io.IOException: Cannot read 199872 bytes at position 200128, stream size is 208008.
+  value 9: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamIoException: Main storage not active. java.io.IOException: Cannot read 199872 bytes at position 200128, stream size is 208008.
+  value 14: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamIoException: Main storage not active. java.io.IOException: Cannot read 199872 bytes at position 200128, stream size is 208008.
+  value 15: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamIoException: Main storage not active. java.io.IOException: Cannot read 199872 bytes at position 200128, stream size is 208008.
+  value 16: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamIoException: Main storage not active. java.io.IOException: Cannot read 199872 bytes at position 200128, stream size is 208008.
+  value 17: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamIoException: Main storage not active. java.io.IOException: Cannot read 199872 bytes at position 200128, stream size is 208008.
+  value 18: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamIoException: Main storage not active. java.io.IOException: Cannot read 199872 bytes at position 200128, stream size is 208008.
+  value 19: tpos 196952, 128 too far; getTrans throws bergdb.storage.StreamIoException: Main storage not active. java.io.IOException: Cannot read 199872 bytes at position 200128, stream size is 208008.
+  14 of 20 values with a wrong tpos
+the probe stopped: bergdb.pub.util.DbFailedException: The transaction at time 21 failed after it began (the cause); nothing is undone. The database takes no more transactions or reads and must be restarted: the restart rebuilds it from the stream.

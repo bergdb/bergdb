@@ -1,6 +1,7 @@
 package bergdb.storage;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicLong;
@@ -454,7 +455,9 @@ public class StorageManager implements AppendOnlyStream {
                 try {
                     d1Lock.wait(500);
                 } catch (InterruptedException e) {
-                    throw new IOException("Thread was interrupted while waiting " +
+                    // Not an IOException of the storage, which fails the database (bergdb
+                    // 005-30, Db.sync).
+                    throw new InterruptedIOException("Thread was interrupted while waiting " +
                     		"for D1 size " + pos + ".");
                 }
             }
@@ -473,7 +476,8 @@ public class StorageManager implements AppendOnlyStream {
                 try {
                     d2Lock.wait(500);
                 } catch (InterruptedException e) {
-                    throw new IOException("Thread was interrupted while waiting " +
+                    // Not an IOException of the storage (bergdb 005-30).
+                    throw new InterruptedIOException("Thread was interrupted while waiting " +
                             "for D1 size " + pos + ".");
                 }
             }

@@ -5,6 +5,7 @@ import java.io.IOException;
 import bergdb.core.SyncLevel;
 import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.DbException;
+import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.StorageInfo;
 import bergdb.pubimp.IndexManager;
@@ -25,6 +26,12 @@ import bergdb.pubimp.IndexManager;
  * rebuilds the database from its storage, as after a crash: the failed transaction is there
  * if it was written before the failure, and otherwise not. An in-memory database is lost.
  * sync() still works for the transactions before the failure.</p>
+ *
+ * <p>A read or a sync that fails on the storage (an I/O error, corrupt data) fails the
+ * database in the same way: the call throws a DbFailedException with the failure as the
+ * cause, and so does every later transaction and read until the restart (bergdb 005-30).
+ * A read whose lookup time has expired throws LookupTimeNotAvailableException instead, and
+ * the database goes on (see getFirstAvailableLookupTime()).</p>
  * 
  * @author Frans Lundberg
  */
@@ -83,6 +90,8 @@ public interface Database {
      * 
      * @throws DbException
      *             if the database is faulty.
+     * @throws DbFailedException
+     *             If the storage has failed: the database fails (see above).
      */
     public void sync();
     
@@ -92,6 +101,8 @@ public interface Database {
      * 
      * @throws DbException
      *             if the database is faulty.
+     * @throws DbFailedException
+     *             If the storage has failed: the database fails (see above).
      */
     public void sync(SyncLevel syncLevel);
 

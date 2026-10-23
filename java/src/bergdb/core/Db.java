@@ -2,6 +2,7 @@ package bergdb.core;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -40,6 +41,7 @@ import bergdb.storage.BufferedStream;
 import bergdb.storage.MetaBlock;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StorageManager;
+import bergdb.storage.StreamException;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
@@ -124,8 +126,10 @@ public class Db {
     private DbState state = DbState.ZERO;
     
     /**
-     * What a transaction threw after its go point, the first time, or null; the state is
-     * then FAILED (bergdb 005-01, fail()). Written under writeLock, before the state.
+     * What failed the database, the first time, or null; the state is then FAILED: what a
+     * transaction threw after its go point (bergdb 005-01, fail()), or what a read or a sync
+     * met on the storage (bergdb 005-30, failOnStorage()). Written under readSync, with the
+     * state (setFailed()).
      */
     private volatile Throwable failure = null;
     
@@ -473,6 +477,9 @@ public class Db {
      * @throws IllegalStateException
      *             If start() has been called already.
      * @throws BadReplicaException
+     * @throws DbFailedException
+     *             If a read of reclaim's table, the last step of the startup, fails on the
+     *             storage (bergdb 005-30).
      */
     public StartInfo start() {        
         return start(StartParams.NULL);
@@ -489,6 +496,9 @@ public class Db {
      * @throws IllegalStateException
      *          If start() has been called already.
      * @throws BadReplicaException
+     * @throws DbFailedException
+     *          If a read of reclaim's table, the last step of the startup, fails on the
+     *          storage (bergdb 005-30).
      */
     public StartInfo start(StartParams params) {
         synchronized (writeLock) {
@@ -1015,14 +1025,14 @@ public class Db {
      * will be started, and no read operation will be started (but could be running).</p>
      */
     public void stop() {
-        synchronized (readSync) {};
+        // Under readSync, as a failure (setFailed(), bergdb 005-30): no failure comes after it.
+        synchronized (readSync) {
+            if (state == DbState.STOPPING) {
+                return;
+            }
         
-        if (state == DbState.STOPPING) {
-            return;
+            state = DbState.STOPPING;
         }
-        
-        state = DbState.STOPPING;
-        synchronized (readSync) {};
         storageManager.stop();
     }
     
@@ -1043,13 +1053,14 @@ public class Db {
         }
         
         synchronized (this.writeLock) {
-            if (state == DbState.STOPPING) {
-                return;
+            // Under readSync, as a failure (setFailed(), bergdb 005-30).
+            synchronized (readSync) {
+                if (state == DbState.STOPPING) {
+                    return;
+                }
+
+                state = DbState.STOPPING;
             }
-            
-            state = DbState.STOPPING;
-            
-            synchronized (readSync) {};
         }
             
         // Here, no write op is running or will be started.
@@ -1104,10 +1115,17 @@ public class Db {
      * @throws IllegalDbStateException
      *             If start() has not been called or stop()/stopFast() has been called. 
      *             The database is not in the active state.
+     * @throws DbFailedException
+     *             If the database has failed, or fails now: the read failed on the storage
+     *             (an I/O error, corrupt data; the cause; bergdb 005-30).
+     * @throws LookupTimeNotAvailableException
+     *             If the lookup time is before the first available lookup time, also when
+     *             a cut has overtaken the read.
      * @throws StreamFormatException
-     *             If the database stream is corrupt.
+     *             If the database stream is corrupt, while the database is stopping.
      * @throws StreamIoException
-     *             If there was an i/o error with the database stream.
+     *             If there was an i/o error with the database stream, while the database
+     *             is stopping.
      */
     public byte[] getOne(long lookupTime, long[] keySegments, GetData gd) {
         assert gd != null;
@@ -1121,11 +1139,44 @@ public class Db {
         return getOneInternal(lookupTime, keySegments, gd);
     }
     
+    /**
+     * Reads the transaction at stream position 'tpos': for the Pub API's
+     * Connection.transactionInfo(), the transaction of the value that its last get read.
+     *
+     * @throws DbFailedException
+     *             If the database has failed, or fails now: the read failed on the storage
+     *             (bergdb 005-30).
+     * @throws LookupTimeNotAvailableException
+     *             If reclaim has removed the transaction: the time of the get has expired.
+     * @throws StreamFormatException
+     *             If the bytes at 'tpos' are not a committed transaction. The database goes
+     *             on: the position is the caller's, and the Pub API's is wrong for a value
+     *             after a meta block in its record (bergdb 005-34).
+     * @throws DbException
+     *             If there is no transaction at 'tpos'.
+     */
     public StoredTrans getTrans(long tpos) {
         // TODO D. DbException or something else?
         
+        // Makes sure writes from startup and execute() are visible; the state checked since
+        // bergdb 005-30 (it read on after a failure).
+        synchronized (readSync) {}
+        assertDbStateIsActive("getTrans");
+
         NodeStream.TransIterator ti = nodeStream.createTransIteratorFromExactStartupPos(tpos);
-        boolean gotTrans = ti.next();
+        boolean gotTrans;
+        try {
+            gotTrans = ti.next();
+        } catch (StreamIoException e) {
+            if (isReadBelowCut(e)) {
+                LookupTimeNotAvailableException ex = new LookupTimeNotAvailableException(
+                        "The transaction at stream pos " + tpos + " is no longer available: "
+                        + "reclaim has removed it.");
+                ex.initCause(e);
+                throw ex;
+            }
+            throw failOnStorage(e, "A read");
+        }
         if (!gotTrans) {
             throw new DbException("could not find transaction at stream pos " + tpos);
         }
@@ -1162,8 +1213,8 @@ public class Db {
 
         try {
             result = dag.getOne(gd.actualLookupTime, keySegments, gd);
-        } catch (StreamIoException e) {
-            throw expiredIfReadBelowCut(e, time);
+        } catch (StreamException e) {
+            throw readFailed(e, time);
         }
 
         aux.getOpCount.incrementAndGet();
@@ -1176,10 +1227,17 @@ public class Db {
      * @param g     Input and output parameters.
      * @throws IllegalDbStateException
      *              If start() has not been called.
+     * @throws DbFailedException
+     *              If the database has failed, or fails now: the read failed on the
+     *              storage (an I/O error, corrupt data; the cause; bergdb 005-30).
+     * @throws LookupTimeNotAvailableException
+     *              If the lookup time is before the first available lookup time, also
+     *              when a cut has overtaken the read.
      * @throws StreamFormatException
-     *              If the database stream is corrupt.
+     *              If the database stream is corrupt, while the database is stopping.
      * @throws StreamIoException
-     *              If there was an i/o error with the database stream.
+     *              If there was an i/o error with the database stream, while the
+     *              database is stopping.
      * @see GetMany
      */
     public void getMany(GetMany g) {
@@ -1215,40 +1273,29 @@ public class Db {
 
         try {
             dag.getMany(g);
-        } catch (StreamIoException e) {
-            throw expiredIfReadBelowCut(e, g.actualLookupTime);
+        } catch (StreamException e) {
+            throw readFailed(e, g.actualLookupTime);
         }
         
         aux.getOpCount.addAndGet(g.getOpCount);
     }
     
     /**
-     * Decides what a failed read throws. A read that was admitted before reclaim moved the
-     * first available lookup time can still reach bytes that the cut then removed
+     * Decides whether a failed read has expired. A read that was admitted before reclaim
+     * moved the first available lookup time can still reach bytes that the cut then removed
      * (docs/levels.md, W1, decision D1 = A: such a read may expire). If the stream
      * says the bytes are before its first position and the lookup time is now before the
      * first available lookup time, the read has expired: the caller gets a
      * LookupTimeNotAvailableException, as if it had asked a moment later. Anything else is
-     * a real failure and is returned unchanged.
+     * a real failure and is returned unchanged; it fails the database (readFailed()).
      *
      * <p>'lookupTime' is the actual lookup time, the snapshot the read uses (see
      * DbClock.lookupTime()), not the requested one: a read of the latest state, Long.MAX_VALUE,
      * reads the state at the time of the last transaction, and that snapshot expires when a
      * cut overtakes it (ReclaimReaderTester.testLatestReaderExpiresWhenCutOvertakesIt).</p>
      */
-    private RuntimeException expiredIfReadBelowCut(StreamIoException e, long lookupTime) {
-        boolean belowCut = false;
-        for (Throwable t = e; t != null; t = t.getCause()) {
-            if (t instanceof ReadBelowFirstPosException) {
-                belowCut = true;
-                break;
-            }
-            if (t.getCause() == t) {
-                break;
-            }
-        }
-
-        if (belowCut) {
+    private RuntimeException expiredIfReadBelowCut(StreamException e, long lookupTime) {
+        if (isReadBelowCut(e)) {
             synchronized (readSync) {}      // Publishes the first available lookup time.
             long first = reclaim.getFirstAvailableLookupTime();
             if (lookupTime < first) {
@@ -1261,6 +1308,29 @@ public class Db {
             }
         }
         return e;
+    }
+
+    /** True if 'e' comes from a read of bytes before the first position of the stream. */
+    private static boolean isReadBelowCut(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t instanceof ReadBelowFirstPosException) {
+                return true;
+            }
+            if (t.getCause() == t) {
+                break;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Decides what a read that failed on the stream throws (bergdb 005-30). A read that a
+     * cut has overtaken expires (expiredIfReadBelowCut()), and the database goes on. Any
+     * other failure fails the database (failOnStorage()).
+     */
+    private RuntimeException readFailed(StreamException e, long lookupTime) {
+        final RuntimeException expired = expiredIfReadBelowCut(e, lookupTime);
+        return expired != e ? expired : failOnStorage(e, "A read");
     }
 
     /**
@@ -1280,6 +1350,12 @@ public class Db {
      *      Stream position to sync to or 0 to sync to last transaction written.
      * @param syncLevel
      *      The sync level.
+     * @throws DbFailedException
+     *      If the storage has failed (the cause): the database fails, as on a read that
+     *      fails on the storage (bergdb 005-30). After another failure, a sync of the
+     *      transactions before it still works while the storage does.
+     * @throws StreamIoException
+     *      If the thread was interrupted while it waited, or the database is stopping.
      */
     public void sync(long pos, SyncLevel syncLevel) {
         if (syncLevel == null) {
@@ -1305,8 +1381,11 @@ public class Db {
                 } else {
                     storageManager.syncStrong(pos);
                 }
-            } catch (IOException e) {
+            } catch (InterruptedIOException e) {
+                // Not a failure of the storage (bergdb 005-30).
                 throw new StreamIoException(e);
+            } catch (IOException e) {
+                throw failOnStorage(new StreamIoException(e), "A sync");
             }
             break;
         
@@ -1371,27 +1450,29 @@ public class Db {
      * bug, and the database fails (bergdb 005-01): it refuses every later transaction and
      * read with a DbFailedException until it is restarted. The restart rebuilds it from the
      * stream, which holds whole records only, as after a crash. stop(), close() and sync()
-     * still work.</p>
+     * still work. A read that fails on the storage, such as one of the warm-up before the
+     * go point, fails the database too (bergdb 005-30).</p>
      * 
      * @throws IllegalDbStateException
      *             If start() has not been called or database is stopping.
      * @throws DbFailedException
-     *             If the database has failed: this transaction threw after its go point (the
-     *             cause), or an earlier one did (the cause is the first failure). Whether
-     *             this transaction is in the stream is known after the restart. An Error
-     *             after the go point, such as an OutOfMemoryError, is thrown as it is, and
-     *             the database fails too.
+     *             If the database has failed: this transaction threw after its go point, or
+     *             a read of its warm-up failed on the storage (the cause), or the database
+     *             failed before (the cause is the first failure). Whether this transaction
+     *             is in the stream is known after the restart. An Error after the go point,
+     *             such as an OutOfMemoryError, is thrown as it is, and the database fails
+     *             too.
      * @throws RerunException
      *             Thrown if the transaction was cancelled and should be rerun
      *             because one or more KVs with a key in the read key hash set,
      *             were changed after the read time of the transaction; 
      *             the STM approach.
      * @throws StreamFormatException
-     *             If the database stream is corrupt; before the go point (the warm-up's
-     *             reads), else the cause of a DbFailedException.
+     *             If the database stream is corrupt, while the database is stopping; else
+     *             the cause of a DbFailedException.
      * @throws StreamIoException
-     *             If there was an i/o error with the database stream; before the go point,
-     *             else the cause of a DbFailedException.
+     *             If there was an i/o error with the database stream, while the database is
+     *             stopping; else the cause of a DbFailedException.
      * @throws InternalDataException
      *             If BergDB internal data in the database is corrupt.
      * @throws DbException
@@ -1423,7 +1504,7 @@ public class Db {
                 throw new DbStoppingException("Cannot call " + methodName + "() while DB is stopping.");
             } else if (myState == DbState.FAILED) {
                 throw new DbFailedException("Cannot call " + methodName + "(): the database "
-                        + "failed in a transaction (the cause) and must be restarted.", failure);
+                        + "failed (the cause) and must be restarted.", failure);
             } else {
                 throw new IllegalDbStateException("Cannot call " + methodName + "() when DB state is " 
                         + myState + ".");
@@ -1552,7 +1633,8 @@ public class Db {
      * 
      * <p>Reclaim's internal transactions run within a user transaction's go point
      * (transactionCompleted()); one that fails first fails the database, and its
-     * DbFailedException comes here and is returned as it is. While the database is stopping,
+     * DbFailedException comes here and is returned as it is, as is that of a read in the
+     * transaction that fails on the storage (failOnStorage()). While the database is stopping,
      * a failure is the stop's (stop() closes the storage without the write lock, so an append
      * of a running transaction can fail) and is thrown as it is, as before.</p>
      * 
@@ -1561,16 +1643,10 @@ public class Db {
      * @throws Error The Error itself, after the database has failed.
      */
     private RuntimeException fail(Trans t, Throwable e) {
-        if (state == DbState.STOPPING) {
+        if (setFailed(e) == DbState.STOPPING) {
             if (e instanceof Error) throw (Error) e;
             return e instanceof RuntimeException ? (RuntimeException) e : new DbException(
                     "The transaction failed while the database was stopping.", e);
-        }
-        
-        if (failure == null) {
-            failure = e;
-            state = DbState.FAILED;
-            synchronized (readSync) {}
         }
         
         if (e instanceof Error) throw (Error) e;
@@ -1579,6 +1655,48 @@ public class Db {
                 + "began (the cause); nothing is undone. The database takes no more "
                 + "transactions or reads and must be restarted: the restart rebuilds it from "
                 + "the stream.", e);
+    }
+
+    /**
+     * Fails the database with 'e' if it is active: keeps 'e' as the first failure and sets
+     * FAILED, in one step under readSync (bergdb 005-30). The writer (fail()) and the readers
+     * (failOnStorage()) both come here, and stop() and close() set STOPPING under readSync
+     * too, so the first failure is the one kept, and no failure comes after a stop.
+     *
+     * @return The state before.
+     */
+    private DbState setFailed(Throwable e) {
+        synchronized (readSync) {
+            final DbState before = state;
+            if (before == DbState.ACTIVE) {
+                failure = e;
+                state = DbState.FAILED;
+            }
+            return before;
+        }
+    }
+
+    /**
+     * Fails the database with what a read or a sync met on the storage (bergdb 005-30): an
+     * I/O error or corrupt data, as after a transaction that fails after its go point
+     * (fail()). The storage below has stopped already after an I/O error (FileStream,
+     * StorageManager), and corrupt data means lost data or a bug: a database that serves
+     * around it is worse than one that stops. Nothing has changed in memory (a load that
+     * fails registers nothing). A transaction that runs meanwhile ends as it would anyway:
+     * committed, or failed after its go point.
+     *
+     * @param what  "A read" or "A sync", for the message.
+     * @return The exception for the caller to throw: a DbFailedException with 'e' as the
+     *      cause; or 'e' itself while the database is stopping (stop() closes the storage
+     *      under running reads) or before it has started.
+     */
+    private RuntimeException failOnStorage(StreamException e, String what) {
+        final DbState before = setFailed(e);
+        if (before != DbState.ACTIVE && before != DbState.FAILED) {
+            return e;
+        }
+        return new DbFailedException(what + " failed on the storage (the cause). The database "
+                + "takes no more transactions or reads and must be restarted.", e);
     }
     
     /**

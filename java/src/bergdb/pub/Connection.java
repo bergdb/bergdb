@@ -3,6 +3,7 @@ package bergdb.pub;
 import bergdb.core.SyncLevel;
 import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
+import bergdb.pub.util.LookupTimeNotAvailableException;
 
 /**
  * A connection to a Database is used to put and get data stored in the
@@ -104,8 +105,9 @@ public interface Connection extends ReadInterface {
      * @throws DbException
      *             Thrown if the database is faulty.
      * @throws DbFailedException
-     *             If the database has failed: it then refuses every transaction and
-     *             read until it is restarted. See Database.
+     *             If the database has failed, before or in this read (a read that fails
+     *             on the storage fails it): it then refuses every transaction and read
+     *             until it is restarted. See Database.
      */
     public boolean exists(String key);
 
@@ -128,8 +130,9 @@ public interface Connection extends ReadInterface {
      * @throws DbException
      *             Thrown if the database is faulty.
      * @throws DbFailedException
-     *             If the database has failed: it then refuses every transaction and
-     *             read until it is restarted. See Database.
+     *             If the database has failed, before or in this read (a read that fails
+     *             on the storage fails it): it then refuses every transaction and read
+     *             until it is restarted. See Database.
      * @throws IllegalArgumentException
      *             If key does not follow the allowed format, or is null. If
      *             'clazz' is null.
@@ -143,6 +146,13 @@ public interface Connection extends ReadInterface {
      * value retreived with the get() method.
      * This method call will always require a read from the database
      * storage, no caching for this query.
+     *
+     * @throws DbFailedException
+     *             If the database has failed, before or in this read: it then refuses
+     *             every transaction and read until it is restarted. See Database.
+     * @throws LookupTimeNotAvailableException
+     *             If the database has reclaimed the transaction: the lookup time of the
+     *             get is no longer available.
      */
     public TransactionInfo transactionInfo();
 
@@ -235,12 +245,17 @@ public interface Connection extends ReadInterface {
      * transaction started with this connection.
      * 
      * @throws DbException if the database is faulty.
+     * @throws DbFailedException
+     *             If the storage has failed: the database fails. See Database.
      */
     public void sync();
 
     /**
      * Waits until the specified sync level (durability) has been achieved 
      * for the last transaction started with this connection.
+     *
+     * @throws DbFailedException
+     *             If the storage has failed: the database fails. See Database.
      */
     public void sync(SyncLevel syncLevel);
     

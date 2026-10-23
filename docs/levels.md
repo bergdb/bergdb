@@ -110,8 +110,8 @@ belong to the corresponding earlier fixes, including the 885-test
 their logs. The scripts and configurations are the reproduction route.
 
 
-A transaction that fails
-========================
+A transaction or a read that fails
+==================================
 
 Since 2026-10-22 (bergdb 005-01; register M49 of
 [level4-alignment.md](level4-alignment.md), found in bergdb item 002 and
@@ -159,6 +159,46 @@ a crash. The Lean model needs no change: its runs have no failing
 transactions, and the stream after a failure is the stream of a run without
 the failed transaction, or with it.
 
+Since 2026-10-23 (bergdb 005-30) a read that fails on the storage fails the
+database in the same way: an I/O error, or corrupt data (a checksum or
+format error). Before, the read threw a `StreamIoException` or a
+`StreamFormatException`, and the database stayed active, half dead: after
+an I/O error the storage below refuses all I/O (`FileStream` remembers the
+error, and `StorageManager` closes the main stream), so reads of nodes in
+memory still answered, reads that needed the stream failed, and writes
+failed until one of them failed the database after its go point. Corrupt
+data fails it too: it means lost data or a bug, and a database that serves
+around the damage is worse than one that stops; after a restart, the next
+read of that node fails it again, until the stream is repaired or restored.
+
+* The reads: `Db.getOne` (`getOneInternal`, which the warm-up of a
+  transaction also uses, before its go point), `getMany`, `getTrans` (the
+  Pub API's `transactionInfo()`), and `sync()`, whose failure is a failure
+  of the storage too. The writer's loads and reclaim's reads, after a
+  transaction's go point, fail it as 005-01 says.
+* The call throws a `DbFailedException` with what the read met as the
+  cause, and every later transaction and read throws one with the first
+  failure as the cause. Nothing has changed in memory: a load that fails
+  registers nothing. A transaction that runs at the time ends as it would
+  anyway, committed or failed, as after a crash at that point.
+* Not failures: a read that a cut has overtaken expires with a
+  `LookupTimeNotAvailableException`, and the database goes on (W1, Level 3);
+  so does `getTrans` of a transaction that reclaim has removed. A read or a
+  sync while the database is stopping throws as it did (`stop()` closes the
+  storage under running reads), and so does a sync whose thread is
+  interrupted (`StorageManager` throws an `InterruptedIOException`). A
+  format error in `getTrans` is thrown as it is: its position is the
+  caller's, and the Pub API's is wrong for a value after a meta block in its
+  record (bergdb 005-34).
+* The state changes in one step under `readSync`, which the writer and the
+  readers both take (`Db.setFailed`), and `stop()` and `close()` set
+  `STOPPING` under it too: the first failure is the one kept, and no failure
+  comes after a stop.
+
+Nothing is added on the path of a read that does not fail: `getOne` and
+`getMany` checked the state and caught `StreamIoException` already, and the
+lock is taken only after a failure; `getTrans` checks the state.
+
 Before 005-01 such a transaction was half committed: its time became
 readable with its first puts in memory, its new nodes stayed in the node
 table and in the writer's node list, and the next transaction wrote them as
@@ -169,7 +209,10 @@ restart neither the failed put nor the next transaction's own value could be
 read. Tests: `DbTesterFailure` (a value transformation that throws, an
 `Error`, a read error and a corrupt node in a put after eviction, an append
 error in `store()`, a writer waiting for the write lock, a refusal before
-the go point) and `DbTesterStream.testReadOnlyStream2`.
+the go point; since 005-30, a read error and a corrupt node in a get and in
+a scan, a read error in the warm-up, a failed sync, an interrupted sync, a
+read while the database stops, and `getTrans`),
+`DbTesterStream.testReadOnlyStream2` and `DbTester.testSyncAfterStreamFailure`.
 
 
 Level 1: restart by full replay
@@ -842,8 +885,10 @@ The fix, in the order of the layers:
 * `Db.getOneInternal` and `Db.getMany` turn a `StreamIoException` caused by it
   into `LookupTimeNotAvailableException` when the lookup time is now before the
   first available lookup time (the read has expired); otherwise it stays a
-  failure. Expiry is documented in the Pub API (`Database.getFirstAvailableLookupTime`,
-  `setRetainDuration`, `Connection.setLookupTime`, `freezeLookupTime`).
+  failure (since 2026-10-23 one that fails the database, bergdb 005-30; see
+  "A transaction or a read that fails"). Expiry is documented in the Pub API
+  (`Database.getFirstAvailableLookupTime`, `setRetainDuration`,
+  `Connection.setLookupTime`, `freezeLookupTime`).
 
 Tests, each failing without the fix (checked by removing it):
 `ReclaimReaderTester` (`CutStream`, unit; `FileStream`, f-test: after the
@@ -1569,7 +1614,7 @@ test that fails without it.
    002-02, section 8, and studied in item 003): its time became readable
    with its first puts, and the next transaction wrote its nodes as its own.
    Now the database fails, and a restart rebuilds it from the stream; see
-   "A transaction that fails" above.
+   "A transaction or a read that fails" above.
 
 
 Level 4: eviction

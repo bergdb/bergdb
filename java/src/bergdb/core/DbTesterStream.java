@@ -634,7 +634,8 @@ public class DbTesterStream {
         // least be able to query or something? To check whether transaction
         // was successful.
         // 2026-10-13: sync() worked because a failed flush was counted as
-        // appended. Now sync() throws.
+        // appended. Now sync() throws. Since bergdb 005-30 it fails the database: a
+        // DbFailedException with the StreamIoException as the cause.
         
         MemoryStream s1 = new MemoryStream();
         Db db1 = Db.builder().testSetup(s1).start();
@@ -646,17 +647,18 @@ public class DbTesterStream {
         Db db2 = Db.builder().testSetup(s2).start();
         
         db2.execute(db2.trans().put("my-string-key-2", new byte[0]));
-        StreamIoException syncEx = null;
+        DbFailedException syncEx = null;
         try {
             db2.sync(SyncLevel.ORDINARY);
-        } catch (StreamIoException e) {
+        } catch (DbFailedException e) {
             syncEx = e;
         }
         Assert.assertTrue(syncEx != null);
+        Assert.assertTrue(syncEx.getCause() instanceof StreamIoException);
         
-        // Since bergdb 005-01: the append fails in store(), after the transaction's go point,
-        // so the database fails, with the append's StreamIoException as the cause, and
-        // refuses what comes after it.
+        // The database has failed (bergdb 005-30; before, the next transaction's append
+        // failed in store(), after its go point, and failed it, bergdb 005-01): it refuses
+        // what comes after it, with the sync's StreamIoException as the cause.
         DbFailedException ex = null;
         try {
             db2.execute(db2.trans().put("my-string-key-3", new byte[0]));

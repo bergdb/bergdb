@@ -24,6 +24,7 @@ import static bergdb.nanotest.Assert.*;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.Clock;
+import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamIoException;
@@ -1352,6 +1353,8 @@ public class DbTester {
      * closed under the running database), a sync returned as if the transaction were
      * durable. Now it throws, and so does the next transaction. An f-test: the sync after
      * the failure returns at StorageManager's next 500 ms poll, as nothing wakes it.
+     * Since bergdb 005-30 the failed sync fails the database: a DbFailedException with
+     * the StreamIoException as the cause, and the next transaction is refused with it.
      */
     @Nano("f")
     public static void testSyncAfterStreamFailure() {
@@ -1365,21 +1368,21 @@ public class DbTester {
         trans = db.trans().put("key2", "value2").build();
         db.execute(trans);
         
-        boolean thrown = false;
+        DbFailedException syncEx = null;
         try {
             db.sync(trans.lastPos, SyncLevel.STRONG);
-        } catch (StreamIoException e) {
-            thrown = true;
+        } catch (DbFailedException e) {
+            syncEx = e;
         }
-        Assert.assertTrue(thrown);
+        Assert.assertTrue(syncEx != null && syncEx.getCause() instanceof StreamIoException);
         
-        thrown = false;
+        DbFailedException ex = null;
         try {
             db.execute(db.trans().put("key3", "value3").build());
-        } catch (RuntimeException e) {
-            thrown = true;
+        } catch (DbFailedException e) {
+            ex = e;
         }
-        Assert.assertTrue(thrown);
+        Assert.assertTrue(ex != null && ex.getCause() == syncEx.getCause());
     }
     
     @Nano
