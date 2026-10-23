@@ -300,8 +300,14 @@ public class RecoverableStream {
         assert META_BLOCK_DISTANCE < Integer.MAX_VALUE;
         int blockPos = (int) (size % META_BLOCK_DISTANCE);
         
-        if (blockPos > 0 && blockPos < RecoverableStream.META_BLOCK_SIZE) {
-            // If in the middle of writing a meta block.
+        if (size > 0 && blockPos < RecoverableStream.META_BLOCK_SIZE) {
+            // If in the middle of writing a meta block, or at the position of one not begun.
+            // 2026-10-23 (bergdb 005-27): a stream that ended at a meta block's position, after a
+            // transaction that ended there, was left as it was. append() writes such a
+            // transaction and its meta block in two appends, and a flush can come between them.
+            // Recovery then stepped past the meta block, beyond the end of the stream, and the
+            // database did not start. The block filled out is invalid, as a partly written one
+            // is; recovery takes the valid one before it.
             
             int byteCount = RecoverableStream.META_BLOCK_SIZE - blockPos;
             try {
@@ -847,6 +853,46 @@ public class RecoverableStream {
             
             RecoverableStream r2 = new RecoverableStream(stream, metaBlock);
             r2.recover();
+        }
+        
+        @Nano
+        public static void crashAtMetaBlockPosition() {
+            // bergdb 005-27: a transaction ends exactly at the second meta block's position,
+            // and a crash ends the stream there, before the meta block. Recovery fills it out,
+            // as a partly written one; it is invalid, and recovery takes the first one. Until
+            // 2026-10-23, recover() threw ("spos >= streamSize").
+            
+            MemoryStream mstream = new MemoryStream();
+            RecoverableStream r1 = new RecoverableStream(mstream, new MetaBlock());
+            byte[] transBytes = new byte[META_BLOCK_DISTANCE - META_BLOCK_SIZE];
+            Bytes.intToBytesLE(transBytes.length, transBytes, 0);
+            transBytes[transBytes.length - 1] = LAST_BYTE;
+            r1.append(transBytes, 0, transBytes.length, true, -1);
+            Assert.assertEquals(META_BLOCK_DISTANCE + META_BLOCK_SIZE, mstream.getLength());
+                    // The meta block is written with the transaction.
+            mstream.truncate(META_BLOCK_DISTANCE);
+            
+            RecoverableStream r2 = new RecoverableStream(mstream, new MetaBlock());
+            r2.recover();
+            
+            Assert.assertEquals(META_BLOCK_DISTANCE + META_BLOCK_SIZE, mstream.getLength());
+            Assert.assertEquals(0, r2.readLastValidMetaBlock().getPos());
+            
+            byte[] transBytes2 = new byte[20];
+            Bytes.intToBytesLE(20, transBytes2, 0);
+            transBytes2[transBytes2.length - 1] = LAST_BYTE;
+            r2.append(transBytes2, 0, 20, true, -1);
+            
+            RecoverableStream r3 = new RecoverableStream(mstream, new MetaBlock());
+            r3.recover();
+            
+            Assert.assertEquals(META_BLOCK_DISTANCE + META_BLOCK_SIZE + 20, mstream.getLength());
+            Iterator iter = new Iterator(r3, 0);
+            Assert.assertEquals(true, iter.next());
+            Assert.assertEquals(transBytes.length, iter.getBytes().length);
+            Assert.assertEquals(true, iter.next());
+            Assert.assertEquals(20, iter.getBytes().length);
+            Assert.assertEquals(false, iter.next());
         }
         
         @Nano

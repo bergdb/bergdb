@@ -1,0 +1,4 @@
+P11. Images that end exactly at a meta block's position.
+  30000 transactions, 67427568 bytes, 337 meta block positions
+  1 transactions end exactly at a meta block's position. Images cut there: 0 of 1 fail; cut 8 bytes before (in the transaction): 0 fail; cut after the meta block: 0 fail
+DONE metaedge in 4.3 s

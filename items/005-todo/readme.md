@@ -29,7 +29,6 @@ Open
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
-| [005-27](27-fix-meta-block-edge.md) | Fix | A crash that ends the stream exactly at a meta block's position, after a transaction that ends there, leaves a database that does not start (005-11, P11) | open |
 | [005-30](30-fix-read-failure.md) | Fix | A read that fails on the storage (an I/O error, corrupt data) leaves the database running half dead; make it fail the database, as a transaction does since 005-01 | open |
 | [005-31](31-fix-take-blocked.md) | Fix | A transaction whose dirty index nodes do not fit in one record stops the startup pos for good: the startup section, startup, D and the stream grow without end (007-02) | open |
 | [005-32](32-fix-failed-start-storage.md) | Fix | A start that throws leaves its storage running: its threads, its open files, and writes of what it appended, also into a database started after it; `BufferedStream.close()` hangs when the last flush fails (005-28) | open |
@@ -41,6 +40,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-27](27-fix-meta-block-edge.md) | Fix | A crash that ended the stream exactly at a meta block's position, after a transaction that ended there, left a database that did not start; now recovery fills out that meta block too, as one partly written (005-11, P11) | done | 2026-10-23 |
 | [005-29](29-fix-memory-stream-assert.md) | Fix | `MemoryStream.copy` failed an assertion when the stream was empty or its length a multiple of 1,000,000 bytes (test code; 005-11); now its arrays are exactly those that hold bytes, also after `truncate` and an append of 0 bytes | done | 2026-10-23 |
 | [005-28](28-fix-trans-iterator-loop.md) | Fix | Startup looped for ever when the transaction at its start position was a failed one (a damaged or mixed stream, 005-11's P9, or a crash in a new database's first transaction); now it throws a `StreamFormatException` that names it | done | 2026-10-23 |
 | [005-01](01-fix-m49-exception-safety.md) | Fix | M49: a transaction that threw after its go point was half committed; now it fails the database, which refuses every transaction and read until it is restarted (item 003) | done | 2026-10-22 |
@@ -76,9 +76,8 @@ and 005-06 feeds 005-05. 005-07 is best before 005-03's fix; the go point
 it asks about is in `Db.executeInner` since 005-01. 005-09 is done. What is left of 005-10 waits for Frans; a removal is best made
 when no other change to `java/` is under way. 005-11 can go any time, best
 before 005-05's decision on publishing, as it concerns the Pub API; 005-12
-is done. 005-27 first of the fixes found in 005-11, as a crash can leave a
-database that does not start; 005-28 and 005-29 are done; none of them
-waits for 005-11's decision. 005-30 any time, but not during a timing
+is done. 005-27, 005-28 and 005-29, the fixes found in 005-11, are done.
+005-30 any time, but not during a timing
 campaign, as it changes the read path. 005-31 before item 007's deadline
 for `TransSeq.take` (007-01, D1), which needs it. 005-32 any time, before
 005-33's change; 005-33 waits for Frans.
@@ -153,7 +152,8 @@ Files
   block's position, the startup's loop on a failed transaction, and
   `MemoryStream.copy`'s assertion. 005-28 is done, with its runs in
   [28-fix-trans-iterator-loop/](28-fix-trans-iterator-loop/); 005-29 is
-  done.
+  done; 005-27 is done, with its runs, gates and probe in
+  [27-fix-meta-block-edge/](27-fix-meta-block-edge/).
 * [30-fix-read-failure.md](30-fix-read-failure.md). 005-30, a read that
   fails on the storage fails the database (005-01's follow-up).
 * [31-fix-take-blocked.md](31-fix-take-blocked.md). 005-31, a transaction
@@ -494,3 +494,15 @@ messages; in 300 kills of a creating process none left one (the creation
 is one write), but a power loss can. Options: a clear error (A), create
 it again at start (B), create it whole or not at all (C), no change (D);
 proposed: A, then B in the Pub API, after 005-32. No change to `java/`.
+
+2026-10-23. 005-27 done, at Frans's request ("bergdb 005-27, fix it."), by
+Claude (Opus 5.5, Claude Code), as proposed first: when the stream ends at
+a meta block's position, `RecoverableStream.fixMetaBlockIfNeeded` fills
+out that meta block too, as one partly written; the block is invalid, and
+recovery takes the one before it. Two unit tests that fail without the fix;
+`CrashTest` also cuts at and next to meta block positions, and at the end
+of each transaction that ends at one (three in `level2.sh`'s full run,
+which fail without the fix); P11 again: none of its 13 images fails.
+Streams unchanged (StreamDigest); `before-commit.sh` and the four gates
+pass, on `e2c0dc0` with the change. The change in `java/` is left for
+Frans to commit.

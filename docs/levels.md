@@ -1320,7 +1320,9 @@ position, or at, just before or just after the end of a transaction; the
 database started from the cut stream and checked against a model, latest
 and historical; 50 more transactions; a restart; the check again. Part of
 level2.sh since 2026-10-13. The first run failed 2 of 3 rounds; after the
-fixes below, 0 of 25.
+fixes below, 0 of 25. Since 2026-10-23 (bergdb item 005-27) also 20 cuts per
+round at or next to meta block positions, and one at the end of each
+transaction that ends where a meta block starts.
 
 
 Bugs found by the load and crash tests
@@ -1375,6 +1377,21 @@ unit test that fails without the fix:
    years at the former 100 ms. After it, the timer flushed nothing for as
    long again, and a sync waited until 2.5 MB were buffered. Now the count
    stops at 4. Test: BufferedStream.testWaitCountStaysSmall.
+
+Fixed 2026-10-23 (bergdb item 005-27), also in the 2017 code, with unit
+tests that fail without the fix; found by item 005-11's probes, in a
+replica's crash image:
+
+7. A crash that ended the stream exactly at a meta block's position, after
+   a transaction that ended there, left a database that did not start
+   ("spos >= streamSize"). The transaction's bytes and the meta block are
+   two appends, and a flush can come between them. Recovery filled out a
+   meta block that was partly written, not one that had not begun, and
+   then stepped past the block, beyond the end of the stream. Now it fills
+   out that block too; the block is invalid, as a partly written one is,
+   and recovery takes the one before it. Tests:
+   DbTester.testCrash7AtMetaBlockPosition and
+   RecoverableStream.crashAtMetaBlockPosition; CrashTest cuts there too.
 
 
 

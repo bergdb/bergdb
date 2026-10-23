@@ -964,3 +964,15 @@ the crash and reclaim tests use through `CutStream`, failed its assertion
 under `-ea`. Now `assertOk`, `truncate` and an append of 0 bytes agree:
 the arrays are exactly those that hold bytes. A test; `before-commit.sh`
 passes.
+
+2026-10-23. 005-27 done, by Claude (Opus 5.5, Claude Code): a crash that
+ended the stream exactly at a meta block's position, after a transaction
+that ended there, left a database that did not start ("spos >=
+streamSize"). The transaction's bytes and the meta block are two appends,
+and a flush can come between them; recovery filled out a meta block that
+was partly written, not one that had not begun, and then stepped past it.
+Now `RecoverableStream.fixMetaBlockIfNeeded` fills out that block too; it
+is invalid, and recovery takes the one before it. Two unit tests;
+`CrashTest` also cuts at and next to meta block positions, and at the end
+of each transaction that ends at one. Streams unchanged (StreamDigest);
+`before-commit.sh` and the four gates pass.

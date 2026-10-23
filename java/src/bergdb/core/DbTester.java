@@ -1294,6 +1294,60 @@ public class DbTester {
     }
     
     /**
+     * Regression test for bergdb 005-27, found 2026-10-22: a crash that ends the stream
+     * exactly at a meta block's position, after a transaction that ends there. The
+     * transaction and the meta block are two appends, and a flush can come between them.
+     * Recovery stepped past the meta block, beyond the end of the stream, and startup failed
+     * ("spos >= streamSize"). Also a cut just after that meta block, and a transaction that
+     * crosses the next position, cut there.
+     */
+    @Nano
+    public static void testCrash7AtMetaBlockPosition() {
+        final int dist = RecoverableStream.META_BLOCK_DISTANCE;
+        MemoryStream mstream = new MemoryStream();
+        Db db = Db.builder().testSetup(mstream).start();
+        db.execute(db.trans().put("key1", "value1"));
+        Trans trans = db.trans().put("key2", new byte[1000]).build();
+        db.execute(trans);
+        
+        // The next put of key2 has the same overhead; its value is sized for the transaction
+        // to end exactly at the position of the second meta block.
+        long overhead = trans.nextPos - trans.tpos - 1000;
+        byte[] v2 = new byte[(int) (dist - trans.nextPos - overhead)];
+        v2[0] = 2;
+        trans = db.trans().put("key2", v2).build();
+        db.execute(trans);
+        Assert.assertEquals(dist, trans.lastPos + 1);
+        
+        byte[] v3 = new byte[dist];
+        trans = db.trans().put("key3", v3).build();
+        db.execute(trans);
+        Assert.assertTrue(trans.tpos < 2 * dist && trans.lastPos > 2 * dist);
+        db.sync(trans.lastPos, SyncLevel.STRONG);
+        db.stop();
+        
+        long[] cuts = {dist, dist + RecoverableStream.META_BLOCK_SIZE, 2 * dist};
+        for (long cut : cuts) {
+            MemoryStream m = mstream.copy();     // db.stop() closed mstream.
+            m.truncate(cut);
+            Db db2 = Db.builder().testSetup(m).start();
+            Assert.assertEquals("value1", DbUtil.getString(db2, "key1"));
+            Assert.assertArrayEquals(v2, DbUtil.get(db2, "key2"));
+            Assert.assertTrue(DbUtil.get(db2, "key3") == null);
+            trans = db2.trans().put("key4", "value4").build();
+            db2.execute(trans);
+            db2.sync(trans.lastPos, SyncLevel.STRONG);
+            db2.stop();
+            
+            Db db3 = Db.builder().testSetup(m.copy()).start();
+            Assert.assertArrayEquals(v2, DbUtil.get(db3, "key2"));
+            Assert.assertTrue(DbUtil.get(db3, "key3") == null);
+            Assert.assertEquals("value4", DbUtil.getString(db3, "key4"));
+            db3.stop();
+        }
+    }
+    
+    /**
      * Regression test for a bug found 2026-10-13: when the stream failed (here,
      * closed under the running database), a sync returned as if the transaction were
      * durable. Now it throws, and so does the next transaction. An f-test: the sync after

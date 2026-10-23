@@ -3,6 +3,7 @@ package bergdb.core;
 import java.util.*;
 
 import bergdb.pub.util.Clock;
+import bergdb.storage.RecoverableStream;
 import bergdb.stream.CutStream;
 
 /**
@@ -28,6 +29,12 @@ import bergdb.stream.CutStream;
  *   keys=N     Distinct keys /k/0 to /k/N-1 (default 300).
  *   cuts=N     Cuts per round (default 100); a third of them at or next to
  *              the end of a transaction.
+ *   metacuts=N More cuts per round, at or next to a meta block's position
+ *              (default 20): at it, 1 byte before it, in the block (1 and 127
+ *              bytes after) and just after it (128 and 129). Also a cut at the
+ *              end of each transaction that ends exactly at a meta block's
+ *              position, where a crash can come between the transaction and
+ *              the meta block (bergdb 005-27); such transactions are rare.
  *   sd=N       Startup distance in bytes (default 2000; 0: Db default).
  *   maxnode=N  Max node size: 8, 14, 30 or 62 (default: Db default).
  *   after=N    Transactions after each cut (default 50).
@@ -42,6 +49,7 @@ public class CrashTest {
     final int transCount = Integer.getInteger("trans", 2000);
     final int keyCount = Integer.getInteger("keys", 300);
     final int cuts = Integer.getInteger("cuts", 100);
+    final int metaCuts = Integer.getInteger("metacuts", 20);
     final int sd = Integer.getInteger("sd", 2000);
     final int maxNode = Integer.getInteger("maxnode", 0);
     final int after = Integer.getInteger("after", 50);
@@ -55,6 +63,11 @@ public class CrashTest {
     final List<Map<String, byte[]>> ops = new ArrayList<Map<String, byte[]>>();
     final List<Long> times = new ArrayList<Long>();
     final List<Long> lastPos = new ArrayList<Long>();
+
+    /** A metacut's offset from a meta block's position. */
+    static final int[] META_OFFSETS = {-1, 0, 1, 127, 128, 129};
+    /** Cuts at the end of a transaction that ends at a meta block's position. */
+    int edgeCuts;
 
     CrashTest(long seed) {
         this.seed = seed;
@@ -183,6 +196,24 @@ public class CrashTest {
             cut = Math.max(first, Math.min(length, cut));
             cutAndCheck(ms, cut, time);
         }
+
+        // At the end of each transaction that ends at a meta block's position, then at or
+        // next to meta block positions (metacuts).
+        final long dist = RecoverableStream.META_BLOCK_DISTANCE;
+        for (long p : lastPos) {
+            if ((p + 1) % dist == 0 && p + 1 >= first) {
+                edgeCuts++;
+                cutAndCheck(ms, p + 1, time);
+            }
+        }
+        long firstBlock = (first + dist - 1) / dist;
+        long blocks = length / dist - firstBlock + 1;
+        for (int c = 0; c < metaCuts && blocks > 0; c++) {
+            long cut = (firstBlock + (long) (rnd.nextDouble() * blocks)) * dist
+                    + META_OFFSETS[rnd.nextInt(META_OFFSETS.length)];
+            cut = Math.max(first, Math.min(length, cut));
+            cutAndCheck(ms, cut, time);
+        }
     }
 
     void cutAndCheck(CutStream full, long cut, long lastTime) {
@@ -236,6 +267,7 @@ public class CrashTest {
         long firstSeed = Long.parseLong(args[0]);
         int rounds = Integer.parseInt(args[1]);
         int fails = 0;
+        int edgeCuts = 0;
         long t0 = System.currentTimeMillis();
         for (long seed = firstSeed; seed < firstSeed + rounds; seed++) {
             CrashTest c = new CrashTest(seed);
@@ -257,9 +289,11 @@ public class CrashTest {
                     }
                 }
             }
+            edgeCuts += c.edgeCuts;
         }
         if (Audit.EVERY > 0) System.out.println(Audit.summary());   // -Daudit=N (WP J1)
         System.out.println("Done: " + rounds + " rounds, " + fails + " failures, "
-                + (System.currentTimeMillis() - t0) / 1000 + " s.");
+                + (System.currentTimeMillis() - t0) / 1000 + " s. Cuts where a transaction "
+                + "ends at a meta block's position: " + edgeCuts + ".");
     }
 }

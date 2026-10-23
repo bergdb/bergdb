@@ -28,7 +28,9 @@
 #      default startup distance.
 #   5. CrashTest (INV-CRASH in docs/problem.md): the stream cut at 100
 #      positions per round, a third of them at or next to the end of a
-#      transaction; the database must start in the state after the last
+#      transaction; then at 20 positions at or next to a meta block, and at
+#      the end of each transaction that ends where a meta block starts
+#      (bergdb 005-27). The database must start in the state after the last
 #      complete transaction, work on, and restart again. Startup distance
 #      2000 bytes, and 500 bytes with node size 8.
 #   6. BryanRepro: the bug report of November 2015 (ISSUE151111). Start,
