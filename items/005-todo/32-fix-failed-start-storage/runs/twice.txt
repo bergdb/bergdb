@@ -1,0 +1,5 @@
+Java 27
+Two databases started on one directory, a and b; each puts and syncs in turn, 50 times:
+  a: 50 synced puts
+  b: 0 synced puts; first error: java.io.IOException: StorageManager has error: Main storage not active. java.io.IOException: File /private/tmp/claude-502/-Users-f-fl-repos-f1/7b9a2d14-727a-4d0...
+  a restart: started; it finds 50 of a's puts and 0 of b's

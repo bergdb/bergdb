@@ -1,0 +1,5 @@
+Java 27
+20 times, assertions off: a start with a main and a replica of two histories fails (005-28); at once, the main alone starts and writes:
+  with both: StreamFormatException; the main alone: started, wrote and synced; then a start of the main: StreamFormatException: 4
+  with both: StreamFormatException; the main alone: started, wrote and synced; then a start of the main: started, /new = v, /k2 = null: 7
+  with both: StreamFormatException; the main alone: started, its write or sync: StreamIoException (java.io.IOException: StorageManager has error: Main storage not active. java.io.IOException: File /private/tmp/claude-502/-Users-f-fl-repos-f1/7b9a2d14-727a-4d0...); then a start of the main: StreamFormatException: 9

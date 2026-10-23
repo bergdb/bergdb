@@ -32,6 +32,8 @@ Open
 | [005-27](27-fix-meta-block-edge.md) | Fix | A crash that ends the stream exactly at a meta block's position, after a transaction that ends there, leaves a database that does not start (005-11, P11) | open |
 | [005-30](30-fix-read-failure.md) | Fix | A read that fails on the storage (an I/O error, corrupt data) leaves the database running half dead; make it fail the database, as a transaction does since 005-01 | open |
 | [005-31](31-fix-take-blocked.md) | Fix | A transaction whose dirty index nodes do not fit in one record stops the startup pos for good: the startup section, startup, D and the stream grow without end (007-02) | open |
+| [005-32](32-fix-failed-start-storage.md) | Fix | A start that throws leaves its storage running: its threads, its open files, and writes of what it appended, also into a database started after it; `BufferedStream.close()` hangs when the last flush fails (005-28) | open |
+| [005-33](33-crashed-creation.md) | Decide | A database whose creation crashed never starts: a clear error, create it again at start, or create it whole or not at all (005-28) | open |
 
 
 Closed
@@ -78,7 +80,8 @@ is done. 005-27 first of the fixes found in 005-11, as a crash can leave a
 database that does not start; 005-28 and 005-29 are done; none of them
 waits for 005-11's decision. 005-30 any time, but not during a timing
 campaign, as it changes the read path. 005-31 before item 007's deadline
-for `TransSeq.take` (007-01, D1), which needs it.
+for `TransSeq.take` (007-01, D1), which needs it. 005-32 any time, before
+005-33's change; 005-33 waits for Frans.
 
 
 Files
@@ -157,6 +160,14 @@ Files
   whose dirty index nodes do not fit in one record stops the startup pos
   for good; found in item 007, with the probe in
   [../007-bounds/02-take-blocked/](../007-bounds/02-take-blocked/).
+* [32-fix-failed-start-storage.md](32-fix-failed-start-storage.md). 005-32,
+  a start that throws leaves its storage running; found in 005-28, with
+  the probe and its runs in
+  [32-fix-failed-start-storage/](32-fix-failed-start-storage/).
+* [33-crashed-creation.md](33-crashed-creation.md). 005-33, a database
+  whose creation crashed: the study and the options, for Frans to decide;
+  found in 005-28, with the probe and its runs in
+  [33-crashed-creation/](33-crashed-creation/).
 
 Log
 ===
@@ -468,3 +479,18 @@ unit test; `before-commit.sh` passes. Found on the way:
 `DbTester.testCrash3` has never started on its truncated copies; on them
 it meets 005-28's case, as it takes its first length before the new
 database is written. The change in `java/` is left for Frans to commit.
+
+2026-10-23. Added 005-32 and 005-33, at Frans's request, by Claude (Opus
+5.5, Claude Code), from 005-28's findings. 005-32 ("Yes, make a new 005
+entry."): a start that throws leaves its storage running until the
+garbage collector finalizes the `Db`; in a probe, a failed start's thread
+wrote into a database started after it on the same files, which then lost
+a synced transaction 4 times in 20 (assertions off); and
+`BufferedStream.close()` hangs when the last flush fails. Proposed: close
+the storage when a start throws. 005-33 ("Study the options and propose
+something in the entry. Do not implement anything."): a crash in a
+database's creation leaves a stream that never starts, with one of three
+messages; in 300 kills of a creating process none left one (the creation
+is one write), but a power loss can. Options: a clear error (A), create
+it again at start (B), create it whole or not at all (C), no change (D);
+proposed: A, then B in the Pub API, after 005-32. No change to `java/`.

@@ -1,0 +1,21 @@
+Java 27
+Exception in thread "BufferedStream-consumer-50" java.lang.AssertionError: 864 != 1048
+	at bergdb.stream.FileStream$DbFile.append(FileStream.java:921)
+	at bergdb.stream.FileStream.append(FileStream.java:173)
+	at bergdb.storage.BufferedStream.flushToStream(BufferedStream.java:235)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:189)
+	at bergdb.storage.BufferedStream.access$000(BufferedStream.java:27)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:117)
+	at java.base/java.lang.Thread.run(Thread.java:1527)
+Exception in thread "BufferedStream-consumer-152" java.lang.AssertionError: 864 != 1048
+	at bergdb.stream.FileStream$DbFile.append(FileStream.java:921)
+	at bergdb.stream.FileStream.append(FileStream.java:173)
+	at bergdb.storage.BufferedStream.flushToStream(BufferedStream.java:235)
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:189)
+	at bergdb.storage.BufferedStream.access$000(BufferedStream.java:27)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:117)
+	at java.base/java.lang.Thread.run(Thread.java:1527)
+20 times, assertions on: a start with a main and a replica of two histories fails (005-28); at once, the main alone starts and writes:
+  with both: StreamFormatException; the main alone: started, its write or sync: StreamIoException (java.io.IOException: StorageManager has error: Main storage not active. java.io.IOException: File /private/tmp/claude-502/-Users-f-fl-repos-f1/7b9a2d14-727a-4d0...); then a start of the main: StreamFormatException: 9
+  with both: StreamFormatException; the main alone: started, wrote and synced; then a start of the main: started, /new = v, /k2 = null: 9
+  with both: StreamFormatException; the main alone: started, its write and sync still running after 5 s; then a start of the main: StreamFormatException: 2

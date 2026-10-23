@@ -1,0 +1,7 @@
+A new database's stream (core API, test setup): 264 bytes, the first meta block (128) and the first transaction (136).
+A start on the stream cut at each length L from 0 to 264:
+  L = 0: started, works; the stream then 384 bytes
+  L = 1 to 127: StreamFormatException: Cannot recover stream without complete first meta block, length: L; the stream then unchanged
+  L = 128: StreamFormatException: No transactions in startup transaction set.; the stream then unchanged
+  L = 129 to 263: StreamFormatException: Transaction at start pos 128 is not committed (its last byte is 0).; the stream then 264 bytes
+  L = 264: started, works; the stream then 384 bytes

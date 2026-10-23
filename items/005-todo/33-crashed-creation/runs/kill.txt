@@ -1,0 +1,4 @@
+300 JVMs killed with SIGKILL 0 to 400 ms after they began to create a database (Pub API, a directory); what the next start found:
+  stream 264 bytes; started, works: 243 (killed after 80 to 400 ms)
+  no stream file; started, works: 29 (killed after 0 to 42 ms)
+  stream 0 bytes; started, works: 28 (killed after 37 to 160 ms)

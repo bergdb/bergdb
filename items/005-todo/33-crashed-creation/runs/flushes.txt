@@ -1,0 +1,3 @@
+500 creations through the Pub API (default buffer: 10 MB, 20 ms); the appends to the main stream, by size in bytes, in the first 50 ms after the creation is complete:
+  [264]: 500 creations
+Time from start()'s return to the first append (0.1 ms units): min 16, median 271, max 359
