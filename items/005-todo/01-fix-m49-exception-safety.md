@@ -276,3 +276,9 @@ covered by T1, T2 and, after cuts, T8. Written in docs/level4-alignment.md
   fourth of the bugs found by the alignment of Levels 3 and 4), and so does
   the public API's documentation (`Database`, `Connection`, `WBuilder`,
   `DbFailedException`). Also docs/log.md.
+
+**Follow-up, 2026-10-23**, at Frans's request: `DbException`'s Javadoc
+called every `DbException` fatal, so that the database should not be used
+after one; a refusal before the go point leaves it as it was. It now names
+the two kinds, refusals and failures, and says that taking any
+`DbException` as a reason to restart is always safe.

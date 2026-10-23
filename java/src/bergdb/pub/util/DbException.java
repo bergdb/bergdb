@@ -1,10 +1,23 @@
 package bergdb.pub.util;
 
 /**
- * Thrown when a serious error condition occurred in the database.
- * This exception should be considered fatal to the database.
- * That means that after a DbException, the database should not be considered 
- * functional and should not be used anymore.
+ * <p>Thrown when the database cannot do what was asked. There are two kinds.</p>
+ * 
+ * <p>A refusal: the database checked the request and refused it before it changed
+ * anything, for example a transaction that is too large, a clock time out of range, or
+ * a stored value that does not fit its Java field (DataFormatException). The database
+ * is as it was and can be used on. Each such case says so where it is thrown.</p>
+ * 
+ * <p>A failure: the storage, the JVM or memory failed, or there is a bug. A failure in
+ * a transaction fails the database: every later transaction and read throws a
+ * DbFailedException until the database is restarted. A stream error in a read
+ * (StreamIoException, StreamFormatException) or corrupt internal data
+ * (InternalDataException) means that the storage or the stream does not work; restart
+ * the database.</p>
+ * 
+ * <p>An application that does not tell the two apart can take any DbException as a
+ * reason to stop and restart the database; that is always safe (2026-10-23, bergdb
+ * 005-01; before, this comment called every DbException fatal).</p>
  * 
  * @author Frans Lundberg
  */
@@ -21,7 +34,7 @@ public class DbException extends RuntimeException {
 }
 
 /*
-The Pub user typically do not need to catch different fatal database exceptions:
+The Pub user typically do not need to catch different database exceptions:
 StreamFormatException / StreamException / InternalDataException in different 
 catch-clauses. It is enough to catch DBException.
 The subclasses of DBException do not have to be a part of Pub layer, but they
