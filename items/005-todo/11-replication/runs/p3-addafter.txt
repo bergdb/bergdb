@@ -1,0 +1,25 @@
+P3. A replica added after cuts (FileStreams).
+No writes during the copy: 900 transactions first; main first position 2000000, length 2711960
+  addReplica: 2082 ms, the job ended with 100 'Done!'; storages then: main ACTIVE (ok); r ACTIVE (ok)
+  then 2000 transactions: 2000 returned, 0 threw; 2900 stored in all
+  main and replica: lengths 10537560 and 10537560, first positions 9800000 and 9000000; bytes 9800000 to 10537560 equal
+  started from the replica alone: 603 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+A writer during the copy, no cuts during it: 900 transactions first; main first position 2000000, length 2711960
+  addReplica: 2495 ms, the job ended with 100 'Done!'; storages then: main ACTIVE (ok); r ACTIVE (ok)
+  the writer: 2114 transactions returned, 0 threw
+  then 2000 transactions: 2000 returned, 0 threw; 5014 stored in all
+  main and replica: lengths 15708584 and 15708584, first positions 15000000 and 15000000; bytes 15000000 to 15708584 equal
+  started from the replica alone: 601 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+A writer during the copy, with cuts: 900 transactions first; main first position 2000000, length 2711960
+  addReplica: 2546 ms, the job ended with 100 'Done!'; storages then: main ACTIVE (ok); r ACTIVE (ok)
+  the writer: 1842 transactions returned, 0 threw
+  then 2000 transactions: 2000 returned, 0 threw; 4742 stored in all
+  main and replica: lengths 17428512 and 17428512, first positions 16800000 and 16800000; bytes 16800000 to 17428512 equal
+  started from the replica alone: 601 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+A writer at full speed during the copy, with cuts: 900 transactions first; main first position 2000000, length 2711960
+  addReplica: 2022 ms, the job ended with 100 'Done!'; storages then: main ACTIVE (ok); r ACTIVE (ok)
+  the writer: 2365 transactions returned, 1 threw, first: NullPointerException: Cannot invoke "bergdb.stream.AppendOnlyStream.pretruncate(long)" because "<local8>" is null at bergdb.storage.StorageManager.pretruncate(StorageManager.java:806)
+  then 2000 transactions: 2000 returned, 0 threw; 5266 stored in all
+  main and replica: lengths 19461808 and 19461808, first positions 18800000 and 18000000; bytes 18800000 to 19461808 equal
+  started from the replica alone: 601 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+DONE addafter in 27.2 s

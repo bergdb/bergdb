@@ -1,0 +1,19 @@
+P8. Syncs with a replica; a slow and a hung replica (FileStreams in /private/tmp/claude-502/-Users-f-fl-repos-f1/a8c838ab-d689-45af-bf14-f0232cfce921/scratchpad/tmp/p8).
+  no replica, sync ORDINARY after each commit: p50 29.0 ms, max 33.4 ms
+  no replica, sync STRONG after each commit: p50 29.5 ms, max 35.0 ms
+  replica 20 ms (replica()), sync ORDINARY after each commit: p50 29.5 ms, max 43.0 ms
+  replica 20 ms (replica()), sync STRONG after each commit: p50 29.9 ms, max 36.2 ms
+  replica 2000 ms (addReplica()), sync ORDINARY after each commit: p50 29.6 ms, max 34.7 ms
+  replica 2000 ms (addReplica()), sync STRONG after each commit: p50 2022.5 ms, max 2029.9 ms
+  no replica: puts of 1 kB without sync, second 1 to 5: 85845 65341 52031 70659 52166
+  a replica limited to 2 MB/s: puts of 1 kB without sync, second 1 to 5: 18219 0 0 0 0
+  a hung replica (1 MB buffer): the writer made 922 puts, then 0 in the next 2 s (thread WAITING); a read meanwhile: 'before'
+  an ORDINARY sync of the first transaction returned within 3 s: true
+  an ORDINARY sync of the last transaction (Database.sync()) returned within 3 s: false
+  stop() returned in 0 ms; the writer is BLOCKED
+Exception in thread "Thread-10" bergdb.core.DbStoppingException: Cannot call execute() while DB is stopping.
+	at bergdb.core.Db.assertDbStateIsActive(Db.java:1399)
+	at bergdb.core.Db.execute(Db.java:1391)
+	at bergdb.core.ReplicaProbe$3.run(ReplicaProbe.java:1129)
+  after the replica was released: the writer is TERMINATED, 923 puts
+DONE slow in 105.9 s

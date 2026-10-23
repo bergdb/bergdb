@@ -1,0 +1,5 @@
+P7. A replica with eviction: a cache budget of 2 MB, about 6 MB of live values.
+  20000 transactions; eviction released 449963 objects; first position 190744968; reads while running: 10016 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+  main and replica: lengths 221011784 and 221011784, first positions 190744968 and 190744968; bytes 190744968 to 221011784 equal
+  started from the replica alone, with eviction: 10009 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+DONE evict in 13.7 s

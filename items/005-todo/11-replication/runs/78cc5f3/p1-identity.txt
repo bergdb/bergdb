@@ -1,0 +1,13 @@
+P1. Replicas are byte copies of the main stream; restart from one.
+Core, replica buffer time 10 ms; 3000 transactions, no reclaim; a STRONG sync took 12 ms; close():
+  main and replica: lengths 6344528 and 6344528, first positions 0 and 0; bytes 0 to 6344528 equal
+  started from the replica alone: 900 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+Core, replica buffer time 2000 ms; 3000 transactions, no reclaim; a STRONG sync took 178 ms; close():
+  main and replica: lengths 6344528 and 6344528, first positions 0 and 0; bytes 0 to 6344528 equal
+  started from the replica alone: 900 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+Pub API, dir() and replica(), addReplica() after 2000 puts (job: 100, 'Done!'), 4000 puts, STRONG sync 41 ms, stop(); storages: main ACTIVE (ok); r ACTIVE (ok); added ACTIVE (ok)
+  main and replica(): lengths 421408 and 421408, first positions 0 and 0; bytes 0 to 421408 equal
+  main and addReplica(): lengths 421408 and 0, first positions 0 and 0; bytes 0 to 0 equal
+  started from r alone (Pub API): 300 keys as expected, 0 not
+  started from added alone (Pub API): 0 keys as expected, 300 not
+DONE identity in 5.2 s

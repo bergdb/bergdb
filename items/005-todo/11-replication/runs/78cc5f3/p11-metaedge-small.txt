@@ -1,0 +1,5 @@
+P11. Images that end exactly at a meta block's position.
+  150000 transactions, 327032120 bytes, 1635 meta block positions
+  12 transactions end exactly at a meta block's position. Images cut there: 12 of 12 fail; cut 8 bytes before (in the transaction): 0 fail; cut after the meta block: 0 fail
+  example: cut at 19200000 (transaction 8846 ends there): startup failed: IllegalArgumentException: spos >= streamSize, 19200128, 19200000
+DONE metaedge in 22.4 s

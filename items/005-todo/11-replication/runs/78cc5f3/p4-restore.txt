@@ -1,0 +1,7 @@
+P4. Restore: a new, empty main directory with the replica.
+No reclaim: 3000 transactions, first position 0; start with an empty main and the replica:
+  started: 900 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+  the restored main alone: 900 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+Reclaim on: 3000 transactions, first position 10000000; start with an empty main and the replica:
+  startup failed: BadReplicaException: Replica 'r is illegal. It's length is 10648328 while main stream length is 0.
+DONE restore in 8.0 s

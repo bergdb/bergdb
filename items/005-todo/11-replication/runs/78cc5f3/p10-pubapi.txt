@@ -1,0 +1,10 @@
+P10. The Pub API.
+replica("r", dir) before dir(main): storages: main ACTIVE (ok); files in the replica directory: 1
+An encrypted database (cryptoKey) with a replica of replica(): the plain text 'SECRET-PLAINTEXT-4711' is in 0 files of the main and 1 of the replica
+  started from the replica without the key: /secret = SECRET-PLAINTEXT-4711
+  started from the replica with the key: BadCryptoKey: Likely, the wrong crypto key was used. Invalid magic bytes in stream.
+An encrypted database (cryptoKey) with a replica of addReplica(): the plain text 'SECRET-PLAINTEXT-4711' is in 0 files of the main and 1 of the replica
+  started from the replica without the key: /secret = SECRET-PLAINTEXT-4711
+  started from the replica with the key: BadCryptoKey: Likely, the wrong crypto key was used. Invalid magic bytes in stream.
+addReplica("self", the main's own directory): accepted, job 'Done!'; after 29000 more puts and a restart: started, 100 of 100 keys as expected
+DONE pubapi in 17.6 s

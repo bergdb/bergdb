@@ -1,0 +1,18 @@
+P6. A replica whose writes fail.
+No reclaim: the replica failed after transaction 219; storages then: main ACTIVE (ok); r ERROR (java.io.IOException: GateStream: injected write failure at 177776)
+  a STRONG sync after the failure returned in 9.6 ms; of 6000 transactions, 6000 returned and 0 threw (stored anyway: 0)
+  removeReplica("r"): NullPointerException: Cannot invoke "bergdb.storage.BufferedStream.stop()" because "<local4>" is null at bergdb.storage.StorageManager.removeReplica(StorageManager.java:647)
+  storages after removeReplica: main ACTIVE (ok)
+  1000 more transactions: 1000 returned, 0 threw
+  the database's content: 900 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+  restarted from the main: 900 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+Reclaim on (retain 1 s): the replica failed after transaction 187; storages then: main ACTIVE (ok); r ERROR (java.io.IOException: GateStream: injected write failure at 123056)
+  a STRONG sync after the failure returned in 12.6 ms; of 6000 transactions, 188 returned and 5812 threw (stored anyway: 1)
+  first exception: transaction 188: DbFailedException: The transaction at time 104500000 failed after it began (the cause); nothing is undone. The database takes no more transactions or reads and must be restarted: the restart rebuilds it from the stream. at bergdb.core.Db.fail(Db.java:1578)
+  removeReplica("r"): NullPointerException: Cannot invoke "bergdb.storage.BufferedStream.stop()" because "<local4>" is null at bergdb.storage.StorageManager.removeReplica(StorageManager.java:647)
+  storages after removeReplica: main ACTIVE (ok)
+  1000 more transactions: 0 returned, 1000 threw
+  the database's content: 659 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 659 other errors (300 of the failed at the latest time); first: the database: /k/0 at 9223372036854775807: bergdb.pub.util.DbFailedException: Cannot call getOne(): the database failed in a transaction (the cause) and must be restarted.
+  restarted from the main: 659 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+addReplica of a replica whose writes fail after 100 kB: the job ended with progress 100, note 'Done!'; storages: main ACTIVE (ok); bad ERROR (java.io.IOException: GateStream: injected write failure at 0)
+DONE fail in 1.9 s

@@ -1,0 +1,9 @@
+P5. A crash (Runtime.halt) in the middle of addReplica's copy.
+child: main length 69861952; halts at progress 52 (Synching storage 'r', 34011952 bytes left.)
+child exit 0
+After the crash: main 69861952 bytes, replica 0 to 20000000
+  main and the half-copied replica: lengths 69861952 and 20000000, first positions 0 and 0; bytes 0 to 20000000 equal
+The half-copied replica alone (6293 transactions complete in it): 6300 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+Restart with main and replica: 6300 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+  main and replica after the restart: lengths 69861952 and 69861952, first positions 0 and 0; bytes 0 to 69861952 equal
+DONE crashsync in 5.7 s

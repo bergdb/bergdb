@@ -29,6 +29,10 @@ Open
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
+| [005-27](27-fix-meta-block-edge.md) | Fix | A crash that ends the stream exactly at a meta block's position, after a transaction that ends there, leaves a database that does not start (005-11, P11) | open |
+| [005-28](28-fix-trans-iterator-loop.md) | Fix | Startup loops for ever when the transaction at its start position is a failed one (a damaged or mixed stream; 005-11, P9) | open |
+| [005-29](29-fix-memory-stream-assert.md) | Fix | `MemoryStream.copy` fails an assertion when the stream is empty or its length a multiple of 1,000,000 bytes (test code; 005-11) | open |
+| [005-30](30-fix-read-failure.md) | Fix | A read that fails on the storage (an I/O error, corrupt data) leaves the database running half dead; make it fail the database, as a transaction does since 005-01 | open |
 
 
 Closed
@@ -69,7 +73,10 @@ and 005-06 feeds 005-05. 005-07 is best before 005-03's fix; the go point
 it asks about is in `Db.executeInner` since 005-01. 005-09 is done. What is left of 005-10 waits for Frans; a removal is best made
 when no other change to `java/` is under way. 005-11 can go any time, best
 before 005-05's decision on publishing, as it concerns the Pub API; 005-12
-is done.
+is done. 005-27 first of the fixes found in 005-11, as a crash can leave a
+database that does not start; 005-28 and 005-29 any time; none of them
+waits for 005-11's decision. 005-30 any time, but not during a timing
+campaign, as it changes the read path.
 
 
 Files
@@ -106,7 +113,8 @@ Files
   the removal as Frans decided it in
   [10-unused-code/applied/](10-unused-code/applied/).
 * [11-replication.md](11-replication.md). 005-11, replication: the
-  decision material for Frans.
+  decision material for Frans; the study, with its probes and runs, in
+  [11-replication/](11-replication/).
 * [12-transaction-outputs.md](12-transaction-outputs.md). 005-12,
   transaction outputs: they stay; the API made consistent, with unit
   tests; done.
@@ -133,6 +141,14 @@ Files
   [FileStream read at the end](24-fix-file-read-at-end.md), 25
   [BufferedStream read past the end](25-fix-buffered-read-past-end.md), 26
   [lone surrogates](26-fix-lone-surrogates.md).
+* [27-fix-meta-block-edge.md](27-fix-meta-block-edge.md),
+  [28-fix-trans-iterator-loop.md](28-fix-trans-iterator-loop.md),
+  [29-fix-memory-stream-assert.md](29-fix-memory-stream-assert.md). 005-27
+  to 005-29, faults found in 005-11 outside replication: a crash at a meta
+  block's position, the startup's loop on a failed transaction, and
+  `MemoryStream.copy`'s assertion.
+* [30-fix-read-failure.md](30-fix-read-failure.md). 005-30, a read that
+  fails on the storage fails the database (005-01's follow-up).
 
 Log
 ===
@@ -366,6 +382,20 @@ refuses calls after its action has run (`IllegalStateException`); the
 rules are in the Javadoc; `GetStarted4` shows an output. Seven unit tests
 in `PubTesterOutput`; `before-commit.sh` passes.
 
+2026-10-22. 005-11 studied, at Frans's request ("Do 005-11. Replication:
+study it, for Frans to decide."), by Claude (Opus 5.5, Claude Code), with
+probes P1 to P11 on today's code. Replication works without cuts and
+failures: replicas are byte copies, one can be added while the database
+writes, a crash in its copy is harmless. It fails with reclaim (a crash
+leaves the replica unusable while it is behind the cut's decision: 943 of
+943 such images broken), after a start without the replica (the main hung
+at startup, or the replica held another history), when a replica fails
+(`NullPointerException` from later transactions), and with encryption (the
+replica in plain text). Proposed: remove it, and leave mirroring to the OS
+and backups to copying the files. Found on the way, outside replication: a
+crash that ends the stream where a meta block starts leaves a database
+that does not start. For Frans to decide; no change to `java/`.
+
 2026-10-22. 005-01 done, at Frans's request ("Do as proposed /
 Recommanded. Implement this and commit it. Refuse both reads and writes
 after failure. Use the wrapper as recommanded. Task 2, as you
@@ -380,3 +410,23 @@ stay after the go point and must not throw. M49 and item 003 closed; no
 model change. Seven tests in `DbTesterFailure`, and
 `DbTesterStream.testReadOnlyStream2` changed; streams unchanged
 (StreamDigest); `before-commit.sh` and the four gates pass.
+
+2026-10-23. Added 005-27 to 005-29, at Frans's request ("For now, add 005
+entries for the bugs."), by Claude (Opus 5.5, Claude Code): the faults that
+005-11's probes found outside replication. 005-11 stays open (Frans: "I
+need to think carefully about this one. Replication is linked to
+durability and it affects the public API."); its options A, B, C1, C2 and
+C3 are now described in the entry itself, with what each means for the
+syncs of the API, and Frans's earlier design of durability levels from
+F1-007 is summarized there. The probes ran again on `78cc5f3`: since
+005-01, a replica that fails, or `addReplica` during cuts, fails the whole
+database at the next cut (a `NullPointerException` after the go point),
+where before some transactions threw. No change to `java/`.
+
+2026-10-23. Added 005-30, at Frans's request ("Write it up in a new entry.
+I like your proposal."), by Claude (Opus 5.5, Claude Code), from 005-01's
+follow-up: a read that fails on the storage leaves the database running
+half dead, as the storage below refuses all I/O after the first error;
+proposed, to fail the database as a transaction does since 005-01,
+corrupt data included, but not for reads that a cut has overtaken or that
+run while the database stops. No change to `java/`.

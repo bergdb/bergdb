@@ -1,0 +1,26 @@
+
+======== NanotestForBergDB: unit ========
+On f53 261022 19:37, OpenJDK 64-Bit Server VM 27
+bergdb.storage.StorageManagerTester.testAddReplica1: 12
+bergdb.storage.StorageManagerTester.testAddReplica2: 17
+bergdb.storage.StorageManagerTester.testAddReplica3: 94
+bergdb.storage.StorageManagerTester.testAddReplica4: 97
+bergdb.storage.StorageManagerTester.testAddReplica5: 94
+bergdb.storage.StorageManagerTester.testAddReplicaWhileAppending: 71
+bergdb.storage.StorageManagerTester.testMultipleClose: 49
+bergdb.storage.StorageManagerTester.testReadBelowFirstPosIsNotAStreamError: 3
+bergdb.storage.StorageManagerTester.testRemoveReplica1: 33
+bergdb.storage.StorageManagerTester.testRemoveReplica2: 36
+bergdb.storage.StorageManagerTester.testSync1: 32
+bergdb.storage.StorageManagerTester.testSync2: 32
+bergdb.storage.StorageManagerTester.testSync3: 30
+bergdb.storage.StorageManagerTester.testSync4: 85
+bergdb.storage.StorageManagerTester.testWait1: 3
+bergdb.storage.StorageManagerTester.testWait2: 128
+SUCCESS, 16 successful tests in 0.8 s.
+
+======== NanotestForBergDB: unit ========
+On f53 261022 19:37, OpenJDK 64-Bit Server VM 27
+bergdb.core.DbTester.testBadReplica1: 24
+bergdb.pubimp.PubTester.testBadStartReplica: 64
+SUCCESS, 2 successful tests in 0.1 s.

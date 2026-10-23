@@ -1,0 +1,39 @@
+P3. A replica added after cuts (FileStreams).
+No writes during the copy: 900 transactions first; main first position 2000000, length 2711960
+  addReplica: 2084 ms, the job ended with 100 'Done!'; storages then: main ACTIVE (ok); r ACTIVE (ok)
+  then 2000 transactions: 2000 returned, 0 threw; 2900 stored in all
+  main and replica: lengths 10537560 and 10537560, first positions 9800000 and 9000000; bytes 9800000 to 10537560 equal
+  started from the replica alone: 603 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+A writer during the copy, no cuts during it: 900 transactions first; main first position 2000000, length 2711960
+  addReplica: 2457 ms, the job ended with 100 'Done!'; storages then: main ACTIVE (ok); r ACTIVE (ok)
+  the writer: 2163 transactions returned, 0 threw
+  then 2000 transactions: 2000 returned, 0 threw; 5063 stored in all
+  main and replica: lengths 15863952 and 15863952, first positions 15200000 and 15000000; bytes 15200000 to 15863952 equal
+  started from the replica alone: 600 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+A writer during the copy, with cuts: 900 transactions first; main first position 2000000, length 2711960
+  addReplica: 2551 ms, the job ended with 100 'Done!'; storages then: main ACTIVE (ok); r ACTIVE (ok)
+  the writer: 1850 transactions returned, 0 threw
+  then 2000 transactions: 2000 returned, 0 threw; 4750 stored in all
+  main and replica: lengths 17471848 and 17471848, first positions 16800000 and 16800000; bytes 16800000 to 17471848 equal
+  started from the replica alone: 601 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+A writer at full speed during the copy, with cuts: 900 transactions first; main first position 2000000, length 2711960
+Exception in thread "db-addReplica-sync-r-50" bergdb.pub.util.DbFailedException: Cannot call execute(): the database failed in a transaction (the cause) and must be restarted.
+	at bergdb.core.Db.assertDbStateIsActive(Db.java:1425)
+	at bergdb.core.Db.execute(Db.java:1415)
+	at bergdb.core.DbHelper$AddReplicaClass$2.run(DbHelper.java:130)
+	at java.base/java.lang.Thread.run(Thread.java:1527)
+Caused by: java.lang.NullPointerException: Cannot invoke "bergdb.stream.AppendOnlyStream.pretruncate(long)" because "<local8>" is null
+	at bergdb.storage.StorageManager.pretruncate(StorageManager.java:806)
+	at bergdb.core.Reclaim.pretruncate(Reclaim.java:714)
+	at bergdb.core.Reclaim.cutIfDurable(Reclaim.java:362)
+	at bergdb.core.Reclaim.transactionCompleted(Reclaim.java:343)
+	at bergdb.core.Db.executeInner(Db.java:1536)
+	at bergdb.core.Db.execute(Db.java:1416)
+	at bergdb.core.ReplicaProbe.execute(ReplicaProbe.java:157)
+	at bergdb.core.ReplicaProbe$2.run(ReplicaProbe.java:711)
+  addReplica: 70 ms, the job ended with 99 'Almost done, waiting for syncString...'; storages then: main ACTIVE (ok); r ACTIVE (ok)
+  the writer: 58 transactions returned, 278226 threw, first: DbFailedException: The transaction at time 489500000 failed after it began (the cause); nothing is undone. The database takes no more transactions or reads and must be restarted: the restart rebuilds it from the stream. at bergdb.core.Db.fail(Db.java:1578)
+  then 2000 transactions: 0 returned, 2000 threw (DbFailedException: Cannot call execute(): the database failed in a transaction (the cause) and must be restarted.); 959 stored in all
+  main and replica: lengths 2963352 and 2963352, first positions 2400000 and 2200000; bytes 2400000 to 2963352 equal
+  started from the replica alone: 610 lookups, 0 wrong, 0 not available at a time from the first available lookup time on, 0 other errors (0 of the failed at the latest time)
+DONE addafter in 24.3 s
