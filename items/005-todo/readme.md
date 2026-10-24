@@ -643,3 +643,9 @@ the paths of a large transaction's keys under the write lock
 (`Dag.dirtyNodeBound`). The bound is 1.0 to 2.6 times the actual nodes on
 007-02's database at the four node sizes. A test; StreamDigest identical;
 `before-commit.sh` passes. Step 1 of 007-03.
+
+2026-10-24. The final checks of the six fixes of the day (005-31, 005-32,
+005-34 to 005-37), on `43d85f9`: the four level scripts pass, and Props in
+ABBA order against `7f08273`, the commit before them, shows no difference
+(MEM 191, SS 1.50, CORE 0.27 to 0.29). See 005-31's outcome. With them, no
+entry of kind Fix is open.

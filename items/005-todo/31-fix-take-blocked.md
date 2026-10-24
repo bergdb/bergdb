@@ -220,3 +220,13 @@ one with the change, DIGESTS IDENTICAL (36 of 36)
 the standard workloads is refused.
 
 `before-commit.sh`: BEFORE COMMIT OK (1007 unit tests, 67 f-tests).
+
+The final checks of the six fixes of 2026-10-24 (005-31, 005-32, 005-34
+to 005-37), on `43d85f9`, which has all of them:
+[final-gates.txt](31-fix-take-blocked/final-gates.txt): LEVEL 1 OK, LEVEL
+2 OK (70 traces, TRACECHECK OK), LEVEL 3 OK (25 traces, no failing CUT
+line), LEVEL 4 OK; and Props in ABBA order against `7f08273`, the commit
+before them, four runs each in a quiet window
+([final-props-ab.txt](31-fix-take-blocked/final-props-ab.txt)): MEM 191
+and SS 1.50 in every run, CORE 0.28 to 0.29 for the base and 0.27 to 0.29
+with the fixes, no difference.

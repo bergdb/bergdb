@@ -1,0 +1,18 @@
+gates on 43d85f9 005-31 done: a transaction whose index nodes, by a bound at the largest node size, could take more than 15/16 of the record limit is refused before its go point (step 1 of 007-03), 0 changed files, Sat Oct 24 19:07:22 CEST 2026
+== java/stress/level1.sh: exit 0, 130 s, 19:09:52
+   SS:1.50 (1.10, 1.19, 1.62, 2.37) (at most 1.51 1.11 1.20 1.63 2.38)
+   CORE:0.27 (0.22, 0.32, 0.25, 0.32) (get, get4t, getmany, set; not checked)
+LEVEL 1 OK
+== java/stress/level2.sh: exit 0, 732 s, 19:22:24
+   a2a3-3: transactions 6000: A2, A3, A5, marking, TREE, A6' and A-COPY OK; adoptions below the old parent (A6' allows them, A6 not) 0
+   conformance: traces: 70, TRACECHECK OK: 70
+LEVEL 2 OK
+== java/stress/level3.sh: exit 0, 503 s, 19:31:08
+8. Conformance with the Lean model, with reclaim
+   conformance: traces: 25, TRACECHECK OK: 25; C-CUT 0 of 288 CUT lines fail; traces without a cut: 0
+LEVEL 3 OK
+== java/stress/level4.sh: exit 0, 873 s, 19:46:01
+   the index: 162215 index nodes, 107 MB in memory (12175 ms); the budget 50 MB; on disk 1374 MB
+   at most: live after a full GC 82 MB (at the phases' ends), collection usage 391 MB, heap used 607 MB, of 805 MB; resident 50 MB; 173 s
+LEVEL 4 OK
+GATES DONE Sat Oct 24 19:46:01 CEST 2026
