@@ -996,3 +996,12 @@ original, so it had tested no truncation since 2017. Now it syncs the new
 database before it takes its first length, and starts on each truncated
 copy; its cuts come after the creation (a cut in the creation is 005-33's
 case). Test code only; `before-commit.sh` passes.
+
+2026-10-24. 005-37 done, by Claude (Opus 5.5, Claude Code): `MemoryStream`,
+the in-memory stream of the tests and of `DatabaseBuilder.memory()`, took
+a negative length to `append` and a `pretruncate` past its length, where
+`AppendOnlyStream` says otherwise; after some of them it took no more
+appends. Now it refuses both with an `IllegalArgumentException`, as
+`FileStream` refuses such a cut, and the Javadoc of
+`AppendOnlyStream.pretruncate` says what the streams do. A test;
+`before-commit.sh` passes.

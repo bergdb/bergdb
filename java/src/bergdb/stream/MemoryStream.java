@@ -107,6 +107,13 @@ public class MemoryStream implements AppendOnlyStream {
         if (closed) {
             throw new IOException("Cannot append to closed stream.");
         }
+
+        // Refused before anything changes (2026-10-24, bergdb 005-37): a negative len made an
+        // array that holds no byte, or returned without appending; a negative off threw
+        // ArrayIndexOutOfBoundsException.
+        if (off < 0 || len < 0) {
+            throw new IllegalArgumentException("bad off or len, off = " + off + ", len = " + len);
+        }
         
         long first = streamLength;
         long last = streamLength + len - 1;
@@ -229,6 +236,13 @@ public class MemoryStream implements AppendOnlyStream {
     public synchronized void pretruncate(long spos) {
         if (spos < 0) {
             throw new IllegalArgumentException("Bad spos, cannot be neg, was " + spos + ".");
+        }
+        // Past the length refused, as FileStream does (2026-10-24, bergdb 005-37): the arrays
+        // before it were dropped and the length kept, so the first position could pass the
+        // length, after which every append threw.
+        if (spos > streamLength) {
+            throw new IllegalArgumentException("spos > length of stream, " + spos + " > "
+                    + streamLength + ".");
         }
         
         int index = (int) (spos / ARRAY_SIZE);
@@ -430,6 +444,74 @@ public class MemoryStream implements AppendOnlyStream {
         Assert.assertEquals(about, length, s.getLength());
     }
     
+    /**
+     * Regression test for bergdb 005-37: an append with a negative length or offset, and a
+     * pretruncate past the length, were taken, and some of them left a stream that took no
+     * more appends. Now they throw IllegalArgumentException and leave the stream as it was.
+     */
+    @Nano
+    private static void testRefusedArguments() throws IOException {
+        long a = ARRAY_SIZE;
+
+        // {length, off, len}
+        int[][] appends = {{0, 0, -5}, {500, 0, -5}, {(int) a, 0, -5}, {500, 0, -2000000},
+                {0, -1, 3}, {500, -1, 3}};
+        for (int[] c : appends) {
+            MemoryStream s = testStream(c[0], 0);
+            try {
+                s.append(new byte[10], c[1], c[2]);
+                throw new AssertionError("append taken, " + Arrays.toString(c));
+            } catch (IllegalArgumentException e) {
+                // Expected.
+            }
+            checkUnchanged(s, c[0], 0);
+        }
+
+        // {length, cut, position}
+        long[][] cuts = {{0, 0, 500}, {0, 0, a}, {2 * a + a / 2, 0, 3 * a - 1},
+                {2 * a + a / 2, 0, 3 * a}, {2 * a + a / 2, 0, 3 * a + a / 2},
+                {2 * a + a / 2, 0, 4 * a + a / 2}, {2 * a + a / 2, 2 * a, 3 * a}};
+        for (long[] c : cuts) {
+            MemoryStream s = testStream(c[0], c[1]);
+            try {
+                s.pretruncate(c[2]);
+                throw new AssertionError("pretruncate taken, " + Arrays.toString(c));
+            } catch (IllegalArgumentException e) {
+                // Expected.
+            }
+            checkUnchanged(s, c[0], c[1]);
+        }
+
+        // At the length, still taken.
+        MemoryStream s = testStream(2 * a + a / 2, 0);
+        s.pretruncate(2 * a + a / 2);
+        checkUnchanged(s, 2 * a + a / 2, 2 * a);
+    }
+
+    /**
+     * Checks that a stream of Util.getTestBytes(length) has 'first' as its first position,
+     * a valid state and its bytes, and that it takes an append.
+     */
+    private static void checkUnchanged(MemoryStream s, long length, long first)
+            throws IOException {
+        String about = "length " + length + ", first position " + first;
+        s.assertOk();
+        Assert.assertEquals(about, length, s.getLength());
+        Assert.assertEquals(about, first, s.getFirstPos());
+
+        byte[] expected = Arrays.copyOfRange(Util.getTestBytes((int) length), (int) first,
+                (int) length);
+        byte[] b = new byte[expected.length];
+        s.read(first, b, 0, b.length);
+        Assert.assertArrayEquals(about, expected, b);
+
+        s.append(new byte[] {1, 2, 3}, 0, 3);
+        s.assertOk();
+        byte[] b3 = new byte[3];
+        s.read(length, b3, 0, b3.length);
+        Assert.assertArrayEquals(about, new byte[] {1, 2, 3}, b3);
+    }
+
     @Nano
     private static void testOneByte() throws IOException {
         MemoryStream s = new MemoryStream();

@@ -1,7 +1,7 @@
 005-37. Fix: MemoryStream takes a negative length and a cut past its end
 ========================================================================
 
-Status: open. Kind: fix. Created 2026-10-24.
+Status: done (2026-10-24). Kind: fix. Created 2026-10-24.
 
 Found on 2026-10-23 in 005-29, by Claude (Opus 5.5, Claude Code); the
 streams checked with probes on `685e895`. Added at Frans's request ("Add
@@ -88,3 +88,39 @@ Size and order
 
 S, any time; `MemoryStream` and a Javadoc. The other streams, if Frans
 wants them, are S too.
+
+
+Outcome
+-------
+
+2026-10-24, by Claude (Opus 5.5, Claude Code), as proposed, at Frans's
+request ("fix all todo items of type Fix", "do what is proposed"):
+
+* `MemoryStream.append` refuses a negative length or offset with an
+  `IllegalArgumentException`, before it changes anything (a closed stream
+  still throws its `IOException` first).
+* `MemoryStream.pretruncate` refuses a position past the length with an
+  `IllegalArgumentException`, as `FileStream` does, before it changes
+  anything. A position equal to the length is taken, as before.
+* `AppendOnlyStream.pretruncate`'s Javadoc says what the streams do: a
+  position past the length is refused and the stream left as it was;
+  `BufferedStream` holds it back until it has written that far, and
+  `OneFileStream`, which never discards data, ignores every position. The
+  sentence that set the length is gone; the file's log has a line.
+
+Test `MemoryStream.testRefusedArguments`: the cases of the two tables (an
+append of length -5 to streams of 0, 500 and 1,000,000 bytes, of length
+-2,000,000, and with offset -1; a `pretruncate` past the length of an
+empty stream and of one of 2,500,000 bytes, at 2,999,999, 3,000,000,
+3,500,000 and 4,500,000, and of one cut at 2,000,000), each of which must
+throw `IllegalArgumentException` and leave the stream as it was:
+`assertOk`, its length, its first position, its bytes, and an append
+after. And a `pretruncate` at the length, which is taken. Without the
+check in `append` the test fails with the old
+`ArrayIndexOutOfBoundsException`; without the one in `pretruncate`, at its
+first case.
+
+Not done, as decided: the same check of the length in the other streams
+(`FileStream` first).
+
+`before-commit.sh`: BEFORE COMMIT OK (991 unit tests, 63 f-tests).

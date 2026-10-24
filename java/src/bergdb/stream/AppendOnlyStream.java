@@ -73,8 +73,11 @@ public interface AppendOnlyStream {
      * This method should return quickly. It might be run within a client request thread, so the
      * DB client might have to wait for this method to return.</p>
      * 
-     * <p>If the current length of the stream is less than 'position', the data before 
-     * 'position' can be deleted and the stream length should be set to 'position'.</p>
+     * <p>A position greater than the length of the stream is refused: the method throws
+     * (IllegalArgumentException, or IOException) and the stream is left as it was. A stream
+     * that buffers appends, BufferedStream, instead holds such a position back until it has
+     * written that far; one that never discards data, OneFileStream, ignores every
+     * position.</p>
      * 
      * @param position Stream items with a stream position strictly less than 'position' will 
      * not be used any longer.
@@ -105,6 +108,7 @@ public interface AppendOnlyStream {
 
 /*
 ---- Log ----
+261024 pretruncate(): a position past the length is refused (bergdb 005-37).
 130326 Added seekTo().
 130322 Added "throws IOException" to close().
 130319 Renamed method getSize() --> getLength().
