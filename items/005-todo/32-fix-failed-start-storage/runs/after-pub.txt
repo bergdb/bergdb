@@ -1,0 +1,7 @@
+Java 27
+A directory whose creation crashed (its stream cut at 200 bytes); 10 starts through the Pub API:
+  before: 0 BufferedStream threads; 8 open file descriptors in the JVM
+  each start throws bergdb.storage.StreamFormatException: Transaction at start pos 128 is not committed (its last byte is 0).
+  after 10 failed starts: 0 BufferedStream threads; 8 open file descriptors in the JVM
+  after System.gc() and System.runFinalization(): 0 BufferedStream threads; 8 open file descriptors in the JVM
+  the directory removed: true

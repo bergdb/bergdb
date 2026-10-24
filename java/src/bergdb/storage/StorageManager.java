@@ -129,9 +129,22 @@ public class StorageManager implements AppendOnlyStream {
         closeInner(true);
     }
     
-    private void closeInner(boolean close) {
+    /**
+     * As close(), and throws the first failure of a stream's close, such as a flush that
+     * failed (2026-10-24, bergdb 005-32): for a start that throws, which adds it to its own.
+     */
+    public void closeAndThrow() throws IOException {
+        IOException e = closeInner(true);
+        if (e != null) {
+            throw e;
+        }
+    }
+    
+    /** Returns the first failure of a stream's close, or null. */
+    private IOException closeInner(boolean close) {
         Internal in;
         Internal newIn;
+        IOException first = null;
         
         in = internal.get();
             
@@ -150,7 +163,10 @@ public class StorageManager implements AppendOnlyStream {
                 try {
                     b.close();
                 } catch (IOException e) {
-                    // Empty. NOTE We could issue warning.
+                    // NOTE We could issue warning.
+                    if (first == null) {
+                        first = e;
+                    }
                 }
             }
             
@@ -164,6 +180,7 @@ public class StorageManager implements AppendOnlyStream {
                 ss.signalStopSync();
             }
         }
+        return first;
     }
 
     private void setError(String message) {

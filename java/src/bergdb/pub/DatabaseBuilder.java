@@ -98,6 +98,10 @@ public interface DatabaseBuilder {
      * Starts the database. When this method returns, connections to the
      * database can be made.
      * 
+     * <p>A start that throws has closed what it opened, its files and its threads, when the
+     * exception leaves (bergdb 005-32): the start can be tried again, or the directory
+     * removed, at once.</p>
+     * 
      * @throws DbException
      *             If a functioning database could not be started.
      * @throws BadReplicaException

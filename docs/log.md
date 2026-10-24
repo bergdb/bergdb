@@ -1017,3 +1017,17 @@ position that cannot start a transaction, and a format error there fails
 the database, as in the other reads ([levels.md](levels.md), "A
 transaction or a read that fails"). Tests; streams unchanged
 (StreamDigest); `before-commit.sh` passes.
+
+2026-10-24. 005-32 done, by Claude (Opus 5.5, Claude Code): a start that
+threw left its storage running, its threads and open files, until the
+garbage collector finalized the `Db`, and its threads then wrote what the
+start had appended, also into a database started after it on the same
+files; `BufferedStream.close()` waited for ever after a failed flush, and
+an `Error` in a flush ended the storage thread without a word, so syncs
+waited for ever. Now `Db.start` closes the storage when the start throws
+(what it appended is written, the streams are closed and their threads
+have ended) and stops the database; the Pub API closes the `Db`, or the
+builder's streams, on a failure after or before the `Db` is built;
+`BufferedStream.close()` waits for its thread and throws the failure; any
+failure of a flush stops the stream and tells the listener. Tests;
+`before-commit.sh` passes.

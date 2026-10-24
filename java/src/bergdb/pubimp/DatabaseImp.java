@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
+import java.util.function.Consumer;
 
 import bergdb.core.Db;
 import bergdb.core.DbStoppingException;
@@ -81,19 +82,44 @@ public class DatabaseImp implements Database {
     public static synchronized DatabaseImp createAndStart(final Db db) {
         @SuppressWarnings("unused")
         StartInfo startInfo;
-        DatabaseImp database = new DatabaseImp(db);
+        DatabaseImp database;
         
-        long t0 = System.nanoTime();
-        startInfo = db.start();
-        double startTime = (System.nanoTime() - t0) * 1e-9;
+        // When anything throws, the Db is closed (2026-10-24, bergdb 005-32): a database
+        // whose index manager failed to initialize ran on until the garbage collector stopped
+        // it. A start that throws has closed its storage already (Db.start()).
+        try {
+            database = new DatabaseImp(db);
         
-        ConnectionImp connection = new ConnectionImp(database);
-        database.indexManager.initFromDatabase(connection);
-        List<Job> jobs = database.indexManager.finishOngoingJobs(database);        
-        database.startupInfo = new StartInfoImp(jobs, startTime);
+            long t0 = System.nanoTime();
+            startInfo = db.start();
+            double startTime = (System.nanoTime() - t0) * 1e-9;
+            
+            final Consumer<Db> hook = testHookAfterStart;
+            if (hook != null) {
+                hook.accept(db);
+            }
+            
+            ConnectionImp connection = new ConnectionImp(database);
+            database.indexManager.initFromDatabase(connection);
+            List<Job> jobs = database.indexManager.finishOngoingJobs(database);        
+            database.startupInfo = new StartInfoImp(jobs, startTime);
+        } catch (RuntimeException | Error e) {
+            try {
+                db.close();
+            } catch (RuntimeException | Error e2) {
+                e.addSuppressed(e2);
+            }
+            throw e;
+        }
         
         return database;
     }
+    
+    /**
+     * For tests (bergdb 005-32): if set, createAndStart() calls it with the Db right after
+     * db.start().
+     */
+    static volatile Consumer<Db> testHookAfterStart = null;
     
     /**
      * Not Pub API.

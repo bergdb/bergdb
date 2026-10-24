@@ -2,12 +2,17 @@ package bergdb.pubimp;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.io.UnsupportedEncodingException;
 import java.util.Iterator;
+import java.util.Set;
+import java.util.function.Consumer;
 
 import bergdb.common.EventToWaitFor;
 import bergdb.common.Util;
 import bergdb.core.Db;
+import bergdb.core.DbStoppingException;
+import bergdb.core.DbTesterFailure;
 import bergdb.core.SyncLevel;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
@@ -30,6 +35,7 @@ import bergdb.pub.util.BadCryptoKey;
 import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.storage.BufferedStream;
+import bergdb.storage.StreamFormatException;
 import bergdb.stream.CutStream;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.SalsaStream;
@@ -1273,5 +1279,165 @@ public class PubTester {
         Assert.assertEquals(2, tinfo.kvs().size());
         Assert.assertEquals("/key2", tinfo.kvs().get(1).key());
         d.stop();
+    }
+    
+    /**
+     * Regression test for bergdb 005-32: a start through the Pub API that throws, here with a
+     * wrong crypto key, left its storage's thread and open file until the garbage collector
+     * finalized the Db. Now ten such starts leave none, counted at once; then the right key
+     * starts.
+     */
+    @Nano
+    private static void testFailedStartsLeaveNothing(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File dir = env.createTempDir();
+        CryptoKey right = CryptoKey.generate();
+        Database d = Factory.database().dir(dir.getPath()).cryptoKey(right).start();
+        d.connection().put("/k", "v");
+        d.sync();
+        ((DatabaseImp) d).getDb().close();
+        
+        Set<Thread> before = DbTesterFailure.storageThreads();
+        long files = openFiles();
+        for (int i = 0; i < 10; i++) {
+            try {
+                Factory.database().dir(dir.getPath()).cryptoKey(CryptoKey.generate()).start();
+                throw new AssertionError("started with a wrong key");
+            } catch (BadCryptoKey e) {
+                // Expected.
+            }
+        }
+        DbTesterFailure.assertNoNewStorageThreads(before);
+        if (files >= 0) {
+            Assert.assertTrue("open files " + openFiles() + ", before " + files, 
+                    openFiles() <= files);
+        }
+        
+        Database d2 = Factory.database().dir(dir.getPath()).cryptoKey(right).start();
+        Assert.assertEquals("v", d2.connection().get("/k", String.class));
+        ((DatabaseImp) d2).getDb().close();
+    }
+    
+    /**
+     * bergdb 005-32: a directory whose start failed, here as its creation crashed (005-33),
+     * can be removed and created again at once: the failed start has closed its files.
+     */
+    @Nano
+    private static void testFailedStartsDirectoryRemoved(TestEnvironment env) 
+            throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File d = new File(env.createTempDir(), "db");
+        Database first = Factory.database().dir(d.getPath()).start();
+        first.sync();
+        ((DatabaseImp) first).getDb().close();
+        File[] streams = d.listFiles();
+        File stream = null;
+        for (File f : streams) {
+            if (f.getName().endsWith(".bergdb")) {
+                stream = f;
+            }
+        }
+        RandomAccessFile raf = new RandomAccessFile(stream, "rw");
+        raf.setLength(200);                 // In the creation's first transaction.
+        raf.close();
+        
+        Set<Thread> before = DbTesterFailure.storageThreads();
+        long files = openFiles();
+        try {
+            Factory.database().dir(d.getPath()).start();
+            throw new AssertionError("started");
+        } catch (StreamFormatException e) {
+            // Expected (005-28).
+        }
+        DbTesterFailure.assertNoNewStorageThreads(before);
+        if (files >= 0) {
+            Assert.assertTrue("open files " + openFiles() + ", before " + files, 
+                    openFiles() <= files);
+        }
+        for (File f : d.listFiles()) {
+            Assert.assertTrue("removed " + f, f.delete());
+        }
+        Assert.assertTrue("removed " + d, d.delete());
+        
+        Database again = Factory.database().dir(d.getPath()).start();
+        again.connection().put("/a", "a0");
+        Assert.assertEquals("a0", again.connection().get("/a", String.class));
+        ((DatabaseImp) again).getDb().close();
+    }
+    
+    /**
+     * bergdb 005-32: when anything throws after db.start() in DatabaseImp.createAndStart()
+     * (here a test hook), the Db is closed; it ran on until the garbage collector stopped it.
+     */
+    @Nano
+    private static void testExceptionAfterStartClosesDb() {
+        final Db[] started = new Db[1];
+        DatabaseImp.testHookAfterStart = new Consumer<Db>() {
+            public void accept(Db db) {
+                started[0] = db;
+                throw new IllegalStateException("the test hook");
+            }
+        };
+        Set<Thread> before = DbTesterFailure.storageThreads();
+        MemoryStream m = new MemoryStream();
+        try {
+            ((DatabaseBuilderImp) Factory.database()).mainStream(m).start();
+            throw new AssertionError("started");
+        } catch (IllegalStateException e) {
+            Assert.assertEquals("the test hook", e.getMessage());
+        } finally {
+            DatabaseImp.testHookAfterStart = null;
+        }
+        DbTesterFailure.assertNoNewStorageThreads(before);
+        DbTesterFailure.assertClosed(m);
+        try {
+            started[0].execute(started[0].trans().put("/a", "a0").build());
+            throw new AssertionError("a transaction was taken");
+        } catch (DbStoppingException e) {
+            // Expected.
+        }
+    }
+    
+    /**
+     * bergdb 005-32: a start that throws before the Db is built, here for a crypto key of an
+     * unknown algorithm, closes the file that dir() opened.
+     */
+    @Nano
+    private static void testUnknownCryptoAlgorithmClosesFile(TestEnvironment env) 
+            throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File dir = env.createTempDir();
+        CryptoKey key = CryptoKey.parse("8184a9f2-other-75ac20b68ccdbf95b9999287bc4da0caf67b4c8e"
+                + "dc40d7615bebf1beae3578b800cfc3dfbaad319c");
+        long files = openFiles();
+        for (int i = 0; i < 3; i++) {
+            try {
+                Factory.database().dir(dir.getPath()).cryptoKey(key).start();
+                throw new AssertionError("started");
+            } catch (IllegalStateException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("other"));
+            }
+        }
+        if (files >= 0) {
+            Assert.assertTrue("open files " + openFiles() + ", before " + files, 
+                    openFiles() <= files);
+        }
+    }
+    
+    /** Open file descriptors of this JVM, or -1 where it cannot be told (bergdb 005-32). */
+    private static long openFiles() {
+        java.lang.management.OperatingSystemMXBean os = 
+                java.lang.management.ManagementFactory.getOperatingSystemMXBean();
+        if (os instanceof com.sun.management.UnixOperatingSystemMXBean) {
+            return ((com.sun.management.UnixOperatingSystemMXBean) os)
+                    .getOpenFileDescriptorCount();
+        }
+        return -1;
     }
 }

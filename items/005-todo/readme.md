@@ -30,7 +30,6 @@ Open
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
 | [005-31](31-fix-take-blocked.md) | Fix | A transaction whose dirty index nodes do not fit in one record stops the startup pos for good: the startup section, startup, D and the stream grow without end (007-02) | open |
-| [005-32](32-fix-failed-start-storage.md) | Fix | A start that throws leaves its storage running: its threads, its open files, and writes of what it appended, also into a database started after it; `BufferedStream.close()` hangs when the last flush fails (005-28) | open |
 | [005-33](33-crashed-creation.md) | Decide | A database whose creation crashed never starts: a clear error, create it again at start, or create it whole or not at all (005-28) | open |
 | [005-35](35-fix-stop-and-close.md) | Fix | `stop()` loses the transactions still in the write buffer (all of them in a quick run); `close()` returns at once after `stop()` or beside another `close()`; a writer that waits for room in the buffer waits for ever when the stream stops or fails | open |
 | [005-38](38-writes-at-scale.md) | Investigate | Writes at scale: the stream grows to about 1.1 KB per key at 100M random keys, and loads into an index larger than the budget slow to under 100 puts a second on a slow disk (004-02) | open |
@@ -41,6 +40,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-32](32-fix-failed-start-storage.md) | Fix | A start that threw left its storage running: its threads, its open files, and writes of what it appended, also into a database started after it; `BufferedStream.close()` hung when the last flush failed; now a start that throws closes its storage before the exception leaves (005-28) | done | 2026-10-24 |
 | [005-34](34-fix-transaction-info-position.md) | Fix | `Connection.transactionInfo()` read at a wrong position for a value after a meta block in its record, and, after a restart, for a value rerun at startup; now a get gives its transaction's position, `getTrans` refuses a position that cannot start one, and a format error there fails the database (005-30) | done | 2026-10-24 |
 | [005-37](37-fix-memory-stream-checks.md) | Fix | `MemoryStream` took a negative length to `append` and a `pretruncate` past its length, after some of which it took no more appends; now it refuses both, and `AppendOnlyStream`'s Javadoc says what the streams do (005-29) | done | 2026-10-24 |
 | [005-36](36-fix-test-crash3.md) | Fix | `DbTester.testCrash3` never tested a truncation: it truncated a copy and started on the original; now it starts on the copy, after a sync that writes the creation (005-29) | done | 2026-10-24 |
@@ -84,7 +84,7 @@ before 005-05's decision on publishing, as it concerns the Pub API; 005-12
 is done. 005-27, 005-28 and 005-29, the fixes found in 005-11, are done.
 005-30 is done, and so is 005-34, found in it. 005-31 before item
 007's deadline for `TransSeq.take` (007-01, D1), which needs it. 005-32
-any time, before 005-33's change; 005-33 waits for Frans. 005-36 and
+is done, which 005-33's change needed; 005-33 waits for Frans. 005-36 and
 005-37 are done.
 
 
@@ -167,8 +167,8 @@ Files
   for good; found in item 007, with the probe in
   [../007-bounds/02-take-blocked/](../007-bounds/02-take-blocked/).
 * [32-fix-failed-start-storage.md](32-fix-failed-start-storage.md). 005-32,
-  a start that throws leaves its storage running; found in 005-28, with
-  the probe and its runs in
+  a start that throws leaves its storage running; found in 005-28; done;
+  the probe and its runs, before and after the fix, in
   [32-fix-failed-start-storage/](32-fix-failed-start-storage/).
 * [33-crashed-creation.md](33-crashed-creation.md). 005-33, a database
   whose creation crashed: the study and the options, for Frans to decide;
@@ -607,3 +607,15 @@ cannot start a transaction, and a format error there fails the database.
 Found on the way and fixed: after a restart, a value that startup had
 rerun gave its own position, and `transactionInfo()` threw. Tests;
 StreamDigest identical; `before-commit.sh` passes.
+
+2026-10-24. 005-32 done, at Frans's request, by Claude (Opus 5.5, Claude
+Code), as proposed: a start that throws closes its storage before the
+exception leaves (what it appended is written, the streams closed, the
+threads ended) and stops the database; the Pub API closes the `Db`, or the
+builder's streams, when it throws after or before the `Db` is built; and
+`BufferedStream.close()` returns, and throws the failure, after a failed
+flush, where an `Error` in a flush now fails the stream as an
+`IOException` does. Tests; the probe's cases again: no thread or file is
+left. Its race now ends the same way every time, but not as "Done when"
+expected: the failed start writes the replica's copy to the main, which
+then holds two histories (005-11). `before-commit.sh` passes.

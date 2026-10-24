@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
+import java.util.HashSet;
+import java.util.Set;
 
 import bergdb.common.StringUtil;
 import bergdb.dag.GetMany;
@@ -35,6 +37,9 @@ import bergdb.stream.MemoryStream;
  * StreamFormatException and the database stayed active, half dead: the storage below
  * refuses all I/O after an I/O error. Not failures: a read that a cut has overtaken
  * (ReclaimReaderTester), one while the database stops, an interrupted sync.</p>
+ *
+ * <p>And of a start that throws, which closes its storage before the exception leaves, and
+ * of an Error in a flush, which fails the stream as an IOException does (bergdb 005-32).</p>
  */
 public class DbTesterFailure {
 
@@ -599,6 +604,120 @@ public class DbTesterFailure {
     // ======== Helpers ========
 
     /**
+     * Regression test for bergdb 005-32: a start that throws closes its storage before the
+     * exception leaves. What it appended is written, its stream is closed, no thread of its
+     * storage runs, and later calls are refused. Here a creation that crashed in its first
+     * transaction (005-28, 005-33), which recovery zero-fills. Before, the storage ran on
+     * until the garbage collector finalized the Db.
+     */
+    @Nano
+    public static void testFailedStartClosesStorage() throws IOException {
+        MemoryStream created = new MemoryStream();
+        Db first = Db.builder().testSetup(created).start();
+        first.sync(SyncLevel.STRONG);
+        first.close();
+        MemoryStream s = created.copy();
+        s.truncate(200);                    // In the creation's first transaction, 128 to 263.
+        
+        Set<Thread> before = storageThreads();
+        Db db = Db.builder().testSetup(s).build();
+        StreamFormatException e = null;
+        try {
+            db.start();
+        } catch (StreamFormatException ex) {
+            e = ex;
+        }
+        Assert.assertTrue("the start throws", e != null);
+        Assert.assertEquals("the zero fill is written", 264L, s.getLength());
+        assertNoNewStorageThreads(before);
+        assertClosed(s);
+        assertStopped(db);
+    }
+    
+    /**
+     * bergdb 005-32: a start with a main and a replica of two histories fails (005-28, 005-11's
+     * P9 in small), after it has copied the replica's last transaction to the main. The copy
+     * is written before the exception leaves, both streams are closed, and no thread runs.
+     * Before, a start of the main alone right after it raced with the failed start's thread,
+     * which wrote the copy later, and lost a synced transaction 4 times in 20.
+     */
+    @Nano
+    public static void testFailedStartOfTwoHistories() throws IOException {
+        MemoryStream m0 = new MemoryStream();
+        MemoryStream r0 = new MemoryStream();
+        DbBuilder b = Db.builder();
+        b.testSetupExceptStream();
+        b.stream("main", m0, 100 * 1000, 10);
+        b.stream("r", r0, 100 * 1000, 10);
+        b.startupDistance(10);
+        Db db = b.start();
+        Trans x = null;
+        Trans t = null;
+        for (int k = 0; k < 4; k++) {
+            x = t;
+            t = db.trans().put("/k" + k, "v" + k).build();
+            db.execute(t);
+        }
+        db.close();
+        Assert.assertTrue("t's startup pos is x", t.startupPos == x.tpos && x.nextPos == t.tpos);
+        MemoryStream m1 = m0.copy();
+        m1.truncate(x.lastPos);             // A crash: x torn, t lost.
+        DbBuilder alone = Db.builder();
+        alone.testSetupExceptStream();
+        alone.stream("main", m1, 100 * 1000, 10);
+        alone.start().close();              // Recovery zero-fills x.
+        
+        MemoryStream m = m1.copy();
+        MemoryStream r = r0.copy();
+        Assert.assertTrue("the replica is longer", r.getLength() > m.getLength());
+        Set<Thread> before = storageThreads();
+        DbBuilder both = Db.builder();
+        both.testSetupExceptStream();
+        both.stream("main", m, 100 * 1000, 10);
+        both.stream("r", r, 100 * 1000, 10);
+        Db db2 = both.build();
+        StreamFormatException e = null;
+        try {
+            db2.start();
+        } catch (StreamFormatException ex) {
+            e = ex;
+        }
+        Assert.assertTrue("the start throws", e != null);
+        Assert.assertEquals("the copy to the main is written", r.getLength(), m.getLength());
+        assertNoNewStorageThreads(before);
+        assertClosed(m);
+        assertClosed(r);
+        assertStopped(db2);
+    }
+    
+    /**
+     * bergdb 005-32: an Error in a flush (as an assertion of FileStream) ended the storage
+     * thread without telling the storage, and a sync waited for ever. Now the flush fails the
+     * stream, and the sync fails the database (005-30); close() returns.
+     */
+    @Nano
+    public static void testErrorInFlushFailsSync() throws Exception {
+        final FaultStream s = new FaultStream();
+        final Db db = Db.builder().testSetup(s).start();
+        db.sync(SyncLevel.STRONG);
+        s.errorInAppends = true;
+        db.execute(db.trans().put("/a", "a0").build());
+        Throwable thrown = within(10000, new Runnable() {
+            public void run() {
+                db.sync(SyncLevel.STRONG);
+            }
+        });
+        Assert.assertTrue("the sync fails: " + thrown, thrown instanceof DbFailedException);
+        Assert.assertTrue("the flush's failure: " + thrown.getCause(),
+                String.valueOf(thrown.getCause()).contains("The flush failed"));
+        Assert.assertTrue("close() returns", within(10000, new Runnable() {
+            public void run() {
+                db.close();
+            }
+        }) == null);
+    }
+    
+    /**
      * Node size 8, a startup distance of 1,000 bytes, so that index nodes are written and
      * can be evicted; every evictable object evicted after every transaction; the audit
      * after every 'audit'-th transaction and at startup, or off (0).
@@ -702,11 +821,79 @@ public class DbTesterFailure {
      * changed (a corrupt node: a checksum error, the storage stays healthy); its appends throw,
      * or wait until holdAppends is cleared.
      */
+    /** The threads of BufferedStreams that are alive (bergdb 005-32). */
+    public static Set<Thread> storageThreads() {
+        Set<Thread> result = new HashSet<Thread>();
+        for (Thread t : Thread.getAllStackTraces().keySet()) {
+            if (t.getName().startsWith("BufferedStream-consumer") && t.isAlive()) {
+                result.add(t);
+            }
+        }
+        return result;
+    }
+    
+    /** No storage thread runs that did not run 'before' (bergdb 005-32). */
+    public static void assertNoNewStorageThreads(Set<Thread> before) {
+        Set<Thread> after = storageThreads();
+        after.removeAll(before);
+        Assert.assertTrue("storage threads left: " + after, after.isEmpty());
+    }
+    
+    /** A MemoryStream that is closed refuses an append. */
+    public static void assertClosed(MemoryStream s) {
+        long length = s.getLength();
+        try {
+            s.append(new byte[1], 0, 1);
+            throw new AssertionError("the stream is open");
+        } catch (IOException e) {
+            // Expected.
+        }
+        Assert.assertEquals("no append", length, s.getLength());
+    }
+    
+    /** A stopped database refuses transactions and reads. */
+    private static void assertStopped(Db db) {
+        try {
+            db.execute(db.trans().put("/later", "x").build());
+            throw new AssertionError("a transaction was taken");
+        } catch (DbStoppingException e) {
+            // Expected.
+        }
+        try {
+            DbUtil.get(db, "/later");
+            throw new AssertionError("a read was taken");
+        } catch (DbStoppingException e) {
+            // Expected.
+        }
+    }
+    
+    /** Runs r in a daemon thread for up to ms; returns what it threw, null, or HUNG. */
+    static Throwable within(int ms, final Runnable r) throws InterruptedException {
+        final Throwable[] thrown = new Throwable[1];
+        Thread th = new Thread() {
+            public void run() {
+                try {
+                    r.run();
+                } catch (Throwable e) {
+                    thrown[0] = e;
+                }
+            }
+        };
+        th.setDaemon(true);
+        th.start();
+        th.join(ms);
+        if (th.isAlive()) {
+            return new AssertionError("HUNG: still running after " + ms + " ms");
+        }
+        return thrown[0];
+    }
+    
     static class FaultStream implements AppendOnlyStream {
         final MemoryStream inner = new MemoryStream();
         volatile boolean failReads = false;
         volatile boolean corruptReads = false;
         volatile boolean failAppends = false;
+        volatile boolean errorInAppends = false;    // an Error, as an assertion (bergdb 005-32)
         volatile boolean holdAppends = false;
         volatile int faults = 0;
 
@@ -742,6 +929,10 @@ public class DbTesterFailure {
             if (failAppends) {
                 faults++;
                 throw new IOException("FaultStream: an append error, as set");
+            }
+            if (errorInAppends) {
+                faults++;
+                throw new AssertionError("FaultStream: an Error in an append, as set");
             }
             inner.append(source, sourceOffset, length);
         }

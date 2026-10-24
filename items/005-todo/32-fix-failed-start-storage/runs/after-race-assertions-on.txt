@@ -1,0 +1,3 @@
+Java 27
+20 times, assertions on: a start with a main and a replica of two histories fails (005-28); at once, the main alone starts and writes:
+  with both: StreamFormatException; the main alone: StreamFormatException; then a start of the main: StreamFormatException: 20

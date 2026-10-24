@@ -213,6 +213,9 @@ public class Db {
         this.maxNodeSize = b.maxNodeSize;
         this.startupDistance = b.startupDistance;
         this.metaBlock = new MetaBlock();        
+        // Before the storage, whose threads and open files nothing would close if this threw
+        // (bergdb 005-32): a null clock.
+        this.dbClock = new DbClock(b.clock);
         this.storageManager = createStorageManager(b);
         
         AppendOnlyStream aos = storageManager;
@@ -229,7 +232,6 @@ public class Db {
             }
         });
         
-        this.dbClock = new DbClock(b.clock);
         this.reclaim = new Reclaim(this, aos);
         reclaim.setStepReserve(b.reclaimStepReserve);
         this.reclaimTransactionListener = reclaim;
@@ -489,21 +491,59 @@ public class Db {
      * Starts the database by reading from the stream. Call once per Db object
      * after constructor and before the get/set methods.
      * 
+     * <p>A start that throws closes the storage before the exception leaves (2026-10-24,
+     * bergdb 005-32): what it appended is written (recovery's zero fill, the copies between
+     * the main stream and its replicas, as any start writes them), the streams are closed
+     * and their threads have ended, and the database is stopped: later calls are refused as
+     * after stop(). A failure of that close is added to the exception as suppressed. Before,
+     * the storage ran on until the garbage collector finalized the Db, and its threads wrote
+     * into a database started after it on the same files.</p>
+     * 
      * @param params  
      *          Used for testing, normally set to StartParams.NULL as default.
      * @throws StreamIoException
      * @throws StreamFormatException
      * @throws IllegalStateException
-     *          If start() has been called already.
+     *          If start() has been called already, or stop(): nothing is closed then.
      * @throws BadReplicaException
      * @throws DbFailedException
      *          If a read of reclaim's table, the last step of the startup, fails on the
      *          storage (bergdb 005-30).
      */
     public StartInfo start(StartParams params) {
+        Throwable failure;
         synchronized (writeLock) {
             synchronized (readSync) {
-                return startInner(params);
+                assertStateIsZero();
+                try {
+                    return startInner(params);
+                } catch (Throwable e) {
+                    // Under both locks, so that no call sees what the start left.
+                    state = DbState.STOPPING;
+                    failure = e;
+                }
+            }
+        }
+        closeAfterFailedStart(failure);
+        if (failure instanceof RuntimeException) {
+            throw (RuntimeException) failure;
+        }
+        if (failure instanceof Error) {
+            throw (Error) failure;
+        }
+        throw new Bug("start() threw a checked exception, " + failure);
+    }
+    
+    /**
+     * Closes the storage of a start that threw, outside the locks (bergdb 005-32); see
+     * start(). StorageManager's close needs neither writeLock nor readSync.
+     */
+    private void closeAfterFailedStart(Throwable failure) {
+        try {
+            storageManager.closeAndThrow();
+        } catch (IOException | RuntimeException | Error e) {
+            if (e != failure) {
+                failure.addSuppressed(e);
             }
         }
     }
@@ -1088,10 +1128,23 @@ public class Db {
     }
     
     /**
+     * Before the startup has made the Dag (not started, or a start that threw and stopped the
+     * database, bergdb 005-32), refuses the call as a read is refused, instead of a
+     * NullPointerException.
+     */
+    private void assertHasDag(String methodName) {
+        if (dag == null) {
+            synchronized (readSync) {}
+            assertDbStateIsActive(methodName);
+        }
+    }
+    
+    /**
      * Creates and returns a new GetData object for use with the getOne() method.
      */
     public GetData newGetData() {
         assert this.nodeCollection != null : "Db.nodeCollection is null";
+        assertHasDag("newGetData");
         GetData gd = dag.newGetData();
         gd.pointerFollower = this.nodeCollection;
         return gd;
@@ -1101,6 +1154,7 @@ public class Db {
      * Creates and returns a new GetMany object for use with the getMany() method.
      */
     public GetMany newGetMany() {
+        assertHasDag("newGetMany");
         GetMany g = dag.newGetMany();
         g.gd.pointerFollower = this.nodeCollection;
         return g;

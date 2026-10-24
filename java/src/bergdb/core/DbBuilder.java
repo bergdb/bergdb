@@ -1,6 +1,7 @@
 package bergdb.core;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -80,6 +81,21 @@ public class DbBuilder {
     
     public int getStreamCount() {
         return streamInfos.size();
+    }
+    
+    /**
+     * Closes the streams given to this builder, for a start that throws before the Db is
+     * built (2026-10-24, bergdb 005-32): the Pub API's dir() opens a FileStream. A failure
+     * of a close is added to 'failure' as suppressed.
+     */
+    public void closeStreams(Throwable failure) {
+        for (StreamInfo info : streamInfos) {
+            try {
+                info.stream.close();
+            } catch (IOException | RuntimeException e) {
+                failure.addSuppressed(e);
+            }
+        }
     }
     
     public AppendOnlyStream getMainStream() {
@@ -223,6 +239,10 @@ public class DbBuilder {
      * stepreserve, so that the stress programs can split the steps.
      */
     public DbBuilder reclaimStepReserve(long bytes) {
+        // Here, not in the Db's constructor after the storage has started (bergdb 005-32).
+        if (bytes < 1) {
+            throw new IllegalArgumentException("Illegal step reserve, " + bytes);
+        }
         this.reclaimStepReserve = bytes;
         return this;
     }

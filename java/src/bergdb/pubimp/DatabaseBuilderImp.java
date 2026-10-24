@@ -164,9 +164,16 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         dbBuilder.startupDistance(startupDistance);
         dbBuilder.cacheSizeIndicator(cacheSizeIndicator);
         
-        handleCryptoKeyAndCreatedTxt();
-        
-        Db db = dbBuilder.build();
+        Db db;
+        try {
+            handleCryptoKeyAndCreatedTxt();
+            db = dbBuilder.build();
+        } catch (RuntimeException | Error e) {
+            // The streams that dir() and replica() opened are closed (2026-10-24, bergdb
+            // 005-32): a crypto key of an unknown algorithm left the directory's file open.
+            dbBuilder.closeStreams(e);
+            throw e;
+        }
         return DatabaseImp.createAndStart(db);
     }
 

@@ -1,8 +1,7 @@
 005-32. Fix: a start that throws leaves its storage running
 ==========================================================
 
-Status: open; Frans likes the proposal, and its implementation waits
-(2026-10-24). Kind: fix. Created 2026-10-23.
+Status: done (2026-10-24). Kind: fix. Created 2026-10-23.
 
 Found on 2026-10-23 in 005-28, by Claude (Opus 5.5, Claude Code). Added
 at Frans's request ("Yes, make a new 005 entry."). The probe is in
@@ -154,3 +153,121 @@ S: about 40 lines in `Db`, `DatabaseImp`, `DatabaseBuilderImp` and
 `BufferedStream`; the tests are most of it. Any time; before 005-33's
 change, whose options A and B need the files of a failed start closed.
 Independent of 005-11; the race test goes with replication.
+
+
+Outcome
+-------
+
+2026-10-24, by Claude (Opus 5.5, Claude Code), as proposed, at Frans's
+request ("fix all todo items of type Fix", "do what is proposed").
+
+The first step, where a start can throw and what it has opened by then:
+
+* `Db`'s constructor makes the storage: a `StorageManager` with a
+  `BufferedStream` and its running thread for each stream. After that, a
+  null clock (`DbClock`) or a step reserve below 1
+  (`Reclaim.setStepReserve`) threw, and nothing closed the storage. Now the
+  clock is made before the storage, and `DbBuilder.reclaimStepReserve`
+  refuses the value itself.
+* `Db.start`, also through `DbBuilder.start()`: anything in `startInner`,
+  from `syncStreams` (a `BadReplicaException`, the copies between the
+  streams), the creation, recovery (`BadCryptoKey`), the reading of the
+  startup section (005-28) and the reruns, to reclaim's `initFromDb` after
+  the state is `ACTIVE` (005-30). The streams are open, their threads run,
+  and the buffers hold what the start appended.
+* The Pub API: `DatabaseBuilderImp.start` before the `Db` is built
+  (`handleCryptoKeyAndCreatedTxt`: a key of an unknown algorithm, a
+  `SalsaStream` that cannot be made), with the `FileStream` of `dir()` and
+  those of `replica()` open; and `DatabaseImp.createAndStart` after
+  `db.start()` (the index manager's initialization and its jobs), with the
+  database running.
+* `StorageManager`'s close needs neither `writeLock` nor `readSync`: it
+  swaps its `Internal` with a compare-and-set and closes each
+  `BufferedStream`, which synchronizes on itself.
+
+The fix:
+
+1. `Db.start`: when `startInner` throws, the state becomes `STOPPING`
+   under both locks, so no call sees what the start left, and outside them
+   the storage is closed (`StorageManager.closeAndThrow`, new: as
+   `close()`, and it throws the first failure of a stream's close). What
+   the start appended is written, the streams are closed, and their
+   threads have ended when the exception leaves; a failure of the close is
+   added to it as suppressed. A second `start()`, or one after `stop()`,
+   closes nothing, as the state is checked before.
+2. The Pub API: `DatabaseImp.createAndStart` closes the `Db` when anything
+   throws, after `db.start()` too (a test hook, `testHookAfterStart`, can
+   throw there); `DatabaseBuilderImp.start` closes the builder's streams
+   (`DbBuilder.closeStreams`, new) when it throws before the `Db` is built.
+   `DatabaseBuilder.start()`'s Javadoc says so.
+3. `BufferedStream`: `close()` waits until all is written or the thread has
+   stopped, then until the thread has ended, and throws the failure of a
+   flush (a new field, `failure`). It does not wait for the thread from the
+   thread itself: `StorageManager.handleStreamException`, the listener of a
+   failed flush, closes the stream there. After `stop()` too it now waits
+   for the thread; it returned at once (005-35's second issue, below the
+   database). A flush that throws a `RuntimeException` or an `Error` stops
+   the stream as an `IOException` does and tells the listener, so syncs
+   fail instead of waiting for ever.
+4. Found on the way: `Db.newGetData()` and `newGetMany()` of a database
+   without a Dag (not started, or a start that threw) threw a
+   `NullPointerException`; now they are refused as a read is: a
+   `DbStoppingException` after a failed start.
+
+Tests:
+
+* `DbTesterFailure.testFailedStartClosesStorage`: a creation cut at 200
+  bytes (005-33): the start throws; the zero fill is written (264 bytes);
+  no thread of the storage runs; the stream is closed; a transaction and a
+  read are refused.
+* `DbTesterFailure.testFailedStartOfTwoHistories`: 005-11's P9 in small,
+  with `MemoryStream`s: the start with a main and a replica of two
+  histories throws (005-28), after it copied the replica's last
+  transaction to the main; the copy is written (the main as long as the
+  replica), both streams are closed, no thread runs.
+* `DbTesterFailure.testErrorInFlushFailsSync`: an `AssertionError` in an
+  append (`FaultStream.errorInAppends`, new): the sync fails the database
+  (005-30) instead of waiting, and `close()` returns.
+* `BufferedStream.testCloseAfterFailedFlush`: an `IOException` and an
+  `Error` in the last flush: `close()` returns, throws the failure, the
+  listener is told, the thread has ended.
+* `PubTester.testFailedStartsLeaveNothing`: ten starts with a wrong key
+  leave no thread and no open file, counted at once; then the right key
+  starts and reads. `PubTester.testFailedStartsDirectoryRemoved`: a
+  directory whose creation crashed, after the failed start, is removed and
+  created again at once. `PubTester.testExceptionAfterStartClosesDb`: the
+  test hook throws after `db.start()`; the `Db` is closed, its stream too,
+  and a transaction is refused. `PubTester.testUnknownCryptoAlgorithmClosesFile`:
+  three starts with a key of an unknown algorithm leave no open file.
+
+Each of them fails without its part of the fix, undone for the check.
+
+The probe again, on the fixed build
+([runs/after-*.txt](32-fix-failed-start-storage/runs/)):
+
+* `pub`: ten starts of a directory whose creation crashed: 0 threads and 8
+  open files after them, as before them (1 and 9 before the fix).
+* `key`: ten starts with a wrong key: 0 threads and 8 open files, also with
+  finalization disabled (5 and 13 before the fix; 10 and 10 without
+  finalization); the right key starts.
+* `closehang`: `close()` returned; before, still waiting after 3 s.
+* `race`, 20 times, assertions on and off: the same every time, the start
+  with both fails (005-28), and then the main alone fails to start too, as
+  does a later start of the main (`StreamFormatException`). No synced
+  transaction is lost, no writer thread dies and nothing hangs: the failed
+  start's thread no longer writes later. But this is not what "Done when"
+  expects, that the main alone then writes, syncs and finds its
+  transaction 20 times of 20. By point 1, the start with both writes the
+  replica's last transaction to the main (`syncStreams`'s copy), as any
+  start with both would; the main then holds two histories, which 005-28
+  refuses. Before the fix the main ended so 9 and 9 times of 20 (the failed
+  start's write came first), and 2 and 4 times both wrote at the same
+  position. To drop the buffer of a failed start instead would keep the
+  main as it was only if the copy had not been flushed yet, so not every
+  time. Two histories are 005-11's matter, replication, which waits for
+  Frans.
+* `twice`: unchanged, two databases on one directory: the second one's
+  first write is refused, and a restart finds all of the first one's (the
+  lock on the directory is not part of this entry).
+
+`before-commit.sh`: BEFORE COMMIT OK (1004 unit tests, 63 f-tests).

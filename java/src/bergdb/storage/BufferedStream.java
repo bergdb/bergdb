@@ -50,6 +50,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     private boolean flushAndClose = false; // can be set to true by
                                            // flushAndStop() only.
     private IOException exception = null;
+    private IOException failure = null;     // the first failed flush (bergdb 005-32)
     private long pendingCut = 0;    // a pretruncate position not yet flushed; see pretruncate()
     private final int waitTime;
     private final int waitsBeforeFlush;
@@ -239,6 +240,8 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             }
         } catch (IOException e) {
             ex = e;
+        } catch (RuntimeException | Error e) {
+            ex = flushFailure(e);
         }
         
         if (ex != null) {
@@ -260,6 +263,9 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             // A failed deletion/directory force is a storage failure too.
             // Do not publish this flush or release durability waiters.
             stopAfterFailure(e);
+            return;
+        } catch (RuntimeException | Error e) {
+            stopAfterFailure(flushFailure(e));
             return;
         }
 
@@ -289,9 +295,19 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         appendListener.dataAppended(myStreamSize);
     }
 
+    /**
+     * Anything else that a flush throws stops the stream too (2026-10-24, bergdb 005-32): an
+     * Error, such as an assertion of FileStream, ended the thread without telling the
+     * listener, and every later sync waited for ever.
+     */
+    private static IOException flushFailure(Throwable e) {
+        return new IOException("The flush failed (the cause).", e);
+    }
+
     private void stopAfterFailure(IOException failure) {
         synchronized (this) {
             if (this.exception == null) this.exception = failure;
+            if (this.failure == null) this.failure = failure;
             stop = true;
             notifyAll();
         }
@@ -531,6 +547,15 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         this.appendListener = appendListener;
     }
 
+    /**
+     * Writes what is buffered, stops the thread and closes the underlying stream. Returns when
+     * the thread has ended, also after a flush that failed, and then throws that failure
+     * (2026-10-24, bergdb 005-32): it waited for ever, as the buffer never empties after a
+     * failed flush. After stop(), it writes nothing more, and returns when the thread has
+     * ended; it returned at once.
+     * 
+     * @throws IOException  If a flush failed, or the close of the underlying stream.
+     */
     public void close() throws IOException {
         synchronized (this) {
             this.flushAndClose = true;
@@ -539,15 +564,11 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 this.exception = new IOException("Stream being closed by flushAndClose()");
             }
 
-            if (this.stop) {
-                // Already stopped
-                return;
-            }
-
-            while (pStart - cStart > 0) {
+            while (pStart - cStart > 0 && !stop) {
                 try {
                     wait(); // Waiting for consumer to flush to output stream
                 } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                     return;
                 }
             }
@@ -555,7 +576,26 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
 
         stop();
 
+        // The thread closes the stream as it ends. Not from the thread itself: the listener
+        // of a failed flush closes this stream (StorageManager.handleStreamException).
+        if (Thread.currentThread() != consumer) {
+            try {
+                consumer.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+
         stream.close();
+        
+        IOException failed;
+        synchronized (this) {
+            failed = failure;
+        }
+        if (failed != null) {
+            throw failed;
+        }
     }
 
     /**
@@ -897,5 +937,93 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         }
         b.close();
         Assert.assertEquals(0, m.getLength());
+    }
+
+    /**
+     * Regression test for bergdb 005-32: close() waited for ever when the last flush failed,
+     * as the buffer never empties then. Now it returns when the thread has ended, and throws
+     * the failure. An Error in a flush fails the stream as an IOException does, and the
+     * listener is told; before, it ended the thread without a word.
+     */
+    @Nano
+    public static void testCloseAfterFailedFlush() throws Exception {
+        for (int i = 0; i < 2; i++) {
+            final FailingStream failing = new FailingStream();
+            failing.failure = i == 0 ? new IOException("the disk fails")
+                    : new AssertionError("an assertion of the stream");
+            final BufferedStream b = new BufferedStream(failing, 1000, 20);
+            final IOException[] told = new IOException[1];
+            b.setAppendListener(new AppendListener() {
+                public void dataAppended(long length) {}
+                public void appendFailed(IOException e) {
+                    told[0] = e;
+                }
+            });
+            b.start();
+            b.append(new byte[100], 0, 100);
+            final Throwable[] thrown = new Throwable[1];
+            Thread t = new Thread() {
+                public void run() {
+                    try {
+                        b.close();
+                    } catch (Throwable e) {
+                        thrown[0] = e;
+                    }
+                }
+            };
+            t.setDaemon(true);
+            t.start();
+            t.join(5000);
+            Assert.assertFalse("close() returns, " + i, t.isAlive());
+            Assert.assertTrue("it throws the failure: " + thrown[0], thrown[0] instanceof IOException);
+            Assert.assertTrue("the listener is told, " + i, told[0] != null);
+            if (i == 1) {
+                Assert.assertTrue("the Error is the cause", told[0].getCause() instanceof AssertionError);
+            }
+            Assert.assertFalse("the thread has ended, " + i, b.consumer.isAlive());
+        }
+    }
+    
+    /** A MemoryStream whose appends throw 'failure' while it is set (bergdb 005-32). */
+    private static class FailingStream implements AppendOnlyStream {
+        final MemoryStream inner = new MemoryStream();
+        volatile Throwable failure = null;
+        
+        public long getLength() {
+            return inner.getLength();
+        }
+        
+        public long getFirstPos() {
+            return inner.getFirstPos();
+        }
+        
+        public void read(long position, byte[] dest, int destOffset, int length) 
+                throws IOException {
+            inner.read(position, dest, destOffset, length);
+        }
+        
+        public void append(byte[] source, int sourceOffset, int length) throws IOException {
+            Throwable f = failure;
+            if (f instanceof IOException) {
+                throw (IOException) f;
+            } else if (f instanceof Error) {
+                throw (Error) f;
+            } else if (f instanceof RuntimeException) {
+                throw (RuntimeException) f;
+            }
+            inner.append(source, sourceOffset, length);
+        }
+        
+        public void pretruncate(long position) throws IOException {
+            inner.pretruncate(position);
+        }
+        
+        public void seekFirstPos(long position) throws IOException {
+            inner.seekFirstPos(position);
+        }
+        
+        public void close() {
+            inner.close();
+        }
     }
 }

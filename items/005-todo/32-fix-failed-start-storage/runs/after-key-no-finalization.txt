@@ -1,0 +1,8 @@
+Java 27
+An encrypted database; 10 starts with a wrong key, then one with the right key:
+  before: 0 BufferedStream threads; 8 open file descriptors in the JVM
+  each start throws bergdb.pub.util.BadCryptoKey: Likely, the wrong crypto key was used. Invalid magic bytes in stream.
+  after 10 failed starts: 0 BufferedStream threads; 8 open file descriptors in the JVM
+  the right key: started, /k = v
+  after it stopped: 0 BufferedStream threads; 8 open file descriptors in the JVM
+  after System.gc() and System.runFinalization(): 0 BufferedStream threads; 8 open file descriptors in the JVM

@@ -1,0 +1,2 @@
+Java 27
+BufferedStream.close() with 100 bytes buffered, and the flush fails: returned
