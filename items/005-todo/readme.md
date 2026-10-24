@@ -34,7 +34,6 @@ Open
 | [005-33](33-crashed-creation.md) | Decide | A database whose creation crashed never starts: a clear error, create it again at start, or create it whole or not at all (005-28) | open |
 | [005-34](34-fix-transaction-info-position.md) | Fix | `Connection.transactionInfo()` reads at a wrong position for a value after a meta block in its record, 128 bytes too far; the read can close the storage (found in 005-30) | open |
 | [005-35](35-fix-stop-and-close.md) | Fix | `stop()` loses the transactions still in the write buffer (all of them in a quick run); `close()` returns at once after `stop()` or beside another `close()`; a writer that waits for room in the buffer waits for ever when the stream stops or fails | open |
-| [005-36](36-fix-test-crash3.md) | Fix | `DbTester.testCrash3` has never tested a truncation: it truncates a copy and starts on the original; on the copy it fails in the database's creation (005-33) unless it syncs first (005-29) | open |
 | [005-37](37-fix-memory-stream-checks.md) | Fix | `MemoryStream` takes a negative length to `append` and a `pretruncate` past its length, where `AppendOnlyStream` says otherwise; after some such cuts it takes no more appends (005-29) | open |
 | [005-38](38-writes-at-scale.md) | Investigate | Writes at scale: the stream grows to about 1.1 KB per key at 100M random keys, and loads into an index larger than the budget slow to under 100 puts a second on a slow disk (004-02) | open |
 
@@ -44,6 +43,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-36](36-fix-test-crash3.md) | Fix | `DbTester.testCrash3` never tested a truncation: it truncated a copy and started on the original; now it starts on the copy, after a sync that writes the creation (005-29) | done | 2026-10-24 |
 | [005-30](30-fix-read-failure.md) | Fix | A read or a sync that failed on the storage (an I/O error, corrupt data) left the database running half dead; now it fails the database, as a transaction does since 005-01 | done | 2026-10-23 |
 | [005-27](27-fix-meta-block-edge.md) | Fix | A crash that ended the stream exactly at a meta block's position, after a transaction that ended there, left a database that did not start; now recovery fills out that meta block too, as one partly written (005-11, P11) | done | 2026-10-23 |
 | [005-29](29-fix-memory-stream-assert.md) | Fix | `MemoryStream.copy` failed an assertion when the stream was empty or its length a multiple of 1,000,000 bytes (test code; 005-11); now its arrays are exactly those that hold bytes, also after `truncate` and an append of 0 bytes | done | 2026-10-23 |
@@ -84,8 +84,8 @@ before 005-05's decision on publishing, as it concerns the Pub API; 005-12
 is done. 005-27, 005-28 and 005-29, the fixes found in 005-11, are done.
 005-30 is done; 005-34, found in it, any time. 005-31 before item
 007's deadline for `TransSeq.take` (007-01, D1), which needs it. 005-32
-any time, before 005-33's change; 005-33 waits for Frans. 005-36 and
-005-37 any time: tests, `MemoryStream` and a Javadoc.
+any time, before 005-33's change; 005-33 waits for Frans. 005-36 is
+done; 005-37 any time: `MemoryStream` and a Javadoc.
 
 
 Files
@@ -186,7 +186,7 @@ Files
   [37-fix-memory-stream-checks.md](37-fix-memory-stream-checks.md).
   005-36 and 005-37, found in 005-29: `DbTester.testCrash3`, which tests
   no truncation, and `MemoryStream`, which takes a negative length and a
-  cut past its end.
+  cut past its end. 005-36 is done.
 * [38-writes-at-scale.md](38-writes-at-scale.md). 005-38, investigate
   writes at scale: the stream's growth per key and loads beyond the
   budget, found in 004-02.
@@ -584,3 +584,9 @@ Code), from 004-02's results: the stream grows to about 1.1 KB per key at
 100M random keys, and loads into an index larger than the budget slow to
 under 100 puts a second on s1. To follow incremental eviction (004-03),
 before the Lean physical layer is redone.
+
+2026-10-24. 005-36 done, at Frans's request ("fix all todo items of type
+Fix", "do what is proposed"), by Claude (Opus 5.5, Claude Code), as
+proposed: `DbTester.testCrash3` syncs the new database before it takes its
+first length, and starts on each truncated copy, at eleven lengths after
+the creation; it passes. Test code only; `before-commit.sh` passes.

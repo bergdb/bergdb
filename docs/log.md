@@ -989,3 +989,10 @@ and an interrupted sync, throw as before. Ten tests; streams unchanged
 (StreamDigest); `before-commit.sh`, `level3.sh` and `level4.sh` pass. Found
 on the way, 005-34: `Connection.transactionInfo()` reads at a wrong
 position for a value after a meta block in its record.
+
+2026-10-24. 005-36 done, by Claude (Opus 5.5, Claude Code):
+`DbTester.testCrash3` truncated a copy of its stream and started on the
+original, so it had tested no truncation since 2017. Now it syncs the new
+database before it takes its first length, and starts on each truncated
+copy; its cuts come after the creation (a cut in the creation is 005-33's
+case). Test code only; `before-commit.sh` passes.

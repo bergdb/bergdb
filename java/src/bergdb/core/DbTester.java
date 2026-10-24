@@ -1162,6 +1162,7 @@ public class DbTester {
         //
         MemoryStream mstream = new MemoryStream();
         Db db = testDb(mstream);
+        db.sync(SyncLevel.STRONG);      // The creation is written: the cuts come after it.
         
         long size1 = mstream.getLength();
         db.execute(db.trans().put("key", "value1").build());
@@ -1183,7 +1184,7 @@ public class DbTester {
             MemoryStream mstream2 = mstream.copy();
             mstream2.truncate(newSize);
  
-            Db db2 = testDb(mstream);
+            Db db2 = testDb(mstream2);
             byte[] value = DbUtil.get(db2, StringUtil.toBytes("non-existing-key"));
             Assert.assertTrue(value == null);
             db2.stop();

@@ -1,7 +1,7 @@
 005-36. Fix: DbTester.testCrash3 has never tested a truncation
 ===============================================================
 
-Status: open. Kind: fix. Created 2026-10-24.
+Status: done (2026-10-24). Kind: fix. Created 2026-10-24.
 
 Found on 2026-10-23 in 005-29, by Claude (Opus 5.5, Claude Code), among
 the tests that use `MemoryStream.truncate`; checked again on `685e895`.
@@ -69,3 +69,20 @@ Size and order
 --------------
 
 S, any time; test code only. Independent of 005-33's decision.
+
+
+Outcome
+-------
+
+2026-10-24, by Claude (Opus 5.5, Claude Code), as proposed, at Frans's
+request ("fix all todo items of type Fix", "do what is proposed"). The two
+lines in `DbTester.testCrash3`: the new database is synced,
+`db.sync(SyncLevel.STRONG)`, before the first length is taken, so that
+`size1` is the creation's 264 bytes; and each database starts on the
+truncated copy, `testDb(mstream2)`. The cuts are at eleven lengths, from
+751 down to 271 bytes, all after the creation. The test passes, 3 of 3
+runs; without the sync it fails at once on the copy, with 005-33's case:
+"Transaction at start pos 128 is not committed (its last byte is 0)." Not
+done, as decided: a check of what each cut keeps.
+
+`before-commit.sh`: BEFORE COMMIT OK (990 unit tests, 63 f-tests).
