@@ -1142,22 +1142,32 @@ public class Db {
     
     /**
      * Reads the transaction at stream position 'tpos': for the Pub API's
-     * Connection.transactionInfo(), the transaction of the value that its last get read.
+     * Connection.transactionInfo(), the transaction of the value that its last get read
+     * (GetData.tpos). 'tpos' must be the position of a transaction, as a get gives it.
      *
+     * @throws IllegalArgumentException
+     *             If 'tpos' cannot start a transaction: negative (Spos.NULL from a get: the
+     *             value's transaction was still being stored), not a multiple of 8, or in a
+     *             meta block. Nothing is read (bergdb 005-34).
      * @throws DbFailedException
-     *             If the database has failed, or fails now: the read failed on the storage
-     *             (bergdb 005-30).
+     *             If the database has failed, or fails now: the read failed on the storage,
+     *             or the bytes at 'tpos' are not a committed transaction, which is corrupt
+     *             data as for the other reads (bergdb 005-30, 005-34).
      * @throws LookupTimeNotAvailableException
      *             If reclaim has removed the transaction: the time of the get has expired.
-     * @throws StreamFormatException
-     *             If the bytes at 'tpos' are not a committed transaction. The database goes
-     *             on: the position is the caller's, and the Pub API's is wrong for a value
-     *             after a meta block in its record (bergdb 005-34).
      * @throws DbException
      *             If there is no transaction at 'tpos'.
      */
     public StoredTrans getTrans(long tpos) {
         // TODO D. DbException or something else?
+        
+        // Refused before it reads (2026-10-24, bergdb 005-34): it would read the middle of a
+        // record as a transaction.
+        final long inBlock = tpos % RecoverableStream.META_BLOCK_DISTANCE;
+        if (tpos < 0 || tpos % NodeStream.TRANS_ALIGNMENT != 0 
+                || inBlock < RecoverableStream.META_BLOCK_SIZE) {
+            throw new IllegalArgumentException("Not a position of a transaction, " + tpos + ".");
+        }
         
         // Makes sure writes from startup and execute() are visible; the state checked since
         // bergdb 005-30 (it read on after a failure).
@@ -1176,6 +1186,11 @@ public class Db {
                 ex.initCause(e);
                 throw ex;
             }
+            throw failOnStorage(e, "A read");
+        } catch (StreamFormatException e) {
+            // Corrupt data, as for the other reads (2026-10-24, bergdb 005-34): it was thrown
+            // as it was, as the Pub API's position was wrong for a value after a meta block in
+            // its record, and for a value that startup had rerun.
             throw failOnStorage(e, "A read");
         }
         if (!gotTrans) {

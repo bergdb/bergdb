@@ -396,6 +396,11 @@ public class DbStarter {
                     
                     Node n = storedTrans.findNode(id);
                     if (n != null) {
+                        if (node instanceof ValueNode && n instanceof ValueNode) {
+                            // Its transaction's position, for a get (2026-10-24, bergdb
+                            // 005-34): a value rerun here had its own position as it.
+                            ((ValueNode) node).offsetFromTrans = ((ValueNode) n).offsetFromTrans;
+                        }
                         node.setSpos(n.getSpos());
                     }
                     

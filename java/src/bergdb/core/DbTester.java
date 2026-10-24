@@ -2023,4 +2023,83 @@ public class DbTester {
         assertEquals(Integer.MAX_VALUE * Clock.UNITS_PER_SEC, db.getRetainDuration());
         db.stop();
     }
+    
+    /**
+     * Regression test for bergdb 005-34: a get gives the position of the transaction that
+     * wrote the value (GetData.tpos), and getTrans of it gives that transaction, also for the
+     * values after a meta block in their record, which were 128 bytes too far, and after a
+     * restart. With the default startup distance the restart reruns every transaction, and a
+     * rerun value had its own position as the transaction's; with a small one, most values are
+     * then read from the stream.
+     */
+    @Nano
+    public static void testGetTransOfEveryValue() {
+        for (int startupDistance : new int[] {50 * 1000000, 20000}) {     // the default, small
+            final int d = RecoverableStream.META_BLOCK_DISTANCE;
+            Random random = new Random(34);
+            MemoryStream s = new MemoryStream();
+            Db db = Db.builder().testSetup(s).startupDistance(startupDistance).start();
+            List<Trans> ts = new ArrayList<Trans>();
+            int crossing = 0;
+            while (crossing < 3) {
+                Trans.Builder b = db.trans();
+                for (int j = 0; j < 20; j++) {
+                    byte[] v = new byte[500];
+                    random.nextBytes(v);
+                    b.put("/k" + ts.size() + "/" + j, v);
+                }
+                Trans t = b.build();
+                db.execute(t);
+                ts.add(t);
+                if (t.tpos / d != t.lastPos / d) {
+                    crossing++;
+                }
+            }
+            checkGetTrans(db, ts);
+            db.sync(SyncLevel.STRONG);
+            db.stop();
+            
+            Db db2 = Db.builder().testSetup(s.copy()).startupDistance(startupDistance).start();
+            checkGetTrans(db2, ts);
+            db2.stop();
+        }
+    }
+    
+    /** Every value of the transactions: its tpos from a get; getTrans of it, once each. */
+    private static void checkGetTrans(Db db, List<Trans> ts) {
+        for (int i = 0; i < ts.size(); i++) {
+            Trans t = ts.get(i);
+            for (int j = 0; j < 20; j++) {
+                GetData gd = db.newGetData();
+                db.getOne(Long.MAX_VALUE, Keys.toSegments("/k" + i + "/" + j), gd);
+                assertEquals("value " + i + "/" + j, t.tpos, gd.tpos);
+            }
+            assertEquals("transaction " + i, t.tt, db.getTrans(t.tpos).tt);
+        }
+    }
+    
+    /**
+     * bergdb 005-34: getTrans refuses a position that cannot start a transaction before it
+     * reads, and the database goes on.
+     */
+    @Nano
+    public static void testGetTransRefusesBadPositions() {
+        Db db = Db.builder().testSetup().start();
+        Trans t = db.trans().put("/a", "a0").build();
+        db.execute(t);
+        final int d = RecoverableStream.META_BLOCK_DISTANCE;
+        long[] bad = {-1, Long.MIN_VALUE, t.tpos + 4, t.tpos + 1, 0, 64, d, d + 120};
+        for (long tpos : bad) {
+            try {
+                db.getTrans(tpos);
+                throw new AssertionError("taken, " + tpos);
+            } catch (IllegalArgumentException e) {
+                // Expected.
+            }
+        }
+        assertEquals(t.tt, db.getTrans(t.tpos).tt);
+        db.execute(db.trans().put("/b", "b0").build());
+        assertEquals("b0", DbUtil.getString(db, "/b"));
+        db.stop();
+    }
 }

@@ -531,42 +531,40 @@ public class DbTesterFailure {
 
     /**
      * Db.getTrans, the Pub API's Connection.transactionInfo(): a read error fails the
-     * database, and after it getTrans is refused (it read on after a failure). A format
-     * error (here, a corrupt read) does not fail it, as the position is the caller's
-     * (bergdb 005-34).
+     * database, and after it getTrans is refused (it read on after a failure). So does a
+     * format error (here, a corrupt read) since bergdb 005-34, which made the positions that
+     * a get gives right; before it, a format error did not fail the database.
      */
     @Nano
     public static void testGetTrans() {
-        FaultStream s = new FaultStream();
-        Db db = Db.builder().testSetup(s).start();
-        Trans t = db.trans().put("/a", "a0").build();
-        db.execute(t);
-        db.sync(SyncLevel.STRONG);
-        Assert.assertEquals("the transaction", t.tt, db.getTrans(t.tpos).tt);
+        for (int i = 0; i < 2; i++) {
+            final boolean corrupt = i == 0;
+            FaultStream s = new FaultStream();
+            Db db = Db.builder().testSetup(s).start();
+            Trans t = db.trans().put("/a", "a0").build();
+            db.execute(t);
+            db.sync(SyncLevel.STRONG);
+            Assert.assertEquals("the transaction", t.tt, db.getTrans(t.tpos).tt);
 
-        s.corruptReads = true;
-        StreamFormatException format = null;
-        try {
-            db.getTrans(t.tpos);
-        } catch (StreamFormatException e) {
-            format = e;
+            if (corrupt) {
+                s.corruptReads = true;
+            } else {
+                s.failReads = true;
+            }
+            DbFailedException e = null;
+            try {
+                db.getTrans(t.tpos);
+            } catch (DbFailedException ex) {
+                e = ex;
+            }
+            Assert.assertTrue("the read fails the database, corrupt " + corrupt, e != null);
+            Class<?> cause = corrupt ? StreamFormatException.class : StreamIoException.class;
+            Assert.assertTrue("the cause: " + e.getCause(), cause.isInstance(e.getCause()));
+            assertRefused(db, e.getCause());
+            s.corruptReads = false;
+            s.failReads = false;
+            db.close();
         }
-        Assert.assertTrue("a format error", format != null);
-        s.corruptReads = false;
-        Assert.assertEquals("the database goes on", t.tt, db.getTrans(t.tpos).tt);
-
-        s.failReads = true;
-        DbFailedException e = null;
-        try {
-            db.getTrans(t.tpos);
-        } catch (DbFailedException ex) {
-            e = ex;
-        }
-        Assert.assertTrue("a read error fails the database", e != null);
-        Assert.assertTrue("the cause: " + e.getCause(), e.getCause() instanceof StreamIoException);
-        assertRefused(db, e.getCause());
-        s.failReads = false;
-        db.close();
     }
 
     /**

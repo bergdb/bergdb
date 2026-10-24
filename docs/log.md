@@ -1005,3 +1005,15 @@ appends. Now it refuses both with an `IllegalArgumentException`, as
 `FileStream` refuses such a cut, and the Javadoc of
 `AppendOnlyStream.pretruncate` says what the streams do. A test;
 `before-commit.sh` passes.
+
+2026-10-24. 005-34 done, by Claude (Opus 5.5, Claude Code): a get gave a
+transaction position 128 bytes too far for a value after a meta block in
+its record, as the value node's offset counted the record's bytes, without
+the meta block; and, after a restart, a value that startup had rerun gave
+its own position. `Connection.transactionInfo()` read the middle of a
+record there. Now the value node keeps the distance in the stream (the
+stored field is unchanged), the rerun copies it, `getTrans` refuses a
+position that cannot start a transaction, and a format error there fails
+the database, as in the other reads ([levels.md](levels.md), "A
+transaction or a read that fails"). Tests; streams unchanged
+(StreamDigest); `before-commit.sh` passes.

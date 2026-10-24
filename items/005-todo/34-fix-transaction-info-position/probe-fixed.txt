@@ -1,0 +1,14 @@
+== values: zeros
+transaction 18 at 196824 to 208007, across the meta block at 200000
+  0 of 20 values with a wrong tpos
+transaction 36 at 395816 to 407031, across the meta block at 400000
+  0 of 20 values with a wrong tpos
+transaction 54 at 594872 to 606087, across the meta block at 600000
+  0 of 20 values with a wrong tpos
+== values: 1
+transaction 18 at 196824 to 208007, across the meta block at 200000
+  0 of 20 values with a wrong tpos
+transaction 36 at 395816 to 407031, across the meta block at 400000
+  0 of 20 values with a wrong tpos
+transaction 54 at 594872 to 606087, across the meta block at 600000
+  0 of 20 values with a wrong tpos

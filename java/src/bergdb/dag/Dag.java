@@ -248,7 +248,8 @@ public class Dag {
     /**
      * Gets one KV value or returns null if it does not exist.
      * gd.kvTime is set if a value is found.
-     * gd.offsetFromTrans is set if a value is found.
+     * gd.tpos is set if a value is found: ValueNode.getTpos(), Spos.NULL if it is not
+     * written yet.
      * 
      * @param time  The lookup time.
      * @throws StreamFormatException

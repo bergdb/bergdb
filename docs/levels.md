@@ -186,10 +186,11 @@ read of that node fails it again, until the stream is repaired or restored.
   so does `getTrans` of a transaction that reclaim has removed. A read or a
   sync while the database is stopping throws as it did (`stop()` closes the
   storage under running reads), and so does a sync whose thread is
-  interrupted (`StorageManager` throws an `InterruptedIOException`). A
-  format error in `getTrans` is thrown as it is: its position is the
-  caller's, and the Pub API's is wrong for a value after a meta block in its
-  record (bergdb 005-34).
+  interrupted (`StorageManager` throws an `InterruptedIOException`).
+  `getTrans` refuses a position that cannot start a transaction, before it
+  reads (`IllegalArgumentException`); a format error at a transaction's
+  position fails the database, as in the other reads, since 005-34 made the
+  positions that a get gives right.
 * The state changes in one step under `readSync`, which the writer and the
   readers both take (`Db.setFailed`), and `stop()` and `close()` set
   `STOPPING` under it too: the first failure is the one kept, and no failure

@@ -588,10 +588,13 @@ public class StoredTrans {
 
             final long topAndKey = size;
 
-            // Prepares valueNodes.
+            // Prepares valueNodes. The offset from the transaction, in the stream, before the
+            // spos (a volatile field), so that a reader that sees the new spos sees the offset
+            // of the same write (2026-10-24, bergdb 005-34).
             for (int i = 0; i < transNodes.valueCount; i++) {
                 ValueNode node = transNodes.valueNodes[i];
                 long[] key = transNodes.keys[i];
+                node.offsetFromTrans = (int) (currentPos - transStartPos);
                 node.setSpos(currentPos);
                 size += StoredValueNode.getByteSizeLong(node.value, key);
                 currentPos = RecoverableStream.getSpos(transStartPos, size);
@@ -1065,7 +1068,8 @@ public class StoredTrans {
         transNodes.addValueNode(v0, Keys.toSegments("a"));
         
         long time = 120;
-        long transPos = 0;
+        long transPos = RecoverableStream.META_BLOCK_SIZE;  // was 0, in the first meta block,
+                // where no transaction starts and no value node is (bergdb 005-34)
         serializer.serialize(transNodes, time, transPos, -1, new ArrayList<Node>());
         Parser parser = new Parser();
         parser.parse(transPos, serializer.getTransBuffer());

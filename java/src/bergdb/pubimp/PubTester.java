@@ -1250,4 +1250,28 @@ public class PubTester {
         Assert.assertEquals("/key1", tinfo.kvs().get(0).key());
         Assert.assertEquals("/key2", tinfo.kvs().get(1).key());
     }
+    
+    /**
+     * Regression test for bergdb 005-34: after a restart, transactionInfo() read at the
+     * value's own position and threw StreamFormatException, as startup's rerun of the
+     * transaction did not give the value its transaction's position.
+     */
+    @Nano
+    private static void testTransactionInfoAfterRestart() {
+        MemoryStream m = new MemoryStream();
+        Database d = ((DatabaseBuilderImp) Factory.database()).mainStream(m).start();
+        Connection c = d.connection();
+        Transaction t = c.w().put("/key1", "v1").put("/key2", "v2").execute();
+        d.sync();
+        d.stop();
+        
+        d = ((DatabaseBuilderImp) Factory.database()).mainStream(m.copy()).start();
+        c = d.connection();
+        Assert.assertEquals("v2", c.get("/key2", String.class));
+        TransactionInfo tinfo = c.transactionInfo();
+        Assert.assertEquals(t.getTime(), tinfo.time());
+        Assert.assertEquals(2, tinfo.kvs().size());
+        Assert.assertEquals("/key2", tinfo.kvs().get(1).key());
+        d.stop();
+    }
 }

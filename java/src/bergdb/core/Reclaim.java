@@ -459,7 +459,9 @@ public class Reclaim implements Db.TransactionListener {
             // the time of the split, not of the write, so old values were skipped and
             // then cut away. The position of the value decides what the cut removes.
             
-            if (value != null && gd.tpos < it.pCut) {
+            // A value not yet written (tpos Spos.NULL, bergdb 005-34) is after the cut, as
+            // its vpos was.
+            if (value != null && gd.tpos != Spos.NULL && gd.tpos < it.pCut) {
                 b.keyRead(kvt.key);
                 b.put(kvt.key, value);      // Note, no mem copy of key and value.
                 rewritten += kvt.key.length * 8 + value.length + VALUE_NODE_BYTES;

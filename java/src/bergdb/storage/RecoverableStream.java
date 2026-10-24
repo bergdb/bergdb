@@ -255,6 +255,28 @@ public class RecoverableStream {
     }
     
     /**
+     * The inverse of getSpos() (2026-10-24, bergdb 005-34): the start spos of a transaction
+     * whose byte at offset 'size', counted in transaction bytes only, is at 'spos'. A value
+     * node stores its offset in its record's bytes, which a meta block in the record makes
+     * shorter than the distance in the stream.
+     * 
+     * @param spos  The spos of a byte of the transaction, not an spos in a meta block.
+     * @throws IllegalArgumentException  if 'spos' is in a meta block, or the transaction
+     *      would start before the first transaction byte of the stream.
+     */
+    public final static long getStartSpos(final long spos, final long size) {
+        final long transBytesPerBlock = META_BLOCK_DISTANCE - META_BLOCK_SIZE;
+        final long transPos = getTransPos(spos) - size;
+        if (spos < 0 || spos % META_BLOCK_DISTANCE < META_BLOCK_SIZE || transPos < 0 
+                || size < 0) {
+            throw new IllegalArgumentException("No transaction start " + size 
+                    + " transaction bytes before spos " + spos + ".");
+        }
+        return (transPos / transBytesPerBlock) * META_BLOCK_DISTANCE + META_BLOCK_SIZE 
+                + transPos % transBytesPerBlock;
+    }
+    
+    /**
      * The start Spos of the next transaction that will be appended.
      * The caller must hold DB.writeLock since method calls aos.getLength().
      */
@@ -727,6 +749,42 @@ public class RecoverableStream {
             Assert.assertTrue(RecoverableStream.getSpos(10*d + s, 38) == 10*d + s + 38);
             Assert.assertEquals(11*d + s + 10, RecoverableStream.getSpos(10*d + (d-10), 20));
             Assert.assertEquals(15*d + (d-s-10), RecoverableStream.getSpos(10*d + (d-s-10), 5*(d-s)));
+        }
+        
+        /** getStartSpos() is the inverse of getSpos() (bergdb 005-34). */
+        @Nano
+        public static void testGetStartSpos() {
+            final int s = META_BLOCK_SIZE;
+            final int d = META_BLOCK_DISTANCE;
+            Assert.assertEquals(s, getStartSpos(s + 32, 32));
+            Assert.assertEquals(d - 1000, getStartSpos(d + s + 1000, 2000));    // across one
+            Assert.assertEquals(d - 1000, getStartSpos(d + s, 1000));    // just after one
+            Assert.assertEquals(10*d + (d-s-10), getStartSpos(15*d + (d-s-10), 5*(d-s)));
+            
+            java.util.Random random = new java.util.Random(34);
+            for (int i = 0; i < 100000; i++) {
+                long start = (long) random.nextInt(1000) * d + s + random.nextInt(d - s);
+                long size;
+                switch (i % 4) {
+                case 0: size = random.nextInt(3 * d); break;
+                case 1: size = random.nextInt(100); break;
+                case 2: size = Math.max(0, d - start % d - random.nextInt(3)); break;  // block end
+                default: size = (long) random.nextInt(20000) * (d - s) + random.nextInt(2); break;
+                }
+                long spos = getSpos(start, size);
+                Assert.assertEquals("start " + start + ", size " + size, start, 
+                        getStartSpos(spos, size));
+            }
+            
+            long[][] bad = {{s + 10, 11}, {d + 5, 0}, {d, 100}, {-1, 0}};    // spos, size
+            for (long[] b : bad) {
+                try {
+                    getStartSpos(b[0], b[1]);
+                    throw new AssertionError("taken, " + b[0] + ", " + b[1]);
+                } catch (IllegalArgumentException e) {
+                    // Expected.
+                }
+            }
         }
         
         @Nano

@@ -24,6 +24,11 @@ public final class ValueNode implements Node {
     public final byte[] value;
     
     public int offsetFromTrans;
+        // The distance in the stream from the start of the node's transaction to the node,
+        // spos - tpos, as an unsigned int (2026-10-24, bergdb 005-34; it was the offset in
+        // the record's bytes, which a meta block in the record makes 128 bytes shorter). A
+        // record of up to 2^31 - 9 bytes and its meta blocks span less than 2^32 bytes. The
+        // serializer sets it before spos, so a reader that sees the new spos sees it too.
     
     public boolean isInTransactionNodes = false;
         // Synch note: this field must only be accessed from threads holding DB.writeLock.
@@ -48,12 +53,20 @@ public final class ValueNode implements Node {
         this(value, Spos.NULL);
     }
     
+    /**
+     * Returns the stream position of the transaction that wrote this node, or Spos.NULL if
+     * the node is not written yet: its spos is NULL, or a vpos while its transaction is
+     * stored (bergdb 005-34).
+     */
     public long getTpos() {
-        return Spos.isNull(spos) ? Spos.NULL : spos - offsetFromTrans;
+        final long p = spos;      // Read once, before offsetFromTrans.
+        return Spos.isNull(p) || Spos.isVpos(p) ? Spos.NULL 
+                : p - Integer.toUnsignedLong(offsetFromTrans);
     }
     
-    public int getOffsetFromTrans() {
-        return offsetFromTrans;
+    /** The distance in the stream from the start of the node's transaction, spos - tpos. */
+    public long getOffsetFromTrans() {
+        return Integer.toUnsignedLong(offsetFromTrans);
     }
     
     public final byte getType() {

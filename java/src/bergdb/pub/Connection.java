@@ -147,6 +147,10 @@ public interface Connection extends ReadInterface {
      * This method call will always require a read from the database
      * storage, no caching for this query.
      *
+     * @throws IllegalStateException
+     *             If no get() has been made, or if the transaction that wrote the value
+     *             was still being stored when get() read it (a get right after the put, in
+     *             another thread): call get() again.
      * @throws DbFailedException
      *             If the database has failed, before or in this read: it then refuses
      *             every transaction and read until it is restarted. See Database.

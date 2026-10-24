@@ -9,6 +9,7 @@ import bergdb.core.StoredValueNode;
 import bergdb.core.SyncLevel;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
+import bergdb.dag.Spos;
 import bergdb.pub.Action;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
@@ -102,6 +103,13 @@ public class ConnectionImp implements Connection {
         if (getData.actualLookupTime == -1) {
             throw new IllegalStateException("No available transaction info, "
                     + "a call to get() must be made before calling transactionInfo().");
+        }
+        
+        if (getData.tpos == Spos.NULL) {
+            // The get read the value while its transaction was stored (bergdb 005-34).
+            throw new IllegalStateException("No available transaction info: the transaction "
+                    + "that wrote the value was still being stored when get() read it; call "
+                    + "get() again.");
         }
         
         final StoredTrans storedTrans = db.getTrans(getData.tpos);
