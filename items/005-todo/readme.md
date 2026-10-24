@@ -34,6 +34,8 @@ Open
 | [005-33](33-crashed-creation.md) | Decide | A database whose creation crashed never starts: a clear error, create it again at start, or create it whole or not at all (005-28) | open |
 | [005-34](34-fix-transaction-info-position.md) | Fix | `Connection.transactionInfo()` reads at a wrong position for a value after a meta block in its record, 128 bytes too far; the read can close the storage (found in 005-30) | open |
 | [005-35](35-fix-stop-and-close.md) | Fix | `stop()` loses the transactions still in the write buffer (all of them in a quick run); `close()` returns at once after `stop()` or beside another `close()`; a writer that waits for room in the buffer waits for ever when the stream stops or fails | open |
+| [005-36](36-fix-test-crash3.md) | Fix | `DbTester.testCrash3` has never tested a truncation: it truncates a copy and starts on the original; on the copy it fails in the database's creation (005-33) unless it syncs first (005-29) | open |
+| [005-37](37-fix-memory-stream-checks.md) | Fix | `MemoryStream` takes a negative length to `append` and a `pretruncate` past its length, where `AppendOnlyStream` says otherwise; after some such cuts it takes no more appends (005-29) | open |
 
 
 Closed
@@ -81,7 +83,8 @@ before 005-05's decision on publishing, as it concerns the Pub API; 005-12
 is done. 005-27, 005-28 and 005-29, the fixes found in 005-11, are done.
 005-30 is done; 005-34, found in it, any time. 005-31 before item
 007's deadline for `TransSeq.take` (007-01, D1), which needs it. 005-32
-any time, before 005-33's change; 005-33 waits for Frans.
+any time, before 005-33's change; 005-33 waits for Frans. 005-36 and
+005-37 any time: tests, `MemoryStream` and a Javadoc.
 
 
 Files
@@ -178,6 +181,11 @@ Files
   and `close()` do not close the database as their Javadoc says, from
   Frans's note in `Db.close()`; its probes, the survey of the calls and
   their runs in [35-fix-stop-and-close/](35-fix-stop-and-close/).
+* [36-fix-test-crash3.md](36-fix-test-crash3.md) and
+  [37-fix-memory-stream-checks.md](37-fix-memory-stream-checks.md).
+  005-36 and 005-37, found in 005-29: `DbTester.testCrash3`, which tests
+  no truncation, and `MemoryStream`, which takes a negative length and a
+  cut past its end.
 
 Log
 ===
@@ -557,3 +565,11 @@ its own and close() waits for it; two questions for Frans. No change to
 2026-10-24. 005-35, Frans's answers: no `Database.close()` in the Pub API
 for now ("Not now."); a transaction that runs when stop() is called
 completes and is written ("As you propose."). Not started.
+
+2026-10-24. Added 005-36 and 005-37, at Frans's request ("Add to 005."),
+by Claude (Opus 5.5, Claude Code), from 005-29's findings, checked again
+on `685e895`: `DbTester.testCrash3` has never tested a truncation, and on
+its copies it fails in the database's creation (005-33's case) unless it
+syncs first, a two-line fix; `MemoryStream` takes a negative length to
+`append` and a `pretruncate` past its length, after some of which it takes
+no more appends, where the interface says otherwise. No change to `java/`.
