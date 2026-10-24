@@ -36,6 +36,7 @@ Open
 | [005-35](35-fix-stop-and-close.md) | Fix | `stop()` loses the transactions still in the write buffer (all of them in a quick run); `close()` returns at once after `stop()` or beside another `close()`; a writer that waits for room in the buffer waits for ever when the stream stops or fails | open |
 | [005-36](36-fix-test-crash3.md) | Fix | `DbTester.testCrash3` has never tested a truncation: it truncates a copy and starts on the original; on the copy it fails in the database's creation (005-33) unless it syncs first (005-29) | open |
 | [005-37](37-fix-memory-stream-checks.md) | Fix | `MemoryStream` takes a negative length to `append` and a `pretruncate` past its length, where `AppendOnlyStream` says otherwise; after some such cuts it takes no more appends (005-29) | open |
+| [005-38](38-writes-at-scale.md) | Investigate | Writes at scale: the stream grows to about 1.1 KB per key at 100M random keys, and loads into an index larger than the budget slow to under 100 puts a second on a slow disk (004-02) | open |
 
 
 Closed
@@ -186,6 +187,9 @@ Files
   005-36 and 005-37, found in 005-29: `DbTester.testCrash3`, which tests
   no truncation, and `MemoryStream`, which takes a negative length and a
   cut past its end.
+* [38-writes-at-scale.md](38-writes-at-scale.md). 005-38, investigate
+  writes at scale: the stream's growth per key and loads beyond the
+  budget, found in 004-02.
 
 Log
 ===
@@ -573,3 +577,10 @@ its copies it fails in the database's creation (005-33's case) unless it
 syncs first, a two-line fix; `MemoryStream` takes a negative length to
 `append` and a `pretruncate` past its length, after some of which it takes
 no more appends, where the interface says otherwise. No change to `java/`.
+
+2026-10-24. Added 005-38, at Frans's request ("Register the write problem
+as a todo in 005 of type Investigate."), by Claude (Opus 5.5, Claude
+Code), from 004-02's results: the stream grows to about 1.1 KB per key at
+100M random keys, and loads into an index larger than the budget slow to
+under 100 puts a second on s1. To follow incremental eviction (004-03),
+before the Lean physical layer is redone.

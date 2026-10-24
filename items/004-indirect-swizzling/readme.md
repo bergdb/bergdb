@@ -23,6 +23,9 @@ Files
   machine (Frans's VPS, s1): 004-01's benchmarks on x86 Linux, a handle's place after
   garbage collections, and BergDB's gets at 1M to 100M keys in memory, from the OS cache
   and from the device. Tools and scripts in [02-scale-tests/](02-scale-tests/).
+* [03-summary-and-direction.md](03-summary-and-direction.md). 004-03, a summary of the
+  work so far and the conclusion on the future direction, written by Frans and Claude
+  together.
 
 
 Log
@@ -61,3 +64,13 @@ D (004-02, 10.5.8). Part A's third session runs at 08:00 on 2026-10-24.
 
 2026-10-24. 004-02 done: part A's third session on s1 (08:00 to 08:35; one-thread figures
 out of cache vary by up to 14 percent between the three sessions), s1's databases deleted.
+
+2026-10-24. Created 004-03 at Frans's request, mostly empty: Frans and Claude will
+summarize the work so far and conclude on the future direction.
+
+2026-10-24. 004-03: Claude's summary of 004-01 and 004-02 (section 2), Frans's direction
+(section 1: indirect swizzling is the path to eviction without stop-the-world), the write
+problem registered as 005-38, and an open question to study before deciding (section 3):
+the id-to-handle table, which must grow without stop-the-world (many HashMaps, linear
+hashing, incremental rehashing). A note on handles' memory at a constant budget was
+written and then removed by Frans as not the most important.
