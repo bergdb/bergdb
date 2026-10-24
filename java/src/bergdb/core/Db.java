@@ -1040,12 +1040,13 @@ public class Db {
      * Stops the database, flushes the storage streams and releases resources.
      * The method closes open files and network sockets and waits until its done
      * before it returns.
-     * 
-     * This method is seldom needed, clients should prefer to call stop(), or just
-     * let the garbage collector clean up the Db object once there are no more 
-     * references to it.
      */
     public void close() {
+        // 26102424-BUG1-close. Frans noted.
+        // Smells like a bug. If close is called when DbState is STOPPING, 
+        // the caller likely assumes the database will wait until things are closed.
+        //
+        
         synchronized (readSync) {};
         
         if (state == DbState.STOPPING) {
