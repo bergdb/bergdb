@@ -1,0 +1,3 @@
+stopclose. A database on a slow stream (each append 300 ms): puts, then stop(), then close().
+  close() returned after 0.0 ms; then: consumer threads alive 1, stream closed false, stream length 264 of 14216
+  1 s later: consumer threads alive 0, stream closed true, stream length 2640 of 14216

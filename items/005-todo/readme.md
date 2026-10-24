@@ -33,6 +33,7 @@ Open
 | [005-32](32-fix-failed-start-storage.md) | Fix | A start that throws leaves its storage running: its threads, its open files, and writes of what it appended, also into a database started after it; `BufferedStream.close()` hangs when the last flush fails (005-28) | open |
 | [005-33](33-crashed-creation.md) | Decide | A database whose creation crashed never starts: a clear error, create it again at start, or create it whole or not at all (005-28) | open |
 | [005-34](34-fix-transaction-info-position.md) | Fix | `Connection.transactionInfo()` reads at a wrong position for a value after a meta block in its record, 128 bytes too far; the read can close the storage (found in 005-30) | open |
+| [005-35](35-fix-stop-and-close.md) | Fix | `stop()` loses the transactions still in the write buffer (all of them in a quick run); `close()` returns at once after `stop()` or beside another `close()`; a writer that waits for room in the buffer waits for ever when the stream stops or fails | open |
 
 
 Closed
@@ -173,6 +174,10 @@ Files
   005-34, `transactionInfo()`'s wrong position after a meta block, found in
   005-30; its probe and runs in
   [34-fix-transaction-info-position/](34-fix-transaction-info-position/).
+* [35-fix-stop-and-close.md](35-fix-stop-and-close.md). 005-35, `stop()`
+  and `close()` do not close the database as their Javadoc says, from
+  Frans's note in `Db.close()`; its probes, the survey of the calls and
+  their runs in [35-fix-stop-and-close/](35-fix-stop-and-close/).
 
 Log
 ===
@@ -536,3 +541,19 @@ stream bytes. No change to `java/` for it.
 2026-10-24. 005-31 decided, by Frans ("005-31, it has my 'go'. But don't
 start the implementation now."): option A, refuse such a transaction before
 its go point. Not started; it is step 1 of item 007's plan (007-03).
+
+2026-10-24. Added 005-35, at Frans's request ("Investigate this further,
+then write this down as a fix item in 005."), by Claude (Opus 5.5, Claude
+Code), from Frans's note in `Db.close()`: both methods are meant to close
+the database properly, stop() without waiting. Probes on `685e895`: stop()
+loses what is still buffered (after 2,000 puts and a stop, a restart found
+0 of them in two runs of three; close() kept all); close() returns at once
+after stop() or beside another close(); a writer that waits for room in
+the buffer waits for ever when the stream stops or fails, so a failing
+disk hangs the database. Proposed: stop() starts the close in a thread of
+its own and close() waits for it; two questions for Frans. No change to
+`java/`.
+
+2026-10-24. 005-35, Frans's answers: no `Database.close()` in the Pub API
+for now ("Not now."); a transaction that runs when stop() is called
+completes and is written ("As you propose."). Not started.

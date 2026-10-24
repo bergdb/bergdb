@@ -1,0 +1,7 @@
+running. A database on a slow stream (each append 300 ms) with a 100 KB buffer: a put of 1 MB runs (it waits for the buffer), and stop() is called 100 ms into it.
+  stop() returned after 0.7 ms; the transaction was still running: true
+  the transaction still waits after 3 s, in:
+      at java.base/java.lang.Object.wait0(Native Method)
+      at java.base/java.lang.Object.wait(Object.java:391)
+      at java.base/java.lang.Object.wait(Object.java:353)
+      at bergdb.storage.BufferedStream.append(BufferedStream.java:439)
