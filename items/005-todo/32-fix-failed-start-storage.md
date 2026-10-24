@@ -1,7 +1,8 @@
 005-32. Fix: a start that throws leaves its storage running
 ==========================================================
 
-Status: open. Kind: fix. Created 2026-10-23.
+Status: open; Frans likes the proposal, and its implementation waits
+(2026-10-24). Kind: fix. Created 2026-10-23.
 
 Found on 2026-10-23 in 005-28, by Claude (Opus 5.5, Claude Code). Added
 at Frans's request ("Yes, make a new 005 entry."). The probe is in

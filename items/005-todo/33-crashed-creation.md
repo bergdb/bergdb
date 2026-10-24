@@ -1,7 +1,8 @@
 005-33. Decide: a database whose creation crashed
 ================================================
 
-Status: open; studied, for Frans to decide. Kind: decide. Created
+Status: open; studied; Frans likes the proposal, and its implementation
+waits (2026-10-24, "Frans, 2026-10-24" below). Kind: decide. Created
 2026-10-23.
 
 Found on 2026-10-23 in 005-28, by Claude (Opus 5.5, Claude Code). Frans:
@@ -224,6 +225,21 @@ Questions for Frans
    otherwise, so it may not matter.
 3. With B and no key: should a stream of only zero bytes, no longer than a
    creation, count as not created too?
+
+
+Frans, 2026-10-24
+-----------------
+
+"Let's wait with implementation. I like the proposals. Just one thing.
+BergDB must work with truly append-only storage, I guess we are making
+exceptions if we delete the stream. It may or may not be ok."
+
+B1 and B2 remove a stream's bytes; A and D leave the stream as it is; C
+needs a rename at the creation, which truly append-only storage may not
+offer either. To study when this is taken up: whether such a stream can
+be repaired by appending only, with the rest of the first meta block, a
+new primordial transaction after the failed one, and a startup that steps
+over failed transactions before the first committed one.
 
 
 Done when
