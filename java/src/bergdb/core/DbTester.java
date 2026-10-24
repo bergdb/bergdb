@@ -2102,4 +2102,218 @@ public class DbTester {
         assertEquals("b0", DbUtil.getString(db, "/b"));
         db.stop();
     }
+    
+    // ======== stop() and close(), bergdb 005-35 ========
+    
+    /**
+     * Regression test for bergdb 005-35: stop() lost the transactions that were still in the
+     * write buffer, all of them in a quick run. Now it writes them in a thread of its own:
+     * once that thread has ended, the stream holds every transaction that returned, and it
+     * is closed.
+     */
+    @Nano
+    public static void testStopWritesAll() throws Exception {
+        MemoryStream s = new MemoryStream();
+        Db db = Db.builder().testSetup(s).start();
+        for (int i = 0; i < 300; i++) {
+            db.execute(db.trans().put("/k" + i, "v" + i).build());
+        }
+        long length = db.getStreamLength();
+        Set<Thread> before = closeThreads();
+        db.stop();
+        joinNew(before);
+        Assert.assertEquals("all written", length, s.getLength());
+        DbTesterFailure.assertClosed(s);
+        
+        Db db2 = Db.builder().testSetup(s.copy()).start();
+        for (int i = 0; i < 300; i++) {
+            Assert.assertEquals("v" + i, DbUtil.getString(db2, "/k" + i));
+        }
+        db2.close();
+    }
+    
+    /**
+     * bergdb 005-35: a transaction that runs when stop() is called, here one that waits for
+     * room in the buffer of a slow stream, completes and is written; stop() returns at once.
+     * Before, stop() closed the storage under it, and it waited for ever.
+     */
+    @Nano("f")
+    public static void testStopWithRunningTransaction() throws Exception {
+        final SlowStream s = new SlowStream(20);
+        DbBuilder b = Db.builder();
+        b.testSetupExceptStream();
+        b.stream("main", s, 100 * 1000, 10);
+        final Db db = b.start();
+        db.sync(SyncLevel.STRONG);
+        final byte[] big = new byte[400 * 1000];
+        Thread w = new Thread() {
+            public void run() {
+                db.execute(db.trans().put("/big", big).build());
+            }
+        };
+        w.start();
+        while (s.appends.get() < 2) {           // It waits for room by now.
+            Thread.sleep(1);
+        }
+        Set<Thread> before = closeThreads();
+        long t0 = System.nanoTime();
+        db.stop();
+        Assert.assertTrue("stop() returns at once", System.nanoTime() - t0 < 1000L * 1000 * 1000);
+        w.join(30 * 1000);
+        Assert.assertFalse("the transaction has ended", w.isAlive());
+        joinNew(before);
+        Assert.assertTrue("closed", s.closed);
+        
+        Db db2 = Db.builder().testSetup(s.inner.copy()).start();
+        Assert.assertEquals("written", big.length, DbUtil.get(db2, "/big").length);
+        db2.close();
+    }
+    
+    /**
+     * bergdb 005-35, Frans's note in close(): close() after stop(), and two close() at once,
+     * returned at once, with the stream open and bytes not yet written. Now each returns only
+     * when the stream is closed and holds everything.
+     */
+    @Nano("f")
+    public static void testCloseWaits() throws Exception {
+        for (int c = 0; c < 2; c++) {
+            final SlowStream s = new SlowStream(100);
+            DbBuilder b = Db.builder();
+            b.testSetupExceptStream();
+            b.stream("main", s, 100 * 1000, 10);
+            final Db db = b.start();
+            db.sync(SyncLevel.STRONG);
+            for (int i = 0; i < 100; i++) {
+                db.execute(db.trans().put("/k" + i, "v" + i).build());
+            }
+            final long length = db.getStreamLength();
+            final String[] seen = new String[2];
+            Thread[] closers = new Thread[2];
+            for (int k = 0; k < 2; k++) {
+                final int kk = k;
+                closers[k] = new Thread() {
+                    public void run() {
+                        db.close();
+                        seen[kk] = "closed " + s.closed + ", length " + s.getLength();
+                    }
+                };
+            }
+            if (c == 0) {
+                db.stop();                      // close() after stop()
+                closers[0].start();
+                closers[0].join(30 * 1000);
+                seen[1] = seen[0];
+            } else {
+                closers[0].start();             // two close() at once
+                Thread.sleep(20);
+                closers[1].start();
+                closers[0].join(30 * 1000);
+                closers[1].join(30 * 1000);
+            }
+            for (int k = 0; k < 2; k++) {
+                Assert.assertEquals("close " + c + "/" + k, "closed true, length " + length, 
+                        seen[k]);
+            }
+        }
+    }
+    
+    /**
+     * bergdb 005-35: a writer that waits for room in the buffer waited for ever when a flush
+     * failed (a failing disk hung the database, holding the write lock). Now it throws, the
+     * database fails, and the next transaction is refused.
+     */
+    @Nano
+    public static void testWriterWaitingForRoomAfterFailedFlush() throws Exception {
+        final DbTesterFailure.FaultStream s = new DbTesterFailure.FaultStream();
+        DbBuilder b = Db.builder();
+        b.testSetupExceptStream();
+        b.stream("main", s, 100 * 1000, 10);
+        final Db db = b.start();
+        db.sync(SyncLevel.STRONG);
+        s.failAppends = true;
+        Throwable thrown = DbTesterFailure.within(10 * 1000, new Runnable() {
+            public void run() {
+                db.execute(db.trans().put("/big", new byte[1000 * 1000]).build());
+            }
+        });
+        Assert.assertTrue("the writer fails the database: " + thrown, 
+                thrown instanceof DbFailedException);
+        Throwable next = DbTesterFailure.within(10 * 1000, new Runnable() {
+            public void run() {
+                db.execute(db.trans().put("/small", "x").build());
+            }
+        });
+        Assert.assertTrue("the next is refused: " + next, next instanceof DbFailedException);
+        db.close();
+    }
+    
+    /** The threads of stop()'s closes that are alive (bergdb 005-35). */
+    public static Set<Thread> closeThreads() {
+        Set<Thread> result = new java.util.HashSet<Thread>();
+        for (Thread t : Thread.getAllStackTraces().keySet()) {
+            if (t.getName().startsWith("Db-close-") && t.isAlive()) {
+                result.add(t);
+            }
+        }
+        return result;
+    }
+    
+    /** Joins, for up to 30 s each, the close threads that were not alive 'before'. */
+    public static void joinNew(Set<Thread> before) throws InterruptedException {
+        Set<Thread> now = closeThreads();
+        now.removeAll(before);
+        for (Thread t : now) {
+            t.join(30 * 1000);
+            Assert.assertFalse("the close has ended", t.isAlive());
+        }
+    }
+    
+    /** A MemoryStream whose appends take 'delayMs' each: a slow disk (bergdb 005-35). */
+    static class SlowStream implements AppendOnlyStream {
+        final MemoryStream inner = new MemoryStream();
+        final int delayMs;
+        final java.util.concurrent.atomic.AtomicInteger appends = 
+                new java.util.concurrent.atomic.AtomicInteger();
+        volatile boolean closed = false;
+        
+        SlowStream(int delayMs) {
+            this.delayMs = delayMs;
+        }
+        
+        public long getLength() {
+            return inner.getLength();
+        }
+        
+        public long getFirstPos() {
+            return inner.getFirstPos();
+        }
+        
+        public void read(long position, byte[] dest, int destOffset, int length) 
+                throws IOException {
+            inner.read(position, dest, destOffset, length);
+        }
+        
+        public void append(byte[] source, int sourceOffset, int length) throws IOException {
+            try {
+                Thread.sleep(delayMs);
+            } catch (InterruptedException e) {
+                throw new IOException("interrupted");
+            }
+            inner.append(source, sourceOffset, length);
+            appends.incrementAndGet();
+        }
+        
+        public void pretruncate(long position) throws IOException {
+            inner.pretruncate(position);
+        }
+        
+        public void seekFirstPos(long position) throws IOException {
+            inner.seekFirstPos(position);
+        }
+        
+        public void close() {
+            closed = true;
+            inner.close();
+        }
+    }
 }

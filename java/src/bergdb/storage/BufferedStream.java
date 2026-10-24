@@ -451,6 +451,13 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             while (length > 0) {
                 int available = availableBufferSize();
                 if (available < length && available < tenPercentOfBufferCapacity) {
+                    // The thread that makes room has stopped: after stop() or a failed flush
+                    // (2026-10-24, bergdb 005-35). The writer waited here for ever, with the
+                    // database's write lock, so a failing disk hung the database.
+                    if (stop) {
+                        throw new IOException("The stream has stopped while an append waited "
+                                + "for room in its buffer.", failure);
+                    }
                     try {
                         wait(); // wait for consumer to write to output stream
                     } catch (InterruptedException e) {
@@ -600,7 +607,8 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
 
     /**
      * Eventually stops thread and closes stream. This method returns
-     * immediately.
+     * immediately. What is still buffered is not written; close() writes it. A writer that
+     * waits for room in the buffer gets an IOException (bergdb 005-35).
      */
     public void stop() {
         synchronized (this) {

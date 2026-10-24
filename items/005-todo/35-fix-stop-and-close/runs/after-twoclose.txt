@@ -1,0 +1,3 @@
+twoclose. A database on a slow stream (each append 300 ms): puts, then close() in thread A and, 50 ms later, in thread B.
+  A: close() returned after 603.9 ms; stream closed true, length 14216 of 14216
+  B: close() returned after 549.6 ms; stream closed true, length 14216 of 14216

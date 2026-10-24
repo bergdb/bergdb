@@ -1,0 +1,3 @@
+running. A database on a slow stream (each append 300 ms) with a 100 KB buffer: a put of 1 MB runs (it waits for the buffer), and stop() is called 100 ms into it.
+  stop() returned after 1.5 ms; the transaction was still running: true
+  the transaction returned normally, 8534.0 ms after stop() returned

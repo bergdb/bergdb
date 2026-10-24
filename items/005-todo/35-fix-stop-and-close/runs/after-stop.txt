@@ -1,0 +1,10 @@
+stop. 2000 puts of one key each, no sync, then stop() or close(); 2 s later a restart counts the keys in the files. Defaults: 10 MB buffer, 20 ms.
+  Db.stop(): stream length at the call 303784, in the files 2 s later 303784; after a restart 2000 of 2000 keys
+  Db.close(): stream length at the call 303784, in the files 2 s later 303784; after a restart 2000 of 2000 keys
+  Database.stop(): stream length at the call (not in the Pub API), in the files 2 s later 293144; after a restart 2000 of 2000 keys
+  Db.stop(): stream length at the call 303784, in the files 2 s later 303784; after a restart 2000 of 2000 keys
+  Db.close(): stream length at the call 303784, in the files 2 s later 303784; after a restart 2000 of 2000 keys
+  Database.stop(): stream length at the call (not in the Pub API), in the files 2 s later 293144; after a restart 2000 of 2000 keys
+  Db.stop(): stream length at the call 303784, in the files 2 s later 303784; after a restart 2000 of 2000 keys
+  Db.close(): stream length at the call 303784, in the files 2 s later 303784; after a restart 2000 of 2000 keys
+  Database.stop(): stream length at the call (not in the Pub API), in the files 2 s later 293144; after a restart 2000 of 2000 keys

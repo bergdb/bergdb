@@ -48,16 +48,20 @@ public interface Database {
     public StartupInfo getStartupInfo();
 
     /**
-     * <p>Stops the database - requests that resources allocated by this Database are eventually
-     * released. This method returns quickly. It does not wait until resources have been released;
-     * this will happen asynchronously in the background. Typically, resources are released within
-     * one second after this method has been called.
+     * <p>Stops the database and closes it properly, without waiting (bergdb 005-35): no
+     * transaction or read starts after this method, and a transaction that runs completes.
+     * Every transaction that has returned is then written and the files are closed, in the
+     * background, typically within a second, also when the program returns from main right
+     * after this method. This method returns at once. Until 005-35, what was still buffered
+     * was lost.
      * </p>
      * 
-     * <p>The user of this class should call sync() before stop() when appropriate; this method does
-     * not call sync(). After this method has been called this Database object must not be used
-     * anymore. This method is OK to call multiple times from multiple unsynchronized threads; only
-     * the first call to this method has any effect (idempotent method).
+     * <p>It does not force the files to the device. Call sync() before stop() when the
+     * transactions must be durable, as sync() defines it, when stop() returns;
+     * sync(SyncLevel.STRONG) forces them to the device. After this method has been called
+     * this Database object must not be used anymore. This method is OK to call multiple times
+     * from multiple unsynchronized threads; only the first call to this method has any
+     * effect (idempotent method).
      * </p>
      * 
      * <p>It is not a requirement that stop() is called once the Database is not longer used. If there

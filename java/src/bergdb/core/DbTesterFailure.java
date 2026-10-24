@@ -489,10 +489,12 @@ public class DbTesterFailure {
     }
 
     /**
-     * A read that runs while the database stops does not fail it: stop() closes the storage
-     * under running reads ("Storage is closing."). The read throws the StreamIoException as
-     * it is, and the database is stopping, not failed. Here the scan stops the database
-     * after its first KV and then loads a node that eviction has released.
+     * A read that runs while the database stops does not fail it: the close of the storage
+     * runs under running reads ("Storage is closing."). The read throws the StreamIoException
+     * as it is, and the database is stopping, not failed. Here the scan closes the database
+     * after its first KV and then loads a node that eviction has released. With close(),
+     * which has closed the storage when it returns; stop() closes it in the background since
+     * bergdb 005-35, so the load could come before it.
      */
     @Nano
     public static void testReadDuringStop() {
@@ -509,7 +511,7 @@ public class DbTesterFailure {
             public int handleKvt(Kvt kvt) {
                 if (first) {
                     first = false;
-                    db.stop();
+                    db.close();
                 }
                 return CONTINUE;
             }

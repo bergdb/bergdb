@@ -1,0 +1,3 @@
+fullfail. A database with a 100 KB buffer on a stream whose appends fail after 50 KB: a put of 1 MB, which waits for room in the buffer; then a put of 10 bytes in another thread.
+  the put of 1 MB threw bergdb.pub.util.DbFailedException: The transaction at time 2 failed after it began (the cause); nothing is undone. The database takes no more transactions or reads and must be restarted: the restart rebuilds it from the stream.
+  the put of 10 bytes threw bergdb.pub.util.DbFailedException: Cannot call execute(): the database failed (the cause) and must be restarted.

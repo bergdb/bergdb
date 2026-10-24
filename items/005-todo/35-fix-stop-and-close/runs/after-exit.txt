@@ -1,0 +1,4 @@
+exit. A child JVM puts 2000 keys without a sync, calls Database.stop() and returns from main; then a restart counts the keys.
+  child exited with 0; after a restart 2000 of 2000 keys
+  child exited with 0; after a restart 2000 of 2000 keys
+  child exited with 0; after a restart 2000 of 2000 keys

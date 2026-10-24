@@ -12,6 +12,7 @@ import bergdb.common.EventToWaitFor;
 import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.DbStoppingException;
+import bergdb.core.DbTester;
 import bergdb.core.DbTesterFailure;
 import bergdb.core.SyncLevel;
 import bergdb.nanotest.Assert;
@@ -1427,6 +1428,78 @@ public class PubTester {
         if (files >= 0) {
             Assert.assertTrue("open files " + openFiles() + ", before " + files, 
                     openFiles() <= files);
+        }
+    }
+    
+    /**
+     * Regression test for bergdb 005-35: Database.stop() lost the transactions still in the
+     * write buffer, all of them in a quick run. Now, once its close has ended, the stream
+     * holds every one, and it is closed.
+     */
+    @Nano
+    private static void testStopWritesAll() throws Exception {
+        MemoryStream m = new MemoryStream();
+        Database d = ((DatabaseBuilderImp) Factory.database()).mainStream(m).start();
+        Connection c = d.connection();
+        for (int i = 0; i < 300; i++) {
+            c.put("/k" + i, "v" + i);
+        }
+        Set<Thread> before = DbTester.closeThreads();
+        d.stop();
+        DbTester.joinNew(before);
+        DbTesterFailure.assertClosed(m);
+        
+        Database d2 = ((DatabaseBuilderImp) Factory.database()).mainStream(m.copy()).start();
+        for (int i = 0; i < 300; i++) {
+            Assert.assertEquals("v" + i, d2.connection().get("/k" + i, String.class));
+        }
+        ((DatabaseImp) d2).getDb().close();
+    }
+    
+    /**
+     * bergdb 005-35: a program that called Database.stop() and returned from main kept only
+     * what had been flushed, as the storage threads are daemons. Now stop()'s close runs in
+     * a thread that is not, and the JVM ends after it: the files hold all transactions.
+     */
+    @Nano("f")
+    private static void testStopThenReturnFromMain(TestEnvironment env) throws Exception {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File tmp = env.createTempDir();
+        File dir = new File(tmp, "db");
+        File out = new File(tmp, "child.txt");
+        String javaBin = System.getProperty("java.home") + "/bin/java";
+        String cp = System.getProperty("java.class.path");
+        Process p = new ProcessBuilder(javaBin, "-cp", cp, StopAndReturn.class.getName(), 
+                dir.getPath()).redirectErrorStream(true).redirectOutput(out).start();
+        Assert.assertTrue("the child ends", p.waitFor(60, java.util.concurrent.TimeUnit.SECONDS));
+        String output = new String(Util.fileToBytes(out.getPath()), "UTF-8");
+        Assert.assertEquals("the child's exit, " + output, 0, p.exitValue());
+        
+        Database d = Factory.database().dir(dir.getPath()).start();
+        Connection c = d.connection();
+        int found = 0;
+        for (int i = 0; i < StopAndReturn.N; i++) {
+            if (c.get("/k" + i, String.class) != null) {
+                found++;
+            }
+        }
+        ((DatabaseImp) d).getDb().close();
+        Assert.assertEquals("the keys in the files", StopAndReturn.N, found);
+    }
+    
+    /** testStopThenReturnFromMain's child: puts, Database.stop(), and returns from main. */
+    public static class StopAndReturn {
+        static final int N = 2000;
+        
+        public static void main(String[] args) {
+            Database d = Factory.database().dir(args[0]).start();
+            Connection c = d.connection();
+            for (int i = 0; i < N; i++) {
+                c.put("/k" + i, "v" + i);
+            }
+            d.stop();
         }
     }
     

@@ -133,6 +133,14 @@ public class Db {
      */
     private volatile Throwable failure = null;
     
+    /**
+     * The close of the storage, which stop() starts in a thread of its own and close() waits
+     * for (2026-10-24, bergdb 005-35): begun and done, under closeLock. See closeStorage().
+     */
+    private final Object closeLock = new Object();
+    private boolean closeBegun = false;
+    private boolean closeDone = false;
+    
     private final ExecuteData x;
     private final Aux aux = new Aux();
     
@@ -539,9 +547,15 @@ public class Db {
      * start(). StorageManager's close needs neither writeLock nor readSync.
      */
     private void closeAfterFailedStart(Throwable failure) {
+        synchronized (closeLock) {
+            closeBegun = true;      // A later stop() or close() has nothing to do.
+        }
         try {
-            storageManager.closeAndThrow();
-        } catch (IOException | RuntimeException | Error e) {
+            IOException e = closeStorage();
+            if (e != null && e != failure) {
+                failure.addSuppressed(e);
+            }
+        } catch (RuntimeException | Error e) {
             if (e != failure) {
                 failure.addSuppressed(e);
             }
@@ -1051,63 +1065,111 @@ public class Db {
     }
 
     /**
-     * <p>Calling this method is a request for stopping the database to not allow
-     * any more get/execute operations on it and to eventually release resources
-     * held by this object.
-     * This method returns quickly, it does not wait for threads to finish, 
-     * storage streams to flush and files to be closed. It only request a release
-     * of such resources in the near future. Typically, resources will be released
-     * within a second after this method has been called.
-     * It is safe to call this method multiple times and from different threads.
-     * If database has been stopped already, a call to this method does nothing.</p>
+     * <p>Stops the database and closes it properly, without waiting (2026-10-24, bergdb
+     * 005-35). No transaction or read starts after this method; a transaction that runs
+     * completes, and is written. A thread of its own then writes what is buffered, closes
+     * the storage streams and their files, and ends their threads, typically within a
+     * second. That thread is not a daemon, so a program that returns from main after stop()
+     * still writes all it had. close() waits for it.</p>
      * 
-     * <p>When this method returns, it is guaranteed that no write operation is running or
-     * will be started, and no read operation will be started (but could be running).</p>
+     * <p>Every transaction that has returned is written, as with close(); neither forces
+     * the files to the device, as sync(SyncLevel.STRONG) does. This method returns at once.
+     * It is safe to call it several times and from different threads; only the first call
+     * of stop() or close() has an effect.</p>
+     * 
+     * <p>Until 005-35, stop() dropped what was still buffered (all of a quick run's
+     * transactions, unless a sync came first), did not wait for a running transaction,
+     * and a writer that waited for room in the buffer waited for ever.</p>
      */
     public void stop() {
         // Under readSync, as a failure (setFailed(), bergdb 005-30): no failure comes after it.
         synchronized (readSync) {
-            if (state == DbState.STOPPING) {
-                return;
-            }
-        
             state = DbState.STOPPING;
         }
-        storageManager.stop();
+        synchronized (closeLock) {
+            if (closeBegun) {
+                return;
+            }
+            closeBegun = true;
+        }
+        Thread closer = new Thread(new Runnable() {
+            public void run() {
+                closeStorage();
+            }
+        });
+        closer.setName("Db-close-" + closer.getId());
+        closer.setDaemon(false);
+        closer.start();
     }
     
     /**
-     * Stops the database, flushes the storage streams and releases resources.
-     * The method closes open files and network sockets and waits until its done
-     * before it returns.
+     * Stops the database as stop() does, and waits until it is closed: every transaction
+     * that has returned is written, the storage streams and their files are closed, and
+     * their threads have ended. Also when stop() or another close() began the close; then
+     * it returned at once (2026-10-24, bergdb 005-35, Frans's note "26102424-BUG1-close").
+     * Called within a transaction (from an action or a listener, which hold the write
+     * lock), it closes the storage at once, as before: a close that another call began
+     * waits for that lock.
      */
     public void close() {
-        // 26102424-BUG1-close. Frans noted.
-        // Smells like a bug. If close is called when DbState is STOPPING, 
-        // the caller likely assumes the database will wait until things are closed.
-        //
-        
-        synchronized (readSync) {};
-        
-        if (state == DbState.STOPPING) {
-            return;
+        // Under readSync, as a failure (setFailed(), bergdb 005-30).
+        synchronized (readSync) {
+            state = DbState.STOPPING;
         }
+        boolean mine;
+        synchronized (closeLock) {
+            mine = !closeBegun;
+            closeBegun = true;
+        }
+        if (mine) {
+            closeStorage();
+        } else if (Thread.holdsLock(writeLock)) {
+            storageManager.close();
+        } else {
+            waitUntilClosed();
+        }
+    }
         
-        synchronized (this.writeLock) {
-            // Under readSync, as a failure (setFailed(), bergdb 005-30).
-            synchronized (readSync) {
-                if (state == DbState.STOPPING) {
-                    return;
-                }
-
-                state = DbState.STOPPING;
+    /**
+     * The one close of the database (2026-10-24, bergdb 005-35), for stop(), close() and a
+     * start that throws: takes the write lock, so that a transaction that runs completes and
+     * is written (no transaction starts after it, as the state is STOPPING), then closes the
+     * storage, which writes what is buffered, closes the streams and ends their threads.
+     * 
+     * @return The first failure of a stream's close, such as a failed flush, or null.
+     */
+    private IOException closeStorage() {
+        try {
+            synchronized (writeLock) {
+                // A transaction that runs has ended.
+            }
+            storageManager.closeAndThrow();
+            return null;
+        } catch (IOException e) {
+            return e;
+        } finally {
+            synchronized (closeLock) {
+                closeDone = true;
+                closeLock.notifyAll();
             }
         }
+    }
             
-        // Here, no write op is running or will be started.
-        // No read op (get) will be started, but may be running.
-        
-        storageManager.close();
+    /** Waits, without being interrupted, until closeStorage() is done (bergdb 005-35). */
+    private void waitUntilClosed() {
+        boolean interrupted = false;
+        synchronized (closeLock) {
+            while (!closeDone) {
+                try {
+                    closeLock.wait();
+                } catch (InterruptedException e) {
+                    interrupted = true;
+                }
+            }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
     }
     
     /**
@@ -1705,8 +1767,9 @@ public class Db {
      * (transactionCompleted()); one that fails first fails the database, and its
      * DbFailedException comes here and is returned as it is, as is that of a read in the
      * transaction that fails on the storage (failOnStorage()). While the database is stopping,
-     * a failure is the stop's (stop() closes the storage without the write lock, so an append
-     * of a running transaction can fail) and is thrown as it is, as before.</p>
+     * a failure is the stop's and is thrown as it is, as before: close() called within a
+     * transaction closes the storage under it, so its append can fail (since bergdb 005-35,
+     * the close of stop() and close() waits for a running transaction).</p>
      * 
      * @return The exception for the caller to throw: a DbFailedException, or the exception
      *      itself while the database is stopping.

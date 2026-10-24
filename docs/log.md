@@ -1031,3 +1031,18 @@ builder's streams, on a failure after or before the `Db` is built;
 `BufferedStream.close()` waits for its thread and throws the failure; any
 failure of a flush stops the stream and tells the listener. Tests;
 `before-commit.sh` passes.
+
+2026-10-24. 005-35 done, by Claude (Opus 5.5, Claude Code), as Frans
+decided: `Db.stop()` dropped what was still in the write buffer (all of a
+quick run's transactions, unless a sync came first), `close()` returned at
+once after `stop()` or beside another `close()`, and a writer that waited
+for room in the buffer waited for ever when the stream stopped or failed,
+so a failing disk hung the database. Now `stop()` starts one close, in a
+thread of its own that is not a daemon, and returns at once; `close()`
+runs or waits for the same close. The close takes the write lock, so a
+transaction that runs completes and is written, then writes what is
+buffered, closes the streams and ends their threads; a program that
+returns from `main` after `stop()` keeps all its transactions. A waiting
+writer gets an `IOException` when the stream stops or fails. The Pub API's
+`Database.stop()` does the same; it has no `close()`. Tests;
+`before-commit.sh` and the four level scripts pass.

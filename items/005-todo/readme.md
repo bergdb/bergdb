@@ -31,7 +31,6 @@ Open
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
 | [005-31](31-fix-take-blocked.md) | Fix | A transaction whose dirty index nodes do not fit in one record stops the startup pos for good: the startup section, startup, D and the stream grow without end (007-02) | open |
 | [005-33](33-crashed-creation.md) | Decide | A database whose creation crashed never starts: a clear error, create it again at start, or create it whole or not at all (005-28) | open |
-| [005-35](35-fix-stop-and-close.md) | Fix | `stop()` loses the transactions still in the write buffer (all of them in a quick run); `close()` returns at once after `stop()` or beside another `close()`; a writer that waits for room in the buffer waits for ever when the stream stops or fails | open |
 | [005-38](38-writes-at-scale.md) | Investigate | Writes at scale: the stream grows to about 1.1 KB per key at 100M random keys, and loads into an index larger than the budget slow to under 100 puts a second on a slow disk (004-02) | open |
 
 
@@ -40,6 +39,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-35](35-fix-stop-and-close.md) | Fix | `stop()` lost the transactions still in the write buffer; `close()` returned at once after `stop()` or beside another `close()`; a writer that waited for room in the buffer waited for ever; now `stop()` starts one close that writes everything, in a thread that is not a daemon, and `close()` waits for it | done | 2026-10-24 |
 | [005-32](32-fix-failed-start-storage.md) | Fix | A start that threw left its storage running: its threads, its open files, and writes of what it appended, also into a database started after it; `BufferedStream.close()` hung when the last flush failed; now a start that throws closes its storage before the exception leaves (005-28) | done | 2026-10-24 |
 | [005-34](34-fix-transaction-info-position.md) | Fix | `Connection.transactionInfo()` read at a wrong position for a value after a meta block in its record, and, after a restart, for a value rerun at startup; now a get gives its transaction's position, `getTrans` refuses a position that cannot start one, and a format error there fails the database (005-30) | done | 2026-10-24 |
 | [005-37](37-fix-memory-stream-checks.md) | Fix | `MemoryStream` took a negative length to `append` and a `pretruncate` past its length, after some of which it took no more appends; now it refuses both, and `AppendOnlyStream`'s Javadoc says what the streams do (005-29) | done | 2026-10-24 |
@@ -84,8 +84,8 @@ before 005-05's decision on publishing, as it concerns the Pub API; 005-12
 is done. 005-27, 005-28 and 005-29, the fixes found in 005-11, are done.
 005-30 is done, and so is 005-34, found in it. 005-31 before item
 007's deadline for `TransSeq.take` (007-01, D1), which needs it. 005-32
-is done, which 005-33's change needed; 005-33 waits for Frans. 005-36 and
-005-37 are done.
+is done, which 005-33's change needed; 005-33 waits for Frans. 005-35,
+005-36 and 005-37 are done.
 
 
 Files
@@ -180,8 +180,9 @@ Files
   [34-fix-transaction-info-position/](34-fix-transaction-info-position/).
 * [35-fix-stop-and-close.md](35-fix-stop-and-close.md). 005-35, `stop()`
   and `close()` do not close the database as their Javadoc says, from
-  Frans's note in `Db.close()`; its probes, the survey of the calls and
-  their runs in [35-fix-stop-and-close/](35-fix-stop-and-close/).
+  Frans's note in `Db.close()`; done; its probes, the survey of the calls
+  and their runs, before and after the fix, in
+  [35-fix-stop-and-close/](35-fix-stop-and-close/).
 * [36-fix-test-crash3.md](36-fix-test-crash3.md) and
   [37-fix-memory-stream-checks.md](37-fix-memory-stream-checks.md).
   005-36 and 005-37, found in 005-29: `DbTester.testCrash3`, which tests
@@ -619,3 +620,14 @@ flush, where an `Error` in a flush now fails the stream as an
 left. Its race now ends the same way every time, but not as "Done when"
 expected: the failed start writes the replica's copy to the main, which
 then holds two histories (005-11). `before-commit.sh` passes.
+
+2026-10-24. 005-35 done, at Frans's request, by Claude (Opus 5.5, Claude
+Code), as proposed and with his answers: `stop()` starts one close of the
+database, in a thread of its own that is not a daemon, and `close()` waits
+for it, also after `stop()` or beside another `close()`. The close takes
+the write lock, so a transaction that runs completes and is written, then
+writes what is buffered and closes the streams. A writer that waits for
+room in the buffer gets an `IOException` when the stream stops or fails.
+The probes again: every key after `stop()`, also when the program returns
+from `main` after it. Tests; `before-commit.sh` and the four level scripts
+pass.

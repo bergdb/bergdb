@@ -47,7 +47,9 @@ public class StopCloseProbe {
         else if (probe.equals("exit")) exit(root);
         else if (probe.equals("exit-child")) exitChild(root);
         else throw new IllegalArgumentException(probe);
-        System.exit(0);
+        // The child returns from main (2026-10-24, the fix of 005-35): System.exit() does not
+        // wait for stop()'s close, which is not a daemon thread.
+        if (!probe.equals("exit-child")) System.exit(0);
     }
 
     // ======== Helpers ========
@@ -84,9 +86,15 @@ public class StopCloseProbe {
 
     /** Joins t for up to 3 s; prints where it waits if it is still alive. */
     static void await(Thread t, String what) throws InterruptedException {
-        t.join(3000);
+        await(t, what, 3);
+    }
+
+    /** Joins t for up to 'seconds'; prints where it waits if it is still alive. */
+    static void await(Thread t, String what, int seconds) throws InterruptedException {
+        t.join(seconds * 1000L);
         if (t.isAlive()) {
-            StringBuilder sb = new StringBuilder("  " + what + " still waits after 3 s, in:");
+            StringBuilder sb = new StringBuilder("  " + what + " still waits after " + seconds
+                    + " s, in:");
             StackTraceElement[] st = t.getStackTrace();
             for (int i = 0; i < Math.min(4, st.length); i++) sb.append("\n      at ").append(st[i]);
             System.out.println(sb);
@@ -256,7 +264,9 @@ public class StopCloseProbe {
         long stopped = System.nanoTime();
         System.out.printf("  stop() returned after %.1f ms; the transaction was still running: %s%n",
                 (stopped - t0) * 1e-6, w.isAlive());
-        await(w, "the transaction");
+        // 30 s (2026-10-24, after the fix of 005-35): the put takes about 6 s now, 20
+        // flushes of 50 KB at 300 ms; with 3 s it was still running.
+        await(w, "the transaction", 30);
         if (!w.isAlive()) {
             System.out.printf("  the transaction %s, %.1f ms after stop() returned%n", result[0],
                     (end[0] - stopped) * 1e-6);
@@ -337,6 +347,6 @@ public class StopCloseProbe {
         Connection c = d.connection();
         for (int i = 0; i < N; i++) c.put("/k/" + i, VALUE);
         d.stop();
-        // main returns; System.exit(0) in main()
+        // main returns
     }
 }
