@@ -45,3 +45,19 @@ yet. s1 was looked at read only (hardware, load, free disk).
 OpenJDK 27 on s1 (`/opt/bergdb-bench`), wrote the tools (ScaleBench, DiskBaseline, the
 aging option of IndirectionBench) and started the runs: part A's first session on s1 at
 10:24.
+
+2026-10-23. 004-02's runs: s1 from 10:24 (parts A, B, C, then D at 0.1M to 10M keys; the
+30M load stopped at 21:53 after 9 hours at 18.46M keys, under 100 puts a second); F53 from
+17:03 to 21:51, once the other sessions were idle (the quiet rules changed at 14:10 and
+14:40, see 004-02 section 4). Results in 004-02 section 10: in memory a get grows by about
+0.5 µs per tenfold (0.38 µs at 0.1M keys, 1.92 at 50M on F53); from s1's disk 0.37 to 0.72
+ms; the worst case is the sweep (0.5 s to 266 s); G1's evacuation puts handles next to their
+objects.
+
+2026-10-23 evening. On s1: reads of the stopped 30M load (its first 18.4M keys; p50 0.67 to
+0.88 ms from the device), the repeats, part A's second session. A cold-cache startup takes
+minutes on s1 (175 to 194 s at 10M keys): `DbStarter.linkD` reads one header per pointer of
+D (004-02, 10.5.8). Part A's third session runs at 08:00 on 2026-10-24.
+
+2026-10-24. 004-02 done: part A's third session on s1 (08:00 to 08:35; one-thread figures
+out of cache vary by up to 14 percent between the three sessions), s1's databases deleted.

@@ -1,0 +1,4 @@
+[  190.1 s] opened data/key24-10000000: 10000000 keys, key24, budget 133000000 bytes; startup 189.65 s, resident 61 MB
+[  190.1 s] two clock reads cost 63.0 ns; heap 629 MB; 2 CPUs
+[  190.4 s] at most: heap used 217 MB, resident 61 MB, RSS 713 MB; eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 133000000 bytes, low 99750000; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most
+SCALEBENCH OK

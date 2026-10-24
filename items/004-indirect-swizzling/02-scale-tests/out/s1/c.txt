@@ -1,0 +1,7 @@
+made /opt/bergdb-bench/data/disk.bin: 8.0 GB in 50.7 s
+DiskBaseline: /opt/bergdb-bench/data/disk.bin, 8.0 GB, block size 4096, Linux amd64, 27
+direct  4096 B, 1 thread :    27740 reads in 15.0 s,     1850 reads/s,     7.6 MB/s; latency us: mean 538.4, p50 450.1, p90 571.9, p99 2291.0, p99.9 13964.8, max 41728.0
+direct  4096 B, 8 threads:   213645 reads in 15.0 s,    14247 reads/s,    58.4 MB/s; latency us: mean 560.9, p50 423.8, p90 597.8, p99 3137.9, p99.9 19185.3, max 57801.8
+direct 16384 B, 1 thread :    24794 reads in 15.0 s,     1653 reads/s,    27.1 MB/s; latency us: mean 604.4, p50 493.9, p90 637.9, p99 2845.9, p99.9 17556.6, max 47114.1
+direct 16384 B, 8 threads:   210624 reads in 15.0 s,    14043 reads/s,   230.1 MB/s; latency us: mean 568.9, p50 441.8, p90 595.2, p99 2967.8, p99.9 23344.1, max 48420.2
+cached  4096 B, 1 thread :  4000261 reads in 5.0 s,   799993 reads/s,  3276.8 MB/s; latency us: mean 0.8, p50 0.7, p90 1.0, p99 1.4, p99.9 13.1, max 135.0

@@ -16,6 +16,7 @@ import java.lang.management.ThreadMXBean;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -54,7 +55,9 @@ import bergdb.stream.FileStream;
  *         30, infinite retention, startup distance sb.sd. With sb.budget 0 nothing is evicted
  *         (regime M) and the heap per key is measured after the load. Then the get phases
  *         run in the same JVM. A marker file in sb.dir keeps the keys, the key type and the
- *         last transaction time for mode get.
+ *         last transaction time for mode get, and the keys loaded: all, or (written by hand
+ *         for a load that was stopped) the first that many of the load order, the only keys
+ *         mode get then asks for.
  *   get   opens the database in sb.dir with the capacity controller's budget sb.budget
  *         (bytes; 0: no eviction) and runs the get phases. With sb.warmos=1 it first reads
  *         the stream's files once, so that the OS file cache holds them (regime C).
@@ -122,6 +125,8 @@ public class ScaleBench {
     final String mode = prop("mode", "get");
     final File dir = new File(prop("dir", "build/scale"));
     int keys = Integer.parseInt(prop("keys", "1000000"));
+    int loaded = keys;          // keys loaded, the first of the load order (marker; see openExisting)
+    BitSet present;             // the loaded keys when not all are (a load that was stopped)
     String keytype = prop("keytype", "key24");
     final long budget = Long.parseLong(prop("budget", "0"));
     final int sd = Integer.parseInt(prop("sd", "10000000"));
@@ -134,6 +139,7 @@ public class ScaleBench {
     final double timedSec = Double.parseDouble(prop("timedsec", "60"));
     final double threadSec = Double.parseDouble(prop("threadsec", "30"));
     final double warmMaxSec = Double.parseDouble(prop("warmmax", "600"));
+    final int loadLimit = Integer.parseInt(prop("loadlimit", "0"));     // load: stop after so many puts (trials)
     final String outFile = prop("out", "scalebench.json");
     final String gcLogFile = prop("gclog", "");
     final String pidio = prop("pidio", "");
@@ -254,9 +260,24 @@ public class ScaleBench {
         }
     }
 
+    /** A key: uniform, or hot (90 percent on the first 1 percent); only loaded keys (present). */
     int pick(SplittableRandom rnd, boolean hot) {
-        if (hot && rnd.nextInt(10) < 9) return rnd.nextInt(Math.max(1, keys / 100));
-        return rnd.nextInt(keys);
+        while (true) {
+            int k = hot && rnd.nextInt(10) < 9 ? rnd.nextInt(Math.max(1, keys / 100)) : rnd.nextInt(keys);
+            if (present == null || present.get(k)) return k;
+        }
+    }
+
+    /** The load order: 0 to n - 1 shuffled with Random(1) (Fisher-Yates from the end). */
+    static int[] shuffled(int n) {
+        int[] order = new int[n];
+        for (int i = 0; i < n; i++) order[i] = i;
+        Random rnd = new Random(1);
+        for (int i = n - 1; i > 0; i--) {
+            int j = rnd.nextInt(i + 1);
+            int x = order[i]; order[i] = order[j]; order[j] = x;
+        }
+        return order;
     }
 
     // ---- The stream and the database ----
@@ -532,19 +553,14 @@ public class ScaleBench {
         long heap0 = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
         db = open();
         wrapLoadListener();
-        int[] order = new int[keys];
-        for (int i = 0; i < keys; i++) order[i] = i;
-        Random rnd = new Random(1);
-        for (int i = keys - 1; i > 0; i--) {
-            int j = rnd.nextInt(i + 1);
-            int x = order[i]; order[i] = order[j]; order[j] = x;
-        }
+        int[] order = shuffled(keys);
+        final int n = loadLimit > 0 ? Math.min(loadLimit, keys) : keys;
         say("load: " + keys + " keys, " + keytype + ", budget " + budget + " bytes, dir " + dir);
         Snap a = new Snap();
         long last = a.nanos;
-        for (int i = 0; i < keys; i += 1000) {
+        for (int i = 0; i < n; i += 1000) {
             Trans.Builder tb = db.trans();
-            int e = Math.min(keys, i + 1000);
+            int e = Math.min(n, i + 1000);
             for (int j = i; j < e; j++) tb.put(keyBytes(order[j]), value(order[j]));
             time += tstep;
             clock.setTime(time);
@@ -563,6 +579,7 @@ public class ScaleBench {
         order = null;
         Properties p = new Properties();
         p.setProperty("keys", Integer.toString(keys));
+        p.setProperty("loaded", Integer.toString(n));
         p.setProperty("keytype", keytype);
         p.setProperty("valsize", Integer.toString(VALSIZE));
         p.setProperty("time", Long.toString(time));
@@ -575,23 +592,24 @@ public class ScaleBench {
         Map<String, Object> m = delta(a, b, 0);
         double sec = (Double) m.get("seconds");
         m.put("keys", (long) keys);
-        m.put("putsPerSec", keys / sec);
+        m.put("loaded", (long) n);
+        m.put("putsPerSec", n / sec);
         long files = streamFilesBytes();
         m.put("streamBytes", db.internal().nodeStream().getNextPos());
         m.put("diskBytes", files);
-        m.put("diskBytesPerKey", (double) files / keys);
+        m.put("diskBytesPerKey", (double) files / n);
         if (budget == 0) {
             System.gc();
             System.gc();
             long used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
             m.put("heapBeforeLoadBytes", heap0);
             m.put("heapAfterFullGcBytes", used);
-            m.put("heapBytesPerKey", (double) (used - heap0) / keys);
+            m.put("heapBytesPerKey", (double) (used - heap0) / n);
         }
         m.put("eviction", db.internal().eviction().summary());
         result.put("load", m);
         say(String.format(Locale.ROOT, "load done: %.1f s, %.0f puts a second; on disk %d MB, %.1f bytes per key%s; %s",
-                sec, keys / sec, files / 1000000, (double) files / keys,
+                sec, n / sec, files / 1000000, (double) files / n,
                 budget == 0 ? String.format(Locale.ROOT, "; heap after a full GC %d MB (%d MB before the load), %.1f bytes per key",
                         (Long) m.get("heapAfterFullGcBytes") / 1000000, heap0 / 1000000,
                         (Double) m.get("heapBytesPerKey")) : "",
@@ -609,6 +627,12 @@ public class ScaleBench {
             fi.close();
         }
         keys = Integer.parseInt(p.getProperty("keys"));
+        loaded = Integer.parseInt(p.getProperty("loaded", p.getProperty("keys")));
+        if (loaded < keys) {
+            int[] order = shuffled(keys);
+            present = new BitSet(keys);
+            for (int i = 0; i < loaded; i++) present.set(order[i]);
+        }
         keytype = p.getProperty("keytype");
         time = Long.parseLong(p.getProperty("time")) + SEC;
         clock.setTime(time);
@@ -936,7 +960,7 @@ public class ScaleBench {
         SplittableRandom rnd = new SplittableRandom(2);
         KeyGen g = new KeyGen();
         for (int i = 0; i < pool; i++) {
-            ks[i] = rnd.nextInt(keys);
+            ks[i] = pick(rnd, false);
             segs[i] = g.segments(ks[i]).clone();
         }
         String[] names = {"as it is", "no lock, no stamp", "stamp, no lock", "as it is, no readSync"};
@@ -1161,6 +1185,7 @@ public class ScaleBench {
         else if (mode.equals("get")) openExisting();
         else throw new IllegalArgumentException("sb.mode " + mode);
         result.put("keys", keys);
+        result.put("loaded", loaded);
         result.put("keytype", keytype);
         result.put("budget", budget);
         say(String.format(Locale.ROOT, "two clock reads cost %.1f ns; heap %d MB; %d CPUs", cp,

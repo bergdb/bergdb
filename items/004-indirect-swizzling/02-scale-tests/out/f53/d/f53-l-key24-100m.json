@@ -1,0 +1,158 @@
+{
+  "tool": "ScaleBench, bergdb item 004 (004-02)",
+  "label": "f53-l-key24-100m",
+  "mode": "load",
+  "properties": {
+    "sb.budget": "8000000000",
+    "sb.dir": "/private/tmp/claude-502/-Users-f-fl-repos-f1/cf58510e-adb4-4675-9165-4f790be38e71/scratchpad/sb/data/key24-100000000",
+    "sb.disk": "sda",
+    "sb.gclog": "/private/tmp/claude-502/-Users-f-fl-repos-f1/cf58510e-adb4-4675-9165-4f790be38e71/scratchpad/sb/out/d/f53-l-key24-100m.gc.log",
+    "sb.keys": "100000000",
+    "sb.keytype": "key24",
+    "sb.label": "f53-l-key24-100m",
+    "sb.mode": "load",
+    "sb.out": "/private/tmp/claude-502/-Users-f-fl-repos-f1/cf58510e-adb4-4675-9165-4f790be38e71/scratchpad/sb/out/d/f53-l-key24-100m.json",
+    "sb.phases": "",
+    "sb.pidio": "/private/tmp/claude-502/-Users-f-fl-repos-f1/cf58510e-adb4-4675-9165-4f790be38e71/scratchpad/sb/pidio",
+    "sb.sampled": "4",
+    "sb.threads": "1,2,4,8"
+  },
+  "jvm": {
+    "javaRuntimeVersion": "27",
+    "javaVmName": "OpenJDK 64-Bit Server VM",
+    "javaVmVersion": "27",
+    "javaVendor": "Homebrew",
+    "osName": "Mac OS X",
+    "osVersion": "27.0.1",
+    "osArch": "aarch64",
+    "availableProcessors": 10,
+    "maxHeapBytes": 21474836480,
+    "physicalMemoryBytes": 34359738368,
+    "collector": "G1",
+    "gcBeans": ["G1 Young Generation","G1 Concurrent GC","G1 Old Generation"],
+    "vmFlags": ["-Xms20g","-Xmx20g","-XX:+AlwaysPreTouch","-Xlog:gc*,safepoint:file=<run>:uptime,level,tags","-Dsb.threads=1,2,4,8","-Dsb.sampled=4","-Dsb.disk=sda","-Dsb.pidio=/private/tmp/claude-502/-Users-f-fl-repos-f1/cf58510e-adb4-4675-9165-4f790be38e71/scratchpad/sb/pidio","-Dsb.label=f53-l-key24-100m","-Dsb.out=/private/tmp/claude-502/-Users-f-fl-repos-f1/cf58510e-adb4-4675-9165-4f790be38e71/scratchpad/sb/out/d/f53-l-key24-100m.json","-Dsb.gclog=/private/tmp/claude-502/-Users-f-fl-repos-f1/cf58510e-adb4-4675-9165-4f790be38e71/scratchpad/sb/out/d/f53-l-key24-100m.gc.log","-Dsb.mode=load","-Dsb.dir=/private/tmp/claude-502/-Users-f-fl-repos-f1/cf58510e-adb4-4675-9165-4f790be38e71/scratchpad/sb/data/key24-100000000","-Dsb.keys=100000000","-Dsb.keytype=key24","-Dsb.budget=8000000000","-Dsb.phases="],
+    "pid": 64037
+  },
+  "vmFlags": ["-Xms20g","-Xmx20g","-XX:+AlwaysPreTouch","-Xlog:gc*,safepoint:file=<run>:uptime,level,tags","-Dsb.threads=1,2,4,8","-Dsb.sampled=4","-Dsb.disk=sda","-Dsb.pidio=/private/tmp/claude-502/-Users-f-fl-repos-f1/cf58510e-adb4-4675-9165-4f790be38e71/scratchpad/sb/pidio","-Dsb.label=f53-l-key24-100m","-Dsb.out=/private/tmp/claude-502/-Users-f-fl-repos-f1/cf58510e-adb4-4675-9165-4f790be38e71/scratchpad/sb/out/d/f53-l-key24-100m.json","-Dsb.gclog=/private/tmp/claude-502/-Users-f-fl-repos-f1/cf58510e-adb4-4675-9165-4f790be38e71/scratchpad/sb/out/d/f53-l-key24-100m.gc.log","-Dsb.mode=load","-Dsb.dir=/private/tmp/claude-502/-Users-f-fl-repos-f1/cf58510e-adb4-4675-9165-4f790be38e71/scratchpad/sb/data/key24-100000000","-Dsb.keys=100000000","-Dsb.keytype=key24","-Dsb.budget=8000000000","-Dsb.phases="],
+  "physicalMemory": 34359738368,
+  "os": "Mac OS X 27.0.1 aarch64",
+  "cpus": 10,
+  "clockPairNs": 22.3470,
+  "startupSec": 0.00573375,
+  "load": {
+    "seconds": 5115.19,
+    "gets": 0,
+    "loads": 365099,
+    "loadsPerGet": 365099,
+    "streamReads": 84113272,
+    "streamReadsPerGet": 84113272,
+    "streamReadBytes": 2772435036,
+    "deviceReadBytes": 343462547456,
+    "deviceReadBytesPerGet": 343462547456,
+    "sweeps": 9,
+    "sweepMs": 768657,
+    "sweepMaxMsSoFar": 265940,
+    "afterLoadCalls": 365103,
+    "afterLoadMs": 45131.8,
+    "afterLoadOver10ms": 1,
+    "gcCount": 181,
+    "gcMs": 92244,
+    "residentBytes": 6772301232,
+    "heapUsedBytes": 11974234544,
+    "uptimeFrom": 7.70081,
+    "uptimeTo": 5122.89,
+    "keys": 100000000,
+    "putsPerSec": 19549.6,
+    "streamBytes": 114218385456,
+    "diskBytes": 114218385456,
+    "diskBytesPerKey": 1142.18,
+    "eviction": "eviction BUDGET: 180587368 slots unswizzled, 104570490 objects released; budget 8000000000 bytes, low 6000000000; 9 sweeps (1 after loads, 0 complete, 0 above the budget after); last sweep 7509809648 -> 5999999952 bytes, pinned 19453712 (at most 69302704); sweep time 768657 ms in total, 265940 ms at most"
+  },
+  "keys": 100000000,
+  "keytype": "key24",
+  "budget": 8000000000,
+  "phases": [],
+  "maxima": {
+    "heapUsedBytes": 21258888776,
+    "residentBytes": 8000254576,
+    "rssBytes": 14948532224
+  },
+  "gcLog": {
+    "pauses": {
+      "count": 183,
+      "totalMs": 92298.5,
+      "maxMs": 16328.8,
+      "p50Ms": 232.447,
+      "p99Ms": 12779.5,
+      "p999Ms": 16328.8,
+      "longest": [
+        {
+          "uptimeSec": 812.731,
+          "what": "Pause Full (G1 Compaction Pause)",
+          "ms": 16328.8
+        },
+        {
+          "uptimeSec": 796.402,
+          "what": "Pause Full (G1 Compaction Pause)",
+          "ms": 12744.2
+        },
+        {
+          "uptimeSec": 717.539,
+          "what": "Pause Young (Mixed) (G1 Evacuation Pause) (Evacuation Failure: Allocation)",
+          "ms": 2083.28
+        },
+        {
+          "uptimeSec": 752.978,
+          "what": "Pause Young (Mixed) (G1 Evacuation Pause)",
+          "ms": 1431.48
+        },
+        {
+          "uptimeSec": 1105.23,
+          "what": "Pause Young (Mixed) (G1 Evacuation Pause)",
+          "ms": 1285.23
+        }
+      ]
+    },
+    "safepoints": {
+      "count": 181,
+      "totalMs": 92384.7,
+      "maxMs": 29570.7,
+      "p50Ms": 231.423,
+      "p99Ms": 2088.96,
+      "p999Ms": 29570.7,
+      "longest": [
+        {
+          "uptimeSec": 812.732,
+          "what": "G1CollectForAllocation",
+          "ms": 29570.7
+        },
+        {
+          "uptimeSec": 717.539,
+          "what": "G1CollectForAllocation",
+          "ms": 2083.67
+        },
+        {
+          "uptimeSec": 752.979,
+          "what": "G1CollectForAllocation",
+          "ms": 1432.23
+        },
+        {
+          "uptimeSec": 1105.23,
+          "what": "G1CollectForAllocation",
+          "ms": 1285.50
+        },
+        {
+          "uptimeSec": 528.305,
+          "what": "G1CollectForAllocation",
+          "ms": 1176.39
+        }
+      ]
+    },
+    "heapAfterGcMaxMB": 20146,
+    "heapCommittedMaxMB": 20480,
+    "fullGcs": 4,
+    "concurrentCycles": 32
+  },
+  "eviction": "eviction BUDGET: 180587368 slots unswizzled, 104570490 objects released; budget 8000000000 bytes, low 6000000000; 9 sweeps (1 after loads, 0 complete, 0 above the budget after); last sweep 7509809648 -> 5999999952 bytes, pinned 19453712 (at most 69302704); sweep time 768657 ms in total, 265940 ms at most"
+}
+

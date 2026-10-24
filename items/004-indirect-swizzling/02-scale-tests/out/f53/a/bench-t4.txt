@@ -1,0 +1,50 @@
+openjdk version "27" 2026-09-15
+# Darwin arm64, f53, heap 2g, started Fri Oct 23 19:41:56 CEST 2026
+direct       keys     20000 threads 4 layout -         depth 5  ns/lookup median    67.5 best    67.3  lookups/s  59.09 M
+# steal 0.00% of 0 ticks; load 
+lockstamp    keys     20000 threads 4 layout -         depth 5  ns/lookup median   206.9 best   205.6  lookups/s  19.32 M
+# steal 0.00% of 0 ticks; load 
+lock         keys     20000 threads 4 layout -         depth 5  ns/lookup median   130.1 best   128.4  lookups/s  30.71 M
+# steal 0.00% of 0 ticks; load 
+stamp        keys     20000 threads 4 layout -         depth 5  ns/lookup median    96.9 best    95.4  lookups/s  40.88 M
+# steal 0.00% of 0 ticks; load 
+handle       keys     20000 threads 4 layout before    depth 5  ns/lookup median    75.0 best    74.9  lookups/s  53.13 M
+# steal 0.00% of 0 ticks; load 
+handleacq    keys     20000 threads 4 layout before    depth 5  ns/lookup median    75.5 best    75.4  lookups/s  52.77 M
+# steal 0.00% of 0 ticks; load 
+handleclock  keys     20000 threads 4 layout before    depth 5  ns/lookup median    76.5 best    76.4  lookups/s  52.14 M
+# steal 0.00% of 0 ticks; load 
+hash         keys     20000 threads 4 layout -         depth 5  ns/lookup median    89.3 best    89.2  lookups/s  44.63 M
+# steal 0.00% of 0 ticks; load 
+chm          keys     20000 threads 4 layout -         depth 5  ns/lookup median   107.5 best   107.5  lookups/s  37.09 M
+# steal 0.00% of 0 ticks; load 
+handleacq    keys     20000 threads 4 layout child     depth 5  ns/lookup median    78.4 best    78.3  lookups/s  50.84 M
+# steal 0.00% of 0 ticks; load 
+handleacq    keys     20000 threads 4 layout parent    depth 5  ns/lookup median    76.1 best    76.1  lookups/s  52.38 M
+# steal 0.00% of 0 ticks; load 
+handleacq    keys     20000 threads 4 layout scattered depth 5  ns/lookup median    80.1 best    80.0  lookups/s  49.72 M
+# steal 0.00% of 0 ticks; load 
+direct       keys   8000000 threads 4 layout -         depth 7  ns/lookup median   563.2 best   562.9  lookups/s   7.09 M
+# steal 0.00% of 0 ticks; load 
+lockstamp    keys   8000000 threads 4 layout -         depth 7  ns/lookup median   757.4 best   750.8  lookups/s   5.27 M
+# steal 0.00% of 0 ticks; load 
+lock         keys   8000000 threads 4 layout -         depth 7  ns/lookup median   664.7 best   663.2  lookups/s   6.00 M
+# steal 0.00% of 0 ticks; load 
+stamp        keys   8000000 threads 4 layout -         depth 7  ns/lookup median   630.6 best   629.7  lookups/s   6.30 M
+# steal 0.00% of 0 ticks; load 
+handle       keys   8000000 threads 4 layout before    depth 7  ns/lookup median   638.2 best   635.5  lookups/s   6.26 M
+# steal 0.00% of 0 ticks; load 
+handleacq    keys   8000000 threads 4 layout before    depth 7  ns/lookup median   635.5 best   634.2  lookups/s   6.29 M
+# steal 0.00% of 0 ticks; load 
+handleclock  keys   8000000 threads 4 layout before    depth 7  ns/lookup median   638.2 best   637.1  lookups/s   6.26 M
+# steal 0.00% of 0 ticks; load 
+hash         keys   8000000 threads 4 layout -         depth 7  ns/lookup median  1063.1 best  1062.0  lookups/s   3.76 M
+# steal 0.00% of 0 ticks; load 
+chm          keys   8000000 threads 4 layout -         depth 7  ns/lookup median  1274.5 best  1271.1  lookups/s   3.14 M
+# steal 0.00% of 0 ticks; load 
+handleacq    keys   8000000 threads 4 layout child     depth 7  ns/lookup median   669.5 best   669.0  lookups/s   5.97 M
+# steal 0.00% of 0 ticks; load 
+handleacq    keys   8000000 threads 4 layout parent    depth 7  ns/lookup median   710.3 best   709.8  lookups/s   5.63 M
+# steal 0.00% of 0 ticks; load 
+handleacq    keys   8000000 threads 4 layout scattered depth 7  ns/lookup median   870.0 best   867.1  lookups/s   4.59 M
+# steal 0.00% of 0 ticks; load 

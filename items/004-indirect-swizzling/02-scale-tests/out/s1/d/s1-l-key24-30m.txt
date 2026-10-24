@@ -1,0 +1,970 @@
+[    1.4 s] load: 30000000 keys, key24, budget 600000000 bytes, dir /opt/bergdb-bench/data/key24-30000000
+[   31.5 s]   2528000 puts, 84196 a second; resident 599 MB, heap 1009 MB, stream 1252 MB
+[   82.8 s]   3215000 puts, 39530 a second; resident 449 MB, heap 1865 MB, stream 1743 MB
+[  112.8 s]   3959000 puts, 35560 a second; resident 472 MB, heap 1619 MB, stream 2359 MB
+[  142.8 s]   4536000 puts, 32091 a second; resident 462 MB, heap 1782 MB, stream 2823 MB
+[  172.8 s]   5368000 puts, 31326 a second; resident 519 MB, heap 1388 MB, stream 3488 MB
+[  202.9 s]   6329000 puts, 31420 a second; resident 450 MB, heap 1540 MB, stream 4256 MB
+[  233.3 s]   6928000 puts, 29882 a second; resident 449 MB, heap 1401 MB, stream 4752 MB
+[  263.3 s]   7018000 puts, 26796 a second; resident 473 MB, heap 1513 MB, stream 4840 MB
+[  293.9 s]   7476000 puts, 25566 a second; resident 451 MB, heap 1653 MB, stream 5252 MB
+[  323.9 s]   7817000 puts, 24243 a second; resident 553 MB, heap 1524 MB, stream 5539 MB
+[  354.3 s]   8015000 puts, 22715 a second; resident 456 MB, heap 1391 MB, stream 5705 MB
+[  384.3 s]   8297000 puts, 21668 a second; resident 547 MB, heap 1471 MB, stream 5952 MB
+[  414.5 s]   8505000 puts, 20590 a second; resident 457 MB, heap 1688 MB, stream 6132 MB
+[  444.6 s]   8587000 puts, 19378 a second; resident 487 MB, heap 1821 MB, stream 6210 MB
+[  474.8 s]   8740000 puts, 18463 a second; resident 536 MB, heap 1455 MB, stream 6333 MB
+[  504.9 s]   8900000 puts, 17677 a second; resident 585 MB, heap 1508 MB, stream 6470 MB
+[  535.4 s]   8980000 puts, 16817 a second; resident 460 MB, heap 1418 MB, stream 6540 MB
+[  571.6 s]   8998000 puts, 15781 a second; resident 469 MB, heap 1461 MB, stream 6568 MB
+[  602.3 s]   9058000 puts, 15074 a second; resident 489 MB, heap 1428 MB, stream 6607 MB
+[  635.7 s]   9077000 puts, 14311 a second; resident 498 MB, heap 1472 MB, stream 6636 MB
+[  666.2 s]   9141000 puts, 13750 a second; resident 518 MB, heap 1241 MB, stream 6681 MB
+[  697.7 s]   9160000 puts, 13156 a second; resident 527 MB, heap 1288 MB, stream 6712 MB
+[  728.2 s]   9226000 puts, 12695 a second; resident 547 MB, heap 1393 MB, stream 6760 MB
+[  758.7 s]   9269000 puts, 12240 a second; resident 563 MB, heap 1478 MB, stream 6813 MB
+[  789.1 s]   9327000 puts, 11841 a second; resident 582 MB, heap 1369 MB, stream 6867 MB
+[  821.3 s]   9394000 puts, 11458 a second; resident 451 MB, heap 1290 MB, stream 6914 MB
+[  852.0 s]   9404000 puts, 11056 a second; resident 454 MB, heap 1320 MB, stream 6932 MB
+[  884.2 s]   9411000 puts, 10661 a second; resident 457 MB, heap 1360 MB, stream 6945 MB
+[  915.1 s]   9467000 puts, 10362 a second; resident 476 MB, heap 1290 MB, stream 6978 MB
+[  948.1 s]   9480000 puts, 10014 a second; resident 483 MB, heap 1325 MB, stream 6999 MB
+[  978.5 s]   9487000 puts, 9710 a second; resident 487 MB, heap 1349 MB, stream 7012 MB
+[ 1009.6 s]   9543000 puts, 9466 a second; resident 505 MB, heap 1292 MB, stream 7043 MB
+[ 1042.4 s]   9558000 puts, 9182 a second; resident 512 MB, heap 1336 MB, stream 7067 MB
+[ 1075.0 s]   9567000 puts, 8911 a second; resident 516 MB, heap 1223 MB, stream 7085 MB
+[ 1106.0 s]   9625000 puts, 8714 a second; resident 535 MB, heap 1328 MB, stream 7121 MB
+[ 1138.8 s]   9638000 puts, 8474 a second; resident 541 MB, heap 1215 MB, stream 7143 MB
+[ 1169.4 s]   9649000 puts, 8261 a second; resident 546 MB, heap 1245 MB, stream 7165 MB
+[ 1200.9 s]   9710000 puts, 8095 a second; resident 565 MB, heap 1195 MB, stream 7203 MB
+[ 1231.1 s]   9720000 puts, 7905 a second; resident 570 MB, heap 1231 MB, stream 7221 MB
+[ 1261.4 s]   9774000 puts, 7757 a second; resident 585 MB, heap 1312 MB, stream 7253 MB
+[ 1291.5 s]   9791000 puts, 7590 a second; resident 592 MB, heap 1346 MB, stream 7280 MB
+[ 1323.3 s]   9801000 puts, 7415 a second; resident 597 MB, heap 1191 MB, stream 7298 MB
+[ 1353.5 s]   9851000 puts, 7286 a second; resident 463 MB, heap 1755 MB, stream 7325 MB
+[ 1387.2 s]   9864000 puts, 7118 a second; resident 470 MB, heap 1792 MB, stream 7342 MB
+[ 1418.3 s]   9874000 puts, 6969 a second; resident 475 MB, heap 1822 MB, stream 7360 MB
+[ 1449.7 s]   9881000 puts, 6823 a second; resident 478 MB, heap 1271 MB, stream 7373 MB
+[ 1479.7 s]   9890000 puts, 6690 a second; resident 483 MB, heap 1304 MB, stream 7389 MB
+[ 1510.5 s]   9941000 puts, 6587 a second; resident 500 MB, heap 1205 MB, stream 7414 MB
+[ 1545.2 s]   9952000 puts, 6447 a second; resident 506 MB, heap 1237 MB, stream 7432 MB
+[ 1576.2 s]   9959000 puts, 6324 a second; resident 509 MB, heap 1266 MB, stream 7446 MB
+[ 1607.0 s]   9968000 puts, 6208 a second; resident 513 MB, heap 1298 MB, stream 7462 MB
+[ 1637.8 s]   10018000 puts, 6122 a second; resident 530 MB, heap 1385 MB, stream 7485 MB
+[ 1671.9 s]   10029000 puts, 6004 a second; resident 535 MB, heap 1428 MB, stream 7503 MB
+[ 1703.2 s]   10036000 puts, 5898 a second; resident 539 MB, heap 1190 MB, stream 7517 MB
+[ 1733.8 s]   10043000 puts, 5797 a second; resident 542 MB, heap 1218 MB, stream 7532 MB
+[ 1764.7 s]   10097000 puts, 5726 a second; resident 559 MB, heap 1181 MB, stream 7558 MB
+[ 1796.2 s]   10108000 puts, 5632 a second; resident 564 MB, heap 1222 MB, stream 7577 MB
+[ 1829.4 s]   10116000 puts, 5534 a second; resident 568 MB, heap 1249 MB, stream 7592 MB
+[ 1860.0 s]   10145000 puts, 5458 a second; resident 577 MB, heap 1145 MB, stream 7615 MB
+[ 1890.6 s]   10180000 puts, 5389 a second; resident 588 MB, heap 1199 MB, stream 7639 MB
+[ 1925.8 s]   10190000 puts, 5295 a second; resident 593 MB, heap 1248 MB, stream 7658 MB
+[ 1956.0 s]   10197000 puts, 5217 a second; resident 596 MB, heap 1278 MB, stream 7672 MB
+[ 1986.1 s]   10238000 puts, 5159 a second; resident 460 MB, heap 1225 MB, stream 7692 MB
+[ 2018.9 s]   10254000 puts, 5083 a second; resident 467 MB, heap 1264 MB, stream 7706 MB
+[ 2053.2 s]   10262000 puts, 5002 a second; resident 471 MB, heap 1292 MB, stream 7719 MB
+[ 2083.9 s]   10268000 puts, 4931 a second; resident 474 MB, heap 1312 MB, stream 7729 MB
+[ 2118.0 s]   10272000 puts, 4853 a second; resident 476 MB, heap 1332 MB, stream 7737 MB
+[ 2148.6 s]   10276000 puts, 4786 a second; resident 478 MB, heap 1348 MB, stream 7745 MB
+[ 2180.2 s]   10280000 puts, 4718 a second; resident 481 MB, heap 1371 MB, stream 7754 MB
+[ 2211.5 s]   10328000 puts, 4673 a second; resident 497 MB, heap 1458 MB, stream 7773 MB
+[ 2244.7 s]   10338000 puts, 4608 a second; resident 502 MB, heap 1497 MB, stream 7789 MB
+[ 2276.4 s]   10345000 puts, 4547 a second; resident 506 MB, heap 1221 MB, stream 7802 MB
+[ 2307.5 s]   10350000 puts, 4488 a second; resident 509 MB, heap 1247 MB, stream 7812 MB
+[ 2342.9 s]   10356000 puts, 4423 a second; resident 512 MB, heap 1277 MB, stream 7823 MB
+[ 2372.9 s]   10394000 puts, 4383 a second; resident 524 MB, heap 1343 MB, stream 7842 MB
+[ 2404.1 s]   10412000 puts, 4334 a second; resident 531 MB, heap 1389 MB, stream 7857 MB
+[ 2436.8 s]   10422000 puts, 4279 a second; resident 537 MB, heap 1422 MB, stream 7873 MB
+[ 2468.8 s]   10428000 puts, 4226 a second; resident 540 MB, heap 1453 MB, stream 7885 MB
+[ 2501.9 s]   10434000 puts, 4173 a second; resident 542 MB, heap 1481 MB, stream 7897 MB
+[ 2533.1 s]   10468000 puts, 4135 a second; resident 553 MB, heap 1540 MB, stream 7915 MB
+[ 2563.1 s]   10491000 puts, 4095 a second; resident 562 MB, heap 1233 MB, stream 7933 MB
+[ 2593.6 s]   10500000 puts, 4051 a second; resident 566 MB, heap 1267 MB, stream 7948 MB
+[ 2628.5 s]   10507000 puts, 3999 a second; resident 570 MB, heap 1291 MB, stream 7961 MB
+[ 2661.4 s]   10513000 puts, 3952 a second; resident 572 MB, heap 1317 MB, stream 7972 MB
+[ 2692.5 s]   10560000 puts, 3924 a second; resident 586 MB, heap 1390 MB, stream 7995 MB
+[ 2723.4 s]   10571000 puts, 3884 a second; resident 591 MB, heap 1197 MB, stream 8010 MB
+[ 2755.5 s]   10581000 puts, 3842 a second; resident 596 MB, heap 1238 MB, stream 8028 MB
+[ 2788.0 s]   10587000 puts, 3799 a second; resident 599 MB, heap 1271 MB, stream 8040 MB
+[ 2825.0 s]   10592000 puts, 3751 a second; resident 451 MB, heap 1198 MB, stream 8049 MB
+[ 2855.9 s]   10596000 puts, 3712 a second; resident 452 MB, heap 1222 MB, stream 8059 MB
+[ 2888.9 s]   10643000 puts, 3686 a second; resident 470 MB, heap 1154 MB, stream 8075 MB
+[ 2921.4 s]   10650000 puts, 3647 a second; resident 474 MB, heap 1180 MB, stream 8087 MB
+[ 2953.7 s]   10658000 puts, 3610 a second; resident 479 MB, heap 1207 MB, stream 8100 MB
+[ 2986.9 s]   10663000 puts, 3572 a second; resident 481 MB, heap 1234 MB, stream 8110 MB
+[ 3017.6 s]   10668000 puts, 3537 a second; resident 484 MB, heap 1255 MB, stream 8120 MB
+[ 3048.1 s]   10672000 puts, 3503 a second; resident 486 MB, heap 1139 MB, stream 8128 MB
+[ 3078.4 s]   10715000 puts, 3482 a second; resident 502 MB, heap 1212 MB, stream 8145 MB
+[ 3110.4 s]   10726000 puts, 3450 a second; resident 507 MB, heap 1097 MB, stream 8158 MB
+[ 3142.2 s]   10734000 puts, 3418 a second; resident 511 MB, heap 1123 MB, stream 8171 MB
+[ 3178.2 s]   10741000 puts, 3381 a second; resident 515 MB, heap 1150 MB, stream 8184 MB
+[ 3212.3 s]   10747000 puts, 3347 a second; resident 518 MB, heap 1174 MB, stream 8196 MB
+[ 3246.3 s]   10752000 puts, 3314 a second; resident 520 MB, heap 1198 MB, stream 8207 MB
+[ 3276.5 s]   10799000 puts, 3297 a second; resident 536 MB, heap 1115 MB, stream 8225 MB
+[ 3307.6 s]   10807000 puts, 3269 a second; resident 540 MB, heap 1142 MB, stream 8238 MB
+[ 3341.4 s]   10816000 puts, 3238 a second; resident 545 MB, heap 1180 MB, stream 8253 MB
+[ 3373.9 s]   10822000 puts, 3209 a second; resident 548 MB, heap 1203 MB, stream 8264 MB
+[ 3408.2 s]   10828000 puts, 3178 a second; resident 551 MB, heap 1232 MB, stream 8277 MB
+[ 3438.2 s]   10839000 puts, 3154 a second; resident 555 MB, heap 1264 MB, stream 8291 MB
+[ 3469.2 s]   10882000 puts, 3138 a second; resident 570 MB, heap 1345 MB, stream 8308 MB
+[ 3503.0 s]   10891000 puts, 3110 a second; resident 574 MB, heap 1380 MB, stream 8322 MB
+[ 3537.8 s]   10899000 puts, 3082 a second; resident 578 MB, heap 1407 MB, stream 8337 MB
+[ 3568.1 s]   10904000 puts, 3057 a second; resident 580 MB, heap 1128 MB, stream 8347 MB
+[ 3598.7 s]   10909000 puts, 3033 a second; resident 583 MB, heap 1130 MB, stream 8357 MB
+[ 3629.4 s]   10955000 puts, 3020 a second; resident 597 MB, heap 1189 MB, stream 8377 MB
+[ 3661.2 s]   10962000 puts, 2995 a second; resident 450 MB, heap 1670 MB, stream 8388 MB
+[ 3693.3 s]   10968000 puts, 2971 a second; resident 452 MB, heap 1699 MB, stream 8397 MB
+[ 3723.5 s]   10973000 puts, 2948 a second; resident 454 MB, heap 1724 MB, stream 8406 MB
+[ 3756.0 s]   10977000 puts, 2924 a second; resident 455 MB, heap 1753 MB, stream 8414 MB
+[ 3793.3 s]   10982000 puts, 2896 a second; resident 458 MB, heap 1777 MB, stream 8424 MB
+[ 3831.0 s]   10986000 puts, 2869 a second; resident 461 MB, heap 1804 MB, stream 8433 MB
+[ 3861.1 s]   11006000 puts, 2852 a second; resident 469 MB, heap 1242 MB, stream 8445 MB
+[ 3894.2 s]   11035000 puts, 2835 a second; resident 480 MB, heap 1299 MB, stream 8457 MB
+[ 3928.6 s]   11041000 puts, 2811 a second; resident 483 MB, heap 1323 MB, stream 8466 MB
+[ 3962.3 s]   11049000 puts, 2790 a second; resident 488 MB, heap 1351 MB, stream 8479 MB
+[ 3996.8 s]   11054000 puts, 2767 a second; resident 491 MB, heap 1374 MB, stream 8490 MB
+[ 4032.8 s]   11059000 puts, 2743 a second; resident 494 MB, heap 1410 MB, stream 8499 MB
+[ 4068.2 s]   11063000 puts, 2720 a second; resident 496 MB, heap 1439 MB, stream 8508 MB
+[ 4098.3 s]   11090000 puts, 2707 a second; resident 506 MB, heap 1496 MB, stream 8522 MB
+[ 4130.3 s]   11113000 puts, 2692 a second; resident 515 MB, heap 1542 MB, stream 8533 MB
+[ 4163.9 s]   11120000 puts, 2672 a second; resident 519 MB, heap 1223 MB, stream 8545 MB
+[ 4195.4 s]   11125000 puts, 2653 a second; resident 521 MB, heap 1242 MB, stream 8553 MB
+[ 4231.3 s]   11130000 puts, 2631 a second; resident 524 MB, heap 1262 MB, stream 8563 MB
+[ 4269.7 s]   11135000 puts, 2609 a second; resident 527 MB, heap 1285 MB, stream 8573 MB
+[ 4300.7 s]   11139000 puts, 2591 a second; resident 529 MB, heap 1303 MB, stream 8581 MB
+[ 4333.0 s]   11152000 puts, 2575 a second; resident 534 MB, heap 1336 MB, stream 8594 MB
+[ 4367.4 s]   11190000 puts, 2563 a second; resident 548 MB, heap 1410 MB, stream 8609 MB
+[ 4397.8 s]   11196000 puts, 2547 a second; resident 551 MB, heap 1439 MB, stream 8619 MB
+[ 4431.5 s]   11203000 puts, 2529 a second; resident 555 MB, heap 1224 MB, stream 8631 MB
+[ 4464.2 s]   11208000 puts, 2511 a second; resident 557 MB, heap 1244 MB, stream 8640 MB
+[ 4500.0 s]   11213000 puts, 2493 a second; resident 560 MB, heap 1271 MB, stream 8651 MB
+[ 4530.8 s]   11217000 puts, 2476 a second; resident 562 MB, heap 1294 MB, stream 8659 MB
+[ 4562.3 s]   11261000 puts, 2469 a second; resident 576 MB, heap 1368 MB, stream 8677 MB
+[ 4592.5 s]   11270000 puts, 2455 a second; resident 581 MB, heap 1242 MB, stream 8690 MB
+[ 4625.6 s]   11278000 puts, 2439 a second; resident 585 MB, heap 1266 MB, stream 8702 MB
+[ 4658.9 s]   11284000 puts, 2423 a second; resident 588 MB, heap 1294 MB, stream 8714 MB
+[ 4691.0 s]   11289000 puts, 2407 a second; resident 590 MB, heap 1314 MB, stream 8724 MB
+[ 4728.2 s]   11294000 puts, 2389 a second; resident 593 MB, heap 1341 MB, stream 8735 MB
+[ 4760.2 s]   11326000 puts, 2380 a second; resident 454 MB, heap 1332 MB, stream 8749 MB
+[ 4797.1 s]   11344000 puts, 2365 a second; resident 461 MB, heap 1377 MB, stream 8760 MB
+[ 4828.2 s]   11350000 puts, 2351 a second; resident 464 MB, heap 1414 MB, stream 8770 MB
+[ 4862.7 s]   11356000 puts, 2336 a second; resident 468 MB, heap 1235 MB, stream 8780 MB
+[ 4893.8 s]   11360000 puts, 2322 a second; resident 470 MB, heap 1257 MB, stream 8788 MB
+[ 4925.5 s]   11364000 puts, 2308 a second; resident 473 MB, heap 1286 MB, stream 8796 MB
+[ 4955.7 s]   11368000 puts, 2295 a second; resident 475 MB, heap 1311 MB, stream 8804 MB
+[ 4988.5 s]   11372000 puts, 2280 a second; resident 477 MB, heap 1332 MB, stream 8813 MB
+[ 5020.3 s]   11403000 puts, 2272 a second; resident 489 MB, heap 1242 MB, stream 8825 MB
+[ 5056.4 s]   11421000 puts, 2259 a second; resident 497 MB, heap 1284 MB, stream 8836 MB
+[ 5090.0 s]   11427000 puts, 2246 a second; resident 500 MB, heap 1306 MB, stream 8846 MB
+[ 5123.1 s]   11433000 puts, 2232 a second; resident 504 MB, heap 1329 MB, stream 8856 MB
+[ 5159.3 s]   11438000 puts, 2218 a second; resident 507 MB, heap 1352 MB, stream 8865 MB
+[ 5189.7 s]   11442000 puts, 2205 a second; resident 509 MB, heap 1371 MB, stream 8874 MB
+[ 5221.1 s]   11446000 puts, 2193 a second; resident 512 MB, heap 1399 MB, stream 8882 MB
+[ 5256.4 s]   11450000 puts, 2179 a second; resident 514 MB, heap 1433 MB, stream 8891 MB
+[ 5288.6 s]   11495000 puts, 2174 a second; resident 530 MB, heap 1513 MB, stream 8907 MB
+[ 5320.6 s]   11501000 puts, 2162 a second; resident 534 MB, heap 1534 MB, stream 8917 MB
+[ 5356.2 s]   11508000 puts, 2149 a second; resident 538 MB, heap 1560 MB, stream 8928 MB
+[ 5388.3 s]   11514000 puts, 2137 a second; resident 541 MB, heap 1581 MB, stream 8938 MB
+[ 5421.1 s]   11518000 puts, 2125 a second; resident 543 MB, heap 1602 MB, stream 8946 MB
+[ 5453.2 s]   11523000 puts, 2114 a second; resident 546 MB, heap 1623 MB, stream 8957 MB
+[ 5488.3 s]   11527000 puts, 2101 a second; resident 548 MB, heap 1253 MB, stream 8966 MB
+[ 5518.9 s]   11572000 puts, 2097 a second; resident 564 MB, heap 1334 MB, stream 8983 MB
+[ 5550.4 s]   11579000 puts, 2087 a second; resident 568 MB, heap 1371 MB, stream 8994 MB
+[ 5581.6 s]   11586000 puts, 2076 a second; resident 571 MB, heap 1395 MB, stream 9005 MB
+[ 5615.4 s]   11592000 puts, 2065 a second; resident 575 MB, heap 1416 MB, stream 9016 MB
+[ 5646.0 s]   11596000 puts, 2054 a second; resident 577 MB, heap 1440 MB, stream 9024 MB
+[ 5680.4 s]   11601000 puts, 2043 a second; resident 579 MB, heap 1462 MB, stream 9034 MB
+[ 5711.6 s]   11605000 puts, 2032 a second; resident 581 MB, heap 1485 MB, stream 9044 MB
+[ 5743.0 s]   11650000 puts, 2029 a second; resident 596 MB, heap 1565 MB, stream 9060 MB
+[ 5779.8 s]   11657000 puts, 2017 a second; resident 450 MB, heap 1732 MB, stream 9071 MB
+[ 5812.4 s]   11663000 puts, 2007 a second; resident 452 MB, heap 1756 MB, stream 9081 MB
+[ 5844.2 s]   11668000 puts, 1997 a second; resident 454 MB, heap 1325 MB, stream 9090 MB
+[ 5878.9 s]   11672000 puts, 1986 a second; resident 456 MB, heap 1351 MB, stream 9098 MB
+[ 5912.0 s]   11676000 puts, 1975 a second; resident 458 MB, heap 1372 MB, stream 9106 MB
+[ 5951.8 s]   11680000 puts, 1963 a second; resident 461 MB, heap 1404 MB, stream 9115 MB
+[ 5983.7 s]   11684000 puts, 1953 a second; resident 463 MB, heap 1428 MB, stream 9123 MB
+[ 6015.0 s]   11727000 puts, 1950 a second; resident 481 MB, heap 1292 MB, stream 9135 MB
+[ 6045.9 s]   11732000 puts, 1941 a second; resident 484 MB, heap 1312 MB, stream 9144 MB
+[ 6077.5 s]   11738000 puts, 1932 a second; resident 487 MB, heap 1341 MB, stream 9153 MB
+[ 6109.8 s]   11744000 puts, 1923 a second; resident 491 MB, heap 1371 MB, stream 9163 MB
+[ 6144.1 s]   11748000 puts, 1913 a second; resident 493 MB, heap 1220 MB, stream 9170 MB
+[ 6176.3 s]   11752000 puts, 1903 a second; resident 496 MB, heap 1240 MB, stream 9178 MB
+[ 6208.8 s]   11756000 puts, 1894 a second; resident 498 MB, heap 1264 MB, stream 9186 MB
+[ 6247.2 s]   11760000 puts, 1883 a second; resident 500 MB, heap 1296 MB, stream 9195 MB
+[ 6277.5 s]   11791000 puts, 1879 a second; resident 513 MB, heap 1354 MB, stream 9207 MB
+[ 6311.0 s]   11809000 puts, 1872 a second; resident 520 MB, heap 1196 MB, stream 9218 MB
+[ 6344.0 s]   11815000 puts, 1863 a second; resident 524 MB, heap 1219 MB, stream 9228 MB
+[ 6378.5 s]   11822000 puts, 1854 a second; resident 528 MB, heap 1244 MB, stream 9239 MB
+[ 6415.9 s]   11827000 puts, 1844 a second; resident 531 MB, heap 1267 MB, stream 9248 MB
+[ 6448.0 s]   11831000 puts, 1835 a second; resident 533 MB, heap 1290 MB, stream 9257 MB
+[ 6484.0 s]   11835000 puts, 1826 a second; resident 535 MB, heap 1324 MB, stream 9265 MB
+[ 6520.0 s]   11839000 puts, 1816 a second; resident 537 MB, heap 1174 MB, stream 9274 MB
+[ 6551.2 s]   11884000 puts, 1814 a second; resident 554 MB, heap 1254 MB, stream 9289 MB
+[ 6586.4 s]   11890000 puts, 1806 a second; resident 557 MB, heap 1277 MB, stream 9300 MB
+[ 6620.7 s]   11897000 puts, 1797 a second; resident 561 MB, heap 1137 MB, stream 9310 MB
+[ 6652.1 s]   11903000 puts, 1790 a second; resident 565 MB, heap 1159 MB, stream 9321 MB
+[ 6689.3 s]   11907000 puts, 1780 a second; resident 567 MB, heap 1184 MB, stream 9329 MB
+[ 6725.4 s]   11912000 puts, 1772 a second; resident 570 MB, heap 1206 MB, stream 9339 MB
+[ 6759.2 s]   11916000 puts, 1763 a second; resident 572 MB, heap 1229 MB, stream 9348 MB
+[ 6789.3 s]   11961000 puts, 1762 a second; resident 588 MB, heap 1313 MB, stream 9365 MB
+[ 6821.4 s]   11968000 puts, 1755 a second; resident 591 MB, heap 1147 MB, stream 9376 MB
+[ 6854.1 s]   11975000 puts, 1748 a second; resident 595 MB, heap 1169 MB, stream 9387 MB
+[ 6890.7 s]   11981000 puts, 1739 a second; resident 599 MB, heap 1195 MB, stream 9398 MB
+[ 6922.5 s]   11984000 puts, 1732 a second; resident 450 MB, heap 1180 MB, stream 9404 MB
+[ 6960.8 s]   11988000 puts, 1723 a second; resident 452 MB, heap 1202 MB, stream 9412 MB
+[ 6991.1 s]   11991000 puts, 1716 a second; resident 453 MB, heap 1228 MB, stream 9418 MB
+[ 7021.7 s]   11994000 puts, 1708 a second; resident 455 MB, heap 1245 MB, stream 9425 MB
+[ 7053.0 s]   12016000 puts, 1704 a second; resident 464 MB, heap 1300 MB, stream 9435 MB
+[ 7087.8 s]   12042000 puts, 1699 a second; resident 476 MB, heap 1367 MB, stream 9446 MB
+[ 7119.2 s]   12047000 puts, 1693 a second; resident 479 MB, heap 1390 MB, stream 9454 MB
+[ 7153.1 s]   12052000 puts, 1685 a second; resident 482 MB, heap 1410 MB, stream 9462 MB
+[ 7187.3 s]   12057000 puts, 1678 a second; resident 485 MB, heap 1438 MB, stream 9471 MB
+[ 7224.0 s]   12061000 puts, 1670 a second; resident 488 MB, heap 1189 MB, stream 9478 MB
+[ 7257.0 s]   12065000 puts, 1663 a second; resident 490 MB, heap 1209 MB, stream 9486 MB
+[ 7293.7 s]   12069000 puts, 1655 a second; resident 493 MB, heap 1235 MB, stream 9494 MB
+[ 7323.7 s]   12072000 puts, 1649 a second; resident 495 MB, heap 1256 MB, stream 9501 MB
+[ 7355.9 s]   12103000 puts, 1646 a second; resident 507 MB, heap 1319 MB, stream 9513 MB
+[ 7394.3 s]   12121000 puts, 1640 a second; resident 515 MB, heap 1362 MB, stream 9524 MB
+[ 7429.3 s]   12126000 puts, 1632 a second; resident 518 MB, heap 1170 MB, stream 9532 MB
+[ 7461.7 s]   12131000 puts, 1626 a second; resident 521 MB, heap 1189 MB, stream 9540 MB
+[ 7492.7 s]   12135000 puts, 1620 a second; resident 524 MB, heap 1210 MB, stream 9548 MB
+[ 7529.6 s]   12139000 puts, 1612 a second; resident 526 MB, heap 1234 MB, stream 9556 MB
+[ 7564.4 s]   12143000 puts, 1606 a second; resident 529 MB, heap 1258 MB, stream 9564 MB
+[ 7598.9 s]   12147000 puts, 1599 a second; resident 531 MB, heap 1279 MB, stream 9572 MB
+[ 7629.0 s]   12151000 puts, 1593 a second; resident 533 MB, heap 1302 MB, stream 9581 MB
+[ 7659.1 s]   12195000 puts, 1593 a second; resident 550 MB, heap 1168 MB, stream 9594 MB
+[ 7690.4 s]   12201000 puts, 1587 a second; resident 553 MB, heap 1190 MB, stream 9605 MB
+[ 7723.2 s]   12207000 puts, 1581 a second; resident 557 MB, heap 1211 MB, stream 9614 MB
+[ 7756.4 s]   12212000 puts, 1575 a second; resident 560 MB, heap 1232 MB, stream 9623 MB
+[ 7786.8 s]   12215000 puts, 1569 a second; resident 562 MB, heap 1255 MB, stream 9629 MB
+[ 7823.2 s]   12219000 puts, 1562 a second; resident 564 MB, heap 1274 MB, stream 9637 MB
+[ 7857.4 s]   12223000 puts, 1556 a second; resident 566 MB, heap 1305 MB, stream 9645 MB
+[ 7891.1 s]   12226000 puts, 1550 a second; resident 568 MB, heap 1329 MB, stream 9652 MB
+[ 7923.0 s]   12269000 puts, 1549 a second; resident 584 MB, heap 1157 MB, stream 9667 MB
+[ 7954.8 s]   12276000 puts, 1543 a second; resident 587 MB, heap 1179 MB, stream 9677 MB
+[ 7988.7 s]   12283000 puts, 1538 a second; resident 591 MB, heap 1203 MB, stream 9688 MB
+[ 8026.4 s]   12290000 puts, 1531 a second; resident 595 MB, heap 1227 MB, stream 9699 MB
+[ 8059.0 s]   12294000 puts, 1526 a second; resident 598 MB, heap 1246 MB, stream 9708 MB
+[ 8096.7 s]   12298000 puts, 1519 a second; resident 449 MB, heap 1151 MB, stream 9717 MB
+[ 8128.8 s]   12301000 puts, 1514 a second; resident 451 MB, heap 1169 MB, stream 9721 MB
+[ 8160.2 s]   12304000 puts, 1508 a second; resident 452 MB, heap 1187 MB, stream 9728 MB
+[ 8191.3 s]   12325000 puts, 1505 a second; resident 462 MB, heap 1240 MB, stream 9738 MB
+[ 8221.6 s]   12351000 puts, 1503 a second; resident 474 MB, heap 1117 MB, stream 9748 MB
+[ 8254.6 s]   12356000 puts, 1497 a second; resident 477 MB, heap 1145 MB, stream 9756 MB
+[ 8287.7 s]   12362000 puts, 1492 a second; resident 481 MB, heap 1169 MB, stream 9765 MB
+[ 8322.0 s]   12367000 puts, 1486 a second; resident 484 MB, heap 1192 MB, stream 9773 MB
+[ 8357.0 s]   12371000 puts, 1481 a second; resident 486 MB, heap 1075 MB, stream 9780 MB
+[ 8394.1 s]   12375000 puts, 1474 a second; resident 489 MB, heap 1095 MB, stream 9788 MB
+[ 8431.5 s]   12379000 puts, 1468 a second; resident 491 MB, heap 1125 MB, stream 9796 MB
+[ 8473.2 s]   12383000 puts, 1462 a second; resident 494 MB, heap 1156 MB, stream 9805 MB
+[ 8503.4 s]   12405000 puts, 1459 a second; resident 503 MB, heap 1204 MB, stream 9815 MB
+[ 8539.6 s]   12431000 puts, 1456 a second; resident 515 MB, heap 1270 MB, stream 9826 MB
+[ 8572.2 s]   12436000 puts, 1451 a second; resident 518 MB, heap 1293 MB, stream 9834 MB
+[ 8603.9 s]   12441000 puts, 1446 a second; resident 521 MB, heap 1319 MB, stream 9842 MB
+[ 8638.1 s]   12446000 puts, 1441 a second; resident 524 MB, heap 1339 MB, stream 9851 MB
+[ 8672.9 s]   12450000 puts, 1436 a second; resident 526 MB, heap 1358 MB, stream 9858 MB
+[ 8705.0 s]   12454000 puts, 1431 a second; resident 529 MB, heap 1102 MB, stream 9866 MB
+[ 8740.6 s]   12458000 puts, 1426 a second; resident 531 MB, heap 1121 MB, stream 9874 MB
+[ 8776.7 s]   12462000 puts, 1420 a second; resident 534 MB, heap 1087 MB, stream 9883 MB
+[ 8809.7 s]   12507000 puts, 1420 a second; resident 552 MB, heap 1172 MB, stream 9898 MB
+[ 8843.4 s]   12513000 puts, 1415 a second; resident 555 MB, heap 1201 MB, stream 9909 MB
+[ 8874.4 s]   12519000 puts, 1411 a second; resident 559 MB, heap 1228 MB, stream 9918 MB
+[ 8909.0 s]   12525000 puts, 1406 a second; resident 562 MB, heap 1254 MB, stream 9928 MB
+[ 8939.3 s]   12528000 puts, 1402 a second; resident 564 MB, heap 1280 MB, stream 9933 MB
+[ 8970.0 s]   12532000 puts, 1397 a second; resident 567 MB, heap 1298 MB, stream 9942 MB
+[ 9001.8 s]   12536000 puts, 1393 a second; resident 569 MB, heap 1316 MB, stream 9949 MB
+[ 9034.5 s]   12540000 puts, 1388 a second; resident 571 MB, heap 1336 MB, stream 9959 MB
+[ 9067.2 s]   12585000 puts, 1388 a second; resident 588 MB, heap 1416 MB, stream 9974 MB
+[ 9098.9 s]   12592000 puts, 1384 a second; resident 592 MB, heap 1440 MB, stream 9986 MB
+[ 9131.9 s]   12599000 puts, 1380 a second; resident 596 MB, heap 1463 MB, stream 9997 MB
+[ 9173.2 s]   12605000 puts, 1374 a second; resident 449 MB, heap 1173 MB, stream 10009 MB
+[ 9207.2 s]   12608000 puts, 1370 a second; resident 451 MB, heap 1191 MB, stream 10013 MB
+[ 9241.6 s]   12612000 puts, 1365 a second; resident 453 MB, heap 1225 MB, stream 10021 MB
+[ 9277.9 s]   12615000 puts, 1360 a second; resident 454 MB, heap 1252 MB, stream 10027 MB
+[ 9309.1 s]   12618000 puts, 1356 a second; resident 456 MB, heap 1274 MB, stream 10034 MB
+[ 9339.2 s]   12652000 puts, 1355 a second; resident 472 MB, heap 1345 MB, stream 10046 MB
+[ 9377.1 s]   12667000 puts, 1351 a second; resident 479 MB, heap 1386 MB, stream 10055 MB
+[ 9409.7 s]   12672000 puts, 1347 a second; resident 482 MB, heap 1407 MB, stream 10063 MB
+[ 9441.5 s]   12678000 puts, 1343 a second; resident 486 MB, heap 1431 MB, stream 10072 MB
+[ 9473.3 s]   12683000 puts, 1339 a second; resident 489 MB, heap 1127 MB, stream 10081 MB
+[ 9508.3 s]   12687000 puts, 1335 a second; resident 492 MB, heap 1148 MB, stream 10088 MB
+[ 9540.4 s]   12691000 puts, 1330 a second; resident 494 MB, heap 1169 MB, stream 10096 MB
+[ 9578.5 s]   12695000 puts, 1326 a second; resident 497 MB, heap 1190 MB, stream 10104 MB
+[ 9610.5 s]   12699000 puts, 1322 a second; resident 499 MB, heap 1210 MB, stream 10113 MB
+[ 9641.3 s]   12744000 puts, 1322 a second; resident 519 MB, heap 1120 MB, stream 10127 MB
+[ 9674.7 s]   12750000 puts, 1318 a second; resident 522 MB, heap 1149 MB, stream 10136 MB
+[ 9707.1 s]   12756000 puts, 1314 a second; resident 526 MB, heap 1174 MB, stream 10146 MB
+[ 9740.4 s]   12761000 puts, 1310 a second; resident 529 MB, heap 1203 MB, stream 10154 MB
+[ 9773.5 s]   12766000 puts, 1306 a second; resident 532 MB, heap 1225 MB, stream 10163 MB
+[ 9804.8 s]   12770000 puts, 1303 a second; resident 535 MB, heap 1250 MB, stream 10171 MB
+[ 9838.8 s]   12774000 puts, 1299 a second; resident 537 MB, heap 1269 MB, stream 10179 MB
+[ 9876.9 s]   12778000 puts, 1294 a second; resident 540 MB, heap 1294 MB, stream 10188 MB
+[ 9911.0 s]   12824000 puts, 1294 a second; resident 558 MB, heap 1158 MB, stream 10203 MB
+[ 9941.3 s]   12829000 puts, 1291 a second; resident 562 MB, heap 1183 MB, stream 10212 MB
+[ 9971.9 s]   12836000 puts, 1287 a second; resident 566 MB, heap 1208 MB, stream 10223 MB
+[10002.6 s]   12842000 puts, 1284 a second; resident 569 MB, heap 1231 MB, stream 10232 MB
+[10038.5 s]   12847000 puts, 1280 a second; resident 572 MB, heap 1258 MB, stream 10242 MB
+[10074.5 s]   12852000 puts, 1276 a second; resident 575 MB, heap 1280 MB, stream 10252 MB
+[10105.8 s]   12856000 puts, 1272 a second; resident 578 MB, heap 1303 MB, stream 10260 MB
+[10136.0 s]   12896000 puts, 1272 a second; resident 593 MB, heap 1166 MB, stream 10276 MB
+[10167.7 s]   12908000 puts, 1270 a second; resident 599 MB, heap 1211 MB, stream 10286 MB
+[10197.8 s]   12913000 puts, 1266 a second; resident 451 MB, heap 1687 MB, stream 10294 MB
+[10232.4 s]   12920000 puts, 1263 a second; resident 454 MB, heap 1714 MB, stream 10305 MB
+[10269.1 s]   12925000 puts, 1259 a second; resident 456 MB, heap 1207 MB, stream 10314 MB
+[10303.9 s]   12929000 puts, 1255 a second; resident 459 MB, heap 1143 MB, stream 10323 MB
+[10338.4 s]   12933000 puts, 1251 a second; resident 461 MB, heap 1169 MB, stream 10330 MB
+[10375.0 s]   12937000 puts, 1247 a second; resident 464 MB, heap 1192 MB, stream 10339 MB
+[10407.3 s]   12969000 puts, 1246 a second; resident 479 MB, heap 1271 MB, stream 10351 MB
+[10440.9 s]   12987000 puts, 1244 a second; resident 488 MB, heap 1317 MB, stream 10361 MB
+[10477.3 s]   12993000 puts, 1240 a second; resident 492 MB, heap 1342 MB, stream 10371 MB
+[10509.4 s]   12999000 puts, 1237 a second; resident 496 MB, heap 1374 MB, stream 10380 MB
+[10545.3 s]   13005000 puts, 1233 a second; resident 500 MB, heap 1401 MB, stream 10390 MB
+[10576.3 s]   13009000 puts, 1230 a second; resident 502 MB, heap 1427 MB, stream 10398 MB
+[10611.1 s]   13014000 puts, 1227 a second; resident 505 MB, heap 1198 MB, stream 10407 MB
+[10646.3 s]   13018000 puts, 1223 a second; resident 508 MB, heap 1229 MB, stream 10416 MB
+[10676.4 s]   13062000 puts, 1224 a second; resident 527 MB, heap 1317 MB, stream 10432 MB
+[10710.0 s]   13069000 puts, 1220 a second; resident 531 MB, heap 1342 MB, stream 10440 MB
+[10740.9 s]   13075000 puts, 1217 a second; resident 535 MB, heap 1365 MB, stream 10450 MB
+[10771.1 s]   13081000 puts, 1215 a second; resident 539 MB, heap 1387 MB, stream 10459 MB
+[10802.4 s]   13086000 puts, 1212 a second; resident 542 MB, heap 1174 MB, stream 10468 MB
+[10833.3 s]   13090000 puts, 1208 a second; resident 544 MB, heap 1199 MB, stream 10476 MB
+[10868.7 s]   13095000 puts, 1205 a second; resident 547 MB, heap 1231 MB, stream 10485 MB
+[10901.8 s]   13099000 puts, 1202 a second; resident 550 MB, heap 1261 MB, stream 10494 MB
+[10936.7 s]   13145000 puts, 1202 a second; resident 569 MB, heap 1350 MB, stream 10511 MB
+[10967.0 s]   13151000 puts, 1199 a second; resident 572 MB, heap 1373 MB, stream 10521 MB
+[11001.1 s]   13157000 puts, 1196 a second; resident 576 MB, heap 1395 MB, stream 10530 MB
+[11034.6 s]   13163000 puts, 1193 a second; resident 580 MB, heap 1167 MB, stream 10540 MB
+[11067.8 s]   13167000 puts, 1190 a second; resident 582 MB, heap 1191 MB, stream 10548 MB
+[11098.7 s]   13171000 puts, 1187 a second; resident 585 MB, heap 1208 MB, stream 10556 MB
+[11134.3 s]   13175000 puts, 1183 a second; resident 587 MB, heap 1232 MB, stream 10564 MB
+[11166.6 s]   13209000 puts, 1183 a second; resident 451 MB, heap 1208 MB, stream 10579 MB
+[11201.0 s]   13226000 puts, 1181 a second; resident 459 MB, heap 1260 MB, stream 10589 MB
+[11233.6 s]   13232000 puts, 1178 a second; resident 461 MB, heap 1288 MB, stream 10598 MB
+[11269.0 s]   13239000 puts, 1175 a second; resident 466 MB, heap 1319 MB, stream 10609 MB
+[11305.6 s]   13243000 puts, 1172 a second; resident 468 MB, heap 1353 MB, stream 10617 MB
+[11338.1 s]   13247000 puts, 1169 a second; resident 471 MB, heap 1112 MB, stream 10625 MB
+[11373.2 s]   13251000 puts, 1165 a second; resident 474 MB, heap 1132 MB, stream 10632 MB
+[11407.0 s]   13254000 puts, 1162 a second; resident 476 MB, heap 1155 MB, stream 10639 MB
+[11440.2 s]   13269000 puts, 1160 a second; resident 483 MB, heap 1196 MB, stream 10649 MB
+[11471.3 s]   13303000 puts, 1160 a second; resident 499 MB, heap 1107 MB, stream 10661 MB
+[11505.4 s]   13309000 puts, 1157 a second; resident 503 MB, heap 1138 MB, stream 10670 MB
+[11540.1 s]   13316000 puts, 1154 a second; resident 508 MB, heap 1165 MB, stream 10680 MB
+[11571.5 s]   13321000 puts, 1151 a second; resident 511 MB, heap 1188 MB, stream 10689 MB
+[11604.7 s]   13325000 puts, 1148 a second; resident 514 MB, heap 1211 MB, stream 10697 MB
+[11640.6 s]   13330000 puts, 1145 a second; resident 517 MB, heap 1076 MB, stream 10706 MB
+[11672.8 s]   13333000 puts, 1142 a second; resident 519 MB, heap 1102 MB, stream 10713 MB
+[11702.9 s]   13337000 puts, 1140 a second; resident 521 MB, heap 1122 MB, stream 10722 MB
+[11736.7 s]   13382000 puts, 1140 a second; resident 541 MB, heap 1211 MB, stream 10735 MB
+[11767.0 s]   13388000 puts, 1138 a second; resident 545 MB, heap 1244 MB, stream 10744 MB
+[11799.5 s]   13395000 puts, 1135 a second; resident 549 MB, heap 1271 MB, stream 10755 MB
+[11831.3 s]   13400000 puts, 1133 a second; resident 552 MB, heap 1299 MB, stream 10763 MB
+[11865.6 s]   13405000 puts, 1130 a second; resident 555 MB, heap 1321 MB, stream 10772 MB
+[11895.6 s]   13409000 puts, 1127 a second; resident 558 MB, heap 1345 MB, stream 10779 MB
+[11932.1 s]   13414000 puts, 1124 a second; resident 561 MB, heap 1368 MB, stream 10789 MB
+[11963.0 s]   13418000 puts, 1122 a second; resident 563 MB, heap 1391 MB, stream 10798 MB
+[11996.0 s]   13463000 puts, 1122 a second; resident 582 MB, heap 1476 MB, stream 10812 MB
+[12030.6 s]   13469000 puts, 1120 a second; resident 585 MB, heap 1497 MB, stream 10821 MB
+[12061.2 s]   13475000 puts, 1117 a second; resident 589 MB, heap 1152 MB, stream 10831 MB
+[12091.6 s]   13481000 puts, 1115 a second; resident 593 MB, heap 1173 MB, stream 10840 MB
+[12125.6 s]   13486000 puts, 1112 a second; resident 596 MB, heap 1151 MB, stream 10849 MB
+[12160.1 s]   13491000 puts, 1110 a second; resident 599 MB, heap 1182 MB, stream 10859 MB
+[12190.8 s]   13494000 puts, 1107 a second; resident 450 MB, heap 1644 MB, stream 10864 MB
+[12223.9 s]   13497000 puts, 1104 a second; resident 451 MB, heap 1667 MB, stream 10871 MB
+[12254.8 s]   13541000 puts, 1105 a second; resident 472 MB, heap 1761 MB, stream 10884 MB
+[12286.3 s]   13546000 puts, 1103 a second; resident 476 MB, heap 1783 MB, stream 10892 MB
+[12318.5 s]   13551000 puts, 1100 a second; resident 479 MB, heap 1805 MB, stream 10900 MB
+[12351.0 s]   13557000 puts, 1098 a second; resident 483 MB, heap 1829 MB, stream 10909 MB
+[12383.9 s]   13562000 puts, 1095 a second; resident 487 MB, heap 1851 MB, stream 10917 MB
+[12417.1 s]   13566000 puts, 1093 a second; resident 490 MB, heap 1238 MB, stream 10926 MB
+[12451.8 s]   13571000 puts, 1090 a second; resident 493 MB, heap 1263 MB, stream 10935 MB
+[12491.2 s]   13575000 puts, 1087 a second; resident 496 MB, heap 1289 MB, stream 10944 MB
+[12521.2 s]   13606000 puts, 1087 a second; resident 510 MB, heap 1361 MB, stream 10955 MB
+[12552.5 s]   13624000 puts, 1085 a second; resident 519 MB, heap 1414 MB, stream 10965 MB
+[12584.6 s]   13630000 puts, 1083 a second; resident 523 MB, heap 1438 MB, stream 10974 MB
+[12616.6 s]   13637000 puts, 1081 a second; resident 527 MB, heap 1463 MB, stream 10985 MB
+[12653.1 s]   13642000 puts, 1078 a second; resident 531 MB, heap 1491 MB, stream 10994 MB
+[12684.8 s]   13646000 puts, 1076 a second; resident 533 MB, heap 1510 MB, stream 11002 MB
+[12721.2 s]   13651000 puts, 1073 a second; resident 536 MB, heap 1539 MB, stream 11011 MB
+[12753.2 s]   13656000 puts, 1071 a second; resident 539 MB, heap 1562 MB, stream 11022 MB
+[12783.8 s]   13701000 puts, 1072 a second; resident 559 MB, heap 1666 MB, stream 11036 MB
+[12817.1 s]   13707000 puts, 1070 a second; resident 563 MB, heap 1266 MB, stream 11046 MB
+[12849.1 s]   13714000 puts, 1067 a second; resident 567 MB, heap 1291 MB, stream 11056 MB
+[12879.5 s]   13719000 puts, 1065 a second; resident 571 MB, heap 1312 MB, stream 11063 MB
+[12913.3 s]   13723000 puts, 1063 a second; resident 573 MB, heap 1331 MB, stream 11071 MB
+[12945.0 s]   13727000 puts, 1061 a second; resident 576 MB, heap 1348 MB, stream 11079 MB
+[12976.0 s]   13731000 puts, 1058 a second; resident 578 MB, heap 1377 MB, stream 11087 MB
+[13007.8 s]   13740000 puts, 1056 a second; resident 583 MB, heap 1405 MB, stream 11099 MB
+[13040.0 s]   13782000 puts, 1057 a second; resident 450 MB, heap 1511 MB, stream 11111 MB
+[13071.0 s]   13787000 puts, 1055 a second; resident 452 MB, heap 1316 MB, stream 11119 MB
+[13101.0 s]   13793000 puts, 1053 a second; resident 455 MB, heap 1341 MB, stream 11128 MB
+[13132.8 s]   13799000 puts, 1051 a second; resident 458 MB, heap 1375 MB, stream 11137 MB
+[13163.5 s]   13803000 puts, 1049 a second; resident 460 MB, heap 1395 MB, stream 11144 MB
+[13197.7 s]   13807000 puts, 1046 a second; resident 463 MB, heap 1416 MB, stream 11151 MB
+[13230.7 s]   13811000 puts, 1044 a second; resident 466 MB, heap 1442 MB, stream 11159 MB
+[13263.9 s]   13815000 puts, 1042 a second; resident 468 MB, heap 1463 MB, stream 11167 MB
+[13295.4 s]   13831000 puts, 1040 a second; resident 477 MB, heap 1512 MB, stream 11177 MB
+[13328.5 s]   13864000 puts, 1040 a second; resident 493 MB, heap 1348 MB, stream 11189 MB
+[13362.5 s]   13869000 puts, 1038 a second; resident 496 MB, heap 1369 MB, stream 11197 MB
+[13394.7 s]   13875000 puts, 1036 a second; resident 500 MB, heap 1409 MB, stream 11206 MB
+[13425.2 s]   13881000 puts, 1034 a second; resident 504 MB, heap 1433 MB, stream 11216 MB
+[13456.1 s]   13885000 puts, 1032 a second; resident 507 MB, heap 1454 MB, stream 11224 MB
+[13487.9 s]   13889000 puts, 1030 a second; resident 510 MB, heap 1333 MB, stream 11231 MB
+[13528.7 s]   13894000 puts, 1027 a second; resident 513 MB, heap 1363 MB, stream 11241 MB
+[13560.9 s]   13929000 puts, 1027 a second; resident 529 MB, heap 1439 MB, stream 11256 MB
+[13593.3 s]   13945000 puts, 1026 a second; resident 537 MB, heap 1346 MB, stream 11266 MB
+[13625.6 s]   13951000 puts, 1024 a second; resident 541 MB, heap 1371 MB, stream 11276 MB
+[13657.5 s]   13958000 puts, 1022 a second; resident 546 MB, heap 1396 MB, stream 11286 MB
+[13689.0 s]   13963000 puts, 1020 a second; resident 549 MB, heap 1418 MB, stream 11295 MB
+[13722.6 s]   13967000 puts, 1018 a second; resident 551 MB, heap 1445 MB, stream 11303 MB
+[13755.0 s]   13972000 puts, 1016 a second; resident 555 MB, heap 1478 MB, stream 11312 MB
+[13788.8 s]   13976000 puts, 1014 a second; resident 557 MB, heap 1506 MB, stream 11320 MB
+[13820.5 s]   14022000 puts, 1015 a second; resident 577 MB, heap 1598 MB, stream 11336 MB
+[13852.8 s]   14029000 puts, 1013 a second; resident 581 MB, heap 1623 MB, stream 11348 MB
+[13885.0 s]   14036000 puts, 1011 a second; resident 586 MB, heap 1380 MB, stream 11358 MB
+[13921.9 s]   14042000 puts, 1009 a second; resident 590 MB, heap 1404 MB, stream 11367 MB
+[13952.2 s]   14046000 puts, 1007 a second; resident 592 MB, heap 1422 MB, stream 11376 MB
+[13991.8 s]   14052000 puts, 1004 a second; resident 596 MB, heap 1453 MB, stream 11386 MB
+[14026.5 s]   14060000 puts, 1002 a second; resident 450 MB, heap 1480 MB, stream 11399 MB
+[14061.9 s]   14101000 puts, 1003 a second; resident 470 MB, heap 1582 MB, stream 11410 MB
+[14097.2 s]   14106000 puts, 1001 a second; resident 473 MB, heap 1607 MB, stream 11418 MB
+[14129.2 s]   14112000 puts, 999 a second; resident 477 MB, heap 1632 MB, stream 11427 MB
+[14163.1 s]   14119000 puts, 997 a second; resident 482 MB, heap 1662 MB, stream 11437 MB
+[14196.4 s]   14123000 puts, 995 a second; resident 485 MB, heap 1692 MB, stream 11445 MB
+[14227.1 s]   14127000 puts, 993 a second; resident 488 MB, heap 1712 MB, stream 11452 MB
+[14258.9 s]   14131000 puts, 991 a second; resident 490 MB, heap 1737 MB, stream 11459 MB
+[14291.5 s]   14135000 puts, 989 a second; resident 493 MB, heap 1758 MB, stream 11468 MB
+[14323.1 s]   14169000 puts, 989 a second; resident 509 MB, heap 1841 MB, stream 11480 MB
+[14358.6 s]   14186000 puts, 988 a second; resident 518 MB, heap 1488 MB, stream 11491 MB
+[14390.8 s]   14192000 puts, 986 a second; resident 522 MB, heap 1515 MB, stream 11500 MB
+[14422.5 s]   14199000 puts, 985 a second; resident 527 MB, heap 1549 MB, stream 11511 MB
+[14456.1 s]   14204000 puts, 983 a second; resident 530 MB, heap 1572 MB, stream 11519 MB
+[14491.9 s]   14209000 puts, 981 a second; resident 534 MB, heap 1596 MB, stream 11528 MB
+[14524.4 s]   14213000 puts, 979 a second; resident 536 MB, heap 1621 MB, stream 11536 MB
+[14559.3 s]   14217000 puts, 977 a second; resident 539 MB, heap 1646 MB, stream 11544 MB
+[14590.6 s]   14261000 puts, 978 a second; resident 558 MB, heap 1738 MB, stream 11559 MB
+[14626.3 s]   14269000 puts, 976 a second; resident 563 MB, heap 1483 MB, stream 11569 MB
+[14657.1 s]   14274000 puts, 974 a second; resident 566 MB, heap 1513 MB, stream 11576 MB
+[14690.4 s]   14281000 puts, 972 a second; resident 571 MB, heap 1537 MB, stream 11587 MB
+[14722.5 s]   14286000 puts, 970 a second; resident 574 MB, heap 1558 MB, stream 11595 MB
+[14756.8 s]   14291000 puts, 969 a second; resident 577 MB, heap 1586 MB, stream 11605 MB
+[14794.1 s]   14296000 puts, 966 a second; resident 580 MB, heap 1609 MB, stream 11614 MB
+[14828.3 s]   14300000 puts, 964 a second; resident 583 MB, heap 1633 MB, stream 11623 MB
+[14859.5 s]   14345000 puts, 965 a second; resident 452 MB, heap 1649 MB, stream 11636 MB
+[14890.1 s]   14350000 puts, 964 a second; resident 455 MB, heap 1671 MB, stream 11643 MB
+[14923.7 s]   14355000 puts, 962 a second; resident 457 MB, heap 1702 MB, stream 11652 MB
+[14959.7 s]   14361000 puts, 960 a second; resident 460 MB, heap 1508 MB, stream 11660 MB
+[14993.0 s]   14366000 puts, 958 a second; resident 463 MB, heap 1531 MB, stream 11668 MB
+[15025.3 s]   14369000 puts, 956 a second; resident 465 MB, heap 1560 MB, stream 11673 MB
+[15058.2 s]   14373000 puts, 955 a second; resident 468 MB, heap 1581 MB, stream 11682 MB
+[15090.4 s]   14377000 puts, 953 a second; resident 471 MB, heap 1602 MB, stream 11689 MB
+[15129.3 s]   14381000 puts, 951 a second; resident 474 MB, heap 1477 MB, stream 11697 MB
+[15160.8 s]   14415000 puts, 951 a second; resident 491 MB, heap 1555 MB, stream 11709 MB
+[15191.5 s]   14431000 puts, 950 a second; resident 499 MB, heap 1473 MB, stream 11719 MB
+[15223.9 s]   14437000 puts, 948 a second; resident 503 MB, heap 1498 MB, stream 11728 MB
+[15255.5 s]   14443000 puts, 947 a second; resident 507 MB, heap 1522 MB, stream 11737 MB
+[15290.5 s]   14449000 puts, 945 a second; resident 512 MB, heap 1548 MB, stream 11746 MB
+[15321.3 s]   14453000 puts, 943 a second; resident 514 MB, heap 1575 MB, stream 11754 MB
+[15359.8 s]   14458000 puts, 941 a second; resident 518 MB, heap 1469 MB, stream 11763 MB
+[15395.5 s]   14462000 puts, 939 a second; resident 520 MB, heap 1490 MB, stream 11771 MB
+[15425.6 s]   14485000 puts, 939 a second; resident 531 MB, heap 1544 MB, stream 11783 MB
+[15457.5 s]   14505000 puts, 938 a second; resident 541 MB, heap 1457 MB, stream 11793 MB
+[15488.9 s]   14511000 puts, 937 a second; resident 545 MB, heap 1480 MB, stream 11803 MB
+[15522.4 s]   14517000 puts, 935 a second; resident 549 MB, heap 1504 MB, stream 11811 MB
+[15557.0 s]   14522000 puts, 934 a second; resident 553 MB, heap 1527 MB, stream 11821 MB
+[15593.6 s]   14527000 puts, 932 a second; resident 556 MB, heap 1551 MB, stream 11830 MB
+[15629.3 s]   14531000 puts, 930 a second; resident 558 MB, heap 1571 MB, stream 11838 MB
+[15663.1 s]   14577000 puts, 931 a second; resident 579 MB, heap 1401 MB, stream 11855 MB
+[15693.8 s]   14583000 puts, 929 a second; resident 583 MB, heap 1429 MB, stream 11865 MB
+[15723.9 s]   14590000 puts, 928 a second; resident 587 MB, heap 1453 MB, stream 11875 MB
+[15755.2 s]   14596000 puts, 927 a second; resident 591 MB, heap 1487 MB, stream 11884 MB
+[15790.0 s]   14601000 puts, 925 a second; resident 594 MB, heap 1510 MB, stream 11894 MB
+[15821.1 s]   14606000 puts, 923 a second; resident 598 MB, heap 1537 MB, stream 11903 MB
+[15859.6 s]   14610000 puts, 921 a second; resident 450 MB, heap 1604 MB, stream 11911 MB
+[15890.5 s]   14617000 puts, 920 a second; resident 453 MB, heap 1635 MB, stream 11919 MB
+[15922.7 s]   14657000 puts, 921 a second; resident 474 MB, heap 1734 MB, stream 11929 MB
+[15953.6 s]   14662000 puts, 919 a second; resident 477 MB, heap 1758 MB, stream 11938 MB
+[15985.2 s]   14667000 puts, 918 a second; resident 481 MB, heap 1333 MB, stream 11945 MB
+[16018.7 s]   14674000 puts, 916 a second; resident 486 MB, heap 1362 MB, stream 11956 MB
+[16053.0 s]   14679000 puts, 914 a second; resident 489 MB, heap 1387 MB, stream 11964 MB
+[16085.6 s]   14683000 puts, 913 a second; resident 492 MB, heap 1412 MB, stream 11972 MB
+[16117.8 s]   14687000 puts, 911 a second; resident 495 MB, heap 1432 MB, stream 11979 MB
+[16156.0 s]   14691000 puts, 909 a second; resident 498 MB, heap 1460 MB, stream 11988 MB
+[16186.1 s]   14721000 puts, 910 a second; resident 512 MB, heap 1308 MB, stream 12000 MB
+[16218.1 s]   14740000 puts, 909 a second; resident 522 MB, heap 1357 MB, stream 12009 MB
+[16252.9 s]   14746000 puts, 907 a second; resident 526 MB, heap 1389 MB, stream 12019 MB
+[16286.8 s]   14752000 puts, 906 a second; resident 530 MB, heap 1420 MB, stream 12028 MB
+[16324.5 s]   14758000 puts, 904 a second; resident 534 MB, heap 1273 MB, stream 12037 MB
+[16359.4 s]   14762000 puts, 902 a second; resident 537 MB, heap 1303 MB, stream 12045 MB
+[16396.4 s]   14767000 puts, 901 a second; resident 540 MB, heap 1326 MB, stream 12054 MB
+[16426.7 s]   14770000 puts, 899 a second; resident 542 MB, heap 1348 MB, stream 12061 MB
+[16459.3 s]   14786000 puts, 898 a second; resident 550 MB, heap 1229 MB, stream 12071 MB
+[16490.1 s]   14818000 puts, 899 a second; resident 565 MB, heap 1297 MB, stream 12080 MB
+[16523.4 s]   14823000 puts, 897 a second; resident 568 MB, heap 1318 MB, stream 12089 MB
+[16557.4 s]   14830000 puts, 896 a second; resident 573 MB, heap 1344 MB, stream 12100 MB
+[16593.5 s]   14837000 puts, 894 a second; resident 578 MB, heap 1371 MB, stream 12110 MB
+[16624.6 s]   14841000 puts, 893 a second; resident 580 MB, heap 1233 MB, stream 12118 MB
+[16655.3 s]   14846000 puts, 891 a second; resident 583 MB, heap 1255 MB, stream 12127 MB
+[16688.2 s]   14850000 puts, 890 a second; resident 586 MB, heap 1285 MB, stream 12136 MB
+[16721.2 s]   14885000 puts, 890 a second; resident 452 MB, heap 1645 MB, stream 12150 MB
+[16752.6 s]   14901000 puts, 890 a second; resident 460 MB, heap 1691 MB, stream 12159 MB
+[16782.8 s]   14906000 puts, 888 a second; resident 462 MB, heap 1713 MB, stream 12167 MB
+[16813.0 s]   14912000 puts, 887 a second; resident 466 MB, heap 1739 MB, stream 12176 MB
+[16848.8 s]   14918000 puts, 885 a second; resident 470 MB, heap 1268 MB, stream 12185 MB
+[16882.9 s]   14922000 puts, 884 a second; resident 473 MB, heap 1290 MB, stream 12193 MB
+[16917.1 s]   14927000 puts, 882 a second; resident 477 MB, heap 1315 MB, stream 12202 MB
+[16949.4 s]   14930000 puts, 881 a second; resident 479 MB, heap 1335 MB, stream 12208 MB
+[16983.0 s]   14934000 puts, 879 a second; resident 481 MB, heap 1255 MB, stream 12216 MB
+[17016.1 s]   14980000 puts, 880 a second; resident 505 MB, heap 1291 MB, stream 12231 MB
+[17047.0 s]   14985000 puts, 879 a second; resident 508 MB, heap 1314 MB, stream 12239 MB
+[17078.2 s]   14991000 puts, 878 a second; resident 512 MB, heap 1339 MB, stream 12248 MB
+[17109.1 s]   14997000 puts, 877 a second; resident 516 MB, heap 1372 MB, stream 12257 MB
+[17141.1 s]   15002000 puts, 875 a second; resident 520 MB, heap 1395 MB, stream 12266 MB
+[17176.3 s]   15007000 puts, 874 a second; resident 523 MB, heap 1420 MB, stream 12275 MB
+[17207.8 s]   15011000 puts, 872 a second; resident 526 MB, heap 1446 MB, stream 12283 MB
+[17241.5 s]   15015000 puts, 871 a second; resident 529 MB, heap 1473 MB, stream 12291 MB
+[17271.7 s]   15048000 puts, 871 a second; resident 545 MB, heap 1553 MB, stream 12303 MB
+[17304.8 s]   15065000 puts, 871 a second; resident 554 MB, heap 1269 MB, stream 12314 MB
+[17338.7 s]   15071000 puts, 869 a second; resident 558 MB, heap 1303 MB, stream 12323 MB
+[17371.0 s]   15078000 puts, 868 a second; resident 562 MB, heap 1329 MB, stream 12334 MB
+[17408.2 s]   15084000 puts, 867 a second; resident 566 MB, heap 1357 MB, stream 12343 MB
+[17438.8 s]   15088000 puts, 865 a second; resident 569 MB, heap 1382 MB, stream 12352 MB
+[17474.6 s]   15093000 puts, 864 a second; resident 572 MB, heap 1406 MB, stream 12361 MB
+[17506.0 s]   15097000 puts, 862 a second; resident 575 MB, heap 1431 MB, stream 12369 MB
+[17539.2 s]   15143000 puts, 863 a second; resident 596 MB, heap 1237 MB, stream 12385 MB
+[17569.6 s]   15149000 puts, 862 a second; resident 599 MB, heap 1271 MB, stream 12395 MB
+[17602.1 s]   15154000 puts, 861 a second; resident 452 MB, heap 1727 MB, stream 12403 MB
+[17633.1 s]   15160000 puts, 860 a second; resident 455 MB, heap 1216 MB, stream 12411 MB
+[17674.7 s]   15165000 puts, 858 a second; resident 458 MB, heap 1248 MB, stream 12419 MB
+[17707.7 s]   15169000 puts, 857 a second; resident 460 MB, heap 1271 MB, stream 12428 MB
+[17739.9 s]   15173000 puts, 855 a second; resident 463 MB, heap 1292 MB, stream 12435 MB
+[17776.4 s]   15177000 puts, 854 a second; resident 466 MB, heap 1321 MB, stream 12443 MB
+[17806.6 s]   15205000 puts, 854 a second; resident 481 MB, heap 1391 MB, stream 12455 MB
+[17841.2 s]   15226000 puts, 853 a second; resident 492 MB, heap 1221 MB, stream 12465 MB
+[17875.0 s]   15232000 puts, 852 a second; resident 497 MB, heap 1254 MB, stream 12474 MB
+[17908.5 s]   15238000 puts, 851 a second; resident 501 MB, heap 1286 MB, stream 12483 MB
+[17941.9 s]   15243000 puts, 850 a second; resident 505 MB, heap 1321 MB, stream 12491 MB
+[17975.2 s]   15247000 puts, 848 a second; resident 507 MB, heap 1342 MB, stream 12499 MB
+[18008.2 s]   15252000 puts, 847 a second; resident 511 MB, heap 1153 MB, stream 12508 MB
+[18042.9 s]   15256000 puts, 846 a second; resident 514 MB, heap 1182 MB, stream 12516 MB
+[18073.4 s]   15272000 puts, 845 a second; resident 522 MB, heap 1226 MB, stream 12527 MB
+[18103.5 s]   15304000 puts, 845 a second; resident 538 MB, heap 1140 MB, stream 12537 MB
+[18136.2 s]   15310000 puts, 844 a second; resident 542 MB, heap 1166 MB, stream 12547 MB
+[18174.2 s]   15317000 puts, 843 a second; resident 547 MB, heap 1196 MB, stream 12557 MB
+[18210.3 s]   15323000 puts, 842 a second; resident 551 MB, heap 1220 MB, stream 12566 MB
+[18246.1 s]   15327000 puts, 840 a second; resident 553 MB, heap 1255 MB, stream 12574 MB
+[18284.0 s]   15331000 puts, 839 a second; resident 556 MB, heap 1284 MB, stream 12582 MB
+[18322.8 s]   15335000 puts, 837 a second; resident 559 MB, heap 1305 MB, stream 12590 MB
+[18353.9 s]   15338000 puts, 836 a second; resident 561 MB, heap 1327 MB, stream 12596 MB
+[18387.7 s]   15383000 puts, 837 a second; resident 582 MB, heap 1150 MB, stream 12610 MB
+[18420.6 s]   15389000 puts, 835 a second; resident 586 MB, heap 1174 MB, stream 12620 MB
+[18453.0 s]   15395000 puts, 834 a second; resident 589 MB, heap 1199 MB, stream 12630 MB
+[18485.2 s]   15402000 puts, 833 a second; resident 594 MB, heap 1225 MB, stream 12640 MB
+[18519.0 s]   15406000 puts, 832 a second; resident 597 MB, heap 1246 MB, stream 12648 MB
+[18561.8 s]   15411000 puts, 830 a second; resident 449 MB, heap 1527 MB, stream 12659 MB
+[18593.6 s]   15414000 puts, 829 a second; resident 451 MB, heap 1545 MB, stream 12663 MB
+[18626.1 s]   15417000 puts, 828 a second; resident 453 MB, heap 1568 MB, stream 12670 MB
+[18658.5 s]   15441000 puts, 828 a second; resident 466 MB, heap 1641 MB, stream 12680 MB
+[18691.8 s]   15465000 puts, 827 a second; resident 479 MB, heap 1704 MB, stream 12689 MB
+[18724.5 s]   15470000 puts, 826 a second; resident 483 MB, heap 1737 MB, stream 12698 MB
+[18756.1 s]   15476000 puts, 825 a second; resident 487 MB, heap 1764 MB, stream 12707 MB
+[18788.8 s]   15482000 puts, 824 a second; resident 491 MB, heap 1213 MB, stream 12716 MB
+[18826.3 s]   15486000 puts, 823 a second; resident 494 MB, heap 1241 MB, stream 12723 MB
+[18860.1 s]   15490000 puts, 821 a second; resident 497 MB, heap 1263 MB, stream 12731 MB
+[18891.8 s]   15494000 puts, 820 a second; resident 500 MB, heap 1129 MB, stream 12738 MB
+[18929.5 s]   15498000 puts, 819 a second; resident 503 MB, heap 1158 MB, stream 12747 MB
+[18962.6 s]   15542000 puts, 820 a second; resident 525 MB, heap 1261 MB, stream 12760 MB
+[18998.0 s]   15548000 puts, 818 a second; resident 529 MB, heap 1297 MB, stream 12770 MB
+[19031.6 s]   15554000 puts, 817 a second; resident 533 MB, heap 1323 MB, stream 12780 MB
+[19065.7 s]   15561000 puts, 816 a second; resident 538 MB, heap 1350 MB, stream 12789 MB
+[19096.3 s]   15565000 puts, 815 a second; resident 540 MB, heap 1376 MB, stream 12797 MB
+[19128.2 s]   15569000 puts, 814 a second; resident 543 MB, heap 1397 MB, stream 12804 MB
+[19167.0 s]   15574000 puts, 813 a second; resident 546 MB, heap 1423 MB, stream 12813 MB
+[19199.5 s]   15578000 puts, 811 a second; resident 549 MB, heap 1445 MB, stream 12822 MB
+[19230.2 s]   15611000 puts, 812 a second; resident 565 MB, heap 1175 MB, stream 12834 MB
+[19262.6 s]   15628000 puts, 811 a second; resident 574 MB, heap 1228 MB, stream 12845 MB
+[19296.4 s]   15634000 puts, 810 a second; resident 578 MB, heap 1256 MB, stream 12854 MB
+[19327.5 s]   15640000 puts, 809 a second; resident 582 MB, heap 1289 MB, stream 12864 MB
+[19362.5 s]   15646000 puts, 808 a second; resident 586 MB, heap 1315 MB, stream 12873 MB
+[19398.0 s]   15651000 puts, 807 a second; resident 589 MB, heap 1341 MB, stream 12883 MB
+[19436.7 s]   15656000 puts, 806 a second; resident 592 MB, heap 1371 MB, stream 12892 MB
+[19472.1 s]   15660000 puts, 804 a second; resident 595 MB, heap 1167 MB, stream 12901 MB
+[19502.3 s]   15697000 puts, 805 a second; resident 464 MB, heap 1684 MB, stream 12913 MB
+[19537.0 s]   15708000 puts, 804 a second; resident 469 MB, heap 1720 MB, stream 12920 MB
+[19568.4 s]   15713000 puts, 803 a second; resident 473 MB, heap 1751 MB, stream 12928 MB
+[19602.0 s]   15718000 puts, 802 a second; resident 477 MB, heap 1250 MB, stream 12936 MB
+[19635.5 s]   15724000 puts, 801 a second; resident 481 MB, heap 1276 MB, stream 12945 MB
+[19669.0 s]   15728000 puts, 800 a second; resident 484 MB, heap 1298 MB, stream 12952 MB
+[19703.2 s]   15732000 puts, 799 a second; resident 487 MB, heap 1218 MB, stream 12960 MB
+[19740.4 s]   15736000 puts, 797 a second; resident 490 MB, heap 1240 MB, stream 12967 MB
+[19775.2 s]   15739000 puts, 796 a second; resident 492 MB, heap 1263 MB, stream 12974 MB
+[19805.3 s]   15754000 puts, 796 a second; resident 500 MB, heap 1307 MB, stream 12984 MB
+[19837.6 s]   15787000 puts, 796 a second; resident 517 MB, heap 1386 MB, stream 12995 MB
+[19871.6 s]   15793000 puts, 795 a second; resident 521 MB, heap 1413 MB, stream 13004 MB
+[19903.0 s]   15799000 puts, 794 a second; resident 526 MB, heap 1438 MB, stream 13013 MB
+[19934.8 s]   15805000 puts, 793 a second; resident 530 MB, heap 1463 MB, stream 13022 MB
+[19969.6 s]   15809000 puts, 792 a second; resident 532 MB, heap 1491 MB, stream 13030 MB
+[20002.8 s]   15813000 puts, 791 a second; resident 535 MB, heap 1525 MB, stream 13037 MB
+[20040.1 s]   15817000 puts, 789 a second; resident 538 MB, heap 1559 MB, stream 13044 MB
+[20080.8 s]   15821000 puts, 788 a second; resident 541 MB, heap 1581 MB, stream 13053 MB
+[20110.9 s]   15843000 puts, 788 a second; resident 552 MB, heap 1639 MB, stream 13063 MB
+[20145.2 s]   15868000 puts, 788 a second; resident 564 MB, heap 1326 MB, stream 13072 MB
+[20175.7 s]   15873000 puts, 787 a second; resident 567 MB, heap 1348 MB, stream 13080 MB
+[20208.7 s]   15879000 puts, 786 a second; resident 571 MB, heap 1373 MB, stream 13089 MB
+[20242.6 s]   15885000 puts, 785 a second; resident 575 MB, heap 1398 MB, stream 13098 MB
+[20272.7 s]   15889000 puts, 784 a second; resident 578 MB, heap 1419 MB, stream 13106 MB
+[20302.8 s]   15893000 puts, 783 a second; resident 581 MB, heap 1440 MB, stream 13113 MB
+[20335.9 s]   15897000 puts, 782 a second; resident 583 MB, heap 1462 MB, stream 13121 MB
+[20374.7 s]   15901000 puts, 780 a second; resident 586 MB, heap 1484 MB, stream 13129 MB
+[20405.6 s]   15930000 puts, 781 a second; resident 449 MB, heap 1707 MB, stream 13142 MB
+[20436.7 s]   15948000 puts, 780 a second; resident 459 MB, heap 1759 MB, stream 13149 MB
+[20471.0 s]   15953000 puts, 779 a second; resident 462 MB, heap 1787 MB, stream 13157 MB
+[20501.6 s]   15957000 puts, 778 a second; resident 464 MB, heap 1817 MB, stream 13164 MB
+[20536.9 s]   15962000 puts, 777 a second; resident 467 MB, heap 1840 MB, stream 13171 MB
+[20573.4 s]   15967000 puts, 776 a second; resident 471 MB, heap 1352 MB, stream 13179 MB
+[20613.8 s]   15971000 puts, 775 a second; resident 474 MB, heap 1383 MB, stream 13187 MB
+[20650.2 s]   15975000 puts, 774 a second; resident 477 MB, heap 1405 MB, stream 13195 MB
+[20680.3 s]   15978000 puts, 773 a second; resident 479 MB, heap 1423 MB, stream 13201 MB
+[20713.9 s]   15981000 puts, 772 a second; resident 481 MB, heap 1448 MB, stream 13207 MB
+[20744.1 s]   16017000 puts, 772 a second; resident 500 MB, heap 1536 MB, stream 13219 MB
+[20778.1 s]   16028000 puts, 771 a second; resident 507 MB, heap 1577 MB, stream 13226 MB
+[20808.5 s]   16032000 puts, 771 a second; resident 510 MB, heap 1606 MB, stream 13233 MB
+[20840.6 s]   16037000 puts, 770 a second; resident 513 MB, heap 1629 MB, stream 13241 MB
+[20870.7 s]   16042000 puts, 769 a second; resident 517 MB, heap 1651 MB, stream 13248 MB
+[20907.0 s]   16047000 puts, 768 a second; resident 520 MB, heap 1676 MB, stream 13256 MB
+[20937.4 s]   16050000 puts, 767 a second; resident 522 MB, heap 1344 MB, stream 13262 MB
+[20971.7 s]   16054000 puts, 766 a second; resident 525 MB, heap 1365 MB, stream 13270 MB
+[21008.7 s]   16057000 puts, 764 a second; resident 527 MB, heap 1388 MB, stream 13275 MB
+[21039.0 s]   16060000 puts, 763 a second; resident 529 MB, heap 1406 MB, stream 13282 MB
+[21069.0 s]   16081000 puts, 763 a second; resident 540 MB, heap 1459 MB, stream 13292 MB
+[21101.4 s]   16106000 puts, 763 a second; resident 553 MB, heap 1526 MB, stream 13301 MB
+[21132.8 s]   16111000 puts, 762 a second; resident 556 MB, heap 1551 MB, stream 13309 MB
+[21167.9 s]   16117000 puts, 761 a second; resident 560 MB, heap 1305 MB, stream 13318 MB
+[21207.6 s]   16123000 puts, 760 a second; resident 564 MB, heap 1344 MB, stream 13327 MB
+[21242.0 s]   16127000 puts, 759 a second; resident 567 MB, heap 1365 MB, stream 13335 MB
+[21276.2 s]   16131000 puts, 758 a second; resident 570 MB, heap 1386 MB, stream 13343 MB
+[21307.0 s]   16134000 puts, 757 a second; resident 572 MB, heap 1404 MB, stream 13348 MB
+[21343.4 s]   16138000 puts, 756 a second; resident 575 MB, heap 1427 MB, stream 13357 MB
+[21376.2 s]   16161000 puts, 756 a second; resident 586 MB, heap 1483 MB, stream 13367 MB
+[21412.8 s]   16186000 puts, 756 a second; resident 598 MB, heap 1542 MB, stream 13378 MB
+[21445.8 s]   16190000 puts, 755 a second; resident 450 MB, heap 1557 MB, stream 13385 MB
+[21477.5 s]   16194000 puts, 754 a second; resident 453 MB, heap 1344 MB, stream 13391 MB
+[21508.0 s]   16198000 puts, 753 a second; resident 455 MB, heap 1371 MB, stream 13397 MB
+[21539.7 s]   16203000 puts, 752 a second; resident 458 MB, heap 1399 MB, stream 13405 MB
+[21572.0 s]   16206000 puts, 751 a second; resident 459 MB, heap 1425 MB, stream 13410 MB
+[21607.8 s]   16210000 puts, 750 a second; resident 462 MB, heap 1450 MB, stream 13418 MB
+[21647.1 s]   16214000 puts, 749 a second; resident 465 MB, heap 1483 MB, stream 13425 MB
+[21678.9 s]   16217000 puts, 748 a second; resident 467 MB, heap 1320 MB, stream 13432 MB
+[21712.0 s]   16222000 puts, 747 a second; resident 471 MB, heap 1348 MB, stream 13440 MB
+[21742.4 s]   16262000 puts, 748 a second; resident 492 MB, heap 1307 MB, stream 13450 MB
+[21776.1 s]   16267000 puts, 747 a second; resident 496 MB, heap 1331 MB, stream 13457 MB
+[21810.1 s]   16271000 puts, 746 a second; resident 499 MB, heap 1350 MB, stream 13463 MB
+[21845.5 s]   16275000 puts, 745 a second; resident 501 MB, heap 1371 MB, stream 13470 MB
+[21880.0 s]   16279000 puts, 744 a second; resident 504 MB, heap 1391 MB, stream 13476 MB
+[21910.7 s]   16283000 puts, 743 a second; resident 507 MB, heap 1275 MB, stream 13482 MB
+[21946.3 s]   16286000 puts, 742 a second; resident 509 MB, heap 1293 MB, stream 13487 MB
+[21977.8 s]   16289000 puts, 741 a second; resident 512 MB, heap 1318 MB, stream 13494 MB
+[22013.6 s]   16293000 puts, 740 a second; resident 514 MB, heap 1340 MB, stream 13501 MB
+[22050.2 s]   16296000 puts, 739 a second; resident 517 MB, heap 1381 MB, stream 13507 MB
+[22084.7 s]   16300000 puts, 738 a second; resident 519 MB, heap 1402 MB, stream 13516 MB
+[22117.3 s]   16340000 puts, 739 a second; resident 539 MB, heap 1493 MB, stream 13526 MB
+[22158.7 s]   16347000 puts, 738 a second; resident 544 MB, heap 1521 MB, stream 13534 MB
+[22193.6 s]   16351000 puts, 737 a second; resident 547 MB, heap 1540 MB, stream 13541 MB
+[22229.2 s]   16356000 puts, 736 a second; resident 550 MB, heap 1564 MB, stream 13548 MB
+[22265.9 s]   16362000 puts, 735 a second; resident 554 MB, heap 1590 MB, stream 13557 MB
+[22305.2 s]   16366000 puts, 734 a second; resident 557 MB, heap 1329 MB, stream 13565 MB
+[22339.5 s]   16370000 puts, 733 a second; resident 560 MB, heap 1351 MB, stream 13573 MB
+[22375.7 s]   16374000 puts, 732 a second; resident 563 MB, heap 1374 MB, stream 13580 MB
+[22413.9 s]   16378000 puts, 731 a second; resident 565 MB, heap 1397 MB, stream 13589 MB
+[22447.1 s]   16400000 puts, 731 a second; resident 576 MB, heap 1282 MB, stream 13599 MB
+[22478.8 s]   16425000 puts, 731 a second; resident 589 MB, heap 1348 MB, stream 13608 MB
+[22514.3 s]   16430000 puts, 730 a second; resident 592 MB, heap 1373 MB, stream 13617 MB
+[22549.1 s]   16436000 puts, 729 a second; resident 596 MB, heap 1398 MB, stream 13626 MB
+[22585.1 s]   16441000 puts, 728 a second; resident 449 MB, heap 1850 MB, stream 13636 MB
+[22620.6 s]   16445000 puts, 727 a second; resident 452 MB, heap 1873 MB, stream 13641 MB
+[22651.3 s]   16448000 puts, 726 a second; resident 453 MB, heap 1893 MB, stream 13647 MB
+[22681.8 s]   16451000 puts, 725 a second; resident 455 MB, heap 1917 MB, stream 13653 MB
+[22723.6 s]   16455000 puts, 724 a second; resident 458 MB, heap 1943 MB, stream 13661 MB
+[22758.3 s]   16458000 puts, 723 a second; resident 460 MB, heap 1333 MB, stream 13668 MB
+[22790.4 s]   16489000 puts, 724 a second; resident 477 MB, heap 1415 MB, stream 13678 MB
+[22820.4 s]   16505000 puts, 723 a second; resident 486 MB, heap 1255 MB, stream 13685 MB
+[22856.1 s]   16510000 puts, 722 a second; resident 490 MB, heap 1282 MB, stream 13693 MB
+[22887.8 s]   16514000 puts, 722 a second; resident 493 MB, heap 1313 MB, stream 13700 MB
+[22920.4 s]   16519000 puts, 721 a second; resident 497 MB, heap 1336 MB, stream 13707 MB
+[22953.8 s]   16524000 puts, 720 a second; resident 500 MB, heap 1359 MB, stream 13715 MB
+[22983.9 s]   16527000 puts, 719 a second; resident 502 MB, heap 1378 MB, stream 13720 MB
+[23015.5 s]   16530000 puts, 718 a second; resident 505 MB, heap 1402 MB, stream 13727 MB
+[23050.5 s]   16534000 puts, 717 a second; resident 507 MB, heap 1424 MB, stream 13734 MB
+[23086.5 s]   16537000 puts, 716 a second; resident 510 MB, heap 1450 MB, stream 13740 MB
+[23121.9 s]   16541000 puts, 715 a second; resident 512 MB, heap 1472 MB, stream 13749 MB
+[23151.9 s]   16580000 puts, 716 a second; resident 532 MB, heap 1562 MB, stream 13759 MB
+[23186.5 s]   16588000 puts, 715 a second; resident 537 MB, heap 1598 MB, stream 13766 MB
+[23220.1 s]   16593000 puts, 715 a second; resident 541 MB, heap 1246 MB, stream 13775 MB
+[23257.8 s]   16599000 puts, 714 a second; resident 545 MB, heap 1275 MB, stream 13783 MB
+[23297.0 s]   16605000 puts, 713 a second; resident 549 MB, heap 1312 MB, stream 13792 MB
+[23328.9 s]   16608000 puts, 712 a second; resident 551 MB, heap 1329 MB, stream 13798 MB
+[23359.1 s]   16611000 puts, 711 a second; resident 554 MB, heap 1347 MB, stream 13804 MB
+[23394.2 s]   16615000 puts, 710 a second; resident 556 MB, heap 1368 MB, stream 13812 MB
+[23429.3 s]   16618000 puts, 709 a second; resident 558 MB, heap 1393 MB, stream 13818 MB
+[23471.3 s]   16622000 puts, 708 a second; resident 561 MB, heap 1426 MB, stream 13826 MB
+[23502.0 s]   16652000 puts, 709 a second; resident 576 MB, heap 1233 MB, stream 13836 MB
+[23535.9 s]   16669000 puts, 708 a second; resident 585 MB, heap 1279 MB, stream 13846 MB
+[23570.1 s]   16674000 puts, 707 a second; resident 588 MB, heap 1302 MB, stream 13854 MB
+[23600.1 s]   16679000 puts, 707 a second; resident 592 MB, heap 1323 MB, stream 13862 MB
+[23630.3 s]   16683000 puts, 706 a second; resident 595 MB, heap 1349 MB, stream 13868 MB
+[23670.2 s]   16688000 puts, 705 a second; resident 598 MB, heap 1390 MB, stream 13876 MB
+[23707.1 s]   16691000 puts, 704 a second; resident 450 MB, heap 1507 MB, stream 13882 MB
+[23747.1 s]   16694000 puts, 703 a second; resident 451 MB, heap 1236 MB, stream 13888 MB
+[23778.6 s]   16697000 puts, 702 a second; resident 453 MB, heap 1254 MB, stream 13894 MB
+[23811.6 s]   16700000 puts, 701 a second; resident 455 MB, heap 1274 MB, stream 13900 MB
+[23843.7 s]   16703000 puts, 701 a second; resident 457 MB, heap 1298 MB, stream 13907 MB
+[23874.1 s]   16742000 puts, 701 a second; resident 479 MB, heap 1244 MB, stream 13917 MB
+[23907.1 s]   16749000 puts, 701 a second; resident 483 MB, heap 1272 MB, stream 13924 MB
+[23937.6 s]   16753000 puts, 700 a second; resident 486 MB, heap 1293 MB, stream 13930 MB
+[23972.6 s]   16757000 puts, 699 a second; resident 489 MB, heap 1316 MB, stream 13937 MB
+[24008.7 s]   16762000 puts, 698 a second; resident 493 MB, heap 1340 MB, stream 13945 MB
+[24045.2 s]   16767000 puts, 697 a second; resident 496 MB, heap 1366 MB, stream 13952 MB
+[24075.4 s]   16770000 puts, 697 a second; resident 499 MB, heap 1385 MB, stream 13958 MB
+[24107.7 s]   16773000 puts, 696 a second; resident 501 MB, heap 1408 MB, stream 13965 MB
+[24142.0 s]   16776000 puts, 695 a second; resident 503 MB, heap 1427 MB, stream 13970 MB
+[24177.2 s]   16779000 puts, 694 a second; resident 505 MB, heap 1452 MB, stream 13976 MB
+[24209.4 s]   16782000 puts, 693 a second; resident 507 MB, heap 1485 MB, stream 13983 MB
+[24241.2 s]   16812000 puts, 694 a second; resident 523 MB, heap 1559 MB, stream 13993 MB
+[24277.8 s]   16830000 puts, 693 a second; resident 533 MB, heap 1611 MB, stream 14003 MB
+[24312.3 s]   16835000 puts, 692 a second; resident 537 MB, heap 1635 MB, stream 14011 MB
+[24345.6 s]   16840000 puts, 692 a second; resident 540 MB, heap 1659 MB, stream 14018 MB
+[24375.9 s]   16845000 puts, 691 a second; resident 544 MB, heap 1682 MB, stream 14026 MB
+[24409.7 s]   16849000 puts, 690 a second; resident 547 MB, heap 1233 MB, stream 14033 MB
+[24447.9 s]   16853000 puts, 689 a second; resident 549 MB, heap 1257 MB, stream 14041 MB
+[24478.5 s]   16856000 puts, 689 a second; resident 552 MB, heap 1275 MB, stream 14047 MB
+[24509.8 s]   16859000 puts, 688 a second; resident 554 MB, heap 1301 MB, stream 14053 MB
+[24541.7 s]   16862000 puts, 687 a second; resident 556 MB, heap 1320 MB, stream 14059 MB
+[24576.2 s]   16866000 puts, 686 a second; resident 558 MB, heap 1346 MB, stream 14067 MB
+[24608.1 s]   16908000 puts, 687 a second; resident 579 MB, heap 1450 MB, stream 14078 MB
+[24638.8 s]   16912000 puts, 686 a second; resident 582 MB, heap 1472 MB, stream 14084 MB
+[24672.0 s]   16917000 puts, 686 a second; resident 586 MB, heap 1495 MB, stream 14092 MB
+[24704.1 s]   16921000 puts, 685 a second; resident 588 MB, heap 1524 MB, stream 14098 MB
+[24741.7 s]   16927000 puts, 684 a second; resident 592 MB, heap 1549 MB, stream 14108 MB
+[24779.3 s]   16931000 puts, 683 a second; resident 595 MB, heap 1572 MB, stream 14115 MB
+[24820.5 s]   16935000 puts, 682 a second; resident 598 MB, heap 1601 MB, stream 14123 MB
+[24863.1 s]   16939000 puts, 681 a second; resident 450 MB, heap 1521 MB, stream 14131 MB
+[24904.0 s]   16942000 puts, 680 a second; resident 452 MB, heap 1548 MB, stream 14137 MB
+[24938.4 s]   16946000 puts, 680 a second; resident 455 MB, heap 1571 MB, stream 14146 MB
+[24968.5 s]   16986000 puts, 680 a second; resident 477 MB, heap 1342 MB, stream 14156 MB
+[25009.8 s]   16992000 puts, 679 a second; resident 481 MB, heap 1385 MB, stream 14163 MB
+[25047.4 s]   16997000 puts, 679 a second; resident 485 MB, heap 1411 MB, stream 14172 MB
+[25082.1 s]   17002000 puts, 678 a second; resident 489 MB, heap 1436 MB, stream 14179 MB
+[25113.1 s]   17007000 puts, 677 a second; resident 492 MB, heap 1461 MB, stream 14186 MB
+[25155.3 s]   17011000 puts, 676 a second; resident 495 MB, heap 1492 MB, stream 14194 MB
+[25194.0 s]   17015000 puts, 675 a second; resident 498 MB, heap 1515 MB, stream 14202 MB
+[25232.9 s]   17019000 puts, 675 a second; resident 501 MB, heap 1539 MB, stream 14210 MB
+[25267.6 s]   17022000 puts, 674 a second; resident 503 MB, heap 1565 MB, stream 14217 MB
+[25300.2 s]   17025000 puts, 673 a second; resident 506 MB, heap 1584 MB, stream 14223 MB
+[25330.8 s]   17064000 puts, 674 a second; resident 526 MB, heap 1348 MB, stream 14233 MB
+[25361.2 s]   17071000 puts, 673 a second; resident 531 MB, heap 1382 MB, stream 14240 MB
+[25398.1 s]   17076000 puts, 672 a second; resident 534 MB, heap 1411 MB, stream 14248 MB
+[25429.7 s]   17080000 puts, 672 a second; resident 537 MB, heap 1433 MB, stream 14255 MB
+[25462.3 s]   17084000 puts, 671 a second; resident 540 MB, heap 1454 MB, stream 14261 MB
+[25497.8 s]   17088000 puts, 670 a second; resident 543 MB, heap 1484 MB, stream 14268 MB
+[25534.8 s]   17091000 puts, 669 a second; resident 545 MB, heap 1503 MB, stream 14273 MB
+[25569.1 s]   17094000 puts, 669 a second; resident 547 MB, heap 1522 MB, stream 14279 MB
+[25610.9 s]   17098000 puts, 668 a second; resident 550 MB, heap 1551 MB, stream 14286 MB
+[25643.3 s]   17101000 puts, 667 a second; resident 552 MB, heap 1570 MB, stream 14293 MB
+[25676.5 s]   17104000 puts, 666 a second; resident 554 MB, heap 1595 MB, stream 14299 MB
+[25710.3 s]   17133000 puts, 666 a second; resident 569 MB, heap 1347 MB, stream 14309 MB
+[25745.7 s]   17151000 puts, 666 a second; resident 579 MB, heap 1397 MB, stream 14319 MB
+[25779.4 s]   17155000 puts, 665 a second; resident 582 MB, heap 1417 MB, stream 14326 MB
+[25810.8 s]   17159000 puts, 665 a second; resident 584 MB, heap 1437 MB, stream 14332 MB
+[25841.2 s]   17163000 puts, 664 a second; resident 587 MB, heap 1457 MB, stream 14339 MB
+[25872.5 s]   17168000 puts, 664 a second; resident 590 MB, heap 1485 MB, stream 14346 MB
+[25902.7 s]   17171000 puts, 663 a second; resident 592 MB, heap 1512 MB, stream 14352 MB
+[25932.9 s]   17174000 puts, 662 a second; resident 595 MB, heap 1531 MB, stream 14358 MB
+[25964.0 s]   17177000 puts, 662 a second; resident 597 MB, heap 1558 MB, stream 14364 MB
+[25994.4 s]   17180000 puts, 661 a second; resident 599 MB, heap 1576 MB, stream 14370 MB
+[26025.9 s]   17182000 puts, 660 a second; resident 450 MB, heap 1488 MB, stream 14374 MB
+[26063.0 s]   17186000 puts, 659 a second; resident 452 MB, heap 1512 MB, stream 14382 MB
+[26096.0 s]   17226000 puts, 660 a second; resident 475 MB, heap 1409 MB, stream 14392 MB
+[26138.0 s]   17232000 puts, 659 a second; resident 479 MB, heap 1440 MB, stream 14400 MB
+[26168.1 s]   17236000 puts, 659 a second; resident 482 MB, heap 1461 MB, stream 14407 MB
+[26199.1 s]   17240000 puts, 658 a second; resident 485 MB, heap 1356 MB, stream 14413 MB
+[26229.1 s]   17244000 puts, 657 a second; resident 488 MB, heap 1376 MB, stream 14419 MB
+[26268.6 s]   17249000 puts, 657 a second; resident 492 MB, heap 1403 MB, stream 14427 MB
+[26307.3 s]   17252000 puts, 656 a second; resident 494 MB, heap 1429 MB, stream 14434 MB
+[26339.7 s]   17255000 puts, 655 a second; resident 496 MB, heap 1448 MB, stream 14439 MB
+[26380.6 s]   17259000 puts, 654 a second; resident 499 MB, heap 1473 MB, stream 14447 MB
+[26420.3 s]   17262000 puts, 653 a second; resident 501 MB, heap 1499 MB, stream 14454 MB
+[26451.6 s]   17265000 puts, 653 a second; resident 504 MB, heap 1525 MB, stream 14460 MB
+[26484.1 s]   17303000 puts, 653 a second; resident 524 MB, heap 1616 MB, stream 14470 MB
+[26518.9 s]   17310000 puts, 653 a second; resident 528 MB, heap 1386 MB, stream 14478 MB
+[26553.9 s]   17314000 puts, 652 a second; resident 531 MB, heap 1267 MB, stream 14484 MB
+[26584.1 s]   17318000 puts, 651 a second; resident 534 MB, heap 1286 MB, stream 14491 MB
+[26619.8 s]   17323000 puts, 651 a second; resident 538 MB, heap 1311 MB, stream 14499 MB
+[26653.9 s]   17327000 puts, 650 a second; resident 541 MB, heap 1342 MB, stream 14505 MB
+[26692.1 s]   17330000 puts, 649 a second; resident 543 MB, heap 1362 MB, stream 14511 MB
+[26722.7 s]   17333000 puts, 649 a second; resident 545 MB, heap 1379 MB, stream 14517 MB
+[26756.8 s]   17336000 puts, 648 a second; resident 547 MB, heap 1402 MB, stream 14523 MB
+[26793.5 s]   17339000 puts, 647 a second; resident 549 MB, heap 1422 MB, stream 14530 MB
+[26829.7 s]   17342000 puts, 646 a second; resident 551 MB, heap 1447 MB, stream 14536 MB
+[26861.4 s]   17371000 puts, 647 a second; resident 566 MB, heap 1525 MB, stream 14546 MB
+[26893.2 s]   17387000 puts, 647 a second; resident 575 MB, heap 1568 MB, stream 14554 MB
+[26928.0 s]   17391000 puts, 646 a second; resident 578 MB, heap 1589 MB, stream 14560 MB
+[26960.8 s]   17395000 puts, 645 a second; resident 581 MB, heap 1611 MB, stream 14567 MB
+[26993.1 s]   17399000 puts, 645 a second; resident 583 MB, heap 1640 MB, stream 14574 MB
+[27027.1 s]   17404000 puts, 644 a second; resident 587 MB, heap 1663 MB, stream 14581 MB
+[27059.4 s]   17407000 puts, 643 a second; resident 589 MB, heap 1314 MB, stream 14587 MB
+[27091.2 s]   17410000 puts, 643 a second; resident 591 MB, heap 1332 MB, stream 14593 MB
+[27121.2 s]   17413000 puts, 642 a second; resident 593 MB, heap 1354 MB, stream 14599 MB
+[27152.2 s]   17416000 puts, 641 a second; resident 595 MB, heap 1373 MB, stream 14605 MB
+[27186.4 s]   17419000 puts, 641 a second; resident 597 MB, heap 1396 MB, stream 14611 MB
+[27216.5 s]   17424000 puts, 640 a second; resident 450 MB, heap 1843 MB, stream 14619 MB
+[27247.8 s]   17459000 puts, 641 a second; resident 470 MB, heap 1359 MB, stream 14626 MB
+[27278.6 s]   17465000 puts, 640 a second; resident 473 MB, heap 1394 MB, stream 14631 MB
+[27321.3 s]   17469000 puts, 639 a second; resident 476 MB, heap 1419 MB, stream 14638 MB
+[27351.4 s]   17472000 puts, 639 a second; resident 479 MB, heap 1446 MB, stream 14643 MB
+[27386.9 s]   17476000 puts, 638 a second; resident 482 MB, heap 1468 MB, stream 14650 MB
+[27422.3 s]   17481000 puts, 638 a second; resident 486 MB, heap 1282 MB, stream 14657 MB
+[27462.3 s]   17485000 puts, 637 a second; resident 489 MB, heap 1307 MB, stream 14664 MB
+[27498.2 s]   17488000 puts, 636 a second; resident 491 MB, heap 1332 MB, stream 14670 MB
+[27530.2 s]   17491000 puts, 635 a second; resident 493 MB, heap 1351 MB, stream 14677 MB
+[27566.8 s]   17494000 puts, 635 a second; resident 495 MB, heap 1372 MB, stream 14683 MB
+[27608.5 s]   17497000 puts, 634 a second; resident 498 MB, heap 1398 MB, stream 14690 MB
+[27643.4 s]   17508000 puts, 633 a second; resident 504 MB, heap 1436 MB, stream 14697 MB
+[27674.7 s]   17541000 puts, 634 a second; resident 522 MB, heap 1257 MB, stream 14706 MB
+[27714.1 s]   17545000 puts, 633 a second; resident 525 MB, heap 1281 MB, stream 14712 MB
+[27752.6 s]   17549000 puts, 632 a second; resident 528 MB, heap 1303 MB, stream 14720 MB
+[27789.8 s]   17554000 puts, 632 a second; resident 532 MB, heap 1329 MB, stream 14728 MB
+[27822.6 s]   17559000 puts, 631 a second; resident 535 MB, heap 1363 MB, stream 14735 MB
+[27866.2 s]   17563000 puts, 630 a second; resident 538 MB, heap 1403 MB, stream 14742 MB
+[27899.8 s]   17566000 puts, 630 a second; resident 540 MB, heap 1423 MB, stream 14749 MB
+[27932.5 s]   17569000 puts, 629 a second; resident 543 MB, heap 1441 MB, stream 14755 MB
+[27967.9 s]   17572000 puts, 628 a second; resident 545 MB, heap 1236 MB, stream 14760 MB
+[28002.9 s]   17575000 puts, 628 a second; resident 547 MB, heap 1255 MB, stream 14768 MB
+[28034.4 s]   17586000 puts, 627 a second; resident 553 MB, heap 1291 MB, stream 14776 MB
+[28066.3 s]   17619000 puts, 628 a second; resident 570 MB, heap 1369 MB, stream 14785 MB
+[28098.7 s]   17623000 puts, 627 a second; resident 573 MB, heap 1390 MB, stream 14791 MB
+[28131.0 s]   17627000 puts, 627 a second; resident 576 MB, heap 1410 MB, stream 14798 MB
+[28168.4 s]   17632000 puts, 626 a second; resident 579 MB, heap 1220 MB, stream 14806 MB
+[28204.7 s]   17637000 puts, 625 a second; resident 583 MB, heap 1245 MB, stream 14813 MB
+[28241.7 s]   17641000 puts, 625 a second; resident 586 MB, heap 1268 MB, stream 14821 MB
+[28272.2 s]   17644000 puts, 624 a second; resident 588 MB, heap 1286 MB, stream 14827 MB
+[28311.3 s]   17648000 puts, 623 a second; resident 590 MB, heap 1310 MB, stream 14835 MB
+[28345.4 s]   17651000 puts, 623 a second; resident 593 MB, heap 1331 MB, stream 14842 MB
+[28379.7 s]   17654000 puts, 622 a second; resident 595 MB, heap 1365 MB, stream 14848 MB
+[28411.3 s]   17673000 puts, 622 a second; resident 455 MB, heap 1387 MB, stream 14856 MB
+[28445.3 s]   17698000 puts, 622 a second; resident 469 MB, heap 1255 MB, stream 14864 MB
+[28487.0 s]   17702000 puts, 621 a second; resident 472 MB, heap 1279 MB, stream 14871 MB
+[28520.6 s]   17706000 puts, 621 a second; resident 475 MB, heap 1301 MB, stream 14878 MB
+[28555.8 s]   17710000 puts, 620 a second; resident 478 MB, heap 1324 MB, stream 14884 MB
+[28592.3 s]   17715000 puts, 620 a second; resident 482 MB, heap 1350 MB, stream 14892 MB
+[28633.4 s]   17719000 puts, 619 a second; resident 485 MB, heap 1376 MB, stream 14899 MB
+[28667.4 s]   17722000 puts, 618 a second; resident 487 MB, heap 1396 MB, stream 14906 MB
+[28703.6 s]   17725000 puts, 618 a second; resident 489 MB, heap 1417 MB, stream 14912 MB
+[28738.2 s]   17728000 puts, 617 a second; resident 492 MB, heap 1437 MB, stream 14918 MB
+[28778.1 s]   17731000 puts, 616 a second; resident 494 MB, heap 1460 MB, stream 14924 MB
+[28809.4 s]   17741000 puts, 616 a second; resident 500 MB, heap 1271 MB, stream 14932 MB
+[28844.1 s]   17775000 puts, 616 a second; resident 519 MB, heap 1232 MB, stream 14942 MB
+[28880.6 s]   17779000 puts, 616 a second; resident 522 MB, heap 1256 MB, stream 14948 MB
+[28917.9 s]   17783000 puts, 615 a second; resident 525 MB, heap 1288 MB, stream 14954 MB
+[28956.6 s]   17788000 puts, 614 a second; resident 528 MB, heap 1313 MB, stream 14963 MB
+[28993.6 s]   17793000 puts, 614 a second; resident 532 MB, heap 1339 MB, stream 14971 MB
+[29026.4 s]   17796000 puts, 613 a second; resident 534 MB, heap 1356 MB, stream 14976 MB
+[29074.1 s]   17799000 puts, 612 a second; resident 536 MB, heap 1384 MB, stream 14982 MB
+[29113.2 s]   17802000 puts, 612 a second; resident 538 MB, heap 1404 MB, stream 14988 MB
+[29144.4 s]   17805000 puts, 611 a second; resident 541 MB, heap 1421 MB, stream 14994 MB
+[29183.8 s]   17808000 puts, 610 a second; resident 543 MB, heap 1448 MB, stream 15001 MB
+[29221.0 s]   17812000 puts, 610 a second; resident 545 MB, heap 1232 MB, stream 15009 MB
+[29252.3 s]   17851000 puts, 610 a second; resident 566 MB, heap 1332 MB, stream 15019 MB
+[29283.2 s]   17856000 puts, 610 a second; resident 569 MB, heap 1357 MB, stream 15025 MB
+[29318.4 s]   17860000 puts, 609 a second; resident 572 MB, heap 1378 MB, stream 15032 MB
+[29358.1 s]   17865000 puts, 609 a second; resident 576 MB, heap 1406 MB, stream 15040 MB
+[29390.0 s]   17869000 puts, 608 a second; resident 578 MB, heap 1426 MB, stream 15046 MB
+[29426.1 s]   17873000 puts, 607 a second; resident 581 MB, heap 1457 MB, stream 15053 MB
+[29461.7 s]   17876000 puts, 607 a second; resident 583 MB, heap 1475 MB, stream 15059 MB
+[29496.6 s]   17879000 puts, 606 a second; resident 585 MB, heap 1495 MB, stream 15065 MB
+[29540.4 s]   17883000 puts, 605 a second; resident 588 MB, heap 1524 MB, stream 15073 MB
+[29577.1 s]   17886000 puts, 605 a second; resident 590 MB, heap 1545 MB, stream 15080 MB
+[29608.5 s]   17889000 puts, 604 a second; resident 592 MB, heap 1568 MB, stream 15087 MB
+[29640.9 s]   17916000 puts, 604 a second; resident 457 MB, heap 1677 MB, stream 15094 MB
+[29671.7 s]   17932000 puts, 604 a second; resident 466 MB, heap 1723 MB, stream 15101 MB
+[29707.9 s]   17936000 puts, 604 a second; resident 468 MB, heap 1748 MB, stream 15108 MB
+[29744.8 s]   17940000 puts, 603 a second; resident 471 MB, heap 1772 MB, stream 15114 MB
+[29782.1 s]   17944000 puts, 603 a second; resident 474 MB, heap 1262 MB, stream 15120 MB
+[29821.9 s]   17949000 puts, 602 a second; resident 478 MB, heap 1288 MB, stream 15129 MB
+[29856.5 s]   17952000 puts, 601 a second; resident 480 MB, heap 1309 MB, stream 15134 MB
+[29894.5 s]   17955000 puts, 601 a second; resident 483 MB, heap 1331 MB, stream 15140 MB
+[29931.3 s]   17958000 puts, 600 a second; resident 485 MB, heap 1361 MB, stream 15146 MB
+[29966.1 s]   17961000 puts, 599 a second; resident 487 MB, heap 1380 MB, stream 15152 MB
+[30004.1 s]   17964000 puts, 599 a second; resident 489 MB, heap 1402 MB, stream 15159 MB
+[30037.7 s]   17967000 puts, 598 a second; resident 492 MB, heap 1427 MB, stream 15166 MB
+[30069.2 s]   17994000 puts, 598 a second; resident 507 MB, heap 1241 MB, stream 15174 MB
+[30104.7 s]   18010000 puts, 598 a second; resident 516 MB, heap 1289 MB, stream 15181 MB
+[30140.1 s]   18014000 puts, 598 a second; resident 519 MB, heap 1312 MB, stream 15188 MB
+[30176.2 s]   18018000 puts, 597 a second; resident 522 MB, heap 1336 MB, stream 15195 MB
+[30207.8 s]   18022000 puts, 597 a second; resident 525 MB, heap 1358 MB, stream 15202 MB
+[30245.5 s]   18027000 puts, 596 a second; resident 529 MB, heap 1194 MB, stream 15209 MB
+[30282.3 s]   18030000 puts, 595 a second; resident 531 MB, heap 1215 MB, stream 15215 MB
+[30318.6 s]   18033000 puts, 595 a second; resident 533 MB, heap 1240 MB, stream 15222 MB
+[30350.5 s]   18036000 puts, 594 a second; resident 535 MB, heap 1259 MB, stream 15228 MB
+[30387.9 s]   18039000 puts, 594 a second; resident 538 MB, heap 1280 MB, stream 15234 MB
+[30427.4 s]   18042000 puts, 593 a second; resident 540 MB, heap 1319 MB, stream 15241 MB
+[30457.6 s]   18063000 puts, 593 a second; resident 551 MB, heap 1375 MB, stream 15250 MB
+[30487.9 s]   18085000 puts, 593 a second; resident 564 MB, heap 1204 MB, stream 15256 MB
+[30520.5 s]   18088000 puts, 593 a second; resident 566 MB, heap 1231 MB, stream 15263 MB
+[30555.2 s]   18092000 puts, 592 a second; resident 569 MB, heap 1254 MB, stream 15269 MB
+[30586.1 s]   18096000 puts, 592 a second; resident 572 MB, heap 1274 MB, stream 15276 MB
+[30621.9 s]   18101000 puts, 591 a second; resident 575 MB, heap 1299 MB, stream 15283 MB
+[30664.3 s]   18105000 puts, 590 a second; resident 578 MB, heap 1142 MB, stream 15290 MB
+[30701.7 s]   18108000 puts, 590 a second; resident 580 MB, heap 1163 MB, stream 15297 MB
+[30732.2 s]   18111000 puts, 589 a second; resident 582 MB, heap 1182 MB, stream 15303 MB
+[30766.2 s]   18114000 puts, 589 a second; resident 584 MB, heap 1207 MB, stream 15309 MB
+[30802.5 s]   18117000 puts, 588 a second; resident 586 MB, heap 1226 MB, stream 15316 MB
+[30837.7 s]   18126000 puts, 588 a second; resident 591 MB, heap 1258 MB, stream 15324 MB
+[30872.6 s]   18158000 puts, 588 a second; resident 459 MB, heap 1618 MB, stream 15332 MB
+[30912.8 s]   18163000 puts, 588 a second; resident 462 MB, heap 1648 MB, stream 15338 MB
+[30945.0 s]   18166000 puts, 587 a second; resident 463 MB, heap 1666 MB, stream 15343 MB
+[30982.0 s]   18170000 puts, 586 a second; resident 466 MB, heap 1690 MB, stream 15350 MB
+[31013.0 s]   18174000 puts, 586 a second; resident 469 MB, heap 1712 MB, stream 15356 MB
+[31044.9 s]   18178000 puts, 586 a second; resident 472 MB, heap 1744 MB, stream 15362 MB
+[31077.9 s]   18181000 puts, 585 a second; resident 474 MB, heap 1769 MB, stream 15368 MB
+[31112.2 s]   18184000 puts, 584 a second; resident 477 MB, heap 1790 MB, stream 15375 MB
+[31143.4 s]   18187000 puts, 584 a second; resident 479 MB, heap 1202 MB, stream 15381 MB
+[31186.8 s]   18190000 puts, 583 a second; resident 481 MB, heap 1156 MB, stream 15387 MB
+[31226.7 s]   18193000 puts, 583 a second; resident 483 MB, heap 1178 MB, stream 15394 MB
+[31256.9 s]   18198000 puts, 582 a second; resident 487 MB, heap 1205 MB, stream 15401 MB
+[31288.9 s]   18232000 puts, 583 a second; resident 506 MB, heap 1291 MB, stream 15409 MB
+[31320.3 s]   18238000 puts, 582 a second; resident 510 MB, heap 1325 MB, stream 15414 MB
+[31354.4 s]   18241000 puts, 582 a second; resident 512 MB, heap 1346 MB, stream 15419 MB
+[31389.9 s]   18245000 puts, 581 a second; resident 515 MB, heap 1369 MB, stream 15426 MB
+[31426.0 s]   18249000 puts, 581 a second; resident 518 MB, heap 1401 MB, stream 15432 MB
+[31456.3 s]   18253000 puts, 580 a second; resident 521 MB, heap 1421 MB, stream 15439 MB
+[31488.4 s]   18256000 puts, 580 a second; resident 523 MB, heap 1440 MB, stream 15444 MB
+[31527.2 s]   18259000 puts, 579 a second; resident 526 MB, heap 1461 MB, stream 15450 MB
+[31563.7 s]   18262000 puts, 579 a second; resident 528 MB, heap 1487 MB, stream 15456 MB
+[31596.3 s]   18265000 puts, 578 a second; resident 530 MB, heap 1507 MB, stream 15462 MB
+[31633.0 s]   18268000 puts, 578 a second; resident 532 MB, heap 1527 MB, stream 15469 MB
+[31663.2 s]   18270000 puts, 577 a second; resident 534 MB, heap 1547 MB, stream 15474 MB
+[31695.1 s]   18288000 puts, 577 a second; resident 544 MB, heap 1599 MB, stream 15481 MB
+[31729.2 s]   18313000 puts, 577 a second; resident 557 MB, heap 1664 MB, stream 15490 MB
+[31767.9 s]   18317000 puts, 577 a second; resident 560 MB, heap 1687 MB, stream 15497 MB
+[31804.8 s]   18321000 puts, 576 a second; resident 563 MB, heap 1711 MB, stream 15504 MB
+[31838.4 s]   18325000 puts, 576 a second; resident 566 MB, heap 1732 MB, stream 15510 MB
+[31873.3 s]   18330000 puts, 575 a second; resident 570 MB, heap 1756 MB, stream 15518 MB
+[31904.3 s]   18333000 puts, 575 a second; resident 572 MB, heap 1787 MB, stream 15524 MB
+[31940.2 s]   18336000 puts, 574 a second; resident 574 MB, heap 1259 MB, stream 15530 MB
+[31972.4 s]   18339000 puts, 574 a second; resident 576 MB, heap 1279 MB, stream 15537 MB
+[32006.4 s]   18342000 puts, 573 a second; resident 578 MB, heap 1298 MB, stream 15543 MB
+[32046.7 s]   18345000 puts, 572 a second; resident 580 MB, heap 1324 MB, stream 15550 MB
+[32085.0 s]   18354000 puts, 572 a second; resident 585 MB, heap 1356 MB, stream 15557 MB
+[32116.8 s]   18386000 puts, 572 a second; resident 452 MB, heap 1668 MB, stream 15565 MB
+[32155.9 s]   18390000 puts, 572 a second; resident 454 MB, heap 1693 MB, stream 15571 MB
+[32193.6 s]   18394000 puts, 571 a second; resident 457 MB, heap 1717 MB, stream 15578 MB
+[32229.6 s]   18398000 puts, 571 a second; resident 459 MB, heap 1741 MB, stream 15585 MB
+[32262.7 s]   18402000 puts, 570 a second; resident 461 MB, heap 1764 MB, stream 15592 MB
+[32297.7 s]   18406000 puts, 570 a second; resident 464 MB, heap 1788 MB, stream 15598 MB
+[32328.2 s]   18408000 puts, 569 a second; resident 466 MB, heap 1809 MB, stream 15602 MB
+[32367.8 s]   18411000 puts, 569 a second; resident 468 MB, heap 1239 MB, stream 15609 MB
+[32402.1 s]   18414000 puts, 568 a second; resident 470 MB, heap 1259 MB, stream 15615 MB
+[32443.0 s]   18417000 puts, 568 a second; resident 473 MB, heap 1287 MB, stream 15621 MB
+[32483.4 s]   18420000 puts, 567 a second; resident 475 MB, heap 1309 MB, stream 15628 MB
+[32516.8 s]   18438000 puts, 567 a second; resident 486 MB, heap 1368 MB, stream 15636 MB
+[32552.8 s]   18463000 puts, 567 a second; resident 500 MB, heap 1443 MB, stream 15644 MB

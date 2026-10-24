@@ -1,0 +1,11 @@
+[0.726s][info][gc] Using The Z Garbage Collector
+[1.670s][info][gc] GC(0) Major Collection (Warmup)
+[1.845s][info][gc] GC(0) Major Collection (Warmup) 304M(10%)->636M(21%) 0.175s
+[1.854s][info][gc] GC(1) Major Collection (Warmup)
+[2.573s][info][gc] GC(1) Major Collection (Warmup) 654M(22%)->1036M(35%) 0.718s
+[2.573s][info][gc] GC(2) Major Collection (System.gc())
+[5.090s][info][gc] GC(2) Major Collection (System.gc()) 1036M(35%)->926M(31%) 2.517s
+[5.090s][info][gc] GC(3) Major Collection (System.gc())
+[6.178s][info][gc] GC(3) Major Collection (System.gc()) 926M(31%)->926M(31%) 1.089s
+[6.179s][info][gc] GC(4) Major Collection (Warmup)
+[7.276s][info][gc] GC(4) Major Collection (Warmup) 936M(31%)->940M(31%) 1.097s

@@ -1,0 +1,29 @@
+# The main thread of a startup at 10M keys on s1 with a cold OS cache (2026-10-23 about
+# 23:20, ScaleBench get mode, budget 133 MB, the JVM in a cgroup of 900 MB), jstack, the
+# bergdb frames:
+bergdb.stream.FileStream$DbFile.read(FileStream.java:862)
+bergdb.stream.FileStream.read(FileStream.java:147)
+bergdb.core.ScaleBench$CountingStream.read(ScaleBench.java:297)
+bergdb.storage.BufferedStream.read(BufferedStream.java:362)
+bergdb.storage.StorageManager.read(StorageManager.java:701)
+bergdb.storage.RecoverableStream.read(RecoverableStream.java:346)
+bergdb.core.NodeStream.readNodeHeader(NodeStream.java:142)
+bergdb.core.NodeCollection.idOf(NodeCollection.java:577)
+bergdb.core.NodeCollection.linkToCanonical(NodeCollection.java:538)
+bergdb.core.DbStarter$2.node(DbStarter.java:503)
+bergdb.core.TransSeq.visitGotDirtyNodes(TransSeq.java:229)
+bergdb.core.DbStarter.linkD(DbStarter.java:501)
+bergdb.core.DbStarter.doOrdinaryStartup(DbStarter.java:133)
+bergdb.core.DbStarter.startup(DbStarter.java:89)
+bergdb.core.DbStarter.start(DbStarter.java:74)
+bergdb.core.Db.startDb(Db.java:556)
+bergdb.core.Db.startInner(Db.java:530)
+bergdb.core.Db.start(Db.java:496)
+bergdb.core.Db.start(Db.java:478)
+bergdb.core.ScaleBench.open(ScaleBench.java:318)
+bergdb.core.ScaleBench.openExisting(ScaleBench.java:657)
+bergdb.core.ScaleBench.run(ScaleBench.java:1185)
+bergdb.core.ScaleBench.main(ScaleBench.java:1214)
+# The first startup's samples (stack1 to stack6, every 8 to 20 s) all ended in the same
+# idOf -> readNodeHeader; /proc/<pid>/io over 40 s of it: syscr 507,114 -> 590,481,
+# read_bytes 1.55 GB -> 1.86 GB. That startup took 189.65 s (s.txt).

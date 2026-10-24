@@ -1,0 +1,50 @@
+openjdk version "27" 2026-09-15
+# Linux x86_64, s1, heap 2g, started Fri Oct 23 22:04:21 CEST 2026
+direct       keys     20000 threads 4 layout -         depth 5  ns/lookup median   163.2 best   158.0  lookups/s  24.02 M
+# steal 0.00% of 1010 ticks; load 2.19 1.81 1.42
+lockstamp    keys     20000 threads 4 layout -         depth 5  ns/lookup median   388.0 best   381.4  lookups/s  10.26 M
+# steal 0.04% of 2251 ticks; load 2.25 1.84 1.43
+lock         keys     20000 threads 4 layout -         depth 5  ns/lookup median   300.3 best   295.6  lookups/s  13.14 M
+# steal 0.04% of 2516 ticks; load 2.56 1.93 1.47
+stamp        keys     20000 threads 4 layout -         depth 5  ns/lookup median   182.3 best   180.4  lookups/s  21.12 M
+# steal 0.09% of 1118 ticks; load 2.67 1.96 1.49
+handle       keys     20000 threads 4 layout before    depth 5  ns/lookup median   191.4 best   182.8  lookups/s  20.56 M
+# steal 0.09% of 1167 ticks; load 2.78 2.00 1.50
+handleacq    keys     20000 threads 4 layout before    depth 5  ns/lookup median   187.4 best   180.9  lookups/s  21.00 M
+# steal 0.00% of 1152 ticks; load 2.88 2.03 1.51
+handleclock  keys     20000 threads 4 layout before    depth 5  ns/lookup median   188.8 best   178.8  lookups/s  20.54 M
+# steal 0.09% of 1172 ticks; load 2.97 2.06 1.53
+hash         keys     20000 threads 4 layout -         depth 5  ns/lookup median   242.8 best   234.1  lookups/s  16.26 M
+# steal 0.00% of 1440 ticks; load 3.35 2.18 1.57
+chm          keys     20000 threads 4 layout -         depth 5  ns/lookup median   263.6 best   258.1  lookups/s  14.74 M
+# steal 0.06% of 1591 ticks; load 3.40 2.21 1.58
+handleacq    keys     20000 threads 4 layout child     depth 5  ns/lookup median   203.7 best   199.3  lookups/s  19.33 M
+# steal 0.00% of 1227 ticks; load 3.45 2.24 1.60
+handleacq    keys     20000 threads 4 layout parent    depth 5  ns/lookup median   185.2 best   184.8  lookups/s  20.55 M
+# steal 0.00% of 1162 ticks; load 3.39 2.26 1.61
+handleacq    keys     20000 threads 4 layout scattered depth 5  ns/lookup median   220.9 best   215.1  lookups/s  17.74 M
+# steal 0.07% of 1350 ticks; load 3.44 2.29 1.62
+direct       keys   8000000 threads 4 layout -         depth 7  ns/lookup median  2110.9 best  2046.6  lookups/s   1.88 M
+# steal 0.03% of 6314 ticks; load 3.66 2.46 1.70
+lockstamp    keys   8000000 threads 4 layout -         depth 7  ns/lookup median  3147.9 best  3122.6  lookups/s   1.26 M
+# steal 0.03% of 8617 ticks; load 3.57 2.60 1.79
+lock         keys   8000000 threads 4 layout -         depth 7  ns/lookup median  1882.6 best  1820.5  lookups/s   2.12 M
+# steal 0.02% of 5767 ticks; load 3.80 2.75 1.86
+stamp        keys   8000000 threads 4 layout -         depth 7  ns/lookup median  1820.5 best  1774.7  lookups/s   2.19 M
+# steal 0.12% of 5983 ticks; load 3.75 2.84 1.92
+handle       keys   8000000 threads 4 layout before    depth 7  ns/lookup median  1908.5 best  1901.8  lookups/s   2.08 M
+# steal 0.02% of 5927 ticks; load 3.79 2.93 1.98
+handleacq    keys   8000000 threads 4 layout before    depth 7  ns/lookup median  2303.1 best  2146.7  lookups/s   1.72 M
+# steal 0.04% of 7092 ticks; load 3.88 3.05 2.06
+handleclock  keys   8000000 threads 4 layout before    depth 7  ns/lookup median  2441.6 best  2283.1  lookups/s   1.58 M
+# steal 0.07% of 7527 ticks; load 4.04 3.19 2.14
+hash         keys   8000000 threads 4 layout -         depth 7  ns/lookup median  4090.8 best  3413.7  lookups/s   0.96 M
+# steal 0.04% of 12126 ticks; load 3.92 3.30 2.25
+chm          keys   8000000 threads 4 layout -         depth 7  ns/lookup median  5309.3 best  5217.9  lookups/s   0.75 M
+# steal 0.04% of 16058 ticks; load 4.00 3.47 2.40
+handleacq    keys   8000000 threads 4 layout child     depth 7  ns/lookup median  2599.6 best  2529.1  lookups/s   1.51 M
+# steal 0.04% of 7757 ticks; load 3.87 3.49 2.45
+handleacq    keys   8000000 threads 4 layout parent    depth 7  ns/lookup median  2561.0 best  2201.2  lookups/s   1.54 M
+# steal 0.04% of 7310 ticks; load 3.96 3.55 2.51
+handleacq    keys   8000000 threads 4 layout scattered depth 7  ns/lookup median  3495.5 best  3451.3  lookups/s   1.11 M
+# steal 0.05% of 11671 ticks; load 3.86 3.58 2.58

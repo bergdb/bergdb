@@ -1,0 +1,30 @@
+[    9.5 s] opened /opt/bergdb-bench/data/key24-1000000: 1000000 keys, key24, budget 66000000 bytes; startup 9.09 s, resident 32 MB
+[    9.5 s] two clock reads cost 61.4 ns; heap 536 MB; 2 CPUs
+[   14.5 s]   warm 0: 6654 gets a second; loads/get 1.384, stream reads/get 4.153, device bytes/get 2152, disk reads/get 0.400, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 1 (63 ms), resident 44 MB, steal 0.00%
+[   19.7 s]   warm 1: 64074 gets a second; loads/get 0.988, stream reads/get 2.966, device bytes/get 55, disk reads/get 0.008, sweeps 2 (2280 ms), after-load waits over 10 ms 2, gc 2 (140 ms), resident 49 MB, steal 0.10%
+[   24.7 s]   warm 2: 99079 gets a second; loads/get 0.970, stream reads/get 2.909, device bytes/get 14, disk reads/get 0.002, sweeps 2 (1600 ms), after-load waits over 10 ms 2, gc 3 (293 ms), resident 61 MB, steal 0.00%
+[   30.4 s]   warm 3: 79554 gets a second; loads/get 0.946, stream reads/get 2.837, device bytes/get 5, disk reads/get 0.001, sweeps 3 (2541 ms), after-load waits over 10 ms 3, gc 10 (488 ms), resident 49 MB, steal 0.09%
+[   35.4 s]   warm 4: 96532 gets a second; loads/get 0.972, stream reads/get 2.916, device bytes/get 4, disk reads/get 0.001, sweeps 2 (1654 ms), after-load waits over 10 ms 2, gc 12 (527 ms), resident 60 MB, steal 0.00%
+[   40.6 s]   warm 5: 87725 gets a second; loads/get 0.945, stream reads/get 2.836, device bytes/get 2, disk reads/get 0.000, sweeps 3 (2238 ms), after-load waits over 10 ms 3, gc 13 (434 ms), resident 49 MB, steal 0.09%
+[   66.9 s] uniform, 1 thread: 98168 gets a second (median of 5 windows, 74917 to 102707); loads/get 0.962, stream reads/get 2.887, device bytes/get 1, disk reads/get 0.000, sweeps 7 (6655 ms), after-load waits over 10 ms 7, gc 33 (1845 ms), resident 65 MB, steal 0.03%
+[   66.9 s] uniform, timed 1000000 gets: mean 10.25, p50 4.77, p90 7.58, p99 15.49, p99.9 40.45, max 1132905.3 us; loads/get 0.954, stream reads/get 2.863, device bytes/get 0, disk reads/get 0.000, sweeps 5 (4277 ms), after-load waits over 10 ms 5, gc 17 (1075 ms), resident 65 MB, steal 0.00%
+[   83.3 s] hot, 1 thread: 537683 gets a second (median of 5 windows, 523369 to 539559); loads/get 0.103, stream reads/get 0.310, device bytes/get 0, disk reads/get 0.000, sweeps 5 (3848 ms), after-load waits over 10 ms 5, gc 9 (465 ms), resident 65 MB, steal 0.03%
+[   83.3 s] hot, timed 1000000 gets: mean 1.36, p50 0.69, p90 1.79, p99 8.16, p99.9 26.75, max 114145.1 us; loads/get 0.091, stream reads/get 0.273, device bytes/get 0, disk reads/get 0.000, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 1 (114 ms), resident 65 MB, steal 0.00%
+[  113.6 s] threads 1: 93929 gets a second; mean 10.54, p50 4.83, p90 7.65, p99 14.98, p99.9 39.94, max 1035499.2 us; loads/get 0.958, stream reads/get 2.874, device bytes/get 0, disk reads/get 0.000, sweeps 16 (13130 ms), after-load waits over 10 ms 16, gc 47 (2504 ms), resident 49 MB, steal 0.03%
+[  143.7 s] threads 2: 115351 gets a second; mean 17.23, p50 6.18, p90 10.18, p99 22.27, p99.9 52.22, max 1120458.4 us; loads/get 0.959, stream reads/get 2.878, device bytes/get 0, disk reads/get 0.000, sweeps 18 (15514 ms), after-load waits over 10 ms 36, gc 46 (2570 ms), resident 55 MB, steal 0.05%
+[  174.1 s] threads 4: 110266 gets a second; mean 36.14, p50 5.57, p90 10.50, p99 163.84, p99.9 1826.82, max 1237211.4 us; loads/get 0.957, stream reads/get 2.870, device bytes/get 0, disk reads/get 0.000, sweeps 18 (15698 ms), after-load waits over 10 ms 72, gc 56 (3009 ms), resident 49 MB, steal 0.05%
+[  194.1 s] sampled 2 threads: 113354 gets a second, 372 samples:
+     25.5% BLOCKED in Eviction.afterLoad on bergdb.core.Db$WriteLock
+     22.3% RUNNABLE reading the stream, holding a pointer lock
+     12.1% RUNNABLE in Eviction.sweep
+      5.9% BLOCKED in NodeCollection.followPointer on bergdb.core.PointerLocks$Lock
+      5.6% RUNNABLE in NodeCollection.followPointer
+      4.8% RUNNABLE in Residents.walk
+      3.5% RUNNABLE in Eviction.drop
+      3.5% RUNNABLE in KeyNode.searchEq
+      2.2% RUNNABLE in NodeCollection.followPointer, holding a pointer lock
+      1.9% RUNNABLE in Eviction.release
+      1.6% RUNNABLE in Eviction.detachable
+      1.3% BLOCKED reading the stream on bergdb.stream.FileStream$DbFile, holding a pointer lock
+[  194.5 s] at most: heap used 533 MB, resident 66 MB, RSS 670 MB; eviction BUDGET: 16883528 slots unswizzled, 16878552 objects released; budget 66000000 bytes, low 49500000; 93 sweeps (93 after loads, 0 complete, 0 above the budget after); last sweep 66000080 -> 49499856 bytes, pinned 21412112 (at most 21412112); sweep time 79276 ms in total, 1292 ms at most
+SCALEBENCH OK

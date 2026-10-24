@@ -1,0 +1,7 @@
+made /private/tmp/claude-502/-Users-f-fl-repos-f1/cf58510e-adb4-4675-9165-4f790be38e71/scratchpad/sb/data/disk.bin: 40.0 GB in 18.9 s
+DiskBaseline: /private/tmp/claude-502/-Users-f-fl-repos-f1/cf58510e-adb4-4675-9165-4f790be38e71/scratchpad/sb/data/disk.bin, 40.0 GB, block size 4096, Mac OS X aarch64, 27
+direct  4096 B, 1 thread :   177607 reads in 15.0 s,    11841 reads/s,    48.5 MB/s; latency us: mean 84.4, p50 82.1, p90 92.0, p99 102.5, p99.9 143.3, max 2259.8
+direct  4096 B, 8 threads:  1426832 reads in 15.0 s,    95124 reads/s,   389.6 MB/s; latency us: mean 84.0, p50 82.2, p90 93.7, p99 128.6, p99.9 166.0, max 1813.5
+direct 16384 B, 1 thread :   152002 reads in 15.0 s,    10133 reads/s,   166.0 MB/s; latency us: mean 98.6, p50 97.4, p90 107.7, p99 119.1, p99.9 170.5, max 2632.5
+direct 16384 B, 8 threads:  1127973 reads in 15.0 s,    75201 reads/s,  1232.1 MB/s; latency us: mean 106.3, p50 100.8, p90 132.0, p99 178.5, p99.9 224.8, max 1851.8
+cached  4096 B, 1 thread :  4001263 reads in 5.0 s,   800206 reads/s,  3277.6 MB/s; latency us: mean 0.7, p50 0.8, p90 0.8, p99 1.0, p99.9 1.2, max 32.8

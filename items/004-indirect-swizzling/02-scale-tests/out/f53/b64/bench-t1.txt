@@ -1,0 +1,27 @@
+openjdk version "27" 2026-09-15
+# Darwin arm64, f53, heap 16g, started Fri Oct 23 21:31:34 CEST 2026
+direct       keys  64000000 threads 1 layout -         depth 8  ns/lookup median   796.6 best   796.1  lookups/s   1.26 M
+# steal 0.00% of 0 ticks; load 
+lockstamp    keys  64000000 threads 1 layout -         depth 8  ns/lookup median   876.5 best   875.2  lookups/s   1.14 M
+# steal 0.00% of 0 ticks; load 
+lock         keys  64000000 threads 1 layout -         depth 8  ns/lookup median   832.0 best   829.8  lookups/s   1.20 M
+# steal 0.00% of 0 ticks; load 
+stamp        keys  64000000 threads 1 layout -         depth 8  ns/lookup median   835.0 best   830.6  lookups/s   1.20 M
+# steal 0.00% of 0 ticks; load 
+handle       keys  64000000 threads 1 layout before    depth 8  ns/lookup median   903.3 best   902.1  lookups/s   1.11 M
+# steal 0.00% of 0 ticks; load 
+handleacq    keys  64000000 threads 1 layout before    depth 8  ns/lookup median   904.2 best   896.6  lookups/s   1.11 M
+# steal 0.00% of 0 ticks; load 
+handleclock  keys  64000000 threads 1 layout before    depth 8  ns/lookup median   900.5 best   897.8  lookups/s   1.11 M
+# steal 0.00% of 0 ticks; load 
+hash         keys  64000000 threads 1 layout -         depth 8  ns/lookup median  1398.0 best  1391.7  lookups/s   0.72 M
+# steal 0.00% of 0 ticks; load 
+chm          keys  64000000 threads 1 layout -         depth 8  ns/lookup median  1588.3 best  1580.0  lookups/s   0.63 M
+# steal 0.00% of 0 ticks; load 
+handleacq    keys  64000000 threads 1 layout child     depth 8  ns/lookup median  1017.7 best  1011.5  lookups/s   0.98 M
+# steal 0.00% of 0 ticks; load 
+handleacq    keys  64000000 threads 1 layout parent    depth 8  ns/lookup median   989.9 best   984.1  lookups/s   1.01 M
+# steal 0.00% of 0 ticks; load 
+handleacq    keys  64000000 threads 1 layout scattered depth 8  ns/lookup median  1280.1 best  1277.3  lookups/s   0.78 M
+# steal 0.00% of 0 ticks; load 
+finished Fri Oct 23 21:36:31 CEST 2026

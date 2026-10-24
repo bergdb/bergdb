@@ -1,0 +1,35 @@
+[    0.4 s] load: 3000000 keys, key24, budget 0 bytes, dir /opt/bergdb-bench/data/key24-3000000
+[   30.4 s]   2646000 puts, 88169 a second; resident 649 MB, heap 936 MB, stream 1229 MB
+[   38.9 s] load done: 36.0 s, 83381 puts a second; on disk 1458 MB, 486.0 bytes per key; heap after a full GC 760 MB (1 MB before the load), 253.0 bytes per key; eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most
+[   38.9 s] two clock reads cost 64.4 ns; heap 2726 MB; 2 CPUs
+[   43.9 s]   warm 0: 414389 gets a second; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, disk reads/get 0.000, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 737 MB, steal 0.00%
+[   48.9 s]   warm 1: 447656 gets a second; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, disk reads/get 0.000, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 737 MB, steal 0.00%
+[   66.2 s] uniform, 1 thread: 470009 gets a second (median of 5 windows, 431855 to 490296); loads/get 0.000, stream reads/get 0.000, device bytes/get 0, disk reads/get 0.000, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 737 MB, steal 0.07%
+[   66.2 s] uniform, timed 1000000 gets: mean 2.15, p50 2.06, p90 2.75, p99 3.62, p99.9 16.38, max 70.8 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, disk reads/get 0.000, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 737 MB, steal 0.00%
+[   82.3 s] hot, 1 thread: 884286 gets a second (median of 5 windows, 858713 to 915156); loads/get 0.000, stream reads/get 0.000, device bytes/get 0, disk reads/get 0.000, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 737 MB, steal 0.00%
+[   82.3 s] hot, timed 1000000 gets: mean 1.09, p50 0.87, p90 1.82, p99 3.34, p99.9 13.70, max 69.4 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, disk reads/get 0.000, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 737 MB, steal 0.00%
+[  112.4 s] threads 1: 456680 gets a second; mean 2.09, p50 1.98, p90 2.69, p99 3.54, p99.9 16.51, max 2585.8 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, disk reads/get 0.000, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 737 MB, steal 0.02%
+[  142.4 s] threads 2: 537042 gets a second; mean 3.62, p50 3.42, p90 4.38, p99 7.52, p99.9 23.04, max 4046.6 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, disk reads/get 0.000, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 737 MB, steal 0.02%
+[  172.4 s] threads 4: 608399 gets a second; mean 6.38, p50 3.07, p90 4.10, p99 10.37, p99.9 2023.42, max 8024.8 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, disk reads/get 0.000, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 737 MB, steal 0.05%
+[  192.4 s] sampled 2 threads: 557204 gets a second, 384 samples:
+     28.1% RUNNABLE in Dag.getEqNodeInSegment
+     23.7% RUNNABLE in KeyNode.searchEq
+     17.7% RUNNABLE in KeyNode.getDeleteBitmapAtTime
+     12.5% RUNNABLE in Db.getOne
+      5.5% RUNNABLE in ?
+      4.4% RUNNABLE in NodeCollection.followPointer, holding a pointer lock
+      4.2% RUNNABLE in KeyNode.searchLte
+      3.6% RUNNABLE in TopDs.findSuperRootAtTime
+      0.3% RUNNABLE in Dag.getOne
+[  250.5 s] variants, 1 thread, ns a get (median of 5 rounds of a million):
+    as it is                   2184.5 (best 2142.0)
+    no lock, no stamp          1989.7 (best 1834.2)
+    stamp, no lock             1990.4 (best 1935.7)
+    as it is, no readSync      2196.9 (best 1996.0)
+[  350.6 s] variants, 4 threads, million gets a second (median of 5 rounds):
+    as it is                           0.57 (best 0.90)
+    no lock, no stamp                  1.05 (best 1.12)
+    no lock, no stamp, no readSync     1.03 (best 1.11)
+[  351.6 s] census: the latest tree has 243382 index nodes (12.33 keys a node), 161 MB, 54.0 bytes a key; 3000000 values, 192 MB
+[  352.2 s] at most: heap used 1058 MB, resident 737 MB, RSS 2892 MB; eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most
+SCALEBENCH OK

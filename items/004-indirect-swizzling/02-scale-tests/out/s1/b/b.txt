@@ -1,0 +1,35 @@
+openjdk version "27" 2026-09-15
+# Linux x86_64, s1, heap 3000m, young 1700m, keys 8000000, started Fri Oct 23 10:57:13 CEST 2026
+g1     direct       keys   8000000 threads 1 layout -         depth 7  ns/lookup median  1062.7 best   986.0  lookups/s   0.94 M  age none  build gcs 3 young 0 old
+# steal 0.03% of 3318 ticks
+g1     handleacq    keys   8000000 threads 1 layout before    depth 7  ns/lookup median  1230.8 best  1204.9  lookups/s   0.81 M  age none  build gcs 4 young 0 old
+# steal 0.02% of 4054 ticks
+g1     handleacq    keys   8000000 threads 1 layout parent    depth 7  ns/lookup median  1181.9 best  1133.1  lookups/s   0.85 M  age none  build gcs 4 young 0 old
+# steal 0.03% of 3865 ticks
+g1     handleacq    keys   8000000 threads 1 layout scattered depth 7  ns/lookup median  2065.3 best  2031.1  lookups/s   0.48 M  age none  build gcs 5 young 0 old
+# steal 0.05% of 7413 ticks
+alloc  direct       keys   8000000 threads 1 layout -         depth 7  ns/lookup median  1073.3 best  1065.1  lookups/s   0.93 M  age none  build gcs 0 young 0 old
+# steal 0.00% of 3417 ticks
+alloc  handleacq    keys   8000000 threads 1 layout before    depth 7  ns/lookup median  1155.8 best  1062.9  lookups/s   0.87 M  age none  build gcs 0 young 0 old
+# steal 0.03% of 3671 ticks
+alloc  handleacq    keys   8000000 threads 1 layout parent    depth 7  ns/lookup median  1315.3 best  1263.8  lookups/s   0.76 M  age none  build gcs 0 young 0 old
+# steal 0.05% of 4299 ticks
+alloc  handleacq    keys   8000000 threads 1 layout scattered depth 7  ns/lookup median  2087.3 best  2068.5  lookups/s   0.48 M  age none  build gcs 0 young 0 old
+# steal 0.07% of 7679 ticks
+young  direct       keys   8000000 threads 1 layout -         depth 7  ns/lookup median   992.6 best   952.0  lookups/s   1.01 M  age young build gcs 0 young 0 old
+# steal 0.09% of 3381 ticks
+young  handleacq    keys   8000000 threads 1 layout before    depth 7  ns/lookup median  1114.6 best  1055.2  lookups/s   0.90 M  age young build gcs 0 young 0 old
+# steal 0.05% of 3788 ticks
+young  handleacq    keys   8000000 threads 1 layout parent    depth 7  ns/lookup median  1175.7 best  1155.6  lookups/s   0.85 M  age young build gcs 0 young 0 old
+# steal 0.08% of 3950 ticks
+young  handleacq    keys   8000000 threads 1 layout scattered depth 7  ns/lookup median  1316.9 best  1249.9  lookups/s   0.76 M  age young build gcs 0 young 0 old
+# steal 0.03% of 5726 ticks
+zgc    direct       keys   8000000 threads 1 layout -         depth 7  ns/lookup median  1192.7 best  1168.5  lookups/s   0.84 M  age none  build gcs 0 young 1 old
+# steal 0.07% of 4215 ticks
+zgc    handleacq    keys   8000000 threads 1 layout before    depth 7  ns/lookup median  1221.2 best  1207.1  lookups/s   0.82 M  age none  build gcs 0 young 1 old
+# steal 0.04% of 4769 ticks
+zgc    handleacq    keys   8000000 threads 1 layout parent    depth 7  ns/lookup median  1287.4 best  1240.0  lookups/s   0.78 M  age none  build gcs 0 young 1 old
+# steal 0.04% of 5091 ticks
+zgc    handleacq    keys   8000000 threads 1 layout scattered depth 7  ns/lookup median  2116.2 best  1905.5  lookups/s   0.47 M  age none  build gcs 3 young 3 old
+# steal 0.05% of 10617 ticks
+finished Fri Oct 23 11:03:51 CEST 2026

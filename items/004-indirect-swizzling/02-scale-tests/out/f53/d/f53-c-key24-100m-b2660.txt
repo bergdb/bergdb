@@ -1,0 +1,71 @@
+[   18.1 s] read the stream's files once: 114218 MB in 18.0 s
+[   35.2 s] opened /private/tmp/claude-502/-Users-f-fl-repos-f1/cf58510e-adb4-4675-9165-4f790be38e71/scratchpad/sb/data/key24-100000000: 100000000 keys, key24, budget 2660000000 bytes; startup 17.08 s, resident 49 MB
+[   35.2 s] two clock reads cost 22.3 ns; heap 11114 MB; 10 CPUs
+[   40.2 s]   warm 0: 6254 gets a second; loads/get 3.682, stream reads/get 11.050, device bytes/get 19460, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 111 MB
+[   45.2 s]   warm 1: 6558 gets a second; loads/get 3.405, stream reads/get 10.220, device bytes/get 18907, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 1 (21 ms), resident 168 MB
+[   50.2 s]   warm 2: 6812 gets a second; loads/get 3.198, stream reads/get 9.598, device bytes/get 18310, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 223 MB
+[   55.3 s]   warm 3: 7140 gets a second; loads/get 3.038, stream reads/get 9.119, device bytes/get 17745, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 1 (17 ms), resident 276 MB
+[   60.3 s]   warm 4: 7072 gets a second; loads/get 2.913, stream reads/get 8.743, device bytes/get 17361, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 325 MB
+[   65.3 s]   warm 5: 7238 gets a second; loads/get 2.812, stream reads/get 8.438, device bytes/get 16926, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 372 MB
+[   70.3 s]   warm 6: 7344 gets a second; loads/get 2.730, stream reads/get 8.194, device bytes/get 16659, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 418 MB
+[   75.3 s]   warm 7: 7445 gets a second; loads/get 2.662, stream reads/get 7.988, device bytes/get 16310, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 463 MB
+[   80.3 s]   warm 8: 7435 gets a second; loads/get 2.596, stream reads/get 7.792, device bytes/get 16122, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 506 MB
+[   85.3 s]   warm 9: 7696 gets a second; loads/get 2.540, stream reads/get 7.622, device bytes/get 15839, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 1 (55 ms), resident 549 MB
+[   90.3 s]   warm 10: 7943 gets a second; loads/get 2.492, stream reads/get 7.478, device bytes/get 15877, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 592 MB
+[   95.4 s]   warm 11: 7899 gets a second; loads/get 2.448, stream reads/get 7.348, device bytes/get 15942, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 633 MB
+[  100.4 s]   warm 12: 7946 gets a second; loads/get 2.411, stream reads/get 7.236, device bytes/get 16100, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 674 MB
+[  105.4 s]   warm 13: 7854 gets a second; loads/get 2.378, stream reads/get 7.136, device bytes/get 16418, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 713 MB
+[  110.4 s]   warm 14: 7572 gets a second; loads/get 2.343, stream reads/get 7.033, device bytes/get 17302, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 750 MB
+[  115.4 s]   warm 15: 7057 gets a second; loads/get 2.315, stream reads/get 6.947, device bytes/get 18927, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 784 MB
+[  120.4 s]   warm 16: 7381 gets a second; loads/get 2.288, stream reads/get 6.867, device bytes/get 18018, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 819 MB
+[  125.4 s]   warm 17: 7930 gets a second; loads/get 2.258, stream reads/get 6.777, device bytes/get 16354, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 855 MB
+[  130.4 s]   warm 18: 8461 gets a second; loads/get 2.228, stream reads/get 6.687, device bytes/get 14919, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 1 (58 ms), resident 893 MB
+[  135.4 s]   warm 19: 9033 gets a second; loads/get 2.208, stream reads/get 6.627, device bytes/get 13862, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 933 MB
+[  140.5 s]   warm 20: 9254 gets a second; loads/get 2.179, stream reads/get 6.537, device bytes/get 13560, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 973 MB
+[  145.5 s]   warm 21: 9193 gets a second; loads/get 2.154, stream reads/get 6.465, device bytes/get 13622, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1012 MB
+[  150.5 s]   warm 22: 9369 gets a second; loads/get 2.129, stream reads/get 6.389, device bytes/get 13417, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1051 MB
+[  155.5 s]   warm 23: 9295 gets a second; loads/get 2.103, stream reads/get 6.310, device bytes/get 13497, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1089 MB
+[  160.5 s]   warm 24: 9468 gets a second; loads/get 2.078, stream reads/get 6.235, device bytes/get 13442, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1127 MB
+[  165.5 s]   warm 25: 9371 gets a second; loads/get 2.062, stream reads/get 6.189, device bytes/get 13388, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1164 MB
+[  170.5 s]   warm 26: 9393 gets a second; loads/get 2.042, stream reads/get 6.128, device bytes/get 13343, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1201 MB
+[  175.5 s]   warm 27: 9509 gets a second; loads/get 2.021, stream reads/get 6.065, device bytes/get 13239, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1237 MB
+[  180.5 s]   warm 28: 9454 gets a second; loads/get 2.004, stream reads/get 6.015, device bytes/get 13292, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1273 MB
+[  185.6 s]   warm 29: 9439 gets a second; loads/get 1.986, stream reads/get 5.961, device bytes/get 13070, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1307 MB
+[  190.6 s]   warm 30: 9439 gets a second; loads/get 1.971, stream reads/get 5.915, device bytes/get 12968, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1342 MB
+[  195.6 s]   warm 31: 9169 gets a second; loads/get 1.949, stream reads/get 5.848, device bytes/get 13152, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 1 (113 ms), resident 1375 MB
+[  200.6 s]   warm 32: 9444 gets a second; loads/get 1.942, stream reads/get 5.828, device bytes/get 13045, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1408 MB
+[  205.6 s]   warm 33: 9696 gets a second; loads/get 1.925, stream reads/get 5.778, device bytes/get 12746, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1442 MB
+[  210.6 s]   warm 34: 9743 gets a second; loads/get 1.913, stream reads/get 5.740, device bytes/get 12720, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1476 MB
+[  215.6 s]   warm 35: 9741 gets a second; loads/get 1.895, stream reads/get 5.688, device bytes/get 12716, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1509 MB
+[  220.6 s]   warm 36: 9973 gets a second; loads/get 1.886, stream reads/get 5.659, device bytes/get 12715, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1543 MB
+[  225.6 s]   warm 37: 9957 gets a second; loads/get 1.872, stream reads/get 5.617, device bytes/get 12588, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1576 MB
+[  230.7 s]   warm 38: 10023 gets a second; loads/get 1.859, stream reads/get 5.578, device bytes/get 12616, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1609 MB
+[  235.7 s]   warm 39: 10166 gets a second; loads/get 1.851, stream reads/get 5.554, device bytes/get 12500, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1642 MB
+[  240.7 s]   warm 40: 10209 gets a second; loads/get 1.838, stream reads/get 5.516, device bytes/get 12481, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1675 MB
+[  245.7 s]   warm 41: 10210 gets a second; loads/get 1.826, stream reads/get 5.479, device bytes/get 12256, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1708 MB
+[  250.7 s]   warm 42: 10284 gets a second; loads/get 1.817, stream reads/get 5.453, device bytes/get 12187, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1740 MB
+[  255.7 s]   warm 43: 10438 gets a second; loads/get 1.803, stream reads/get 5.412, device bytes/get 12048, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1773 MB
+[  260.7 s]   warm 44: 10459 gets a second; loads/get 1.799, stream reads/get 5.398, device bytes/get 12050, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1805 MB
+[  265.7 s]   warm 45: 10217 gets a second; loads/get 1.785, stream reads/get 5.356, device bytes/get 11918, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 1 (108 ms), resident 1836 MB
+[  270.7 s]   warm 46: 10626 gets a second; loads/get 1.772, stream reads/get 5.317, device bytes/get 11886, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 1868 MB
+[  345.8 s] uniform, 1 thread: 10590 gets a second (median of 5 windows, 10526 to 10787); loads/get 1.757, stream reads/get 5.274, device bytes/get 11833, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2325 MB
+[  345.8 s] uniform, timed 655616 gets: mean 91.44, p50 109.57, p90 212.99, p99 280.58, p99.9 397.31, max 2380.0 us; loads/get 1.695, stream reads/get 5.088, device bytes/get 11262, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2325 MB
+[  374.1 s] hot, 1 thread: 28531 gets a second (median of 5 windows, 11767 to 59754); loads/get 0.974, stream reads/get 2.923, device bytes/get 3385, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 1 (139 ms), resident 2480 MB
+[  374.1 s] hot, timed 1000000 gets: mean 13.22, p50 3.50, p90 10.11, p99 217.09, p99.9 286.72, max 703.8 us; loads/get 0.535, stream reads/get 1.606, device bytes/get 1207, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2480 MB
+[  404.1 s] threads 1: 11641 gets a second; mean 85.82, p50 106.50, p90 206.85, p99 266.24, p99.9 372.74, max 1950.7 us; loads/get 1.600, stream reads/get 4.802, device bytes/get 10638, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2653 MB
+[  434.2 s] threads 2: 21519 gets a second; mean 92.88, p50 2.05, p90 155.65, p99 313.34, p99.9 432.13, max 13833074.0 us; loads/get 0.779, stream reads/get 2.337, device bytes/get 5327, sweeps 1 (13832 ms), after-load waits over 10 ms 2, gc 3 (635 ms), resident 2148 MB
+[  464.2 s] threads 4: 50178 gets a second; mean 79.65, p50 17.02, p90 215.04, p99 389.12, p99.9 536.58, max 107563.6 us; loads/get 1.170, stream reads/get 3.512, device bytes/get 6487, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 2 (187 ms), resident 2599 MB
+[  494.2 s] threads 8: 77016 gets a second; mean 103.78, p50 3.14, p90 260.10, p99 622.59, p99.9 946.18, max 7912613.5 us; loads/get 0.578, stream reads/get 1.735, device bytes/get 3777, sweeps 1 (7912 ms), after-load waits over 10 ms 8, gc 2 (332 ms), resident 2349 MB
+[  514.2 s] sampled 4 threads: 96356 gets a second, 728 samples:
+     55.9% RUNNABLE reading the stream, holding a pointer lock
+     18.0% BLOCKED in NodeCollection.followPointer on bergdb.core.PointerLocks$Lock
+     17.9% BLOCKED reading the stream on bergdb.stream.FileStream$DbFile, holding a pointer lock
+      2.5% RUNNABLE in NodeCollection.followPointer, holding a pointer lock
+      1.1% RUNNABLE in KeyNode.getDeleteBitmapAtTime
+      1.0% RUNNABLE in NodeChecksum.sumWithZeroReplace, holding a pointer lock
+      1.0% RUNNABLE in NodeCollection.followPointer
+      0.8% RUNNABLE in KeyNode.searchEq
+      0.7% RUNNABLE in KeyNode.searchLte
+      0.3% RUNNABLE in ?
+[  515.1 s] at most: heap used 6728 MB, resident 2660 MB, RSS 9263 MB; eviction BUDGET: 7110212 slots unswizzled, 7110172 objects released; budget 2660000000 bytes, low 1995000000; 2 sweeps (2 after loads, 0 complete, 0 above the budget after); last sweep 2660003184 -> 1995000752 bytes, pinned 32015312 (at most 32015312); sweep time 21744 ms in total, 13832 ms at most
+SCALEBENCH OK

@@ -1,6 +1,6 @@
 #!/bin/sh
 # The runs of 004-02 on s1, in blocks, as fixed in 02-scale-tests.md (section 3.5).
-# Usage: sh plan-s1.sh BLOCK...   (blocks: b c m 1m 10m 30m rep)
+# Usage: sh plan-s1.sh BLOCK...   (blocks: b c m 1m 10m 30m 18m rep)
 # Expects /opt/bergdb-bench as set up for 004-02: jdk-27/, bergdb.jar, classes/ (ScaleBench,
 # PerfUtil, DiskBaseline), item/02-scale-tests/ (these scripts and IndirectionBench.java).
 set -e
@@ -46,6 +46,16 @@ for block in "$@"; do
         sb_load s1-l-key24-30m key24 30000000 2500m 600000000 ""
         sb_get s1-d-key24-30m-b200 key24 30000000 800m 200000000 D $P
         sb_get s1-d-key24-30m-b600 key24 30000000 2400m 600000000 D $P
+        ;;
+    18m)
+        # The 30M load was stopped at 18,463,000 puts after 9 hours (2026-10-23 21:53): it had
+        # slowed to under 100 puts a second. The marker, written here, names the first
+        # 18,400,000 keys of the load order as loaded; the gets ask for those only. The time
+        # is that of 30,000 transactions, later than the last one written.
+        printf 'keys=30000000\nloaded=18400000\nkeytype=key24\nvalsize=8\ntime=40000000\n' \
+            > "$DATA/key24-30000000/scalebench.properties"
+        sb_get s1-d-key24-18m-b200 key24 30000000 1g 200000000 D $P
+        sb_get s1-d-key24-18m-b600 key24 30000000 2400m 600000000 D $P
         ;;
     rep)
         sb_get s1-c-key24-1m-b66-r2 key24 1000000 512m 66000000 C $P
