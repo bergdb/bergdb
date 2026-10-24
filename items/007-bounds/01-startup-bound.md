@@ -288,12 +288,14 @@ Decisions for Frans:
   strict); or C, keeping the section and the debt below d (4.2).
   Recommended: B. It is a small change to the take, T3 then applies to
   Java with d = d_h, and it bounds the rerun, the costly part, whatever the
-  debt.
+  debt. Decided 2026-10-24 (Frans: "As you propose."): B, with d_h = 2 × sd.
 * D2. The fix of 007-02, now 005-31 (its options; A is proposed there).
 * D3. The cost of a record for the startup distance: bytes, as now, or an
   estimate of startup time (5.4).
 
-Next steps, in order:
+Next steps, in order (since 2026-10-24 the plan is
+[007-03](03-plan.md), which orders them differently and puts 005-31
+first):
 
 1. Model Java's take in Lean as a policy, with the deadline, and prove that
    it keeps up with d_h, so that T3 holds for it. The trace checker can then

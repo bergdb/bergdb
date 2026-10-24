@@ -9,6 +9,10 @@ the probe and its output in
 [../007-bounds/02-take-blocked/](../007-bounds/02-take-blocked/). Added at
 Frans's request ("Register the bug in 005.").
 
+Decided 2026-10-24, Frans: "005-31, it has my 'go'. But don't start the
+implementation now." So option A, the proposed fix; not started. It is step
+1 of item 007's plan, [007-03](../007-bounds/03-plan.md).
+
 
 The issue
 ---------
@@ -60,9 +64,9 @@ its record.
 The fix, options
 ----------------
 
-A, proposed: refuse such a transaction before its go point, with a
-`DbException`, as `Db.checkSize` refuses one whose value nodes pass 7/8 of
-the limit (005-17).
+A, proposed, and decided on 2026-10-24: refuse such a transaction before
+its go point, with a `DbException`, as `Db.checkSize` refuses one whose
+value nodes pass 7/8 of the limit (005-17).
 
 * A cheap test first, for every transaction: if its keys times (the
   length of a key's path + 2) times the largest key node (528 bytes and 16)

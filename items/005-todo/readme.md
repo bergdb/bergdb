@@ -532,3 +532,7 @@ for a value after a meta block in its record, so `transactionInfo()` reads
 the middle of a record; on the code before 005-30, one such call could
 leave the database half dead. Proposed: keep the value node's offset in
 stream bytes. No change to `java/` for it.
+
+2026-10-24. 005-31 decided, by Frans ("005-31, it has my 'go'. But don't
+start the implementation now."): option A, refuse such a transaction before
+its go point. Not started; it is step 1 of item 007's plan (007-03).

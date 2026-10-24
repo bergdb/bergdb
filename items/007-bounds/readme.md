@@ -20,6 +20,10 @@ Files
   startup pos for good. The probe and its output are in
   [02-take-blocked/](02-take-blocked/). Registered as
   [005-31](../005-todo/31-fix-take-blocked.md).
+* [03-plan.md](03-plan.md). 007-03, the plan: bounded startup for BergDB
+  itself, proved for its own policy, in five steps (005-31, a test that
+  drives the debt up, the deadline in `TransSeq.take`, BergDB's take in
+  Lean, startup time).
 
 
 Log
@@ -35,3 +39,11 @@ with restarts. BergDB's take does not keep up (4.1 of 007-01); 007-02 is a
 case where it never catches up.
 
 2026-10-23. 007-02 registered as 005-31, at Frans's request.
+
+2026-10-24. 007-03, the plan, written by Claude (Opus 5.5, Claude Code) at
+Frans's request ("Do: write this plan into item 007."), from the proposal
+of 2026-10-23. Frans's go for 005-31's option A, its step 1, but not to
+start yet; the deadline (007-01, D1) waits for Frans. Nothing started.
+
+2026-10-24. D1 decided by Frans ("As you propose."): the deadline in
+`TransSeq.take` at d_h = 2 × sd (007-03, step 3). Not started.
