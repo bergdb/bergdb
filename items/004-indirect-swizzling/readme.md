@@ -26,6 +26,9 @@ Files
 * [03-summary-and-direction.md](03-summary-and-direction.md). 004-03, a summary of the
   work so far and the conclusion on the future direction, written by Frans and Claude
   together.
+* [04-zgc.md](04-zgc.md). 004-04, today's code with G1 and with ZGC: does ZGC remove the
+  full collections that G1 runs under eviction, and at what cost in memory, speed and CPU.
+  The GC assumption for the plan for handles. Scripts in [04-zgc/](04-zgc/).
 
 
 Log
@@ -74,3 +77,7 @@ problem registered as 005-38, and an open question to study before deciding (sec
 the id-to-handle table, which must grow without stop-the-world (many HashMaps, linear
 hashing, incremental rehashing). A note on handles' memory at a constant budget was
 written and then removed by Frans as not the most important.
+
+2026-10-24. Created 004-04 at Frans's request ("start with 'the ZGC run on today's code,
+which is cheap and decides the GC assumption'"): G1 against ZGC on 004-02's 10M runs and a
+shortened P4 soak, on F53. Started at about 16:50.
