@@ -360,6 +360,183 @@ public class Dag {
     
     
     
+    // ======== dirtyNodeBound() ========
+    
+    /**
+     * An upper bound on the number of index nodes that a transaction with these puts and
+     * deletes, at a later time, can make dirty or create (2026-10-24, bergdb 005-31), for
+     * Db's check before the go point. Walks the paths of the keys at 'time', as a get does,
+     * loading nodes. Counts:
+     * 
+     * <ul>
+     * <li>the distinct key nodes on the paths: a put makes dirty its leaf and every node above
+     * it, up to the space root;</li>
+     * <li>the nodes that splits can make. A node that gets k klongs (one for each put and each
+     * new segment below it, those of its children's splits, and a TIME klong) with room for r
+     * more overflows at most once if k exceeds r, and once more for every further half node
+     * of klongs (a replacement holds at most half a node): 1 + (k - r - 1) / q times, q = M/2
+     * - 3 or 1. The first overflow of a node that existed replaces it by up to two new nodes
+     * and adds two klongs to its parent; later ones split new nodes in place, one new node and
+     * one klong each. An overflow of the space root adds a new root;</li>
+     * <li>the new segment trees of keys whose segment is not there, counted the same way from
+     * an empty node.</li>
+     * </ul>
+     * 
+     * @param deletes  deletes[i] is true if keys[i] is deleted; a delete of a missing key
+     *      changes nothing.
+     */
+    public long dirtyNodeBound(long time, long[][] keys, boolean[] deletes, GetData gd) {
+        final KeyNode root = topDs.findRoot(time, gd);
+        if (root == null) {
+            return 0;
+        }
+        final java.util.IdentityHashMap<KeyNode, Walked> walked =
+                new java.util.IdentityHashMap<KeyNode, Walked>();
+        final KlongWithPointer kwi = gd.kwi;
+        
+        for (int k = 0; k < keys.length; k++) {
+            final long[] key = keys[k];
+            KeyNode node = root;
+            Walked w = walked(walked, node, null);
+            for (int i = 0; i < key.length; i++) {
+                while (!node.isSegmentLeaf()) {
+                    node.searchLte(time, key[i], kwi);
+                    if (kwi.klong == Klong.NULL) {
+                        break;
+                    }
+                    node = (KeyNode) gd.followPointer(node, kwi.pointerIndex);
+                    w = walked(walked, node, w);
+                }
+                if (i == key.length - 1) {
+                    w.klongs++;
+                    break;
+                }
+                node.searchEq(time, key[i], kwi);
+                if (kwi.klong == Klong.NULL) {
+                    if (!deletes[k]) {
+                        w.fresh(key, i);
+                    }
+                    break;
+                }
+                node = (KeyNode) gd.followPointer(node, kwi.pointerIndex);
+                w = walked(walked, node, w);
+            }
+        }
+        
+        long count = walked.size();
+        final java.util.List<Walked> deepestFirst = new java.util.ArrayList<Walked>(walked.values());
+        java.util.Collections.sort(deepestFirst, new java.util.Comparator<Walked>() {
+            public int compare(Walked a, Walked b) {
+                return Integer.compare(b.depth, a.depth);
+            }
+        });
+        for (Walked w : deepestFirst) {
+            if (w.freshKeys != null) {
+                for (java.util.List<long[]> l : w.freshKeys.values()) {
+                    count += freshTreeBound(l, w.freshLevel + 1);
+                }
+            }
+            final long overflows = overflows(w.klongs, w.node.size);
+            if (overflows > 0) {
+                count += overflows + 1;
+                if (w.up != null) {
+                    w.up.klongs += overflows + 1;
+                } else {
+                    count += overflows;             // new roots
+                }
+            }
+        }
+        return count;
+    }
+    
+    /** A node that dirtyNodeBound() walked. */
+    private static final class Walked {
+        final KeyNode node;
+        final Walked up;                // the node above it on the path, null for the space root
+        final int depth;
+        long klongs = 0;                // that it gets
+        java.util.HashMap<Long, java.util.List<long[]>> freshKeys = null;
+        int freshLevel;                 // the segment of the keys in freshKeys missing here
+        
+        Walked(KeyNode node, Walked up) {
+            this.node = node;
+            this.up = up;
+            this.depth = up == null ? 0 : up.depth + 1;
+        }
+        
+        /** A key whose segment i is not in this leaf: a new segment tree below it. */
+        void fresh(long[] key, int i) {
+            if (freshKeys == null) {
+                freshKeys = new java.util.HashMap<Long, java.util.List<long[]>>();
+                freshLevel = i;
+            }
+            java.util.List<long[]> l = freshKeys.get(key[i]);
+            if (l == null) {
+                l = new java.util.ArrayList<long[]>();
+                freshKeys.put(key[i], l);
+                klongs++;                       // the pointer to the new segment tree
+            }
+            l.add(key);
+        }
+    }
+    
+    private static Walked walked(java.util.IdentityHashMap<KeyNode, Walked> walked, KeyNode node,
+            Walked up) {
+        Walked w = walked.get(node);
+        if (w == null) {
+            w = new Walked(node, up);
+            walked.put(node, w);
+        }
+        return w;
+    }
+    
+    /** How many times a node of 'size' klongs, given 'klongs' more and a TIME klong, can overflow. */
+    private long overflows(long klongs, int size) {
+        if (klongs == 0) {
+            return 0;
+        }
+        final long k = klongs + 1;
+        final long room = Math.max(0, maxNodeSize - 2 - size);
+        if (k <= room) {
+            return 0;
+        }
+        final long q = Math.max(2, maxNodeSize / 2 - 3);
+        return 1 + (k - room - 1) / q;
+    }
+    
+    /**
+     * The nodes of the new segment trees of 'keys', which share their segments before 'level'
+     * and whose segment 'level' is in a new tree: its root, the in-place splits of its new
+     * nodes (one new node and one klong above a split), a new root for each level, and the
+     * trees below.
+     */
+    private long freshTreeBound(java.util.List<long[]> keys, int level) {
+        long klongs = 0;
+        java.util.HashMap<Long, java.util.List<long[]>> below =
+                new java.util.HashMap<Long, java.util.List<long[]>>();
+        for (long[] key : keys) {
+            if (key.length == level + 1) {
+                klongs++;                       // a value
+            } else {
+                java.util.List<long[]> l = below.get(key[level]);
+                if (l == null) {
+                    l = new java.util.ArrayList<long[]>();
+                    below.put(key[level], l);
+                    klongs++;                   // the pointer to the tree below
+                }
+                l.add(key);
+            }
+        }
+        long count = 1;
+        for (long ov = overflows(klongs, 0); ov > 0; ov = overflows(ov, 1)) {
+            count += ov + 1;                    // the splits, and a new node above them
+        }
+        for (java.util.List<long[]> l : below.values()) {
+            count += freshTreeBound(l, level + 1);
+        }
+        return count;
+    }
+    
     // ======== getMany() ========
     
     /**

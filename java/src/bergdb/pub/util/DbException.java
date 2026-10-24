@@ -4,7 +4,8 @@ package bergdb.pub.util;
  * <p>Thrown when the database cannot do what was asked. There are two kinds.</p>
  * 
  * <p>A refusal: the database checked the request and refused it before it changed
- * anything, for example a transaction that is too large, a clock time out of range, or
+ * anything, for example a transaction that is too large (its values, or the index nodes
+ * it can make dirty: bergdb 005-17, 005-31), a clock time out of range, or
  * a stored value that does not fit its Java field (DataFormatException). The database
  * is as it was and can be used on. Each such case says so where it is thrown.</p>
  * 

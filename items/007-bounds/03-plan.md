@@ -5,10 +5,12 @@ Created 2026-10-24 by Claude (Opus 5.5, Claude Code) for Frans Lundberg, at
 his request ("Do: write this plan into item 007."), from Claude's proposal
 of 2026-10-23, which followed 007-01 and 007-02.
 
-**Status: plan only; nothing started.** Step 1, 005-31, has Frans's go for
-its option A (2026-10-24: "005-31, it has my 'go'. But don't start the
-implementation now."). Step 3, the deadline, is decided too (D1, Frans,
-2026-10-24: "As you propose."): d_h = 2 × sd, a constant factor.
+**Status: step 1 done (005-31, 2026-10-24); steps 2 to 5 not started.**
+Step 1, 005-31, had Frans's go for its option A (2026-10-24: "005-31, it
+has my 'go'. But don't start the implementation now."), and then his
+request to fix it ("fix all todo items of type Fix"). Step 3, the deadline,
+is decided too (D1, Frans, 2026-10-24: "As you propose."): d_h = 2 × sd, a
+constant factor.
 
 
 The goal
@@ -50,6 +52,15 @@ the precise count, under the write lock, only for the rare large ones
 * Done when: as 005-31 says (a unit test with the record limit lowered,
   `before-commit.sh`, StreamDigest identical, the docs).
 * Size: S.
+* Done 2026-10-24, by Claude (Opus 5.5, Claude Code); see 005-31's
+  outcome. The bound is at 15/16 of the record limit, so a transaction's
+  nodes fit in the record of a later transaction whose own part is below
+  1/16 of the limit. For step 3: "one transaction always fits in a record"
+  holds for such records; a record whose values take nearly 7/8 of the
+  limit (005-17) leaves less, and the take then waits for a smaller one. A
+  dirty limit of 1/8 of the record limit would make it hold for every
+  record, at the price of refusing eight times smaller updates; for Frans
+  to decide if step 3 or 4 needs it.
 
 ### Step 2. A test that drives the debt up
 
@@ -170,7 +181,7 @@ D1 is decided (the deadline at 2 × sd), so all five steps stand.
 Decisions
 ---------
 
-* 005-31, option A: decided, go (Frans, 2026-10-24); not started.
+* 005-31, option A: decided, go (Frans, 2026-10-24); done (2026-10-24).
 * D1 of 007-01: the deadline, with d_h = 2 × sd as a constant factor:
   decided (Frans, 2026-10-24, "As you propose."); not started.
 * D3 of 007-01, bytes or estimated time: not needed for this plan.

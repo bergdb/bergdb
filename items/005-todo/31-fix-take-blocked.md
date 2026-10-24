@@ -1,7 +1,7 @@
 005-31. Fix: a transaction whose dirty index nodes do not fit in one record stops the startup pos for good
 ==========================================================================================================
 
-Status: open. Kind: fix. Created 2026-10-23.
+Status: done (2026-10-24). Kind: fix. Created 2026-10-23.
 
 Found on 2026-10-23 in bergdb item 007, by Claude (Opus 5.5, Claude Code),
 and checked with a probe: [007-02](../007-bounds/02-take-blocked.md), with
@@ -119,3 +119,104 @@ Size and order
 S for option A: a check before the go point and its tests. Before the
 deadline that 007-01 proposes for `TransSeq.take` (its decision D1): the
 deadline needs every transaction's nodes to fit in a record.
+
+
+Outcome
+-------
+
+2026-10-24, by Claude (Opus 5.5, Claude Code), option A as decided, at
+Frans's request ("fix all todo items of type Fix", "do what is proposed";
+it lifted the hold of 2026-10-24). Step 1 of 007-03.
+
+The check, `Db.checkDirtyNodes`, runs in `executeInner` under the write
+lock, before the go point, after the check of the top node ordinals; not
+for reclaim's internal transactions, whose steps have their own reserve
+(`Reclaim.setStepReserve`), and which run after a user transaction's go
+point, where a refusal would fail the database. It refuses with a
+`DbException` ("The transaction is too large: the index nodes it can make
+dirty or create, up to N, could take B bytes in a record, more than L
+(bergdb 005-31). ...") when a bound on those nodes, each at the largest
+size (32 + 16 (M + 1) bytes, 528 at the default node size M = 30, and 16
+for its got-dirty entry) and two top nodes, passes
+`StoredTrans.dirtyLimit()`: 15/16 of the record limit. So a later
+transaction whose own part of its record (values, got-dirty ids, header)
+is below 1/16 of the limit, 134 MB, can take them all. "The limit" of the
+proposal, taken as the record limit less that room: a bound of the whole
+limit could never be taken, as every record has a header.
+
+* The cheap test, for every transaction: each key counts 3 h s + 3 nodes,
+  s its segments and h = log2(the stream's length / 48) + 2, a height that
+  no segment tree of the stream can pass (a tree of n nodes with two
+  children or more is at most log2(n) + 1 high). At the real limit and a
+  stream of 1 GB it passes every transaction of up to 23,000 keys of two
+  segments (7 to 13 bytes), 45,000 of one; no walk, a sum over the keys.
+* The bound, for a transaction that fails it: `Dag.dirtyNodeBound` walks
+  the paths of its keys at the latest time, as a get, and counts the
+  distinct key nodes on them (a put makes dirty its leaf and every node
+  above it), the nodes that the splits of the klongs it appends can make,
+  from each node's actual size (its room, then a split every
+  max(2, M/2 - 3) klongs; a node that existed is replaced by up to two),
+  new roots, and the new segment trees of keys whose segment is missing. A
+  key with a key transformation (known only at the put) counts as in the
+  cheap test.
+* No change to the format, the model or the streams.
+
+The first step, the bound against what the got-dirty nodes take when the
+transaction has run (`TransSeq.recordBytes`, as `take()` counts them), with
+[BoundProbe.java](31-fix-take-blocked/BoundProbe.java), on 007-02's
+database (40,000 keys) at the real limit, at the four node sizes
+([bound-m8.txt](31-fix-take-blocked/bound-m8.txt),
+[bound-m14.txt](31-fix-take-blocked/bound-m14.txt),
+[bound-m30.txt](31-fix-take-blocked/bound-m30.txt),
+[bound-m62.txt](31-fix-take-blocked/bound-m62.txt)). The bound is above
+the actual in every case. At the default node size:
+
+| Transaction | Its record | Bound | Actual | Bound / actual, bytes (nodes) |
+|---|---|---|---|---|
+| update of every 20th key | 138 KB | 2,935 nodes, 1.60 MB | 2,571 nodes, 0.90 MB | 1.78 (1.14) |
+| update of every 100th key | 34 KB | 949 nodes, 516 KB | 870 nodes, 305 KB | 1.69 (1.09) |
+| update of every 1000th key | 5 KB | 123 nodes, 67 KB | 120 nodes, 44 KB | 1.53 (1.03) |
+| load of 20,000 new keys, new prefix | 986 KB | 1,819 nodes, 990 KB | 1,539 nodes, 444 KB | 2.23 (1.18) |
+| load of 20,000 new keys among them | 1.49 MB | 24,431 nodes, 13.3 MB | 23,264 nodes, 3.0 MB | 4.41 (1.05) |
+
+The bound is close in nodes (1.03 to 1.19 at node size 30; 1.01 to 1.67 at
+14 and 62; 2.0 to 2.6 at 8, where splits come every klong or two); the
+bytes overestimate by 1.5 to 8, as every node counts at the largest size.
+With the first version, a split every M/2 - 3 klongs also at node size 8,
+the bound was 9 to 2,500 times too large there; hence the floor of 2. So
+at the real limit a transaction is refused when its bound passes about 2
+GB: an update of about 3 million keys spread over as many key nodes, or a
+load of about 3 million new keys at random among existing ones (at the
+default node size); for a load into a new key range the value limit (005-17)
+comes first. Found on the way:
+a load of new keys at random among existing ones dirties more index nodes
+than it has keys (23,264 for 20,000), so it can stop the startup pos as an
+update can; "A load of new keys does not do it" above holds for a load into
+a new database or a new key range.
+
+Tests: `DbTester.testTooManyDirtyNodes` (f), with the record limit lowered
+to 200 KB: 10,000 keys, then an update of every 10th key, a record of about
+70 KB, is refused before it changes anything (the stream's length and the
+values as before), and the database goes on: an update of every 1000th
+key, and a load of 1,000 new keys under a new prefix, are taken, and after
+500 more transactions the startup section is below 3 startup distances.
+Without the check the update is taken, and the section is then 16
+startup distances, 163 KB, and growing (the stall of 007-02).
+`DbTester.testRecordsWithinLimit` (005-17), at node size 8 with records of
+170 KB of values, passes with the floor of 2, not without it.
+
+Not done, as not part of the proposal: a transaction is taken by the record
+of a later one that leaves room for it, so a transaction refused by
+nothing can still wait if every later record is nearly full. A stream of
+transactions each near the value limit, as in `testRecordsWithinLimit`,
+does it; a dirty limit of 1/8 of the record limit, the room that every
+record leaves after its values (005-17), would make one transaction always
+fit, and refuse eight times smaller updates. For Frans: see the note at
+step 1 of [007-03](../007-bounds/03-plan.md).
+
+Streams unchanged: StreamDigest `all`, the build of `10bc36b` against the
+one with the change, DIGESTS IDENTICAL (36 of 36)
+([digest-compare.txt](31-fix-take-blocked/digest-compare.txt)): nothing of
+the standard workloads is refused.
+
+`before-commit.sh`: BEFORE COMMIT OK (1007 unit tests, 67 f-tests).

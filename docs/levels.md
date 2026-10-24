@@ -125,7 +125,8 @@ note of 2013-01). The notes are in the f1 repository's F1-007.
 `Db.executeInner` has a go point. Before it, everything that may refuse the
 transaction is checked, and nothing is changed: the STM check
 (`RerunException`), the end of the top node ordinals (005-02), the size of
-the transaction (005-17) and the clock (005-18). The Pub API runs the
+the transaction (005-17), the index nodes it can make dirty (005-31) and the
+clock (005-18). The Pub API runs the
 application's code before the transaction too: the action, the index
 functions, the conversion of objects. A refused transaction leaves the
 database as it was, and the database goes on. After the go point nothing
@@ -404,6 +405,19 @@ Open:
   index nodes wait to be written (problem.md, R3 and Q4). The conservative
   still-dirty test may make dead nodes be written again and again. To
   measure.
+* Bounds, one transaction: `TransSeq.take` takes transactions whole, so a
+  transaction whose index nodes, those it makes dirty or creates, could not
+  be written in one record stopped the startup pos for good: the startup
+  section, startup, D and the stream grew without end (bergdb 005-31, item
+  007's 007-02). Since 2026-10-24 such a transaction is refused before its
+  go point, with a `DbException`, when a bound on those nodes at the largest
+  node size passes 15/16 of the record limit (`Db.checkDirtyNodes`,
+  `Dag.dirtyNodeBound`): a cheap test from the keys first, then, for a large
+  transaction, a walk of the paths of its keys under the write lock. At the
+  real limit that is updates of some millions of keys spread over as many
+  key nodes; a larger update must be split by the application, as a
+  transaction of values over 7/8 of the limit must (005-17). Reclaim's
+  internal transactions are not checked; their steps have their own reserve.
 
 
 Level 3: reclaim

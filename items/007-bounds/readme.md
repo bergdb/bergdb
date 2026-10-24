@@ -47,3 +47,9 @@ start yet; the deadline (007-01, D1) waits for Frans. Nothing started.
 
 2026-10-24. D1 decided by Frans ("As you propose."): the deadline in
 `TransSeq.take` at d_h = 2 × sd (007-03, step 3). Not started.
+
+2026-10-24. Step 1 of 007-03 done: 005-31, option A, by Claude (Opus 5.5,
+Claude Code), at Frans's request ("fix all todo items of type Fix"). A
+transaction whose index nodes, by a bound at the largest node size, could
+take more than 15/16 of the record limit is refused before its go point.
+See 005-31's outcome, and the note at step 1 for step 3.

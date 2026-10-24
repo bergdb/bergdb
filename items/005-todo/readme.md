@@ -29,7 +29,6 @@ Open
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
-| [005-31](31-fix-take-blocked.md) | Fix | A transaction whose dirty index nodes do not fit in one record stops the startup pos for good: the startup section, startup, D and the stream grow without end (007-02) | open |
 | [005-33](33-crashed-creation.md) | Decide | A database whose creation crashed never starts: a clear error, create it again at start, or create it whole or not at all (005-28) | open |
 | [005-38](38-writes-at-scale.md) | Investigate | Writes at scale: the stream grows to about 1.1 KB per key at 100M random keys, and loads into an index larger than the budget slow to under 100 puts a second on a slow disk (004-02) | open |
 
@@ -39,6 +38,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-31](31-fix-take-blocked.md) | Fix | A transaction whose dirty index nodes did not fit in one record stopped the startup pos for good; now one whose index nodes, by a bound at the largest node size, could take more than 15/16 of the record limit is refused before its go point (007-02, 007-03 step 1) | done | 2026-10-24 |
 | [005-35](35-fix-stop-and-close.md) | Fix | `stop()` lost the transactions still in the write buffer; `close()` returned at once after `stop()` or beside another `close()`; a writer that waited for room in the buffer waited for ever; now `stop()` starts one close that writes everything, in a thread that is not a daemon, and `close()` waits for it | done | 2026-10-24 |
 | [005-32](32-fix-failed-start-storage.md) | Fix | A start that threw left its storage running: its threads, its open files, and writes of what it appended, also into a database started after it; `BufferedStream.close()` hung when the last flush failed; now a start that throws closes its storage before the exception leaves (005-28) | done | 2026-10-24 |
 | [005-34](34-fix-transaction-info-position.md) | Fix | `Connection.transactionInfo()` read at a wrong position for a value after a meta block in its record, and, after a restart, for a value rerun at startup; now a get gives its transaction's position, `getTrans` refuses a position that cannot start one, and a format error there fails the database (005-30) | done | 2026-10-24 |
@@ -82,8 +82,8 @@ it asks about is in `Db.executeInner` since 005-01. 005-09 is done. What is left
 when no other change to `java/` is under way. 005-11 can go any time, best
 before 005-05's decision on publishing, as it concerns the Pub API; 005-12
 is done. 005-27, 005-28 and 005-29, the fixes found in 005-11, are done.
-005-30 is done, and so is 005-34, found in it. 005-31 before item
-007's deadline for `TransSeq.take` (007-01, D1), which needs it. 005-32
+005-30 is done, and so is 005-34, found in it. 005-31 is done, which item
+007's deadline for `TransSeq.take` (007-01, D1) needed. 005-32
 is done, which 005-33's change needed; 005-33 waits for Frans. 005-35,
 005-36 and 005-37 are done.
 
@@ -165,7 +165,9 @@ Files
 * [31-fix-take-blocked.md](31-fix-take-blocked.md). 005-31, a transaction
   whose dirty index nodes do not fit in one record stops the startup pos
   for good; found in item 007, with the probe in
-  [../007-bounds/02-take-blocked/](../007-bounds/02-take-blocked/).
+  [../007-bounds/02-take-blocked/](../007-bounds/02-take-blocked/); done;
+  the measurements of the bound in
+  [31-fix-take-blocked/](31-fix-take-blocked/).
 * [32-fix-failed-start-storage.md](32-fix-failed-start-storage.md). 005-32,
   a start that throws leaves its storage running; found in 005-28; done;
   the probe and its runs, before and after the fix, in
@@ -631,3 +633,13 @@ room in the buffer gets an `IOException` when the stream stops or fails.
 The probes again: every key after `stop()`, also when the program returns
 from `main` after it. Tests; `before-commit.sh` and the four level scripts
 pass.
+
+2026-10-24. 005-31 done, at Frans's request ("fix all todo items of type
+Fix"), by Claude (Opus 5.5, Claude Code), option A as decided: a
+transaction whose index nodes, those it makes dirty or creates, could take
+more than 15/16 of the record limit, by a bound at the largest node size,
+is refused before its go point. A cheap test from the keys first; a walk of
+the paths of a large transaction's keys under the write lock
+(`Dag.dirtyNodeBound`). The bound is 1.0 to 2.6 times the actual nodes on
+007-02's database at the four node sizes. A test; StreamDigest identical;
+`before-commit.sh` passes. Step 1 of 007-03.

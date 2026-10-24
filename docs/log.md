@@ -1046,3 +1046,15 @@ returns from `main` after `stop()` keeps all its transactions. A waiting
 writer gets an `IOException` when the stream stops or fails. The Pub API's
 `Database.stop()` does the same; it has no `close()`. Tests;
 `before-commit.sh` and the four level scripts pass.
+
+2026-10-24. 005-31 done, by Claude (Opus 5.5, Claude Code), option A as
+Frans decided: a transaction whose index nodes did not fit in one record
+was never taken by `TransSeq.take`, which takes transactions whole, so the
+startup pos stayed before it for good (007-02). Now `Db.checkDirtyNodes`
+refuses such a transaction before its go point, under the write lock: a
+cheap test from its keys, then, for a large transaction, a bound from a
+walk of the paths of its keys (`Dag.dirtyNodeBound`: the distinct key
+nodes on them, the splits from each node's room, new segment trees), each
+node at the largest size, against 15/16 of the record limit
+([levels.md](levels.md), Level 2, "Bounds, one transaction"). Streams
+unchanged (StreamDigest); a test; `before-commit.sh` passes.

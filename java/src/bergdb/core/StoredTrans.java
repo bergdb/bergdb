@@ -66,6 +66,16 @@ public class StoredTrans {
         return recordLimit / 8 * 7;
     }
     
+    /**
+     * The most bytes the index nodes that one transaction makes dirty or creates may take,
+     * by Db's bound at the largest node size (2026-10-24, bergdb 005-31): 15/16 of the record
+     * limit. TransSeq.take writes them in the record of a later transaction, all in one; a
+     * transaction whose record leaves less than 1/16 of the limit for them waits for the next.
+     */
+    static long dirtyLimit() {
+        return recordLimit - recordLimit / 16;
+    }
+    
     /** Transaction time. */
     public final long tt;
 

@@ -1694,6 +1694,9 @@ public class Db {
                 throw new DbException("The database has used its top node ordinals (up to "
                         + LAST_TOP_ORDINAL + "); it takes no more transactions.");
             }
+            if (!t.isInternal()) {
+                checkDirtyNodes(t);
+            }
             x.begin(t);
             
             stmCheckConflicts(t);
@@ -1837,6 +1840,8 @@ public class Db {
      * bytes of its record, before it changes anything (2026-10-21, bergdb 005-17). Before,
      * the record's size wrapped in an int, or its buffer could not be made, in store(): after
      * the transaction had changed the Dag (M49), and every later transaction failed too.
+     * A transaction whose index nodes could not be written in one record is refused too,
+     * under the write lock (checkDirtyNodes(), bergdb 005-31).
      *
      * @throws DbException
      */
@@ -1849,6 +1854,67 @@ public class Db {
         if (bytes > limit) {
             throw new DbException("The transaction is too large: its values and keys take " 
                     + bytes + " bytes in the stream, more than " + limit + ".");
+        }
+    }
+    
+    /**
+     * Refuses a transaction whose index nodes, those it makes dirty or creates, could take
+     * more than StoredTrans.dirtyLimit() bytes, before it changes anything (2026-10-24,
+     * bergdb 005-31). TransSeq.take takes transactions whole, so it would never take such a
+     * transaction, and the startup pos would stay before it for good: the startup section,
+     * startup, D and the stream would grow without end. Called under writeLock, before the
+     * go point; not for reclaim's internal transactions, whose steps are bounded by their
+     * own reserve (Reclaim.setStepReserve).
+     * 
+     * <p>A cheap test first: every key at most three nodes a level of a path of at most
+     * 'height' levels a segment, and three more; 'height' from the stream's length, as a
+     * tree of n nodes with at least two children each is at most log2(n) + 1 high. Only a
+     * transaction that fails it walks the paths of its keys (Dag.dirtyNodeBound()). A key
+     * with a key transformation, known only at the put, counts as the cheap test counts it.
+     * Each node at the largest size, and 16 bytes for its entry in the got-dirty list.</p>
+     *
+     * @throws DbException
+     */
+    private void checkDirtyNodes(Trans t) {
+        final long limit = StoredTrans.dirtyLimit();
+        final long nodeBytes = 32 + 16L * (maxNodeSize + 1) + 16;
+        final long topBytes = 2 * (40 + 16L * 64 + 16);     // its top nodes
+        final long height = 2 + 63 - Long.numberOfLeadingZeros(
+                Math.max(1, nodeStream.getLength() / 48));
+        
+        long cheap = 0;
+        for (Kv kv : t.kvs) {
+            cheap += 3 * height * kv.getKey().length + 3;
+        }
+        if (cheap <= (limit - topBytes) / nodeBytes) {
+            return;
+        }
+        
+        int n = 0;
+        long nodes = 0;
+        final long[][] keys = new long[t.kvs.length][];
+        final boolean[] deletes = new boolean[t.kvs.length];
+        for (Kv kv : t.kvs) {
+            if (kv.keyTransformation != null) {
+                nodes += 3 * height * kv.getKey().length + 3;
+            } else {
+                keys[n] = kv.getKey();
+                deletes[n] = kv.getValue() == null && kv.valueTransformation == null;
+                n++;
+            }
+        }
+        final long time = dbClock.lookupTime(Long.MAX_VALUE);
+        try {
+            nodes += dag.dirtyNodeBound(time, java.util.Arrays.copyOf(keys, n), 
+                    java.util.Arrays.copyOf(deletes, n), newGetData());
+        } catch (StreamException e) {
+            throw readFailed(e, time);
+        }
+        if (nodes > (limit - topBytes) / nodeBytes) {
+            throw new DbException("The transaction is too large: the index nodes it can make "
+                    + "dirty or create, up to " + nodes + ", could take " 
+                    + (nodes * nodeBytes + topBytes) + " bytes in a record, more than " + limit
+                    + " (bergdb 005-31). A larger update must be split into transactions.");
         }
     }
     

@@ -1,0 +1,10 @@
+node size 8; bound in nodes and in bytes at the largest size (32 + 16 (M + 1) + 16 a node); actual: the got-dirty nodes after the transaction, TransSeq.recordBytes
+  update of every 20th of 40,000 keys: record 203360 bytes; bound 17199 nodes, 3302208 bytes; actual 6689 nodes, 908352 bytes; bound / actual 3.64 (nodes 2.57)
+  update of every 40th of 40,000 keys: record 112928 bytes; bound 10291 nodes, 1975872 bytes; actual 4045 nodes, 552784 bytes; bound / actual 3.57 (nodes 2.54)
+  update of every 100th of 40,000 keys: record 51792 bytes; bound 4664 nodes, 895488 bytes; actual 2024 nodes, 280864 bytes; bound / actual 3.19 (nodes 2.30)
+  update of every 200th of 40,000 keys: record 28432 bytes; bound 2740 nodes, 526080 bytes; actual 1164 nodes, 160544 bytes; bound / actual 3.28 (nodes 2.35)
+  update of every 1000th of 40,000 keys: record 6992 bytes; bound 627 nodes, 120384 bytes; actual 304 nodes, 41216 bytes; bound / actual 2.92 (nodes 2.06)
+  load of 2,000 new keys under a new prefix: record 112144 bytes; bound 2001 nodes, 384192 bytes; actual 996 nodes, 111760 bytes; bound / actual 3.44 (nodes 2.01)
+  load of 20,000 new keys under a new prefix: record 1120624 bytes; bound 19970 nodes, 3834240 bytes; actual 9986 nodes, 1118944 bytes; bound / actual 3.43 (nodes 2.00)
+  load of 2,000 new random keys among them: record 213920 bytes; bound 17159 nodes, 3294528 bytes; actual 6849 nodes, 874624 bytes; bound / actual 3.77 (nodes 2.51)
+  load of 20,000 new random keys among them: record 1782032 bytes; bound 84201 nodes, 16166592 bytes; actual 41792 nodes, 4439136 bytes; bound / actual 3.64 (nodes 2.01)

@@ -1918,6 +1918,91 @@ public class DbTester {
     }
     
     /**
+     * Regression test for bergdb 005-31 (007-02's probe, in small): a transaction whose index
+     * nodes, those it makes dirty, did not fit in one record was never taken, as
+     * TransSeq.take takes transactions whole, and the startup pos stayed before it for good.
+     * Now it is refused before it changes anything, and the database goes on with its
+     * startup pos moving; a smaller update, and a load of new keys, are taken. The record
+     * limit is lowered to 200 KB.
+     */
+    @Nano("f")
+    public static void testTooManyDirtyNodes() {
+        final long saved = StoredTrans.recordLimit;
+        StoredTrans.recordLimit = 200 * 1000;
+        try {
+            MemoryStream stream = new MemoryStream();
+            CoreTestClock clock = new CoreTestClock();
+            long time = 1000 * 1000;
+            clock.setTime(time);
+            final int sd = 10 * 1000;
+            Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(sd).start();
+            List<Integer> order = new ArrayList<Integer>();
+            for (int k = 0; k < 10000; k++) {
+                order.add(k);
+            }
+            Collections.shuffle(order, new Random(7));
+            for (int i = 0; i < 100; i++) {
+                clock.setTime(time += 1000);
+                Trans.Builder b = db.trans();
+                for (int j = 0; j < 100; j++) {
+                    b.put(dirtyKey(order.get(i * 100 + j)), "v");
+                }
+                db.execute(b.build());
+            }
+            for (int i = 0; i < 500; i++) {
+                clock.setTime(time += 1000);
+                db.execute(db.trans().put("/x", "a" + i).build());
+            }
+            
+            // An update of every 10th key: a record of about 70 KB, and index nodes for more
+            // than the record limit.
+            clock.setTime(time += 1000);
+            Trans.Builder b = db.trans();
+            for (int k = 0; k < 10000; k += 10) {
+                b.put(dirtyKey(k), "w");
+            }
+            long length = db.getStreamLength();
+            try {
+                db.execute(b.build());
+                throw new AssertionError("a transaction above the bound was executed");
+            } catch (bergdb.pub.util.DbException e) {
+                assertTrue(e.getMessage(), e.getMessage().contains("005-31"));
+            }
+            assertEquals("nothing appended", length, db.getStreamLength());
+            assertEquals("nothing changed", "v", DbUtil.getString(db, dirtyKey(0)));
+            
+            clock.setTime(time += 1000);
+            b = db.trans();
+            for (int k = 0; k < 10000; k += 1000) {
+                b.put(dirtyKey(k), "w");
+            }
+            db.execute(b.build());
+            clock.setTime(time += 1000);
+            b = db.trans();
+            for (int k = 0; k < 1000; k++) {
+                b.put(String.format("/new/%06d", k), "n");
+            }
+            db.execute(b.build());
+            for (int i = 0; i < 500; i++) {
+                clock.setTime(time += 1000);
+                db.execute(db.trans().put("/y", "b" + i).build());
+            }
+            long section = db.getStreamLength() - db.internal().getStartupPosForEvict();
+            assertTrue("the startup pos moves: a section of " + section, section < 3 * sd);
+            assertEquals("w", DbUtil.getString(db, dirtyKey(0)));
+            assertEquals("v", DbUtil.getString(db, dirtyKey(10)));
+            assertEquals("n", DbUtil.getString(db, "/new/000999"));
+            db.close();
+        } finally {
+            StoredTrans.recordLimit = saved;
+        }
+    }
+    
+    private static String dirtyKey(int k) {
+        return String.format("/k/%06d", k);
+    }
+    
+    /**
      * bergdb 005-17: records near the record limit stay within it; the writer takes fewer
      * dirty index nodes (TransSeq.take's budget), and a restart finds the state.
      */

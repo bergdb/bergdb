@@ -1,0 +1,4 @@
+bergdb 005-31: StreamDigest all, the build before the change (10bc36b) against the one with it,
+one compiled copy of StreamDigest, the base's (2026-10-24, F53).
+
+DIGESTS IDENTICAL (36 of 36)

@@ -32,6 +32,11 @@ public class TransSeq implements PosOfTransBeforeFunction {
         return first == null;
     }
     
+    /** The last transaction, or null; for tests (bergdb 005-31). */
+    TransInfo last() {
+        return last;
+    }
+    
     public int getSize() {
         return size;
     }
@@ -175,7 +180,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
     }
     
     /** The bytes the got-dirty nodes of 'info' may add to a record; see take(). */
-    private static long recordBytes(TransInfo info) {
+    static long recordBytes(TransInfo info) {
         long bytes = 0;
         for (Node node : info.gotDirtyNodes) {
             switch (node.getType()) {
