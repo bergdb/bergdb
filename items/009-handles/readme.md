@@ -96,3 +96,24 @@ through their gates first; the merge (phase 6) only if phase 5 meets
 targets 2 to 4 of 009-01 and 02d (the serialization invariant, G2b) is
 proved; otherwise stop before it, with the results in this item, for
 Frans to decide.
+
+2026-10-25, 19:55 to 21:20. Phase 1 on `main`, each step with
+`before-commit.sh` and StreamDigest as 2026.1's (36 of 36): 1-0
+(`--release 17`), 1a (PauseProbe, CacheStats), 1b (4,096 maps, a lock each,
+CacheEntry gone: MEM 174 bytes per KV, 2026.1 191), 1c (reads without the
+`readSync` monitor; `level4.sh quick` OK), 1d (seams). The branch
+`009-handles` made from `main` after 1d, in the worktree `../bergdb-009`,
+and pushed. Step 3a on the branch (`4e66a59`): handles, with the followers
+still under the pointer locks and the controller still walking;
+`level4.sh quick` OK, C-P 0 of 2643. Phase 2's model (2a to 2c, and 2d
+started) on `main` (`74af34c`). The model's runs found two things 02 did not
+say (Handle.lean's header, choices 1 and 7): a pointer resolved again from a
+dead handle must keep the position the node was last written at, and the
+slow path must compare with it. Java does both pointer-locally: the slow path
+takes the newer of the pointer's reference after Rule R and its dead
+handle's written position, and writes it back into the pointer (record
+neutral); the model is being aligned with that. The runs also settled open
+points 1 and 2 of 02 (the fast path's test with `pos[i]` is enough) and
+asked for an explicit vpos case where Java compares references (open point
+3; `Spos.newer`). Step 1a's timing runs (2026.1 and `main`, G1 and ZGC) wait
+for a quiet machine.
