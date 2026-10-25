@@ -88,3 +88,11 @@ until completion. Work unattended through the night. I will have a look at
 your work in the morning; Monday morning." Claude works on in this
 session; the merge into `main` (phase 6) waits for Frans's go, as section
 6 of 009-01 says.
+
+2026-10-25, 20:14. Relayed by the session that monitors this one (f1-40),
+Frans's words to it: "If Phases 1-3 are successful, I want the Handles
+session to continue with Phases 4, 5, 6." Read as: phases 1 to 3 each
+through their gates first; the merge (phase 6) only if phase 5 meets
+targets 2 to 4 of 009-01 and 02d (the serialization invariant, G2b) is
+proved; otherwise stop before it, with the results in this item, for
+Frans to decide.

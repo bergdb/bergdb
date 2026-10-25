@@ -12,6 +12,13 @@ import bergdb.nanotest.Nano;
  * A deterministic node cache; size is known, weak references are *not* used.
  * The cache ensures there is never more than one Node object with a given
  * node id.
+ *
+ * <p>The node table is 4,096 HashMaps from node id to object, each with its own lock, the
+ * map itself (getLock): a resize stops one map, 1/4,096 of the table (bergdb item 009, step
+ * 1b; 009-02, T1a and section 8: 0.23 ms at 30 million entries under ZGC, where the 256
+ * maps under one lock of before took 11.6 ms). Until 2026-10-25 the maps' values were
+ * CacheEntry objects with a reference count that nothing decremented (bergdb item 004-01,
+ * section 9).</p>
  * 
  * @author Frans Lundberg
  */
@@ -23,7 +30,7 @@ public class Cache3 {
     private static final long INITIAL_CACHE_SIZE = 10*1000;
 
     /** The node table is 2^MAP_BITS maps; mapIndex picks one by the node id. */
-    private static final int MAP_BITS = 8;
+    static final int MAP_BITS = 12;
 
     @SuppressWarnings("unused")
     private final Cache.DbInfo dbInfo;
@@ -31,7 +38,7 @@ public class Cache3 {
     private long sizeIndicator;
     private long totalSize;     // total cache size estimation, in bytes
     private long putSize;
-    private final HashMap<Long, CacheEntry>[] maps;
+    private final HashMap<Long, Node>[] maps;
     
     /**
      * The access clock (bergdb item 001, WP R8, change 4; docs/level4-alignment.md, M23 and
@@ -70,7 +77,7 @@ public class Cache3 {
         this.maps = new HashMap[1 << MAP_BITS];
         
         for (int i = 0; i < maps.length; i++) {
-            maps[i] = new HashMap<Long, CacheEntry>();
+            maps[i] = new HashMap<Long, Node>();
         }
         
         synchronized (bigLock) {}
@@ -98,13 +105,15 @@ public class Cache3 {
     }
     
     /**
-     * Gets a lock object for one specific node.
+     * Gets a lock object for one specific node: the lock of its map, which every change and
+     * read of the node's entry takes (bergdb item 009, step 1b; before, one lock for the
+     * whole table).
      * 
      * @param id
      *      Node ID.
      */
     public Object getLock(long id) {
-        return bigLock;
+        return map(id);
     }
     
     public long totalSize() {
@@ -128,8 +137,7 @@ public class Cache3 {
         long id = node.getId();
         synchronized (getLock(id)) {
             node.setCanonical(false);       // No effect for a value node.
-            CacheEntry entry = internalGet(id);
-            if (entry != null && entry.node == node) {
+            if (internalGet(id) == node) {
                 internalRemove(id);
             }
         }
@@ -141,18 +149,19 @@ public class Cache3 {
      * order of the maps and their bins, which follows the node ids (mapIndex), not the tree or
      * the age. The sweeps' choices among equal candidates follow it (Eviction: the objects
      * that only the table holds, memory pointers of the same age, the random schedule's
-     * draws); the records do not (EvictionInvariance).
+     * draws); the records do not (EvictionInvariance). Each map under its own lock, in
+     * turn (bergdb item 009, step 1b): readers add entries meanwhile (the values they load,
+     * which count as canonical), as they did before between this list and the walk of a
+     * sweep.
      */
     public java.util.List<Node> nodes() {
-        synchronized (bigLock) {
-            java.util.ArrayList<Node> result = new java.util.ArrayList<Node>();
-            for (HashMap<Long, CacheEntry> m : maps) {
-                for (CacheEntry e : m.values()) {
-                    result.add(e.node);
-                }
+        java.util.ArrayList<Node> result = new java.util.ArrayList<Node>();
+        for (HashMap<Long, Node> m : maps) {
+            synchronized (m) {
+                result.addAll(m.values());
             }
-            return result;
         }
+        return result;
     }
 
     /** The access clock's value; see accessClock. */
@@ -196,18 +205,11 @@ public class Cache3 {
             if (!to.isCanonical()) {
                 return;
             }
-            CacheEntry entry = internalGet(id);
+            Node old = internalGet(id);
             
-            if (entry == null) {
-                entry = CacheEntry.oneRef(to);
-                internalPut(id, entry);
+            if (old == null || (old != to && isBetter(to, old))) {
+                internalPut(id, to);
                 residents.added(to);
-            } else {
-                entry.refCount++;
-                if (entry.node != to && isBetter(to, entry.node)) {
-                    entry.node = to;
-                    residents.added(to);
-                }
             }
         }
     }
@@ -222,18 +224,15 @@ public class Cache3 {
         long id = node.getId();
         
         synchronized (getLock(id)) {
-            CacheEntry entry = internalGet(id);
+            Node old = internalGet(id);
             
-            if (entry == null) {
-                entry = CacheEntry.noRef(node);
-                internalPut(id, entry);
+            if (old == null || (old != node && isBetter(node, old))) {
+                internalPut(id, node);
                 residents.added(node);
-            } else if (entry.node != node && isBetter(node, entry.node)) {
-                entry.node = node;
-                residents.added(node);
+                return node;
             }
             
-            return entry.node;
+            return old;
         }
     }
     
@@ -246,11 +245,10 @@ public class Cache3 {
         long id = node.getId();
         
         synchronized (getLock(id)) {
-            CacheEntry entry = internalGet(id);
+            Node other = internalGet(id);
             Node result = node;
             
-            if (entry != null && entry.node != node) {
-                Node other = entry.node;
+            if (other != null && other != node) {
                 if (other.isCanonical() || other.getSpos() > node.getSpos()) {
                     result = other;
                 }
@@ -259,10 +257,8 @@ public class Cache3 {
             result.setCanonical(true);
             residents.promoted(result);
             
-            if (entry == null) {
-                internalPut(id, CacheEntry.noRef(result));
-            } else {
-                entry.node = result;
+            if (other != result) {
+                internalPut(id, result);
             }
             
             return result;
@@ -287,17 +283,16 @@ public class Cache3 {
     }
     
     public Node getNode(long id) {
-        synchronized (bigLock) {
-            CacheEntry entry = internalGet(id);
-            return entry == null ? null : entry.node;
+        synchronized (getLock(id)) {
+            return internalGet(id);
         }
     }
     
-    private void internalPut(long id, CacheEntry entry) {
-        map(id).put(id, entry);
+    private void internalPut(long id, Node node) {
+        map(id).put(id, node);
     }
     
-    private CacheEntry internalGet(long id) {
+    private Node internalGet(long id) {
         return map(id).get(id);
     }
     
@@ -305,7 +300,7 @@ public class Cache3 {
         map(id).remove(id);
     }
     
-    private HashMap<Long, CacheEntry> map(long id) {
+    private HashMap<Long, Node> map(long id) {
         return maps[mapIndex(id)];
     }
     
@@ -339,6 +334,7 @@ public class Cache3 {
         long[] ids = {1L << 31, (1L << 31) + 0x94, (1L << 32) - 1, 5L << 30, 1L << 40, Long.MAX_VALUE};
         for (long id : ids) {
             Assert.assertTrue(cache.getNode(id) == null);
+            Assert.assertTrue(mapIndex(id) >= 0 && mapIndex(id) < 1 << MAP_BITS);
         }
     }
 
@@ -390,33 +386,5 @@ public class Cache3 {
     private static int bin(long id, int capacity) {
         int h = Long.hashCode(id);
         return (h ^ (h >>> 16)) & (capacity - 1);
-    }
-
-    public static class CacheEntry {
-        public Node node;
-        public int refCount;
-        
-        private CacheEntry() {
-        }
-        
-        /**
-         * Creates and returns a CacheEntry with refCount equal to 1.
-         */
-        public static CacheEntry oneRef(Node node) {
-            CacheEntry entry = new CacheEntry();
-            entry.node = node;
-            entry.refCount = 1;
-            return entry;
-        }
-        
-        /**
-         * Creates and returns a CacheEntry with refCount equal to 0.
-         */
-        public static CacheEntry noRef(Node node) {
-            CacheEntry entry = new CacheEntry();
-            entry.node = node;
-            entry.refCount = 0;
-            return entry;
-        }
     }
 }
