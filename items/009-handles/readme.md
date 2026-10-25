@@ -175,3 +175,20 @@ device's and a reader's wait for the writer's `fsync` (FileStream, for the
 stream layer: registered as 005-46; the load's finding is in 005-38). Not yet run: P4's soak and ScaleBench under Shenandoah, on
 F53 from 05:00. `main` merged into the branch (`a73cd66`) for phase 6's
 gates; `night.sh` runs on it.
+
+2026-10-26, 00:01. Step 2d done, by a Claude subagent working for this
+session: T-CACHE over handles is proved (`tc_handles`, `TC_handles_records`;
+lean/SIS/Proof/Handle*.lean, about 8,760 lines): from the startup with
+handles from R(0), with any reads and evictions between transactions and no
+restart, the physical writer with handles appends exactly the model's
+records and leaves the model's D, and the memory keeps the invariants of
+`TC_handles`. The model was first aligned with Java's step 3a (the written
+position travels in the pointer: only an eviction sets it, and the slow path
+raises the reference and writes it back). Checked in this session: the
+handle modules rebuilt from scratch with no warnings and no `sorry`, and
+`#print axioms tc_handles` gives only Lean's standard axioms. On `main` as
+`38586b3`. G2b's condition for the merge (phase 2's model and the
+serialization invariant) is met. Phase 4a (T2-C, T-READ and T-PIN over
+handles) started in the same way. The model's follow is one atomic step, so
+the interleavings of Java's slow path are argued in 02, section 9 (the
+reads of `writtenPos`).

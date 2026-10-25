@@ -1048,3 +1048,19 @@ found each:
   into D's leaves stayed resident. s1's pause probe at a 100 MB budget
   ended with 153 to 181 MB resident under G1 in step 3c; 2026.1's sweep
   took such values first.
+* **A reader's slow path reads `writtenPos` without the write lock** (3.3's
+  row says "writer, plain; read by writer and evictor"; the slow path's
+  raise of the reference reads it too). Only an eviction writes it, after
+  its compareAndSet to DEAD and before `obj = null`. A reader whose lookup
+  time is after the transaction that wrote the node read the pointer after
+  that transaction's commit, so it saw the writer's install (or a later
+  write) of `obj`: it then reads either an object, which the fast path takes
+  (it is the node's latest version, canonical or not), or the eviction's
+  null, whose volatile write follows the write of `writtenPos`; either way
+  it does not miss the position. A reader that did not see the install has
+  a lookup time before that transaction, and the version it reads at its
+  older reference is right for it; it puts that version into the node's
+  live handle at most, where a later follow, which compares with the raised
+  reference, does not take it (`Handle.usable`), and its swizzle does not
+  replace the newer handle (`Node.swizzle`). Checked by reasoning, not by
+  the model, whose follow is one step (phase 2's note, 2026-10-26).
