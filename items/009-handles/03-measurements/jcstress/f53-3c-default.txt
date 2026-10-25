@@ -1,0 +1,39 @@
+RUN RESULTS:
+  Interesting tests: 1 matching test results.
+.......... [OK] bergdb.jcstress.PlainPublication
+  Results across all configurations:
+  RESULT        SAMPLES     FREQ       EXPECT  DESCRIPTION
+      -2  3,506,944,657   68.68%   Acceptable  Not seen yet.
+       0        166,641   <0.01%  Interesting  Seen without its field: a race.
+       1  1,599,436,036   31.32%   Acceptable  Seen with its field.
+  Failed tests: No matches.
+  Error tests: No matches.
+  All remaining tests: 4 matching test results.
+.......... [OK] bergdb.jcstress.EvictionRace
+  Results across all configurations:
+  RESULT      SAMPLES     FREQ      EXPECT  DESCRIPTION
+   -1, 0  237,508,126   23.35%  Acceptable  No object: the slow path.
+   0, .*            0    0.00%   Forbidden  The object without its contents, or not usable.
+    1, 0    6,539,101    0.64%  Acceptable  The object, no longer canonical: still the version at its...
+    1, 1  773,319,947   76.01%  Acceptable  The object, still canonical.
+.......... [OK] bergdb.jcstress.HandlePublication
+  Results across all configurations:
+  RESULT        SAMPLES     FREQ       EXPECT  DESCRIPTION
+   -1, 7              0    0.00%  Interesting  The handle without its object: the slow path.
+   -2, 0  1,304,170,522   85.61%   Acceptable  The pointer not seen yet.
+   .*, 0              0    0.00%    Forbidden  The handle without its id.
+    0, 7              0    0.00%    Forbidden  The object without its contents.
+    1, 7    219,165,292   14.39%   Acceptable  The handle, its id, its object with its contents.
+.......... [OK] bergdb.jcstress.InstallPublication
+  Results across all configurations:
+  RESULT        SAMPLES     FREQ      EXPECT  DESCRIPTION
+      -1  1,033,608,293   87.31%  Acceptable  No object yet: the slow path.
+       0              0    0.00%   Forbidden  The object without its contents.
+       1    150,281,761   12.69%  Acceptable  The object with its contents.
+.......... [OK] bergdb.jcstress.ValuePublication
+  Results across all configurations:
+  RESULT        SAMPLES     FREQ      EXPECT  DESCRIPTION
+      -2  1,386,383,696   79.92%  Acceptable  The pointer not seen yet.
+       0              0    0.00%   Forbidden  The value without them.
+       1    348,315,958   20.08%  Acceptable  The value with its position and bytes.
+  HTML report generated at /Users/f/fl/repos/bergdb-009/java/build/jcstress/results/index.html

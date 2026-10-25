@@ -937,3 +937,114 @@ What it shows:
 
 How to rerun: `items/009-handles/02-implementation-plan/run.sh OUT_DIR` on
 a quiet machine (about 3 minutes; the 100M runs need 16 GB of heap).
+
+
+# 9. Changes made in the implementation
+
+Recorded 2026-10-25 during phase 3 (the branch `009-handles`), with what
+found each:
+
+* **The written position and a re-resolve** (phase 2's runs, Handle.lean's
+  header, choices 1 and 7). A handle's `writtenPos` is set only by an
+  eviction, from a canonical object's position (Cache3.evict). When the slow
+  path follows a pointer that holds a dead handle, it takes as the reference
+  the newer of the pointer's after Rule R and the dead handle's written
+  position, writes that back into the pointer (no record changes: the
+  record rule gives the same before and after), and compares the live
+  handle's object with it. The live handle's written position is not
+  changed, so 3.3's row stays true: no reader writes `writtenPos`. (The
+  model first kept the position in the live handle instead; it is being
+  aligned with Java.)
+* **A vpos is older than any position** where references are compared
+  (`Spos.newer`: Rule R, the record rule, the slow path), not by its number
+  (open point 3).
+* **Values have no handles**: the startup's registration skips them
+  (`Cache3.register`); they were registered as canonical objects before.
+* **Maintenance reads are keyed by the version a pointer names**, its
+  reference raised as above: reclaim's step read a stale version through a
+  key by position (Eviction.testReclaimWithMissesF, whose twins compare
+  streams byte for byte, found it).
+* **A read that keeps nothing** (a cache policy that caches nothing) leaves
+  no empty handle in the table (`Cache3.dropIfEmpty`).
+* **A CLOCK batch is bounded by the handles it examines** (4,096, or 65,536
+  under pressure) and by two rounds of the hand, not by K maps (4.7): with
+  16 maps a batch freed almost nothing in a small database
+  (CapacityTester). The trigger is raised only after a round that met no
+  detachable object (pinned state above the budget), not one that only
+  cleared CLOCK bits.
+* **Large values** leave memory when their record is written: those the
+  transaction made (the writer's list, `Eviction.largeValueCreated`) and
+  those of the key nodes written (`recordWritten`); 4.7 had them with the
+  batches.
+* **Tests sample the resident bytes after the eviction thread's batch**
+  (`Eviction.awaitBatch`), as a reader no longer runs it (T5a).
+* **A swizzle is a release store under the node's monitor** (C2):
+  `KeyNode.setPointee`, `setPointer` and `swizzle` store with
+  `setRelease`, which pairs with the fast path's acquire read of a pointer
+  to a value (C5; step 3c). A reader's swizzle is a compare-and-set under
+  the monitor (`Node.swizzle`, step 3d), as 3.3's row of `pointers[i]`
+  says: it replaces only what the reader read in the pointer, and its
+  write-back of the reference only raises it (`Node.raiseRef`). In step
+  3c both were plain stores, and a reader could replace a newer handle
+  that the writer had put there with a dead one of its own, or lower a
+  reference that another reader had raised: the written position of the
+  node's last record was then lost, and the next follow read an older
+  version. Step 3d's test of readers under the capacity controller found
+  it, as stale reads (`get(k21)` gave transaction 70's value, not 82's),
+  in 2 runs of 9; after the change, none in 20. The writer's swizzle
+  replaces whatever is there: its handle holds the canonical object. A
+  reader that stores a handle that an eviction killed meanwhile leaves a
+  dead handle in the pointer, which the next follow resolves again
+  (`EvictionReaderTester.testDeadHandleInAPointer`).
+* **`pos[i]` is read and written plainly**, not opaque (3.3): BergDB
+  relies on a 64-bit JVM, where a plain long does not tear (JLS 17.7 allows
+  it elsewhere), as it did before 009, whose searches read `pos[i]` without
+  a lock. A reader's slow path writes `pos[i]` too, the raised reference,
+  under the node's monitor; 3.3 had the writer only.
+* **The pointer locks** (`PointerLocks`) are off every follower since step
+  3c, the writer's and the maintenance follower's included: they read a
+  pointer's pair under the node's monitor.
+* **The eviction thread gives way to a writer** that waits for the write
+  lock (`Db.writersWaiting`; step 3d). A monitor is not fair: with readers
+  that kept loading, the thread ran batch after batch and the writer waited.
+  Found by step 3d's new `level4.sh` run (ReclaimReaders, 4 readers, a 20 KB
+  budget): 132 s where the random schedule took 4 s, the writer blocked on
+  the write lock in every thread dump; 4 s after the change. s1's pause
+  probe at a 20 MB budget showed it too: 2,583 commits in a minute under G1
+  where 2026.1 made 221,900.
+* **The trigger is the budget, or the pinned bytes plus the gap** between
+  the watermarks if that is more (step 3d, second commit): each round of
+  the hand counts the bytes of the objects that are not detachable, and a
+  batch goes down to the low watermark or to those bytes. With pinned state
+  above the budget, the controller then runs once the detachable objects
+  have grown by the gap. 3b raised the trigger only after a round that met
+  no detachable object, and readers that kept loading kept the batches
+  going (3d's first commit tried a back-off after two rounds above the
+  budget instead).
+* **A batch is bounded by time too**, 2 ms (`Eviction.BATCH_NANOS`), as
+  well as by its handles and two rounds (step 3d, second commit): at step
+  3c s1's pause probe had batches of up to 100 ms, and a writer waits for
+  the batch in progress. If the resident bytes are still over the trigger
+  after a batch, the eviction thread goes on, batch after batch, woken by
+  the writer's transaction end as well as by loads, giving way to a waiting
+  writer before each, and stopping after a batch that freed nothing.
+* **Loads wait for eviction when it falls behind** (step 3d, second
+  commit): a reader's load that finds the resident bytes over the trigger
+  by more than the gap waits up to 2 ms for the eviction thread's next
+  batch (`Eviction.LOAD_WAIT_NANOS`), so that loads, which grow the
+  resident bytes, go at eviction's pace. At step 3c the resident bytes
+  went far above the budget on s1, where two readers and the thread share
+  two CPUs.
+* **The pointer locks are gone** (`PointerLocks`, `Db.Internal.getPointerLock`,
+  `Cache.DbInfo.getPointerLocks`; step 3d); `Cache.DbInfo` has no methods.
+* **An eviction reads the handle's object after its compareAndSet** to
+  DEAD (`Cache3.kill`'s callers; step 3d): a loader sets the object only
+  while the handle is LOADING, so not after it, but it may have installed
+  one between the evictor's read and its compareAndSet. Read before, the
+  object stayed in the dead handle; the audit's new check found it in
+  `CapacityTester`'s f-test.
+* **The values of pinned key nodes leave memory** in the batches (step 3d;
+  4.8): a pinned object is never evicted, so the values that reads loaded
+  into D's leaves stayed resident. s1's pause probe at a 100 MB budget
+  ended with 153 to 181 MB resident under G1 in step 3c; 2026.1's sweep
+  took such values first.

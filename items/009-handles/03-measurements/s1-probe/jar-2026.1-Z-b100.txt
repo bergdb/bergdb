@@ -1,0 +1,13 @@
+PauseProbe: keys=1000000 valsize=100 budget=100 MB readers=2 seconds=60 tsize=[1, 1000] java=27 gc=ZGC_Minor_Cycles+ZGC_Minor_Pauses+ZGC_Major_Cycles+ZGC_Major_Pauses xmx=1258 MB
+load: 1000000 keys in 30.4 s; uptime 1.227 to 31.623 s
+  commits  1000, median 5.243 ms, p99 671.089, p99.9 2684.355, p99.99 8589.935, max 9234.327 ms; longest at uptime 10.988s (9234.3 ms) 15.556s (3164.2 ms) 18.088s (2027.0 ms) 22.595s (1682.8 ms) 20.428s (1604.5 ms)
+  eviction BUDGET: 1808169 slots unswizzled, 1042989 objects released; budget 100000000 bytes, low 75000000; 10 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 96009296 -> 74999760 bytes, pinned 55065648 (at most 55065648); sweep time 14347 ms in total, 3156 ms at most
+phase tsize=1, 2 readers, 60 s; uptime 31.631 to 92.210 s
+  gets     2465340, median 0.007 ms, p99 0.066, p99.9 2.097, p99.99 8.389, max 1487.429 ms; longest at uptime 43.236s (1487.4 ms) 43.236s (1482.3 ms) 62.631s (1452.8 ms) 62.631s (1452.0 ms) 49.837s (1325.6 ms)
+  commits  572530, median 0.012 ms, p99 0.459, p99.9 5.243, p99.99 16.777, max 1482.168 ms; longest at uptime 43.236s (1482.2 ms) 62.632s (1453.1 ms) 49.837s (1325.4 ms) 54.152s (1322.0 ms) 52.066s (1293.3 ms)
+  eviction BUDGET: 5697021 slots unswizzled, 4702840 objects released; budget 100000000 bytes, low 75000000; 39 sweeps (14 after loads, 0 complete, 0 above the budget after); last sweep 98143220 -> 74999760 bytes, pinned 62278128 (at most 62278128); sweep time 48629 ms in total, 3156 ms at most
+phase tsize=1000, 2 readers, 60 s; uptime 92.213 to 152.350 s
+  gets     2213049, median 0.008 ms, p99 0.131, p99.9 2.097, p99.99 8.389, max 1134.071 ms; longest at uptime 105.890s (1134.1 ms) 105.890s (1134.0 ms) 99.070s (1045.4 ms) 99.069s (1042.7 ms) 97.181s (996.3 ms)
+  commits  561, median 41.943 ms, p99 939.524, p99.9 1073.742, p99.99 1073.742, max 1166.716 ms; longest at uptime 105.890s (1166.7 ms) 99.109s (1096.5 ms) 97.221s (1051.6 ms) 118.258s (1028.2 ms) 100.892s (1016.9 ms)
+  eviction BUDGET: 9645329 slots unswizzled, 8467495 objects released; budget 100000000 bytes, low 75000000; 78 sweeps (32 after loads, 0 complete, 0 above the budget after); last sweep 98489544 -> 74999232 bytes, pinned 48942016 (at most 74170592); sweep time 82096 ms in total, 3156 ms at most
+PAUSE PROBE OK

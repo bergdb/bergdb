@@ -26,7 +26,13 @@ Files
   records, eviction, values, startup, the audit), the steps of phases 1
   to 6, decisions T1 to T7 for Frans, and the measurements of the table.
   TableBench, its script and outputs are in
-  [02-implementation-plan/](02-implementation-plan/).
+  [02-implementation-plan/](02-implementation-plan/). Section 9 records
+  what the implementation changed from the plan, and why.
+
+* [03-measurements.md](03-measurements.md). 009-03, the measurements of
+  phases 3 and 5: the pause probe on s1 and F53, jcstress, MEM, ScaleBench,
+  against 2026.1 in turns. Outputs and scripts in
+  [03-measurements/](03-measurements/).
 
 
 Log
@@ -96,3 +102,59 @@ through their gates first; the merge (phase 6) only if phase 5 meets
 targets 2 to 4 of 009-01 and 02d (the serialization invariant, G2b) is
 proved; otherwise stop before it, with the results in this item, for
 Frans to decide.
+
+2026-10-25, 19:55 to 21:20. Phase 1 on `main`, each step with
+`before-commit.sh` and StreamDigest as 2026.1's (36 of 36): 1-0
+(`--release 17`), 1a (PauseProbe, CacheStats), 1b (4,096 maps, a lock each,
+CacheEntry gone: MEM 174 bytes per KV, 2026.1 191), 1c (reads without the
+`readSync` monitor; `level4.sh quick` OK), 1d (seams). The branch
+`009-handles` made from `main` after 1d, in the worktree `../bergdb-009`,
+and pushed. Step 3a on the branch (`4e66a59`): handles, with the followers
+still under the pointer locks and the controller still walking;
+`level4.sh quick` OK, C-P 0 of 2643. Phase 2's model (2a to 2c, and 2d
+started) on `main` (`74af34c`). The model's runs found two things 02 did not
+say (Handle.lean's header, choices 1 and 7): a pointer resolved again from a
+dead handle must keep the position the node was last written at, and the
+slow path must compare with it. Java does both pointer-locally: the slow path
+takes the newer of the pointer's reference after Rule R and its dead
+handle's written position, and writes it back into the pointer (record
+neutral); the model is being aligned with that. The runs also settled open
+points 1 and 2 of 02 (the fast path's test with `pos[i]` is enough) and
+asked for an explicit vpos case where Java compares references (open point
+3; `Spos.newer`). Step 1a's timing runs (2026.1 and `main`, G1 and ZGC) wait
+for a quiet machine.
+
+2026-10-25, 21:20 to 21:50. Step 3c on the branch (`19a8c58`): the
+lock-free fast path; the pointer locks off every follower; the release
+store of a pointer's change, paired with the acquire read of a pointer to
+a value. jcstress tests of the barriers (`java/stress/jcstress/`, a tool,
+not a gate): on F53, no forbidden outcome in 1.0 to 1.7 billion samples a
+test, while the control without an edge showed its race 166,641 times in
+5.1 billion (log in 03-measurements/). The pause probe on s1 (1M keys, two
+readers, 2026.1, `main` at 1d and the branch at 3c, G1 and ZGC, budgets of
+20 and 100 MB) in 03-measurements: 2026.1's sweeps stop gets and commits
+for 0.7 to 2.5 s; at 3c no batch stops a get, but commits waited for the
+eviction thread, batches took up to 100 ms, and the resident bytes went
+above the budget. Step 3d's changes come from these runs and its tests.
+
+2026-10-25, 21:50 to 22:40. Step 3d on the branch, in two commits. The
+first (`7831909`): the audit's handle checks, EvictionReaderTester's
+f-tests with 8 readers and under the capacity controller, two more
+ReclaimReaders runs in `level4.sh`, and the pointer locks removed. The new
+tests found two faults of steps 3a to 3c, both fixed: an eviction read a
+handle's object before its compareAndSet, so a dead handle could keep an
+object; and a reader's swizzle could replace the writer's newer handle in
+a pointer, or its write-back lower a reference, so that a later follow
+read an older version (stale reads, 2 runs of 9). And s1's runs found two
+more: the eviction thread kept the writer out of the write lock, and the
+values that reads load into pinned leaves stayed. `level4.sh` in full OK
+(C-P 0 of 7917). The second (`66c8f3a`): batches bounded to 2 ms, the
+trigger from the pinned bytes the hand counts, and loads that wait up to
+2 ms when eviction falls behind; s1's probe at 20 MB under G1: 645,083
+commits a minute (3c: 2,583; 2026.1: 221,900), 41 MB resident at the end
+(3c: 138 MB). jcstress on s1 (x86): no forbidden outcome. MEM: 130 bytes
+per KV (2026.1: 191). The details are in 02's section 9 and in 009-03.
+s1's longest waits of a get or a commit at step 3d, 1.4 and 2.7 s, have no
+collection or safepoint under them: a reader's read of the stream file
+waits for the writer's append and its `fsync` (FileStream.DbFile, one
+monitor for both), on s1's slow disk; not eviction, and for 3e.
