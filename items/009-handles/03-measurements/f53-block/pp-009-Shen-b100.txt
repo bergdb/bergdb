@@ -1,0 +1,13 @@
+PauseProbe: keys=1000000 valsize=100 budget=100 MB readers=4 seconds=60 tsize=[1, 1000] java=27 gc=Shenandoah_Pauses+Shenandoah_Cycles xmx=1258 MB
+load: 1000000 keys in 3.6 s; uptime 0.216 to 3.815 s
+  commits  1000, median 2.621 ms, p99 8.389, p99.9 14.680, p99.99 50.332, max 52.323 ms; longest at uptime 0.544s (52.3 ms) 2.734s (16.7 ms) 0.231s (13.1 ms) 3.320s (11.5 ms) 3.103s (11.2 ms)
+  resident 99 MB, 305 loads, 57 eviction steps, 790828 objects evicted, eviction time 111 ms in total, 2.045 ms at most
+phase tsize=1, 4 readers, 60 s; uptime 3.825 to 63.826 s
+  gets     25002891, median 0.006 ms, p99 0.029, p99.9 0.082, p99.99 5.243, max 80.084 ms; longest at uptime 49.021s (80.1 ms) 49.021s (79.4 ms) 49.021s (79.4 ms) 44.581s (45.1 ms) 44.581s (45.0 ms)
+  commits  2772611, median 0.012 ms, p99 0.057, p99.9 1.573, p99.99 6.291, max 80.164 ms; longest at uptime 49.021s (80.2 ms) 44.934s (45.1 ms) 44.429s (43.5 ms) 48.780s (31.6 ms) 48.485s (26.4 ms)
+  resident 99 MB, 19368322 loads, 4344 eviction steps, 20075317 objects evicted, eviction time 6947 ms in total, 80.143 ms at most
+phase tsize=1000, 4 readers, 60 s; uptime 63.827 to 123.843 s
+  gets     18326189, median 0.007 ms, p99 0.066, p99.9 0.197, p99.99 5.243, max 69.364 ms; longest at uptime 93.139s (69.4 ms) 93.139s (69.1 ms) 93.139s (68.9 ms) 90.905s (39.4 ms) 91.057s (38.8 ms)
+  commits  3168, median 16.777 ms, p99 41.943, p99.9 58.720, p99.99 67.109, max 81.851 ms; longest at uptime 93.146s (81.9 ms) 110.557s (65.7 ms) 105.156s (61.4 ms) 91.068s (60.3 ms) 121.409s (58.9 ms)
+  resident 99 MB, 39110575 loads, 8988 eviction steps, 40017284 objects evicted, eviction time 14312 ms in total, 80.143 ms at most
+PAUSE PROBE OK

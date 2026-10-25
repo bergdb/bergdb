@@ -1,0 +1,29 @@
+[    0.6 s] read the stream's files once: 7543 MB in 0.6 s
+[    2.2 s] opened /private/tmp/claude-502/-Users-f-fl-repos-f1/32b68478-35b0-4112-9d94-6ddb9ecd9df2/scratchpad/f53blk/sbdata/key24-10000000: 10000000 keys, key24, budget 133000000 bytes; startup 1.50 s, resident 56 MB
+[    2.2 s] two clock reads cost 23.4 ns; heap 629 MB; 10 CPUs
+[    7.2 s]   warm 0: 102238 gets a second; loads/get 1.991, stream reads/get 4.790, device bytes/get 0, sweeps 365 (250 ms), after-load waits over 10 ms 0, gc 11 (99 ms), resident 132 MB
+[   12.2 s]   warm 1: 106085 gets a second; loads/get 1.951, stream reads/get 4.472, device bytes/get 0, sweeps 426 (295 ms), after-load waits over 10 ms 0, gc 14 (104 ms), resident 132 MB
+[   36.5 s] uniform, 1 thread: 107226 gets a second (median of 5 windows, 106898 to 108301); loads/get 1.949, stream reads/get 4.379, device bytes/get 0, sweeps 1295 (954 ms), after-load waits over 10 ms 0, gc 44 (337 ms), resident 132 MB
+[   36.5 s] uniform, timed 1000000 gets: mean 9.25, p50 9.02, p90 13.38, p99 17.02, p99.9 20.74, max 11823.9 us; loads/get 1.949, stream reads/get 4.347, device bytes/get 0, sweeps 801 (549 ms), after-load waits over 10 ms 0, gc 28 (210 ms), resident 132 MB
+[   53.1 s] hot, 1 thread: 637844 gets a second (median of 5 windows, 572009 to 645660); loads/get 0.217, stream reads/get 0.480, device bytes/get 0, sweeps 844 (623 ms), after-load waits over 10 ms 0, gc 28 (208 ms), resident 132 MB
+[   53.1 s] hot, timed 1000000 gets: mean 1.51, p50 0.58, p90 3.50, p99 14.08, p99.9 17.02, max 10331.3 us; loads/get 0.207, stream reads/get 0.461, device bytes/get 0, sweeps 89 (59 ms), after-load waits over 10 ms 0, gc 4 (21 ms), resident 132 MB
+[   83.1 s] threads 1: 107864 gets a second; mean 9.22, p50 8.96, p90 13.38, p99 16.90, p99.9 20.74, max 11661.5 us; loads/get 1.950, stream reads/get 4.344, device bytes/get 0, sweeps 2596 (1812 ms), after-load waits over 10 ms 0, gc 90 (669 ms), resident 132 MB
+[  113.1 s] threads 2: 176478 gets a second; mean 11.28, p50 10.69, p90 16.13, p99 21.38, p99.9 28.80, max 11731.4 us; loads/get 1.950, stream reads/get 4.343, device bytes/get 0, sweeps 4255 (3174 ms), after-load waits over 10 ms 0, gc 147 (1094 ms), resident 132 MB
+[  143.1 s] threads 4: 262883 gets a second; mean 15.16, p50 13.25, p90 21.89, p99 40.70, p99.9 89.60, max 11512.8 us; loads/get 1.949, stream reads/get 4.342, device bytes/get 0, sweeps 6336 (4514 ms), after-load waits over 10 ms 0, gc 220 (1647 ms), resident 132 MB
+[  173.1 s] threads 8: 176642 gets a second; mean 45.20, p50 21.76, p90 122.37, p99 317.44, p99.9 507.90, max 11931.9 us; loads/get 1.949, stream reads/get 4.342, device bytes/get 0, sweeps 4251 (3040 ms), after-load waits over 10 ms 1, gc 148 (1109 ms), resident 132 MB
+[  193.1 s] sampled 4 threads: 262354 gets a second, 724 samples:
+     52.9% RUNNABLE reading the stream
+     14.5% BLOCKED reading the stream on bergdb.stream.FileStream$DbFile
+     11.0% RUNNABLE in NodeChecksum.sumWithZeroReplace
+      5.2% RUNNABLE in NodeCollection.followPointer
+      3.6% RUNNABLE in NodeCollection.followStreamPointer
+      2.6% RUNNABLE in Dag.getEqNodeInSegment
+      2.3% RUNNABLE in KeyNode.searchLte
+      1.5% RUNNABLE in RecoverableStream.read
+      1.2% RUNNABLE in KeyNode.searchEq
+      1.1% RUNNABLE in KeyNode.ensureCapacity
+      1.1% RUNNABLE in KeyNode.getDeleteBitmapAtTime
+      0.7% RUNNABLE in StoredKeyNode.parse
+      0.6% RUNNABLE in ?
+[  194.1 s] at most: heap used 560 MB, resident 133 MB, RSS 741 MB; eviction BUDGET: 1662507 slots unswizzled, 32010683 objects released; budget 133000000 bytes, low 99750000; 25474 sweeps (25474 after loads, 469 complete, 3 above the budget after); last sweep 133003216 -> 132201840 bytes, pinned 44704880 (at most 44704880); sweep time 18234 ms in total, 12 ms at most
+SCALEBENCH OK

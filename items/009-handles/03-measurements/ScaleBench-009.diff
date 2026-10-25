@@ -1,0 +1,45 @@
+--- items/004-indirect-swizzling/02-scale-tests/ScaleBench.java	2026-10-23 21:54:24
++++ ScaleBench.java (ported for 009)	2026-10-25 22:14:39
+@@ -848,7 +848,7 @@
+         long[] ids = new long[threads];
+         for (int t = 0; t < threads; t++) {
+             (rs[t] = new Reader(t, sampleSec, barrier)).start();
+-            ids[t] = rs[t].threadId();
++            ids[t] = rs[t].getId();
+         }
+         barrier.await();
+         Snap a = new Snap();
+@@ -930,7 +930,18 @@
+             return real.followPointer(predecessor, pointerIndex, op);
+         }
+     }
++
++    /** KeyNode.setPointerAccessData, or null where it is gone (bergdb item 009). */
++    static final java.lang.reflect.Method STAMP = stampMethod();
+ 
++    static java.lang.reflect.Method stampMethod() {
++        try {
++            return KeyNode.class.getMethod("setPointerAccessData", int.class, long.class);
++        } catch (NoSuchMethodException e) {
++            return null;
++        }
++    }
++
+     /** A follower that writes the stamp but takes no lock (IndexCensus, 004-01). */
+     static final class StampNoLock implements PointerFollower {
+         final PointerFollower real;
+@@ -942,8 +953,12 @@
+         public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
+             Node c = predecessor.getPointerNode(pointerIndex);
+             if (c != null) {
+-                if (predecessor instanceof KeyNode) {
+-                    ((KeyNode) predecessor).setPointerAccessData(pointerIndex, op.accessData);
++                if (predecessor instanceof KeyNode && STAMP != null) {
++                    try {   // 2026.1's stamp; bergdb item 009 has none (port, 009 phase 5)
++                        STAMP.invoke(predecessor, pointerIndex, op.accessData);
++                    } catch (Exception e) {
++                        throw new RuntimeException(e);
++                    }
+                 }
+                 return c;
+             }

@@ -1,0 +1,13 @@
+PauseProbe: keys=1000000 valsize=100 budget=100 MB readers=4 seconds=60 tsize=[1, 1000] java=27 gc=Shenandoah_Pauses+Shenandoah_Cycles xmx=1258 MB
+load: 1000000 keys in 7.9 s; uptime 0.210 to 8.142 s
+  commits  1000, median 2.621 ms, p99 25.166, p99.9 671.089, p99.99 939.524, max 1002.375 ms; longest at uptime 2.065s (1002.4 ms) 3.051s (751.0 ms) 3.872s (498.0 ms) 4.549s (413.7 ms) 5.724s (374.8 ms)
+  eviction BUDGET: 1808169 slots unswizzled, 1042989 objects released; budget 100000000 bytes, low 75000000; 10 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 96009296 -> 74999760 bytes, pinned 55065648 (at most 55065648); sweep time 4550 ms in total, 1000 ms at most
+phase tsize=1, 4 readers, 60 s; uptime 8.151 to 68.151 s
+  gets     6910446, median 0.012 ms, p99 0.066, p99.9 0.115, p99.99 5.243, max 450.971 ms; longest at uptime 24.436s (451.0 ms) 24.436s (451.0 ms) 24.436s (450.9 ms) 24.436s (450.9 ms) 9.916s (446.4 ms)
+  commits  931650, median 0.016 ms, p99 0.098, p99.9 4.194, p99.99 10.486, max 450.868 ms; longest at uptime 24.436s (450.9 ms) 9.916s (446.2 ms) 47.624s (427.7 ms) 19.885s (426.9 ms) 10.867s (423.7 ms)
+  eviction BUDGET: 11214794 slots unswizzled, 10088345 objects released; budget 100000000 bytes, low 75000000; 86 sweeps (31 after loads, 0 complete, 0 above the budget after); last sweep 98748520 -> 74999392 bytes, pinned 62910464 (at most 64356736); sweep time 31640 ms in total, 1000 ms at most
+phase tsize=1000, 4 readers, 60 s; uptime 68.153 to 128.159 s
+  gets     5828898, median 0.012 ms, p99 0.066, p99.9 0.131, p99.99 7.340, max 393.965 ms; longest at uptime 99.689s (394.0 ms) 99.689s (393.9 ms) 99.689s (393.9 ms) 99.689s (393.8 ms) 127.925s (371.7 ms)
+  commits  862, median 33.554 ms, p99 335.544, p99.9 402.653, p99.99 402.653, max 417.696 ms; longest at uptime 99.689s (417.7 ms) 76.503s (414.4 ms) 127.931s (395.4 ms) 123.170s (380.4 ms) 123.898s (376.6 ms)
+  eviction BUDGET: 20173113 slots unswizzled, 18766552 objects released; budget 100000000 bytes, low 75000000; 183 sweeps (79 after loads, 0 complete, 0 above the budget after); last sweep 98552776 -> 74999336 bytes, pinned 60042536 (at most 88577992); sweep time 59692 ms in total, 1000 ms at most
+PAUSE PROBE OK

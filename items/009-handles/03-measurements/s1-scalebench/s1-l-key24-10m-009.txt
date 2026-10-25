@@ -1,0 +1,30 @@
+[    0.7 s] load: 10000000 keys, key24, budget 600000000 bytes, dir /opt/bergdb-bench/009/sb/data/key24-10000000
+[   30.7 s]   1751000 puts, 58360 a second; resident 452 MB, heap 523 MB, stream 714 MB
+[   60.7 s]   2775000 puts, 46235 a second; resident 598 MB, heap 798 MB, stream 1346 MB
+[   90.7 s]   3607000 puts, 40063 a second; resident 597 MB, heap 925 MB, stream 1948 MB
+[  120.8 s]   4210000 puts, 35060 a second; resident 599 MB, heap 1167 MB, stream 2433 MB
+[  150.8 s]   4711000 puts, 31380 a second; resident 598 MB, heap 1353 MB, stream 2812 MB
+[  180.9 s]   5192000 puts, 28819 a second; resident 598 MB, heap 1248 MB, stream 3209 MB
+[  210.9 s]   5662000 puts, 26938 a second; resident 598 MB, heap 1520 MB, stream 3576 MB
+[  241.1 s]   6054000 puts, 25189 a second; resident 599 MB, heap 1433 MB, stream 3918 MB
+[  271.1 s]   6384000 puts, 23614 a second; resident 599 MB, heap 1391 MB, stream 4199 MB
+[  301.2 s]   6714000 puts, 22346 a second; resident 599 MB, heap 1372 MB, stream 4478 MB
+[  331.2 s]   7009000 puts, 21208 a second; resident 599 MB, heap 1546 MB, stream 4750 MB
+[  361.3 s]   7266000 puts, 20149 a second; resident 598 MB, heap 1562 MB, stream 4990 MB
+[  391.4 s]   7526000 puts, 19264 a second; resident 598 MB, heap 1563 MB, stream 5232 MB
+[  421.4 s]   7752000 puts, 18425 a second; resident 599 MB, heap 1557 MB, stream 5437 MB
+[  451.4 s]   7966000 puts, 17673 a second; resident 599 MB, heap 1415 MB, stream 5638 MB
+[  481.5 s]   8185000 puts, 17025 a second; resident 599 MB, heap 1448 MB, stream 5836 MB
+[  511.6 s]   8400000 puts, 16443 a second; resident 599 MB, heap 1249 MB, stream 6033 MB
+[  541.6 s]   8598000 puts, 15896 a second; resident 598 MB, heap 1366 MB, stream 6228 MB
+[  571.7 s]   8795000 puts, 15403 a second; resident 599 MB, heap 1382 MB, stream 6422 MB
+[  601.9 s]   8998000 puts, 14967 a second; resident 599 MB, heap 1397 MB, stream 6601 MB
+[  632.0 s]   9198000 puts, 14570 a second; resident 599 MB, heap 1420 MB, stream 6781 MB
+[  662.1 s]   9381000 puts, 14184 a second; resident 599 MB, heap 1313 MB, stream 6955 MB
+[  692.1 s]   9562000 puts, 13829 a second; resident 599 MB, heap 1272 MB, stream 7144 MB
+[  722.2 s]   9745000 puts, 13507 a second; resident 599 MB, heap 1545 MB, stream 7296 MB
+[  752.2 s]   9915000 puts, 13194 a second; resident 599 MB, heap 1440 MB, stream 7476 MB
+[  767.3 s] load done: 766.6 s, 13045 puts a second; on disk 7543 MB, 754.4 bytes per key; eviction BUDGET: 1887949 slots unswizzled, 3790527 objects released; budget 600000000 bytes, low 450000000; 1566 sweeps (406 after loads, 10 complete, 32 above the budget after); last sweep 600000032 -> 598719472 bytes, pinned 32336240 (at most 32462576); sweep time 2300 ms in total, 5 ms at most
+[  767.3 s] two clock reads cost 65.4 ns; heap 2621 MB; 2 CPUs
+[  767.6 s] at most: heap used 1805 MB, resident 600 MB, RSS 2771 MB; eviction BUDGET: 1887949 slots unswizzled, 3790527 objects released; budget 600000000 bytes, low 450000000; 1566 sweeps (406 after loads, 10 complete, 32 above the budget after); last sweep 600000032 -> 598719472 bytes, pinned 32336240 (at most 32462576); sweep time 2300 ms in total, 5 ms at most
+SCALEBENCH OK

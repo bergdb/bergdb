@@ -1,0 +1,31 @@
+[    0.6 s] read the stream's files once: 7543 MB in 0.5 s
+[    2.2 s] opened /private/tmp/claude-502/-Users-f-fl-repos-f1/32b68478-35b0-4112-9d94-6ddb9ecd9df2/scratchpad/f53blk/sbdata/key24-10000000: 10000000 keys, key24, budget 665000000 bytes; startup 1.51 s, resident 56 MB
+[    2.2 s] two clock reads cost 22.1 ns; heap 2793 MB; 10 CPUs
+[    7.2 s]   warm 0: 128847 gets a second; loads/get 1.640, stream reads/get 3.957, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 2 (67 ms), resident 391 MB
+[   12.2 s]   warm 1: 205322 gets a second; loads/get 1.097, stream reads/get 2.403, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 1 (52 ms), resident 589 MB
+[   17.2 s]   warm 2: 264401 gets a second; loads/get 0.849, stream reads/get 1.747, device bytes/get 0, sweeps 201 (99 ms), after-load waits over 10 ms 0, gc 1 (52 ms), resident 664 MB
+[   22.2 s]   warm 3: 268723 gets a second; loads/get 0.819, stream reads/get 1.648, device bytes/get 0, sweeps 213 (92 ms), after-load waits over 10 ms 0, gc 1 (52 ms), resident 664 MB
+[   41.2 s] uniform, 1 thread: 260181 gets a second (median of 5 windows, 253704 to 267931); loads/get 0.828, stream reads/get 1.657, device bytes/get 0, sweeps 683 (311 ms), after-load waits over 10 ms 0, gc 3 (166 ms), resident 664 MB
+[   41.2 s] uniform, timed 1000000 gets: mean 3.92, p50 3.84, p90 8.26, p99 10.62, p99.9 13.89, max 52536.7 us; loads/get 0.829, stream reads/get 1.658, device bytes/get 0, sweeps 182 (86 ms), after-load waits over 10 ms 0, gc 1 (52 ms), resident 664 MB
+[   57.2 s] hot, 1 thread: 1053289 gets a second (median of 5 windows, 899126 to 1071201); loads/get 0.088, stream reads/get 0.176, device bytes/get 0, sweeps 286 (134 ms), after-load waits over 10 ms 0, gc 4 (98 ms), resident 664 MB
+[   57.2 s] hot, timed 1000000 gets: mean 0.90, p50 0.54, p90 1.00, p99 8.64, p99.9 10.82, max 34.4 us; loads/get 0.084, stream reads/get 0.167, device bytes/get 0, sweeps 18 (9 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 664 MB
+[   87.2 s] threads 1: 254787 gets a second; mean 3.88, p50 3.81, p90 8.13, p99 9.98, p99.9 13.44, max 185033.6 us; loads/get 0.830, stream reads/get 1.661, device bytes/get 0, sweeps 1391 (650 ms), after-load waits over 10 ms 0, gc 12 (647 ms), resident 664 MB
+[  117.2 s] threads 2: 442212 gets a second; mean 4.47, p50 4.32, p90 9.28, p99 12.29, p99.9 16.64, max 192464.6 us; loads/get 0.820, stream reads/get 1.641, device bytes/get 0, sweeps 2405 (1168 ms), after-load waits over 10 ms 0, gc 22 (987 ms), resident 664 MB
+[  147.2 s] threads 4: 698702 gets a second; mean 5.66, p50 5.09, p90 11.14, p99 16.32, p99.9 26.88, max 185887.9 us; loads/get 0.829, stream reads/get 1.658, device bytes/get 0, sweeps 3810 (1977 ms), after-load waits over 10 ms 0, gc 36 (1564 ms), resident 664 MB
+[  177.2 s] threads 8: 377500 gets a second; mean 21.10, p50 14.78, p90 46.34, p99 138.24, p99.9 232.45, max 257881.9 us; loads/get 0.830, stream reads/get 1.660, device bytes/get 0, sweeps 2060 (1137 ms), after-load waits over 10 ms 0, gc 17 (703 ms), resident 664 MB
+[  197.2 s] sampled 4 threads: 712991 gets a second, 712 samples:
+     55.8% RUNNABLE reading the stream
+      7.9% RUNNABLE in Dag.getEqNodeInSegment
+      7.6% RUNNABLE in NodeChecksum.sumWithZeroReplace
+      5.5% RUNNABLE in KeyNode.searchEq
+      4.9% RUNNABLE in NodeCollection.followPointer
+      4.1% RUNNABLE in KeyNode.searchLte
+      3.8% RUNNABLE in KeyNode.getDeleteBitmapAtTime
+      3.4% BLOCKED reading the stream on bergdb.stream.FileStream$DbFile
+      2.5% RUNNABLE in ?
+      1.7% RUNNABLE in NodeCollection.followStreamPointer
+      0.8% RUNNABLE in RecoverableStream.read
+      0.4% RUNNABLE in KeyNode.ensureCapacity
+      0.4% RUNNABLE in StoredValueNode.parse
+[  197.5 s] at most: heap used 2493 MB, resident 665 MB, RSS 2971 MB; eviction BUDGET: 3657646 slots unswizzled, 13790206 objects released; budget 665000000 bytes, low 498750000; 13833 sweeps (13833 after loads, 76 complete, 0 above the budget after); last sweep 665001520 -> 664366640 bytes, pinned 44704880 (at most 44704880); sweep time 6987 ms in total, 185 ms at most
+SCALEBENCH OK
