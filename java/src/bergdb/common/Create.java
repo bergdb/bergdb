@@ -19,6 +19,7 @@ public class Create {
     /**
      * Creates and returns set of items.
      */
+    @SafeVarargs
     public static <T> Set<T> set(T... items) {
         HashSet<T> set = new HashSet<T>(items.length);
         
@@ -32,6 +33,7 @@ public class Create {
     /**
      * Creates and returns a list of items.
      */
+    @SafeVarargs
     public static <T> List<T> list(T... items) {
         ArrayList<T> list = new ArrayList<T>(items.length);
         for (T item : items) {

@@ -19,6 +19,7 @@ public class NanoUtil {
     /**
      * Creates and returns set of items.
      */
+    @SafeVarargs
     public static <T> Set<T> createSet(T... items) {
         // Taken from java-cut.
         
