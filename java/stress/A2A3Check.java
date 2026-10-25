@@ -71,7 +71,7 @@ public class A2A3Check {
         }
         List<Node> result = new ArrayList<Node>();
         for (int i : last.values()) {
-            Node child = k.pointers[i];
+            Node child = k.getPointerNode(i);
             if (child == null) throw new IllegalStateException("no memory pointer");
             result.add(child);
         }
@@ -86,7 +86,7 @@ public class A2A3Check {
         if (top == null) return r;
         r.add(top);
         Deque<Node> stack = new ArrayDeque<Node>();
-        stack.push(top.rootPointer);
+        stack.push(top.getPointerNode(0));
         while (!stack.isEmpty()) {
             Node x = stack.pop();
             if (!r.add(x)) continue;

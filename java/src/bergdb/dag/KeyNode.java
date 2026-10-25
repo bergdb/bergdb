@@ -70,18 +70,26 @@ public class KeyNode implements Node {
         // Synch note: Writes to "klongs" and its elements published by a write to this.size.
         // Readers should first read this.size, before accessing klongs or elements in klongs.
     
-    public Node[] pointers;           
-        // Memory pointers to value nodes or other key nodes. Elements can be null.
-        // Synch note: access protected by "this" lock and used atomically with "pos".
+    public Pointee[] pointers;           
+        // What each pointer holds (bergdb item 009, step 3a): the handle of a key node it
+        // points to, or the ValueNode it points to, or null (not followed yet; a value
+        // unswizzled). Before 2026-10-25 the key node objects themselves.
+        // Synch note: written under "this" lock (setPointee, setPointer), and by the writer
+        // before it publishes a new pointer with this.size; read plainly (009-02, 3.4, T6b).
     public long[] pos;
-        // spos for a stream pointer, access data for a memory pointer (see AccessData).
-        // Synch note: access protected by "this" lock and used atomically with "pointers".
+        // The pointer's reference, its position or vpos (009-02, 4.2): what it named when it
+        // was made, loaded, or last resolved. No access data since step 3a.
+        // Synch note: written under "this" lock and by the writer before it publishes a new
+        // pointer with this.size.
+    public Handle handle;
+        // The handle this object is in, or was in (bergdb item 009, step 3a): set when the
+        // object is put into a handle (Cache3.register, install, makeCanonical; Handle.of).
 
     /** Possible sizes (lengths) of the 'klongs' ('pointers', 'pos') array. */
     private static final int[] ARRAY_SIZES = new int[]{2, 8-2, 16-2, 32-2, 64-2, 128-2};
     
     private static final long[] EMPTY_LONG_ARRAY = new long[0];
-    private static final Node[] EMPTY_INODE_ARRAY = new Node[0];
+    private static final Pointee[] EMPTY_INODE_ARRAY = new Pointee[0];
     
     /**
      * Creates an empty node with zero klongs. isSegmentLeaf is set to true.
@@ -210,68 +218,70 @@ public class KeyNode implements Node {
      * the position.</p>
      */
     public final void getPointer(int index, Pointer pointer) {
-        Node n = pointers[index];
-        if (n != null) {
-            pointer.node = n;
+        synchronized (this) {
+            pointer.node = getPointerNode(index);
             pointer.pos = pos[index];
-        } else {
-            synchronized (this) {
-                pointer.node = pointers[index];
-                pointer.pos = pos[index];
-            }
         }
         pointer.index = index;
     }
     
+    /** See Node.getPointerNode(): the value, or the handle's object if it may serve. */
     public final Node getPointerNode(int index) {
         assert index < pointers.length : "bad index, " + index + ", length:" + pointers.length;
-        return pointers[index];
+        Pointee p = pointers[index];
+        if (p == null) return null;
+        if (p instanceof ValueNode) return (ValueNode) p;
+        Node o = ((Handle) p).obj;
+        return o != null && Handle.usable(o, pos[index]) ? o : null;
     }
     
     public final long getPointerPos(int index) {
         return pos[index];
     }
     
+    public final Pointee getPointee(int index) {
+        return pointers[index];
+    }
+    
+    public final void setPointee(int index, Pointee pointee) {
+        synchronized (this) {
+            pointers[index] = pointee;
+        }
+    }
+    
+    public final void setRef(int index, long ref) {
+        synchronized (this) {
+            pos[index] = ref;
+        }
+    }
+    
     /**
-     * Sets a pointer, can be used to evict a pointer.
+     * Sets a pointer: what it holds and its reference.
      * Concurrency: after startup, synchronized (dag.getPointerLock(node, i)) must be held
      * by caller.
      */
-    public final void setPointer(int index, Node node, long spos) {
-        // Besides Db startup, only called from Evictor.evictPointers() and
-        // Dag.followPointer().
-        
+    public final void setPointer(int index, Pointee pointee, long ref) {
         synchronized (this) {   // See getPointer().
-            pointers[index] = node;
-            pos[index] = spos;
+            pointers[index] = pointee;
+            pos[index] = ref;
         }
     }
     
     /**
-     * Sets the access data of a memory pointer. 'pos' holds access data while the pointer is
-     * a memory pointer and the position while it is a stream pointer, so the access data is
-     * written only into a memory pointer: with eviction, a reader that saw a memory pointer
-     * must not overwrite the position that an unswizzle wrote since (bergdb item 001, WP R8,
-     * change 4: M23 of docs/level4-alignment.md; before 2026-10-17, written always). The
-     * caller holds the pointer's lock (PointerLocks), as every caller of setPointer() does,
-     * so the pointer cannot change between this check and the write.
+     * See Node.getSerializedRef(). The record rule of 009-02, 4.6 (bergdb item 009, step
+     * 3a): a value's position; the canonical object's position if the pointer's handle
+     * holds a canonical object; else the newer of the pointer's reference (after Rule R,
+     * which the writer applies first, NodeCollection.resolvePointers) and the position this
+     * process last wrote the node at (Handle.writtenPos). Read as a coherent pair.
      */
-    public final void setPointerAccessData(int pointerIndex, long accessData) {
-        if (pointers[pointerIndex] != null) {
-            pos[pointerIndex] = accessData;
-        }
-    }
-    
-    /** See Node.getSerializedRef(). */
     public final long getSerializedRef(int index) {
-        Pointer p = new Pointer();
-        getPointer(index, p);
-        return p.getSposForStream();
-    }
-    
-    /** The access data of a memory pointer; Spos.NULL for a stream pointer. */
-    public final long getPointerAccessData(int pointerIndex) {
-        return pointers[pointerIndex] != null ? pos[pointerIndex] : Spos.NULL;
+        Pointee p;
+        long ref;
+        synchronized (this) {
+            p = pointers[index];
+            ref = pos[index];
+        }
+        return Handle.serializedRef(p, ref);
     }
     
     public void accept(NodeVisitor visitor) {
@@ -348,7 +358,7 @@ public class KeyNode implements Node {
                     kwi.klong = klong;
                     kwi.pointerIndex = index;
                     kwi.klongTime = arrayTime;
-                    kwi.node = this.pointers[index];      // Warning, unsynched access to pointer.
+                    kwi.node = getPointerNode(index);      // Warning, unsynched access to pointer.
                     kwi.pos = this.pos[index];
                 }
                 break;
@@ -442,7 +452,7 @@ public class KeyNode implements Node {
             kwi.pointerIndex = bestPointerIndex;
             kwi.klongTime = bestKlongTime;
             kwi.pos = this.pos[bestPointerIndex];     // Warning, unsynched access to pointer.
-            kwi.node = this.pointers[bestPointerIndex];
+            kwi.node = getPointerNode(bestPointerIndex);
         }
     }
     
@@ -517,7 +527,7 @@ public class KeyNode implements Node {
         if (bestCompareValue != -1) {
             kwi.klong = klongs[bestPointerIndex];
             kwi.pos = this.pos[bestPointerIndex];
-            kwi.node = this.pointers[bestPointerIndex];
+            kwi.node = getPointerNode(bestPointerIndex);
             kwi.pointerIndex = bestPointerIndex;
             kwi.klongTime = bestKlongTime;
         }
@@ -592,7 +602,7 @@ public class KeyNode implements Node {
         if (bestCompareValue != -1) {
             kwi.klong = klongs[bestPointerIndex];
             kwi.pos = this.pos[bestPointerIndex];
-            kwi.node = this.pointers[bestPointerIndex];
+            kwi.node = getPointerNode(bestPointerIndex);
             kwi.pointerIndex = bestPointerIndex;
             kwi.klongTime = bestKlongTime;
         }
@@ -667,7 +677,7 @@ public class KeyNode implements Node {
         if (bestCompareValue != -1) {
             kwi.klong = klongs[bestPointerIndex];
             kwi.pos = this.pos[bestPointerIndex];
-            kwi.node = this.pointers[bestPointerIndex];
+            kwi.node = getPointerNode(bestPointerIndex);
             kwi.pointerIndex = bestPointerIndex;
             kwi.klongTime = bestKlongTime;
         }
@@ -733,7 +743,7 @@ public class KeyNode implements Node {
         if (bestCompareValue != -1) {
             kwi.klong = klongs[bestPointerIndex];
             kwi.pos = this.pos[bestPointerIndex];
-            kwi.node = this.pointers[bestPointerIndex];
+            kwi.node = getPointerNode(bestPointerIndex);
             kwi.pointerIndex = bestPointerIndex;
             kwi.klongTime = bestKlongTime;
         }
@@ -748,7 +758,12 @@ public class KeyNode implements Node {
      * Adds a klong with a pointer/null and accessData/spos to the end of the key node.
      * If needed, a time klong is added before 'klong'.
      */
-    public void addKlong(long time, long klong, Node pointer, long accessDataOrSpos) {
+    public void addKlong(long time, long klong, Node pointerNode, long accessDataOrSpos) {
+        // A pointer to a node holds its handle, or the value; its reference is the node's
+        // position, its vpos if not written (bergdb item 009, step 3a). Without a node, a
+        // stream pointer: accessDataOrSpos is its position.
+        final Pointee pointer = Handle.pointeeOf(pointerNode);
+        final long ref = pointerNode != null ? pointerNode.getSpos() : accessDataOrSpos;
         short sz;
         
         // Synch action, ensures that published previous writes are visible.
@@ -785,7 +800,7 @@ public class KeyNode implements Node {
         
         this.klongs[newSize] = klong;
         this.pointers[newSize] = pointer;
-        this.pos[newSize] = accessDataOrSpos;
+        this.pos[newSize] = ref;
         newSize++;
         
         // Synch action, line below makes changes visible to readers (that read this.size).
@@ -799,7 +814,9 @@ public class KeyNode implements Node {
      * 
      * @return true if a klong was replaced.
      */
-    public boolean replaceKlong(long time, long klong1, Node pointer, long accessData) {
+    public boolean replaceKlong(long time, long klong1, Node pointerNode, long accessData) {
+        final Pointee pointer = Handle.pointeeOf(pointerNode);
+        final long ref = pointerNode != null ? pointerNode.getSpos() : accessData;
         final int sz; 
         final long[] klongs;
         int index = 0;
@@ -823,7 +840,7 @@ public class KeyNode implements Node {
                 if (klong1 == klong && time == arrayTime) {
                     this.klongs[index] = klong1;
                     this.pointers[index] = pointer;
-                    this.pos[index] = accessData;
+                    this.pos[index] = ref;
                     result = true;
                     break A;
                 }
@@ -876,7 +893,7 @@ public class KeyNode implements Node {
             }
             
             long[] klongs = new long[newSize];
-            Node[] pointers = new Node[newSize];
+            Pointee[] pointers = new Pointee[newSize];
             long[] pos = new long[newSize];
             
             System.arraycopy(this.klongs, 0, klongs, 0, sz);
@@ -893,7 +910,7 @@ public class KeyNode implements Node {
      * Adds a klong and its pointer to the end of the arrays.
      * No checking is used. Write access required.
      */
-    public void addToEnd(long klongToAdd, Node pointerToAdd, long posToAdd) {
+    public void addToEnd(long klongToAdd, Pointee pointerToAdd, long posToAdd) {
         int sz = this.size;             // Synch action make previous writes visible.
         if (klongs.length + 1 > sz) {
             ensureCapacity(sz + 1);
@@ -949,7 +966,7 @@ public class KeyNode implements Node {
         int sz = other.size;
         int len = Math.max(sz, other.klongs.length);
         long[] k = new long[len];
-        Node[] p = new Node[len];
+        Pointee[] p = new Pointee[len];
         long[] ps = new long[len];
         System.arraycopy(other.klongs, 0, k, 0, sz);
         System.arraycopy(other.pointers, 0, p, 0, sz);
@@ -1018,7 +1035,7 @@ public class KeyNode implements Node {
             }
             
             long klongToAdd = Klong.NULL;
-            Node pointerToAdd = null;
+            Pointee pointerToAdd = null;
             long posToAdd = Spos.NULL;
     
             if (type == Klong.TYPE_TIME) {
@@ -1101,7 +1118,7 @@ public class KeyNode implements Node {
      * @param pointerToAdd
      * @param posToAdd
      */
-    private void addToSorted(long klongToAdd, Node pointerToAdd, long posToAdd) {
+    private void addToSorted(long klongToAdd, Pointee pointerToAdd, long posToAdd) {
         assert Klong.getType(klongToAdd) == Klong.TYPE_KEY;
         
         long compareValue = Klong.getCompareValue(klongToAdd);
@@ -1211,7 +1228,8 @@ public class KeyNode implements Node {
         
         for (int i = 0; i < insert.length; i++) {
             KlongWithPointer kwi = insert[i];
-            insertTo.addToEnd(kwi.klong, kwi.node, kwi.pos);
+            insertTo.addToEnd(kwi.klong, Handle.pointeeOf(kwi.node),
+                    kwi.node != null ? kwi.node.getSpos() : kwi.pos);
         }
         
         return secondKlong;
@@ -1239,7 +1257,7 @@ public class KeyNode implements Node {
         int count = 0;
         int size = this.size;
         for (int i = 0; i < size; i++) {
-            if (pointers[i] != null) count++;
+            if (getPointerNode(i) != null) count++;
         }
         return count;
     }
@@ -1326,7 +1344,7 @@ public class KeyNode implements Node {
             case Klong.INT_TYPE_KEY:
                 String keyString = getKeyString(klong);
                 out.print(String.format("%-15s", keyString));
-                Node child = pointers[i];
+                Node child = getPointerNode(i);
                 boolean isMem = child != null;
                 
                 if (isMem) {
@@ -1336,7 +1354,7 @@ public class KeyNode implements Node {
                         keyNodeChild.printInternal(out, newIndent, depth + 1, true);
                         
                     } else {
-                        out.println(" -> " + pointers[i].toString());
+                        out.println(" -> " + child.toString());
                     }
                 } else {
                     out.println(" -> spos: " + pos[i]);
@@ -1470,7 +1488,7 @@ public class KeyNode implements Node {
         for (int i = 0; i < sz; i++) {
             long klong = klongs[i];
             if (Klong.getType(klong) == Klong.TYPE_KEY) {
-                Node pointer;
+                Pointee pointer;
                 long spos;
                 synchronized (this) {
                     pointer = pointers[i];
@@ -1490,15 +1508,17 @@ public class KeyNode implements Node {
         for (int i = 0; i < sz; i++) {
             long klong = klongs[i];
             if (Klong.getType(klong) == Klong.TYPE_KEY) {
-                Node pointer;
-                long accessData;
+                Pointee pointer;
+                long ref;
                 synchronized (this) {
                     pointer = pointers[i];
-                    accessData = pos[i];
+                    ref = pos[i];
                 }
                 if (pointer != null) {
-                    if (!AccessData.isValidOrNull(accessData)) {
-                        throw new AssertionError("Bad access data (" + accessData 
+                    // A pointer that holds a handle or a value has a reference too (bergdb
+                    // item 009, step 3a; before, access data).
+                    if (!Spos.isValidOrNull(ref)) {
+                        throw new AssertionError("Bad reference (" + ref 
                                 + ") of pointer " + i + " of node " + this + ".");
                     }
                 }

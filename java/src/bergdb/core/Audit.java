@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import bergdb.dag.Pointee;
+import bergdb.dag.Handle;
 import bergdb.dag.Klong;
 import bergdb.dag.KeyNode;
 import bergdb.dag.KlongWithPointer;
@@ -186,9 +188,17 @@ public final class Audit {
                         + " is the version at " + n.getSpos() + ", its latest is at " + latest);
             }
         }
-        for (Node n : tableObjects) {
-            if (n.isIndexNode() && !n.isCanonical()) {
-                fail(failures, "INV-CAN: the node table names a snapshot of node " + n.getId());
+        // The handles (bergdb item 009, step 3a): the table's are live, each with its node's
+        // object or none; a handle's object is of its node. A handle may hold a version that
+        // is not canonical (until step 3a the node table named canonical objects only).
+        for (Handle h : table.handles()) {
+            if (h.isDead()) {
+                fail(failures, "handles: the node table has a dead handle of node " + h.id);
+            }
+            Node o = h.obj;
+            if (o != null && o.getId() != h.id) {
+                fail(failures, "handles: the handle of node " + h.id + " holds an object of node "
+                        + o.getId());
             }
         }
 
@@ -226,20 +236,22 @@ public final class Audit {
             int size = n.getSize();
             for (int i = 0; i < size; i++) {
                 Node c = n.getPointerNode(i);
-                long pos = n.getPointerPos(i);
+                long pos = c == null ? n.getSerializedRef(i) : n.getPointerPos(i);
                 if (Pointer.isNull(c, pos)) continue;
                 if (c == null && !Spos.isVpos(pos) && pos < firstPos) continue;      // M33
-                long id = c != null ? c.getId() : (Spos.isVpos(pos) ? pos : ns.readNodeHeader(pos).id());
+                Pointee pe = n.getPointee(i);
+                long id = c != null ? c.getId() : pe instanceof Handle ? ((Handle) pe).id
+                        : (Spos.isVpos(pos) ? pos : ns.readNodeHeader(pos).id());
                 Node canon = table.getNode(id);
                 if (canon != null && Residents.isPinned(canon, superRoot)) {
                     pinned++;
                     continue;
                 }
-                long ref;
-                if (c != null) {
-                    ref = c.getSpos();
-                } else {
-                    ref = pos;
+                // The reference a record would get now (the record rule, 009-02, 4.6), and
+                // Rule R, which the writer applies before it writes, unless a canonical
+                // object decides it.
+                long ref = n.getSerializedRef(i);
+                if (c == null || !c.isCanonical()) {
                     Long newPos = nc.newestInSection(id);
                     if (newPos != null && newPos > ref) ref = newPos;
                 }
@@ -295,7 +307,7 @@ public final class Audit {
             if (!ids.add(x.getId())) continue;
             if (x instanceof TopNode) {
                 TopNode t = (TopNode) x;
-                Node r = load(t.rootPointer, t.rootPointerPos, table, ns, nc, oracle);
+                Node r = load(t.getPointerNode(0), t.rootPointerPos, table, ns, nc, oracle);
                 if (r != null) todo.add(r);
             } else if (x instanceof KeyNode) {
                 KeyNode k = (KeyNode) x;

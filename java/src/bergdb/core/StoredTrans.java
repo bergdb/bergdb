@@ -543,8 +543,12 @@ public class StoredTrans {
                 int count = node.getSize();
                 for (int i = 0; i < count; i++) {
                     node.getPointer(i, p);
-                    if (!p.isNull()) {
-                        spos = p.pos;
+                    // A stream pointer, as written (with handles, bergdb item 009: its
+                    // serialized reference). A memory pointer to a node not written yet is
+                    // written with its vpos, as before (its long field was access data, which
+                    // this check passed).
+                    if (!p.isNull() && p.node == null) {
+                        spos = node.getSerializedRef(i);
                         if (Spos.isNull(spos)) {
                             throw new AssertionError("spos of node pointer is NULL, index: " + i + ", node: " + node.toString());
                         }

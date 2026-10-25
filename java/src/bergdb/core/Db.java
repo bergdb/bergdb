@@ -916,11 +916,15 @@ public class Db {
         long tt = dbClock.transactionBegin();
         dbClock.transactionEnd();
         
+        // The root's id first, and canonical: the super root's pointer holds the root's
+        // handle, and a record names a canonical object's position (bergdb item 009, step
+        // 3a; the record rule, Handle.serializedRef).
         KeyNode root = KeyNode.nodeWithTime(tt);
+        setIdOfNode(root);
+        root.setCanonical(true);
         TopNode superRoot = TopDs.createSuperRootFromFirstKeyNode(tt, root, 
                 AccessData.DEFAULT_ACCESS_DATA, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
         
-        setIdOfNode(root);
         setIdOfNode(superRoot);
         
         MetaBlock meta = nodeStream.getMetaBlock();

@@ -12,10 +12,13 @@ import java.util.Set;
 
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
+import bergdb.dag.Handle;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Node;
+import bergdb.dag.Pointee;
 import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
+import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.stream.MemoryStream;
@@ -23,23 +26,25 @@ import bergdb.stream.MemoryStream;
 /**
  * Eviction at transaction boundaries (bergdb item 001, WP J2: values; J3: index nodes;
  * docs/level4-alignment.md, 5.2 and 6.2, rows 8 and 9; the Lean model's `Mem.unswizzle`,
- * `Mem.release` and `Mem.detachable`, lean/SIS/Evict.lean).
+ * `Mem.release` and `Mem.detachable`, lean/SIS/Evict.lean). With handles since bergdb item
+ * 009, step 3a (items/009-handles/02-implementation-plan.md, 4.7).
  *
  * <p>An object is <b>detachable</b> when it is not pinned (Residents.isPinned: the super
  * root, and the canonical objects of D and of the record being written; also the newest
  * written top node, which Db keeps for the next record) and written (its position is a
  * stream position, not a vpos). Values are never dirty; a new value is detachable once its
- * record is appended. An index object is a snapshot, which is a version read, or the
- * canonical object of a clean node, which holds exactly the node's latest version
- * (INV-CAN). <b>Unswizzle</b>: a memory slot to a detachable
- * object becomes a stream slot naming its position, under the slot's pointer lock, which
- * readers take on every follow (NodeCollection.followPointer); the slot's serialized
- * reference (Pointer.getSposForStream) does not change, so no record does. A reader that
- * holds the object may finish with it (Q8). <b>Release</b>: an object that no resident
- * memory slot names any more leaves the registry, and the node table's entry goes if it
- * names the object, and a canonical object's flag is cleared (M31: a reader may still hold
- * it); a later read loads the version from the slot's position, and the writer's follower
- * makes it canonical again (Cache3.makeCanonical, the model's `Mem.promote`).</p>
+ * record is appended. An index object is a version read, or the canonical object of a clean
+ * node, which holds exactly the node's latest version (INV-CAN). <b>Evict</b> an index
+ * object: its handle dies (Cache3.evict): the object leaves the handle and the handle the
+ * node table, a canonical object's flag is cleared (M31: a reader may still hold it), and
+ * the handle keeps the position a canonical object was at (Handle.writtenPos), so that a
+ * pointer that holds the dead handle is written, and followed, as the unswizzled pointer of
+ * before was (the record rule, Handle.serializedRef): no record changes. Nothing asks which
+ * pointers hold the handle. A later follow resolves the pointer to the node's live handle by
+ * the id, and loads the version again; the writer's follower makes it canonical (the model's
+ * `Mem.promote`). <b>Unswizzle</b> a value: a leaf's pointer that holds a detachable value
+ * becomes a stream pointer naming its position, under the pointer's lock. Values have no
+ * handles and are not in the node table (009-02, 4.8).</p>
  *
  * <p>Admission: a large value (over 1 MiB, as `Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES` does not
  * cache on a read) is not kept: when eviction is on, it is taken once its record is written,
@@ -51,12 +56,12 @@ import bergdb.stream.MemoryStream;
  * (Residents) as its high watermark and LOW of it as its low one: when the resident bytes
  * pass the budget, at a transaction boundary or after a reader's load (afterLoad), a sweep
  * (sweep()) takes the oldest detachable objects, values first, down to the low watermark
- * (counting the objects that leave the resident set with those it takes), and takes every
- * detachable object if that is not enough; pinned state is never taken.
+ * (counting the values that leave the resident set with the objects it takes), and takes
+ * every detachable object if that is not enough; pinned state is never taken.
  * The schedules for tests (the plan's 8.4): none; values (every detachable value after every
  * transaction, WP J2's eviction); every (every detachable object after every transaction);
- * random (each slot to a detachable object, and each object that only the node table holds,
- * with probability 0.3, seeded). The system property evict (none, values, every, random or
+ * random (each detachable value pointer and each handle of a detachable object, with
+ * probability 0.3, seeded). The system property evict (none, values, every, random or
  * budget; evictseed, default 1; evictbudget, a budget in bytes) sets the default, so that
  * existing stress programs and the gates can run with any schedule.</p>
  *
@@ -65,19 +70,14 @@ import bergdb.stream.MemoryStream;
  * startup.</p>
  *
  * <p><b>Readers</b> (the plan's Q8; bergdb item 001, WP J5; EvictionReaderTester). Eviction
- * runs only under the write lock, which readers never take, and changes a slot only under
- * the slot's pointer lock (PointerLocks), which a reader holds for the whole of a follow,
- * the load from the stream included (NodeCollection.followPointer); so a reader sees a slot
- * as a memory slot or as a stream slot, never half of one. A reader that holds an object
- * (it followed a slot to it before the unswizzle, or took it from the node table before
- * its release) may finish with it: a released object is the version at its position, so
- * its answers are right; if the reader then puts it into a slot, the slot names that
- * version, the node's latest (INV-SLOT holds), and the writer makes it canonical again when
- * it follows that slot (the accounting misses it until the next sweep's resync). A sweep
- * that needs a pointer lock that a loading reader holds waits for it; a load never asks for
- * the write lock, so they cannot deadlock. An access-data update writes only into a memory
- * slot, under the slot's lock (KeyNode.setPointerAccessData), so it never overwrites the
- * position an unswizzle wrote.</p>
+ * runs only under the write lock, which readers take only for a load-triggered sweep
+ * (afterLoad), and kills a handle under its map's lock, with a compareAndSet of its state
+ * that fails while a loader holds the handle (LOADING; 009-02, T7a), so eviction never waits
+ * for a load. Until step 3c a reader holds the pointer's lock (PointerLocks) for the whole
+ * of a follow. A reader that holds an object (it took it from a handle before the
+ * eviction) may finish with it: it is the version at its position, so its answers are
+ * right; if the reader then puts the dead handle into a pointer, the next follow resolves
+ * it again (EvictionReaderTester.testDeadHandleInAPointer).</p>
  */
 public final class Eviction {
     /** The schedule; see the class comment. BUDGET is the capacity controller (WP J7). */
@@ -255,52 +255,37 @@ public final class Eviction {
                 dObjects.add(node);
             }
         });
-        List<Node> tableObjects = table.nodes();
-        List<Node> resident = Residents.walk(superRoot, tableObjects, dObjects);
+        List<Node> resident = Residents.walk(superRoot, table.nodes(), dObjects);
 
-        // 1. Unswizzle; and note the objects that a memory slot still names.
-        IdentityHashMap<Node, Boolean> stillNamed = new IdentityHashMap<Node, Boolean>();
-        IdentityHashMap<Node, Boolean> detached = new IdentityHashMap<Node, Boolean>();
-        long n = 0;
+        // 1. Values: the pointers of resident objects to detachable values that the schedule
+        //    selects become stream pointers (bergdb item 009, step 3a: a value has no
+        //    handle; its leaf's pointer holds it). A value so leaves memory, unless another
+        //    resident pointer holds it: counted as released.
+        long n = 0, r = 0;
         for (Node x : resident) {
-            if (!x.isIndexNode()) continue;
+            if (!(x instanceof KeyNode)) continue;
             int size = x.getSize();
             for (int i = 0; i < size; i++) {
-                Node c = x.getPointerNode(i);
-                if (c == null) continue;
-                boolean take = detachable(c, superRoot, newestWritten) && selected(c);
-                if (take) {
-                    synchronized (in.getPointerLock(x, i)) {
-                        if (x.getPointerNode(i) == c) {
-                            x.setPointer(i, null, c.getSpos());
-                            n++;
-                        }
+                Pointee p = x.getPointee(i);
+                if (!(p instanceof ValueNode)) continue;
+                ValueNode v = (ValueNode) p;
+                if (detachable(v, superRoot, newestWritten) && selected(v)) {
+                    if (unswizzleValue(in, x, i, v)) {
+                        n++;
+                        r++;
                     }
-                    detached.put(c, Boolean.TRUE);
-                } else {
-                    stillNamed.put(c, Boolean.TRUE);
                 }
             }
         }
 
-        // 2. Objects that only the node table holds (no memory slot names them), index nodes
-        //    and values (Cache3.pointerCreated enters a value too): they are released as if
-        //    a slot to them had been unswizzled, when the schedule takes them.
-        for (Node c : tableObjects) {
-            if (stillNamed.containsKey(c) || detached.containsKey(c)) continue;
+        // 2. Index nodes: the handles of detachable objects that the schedule selects are
+        //    evicted (Cache3.evict): local, whoever points to them (009-02, 4.7).
+        for (Handle h : table.handles()) {
+            Node c = h.obj;
+            if (c == null) continue;
             if (detachable(c, superRoot, newestWritten) && selected(c)) {
-                detached.put(c, Boolean.TRUE);
+                if (table.evict(h)) r++;
             }
-        }
-
-        // 3. Release the detached objects that no resident memory slot names (D's objects and
-        //    the super root are pinned, so not among them).
-        long r = 0;
-        for (Map.Entry<Node, Boolean> e : detached.entrySet()) {
-            Node c = e.getKey();
-            if (stillNamed.containsKey(c)) continue;
-            table.released(c);                  // and its canonical flag cleared, M31
-            r++;
         }
         synchronized (this) {
             unswizzled += n;
@@ -311,8 +296,20 @@ public final class Eviction {
             allReleased += r;
         }
 
-        // 4. The accounting, exact again: the objects that are still resident.
+        // 3. The accounting, exact again: the objects that are still resident.
         table.residents().resync(Residents.walk(superRoot, table.nodes(), dObjects));
+    }
+
+    /**
+     * Pointer i of x to value v becomes a stream pointer naming v's position, under the
+     * pointer's lock, if it still holds v. True if it did.
+     */
+    private static boolean unswizzleValue(Db.Internal in, Node x, int i, ValueNode v) {
+        synchronized (in.getPointerLock(x, i)) {
+            if (x.getPointee(i) != v) return false;
+            x.setPointer(i, null, v.getSpos());
+            return true;
+        }
     }
 
     // ======== The capacity controller (BUDGET; bergdb item 001, WP J7) ========
@@ -337,19 +334,23 @@ public final class Eviction {
     }
 
     /**
-     * A memory slot of a resident index object to a detachable object, its age, and its
-     * place in the walk's breadth-first order (seq).
+     * A candidate of a sweep: a value pointer of a resident object (x, i, the value c), or
+     * a handle h with its object c; its age (the access time of the last follow, of the
+     * value's leaf or of the handle; Handle.stamp) and its place in the walk's breadth-first
+     * order (seq).
      */
     private static final class Slot {
         final Node x;
         final int i;
+        final Handle h;
         final Node c;
         final long time;
         final int seq;
 
-        Slot(Node x, int i, Node c, long time, int seq) {
+        Slot(Node x, int i, Handle h, Node c, long time, int seq) {
             this.x = x;
             this.i = i;
+            this.h = h;
             this.c = c;
             this.time = time;
             this.seq = seq;
@@ -358,8 +359,8 @@ public final class Eviction {
 
     /**
      * The oldest first; of slots of the same age, the later in the walk's breadth-first order
-     * first, so the deeper: an operation gives every slot it follows the same access data, so
-     * a slot and the slots below it are often of the same age, and the sweep takes the leaves
+     * first, so the deeper: an operation gives every node it follows the same access data, so
+     * a node and the nodes below it are often of the same age, and the sweep takes the leaves
      * before the inner nodes above them.
      */
     private static final Comparator<Slot> OLDEST_FIRST = new Comparator<Slot>() {
@@ -379,28 +380,30 @@ public final class Eviction {
         }
     };
 
+    /** The age of a handle's last follow, or 0. */
+    private static long ageOf(Handle h) {
+        long acc = h == null ? Spos.NULL : h.stamp;
+        return AccessData.isValid(acc) ? AccessData.getAccessTime(acc) : 0;
+    }
+
     /**
-     * One sweep of the capacity controller, down to the low watermark (Q9): first the
-     * objects that only the node table holds, then values (those over 1 MiB first, as a read
-     * does not cache them either: admission), then index nodes, the oldest slots first by
-     * their access time (the access clock when a reader or the writer last followed the
-     * slot), each unswizzled under its pointer lock and its object released when no memory
-     * slot of a resident object names it any more; then the accounting is made exact
-     * (Residents.resync). What the sweep frees is counted as it goes (drop()): an object it
-     * releases, and the objects below it that only it named and that the node table does not
-     * hold, which leave the resident set with it; so a sweep stops near the low watermark
-     * (before 2026-10-18, only the released objects were counted, and a sweep after reads,
-     * whose snapshots hang below the slots it took, could go down to the pinned state: bergdb
-     * item 001, WP J8). If the resident bytes are still above the budget, a complete sweep
-     * follows: every detachable object, whatever its age, so that a working set larger than
-     * the budget cannot stop progress. Pinned state is never taken; if it alone is above the
-     * budget, the sweep is counted as above the budget (stats()), and the next sweep waits
-     * until the resident bytes have grown by the gap between the watermarks (trigger), so
-     * that pinned state above the budget does not make every transaction and every load
-     * sweep. The sweep walks every resident object (Residents.walk), once before and once
-     * after; it runs when the bytes pass the budget and frees at least the gap to the low
-     * watermark, so its cost is paid once per that many bytes loaded. The caller holds
-     * Db.writeLock, between transactions.
+     * One sweep of the capacity controller, down to the low watermark (Q9): first values
+     * (those over 1 MiB first, as a read does not cache them either: admission), each
+     * pointer to one made a stream pointer under its pointer lock; then index nodes, the
+     * oldest first by their access time (the access clock when a reader or the writer last
+     * followed a pointer to the node: Handle.stamp), each evicted (Cache3.evict; bergdb item
+     * 009, step 3a: with handles, nothing asks who points to an object); then the accounting
+     * is made exact (Residents.resync). What the sweep frees is counted as it goes: an
+     * object it evicts, with the values that only it holds, or a value no other resident
+     * pointer holds; so a sweep stops near the low watermark. If the resident bytes are
+     * still above the budget, a complete sweep follows: every detachable object, whatever
+     * its age, so that a working set larger than the budget cannot stop progress. Pinned
+     * state is never taken; if it alone is above the budget, the sweep is counted as above
+     * the budget (stats()), and the next sweep waits until the resident bytes have grown by
+     * the gap between the watermarks (trigger), so that pinned state above the budget does
+     * not make every transaction and every load sweep. In this step (3a) the sweep still
+     * walks every resident object (Residents.walk), for its choice and its byte count; step
+     * 3b removes the walks. The caller holds Db.writeLock, between transactions.
      */
     void sweep(Db db, boolean afterLoad) {
         final long t0 = System.nanoTime();
@@ -415,76 +418,66 @@ public final class Eviction {
                 dObjects.add(node);
             }
         });
-        List<Node> tableObjects = table.nodes();
-        List<Node> resident = Residents.walk(superRoot, tableObjects, dObjects);
+        List<Node> resident = Residents.walk(superRoot, table.nodes(), dObjects);
 
         long before = 0, pinned = 0;
         int seq = 0;
         IdentityHashMap<Node, int[]> named = new IdentityHashMap<Node, int[]>();
+        IdentityHashMap<Node, Integer> order = new IdentityHashMap<Node, Integer>();
         ArrayList<Slot> values = new ArrayList<Slot>(), index = new ArrayList<Slot>();
         for (Node x : resident) {
             int size = x.getMemSize();
             before += size;
+            order.put(x, seq++);
             if (x.isIndexNode() && !detachable(x, superRoot, newestWritten)) pinned += size;
-            if (!x.isIndexNode()) continue;
+            if (!(x instanceof KeyNode)) continue;
             int n = x.getSize();
             for (int i = 0; i < n; i++) {
-                Node c = x.getPointerNode(i);
-                if (c == null) continue;
-                int[] count = named.get(c);
-                if (count == null) named.put(c, count = new int[1]);
+                Pointee p = x.getPointee(i);
+                if (!(p instanceof ValueNode)) continue;
+                ValueNode v = (ValueNode) p;
+                int[] count = named.get(v);
+                if (count == null) named.put(v, count = new int[1]);
                 count[0]++;
-                if (!detachable(c, superRoot, newestWritten)) continue;
-                long acc = x.getPointerAccessData(i);
-                long time = AccessData.isValid(acc) ? AccessData.getAccessTime(acc) : 0;
-                (c.isIndexNode() ? index : values).add(new Slot(x, i, c, time, seq++));
+                if (!detachable(v, superRoot, newestWritten)) continue;
+                values.add(new Slot(x, i, null, v, ageOf(Cache3.handleOf(x)), seq));
             }
+        }
+        for (Handle h : table.handles()) {
+            Node c = h.obj;
+            if (c == null || !detachable(c, superRoot, newestWritten)) continue;
+            Integer s = order.get(c);
+            index.add(new Slot(null, -1, h, c, ageOf(h), s == null ? 0 : s));
         }
 
         long need = before - low;
-        long freed = 0, n = 0;
-        ArrayList<Node> toRelease = new ArrayList<Node>();
-        // The walk's roots, which stay resident unless released, and the objects that have
-        // left the resident set in this sweep (drop()).
-        Set<Node> roots = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
-        roots.add(superRoot);
-        roots.addAll(tableObjects);
-        roots.addAll(dObjects);
-        Set<Node> gone = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
-        // 1. Objects that only the node table holds, index nodes and values: no slot names
-        //    them.
-        for (Node c : tableObjects) {
-            if (freed >= need) break;
-            if (named.containsKey(c) || !detachable(c, superRoot, newestWritten)) continue;
-            toRelease.add(c);
-            freed += drop(c, named, roots, gone);
-        }
-        // 2. Values, then index nodes, the oldest slots first. Large values always. A slot
-        //    of an object that has left the resident set is left as it is.
+        long freed = 0, n = 0, r = 0;
+        // 1. Values, then index nodes, the oldest first. Large values always.
         for (int pass = 0; pass < 2 && freed < need; pass++) {
             ArrayList<Slot> list = pass == 0 ? values : index;
             Collections.sort(list, pass == 0 ? LARGE_THEN_OLDEST : OLDEST_FIRST);
             for (Slot sl : list) {
                 if (freed >= need) break;
-                if (gone.contains(sl.x)) continue;
-                synchronized (in.getPointerLock(sl.x, sl.i)) {
-                    if (sl.x.getPointerNode(sl.i) != sl.c) continue;
-                    sl.x.setPointer(sl.i, null, sl.c.getSpos());
-                }
-                n++;
-                int[] count = named.get(sl.c);
-                if (--count[0] == 0) {
-                    toRelease.add(sl.c);
-                    freed += drop(sl.c, named, roots, gone);
+                if (pass == 0) {
+                    if (!unswizzleValue(in, sl.x, sl.i, (ValueNode) sl.c)) continue;
+                    n++;
+                    int[] count = named.get(sl.c);
+                    if (--count[0] == 0) {
+                        freed += sl.c.getMemSize();
+                        r++;
+                    }
+                } else {
+                    if (sl.h.obj != sl.c || !table.evict(sl.h)) continue;
+                    r++;
+                    freed += sl.c.getMemSize() + valuesOnlyIn(sl.c, named);
                 }
             }
         }
-        long r = release(table, toRelease);
         res.resync(Residents.walk(superRoot, table.nodes(), dObjects));
 
         boolean complete = false;
         if (res.bytes() > high) {
-            // 3. Under pressure: every detachable object (a complete sweep).
+            // 2. Under pressure: every detachable object (a complete sweep).
             complete = true;
             long[] nr = takeAll(in, table, superRoot, newestWritten, dObjects);
             n += nr[0];
@@ -515,84 +508,45 @@ public final class Eviction {
     }
 
     /**
-     * Object c leaves the resident set, as the sweep releases it: returns its bytes and those
-     * of the objects that only it named, recursively (their counts of naming memory slots of
-     * resident objects, 'named', reach 0), except the walk's roots (the node table's objects
-     * and D's), which stay resident. Marks them all in 'gone'.
+     * The bytes of the values that only object c holds among the resident objects (their
+     * counts of resident pointers, 'named', reach 0 as c leaves).
      */
-    private static long drop(Node c, IdentityHashMap<Node, int[]> named, Set<Node> roots,
-            Set<Node> gone) {
+    private static long valuesOnlyIn(Node c, IdentityHashMap<Node, int[]> named) {
+        if (!(c instanceof KeyNode)) return 0;
         long bytes = 0;
-        ArrayDeque<Node> todo = new ArrayDeque<Node>();
-        gone.add(c);
-        todo.add(c);
-        while (!todo.isEmpty()) {
-            Node y = todo.poll();
-            bytes += y.getMemSize();
-            if (!y.isIndexNode()) continue;
-            int size = y.getSize();
-            for (int i = 0; i < size; i++) {
-                Node d = y.getPointerNode(i);
-                if (d == null) continue;
-                int[] count = named.get(d);
-                if (count == null || --count[0] > 0) continue;
-                if (roots.contains(d) || !gone.add(d)) continue;
-                todo.add(d);
-            }
+        int size = c.getSize();
+        for (int i = 0; i < size; i++) {
+            Pointee p = c.getPointee(i);
+            if (!(p instanceof ValueNode)) continue;
+            int[] count = named.get(p);
+            if (count != null && --count[0] == 0) bytes += ((ValueNode) p).getMemSize();
         }
         return bytes;
     }
 
-    /** Releases the objects: the canonical flag cleared (M31) and the node table's entry,
-     *  then the registry (Cache3.released). Returns how many. */
-    private static long release(Cache3 table, List<Node> objects) {
-        for (Node c : objects) {
-            table.released(c);
-        }
-        return objects.size();
-    }
-
     /**
-     * Unswizzles every memory slot of a resident object to a detachable object, and releases
-     * the objects that no memory slot names then, and those that only the node table holds.
-     * Returns the slots unswizzled and the objects released.
+     * Makes every pointer of a resident object to a detachable value a stream pointer, and
+     * evicts every handle of a detachable object. Returns the pointers and the objects.
      */
     private static long[] takeAll(Db.Internal in, Cache3 table, TopNode superRoot,
             TopNode newestWritten, List<Node> dObjects) {
-        List<Node> tableObjects = table.nodes();
-        List<Node> resident = Residents.walk(superRoot, tableObjects, dObjects);
-        IdentityHashMap<Node, Boolean> stillNamed = new IdentityHashMap<Node, Boolean>();
-        IdentityHashMap<Node, Boolean> detached = new IdentityHashMap<Node, Boolean>();
-        long n = 0;
+        List<Node> resident = Residents.walk(superRoot, table.nodes(), dObjects);
+        long n = 0, r = 0;
         for (Node x : resident) {
-            if (!x.isIndexNode()) continue;
+            if (!(x instanceof KeyNode)) continue;
             int size = x.getSize();
             for (int i = 0; i < size; i++) {
-                Node c = x.getPointerNode(i);
-                if (c == null) continue;
-                if (detachable(c, superRoot, newestWritten)) {
-                    synchronized (in.getPointerLock(x, i)) {
-                        if (x.getPointerNode(i) == c) {
-                            x.setPointer(i, null, c.getSpos());
-                            n++;
-                        }
-                    }
-                    detached.put(c, Boolean.TRUE);
-                } else {
-                    stillNamed.put(c, Boolean.TRUE);
-                }
+                Pointee p = x.getPointee(i);
+                if (!(p instanceof ValueNode)) continue;
+                ValueNode v = (ValueNode) p;
+                if (detachable(v, superRoot, newestWritten) && unswizzleValue(in, x, i, v)) n++;
             }
         }
-        for (Node c : tableObjects) {
-            if (!stillNamed.containsKey(c) && detachable(c, superRoot, newestWritten)) {
-                detached.put(c, Boolean.TRUE);
-            }
+        for (Handle h : table.handles()) {
+            Node c = h.obj;
+            if (c != null && detachable(c, superRoot, newestWritten) && table.evict(h)) r++;
         }
-        ArrayList<Node> objects = new ArrayList<Node>();
-        for (Node c : detached.keySet()) {
-            if (!stillNamed.containsKey(c)) objects.add(c);
-        }
-        return new long[] {n, release(table, objects)};
+        return new long[] {n, r};
     }
 
     // ======== Tests ========
@@ -996,11 +950,11 @@ public final class Eviction {
                 Node k = p.getPointerNode(i);
                 if (k == null || !k.isIndexNode()) continue;
                 todo.add(k);
-                if (!(k instanceof KeyNode) || k.isCanonical()) continue;
+                if (!(k instanceof KeyNode)) continue;
                 for (int j = 0; j < k.getSize(); j++) {
                     Node v = k.getPointerNode(j);
-                    if (v != null && !v.isIndexNode() && table.getNode(v.getId()) == v) {
-                        return new Object[] {p, i, k, v};
+                    if (v instanceof ValueNode && !((ValueNode) v).isDelete()) {
+                        return new Object[] {p, i, k, v, j};
                     }
                 }
             }
@@ -1009,14 +963,14 @@ public final class Eviction {
     }
 
     /**
-     * An object that only the node table holds, a value: a reader's load put it into the
-     * node table (Cache3.pointerCreated enters values) and into a slot of a key node version
-     * that then leaves memory; the next sweep of every detachable object releases it. Before
-     * 2026-10-18 only index nodes were released so, and such values stayed in memory (found
-     * by the capacity controller's scan test, WP J7).
+     * Values are not in the node table (bergdb item 009, step 3a; 009-02, 4.8): a value a
+     * reader loads goes into its leaf's pointer only, and a sweep of every detachable object
+     * makes those pointers stream pointers again. (From 2026-10-18 to step 3a this test was
+     * of a value that only the node table held, after the key node version that had loaded
+     * it left memory; with handles no value is in the table.)
      */
     @Nano
-    public static void testTableOnlyValueReleased() {
+    public static void testValuesNotInTheTable() {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8()
@@ -1029,18 +983,15 @@ public final class Eviction {
         }
         for (int i = 0; i < 30; i++) DbUtil.get(db, "k" + i);       // loads, values too
         Object[] found = valueHeldBelow(db);
-        Assert.assertTrue("a value below a key node version", found != null);
-        Node p = (Node) found[0];
-        int i = (Integer) found[1];
-        Node k = (Node) found[2];
+        Assert.assertTrue("a value in a leaf's pointer", found != null);
         Node v = (Node) found[3];
-        synchronized (db.internal().getPointerLock(p, i)) {
-            p.setPointer(i, null, k.getSpos());     // the key node version leaves memory
-        }
+        Assert.assertTrue("not in the node table", db.internal().cache().getNode(v.getId()) == null);
         time += STEP;
         clock.setTime(time);
         db.execute(db.trans().build());             // an empty transaction, and its sweep
-        Assert.assertTrue("released", db.internal().cache().getNode(v.getId()) != v);
+        Node p = (Node) found[2];
+        int i = (Integer) found[4];
+        Assert.assertTrue("the value's pointer is a stream pointer", p.getPointee(i) != v);
         Assert.assertEquals("v" + 0, new String(DbUtil.get(db, "k0")));
         db.stop();
     }
@@ -1080,6 +1031,8 @@ public final class Eviction {
             r.check(true);
             shared += r.sharedValues;
         }
-        Assert.assertTrue("a value named by two slots", shared > 0);
+        // Until bergdb item 009, step 3a: a value named by two slots (shared > 0). Values
+        // are no longer in the node table, so two leaves that load a value get a copy each;
+        // a value is shared only where a split copies a pointer that holds it.
     }
 }

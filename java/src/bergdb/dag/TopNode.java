@@ -13,10 +13,12 @@ import bergdb.nanotest.Nano;
  * @author Frans Lundberg
  */
 public final class TopNode implements Node {
-    public final TopNode[] pointers;
-        // Backward pointers in skip list.
+    public final Handle[] pointers;
+        // Backward pointers in skip list: the handles of the top nodes they point to, or
+        // null (bergdb item 009, step 3a; before, the top node objects).
     public final long[] pointersPos;     
-        // stream pos when pointers[x] == null and accessTime when pointers[x] != null.
+        // The skip pointers' references, positions or vpos (since step 3a; before, access
+        // data while a pointer was a memory pointer).
     public final long[] pointersTime;
         // The rootTime of each skip pointer's target, cached here so that a search can choose
         // a pointer without following it (TopDs.findSuperRootAtTime); -1 for an unused slot.
@@ -27,8 +29,10 @@ public final class TopNode implements Node {
     public final short pointersLength;
         // Same as pointers.length.
     
-    public KeyNode rootPointer;    // pointer to current space root
-    public long rootPointerPos;    // stream pointer corresponding to rootPointer.
+    public Handle rootPointer;     // the handle of the space root, or null (009, step 3a)
+    public long rootPointerPos;    // the root pointer's reference
+    public Handle handle;
+        // The handle this object is in, or was in (bergdb item 009, step 3a; KeyNode.handle).
     public long rootTime;
     
     public final long topNodeId;
@@ -56,12 +60,14 @@ public final class TopNode implements Node {
      */
     public TopNode(long topNodeId, KeyNode rootPointer, long rootPointerPos, long rootTime,
             long spos) {
-        this.rootPointer = rootPointer;
-        this.rootPointerPos = rootPointerPos;
+        // A root object becomes its handle, with its position as the reference (bergdb item
+        // 009, step 3a); without one, rootPointerPos is the stream pointer's position.
+        this.rootPointer = rootPointer == null ? null : Handle.of(rootPointer);
+        this.rootPointerPos = rootPointer == null ? rootPointerPos : rootPointer.getSpos();
         this.rootTime = rootTime;
         
         final int h = height(topNodeId);
-        pointers = new TopNode[h];
+        pointers = new Handle[h];
         pointersPos = new long[h];
         pointersTime = new long[h];
         
@@ -175,7 +181,7 @@ public final class TopNode implements Node {
         out.println(indent + this.toString() + " -->");
         
         for (int i = pointersLength - 1; i >= 0; i--) {
-            topNode = pointers[i];
+            topNode = (TopNode) getPointerNode(i + 1);
             
             if (topNode == null) {
                 out.println(indent + "-->" + pointersPos[i]);
@@ -184,7 +190,7 @@ public final class TopNode implements Node {
             }
         }
         
-        KeyNode rootNode = this.rootPointer;
+        KeyNode rootNode = (KeyNode) getPointerNode(0);
         
         if (rootNode == null) {
             out.println(newIndent + "root node spos: " + rootPointerPos);
@@ -215,10 +221,9 @@ public final class TopNode implements Node {
     }
 
     public int getMemoryPointerCount() {
-        int count = rootPointer == null ? 0 : 1;
-        
-        for (int i = 0; i < pointersLength; i++) {
-            if (pointers[i] != null) {
+        int count = 0;
+        for (int i = 0; i < pointerCount; i++) {
+            if (getPointerNode(i) != null) {
                 count++;
             }
         }
@@ -270,83 +275,73 @@ public final class TopNode implements Node {
      */
     public final void getPointer(final int index, Pointer pointer) {
         pointer.index = index;
-        
-        final Node n = index == 0 ? rootPointer : pointers[index - 1];
-        if (n != null) {
-            pointer.node = n;
-            pointer.pos = index == 0 ? rootPointerPos : pointersPos[index - 1];
-            return;
-        }
-
         synchronized (this) {
-            if (index == 0) {
-                pointer.node = rootPointer;
-                pointer.pos = rootPointerPos;
-            } else {
-                pointer.node = pointers[index - 1];
-                pointer.pos = pointersPos[index - 1];
-            }
+            pointer.node = getPointerNode(index);
+            pointer.pos = getPointerPos(index);
         }
     }
     
-    /** See Node.getSerializedRef(). */
+    /** See Node.getSerializedRef() and Handle.serializedRef(): the record rule. */
     public final long getSerializedRef(int index) {
-        Pointer p = new Pointer();
-        getPointer(index, p);
-        return p.getSposForStream();
+        Pointee p;
+        long ref;
+        synchronized (this) {
+            p = getPointee(index);
+            ref = getPointerPos(index);
+        }
+        return Handle.serializedRef(p, ref);
     }
     
     public final long getPointerTime(int index) {
         return index == 0 ? rootTime : pointersTime[index - 1];
     }
     
+    /** See Node.getPointerNode(): the handle's object if it may serve the pointer. */
     public final Node getPointerNode(int index) {
-        return index == 0 ? rootPointer : pointers[index - 1];
+        Handle h = index == 0 ? rootPointer : pointers[index - 1];
+        if (h == null) return null;
+        Node o = h.obj;
+        return o != null && Handle.usable(o, getPointerPos(index)) ? o : null;
     }
     
     public final long getPointerPos(int index) {
         return index == 0 ? rootPointerPos : pointersPos[index - 1];
     }
     
-    public final void setPointer(int index, Node node, long spos) {
+    public final Pointee getPointee(int index) {
+        return index == 0 ? rootPointer : pointers[index - 1];
+    }
+    
+    public final void setPointee(int index, Pointee pointee) {
+        synchronized (this) {
+            if (index == 0) {
+                rootPointer = (Handle) pointee;
+            } else {
+                pointers[index - 1] = (Handle) pointee;
+            }
+        }
+    }
+    
+    public final void setRef(int index, long ref) {
+        synchronized (this) {
+            if (index == 0) {
+                rootPointerPos = ref;
+            } else {
+                pointersPos[index - 1] = ref;
+            }
+        }
+    }
+    
+    public final void setPointer(int index, Pointee pointee, long ref) {
         synchronized (this) {   // See getPointer().
             if (index == 0) {
-                rootPointer = (KeyNode) node;
-                rootPointerPos = spos;
+                rootPointer = (Handle) pointee;
+                rootPointerPos = ref;
             } else {
                 index -= 1;
-                pointers[index] = (TopNode) node;
-                pointersPos[index] = spos;
+                pointers[index] = (Handle) pointee;
+                pointersPos[index] = ref;
             }
-        }
-    }
-    
-    /**
-     * Sets the access data of a memory pointer, and leaves a stream pointer's position as it
-     * is; see KeyNode.setPointerAccessData() (bergdb item 001, WP R8, change 4: M23, M24;
-     * before 2026-10-17 it asserted a memory pointer and wrote always). The caller holds the
-     * pointer's lock.
-     */
-    public final void setPointerAccessData(int index, long accessData) {
-        if (index == 0) {
-            if (rootPointer != null) {
-                rootPointerPos = accessData;
-            }
-        } else {
-            index -= 1;
-            if (pointers[index] != null) {
-                pointersPos[index] = accessData;
-            }
-        }
-    }
-    
-    /** The access data of a memory pointer; Spos.NULL for a stream pointer. */
-    public final long getPointerAccessData(int index) {
-        if (index == 0) {
-            return rootPointer != null ? rootPointerPos : Spos.NULL;
-        } else {
-            index -= 1;
-            return pointers[index] != null ? pointersPos[index] : Spos.NULL;
         }
     }
     

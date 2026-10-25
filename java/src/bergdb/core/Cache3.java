@@ -3,8 +3,11 @@ package bergdb.core;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import bergdb.dag.Handle;
+import bergdb.dag.KeyNode;
 import bergdb.dag.Node;
 import bergdb.dag.Spos;
+import bergdb.dag.TopNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
@@ -19,14 +22,22 @@ import bergdb.nanotest.Nano;
  * maps under one lock of before took 11.6 ms). Until 2026-10-25 the maps' values were
  * CacheEntry objects with a reference count that nothing decremented (bergdb item 004-01,
  * section 9).</p>
- * 
+ *
+ * <p>Since bergdb item 009, step 3a, the maps hold handles (dag/Handle.java): the live handle
+ * of each index node that has one, and through it the node's one object. A memory pointer of
+ * an index node holds its pointee's handle; eviction kills a handle (evict) and nothing has
+ * to know which pointers hold it; a pointer that holds a dead handle finds the live one here
+ * by the id (liveOrNewHandle). One live handle per node id, so one object, and at most one
+ * canonical object, per node. Values have no handles and are not in the table (009-02,
+ * 4.8).</p>
+ *
  * @author Frans Lundberg
  */
 public class Cache3 {
     //
-    // Simple, non-optimal implementation to start with. 
+    // Simple, non-optimal implementation to start with.
     //
-    
+
     private static final long INITIAL_CACHE_SIZE = 10*1000;
 
     /** The node table is 2^MAP_BITS maps; mapIndex picks one by the node id. */
@@ -38,84 +49,74 @@ public class Cache3 {
     private long sizeIndicator;
     private long totalSize;     // total cache size estimation, in bytes
     private long putSize;
-    private final HashMap<Long, Node>[] maps;
-    
+    private final HashMap<Long, Handle>[] maps;
+
     /**
      * The access clock (bergdb item 001, WP R8, change 4; docs/level4-alignment.md, M23 and
      * M40): it advances by one at every node read from the stream (NodeCollection) and every
      * node the writer makes (Db), so in read-only workloads too. The access data that an
-     * operation writes into the memory pointers it follows is minus its value
-     * (Db.getAccessData, dag/AccessData.java), for the age policy of eviction (J7). A field of
-     * its own: before 2026-10-17 the access data was minus putSize, which nothing advances,
-     * so the constant -10,000; the clock starts there. Read and advanced without a lock.
+     * operation writes into the handles it follows (bergdb item 009, step 3a; before, into
+     * the memory pointers) is minus its value (Db.getAccessData, dag/AccessData.java), for the
+     * age policy of eviction (J7). A field of its own: before 2026-10-17 the access data was
+     * minus putSize, which nothing advances, so the constant -10,000; the clock starts there.
+     * Read and advanced without a lock.
      */
     private final AtomicLong accessClock = new AtomicLong(INITIAL_CACHE_SIZE);
 
     /** The resident registry's accounting (bergdb item 001, WP J1); see Residents. */
     private final Residents residents = new Residents();
 
-    /**
-     * Told in pointerCreated just before it takes the node table's lock; for tests only
-     * (bergdb item 005-09: EvictionReaderTester.testReleaseBeforeTheTableEntry).
-     */
-    interface EntryListener {
-        void beforeEntry(Node to);
-    }
 
-    /** See EntryListener. Null, and so doing nothing, unless a test sets it. */
-    static volatile EntryListener entryListener = null;
-
-    
     @SuppressWarnings("unchecked")
     public Cache3(Cache.DbInfo dbInfo) {
         assert dbInfo != null;
-        
+
         this.bigLock = new Object();
         this.dbInfo = dbInfo;
         this.totalSize = INITIAL_CACHE_SIZE;
         this.putSize = INITIAL_CACHE_SIZE;
         this.maps = new HashMap[1 << MAP_BITS];
-        
+
         for (int i = 0; i < maps.length; i++) {
-            maps[i] = new HashMap<Long, Node>();
+            maps[i] = new HashMap<Long, Handle>();
         }
-        
+
         synchronized (bigLock) {}
     }
-    
+
     /**
      * Sets the user-suggested size of the cache (in bytes).
      */
     public void setSizeIndicator(long sizeIndicator) {
         assert sizeIndicator > 0;
-        
+
         if (sizeIndicator < 4*1000000) {
             sizeIndicator = 4*1000000;
         }
-        
+
         synchronized (bigLock) {
             this.sizeIndicator = sizeIndicator;
         }
     }
-    
+
     public long getSizeIndicator() {
         synchronized (bigLock) {
             return sizeIndicator;
         }
     }
-    
+
     /**
      * Gets a lock object for one specific node: the lock of its map, which every change and
      * read of the node's entry takes (bergdb item 009, step 1b; before, one lock for the
      * whole table).
-     * 
+     *
      * @param id
      *      Node ID.
      */
     public Object getLock(long id) {
         return map(id);
     }
-    
+
     public long totalSize() {
         synchronized (bigLock) {
             return totalSize;
@@ -127,38 +128,55 @@ public class Cache3 {
         return residents;
     }
 
-    /**
-     * Object 'node' is released (bergdb item 001, WP J2 on; the Lean model's Mem.release):
-     * its canonical flag is cleared (M31) and the node table's entry goes if it names it,
-     * one step under the table's lock (bergdb item 005-09, see pointerCreated); the registry
-     * forgets it.
-     */
-    public void released(Node node) {
-        long id = node.getId();
+    /** The node's live handle, or null. */
+    public Handle liveHandle(long id) {
         synchronized (getLock(id)) {
-            node.setCanonical(false);       // No effect for a value node.
-            if (internalGet(id) == node) {
-                internalRemove(id);
-            }
+            return internalGet(id);
         }
-        residents.released(node);
     }
 
     /**
-     * The objects the node table names, for the audit (Audit) and the sweeps (J2 on), in the
-     * order of the maps and their bins, which follows the node ids (mapIndex), not the tree or
-     * the age. The sweeps' choices among equal candidates follow it (Eviction: the objects
-     * that only the table holds, memory pointers of the same age, the random schedule's
-     * draws); the records do not (EvictionInvariance). Each map under its own lock, in
-     * turn (bergdb item 009, step 1b): readers add entries meanwhile (the values they load,
-     * which count as canonical), as they did before between this list and the walk of a
-     * sweep.
+     * The node's live handle, made (with no object) if it has none: a pointer that holds no
+     * handle, or a dead one, resolves to it (009-02, 4.4, the slow path's step 1).
+     */
+    public Handle liveOrNewHandle(long id) {
+        synchronized (getLock(id)) {
+            Handle h = internalGet(id);
+            if (h == null) {
+                h = new Handle(id);
+                internalPut(id, h);
+            }
+            return h;
+        }
+    }
+
+    /**
+     * The live handles, for eviction's walks and the audit, in the order of the maps and their
+     * bins, which follows the node ids (mapIndex), not the tree or the age. Each map under its
+     * own lock, in turn: readers add handles meanwhile.
+     */
+    public java.util.List<Handle> handles() {
+        java.util.ArrayList<Handle> result = new java.util.ArrayList<Handle>();
+        for (HashMap<Long, Handle> m : maps) {
+            synchronized (m) {
+                result.addAll(m.values());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * The objects of the live handles, for the audit (Audit) and the walks (Residents), in the
+     * order of handles().
      */
     public java.util.List<Node> nodes() {
         java.util.ArrayList<Node> result = new java.util.ArrayList<Node>();
-        for (HashMap<Long, Node> m : maps) {
+        for (HashMap<Long, Handle> m : maps) {
             synchronized (m) {
-                result.addAll(m.values());
+                for (Handle h : m.values()) {
+                    Node o = h.obj;
+                    if (o != null) result.add(o);
+                }
             }
         }
         return result;
@@ -168,142 +186,182 @@ public class Cache3 {
     public long accessClock() {
         return accessClock.get();
     }
-    
+
     /** Advances the access clock by one; see accessClock. */
     public void tickAccessClock() {
         accessClock.incrementAndGet();
     }
-    
+
     public long putSize() {
         synchronized (bigLock) {
             return putSize;
         }
     }
-    
+
+    /**
+     * A pointer from 'from' to 'to' was made by the writer, or swizzled by a follow (Dag,
+     * TopDs, NodeCollection). An index node's handle is in the table since its object was made
+     * or installed; a value counts as resident from here (Residents; a value that two leaves
+     * hold is counted for each until the next resync, 009-02, 4.8).
+     */
     public void pointerCreated(Node from, int index, Node to) {
-        // The node table names canonical objects only (bergdb item 001, WP J1; the Lean model's
-        // Level 4 memory, docs/level4-alignment.md, 5.2; WP R8's change 3 for the loader): a
-        // memory slot to a snapshot, which a split copies (Dag.reportNewPointers), does not enter
-        // it. Before 2026-10-18 it did, when the table had no object for the node, and a newer
-        // snapshot replaced an older one; the audit found it.
-        //
-        // The flag is read again under the table's lock, where a release clears it (released):
-        // a reader's follow (NodeCollection.followStreamPointer) gets here without the write
-        // lock, and a sweep may release 'to' between the first read and the lock. Until
-        // 2026-10-20 only the first read was made, and the table got the released object back,
-        // a snapshot (bergdb item 005-09; EvictionReaderTester.testReleaseBeforeTheTableEntry).
-        if (!to.isCanonical()) {
-            return;
-        }
-        long id = to.getId();
-        Object lock = getLock(id);
-        
-        final EntryListener el = entryListener;
-        if (el != null) el.beforeEntry(to);
-        
-        synchronized (lock) {
-            if (!to.isCanonical()) {
-                return;
-            }
-            Node old = internalGet(id);
-            
-            if (old == null || (old != to && isBetter(to, old))) {
-                internalPut(id, to);
-                residents.added(to);
-            }
+        if (!to.isIndexNode()) {
+            residents.added(to);
         }
     }
-    
+
     /**
-     * Enters 'node' in the node table, unless the table has a better object for the
-     * node: a canonical object is never replaced; otherwise the newest version wins
-     * (docs/levels.md, level 2). Returns the table's object
-     * for the node after the call.
+     * Enters 'node', an object the writer or the startup made, as its node's object:
+     * canonical, in the node's live handle, made if it has none. A canonical object already
+     * there is kept (one canonical object per node); otherwise 'node' replaces the handle's
+     * object if it is better: canonical, or a newer version (docs/levels.md, level 2). Returns
+     * the handle's object after the call.
      */
     public Node register(Node node) {
         long id = node.getId();
-        
+
         synchronized (getLock(id)) {
-            Node old = internalGet(id);
-            
+            Handle h = internalGet(id);
+            if (h == null) {
+                h = handleOf(node);
+                if (h == null || h.id != id || h.isDead()) h = new Handle(id);
+                internalPut(id, h);
+            }
+            Node old = h.obj;
             if (old == null || (old != node && isBetter(node, old))) {
-                internalPut(id, node);
+                setHandle(node, h);
+                h.obj = node;
                 residents.added(node);
                 return node;
             }
-            
             return old;
         }
     }
-    
+
     /**
-     * Makes the node of 'node' canonical in the node table: the table's canonical object
-     * if there is one, else the newest of 'node' and the table's object, which is then
-     * marked canonical. Returns that object. Called when the writer reaches a node.
+     * Installs 'node', a version read from the stream, in its live handle 'h', unless the
+     * handle has a better object (canonical, or a newer version). The caller holds h's
+     * monitor (a load, 009-02, T7a). Returns the handle's object after the call.
      */
-    public Node makeCanonical(Node node) {
-        long id = node.getId();
-        
-        synchronized (getLock(id)) {
-            Node other = internalGet(id);
+    public Node install(Handle h, Node node) {
+        assert Thread.holdsLock(h);
+        Node old = h.obj;
+        if (old == null || (old != node && isBetter(node, old))) {
+            setHandle(node, h);
+            h.obj = node;
+            if (old != null) residents.released(old);
+            residents.added(node);
+            return node;
+        }
+        return old;
+    }
+
+    /**
+     * Makes the node's object canonical, for the writer (the Lean model's Mem.promote): the
+     * handle's canonical object if it has one, else the newest of 'node', the version the
+     * writer followed to, which is the node's latest (INV-SLOT), and the handle's object,
+     * which is then marked canonical. Returns that object. Called when the writer reaches a
+     * node, with h the node's live handle.
+     */
+    public Node makeCanonical(Handle h, Node node) {
+        synchronized (h) {
+            Node other = h.obj;
             Node result = node;
-            
+
             if (other != null && other != node) {
                 if (other.isCanonical() || other.getSpos() > node.getSpos()) {
                     result = other;
                 }
             }
-            
+
             result.setCanonical(true);
-            residents.promoted(result);
-            
             if (other != result) {
-                internalPut(id, result);
+                setHandle(result, h);
+                h.obj = result;
+                if (other != null) residents.released(other);
+                residents.added(result);
             }
-            
+            residents.promoted(result);
             return result;
         }
     }
-    
+
     /**
-     * True if 'node' should replace 'old' in the node table: never a canonical object,
-     * otherwise by a canonical object or a newer version.
+     * Evicts handle h's object (009-02, 4.7): h dies (unless a loader holds it: then false),
+     * its written position is set from a canonical object's, the object's canonical flag is
+     * cleared (as M31: a reader that holds the object may finish with it), the object leaves
+     * the handle and the handle the table. The caller holds Db.writeLock, between
+     * transactions, and has checked that the object may be evicted (Eviction.detachable).
+     */
+    public boolean evict(Handle h) {
+        synchronized (getLock(h.id)) {
+            Node o = h.obj;
+            if (!h.casState(Handle.LIVE, Handle.DEAD)) {
+                return false;
+            }
+            if (o != null && o.isCanonical()) {
+                long spos = o.getSpos();
+                if (Spos.isValid(spos) && !Spos.isVpos(spos)) h.writtenPos = spos;
+                o.setCanonical(false);
+            }
+            h.obj = null;
+            if (internalGet(h.id) == h) {
+                internalRemove(h.id);
+            }
+            if (o != null) residents.released(o);
+            return true;
+        }
+    }
+
+    /**
+     * True if 'node' should replace 'old' in a handle: never a canonical object, otherwise by
+     * a canonical object or a newer version.
      */
     private static boolean isBetter(Node node, Node old) {
-        if (!node.isIndexNode()) {
-            return false;       // Value nodes have one version.
-        }
-        
         if (old.isCanonical()) {
             assert !node.isCanonical() : "two canonical objects for node " + node.getId();
             return false;
         }
-        
+
         return node.isCanonical() || node.getSpos() > old.getSpos();
     }
-    
+
+    /** The handle an index node's object is in (KeyNode.handle, TopNode.handle), or null. */
+    static Handle handleOf(Node node) {
+        if (node instanceof KeyNode) return ((KeyNode) node).handle;
+        if (node instanceof TopNode) return ((TopNode) node).handle;
+        return null;
+    }
+
+    private static void setHandle(Node node, Handle h) {
+        if (node instanceof KeyNode) ((KeyNode) node).handle = h;
+        else if (node instanceof TopNode) ((TopNode) node).handle = h;
+    }
+
+    /** The object of the node's live handle, or null. */
     public Node getNode(long id) {
         synchronized (getLock(id)) {
-            return internalGet(id);
+            Handle h = internalGet(id);
+            return h == null ? null : h.obj;
         }
     }
-    
-    private void internalPut(long id, Node node) {
-        map(id).put(id, node);
+
+    private void internalPut(long id, Handle h) {
+        map(id).put(id, h);
     }
-    
-    private Node internalGet(long id) {
+
+    private Handle internalGet(long id) {
         return map(id).get(id);
     }
-    
+
     private void internalRemove(long id) {
         map(id).remove(id);
     }
-    
-    private HashMap<Long, Node> map(long id) {
+
+    private HashMap<Long, Handle> map(long id) {
         return maps[mapIndex(id)];
     }
-    
+
     /**
      * The map of node 'id': the top MAP_BITS bits of id times 2^64 divided by the golden
      * ratio (Fibonacci hashing), which depend on every bit of the id. HashMap takes the bin
@@ -319,9 +377,9 @@ public class Cache3 {
     static int mapIndex(long id) {
         return (int) ((id * 0x9E3779B97F4A7C15L) >>> (64 - MAP_BITS));
     }
-    
+
     // ======== Tests ========
-    
+
     /**
      * Regression test for a bug found 2026-10-13: node ids of 2^31 and more,
      * stream positions past 2.1 GB, gave a negative map index.
@@ -336,6 +394,26 @@ public class Cache3 {
             Assert.assertTrue(cache.getNode(id) == null);
             Assert.assertTrue(mapIndex(id) >= 0 && mapIndex(id) < 1 << MAP_BITS);
         }
+    }
+
+    /**
+     * One live handle per node id (bergdb item 009, step 3a): liveOrNewHandle makes it once;
+     * an evicted handle is dead, out of the table, and the next resolve makes a new one.
+     */
+    @Nano
+    public static void testOneLiveHandle() {
+        Cache3 cache = new Cache3(new Cache.DbInfo() {
+            public PointerLocks getPointerLocks() { return null; }
+        });
+        Handle h1 = cache.liveOrNewHandle(7);
+        Assert.assertTrue(h1 == cache.liveOrNewHandle(7));
+        Assert.assertTrue(h1 == cache.liveHandle(7));
+        Assert.assertTrue(cache.evict(h1));
+        Assert.assertTrue(h1.isDead());
+        Assert.assertTrue(cache.liveHandle(7) == null);
+        Handle h2 = cache.liveOrNewHandle(7);
+        Assert.assertTrue(h2 != h1 && !h2.isDead());
+        Assert.assertTrue(!cache.evict(h1));    // dead already
     }
 
     /**

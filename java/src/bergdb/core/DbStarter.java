@@ -3,6 +3,7 @@ package bergdb.core;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import bergdb.dag.Handle;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.GetData;
@@ -100,7 +101,7 @@ public class DbStarter {
         superRoot = (TopNode) n0;
         KeyNode keyNode = (KeyNode) n1;
         
-        superRoot.setPointer(0, keyNode, AccessData.DEFAULT_ACCESS_DATA);
+        superRoot.setPointer(0, Handle.of(keyNode), keyNode.getSpos());
         
         Cache3 nodeTable = db.internal().cache();
         superRoot.setCanonical(true);
@@ -242,7 +243,7 @@ public class DbStarter {
                 StoredNode storedPointee = posMap.get(p.pos);
                 if (storedPointee != null) {
                     Node pointee = storedPointee.getNode();
-                    node.setPointer(i, pointee, accessData);
+                    node.setPointer(i, Handle.pointeeOf(pointee), p.pos);
                 }
             }
         }

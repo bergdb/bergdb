@@ -68,14 +68,37 @@ public interface Node {
      */
     public void getPointer(int index, Pointer pointer);
     
+    /**
+     * The object that pointer i leads to without a read of the stream, or null (a stream
+     * pointer): a value; or the object of the pointer's handle, if the handle is live and the
+     * object may serve the pointer (Handle.usable; bergdb item 009, step 3a: the memory
+     * pointer of before, as the walks, the audit and the trace exporter see it).
+     */
     public Node getPointerNode(int index);
+    
+    /**
+     * Pointer i's reference: the position or vpos it named when it was made, loaded, or last
+     * resolved (since bergdb item 009, step 3a always this, never access data).
+     */
     public long getPointerPos(int index);
     
     /**
-     * Sets pointer node and spos (accessData) at a given pointer index.
-     * Caller should synchronize on "pointer lock" (Db.pointerLocks).
+     * What pointer i holds (bergdb item 009, step 3a): the pointee's handle, a value, or null
+     * (not followed yet, or a value unswizzled).
      */
-    public void setPointer(int index, Node node, long spos);
+    public Pointee getPointee(int index);
+    
+    /** Sets what pointer i holds, under the node's monitor (009-02, 3.4, C2). */
+    public void setPointee(int index, Pointee pointee);
+    
+    /** Sets pointer i's reference, under the node's monitor (009-02, 3.4, C2). */
+    public void setRef(int index, long ref);
+    
+    /**
+     * Sets what pointer i holds and its reference, under the node's monitor. Caller should
+     * synchronize on "pointer lock" (Db.pointerLocks) after startup.
+     */
+    public void setPointer(int index, Pointee pointee, long ref);
     
     /**
      * Calls visitor.visit().
@@ -106,9 +129,6 @@ public interface Node {
      * Like print(), but with indentation.
      */
     public String print(String indent);
-    
-    public void setPointerAccessData(int pointerIndex, long time);
-    public long getPointerAccessData(int pointerIndex);
     
     /**
      * Returns an estimate of the size of the node object when stored in memory; when stored

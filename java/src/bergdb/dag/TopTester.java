@@ -30,9 +30,6 @@ public class TopTester {
 
             if (Pointer.isMem(pointerNode)) {
                 result = pointerNode;
-                if (op.accessData != AccessData.ZERO) {
-                    predecessor.setPointerAccessData(pointerIndex, op.accessData);
-                }
                 op.pointerListener.pointerFollowed(predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
             
             } else {
@@ -206,11 +203,11 @@ public class TopTester {
         top2.setSpos(300);
 
         // The same top node 2, with its skip pointers as stream pointers.
-        TopNode streamTop2 = new TopNode(top2.topNodeId, top2.rootPointer,
+        TopNode streamTop2 = new TopNode(top2.topNodeId, (KeyNode) top2.rootPointer.obj,
                 top2.rootPointerPos, top2.rootTime, top2.spos);
         for (int i = 0; i < top2.pointersLength; i++) {
-            TopNode p = top2.pointers[i];
-            streamTop2.setPointer(i + 1, null, p == null ? top2.pointersPos[i] : p.getSpos());
+            Handle p = top2.pointers[i];
+            streamTop2.setPointer(i + 1, null, p == null ? top2.pointersPos[i] : p.obj.getSpos());
             streamTop2.pointersTime[i] = top2.pointersTime[i];
         }
         TopDs streamDs = new TopDs(streamTop2);
@@ -222,8 +219,8 @@ public class TopTester {
 
         Assert.assertEquals(a.pointersLength, b.pointersLength);
         for (int i = 0; i < a.pointersLength; i++) {
-            long aPos = a.pointers[i] == null ? a.pointersPos[i] : a.pointers[i].getSpos();
-            long bPos = b.pointers[i] == null ? b.pointersPos[i] : b.pointers[i].getSpos();
+            long aPos = a.getSerializedRef(i + 1);
+            long bPos = b.getSerializedRef(i + 1);
             Assert.assertEquals("pointer " + i + ", position", aPos, bPos);
             Assert.assertEquals("pointer " + i + ", time", a.pointersTime[i], b.pointersTime[i]);
         }

@@ -106,7 +106,7 @@ public class A2A3Check2 {
         }
         List<Node> result = new ArrayList<Node>();
         for (int i : last.values()) {
-            Node child = k.pointers[i];
+            Node child = k.getPointerNode(i);
             if (child == null) throw new IllegalStateException("no memory pointer");
             result.add(child);
         }
@@ -121,7 +121,7 @@ public class A2A3Check2 {
         if (top == null) return r;
         r.add(top);
         Deque<Node> stack = new ArrayDeque<Node>();
-        stack.push(top.rootPointer);
+        stack.push(top.getPointerNode(0));
         while (!stack.isEmpty()) {
             Node x = stack.pop();
             if (!r.add(x)) continue;
@@ -140,14 +140,15 @@ public class A2A3Check2 {
             KeyNode k = (KeyNode) x;
             for (int i = 0; i < k.size; i++) {
                 if (Klong.getType(k.klongs[i]) != Klong.TYPE_KEY) continue;
-                Node child = k.pointers[i];
+                Node child = k.getPointerNode(i);
                 if (child == null) throw new IllegalStateException("no memory pointer");
                 result.add(child);
             }
         } else if (x instanceof TopNode) {
             TopNode t = (TopNode) x;
-            result.add(t.rootPointer);
-            for (TopNode older : t.pointers) {
+            result.add(t.getPointerNode(0));
+            for (int oi = 1; oi < t.getSize(); oi++) {
+                Node older = t.getPointerNode(oi);
                 if (older != null) result.add(older);
             }
         }
@@ -158,7 +159,7 @@ public class A2A3Check2 {
     static Set<Node> liveSet(Node x, long t) {
         Set<Node> result = idSet();
         if (x instanceof KeyNode) result.addAll(liveChildren((KeyNode) x, t));
-        else if (x instanceof TopNode) result.add(((TopNode) x).rootPointer);
+        else if (x instanceof TopNode) result.add(((TopNode) x).getPointerNode(0));
         return result;
     }
 
@@ -215,14 +216,15 @@ public class A2A3Check2 {
                     continue;
                 }
                 if (Klong.getType(klong) != Klong.TYPE_KEY) continue;
-                Node child = k.pointers[i];
+                Node child = k.getPointerNode(i);
                 if (child == null) throw new IllegalStateException("no memory pointer");
                 result.add(child);
             }
         } else if (x instanceof TopNode) {
             TopNode tn = (TopNode) x;
-            result.add(tn.rootPointer);
-            for (TopNode older : tn.pointers) {
+            result.add(tn.getPointerNode(0));
+            for (int oi = 1; oi < tn.getSize(); oi++) {
+                Node older = tn.getPointerNode(oi);
                 if (older != null) result.add(older);
             }
         }
@@ -245,15 +247,16 @@ public class A2A3Check2 {
                 }
                 if (Klong.getType(klong) != Klong.TYPE_KEY) continue;
                 if (createdNow || time == tt) {
-                    Node child = k.pointers[i];
+                    Node child = k.getPointerNode(i);
                     if (child == null) throw new IllegalStateException("no memory pointer");
                     result.add(child);
                 }
             }
         } else if (x instanceof TopNode && createdNow) {
             TopNode tn = (TopNode) x;
-            result.add(tn.rootPointer);
-            for (TopNode older : tn.pointers) {
+            result.add(tn.getPointerNode(0));
+            for (int oi = 1; oi < tn.getSize(); oi++) {
+                Node older = tn.getPointerNode(oi);
                 if (older != null) result.add(older);
             }
         }
@@ -322,7 +325,7 @@ public class A2A3Check2 {
         gd.pointerFollower = FOLLOWER;
         TopNode top = dag.getTopDs().findSuperRootAtTime(t, gd);
         if (top == null) return result;
-        boolean below = mark(top.rootPointer, t, changed, result, idSet());
+        boolean below = mark(top.getPointerNode(0), t, changed, result, idSet());
         if (below || changed.contains(top)) result.add(top);
         return result;
     }

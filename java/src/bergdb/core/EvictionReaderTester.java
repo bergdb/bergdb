@@ -14,6 +14,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import bergdb.dag.Pointee;
+import bergdb.dag.Handle;
 import bergdb.dag.AccessData;
 import bergdb.dag.GetMany;
 import bergdb.dag.KeyNode;
@@ -98,43 +100,48 @@ public class EvictionReaderTester {
     }
 
     /**
-     * An access-data update that a reader makes after an unswizzle (it saw the memory slot
-     * before) leaves the position the unswizzle wrote: a key node's slot, a top node's root
-     * slot and a skip slot (R8's change 4, M23; Q8).
+     * Evicting a handle changes no record (bergdb item 009, step 3a; 009-02, 4.6): for a key
+     * node's pointers, a top node's root pointer and its skip pointers, the reference a
+     * record would get is the same before and after the pointee's handle dies, its object's
+     * position, and the reads are those of the database without eviction. (Until step 3a
+     * this test was of the access data that a reader wrote after an unswizzle; with handles
+     * a follow writes into the pointee's handle, never into the pointer.)
      */
     @Nano
-    public static void testAccessDataKeepsThePosition() {
+    public static void testEvictionKeepsTheRecords() {
         MemoryStream s1 = new MemoryStream(), s2 = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db ref = start(s1, clock, Eviction.Schedule.NONE, 0);
         Db db = start(s2, clock, Eviction.Schedule.NONE, 0);
         load(ref, db, clock, 60, 30, 1);
         db.sync(SyncLevel.STRONG);
-        TopNode top = db.internal().superRoot();
+        Db.Internal in = db.internal();
+        TopNode top = in.superRoot();
         int checked = 0;
         List<Object[]> slots = new ArrayList<Object[]>();
         slots.add(new Object[] {top, 0});
         for (int i = 1; i < top.getSize(); i++) slots.add(new Object[] {top, i});
-        KeyNode root = top.rootPointer;
+        KeyNode root = (KeyNode) top.getPointerNode(0);
         for (int i = 0; i < root.size; i++) slots.add(new Object[] {root, i});
         for (Object[] s : slots) {
             Node x = (Node) s[0];
             int i = (Integer) s[1];
             Node c = x.getPointerNode(i);
-            if (c == null || c.isDirty() || bergdb.dag.Spos.isVpos(c.getSpos())) continue;
-            long pos = c.getSpos();
-            synchronized (db.internal().getPointerLock(x, i)) {
-                x.setPointer(i, null, pos);
+            if (c == null || !c.isIndexNode() || c.isDirty() || bergdb.dag.Spos.isVpos(c.getSpos())) continue;
+            if (!(x.getPointee(i) instanceof Handle)) continue;
+            Handle h = (Handle) x.getPointee(i);
+            long before = x.getSerializedRef(i);
+            Assert.assertEquals(c.getSpos(), before);
+            synchronized (in.getWriteLock()) {
+                if (!Eviction.detachable(c, in.superRoot(), in.newestWrittenTop())) continue;
+                Assert.assertTrue("evicted", in.cache().evict(h));
             }
-            x.setPointerAccessData(i, AccessData.DEFAULT_ACCESS_DATA - 77);
-            Assert.assertEquals(pos, x.getPointerPos(i));
+            Assert.assertTrue(h.isDead() && h.obj == null && !c.isCanonical());
+            Assert.assertEquals(before, x.getSerializedRef(i));
             Assert.assertTrue(x.getPointerNode(i) == null);
-            synchronized (db.internal().getPointerLock(x, i)) {
-                x.setPointer(i, c, AccessData.DEFAULT_ACCESS_DATA);
-            }
             checked++;
         }
-        Assert.assertTrue("slots checked", checked >= 3);
+        Assert.assertTrue("pointers checked", checked >= 3);
         assertSameReads(ref, db, 30, new ArrayList<Long>());
     }
 
@@ -202,18 +209,17 @@ public class EvictionReaderTester {
     }
 
     /**
-     * The race of a reader and a release, its outcome (Q8): a reader takes a canonical object
-     * from the node table for a stream slot (NodeCollection.followStreamPointer, step 3);
-     * before it puts the object into the slot (step 4), eviction releases it: the node
-     * table's entry goes and its canonical flag is cleared; then the reader puts it into the
-     * slot. The steps are made here one after the other. The object is the version at its
-     * position, its node's latest, so the slot is right (INV-SLOT): reads through it are
-     * right, the audit passes, and the writer makes the object canonical again when it
-     * follows the slot, with the same records as without eviction. The accounting misses the
-     * object until the next sweep (Residents.resync).
+     * A reader and an eviction (Q8, with handles; bergdb item 009, step 3a): a reader takes
+     * a canonical object from its node's live handle for a pointer that holds nothing
+     * (NodeCollection.followStreamPointer, step 4); before it puts the handle into the pointer
+     * (step 5), eviction kills the handle; then the reader puts the dead handle into the
+     * pointer. The steps are made here one after the other. The object is the version at
+     * its position, its node's latest, so the reader's answers are right; the pointer holds
+     * a dead handle, which the next follow resolves to a new live one by the node id; the
+     * audit passes; and the writer goes on with the records it writes without eviction.
      */
     @Nano
-    public static void testReleasedObjectPutIntoASlot() {
+    public static void testDeadHandleInAPointer() {
         int done = 0;
         for (int attempt = 0; attempt < 4; attempt++) {
             Pair w = new Pair(attempt);
@@ -225,80 +231,74 @@ public class EvictionReaderTester {
             Node c = (Node) cand[2];
             Db.Internal in = w.db.internal();
             Object lock = in.getPointerLock(p, i);
+            long ref = p.getSerializedRef(i);
 
             synchronized (lock) {
-                p.setPointer(i, null, c.getSpos());         // c: held by the node table only
+                p.setPointer(i, null, c.getSpos());         // the pointer holds nothing
             }
-            Node got = in.cache().getNode(c.getId());        // the reader's step 3
-            Assert.assertTrue(got == c && got.isCanonical());
-            in.evictNow(Eviction.Schedule.EVERY, 1);         // the release
-            Assert.assertTrue("released", !c.isCanonical() && in.cache().getNode(c.getId()) != c);
+            Handle h = in.cache().liveHandle(c.getId());     // the reader's step 3 and 4
+            Assert.assertTrue(h != null && h.obj == c && c.isCanonical());
+            in.evictNow(Eviction.Schedule.EVERY, 1);         // the eviction
+            Assert.assertTrue("evicted", h.isDead() && !c.isCanonical()
+                    && in.cache().liveHandle(c.getId()) == null);
             boolean pResident = Residents.isPinned(p, in.superRoot());
-            synchronized (lock) {                            // the reader's step 4
-                if (p.getPointerNode(i) == null) p.setPointer(i, got, AccessData.DEFAULT_ACCESS_DATA);
+            synchronized (lock) {                            // the reader's step 5
+                if (p.getPointee(i) == null) p.setPointee(i, h);
             }
+            Assert.assertEquals(ref, p.getSerializedRef(i));
             List<String> audit = Audit.check(w.db);
             Assert.assertTrue(audit.toString(), audit.isEmpty());
             assertSameReads(w.ref, w.db, w.keys, w.times);
             w.goOn();
             if (pResident) done++;
         }
-        Assert.assertTrue("a pinned parent's slot (" + done + ")", done > 0);
+        Assert.assertTrue("a pinned parent's pointer (" + done + ")", done > 0);
     }
 
     /**
-     * The race of a reader's entry and a release (bergdb item 005-09): a reader follows a
-     * stream slot to a canonical object that only the node table holds
-     * (NodeCollection.followStreamPointer, steps 3 and 4), and eviction releases the object
-     * just before the reader's Cache3.pointerCreated takes the table's lock. Made
-     * deterministic here: the hook (Cache3.EntryListener) runs a sweep of every detachable
-     * object in the reader's thread, which holds the slot's pointer lock (reentrant). The
-     * table must not get the released object back. Until 2026-10-20 pointerCreated read the
-     * canonical flag before it took the lock and entered the object, by then a snapshot, and
-     * the audit failed (INV-CAN: the node table names a snapshot); testReaderPausedInsideAFollow
-     * met it now and then, when a slow sweep was still running as the reader went on.
+     * A pointer that holds a dead handle is resolved again by its node's id (bergdb item
+     * 009, step 3a; 009-02, 4.4, the slow path's step 1): every pointer of the current tree
+     * holds a dead handle after an eviction of every detachable object; reads through them
+     * load the nodes again into new live handles, which the pointers then hold, and the
+     * references a record would get stay the same. (Until step 3a this test was of the race
+     * of a reader's node table entry and a release, which handles do not have: the table is
+     * not entered on a follow.)
      */
     @Nano
-    public static void testReleaseBeforeTheTableEntry() {
-        int tries = 0;
-        for (int attempt = 0; attempt < 4; attempt++) {
-            final Pair w = new Pair(attempt);
-            List<Object[]> cs = candidates(w.db);
-            Assert.assertTrue("candidates", !cs.isEmpty());
-            Object[] cand = cs.get(attempt % cs.size());
-            Node p = (Node) cand[0];
-            int i = (Integer) cand[1];
-            final Node c = (Node) cand[2];
-            synchronized (w.db.internal().getPointerLock(p, i)) {
-                p.setPointer(i, null, c.getSpos());         // c: held by the node table only
-            }
-
-            final AtomicBoolean released = new AtomicBoolean(false);
-            Cache3.entryListener = new Cache3.EntryListener() {
-                public void beforeEntry(Node to) {
-                    if (to == c && released.compareAndSet(false, true)) {
-                        w.db.internal().evictNow(Eviction.Schedule.EVERY, 1);
-                    }
-                }
-            };
-            try {
-                for (int k = 0; k < w.keys; k++) {
-                    Assert.assertTrue("get(k" + k + ")", Arrays.equals(DbUtil.get(w.ref, "k" + k),
-                            DbUtil.get(w.db, "k" + k)));
-                }
-            } finally {
-                Cache3.entryListener = null;
-            }
-            // The lookups pass the slot unless it is an old entry's.
-            if (released.get()) {
-                tries++;
-                Assert.assertTrue("released", !c.isCanonical());
-            }
-            List<String> audit = Audit.check(w.db);
-            Assert.assertTrue(audit.toString(), audit.isEmpty());
-            w.goOn();
+    public static void testDeadHandlesResolvedAgain() {
+        Pair w = new Pair(5);
+        Db.Internal in = w.db.internal();
+        List<Object[]> cs = candidates(w.db);
+        Assert.assertTrue("candidates", !cs.isEmpty());
+        long[] refs = new long[cs.size()];
+        Handle[] olds = new Handle[cs.size()];
+        for (int j = 0; j < cs.size(); j++) {
+            Node p = (Node) cs.get(j)[0];
+            int i = (Integer) cs.get(j)[1];
+            refs[j] = p.getSerializedRef(i);
+            olds[j] = (Handle) p.getPointee(i);
         }
-        Assert.assertTrue("tried", tries > 0);
+        in.evictNow(Eviction.Schedule.EVERY, 1);
+        int dead = 0;
+        for (Handle h : olds) if (h != null && h.isDead()) dead++;
+        Assert.assertTrue("dead handles", dead > 0);
+        assertSameReads(w.ref, w.db, w.keys, w.times);
+        int resolved = 0;
+        for (int j = 0; j < cs.size(); j++) {
+            Node p = (Node) cs.get(j)[0];
+            int i = (Integer) cs.get(j)[1];
+            if (olds[j] == null || !olds[j].isDead()) continue;
+            Pointee now = p.getPointee(i);
+            if (now != olds[j]) {
+                Assert.assertTrue("a live handle", now instanceof Handle && !((Handle) now).isDead());
+                resolved++;
+            }
+            Assert.assertEquals("reference of " + j, refs[j], p.getSerializedRef(i));
+        }
+        Assert.assertTrue("resolved again", resolved > 0);
+        List<String> audit = Audit.check(w.db);
+        Assert.assertTrue(audit.toString(), audit.isEmpty());
+        w.goOn();
     }
 
     /**

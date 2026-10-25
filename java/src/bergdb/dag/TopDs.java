@@ -68,7 +68,7 @@ public class TopDs {
             // with the same time. The super root was created by this transaction, so it
             // is not yet written and no reader uses its root pointer (readers have
             // lookup time < time). Update it instead of creating a new top node.
-            superRoot.setPointer(0, newRoot, accessData);
+            superRoot.setPointer(0, Handle.of(newRoot), newRoot.getSpos());
             pointerCreationListener.pointerCreated(superRoot, 0, newRoot);
             return;
         }
@@ -84,45 +84,38 @@ public class TopDs {
         nodeChangeListener.topNodeCreated(newSuperRoot);
         nodeChangeListener.topNodeReplaced(superRoot);  // it existed before this transaction
         pointerCreationListener.pointerCreated(newSuperRoot, 0, newRoot);
-        Pointer inherited = new Pointer();
         
         for (int i = 0; i < h; i++) {
             if ((id & TopNode.power2(i)) != 0) {
                 assert superRoot != null;
                 assert superRoot.pointers != null;
                 
-                TopNode pointer = null;
-                long pointerPos = Spos.NULL;
+                Pointee inherited = null;
+                long inheritedRef = Spos.NULL;
                 
                 if (i < superRoot.pointersLength) {
-                    superRoot.getPointer(i + 1, inherited);
-                    pointer = (TopNode) inherited.node;
-                    pointerPos = inherited.pos;
+                    synchronized (superRoot) {          // a coherent pair
+                        inherited = superRoot.getPointee(i + 1);
+                        inheritedRef = superRoot.getPointerPos(i + 1);
+                    }
                 }
 
-                if (pointer == null && pointerPos != Spos.NULL) {
-                    // A stream pointer, as after a restart: inherited like a memory
-                    // pointer, so that the skip list does not depend on the pointer form.
-                    newSuperRoot.pointers[i] = null;
-                    newSuperRoot.pointersPos[i] = pointerPos;
+                if (inherited != null || inheritedRef != Spos.NULL) {
+                    // Inherited as it is, its handle and its reference (bergdb item 009, step
+                    // 3a; before, a memory pointer as a memory pointer, a stream pointer as a
+                    // stream pointer), so that the skip list does not depend on the pointer
+                    // form. The time is the target's root time, cached.
+                    newSuperRoot.pointers[i] = (Handle) inherited;
+                    newSuperRoot.pointersPos[i] = inheritedRef;
                     newSuperRoot.pointersTime[i] = superRoot.pointersTime[i];
                     continue;
                 }
                 
-                if (pointer == null) {
-                    pointer = superRoot;
-                }
-                
-                newSuperRoot.pointers[i] = pointer;
-                if (pointer == null) {
-                    newSuperRoot.pointersTime[i] = -1;
-                    newSuperRoot.pointersPos[i] = Spos.NULL;
-                } else {
-                    newSuperRoot.pointersTime[i] = pointer.rootTime;
-                    newSuperRoot.pointersPos[i] = accessData;
-                    
-                    pointerCreationListener.pointerCreated(newSuperRoot, i + 1, pointer);
-                }
+                // The super root lacks the skip pointer: the new one names the super root.
+                newSuperRoot.pointers[i] = Handle.of(superRoot);
+                newSuperRoot.pointersTime[i] = superRoot.rootTime;
+                newSuperRoot.pointersPos[i] = superRoot.getSpos();
+                pointerCreationListener.pointerCreated(newSuperRoot, i + 1, superRoot);
             }
         }
         
@@ -214,7 +207,7 @@ public class TopDs {
         p.reset();
         
         for (int i = n.pointersLength - 1; i >= 0; i--) {
-            TopNode top = n.pointers[i];
+            TopNode top = (TopNode) n.getPointerNode(i + 1);
             if (Pointer.isNull(top, n.pointersPos[i])) {
                 continue;
             }
@@ -233,7 +226,7 @@ public class TopDs {
         final int pointersLength = n.pointersLength;
         
         for (int i = 0; i < pointersLength; i++) {
-            TopNode top = n.pointers[i];
+            TopNode top = (TopNode) n.getPointerNode(i + 1);
             
             if (Pointer.isNull(top, n.pointersPos[i])) {
                 continue;
