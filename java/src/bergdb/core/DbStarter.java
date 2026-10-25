@@ -677,8 +677,8 @@ public class DbStarter {
             
             for (int i = 0; i < k.size; i++) {
                 long klong = k.klongs[i];
-                if (Klong.isKey(klong) && k.pointers[i] == null) {
-                    long pos = k.pos[i];
+                if (Klong.isKey(klong) && k.getPointerNode(i) == null) {
+                    long pos = k.getPointerPos(i);
                     if (Spos.isNull(pos) || Spos.isVpos(pos)) {
                         throw new StreamFormatException("Unexpected stream pointer from KeyNode, was " 
                                 + pos + ", index " + i + ", node: " + node);

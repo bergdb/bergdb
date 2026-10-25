@@ -80,6 +80,11 @@ public final class ValueNode implements Node {
     /**
      * Returns the stream position, spos, of the node.
      */
+    /** A value node has no pointers; see Node.getSerializedRef(). */
+    public final long getSerializedRef(int index) {
+        throw new UnsupportedOperationException("a value node has no pointers");
+    }
+    
     public final long getSpos() {
         return spos;
     }

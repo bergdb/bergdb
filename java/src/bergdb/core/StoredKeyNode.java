@@ -69,11 +69,8 @@ public class StoredKeyNode implements StoredNode {
         System.arraycopy(node.klongs, 0, buffer, offset, sz);
         offset += sz;
         
-        Pointer p = new Pointer();
-        
         for (int i = 0; i < sz; i++) {
-            node.getPointer(i, p);
-            buffer[offset++] = p.getSposForStream();
+            buffer[offset++] = node.getSerializedRef(i);
         }
         
         long checksum = NodeChecksum.sum(buffer, firstOffset, offset - firstOffset);

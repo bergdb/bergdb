@@ -289,6 +289,13 @@ public final class TopNode implements Node {
         }
     }
     
+    /** See Node.getSerializedRef(). */
+    public final long getSerializedRef(int index) {
+        Pointer p = new Pointer();
+        getPointer(index, p);
+        return p.getSposForStream();
+    }
+    
     public final long getPointerTime(int index) {
         return index == 0 ? rootTime : pointersTime[index - 1];
     }

@@ -87,6 +87,14 @@ public interface Node {
      * This method is used for assertions and testing in general.
      */
     public int getMemoryPointerCount();
+
+    /**
+     * The reference that pointer i is written with into a record: a memory pointer's
+     * pointee's position (or vpos), a stream pointer's position; Spos.NULL for a null
+     * pointer (bergdb item 009, step 1d: the one place that decides it). Read as a coherent
+     * pair. A value node has no pointers.
+     */
+    public long getSerializedRef(int index);
     
     /**
      * Returns multi-line print of the state of this node.

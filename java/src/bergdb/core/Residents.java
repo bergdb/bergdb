@@ -190,15 +190,10 @@ public final class Residents {
             Node x = todo.poll();
             if (!seen.add(x)) continue;
             order.add(x);
-            if (x instanceof TopNode) {
-                TopNode t = (TopNode) x;
-                if (t.rootPointer != null) todo.add(t.rootPointer);
-                for (TopNode z : t.pointers) if (z != null) todo.add(z);
-            } else if (x instanceof KeyNode) {
-                KeyNode k = (KeyNode) x;
-                int size = k.size;
+            if (x.isIndexNode()) {
+                int size = x.getSize();
                 for (int i = 0; i < size; i++) {
-                    Node c = k.pointers[i];
+                    Node c = x.getPointerNode(i);
                     if (c != null) todo.add(c);
                 }
             }

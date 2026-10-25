@@ -262,6 +262,13 @@ public class KeyNode implements Node {
         }
     }
     
+    /** See Node.getSerializedRef(). */
+    public final long getSerializedRef(int index) {
+        Pointer p = new Pointer();
+        getPointer(index, p);
+        return p.getSposForStream();
+    }
+    
     /** The access data of a memory pointer; Spos.NULL for a stream pointer. */
     public final long getPointerAccessData(int pointerIndex) {
         return pointers[pointerIndex] != null ? pos[pointerIndex] : Spos.NULL;

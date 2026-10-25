@@ -497,7 +497,7 @@ public class StoredTrans {
                     if (Klong.getType(klong) == Klong.TYPE_KEY) {
                         keyNode.getPointer(j, pointer);     // A coherent pair.
                         Node pointee = pointer.node;
-                        long spos = pointer.getSposForStream();
+                        long spos = keyNode.getSerializedRef(j);
                         
                         if (!Spos.isValid(spos)) {
                             String message = "Bad stream pointer of KeyNode, index " + j + ", spos: " + spos 

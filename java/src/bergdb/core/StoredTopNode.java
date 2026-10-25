@@ -218,16 +218,13 @@ public class StoredTopNode implements StoredNode {
         // spos value for the pointers
 
         // Coherent pairs (node, pos): a reader can replace a stream pointer by a memory
-        // pointer at any time (TopNode.getPointer()).
-        Pointer p = new Pointer();
-        node.getPointer(0, p);
-        long spos = p.getSposForStream();
+        // pointer at any time (TopNode.getPointer(), in getSerializedRef()).
+        long spos = node.getSerializedRef(0);
         
         buffer[offset++] = spos;
 
         for (int i = 0; i < node.pointersLength; i++) {
-            node.getPointer(i + 1, p);
-            spos = p.getSposForStream();
+            spos = node.getSerializedRef(i + 1);
             buffer[offset++] = spos;
 
             long time = spos == Spos.NULL ? -1 : node.pointersTime[i];

@@ -1205,7 +1205,7 @@ public class Dag {
     private void reportNewPointers(KeyNode node, PointerCreatedListener listener) {
         int size = node.size;
         for (int i = 0; i < size; i++) {
-            Node pointee = node.pointers[i];
+            Node pointee = node.getPointerNode(i);
             if (pointee != null) {
                 listener.pointerCreated(node, i, pointee);
             }
