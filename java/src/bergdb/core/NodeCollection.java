@@ -34,7 +34,16 @@ import bergdb.stream.MemoryStream;
  * <p>Since 2026-10-12 (docs/levels.md, level 2), the cache is the node table 
  * shared with Db: one canonical object per node, and Rule R for pointers followed into 
  * the stream. This object is the follower for readers; writer() is the follower for 
- * the writer. Following a memory pointer is the same for readers as before.</p>
+ * the writer.</p>
+ *
+ * <p>Since bergdb item 009 (items/009-handles/02-implementation-plan.md, 4.4), a pointer to
+ * an index node holds the node's handle (dag/Handle.java): a follow takes the handle's
+ * object if it may serve the pointer (Handle.usable), without a lock (step 3c; the barriers
+ * of 02, 3.4); else the slow path resolves the pointer to the node's live handle by the id,
+ * with the reference raised to the newer of the pointer's after Rule R and its dead
+ * handle's written position (written back into the pointer: no record changes), and loads
+ * that version into the handle under its monitor, so that two readers do not read the same
+ * node (T7a). A pointer to a value holds the value (Pointee).</p>
  * 
  * @author Frans Lundberg
  */
@@ -46,7 +55,6 @@ public class NodeCollection implements PointerFollower {
     
     private NodeStream nodeStream;
     private Cache3 cache;
-    private PointerLocks pointerLocks;
     private final PointerFollower writer = new WriterFollower();
     private volatile StartupSection section;
     
@@ -132,7 +140,6 @@ public class NodeCollection implements PointerFollower {
     public NodeCollection(Cache.DbInfo dbInfo, NodeStream nodeStream, Cache3 nodeTable) {
         this.nodeStream = nodeStream;
         this.cache = nodeTable;
-        this.pointerLocks = dbInfo.getPointerLocks();
     }
     
     /**
@@ -414,7 +421,7 @@ public class NodeCollection implements PointerFollower {
             ref = newerPos(ref, handle.writtenPos);
         }
         if (ref != pointerPos && !isMaintenance) {
-            predecessor.setRef(pointerIndex, ref);
+            predecessor.raiseRef(pointerIndex, ref);    // never lowered (step 3d)
         }
 
         // 3. The node's live handle. A maintenance read makes none.
@@ -483,11 +490,21 @@ public class NodeCollection implements PointerFollower {
             cache.dropIfEmpty(live);
         }
 
-        // 5. Swizzle: the live handle into the pointer.
+        // 5. Swizzle: the live handle into the pointer. A reader's swizzle replaces only what
+        //    it read there (Node.swizzle; bergdb item 009, step 3d): another follow or the
+        //    writer may have put a newer handle there since, whose written position a dead
+        //    handle of this follow must not hide (EvictionReaderTester's readers under the
+        //    capacity controller found the lost update: stale reads). Before the swizzle,
+        //    step 2 raised the reference to the written position of the handle it replaces.
+        //    The writer's swizzle always replaces: its handle holds the canonical object.
 
         if (!isMaintenance && live != null && op.cachePolicy.shouldCache(result)
                 && (!cutBack || isWriter) && predecessor.getPointee(pointerIndex) != live) {
-            predecessor.setPointee(pointerIndex, live);
+            if (isWriter) {
+                predecessor.setPointee(pointerIndex, live);
+            } else {
+                predecessor.swizzle(pointerIndex, handle, live);
+            }
         }
 
         // 6. The canonical object, for the writer.
@@ -759,10 +776,7 @@ public class NodeCollection implements PointerFollower {
     }
     
     private static Cache.DbInfo testDbInfo() {
-        return new Cache.DbInfo() {
-            final PointerLocks locks = new PointerLocks();
-            public PointerLocks getPointerLocks() { return locks; }
-        };
+        return new Cache.DbInfo() {};
     }
     
     /** A key node version: id, position, and one key klong at each of the given times. */

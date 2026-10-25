@@ -35,6 +35,16 @@ import bergdb.nanotest.Assert;
  * empty) gets new arrays in place when it is split (setContentFrom). Its first klong, before
  * and after, is the time klong of the transaction, where every reader stops.</li>
  * </ul>
+ *
+ * <p>Pointers change in place (bergdb item 009; items/009-handles/02-implementation-plan.md,
+ * 3.3 and 3.4): what pointer i holds (pointers[i]: nothing, a handle of its node, live or
+ * dead, or its value) and its reference (pos[i], raised by Rule R or by a reader's slow
+ * path). What it names, the node or the value, never changes (C1). Every such change is made
+ * under the node's monitor (C2), and a change of what a pointer holds is a release store
+ * (setPointee, setPointer). A reader's fast path reads pointers[i] without a lock: plainly
+ * for a pointer to a handle (T6b), with an acquire for a pointer to a value
+ * (getPointeeAcquire, C5). pos[i] is a long read and written plainly: BergDB relies on a
+ * 64-bit JVM, where a plain long does not tear.</p>
  * 
  * @author Frans Lundberg
  */
@@ -54,9 +64,9 @@ public class KeyNode implements Node {
         // Synch note: no need for volatile or something since all access is from threads 
         // holding Db.writeLock.
     public int countedMemSize = 0;
-        // The size the resident registry counted this canonical object with, 0 if not counted
-        // (bergdb item 001, WP J1; core/Residents.java). Written by the writer, or under the
-        // node table's lock.
+        // The size the resident registry counted this object with, the values its pointers
+        // hold included, 0 if not counted (bergdb item 001, WP J1; item 009, step 3b;
+        // core/Residents.java). Read and written under the object's monitor.
     private boolean isDirty;
         // Synch note: read/write access only from threads holding Db.writeLock.
     private boolean isCanonical;
@@ -269,6 +279,20 @@ public class KeyNode implements Node {
     public final void setRef(int index, long ref) {
         synchronized (this) {
             pos[index] = ref;
+        }
+    }
+    
+    public final void raiseRef(int index, long ref) {
+        synchronized (this) {
+            if (Spos.newer(ref, pos[index])) pos[index] = ref;
+        }
+    }
+    
+    public final boolean swizzle(int index, Pointee expected, Pointee pointee) {
+        synchronized (this) {
+            if (pointers[index] != expected) return false;
+            POINTEES.setRelease(pointers, index, pointee);      // C5, as setPointee
+            return true;
         }
     }
     

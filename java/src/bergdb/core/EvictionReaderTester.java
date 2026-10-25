@@ -29,17 +29,20 @@ import bergdb.stream.MemoryStream;
 
 /**
  * Readers under eviction (bergdb item 001, WP J5; docs/level4-alignment.md, 7.4; the plan's
- * Q8): the protocol of Eviction's class comment, tested. A reader takes a slot's pointer
- * lock on every follow (NodeCollection.followPointer), eviction takes it for every slot it
- * changes, and eviction runs under the write lock, which readers never take; so a slot is a
- * memory slot or a stream slot for the whole of a follow, and a reader that holds an object
- * may finish with it after its release.
+ * Q8), with handles since bergdb item 009 (items/009-handles/02-implementation-plan.md, 3.4
+ * and 4.4): the protocol of Eviction's class comment, tested. A reader follows a pointer
+ * without a lock when the pointer's handle holds an object that may serve it; else it
+ * resolves the pointer to its node's live handle and loads under the handle's monitor.
+ * Eviction runs under the write lock, which readers never take, and kills a handle under its
+ * map's lock without waiting for a loader. A reader that holds an object may finish with it
+ * after its eviction: it is the version at its position.
  *
- * <p>The tests: an access-data update after an unswizzle leaves the position; a reader that
- * took a canonical object from the node table, paused (deterministically) while eviction
- * releases that object, and then puts it into its slot; a scan in chunks with eviction and
- * writes between the chunks; and reader threads while the writer alternates the slots
- * between memory and stream (every transaction and sweeps of every detachable object).</p>
+ * <p>The tests: eviction changes no record; a reader that took a canonical object from a live
+ * handle puts the handle into a pointer after an eviction killed it (the steps made one after
+ * the other); pointers that hold dead handles are resolved again; a reader paused
+ * (deterministically) inside a load while an eviction runs; a scan in chunks with eviction
+ * and writes between the chunks; and reader threads while the writer alternates the pointers
+ * between memory and stream, with a forced schedule or the capacity controller.</p>
  */
 public class EvictionReaderTester {
     private static final long STEP = bergdb.pub.util.Clock.UNITS_PER_SEC / 100;
@@ -230,19 +233,16 @@ public class EvictionReaderTester {
             int i = (Integer) cand[1];
             Node c = (Node) cand[2];
             Db.Internal in = w.db.internal();
-            Object lock = in.getPointerLock(p, i);
             long ref = p.getSerializedRef(i);
 
-            synchronized (lock) {
-                p.setPointer(i, null, c.getSpos());         // the pointer holds nothing
-            }
+            p.setPointer(i, null, c.getSpos());             // the pointer holds nothing
             Handle h = in.cache().liveHandle(c.getId());     // the reader's step 3 and 4
             Assert.assertTrue(h != null && h.obj == c && c.isCanonical());
             in.evictNow(Eviction.Schedule.EVERY, 1);         // the eviction
             Assert.assertTrue("evicted", h.isDead() && !c.isCanonical()
                     && in.cache().liveHandle(c.getId()) == null);
             boolean pResident = Residents.isPinned(p, in.superRoot());
-            synchronized (lock) {                            // the reader's step 5
+            synchronized (p) {                               // the reader's step 5
                 if (p.getPointee(i) == null) p.setPointee(i, h);
             }
             Assert.assertEquals(ref, p.getSerializedRef(i));
@@ -302,13 +302,15 @@ public class EvictionReaderTester {
     }
 
     /**
-     * A reader paused inside a follow, holding the slot's pointer lock, after it took a
-     * canonical object from the node table: a sweep of every detachable object runs
-     * meanwhile. A sweep that needs a pointer lock the reader holds (128 stripes) waits for
-     * it, and a load never asks for the write lock (Q8), so there is no deadlock; whichever
-     * order results, the reader's answers are right, the audit passes, and the writer goes
-     * on with the records it writes without eviction. The unit test makes one try and gives
-     * the sweep 50 ms to run or wait; the f-test three tries and 500 ms.
+     * A reader paused inside a follow's slow path, holding the handle's monitor, after it
+     * took a canonical object from the node's live handle: an eviction of every detachable
+     * object runs meanwhile. Eviction takes no handle's monitor (it kills a handle by a
+     * compareAndSet of its state, under its map's lock), and a load never asks for the write
+     * lock (Q8), so there is no deadlock; whichever order results, the reader's answers are
+     * right, the audit passes, and the writer goes on with the records it writes without
+     * eviction. The unit test makes one try and gives the eviction 50 ms to run; the f-test
+     * three tries and 500 ms. (Until bergdb item 009, step 3c, the reader held the pointer's
+     * lock, which a sweep could wait for.)
      */
     @Nano
     public static void testReaderPausedInsideAFollow() throws Exception {
@@ -330,9 +332,7 @@ public class EvictionReaderTester {
             final Node p = (Node) cand[0];
             final int i = (Integer) cand[1];
             final Node c = (Node) cand[2];
-            synchronized (w.db.internal().getPointerLock(p, i)) {
-                p.setPointer(i, null, c.getSpos());
-            }
+            p.setPointer(i, null, c.getSpos());
 
             final CountDownLatch paused = new CountDownLatch(1);
             final CountDownLatch resume = new CountDownLatch(1);
@@ -448,17 +448,40 @@ public class EvictionReaderTester {
     }
 
     /**
-     * Reader threads, gets at random times, while the writer alternates the slots
+     * Reader threads, gets at random times, while the writer alternates the pointers
      * between memory and stream: every transaction evicts (random schedule), and every third
-     * one is followed by a sweep of every detachable object. Every answer is checked against
-     * the history; no read may fail.
+     * one is followed by an eviction of every detachable object. Every answer is checked
+     * against the history; no read may fail. The unit test: 3 readers and 300 transactions.
+     * The f-tests (bergdb item 009, step 3d; 009-02, 3.5): 8 readers and 3,000 transactions;
+     * and the same with the capacity controller and a budget far below the database instead
+     * of the random schedule, so that readers' loads wake the eviction thread (T5a), whose
+     * batches run while the readers follow pointers without a lock.
      */
     @Nano
     public static void testReadersWhileSlotsAlternate() throws Exception {
+        readersWhileSlotsAlternate(3, 300, false);
+    }
+
+    @Nano("f")
+    public static void testReadersWhileSlotsAlternateF() throws Exception {
+        readersWhileSlotsAlternate(8, 3000, false);
+    }
+
+    @Nano("f")
+    public static void testReadersUnderTheCapacityControllerF() throws Exception {
+        readersWhileSlotsAlternate(8, 3000, true);
+    }
+
+    private static void readersWhileSlotsAlternate(int readerCount, final int n, boolean budget)
+            throws Exception {
         MemoryStream s1 = new MemoryStream();
         final CoreTestClock clock = new CoreTestClock();
-        final Db db = start(s1, clock, Eviction.Schedule.RANDOM, 0);
-        final int keys = 50, n = 300;
+        final Db db = budget
+                ? Db.builder().testSetup(s1).clock(clock).testId().maxNodeSize8()
+                        .startupDistance(200).cacheSizeIndicator(4 * 1000)
+                        .evictionSchedule(Eviction.Schedule.BUDGET, 1).audit(0).start()
+                : start(s1, clock, Eviction.Schedule.RANDOM, 0);
+        final int keys = 50;
         final String[][] history = new String[n][];     // per transaction, its values by key
         final long[] times = new long[n];
         final AtomicInteger done = new AtomicInteger(0);    // transactions published
@@ -467,7 +490,7 @@ public class EvictionReaderTester {
         final AtomicInteger reads = new AtomicInteger(0);
 
         List<Thread> readers = new ArrayList<Thread>();
-        for (int r = 0; r < 3; r++) {
+        for (int r = 0; r < readerCount; r++) {
             final int rid = r;
             Thread th = new Thread(new Runnable() {
                 public void run() {
@@ -525,5 +548,8 @@ public class EvictionReaderTester {
         }
         Assert.assertTrue(problems.size() + " problems, first: " + problems.peek(), problems.isEmpty());
         Assert.assertTrue("reads", reads.get() > 1000);
+        if (budget) {
+            Assert.assertTrue("batches after loads", db.internal().eviction().sweepCounts()[1] > 0);
+        }
     }
 }

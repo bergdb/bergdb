@@ -281,6 +281,14 @@ public final class ValueNode implements Node, Pointee {
         throw new Bug("A ValueNode has no pointers to set, " + this.toString());
     }
 
+    public void raiseRef(int index, long ref) {
+        throw new Bug("A ValueNode has no pointers to set, " + this.toString());
+    }
+
+    public boolean swizzle(int index, Pointee expected, Pointee pointee) {
+        throw new Bug("A ValueNode has no pointers to set, " + this.toString());
+    }
+
     /**
      * Always returns 'null'.
      */

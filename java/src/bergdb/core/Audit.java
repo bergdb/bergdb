@@ -30,10 +30,14 @@ import bergdb.dag.TopNode;
  * <ol>
  * <li><b>The resident objects</b> (Residents.walk): every object reachable through memory
  * slots from the super root, the node table and D.</li>
- * <li><b>INV-CAN</b>: one canonical object per node id among them, the node table's; the
- * node table names canonical objects only (bergdb item 001, WP R8, change 3); and a clean
- * canonical object is its node's latest version (WP J3: a node released and loaded again
- * is made canonical from that version only), when the oracle knows the node.</li>
+ * <li><b>INV-CAN</b>: one canonical object per node id among them, the node table's; and a
+ * clean canonical object is its node's latest version (WP J3: a node released and loaded
+ * again is made canonical from that version only), when the oracle knows the node.</li>
+ * <li><b>Handles</b> (bergdb item 009, steps 3a and 3d): the node table's handles are live,
+ * each with an object of its node or none; a live handle that a pointer of a resident object
+ * holds is the table's (one live handle per node id); a dead handle has no object. Until
+ * step 3a the node table named canonical objects only (bergdb item 001, WP R8, change 3);
+ * with handles, a handle may hold a version read.</li>
  * <li><b>Pins</b>: every object of D (TransSeq) is resident, canonical, dirty and the node
  * table's; the super root is canonical and the table's; the record being written is empty
  * between transactions; and every dirty resident index object is in D.</li>
@@ -223,6 +227,27 @@ public final class Audit {
             if (n.isIndexNode() && n.isInTransNodes()) {
                 fail(failures, "pins: object of node " + n.getId() + " is in TransNodes between "
                         + "transactions");
+            }
+        }
+
+        // The handles in the pointers (bergdb item 009, step 3d): a live handle that a pointer
+        // of a resident object holds is the table's handle for its node (one live handle per
+        // node id, 009-02, 4.10); a dead one has no object.
+        for (Node x : resident) {
+            if (!x.isIndexNode()) continue;
+            int size = x.getSize();
+            for (int i = 0; i < size; i++) {
+                Pointee pe = x.getPointee(i);
+                if (!(pe instanceof Handle)) continue;
+                Handle h = (Handle) pe;
+                if (h.isDead()) {
+                    if (h.obj != null) {
+                        fail(failures, "handles: a dead handle of node " + h.id + " has an object");
+                    }
+                } else if (h.state() == Handle.LIVE && table.liveHandle(h.id) != h) {
+                    fail(failures, "handles: pointer " + i + " of node " + x.getId()
+                            + " holds a live handle of node " + h.id + " that is not the table's");
+                }
             }
         }
 

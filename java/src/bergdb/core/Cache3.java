@@ -302,11 +302,10 @@ public class Cache3 {
      */
     public boolean evict(Handle h) {
         synchronized (getLock(h.id)) {
-            Node o = h.obj;
             if (!h.casState(Handle.LIVE, Handle.DEAD)) {
                 return false;
             }
-            kill(h, o);
+            kill(h, h.obj);     // read after the compareAndSet (kill)
             if (internalGet(h.id) == h) {
                 internalRemove(h.id);
             }
@@ -316,7 +315,11 @@ public class Cache3 {
 
     /**
      * The rest of an eviction of h, which the caller has made DEAD under h's map lock; the
-     * caller removes h from the map. Returns the bytes h's object was counted with.
+     * caller removes h from the map. Returns the bytes h's object was counted with. The
+     * caller reads h's object after the compareAndSet that made h DEAD (bergdb item 009,
+     * step 3d): a loader sets the object only while h is LOADING, so not after it, but it
+     * may have installed one since the caller last read it. (Read before, the object stayed
+     * in the dead handle; the audit found it.)
      */
     private int kill(Handle h, Node o) {
         if (o == null) return 0;
@@ -340,9 +343,10 @@ public class Cache3 {
      * with the bit clear and a detachable object is evicted; a live handle with no object
      * (a read that kept nothing) leaves the table too. A handle that a loader holds (LOADING)
      * is skipped. The work is one map's: 1/4,096 of the handles. Returns the bytes freed, the
-     * objects evicted, the handles examined and the detachable objects met.
+     * objects evicted, the handles examined and the detachable objects met; adds the key
+     * nodes' objects that are not detachable (pinned) to 'pinned', for their values.
      */
-    long[] clockStep(int k, Detachable d) {
+    long[] clockStep(int k, Detachable d, java.util.List<Node> pinned) {
         HashMap<Long, Handle> m = maps[k];
         long bytes = 0, objects = 0, examined = 0, candidates = 0;
         synchronized (m) {
@@ -352,17 +356,27 @@ public class Cache3 {
                 examined++;
                 Node o = h.obj;
                 if (o == null) {
-                    if (h.casState(Handle.LIVE, Handle.DEAD)) it.remove();
+                    if (h.casState(Handle.LIVE, Handle.DEAD)) {
+                        o = h.obj;      // a loader may have installed one since (kill)
+                        if (o != null) {
+                            bytes += kill(h, o);
+                            objects++;
+                        }
+                        it.remove();
+                    }
                     continue;
                 }
-                if (!d.detachable(o)) continue;
+                if (!d.detachable(o)) {
+                    if (o instanceof KeyNode) pinned.add(o);
+                    continue;
+                }
                 candidates++;
                 if (h.ref != 0) {
                     h.ref = 0;
                     continue;
                 }
                 if (!h.casState(Handle.LIVE, Handle.DEAD)) continue;
-                bytes += kill(h, o);
+                bytes += kill(h, h.obj);    // again: a loader may have replaced o (kill)
                 objects++;
                 it.remove();
             }
@@ -382,6 +396,7 @@ public class Cache3 {
     void dropIfEmpty(Handle h) {
         synchronized (getLock(h.id)) {
             if (h.obj == null && internalGet(h.id) == h && h.casState(Handle.LIVE, Handle.DEAD)) {
+                kill(h, h.obj);     // a loader may have installed one since the test (kill)
                 internalRemove(h.id);
             }
         }
@@ -460,9 +475,7 @@ public class Cache3 {
      */
     @Nano
     public static void testLargeIds() {
-        Cache3 cache = new Cache3(new Cache.DbInfo() {
-            public PointerLocks getPointerLocks() { return null; }
-        });
+        Cache3 cache = new Cache3(new Cache.DbInfo() {});
         long[] ids = {1L << 31, (1L << 31) + 0x94, (1L << 32) - 1, 5L << 30, 1L << 40, Long.MAX_VALUE};
         for (long id : ids) {
             Assert.assertTrue(cache.getNode(id) == null);
@@ -476,9 +489,7 @@ public class Cache3 {
      */
     @Nano
     public static void testOneLiveHandle() {
-        Cache3 cache = new Cache3(new Cache.DbInfo() {
-            public PointerLocks getPointerLocks() { return null; }
-        });
+        Cache3 cache = new Cache3(new Cache.DbInfo() {});
         Handle h1 = cache.liveOrNewHandle(7);
         Assert.assertTrue(h1 == cache.liveOrNewHandle(7));
         Assert.assertTrue(h1 == cache.liveHandle(7));

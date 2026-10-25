@@ -94,6 +94,20 @@ public interface Node {
     /** Sets pointer i's reference, under the node's monitor (009-02, 3.4, C2). */
     public void setRef(int index, long ref);
     
+    /**
+     * Raises pointer i's reference to ref if ref is newer (Spos.newer), under the node's
+     * monitor: a reader's write-back of the reference it resolved with (bergdb item 009,
+     * step 3d), which must not lower one that another follow raised meanwhile.
+     */
+    public void raiseRef(int index, long ref);
+    
+    /**
+     * Pointer i holds 'pointee' if it held 'expected', under the node's monitor; true if
+     * it did. A reader's swizzle (bergdb item 009, step 3d): it must not replace what
+     * another follow or the writer put into the pointer after the reader read it.
+     */
+    public boolean swizzle(int index, Pointee expected, Pointee pointee);
+    
     /** Sets what pointer i holds and its reference, under the node's monitor (009-02, 3.4, C2). */
     public void setPointer(int index, Pointee pointee, long ref);
     

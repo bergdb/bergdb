@@ -23,7 +23,9 @@
 #      (every, random) and the audit: restarts, crashes and reclaim (on a
 #      CutStream) after eviction.
 #   4. ReclaimReaders with forced schedules: reader threads while slots change
-#      between memory and stream and reclaim cuts, CutStream and FileStream.
+#      between memory and stream and reclaim cuts, CutStream and FileStream; 8
+#      readers; and the capacity controller with a small budget (since bergdb
+#      item 009, step 3d).
 #   5. Conformance with the Lean model, with eviction: conformance.sh evict
 #      (TraceExport's run E with a forced schedule: its stream is run A's, and
 #      its slots meet INV-SLOT, the checker's C-P; 1 seed quick, 3 full). It
@@ -130,6 +132,13 @@ $JAVA -ea -Xmx2g -Devict=every -cp $CP bergdb.core.ReclaimReaders 1 $READER_ROUN
 $JAVA -ea -Xmx2g -Devict=random -cp $CP bergdb.core.ReclaimReaders 101 $READER_ROUNDS > $LOG/readers-random.txt 2>&1 &
 $JAVA -ea -Xmx2g -Ddisk=1 -Devict=random -cp $CP bergdb.core.ReclaimReaders 201 $READER_ROUNDS \
     > $LOG/readers-disk.txt 2>&1 &
+# More readers, and the capacity controller with a small budget, whose batches the readers'
+# loads ask the eviction thread for while they follow pointers without a lock (bergdb item
+# 009, step 3d; items/009-handles/02-implementation-plan.md, 3.5).
+$JAVA -ea -Xmx2g -Dreaders=8 -Devict=random -cp $CP bergdb.core.ReclaimReaders 301 $READER_ROUNDS \
+    > $LOG/readers-many.txt 2>&1 &
+$JAVA -ea -Xmx2g -Dreaders=4 -Devict=budget -Devictbudget=20000 -cp $CP bergdb.core.ReclaimReaders 401 \
+    $READER_ROUNDS > $LOG/readers-budget.txt 2>&1 &
 wait
 for f in $LOG/readers-*.txt; do
     grep -q '^Done: .* 0 failures' $f || fail "ReclaimReaders" $f
