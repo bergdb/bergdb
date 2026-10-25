@@ -192,3 +192,8 @@ serialization invariant) is met. Phase 4a (T2-C, T-READ and T-PIN over
 handles) started in the same way. The model's follow is one atomic step, so
 the interleavings of Java's slow path are argued in 02, section 9 (the
 reads of `writtenPos`).
+
+2026-10-26, 00:20. Step 4b: docs/handles-alignment.md, the mapping of
+Java's state with handles to the model's (SIS/Handle.lean) and the register
+of where they differ, as docs/level4-alignment.md does for the design
+before handles. Written by Claude (Opus 5.5, Claude Code).
