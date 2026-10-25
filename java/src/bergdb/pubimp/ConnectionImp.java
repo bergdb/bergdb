@@ -3,6 +3,8 @@ package bergdb.pubimp;
 import java.util.ArrayList;
 import java.util.List;
 import bergdb.core.Db;
+import bergdb.core.DbConstants;
+import bergdb.core.Reclaim;
 import bergdb.core.StoredNode;
 import bergdb.core.StoredTrans;
 import bergdb.core.StoredValueNode;
@@ -20,6 +22,7 @@ import bergdb.pub.TransactionInfo;
 import bergdb.pub.UseIndexBuilder;
 import bergdb.pub.UsePrimaryBuilder;
 import bergdb.pub.WBuilder;
+import bergdb.pub.util.LookupTimeNotAvailableException;
 
 /**
  * Implementation of Connection.
@@ -114,16 +117,28 @@ public class ConnectionImp implements Connection {
         
         final StoredTrans storedTrans = db.getTrans(getData.tpos);
         
+        // The user's KVs only (2026-10-25, bergdb 005-42): those under the internal prefix,
+        // an index's entries, were given too, and their key() threw, as they have no ukey.
+        // And a record of reclaim's is not the transaction that wrote the value: reclaim has
+        // rewritten the value, so that the transaction that wrote it can be cut. It gave the
+        // step's time and its row.
         final ArrayList<Kv<byte[]>> kvs = new ArrayList<Kv<byte[]>>();
         for (int i = 0; i < storedTrans.nodes.length; i++) {
             StoredNode storedNode = storedTrans.nodes[i];
             
             if (storedNode instanceof StoredValueNode) {
                 final StoredValueNode storedValueNode = (StoredValueNode) storedNode;
+                if (Keys.isPrefix(Reclaim.KEY_PREFIX_SKEY, storedValueNode.getKey())) {
+                    throw new LookupTimeNotAvailableException("No available transaction info: "
+                            + "reclaim has rewritten the value, and the transaction that wrote "
+                            + "it is no longer available.");
+                }
+                if (Keys.isPrefix(DbConstants.INTERNAL_PREFIX_SKEY, storedValueNode.getKey())) {
+                    continue;
+                }
+                
                 kvs.add(new Kv<byte[]>() {
                     public String key() {
-                        // An internal key (an index entry, reclaim's row) has no ukey: i2u
-                        // throws (bergdb 005-42).
                         byte[] bkey = Keys.toBytes(storedValueNode.getKey());
                         String ukey = PubKeys.i2u(Keys.bkey2ikey(bkey));
                         return ukey;

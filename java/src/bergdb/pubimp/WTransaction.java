@@ -67,9 +67,12 @@ public class WTransaction implements Transaction {
     }
     
     /**
+     * Waits for this transaction, as sync() does (2026-10-25, bergdb 005-45): it waited for
+     * the database's last transaction.
+     * 
      * @throws StreamIoException
      */
     public void sync(SyncLevel syncLevel) {
-        connection.getDb().sync(syncLevel);
+        connection.getDb().sync(trans.lastPos, syncLevel);
     }
 }

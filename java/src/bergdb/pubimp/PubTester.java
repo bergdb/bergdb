@@ -38,6 +38,7 @@ import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.storage.BufferedStream;
 import bergdb.storage.RecoverableStream;
+import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.CutStream;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.SalsaStream;
@@ -1374,6 +1375,164 @@ public class PubTester {
         Assert.assertEquals(2, tinfo.kvs().size());
         Assert.assertEquals("/key2", tinfo.kvs().get(1).key());
         d.stop();
+    }
+    
+    /**
+     * Regression test for bergdb 005-42: a transaction that wrote an index entry gave it
+     * among its KVs, and its key() threw IllegalArgumentException. Now the KVs are the
+     * user's, also when a put replaces an index entry.
+     */
+    @Nano
+    private static void testTransactionInfoWithIndex() {
+        Database db = Factory.database().memory().start();
+        db.indexBuilder("area").type("long").dir("/houses/").field("area").createFast();
+        Connection c = db.connection();
+        House h = new House();
+        h.area = 120;
+        c.put("/houses/h1", h);
+        h.area = 130;
+        Transaction t = c.w().put("/houses/h1", h).put("/other", "x").execute();
+        
+        Assert.assertEquals(130, c.get("/houses/h1", House.class).area);
+        TransactionInfo tinfo = c.transactionInfo();
+        Assert.assertEquals(t.getTime(), tinfo.time());
+        Set<String> keys = new java.util.HashSet<String>();
+        for (Kv<byte[]> kv : tinfo.kvs()) {
+            keys.add(kv.key());
+        }
+        Assert.assertEquals(2, tinfo.kvs().size());
+        Assert.assertTrue("keys: " + keys, keys.contains("/houses/h1") && keys.contains("/other"));
+        db.stop();
+    }
+    
+    /**
+     * Regression test for bergdb 005-42: for a value that reclaim had rewritten,
+     * transactionInfo() described reclaim's step, with its time and its row, whose key()
+     * threw. Now it throws LookupTimeNotAvailableException, as for a transaction that reclaim
+     * has removed; a value written after the cut still gives its transaction. Made with the
+     * core's builder, as testFirstAvailableLookupTime2, so that reclaim cuts soon.
+     */
+    @Nano
+    private static void testTransactionInfoAfterReclaim() {
+        TestClock clock = new TestClock();
+        Db db = Db.builder().testSetup(new CutStream()).clock(clock).maxNodeSize8()
+                .startupDistance(2000).build();
+        Database d = DatabaseImp.createAndStart(db);
+        d.setRetainDuration(Duration.seconds(1));
+        Connection c = d.connection();
+        
+        long sec = Duration.seconds(1).units();
+        long time = sec;
+        clock.setTime(Time.units(time));
+        long t0 = c.w().put("/a", "a0").execute().getTime().units();
+        java.util.Random r = new java.util.Random(1);
+        for (int i = 0; i < 20000 && d.getFirstAvailableLookupTime().units() <= t0; i++) {
+            time += sec / 20;
+            clock.setTime(Time.units(time));
+            c.w().put("/k/" + r.nextInt(50), "v" + i).execute();
+        }
+        Assert.assertTrue("no cut after /a", d.getFirstAvailableLookupTime().units() > t0);
+        
+        Assert.assertEquals("a0", c.get("/a", String.class));
+        String gave = null;
+        try {
+            gave = "a transaction at " + c.transactionInfo().time().units();
+        } catch (LookupTimeNotAvailableException e) {
+            // Expected.
+        }
+        Assert.assertTrue("a value that reclaim rewrote gave " + gave + "; /a was put at " + t0,
+                gave == null);
+        
+        clock.setTime(Time.units(time + sec));
+        Transaction t1 = c.w().put("/b", "b1").execute();
+        Assert.assertEquals("b1", c.get("/b", String.class));
+        TransactionInfo tinfo = c.transactionInfo();
+        Assert.assertEquals(t1.getTime(), tinfo.time());
+        Assert.assertEquals(1, tinfo.kvs().size());
+        Assert.assertEquals("/b", tinfo.kvs().get(0).key());
+        d.stop();
+    }
+    
+    /**
+     * Regression test for bergdb 005-45: a w-transaction's sync(level) waited for the
+     * database's last transaction, not for its own, as its sync() and an rw-transaction's
+     * sync(level) do. Here the stream holds back the appends of a later transaction, and the
+     * first one's sync(level) returns at once, as that one is durable.
+     */
+    @Nano
+    private static void testWSyncLevelWaitsForItsOwn() throws InterruptedException {
+        final HeldStream s = new HeldStream();
+        Database d = ((DatabaseBuilderImp) Factory.database()).mainStream(s).start();
+        Connection c = d.connection();
+        final Transaction t1 = c.w().put("/a", "1").execute();
+        t1.sync();
+        s.hold();
+        c.w().put("/b", "2").execute();
+        
+        Thread syncer = new Thread() {
+            public void run() {
+                t1.sync(SyncLevel.ORDINARY);
+            }
+        };
+        syncer.start();
+        syncer.join(5000);
+        final boolean returned = !syncer.isAlive();
+        s.release();
+        syncer.join();
+        Assert.assertTrue("sync(ORDINARY) waited for a later transaction", returned);
+        d.stop();
+    }
+    
+    /** A MemoryStream whose appends wait while it is held (bergdb 005-45). */
+    private static class HeldStream implements AppendOnlyStream {
+        private final MemoryStream inner = new MemoryStream();
+        private boolean held = false;
+        
+        synchronized void hold() {
+            held = true;
+        }
+        
+        synchronized void release() {
+            held = false;
+            notifyAll();
+        }
+        
+        public long getLength() {
+            return inner.getLength();
+        }
+        
+        public long getFirstPos() {
+            return inner.getFirstPos();
+        }
+        
+        public void read(long position, byte[] dest, int destOffset, int length) 
+                throws IOException {
+            inner.read(position, dest, destOffset, length);
+        }
+        
+        public synchronized void append(byte[] source, int sourceOffset, int length) 
+                throws IOException {
+            while (held) {
+                try {
+                    wait();
+                } catch (InterruptedException e) {
+                    throw new IOException("interrupted");
+                }
+            }
+            inner.append(source, sourceOffset, length);
+        }
+        
+        public void pretruncate(long position) throws IOException {
+            inner.pretruncate(position);
+        }
+        
+        public void seekFirstPos(long position) throws IOException {
+            inner.seekFirstPos(position);
+        }
+        
+        public void close() {
+            inner.close();
+        }
     }
     
     /**

@@ -5,7 +5,8 @@ Created 2026-10-24 by Claude (Opus 5.5, Claude Code) for Frans Lundberg, at
 his request ("Do: write this plan into item 007."), from Claude's proposal
 of 2026-10-23, which followed 007-01 and 007-02.
 
-**Status: step 1 done (005-31, 2026-10-24); steps 2 to 5 not started.**
+**Status: step 1 done (005-31, 2026-10-24); steps 2 to 5 not started, and
+after release 2026.1 (Frans, 2026-10-25: "After the release").**
 Step 1, 005-31, had Frans's go for its option A (2026-10-24: "005-31, it
 has my 'go'. But don't start the implementation now."), and then his
 request to fix it ("fix all todo items of type Fix"). Step 3, the deadline,
@@ -190,6 +191,9 @@ Decisions
 * D1 of 007-01: the deadline, with d_h = 2 × sd as a constant factor:
   decided (Frans, 2026-10-24, "As you propose."); not started.
 * D3 of 007-01, bytes or estimated time: not needed for this plan.
+* Steps 2 to 5 before or after release 2026.1 (item 008): after (Frans,
+  2026-10-25, "After the release"). The release ships with the take as it
+  is, and says so: README.md, and docs/levels.md, "Bounds, measured".
 
 
 After the plan

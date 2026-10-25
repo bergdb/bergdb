@@ -143,7 +143,9 @@ public interface Connection extends ReadInterface {
     
     /**
      * Returns information about the transaction that wrote the last
-     * value retreived with the get() method.
+     * value retreived with the get() method: its time and its KVs. The KVs
+     * are the user's; those that the database writes itself in the
+     * transaction, the entries of an index, are left out.
      * This method call will always require a read from the database
      * storage, no caching for this query.
      *
@@ -156,7 +158,8 @@ public interface Connection extends ReadInterface {
      *             every transaction and read until it is restarted. See Database.
      * @throws LookupTimeNotAvailableException
      *             If the database has reclaimed the transaction: the lookup time of the
-     *             get is no longer available.
+     *             get is no longer available, or reclaim has rewritten the value, in a
+     *             transaction of its own, so that the transaction that wrote it can be cut.
      */
     public TransactionInfo transactionInfo();
 

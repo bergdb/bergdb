@@ -44,6 +44,16 @@ public interface DatabaseBuilder {
     /**
      * Adds a replica to the sets of database replicas.
      * 
+     * <p>Experimental, with known faults; not for data that matters (2026-10-25, bergdb
+     * 005-11). A replica is written in plain text, also when the database is encrypted.
+     * With reclaim (a finite retain duration), a crash can leave a replica that does not
+     * start, or that gives wrong answers at times it claims to have. A replica whose storage
+     * fails is dropped without a word, and reclaim's next cut then fails the database. A
+     * start without a replica that a crash left ahead of the main, and then one with it, can
+     * leave two histories, or a database that does not start. A slow replica slows every
+     * write, and a hung one stops them. Call dir() first: a replica added before it is
+     * dropped.</p>
+     * 
      * @param name  Name of the storage replica.
      * @param dir   Directory of the replica database data.
      * @throws IOException  if there is a file access error with the specified directory 'dir'.

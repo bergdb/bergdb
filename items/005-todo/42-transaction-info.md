@@ -1,7 +1,8 @@
 005-42. Decide: what transactionInfo() gives: internal KVs, and reclaim's rewrites
 =================================================================================
 
-Status: open. Kind: decide. Created 2026-10-25.
+Status: done; decided A1 and B2 (Frans, 2026-10-25), and done the same day.
+Kind: decide. Created 2026-10-25.
 
 From a TODO of 2016 in `ConnectionImp.transactionInfo()`: "we cannot in
 general convert keys to ukey (strings). How to handle in Pub Layer?".
@@ -112,10 +113,50 @@ S for A1 and B2. Any time; best before 005-05's decision on publishing, as
 it concerns the Pub API.
 
 
+Frans, 2026-10-25
+-----------------
+
+Asked, before release 2026.1 (008), what the release should do with it:
+"A1 + B2 as proposed".
+
+
+Outcome
+-------
+
+2026-10-25, by Claude (Opus 5.5, Claude Code), A1 and B2 as proposed, on
+`da8bbc1`:
+
+* `ConnectionImp.transactionInfo()` leaves out the KVs under the internal
+  prefix, `DbConstants.INTERNAL_PREFIX_SKEY`, so every `key()` of
+  `kvs()` works.
+* It throws `LookupTimeNotAvailableException` for a record of reclaim's: one
+  that holds a KV under reclaim's prefix, `/#i/dreclaim/`, now
+  `Reclaim.KEY_PREFIX_SKEY`. Every step stores reclaim's row in the
+  transaction that rewrites the values, and the table is a transaction of
+  its own with no user value, so the test finds every rewrite, and no user
+  transaction holds such a KV.
+* The Javadoc of `Connection.transactionInfo()` and `TransactionInfo.kvs()`
+  says so. `Kv.ikey()` still throws "not implemented"; not part of the
+  decision.
+* Tests, in `PubTester`, which fail without the change:
+  `testTransactionInfoWithIndex` (a put that replaces an index entry, and
+  one more KV: two KVs, the user's), `testTransactionInfoAfterReclaim` (a
+  value that reclaim has rewritten: the exception, with the core's builder
+  as `testFirstAvailableLookupTime2`, so that reclaim cuts soon; a value
+  written after the cut still gives its transaction). Before the change:
+  "ikey cannot be converted to valid ukey", and "a value that reclaim
+  rewrote gave a transaction at 121000001; /a was put at 10000000".
+* The probe again ([probe-after.txt](42-transaction-info/probe-after.txt)):
+  part A gives one KV, `/e/x`; part B throws the exception.
+* `before-commit.sh` passes; see 005-45's outcome, which was gated with
+  it.
+
+
 The probe
 ---------
 
 In [42-transaction-info/](42-transaction-info/): `TransactionInfoProbe.java`,
 parts A and B, through the Pub API; `probe.sh JAR WORK_DIR` compiles it
 against a build and runs it; `probe-output.txt`, its output on `98ac9eb`
-with 005-40 and 005-43, uncommitted at the time.
+with 005-40 and 005-43, uncommitted at the time; `probe-after.txt`, on
+`da8bbc1` with the change.

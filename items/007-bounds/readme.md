@@ -57,3 +57,7 @@ See 005-31's outcome, and the note at step 1 for step 3.
 2026-10-25. 007-03, step 3: the change removes the TODO in
 `TransSeq.take` that D1 came from, and the comment's claim that the
 startup pos should never fall far behind (006-05, T7).
+
+2026-10-25. Steps 2 to 5 of 007-03 after release 2026.1 (item 008), Frans:
+"After the release". README.md and docs/levels.md ("Bounds, measured") say
+that the startup section is not yet bounded for BergDB's own take.

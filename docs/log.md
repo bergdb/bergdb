@@ -1139,3 +1139,20 @@ whatever its first transaction's size field says. Without a crypto key, a
 used. Tests; `before-commit.sh` and `level2.sh quick` pass. Found on the
 way, for 005-11: with a replica, a stream that ends inside its first meta
 block fails the start earlier, in the check of the streams' IDs.
+
+2026-10-25. Before release 2026.1 (bergdb 008), the known faults that were
+left, at Frans's request ("Are there any known bugs in BergDB? If so, we
+should fix them before the release."), by Claude (Opus 5.5, Claude Code).
+005-42 done, A1 and B2 as Frans decided: `Connection.transactionInfo()`
+also gave the KVs under the internal prefix, an index's entries, whose
+`key()` threw, and for a value that reclaim had rewritten it described
+reclaim's step, with its time and its row. Now it gives the user's KVs
+only, and throws `LookupTimeNotAvailableException` for a value that
+reclaim has rewritten. 005-45, two faults found on the way in 005-40 and
+005-41: `SalsaStream.getLength()` did not count what it appended, and
+`WTransaction.sync(SyncLevel)` waited for the database's last transaction,
+not for its own. Replication is kept as it is for the release, documented
+as experimental in the Javadoc of the Pub API's replica methods, README.md
+and levels.md (005-11), and the deadline in `TransSeq.take` comes after the
+release (007-03), which README.md and levels.md say too. Tests that fail
+without the changes; `before-commit.sh` passes.

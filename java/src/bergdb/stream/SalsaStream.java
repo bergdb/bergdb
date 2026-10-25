@@ -17,7 +17,6 @@ public class SalsaStream implements AppendOnlyStream {
     private final AppendOnlyStream stream;
     private final Salsa encrypt;
     private final Salsa decrypt;
-    private long length;
     private final Object readLock = new Object();
     private final byte[] appendBuffer = new byte[100*1024];
     
@@ -48,7 +47,7 @@ public class SalsaStream implements AppendOnlyStream {
         key = null;
         this.stream = stream;
         
-        length = stream.getLength();
+        final long length = stream.getLength();
         int blockOffset = (int) (length % Salsa.BLOCK_SIZE);
         long p0 = length - blockOffset;    // stream position of beginning of block
         byte[] lastBlock = new byte[blockOffset];
@@ -75,8 +74,12 @@ public class SalsaStream implements AppendOnlyStream {
         return stream;
     }
 
+    /**
+     * The underlying stream's length, which counts what this stream appends (2026-10-25,
+     * bergdb 005-45: it was the length when this stream was made).
+     */
     public long getLength() {
-        return length;
+        return stream.getLength();
     }
 
     public long getFirstPos() {
@@ -286,6 +289,24 @@ public class SalsaStream implements AppendOnlyStream {
         s.read(0, data2, 0, 10);
         
         Assert.assertArrayEquals(data, data2);
+    }
+    
+    /**
+     * Regression test for bergdb 005-45: getLength() gave the underlying stream's length when
+     * this stream was made, and did not count the appends (after 150 bytes it said 0).
+     */
+    @Nano
+    private static void testLengthCountsAppends() throws IOException {
+        MemoryStream m = new MemoryStream();
+        SalsaStream s = new SalsaStream(m, new byte[8], new byte[32]);
+        Assert.assertEquals(0, s.getLength());
+        s.append(new byte[100], 0, 100);
+        s.append(new byte[50], 0, 50);
+        Assert.assertEquals(150, s.getLength());
+        
+        s = new SalsaStream(m, new byte[8], new byte[32]);
+        s.append(new byte[10], 0, 10);
+        Assert.assertEquals(160, s.getLength());
     }
     
     @Nano

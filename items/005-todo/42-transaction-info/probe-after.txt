@@ -1,0 +1,9 @@
+bergdb 005-42: probe.sh on da8bbc1 with the change (A1 and B2), uncommitted at the time (2026-10-25, F53).
+
+A: a put of /e/x, in a directory with an index; a get of /e/x
+  kvs(): 1
+    0: key() = /e/x; ikey() throws UnsupportedOperationException: not implemented; value 31 bytes
+Exception in thread "main" bergdb.pub.util.LookupTimeNotAvailableException: No available transaction info: reclaim has rewritten the value, and the transaction that wrote it is no longer available.
+	at bergdb.pubimp.ConnectionImp.transactionInfo(ConnectionImp.java:132)
+	at TransactionInfoProbe.partB(TransactionInfoProbe.java:62)
+	at TransactionInfoProbe.main(TransactionInfoProbe.java:34)

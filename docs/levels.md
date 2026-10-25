@@ -64,6 +64,15 @@ Levels
 Level 3 needs level 2: once the front of the stream is cut, startup can no
 longer replay from the beginning.
 
+Replication is in no level, and no check of the levels has a replica. It is
+experimental, with known faults (bergdb 005-11; Frans, 2026-10-25: kept as
+it is for release 2026.1, documented as experimental): with reclaim, a crash
+can leave a replica that does not start or gives wrong answers; a replica
+whose storage fails fails the database at reclaim's next cut; a start without
+a replica that was ahead of the main mixes two histories; a replica is written
+in plain text when the database is encrypted. The Javadoc of
+`DatabaseBuilder.replica` and `Database.addReplica` lists them.
+
 Checks of the levels:
 [level1.sh](../java/stress/level1.sh),
 [level2.sh](../java/stress/level2.sh),
@@ -1352,6 +1361,11 @@ Findings:
   transactions (1.22 x) and with a small distance (1.67 x at 5 MB, uniform):
   the take catches up a few transactions late, which matters more when the
   distance is small. Not a proven bound (problem.md, Q4).
+* Later runs (bergdb 007-01, 4.1): up to 2.21 x sd with 10M keys at 20 MB.
+  The section follows the debt of D, the bytes it takes to write D's nodes,
+  which the take spreads over many records. The deadline that bounds it
+  for BergDB's own take, at 2 x sd, is planned (007-03, steps 2 to 5; Frans,
+  2026-10-25: after release 2026.1).
 * D, the memory that Level 4 cannot evict, follows the startup distance:
   at most 72 MB (uniform) to 95 MB (40-put transactions) at 50 MB, and 5.6
   to 16 MB at 5 MB, that is 1.0 to 3.2 times the startup distance in

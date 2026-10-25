@@ -2,7 +2,9 @@
 =================================================
 
 Status: open; the study is done (2026-10-22), and Frans thinks it over, to
-discuss it (2026-10-23). Kind: decide. Created 2026-10-20.
+discuss it (2026-10-23). For release 2026.1: kept as it is, documented as
+experimental (Frans, 2026-10-25; "For release 2026.1" below). Kind: decide.
+Created 2026-10-20.
 
 
 The question
@@ -391,6 +393,21 @@ stay in the API meanwhile. B only if replicas in the write path are
 wanted. With Frans's later thought, a special call instead of a sync level,
 A now and C1 later fit without a gap: STRONG goes with A, and C1 brings the
 call.
+
+
+For release 2026.1
+------------------
+
+Asked, before release 2026.1 (008), what the release should do with it
+(remove it, A; pull it from the Pub API only; complete it, B; or keep it,
+documented as experimental), Frans, 2026-10-25: "Keep it, document as
+experimental". No code change. Done the same day, by Claude (Opus 5.5,
+Claude Code): the Javadoc of `DatabaseBuilder.replica` and
+`Database.addReplica` says that replication is experimental, not for data
+that matters, and lists the faults that a user meets (P1 to P3, P6, P8 to
+P10); `removeReplica`, `getStorageInfos` and `SyncLevel.STRONG` point
+there; README.md and docs/levels.md say so. The decision on the design
+below stays open.
 
 
 Next

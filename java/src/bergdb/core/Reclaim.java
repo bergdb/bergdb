@@ -92,6 +92,13 @@ public class Reclaim implements Db.TransactionListener {
     private static final String TABLE_KEY_NAME = DbConstants.INTERNAL_PREFIX + "dreclaim/-table.txt";
     
     /**
+     * The prefix of reclaim's keys, the table's and the row's: a record with a KV under it
+     * is one of reclaim's transactions, a step or the table (bergdb 005-42).
+     */
+    public static final long[] KEY_PREFIX_SKEY = 
+            Keys.toSegments(DbConstants.INTERNAL_PREFIX + "dreclaim/");
+    
+    /**
      * The row of the iteration in progress, as stored by its last step (2026-10-13,
      * docs/levels.md, "Level 3 cost"). Steps stored the whole table, which grows by a
      * row per iteration until a cut; with a long retention about 30 rows, stored at every

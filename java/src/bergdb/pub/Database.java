@@ -205,6 +205,11 @@ public interface Database {
      * Adds a replica storage to this database while it is running. The replicated data is storage
      * in the provided directory.
      * 
+     * <p>Experimental, with known faults; not for data that matters (2026-10-25, bergdb
+     * 005-11): those of DatabaseBuilder.replica(), and a cut of reclaim's during the copy
+     * fails the database. The job reports done also when the copy failed; getStorageInfos()
+     * shows the error.</p>
+     * 
      * @param name
      *            Name of the storage to add.
      * @param dir
@@ -221,7 +226,7 @@ public interface Database {
 
     /**
      * Removes a replica storage from the database. The existing replica data is not deleted but
-     * will no longer be updated.
+     * will no longer be updated. Experimental, as addReplica() (bergdb 005-11).
      * 
      * @param name
      *            Name of the storage.
@@ -229,7 +234,8 @@ public interface Database {
     public void removeReplica(String name);
 
     /**
-     * Returns information about the storages currently used by the database.
+     * Returns information about the storages currently used by the database. Experimental, as
+     * addReplica() (bergdb 005-11).
      */
     // NOTE Consider making the returned data immutable? Or not? Should it be used for
     // custom durability rules?

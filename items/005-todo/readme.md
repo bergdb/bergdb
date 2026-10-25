@@ -28,9 +28,8 @@ Open
 | [005-05](05-bergdb-future.md) | Decide | What to do with BergDB: publish it, when, money, paid work | open |
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
-| [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
+| [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10). For release 2026.1: kept, documented as experimental | open |
 | [005-38](38-writes-at-scale.md) | Investigate | Writes at scale: the stream grows to about 1.1 KB per key at 100M random keys, and loads into an index larger than the budget slow to under 100 puts a second on a slow disk (004-02) | open |
-| [005-42](42-transaction-info.md) | Decide | `Connection.transactionInfo()` gives internal KVs, whose `key()` throws (an index entry, reclaim's row), and for a value that reclaim has rewritten, reclaim's transaction and its time; from a TODO of 2016 (006-05) | open |
 
 
 Closed
@@ -38,6 +37,8 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-45](45-fix-two-leftovers.md) | Fix | Two faults found on the way in 005-40 and 005-41: `SalsaStream.getLength()` did not count what it appended (BergDB's own stack did not meet it), and `WTransaction.sync(SyncLevel)` waited for the database's last transaction, not for its own; now the length is the underlying stream's, and the sync waits for its own transaction, as `sync()` does | done | 2026-10-25 |
+| [005-42](42-transaction-info.md) | Decide | `Connection.transactionInfo()` gave internal KVs, whose `key()` threw (an index entry, reclaim's row), and for a value that reclaim had rewritten, reclaim's transaction and its time; from a TODO of 2016 (006-05). Decided A1 and B2: the internal KVs are left out, and a value that reclaim has rewritten gives `LookupTimeNotAvailableException` | done | 2026-10-25 |
 | [005-33](33-crashed-creation.md) | Decide | A database whose creation crashed (a power loss in the first write of its stream) never started: one of three `StreamFormatException`s that did not say why, after recovery had zero-filled its first transaction. Decided A, one clear error: a start refuses it with a `DatabaseNotCreatedException` that says what happened and what to do, and writes nothing (005-28) | done | 2026-10-25 |
 | [005-44](44-fix-sync-commit-byte.md) | Fix | A sync returned when every byte of the transaction but its last, the commit byte, was durable, so that a crash could then lose a transaction that the sync had reported durable, with a write buffer whose size is not a multiple of 4 (through the core API); now it waits until the commit byte is durable too (005-41) | done | 2026-10-25 |
 | [005-41](41-is-durable.md) | Decide | `isDurable()`, whether a transaction is durable, answered at once, beside `sync()`; Frans's idea of 2026-10-13, from comments in the Pub API (006-05): not now (option C) | done | 2026-10-25 |
@@ -92,8 +93,9 @@ is done. 005-27, 005-28 and 005-29, the fixes found in 005-11, are done.
 007's deadline for `TransSeq.take` (007-01, D1) needed. 005-32
 is done, which 005-33's change needed; 005-33 is decided, A, and done. 005-35,
 005-36 and 005-37 are done, and so are 005-39, 005-40, 005-43 and 005-44.
-005-41 is decided: not now. 005-42 waits for Frans, best before 005-05's
-decision on publishing, as it concerns the Pub API.
+005-41 is decided: not now. 005-42 is decided, A1 and B2, and done, and so
+is 005-45. 005-11 is kept as it is for release 2026.1, documented as
+experimental; its decision waits for Frans.
 
 
 Files
@@ -215,7 +217,8 @@ Files
 * [41-is-durable.md](41-is-durable.md). 005-41, `isDurable()`: Frans's
   idea, the options, and two findings on the syncs; decided: not now.
 * [42-transaction-info.md](42-transaction-info.md). 005-42, what
-  `transactionInfo()` gives; the probe and its output in
+  `transactionInfo()` gives; decided A1 and B2, and done; the probe and its
+  output, before and after the change, in
   [42-transaction-info/](42-transaction-info/).
 * [43-fix-from-todos.md](43-fix-from-todos.md). 005-43, two fixes from the
   TODO markers of 006-05; done.
@@ -223,6 +226,9 @@ Files
   one byte short of the commit byte, found in 005-41; done; the probe and
   its output, before and after the fix, in
   [44-fix-sync-commit-byte/](44-fix-sync-commit-byte/).
+* [45-fix-two-leftovers.md](45-fix-two-leftovers.md). 005-45, two faults
+  found on the way in 005-40 and 005-41: `SalsaStream.getLength()` and
+  `WTransaction.sync(SyncLevel)`; done.
 
 Log
 ===
@@ -773,3 +779,23 @@ magic bytes are wrong is no longer called a wrong key. Tests;
 `before-commit.sh` and `level2.sh quick` pass. Found on the way, for
 005-11: with a replica, a stream that ends inside its first meta block
 fails the start earlier, in the check of the streams' IDs.
+
+2026-10-25. Before release 2026.1 (item 008), at Frans's request ("Are
+there any known bugs in BergDB? If so, we should fix them before the
+release."), by Claude (Opus 5.5, Claude Code): the known faults that were
+left are those of the open entries 005-11, 005-33 (done meanwhile, in
+another session) and 005-42, and two found on the way and not fixed, in
+005-40 and 005-41. Frans's answers: 005-11, "Keep it, document as
+experimental"; 005-42, "A1 + B2 as proposed"; 007-03's steps 2 to 5,
+"After the release".
+
+2026-10-25. 005-42 done, by Claude (Opus 5.5, Claude Code), A1 and B2 as
+decided: `transactionInfo()` leaves out the KVs under the internal prefix,
+so every `key()` works, and throws `LookupTimeNotAvailableException` for a
+value that reclaim has rewritten, where it gave reclaim's step. Added
+005-45, the two faults found on the way, and done: `SalsaStream.getLength()`
+counts what it appends, and `WTransaction.sync(SyncLevel)` waits for its own
+transaction. 005-11: the Javadoc of the Pub API's replica methods,
+README.md and docs/levels.md say that replication is experimental, with
+its faults. Tests that fail without the changes; `before-commit.sh`
+passes.
