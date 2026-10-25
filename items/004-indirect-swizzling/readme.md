@@ -80,4 +80,16 @@ written and then removed by Frans as not the most important.
 
 2026-10-24. Created 004-04 at Frans's request ("start with 'the ZGC run on today's code,
 which is cheap and decides the GC assumption'"): G1 against ZGC on 004-02's 10M runs and a
-shortened P4 soak, on F53. Started at about 16:50.
+shortened P4 soak, on F53. Started at 16:43.
+
+2026-10-25. 004-04 done (runs 2026-10-24 16:43 to 2026-10-25 06:30, unattended, on bergdb
+`7d14f65`), with Shenandoah (generational) and G1 with a 10 ms pause goal added, and
+Frans's target recorded: no stop-the-world above about 10 ms. Results in 004-04 section 3:
+under eviction only the concurrent collectors meet it (ZGC's pauses at most 0.02 ms and its
+safepoints 3.9 ms; Shenandoah's at most 0.53 and 0.55 ms; no stalls or fallbacks); G1
+paused up to 344 ms (a 477 ms safepoint), ran full collections in every run with
+eviction, paused 150 to 175 ms in a load without eviction, and up to 58 ms with a 10 ms
+goal. Costs: heap per key +30 percent with ZGC, +3 percent with Shenandoah; 10 to 13
+percent fewer gets in memory on one thread. Today's sweep takes up to a third longer under
+them, so today's worst case grows; handles remove it. Tools added: `run2.sh`, `gcsum.py`,
+`soaksum.py`; the outputs were not kept.
