@@ -1007,6 +1007,7 @@ public class StorageManager implements AppendOnlyStream {
             copy.d2 = d2;
             copy.errorRule = errorRule;
             copy.hasError = hasError;
+            copy.errorString = errorString;
             return copy;
         }
     }
