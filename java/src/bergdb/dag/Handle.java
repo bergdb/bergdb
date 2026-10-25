@@ -18,9 +18,12 @@ import java.lang.invoke.VarHandle;
  * <p>Concurrency (009-02, 3.3 and 3.4): the id is final, so a thread that sees a handle
  * through a race sees its id; obj is volatile, written by an install or an eviction, and the
  * fast path reads it with that edge; the state changes only by compareAndSet, and LIVE is 0,
- * the default, so a new handle is live without a write in its constructor; writtenPos is read
- * and written by the writer and by eviction, which hold the write lock; the CLOCK bit is a
- * hint, read and written plainly.</p>
+ * the default, so a new handle is live without a write in its constructor; writtenPos is
+ * written only by an eviction (Cache3.kill), before the object leaves the handle, and read
+ * by the record rule and by the slow path, which sees it through obj (a reader that follows
+ * the pointer at a time after the node's write sees the install, and then the eviction's
+ * null; one that does not, reads a version that is right for its own time); the CLOCK bit
+ * is a hint, read and written plainly.</p>
  */
 public final class Handle implements Pointee {
     /** The states. LIVE is 0, the default value of a byte field. */
@@ -33,9 +36,11 @@ public final class Handle implements Pointee {
     public volatile Node obj;
 
     /**
-     * The position this process last wrote the node at, Spos.NULL if none. Set by the writer
-     * when it writes the node, and by an eviction from a canonical object's position; read by
-     * the writer for a record (009-02, 4.6). Both hold the write lock.
+     * Where the node's canonical object was when an eviction killed this handle, Spos.NULL if
+     * none: set only by that eviction (Cache3.kill; live handles have none, as the model's
+     * HLiveWrittenOK says), under the map's lock and the write lock; read by the record rule
+     * (serializedRef; 009-02, 4.6) and by the slow path, which raises a pointer's reference
+     * to it (NodeCollection.followStreamPointer).
      */
     public long writtenPos = Spos.NULL;
 
