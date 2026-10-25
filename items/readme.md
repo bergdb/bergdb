@@ -99,3 +99,6 @@ Index
 * **007-bounds** (open). Bounds on BergDB's costs, the planned T3 and T4:
   first, that startup takes a bounded time, whatever the size and the age
   of the database.
+* **008-release-2026-1** (open). Release 2026.1, internal: the tagged code,
+  the jar and the release notes, and the baseline for performance
+  measurements before handles (004) and gradual eviction.
