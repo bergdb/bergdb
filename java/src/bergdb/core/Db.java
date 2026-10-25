@@ -957,7 +957,7 @@ public class Db {
                 "none (not encrypted)" : createdTxtCryptoKeyInfo;
         
         StringBuilder b = new StringBuilder();
-        b.append("This directory contains a BergDB database (see bergdb.com).\n");
+        b.append("This directory contains a BergDB database.\n");
         b.append("\n");
         b.append("creation date: " + Util.today() + "\n");
         b.append("created with:  BergDB " + BuildInfo.RELEASE + "\n");

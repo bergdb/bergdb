@@ -259,7 +259,7 @@ Level 2: bounded startup
 
 The database as designed: index nodes are written lazily to the stream,
 and startup reads only the startup section, the tail of the stream, and
-reruns the transactions in it. This is the default (startup distance 20
+reruns the transactions in it. This is the default (startup distance 50
 MB). Self-indexed streams.
 
 Theory: [sis-model.md](sis-model.md), an abstract model with Rule A and Rule
