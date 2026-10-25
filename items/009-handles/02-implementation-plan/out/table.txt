@@ -1,0 +1,19 @@
+ZGC maps256 n=1000000 fill=0.2s maxPut=0.162ms puts>1ms=0 puts>10ms=0 | resize to 2^13: 256, median 0.087ms, max 0.162ms | resize to 2^12: 256, median 0.035ms, max 0.090ms
+ZGC maps4096 n=1000000 fill=0.2s maxPut=0.066ms puts>1ms=0 puts>10ms=0 | resize to 2^9: 4096, median 0.005ms, max 0.053ms | resize to 2^8: 4096, median 0.002ms, max 0.029ms
+ZGC intr4096 n=1000000 fill=0.1s maxPut=0.049ms puts>1ms=0 puts>10ms=0 | resize to 2^9: 4096, median 0.004ms, max 0.041ms | resize to 2^8: 4096, median 0.002ms, max 0.032ms
+ZGC maps256 n=10000000 fill=2.0s maxPut=2.040ms puts>1ms=4 puts>10ms=0 | resize to 2^16: 256, median 0.738ms, max 2.040ms | resize to 2^15: 256, median 0.414ms, max 0.522ms
+ZGC maps4096 n=10000000 fill=1.9s maxPut=0.183ms puts>1ms=0 puts>10ms=0 | resize to 2^12: 4096, median 0.044ms, max 0.183ms | resize to 2^11: 4096, median 0.022ms, max 0.070ms
+ZGC intr4096 n=10000000 fill=1.0s maxPut=0.443ms puts>1ms=0 puts>10ms=0 | resize to 2^12: 4096, median 0.043ms, max 0.443ms | resize to 2^11: 4096, median 0.019ms, max 0.114ms
+ZGC maps256 n=30000000 fill=9.9s maxPut=19.274ms puts>1ms=513 puts>10ms=157 | resize to 2^18: 256, median 11.601ms, max 19.274ms | resize to 2^17: 256, median 4.173ms, max 5.129ms
+ZGC maps4096 n=30000000 fill=8.4s maxPut=1.164ms puts>1ms=58 puts>10ms=0 | resize to 2^14: 4096, median 0.233ms, max 1.164ms | resize to 2^13: 4096, median 0.257ms, max 0.440ms
+ZGC intr4096 n=30000000 fill=5.2s maxPut=1.008ms puts>1ms=1 puts>10ms=0 | resize to 2^14: 4096, median 0.388ms, max 1.008ms | resize to 2^13: 4096, median 0.122ms, max 0.637ms
+G1GC maps256 n=100000000 fill=27.8s maxPut=371.559ms puts>1ms=522 puts>10ms=11 | resize to 2^19: 256, median 3.773ms, max 255.040ms | resize to 2^18: 256, median 2.271ms, max 218.921ms
+G1GC maps4096 n=100000000 fill=23.3s maxPut=379.515ms puts>1ms=11 puts>10ms=10 | resize to 2^15: 4096, median 0.197ms, max 254.292ms | resize to 2^14: 4096, median 0.114ms, max 216.635ms
+G1GC intr4096 n=100000000 fill=12.4s maxPut=250.371ms puts>1ms=6 puts>10ms=6 | resize to 2^15: 4096, median 0.204ms, max 232.908ms | resize to 2^14: 4096, median 0.145ms, max 0.253ms
+G1GC handles n=10000000 fill=0.1s maxPut=0.000ms puts>1ms=0 puts>10ms=0 | heap 36.5 bytes/entry
+G1GC maps4096 n=10000000 fill=1.9s maxPut=105.129ms puts>1ms=2 puts>10ms=2 | resize to 2^12: 4096, median 0.026ms, max 0.055ms | resize to 2^11: 4096, median 0.021ms, max 0.063ms | heap 79.0 bytes/entry
+G1GC intr4096 n=10000000 fill=1.1s maxPut=66.073ms puts>1ms=1 puts>10ms=1 | resize to 2^12: 4096, median 0.046ms, max 0.251ms | resize to 2^11: 4096, median 0.019ms, max 0.115ms | heap 47.0 bytes/entry
+ZGC handles n=10000000 fill=0.1s maxPut=0.000ms puts>1ms=0 puts>10ms=0 | heap 51.6 bytes/entry
+ZGC maps4096 n=10000000 fill=2.0s maxPut=0.890ms puts>1ms=0 puts>10ms=0 | resize to 2^12: 4096, median 0.048ms, max 0.205ms | resize to 2^11: 4096, median 0.021ms, max 0.066ms | heap 113.2 bytes/entry
+ZGC intr4096 n=10000000 fill=1.1s maxPut=0.284ms puts>1ms=0 puts>10ms=0 | resize to 2^12: 4096, median 0.044ms, max 0.284ms | resize to 2^11: 4096, median 0.020ms, max 0.149ms | heap 65.0 bytes/entry
+done

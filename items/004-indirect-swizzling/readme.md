@@ -97,3 +97,7 @@ them, so today's worst case grows; handles remove it. Tools added: `run2.sh`, `g
 2026-10-25. 004-03, section 3: Frans's prototype of 2017 of a table from id to node,
 `MyLongMap`, named for the study of the table, from a TODO marker on its fixed size
 (006-05, T3).
+
+2026-10-25. The implementation of handles goes to item 009, created at Frans's request;
+its overview plan, 009-01, is a draft. 004 stays the study; 004-03's open question, the
+table, is settled in 009-02 (009-01, phase 0).

@@ -1,0 +1,17 @@
+[0.006s][info][gc] Using The Z Garbage Collector
+[0.329s][info][gc] GC(0) Major Collection (System.gc())
+[0.345s][info][gc] GC(0) Major Collection (System.gc()) 68M(1%)->8M(0%) 0.015s
+[0.554s][info][gc] GC(1) Major Collection (System.gc())
+[0.567s][info][gc] GC(1) Major Collection (System.gc()) 10M(0%)->10M(0%) 0.013s
+[0.774s][info][gc] GC(2) Major Collection (System.gc())
+[0.793s][info][gc] GC(2) Major Collection (System.gc()) 12M(0%)->10M(0%) 0.018s
+[1.003s][info][gc] GC(3) Major Collection (System.gc())
+[1.021s][info][gc] GC(3) Major Collection (System.gc()) 12M(0%)->10M(0%) 0.018s
+[1.333s][info][gc] GC(4) Major Collection (System.gc())
+[1.653s][info][gc] GC(4) Major Collection (System.gc()) 504M(6%)->502M(6%) 0.319s
+[1.863s][info][gc] GC(5) Major Collection (System.gc())
+[2.017s][info][gc] GC(5) Major Collection (System.gc()) 504M(6%)->502M(6%) 0.154s
+[2.227s][info][gc] GC(6) Major Collection (System.gc())
+[2.365s][info][gc] GC(6) Major Collection (System.gc()) 504M(6%)->502M(6%) 0.138s
+[2.573s][info][gc] GC(7) Major Collection (System.gc())
+[2.709s][info][gc] GC(7) Major Collection (System.gc()) 504M(6%)->502M(6%) 0.136s
