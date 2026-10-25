@@ -281,6 +281,11 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         }
     }
     
+    /**
+     * An iterator from the transaction RecoverableStream.getPosOfTransCompletedBefore()
+     * gives for 'startPos': one completed before it, in general not the last one, or the
+     * first one found if there is none (bergdb 005-39).
+     */
     public TransIterator createTransIterator(long startPos) {
         return new TransIterator(startPos, false);
     }

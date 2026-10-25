@@ -1371,6 +1371,61 @@ public class Reclaim implements Db.TransactionListener {
         }
         
         /**
+         * Regression test for bergdb 005-39: after a cut, NodeStream.createTransIterator()
+         * and print() threw NullPointerException for a start pos before the first meta block
+         * after the cut (RecoverableStream.getPosOfTransCompletedBefore()). Now they start
+         * at the first transaction after the cut that a meta block names.
+         */
+        @Nano
+        public static void testTransIteratorAfterCut() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            CutStream stream = new CutStream();
+            Db db = startForCutTest(stream, clock);
+            java.util.Random r = new java.util.Random(2);
+            Trans t = null;
+            
+            for (int i = 0; i < 3000 && stream.getCut() == 0; i++) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                byte[] v = new byte[1 + r.nextInt(30)];
+                r.nextBytes(v);
+                t = db.trans().put("/k/" + r.nextInt(50), v).build();
+                db.execute(t);
+            }
+            
+            Assert.assertTrue("no cut", stream.getCut() > 0);
+            synchronized (db.internal().getWriteLock()) {
+                NodeStream ns = db.internal().nodeStream();
+                long first = -1;
+                for (long startPos : new long[] {0, stream.getCut(), stream.getCut() + 1}) {
+                    NodeStream.TransIterator ti = ns.createTransIterator(startPos);
+                    Assert.assertTrue(ti.next());
+                    Assert.assertTrue(ti.tpos + ", cut " + stream.getCut(),
+                            ti.tpos >= stream.getCut());
+                    if (first == -1) {
+                        first = ti.tpos;
+                    }
+                    Assert.assertEquals(first, ti.tpos);
+                    boolean seen = false;
+                    long end;
+                    do {
+                        seen |= ti.tpos == t.tpos;
+                        end = ti.nextTransPos;
+                    } while (ti.next());
+                    Assert.assertTrue("the last transaction", seen);
+                    Assert.assertEquals(ns.getNextPos(), end);
+                }
+                
+                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                ns.print(new java.io.PrintStream(out), 0);
+                Assert.assertTrue(out.toString().startsWith("==== Trans @" + first + " ===="));
+            }
+            db.stop();
+        }
+        
+        /**
          * Regression test for a bug found 2026-10-13 (java/stress/ReclaimStress.java):
          * after a restart, the first available lookup time was taken from the last
          * completed iteration, also when the stream had not been cut there yet. Then

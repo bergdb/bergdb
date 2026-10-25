@@ -1058,3 +1058,17 @@ nodes on them, the splits from each node's room, new segment trees), each
 node at the largest size, against 15/16 of the record limit
 ([levels.md](levels.md), Level 2, "Bounds, one transaction"). Streams
 unchanged (StreamDigest); a test; `before-commit.sh` passes.
+
+2026-10-25. 005-39 done, by Claude (Opus 5.5, Claude Code), from the TODO
+under the Javadoc of `RecoverableStream.getPosOfTransCompletedBefore`,
+where the iterators that do not start at an exact position start. The
+Javadoc promised the last transaction completed before the position;
+the method gives the one that the last meta block before it names, up
+to 200,000 bytes earlier. In a stream whose front is cut, it threw
+`NullPointerException` for a position before the first meta block after
+the cut, and could give a transaction before the cut for one after it,
+so `NodeStream.createTransIterator` and `print()` failed on a database
+that reclaim had cut. Startup does not use it. Now the Javadoc says what
+the method gives, and in a cut stream it gives the first transaction
+after the cut that a meta block names. Tests; `before-commit.sh`
+passes.

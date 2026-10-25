@@ -38,6 +38,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-39](39-fix-trans-completed-before.md) | Fix | `RecoverableStream.getPosOfTransCompletedBefore`, where the iterators that do not start at an exact position start: its Javadoc promised the last transaction completed before the position, which it never searched for (a TODO said so), and in a stream cut by reclaim it threw `NullPointerException` or gave a transaction before the cut; now the Javadoc says what it gives, and in a cut stream it gives the first transaction after the cut that a meta block names | done | 2026-10-25 |
 | [005-31](31-fix-take-blocked.md) | Fix | A transaction whose dirty index nodes did not fit in one record stopped the startup pos for good; now one whose index nodes, by a bound at the largest node size, could take more than 15/16 of the record limit is refused before its go point (007-02, 007-03 step 1) | done | 2026-10-24 |
 | [005-35](35-fix-stop-and-close.md) | Fix | `stop()` lost the transactions still in the write buffer; `close()` returned at once after `stop()` or beside another `close()`; a writer that waited for room in the buffer waited for ever; now `stop()` starts one close that writes everything, in a thread that is not a daemon, and `close()` waits for it | done | 2026-10-24 |
 | [005-32](32-fix-failed-start-storage.md) | Fix | A start that threw left its storage running: its threads, its open files, and writes of what it appended, also into a database started after it; `BufferedStream.close()` hung when the last flush failed; now a start that throws closes its storage before the exception leaves (005-28) | done | 2026-10-24 |
@@ -85,7 +86,7 @@ is done. 005-27, 005-28 and 005-29, the fixes found in 005-11, are done.
 005-30 is done, and so is 005-34, found in it. 005-31 is done, which item
 007's deadline for `TransSeq.take` (007-01, D1) needed. 005-32
 is done, which 005-33's change needed; 005-33 waits for Frans. 005-35,
-005-36 and 005-37 are done.
+005-36 and 005-37 are done, and so is 005-39.
 
 
 Files
@@ -193,6 +194,11 @@ Files
 * [38-writes-at-scale.md](38-writes-at-scale.md). 005-38, investigate
   writes at scale: the stream's growth per key and loads beyond the
   budget, found in 004-02.
+* [39-fix-trans-completed-before.md](39-fix-trans-completed-before.md).
+  005-39, `RecoverableStream.getPosOfTransCompletedBefore`: a wrong
+  Javadoc, from the TODO under it, and a cut stream; done; the probe and
+  its output, before and after the fix, in
+  [39-fix-trans-completed-before/](39-fix-trans-completed-before/).
 
 Log
 ===
@@ -649,3 +655,15 @@ the paths of a large transaction's keys under the write lock
 ABBA order against `7f08273`, the commit before them, shows no difference
 (MEM 191, SS 1.50, CORE 0.27 to 0.29). See 005-31's outcome. With them, no
 entry of kind Fix is open.
+
+2026-10-25. Added 005-39 and done, at Frans's request ("Investigate
+RecoverableStream.java:516. The TODO there.", then "Yes" to a Fix
+entry), by Claude (Opus 5.5, Claude Code). The TODO was right: the
+Javadoc promised the last transaction completed before the position,
+which the method never searched for; and in a stream whose front
+reclaim had cut, it threw `NullPointerException` or gave a transaction
+before the cut, so `NodeStream.createTransIterator` and `print()` failed
+on such a database. Startup does not use it; it reads from an exact
+position. Now the Javadoc says what the method gives, and in a cut
+stream it gives the first transaction after the cut that a meta block
+names. Tests; `before-commit.sh` passes.

@@ -1,0 +1,27 @@
+bergdb 005-39: probe.sh on 425d7a7, before the fix (2026-10-25, F53).
+
+A: 1300 transactions, stream length 1300896
+  spos 100: got 128, the last completed before spos -1, completed between them 0
+  spos 150000: got 128, the last completed before spos 148128, completed between them 148
+  spos 200000: got 198128, the last completed before spos 198128, completed between them 0
+  spos 200100: got 198128, the last completed before spos 198128, completed between them 0
+  spos 399000: got 198128, the last completed before spos 397256, completed between them 199
+  spos 600000: got 598384, the last completed before spos 598384, completed between them 0
+  spos every 997 bytes: 1305 positions; got the last one completed before spos at 4; at most 200 completed between them
+B: first transaction failed; spos 5000: got 128, the committed one at 1128
+C: stream A cut, first position 1000000
+  spos 0: java.lang.NullPointerException: Cannot invoke "bergdb.storage.MetaBlock.getLastTransSpos()" because "<local3>" is null
+  spos 500: java.lang.NullPointerException: Cannot invoke "bergdb.storage.MetaBlock.getLastTransSpos()" because "<local3>" is null
+  spos 1000000: bergdb.storage.StreamIoException: Cannot read from position 998640, first valid position is 1000000.
+  spos 1050000: bergdb.storage.StreamIoException: Cannot read from position 998640, first valid position is 1000000.
+  spos 1199999: bergdb.storage.StreamIoException: Cannot read from position 998640, first valid position is 1000000.
+  spos 1200000: got 1198768, can be read
+  spos 1250000: got 1198768, can be read
+D: 1006 transactions, cut at 372720, first position 372720, stream length 662528, startup pos 658784
+  createTransIteratorFromExactStartupPos(658784): 5 transactions, 658784 to 662360
+  createTransIterator(0): java.lang.NullPointerException: Cannot invoke "bergdb.storage.MetaBlock.getLastTransSpos()" because "<local3>" is null
+  createTransIterator(372720): java.lang.NullPointerException: Cannot invoke "bergdb.storage.MetaBlock.getLastTransSpos()" because "<local3>" is null
+  createTransIterator(372721): java.lang.NullPointerException: Cannot invoke "bergdb.storage.MetaBlock.getLastTransSpos()" because "<local3>" is null
+  createTransIterator(401000): 392 transactions, 398128 to 662360
+  createTransIterator(658784): 89 transactions, 599064 to 662360
+  print(out, 0): java.lang.NullPointerException: Cannot invoke "bergdb.storage.MetaBlock.getLastTransSpos()" because "<local3>" is null

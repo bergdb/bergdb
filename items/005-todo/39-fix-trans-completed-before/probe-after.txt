@@ -1,0 +1,28 @@
+bergdb 005-39: probe.sh on 425d7a7 with the fix (2026-10-25, F53). Part D's counts vary from
+run to run: its loop stops on the CutStream's length, which grows as the write buffer is written.
+
+A: 1300 transactions, stream length 1300896
+  spos 100: got 128, the last completed before spos -1, completed between them 0
+  spos 150000: got 128, the last completed before spos 148128, completed between them 148
+  spos 200000: got 198128, the last completed before spos 198128, completed between them 0
+  spos 200100: got 198128, the last completed before spos 198128, completed between them 0
+  spos 399000: got 198128, the last completed before spos 397256, completed between them 199
+  spos 600000: got 598384, the last completed before spos 598384, completed between them 0
+  spos every 997 bytes: 1305 positions; got the last one completed before spos at 4; at most 200 completed between them
+B: first transaction failed; spos 5000: got 128, the committed one at 1128
+C: stream A cut, first position 1000000
+  spos 0: got 1198768, can be read
+  spos 500: got 1198768, can be read
+  spos 1000000: got 1198768, can be read
+  spos 1050000: got 1198768, can be read
+  spos 1199999: got 1198768, can be read
+  spos 1200000: got 1198768, can be read
+  spos 1250000: got 1198768, can be read
+D: 1019 transactions, cut at 372720, first position 372720, stream length 668048, startup pos 664136
+  createTransIteratorFromExactStartupPos(664136): 6 transactions, 664136 to 667432
+  createTransIterator(0): 405 transactions, 398128 to 667432
+  createTransIterator(372720): 405 transactions, 398128 to 667432
+  createTransIterator(372721): 405 transactions, 398128 to 667432
+  createTransIterator(401000): 405 transactions, 398128 to 667432
+  createTransIterator(664136): 102 transactions, 599064 to 667432
+  print(out, 0): OK

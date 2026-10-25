@@ -504,27 +504,59 @@ public class RecoverableStream {
     }
     
     /**
-     * Returns the last valid transaction that was completely written before 
-     * stream position 'spos'.
-     * If there is no such transaction, the spos of the very first valid 
-     * transaction is returned instead. If there is no valid transaction at all in 
-     * the stream, Spos.NULL is returned. Caller must hold DB.writeLock.
+     * Returns the position of a transaction to read the stream from, in order, to reach
+     * stream position 'spos': the one named by the last valid meta block at or before
+     * 'spos', which is the last transaction completely written before that meta block,
+     * so before 'spos'. In general it is not the last one completed before 'spos': those
+     * written between the meta block and 'spos' come after it. If the meta block names
+     * none, the first transaction of the stream is returned, committed or not (the
+     * iterators skip one that is not), or Spos.NULL if the stream has none.
+     * 
+     * In a stream whose front is cut (pretruncate), the meta block can name a transaction
+     * that starts before the first position, and an 'spos' before the first meta block
+     * after that position has no meta block at or before it. Then the result is the
+     * transaction named by the next valid meta block that names one at or after the first
+     * position. It can come after 'spos', and the transactions between the first position
+     * and it are not found. Caller must hold DB.writeLock.
      * 
      * @throws StreamIoException
+     * @throws StreamFormatException  if no valid meta block names a transaction at or after
+     *      the first position. A stream is not cut after the transaction its last valid meta
+     *      block names (Reclaim).
      */
     public long getPosOfTransCompletedBefore(long spos) {
-        // TODO LATER. This doc is not true, or we have a bug. This method does not iterate to find
-        // last valid transaction, just any recent transaction completely written before
-        // stream position 'spos'.
+        // 2026-10-25 (bergdb 005-39): the Javadoc promised "the last valid transaction that
+        // was completely written before stream position 'spos'", which was never searched
+        // for, as a TODO here said. In a cut stream, an 'spos' before the first meta block
+        // after the cut gave NullPointerException, and one after it could give a transaction
+        // that starts before the cut, which cannot be read. Now the meta blocks after it are
+        // searched for one that names a transaction after the cut.
         
+        final long firstPos = aos.getFirstPos();
         MetaBlock meta = readAValidMetaBlock(aos, spos);
-        long result = meta.getLastTransSpos();
-        if (result == Constants.SposNULL) {
-            if (aos.getLength() > RecoverableStream.META_BLOCK_SIZE) {
+        long blockPos = meta != null ? meta.getPos()
+                : (firstPos + META_BLOCK_DISTANCE - 1) / META_BLOCK_DISTANCE * META_BLOCK_DISTANCE;
+        
+        for (; blockPos + META_BLOCK_SIZE <= aos.getLength(); blockPos += META_BLOCK_DISTANCE) {
+            meta = readMetaBlock(aos, blockPos);
+            if (!meta.isValid()) {
+                continue;
+            }
+            meta.checkFormat();
+            long result = meta.getLastTransSpos();
+            if (result == Constants.SposNULL) {
+                if (aos.getLength() <= RecoverableStream.META_BLOCK_SIZE) {
+                    return Constants.SposNULL;
+                }
                 result = RecoverableStream.META_BLOCK_SIZE;     // spos of very first transaction
             }
+            if (result >= firstPos) {
+                return result;
+            }
         }
-        return result;
+        
+        throw new StreamFormatException("No valid meta block names a transaction at or after "
+                + "the first position of the stream, " + firstPos + ".");
     }
     
     /**
@@ -602,10 +634,10 @@ public class RecoverableStream {
     }
     
     /**
-     * Iterates through the transactions starting at a certain spos.
-     * The first transaction is the last transaction that completed before
-     * 'spos' or if there is no such transaction, the very first transaction
-     * in the stream is the first returned by the iterator.
+     * Iterates through the committed transactions, from the one that
+     * getPosOfTransCompletedBefore(spos) gives to the end of the stream: from one
+     * completed before 'spos', in general not the last one, or from the first one
+     * found if there is none (bergdb 005-39).
      */
     public static class Iterator {
         RecoverableStream stream;
@@ -1146,6 +1178,99 @@ public class RecoverableStream {
             Assert.assertEquals(3, transBytes[5]);
             
             Assert.assertEquals(false, iter.next());
+        }
+        
+        /**
+         * getPosOfTransCompletedBefore() gives the transaction named by the last valid meta
+         * block at or before the position, which is in general not the last one completed
+         * before it (bergdb 005-39; until 2026-10-25, its Javadoc said it was).
+         */
+        @Nano
+        public static void testPosOfTransCompletedBefore() {
+            MemoryStream mstream = new MemoryStream();
+            RecoverableStream r = new RecoverableStream(mstream, new MetaBlock());
+            long[] starts = appendNamedTransactions(r, 1300);
+            
+            for (long spos = 0; spos < mstream.getLength(); spos += 997) {
+                long blockPos = spos / META_BLOCK_DISTANCE * META_BLOCK_DISTANCE;
+                long expected = META_BLOCK_SIZE;    // The first, if the meta block names none.
+                for (long start : starts) {
+                    if (getSpos(start, 1000) < blockPos) {
+                        expected = start;
+                    }
+                }
+                Assert.assertEquals("spos " + spos, expected, r.getPosOfTransCompletedBefore(spos));
+            }
+            
+            // 199 transactions after it were completed before 399,000, the last at 397,256.
+            Assert.assertEquals(198128, r.getPosOfTransCompletedBefore(399000));
+        }
+        
+        /**
+         * In a stream whose front is cut, the meta blocks up to the first one after the cut
+         * name a transaction before it. Until 2026-10-25 (bergdb 005-39), a position before
+         * that meta block gave NullPointerException, and one in the META_BLOCK_DISTANCE bytes
+         * after it gave a transaction that cannot be read.
+         */
+        @Nano
+        public static void testPosOfTransCompletedBeforeAfterCut() {
+            MemoryStream mstream = new MemoryStream();
+            RecoverableStream r = new RecoverableStream(mstream, new MetaBlock());
+            long[] starts = appendNamedTransactions(r, 1300);
+            mstream.pretruncate(5 * META_BLOCK_DISTANCE);     // At one of its 1 MB arrays.
+            Assert.assertEquals(5 * META_BLOCK_DISTANCE, mstream.getFirstPos());
+            
+            // The one the meta block at 1,200,000 names, as before the cut.
+            long first = r.getPosOfTransCompletedBefore(6 * META_BLOCK_DISTANCE);
+            Assert.assertTrue("" + first, first >= 5 * META_BLOCK_DISTANCE
+                    && getSpos(first, 1000) < 6 * META_BLOCK_DISTANCE);
+            long[] before = {0, 500, 5 * META_BLOCK_DISTANCE, 5 * META_BLOCK_DISTANCE + 50000,
+                    6 * META_BLOCK_DISTANCE - 1};
+            for (long spos : before) {
+                Assert.assertEquals("spos " + spos, first, r.getPosOfTransCompletedBefore(spos));
+            }
+            
+            Iterator iter = new Iterator(r, 0);
+            int count = 0;
+            while (iter.next()) {
+                count++;
+            }
+            int expected = 0;
+            for (long start : starts) {
+                expected += start >= first ? 1 : 0;
+            }
+            Assert.assertEquals(expected, count);
+            
+            // Cut after the transaction its last meta block names: none can be found.
+            MemoryStream mstream2 = new MemoryStream();
+            RecoverableStream r2 = new RecoverableStream(mstream2, new MetaBlock());
+            appendNamedTransactions(r2, 1100);
+            mstream2.pretruncate(5 * META_BLOCK_DISTANCE);
+            for (long spos : new long[] {0, 5 * META_BLOCK_DISTANCE + 50000}) {
+                try {
+                    r2.getPosOfTransCompletedBefore(spos);
+                    throw new AssertionError("taken, spos " + spos);
+                } catch (StreamFormatException e) {
+                    // Expected.
+                }
+            }
+        }
+        
+        /**
+         * Appends 'count' committed transactions of 1000 bytes, each named by the meta
+         * blocks after it, as NodeStream.appendNodes() does; returns their positions.
+         */
+        private static long[] appendNamedTransactions(RecoverableStream r, int count) {
+            byte[] transBytes = new byte[1000];
+            Bytes.intToBytesLE(transBytes.length, transBytes, 0);
+            transBytes[transBytes.length - 1] = LAST_BYTE;
+            long[] result = new long[count];
+            for (int i = 0; i < count; i++) {
+                result[i] = r.getNextSpos();
+                r.append(transBytes, 0, transBytes.length, true, -1);
+                r.getMetaBlock().setLastTransSpos(result[i]);
+            }
+            return result;
         }
         
         @Nano
