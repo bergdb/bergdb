@@ -30,6 +30,7 @@ Open
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10). For release 2026.1: kept, documented as experimental | open |
 | [005-38](38-writes-at-scale.md) | Investigate | Writes at scale: the stream grows to about 1.1 KB per key at 100M random keys, and loads into an index larger than the budget slow to under 100 puts a second on a slow disk (004-02) | open |
+| [005-46](46-stream-file-lock.md) | Fix | A read of the stream's last file waits for the writer's append and its `fsync` (`FileStream.DbFile`, one monitor for both): seconds on s1's disk, the longest waits left there with handles (009-03) | open |
 
 
 Closed
@@ -229,6 +230,9 @@ Files
 * [45-fix-two-leftovers.md](45-fix-two-leftovers.md). 005-45, two faults
   found on the way in 005-40 and 005-41: `SalsaStream.getLength()` and
   `WTransaction.sync(SyncLevel)`; done.
+* [46-stream-file-lock.md](46-stream-file-lock.md). 005-46, a read of the
+  stream's last file waits for the writer's append and its `fsync`; found
+  in 009's measurements; open.
 
 Log
 ===
@@ -799,3 +803,9 @@ transaction. 005-11: the Javadoc of the Pub API's replica methods,
 README.md and docs/levels.md say that replication is experimental, with
 its faults. Tests that fail without the changes; `before-commit.sh`
 passes.
+
+2026-10-26. Added 005-46, found in item 009's measurements (009-03) by
+Claude (Opus 5.5, Claude Code), during Frans's unattended run of 009: a
+read of the stream's last file waits for the writer's append and its
+`fsync`. And 005-38 got 009's answer to its question 4 for the 10M load on
+s1 (009-03, section 7): 2026.1's eviction made most of its time.

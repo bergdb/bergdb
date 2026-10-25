@@ -1,0 +1,31 @@
+[    0.6 s] read the stream's files once: 7543 MB in 0.6 s
+[    2.3 s] opened /private/tmp/claude-502/-Users-f-fl-repos-f1/32b68478-35b0-4112-9d94-6ddb9ecd9df2/scratchpad/f53blk/sbdata/key24-10000000: 10000000 keys, key24, budget 665000000 bytes; startup 1.60 s, resident 56 MB
+[    2.3 s] two clock reads cost 23.0 ns; heap 2789 MB; 10 CPUs
+[    7.3 s]   warm 0: 126431 gets a second; loads/get 1.646, stream reads/get 3.974, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 12 (233 ms), resident 387 MB
+[   12.3 s]   warm 1: 198777 gets a second; loads/get 1.106, stream reads/get 2.429, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 4 (1099 ms), resident 584 MB
+[   17.3 s]   warm 2: 252148 gets a second; loads/get 0.856, stream reads/get 1.764, device bytes/get 0, sweeps 197 (187 ms), after-load waits over 10 ms 0, gc 10 (1400 ms), resident 663 MB
+[   22.3 s]   warm 3: 266995 gets a second; loads/get 0.818, stream reads/get 1.648, device bytes/get 0, sweeps 183 (152 ms), after-load waits over 10 ms 0, gc 4 (660 ms), resident 664 MB
+[   41.5 s] uniform, 1 thread: 247592 gets a second (median of 5 windows, 234432 to 262041); loads/get 0.828, stream reads/get 1.657, device bytes/get 0, sweeps 663 (708 ms), after-load waits over 10 ms 0, gc 21 (4593 ms), resident 664 MB
+[   41.5 s] uniform, timed 1000000 gets: mean 4.14, p50 4.02, p90 8.45, p99 10.56, p99.9 15.42, max 273.8 us; loads/get 0.829, stream reads/get 1.658, device bytes/get 0, sweeps 182 (246 ms), after-load waits over 10 ms 0, gc 7 (2844 ms), resident 664 MB
+[   57.6 s] hot, 1 thread: 948176 gets a second (median of 5 windows, 856296 to 989820); loads/get 0.089, stream reads/get 0.177, device bytes/get 0, sweeps 261 (257 ms), after-load waits over 10 ms 0, gc 11 (1920 ms), resident 664 MB
+[   57.6 s] hot, timed 1000000 gets: mean 1.01, p50 0.63, p90 1.38, p99 8.90, p99.9 11.52, max 104.1 us; loads/get 0.083, stream reads/get 0.167, device bytes/get 0, sweeps 19 (16 ms), after-load waits over 10 ms 0, gc 1 (987 ms), resident 664 MB
+[   87.6 s] threads 1: 239463 gets a second; mean 4.13, p50 4.02, p90 8.51, p99 10.69, p99.9 15.74, max 1766.4 us; loads/get 0.830, stream reads/get 1.661, device bytes/get 0, sweeps 1306 (1492 ms), after-load waits over 10 ms 0, gc 46 (13017 ms), resident 664 MB
+[  117.6 s] threads 2: 412605 gets a second; mean 4.79, p50 4.64, p90 9.79, p99 13.31, p99.9 19.46, max 938.2 us; loads/get 0.818, stream reads/get 1.636, device bytes/get 0, sweeps 2243 (2531 ms), after-load waits over 10 ms 0, gc 88 (17070 ms), resident 664 MB
+[  147.6 s] threads 4: 601347 gets a second; mean 6.58, p50 5.50, p90 12.61, p99 24.06, p99.9 33.28, max 1532.9 us; loads/get 0.828, stream reads/get 1.656, device bytes/get 0, sweeps 3283 (3780 ms), after-load waits over 10 ms 0, gc 141 (21163 ms), resident 664 MB
+[  177.6 s] threads 8: 391900 gets a second; mean 20.30, p50 13.95, p90 44.54, p99 140.29, p99.9 234.50, max 3451.0 us; loads/get 0.830, stream reads/get 1.660, device bytes/get 0, sweeps 2143 (2631 ms), after-load waits over 10 ms 0, gc 84 (15633 ms), resident 664 MB
+[  197.6 s] sampled 4 threads: 625461 gets a second, 724 samples:
+     53.5% RUNNABLE reading the stream
+      9.4% RUNNABLE in Dag.getEqNodeInSegment
+      9.0% RUNNABLE in NodeChecksum.sumWithZeroReplace
+      6.4% RUNNABLE in KeyNode.searchEq
+      4.6% RUNNABLE in NodeCollection.followPointer
+      3.6% RUNNABLE in KeyNode.getDeleteBitmapAtTime
+      3.2% BLOCKED reading the stream on bergdb.stream.FileStream$DbFile
+      2.9% RUNNABLE in NodeCollection.followStreamPointer
+      2.3% RUNNABLE in KeyNode.searchLte
+      2.1% RUNNABLE in ?
+      1.1% RUNNABLE in StorageManager.read
+      0.6% RUNNABLE in StoredKeyNode.parse
+      0.4% RUNNABLE in Dag.getOne
+[  198.0 s] at most: heap used 2344 MB, resident 664 MB, RSS 3613 MB; eviction BUDGET: 3376200 slots unswizzled, 12694177 objects released; budget 665000000 bytes, low 498750000; 12758 sweeps (12758 after loads, 70 complete, 0 above the budget after); last sweep 665001456 -> 664376048 bytes, pinned 44704880 (at most 44704944); sweep time 14696 ms in total, 2 ms at most
+SCALEBENCH OK

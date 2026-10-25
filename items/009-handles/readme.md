@@ -158,3 +158,42 @@ s1's longest waits of a get or a commit at step 3d, 1.4 and 2.7 s, have no
 collection or safepoint under them: a reader's read of the stream file
 waits for the writer's append and its `fsync` (FileStream.DbFile, one
 monitor for both), on s1's slow disk; not eviction, and for 3e.
+
+2026-10-25, 22:41 to 2026-10-26, 00:30. Phase 5's first runs, the branch at
+step 3d against 2026.1 in turns (009-03, sections 0 and 4 to 8): s1's pause
+probe and ScaleBench at 10M keys (the load with a 600 MB budget, then from
+the device at 133 MB, G1 and ZGC); F53's timed block, 22:55 to 23:52, with
+the Lean session paused (Props, the pause probe with G1, ZGC and
+Shenandoah, and 2026.1's ScaleBench block for each jar). Target 2 met with
+ZGC on F53 (the longest get from the OS cache at 10M keys 3.45 ms, 2026.1
+7.3 s); target 3 met (one thread in memory 3 and 11 percent fewer gets, 8
+threads 101 and 61 percent more); target 4 recorded (MEM 130, 2026.1 191).
+Step 3e: the 10M load on s1 took 767 s, 2026.1 3,015 s, of which its sweeps
+were 119 s and most of the rest reading back what they evicted (25.9 GB
+from the device, the branch 4.6 GB). On s1 the longest waits left are the
+device's and a reader's wait for the writer's `fsync` (FileStream, for the
+stream layer: registered as 005-46; the load's finding is in 005-38). Not yet run: P4's soak and ScaleBench under Shenandoah, on
+F53 from 05:00. `main` merged into the branch (`a73cd66`) for phase 6's
+gates; `night.sh` runs on it.
+
+2026-10-26, 00:01. Step 2d done, by a Claude subagent working for this
+session: T-CACHE over handles is proved (`tc_handles`, `TC_handles_records`;
+lean/SIS/Proof/Handle*.lean, about 8,760 lines): from the startup with
+handles from R(0), with any reads and evictions between transactions and no
+restart, the physical writer with handles appends exactly the model's
+records and leaves the model's D, and the memory keeps the invariants of
+`TC_handles`. The model was first aligned with Java's step 3a (the written
+position travels in the pointer: only an eviction sets it, and the slow path
+raises the reference and writes it back). Checked in this session: the
+handle modules rebuilt from scratch with no warnings and no `sorry`, and
+`#print axioms tc_handles` gives only Lean's standard axioms. On `main` as
+`38586b3`. G2b's condition for the merge (phase 2's model and the
+serialization invariant) is met. Phase 4a (T2-C, T-READ and T-PIN over
+handles) started in the same way. The model's follow is one atomic step, so
+the interleavings of Java's slow path are argued in 02, section 9 (the
+reads of `writtenPos`).
+
+2026-10-26, 00:20. Step 4b: docs/handles-alignment.md, the mapping of
+Java's state with handles to the model's (SIS/Handle.lean) and the register
+of where they differ, as docs/level4-alignment.md does for the design
+before handles. Written by Claude (Opus 5.5, Claude Code).

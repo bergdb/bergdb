@@ -1,0 +1,30 @@
+[    0.7 s] read the stream's files once: 7543 MB in 0.6 s
+[    2.3 s] opened /private/tmp/claude-502/-Users-f-fl-repos-f1/32b68478-35b0-4112-9d94-6ddb9ecd9df2/scratchpad/f53blk/sbdata/key24-10000000: 10000000 keys, key24, budget 665000000 bytes; startup 1.56 s, resident 61 MB
+[    2.3 s] two clock reads cost 26.9 ns; heap 2793 MB; 10 CPUs
+[    7.3 s]   warm 0: 108896 gets a second; loads/get 1.693, stream reads/get 5.080, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 2 (62 ms), resident 361 MB
+[   12.3 s]   warm 1: 158352 gets a second; loads/get 1.178, stream reads/get 3.534, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 1 (54 ms), resident 548 MB
+[   17.3 s]   warm 2: 196744 gets a second; loads/get 0.918, stream reads/get 2.754, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 1 (70 ms), resident 654 MB
+[   23.5 s]   warm 3: 22507 gets a second; loads/get 0.825, stream reads/get 2.476, device bytes/get 0, sweeps 1 (5541 ms), after-load waits over 10 ms 1, gc 1 (182 ms), resident 498 MB
+[   28.5 s]   warm 4: 189990 gets a second; loads/get 1.004, stream reads/get 3.013, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 1 (84 ms), resident 585 MB
+[   33.5 s]   warm 5: 210098 gets a second; loads/get 0.878, stream reads/get 2.635, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 1 (66 ms), resident 653 MB
+[   61.5 s] uniform, 1 thread: 178717 gets a second (median of 5 windows, 35646 to 209257); loads/get 0.917, stream reads/get 2.750, device bytes/get 0, sweeps 2 (10259 ms), after-load waits over 10 ms 2, gc 9 (450 ms), resident 589 MB
+[   61.5 s] uniform, timed 1000000 gets: mean 5.67, p50 5.02, p90 5.76, p99 11.07, p99.9 14.21, max 185547.0 us; loads/get 1.001, stream reads/get 3.003, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 6 (466 ms), resident 589 MB
+[   82.4 s] hot, 1 thread: 884190 gets a second (median of 5 windows, 122968 to 905193); loads/get 0.094, stream reads/get 0.283, device bytes/get 0, sweeps 1 (6146 ms), after-load waits over 10 ms 1, gc 4 (312 ms), resident 516 MB
+[   82.4 s] hot, timed 1000000 gets: mean 1.64, p50 0.71, p90 4.90, p99 8.38, p99.9 12.22, max 44659.3 us; loads/get 0.206, stream reads/get 0.619, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 1 (45 ms), resident 516 MB
+[  114.1 s] threads 1: 133639 gets a second; mean 7.44, p50 4.96, p90 5.50, p99 10.69, p99.9 13.50, max 5356463.7 us; loads/get 0.921, stream reads/get 2.764, device bytes/get 0, sweeps 2 (10462 ms), after-load waits over 10 ms 2, gc 15 (821 ms), resident 498 MB
+[  144.1 s] threads 2: 195931 gets a second; mean 10.15, p50 6.02, p90 8.45, p99 13.18, p99.9 18.18, max 5185581.6 us; loads/get 0.937, stream reads/get 2.812, device bytes/get 0, sweeps 2 (10332 ms), after-load waits over 10 ms 4, gc 20 (1700 ms), resident 619 MB
+[  174.1 s] threads 4: 208362 gets a second; mean 19.14, p50 7.39, p90 12.29, p99 24.45, p99.9 64.00, max 5233182.3 us; loads/get 0.928, stream reads/get 2.784, device bytes/get 0, sweeps 3 (15544 ms), after-load waits over 10 ms 12, gc 21 (1620 ms), resident 592 MB
+[  204.1 s] threads 8: 151838 gets a second; mean 52.59, p50 25.34, p90 67.58, p99 128.51, p99.9 182.27, max 5313123.3 us; loads/get 0.926, stream reads/get 2.778, device bytes/get 0, sweeps 2 (10473 ms), after-load waits over 10 ms 16, gc 15 (1278 ms), resident 601 MB
+[  224.1 s] sampled 4 threads: 203217 gets a second, 696 samples:
+     41.8% BLOCKED in Eviction.afterLoad on bergdb.core.Db$WriteLock
+     25.4% RUNNABLE reading the stream, holding a pointer lock
+      8.5% RUNNABLE in Eviction.sweep
+      3.6% RUNNABLE in NodeCollection.followPointer, holding a pointer lock
+      3.3% RUNNABLE in Residents.walk
+      2.2% BLOCKED in NodeCollection.followPointer on bergdb.core.PointerLocks$Lock
+      2.0% BLOCKED reading the stream on bergdb.stream.FileStream$DbFile, holding a pointer lock
+      2.0% RUNNABLE in NodeChecksum.sumWithZeroReplace, holding a pointer lock
+      2.0% RUNNABLE in NodeCollection.followPointer
+      1.7% RUNNABLE in KeyNode.searchEq
+[  224.9 s] at most: heap used 2775 MB, resident 665 MB, RSS 3078 MB; eviction BUDGET: 31038744 slots unswizzled, 31038533 objects released; budget 665000000 bytes, low 498750000; 15 sweeps (15 after loads, 0 complete, 0 above the budget after); last sweep 665000240 -> 498749232 bytes, pinned 50240880 (at most 50240880); sweep time 79286 ms in total, 6145 ms at most
+SCALEBENCH OK

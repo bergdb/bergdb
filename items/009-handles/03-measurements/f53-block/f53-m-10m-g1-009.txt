@@ -1,0 +1,26 @@
+[    0.4 s] load: 10000000 keys, key24, budget 0 bytes, dir /private/tmp/claude-502/-Users-f-fl-repos-f1/32b68478-35b0-4112-9d94-6ddb9ecd9df2/scratchpad/f53blk/sbdata/key24-10000000
+[   30.4 s]   3910000 puts, 130301 a second; resident 1037 MB, heap 1534 MB, stream 2187 MB
+[   60.5 s]   6506000 puts, 108368 a second; resident 1755 MB, heap 2549 MB, stream 4316 MB
+[   90.5 s]   8784000 puts, 97515 a second; resident 2382 MB, heap 3160 MB, stream 6400 MB
+[  107.9 s] load done: 106.9 s, 93503 puts a second; on disk 7543 MB, 754.4 bytes per key; heap after a full GC 1862 MB (2 MB before the load), 186.0 bytes per key; eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most
+[  107.9 s] two clock reads cost 22.2 ns; heap 6442 MB; 10 CPUs
+[  112.9 s]   warm 0: 690244 gets a second; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  117.9 s]   warm 1: 686404 gets a second; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  134.4 s] uniform, 1 thread: 693400 gets a second (median of 5 windows, 690240 to 694716); loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  134.4 s] uniform, timed 1000000 gets: mean 1.41, p50 1.42, p90 1.71, p99 2.01, p99.9 3.84, max 31.7 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  150.1 s] hot, 1 thread: 1448323 gets a second (median of 5 windows, 1424066 to 1452263); loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  150.1 s] hot, timed 1000000 gets: mean 0.65, p50 0.54, p90 0.92, p99 1.96, p99.9 2.30, max 37.5 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  180.1 s] threads 1: 684962 gets a second; mean 1.41, p50 1.42, p90 1.71, p99 2.01, p99.9 5.44, max 59.4 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  210.2 s] threads 2: 1307728 gets a second; mean 1.47, p50 1.46, p90 1.80, p99 2.10, p99.9 4.48, max 165.6 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  240.2 s] threads 4: 2381443 gets a second; mean 1.59, p50 1.58, p90 1.92, p99 2.80, p99.9 5.82, max 278.2 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  270.2 s] threads 8: 4247964 gets a second; mean 1.71, p50 1.71, p90 2.10, p99 2.43, p99.9 4.13, max 990.4 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  290.2 s] sampled 4 threads: 2362053 gets a second, 724 samples:
+     28.3% RUNNABLE in KeyNode.searchEq
+     27.6% RUNNABLE in Dag.getEqNodeInSegment
+     16.6% RUNNABLE in KeyNode.searchLte
+      9.9% RUNNABLE in KeyNode.getDeleteBitmapAtTime
+      7.9% RUNNABLE in ?
+      5.5% RUNNABLE in Dag.getOne
+      4.1% RUNNABLE in TopDs.findSuperRootAtTime
+[  290.7 s] at most: heap used 3667 MB, resident 2712 MB, RSS 6716 MB; eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most
+SCALEBENCH OK

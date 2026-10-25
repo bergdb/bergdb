@@ -73,6 +73,21 @@ Measure the bytes written a put by kind with ScaleBench (004-02's tool) at
 loads and writes, on F53 at 10M keys and on s1.
 
 
+Findings
+--------
+
+2026-10-26, from item 009 ([009-03](../009-handles/03-measurements.md),
+section 7), question 4 for s1 at 10M keys: the same load (600 MB budget,
+2.5 GB heap, G1) took 3,015 s on release 2026.1 and 767 s on 009's branch
+with handles (13,045 puts a second). 2026.1's sweeps took 119 s of it;
+most of the rest was reading back what they had evicted: 10.1M stream
+reads and 25.9 GB from the device, against 2.0M and 4.6 GB with handles,
+whose pointers keep the node's id (no header read to find it) and whose
+CLOCK eviction keeps what the writer touches. So at 10M keys on s1 the
+slowness was eviction's, not the write path's. The stream's growth per key
+(question 1), and loads at 30M and 100M keys, are not measured again.
+
+
 Size and order
 --------------
 

@@ -1,8 +1,11 @@
 /-
 Self-indexed streams in Lean: the physical layer with handles (bergdb item 009,
 phase 2, step 2a; the design is items/009-handles/02-implementation-plan.md,
-section 4, here called 02). Trusted part, like Evict.lean. Work in progress: the
-statements are in HandleTheorems.lean, not yet proved.
+section 4, here called 02; aligned with Java's implementation, step 3a on the
+branch 009-handles: java/src/bergdb/dag/Handle.java, core/NodeCollection.java,
+core/Cache3.java). Trusted part, like Evict.lean. The statements are in
+HandleTheorems.lean; T-CACHE over handles (`TC_handles`) is proved in
+SIS/Proof/HandleRecords.lean (step 2d), the others are not yet.
 
 Evict.lean models BergDB's memory as it is at Level 4: a pointer of an object
 is a memory pointer to an object, or a stream pointer, and eviction unswizzles
@@ -10,10 +13,10 @@ memory pointers and releases objects that no memory pointer names. This file
 models 009's design instead:
 
 * A *handle* (02, 4.1) is one per index node that is resident or that a
-  resident pointer names: the node id, the node's one object or none, the
-  position this process last wrote the node at (`writtenPos`), and whether it
-  is dead. One live handle per node, in the table (02, 4.3). A dead handle is
-  never live again.
+  resident pointer names: the node id, the node's one object or none, a
+  written position (`writtenPos`: where a canonical object of the node was
+  when it was evicted), and whether it is dead. One live handle per node, in
+  the table (02, 4.3). A dead handle is never live again.
 * A *pointer* of an object (02, 4.2) holds a reference, Java's `pos[i]`: the
   record of the version it names, or none for a vpos (a node not written when
   the pointer was written); never access data. And a handle, or none until the
@@ -21,10 +24,11 @@ models 009's design instead:
 * The objects are numbered. Phys.lean calls an object's number a handle
   (`Slot.mem h`); here it is an *address*, since a handle is 009's.
 
-The operations, each mirroring one of Evict.lean:
+The operations, each mirroring one of Evict.lean and one of Java's:
 
 * following a pointer (02, 4.4; `HMem.followR`, `HMem.follow`): the fast path,
-  and the slow path: resolve (`HMem.resolve`), load and install (`HMem.load`);
+  and the slow path: the reference raised and written back, the live handle
+  (`HMem.resolve`), load and install (`HMem.load`);
 * the writer's promote (02, 4.5; `HMem.promote`), its walk and its change
   (`HMem.reachOnPath`, `HMem.newPtr`, `HMem.applyChange`; A-COPY as in
   Evict.lean);
@@ -36,46 +40,51 @@ The operations, each mirroring one of Evict.lean:
 * runs with reads and evictions between transactions (`HCacheOp`,
   `runHandles`).
 
-Where 02 is vague, the model takes the simplest option that is faithful to it,
-and says so in the comment of the definition. The choices:
+Where 02 is vague, the model does what Java does, and says so in the comment of
+the definition. The choices:
 
-1. A re-resolve keeps the written position: when a pointer that holds a dead
-   handle is resolved to the node's live handle, the live handle's written
-   position becomes the larger of its own and the dead handle's
-   (`HMem.resolve`). 02 does not say this; without it, the record rule of 4.6
-   and the slow path lose the position this process last wrote the node at
-   (HandleExample.lean has the case, and counts it in its runs; runs of the
-   model without it give wrong records and reads). So readers change a written
-   position too, which 02 (4.6) says they do not: only to the larger of two
-   positions at which this process wrote the node.
-2. The writer's `resolvePointers` (`HMem.writeNode`): a pinned pointee's
-   pointer takes the node's live handle (by id) and, as its reference, the
-   position of the node's canonical object, which is what the record names for
-   it (02, 4.2: `pos[i]` holds the reference the pointer was "last resolved by
-   the writer" with); any other pointer's reference is set to its reference
-   after Rule R, as today. Keeping the old reference of a pinned pointee's
-   pointer gives the same records and reads in the runs of HandleExample.lean,
-   but leaves more pointers whose reference is older than their record, or a
-   vpos, which the fast path sends to the slow path.
+1. The written position travels in the pointer. Only an eviction sets a
+   written position: when it kills a handle whose object is canonical, the
+   handle keeps that object's position (Java's `Cache3.evict`). When the slow
+   path follows a pointer, it raises the pointer's reference after Rule R to
+   the written position of the handle the pointer holds, if that is newer
+   (Java's `newerPos`), and writes the result back into the pointer's
+   reference (Java's `setRef`); then the pointer takes the node's live handle,
+   whose written position does not change. Live handles have no written
+   position. This is record-neutral: before, the record rule gives the larger
+   of the reference after Rule R and the dead handle's written position;
+   after, the new reference, which already includes it (Rule R applied twice
+   gives what it gives once). 02 does not say how a re-resolve keeps the
+   written position; without it, records and reads go wrong
+   (HandleExample.lean has the case).
+2. The writer's `resolvePointers` (`HMem.writeNode`, as Java's): a pointer
+   whose handle holds a canonical object stays as it is; a pinned pointee's
+   pointer takes the node's live handle (by id), its reference unchanged; any
+   other pointer's reference is set to its reference after Rule R. The writer
+   sets no written position.
 3. A vpos is none, below every position: the larger of a vpos and a position is
-   the position (`maxRef`), and Rule R replaces a vpos by the newest version in
-   the startup section, as Rule R does in the model (`ruleRRef`).
+   the position (`maxRef`, Java's `newerPos` and `Handle.serializedRef`), and
+   Rule R replaces a vpos by the newest version in the startup section
+   (`ruleRRef`).
 4. There are no readers in the middle of an operation, so an object that leaves
    its handle (a newer version installed, or an eviction) leaves memory. Java's
    garbage collector keeps it for a reader that still holds it.
 5. Data nodes (BergDB's values) get handles like index nodes. Java keeps
-   direct pointers from leaves to values (02, 4.8); a data node has one
-   version, so its references are the same either way.
+   direct pointers from leaves to values (02, 4.8). A data node has one
+   version, written in the record of the transaction that makes it, so every
+   object of it is that version, and a pointer's record for it is its position
+   either way: the records and the reads are the same.
 6. A load that finds no version (Java throws) changes nothing.
-7. The slow path compares the handle's object with the larger of the
-   pointer's reference after Rule R and the live handle's written position,
-   which a re-resolve may just have raised (choice 1); 02 compares with the
+7. The slow path compares the live handle's object with the raised reference
+   of choice 1 (Java's `Handle.usable(o, ref)`); 02 compares with the
    reference after Rule R only (4.4, step 2). With 02's test, a snapshot older
-   than the version this process last wrote, which a reader installed through
-   an older pointer after an eviction, serves a pointer whose record is that
-   newer version: reads at the last time and the writer's view then go wrong,
-   and so do the records (HandleExample.lean has the case; runs of the model
-   with 02's test found it).
+   than the written position, which a reader installed through an older
+   pointer after an eviction, serves a pointer whose record is that newer
+   version: reads at the last time and the writer's view then go wrong, and so
+   do the records (HandleExample.lean has the case).
+8. The writer's promote marks the handle's object canonical, without a load
+   (Java's `Cache3.makeCanonical`): the object its follow reached is the node's
+   latest version.
 
 Left out, as in Evict.lean: concurrency (the fast path's barriers of 02, 3.3
 and 3.4, the handle's LOADING state, the monitors and the map locks: every
@@ -92,9 +101,10 @@ variable {V T : Type} [DecidableEq V]
 
 /-! ## The state -/
 
-/-- The larger of two references, none (a vpos) below every position. The
-record rule of 02, 4.6, takes the larger of a pointer's reference after Rule R
-and its handle's written position; a vpos never wins (choice 3 of the header). -/
+/-- The larger of two references, none (a vpos) below every position (Java's
+`newerPos`). The record rule of 02, 4.6, takes the larger of a pointer's
+reference after Rule R and its handle's written position, and so does the slow
+path; a vpos never wins (choice 3 of the header). -/
 def maxRef : Option Nat → Option Nat → Option Nat
   | some a, some b => some (max a b)
   | some a, none => some a
@@ -125,10 +135,11 @@ structure HObj (V : Type) where
   deriving Repr
 
 /-- A handle (02, 4.1, Java's `Handle`): the node id (Java's final `id`), the
-address of the node's one object or none (`obj`), the record this process last
-wrote the node in or none (Java's `writtenPos`), and whether it is dead. A dead
-handle has no object and is not in the table; it is never live again. The
-LOADING state and the CLOCK bit are left out (see the header). -/
+address of the node's one object or none (`obj`), the written position or none
+(Java's `writtenPos`: the position of the canonical object an eviction took
+from it; choice 1 of the header), and whether it is dead. A dead handle has no
+object and is not in the table; it is never live again. The LOADING state and
+the CLOCK bit are left out (see the header). -/
 structure Handle where
   node : NodeId
   obj : Option Nat
@@ -215,9 +226,9 @@ def HObj.ofVersion (sp : Spec V T) (w : Version V) : HObj V :=
 
 /-- Object o can serve a pointer whose reference is r: it is canonical, or a
 snapshot at least as new as r. A vpos (none) is served only by a canonical
-object. The fast path's test (02, 4.4) with r the pointer's own reference; the
-slow path's with the larger of r after Rule R and the handle's written
-position (choice 7 of the header). -/
+object (Java's `Handle.usable`). The fast path's test (02, 4.4) with r the
+pointer's own reference; the slow path's with the pointer's raised reference
+(choices 1 and 7 of the header). -/
 def HObj.usable (o : HObj V) (r : Option Nat) : Bool :=
   o.canonical || match r, o.pos with
     | some r, some p => decide (r ≤ p)
@@ -225,20 +236,25 @@ def HObj.usable (o : HObj V) (r : Option Nat) : Bool :=
 
 /-! ## Following a pointer (02, 4.4) -/
 
-/-- The slow path's step 1, resolve (02, 4.4), for the pointer of the object
-at address a for pointee y. If the pointer holds a live handle, that one.
-Otherwise (no handle, or a dead one): the node's live handle from the table, by
-node id (Java: a vpos is the id, else the dead handle's id, else the header at
-`pos[i]`; the model's pointer knows its pointee), or a new live handle with no
-object, entered in the table; the pointer then holds it (Java: compareAndSet).
-Returns the memory after and the live handle.
+/-- Set the reference of the pointer of the object at address a for pointee y
+(Java's `setRef`, under the node's monitor). -/
+def HMem.setRef (m : HMem V) (a : Nat) (y : NodeId) (r : Option Nat) : HMem V :=
+  match m.obj? a with
+  | some o => match o.ptr? y with
+    | some p => m.setObj a (o.setPtr y { p with ref := r })
+    | none => m
+  | none => m
 
-Choice 1 of the header: when the pointer held a dead handle, the live handle's
-written position becomes the larger of its own and the dead handle's. 02 says
-that the slow path reads "the newest this process wrote, `writtenPos`", but not
-how a new handle learns it; the dead handle is the only place that knows it,
-and the record rule (02, 4.6) reads the written position of the handle the
-pointer holds, which is now the live one. -/
+/-- The slow path's live handle (02, 4.4, step 1; Java's `followStreamPointer`,
+step 3), for the pointer of the object at address a for pointee y. If the
+pointer holds a live handle, that one. Otherwise (no handle, or a dead one): the
+node's live handle from the table, by node id (Java: the dead handle's id, else
+a vpos is the id, else the header at `pos[i]`; the model's pointer knows its
+pointee), or a new live handle with no object and no written position, entered
+in the table (Java's `liveOrNewHandle`); the pointer then holds it (Java's
+`setPointee`, step 5, after the load; here the load cannot fail in between).
+The live handle's written position does not change (choice 1 of the header).
+Returns the memory after and the live handle. -/
 def HMem.resolve (m : HMem V) (a : Nat) (y : NodeId) : HMem V × Nat :=
   let cur : Option Nat := ((m.obj? a).bind (·.ptr? y)).bind (·.handle)
   let live : Option Nat := match cur with
@@ -249,16 +265,12 @@ def HMem.resolve (m : HMem V) (a : Nat) (y : NodeId) : HMem V × Nat :=
   match live with
   | some n => (m, n)
   | none =>
-    -- The written position of the dead handle the pointer holds, if any.
-    let wpDead : Option Nat := (cur.bind m.handle?).bind (·.written)
     -- The node's live handle, the table's, or a new one.
     let r1 : HMem V × Nat := match m.tableOf y with
-      | some n => match m.handle? n with
-        | some hd => (m.setHandle n { hd with written := maxRef hd.written wpDead }, n)
-        | none => (m, n)
+      | some n => (m, n)
       | none =>
         let n := m.nextHandle
-        let m' := (m.setHandle n { node := y, obj := none, written := wpDead, dead := false }).setTable y n
+        let m' := (m.setHandle n { node := y, obj := none, written := none, dead := false }).setTable y n
         ({ m' with nextHandle := n + 1 }, n)
     -- The pointer takes it.
     let m2 := match r1.1.obj? a with
@@ -268,33 +280,32 @@ def HMem.resolve (m : HMem V) (a : Nat) (y : NodeId) : HMem V × Nat :=
       | none => r1.1
     (m2, r1.2)
 
-/-- The slow path's step 2, load and install (02, 4.4), on the live handle n:
-the handle's object if it can serve the reference `target` (`HObj.usable`);
-otherwise the version at the larger of `target` and the handle's written
-position ("the pointer's, or the newest this process wrote, if newer"), read
-from the stream S exactly (a snapshot, not cut back), installed in the handle
-in place of the object it held, which leaves memory (choice 4 of the header).
-The readers' slow path and the writer's promote pass the larger of the
-pointer's reference after Rule R and the handle's written position as `target`
-(choice 7 of the header). Returns the memory after and the address of the
-object; none if there is no version to read (Java throws; choice 6). In Java
+/-- The slow path's load and install (02, 4.4, step 2; Java's
+`followStreamPointer`, step 4, under the handle's monitor), on the live handle
+n: the handle's object if it can serve the reference r (`HObj.usable`);
+otherwise the version at r, read from the stream S exactly (a snapshot, not cut
+back), installed in the handle in place of the object it held, which leaves
+memory (Java's `Cache3.install`: the version read is newer than the object it
+replaces; choice 4 of the header). The readers' slow path passes the pointer's
+raised reference (choices 1 and 7). Returns the memory after and the address of
+the object; none if r names no version (a vpos: Java throws; choice 6). In Java
 the loader holds the handle's monitor, with the state LOADING; here the load is
 atomic, so the handle is still live and "a canonical or newer object got there
 first" cannot happen. -/
-def HMem.load (sp : Spec V T) (S : Stream V T) (m : HMem V) (n : Nat) (target : Option Nat) :
+def HMem.load (sp : Spec V T) (S : Stream V T) (m : HMem V) (n : Nat) (r : Option Nat) :
     HMem V × Option Nat :=
   match m.handle? n with
   | none => (m, none)
   | some hd =>
     let cur : Option Nat := match hd.obj with
       | some b => match m.obj? b with
-        | some o => if o.usable target then some b else none
+        | some o => if o.usable r then some b else none
         | none => none
       | none => none
     match cur with
     | some b => (m, some b)
     | none =>
-      match maxRef target hd.written with
+      match r with
       | none => (m, none)
       | some r =>
         match S.versionAt r hd.node with
@@ -308,25 +319,28 @@ def HMem.load (sp : Spec V T) (S : Stream V T) (m : HMem V) (n : Nat) (target : 
           (m2.setHandle n { hd with obj := some b }, some b)
 
 /-- The readers' follow of the pointer of the object at address a for pointee
-y (02, 4.4). The fast path: the pointer holds a handle, the handle holds an
-object, and the object is canonical or at least as new as the pointer's own
-reference, without Rule R and without the written position (`HObj.usable`);
-then nothing changes (Java sets the CLOCK bit, left out). A dead handle holds no
-object, so it fails the test, as in Java, which reads only the handle's object.
-Otherwise the slow path: resolve, then load with the larger of the pointer's
-reference after Rule R, of the last startup (its stream S0), and the live
-handle's written position (choice 7 of the header). Versions are read from S,
-the stream now, as in Evict.lean's `follow4`. Returns the memory after, the live
+y (02, 4.4; Java's `NodeCollection.followPointer`). The fast path (Java's
+`memoryObject`): the pointer holds a handle, the handle holds an object, and the
+object is canonical or at least as new as the pointer's own reference, without
+Rule R (`HObj.usable`); then nothing changes (Java sets the CLOCK bit, left
+out). A dead handle holds no object, so it fails the test, as in Java, which
+reads only the handle's object. Otherwise the slow path (Java's
+`followStreamPointer`): the pointer's reference after Rule R, of the last
+startup (its stream S0), raised to the written position of the handle the
+pointer holds, if any (a dead handle's; a live one has none), is written back
+into the pointer (choice 1 of the header); then the live handle (`resolve`) and
+the load with that reference (`load`; choice 7). Versions are read from S, the
+stream now, as in Evict.lean's `follow4`. Returns the memory after, the live
 handle and the address of the object reached; none if there is no such pointer
 or nothing to read.
 
-Open point 1 of 02 (section 7), Rule R on the fast path, is this test: it
-compares with the pointer's own reference only. HandleTheorems.lean states why
-that is enough (`HRuleROK`, `HSnapWrittenOK`, `HFastOK`): every snapshot in a
-handle was loaded after the last startup by the slow path, so it is at least as
-new as its node's newest version in the startup section and as its handle's
-written position; for a reference that is not a vpos, the fast path's test then
-gives the slow path's answer. -/
+Open point 1 of 02 (section 7), Rule R on the fast path, is the fast path's
+test: it compares with the pointer's own reference only. HandleTheorems.lean
+states why that is enough (`HRuleROK`, `HLiveWrittenOK`, `HFastOK`): every
+snapshot in a handle was loaded after the last startup by the slow path, so it
+is at least as new as its node's newest version in the startup section, and a
+live handle has no written position; for a reference that is not a vpos, the
+fast path's test then gives the slow path's answer. -/
 def HMem.followR (sp : Spec V T) (S0 S : Stream V T) (m : HMem V) (a : Nat) (y : NodeId) :
     Option (HMem V × Nat × Nat) :=
   match (m.obj? a).bind (·.ptr? y) with
@@ -342,29 +356,27 @@ def HMem.followR (sp : Spec V T) (S0 S : Stream V T) (m : HMem V) (a : Nat) (y :
     match fast with
     | some nb => some (m, nb.1, nb.2)
     | none =>
-      let r1 := m.resolve a y
-      let wp : Option Nat := (r1.1.handle? r1.2).bind (·.written)
-      match r1.1.load sp S r1.2 (maxRef (ruleRRef S0 m.s y p.ref) wp) with
+      -- The reference after Rule R, raised to the held handle's written position,
+      -- written back into the pointer (Java: `newerPos`, `setRef`).
+      let ref := maxRef (ruleRRef S0 m.s y p.ref) ((p.handle.bind m.handle?).bind (·.written))
+      let r1 := (m.setRef a y ref).resolve a y
+      match r1.1.load sp S r1.2 ref with
       | (m2, some b) => some (m2, r1.2, b)
       | (_, none) => none
 
-/-- The writer's promote (02, 4.5; Evict.lean's `Mem.promote`), after its
-follow of the pointer of the object at address a for pointee y has reached
-the live handle n: the handle's object, if canonical. Otherwise it is lv(y) or
-older: if it is older than the larger of the pointer's reference after Rule R
-and the handle's written position (which is lv(y) for the pointers the writer
-follows; the invariant `HSlotOK` of HandleTheorems.lean), the writer loads that
-version (`HMem.load`), and then marks the handle's object canonical. One live
+/-- The writer's promote (02, 4.5; Java's `Cache3.makeCanonical`; Evict.lean's
+`Mem.promote`), after its follow has reached the live handle n: the handle's
+object, marked canonical. It is the object the follow reached, the version of
+the node that the writer's pointer names, which is the node's latest (the
+invariant `HSlotOK` of HandleTheorems.lean); Java takes the newer of that
+version and the handle's object, which here are the same object. One live
 handle per node gives one canonical object per node. -/
-def HMem.promote (sp : Spec V T) (S0 S : Stream V T) (m : HMem V) (a : Nat) (y : NodeId)
-    (n : Nat) : HMem V × Option Nat :=
-  let r : Option Nat := ((m.obj? a).bind (·.ptr? y)).bind (·.ref)
-  let target := maxRef (ruleRRef S0 m.s y r) ((m.handle? n).bind (·.written))
-  match m.load sp S n target with
-  | (m1, some b) => match m1.obj? b with
-    | some o => (m1.setObj b { o with canonical := true }, some b)
-    | none => (m1, some b)
-  | (_, none) => (m, none)
+def HMem.promote (m : HMem V) (n : Nat) : HMem V × Option Nat :=
+  match m.objOf n with
+  | some b => match m.obj? b with
+    | some o => (m.setObj b { o with canonical := true }, some b)
+    | none => (m, none)
+  | none => (m, none)
 
 /-- Follow the pointer of the object at address a for pointee y: the readers'
 follow, then, for the writer, its promote (02, 4.5: "follows as a reader, then
@@ -374,7 +386,7 @@ def HMem.follow (sp : Spec V T) (S0 S : Stream V T) (m : HMem V) (a : Nat) (y : 
     (writer : Bool) : HMem V × Option Nat :=
   match m.followR sp S0 S a y with
   | none => (m, none)
-  | some (m1, n, b) => if writer then m1.promote sp S0 S a y n else (m1, some b)
+  | some (m1, n, b) => if writer then m1.promote n else (m1, some b)
 
 /-- Read at time t from the object at address a, down, through the handles: as
 Evict.lean's `Mem.readAt4`. Each object reached, by node, with the node it gives
@@ -485,17 +497,19 @@ def HMem.applyChange (sp : Spec V T) (P : Struct V) (j : Time) (c : Changes V) (
 /-! ## Records (02, 4.6) -/
 
 /-- The serialized reference of pointer p to node y, the record rule of 02, 4.6,
-without the rule for pinned pointees: the position of the canonical object if
-p's handle holds a canonical object; else the larger of p's reference after Rule
-R (of the last startup, S0) and the handle's written position; with no handle,
-the reference after Rule R. A vpos (none) is below every position (`maxRef`).
+without the rule for pinned pointees (Java's `Handle.serializedRef`, after the
+writer's Rule R): the position of the canonical object if p's handle holds a
+canonical object; else the larger of p's reference after Rule R (of the last
+startup, S0) and the handle's written position (only a dead handle has one);
+with no handle, the reference after Rule R. A vpos (none) is below every
+position (`maxRef`).
 
 Open point 3 of 02 (section 7), a vpos in `pos[i]`: Rule R replaces a vpos by
 the newest version in the startup section, if there is one (`ruleRRef`); and in
 the larger of the two, a vpos never wins. HandleExample.lean has runs in which a
-pointer's reference is a vpos and its record is its handle's written position;
-Java's rule must not compare such a vpos with the written position as numbers
-unless a vpos is always below the positions its node is written at. -/
+pointer's reference is a vpos and its record is its handle's written position,
+so a vpos must not be compared with a position as a number unless it is
+always below the positions its node is written at. -/
 def HMem.ptrRef (S0 : Stream V T) (m : HMem V) (y : NodeId) (p : HPtr) : Option Nat :=
   let rr := ruleRRef S0 m.s y p.ref
   match p.handle.bind m.handle? with
@@ -509,9 +523,9 @@ def HMem.ptrRef (S0 : Stream V T) (m : HMem V) (y : NodeId) (p : HPtr) : Option 
 Evict.lean's `Mem.refOf`): if y is pinned (in D, which holds the nodes in D
 before this record's writes, those taken by it included), the position of its
 canonical object, found by node id (`resolvePointers` keeps this rule); otherwise
-the record rule for o's pointer for y (`ptrRef`). Readers change neither a
-pointer's reference nor a written position; they change which handle a pointer
-holds, which the record rule reads too. -/
+the record rule for o's pointer for y (`ptrRef`). Readers change a pointer's
+reference (the slow path writes back its raised reference) and which handle it
+holds; neither changes what the record rule gives (choice 1 of the header). -/
 def HMem.refOf (S0 : Stream V T) (m : HMem V) (D : Dirty) (o : HObj V) (y : NodeId) : Option Nat :=
   let fromPtr : Option Nat := (o.ptr? y).bind (m.ptrRef S0 y)
   if inD D y then
@@ -520,16 +534,22 @@ def HMem.refOf (S0 : Stream V T) (m : HMem V) (D : Dirty) (o : HObj V) (y : Node
     | none => fromPtr
   else fromPtr
 
+/-- Whether pointer p holds a handle that holds a canonical object. -/
+def HMem.holdsCanonical (m : HMem V) (p : HPtr) : Bool :=
+  match (p.handle.bind m.objOf).bind m.obj? with
+  | some o => o.canonical
+  | none => false
+
 /-- Write node x into record i from its canonical object (Evict.lean's
 `Mem.writeNode`): the version (the object's history, and for each pointee the
-reference `refOf` gives) and the memory after. The object names record i, and
-its node's live handle gets record i as its written position (02, 4.5: "when the
-writer writes a node, it sets the handle's writtenPos"). Choice 2 of the header,
-Java's `resolvePointers` with handles: a pointer to a pinned pointee that has a
-canonical object takes that node's live handle, and that object's position as
-its reference (what the version names); the reference of any other pointer
-becomes its reference after Rule R, as today's `resolvePointers` does for a
-stream pointer. none if x has no canonical object. -/
+reference `refOf` gives) and the memory after, where the object names record i.
+Its pointers as Java's `resolvePointers` leaves them (choice 2 of the header): a
+pointer whose handle holds a canonical object stays as it is; a pointer to a
+pinned pointee that has a canonical object takes that node's live handle, its
+reference unchanged; the reference of any other pointer becomes its reference
+after Rule R. The writer sets no written position (Java: only an eviction
+does); while the handle holds the canonical object, the record rule names that
+object's position. none if x has no canonical object. -/
 def HMem.writeNode (sp : Spec V T) (S0 : Stream V T) (D : Dirty) (i : Nat) (m : HMem V)
     (x : NodeId) : HMem V × Option (Version V) :=
   match m.canonicalOf x with
@@ -542,18 +562,10 @@ def HMem.writeNode (sp : Spec V T) (S0 : Stream V T) (D : Dirty) (i : Nat) (m : 
       let v : Version V :=
         { node := x, recNo := i, level := o.level, isData := o.isData, hist := o.hist, refs := refs }
       let ptrs := o.ptrs.map (fun q =>
-        if inD D q.1 then
-          match m.canonicalOf q.1 with
-          | some b => (q.1, { ref := (m.obj? b).bind (·.pos), handle := m.tableOf q.1 })
-          | none => q
+        if m.holdsCanonical q.2 then q
+        else if inD D q.1 && (m.canonicalOf q.1).isSome then (q.1, { q.2 with handle := m.tableOf q.1 })
         else (q.1, { q.2 with ref := ruleRRef S0 m.s q.1 q.2.ref }))
-      let m1 := m.setObj a { o with pos := some i, ptrs := ptrs }
-      let m2 := match m1.tableOf x with
-        | some n => match m1.handle? n with
-          | some hd => m1.setHandle n { hd with written := some i }
-          | none => m1
-        | none => m1
-      (m2, some v)
+      (m.setObj a { o with pos := some i, ptrs := ptrs }, some v)
 
 /-- Write the nodes xs in turn into record i: the memory after, and the
 versions, in that order. -/

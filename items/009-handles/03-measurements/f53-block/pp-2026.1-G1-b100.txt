@@ -1,0 +1,13 @@
+PauseProbe: keys=1000000 valsize=100 budget=100 MB readers=4 seconds=60 tsize=[1, 1000] java=27 gc=G1_Young_Generation+G1_Concurrent_GC+G1_Old_Generation xmx=1258 MB
+load: 1000000 keys in 7.7 s; uptime 0.180 to 7.902 s
+  commits  1000, median 2.621 ms, p99 83.886, p99.9 671.089, p99.99 671.089, max 802.394 ms; longest at uptime 2.848s (802.4 ms) 1.796s (764.7 ms) 3.612s (452.2 ms) 4.265s (394.6 ms) 5.449s (340.1 ms)
+  eviction BUDGET: 1808169 slots unswizzled, 1042989 objects released; budget 100000000 bytes, low 75000000; 10 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 96009296 -> 74999760 bytes, pinned 55065648 (at most 55065648); sweep time 4306 ms in total, 797 ms at most
+phase tsize=1, 4 readers, 60 s; uptime 7.909 to 67.911 s
+  gets     7036720, median 0.012 ms, p99 0.066, p99.9 0.098, p99.99 6.291, max 475.223 ms; longest at uptime 31.362s (475.2 ms) 31.362s (475.2 ms) 31.362s (475.2 ms) 31.362s (475.0 ms) 33.081s (425.1 ms)
+  commits  946829, median 0.016 ms, p99 0.098, p99.9 4.194, p99.99 33.554, max 475.145 ms; longest at uptime 31.362s (475.1 ms) 33.081s (429.4 ms) 13.190s (411.6 ms) 22.121s (407.4 ms) 21.185s (403.9 ms)
+  eviction BUDGET: 11420983 slots unswizzled, 10290806 objects released; budget 100000000 bytes, low 75000000; 88 sweeps (38 after loads, 0 complete, 0 above the budget after); last sweep 98754280 -> 74999264 bytes, pinned 65515104 (at most 65515104); sweep time 30223 ms in total, 797 ms at most
+phase tsize=1000, 4 readers, 60 s; uptime 67.913 to 127.939 s
+  gets     5973816, median 0.012 ms, p99 0.066, p99.9 0.131, p99.99 8.389, max 400.295 ms; longest at uptime 73.062s (400.3 ms) 73.062s (400.3 ms) 73.062s (400.2 ms) 73.062s (400.2 ms) 103.878s (360.7 ms)
+  commits  892, median 33.554 ms, p99 335.544, p99.9 402.653, p99.99 402.653, max 424.728 ms; longest at uptime 73.062s (424.7 ms) 103.878s (401.2 ms) 113.879s (374.4 ms) 117.304s (368.7 ms) 123.612s (368.2 ms)
+  eviction BUDGET: 20614752 slots unswizzled, 19206486 objects released; budget 100000000 bytes, low 75000000; 185 sweeps (86 after loads, 0 complete, 0 above the budget after); last sweep 98766584 -> 78965448 bytes, pinned 78965448 (at most 84208360); sweep time 57184 ms in total, 797 ms at most
+PAUSE PROBE OK
