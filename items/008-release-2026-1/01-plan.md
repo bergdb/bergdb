@@ -10,8 +10,8 @@ budget. Also, I want everything in the repo. As long as it is small. Few
 files, not more than 30 MB or so. Zip as you find suitable. Include the
 source code in the release. And the jar."
 
-**Status: planned; waits for Frans's command.** Two hours from the command
-to the tag.
+**Status: done 2026-10-25** (see the item's log; it took three hours).
+Two hours from the command to the tag, as planned.
 
 
 The goal

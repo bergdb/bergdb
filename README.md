@@ -20,6 +20,9 @@ them:
   stress tests.
 * `items/`. Work items: plans, experiments, progress logs and reports, kept
   apart from the current state. See [items/readme.md](items/readme.md).
+* `releases/`. The releases: each one's jar, source, release notes and
+  baseline measurements. The latest is
+  [2026.1](releases/2026.1/readme.md), internal, of 2026-10-25.
 
 BergDB was developed 2012 to 2017. This repository continues from the 2017 source; the work since October 2026 fixed the bugs that stopped it, formalized the algorithm, and added reclaim and eviction.
 

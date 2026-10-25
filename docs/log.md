@@ -1156,3 +1156,12 @@ as experimental in the Javadoc of the Pub API's replica methods, README.md
 and levels.md (005-11), and the deadline in `TransSeq.take` comes after the
 release (007-03), which README.md and levels.md say too. Tests that fail
 without the changes; `before-commit.sh` passes.
+
+2026-10-25. Release 2026.1, internal, by Claude (Opus 5.5, Claude Code) at
+Frans's request, as planned in item 008: the tag `release-2026.1` on
+`a42947c`, where `BuildInfo` says 2026.1 (it said 2017.1). The night run
+passed on it, and the tests again on the jar itself. `releases/2026.1/`
+holds the jar, the source, the release notes with the baseline before
+handles (Props: MEM 191, CORE 0.29, SS 1.50; the quick suite; ScaleBench at
+10M keys on F53 with G1 and ZGC, and on s1 from the disk), and the outputs
+of the runs. After the tag, `BuildInfo` says 2026.2-dev.

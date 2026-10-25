@@ -1,0 +1,283 @@
+BergDB 2026.1
+=============
+
+Released 2026-10-25 by Frans Lundberg. **Internal: not published, not for
+production.** Made by Claude (Opus 5.5, Claude Code) for Frans, as planned
+in bergdb item 008 ([../../items/008-release-2026-1/01-plan.md](../../items/008-release-2026-1/01-plan.md)).
+
+The first release since 2015.4 (July 2015); 2017.1 was prepared in 2017 and
+never released. 2026.1 is the baseline before the next major change,
+handles (item 004) and gradual eviction: the code that later versions are
+measured against.
+
+
+Files
+-----
+
+| File | What |
+|---|---|
+| `bergdb-2026.1.jar` | `java/build.sh`'s jar of the release commit: the production code, `src-dev` (Props, the tests, the demos) and ICU 50 (as `bergdb.icu50`). Class files for Java 8. Main class `bergdb.dev.Run`. |
+| `bergdb-2026.1-src.zip` | `git archive` of the release commit, the whole tree, in `bergdb-2026.1/`. License: Apache-2.0 (`LICENSE`, `NOTICE`); ICU's in `java/in/ICU-LICENSE.html`. |
+| `baseline.zip` | The outputs of the gates and of the baseline runs (below). |
+| `SHA256SUMS` | Check with `shasum -a 256 -c SHA256SUMS`. |
+
+
+Identity
+--------
+
+* Tag `release-2026.1`, commit `a42947c58ee0c984375095cf99bc207d9980c214`
+  (2026-10-25).
+* `BuildInfo`: release 2026.1, release int 261, build 2026.1.261025.1248;
+  `java -cp bergdb-2026.1.jar bergdb.core.BuildInfo` prints them.
+* Built by `java/build.sh` (`javac --release 8`) with OpenJDK 27 (Homebrew,
+  build 27) on F53, Frans's MacBook Pro (MacBookPro18,3, Apple M1 Pro, 10
+  cores, 32 GB, macOS 27.0.1).
+* `bergdb-2026.1.jar`: SHA-256
+  `4d90eb9237462f28a697620755500043b7880f408ff6469293a63ff951ad5892`.
+
+
+What it is
+----------
+
+An in-process, append-only database for Java: a multiversion ordered map
+from (key, time) to value, kept in one append-only stream, with a Lean
+model of its algorithm ([README.md](../../README.md)).
+
+| Level | Features | Status |
+|---|---|---|
+| 0 | Multiversion map in memory | Passes the tests run |
+| 1 | + restart by replaying the whole stream | Passes the tests run |
+| 2 | + bounded startup (self-indexed stream) | Passes the tests run, under load and with crashes |
+| 3 | + reclaim: cut the front of the stream | Passes the tests run, a two-hour disk soak and the power-loss ordering checks; aligned with the proved Lean model of reclaim |
+| 4 | + eviction: data larger than memory | Passes the tests run, on by default; a database six times its memory budget runs on disk; aligned with the proved Lean model of eviction |
+
+Defaults that matter: a startup distance of 50 MB; a buffer time of 20 ms;
+infinite retention; eviction on, with the cache size indicator as its
+budget (200 MB in the core API).
+
+
+Changes since 2015.4 and since the 2017 import
+----------------------------------------------
+
+The details are in [docs/log.md](../../docs/log.md) and in the closed list
+of [items/005-todo/readme.md](../../items/005-todo/readme.md).
+
+* **The restart bugs of 2015 to 2017 fixed** (2026-10-12 to 14), ISSUE151111
+  very likely among them: deletes of missing long keys, a root replaced twice
+  in one transaction, two node tables, Rule R by node id, streams over 2.1
+  GB, a crash inside the size bytes, a sync that hid a failed write, and
+  more. The stream is byte for byte the same with and without restarts.
+* **Levels 2 to 4 work**: bounded startup, reclaim, and eviction (new in
+  2026), each aligned with a Lean model with machine-checked proofs.
+* **Faults fixed since**, 005-01 to 005-45: M49, a transaction half
+  committed when it threw (005-01); M46, the top node ordinal bound (005-02);
+  the node table's tree bins (005-08); a race between a
+  reader and the sweep (005-09); the overflows of 005-15 to 005-26; a crash
+  at a meta block's position (005-27); a read that fails on the storage
+  (005-30); a transaction too large for one record (005-31); a failed start
+  that left its storage running (005-32); `stop()` and `close()` (005-35);
+  a start that wrote before it checked the key and the format (005-40); a
+  sync one byte short of the commit byte (005-44); and more.
+* **API changes**: `Kv.time()` and `Connection.time()` removed; a failure
+  fails the database, which then refuses every transaction and read until
+  restarted (005-01, 005-30); `stop()` writes everything in a close of its
+  own, and `close()` waits for it (005-35); transaction outputs made
+  consistent (005-12); `DatabaseNotCreatedException` for a database whose
+  creation did not complete (005-33); `transactionInfo()` gives the user's
+  KVs only, and `LookupTimeNotAvailableException` for a value that reclaim
+  has rewritten (005-42); replication is documented as experimental
+  (005-11).
+* **Defaults**: the startup distance 20 MB to 50 MB (2026-10-13); the
+  buffer time 100 ms to 20 ms (005-13); an idle database sleeps (005-14).
+* **Format**: record format 5 since 2026-10-15 (`topPos` in the header,
+  M18). Streams of 2015.4 and 2017 are refused, with a
+  `VersioningStreamException` that says whether an older or a newer BergDB
+  wrote the stream (005-40).
+
+
+Verification
+------------
+
+On the release commit, in a clean clone (`baseline.zip`, `gates/`):
+
+`java/night.sh` on the release commit, 2026-10-25 12:51 to 13:35 (`NIGHT OK`,
+44 minutes, JDK 27):
+
+| Step | Result | Time |
+|---|---|---|
+| `before-commit.sh` | BEFORE COMMIT OK: 1,024 unit tests, 69 f-tests | 134 s |
+| `level1.sh` | LEVEL 1 OK | 132 s |
+| `level2.sh` | LEVEL 2 OK | 740 s |
+| `level3.sh` | LEVEL 3 OK | 493 s |
+| `level4.sh` | LEVEL 4 OK | 863 s |
+| night tests | SUCCESS, 7 tests | 161 s |
+| `conformance.sh medium` | CONFORMANCE OK | 141 s |
+
+* Lean: `lake build` of every proof (in the level scripts); the 27 theorems
+  that [lean/README.md](../../lean/README.md) lists depend on Lean's standard
+  axioms only (`propext`, `Classical.choice`, `Quot.sound`; no `sorry`).
+* The tests again on the jar itself, with `-ea`: 1,024 unit tests, 69 f-tests and 7 night tests, all passed.
+* StreamDigest: the 12 configurations in 3 modes; the modes give the same
+  stream (`baseline.zip`, `f53/digests.txt`).
+
+
+Release Props
+-------------
+
+As in the log of 2015 (F1-007). Props (`bergdb.dev.props.Props`; lower is
+better): MEM, heap bytes per KV; CORE, the four Core tests against cissi's
+times of July 2013; SS, stream bytes per user byte.
+
+| Release, machine | MEM | CORE (get, get4t, getmany, set) | SS (SS1, SS2, SS3, SS4) |
+|---|---|---|---|
+| 2015.4, cissi, Java 7 (2015-07-27) | 161 | 0.78 (0.77, 0.99, 0.85, 0.58) | 1.48 (1.16, 1.26, 1.60, 2.06) |
+| 2026.1, F53, JDK 27 (median of 5 runs) | 191 | 0.29 (0.26, 0.35, 0.26, 0.32) | 1.50 (1.10, 1.19, 1.62, 2.37) |
+
+MEM and SS do not depend on the machine; CORE does (F53 is 2.6 to 2.9 times
+faster than cissi for the same code, bergdb 006-02). MEM was 271 in the
+2017 import.
+
+Lines of code (Java and Lean files in git):
+
+| Part | Files | Lines |
+|---|---|---|
+| `java/src` | 250 | 65,958 |
+| `java/src-dev` | 123 | 13,904 |
+| `java/src-icu` | 2 | 194 |
+| `java/stress` | 24 | 10,765 |
+| `lean` | 115 | 47,347 |
+| `docs` (Markdown) | 20 | 13,712 |
+
+
+Baseline
+--------
+
+The release jar on two machines, with the parameters of 004-02 and 004-04,
+2026-10-25. Every value read was checked (`PERF OK`, `SCALEBENCH OK`). All
+outputs, GC logs included, are in `baseline.zip`, with the scripts
+(`tools/`).
+
+* **F53**: as above; Homebrew's OpenJDK 27; AC power; the timed block
+  15:17 to 15:49, after 5 quiet minutes (load 1.4, every other Claude
+  session idle; 95.6 percent CPU idle before the quick suite).
+* **s1**: Frans's VPS (AMD EPYC, 2 virtual CPUs, 3.8 GB, a virtual disk of
+  about 0.45 ms a read), OpenJDK 27+35; 12:52 to 14:00.
+
+**The quick suite** (`performance.sh quick`, G1, `-Xms8g -Xmx8g`, assertions
+off, medians of 3 runs; session `a42947c5-20261025T152138-quick-g1-8g-2026.1`):
+
+| Measure | 2026.1 | 2026-10-16 reference |
+|---|---|---|
+| Warm latest gets, 200k keys of 1,000 bytes, resident | 1.29 M/s | 1.28 M/s |
+| Warm historical gets | 1.25 M/s | 1.26 M/s |
+| Warm long-key gets (120-byte keys) | 0.95 M/s | 0.95 M/s |
+| Gets from 4 threads | 3.10 M/s | 3.42 M/s |
+| Forward / backward scans (100 KVs) | 3.78 / 4.03 M KVs/s | 3.70 / 3.88 M KVs/s |
+| Updates, infinite retention | 100.9k commits/s | 90.1k commits/s |
+| Bytes appended per user byte, infinite / finite | 1.22 / 1.68 | 1.22 / 1.68 |
+| Updates, finite retention | 62.9k commits/s | 58.4k commits/s |
+| Startup after a restart (50 MB section) | 0.70 s | 0.65 s |
+| First 300k gets after a restart, mean; the same again | 2.66 µs; 0.55 µs | 2.69 µs; 0.56 µs |
+| Mixed phase (1 writer, 2 readers): commits/s, gets/s | 49.1k, 1.96 M | 47.3k, 1.86 M |
+
+**ScaleBench, 10M keys of 24 bytes on F53** (8-byte values, loaded in
+random order, startup distance 10 MB). M: everything in memory, no
+eviction; C: the stream in the OS cache, eviction with the budget given.
+Gets from one thread, uniform keys; latencies from a timed pass of a
+million gets.
+
+| Run | Gets/s | p50 | p99 | Longest get | 4 / 8 threads, gets/s | Longest sweep | Longest GC pause | Full GCs |
+|---|---|---|---|---|---|---|---|---|
+| M, G1 | 726k | 1.33 µs | 1.96 µs | 45 µs | 1.98 M / 2.00 M | — | 175 ms (during the load) | 0 |
+| M, ZGC | 611k | 1.50 µs | 2.46 µs | 120 µs | 1.80 M / 2.21 M | — | 0.013 ms | 0 |
+| C 665 MB, G1 | 179k | 5.05 µs | 11.2 µs | 152 ms | 197k / 152k | 5.9 s | 246 ms | 8 |
+| C 665 MB, ZGC | 176k | 5.15 µs | 11.2 µs | 0.25 ms | 198k / 139k | 7.4 s | 0.021 ms | 0 |
+| C 133 MB, G1 | 58k | 10.4 µs | 18.3 µs | 334 ms | 83k / 65k | 0.6 s | 44 ms | 46 |
+
+* The load (M): 97.7 s, 102k puts a second with G1 (96k with ZGC); 754
+  bytes on disk a key; heap per key 243 bytes with G1, 317 with ZGC.
+* The longest waits are the sweeps: with 665 MB every sweep took 5 to 7 s,
+  and the readers waited for them (4 threads: 41 to 48 percent of the
+  samples blocked in `Eviction.afterLoad` on the write lock). In the timed
+  passes, a get's tail was a sweep or a G1 pause; with ZGC the GC paused at
+  most 0.021 ms.
+
+**ScaleBench on s1** (G1; D: the OS cache dropped, the JVM in a cgroup
+that leaves about 300 MB for it):
+
+| Run | Result |
+|---|---|
+| Load, 10M keys, budget 600 MB | 3,015 s, 3.3k puts a second; longest sweep 24.5 s; longest GC pause 464 ms |
+| D, 10M keys, 133 MB | startup with a cold cache 178 s; 1,216 gets a second, p50 0.69 ms, p99 3.1 ms, longest 1.4 s; 1.84 device reads a get; 4 threads 3.3k gets/s |
+| M, 1M keys | load 32 s (31k puts/s), 262 bytes of heap a key; 670k gets/s, p50 1.32 µs |
+| C, 1M keys, 66 MB | 95k gets/s, p50 4.5 µs, longest 1.1 s (sweeps up to 1.4 s) |
+| D, 1M keys, 66 MB | startup with a cold cache 8.3 s; 92k gets/s, p50 5.2 µs, longest 1.1 s |
+
+Beside the earlier runs on older commits (004-02 on `f206e58`, 004-04 on
+`7d14f65`), the figures agree within their spread: in memory 726k against
+712k to 722k gets a second; the 665 MB sweep 5.9 s against 6.0 s; full
+collections at 133 MB 46 against 47 to 49; s1's cold start at 10M 178 s
+against 175 to 194 s; s1's 10M load 3,015 s against 3,616 s. Gets from 4
+threads in the quick suite (3.10 against 3.42 M/s) are within that test's
+known sensitivity to other work (006-02).
+
+StreamDigest's digests of the release are in `baseline.zip`,
+`f53/digests.txt`.
+
+
+How to compare a later version
+------------------------------
+
+Run 2026.1 again beside the later version, in turns, on the same machine and
+JDK, rather than compare with the numbers above: the machine, the OS and the
+JDK change.
+
+* **Props**: `java -cp JAR bergdb.dev.props.Props`, with each jar in turn.
+* **performance.sh**: in a clone at the tag, `java/stress/performance.sh
+  build 2026.1` (a preserved build in `java/build/perf/builds/`); then, in
+  the later tree, `performance.sh ab 2026.1 current`, which alternates the
+  two and compares.
+* **StreamDigest**: compile `java/stress` of the tag against this jar and
+  run that one compiled copy against both jars, then `compare` (see
+  `StreamDigest`'s header). The stream does not depend on eviction
+  (EvictionInvariance; T-CACHE in Lean), and handles do not change the
+  records (004-03, 2.2), so 004 should give the same digests.
+* **ScaleBench** (`items/004-indirect-swizzling/02-scale-tests/`, with
+  `sb.sh`): the same runs on both jars, in turns, as in `baseline.zip`'s
+  `tools/`. It reads internals that handles change (the eviction's figures,
+  the resident bytes, the load listener); 004 ports those reads and keeps
+  the workload.
+
+
+Known issues and limits
+-----------------------
+
+* The sweep stops the world while it walks every resident object: 0.5 s
+  to 266 s in 004-02 (at 100M keys during the load), with G1's full
+  collections around it under eviction (004-04). Handles (004) are to end it.
+* The read path's pointer lock, stamp and `readSync` cap reads at about 2
+  million gets a second, at any size (004-02).
+* Writes at scale: the stream grows to about 1.1 KB per key at 100M random
+  keys, and loads into an index larger than the budget slow to under 100
+  puts a second on a slow disk (005-38).
+* A startup with a cold OS cache on a slow disk takes minutes at 10M keys:
+  one header read per pointer of D (`DbStarter.linkD`; 004-02, 10.5.8).
+* Startup is not yet bounded for BergDB's own startup pos policy: the
+  section reached 2.21 times the startup distance in a test (007-01, 4.1);
+  the deadline that bounds it (007-03) comes after 2026.1.
+* Replication is experimental, with known faults, and not for data that
+  matters (005-11).
+* `BufferedStream` does not wake its consumer when the buffer is full; it
+  matters only at buffer times of about 200 ms or more, set through the core
+  API (005-13); the default is 20 ms.
+* Power loss on real hardware is not established (see
+  [docs/level3-durability.md](../../docs/level3-durability.md)). Tested on
+  JDK 27 only, though compiled for Java 8. The documentation has not been
+  reviewed for users.
+
+
+Post-release notes
+------------------
+
+None yet. A fault found later that affects 2026.1, its numbers or its
+correctness, is recorded here.
