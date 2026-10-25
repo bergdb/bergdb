@@ -460,9 +460,14 @@ public class StorageManager implements AppendOnlyStream {
         }
     }
     
-    public void sync(long pos) throws IOException {
+    /**
+     * Waits until the durable length of rule D1 is at least 'length': every byte before that
+     * position is durable. A transaction is durable when its last byte is, so a sync of it
+     * waits for its lastPos + 1 (bergdb 005-44).
+     */
+    public void sync(long length) throws IOException {
         synchronized (d1Lock) {
-            while (d1Size < pos) {
+            while (d1Size < length) {
                 Internal in = internal.get();
                 if (in.hasError) {
                     assert in.errorString != null;
@@ -475,15 +480,16 @@ public class StorageManager implements AppendOnlyStream {
                     // Not an IOException of the storage, which fails the database (bergdb
                     // 005-30, Db.sync).
                     throw new InterruptedIOException("Thread was interrupted while waiting " +
-                    		"for D1 size " + pos + ".");
+                    		"for D1 size " + length + ".");
                 }
             }
         }
     }
     
-    public void syncStrong(long pos) throws IOException {
+    /** As sync(), for rule D2. */
+    public void syncStrong(long length) throws IOException {
         synchronized (d2Lock) {
-            while (d2Size < pos) {
+            while (d2Size < length) {
                 Internal in = internal.get();
                 if (in.hasError) {
                     assert in.errorString != null;
@@ -495,7 +501,7 @@ public class StorageManager implements AppendOnlyStream {
                 } catch (InterruptedException e) {
                     // Not an IOException of the storage (bergdb 005-30).
                     throw new InterruptedIOException("Thread was interrupted while waiting " +
-                            "for D1 size " + pos + ".");
+                            "for D2 size " + length + ".");
                 }
             }
         }

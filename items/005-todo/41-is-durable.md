@@ -1,13 +1,22 @@
 005-41. Decide: isDurable(), whether a transaction is durable, without a wait
 =============================================================================
 
-Status: open. Kind: decide. Created 2026-10-25.
+Status: done (2026-10-25), decided: C, not now. Kind: decide. Created
+2026-10-25.
 
 Frans's idea of 2026-10-13, kept until now as comments in the Pub API's
 `Transaction` and `Connection`. Moved here at Frans's request ("as
 proposed"), from the review of the TODO markers in `java/` (006-05, T10
 and T11), by Claude (Opus 5.5, Claude Code); the comments are gone from
 the code.
+
+
+The decision
+------------
+
+Frans, 2026-10-25: "my decision: C, not now." No `isDurable()` for now;
+the idea and the options stay here. The first finding below, a sync one
+byte short, is 005-44, fixed the same day at his request.
 
 
 The idea
@@ -102,11 +111,12 @@ Found on the way
   durable. From the code; not reproduced. `isDurable` compares
   `durable length > lastPos`. The syncs can do the same, with care: `Db`
   keeps the position of the last transaction as the stream length at
-  start, and as a last byte's position after a transaction.
+  start, and as a last byte's position after a transaction. Reproduced
+  and fixed in 005-44.
 * **A w-transaction's `sync(level)`.** `WTransaction.sync(SyncLevel)` waits
   for the database's last transaction (`Db.sync(level)`, position 0), not
   for its own, as its `sync()` and the rw-transaction's `sync(level)` do. It
-  waits longer than it needs to, never too short.
+  waits longer than it needs to, never too short. Not fixed.
 
 
 Done when
@@ -124,5 +134,5 @@ Done when
 Size and order
 --------------
 
-S. Any time; the level after 005-11. The syncs' byte, if Frans wants it
-fixed, is S too, and can go first.
+S. Any time; the level after 005-11. The syncs' byte was S, and is done:
+005-44.

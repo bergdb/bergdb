@@ -1107,3 +1107,17 @@ was a `DbException`), and the Pub API's `IndexBuilder.dir` and
 `BadFormatException`). Three were done in 005-39 and 005-40; the one in
 `TransSeq.take` waits for 007-03's step 3. Two tests; `before-commit.sh`
 passes.
+
+2026-10-25. 005-44 done, by Claude (Opus 5.5, Claude Code), found in
+005-41: a sync waited until the durable length reached the position of
+the transaction's last byte, its commit byte, so it returned while that
+byte could still be in the write buffer. It was right only while the
+buffer wrote in parts that end at even positions, as with the Pub API's
+buffer sizes, multiples of 4; with a buffer of 2 S − 2 bytes, for a
+record of S bytes, a crash right after the sync lost the transaction in
+10 runs of 10 of a probe. Now `Db.sync` waits until that byte is durable
+too, and `Db` keeps the end of the last transaction
+(`endOfLastTrans`), not its last byte ([levels.md](levels.md), "Bugs found
+by the load and crash tests", 9). An f-test that fails without the fix;
+`before-commit.sh` passes. 005-41 itself is decided: no
+`isDurable()` for now (Frans).

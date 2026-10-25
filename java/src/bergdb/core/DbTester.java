@@ -2192,6 +2192,49 @@ public class DbTester {
         db.stop();
     }
     
+    // ======== sync(), bergdb 005-44 ========
+    
+    /**
+     * Regression test for bergdb 005-44: a sync returned when the durable length reached the
+     * position of the transaction's last byte, its commit byte, so that byte could still be in
+     * the write buffer, and a crash then lost the transaction. A buffer of 2 S - 2 bytes, for
+     * a record of S bytes, writes S - 1 bytes of the record at once and its last byte a buffer
+     * time later; the sync must wait for that byte.
+     */
+    @Nano("f")
+    public static void testSyncWaitsForTheCommitByte() throws InterruptedException {
+        final byte[] value = new byte[100];
+        
+        // The size of the third put's record, in a database of its own.
+        Db db = Db.builder().stream("m", new MemoryStream(), 10 * 1000, 10).start();
+        Trans t = null;
+        for (int i = 0; i < 3; i++) {
+            t = db.trans().put("/k", value).build();
+            db.execute(t);
+        }
+        final long size = t.lastPos + 1 - t.tpos;
+        db.close();
+        
+        db = Db.builder().stream("m", new MemoryStream(), (int) (2 * size - 2), 200).start();
+        for (int i = 0; i < 2; i++) {
+            db.execute(db.trans().put("/k", value).build());
+        }
+        // All written, so that the buffer holds the third record only.
+        final long deadline = System.currentTimeMillis() + 10 * 1000;
+        while (db.getDurableLength() < db.getStreamLength()) {
+            assertTrue("written within 10 s", System.currentTimeMillis() < deadline);
+            Thread.sleep(5);
+        }
+        t = db.trans().put("/k", value).build();
+        db.execute(t);
+        assertEquals("the record's size", size, t.lastPos + 1 - t.tpos);
+        
+        db.sync(t.lastPos, SyncLevel.ORDINARY);
+        assertTrue("the commit byte is durable: " + db.getDurableLength() + " > " + t.lastPos,
+                db.getDurableLength() > t.lastPos);
+        db.close();
+    }
+    
     // ======== stop() and close(), bergdb 005-35 ========
     
     /**

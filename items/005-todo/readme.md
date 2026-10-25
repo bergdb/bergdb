@@ -31,7 +31,6 @@ Open
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
 | [005-33](33-crashed-creation.md) | Decide | A database whose creation crashed never starts: a clear error, create it again at start, or create it whole or not at all (005-28) | open |
 | [005-38](38-writes-at-scale.md) | Investigate | Writes at scale: the stream grows to about 1.1 KB per key at 100M random keys, and loads into an index larger than the budget slow to under 100 puts a second on a slow disk (004-02) | open |
-| [005-41](41-is-durable.md) | Decide | `isDurable()`: whether a transaction is durable, answered at once, beside `sync()`; Frans's idea of 2026-10-13, from comments in the Pub API (006-05) | open |
 | [005-42](42-transaction-info.md) | Decide | `Connection.transactionInfo()` gives internal KVs, whose `key()` throws (an index entry, reclaim's row), and for a value that reclaim has rewritten, reclaim's transaction and its time; from a TODO of 2016 (006-05) | open |
 
 
@@ -40,6 +39,8 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-44](44-fix-sync-commit-byte.md) | Fix | A sync returned when every byte of the transaction but its last, the commit byte, was durable, so that a crash could then lose a transaction that the sync had reported durable, with a write buffer whose size is not a multiple of 4 (through the core API); now it waits until the commit byte is durable too (005-41) | done | 2026-10-25 |
+| [005-41](41-is-durable.md) | Decide | `isDurable()`, whether a transaction is durable, answered at once, beside `sync()`; Frans's idea of 2026-10-13, from comments in the Pub API (006-05): not now (option C) | done | 2026-10-25 |
 | [005-43](43-fix-from-todos.md) | Fix | Two leftovers of TODO markers (006-05): `Db.getTrans` threw a `DbException` for a position at or past the end of the stream, and the Pub API's `IndexBuilder.dir` and `UsePrimaryBuilder.dir` a `BadFormatException` for a bad directory; now both throw `IllegalArgumentException`, as for the other positions that cannot start a transaction and for a bad key | done | 2026-10-25 |
 | [005-40](40-fix-refused-start-writes.md) | Fix | A start wrote to the stream before it checked the crypto key and the format: after a crash that ended the stream at or just inside a meta block, a start with a wrong key, or none, left a database that the right key could not start either; a newer record format was refused as corrupt data, with format 2's message. Now recovery reads the meta blocks first, and the versions of records and nodes are refused with a `VersioningStreamException` that says which BergDB wrote the stream. The format check that `DbStarter`'s TODO asked for had been made by the parsers since 2015 | done | 2026-10-25 |
 | [005-39](39-fix-trans-completed-before.md) | Fix | `RecoverableStream.getPosOfTransCompletedBefore`, where the iterators that do not start at an exact position start: its Javadoc promised the last transaction completed before the position, which it never searched for (a TODO said so), and in a stream cut by reclaim it threw `NullPointerException` or gave a transaction before the cut; now the Javadoc says what it gives, and in a cut stream it gives the first transaction after the cut that a meta block names | done | 2026-10-25 |
@@ -90,9 +91,9 @@ is done. 005-27, 005-28 and 005-29, the fixes found in 005-11, are done.
 005-30 is done, and so is 005-34, found in it. 005-31 is done, which item
 007's deadline for `TransSeq.take` (007-01, D1) needed. 005-32
 is done, which 005-33's change needed; 005-33 waits for Frans. 005-35,
-005-36 and 005-37 are done, and so are 005-39, 005-40 and 005-43. 005-41
-and 005-42 wait for Frans, best before 005-05's decision on publishing, as
-they concern the Pub API.
+005-36 and 005-37 are done, and so are 005-39, 005-40, 005-43 and 005-44.
+005-41 is decided: not now. 005-42 waits for Frans, best before 005-05's
+decision on publishing, as it concerns the Pub API.
 
 
 Files
@@ -212,12 +213,16 @@ Files
   the prototype in
   [40-fix-refused-start-writes/](40-fix-refused-start-writes/).
 * [41-is-durable.md](41-is-durable.md). 005-41, `isDurable()`: Frans's
-  idea, the options, and two findings on the syncs.
+  idea, the options, and two findings on the syncs; decided: not now.
 * [42-transaction-info.md](42-transaction-info.md). 005-42, what
   `transactionInfo()` gives; the probe and its output in
   [42-transaction-info/](42-transaction-info/).
 * [43-fix-from-todos.md](43-fix-from-todos.md). 005-43, two fixes from the
   TODO markers of 006-05; done.
+* [44-fix-sync-commit-byte.md](44-fix-sync-commit-byte.md). 005-44, a sync
+  one byte short of the commit byte, found in 005-41; done; the probe and
+  its output, before and after the fix, in
+  [44-fix-sync-commit-byte/](44-fix-sync-commit-byte/).
 
 Log
 ===
@@ -740,3 +745,17 @@ API caller can choose another.
 `UsePrimaryBuilder.dir` use, refuses a bad directory with one, where it
 threw a `BadFormatException`. Two tests, which fail without the change;
 `before-commit.sh` passes.
+
+2026-10-25. 005-41 decided, by Frans ("my decision: C, not now."): no
+`isDurable()` for now. Its first finding, the sync one byte short, added
+as 005-44, at his request ("Yes, register as an 005 item, fix it, then
+commit the fix."), by Claude (Opus 5.5, Claude Code).
+
+2026-10-25. 005-44 done, by Claude (Opus 5.5, Claude Code): a sync waited
+until the durable length reached the transaction's last byte, the commit
+byte, so it returned while that byte could still be in the write buffer;
+with a buffer whose size is not a multiple of 4, which the core API
+allows, a crash right after the sync lost the transaction, in 10 runs of
+10 of a probe. Now `Db.sync` waits for the position after that byte, and
+`Db` keeps the end of the last transaction instead of its last byte. An
+f-test that fails without the fix; `before-commit.sh` passes.

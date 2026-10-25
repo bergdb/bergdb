@@ -227,7 +227,7 @@ public class Db {
         this.storageManager = createStorageManager(b);
         
         AppendOnlyStream aos = storageManager;
-        x.lastSposOfLastTrans = aos.getLength();
+        x.endOfLastTrans = aos.getLength();
         
         RecoverableStream rstream = new RecoverableStream(aos, metaBlock);
         this.nodeStream = new NodeStream(rstream, writeLock);
@@ -886,7 +886,7 @@ public class Db {
         nodeStream.appendNodes(transNodes, trans, new ArrayList<Node>(), superRoot);
         
         // This is needed to be able to use sync() method.
-        x.lastSposOfLastTrans = trans.lastPos;
+        x.endOfLastTrans = trans.lastPos + 1;
     }
     
     /** 
@@ -1479,7 +1479,11 @@ public class Db {
      * Sync method with parametarized sync level.
      * 
      * @param pos
-     *      Stream position to sync to or 0 to sync to last transaction written.
+     *      The stream position of the last byte to make durable, a transaction's lastPos, or
+     *      0 for the last transaction written. The sync returns when every byte up to and
+     *      including it is durable (2026-10-25, bergdb 005-44: it returned when the bytes
+     *      before it were, so the transaction's last byte, its commit byte, could still be in
+     *      the write buffer, and a crash then lost the transaction).
      * @param syncLevel
      *      The sync level.
      * @throws DbFailedException
@@ -1498,10 +1502,14 @@ public class Db {
             return;
         }
         
+        // The durable length to wait for: the bytes before it are durable (bergdb 005-44).
+        final long length;
         if (pos == 0) {
             synchronized (writeLock) {
-                pos = x.lastSposOfLastTrans;
+                length = x.endOfLastTrans;
             }
+        } else {
+            length = pos + 1;
         }
         
         switch (syncLevel) {
@@ -1509,9 +1517,9 @@ public class Db {
         case STRONG:
             try {
                 if (syncLevel == SyncLevel.ORDINARY) {
-                    storageManager.sync(pos);
+                    storageManager.sync(length);
                 } else {
-                    storageManager.syncStrong(pos);
+                    storageManager.syncStrong(length);
                 }
             } catch (InterruptedIOException e) {
                 // Not a failure of the storage (bergdb 005-30).
@@ -2319,8 +2327,12 @@ public class Db {
         
         public TransSeq.TransInfo transInfo;
         
-        /** Last stream position of last transaction; used by Db.sync(). */
-        public long lastSposOfLastTrans;
+        /**
+         * The stream length just past the last byte of the last transaction (at the start, the
+         * stream's length): what sync() of the last transaction waits for. It was the position
+         * of that last byte, one byte short (bergdb 005-44).
+         */
+        public long endOfLastTrans;
 
         /** The vpos to assign to next index node that is created. */
         private long nextVpos;
@@ -2359,7 +2371,7 @@ public class Db {
             // Good to clear here, kvTransNodes/indexTransNodes. 
             // Large transaction otherwise consumes memory until next transaction executed.
             
-            x.lastSposOfLastTrans = x.trans.lastPos;
+            x.endOfLastTrans = x.trans.lastPos + 1;
             trans = null;
             transNodes.clear();
         }

@@ -1,0 +1,13 @@
+bergdb 005-44: probe.sh 10 on 7306a4a with the fix (2026-10-25, F53).
+
+run 0: record of 184 bytes, its last byte at 847; sync() returned with the durable length 848; after a crash then: /k = v3, kept
+run 1: record of 184 bytes, its last byte at 847; sync() returned with the durable length 848; after a crash then: /k = v3, kept
+run 2: record of 184 bytes, its last byte at 847; sync() returned with the durable length 848; after a crash then: /k = v3, kept
+run 3: record of 184 bytes, its last byte at 847; sync() returned with the durable length 848; after a crash then: /k = v3, kept
+run 4: record of 184 bytes, its last byte at 847; sync() returned with the durable length 848; after a crash then: /k = v3, kept
+run 5: record of 184 bytes, its last byte at 847; sync() returned with the durable length 848; after a crash then: /k = v3, kept
+run 6: record of 184 bytes, its last byte at 847; sync() returned with the durable length 848; after a crash then: /k = v3, kept
+run 7: record of 184 bytes, its last byte at 847; sync() returned with the durable length 848; after a crash then: /k = v3, kept
+run 8: record of 184 bytes, its last byte at 847; sync() returned with the durable length 848; after a crash then: /k = v3, kept
+run 9: record of 184 bytes, its last byte at 847; sync() returned with the durable length 848; after a crash then: /k = v3, kept
+lost after its sync: 0 of 10

@@ -1472,6 +1472,23 @@ format version:
    testRecoverOtherVersionWritesNothing, and
    PubTester.testWrongKeyAfterCrashAtMetaBlock.
 
+Fixed 2026-10-25 (bergdb item 005-44), in the 2017 code, with a test that
+fails without the fix; found by reading the code, in item 005-41:
+
+9. A sync could return before the transaction's last byte, its commit
+   byte, was written, and a crash then lost the transaction. A sync waited
+   until the durable length reached the position of that byte; but a
+   durable length counts the bytes before it, so the byte itself could
+   still be in the write buffer. It was right only while the buffer wrote
+   in parts that end at even positions, as it does when its size is a
+   multiple of 4, as the Pub API's sizes are; with another size, set
+   through the core API, a part could end just before a commit byte. Now a
+   sync waits until the durable length is past that byte. Test:
+   DbTester.testSyncWaitsForTheCommitByte, with a buffer of 2 S − 2 bytes
+   for a record of S bytes; in 005-44's probe, a crash right after the sync
+   lost the transaction in 10 runs of 10 before the fix, and in none after
+   it.
+
 
 
 The level 1 bugs
