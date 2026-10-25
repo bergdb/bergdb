@@ -111,14 +111,9 @@ def hRuleROKB (S0 : SIS.Stream Val T) (m : HMem Val) : Bool :=
       | none => true
     | none => true)
 
-/-- The snapshots and the written positions (`HSnapWrittenOK`): every snapshot
-that a handle holds is at least as new as the handle's written position. -/
-def hSnapWrittenOKB (m : HMem Val) : Bool :=
-  m.handles.all (fun p => match p.2.obj.bind m.obj?, p.2.written with
-    | some o, some w => o.canonical || match o.pos with
-      | some q => decide (w ≤ q)
-      | none => false
-    | _, _ => true)
+/-- Live handles have no written position (`HLiveWrittenOK`). -/
+def hLiveWrittenOKB (m : HMem Val) : Bool :=
+  m.handles.all (fun p => p.2.dead || p.2.written.isNone)
 
 /-- References and written positions name versions (`HWrittenOK`): a handle's
 written position, and a pointer's reference, is a record that holds a version of
@@ -144,7 +139,7 @@ def hPinOKB (D : Dirty) (m : HMem Val) : Bool :=
 /-- All the invariants. -/
 def hInvB (sp : Spec Val T) (S0 : SIS.Stream Val T) (db : DB Val T) (m : HMem Val) : Bool :=
   hTableOKB m && hCanOKB db m && hSnapOKB db m && hSlotOKB sp S0 db m && hRuleROKB S0 m &&
-    hSnapWrittenOKB m && hWrittenOKB db m && hPinOKB db.D m
+    hLiveWrittenOKB m && hWrittenOKB db m && hPinOKB db.D m
 
 /-- Reads at the times ts through the handles, one after the other on the same
 memory; the memory after, and whether each read gave P at its time. -/
@@ -261,9 +256,10 @@ def checkRunHandles [DecidableEq T] (sp : Spec Val T) (al : Algo Val T) (ts : Li
 
 /-! ## The open points of 02, by running
 
-Counts over the states of a run (after every transaction and its schedule), to
-show that the runs above reach the cases of 02's open points 1 and 3 and of
-choice 1 of Handle.lean (a re-resolve keeps the written position). -/
+Counts over the states of a run (after every transaction and its operations),
+to show that the runs above reach the cases of 02's open points 1 and 3 and of
+choice 1 of Handle.lean (the written position, carried by a dead handle and
+written back into the pointer). -/
 
 /-- Counts in memory m (S0 the stream of the last startup, db the state):
 1. the pointers of objects in memory whose reference is older than their
@@ -272,25 +268,23 @@ choice 1 of Handle.lean (a re-resolve keeps the written position). -/
    Rule R);
 2. the pointers whose handle holds a snapshot that the fast path's test accepts
    with the pointer's reference and the slow path's test would reject, with the
-   larger of the reference after Rule R and the handle's written position (must
-   be none: `HFastOK`);
+   reference after Rule R raised to the handle's written position (must be
+   none: `HFastOK`);
 3. the pointers of canonical objects whose records matter (a written node
    current at the last time or in D), to a pointee not in D, whose reference is
    a vpos and whose record is their handle's written position (open point 3);
-4. such pointers (any reference) that hold a live handle with a snapshot or no
-   object, and whose record is not their reference after Rule R: it is the
-   written position that a re-resolve put into the live handle (choice 1);
-5. such pointers that hold a dead handle, and whose record is not their
-   reference after Rule R: the dead handle's written position. -/
+4. such pointers (any reference) whose record is their dead handle's written
+   position, newer than their reference after Rule R: what the slow path writes
+   back into the pointer when it follows it (choice 1). -/
 def pointCounts (sp : Spec Val T) (S0 : SIS.Stream Val T) (db : DB Val T) (m : HMem Val) :
-    Nat × Nat × Nat × Nat × Nat :=
+    Nat × Nat × Nat × Nat :=
   let k := db.S.length - 1
   let relevant := fun (o : HObj Val) => o.canonical && written sp o.node &&
     (reachable sp db.P k o.node || inD db.D o.node)
   m.objs.foldl (fun acc p =>
     let o := p.2
-    o.ptrs.foldl (fun (acc : Nat × Nat × Nat × Nat × Nat) q =>
-      let (c1, c2, c3, c4, c5) := acc
+    o.ptrs.foldl (fun (acc : Nat × Nat × Nat × Nat) q =>
+      let (c1, c2, c3, c4) := acc
       let y := q.1
       let ptr := q.2
       let rr := ruleRRef S0 m.s y ptr.ref
@@ -313,35 +307,34 @@ def pointCounts (sp : Spec Val T) (S0 : SIS.Stream Val T) (db : DB Val T) (m : H
         | some h => (h.obj.bind m.obj?).all (fun ob => !ob.canonical) && recRef == h.written
         | none => false
       let c3 := c3 + (if rel && ptr.ref.isNone && fromWp then 1 else 0)
-      let live := match hd with
-        | some h => !h.dead
-        | none => false
-      let c4 := c4 + (if rel && fromWp && live then 1 else 0)
-      let c5 := c5 + (if rel && fromWp && !live then 1 else 0)
-      (c1, c2, c3, c4, c5)) acc) (0, 0, 0, 0, 0)
+      let c4 := c4 + (if rel && fromWp then 1 else 0)
+      (c1, c2, c3, c4)) acc) (0, 0, 0, 0)
 
 /-- `pointCounts` summed over the states of a run as in `checkHandles` (after
-every transaction and its schedule, before a restart). -/
+every transaction and its operations, before a restart). -/
 def runCounts [DecidableEq T] (sp : Spec Val T) (al : Algo Val T) (ts : List (T × Bool))
-    (policy seed : Nat) : Nat × Nat × Nat × Nat × Nat :=
+    (policy seed : Nat) : Nat × Nat × Nat × Nat :=
   let r := ts.zipIdx.foldl
-    (fun (acc : (DB Val T × HMem Val × SIS.Stream Val T) × (Nat × Nat × Nat × Nat × Nat)) (p, j) =>
-      let ((db, m, S0), (a1, a2, a3, a4, a5)) := acc
+    (fun (acc : (DB Val T × HMem Val × SIS.Stream Val T) × (Nat × Nat × Nat × Nat)) (p, j) =>
+      let ((db, m, S0), (a1, a2, a3, a4)) := acc
       let (db', m') := handleTrans sp al S0 db m p.1
       let (m3, _) := afterTrans sp S0 db' m' policy seed j
-      let (c1, c2, c3, c4, c5) := pointCounts sp S0 db' m3
+      let (c1, c2, c3, c4) := pointCounts sp S0 db' m3
       let st' := if p.2 then (startup sp db'.S, handleStartup sp db'.S, db'.S) else (db', m3, S0)
-      (st', (a1 + c1, a2 + c2, a3 + c3, a4 + c4, a5 + c5)))
-    ((init sp, handleStartup sp (init sp).S, (init sp).S), (0, 0, 0, 0, 0))
+      (st', (a1 + c1, a2 + c2, a3 + c3, a4 + c4)))
+    ((init sp, handleStartup sp (init sp).S, (init sp).S), (0, 0, 0, 0))
   r.2
 
 -- In the runs above: open point 3 (column 3) and choice 1 (column 4) are reached
--- with random evictions; columns 1 and 2 are 0 in these short runs.
-#guard runCounts spec3 al3 (randomTs3 1 12) 2 1 == (0, 0, 14, 10, 10)
--- In a longer run of example 5, pointers older than the startup section have
--- snapshots in their handles (column 1), and the fast path's test never accepts
--- what the slow path's test would reject (column 2). The run itself passes.
-#guard runCounts spec5 al5 (randomTs5 1 40) 2 1 == (4, 0, 60, 29, 41)
+-- with random evictions.
+#guard runCounts spec3 al3 (randomTs3 1 12) 2 1 == (0, 0, 5, 5)
+-- In a longer run of example 5 too, and the run passes. No pointer that holds a
+-- snapshot has a reference older than its pointee's newest version in the
+-- startup section (column 1): the slow path writes Rule R back into the
+-- reference of every pointer it resolves, so the fast path compares with a
+-- reference after Rule R, and open point 1's case does not arise; `HFastOK`
+-- covers it anyway (column 2).
+#guard runCounts spec5 al5 (randomTs5 1 40) 2 1 == (0, 0, 20, 27)
 #guard checkHandles spec5 al5 (randomTs5 1 40) 2 1 == (40, 0)
 
 /-! ## Three small examples
@@ -378,12 +371,13 @@ R (2 ≤ 2) would: nothing changes, and the reader gets R(2). -/
 
 /- Choice 1 of Handle.lean. No startup section (the startup pos is 3), so Rule R
 changes nothing. The pointer names R(0) and holds handle 7, dead, whose written
-position is R(2): this process wrote node 5 there, and then evicted it. Its
-record is R(2) (`HMem.refOf`). A read re-resolves the pointer to a new live
-handle (8), which keeps R(2) as its written position; the load reads R(2), and
-the record stays R(2). Had the new handle not kept it, as with a dead handle
-that has no written position, the read would load R(0), and the record would
-be R(0). -/
+position is R(2): node 5's canonical object was at R(2) when it was evicted. Its
+record is R(2) (`HMem.refOf`). A read raises the pointer's reference to R(2),
+writes it back into the pointer, and gives the pointer a new live handle (8),
+which has no written position; the load reads R(2), and the record stays R(2),
+now by the pointer's own reference. Without the written position, as with a
+dead handle that has none, the read would load R(0), and the record would be
+R(0). -/
 def dead7 (w : Option Nat) : List (Nat × Handle) :=
   [(7, { node := 5, obj := none, written := w, dead := true })]
 
@@ -391,7 +385,8 @@ def dead7 (w : Option Nat) : List (Nat × Handle) :=
         let (m1, b) := m0.follow spec3 S1 S1 1 5 false
         m0.refOf S1 [] (parentH (some 7)) 5 == some 2 &&
           ((b.bind m1.obj?).map (·.pos)) == some (some 2) &&
-          ((m1.handle? 8).map (·.written)) == some (some 2) &&
+          ((m1.handle? 8).map (·.written)) == some none &&
+          ((m1.obj? 1).bind (·.ptr? 5)) == some { ref := some 2, handle := some 8 } &&
           ((m1.obj? 1).bind (fun o => m1.refOf S1 [] o 5)) == some 2)
 #guard (let m0 := memH (some 7) (dead7 none) 3
         let (m1, b) := m0.follow spec3 S1 S1 1 5 false
@@ -402,11 +397,11 @@ def dead7 (w : Option Nat) : List (Nat × Handle) :=
 handle 7, whose written position is R(2); but node 5 has a live handle again
 (8), which holds a snapshot of R(0): after the eviction, a reader came to node 5
 through an older pointer (of a node that is no longer current, whose version
-names R(0)) and loaded that version. A read through the pointer re-resolves it
-to handle 8, which takes the written position R(2), and the slow path compares
-the snapshot with R(2): it is older, so the reader loads R(2), which the
-pointer's record names. With 02's test, the reference after Rule R only (R(0)),
-the snapshot would serve, and the reader would get R(0). -/
+names R(0)) and loaded that version. A read through the pointer raises its
+reference to R(2), and the slow path compares the snapshot with R(2): it is
+older, so the reader loads R(2), which the pointer's record names. With 02's
+test, the reference after Rule R only (R(0)), the snapshot would serve, and the
+reader would get R(0). -/
 def live8 : List (Nat × Handle) :=
   (8, { node := 5, obj := some 2, written := none, dead := false }) :: dead7 (some 2)
 
@@ -419,7 +414,8 @@ def memH8 : HMem Val :=
 
 #guard (let (m1, b) := memH8.follow spec3 S1 S1 1 5 false
         ((b.bind m1.obj?).map (·.pos)) == some (some 2) &&
-          ((m1.handle? 8).map (·.written)) == some (some 2) &&
+          ((m1.handle? 8).map (·.written)) == some none &&
+          ((m1.obj? 1).bind (·.ptr? 5)) == some { ref := some 2, handle := some 8 } &&
           ((m1.obj? 1).bind (fun o => m1.refOf S1 [] o 5)) == some 2)
 -- 02's test: after the same resolve, a load that compares the snapshot with the
 -- reference after Rule R only, R(0), keeps the snapshot of R(0).

@@ -2,8 +2,9 @@
 Self-indexed streams in Lean: the statements of the physical layer with handles
 (bergdb item 009, phase 2, step 2c). Trusted part: what is to be proved, stated
 as definitions of type `Prop`, not as theorems, so that nothing here is
-assumed or left unproved. A proof of `TC_handles sp al` for every `sp` and
-`al` is step 2d (its first part, the records) and phase 4a; so are the others.
+assumed or left unproved. `TC_handles` is proved for every `sp` and `al`
+(`tc_handles`, SIS/Proof/HandleRecords.lean; step 2d); proofs of the others
+are phase 4a.
 
 They mirror PhysTheorems.lean's `TC_records` (T-CACHE), `TR_view` (T-READ),
 `TP_pins` (T-PIN), and `T2_cache` (T2-C) and `TR_view_restarts`, the forms
@@ -79,32 +80,31 @@ def HSlotOK (sp : Spec V T) (S0 : Stream V T) (db : DB V T) (k : Nat) (m : HMem 
 02, section 7): every snapshot that a handle holds is at least as new as its
 node's newest version in the startup section, R(s), ..., R(k) of S0. A snapshot
 is only ever loaded by the slow path, which applies Rule R, and the startup
-makes canonical objects only. With `HSnapWrittenOK`, the fast path's test with a
+makes canonical objects only. With `HLiveWrittenOK`, the fast path's test with a
 pointer's own reference (`HMem.followR`) then gives the slow path's answer
 whenever the reference is not a vpos (`HFastOK`); and a stale read of a
-reference that the writer is changing to its reference after Rule R
-(`HMem.writeNode`) gives the same answer as the new reference. -/
+reference that the writer, or the slow path, is changing to its reference after
+Rule R (`HMem.writeNode`, `HMem.followR`) gives the same answer as the new
+reference. -/
 def HRuleROK (S0 : Stream V T) (m : HMem V) : Prop :=
   ∀ n hd b o w, m.handle? n = some hd → hd.obj = some b → m.obj? b = some o →
     o.canonical = false → newest S0 m.s hd.node = some w → ∃ p, o.pos = some p ∧ w.recNo ≤ p
 
-/-- The snapshots and the written positions: every snapshot that a handle
-holds is at least as new as the handle's written position. A load installs a
-version at least as new as it (`HMem.load`); a re-resolve that raises it
-(choice 1 of Handle.lean) is followed at once by a load that compares with it
-(choice 7). -/
-def HSnapWrittenOK (m : HMem V) : Prop :=
-  ∀ n hd b o w, m.handle? n = some hd → hd.obj = some b → m.obj? b = some o →
-    o.canonical = false → hd.written = some w → ∃ p, o.pos = some p ∧ w ≤ p
+/-- Live handles have no written position: only an eviction sets one, from a
+canonical object's position, and it kills the handle (choice 1 of Handle.lean,
+as Java's `Cache3.evict`). So the record rule for a pointer that holds a live
+handle is its canonical object's position, or the pointer's own reference after
+Rule R. -/
+def HLiveWrittenOK (m : HMem V) : Prop :=
+  ∀ n hd, m.handle? n = some hd → hd.dead = false → hd.written = none
 
-/-- What `HRuleROK` and `HSnapWrittenOK` are for (open point 1): for every
+/-- What `HRuleROK` and `HLiveWrittenOK` are for (open point 1): for every
 pointer of an object in memory whose reference is a position (not a vpos) and
 whose handle holds an object, the fast path's test with the pointer's own
-reference gives what the slow path's test gives, with the larger of the
-reference after Rule R and the handle's written position. So the fast path
-needs neither Rule R nor the written position. It follows from `HTableOK`,
-`HRuleROK` and `HSnapWrittenOK` (`hFastOK_of` in
-SIS/Proof/HandleRecords.lean). -/
+reference gives what the slow path's test gives, with the pointer's reference
+after Rule R raised to the handle's written position. So the fast path needs
+neither Rule R nor a written position. It follows from `HTableOK`, `HRuleROK`
+and `HLiveWrittenOK` (`hFastOK_of` in SIS/Proof/HandleMem.lean). -/
 def HFastOK (S0 : Stream V T) (m : HMem V) : Prop :=
   ∀ a o y p n hd b ob r, m.obj? a = some o → o.ptr? y = some p → p.handle = some n →
     m.handle? n = some hd → hd.obj = some b → m.obj? b = some ob → p.ref = some r →
@@ -128,11 +128,11 @@ from R(0) (`handleStartup`), with any reads and evictions after each transaction
 operations, the physical writer with handles (`handleTrans`) has appended
 exactly the model's records and left the model's D (the state is the model's),
 and the memory meets the invariants above: the table and the handles, INV-CAN,
-INV-SNAP, INV-SLOT for the record rule, the snapshots against Rule R and
-against the written positions, and references that name versions. The
+INV-SNAP, INV-SLOT for the record rule, the snapshots against Rule R, live
+handles without written positions, and references that name versions. The
 operations being any, this holds whatever reads and evictions run between
-transactions, in any order. The first part, that the records are the model's,
-is step 2d. -/
+transactions, in any order. Proved: `tc_handles`, and the first part, that the
+records are the model's, alone: `TC_handles_records` (SIS/Proof/HandleRecords.lean). -/
 def TC_handles (sp : Spec V T) (al : Algo V T) : Prop :=
   ∀ ts : List (T × Bool × List HCacheOp),
     RunOK sp al (ts.map (·.1)) → PhysRunOK sp al (ts.map (·.1)) →
@@ -142,7 +142,7 @@ def TC_handles (sp : Spec V T) (al : Algo V T) : Prop :=
       let db := run sp al ((ts.take j).map (·.1))
       let m := (runHandles sp al (ts.take j)).2.1
       (runHandles sp al (ts.take j)).1 = db ∧ HTableOK m ∧ HCanOK db m ∧ HSnapOK db m ∧
-        HSlotOK sp (init sp).S db j m ∧ HRuleROK (init sp).S m ∧ HSnapWrittenOK m ∧
+        HSlotOK sp (init sp).S db j m ∧ HRuleROK (init sp).S m ∧ HLiveWrittenOK m ∧
         HWrittenOK db m
 
 /-- T2-C with handles (`T2_cache` over handles): T-CACHE with restarts. In a
@@ -166,7 +166,7 @@ def T2_handles (sp : Spec V T) (al : Algo V T) : Prop :=
       r.1.S = db.S ∧ r.1.D = db.D ∧ (∀ x, r.1.P.get? x = db.P.get? x) ∧
       ∃ k1, k1 ≤ j ∧ r.2.2 = (run sp al ((ts.take k1).map (·.1))).S ∧
         HTableOK m ∧ HCanOK db m ∧ HSnapOK db m ∧ HSlotOK sp r.2.2 db j m ∧
-        HRuleROK r.2.2 m ∧ HSnapWrittenOK m ∧ HWrittenOK db m
+        HRuleROK r.2.2 m ∧ HLiveWrittenOK m ∧ HWrittenOK db m
 
 /-- T-READ with handles (`TR_view` over handles). In a run as in `TC_handles`
 (BergDB's algorithm with marking, the assumptions, the startup with handles from
