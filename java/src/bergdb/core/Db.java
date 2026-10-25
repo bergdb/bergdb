@@ -2315,6 +2315,13 @@ public class Db {
         /** Eviction at transaction boundaries; see Eviction. */
         public Eviction eviction() { return eviction; }
 
+        /** The cache's figures now, for tools; see CacheStats (bergdb item 009, step 1a). */
+        public CacheStats cacheStats() {
+            long[] e = eviction.figures();
+            return new CacheStats(cache.residents().bytes(), nodeCollection.loads(), e[0], e[1],
+                    e[2], e[3]);
+        }
+
         /**
          * One eviction sweep now, with the given schedule, under the write lock, between
          * transactions; for tests (bergdb item 001, WP J5: EvictionReaderTester).

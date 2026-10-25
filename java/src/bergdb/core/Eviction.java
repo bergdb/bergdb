@@ -189,6 +189,14 @@ public final class Eviction {
                 + sweepNanos / 1000000 + " ms in total, " + maxSweepNanos / 1000000 + " ms at most";
     }
 
+    /**
+     * The figures of CacheStats (bergdb item 009, step 1a): the sweeps, the objects
+     * released, the time of the sweeps in all and the longest, in nanoseconds.
+     */
+    public synchronized long[] figures() {
+        return new long[] {sweeps, released, sweepNanos, maxSweepNanos};
+    }
+
     /** Sweeps, and sweeps after which the resident bytes stayed above the budget. */
     public synchronized long[] sweepCounts() {
         return new long[] {sweeps, loadSweeps, completeSweeps, overTarget};
