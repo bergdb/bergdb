@@ -1,0 +1,7 @@
+A start on a main stream and one replica, each the creation (264 bytes) or a cut of it:
+  main 100, replica 264: StreamIoException: Cannot read 128 bytes at position 0, stream size is 100.; then main 100, replica 264
+  main 200, replica 264: started, works; then main 384, replica 384
+  main 264, replica 100: StreamIoException: Cannot read 128 bytes at position 0, stream size is 100.; then main 264, replica 100
+  main 264, replica 200: started, works; then main 384, replica 384
+  main 100, replica 100: StreamIoException: Cannot read 128 bytes at position 0, stream size is 100.; then main 100, replica 100
+  main 200, replica 200: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of length 200, holds an incomplete creation, and no data. Remove its files and start it again; the start then creates it (bergdb 005-33).; then main 200, replica 200

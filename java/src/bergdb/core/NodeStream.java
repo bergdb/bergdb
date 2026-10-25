@@ -75,6 +75,16 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     }
 
     /**
+     * Whether the stream holds a creation that did not complete, and no committed transaction
+     * (bergdb 005-33); see RecoverableStream.isIncompleteCreation(). The caller must hold
+     * DB.writeLock.
+     */
+    boolean isIncompleteCreation(long creationLength) {
+        assert Thread.holdsLock(writeLock);
+        return rstream.isIncompleteCreation(creationLength);
+    }
+
+    /**
      * Returns the length of the underlying stream. The caller must hold DB.writeLock.
      */
     final long getLength() {

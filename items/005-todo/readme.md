@@ -29,7 +29,6 @@ Open
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
-| [005-33](33-crashed-creation.md) | Decide | A database whose creation crashed never starts: a clear error, create it again at start, or create it whole or not at all (005-28) | open |
 | [005-38](38-writes-at-scale.md) | Investigate | Writes at scale: the stream grows to about 1.1 KB per key at 100M random keys, and loads into an index larger than the budget slow to under 100 puts a second on a slow disk (004-02) | open |
 | [005-42](42-transaction-info.md) | Decide | `Connection.transactionInfo()` gives internal KVs, whose `key()` throws (an index entry, reclaim's row), and for a value that reclaim has rewritten, reclaim's transaction and its time; from a TODO of 2016 (006-05) | open |
 
@@ -39,6 +38,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-33](33-crashed-creation.md) | Decide | A database whose creation crashed (a power loss in the first write of its stream) never started: one of three `StreamFormatException`s that did not say why, after recovery had zero-filled its first transaction. Decided A, one clear error: a start refuses it with a `DatabaseNotCreatedException` that says what happened and what to do, and writes nothing (005-28) | done | 2026-10-25 |
 | [005-44](44-fix-sync-commit-byte.md) | Fix | A sync returned when every byte of the transaction but its last, the commit byte, was durable, so that a crash could then lose a transaction that the sync had reported durable, with a write buffer whose size is not a multiple of 4 (through the core API); now it waits until the commit byte is durable too (005-41) | done | 2026-10-25 |
 | [005-41](41-is-durable.md) | Decide | `isDurable()`, whether a transaction is durable, answered at once, beside `sync()`; Frans's idea of 2026-10-13, from comments in the Pub API (006-05): not now (option C) | done | 2026-10-25 |
 | [005-43](43-fix-from-todos.md) | Fix | Two leftovers of TODO markers (006-05): `Db.getTrans` threw a `DbException` for a position at or past the end of the stream, and the Pub API's `IndexBuilder.dir` and `UsePrimaryBuilder.dir` a `BadFormatException` for a bad directory; now both throw `IllegalArgumentException`, as for the other positions that cannot start a transaction and for a bad key | done | 2026-10-25 |
@@ -90,7 +90,7 @@ before 005-05's decision on publishing, as it concerns the Pub API; 005-12
 is done. 005-27, 005-28 and 005-29, the fixes found in 005-11, are done.
 005-30 is done, and so is 005-34, found in it. 005-31 is done, which item
 007's deadline for `TransSeq.take` (007-01, D1) needed. 005-32
-is done, which 005-33's change needed; 005-33 waits for Frans. 005-35,
+is done, which 005-33's change needed; 005-33 is decided, A, and done. 005-35,
 005-36 and 005-37 are done, and so are 005-39, 005-40, 005-43 and 005-44.
 005-41 is decided: not now. 005-42 waits for Frans, best before 005-05's
 decision on publishing, as it concerns the Pub API.
@@ -181,9 +181,9 @@ Files
   the probe and its runs, before and after the fix, in
   [32-fix-failed-start-storage/](32-fix-failed-start-storage/).
 * [33-crashed-creation.md](33-crashed-creation.md). 005-33, a database
-  whose creation crashed: the study and the options, for Frans to decide;
-  found in 005-28, with the probe and its runs in
-  [33-crashed-creation/](33-crashed-creation/).
+  whose creation crashed: the study, the options and Frans's decision, A;
+  done; found in 005-28, with the probe and its runs, before and after the
+  change, in [33-crashed-creation/](33-crashed-creation/).
 * [34-fix-transaction-info-position.md](34-fix-transaction-info-position.md).
   005-34, `transactionInfo()`'s wrong position after a meta block, found in
   005-30; done; its probe and runs in
@@ -759,3 +759,17 @@ allows, a crash right after the sync lost the transaction, in 10 runs of
 10 of a probe. Now `Db.sync` waits for the position after that byte, and
 `Db` keeps the end of the last transaction instead of its last byte. An
 f-test that fails without the fix; `before-commit.sh` passes.
+
+2026-10-25. 005-33 decided, by Frans ("bergdb 005-33. Decision: A. Note
+the decision in the readme. Implement it. Then commit if successful."):
+option A, one clear error. Done, by Claude (Opus 5.5, Claude Code): a start
+refuses a stream that holds a creation which did not complete, and no
+committed transaction, with a `DatabaseNotCreatedException` (in
+`bergdb.pub.util`, for the application to catch) that says what happened
+and what to do; it does so before recovery, so it writes nothing. Before,
+it threw one of three `StreamFormatException`s, after recovery had
+zero-filled a cut first transaction. Without a crypto key, a stream whose
+magic bytes are wrong is no longer called a wrong key. Tests;
+`before-commit.sh` and `level2.sh quick` pass. Found on the way, for
+005-11: with a replica, a stream that ends inside its first meta block
+fails the start earlier, in the check of the streams' IDs.

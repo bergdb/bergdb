@@ -33,6 +33,8 @@ import bergdb.stream.MemoryStream;
  *   kill DIR N MS  N JVMs killed (SIGKILL) at random moments, 0 to MS ms after they begin to
  *                  create a database
  *   child DIR      used by kill: creates a database in DIR, then waits
+ *   replicas       cuts of the main stream and of a replica (the core API), added with
+ *                  005-33's change
  */
 public class CreationCrashProbe {
     static final int LIMIT_MS = 10 * 1000;
@@ -40,6 +42,7 @@ public class CreationCrashProbe {
     public static void main(String[] args) throws Exception {
         String c = args[0];
         if (c.equals("cuts")) cuts();
+        else if (c.equals("replicas")) replicas();
         else if (c.equals("pub")) pub(new File(args[1]));
         else if (c.equals("flushes")) flushes(Integer.parseInt(args[1]));
         else if (c.equals("kill")) kill(new File(args[1]), Integer.parseInt(args[2]),
@@ -72,6 +75,12 @@ public class CreationCrashProbe {
                 from = c;
             }
         }
+        // Added with 005-33's change (2026-10-25): the whole creation with its transaction
+        // failed, as recovery's zero fill left a cut one before that change.
+        MemoryStream failed = created.copy();
+        MemoryStream.TestAccess.write(failed, new byte[] {0}, end - 1);
+        System.out.println("The whole creation, its transaction failed (its last byte 0): "
+                + cutOutcome(failed, end));
     }
 
     static String cutOutcome(MemoryStream created, long c) throws Exception {
@@ -88,11 +97,52 @@ public class CreationCrashProbe {
             db.execute(db.trans().put("/k", "v").build());
             o = "started, " + ("v".equals(DbUtil.getString(db, "/k")) ? "works" : "BROKEN");
         } else {
-            o = e.getClass().getSimpleName() + ": " + e.getMessage().replace(": " + c, ": L");
+            o = e.getClass().getSimpleName() + ": " + e.getMessage().replace(": " + c, ": L")
+                    .replace("of length " + c + ",", "of length L,");   // since 005-33's change
         }
         db.close();     // Flushes what the start appended, also after a failed start.
         long after = m.getLength();
         return o + "; the stream then " + (after == c ? "unchanged" : after + " bytes");
+    }
+
+    // ======== replicas ========
+
+    /** A creation cut in the main stream, in a replica, or in both (the core API). */
+    static void replicas() throws Exception {
+        MemoryStream s = new MemoryStream();
+        Db.builder().testSetup(s).start().close();
+        MemoryStream created = s.copy();
+        long end = created.getLength();
+        System.out.println("A start on a main stream and one replica, each the creation ("
+                + end + " bytes) or a cut of it:");
+        long[][] cases = {{100, end}, {200, end}, {end, 100}, {end, 200}, {100, 100},
+                {200, 200}};
+        for (long[] c : cases) {
+            final MemoryStream main = created.copy();
+            main.truncate(c[0]);
+            final MemoryStream replica = created.copy();
+            replica.truncate(c[1]);
+            DbBuilder b = Db.builder();
+            b.testSetupExceptStream();
+            b.stream("main", main, 100 * 1000, 10);
+            b.stream("r", replica, 100 * 1000, 10);
+            final Db db = b.build();
+            Throwable e = within(new Runnable() {
+                public void run() {
+                    db.start();
+                }
+            });
+            String o;
+            if (e == null) {
+                db.execute(db.trans().put("/k", "v").build());
+                o = "started, " + ("v".equals(DbUtil.getString(db, "/k")) ? "works" : "BROKEN");
+            } else {
+                o = e.getClass().getSimpleName() + ": " + e.getMessage();
+            }
+            db.close();
+            System.out.println("  main " + c[0] + ", replica " + c[1] + ": " + o
+                    + "; then main " + main.getLength() + ", replica " + replica.getLength());
+        }
     }
 
     // ======== pub ========

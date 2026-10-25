@@ -13,6 +13,7 @@ import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.storage.MetaBlock;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
@@ -270,7 +271,10 @@ public class NodeStreamTester {
     /**
      * Bergdb 005-28 in one history: a crash while the database is created, in its first
      * transaction (the primordial one). Recovery zero-fills it, and startup, which starts
-     * there as the meta block names no transaction, looped for ever. Now it throws.
+     * there as the meta block names no transaction, looped for ever. Now it throws. Since
+     * 2026-10-25 (005-33) the start refuses such a stream before recovery, with a
+     * DatabaseNotCreatedException, and writes nothing; DbTester.testCrash8InCreation has every
+     * cut.
      */
     @Nano
     public static void testCrashInPrimordialTrans() throws IOException, InterruptedException {
@@ -289,8 +293,8 @@ public class NodeStreamTester {
             m.truncate(cut);
             Throwable e = startWithin10s(m);
             Assert.assertTrue("cut at " + cut + ", thrown: " + e,
-                    e instanceof StreamFormatException);
-            Assert.assertTrue(e.getMessage(), e.getMessage().contains(" " + first + " "));
+                    e instanceof DatabaseNotCreatedException);
+            Assert.assertEquals("cut at " + cut + ", unchanged", cut, m.getLength());
         }
     }
     

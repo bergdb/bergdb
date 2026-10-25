@@ -153,6 +153,66 @@ public class RecoverableStream {
     }
     
     /**
+     * Whether the stream holds a creation that did not complete, and no committed
+     * transaction (2026-10-25, bergdb 005-33). A crash, as a power loss, while a database is
+     * created can leave a part of its first meta block, the block, or the block and a part of
+     * its first transaction; recovery's zero fill, before this check, made the last one the
+     * whole creation with that transaction failed. That is: the stream is not empty and no
+     * longer than 'creationLength'; its bytes begin as a meta block of this version as far
+     * as they go, and a complete block is valid and names no transaction; and the
+     * transaction after the block, if begun, is cut by the end of the stream, or failed (its
+     * last byte 0) and ends the stream. A longer stream is not one, whatever its first
+     * transaction's size says: it may hold data. This method only reads. Caller must hold
+     * DB.writeLock.
+     *
+     * @param creationLength  The length of a new database's stream: the first meta block
+     *      and the first transaction.
+     * @throws StreamIoException
+     */
+    public boolean isIncompleteCreation(long creationLength) {
+        final long length = aos.getLength();
+        if (length == 0 || length > creationLength || aos.getFirstPos() > 0) {
+            return false;
+        }
+        
+        byte[] block = new byte[(int) Math.min(length, META_BLOCK_SIZE)];
+        readRaw(0, block);
+        if (!MetaBlock.beginsAsBlock(block)) {
+            return false;   // Not a BergDB stream, a wrong crypto key, or another version.
+        }
+        if (length < META_BLOCK_SIZE) {
+            return true;
+        }
+        MetaBlock first = new MetaBlock(block, 0);
+        if (!first.isValid() || first.getLastTransSpos() != Constants.SposNULL) {
+            return false;
+        }
+        
+        final long transBytes = length - META_BLOCK_SIZE;
+        if (transBytes < 4) {
+            return true;    // No transaction, or a part of its size.
+        }
+        byte[] sizeBytes = new byte[4];
+        readRaw(META_BLOCK_SIZE, sizeBytes);
+        int transSize = Bytes.bytesToIntLE(sizeBytes, 0);
+        if (transBytes != transSize) {
+            return transBytes < transSize;      // Cut; else more bytes follow it.
+        }
+        byte[] lastByte = new byte[1];
+        readRaw(length - 1, lastByte);
+        return lastByte[0] == 0;
+    }
+    
+    /** Reads bytes of the underlying stream, meta blocks included. */
+    private void readRaw(long pos, byte[] buffer) {
+        try {
+            aos.read(pos, buffer, 0, buffer.length);
+        } catch (IOException e) {
+            throw new StreamIoException(e);
+        }
+    }
+    
+    /**
      * Returns the position of the transaction named by the last valid meta block, where
      * recovery starts, or -1 if unknown or none. The stream must not be cut after it.
      */
@@ -1100,6 +1160,101 @@ public class RecoverableStream {
                 Assert.assertEquals("cut " + x + " bytes into the meta block",
                         META_BLOCK_DISTANCE + x, m.getLength());
             }
+        }
+        
+        /**
+         * Bergdb 005-33: isIncompleteCreation(), which a start checks before recovery. The
+         * creation here is the first meta block and a first transaction of 136 bytes, as Db
+         * writes. Every cut of it from 1 byte on is one, and so is the whole of it with that
+         * transaction failed; the whole of it committed is not, nor an empty or a longer
+         * stream, a stream that does not begin as a meta block of this version, a complete
+         * block that is invalid or names a transaction, or a first transaction that more bytes
+         * follow. The method only reads.
+         */
+        @Nano
+        public static void testIsIncompleteCreation() throws IOException {
+            final int creation = META_BLOCK_SIZE + 136;
+            MemoryStream created = new MemoryStream();
+            new RecoverableStream(created, new MetaBlock()).append(transBytes(136, LAST_BYTE), 0,
+                    136, true, -1);
+            Assert.assertEquals(creation, created.getLength());
+            for (int cut = 0; cut <= creation; cut++) {
+                MemoryStream m = created.copy();
+                m.truncate(cut);
+                Assert.assertEquals("cut at " + cut, cut > 0 && cut < creation,
+                        isIncompleteCreation(m, creation));
+            }
+            
+            MemoryStream failed = created.copy();
+            MemoryStream.TestAccess.write(failed, new byte[] {0}, creation - 1);
+            Assert.assertTrue("failed", isIncompleteCreation(failed, creation));
+            
+            // Longer than a creation: a transaction after it, committed or not; a first
+            // transaction cut after the creation's length, whatever its size says.
+            for (MemoryStream m : new MemoryStream[] {created.copy(), failed.copy()}) {
+                new RecoverableStream(m, new MetaBlock()).append(transBytes(24, LAST_BYTE), 0,
+                        24, true, -1);
+                Assert.assertFalse("longer", isIncompleteCreation(m, creation));
+            }
+            MemoryStream large = new MemoryStream();
+            new RecoverableStream(large, new MetaBlock()).append(transBytes(1000, LAST_BYTE), 0,
+                    300 - META_BLOCK_SIZE, false, -1);
+            Assert.assertFalse("cut at 300", isIncompleteCreation(large, creation));
+            large.truncate(200);
+            Assert.assertTrue("cut at 200", isIncompleteCreation(large, creation));
+            
+            // Not the beginning of a meta block of this version.
+            for (int n : new int[] {1, 100, META_BLOCK_SIZE, creation}) {
+                MemoryStream zeros = new MemoryStream();
+                zeros.append(new byte[n], 0, n);
+                Assert.assertFalse(n + " zero bytes", isIncompleteCreation(zeros, creation));
+            }
+            MemoryStream version = created.copy();
+            MemoryStream.TestAccess.write(version, new byte[] {(byte) 155}, 4);
+            version.truncate(10);
+            Assert.assertFalse("version 155", isIncompleteCreation(version, creation));
+            version.truncate(4);
+            Assert.assertTrue("the magic bytes only", isIncompleteCreation(version, creation));
+            
+            // A complete block that is invalid, or that names a transaction.
+            MemoryStream invalid = created.copy();
+            MemoryStream.TestAccess.write(invalid, new byte[] {0}, META_BLOCK_SIZE - 1);
+            invalid.truncate(200);
+            Assert.assertFalse("invalid block", isIncompleteCreation(invalid, creation));
+            MemoryStream names = created.copy();
+            byte[] pos = new byte[8];
+            Bytes.longToBytesLE(META_BLOCK_SIZE, pos, 0);
+            MemoryStream.TestAccess.write(names, pos, 16);
+            names.truncate(200);
+            Assert.assertFalse("a block that names a transaction",
+                    isIncompleteCreation(names, creation));
+            
+            // A short first transaction, committed or failed, with more bytes after it.
+            for (byte last : new byte[] {LAST_BYTE, 0}) {
+                MemoryStream m = new MemoryStream();
+                RecoverableStream r = new RecoverableStream(m, new MetaBlock());
+                r.append(transBytes(24, last), 0, 24, false, -1);
+                r.append(transBytes(100, LAST_BYTE), 0, 50, false, -1);
+                Assert.assertFalse("last byte " + last, isIncompleteCreation(m, creation));
+            }
+        }
+        
+        /** The bytes of a transaction of 'size' bytes: its size, zeros, and its last byte. */
+        private static byte[] transBytes(int size, byte last) {
+            byte[] bytes = new byte[size];
+            Bytes.intToBytesLE(size, bytes, 0);
+            bytes[size - 1] = last;
+            return bytes;
+        }
+        
+        /** isIncompleteCreation() on the stream m, which it must leave as it was. */
+        private static boolean isIncompleteCreation(MemoryStream m, long creationLength)
+                throws IOException {
+            byte[] before = bytesOf(m);
+            boolean result = new RecoverableStream(m, new MetaBlock())
+                    .isIncompleteCreation(creationLength);
+            Assert.assertArrayEquals("unchanged", before, bytesOf(m));
+            return result;
         }
         
         @Nano

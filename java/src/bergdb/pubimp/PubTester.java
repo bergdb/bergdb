@@ -34,10 +34,10 @@ import bergdb.pub.TransactionInfo;
 import bergdb.pub.WBuilder;
 import bergdb.pub.util.BadCryptoKey;
 import bergdb.pub.util.BadReplicaException;
+import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.storage.BufferedStream;
 import bergdb.storage.RecoverableStream;
-import bergdb.storage.StreamFormatException;
 import bergdb.stream.CutStream;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.SalsaStream;
@@ -1239,6 +1239,49 @@ public class PubTester {
         }
     }
     
+    /**
+     * Bergdb 005-33: a crash while the database is created, through the Pub API, with and
+     * without a crypto key. At each cut of the creation the start throws a
+     * DatabaseNotCreatedException and writes nothing; the whole creation starts. A stream of
+     * zero bytes, as a power loss can leave, gives a BadCryptoKey whose message names a wrong
+     * key only when a key is used; until 2026-10-25, also without one.
+     */
+    @Nano
+    private static void testCrashInCreation() throws IOException {
+        for (CryptoKey key : new CryptoKey[] {null, CryptoKey.generate()}) {
+            MemoryStream m = new MemoryStream();
+            ((DatabaseImp) builderOn(m, key).start()).getDb().close();
+            final long length = m.getLength();
+            
+            for (long cut : new long[] {1, 64, 127, 128, 129, 132, 200, length - 1}) {
+                MemoryStream m2 = m.copy();
+                m2.truncate(cut);
+                try {
+                    builderOn(m2, key).start();
+                    throw new AssertionError("started, cut at " + cut);
+                } catch (DatabaseNotCreatedException e) {
+                    // Expected.
+                }
+                Assert.assertEquals("cut at " + cut, cut, m2.getLength());
+            }
+            
+            MemoryStream zeros = new MemoryStream();
+            zeros.append(new byte[128], 0, 128);
+            try {
+                builderOn(zeros, key).start();
+                throw new AssertionError("started on zero bytes");
+            } catch (BadCryptoKey e) {
+                Assert.assertTrue(e.getMessage(),
+                        e.getMessage().contains("wrong crypto key") == (key != null));
+            }
+            
+            Database d = builderOn(m.copy(), key).start();
+            d.connection().put("/k", "v");
+            Assert.assertEquals("v", d.connection().get("/k", String.class));
+            ((DatabaseImp) d).getDb().close();
+        }
+    }
+    
     /** A builder of a database on the stream m, with the crypto key unless it is null. */
     private static DatabaseBuilder builderOn(MemoryStream m, CryptoKey key) {
         DatabaseBuilderImp b = (DatabaseBuilderImp) Factory.database();
@@ -1402,9 +1445,10 @@ public class PubTester {
         try {
             Factory.database().dir(d.getPath()).start();
             throw new AssertionError("started");
-        } catch (StreamFormatException e) {
-            // Expected (005-28).
+        } catch (DatabaseNotCreatedException e) {
+            // Expected (005-33; until 2026-10-25 a StreamFormatException, 005-28).
         }
+        Assert.assertEquals("the stream as it was", 200, stream.length());
         DbTesterFailure.assertNoNewStorageThreads(before);
         if (files >= 0) {
             Assert.assertTrue("open files " + openFiles() + ", before " + files, 

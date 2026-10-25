@@ -1,15 +1,15 @@
 005-33. Decide: a database whose creation crashed
 ================================================
 
-Status: open; studied; Frans likes the proposal, and its implementation
-waits (2026-10-24, "Frans, 2026-10-24" below). Kind: decide. Created
-2026-10-23.
+Status: done (2026-10-25). Frans decided A, one clear error, on
+2026-10-25, and it is implemented ("Frans, 2026-10-25" and "Outcome"
+below). Kind: decide. Created 2026-10-23.
 
 Found on 2026-10-23 in 005-28, by Claude (Opus 5.5, Claude Code). Frans:
 "I don't know what to do with this. Make a new 005 entry for this. Study
 the options and propose something in the entry. Do not implement
 anything." The probe is in [33-crashed-creation/](33-crashed-creation/).
-No change to `java/`.
+No change to `java/` for the study.
 
 
 The question
@@ -242,6 +242,19 @@ new primordial transaction after the failed one, and a startup that steps
 over failed transactions before the first committed one.
 
 
+Frans, 2026-10-25
+-----------------
+
+"bergdb 005-33. Decision: A. Note the decision in the readme. Implement
+it. Then commit if successful."
+
+So option A, one clear error: the database never removes a stream's bytes
+and writes nothing to such a stream, which also suits truly append-only
+storage (his note of 2026-10-24). B and C are not done. Questions 2 and 3
+were for B; with A they fall away. The repair by appending only, above,
+is not needed for A.
+
+
 Done when
 ---------
 
@@ -255,3 +268,89 @@ Size and order
 The study is done (2026-10-23). A is S, A with B2 S to M, C M. After
 005-32 for A and B2; independent of 005-11, but B2 waits for its decision
 for replicas.
+
+
+Outcome
+-------
+
+2026-10-25, by Claude (Opus 5.5, Claude Code), option A as Frans decided.
+
+* The check. `Db.startInner` calls `refuseIncompleteCreation()` after
+  `syncStreams()` and `handleEmptyStream()`, before recovery. It asks
+  `RecoverableStream.isIncompleteCreation()`, through `NodeStream`, which
+  only reads: the stream is not empty and no longer than a creation,
+  `Db.CREATION_LENGTH`, 264 bytes (`writePrimordialTransaction()` asserts
+  it); its bytes begin as a meta block of this version as far as they go,
+  the magic bytes and the version (`MetaBlock.beginsAsBlock`), and a
+  complete block is valid and names no transaction; and the transaction at
+  128, if begun, is cut by the end of the stream, or failed (its last byte
+  0) and ends the stream. The bound on the length makes it safe: a stream
+  no longer than a creation holds no data, whatever the size field of its
+  first transaction says. Without the bound, a damaged size field that
+  claims more bytes than there are would make a longer stream, with data
+  after it, look cut.
+* The exception, `bergdb.pub.util.DatabaseNotCreatedException`, a
+  `DbException`: "The database was not completely created (a crash or a
+  power loss while it was created?): its stream, of length L, holds an
+  incomplete creation, and no data. Remove its files and start it again;
+  the start then creates it (bergdb 005-33)." It is in the Pub API's
+  package, beside `BadCryptoKey`, as the application is to catch it; so it
+  is not the `StreamFormatException` that option A's sketch named, since
+  `bergdb.pub.util` depends on `bergdb.common` only (its package.html).
+  The start writes nothing: recovery's zero fill does not run, and the
+  failed start closes the files before the exception leaves (005-32). The
+  remedy is in the Javadoc of `DatabaseBuilder.start()`, of `Db.start()`
+  and of the exception.
+* No key, no wrong key. Without a crypto key (the main stream is not a
+  `SalsaStream`), a stream whose magic bytes are wrong still gives a
+  `BadCryptoKey`, as the Pub API documents for an encrypted database
+  started without its key, but its message no longer says that the wrong
+  key was used: "Invalid magic bytes in stream, and no crypto key was used:
+  likely, the database is encrypted and needs its key; else the stream is
+  not a BergDB stream, or it is damaged." With a key, as before.
+* Tests. New: `RecoverableStream.Tester.testIsIncompleteCreation`, every
+  cut of a creation and the creation with its transaction failed, and what
+  is not one (longer streams, also a first transaction whose size claims
+  more than the stream has, zero bytes, another version, an invalid block,
+  a block that names a transaction, a short first transaction with more
+  bytes after it), each stream left as it was;
+  `DbTester.testCrash8InCreation`, an f-test, as its 264 starts take about
+  110 ms: every cut from 1 to 263 and the creation with its transaction
+  failed give the exception, the stream unchanged byte for byte, and the
+  whole creation starts; `PubTester.testCrashInCreation`, through the Pub
+  API with and without a key: eight cuts, and a stream of zero bytes, whose
+  message names a key only when one is used. Changed: 005-28's
+  `NodeStreamTester.testCrashInPrimordialTrans` and 005-32's
+  `PubTester.testFailedStartsDirectoryRemoved` expect the new exception
+  and the stream as it was; 005-32's
+  `DbTesterFailure.testFailedStartClosesStorage` needs a start that
+  appends and then throws, and a cut creation is no longer zero-filled, so
+  it now starts on a damaged stream, a failed first transaction with a cut
+  one after it (recovery zero-fills the cut one, and startup throws at the
+  failed one).
+* The probe again, on the change ([runs/](33-crashed-creation/runs/)
+  `after-cuts.txt`, `after-pub.txt`): every cut from 1 to 263 bytes, and
+  the creation with its transaction failed, give the exception, and the
+  stream is as it was; 0 and 264 start. Through the Pub API in
+  directories, with and without a key, the same, and the files are as they
+  were; streams of zero bytes give a `BadCryptoKey`, with the new message
+  without a key. The probe now also starts on the creation with its
+  transaction failed (on `ec44d19`, before the change: "Transaction at
+  start pos 128 is not committed (its last byte is 0).",
+  `cuts-ec44d19.txt`), and writes the length in the new message as L.
+  `flushes` and `kill` were not run again: they measure the creation,
+  which has not changed.
+* Found on the way, for 005-11: with a replica, a main stream or a
+  replica that ends inside its first meta block fails the start before the
+  check, in `StorageManager.checkStreamIds`, with a `StreamIoException`
+  ("Cannot read 128 bytes at position 0, stream size is 100."), as before;
+  also when the other stream holds the whole creation, which
+  `syncStreams()` would copy. "A replica with the whole creation is copied
+  to the main first", above, holds only when both have their first meta
+  block. The probe's new case `replicas`, the core API with one replica
+  (`after-replicas.txt`): a main of 200 bytes and a replica of 264 start,
+  as the copy makes the creation whole, and so do the reverse; both of 200
+  give the exception.
+* `java/before-commit.sh`: BEFORE COMMIT OK (1020 unit tests, 69
+  f-tests). Also `java/stress/level2.sh quick`, as the change is in the
+  start: LEVEL 2 OK.

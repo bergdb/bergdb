@@ -30,6 +30,7 @@ import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 import bergdb.pub.util.BadCryptoKey;
 import bergdb.pub.util.BadReplicaException;
+import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
@@ -46,6 +47,7 @@ import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.ReadBelowFirstPosException;
+import bergdb.stream.SalsaStream;
 
 /**
  * <p>An object of this class provides access to the data in the database. This
@@ -167,6 +169,20 @@ public class Db {
     private Cache3 cache;
 
     /**
+     * Whether the main stream is encrypted: a SalsaStream, as the Pub API makes for a crypto
+     * key. For the message of BadCryptoKey (bergdb 005-33).
+     */
+    private final boolean encrypted;
+    
+    /**
+     * The length of a new database's stream, what a creation writes (2026-10-25, bergdb
+     * 005-33): the first meta block, 128 bytes, and the primordial transaction, 136 bytes
+     * (its header, the super root with its one pointer, the first key node, empty, and the
+     * record's end, aligned to 8). writePrimordialTransaction() asserts it.
+     */
+    static final long CREATION_LENGTH = RecoverableStream.META_BLOCK_SIZE + 136;
+    
+    /**
      * The audit (bergdb item 001, WP J1; test-only): after every auditEvery-th transaction
      * and at every startup; 0 is off. DbBuilder.audit(), by default the system property
      * audit (Audit.EVERY).
@@ -249,6 +265,7 @@ public class Db {
         
         this.createdTxtDir = b.createdTxtDir;
         this.createdTxtCryptoKeyInfo = b.createdTxtCryptoKeyInfo;
+        this.encrypted = b.getMainStream() instanceof SalsaStream;
         
         //
         // Synch note: Synchronized blocks make sure the writes in constructor are
@@ -484,6 +501,9 @@ public class Db {
      * 
      * @throws StreamIoException
      * @throws StreamFormatException
+     * @throws DatabaseNotCreatedException
+     *             If the stream holds a creation that did not complete, and no committed
+     *             transaction (bergdb 005-33). The start writes nothing.
      * @throws IllegalStateException
      *             If start() has been called already.
      * @throws BadReplicaException
@@ -511,6 +531,9 @@ public class Db {
      *          Used for testing, normally set to StartParams.NULL as default.
      * @throws StreamIoException
      * @throws StreamFormatException
+     * @throws DatabaseNotCreatedException
+     *          If the stream holds a creation that did not complete, and no committed
+     *          transaction (bergdb 005-33). The start writes nothing.
      * @throws IllegalStateException
      *          If start() has been called already, or stop(): nothing is closed then.
      * @throws BadReplicaException
@@ -570,18 +593,26 @@ public class Db {
      * @throws BadReplicaException
      * @throws IllegalDbStateException
      * @throws BadCryptoKey
+     * @throws DatabaseNotCreatedException
      */
     private StartInfo startInner(StartParams params) {
         assertStateIsZero();
 
         syncStreams();
         handleEmptyStream();
+        refuseIncompleteCreation();
         
         try {
             nodeStream.recover();
         } catch (BadMagicBytes e) {
-            throw new BadCryptoKey("Likely, the wrong crypto key was used."
-                    + " Invalid magic bytes in stream.");
+            // 2026-10-25 (bergdb 005-33): without a crypto key, the message said that the
+            // wrong key was used too, also for a stream of zero bytes, as a power loss can
+            // leave one.
+            throw new BadCryptoKey(encrypted
+                    ? "Likely, the wrong crypto key was used. Invalid magic bytes in stream."
+                    : "Invalid magic bytes in stream, and no crypto key was used: likely, the "
+                    + "database is encrypted and needs its key; else the stream is not a "
+                    + "BergDB stream, or it is damaged.");
         }
         
         handleStartParams(params);
@@ -837,6 +868,28 @@ public class Db {
         }
     }
     
+    /**
+     * Refuses a stream that holds a creation which did not complete (2026-10-25, bergdb
+     * 005-33), before recovery: a crash, as a power loss, while the database was created left
+     * a part of what the creation writes (RecoverableStream.isIncompleteCreation). Such a
+     * stream holds no committed transaction, so no data, and it is not a database: a stream
+     * is valid only after its primordial transaction has run (Frans, 2012-08-20). Before, the
+     * start threw one of three StreamFormatExceptions that did not say so, and recovery
+     * zero-filled a cut transaction first. Now nothing is written, and the application, or a
+     * person, removes the files.
+     *
+     * @throws DatabaseNotCreatedException
+     */
+    private void refuseIncompleteCreation() {
+        if (nodeStream.isIncompleteCreation(CREATION_LENGTH)) {
+            throw new DatabaseNotCreatedException("The database was not completely created "
+                    + "(a crash or a power loss while it was created?): its stream, of length "
+                    + nodeStream.getLength() + ", holds an incomplete creation, and no data. "
+                    + "Remove its files and start it again; the start then creates it (bergdb "
+                    + "005-33).");
+        }
+    }
+    
     private void determineDatabaseId() {
         if (databaseIdFromBuilder.isCreateLaterMarker()) {
             databaseId = DatabaseId.createRandom();
@@ -884,6 +937,7 @@ public class Db {
         transNodes.addTopNode(superRoot);
         
         nodeStream.appendNodes(transNodes, trans, new ArrayList<Node>(), superRoot);
+        assert trans.lastPos + 1 == CREATION_LENGTH : "creation length " + (trans.lastPos + 1);
         
         // This is needed to be able to use sync() method.
         x.endOfLastTrans = trans.lastPos + 1;

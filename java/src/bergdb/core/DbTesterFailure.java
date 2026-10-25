@@ -608,18 +608,22 @@ public class DbTesterFailure {
     /**
      * Regression test for bergdb 005-32: a start that throws closes its storage before the
      * exception leaves. What it appended is written, its stream is closed, no thread of its
-     * storage runs, and later calls are refused. Here a creation that crashed in its first
-     * transaction (005-28, 005-33), which recovery zero-fills. Before, the storage ran on
-     * until the garbage collector finalized the Db.
+     * storage runs, and later calls are refused. Here a damaged stream whose first
+     * transaction failed, with a cut one after it (005-28): recovery zero-fills the cut one,
+     * and startup then throws at the failed one. Before, the storage ran on until the garbage
+     * collector finalized the Db. Until 2026-10-25 the stream was a creation cut in its first
+     * transaction, which a start now refuses before recovery, and writes nothing (005-33).
      */
     @Nano
     public static void testFailedStartClosesStorage() throws IOException {
         MemoryStream created = new MemoryStream();
         Db first = Db.builder().testSetup(created).start();
-        first.sync(SyncLevel.STRONG);
+        Trans t = first.trans().put("/k", "v").build();
+        first.execute(t);
         first.close();
         MemoryStream s = created.copy();
-        s.truncate(200);                    // In the creation's first transaction, 128 to 263.
+        MemoryStream.TestAccess.write(s, new byte[] {0}, Db.CREATION_LENGTH - 1);
+        s.truncate(t.lastPos);              // t cut before its last byte.
         
         Set<Thread> before = storageThreads();
         Db db = Db.builder().testSetup(s).build();
@@ -630,7 +634,7 @@ public class DbTesterFailure {
             e = ex;
         }
         Assert.assertTrue("the start throws", e != null);
-        Assert.assertEquals("the zero fill is written", 264L, s.getLength());
+        Assert.assertEquals("the zero fill is written", t.lastPos + 1, s.getLength());
         assertNoNewStorageThreads(before);
         assertClosed(s);
         assertStopped(db);

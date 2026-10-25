@@ -1121,3 +1121,21 @@ too, and `Db` keeps the end of the last transaction
 by the load and crash tests", 9). An f-test that fails without the fix;
 `before-commit.sh` passes. 005-41 itself is decided: no
 `isDurable()` for now (Frans).
+
+2026-10-25. 005-33 done, by Claude (Opus 5.5, Claude Code), option A as
+Frans decided: a database whose creation did not complete, as after a
+power loss in the first write of its stream, never started: one of three
+`StreamFormatException`s that did not say why ("Cannot recover stream
+without complete first meta block", "No transactions in startup
+transaction set.", "Transaction at start pos 128 is not committed"), after
+recovery had zero-filled a cut first transaction. Now `Db.startInner`
+refuses such a stream before recovery, with a `DatabaseNotCreatedException`
+(in `bergdb.pub.util`, for the application to catch) that says what
+happened and what to do (remove the files, start again), and it writes
+nothing. `RecoverableStream.isIncompleteCreation` recognizes it, and only
+in a stream no longer than a creation, 264 bytes, which holds no data
+whatever its first transaction's size field says. Without a crypto key, a
+`BadCryptoKey` for bad magic bytes no longer says that the wrong key was
+used. Tests; `before-commit.sh` and `level2.sh quick` pass. Found on the
+way, for 005-11: with a replica, a stream that ends inside its first meta
+block fails the start earlier, in the check of the streams' IDs.

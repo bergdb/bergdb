@@ -231,6 +231,21 @@ public class MetaBlock {
     }
     
     /**
+     * Whether 'bytes' begin as a meta block of this version, as far as they go: the magic
+     * bytes, then the version, as readMetaBlock() reads them (2026-10-25, bergdb 005-33).
+     * For a stream that a crash has cut in its first meta block.
+     */
+    static boolean beginsAsBlock(byte[] bytes) {
+        final int n = Math.min(bytes.length, 4 + 2);    // FILL_OUT_TEMPLATE begins with them.
+        for (int i = 0; i < n; i++) {
+            if (bytes[i] != FILL_OUT_TEMPLATE[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    /**
      * Unit tests for this class.
      */
     public static class Tester {

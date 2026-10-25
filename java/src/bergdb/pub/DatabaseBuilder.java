@@ -5,6 +5,7 @@ import java.io.IOException;
 import bergdb.pub.util.BadCryptoKey;
 import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.Clock;
+import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.DbException;
 
 /**
@@ -114,6 +115,12 @@ public interface DatabaseBuilder {
      *             start has then written nothing to the database, so it can be started
      *             with the right key (bergdb 005-40; until 2026-10-25, such a start after
      *             a crash could make the database unreadable with the right key too).
+     * @throws DatabaseNotCreatedException
+     *             If the database's creation did not complete: a crash, as a power loss,
+     *             while it was created left a part of it, and no data (bergdb 005-33). The
+     *             start has written nothing. To create the database, remove its files, in
+     *             its directory the stream's files (*.bergdb) and created.txt, and start
+     *             again. A database that holds data never gives this exception.
      */
     public abstract Database start();
 }

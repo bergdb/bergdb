@@ -1,0 +1,6 @@
+A new database's stream (core API, test setup): 264 bytes, the first meta block (128) and the first transaction (136).
+A start on the stream cut at each length L from 0 to 264:
+  L = 0: started, works; the stream then 384 bytes
+  L = 1 to 263: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of length L, holds an incomplete creation, and no data. Remove its files and start it again; the start then creates it (bergdb 005-33).; the stream then unchanged
+  L = 264: started, works; the stream then 384 bytes
+The whole creation, its transaction failed (its last byte 0): DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of length L, holds an incomplete creation, and no data. Remove its files and start it again; the start then creates it (bergdb 005-33).; the stream then unchanged

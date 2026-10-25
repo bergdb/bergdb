@@ -24,6 +24,7 @@ import static bergdb.nanotest.Assert.*;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.Clock;
+import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
 import bergdb.storage.RecoverableStream;
@@ -1347,6 +1348,53 @@ public class DbTester {
             Assert.assertEquals("value4", DbUtil.getString(db3, "key4"));
             db3.stop();
         }
+    }
+    
+    /**
+     * Bergdb 005-33: a crash while the database is created, at every length of its stream
+     * from 1 byte to the whole creation less one, and the whole creation with its transaction
+     * failed, as recovery's zero fill left it before. The start throws a
+     * DatabaseNotCreatedException and leaves the stream as it was. Before, it threw one of
+     * three StreamFormatExceptions, and from 129 bytes on recovery zero-filled the
+     * transaction first. The whole creation starts. An f-test, as its 264 starts take about
+     * 110 ms; the unit tests start on some of the cuts (NodeStreamTester, PubTester).
+     */
+    @Nano("f")
+    public static void testCrash8InCreation() throws IOException {
+        MemoryStream s = new MemoryStream();
+        Db.builder().testSetup(s).start().close();
+        MemoryStream created = s.copy();        // close() closed s.
+        final int length = (int) created.getLength();
+        Assert.assertEquals(Db.CREATION_LENGTH, length);
+        byte[] bytes = new byte[length];
+        created.read(0, bytes, 0, length);
+        MemoryStream failed = created.copy();
+        MemoryStream.TestAccess.write(failed, new byte[] {0}, length - 1);
+        
+        for (int cut = 1; cut <= length; cut++) {
+            MemoryStream m = cut < length ? created.copy() : failed.copy();
+            m.truncate(cut);
+            Db db = Db.builder().testSetup(m).build();
+            try {
+                db.start();
+                throw new AssertionError("started, cut at " + cut);
+            } catch (DatabaseNotCreatedException e) {
+                // Expected.
+            }
+            MemoryStream after = m.copy();      // The failed start closed m.
+            byte[] expected = java.util.Arrays.copyOf(bytes, cut);
+            if (cut == length) {
+                expected[length - 1] = 0;
+            }
+            byte[] actual = new byte[(int) after.getLength()];
+            after.read(0, actual, 0, actual.length);
+            Assert.assertArrayEquals("cut at " + cut, expected, actual);
+        }
+        
+        Db db = Db.builder().testSetup(created.copy()).start();
+        db.execute(db.trans().put("key1", "value1"));
+        Assert.assertEquals("value1", DbUtil.getString(db, "key1"));
+        db.close();
     }
     
     /**
