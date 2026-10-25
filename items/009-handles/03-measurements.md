@@ -304,7 +304,9 @@ included (`FileStream.DbFile.read` and `append` are both `synchronized` on
 the file). On s1's disk an `fsync` can take seconds, and the pause probe's
 longest waits on s1 at step 3d (1.4 to 2.7 s, with transactions of 1,000
 puts) are those. Positional reads (`FileChannel.read(buffer, position)`)
-need no lock; that is work of its own.
+need no lock; that is work of its own:
+[005-46](../005-todo/46-stream-file-lock.md). The finding of the load went
+into [005-38](../005-todo/38-writes-at-scale.md).
 
 
 # 8. Still to run

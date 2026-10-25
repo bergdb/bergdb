@@ -172,6 +172,6 @@ Step 3e: the 10M load on s1 took 767 s, 2026.1 3,015 s, of which its sweeps
 were 119 s and most of the rest reading back what they evicted (25.9 GB
 from the device, the branch 4.6 GB). On s1 the longest waits left are the
 device's and a reader's wait for the writer's `fsync` (FileStream, for the
-stream layer). Not yet run: P4's soak and ScaleBench under Shenandoah, on
+stream layer: registered as 005-46; the load's finding is in 005-38). Not yet run: P4's soak and ScaleBench under Shenandoah, on
 F53 from 05:00. `main` merged into the branch (`a73cd66`) for phase 6's
 gates; `night.sh` runs on it.
