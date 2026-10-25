@@ -187,7 +187,9 @@ From the JLS, chapter 17 (17.4, the memory model; 17.5, final fields;
   So: the writer writes plain fields, then a volatile field (release); a
   reader reads that volatile field (acquire) and sees the new value; then
   everything the writer wrote before the volatile write is visible to it.
-* **The VarHandle access modes** (JDK 9): plain; opaque (no tearing, no
+* **The VarHandle access modes** (JDK 9; BergDB compiles with
+  `--release 17` since step 1-0, before that with 8, which had none of
+  them): plain; opaque (no tearing, no
   reordering of accesses to the same variable, no edges); release and
   acquire (the edge above, without the total order of volatile); volatile.
   `compareAndSet` has volatile semantics. `arrayElementVarHandle` gives these
@@ -569,6 +571,11 @@ its gate alone.
 
 ## Phase 1. On `main`
 
+* **1-0. Java 17.** The build compiles with `--release 17` instead of 8,
+  so that VarHandle's access modes (3.1) can be used (Frans, 2026-10-25:
+  "Move to --release 17. Code compiles for that. But we will test
+  performance on the latest jvm."). Performance is measured on the newest
+  JDK, 27. Size: S.
 * **1a. The pause probe.** `java/stress/PauseProbe.java`: a database with
   the capacity controller and a budget well below the data, a writer in
   transactions of 1 and of 1,000 puts, 1 to 8 readers of random keys, each

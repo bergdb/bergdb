@@ -19,7 +19,7 @@ mkdir -p $OUT/classes $OUT/stress
 find $OUT/classes $OUT/stress -type f -delete
 rm -f $OUT/bergdb.jar $OUT/MANIFEST.MF
 
-$JAVAC --release 8 -encoding UTF-8 -nowarn -Xlint:-options -d $OUT/classes -cp $ICU \
+$JAVAC --release 17 -encoding UTF-8 -nowarn -Xlint:-options -d $OUT/classes -cp $ICU \
     $(find $SRC/src $SRC/src-dev $SRC/src-icu -name '*.java')
 
 # Non-Java resources, as in the original build.xml.
@@ -38,5 +38,5 @@ $JAR cfm $OUT/bergdb.jar $OUT/MANIFEST.MF -C $OUT/classes .
 echo "Built $OUT/bergdb.jar"
 
 # Stress tests, see stress/*.java.
-$JAVAC --release 8 -Xlint:-options -cp $OUT/bergdb.jar -d $OUT/stress stress/*.java
+$JAVAC --release 17 -Xlint:-options -cp $OUT/bergdb.jar -d $OUT/stress stress/*.java
 echo "Built stress tests in $OUT/stress/"

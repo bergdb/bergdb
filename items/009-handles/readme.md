@@ -78,3 +78,13 @@ gated step on `main` in his name and push `main`; go through phase 1 and
 Lean's 2a to 2c and on into phase 3a on the branch; a pointer to a value
 keeps its acquire read (009-02, 3.4, point 5); timing runs on F53 when it
 is quiet, and on s1.
+
+2026-10-25, 19:55. Frans: BergDB moves to `--release 17` ("Move to
+--release 17. Code compiles for that. But we will test performance on the
+latest jvm."), as 02's VarHandle needs Java 9 or later; step 1-0 in 02.
+
+2026-10-25, 20:07. Frans: "I want you to work on the 009 implementation
+until completion. Work unattended through the night. I will have a look at
+your work in the morning; Monday morning." Claude works on in this
+session; the merge into `main` (phase 6) waits for Frans's go, as section
+6 of 009-01 says.

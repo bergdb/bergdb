@@ -13,6 +13,7 @@ public class MemoryOfLongVsCustomClass {
     static String dummy;
     
     @Nano("perf")
+    @SuppressWarnings("removal")    // new Long(...): distinct objects, on purpose
     public static void run(TestEnvironment c) throws Exception {
         int n = 100 * 1000;
         Object[] longs = new Object[n];

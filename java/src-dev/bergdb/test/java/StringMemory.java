@@ -13,7 +13,7 @@ import bergdb.nanotest.TestEnvironment;
  */
 public class StringMemory {
     
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "removal"})    // removal: new Long(...), distinct objects, on purpose
     @Nano("perf")
     public static void run(TestEnvironment c) throws Exception {
         int N = 1000;

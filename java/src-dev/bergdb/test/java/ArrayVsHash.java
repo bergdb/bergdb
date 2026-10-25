@@ -22,7 +22,7 @@ public class ArrayVsHash {
         new ArrayVsHash().go(c);
     }
     
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "removal"})    // removal: new Long(...), distinct objects, on purpose
     public void go(TestEnvironment c) throws Exception {
         Random random = new Random(0);
         int current = 0;

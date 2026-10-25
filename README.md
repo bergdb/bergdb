@@ -31,7 +31,8 @@ BergDB was developed 2012 to 2017. This repository continues from the 2017 sourc
 Build and test
 --------------
 
-Needs a JDK (the code is compiled with `--release 8`) and, for the proofs
+Needs a JDK 17 or later (the code is compiled with `--release 17`, since
+2026-10-25, bergdb 009; before, `--release 8`) and, for the proofs
 and `level2.sh` to `level4.sh`, [elan](https://github.com/leanprover/elan).
 
     

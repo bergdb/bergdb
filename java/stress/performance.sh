@@ -173,7 +173,7 @@ prepare_target() {
     hclasses=$bdir/harness-$(echo "$hsha" | cut -c1-12)
     if [ ! -d "$hclasses" ]; then
         mkdir -p "$hclasses.tmp"
-        "$JAVAC" --release 8 -Xlint:-options -encoding UTF-8 -cp "$bjar" -d "$hclasses.tmp" \
+        "$JAVAC" --release 17 -Xlint:-options -encoding UTF-8 -cp "$bjar" -d "$hclasses.tmp" \
             $(for f in $HARNESS_FILES; do echo "$JAVADIR/stress/$f"; done) || die "the harness does not compile against $bjar"
         mv "$hclasses.tmp" "$hclasses"
     fi

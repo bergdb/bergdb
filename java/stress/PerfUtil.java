@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
  * the description of the JVM and machine. Nothing here touches the database; the soak of
  * docs/level3-plan.md, task 2, can use the same classes.
  *
- * Compiled with --release 8 like the rest of java/stress/.
+ * Compiled with --release 17 like the rest of java/stress/.
  */
 public final class PerfUtil {
     private PerfUtil() {}
