@@ -343,8 +343,8 @@ public class Cache3 {
      * with the bit clear and a detachable object is evicted; a live handle with no object
      * (a read that kept nothing) leaves the table too. A handle that a loader holds (LOADING)
      * is skipped. The work is one map's: 1/4,096 of the handles. Returns the bytes freed, the
-     * objects evicted, the handles examined and the detachable objects met; adds the key
-     * nodes' objects that are not detachable (pinned) to 'pinned', for their values.
+     * objects evicted, the handles examined and the detachable objects met; adds the objects
+     * that are not detachable (pinned) to 'pinned', for their values and their bytes.
      */
     long[] clockStep(int k, Detachable d, java.util.List<Node> pinned) {
         HashMap<Long, Handle> m = maps[k];
@@ -367,7 +367,7 @@ public class Cache3 {
                     continue;
                 }
                 if (!d.detachable(o)) {
-                    if (o instanceof KeyNode) pinned.add(o);
+                    pinned.add(o);
                     continue;
                 }
                 candidates++;

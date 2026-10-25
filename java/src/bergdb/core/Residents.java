@@ -56,6 +56,11 @@ public final class Residents {
     private final AtomicLong bytes = new AtomicLong();
     private final AtomicLong objects = new AtomicLong();
 
+    /** The bytes an index object is counted with, 0 if none; for eviction's pinned bytes. */
+    static int countedBytes(Node node) {
+        return counted(node);
+    }
+
     /** The size an index object was counted with (its countedMemSize field), 0 if none. */
     private static int counted(Node node) {
         if (node instanceof KeyNode) return ((KeyNode) node).countedMemSize;

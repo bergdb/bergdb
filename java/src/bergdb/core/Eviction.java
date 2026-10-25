@@ -118,11 +118,10 @@ public final class Eviction {
     private volatile long high, low;
 
     /**
-     * The resident bytes above which the controller runs a batch: the budget; after two
-     * rounds of the hand that ended above it (pinned state, or objects in use, above the
-     * budget; since bergdb item 009, step 3b, sweep()), the last batch's result plus the gap
-     * between the watermarks, so that the controller does not run again and again for
-     * nothing; back to the budget after the next batch.
+     * The resident bytes above which the controller runs a batch: the budget, or the pinned
+     * bytes that the hand's last round found plus the gap between the watermarks if that is
+     * more (bergdb item 009, step 3d; sweep()), so that pinned state above the budget does
+     * not keep the controller running for nothing.
      */
     private volatile long trigger;
 
@@ -246,7 +245,13 @@ public final class Eviction {
     public void afterTransaction(Db db) {
         if (schedule == Schedule.NONE) return;
         if (schedule == Schedule.BUDGET) {
-            if (db.internal().cache().residents().bytes() > trigger) sweep(db, false);
+            Db.Internal bin = db.internal();
+            if (bin.cache().residents().bytes() > trigger) {
+                sweep(db, false);
+                // A batch is bounded (BATCH_NANOS): if the resident bytes are still over the
+                // trigger, the eviction thread goes on, between transactions (step 3d).
+                if (bin.cache().residents().bytes() > trigger && bin.isActive()) wake(db);
+            }
             return;
         }
         final Db.Internal in = db.internal();
@@ -322,19 +327,41 @@ public final class Eviction {
 
     /**
      * After a reader's load (the capacity controller, BUDGET): if the resident bytes are over
-     * the trigger, the database's eviction thread runs a batch, so that reads without writes
-     * stay within the budget (Q8, Q9). The reader does not wait: it wakes the thread, which
-     * takes the write lock between transactions (bergdb item 009, step 3b; 009-02, T5a).
-     * Until step 3b the reader took the write lock itself, and waited for any transaction in
-     * progress. Not inside a transaction (the thread holds the write lock: the user's own
-     * read in a value transformation; the transaction's end runs a batch) and not before the
-     * database is active (startup).
+     * the trigger, the database's eviction thread runs batches, so that reads without writes
+     * stay within the budget (Q8, Q9). The reader does not take the write lock: it wakes the
+     * thread, which takes it between transactions (bergdb item 009, step 3b; 009-02, T5a).
+     * If the resident bytes are over the trigger by more than the gap between the
+     * watermarks, the thread is behind the loads, and the reader waits for its next batch, at
+     * most LOAD_WAIT_NANOS (step 3d): loads, which grow the resident bytes, go at the pace
+     * of eviction. Until step 3b the reader took the write lock itself, and waited for any
+     * transaction in progress and for a sweep of the resident objects. Not inside a
+     * transaction (the thread holds the write lock: the user's own read in a value
+     * transformation; the transaction's end runs a batch) and not before the database is
+     * active (startup).
      */
     public void afterLoad(Db db) {
         if (schedule != Schedule.BUDGET) return;
         Db.Internal in = db.internal();
-        if (in.cache().residents().bytes() <= trigger) return;
+        long bytes = in.cache().residents().bytes();
+        if (bytes <= trigger) return;
         if (Thread.holdsLock(in.getWriteLock()) || !in.isActive()) return;
+        long batch = wake(db);
+        if (bytes > trigger + (high - low)) {
+            long end = System.nanoTime() + LOAD_WAIT_NANOS;
+            while (batches == batch && in.isActive() && System.nanoTime() < end) {
+                java.util.concurrent.locks.LockSupport.parkNanos(50 * 1000);
+            }
+        }
+    }
+
+    /** The longest a reader's load waits for the eviction thread (afterLoad): 2 ms. */
+    static final long LOAD_WAIT_NANOS = 2L * 1000 * 1000;
+
+    /** The batches the eviction thread has run, for afterLoad's wait. */
+    private volatile long batches = 0;
+
+    /** Wakes the eviction thread, and starts it if there is none; returns batches. */
+    private long wake(Db db) {
         synchronized (evictorLock) {
             wanted = true;
             if (evictor == null) {
@@ -343,6 +370,7 @@ public final class Eviction {
                 evictor.start();
             }
             evictorLock.notifyAll();
+            return batches;
         }
     }
 
@@ -369,9 +397,9 @@ public final class Eviction {
     }
 
     /**
-     * The eviction thread: a batch each time a reader asks, under the write lock. It ends
-     * when the database is no longer active, at most a second later, and the next load that
-     * asks starts a new one.
+     * The eviction thread: when a reader or the writer asks, batches until the resident bytes
+     * are at most the trigger, each under the write lock. It ends when the database is no
+     * longer active, at most a second later, and the next request starts a new one.
      */
     private final class EvictorRun implements Runnable {
         private final Db db;
@@ -400,17 +428,25 @@ public final class Eviction {
                     running = true;
                 }
                 try {
-                    // A writer that waits for the write lock goes first (bergdb item 009, step
-                    // 3d): a monitor is not fair, and a busy eviction thread would keep the
-                    // writer out for as long as readers load; the end of the writer's
-                    // transaction runs a batch anyway (afterTransaction).
-                    while (in.writersWaiting() > 0 && in.isActive()) {
-                        java.util.concurrent.locks.LockSupport.parkNanos(100 * 1000);
-                    }
-                    synchronized (in.getWriteLock()) {
-                        if (in.isActive() && in.cache().residents().bytes() > trigger) {
-                            sweep(db, true);
+                    // Batches until the resident bytes are at most the trigger (bergdb item
+                    // 009, step 3d: a batch ends after BATCH_NANOS). Before each, a writer
+                    // that waits for the write lock goes first: a monitor is not fair, and a
+                    // busy eviction thread would keep the writer out for as long as readers
+                    // load; the end of the writer's transaction runs a batch anyway.
+                    // A batch that freed nothing ends them (every object in use, or pinned):
+                    // the next request, a load or a transaction's end, starts them again.
+                    while (in.isActive() && in.cache().residents().bytes() > trigger) {
+                        while (in.writersWaiting() > 0 && in.isActive()) {
+                            java.util.concurrent.locks.LockSupport.parkNanos(100 * 1000);
                         }
+                        long freed = 0;
+                        synchronized (in.getWriteLock()) {
+                            if (in.isActive() && in.cache().residents().bytes() > trigger) {
+                                freed = sweep(db, true);
+                            }
+                        }
+                        batches++;      // this thread's only (afterLoad reads it)
+                        if (freed == 0) break;
                     }
                 } finally {
                     synchronized (evictorLock) {
@@ -425,21 +461,24 @@ public final class Eviction {
     /** The CLOCK hand: the next map of the node table (Cache3.clockStep). */
     private int hand = 0;
 
-    /** The detachable objects met and the maps taken in the hand's current round, for trigger. */
-    private long roundCandidates = 0;
-    private int roundMaps = 0;
-
-    /** Rounds of the hand completed since a batch last ended at or below the budget. */
-    private int roundsAbove = 0;
+    /**
+     * The counted bytes of the objects that were not detachable (pinned) in the hand's
+     * current round, and in its last complete round (sweep(); the trigger). Under the write
+     * lock.
+     */
+    private long roundPinned = 0, pinnedOfLastRound = 0;
 
     /**
      * The handles a batch examines at most (bergdb item 009, step 3b; 009-02, 4.7, K):
-     * BATCH, or BATCH_UNDER_PRESSURE when the resident bytes are over the budget by more than
-     * the gap between the watermarks; and at most two rounds of the hand over the maps (the
-     * first may only clear the CLOCK bits). The work of a batch is
-     * bounded by these, whatever the size of the database.
+     * BATCH, or BATCH_UNDER_PRESSURE when the resident bytes are over the trigger by more
+     * than the gap between the watermarks; at most two rounds of the hand over the maps (the
+     * first may only clear the CLOCK bits); and at most BATCH_NANOS, 2 ms, of time (step 3d:
+     * on s1, a batch of 65,536 handles took up to 100 ms, and a writer waits for the batch
+     * in progress). The work of a batch is bounded by these, whatever the size of the
+     * database.
      */
     static final int BATCH = 4096, BATCH_UNDER_PRESSURE = 65536;
+    static final long BATCH_NANOS = 2L * 1000 * 1000;
 
     /**
      * One batch of the capacity controller (bergdb item 009, step 3b; 009-02, 4.7): CLOCK
@@ -451,13 +490,12 @@ public final class Eviction {
      * to what: the work is bounded by the maps a batch takes, whatever the size of the
      * database and of the budget. The accounting is exact without walks (Residents). If the
      * resident bytes stay above the budget, the next trigger goes on from the hand; pinned
-     * state is never taken, and if two rounds of the hand end above the budget (pinned
-     * state, or objects in use, above it), the next batch waits until the resident bytes
-     * have grown by the gap between the watermarks (trigger). Until step
-     * 3b a sweep walked every resident object, twice. The caller holds Db.writeLock, between
-     * transactions.
+     * state is never taken: its bytes, which the hand's rounds count, raise the trigger if
+     * they are above the budget (trigger). Until step
+     * 3b a sweep walked every resident object, twice. Returns the bytes freed. The caller
+     * holds Db.writeLock, between transactions.
      */
-    void sweep(Db db, boolean afterLoad) {
+    long sweep(Db db, boolean afterLoad) {
         final long t0 = System.nanoTime();
         final Db.Internal in = db.internal();
         final Cache3 table = in.cache();
@@ -471,58 +509,54 @@ public final class Eviction {
         };
 
         long before = res.bytes();
-        long need = before - low;
-        boolean pressure = before > high + (high - low);
+        // Down to the low watermark, or to the pinned bytes of the hand's last round if they
+        // are above it: the rest cannot go.
+        long need = before - Math.max(low, pinnedOfLastRound);
+        boolean pressure = before > trigger + (high - low);
         long maxHandles = pressure ? BATCH_UNDER_PRESSURE : BATCH;
         final int all = Cache3.maps();
         int maxMaps = 2 * all;
-        long freed = 0, r = 0, examined = 0, candidates = 0, values = 0;
+        long freed = 0, r = 0, examined = 0, values = 0;
         int maps = 0;
+        boolean complete = false;
         final java.util.ArrayList<Node> pinned = new java.util.ArrayList<Node>();
-        while (freed < need && examined < maxHandles && maps < maxMaps) {
+        while (freed < need && examined < maxHandles && maps < maxMaps
+                && System.nanoTime() - t0 < BATCH_NANOS) {
             long[] fr = table.clockStep(hand, d, pinned);
             freed += fr[0];
             r += fr[1];
             examined += fr[2];
-            candidates += fr[3];
-            hand = (hand + 1) % all;
-            maps++;
-            // The values of pinned key nodes (bergdb item 009, step 3d; 009-02, 4.8): a
-            // pinned object is never evicted, so the values that reads load into it would
-            // stay; its written values become stream pointers, as the sweep's values did.
+            // The objects that are not detachable (pinned; bergdb item 009, step 3d): the
+            // written values of the key nodes among them become stream pointers (009-02,
+            // 4.8), as a pinned object is never evicted and the values that reads load into
+            // it would stay, where the sweep took them; and their bytes are the round's
+            // pinned bytes.
             for (int j = 0; j < pinned.size(); j++) {
-                long[] fv = unswizzleValues(in, pinned.get(j));
-                freed += fv[0];
-                values += fv[1];
+                Node x = pinned.get(j);
+                if (x instanceof KeyNode) {
+                    long[] fv = unswizzleValues(in, x);
+                    freed += fv[0];
+                    values += fv[1];
+                }
+                roundPinned += Residents.countedBytes(x);
             }
             pinned.clear();
+            maps++;
+            if (++hand == all) {
+                hand = 0;
+                complete = true;
+                pinnedOfLastRound = roundPinned;
+                roundPinned = 0;
+            }
         }
 
         long after = res.bytes();
-        // Rounds of the hand above the budget (bergdb item 009, steps 3b and 3d). After two
-        // rounds, every detachable object that no follow touched meanwhile has gone (the
-        // first round clears CLOCK bits, the second takes the objects whose bits are still
-        // clear); if the resident bytes are still above the budget, the rest is pinned state
-        // or in use, and the next batch waits until the resident bytes have grown by the gap
-        // between the watermarks. One round that met no detachable object is enough. (Until
-        // step 3d only such a round counted, and readers that kept loading objects kept the
-        // batches going, and the eviction thread the write lock.)
-        roundCandidates += candidates;
-        roundMaps += maps;
-        boolean complete = false;
-        while (roundMaps >= all) {
-            complete = true;
-            roundMaps -= all;
-            roundsAbove = roundCandidates == 0 ? 2 : roundsAbove + 1;
-            roundCandidates = 0;
-        }
-        if (after <= high) roundsAbove = 0;
-        if (roundsAbove >= 2) {
-            trigger = after + (high - low);
-            roundsAbove = 0;
-        } else {
-            trigger = high;
-        }
+        // The trigger (bergdb item 009, step 3d): the budget, or the pinned bytes of the
+        // hand's last round plus the gap between the watermarks if that is more: then the
+        // controller runs once the detachable objects have grown by the gap. (In step 3b the
+        // trigger was raised only after a round that met no detachable object, so readers
+        // that kept loading kept the batches going with pinned state above the budget.)
+        trigger = Math.max(high, pinnedOfLastRound + (high - low));
         long dt = System.nanoTime() - t0;
         synchronized (this) {
             released += r + values;
@@ -533,6 +567,8 @@ public final class Eviction {
             if (after > high) overTarget++;
             lastBefore = before;
             lastAfter = after;
+            lastPinned = pinnedOfLastRound;
+            maxPinned = Math.max(maxPinned, pinnedOfLastRound);
             sweepNanos += dt;
             maxSweepNanos = Math.max(maxSweepNanos, dt);
         }
@@ -540,6 +576,7 @@ public final class Eviction {
             allReleased += r + values;
             allUnswizzled += values;
         }
+        return freed;
     }
 
     /**
