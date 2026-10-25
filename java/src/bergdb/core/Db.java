@@ -9,7 +9,6 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
 import bergdb.common.Bug;
 import bergdb.common.NullProgressListener;
 import bergdb.common.Util;
@@ -123,9 +122,11 @@ public class Db {
     private final Reclaim reclaim;
     
     /** 
-     * State of the database. Synch note: writes published by readSync.
+     * State of the database. Synch note: volatile since bergdb item 009, step 1c, so that a
+     * read, which no longer synchronizes on readSync, sees it; written under readSync, as
+     * before (setFailed(), stop()).
      */
-    private DbState state = DbState.ZERO;
+    private volatile DbState state = DbState.ZERO;
     
     /**
      * What failed the database, the first time, or null; the state is then FAILED: what a
@@ -408,7 +409,7 @@ public class Db {
      * Returns the number of get operations that has completed since Db.start() was called.
      */
     public long getGetOpCount() {
-        return aux.getOpCount.get();
+        return aux.getOpCount.sum();
     }
 
     /** The stream length that has ordinary durability; see SyncLevel.ORDINARY. */
@@ -1302,10 +1303,12 @@ public class Db {
         assert gd != null;
         assert gd.kwi != null;
         
+        // Publication (bergdb item 009, step 1c): the read of the volatile state above, then
+        // in getOneInternal the volatile first available lookup time and the clock's volatile
+        // last transaction time, read before the Dag, give this read the writes of startup and
+        // of the transactions before its lookup time. Until 2026-10-25 an empty
+        // synchronized (readSync) block here did, a write of the monitor's word by every get.
         assertDbStateIsActive("getOne");
-
-        // Makes sure writes from startup and execute() are visible.
-        synchronized (readSync) {}
         
         return getOneInternal(lookupTime, keySegments, gd);
     }
@@ -1336,9 +1339,9 @@ public class Db {
             throw new IllegalArgumentException("Not a position of a transaction, " + tpos + ".");
         }
         
-        // Makes sure writes from startup and execute() are visible; the state checked since
-        // bergdb 005-30 (it read on after a failure).
-        synchronized (readSync) {}
+        // The state checked since bergdb 005-30 (it read on after a failure). Publication: the
+        // volatile state, as in getOne (bergdb item 009, step 1c; an empty synchronized
+        // (readSync) block until 2026-10-25).
         assertDbStateIsActive("getTrans");
 
         NodeStream.TransIterator ti = nodeStream.createTransIteratorFromExactStartupPos(tpos);
@@ -1403,7 +1406,7 @@ public class Db {
             throw readFailed(e, time);
         }
 
-        aux.getOpCount.incrementAndGet();
+        aux.getOpCount.increment();
         return result;
     }
 
@@ -1436,9 +1439,8 @@ public class Db {
         assert g.result.size() == 0 : "g.result.size() not 0, but " + g.result.size();
         assert g.stopCondition != null;
 
-        synchronized (readSync) {}
-            // Makes sure writes from startup and execute() are visible.
-
+        // Publication: as in getOne (bergdb item 009, step 1c; an empty synchronized (readSync)
+        // block until 2026-10-25).
         assertDbStateIsActive("getMany");
         
         long first = reclaim.getFirstAvailableLookupTime();
@@ -1463,7 +1465,7 @@ public class Db {
             throw readFailed(e, g.actualLookupTime);
         }
         
-        aux.getOpCount.addAndGet(g.getOpCount);
+        aux.getOpCount.add(g.getOpCount);
     }
     
     /**
@@ -2444,7 +2446,9 @@ public class Db {
     public final class Aux {
         
         /** Number of get operations processed since startup of Db. */
-        private final AtomicLong getOpCount = new AtomicLong(0);
+        /** Striped (bergdb item 009, step 1c): readers do not share one counter's word. */
+        private final java.util.concurrent.atomic.LongAdder getOpCount
+                = new java.util.concurrent.atomic.LongAdder();
         
         /** 
          * Number of transactions executed since this.start(). 
@@ -2615,6 +2619,15 @@ See code fragment below.
 
     synchronized (readSynch) {}
     actualLookupTime = dbClock.timeForGet(requestedLookupTime);
+
+2026-10-25 (bergdb item 009, step 1c; items/009-handles/02-implementation-plan.md,
+section 3): readers no longer synchronize on readSynch. Every get then wrote the
+monitor's word, which all readers share, and readers did not scale. Instead, a read
+reads volatile fields before the Dag: the database's state (assertDbStateIsActive), the
+first available lookup time (Reclaim), and the clock's last transaction time
+(DbClock.lookupTime). The writer's writes before dbClock.transactionEnd() happen before
+the clock's volatile write, so a reader that reads the clock sees them, as the empty
+synchronized block of the writer and the reader's did. The writer's blocks stay.
 
 The memory writes made by the writer can in general become visible to readers
 before the synch operation. The execute() method is however designed in a

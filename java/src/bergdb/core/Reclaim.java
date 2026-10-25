@@ -146,8 +146,10 @@ public class Reclaim implements Db.TransactionListener {
     private final Object readSynch;         // From DB.
     private final Object writeLock;         // From DB.
     
-    private long firstAvailableLookupTime;
-    private long firstAvailablePos;
+    // Volatile since bergdb item 009, step 1c: reads read them without synchronizing on
+    // readSync. Written by the writer, as before.
+    private volatile long firstAvailableLookupTime;
+    private volatile long firstAvailablePos;
     
     private volatile long iterationCount;   // Iterations completed by this object (statistics).
     
@@ -217,16 +219,16 @@ public class Reclaim implements Db.TransactionListener {
     /**
      * Returns the first (smallest value) time that can currently be used as a lookup time
      * for get operations on the database. Note, this time is increased asynchronously.
-     * Caller should have run: [synchronized (readSynch)] block recently to ensure the last
-     * value is read.
+     * A volatile read (bergdb item 009, step 1c; before, the caller synchronized on readSynch
+     * to see the last value).
      */
     public final long getFirstAvailableLookupTime() {
         return this.firstAvailableLookupTime;
     }
     
     public final long getFirstAvailablePos() {
-        // Synch note: writes to firstAvailablePos is published by DB.readSynch unlock.
-        //   Caller need to to DB.readSynch lock to ensure last value is read.
+        // Synch note: a volatile read (bergdb item 009, step 1c; before, published by
+        // DB.readSynch's unlock, and the caller locked DB.readSynch to see the last value).
         return this.firstAvailablePos;
     }
     
