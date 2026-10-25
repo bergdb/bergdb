@@ -94,10 +94,7 @@ public interface Node {
     /** Sets pointer i's reference, under the node's monitor (009-02, 3.4, C2). */
     public void setRef(int index, long ref);
     
-    /**
-     * Sets what pointer i holds and its reference, under the node's monitor. Caller should
-     * synchronize on "pointer lock" (Db.pointerLocks) after startup.
-     */
+    /** Sets what pointer i holds and its reference, under the node's monitor (009-02, 3.4, C2). */
     public void setPointer(int index, Pointee pointee, long ref);
     
     /**

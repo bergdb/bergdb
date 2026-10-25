@@ -22,7 +22,7 @@ import bergdb.pub.util.DbException;
  * <p>Not in scope:</p>
  * <ul>
  * <li>DbClock - clock for the database</li>
- * <li>Concurrency - limited locking support, only pointer locks.</li>
+ * <li>Concurrency - the nodes' monitors and the handles' (bergdb item 009).</li>
  * <li>Transaction: collecting transaction node set, adding transaction nodes
  * to stream, ...</li>
  * <li>STM implementation</li>

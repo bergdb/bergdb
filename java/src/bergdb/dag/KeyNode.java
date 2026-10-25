@@ -242,10 +242,27 @@ public class KeyNode implements Node {
     public final Pointee getPointee(int index) {
         return pointers[index];
     }
+
+    /**
+     * What pointer i holds, read with an acquire (bergdb item 009, step 3c; 009-02, 3.4,
+     * C5): for a pointer to a value, whose position (ValueNode.spos, volatile but set in the
+     * constructor) the JLS does not promise through a race. A pointer to a handle is read
+     * plainly (getPointee; T6b, 3.4).
+     */
+    public final Pointee getPointeeAcquire(int index) {
+        return (Pointee) POINTEES.getAcquire(pointers, index);
+    }
+
+    private static final java.lang.invoke.VarHandle POINTEES =
+            java.lang.invoke.MethodHandles.arrayElementVarHandle(Pointee[].class);
     
     public final void setPointee(int index, Pointee pointee) {
         synchronized (this) {
-            pointers[index] = pointee;
+            // A release store (bergdb item 009, step 3c; 009-02, 3.4, C5): a reader reads a
+            // pointer to a value with an acquire, which pairs with it, so the value's fields
+            // as they were before are visible to it. A pointer to a handle needs no edge
+            // (T6b), but gets the same store.
+            POINTEES.setRelease(pointers, index, pointee);
         }
     }
     
@@ -256,14 +273,13 @@ public class KeyNode implements Node {
     }
     
     /**
-     * Sets a pointer: what it holds and its reference.
-     * Concurrency: after startup, synchronized (dag.getPointerLock(node, i)) must be held
-     * by caller.
+     * Sets a pointer: what it holds and its reference, under the node's monitor (009-02,
+     * 3.4, C2).
      */
     public final void setPointer(int index, Pointee pointee, long ref) {
         synchronized (this) {   // See getPointer().
-            pointers[index] = pointee;
             pos[index] = ref;
+            POINTEES.setRelease(pointers, index, pointee);      // C5, as setPointee
         }
     }
     

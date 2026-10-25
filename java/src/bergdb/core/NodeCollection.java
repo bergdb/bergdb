@@ -85,7 +85,7 @@ public class NodeCollection implements PointerFollower {
     public static volatile FirstTouchListener firstTouchListener = null;
     
     /**
-     * Told after a reader followed a stream pointer, when it holds no pointer lock any more
+     * Told after a reader followed a stream pointer, when it holds no lock any more
      * (bergdb item 001, WP J7: the capacity controller's load-triggered sweeps, Eviction).
      */
     public interface LoadListener {
@@ -164,8 +164,7 @@ public class NodeCollection implements PointerFollower {
         // handle holds an object that may serve the pointer (Handle.usable), the follow
         // takes it; else the slow path resolves the pointer to the node's live handle and
         // loads a version into it, under the handle's monitor, so that two readers do not
-        // read the same node (followStreamPointer). Until step 3c the whole follow holds the
-        // pointer's lock (PointerLocks), as before.
+        // read the same node (followStreamPointer).
         //
 
         Node result;
@@ -173,34 +172,47 @@ public class NodeCollection implements PointerFollower {
         assert predecessor != null : "predecessor is null";
         assert op.accessData == AccessData.ZERO || AccessData.isValid(op.accessData);
 
-        final Object pointerLock = pointerLocks.getLock(predecessor, pointerIndex);
-        boolean stream = false;
+        // The fast path, without a lock (bergdb item 009, step 3c; 009-02, 3.3 and 3.4):
+        // a plain read of a pointer to a handle (T6b: C1 to C4), an acquire read of a pointer
+        // to a value (C5), the handle's object by its volatile read (Handle.obj), and the
+        // test of Handle.usable. Until step 3c the whole follow held the pointer's lock
+        // (PointerLocks), the read of the stream included.
+        Pointee pointee = predecessor instanceof KeyNode
+                && !pointsToIndexNode(predecessor, pointerIndex)
+                ? ((KeyNode) predecessor).getPointeeAcquire(pointerIndex)
+                : predecessor.getPointee(pointerIndex);
+        long pointerPos = predecessor.getPointerPos(pointerIndex);
 
-        synchronized (pointerLock) {
-            Pointee pointee = predecessor.getPointee(pointerIndex);
-            long pointerPos = predecessor.getPointerPos(pointerIndex);
-
-            assert pointee != null || pointerPos != Spos.NULL : "Pointer is null, index "
-                    + pointerIndex + " of " + predecessor.getId();
-
-            Node mem = memoryObject(pointee, pointerPos);
-            if (mem != null) {
-                result = mem;
-                touch(pointee, op);
-                op.pointerListener.pointerFollowed(
-                        predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
-            } else {
-                result = followStreamPointer(predecessor, pointerIndex, pointerPos,
-                        (Handle) (pointee instanceof Handle ? pointee : null), op, false, null);
-                stream = true;
-            }
+        Node mem = memoryObject(pointee, pointerPos);
+        if (mem != null) {
+            touch(pointee, op);
+            op.pointerListener.pointerFollowed(
+                    predecessor, pointerIndex, mem, Pointer.TYPE_MEMORY);
+            return mem;
         }
 
-        // The capacity controller (WP J7): outside the pointer lock.
-        if (stream) {
-            final LoadListener l = loadListener;
-            if (l != null) l.loaded();
+        // The slow path: the pair again under the node's monitor (C2), then resolve and
+        // load (followStreamPointer), under the handle's monitor (T7a). Locks are cheap
+        // beside a read of the stream.
+        synchronized (predecessor) {
+            pointee = predecessor.getPointee(pointerIndex);
+            pointerPos = predecessor.getPointerPos(pointerIndex);
         }
+        assert pointee != null || pointerPos != Spos.NULL : "Pointer is null, index "
+                + pointerIndex + " of " + predecessor.getId();
+        mem = memoryObject(pointee, pointerPos);
+        if (mem != null) {
+            touch(pointee, op);
+            op.pointerListener.pointerFollowed(
+                    predecessor, pointerIndex, mem, Pointer.TYPE_MEMORY);
+            return mem;
+        }
+        result = followStreamPointer(predecessor, pointerIndex, pointerPos,
+                (Handle) (pointee instanceof Handle ? pointee : null), op, false, null);
+
+        // The capacity controller (WP J7).
+        final LoadListener l = loadListener;
+        if (l != null) l.loaded();
         return result;
     }
 
@@ -238,30 +250,30 @@ public class NodeCollection implements PointerFollower {
             assert predecessor != null : "predecessor is null";
             assert op.accessData == AccessData.ZERO || AccessData.isValid(op.accessData);
 
-            final Object pointerLock = pointerLocks.getLock(predecessor, pointerIndex);
+            Pointee pointee;
+            long pointerPos;
+            synchronized (predecessor) {        // a coherent pair (C2; bergdb 009, step 3c)
+                pointee = predecessor.getPointee(pointerIndex);
+                pointerPos = predecessor.getPointerPos(pointerIndex);
+            }
 
-            synchronized (pointerLock) {
-                Pointee pointee = predecessor.getPointee(pointerIndex);
-                long pointerPos = predecessor.getPointerPos(pointerIndex);
+            assert pointee != null || pointerPos != Spos.NULL : "Pointer is null, index "
+                    + pointerIndex + " of " + predecessor.getId();
 
-                assert pointee != null || pointerPos != Spos.NULL : "Pointer is null, index "
-                        + pointerIndex + " of " + predecessor.getId();
-
-                Node mem = memoryObject(pointee, pointerPos);
-                if (mem != null) {
-                    result = mem;
-                    if (!result.isCanonical()) {
-                        result = cache.makeCanonical((Handle) pointee, result);
-                    }
-                    touch(pointee, op);
-                    op.pointerListener.pointerFollowed(
-                            predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
-
-                } else {
-                    result = followStreamPointer(predecessor, pointerIndex, pointerPos,
-                            (Handle) (pointee instanceof Handle ? pointee : null), op, true,
-                            null);
+            Node mem = memoryObject(pointee, pointerPos);
+            if (mem != null) {
+                result = mem;
+                if (!result.isCanonical()) {
+                    result = cache.makeCanonical((Handle) pointee, result);
                 }
+                touch(pointee, op);
+                op.pointerListener.pointerFollowed(
+                        predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
+
+            } else {
+                result = followStreamPointer(predecessor, pointerIndex, pointerPos,
+                        (Handle) (pointee instanceof Handle ? pointee : null), op, true,
+                        null);
             }
 
             return result;
@@ -303,11 +315,13 @@ public class NodeCollection implements PointerFollower {
             assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
             assert predecessor != null : "predecessor is null";
 
-            final Object pointerLock = pointerLocks.getLock(predecessor, pointerIndex);
-
-            synchronized (pointerLock) {
-                Pointee pointee = predecessor.getPointee(pointerIndex);
-                long pointerPos = predecessor.getPointerPos(pointerIndex);
+            {
+                Pointee pointee;
+                long pointerPos;
+                synchronized (predecessor) {    // a coherent pair (C2; bergdb 009, step 3c)
+                    pointee = predecessor.getPointee(pointerIndex);
+                    pointerPos = predecessor.getPointerPos(pointerIndex);
+                }
 
                 assert pointee != null || pointerPos != Spos.NULL : "Pointer is null, index "
                         + pointerIndex + " of " + predecessor.getId();
@@ -342,7 +356,9 @@ public class NodeCollection implements PointerFollower {
 
     /**
      * Follows a pointer whose handle holds no object that may serve it (or that holds no
-     * handle): the slow path of 009-02, 4.4. The caller holds the pointer lock. A maintenance
+     * handle): the slow path of 009-02, 4.4. The caller holds no lock (since bergdb item
+     * 009, step 3c; before, the pointer's lock); every change of the predecessor's pointer
+     * is made under its monitor (setRef, setPointee; C2). A maintenance
      * read (maintenance not null) does not swizzle, makes no handle and installs nothing, and
      * the maintenance follower counts a load.
      *
@@ -608,9 +624,7 @@ public class NodeCollection implements PointerFollower {
                 continue;       // Value nodes have one version and are never dirty.
             }
 
-            final Object pointerLock = pointerLocks.getLock(node, i);
-
-            synchronized (pointerLock) {
+            synchronized (node) {               // C2 (bergdb item 009, step 3c)
                 Pointee pointee = node.getPointee(i);
                 long pos = node.getPointerPos(i);
                 Handle h = (Handle) pointee;
@@ -666,7 +680,7 @@ public class NodeCollection implements PointerFollower {
             if (!pointsToIndexNode(node, i)) {
                 continue;
             }
-            synchronized (pointerLocks.getLock(node, i)) {
+            synchronized (node) {               // C2 (bergdb item 009, step 3c)
                 Pointee pointee = node.getPointee(i);
                 long pos = node.getPointerPos(i);
                 if (pointee != null || Spos.isNull(pos)) {

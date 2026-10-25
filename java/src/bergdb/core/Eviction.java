@@ -43,7 +43,7 @@ import bergdb.stream.MemoryStream;
  * pointers hold the handle. A later follow resolves the pointer to the node's live handle by
  * the id, and loads the version again; the writer's follower makes it canonical (the model's
  * `Mem.promote`). <b>Unswizzle</b> a value: a leaf's pointer that holds a detachable value
- * becomes a stream pointer naming its position, under the pointer's lock. Values have no
+ * becomes a stream pointer naming its position, under the leaf's monitor. Values have no
  * handles and are not in the node table (009-02, 4.8).</p>
  *
  * <p>Admission: a large value (over 1 MiB, as `Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES` does not
@@ -301,17 +301,15 @@ public final class Eviction {
     }
 
     /**
-     * Pointer i of x to value v becomes a stream pointer naming v's position, under the
-     * pointer's lock, if it still holds v. True if it did.
+     * Pointer i of x to value v becomes a stream pointer naming v's position, under x's
+     * monitor, if it still holds v. True if it did.
      */
     private static boolean unswizzleValue(Db.Internal in, Node x, int i, ValueNode v) {
-        synchronized (in.getPointerLock(x, i)) {
-            synchronized (x) {
-                if (x.getPointee(i) != v) return false;
-                x.setPointer(i, null, v.getSpos());
-                in.cache().residents().valueOut(x, v);      // bergdb item 009, step 3b
-                return true;
-            }
+        synchronized (x) {          // C2 (bergdb item 009, step 3c; before, the pointer lock)
+            if (x.getPointee(i) != v) return false;
+            x.setPointer(i, null, v.getSpos());
+            in.cache().residents().valueOut(x, v);      // bergdb item 009, step 3b
+            return true;
         }
     }
 
