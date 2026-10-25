@@ -306,104 +306,142 @@ public final class Eviction {
      */
     private static boolean unswizzleValue(Db.Internal in, Node x, int i, ValueNode v) {
         synchronized (in.getPointerLock(x, i)) {
-            if (x.getPointee(i) != v) return false;
-            x.setPointer(i, null, v.getSpos());
-            return true;
+            synchronized (x) {
+                if (x.getPointee(i) != v) return false;
+                x.setPointer(i, null, v.getSpos());
+                in.cache().residents().valueOut(x, v);      // bergdb item 009, step 3b
+                return true;
+            }
         }
     }
 
     // ======== The capacity controller (BUDGET; bergdb item 001, WP J7) ========
 
     /**
-     * After a reader's load (NodeCollection.followPointer, a stream slot followed; the
-     * reader holds no pointer lock then): when the resident bytes are above the budget, a
-     * sweep under the write lock, a load-triggered batch (Q8, Q9), so that reads without
-     * writes stay within the budget. Not inside a transaction (the thread holds the write
-     * lock: the user's own read in a value transformation; the transaction's end sweeps) and
-     * not before the database is active (startup).
+     * After a reader's load (the capacity controller, BUDGET): if the resident bytes are over
+     * the trigger, the database's eviction thread runs a batch, so that reads without writes
+     * stay within the budget (Q8, Q9). The reader does not wait: it wakes the thread, which
+     * takes the write lock between transactions (bergdb item 009, step 3b; 009-02, T5a).
+     * Until step 3b the reader took the write lock itself, and waited for any transaction in
+     * progress. Not inside a transaction (the thread holds the write lock: the user's own
+     * read in a value transformation; the transaction's end runs a batch) and not before the
+     * database is active (startup).
      */
     public void afterLoad(Db db) {
         if (schedule != Schedule.BUDGET) return;
         Db.Internal in = db.internal();
         if (in.cache().residents().bytes() <= trigger) return;
-        Object writeLock = in.getWriteLock();
-        if (Thread.holdsLock(writeLock) || !in.isActive()) return;
-        synchronized (writeLock) {
-            if (in.cache().residents().bytes() > trigger) sweep(db, true);
+        if (Thread.holdsLock(in.getWriteLock()) || !in.isActive()) return;
+        synchronized (evictorLock) {
+            wanted = true;
+            if (evictor == null) {
+                evictor = new Thread(new EvictorRun(db), "bergdb-evictor");
+                evictor.setDaemon(true);
+                evictor.start();
+            }
+            evictorLock.notifyAll();
         }
     }
 
+    private final Object evictorLock = new Object();
+    private Thread evictor = null;      // under evictorLock
+    private boolean wanted = false;     // under evictorLock
+    private boolean running = false;    // under evictorLock: a batch in progress
+
     /**
-     * A candidate of a sweep: a value pointer of a resident object (x, i, the value c), or
-     * a handle h with its object c; its age (the access time of the last follow, of the
-     * value's leaf or of the handle; Handle.stamp) and its place in the walk's breadth-first
-     * order (seq).
+     * Waits until the eviction thread has run the batches readers asked for (at most a
+     * second); for tests, which sample the resident bytes after the controller has run.
      */
-    private static final class Slot {
-        final Node x;
-        final int i;
-        final Handle h;
-        final Node c;
-        final long time;
-        final int seq;
-
-        Slot(Node x, int i, Handle h, Node c, long time, int seq) {
-            this.x = x;
-            this.i = i;
-            this.h = h;
-            this.c = c;
-            this.time = time;
-            this.seq = seq;
+    public void awaitBatch() {
+        long end = System.nanoTime() + 1000L * 1000 * 1000;
+        synchronized (evictorLock) {
+            while ((wanted || running) && System.nanoTime() < end) {
+                try {
+                    evictorLock.wait(10);
+                } catch (InterruptedException e) {
+                    return;
+                }
+            }
         }
     }
 
     /**
-     * The oldest first; of slots of the same age, the later in the walk's breadth-first order
-     * first, so the deeper: an operation gives every node it follows the same access data, so
-     * a node and the nodes below it are often of the same age, and the sweep takes the leaves
-     * before the inner nodes above them.
+     * The eviction thread: a batch each time a reader asks, under the write lock. It ends
+     * when the database is no longer active, at most a second later, and the next load that
+     * asks starts a new one.
      */
-    private static final Comparator<Slot> OLDEST_FIRST = new Comparator<Slot>() {
-        public int compare(Slot a, Slot b) {
-            if (a.time != b.time) return a.time < b.time ? -1 : 1;
-            return a.seq > b.seq ? -1 : a.seq < b.seq ? 1 : 0;
-        }
-    };
+    private final class EvictorRun implements Runnable {
+        private final Db db;
 
-    /** Large values first (admission: a value over 1 MiB is not kept), then the oldest. */
-    private static final Comparator<Slot> LARGE_THEN_OLDEST = new Comparator<Slot>() {
-        public int compare(Slot a, Slot b) {
-            boolean la = !Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES.shouldCache(a.c);
-            boolean lb = !Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES.shouldCache(b.c);
-            if (la != lb) return la ? -1 : 1;
-            return OLDEST_FIRST.compare(a, b);
+        EvictorRun(Db db) {
+            this.db = db;
         }
-    };
 
-    /** The age of a handle's last follow, or 0. */
-    private static long ageOf(Handle h) {
-        long acc = h == null ? Spos.NULL : h.stamp;
-        return AccessData.isValid(acc) ? AccessData.getAccessTime(acc) : 0;
+        public void run() {
+            Db.Internal in = db.internal();
+            while (true) {
+                synchronized (evictorLock) {
+                    while (!wanted) {
+                        if (!in.isActive()) {
+                            evictor = null;
+                            return;
+                        }
+                        try {
+                            evictorLock.wait(1000);
+                        } catch (InterruptedException e) {
+                            evictor = null;
+                            return;
+                        }
+                    }
+                    wanted = false;
+                    running = true;
+                }
+                try {
+                    synchronized (in.getWriteLock()) {
+                        if (in.isActive() && in.cache().residents().bytes() > trigger) {
+                            sweep(db, true);
+                        }
+                    }
+                } finally {
+                    synchronized (evictorLock) {
+                        running = false;
+                        evictorLock.notifyAll();
+                    }
+                }
+            }
+        }
     }
 
+    /** The CLOCK hand: the next map of the node table (Cache3.clockStep). */
+    private int hand = 0;
+
+    /** The detachable objects met and the maps taken in the hand's current round, for trigger. */
+    private long roundCandidates = 0;
+    private int roundMaps = 0;
+
     /**
-     * One sweep of the capacity controller, down to the low watermark (Q9): first values
-     * (those over 1 MiB first, as a read does not cache them either: admission), each
-     * pointer to one made a stream pointer under its pointer lock; then index nodes, the
-     * oldest first by their access time (the access clock when a reader or the writer last
-     * followed a pointer to the node: Handle.stamp), each evicted (Cache3.evict; bergdb item
-     * 009, step 3a: with handles, nothing asks who points to an object); then the accounting
-     * is made exact (Residents.resync). What the sweep frees is counted as it goes: an
-     * object it evicts, with the values that only it holds, or a value no other resident
-     * pointer holds; so a sweep stops near the low watermark. If the resident bytes are
-     * still above the budget, a complete sweep follows: every detachable object, whatever
-     * its age, so that a working set larger than the budget cannot stop progress. Pinned
-     * state is never taken; if it alone is above the budget, the sweep is counted as above
-     * the budget (stats()), and the next sweep waits until the resident bytes have grown by
-     * the gap between the watermarks (trigger), so that pinned state above the budget does
-     * not make every transaction and every load sweep. In this step (3a) the sweep still
-     * walks every resident object (Residents.walk), for its choice and its byte count; step
-     * 3b removes the walks. The caller holds Db.writeLock, between transactions.
+     * The handles a batch examines at most (bergdb item 009, step 3b; 009-02, 4.7, K):
+     * BATCH, or BATCH_UNDER_PRESSURE when the resident bytes are over the budget by more than
+     * the gap between the watermarks; and at most two rounds of the hand over the maps (the
+     * first may only clear the CLOCK bits). The work of a batch is
+     * bounded by these, whatever the size of the database.
+     */
+    static final int BATCH = 4096, BATCH_UNDER_PRESSURE = 65536;
+
+    /**
+     * One batch of the capacity controller (bergdb item 009, step 3b; 009-02, 4.7): CLOCK
+     * steps over the node table, one map at a time (Cache3.clockStep), from where the last
+     * batch stopped, until the resident bytes are below the low watermark or the batch has
+     * taken its maps. An object whose handle's CLOCK bit is set (a follow since the hand last
+     * passed) gets a second chance; one with the bit clear goes if it is detachable, with the
+     * values its pointers hold. No walk of the resident objects, and no count of who points
+     * to what: the work is bounded by the maps a batch takes, whatever the size of the
+     * database and of the budget. The accounting is exact without walks (Residents). If the
+     * resident bytes stay above the budget, the next trigger goes on from the hand; pinned
+     * state is never taken, and if it alone is above the budget, the next batch waits until
+     * the resident bytes have grown by the gap between the watermarks (trigger). Until step
+     * 3b a sweep walked every resident object, twice. The caller holds Db.writeLock, between
+     * transactions.
      */
     void sweep(Db db, boolean afterLoad) {
         final long t0 = System.nanoTime();
@@ -412,83 +450,48 @@ public final class Eviction {
         final Residents res = table.residents();
         final TopNode superRoot = in.superRoot();
         final TopNode newestWritten = in.newestWrittenTop();
-        final ArrayList<Node> dObjects = new ArrayList<Node>();
-        in.transSeq().visitGotDirtyNodes(Long.MAX_VALUE, new TransSeq.NodeVisitor() {
-            public void node(Node node, long tpos, long lastTpos) {
-                dObjects.add(node);
+        final Cache3.Detachable d = new Cache3.Detachable() {
+            public boolean detachable(Node o) {
+                return Eviction.detachable(o, superRoot, newestWritten);
             }
-        });
-        List<Node> resident = Residents.walk(superRoot, table.nodes(), dObjects);
+        };
 
-        long before = 0, pinned = 0;
-        int seq = 0;
-        IdentityHashMap<Node, int[]> named = new IdentityHashMap<Node, int[]>();
-        IdentityHashMap<Node, Integer> order = new IdentityHashMap<Node, Integer>();
-        ArrayList<Slot> values = new ArrayList<Slot>(), index = new ArrayList<Slot>();
-        for (Node x : resident) {
-            int size = x.getMemSize();
-            before += size;
-            order.put(x, seq++);
-            if (x.isIndexNode() && !detachable(x, superRoot, newestWritten)) pinned += size;
-            if (!(x instanceof KeyNode)) continue;
-            int n = x.getSize();
-            for (int i = 0; i < n; i++) {
-                Pointee p = x.getPointee(i);
-                if (!(p instanceof ValueNode)) continue;
-                ValueNode v = (ValueNode) p;
-                int[] count = named.get(v);
-                if (count == null) named.put(v, count = new int[1]);
-                count[0]++;
-                if (!detachable(v, superRoot, newestWritten)) continue;
-                values.add(new Slot(x, i, null, v, ageOf(Cache3.handleOf(x)), seq));
-            }
-        }
-        for (Handle h : table.handles()) {
-            Node c = h.obj;
-            if (c == null || !detachable(c, superRoot, newestWritten)) continue;
-            Integer s = order.get(c);
-            index.add(new Slot(null, -1, h, c, ageOf(h), s == null ? 0 : s));
-        }
-
+        long before = res.bytes();
         long need = before - low;
-        long freed = 0, n = 0, r = 0;
-        // 1. Values, then index nodes, the oldest first. Large values always.
-        for (int pass = 0; pass < 2 && freed < need; pass++) {
-            ArrayList<Slot> list = pass == 0 ? values : index;
-            Collections.sort(list, pass == 0 ? LARGE_THEN_OLDEST : OLDEST_FIRST);
-            for (Slot sl : list) {
-                if (freed >= need) break;
-                if (pass == 0) {
-                    if (!unswizzleValue(in, sl.x, sl.i, (ValueNode) sl.c)) continue;
-                    n++;
-                    int[] count = named.get(sl.c);
-                    if (--count[0] == 0) {
-                        freed += sl.c.getMemSize();
-                        r++;
-                    }
-                } else {
-                    if (sl.h.obj != sl.c || !table.evict(sl.h)) continue;
-                    r++;
-                    freed += sl.c.getMemSize() + valuesOnlyIn(sl.c, named);
-                }
-            }
+        boolean pressure = before > high + (high - low);
+        long maxHandles = pressure ? BATCH_UNDER_PRESSURE : BATCH;
+        final int all = Cache3.maps();
+        int maxMaps = 2 * all;
+        long freed = 0, r = 0, examined = 0, candidates = 0;
+        int maps = 0;
+        while (freed < need && examined < maxHandles && maps < maxMaps) {
+            long[] fr = table.clockStep(hand, d);
+            freed += fr[0];
+            r += fr[1];
+            examined += fr[2];
+            candidates += fr[3];
+            hand = (hand + 1) % all;
+            maps++;
         }
-        res.resync(Residents.walk(superRoot, table.nodes(), dObjects));
 
-        boolean complete = false;
-        if (res.bytes() > high) {
-            // 2. Under pressure: every detachable object (a complete sweep).
-            complete = true;
-            long[] nr = takeAll(in, table, superRoot, newestWritten, dObjects);
-            n += nr[0];
-            r += nr[1];
-            res.resync(Residents.walk(superRoot, table.nodes(), dObjects));
-        }
         long after = res.bytes();
-        trigger = after > high ? after + (high - low) : high;
+        // A round of the hand over every map that met no detachable object while above the
+        // budget: pinned state above it; the next batch waits until the resident bytes have
+        // grown by the gap between the watermarks. (A round that only cleared CLOCK bits
+        // met detachable objects: the next batch takes them.)
+        roundCandidates += candidates;
+        roundMaps += maps;
+        boolean complete = false;
+        if (roundMaps >= all) {
+            complete = true;
+            trigger = after > high && roundCandidates == 0 ? after + (high - low) : high;
+            roundCandidates = 0;
+            roundMaps = 0;
+        } else {
+            trigger = high;
+        }
         long dt = System.nanoTime() - t0;
         synchronized (this) {
-            unswizzled += n;
             released += r;
             sweeps++;
             if (afterLoad) loadSweeps++;
@@ -496,57 +499,82 @@ public final class Eviction {
             if (after > high) overTarget++;
             lastBefore = before;
             lastAfter = after;
-            lastPinned = pinned;
-            maxPinned = Math.max(maxPinned, pinned);
             sweepNanos += dt;
             maxSweepNanos = Math.max(maxSweepNanos, dt);
         }
         synchronized (Eviction.class) {
-            allUnswizzled += n;
             allReleased += r;
         }
     }
 
+    /** The large values the writer made in this transaction: {holder, index, value}. */
+    private final java.util.ArrayList<Object[]> largeValues = new java.util.ArrayList<Object[]>();
+
     /**
-     * The bytes of the values that only object c holds among the resident objects (their
-     * counts of resident pointers, 'named', reach 0 as c leaves).
+     * The writer made pointer i of x to value v (Db's pointer listener): a value over 1 MiB
+     * is remembered, to be unswizzled when its record is written (recordWritten). The caller
+     * holds Db.writeLock.
      */
-    private static long valuesOnlyIn(Node c, IdentityHashMap<Node, int[]> named) {
-        if (!(c instanceof KeyNode)) return 0;
-        long bytes = 0;
-        int size = c.getSize();
-        for (int i = 0; i < size; i++) {
-            Pointee p = c.getPointee(i);
-            if (!(p instanceof ValueNode)) continue;
-            int[] count = named.get(p);
-            if (count != null && --count[0] == 0) bytes += ((ValueNode) p).getMemSize();
+    public void largeValueCreated(Node x, int i, ValueNode v) {
+        if (schedule != Schedule.NONE && !Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES.shouldCache(v)) {
+            largeValues.add(new Object[] {x, i, v});
         }
-        return bytes;
     }
 
     /**
-     * Makes every pointer of a resident object to a detachable value a stream pointer, and
-     * evicts every handle of a detachable object. Returns the pointers and the objects.
+     * Admission (bergdb item 009, step 3b): after a record is written, a pointer of a written
+     * key node to a value over 1 MiB becomes a stream pointer, as a read does not cache such
+     * a value either (Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES). With eviction on (any schedule
+     * but none). Until step 3b a sweep took them, first. The work is the record's: its key
+     * nodes' pointers. The caller holds Db.writeLock (Db.store).
      */
-    private static long[] takeAll(Db.Internal in, Cache3 table, TopNode superRoot,
-            TopNode newestWritten, List<Node> dObjects) {
-        List<Node> resident = Residents.walk(superRoot, table.nodes(), dObjects);
-        long n = 0, r = 0;
-        for (Node x : resident) {
+    public void recordWritten(Db db, java.util.Iterator<Node> written) {
+        if (schedule == Schedule.NONE) {
+            largeValues.clear();
+            return;
+        }
+        Db.Internal in = db.internal();
+        long n = 0;
+        // The large values the transaction made: their pointers, as the writer made them
+        // (largeValueCreated). A value is written with its transaction's record, which this is.
+        for (Object[] lv : largeValues) {
+            Node x = (Node) lv[0];
+            int i = (Integer) lv[1];
+            ValueNode v = (ValueNode) lv[2];
+            if (!Spos.isValid(v.getSpos()) || Spos.isVpos(v.getSpos())) continue;
+            int size = x.getSize();
+            if (i >= size || x.getPointee(i) != v) {
+                i = -1;
+                for (int j = 0; j < size; j++) if (x.getPointee(j) == v) i = j;
+            }
+            if (i >= 0 && unswizzleValue(in, x, i, v)) n++;
+        }
+        largeValues.clear();
+        while (written.hasNext()) {
+            Node x = written.next();
             if (!(x instanceof KeyNode)) continue;
             int size = x.getSize();
             for (int i = 0; i < size; i++) {
                 Pointee p = x.getPointee(i);
                 if (!(p instanceof ValueNode)) continue;
                 ValueNode v = (ValueNode) p;
-                if (detachable(v, superRoot, newestWritten) && unswizzleValue(in, x, i, v)) n++;
+                if (!Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES.shouldCache(v)
+                        && Spos.isValid(v.getSpos()) && !Spos.isVpos(v.getSpos())
+                        && unswizzleValue(in, x, i, v)) {
+                    n++;
+                }
             }
         }
-        for (Handle h : table.handles()) {
-            Node c = h.obj;
-            if (c != null && detachable(c, superRoot, newestWritten) && table.evict(h)) r++;
+        if (n > 0) {
+            synchronized (this) {
+                unswizzled += n;
+                released += n;
+            }
+            synchronized (Eviction.class) {
+                allUnswizzled += n;
+                allReleased += n;
+            }
         }
-        return new long[] {n, r};
     }
 
     // ======== Tests ========

@@ -45,13 +45,6 @@ public final class Handle implements Pointee {
     /** The CLOCK bit (009-02, 4.7): set by a follow when clear, cleared by eviction. */
     public byte ref;
 
-    /**
-     * The access data of the last follow to the node (dag/AccessData.java), for the age order
-     * of the capacity controller (Eviction, BUDGET): the stamp that a follow wrote into the
-     * parent's pointer before bergdb item 009, step 3a. Written by followers, plainly.
-     */
-    public long stamp;
-
     private static final VarHandle STATE;
     static {
         try {

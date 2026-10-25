@@ -45,6 +45,17 @@ abstract public class Spos {
      * @param spos  An spos of an index node.
      * @return true if the spos is a vpos (virtual spos).
      */
+    /**
+     * True if stream position 'pos' is newer than reference 'ref' (bergdb item 009): a
+     * position is newer than a vpos, whatever their numbers, and than a smaller position.
+     * Rule R and the record rule compare so; before, Rule R compared them as numbers, which
+     * gave the same as long as a vpos is below every position its node is written at
+     * (lean/SIS/Handle.lean, choice 3).
+     */
+    public static final boolean newer(long pos, long ref) {
+        return isVpos(ref) ? !isVpos(pos) && pos >= 0 : pos > ref;
+    }
+    
     public static final boolean isVpos(long spos) {
         return spos % 2 == 1;
     }

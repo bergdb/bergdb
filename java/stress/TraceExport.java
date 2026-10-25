@@ -998,7 +998,7 @@ public class TraceExport {
                     } else {
                         kind = "stream";
                         Long newPos = nc.newestInSection(y - 1);
-                        if (newPos != null && newPos > ref) ref = newPos;
+                        if (newPos != null && Spos.newer(newPos, ref)) ref = newPos;
                     }
                 }
                 String r = Spos.isVpos(ref) || !Spos.isValid(ref) ? "-" : recordOfPos(ref, context);

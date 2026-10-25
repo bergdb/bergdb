@@ -218,6 +218,9 @@ public class Cache3 {
      * the handle's object after the call.
      */
     public Node register(Node node) {
+        if (!node.isIndexNode()) {
+            return node;        // Values have no handles and are not in the table (009-02, 4.8).
+        }
         long id = node.getId();
 
         synchronized (getLock(id)) {
@@ -230,9 +233,13 @@ public class Cache3 {
             Node old = h.obj;
             if (old == null || (old != node && isBetter(node, old))) {
                 setHandle(node, h);
-                h.obj = node;
                 residents.added(node);
+                h.obj = node;
+                if (old != null) residents.released(old);
                 return node;
+            }
+            if (old == node) {
+                residents.added(node);      // in a handle made before (Handle.of): counted now
             }
             return old;
         }
@@ -248,9 +255,9 @@ public class Cache3 {
         Node old = h.obj;
         if (old == null || (old != node && isBetter(node, old))) {
             setHandle(node, h);
+            residents.added(node);
             h.obj = node;
             if (old != null) residents.released(old);
-            residents.added(node);
             return node;
         }
         return old;
@@ -299,17 +306,84 @@ public class Cache3 {
             if (!h.casState(Handle.LIVE, Handle.DEAD)) {
                 return false;
             }
-            if (o != null && o.isCanonical()) {
-                long spos = o.getSpos();
-                if (Spos.isValid(spos) && !Spos.isVpos(spos)) h.writtenPos = spos;
-                o.setCanonical(false);
-            }
-            h.obj = null;
+            kill(h, o);
             if (internalGet(h.id) == h) {
                 internalRemove(h.id);
             }
-            if (o != null) residents.released(o);
             return true;
+        }
+    }
+
+    /**
+     * The rest of an eviction of h, which the caller has made DEAD under h's map lock; the
+     * caller removes h from the map. Returns the bytes h's object was counted with.
+     */
+    private int kill(Handle h, Node o) {
+        if (o == null) return 0;
+        if (o.isCanonical()) {
+            long spos = o.getSpos();
+            if (Spos.isValid(spos) && !Spos.isVpos(spos)) h.writtenPos = spos;
+            o.setCanonical(false);
+        }
+        h.obj = null;
+        return residents.released(o);
+    }
+
+    /** Whether eviction may take an object (Eviction.detachable, with the batch's roots). */
+    interface Detachable {
+        boolean detachable(Node o);
+    }
+
+    /**
+     * One CLOCK step (bergdb item 009, step 3b; 009-02, 4.7, T2a): the handles of map k,
+     * under its lock. A handle whose CLOCK bit is set gets it cleared (a second chance); one
+     * with the bit clear and a detachable object is evicted; a live handle with no object
+     * (a read that kept nothing) leaves the table too. A handle that a loader holds (LOADING)
+     * is skipped. The work is one map's: 1/4,096 of the handles. Returns the bytes freed, the
+     * objects evicted, the handles examined and the detachable objects met.
+     */
+    long[] clockStep(int k, Detachable d) {
+        HashMap<Long, Handle> m = maps[k];
+        long bytes = 0, objects = 0, examined = 0, candidates = 0;
+        synchronized (m) {
+            java.util.Iterator<Handle> it = m.values().iterator();
+            while (it.hasNext()) {
+                Handle h = it.next();
+                examined++;
+                Node o = h.obj;
+                if (o == null) {
+                    if (h.casState(Handle.LIVE, Handle.DEAD)) it.remove();
+                    continue;
+                }
+                if (!d.detachable(o)) continue;
+                candidates++;
+                if (h.ref != 0) {
+                    h.ref = 0;
+                    continue;
+                }
+                if (!h.casState(Handle.LIVE, Handle.DEAD)) continue;
+                bytes += kill(h, o);
+                objects++;
+                it.remove();
+            }
+        }
+        return new long[] {bytes, objects, examined, candidates};
+    }
+
+    /** The number of maps, for the CLOCK hand. */
+    static int maps() {
+        return 1 << MAP_BITS;
+    }
+
+    /**
+     * Removes live handle h if it has no object: a read that kept nothing (a cache policy
+     * that caches nothing) leaves no empty handle behind. The caller holds no handle monitor.
+     */
+    void dropIfEmpty(Handle h) {
+        synchronized (getLock(h.id)) {
+            if (h.obj == null && internalGet(h.id) == h && h.casState(Handle.LIVE, Handle.DEAD)) {
+                internalRemove(h.id);
+            }
         }
     }
 

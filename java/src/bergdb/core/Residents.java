@@ -6,6 +6,7 @@ import java.util.IdentityHashMap;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
+import bergdb.dag.Pointee;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Klong;
 import bergdb.dag.Node;
@@ -18,20 +19,27 @@ import bergdb.nanotest.Nano;
 /**
  * What the database holds in memory, its bytes, and what it must keep: the resident
  * registry and the pins (bergdb item 001, WP J1; docs/level4-alignment.md, 5.2 and 6.2,
- * row 7; docs/level4-plan.md, 4.1 and 4.2). There is no eviction yet: nothing is released.
+ * row 7; docs/level4-plan.md, 4.1 and 4.2).
  *
- * <p><b>Resident objects</b> are the node objects the database holds: the canonical objects
- * (the node table's, Cache3), the snapshots that slots of resident objects name (versions
- * read for lookups at earlier times), and the values. Objects read for one operation only
- * (not cached, `OpData.cachePolicy`) are not resident. {@link #walk} finds them all, from
- * the roots: the super root, the node table and D.</p>
+ * <p><b>Resident objects</b> are the node objects the database holds: the objects of the
+ * live handles (Cache3; canonical objects and versions read), and the values that pointers
+ * of those objects hold. Objects read for one operation only (not cached,
+ * `OpData.cachePolicy`) are not resident. {@link #walk} finds them all, from the roots: the
+ * super root, the node table and D.</p>
  *
- * <p><b>Accounting</b> (M40): an estimate of the bytes of the resident objects
- * (`Node.getMemSize()`), advanced when an object becomes resident (a node the writer
- * makes, a version read and put into a slot, an object made by startup), when a canonical
- * object grows (when it is written, by its size then), and, from J3 on, when an object is
- * released. A snapshot that a slot no longer names, and that the garbage collector frees,
- * stays counted until it is released (J3): the estimate is an upper bound.</p>
+ * <p><b>Accounting</b>, exact without walks since bergdb item 009, step 3b
+ * (items/009-handles/02-implementation-plan.md, 4.7): each index object is counted with
+ * its own bytes and those of the values its pointers hold (`Node.getMemSize()`), in its
+ * field `countedMemSize` (KeyNode, TopNode): from when it enters a handle (added) until it
+ * leaves it (released); again when the writer writes it, as it may have grown (grown); and
+ * a value a reader puts into, or eviction takes from, a pointer of a counted object moves
+ * that object's count (valueIn, valueOut). A value that two resident objects hold is
+ * counted for each: the estimate is an upper bound, and it does not drift, as every byte
+ * added is taken away with the object or the pointer it was added for. Between the
+ * writer's changes to a canonical object and its write, the object is counted with its
+ * size at the last count; it is pinned meanwhile. Before step 3b the estimate was made
+ * exact by walks of the resident objects after each sweep (resync, which the audit and
+ * the test schedules still use).</p>
  *
  * <p><b>Pins</b> (the model's `Mem.pinned`, lean/SIS/Evict.lean): the objects that eviction
  * must keep: the canonical objects of the nodes of D (TransSeq; dirty), those of the record
@@ -40,20 +48,15 @@ import bergdb.nanotest.Nano;
  * for. The objects of an operation in progress are pinned too; between transactions there
  * are none. See {@link #isPinned}.</p>
  *
- * <p>Synch note: the counters are atomic: the writer advances them under Db.writeLock, and
- * readers that put a version into a slot under that slot's pointer lock. The size counted
- * for a canonical object is in its field `countedMemSize` (KeyNode, TopNode), written by the
- * writer or under the node table's lock.</p>
+ * <p>Synch note: the total is atomic. An object's countedMemSize is read and written under
+ * the object's monitor, which a reader that puts a value into one of its pointers also
+ * holds (KeyNode.setPointee), so that a count and an eviction of the object do not cross.</p>
  */
 public final class Residents {
-    private final AtomicLong canonicalBytes = new AtomicLong();
-    private final AtomicLong snapshotBytes = new AtomicLong();
-    private final AtomicLong valueBytes = new AtomicLong();
-    private final AtomicLong canonicalCount = new AtomicLong();
-    private final AtomicLong snapshotCount = new AtomicLong();
-    private final AtomicLong valueCount = new AtomicLong();
+    private final AtomicLong bytes = new AtomicLong();
+    private final AtomicLong objects = new AtomicLong();
 
-    /** The size a canonical index object was counted with (its countedMemSize field), 0 if none. */
+    /** The size an index object was counted with (its countedMemSize field), 0 if none. */
     private static int counted(Node node) {
         if (node instanceof KeyNode) return ((KeyNode) node).countedMemSize;
         if (node instanceof TopNode) return ((TopNode) node).countedMemSize;
@@ -65,101 +68,121 @@ public final class Residents {
         else if (node instanceof TopNode) ((TopNode) node).countedMemSize = size;
     }
 
-    /** A node became resident: made by the writer or by startup, or read and put into a slot. */
-    public void added(Node node) {
-        int size = node.getMemSize();
-        if (!node.isIndexNode()) {
-            valueBytes.addAndGet(size);
-            valueCount.incrementAndGet();
-        } else if (node.isCanonical()) {
-            if (counted(node) == 0) {
-                setCounted(node, size);
-                canonicalBytes.addAndGet(size);
-                canonicalCount.incrementAndGet();
-            }
-        } else {
-            snapshotBytes.addAndGet(size);
-            snapshotCount.incrementAndGet();
-        }
-    }
-
     /**
-     * A snapshot became canonical (the writer's follow, Cache3.makeCanonical): its bytes move
-     * from the snapshots to the canonical objects.
+     * The bytes index object o is counted with now: its own, and for a key node those of the
+     * values its pointers hold.
      */
-    public void promoted(Node node) {
-        if (counted(node) != 0) return;
-        int size = node.getMemSize();
-        setCounted(node, size);
-        canonicalBytes.addAndGet(size);
-        canonicalCount.incrementAndGet();
-        if (snapshotCount.get() > 0) {
-            snapshotBytes.addAndGet(-size);
-            snapshotCount.decrementAndGet();
+    static int bytesOf(Node o) {
+        int size = o.getMemSize();
+        if (o instanceof KeyNode) {
+            KeyNode k = (KeyNode) o;
+            int n = k.size;
+            for (int i = 0; i < n; i++) {
+                Pointee p = k.pointers[i];
+                if (p instanceof ValueNode) size += ((ValueNode) p).getMemSize();
+            }
         }
+        return size;
     }
 
-    /** A canonical index object may have grown: it is counted with its size now. */
-    public void grown(Node node) {
-        int old = counted(node);
-        if (old == 0) return;
-        int size = node.getMemSize();
-        if (size != old) {
+    /**
+     * An index object became resident: it entered a handle (made by the writer or by startup,
+     * or a version read). Counted once. A value is counted with the objects that hold it.
+     */
+    public void added(Node node) {
+        if (!node.isIndexNode()) return;
+        synchronized (node) {
+            if (counted(node) != 0) return;
+            int size = bytesOf(node);
             setCounted(node, size);
-            canonicalBytes.addAndGet(size - old);
+            bytes.addAndGet(size);
+            objects.incrementAndGet();
         }
     }
 
-    /** A resident object was released (WP J2 on): its bytes leave the estimate. */
-    public void released(Node node) {
-        if (!node.isIndexNode()) {
-            valueBytes.addAndGet(-node.getMemSize());
-            valueCount.decrementAndGet();
-            return;
-        }
-        int size = counted(node);
-        if (size != 0) {
-            setCounted(node, 0);
-            canonicalBytes.addAndGet(-size);
-            canonicalCount.decrementAndGet();
-        } else {
-            snapshotBytes.addAndGet(-node.getMemSize());
-            snapshotCount.decrementAndGet();
+    /** A version became canonical (Cache3.makeCanonical): counted already, or now. */
+    public void promoted(Node node) {
+        added(node);
+    }
+
+    /** A canonical index object may have grown (it was written): counted with its bytes now. */
+    public void grown(Node node) {
+        synchronized (node) {
+            int old = counted(node);
+            if (old == 0) return;
+            int size = bytesOf(node);
+            if (size != old) {
+                setCounted(node, size);
+                bytes.addAndGet(size - old);
+            }
         }
     }
 
     /**
-     * Sets the estimate to the bytes of the resident objects 'objects' (a walk's, after an
-     * eviction sweep), which makes it exact; each canonical object is counted with its size
-     * now. The caller holds Db.writeLock, between transactions.
+     * A resident index object left its handle (evicted, or replaced by a better object): its
+     * count leaves the estimate. Returns the bytes it was counted with.
+     */
+    public int released(Node node) {
+        if (!node.isIndexNode()) return 0;
+        synchronized (node) {
+            int size = counted(node);
+            if (size == 0) return 0;
+            setCounted(node, 0);
+            bytes.addAndGet(-size);
+            objects.decrementAndGet();
+            return size;
+        }
+    }
+
+    /**
+     * Value v went into a pointer of 'holder' (a reader's load). The caller holds the
+     * holder's monitor. Nothing if the holder is not counted (not resident).
+     */
+    public void valueIn(Node holder, ValueNode v) {
+        int c = counted(holder);
+        if (c == 0) return;
+        int size = v.getMemSize();
+        setCounted(holder, c + size);
+        bytes.addAndGet(size);
+    }
+
+    /** Value v left a pointer of 'holder' (eviction). The caller holds the holder's monitor. */
+    public void valueOut(Node holder, ValueNode v) {
+        int c = counted(holder);
+        if (c == 0) return;
+        int size = Math.min(c, v.getMemSize());
+        setCounted(holder, c - size);
+        bytes.addAndGet(-size);
+    }
+
+    /**
+     * Sets the estimate to the bytes of the resident objects 'objects' (a walk's), each index
+     * object counted with its bytes now (bytesOf), values with their holders; for the test
+     * schedules and the audit. The caller holds Db.writeLock, between transactions.
      */
     public void resync(Iterable<Node> objects) {
-        long cb = 0, sb = 0, vb = 0, cc = 0, sc = 0, vc = 0;
-        for (Node n : objects) {
-            int size = n.getMemSize();
-            if (!n.isIndexNode()) {
-                vb += size;
-                vc++;
-            } else if (n.isCanonical()) {
-                setCounted(n, size);
-                cb += size;
-                cc++;
-            } else {
-                sb += size;
-                sc++;
+        long b = 0, n = 0;
+        for (Node o : objects) {
+            if (!o.isIndexNode()) continue;
+            synchronized (o) {
+                int size = bytesOf(o);
+                setCounted(o, size);
+                b += size;
+                n++;
             }
         }
-        canonicalBytes.set(cb);
-        snapshotBytes.set(sb);
-        valueBytes.set(vb);
-        canonicalCount.set(cc);
-        snapshotCount.set(sc);
-        valueCount.set(vc);
+        bytes.set(b);
+        this.objects.set(n);
     }
 
     /** The estimated bytes of the resident objects. */
     public long bytes() {
-        return canonicalBytes.get() + Math.max(0, snapshotBytes.get()) + valueBytes.get();
+        return bytes.get();
+    }
+
+    /** The resident index objects counted. */
+    public long objects() {
+        return objects.get();
     }
 
     /**
@@ -203,7 +226,11 @@ public final class Residents {
 
     // ======== Tests ========
 
-    /** Accounting: a canonical object, a snapshot that becomes canonical, growth, a value. */
+    /**
+     * Accounting (bergdb item 009, step 3b): an object counted once, with the values its
+     * pointers hold; a version that becomes canonical; growth; a value in and out of a
+     * pointer; a release takes the object's count away, values included.
+     */
     @Nano
     public static void testAccounting() {
         Residents r = new Residents();
@@ -214,11 +241,11 @@ public final class Residents {
         Assert.assertEquals((long) k.getMemSize(), b1);
         r.added(k);                                     // counted once
         Assert.assertEquals(b1, r.bytes());
-        KeyNode s = KeyNode.nodeWithTime(6);            // a snapshot
+        KeyNode s = KeyNode.nodeWithTime(6);            // a version read
         r.added(s);
         Assert.assertEquals(b1 + s.getMemSize(), r.bytes());
         s.setCanonical(true);
-        r.promoted(s);                                  // its bytes move, the total stays
+        r.promoted(s);                                  // counted already
         Assert.assertEquals(b1 + s.getMemSize(), r.bytes());
         for (int i = 0; i < 10; i++) {
             k.addToEnd(Klong.createTime(10 + i), null, Spos.NULL);
@@ -226,8 +253,22 @@ public final class Residents {
         r.grown(k);
         Assert.assertEquals((long) k.getMemSize() + s.getMemSize(), r.bytes());
         ValueNode v = new ValueNode(new byte[100]);
-        r.added(v);
+        r.added(v);                                     // a value alone: not counted
+        Assert.assertEquals((long) k.getMemSize() + s.getMemSize(), r.bytes());
+        synchronized (s) {
+            r.valueIn(s, v);
+        }
         Assert.assertEquals((long) k.getMemSize() + s.getMemSize() + v.getMemSize(), r.bytes());
+        synchronized (s) {
+            r.valueOut(s, v);
+        }
+        Assert.assertEquals((long) k.getMemSize() + s.getMemSize(), r.bytes());
+        synchronized (s) {
+            r.valueIn(s, v);
+        }
+        Assert.assertEquals((long) s.getMemSize() + v.getMemSize(), (long) r.released(s));
+        Assert.assertEquals((long) k.getMemSize(), r.bytes());
+        Assert.assertEquals(0, r.released(s));          // released once
     }
 
     /** Pins: the super root, and the canonical objects of D and of the record being written. */

@@ -217,10 +217,16 @@ public class NodeCollection implements PointerFollower {
         return o != null && Handle.usable(o, ref) ? o : null;
     }
 
-    /** A follow's access data, into the pointee's handle, for eviction's age order. */
+    /**
+     * A follow sets the pointee's CLOCK bit (bergdb item 009, step 3b; 009-02, 4.7), and only
+     * when it is clear, so that a hot handle's line is not written on every follow. Before
+     * step 3b (since 3a), the follow's access data went into the handle, for an age order;
+     * before 3a, into the pointer.
+     */
     private static void touch(Pointee pointee, OpData op) {
-        if (op.accessData != AccessData.ZERO && pointee instanceof Handle) {
-            ((Handle) pointee).stamp = op.accessData;
+        if (pointee instanceof Handle) {
+            Handle h = (Handle) pointee;
+            if (h.ref == 0) h.ref = 1;
         }
     }
 
@@ -381,7 +387,7 @@ public class NodeCollection implements PointerFollower {
         long ref = pointerPos;
         if (mySection != null) {
             Long newPos = mySection.newById.get(id);
-            if (newPos != null && newPos > ref) {
+            if (newPos != null && Spos.newer(newPos, ref)) {
                 ref = newPos;
             }
         }
@@ -453,6 +459,12 @@ public class NodeCollection implements PointerFollower {
         final FirstTouchListener ftl = firstTouchListener;
         if (ftl != null) {
             ftl.firstTouch(id, ref, result, read, cutBack);
+        }
+
+        // A read that kept nothing in a new handle (a cache policy that caches nothing)
+        // leaves no empty handle in the table.
+        if (live != null && live.obj == null && !isMaintenance) {
+            cache.dropIfEmpty(live);
         }
 
         // 5. Swizzle: the live handle into the pointer.
@@ -535,8 +547,14 @@ public class NodeCollection implements PointerFollower {
         }
 
         if (!isMaintenance && op.cachePolicy.shouldCache(node)) {
-            cache.pointerCreated(predecessor, pointerIndex, node);
-            predecessor.setPointee(pointerIndex, (ValueNode) node);
+            // Into the pointer, and counted with its holder (Residents.valueIn), under the
+            // holder's monitor, as eviction counts the holder out (bergdb item 009, step 3b).
+            synchronized (predecessor) {
+                if (predecessor.getPointee(pointerIndex) == null) {
+                    predecessor.setPointee(pointerIndex, (ValueNode) node);
+                    cache.residents().valueIn(predecessor, (ValueNode) node);
+                }
+            }
         }
         op.pointerListener.pointerFollowed(predecessor, pointerIndex, node, Pointer.TYPE_STREAM);
         return node;
@@ -625,7 +643,7 @@ public class NodeCollection implements PointerFollower {
                 // 2. Any other: the pointer's reference after Rule R.
                 long ref = pos;
                 Long newPos = newestInSection(id);
-                if (newPos != null && newPos > ref) {
+                if (newPos != null && Spos.newer(newPos, ref)) {
                     ref = newPos;
                 }
                 if (ref != pos) {
@@ -894,23 +912,21 @@ public class NodeCollection implements PointerFollower {
         
         TopNode memParent = testParent(501, 100);
         Handle h = Handle.of(a);
-        h.stamp = AccessData.DEFAULT_ACCESS_DATA;
         memParent.setPointee(0, h);
-        op.accessData = AccessData.DEFAULT_ACCESS_DATA - 100;
         Assert.assertTrue("a memory pointer's object", m.followPointer(memParent, 0, op) == a);
-        Assert.assertEquals("access data unchanged", AccessData.DEFAULT_ACCESS_DATA, h.stamp);
+        Assert.assertEquals("the CLOCK bit unchanged", 0, h.ref);
         
         c.followPointer(testParent(601, 100), 0, op);
         Assert.assertEquals("a reader reads it again", 2, stream.reads);
     }
     
     /**
-     * Access data (bergdb item 009, step 3a): a follow writes it into the pointee's handle
-     * (Handle.stamp), for eviction's age order, and never into the pointer, whose reference
-     * stays; and the access clock advances at every node read from the stream, not at a
-     * follow of a memory pointer. (From 2026-10-17 to step 3a, access data was written only
-     * into a memory pointer, so that a stream pointer's position survived a reader that saw
-     * a memory pointer before an unswizzle: M23, M24.)
+     * The CLOCK bit (bergdb item 009, step 3b): a follow sets it in the pointee's handle,
+     * and never writes into the pointer, whose reference stays; and the access clock
+     * advances at every node read from the stream, not at a follow of a memory pointer.
+     * (From 2026-10-17 to step 3a, access data was written only into a memory pointer, so
+     * that a stream pointer's position survived a reader that saw a memory pointer before an
+     * unswizzle: M23, M24; in step 3a into the handle.)
      */
     @Nano
     private static void testAccessData() {
@@ -928,12 +944,12 @@ public class NodeCollection implements PointerFollower {
         Assert.assertTrue("a memory pointer", p.node == a);
         Assert.assertEquals("its reference", 100, p.pos);
         Handle h = (Handle) top.getPointee(0);
-        Assert.assertEquals("the access data, in the handle", AccessData.DEFAULT_ACCESS_DATA, h.stamp);
+        Assert.assertEquals("the CLOCK bit, in the handle", 1, h.ref);
         
-        op.accessData = AccessData.DEFAULT_ACCESS_DATA - 5;
+        h.ref = 0;
         Assert.assertTrue("followed from memory", c.followPointer(top, 0, op) == a);
         Assert.assertEquals("no read, no tick", clock + 1, c.cache.accessClock());
-        Assert.assertEquals("the new access data", AccessData.DEFAULT_ACCESS_DATA - 5, h.stamp);
+        Assert.assertEquals("the CLOCK bit set again", 1, h.ref);
         Assert.assertEquals("the reference stays", 100, top.getPointerPos(0));
     }
     

@@ -837,6 +837,9 @@ public class Db {
                     "to-node has NULL id, from " + from + ", to: " + to;
                 
                 cache.pointerCreated(from, index, to);
+                if (to instanceof ValueNode) {
+                    eviction.largeValueCreated(from, index, (ValueNode) to);
+                }
             }
         };
         
@@ -2034,6 +2037,7 @@ public class Db {
         while (written.hasNext()) {
             cache.residents().grown(written.next());
         }
+        eviction.recordWritten(this, x.transNodes.indexNodeIterator());   // admission (009, 3b)
         if (oracle != null) oracle.appended(x.transNodes);
 
         reclaim.recordWritten(x.trans, x.transNodes);       // Statistics, if on.

@@ -253,7 +253,7 @@ public final class Audit {
                 long ref = n.getSerializedRef(i);
                 if (c == null || !c.isCanonical()) {
                     Long newPos = nc.newestInSection(id);
-                    if (newPos != null && newPos > ref) ref = newPos;
+                    if (newPos != null && Spos.newer(newPos, ref)) ref = newPos;
                 }
                 Long expected = oracle == null ? null : oracle.latest(id);
                 if (expected == null) {
@@ -351,7 +351,7 @@ public final class Audit {
         long ref = latest != null ? latest : pos;
         if (latest == null) {
             Long newPos = nc.newestInSection(id);
-            if (newPos != null && newPos > ref) ref = newPos;
+            if (newPos != null && Spos.newer(newPos, ref)) ref = newPos;
         }
         if (Spos.isVpos(ref)) return null;
         return ns.readNode(ref);

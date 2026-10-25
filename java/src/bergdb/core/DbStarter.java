@@ -203,7 +203,7 @@ public class DbStarter {
                 long pos = p.getPos();
                 Long id = Spos.isVpos(pos) ? Long.valueOf(pos) : posToId.get(pos);
                 Long newPos = id == null ? null : newById.get(id);
-                if (newPos != null && newPos > pos) {
+                if (newPos != null && Spos.newer(newPos, pos)) {
                     node.setPointer(i, null, newPos);
                 }
             }
@@ -311,7 +311,7 @@ public class DbStarter {
         Long newPos = newById.get(id);     // Rule R; topPos names the latest version anyway
         assert newPos == null || newPos == pos : "topPos " + pos + " is not the newest version "
                 + newPos + " of top node " + id;
-        long ref = newPos != null && newPos > pos ? newPos : pos;
+        long ref = newPos != null && Spos.newer(newPos, pos) ? newPos : pos;
         
         Node node;
         StoredNode stored = posMap.get(ref);
