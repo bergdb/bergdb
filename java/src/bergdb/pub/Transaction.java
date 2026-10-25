@@ -49,11 +49,4 @@ public interface Transaction {
      * @throws DbException
      */
     public void sync(SyncLevel syncLevel);
-    
-    // TODO LATER. Idea, 2026-10-13 (Frans): isDurable() and 
-    // isDurable(SyncLevel), returning at once whether this transaction has 
-    // attained the sync level. A non-blocking companion to sync(): commit 
-    // now, ask later. Cheap to implement: StorageManager already tracks the 
-    // durable stream length per level (d1Size, d2Size); compare with the 
-    // transaction's last position. Same idea in Connection.
 }

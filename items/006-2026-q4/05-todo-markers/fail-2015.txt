@@ -1,0 +1,15 @@
+bergdb 006-05, T2: StartupDistanceTester paying till 3.0e6 on d7a46d4 (2015-05-31, F1-007's history),
+with -ea, JDK 27, 2026-10-25, F53. The last 12 lines of its output.
+
+Exception in thread "main" java.lang.AssertionError: trying to read node at bad spos, 502073, mod8: 1
+	at bergdb.core.NodeStream.readNode(NodeStream.java:171)
+	at bergdb.dag.Dag.followPointer(Dag.java:362)
+	at bergdb.dag.Dag.getEqNodeInSegment(Dag.java:476)
+	at bergdb.dag.Dag.getOne(Dag.java:416)
+	at bergdb.core.Db.getOneInternal(Db.java:873)
+	at bergdb.core.Db.getOne(Db.java:840)
+	at bergdb.core.DbUtil.getString(DbUtil.java:87)
+	at bergdb.test.StartupDistanceTester.checkAccountSum(StartupDistanceTester.java:144)
+	at bergdb.test.StartupDistanceTester.go(StartupDistanceTester.java:134)
+	at bergdb.test.StartupDistanceTester.test1(StartupDistanceTester.java:197)
+	at bergdb.test.StartupDistanceTester.main(StartupDistanceTester.java:201)

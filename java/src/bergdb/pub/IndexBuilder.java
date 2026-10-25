@@ -185,6 +185,8 @@ public interface IndexBuilder {
      * required.
      * 
      * @param dir  The directory, null is not allowed. Must end with '/'.
+     * @throws IllegalArgumentException  If dir is null or empty, does not end with '/', or
+     *      contains "//".
      */
     public IndexBuilder dir(String dir);
     

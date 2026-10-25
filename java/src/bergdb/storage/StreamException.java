@@ -5,7 +5,8 @@ import bergdb.pub.util.DbException;
 /**
  * Thrown when there is an error in the underlying stream of
  * the database.
- * Subclasses: StreamFormatException, StreamIoException, VersioningStreamException.
+ * Subclasses: StreamFormatException (among its subclasses BadMagicBytes and
+ * VersioningStreamException), StreamIoException.
  * 
  * @author Frans Lundberg
  */

@@ -1,0 +1,7 @@
+The encrypted stream: 327912 bytes. For each cut, 2560 starts with a wrong key, each on its own copy; then a start with key A.
+Cut 6 bytes into the meta block, then key A:
+    2560 of 2560: started, /k0 read
+Cut 50 bytes into the meta block, then key A:
+    2560 of 2560: started, /k0 read
+Cut 127 bytes into the meta block, then key A:
+    2560 of 2560: started, /k0 read

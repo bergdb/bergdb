@@ -15,6 +15,7 @@ import bergdb.dag.TopTester;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.storage.StreamFormatException;
+import bergdb.storage.VersioningStreamException;
 
 /**
  * This class is responsible for how to store a TopNode in the stream:
@@ -76,7 +77,7 @@ public class StoredTopNode implements StoredNode {
         offset += 1;
         
         if (version != 2) {
-            throw new StreamFormatException("Cannot parse top node of "
+            throw new VersioningStreamException("Cannot parse top node of "
                     + "format version " + version + ".");
         }
 
@@ -263,6 +264,23 @@ public class StoredTopNode implements StoredNode {
             throw new AssertionError("no exception");
         } catch (StreamFormatException e) {
             // Expected.
+        }
+    }
+    
+    /** A top node of another format version is refused as one (2026-10-25, bergdb 005-40). */
+    @Nano
+    public static void testRefusesOtherVersion() {
+        TopNode top = TopNode.createDummy(5);
+        long[] longs = new long[getByteSize(top) / 8];
+        toLongs(top, longs, 0);
+        byte[] bytes = Bytes.longsToBytesLE(longs);
+        Assert.assertEquals(2, bytes[5]);
+        bytes[5] = 3;
+        try {
+            parse(bytes, 0, 1000);
+            throw new AssertionError("parsed");
+        } catch (VersioningStreamException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 3"));
         }
     }
     

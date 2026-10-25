@@ -1,0 +1,11 @@
+bergdb 005-42: probe.sh on 98ac9eb with 005-40 and 005-43, uncommitted at the time (2026-10-25, F53).
+
+A: a put of /e/x, in a directory with an index; a get of /e/x
+  kvs(): 2
+    0: key() throws IllegalArgumentException: ikey cannot be converted to valid ukey, ikey: /#i/di/demp-salary/~\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd(\ufffd/-x; ikey() throws UnsupportedOperationException: not implemented; value 0 bytes
+    1: key() = /e/x; ikey() throws UnsupportedOperationException: not implemented; value 31 bytes
+B: a put of /a at 1 s, then 20,000 puts of other keys; a get of /a at 20001 s
+  time(): 14078 s
+  kvs(): 2
+    0: key() throws IllegalArgumentException: ikey cannot be converted to valid ukey, ikey: /#i/dreclaim/-current.txt; ikey() throws UnsupportedOperationException: not implemented; value 147 bytes
+    1: key() = /a; ikey() throws UnsupportedOperationException: not implemented; value 2 bytes

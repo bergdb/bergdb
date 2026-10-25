@@ -17,7 +17,7 @@ import bergdb.nanotest.TestEnvironment;
  * @author Frans Lundberg
  */
 public class MyLongMap {
-    static final int binCount = 2*1048576;  // TODO A.
+    static final int binCount = 2*1048576;
             // fixed at 2^21 for this test, test with 1M entries for 0.50 fill factor
     final Node[] table;
     

@@ -36,6 +36,7 @@ import bergdb.pub.util.BadCryptoKey;
 import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.storage.BufferedStream;
+import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
 import bergdb.stream.CutStream;
 import bergdb.stream.MemoryStream;
@@ -1196,6 +1197,56 @@ public class PubTester {
         }
         
         Assert.assertTrue(ex != null);
+    }
+    
+    /**
+     * Regression test for bergdb 005-40: a start with a wrong crypto key, or with none, on a
+     * database whose stream a crash had cut where a meta block starts, filled out that meta
+     * block through the key before it found the key wrong; the right key then read garbage
+     * there, and the database never started again. Now such a start writes nothing.
+     */
+    @Nano
+    private static void testWrongKeyAfterCrashAtMetaBlock() {
+        CryptoKey right = CryptoKey.generate();
+        MemoryStream m = new MemoryStream();
+        Database d = builderOn(m, right).start();
+        Connection c = d.connection();
+        String big = new String(new char[100 * 1000]).replace('\0', 'b');
+        for (int i = 0; i < 3; i++) {
+            c.put("/k" + i, big);           // Past the meta block at 200,000.
+        }
+        d.sync();
+        ((DatabaseImp) d).getDb().close();
+        final long cut = RecoverableStream.META_BLOCK_DISTANCE;
+        Assert.assertTrue("length " + m.getLength(),
+                m.getLength() > cut + RecoverableStream.META_BLOCK_SIZE);
+        MemoryStream crashed = m.copy();
+        crashed.truncate(cut);              // A crash just before the meta block (005-27).
+        
+        for (CryptoKey wrong : new CryptoKey[] {CryptoKey.generate(), null}) {
+            MemoryStream m2 = crashed.copy();
+            try {
+                builderOn(m2, wrong).start();
+                throw new AssertionError("started with a wrong key");
+            } catch (BadCryptoKey e) {
+                // Expected.
+            }
+            Assert.assertEquals("the stream as it was", cut, m2.getLength());
+            
+            Database d2 = builderOn(m2.copy(), right).start();
+            Assert.assertEquals(big, d2.connection().get("/k0", String.class));
+            ((DatabaseImp) d2).getDb().close();
+        }
+    }
+    
+    /** A builder of a database on the stream m, with the crypto key unless it is null. */
+    private static DatabaseBuilder builderOn(MemoryStream m, CryptoKey key) {
+        DatabaseBuilderImp b = (DatabaseBuilderImp) Factory.database();
+        b.mainStream(m);
+        if (key != null) {
+            b.cryptoKey(key);
+        }
+        return b;
     }
     
     @Nano

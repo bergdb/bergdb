@@ -16,8 +16,6 @@ import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.MemoryStream;
 
-// TODO LATER We need more startupDistance testing. See "payTillStreamSize(3.0e6);"
-
 /**
  * f-test for Db.setStartupDistance().
  * 
@@ -58,7 +56,6 @@ public class StartupDistanceTester {
         db.setStartupDistance(400*1000);
         out.println("1.2 Stream length: " + db.getStreamLength());
         
-        //payTillStreamSize(3.0e6);   // NOTE result in problems
         payTillStreamSize(4.0e6);
         
         checkAccountSum(db);

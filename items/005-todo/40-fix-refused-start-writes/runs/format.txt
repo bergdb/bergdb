@@ -1,0 +1,36 @@
+The stream: 327912 bytes, 301 records, 2 meta blocks (at 0 to 200000), record format 5, meta block version 154.
+The last record starts at 326792.
+
+C0. As written:
+    started, /k0 read
+    The stream then: unchanged.
+C1. Every record of format 6 (a newer format):
+    StreamFormatException: Cannot parse stored transaction of format version 6; this version of BergDB reads format 5 only. A database written before 2026-10-15 (format 2) cannot be opened (docs/level2-alignment.md, M18).
+    The stream then: unchanged.
+C2. Every record of format 2 (before 2026-10-15):
+    StreamFormatException: Cannot parse stored transaction of format version 2; this version of BergDB reads format 5 only. A database written before 2026-10-15 (format 2) cannot be opened (docs/level2-alignment.md, M18).
+    The stream then: unchanged.
+C3. As C1, the last 10 bytes cut (a torn last record):
+    StreamFormatException: Cannot parse stored transaction of format version 6; this version of BergDB reads format 5 only. A database written before 2026-10-15 (format 2) cannot be opened (docs/level2-alignment.md, M18).
+    The stream then: grew by 10 bytes at 327902: all zero.
+C4. As C1, cut 3 bytes into the last record (a torn header):
+    StreamFormatException: Cannot parse stored transaction of format version 6; this version of BergDB reads format 5 only. A database written before 2026-10-15 (format 2) cannot be opened (docs/level2-alignment.md, M18).
+    The stream then: grew by 1117 bytes at 326795: 1 not zero (4).
+C5. Every meta block of version 155 (a newer format):
+    VersioningStreamException: Cannot read meta block with version 155. Version supported: 154
+    The stream then: unchanged.
+C6. As C5, cut 50 bytes into the meta block at 200000:
+    VersioningStreamException: Cannot read meta block with version 155. Version supported: 154
+    The stream then: grew by 78 bytes at 200050: all zero.
+C7. As C5, the last 10 bytes cut (a torn last record):
+    VersioningStreamException: Cannot read meta block with version 155. Version supported: 154
+    The stream then: unchanged.
+C8. As written, cut 50 bytes into the meta block at 200000:
+    started, /k0 read
+    The stream then: grew by 86 bytes at 200050: all zero.
+C9. A value node of format 5 in the last record (at 326824), its checksum computed again:
+    StreamFormatException: Cannot parse value node of format version 5.
+    The stream then: unchanged.
+C10. As C9, its checksum as it was:
+    StreamChecksumException: spos: 326824, storedSum: 58624, computedSum: 62465, nodeType: 30
+    The stream then: unchanged.

@@ -158,13 +158,12 @@ public class Dag {
     }
     
     /**
-     * Creates a GetData object suitable for use with as a parameter to Graph.getOne().
+     * Creates a GetData object suitable for use with as a parameter to Dag.getOne().
      * Use Db.newGetData() instead if you want to use the GetData object
-     * in Db.getOne().
+     * in Db.getOne(). The caller sets its pointerFollower, as Db.newGetData() does: a Dag
+     * has none of its own since 2017 (OpData.followPointer asserts that it is set).
      */
     public GetData newGetData() {
-        // TODO A. We need to set g.pointerFollower somehow, I suppose.
-        
         final GetData g = new GetData();
         
         g.pointerListener = new Dag.PointerListener() {
@@ -200,7 +199,7 @@ public class Dag {
     /**
      * Creates a PutData object suitable for use with as a parameter to Dag.putKv().
      * Use Db.newPutData() instead if you want to use the PutData object as a 
-     * parameter with methods of Db.
+     * parameter with methods of Db. The caller sets its pointerFollower, as Db does.
      */
     public PutData newPutData() {        
         final PutData p = new PutData();
@@ -1049,8 +1048,8 @@ public class Dag {
             KlongWithPointer[] toAppend, PutData pd) {
         //
         // 131005, added the last.replaceKlong() method call. A bit of a hack.
-        //   See Graph.testTimeSplit1a().
-        //   TODO LATER. Consider other solution. Maybe last should include toAppend.
+        //   See DagTester.testTimeSplit1a().
+        //   NOTE Consider other solution. Maybe last should include toAppend.
         //
         // Last version is small enough not to split into two nodes, but not empty.
         //

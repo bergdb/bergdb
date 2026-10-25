@@ -30,6 +30,15 @@ public class MetaBlock {
     public static final byte[] MAGIC = new byte[] {'b', 'e', 'r', 'g'};
     public static final int VERSION_133 = Util.identity(133);
     public static final int VERSION_154 = Util.identity(154);
+    
+    /**
+     * The version of the stream's framing, which RecoverableStream reads and writes: the meta
+     * blocks (their size, distance and layout) and a record's size field and last byte. A
+     * change of these changes this number, which recovery checks in each meta block it reads,
+     * before it writes anything (2026-10-25, bergdb 005-40). What a record holds has a
+     * version of its own, StoredTrans.RECORD_FORMAT. New databases only: a stream of another
+     * version is refused.
+     */
     private static final int CURRENT_VERSION = VERSION_154;
     
     /** Bytes to fill-out meta block in case of a stream crash in meta block. */

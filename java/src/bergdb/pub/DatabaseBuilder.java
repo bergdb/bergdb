@@ -110,7 +110,10 @@ public interface DatabaseBuilder {
      *             the stream may be wrong, for example.
      * @throws BadCryptoKey
      *             If the wrong crypto key is used, or none is used with an encrypted
-     *             database or a crypto key is used with an unencrypted database.
+     *             database or a crypto key is used with an unencrypted database. The
+     *             start has then written nothing to the database, so it can be started
+     *             with the right key (bergdb 005-40; until 2026-10-25, such a start after
+     *             a crash could make the database unreadable with the right key too).
      */
     public abstract Database start();
 }

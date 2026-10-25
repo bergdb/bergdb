@@ -189,9 +189,10 @@ read of that node fails it again, until the stream is repaired or restored.
   storage under running reads), and so does a sync whose thread is
   interrupted (`StorageManager` throws an `InterruptedIOException`).
   `getTrans` refuses a position that cannot start a transaction, before it
-  reads (`IllegalArgumentException`); a format error at a transaction's
-  position fails the database, as in the other reads, since 005-34 made the
-  positions that a get gives right.
+  reads (`IllegalArgumentException`; since 005-43 also one at or past the
+  end of the stream, which was a `DbException`); a format error at a
+  transaction's position fails the database, as in the other reads, since
+  005-34 made the positions that a get gives right.
 * The state changes in one step under `readSync`, which the writer and the
   readers both take (`Db.setFailed`), and `stop()` and `close()` set
   `STOPPING` under it too: the first failure is the one kept, and no failure
@@ -1452,6 +1453,24 @@ replica's crash image:
    and recovery takes the one before it. Tests:
    DbTester.testCrash7AtMetaBlockPosition and
    RecoverableStream.crashAtMetaBlockPosition; CrashTest cuts there too.
+
+Fixed 2026-10-25 (bergdb item 005-40), also in the 2017 code from 1 to 127
+bytes into a meta block (at 0 bytes since 005-27), with unit tests that
+fail without the fix; found by that item's probes, from a TODO on the
+format version:
+
+8. A start with a wrong crypto key, or with none on an encrypted database,
+   or with one on a database that is not encrypted, after a crash that
+   ended the stream at or just inside a meta block, left a database that
+   the right key could not start either ("Likely, the wrong crypto key was
+   used", or a meta block of a version such as 60826). Recovery filled out
+   the cut meta block, through the key it was given, before it read a meta
+   block and found the magic bytes wrong; the right key then read garbage
+   there. Now recovery reads the meta blocks first, and a stream that it
+   cannot read, for its key or its version, is refused as it is. Tests:
+   RecoverableStream.testRecoverWithWrongKeyWritesNothing and
+   testRecoverOtherVersionWritesNothing, and
+   PubTester.testWrongKeyAfterCrashAtMetaBlock.
 
 
 

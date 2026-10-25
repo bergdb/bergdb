@@ -1263,20 +1263,17 @@ public class Db {
      *
      * @throws IllegalArgumentException
      *             If 'tpos' cannot start a transaction: negative (Spos.NULL from a get: the
-     *             value's transaction was still being stored), not a multiple of 8, or in a
-     *             meta block. Nothing is read (bergdb 005-34).
+     *             value's transaction was still being stored), not a multiple of 8, in a
+     *             meta block (bergdb 005-34), or at or past the end of the stream (bergdb
+     *             005-43). Nothing is read.
      * @throws DbFailedException
      *             If the database has failed, or fails now: the read failed on the storage,
      *             or the bytes at 'tpos' are not a committed transaction, which is corrupt
      *             data as for the other reads (bergdb 005-30, 005-34).
      * @throws LookupTimeNotAvailableException
      *             If reclaim has removed the transaction: the time of the get has expired.
-     * @throws DbException
-     *             If there is no transaction at 'tpos'.
      */
     public StoredTrans getTrans(long tpos) {
-        // TODO D. DbException or something else?
-        
         // Refused before it reads (2026-10-24, bergdb 005-34): it would read the middle of a
         // record as a transaction.
         final long inBlock = tpos % RecoverableStream.META_BLOCK_DISTANCE;
@@ -1310,7 +1307,10 @@ public class Db {
             throw failOnStorage(e, "A read");
         }
         if (!gotTrans) {
-            throw new DbException("could not find transaction at stream pos " + tpos);
+            // At or past the end of the stream, refused as the positions above are (2026-10-25,
+            // bergdb 005-43). It was a DbException.
+            throw new IllegalArgumentException("Not a position of a transaction, " + tpos
+                    + ": at or past the end of the stream.");
         }
         
         return ti.getStoredTrans();

@@ -296,10 +296,13 @@ path, and make it correct and tested.
   | 9 | A slow or hung replica stalls the database: a time limit after which it is marked failed, or a larger buffer | P8 | M, and a decision |
   | 10 | Tell the application of a failed replica: a listener, a log line, or an exception at the next STRONG sync | P6 | S, and a decision |
 
-  Then the probes as unit and f-tests, P2's crash images of a replica as a
-  step of `level3.sh`, a replica in `level4.sh`'s eviction runs and in the
-  night run, and the documents. Lean unchanged. Size M to L: four to six
-  days with the gates, and decisions on 5, 9 and 10 first.
+  Then the probes as unit and f-tests; unit tests of `addReplica` itself,
+  its copy, its job and the STRONG sync at its end, of which only the ID
+  check has one today (a TODO of 2014 in `DbHelper` said so; gone since
+  2026-10-25, 006-05); P2's crash images of a replica as a step of
+  `level3.sh`; a replica in `level4.sh`'s eviction runs and in the night
+  run; and the documents. Lean unchanged. Size M to L: four to six days
+  with the gates, and decisions on 5, 9 and 10 first.
 * Durability and the API. Today's model stays and becomes true:
   `Transaction.sync(STRONG)` waits until the transaction is on the main and
   on the replicas that fix 5 says. It can grow towards the 2012 design: D3,

@@ -10,6 +10,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
+import bergdb.storage.VersioningStreamException;
 
 /**
  * This class is responsible for how to store a ValueNode in the stream.
@@ -81,7 +82,7 @@ public class StoredValueNode implements StoredNode {
         offset += 1;
         
         if (version != 4) {
-            throw new StreamFormatException("Cannot parse value node of "
+            throw new VersioningStreamException("Cannot parse value node of "
                     + "format version " + version + ".");
         }
         
@@ -252,6 +253,24 @@ public class StoredValueNode implements StoredNode {
         StoredValueNode stored = parse(buffer, 0, 128);
         
         Assert.assertArrayEquals(Keys.toSegments(keyString), stored.getKey());
+    }
+    
+    /** A value node of another format version is refused as one (2026-10-25, bergdb 005-40). */
+    @Nano
+    private static void testRefusesOtherVersion() {
+        long[] key = Keys.toSegments("a");
+        ValueNode node = new ValueNode(new byte[3], Spos.NULL);
+        byte[] buffer = new byte[getByteSize(node, key)];
+        StoredValueNode.toBytes(node, key, buffer, 0);
+        Assert.assertEquals(4, buffer[5]);
+        buffer[5] = 5;
+        
+        try {
+            parse(buffer, 0, 128);
+            throw new AssertionError("parsed");
+        } catch (VersioningStreamException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 5"));
+        }
     }
     
     @Nano

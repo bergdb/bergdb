@@ -587,8 +587,11 @@ public class DbStarter {
      *      if the db stream was tampered with.
      */
     private void validateTransactions(List<StoredTrans> transactions, long startupTime) {
-        // TODO D. check: t.version --- stream format version. We should check that this
-        // software supports the version of the transactions in the stream.
+        // The versions are checked where they are read: each transaction's format and its
+        // nodes' by the parsers (StoredTrans.Parser, Stored*Node.parse), the meta blocks' by
+        // recovery (RecoverableStream.readMetaBlock); a stream of another version is refused
+        // there with a VersioningStreamException. Until 2026-10-25 (bergdb 005-40), a TODO of
+        // 2014 here asked for this check; the parsers have made it since 2015-07-24.
         
         if (transactions.size() == 0) {
             throw new StreamFormatException("No transactions for startup algorithm.");

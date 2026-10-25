@@ -114,6 +114,11 @@ at least one transaction per record.
   a large transaction to run". Today the node limit spreads the work; with
   the deadline, the next transaction writes the debt beyond d_h at once.
   Update the Javadoc.
+* `take()`'s comment: its "TODO D." of 2015, which asks for a factor on the
+  node limit when the startup pos falls behind by more than 2 × sd (D1's
+  origin), goes with the change, and so does the claim that the startup
+  pos "should never fall exceedingly behind" (007-01, 4.1). Noted
+  2026-10-25 (006-05, T7).
 * Done when: in step 2's runs, the section without its last record stays
   below d_h; `before-commit.sh`; `level2.sh`, since the take is Level 2's
   mechanism; `level3.sh` and `level4.sh` if their streams change; the quick

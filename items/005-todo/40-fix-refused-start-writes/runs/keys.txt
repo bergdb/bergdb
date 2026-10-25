@@ -1,0 +1,14 @@
+The encrypted stream: 327912 bytes. For each cut, 2560 starts with a wrong key, each on its own copy; then a start with key A.
+Cut 6 bytes into the meta block, then key A:
+    2555 of 2560: started, /k0 read
+    1 of 2560: the block read as valid; StreamFormatException: Meta block, bad last transaction spos: -7213040407476279254.
+    1 of 2560: the block read as valid; StreamFormatException: Meta block, bad last transaction spos: -7881772093426265245.
+    1 of 2560: the block read as valid; StreamFormatException: Meta block, bad time, -2139762009543108309.
+    1 of 2560: the block read as valid; StreamFormatException: Meta block, bad time, -2486199024948887610.
+    1 of 2560: the block read as valid; StreamFormatException: Meta block, bad time, -4059090925589827463.
+Cut 50 bytes into the meta block, then key A:
+    2555 of 2560: started, /k0 read
+    5 of 2560: the block read as valid; started, /k0 read
+Cut 127 bytes into the meta block, then key A:
+    2555 of 2560: started, /k0 read
+    5 of 2560: the block read as valid; started, /k0 read

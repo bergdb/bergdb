@@ -1,0 +1,33 @@
+Today's code: 98ac9eb with the fix of 005-40 (not committed when this ran)
+The 2017 code: 195cf88 (the 2017 import)
+
+X0. 2017 creates, 2017 starts:
+    created, 20 puts; the stream file 1920 bytes
+    started, /k0 = value 0
+    The stream file then: unchanged.
+X1. Today's code creates, today's code starts:
+    created, 20 puts; the stream file 2088 bytes
+    started, /k0 = value 0
+    The stream file then: unchanged.
+X2. 2017 creates, today's code starts:
+    created, 20 puts; the stream file 1920 bytes
+    bergdb.storage.VersioningStreamException: Cannot parse stored transaction of format version 2; this version of BergDB reads format 5 only. A smaller number is a database written by an older version of BergDB, which cannot be opened: format 2 was written until 2026-10-15 (docs/level2-alignment.md, M18).
+    The stream file then: unchanged.
+X3. Today's code creates, 2017 starts:
+    created, 20 puts; the stream file 2088 bytes
+    bergdb.storage.StreamFormatException: Cannot parse stored transaction of format version 5.
+    The stream file then: unchanged.
+X4. 2017 creates, the last 10 bytes cut, today's code starts, then 2017:
+    created, 20 puts; the stream file 1920 bytes
+    cut 10 bytes; the stream file 1910 bytes
+    bergdb.storage.VersioningStreamException: Cannot parse stored transaction of format version 2; this version of BergDB reads format 5 only. A smaller number is a database written by an older version of BergDB, which cannot be opened: format 2 was written until 2026-10-15 (docs/level2-alignment.md, M18).
+    The stream file then: grew by 10 bytes at 1910: all zero.
+    started, /k0 = value 0
+    The stream file then: unchanged.
+X5. Today's code creates, the last 10 bytes cut, 2017 starts, then today's code:
+    created, 20 puts; the stream file 2088 bytes
+    cut 10 bytes; the stream file 2078 bytes
+    bergdb.storage.StreamFormatException: Cannot parse stored transaction of format version 5.
+    The stream file then: grew by 10 bytes at 2078: all zero.
+    started, /k0 = value 0
+    The stream file then: unchanged.

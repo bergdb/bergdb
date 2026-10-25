@@ -1,0 +1,20 @@
+diff --git a/java/src/bergdb/storage/RecoverableStream.java b/java/src/bergdb/storage/RecoverableStream.java
+index ed1fc26..3a6359f 100644
+--- a/java/src/bergdb/storage/RecoverableStream.java
++++ b/java/src/bergdb/storage/RecoverableStream.java
+@@ -113,9 +113,14 @@ public class RecoverableStream {
+      * @throws StreamFormatException
+      */
+     public void recover() {
++        // PROTOTYPE bergdb 005-40: read before writing. readLastValidMetaBlock() reads only
++        // meta blocks that are complete in the stream, and checks their magic bytes (the
++        // crypto key) and version; the block filled out below is invalid, so it finds the
++        // same block before the fill as after it.
++        MetaBlock lastBlock = readLastValidMetaBlock();
++        
+         fixMetaBlockIfNeeded();
+         
+-        MetaBlock lastBlock = readLastValidMetaBlock();
+         if (lastBlock == null) {
+             throw new StreamFormatException("Could not find *any* valid meta block. "
+                     + "At least the very first meta block must be valid in a db stream.");

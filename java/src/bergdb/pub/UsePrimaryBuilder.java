@@ -10,7 +10,9 @@ public interface UsePrimaryBuilder<TYPE> {
     /**
      * Sets the directory to iterate.
      * 
-     * @param dir  The directory, should end with '/'.
+     * @param dir  The directory; it must end with '/'.
+     * @throws IllegalArgumentException  If dir is null or empty, does not end with '/', or
+     *      contains "//".
      */
     public UsePrimaryBuilder<TYPE> dir(String dir);
     

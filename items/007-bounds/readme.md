@@ -53,3 +53,7 @@ Claude Code), at Frans's request ("fix all todo items of type Fix"). A
 transaction whose index nodes, by a bound at the largest node size, could
 take more than 15/16 of the record limit is refused before its go point.
 See 005-31's outcome, and the note at step 1 for step 3.
+
+2026-10-25. 007-03, step 3: the change removes the TODO in
+`TransSeq.take` that D1 came from, and the comment's claim that the
+startup pos should never fall far behind (006-05, T7).

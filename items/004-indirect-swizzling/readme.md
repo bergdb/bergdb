@@ -93,3 +93,7 @@ goal. Costs: heap per key +30 percent with ZGC, +3 percent with Shenandoah; 10 t
 percent fewer gets in memory on one thread. Today's sweep takes up to a third longer under
 them, so today's worst case grows; handles remove it. Tools added: `run2.sh`, `gcsum.py`,
 `soaksum.py`; the outputs were not kept.
+
+2026-10-25. 004-03, section 3: Frans's prototype of 2017 of a table from id to node,
+`MyLongMap`, named for the study of the table, from a TODO marker on its fixed size
+(006-05, T3).

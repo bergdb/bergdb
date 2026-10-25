@@ -5,14 +5,12 @@ import java.io.IOException;
 import bergdb.common.Bytes;
 import bergdb.common.StringUtil;
 import bergdb.common.Util;
-import bergdb.core.StoredTrans;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
-
-// TODO D. Remove reference to core.StoredTrans, ref storage -> core not allowed.
+import bergdb.stream.SalsaStream;
 
 /**
  * <p>This class adds transactional support to an underlying AppendOnlyStream.
@@ -73,6 +71,15 @@ public class RecoverableStream {
     /** If check enabled, append sizes must be a multiple of this value. */
     public static final int TRANS_ALIGNMENT = 8;
     
+    /**
+     * The byte that recovery writes at offset 4 of a torn transaction header, which it
+     * completes (transHeaderFixBytes): 4, as since 2016. Any value would do: the transaction
+     * is failed, and the layer above parses no failed transaction. Until 2026-10-25 (bergdb
+     * 005-40) it was StoredTrans.CURRENT_FORMAT_VERSION, which was never the format of a
+     * stored transaction, and this package's only reference to bergdb.core.
+     */
+    static final byte TORN_HEADER_FILLER = 4;
+    
     private static final byte[] zeros = new byte[10*1000];
     private static final int MAX_TRANS_SIZE = Integer.MAX_VALUE;
     public static final byte LAST_BYTE = 10;    
@@ -105,21 +112,33 @@ public class RecoverableStream {
     }
     
     /**
-     * Recovers the stream; adds zero bytes at end if needed, reads the last valid meta block.
-     * This method must be called before any data is appended to an existing
-     * underlying stream.
+     * Recovers the stream: reads the last valid meta block, then fills out a meta block and
+     * a last transaction that a crash has cut. This method must be called before any data
+     * is appended to an existing underlying stream.
+     *
+     * <p>It reads before it writes (2026-10-25, bergdb 005-40): a stream whose meta blocks
+     * it cannot read, as their magic bytes or their version are not this code's (a wrong
+     * crypto key, or a stream of another version of BergDB), is refused as it is.</p>
      * 
      * @throws StreamIoException
-     * @throws StreamFormatException
+     * @throws StreamFormatException  among them BadMagicBytes and VersioningStreamException,
+     *      thrown before anything is written
      */
     public void recover() {
-        fixMetaBlockIfNeeded();
-        
+        // 2026-10-25 (bergdb 005-40): fixMetaBlockIfNeeded() came first. With a wrong crypto
+        // key, or none, it filled out a meta block that a crash had cut, through that key,
+        // and only then did readLastValidMetaBlock() find the magic bytes wrong; the right key
+        // then read garbage in that block, and no start succeeded again. The same for a
+        // stream of another version. readLastValidMetaBlock() reads only the meta blocks that
+        // are complete in the stream, and the block that the fill makes is invalid, so it
+        // finds the same block before the fill as after it.
         MetaBlock lastBlock = readLastValidMetaBlock();
         if (lastBlock == null) {
             throw new StreamFormatException("Could not find *any* valid meta block. "
                     + "At least the very first meta block must be valid in a db stream.");
         }
+        
+        fixMetaBlockIfNeeded();
         
         metaBlock.setFromOtherMetaBlock(lastBlock);
         
@@ -209,7 +228,7 @@ public class RecoverableStream {
         boolean existingSizeTooSmall = sizeFromBuffer < MIN_TRANS_SIZE;
         
         fixBytes = new byte[bytesToAdd];
-        fixBytes[fixBytes.length - 1] = StoredTrans.CURRENT_FORMAT_VERSION;
+        fixBytes[fixBytes.length - 1] = TORN_HEADER_FILLER;
         
         for (int i = 0; i < bytesToAdd - 1; i++) {
             if (existingSizeTooSmall) {
@@ -985,6 +1004,104 @@ public class RecoverableStream {
             Assert.assertEquals(false, iter.next());
         }
         
+        /**
+         * Regression test for bergdb 005-40: a recovery that cannot read the meta blocks, with
+         * a wrong crypto key, with none on an encrypted stream, or with one on a stream that is
+         * not encrypted, writes nothing, also when a crash has cut the stream at or in a meta
+         * block. Until 2026-10-25 it filled out that meta block through the key first, and
+         * the right key then read garbage there (at 0, 3 and 5 bytes into the block, its magic
+         * bytes or its version), so that no recovery succeeded again.
+         */
+        @Nano
+        public static void testRecoverWithWrongKeyWritesNothing() throws IOException {
+            byte[] keyA = new byte[32];
+            byte[] keyB = new byte[32];
+            java.util.Arrays.fill(keyA, (byte) 1);
+            java.util.Arrays.fill(keyB, (byte) 2);
+            MemoryStream plain = new MemoryStream();
+            long[] starts = appendNamedTransactions(new RecoverableStream(plain, new MetaBlock()), 
+                    250);
+            MemoryStream encrypted = new MemoryStream();
+            new SalsaStream(encrypted, new byte[8], keyA).append(bytesOf(plain), 0, 
+                    (int) plain.getLength());
+            int complete = 0;           // Those that end before the meta block at 200,000.
+            for (long start : starts) {
+                complete += getSpos(start, 1000) <= META_BLOCK_DISTANCE ? 1 : 0;
+            }
+            
+            // The stream, the key of the wrong recovery, the key of the right one.
+            Object[][] cases = {{encrypted, keyB, keyA}, {encrypted, null, keyA}, 
+                    {plain, keyA, null}};
+            for (int x : new int[] {0, 3, 5, 50}) {
+                for (int c = 0; c < cases.length; c++) {
+                    MemoryStream m = ((MemoryStream) cases[c][0]).copy();
+                    m.truncate(META_BLOCK_DISTANCE + x);
+                    String what = "case " + c + ", cut " + x + " bytes into the meta block";
+                    AppendOnlyStream wrong = cases[c][1] == null ? m 
+                            : new SalsaStream(m, new byte[8], (byte[]) cases[c][1]);
+                    try {
+                        new RecoverableStream(wrong, new MetaBlock()).recover();
+                        throw new AssertionError(what + ": recovered with the wrong key");
+                    } catch (BadMagicBytes e) {
+                        // Expected.
+                    }
+                    Assert.assertEquals(what, META_BLOCK_DISTANCE + x, m.getLength());
+                    
+                    // The stream as the right key reads it recovers as before the cut.
+                    MemoryStream right = new MemoryStream();
+                    byte[] bytes = bytesOf(m);
+                    if (cases[c][2] != null) {
+                        new SalsaStream(m, new byte[8], (byte[]) cases[c][2]).read(0, bytes, 0, 
+                                bytes.length);
+                    }
+                    right.append(bytes, 0, bytes.length);
+                    RecoverableStream r = new RecoverableStream(right, new MetaBlock());
+                    r.recover();
+                    Assert.assertEquals(what, 0, r.readLastValidMetaBlock().getPos());
+                    Iterator iter = new Iterator(r, 0);
+                    int n = 0;
+                    while (iter.next()) {
+                        n++;
+                    }
+                    Assert.assertEquals(what, complete, n);
+                }
+            }
+        }
+        
+        private static byte[] bytesOf(MemoryStream m) throws IOException {
+            byte[] bytes = new byte[(int) m.getLength()];
+            m.read(0, bytes, 0, bytes.length);
+            return bytes;
+        }
+        
+        /**
+         * Regression test for bergdb 005-40: a recovery writes nothing to a stream whose meta
+         * blocks are of another version, also when a crash has cut one of them. Until
+         * 2026-10-25 it filled out the cut one first.
+         */
+        @Nano
+        public static void testRecoverOtherVersionWritesNothing() throws IOException {
+            MemoryStream mstream = new MemoryStream();
+            appendNamedTransactions(new RecoverableStream(mstream, new MetaBlock()), 250);
+            for (long pos = 0; pos + META_BLOCK_SIZE <= mstream.getLength();
+                    pos += META_BLOCK_DISTANCE) {
+                MemoryStream.TestAccess.write(mstream, new byte[]{(byte) 155, 0}, pos + 4);
+            }
+            
+            for (int x : new int[] {0, 3, 50}) {
+                MemoryStream m = mstream.copy();
+                m.truncate(META_BLOCK_DISTANCE + x);
+                try {
+                    new RecoverableStream(m, new MetaBlock()).recover();
+                    throw new AssertionError("recovered, " + x + " bytes into the meta block");
+                } catch (VersioningStreamException e) {
+                    Assert.assertTrue(e.getMessage(), e.getMessage().contains("155"));
+                }
+                Assert.assertEquals("cut " + x + " bytes into the meta block",
+                        META_BLOCK_DISTANCE + x, m.getLength());
+            }
+        }
+        
         @Nano
         public static void crashInTransHeader1() {
             // Crash in trans header when just one byte of size has been
@@ -997,7 +1114,6 @@ public class RecoverableStream {
             byte[] transBytes = new byte[1025];    // 0x00000401
             
             Bytes.intToBytesLE(transBytes.length, transBytes, 0);
-            transBytes[4] = StoredTrans.CURRENT_FORMAT_VERSION;
             transBytes[transBytes.length - 1] = RecoverableStream.LAST_BYTE;
             
             r1.append(transBytes, 0, transBytes.length, true, 10);
@@ -1021,7 +1137,6 @@ public class RecoverableStream {
             byte[] transBytes = new byte[0x00010002];    // 65536 + 2
             
             Bytes.intToBytesLE(transBytes.length, transBytes, 0);
-            transBytes[4] = StoredTrans.CURRENT_FORMAT_VERSION;
             transBytes[transBytes.length - 1] = RecoverableStream.LAST_BYTE;
             
             r1.append(transBytes, 0, transBytes.length, true, 10);

@@ -23,6 +23,7 @@ import bergdb.nanotest.Nano;
 import bergdb.pub.util.DbException;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
+import bergdb.storage.VersioningStreamException;
 
 /**
  * This class and its inner classes are responsible serializing transactions to bytes
@@ -33,17 +34,21 @@ import bergdb.storage.StreamFormatException;
  * @author Frans Lundberg
  */
 public class StoredTrans {
-    public final static byte CURRENT_FORMAT_VERSION = 4;    // serial format version (one byte).
-        // 160511 - changed to 4. Both id+spos stored with got-dirty node list.
-        // 151229 - changed from 2 to 3
-        // 2026-10-15: not the format byte of a stored transaction (see RECORD_FORMAT); the
-        // stored byte stayed 2 through these changes. RecoverableStream uses this constant
-        // for the filler bytes of a torn transaction header.
-    
     /**
      * The format byte of a stored transaction, written by Serializer and checked by Parser.
-     * 5 since 2026-10-15: the header holds topPos (docs/level2-alignment.md, M18). Before, 2.
-     * A stream of an older format is refused: new databases only.
+     * 5 since 2026-10-15: the header holds topPos (docs/level2-alignment.md, M18). Before, 2,
+     * also through two incompatible changes, of 2015-12-29 and of 2016-05-11 (both id and
+     * spos in the got-dirty list): they changed CURRENT_FORMAT_VERSION, to 3 and then 4,
+     * which was never the stored byte, and is gone since 2026-10-25. A stream of another
+     * format is refused: new databases only (F1-008-11's Q5).
+     *
+     * <p>A change of what a record holds, its header or its nodes, changes this number, so
+     * that a start refuses a stream of another format: startup parses at least the record
+     * that the last valid meta block names. A node's own format byte changes with its
+     * layout too. A change of RecoverableStream's framing (a record's size field or last
+     * byte, the meta blocks) changes MetaBlock's version instead, which recovery checks
+     * before it writes; the zero fill of a torn record, before its format is read, uses
+     * only the framing (2026-10-25, bergdb 005-40).</p>
      */
     public final static byte RECORD_FORMAT = 5;
     
@@ -187,6 +192,23 @@ public class StoredTrans {
         return new StoredTrans(p);
     }
 
+    /**
+     * The message of a VersioningStreamException for a record whose format byte is not
+     * RECORD_FORMAT: it says whether the stream was written by an older or a newer BergDB
+     * (2026-10-25, bergdb 005-40). Before, every other format got the message of format 2.
+     */
+    static String formatRefused(byte version) {
+        int v = version & 0xff;
+        String s = "Cannot parse stored transaction of format version " + v + "; this version "
+                + "of BergDB reads format " + RECORD_FORMAT + " only. ";
+        if (v > RECORD_FORMAT) {
+            return s + "A larger number is a database written by a newer version of BergDB.";
+        }
+        return s + "A smaller number is a database written by an older version of BergDB, "
+                + "which cannot be opened: format 2 was written until 2026-10-15 "
+                + "(docs/level2-alignment.md, M18).";
+    }
+    
     public String toString() {
         StringBuilder b = new StringBuilder();
         b.append("tt:" + tt + ", tpos:" + tpos + ", lastPos:" + lastPos + ", startupPos:" + this.startupPos
@@ -283,10 +305,7 @@ public class StoredTrans {
             offset++;
             
             if (version != RECORD_FORMAT) {
-                throw new StreamFormatException("Cannot parse stored transaction of "
-                        + "format version " + version + "; this version of BergDB reads format "
-                        + RECORD_FORMAT + " only. A database written before 2026-10-15 (format 2) "
-                        + "cannot be opened (docs/level2-alignment.md, M18).");
+                throw new VersioningStreamException(formatRefused(version));
             }
 
             offset += 3;     // three unused bytes
@@ -961,7 +980,10 @@ public class StoredTrans {
         assertEquals(0, parser.nodes.length);
     }
     
-    /** A transaction of the format before 2026-10-15 (2) is refused with a clear message. */
+    /**
+     * A transaction of the format before 2026-10-15 (2) is refused with a clear message, as a
+     * VersioningStreamException since 2026-10-25 (bergdb 005-40).
+     */
     @Nano
     private static void testRefusesOldFormat() {
         Serializer serializer = new Serializer();
@@ -973,8 +995,32 @@ public class StoredTrans {
         try {
             new Parser().parse(200, buffer);
             throw new AssertionError("no exception for format 2");
-        } catch (StreamFormatException e) {
-            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 2"));
+        } catch (VersioningStreamException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 2;"));
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("older version"));
+        }
+    }
+    
+    /**
+     * A transaction of a larger format is refused as one of a newer BergDB (2026-10-25, bergdb
+     * 005-40). Until then its message named format 2, written until 2026-10-15, as the cause.
+     */
+    @Nano
+    private static void testRefusesNewerFormat() {
+        Serializer serializer = new Serializer();
+        serializer.serialize(new TransNodes(), 100, 200, -1, new ArrayList<Node>());
+        for (int format : new int[] {6, 200}) {
+            byte[] buffer = serializer.getTransBuffer().clone();
+            buffer[4] = (byte) format;
+            try {
+                new Parser().parse(200, buffer);
+                throw new AssertionError("no exception for format " + format);
+            } catch (VersioningStreamException e) {
+                String m = e.getMessage();
+                Assert.assertTrue(m, m.contains("format version " + format + ";"));
+                Assert.assertTrue(m, m.contains("newer version"));
+                Assert.assertFalse(m, m.contains("format 2"));
+            }
         }
     }
     

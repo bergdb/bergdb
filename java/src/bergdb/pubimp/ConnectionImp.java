@@ -122,7 +122,8 @@ public class ConnectionImp implements Connection {
                 final StoredValueNode storedValueNode = (StoredValueNode) storedNode;
                 kvs.add(new Kv<byte[]>() {
                     public String key() {
-                        // TODO D. we cannot in general convert keys to ukey (strings). How to handle in Pub Layer?
+                        // An internal key (an index entry, reclaim's row) has no ukey: i2u
+                        // throws (bergdb 005-42).
                         byte[] bkey = Keys.toBytes(storedValueNode.getKey());
                         String ukey = PubKeys.i2u(Keys.bkey2ikey(bkey));
                         return ukey;

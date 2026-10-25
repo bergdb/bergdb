@@ -3,10 +3,6 @@ package bergdb.pubimp;
 import bergdb.common.Bug;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
-import bergdb.pub.util.BadFormatException;
-
-//TODO LATER Review what exception to throw? Make it consistent. Consider throwing IllegalArgumentException or subclass of it.
-
 
 /**
  * Class with static methods for handling database keys.
@@ -89,22 +85,24 @@ public class PubKeys {
     /**
      * Converts a directory ukey to a directory ikey according to doc/2013-key-encoding.txt.
      * 
-     * @throws BadFormatException
+     * @throws IllegalArgumentException  If udir is null or empty, does not end with '/', or
+     *      contains "//". As u2i() does for a key; it was a BadFormatException (2026-10-25,
+     *      bergdb 005-43).
      */
-    public static final String udir2idir(String udir) throws BadFormatException {
+    public static final String udir2idir(String udir) throws IllegalArgumentException {
         
         if (udir == null) {
-            throw new BadFormatException("null is not a valid dir.");
+            throw new IllegalArgumentException("null is not a valid dir.");
         }
         
         if (udir.length() == 0) {
-            throw new BadFormatException("The empty string is not a valid dir.");
+            throw new IllegalArgumentException("The empty string is not a valid dir.");
         }
         
         int length = udir.length();
         
         if (udir.charAt(length - 1) != '/') {
-            throw new BadFormatException("udir must end with '/', was: " + udir);
+            throw new IllegalArgumentException("udir must end with '/', was: " + udir);
         }
         
         StringBuilder b = new StringBuilder();
@@ -116,7 +114,7 @@ public class PubKeys {
             
             if (c == '/') {
                 if (slashIndex == i - 1) {
-                    throw new BadFormatException("udir cannot contain \"//\", was: " + udir);
+                    throw new IllegalArgumentException("udir cannot contain \"//\", was: " + udir);
                 }
                 slashIndex = i;
                 b.append('/');
@@ -224,5 +222,21 @@ public class PubKeys {
         assertI2uException(null);
         assertI2uException("/dir/dir2//double-slash/not-allowed.txt");
         assertI2uException("/slash at end not allowed/");
+    }
+    
+    /** bergdb 005-43: a bad directory is an IllegalArgumentException, as a bad key is. */
+    @Nano
+    public static void testUdir2idirRefusesBadDirs() {
+        String[] bad = {null, "", "/a", "a", "/a//b/"};
+        for (String udir : bad) {
+            try {
+                udir2idir(udir);
+                throw new AssertionError("taken, " + udir);
+            } catch (IllegalArgumentException e) {
+                // Expected.
+            }
+        }
+        Assert.assertEquals("/da/", udir2idir("/a/"));
+        Assert.assertEquals("/da/db/", udir2idir("/a/b/"));
     }
 }

@@ -176,3 +176,8 @@ is busy about 1 percent of the time.
 To study: the pause of a resize at realistic sizes with many HashMaps (is it small enough
 to accept?), the memory per entry of each option measured, and how
 the eviction policy walks or samples each.
+
+Frans's prototype of 2017, for reference: `java/src-dev/bergdb/test/java/MyLongMap.java`, a
+map from id to node, its bins chained through a `next` field in the node and fixed at 2^21
+(48 ns a get at 1M entries, on cissi, 2017-07-31), and `java/src-dev/frans/FastMap.java`.
+Noted 2026-10-25 from a TODO marker on its fixed size (006-05, T3).

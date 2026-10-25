@@ -1,0 +1,20 @@
+The prototype, ../prototype.diff, on 425d7a7, in a clone; 2026-10-25.
+
+java/before-commit.sh:
+    Unit: SUCCESS, 1007 successful tests in 8.6 s.
+    F:    SUCCESS, 67 successful tests in 115.5 s.
+    BEFORE COMMIT OK (119 s)
+
+CrashTest as step 5 of java/stress/level2.sh runs it in full: seeds 1, 6, 11 and 16, 5
+rounds each, and seed 1001 with node size 8 and startup distance 500, 5 rounds:
+    crash-0: Done: 5 rounds, 0 failures, 9 s. Cuts where a transaction ends at a meta block's position: 1.
+    crash-1: Done: 5 rounds, 0 failures, 9 s. Cuts where a transaction ends at a meta block's position: 0.
+    crash-2: Done: 5 rounds, 0 failures, 10 s. Cuts where a transaction ends at a meta block's position: 1.
+    crash-3: Done: 5 rounds, 0 failures, 9 s. Cuts where a transaction ends at a meta block's position: 0.
+    crash-node8: Done: 5 rounds, 0 failures, 12 s. Cuts where a transaction ends at a meta block's position: 1.
+
+The probes on the prototype: prototype-format.txt, prototype-crypto.txt and
+prototype-keys.txt. Against format.txt, crypto.txt and keys.txt: in format, C6 only (the
+stream unchanged); in crypto, after each start with a wrong key, with none, or with one
+on a stream that is not encrypted, the stream is unchanged, and the start after it
+succeeds; in keys, 2,560 of 2,560 start at each cut.

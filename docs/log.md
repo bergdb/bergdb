@@ -1072,3 +1072,38 @@ that reclaim had cut. Startup does not use it. Now the Javadoc says what
 the method gives, and in a cut stream it gives the first transaction
 after the cut that a meta block names. Tests; `before-commit.sh`
 passes.
+
+2026-10-25. 005-40 done, by Claude (Opus 5.5, Claude Code), at Frans's
+request, from the TODO in `DbStarter.validateTransactions` that asked for
+a check of the stream format version. The parsers have made that check
+since 2015; what was wrong was the order of recovery, which wrote to the
+stream before it checked it. After a crash that ended the stream at or
+just inside a meta block, a start with a wrong crypto key, or with none,
+filled out that meta block through the key, and the right key could then
+not start the database either. Now `RecoverableStream.recover()` reads the
+meta blocks first, and a stream whose key or version it cannot read is
+refused as it is ([levels.md](levels.md), "Bugs found by the load and
+crash tests", 8). The versions of records and nodes are refused with a
+`VersioningStreamException` (now a `StreamFormatException`), whose
+message says whether an older or a newer BergDB wrote the stream; a newer
+format got the message of format 2 before. The rule for the next format
+change is in the Javadoc of `MetaBlock` and `StoredTrans.RECORD_FORMAT`.
+`StoredTrans.CURRENT_FORMAT_VERSION`, never the stored byte, is gone, and
+`RecoverableStream` no longer refers to `bergdb.core`. Streams unchanged
+(StreamDigest); tests; `before-commit.sh` and `level2.sh` pass.
+
+2026-10-25. The TODO markers in `java/` reviewed, at Frans's request, by
+Claude (Opus 5.5, Claude Code): 15, of 2013 to 2017, but two of 2026-10-13
+(bergdb 006-05). Seven are gone from the code: five that were obsolete or
+done, among them the startup distance test's 3.0e6 that "result in
+problems" (an assertion removed in 2015, found by a bisect in F1-007's
+history), and the two of Frans's `isDurable()`, now 005-41. One is a NOTE.
+One points to 005-42: `Connection.transactionInfo()` gives internal KVs
+whose `key()` throws, and for a value that reclaim has rewritten,
+reclaim's transaction. 005-43 fixes two: `Db.getTrans` refuses a position
+at or past the end of the stream with an `IllegalArgumentException` (it
+was a `DbException`), and the Pub API's `IndexBuilder.dir` and
+`UsePrimaryBuilder.dir` refuse a bad directory with one (it was a
+`BadFormatException`). Three were done in 005-39 and 005-40; the one in
+`TransSeq.take` waits for 007-03's step 3. Two tests; `before-commit.sh`
+passes.

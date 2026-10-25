@@ -2165,7 +2165,8 @@ public class DbTester {
     
     /**
      * bergdb 005-34: getTrans refuses a position that cannot start a transaction before it
-     * reads, and the database goes on.
+     * reads, and the database goes on. Since bergdb 005-43 also a position at or past the end
+     * of the stream (end, end + 8 and d + 128 pass the other checks), which was a DbException.
      */
     @Nano
     public static void testGetTransRefusesBadPositions() {
@@ -2173,7 +2174,10 @@ public class DbTester {
         Trans t = db.trans().put("/a", "a0").build();
         db.execute(t);
         final int d = RecoverableStream.META_BLOCK_DISTANCE;
-        long[] bad = {-1, Long.MIN_VALUE, t.tpos + 4, t.tpos + 1, 0, 64, d, d + 120};
+        final long end = db.getStreamLength();
+        assertEquals(t.lastPos + 1, end);
+        long[] bad = {-1, Long.MIN_VALUE, t.tpos + 4, t.tpos + 1, 0, 64, d, d + 120,
+                end, end + 8, d + 128};
         for (long tpos : bad) {
             try {
                 db.getTrans(tpos);

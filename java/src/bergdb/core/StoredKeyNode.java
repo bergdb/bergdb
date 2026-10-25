@@ -11,6 +11,7 @@ import bergdb.dag.Spos;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.storage.StreamFormatException;
+import bergdb.storage.VersioningStreamException;
 
 /**
  * This class is responsible for how to store a KeyNode in the stream. Serialization/deserialization
@@ -98,7 +99,7 @@ public class StoredKeyNode implements StoredNode {
         byte version = buffer[offset];
         
         if (version != 2) {
-            throw new StreamFormatException("Cannot parse key node of format version "
+            throw new VersioningStreamException("Cannot parse key node of format version "
                     + version + ".");
         }
         
@@ -191,5 +192,24 @@ public class StoredKeyNode implements StoredNode {
         Assert.assertEquals(node.getKlong(0), storedNode.node.getKlong(0));
         Assert.assertEquals(node.getKlong(1), storedNode.node.getKlong(1));
         Assert.assertEquals(1234, storedNode.node.getPointerPos(1));
+    }
+    
+    /** A key node of another format version is refused as one (2026-10-25, bergdb 005-40). */
+    @Nano
+    private static void testRefusesOtherVersion() {
+        KeyNode node = new KeyNode();
+        node.addToEnd(Klong.createTime(5000), null, Spos.NULL);
+        long[] longBuffer = new long[StoredKeyNode.getByteSize(node) / 8];
+        StoredKeyNode.toLongs(node, longBuffer, 0, 200);
+        byte[] byteBuffer = Bytes.longsToBytesLE(longBuffer);
+        Assert.assertEquals(2, byteBuffer[5]);
+        byteBuffer[5] = 3;
+        
+        try {
+            StoredKeyNode.parse(byteBuffer, 0, 0);
+            throw new AssertionError("parsed");
+        } catch (VersioningStreamException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 3"));
+        }
     }
 }

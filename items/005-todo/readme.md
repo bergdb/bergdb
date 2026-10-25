@@ -31,6 +31,8 @@ Open
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10) | open |
 | [005-33](33-crashed-creation.md) | Decide | A database whose creation crashed never starts: a clear error, create it again at start, or create it whole or not at all (005-28) | open |
 | [005-38](38-writes-at-scale.md) | Investigate | Writes at scale: the stream grows to about 1.1 KB per key at 100M random keys, and loads into an index larger than the budget slow to under 100 puts a second on a slow disk (004-02) | open |
+| [005-41](41-is-durable.md) | Decide | `isDurable()`: whether a transaction is durable, answered at once, beside `sync()`; Frans's idea of 2026-10-13, from comments in the Pub API (006-05) | open |
+| [005-42](42-transaction-info.md) | Decide | `Connection.transactionInfo()` gives internal KVs, whose `key()` throws (an index entry, reclaim's row), and for a value that reclaim has rewritten, reclaim's transaction and its time; from a TODO of 2016 (006-05) | open |
 
 
 Closed
@@ -38,6 +40,8 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-43](43-fix-from-todos.md) | Fix | Two leftovers of TODO markers (006-05): `Db.getTrans` threw a `DbException` for a position at or past the end of the stream, and the Pub API's `IndexBuilder.dir` and `UsePrimaryBuilder.dir` a `BadFormatException` for a bad directory; now both throw `IllegalArgumentException`, as for the other positions that cannot start a transaction and for a bad key | done | 2026-10-25 |
+| [005-40](40-fix-refused-start-writes.md) | Fix | A start wrote to the stream before it checked the crypto key and the format: after a crash that ended the stream at or just inside a meta block, a start with a wrong key, or none, left a database that the right key could not start either; a newer record format was refused as corrupt data, with format 2's message. Now recovery reads the meta blocks first, and the versions of records and nodes are refused with a `VersioningStreamException` that says which BergDB wrote the stream. The format check that `DbStarter`'s TODO asked for had been made by the parsers since 2015 | done | 2026-10-25 |
 | [005-39](39-fix-trans-completed-before.md) | Fix | `RecoverableStream.getPosOfTransCompletedBefore`, where the iterators that do not start at an exact position start: its Javadoc promised the last transaction completed before the position, which it never searched for (a TODO said so), and in a stream cut by reclaim it threw `NullPointerException` or gave a transaction before the cut; now the Javadoc says what it gives, and in a cut stream it gives the first transaction after the cut that a meta block names | done | 2026-10-25 |
 | [005-31](31-fix-take-blocked.md) | Fix | A transaction whose dirty index nodes did not fit in one record stopped the startup pos for good; now one whose index nodes, by a bound at the largest node size, could take more than 15/16 of the record limit is refused before its go point (007-02, 007-03 step 1) | done | 2026-10-24 |
 | [005-35](35-fix-stop-and-close.md) | Fix | `stop()` lost the transactions still in the write buffer; `close()` returned at once after `stop()` or beside another `close()`; a writer that waited for room in the buffer waited for ever; now `stop()` starts one close that writes everything, in a thread that is not a daemon, and `close()` waits for it | done | 2026-10-24 |
@@ -86,7 +90,9 @@ is done. 005-27, 005-28 and 005-29, the fixes found in 005-11, are done.
 005-30 is done, and so is 005-34, found in it. 005-31 is done, which item
 007's deadline for `TransSeq.take` (007-01, D1) needed. 005-32
 is done, which 005-33's change needed; 005-33 waits for Frans. 005-35,
-005-36 and 005-37 are done, and so is 005-39.
+005-36 and 005-37 are done, and so are 005-39, 005-40 and 005-43. 005-41
+and 005-42 wait for Frans, best before 005-05's decision on publishing, as
+they concern the Pub API.
 
 
 Files
@@ -199,6 +205,19 @@ Files
   Javadoc, from the TODO under it, and a cut stream; done; the probe and
   its output, before and after the fix, in
   [39-fix-trans-completed-before/](39-fix-trans-completed-before/).
+* [40-fix-refused-start-writes.md](40-fix-refused-start-writes.md).
+  005-40, a start writes to the stream before it checks the crypto key
+  and the format; found from the TODO on the format version in
+  `DbStarter`; done; the probes, their runs before and after the fix, and
+  the prototype in
+  [40-fix-refused-start-writes/](40-fix-refused-start-writes/).
+* [41-is-durable.md](41-is-durable.md). 005-41, `isDurable()`: Frans's
+  idea, the options, and two findings on the syncs.
+* [42-transaction-info.md](42-transaction-info.md). 005-42, what
+  `transactionInfo()` gives; the probe and its output in
+  [42-transaction-info/](42-transaction-info/).
+* [43-fix-from-todos.md](43-fix-from-todos.md). 005-43, two fixes from the
+  TODO markers of 006-05; done.
 
 Log
 ===
@@ -667,3 +686,57 @@ on such a database. Startup does not use it; it reads from an exact
 position. Now the Javadoc says what the method gives, and in a cut
 stream it gives the first transaction after the cut that a meta block
 names. Tests; `before-commit.sh` passes.
+
+2026-10-25. Added 005-40, at Frans's request ("Investigate this and
+propose what to do. If you find it appropriate, add an item to 005."), by
+Claude (Opus 5.5, Claude Code), from another session's remark that the
+stream format version is not checked at start (`DbStarter.java:590`). It
+is: since 2015-07-24 the parsers check the format byte of each record and
+node they read, and recovery the meta blocks' version; the TODO there is
+from 2014. Probes on `425d7a7` found instead that recovery writes before
+it checks: after a crash that ends the stream at or just inside a meta
+block, a start with a wrong crypto key, or with none, appends the rest of
+the block, and then the right key fails at every start (at 0, 3 and 5
+bytes into the block; at 6, for 5 of 2,560 wrong keys). And a record of
+another format is refused as corrupt data, with the message for format 2.
+Proposed: read the meta blocks before that fill (a prototype passes
+`before-commit.sh` and `CrashTest`), `VersioningStreamException` for the
+versions of records and nodes, a rule for the next format change, and
+the stale TODO and constant gone. No change to `java/`.
+
+2026-10-25. 005-40 done, at Frans's request ("fix 005-40"), by Claude
+(Opus 5.5, Claude Code), as proposed: `RecoverableStream.recover()` reads
+the meta blocks before it fills out one that a crash has cut, so a start
+with a wrong crypto key, with none, or on a stream of another meta block
+version writes nothing, and the right key then starts the database. The
+versions of records and nodes are refused with a
+`VersioningStreamException`, now a `StreamFormatException`, whose message
+says whether an older or a newer BergDB wrote the stream. The rule for the
+next format change is in the Javadoc of `MetaBlock` and
+`StoredTrans.RECORD_FORMAT`, with one change: a node's new layout changes
+`RECORD_FORMAT` too. The TODO in `DbStarter` and
+`StoredTrans.CURRENT_FORMAT_VERSION` are gone. Tests; `before-commit.sh`
+and `level2.sh` pass, StreamDigest identical, the probes again. Found on
+the way, not fixed: `SalsaStream.getLength()` does not count what it
+appends, which BergDB's own stack does not meet.
+
+2026-10-25. Added 005-41 to 005-43, at Frans's request ("as proposed"), by
+Claude (Opus 5.5, Claude Code), from the review of the TODO markers in
+`java/` (006-05). 005-41: Frans's idea of `isDurable()`, from two comments
+in the Pub API, which are gone. 005-42: `transactionInfo()`, from a TODO
+of 2016 and a probe: a transaction that writes an index entry gives a KV
+whose `key()` throws, and a value that reclaim has rewritten gives
+reclaim's step, at 14,078 s for a put at 1 s. 005-43: two small fixes.
+005-11's option B names the unit tests of `addReplica`, from a TODO of
+2014 in `DbHelper`, which is gone. Found on the way, in 005-41: a sync
+waits for every byte of a transaction but its last, the commit byte; it
+is right because the buffer sizes in use are multiples of 4, and a core
+API caller can choose another.
+
+2026-10-25. 005-43 done, by Claude (Opus 5.5, Claude Code), as proposed:
+`Db.getTrans` refuses a position at or past the end of the stream with an
+`IllegalArgumentException`, where it threw a `DbException`, and
+`PubKeys.udir2idir`, which the Pub API's `IndexBuilder.dir` and
+`UsePrimaryBuilder.dir` use, refuses a bad directory with one, where it
+threw a `BadFormatException`. Two tests, which fail without the change;
+`before-commit.sh` passes.

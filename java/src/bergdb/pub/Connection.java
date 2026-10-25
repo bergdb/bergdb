@@ -262,10 +262,6 @@ public interface Connection extends ReadInterface {
      *             If the storage has failed: the database fails. See Database.
      */
     public void sync(SyncLevel syncLevel);
-    
-    // TODO LATER. Idea, 2026-10-13 (Frans): isDurable() and 
-    // isDurable(SyncLevel) for the last transaction started with this 
-    // connection, as for sync(). See the same idea in Transaction.
 }
 
 /*

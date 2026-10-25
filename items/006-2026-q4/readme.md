@@ -18,6 +18,7 @@ The list
 | [006-02](02-props-2017-vs-2026.md) | 2026-10-19 | Props, the 2013 to 2017 performance suite, on the 2017 and the 2026 code on F53, against cissi's numbers of 2015 and 2017 |
 | [006-03](03-fast-unit-tests.md) | 2026-10-20 | Fast unit tests (41.5 s to 10 s), the full versions as f-tests; `java/before-commit.sh`, the only commit gate |
 | [006-04](04-lean-guided-reading.md) | 2026-10-22 | Guided reading of the Lean model's definitions and theorem statements against sis-model.md, by Frans with Claude: the plan and the log |
+| [006-05](05-todo-markers.md) | 2026-10-25 | The TODO markers in `java/`: the 15, what was found and done with each, and the 3.0e6 that "result in problems" in 2015 |
 
 
 Files
@@ -36,6 +37,9 @@ Files
 * [04-lean-guided-reading.md](04-lean-guided-reading.md). 006-04, the plan:
   five sessions, each a part of sis-model.md against a file of `lean/SIS/`,
   what to check in the theorems, and the log of the sessions.
+* [05-todo-markers.md](05-todo-markers.md). 006-05, the review: the
+  markers in a table, what was done with each, and the bisect of T2; its
+  script and log in [05-todo-markers/](05-todo-markers/).
 
 
 Log
@@ -75,3 +79,9 @@ night tests and the medium conformance set on a clone of HEAD, at 02:00
 of `lean/` (definitions and theorem statements) against `docs/sis-model.md`,
 Frans reading and Claude (Opus 5.5, Claude Code) guiding; the plan, written
 by Claude, and the log of the sessions. First session 2026-10-23.
+
+2026-10-25. 006-05, at Frans's request, by Claude (Opus 5.5, Claude Code):
+the 15 TODO markers in `java/`, and what to do with each; Frans: "as
+proposed". Done with it: comments removed or changed, 005-41 to 005-43,
+and lines in 004-03, 005-11 and 007-03. Three markers were done in 005-39
+and 005-40, the same morning; one is kept for 007-03's step 3.

@@ -72,10 +72,10 @@ public class IndexBuilderImp implements IndexBuilder {
     }
 
     /**
-     * @throws BadFormatException
+     * @throws IllegalArgumentException
      */
     public IndexBuilder dir(String udir) {
-        String idir = PubKeys.udir2idir(udir);    // throws BadFormatException
+        String idir = PubKeys.udir2idir(udir);    // throws IllegalArgumentException
         
         if (dirList.size() >= 127) {
             throw new IllegalArgumentException("To many directories, more than 127 is not allowed.");

@@ -1,0 +1,104 @@
+Two streams of the same puts: one encrypted with key A, 327912 bytes; one not encrypted, 327912 bytes.
+
+K0. Encrypted, as written; key B:
+    BadCryptoKey: Likely, the wrong crypto key was used. Invalid magic bytes in stream.
+    The stream then: unchanged.
+  Then key A:
+    started, /k0 read
+    The stream then: unchanged.
+K1. Not encrypted, as written; key A:
+    BadCryptoKey: Likely, the wrong crypto key was used. Invalid magic bytes in stream.
+    The stream then: unchanged.
+  Then no key:
+    started, /k0 read
+    The stream then: unchanged.
+K2. Encrypted, the last 10 bytes cut (a torn last record); key B:
+    BadCryptoKey: Likely, the wrong crypto key was used. Invalid magic bytes in stream.
+    The stream then: unchanged.
+  Then key A:
+    started, /k0 read
+    The stream then: grew by 10 bytes at 327902: 10 not zero (126, 235, 194, 222, 150, 89, ...).
+K3. Encrypted, cut at 200000 (0 bytes into the meta block at 200000); key A:
+    started, /k0 read
+    The stream then: grew by 136 bytes at 200000: 135 not zero (243, 194, 156, 37, 221, 180, ...).
+K4. Encrypted, cut at 200000 (0 bytes into the meta block at 200000); key B:
+    BadCryptoKey: Likely, the wrong crypto key was used. Invalid magic bytes in stream.
+    The stream then: unchanged.
+  Then key A:
+    started, /k0 read
+    The stream then: grew by 136 bytes at 200000: 135 not zero (243, 194, 156, 37, 221, 180, ...).
+K5. Encrypted, cut at 200000 (0 bytes into the meta block at 200000); no key:
+    BadCryptoKey: Likely, the wrong crypto key was used. Invalid magic bytes in stream.
+    The stream then: unchanged.
+  Then key A:
+    started, /k0 read
+    The stream then: grew by 136 bytes at 200000: 135 not zero (243, 194, 156, 37, 221, 180, ...).
+K6. Not encrypted, cut at 200000 (0 bytes into the meta block at 200000); key A:
+    BadCryptoKey: Likely, the wrong crypto key was used. Invalid magic bytes in stream.
+    The stream then: unchanged.
+  Then no key:
+    started, /k0 read
+    The stream then: grew by 136 bytes at 200000: a meta block's fill-out in plain text ("berg", 154, zeros).
+K7. Encrypted, cut at 200003 (3 bytes into the meta block at 200000); key A:
+    started, /k0 read
+    The stream then: grew by 133 bytes at 200003: 132 not zero (37, 221, 180, 186, 141, 246, ...).
+K8. Encrypted, cut at 200003 (3 bytes into the meta block at 200000); key B:
+    BadCryptoKey: Likely, the wrong crypto key was used. Invalid magic bytes in stream.
+    The stream then: unchanged.
+  Then key A:
+    started, /k0 read
+    The stream then: grew by 133 bytes at 200003: 132 not zero (37, 221, 180, 186, 141, 246, ...).
+K9. Encrypted, cut at 200003 (3 bytes into the meta block at 200000); no key:
+    BadCryptoKey: Likely, the wrong crypto key was used. Invalid magic bytes in stream.
+    The stream then: unchanged.
+  Then key A:
+    started, /k0 read
+    The stream then: grew by 133 bytes at 200003: 132 not zero (37, 221, 180, 186, 141, 246, ...).
+K10. Not encrypted, cut at 200003 (3 bytes into the meta block at 200000); key A:
+    BadCryptoKey: Likely, the wrong crypto key was used. Invalid magic bytes in stream.
+    The stream then: unchanged.
+  Then no key:
+    started, /k0 read
+    The stream then: grew by 133 bytes at 200003: a meta block's fill-out in plain text ("berg", 154, zeros).
+K11. Encrypted, cut at 200005 (5 bytes into the meta block at 200000); key A:
+    started, /k0 read
+    The stream then: grew by 131 bytes at 200005: 130 not zero (180, 186, 141, 246, 245, 91, ...).
+K12. Encrypted, cut at 200005 (5 bytes into the meta block at 200000); key B:
+    BadCryptoKey: Likely, the wrong crypto key was used. Invalid magic bytes in stream.
+    The stream then: unchanged.
+  Then key A:
+    started, /k0 read
+    The stream then: grew by 131 bytes at 200005: 130 not zero (180, 186, 141, 246, 245, 91, ...).
+K13. Encrypted, cut at 200005 (5 bytes into the meta block at 200000); no key:
+    BadCryptoKey: Likely, the wrong crypto key was used. Invalid magic bytes in stream.
+    The stream then: unchanged.
+  Then key A:
+    started, /k0 read
+    The stream then: grew by 131 bytes at 200005: 130 not zero (180, 186, 141, 246, 245, 91, ...).
+K14. Not encrypted, cut at 200005 (5 bytes into the meta block at 200000); key A:
+    BadCryptoKey: Likely, the wrong crypto key was used. Invalid magic bytes in stream.
+    The stream then: unchanged.
+  Then no key:
+    started, /k0 read
+    The stream then: grew by 131 bytes at 200005: all zero.
+K15. Encrypted, cut at 200050 (50 bytes into the meta block at 200000); key A:
+    started, /k0 read
+    The stream then: grew by 86 bytes at 200050: 85 not zero (75, 90, 118, 30, 135, 150, ...).
+K16. Encrypted, cut at 200050 (50 bytes into the meta block at 200000); key B:
+    BadCryptoKey: Likely, the wrong crypto key was used. Invalid magic bytes in stream.
+    The stream then: unchanged.
+  Then key A:
+    started, /k0 read
+    The stream then: grew by 86 bytes at 200050: 85 not zero (75, 90, 118, 30, 135, 150, ...).
+K17. Encrypted, cut at 200050 (50 bytes into the meta block at 200000); no key:
+    BadCryptoKey: Likely, the wrong crypto key was used. Invalid magic bytes in stream.
+    The stream then: unchanged.
+  Then key A:
+    started, /k0 read
+    The stream then: grew by 86 bytes at 200050: 85 not zero (75, 90, 118, 30, 135, 150, ...).
+K18. Not encrypted, cut at 200050 (50 bytes into the meta block at 200000); key A:
+    BadCryptoKey: Likely, the wrong crypto key was used. Invalid magic bytes in stream.
+    The stream then: unchanged.
+  Then no key:
+    started, /k0 read
+    The stream then: grew by 86 bytes at 200050: all zero.
