@@ -34,6 +34,12 @@ Files
   against 2026.1 in turns. Outputs and scripts in
   [03-measurements/](03-measurements/).
 
+* [04-shenandoah-degenerated.md](04-shenandoah-degenerated.md). 009-04,
+  generational Shenandoah's two stops in P4's soak (182 ms, and 821 ms when
+  the second degenerated collection became a full one): the old generation
+  filled with garbage it did not reclaim; what it means for target 2, and
+  what could be done.
+
 
 Log
 ===
@@ -228,4 +234,9 @@ budget: gets on one thread 3 to 9 percent fewer (long keys 9, one
 unconfirmed alert), from 4 threads 19 percent more; the run with eviction
 off was skipped (the machine not quiet after the soak). The final branch
 `a04a418` passed `night.sh` (NIGHT OK).
+
+2026-10-26, 08:45. 009-04 written, at Frans's request ("Document the 'two
+degenerated collections' in 009-04."): the second of the two was upgraded to
+a full collection, which left 3.8 GB of an old generation of 8 GB, so the
+heap was full of garbage the collector had not reclaimed, not of live data.
 
