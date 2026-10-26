@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import bergdb.dag.Pointee;
+import bergdb.dag.Handle;
 import bergdb.dag.Klong;
 import bergdb.dag.KeyNode;
 import bergdb.dag.KlongWithPointer;
@@ -28,10 +30,14 @@ import bergdb.dag.TopNode;
  * <ol>
  * <li><b>The resident objects</b> (Residents.walk): every object reachable through memory
  * slots from the super root, the node table and D.</li>
- * <li><b>INV-CAN</b>: one canonical object per node id among them, the node table's; the
- * node table names canonical objects only (bergdb item 001, WP R8, change 3); and a clean
- * canonical object is its node's latest version (WP J3: a node released and loaded again
- * is made canonical from that version only), when the oracle knows the node.</li>
+ * <li><b>INV-CAN</b>: one canonical object per node id among them, the node table's; and a
+ * clean canonical object is its node's latest version (WP J3: a node released and loaded
+ * again is made canonical from that version only), when the oracle knows the node.</li>
+ * <li><b>Handles</b> (bergdb item 009, steps 3a and 3d): the node table's handles are live,
+ * each with an object of its node or none; a live handle that a pointer of a resident object
+ * holds is the table's (one live handle per node id); a dead handle has no object. Until
+ * step 3a the node table named canonical objects only (bergdb item 001, WP R8, change 3);
+ * with handles, a handle may hold a version read.</li>
  * <li><b>Pins</b>: every object of D (TransSeq) is resident, canonical, dirty and the node
  * table's; the super root is canonical and the table's; the record being written is empty
  * between transactions; and every dirty resident index object is in D.</li>
@@ -186,9 +192,17 @@ public final class Audit {
                         + " is the version at " + n.getSpos() + ", its latest is at " + latest);
             }
         }
-        for (Node n : tableObjects) {
-            if (n.isIndexNode() && !n.isCanonical()) {
-                fail(failures, "INV-CAN: the node table names a snapshot of node " + n.getId());
+        // The handles (bergdb item 009, step 3a): the table's are live, each with its node's
+        // object or none; a handle's object is of its node. A handle may hold a version that
+        // is not canonical (until step 3a the node table named canonical objects only).
+        for (Handle h : table.handles()) {
+            if (h.isDead()) {
+                fail(failures, "handles: the node table has a dead handle of node " + h.id);
+            }
+            Node o = h.obj;
+            if (o != null && o.getId() != h.id) {
+                fail(failures, "handles: the handle of node " + h.id + " holds an object of node "
+                        + o.getId());
             }
         }
 
@@ -216,6 +230,27 @@ public final class Audit {
             }
         }
 
+        // The handles in the pointers (bergdb item 009, step 3d): a live handle that a pointer
+        // of a resident object holds is the table's handle for its node (one live handle per
+        // node id, 009-02, 4.10); a dead one has no object.
+        for (Node x : resident) {
+            if (!x.isIndexNode()) continue;
+            int size = x.getSize();
+            for (int i = 0; i < size; i++) {
+                Pointee pe = x.getPointee(i);
+                if (!(pe instanceof Handle)) continue;
+                Handle h = (Handle) pe;
+                if (h.isDead()) {
+                    if (h.obj != null) {
+                        fail(failures, "handles: a dead handle of node " + h.id + " has an object");
+                    }
+                } else if (h.state() == Handle.LIVE && table.liveHandle(h.id) != h) {
+                    fail(failures, "handles: pointer " + i + " of node " + x.getId()
+                            + " holds a live handle of node " + h.id + " that is not the table's");
+                }
+            }
+        }
+
         // 4. INV-SLOT, for the canonical objects of current nodes and of D.
         final long time = db.lookupTime(Long.MAX_VALUE);
         final Set<Long> current = currentIds(db, time, oracle);
@@ -226,22 +261,24 @@ public final class Audit {
             int size = n.getSize();
             for (int i = 0; i < size; i++) {
                 Node c = n.getPointerNode(i);
-                long pos = n.getPointerPos(i);
+                long pos = c == null ? n.getSerializedRef(i) : n.getPointerPos(i);
                 if (Pointer.isNull(c, pos)) continue;
                 if (c == null && !Spos.isVpos(pos) && pos < firstPos) continue;      // M33
-                long id = c != null ? c.getId() : (Spos.isVpos(pos) ? pos : ns.readNodeHeader(pos).id());
+                Pointee pe = n.getPointee(i);
+                long id = c != null ? c.getId() : pe instanceof Handle ? ((Handle) pe).id
+                        : (Spos.isVpos(pos) ? pos : ns.readNodeHeader(pos).id());
                 Node canon = table.getNode(id);
                 if (canon != null && Residents.isPinned(canon, superRoot)) {
                     pinned++;
                     continue;
                 }
-                long ref;
-                if (c != null) {
-                    ref = c.getSpos();
-                } else {
-                    ref = pos;
+                // The reference a record would get now (the record rule, 009-02, 4.6), and
+                // Rule R, which the writer applies before it writes, unless a canonical
+                // object decides it.
+                long ref = n.getSerializedRef(i);
+                if (c == null || !c.isCanonical()) {
                     Long newPos = nc.newestInSection(id);
-                    if (newPos != null && newPos > ref) ref = newPos;
+                    if (newPos != null && Spos.newer(newPos, ref)) ref = newPos;
                 }
                 Long expected = oracle == null ? null : oracle.latest(id);
                 if (expected == null) {
@@ -295,7 +332,7 @@ public final class Audit {
             if (!ids.add(x.getId())) continue;
             if (x instanceof TopNode) {
                 TopNode t = (TopNode) x;
-                Node r = load(t.rootPointer, t.rootPointerPos, table, ns, nc, oracle);
+                Node r = load(t.getPointerNode(0), t.rootPointerPos, table, ns, nc, oracle);
                 if (r != null) todo.add(r);
             } else if (x instanceof KeyNode) {
                 KeyNode k = (KeyNode) x;
@@ -339,7 +376,7 @@ public final class Audit {
         long ref = latest != null ? latest : pos;
         if (latest == null) {
             Long newPos = nc.newestInSection(id);
-            if (newPos != null && newPos > ref) ref = newPos;
+            if (newPos != null && Spos.newer(newPos, ref)) ref = newPos;
         }
         if (Spos.isVpos(ref)) return null;
         return ns.readNode(ref);

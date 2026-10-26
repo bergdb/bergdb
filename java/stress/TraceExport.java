@@ -356,13 +356,16 @@ public class TraceExport {
     List<Ent> topEntries(TopNode tn, boolean memoryOnly, NodeStream ns, String context) {
         List<Ent> result = new ArrayList<Ent>();
         int t = timeIndex(tn.rootTime, context);
-        if (memoryOnly && tn.rootPointer == null) error("stream root pointer in run A, " + context);
-        long y = childId(tn.rootPointer, tn.rootPointer == null ? tn.rootPointerPos : Spos.NULL,
-                ns, context);
+        // With handles (bergdb item 009, step 3a): a pointer whose handle holds an object
+        // that may serve it is a memory pointer to that object; any other a stream pointer
+        // with the reference a record would get (Node.getSerializedRef).
+        Node root = tn.getPointerNode(0);
+        if (memoryOnly && root == null) error("stream root pointer in run A, " + context);
+        long y = childId(root, root == null ? tn.getSerializedRef(0) : Spos.NULL, ns, context);
         result.add(new Ent(t, "R " + y));
         for (int j = 0; j < tn.pointersLength; j++) {
-            TopNode z = tn.pointers[j];
-            long p = tn.pointersPos[j];
+            TopNode z = (TopNode) tn.getPointerNode(j + 1);
+            long p = z == null ? tn.getSerializedRef(j + 1) : tn.pointersPos[j];
             if (z == null && p == Spos.NULL) continue;
             if (memoryOnly && z == null) error("stream skip pointer in run A, " + context);
             result.add(new Ent(t, "S " + j + " " + childId(z, z == null ? p : Spos.NULL, ns, context)));
@@ -382,7 +385,14 @@ public class TraceExport {
         case Node.TYPE_KEY_NODE: {
             KeyNode k = (KeyNode) pn.obj;
             int size = k.size;
-            return keyEntries(k, k.pointers, k.pos, size, ns, true, "node " + pn.id);
+            Node[] view = new Node[size];
+            long[] refs = new long[size];
+            for (int i = 0; i < size; i++) {
+                if (Klong.getIntType(k.klongs[i]) != Klong.INT_TYPE_KEY) continue;
+                view[i] = k.getPointerNode(i);
+                refs[i] = view[i] == null ? k.getSerializedRef(i) : k.getPointerPos(i);
+            }
+            return keyEntries(k, view, refs, size, ns, true, "node " + pn.id);
         }
         case Node.TYPE_TOP_NODE:
             return topEntries((TopNode) pn.obj, true, ns, "node " + pn.id);
@@ -404,15 +414,11 @@ public class TraceExport {
             Node x = todo.poll();
             if (!seen.add(x)) continue;
             register(x, index);
-            if (x instanceof TopNode) {
-                TopNode tn = (TopNode) x;
-                if (tn.rootPointer != null) todo.add(tn.rootPointer);
-                for (TopNode z : tn.pointers) if (z != null) todo.add(z);
-            } else if (x instanceof KeyNode) {
-                KeyNode k = (KeyNode) x;
-                int size = k.size;
+            if (x.isIndexNode()) {
+                int size = x.getSize();
                 for (int i = 0; i < size; i++) {
-                    if (k.pointers[i] != null) todo.add(k.pointers[i]);
+                    Node c = x.getPointerNode(i);
+                    if (c != null) todo.add(c);
                 }
             }
         }
@@ -606,7 +612,7 @@ public class TraceExport {
                 TreeSet<Long> children = new TreeSet<Long>();
                 if (pn.obj instanceof TopNode) {
                     if (((TopNode) pn.obj).rootTime > tt) continue;
-                    KeyNode r = ((TopNode) pn.obj).rootPointer;
+                    KeyNode r = (KeyNode) ((TopNode) pn.obj).getPointerNode(0);
                     if (r != null) children.add(mid(r.getId()));
                 } else if (pn.obj instanceof KeyNode) {
                     // Java's own lookup: KeyNode.searchEq for each compare value.
@@ -960,7 +966,10 @@ public class TraceExport {
             int size = x.getSize();
             for (int i = 0; i < size; i++) {
                 Node c = x.getPointerNode(i);
-                long pos = x.getPointerPos(i);
+                // A stream pointer's reference: what a record would get (with handles,
+                // bergdb item 009, step 3a: the newer of the pointer's and its dead handle's
+                // written position).
+                long pos = c == null ? x.getSerializedRef(i) : x.getPointerPos(i);
                 if (Pointer.isNull(c, pos)) continue;
                 String context = "SLOT of node " + mid(x.getId()) + " after R(" + rec.index + ")";
                 long y;
@@ -989,7 +998,7 @@ public class TraceExport {
                     } else {
                         kind = "stream";
                         Long newPos = nc.newestInSection(y - 1);
-                        if (newPos != null && newPos > ref) ref = newPos;
+                        if (newPos != null && Spos.newer(newPos, ref)) ref = newPos;
                     }
                 }
                 String r = Spos.isVpos(ref) || !Spos.isValid(ref) ? "-" : recordOfPos(ref, context);
@@ -1087,9 +1096,10 @@ public class TraceExport {
         // Segments, from the root key nodes of the top nodes, through all pointers.
         Deque<KeyNode> todo = new ArrayDeque<KeyNode>();
         for (TopNode tn : topNodes) {
-            if (tn.rootPointer != null && !segment.containsKey(mid(tn.rootPointer.getId()))) {
-                segment.put(mid(tn.rootPointer.getId()), 0);
-                todo.add(tn.rootPointer);
+            KeyNode root = (KeyNode) tn.getPointerNode(0);
+            if (root != null && !segment.containsKey(mid(root.getId()))) {
+                segment.put(mid(root.getId()), 0);
+                todo.add(root);
             }
         }
         while (!todo.isEmpty()) {
@@ -1097,7 +1107,7 @@ public class TraceExport {
             int g = segment.get(mid(k.getId()));
             for (int i = 0; i < k.size; i++) {
                 if (Klong.getIntType(k.klongs[i]) != Klong.INT_TYPE_KEY) continue;
-                Node c = k.pointers[i];
+                Node c = k.getPointerNode(i);
                 if (!(c instanceof KeyNode)) continue;
                 int gc = k.isSegmentLeaf() ? g + 1 : g;
                 Integer old = segment.get(mid(c.getId()));
@@ -1136,7 +1146,7 @@ public class TraceExport {
             int lo = Integer.MAX_VALUE, hi = -1;
             for (int i = 0; i < k.size; i++) {
                 if (Klong.getIntType(k.klongs[i]) != Klong.INT_TYPE_KEY) continue;
-                Node c = k.pointers[i];
+                Node c = k.getPointerNode(i);
                 if (!(c instanceof KeyNode)) continue;
                 int hc = heightOf((KeyNode) c);
                 lo = Math.min(lo, hc);

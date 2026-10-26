@@ -3,6 +3,7 @@ package bergdb.core;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import bergdb.dag.Handle;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.GetData;
@@ -100,7 +101,7 @@ public class DbStarter {
         superRoot = (TopNode) n0;
         KeyNode keyNode = (KeyNode) n1;
         
-        superRoot.setPointer(0, keyNode, AccessData.DEFAULT_ACCESS_DATA);
+        superRoot.setPointer(0, Handle.of(keyNode), keyNode.getSpos());
         
         Cache3 nodeTable = db.internal().cache();
         superRoot.setCanonical(true);
@@ -202,7 +203,7 @@ public class DbStarter {
                 long pos = p.getPos();
                 Long id = Spos.isVpos(pos) ? Long.valueOf(pos) : posToId.get(pos);
                 Long newPos = id == null ? null : newById.get(id);
-                if (newPos != null && newPos > pos) {
+                if (newPos != null && Spos.newer(newPos, pos)) {
                     node.setPointer(i, null, newPos);
                 }
             }
@@ -242,7 +243,7 @@ public class DbStarter {
                 StoredNode storedPointee = posMap.get(p.pos);
                 if (storedPointee != null) {
                     Node pointee = storedPointee.getNode();
-                    node.setPointer(i, pointee, accessData);
+                    node.setPointer(i, Handle.pointeeOf(pointee), p.pos);
                 }
             }
         }
@@ -310,7 +311,7 @@ public class DbStarter {
         Long newPos = newById.get(id);     // Rule R; topPos names the latest version anyway
         assert newPos == null || newPos == pos : "topPos " + pos + " is not the newest version "
                 + newPos + " of top node " + id;
-        long ref = newPos != null && newPos > pos ? newPos : pos;
+        long ref = newPos != null && Spos.newer(newPos, pos) ? newPos : pos;
         
         Node node;
         StoredNode stored = posMap.get(ref);

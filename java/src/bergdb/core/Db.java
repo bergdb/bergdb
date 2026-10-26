@@ -108,6 +108,14 @@ public class Db {
     private final WriteLock writeLock;
     
     /**
+     * Writers waiting for writeLock in executeInner (bergdb item 009, step 3d): the eviction
+     * thread gives way to them (Eviction.EvictorRun), as a monitor is not fair and a busy
+     * eviction thread would keep the writer out.
+     */
+    private final java.util.concurrent.atomic.AtomicInteger writersWaiting =
+            new java.util.concurrent.atomic.AtomicInteger();
+    
+    /**
      * Sync object used to make sure writes from Db(), start(), execute(), are published
      * and made visible to threads calling getOne(), getMany().
      * It is typically used with an empty block: "synchronized (readSynch) {}".
@@ -164,7 +172,6 @@ public class Db {
     private DatabaseId databaseId;
     private final TransactionListener reclaimTransactionListener;
     private final Internal internal;
-    private final PointerLocks pointerLocks;
     private File createdTxtDir;
     private String createdTxtCryptoKeyInfo;
     private Cache3 cache;
@@ -215,14 +222,8 @@ public class Db {
         readSync = new ReadSync();
         x = new ExecuteData();
         keyModSet = new KeyModSet();
-        pointerLocks = new PointerLocks();
         
-        Cache.DbInfo dbInfo = new Cache.DbInfo() {
-
-            public PointerLocks getPointerLocks() {
-                return pointerLocks;
-            }
-        };
+        Cache.DbInfo dbInfo = new Cache.DbInfo() {};
         
         cache = new Cache3(dbInfo);
         cache.setSizeIndicator(b.cacheSizeIndicator);
@@ -837,6 +838,9 @@ public class Db {
                     "to-node has NULL id, from " + from + ", to: " + to;
                 
                 cache.pointerCreated(from, index, to);
+                if (to instanceof ValueNode) {
+                    eviction.largeValueCreated(from, index, (ValueNode) to);
+                }
             }
         };
         
@@ -916,11 +920,15 @@ public class Db {
         long tt = dbClock.transactionBegin();
         dbClock.transactionEnd();
         
+        // The root's id first, and canonical: the super root's pointer holds the root's
+        // handle, and a record names a canonical object's position (bergdb item 009, step
+        // 3a; the record rule, Handle.serializedRef).
         KeyNode root = KeyNode.nodeWithTime(tt);
+        setIdOfNode(root);
+        root.setCanonical(true);
         TopNode superRoot = TopDs.createSuperRootFromFirstKeyNode(tt, root, 
                 AccessData.DEFAULT_ACCESS_DATA, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
         
-        setIdOfNode(root);
         setIdOfNode(superRoot);
         
         MetaBlock meta = nodeStream.getMetaBlock();
@@ -1744,7 +1752,9 @@ public class Db {
         t.warmupGetData.pointerFollower = x.getData.pointerFollower;
         warmup(t);
         
+        writersWaiting.incrementAndGet();
         synchronized (writeLock) {
+            writersWaiting.decrementAndGet();
             // Again under the lock (bergdb 005-01): a writer that waited for the lock while
             // another one failed must not run on what the failed one left in memory.
             assertDbStateIsActive("execute");
@@ -2030,6 +2040,7 @@ public class Db {
         while (written.hasNext()) {
             cache.residents().grown(written.next());
         }
+        eviction.recordWritten(this, x.transNodes.indexNodeIterator());   // admission (009, 3b)
         if (oracle != null) oracle.appended(x.transNodes);
 
         reclaim.recordWritten(x.trans, x.transNodes);       // Statistics, if on.
@@ -2292,6 +2303,9 @@ public class Db {
 
         public Object getWriteLock() { return writeLock; }
         
+        /** Writers waiting for the write lock (bergdb item 009, step 3d; Eviction). */
+        public int writersWaiting() { return writersWaiting.get(); }
+        
         public Object getReadSynch() { return readSync; }
         
         public ExecuteData x() { return x; }
@@ -2346,13 +2360,6 @@ public class Db {
 
         public AppendOnlyStream getMainStream() {
             return storageManager.getMainStream();
-        }
-        
-        /**
-         * Returns a lock for the pointerIndex'th pointer of node 'node'.
-         */
-        public final Object getPointerLock(Node node, int pointerIndex) {
-            return pointerLocks.getLock(node, pointerIndex);
         }
         
         /**

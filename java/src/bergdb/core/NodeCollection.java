@@ -7,15 +7,18 @@ import java.util.Map;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.GetData;
+import bergdb.dag.Handle;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Keys;
 import bergdb.dag.Klong;
 import bergdb.dag.Node;
 import bergdb.dag.OpData;
+import bergdb.dag.Pointee;
 import bergdb.dag.Pointer;
 import bergdb.dag.PointerFollower;
 import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
+import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.storage.MetaBlock;
@@ -31,7 +34,16 @@ import bergdb.stream.MemoryStream;
  * <p>Since 2026-10-12 (docs/levels.md, level 2), the cache is the node table 
  * shared with Db: one canonical object per node, and Rule R for pointers followed into 
  * the stream. This object is the follower for readers; writer() is the follower for 
- * the writer. Following a memory pointer is the same for readers as before.</p>
+ * the writer.</p>
+ *
+ * <p>Since bergdb item 009 (items/009-handles/02-implementation-plan.md, 4.4), a pointer to
+ * an index node holds the node's handle (dag/Handle.java): a follow takes the handle's
+ * object if it may serve the pointer (Handle.usable), without a lock (step 3c; the barriers
+ * of 02, 3.4); else the slow path resolves the pointer to the node's live handle by the id,
+ * with the reference raised to the newer of the pointer's after Rule R and its dead
+ * handle's written position (written back into the pointer: no record changes), and loads
+ * that version into the handle under its monitor, so that two readers do not read the same
+ * node (T7a). A pointer to a value holds the value (Pointee).</p>
  * 
  * @author Frans Lundberg
  */
@@ -43,7 +55,6 @@ public class NodeCollection implements PointerFollower {
     
     private NodeStream nodeStream;
     private Cache3 cache;
-    private PointerLocks pointerLocks;
     private final PointerFollower writer = new WriterFollower();
     private volatile StartupSection section;
     
@@ -82,7 +93,7 @@ public class NodeCollection implements PointerFollower {
     public static volatile FirstTouchListener firstTouchListener = null;
     
     /**
-     * Told after a reader followed a stream pointer, when it holds no pointer lock any more
+     * Told after a reader followed a stream pointer, when it holds no lock any more
      * (bergdb item 001, WP J7: the capacity controller's load-triggered sweeps, Eviction).
      */
     public interface LoadListener {
@@ -129,7 +140,6 @@ public class NodeCollection implements PointerFollower {
     public NodeCollection(Cache.DbInfo dbInfo, NodeStream nodeStream, Cache3 nodeTable) {
         this.nodeStream = nodeStream;
         this.cache = nodeTable;
-        this.pointerLocks = dbInfo.getPointerLocks();
     }
     
     /**
@@ -156,61 +166,89 @@ public class NodeCollection implements PointerFollower {
 
     public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
         //
-        // It is possible that concurrent threads will read same node 
-        // from stream and try to add it to the cache. That is why we need to use existing 
-        // node from cache if there is one there. See [synchronized (cacheLock)]
-        // clauses in this method.
+        // With handles (bergdb item 009, step 3a; items/009-handles/02-implementation-plan.md,
+        // 4.4): pointer i holds its pointee's handle, or a value, or nothing yet. If the
+        // handle holds an object that may serve the pointer (Handle.usable), the follow
+        // takes it; else the slow path resolves the pointer to the node's live handle and
+        // loads a version into it, under the handle's monitor, so that two readers do not
+        // read the same node (followStreamPointer).
         //
-        // Note, it is possible to avoid holding 'lock' while reading from stream, 
-        // I believe. The node in the stream is immutable. 
-        // So, the algo would be to first acquire 'lock', then if pointer is
-        // a memory pointer (isMem() == true), just set access data and call 
-        // listener.pointerFollowed().
-        // If it is a stream pointer, release 'lock', read node, and acquire lock 
-        // again. Then do the same, if isMem() do the same as above, else handle
-        // the stream pointer case, but now we have read the node already and can 
-        // quickly do what we should without blocking I/O call while holding 'lock'.
-        //
-        
+
         Node result;
         assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
         assert predecessor != null : "predecessor is null";
         assert op.accessData == AccessData.ZERO || AccessData.isValid(op.accessData);
 
-        final Object pointerLock = pointerLocks.getLock(predecessor, pointerIndex);
-        boolean stream = false;
+        // The fast path, without a lock (bergdb item 009, step 3c; 009-02, 3.3 and 3.4):
+        // a plain read of a pointer to a handle (T6b: C1 to C4), an acquire read of a pointer
+        // to a value (C5), the handle's object by its volatile read (Handle.obj), and the
+        // test of Handle.usable. Until step 3c the whole follow held the pointer's lock
+        // (PointerLocks), the read of the stream included.
+        Pointee pointee = predecessor instanceof KeyNode
+                && !pointsToIndexNode(predecessor, pointerIndex)
+                ? ((KeyNode) predecessor).getPointeeAcquire(pointerIndex)
+                : predecessor.getPointee(pointerIndex);
+        long pointerPos = predecessor.getPointerPos(pointerIndex);
 
-        synchronized (pointerLock) {
-            Node pointerNode = predecessor.getPointerNode(pointerIndex);
-            long pointerPos = predecessor.getPointerPos(pointerIndex);
-
-            assert !Pointer.isNull(pointerNode, pointerPos) : "Pointer is null: " + pointerNode
-                    + ", " + pointerPos;
-
-            if (Pointer.isMem(pointerNode)) {
-                result = pointerNode;
-                if (op.accessData != AccessData.ZERO) {
-                    predecessor.setPointerAccessData(pointerIndex, op.accessData);
-                }
-                
-                op.pointerListener.pointerFollowed(
-                        predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
-            
-            } else {
-                result = followStreamPointer(predecessor, pointerIndex, pointerPos, op, false,
-                        null);
-                stream = true;
-            }
+        Node mem = memoryObject(pointee, pointerPos);
+        if (mem != null) {
+            touch(pointee, op);
+            op.pointerListener.pointerFollowed(
+                    predecessor, pointerIndex, mem, Pointer.TYPE_MEMORY);
+            return mem;
         }
-        
-        // The capacity controller (WP J7): outside the pointer lock.
-        if (stream) {
-            final LoadListener l = loadListener;
-            if (l != null) l.loaded();
+
+        // The slow path: the pair again under the node's monitor (C2), then resolve and
+        // load (followStreamPointer), under the handle's monitor (T7a). Locks are cheap
+        // beside a read of the stream.
+        synchronized (predecessor) {
+            pointee = predecessor.getPointee(pointerIndex);
+            pointerPos = predecessor.getPointerPos(pointerIndex);
         }
+        assert pointee != null || pointerPos != Spos.NULL : "Pointer is null, index "
+                + pointerIndex + " of " + predecessor.getId();
+        mem = memoryObject(pointee, pointerPos);
+        if (mem != null) {
+            touch(pointee, op);
+            op.pointerListener.pointerFollowed(
+                    predecessor, pointerIndex, mem, Pointer.TYPE_MEMORY);
+            return mem;
+        }
+        result = followStreamPointer(predecessor, pointerIndex, pointerPos,
+                (Handle) (pointee instanceof Handle ? pointee : null), op, false, null);
+
+        // The capacity controller (WP J7).
+        final LoadListener l = loadListener;
+        if (l != null) l.loaded();
         return result;
     }
-    
+
+    /**
+     * The object that pointee (what a pointer holds) gives a pointer with reference ref
+     * without a load: a value; or the handle's object if the handle is live and the object
+     * may serve the pointer (Handle.usable); else null.
+     */
+    static Node memoryObject(Pointee pointee, long ref) {
+        if (pointee instanceof ValueNode) return (ValueNode) pointee;
+        if (pointee == null) return null;
+        Handle h = (Handle) pointee;
+        Node o = h.obj;
+        return o != null && Handle.usable(o, ref) ? o : null;
+    }
+
+    /**
+     * A follow sets the pointee's CLOCK bit (bergdb item 009, step 3b; 009-02, 4.7), and only
+     * when it is clear, so that a hot handle's line is not written on every follow. Before
+     * step 3b (since 3a), the follow's access data went into the handle, for an age order;
+     * before 3a, into the pointer.
+     */
+    private static void touch(Pointee pointee, OpData op) {
+        if (pointee instanceof Handle) {
+            Handle h = (Handle) pointee;
+            if (h.ref == 0) h.ref = 1;
+        }
+    }
+
     /** The follower for the writer, see writer(). */
     private final class WriterFollower implements PointerFollower {
         public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
@@ -219,37 +257,36 @@ public class NodeCollection implements PointerFollower {
             assert predecessor != null : "predecessor is null";
             assert op.accessData == AccessData.ZERO || AccessData.isValid(op.accessData);
 
-            final Object pointerLock = pointerLocks.getLock(predecessor, pointerIndex);
-
-            synchronized (pointerLock) {
-                Node pointerNode = predecessor.getPointerNode(pointerIndex);
-                long pointerPos = predecessor.getPointerPos(pointerIndex);
-
-                assert !Pointer.isNull(pointerNode, pointerPos) : "Pointer is null: " 
-                        + pointerNode + ", " + pointerPos;
-
-                if (Pointer.isMem(pointerNode)) {
-                    result = pointerNode;
-                    if (!result.isCanonical()) {
-                        result = makeCanonical(predecessor, pointerIndex, result, op);
-                    }
-                    if (op.accessData != AccessData.ZERO) {
-                        predecessor.setPointerAccessData(pointerIndex, op.accessData);
-                    }
-                    
-                    op.pointerListener.pointerFollowed(
-                            predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
-                
-                } else {
-                    result = followStreamPointer(predecessor, pointerIndex, pointerPos, op, true,
-                            null);
-                }
+            Pointee pointee;
+            long pointerPos;
+            synchronized (predecessor) {        // a coherent pair (C2; bergdb 009, step 3c)
+                pointee = predecessor.getPointee(pointerIndex);
+                pointerPos = predecessor.getPointerPos(pointerIndex);
             }
-            
+
+            assert pointee != null || pointerPos != Spos.NULL : "Pointer is null, index "
+                    + pointerIndex + " of " + predecessor.getId();
+
+            Node mem = memoryObject(pointee, pointerPos);
+            if (mem != null) {
+                result = mem;
+                if (!result.isCanonical()) {
+                    result = cache.makeCanonical((Handle) pointee, result);
+                }
+                touch(pointee, op);
+                op.pointerListener.pointerFollowed(
+                        predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
+
+            } else {
+                result = followStreamPointer(predecessor, pointerIndex, pointerPos,
+                        (Handle) (pointee instanceof Handle ? pointee : null), op, true,
+                        null);
+            }
+
             return result;
         }
     }
-    
+
     /**
      * The follower for maintenance reads, see maintenance(). It counts the index nodes it
      * follows, by node id, which is the same whatever is resident (a reclaim step's reserve,
@@ -260,52 +297,60 @@ public class NodeCollection implements PointerFollower {
         private final Map<Long, Node> read = new HashMap<Long, Node>();
         private final java.util.HashSet<Long> indexIds = new java.util.HashSet<Long>();
         private long loads = 0, loadBytes = 0;
-        
+
         /** The index nodes followed so far, by id. */
         public int indexNodes() {
             return indexIds.size();
         }
-        
+
         /** The versions loaded from the stream so far. */
         public long loads() {
             return loads;
         }
-        
+
         /** The memory size of the versions loaded so far (Node.getMemSize()). */
         public long loadBytes() {
             return loadBytes;
         }
-        
+
         void loaded(Node node) {
             loads++;
             loadBytes += node.getMemSize();
         }
-        
+
         public Node followPointer(Node predecessor, int pointerIndex, OpData op) {
             assert pointerIndex >= 0 : "pointerIndex: " + pointerIndex;
             assert predecessor != null : "predecessor is null";
-            
-            final Object pointerLock = pointerLocks.getLock(predecessor, pointerIndex);
-            
-            synchronized (pointerLock) {
-                Node pointerNode = predecessor.getPointerNode(pointerIndex);
-                long pointerPos = predecessor.getPointerPos(pointerIndex);
-                
-                assert !Pointer.isNull(pointerNode, pointerPos) : "Pointer is null: " 
-                        + pointerNode + ", " + pointerPos;
-                
-                if (Pointer.isMem(pointerNode)) {
-                    if (pointerNode.isIndexNode()) indexIds.add(pointerNode.getId());
-                    op.pointerListener.pointerFollowed(
-                            predecessor, pointerIndex, pointerNode, Pointer.TYPE_MEMORY);
-                    return pointerNode;
+
+            {
+                Pointee pointee;
+                long pointerPos;
+                synchronized (predecessor) {    // a coherent pair (C2; bergdb 009, step 3c)
+                    pointee = predecessor.getPointee(pointerIndex);
+                    pointerPos = predecessor.getPointerPos(pointerIndex);
                 }
-                
-                Node result = read.get(pointerPos);
+
+                assert pointee != null || pointerPos != Spos.NULL : "Pointer is null, index "
+                        + pointerIndex + " of " + predecessor.getId();
+
+                Node mem = memoryObject(pointee, pointerPos);
+                if (mem != null) {
+                    if (mem.isIndexNode()) indexIds.add(mem.getId());
+                    op.pointerListener.pointerFollowed(
+                            predecessor, pointerIndex, mem, Pointer.TYPE_MEMORY);
+                    return mem;
+                }
+
+                // By the version the pointer names: a dead handle's written position counts
+                // (followStreamPointer; bergdb item 009, step 3a), so two pointers with the same
+                // position may name two versions.
+                Handle h = (Handle) (pointee instanceof Handle ? pointee : null);
+                long key = h == null ? pointerPos : newerPos(pointerPos, h.writtenPos);
+                Node result = read.get(key);
                 if (result == null) {
-                    result = followStreamPointer(predecessor, pointerIndex, pointerPos, op, 
+                    result = followStreamPointer(predecessor, pointerIndex, pointerPos, h, op,
                             false, this);
-                    read.put(pointerPos, result);
+                    read.put(key, result);
                     if (result.isIndexNode()) indexIds.add(result.getId());
                 } else {
                     op.pointerListener.pointerFollowed(
@@ -315,125 +360,252 @@ public class NodeCollection implements PointerFollower {
             }
         }
     }
-    
+
     /**
-     * Follows a stream pointer, the first touch of a node through this pointer
-     * (docs/levels.md, level 2). The caller holds the pointer lock. A maintenance read
-     * (maintenance not null) does not swizzle, and the maintenance follower counts a load.
+     * Follows a pointer whose handle holds no object that may serve it (or that holds no
+     * handle): the slow path of 009-02, 4.4. The caller holds no lock (since bergdb item
+     * 009, step 3c; before, the pointer's lock); every change of the predecessor's pointer
+     * is made under its monitor (setRef, setPointee; C2). A maintenance
+     * read (maintenance not null) does not swizzle, makes no handle and installs nothing, and
+     * the maintenance follower counts a load.
+     *
+     * <p>A pointer to a value: the value read at the pointer's position, put into the
+     * pointer (unless maintenance, or the cache policy says no). A pointer to an index node:
+     * (1) the node id: the handle's, a vpos, or the header at the position; (2) Rule R: the
+     * newest version in the startup section, written into the pointer's reference, which
+     * changes no record (the writer applies Rule R to every reference it writes, and Rule R
+     * applied twice gives what it gives once); (3) the node's live handle, made if it has
+     * none; (4) under the handle's monitor, its object if it may serve the pointer, else
+     * the version read at the newer of the reference and the position this process last
+     * wrote the node at, installed in the handle (Cache3.install), unless a better object is
+     * there; (5) the live handle into the pointer; (6) for the writer, the canonical
+     * object.</p>
      */
-    private Node followStreamPointer(Node predecessor, int pointerIndex, long pointerPos, 
-            OpData op, boolean isWriter, MaintenanceFollower maintenance) {
+    private Node followStreamPointer(Node predecessor, int pointerIndex, long pointerPos,
+            Handle handle, OpData op, boolean isWriter, MaintenanceFollower maintenance) {
         final boolean isMaintenance = maintenance != null;
-        
+
+        if (!pointsToIndexNode(predecessor, pointerIndex)) {
+            return followValuePointer(predecessor, pointerIndex, pointerPos, op, maintenance);
+        }
+
         // 1. The id of the node. A vpos is the id of a node that had not been written
         //    when the pointer was written.
-        
+
         final long id;
-        if (Spos.isVpos(pointerPos)) {
+        if (handle != null) {
+            id = handle.id;
+        } else if (Spos.isVpos(pointerPos)) {
             id = pointerPos;
         } else {
             assert pointerPos >= 0 : "bad pointerPos (" + pointerPos + "), to read from stream"
                     + ", pointerIndex:" + pointerIndex + ", predecessor:" + predecessor.print();
             id = nodeStream.readNodeHeader(pointerPos).id();
         }
-        
+
         // 2. The version the pointer names, after Rule R: a newer version in the startup
         //    section replaces it.
-        
+
         final StartupSection mySection = this.section;
         long ref = pointerPos;
         if (mySection != null) {
             Long newPos = mySection.newById.get(id);
-            if (newPos != null && newPos > ref) {
+            if (newPos != null && Spos.newer(newPos, ref)) {
                 ref = newPos;
             }
         }
-        
-        // 3. The node's canonical object, if it has one. Otherwise, read exactly version
-        //    ref, a snapshot that is not entered in the node table; during the
-        //    reconstruction only, a key node version of the section is cut back to the
-        //    startup time (M22). Never a snapshot from the table: bergdb item 001, WP R8,
-        //    change 3 (M27), the Level 4 loader, Mem.follow4 in lean/SIS/Evict.lean;
-        //    before 2026-10-17 also the table's snapshot if at least as new as ref, and a
-        //    version read was entered in the table.
-        
-        Node result = cache.getNode(id);
-        boolean usable = result != null && result.isCanonical();
-        boolean cutBack = false;
-        
-        if (!usable) {
-            if (Spos.isVpos(ref)) {
-                throw new StreamFormatException("Pointer to node " + id + ", which is not "
-                        + "in the stream and not in memory, index " + pointerIndex 
-                        + " of node " + predecessor.getId() + ".");
-            }
-            
-            Node node = nodeStream.readNode(ref);
-            assert node.getId() == id : "ids differ, " + node.getId() + " != " + id;
-            cache.tickAccessClock();
-            loads.incrementAndGet();
-            if (isMaintenance) maintenance.loaded(node);
-            
-            if (reconstructing && mySection != null && ref >= mySection.startPos 
-                    && node.getType() == Node.TYPE_KEY_NODE) {
-                ((KeyNode) node).toPreviousState(mySection.startupTime);
-                cutBack = true;
-            }
-            
-            result = node;
+        // A dead handle names the position this process last wrote the node at, if the node
+        // was evicted from a canonical object (Cache3.evict): the pointer then names that
+        // version, as an unswizzled pointer did before (the record rule, 009-02, 4.6).
+        if (handle != null) {
+            ref = newerPos(ref, handle.writtenPos);
         }
-        
+        if (ref != pointerPos && !isMaintenance) {
+            predecessor.raiseRef(pointerIndex, ref);    // never lowered (step 3d)
+        }
+
+        // 3. The node's live handle. A maintenance read makes none.
+
+        Handle live = handle != null && !handle.isDead() ? handle
+                : isMaintenance ? cache.liveHandle(id) : cache.liveOrNewHandle(id);
+
+        // 4. The handle's object, or a version read and installed, under the handle's monitor
+        //    (009-02, T7a). The loader's state is LOADING meanwhile, so eviction leaves the
+        //    handle alone; a handle that died since step 3 is resolved again.
+
+        Node result = null;
+        boolean read = false;
+        boolean cutBack = false;
+
+        while (result == null) {
+            if (live == null) {
+                // A maintenance read of a node with no live handle: read, keep nothing.
+                Node node = readVersion(id, ref, pointerIndex, predecessor, maintenance);
+                cutBack = cutBack(node, ref);
+                result = node;
+                read = true;
+                break;
+            }
+            synchronized (live) {
+                if (live.isDead()) {
+                    live = isMaintenance ? cache.liveHandle(id) : cache.liveOrNewHandle(id);
+                    continue;
+                }
+                Node o = live.obj;
+                if (o != null && Handle.usable(o, ref)) {
+                    result = o;
+                    break;
+                }
+                if (!live.casState(Handle.LIVE, Handle.LOADING)) {
+                    continue;       // evicted meanwhile: dead, resolved again above
+                }
+                try {
+                    Node node = readVersion(id, ref, pointerIndex, predecessor, maintenance);
+                    cutBack = cutBack(node, ref);
+                    read = true;
+                    // A version cut back to the startup time (the reconstruction) is not the
+                    // version at its position: only the writer's rerun, which makes it
+                    // canonical, keeps it in the handle (M22).
+                    if (!isMaintenance && op.cachePolicy.shouldCache(node)
+                            && (!cutBack || isWriter)) {
+                        result = cache.install(live, node);
+                        if (!Handle.usable(result, ref)) result = node;
+                    } else {
+                        result = node;
+                    }
+                } finally {
+                    live.casState(Handle.LOADING, Handle.LIVE);
+                }
+            }
+        }
+
         final FirstTouchListener ftl = firstTouchListener;
         if (ftl != null) {
-            ftl.firstTouch(id, ref, result, !usable, cutBack);
+            ftl.firstTouch(id, ref, result, read, cutBack);
         }
-        
-        // 4. Swizzle, and make canonical for the writer. Only a canonical object is in
-        //    the node table.
-        
-        if (!isMaintenance && op.cachePolicy.shouldCache(result)) {
-            if (result.isCanonical()) {
-                cache.pointerCreated(predecessor, pointerIndex, result);
-            } else if (!usable) {
-                cache.residents().added(result);     // a version read, now a snapshot in a slot
+
+        // A read that kept nothing in a new handle (a cache policy that caches nothing)
+        // leaves no empty handle in the table.
+        if (live != null && live.obj == null && !isMaintenance) {
+            cache.dropIfEmpty(live);
+        }
+
+        // 5. Swizzle: the live handle into the pointer. A reader's swizzle replaces only what
+        //    it read there (Node.swizzle; bergdb item 009, step 3d): another follow or the
+        //    writer may have put a newer handle there since, whose written position a dead
+        //    handle of this follow must not hide (EvictionReaderTester's readers under the
+        //    capacity controller found the lost update: stale reads). Before the swizzle,
+        //    step 2 raised the reference to the written position of the handle it replaces.
+        //    The writer's swizzle always replaces: its handle holds the canonical object.
+
+        if (!isMaintenance && live != null && op.cachePolicy.shouldCache(result)
+                && (!cutBack || isWriter) && predecessor.getPointee(pointerIndex) != live) {
+            if (isWriter) {
+                predecessor.setPointee(pointerIndex, live);
+            } else {
+                predecessor.swizzle(pointerIndex, handle, live);
             }
-            predecessor.setPointer(pointerIndex, result, op.accessData);
         }
-        
+
+        // 6. The canonical object, for the writer.
+
         if (isWriter && !result.isCanonical()) {
-            result = makeCanonical(predecessor, pointerIndex, result, op);
+            result = cache.makeCanonical(live, result);
         }
-        
+
+        if (live != null) touch(live, op);
         op.pointerListener.pointerFollowed(predecessor, pointerIndex, result, Pointer.TYPE_STREAM);
         return result;
     }
-    
+
     /**
-     * Makes the node of 'node' canonical, in the node table and in the predecessor's
-     * pointer. The caller holds the pointer lock.
+     * The newer of reference ref and position w (Spos.NULL: none): a stream position is
+     * newer than a vpos, as Rule R compares them.
      */
-    private Node makeCanonical(Node predecessor, int pointerIndex, Node node, OpData op) {
-        Node canonical = cache.makeCanonical(node);
-        if (canonical != node) {
-            cache.pointerCreated(predecessor, pointerIndex, canonical);
-            predecessor.setPointer(pointerIndex, canonical, op.accessData);
+    static long newerPos(long ref, long w) {
+        if (!Spos.isValid(w) || Spos.isVpos(w)) return ref;
+        return Spos.isVpos(ref) || Spos.isNull(ref) || w > ref ? w : ref;
+    }
+
+    /**
+     * Reads version 'pos' of node 'id' from the stream; during the reconstruction only, a key
+     * node version of the section is cut back to the startup time (M22).
+     */
+    private Node readVersion(long id, long pos, int pointerIndex, Node predecessor,
+            MaintenanceFollower maintenance) {
+        if (Spos.isVpos(pos)) {
+            throw new StreamFormatException("Pointer to node " + id + ", which is not "
+                    + "in the stream and not in memory, index " + pointerIndex
+                    + " of node " + predecessor.getId() + ".");
         }
-        return canonical;
+        Node node = nodeStream.readNode(pos);
+        assert node.getId() == id : "ids differ, " + node.getId() + " != " + id;
+        cache.tickAccessClock();
+        loads.incrementAndGet();
+        if (maintenance != null) maintenance.loaded(node);
+
+        final StartupSection mySection = this.section;
+        if (reconstructing && mySection != null && pos >= mySection.startPos
+                && node.getType() == Node.TYPE_KEY_NODE) {
+            ((KeyNode) node).toPreviousState(mySection.startupTime);
+        }
+        return node;
+    }
+
+    /** True if a version just read at pos was cut back by readVersion. */
+    private boolean cutBack(Node node, long pos) {
+        final StartupSection mySection = this.section;
+        return reconstructing && mySection != null && pos >= mySection.startPos
+                && node.getType() == Node.TYPE_KEY_NODE;
+    }
+
+    /**
+     * Follows a stream pointer to a value: the value read at the pointer's position, and put
+     * into the pointer (a direct pointer, no handle; 009-02, 4.8), unless maintenance or the
+     * cache policy says no (large values).
+     */
+    private Node followValuePointer(Node predecessor, int pointerIndex, long pointerPos,
+            OpData op, MaintenanceFollower maintenance) {
+        final boolean isMaintenance = maintenance != null;
+        assert pointerPos >= 0 && !Spos.isVpos(pointerPos) : "bad value pointer " + pointerPos
+                + ", index " + pointerIndex + " of " + predecessor.getId();
+        Node node = nodeStream.readNode(pointerPos);
+        cache.tickAccessClock();
+        loads.incrementAndGet();
+        if (isMaintenance) maintenance.loaded(node);
+
+        final FirstTouchListener ftl = firstTouchListener;
+        if (ftl != null) {
+            ftl.firstTouch(node.getId(), pointerPos, node, true, false);
+        }
+
+        if (!isMaintenance && op.cachePolicy.shouldCache(node)) {
+            // Into the pointer, and counted with its holder (Residents.valueIn), under the
+            // holder's monitor, as eviction counts the holder out (bergdb item 009, step 3b).
+            synchronized (predecessor) {
+                if (predecessor.getPointee(pointerIndex) == null) {
+                    predecessor.setPointee(pointerIndex, (ValueNode) node);
+                    cache.residents().valueIn(predecessor, (ValueNode) node);
+                }
+            }
+        }
+        op.pointerListener.pointerFollowed(predecessor, pointerIndex, node, Pointer.TYPE_STREAM);
+        return node;
     }
 
     /**
      * Sets Rule R (docs/sis-model.md, 6.2) for this process: newById maps the id of
      * each index node that has a version in the startup section to the position of its
-     * newest version there. Key node versions from the section are cut back to their 
+     * newest version there. Key node versions from the section are cut back to their
      * state at startupTime when read. Called by DbStarter.
      */
-    public void setStartupSection(Map<Long, Long> newById, long sectionStartPos, 
+    public void setStartupSection(Map<Long, Long> newById, long sectionStartPos,
             long startupTime) {
         this.section = new StartupSection(new HashMap<Long, Long>(newById), sectionStartPos,
                 startupTime);
         this.reconstructing = true;
     }
-    
+
     /**
      * Ends the reconstruction (DbStarter): from now on, a version read through a pointer is
      * never cut back to the startup time (M22). Rule R stays.
@@ -441,109 +613,108 @@ public class NodeCollection implements PointerFollower {
     public void endReconstruction() {
         this.reconstructing = false;
     }
-    
+
     /** The position of the newest version of node 'id' in the startup section, or null. */
     Long newestInSection(long id) {
         StartupSection mySection = this.section;
         return mySection == null ? null : mySection.newById.get(id);
     }
-    
-    
+
+
     /**
      * Before an index node is written: makes each of its pointers to an index node name
      * the latest version of that node (docs/levels.md, level 2; the Lean model's
      * `Mem.refOf`). A pointee in the pinned set, a node of D or of the record being written
      * (its canonical object, dirty: the writer calls this before it cleans the record's
-     * nodes), is resolved by node id: the pointer becomes a memory pointer to its
-     * canonical object, so a node written in the same record is named by its new position,
-     * and a node in D is seen by the still-dirty test (DbHelper.hasDirtyChild). Any other
-     * pointee keeps its slot: a memory pointer names its object's position, a stream
-     * pointer the version it names after Rule R. No snapshot from the node table (bergdb
-     * item 001, WP R8, change 1; docs/level4-alignment.md, M20, M21, M26: with the
-     * invariant INV-SLOT, the slot names the latest version, so the references are
-     * today's). Called by the writer.
+     * nodes), is resolved by node id: the pointer gets the node's live handle, which holds
+     * the canonical object, so a node written in the same record is named by its new
+     * position, and a node in D is seen by the still-dirty test (DbHelper.hasDirtyChild).
+     * Any other pointee keeps its pointer: its reference after Rule R, or the position this
+     * process last wrote the node at (the record rule, 009-02, 4.6; KeyNode.getSerializedRef).
+     * Called by the writer.
      */
     public void resolvePointers(Node node, long accessData) {
         final int count = node.getSize();
-        
+
         for (int i = 0; i < count; i++) {
             if (!pointsToIndexNode(node, i)) {
                 continue;       // Value nodes have one version and are never dirty.
             }
-            
-            final Object pointerLock = pointerLocks.getLock(node, i);
-            
-            synchronized (pointerLock) {
-                Node child = node.getPointerNode(i);
+
+            synchronized (node) {               // C2 (bergdb item 009, step 3c)
+                Pointee pointee = node.getPointee(i);
                 long pos = node.getPointerPos(i);
-                if (Pointer.isNull(child, pos) || (child != null && child.isCanonical())) {
+                Handle h = (Handle) pointee;
+                if (h == null && Spos.isNull(pos)) {
                     continue;
                 }
-                
+                Node o = h == null ? null : h.obj;
+                if (o != null && o.isCanonical()) {
+                    continue;
+                }
+
                 // 2026-10-13 (Reclaim.Tester.testWritesAfterCut): a stream pointer
                 // below the first position of the stream names a version that reclaim cut
                 // away. It is dead for every lookup time still available, so it is left as
                 // it is; reading its header failed.
-                if (child == null && !Spos.isVpos(pos) && pos < nodeStream.getFirstPos()) {
+                if (h == null && !Spos.isVpos(pos) && pos < nodeStream.getFirstPos()) {
                     continue;
                 }
-                
-                long id = child != null ? child.getId() : idOf(pos);
-                
-                // 1. A pinned pointee, by node id: its canonical object.
-                Node pinned = cache.getNode(id);
-                if (pinned != null && pinned != child && pinned.isCanonical() && pinned.isDirty()) {
-                    cache.pointerCreated(node, i, pinned);
-                    node.setPointer(i, pinned, accessData);
+
+                long id = h != null ? h.id : idOf(pos);
+
+                // 1. A pinned pointee, by node id: its live handle, with its canonical object.
+                Handle live = cache.liveHandle(id);
+                Node pinned = live == null ? null : live.obj;
+                if (pinned != null && pinned.isCanonical() && pinned.isDirty()) {
+                    if (h != live) node.setPointee(i, live);
                     continue;
                 }
-                
-                // 2. Any other: the slot. A stream pointer names the version after Rule R.
-                if (child == null) {
-                    long ref = pos;
-                    Long newPos = newestInSection(id);
-                    if (newPos != null && newPos > ref) {
-                        ref = newPos;
-                    }
-                    if (ref != pos) {
-                        node.setPointer(i, null, ref);
-                    }
+
+                // 2. Any other: the pointer's reference after Rule R.
+                long ref = pos;
+                Long newPos = newestInSection(id);
+                if (newPos != null && Spos.newer(newPos, ref)) {
+                    ref = newPos;
+                }
+                if (ref != pos) {
+                    node.setRef(i, ref);
                 }
             }
         }
     }
-    
+
     /**
      * Rule 4 at startup (DbStarter.linkD; the Lean model's `Mem.linkD`; bergdb item 001,
-     * WP R8, change 1: docs/level4-alignment.md, M44): each stream pointer of 'node' to an
-     * index node that has a canonical object becomes a memory pointer to it, by node id. A
-     * stream pointer below the first position of the stream is left as it is (M33).
+     * WP R8, change 1: docs/level4-alignment.md, M44): each pointer of 'node' to an index
+     * node that has a canonical object gets that node's live handle, by node id. A stream
+     * pointer below the first position of the stream is left as it is (M33).
      */
     public void linkToCanonical(Node node, long accessData) {
         final int count = node.getSize();
-        
+
         for (int i = 0; i < count; i++) {
             if (!pointsToIndexNode(node, i)) {
                 continue;
             }
-            synchronized (pointerLocks.getLock(node, i)) {
-                Node child = node.getPointerNode(i);
+            synchronized (node) {               // C2 (bergdb item 009, step 3c)
+                Pointee pointee = node.getPointee(i);
                 long pos = node.getPointerPos(i);
-                if (child != null || Pointer.isNull(child, pos)) {
+                if (pointee != null || Spos.isNull(pos)) {
                     continue;
                 }
                 if (!Spos.isVpos(pos) && pos < nodeStream.getFirstPos()) {
                     continue;
                 }
-                Node canonical = cache.getNode(idOf(pos));
+                Handle live = cache.liveHandle(idOf(pos));
+                Node canonical = live == null ? null : live.obj;
                 if (canonical != null && canonical.isCanonical()) {
-                    cache.pointerCreated(node, i, canonical);
-                    node.setPointer(i, canonical, accessData);
+                    node.setPointee(i, live);
                 }
             }
         }
     }
-    
+
     /** True if pointer i of 'node' points to an index node: a key node or a top node. */
     static boolean pointsToIndexNode(Node node, int i) {
         switch (node.getType()) {
@@ -605,10 +776,7 @@ public class NodeCollection implements PointerFollower {
     }
     
     private static Cache.DbInfo testDbInfo() {
-        return new Cache.DbInfo() {
-            final PointerLocks locks = new PointerLocks();
-            public PointerLocks getPointerLocks() { return locks; }
-        };
+        return new Cache.DbInfo() {};
     }
     
     /** A key node version: id, position, and one key klong at each of the given times. */
@@ -673,10 +841,11 @@ public class NodeCollection implements PointerFollower {
     /**
      * Rule R: a pointer to an old version of a node that has a version in the startup 
      * section, or a vpos for it, is followed to the node's newest version in the 
-     * section, cut back to the startup time during the reconstruction. The version read
-     * is not entered in the node table, so a second pointer reads it again (bergdb item
-     * 001, WP R8, change 3: M27); before 2026-10-17 the second pointer got the first's
-     * object from the table.
+     * section, cut back to the startup time during the reconstruction. A version cut back
+     * is not the version at its position, so a reader does not keep it in the node's
+     * handle (only the writer's rerun does, which makes it canonical), and a second pointer
+     * reads it again (bergdb item 001, WP R8, change 3: M27; with handles since bergdb item
+     * 009, step 3a). The pointer's reference becomes Rule R's, which changes no record.
      */
     @Nano
     private static void testFollowRuleR() {
@@ -689,11 +858,13 @@ public class NodeCollection implements PointerFollower {
         c.setStartupSection(newById, 250, 25);
         GetData op = testGetData(new int[1]);
         
-        Node a = c.followPointer(testParent(401, 100), 0, op);
+        TopNode parent = testParent(401, 100);
+        Node a = c.followPointer(parent, 0, op);
         Assert.assertEquals("old version followed to the newest", 300, a.getSpos());
         Assert.assertEquals("cut at startup time 25", 4, a.getSize());
+        Assert.assertEquals("the reference after Rule R", 300, parent.getPointerPos(0));
         
-        Assert.assertTrue("not entered in the node table", c.cache.getNode(101) == null);
+        Assert.assertTrue("not in the node's handle", c.cache.getNode(101) == null);
         
         Node b = c.followPointer(testParent(501, 101), 0, op);
         Assert.assertEquals("vpos followed to the same version", 300, b.getSpos());
@@ -701,39 +872,50 @@ public class NodeCollection implements PointerFollower {
     }
     
     /**
-     * The loader takes a node's canonical object, or reads exactly the version the pointer
-     * names: a newer snapshot in the node table is not taken, and the version read is
-     * not entered in the table (bergdb item 001, WP R8, change 3: M27). Before 2026-10-17
-     * the snapshot was taken.
+     * The loader takes the object of the node's handle if it may serve the pointer: a
+     * canonical object, or a version at the pointer's reference or later (lemma M), without
+     * a read; else it reads the version the pointer names and puts it into the handle, where
+     * it replaces an older version (bergdb item 009, step 3a; 009-02, 4.4). From 2026-10-17
+     * to step 3a a newer snapshot in the node table was not taken (M27): the record a
+     * pointer gave depended on the object it led to, which handles no longer do (4.6).
      */
     @Nano
-    private static void testLoaderReadsTheVersionNamed() {
+    private static void testLoaderTakesTheHandlesObject() {
         TestStream stream = new TestStream();
         stream.nodes.put(100L, testKeyNode(101, 100, 10));
+        stream.nodes.put(300L, testKeyNode(101, 300, 10, 20, 30));
         NodeCollection c = new NodeCollection(testDbInfo(), stream);
         KeyNode snapshot = testKeyNode(101, 200, 10, 20);
         c.cache.register(snapshot);
+        snapshot.setCanonical(false);
         GetData op = testGetData(new int[1]);
         
         TopNode parent = testParent(301, 100);
         Node a = c.followPointer(parent, 0, op);
-        Assert.assertEquals("the version named", 100, a.getSpos());
-        Assert.assertTrue("not the snapshot", a != snapshot);
-        Assert.assertTrue("the table keeps its object", c.cache.getNode(101) == snapshot);
+        Assert.assertTrue("the newer version in the handle", a == snapshot);
+        Assert.assertEquals("no read", 0, stream.reads);
         Assert.assertTrue("swizzled", parent.getPointerNode(0) == a);
+        Assert.assertEquals("the reference kept", 100, parent.getPointerPos(0));
         
-        // Once the table's object is canonical, the loader takes it, without a read.
-        snapshot.setCanonical(true);
-        Node b = c.followPointer(testParent(401, 100), 0, op);
-        Assert.assertTrue("the canonical object", b == snapshot);
+        // A pointer to a newer version reads it, and the handle takes it.
+        Node b = c.followPointer(testParent(401, 300), 0, op);
+        Assert.assertEquals("the version named", 300, b.getSpos());
         Assert.assertEquals("one read", 1, stream.reads);
+        Assert.assertTrue("the handle's object", c.cache.getNode(101) == b);
+        Assert.assertTrue("the first pointer gets it too", parent.getPointerNode(0) == b);
+        
+        // A canonical object serves every pointer.
+        b.setCanonical(true);
+        Node d = c.followPointer(testParent(501, 300), 0, op);
+        Assert.assertTrue("the canonical object", d == b);
+        Assert.assertEquals("still one read", 1, stream.reads);
     }
     
     /**
      * The maintenance follower (bergdb item 001, WP R8, change 5: M28) loads as the
-     * readers' follower does, but leaves the slot a stream pointer and the node table
-     * without the version read; it reads a version once; a memory pointer gives its
-     * object, with the slot's access data unchanged.
+     * readers' follower does, but leaves the pointer as it is and the node table without
+     * the version read (and without a handle for it); it reads a version once; a memory
+     * pointer gives its object, with the handle's access data unchanged.
      */
     @Nano
     private static void testMaintenanceFollower() {
@@ -757,39 +939,26 @@ public class NodeCollection implements PointerFollower {
         Assert.assertEquals("listener calls", 2, calls[0]);
         
         TopNode memParent = testParent(501, 100);
-        memParent.setPointer(0, a, AccessData.DEFAULT_ACCESS_DATA);
-        op.accessData = AccessData.DEFAULT_ACCESS_DATA - 100;
+        Handle h = Handle.of(a);
+        memParent.setPointee(0, h);
         Assert.assertTrue("a memory pointer's object", m.followPointer(memParent, 0, op) == a);
-        Assert.assertEquals("access data unchanged", AccessData.DEFAULT_ACCESS_DATA, 
-                memParent.getPointerAccessData(0));
+        Assert.assertEquals("the CLOCK bit unchanged", 0, h.ref);
         
         c.followPointer(testParent(601, 100), 0, op);
         Assert.assertEquals("a reader reads it again", 2, stream.reads);
     }
     
     /**
-     * Access data (bergdb item 001, WP R8, change 4: M23, M24): written only into a memory
-     * pointer, so that a stream pointer's position survives a reader that saw a memory
-     * pointer before an unswizzle; Spos.NULL from a stream pointer; a memory pointer read as
-     * a pair; and the access clock advances at every node read from the stream, not at a
-     * follow of a memory pointer.
+     * The CLOCK bit (bergdb item 009, step 3b): a follow sets it in the pointee's handle,
+     * and never writes into the pointer, whose reference stays; and the access clock
+     * advances at every node read from the stream, not at a follow of a memory pointer.
+     * (From 2026-10-17 to step 3a, access data was written only into a memory pointer, so
+     * that a stream pointer's position survived a reader that saw a memory pointer before an
+     * unswizzle: M23, M24; in step 3a into the handle.)
      */
     @Nano
     private static void testAccessData() {
         TopNode top = testParent(301, 100);
-        top.setPointerAccessData(0, AccessData.DEFAULT_ACCESS_DATA);
-        Assert.assertEquals("a top node's stream pointer keeps its position", 100, 
-                top.getPointerPos(0));
-        Assert.assertEquals("no access data", Spos.NULL, top.getPointerAccessData(0));
-        
-        KeyNode parent = new KeyNode(false);
-        parent.addToEnd(Klong.createTime(10), null, -1);
-        parent.addToEnd(Klong.compareValueToKeyKlong(Keys.toSegments("k")[0]), null, 100);
-        parent.setPointerAccessData(1, AccessData.DEFAULT_ACCESS_DATA);
-        Assert.assertEquals("a key node's stream pointer keeps its position", 100, 
-                parent.getPointerPos(1));
-        Assert.assertEquals("no access data", Spos.NULL, parent.getPointerAccessData(1));
-        
         TestStream stream = new TestStream();
         stream.nodes.put(100L, testKeyNode(101, 100, 10));
         NodeCollection c = new NodeCollection(testDbInfo(), stream);
@@ -801,12 +970,15 @@ public class NodeCollection implements PointerFollower {
         Pointer p = new Pointer();
         top.getPointer(0, p);
         Assert.assertTrue("a memory pointer", p.node == a);
-        Assert.assertEquals("its access data", AccessData.DEFAULT_ACCESS_DATA, p.pos);
-        top.setPointerAccessData(0, AccessData.DEFAULT_ACCESS_DATA - 5);
-        Assert.assertEquals("set", AccessData.DEFAULT_ACCESS_DATA - 5, top.getPointerAccessData(0));
+        Assert.assertEquals("its reference", 100, p.pos);
+        Handle h = (Handle) top.getPointee(0);
+        Assert.assertEquals("the CLOCK bit, in the handle", 1, h.ref);
         
+        h.ref = 0;
         Assert.assertTrue("followed from memory", c.followPointer(top, 0, op) == a);
         Assert.assertEquals("no read, no tick", clock + 1, c.cache.accessClock());
+        Assert.assertEquals("the CLOCK bit set again", 1, h.ref);
+        Assert.assertEquals("the reference stays", 100, top.getPointerPos(0));
     }
     
     /**

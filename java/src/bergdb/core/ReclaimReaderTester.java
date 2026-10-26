@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import bergdb.dag.Handle;
 import bergdb.dag.GetMany;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Klong;
@@ -312,7 +313,7 @@ public class ReclaimReaderTester {
                         Thread.yield();
                         continue;
                     }
-                    parent.setPointer(1, child, -10000);
+                    parent.setPointee(1, Handle.of(child));     // a reader's swizzle (009)
                     complete.incrementAndGet();
                 }
             }
@@ -376,15 +377,17 @@ public class ReclaimReaderTester {
         final KeyNode parent = KeyNode.nodeWithTime(1);
         final KeyNode child = new KeyNode();
         final long streamPos = 123456;
-        final long accessData = -10000;
+        final Handle h = Handle.of(child);
         parent.setPointer(0, null, streamPos);
         final AtomicBoolean stop = new AtomicBoolean(false);
         
+        // With handles (bergdb item 009, step 3a) a reader's swizzle changes what the pointer
+        // holds, never its reference: the pair stays coherent by construction.
         Thread flipper = new Thread(new Runnable() {
             public void run() {
                 while (!stop.get()) {
-                    parent.setPointer(0, child, accessData);    // What a reader does.
-                    parent.setPointer(0, null, streamPos);
+                    parent.setPointee(0, h);    // What a reader does.
+                    parent.setPointee(0, null);
                 }
             }
         });

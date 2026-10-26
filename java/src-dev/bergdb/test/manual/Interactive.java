@@ -200,7 +200,7 @@ public class Interactive {
         PointerVisitor visitor = new PointerVisitor() {
             
             public void visitPointer(Node from, Pointer pointer) {
-                synchronized (db.internal().getPointerLock(from, pointer.index)) {
+                synchronized (from) {   // the node's monitor (bergdb item 009; was the pointer lock)
                     Node pointee = pointer.node;
                     
                     if (pointee != null && !pointee.isDirty()) {

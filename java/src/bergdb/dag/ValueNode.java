@@ -11,7 +11,7 @@ import bergdb.nanotest.Nano;
  * 
  * @author Frans Lundberg
  */
-public final class ValueNode implements Node {
+public final class ValueNode implements Node, Pointee {
     // NOTE The Node.TYPE_VALUE/DELETE is confusing!
     // In this class, the value node is considered a delete if value == null.
     
@@ -262,7 +262,30 @@ public final class ValueNode implements Node {
     /**
      * This method should never be called. Always throws a Bug.
      */
-    public void setPointer(int index, Node node, long spos) {
+    public void setPointer(int index, Pointee pointee, long ref) {
+        throw new Bug("A ValueNode has no pointers to set, " + this.toString());
+    }
+    
+    /** This method should never be called. Always throws a Bug. */
+    public Pointee getPointee(int index) {
+        throw new Bug("A ValueNode has no pointers, " + this.toString());
+    }
+    
+    /** This method should never be called. Always throws a Bug. */
+    public void setPointee(int index, Pointee pointee) {
+        throw new Bug("A ValueNode has no pointers to set, " + this.toString());
+    }
+    
+    /** This method should never be called. Always throws a Bug. */
+    public void setRef(int index, long ref) {
+        throw new Bug("A ValueNode has no pointers to set, " + this.toString());
+    }
+
+    public void raiseRef(int index, long ref) {
+        throw new Bug("A ValueNode has no pointers to set, " + this.toString());
+    }
+
+    public boolean swizzle(int index, Pointee expected, Pointee pointee) {
         throw new Bug("A ValueNode has no pointers to set, " + this.toString());
     }
 
@@ -271,20 +294,6 @@ public final class ValueNode implements Node {
      */
     public final Node getEvictPointer(int rand) {
         return null;
-    }
-
-    /**
-     * This method should never be called. Always throws a Bug.
-     */
-    public void setPointerAccessData(int pointerIndex, long time) {
-        throw new Bug("A ValueNode has no pointers to set, " + this.toString());
-    }
-    
-    /**
-     * This method should never be called. Always throws a Bug.
-     */
-    public long getPointerAccessData(int pointerIndex) {
-        throw new Bug("A ValueNode has no access data, " + this.toString());
     }
 
     public void accept(NodeVisitor visitor) {
@@ -316,11 +325,11 @@ public final class ValueNode implements Node {
         v.getEvictPointer(0);
         
         try {
-            v.getPointerAccessData(0);
+            v.getPointee(0);
         } catch (Bug e) {}
         
         try {
-            v.setPointerAccessData(0, 0);
+            v.setRef(0, 0);
         } catch (Bug e) {}
     }
 

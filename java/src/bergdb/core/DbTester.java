@@ -1808,7 +1808,7 @@ public class DbTester {
         clock.setTime(time++);
         db.execute(db.trans().delete("/k/missing").delete("/other/missing").build());
         assertEquals("nodes of D after", 0, nodesOfD(db).size());
-        assertTrue("root key node clean", !db.internal().superRoot().rootPointer.isDirty());
+        assertTrue("root key node clean", !db.internal().superRoot().getPointerNode(0).isDirty());
         
         for (int i = 0; i < 30; i++) {
             Assert.assertArrayEquals("i=" + i, StringUtil.toBytes("v" + i),
@@ -1839,7 +1839,7 @@ public class DbTester {
             db.execute(db.trans().build());
         }
         TopNode oldTop = db.internal().superRoot();
-        KeyNode oldRoot = oldTop.rootPointer;
+        KeyNode oldRoot = (KeyNode) oldTop.getPointerNode(0);
         assertTrue("old root clean before", !oldRoot.isDirty());
         assertTrue("old top node clean before", !oldTop.isDirty());
         
@@ -1848,7 +1848,7 @@ public class DbTester {
         db.execute(db.trans().put("/k/" + getKey(10), "v10").put("/k/" + getKey(11), "v11").build());
         
         assertTrue("a new super root", db.internal().superRoot() != oldTop);
-        assertTrue("a new root key node", db.internal().superRoot().rootPointer != oldRoot);
+        assertTrue("a new root key node", db.internal().superRoot().getPointerNode(0) != oldRoot);
         assertTrue("old root clean after", !oldRoot.isDirty());
         assertTrue("old top node clean after", !oldTop.isDirty());
         for (Node n : nodesOfD(db)) {

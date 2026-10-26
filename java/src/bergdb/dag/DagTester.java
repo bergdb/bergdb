@@ -35,9 +35,6 @@ public class DagTester {
 
             if (Pointer.isMem(pointerNode)) {
                 result = pointerNode;
-                if (op.accessData != AccessData.ZERO) {
-                    predecessor.setPointerAccessData(pointerIndex, op.accessData);
-                }
                 op.pointerListener.pointerFollowed(predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
             
             } else {
@@ -502,7 +499,7 @@ public class DagTester {
         if (top == null) return r;
         r.add(top);
         Deque<Node> stack = new ArrayDeque<Node>();
-        stack.push(top.rootPointer);
+        stack.push(top.getPointerNode(0));
         while (!stack.isEmpty()) {
             Node x = stack.pop();
             if (!r.add(x) || !(x instanceof KeyNode)) continue;
@@ -521,7 +518,7 @@ public class DagTester {
                 }
             }
             List<Integer> indexes = new ArrayList<Integer>(last.values());
-            for (int i : indexes) stack.push(k.pointers[i]);
+            for (int i : indexes) stack.push(k.getPointerNode(i));
         }
         return r;
     }

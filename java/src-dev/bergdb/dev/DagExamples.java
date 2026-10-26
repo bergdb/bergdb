@@ -39,9 +39,6 @@ public class DagExamples {
 
             if (Pointer.isMem(pointerNode)) {
                 result = pointerNode;
-                if (op.accessData != AccessData.ZERO) {
-                    predecessor.setPointerAccessData(pointerIndex, op.accessData);
-                }
                 op.pointerListener.pointerFollowed(
                         predecessor, pointerIndex, result, Pointer.TYPE_MEMORY);
             

@@ -2,6 +2,7 @@ package bergdb.core;
 
 import bergdb.common.Bug;
 import bergdb.common.Bytes;
+import bergdb.dag.Handle;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.KeyNode;
@@ -288,9 +289,9 @@ public class StoredTopNode implements StoredNode {
         TopNode top1 = new TopNode(1, root, 80, 20, 100);
         TopNode top2 = new TopNode(2, root, 80, 30, 200);
         TopNode top3 = new TopNode(3, root, 80, 40, 300);
-        top3.setPointer(1, top2, AccessData.DEFAULT_ACCESS_DATA);
+        top3.setPointer(1, Handle.of(top2), top2.getSpos());
         top3.pointersTime[0] = 30;
-        top3.setPointer(2, top1, AccessData.DEFAULT_ACCESS_DATA);
+        top3.setPointer(2, Handle.of(top1), top1.getSpos());
         top3.pointersTime[1] = 20;
 
         TopNode read1 = writeAndRead(top3, 400);    // memory pointers written
@@ -454,8 +455,11 @@ public class StoredTopNode implements StoredNode {
         // unset, which the parser refuses since 2026-10-16 (WP A3). Db gives every top node
         // one (Db.setIdOfNode); so does this test.
         for (int i = 0; i < top1.pointersLength; i++) {
-            TopNode older = top1.pointers[i];
+            TopNode older = top1.pointers[i] == null ? null : (TopNode) top1.pointers[i].obj;
             if (older != null && older.getSpos() == Spos.NULL) older.setSpos(posOf(older.topNodeId));
+            // In a database the writer's top nodes are canonical: a pointer to one is written
+            // with its position (bergdb item 009, step 3a; the record rule).
+            if (older != null) older.setCanonical(true);
         }
         int size = StoredTopNode.getByteSize(top1);
         assert size % 8 == 0;

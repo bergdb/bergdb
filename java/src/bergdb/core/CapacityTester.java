@@ -61,7 +61,12 @@ public class CapacityTester {
         return last;
     }
 
+    /**
+     * The resident bytes, after the eviction thread has run the batches that readers asked
+     * for (bergdb item 009, step 3b: a reader no longer runs them itself; 009-02, T5a).
+     */
     private static long bytes(Db db) {
+        db.internal().eviction().awaitBatch();
         return db.internal().cache().residents().bytes();
     }
 
