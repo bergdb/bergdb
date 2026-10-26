@@ -4,7 +4,7 @@
 Created 2026-10-17 by Frans Lundberg. Status: done.
 
 The top node ordinal bound, register row M46 of
-[docs/level4-alignment.md](../../docs/level4-alignment.md): top node
+[docs/level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md): top node
 ordinals are bounded by `TopNode.MAX_TOP_NODE_ID_VALUE`, 2^30 − 1, over the
 database's whole life, and reclaim bounds the stream but not the ordinals.
 Understand the bound and what Java does at it, and decide: a wider ordinal,

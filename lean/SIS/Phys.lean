@@ -1,7 +1,7 @@
 /-
 Self-indexed streams in Lean: the physical layer, what Java holds in memory
 (bergdb item 001, stages 1 and 2; its plan, section 8.6;
-docs/level2-alignment.md, section 13, "Lazy reading"). Trusted part.
+bergdb 011-11, section 13, "Lazy reading"). Trusted part.
 
 Stage 1 (WP L1) models how BergDB reads today, without eviction. After a
 restart, Java holds in memory the canonical objects of the startup section's
@@ -513,7 +513,7 @@ def OpsOK (sp : Spec V T) (S : Stream V T) (P : Struct V) (k : Time) : Mem V →
 time i to the structure P (bergdb item 001, WP L3). BergDB meets both: a key
 node's pointer (its klong) is live until a later klong of the same key; and a
 split's new nodes take the children of the node they split, which stops being
-current or changes (docs/level4-alignment.md, M43: no path moves a child from
+current or changes (bergdb 001-08, M43: no path moves a child from
 one current node to another). With TREE and A5, `adopt` follows. -/
 structure PhysStep (sp : Spec V T) (P : Struct V) (i : Time) (c : Changes V) : Prop where
   /-- A node's new live children at i are pointees of its new entries. -/

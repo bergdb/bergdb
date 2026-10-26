@@ -34,7 +34,7 @@ import bergdb.stream.MemoryStream;
  *
  * Each configuration runs in three modes, which must give the same stream
  * from the decided cut (sha256). The physical cut may differ between them:
- * it waits for durability, and a restart syncs (docs/levels.md, Level 3):
+ * it waits for durability, and a restart syncs (bergdb 011-04, Level 3):
  *   plain     the transactions only;
  *   reads     as RestartInvariance's run A: at every checkpoint (after every
  *             'every' transactions, and at the end) a checksum of the latest

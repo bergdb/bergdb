@@ -36,7 +36,7 @@ import bergdb.storage.VersioningStreamException;
 public class StoredTrans {
     /**
      * The format byte of a stored transaction, written by Serializer and checked by Parser.
-     * 5 since 2026-10-15: the header holds topPos (docs/level2-alignment.md, M18). Before, 2,
+     * 5 since 2026-10-15: the header holds topPos (bergdb 011-11, M18). Before, 2,
      * also through two incompatible changes, of 2015-12-29 and of 2016-05-11 (both id and
      * spos in the got-dirty list): they changed CURRENT_FORMAT_VERSION, to 3 and then 4,
      * which was never the stored byte, and is gone since 2026-10-25. A stream of another
@@ -97,7 +97,7 @@ public class StoredTrans {
     
     /**
      * The position of the latest version of the newest written top node: the super root at
-     * the startup time of this record (docs/level2-alignment.md, 8.3). Spos.NULL if none.
+     * the startup time of this record (bergdb 011-11, 8.3). Spos.NULL if none.
      * Startup starts from the last record's topPos; before 2026-10-15, it scanned the startup
      * section for the newest top node, which the section need not hold (M18).
      */
@@ -206,7 +206,7 @@ public class StoredTrans {
         }
         return s + "A smaller number is a database written by an older version of BergDB, "
                 + "which cannot be opened: format 2 was written until 2026-10-15 "
-                + "(docs/level2-alignment.md, M18).";
+                + "(bergdb 011-11, M18).";
     }
     
     public String toString() {

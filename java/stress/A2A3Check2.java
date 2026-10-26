@@ -10,7 +10,7 @@ import bergdb.common.StringUtil;
  * and compares Db's marking (the marks of operations that change something, minus the nodes
  * the transaction replaced; Db.endOfOp, Db.endOfTrans) with the Lean model's marked set.
  * Written for F1-008-10, 2026-10-15, on its prototype; part of the Java tier of the Level 2
- * conformance checks (docs/level2-alignment.md).
+ * conformance checks (bergdb 011-11).
  *
  * Checks the SIS model's assumptions A2, A3 and A5 on the Java Dag, transaction by
  * transaction, all in memory (as DagFuzz).
@@ -27,7 +27,7 @@ import bergdb.common.StringUtil;
  *       live child at tt, is reachable at tt from x (below x).
  *   TREE, one current parent (the same WP): every node in R(tt) but the super root is
  *       the live child at tt of exactly one node in R(tt).
- *   A-COPY (bergdb item 001, WPs E2 and E3, 2026-10-17; docs/level4-alignment.md, 5.10):
+ *   A-COPY (bergdb item 001, WPs E2 and E3, 2026-10-17; bergdb 001-08, 5.10):
  *       every pointer of a new entry (a key klong at tt, any key klong of a node the
  *       transaction created, a new top node's root and skip pointers) to a node the
  *       transaction did not create names a node of the writer's paths, or a child, live
@@ -35,7 +35,7 @@ import bergdb.common.StringUtil;
  *       node below them, themselves included, that the transaction changed or that is
  *       not in R(tt).
  *   TREE, A6' and A-COPY are assumptions of the model (SIS/Evict.lean, EvictRunOK;
- *   docs/level4-alignment.md, 5.5), which level2.sh requires (bergdb 005-04). A6, the
+ *   bergdb 001-08, 5.5), which level2.sh requires (bergdb 005-04). A6, the
  *   stronger form that item 001's plan assumed (no such index node at all), is not
  *   assumed: its failures, adoptions below the old parent, are counted for information.
  *   Java makes them where a transaction splits in place a segment root that it made

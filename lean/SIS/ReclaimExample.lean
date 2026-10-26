@@ -611,7 +611,7 @@ def schemeIters (ts : List Tr4) : List (Nat × Nat × Nat) :=
       | none => acc
     | _ => acc) ([], none)).1
 
-/-- T-SCHEME by running (bergdb item 001, WP R6; level3-alignment.md, section 5):
+/-- T-SCHEME by running (bergdb item 001, WP R6; bergdb 001-07, section 5):
 for each iteration of a run of example 4 whose scheme conditions hold (pCut at
 most pStart, the touches cover, `touchCoverB`, and the rewrites, `rewritesB`),
 `CutOK` at pCut in every later state k at which the startup pos is past j0, the

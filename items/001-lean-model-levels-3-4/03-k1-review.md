@@ -25,14 +25,14 @@ which both hold in every Java transaction checked.
    records and the format. Section 3 below says what the three assumptions
    are and how they were checked.
 2. **The Java changes** of
-   [level4-alignment.md, section 6](../../docs/level4-alignment.md): six
+   [level4-alignment.md, section 6](08-level4-alignment.md): six
    before eviction (WP R8), which keep every record (checked byte for byte
    against `l34-base`), and the eviction work of J1 to J10. Recommended as
    listed.
 3. **One change to the trusted Lean model that E5 made**: rule 4 (the
    startup links the pinned objects' slots by node id) now links the root's
    object too, not only D's objects
-   ([level4-alignment.md, 5.13](../../docs/level4-alignment.md); register
+   ([level4-alignment.md, 5.13](08-level4-alignment.md); register
    M44). It asks nothing of Java, whose virtual root holds the super root by
    reference, and changes no record. Recommended to accept.
 4. **Format and public API**: no change is needed. Nothing to decide.
@@ -61,12 +61,12 @@ reads, unswizzles and releases after each transaction.
 | T-READ (`TR_view`, `TR_view_restarts`) | A read through the Level 4 loader at any time up to the last record gives P at that time, in every state such a run reaches | E4, E5 |
 | T2-C (`T2_cache`) | With restarts after any transactions (the Level 4 startup), the records and D are still the model's, so restarts change no record; the invariants hold for the last startup | E5 |
 | T-PIN (`TP_pins`) | Every object outside the pinned set (D's canonical objects and the root's object) may be evicted at any transaction boundary: it has been written, and unswizzling its memory slots and releasing it removes it; the theorems above hold for every schedule | E6 |
-| T-INDEX | The physical writer computes references from slots, the pinned set by node id and Rule R's section map; never from a map of every node id. By the definitions ([level4-alignment.md, 5.14](../../docs/level4-alignment.md)) | E6 |
+| T-INDEX | The physical writer computes references from slots, the pinned set by node id and Rule R's section map; never from a map of every node id. By the definitions ([level4-alignment.md, 5.14](08-level4-alignment.md)) | E6 |
 
 Stage 1's theorems, which stage 2 builds on: lemma M (`LM_newer`,
 `LM_ruleR`, `LM_cutTo`), T1-L (`T1_lazy`), CC (`CC_canonical`) and T2-L
 (`T2_lazy`). The proofs' outlines are in
-[level4-alignment.md](../../docs/level4-alignment.md), 5.11 to 5.14.
+[level4-alignment.md](08-level4-alignment.md), 5.11 to 5.14.
 
 
 3. What is assumed, and how it was checked
@@ -98,7 +98,7 @@ The five A6 failures are of one kind: a transaction creates the root of the
 next key segment's tree and splits it in place (`Dag.spaceSplitInPlace`),
 so the segment leaf's earlier klong of the same transaction, to the split
 node, becomes a dead pointer to a node that is still below the leaf
-([level4-alignment.md, section 4](../../docs/level4-alignment.md)). That is
+([level4-alignment.md, section 4](08-level4-alignment.md)). That is
 what A6' allows.
 
 Checked by running on the model's own examples (examples 2, 3 and 5, with
@@ -162,7 +162,7 @@ and `#print axioms` of the theorems above, as `lean/README.md` shows. In
     java -ea <config> -cp build/bergdb.jar:build/stress bergdb.dag.A2A3Check2
 
 for each configuration of
-[level2-alignment.md, 10.5](../../docs/level2-alignment.md) (for example
+[level2-alignment.md, 10.5](../011-docs-archive/11-level2-alignment.md) (for example
 `-Dmaxnode=8 -Dkeys=1000 -Dn=50 -Dexact=1 -Dops=40 -Ddel=25 -Dlong=1
 -Dseeds=10`, which shows A6's failures); its summary has a line for A6, A6'
 and TREE, and one for A-COPY; `-DdebugA6=1` prints each failure. The Lean

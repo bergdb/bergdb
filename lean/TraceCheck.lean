@@ -1,6 +1,6 @@
 /-
 The trace checker: checks a trace of a Java run (java/stress/TraceExport.java)
-against the model (docs/level2-alignment.md, sections 8.5 and 9).
+against the model (bergdb 011-11, section 8.5; docs/trace-format.md).
 
 Usage: lake exe tracecheck TRACE [options]
   --step3 exact|mark    step 3: the exact dirty test, or marking (default mark)

@@ -24,7 +24,7 @@ public interface Kv<TYPE> {
 
 // 1410 Frans: ikey() should probably be hidden from Pub API. Maybe two interface CoreKv and Kv.
 //      Core Layer user could cast to CoreKv interface. CoreKv would have more information.
-// 2026-10-13 (docs/problem.md Q9, docs/levels.md W3): the method time() was
+// 2026-10-13 (bergdb 011-01 Q9, bergdb 011-04 W3): the method time() was
 // removed. The time it returned was not the time of the write: after a time split of a key
 // node it was the time of the split, and reclaim rewrites live values in later transactions.
 // An exact write time would be stored in the value node (a format change), not done.

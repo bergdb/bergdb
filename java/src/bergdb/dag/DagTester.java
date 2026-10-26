@@ -418,7 +418,7 @@ public class DagTester {
      * A transaction of 40 sorted puts into an empty tree at node size 8, then one of 40 puts
      * between those keys: every node a transaction creates is reachable at its time, and
      * every node it changed is reachable at its time, or was replaced and has no klong of
-     * the time (assumptions A2 and A3 of the Lean model; docs/level2-alignment.md, M1). The
+     * the time (assumptions A2 and A3 of the Lean model; bergdb 011-11, M1). The
      * root changes several times in the first transaction, which makes one top node: the
      * second root change updates it in place. Before 2026-10-16, 17 of the 39 key nodes that
      * the first transaction created were never reachable (F1-008-10).

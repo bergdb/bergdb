@@ -54,7 +54,7 @@ At Level 2, the model and Java rely on two simplifications:
 
 * The writer knows the newest version of every node it points to, because
   everything stays in memory (register rows M4 and M5 of
-  [docs/level2-alignment.md](../../docs/level2-alignment.md)).
+  [docs/level2-alignment.md](../011-docs-archive/11-level2-alignment.md)).
 * Everything ever written can still be read.
 
 Level 4 removes the first and Level 3 the second. Both then meet the same
@@ -151,7 +151,7 @@ Terms:
   memory: objects with identity, pointer slots, the node table, pins. The
   logical model stays the specification.
 * **α**: the mapping from Java's state to the model's state
-  ([docs/level2-alignment.md](../../docs/level2-alignment.md), section 2),
+  ([docs/level2-alignment.md](../011-docs-archive/11-level2-alignment.md), section 2),
   extended in `docs/level4-alignment.md` and `docs/level3-alignment.md` (new,
   WP A2).
 * **The register**: the mismatches between Java and the model. M1 to M19
@@ -229,7 +229,7 @@ written down and checked on many runs, not proven); concurrency (readers
 beside the writer and beside eviction: a Java protocol with targeted tests,
 Q8); bytes, torn records and durability (the gates and `PowerLossTest`);
 resource bounds (measured, P3); the B-tree's lookup correctness (INV-LOOKUP
-of [docs/problem.md](../../docs/problem.md): the model abstracts the Dag
+of [docs/problem.md](../011-docs-archive/01-problem.md): the model abstracts the Dag
 through `Spec`, as at Level 2, and DagFuzz, RestartStress and the checker's
 C-V test it).
 
@@ -274,7 +274,7 @@ Lean names are proposals; the WPs may choose others and record them.
 In scope: everything needed for 1.2 at Levels 2 (lazy reading), 3 and 4:
 the model, the checker and the exporter, the Java changes, the Level 4
 implementation, its tests and gate, and the Level 3 validation that
-[docs/level3-plan.md](../../docs/level3-plan.md) requires before Level 4
+[docs/level3-plan.md](../011-docs-archive/06-level3-plan.md) requires before Level 4
 (the performance reference and the soak).
 
 Out of scope (write ideas down in the progress entry; do not work on them):
@@ -1462,7 +1462,7 @@ pauses with P2. Report in `docs/level3-soak.md` or the Level 4 evidence.
 
 To be checked and completed in WP A2 (section 6). "Java" names classes and
 methods in `java/src/bergdb/`; "model" names definitions in `lean/SIS/`.
-M1 to M19 are in [docs/level2-alignment.md](../../docs/level2-alignment.md),
+M1 to M19 are in [docs/level2-alignment.md](../011-docs-archive/11-level2-alignment.md),
 section 6; M8 and M17 are reopened here.
 
 | | Mismatch or open question | Java | Model | Proposed resolution | Stage, WP |
@@ -1861,18 +1861,18 @@ Lean model.
 ===========
 
 * In bergdb: [README.md](../../README.md), [AGENTS.md](../../AGENTS.md),
-  [items/readme.md](../readme.md); [docs/levels.md](../../docs/levels.md),
-  [docs/level2-alignment.md](../../docs/level2-alignment.md),
-  [docs/level3-plan.md](../../docs/level3-plan.md),
-  [docs/level3-durability.md](../../docs/level3-durability.md),
-  [docs/level3-performance.md](../../docs/level3-performance.md),
-  [docs/level4-plan.md](../../docs/level4-plan.md),
-  [docs/reference-theory.md](../../docs/reference-theory.md),
+  [items/readme.md](../readme.md); [docs/levels.md](../011-docs-archive/04-levels.md),
+  [docs/level2-alignment.md](../011-docs-archive/11-level2-alignment.md),
+  [docs/level3-plan.md](../011-docs-archive/06-level3-plan.md),
+  [docs/level3-durability.md](../011-docs-archive/07-level3-durability.md),
+  [docs/level3-performance.md](../011-docs-archive/10-level3-performance.md),
+  [docs/level4-plan.md](../011-docs-archive/05-level4-plan.md),
+  [docs/reference-theory.md](../011-docs-archive/08-reference-theory.md),
   [docs/sis-model.md](../../docs/sis-model.md),
-  [docs/problem.md](../../docs/problem.md),
-  [docs/performance-harness.md](../../docs/performance-harness.md);
+  [docs/problem.md](../011-docs-archive/01-problem.md),
+  [docs/performance-harness.md](../011-docs-archive/09-performance-harness.md);
   [lean/README.md](../../lean/README.md),
-  [lean/References/README.md](../../lean/References/README.md).
+  [lean/References/README.md](../011-docs-archive/08-reference-theory/README.md).
 * In f1, F1-008:
   [07](../../../f1/b/008-bergdb-lean-model/07-solution-claude/07-solution-claude.md),
   [08](../../../f1/b/008-bergdb-lean-model/08-solution-claude/08-solution-claude.md),

@@ -671,7 +671,7 @@ the pinned state; fixed. The gates pass with eviction on.
 index of 1.5 GB and 2 GB of values, on disk in a JVM capped at 2 GB with a
 budget of 500 MB: load, updates, gets, scans, reclaim, two cold restarts and
 every key checked, all right; the live heap at most 646 MB
-([level4-evidence.md](level4-evidence.md)).
+([level4-evidence.md](../items/001-lean-model-levels-3-4/10-level4-evidence.md)).
 
 2026-10-18. Bergdb item 001, WP J9: `java/stress/level4.sh`, the Level 4
 check (eviction invariance with every schedule, stress with eviction and
@@ -683,7 +683,7 @@ performance suite in matched runs: with eviction off and with a budget
 larger than the data, warm gets and scans within 5 percent, commits within
 1.2 percent, startup 7 to 10 percent slower, no alert (the plan's Q13
 targets); under pressure (a budget of a fifth of the data) reads are 30 to
-90 times slower ([level4-performance.md](level4-performance.md)).
+90 times slower ([level4-performance.md](../items/001-lean-model-levels-3-4/11-level4-performance.md)).
 
 2026-10-18. Bergdb item 001, checkpoint K4: Level 4 in Java accepted (by the
 agent, on Frans's go), with eviction on by default and `level4.sh` a
@@ -696,19 +696,19 @@ every read right, the live heap bounded at 1.5 to 1.9 GB (without eviction
 it grew to 15 GB). But the paced writer reached 123.5 of its 200 commits a
 second: a sweep walks every resident object under the write lock, 35
 percent of the time with the readers' loads; and G1 needed 81 full
-collections ([level4-evidence.md](level4-evidence.md)).
+collections ([level4-evidence.md](../items/001-lean-model-levels-3-4/10-level4-evidence.md)).
 
 2026-10-18. Bergdb item 001, WP F1: the conformance campaign on the final code
 and model, all levels: the Level 2 sets (81 traces), the reclaim sets (31
 traces, 463 cuts), the eviction set (30 traces, C-P), every trace
 `TRACECHECK OK`; the Java tier (68,901 transactions); `EvictionInvariance`
 with every schedule (24 runs); the four gates, full, and every record R8's
-([evidence/level34-conformance.txt](evidence/level34-conformance.txt)).
+([../items/001-lean-model-levels-3-4/07-level3-alignment/level34-conformance.txt](../items/001-lean-model-levels-3-4/07-level3-alignment/level34-conformance.txt)).
 
 2026-10-18. Bergdb item 001, WP F2: the documents for Levels 3 and 4: the
 outcome of the plan's 1.2 for Level 4 point by point
-([level4-alignment.md](level4-alignment.md), section 8), Level 4 in
-[levels.md](levels.md), the status in `README.md`, `problem.md` (R5, R6,
+([level4-alignment.md](../items/001-lean-model-levels-3-4/08-level4-alignment.md), section 8), Level 4 in
+[levels.md](../items/011-docs-archive/04-levels.md), the status in `README.md`, `problem.md` (R5, R6,
 Q10), [sis-model.md](sis-model.md) (section 15) and `lean/README.md`.
 
 2026-10-18. Bergdb item 001, WP F3: the final report
@@ -934,7 +934,7 @@ time of a transaction whose puts threw never becomes a lookup time, and
 every later transaction and read is refused until a restart, which
 rebuilds the state from the stream. The state is checked again under the
 write lock. No rollback; transformations stay where they are and must not
-throw. No model change ([levels.md](levels.md), "A transaction that
+throw. No model change ([levels.md](../items/011-docs-archive/04-levels.md), "A transaction that
 fails"). Seven tests; streams unchanged (StreamDigest); `before-commit.sh`
 and the four gates pass.
 
@@ -983,7 +983,7 @@ threw, and the database stayed active, half dead, as the storage below
 refuses all I/O after an I/O error. Now such a read (`Db.getOne`,
 `getMany`, the warm-up of a transaction, `getTrans`), and a sync that
 fails, fail the database as a transaction does since 005-01
-([levels.md](levels.md), "A transaction or a read that fails"). A read
+([levels.md](../items/011-docs-archive/04-levels.md), "A transaction or a read that fails"). A read
 that a cut has overtaken still expires; a read while the database stops,
 and an interrupted sync, throw as before. Ten tests; streams unchanged
 (StreamDigest); `before-commit.sh`, `level3.sh` and `level4.sh` pass. Found
@@ -1014,7 +1014,7 @@ its own position. `Connection.transactionInfo()` read the middle of a
 record there. Now the value node keeps the distance in the stream (the
 stored field is unchanged), the rerun copies it, `getTrans` refuses a
 position that cannot start a transaction, and a format error there fails
-the database, as in the other reads ([levels.md](levels.md), "A
+the database, as in the other reads ([levels.md](../items/011-docs-archive/04-levels.md), "A
 transaction or a read that fails"). Tests; streams unchanged
 (StreamDigest); `before-commit.sh` passes.
 
@@ -1056,7 +1056,7 @@ cheap test from its keys, then, for a large transaction, a bound from a
 walk of the paths of its keys (`Dag.dirtyNodeBound`: the distinct key
 nodes on them, the splits from each node's room, new segment trees), each
 node at the largest size, against 15/16 of the record limit
-([levels.md](levels.md), Level 2, "Bounds, one transaction"). Streams
+([levels.md](../items/011-docs-archive/04-levels.md), Level 2, "Bounds, one transaction"). Streams
 unchanged (StreamDigest); a test; `before-commit.sh` passes.
 
 2026-10-25. 005-39 done, by Claude (Opus 5.5, Claude Code), from the TODO
@@ -1082,7 +1082,7 @@ just inside a meta block, a start with a wrong crypto key, or with none,
 filled out that meta block through the key, and the right key could then
 not start the database either. Now `RecoverableStream.recover()` reads the
 meta blocks first, and a stream whose key or version it cannot read is
-refused as it is ([levels.md](levels.md), "Bugs found by the load and
+refused as it is ([levels.md](../items/011-docs-archive/04-levels.md), "Bugs found by the load and
 crash tests", 8). The versions of records and nodes are refused with a
 `VersioningStreamException` (now a `StreamFormatException`), whose
 message says whether an older or a newer BergDB wrote the stream; a newer
@@ -1117,7 +1117,7 @@ buffer sizes, multiples of 4; with a buffer of 2 S − 2 bytes, for a
 record of S bytes, a crash right after the sync lost the transaction in
 10 runs of 10 of a probe. Now `Db.sync` waits until that byte is durable
 too, and `Db` keeps the end of the last transaction
-(`endOfLastTrans`), not its last byte ([levels.md](levels.md), "Bugs found
+(`endOfLastTrans`), not its last byte ([levels.md](../items/011-docs-archive/04-levels.md), "Bugs found
 by the load and crash tests", 9). An f-test that fails without the fix;
 `before-commit.sh` passes. 005-41 itself is decided: no
 `isDurable()` for now (Frans).
@@ -1185,3 +1185,16 @@ more; MEM 130 bytes per KV (191); the 10M load on s1 with a 600 MB budget
 767 s (3,015 s). Found on the way: 005-46, a reader's read of the stream's
 last file waits for the writer's `fsync`. docs/levels.md's Level 4 and
 docs/handles-alignment.md describe it.
+
+2026-10-26. `docs/` cleaned up, at Frans's request (006-07), by Claude (Opus
+5.5, Claude Code). `docs/` keeps what is kept up to date with the code:
+`levels.md`, rewritten from 1,805 lines to 390 (the current state, level by
+level, with the evidence by item ID), `sis-model.md`, `trace-format.md` (new:
+section 9 of the Level 2 alignment), this log and `sources/`;
+[readme.md](readme.md) says where the other documents went. Those written in
+an item went to it (001-07 to 001-11, 009-05); those that no item owns went
+to the new item 011-docs-archive (011-01 to 011-11), with `levels.md` as it
+was until today as 011-04, and `lean/References/` beside 011-08. The code and
+the items cite documents by ID now (`bergdb 001-08, section 5.5`), and every
+link to a moved file is fixed. The open questions of the problem statement
+that had no home are 005-54.

@@ -727,7 +727,7 @@ public class StorageManager implements AppendOnlyStream {
         try {
             mainStream.read(position, dest, destOffset, length);
         } catch (ReadBelowFirstPosException e) {
-            // 2026-10-13 (docs/levels.md, W1): a read admitted before a cut
+            // 2026-10-13 (bergdb 011-04, W1): a read admitted before a cut
             // that reached bytes the cut removed. That read fails; the stream is not faulty,
             // so it is not closed and the storage does not get an error state.
             throw e;

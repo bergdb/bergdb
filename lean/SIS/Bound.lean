@@ -32,7 +32,7 @@ def sdTarget (size : Record V T → Nat) (d : Nat) (S : Stream V T) : Nat :=
 asks for a startup pos before `sdTarget` (bergdb item 007). The algorithm
 clamps the policy (`startupPos`); T3 needs nothing else of it. BergDB's take
 (`TransSeq.take`) does not keep up: after two transactions it stops at a limit
-on the nodes taken (docs/problem.md, Q4). -/
+on the nodes taken (bergdb 011-01, Q4). -/
 def KeepsUp (size : Record V T → Nat) (d : Nat) (al : Algo V T) : Prop :=
   ∀ S D i tr, sdTarget size d S ≤ al.policy S D i tr
 

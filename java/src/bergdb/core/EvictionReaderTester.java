@@ -28,7 +28,7 @@ import bergdb.nanotest.Nano;
 import bergdb.stream.MemoryStream;
 
 /**
- * Readers under eviction (bergdb item 001, WP J5; docs/level4-alignment.md, 7.4; the plan's
+ * Readers under eviction (bergdb item 001, WP J5; bergdb 001-08, 7.4; the plan's
  * Q8), with handles since bergdb item 009 (items/009-handles/02-implementation-plan.md, 3.4
  * and 4.4): the protocol of Eviction's class comment, tested. A reader follows a pointer
  * without a lock when the pointer's handle holds an object that may serve it; else it

@@ -1,4 +1,4 @@
-# The rest of the grid of docs/level3-plan.md, task 3: hot-set and mostly unchanged data with
+# The rest of the grid of bergdb 011-06, task 3: hot-set and mostly unchanged data with
 # 100-byte and 10 KB values, finite and infinite retention. Same format and settings as
 # performance.suite. Run with SUITE=grid. Not part of the principal reference.
 

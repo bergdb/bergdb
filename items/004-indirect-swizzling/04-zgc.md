@@ -30,7 +30,7 @@ runs out of free regions to copy into (an evacuation failure) and falls back to 
 collection: every thread stops while the whole heap is marked and compacted, for a time
 that grows with the live heap. Handles do not change this; eviction makes the same garbage.
 
-* **P4** ([docs/level4-evidence.md](../../docs/level4-evidence.md); 8 GB heap, budget 1.6
+* **P4** ([docs/level4-evidence.md](../001-lean-model-levels-3-4/10-level4-evidence.md); 8 GB heap, budget 1.6
   GB, two measured hours): 81 full collections, 22.7 s in all, median 0.27 s, and 392
   evacuation failures. A typical one: `Pause Full (G1 Compaction Pause) 8192M->1473M(8192M)
   269 ms`, the heap full and 82 percent of the old regions garbage (2,034 regions to 368).

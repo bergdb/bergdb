@@ -11,7 +11,7 @@ A transaction that throws inside `Db.putKvs` is half committed. Its time
 becomes readable with some of its changes in memory; the nodes it made stay
 in the cache and in the writer's node list, and the next transaction writes
 them as its own. Register row M49 of
-[docs/level4-alignment.md](../../docs/level4-alignment.md). The full
+[docs/level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md). The full
 analysis, with a reproduction, the causes in the code, the fix options and a
 test plan: [item 003, 003-01](../003-transaction-exception-safety/01-finding.md).
 

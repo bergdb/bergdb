@@ -6,7 +6,7 @@ before the change can be good now along the path to the changed node. A node
 not in D with no changed node below it is clean: it was clean before (inv2),
 it was reachable before (A5), and nothing below it changed.
 
-Written 2026-10-15 for F1-008-11, WP E1 (docs/level2-alignment.md, M2). The
+Written 2026-10-15 for F1-008-11, WP E1 (bergdb 011-11, M2). The
 idea follows F1-008-08's Proof/MarkTests.lean; the proofs are new, for the
 Level 2 model's `dirty`.
 -/

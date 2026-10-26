@@ -926,7 +926,7 @@ public class Dag {
      * loses the klongs of the current transaction, which its replacement has. So a
      * transaction leaves no node that it created unreachable at its time, and no klong of
      * its time in a node that is not reachable at that time: a whole transaction is one
-     * transaction of the Lean model (assumptions A2 and A3; docs/level2-alignment.md,
+     * transaction of the Lean model (assumptions A2 and A3; bergdb 011-11,
      * M1). Before 2026-10-16, a later key of a transaction could replace a node that an
      * earlier key had created or changed.</p>
      */

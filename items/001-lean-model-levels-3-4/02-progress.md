@@ -96,7 +96,7 @@ Frans's go and decisions
   Continue the work. Work unattended, but report progress." So, from its
   section 1: (1) the reference rule is Option K, under TREE, A6' and A-COPY
   instead of A6; (2) the Java changes of
-  [level4-alignment.md, section 6](../../docs/level4-alignment.md) are the
+  [level4-alignment.md, section 6](08-level4-alignment.md) are the
   list for R8 and the J WPs; (3) E5's change to the trusted model (rule 4
   links the root's object too) stands. No format or public API change (its
   point 4). R3 to R8 and stage 4 may start.
@@ -107,7 +107,7 @@ Frans's go and decisions
   names); R6 proves that Java's scheme gives it, with the rest of T-SCHEME;
   then T9 is proved for the Level 4 memory, with the invariant on the slots
   that R5's T12 with eviction needs too ([level3-alignment.md,
-  2.9](../../docs/level3-alignment.md)). No change in Java. T9 is no longer
+  2.9](07-level3-alignment.md)). No change in Java. T9 is no longer
   stopped; it follows R6.
 * **2026-10-17 19:34 CEST, Frans** (in session f1-51, recorded by it), on
   three open points:
@@ -197,11 +197,11 @@ Current state
   assumes `CutOK` only); R6 proves that Java's scheme gives it, and R5's
   half with eviction is done (2026-10-17 22:56). R6 part
   1b refined the definition (an exception for put-back versions in D;
-  `schemeWitness`; [level3-alignment.md, 2.9](../../docs/level3-alignment.md),
+  `schemeWitness`; [level3-alignment.md, 2.9](07-level3-alignment.md),
   "Refined"): kept (Frans, 2026-10-17 19:34; above).
 * **For Frans: register M49** (new, 2026-10-17; from session f1-9c's item
   002, `items/002-top-node-ordinal-bound/02-report.md`, section 8;
-  [level4-alignment.md](../../docs/level4-alignment.md)): a transaction that
+  [level4-alignment.md](08-level4-alignment.md)): a transaction that
   throws inside `Db.putKvs` is half committed (its time readable, its nodes
   written by the next transaction, their ids reused). Not blocking: Frans
   lifted the "fix before J3" (2026-10-17 19:52; above); item 003 deals with
@@ -2418,7 +2418,7 @@ Did:
    (`ReadsAt`) take it by Rule R; but the running memory's Rule R is that of
    its startup at R(0), and the mid node's canonical object was evicted.
    Without eviction the same read gives P. Register M48 (new), with the
-   options for Frans ([level3-alignment.md, 2.9](../../docs/level3-alignment.md)):
+   options for Frans ([level3-alignment.md, 2.9](07-level3-alignment.md)):
    (a) part 2 over every version a physical read from f on may follow (every
    version of a pointee at or after the one the pointer names), which Java's
    scheme gives (every index node reachable at tEnd is written after its
@@ -3073,7 +3073,7 @@ Did:
    cut; its D is the run's, and so are its lookups from the run's first
    available time on. Hypotheses: `RunOK`, marking and `javaTest`, T8's
    `ExecRootOK` and `VirtLiveOK`, `PolicyCutOK`; not A6' or A-COPY.
-2. The proof ([level3-alignment.md, 2.10](../../docs/level3-alignment.md);
+2. The proof ([level3-alignment.md, 2.10](07-level3-alignment.md);
    `lean/SIS/Proof/CutRestart.lean`, `CutHist.lean`, `CutHistRead.lean`,
    `CutRuns.lean`, new, 1,787 lines): a relation between the states of the
    two runs (`CutRel`: the run's stream cut at m, its D, its nodes for the
@@ -3139,7 +3139,7 @@ Did:
    loader at any time t from f to the last record gives the same on the
    stream cut at c as on the whole stream, so it needs no record before the
    cut, and it gives P at t (with `TR_view_restarts`).
-3. The proof ([level3-alignment.md, 2.9](../../docs/level3-alignment.md),
+3. The proof ([level3-alignment.md, 2.9](07-level3-alignment.md),
    "T9 is proved"; `lean/SIS/Proof/CutPhys.lean`, `CutPhysTrans.lean`,
    `CutPhysRun.lean`, new, 2,628 lines): the invariant on the slots that
    M48's (a) asked for (`CInv`, four parts). With it a read at t from f on
@@ -3274,7 +3274,7 @@ Did:
    `EvictRunOK`: TREE, A6' and A-COPY), and cache schedules whose reads are at
    times from the first available time on to the current one (a read before
    f may need a record before the cut).
-2. The proof ([level3-alignment.md, 2.10](../../docs/level3-alignment.md);
+2. The proof ([level3-alignment.md, 2.10](07-level3-alignment.md);
    `lean/SIS/Proof/CutLater.lean` to `CutLaterRun.lean`, new, 8,144 lines)
    compares the run C (`runEvictCut`) with the run E with eviction that
    restarts from the whole streams at the same points (`runEvict`), which
@@ -3369,7 +3369,7 @@ Did:
    by running. I judged a proof several days with an uncertain outcome and
    took the plan's fallback (R6, "Stop if"): T-SCHEME is checked, not
    proved; stage 4 goes on, and the proof can be taken up later. The reasons
-   are in [level3-alignment.md, section 5](../../docs/level3-alignment.md),
+   are in [level3-alignment.md, section 5](07-level3-alignment.md),
    "T-SCHEME: checked, not proved".
 2. T-SCHEME by running, kept (part 1b's probe was a scratch program):
    `checkSchemeB` in `lean/SIS/ReclaimExample.lean` (with `schemeIters`, the
@@ -3839,7 +3839,7 @@ and hot updates, gets and scans warm and cold, reclaim on, cold restarts,
 every key checked after each restart and at the end; memory sampled every
 second, and the live heap after a full collection at the end of each phase;
 the index's size by a scan that caches nothing); the runs; the report,
-[docs/level4-evidence.md](../../docs/level4-evidence.md).
+[docs/level4-evidence.md](10-level4-evidence.md).
 
 The run on J7's final tree (2026-10-18 04:00 to 04:58, 57 minutes; `-Xmx2g`,
 a budget of 500 MB, 20 million keys of 100 bytes, node size 30, reclaim on,
@@ -3940,7 +3940,7 @@ Did:
    (06:18 to 06:55), stopped after the read scenario's first run (reads
    under pressure are 30 to 90 times slower; the whole suite would have
    taken hours).
-3. The report: [docs/level4-performance.md](../../docs/level4-performance.md).
+3. The report: [docs/level4-performance.md](11-level4-performance.md).
 
 Results: Q13's targets are met, with eviction off and with the 4 GB budget:
 warm gets -0.2 to +4.4 percent, scans -0.5 to +1.9 percent, commits -1.2
@@ -4014,7 +4014,7 @@ Did:
    The run, `soak.sh p4main2` (07:04 to 09:26: `HEAP=8g
    JFLAGS=-Devictbudget=1600000000`, a fifth of the heap, the public API's
    default ratio): `SOAK OK`.
-3. The report: [docs/level4-evidence.md](../../docs/level4-evidence.md),
+3. The report: [docs/level4-evidence.md](10-level4-evidence.md),
    "The soak with eviction (P4)", with P2's figures beside P4's.
 
 Results: 7,201 steady seconds, 889,043 commits (123.5 a second against
@@ -4068,7 +4068,7 @@ Did: the campaign of the plan's F1 on the final code and model (scratch
 `f1-campaign.sh`, not edited while running; two scratch copies of the work
 tree, java/ and lean/ as committed in P4's `899c547`, one for the trace sets
 and the Java tiers, one for the gates), 09:26 to 15:56. Evidence:
-[docs/evidence/level34-conformance.txt](../../docs/evidence/level34-conformance.txt).
+[docs/evidence/level34-conformance.txt](07-level3-alignment/level34-conformance.txt).
 
 Checks, every one passed:
 

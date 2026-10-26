@@ -21,7 +21,7 @@ import bergdb.storage.StorageManager;
 import bergdb.stream.FileStream;
 
 /**
- * The performance harness of Level 3 (docs/level3-plan.md, task 3), written 2026-10-14.
+ * The performance harness of Level 3 (bergdb 011-06, task 3), written 2026-10-14.
  * It is run by java/stress/performance.sh, which fixes the JVM, the GC logging and the
  * scenarios (java/stress/performance.suite); PerfTool compares the results.
  *

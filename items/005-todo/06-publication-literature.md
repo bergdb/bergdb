@@ -15,15 +15,15 @@ And where and how.
 What exists
 -----------
 
-* [docs/prior-art.md](../../docs/prior-art.md) (draft 2, 2026-10-12, with a
+* [docs/prior-art.md](../011-docs-archive/02-prior-art.md) (draft 2, 2026-10-12, with a
   closure review): the literature by layer, and which parts seem new. Its
   section 5 names self-indexed streams as the candidate novel concept (the
   stream is the database; continuous, per-node checkpointing; mixed stream
   and memory pointers; data written at once, the index lazily) with four
   properties P1 to P4. Novelty is provisional, not established.
-* [docs/problem.md](../../docs/problem.md), Q12 (novelty), the question put
+* [docs/problem.md](../011-docs-archive/01-problem.md), Q12 (novelty), the question put
   to Tore Risch in 2012: does it make a paper?
-* [docs/reference-theory.md](../../docs/reference-theory.md), item 004's
+* [docs/reference-theory.md](../011-docs-archive/08-reference-theory.md), item 004's
   literature on swizzling ([004-01](../004-indirect-swizzling/01-report.md)),
   and the sources in [docs/sources/](../../docs/sources/) (Frans's 2012
   self-indexed streams paper draft v5, the 2015 algorithms).

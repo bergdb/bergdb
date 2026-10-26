@@ -1,6 +1,12 @@
 BergDB feature levels: what works
 =================================
 
+011-04. This is `docs/levels.md` as it was on 2026-10-26, when docs/levels.md
+was rewritten as a short statement of the current state (006-07); history, not
+kept up to date. The code and the items cite its sections here (W1, "Level 3
+cost", "Bounds, measured" and so on). The current state is in
+[docs/levels.md](../../docs/levels.md).
+
 Draft 7, 2026-10-14. Originally written by Claude for Frans Lundberg.
 Codex consolidated the independent review, added the validation plan and
 implemented and tested FileStream power-loss ordering.
@@ -12,9 +18,9 @@ Draft 5 adds "Level 3 follow-up": readers and cuts, changes of the retain
 duration, the removal of `Kv.time()`, the attribution of the stream bytes.
 
 The current status of each level of the problem in
-[problem.md](problem.md), in theory and in implementation. This is the
+[problem.md](01-problem.md), in theory and in implementation. This is the
 place for the status and for how level 2 works in the Java code;
-[log.md](log.md) has the history.
+[log.md](../../docs/log.md) has the history.
 
 Historical reviewed status: committed snapshot `ebe5f77`, 2026-10-13 18:02 CEST.
 This includes index-aware reclaim budgeting and the 16 KB scan target.
@@ -29,7 +35,7 @@ not be read as final tuned performance. The table and "Next" now include the
 Level 1–3 gates, the reviewed source manifest, and further copy/oracle/test
 repairs committed in `0319caf`. It supersedes the earlier follow-up gate
 snapshot; performance measurements retain their stated versions. The next
-[Level 3 plan](level3-plan.md) covers power loss, a longer disk soak and a
+[Level 3 plan](06-level3-plan.md) covers power loss, a longer disk soak and a
 reproducible performance reference before Level 4. Task 1 results are below;
 the soak and performance reference remain pending. Java gates were rerun for
 the storage work; the abstract Lean model is unchanged.
@@ -39,14 +45,14 @@ Power-loss ordering, 14 October
 -------------------------------
 
 The current FileStream ordering work is in
-[level3-durability.md](level3-durability.md): explicit file and namespace forces,
+[level3-durability.md](07-level3-durability.md): explicit file and namespace forces,
 a force between prefix removals, propagated deferred-cut failures, and handle
 cleanup after errors. The fault model separates readable/forced bytes and
 persistent names; omitted forces and unordered deletions are negative controls.
 Native audits confirm F_FULLFSYNC on the tested macOS/APFS JDK and fsync in the
 Linux VM. Physical power cycling, other providers/Windows and replication are
 not established by these checks. Final gate results are recorded in that report.
-The longer soak and performance reference of [level3-plan.md](level3-plan.md)
+The longer soak and performance reference of [level3-plan.md](06-level3-plan.md)
 remain pending. Earlier sections retain their historical source scopes.
 
 
@@ -58,8 +64,8 @@ Levels
 | 0 | Multiversion map in memory: puts, deletes, latest and historical lookups, scans; no restart | Passes the tests run |
 | 1 | + restart by replaying the whole stream | Passes the tests run; two bugs fixed |
 | 2 | + bounded startup: the startup pos moves, startup reads only the tail | Works in all tests run, also under load and with crashes; the defects of the 2017 code fixed; aligned with the Lean model, which is proven (2026-10-16, F1-008-11) |
-| 3 | + reclaim: cut the front of the stream | Passes the recorded exact-cut, restart, crash, load, concurrent-reader and changing-retention tests; infinite retention is the default, finite retention schedules reclaim; retention pacing, older cut point, index-aware allowance and 16 KB scan target implemented; an overtaken read may expire without harming the database; FileStream power-loss ordering is implemented and audited on the tested platforms; the Lean model of reclaim is proved (2026-10-18, bergdb item 001: recovery, reads and restarts after safe cuts; that Java's scheme gives safe cuts is checked at every cut, not proved), and Java's reclaim is aligned with it, a step of `level3.sh` ([level3-alignment.md](level3-alignment.md)); a two-hour disk soak passes ([level3-soak.md](level3-soak.md)) |
-| 4 | + eviction: data larger than memory | Works in all tests run, on by default (2026-10-18, bergdb item 001): values and index nodes evicted under a capacity controller whose budget is `cacheSizeInMb`; a database six times the budget, its index three times, runs on disk in a capped JVM ([level4-evidence.md](level4-evidence.md)); within the item's performance targets against Level 3 ([level4-performance.md](level4-performance.md)); the Lean model with eviction is proved (any eviction schedule gives the model's records, D and answers), and Java is checked against it ([level4-alignment.md](level4-alignment.md)); `level4.sh` |
+| 3 | + reclaim: cut the front of the stream | Passes the recorded exact-cut, restart, crash, load, concurrent-reader and changing-retention tests; infinite retention is the default, finite retention schedules reclaim; retention pacing, older cut point, index-aware allowance and 16 KB scan target implemented; an overtaken read may expire without harming the database; FileStream power-loss ordering is implemented and audited on the tested platforms; the Lean model of reclaim is proved (2026-10-18, bergdb item 001: recovery, reads and restarts after safe cuts; that Java's scheme gives safe cuts is checked at every cut, not proved), and Java's reclaim is aligned with it, a step of `level3.sh` ([level3-alignment.md](../001-lean-model-levels-3-4/07-level3-alignment.md)); a two-hour disk soak passes ([level3-soak.md](../001-lean-model-levels-3-4/09-level3-soak.md)) |
+| 4 | + eviction: data larger than memory | Works in all tests run, on by default (2026-10-18, bergdb item 001): values and index nodes evicted under a capacity controller whose budget is `cacheSizeInMb`; a database six times the budget, its index three times, runs on disk in a capped JVM ([level4-evidence.md](../001-lean-model-levels-3-4/10-level4-evidence.md)); within the item's performance targets against Level 3 ([level4-performance.md](../001-lean-model-levels-3-4/11-level4-performance.md)); the Lean model with eviction is proved (any eviction schedule gives the model's records, D and answers), and Java is checked against it ([level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md)); `level4.sh` |
 
 Level 3 needs level 2: once the front of the stream is cut, startup can no
 longer replay from the beginning.
@@ -74,17 +80,17 @@ in plain text when the database is encrypted. The Javadoc of
 `DatabaseBuilder.replica` and `Database.addReplica` lists them.
 
 Checks of the levels:
-[level1.sh](../java/stress/level1.sh),
-[level2.sh](../java/stress/level2.sh),
-[level3.sh](../java/stress/level3.sh) and, since 2026-10-18 (bergdb item
-001, K4), [level4.sh](../java/stress/level4.sh). Until 2026-10-20 all four
+[level1.sh](../../java/stress/level1.sh),
+[level2.sh](../../java/stress/level2.sh),
+[level3.sh](../../java/stress/level3.sh) and, since 2026-10-18 (bergdb item
+001, K4), [level4.sh](../../java/stress/level4.sh). Until 2026-10-20 all four
 had to pass before a change to the code was committed; since then the only
-requirement is [before-commit.sh](../java/before-commit.sh), the unit tests
+requirement is [before-commit.sh](../../java/before-commit.sh), the unit tests
 and the f-tests (bergdb 006-03). They print `LEVEL 1 OK`,
 `LEVEL 2 OK`, `LEVEL 3 OK` and `LEVEL 4 OK`. Runtime depends on the cost of the storage
 forces; the old pre-force timing estimates no longer describe these runs.
 
-Since 2026-10-18 (bergdb item 001, WP J9), [level4.sh](../java/stress/level4.sh)
+Since 2026-10-18 (bergdb item 001, WP J9), [level4.sh](../../java/stress/level4.sh)
 checks Level 4, eviction, and prints `LEVEL 4 OK`: the unit tests (quick: the
 eviction tests); `EvictionInvariance`, the same transactions with every
 eviction schedule (none, values, every, random, and the capacity controller
@@ -100,7 +106,7 @@ in a capped JVM (quick: 500,000 keys, a budget of 20 MB, `-Xmx384m`; full: 2
 million keys, 50 MB, `-Xmx768m`). It takes about 16 minutes full and 4
 quick.
 
-`level2.sh` also runs [BryanRepro.java](../java/stress/BryanRepro.java), the
+`level2.sh` also runs [BryanRepro.java](../../java/stress/BryanRepro.java), the
 program attached to a bug report of November 2015 (ISSUE151111): start,
 delete all objects, create 10,000, stop, repeated, with a retain duration of
 10 s. Checked 2026-10-14: on the unmodified 2017 source it fails when the
@@ -124,7 +130,7 @@ A transaction or a read that fails
 ==================================
 
 Since 2026-10-22 (bergdb 005-01; register M49 of
-[level4-alignment.md](level4-alignment.md), found in bergdb item 002 and
+[level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md), found in bergdb item 002 and
 studied in item 003). The design is Frans's, from the start: no rollback of
 in-memory state ("Support for rollback? Answer: No. If transactions are
 deterministic, we don't need this, we can always check input data before we
@@ -263,12 +269,12 @@ and startup reads only the startup section, the tail of the stream, and
 reruns the transactions in it. This is the default (startup distance 50
 MB). Self-indexed streams.
 
-Theory: [sis-model.md](sis-model.md), an abstract model with Rule A and Rule
+Theory: [sis-model.md](../../docs/sis-model.md), an abstract model with Rule A and Rule
 R, and the theorems T1 (recovery) and T2 (restart invariance), proven in
-Lean ([../lean/](../lean/README.md)). They prove the model, not the Java
+Lean ([../../lean/](../../lean/README.md)). They prove the model, not the Java
 code. Since 2026-10-16 the model has BergDB's bookkeeping and its virtual
 root, and Java's runs are checked against it, step by step
-([level2-alignment.md](level2-alignment.md), F1-008-11): see "Alignment with
+([level2-alignment.md](11-level2-alignment.md), F1-008-11): see "Alignment with
 the model" below.
 
 How it works in the Java code. Reads of nodes in memory follow Java
@@ -296,12 +302,12 @@ a node, and when index nodes are written.
   pointer names after Rule R (the node's newest version in the startup
   section, if it is newer; also for a vpos), read as a snapshot that the
   node table does not get (since 2026-10-17, bergdb item 001, R8: M27 of
-  [level4-alignment.md](level4-alignment.md); before, the newest of that
+  [level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md); before, the newest of that
   version and a snapshot in the node table, and the version read was
   entered in the table). During startup's
   reconstruction, a version from the startup section is cut back to the
   startup time; at runtime never (2026-10-17, bergdb item 001, R8: M22 of
-  [level4-alignment.md](level4-alignment.md)). The pointer listener is
+  [level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md)). The pointer listener is
   called on every follow. Puts and the rerun use a writer follower that
   makes every node it reaches canonical.
 * Writing (Db.store): before index nodes are written, their pointers to
@@ -311,7 +317,7 @@ a node, and when index nodes are written.
   still-dirty test sees every node in D; every other pointer keeps its slot,
   which names the latest version (since 2026-10-17, bergdb item 001, R8:
   before, any canonical object or a newer snapshot in the node table was
-  taken, M21 of [level4-alignment.md](level4-alignment.md)). Startup links
+  taken, M21 of [level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md)). Startup links
   the stream pointers of D's canonical objects to canonical objects by node
   id (rule 4, `DbStarter.linkD`, M44), as the writer did at every write
   before.
@@ -324,7 +330,7 @@ a node, and when index nodes are written.
   the nodes on its path in D, but it is not stored, so it is not rerun. Now
   it marks nothing (below).
 * A transaction is one transaction of the Lean model (2026-10-16,
-  [level2-alignment.md](level2-alignment.md), M1). A transaction applies its
+  [level2-alignment.md](11-level2-alignment.md), M1). A transaction applies its
   keys one at a time; a later key may split a node that an earlier key
   created or changed. A node that the transaction created is split in place
   (Dag.handleFullNode): no reader can reach it before the transaction ends.
@@ -342,11 +348,11 @@ a node, and when index nodes are written.
   step, the nodes that its touch marked stay in D, also those that the
   step's puts then replace, as the model's step 3 has it (T13'); before
   2026-10-17 (bergdb item 001, R8: register M17 of
-  [level3-alignment.md](level3-alignment.md)) a touch transaction kept every
+  [level3-alignment.md](../001-lean-model-levels-3-4/07-level3-alignment.md)) a touch transaction kept every
   mark, the puts' too. Before, every node an operation reached got
   dirty at once; the change writes 1.4 to 13.7 percent fewer stream bytes in
   five workloads (level2-alignment.md, 10.4).
-* The super root (2026-10-15, [level2-alignment.md](level2-alignment.md),
+* The super root (2026-10-15, [level2-alignment.md](11-level2-alignment.md),
   M18): every record stores topPos, the position of the latest version of the
   newest written top node, which is the super root at the record's startup
   time (record format 5; streams of the older format 2 are refused).
@@ -356,7 +362,7 @@ a node, and when index nodes are written.
   could not start.
 
 Alignment with the model (F1-008-11, 2026-10-16;
-[level2-alignment.md](level2-alignment.md), sections 10.5 and 11):
+[level2-alignment.md](11-level2-alignment.md), sections 10.5 and 11):
 
 * Proved, in Lean, for the model: T1 (recovery, also after a crash after
   any transaction) and T2 (restart invariance), with BergDB's bookkeeping:
@@ -434,7 +440,7 @@ Open:
 Level 3: reclaim
 ================
 
-Alignment with the Lean model: [level3-alignment.md](level3-alignment.md)
+Alignment with the Lean model: [level3-alignment.md](../001-lean-model-levels-3-4/07-level3-alignment.md)
 (bergdb item 001, in progress).
 
 Reclaim cuts the front of the stream (pretruncate), so that the stream does
@@ -467,7 +473,7 @@ How it works in the reviewed baseline (including items 2 and 3 below):
   time tStart with a target of the smaller of that allowance and 16 KB;
   the final KV can exceed the target. The scan and the step's reads of each
   KV are maintenance reads (since 2026-10-17, bergdb item 001, R8: M28 of
-  [level4-alignment.md](level4-alignment.md)): they swizzle nothing into
+  [level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md)): they swizzle nothing into
   the slots, the node table gets nothing, and a step reads a version once
   (`NodeCollection.maintenance`); before, they swizzled what they read,
   the values too, which then stayed in memory. In one internal transaction
@@ -609,8 +615,8 @@ Findings:
 Level 3 cost
 ============
 
-Measured 2026-10-13 with [ReclaimCost.java](../java/stress/ReclaimCost.java)
-and [reclaimgrid.sh](../java/stress/reclaimgrid.sh), to decide how often
+Measured 2026-10-13 with [ReclaimCost.java](../../java/stress/ReclaimCost.java)
+and [reclaimgrid.sh](../../java/stress/reclaimgrid.sh), to decide how often
 iterations should run and what they should rewrite. Question from the
 discussion with Frans: with a long retention, little is gained by
 reclaiming often.
@@ -619,12 +625,12 @@ The first grid is the initial repair baseline; step 3 adds pacing and
 current-row storage; option 3 adds the older cut point (`b70fe6b`); items
 2 and 3 add index-aware budgeting and the scan target (`ebe5f77`). The
 summaries are kept in `evidence/`:
-[reclaimgrid-before-summary.txt](evidence/reclaimgrid-before-summary.txt),
-[reclaimgrid-step3-summary.txt](evidence/reclaimgrid-step3-summary.txt),
-[reclaimgrid-pcut-summary.txt](evidence/reclaimgrid-pcut-summary.txt) and
-[reclaimgrid-items23-summary.txt](evidence/reclaimgrid-items23-summary.txt). Their `RESULT` rows retain the
+[reclaimgrid-before-summary.txt](04-levels/reclaimgrid-before-summary.txt),
+[reclaimgrid-step3-summary.txt](04-levels/reclaimgrid-step3-summary.txt),
+[reclaimgrid-pcut-summary.txt](04-levels/reclaimgrid-pcut-summary.txt) and
+[reclaimgrid-items23-summary.txt](04-levels/reclaimgrid-items23-summary.txt). Their `RESULT` rows retain the
 workload, value size, K, f and measured quantities. The earlier H-based
-experiment in [log.md](log.md) used a different setup.
+experiment in [log.md](../../docs/log.md) used a different setup.
 
 Measures (Frans, 2026-10-13):
 
@@ -831,7 +837,7 @@ The following tuning is included in `ebe5f77` and the log
 snapshot of that day. Source, numerical summaries and existing regression logs were
 checked for consistency; Java gates were not independently rerun by this
 reviewer. The logs report 886 unit tests, 29 f-tests and successful Level
-1–3 checks. Grid source: [evidence/reclaimgrid-items23-summary.txt](evidence/reclaimgrid-items23-summary.txt).
+1–3 checks. Grid source: [04-levels/reclaimgrid-items23-summary.txt](04-levels/reclaimgrid-items23-summary.txt).
 
 Items 2 and 3, 2026-10-13: the allowance counts the index nodes, and the
 cause of the large commits.
@@ -930,7 +936,7 @@ operations expired during the run with a cut overtaking them, and 150
 expired at admission (the rest ran to the end, 40 million operations).
 Protected long-lived snapshots (option B of the completed plan) are not built
 and remain optional. Level 4 needs safe object and cold-load lifetimes while
-preserving the accepted expiry contract; see [level4-plan.md](level4-plan.md),
+preserving the accepted expiry contract; see [level4-plan.md](05-level4-plan.md),
 section 6.
 
 The retain duration may change (W2)
@@ -958,7 +964,7 @@ Removed from the Pub API with their tests (`testKvTime1`, `testKvTime2`). The
 time was the time of a key-node entry, wrong after a time split and changed by
 reclaim. `TransactionInfo.time()` stays (the transaction time). `GetData.kvTime`
 and `Kvt.time` stay as internal, marked inexact. Q9 is answered in
-[problem.md](problem.md). An exact write time would be stored in the value node
+[problem.md](01-problem.md). An exact write time would be stored in the value node
 (a format change); not planned.
 
 Where the bytes go (W4)
@@ -1022,7 +1028,7 @@ Small items (W5)
   (synchronous). So a cut that waits for it waits for the data to be written
   through the OS; on macOS that is not `F_FULLFSYNC` (drive cache), a
   hardware question at that cutoff. The later explicit-force work and native
-  audits are in [level3-durability.md](level3-durability.md).
+  audits are in [level3-durability.md](07-level3-durability.md).
   `Reclaim.Tester.testCutIsMadeAfterDecisionIsDurable` fails when the wait is
   removed. `CutStream.truncate` (used by `CrashTest`) never cuts the stream shorter than it was at
   the last cut, which is the model of this.
@@ -1046,7 +1052,7 @@ it could see a null node and the new position, and took the access data for a
 stream position. Without `-ea` that is a wrong pointer written to the stream. It
 exists without reclaim, whenever readers touch cold nodes while the writer
 serializes the same key node (after a restart); it is the interleaving that
-[level4-plan.md](level4-plan.md), section 4.5, predicted from the source. Fix:
+[level4-plan.md](05-level4-plan.md), section 4.5, predicted from the source. Fix:
 `KeyNode.getPointer()` and `TopNode.getPointer()` read the pair coherently (a
 memory pointer without a lock, a stream pointer under the monitor of the node,
 which `setPointer()` holds), and the serializer of the top node and the check of
@@ -1055,7 +1061,7 @@ atomically with pointers") asked for this. Test:
 `ReclaimReaderTester.testPointerPairIsCoherent` fails without the fix after
 about 3600 reads. Level 4 (eviction) must revisit it: it assumes that a memory
 pointer stays one. Since 2026-10-17 (bergdb item 001, R8, change 4: M23 and
-M24 of [level4-alignment.md](level4-alignment.md)) both read the reference
+M24 of [level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md)) both read the reference
 once and decide on that read; access data is written only into a memory
 pointer (`setPointerAccessData` checks it, under the pointer's lock, which
 every change of a pointer holds), so a position that an unswizzle writes
@@ -1168,18 +1174,18 @@ or replication with cuts. The 200-index-node measurement target is not an
 enforced cap. These proof/measurement limits and the API's expiry contract
 survive the document consolidation. Archived .NET/release documentation
 still needs an API-removal check before release. The new
-[Level 3 plan](level3-plan.md) addresses the next three validation gaps; the
+[Level 3 plan](06-level3-plan.md) addresses the next three validation gaps; the
 older cost grids remain historical measurements.
 
 
 Evidence
 ========
 
-With [RestartStress.java](../java/stress/RestartStress.java) (model check of
+With [RestartStress.java](../../java/stress/RestartStress.java) (model check of
 latest and historical lookups, before and after every restart),
-[RestartInvariance.java](../java/stress/RestartInvariance.java) (the same
+[RestartInvariance.java](../../java/stress/RestartInvariance.java) (the same
 transactions with and without restarts, compared) and
-[DagFuzz.java](../java/stress/DagFuzz.java) (the Dag alone).
+[DagFuzz.java](../../java/stress/DagFuzz.java) (the Dag alone).
 
 Level 0, no restarts:
 
@@ -1204,7 +1210,7 @@ Level 2, bounded startup:
 
 * Before the repairs (2017 code): 68 of 100 random configurations failed,
   and all 5 seeds of the default case on disk past 20 MB. Details in
-  [startup-invariants.md](startup-invariants.md), section 5.
+  [startup-invariants.md](03-startup-invariants.md), section 5.
 * After the repairs: random configurations 0 of 200
   fail (startup distances 100 bytes to 20 MB, node sizes 8 to 62, deletes,
   transactions of up to 40 keys); the default case on disk past 20 MB, 0 of
@@ -1220,7 +1226,7 @@ Level 2, bounded startup:
 Level 2 under load
 ==================
 
-Measured 2026-10-13 with [LoadTest.java](../java/stress/LoadTest.java) on a
+Measured 2026-10-13 with [LoadTest.java](../../java/stress/LoadTest.java) on a
 FileStream on the Mac (10 cores, SSD, JDK 27, G1, one writer thread). Keys
 are 4 bytes and values 100 bytes. A load of n keys in random order, 100
 per transaction; then single-put transactions on uniformly random keys;
@@ -1333,7 +1339,7 @@ Bounds, measured
 
 Measured 2026-10-17 for bergdb item 001, WP P3 (problem.md, R3 and Q4;
 sis-model.md, sections 10 and 11; input for the reserve of Level 4's
-capacity controller, J7), with [LoadTest.java](../java/stress/LoadTest.java)
+capacity controller, J7), with [LoadTest.java](../../java/stress/LoadTest.java)
 as above: 1M keys of 4 bytes, values of 100 bytes, a load of 100 keys per
 transaction, then 2M single-put transactions (uniform, or 90 percent on 1
 percent of the keys) or 100,000 transactions of 40 puts, on a FileStream,
@@ -1388,8 +1394,8 @@ Findings:
 Crash tests
 ===========
 
-[CrashTest.java](../java/stress/CrashTest.java), INV-CRASH in
-[problem.md](problem.md): random transactions with a small startup
+[CrashTest.java](../../java/stress/CrashTest.java), INV-CRASH in
+[problem.md](01-problem.md): random transactions with a small startup
 distance (2000 bytes, so that index nodes are written and the startup pos
 moves), then for each of 100 cuts per round: the stream cut at a random
 position, or at, just before or just after the end of a transaction; the
@@ -1509,7 +1515,7 @@ fails without the fix; found by reading the code, in item 005-41:
 The level 1 bugs
 ================
 
-Both fixed 2026-10-12. [level1.sh](../java/stress/level1.sh) checks level 1,
+Both fixed 2026-10-12. [level1.sh](../../java/stress/level1.sh) checks level 1,
 including these bugs; it must pass before any change to the code is
 committed.
 
@@ -1519,7 +1525,7 @@ committed.
 
 Deleting a key that does not exist broke the next restart
 if the key is 7 bytes or longer. Reproduction:
-[DeleteRepro.java](../java/stress/DeleteRepro.java), three transactions:
+[DeleteRepro.java](../../java/stress/DeleteRepro.java), three transactions:
 
     java -cp build/bergdb.jar:build/stress bergdb.core.DeleteRepro /k/1000
     -> FAILED: StreamIoException: Cannot read 199631 bytes at position 369
@@ -1600,7 +1606,7 @@ node padding was not written. Found while fixing them: Db and
 NodeCollection had a node table each; nodes created in the startup section
 got their vpos as spos at startup; nodes in D that the rerun does not
 reach; and the meta block's last transaction position after a restart. See
-[log.md](log.md).
+[log.md](../../docs/log.md).
 
 
 Bugs found by the alignment of Levels 3 and 4
@@ -1686,11 +1692,11 @@ test that fails without it.
 Level 4: eviction
 =================
 
-Alignment with the Lean model: [level4-alignment.md](level4-alignment.md)
+Alignment with the Lean model: [level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md)
 (bergdb item 001: the model, sections 5 and 6; the Java work, section 7).
 Evidence of a database larger than memory:
-[level4-evidence.md](level4-evidence.md); performance:
-[level4-performance.md](level4-performance.md).
+[level4-evidence.md](../001-lean-model-levels-3-4/10-level4-evidence.md); performance:
+[level4-performance.md](../001-lean-model-levels-3-4/11-level4-performance.md).
 
 Since 2026-10-18 the database keeps only part of its index and values in
 memory: eviction is on by default. The budget is `cacheSizeInMb`
@@ -1698,8 +1704,8 @@ memory: eviction is on by default. The budget is `cacheSizeInMb`
 heap); `DbBuilder.noEvict()` turns it off.
 
 How it works, with handles since 2026-10-26 (bergdb item 009,
-[items/009-handles/](../items/009-handles/readme.md), and
-[handles-alignment.md](handles-alignment.md); `dag/Handle.java`,
+[items/009-handles/](../009-handles/readme.md), and
+[handles-alignment.md](../009-handles/05-handles-alignment.md); `dag/Handle.java`,
 `core/Cache3.java`, `core/Eviction.java`, `core/Residents.java`). Until then
 eviction unswizzled pointers and released what no resident pointer named,
 with a sweep that walked every resident object (item 004).
@@ -1749,7 +1755,7 @@ records, D and the answers are those without eviction (T-CACHE, T-READ,
 T2-C, T-PIN; level4-alignment.md, section 5), for the design before
 handles, and for handles (`tc_handles`, `tr_handles`, `t2_handles`,
 `tr_handles_restarts`, `tp_handles`; lean/SIS/Proof/Handle*.lean; the
-mapping and its register in [handles-alignment.md](handles-alignment.md)).
+mapping and its register in [handles-alignment.md](../009-handles/05-handles-alignment.md)).
 Java is checked against it:
 the audit (INV-CAN, the pins, INV-SLOT, test-only), the checker's C-P on
 Java's physical states and its C-H, the model's invariants with handles on
@@ -1781,12 +1787,12 @@ Index-aware budgeting and the 16 KB scan target are now part of the
 reviewed `ebe5f77` baseline; the remaining work is below.
 
 1. Levels 3 and 4 are done for now (bergdb item 001, 2026-10-18): the
-   power-loss ordering ([level3-durability.md](level3-durability.md)), the
-   disk soak ([level3-soak.md](level3-soak.md)), the performance reference
-   ([level3-performance.md](level3-performance.md)), eviction, and both
+   power-loss ordering ([level3-durability.md](07-level3-durability.md)), the
+   disk soak ([level3-soak.md](../001-lean-model-levels-3-4/09-level3-soak.md)), the performance reference
+   ([level3-performance.md](10-level3-performance.md)), eviction, and both
    levels aligned with the proved Lean model
-   ([level3-alignment.md](level3-alignment.md),
-   [level4-alignment.md](level4-alignment.md)). Infinite retention remains
+   ([level3-alignment.md](../001-lean-model-levels-3-4/07-level3-alignment.md),
+   [level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md)). Infinite retention remains
    the default; eviction is on by default. Protected snapshots and an expert
    f controller remain optional work; that Java's reclaim scheme gives safe
    cuts is checked at every cut, not proved (T-SCHEME).

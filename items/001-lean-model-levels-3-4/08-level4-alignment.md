@@ -1,8 +1,10 @@
 # BergDB Level 4: the Java code and the Lean model
 
+001-08. Moved here from `docs/level4-alignment.md` on 2026-10-26 (006-07); history, not kept up to date.
+
 By Claude (Opus 5.5, Claude Code) for Frans Lundberg, from 2026-10-16.
 Work package A2 and later of bergdb item 001
-([../items/001-lean-model-levels-3-4/01-plan.md](../items/001-lean-model-levels-3-4/01-plan.md)).
+([01-plan.md](01-plan.md)).
 Source commit `75d3c2d`; line numbers below are at that commit, in
 `java/src/bergdb/`.
 
@@ -18,9 +20,9 @@ puts it in the model before it is in Java: the model's physical layer says
 what Java holds in memory, how it reads a node it does not hold, and how it
 evicts; Java then implements that, and the checker compares. This document
 says what "aligned" means for the cache, as
-[level2-alignment.md](level2-alignment.md) does for Level 2: α of Java's
+[level2-alignment.md](../011-docs-archive/11-level2-alignment.md) does for Level 2: α of Java's
 resident state (section 2) and the known differences, the register
-(section 3). Reclaim is in [level3-alignment.md](level3-alignment.md).
+(section 3). Reclaim is in [level3-alignment.md](07-level3-alignment.md).
 
 Terms of the model as in level2-alignment.md: P, the structure; D, the dirty
 set; S, the stream of records; lv(x), the latest version of x in S. The
@@ -281,7 +283,7 @@ still checked and argued, not proved. Since 2026-10-20 the gates require them:
 and A-COPY were diagnostics there) on the sets of `level2.sh`, `level3.sh`
 and `level4.sh`; the small and evict sets have a configuration with the kind
 (`a6`, `e-a6`), whose traces must contain it. Details:
-[items/005-todo/04-a6-failures.md](../items/005-todo/04-a6-failures.md).
+[items/005-todo/04-a6-failures.md](../005-todo/04-a6-failures.md).
 
 **A-COPY** (2026-10-17, after E3). The assumption that E3 added (5.10,
 `CopyStep`): every pointer of a new entry of transaction i names a node that
@@ -305,7 +307,7 @@ the paths that is not on them itself).
 The traces are those of L5's runs in `java/build/traces/` (the production
 code that made them is today's), and the large set of C3, checked after the
 others (2026-10-17, 03:41 to 07:17). The counts of both tiers are in
-[evidence/level4-acopy.txt](evidence/level4-acopy.txt). Most new pointers
+[08-level4-alignment/level4-acopy.txt](08-level4-alignment/level4-acopy.txt). Most new pointers
 are of the second kind: a split copies the split node's pointers to its
 children, which are below the paths, not on them.
 
@@ -1513,7 +1515,7 @@ Larger than memory: 7.7.
 
 **J8** (bergdb item 001, 2026-10-18): a database of 20 million keys, about
 six times the controller's budget of 500 MB, its index alone three times
-it, on disk in a JVM capped at 2 GB: [level4-evidence.md](level4-evidence.md).
+it, on disk in a JVM capped at 2 GB: [level4-evidence.md](10-level4-evidence.md).
 Every check passed (60 million checks of the whole key space after two cold
 restarts and at the end, and the reads between); the resident bytes stayed
 at or below the budget, the live heap at most 646 MB, 30 percent of the cap;
@@ -1544,7 +1546,7 @@ are met (warm gets and scans within 5 percent, commits within 1.2 percent,
 startup 6.5 to 9.7 percent slower, against 20 allowed), with no alert;
 under a budget of a fifth of the read scenario's data, reads are 30 to 90
 times slower, as they load from the stream:
-[level4-performance.md](level4-performance.md).
+[level4-performance.md](11-level4-performance.md).
 
 
 
@@ -1553,7 +1555,7 @@ times slower, as they load from the stream:
 Bergdb item 001's plan, section 1.2, point by point for Level 4 (WP F2,
 2026-10-18; Level 3's is in level3-alignment.md, section 7). The final
 campaign (F1) ran on the final code and model, bergdb `899c547`:
-[evidence/level34-conformance.txt](evidence/level34-conformance.txt).
+[07-level3-alignment/level34-conformance.txt](07-level3-alignment/level34-conformance.txt).
 
 1. **Correspondence.** α covers the cache: the resident objects, their
    slots, the node table and the pins (section 2, with E1's design in
@@ -1605,10 +1607,10 @@ campaign (F1) ran on the final code and model, bergdb `899c547`:
    the final tree (`LEVEL 1 OK` to `LEVEL 4 OK`; every record of
    `StreamDigest`'s 36 runs R8's); the quick performance suite stays within
    Q13's targets against Level 3, with eviction off and with a budget above
-   the data (J10, [level4-performance.md](level4-performance.md)); a
+   the data (J10, [level4-performance.md](11-level4-performance.md)); a
    database of 20 million keys, six times the budget, its index three
    times, runs on disk in a JVM capped at 2 GB with stable memory (J8,
-   [level4-evidence.md](level4-evidence.md)); and the two-hour soak with
+   [level4-evidence.md](10-level4-evidence.md)); and the two-hour soak with
    eviction keeps its memory bounded and every one of its 64 million reads
    right (P4). Under that soak's read churn, though, the sweeps took 35
    percent of the time and the paced writer reached 62 percent of its rate

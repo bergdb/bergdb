@@ -20,7 +20,7 @@ The proofs never used A6. They use a weaker form, A6', which allows exactly
 this case, and A-COPY. Both hold in every Java transaction checked, and
 Frans accepted this at K1 (2026-10-17). See
 [03-k1-review.md](../001-lean-model-levels-3-4/03-k1-review.md), sections 1
-and 3, and [level4-alignment.md](../../docs/level4-alignment.md), section 4.
+and 3, and [level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md), section 4.
 
 So nothing is broken. The question is whether to leave it, or tidy up.
 
@@ -115,7 +115,7 @@ later takes the later klong for the compare value, an earlier lookup sees
 neither. It costs one klong and its pointer in each version of the leaf until
 a split drops it. For the model it is a pointee like any other: Rule A keeps
 the leaf in D while the split node is in D, case 2 of
-[level4-alignment.md, 5.4](../../docs/level4-alignment.md), the case that
+[level4-alignment.md, 5.4](../001-lean-model-levels-3-4/08-level4-alignment.md), the case that
 needs A6' rather than A6.
 
 **Option 4, the code.** Can anything else adopt, that is, give a node

@@ -141,7 +141,7 @@ public interface Database {
      * <p>
      * A finite duration makes the database reclaim stream space: it rewrites live values that
      * are stored in the front of the stream, and then cuts the front. This costs writes and
-     * space. Measured with the default settings (2026-10-13, see docs/levels.md, "Level 3
+     * space. Measured with the default settings (2026-10-13, see bergdb 011-04, "Level 3
      * cost"): when the duration is short, the write efficiency (user bytes divided by stream
      * bytes written) is 23 to 38 percent lower than without reclaim, and the stream kept is
      * several times the data accessible within the duration (store efficiency 0.09 to 0.75,

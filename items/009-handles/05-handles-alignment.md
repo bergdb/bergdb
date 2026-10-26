@@ -1,9 +1,11 @@
 # BergDB Level 4 with handles: the Java code and the Lean model
 
+009-05. Moved here from `docs/handles-alignment.md` on 2026-10-26 (006-07).
+
 Written 2026-10-26 by Claude (Opus 5.5, Claude Code) for Frans Lundberg,
 as step 4b of bergdb item 009
-([items/009-handles/](../items/009-handles/readme.md); 009-01, phase 4). It
-does for handles what [level4-alignment.md](level4-alignment.md) does for
+([items/009-handles/](readme.md); 009-01, phase 4). It
+does for handles what [level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md) does for
 the design before them, which stays as its history: the mapping α from
 Java's state to the model's, and the register of where they differ.
 
@@ -12,7 +14,7 @@ dag/KeyNode.java, dag/TopNode.java, core/Cache3.java,
 core/NodeCollection.java, core/Eviction.java, core/Residents.java). The
 model: lean/SIS/Handle.lean (trusted, like Evict.lean), with the statements
 in lean/SIS/HandleTheorems.lean. The design both follow:
-[02-implementation-plan.md](../items/009-handles/02-implementation-plan.md),
+[02-implementation-plan.md](02-implementation-plan.md),
 section 4, and its section 9, what the implementation changed.
 
 

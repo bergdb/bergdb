@@ -285,7 +285,7 @@ request ("fix 005-40"); in a clone, on `98ac9eb`:
    its own `TORN_HEADER_FILLER` (4), and no longer imports `bergdb.core`,
    so the "TODO D." about that is gone too. Two of its tests set byte 4 of
    a transaction to the constant before they cut it off; they no longer
-   do. [docs/levels.md](../../docs/levels.md) has the fault as number 8 of
+   do. [docs/levels.md](../011-docs-archive/04-levels.md) has the fault as number 8 of
    "Bugs found by the load and crash tests".
 
 Tests; the three of recovery fail without the fix (checked with the old

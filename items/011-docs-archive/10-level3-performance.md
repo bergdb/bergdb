@@ -1,12 +1,14 @@
 # Level 3 performance baseline (quick)
 
+011-10. Moved here from `docs/level3-performance.md` on 2026-10-26 (006-07); history, not kept up to date.
+
 Written by Claude (Sonnet 5.5) for Frans Lundberg, 2026-10-14.
 
 A simple sanity baseline for Level 4, as defined in task 3 of
-[level3-plan.md](level3-plan.md): after Level 4, run the same command and compare by
+[level3-plan.md](06-level3-plan.md): after Level 4, run the same command and compare by
 eye. A warm-read loss of more than about 10-20%, or a gross stall, needs an explanation.
 This is not a regression gate and not a complete baseline; the fuller tooling is described
-in [performance-harness.md](performance-harness.md).
+in [performance-harness.md](09-performance-harness.md).
 
 **Status, 2026-10-16: the reference is `quick-2026-10-16-post-task1`** (next section), taken
 on the code after task 1 and the Level 2 alignment, for bergdb item 001 (WP P1). The first

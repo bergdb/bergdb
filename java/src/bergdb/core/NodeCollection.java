@@ -31,7 +31,7 @@ import bergdb.stream.MemoryStream;
  * An instance of this class adds a cache to NodeStream
  * and implements PointerFollower for Db.
  * 
- * <p>Since 2026-10-12 (docs/levels.md, level 2), the cache is the node table 
+ * <p>Since 2026-10-12 (bergdb 011-04, level 2), the cache is the node table 
  * shared with Db: one canonical object per node, and Rule R for pointers followed into 
  * the stream. This object is the follower for readers; writer() is the follower for 
  * the writer.</p>
@@ -62,7 +62,7 @@ public class NodeCollection implements PointerFollower {
      * True from setStartupSection() until endReconstruction(): while DbStarter rebuilds the
      * database. Only then is a key node version of the startup section that a pointer leads
      * to cut back to the startup time; a load at runtime never is (bergdb item 001, WP R8,
-     * change 2; docs/level4-alignment.md, M22: the Level 4 loader, `Mem.follow4`).
+     * change 2; bergdb 001-08, M22: the Level 4 loader, `Mem.follow4`).
      */
     private volatile boolean reconstructing = false;
     
@@ -152,7 +152,7 @@ public class NodeCollection implements PointerFollower {
     
     /**
      * Returns a new follower for maintenance reads: reclaim's scan and its reads of each
-     * KV (bergdb item 001, WP R8, change 5: M28; docs/level4-plan.md, 5.1). It loads as
+     * KV (bergdb item 001, WP R8, change 5: M28; bergdb 011-05, 5.1). It loads as
      * the readers' follower does (the canonical object, or the version the slot names after
      * Rule R), but it does not swizzle what it reads into the slot, the node table gets
      * nothing, and it leaves the slots' access data as they are. What it reads stays in a
@@ -623,7 +623,7 @@ public class NodeCollection implements PointerFollower {
 
     /**
      * Before an index node is written: makes each of its pointers to an index node name
-     * the latest version of that node (docs/levels.md, level 2; the Lean model's
+     * the latest version of that node (bergdb 011-04, level 2; the Lean model's
      * `Mem.refOf`). A pointee in the pinned set, a node of D or of the record being written
      * (its canonical object, dirty: the writer calls this before it cleans the record's
      * nodes), is resolved by node id: the pointer gets the node's live handle, which holds
@@ -686,7 +686,7 @@ public class NodeCollection implements PointerFollower {
 
     /**
      * Rule 4 at startup (DbStarter.linkD; the Lean model's `Mem.linkD`; bergdb item 001,
-     * WP R8, change 1: docs/level4-alignment.md, M44): each pointer of 'node' to an index
+     * WP R8, change 1: bergdb 001-08, M44): each pointer of 'node' to an index
      * node that has a canonical object gets that node's live handle, by node id. A stream
      * pointer below the first position of the stream is left as it is (M33).
      */

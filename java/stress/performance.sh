@@ -1,5 +1,5 @@
 #!/bin/sh
-# The performance runner of Level 3 (docs/level3-plan.md, task 3), written 2026-10-14.
+# The performance runner of Level 3 (bergdb 011-06, task 3), written 2026-10-14.
 # Repeatable workloads on a FileStream, with a short smoke mode and a full reference mode, and a
 # comparison of a candidate with an explicitly chosen reference. It is a performance check
 # alongside the correctness gates (level1.sh to level3.sh), not one of them. Do not run

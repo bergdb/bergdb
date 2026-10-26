@@ -1,6 +1,6 @@
 /-
 An exploratory reference model, independent of SIS's proved write algorithm.
-See docs/reference-theory.md for the proposal and the limits of these proofs.
+See bergdb 011-08 for the proposal and the limits of these proofs.
 
 Resident object IDs model direct references, not an implementation map lookup.
 This model covers immutable, exactly backed images. Dirty canonical bodies,

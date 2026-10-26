@@ -6,8 +6,8 @@ reports, reviews. This file holds the rules and the index.
 
 An item is a place to work with freedom: to try things, keep dead ends and
 logs, without cluttering the current state of BergDB. The current state is
-`java/`, `lean/` and the reviewed documents in `docs/`, starting with
-[docs/levels.md](../docs/levels.md).
+`java/`, `lean/` and the few documents in `docs/` that are kept up to date
+with them, starting with [docs/levels.md](../docs/levels.md).
 
 
 Names
@@ -21,6 +21,9 @@ Names
   index and in the directory names. Never reuse a number and do not fill
   gaps; a deleted item or subitem keeps its number.
 * Short names are lowercase kebab-case.
+* Cite a document by its ID and section: `001-08, section 5.5`; in code
+  comments, `bergdb 001-08, section 5.5`. A path changes when a file moves,
+  an ID does not.
 
 
 Layout
@@ -69,14 +72,18 @@ Items and the current state
   scripts and `lake build` never read it. Code in an item is a prototype, a
   patch or a tool for that item only.
 * A result leaves an item on purpose: code moves into `java/` or `lean/`,
-  passing the gates; findings go into `docs/`, with a link to the item as
-  evidence.
+  passing the gates. A finding changes `docs/` only as far as the current
+  state changes, usually a few lines in `docs/levels.md` that cite the item
+  as evidence; the report, the alignment, the evidence and the log stay in
+  the item. A new document is a subitem, not a file in `docs/`
+  ([docs/readme.md](../docs/readme.md)).
 * A code experiment too large for the item directory runs on a git branch
   or worktree. The item records the branch and the outcome.
 * A finished item is history. It is not kept up to date, like
   [docs/log.md](../docs/log.md).
 * Work on BergDB before this index (2026-10-16), including the Level 2
-  alignment, is described in `docs/` and in the f1 repo's F1-007 and F1-008.
+  alignment, is in item 011, in [docs/log.md](../docs/log.md), and in the f1
+  repo's F1-007 and F1-008.
 
 
 Index
@@ -108,3 +115,7 @@ Index
 * **010-principles** (open). BergDB's design principles, in Frans's
   words, P1 to P11: among them no stop-the-world, a deterministic stream,
   calm when not used, and maintenance proportional to the user's work.
+* **011-docs-archive** (done). The documents of `docs/` that no item owns,
+  moved here on 2026-10-26 (006-07): the problem statement, prior art, the
+  plans for Levels 3 and 4, the Level 2 alignment and more of 12 to 16
+  October, and `docs/levels.md` as it was until then.

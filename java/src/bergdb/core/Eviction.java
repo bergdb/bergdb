@@ -25,7 +25,7 @@ import bergdb.stream.MemoryStream;
 
 /**
  * Eviction at transaction boundaries (bergdb item 001, WP J2: values; J3: index nodes;
- * docs/level4-alignment.md, 5.2 and 6.2, rows 8 and 9; the Lean model's `Mem.unswizzle`,
+ * bergdb 001-08, 5.2 and 6.2, rows 8 and 9; the Lean model's `Mem.unswizzle`,
  * `Mem.release` and `Mem.detachable`, lean/SIS/Evict.lean). With handles since bergdb item
  * 009, step 3a (items/009-handles/02-implementation-plan.md, 4.7).
  *
@@ -678,7 +678,7 @@ public final class Eviction {
 
     // ======== Tests ========
     //
-    // The cases of docs/level4-plan.md, section 9 (bergdb item 001, WPs J2 and J3), each run
+    // The cases of bergdb 011-05, section 9 (bergdb item 001, WPs J2 and J3), each run
     // as a twin: the same transactions on a database without eviction and on one with a
     // schedule, the audit after every transaction (INV-CAN, the pins, INV-SLOT), the streams
     // byte for byte the same and every lookup the same.

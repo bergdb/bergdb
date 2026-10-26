@@ -1,5 +1,5 @@
 #!/bin/sh
-# Level 2 conformance (docs/level2-alignment.md): runs TraceExport on a set of
+# Level 2 conformance (bergdb 011-11): runs TraceExport on a set of
 # configurations, and checks each trace with the Lean checker (lean/, lake exe
 # tracecheck). Written 2026-10-15 for F1-008-11, WPs C3 and F1.
 #

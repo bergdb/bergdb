@@ -9,7 +9,7 @@
 #
 # Builds with ../java/build.sh, then runs, stopping at the first failure:
 #   1. The unit tests (bergdb.dev.Unit; quick: the eviction tests only):
-#      Eviction (the cases of docs/level4-plan.md, section 9, as twins with and
+#      Eviction (the cases of bergdb 011-05, section 9, as twins with and
 #      without eviction), EvictionReaderTester (readers under eviction, Q8),
 #      CapacityTester (the capacity controller) and Residents; then the f-tests
 #      of these classes (bergdb.dev.F), their full versions: every schedule,

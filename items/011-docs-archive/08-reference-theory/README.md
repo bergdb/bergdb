@@ -1,20 +1,22 @@
 # Exploratory reference model
 
-The theory proposal is [reference-theory.md](../../docs/reference-theory.md).
+The theory proposal is [reference-theory.md](../08-reference-theory.md)
+(011-08). Moved here from `lean/References/` on 2026-10-26 (006-07), with
+that document.
 This model is separate from the existing proved SIS algorithm and is not
 part of the default `lake build` target.
 
 From the repository root:
 
 ```sh
-sh lean/References/check.sh
+sh items/011-docs-archive/08-reference-theory/check.sh
 ```
 
 To also rebuild the existing SIS library in isolation and check the
 historical-reference trace under its current algorithm:
 
 ```sh
-sh lean/References/check.sh --sis
+sh items/011-docs-archive/08-reference-theory/check.sh --sis
 ```
 
 The script uses `lean/lean-toolchain`, copies the two source files to a

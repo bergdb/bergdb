@@ -1,5 +1,7 @@
 # References, deferred writes, reclaim and caching
 
+011-08. Moved here from `docs/reference-theory.md` on 2026-10-26 (006-07); history, not kept up to date. Its exploratory Lean model, formerly `lean/References/`, is in [08-reference-theory/](08-reference-theory/README.md).
+
 By Codex for Frans Lundberg, 2026-10-14.
 
 **Status, 2026-10-18.** Bergdb item 001 settled the reference rule: Option
@@ -64,14 +66,14 @@ whole-database runs:
 | `DbHelper.hasDirtyChild()` | The conservative still-dirty test recognizes dirty children through memory references. | Replacing a memory edge by a cold edge must not silently change writer bookkeeping. |
 | `Reclaim.step()` | Ordinary reads scan an iteration snapshot, then a writer transaction rewrites old values and touches the index range. | Maintenance reads need bounded admission; rewrite and cut safety must survive a fully cold graph. |
 
-Relevant sources: [Pointer](../java/src/bergdb/dag/Pointer.java),
-[KeyNode](../java/src/bergdb/dag/KeyNode.java),
-[TopNode](../java/src/bergdb/dag/TopNode.java),
-[Cache3](../java/src/bergdb/core/Cache3.java),
-[NodeCollection](../java/src/bergdb/core/NodeCollection.java),
-[DbHelper](../java/src/bergdb/core/DbHelper.java),
-[Db.store](../java/src/bergdb/core/Db.java),
-[Reclaim](../java/src/bergdb/core/Reclaim.java).
+Relevant sources: [Pointer](../../java/src/bergdb/dag/Pointer.java),
+[KeyNode](../../java/src/bergdb/dag/KeyNode.java),
+[TopNode](../../java/src/bergdb/dag/TopNode.java),
+[Cache3](../../java/src/bergdb/core/Cache3.java),
+[NodeCollection](../../java/src/bergdb/core/NodeCollection.java),
+[DbHelper](../../java/src/bergdb/core/DbHelper.java),
+[Db.store](../../java/src/bergdb/core/Db.java),
+[Reclaim](../../java/src/bergdb/core/Reclaim.java).
 
 Adding balanced counts and an eviction loop would leave these semantic
 couplings in place. That is why the overall reference design comes first.
@@ -95,7 +97,7 @@ strong requirement: an old image and a current body can legitimately
 coexist. The important conditions are completeness for the operation's
 time and uniqueness of mutable writer authority.
 
-The current-tree assumption in [sis-model.md](sis-model.md), section 11,
+The current-tree assumption in [sis-model.md](../../docs/sis-model.md), section 11,
 is useful: a changed node has one current parent, and the write path finds
 its current ancestors. Historical parents still share children. This
 assumption must be verified for the Java Dag, including segmented keys,
@@ -210,7 +212,7 @@ may supply the answer in B, but making its presence authoritative restores
 cache-dependent records. Keeping a directory of every latest node position
 would supply the information at a cost proportional to total node count.
 
-[Model.lean](../lean/References/Model.lean) defines these two write logs,
+[Model.lean](08-reference-theory/Model.lean) defines these two write logs,
 their observations and latest positions, and proves
 `no_latest_from_anchor_and_tail`. This is a theorem about that observation
 set. A richer resolver, current-tree search, or an invariant excluding
@@ -223,7 +225,7 @@ parent does not remove its future serialization obligation.
 
 ### 5.2 A reachable case in the existing SIS algorithm
 
-[SISCase.lean](../lean/References/SISCase.lean) makes the obligation concrete
+[SISCase.lean](08-reference-theory/SISCase.lean) makes the obligation concrete
 in the existing model, with the exact still-dirty test. Its executable
 assumption checks pass, and every non-root node has one current parent
 in every recorded state. No node changes after it leaves current reachability.
@@ -470,7 +472,7 @@ examples expose different parts of that relation.
 
 ## 9. The small model implemented in this investigation
 
-[References/Model.lean](../lean/References/Model.lean) gives an operational
+[References/Model.lean](08-reference-theory/Model.lean) gives an operational
 time-dependent traversal over stored images and a physical heap. A heap
 object has its own identity, backing address, image and outgoing direct
 references. Different parents can share an object, and different images
@@ -520,7 +522,7 @@ capacity bounds, concurrency and restart are outside the new proofs.
 This is an initial component model of references and cuts, not the
 requested eventual proof that all database operations compose.
 
-[Examples.lean](../lean/References/Examples.lean) exercises warm/cold reads,
+[Examples.lean](08-reference-theory/Examples.lean) exercises warm/cold reads,
 shared-child detachment, historical/current images, incorrect same-ID
 promotion, warm memory masking an invalid cut, valid retained paths,
 rewrite-before-cut, expiry, snapshot changes on retry and cache-dependent
@@ -568,7 +570,7 @@ eligible, and varied cache schedules.
 Resolve that trace and its general loading/reference-selection lemma
 before adding production ownership machinery. Then select the smallest
 lifetime protocol that meets measured read and maintenance-tail requirements.
-The existing [Level 3 validation plan](level3-plan.md) remains the integration
+The existing [Level 3 validation plan](06-level3-plan.md) remains the integration
 gate; its fixed source and performance reference are needed when Java work
-begins. [level4-plan.md](level4-plan.md) remains an implementation proposal,
+begins. [level4-plan.md](05-level4-plan.md) remains an implementation proposal,
 to revise after the reference rule and refinement are settled.

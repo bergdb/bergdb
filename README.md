@@ -11,9 +11,10 @@ database.
 This repository holds three things that belong together, and the work on
 them:
 
-* `docs/`. The theory: the problem statement, the model of self-indexed
-  streams, prior art, the feature levels with their test evidence, and the
-  plans for the next levels. Start with [docs/levels.md](docs/levels.md).
+* `docs/`. The current state in words: the feature levels, what works
+  and where the evidence is (start with [docs/levels.md](docs/levels.md)),
+  the model of self-indexed streams, the trace format, and the development
+  log. See [docs/readme.md](docs/readme.md).
 * `lean/`. The abstract model in Lean 4 and machine-checked proofs of
   recovery (T1) and restart invariance (T2). See [lean/README.md](lean/README.md).
 * `java/`. The Java implementation, its build script and the regression and
@@ -78,11 +79,12 @@ Status
 | 4 | + eviction: data larger than memory | Passes the tests run, on by default; with handles since 2026-10-26, eviction in bounded steps, without a stop-the-world of its own (bergdb item 009); a database six times its memory budget runs on disk; aligned with the proved Lean model of eviction, with handles |
 
 Evidence and limits are in [docs/levels.md](docs/levels.md), including the
-[FileStream durability report](docs/level3-durability.md). The Lean proofs
+FileStream durability report,
+[011-07](items/011-docs-archive/07-level3-durability.md). The Lean proofs
 concern the abstract model, which since bergdb item 001 includes reclaim and
 eviction; Java's runs are checked against it, not proved, and concurrency and
 resource bounds are not in it. Whether the concept is novel is open; see
-[docs/prior-art.md](docs/prior-art.md).
+the study of prior art, [011-02](items/011-docs-archive/02-prior-art.md).
 
 Two known limits (2026-10-25). Replication (`DatabaseBuilder.replica`,
 `Database.addReplica`) is experimental, with known faults, and not for data

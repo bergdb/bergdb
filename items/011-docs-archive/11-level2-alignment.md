@@ -1,5 +1,7 @@
 # BergDB Level 2: the Java code and the Lean model
 
+011-11. Moved here from `docs/level2-alignment.md` on 2026-10-26 (006-07); history, not kept up to date. Section 9, the trace format, is kept up to date in [docs/trace-format.md](../../docs/trace-format.md).
+
 By Claude (Opus 5.5, Claude Code) for Frans Lundberg, from 2026-10-15.
 Work packages B1, B2, B3 and later of the plan F1-008-11 (repository f1,
 `b/008-bergdb-lean-model/11-level2-alignment-plan-claude/`). Source commit
@@ -10,7 +12,7 @@ Status, 2026-10-16: all work packages done; D0 and D1 committed (`01f386a`,
 section 12; next is Frans's checkpoint K4.
 
 The goal of the plan is that the Java code and the Lean model in
-[../lean/](../lean/README.md) agree at Level 2 (reclaim off): the Java
+[../../lean/](../../lean/README.md) agree at Level 2 (reclaim off): the Java
 transactions meet the model's assumptions, every Java transaction does what
 the model's `step` does, and restarts are invisible. This document says what
 "agree" means in detail: the mapping α from the Java state to the model's
@@ -22,7 +24,7 @@ arguments for the rows resolved by argument (section 7).
 Terms of the model: P, the structure (nodes with histories); D, the dirty
 set (node id and got-dirty index); S, the stream of records R(0), R(1), ...;
 x@t, a history cut at time t; lv(x), the latest version of x in S. See
-[sis-model.md](sis-model.md) and the Lean files `SIS/Basic.lean` to
+[sis-model.md](../../docs/sis-model.md) and the Lean files `SIS/Basic.lean` to
 `SIS/Theorems.lean`.
 
 
@@ -269,8 +271,8 @@ classes and methods in `java/src/bergdb/`, "model" definitions in
 
 Since 2026-10-16, bergdb item 001 reopens M8 (stage 1, WPs L1 to L5: a Lean
 model of lazy reading, which also closes M42) and M17 (Level 3). The rows of
-Levels 3 and 4, M17 and M20 on, are in [level3-alignment.md](level3-alignment.md)
-and [level4-alignment.md](level4-alignment.md). Lemma M itself is proved
+Levels 3 and 4, M17 and M20 on, are in [level3-alignment.md](../001-lean-model-levels-3-4/07-level3-alignment.md)
+and [level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md). Lemma M itself is proved
 (WP L2: `LM_newer`, `LM_ruleR`, `LM_cutTo` in `lean/SIS/PhysTheorems.lean`).
 
 Findings while writing B1, beyond the plan's initial list: M19 (a note), and
@@ -566,6 +568,9 @@ Done in `lean/` (see its README, "Changes to the trusted part on
 
 ## 9. Trace format
 
+Since 2026-10-26 the trace format is [docs/trace-format.md](../../docs/trace-format.md),
+which is kept up to date; this section is the format as it was then.
+
 Work package B3, 2026-10-15. The exporter (`java/stress/TraceExport.java`,
 WP C1) writes a trace of a Java run in model terms; the checker (`lake exe
 tracecheck` in `lean/`, WP C2) reads it.
@@ -793,7 +798,7 @@ after every transaction; long keys (two segments); 40-key transactions;
 sorted bulk loads of 40 keys; mostly idle transactions (30 percent empty, 20
 percent deletes of missing keys) at a startup distance of 100 bytes. The
 medium set: 300 to 500 transactions, node sizes 8 to 30, up to 3,000 keys.
-Raw summaries: [evidence/level2-redlist-baseline.txt](evidence/level2-redlist-baseline.txt).
+Raw summaries: [11-level2-alignment/level2-redlist-baseline.txt](11-level2-alignment/level2-redlist-baseline.txt).
 
 The checker in its target mode (marking in step 3, Java's still-dirty test,
 the virtual root), 50 small traces, 3,700 transactions after their R(0):
@@ -933,7 +938,7 @@ class comment; `TopDs.newSuperRoot`; Db's `markAtEndOfOp`, `endOfOp`,
 
 The full set of 8.5 on the final code and model: bergdb `d5c56dd` (D0 and
 D1), the model of E3. Raw summaries, with the time and memory of each run:
-[evidence/level2-conformance.txt](evidence/level2-conformance.txt).
+[11-level2-alignment/level2-conformance.txt](11-level2-alignment/level2-conformance.txt).
 
 | Set | What ran | Result |
 |---|---|---|
@@ -957,7 +962,7 @@ traces, not a sample. Since bergdb item 001's WPs C2 and C3, the Lean tier
 also has a large set (`conformance.sh large`, 12 traces of 1,000 to 5,000
 transactions, node sizes 8 to 62, up to 3,000 keys): all pass, in 60 minutes
 with four traces at once (section 12;
-[evidence/level2-conformance-c3.txt](evidence/level2-conformance-c3.txt)).
+[11-level2-alignment/level2-conformance-c3.txt](11-level2-alignment/level2-conformance-c3.txt)).
 
 ## 11. Outcome (WP F2, 2026-10-16)
 
@@ -1060,12 +1065,12 @@ at node size 30 takes under 8 minutes. All CONFORMANCE OK.
 ## 13. Lazy reading (bergdb item 001, stage 1)
 
 Work packages L1 to L5 of bergdb item 001
-([../items/001-lean-model-levels-3-4/01-plan.md](../items/001-lean-model-levels-3-4/01-plan.md)),
+([../001-lean-model-levels-3-4/01-plan.md](../001-lean-model-levels-3-4/01-plan.md)),
 from 2026-10-16: what Java holds in memory after a restart, and how it reads a
 node on first touch, as definitions of the model (`lean/SIS/Phys.lean`), and
 the theorems that make M8 (lemma M) a proof. The logical model stays the
 specification; this is the first part of the physical layer, which stage 2
-(eviction, [level4-alignment.md](level4-alignment.md)) extends.
+(eviction, [level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md)) extends.
 
 ### 13.1 The physical layer, part 1 (WP L1)
 

@@ -18,8 +18,8 @@ import bergdb.nanotest.Nano;
 
 /**
  * What the database holds in memory, its bytes, and what it must keep: the resident
- * registry and the pins (bergdb item 001, WP J1; docs/level4-alignment.md, 5.2 and 6.2,
- * row 7; docs/level4-plan.md, 4.1 and 4.2).
+ * registry and the pins (bergdb item 001, WP J1; bergdb 001-08, 5.2 and 6.2,
+ * row 7; bergdb 011-05, 4.1 and 4.2).
  *
  * <p><b>Resident objects</b> are the node objects the database holds: the objects of the
  * live handles (Cache3; canonical objects and versions read), and the values that pointers

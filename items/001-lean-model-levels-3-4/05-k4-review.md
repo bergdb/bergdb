@@ -86,7 +86,7 @@ with the controller): no failure, no audit failed. The readers' protocol
 threads under eviction.
 
 **Larger than memory** (J8,
-[level4-evidence.md](../../docs/level4-evidence.md)): 20 million keys, an
+[level4-evidence.md](10-level4-evidence.md)): 20 million keys, an
 index of 1.5 GB and 2 GB of values, on disk in a JVM capped at 2 GB with a
 budget of 500 MB: every check right; the resident bytes at most the budget;
 the live heap at most 646 MB.
@@ -94,7 +94,7 @@ the live heap at most 646 MB.
 **The gate** (J9): `level4.sh` full, `LEVEL 4 OK` in 982 s, and quick in
 239 s, on a busy machine.
 
-**Performance** (J10, [level4-performance.md](../../docs/level4-performance.md)):
+**Performance** (J10, [level4-performance.md](11-level4-performance.md)):
 with eviction off and with a budget
 larger than the data, against `l34-base` in matched runs on a quiet
 machine: warm gets and scans within 5 percent, commits within 1.2 percent,

@@ -12,6 +12,12 @@ algorithm. [README.md](README.md) describes the repo; start reading at
   subitem in `items/`, unless the context says otherwise.
 - Experiments, plans, progress logs and reports belong in an item, not in
   `java/`, `lean/` or `docs/`.
+- `docs/` holds only what is kept up to date with the code: `levels.md`,
+  `sis-model.md`, `trace-format.md`, the log `log.md` and `sources/`
+  ([docs/readme.md](docs/readme.md)). A new document is a subitem, not a
+  file in `docs/`.
+- Cite a document by its ID and section (`001-08, section 5.5`; in code
+  comments `bergdb 001-08, section 5.5`), not by its path.
 
 ## Code
 

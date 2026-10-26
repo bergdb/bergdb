@@ -12,7 +12,7 @@ import bergdb.stream.FileStream;
 
 /**
  * The cost of reclaim (level 3), written 2026-10-13, revised the same day with Frans's
- * measures (docs/levels.md, "Level 3 cost"):
+ * measures (bergdb 011-04, "Level 3 cost"):
  *
  *   WE, write efficiency = user bytes written / stream bytes appended, over the
  *       transactions from the first cut to the end. User bytes are key + value, as given
@@ -38,7 +38,7 @@ import bergdb.stream.FileStream;
  *      before now - R.
  *
  * In phase 3 it also prints the first 12 user commits that write more than 200 index
- * nodes, with the state of the iteration then (docs/levels.md, "Level 3 cost": large
+ * nodes, with the state of the iteration then (bergdb 011-04, "Level 3 cost": large
  * steps of reclaim caused them, until steps were capped).
  *
  * In package bergdb.core to reach Db internals (Reclaim.Stats).
@@ -82,7 +82,7 @@ public class ReclaimCost {
     final long tstep;
     final long r;
 
-    /** The tail target (docs/levels.md, W4.2): index nodes in one user commit. */
+    /** The tail target (bergdb 011-04, W4.2): index nodes in one user commit. */
     static final long TAIL_TARGET_INDEX_NODES = 200;
 
     final Random rnd = new Random(1);
@@ -99,7 +99,7 @@ public class ReclaimCost {
     Reclaim.Stats statsForDebug;
 
     // The records of the stream (Reclaim.Stats.Record) when the steady period started (2026-10-13,
-    // docs/levels.md, W4.1), to take the records of the period by subtraction.
+    // bergdb 011-04, W4.1), to take the records of the period by subtraction.
     Reclaim.Stats.Record user0, step0, table0;
 
     void snapshot(Reclaim.Stats stats) {
@@ -353,7 +353,7 @@ public class ReclaimCost {
                 maxKept = Math.max(maxKept, kept);
                 samples++;
                 if (disk) {
-                    // FileStream deletes whole files (docs/levels.md, W5d): the disk
+                    // FileStream deletes whole files (bergdb 011-04, W5d): the disk
                     // holds the kept stream plus the part of the first file before the cut.
                     long onDisk = 0;
                     for (File f : dir.listFiles()) onDisk += f.length();

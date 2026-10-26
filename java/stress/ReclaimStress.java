@@ -36,7 +36,7 @@ import bergdb.stream.CutStream;
  *               (a cold cache: every surviving old version is read from the stream, which
  *               refuses reads below the cut), instead of 300 random lookups.
  *   rchange=0   Keep the retain duration of the round fixed. By default (2026-10-13,
- *               docs/levels.md, W2) it is changed at restarts and during sessions, to 1,
+ *               bergdb 011-04, W2) it is changed at restarts and during sessions, to 1,
  *               2, 5 s or forever (no reclaim), at random.
  *   del=0       No deletes.
  *   verbose=1   Print a line per session: stream length, cut, first available time.

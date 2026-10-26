@@ -212,7 +212,7 @@ public class KeyNode implements Node {
     /**
      * Gets the pointer as one coherent pair (node, pos).
      *
-     * <p>2026-10-13 (docs/levels.md, "Level 3 follow-up"): a reader that follows a stream pointer
+     * <p>2026-10-13 (bergdb 011-04, "Level 3 follow-up"): a reader that follows a stream pointer
      * replaces it by a memory pointer, setting the node and then the position (access data
      * instead of a stream position), while the writer serializes this node. A writer that
      * read the node as null and then the new position took the access data for a stream
@@ -221,7 +221,7 @@ public class KeyNode implements Node {
      * the common case reads without a lock; a stream pointer is read under the monitor of
      * the node, which setPointer() holds. Level 4 (eviction) must revisit this.</p>
      *
-     * <p>2026-10-17 (bergdb item 001, WP R8, change 4: M24 of docs/level4-alignment.md): the
+     * <p>2026-10-17 (bergdb item 001, WP R8, change 4: M24 of bergdb 001-08): the
      * reference is read once, and a memory pointer is decided on that read. Its long field is
      * then access data, which no caller takes for a position: once eviction can make a memory
      * pointer a stream pointer again, the field read after the reference can already hold

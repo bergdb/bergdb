@@ -11,7 +11,7 @@ import bergdb.stream.MemoryStream;
 
 /**
  * Targeted test of the restart invariant, written 2026-10-12.
- * See docs/startup-invariants.md, invariants INV-RESTART, INV-ID and
+ * See bergdb 011-03, invariants INV-RESTART, INV-ID and
  * INV-LOOKUP.
  *
  * Runs the same deterministic sequence of transactions twice: run A without
@@ -317,7 +317,7 @@ public class RestartInvariance {
     }
 
     /**
-     * Checks INV-ID, one object per node (docs/levels.md, level 2): every
+     * Checks INV-ID, one object per node (bergdb 011-04, level 2): every
      * queued node (in D) is the node table's object for its id and is dirty, every dirty
      * node in Dag memory is queued, and no id has two dirty objects. Old snapshots of a
      * node, in pointers that named old versions, are allowed. Returns null if OK, else a

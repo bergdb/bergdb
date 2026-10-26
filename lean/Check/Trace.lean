@@ -1,5 +1,5 @@
 /-
-The trace checker (docs/level2-alignment.md, sections 2 and 9): the BergDB
+The trace checker (bergdb 011-11, section 2; docs/trace-format.md): the BergDB
 instance of the model's `Spec`, and the reading of a trace written by
 java/stress/TraceExport.java.
 

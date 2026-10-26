@@ -1,5 +1,7 @@
 # Level 3 power-loss ordering
 
+011-07. Moved here from `docs/level3-durability.md` on 2026-10-26 (006-07); history, not kept up to date.
+
 Codex for Frans Lundberg, 2026-10-14.
 
 The FileStream power-loss ordering work is implemented. It establishes the
@@ -191,7 +193,7 @@ the operation fail opening/writing rather than silently acknowledge durability.
 The Linux guest test does not validate every layer of a bare-metal or
 virtualized storage stack. No reclaim theorem or hard latency bound is claimed.
 
-The two remaining tasks in [level3-plan.md](level3-plan.md) measure a longer
+The two remaining tasks in [level3-plan.md](06-level3-plan.md) measure a longer
 file-backed run and produce the reproducible performance reference before
 Level 4. Stronger forces and per-unlink barriers can change I/O cost; that
 cost has not been benchmarked here. The buffer/group-commit scheduling stays

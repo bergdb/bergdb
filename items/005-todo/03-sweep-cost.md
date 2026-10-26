@@ -10,7 +10,7 @@ The issue
 A performance problem, not a fault: reads stay correct and memory stays
 bounded. Item 001's final report, finding 10
 ([06-final-report.md](../001-lean-model-levels-3-4/06-final-report.md)),
-and P4's soak in [docs/level4-evidence.md](../../docs/level4-evidence.md):
+and P4's soak in [docs/level4-evidence.md](../001-lean-model-levels-3-4/10-level4-evidence.md):
 
 * The capacity controller's sweep walks every resident object, twice (the
   sweep and the resync after it), under the write lock, each time a quarter

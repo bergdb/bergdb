@@ -12,8 +12,8 @@ import bergdb.stream.FileStream;
  * Level 2 under load, written 2026-10-13: write and read speed, commit
  * latency, the length of the startup section, the dirty set D, the bytes
  * appended per user byte, and the startup time, on a FileStream on disk.
- * See docs/levels.md, level 2, and problem.md, R3, R4 and R6. Since
- * 2026-10-17 (bergdb item 001, WP P3; docs/levels.md, "Bounds, measured"):
+ * See bergdb 011-04, level 2, and bergdb 011-01, R3, R4 and R6. Since
+ * 2026-10-17 (bergdb item 001, WP P3; bergdb 011-04, "Bounds, measured"):
  * also D's bytes in memory, and the index nodes written that are no longer
  * current (replaced by a split or a new super root, seen through Db's test
  * hooks), which the conservative still-dirty test keeps writing while a

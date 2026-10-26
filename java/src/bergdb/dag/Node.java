@@ -158,7 +158,7 @@ public interface Node {
      * True if this object is the canonical object of its node: the one object that holds
      * the node's whole history and can change. An object read from an older version of
      * the node, for lookups at older times, is not canonical (a snapshot). Value nodes
-     * never change and are always canonical. See docs/levels.md, level 2.
+     * never change and are always canonical. See bergdb 011-04, level 2.
      * Synch note: written by the writer, or under the node table's lock.
      */
     public boolean isCanonical();

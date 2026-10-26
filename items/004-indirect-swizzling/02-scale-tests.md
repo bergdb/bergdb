@@ -33,7 +33,7 @@ the results will be in section 10.
 * **Q4 Cold gets.** How many loads, stream reads and device reads does a get cost when
   the data do not fit? Under pressure today a get loads about two versions, and each load
   reads the stream twice, the node's header for its id and then the node
-  ([level4-performance.md](../../docs/level4-performance.md)).
+  ([level4-performance.md](../001-lean-model-levels-3-4/11-level4-performance.md)).
 * **Q5 Tails.** What sets the maximum: sweeps (they walk every resident object: 1.5 s on
   average at a budget of 500 MB in J8, 3.2 s at 1.6 GB in P4), collections, the device?
 * **Q6 Readers in parallel.** How do 1, 2, 4 and 8 reader threads scale in each regime,

@@ -11,7 +11,7 @@ Think about synchronization for transactions: understand how it works in
 the code today, and how it may need to change. The writer, the readers,
 reclaim and eviction share one in-memory Dag; the Lean model leaves
 concurrency out ("Not in the model: concurrency",
-[level4-alignment.md](../../docs/level4-alignment.md), section 1 and 5.8),
+[level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md), section 1 and 5.8),
 so the design lives only in the code, its comments, old notes and tests.
 
 

@@ -1,16 +1,18 @@
 BergDB problem statement
 ========================
 
+011-01. Moved here from `docs/problem.md` on 2026-10-26 (006-07); history, not kept up to date.
+
 Draft 1, 2026-10-12. Written by Claude for Frans Lundberg,
 consolidated from Frans's BergDB documents 2008 to 2017; see Sources.
 Each requirement says where it was stated before and what is missing.
 Gaps are listed as open questions, Q1 to Q12, at the end.
 
 Status reviewed against `ebe5f77`, 2026-10-13 18:02 CEST. This document
-states requirements, not achieved guarantees. [levels.md](levels.md) is
+states requirements, not achieved guarantees. [levels.md](04-levels.md) is
 the authority for implementation evidence; subsequent work is outside
 this snapshot, except that Q9 and the reader decision of R5 were updated on
-2026-10-13 after the Level 3 work (recorded in [levels.md](levels.md)). Q6,
+2026-10-13 after the Level 3 work (recorded in [levels.md](04-levels.md)). Q6,
 Q7 and Q9 below are answered, retained for traceability.
 
 
@@ -87,7 +89,7 @@ lookup time"); startup.md (paths of length O(log(size))).
 
 Status: the lookup bound is claimed, not proved for BergDB. N in the older
 claims is ambiguous; the symbols above distinguish keys from versions.
-Latest and historical lookups pass the tests in [levels.md](levels.md).
+Latest and historical lookups pass the tests in [levels.md](04-levels.md).
 See Q1 to Q3.
 
 
@@ -106,7 +108,7 @@ including after reclaim cuts. Lean proves recovery only for a prefix of
 complete abstract records. `execute()` appends to a buffer; the application
 must sync for the configured durability level. The existing buffer-delay
 design is retained. Power-loss durability and the OS/device flush path
-remain to be validated; see [levels.md](levels.md), "Level 2 under load".
+remain to be validated; see [levels.md](04-levels.md), "Level 2 under load".
 
 
 R3 Bounded startup
@@ -123,9 +125,9 @@ about.html (about 1.5 s for 1, 10 and 100 million entries); log 2016-04-12.
 
 Status: algorithm and proof sketch in startup.md. Correctness of the
 startup (recovery and restart invariance) is now proven in Lean for an
-abstract model ([sis-model.md](sis-model.md)), with the exact still-dirty
+abstract model ([sis-model.md](../../docs/sis-model.md)), with the exact still-dirty
 test. Level 2 Java passes the tests run, including load and crash checks,
-but refinement to that model is still open ([levels.md](levels.md)).
+but refinement to that model is still open ([levels.md](04-levels.md)).
 Measured startup was 0.62 s for a 1.6 GB stream and 0.70 s for 18.5 GB,
 with a 20 MB startup distance. The bound is open: in the code, the startup
 section can grow beyond D when many index nodes wait to be written: a
@@ -148,7 +150,7 @@ nodes in the startup section").
 Status: measured on 13 October at 6.0 and 9.9 stream bytes per user byte
 with uniform updates at 1M and 10M keys, and lower for a hot set or larger
 startup distance. Reclaim has separate cost grids. A bound still needs a
-model of D, n, B and the update pattern; see Q5 and [levels.md](levels.md).
+model of D, n, B and the update pattern; see Q5 and [levels.md](04-levels.md).
 
 
 R5 Space and reclaim
@@ -166,7 +168,7 @@ dirty by a step against stream growth, which itself includes reclaim.
 Table/record overhead and later still-dirty rewrites remain excluded.
 The 16 KB scan target limits step size but can be exceeded by the final KV;
 neither setting proves a cap on total reclaim writes or latency. A measured
-attribution of the stream bytes is in [levels.md](levels.md), "Level 3 cost".
+attribution of the stream bytes is in [levels.md](04-levels.md), "Level 3 cost".
 
 Stated: 2012-07-space-reclaim (iteration table, tRetain, write fraction,
 and "Case A": stream between 2 and 4 times the live data at f = 0.5);
@@ -184,11 +186,11 @@ crashes, and Q6 and Q7 were bugs, now fixed. The initial
 repair kept 8 to 12 times the live data in one load experiment. The reviewed
 baseline adds retention pacing, separate current-row storage, an older
 cut point, index-aware budgeting and a 16 KB scan target. Its WE/SE grids
-are in [levels.md](levels.md), "Level 3 cost". Remaining efficiency tradeoffs,
+are in [levels.md](04-levels.md), "Level 3 cost". Remaining efficiency tradeoffs,
 total-write budgeting remain open. Readers overlapping cuts: such a read may
 expire with a LookupTimeNotAvailableException (decision D1 = A, 2026-10-13);
-protected reads are a later option. See [levels.md](levels.md), "Level 3 follow-up".
-The new [Level 3 plan](level3-plan.md) covers power loss, the disk soak and
+protected reads are a later option. See [levels.md](04-levels.md), "Level 3 follow-up".
+The new [Level 3 plan](06-level3-plan.md) covers power loss, the disk soak and
 the performance reference before Level 4. Infinite retention remains the
 default, and finite retention schedules reclaim.
 The older 8–12 figure is not a final performance claim. See Q6 to Q9.
@@ -231,7 +233,7 @@ Stated: 2012-01-optimal-tree-structure, 2012-01-the-separator-problem,
 2012-02-segmented-keys, 2012-05-linear-search, about.html.
 
 Status: current warm gets measured about 1 us at 1M and 10M keys, but cold
-loads are slower ([levels.md](levels.md)). There is no cost model. A theory
+loads are slower ([levels.md](04-levels.md)). There is no cost model. A theory
 could state the bounds in the external-memory model with block size B and
 leave constants to measurement.
 See Q3.
@@ -256,9 +258,9 @@ INV-RESTART. A restart between any two transactions changes nothing: not the
 lookups, not the dirty set D, not even the bytes later appended to the
 stream. This is Frans's goal from 2015-12-28: "a restart can be inserted
 between any two transactions without affecting the bytes in the stream".
-See [sis-model.md](sis-model.md) for the abstract proof and
-[levels.md](levels.md) for Java evidence and remaining obligations;
-[startup-invariants.md](startup-invariants.md) is the historical analysis.
+See [sis-model.md](../../docs/sis-model.md) for the abstract proof and
+[levels.md](04-levels.md) for Java evidence and remaining obligations;
+[startup-invariants.md](03-startup-invariants.md) is the historical analysis.
 
 INV-CRASH. Cutting the stream at any position gives the database state after
 the last complete transaction before the cut.
@@ -269,11 +271,17 @@ time in the retention window can reach.
 INV-EVICT. Only eligible clean, backed nodes may be unloaded. Reloading
 preserves admitted lookups, subsequent writes and restart invariance.
 Ownership, pins, version authority and stream lifetime are additional
-eligibility conditions; see [level4-plan.md](level4-plan.md).
+eligibility conditions; see [level4-plan.md](05-level4-plan.md).
 
 
 Open questions
 ==============
+
+2026-10-26, when this document became 011-01 (006-07): Q4 is item 007's.
+Q10 and Q11 are answered by item 001: INV-SLOT and Option K are proved in
+the model, with lemma M (001-08, section 5; 011-11, section 13), and Java is
+checked against it, not proved. Q12 is 005-06's. Q1, Q2, Q3, Q5 and Q8, the
+bounds still open, are 005-54.
 
 Q1. What is n in O(log n)? Nodes are split (time splits and space splits)
 but never merged; there is no merge code at all. After many deletes, the
@@ -333,11 +341,11 @@ API; `TransactionInfo.time()` (the transaction time) stays. The internal
 `GetData.kvTime` and `Kvt.time` remain and are marked inexact. An exact write
 time may come later: store it in the value node (a format change, +8 bytes or a
 varint per value) and let reclaim copy it; then reclaim stays invisible to
-users. Not planned. See [levels.md](levels.md), "Kv.time() and Connection.time() removed".
+users. Not planned. See [levels.md](04-levels.md), "Kv.time() and Connection.time() removed".
 
 Q10. Eviction. State and prove INV-EVICT for a Dag with several parents,
 including historical parents. Resolve the version-authority, publication
-and lifetime gates in [level4-plan.md](level4-plan.md) before implementation.
+and lifetime gates in [level4-plan.md](05-level4-plan.md) before implementation.
 Settled 2026-10-17 and 2026-10-18 (bergdb item 001): INV-SLOT (every slot of
 a current or dirty object names its pointee's latest version) with the
 theorems of level4-alignment.md, section 5, under TREE, A6' and A-COPY,
@@ -362,7 +370,7 @@ Prior art to check
 
 This was the initial list from Claude's knowledge. The subsequent review,
 source-reading status and provisional novelty assessment are in
-[prior-art.md](prior-art.md); this list is not an independent verification.
+[prior-art.md](02-prior-art.md); this list is not an independent verification.
 
 * Driscoll, Sarnak, Sleator, Tarjan: Making Data Structures Persistent.
   STOC 1986, JCSS 1989. Cited by Frans; the basis of the persistent Dag.
@@ -400,16 +408,16 @@ Sources
 Frans's documents. The four linked below are copied to `sources/`; the others are
 in his personal archive and are not part of this repository:
 
-* [self-indexed_streams_v5_130704.pdf](sources/self-indexed_streams_v5_130704.pdf)
+* [self-indexed_streams_v5_130704.pdf](../../docs/sources/self-indexed_streams_v5_130704.pdf)
   (v5). Motivation, startup distance, stream overhead, truncation; general
   linked data structures. Dated January 2012, saved 2013-07-04.
 * 2014-08-startup.odt and
   2014-08-kv-stream.odt. Startup
   in five steps with pointer reconciliation; the KV-stream approach.
-* [2015-algos.pdf](sources/2015-algos.pdf), dated
+* [2015-algos.pdf](../../docs/sources/2015-algos.pdf), dated
   2016-03-03. Data model, Dag, invariants, splits, TopDs, transactions.
-* [startup-1604.md](sources/startup-1604.md), 2016-04-01,
-  and [startup.md](sources/startup.md), 2016-05-05. The
+* [startup-1604.md](../../docs/sources/startup-1604.md), 2016-04-01,
+  and [startup.md](../../docs/sources/startup.md), 2016-05-05. The
   startup algorithm, the Clean Rule and the proof sketch.
 * 2012-07-space-reclaim.txt.
   The reclaim design.
@@ -422,6 +430,6 @@ in his personal archive and are not part of this repository:
   (theory status), 2015-11 to 2016-05 (ISSUE151111) and 2016-04-12 ("All
   theoretic issues solved!?").
 * bergdb.com/about.html (Wayback Machine, 2014): the public feature list.
-* Code: [Reclaim.java](../java/src/bergdb/core/Reclaim.java),
-  [DbStarter.java](../java/src/bergdb/core/DbStarter.java),
-  [TransSeq.java](../java/src/bergdb/core/TransSeq.java).
+* Code: [Reclaim.java](../../java/src/bergdb/core/Reclaim.java),
+  [DbStarter.java](../../java/src/bergdb/core/DbStarter.java),
+  [TransSeq.java](../../java/src/bergdb/core/TransSeq.java).

@@ -761,7 +761,7 @@ Today this is item 007 (T3).
   for rollback? Answer: No. If transactions are deterministic, we don't
   need this, we can always check input data before we start to modify
   data. Note, this may disallow the KissDB to participate in distributed
-  transactions." (Cited in [levels.md](../../docs/levels.md), "A
+  transactions." (Cited in [levels.md](../011-docs-archive/04-levels.md), "A
   transaction or a read that fails".)
 * 2008-07-24, lines 44-45: "In-memory serial transactions are fast enough.
   Everything is normally limited by disk or network performance rather
@@ -776,7 +776,7 @@ Today this is item 007 (T3).
 
 ### A failed database does not run on
 
-Cited in [levels.md](../../docs/levels.md), "A transaction or a read that
+Cited in [levels.md](../011-docs-archive/04-levels.md), "A transaction or a read that
 fails".
 
 * 2012-08, `doc/2012/2012-08-layers.txt` lines 99-100: "FatalDBException -

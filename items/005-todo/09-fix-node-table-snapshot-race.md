@@ -20,7 +20,7 @@ before 005-02 (`8c5a106`), with the same message, and in none of 600 with
 
 INV-CAN (the audit, `Audit.check`) says that the node table names canonical
 objects only. The register row M31 and item 001's J1 and J3 rest on it
-([level4-alignment.md](../../docs/level4-alignment.md)): a release clears
+([level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md)): a release clears
 the canonical flag and takes the table's entry, and a later read loads the
 version from the slot's position.
 
@@ -211,7 +211,7 @@ The criteria of "Done when", point by point:
   flag is still read first without it, and again only where the lock was
   taken anyway.
 * **The register and docs/levels.md: met.** M31's row and section 7.4 in
-  [level4-alignment.md](../../docs/level4-alignment.md); docs/levels.md,
+  [level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md); docs/levels.md,
   "Bugs found by the alignment of Levels 3 and 4", 3, and its Level 4
   readers.
 

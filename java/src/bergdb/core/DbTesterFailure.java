@@ -25,7 +25,7 @@ import bergdb.stream.MemoryStream;
 
 /**
  * Tests of a transaction that fails after its go point (bergdb 005-01, register M49 of
- * docs/level4-alignment.md; item 003, 003-01's test plan). Until 005-01 such a transaction
+ * bergdb 001-08; item 003, 003-01's test plan). Until 005-01 such a transaction
  * was half committed: its time became readable with its first puts in memory, and the next
  * transaction wrote its nodes as its own. Now the database fails: the call gets a
  * DbFailedException (an Error is thrown as it is), the transaction's time never becomes a
@@ -577,7 +577,7 @@ public class DbTesterFailure {
     /**
      * Db.getTrans of a transaction that reclaim has removed (here, a cut of the stream
      * itself) throws a LookupTimeNotAvailableException, and the database goes on, as for a
-     * read that a cut has overtaken (docs/levels.md, W1).
+     * read that a cut has overtaken (bergdb 011-04, W1).
      */
     @Nano
     public static void testGetTransBelowTheCut() throws IOException {

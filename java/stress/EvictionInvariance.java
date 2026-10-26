@@ -4,7 +4,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * Eviction invariance (bergdb item 001, WPs J2 and J3; docs/level4-alignment.md, 7): the
+ * Eviction invariance (bergdb item 001, WPs J2 and J3; bergdb 001-08, 7): the
  * workload of RestartInvariance, run with each eviction schedule (Eviction: none; values,
  * every detachable value after every transaction; every detachable object after every
  * transaction; random), must give the same stream byte for byte (from

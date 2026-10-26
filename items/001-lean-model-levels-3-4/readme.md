@@ -32,6 +32,26 @@ Files
 * [06-final-report.md](06-final-report.md). 001-06, the final report (WP
   F3): the outcome of the plan for Levels 3 and 4, what changed, the
   findings, and what Frans decides at K5.
+* [07-level3-alignment.md](07-level3-alignment.md). 001-07, the Level 3
+  alignment (WPs A2, R1 to R9): α for reclaim, the register (M17, M32 to
+  M38, M41, M48), what makes a cut safe, the red list, conformance; its
+  evidence in [07-level3-alignment/](07-level3-alignment/). Formerly
+  `docs/level3-alignment.md`.
+* [08-level4-alignment.md](08-level4-alignment.md). 001-08, the Level 4
+  alignment (WP A2 on): α for the cache, the register (M20 to M31, M39, M40,
+  M43 to M46, M49), the probes, the design of eviction and its theorems (section
+  5), what Java must do, Level 4 in Java, the outcome; its evidence in
+  [08-level4-alignment/](08-level4-alignment/). Formerly
+  `docs/level4-alignment.md`.
+* [09-level3-soak.md](09-level3-soak.md). 001-09, the Level 3 soak (WP
+  P2): two hours on disk at the pilot scale, and the companion; the runs'
+  output in [09-level3-soak/](09-level3-soak/). Formerly
+  `docs/level3-soak.md`.
+* [10-level4-evidence.md](10-level4-evidence.md). 001-10, Level 4 larger
+  than memory (WPs J8 and P4). Formerly `docs/level4-evidence.md`.
+* [11-level4-performance.md](11-level4-performance.md). 001-11, Level 4's
+  performance against Level 3 (WP J10). Formerly
+  `docs/level4-performance.md`.
 
 
 Log
@@ -61,3 +81,7 @@ the outcome, and closing the item and what comes next wait for Frans.
 
 2026-10-19. Frans accepted the outcome (K5), with R6 as it is, and
 closed the item. Status: done.
+
+2026-10-26. 07 to 11 added: the five documents this item wrote in `docs/`,
+moved here in the docs/ cleanup (006-07), each with a line on where it came
+from and its links fixed, otherwise unchanged.

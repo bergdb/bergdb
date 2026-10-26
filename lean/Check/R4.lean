@@ -5,7 +5,7 @@ through pointers between root children; the checker evaluated it with
 `topClosure`, which walks every path between root children and is
 exponential in their number (F1-008-13's review, review-13-claude, section
 5.1, in the f1 repository). BergDB's top nodes have ordinals, a top node's
-level minus `topLevel` (docs/level2-alignment.md, 8.4), and each top node but
+level minus `topLevel` (bergdb 011-11, 8.4), and each top node but
 the first points to the one before it (the skip pointer of the lowest set bit
 of its ordinal). `PredChain` and `closure_of_chain` are review-13-claude's
 `R4Bridge.lean`, with its proofs: if the chain holds after the step, and the

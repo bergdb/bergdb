@@ -28,11 +28,11 @@ structure Algo (V T : Type) where
   stillDirty : Stream V T → Struct V → Dirty → Time → NodeId → Bool
   /-- Step 3: mark the access path of the change (`markOf`, BergDB's way),
   instead of testing every index node for dirtiness (`gotDirtyOf`). T13 says
-  the two give the same nodes. Added 2026-10-15 (docs/level2-alignment.md,
+  the two give the same nodes. Added 2026-10-15 (bergdb 011-11,
   M2). -/
   mark : Bool := false
   /-- The first available time policy, fa(i) (bergdb item 001, WP R3;
-  docs/level3-alignment.md, 2.4): the earliest time that lookups must still
+  bergdb 001-07, 2.4): the earliest time that lookups must still
   answer. It may depend on S, D, i and T(i), as the startup pos policy; the
   algorithm clamps it so that it never decreases and stays at most the
   startup pos (`firstAvail`). Java's: the end of the newest iteration of
@@ -76,7 +76,7 @@ in bergdb's Java code): a written node goes back into D if one of its
 pointees, live or dead, is in D. Step 7 (`stillDirtyOf`) tests the written
 nodes lowest level first, with D holding the nodes put back so far, which gives
 the least fixpoint of BergDB's loop. Added 2026-10-15
-(docs/level2-alignment.md, M3). -/
+(bergdb 011-11, M3). -/
 def javaTest (sp : Spec V T) : Stream V T → Struct V → Dirty → Time → NodeId → Bool :=
   fun _ P D _ x => match P.get? x with
     | some n => (pointees sp n.hist).any (inD D)
@@ -136,7 +136,7 @@ def topV (sp : Spec V T) (P : Struct V) (S : Stream V T) (s : Nat) : Option (Nod
 
 /-- top(i): the version that startup reads first, as its node and record. The
 latest version of root, or, with a virtual root, `topV` (BergDB's topPos,
-docs/level2-alignment.md, 8.2 and 8.3). -/
+bergdb 011-11, 8.2 and 8.3). -/
 def topOf (sp : Spec V T) (P : Struct V) (S : Stream V T) (s : Nat) : Option (NodeId × Nat) :=
   if sp.virt then topV sp P S s else (S.lv root).map (fun v => (root, v.recNo))
 

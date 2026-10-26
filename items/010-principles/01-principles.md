@@ -70,7 +70,7 @@ between any two transactions without affecting the bytes in the stream".
 The transactions are deterministic too: "Is a KissDB transaction always
 deterministic? Answer: Yes." (2008-08-02). So a transaction needs no
 rollback: what may refuse it is checked before it changes anything (the go
-point; [levels.md](../../docs/levels.md), "A transaction or a read that
+point; [levels.md](../011-docs-archive/04-levels.md), "A transaction or a read that
 fails"). A failure after that point is P7's.
 
 Where BergDB stands:
@@ -79,7 +79,7 @@ Where BergDB stands:
   ([sis-model.md](../../docs/sis-model.md), section 9), on assumption A1,
   determinism of the transactions.
 * Checked for the bytes: the restart checks require byte equality
-  (`RestartInvariance`, [levels.md](../../docs/levels.md)); the padding
+  (`RestartInvariance`, [levels.md](../011-docs-archive/04-levels.md)); the padding
   bytes that the 2017 code left uninitialized were fixed on 2026-10-12.
 * To check: that the memory budget and eviction (Level 4, item 009), the
   buffer time and the startup distance's deadline (007-03) leave the bytes
@@ -262,7 +262,7 @@ database." (2012-08). A refused transaction is another matter: it changes
 nothing, and the database goes on (P2).
 
 Where BergDB stands: as P7 says, since 005-01 for transactions and 005-30
-for reads and syncs (`DbFailedException`; [levels.md](../../docs/levels.md),
+for reads and syncs (`DbFailedException`; [levels.md](../011-docs-archive/04-levels.md),
 "A transaction or a read that fails").
 
 

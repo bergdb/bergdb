@@ -36,6 +36,7 @@ Open
 | [005-50](50-fix-node-size-start.md) | Fix | A start with another node size than the stream was written with fails with what looks like a corrupt stream (`StreamFormatException: startup error, node ... not found`); it should fail with a clear error. Only that (005-38) | open |
 | [005-51](51-eviction-on-calls.md) | Fix | Eviction only in response to the calls: the eviction thread wakes once a second while the database is open, also when idle (`evictorLock.wait(1000)`), against 010-P3, calm when not used | open |
 | [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API sets it only at start (`cacheSizeInMb`), against 010-P6; the core has `Eviction.setBudget` (also through JMX). The cache should converge gradually to the new size, with no disruption | open |
+| [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
 
 
 Closed
@@ -250,6 +251,8 @@ Files
   index writes: the bursts found in 005-38, the cause, the questions; open.
 * [50-fix-node-size-start.md](50-fix-node-size-start.md). 005-50, a start
   with another node size fails with a clear error; found in 005-38; open.
+* [54-open-bounds.md](54-open-bounds.md). 005-54, the bounds still open in
+  the problem statement (011-01): Q1, Q2, Q3, Q5 and Q8; open.
 
 Log
 ===
@@ -854,3 +857,8 @@ the burst entry. Yes to node-size fix entry."), by Claude (Opus 5.5, Claude
 Code), both found in 005-38: smooth index writes (the bursts at large
 startup distances; 007-03's step 3 waits for it), and a start with another
 node size, which should fail with a clear error, only that.
+
+2026-10-26. Added 005-54, by Claude (Opus 5.5, Claude Code), in the docs/
+cleanup (006-07), as Frans approved ("Everything as recommended"): the
+open questions of the problem statement, now 011-01, that had no other
+home (Q1, Q2, Q3, Q5, Q8).

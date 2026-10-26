@@ -13,7 +13,7 @@ import bergdb.dag.PointerFollower;
 import bergdb.stream.FileStream;
 
 /**
- * A database larger than memory (bergdb item 001, WP J8; docs/level4-evidence.md): on disk
+ * A database larger than memory (bergdb item 001, WP J8; bergdb 001-10): on disk
  * (FileStream), in a capped JVM, with the capacity controller's budget much smaller than the
  * data and the index. Phases: load (keys in random order), uniform updates, hot updates (90
  * percent of the puts on 1 percent of the keys), with reclaim on; gets (cold after each

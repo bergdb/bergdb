@@ -15,7 +15,7 @@ namespace SIS
 
 variable {V T : Type} [DecidableEq V]
 
-/-- Lemma M (bergdb item 001, WP L2; docs/level2-alignment.md, M8). In every
+/-- Lemma M (bergdb item 001, WP L2; bergdb 011-11, M8). In every
 run, after every transaction: if version v of node x is good for time t (5.1),
 so is every version w of x written at or after v. Java relies on it when it
 reads a node on its first touch after a restart: it takes the newer of the
@@ -152,7 +152,7 @@ theorem T15_closed (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK sp
   have h := evLogic_st sp al ts hok hj hmk hev j hjt
   exact ⟨h.closed, h.clean⟩
 
-/-- T-CACHE (bergdb item 001, WP E3; docs/level4-alignment.md, 5.3, 5.4 and
+/-- T-CACHE (bergdb item 001, WP E3; bergdb 001-08, 5.3, 5.4 and
 5.6). A run of BergDB's algorithm (`javaTest`, with marking) that meets the
 assumptions, those of the physical layer (`PhysRunOK`) and those of stage 2
 (`EvictRunOK`: TREE, A6' and A-COPY), from the Level 4 startup from R(0)
@@ -200,7 +200,7 @@ theorem TC_records (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool × List
   rw [hst] at e1 e3
   exact ⟨e1, e3.tc_facts⟩
 
-/-- T-READ (bergdb item 001, WP E4; docs/level4-alignment.md, 5.6). In a run as
+/-- T-READ (bergdb item 001, WP E4; bergdb 001-08, 5.6). In a run as
 in `TC_records` (BergDB's algorithm with marking, the assumptions, those of the
 physical layer and of stage 2, the Level 4 startup from R(0), any cache
 schedule, no restart), after any transaction and its cache operations, a read
@@ -228,7 +228,7 @@ theorem TR_view (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool × List Ca
   rw [hst] at e3 hh hinv
   exact read_list_view (e3.read4T_ok hinv hok.1.liveSub hh ht).2.2
 
-/-- T2-C, restarts with eviction (bergdb item 001, WP E5; docs/level4-alignment.md,
+/-- T2-C, restarts with eviction (bergdb item 001, WP E5; bergdb 001-08,
 5.13). A run as in `TC_records` (BergDB's algorithm with marking, the
 assumptions, those of the physical layer and of stage 2, the Level 4 startup
 from R(0), any cache schedule), now with restarts after any transactions
@@ -279,7 +279,7 @@ theorem T2_cache (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool × List C
   obtain ⟨e1, e2, e3⟩ := hrel
   exact ⟨e1, e2, e3, k1, hk1, hS0, hm.tc_facts⟩
 
-/-- T-READ with restarts (bergdb item 001, WP E5; docs/level4-alignment.md,
+/-- T-READ with restarts (bergdb item 001, WP E5; bergdb 001-08,
 5.13). In a run as in `T2_cache` (with restarts after any transactions), after
 any transaction and its cache operations or its restart, a read through the
 Level 4 loader (`Mem.read4`, with Rule R from the stream of the last startup)
@@ -306,7 +306,7 @@ theorem TR_view_restarts (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool �
   rw [← hS0] at hm hh
   exact read_list_view (hm.read4T_ok hinv hok.1.liveSub hh ht).2.2
 
-/-- T-PIN (bergdb item 001, WP E6; docs/level4-alignment.md, 5.14). In a run as
+/-- T-PIN (bergdb item 001, WP E6; bergdb 001-08, 5.14). In a run as
 in `T2_cache` (BergDB's algorithm with marking, the assumptions, those of the
 physical layer and of stage 2, the Level 4 startup, any cache schedules,
 restarts after any transactions), after any transaction and its cache

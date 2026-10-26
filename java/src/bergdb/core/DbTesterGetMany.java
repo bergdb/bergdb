@@ -681,7 +681,7 @@ public class DbTesterGetMany {
     
     /**
      * Regression test for a bug found 2026-10-13 (java/stress/ReclaimReaders.java; see
-     * docs/levels.md, "Level 3 follow-up"): with an inclusive start key (the default), the start key itself
+     * bergdb 011-04, "Level 3 follow-up"): with an inclusive start key (the default), the start key itself
      * was not returned when the tree of its segment had more than one node level, that is,
      * with more than about 30 keys. The setup of the chain compared the number of nodes in
      * the chain, not the number of key segments, with the length of the start key.
@@ -736,7 +736,7 @@ public class DbTesterGetMany {
      * Scans from a random start key, in both directions, inclusive and exclusive, against a
      * sorted list of the keys: trees of several node levels, keys of one and of several
      * segments, start keys that exist and that do not (2026-10-13, found by
-     * java/stress/ReclaimReaders.java; see docs/levels.md, "Level 3 follow-up").
+     * java/stress/ReclaimReaders.java; see bergdb 011-04, "Level 3 follow-up").
      */
     @Nano
     public static void testStartKeyRandom() {

@@ -10,7 +10,7 @@ The issue
 Top node ordinals are bounded by `TopNode.MAX_TOP_NODE_ID_VALUE`, 2^30 − 1,
 over a database's whole life. Reclaim bounds the stream but not the
 ordinals. Register row M46 of
-[docs/level4-alignment.md](../../docs/level4-alignment.md). The analysis,
+[docs/level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md). The analysis,
 with a patch: [item 002, 002-02](../002-top-node-ordinal-bound/02-report.md).
 
 Why it matters now: with Level 4 the heap is a cache, so memory no longer

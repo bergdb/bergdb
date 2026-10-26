@@ -1785,7 +1785,7 @@ public class DbTester {
     
     /**
      * A delete of a key that does not exist changes nothing, and marks nothing: no node gets
-     * dirty (step 3 of the Lean model; docs/level2-alignment.md, M2). Before 2026-10-16,
+     * dirty (step 3 of the Lean model; bergdb 011-11, M2). Before 2026-10-16,
      * every node on the path of the delete got dirty.
      */
     @Nano
@@ -1820,7 +1820,7 @@ public class DbTester {
      * A transaction that replaces a node by a split leaves that node clean and out of D,
      * also when the transaction followed and changed it: it is not current at the
      * transaction time, and its latest version is good for every earlier time (Db's
-     * endOfTrans; docs/level2-alignment.md, M2). The same for the super root that the
+     * endOfTrans; bergdb 011-11, M2). The same for the super root that the
      * transaction replaces.
      */
     @Nano
@@ -1865,7 +1865,7 @@ public class DbTester {
      * In a transaction with a touch (a reclaim step), a node that the puts mark and replace
      * leaves D, as in any other transaction; a node that the touch marked stays in D, also
      * when the puts replace it, as the Lean model's step 3 has it (`touchOf`; bergdb item
-     * 001, WP R8: register M17 and the red list of docs/level3-alignment.md, section 6).
+     * 001, WP R8: register M17 and the red list of bergdb 001-07, section 6).
      * Before 2026-10-17, a touch transaction kept every mark (Db's endOfTrans).
      */
     @Nano

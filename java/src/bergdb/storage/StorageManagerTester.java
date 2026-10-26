@@ -121,7 +121,7 @@ public class StorageManagerTester {
     }
     
     /**
-     * 2026-10-13 (docs/levels.md, W1). A read of bytes that a cut removed
+     * 2026-10-13 (bergdb 011-04, W1). A read of bytes that a cut removed
      * fails alone. Before, StorageManager closed the stream and set an error state, so that
      * every later read and append failed: the database stopped.
      */

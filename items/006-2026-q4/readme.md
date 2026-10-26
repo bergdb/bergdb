@@ -20,6 +20,7 @@ The list
 | [006-04](04-lean-guided-reading.md) | 2026-10-22 | Guided reading of the Lean model's definitions and theorem statements against sis-model.md, by Frans with Claude: the plan and the log |
 | [006-05](05-todo-markers.md) | 2026-10-25 | The TODO markers in `java/`: the 15, what was found and done with each, and the 3.0e6 that "result in problems" in 2015 |
 | [006-06](06-fast-restart.md) | 2026-10-26 | Fast restart, a note of Frans's idea: lower the startup distance for a while before a controlled restart; not investigated |
+| [006-07](07-docs-cleanup.md) | 2026-10-26 | The `docs/` cleanup: most documents to items (001-07 to 001-11, 009-05, the new 011), `docs/levels.md` rewritten short, `docs/trace-format.md`, the references as IDs |
 
 
 Files
@@ -44,6 +45,10 @@ Files
 * [06-fast-restart.md](06-fast-restart.md). 006-06, the note: the idea in
   Frans's words, why it matters (005-38's first numbers), and the questions
   for later.
+* [07-docs-cleanup.md](07-docs-cleanup.md). 006-07, the cleanup of
+  `docs/`: what moved where, the rules for references, what was carried
+  forward, the checks; the script that rewrote the references and the link
+  check in [07-docs-cleanup/](07-docs-cleanup/).
 
 
 Log
@@ -94,3 +99,10 @@ and 005-40, the same morning; one is kept for 007-03's step 3.
 of Frans's idea (a lower startup distance for a while before a controlled
 restart, for a short startup), written by Claude (Opus 5.5, Claude Code).
 Not investigated.
+
+2026-10-26. 006-07, at Frans's request ("I want most docs moved to
+items/."; to the plan: "Everything as recommended, except the log. Keep
+log.md as is."), by Claude (Opus 5.5, Claude Code): `docs/` keeps
+`levels.md` (rewritten short), `sis-model.md`, `trace-format.md` (new),
+`log.md` and `sources/`; the other documents are subitems of 001, 009 and
+the new 011; the code and the items cite them by ID.

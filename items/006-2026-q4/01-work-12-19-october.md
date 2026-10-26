@@ -70,7 +70,7 @@ Phase 1: recovery and Levels 0 to 3 (12 to 14 October, in F1-007)
 **14 October.**
 
 * Codex did the power-loss ordering work for `FileStream`
-  ([docs/level3-durability.md](../../docs/level3-durability.md)): explicit
+  ([docs/level3-durability.md](../011-docs-archive/07-level3-durability.md)): explicit
   forces, and an ordered directory force after each unlink. A failed
   pending cut was being acknowledged, and that is fixed. It was verified on
   macOS/APFS and a Linux VM, but with no physical power cycle.
@@ -83,7 +83,7 @@ Phase 2: Level 2 alignment of code and model (14 to 16 October, F1-008)
 =======================================================================
 
 * Frans chose to keep the Java code and step the Lean model back to match
-  it (F1-008-11; [docs/level2-alignment.md](../../docs/level2-alignment.md)).
+  it (F1-008-11; [docs/level2-alignment.md](../011-docs-archive/11-level2-alignment.md)).
 * New tools:
   * a trace exporter (`TraceExport.java`)
   * the Lean trace checker (`lake exe tracecheck`)
@@ -135,8 +135,8 @@ K5.
 * About 2,950 lines in `java/src/`, 1,750 of them tests. No change to the
   record format or the public API.
 
-**Evidence** ([docs/level4-evidence.md](../../docs/level4-evidence.md),
-[docs/evidence/level34-conformance.txt](../../docs/evidence/level34-conformance.txt)).
+**Evidence** ([docs/level4-evidence.md](../001-lean-model-levels-3-4/10-level4-evidence.md),
+[docs/evidence/level34-conformance.txt](../001-lean-model-levels-3-4/07-level3-alignment/level34-conformance.txt)).
 
 * Final conformance campaign: every trace `TRACECHECK OK`.
   * 81 Level 2 traces

@@ -6,7 +6,7 @@ import bergdb.dag.*;
 import bergdb.stream.MemoryStream;
 
 /**
- * Db-level measurement for F1-008-10, 2026-10-15 (Java tier of docs/level2-alignment.md,
+ * Db-level measurement for F1-008-10, 2026-10-15 (Java tier of bergdb 011-11,
  * 8.3): runs a deterministic workload and reports
  * the nodes written, the size of D, and the nodes in D that are not reachable at the
  * time of the last transaction (dead or never reachable).

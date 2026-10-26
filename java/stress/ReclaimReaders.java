@@ -19,7 +19,7 @@ import bergdb.stream.FileStream;
 import bergdb.stream.ReadBelowFirstPosException;
 
 /**
- * Concurrent readers while reclaim cuts the stream (level 3, docs/levels.md, W1),
+ * Concurrent readers while reclaim cuts the stream (level 3, bergdb 011-04, W1),
  * written 2026-10-13, modeled on ReclaimStress. Reader threads do random get and scan
  * operations at lookup times from the first available lookup time (mostly its old end) to
  * the last completed transaction, while the writer thread, the main thread, drives reclaim.
@@ -276,7 +276,7 @@ public class ReclaimReaders {
         g.lookupTime = requested;
         g.startKey = segments.get(start);
         g.inclusive = true;     // [start, ...]; before 2026-10-13 the start key was not
-                                // returned in a deep tree (GetMany.eqMatch, docs/levels.md, "Level 3 follow-up").
+                                // returned in a deep tree (GetMany.eqMatch, bergdb 011-04, "Level 3 follow-up").
         final int[] added = new int[1];
         g.stopCondition = new GetMany.StopCondition() {
             public int handleKvt(Kvt kvt) {

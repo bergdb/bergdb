@@ -32,7 +32,7 @@ import bergdb.stream.MemoryStream;
 /**
  * This class handles stream space reclaim.
  * 
- * <p>2026-10-13 (docs/levels.md, level 3): reworked after tests with restarts
+ * <p>2026-10-13 (bergdb 011-04, level 3): reworked after tests with restarts
  * and an exact cut (java/stress/ReclaimStress.java). How it works now:</p>
  * 
  * <ul>
@@ -64,7 +64,7 @@ import bergdb.stream.MemoryStream;
  * Every cut keeps the guarantee of the duration in force when it is decided (the first
  * available lookup time is then before the decision time minus the duration); the first
  * available lookup time never moves back, and a larger duration does not bring back what was
- * cut (ReclaimRetentionTester, java/stress/ReclaimStress.java; docs/levels.md, W2).</li>
+ * cut (ReclaimRetentionTester, java/stress/ReclaimStress.java; bergdb 011-04, W2).</li>
  * <li>A read admitted before a cut may reach bytes the cut removes. It expires with a
  * LookupTimeNotAvailableException; the stream and the database are not affected (see
  * cutIfDurable(); ReclaimReaderTester, java/stress/ReclaimReaders.java; W1).</li>
@@ -100,7 +100,7 @@ public class Reclaim implements Db.TransactionListener {
     
     /**
      * The row of the iteration in progress, as stored by its last step (2026-10-13,
-     * docs/levels.md, "Level 3 cost"). Steps stored the whole table, which grows by a
+     * bergdb 011-04, "Level 3 cost"). Steps stored the whole table, which grows by a
      * row per iteration until a cut; with a long retention about 30 rows, stored at every
      * step. Newer than the table's row with the same pStart while that row is not done.
      */
@@ -110,7 +110,7 @@ public class Reclaim implements Db.TransactionListener {
     
     /**
      * An iteration starts when this fraction of the retain duration has passed since the
-     * last one started (2026-10-13, docs/levels.md, "Level 3 cost"). Before,
+     * last one started (2026-10-13, bergdb 011-04, "Level 3 cost"). Before,
      * iterations ran back to back whatever the retention; with a long retention, many
      * per retention duration, each rewriting most KVs. A cut point every quarter of the
      * retention keeps the stream within about 1.25 times what the retention needs.
@@ -122,7 +122,7 @@ public class Reclaim implements Db.TransactionListener {
     private static final long MIN_STEP_SIZE = 10 * 1000L;
     
     /**
-     * A step scans at most this many bytes of KVs (2026-10-13, docs/levels.md,
+     * A step scans at most this many bytes of KVs (2026-10-13, bergdb 011-04,
      * "Level 3 cost"). The allowance is a budget for the whole iteration, and the stream
      * grows in bursts (the writes of nodes made dirty a startup distance earlier), so it
      * reached a megabyte at times; one step then made 800 index nodes dirty, and since
@@ -361,7 +361,7 @@ public class Reclaim implements Db.TransactionListener {
      * lookup time moved can still be running, with a lookup time before the new first
      * available lookup time, and reach bytes this cut removes. Such a read expires: the
      * stream throws ReadBelowFirstPosException, the stream stays usable, and Db turns the
-     * exception into a LookupTimeNotAvailableException (docs/levels.md, W1,
+     * exception into a LookupTimeNotAvailableException (bergdb 011-04, W1,
      * decision D1 = A; ReclaimReaderTester, java/stress/ReclaimReaders.java). Protected reads
      * (registration of readers, a wait for them before the cut) are decision D1 = B,
      * not done.</p>
@@ -487,7 +487,7 @@ public class Reclaim implements Db.TransactionListener {
         final byte[][] tableBytes = new byte[1][];
         final long[] dirtiedStored = new long[1];
         
-        // 2026-10-13 (docs/levels.md, "Level 3 cost"): the allowance counted the
+        // 2026-10-13 (bergdb 011-04, "Level 3 cost"): the allowance counted the
         // values only, about 100 bytes each for the index; the index nodes the step makes
         // dirty, by its puts and its touch, were not counted, so reclaim wrote more than
         // internalFraction. Their size is known during the step only (Trans.dirtiedBytes),
@@ -510,7 +510,7 @@ public class Reclaim implements Db.TransactionListener {
         }
         t.isInternal = true;
         
-        // 2026-10-13 (Q7 in docs/problem.md, 
+        // 2026-10-13 (Q7 in bergdb 011-01, 
         // Reclaim.Tester.testDeletedKeysAfterCut): only live values were rewritten. Nodes
         // that hold deleted keys only, and the segment subtrees of deleted long keys, kept 
         // their versions before pStart, and lookups still pass through them.
@@ -695,7 +695,7 @@ public class Reclaim implements Db.TransactionListener {
         cutRow.cut = true;
         storeTable();
         
-        // 2026-10-13 (Q6 in docs/problem.md, 
+        // 2026-10-13 (Q6 in bergdb 011-01, 
         // Reclaim.Tester.testLookupsFromFirstAvailableTime): the first available lookup 
         // time was cutRow.tStart. A value not changed since tStart is rewritten later in
         // the iteration; until then, lookups find the old version, below the cut. The 
@@ -811,7 +811,7 @@ public class Reclaim implements Db.TransactionListener {
          * What the transaction records in the stream consist of. The index nodes in a record
          * are those the writer took when it wrote the record, not necessarily those that
          * this transaction made dirty: index nodes that reclaim made dirty are written in
-         * user records too (levels.md, "Level 3 cost"). "Other" is the rest of the record:
+         * user records too (bergdb 011-04, "Level 3 cost"). "Other" is the rest of the record:
          * headers, the key/value overhead of the value nodes is in valueBytes.
          */
         static final class Record {
@@ -965,7 +965,7 @@ public class Reclaim implements Db.TransactionListener {
         long pSafe = -1;    // See the class comment; -1 until known (2026-10-13).
         
         /**
-         * The cut point (2026-10-13, docs/levels.md, "Level 3 cost"): values
+         * The cut point (2026-10-13, bergdb 011-04, "Level 3 cost"): values
          * stored before it are rewritten, and the stream is cut there. It was pStart; now
          * the pStart of the iteration before, so that the values the users update between
          * the two need no rewrite. Rows stored before have pCut = pStart.
@@ -1514,7 +1514,7 @@ public class Reclaim implements Db.TransactionListener {
         
         /**
          * Regression test for a bug found 2026-10-13 (java/stress/ReclaimStress.java),
-         * Q7 in docs/problem.md: an iteration rewrote live values only. Nodes that hold
+         * Q7 in bergdb 011-01: an iteration rewrote live values only. Nodes that hold
          * only deleted keys, and the segment subtrees of deleted long keys, kept their 
          * versions below the cut, and lookups and scans still pass through them.
          */
@@ -1691,7 +1691,7 @@ public class Reclaim implements Db.TransactionListener {
 
         /**
          * The allowance counts the index nodes a step makes dirty (2026-10-13,
-         * docs/levels.md, "Level 3 cost"): before, 100 bytes per value rewritten, and
+         * bergdb 011-04, "Level 3 cost"): before, 100 bytes per value rewritten, and
          * reclaim wrote more than internalFraction of the stream.
          */
         @Nano
@@ -1734,7 +1734,7 @@ public class Reclaim implements Db.TransactionListener {
         
         /**
          * The cut point of an iteration is the pStart of the one before (pCut, 2026-10-13,
-         * docs/levels.md, "Level 3 cost"): values stored between the two are not
+         * bergdb 011-04, "Level 3 cost"): values stored between the two are not
          * rewritten, and every live value is stored at pCut or later when it is done.
          */
         @Nano
@@ -1786,7 +1786,7 @@ public class Reclaim implements Db.TransactionListener {
         
         /**
          * Iterations start a quarter of the retain duration apart (ITERATION_SPACING,
-         * 2026-10-13, docs/levels.md, "Level 3 cost"); before, they ran back
+         * 2026-10-13, bergdb 011-04, "Level 3 cost"); before, they ran back
          * to back whatever the retention.
          */
         @Nano
@@ -1893,7 +1893,7 @@ public class Reclaim implements Db.TransactionListener {
 
         /**
          * Regression test for a bug found 2026-10-13 (java/stress/ReclaimStress.java),
-         * Q6 in docs/problem.md: after a cut at the pStart of an iteration, the first
+         * Q6 in bergdb 011-01: after a cut at the pStart of an iteration, the first
          * available lookup time was the iteration's start time, tStart. But a value not
          * changed since tStart is rewritten later in the iteration, so between tStart and
          * the rewrite, lookups find the old version, which was cut away. Only the states
@@ -2032,13 +2032,13 @@ public class Reclaim implements Db.TransactionListener {
         }
 
         /**
-         * Theory/levels.md, W5c. The cut is made only when the stream is durable up to the
+         * bergdb 011-04, W5c. The cut is made only when the stream is durable up to the
          * decision (the table that marks the cut, the meta block that recovery starts from):
          * when the front is cut, the underlying stream is at least as long as it was at the
          * decision. CutStream.getLengthAtCut() is the length then, and CrashTest never cuts
          * the stream shorter than that: what a crash may lose is only what came after.
          * "Durable" is what StorageManager confirms: FileStream forces appended bytes
-         * and backing-file names before completion (see docs/level3-durability.md). The unit
+         * and backing-file names before completion (see bergdb 011-07). The unit
          * test waits for two cuts and does not sync; the f-test waits for three and syncs
          * after every seventh transaction, which waits for the storage thread.
          */

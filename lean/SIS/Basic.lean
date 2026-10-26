@@ -59,7 +59,7 @@ structure Changes (V : Type) where
   adds : List (NodeId × V)
   /-- The nodes that the transaction's touch marks dirty without giving them
   entries (bergdb's reclaim steps, `Db.touchRange`; register M17 of
-  docs/level3-alignment.md): as the rest of the changes, a function of T(i),
+  bergdb 001-07): as the rest of the changes, a function of T(i),
   i and P@(i-1) (A1). Step 3 marks them besides the access path of the change
   (`touchOf`), and the writer reaches them (`pathOf`). `StepOK` asks that they
   be index nodes reachable at i-1, and that every node reachable then with a
@@ -90,7 +90,7 @@ structure Spec (V T : Type) where
   node but a chain of top nodes. The root is never in D and never written;
   startup rebuilds it from its children, the root children. With false, the
   root is an ordinary node. Added 2026-10-16 (F1-008-11, WP E3;
-  docs/level2-alignment.md, section 8). -/
+  bergdb 011-11, section 8). -/
   virt : Bool := false
   /-- With `virt`: the root children (BergDB's top nodes) are the nodes other
   than the root on level `topLevel` or above. -/

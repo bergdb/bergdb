@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
  * Support for the performance harness (Perf.java, PerfTool.java), written 2026-10-14:
  * a bounded streaming histogram, a small JSON reader and writer, the GC log reader and
  * the description of the JVM and machine. Nothing here touches the database; the soak of
- * docs/level3-plan.md, task 2, can use the same classes.
+ * bergdb 011-06, task 2, can use the same classes.
  *
  * Compiled with --release 17 like the rest of java/stress/.
  */

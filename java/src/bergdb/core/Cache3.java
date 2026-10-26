@@ -52,7 +52,7 @@ public class Cache3 {
     private final HashMap<Long, Handle>[] maps;
 
     /**
-     * The access clock (bergdb item 001, WP R8, change 4; docs/level4-alignment.md, M23 and
+     * The access clock (bergdb item 001, WP R8, change 4; bergdb 001-08, M23 and
      * M40): it advances by one at every node read from the stream (NodeCollection) and every
      * node the writer makes (Db), so in read-only workloads too. The access data that an
      * operation writes into the handles it follows (bergdb item 009, step 3a; before, into
@@ -232,7 +232,7 @@ public class Cache3 {
      * Enters 'node', an object the writer or the startup made, as its node's object:
      * canonical, in the node's live handle, made if it has none. A canonical object already
      * there is kept (one canonical object per node); otherwise 'node' replaces the handle's
-     * object if it is better: canonical, or a newer version (docs/levels.md, level 2). Returns
+     * object if it is better: canonical, or a newer version (bergdb 011-04, level 2). Returns
      * the handle's object after the call.
      */
     public Node register(Node node) {

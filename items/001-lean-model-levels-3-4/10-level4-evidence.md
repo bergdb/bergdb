@@ -1,9 +1,11 @@
 # BergDB Level 4: larger than memory
 
+001-10. Moved here from `docs/level4-evidence.md` on 2026-10-26 (006-07); history, not kept up to date.
+
 By Claude (Opus 5.5, Claude Code) for Frans Lundberg, 2026-10-18. WP J8 of
 bergdb item 001
-([../items/001-lean-model-levels-3-4/01-plan.md](../items/001-lean-model-levels-3-4/01-plan.md));
-the eviction it relies on is in [level4-alignment.md](level4-alignment.md),
+([01-plan.md](01-plan.md));
+the eviction it relies on is in [level4-alignment.md](08-level4-alignment.md),
 section 7.
 
 ## Result
@@ -129,7 +131,7 @@ budget), and the run's own 160 MB of arrays.
 
 ## The soak with eviction (P4)
 
-WP P4 of the plan: P2's main soak ([level3-soak.md](level3-soak.md)) with
+WP P4 of the plan: P2's main soak ([level3-soak.md](09-level3-soak.md)) with
 eviction on and a capped heap. `java/stress/soak.sh p4main2` (2026-10-18
 07:04 to 09:26), the same workload and properties as P2's `main1` (a
 million keys and 1,000 long keys, 1,000-byte values, a retention of five

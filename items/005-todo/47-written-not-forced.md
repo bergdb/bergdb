@@ -33,7 +33,7 @@ Today: hard sync only
   any new file names, before `append` returns, as that completion
   advances the durable frontier.
 * This came on 2026-10-14 (commit 506510d,
-  [docs/level3-durability.md](../../docs/level3-durability.md)). Before
+  [docs/level3-durability.md](../011-docs-archive/07-level3-durability.md)). Before
   it, and in the 2013 to 2017 code, `FileStream` opened its files with
   mode `"rws"`, a synchronous write through the OS on every write, with
   no explicit force: on macOS that does not empty the drive's cache

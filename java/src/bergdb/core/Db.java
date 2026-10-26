@@ -97,7 +97,7 @@ public class Db {
     /**
      * The newest written top node: the top node with the largest id among those written to
      * the stream. Every transaction stores the position of its latest version (topPos), from
-     * which startup finds the super root (docs/level2-alignment.md, M18). Set at startup;
+     * which startup finds the super root (bergdb 011-11, M18). Set at startup;
      * accessed by the writer (writeLock) only.
      */
     private TopNode newestWrittenTop;
@@ -1007,7 +1007,7 @@ public class Db {
 
     /**
      * Makes a node that a put created the canonical object of its node, in the node
-     * table (docs/levels.md, level 2).
+     * table (bergdb 011-04, level 2).
      */
     private void registerNewNode(Node node) {
         node.setCanonical(true);
@@ -1024,13 +1024,13 @@ public class Db {
     // current; if it got dirty in the transaction, it is clean again and leaves D, since its
     // latest version is still good for every earlier time. So step 3 marks exactly the nodes
     // that the Lean model marks: the index nodes current at the transaction time with a node
-    // created or changed by the transaction below them (T13 in lean/; docs/level2-alignment.md,
+    // created or changed by the transaction below them (T13 in lean/; bergdb 011-11,
     // M2). Before 2026-10-16, every such node got dirty at once, also on the path of a delete
     // of a missing key and when the transaction replaced the node later. A reclaim step's
     // touch (Level 3, Trans.touch) marks the nodes it visits first, and those marks stay, also
     // for a node that the step's puts then replace; the puts' marks of replaced nodes go, as
     // in any transaction (the Lean model's step 3, touchOf; bergdb item 001, WP R8: M17 in
-    // docs/level3-alignment.md). Before 2026-10-17, a touch transaction kept every mark.
+    // bergdb 001-07). Before 2026-10-17, a touch transaction kept every mark.
     
     /** The index nodes that the current operation followed, created or changed. */
     private final ArrayList<Node> opMarks = new ArrayList<Node>();
@@ -1480,7 +1480,7 @@ public class Db {
     /**
      * Decides whether a failed read has expired. A read that was admitted before reclaim
      * moved the first available lookup time can still reach bytes that the cut then removed
-     * (docs/levels.md, W1, decision D1 = A: such a read may expire). If the stream
+     * (bergdb 011-04, W1, decision D1 = A: such a read may expire). If the stream
      * says the bytes are before its first position and the lookup time is now before the
      * first available lookup time, the read has expired: the caller gets a
      * LookupTimeNotAvailableException, as if it had asked a moment later. Anything else is
@@ -2060,7 +2060,7 @@ public class Db {
     /**
      * Resolves the pointers of the index nodes about to be written, so that they name the
      * latest versions, and the still-dirty test sees every node in D they point to
-     * (docs/levels.md, level 2; NodeCollection.resolvePointers).
+     * (bergdb 011-04, level 2; NodeCollection.resolvePointers).
      */
     private void resolvePointersOfTakenNodes() {
         long accessData = getAccessData();

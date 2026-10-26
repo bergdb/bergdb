@@ -1,6 +1,8 @@
 BergDB prior art and what seems novel
 =====================================
 
+011-02. Moved here from `docs/prior-art.md` on 2026-10-26 (006-07); history, not kept up to date.
+
 Draft 2, 2026-10-12. Written by Claude for Frans Lundberg.
 Draft 2 adds Berkeley DB JE (verified), the wandering tree problem (UBIFS,
 LogFS, LSB-tree), LeanStore, ForestDB and OrioleDB to section 4, and the
@@ -8,15 +10,15 @@ four properties P1 to P4 with sharper claims to section 5.
 2026-10-13: added runtime timing and checkpoint terminology in section 5.5.
 
 Closure review: Java status is pinned to `ebe5f77`, 2026-10-13 18:02 CEST;
-see [levels.md](levels.md). The claims below are research candidates, not
+see [levels.md](04-levels.md). The claims below are research candidates, not
 established novelty or implementation guarantees. The review qualifies the
 timing/history comparisons and separates prior source-reading records from
 the primary-source checks made at closure.
 
 Literature related to BergDB, how BergDB compares, and which parts seem to be
 new. Answers a first round of question Q12 (novelty) in
-[problem.md](problem.md) and checks its list "Prior art to check". Terms
-follow [2015-algos.pdf](sources/2015-algos.pdf). Each
+[problem.md](01-problem.md) and checks its list "Prior art to check". Terms
+follow [2015-algos.pdf](../../docs/sources/2015-algos.pdf). Each
 reference in section 7 says whether it was read, verified, or is from
 Claude's own knowledge.
 
@@ -447,9 +449,9 @@ makes the stream several times larger than the data.
 5.1 The concept
 ---------------
 
-From Frans's [self-indexed_streams_v5_130704.pdf](sources/self-indexed_streams_v5_130704.pdf)
-(dated January 2012), [2015-algos.pdf](sources/2015-algos.pdf)
-and [startup.md](sources/startup.md):
+From Frans's [self-indexed_streams_v5_130704.pdf](../../docs/sources/self-indexed_streams_v5_130704.pdf)
+(dated January 2012), [2015-algos.pdf](../../docs/sources/2015-algos.pdf)
+and [startup.md](../../docs/sources/startup.md):
 
 * The stream is the database. It can be read anywhere, appended at the end,
   and cut at the front. Nothing is overwritten, and there is no separate
@@ -549,7 +551,7 @@ provide append-only storage and history without useful recovery control.
 
 The claim is best put as a method, not a data structure: a way to store
 any partially persistent linked structure (A1 to A4 in
-[sis-model.md](sis-model.md)) on one append-only stream, with the
+[sis-model.md](../../docs/sis-model.md)) on one append-only stream, with the
 multiversion B-tree as one instance. This extends Driscoll et al. from
 memory to durable storage; Frans's 2016 working title was "Making Data
 Structures Persistent and Storing Them". The Lean proofs already hold for
@@ -600,10 +602,10 @@ The earlier claims, sharpened:
 * C5. The cache-aware versioned node of section 3, if it holds up.
 
 The claims stand only with their invariants proven: INV-RESTART and
-INV-CRASH in [problem.md](problem.md), and the bound on write overhead (R4,
+INV-CRASH in [problem.md](01-problem.md), and the bound on write overhead (R4,
 Q5). The 2017 startup failures are analyzed historically in
-[startup-invariants.md](startup-invariants.md); the repaired Java passes the
-recorded Level 2 checks in [levels.md](levels.md). Correctness and novelty
+[startup-invariants.md](03-startup-invariants.md); the repaired Java passes the
+recorded Level 2 checks in [levels.md](04-levels.md). Correctness and novelty
 are separate obligations; neither follows merely from the other.
 
 
@@ -688,7 +690,7 @@ behind: write backpressure, more dirty-node memory, or a longer recovery
 window. Reclaim has now been tested and tuned: the initial load check wrote
 up to 4019 index nodes in one commit, and later grids still show bursts.
 Those observations make this scheduling obligation concrete; see
-[levels.md](levels.md), "Level 3 cost".
+[levels.md](04-levels.md), "Level 3 cost".
 
 Evaluate latency over time alongside maintenance activity, reporting high
 percentiles and maximum observed delays. "Predictable latency" is a useful

@@ -270,7 +270,7 @@ public final class TopNode implements Node {
     /**
      * Gets the pointer as one coherent pair (node, pos); see KeyNode.getPointer(). The
      * reference is read once, and a memory pointer is decided on that read (bergdb item 001,
-     * WP R8, change 4: M24 of docs/level4-alignment.md). Before 2026-10-17 it was tested and
+     * WP R8, change 4: M24 of bergdb 001-08). Before 2026-10-17 it was tested and
      * then read again, which, once eviction can clear it in between, gives a null node with
      * access data for its position.
      */

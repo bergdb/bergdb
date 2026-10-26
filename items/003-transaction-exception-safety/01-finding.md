@@ -5,7 +5,7 @@ By Claude (Opus 5.5, Claude Code) for Frans Lundberg, 2026-10-17. Found in
 item 002 while probing the top node ordinal bound
 ([02-report.md](../002-top-node-ordinal-bound/02-report.md), sections 2.3
 and 8). Register row M49 of
-[docs/level4-alignment.md](../../docs/level4-alignment.md). Line numbers are
+[docs/level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md). Line numbers are
 at `a3b4421`. No code was changed.
 
 Fixed on 2026-10-22 by bergdb 005-01

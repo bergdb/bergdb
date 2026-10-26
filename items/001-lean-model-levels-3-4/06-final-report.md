@@ -10,8 +10,8 @@ M46, M49, and the go of 19:59). Every WP is committed, one commit per WP
 (J2 and J3 in one); the log of every session is in
 [02-progress.md](02-progress.md); the details
 are in bergdb's
-[docs/level3-alignment.md](../../docs/level3-alignment.md) and
-[docs/level4-alignment.md](../../docs/level4-alignment.md).
+[docs/level3-alignment.md](07-level3-alignment.md) and
+[docs/level4-alignment.md](08-level4-alignment.md).
 
 
 Summary
@@ -68,7 +68,7 @@ The outcome, point by point
 | 7. No regressions, Level 4 works | Done: the gates; the soak (P2) | Done: four gates; Q13's targets (J10); larger than memory (J8); the soak with eviction (P4, with its throughput finding) | F1, J8, J10, P4 |
 
 The checks in numbers, on the final code and model (F1,
-[docs/evidence/level34-conformance.txt](../../docs/evidence/level34-conformance.txt)):
+[docs/evidence/level34-conformance.txt](07-level3-alignment/level34-conformance.txt)):
 the Level 2 sets, 81 traces with 44,141 transactions; the reclaim sets made
 again, 31 traces with 36,908 transactions and 463 cuts; the eviction set,
 30 traces with 7,794 transactions and 472,829 slots checked by C-P; every

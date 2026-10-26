@@ -271,7 +271,7 @@ Known issues and limits
   matters only at buffer times of about 200 ms or more, set through the core
   API (005-13); the default is 20 ms.
 * Power loss on real hardware is not established (see
-  [docs/level3-durability.md](../../docs/level3-durability.md)). Tested on
+  [docs/level3-durability.md](../../items/011-docs-archive/07-level3-durability.md)). Tested on
   JDK 27 only, though compiled for Java 8. The documentation has not been
   reviewed for users.
 

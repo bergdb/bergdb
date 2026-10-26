@@ -27,7 +27,7 @@ import bergdb.stream.FileStream;
 import bergdb.stream.ReadBelowFirstPosException;
 
 /**
- * Tests of readers and reclaim cuts (2026-10-13, docs/levels.md, W1).
+ * Tests of readers and reclaim cuts (2026-10-13, bergdb 011-04, W1).
  *
  * <p>A read is admitted by comparing its lookup time with the first available lookup time.
  * Reclaim can move that time, and cut the stream, while the read runs. A read that
@@ -260,7 +260,7 @@ public class ReclaimReaderTester {
      * Runs the scenario with seeds from firstSeed on, and checks the first one whose reader
      * reaches the bytes of the cut. Whether a held reader still needs a version below the
      * cut depends on where the versions lie, which a change of what the writer writes moves:
-     * since 2026-10-16 (a transaction is one model transaction, docs/level2-alignment.md, M1
+     * since 2026-10-16 (a transaction is one model transaction, bergdb 011-11, M1
      * and M2), seed 1 of the CutStream scenario ends without reaching the cut, as seeds 2, 8
      * and 11 did before. A reader that does not reach the cut must end with every KV, and the
      * database must go on.
@@ -356,7 +356,7 @@ public class ReclaimReaderTester {
 
     /**
      * Regression test for a data race found 2026-10-13 (java/stress/ReclaimReaders.java,
-     * docs/levels.md, "Level 3 follow-up"). A reader that follows a stream pointer replaces it with a
+     * bergdb 011-04, "Level 3 follow-up"). A reader that follows a stream pointer replaces it with a
      * memory pointer: the node, then the position (access data instead of a stream
      * position). The writer reads the pair when it serializes the key node. Read as null and
      * then the new position, it took the access data for a stream position: "Bad stream

@@ -28,7 +28,7 @@ distance:
     long it has run.
 
 The time then follows from the machine. Measured on F53 with a warm OS file
-cache ([levels.md](../../docs/levels.md), "Default startup distance 50
+cache ([levels.md](../011-docs-archive/04-levels.md), "Default startup distance 50
 MB"): 0.36 to 1.45 s at the default of 50 MB; 7 to 29 ms per MB of section,
 or 15 to 25 µs per transaction rerun.
 
@@ -135,7 +135,7 @@ first two it stops when the nodes taken reach a limit: 4 per value of the
 current transaction and 1 per KB (`nodeCountLimit`). And it stops before a
 record would pass the record limit of about 2 GB, even before two (bergdb
 005-17). So it does not keep up, and T3 does not apply to it
-([problem.md](../../docs/problem.md), Q4).
+([problem.md](../011-docs-archive/01-problem.md), Q4).
 
 Measured, the section stays near d but goes past it (levels.md): up to
 1.36 d with 1M keys at 20 MB, 2.21 d with 10M keys at 20 MB, 1.67 d with 1M

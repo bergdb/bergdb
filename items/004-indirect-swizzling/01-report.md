@@ -127,8 +127,8 @@ From the literature (Moss 1992; Kemper and Kossmann 1995, section 3):
 * **Single owner.** A structure in which every object has exactly one incoming pointer
   (a tree, a forest), so that a parent pointer replaces an RRL.
 
-BergDB's terms, as in [docs/levels.md](../../docs/levels.md) and
-[docs/level4-alignment.md](../../docs/level4-alignment.md): a **node** (node id) has
+BergDB's terms, as in [docs/levels.md](../011-docs-archive/04-levels.md) and
+[docs/level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md): a **node** (node id) has
 **versions** in the stream (positions); lv(y) is node y's latest version. An **object** is
 a Java `Node` in memory. A **canonical object** is the one object of a node that the
 writer reads and changes; it holds the node's whole history (CC) and, for a clean written
@@ -313,7 +313,7 @@ version", in a database: the indirection redirects every referrer at once.
 
 ### 2.7 Multiversion structures have multiple parents
 
-[docs/prior-art.md](../../docs/prior-art.md) reviews the structures BergDB descends from.
+[docs/prior-art.md](../011-docs-archive/02-prior-art.md) reviews the structures BergDB descends from.
 What matters here:
 
 * **Driscoll, Sarnak, Sleator and Tarjan (1989).** Node copying keeps, in each node, a
@@ -384,9 +384,9 @@ done under the write lock.
 Its cost grows with the resident memory, not with what it frees: 1.5 s on average and
 2.2 s at most at a 500 MB budget (J8), 3.2 s on average at 1.6 GB in P4's soak, every 9
 seconds or so, 35 percent of the time, which brought the paced writer down to 62 percent
-([level4-evidence.md](../../docs/level4-evidence.md)). Item 001 lists the options for K5
+([level4-evidence.md](../001-lean-model-levels-3-4/10-level4-evidence.md)). Item 001 lists the options for K5
 as an incremental sweep or incoming-reference lists, the RRLs of 2.2
-([level4-plan.md](../../docs/level4-plan.md), sections 1 and 4.3).
+([level4-plan.md](../011-docs-archive/05-level4-plan.md), sections 1 and 4.3).
 
 ### 3.3 Most resident objects have more than one parent
 
@@ -440,7 +440,7 @@ percent more. With eight threads, today's gets scale backwards: 2.4 million a se
 3.6 with four. Without the lock and the stamp they reach about 4, and without `readSync`
 too 8.7 to 8.9, more than six times one thread; the global monitor of every get is then
 the larger cost. J10 measured 1.30 million gets a second on one thread and 3.5 million on
-four, with another data set ([level4-performance.md](../../docs/level4-performance.md)).
+four, with another data set ([level4-performance.md](../001-lean-model-levels-3-4/11-level4-performance.md)).
 Masstree's design rule is the opposite of today's read path: its readers "acquire no
 locks whatsoever, and in fact never write to globally-accessible shared memory" (Mao,
 Kohler and Morris 2012, section 4.4).
@@ -834,7 +834,7 @@ capacity controller needs comes too late).
 * **Every get writes shared memory twice:** the `readSync` monitor and `aux.getOpCount`.
 * **`Cache3.CacheEntry.refCount` is never decremented** (`pointerDestroyed` has no
   caller): dead, harmless.
-* **[docs/levels.md](../../docs/levels.md) gives the default startup distance as 20 MB;**
+* **[docs/levels.md](../011-docs-archive/04-levels.md) gives the default startup distance as 20 MB;**
   `DbBuilder` sets 50 MB, as level4-evidence.md says.
 
 
@@ -920,7 +920,7 @@ Indirection layers:
   Multi-Version Concurrency Control. PVLDB 10(7):781–792, 2017.
   https://www.vldb.org/pvldb/vol10/p781-Wu.pdf (Part: sections 6, 7.5 and 8.)
 
-Multiversion structures (see also [docs/prior-art.md](../../docs/prior-art.md), whose
+Multiversion structures (see also [docs/prior-art.md](../011-docs-archive/02-prior-art.md), whose
 reading records these follow):
 
 * J. R. Driscoll, N. Sarnak, D. D. Sleator and R. E. Tarjan. Making data structures
@@ -935,11 +935,11 @@ reading records these follow):
   transaction time support for SQL Server. SIGMOD 2005. doi:10.1145/1066157.1066295.
   (Abstract.)
 
-BergDB: [docs/level4-alignment.md](../../docs/level4-alignment.md) (sections 4, 5 and 7),
-[docs/level4-plan.md](../../docs/level4-plan.md) (sections 1 and 4),
-[docs/level4-evidence.md](../../docs/level4-evidence.md) (J8, P4),
-[docs/level4-performance.md](../../docs/level4-performance.md) (J10),
-[docs/levels.md](../../docs/levels.md), [docs/prior-art.md](../../docs/prior-art.md);
+BergDB: [docs/level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md) (sections 4, 5 and 7),
+[docs/level4-plan.md](../011-docs-archive/05-level4-plan.md) (sections 1 and 4),
+[docs/level4-evidence.md](../001-lean-model-levels-3-4/10-level4-evidence.md) (J8, P4),
+[docs/level4-performance.md](../001-lean-model-levels-3-4/11-level4-performance.md) (J10),
+[docs/levels.md](../011-docs-archive/04-levels.md), [docs/prior-art.md](../011-docs-archive/02-prior-art.md);
 [Eviction.java](../../java/src/bergdb/core/Eviction.java),
 [Residents.java](../../java/src/bergdb/core/Residents.java),
 [NodeCollection.java](../../java/src/bergdb/core/NodeCollection.java),

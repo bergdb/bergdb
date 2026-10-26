@@ -1,11 +1,13 @@
 # BergDB Level 4: performance against Level 3
 
+001-11. Moved here from `docs/level4-performance.md` on 2026-10-26 (006-07); history, not kept up to date.
+
 By Claude (Opus 5.5, Claude Code) for Frans Lundberg, 2026-10-18. WP J10 of
 bergdb item 001
-([../items/001-lean-model-levels-3-4/01-plan.md](../items/001-lean-model-levels-3-4/01-plan.md)),
+([01-plan.md](01-plan.md)),
 against the targets of its Q13. The baseline and the tool are in
-[level3-performance.md](level3-performance.md) and
-[performance-harness.md](performance-harness.md).
+[level3-performance.md](../011-docs-archive/10-level3-performance.md) and
+[performance-harness.md](../011-docs-archive/09-performance-harness.md).
 
 ## Result
 
@@ -108,7 +110,7 @@ passed (`PERF OK`). The heap after a collection stayed below 600 MB (G1's
 young collections: 822 in the run, 29.5 s in all, 121 ms at most; three
 full collections). Reads under pressure are this slow because a get loads
 about two versions, each read twice from the stream (the node's header for
-its id, then the node: [level4-evidence.md](level4-evidence.md), the
+its id, then the node: [level4-evidence.md](10-level4-evidence.md), the
 limits), and a scan loads every leaf and value it passes. Four reader
 threads read only 1.5 times as fast as one (not looked at further; a
 sweep after a load holds the write lock, and the other readers' loads that

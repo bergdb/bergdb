@@ -570,7 +570,7 @@ public class DbTesterRestart {
     /**
      * Transactions that change nothing do not mark the super root; enough of them move the
      * startup pos past every top node version. Startup must still find the super root, from
-     * the last transaction's topPos. Regression test for M18 of docs/level2-alignment.md,
+     * the last transaction's topPos. Regression test for M18 of bergdb 011-11,
      * found 2026-10-15: the database could not start ("Could not find super node in startup
      * section").
      */

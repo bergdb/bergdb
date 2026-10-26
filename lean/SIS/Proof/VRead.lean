@@ -2,7 +2,7 @@
 Proofs, part 14c: with a virtual root (`Spec.virt`, option (a) of Q7),
 startup reads the root children from top(k) and rebuilds the root.
 
-Written 2026-10-16 for F1-008-11, WP E3 (docs/level2-alignment.md, 8.2).
+Written 2026-10-16 for F1-008-11, WP E3 (bergdb 011-11, 8.2).
 -/
 import SIS.Proof.Read
 

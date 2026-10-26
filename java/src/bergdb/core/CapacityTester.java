@@ -121,7 +121,7 @@ public class CapacityTester {
     /**
      * A sweep stops near the low watermark: reads with no writes on a cold database whose
      * index alone is several times the budget, as at the end of the run of
-     * docs/level4-evidence.md: a scan of every key (one operation, so the slots it follows
+     * bergdb 001-10: a scan of every key (one operation, so the slots it follows
      * get the same access time), then every key read in order, twice. A sweep counts the
      * objects that leave the resident set with those it takes (Eviction.drop: the snapshots
      * below a slot it unswizzles), so after the first sweep the resident bytes, sampled

@@ -40,6 +40,11 @@ Files
   filled with garbage it did not reclaim; what it means for target 2, and
   what could be done.
 
+* [05-handles-alignment.md](05-handles-alignment.md). 009-05, Level 4 with
+  handles, the Java code and the Lean model (step 4b): what is proved, the
+  mapping α, the register R1 to R7, and how Java is checked against the
+  model. Formerly `docs/handles-alignment.md`.
+
 
 Log
 ===
@@ -289,3 +294,7 @@ compared; the agent's gates (before-commit, level2 to level4 quick,
 conformance.sh evict 3, the trace tests) pass, and here lake build, the
 trace tests and the evict set again.
 
+2026-10-26. `docs/handles-alignment.md` moved here as 009-05, in the docs/
+cleanup (006-07), with a line on where it came from and its links fixed,
+otherwise unchanged. The trace format of step 4c, section 9 of
+`docs/level2-alignment.md` until then, is `docs/trace-format.md`.

@@ -31,7 +31,7 @@ import bergdb.pub.util.BadFormatException;
  * file and its directory entry are forced before the file takes appends. So a completed
  * append means durable bytes, not only bytes in the OS cache, and StorageManager's
  * durable length, which sync() waits for, holds after a power loss, not only after a
- * process crash (2026-10-14, docs/level3-durability.md).
+ * process crash (2026-10-14, bergdb 011-07).
  * 
  * A force costs a device round trip: well under a millisecond on a fast SSD, up to
  * seconds on a slow virtual disk. This class is meant to be used below BufferedStream,
@@ -149,7 +149,7 @@ public class FileStream implements AppendOnlyStream {
             if (k == null) {
                 long first = getFirstPos();
                 if (spos < first) {
-                    // 2026-10-13 (docs/levels.md, W1): a read admitted before a
+                    // 2026-10-13 (bergdb 011-04, W1): a read admitted before a
                     // cut can come here. It fails alone; the stream is not faulty.
                     throw new ReadBelowFirstPosException("Cannot read at spos " + spos
                             + ", below the first position, " + first + ".");
@@ -843,7 +843,7 @@ public class FileStream implements AppendOnlyStream {
          */
         synchronized int read(long spos, byte[] dest, int destOffset, int lengthToRead) throws IOException {
             if (isDeleted) {
-                // 2026-10-13 (docs/levels.md, W1): a reader found this file
+                // 2026-10-13 (bergdb 011-04, W1): a reader found this file
                 // just before pretruncate() deleted it. Only this read fails.
                 throw new ReadBelowFirstPosException("Cannot read at spos " + spos
                         + ", the file " + file.getPath() + " has been deleted by pretruncate.");
@@ -1143,7 +1143,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     /**
-     * 2026-10-13 (docs/levels.md, W1). A read of bytes that pretruncate()
+     * 2026-10-13 (bergdb 011-04, W1). A read of bytes that pretruncate()
      * removed used to store a permanent IOException: after it, every read and append failed.
      * Now only the read fails.
      */

@@ -1,8 +1,10 @@
 # BergDB Level 3: the Java code and the Lean model
 
+001-07. Moved here from `docs/level3-alignment.md` on 2026-10-26 (006-07); history, not kept up to date.
+
 By Claude (Opus 5.5, Claude Code) for Frans Lundberg, from 2026-10-16.
 Work packages A2, R1 and later of bergdb item 001
-([../items/001-lean-model-levels-3-4/01-plan.md](../items/001-lean-model-levels-3-4/01-plan.md)).
+([01-plan.md](01-plan.md)).
 Source commit `a66e4d9` (R1); line numbers below are at that commit, in
 `java/src/bergdb/`.
 
@@ -15,14 +17,14 @@ outcome of the plan's 1.2 for Level 3 (section 7, R9) and the conformance
 step in `level3.sh` (section 8, K3).
 
 Level 3 is reclaim: the front of the stream is cut, so that the stream does
-not grow forever. How Java does it is in [levels.md](levels.md), "Level 3:
+not grow forever. How Java does it is in [levels.md](../011-docs-archive/04-levels.md), "Level 3:
 reclaim", and in the class comment of `core/Reclaim.java`. The plan of item
 001 aligns it with the model after the model has the cache (stage 2), since
 reclaim's safety depends on what a written version names, which Level 4
 decides (the plan, "How the levels depend on each other"). This document
 says what "aligned" means for reclaim, as
-[level2-alignment.md](level2-alignment.md) does for Level 2. The cache is in
-[level4-alignment.md](level4-alignment.md).
+[level2-alignment.md](../011-docs-archive/11-level2-alignment.md) does for Level 2. The cache is in
+[level4-alignment.md](08-level4-alignment.md).
 
 
 ## 1. Scope
@@ -38,7 +40,7 @@ Not in the model: when an iteration starts and how much a step rewrites
 (the allowance; a policy, like the startup pos policy at Level 2); the
 retain duration and the wall clock (the model gets f, not R); bytes,
 durability and the order of file deletions
-([level3-durability.md](level3-durability.md)); readers that expire while a
+([level3-durability.md](../011-docs-archive/07-level3-durability.md)); readers that expire while a
 cut overtakes them (concurrency; decision D1 = A, levels.md, W1).
 
 
@@ -196,7 +198,7 @@ keeps that Java lost.
   P2).
 * Not in the model: the wall clock and the retain duration (condition 1 is
   a policy that chooses f), the meta block condition (3: bytes and
-  recovery, [level3-durability.md](level3-durability.md)), durability and
+  recovery, [level3-durability.md](../011-docs-archive/07-level3-durability.md)), durability and
   file deletion, the allowance and the iteration spacing.
 
 ### 2.7 For the trace (R2)
@@ -922,7 +924,7 @@ change. The summary per trace: `docs/evidence/level3-redlist-baseline.txt`.
 
 **R9** (2026-10-17). The plan's section 1.2, point by point, for Level 3
 (points 5 and the second half of 7, the cache, are Level 4's:
-[level4-alignment.md](level4-alignment.md), stage 4). The runs: the reclaim
+[level4-alignment.md](08-level4-alignment.md), stage 4). The runs: the reclaim
 traces of R2's small and medium sets made again with the current Java
 (`java/` as at `5b1abdd`, R8's last change; the medium set's earlier traces
 were from before R8), the checker at `970c996` on each; and the gates, full,
@@ -931,7 +933,7 @@ on `970c996`. On the final code and model (F1, 2026-10-18, bergdb
 traces (14,448 transactions, 288 cuts, 1,507 probes) and medium 6 (22,460,
 175, 261), every trace `TRACECHECK OK`, with C-A, C-S on the cut stream,
 C-CUT at every cut and C-R's probes without failure; and the four gates
-([evidence/level34-conformance.txt](evidence/level34-conformance.txt)).
+([07-level3-alignment/level34-conformance.txt](07-level3-alignment/level34-conformance.txt)).
 
 1. **Correspondence.** α for reclaim is section 2: reclaim's steps and table
    stores are transactions (2.2, M37), the touch is `Changes.touch` (2.2,

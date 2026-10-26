@@ -1,5 +1,5 @@
 #!/bin/sh
-# The cost of reclaim over a grid (2026-10-13; docs/levels.md, "Level 3 cost"):
+# The cost of reclaim over a grid (2026-10-13; bergdb 011-04, "Level 3 cost"):
 # ReclaimCost for each workload, value size and K (updates per key within the
 # retention duration), and a baseline without reclaim (K = 0) for each workload and
 # value size. Prints WE and SE per run; the logs are in $OUT.

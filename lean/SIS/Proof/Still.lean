@@ -7,7 +7,7 @@ nodes lowest level first: a written node that is still dirty has a pointee in
 D after step 5, or a pointee written before it in the record that is still
 dirty itself.
 
-Written 2026-10-15 for F1-008-11, WP E2 (docs/level2-alignment.md, M3).
+Written 2026-10-15 for F1-008-11, WP E2 (bergdb 011-11, M3).
 -/
 import SIS.Proof.Mark
 

@@ -1,6 +1,6 @@
 /-
 Self-indexed streams in Lean: the physical layer, part 2, with eviction
-(bergdb item 001, stage 2, WP E2; the design is docs/level4-alignment.md,
+(bergdb item 001, stage 2, WP E2; the design is bergdb 001-08,
 section 5). Trusted part.
 
 Stage 1 (Phys.lean) models what BergDB holds in memory and how it reads a node
@@ -179,7 +179,7 @@ live child of at j - 1, through that object's slot (the writer's follow), which
 then names x's canonical object. Unlike stage 1, the writer follows the slot
 also when x has a canonical object already, as Java's writer does, which walks
 down from the root: after an unswizzle, the slot may be a stream slot, or name
-another object of x (docs/level4-alignment.md, 5.10). -/
+another object of x (bergdb 001-08, 5.10). -/
 def Mem.reachOnPath4 (sp : Spec V T) (S0 S : Stream V T) (P : Struct V) (j : Time)
     (path : List NodeId) (m : Mem V) (x : NodeId) : Mem V :=
   let parent := path.find? (fun p => match P.get? p, m.canonicalOf p with
@@ -414,7 +414,7 @@ def treeAt (sp : Spec V T) (P : Struct V) (i : Time) : Prop :=
       | some n => (sp.live (n.hist.upTo i)).contains y
       | none => false)).length = 1
 
-/-- A6' at time i (no adoption, the weaker form; docs/level4-alignment.md,
+/-- A6' at time i (no adoption, the weaker form; bergdb 001-08,
 section 4): for every node x reachable at i and every pointee y of x that is
 not a live child of x at i, y is a data node, or is not reachable at i, or is
 reachable at i from x through live pointers (below x). -/

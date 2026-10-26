@@ -19,7 +19,7 @@ proofs; section 14 lists what the proofs changed.
 
 Builds on Frans's [startup.md](sources/startup.md) and
 [v5](sources/self-indexed_streams_v5_130704.pdf),
-and on [startup-invariants.md](startup-invariants.md). Uses the notation of
+and on [011-03](../items/011-docs-archive/03-startup-invariants.md). Uses the notation of
 startup.md where it can, all defined below: the database state
 DB = <P, D, S>, where P is the data, D the dirty nodes and S the stream;
 the transactions T(i); the startup positions s(i); and the got-dirty sets
@@ -191,8 +191,8 @@ balanced binary tree with rotations does not automatically supply A4 with
 fixed levels, since a child can become its parent's parent.
 
 Since 2026-10-16, BergDB's Java transactions are built to meet A2 and A3
-(F1-008-11; mismatch M1 of [level2-alignment.md](level2-alignment.md)). Two
-checkers check A2 to A5, with the levels of level2-alignment.md, section
+(F1-008-11; mismatch M1 of [011-11](../items/011-docs-archive/11-level2-alignment.md)). Two
+checkers check A2 to A5, with the levels of 011-11, section
 8.4, on every transaction of their runs: the trace checker, which runs the
 Lean model on traces of Java runs (section 13), and the Java tier, a Java
 stress test (`A2A3Check2`). That is a check on many runs, not a proof.
@@ -248,7 +248,7 @@ A version v of node x is good for time t if:
    good for t.
 
 Reading the stream from a version that is good for t shows exactly P@t below
-that node. This is "complete for t" in startup-invariants.md. The definition
+that node. This is "complete for t" in 011-03. The definition
 is recursive, and A4 makes the recursion end.
 
 Stability. A version that is good for t stays good for t: versions never
@@ -267,7 +267,7 @@ version that is not good, x is dirty. Writing a node does not make its
 ancestors dirty, since their latest versions do not change. An
 implementation has two kinds of pointers: memory pointers, between nodes in
 RAM, and stream pointers, from a version to a version. Dirtiness through
-stream pointers (INV-CLOSURE in startup-invariants.md) needs no rule of its
+stream pointers (INV-CLOSURE in 011-03) needs no rule of its
 own: the definition is about versions and does not know about memory
 pointers.
 
@@ -358,7 +358,7 @@ earlier, as in startup.md.
 Rule R is the reconciliation of v5 and of startup.md's edit of 2016-04-16,
 made uniform: by node id, for every pointer, top nodes included. It needs
 no prevPos chains, BergDB's links from a version to the previous version of
-its node (G3 in startup-invariants.md). It covers references in
+its node (G3 in 011-03). It covers references in
 versions written before the section (E4), and it resolves vpos pointers.
 That last part is needed: a version written before its child was first
 written holds no reference for the child, and the child's first version can
@@ -369,7 +369,7 @@ be in the section. The Lean model found this (section 13).
 --------------------
 
 Since 2026-10-16 (F1-008-11, option (a) of
-[level2-alignment.md](level2-alignment.md), sections 8.2 and 8.6), the root
+[011-11](../items/011-docs-archive/11-level2-alignment.md), sections 8.2 and 8.6), the root
 can be virtual (`Spec.virt`), as in BergDB, which has no root node but a
 chain of top nodes. Each top node points to the B-tree's root node of its
 time and to some older top nodes; the newest, the super root, is the entry
@@ -379,7 +379,7 @@ super root at the startup time, and the record of its latest version.
 Startup reads the root's children from that version through their pointers, live or
 dead, with Rule R, rebuilds the root from them, and then reads as in 6.2.
 
-The virtual root needs more assumptions (R1 to R4 of level2-alignment.md,
+The virtual root needs more assumptions (R1 to R4 of 011-11,
 8.2, and two more): the root's entry for a child points to it; at most one
 new root child per transaction, an index node with entries; a root child
 gets entries only in the transaction that creates it; the root gets exactly
@@ -568,7 +568,7 @@ being on the access path.
   up with d; the size of the records at the ends of the section (T4) and
   the rest are open ([../items/007-bounds/](../items/007-bounds/readme.md)).
 * Reclaim: cutting the front of the stream (INV-RECLAIM of
-  [problem.md](problem.md); level 3 of levels.md), and eviction and the
+  [011-01](../items/011-docs-archive/01-problem.md); level 3 of levels.md), and eviction and the
   cache (the planned T5; level 4): not in sections 2 to 9; bergdb item 001
   added both, with their theorems (section 15).
 * Concurrency, sync levels and torn records. A record is assumed complete
@@ -609,11 +609,11 @@ implementation must meet them.
   query equivalence alone does not establish T2.
 * One object per node. The model has one history per node id. An
   implementation must not let an object read from an older version stand for
-  the node at a later time (G8 in startup-invariants.md).
+  the node at a later time (G8 in 011-03).
 * Finding the root. The model stores top(i) in every record. Any way to find
   lv(root) at startup will do. BergDB stores topPos in every record since
   2026-10-15 (format 5): the position of the super root at the startup time
-  (level2-alignment.md, mismatch M18; with a virtual root, top(i) of 6.3).
+  (011-11, mismatch M18; with a virtual root, top(i) of 6.3).
 
 
 12 Compared with startup.md
@@ -658,7 +658,8 @@ The model in Lean is in [../lean/](../lean/README.md).
   virtual root (sections 3.4, 6 and 9; lean/README.md, the changes to the
   trusted part). The trace checker (lean/Check/, `tracecheck`) runs the
   model's `init` and `step` on traces of Java runs
-  ([level2-alignment.md](level2-alignment.md), sections 9 and 10).
+  ([trace-format.md](trace-format.md); [011-11](../items/011-docs-archive/11-level2-alignment.md),
+  section 10).
 
 The lemmas of section 8, by Lean name:
 
@@ -726,9 +727,9 @@ the front of the stream is cut (Level 3), each with its theorems, proved in
 Lean with
 only the standard axioms. The definitions and statements are in
 [../lean/](../lean/README.md) ("What to read"); the design and its reasons
-in [level2-alignment.md](level2-alignment.md), section 13 (the physical
-layer, part 1), [level4-alignment.md](level4-alignment.md), section 5
-(eviction) and [level3-alignment.md](level3-alignment.md), sections 2 and 5
+in [011-11](../items/011-docs-archive/11-level2-alignment.md), section 13 (the physical
+layer, part 1), [001-08](../items/001-lean-model-levels-3-4/08-level4-alignment.md), section 5
+(eviction) and [001-07](../items/001-lean-model-levels-3-4/07-level3-alignment.md), sections 2 and 5
 (reclaim).
 
 15.1 Memory: objects, slots, the node table
@@ -752,7 +753,7 @@ before) and release (an object that no memory slot names leaves memory, and
 the node table if it is there). The pinned objects are the root's and the
 canonical objects of D. The physical writer writes from slots and the
 pinned set (`Mem.refOf`): a version names the latest version of each
-pointee (Option K of [level4-plan.md](level4-plan.md)), with no table of
+pointee (Option K of [011-05](../items/011-docs-archive/05-level4-plan.md)), with no table of
 all nodes.
 
 15.2 What is proved for it
@@ -772,7 +773,7 @@ all nodes.
   leaves the model's D, and three invariants hold: INV-CAN (at most one
   canonical object per node, named by the node table), INV-SNAP (every other
   object is exactly the version at its position) and INV-SLOT (what each
-  slot may name; level4-alignment.md, 5.3 and 5.4). T-READ (`TR_view`):
+  slot may name; 001-08, 5.3 and 5.4). T-READ (`TR_view`):
   reads give P. T2-C (`T2_cache`, `TR_view_restarts`): with restarts too.
   T-PIN (`TP_pins`): every object outside the pinned set may be evicted.
   They assume three properties of BergDB's tree that Java runs meet: TREE
@@ -806,7 +807,7 @@ the top is after the cut. Then:
 
 That Java's reclaim (its touches, rewrites and waits) gives safe cuts
 (T-SCHEME) is checked, not proved: at every cut of every trace the checker
-sees, and by running on the model's example (level3-alignment.md, section
+sees, and by running on the model's example (001-07, section
 5).
 
 15.4 Java against it

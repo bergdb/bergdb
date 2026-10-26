@@ -17,7 +17,7 @@ import java.util.UUID;
  * (so reclaim is scheduled), reads all objects, deletes them, creates new ones, and
  * stops. The original program repeated this forever, with 10 s between cycles, on
  * C:\berg\db. The 2017 code fails when it starts, after about 12 cycles, with "A
- * ValueNode cannot be dirty" (the bounded-startup defects, docs/levels.md, level 2).
+ * ValueNode cannot be dirty" (the bounded-startup defects, bergdb 011-04, level 2).
  *
  * Adapted from the original DbTest.java and Foobar.java: the directory, the number of
  * cycles and the pause are arguments, and each cycle checks the number of objects it

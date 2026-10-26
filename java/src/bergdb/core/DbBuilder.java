@@ -59,7 +59,7 @@ public class DbBuilder {
         // 130707 Frans: default retain duration = forever. Was one week before.
         //
         
-        // 2026-10-13 (docs/levels.md, "Level 2 under load"): was 20 MB. With
+        // 2026-10-13 (bergdb 011-04, "Level 2 under load"): was 20 MB. With
         // 50 MB, startup takes about 0.6 s with 1000-byte values (1.4 s with 100-byte 
         // values, single-put transactions), and the bytes appended per user byte fall
         // by 9% (1000 bytes) to 26% (100 bytes). The cache size indicator is kept.

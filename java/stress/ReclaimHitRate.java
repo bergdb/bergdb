@@ -7,7 +7,7 @@ import bergdb.stream.MemoryStream;
 
 /**
  * The hit rate of a hot set before and after a reclaim iteration, with the capacity
- * controller (bergdb item 001, WPs J6 and J7; docs/level4-alignment.md, 7.5 and 7.6). Two
+ * controller (bergdb item 001, WPs J6 and J7; bergdb 001-08, 7.5 and 7.6). Two
  * databases get the same workload: keys with values, a hot set read again and again, and
  * updates of random keys; database B has reclaim on, A has not. Both have a budget smaller
  * than the data and larger than the hot set. The loads per hot read (NodeCollection.loads)

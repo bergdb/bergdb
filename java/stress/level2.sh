@@ -24,9 +24,9 @@
 #      keys, a restart after every transaction; mostly idle runs (30 percent
 #      empty transactions, 20 percent deletes of missing keys, a restart
 #      after every transaction), which caught the startup bug M18 of
-#      docs/level2-alignment.md; and, full only, about 100 MB with the
+#      bergdb 011-11; and, full only, about 100 MB with the
 #      default startup distance.
-#   5. CrashTest (INV-CRASH in docs/problem.md): the stream cut at 100
+#   5. CrashTest (INV-CRASH in bergdb 011-01): the stream cut at 100
 #      positions per round, a third of them at or next to the end of a
 #      transaction; then at 20 positions at or next to a meta block, and at
 #      the end of each transaction that ends where a meta block starts
@@ -37,7 +37,7 @@
 #      read, delete all, create 10000 objects and stop, repeated (15 times
 #      quick, 40 full) with a retain duration of 10 s. The 2017 code fails
 #      to start after about 12 cycles.
-#   7. Conformance with the Lean model (docs/level2-alignment.md, 12):
+#   7. Conformance with the Lean model (bergdb 011-11, 12):
 #      A2A3Check2 (a transaction meets the model's A2, A3 and A5, and Db
 #      marks what the model marks; and, since bergdb 005-04, TREE, A6' and
 #      A-COPY, the model's assumptions of stage 2) on three configurations;

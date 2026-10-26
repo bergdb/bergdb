@@ -7,7 +7,7 @@ import bergdb.common.StringUtil;
 /**
  * Checks the SIS model's assumptions A2, A3 and A5 on the Java Dag, transaction by
  * transaction, all in memory (as DagFuzz). Written for F1-008-10, 2026-10-15; part of the
- * Java tier of the Level 2 conformance checks (docs/level2-alignment.md, 8.3).
+ * Java tier of the Level 2 conformance checks (bergdb 011-11, 8.3).
  *
  * After each transaction T(i) at time tt, with R(t) the nodes reachable at time t
  * (super root at t, its root key node, live klongs at t, recursively):

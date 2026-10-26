@@ -7,7 +7,7 @@ import bergdb.storage.RecoverableStream;
 import bergdb.stream.CutStream;
 
 /**
- * Crash test, written 2026-10-13: INV-CRASH in docs/problem.md. Cutting
+ * Crash test, written 2026-10-13: INV-CRASH in bergdb 011-01. Cutting
  * the stream at any position must give the database state after the last
  * complete transaction before the cut, and the database must work on from
  * there.

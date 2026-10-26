@@ -13,7 +13,7 @@ import bergdb.stream.CutStream;
 
 /**
  * Tests of changing the retain duration while the database runs, and across restarts
- * (2026-10-13, docs/levels.md, W2). Database.setRetainDuration() promises that
+ * (2026-10-13, bergdb 011-04, W2). Database.setRetainDuration() promises that
  * the retain duration can be changed at any time: a larger one makes the available span
  * grow until it reaches the new duration; a smaller one is allowed.
  *

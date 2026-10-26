@@ -155,7 +155,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     }
     
     public Database start() {
-        // In long (bergdb item 001, WP J7: M45 of docs/level4-alignment.md; before 2026-10-18
+        // In long (bergdb item 001, WP J7: M45 of bergdb 001-08; before 2026-10-18
         // int times int, which overflowed for more than 2,147 MB, so with heaps above about
         // 10.7 GB by default). It is the capacity controller's budget (core/Eviction.java).
         long cacheSizeIndicator = this.cacheSizeInMb * 1000000L;

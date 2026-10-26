@@ -23,7 +23,7 @@ import bergdb.stream.FileStream;
 import bergdb.stream.ReadBelowFirstPosException;
 
 /**
- * The Level 3 soak (docs/level3-plan.md, task 2; bergdb item 001, WP P2), written
+ * The Level 3 soak (bergdb 011-06, task 2; bergdb item 001, WP P2), written
  * 2026-10-16. Run it with java/stress/soak.sh, which fixes the JVM flags and the GC log and
  * runs "Soak finish" on the result.
  *

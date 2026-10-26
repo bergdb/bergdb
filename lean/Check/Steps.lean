@@ -1,5 +1,5 @@
 /-
-The trace checker: the checks (docs/level2-alignment.md, 8.5 and 9).
+The trace checker: the checks (bergdb 011-11, 8.5; docs/trace-format.md).
 
 Not part of the trusted part. The checker runs the model's own `init` and
 `step` (SIS/Algorithm.lean) with the switches of `Opts`: marking in step 3
@@ -307,7 +307,7 @@ def closedFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time) (D : Dirty)
      | none => false))
 
 /-- A6', no adoption, the weaker form (`adoptAt` in SIS/Evict.lean, an assumption
-of stage 2; docs/level4-alignment.md, 5.5), first: the pairs (x, y) of a node x
+of stage 2; bergdb 001-08, 5.5), first: the pairs (x, y) of a node x
 reachable at i and a pointee y of x, live or dead, that is not a live child of x
 at i, is an index node reachable at i, and is not reachable from x at i through
 live pointers. Second, the pairs that fail only A6, the stronger form (bergdb
@@ -490,7 +490,7 @@ def showRec (o : Option Nat) (dflt : String) : String :=
 
 /-- Run E's handle state at the end of T(i), the HTABLE, HANDLE, HOBJ and HPTR lines, as the
 model's memory with handles (`HMem`, SIS/Handle.lean; the mapping α of
-docs/handles-alignment.md, section 2): the objects by their numbers, each with its pointers;
+bergdb 009-05, section 2): the objects by their numbers, each with its pointers;
 the handles by their numbers, a loading one as live (the model has no LOADING state); the
 table. The trace gives an object's number of entries and their hash, not its history: a
 canonical object gets its node's history in P (g), a snapshot the history of the version at

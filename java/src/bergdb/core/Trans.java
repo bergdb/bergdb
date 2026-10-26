@@ -79,7 +79,7 @@ public class Trans {
     long[] touchTo;
     
     /**
-     * For a transaction with touch (2026-10-13, docs/levels.md, "Level 3 cost"):
+     * For a transaction with touch (2026-10-13, bergdb 011-04, "Level 3 cost"):
      * the index nodes it makes dirty, by the puts and the touch, and their size in the
      * stream when they got dirty, so far; a value transformation can store them.
      */

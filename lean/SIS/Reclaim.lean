@@ -4,7 +4,7 @@ Self-indexed streams in Lean: Level 3, reclaim (bergdb item 001, WP R3).
 Plan section numbers refer to items/001-lean-model-levels-3-4/01-plan.md in
 bergdb. Trusted part.
 
-Java's reclaim (levels.md, "Level 3: reclaim") rewrites the old live values
+Java's reclaim (bergdb 011-04, "Level 3: reclaim") rewrites the old live values
 and touches the index nodes, step by step, and cuts the front of the stream:
 the records before the cut position c are gone, and lookups are required only
 from the first available time f on. The touch is `Changes.touch`, which step 3

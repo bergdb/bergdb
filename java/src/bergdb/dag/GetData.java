@@ -21,7 +21,7 @@ public class GetData extends OpData {
         // The time of the key node entry of the found kv. Internal. NOT the time the kv was
         // written: after a time split of the key node it is the time of the split, and reclaim
         // rewrites values in later transactions. Not in the Pub API since 2026-10-13
-        // (docs/problem.md, Q9; docs/levels.md, W3).
+        // (bergdb 011-01, Q9; bergdb 011-04, W3).
     public long tpos;
         // Set to the tpos of the transaction that wrote the value.
     public long followMemoryPointerCount;

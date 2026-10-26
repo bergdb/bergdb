@@ -16,7 +16,7 @@ make about 1.07 · 10^9 super roots in its whole life. Reclaim (Level 3)
 bounds the stream, so a database can now run indefinitely, but the ordinals
 never restart.
 
-Register row M46 ([docs/level4-alignment.md](../../docs/level4-alignment.md),
+Register row M46 ([docs/level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md),
 section 3) proposes two ways out, for Frans to choose: a wider ordinal (the
 header has 48 bits for it) or a clean refusal before the transaction changes
 anything. Also listed as "not settled" in its section 6.4, and as "Open for
@@ -62,7 +62,7 @@ decisions".
   `DbTesterRestart.testRestartAfterManyTopNodes`. Nothing tests what
   happens at the bound in a running database.
 * The Lean model has no bound: ordinals are natural numbers, and the top
-  level is `Spec.topLevel` ([docs/level2-alignment.md](../../docs/level2-alignment.md),
+  level is `Spec.topLevel` ([docs/level2-alignment.md](../011-docs-archive/11-level2-alignment.md),
   8.2 and 8.4; the checker's C-S checks the layout of every top node, 13.5).
 
 
@@ -100,7 +100,7 @@ decisions".
     to a wider ordinal (more hops, at most 48) and to any renumbering.
   * Section 6: the Java facts about `TopDs` and `TopNode`, with lines.
 * **bergdb item 001**:
-  * WP A3 fixed the codec (`280525a`): [docs/levels.md](../../docs/levels.md),
+  * WP A3 fixed the codec (`280525a`): [docs/levels.md](../011-docs-archive/04-levels.md),
     "Bugs found by the alignment of Levels 3 and 4", bug 1;
     [docs/log.md](../../docs/log.md), 2026-10-16; register row M30, closed.
   * WP A2 registered the bound as M46, from review-13-claude, 3. 001-02

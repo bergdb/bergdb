@@ -1,6 +1,6 @@
 /-
 Proofs for stage 2 (bergdb item 001, WP E3), part 1: the logical facts that the
-design of docs/level4-alignment.md, 5.4, rests on. With BergDB's bookkeeping
+design of bergdb 001-08, 5.4, rests on. With BergDB's bookkeeping
 (marking and `javaTest`) and A6', after every transaction of a run: D is closed
 upward (every current ancestor of a node of D is in D), and a current node that
 is not in D has no pointee in D, and its latest version names the latest

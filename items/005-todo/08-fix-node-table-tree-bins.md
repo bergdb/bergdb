@@ -261,7 +261,7 @@ of the fix's, have a third young collection of 78 to 98 ms near the end of
 the mixed phase (the heap from 1.3 to 1.5 GB down to 0.56 to 0.61 GB); in
 two of the fix's runs it fell inside the measured window. When a collection
 comes decides it, as in item 001's J10
-([level4-performance.md](../../docs/level4-performance.md)).
+([level4-performance.md](../001-lean-model-levels-3-4/11-level4-performance.md)).
 
 
 Files

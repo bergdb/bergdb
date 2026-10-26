@@ -1,8 +1,10 @@
 # BergDB Level 3: the soak
 
+001-09. Moved here from `docs/level3-soak.md` on 2026-10-26 (006-07); history, not kept up to date.
+
 By Claude (Opus 5.5, Claude Code) for Frans Lundberg, 2026-10-16 and 17.
-Task 2 of [level3-plan.md](level3-plan.md), as WP P2 of bergdb item 001
-([../items/001-lean-model-levels-3-4/01-plan.md](../items/001-lean-model-levels-3-4/01-plan.md)).
+Task 2 of [level3-plan.md](../011-docs-archive/06-level3-plan.md), as WP P2 of bergdb item 001
+([01-plan.md](01-plan.md)).
 
 ## Result
 
@@ -120,7 +122,7 @@ What it showed, for the main run:
    after the young collections rose by about 4 MB a second, about 1.3 KB per
    update, cuts or not. Level 3 keeps every node it has made or read:
    `Cache3`'s entries are never removed (`pointerDestroyed` has no caller;
-   [level4-alignment.md](level4-alignment.md), M25 and M26). A restart starts
+   [level4-alignment.md](08-level4-alignment.md), M25 and M26). A restart starts
    from a new database object that loads lazily (about 4.4 GB after its check
    had read every key), and the old one becomes garbage. In the 12 GB heap
    the restart's check, with the old database not yet collected and the new
@@ -343,4 +345,4 @@ collection of 44 ms.
 `source.txt`, `stdout.txt`, `gc.log`, `result.json`. Copies of the main run's
 and the companion's `source.txt` and `stdout.txt`, and their `result.json`
 without the per-second samples, commit counts and histogram buckets
-(`NAME-result.json`), are in [evidence/level3-soak/](evidence/level3-soak/).
+(`NAME-result.json`), are in [09-level3-soak/](09-level3-soak/).

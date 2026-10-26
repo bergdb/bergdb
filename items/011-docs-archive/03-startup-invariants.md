@@ -1,34 +1,36 @@
 BergDB startup: model, invariants and status
 ============================================
 
+011-03. Moved here from `docs/startup-invariants.md` on 2026-10-26 (006-07); history, not kept up to date.
+
 Draft 1, 2026-10-12. Written by Claude for Frans Lundberg.
 
 Status, 2026-10-13: historical. This is the analysis of the 2017 code that
-led to [sis-model.md](sis-model.md) and to the level 2 design in
-[levels.md](levels.md). The defects it found are fixed, by that design rather
+led to [sis-model.md](../../docs/sis-model.md) and to the level 2 design in
+[levels.md](04-levels.md). The defects it found are fixed, by that design rather
 than by the experiments and next steps here (Rule R by node id instead of prevPos
 chains, one node table instead of E1 to E6). For the current status, see
-[levels.md](levels.md). Closure review cutoff: `ebe5f77`, 2026-10-13
+[levels.md](04-levels.md). Closure review cutoff: `ebe5f77`, 2026-10-13
 18:02 CEST. The algorithms, failures and next steps below describe the
 original investigation, not instructions for repairing today's code.
 
 Formalizes requirement R3 (bounded startup) and invariant INV-RESTART of
-[problem.md](problem.md): the algorithms as they are in the 2017 code, the
+[problem.md](01-problem.md): the algorithms as they are in the 2017 code, the
 invariants they rely on, the proof obligations, and what the targeted test
-[RestartInvariance.java](../java/stress/RestartInvariance.java) showed in those
+[RestartInvariance.java](../../java/stress/RestartInvariance.java) showed in those
 experiments. The linked harness and Java files have since been repaired;
 for unmodified source use the baseline commit of this repository (the 2017
 source, original commit `49aa48d`). The initial harness and experiment patch,
-[restart-experiments.diff](../java/stress/restart-experiments.diff), were made
+[restart-experiments.diff](../../java/stress/restart-experiments.diff), were made
 against a source that already included the first delete repair, so that
 source is not the unmodified baseline.
 
-Builds on Frans's [startup.md](sources/startup.md)
-(2016-05-05), [startup-1604.md](sources/startup-1604.md),
-[2015-algos.pdf](sources/2015-algos.pdf) and
+Builds on Frans's [startup.md](../../docs/sources/startup.md)
+(2016-05-05), [startup-1604.md](../../docs/sources/startup-1604.md),
+[2015-algos.pdf](../../docs/sources/2015-algos.pdf) and
 2014-08-startup.odt. Terms follow
 2015-algos. Code references are to
-[java/src/bergdb/](../java/src/bergdb/).
+[java/src/bergdb/](../../java/src/bergdb/).
 
 
 1 Model
@@ -294,7 +296,7 @@ the current harness and Level 1–3 gates require byte-identical streams.
 The commands below name the old workloads and need the old source/patch
 combination to reproduce these failures, not the current `java/build/bergdb.jar`.
 
-[RestartInvariance.java](../java/stress/RestartInvariance.java) runs the same
+[RestartInvariance.java](../../java/stress/RestartInvariance.java) runs the same
 deterministic transactions twice: run A without restarts, run B with a
 restart (sync, stop, start) every N transactions. At a checkpoint after
 every N transactions, it compares the two streams, D (TransSeq.checksum()),
@@ -350,7 +352,7 @@ Small workload:
 ---------------
 
 Patches to the 2017 code in
-[restart-experiments.diff](../java/stress/restart-experiments.diff), switched on
+[restart-experiments.diff](../../java/stress/restart-experiments.diff), switched on
 with system properties. They test the invariants; they are not proposed
 fixes, and are not applied to the source in bergdb/.
 
@@ -394,7 +396,7 @@ the end with E1, E3, E4 and E6, gives correct lookups for 4 seeds of the
 small workload. So the stream written without restarts appears to be
 complete, and the remaining problems come from restarts in the middle.
 
-Effect on [RestartStress.java](../java/stress/RestartStress.java), number of
+Effect on [RestartStress.java](../../java/stress/RestartStress.java), number of
 failing seeds:
 
 | Case | As is | E1 | E1+E4 | E1+E4+E6 | E1+E3+E4+E6 |
@@ -412,7 +414,7 @@ Still failing with E1, E4 and E6:
 * With deletes, almost every seed fails at startup with "Key node with size
   0": an empty key node was written in an earlier session. Found later the
   same day: a delete of a missing key of 7 bytes or more created a segment
-  key node (the level 1 bug in [levels.md](levels.md), now fixed). With the
+  key node (the level 1 bug in [levels.md](04-levels.md), now fixed). With the
   fix and E1, E4 and E6, random settings with deletes fail 14 of 100 seeds,
   as without deletes; the default settings with deletes still fail 9 of 10,
   with other errors (a wrong checksum after the first restart, a corrupt
@@ -436,8 +438,8 @@ difference in these runs.
 ============
 
 These were proposed after the initial failing experiments. They are
-superseded by the abstract model in [sis-model.md](sis-model.md) and the
-implemented Level 2 design and current priorities in [levels.md](levels.md).
+superseded by the abstract model in [sis-model.md](../../docs/sis-model.md) and the
+implemented Level 2 design and current priorities in [levels.md](04-levels.md).
 
 1. Decide how pointers are resolved (G8, G2, G3). A pointer needs a
    version that is complete for the times it is valid: dead pointers can

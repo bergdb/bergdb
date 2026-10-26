@@ -1,4 +1,4 @@
-# The principal scenarios of the Level 3 performance reference (docs/level3-plan.md, task 3).
+# The principal scenarios of the Level 3 performance reference (bergdb 011-06, task 3).
 # Run by java/stress/performance.sh; one scenario per line:
 #
 #   name  mode  runs  [jvm.heap=SIZE]  [parameter=value ...]

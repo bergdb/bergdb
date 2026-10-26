@@ -1,17 +1,19 @@
 # BergDB Level 3: durability, soak and performance baseline
 
+011-06. Moved here from `docs/level3-plan.md` on 2026-10-26 (006-07); history, not kept up to date.
+
 By Codex for Frans Lundberg, 2026-10-14.
 
 Status: task 1 complete for the tested macOS/APFS and Linux VM FileStream
 paths, under the assumptions in the durability report. Task 3 complete on
 2026-10-16 (bergdb item 001, WP P1: `quick-2026-10-16-post-task1` in
-[level3-performance.md](level3-performance.md)). Task 2 complete on
-2026-10-17 (WP P2: [level3-soak.md](level3-soak.md); the pilot scale at 200
+[level3-performance.md](10-level3-performance.md)). Task 2 complete on
+2026-10-17 (WP P2: [level3-soak.md](../001-lean-model-levels-3-4/09-level3-soak.md); the pilot scale at 200
 transactions a second, and the exhaustive companion). All three were to be
 complete before implementing Level 4.
 This file replaces the completed 13 October plan. Implementation status and
-review results are in [levels.md](levels.md); the eviction design is in
-[level4-plan.md](level4-plan.md).
+review results are in [levels.md](04-levels.md); the eviction design is in
+[level4-plan.md](05-level4-plan.md).
 
 ## Starting point and decisions
 
@@ -20,7 +22,7 @@ readers, changing retention, exact cuts, restart invariance and crashes in
 the existing complete-record model. The local baseline for this work is
 `2e0bfe6`. Earlier commit IDs in the recorded review are historical provenance
 from before this repository. Current power-loss evidence is in
-[level3-durability.md](level3-durability.md); long-running disk performance
+[level3-durability.md](07-level3-durability.md); long-running disk performance
 remains to be measured.
 
 Keep the agreed policy:
@@ -49,7 +51,7 @@ Implemented on the tested FileStream path: explicit file/name forces, a
 directory force after each prefix removal, and propagation of deferred-cut
 failures before durable publication. The bounded fault model includes
 unordered deletion survival and cold recovery. See the
-[durability report](level3-durability.md) for tests, native audits and limits.
+[durability report](07-level3-durability.md) for tests, native audits and limits.
 
 The existing durable-cut regression checks that a cut waits for the
 reported durable length. `CutStream.truncate()` refuses to lose bytes before
@@ -191,7 +193,7 @@ needs an explanation. Results of concurrent benchmark jobs are not a baseline.
 
 The fuller machinery (`performance.sh reference`, the grid suite, `ab`,
 `compare`, `calibrate`, thresholds and alerts, see
-[performance-harness.md](performance-harness.md)) exists and is tested, but is
+[performance-harness.md](09-performance-harness.md)) exists and is tested, but is
 not required now. Use it for the complete baseline after Level 4 works.
 
 **Done when:** the quick baseline is recorded in `docs/level3-performance.md`

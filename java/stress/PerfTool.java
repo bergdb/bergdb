@@ -498,7 +498,7 @@ public class PerfTool {
     @SuppressWarnings("unchecked")
     static Thresholds loadThresholds(String path) throws IOException {
         Thresholds t = new Thresholds();
-        // The provisional target of docs/level3-plan.md, task 3: investigate a consistent warm-read loss above 5%.
+        // The provisional target of bergdb 011-06, task 3: investigate a consistent warm-read loss above 5%.
         t.rel.put("warm_read_throughput", 0.05);
         if (path == null) return t;
         File f = new File(path);

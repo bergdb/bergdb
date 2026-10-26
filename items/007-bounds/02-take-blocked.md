@@ -28,7 +28,7 @@ Then:
 * D keeps the transaction's nodes for good: memory that eviction cannot
   free.
 * Reclaim cannot cut, since the cut waits for the startup pos
-  ([levels.md](../../docs/levels.md), Level 3).
+  ([levels.md](../011-docs-archive/04-levels.md), Level 3).
 * A restart does not help: startup rebuilds the same D, and the take meets
   the same transaction (T2).
 

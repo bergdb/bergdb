@@ -6,7 +6,7 @@ Created 2026-10-17 by Frans Lundberg. Status: done.
 A transaction that throws inside `Db.putKvs` is half committed: its time
 becomes readable with some of its changes in memory, and the next
 transaction writes its leftovers as its own. Register row M49 of
-[docs/level4-alignment.md](../../docs/level4-alignment.md). Found in item 002
+[docs/level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md). Found in item 002
 ([02-report.md](../002-top-node-ordinal-bound/02-report.md), section 8).
 Document it now; fix it later, before item 001's J3 (index nodes evicted, so
 loads in the writer), without disturbing item 001's work on `Db`.

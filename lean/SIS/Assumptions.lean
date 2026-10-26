@@ -21,7 +21,7 @@ def topClosure (sp : Spec V T) (P : Struct V) (x : NodeId) (n : Node V) : List N
 termination_by n.level
 
 /-- The assumptions on the initial structure with a virtual root (option (a)
-of Q7; docs/level2-alignment.md, 8.2). BergDB's primordial record has one top
+of Q7; bergdb 011-11, 8.2). BergDB's primordial record has one top
 node. Added 2026-10-16 (F1-008-11, WP E3). -/
 structure VirtInit (sp : Spec V T) : Prop where
   /-- R1: the root's entry for a child points to that child. -/
@@ -57,7 +57,7 @@ structure SpecOK (sp : Spec V T) : Prop where
   virtInit : sp.virt = true → VirtInit sp
 
 /-- The assumptions on one transaction with a virtual root, R1 to R4
-(docs/level2-alignment.md, 8.2): the changes c made at time i to the
+(bergdb 011-11, 8.2): the changes c made at time i to the
 structure P. BergDB meets them, and the trace checker checks them (C-A).
 Added 2026-10-16 (F1-008-11, WP E3). -/
 structure VirtStep (sp : Spec V T) (P : Struct V) (i : Time) (c : Changes V) : Prop where
@@ -104,7 +104,7 @@ structure StepOK (sp : Spec V T) (P : Struct V) (i : Time) (c : Changes V) : Pro
   i-1, or is created by T(i). Marking needs it (step 3 with `Algo.mark`, T13):
   a node that becomes reachable again without a change below it could be dirty
   without being on the access path of the change. Added 2026-10-15
-  (docs/level2-alignment.md, WP E1); BergDB meets it (checker, C-A). -/
+  (bergdb 011-11, WP E1); BergDB meets it (checker, C-A). -/
   noRes : ∀ y, reachable sp (P.apply i c) i y = true →
     reachable sp P (i - 1) y = true ∨ y ∈ c.new.map (·.id)
   /-- With a virtual root: `VirtStep`. -/

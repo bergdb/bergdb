@@ -1,6 +1,6 @@
 /-
 The physical layer with eviction by running (bergdb item 001, WP E2): the
-invariants of docs/level4-alignment.md, section 5.3, and the records and reads of
+invariants of bergdb 001-08, section 5.3, and the records and reads of
 runs with cache schedules, with `#guard` checks. Not part of the trusted part.
 -/
 import SIS.Evict
@@ -204,7 +204,7 @@ def evictRunOKB (sp : Spec Val T) (al : Algo Val T) (ts : List T) : Bool :=
 
 As example 3 (a virtual root, top nodes above tree roots, mid nodes, leaves and
 data nodes), with one more kind of transaction, for the cases of the design
-(docs/level4-alignment.md, 5.4): a drop replaces a leaf by a new, empty one, so
+(bergdb 001-08, 5.4): a drop replaces a leaf by a new, empty one, so
 that the old leaf and its data nodes are no longer reachable (BergDB's delete of
 a long key, whose segment subtree goes cold). The plan's example 5 also asks for
 two root changes in one transaction; the model's assumptions exclude it (every

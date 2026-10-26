@@ -1,9 +1,11 @@
 # BergDB performance harness
 
+011-09. Moved here from `docs/performance-harness.md` on 2026-10-26 (006-07); history, not kept up to date. The harness's usage is in the header of `java/stress/performance.sh`.
+
 Written by Claude (Sonnet 5.5) for Frans Lundberg, 2026-10-14.
 
 Status: **the harness exists and has been smoke-tested; no reference has been recorded.**
-This is the tooling for task 3 of the [Level 3 plan](level3-plan.md), the performance
+This is the tooling for task 3 of the [Level 3 plan](06-level3-plan.md), the performance
 reference before Level 4. The reference runs, `docs/level3-performance.md` and the
 frozen thresholds follow task 1 (the power-loss repairs change the storage path that
 the durable-commit and restart measurements use) and are not part of this document.
@@ -13,13 +15,13 @@ Nothing here is a measurement of the database.
 
 | File | Purpose |
 |---|---|
-| [java/stress/performance.sh](../java/stress/performance.sh) | The runner: `smoke`, `reference`, `build`, `ab`, `compare`, `summary`, `calibrate`, `promote`, `list` |
-| [java/stress/performance.suite](../java/stress/performance.suite) | The principal scenarios (read, write, restart), with the runs of each |
-| [java/stress/performance-grid.suite](../java/stress/performance-grid.suite) | The rest of the grid (`SUITE=grid`) |
-| [java/stress/performance-smoke.suite](../java/stress/performance-smoke.suite) | Small scenarios for `smoke` |
-| [java/stress/Perf.java](../java/stress/Perf.java) | The harness: one JVM per run, modes `write`, `read`, `restart` |
-| [java/stress/PerfUtil.java](../java/stress/PerfUtil.java) | Bounded histogram, JSON, GC log reader, JVM facts |
-| [java/stress/PerfTool.java](../java/stress/PerfTool.java) | `finish` (GC log into the result), `summary`, `compare`, `calibrate`, `selftest` |
+| [java/stress/performance.sh](../../java/stress/performance.sh) | The runner: `smoke`, `reference`, `build`, `ab`, `compare`, `summary`, `calibrate`, `promote`, `list` |
+| [java/stress/performance.suite](../../java/stress/performance.suite) | The principal scenarios (read, write, restart), with the runs of each |
+| [java/stress/performance-grid.suite](../../java/stress/performance-grid.suite) | The rest of the grid (`SUITE=grid`) |
+| [java/stress/performance-smoke.suite](../../java/stress/performance-smoke.suite) | Small scenarios for `smoke` |
+| [java/stress/Perf.java](../../java/stress/Perf.java) | The harness: one JVM per run, modes `write`, `read`, `restart` |
+| [java/stress/PerfUtil.java](../../java/stress/PerfUtil.java) | Bounded histogram, JSON, GC log reader, JVM facts |
+| [java/stress/PerfTool.java](../../java/stress/PerfTool.java) | `finish` (GC log into the result), `summary`, `compare`, `calibrate`, `selftest` |
 
 `LoadTest.java` and `ReclaimCost.java` are not changed; the harness reuses their
 definitions (the load and update traces, WE and SE, the record attribution of
@@ -195,7 +197,7 @@ A failed run (wrong value, exception) stops `performance.sh` at once.
 5. `performance.sh ab level3-ref level3-ref` for the matched rerun (two sessions of the same build),
    then `calibrate` on the two sessions, review `java/bench/thresholds.json`, freeze it.
 6. `performance.sh promote SESSION level3-ref-v1`, write `docs/level3-performance.md` from
-   `summary.md`, name the reference in step 0 of [level4-plan.md](level4-plan.md), and commit.
+   `summary.md`, name the reference in step 0 of [level4-plan.md](05-level4-plan.md), and commit.
 7. In Level 4, `performance.sh ab level3-ref current` alternates the reference build and the
    candidate; changes both need go into a common baseline first.
 

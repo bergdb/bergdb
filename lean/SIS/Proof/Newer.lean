@@ -1,5 +1,5 @@
 /-
-Proofs for bergdb item 001, WP L2: lemma M (docs/level2-alignment.md, M8). A
+Proofs for bergdb item 001, WP L2: lemma M (bergdb 011-11, M8). A
 version of a node written at or after a version that is good for a time is
 good for that time too; and a version cut back to a time s serves the times
 up to s as the whole version does.

@@ -1,5 +1,5 @@
 #!/bin/sh
-# The Level 3 soak (docs/level3-plan.md, task 2; bergdb item 001, WP P2), written
+# The Level 3 soak (bergdb 011-06, task 2; bergdb item 001, WP P2), written
 # 2026-10-16. Runs java/stress/Soak.java in one JVM with fixed flags (G1, or ZGC as a
 # separate configuration; a fixed heap, not pretouched; assertions off; unified GC and
 # safepoint logging, as performance.sh), then "Soak finish" on its result.

@@ -11,7 +11,7 @@ variable {V T : Type} [DecidableEq V]
 
 /-- The newest version of y in R(s), ..., R(k): the startup section and the
 record at the startup pos, as in BergDB's `DbStarter.createMaps` (6.2, step 3;
-R(s) added 2026-10-16, docs/level2-alignment.md, M7). -/
+R(s) added 2026-10-16, bergdb 011-11, M7). -/
 def newest (S : Stream V T) (s : Nat) (y : NodeId) : Option (Version V) :=
   (S.drop s).reverse.findSome? (fun R => R.vers.find? (fun v => v.node == y))
 
@@ -76,7 +76,7 @@ def topsRead (sp : Spec V T) (S : Stream V T) (s : Nat) (ruleR : Bool) : List (V
 
 /-- The version that startup reads from: top(k)'s, or, with a virtual root,
 the root rebuilt from the root children read from top(k)'s version (6.2;
-docs/level2-alignment.md, 8.2). -/
+bergdb 011-11, 8.2). -/
 def startVersion (sp : Spec V T) (S : Stream V T) (s : Nat) (ruleR : Bool) : Option (Version V) :=
   if sp.virt then some (rootVersion sp s (topsRead sp S s ruleR)) else topVersion S s ruleR
 

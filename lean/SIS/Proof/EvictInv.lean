@@ -1,6 +1,6 @@
 /-
 Proofs for stage 2 (bergdb item 001, WP E3), part 3: the invariant of the memory
-with eviction (docs/level4-alignment.md, 5.3 and 5.4), and that unswizzling and
+with eviction (bergdb 001-08, 5.3 and 5.4), and that unswizzling and
 release keep it.
 -/
 import SIS.Proof.EvictWrite

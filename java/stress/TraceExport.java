@@ -25,8 +25,8 @@ import bergdb.stream.MemoryStream;
 
 /**
  * Writes a trace of a Java run in the terms of the Lean model, for the checker in lean/
- * (lake exe tracecheck). The mapping from Java to the model (α) and the trace format are in
- * docs/level2-alignment.md, sections 2 and 9. Written 2026-10-15 for F1-008-11, WP C1.
+ * (lake exe tracecheck). The mapping from Java to the model (α) is in bergdb 011-11, section 2;
+ * the trace format is docs/trace-format.md. Written 2026-10-15 for F1-008-11, WP C1.
  *
  * Run A executes a deterministic workload without restarts and records, after every
  * transaction, the changes to P, the record R(i) and D. Run B (probe=K) executes the same
@@ -63,7 +63,7 @@ import bergdb.stream.MemoryStream;
  *              of run E after every K-th transaction (default 0: none); ereads and erestart
  *              since bergdb item 009, step 4c
  *
- * With reclaim (bergdb item 001, WP R2; docs/level3-alignment.md, 2.7) every executed
+ * With reclaim (bergdb item 001, WP R2; bergdb 001-07, 2.7) every executed
  * transaction is a record, reclaim's steps and table stores too: run A records each through
  * Db's test hooks (Db.TestHooks), and the trace has, besides version 1's lines, the touch of
  * each step (TOUCH), the first available time when it changes (FA), each cut decided (CUT)
@@ -85,7 +85,7 @@ import bergdb.stream.MemoryStream;
  * Run E's handle state (bergdb item 009, step 4c; items/009-handles/02-implementation-plan.md,
  * 4.10): with the SLOT lines, and under the write lock, so that the capacity controller's
  * eviction thread runs no batch meanwhile, run E records its memory as the Lean model's memory
- * with handles (lean/SIS/Handle.lean, HMem; the mapping of docs/handles-alignment.md, section
+ * with handles (lean/SIS/Handle.lean, HMem; the mapping of bergdb 009-05, section
  * 2): HMEM, the startup the state comes from and the stream's first record; HTABLE, the node
  * table's entries; HANDLE, every handle that the table or a pointer of an object holds, with
  * its node, state, object and written position; HOBJ, every object that a handle holds, and
@@ -786,7 +786,7 @@ public class TraceExport {
         if (retain > 0) recordReclaim(db, t, touched, rec);
     }
 
-    // ======== Reclaim (docs/level3-alignment.md, 2.7) ========
+    // ======== Reclaim (bergdb 001-07, 2.7) ========
 
     int lastFa = 0;             // the first available time, as a model time
     long lastCutPStart = -1;    // pStart of the newest row marked cut, or -1
@@ -813,7 +813,7 @@ public class TraceExport {
             error("R(" + rec.index + "), without a touch, touched " + touched.size() + " nodes");
         }
         // fa(i): the tEnd of the newest row marked cut in the table as stored at or before
-        // R(i); 0 before the first cut (docs/level3-alignment.md, 2.4).
+        // R(i); 0 before the first cut (bergdb 001-07, 2.4).
         Reclaim.IterationInfo row = db.internal().reclaim().lastCutRow();
         int fa = row == null ? 0 : timeIndex(row.tEnd, "the first available time at R(" + rec.index + ")");
         if (fa != lastFa) {
@@ -865,7 +865,7 @@ public class TraceExport {
     /** The first touches go to this list: that of the last restart's record. */
     List<String> curFirsts = null;
 
-    /** Records the first touches of run B as FIRST lines (docs/level2-alignment.md, 9.2). */
+    /** Records the first touches of run B as FIRST lines (docs/trace-format.md, 2). */
     final NodeCollection.FirstTouchListener firstTouches = new NodeCollection.FirstTouchListener() {
         public void firstTouch(long id, long ref, Node result, boolean read, boolean cutBack) {
             if (curFirsts == null) return;

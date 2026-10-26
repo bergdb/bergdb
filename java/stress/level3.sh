@@ -27,7 +27,7 @@
 #   5. ReclaimReaders: reader threads (gets and scans at old lookup times, on a cold
 #      cache) while reclaim cuts the stream, CutStream and FileStream. An operation
 #      returns what the model says or throws LookupTimeNotAvailableException (it expired
-#      when a cut overtook it); the writer must never fail (docs/levels.md, W1).
+#      when a cut overtook it); the writer must never fail (bergdb 011-04, W1).
 #   6. Full only: LoadTest with reclaim, 100,000 keys and 1,000,000 updates,
 #      a startup distance of 20 MB (the default until 2026-10-13; with the 50 MB
 #      default, the run reaches only one cut) and a retention of 1 s (about 8 MB
@@ -39,7 +39,7 @@
 #      bytes, forced bytes and durable names, surviving deletion, partial tails,
 #      cold recovery, and weakened data/directory-force negative controls.
 #   8. Conformance with the Lean model, with reclaim (bergdb item 001, K3,
-#      2026-10-17; docs/level3-alignment.md, section 8): conformance.sh reclaim,
+#      2026-10-17; bergdb 001-07, section 8): conformance.sh reclaim,
 #      the small reclaim set (2 seeds quick, 5 full): each trace's every record
 #      against the model's step on the cut stream, CutOK at every cut Java
 #      decides, the touch assumptions, and the probes after restarts from the
