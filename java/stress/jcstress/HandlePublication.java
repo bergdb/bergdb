@@ -15,8 +15,9 @@ import bergdb.dag.Pointee;
 
 /**
  * T6b (bergdb item 009; items/009-handles/02-implementation-plan.md, 3.4): a resolver puts a
- * new handle into a pointer that held nothing (KeyNode.setPointee, under the node's monitor),
- * the handle's object installed before it with a volatile write (Handle.obj); a reader on the
+ * new handle into a pointer that held nothing (KeyNode.swizzle, a reader's compare-and-set
+ * under the node's monitor since step 3d, with a release store), the handle's object
+ * installed before it with a volatile write (Handle.obj); a reader on the
  * fast path reads the pointer plainly (getPointee, as NodeCollection.followPointer does for a
  * pointer to an index node) and then the object with a volatile read. r1: -2 the pointer seen
  * empty, -1 the handle seen without its object (the slow path), 1 the object with its
@@ -43,7 +44,7 @@ public class HandlePublication {
         child.setSpos(200);
         Handle h = new Handle(7);
         h.obj = child;                  // the install: a volatile write
-        x.setPointee(0, h);             // the swizzle, under x's monitor
+        x.swizzle(0, null, h);          // a reader's swizzle, under x's monitor
     }
 
     @Actor

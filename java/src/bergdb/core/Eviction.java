@@ -475,7 +475,8 @@ public final class Eviction {
      * first may only clear the CLOCK bits); and at most BATCH_NANOS, 2 ms, of time (step 3d:
      * on s1, a batch of 65,536 handles took up to 100 ms, and a writer waits for the batch
      * in progress). The work of a batch is bounded by these, whatever the size of the
-     * database.
+     * database. A batch of the eviction thread also ends when a writer waits for the write
+     * lock.
      */
     static final int BATCH = 4096, BATCH_UNDER_PRESSURE = 65536;
     static final long BATCH_NANOS = 2L * 1000 * 1000;
@@ -520,8 +521,12 @@ public final class Eviction {
         int maps = 0;
         boolean complete = false;
         final java.util.ArrayList<Node> pinned = new java.util.ArrayList<Node>();
+        // The eviction thread's batch also ends at the next map when a writer waits for the
+        // write lock (bergdb item 009, step 3d): on s1, two busy readers on two CPUs kept the
+        // thread off a CPU in the middle of a batch, and a commit waited 45 ms for it.
         while (freed < need && examined < maxHandles && maps < maxMaps
-                && System.nanoTime() - t0 < BATCH_NANOS) {
+                && System.nanoTime() - t0 < BATCH_NANOS
+                && !(afterLoad && in.writersWaiting() > 0)) {
             long[] fr = table.clockStep(hand, d, pinned);
             freed += fr[0];
             r += fr[1];

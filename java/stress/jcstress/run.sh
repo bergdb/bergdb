@@ -25,5 +25,5 @@ cd $OUT
 java -cp "$CP:classes:$JAR" org.openjdk.jcstress.Main -v -m "$MODE" -t 'bergdb\.jcstress\..*' > out.txt 2>&1 || true
 # Each test's outcomes, summed over its runs (jcstress's results/ has them per JVM mode).
 sed -n '/^RUN RESULTS:/,$p' out.txt | grep -v "^ *$"
-sed -n '/^RUN RESULTS:/,$p' out.txt | grep -A1 -E "Failed tests:|Error tests:" | grep -q -v "No matches\|tests:\|^--" && exit 1
+sed -n '/^RUN RESULTS:/,$p' out.txt | grep -A1 -E "Failed tests:|Error tests:" | grep -q -v "No matches\|tests:\|^--\|^ *$" && exit 1
 grep -q "^RUN RESULTS:" out.txt
