@@ -1696,58 +1696,74 @@ memory: eviction is on by default. The budget is `cacheSizeInMb`
 (`DbBuilder.cacheSizeIndicator`; by default a fifth of the JVM's maximum
 heap); `DbBuilder.noEvict()` turns it off.
 
-How it works (`core/Eviction.java`, `core/Residents.java`):
+How it works, with handles since 2026-10-26 (bergdb item 009,
+[items/009-handles/](../items/009-handles/readme.md), and
+[handles-alignment.md](handles-alignment.md); `dag/Handle.java`,
+`core/Cache3.java`, `core/Eviction.java`, `core/Residents.java`). Until then
+eviction unswizzled pointers and released what no resident pointer named,
+with a sweep that walked every resident object (item 004).
 
-* **What is in memory.** The resident objects: the canonical object of a
-  node (the one in the node table, which holds the node's latest version),
-  the snapshots that slots of resident objects name (versions read), and
-  the values. `Residents` counts their bytes (`Node.getMemSize()`), exactly
-  after each sweep (a walk from the super root, the node table and D).
+* **Handles.** A memory pointer of a key node or a top node holds its
+  pointee's handle; a pointer to a value holds the value. One live handle
+  per index node, in the node table (4,096 maps, each its own lock), with
+  the node's one object, canonical or a version read, or none. A pointer's
+  reference (`pos[i]`) is what its record names: the record rule
+  (`Handle.serializedRef`) takes a canonical object's position, else the
+  newer of the reference and the position its dead handle's canonical
+  object had when it was evicted.
+* **What is in memory.** The objects of the live handles and the values
+  that their pointers hold. `Residents` counts their bytes exactly without
+  walks: each object with its values, from when it enters a handle until it
+  leaves it.
 * **What is pinned** (never evicted): the super root, the canonical objects
   of D (the nodes dirty since the startup position) and of the record being
-  written, and the newest written top node. Everything else has been
-  written and may be evicted.
-* **Unswizzle and release.** A memory slot to an object that may be evicted
-  becomes a stream slot naming the object's position, under the slot's
-  pointer lock; the slot's serialized reference does not change, so no
-  record does. An object that no resident memory slot names is released:
-  it leaves the node table and the registry, and a canonical object's flag
-  is cleared. A later read loads the version from the slot's position (the
-  Level 4 loader, R8), and the writer makes it canonical again.
-* **The capacity controller.** When the resident bytes pass the budget, at
-  a transaction boundary or after a reader's load (the reader takes the
-  write lock for it, holding no pointer lock), a sweep takes what only the
-  node table holds, then values (those over 1 MiB first), then index nodes,
-  the slots least recently followed first, down to three quarters of the
-  budget, counting the objects that leave memory with those it takes; if
-  that is not enough, every object that may be evicted. Pinned state above
-  the budget is kept and counted; the next sweep then waits for growth.
-* **Readers** (the plan's Q8) take a slot's pointer lock for a whole follow,
-  so they see a slot as a memory slot or as a stream slot, never half of
-  one; a reader may finish with an object that was released meanwhile, as
-  it is the version at its position, but enters it in the node table only
-  if it is still canonical under the table's lock (bergdb item 005-09).
+  written, and the newest written top node.
+* **Evict.** The object leaves its handle, which dies (`Cache3.evict`):
+  nothing asks which pointers hold it, and no record changes. A pointer
+  that holds a dead handle is resolved again by the node's id; the slow
+  path raises the pointer's reference to the dead handle's written position
+  and writes it back. The values of a pinned leaf become stream pointers.
+* **The capacity controller.** CLOCK over the node table: when the resident
+  bytes pass the trigger (the budget, or the pinned bytes plus the gap
+  between the watermarks if that is more), a batch of CLOCK steps runs, at
+  most 2 ms, 4,096 handles (65,536 under pressure) and two rounds of the
+  hand: in the writer at a transaction's end, and after a reader's load in
+  the database's eviction thread, which takes the write lock between
+  transactions and gives way to a waiting writer. A load that finds the
+  resident bytes far over the trigger waits up to 2 ms for that thread.
+* **Readers** follow a pointer without a lock when its handle holds an
+  object that may serve it (`Handle.usable`): a plain read of a pointer to
+  a handle, an acquire read of a pointer to a value (the barriers of
+  item 009's 02, section 3.4, and its jcstress tests,
+  `java/stress/jcstress/`). Else the slow path reads the pointer under the
+  node's monitor and loads under the handle's, so two readers do not read
+  the same node; its swizzle is a compare-and-set and its write-back of the
+  reference only raises it.
 * **Reclaim** reads with the maintenance follower, which loads but
   swizzles nothing; a step's dirty index nodes stay pinned until written,
   and a reserve (4 MiB) splits a step that would pin more.
 
 Evidence: the Lean model proves that with any eviction schedule the
 records, D and the answers are those without eviction (T-CACHE, T-READ,
-T2-C, T-PIN; level4-alignment.md, section 5). Java is checked against it:
+T2-C, T-PIN; level4-alignment.md, section 5), for the design before
+handles, and for handles (`tc_handles`, `tr_handles`, `t2_handles`,
+`tr_handles_restarts`, `tp_handles`; lean/SIS/Proof/Handle*.lean; the
+mapping and its register in [handles-alignment.md](handles-alignment.md)).
+Java is checked against it:
 the audit (INV-CAN, the pins, INV-SLOT, test-only), the checker's C-P on
 Java's physical states (`conformance.sh evict`), and `EvictionInvariance`
 (the same stream byte for byte with every schedule, on the configurations
 of the plan's 8.4, with restarts and reclaim). `level4.sh` runs them, with
 stress under eviction and a larger-than-memory run.
 
-Limits (level4-evidence.md, level4-performance.md): writes when the index
-does not fit cost several times as much (each load reads the node's header
-and then the node); a sweep walks every resident object under the write
-lock, so when readers load a working set above the budget the sweeps stall
-the writer (P2's soak with eviction: 35 percent of the time, the paced
-writer at 62 percent of its rate) and G1 needs full collections; the node
-table's entries are not in the budget; D is bounded only loosely by the
-startup distance.
+Limits: with G1 the collector's own pauses reach hundreds of milliseconds
+under eviction, and full collections happen; the pause target of item 009,
+about 20 ms for a get or a commit, needs ZGC or generational Shenandoah
+(items/004-indirect-swizzling/04-zgc.md, items/009-handles/03-measurements.md).
+A reader's read of the stream's last file waits for the writer's append and
+its `fsync` (005-46), which takes seconds on a slow disk. Loads in memory,
+with no eviction, are 8 to 20 percent slower than before handles. D is
+bounded only loosely by the startup distance.
 
 
 Next
@@ -1768,12 +1784,11 @@ reviewed `ebe5f77` baseline; the remaining work is below.
    the default; eviction is on by default. Protected snapshots and an expert
    f controller remain optional work; that Java's reclaim scheme gives safe
    cuts is checked at every cut, not proved (T-SCHEME).
-2. Level 4's limits ([level4-evidence.md](level4-evidence.md)): a load reads
-   the node's header and then the node (the id could be kept in the
-   unswizzled slot); a sweep walks every resident object, which under read
-   churn costs a third of the time (P4: incremental sweeps, or Q9's
-   incoming-reference lists); the node table's entries are not in the
-   budget; D is bounded only loosely by the startup distance (R6, Q5).
+2. Level 4's limits: since item 009 eviction does bounded work with
+   handles, and a load no longer reads a node's header for its id; left:
+   the trace checker's check of the handle state (009's step 4c), the
+   stream file's lock (005-46), and D bounded only loosely by the startup
+   distance (R6, Q5).
 3. Write overhead with uniform random updates (6 to 10 bytes per user
    byte): measure where the bytes go (key node size, time splits, the
    conservative still-dirty test), and what a larger default startup

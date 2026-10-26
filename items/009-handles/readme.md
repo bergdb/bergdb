@@ -240,3 +240,11 @@ degenerated collections' in 009-04."): the second of the two was upgraded to
 a full collection, which left 3.8 GB of an old generation of 8 GB, so the
 heap was full of garbage the collector had not reclaimed, not of live data.
 
+2026-10-26, 08:49. Phase 6: Frans merged the branch into `main` ("Ok, we are
+ready to merge."; `git merge --no-ff 009-handles`, `178a0d4`), after reading
+009-04. Then, by Claude: docs/levels.md's Level 4 for handles, README.md's
+Level 4 row, docs/log.md, and item 004 done. Left of 009: step 4c (the trace
+checker over the handle state) and the removal of the Lean files that only
+the design before handles uses, for Frans to decide; and 009-04's open
+question, Shenandoah in P4's soak. Status stays open until then.
+

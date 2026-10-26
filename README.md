@@ -75,7 +75,7 @@ Status
 | 1 | + restart by replaying the whole stream | Passes the tests run |
 | 2 | + bounded startup (self-indexed stream) | Passes the tests run, under load and with crashes |
 | 3 | + reclaim: cut the front of the stream | Passes the tests run, a two-hour disk soak and the power-loss ordering checks; aligned with the proved Lean model of reclaim |
-| 4 | + eviction: data larger than memory | Passes the tests run, on by default; a database six times its memory budget runs on disk; aligned with the proved Lean model of eviction |
+| 4 | + eviction: data larger than memory | Passes the tests run, on by default; with handles since 2026-10-26, eviction in bounded steps, without a stop-the-world of its own (bergdb item 009); a database six times its memory budget runs on disk; aligned with the proved Lean model of eviction, with handles |
 
 Evidence and limits are in [docs/levels.md](docs/levels.md), including the
 [FileStream durability report](docs/level3-durability.md). The Lean proofs

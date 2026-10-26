@@ -89,9 +89,9 @@ Index
   what to do about it.
 * **003-transaction-exception-safety** (done). A transaction that throws
   inside `Db.putKvs` is half committed (register M49); fixed in 005-01.
-* **004-indirect-swizzling** (open). Indirect swizzling (handles, a mapping
+* **004-indirect-swizzling** (done). Indirect swizzling (handles, a mapping
   table) for BergDB: the literature, measurements, a design sketch, pros and
-  cons.
+  cons; implemented in 009.
 * **005-todo** (open). A list of things to do on BergDB: issues to fix,
   things to investigate, decisions to make; one subitem per entry.
 * **006-2026-q4** (open). Small pieces of work in October to December

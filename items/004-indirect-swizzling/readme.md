@@ -1,7 +1,7 @@
 004-indirect-swizzling
 ======================
 
-Created 2026-10-18 by Frans Lundberg. Status: open.
+Created 2026-10-18 by Frans Lundberg. Status: done.
 
 Indirect swizzling for BergDB: memory pointers that go through a small
 per-node handle (a descriptor, a mapping-table entry) instead of straight to
@@ -101,3 +101,6 @@ them, so today's worst case grows; handles remove it. Tools added: `run2.sh`, `g
 2026-10-25. The implementation of handles goes to item 009, created at Frans's request;
 its overview plan, 009-01, is a draft. 004 stays the study; 004-03's open question, the
 table, is settled in 009-02 (009-01, phase 0).
+
+2026-10-26. Done: the direction of 004-03, handles, implemented in item 009
+([../009-handles/](../009-handles/readme.md)) and merged into `main`. Status: done.

@@ -1165,3 +1165,23 @@ holds the jar, the source, the release notes with the baseline before
 handles (Props: MEM 191, CORE 0.29, SS 1.50; the quick suite; ScaleBench at
 10M keys on F53 with G1 and ZGC, and on s1 from the disk), and the outputs
 of the runs. After the tag, `BuildInfo` says 2026.2-dev.
+
+2026-10-26. Handles (bergdb item 009), merged into `main` (`178a0d4`), by Claude
+(Opus 5.5, Claude Code) in Frans's unattended run ("I want you to work on the
+009 implementation until completion."). A memory pointer of a key node or a
+top node holds its pointee's handle, the handle the node's one object;
+eviction kills a handle, with nothing to find, in batches of CLOCK steps
+bounded to 2 ms; readers follow pointers without a lock, with the barriers
+of 009-02, section 3.4, tested by jcstress; the pointer locks, the stamp,
+the readers' `readSync` monitor and the sweep are gone; the build is
+`--release 17`. Records unchanged: StreamDigest gives 2026.1's digests after
+every step. Lean: T-CACHE, T-READ, T2-C and T-PIN over handles proved
+(`tc_handles`, `tr_handles`, `t2_handles`, `tr_handles_restarts`,
+`tp_handles`; docs/handles-alignment.md maps Java to the model). Against
+2026.1 (items/009-handles/03-measurements.md): with ZGC on F53 the longest
+get from the OS cache at 10M keys 3.45 ms (7.3 s); gets in memory on one
+thread 3 and 11 percent fewer (G1, ZGC), with 8 threads 101 and 61 percent
+more; MEM 130 bytes per KV (191); the 10M load on s1 with a 600 MB budget
+767 s (3,015 s). Found on the way: 005-46, a reader's read of the stream's
+last file waits for the writer's `fsync`. docs/levels.md's Level 4 and
+docs/handles-alignment.md describe it.
