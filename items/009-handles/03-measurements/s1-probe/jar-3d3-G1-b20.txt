@@ -1,0 +1,13 @@
+PauseProbe: keys=1000000 valsize=100 budget=20 MB readers=2 seconds=60 tsize=[1, 1000] java=27 gc=G1_Young_Generation+G1_Concurrent_GC+G1_Old_Generation xmx=1258 MB
+load: 1000000 keys in 5.2 s; uptime 1.082 to 6.305 s
+  commits  1000, median 3.670 ms, p99 16.777, p99.9 33.554, p99.99 58.720, max 65.292 ms; longest at uptime 5.904s (65.3 ms) 2.152s (34.1 ms) 5.533s (25.8 ms) 1.112s (23.9 ms) 5.248s (20.8 ms)
+  resident 19 MB, 1099 loads, 197 eviction steps, 1385536 objects evicted, eviction time 377 ms in total, 3.399 ms at most
+phase tsize=1, 2 readers, 60 s; uptime 6.318 to 66.324 s
+  gets     6144494, median 0.005 ms, p99 0.025, p99.9 2.097, p99.99 7.340, max 69.478 ms; longest at uptime 13.177s (69.5 ms) 27.224s (68.3 ms) 27.222s (66.9 ms) 9.859s (66.0 ms) 33.758s (65.5 ms)
+  commits  673012, median 0.010 ms, p99 1.835, p99.9 7.340, p99.99 20.972, max 71.691 ms; longest at uptime 11.348s (71.7 ms) 27.223s (67.0 ms) 33.756s (65.5 ms) 13.173s (64.9 ms) 29.333s (64.4 ms)
+  resident 43 MB, 8690942 loads, 18514 eviction steps, 8694137 objects evicted, eviction time 35890 ms in total, 66.909 ms at most
+phase tsize=1000, 2 readers, 60 s; uptime 66.326 to 126.348 s
+  gets     5201954, median 0.005 ms, p99 0.025, p99.9 3.670, p99.99 10.486, max 187.229 ms; longest at uptime 70.214s (187.2 ms) 70.213s (186.2 ms) 117.846s (170.5 ms) 117.847s (170.1 ms) 70.016s (81.4 ms)
+  commits  1570, median 33.554 ms, p99 83.886, p99.9 201.327, p99.99 201.327, max 219.298 ms; longest at uptime 70.235s (219.3 ms) 117.867s (201.9 ms) 92.506s (122.5 ms) 70.016s (115.3 ms) 103.276s (110.9 ms)
+  resident 53 MB, 17623316 loads, 36762 eviction steps, 17369823 objects evicted, eviction time 77568 ms in total, 189.407 ms at most
+PAUSE PROBE OK

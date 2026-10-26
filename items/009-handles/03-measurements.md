@@ -185,6 +185,26 @@ As section 1, on the jar of the branch at `66c8f3a` (`14692722`),
   safepoint or batch under them: the readers' reads of the stream file wait
   for the writer's append and its `fsync` on s1's disk (section 7).
 
+Then a batch of the eviction thread also ends when a writer waits (`a04a418`,
+jar `274e4e46`), and again on s1, 2026-10-26, 01:38 to 01:48:
+
+| run | phase | gets | p99.9 | max | commits | p99.9 | max | resident | longest batch |
+|---|---|---|---|---|---|---|---|---|---|
+| ZGC, 20 MB | tsize=1 | 5,882,681 | 2.6 | 40 | 635,552 | 7.3 | 42 | 42 MB | 8.3 |
+| ZGC, 20 MB | tsize=1000 | 4,713,131 | 3.7 | 73 | 1,465 | 101 | 130 | 65 MB | 10.9 |
+| ZGC, 100 MB | tsize=1 | 7,978,250 | 2.1 | 52 | 1,543,606 | 5.2 | 51 | 99 MB | 11.0 |
+| ZGC, 100 MB | tsize=1000 | 6,524,722 | 2.6 | 53 | 1,861 | 134 | 143 | 99 MB | 11.0 |
+| G1, 20 MB | tsize=1 | 6,144,494 | 2.1 | 69 | 673,012 | 7.3 | 72 | 43 MB | 67 |
+| G1, 100 MB | tsize=1 | 8,385,073 | 1.8 | 107 | 2,066,265 | 3.7 | 104 | 99 MB | 98 |
+
+With ZGC the longest batch fell from 46 to 8 to 11 ms of wall time, and the
+longest get and single-put commit are 40 to 52 ms. What is left on s1 is not
+the collector (ZGC's pauses: 0.03 ms) and not a batch: the readers' wait for
+the writer's `fsync` (005-46), which also gave this run's waits of 1.4 and
+2.7 s at 3d with transactions of 1,000 puts, and two CPUs shared by two
+busy readers, the writer, the eviction thread and the collector's threads.
+With G1, its pauses (a batch's wall time includes them).
+
 
 # 5. F53's timed block
 
