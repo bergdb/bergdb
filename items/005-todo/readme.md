@@ -29,10 +29,13 @@ Open
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10). For release 2026.1: kept, documented as experimental | open |
-| [005-38](38-writes-at-scale.md) | Investigate | Writes at scale: the stream grows to about 1.1 KB per key at 100M random keys, and loads into an index larger than the budget slow to under 100 puts a second on a slow disk (004-02) | open |
 | [005-46](46-stream-file-lock.md) | Fix | A read of the stream's last file waits for the writer's append and its `fsync` (`FileStream.DbFile`, one monitor for both): seconds on s1's disk, the longest waits left there with handles (009-03) | open |
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
 | [005-48](48-group-commit.md) | Investigate | Group commit: a sync that waits starts the flush, instead of waiting for `BufferedStream`'s timer; one thread's durable commit from 35 ms to about one force (005-13's question 5) | open |
+| [005-49](49-smooth-index-writes.md) | Investigate | Smooth index writes: at large startup distances the index is written in bursts (10M keys, 1000 MB: windows of 70 to 1,100 bytes a put); a commit's index writes should follow its own size. Before 007-03's step 3 (005-38) | open |
+| [005-50](50-fix-node-size-start.md) | Fix | A start with another node size than the stream was written with fails with what looks like a corrupt stream (`StreamFormatException: startup error, node ... not found`); it should fail with a clear error. Only that (005-38) | open |
+| [005-51](51-eviction-on-calls.md) | Fix | Eviction only in response to the calls: the eviction thread wakes once a second while the database is open, also when idle (`evictorLock.wait(1000)`), against 010-P3, calm when not used | open |
+| [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API sets it only at start (`cacheSizeInMb`), against 010-P6; the core has `Eviction.setBudget` (also through JMX). The cache should converge gradually to the new size, with no disruption | open |
 
 
 Closed
@@ -40,6 +43,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-38](38-writes-at-scale.md) | Investigate | Writes at scale: the stream grew to about 1.1 KB per key at 100M random keys (004-02); the cause was its startup distance of 10 MB. At 200 to 1000 MB a put costs 180 to 670 bytes at 10M and 50M keys; the fix is a startup distance that suits the database. Node size 30 stays. Bursts of index writes at large startup distances found | done | 2026-10-26 |
 | [005-45](45-fix-two-leftovers.md) | Fix | Two faults found on the way in 005-40 and 005-41: `SalsaStream.getLength()` did not count what it appended (BergDB's own stack did not meet it), and `WTransaction.sync(SyncLevel)` waited for the database's last transaction, not for its own; now the length is the underlying stream's, and the sync waits for its own transaction, as `sync()` does | done | 2026-10-25 |
 | [005-42](42-transaction-info.md) | Decide | `Connection.transactionInfo()` gave internal KVs, whose `key()` threw (an index entry, reclaim's row), and for a value that reclaim had rewritten, reclaim's transaction and its time; from a TODO of 2016 (006-05). Decided A1 and B2: the internal KVs are left out, and a value that reclaim has rewritten gives `LookupTimeNotAvailableException` | done | 2026-10-25 |
 | [005-33](33-crashed-creation.md) | Decide | A database whose creation crashed (a power loss in the first write of its stream) never started: one of three `StreamFormatException`s that did not say why, after recovery had zero-filled its first transaction. Decided A, one clear error: a start refuses it with a `DatabaseNotCreatedException` that says what happened and what to do, and writes nothing (005-28) | done | 2026-10-25 |
@@ -205,7 +209,9 @@ Files
   cut past its end. Both are done.
 * [38-writes-at-scale.md](38-writes-at-scale.md). 005-38, investigate
   writes at scale: the stream's growth per key and loads beyond the
-  budget, found in 004-02.
+  budget, found in 004-02; done; the report, the tool (WriteBench), the
+  node-size runs and every output in
+  [38-writes-at-scale/](38-writes-at-scale/).
 * [39-fix-trans-completed-before.md](39-fix-trans-completed-before.md).
   005-39, `RecoverableStream.getPosOfTransCompletedBefore`: a wrong
   Javadoc, from the TODO under it, and a cut stream; done; the probe and
@@ -240,6 +246,10 @@ Files
   the constraints; open.
 * [48-group-commit.md](48-group-commit.md). 005-48, group commit: a
   waiting sync starts the flush; the change, the questions; open.
+* [49-smooth-index-writes.md](49-smooth-index-writes.md). 005-49, smooth
+  index writes: the bursts found in 005-38, the cause, the questions; open.
+* [50-fix-node-size-start.md](50-fix-node-size-start.md). 005-50, a start
+  with another node size fails with a clear error; found in 005-38; open.
 
 Log
 ===
@@ -831,3 +841,16 @@ between its write and its force.
 005-48."), by Claude (Opus 5.5, Claude Code): group commit, proposed in
 005-13 and not done there. A sync that waits asks `BufferedStream` for a
 flush instead of waiting for its timer; the force paces the groups.
+
+2026-10-26. 005-38 done, by Claude (Opus 5.5, Claude Code), with Frans:
+the stream's growth per key at scale was 004-02's startup distance of 10
+MB; at 200 to 1000 MB a put costs 180 to 670 bytes of stream at 10M and
+50M keys (random updates, in memory). Node size 30 stays. Found: the index
+is written in bursts at large startup distances, and a database starts
+only with the node size it was written with.
+
+2026-10-26. Added 005-49 and 005-50, at Frans's request ("Yes, register
+the burst entry. Yes to node-size fix entry."), by Claude (Opus 5.5, Claude
+Code), both found in 005-38: smooth index writes (the bursts at large
+startup distances; 007-03's step 3 waits for it), and a start with another
+node size, which should fail with a clear error, only that.

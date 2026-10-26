@@ -1,0 +1,99 @@
+NodeSizeBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 62, ring 1300000000, updates 30000000
+1000000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 1000; startup lag 69 MB; D 77564 nodes, 53 MB
+  classes:
+2000000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 1000; startup lag 139 MB; D 146894 nodes, 112 MB
+  classes:
+3000000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 1000; startup lag 208 MB; D 210878 nodes, 168 MB
+  classes:
+4000000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 1000; startup lag 277 MB; D 286636 nodes, 230 MB
+  classes:
+5000000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 1000; startup lag 346 MB; D 350295 nodes, 287 MB
+  classes:
+6000000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 1000; startup lag 415 MB; D 426074 nodes, 348 MB
+  classes:
+7000000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 1000; startup lag 485 MB; D 507275 nodes, 412 MB
+  classes:
+8000000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 1000; startup lag 554 MB; D 577795 nodes, 471 MB
+  classes:
+9000000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 1000; startup lag 623 MB; D 646229 nodes, 530 MB
+  classes:
+10000000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 1000; startup lag 693 MB; D 726021 nodes, 591 MB
+  classes:
+total: 10000000 keys, stream 692539736 bytes, 69.3 B/key, 27.4 s
+D: 10000 transactions, 726021 nodes (726020 key, 1 top, 726021 marked dirty), 591043784 stream bytes (591.0 MB), memory estimate 1028353408 bytes (1028.4 MB, KeyNode.getMemSize)
+  D classes: s0h0 1 (0.0 MB); s1h0 1 (0.0 MB); s2h0 1819 (1.7 MB); s2h1 79 (0.1 MB); s2h2 3 (0.0 MB); s3h0 692318 (566.2 MB); s3h1 27866 (22.7 MB); s3h2 3933 (0.3 MB);
+heap: 2900681256 bytes after the load, 1352780944 before, 154.8 B a key (full GCs; the ring and the key order excluded)
+tree: 369519 current key nodes, 10000000 values, 0.04 key nodes a key, longest path 8 key nodes (all segments), 0 children not in memory
+  tree s0h0: 1 nodes, 3.0 klongs, 1.0 live keys, 6.0 capacity, 80 B on stream, 224 B mem est. (a node); fill 0.05 of 62
+  tree s1h0: 1 nodes, 9.0 klongs, 1.0 live keys, 14.0 capacity, 176 B on stream, 416 B mem est. (a node); fill 0.15 of 62
+  tree s2h0: 468 nodes, 41.8 klongs, 21.4 live keys, 62.0 capacity, 700 B on stream, 1568 B mem est. (a node); fill 0.67 of 62
+  tree s2h1: 23 nodes, 47.5 klongs, 20.3 live keys, 62.0 capacity, 792 B on stream, 1568 B mem est. (a node); fill 0.77 of 62
+  tree s2h2: 1 nodes, 52.0 klongs, 23.0 live keys, 62.0 capacity, 864 B on stream, 1568 B mem est. (a node); fill 0.84 of 62
+  tree s3h0: 351159 nodes, 37.1 klongs, 28.5 live keys, 50.3 capacity, 626 B on stream, 1287 B mem est. (a node); fill 0.60 of 62
+  tree s3h1: 13933 nodes, 37.4 klongs, 25.2 live keys, 43.9 capacity, 630 B on stream, 1134 B mem est. (a node); fill 0.60 of 62
+  tree s3h2: 3933 nodes, 3.0 klongs, 2.0 live keys, 6.0 capacity, 80 B on stream, 224 B mem est. (a node); fill 0.05 of 62
+upd 1000000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 1000; startup lag 762 MB; D 813982 nodes, 654 MB
+  classes:
+upd 2000000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 1000; startup lag 831 MB; D 885253 nodes, 711 MB
+  classes:
+upd 3000000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 1000; startup lag 900 MB; D 950249 nodes, 765 MB
+  classes:
+upd 4000000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 1000; startup lag 969 MB; D 1002192 nodes, 818 MB
+  classes:
+upd 5000000 keys: B/put 851 = value 68 + key nodes 779 + top 0 + dirty list 4 + rec other 1 + meta 0; nodes/put vleaf 0.822 (903 B, 54.4 kl) lleaf 0.002 (946 B, 57.1 kl) in1 0.040 (847 B, 50.9 kl) in2 0.010 (80 B, 3.0 kl) top 0.000; still dirty 0.052/put; writes/distinct 1.00; records 1000; startup lag 1000 MB; D 362983 nodes, 230 MB
+  classes: s0h0 0.0000/put 80B 3.0kl 2.0t 1.0live 1.00still; s1h0 0.0000/put 208B 11.0kl 5.0t 1.0live 1.00still; s2h0 0.0021/put 947B 57.2kl 15.8t 27.6live 0.95still; s2h1 0.0001/put 930B 56.1kl 15.5t 24.3live 1.00still; s2h2 0.0000/put 952B 57.5kl 17.8t 22.8live 1.00still; s3h0 0.8220/put 903B 54.4kl 17.6t 31.8live 0.00still; s3h1 0.0400/put 847B 50.9kl 12.9t 25.8live 1.00still; s3h2 0.0100/put 80B 3.0kl 1.0t 2.0live 1.00still;
+upd 6000000 keys: B/put 132 = value 68 + key nodes 60 + top 0 + dirty list 4 + rec other 0 + meta 0; nodes/put vleaf 0.117 (517 B, 30.3 kl) top 0.000; still dirty 0.000/put; writes/distinct 1.00; records 1000; startup lag 1000 MB; D 491532 nodes, 351 MB
+  classes: s3h0 0.1168/put 517B 30.3kl 6.0t 18.8live 0.00still;
+upd 7000000 keys: B/put 100 = value 68 + key nodes 30 + top 0 + dirty list 2 + rec other 0 + meta 0; nodes/put vleaf 0.034 (574 B, 33.9 kl) lleaf 0.001 (1009 B, 61.0 kl) in1 0.010 (993 B, 60.0 kl) in2 0.000 (1024 B, 62.0 kl) top 0.000; still dirty 0.004/put; writes/distinct 1.00; records 1000; startup lag 1002 MB; D 571895 nodes, 420 MB
+  classes: s0h0 0.0000/put 80B 3.0kl 2.0t 1.0live 1.00still; s1h0 0.0000/put 208B 11.0kl 5.0t 1.0live 1.00still; s2h0 0.0010/put 1010B 61.1kl 17.0t 30.1live 0.83still; s2h1 0.0000/put 990B 59.9kl 15.4t 26.9live 0.90still; s2h2 0.0000/put 1024B 62.0kl 20.0t 22.5live 1.00still; s3h0 0.0337/put 574B 33.9kl 5.8t 23.0live 0.00still; s3h1 0.0100/put 993B 60.0kl 20.0t 21.0live 0.29still;
+upd 8000000 keys: B/put 69 = value 68 + key nodes 1 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.001 (669 B, 39.8 kl) top 0.000; still dirty 0.000/put; writes/distinct 1.00; records 1000; startup lag 1000 MB; D 626274 nodes, 477 MB
+  classes: s3h0 0.0008/put 669B 39.8kl 8.2t 24.2live 0.00still;
+upd 9000000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.001 (750 B, 44.8 kl) top 0.000; still dirty 0.000/put; writes/distinct 1.00; records 1000; startup lag 1002 MB; D 673806 nodes, 530 MB
+  classes: s3h0 0.0006/put 750B 44.8kl 10.7t 24.2live 0.00still;
+upd 10000000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.001 (798 B, 47.9 kl) top 0.000; still dirty 0.000/put; writes/distinct 1.00; records 1000; startup lag 1004 MB; D 726871 nodes, 584 MB
+  classes: s3h0 0.0006/put 798B 47.9kl 12.3t 24.1live 0.00still;
+upd 11000000 keys: B/put 70 = value 68 + key nodes 1 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.001 (848 B, 51.0 kl) top 0.000; still dirty 0.000/put; writes/distinct 1.00; records 1000; startup lag 1002 MB; D 781959 nodes, 639 MB
+  classes: s3h0 0.0007/put 848B 51.0kl 13.9t 24.0live 0.00still;
+upd 12000000 keys: B/put 70 = value 68 + key nodes 1 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.001 (902 B, 54.4 kl) lleaf 0.000 (1014 B, 61.4 kl) in1 0.000 (1023 B, 62.0 kl) top 0.000; still dirty 0.000/put; writes/distinct 1.00; records 1000; startup lag 1001 MB; D 835648 nodes, 693 MB
+  classes: s2h0 0.0000/put 1014B 61.4kl 18.8t 24.3live 1.00still; s3h0 0.0007/put 902B 54.4kl 15.6t 24.2live 0.00still; s3h1 0.0004/put 1023B 62.0kl 14.0t 35.0live 1.00still;
+upd 13000000 keys: B/put 78 = value 68 + key nodes 9 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.001 (948 B, 57.2 kl) lleaf 0.000 (1008 B, 61.0 kl) in1 0.008 (1023 B, 61.9 kl) in2 0.000 (1024 B, 62.0 kl) top 0.000; still dirty 0.008/put; writes/distinct 1.00; records 1000; startup lag 1003 MB; D 887819 nodes, 745 MB
+  classes: s2h0 0.0004/put 1008B 61.0kl 19.7t 22.6live 1.00still; s2h1 0.0000/put 1011B 61.2kl 20.2t 21.7live 1.00still; s2h2 0.0000/put 1024B 62.0kl 20.0t 23.0live 1.00still; s3h0 0.0009/put 948B 57.2kl 17.2t 25.1live 0.00still; s3h1 0.0075/put 1023B 61.9kl 14.0t 35.0live 1.00still;
+upd 14000000 keys: B/put 73 = value 68 + key nodes 4 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.001 (980 B, 59.2 kl) lleaf 0.000 (965 B, 58.3 kl) in1 0.002 (1021 B, 61.8 kl) top 0.000; still dirty 0.002/put; writes/distinct 1.00; records 1000; startup lag 1002 MB; D 940407 nodes, 798 MB
+  classes: s2h0 0.0001/put 965B 58.3kl 18.7t 21.8live 1.00still; s2h1 0.0000/put 949B 57.3kl 18.7t 20.7live 1.00still; s3h0 0.0013/put 980B 59.2kl 18.8t 25.9live 0.00still; s3h1 0.0021/put 1022B 61.9kl 13.9t 35.0live 1.00still;
+upd 15000000 keys: B/put 72 = value 68 + key nodes 3 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.003 (1004 B, 60.8 kl) in1 0.000 (1014 B, 61.4 kl) in2 0.000 (144 B, 7.0 kl) top 0.000; still dirty 0.000/put; writes/distinct 1.00; records 1000; startup lag 1002 MB; D 992636 nodes, 849 MB
+  classes: s3h0 0.0031/put 1004B 60.8kl 20.1t 26.0live 0.00still; s3h1 0.0000/put 1014B 61.4kl 16.4t 29.4live 1.00still; s3h2 0.0000/put 144B 7.0kl 3.0t 2.0live 1.00still;
+upd 16000000 keys: B/put 87 = value 68 + key nodes 18 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.009 (1011 B, 61.2 kl) lleaf 0.000 (924 B, 55.8 kl) in1 0.008 (1016 B, 61.5 kl) in2 0.004 (153 B, 7.6 kl) top 0.000; still dirty 0.012/put; writes/distinct 1.00; records 1000; startup lag 1002 MB; D 1040699 nodes, 894 MB
+  classes: s2h0 0.0002/put 924B 55.8kl 16.5t 23.7live 1.00still; s2h1 0.0000/put 908B 54.8kl 17.0t 21.5live 1.00still; s3h0 0.0092/put 1011B 61.2kl 20.4t 24.8live 0.00still; s3h1 0.0080/put 1016B 61.5kl 19.3t 23.3live 1.00still; s3h2 0.0040/put 153B 7.6kl 3.3t 2.0live 1.00still;
+upd 17000000 keys: B/put 979 = value 68 + key nodes 905 + top 0 + dirty list 5 + rec other 1 + meta 0; nodes/put vleaf 0.963 (887 B, 53.4 kl) lleaf 0.002 (948 B, 57.2 kl) in1 0.051 (956 B, 57.8 kl) in2 0.007 (160 B, 8.0 kl) top 0.000; still dirty 0.047/put; writes/distinct 1.00; records 1000; startup lag 1000 MB; D 307528 nodes, 218 MB
+  classes: s0h0 0.0000/put 80B 3.0kl 2.0t 1.0live 1.00still; s1h0 0.0000/put 208B 11.0kl 5.0t 1.0live 1.00still; s2h0 0.0017/put 948B 57.3kl 17.3t 24.1live 0.98still; s2h1 0.0001/put 932B 56.3kl 16.3t 23.6live 1.00still; s2h2 0.0000/put 952B 57.5kl 17.8t 22.8live 1.00still; s3h0 0.9625/put 887B 53.4kl 16.4t 22.1live 0.00still; s3h1 0.0507/put 956B 57.8kl 16.3t 25.9live 0.74still; s3h2 0.0074/put 160B 8.0kl 3.5t 2.0live 1.00still;
+upd 18000000 keys: B/put 112 = value 68 + key nodes 39 + top 0 + dirty list 5 + rec other 0 + meta 0; nodes/put vleaf 0.038 (478 B, 27.9 kl) lleaf 0.000 (723 B, 43.2 kl) in1 0.020 (952 B, 57.5 kl) in2 0.009 (172 B, 8.8 kl) top 0.000; still dirty 0.028/put; writes/distinct 1.00; records 1000; startup lag 1001 MB; D 544150 nodes, 399 MB
+  classes: s2h0 0.0004/put 723B 43.2kl 10.4t 23.3live 1.00still; s2h1 0.0000/put 671B 39.9kl 9.4t 22.2live 1.00still; s2h2 0.0000/put 736B 44.0kl 11.0t 23.0live 1.00still; s3h0 0.0380/put 478B 27.9kl 3.5t 21.8live 0.00still; s3h1 0.0197/put 952B 57.5kl 17.0t 24.0live 0.98still; s3h2 0.0086/put 172B 8.8kl 3.9t 2.0live 1.00still;
+upd 19000000 keys: B/put 70 = value 68 + key nodes 1 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.001 (554 B, 32.6 kl) lleaf 0.000 (408 B, 23.5 kl) in1 0.000 (805 B, 48.3 kl) in2 0.000 (190 B, 9.9 kl) top 0.000; still dirty 0.000/put; writes/distinct 1.00; records 1000; startup lag 1001 MB; D 632144 nodes, 474 MB
+  classes: s2h0 0.0000/put 408B 23.5kl 1.0t 22.5live 1.00still; s3h0 0.0008/put 554B 32.6kl 6.1t 21.5live 0.00still; s3h1 0.0001/put 805B 48.3kl 12.3t 24.4live 1.00still; s3h2 0.0000/put 190B 9.9kl 4.4t 2.0live 1.00still;
+upd 20000000 keys: B/put 70 = value 68 + key nodes 1 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.001 (646 B, 38.4 kl) in1 0.000 (689 B, 41.1 kl) in2 0.000 (208 B, 11.0 kl) top 0.000; still dirty 0.000/put; writes/distinct 1.00; records 1000; startup lag 1001 MB; D 689474 nodes, 530 MB
+  classes: s3h0 0.0010/put 646B 38.4kl 8.9t 21.6live 0.00still; s3h1 0.0001/put 689B 41.1kl 8.8t 24.4live 1.00still; s3h2 0.0000/put 208B 11.0kl 5.0t 2.0live 1.00still;
+upd 21000000 keys: B/put 70 = value 68 + key nodes 1 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.001 (735 B, 43.9 kl) in1 0.000 (765 B, 45.8 kl) top 0.000; still dirty 0.000/put; writes/distinct 1.00; records 1000; startup lag 1002 MB; D 740287 nodes, 583 MB
+  classes: s3h0 0.0011/put 735B 43.9kl 11.9t 21.0live 0.00still; s3h1 0.0001/put 765B 45.8kl 11.1t 24.7live 1.00still;
+upd 22000000 keys: B/put 70 = value 68 + key nodes 1 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.001 (820 B, 49.2 kl) in1 0.000 (809 B, 48.6 kl) top 0.000; still dirty 0.000/put; writes/distinct 1.00; records 1000; startup lag 1004 MB; D 789000 nodes, 635 MB
+  classes: s3h0 0.0012/put 820B 49.2kl 14.6t 20.9live 0.00still; s3h1 0.0001/put 809B 48.6kl 12.6t 24.5live 1.00still;
+upd 23000000 keys: B/put 70 = value 68 + key nodes 1 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.002 (886 B, 53.4 kl) in1 0.000 (903 B, 54.4 kl) top 0.000; still dirty 0.000/put; writes/distinct 1.00; records 1000; startup lag 1003 MB; D 837874 nodes, 687 MB
+  classes: s3h0 0.0015/put 886B 53.4kl 17.1t 20.0live 0.00still; s3h1 0.0001/put 903B 54.4kl 15.4t 24.5live 1.00still;
+upd 24000000 keys: B/put 71 = value 68 + key nodes 2 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.002 (931 B, 56.2 kl) lleaf 0.000 (144 B, 7.0 kl) in1 0.000 (967 B, 58.4 kl) top 0.000; still dirty 0.000/put; writes/distinct 1.00; records 1000; startup lag 1003 MB; D 886763 nodes, 738 MB
+  classes: s0h0 0.0000/put 80B 3.0kl 2.0t 1.0live 1.00still; s1h0 0.0000/put 208B 11.0kl 5.0t 1.0live 1.00still; s3h0 0.0019/put 931B 56.2kl 18.7t 19.4live 0.00still; s3h1 0.0001/put 967B 58.4kl 17.3t 24.9live 1.00still;
+upd 25000000 keys: B/put 72 = value 68 + key nodes 3 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.002 (964 B, 58.2 kl) lleaf 0.001 (1015 B, 61.5 kl) in1 0.000 (1004 B, 60.7 kl) in2 0.000 (1024 B, 62.0 kl) top 0.000; still dirty 0.000/put; writes/distinct 1.00; records 1000; startup lag 1004 MB; D 935155 nodes, 789 MB
+  classes: s2h0 0.0008/put 1015B 61.5kl 19.0t 25.0live 0.04still; s2h1 0.0000/put 1003B 60.7kl 16.8t 25.8live 0.95still; s2h2 0.0000/put 1024B 62.0kl 20.0t 22.5live 1.00still; s3h0 0.0023/put 964B 58.2kl 20.0t 19.0live 0.00still; s3h1 0.0001/put 1004B 60.7kl 18.2t 25.3live 0.97still;
+upd 26000000 keys: B/put 74 = value 68 + key nodes 5 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.003 (981 B, 59.3 kl) in1 0.002 (1016 B, 61.5 kl) top 0.000; still dirty 0.002/put; writes/distinct 1.00; records 1000; startup lag 1002 MB; D 984099 nodes, 839 MB
+  classes: s3h0 0.0032/put 981B 59.3kl 20.5t 19.2live 0.00still; s3h1 0.0019/put 1016B 61.5kl 18.5t 25.5live 1.00still;
+upd 27000000 keys: B/put 85 = value 68 + key nodes 15 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.005 (1000 B, 60.5 kl) in1 0.010 (1016 B, 61.5 kl) top 0.000; still dirty 0.010/put; writes/distinct 1.00; records 1000; startup lag 1003 MB; D 1031835 nodes, 888 MB
+  classes: s3h0 0.0053/put 1000B 60.5kl 20.7t 19.9live 0.00still; s3h1 0.0100/put 1016B 61.5kl 19.2t 24.1live 1.00still;
+upd 28000000 keys: B/put 87 = value 68 + key nodes 18 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.010 (1008 B, 61.0 kl) lleaf 0.000 (1015 B, 61.5 kl) in1 0.008 (1016 B, 61.5 kl) top 0.000; still dirty 0.008/put; writes/distinct 1.00; records 1000; startup lag 1001 MB; D 1075286 nodes, 931 MB
+  classes: s2h0 0.0001/put 1015B 61.5kl 19.1t 24.1live 0.46still; s2h1 0.0000/put 1018B 61.6kl 19.6t 23.4live 1.00still; s3h0 0.0101/put 1008B 61.0kl 20.6t 20.6live 0.00still; s3h1 0.0077/put 1016B 61.5kl 19.7t 23.0live 1.00still;
+upd 29000000 keys: B/put 88 = value 68 + key nodes 19 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put vleaf 0.017 (1011 B, 61.2 kl) lleaf 0.000 (994 B, 60.1 kl) in1 0.001 (1016 B, 61.5 kl) in2 0.000 (1024 B, 62.0 kl) top 0.000; still dirty 0.002/put; writes/distinct 1.00; records 1000; startup lag 1002 MB; D 1111604 nodes, 968 MB
+  classes: s2h0 0.0005/put 994B 60.1kl 19.5t 22.0live 0.92still; s2h1 0.0000/put 989B 59.8kl 19.8t 21.0live 1.00still; s2h2 0.0000/put 1024B 62.0kl 20.0t 23.0live 1.00still; s3h0 0.0172/put 1011B 61.2kl 20.4t 21.4live 0.00still; s3h1 0.0013/put 1016B 61.5kl 19.0t 24.4live 0.96still;
+upd 30000000 keys: B/put 1066 = value 68 + key nodes 990 + top 0 + dirty list 7 + rec other 1 + meta 0; nodes/put vleaf 1.035 (878 B, 52.9 kl) lleaf 0.001 (879 B, 52.9 kl) in1 0.082 (946 B, 57.1 kl) in2 0.010 (274 B, 15.1 kl) top 0.000; still dirty 0.077/put; writes/distinct 1.00; records 1000; startup lag 1002 MB; D 417758 nodes, 310 MB
+  classes: s0h0 0.0000/put 80B 3.0kl 2.0t 1.0live 1.00still; s1h0 0.0000/put 208B 11.0kl 5.0t 1.0live 1.00still; s2h0 0.0009/put 881B 53.0kl 15.8t 22.3live 0.96still; s2h1 0.0001/put 933B 56.3kl 16.4t 23.4live 0.85still; s2h2 0.0000/put 952B 57.5kl 17.8t 22.8live 1.00still; s3h0 1.0345/put 878B 52.9kl 16.0t 21.9live 0.00still; s3h1 0.0818/put 946B 57.1kl 17.0t 23.9live 0.80still; s3h2 0.0102/put 274B 15.1kl 7.0t 2.0live 1.00still;
+updates total: 30000000 puts, 5001342376 bytes, 166.7 B/put
+D: 749 transactions, 417758 nodes (417757 key, 1 top, 417758 marked dirty), 310288904 stream bytes (310.3 MB), memory estimate 647322848 bytes (647.3 MB, KeyNode.getMemSize)
+  D classes: s0h0 1 (0.0 MB); s1h0 1 (0.0 MB); s2h0 895 (0.8 MB); s2h1 75 (0.1 MB); s2h2 4 (0.0 MB); s3h0 341814 (246.5 MB); s3h1 64967 (60.1 MB); s3h2 10000 (2.8 MB);
+heap after the updates: 7169459824 bytes, 581.7 B a key
+NODESIZEBENCH OK

@@ -1,0 +1,59 @@
+NodeSizeBench: 1000000 keys key24 random, sd 200000000, tx 1000, node 62, ring 536870912, updates 6000000
+100000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+200000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+300000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+400000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+500000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+600000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+700000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+800000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+900000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+1000000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+total: 1000000 keys, stream 69236808 bytes, 69.2 B/key, 2.7 s
+D: 1000 transactions, 71516 nodes (71515 key, 1 top, 71516 marked dirty), 58417880 stream bytes (58.4 MB), memory estimate 101814368 bytes (101.8 MB, KeyNode.getMemSize)
+  D classes: s0h0 1 (0.0 MB); s1h0 1 (0.0 MB); s2h0 148 (0.1 MB); s2h1 6 (0.0 MB); s2h2 1 (0.0 MB); s3h0 68482 (56.1 MB); s3h1 2584 (2.2 MB); s3h2 292 (0.0 MB);
+heap: 717910800 bytes after the load, 557649320 before, 160.3 B a key (full GCs; the ring and the key order excluded)
+tree: 36372 current key nodes, 1000000 values, 0.04 key nodes a key, longest path 8 key nodes (all segments), 0 children not in memory
+  tree s0h0: 1 nodes, 3.0 klongs, 1.0 live keys, 6.0 capacity, 80 B on stream, 224 B mem est. (a node); fill 0.05 of 62
+  tree s1h0: 1 nodes, 5.0 klongs, 1.0 live keys, 6.0 capacity, 112 B on stream, 224 B mem est. (a node); fill 0.08 of 62
+  tree s2h0: 42 nodes, 40.4 klongs, 23.8 live keys, 62.0 capacity, 679 B on stream, 1568 B mem est. (a node); fill 0.65 of 62
+  tree s2h1: 2 nodes, 46.0 klongs, 21.0 live keys, 62.0 capacity, 768 B on stream, 1568 B mem est. (a node); fill 0.74 of 62
+  tree s2h2: 1 nodes, 9.0 klongs, 2.0 live keys, 14.0 capacity, 176 B on stream, 416 B mem est. (a node); fill 0.15 of 62
+  tree s3h0: 34741 nodes, 37.4 klongs, 28.8 live keys, 50.6 capacity, 630 B on stream, 1295 B mem est. (a node); fill 0.60 of 62
+  tree s3h1: 1292 nodes, 41.1 klongs, 26.9 live keys, 47.5 capacity, 690 B on stream, 1221 B mem est. (a node); fill 0.66 of 62
+  tree s3h2: 292 nodes, 3.0 klongs, 2.0 live keys, 6.0 capacity, 80 B on stream, 224 B mem est. (a node); fill 0.05 of 62
+reach: 71515 key nodes (0.07 a key, mem est. 101.8 B a key), 1 top nodes, 2394184 pointers to values, reachable through any pointer
+upd 100000 keys: B/put 70 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+upd 200000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+upd 300000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+upd 400000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+upd 500000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+upd 600000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+upd 700000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+upd 800000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+upd 900000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+upd 1000000 keys: B/put 69 = value 68 + key nodes 0 + top 0 + dirty list 1 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 100
+  classes:
+updates total: 1000000 puts, 68928416 bytes, 68.9 B/put
+D: 2000 transactions, 123790 nodes (123789 key, 1 top, 123790 marked dirty), 110789928 stream bytes (110.8 MB), memory estimate 192734304 bytes (192.7 MB, KeyNode.getMemSize)
+  D classes: s0h0 1 (0.0 MB); s1h0 1 (0.0 MB); s2h0 180 (0.2 MB); s2h1 8 (0.0 MB); s2h2 1 (0.0 MB); s3h0 117942 (106.2 MB); s3h1 4656 (4.3 MB); s3h2 1000 (0.1 MB);
+NODESIZEBENCH OK

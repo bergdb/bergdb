@@ -230,6 +230,13 @@ key. With a cold disk cache they can dominate: 100,000 random reads of
 100 µs take 10 s. The measurements so far had a warm OS file cache. To
 measure (8, step 4).
 
+Note, 2026-10-26: measured since, a cold startup on s1 takes minutes, and
+its time goes to rule 4's header reads in `DbStarter.linkD` (step 4 of
+section 2), one random read per stream pointer of D that startup's maps do
+not resolve, about 590,000 at 10M keys, rather than to the rerun's first
+touches ([004-02](../004-indirect-swizzling/02-scale-tests.md), 10.5.8;
+unchanged with handles, 009-03). See 007-04, 3, and 007-03, step 6.
+
 **5.4 Bytes or time.** Startup time follows the transactions rerun more
 than the bytes: 29 ms per MB with 100-byte values, 7 with 10 kB (levels.md,
 which adds that "a default given as a target startup time would fit all

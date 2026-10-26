@@ -1,0 +1,10 @@
+Props Mem (default node 30), -Xmx2g G1:
+MEM:130
+MEM:253 node 8 (253.0 bytes per KV), stream 45757080 bytes
+MEM:253 node 8 (253.0 bytes per KV), stream 45757080 bytes
+MEM:165 node 14 (165.2 bytes per KV), stream 40342824 bytes
+MEM:165 node 14 (165.4 bytes per KV), stream 40342824 bytes
+MEM:130 node 30 (129.8 bytes per KV), stream 38035928 bytes
+MEM:130 node 30 (129.8 bytes per KV), stream 38035928 bytes
+MEM:120 node 62 (119.8 bytes per KV), stream 37262920 bytes
+MEM:120 node 62 (119.8 bytes per KV), stream 37262920 bytes

@@ -3,10 +3,19 @@
 
 Created 2026-10-24 by Claude (Opus 5.5, Claude Code) for Frans Lundberg, at
 his request ("Do: write this plan into item 007."), from Claude's proposal
-of 2026-10-23, which followed 007-01 and 007-02.
+of 2026-10-23, which followed 007-01 and 007-02. Updated 2026-10-26 from
+the review after item 009, [007-04](04-review-after-009.md).
 
-**Status: step 1 done (005-31, 2026-10-24); steps 2 to 5 not started, and
-after release 2026.1 (Frans, 2026-10-25: "After the release").**
+**Status (2026-10-26): step 1 done (005-31, 2026-10-24); steps 2 to 5 not
+started; step 5 scheduled for 2026-10-27, 04:00.** Steps 2 to 5 waited for release 2026.1 (Frans,
+2026-10-25: "After the release"), which is out, so they wait only for
+Frans's start. Since 007-04, step 2 is smaller (005-38 measured its first
+workload); steps 3 and 4 wait for
+[005-49](../005-todo/49-smooth-index-writes.md), smooth index writes, and
+step 3 for D4; step 5 goes first, and counts a cold startup's random
+reads; step 6, for those reads, is new. D4 and D5, new, are decided (Frans,
+2026-10-26: "D4:B. D5: as recommended.").
+
 Step 1, 005-31, had Frans's go for its option A (2026-10-24: "005-31, it
 has my 'go'. But don't start the implementation now."), and then his
 request to fix it ("fix all todo items of type Fix"). Step 3, the deadline,
@@ -18,20 +27,24 @@ The goal
 --------
 
 T3 bounds the startup section for a policy that keeps up with the startup
-distance (007-01, section 3). BergDB's take does not keep up (007-01, 4.1),
-and one large transaction can stop it for good (005-31). The goal: bounded
-startup that holds for BergDB itself, proved for BergDB's own policy. In
-the words a user should be able to rely on:
+distance (007-01, section 3). BergDB's take does not keep up (007-01, 4.1;
+007-04, 1), and one large transaction could stop it for good (005-31,
+fixed). The goal: bounded startup that holds for BergDB itself, proved for
+BergDB's own policy, and a startup time a user can rely on, from a warm OS
+cache and from a cold disk. In the words a user should be able to rely on:
 
     Startup reruns the transactions of less than 2 × sd of records, and
     the last transaction, whatever the size and the age of the database,
-    where sd is the startup distance. At the default of 50 MB, that is
-    about X s on F53.
+    where sd is the startup distance: about X s per 100 MB of startup
+    distance on F53 with a warm OS cache. From a cold disk it also reads
+    about N nodes at random, Y s on s1.
 
-X comes from step 5. Not in this plan: T4, a bound on D (007-01, section
-6), which bounds the two records at the ends of the section and the memory
-that D pins; and the startup distance as an estimated time instead of bytes
-(007-01, D3).
+X, N and Y come from step 5. Today N is mostly rule 4's header reads,
+whose number follows D, not the section (007-04, 3); step 6 is to make
+them few, so that N follows the section, which T3 bounds. Not in this
+plan: T4, a bound on D (007-01, section 6), which bounds the two records at
+the ends of the section and the memory that D pins (007-04, 4); and the
+startup distance as an estimated time instead of bytes (007-01, D3).
 
 
 The steps
@@ -65,35 +78,49 @@ the precise count, under the write lock, only for the rare large ones
 
 ### Step 2. A test that drives the debt up
 
-A stress test, in `java/stress/` with LoadTest's setup, that makes the debt
-of D large compared with the startup distance (007-01, 4.2), run on
-today's take first. Three workloads:
+A stress test that makes the debt of D large compared with the startup
+distance (007-01, 4.2), run on today's take first. After every
+transaction, it records the section without its last record, the record's
+size, D in nodes, and the debt: the stream size of D's nodes plus 16 bytes
+each, as `TransSeq.recordBytes` counts them.
 
-* A load of n keys, then single puts spread uniformly over them, for
-  several n and startup distances. The measured 10M keys at 20 MB (2.21 d)
-  is such a run, and likely overshoots for this reason: the first updates'
-  records have many got-dirty ids and few index nodes, as the take is
-  still writing the load's nodes, which are cheap; so the debt piles up
-  until the take reaches them.
-* The startup distance lowered at runtime (`Db.setStartupDistance`, for
-  example from 50 MB to 5 MB), which leaves the take a long section's debt
-  to pay.
+Its first workload is measured (2026-10-26; 007-04, 1): a load of n keys,
+then updates spread uniformly over them, by 005-38's WriteBench at 10M and
+50M keys and 50, 200 and 1000 MB, in transactions of 1,000 puts, with the
+lag and D sampled at the end of every window of updates. 007-01's
+hypothesis fits it. 005-49's first step extends WriteBench to count every
+record, which gives the largest record per transaction for that workload.
+Left, on 005-49's version of WriteBench, with the section per transaction
+added:
+
+* The startup distance lowered at runtime (`Db.setStartupDistance`), from
+  1000 to 100 MB and from 200 to 50 MB, in one call and in steps: how long
+  until the section is below the new d_h, and the largest record and
+  commit meanwhile. It answers 006-06's question 2 for today's take, and
+  gives D4 its sizes.
 * Deletes of existing keys spread over the keys: small records, each with
   a key path's worth of got-dirty ids.
+* Single puts: the first workload with transactions of one put, at 50 and
+  200 MB.
 
-After every transaction, it records the section without its last record,
-the record's size, D in nodes, and the debt: the stream size of D's nodes
-plus 16 bytes each, as `TransSeq.recordBytes` counts them.
+Startup distances of 50, 200 and 1000 MB (Frans, 2026-10-26; 007-04, 5);
+smaller ones only as a quick stress. In memory, as 005-38 ran it, with a
+12 GB heap at 10M keys and 22 GB at 50M.
 
-* Done when: for each workload, the largest section over d, the largest
-  record, and the debt over d, on today's take; 007-01's hypothesis (the
-  section reaches the larger of d and the debt, plus at most 0.25 d)
-  confirmed or rejected; the outputs in this item's directory. The same
-  runs again after step 3.
+* Done when: the workloads left are measured on today's take, with the
+  outputs in this item's directory. The same runs again after step 3.
 * Size: S, and runs in the background. They count bytes and nodes, not
   time, so a busy machine does not matter.
 
 ### Step 3. The deadline in `TransSeq.take` (D1, decided)
+
+**Waits (2026-10-26) for [005-49](../005-todo/49-smooth-index-writes.md),
+smooth index writes, and for D4** (007-04, 2 and 6). Frans wants the cost
+of a commit in proportion to its own size ("Bursts are to be avoided"), and
+the deadline alone makes the bursts steeper. 005-49 recommends how the take
+paces its writes, and this step follows it. The deadline stays in the take
+as the backstop that T3's proof uses, and acts only when the pace falls
+behind. The rest of this step is the deadline as planned on 2026-10-24.
 
 The take ignores its node limit for transactions that begin more than d_h
 before the end of the stream; d_h is 2 × the startup distance, a constant
@@ -102,48 +129,64 @@ factor, so no new setting. In `take()`'s loop, one more way to go on:
     first.tpos <= maxSp
         && (nodeCount < nodeCountLimit || transCount < 2 || first.tpos <= hardSp)
 
-where `hardSp` is the stream length minus d_h. The record limit stays: after
-step 1 one transaction always fits in a record, so a take that lags passes
-at least one transaction per record.
+where `hardSp` is the stream length minus d_h, computed in a long
+(`2L * startupDistance`: the distance is an int, and
+`DbBuilder.startupDistance` takes any int; 007-04, 5). The record limit
+stays: after step 1 one transaction always fits in a record, so a take that
+lags passes at least one transaction per record.
 
 * Streams change only where the take lagged more than d_h: tests with small
   startup distances, runs like the 10M one. StreamDigest on the standard
   sets says which, and each change needs its reason.
-* The price, to measure with step 2: the largest record the deadline makes,
-  which writes the debt beyond d_h, and that commit's latency.
+* The price, to measure with step 2's and 005-49's runs: the largest record
+  the deadline makes, which writes the debt beyond d_h; the longest commit,
+  against the target of about 20 ms; and the readers that wait while that
+  record is appended and forced (005-46; 007-04, 7).
 * `Db.setStartupDistance`'s Javadoc warns that a large decrease "can cause
   a large transaction to run". Today the node limit spreads the work; with
-  the deadline, the next transaction writes the debt beyond d_h at once.
-  Update the Javadoc.
+  the deadline, the next transaction writes the debt beyond d_h at once,
+  unless D4 decides otherwise. Update the Javadoc.
 * `take()`'s comment: its "TODO D." of 2015, which asks for a factor on the
   node limit when the startup pos falls behind by more than 2 × sd (D1's
   origin), goes with the change, and so does the claim that the startup
   pos "should never fall exceedingly behind" (007-01, 4.1). Noted
   2026-10-25 (006-05, T7).
-* Done when: in step 2's runs, the section without its last record stays
-  below d_h; `before-commit.sh`; `level2.sh`, since the take is Level 2's
-  mechanism; `level3.sh` and `level4.sh` if their streams change; the quick
-  performance suite unchanged; docs/levels.md, Level 2, "Bounds", updated.
+* Done when: in step 2's and 005-49's runs, the section without its last
+  record stays below d_h; `before-commit.sh`; `level2.sh`, since the take
+  is Level 2's mechanism; `level3.sh` and `level4.sh` if their streams
+  change; the quick performance suite unchanged; docs/levels.md, Level 2,
+  "Bounds", updated.
 * Size: S for the code, M with the gates and runs.
 
 ### Step 4. BergDB's take in Lean
 
-BergDB's take becomes a policy of the model, in the trusted part
-(`lean/SIS/Bound.lean`): from s(i-1) + 1 on, whole transactions while they
-begin at least sd before the end of the stream, and fewer than two have
-been taken, or their got-dirty ids are below the limit, or they begin at
-least d_h before the end. The limit is a function of T(i), which the
-policy may see (M10 of docs/level2-alignment.md). BoundExample.lean's
-sketch, `javaTake`, becomes this definition.
+BergDB's take, as step 3 leaves it, becomes a policy of the model, in the
+trusted part (`lean/SIS/Bound.lean`). With the deadline alone: from
+s(i-1) + 1 on, whole transactions while they begin at least sd before the
+end of the stream, and fewer than two have been taken, or their got-dirty
+ids are below the limit, or they begin at least d_h before the end. The
+limit is a function of T(i), which the policy may see (M10 of
+docs/level2-alignment.md). BoundExample.lean's sketch, `javaTake`, becomes
+this definition. A take paced by 005-49 changes the definition, so this
+step waits for 005-49 too.
 
 * The proof: every transaction up to the target of d_h passes the loop's
   test, since the cost to the end only shrinks along the stream and
   d_h ≥ sd. So the policy keeps up with d_h (`KeepsUp`), and T3 holds for
-  runs with BergDB's take, with d = d_h.
+  runs with BergDB's take, with d = d_h. A pace that only takes more
+  transactions, earlier, needs no more than the deadline's test. A pace
+  that writes nodes of transactions it does not take (005-49, question 4)
+  changes the model itself, whose algorithm writes exactly the nodes taken
+  (sis-model.md, 6.1, step 6; 007-02's third option), with proofs of its
+  own.
 * The record limit is left out of the model. Java's take is the model's as
   long as the record limit does not stop it, which after step 1 takes the
   transactions due at once to need more than one record, about 2 GB of
   index nodes. The theorem's comment says so.
+* A startup distance that changes between transactions (006-06, question
+  4; 007-04, 6): T3's proof uses only the startup pos of the last
+  transaction, so it should carry over to a d given, like the limit, by
+  the stream and T(i). State it, with a `#guard` on a run that lowers d.
 * Done when: the theorem (`T3_take`, say) proved, with `#guard`s on
   example 2: the take with the deadline keeps the section below d_h, and
   with a tight limit and no deadline it does not; `lake build` with no
@@ -153,35 +196,96 @@ sketch, `javaTake`, becomes this definition.
 
 Later, not in this plan: the trace checker compares Java's startup pos
 with this policy on every record. It needs each record's length in bytes
-in the traces (a trace format change, in Java's exporter and in `Check/`),
-and Java's positions also count the meta blocks, 128 bytes every 200 kB,
-which the model's cost of a record does not.
+in the traces (a trace format change, in Java's exporter and in `Check/`,
+after 009's step 4c, which changes both now; 007-04, 8), and Java's
+positions also count the meta blocks, 128 bytes every 200 kB, which the
+model's cost of a record does not.
 
 ### Step 5. Startup time
 
-Startup time against the section on F53: sections of 5 to 100 MB, values of
-10 bytes to 10 kB, a warm OS file cache; and a cold one on s1, where root
-can drop the caches (F53 has no passwordless sudo). Besides the time, count
-what startup does: the bytes it reads in order, the transactions it reruns,
-its first touches (random reads); fit time ≈ a × bytes + b × transactions
-+ c × touches.
+Startup time against the section, at startup distances of 50, 200 and 1000
+MB, so sections from 50 MB to d_h = 2 GB, for 10M and 50M keys, with values
+of 10 bytes to 10 kB: on F53 with a warm OS file cache, and cold on s1,
+where root can drop the caches (F53 has no passwordless sudo; a database
+larger than its memory, such as 100M keys, gives a partly cold start
+there). Besides the time, count what startup does: the bytes it reads in
+order, the transactions it reruns, and its random reads by source: the
+rerun's first touches, rule 4's header reads (the calls of
+`NodeCollection.idOf` from `DbStarter.linkD` that read the stream), and the
+reads of the nodes of D that the rerun does not reach. Fit
+time ≈ a × bytes + b × transactions + c × random reads, with c for a warm
+and for a cold cache.
 
+* It needs neither 005-49 nor the deadline: the startup distance makes the
+  sections, and the deadline only bounds them. So it can go first (Order).
 * Done when: the table, the fitted constants, and the numbers for the
-  promise: the default (50 MB, so d_h = 100 MB) with small and large values,
-  warm and cold.
-* Size: S, in the background with the session idle, and not while another
-  timing run is on.
+  promise for each startup distance, warm and cold; rule 4's share of the
+  random reads, for step 6.
+* Size: S to M, in the background with the session idle, and not while
+  another timing run is on.
+* Scheduled for 2026-10-27 from 04:00, after `night.sh` (Frans, 2026-10-26:
+  "Schedule Step 5 tonight at 04:00; I assume night.sh is done by then;
+  report to news.md."). The tool, the scripts, what the night runs, and
+  the results: [007-05](05-startup-time.md).
+
+### Step 6. Fewer random reads at startup (D5: in this plan)
+
+Proposed 2026-10-26 (007-04, 3); in this plan by D5 (Frans, 2026-10-26).
+Rule 4
+(`DbStarter.linkD`; M44 of docs/level4-alignment.md; `Mem.linkD`, and
+`HMem.linkD` for handles, in the Lean model) links each stream pointer of
+D's nodes to its pointee's canonical object, if it has one, so that a node
+of D never names an older version of a node written since. To find the
+object it needs the pointee's id, and a pointer that startup's maps do not
+resolve costs a read of the pointee's header: the 590,000 random reads of
+a cold startup at 10M keys and a startup distance of 10 MB, minutes on s1.
+Their number follows D, not the section. Most likely find no canonical
+object; step 5 counts how many do. The writer may read the same headers
+again when it takes those nodes:
+`NodeCollection.resolvePointers` calls `idOf` for each stream pointer left,
+and `idOf` remembers the last 100,000 positions.
+
+Options, for the investigation to weigh:
+
+* A. The same reads, cheaper: in position order, or several at a time (an
+  SSD serves many at once). No change to the rule or the model.
+* B. Fewer reads: decide from what startup knows which pointers can name a
+  node with a canonical object (the section's positions and prevPos
+  chains, the positions of what the rerun loaded), and read only for
+  those. It needs the argument, against M44, that the others need
+  nothing, and maybe a matching change to the model's startup.
+* C. No reads: the pointee's id in the stream with each pointer, as a
+  handle keeps it in memory. A format change, the largest of the three; it
+  would spare the writer's reads too.
+
+With the reads few (B) or gone (C), a cold startup reads at random only
+what the rerun touches, at most a node per level of the tree for each key
+rerun, and the section bounds that, with T3 and the deadline, without T4.
+
+* Done when: the reads counted by source (step 5), the options costed, and
+  Frans's choice. The change itself is a step of its own after that.
+* Size: M for the investigation.
 
 
 Order
 -----
 
-1, 2 and 3 in that order: the deadline needs 005-31, and step 2 shows the
-take before and after it. Step 4 can go beside 2 and 3, once D1 has fixed
-the deadline's rule, which it must match. Step 5 after 3, as it measures
-the startup that the deadline bounds.
+Since the review (007-04):
 
-D1 is decided (the deadline at 2 × sd), so all five steps stand.
+* 005-49 first, as its entry says: before steps 3 and 4.
+* Step 5 now, beside 005-49 (scheduled for 2026-10-27, 04:00): it needs neither 005-49 nor the
+  deadline, and it shows where a startup's time goes at 50, 200 and 1000
+  MB, warm and cold, which step 6 and the promise need. Step 6's count
+  comes from its runs.
+* Step 2's runs left after 005-49's first step, on its version of
+  WriteBench, in the background: they count, they do not time.
+* D4 and step 3 after 005-49's recommendation; step 2's runs again after
+  step 3.
+* Step 4 after step 3's design, which it must match.
+* Step 6 after D5, from step 5's count.
+
+Before the review: 1, 2 and 3 in that order, 4 beside 2 and 3 once D1 had
+fixed the deadline's rule, and 5 after 3.
 
 
 Decisions
@@ -189,22 +293,61 @@ Decisions
 
 * 005-31, option A: decided, go (Frans, 2026-10-24); done (2026-10-24).
 * D1 of 007-01: the deadline, with d_h = 2 × sd as a constant factor:
-  decided (Frans, 2026-10-24, "As you propose."); not started.
-* D3 of 007-01, bytes or estimated time: not needed for this plan.
+  decided (Frans, 2026-10-24, "As you propose."); not started. Since 007-04
+  it is the backstop of the take that 005-49 recommends: that take must
+  still take every transaction that begins at least d_h before the end.
+* D3 of 007-01, bytes or estimated time: not needed for this plan. 006-06
+  (question 3) asks it again, for fast restart.
 * Steps 2 to 5 before or after release 2026.1 (item 008): after (Frans,
-  2026-10-25, "After the release"). The release ships with the take as it
-  is, and says so: README.md, and docs/levels.md, "Bounds, measured".
+  2026-10-25, "After the release"). The release shipped with the take as
+  it is, and says so: README.md, and docs/levels.md, "Bounds, measured".
+  It is out (2026-10-25).
+* The bursts as an entry of their own: yes (Frans, 2026-10-26: "Yes,
+  register the burst entry."), 005-49, before steps 3 and 4.
+* Open since step 1: a dirty limit of 1/8 of the record limit instead of
+  15/16, if step 3 or 4 needs it.
+* **D4 (new, 2026-10-26): how a decrease of the startup distance meets the
+  deadline** (007-04, 6 and 7). To decide with 005-49's recommendation,
+  before step 3.
+  * A. At once: the transaction that `setStartupDistance` runs takes every
+    transaction that the new d_h makes due. One call does fast restart's
+    "write D now". But one commit may write hundreds of MB of index nodes
+    (D held up to 1.57 GB at 1000 MB and 50M keys), while the other
+    writers wait, and the readers of the stream's last file (005-46).
+  * B. In steps: `setStartupDistance` lowers the distance a little at a
+    time, each step with its own transaction and the write lock released
+    between them, so that every record stays short, and returns when the
+    section is below the new d_h. Its Javadoc asks callers for such steps
+    today ("no more than 10M for every call"). A take paced by 005-49 may
+    do the same by itself, if d_h comes down gradually.
+  * C. As today: the steps are the caller's business, as the Javadoc says,
+    and the deadline acts at once on whatever the caller does.
+
+  Recommended: B. Fast restart gets one call to wait for, and every commit
+  stays in proportion to its own size, as Frans asks of a user operation
+  (005-49). Step 2's runtime decrease gives the sizes of the steps.
+  Decided (Frans, 2026-10-26, "D4:B."): B.
+* **D5 (new, 2026-10-26): step 6, fewer random reads at startup**: in this
+  plan, as proposed, or as an entry of its own. Either way, its count goes
+  with step 5's runs. Recommended: in this plan, since a startup time that
+  holds from a cold disk needs it. Decided (Frans, 2026-10-26, "D5: as
+  recommended."): in this plan.
 
 
 After the plan
 --------------
 
 * T4 (007-01, section 6): a bound on D, for the exact still-dirty test
-  first. It bounds the records at the ends of the section and the memory
-  that D pins.
-* The trace checker's comparison of the startup pos (after step 4).
+  first. It bounds the records at the ends of the section, the memory that
+  eviction cannot free (with handles, the resident bytes follow D once D
+  outgrows the budget), and the cold startup's random reads, unless step 6
+  removes them (007-04, 3 and 4). Steps 2 and 5 give its numbers at 50 to
+  1000 MB.
+* The trace checker's comparison of the startup pos (after step 4, and
+  after 009's step 4c).
 * The promise in the user documentation: the Pub API's startup distance,
-  and docs/levels.md.
+  and docs/levels.md, per startup distance, warm and cold; fast restart
+  (006-06) for planned restarts at large distances.
 
 
 How to work

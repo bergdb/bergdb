@@ -1,7 +1,7 @@
 005-38. Investigate writes at scale
 ==================================
 
-Status: open. Kind: investigate. Created 2026-10-24.
+Status: done (2026-10-26; see Outcome). Kind: investigate. Created 2026-10-24.
 
 Found in item 004's scale tests
 ([004-02](../004-indirect-swizzling/02-scale-tests.md), sections 10.5.4
@@ -98,3 +98,44 @@ Size and order
 M. After the decision of 004-03 to make eviction incremental first, but
 before the Lean physical layer is redone for that: if the write path's fix
 changes what is pinned or written, the eviction design must know.
+
+
+Outcome
+-------
+
+2026-10-26, by Claude (Opus 5.5, Claude Code), with Frans; closed at his
+request ("We have enough to conclude that writes-at-scale is not really a
+problem as long as the startup distance is set appropriately. [...] the
+current default size (30) is good."). The report:
+[38-writes-at-scale/report.md](38-writes-at-scale/report.md); the tool,
+its runs and outputs in [38-writes-at-scale/](38-writes-at-scale/).
+
+* **The stream's growth was the startup distance of 10 MB.** A put costs
+  about one node write at each level of the tree with more nodes than the
+  puts in a window (question 1: the leaves and the inner nodes above them,
+  in about equal parts). Random updates at a fixed size, bytes of stream a
+  put, node size 30: 681, 373 and 180 at 50, 200 and 1000 MB for 10M keys;
+  1,013, 673 and 299 for 50M keys (at 10 MB: 920 and 1,219). The cost
+  grows slowly with the database. The fix is a startup distance that suits
+  the database's size: 200 to 1000 MB from about 10M keys (Frans's note
+  above).
+* **Question 2:** the transaction size does not matter; sequential keys
+  cost 90 bytes a key; node sizes 14 and 62 are within 30 percent of 30,
+  better or worse depending on the startup distance; the default, 30,
+  stays.
+* **Questions 3 and 4:** the time was eviction's (009-03, above). Loads of
+  30M and 100M keys were not run again.
+* **Question 5:** not needed. Delta writes of nodes (as Berkeley DB Java
+  Edition's BIN-deltas), fewer TIME klongs and an exact still-dirty test
+  are noted in the report, section 8.
+* **The price of a large startup distance:** D pins more (1.16 GB of node
+  bytes on average at 50M keys and 1000 MB), the startup section overshoots
+  the distance (up to 1.65 to 2.6 times, 007-03), startup takes longer
+  ([006-06](../006-2026-q4/06-fast-restart.md), fast restart), and the
+  index is written in bursts (report, section 5).
+* **Found on the way:** the bursts, which Frans wants avoided ("I like
+  smooth operation. Good worst case behaviour."), now
+  [005-49](49-smooth-index-writes.md), which 007-03's step 3 waits for; and
+  a database starts only with the node size it was written with, another
+  size giving what looks like a corrupt stream, now
+  [005-50](50-fix-node-size-start.md) (report, section 6).

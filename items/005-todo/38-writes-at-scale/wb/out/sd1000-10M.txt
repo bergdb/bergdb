@@ -1,0 +1,23 @@
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+500000 keys: B/put 71 = value 68 + key nodes 0 + top 0 + dirty list 3 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+1000000 keys: B/put 70 = value 68 + key nodes 0 + top 0 + dirty list 2 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+1500000 keys: B/put 71 = value 68 + key nodes 0 + top 0 + dirty list 2 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+2000000 keys: B/put 71 = value 68 + key nodes 0 + top 0 + dirty list 3 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+2500000 keys: B/put 71 = value 68 + key nodes 0 + top 0 + dirty list 3 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+3000000 keys: B/put 71 = value 68 + key nodes 0 + top 0 + dirty list 3 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+3500000 keys: B/put 70 = value 68 + key nodes 0 + top 0 + dirty list 2 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+4000000 keys: B/put 71 = value 68 + key nodes 0 + top 0 + dirty list 3 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+4500000 keys: B/put 71 = value 68 + key nodes 0 + top 0 + dirty list 3 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+5000000 keys: B/put 71 = value 68 + key nodes 0 + top 0 + dirty list 3 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+5500000 keys: B/put 71 = value 68 + key nodes 0 + top 0 + dirty list 2 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+6000000 keys: B/put 70 = value 68 + key nodes 0 + top 0 + dirty list 2 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+6500000 keys: B/put 71 = value 68 + key nodes 0 + top 0 + dirty list 2 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+7000000 keys: B/put 71 = value 68 + key nodes 0 + top 0 + dirty list 3 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+7500000 keys: B/put 71 = value 68 + key nodes 0 + top 0 + dirty list 3 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+8000000 keys: B/put 71 = value 68 + key nodes 0 + top 0 + dirty list 3 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+8500000 keys: B/put 71 = value 68 + key nodes 0 + top 0 + dirty list 3 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+9000000 keys: B/put 71 = value 68 + key nodes 0 + top 0 + dirty list 3 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+9500000 keys: B/put 71 = value 68 + key nodes 0 + top 0 + dirty list 3 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+10000000 keys: B/put 71 = value 68 + key nodes 0 + top 0 + dirty list 3 + rec other 0 + meta 0; nodes/put top 0.000; still dirty 0.000/put; writes/distinct 0.00; records 500
+total: 10000000 keys, stream 706849160 bytes, 70.7 B/key, 30.5 s
+WRITEBENCH OK

@@ -105,3 +105,6 @@ Index
 * **009-handles** (open). Handles in BergDB, from 004's direction:
   eviction with bounded work and no stop-the-world. The plan, the work on
   `main` and on the branch `009-handles`, the measurements, the outcome.
+* **010-principles** (open). BergDB's design principles, in Frans's
+  words, P1 to P11: among them no stop-the-world, a deterministic stream,
+  calm when not used, and maintenance proportional to the user's work.
