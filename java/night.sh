@@ -119,4 +119,12 @@ else
     echo "NIGHT FAILED:$FAILED ($(( ($(date +%s) - START) / 60 )) minutes)" >> $REPORT
 fi
 cat $REPORT
+
+# One line in news.md, Frans's morning news (AGENTS.md, "News"; tools/news.sh).
+if [ -f "$REPO/tools/news.sh" ]; then
+    if [ -z "$FAILED" ]; then st=OK; else st=FAILED; fi
+    sh "$REPO/tools/news.sh" "$st" night.sh \
+        "$(tail -1 $REPORT) on $(sed -n 's/^Commit: \([0-9a-f]*\) .*/\1/p' $REPORT). Report: java/build/night/$(basename $RUN)/report.txt" \
+        || echo "night.sh: news.sh failed"
+fi
 [ -z "$FAILED" ]

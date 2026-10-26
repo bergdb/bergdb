@@ -31,6 +31,16 @@ algorithm. [README.md](README.md) describes the repo; start reading at
   and is started by hand.
 - Do not edit a shell script while it runs; `sh` reads it as it goes.
 
+## News
+
+- `news.md` (not tracked by Git) is Frans's morning news of background work:
+  `night.sh`, scheduled runs, unattended sessions. Add an entry with
+  `tools/news.sh STATUS SOURCE TEXT` when such work finishes, fails, or stops
+  for Frans's decision; STATUS is `OK`, `FAILED` or `needs a look`. One or two
+  lines and a reference (an item such as `012-03`, a file, a commit): the
+  details belong in the item. An unattended session ends its night with a
+  summary entry. The helper drops `OK` entries after 3 weekdays.
+
 ## General
 
 - Preserve unrelated worktree changes.
