@@ -199,11 +199,13 @@ jar `274e4e46`), and again on s1, 2026-10-26, 01:38 to 01:48:
 
 With ZGC the longest batch fell from 46 to 8 to 11 ms of wall time, and the
 longest get and single-put commit are 40 to 52 ms. What is left on s1 is not
-the collector (ZGC's pauses: 0.03 ms) and not a batch: the readers' wait for
-the writer's `fsync` (005-46), which also gave this run's waits of 1.4 and
-2.7 s at 3d with transactions of 1,000 puts, and two CPUs shared by two
-busy readers, the writer, the eviction thread and the collector's threads.
-With G1, its pauses (a batch's wall time includes them).
+a batch, and not the collector's pauses (at most 0.04 ms); ZGC stalled
+allocations three times, 42 to 47 ms, at the start of a phase at 100 MB, not
+when the longest waits were. It is the readers' wait for the writer's
+`fsync` (005-46), which also gave the waits of 1.4 and 2.7 s at 3d with
+transactions of 1,000 puts, and two CPUs shared by two busy readers, the
+writer, the eviction thread and the collector's threads. With G1, its
+pauses (a batch's wall time includes them).
 
 
 # 5. F53's timed block
