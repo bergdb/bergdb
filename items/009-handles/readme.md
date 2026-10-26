@@ -276,3 +276,16 @@ quick and conformance.sh evict 3 (C-H 0 of 10,321). Histories are compared
 by their entry count, not their contents (a hash is possible; Frans asked
 for more on it).
 
+2026-10-26, 13:40. Frans on the histories: "Use a hash." Done by the same
+agent: C-H compares each object's history by its contents too, an FNV-1a
+64-bit hash of its entries in the model's terms (the encoding field by field
+in TraceExport.historyHash, lean/Check/Trace.lean and
+docs/level2-alignment.md 9.2), a canonical object against its node in P and
+a snapshot against the version at its position; a differing count and
+differing contents give different messages. badhash.trace and eight content
+mutations of a real trace, each with the right count, are rejected.
+conformance.sh evict: C-H 0 of 3445 transactions fail, 106,510 histories
+compared; the agent's gates (before-commit, level2 to level4 quick,
+conformance.sh evict 3, the trace tests) pass, and here lake build, the
+trace tests and the evict set again.
+

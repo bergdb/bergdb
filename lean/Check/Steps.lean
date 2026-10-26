@@ -492,10 +492,11 @@ def showRec (o : Option Nat) (dflt : String) : String :=
 model's memory with handles (`HMem`, SIS/Handle.lean; the mapping α of
 docs/handles-alignment.md, section 2): the objects by their numbers, each with its pointers;
 the handles by their numbers, a loading one as live (the model has no LOADING state); the
-table. The trace gives an object's number of entries, not its history: a canonical object
-gets its node's history in P (g), a snapshot the history of the version at its position
-(verAt); C-H compares the numbers. s is Rule R's startup pos. Java has no object for a virtual
-root (TopDs stands for it, register R7), so the root's address is 0, which no object has. -/
+table. The trace gives an object's number of entries and their hash, not its history: a
+canonical object gets its node's history in P (g), a snapshot the history of the version at
+its position (verAt); C-H compares the numbers and the hashes. s is Rule R's startup pos.
+Java has no object for a virtual root (TopDs stands for it, register R7), so the root's
+address is 0, which no object has. -/
 def toHMem (g : NodeId → Option (Node BVal)) (verAt : Nat → NodeId → Option (Version BVal))
     (s : Nat) (r : TRec) : HMem BVal :=
   let ptrsOf : Std.HashMap Nat (Array (NodeId × HPtr)) := r.hptrs.foldl (fun m q =>
@@ -513,16 +514,18 @@ def toHMem (g : NodeId → Option (Node BVal)) (verAt : Nat → NodeId → Optio
     nextHandle := r.handles.foldl (fun n h => max n (h.num + 1)) 1 }
 
 /-- What C-H met in run E's states (bergdb item 009, step 4c), besides failures: the pointers
-it checked against the record rule; and, as `pointCounts` of SIS/HandleExample.lean for the
-model's runs, how often Java's states reach the cases that the model's runs found: snapshots;
-snapshots, after a restart, of nodes with a version in the startup section (where `HRuleROK`
-says something); pointers whose handle holds a snapshot (where `HFastOK` does); pointers
-checked whose record is their handle's written position, newer than their reference after Rule
-R (choice 1 of SIS/Handle.lean), and those of them whose reference is a vpos (open point 3 of
-02, section 7); pointers whose handle holds a snapshot and whose reference is older than the
-pointee's newest version in the startup section (open point 1). -/
+it checked against the record rule, the objects whose histories it compared by their hashes;
+and, as `pointCounts` of SIS/HandleExample.lean for the model's runs, how often Java's states
+reach the cases that the model's runs found: snapshots; snapshots, after a restart, of nodes
+with a version in the startup section (where `HRuleROK` says something); pointers whose handle
+holds a snapshot (where `HFastOK` does); pointers checked whose record is their handle's
+written position, newer than their reference after Rule R (choice 1 of SIS/Handle.lean), and
+those of them whose reference is a vpos (open point 3 of 02, section 7); pointers whose handle
+holds a snapshot and whose reference is older than the pointee's newest version in the
+startup section (open point 1). -/
 structure HCounts where
   checked : Nat := 0
+  hashed : Nat := 0
   snaps : Nat := 0
   snapsSection : Nat := 0
   ptrSnaps : Nat := 0
@@ -531,7 +534,7 @@ structure HCounts where
   olderSnap : Nat := 0
 
 def HCounts.add (a b : HCounts) : HCounts :=
-  { checked := a.checked + b.checked, snaps := a.snaps + b.snaps,
+  { checked := a.checked + b.checked, hashed := a.hashed + b.hashed, snaps := a.snaps + b.snaps,
     snapsSection := a.snapsSection + b.snapsSection, ptrSnaps := a.ptrSnaps + b.ptrSnaps,
     written := a.written + b.written, writtenVpos := a.writtenVpos + b.writtenVpos,
     olderSnap := a.olderSnap + b.olderSnap }
@@ -547,10 +550,11 @@ state's startup read, for Rule R, and first the stream's first record. By invari
   node; one entry per node; every live handle is the table's; a dead handle holds no object;
   every object is held by its node's live handle; a pointer's handle is of its pointee.
   Numbers do not repeat.
-* `HCanOK`: a canonical object holds its node's history (as many entries) and is at its
-  node's latest record; every node of D has a canonical object.
-* `HSnapOK`: a snapshot is at a record that holds a version of its node, with as many
-  entries.
+* `HCanOK`: a canonical object holds its node's history and is at its node's latest record;
+  every node of D has a canonical object. The history is compared by its number of entries,
+  and, if the trace gives it, by its hash (`historyHash`).
+* `HSnapOK`: a snapshot is at a record that holds a version of its node, with the version's
+  history: as many entries and, if the trace gives it, the same hash.
 * `HSlotOK`, the record rule: a canonical object of a written node current at i or in D has a
   pointer for every pointee of its history that is an index node, and each such pointer gives
   the pointee's latest version (`HMem.refOf`, the model's record rule); one for a pointee in D
@@ -631,6 +635,8 @@ def handleFailures (sp : Spec BVal Nat) (g : NodeId → Option (Node BVal)) (now
       if n.isData then some s!"canonical object {o.num} of {o.node}, a data node"
       else if o.entries != n.hist.length then
         some s!"the canonical object of {o.node} has {o.entries} entries, its node in P {n.hist.length}"
+      else if o.hash.any (· != (historyHash n.hist).toNat) then
+        some s!"the canonical object of {o.node} (object {o.num}) has as many entries as its node in P, other ones: the history hash {o.hash.getD 0}, P's {(historyHash n.hist).toNat}"
       else if o.pos != lvRec o.node then
         some s!"the canonical object of {o.node} is at {showRec o.pos "no position"}, its latest version {showRec (lvRec o.node) "none"}"
       else none)
@@ -643,8 +649,12 @@ def handleFailures (sp : Spec BVal Nat) (g : NodeId → Option (Node BVal)) (now
     | none => some s!"snapshot {o.num} of {o.node} has no position"
     | some p => match verAt p o.node with
       | none => some s!"the snapshot of {o.node} is at R({p}), which holds no version of it"
-      | some w => if w.hist.length == o.entries then none
-        else some s!"the snapshot of {o.node} at R({p}) has {o.entries} entries, the version {w.hist.length}")
+      | some w =>
+        if w.hist.length != o.entries then
+          some s!"the snapshot of {o.node} at R({p}) has {o.entries} entries, the version {w.hist.length}"
+        else if o.hash.any (· != (historyHash w.hist).toNat) then
+          some s!"the snapshot of {o.node} at R({p}) (object {o.num}) has as many entries as the version, other ones: the history hash {o.hash.getD 0}, the version's {(historyHash w.hist).toNat}"
+        else none)
   -- HSlotOK, by the model's record rule
   let heldCanonical := fun (q : HPtr) => m.holdsCanonical q
   let writtenOf := fun (q : HPtr) => (q.handle.bind m.handle?).bind (·.written)
@@ -740,6 +750,9 @@ def handleFailures (sp : Spec BVal Nat) (g : NodeId → Option (Node BVal)) (now
     | none => false))
   let counts : HCounts :=
     { checked := slotRes.foldl (fun n x => n + x.2.1) 0,
+      hashed := (r.hobjs.filter (fun o => o.hash.isSome && if o.canonical then
+          ((g o.node).map (·.hist.length)) == some o.entries
+        else ((o.pos.bind (verAt · o.node)).map (·.hist.length)) == some o.entries)).size,
       snaps := snapObjs.length,
       snapsSection := if S0.length ≤ 1 then 0
         else (snapObjs.filter (fun p => (newest S0 s p.2.node).isSome)).length,

@@ -113,13 +113,15 @@ structure THandle where
 
 /-- An object of run E's state (a HOBJ line; bergdb item 009, step 4c): its number in the
 state, its node, whether it is canonical, the record of its position (none if it has not been
-written: a vpos), and the number of entries of its history. -/
+written: a vpos), the number of entries of its history, and the history's hash
+(`historyHash`; none if the line has none, as the first traces with handle lines). -/
 structure TObj where
   num : Nat
   node : NodeId
   canonical : Bool
   pos : Option Nat
   entries : Nat
+  hash : Option Nat := none
   deriving Inhabited
 
 /-- A pointer of an object of run E's state to an index node (a HPTR line; bergdb item 009,
@@ -269,10 +271,17 @@ def parseLine (t : Trace) (n : Nat) (line : String) : Trace :=
           (w != "-" && w.toNat?.isNone) then bad "bad HANDLE"
       else modCur t (fun r => { r with handles := r.handles.push (THandle.mk h y st a.toNat? w.toNat?) })
     | _, _ => bad "bad HANDLE"
-  | ["HOBJ", a, y, k, p, e] => match a.toNat?, y.toNat?, e.toNat? with
+  | "HOBJ" :: a :: y :: k :: p :: e :: hs => match a.toNat?, y.toNat?, e.toNat? with
     | some a, some y, some e =>
-      if !(["canon", "snap"].contains k) || (p != "-" && p.toNat?.isNone) then bad "bad HOBJ"
-      else modCur t (fun r => { r with hobjs := r.hobjs.push (TObj.mk a y (k == "canon") p.toNat? e) })
+      let hash := match hs with
+        | [h] => h.toNat?.map some
+        | [] => some none
+        | _ => none
+      match hash with
+      | some hash =>
+        if !(["canon", "snap"].contains k) || (p != "-" && p.toNat?.isNone) then bad "bad HOBJ"
+        else modCur t (fun r => { r with hobjs := r.hobjs.push (TObj.mk a y (k == "canon") p.toNat? e hash) })
+      | none => bad "bad HOBJ"
     | _, _, _ => bad "bad HOBJ"
   | ["HPTR", a, y, rr, h] => match a.toNat?, y.toNat? with
     | some a, some y =>
@@ -309,6 +318,30 @@ def parseLine (t : Trace) (n : Nat) (line : String) : Trace :=
 
 def parseTrace (s : String) : Trace :=
   ((s.splitOn "\n").zipIdx).foldl (fun t (l, n) => parseLine t (n + 1) l) {}
+
+/-! ## The hash of a history (bergdb item 009, step 4c) -/
+
+/-- An entry value as on an H or ADD line (9.1): `K c y`, `D n c1 ... cn`, `R y`, `S j z`,
+`T z`, `V h`. -/
+def showVal : BVal → String
+  | .key c y => s!"K {c} {y}"
+  | .del cs => " ".intercalate (s!"D {cs.length}" :: cs.map toString)
+  | .rootKey y => s!"R {y}"
+  | .skip j z => s!"S {j} {z}"
+  | .top z => s!"T {z}"
+  | .data h => s!"V {h}"
+
+/-- The hash of a history, as TraceExport's `historyHash` writes it on a HOBJ line: FNV-1a
+with 64 bits (offset basis 0xcbf29ce484222325, prime 0x100000001b3, arithmetic modulo 2^64,
+`UInt64`) over the bytes of the entries in their order, each as on an H line, then a newline
+(0x0a): the time (the record index), a space, and the value (`showVal`: K c y, a key klong
+with compare value c and child y; D n c1 ... cn, a delete bitmap with the n compare values it
+deletes, ascending; R y, a top node's root pointer; S j z, its skip pointer j; T z, a root
+entry; V h, a value's data, h its hash); numbers in decimal ASCII, tokens separated by one
+space. The trace writes it as an unsigned decimal. -/
+def historyHash (h : History BVal) : UInt64 :=
+  h.foldl (fun x e => s!"{e.time} {showVal e.val}\n".toUTF8.foldl
+    (fun x b => (x ^^^ b.toUInt64) * 0x100000001b3) x) 0xcbf29ce484222325
 
 /-! ## The model's objects -/
 

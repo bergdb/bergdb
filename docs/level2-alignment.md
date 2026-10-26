@@ -685,21 +685,27 @@ moments as the SLOT lines and after them:
                                  of run E: state live, loading or dead; it
                                  holds object a (- for none); w is the record
                                  of its written position (- for none)
-    HOBJ a y kind r e            object a of node y, a numbered in its state:
+    HOBJ a y kind r e x          object a of node y, a numbered in its state:
                                  kind canon or snap; r is the record of its
                                  position (- if it has none: a vpos); e is the
-                                 number of entries of its history
+                                 number of entries of its history, and x the
+                                 history's hash (below; first traces: none)
     HPTR a y r h                 a pointer of object a to index node y: its
                                  reference names record r (- for a vpos); it
                                  holds handle h (- for none)
 
 The handles are the table's and those that a pointer of an object holds; the
 objects, those that the handles hold, the super root and D's. Values have no
-handles and are left out. The checker's C-H checks these lines against the
-model's invariants with handles (lean/SIS/HandleTheorems.lean). The exporter's
-`ereads=N` adds N lookups at random times after each transaction of run E
-(a `PROBE` fail line if one is wrong), and `erestart=K` a restart of run E
-after every K-th transaction; the lines of that transaction are then the
+handles and are left out. A history's hash is FNV-1a with 64 bits (offset
+basis 0xcbf29ce484222325, prime 0x100000001b3, modulo 2^64) over its entries
+in order, each written as on an H line, `t entry` with the tokens of 9.1 in
+decimal ASCII and one space between them, and a newline after it; written as
+an unsigned decimal (TraceExport's `historyHash`, the checker's `historyHash`
+in lean/Check/Trace.lean). The checker's C-H checks these lines against the
+model's invariants with handles (lean/SIS/HandleTheorems.lean). The
+exporter's `ereads=N` adds N lookups at random times after each transaction of
+run E (a `PROBE` fail line if one is wrong), and `erestart=K` a restart of run
+E after every K-th transaction; the lines of that transaction are then the
 startup's state, and HMEM's k is the transaction's last record.
 
 FIRST lines come after the `PROBE` lines of their transaction. With `live=1`,

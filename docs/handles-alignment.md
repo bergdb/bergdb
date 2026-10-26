@@ -123,8 +123,11 @@ for Java.
   checker's C-H (`handleFailures`, lean/Check/Steps.lean) checks it against
   the invariants of HandleTheorems.lean, which the model's theorems prove:
   `HTableOK` (the table and the handles, a pointer's handle of its
-  pointee); `HCanOK` and `HSnapOK` (by position, and by the number of entries
-  of an object's history); `HSlotOK`, with the model's own record rule
+  pointee); `HCanOK` and `HSnapOK` (by position, and an object's history by
+  its number of entries and its contents: a hash of the entries, which the
+  exporter writes and the checker computes from P's node or the stream's
+  version, FNV-1a with 64 bits over the entries as on the trace's H lines;
+  level2-alignment.md, 9.2); `HSlotOK`, with the model's own record rule
   (`HMem.refOf`) on Java's pointers, handles and objects; `HRuleROK`;
   `HLiveWrittenOK`; `HWrittenOK`, and that a pointer names a pointee of its
   object's history; `HFastOK`; T-PIN's first part, every object outside the
@@ -140,15 +143,16 @@ for Java.
   nodes in the startup section after a restart; open point 1's case (a
   snapshot that a pointer older than the section names) does not occur, as
   in the model's runs, since the slow path writes Rule R back.
-  What C-H does not check: the histories themselves (only their number of
-  entries; C-S checks run A's, and run E's stream is run A's byte for byte);
-  values, which have no handles in Java (R1; C-P checks their slots); the
-  virtual root's object, which Java does not have (R7); the operations'
-  interleavings (R2: it sees states between transactions); the CLOCK bit and
-  the bytes (R3); T-PIN's second part, which is the definition of
-  `HMem.evict`. A pointer that leads to no object that may serve it and
-  whose reference is before the stream's first record (reclaim's cut, M33)
-  is not checked against the record rule, as C-P's dead slots.
+  What C-H does not check: values, which have no handles in Java (R1; C-P
+  checks their slots); the virtual root's object, which Java does not have
+  (R7); the operations' interleavings (R2: it sees states between
+  transactions); the CLOCK bit and the bytes (R3); T-PIN's second part,
+  which is the definition of `HMem.evict`. A history is compared by its hash,
+  not entry by entry: a history with other entries and the same hash would
+  pass, about one chance in 2^64 for a given pair. A pointer that leads to no
+  object that may serve it and whose reference is before the stream's first
+  record (reclaim's cut, M33) is not checked against the record rule, as
+  C-P's dead slots.
 * **The audit** (`core/Audit.java`): INV-CAN, the pins and INV-SLOT as
   before, and the handles: a live handle that a pointer of a resident object
   holds is the table's, a dead one has no object.

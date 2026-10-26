@@ -1084,4 +1084,8 @@ found each:
   a restart Rule R is R(0)'s; and the exporter takes the write lock for the
   state, since the capacity controller's eviction thread may run batches
   after a transaction (step 3d), and the SLOT lines were read without it.
+  Frans, on how C-H compares an object's history with the model's: "Use a
+  hash." The HOBJ line has the number of entries and a hash of them (FNV-1a
+  with 64 bits over the entries as on the trace's H lines), which C-H
+  compares with P's node or the stream's version.
 

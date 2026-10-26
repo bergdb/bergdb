@@ -20,9 +20,9 @@
 #   stream must be run A's, and whose slots (SLOT lines) the checker's C-P
 #   checks against the model's INV-SLOT; a trace without SLOT lines fails.
 #   Since bergdb item 009, step 4c, run E also writes its handle state (HMEM,
-#   HTABLE, HANDLE, HOBJ and HPTR lines), which the checker's C-H checks
-#   against the model's invariants with handles; a trace without HANDLE lines
-#   fails. Four of its configurations read between run E's transactions, and
+#   HTABLE, HANDLE, HOBJ and HPTR lines, the objects' histories by their
+#   hashes), which the checker's C-H checks against the model's invariants with
+#   handles; a trace without HANDLE lines fails. Four of its configurations read between run E's transactions, and
 #   three of them restart run E too (TraceExport's ereads and erestart).
 #   Since bergdb 005-04 the small and evict sets each have a configuration
 #   with A6's kind, a segment root that a transaction makes and splits in
@@ -188,7 +188,7 @@ summary() {
     fi
     if [ $1 = evict ]; then
         echo "   C-P: $(grep -h '^C-P slots' $dir/*.check.txt | sed -E 's/.*: ([0-9]+) of ([0-9]+) transactions fail; ([0-9]+) SLOT lines, ([0-9]+) checked.*/\1 \2 \3 \4/' | awk '{f+=$1; t+=$2; n+=$3; c+=$4} END {print f+0 " of " t+0 " transactions fail; " n+0 " SLOT lines, " c+0 " checked"}'); traces without SLOT lines: $(grep -L '^SLOT ' $dir/*.trace | wc -l | tr -d ' ')"
-        echo "   C-H: $(grep -h '^C-H handles' $dir/*.check.txt | sed -E 's/.*: ([0-9]+) of ([0-9]+) transactions fail; ([0-9]+) states, ([0-9]+) handles, ([0-9]+) objects, ([0-9]+) pointers, ([0-9]+) checked.*/\1 \2 \3 \4 \5 \6 \7/' | awk '{f+=$1; t+=$2; n+=$3; h+=$4; o+=$5; p+=$6; c+=$7} END {print f+0 " of " t+0 " transactions fail; " n+0 " states, " h+0 " handles, " o+0 " objects, " p+0 " pointers, " c+0 " checked by the record rule"}'); traces without HANDLE lines: $(grep -L '^HANDLE ' $dir/*.trace | wc -l | tr -d ' ')"
+        echo "   C-H: $(grep -h '^C-H handles' $dir/*.check.txt | sed -E 's/.*: ([0-9]+) of ([0-9]+) transactions fail; ([0-9]+) states, ([0-9]+) handles, ([0-9]+) objects, ([0-9]+) histories compared, ([0-9]+) pointers, ([0-9]+) checked.*/\1 \2 \3 \4 \5 \6 \7 \8/' | awk '{f+=$1; t+=$2; n+=$3; h+=$4; o+=$5; x+=$6; p+=$7; c+=$8} END {print f+0 " of " t+0 " transactions fail; " n+0 " states, " h+0 " handles, " o+0 " objects, " x+0 " histories compared, " p+0 " pointers, " c+0 " checked by the record rule"}'); traces without HANDLE lines: $(grep -L '^HANDLE ' $dir/*.trace | wc -l | tr -d ' ')"
         echo "   C-H cases: $(grep -h '^C-H cases' $dir/*.check.txt | sed -E 's/.*: ([0-9]+) snapshots, ([0-9]+) of nodes.*; ([0-9]+) pointers to snapshots, ([0-9]+) with a reference.*; ([0-9]+) pointers checked written.*, ([0-9]+) with a vpos.*/\1 \2 \3 \4 \5 \6/' | awk '{a+=$1; b+=$2; c+=$3; d+=$4; e+=$5; f+=$6} END {print a+0 " snapshots (" b+0 " of nodes in the startup section after a restart), " c+0 " pointers to snapshots (" d+0 " with a reference older than the section'"'"'s), " e+0 " pointers written with their handle'"'"'s written position (" f+0 " with a vpos)"}')"
     fi
     echo "   C-L: $(grep -h '^C-L' $dir/*.check.txt | awk '{s+=$4} END {print s+0}') of $(grep -h '^C-L' $dir/*.check.txt | awk '{s+=$6} END {print s+0}') FIRST lines fail"

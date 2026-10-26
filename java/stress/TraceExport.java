@@ -89,14 +89,15 @@ import bergdb.stream.MemoryStream;
  * 2): HMEM, the startup the state comes from and the stream's first record; HTABLE, the node
  * table's entries; HANDLE, every handle that the table or a pointer of an object holds, with
  * its node, state, object and written position; HOBJ, every object that a handle holds, and
- * the super root and D's, with its node, whether it is canonical, its position and the number
- * of entries of its history; HPTR, every pointer of an object to an index node, with its
- * pointee, the record it names and the handle it holds. A handle has the same number in every
- * state of run E, an object a number in its state. Values have no handles (009-02, 4.8) and are
- * left out. The checker's C-H checks them against the model's invariants with handles
- * (lean/SIS/HandleTheorems.lean). Run E's reads (ereads) leave versions read in handles, and
- * take pointers that hold dead handles through the slow path; after a restart (erestart) the
- * state recorded for the transaction is the startup's, and HMEM names the record it read last.
+ * the super root and D's, with its node, whether it is canonical, its position, the number of
+ * entries of its history and the history's hash (historyHash); HPTR, every pointer of an
+ * object to an index node, with its pointee, the record it names and the handle it holds. A
+ * handle has the same number in every state of run E, an object a number in its state. Values
+ * have no handles (009-02, 4.8) and are left out. The checker's C-H checks them against the
+ * model's invariants with handles (lean/SIS/HandleTheorems.lean), a history by its hash. Run
+ * E's reads (ereads) leave versions read in handles, and take pointers that hold dead handles
+ * through the slow path; after a restart (erestart) the state recorded for the transaction is
+ * the startup's, and HMEM names the record it read last.
  */
 public class TraceExport {
     final long seed;
@@ -406,27 +407,52 @@ public class TraceExport {
             }
             return result;
         }
-        switch (pn.obj.getType()) {
-        case Node.TYPE_KEY_NODE: {
-            KeyNode k = (KeyNode) pn.obj;
-            int size = k.size;
-            Node[] view = new Node[size];
-            long[] refs = new long[size];
-            for (int i = 0; i < size; i++) {
-                if (Klong.getIntType(k.klongs[i]) != Klong.INT_TYPE_KEY) continue;
-                view[i] = k.getPointerNode(i);
-                refs[i] = view[i] == null ? k.getSerializedRef(i) : k.getPointerPos(i);
+        if (pn.obj.isIndexNode()) return objectEntries(pn.obj, ns, true, "node " + pn.id);
+        List<Ent> result = new ArrayList<Ent>();
+        result.add(new Ent(pn.created, "V " + hash(((ValueNode) pn.obj).getValue())));
+        return result;
+    }
+
+    /**
+     * The entries of index object x (docs, 2.4): a key node's from its klongs and pointers, a
+     * top node's from its pointers; a pointer's pointee from the object a pointer leads to
+     * without a read, else from the reference a record would get. memoryOnly: run A's, whose
+     * pointers all lead to objects (an error otherwise).
+     */
+    List<Ent> objectEntries(Node x, NodeStream ns, boolean memoryOnly, String context) {
+        if (x instanceof TopNode) return topEntries((TopNode) x, memoryOnly, ns, context);
+        KeyNode k = (KeyNode) x;
+        int size = k.size;
+        Node[] view = new Node[size];
+        long[] refs = new long[size];
+        for (int i = 0; i < size; i++) {
+            if (Klong.getIntType(k.klongs[i]) != Klong.INT_TYPE_KEY) continue;
+            view[i] = k.getPointerNode(i);
+            refs[i] = view[i] == null ? k.getSerializedRef(i) : k.getPointerPos(i);
+        }
+        return keyEntries(k, view, refs, size, ns, memoryOnly, context);
+    }
+
+    /**
+     * The hash of a history (bergdb item 009, step 4c; the checker's historyHash in
+     * lean/Check/Trace.lean computes the same): FNV-1a with 64 bits (offset basis
+     * 0xcbf29ce484222325, prime 0x100000001b3, arithmetic modulo 2^64) over the bytes of the
+     * entries in their order, each as on an H line, then a newline (0x0a): the time (the
+     * record index), a space, and the value, one of K c y (a key klong: compare value c,
+     * child y), D n c1 ... cn (a delete bitmap: the n compare values it deletes, ascending),
+     * R y (a top node's root pointer), S j z (its skip pointer j), T z (a root entry) and V h
+     * (a value's data, h its hash); numbers in decimal ASCII, tokens separated by one space.
+     * Written as an unsigned decimal.
+     */
+    static long historyHash(List<Ent> h) {
+        long x = 0xcbf29ce484222325L;
+        for (Ent e : h) {
+            for (byte b : (e + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
+                x ^= (b & 0xff);
+                x *= 0x100000001b3L;
             }
-            return keyEntries(k, view, refs, size, ns, true, "node " + pn.id);
         }
-        case Node.TYPE_TOP_NODE:
-            return topEntries((TopNode) pn.obj, true, ns, "node " + pn.id);
-        default: {
-            List<Ent> result = new ArrayList<Ent>();
-            result.add(new Ent(pn.created, "V " + hash(((ValueNode) pn.obj).getValue())));
-            return result;
-        }
-        }
+        return x;
     }
 
     /** Adds every node reachable through memory pointers, live or dead, to 'nodes'. */
@@ -1170,9 +1196,12 @@ public class TraceExport {
                         + context + ")");
                 continue;
             }
+            List<Ent> h = objectEntries(x, in.nodeStream(), false, "object of node "
+                    + mid(x.getId()) + ", " + context);
             lines.add("HOBJ " + st.numbers.get(x) + " " + mid(x.getId()) + " "
                     + (x.isCanonical() ? "canon" : "snap") + " "
-                    + recordOrNone(x.getSpos(), context) + " " + entryCount(x));
+                    + recordOrNone(x.getSpos(), context) + " " + h.size() + " "
+                    + Long.toUnsignedString(historyHash(h)));
         }
         for (Node x : st.objects) {
             if (!x.isIndexNode()) continue;
@@ -1203,30 +1232,6 @@ public class TraceExport {
     /** The record of the version at stream position pos, or - for a vpos or none. */
     String recordOrNone(long pos, String context) {
         return Spos.isValid(pos) && !Spos.isVpos(pos) ? recordOfPos(pos, context) : "-";
-    }
-
-    /**
-     * The number of entries of index object x's history in the model (keyEntries and
-     * topEntries): a key node's key and delete klongs; a top node's root pointer and its skip
-     * pointers.
-     */
-    static int entryCount(Node x) {
-        int count = 0;
-        if (x instanceof KeyNode) {
-            KeyNode k = (KeyNode) x;
-            int size = k.size;
-            for (int i = 0; i < size; i++) {
-                int type = Klong.getIntType(k.klongs[i]);
-                if (type == Klong.INT_TYPE_KEY || type == Klong.INT_TYPE_DELETE_BITMAP) count++;
-            }
-        } else {
-            TopNode tn = (TopNode) x;
-            count = 1;
-            for (int j = 0; j < tn.pointersLength; j++) {
-                if (tn.pointers[j] != null || tn.pointersPos[j] != Spos.NULL) count++;
-            }
-        }
-        return count;
     }
 
     /** The first position at which two streams differ, from the later first position of the

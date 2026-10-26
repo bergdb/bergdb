@@ -49,10 +49,11 @@ Checks, per transaction i (R(0) included):
        bergdb item 009, step 4c): the model's invariants with handles
        (SIS/HandleTheorems.lean; `handleFailures`) on Java's states, as the
        model's memory with handles (`toHMem`): the table and the handles
-       (HTableOK), the canonical objects and D (HCanOK, by position and number
-       of entries), the snapshots (HSnapOK), the record rule for the pointers of
-       canonical objects of nodes current at i or in D, computed by the model's
-       `HMem.refOf` (HSlotOK), the snapshots against Rule R (HRuleROK), live
+       (HTableOK), the canonical objects and D (HCanOK, by position, number of
+       entries and the history's hash), the snapshots (HSnapOK, the same), the
+       record rule for the pointers of canonical objects of nodes current at i
+       or in D, computed by the model's `HMem.refOf` (HSlotOK), the snapshots
+       against Rule R (HRuleROK), live
        handles without a written position (HLiveWrittenOK), written positions
        and references that name versions (HWrittenOK), the fast path's test
        (HFastOK), the unpinned objects written (T-PIN); no handle loading, and
@@ -331,7 +332,7 @@ def main (args : List String) : IO UInt32 := do
       IO.println s!"C-P slots (INV-SLOT on run E's states): {cpt.failing} of {total} transactions fail; {slotCount} SLOT lines, {slotChecked} checked (of objects current or in D)"
       for e in cpt.examples do IO.println s!"  {e}"
     if hStates > 0 || cht.failing > 0 then
-      IO.println (s!"C-H handles (the model's invariants with handles on run E's states): {cht.failing} of {total} transactions fail; {hStates} states, {hHandles} handles, {hObjs} objects, {hPtrs} pointers, {hCounts.checked} checked by the record rule" ++
+      IO.println (s!"C-H handles (the model's invariants with handles on run E's states): {cht.failing} of {total} transactions fail; {hStates} states, {hHandles} handles, {hObjs} objects, {hCounts.hashed} histories compared, {hPtrs} pointers, {hCounts.checked} checked by the record rule" ++
         (if cht.byName.isEmpty then "" else s!" ({", ".intercalate (cht.byName.map (fun p => s!"{p.1} {p.2}"))})"))
       for e in cht.examples do IO.println s!"  {e}"
       IO.println (s!"C-H cases (SIS/HandleExample.lean's pointCounts): {hCounts.snaps} snapshots, {hCounts.snapsSection} of nodes in the startup section after a restart; " ++

@@ -332,12 +332,13 @@ Not trusted, tests only:
   writes as the model's memory with handles (the HMEM, HTABLE, HANDLE, HOBJ
   and HPTR lines; `toHMem`, `handleFailures`, after the `Bool` twins of
   SIS/HandleExample.lean): the table and the handles, the canonical objects
-  and D, the snapshots, the record rule by the model's own `HMem.refOf`,
-  the snapshots against Rule R, live handles without a written position,
-  written positions and references that name versions, the fast path's
-  test, T-PIN's unpinned objects written; and how often the states reach
-  the cases of `pointCounts` (test traces `handles.trace` and
-  `badhandle.trace`;
+  and D, the snapshots (an object's history by its number of entries and a
+  hash of them, `historyHash`), the record rule by the model's own
+  `HMem.refOf`, the snapshots against Rule R, live handles without a written
+  position, written positions and references that name versions, the fast
+  path's test, T-PIN's unpinned objects written; and how often the states
+  reach the cases of `pointCounts` (test traces `handles.trace`,
+  `badhandle.trace` and `badhash.trace`;
   [../docs/handles-alignment.md](../docs/handles-alignment.md), section 4).
 * SIS/BoundExample.lean (bergdb item 007): T3 by running. The policy of
   the example of section 7 is a startup distance of two records; on random
@@ -1033,7 +1034,14 @@ transactions (the exporter's `ereads`, `erestart`), so that its states hold
 snapshots and the startups' memories. On `conformance.sh evict` (15
 configurations, 3 seeds): 45 traces, 8,520 states, C-H 0 of 10,321
 transactions fail. No change to the trusted part. `lake build` passes with no
-warnings and no `sorry`.
+warnings and no `sorry`. Then, at Frans's word ("Use a hash."), C-H compares
+an object's history by its contents too: the exporter writes a hash of its
+entries on the HOBJ line (FNV-1a with 64 bits over the entries as on H lines;
+`historyHash` in Check/Trace.lean, the same in TraceExport), and C-H compares
+it with the hash of the node's history in P (a canonical object) or of the
+version at its position (a snapshot); a HOBJ line without a hash is checked
+by the number of entries only. On the evict set (3 seeds) every object's
+history is compared.
 
 Stage 1 of bergdb item 001 is done (2026-10-16): lemma M (`LM_newer`, L2),
 T1-L (`T1_lazy`, L3), CC and T2-L (`CC_canonical`, `T2_lazy`, L4) are proved,
