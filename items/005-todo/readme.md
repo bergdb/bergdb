@@ -36,6 +36,7 @@ Open
 | [005-50](50-fix-node-size-start.md) | Fix | A start with another node size than the stream was written with fails with what looks like a corrupt stream (`StreamFormatException: startup error, node ... not found`); it should fail with a clear error. Only that (005-38) | open |
 | [005-51](51-eviction-on-calls.md) | Fix | Eviction only in response to the calls: the eviction thread wakes once a second while the database is open, also when idle (`evictorLock.wait(1000)`), against 010-P3, calm when not used | open |
 | [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API sets it only at start (`cacheSizeInMb`), against 010-P6; the core has `Eviction.setBudget` (also through JMX). The cache should converge gradually to the new size, with no disruption | open |
+| [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API cannot change it for an existing database (against 010-P6); the core can since 2013-04, through JMX only. A decrease in steps (007-03's D4), measured; options A to D for the Pub API; `Reclaim.initialStartupDistance`. First study, from 010-03, in its directory | open |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
 
 

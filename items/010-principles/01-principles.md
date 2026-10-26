@@ -197,8 +197,8 @@ Where BergDB stands, in item [007](../007-bounds/readme.md):
   startup distance bounds the startup section.
 * BergDB's own take does not keep up yet: 005-38 measured it past 2 × sd
   at 50 and 200 MB (007-04). The plan, 007-03, adds a deadline (D1), after
-  smooth index writes (005-49). A deviation until then; README.md and
-  docs/levels.md say so.
+  smooth index writes (005-49). A deviation until then;
+  [docs/levels.md](../../docs/levels.md), section 5, says so.
 * A cold startup's random reads take minutes on s1 (007-04; 007-03, step
   6).
 
@@ -230,8 +230,8 @@ Where BergDB stands:
   database runs (`Db.setStartupDistance`), and 006-06 (fast restart)
   builds on that. A deviation. On-the-fly changes date from 2013-04, in the
   core and through JMX (`Jmx.DbMonitor`), never in the Pub API; the code is
-  unchanged since. History and options (A to D) for Frans in
-  [010-03](03-startup-distance-on-the-fly.md).
+  unchanged since. Being investigated in
+  [005-53](../005-todo/53-startup-distance-on-the-fly.md).
 * The cache size: set at start only (`cacheSizeInMb`); a change needs a
   restart. A deviation. It should change while the database runs, with no
   disruption: the cache converges gradually to the new size (Frans,

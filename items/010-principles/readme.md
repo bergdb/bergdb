@@ -37,10 +37,8 @@ Files
   quoted with their sources: how they support, refine or contradict P1 to
   P4, the reasons behind P3, the other principles, and candidates for 01.
 * [03-startup-distance-on-the-fly.md](03-startup-distance-on-the-fly.md).
-  010-03, changing the startup distance while the database runs (P6): the
-  history from 2013 in the notes and the old Git, the core and JMX setters
-  of today, what a Pub API method needs (007-03's D4), and options A to D
-  for Frans.
+  010-03, moved to [005-53](../005-todo/53-startup-distance-on-the-fly.md):
+  a link in its place.
 
 
 Log
@@ -69,3 +67,9 @@ distance used to be supported in the 2012 era. Have a look at this with a
 subagent so it does not block our discussion."). It came in 2013-04, in the
 core and through JMX, never in the Pub API. Also 005-52 registered, from
 P6: the cache size changed while the database runs.
+
+2026-10-26. 010-03 moved to a new entry, 005-53, to be investigated
+properly, at Frans's request ("Move 03 contents from 010 principles to a
+new item in 005. This should be investigated properly. In a separate work
+item."). Its contents are 005-53's `history.md`; 03 keeps its number, as a
+link.
