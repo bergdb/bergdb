@@ -54,24 +54,24 @@ import bergdb.stream.SalsaStream;
  * It should not be used directly by users unless they really 
  * need the highest possible performance or some feature not exposed by 
  * the higher level API.
- * This class implements the <i>Core Layer</i>, see below.</p>
+ * This class implements the <i>Core Data API</i>, see below.</p>
  * 
- * <p>The API of the <i>Core Layer</i> consists of the following methods of Db:
+ * <p>The <i>Core Data API</i> consists of the following methods of Db:
  * </p>
  * <ul>
  * <li>getOne()</li>
  * <li>getMany()</li>
- * <li>getTrans(tpos)</li>
- * <li>execute(Transaction)</li>
+ * <li>getTrans()</li>
+ * <li>execute()</li>
  * </ul>
  * 
- * <p>These methods are the only ones that need to be used by a consumer of the 
- * Core Layer once the Db has been started and before it is stopped. This API
- * form a narrow "waist" with a large code base under it and potentially a large code
+ * <p>These methods are the only ones that are called by the consumer of the 
+ * core layer to read and write data.
+ * This API form a narrow waist with a large code base under it and a large code
  * base above it. These methods are believed to be feature complete in the
  * sense that all features we want from the database can be implemented on top
- * of them. Functionality that can be provided by using the Core Layer API,
- * should not offered by this class.</p>
+ * of them. Functionality that can be provided by using the Core API,
+ * should not be offered by this class.</p>
  * 
  * <p>Db shutdown. The Db typically has allocated resources besides memory: 
  * open files, running threads, open sockets for example. These resources are guaranteed
