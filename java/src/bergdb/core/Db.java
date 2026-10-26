@@ -1135,8 +1135,9 @@ public class Db {
      * second. That thread is not a daemon, so a program that returns from main after stop()
      * still writes all it had. close() waits for it.</p>
      * 
-     * <p>Every transaction that has returned is written, as with close(); neither forces
-     * the files to the device, as sync(SyncLevel.STRONG) does. This method returns at once.
+     * <p>Every transaction that has returned is written, as with close(), and with a file
+     * storage forced to the device (FileStream forces every append); only close() waits
+     * for that. This method returns at once.
      * It is safe to call it several times and from different threads; only the first call
      * of stop() or close() has an effect.</p>
      * 

@@ -56,9 +56,9 @@ public interface Database {
      * was lost.
      * </p>
      * 
-     * <p>It does not force the files to the device. Call sync() before stop() when the
-     * transactions must be durable, as sync() defines it, when stop() returns;
-     * sync(SyncLevel.STRONG) forces them to the device. After this method has been called
+     * <p>Call sync() before stop() when the transactions must be durable when stop()
+     * returns: with a file storage, sync() waits until they are forced to the device, and
+     * sync(SyncLevel.STRONG) also for a replica. After this method has been called
      * this Database object must not be used anymore. This method is OK to call multiple times
      * from multiple unsynchronized threads; only the first call to this method has any
      * effect (idempotent method).

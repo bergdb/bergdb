@@ -26,6 +26,20 @@ import bergdb.pub.util.BadFormatException;
  * Files of sizes 200*1000, 1*M, 5*M, 20*M, 100*M, 500*M, 2*G, 10*G, 50*G, 200*G
  * are used to store the stream (4-5 factor log factor). Decimal factors, M = 1,000,000 bytes.
  * 
+ * Hard sync. Every append is forced to the device before it returns: the bytes are
+ * written, then FileChannel.force(true) (F_FULLFSYNC on macOS, fsync on Linux). A new
+ * file and its directory entry are forced before the file takes appends. So a completed
+ * append means durable bytes, not only bytes in the OS cache, and StorageManager's
+ * durable length, which sync() waits for, holds after a power loss, not only after a
+ * process crash (2026-10-14, docs/level3-durability.md).
+ * 
+ * A force costs a device round trip: well under a millisecond on a fast SSD, up to
+ * seconds on a slow virtual disk. This class is meant to be used below BufferedStream,
+ * which controls the buffering: it collects the database's appends and writes them
+ * here in chunks, from a thread of its own, when a buffer time has passed or its
+ * buffer is full. So there is one force per chunk, not one
+ * per transaction, and a transaction waits for a force only when it asks for a sync.
+ * 
  * @author Frans Lundberg
  */
 public class FileStream implements AppendOnlyStream {
