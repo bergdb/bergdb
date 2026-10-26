@@ -740,6 +740,21 @@ theorem HMem.holdsLive_setObj_core {m : HMem V} {a : Nat} {o o' : HObj V} (ho : 
   unfold HMem.HoldsLive
   rw [HMem.tableOf_setObj, HMem.canonicalOf_setObj_core ho hc]
 
+/-- Whether a pointer holds a canonical object, after an object is replaced by
+one with the same flag. -/
+theorem HMem.holdsCanonical_setObj_flag {m : HMem V} {a : Nat} {o o' : HObj V} (ho : m.obj? a = some o)
+    (hc : o'.canonical = o.canonical) (p : HPtr) : (m.setObj a o').holdsCanonical p = m.holdsCanonical p := by
+  unfold HMem.holdsCanonical
+  rw [HMem.objOf_setObj_fun]
+  cases p.handle.bind m.objOf with
+  | none => rfl
+  | some b =>
+    simp only [Option.bind_some]
+    rw [HMem.obj?_setObj]
+    by_cases hba : b = a
+    · subst hba; simp [ho, hc]
+    · simp only [hba, ↓reduceIte]
+
 theorem HSnapExact.of_s {sp : Spec V T} {S0 : Stream V T} {db : DB V T} {m m' : HMem V} {o : HObj V}
     (hs : m'.s = m.s) (h : HSnapExact sp S0 db m o) : HSnapExact sp S0 db m' o := by
   obtain ⟨r, w, h1, h2, h3, h4, h5, h6, h7⟩ := h

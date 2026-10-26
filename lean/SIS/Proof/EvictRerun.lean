@@ -135,8 +135,9 @@ theorem ruleRRef_idem (S : Stream V T) (s : Nat) (y : NodeId) (r : Option Nat) :
 /-- The invariant of the startup's memory, against the stream S after T(k), all
 through the rerun: every object is canonical; every stream slot names, after
 Rule R of S's section, its pointee's latest version; every memory slot names an
-object of its pointee; and an object of a node without a version in the section
-is at the node's latest version. -/
+object of its pointee; an object of a node without a version in the section is
+at the node's latest version; every object has a slot for each pointee; and
+every stream slot names a version. -/
 structure RInv (sp : Spec V T) (S : Stream V T) (m : Mem V) : Prop where
   canon : ∀ h o, m.obj? h = some o → o.canonical = true
   fresh : ∀ h o, m.obj? h = some o → ∀ y r, o.slot? y = some (Slot.stream r) →
@@ -147,6 +148,9 @@ structure RInv (sp : Spec V T) (S : Stream V T) (m : Mem V) : Prop where
     o.pos = (S.lv o.node).map (·.recNo)
   /-- Every object has a slot for each pointee of its history. -/
   slotsAll : ∀ h o, m.obj? h = some o → ∀ y ∈ pointees sp o.hist, (o.slot? y).isSome
+  /-- Every stream slot's reference names a version of its pointee. -/
+  ver : ∀ h o, m.obj? h = some o → ∀ y r, o.slot? y = some (Slot.stream (some r)) →
+    ∃ u, S.versionAt r y = some u
 
 /-- The stream slot of the object startup makes from version w names, after Rule
 R, what w's reference does. -/
@@ -246,8 +250,33 @@ theorem rinv_lazyBase (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp) 
           omega
       have hrw : written sp SIS.root = true := by simp [written, hv]
       exact (fresh_clean hok hj hmk hev hsk hk (Nat.le_refl _) hnw hroot hrD hrw hu).2 y hy
+  -- The stream slots of the objects before the memory slots name versions: Rule R of
+  -- a version's reference.
+  have hver2 : ∀ h o2, (lazyRoot sp (st sp al ts k).S (lazySec sp (st sp al ts k).S)).obj? h = some o2 →
+      ∀ y r, o2.slot? y = some (Slot.stream (some r)) → ∃ u, (st sp al ts k).S.versionAt r y = some u := by
+    intro h o2 ho2 y r hsl
+    obtain ⟨-, -, hsrc⟩ := hb.obj h o2 ho2
+    have hcv : ∀ w : Version V, (∀ r' y', w.ref? y' = some r' → ∃ u, (st sp al ts k).S.versionAt r' y' = some u) →
+        (canonOfVersion sp (st sp al ts k).S (lastSp (st sp al ts k).S) w).slot? y = some (Slot.stream (some r)) →
+        ∃ u, (st sp al ts k).S.versionAt r y = some u := by
+      intro w hw hs
+      have := canonOfVersion_slot_eq hs
+      simp only [Slot.stream.injEq] at this
+      exact (hinv.ruleR_bound (List.prefix_refl _) _ (fun r' h' => hw r' y h') this.symm).1
+    rcases hsrc with ⟨w, r0, hw, -, hoe, -⟩ | ⟨hv, hoe⟩ | ⟨-, u, hu, -, -, hoe⟩
+    · subst hoe
+      exact hcv w (fun r' y' h' => hinv.ref_versionAt hw h') hsl
+    · subst hoe
+      apply hcv _ _ hsl
+      intro r' y' hr'
+      obtain ⟨w, hw, hwy, hwr⟩ := lookup_refs_some hr'
+      obtain ⟨-, -, -, -, hlv⟩ := (hinv.topsRead_spec hv).1 w hw
+      rw [← hwr, ← hwy]
+      exact ⟨w, hinv.lv_at hlv⟩
+    · subst hoe
+      exact hcv u (fun r' y' h' => hinv.ref_versionAt (hinv.lv_at hu) h') hsl
   refine ⟨fun h o ho => ?_, fun h o ho y r hsl => ?_, fun h o ho y h' hsl => ?_, fun h o ho hn => ?_,
-    fun h o ho y hy => ?_⟩
+    fun h o ho y hy => ?_, fun h o ho y r hsl => ?_⟩
   · unfold lazyBase at ho
     rw [linkCanonical_obj?] at ho
     obtain ⟨o2, ho2, rfl⟩ := Option.map_eq_some_iff.mp ho
@@ -336,6 +365,18 @@ theorem rinv_lazyBase (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp) 
     · subst hoe
       rw [(canonOfVersion_fields sp _ _ u).2.2.2.1] at hy
       rw [canonOfVersion_slot?]; simp [hy]
+  · unfold lazyBase at ho
+    rw [linkCanonical_obj?] at ho
+    obtain ⟨o2, ho2, rfl⟩ := Option.map_eq_some_iff.mp ho
+    obtain ⟨-, hc2, -⟩ := hb.obj h o2 ho2
+    rw [linkObj_slot? _ hc2] at hsl
+    obtain ⟨sl2, hsl2, hq⟩ := Option.map_eq_some_iff.mp hsl
+    rcases linkQ_cases (lazyRoot sp (st sp al ts k).S (lazySec sp (st sp al ts k).S)) y sl2 with
+      he | ⟨h0, o0, -, -, -, he⟩
+    · rw [he] at hq
+      subst hq
+      exact hver2 h o2 ho2 y r hsl2
+    · rw [he] at hq; cases hq
 
 end Base
 
@@ -513,7 +554,7 @@ theorem RInv.reachOnPath (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest s
                         exact hm.coverGd d R x hsd hdK hR hxR hcx
                     exact (fresh_clean hok hj hmk hev (Nat.le_of_lt hKk) hk hsK hnw hrx hxD hxw hlv).2 z hz
                 refine ⟨fun h' o' ho' => ?_, fun h' o' ho' z r' hz => ?_, fun h' o' ho' z h'' hz => ?_,
-                  fun h' o' ho' hn => ?_, fun h' o' ho' z hz => ?_⟩
+                  fun h' o' ho' hn => ?_, fun h' o' ho' z hz => ?_, fun h' o' ho' z r' hz => ?_⟩
                 · rw [hobj] at ho'
                   split at ho'
                   · simp only [Option.some.injEq] at ho'; subst ho'; exact hco
@@ -591,6 +632,20 @@ theorem RInv.reachOnPath (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest s
                       have hz' : z ∈ pointees sp (cutHist w cut) := by rw [← f4]; exact hz
                       rw [Obj.ofVersion_slot?]; simp [hz']
                     · exact hr.slotsAll h' o' ho' z hz
+                · -- stream slots name versions: the new object's are the version's references
+                  rw [hobj] at ho'
+                  split at ho'
+                  · simp only [Option.some.injEq] at ho'; subst ho'
+                    rw [slot?_setSlot_of hsl] at hz
+                    split at hz
+                    · cases hz
+                    · exact hr.ver hp op hop z r' hz
+                  · split at ho'
+                    · simp only [Option.some.injEq] at ho'; subst ho'
+                      obtain ⟨-, hze⟩ := hslot1 z _ hz
+                      simp only [Slot.stream.injEq] at hze
+                      exact hinvk.ref_versionAt hw hze.symm
+                    · exact hr.ver h' o' ho' z r' hz
 
 end Walk
 
@@ -649,54 +704,57 @@ theorem RInv.applyChange {m : Mem V} (hr : RInv sp S m) (hfr : ∀ h, m.next ≤
     intro h o ho
     rw [hf.obj h, hold1 h (lt_next_of_obj? hfr ho), ho]
     exact ⟨_, rfl, (updAll_core sp P j _ _ o).1⟩
+  -- A stream slot of the result is a stream slot of an object of m.
+  have hstr : ∀ h o3, (m.applyChange sp P j c).obj? h = some o3 → ∀ z r, o3.slot? z = some (Slot.stream r) →
+      ∃ h2 o2, m.obj? h2 = some o2 ∧ o2.slot? z = some (Slot.stream r) := by
+    intro h o3 ho3 z r hz
+    obtain ⟨o1, L, ho1, rfl⟩ := hobj h o3 ho3
+    rw [updAll_slot] at hz
+    split at hz
+    · unfold combo NS1 at hz
+      cases hcz : (c.new.foldl addNew m).canonicalOf z with
+      | some h0 => rw [hcz] at hz; simp at hz
+      | none =>
+        rw [hcz] at hz
+        simp only [Option.map_none, Option.none_or] at hz
+        cases hss : srcSlot sp P j (c.new.foldl addNew m) z with
+        | some sl =>
+          rw [hss] at hz
+          simp only [Option.some_or, Option.some.injEq] at hz
+          subst hz
+          unfold srcSlot at hss
+          cases hfd : (c.new.foldl addNew m).objs.find? (srcOK sp P j z) with
+          | none => rw [hfd] at hss; cases hss
+          | some q =>
+            rw [hfd] at hss
+            exact hsrc q (List.mem_of_find?_eq_some hfd) z _ hss
+        | none =>
+          rw [hss] at hz
+          simp only [Option.none_or] at hz
+          cases hos : o1.slot? z with
+          | some sl =>
+            rw [hos] at hz
+            simp only [Option.some_or, Option.some.injEq] at hz
+            subst hz
+            exact hsrc (h, o1) (mem_objs_of_obj? ho1) z _ hos
+          | none =>
+            rw [hos] at hz
+            simp only [Option.none_or] at hz
+            unfold anySlot at hz
+            cases hfd : (c.new.foldl addNew m).objs.find? (fun p => p.2.canonical && (p.2.slot? z).isSome) with
+            | none => rw [hfd] at hz; cases hz
+            | some q =>
+              rw [hfd] at hz
+              exact hsrc q (List.mem_of_find?_eq_some hfd) z _ hz
+    · exact hsrc (h, o1) (mem_objs_of_obj? ho1) z _ hz
   refine ⟨fun h o3 ho3 => ?_, fun h o3 ho3 z r hz => ?_, fun h o3 ho3 z h' hz => ?_, fun h o3 ho3 hn => ?_,
-    fun h o3 ho3 z hz => ?_⟩
+    fun h o3 ho3 z hz => ?_, fun h o3 ho3 z r hz => ?_⟩
   · obtain ⟨o1, L, ho1, rfl⟩ := hobj h o3 ho3
     rw [(updAll_core sp P j _ L o1).2.2.2.2.1]
     rcases hcls h o1 ho1 with ⟨-, h2⟩ | ⟨-, nn, -, hon, -⟩
     · exact hr.canon h o1 h2
     · rw [hon]; rfl
-  · obtain ⟨o1, L, ho1, rfl⟩ := hobj h o3 ho3
-    rw [updAll_slot] at hz
-    -- the stream slot comes from an object of m
-    obtain ⟨h2, o2, ho2, hs2⟩ : ∃ h2 o2, m.obj? h2 = some o2 ∧ o2.slot? z = some (Slot.stream r) := by
-      split at hz
-      · unfold combo NS1 at hz
-        cases hcz : (c.new.foldl addNew m).canonicalOf z with
-        | some h0 => rw [hcz] at hz; simp at hz
-        | none =>
-          rw [hcz] at hz
-          simp only [Option.map_none, Option.none_or] at hz
-          cases hss : srcSlot sp P j (c.new.foldl addNew m) z with
-          | some sl =>
-            rw [hss] at hz
-            simp only [Option.some_or, Option.some.injEq] at hz
-            subst hz
-            unfold srcSlot at hss
-            cases hfd : (c.new.foldl addNew m).objs.find? (srcOK sp P j z) with
-            | none => rw [hfd] at hss; cases hss
-            | some q =>
-              rw [hfd] at hss
-              exact hsrc q (List.mem_of_find?_eq_some hfd) z _ hss
-          | none =>
-            rw [hss] at hz
-            simp only [Option.none_or] at hz
-            cases hos : o1.slot? z with
-            | some sl =>
-              rw [hos] at hz
-              simp only [Option.some_or, Option.some.injEq] at hz
-              subst hz
-              exact hsrc (h, o1) (mem_objs_of_obj? ho1) z _ hos
-            | none =>
-              rw [hos] at hz
-              simp only [Option.none_or] at hz
-              unfold anySlot at hz
-              cases hfd : (c.new.foldl addNew m).objs.find? (fun p => p.2.canonical && (p.2.slot? z).isSome) with
-              | none => rw [hfd] at hz; cases hz
-              | some q =>
-                rw [hfd] at hz
-                exact hsrc q (List.mem_of_find?_eq_some hfd) z _ hz
-      · exact hsrc (h, o1) (mem_objs_of_obj? ho1) z _ hz
+  · obtain ⟨h2, o2, ho2, hs2⟩ := hstr h o3 ho3 z r hz
     exact hr.fresh h2 o2 ho2 z r hs2
   · obtain ⟨o1, L, ho1, rfl⟩ := hobj h o3 ho3
     rw [updAll_slot] at hz
@@ -813,6 +871,8 @@ theorem RInv.applyChange {m : Mem V} (hr : RInv sp S m) (hfr : ∀ h, m.next ≤
       · exfalso
         obtain ⟨a, ha, rfl⟩ := List.mem_map.mp he2
         exact hnot (List.mem_flatMap.mpr ⟨a, ha, hze⟩)
+  · obtain ⟨h2, o2, ho2, hs2⟩ := hstr h o3 ho3 z (some r) hz
+    exact hr.ver h2 o2 ho2 z r hs2
 
 end Apply
 
