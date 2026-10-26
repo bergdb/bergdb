@@ -1758,8 +1758,11 @@ stress under eviction and a larger-than-memory run.
 
 Limits: with G1 the collector's own pauses reach hundreds of milliseconds
 under eviction, and full collections happen; the pause target of item 009,
-about 20 ms for a get or a commit, needs ZGC or generational Shenandoah
-(items/004-indirect-swizzling/04-zgc.md, items/009-handles/03-measurements.md).
+about 20 ms for a get or a commit, needs ZGC (items/004-indirect-swizzling/04-zgc.md,
+items/009-handles/03-measurements.md); generational Shenandoah met it at
+10M keys but stopped for 821 ms in P4's soak with an 8 GB heap, its old
+generation full of garbage it had not reclaimed
+(items/009-handles/04-shenandoah-degenerated.md).
 A reader's read of the stream's last file waits for the writer's append and
 its `fsync` (005-46), which takes seconds on a slow disk. Loads in memory,
 with no eviction, are 8 to 20 percent slower than before handles. D is
