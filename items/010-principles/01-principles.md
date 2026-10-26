@@ -369,3 +369,50 @@ this." (2015, fourth quarter).
 A principle for decisions on the design and the code, not on BergDB's
 behaviour; it has no measure of its own today.
 
+
+P12. A small Core Layer
+-----------------------
+
+The Core Layer has a small API, and we keep it small. The API is Db's
+public methods; dag, storage and stream are under them. What can be built
+on top of the Core API is built on top, not added to it. Frans
+(2026-10-26): "I think the principle is to maintain the small core layer.
+Avoid adding more to the layer's API. Better to implement on top."
+
+All data passes through four methods, the Core Data API: `getOne`,
+`getMany`, `getTrans` and `execute`. The rest of the Core API runs the
+database or reports on it, and reads or writes no data: the lifecycle
+(`start`, `stop`, `close`), `sync`, settings and status.
+
+The Core Layer does not depend on the layers above: its packages never
+import `pub` or `pubimp` (`pub.util` is shared with lower layers). Each
+package's `package.html` lists its allowed dependencies.
+
+From the Db Javadoc, in the first commit of the 2013 repo (2013-06-06),
+with `get()`, `getMany()` and `execute(Transaction)`: "This API form a
+narrow "waist" with a large code base under it and potentially a large
+code base "above" it. These methods are believed to be "feature complete"
+in the sense that all features we want from the database can be
+implemented on top of them. Functionality that can be provided by using
+only the Core Layer API, should not offered by this class." `getTrans` came
+on 2016-03-30, for `Connection.transactionInfo()`: the only widening of
+the data methods.
+
+Where BergDB stands (`java/src`, 2026-10-26):
+
+* The Core Layer imports no upper layer: `core` imports `common`, `dag`,
+  `nanotest`, `pub.util`, `storage` and `stream`.
+* `stream` imports `core` and `storage`, against its `package.html`
+  (`common`, `nano`, `pub.util`); only in `FileStreamPowerLossTester`, a
+  tester.
+* `pub` imports `core.SyncLevel` (in `Database`, `Connection` and
+  `Transaction`): a core type in the public API. Its `package.html` says
+  `pub.util` only.
+* Stale `package.html` lists: `core`'s leaves out `dag`, `pubimp`'s leaves
+  out `dag` and `storage`, `dag`'s leaves out `nanotest`.
+* `getOneInternal` is public.
+* Db has 43 public methods.
+
+No measure today. Candidates: the number of Db's public methods, and a
+test that checks each package's imports against its `package.html`.
+

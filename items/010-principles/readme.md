@@ -25,13 +25,13 @@ Names
 Files
 =====
 
-* [01-principles.md](01-principles.md). 010-01, the principles P1 to P11:
+* [01-principles.md](01-principles.md). 010-01, the principles P1 to P12:
   no stop-the-world (for readers too), a deterministic stream, calm when
   not used, maintenance proportional to the user's work, bounded startup,
   no interruption for changes, a failed database stops, determinism beyond
-  the stream, no global state, no administration, and simple before
-  optimal. For each, what it means, where it comes from, and where BergDB
-  deviates from it today.
+  the stream, no global state, no administration, simple before optimal,
+  and a small Core Layer. For each, what it means, where it comes from,
+  and where BergDB deviates from it today.
 * [02-principles-2012.md](02-principles-2012.md). 010-02, the principles
   Frans wrote down from 2008 to 2017 (notes, logs, code, the old website),
   quoted with their sources: how they support, refine or contradict P1 to
@@ -73,3 +73,9 @@ properly, at Frans's request ("Move 03 contents from 010 principles to a
 new item in 005. This should be investigated properly. In a separate work
 item."). Its contents are 005-53's `history.md`; 03 keeps its number, as a
 link.
+
+2026-10-26. Added P12, a small Core Layer, at Frans's request ("Add P12 as
+proposed."): the Core Data API (`getOne`, `getMany`, `getTrans`,
+`execute`) within the larger Core API, kept small; the Core Layer does not
+depend on the layers above. From the Db Javadoc of 2013, which Frans
+updated the same day.
