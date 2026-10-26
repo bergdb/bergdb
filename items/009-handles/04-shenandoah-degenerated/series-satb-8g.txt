@@ -1,0 +1,24 @@
+window(s) cycles cancelled(alloc,conc) degen full | oldUsed oldMax minOldAvail | used minAvail | oldMarkIncrements | mixed n regions reclaimedMB
+      0     7 0,0 0 0 | - - - |   4917   2772 | 0 | 0 0 0
+    150     4 0,0 0 0 | - - - |   4726   2986 | 0 | 0 0 0
+    300     4 0,0 0 0 | - - - |   5087   2694 | 0 | 0 0 0
+    450     7 0,0 0 0 | - - - |   5615   2164 | 0 | 0 0 0
+    600    10 0,0 0 0 | - - - |   5900   1877 | 0 | 0 0 0
+    750    15 0,0 0 0 | - - - |   6025   1754 | 0 | 0 0 0
+    900    17 0,0 0 0 | - - - |   5195   1683 | 0 | 0 0 0
+   1050     3 0,0 0 0 | - - - |   4638   2818 | 0 | 0 0 0
+   1200     4 0,0 0 0 | - - - |   5068   2713 | 0 | 0 0 0
+   1350     6 0,0 0 0 | - - - |   5620   2159 | 0 | 0 0 0
+   1500    11 0,0 0 0 | - - - |   6063   1718 | 0 | 0 0 0
+   1650    27 0,0 0 0 | - - - |   5974   1651 | 0 | 0 0 0
+   1800    10 0,0 0 0 | - - - |   5526   1690 | 0 | 0 0 0
+   1950    11 0,0 0 0 | - - - |   5675   2104 | 0 | 0 0 0
+   2100     5 0,0 0 0 | - - - |   4953   2094 | 0 | 0 0 0
+   2250     4 0,0 0 0 | - - - |   5106   2672 | 0 | 0 0 0
+   2400     7 0,0 0 0 | - - - |   5524   2229 | 0 | 0 0 0
+   2550     4 0,0 0 0 | - - - |   5150   2297 | 0 | 0 0 0
+   2700     3 0,0 0 0 | - - - |   5160   2620 | 0 | 0 0 0
+cycles 159, wall 105.5 s (3.8% of the window), concurrent phases 105.0 s, worker time 110.6 s, pauses 76 ms; degenerated 0, full 0, cancelled {'Stopping VM': 1}; old marking increments 0
+    153  Trigger: Free (Soft) (#) is below minimum threshold (#)
+      5  Trigger: Learning # of #. Free (#) is below initial threshold (#)
+      1  Trigger: Accelerated consumption (#) exceeds free headroom (#) at current rate (# M/s) with acceleration (# M/s/s) for anticipated GC duration (# ms)

@@ -1,0 +1,14 @@
+2026-10-26 22:30:21 scheduled block start
+quiet at Mon Oct 26 22:47:24 CET 2026: load averages: 1.86 1.87 1.90; other sessions: idle idle idle idle 
+2026-10-26 22:47:24 quiet: load averages: 1.86 1.87 1.90
+2026-10-26 22:47:24 start soak p4-009-shen-gen-12g
+SOAK {checktimes=6, companion=20000, del=5, dirtyevery=60, durable=200, extend=900, hot=30, hotkeys=1000, longlen=120, maxnode=0, measure=1800, mincuts=2, n=1000000, nlong=1000, rate=200, readers=3, readrate=5000, restarts=1, retain=300, samplekeys=20000, samplems=1000, scanlen=50, sd=0, seed=1, tsize=10, valsize=1000, warmup=300, warmupmax=3600}
+SOAK OK: 1800 s steady, 360000 commits (200.0/s), 16870761 gets and 9452731 scans checked, 3 physical cuts, 1 restarts, expired 676411 at admission and 0 during
+FINISH /Users/f/fl/repos/bergdb-009/java/build/soak/p4-009-shen-gen-12g/result.json: GC pauses in the measured phase: 570, total 115 ms, max 4.7 ms; safepoints: 570, max 4.7 ms
+2026-10-26 23:33:59 ok soak p4-009-shen-gen-12g
+2026-10-26 23:33:59 start soak p4-009-shen-satb-8g
+SOAK {checktimes=6, companion=20000, del=5, dirtyevery=60, durable=200, extend=900, hot=30, hotkeys=1000, longlen=120, maxnode=0, measure=1800, mincuts=2, n=1000000, nlong=1000, rate=200, readers=3, readrate=5000, restarts=1, retain=300, samplekeys=20000, samplems=1000, scanlen=50, sd=0, seed=1, tsize=10, valsize=1000, warmup=300, warmupmax=3600}
+SOAK OK: 1800 s steady, 359998 commits (200.0/s), 16870648 gets and 9452668 scans checked, 3 physical cuts, 1 restarts, expired 676407 at admission and 0 during
+FINISH /Users/f/fl/repos/bergdb-009/java/build/soak/p4-009-shen-satb-8g/result.json: GC pauses in the measured phase: 297, total 45 ms, max 4.1 ms; safepoints: 297, max 4.1 ms
+2026-10-27 00:20:34 ok soak p4-009-shen-satb-8g
+2026-10-27 00:20:34 F53 009-04 BLOCK DONE

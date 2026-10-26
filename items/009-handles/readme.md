@@ -38,7 +38,9 @@ Files
   generational Shenandoah's two stops in P4's soak (182 ms, and 821 ms when
   the second degenerated collection became a full one): the old generation
   filled with garbage it did not reclaim; what it means for target 2, and
-  what could be done.
+  what could be done; then the two soaks that followed (a 12 GB heap, and
+  Shenandoah without generations) and what they settle. Their outputs are
+  in [04-shenandoah-degenerated/](04-shenandoah-degenerated/).
 
 * [05-handles-alignment.md](05-handles-alignment.md). 009-05, Level 4 with
   handles, the Java code and the Lean model (step 4b): what is proved, the
@@ -298,3 +300,18 @@ trace tests and the evict set again.
 cleanup (006-07), with a line on where it came from and its links fixed,
 otherwise unchanged. The trace format of step 4c, section 9 of
 `docs/level2-alignment.md` until then, is `docs/trace-format.md`.
+
+2026-10-27, 01:00. 009-04's two soaks (section 6, points 1 and 2), run at
+22:47 and 23:34 as Frans scheduled them, and written up in 009-04, sections
+7 and 8, by Claude (Opus 5.5, Claude Code). Generational Shenandoah with a
+12 GB heap had no stop (pauses at most 4.7 ms), but its old generation grew
+as with 8 GB, to 10.35 GB of the 12, until the soak's restart emptied it.
+Shenandoah without generations (`satb`, JDK 27's default mode) with P4's
+8 GB had no stop either (4.1 ms), and kept at least 1.65 GB free with no
+growth. So under Shenandoah target 2 is met in the soak by the default
+mode; whether target 2 should name it instead of generational Shenandoah is
+for Frans (009-04, section 8). Beside the collector: the soaks' slowest
+commits and reads, 88 to 171 ms under ZGC too, are reclaim's physical cuts,
+which hold the stream's monitor while they delete files; added to 005-46.
+docs/levels.md's Level 4 limits say both. Status stays open for Frans's
+decision on target 2.

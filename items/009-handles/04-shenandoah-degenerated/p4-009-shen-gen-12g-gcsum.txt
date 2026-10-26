@@ -1,0 +1,13 @@
+gc.log: Shenandoah, window 981.6 to 2792.7 s
+  pauses: 570, 115.2 ms in all, longest 4.71 ms; above 1 ms 2, 10 ms 0, 100 ms 0
+          4.71 ms at    1535.1 s  Pause Final Mark (Young)
+          3.44 ms at    1816.7 s  Pause Init Mark (Young)
+          0.47 ms at    1854.0 s  Pause Final Update Refs
+          0.45 ms at    1754.6 s  Pause Final Mark (Young)
+          0.43 ms at    2334.0 s  Pause Final Mark (Young)
+  fallbacks (full, degenerated; not System.gc()): 0, 0.0 ms in all, longest 0.0 ms; System.gc() full: 0; evacuation failures: 0; allocation stalls: 0 (longest 0.00 ms)
+  safepoints by operation (count, total ms, longest ms, longest reaching ms):
+    ShenandoahFinalMarkStartEvac        200       72.2      4.74     0.06
+    ShenandoahInitMark                  185       17.4      3.52     0.09
+    ShenandoahFinalUpdateRefs           185       46.1      0.51     0.06
+JSON {"log": "gc.log", "collector": "Shenandoah", "window": [981.6, 2792.7], "pauses": 570, "pauseTotalMs": 115.2, "pauseMaxMs": 4.714, "over1ms": 2, "over10ms": 0, "over100ms": 0, "fallbacks": 0, "fallbackTotalMs": 0, "fallbackMaxMs": 0.0, "systemGcFull": 0, "evacuationFailures": 0, "allocationStalls": 0, "stallMaxMs": 0.0, "safepointMaxMs": 4.74}

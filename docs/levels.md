@@ -328,12 +328,17 @@ Limits:
 
 * With G1 the collector's own pauses reach hundreds of milliseconds under
   eviction, and full collections happen. The pause target of item 009,
-  about 20 ms for a get or a commit, needs ZGC (004-04, 009-03). Generational
-  Shenandoah met it at 10M keys but stopped for 821 ms in P4's soak with an
-  8 GB heap, its old generation full of garbage it had not reclaimed
-  (009-04).
+  about 20 ms for a get or a commit, needs ZGC (004-04, 009-03).
+  Shenandoah in its default mode, without generations, met it in P4's soak
+  with an 8 GB heap (4.1 ms; 009-04, section 7); it has not been run at
+  10M keys. Generational Shenandoah met it at 10M keys but stopped for
+  821 ms in P4's soak with an 8 GB heap, its old generation full of garbage
+  it had not reclaimed, and with 12 GB it held only as far as the soak's
+  restart, which emptied its old generation (009-04).
 * A reader's read of the stream's last file waits for the writer's append
-  and its force (005-46), which takes seconds on a slow disk.
+  and its force, which takes seconds on a slow disk; and every read from
+  the stream waits while a physical cut deletes files, up to 171 ms in
+  P4's soak under every collector (005-46; 009-04, section 7.3).
 * Loads in memory, with no eviction, are 8 to 20 percent slower than before
   handles.
 * D, which cannot be evicted, is bounded only loosely by the startup

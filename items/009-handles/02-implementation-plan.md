@@ -1076,7 +1076,7 @@ found each:
   with handles (HMEM, HTABLE, HANDLE, HOBJ and HPTR lines, in trace format 2,
   as the SLOT lines were; `Cache3.entries` gives it the table), and C-H
   checks it against HandleTheorems.lean's invariants, the record rule by the
-  model's own `HMem.refOf` (docs/handles-alignment.md, section 4). Two things
+  model's own `HMem.refOf` (009-05, section 4). Two things
   the plan did not say: run E got reads and restarts between its
   transactions (TraceExport's `ereads` and `erestart`, in four new
   configurations of `conformance.sh evict`), since run E has only the writer,

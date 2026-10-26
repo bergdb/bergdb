@@ -1,0 +1,33 @@
+[601.037s][info][gc,ergo     ] GC(13) Old-Gen Collectable Garbage: 1063M consolidated with free: 2048K, over 491 regions
+[955.225s][info][gc          ] Trigger (Old): Old has overgrown, live at end of previous OLD marking: 1891M, current usage: 5011M, percent growth: 164.9%
+[956.481s][info][gc,ergo     ] GC(35) Old-Gen Collectable Garbage: 813M consolidated with free: 3243K, over 542 regions
+[986.512s][info][gc          ] Trigger (Old): Old has overgrown, live at end of previous OLD marking: 4018M, current usage: 6181M, percent growth: 53.8%
+[987.688s][info][gc,ergo     ] GC(42) Old-Gen Collectable Garbage: 566M consolidated with free: 1792K, over 367 regions
+[1331.121s][info][gc          ] Trigger (Old): Old has overgrown, live at end of previous OLD marking: 5268M, current usage: 7953M, percent growth: 51.0%
+[1332.487s][info][gc,ergo     ] GC(54) Old-Gen Collectable Garbage: 1653M consolidated with free: 256B, over 948 regions
+[1531.211s][info][gc          ] Trigger (Old): Old has overgrown, live at end of previous OLD marking: 5861M, current usage: 8508M, percent growth: 45.2%
+[1532.611s][info][gc,ergo     ] GC(67) Old-Gen Collectable Garbage: 1229M consolidated with free: 3840K, over 1109 regions
+[1644.016s][info][gc          ] Trigger (Old): Old has overgrown, live at end of previous OLD marking: 7008M, current usage: 8863M, percent growth: 26.5%
+[1645.472s][info][gc,ergo     ] GC(82) Old-Gen Collectable Garbage: 953M consolidated with free: 3072K, over 742 regions
+[1691.639s][info][gc          ] Trigger (Old): Old has overgrown, live at end of previous OLD marking: 7589M, current usage: 9622M, percent growth: 26.8%
+[1693.091s][info][gc,ergo     ] GC(95) Old-Gen Collectable Garbage: 913M consolidated with free: 1536K, over 721 regions
+[1721.846s][info][gc          ] Trigger (Old): Old has overgrown, live at end of previous OLD marking: 8186M, current usage: 9715M, percent growth: 18.7%
+[1723.269s][info][gc,ergo     ] GC(108) Old-Gen Collectable Garbage: 949M consolidated with free: 3584K, over 743 regions
+[1740.947s][info][gc          ] Trigger (Old): Old has overgrown, live at end of previous OLD marking: 8253M, current usage: 9767M, percent growth: 18.3%
+[1742.408s][info][gc,ergo     ] GC(120) Old-Gen Collectable Garbage: 803M consolidated with free: 0B, over 685 regions
+[1754.534s][info][gc          ] Trigger (Old): Old has overgrown, live at end of previous OLD marking: 8421M, current usage: 9776M, percent growth: 16.1%
+[1755.992s][info][gc,ergo     ] GC(131) Old-Gen Collectable Garbage: 655M consolidated with free: 2304K, over 592 regions
+[1766.743s][info][gc          ] Trigger (Old): Old has overgrown, live at end of previous OLD marking: 8577M, current usage: 9925M, percent growth: 15.7%
+[1768.178s][info][gc,ergo     ] GC(142) Old-Gen Collectable Garbage: 686M consolidated with free: 3835K, over 644 regions
+[1777.501s][info][gc          ] Trigger (Old): Old has overgrown, live at end of previous OLD marking: 8670M, current usage: 9945M, percent growth: 14.7%
+[1778.977s][info][gc,ergo     ] GC(153) Old-Gen Collectable Garbage: 612M consolidated with free: 2048K, over 587 regions
+[1787.990s][info][gc          ] Trigger (Old): Old has overgrown, live at end of previous OLD marking: 8824M, current usage: 10074M, percent growth: 14.2%
+[1789.460s][info][gc,ergo     ] GC(164) Old-Gen Collectable Garbage: 977M consolidated with free: 2560K, over 1338 regions
+[1853.852s][info][gc          ] Trigger (Old): Old has overgrown, live at end of previous OLD marking: 8919M, current usage: 10191M, percent growth: 14.3%
+[1855.323s][info][gc,ergo     ] GC(186) Old-Gen Collectable Garbage: 701M consolidated with free: 0B, over 685 regions
+[1889.491s][info][gc          ] Trigger (Old): Old has overgrown, live at end of previous OLD marking: 9190M, current usage: 10351M, percent growth: 12.6%
+[1890.136s][info][gc,ergo     ] GC(205) Old-Gen Collectable Garbage: 6798M consolidated with free: 0B, over 2198 regions
+[2138.737s][info][gc          ] Trigger (Old): Old has overgrown, live at end of previous OLD marking: 3511M, current usage: 5399M, percent growth: 53.8%
+[2139.527s][info][gc,ergo     ] GC(224) Old-Gen Collectable Garbage: 3601M consolidated with free: 3840K, over 1058 regions
+[2678.917s][info][gc          ] Trigger (Old): Old has overgrown, live at end of previous OLD marking: 2009M, current usage: 5685M, percent growth: 182.9%
+[2679.911s][info][gc,ergo     ] GC(236) Old-Gen Collectable Garbage: 1526M consolidated with free: 0B, over 834 regions

@@ -28,6 +28,25 @@ It is a stop of its own: every reader that loads from the last file, at any
 level of the index, waits for the writer's I/O.
 
 
+The cut
+-------
+
+Added 2026-10-27 by Claude (Opus 5.5, Claude Code), from the soaks of
+[009-04](../009-handles/04-shenandoah-degenerated.md), section 7.3: a second
+wait of the same kind. `FileStream.pretruncate`, reclaim's physical cut, is
+`synchronized` on the stream and deletes the files before the cut one by
+one, forcing the directory after each (so that a crash cannot keep an
+older file and lose a newer one). Every `FileStream.read` takes the same
+monitor to find its file (`findFile`), so every read from the stream waits
+for the whole cut.
+
+In P4's soak on F53, the cuts of 11, 2 and 4 files took 88 to 171 ms, 17
+to 31 ms and 46 to 96 ms, about 8 to 24 ms a file, and they were the
+soak's slowest commits under ZGC and under Shenandoah alike; the longest
+gets and scans matched them. On a disk like s1's, where a force can take
+seconds, a cut would stop the readers longer.
+
+
 Options
 -------
 
@@ -42,11 +61,18 @@ Options
 * **The `fsync` outside the file's monitor:** append under the monitor,
   force after it. Readers then wait for the write only; the order of the
   write and the commit byte (005-44) must stay.
+* **The cut's deletes outside the stream's monitor:** take the files off
+  the stream's list under the monitor, so that new reads see the new first
+  position, and delete them and force the directory after it, in the same
+  order. A read that still holds one of the files gets
+  `ReadBelowFirstPosException` from `DbFile.read`, as today when it meets a
+  deleted file.
 
 
 Done when
 ---------
 
-A reader of the last file does not wait for the writer's `fsync`: a test
-with a slow forcing `FileStreamIo`, the pause probe on s1 again, and the
+A reader of the last file does not wait for the writer's `fsync`, and a
+reader does not wait for a cut's deletes: a test with a slow forcing
+`FileStreamIo`, the pause probe on s1 again, P4's soak (its cuts), and the
 level 3 gates (reclaim's cut and its delete of files) pass.
