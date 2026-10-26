@@ -1,0 +1,5 @@
+Building current-a04a4189-1a923133 from a04a4189be13b319f9528290899310c1ca671642 (dirty: false) in /Users/f/fl/repos/bergdb-009/java/build/perf/builds/current-a04a4189-1a923133
+Built /Users/f/fl/repos/bergdb-009/java/build/perf/builds/current-a04a4189-1a923133
+       4 scenarios from performance-quick.suite
+CPU idle before the runs: 78.4%
+performance.sh: the machine is not quiet (78.4% idle): stop other jobs, or FORCE=1 (the results are then not a reference)

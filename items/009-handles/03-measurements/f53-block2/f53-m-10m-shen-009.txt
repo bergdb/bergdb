@@ -1,0 +1,27 @@
+[    0.4 s] load: 10000000 keys, key24, budget 0 bytes, dir /private/tmp/claude-502/-Users-f-fl-repos-f1/32b68478-35b0-4112-9d94-6ddb9ecd9df2/scratchpad/f53blk/sbdata/key24-10000000
+[   30.4 s]   3610000 puts, 120333 a second; resident 955 MB, heap 1020 MB, stream 1951 MB
+[   60.4 s]   6014000 puts, 100223 a second; resident 1617 MB, heap 1913 MB, stream 3877 MB
+[   90.5 s]   8075000 puts, 89685 a second; resident 2183 MB, heap 3719 MB, stream 5736 MB
+[  120.5 s]   9941000 puts, 82811 a second; resident 2695 MB, heap 3407 MB, stream 7480 MB
+[  126.2 s] load done: 121.1 s, 82573 puts a second; on disk 7543 MB, 754.4 bytes per key; heap after a full GC 2017 MB (2 MB before the load), 201.5 bytes per key; eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most
+[  126.2 s] two clock reads cost 23.4 ns; heap 6442 MB; 10 CPUs
+[  131.2 s]   warm 0: 562952 gets a second; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  136.2 s]   warm 1: 566859 gets a second; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  153.0 s] uniform, 1 thread: 565887 gets a second (median of 5 windows, 561103 to 568060); loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  153.0 s] uniform, timed 1000000 gets: mean 1.62, p50 1.63, p90 1.96, p99 2.26, p99.9 6.34, max 25.6 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  168.9 s] hot, 1 thread: 1185270 gets a second (median of 5 windows, 1152030 to 1191595); loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  168.9 s] hot, timed 1000000 gets: mean 0.72, p50 0.63, p90 1.09, p99 2.18, p99.9 2.51, max 30.5 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  198.9 s] threads 1: 565975 gets a second; mean 1.62, p50 1.63, p90 1.96, p99 2.26, p99.9 6.46, max 67.8 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  228.9 s] threads 2: 1098775 gets a second; mean 1.67, p50 1.67, p90 2.01, p99 2.30, p99.9 4.64, max 184.2 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  258.9 s] threads 4: 2006147 gets a second; mean 1.84, p50 1.80, p90 2.22, p99 3.89, p99.9 6.14, max 84.5 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  288.9 s] threads 8: 3706749 gets a second; mean 1.96, p50 1.96, p90 2.38, p99 2.75, p99.9 5.02, max 11392.8 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2712 MB
+[  308.9 s] sampled 4 threads: 1991569 gets a second, 728 samples:
+     31.5% RUNNABLE in KeyNode.searchEq
+     22.8% RUNNABLE in Dag.getEqNodeInSegment
+     13.2% RUNNABLE in KeyNode.searchLte
+     12.1% RUNNABLE in KeyNode.getDeleteBitmapAtTime
+      9.1% RUNNABLE in ?
+      7.3% RUNNABLE in Db.getOneInternal
+      4.1% RUNNABLE in TopDs.findSuperRootAtTime
+[  309.3 s] at most: heap used 5294 MB, resident 2712 MB, RSS 6816 MB; eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most
+SCALEBENCH OK

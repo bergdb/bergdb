@@ -210,3 +210,22 @@ checker's C-P over the handle state (TraceExport's export of it, and the
 model's handle invariants checked on Java's states), and then the removal
 of the Phys and Evict files that only the design before handles uses, for
 Frans to decide when; and the night runs on the merged tree.
+
+2026-10-26, 05:08 to 08:30. F53's second timed block (outputs in
+03-measurements/f53-block2/): ScaleBench under generational Shenandoah, the
+branch against 2026.1 (from the OS cache at 10M keys the longest get 2.5 ms
+at 133 MB, 2026.1 409 ms, and 1.9 ms at 665 MB, 2026.1 7.1 s); P4's soak on
+the branch, 30 measured minutes: with ZGC 200 commits and 14,624 reads a
+second at their paced rates (004-04's runs before handles: 116 and 8,471),
+GC pauses at most 0.02 ms, batches at most 2 ms, the longest latest get
+11.8 ms; with Shenandoah and P4's 8 GB heap, two degenerated collections of
+821 and 182 ms with the heap nearly full (8.2 GB after GC). That misses
+target 2 for Shenandoah in the soak, so the merge (phase 6) waits for
+Frans, as the 20:14 entry says. A rerun of that soak with a 12 GB heap
+waited from 07:22 for a quiet machine (mediaanalysisd kept the load above
+2) and was stopped at 08:31. `performance.sh ab`, quick suite, with a 4 GB
+budget: gets on one thread 3 to 9 percent fewer (long keys 9, one
+unconfirmed alert), from 4 threads 19 percent more; the run with eviction
+off was skipped (the machine not quiet after the soak). The final branch
+`a04a418` passed `night.sh` (NIGHT OK).
+

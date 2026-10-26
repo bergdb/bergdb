@@ -1,0 +1,28 @@
+[    0.4 s] load: 10000000 keys, key24, budget 0 bytes, dir /private/tmp/claude-502/-Users-f-fl-repos-f1/32b68478-35b0-4112-9d94-6ddb9ecd9df2/scratchpad/f53blk/sbdata/key24-10000000
+[   30.4 s]   3845000 puts, 128095 a second; resident 938 MB, heap 1251 MB, stream 2150 MB
+[   60.4 s]   6546000 puts, 109064 a second; resident 1603 MB, heap 3370 MB, stream 4332 MB
+[   90.5 s]   8841000 puts, 98197 a second; resident 2173 MB, heap 4032 MB, stream 6439 MB
+[  114.8 s] load done: 106.4 s, 94018 puts a second; on disk 7543 MB, 754.4 bytes per key; heap after a full GC 2511 MB (2 MB before the load), 250.9 bytes per key; eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most
+[  114.8 s] two clock reads cost 22.4 ns; heap 6442 MB; 10 CPUs
+[  119.8 s]   warm 0: 636336 gets a second; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2462 MB
+[  124.8 s]   warm 1: 642518 gets a second; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2462 MB
+[  141.4 s] uniform, 1 thread: 643872 gets a second (median of 5 windows, 629156 to 645823); loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2462 MB
+[  141.4 s] uniform, timed 1000000 gets: mean 1.41, p50 1.42, p90 1.67, p99 1.88, p99.9 4.05, max 32.2 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2462 MB
+[  157.2 s] hot, 1 thread: 1233559 gets a second (median of 5 windows, 1211357 to 1242515); loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2462 MB
+[  157.2 s] hot, timed 1000000 gets: mean 0.70, p50 0.63, p90 1.00, p99 1.88, p99.9 2.22, max 26.1 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2462 MB
+[  187.2 s] threads 1: 641128 gets a second; mean 1.41, p50 1.42, p90 1.67, p99 1.88, p99.9 5.57, max 50.0 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2462 MB
+[  217.2 s] threads 2: 1135289 gets a second; mean 1.63, p50 1.63, p90 1.92, p99 2.22, p99.9 4.96, max 89.9 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2462 MB
+[  247.2 s] threads 4: 1920828 gets a second; mean 1.95, p50 1.80, p90 2.72, p99 4.38, p99.9 6.18, max 122.2 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2462 MB
+[  277.2 s] threads 8: 2236170 gets a second; mean 3.41, p50 3.22, p90 4.10, p99 7.49, p99.9 26.24, max 1228.3 us; loads/get 0.000, stream reads/get 0.000, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 2462 MB
+[  297.2 s] sampled 4 threads: 1868049 gets a second, 728 samples:
+     32.7% RUNNABLE in Dag.getEqNodeInSegment
+     21.3% RUNNABLE in KeyNode.searchEq
+     15.5% RUNNABLE in ?
+     12.0% RUNNABLE in KeyNode.searchLte
+     10.9% RUNNABLE in KeyNode.getDeleteBitmapAtTime
+      5.1% RUNNABLE in TopDs.findSuperRootAtTime
+      2.2% RUNNABLE in NodeCollection.followPointer, holding a pointer lock
+      0.3% BLOCKED in NodeCollection.followPointer on bergdb.core.PointerLocks$Lock
+      0.1% RUNNABLE in Db.getOne
+[  298.1 s] at most: heap used 4972 MB, resident 2462 MB, RSS 6825 MB; eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most
+SCALEBENCH OK
