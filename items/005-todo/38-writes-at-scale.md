@@ -13,6 +13,10 @@ the write problem as a todo in 005 of type Investigate."
 The issue
 ---------
 
+Note by Frans, 26 Oct 09:50. Not sure this is a real issue. A startup distance of 10 MB is not reasonable for a large database like 10M or 100M keys. 
+For such a database, we should use more like 100 MB to 1000 MB 
+for startup distance. Not 10 MB. And a large cache.
+
 Two problems with writes into a large database, loaded with random keys
 (24-byte keys, 8-byte values, 1,000 puts a transaction, a startup distance
 of 10 MB):

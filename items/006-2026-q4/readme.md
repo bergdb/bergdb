@@ -19,6 +19,7 @@ The list
 | [006-03](03-fast-unit-tests.md) | 2026-10-20 | Fast unit tests (41.5 s to 10 s), the full versions as f-tests; `java/before-commit.sh`, the only commit gate |
 | [006-04](04-lean-guided-reading.md) | 2026-10-22 | Guided reading of the Lean model's definitions and theorem statements against sis-model.md, by Frans with Claude: the plan and the log |
 | [006-05](05-todo-markers.md) | 2026-10-25 | The TODO markers in `java/`: the 15, what was found and done with each, and the 3.0e6 that "result in problems" in 2015 |
+| [006-06](06-fast-restart.md) | 2026-10-26 | Fast restart, a note of Frans's idea: lower the startup distance for a while before a controlled restart; not investigated |
 
 
 Files
@@ -40,6 +41,9 @@ Files
 * [05-todo-markers.md](05-todo-markers.md). 006-05, the review: the
   markers in a table, what was done with each, and the bisect of T2; its
   script and log in [05-todo-markers/](05-todo-markers/).
+* [06-fast-restart.md](06-fast-restart.md). 006-06, the note: the idea in
+  Frans's words, why it matters (005-38's first numbers), and the questions
+  for later.
 
 
 Log
@@ -85,3 +89,8 @@ the 15 TODO markers in `java/`, and what to do with each; Frans: "as
 proposed". Done with it: comments removed or changed, 005-41 to 005-43,
 and lines in 004-03, 005-11 and 007-03. Three markers were done in 005-39
 and 005-40, the same morning; one is kept for 007-03's step 3.
+
+2026-10-26. 006-06, at Frans's request, during 005-38: fast restart, a note
+of Frans's idea (a lower startup distance for a while before a controlled
+restart, for a short startup), written by Claude (Opus 5.5, Claude Code).
+Not investigated.
