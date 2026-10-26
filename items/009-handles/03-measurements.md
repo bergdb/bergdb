@@ -132,6 +132,12 @@ s1's output: [s1-3c-default.txt](03-measurements/jcstress/s1-3c-default.txt)
 fault of the code or of the argument of 009-02, 3.4; on x86 the hardware
 hides most such faults, so F53's runs are the ones that count.
 
+Again on F53 on the final branch (2026-10-26, 01:25; `fb0c770`, where a
+reader's swizzle is `Node.swizzle`, which HandlePublication now uses): no
+forbidden outcome in 1.1 to 1.9 billion samples a test, the control's race
+168,789 times in 5.6 billion
+([f53-final-default.txt](03-measurements/jcstress/f53-final-default.txt)).
+
 
 # 3. Memory: MEM
 
