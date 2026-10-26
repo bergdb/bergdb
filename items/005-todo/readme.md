@@ -31,6 +31,8 @@ Open
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10). For release 2026.1: kept, documented as experimental | open |
 | [005-38](38-writes-at-scale.md) | Investigate | Writes at scale: the stream grows to about 1.1 KB per key at 100M random keys, and loads into an index larger than the budget slow to under 100 puts a second on a slow disk (004-02) | open |
 | [005-46](46-stream-file-lock.md) | Fix | A read of the stream's last file waits for the writer's append and its `fsync` (`FileStream.DbFile`, one monitor for both): seconds on s1's disk, the longest waits left there with handles (009-03) | open |
+| [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
+| [005-48](48-group-commit.md) | Investigate | Group commit: a sync that waits starts the flush, instead of waiting for `BufferedStream`'s timer; one thread's durable commit from 35 ms to about one force (005-13's question 5) | open |
 
 
 Closed
@@ -233,6 +235,11 @@ Files
 * [46-stream-file-lock.md](46-stream-file-lock.md). 005-46, a read of the
   stream's last file waits for the writer's append and its `fsync`; found
   in 009's measurements; open.
+* [47-written-not-forced.md](47-written-not-forced.md). 005-47, a
+  durability of "written, not forced": Frans's question, the options and
+  the constraints; open.
+* [48-group-commit.md](48-group-commit.md). 005-48, group commit: a
+  waiting sync starts the flush; the change, the questions; open.
 
 Log
 ===
@@ -809,3 +816,18 @@ Claude (Opus 5.5, Claude Code), during Frans's unattended run of 009: a
 read of the stream's last file waits for the writer's append and its
 `fsync`. And 005-38 got 009's answer to its question 4 for the 10M load on
 s1 (009-03, section 7): 2026.1's eviction made most of its time.
+
+2026-10-26. Added 005-47, at Frans's request, by Claude (Opus 5.5, Claude
+Code): a durability of "written, not forced", Frans's question of the day
+("Would the middle-ground be good to support too? That is, ensuring the
+write left the process."). Three options, A recommended: a property of
+the storage, `FileStream` without a force per append. Found on the way,
+from the code: records have no checksum, so recovery cannot tell a hole in
+an unforced tail from data; `FileStreamPowerLossTester` models a lost tail
+and a prefix of it, not a hole. That holds today too, for one chunk
+between its write and its force.
+
+2026-10-26. Added 005-48, at Frans's request ("Yes, group commit as
+005-48."), by Claude (Opus 5.5, Claude Code): group commit, proposed in
+005-13 and not done there. A sync that waits asks `BufferedStream` for a
+flush instead of waiting for its timer; the force paces the groups.

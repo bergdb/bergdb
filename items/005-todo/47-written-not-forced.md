@@ -1,0 +1,275 @@
+005-47. Decide: a durability of "written, not forced"
+=====================================================
+
+Status: open. Kind: decide. Created 2026-10-26.
+
+Frans's question, 2026-10-26, added as an entry at his request, by Claude
+(Opus 5.5, Claude Code).
+
+
+The question
+------------
+
+In Frans's words (2026-10-26): "Would the middle-ground be good to
+support too? That is, ensuring the write left the process. This is a less
+strong durability guarantee. Obviously. But still perhaps useful. With
+replication for example, it is the total setup that counts."
+
+The middle ground is between today's two: a commit that returns before
+its bytes leave the process (no sync, NONE), and a sync that returns when
+they are forced to the device (ORDINARY). "Written, not forced": the
+bytes have been handed to the OS by `write()`.
+
+
+Today: hard sync only
+---------------------
+
+* `FileStream.DbFile.append` (java/src/bergdb/stream/FileStream.java)
+  writes and then forces the file (`io.forceFile`, which is
+  `FileChannel.force(true)` in `FileStreamIo`: `F_FULLFSYNC` on macOS,
+  `fsync` on Linux) before it returns. The class Javadoc's "Hard sync"
+  paragraph says so (2026-10-26). `AppendOnlyStream.append`'s Javadoc makes it a contract:
+  a persistent stream given to `StorageManager` must force the bytes, and
+  any new file names, before `append` returns, as that completion
+  advances the durable frontier.
+* This came on 2026-10-14 (commit 506510d,
+  [docs/level3-durability.md](../../docs/level3-durability.md)). Before
+  it, and in the 2013 to 2017 code, `FileStream` opened its files with
+  mode `"rws"`, a synchronous write through the OS on every write, with
+  no explicit force: on macOS that does not empty the drive's cache
+  (docs/levels.md, Reclaim, small item c). So BergDB has never had a
+  level of "written" only; the old code was between written and forced.
+* A completed append is what `BufferedStream`'s append listener reports
+  to `StorageManager` (`MyStorage.confirmedLength`). The main storage's
+  confirmed length is d1Size, rule D1 (`MainConfirmedRule`), which
+  `sync(ORDINARY)` waits for; STRONG waits for d2Size, rule D2
+  (`OneActiveReplicaRule`): the main and one active replica. Reclaim cuts
+  the stream only when `Db.getDurableLength()` (d1Size) has passed its
+  decision (`Reclaim.java`, `pendingCutDurableAt`).
+* What a force costs: on F53, `F_FULLFSYNC` of 100 bytes 4.2 to 5.2 ms,
+  of 1 to 4 MB 7 to 12 ms (005-13, question 3); plain `fsync` there,
+  which does not empty the drive's cache, 0.03 ms. On s1's virtual disk a
+  force can take seconds: 1.4 to 2.7 s waits for a get and a commit
+  (005-46, 009-03 section 4). There is one force per flush of the
+  buffer, so a writer that does not sync pays little; a sync pays the
+  buffer time (20 ms) plus one force, and readers of the last file wait
+  for the force too (005-46).
+
+
+What "written" gives
+--------------------
+
+* Bytes handed to the OS survive a crash of the process: the OS writes
+  them out later, and a restart reads them from its cache or the disk.
+  They do not survive a crash of the OS or a power loss: the OS may not
+  have written them yet (on Linux the writeback of dirty pages runs about
+  every 5 s and writes pages older than about 30 s; macOS has its own
+  rules).
+* Crashes of the process (a bug, an `OutOfMemoryError`, a kill, a
+  restart of the service) are much more common than OS crashes and power
+  losses, mostly on servers with a UPS.
+* Other systems make this trade, many by default:
+  * RocksDB: a write goes to the WAL with `write()` and returns; only
+    `WriteOptions.sync = true` forces it. The default survives a crash of
+    the process, not of the machine
+    ([Basic operations](https://github.com/facebook/rocksdb/wiki/Basic-Operations#synchronous-writes)).
+  * SQLite, WAL mode with `synchronous=NORMAL`: a commit is written to the
+    WAL and not synced; the WAL is synced at checkpoints. A power loss can
+    roll back the last commits but never corrupts the database
+    ([PRAGMA synchronous](https://www.sqlite.org/pragma.html#pragma_synchronous)).
+  * Kafka: by default the broker does not force per message (the
+    `log.flush.interval.*` settings are off) and relies on replication,
+    `acks=all` with `min.insync.replicas`, for durability
+    ([broker configs](https://kafka.apache.org/documentation/#brokerconfigs_log.flush.interval.messages)).
+  * PostgreSQL: `synchronous_commit = remote_write` waits until the
+    standby has written the commit to its OS, not flushed it (005-11,
+    "Elsewhere").
+* With replication across machines, failures are mostly independent: a
+  transaction written on two machines is lost only if both lose power or
+  crash their OS before the writeback. That is Frans's point: the total
+  setup counts. Today, though, BergDB has no replica on another machine;
+  a replica is a stream in the same process, often on the same disk
+  (005-11: "a copy on another machine, the code does not do").
+
+
+The design rule
+---------------
+
+From 005-13 (Frans, 2026-10-20): `sync(level)` is the general, high-level
+interface, and the storage layer defines what a level means, by medium,
+replication and so on. A storage could be over a network. The options are
+read against that rule.
+
+
+Options
+-------
+
+**A. A property of the storage (recommended).** `FileStream` gets a
+setting, per-append forcing on (the default, today's behaviour) or off.
+With it off, `DbFile.append` writes and returns, and the storage's
+confirmed length means "written". Nothing above the stream changes: D1
+and D2 combine storages as today, and the levels keep their names. A main
+storage with forcing off makes ORDINARY "written on the main"; a main
+with forcing on and a replica with it off makes STRONG "forced here and
+written there"; with a network replica (not there today) "written on two
+machines" is STRONG with both off.
+
+* The forces that must stay with it off (see "Constraints"): a new file
+  and its directory entry, the old file's tail when the stream moves to
+  a new file, and the stream before reclaim's cut and before file
+  deletes. Add: a force at `close()`, so a clean stop is durable. Perhaps:
+  a force at an interval (say every second), which bounds what a power
+  loss costs, as SQLite's checkpoints do.
+* Where the setting goes: `FileStream`'s constructor (the core API passes
+  a stream to `DbBuilder.stream`); the Pub API's `DatabaseBuilderImp`
+  and `DatabaseImp.addReplica` make their `FileStream`s themselves, so
+  the Pub API needs a setting per storage too, a small API decision as
+  the buffer time per storage in 005-13 (with 005-05).
+* `AppendOnlyStream.append`'s contract changes: the storage says what its
+  completion means, forced or written.
+* Pros: follows the design rule; small and local, most of it in
+  `FileStream`; no new level, no change in `StorageManager`, the rules or
+  the Pub API's `SyncLevel`; a sync with forcing off costs the buffer time
+  and a `write()`, not a force (on s1, milliseconds instead of seconds);
+  with forcing off, 005-46's readers no longer wait for a force on every
+  append; less wear on flash.
+* Cons: the choice is per storage, not per transaction: an application
+  that wants some transactions forced and others not cannot have both on
+  one storage. The meaning of ORDINARY depends on the setup, so the
+  application must know how its storage was built. On F53 the gain in
+  latency is small, as the buffer time dominates (005-13: sync p50 35 ms
+  at 20 ms, against a force of 5 ms). And a power loss now costs the
+  recent transactions that a sync reported durable, which needs the test
+  in "Constraints".
+
+**B. A new sync level between NONE and ORDINARY,** say `WRITTEN`. Each
+storage reports two confirmed lengths, written and forced; `FileStream`
+splits its append into the write and the force and reports each step;
+`StorageManager` keeps a third durable length beside d1Size and d2Size,
+with its lock, and the rules compute each level from the right length.
+
+* It lines up with 005-46's second option, to write under the file's
+  monitor and force outside it: the write and the force become two
+  steps, and B reports both.
+* Pros: the choice is per transaction, as PostgreSQL's
+  `synchronous_commit` (`SET LOCAL`) and SQL Server's delayed durability
+  are (005-11, "Elsewhere"); hard sync stays for those who ask for it; a
+  WRITTEN sync costs the buffer time and a `write()`.
+* Cons: more API (a level in the Pub API's `SyncLevel`, to be documented
+  and kept); more rules, and their combinations grow: with replicas,
+  which of written-here, forced-here, written-there, forced-there is
+  STRONG, and is a new level needed for "written on two"? Every storage
+  needs two lengths, also those where they are the same (memory, a
+  network stream that only confirms). The forces stay on every flush, so
+  the I/O cost and the forces' share of readers' waits (005-46) stay;
+  only the waiting sync is faster. It goes against the design rule's
+  spirit, that a level's meaning is the storage's: B puts the medium's
+  steps into the levels.
+
+**C. Do nothing.** Keep hard sync only. An application that wants less
+calls no sync, and gets NONE: its commits leave the process within the
+buffer time (20 ms) anyway, without a guarantee.
+
+* Pros: no work, no new guarantees to test; one meaning of a sync,
+  simple to explain.
+* Cons: the cost of a force stays in every sync, seconds on slow disks;
+  a setup with replication pays forces it may not need; no answer for
+  "written on two machines" when a network replica comes.
+
+Proposed: A, after 005-46, and with the hole test below first. Questions
+for Frans: A, B or C? With A, a force at an interval, and at what
+interval? Is the setting in the Pub API now, or only in the core API
+until 005-05 and 005-11?
+
+
+Constraints
+-----------
+
+* **"No force" cannot mean no forces at all.** A power loss with forcing
+  off may cost the recent transactions, never the database. Forces that
+  must stay, from today's code in `FileStream`:
+  * `openForRw`: a new file is forced, and its directory
+    (`io.forceFile`, `io.forceDirectory(dir)`), before it takes appends.
+    Without it, a power loss can lose all the files' names after an
+    acknowledged commit (docs/level3-durability.md, negative controls).
+  * `pretruncate` and `deleteAllFiles`: a directory force after each
+    delete, so that an older name never survives a newer one; a hole
+    there makes `FileStream` refuse to open the database before recovery
+    can read reclaim's table (docs/level3-durability.md, "Production
+    changes"). New with forcing off: `pretruncate` must also force the
+    last file before it deletes, since reclaim cuts when d1Size has passed
+    its decision (`Reclaim.java`, `pendingCutDurableAt`), and with forcing
+    off d1Size means written; a power loss would otherwise keep the cut
+    and lose the table.
+  * New with forcing off: `newFile` (through `reopenForReadOnly`) must
+    force the old file before the new one takes appends. Today every
+    append is forced, so the old file is complete; without it, a power
+    loss can leave a short old file and a newer one, and `checkDbFiles`
+    refuses a file before the last that is not a whole number of index
+    units (`BadDirStateException`).
+  * `createDirIfNeeded`: the directory forces stay.
+* **Holes in the unforced tail: untested, and likely not handled.**
+  Without a force after each append, the OS may write later pages before
+  earlier ones, so a power loss can leave a hole: zeros (or, through
+  `SalsaStream`, garbage) inside the tail, with later bytes intact.
+  `FileStreamPowerLossTester` does not model this. Its images keep the
+  forced bytes of each file (loss of the unforced tail), and after each
+  `write` one image `partial_write` that keeps the first half of the
+  unforced bytes (`previous + (current - previous) / 2`): a prefix, never
+  a hole. Recovery (`RecoverableStream.recover`) walks the transaction
+  headers from the last valid meta block to the end, and records have no
+  checksum. So a hole may make the start fail (a header of zeros is a
+  "Bad transaction size" `StreamFormatException`), or accept a
+  transaction whose commit byte survived with zeros inside it; the
+  nodes' 16-bit checksums (`NodeStream`, `StreamChecksumException`) then
+  fail the database at a read or at the startup rerun. From the code;
+  not reproduced. The window exists today too, for the one chunk between
+  its write and its force (up to half the buffer, 5 MB); forcing off
+  widens it to everything not forced. Recovery must take the valid
+  prefix; if the test shows it does not, the fix is likely a checksum per
+  record, a format change (as 005-40's versions).
+* **005-46 first.** It changes the same code, `DbFile.append` and its
+  monitor, and one of its options (the force outside the monitor) is
+  half of B. Do 005-46, then this.
+* **Replication is experimental** (005-11; Frans, 2026-10-25: kept for
+  release 2026.1, documented as experimental). The case for A with a
+  replica rests on a replica on another machine, which BergDB does not
+  have. A for the main storage alone does not need 005-11; anything for
+  replicas waits for its decision.
+
+
+Done when
+---------
+
+* Frans has decided A, B or C.
+* For A: the setting in `FileStream` (and the Pub API, as decided), with
+  forcing on by default; the forces at a new file, a new file's
+  predecessor, a cut, a delete and `close()`; `AppendOnlyStream`'s and
+  `FileStream`'s Javadoc, and docs/levels.md ("Durable commits"), say what
+  a confirmed length means with forcing off.
+* `FileStreamPowerLossTester` has a mode without per-append forces, with
+  images that have holes in the unforced tail, and its negative controls
+  (no force at the switch to a new file, none before a cut) fail as they
+  should; recovery takes the valid prefix in every image.
+* `java/before-commit.sh` prints `BEFORE COMMIT OK`; `level3.sh` passes
+  (a change to the stream's durability); the sync latency is measured
+  with forcing on and off, on F53 and on s1 (`Perf`'s `d-1k-t1`).
+
+
+First step
+----------
+
+A hole mode in `FileStreamPowerLossTester`, on a scratch clone, against
+today's code: images where a later part of a written chunk survives and
+an earlier part is zeros. It tells what recovery does with a hole, which
+matters for today's one-chunk window as well as for A and B.
+
+
+Size and order
+--------------
+
+S to M for A if recovery takes the valid prefix: the setting and the
+forces are small, most of it is the power-loss tester's new mode and the
+gates. M to L if it needs a checksum per record. B is M or more, through
+`StorageManager`, the rules and the API. After 005-46; the replica side
+after 005-11.
