@@ -197,3 +197,16 @@ reads of `writtenPos`).
 Java's state with handles to the model's (SIS/Handle.lean) and the register
 of where they differ, as docs/level4-alignment.md does for the design
 before handles. Written by Claude (Opus 5.5, Claude Code).
+
+2026-10-26, 01:13. Phase 4a done, by the same subagent: T-READ, T2-C,
+T-READ with restarts and T-PIN over handles are proved (`tr_handles`,
+`t2_handles`, `tr_handles_restarts`, `tp_handles`; SIS/Proof/HandleHist,
+HandleHistTrans, HandleReadT, HandleRestart, HandlePin, about 1,980 lines),
+mirroring E4 to E6. Checked here: the whole Lean project rebuilt from
+nothing (161 jobs, no warnings, no `sorry`), and `#print axioms` for the
+five handle theorems and the four of the design before them gives only
+Lean's standard axioms. On `main` as `059d741`. Left of phase 4: 4c, the
+checker's C-P over the handle state (TraceExport's export of it, and the
+model's handle invariants checked on Java's states), and then the removal
+of the Phys and Evict files that only the design before handles uses, for
+Frans to decide when; and the night runs on the merged tree.

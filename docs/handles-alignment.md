@@ -26,12 +26,15 @@ section 4, and its section 9, what the implementation changed.
   invariants of `TC_handles` (the table and the handles, INV-CAN, INV-SNAP,
   INV-SLOT for the record rule, Rule R, live handles without a written
   position).
-* **Stated, not yet proved** (phase 4a): T2-C with restarts
-  (`T2_handles`), T-READ (`TR_handles`, `TR_handles_restarts`), T-PIN
-  (`TP_handles`). Until they are, the old design's proofs (E3 to E6, for
-  Evict.lean) are the model's evidence for reads, restarts and pins, and
-  Java's runs are checked against the model by the trace checker through the
-  old trace format (section 4).
+* **T-READ, T2-C and T-PIN over handles** (phase 4a, 2026-10-26):
+  `tr_handles` (a read through the handles at any time up to the last record
+  gives P at that time; SIS/Proof/HandleReadT.lean), `t2_handles` and
+  `tr_handles_restarts` (the same with restarts: the records and D stay the
+  model's, and reads give P; SIS/Proof/HandleRestart.lean), and `tp_handles`
+  (every object outside the pinned set may be evicted;
+  SIS/Proof/HandlePin.lean). Java's runs are checked against the model by
+  the trace checker through the trace format of the design before handles
+  (section 4); a check of the handle state itself is step 4c.
 
 
 ## 2. The mapping α
