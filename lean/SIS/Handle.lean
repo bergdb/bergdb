@@ -4,8 +4,10 @@ phase 2, step 2a; the design is items/009-handles/02-implementation-plan.md,
 section 4, here called 02; aligned with Java's implementation, step 3a on the
 branch 009-handles: java/src/bergdb/dag/Handle.java, core/NodeCollection.java,
 core/Cache3.java). Trusted part, like Evict.lean. The statements are in
-HandleTheorems.lean; T-CACHE over handles (`TC_handles`) is proved in
-SIS/Proof/HandleRecords.lean (step 2d), the others are not yet.
+HandleTheorems.lean, all proved in SIS/Proof/Handle*.lean: T-CACHE over
+handles (`tc_handles`, step 2d), and T-READ, T2-C, T-READ with restarts and
+T-PIN (`tr_handles`, `t2_handles`, `tr_handles_restarts`, `tp_handles`, phase
+4a).
 
 Evict.lean models BergDB's memory as it is at Level 4: a pointer of an object
 is a memory pointer to an object, or a stream pointer, and eviction unswizzles

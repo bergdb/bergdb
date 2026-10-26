@@ -460,15 +460,19 @@ section Relink
 
 variable {sp : Spec V T} {db : DB V T} {S0 : Stream V T} {k : Nat} {m m' : HMem V}
 
-/-- The invariant survives pointers with no handle taking the live handle of a
-node with a canonical object, the cores, the table, the handles and the rest
-staying. -/
+/-- The invariant survives pointers taking the live handle of a node with a
+canonical object, with any reference that names a version, the cores, the
+table, the handles and the rest staying. Rule 4 with handles keeps the
+pointer's own reference; the startup from the stream after T(k), against
+Evict.lean's taken to handles, has the stream slot's reference where Evict.lean
+has the canonical object's position (SIS/Proof/HandleRestart.lean). -/
 theorem HEInv.relinkH (hm : HEInv sp db S0 k m)
     (hfw : ∀ a o, m.obj? a = some o → ∃ o', m'.obj? a = some o')
     (hbk : ∀ a o', m'.obj? a = some o' → ∃ o, m.obj? a = some o ∧ o'.core = o.core ∧
       (o.canonical = false → o' = o) ∧
-      ∀ y, o'.ptr? y = o.ptr? y ∨ ∃ q, o.ptr? y = some q ∧ q.handle = none ∧
-        (m.canonicalOf y).isSome = true ∧ o'.ptr? y = some { q with handle := m.tableOf y })
+      ∀ y, o'.ptr? y = o.ptr? y ∨ ∃ q q', o.ptr? y = some q ∧ o'.ptr? y = some q' ∧
+        q'.handle = m.tableOf y ∧ (m.canonicalOf y).isSome = true ∧
+        ∀ r, q'.ref = some r → ∃ u, db.S.versionAt r y = some u)
     (htab : m'.table = m.table) (hh : m'.handles = m.handles) (hs : m'.s = m.s) (hroot : m'.root = m.root)
     (hno : m'.nextObj = m.nextObj) (hnh : m'.nextHandle = m.nextHandle)
     (hnd : (m'.objs.map (·.1)).Nodup) : HEInv sp db S0 k m' := by
@@ -506,13 +510,13 @@ theorem HEInv.relinkH (hm : HEInv sp db S0 k m)
     intro y p ⟨n, h1, h2, h3⟩
     exact ⟨n, h1, by rw [htab']; exact h2, by rw [hcan]; exact h3⟩
   -- A pointer that takes y's live handle: what INV-SLOT and the live pointers ask.
-  have hnewp : ∀ (y : NodeId) (q : HPtr), (m.canonicalOf y).isSome = true →
-      m'.HoldsLive y { q with handle := m.tableOf y } ∧
-        m'.ptrRef S0 y { q with handle := m.tableOf y } = (db.S.lv y).map (·.recNo) := by
-    intro y q hc
+  have hnewp : ∀ (y : NodeId) (q : HPtr), q.handle = m.tableOf y → (m.canonicalOf y).isSome = true →
+      m'.HoldsLive y q ∧ m'.ptrRef S0 y q = (db.S.lv y).map (·.recNo) := by
+    intro y q hq hc
     have hc' : (m'.canonicalOf y).isSome = true := by rw [hcan]; exact hc
-    have hhl' : m'.HoldsLive y { q with handle := m'.tableOf y } := HMem.holdsLive_tableOf q hc'
-    rw [htab'] at hhl'
+    obtain ⟨b0, hb0⟩ := Option.isSome_iff_exists.mp hc'
+    obtain ⟨n0, -, htn0, -⟩ := (m'.canonicalOf_eq_some y b0).mp hb0
+    have hhl' : m'.HoldsLive y q := ⟨n0, by rw [hq, ← htab', htn0], htn0, hc'⟩
     refine ⟨hhl', ?_⟩
     obtain ⟨b, o, hcb, ho, -, hpr⟩ := HMem.ptrRef_of_holdsLive S0 hhl'
     rw [hpr]
@@ -524,8 +528,9 @@ theorem HEInv.relinkH (hm : HEInv sp db S0 k m)
   have hbk' : ∀ a o', m'.obj? a = some o' → ∃ o, m.obj? a = some o ∧ o'.node = o.node ∧
       o'.level = o.level ∧ o'.isData = o.isData ∧ o'.hist = o.hist ∧ o'.canonical = o.canonical ∧
       o'.pos = o.pos ∧ (o.canonical = false → o' = o) ∧
-      ∀ y, o'.ptr? y = o.ptr? y ∨ ∃ q, o.ptr? y = some q ∧ q.handle = none ∧
-        (m.canonicalOf y).isSome = true ∧ o'.ptr? y = some { q with handle := m.tableOf y } := by
+      ∀ y, o'.ptr? y = o.ptr? y ∨ ∃ q q', o.ptr? y = some q ∧ o'.ptr? y = some q' ∧
+        q'.handle = m.tableOf y ∧ (m.canonicalOf y).isSome = true ∧
+        ∀ r, q'.ref = some r → ∃ u, db.S.versionAt r y = some u := by
     intro a o' ho'
     obtain ⟨o, ho, hc, hsn, hpt⟩ := hbk a o' ho'
     simp only [HObj.core, Prod.mk.injEq] at hc
@@ -576,13 +581,12 @@ theorem HEInv.relinkH (hm : HEInv sp db S0 k m)
       obtain ⟨n, h1, h2⟩ := hm.tbl.held ho
       exact ⟨n, by rw [htab', e1]; exact h1, by rw [hof]; exact h2⟩
     · obtain ⟨o, ho, -, -, -, -, -, -, -, hpt⟩ := hbk' a o' ho'
-      rcases hpt y with h | ⟨q0, hq0, -, hc, h⟩
+      rcases hpt y with h | ⟨q0, q1, -, h, hq1, -, -⟩
       · rw [h] at hq
         obtain ⟨hd, h1, h2⟩ := hm.tbl.ptrNode ho hq hqn
         exact ⟨hd, by rw [hh']; exact h1, h2⟩
       · rw [h, Option.some.injEq] at hq
-        subst hq
-        simp only at hqn
+        rw [← hq, hq1] at hqn
         obtain ⟨hd, -, -, h1, -, h2, -⟩ := hm.tbl.entry hqn
         exact ⟨hd, by rw [hh']; exact h1, h2⟩
   · intro a o' ho' hc
@@ -606,35 +610,31 @@ theorem HEInv.relinkH (hm : HEInv sp db S0 k m)
     exact hm.ruleR n hd b o w (by rw [← hh']; exact h1) h2 ho hc0 hw
   · intro a o' y q r ho' hq hr
     obtain ⟨o, ho, -, -, -, -, -, -, -, hpt⟩ := hbk' a o' ho'
-    rcases hpt y with h | ⟨q0, hq0, -, -, h⟩
+    rcases hpt y with h | ⟨q0, q1, -, h, -, -, hv⟩
     · rw [h] at hq; exact hm.rver a o y q r ho hq hr
     · rw [h, Option.some.injEq] at hq
-      subst hq
-      exact hm.rver a o y q0 r ho hq0 hr
+      rw [← hq] at hr
+      exact hv r hr
   · intro a o' ho' hrel y hy
     obtain ⟨o, ho, e1, -, -, e4, e5, -, -, hpt⟩ := hbk' a o' ho'
     have hrel0 : HRelevant sp db k o := by
       obtain ⟨h1, h2, h3⟩ := hrel
       exact ⟨by rw [← e5]; exact h1, by rw [← e1]; exact h2, by rw [← e1]; exact h3⟩
     obtain ⟨q, hq, hi1, hi2⟩ := hm.slots a o ho hrel0 y (by rw [← e4]; exact hy)
-    rcases hpt y with h | ⟨q0, hq0, -, hc, h⟩
+    rcases hpt y with h | ⟨q0, q1, -, h, hq1, hc, -⟩
     · refine ⟨q, by rw [h]; exact hq, fun hD => by rw [href]; exact hi1 hD, fun hD => ?_⟩
       rcases hi2 hD with h' | h'
       · exact Or.inl (hhl y q h')
       · rw [e1]; exact Or.inr h'
-    · rw [hq, Option.some.injEq] at hq0
-      subst hq0
-      obtain ⟨hhl', hval⟩ := hnewp y q hc
+    · obtain ⟨hhl', hval⟩ := hnewp y q1 hq1 hc
       exact ⟨_, h, fun _ => hval, fun _ => Or.inl hhl'⟩
   · intro a o' ho' hc hr y hy
     obtain ⟨o, ho, e1, -, -, e4, e5, -, -, hpt⟩ := hbk' a o' ho'
     obtain ⟨q, hq, hl1, hl2⟩ := hm.live a o ho (by rw [← e5]; exact hc) (by rw [← e1]; exact hr) y
       (by rw [← e4]; exact hy)
-    rcases hpt y with h | ⟨q0, hq0, -, hcz, h⟩
+    rcases hpt y with h | ⟨q0, q1, -, h, hq1, hcz, -⟩
     · exact ⟨q, by rw [h]; exact hq, fun hD => hhl y q (hl1 hD), fun hD => by rw [href]; exact hl2 hD⟩
-    · rw [hq, Option.some.injEq] at hq0
-      subst hq0
-      obtain ⟨hhl', hval⟩ := hnewp y q hcz
+    · obtain ⟨hhl', hval⟩ := hnewp y q1 hq1 hcz
       exact ⟨_, h, fun _ => hhl', fun _ => hval⟩
 
 /-- Rule 4 with handles keeps the invariant. -/
@@ -645,9 +645,12 @@ theorem HEInv.linkD (hm : HEInv sp db S0 k m) (D : Dirty) : HEInv sp db S0 k (m.
   · intro a o' ho'
     rw [HMem.linkD_obj?] at ho'
     obtain ⟨o, ho, rfl⟩ := Option.map_eq_some_iff.mp ho'
-    refine ⟨o, ho, HMem.linkObj_core m D a o, fun hc => ?_, HMem.linkObj_ptr m D a o⟩
-    unfold HMem.linkObj
-    simp [hc]
+    refine ⟨o, ho, HMem.linkObj_core m D a o, fun hc => ?_, fun y => ?_⟩
+    · unfold HMem.linkObj
+      simp [hc]
+    · rcases HMem.linkObj_ptr m D a o y with h | ⟨q, hq, -, hc, h⟩
+      · exact Or.inl h
+      · exact Or.inr ⟨q, _, hq, h, rfl, hc, fun r hr => hm.rver a o y q r ho hq hr⟩
   · rfl
   · rfl
   · rfl

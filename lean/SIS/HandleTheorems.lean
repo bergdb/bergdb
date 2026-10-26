@@ -2,9 +2,12 @@
 Self-indexed streams in Lean: the statements of the physical layer with handles
 (bergdb item 009, phase 2, step 2c). Trusted part: what is to be proved, stated
 as definitions of type `Prop`, not as theorems, so that nothing here is
-assumed or left unproved. `TC_handles` is proved for every `sp` and `al`
-(`tc_handles`, SIS/Proof/HandleRecords.lean; step 2d); proofs of the others
-are phase 4a.
+assumed or left unproved. All are proved for every `sp` and `al`:
+`TC_handles` (`tc_handles`, SIS/Proof/HandleRecords.lean; step 2d),
+`TR_handles` (`tr_handles`, SIS/Proof/HandleReadT.lean), `T2_handles` and
+`TR_handles_restarts` (`t2_handles`, `tr_handles_restarts`,
+SIS/Proof/HandleRestart.lean), and `TP_handles` (`tp_handles`,
+SIS/Proof/HandlePin.lean); the last four in phase 4a.
 
 They mirror PhysTheorems.lean's `TC_records` (T-CACHE), `TR_view` (T-READ),
 `TP_pins` (T-PIN), and `T2_cache` (T2-C) and `TR_view_restarts`, the forms
@@ -154,7 +157,8 @@ records (so restarts change no record) and D, and P with the same nodes; and
 the memory meets the invariants of `TC_handles` for the startup it last made,
 from the run's stream after some earlier transaction k1 (Rule R from that
 stream's section). Without restarts `HRuleROK` says nothing (every position is
-at least the version in R(0)); after a restart it is what open point 1 needs. -/
+at least the version in R(0)); after a restart it is what open point 1 needs.
+Proved: `t2_handles` (SIS/Proof/HandleRestart.lean). -/
 def T2_handles (sp : Spec V T) (al : Algo V T) : Prop :=
   ∀ ts : List (T × Bool × List HCacheOp),
     RunOK sp al (ts.map (·.1)) → PhysRunOK sp al (ts.map (·.1)) →
@@ -175,7 +179,8 @@ operations, a read through the handles (`HMem.read`: the fast path, or resolve
 and load) at any time t up to the last record gives P at t: it reaches exactly
 the nodes reachable at t, each with its node at t (level, kind and history at
 t). The operations being any, this holds for every read between transactions,
-and for the writer's own read at the last time. -/
+and for the writer's own read at the last time. Proved: `tr_handles`
+(SIS/Proof/HandleReadT.lean). -/
 def TR_handles (sp : Spec V T) (al : Algo V T) : Prop :=
   ∀ ts : List (T × Bool × List HCacheOp),
     RunOK sp al (ts.map (·.1)) → PhysRunOK sp al (ts.map (·.1)) →
@@ -192,7 +197,8 @@ run as in `T2_handles` (with restarts after any transactions), after any
 transaction and its operations or its restart, a read through the handles (with
 Rule R from the stream of the last startup) at any time t up to the last record
 gives P at t. This is where open point 1 of 02 (Rule R on the fast path) matters
-for reads: without a restart, Rule R changes nothing. -/
+for reads: without a restart, Rule R changes nothing. Proved:
+`tr_handles_restarts` (SIS/Proof/HandleRestart.lean). -/
 def TR_handles_restarts (sp : Spec V T) (al : Algo V T) : Prop :=
   ∀ ts : List (T × Bool × List HCacheOp),
     RunOK sp al (ts.map (·.1)) → PhysRunOK sp al (ts.map (·.1)) →
@@ -213,9 +219,10 @@ and the root's object) may be evicted (`HMem.evictable`: its object has been
 written), and one eviction (`HCacheOp.evict`) removes the object from memory and
 kills the handle. The second part is by the definition of `HMem.evict`; the
 first, that every object outside the pinned set has been written, is what needs
-a proof (as `EInv.detachable_of_unpinned` for Evict.lean). With `TC_handles` and
-`TR_handles`, which hold for any operations, the pinned set is all that must
-stay: no walk, and nothing about the pointers that hold a handle. -/
+a proof (`HEInv.evictable_of_unpinned`, as `EInv.detachable_of_unpinned` for
+Evict.lean). With `TC_handles` and `TR_handles`, which hold for any operations,
+the pinned set is all that must stay: no walk, and nothing about the pointers
+that hold a handle. Proved: `tp_handles` (SIS/Proof/HandlePin.lean). -/
 def TP_handles (sp : Spec V T) (al : Algo V T) : Prop :=
   ∀ ts : List (T × Bool × List HCacheOp),
     RunOK sp al (ts.map (·.1)) → PhysRunOK sp al (ts.map (·.1)) →

@@ -28,19 +28,6 @@ theorem HMem.canonicalOf_setObj_flag {m : HMem V} {a : Nat} {o o' : HObj V} (ho 
   · rename_i h; subst h; rw [ho]; simp [hc]
   · rfl
 
-theorem HMem.holdsCanonical_setObj_flag {m : HMem V} {a : Nat} {o o' : HObj V} (ho : m.obj? a = some o)
-    (hc : o'.canonical = o.canonical) (p : HPtr) : (m.setObj a o').holdsCanonical p = m.holdsCanonical p := by
-  unfold HMem.holdsCanonical
-  rw [HMem.objOf_setObj_fun]
-  cases p.handle.bind m.objOf with
-  | none => rfl
-  | some b =>
-    simp only [Option.bind_some]
-    rw [HMem.obj?_setObj]
-    by_cases hba : b = a
-    · subst hba; simp [ho, hc]
-    · simp only [hba, ↓reduceIte]
-
 /-- The table and the handles after an object is replaced by one of the same
 node, whose pointers hold handles of their pointees. -/
 theorem HTableOK.setObj {m : HMem V} (ht : HTableOK m) {a : Nat} {o o' : HObj V} (ho : m.obj? a = some o)

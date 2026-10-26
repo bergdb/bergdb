@@ -1,7 +1,10 @@
 /-
 Proofs about the physical layer with handles (bergdb item 009, step 2d), part 3:
 the readers' follow keeps the invariant, step by step: the raised reference
-written back into the pointer (record-neutral), the live handle, the load.
+written back into the pointer (record-neutral), the live handle, the load. And
+(phase 4a) what reads at earlier times need of the follow: what the pointers
+give is kept (`HMem.KeepPtrs`), and the object reached serves the slow path's
+reference (`HFollowed`).
 -/
 import SIS.Proof.HandleInv
 
@@ -43,6 +46,72 @@ theorem HMem.slowRef_ge (m : HMem V) (S0 : Stream V T) (y : NodeId) (p : HPtr) {
     (h : ruleRRef S0 m.s y p.ref = some r) : ∃ r', m.slowRef S0 y p = some r' ∧ r ≤ r' := by
   unfold HMem.slowRef
   exact maxRef_ge_left h
+
+/-! ## What the pointers give a read at an earlier time -/
+
+/-- Pointer p holds a handle that holds a canonical object, in lookups. -/
+theorem HMem.holdsCanonical_iff (m : HMem V) (p : HPtr) :
+    m.holdsCanonical p = true ↔ ∃ n c oc, p.handle = some n ∧ m.objOf n = some c ∧ m.obj? c = some oc ∧
+      oc.canonical = true := by
+  unfold HMem.holdsCanonical
+  constructor
+  · intro h
+    cases hn : p.handle with
+    | none => rw [hn] at h; simp at h
+    | some n =>
+      rw [hn] at h
+      simp only [Option.bind_some] at h
+      cases hc : m.objOf n with
+      | none => rw [hc] at h; simp at h
+      | some c =>
+        rw [hc] at h
+        simp only [Option.bind_some] at h
+        cases ho : m.obj? c with
+        | none => rw [ho] at h; simp at h
+        | some oc => rw [ho] at h; exact ⟨n, c, oc, rfl, hc, ho, h⟩
+  · rintro ⟨n, c, oc, hn, hc, ho, hcc⟩
+    rw [hn]
+    simp only [Option.bind_some]
+    rw [hc]
+    simp only [Option.bind_some]
+    rw [ho]
+    exact hcc
+
+/-- m' keeps what the pointers of m give a read at an earlier time: Rule R's
+startup pos, every handle with its written position, and every pointer that
+holds a canonical object still holds one. -/
+structure HMem.KeepPtrs (m m' : HMem V) : Prop where
+  s : m'.s = m.s
+  written : ∀ n hd, m.handle? n = some hd → ∃ hd', m'.handle? n = some hd' ∧ hd'.written = hd.written
+  canon : ∀ p, m.holdsCanonical p = true → m'.holdsCanonical p = true
+
+theorem HMem.KeepPtrs.refl (m : HMem V) : m.KeepPtrs m :=
+  ⟨rfl, fun _ hd h => ⟨hd, h, rfl⟩, fun _ h => h⟩
+
+theorem HMem.KeepPtrs.trans {m1 m2 m3 : HMem V} (h1 : m1.KeepPtrs m2) (h2 : m2.KeepPtrs m3) :
+    m1.KeepPtrs m3 := by
+  refine ⟨by rw [h2.s, h1.s], fun n hd h => ?_, fun p h => h2.canon p (h1.canon p h)⟩
+  obtain ⟨hd2, h2', e2⟩ := h1.written n hd h
+  obtain ⟨hd3, h3', e3⟩ := h2.written n hd2 h2'
+  exact ⟨hd3, h3', by rw [e3, e2]⟩
+
+/-- The slow path's reference of a pointer whose handle, if any, exists is
+kept. -/
+theorem HMem.KeepPtrs.slowRef {m m' : HMem V} (hk : m.KeepPtrs m') (S0 : Stream V T) (y : NodeId)
+    {p : HPtr} (hp : ∀ n, p.handle = some n → (m.handle? n).isSome = true) :
+    m'.slowRef S0 y p = m.slowRef S0 y p := by
+  unfold HMem.slowRef
+  rw [hk.s]
+  cases hn : p.handle with
+  | none => rfl
+  | some n =>
+    obtain ⟨hd, hh⟩ := Option.isSome_iff_exists.mp (hp n hn)
+    obtain ⟨hd', hh', hw⟩ := hk.written n hd hh
+    simp only [Option.bind_some, hh, hh', hw]
+
+theorem HMem.keepPtrs_setObj {m : HMem V} {a : Nat} {o o' : HObj V} (ho : m.obj? a = some o)
+    (hc : o'.canonical = o.canonical) : m.KeepPtrs (m.setObj a o') :=
+  ⟨rfl, fun _ hd h => ⟨hd, h, rfl⟩, fun p h => by rw [HMem.holdsCanonical_setObj_flag ho hc]; exact h⟩
 
 section WriteBack
 
@@ -388,6 +457,32 @@ theorem HMem.installed_tableOf (sp : Spec V T) (m : HMem V) (n : Nat) (hd : Hand
     (w : Version V) : (m.installed sp n hd b w).nextObj = m.nextObj + 1 := rfl
 @[simp] theorem HMem.installed_nextHandle (sp : Spec V T) (m : HMem V) (n : Nat) (hd : Handle)
     (b : Nat) (w : Version V) : (m.installed sp n hd b w).nextHandle = m.nextHandle := rfl
+
+/-- The load's install keeps what the pointers give: the handle keeps its
+written position, and the object it gives up is a snapshot, which no pointer that
+holds a canonical object holds. -/
+theorem HMem.keepPtrs_installed (sp : Spec V T) {m : HMem V} {n : Nat} {hd : Handle} {b : Nat}
+    {ob : HObj V} (hh : m.handle? n = some hd) (hb : hd.obj = some b) (hob : m.obj? b = some ob)
+    (hc : ob.canonical = false) (hfr : m.obj? m.nextObj = none) (w : Version V) :
+    m.KeepPtrs (m.installed sp n hd b w) := by
+  refine ⟨rfl, fun n' hd' h => ?_, fun p h => ?_⟩
+  · rw [HMem.installed_handle?]
+    by_cases hn : n' = n
+    · subst hn; rw [hh, Option.some.injEq] at h; subst h
+      exact ⟨{ hd with obj := some m.nextObj }, by simp, rfl⟩
+    · exact ⟨hd', by simp only [hn, ↓reduceIte]; exact h, rfl⟩
+  · obtain ⟨n', c, oc, hn', hc', ho, hcc⟩ := (m.holdsCanonical_iff p).mp h
+    have hcb : c ≠ b := by
+      intro he; subst he; rw [hob, Option.some.injEq] at ho; subst ho; rw [hc] at hcc; cases hcc
+    have hne : n' ≠ n := by
+      intro he; subst he
+      have : m.objOf n' = some b := by unfold HMem.objOf; rw [hh]; exact hb
+      rw [hc', Option.some.injEq] at this
+      exact hcb this
+    have hcn : c ≠ m.nextObj := by intro he; rw [he, hfr] at ho; cases ho
+    refine ((m.installed sp n hd b w).holdsCanonical_iff p).mpr ⟨n', c, oc, hn', ?_, ?_, hcc⟩
+    · unfold HMem.objOf; rw [HMem.installed_handle?]; simp only [hne, ↓reduceIte]; exact hc'
+    · rw [HMem.installed_obj?]; simp only [hcn, hcb, ↓reduceIte]; exact ho
 
 theorem HObj.ofVersion_ptr? (sp : Spec V T) (w : Version V) (z : NodeId) :
     (HObj.ofVersion sp w).ptr? z =
@@ -1082,7 +1177,12 @@ invariant; every object of another node keeps its core; b is an object of y,
 held by n, which is y's live handle; if the pointer was good, b is readable;
 every object at another address that is of another node, or canonical, is as it
 was; object a, if of another node, keeps its core and its other pointers, and
-its pointer for y holds n; the table is as it was for the other nodes. -/
+its pointer for y holds n; the table is as it was for the other nodes. And, for
+reads at earlier times: what the pointers give is kept; every canonical object
+after the follow was in memory, with the same core and pointers, but a's
+pointer for y; that pointer, if the memory changed, held no canonical object
+and now has the slow path's reference and holds n; and b can serve the slow
+path's reference. -/
 structure HFollowed (sp : Spec V T) (S0 : Stream V T) (db : DB V T) (k : Nat) (m m' : HMem V) (a : Nat)
     (y : NodeId) (n b : Nat) : Prop where
   inv : HEInv sp db S0 k m'
@@ -1096,6 +1196,13 @@ structure HFollowed (sp : Spec V T) (S0 : Stream V T) (db : DB V T) (k : Nat) (m
   parent : ∀ o, m.obj? a = some o → o.node ≠ y → ∃ o' p', m'.obj? a = some o' ∧ o'.core = o.core ∧
     o'.ptr? y = some p' ∧ p'.handle = some n ∧ ∀ z, z ≠ y → o'.ptr? z = o.ptr? z
   tables : ∀ z, z ≠ y → m'.tableOf z = m.tableOf z
+  keep : m.KeepPtrs m'
+  back : ∀ x o', m'.obj? x = some o' → o'.canonical = true → ∃ o, m.obj? x = some o ∧ o'.core = o.core ∧
+    (x ≠ a → o' = o) ∧ ∀ z, z ≠ y → o'.ptr? z = o.ptr? z
+  ptrA : ∀ o p o', m.obj? a = some o → o.ptr? y = some p → m'.obj? a = some o' → m' = m ∨
+    (m.holdsCanonical p = false ∧ ∃ p', o'.ptr? y = some p' ∧ p'.ref = m.slowRef S0 y p ∧ p'.handle = some n)
+  usable : ∀ o p, m.obj? a = some o → o.ptr? y = some p →
+    ∃ ob, m'.obj? b = some ob ∧ ob.usable (m.slowRef S0 y p) = true
 
 theorem HMem.followR_fast (sp : Spec V T) (S0 S : Stream V T) {m : HMem V} {a : Nat} {y : NodeId}
     {o : HObj V} {p : HPtr} {n b : Nat} {ob : HObj V} (ho : m.obj? a = some o) (hp : o.ptr? y = some p)
@@ -1171,7 +1278,9 @@ variable {sp : Spec V T} {db : DB V T} {S0 : Stream V T} {k : Nat} {M : HMem V}
 /-- The load on a live handle that holds an object, with a reference r at least
 the newest version in the section: the invariant is kept; every object of
 another node keeps its core; the handle then holds an object of its node,
-usable for r; the table is the same. -/
+usable for r; the table is the same; every object after the load that was in
+memory before, or is canonical, is as it was; and what the pointers give a read
+at an earlier time is kept. -/
 theorem HEInv.load_ok (hinv : Inv sp db k) (hM : HEInv sp db S0 k M) {n : Nat} {hd : Handle}
     (hh : M.handle? n = some hd) {b0 : Nat} (hb0 : hd.obj = some b0) {r : Option Nat}
     (hr : ∀ x, r = some x → ∀ wn, newest S0 M.s hd.node = some wn → wn.recNo ≤ x)
@@ -1179,7 +1288,10 @@ theorem HEInv.load_ok (hinv : Inv sp db k) (hM : HEInv sp db S0 k M) {n : Nat} {
     HEInv sp db S0 k M' ∧
       (∀ x o, M.obj? x = some o → (o.node ≠ hd.node ∨ o.canonical = true) → M'.obj? x = some o) ∧
       (∃ ob, M'.obj? b = some ob ∧ ob.node = hd.node ∧ ob.usable r = true) ∧
-      M'.objOf n = some b ∧ (∀ z, M'.tableOf z = M.tableOf z) ∧ M'.s = M.s := by
+      M'.objOf n = some b ∧ (∀ z, M'.tableOf z = M.tableOf z) ∧ M'.s = M.s ∧
+      (∀ x o', M'.obj? x = some o' → ((M.obj? x).isSome = true ∨ o'.canonical = true) →
+        M.obj? x = some o') ∧
+      M.KeepPtrs M' := by
   obtain ⟨-, ob0, hob0, hon0⟩ := hM.tbl.obj_of_handle hh hb0
   cases hu : ob0.usable r with
   | true =>
@@ -1187,7 +1299,7 @@ theorem HEInv.load_ok (hinv : Inv sp db k) (hM : HEInv sp db S0 k M) {n : Nat} {
     simp only [Prod.mk.injEq, Option.some.injEq] at hload
     obtain ⟨rfl, rfl⟩ := hload
     exact ⟨hM, fun x o ho _ => ho, ⟨ob0, hob0, hon0, hu⟩,
-      by simp [HMem.objOf, hh, hb0], fun z => rfl, rfl⟩
+      by simp [HMem.objOf, hh, hb0], fun z => rfl, rfl, fun x o' h _ => h, HMem.KeepPtrs.refl M⟩
   | false =>
     have hc : ob0.canonical = false := by
       cases hc0 : ob0.canonical with
@@ -1209,7 +1321,8 @@ theorem HEInv.load_ok (hinv : Inv sp db k) (hM : HEInv sp db S0 k M) {n : Nat} {
         simp only [Prod.mk.injEq, Option.some.injEq] at hload
         obtain ⟨rfl, rfl⟩ := hload
         obtain ⟨hwn, hwr, -⟩ := hinv.version_node hw
-        refine ⟨hM.install hinv hh hb0 hob0 hc hw (hr x rfl), ?_, ?_, ?_, fun z => rfl, rfl⟩
+        refine ⟨hM.install hinv hh hb0 hob0 hc hw (hr x rfl), ?_, ?_, ?_, fun z => rfl, rfl, ?_,
+          HMem.keepPtrs_installed sp hh hb0 hob0 hc (hM.freshO _ (Nat.le_refl _)) w⟩
         · intro x' o ho hon
           have hx1 : x' ≠ M.nextObj := by
             intro he; rw [he, hM.freshO _ (Nat.le_refl _)] at ho; cases ho
@@ -1222,6 +1335,20 @@ theorem HEInv.load_ok (hinv : Inv sp db k) (hM : HEInv sp db S0 k M) {n : Nat} {
         · refine ⟨HObj.ofVersion sp w, by rw [HMem.installed_obj?]; simp, by simp [HObj.ofVersion, hwn], ?_⟩
           simp [HObj.usable, HObj.ofVersion, hwr]
         · unfold HMem.objOf; rw [HMem.installed_handle?]; simp
+        · intro x' o' hx' hcase
+          rw [HMem.installed_obj?] at hx'
+          by_cases h1 : x' = M.nextObj
+          · exfalso
+            simp only [h1, ↓reduceIte, Option.some.injEq] at hx'
+            subst hx'
+            rcases hcase with hcase | hcase
+            · rw [h1, hM.freshO _ (Nat.le_refl _)] at hcase; cases hcase
+            · simp [HObj.ofVersion] at hcase
+          · simp only [h1, ↓reduceIte] at hx'
+            by_cases h2 : x' = b0
+            · simp [h2] at hx'
+            · simp only [h2, ↓reduceIte] at hx'
+              exact hx'
 
 end LoadOk
 
@@ -1259,6 +1386,36 @@ theorem HMem.filled_handle? (sp : Spec V T) (M : HMem V) (n : Nat) (hd : Handle)
 
 theorem HMem.filled_tableOf (sp : Spec V T) (M : HMem V) (n : Nat) (hd : Handle) (w : Version V)
     (z : NodeId) : (M.filled sp n hd w).tableOf z = M.tableOf z := rfl
+
+/-- A new handle keeps what the pointers give. -/
+theorem HMem.keepPtrs_emptyHandle {M : HMem V} (hfr : M.handle? M.nextHandle = none) (y : NodeId) :
+    M.KeepPtrs (M.emptyHandle y) := by
+  refine ⟨rfl, fun n hd h => ⟨hd, ?_, rfl⟩, fun p h => ?_⟩
+  · have hne : n ≠ M.nextHandle := by intro he; rw [he, hfr] at h; cases h
+    rw [HMem.emptyHandle_handle?]; simp only [hne, ↓reduceIte]; exact h
+  · obtain ⟨n, c, oc, hn, hc, ho, hcc⟩ := (M.holdsCanonical_iff p).mp h
+    have hne : n ≠ M.nextHandle := by
+      intro he; rw [he] at hc; unfold HMem.objOf at hc; rw [hfr] at hc; cases hc
+    refine ((M.emptyHandle y).holdsCanonical_iff p).mpr ⟨n, c, oc, hn, ?_, ho, hcc⟩
+    unfold HMem.objOf; rw [HMem.emptyHandle_handle?]; simp only [hne, ↓reduceIte]; exact hc
+
+/-- Filling a handle that holds no object keeps what the pointers give. -/
+theorem HMem.keepPtrs_filled (sp : Spec V T) {M : HMem V} {n : Nat} {hd : Handle}
+    (hh : M.handle? n = some hd) (hb : hd.obj = none) (hfr : M.obj? M.nextObj = none) (w : Version V) :
+    M.KeepPtrs (M.filled sp n hd w) := by
+  refine ⟨rfl, fun n' hd' h => ?_, fun p h => ?_⟩
+  · rw [HMem.filled_handle?]
+    by_cases hn : n' = n
+    · subst hn; rw [hh, Option.some.injEq] at h; subst h
+      exact ⟨{ hd with obj := some M.nextObj }, by simp, rfl⟩
+    · exact ⟨hd', by simp only [hn, ↓reduceIte]; exact h, rfl⟩
+  · obtain ⟨n', c, oc, hn', hc, ho, hcc⟩ := (M.holdsCanonical_iff p).mp h
+    have hne : n' ≠ n := by
+      intro he; subst he; unfold HMem.objOf at hc; rw [hh] at hc; simp [hb] at hc
+    have hcn : c ≠ M.nextObj := by intro he; rw [he, hfr] at ho; cases ho
+    refine ((M.filled sp n hd w).holdsCanonical_iff p).mpr ⟨n', c, oc, hn', ?_, ?_, hcc⟩
+    · unfold HMem.objOf; rw [HMem.filled_handle?]; simp only [hne, ↓reduceIte]; exact hc
+    · rw [HMem.filled_obj?]; simp only [hcn, ↓reduceIte]; exact ho
 
 variable {sp : Spec V T} {db : DB V T} {S0 : Stream V T} {k : Nat} {M : HMem V}
 
@@ -1445,6 +1602,48 @@ theorem HMem.filled_new (sp : Spec V T) (M : HMem V) (n : Nat) (hd : Handle) (w 
     (M.filled sp n hd w).obj? M.nextObj = some (HObj.ofVersion sp w) := by
   rw [HMem.filled_obj?]; simp
 
+/-- The objects after the follow to a node with no live handle (`HMem.resolve`,
+`HMem.load`): the new snapshot, object a with its new pointer, the others as
+they were. -/
+theorem HMem.newLoad_obj? (sp : Spec V T) (M : HMem V) (a : Nat) (o2 : HObj V) (y : NodeId) (n : Nat)
+    (hd : Handle) (w : Version V) (x : Nat) :
+    (((M.emptyHandle y).setObj a o2).filled sp n hd w).obj? x =
+      if x = M.nextObj then some (HObj.ofVersion sp w) else if x = a then some o2 else M.obj? x := by
+  rw [HMem.filled_obj?, HMem.setObj_nextObj]
+  show (if x = M.nextObj then _ else _) = _
+  rw [HMem.obj?_setObj, HMem.emptyHandle_obj?]
+
+/-- The follow to a node with no live handle keeps what the pointers give. -/
+theorem HMem.keepPtrs_newLoad (sp : Spec V T) {M : HMem V} {a : Nat} {o o2 : HObj V}
+    (ho : M.obj? a = some o) (hc : o2.canonical = o.canonical) (y : NodeId)
+    (hfrH : M.handle? M.nextHandle = none) (hfrO : M.obj? M.nextObj = none) (ha : a ≠ M.nextObj)
+    (w : Version V) :
+    M.KeepPtrs (((M.emptyHandle y).setObj a o2).filled sp M.nextHandle
+      { node := y, obj := none, written := none, dead := false } w) := by
+  have k1 := HMem.keepPtrs_emptyHandle hfrH y
+  have ho' : (M.emptyHandle y).obj? a = some o := ho
+  have k2 := HMem.keepPtrs_setObj ho' hc
+  have hh : ((M.emptyHandle y).setObj a o2).handle? M.nextHandle =
+      some { node := y, obj := none, written := none, dead := false } := by
+    rw [HMem.handle?_setObj, HMem.emptyHandle_handle?]; simp
+  have hfr : ((M.emptyHandle y).setObj a o2).obj? ((M.emptyHandle y).setObj a o2).nextObj = none := by
+    rw [HMem.setObj_nextObj]
+    show ((M.emptyHandle y).setObj a o2).obj? M.nextObj = none
+    rw [HMem.obj?_setObj_ne _ _ (Ne.symm ha), HMem.emptyHandle_obj?]
+    exact hfrO
+  exact (k1.trans k2).trans (HMem.keepPtrs_filled sp hh rfl hfr w)
+
+/-- A pointer that the fast path does not serve holds no canonical object. -/
+theorem HMem.holdsCanonical_of_slow {m : HMem V} {p : HPtr}
+    (hnf : ∀ n0 b0 ob0, p.handle = some n0 → m.objOf n0 = some b0 → m.obj? b0 = some ob0 →
+      ob0.usable p.ref = false) : m.holdsCanonical p = false := by
+  cases h : m.holdsCanonical p with
+  | false => rfl
+  | true =>
+    obtain ⟨n, c, oc, hn, hc, ho, hcc⟩ := (m.holdsCanonical_iff p).mp h
+    have := hnf n c oc hn hc ho
+    simp [HObj.usable, hcc] at this
+
 /-- The readers' follow of the pointer of object a for a node y keeps the
 invariant, and leaves what `HFollowed` says. -/
 theorem HEInv.followR_ok (hinv : Inv sp db k) (hm : HEInv sp db S0 k m) {a : Nat} {o : HObj V}
@@ -1475,7 +1674,8 @@ theorem HEInv.followR_ok (hinv : Inv sp db k) (hm : HEInv sp db S0 k m) {a : Nat
     have htb0 : m.tableOf y = some n0 := by
       rw [← hny0]; exact hm.tbl.liveIn hh0 (hm.tbl.live_of_obj hh0 hb0')
     refine ⟨hm, fun x o' hx _ => ⟨o', hx, rfl⟩, ⟨ob0, hob0, hony⟩, ?_, hb0, htb0, fun x o' hx _ _ => hx,
-      ?_, fun _ _ => rfl⟩
+      ?_, fun _ _ => rfl, HMem.KeepPtrs.refl m, fun x o' hx _ => ⟨o', hx, rfl, fun _ => rfl, fun _ _ => rfl⟩,
+      fun _ _ _ _ _ _ => Or.inl rfl, ?_⟩
     · intro o2 p2 ho2 hp2 hgood hw
       obtain ⟨h1, h2⟩ := hgoodp o2 p2 ho2 hp2
       subst h1; subst h2
@@ -1525,6 +1725,37 @@ theorem HEInv.followR_ok (hinv : Inv sp db k) (hm : HEInv sp db S0 k m) {a : Nat
       rw [ho, Option.some.injEq] at ho2
       subst ho2
       exact ⟨o, p, ho, rfl, hp, hn0, fun _ _ => rfl⟩
+    · -- The object serves the slow path's reference: the handle is live, so it has no
+      -- written position, and a snapshot is at least the newest version in the section.
+      intro o2 p2 ho2 hp2
+      obtain ⟨h1, h2⟩ := hgoodp o2 p2 ho2 hp2
+      subst h1; subst h2
+      refine ⟨ob0, hob0, ?_⟩
+      have hl0 := hm.tbl.live_of_obj hh0 hb0'
+      have hsr : m.slowRef S0 y p = ruleRRef S0 m.s y p.ref := by
+        unfold HMem.slowRef
+        simp only [hn0, Option.bind_some, hh0, hm.liveW n0 hd0 hh0 hl0, maxRef_none]
+      rw [hsr]
+      cases hc0 : ob0.canonical with
+      | true => simp [HObj.usable, hc0]
+      | false =>
+        cases hpref : p.ref with
+        | none => simp [HObj.usable, hc0, hpref] at hu0
+        | some r0 =>
+          cases hq : ob0.pos with
+          | none => simp [HObj.usable, hc0, hpref, hq] at hu0
+          | some q =>
+            have hle : r0 ≤ q := by simpa [HObj.usable, hc0, hpref, hq] using hu0
+            have hnw : ∀ wn, newest S0 m.s y = some wn → wn.recNo ≤ q := by
+              intro wn hwn
+              obtain ⟨q', hq', hle'⟩ := hm.ruleR n0 hd0 b0 ob0 wn hh0 hb0' hob0 hc0
+                (by rw [hny0]; exact hwn)
+              rw [hq, Option.some.injEq] at hq'
+              omega
+            obtain ⟨x, hx, -⟩ := ruleRRef_ge (S0 := S0) (s := m.s) (y := y) (rfl : some r0 = some r0)
+            rw [hx]
+            have hlr := le_of_ruleR hle hnw hx
+            simp [HObj.usable, hc0, hq, hlr]
   · -- The slow path.
     have hnf : ∀ n0 b0 ob0, p.handle = some n0 → m.objOf n0 = some b0 → m.obj? b0 = some ob0 →
         ob0.usable p.ref = false := by
@@ -1532,6 +1763,7 @@ theorem HEInv.followR_ok (hinv : Inv sp db k) (hm : HEInv sp db S0 k m) {a : Nat
       cases hu : ob0.usable p.ref with
       | false => rfl
       | true => exact absurd ⟨n0, b0, ob0, h1, h2, h3, hu⟩ hfast
+    have hnotc : m.holdsCanonical p = false := HMem.holdsCanonical_of_slow hnf
     rw [HMem.followR_slow sp S0 db.S ho hp hnf] at hf
     have hm1 := hm.writeBack hinv ho hp
     rw [HMem.setRef_eq ho hp] at hf hm1
@@ -1613,11 +1845,12 @@ theorem HEInv.followR_ok (hinv : Inv sp db k) (hm : HEInv sp db S0 k m) {a : Nat
           rw [hload] at hf
           simp only [Option.some.injEq, Prod.mk.injEq] at hf
           obtain ⟨rfl, rfl, rfl⟩ := hf
-          obtain ⟨hi, hfr, ⟨ob, hob, hon, hu⟩, hobn, htbl, -⟩ :=
+          obtain ⟨hi, hfr, ⟨ob, hob, hon, hu⟩, hobn, htbl, -, hbk, hkp⟩ :=
             hm1.load_ok hinv (by rw [HMem.handle?_setObj]; exact hh0) hb0
               (fun x hx wn hwn => hsec x hx wn (by rw [hy0] at hwn; exact hwn)) hload
           refine ⟨hi, fun x o' hx hxn => ?_, ⟨ob, hob, by rw [hon, hy0]⟩, ?_, hobn,
-            by rw [htbl, HMem.tableOf_setObj]; exact htb0, ?_, ?_, ?_⟩
+            by rw [htbl, HMem.tableOf_setObj]; exact htb0, ?_, ?_, ?_,
+            (HMem.keepPtrs_setObj ho (HObj.setPtr_canonical o y _)).trans hkp, ?_, ?_, ?_⟩
           · obtain ⟨o'', hx'', hc''⟩ := hfr1 x o' hx
             have hxn' : o''.node ≠ hd0.node := by
               rw [show o''.node = o'.node from congrArg (fun c => c.1) hc'', hy0]; exact hxn
@@ -1636,6 +1869,27 @@ theorem HEInv.followR_ok (hinv : Inv sp db k) (hm : HEInv sp db S0 k m) {a : Nat
               rw [HObj.setPtr_node, hy0]; exact hny)), HObj.setPtr_core _ _ _, hp1, hn0, hptrs0⟩
           · intro z hz
             rw [htbl, HMem.tableOf_setObj]
+          · intro x o' hx hc'
+            have h1 := hbk x o' hx (Or.inr hc')
+            rw [HMem.obj?_setObj] at h1
+            by_cases hxa : x = a
+            · rw [ite_eq_left hxa, Option.some.injEq] at h1
+              subst h1
+              exact ⟨o, by rw [hxa]; exact ho, HObj.setPtr_core _ _ _, fun h => absurd hxa h, hptrs0⟩
+            · rw [ite_eq_right hxa] at h1
+              exact ⟨o', h1, rfl, fun _ => rfl, fun _ _ => rfl⟩
+          · intro o2 p2 o' ho2 hp2 ho'
+            obtain ⟨h1, h2⟩ := hgoodp o2 p2 ho2 hp2
+            subst h1; subst h2
+            right
+            have h1 := hbk a o' ho' (Or.inl (by rw [ho1]; rfl))
+            rw [ho1, Option.some.injEq] at h1
+            subst h1
+            exact ⟨hnotc, { p with ref := m.slowRef S0 y p }, hp1, rfl, hn0⟩
+          · intro o2 p2 ho2 hp2
+            obtain ⟨h1, h2⟩ := hgoodp o2 p2 ho2 hp2
+            subst h1; subst h2
+            exact ⟨ob, hob, hu⟩
     · -- The pointer holds no live handle.
       have hnl : ∀ n0 hd0, ({ p with ref := m.slowRef S0 y p } : HPtr).handle = some n0 →
           (m.setObj a (o.setPtr y { p with ref := m.slowRef S0 y p })).handle? n0 = some hd0 →
@@ -1682,7 +1936,7 @@ theorem HEInv.followR_ok (hinv : Inv sp db k) (hm : HEInv sp db S0 k m) {a : Nat
             rw [hload] at hf
             simp only [Option.some.injEq, Prod.mk.injEq] at hf
             obtain ⟨rfl, rfl, rfl⟩ := hf
-            obtain ⟨hi, hfr, ⟨ob, hob, hon, hu⟩, hobn, htbl, -⟩ :=
+            obtain ⟨hi, hfr, ⟨ob, hob, hon, hu⟩, hobn, htbl, -, hbk, hkp⟩ :=
               hm2.load_ok hinv (by rw [HMem.handle?_setObj, HMem.handle?_setObj]; exact hh1) hb1
                 (fun x hx wn hwn => hsec x hx wn (by rw [hny1] at hwn; exact hwn)) hload
             have hx2 : ∀ x o'', (m.setObj a (o.setPtr y { p with ref := m.slowRef S0 y p })).obj? x = some o'' →
@@ -1699,7 +1953,9 @@ theorem HEInv.followR_ok (hinv : Inv sp db k) (hm : HEInv sp db S0 k m) {a : Nat
                 exact ⟨_, rfl, HObj.setPtr_core _ _ _⟩
               · exact ⟨o'', hx'', rfl⟩
             refine ⟨hi, fun x o' hx hxn => ?_, ⟨ob, hob, by rw [hon, hny1]⟩, ?_, hobn,
-              by rw [htbl, HMem.tableOf_setObj, HMem.tableOf_setObj]; exact htb, ?_, ?_, ?_⟩
+              by rw [htbl, HMem.tableOf_setObj, HMem.tableOf_setObj]; exact htb, ?_, ?_, ?_,
+              ((HMem.keepPtrs_setObj ho (HObj.setPtr_canonical o y _)).trans
+                (HMem.keepPtrs_setObj ho1 (HObj.setPtr_canonical _ y _))).trans hkp, ?_, ?_, ?_⟩
             · obtain ⟨o'', hx'', hc''⟩ := hfr1 x o' hx
               obtain ⟨o2, hx2', hc2⟩ := hx2 x o'' hx''
               have hxn' : o2.node ≠ hd1.node := by
@@ -1725,6 +1981,29 @@ theorem HEInv.followR_ok (hinv : Inv sp db k) (hm : HEInv sp db S0 k m) {a : Nat
               rw [HObj.ptr?_setPtr_of hp1]; simp
             · intro z hz
               rw [htbl, HMem.tableOf_setObj, HMem.tableOf_setObj]
+            · intro x o' hx hc'
+              have h1 := hbk x o' hx (Or.inr hc')
+              rw [HMem.obj?_setObj, HMem.obj?_setObj] at h1
+              by_cases hxa : x = a
+              · rw [ite_eq_left hxa, Option.some.injEq] at h1
+                subst h1
+                exact ⟨o, by rw [hxa]; exact ho, by rw [HObj.setPtr_core, HObj.setPtr_core],
+                  fun h => absurd hxa h, hptrs1 _⟩
+              · rw [ite_eq_right hxa, ite_eq_right hxa] at h1
+                exact ⟨o', h1, rfl, fun _ => rfl, fun _ _ => rfl⟩
+            · intro o2 p2 o' ho2 hp2 ho'
+              obtain ⟨h1, h2⟩ := hgoodp o2 p2 ho2 hp2
+              subst h1; subst h2
+              right
+              have h1 := hbk a o' ho' (Or.inl (by rw [HMem.obj?_setObj_self]; rfl))
+              rw [HMem.obj?_setObj_self, Option.some.injEq] at h1
+              subst h1
+              refine ⟨hnotc, { ({ p with ref := m.slowRef S0 y p } : HPtr) with handle := some n1 }, ?_, rfl, rfl⟩
+              rw [HObj.ptr?_setPtr_of hp1]; simp
+            · intro o2 p2 ho2 hp2
+              obtain ⟨h1, h2⟩ := hgoodp o2 p2 ho2 hp2
+              subst h1; subst h2
+              exact ⟨ob, hob, hu⟩
       | none =>
         rw [HMem.resolve_new ho1 hp1 hnl (by rw [HMem.tableOf_setObj]; exact htb)] at hf
         have hhn : HMem.handle? (((m.setObj a (o.setPtr y { p with ref := m.slowRef S0 y p })).emptyHandle y).setObj
@@ -1795,8 +2074,14 @@ theorem HEInv.followR_ok (hinv : Inv sp db k) (hm : HEInv sp db S0 k m) {a : Nat
             simp only [Option.some.injEq, Prod.mk.injEq] at hf
             obtain ⟨rfl, rfl, rfl⟩ := hf
             obtain ⟨hwn, hwr, -⟩ := hinv.version_node hw
+            have hna : a ≠ m.nextObj := by
+              intro he; rw [he, hm.freshO _ (Nat.le_refl _)] at ho; cases ho
+            have hfrO : (m.setObj a (o.setPtr y { p with ref := some r })).obj?
+                (m.setObj a (o.setPtr y { p with ref := some r })).nextObj = none := by
+              rw [HMem.setObj_nextObj, HMem.obj?_setObj_ne _ _ (Ne.symm hna)]
+              exact hm.freshO _ (Nat.le_refl _)
             refine ⟨hm4, fun x o' hx _ => ?_, ⟨HObj.ofVersion sp w, HMem.filled_new sp _ _ _ w,
-              by simp [HObj.ofVersion, hwn]⟩, ?_, ?_, ?_, ?_, ?_, ?_⟩
+              by simp [HObj.ofVersion, hwn]⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
             · obtain ⟨o'', hx'', hc''⟩ := hfr1 x o' hx
               rw [hsr] at hx''
               obtain ⟨o3, h3, hc3⟩ := hfr3 x o'' hx''
@@ -1835,6 +2120,39 @@ theorem HEInv.followR_ok (hinv : Inv sp db k) (hm : HEInv sp db S0 k m) {a : Nat
             · intro z hz
               rw [HMem.filled_tableOf, HMem.tableOf_setObj, HMem.emptyHandle_tableOf, HMem.tableOf_setObj]
               simp [hz]
+            · exact (HMem.keepPtrs_setObj ho (HObj.setPtr_canonical o y _)).trans
+                (HMem.keepPtrs_newLoad sp (HMem.obj?_setObj_self _ _ _) (HObj.setPtr_canonical _ y _) y
+                  (hm.freshH _ (Nat.le_refl _)) hfrO hna w)
+            · intro x o' hx hc'
+              rw [HMem.newLoad_obj?, HMem.setObj_nextObj] at hx
+              by_cases h1 : x = m.nextObj
+              · rw [ite_eq_left h1, Option.some.injEq] at hx
+                subst hx
+                simp [HObj.ofVersion] at hc'
+              · rw [ite_eq_right h1] at hx
+                by_cases hxa : x = a
+                · rw [ite_eq_left hxa, Option.some.injEq] at hx
+                  subst hx
+                  exact ⟨o, by rw [hxa]; exact ho, by rw [HObj.setPtr_core, HObj.setPtr_core],
+                    fun h => absurd hxa h, hptrs1 _⟩
+                · rw [ite_eq_right hxa, HMem.obj?_setObj, ite_eq_right hxa] at hx
+                  exact ⟨o', hx, rfl, fun _ => rfl, fun _ _ => rfl⟩
+            · intro o2 p2 o' ho2 hp2 ho'
+              obtain ⟨h1, h2⟩ := hgoodp o2 p2 ho2 hp2
+              subst h1; subst h2
+              right
+              rw [HMem.newLoad_obj?, HMem.setObj_nextObj, ite_eq_right hna, ite_eq_left rfl, Option.some.injEq] at ho'
+              subst ho'
+              refine ⟨hnotc, { ({ p with ref := some r } : HPtr) with
+                handle := some (m.setObj a (o.setPtr y { p with ref := some r })).nextHandle }, ?_, hsr.symm, rfl⟩
+              rw [HObj.ptr?_setPtr, HObj.ptr?_setPtr_of hp]
+              simp
+            · intro o2 p2 ho2 hp2
+              obtain ⟨h1, h2⟩ := hgoodp o2 p2 ho2 hp2
+              subst h1; subst h2
+              refine ⟨HObj.ofVersion sp w, HMem.filled_new sp _ _ _ w, ?_⟩
+              rw [hsr]
+              simp [HObj.usable, HObj.ofVersion, hwr]
 
 end FollowOk
 
