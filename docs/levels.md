@@ -172,19 +172,21 @@ Limits:
 * Bounded startup is proved in Lean for a startup pos policy that keeps up
   with the startup distance (T3,
   [007-01](../items/007-bounds/01-startup-bound.md)), not yet for BergDB's
-  own: the startup section reached 2.21 times the startup distance with 10M
-  keys at 20 MB. The deadline that bounds it, at twice the startup distance,
-  is planned ([007-03](../items/007-bounds/03-plan.md)), after release
-  2026.1.
+  own: at its peaks the startup section reached 2.6 times the startup
+  distance at 50 MB, 2.3 times at 200 MB and 1.65 times at 1000 MB, in
+  runs with 10M and 50M keys (005-38). The deadline that bounds it, at
+  twice the startup distance, is planned
+  ([007-03](../items/007-bounds/03-plan.md)), after 005-49 (smooth index
+  writes), as the backstop of the take it recommends.
 * A transaction whose dirty index nodes could not be written in one record
   is refused before its go point (005-31); larger updates must be split by
   the application, as a transaction of values over 7/8 of the record limit
   must (005-17).
-* Write overhead: with uniform random updates, about one index node is
-  written per update: 6 bytes appended per user byte at 1M keys and 9.9 at
-  10M keys, at 20 MB (011-04, "Level 2 under load"). At 200 to 1000 MB a
-  put costs 180 to 670 bytes of stream at 10M and 50M keys (005-38). At
-  large startup distances the index is written in bursts (005-49).
+* Write overhead: with uniform random updates, a put of a 24-byte key and
+  an 8-byte value costs 681 and 1,013 bytes of stream at 50 MB with 10M
+  and 50M keys, 373 and 673 at 200 MB, and 180 and 299 at 1000 MB; its own
+  record is 68 bytes of it (005-38). At large startup distances the index
+  is written in bursts (005-49).
 * The conservative still-dirty test writes index nodes that are no longer
   current: 20 to 46 percent of those written at 50 MB (011-04, "Bounds,
   measured").
@@ -335,8 +337,9 @@ Limits:
 * Loads in memory, with no eviction, are 8 to 20 percent slower than before
   handles.
 * D, which cannot be evicted, is bounded only loosely by the startup
-  distance: 1.0 to 3.2 times the startup distance in memory in the runs
-  measured (011-04, "Bounds, measured").
+  distance: its nodes' stream bytes reached 2.9 times the startup distance
+  at 50 MB, 2.3 times at 200 MB and 1.6 times at 1000 MB, in runs with 10M
+  and 50M keys (005-38); in memory they take more.
 
 
 ## 8. Durability

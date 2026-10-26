@@ -90,3 +90,14 @@ decrease of the startup distance in steps) and D5 (step 6 in this plan)
 recorded in 007-03. Step 5 prepared as 007-05 by Claude (Opus 5.5, Claude
 Code): StartupBench, the scripts for F53 and s1, checked on small databases
 on both; scheduled for 2026-10-27, 04:00, reporting to news.md.
+
+2026-10-26. After the docs/ cleanup (006-07): 007-03 cites the moved
+documents by ID (011-11, M10; 001-08, M44; 011-04) and docs/levels.md by
+its new section 5, and lists 005-54's Q1, Q3 and Q5 under "After the plan".
+007-04 and this log keep their wording, as history.
+
+2026-10-26. docs/levels.md (sections 5 and 7) and README.md give 005-38's
+figures at 50 to 1000 MB for the startup section, the write overhead and D,
+in place of those at 20 and 5 MB (Frans: "We should use at a startup
+distance of at least 50 MB."); section 5 gives 007-03's order, 005-49 first
+and the deadline as its backstop.

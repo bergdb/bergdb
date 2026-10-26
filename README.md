@@ -90,8 +90,9 @@ Two known limits (2026-10-25). Replication (`DatabaseBuilder.replica`,
 `Database.addReplica`) is experimental, with known faults, and not for data
 that matters ([005-11](items/005-todo/11-replication.md)). And bounded
 startup is not yet proved for BergDB's own startup pos policy: the startup
-section reached 2.21 times the startup distance in a test, and the deadline
-that bounds it is planned ([007-03](items/007-bounds/03-plan.md)).
+section reached 2.6 times the startup distance at 50 MB in a test
+([005-38](items/005-todo/38-writes-at-scale.md)), and the deadline that
+bounds it is planned ([007-03](items/007-bounds/03-plan.md)).
 
 
 Notes

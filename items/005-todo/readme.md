@@ -38,6 +38,7 @@ Open
 | [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API sets it only at start (`cacheSizeInMb`), against 010-P6; the core has `Eviction.setBudget` (also through JMX). The cache should converge gradually to the new size, with no disruption | open |
 | [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API cannot change it for an existing database (against 010-P6); the core can since 2013-04, through JMX only. A decrease in steps (007-03's D4), measured; options A to D for the Pub API; `Reclaim.initialStartupDistance`. First study, from 010-03, in its directory | open |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
+| [005-55](55-fix-finalize.md) | Fix | The note of deprecated API that every build prints: `finalize()` (six uses) and `Class.newInstance()` (two). `Db.finalize()` stops a database that the application drops without `stop()`, as the Pub API promises; proposed: a `Cleaner` in its place, no `@SuppressWarnings` (Frans: "finalize() need to go"). Found with it: a dropped database whose eviction thread has started is never collected, as the thread holds the `Db` (009's step 3b) | open |
 
 
 Closed
@@ -104,7 +105,8 @@ is done, which 005-33's change needed; 005-33 is decided, A, and done. 005-35,
 005-36 and 005-37 are done, and so are 005-39, 005-40, 005-43 and 005-44.
 005-41 is decided: not now. 005-42 is decided, A1 and B2, and done, and so
 is 005-45. 005-11 is kept as it is for release 2026.1, documented as
-experimental; its decision waits for Frans.
+experimental; its decision waits for Frans. 005-55 is best done with
+005-51, as both change the eviction thread's wait.
 
 
 Files
@@ -254,6 +256,10 @@ Files
   with another node size fails with a clear error; found in 005-38; open.
 * [54-open-bounds.md](54-open-bounds.md). 005-54, the bounds still open in
   the problem statement (011-01): Q1, Q2, Q3, Q5 and Q8; open.
+* [55-fix-finalize.md](55-fix-finalize.md). 005-55, the deprecated API in
+  the build, `finalize()` first: what `Db.finalize()` is for, the probes,
+  a `Cleaner` proposed; open; the probes, the lint script and their output
+  in [55-fix-finalize/](55-fix-finalize/).
 
 Log
 ===
@@ -863,3 +869,17 @@ node size, which should fail with a clear error, only that.
 cleanup (006-07), as Frans approved ("Everything as recommended"): the
 open questions of the problem statement, now 011-01, that had no other
 home (Q1, Q2, Q3, Q5, Q8).
+
+2026-10-26. Added 005-55, at Frans's request ("Add a Fix item to 005. I
+want a real fix for this, not SuppressWarnings. finalize() need to go. In
+the item, propose a solution, but do not implement it."), by Claude (Opus
+5.5, Claude Code), from the note of deprecated API that every build
+prints: six uses of `finalize()` and two of `Class.newInstance()`.
+Proposed: a `Cleaner` in `Db` in place of `finalize()`, which keeps the Pub
+API's promise that a database dropped without `stop()` is stopped; an
+eviction thread that lets go of the `Db` while it waits; the test code
+stops its databases. Found on the way, with probes: a dropped database
+whose eviction thread has started is never collected, as the thread holds
+the `Db` (since 009's step 3b; one such database in the f-tests); and the
+unit tests leave 211 storage threads of databases not stopped, which only
+finalization cleans up. No change to `java/`.

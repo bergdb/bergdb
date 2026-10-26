@@ -1,0 +1,32 @@
+src/bergdb/core/Db.java:1242: warning: [deprecation] finalize() in Object has been deprecated
+    protected void finalize() throws Throwable {
+                   ^
+src/bergdb/core/Db.java:1244: warning: [deprecation] finalize() in Object has been deprecated
+        super.finalize();
+             ^
+src/bergdb/core/StoredTrans.java:134: warning: [dep-ann] deprecated item is not annotated with @Deprecated
+    public ValueNode getValueNode(long[] key) {
+                     ^
+src/bergdb/pubimp/OptionalIcuCollatorFactory.java:37: warning: [deprecation] newInstance() in Class has been deprecated
+                factoryObject = clazz.newInstance();
+                                     ^
+  where T is a type-variable:
+    T extends Object declared in class Class
+src/bergdb/nanotest/TestRunner.java:118: warning: [deprecation] newInstance() in Class has been deprecated
+                object = m.getDeclaringClass().newInstance();
+                                              ^
+  where T is a type-variable:
+    T extends Object declared in class Class
+src-dev/bergdb/test/manual/CcDbTest.java:145: warning: [deprecation] finalize() in Object has been deprecated
+    protected void finalize() {
+                   ^
+src-dev/bergdb/test/manual/ValueNodeTotalMem.java:87: warning: [deprecation] finalize() in Object has been deprecated
+        protected void finalize() throws Throwable {
+                       ^
+src-dev/bergdb/test/manual/ValueNodeTotalMem.java:89: warning: [deprecation] finalize() in Object has been deprecated
+            super.finalize();
+                 ^
+src-dev/bergdb/test/night/CcDbNightTest.java:168: warning: [deprecation] finalize() in Object has been deprecated
+    protected void finalize() {
+                   ^
+9 warnings

@@ -1,0 +1,77 @@
+src/bergdb/pubimp/IndexBuilderImp.java:338: warning: [deprecation] getId() in Thread has been deprecated
+        t.setName("IndexBuilderImp-CreateIndex-" + createState.index.getName() + "-" + t.getId());
+                                                                                        ^
+src/bergdb/pubimp/DatabaseImp.java:306: warning: [deprecation] getId() in Thread has been deprecated
+                + indexName + "-" + thread.getId());
+                                          ^
+src/bergdb/core/DbHelper.java:137: warning: [deprecation] getId() in Thread has been deprecated
+            syncThread.setName("db-addReplica-sync-" + name + "-" + syncThread.getId());
+                                                                              ^
+src/bergdb/core/Db.java:1164: warning: [deprecation] getId() in Thread has been deprecated
+        closer.setName("Db-close-" + closer.getId());
+                                           ^
+src/bergdb/core/Db.java:1242: warning: [removal] finalize() in Object has been deprecated and marked for removal
+    protected void finalize() throws Throwable {
+                   ^
+src/bergdb/core/Db.java:1244: warning: [removal] finalize() in Object has been deprecated and marked for removal
+        super.finalize();
+             ^
+src/bergdb/core/StoredTrans.java:134: warning: [dep-ann] deprecated item is not annotated with @Deprecated
+    public ValueNode getValueNode(long[] key) {
+                     ^
+src/bergdb/storage/BufferedStream.java:121: warning: [deprecation] getId() in Thread has been deprecated
+        consumer.setName("BufferedStream-consumer-" + consumer.getId());
+                                                              ^
+src/bergdb/pubimp/OptionalIcuCollatorFactory.java:37: warning: [deprecation] newInstance() in Class has been deprecated
+                factoryObject = clazz.newInstance();
+                                     ^
+  where T is a type-variable:
+    T extends Object declared in class Class
+src/bergdb/core/DbTesterFailure.java:809: warning: [deprecation] getId() in Thread has been deprecated
+            ThreadInfo info = ManagementFactory.getThreadMXBean().getThreadInfo(thread.getId());
+                                                                                      ^
+src/bergdb/nanotest/TestRunner.java:118: warning: [deprecation] newInstance() in Class has been deprecated
+                object = m.getDeclaringClass().newInstance();
+                                              ^
+  where T is a type-variable:
+    T extends Object declared in class Class
+src-dev/bergdb/test/java/MemoryOfLongVsCustomClass.java:26: warning: [deprecation] Long(long) in Long has been deprecated
+            longs[i] = new Long(i);
+                       ^
+src-dev/bergdb/test/java/StringMemory.java:90: warning: [deprecation] Long(long) in Long has been deprecated
+            map.put("thisIsAnUnusuallyLongNameOfAField", new Long(i));
+                                                         ^
+src-dev/bergdb/test/java/StringMemory.java:92: warning: [deprecation] Long(long) in Long has been deprecated
+            map.put("thisFieldNameIsAlsoQuiteLong", new Long(0));
+                                                    ^
+src-dev/bergdb/test/java/StringMemory.java:104: warning: [deprecation] Long(long) in Long has been deprecated
+            map.put("a", new Long(i));
+                         ^
+src-dev/bergdb/test/java/StringMemory.java:105: warning: [deprecation] Long(long) in Long has been deprecated
+            map.put("b", new Long(0));
+                         ^
+src-dev/bergdb/test/java/ArrayVsHash.java:42: warning: [deprecation] Long(long) in Long has been deprecated
+            keys[i] = new Long(current);
+                      ^
+src-dev/bergdb/test/manual/NetworkRoundTrip.java:53: warning: [removal] setPerformancePreferences(int,int,int) in ServerSocket has been deprecated and marked for removal
+            ss.setPerformancePreferences(0, 10, 0);
+              ^
+src-dev/bergdb/test/manual/NetworkRoundTrip.java:57: warning: [removal] setPerformancePreferences(int,int,int) in Socket has been deprecated and marked for removal
+            socket.setPerformancePreferences(0, 10, 0);
+                  ^
+src-dev/bergdb/test/manual/NetworkRoundTrip.java:97: warning: [removal] setPerformancePreferences(int,int,int) in Socket has been deprecated and marked for removal
+        socket.setPerformancePreferences(0, 10, 0);
+              ^
+src-dev/bergdb/test/manual/CcDbTest.java:145: warning: [removal] finalize() in Object has been deprecated and marked for removal
+    protected void finalize() {
+                   ^
+src-dev/bergdb/test/manual/ValueNodeTotalMem.java:87: warning: [removal] finalize() in Object has been deprecated and marked for removal
+        protected void finalize() throws Throwable {
+                       ^
+src-dev/bergdb/test/manual/ValueNodeTotalMem.java:89: warning: [removal] finalize() in Object has been deprecated and marked for removal
+            super.finalize();
+                 ^
+src-dev/bergdb/test/night/CcDbNightTest.java:168: warning: [removal] finalize() in Object has been deprecated and marked for removal
+    protected void finalize() {
+                   ^
+24 warnings

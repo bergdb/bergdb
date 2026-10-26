@@ -1,0 +1,5 @@
+case evict, Java 27
+  before the start: open files 6, threads []
+  after the start: open files 9, threads [BufferedStream-consumer-28, bergdb-evictor]
+  after 50 collections: open files 9, threads [BufferedStream-consumer-28, bergdb-evictor]
+  Database still reachable: false, its Db still reachable: true

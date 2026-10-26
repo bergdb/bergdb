@@ -1,0 +1,29 @@
+# FinalizeProbe evict on 356c058 with one change, in a scratch clone and not kept: the eviction
+# thread ends when it has nothing to do (EvictorRun: 'if (!in.isActive())' became 'if (true)').
+# The diff:
+#   diff --git a/java/src/bergdb/core/Eviction.java b/java/src/bergdb/core/Eviction.java
+#   index 38d1183..4f61fa6 100644
+#   --- a/java/src/bergdb/core/Eviction.java
+#   +++ b/java/src/bergdb/core/Eviction.java
+#   @@ -413,7 +413,7 @@ public final class Eviction {
+#                while (true) {
+#                    synchronized (evictorLock) {
+#                        while (!wanted) {
+#   -                        if (!in.isActive()) {
+#   +                        if (true) {     // 005-55 check only: the thread ends when idle
+#                                evictor = null;
+#                                return;
+#                            }
+
+== finalization on
+case evict, Java 27
+  before the start: open files 6, threads []
+  after the start: open files 9, threads [BufferedStream-consumer-28]
+  after 1 collections: open files 9, threads []
+  Database still reachable: false, its Db still reachable: false
+== --finalization=disabled
+case evict, Java 27
+  before the start: open files 6, threads []
+  after the start: open files 9, threads [BufferedStream-consumer-27]
+  after 50 collections: open files 9, threads [BufferedStream-consumer-27]
+  Database still reachable: false, its Db still reachable: false

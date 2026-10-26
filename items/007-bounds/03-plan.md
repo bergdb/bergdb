@@ -154,8 +154,8 @@ lags passes at least one transaction per record.
 * Done when: in step 2's and 005-49's runs, the section without its last
   record stays below d_h; `before-commit.sh`; `level2.sh`, since the take
   is Level 2's mechanism; `level3.sh` and `level4.sh` if their streams
-  change; the quick performance suite unchanged; docs/levels.md, Level 2,
-  "Bounds", updated.
+  change; the quick performance suite unchanged; docs/levels.md, section
+  5 (Level 2), updated.
 * Size: S for the code, M with the gates and runs.
 
 ### Step 4. BergDB's take in Lean
@@ -165,10 +165,9 @@ trusted part (`lean/SIS/Bound.lean`). With the deadline alone: from
 s(i-1) + 1 on, whole transactions while they begin at least sd before the
 end of the stream, and fewer than two have been taken, or their got-dirty
 ids are below the limit, or they begin at least d_h before the end. The
-limit is a function of T(i), which the policy may see (M10 of
-docs/level2-alignment.md). BoundExample.lean's sketch, `javaTake`, becomes
-this definition. A take paced by 005-49 changes the definition, so this
-step waits for 005-49 too.
+limit is a function of T(i), which the policy may see (011-11, M10).
+BoundExample.lean's sketch, `javaTake`, becomes this definition. A take
+paced by 005-49 changes the definition, so this step waits for 005-49 too.
 
 * The proof: every transaction up to the target of d_h passes the loop's
   test, since the cost to the end only shrinks along the stream and
@@ -231,8 +230,7 @@ and for a cold cache.
 ### Step 6. Fewer random reads at startup (D5: in this plan)
 
 Proposed 2026-10-26 (007-04, 3); in this plan by D5 (Frans, 2026-10-26).
-Rule 4
-(`DbStarter.linkD`; M44 of docs/level4-alignment.md; `Mem.linkD`, and
+Rule 4 (`DbStarter.linkD`; 001-08, M44; `Mem.linkD`, and
 `HMem.linkD` for handles, in the Lean model) links each stream pointer of
 D's nodes to its pointee's canonical object, if it has one, so that a node
 of D never names an older version of a node written since. To find the
@@ -300,8 +298,8 @@ Decisions
   (question 3) asks it again, for fast restart.
 * Steps 2 to 5 before or after release 2026.1 (item 008): after (Frans,
   2026-10-25, "After the release"). The release shipped with the take as
-  it is, and says so: README.md, and docs/levels.md, "Bounds, measured".
-  It is out (2026-10-25).
+  it is, and says so: README.md, and the old levels.md (011-04, "Bounds,
+  measured"). It is out (2026-10-25).
 * The bursts as an entry of their own: yes (Frans, 2026-10-26: "Yes,
   register the burst entry."), 005-49, before steps 3 and 4.
 * Open since step 1: a dirty limit of 1/8 of the record limit instead of
@@ -343,11 +341,14 @@ After the plan
   outgrows the budget), and the cold startup's random reads, unless step 6
   removes them (007-04, 3 and 4). Steps 2 and 5 give its numbers at 50 to
   1000 MB.
+* The problem statement's Q1 (the lookup bound), Q3 (the cost model) and
+  Q5 (the write overhead) (011-01): 005-54 names this item, with T4, as
+  their natural home; which of them matter now is for Frans to say.
 * The trace checker's comparison of the startup pos (after step 4, and
   after 009's step 4c).
 * The promise in the user documentation: the Pub API's startup distance,
-  and docs/levels.md, per startup distance, warm and cold; fast restart
-  (006-06) for planned restarts at large distances.
+  and docs/levels.md, section 5, per startup distance, warm and cold; fast
+  restart (006-06) for planned restarts at large distances.
 
 
 How to work
