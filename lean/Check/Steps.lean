@@ -10,6 +10,7 @@ WP C2; since 2026-10-16 (WP E3) without checker-local definitions.
 import Check.Trace
 import Check.Fast
 import SIS.Phys
+import SIS.Handle
 import SIS.Reclaim
 import Check.R4
 import Std.Data.HashSet
@@ -472,6 +473,287 @@ def slotFailures (sp : Spec BVal Nat) (P : Struct BVal) (now : Std.HashSet NodeI
         if pairs.contains (x, y) then none else some s!"the object of {x} has no slot for {y}")
     | none => [s!"SLOT lines for {x}, which is not a node of P"])
   (bad ++ missing, (checked.filter (·.kind != "dead")).length)
+
+/-! ## The handle state (bergdb item 009, step 4c) -/
+
+/-- The elements of xs that occur more than once, each once. -/
+def repeated (xs : List Nat) : List Nat :=
+  (xs.foldl (fun (acc : Std.HashSet Nat × List Nat) x =>
+    if !acc.1.contains x then (acc.1.insert x, acc.2)
+    else if acc.2.contains x then acc else (acc.1, acc.2 ++ [x])) ({}, [])).2
+
+/-- A record, or what none stands for (dflt). -/
+def showRec (o : Option Nat) (dflt : String) : String :=
+  match o with
+  | some r => s!"R({r})"
+  | none => dflt
+
+/-- Run E's handle state at the end of T(i), the HTABLE, HANDLE, HOBJ and HPTR lines, as the
+model's memory with handles (`HMem`, SIS/Handle.lean; the mapping α of
+docs/handles-alignment.md, section 2): the objects by their numbers, each with its pointers;
+the handles by their numbers, a loading one as live (the model has no LOADING state); the
+table. The trace gives an object's number of entries, not its history: a canonical object
+gets its node's history in P (g), a snapshot the history of the version at its position
+(verAt); C-H compares the numbers. s is Rule R's startup pos. Java has no object for a virtual
+root (TopDs stands for it, register R7), so the root's address is 0, which no object has. -/
+def toHMem (g : NodeId → Option (Node BVal)) (verAt : Nat → NodeId → Option (Version BVal))
+    (s : Nat) (r : TRec) : HMem BVal :=
+  let ptrsOf : Std.HashMap Nat (Array (NodeId × HPtr)) := r.hptrs.foldl (fun m q =>
+    m.insert q.obj ((m.getD q.obj #[]).push (q.pointee, { ref := q.ref, handle := q.handle }))) {}
+  { objs := r.hobjs.toList.map (fun o =>
+      let hist := if o.canonical then ((g o.node).map (·.hist)).getD []
+        else ((o.pos.bind (verAt · o.node)).map (·.hist)).getD []
+      (o.num, ({ node := o.node, level := ((g o.node).map (·.level)).getD 0, isData := false,
+                 hist := hist, canonical := o.canonical, pos := o.pos,
+                 ptrs := (ptrsOf.getD o.num #[]).toList } : HObj BVal))),
+    handles := r.handles.toList.map (fun h =>
+      (h.num, ({ node := h.node, obj := h.obj, written := h.written, dead := h.state == "dead" } : Handle))),
+    table := r.htable.toList, s := s, root := 0,
+    nextObj := r.hobjs.foldl (fun n o => max n (o.num + 1)) 1,
+    nextHandle := r.handles.foldl (fun n h => max n (h.num + 1)) 1 }
+
+/-- What C-H met in run E's states (bergdb item 009, step 4c), besides failures: the pointers
+it checked against the record rule; and, as `pointCounts` of SIS/HandleExample.lean for the
+model's runs, how often Java's states reach the cases that the model's runs found: snapshots;
+snapshots, after a restart, of nodes with a version in the startup section (where `HRuleROK`
+says something); pointers whose handle holds a snapshot (where `HFastOK` does); pointers
+checked whose record is their handle's written position, newer than their reference after Rule
+R (choice 1 of SIS/Handle.lean), and those of them whose reference is a vpos (open point 3 of
+02, section 7); pointers whose handle holds a snapshot and whose reference is older than the
+pointee's newest version in the startup section (open point 1). -/
+structure HCounts where
+  checked : Nat := 0
+  snaps : Nat := 0
+  snapsSection : Nat := 0
+  ptrSnaps : Nat := 0
+  written : Nat := 0
+  writtenVpos : Nat := 0
+  olderSnap : Nat := 0
+
+def HCounts.add (a b : HCounts) : HCounts :=
+  { checked := a.checked + b.checked, snaps := a.snaps + b.snaps,
+    snapsSection := a.snapsSection + b.snapsSection, ptrSnaps := a.ptrSnaps + b.ptrSnaps,
+    written := a.written + b.written, writtenVpos := a.writtenVpos + b.writtenVpos,
+    olderSnap := a.olderSnap + b.olderSnap }
+
+/-- C-H, the model's invariants with handles on Java's states (bergdb item 009, step 4c): the
+`Prop`s of SIS/HandleTheorems.lean, which `tc_handles` and `t2_handles` prove for the model,
+after their `Bool` twins in SIS/HandleExample.lean, on run E's state at the end of T(i)
+(`toHMem`), in the state after T(i): P (g gives a node of P), the nodes current at i (now), D,
+the latest records (lvRec), the versions of the stream (verAt); S0 is the stream that the
+state's startup read, for Rule R, and first the stream's first record. By invariant:
+
+* `HTableOK`: the table's entries name live handles of their nodes, each with an object of its
+  node; one entry per node; every live handle is the table's; a dead handle holds no object;
+  every object is held by its node's live handle; a pointer's handle is of its pointee.
+  Numbers do not repeat.
+* `HCanOK`: a canonical object holds its node's history (as many entries) and is at its
+  node's latest record; every node of D has a canonical object.
+* `HSnapOK`: a snapshot is at a record that holds a version of its node, with as many
+  entries.
+* `HSlotOK`, the record rule: a canonical object of a written node current at i or in D has a
+  pointer for every pointee of its history that is an index node, and each such pointer gives
+  the pointee's latest version (`HMem.refOf`, the model's record rule); one for a pointee in D
+  holds the pointee's live handle with its canonical object, or the object's node is in D with
+  an index at most the pointee's. A pointer whose handle holds no object that may serve it
+  (`HObj.usable`) and whose reference, raised to the handle's written position, is before the
+  stream's first record (reclaim's cut, M33) is not checked, as C-P's dead slots. Values have
+  no handles in Java (register R1); C-P checks their slots.
+* `HRuleROK`: a snapshot in a handle is at least as new as its node's newest version in the
+  startup section of S0.
+* `HLiveWrittenOK`: a live handle has no written position.
+* `HWrittenOK`: a written position and a pointer's reference name records that hold versions
+  of their nodes; and (`pointees`) a pointer's pointee is a pointee of its object's history.
+* `HFastOK`: for a pointer whose reference is a position and whose handle holds an object, the
+  fast path's test with the reference (`HObj.usable`) gives the slow path's answer.
+* T-PIN (`TP_handles`): every live handle's object that is not pinned (`HMem.pinned`) may be
+  evicted (`HMem.evictable`: it has been written).
+* 02, 4.1 and 4.10: no handle is loading at a transaction's end, and a dead handle (deadBefore:
+  those seen dead in earlier states) is never live again.
+
+Returns the failures, as (invariant, message), and what C-H met (`HCounts`). -/
+def handleFailures (sp : Spec BVal Nat) (g : NodeId → Option (Node BVal)) (now : Std.HashSet NodeId)
+    (D : Dirty) (lvRec : NodeId → Option Nat) (verAt : Nat → NodeId → Option (Version BVal))
+    (S0 : Stream BVal Nat) (first : Nat) (deadBefore : Std.HashSet Nat) (r : TRec) :
+    List (String × String) × HCounts :=
+  let s := lastSp S0
+  let m := toHMem g verAt s r
+  let hmap : Std.HashMap Nat THandle := r.handles.foldl (fun mm h => mm.insert h.num h) {}
+  let omap : Std.HashMap Nat TObj := r.hobjs.foldl (fun mm o => mm.insert o.num o) {}
+  let tmap : Std.HashMap NodeId Nat :=
+    r.htable.foldl (fun mm e => if mm.contains e.1 then mm else mm.insert e.1 e.2) {}
+  let dOf : Std.HashMap NodeId Nat := D.foldl (fun mm e => mm.insert e.1 e.2) {}
+  let nodeOf := fun (a : Nat) => ((omap.get? a).map (·.node)).getD 0
+  let showH := fun (n : Option Nat) => match n with
+    | some n => s!"handle {n}"
+    | none => "no handle"
+  -- HTableOK
+  let numbers := (repeated (r.handles.toList.map (·.num))).map (fun n => s!"handle {n} is listed twice") ++
+    (repeated (r.hobjs.toList.map (·.num))).map (fun a => s!"object {a} is listed twice")
+  let entries := r.htable.toList.filterMap (fun (y, n) =>
+    match hmap.get? n with
+    | none => some s!"the table's entry for {y} is handle {n}, which the state does not list"
+    | some hd =>
+      if hd.state == "dead" then some s!"the table's entry for {y} is handle {n}, which is dead"
+      else if hd.node != y then some s!"the table's entry for {y} is handle {n}, of node {hd.node}"
+      else match hd.obj with
+        | none => some s!"the table's handle {n} of {y} holds no object"
+        | some a => match omap.get? a with
+          | none => some s!"the table's handle {n} of {y} holds object {a}, which the state does not list"
+          | some o => if o.node == y then none
+            else some s!"the table's handle {n} of {y} holds an object of {o.node}")
+  let once := (repeated (r.htable.toList.map (·.1))).map (fun y => s!"the table has two entries for {y}")
+  let live := r.handles.toList.filterMap (fun h =>
+    if h.state == "dead" then
+      if h.obj.isSome then some s!"dead handle {h.num} of {h.node} holds an object" else none
+    else if tmap.get? h.node == some h.num then none
+    else some s!"live handle {h.num} of {h.node} is not the table's ({showH (tmap.get? h.node)} is)")
+  let held := r.hobjs.toList.filterMap (fun o =>
+    match tmap.get? o.node with
+    | some n => if ((hmap.get? n).bind (·.obj)) == some o.num then none
+      else some s!"object {o.num} of {o.node} is not the object of its node's live handle {n}"
+    | none => some s!"object {o.num} of {o.node}: the table has no handle for its node")
+  let ptrHandles := r.hptrs.toList.filterMap (fun q =>
+    if !omap.contains q.obj then some s!"a pointer of object {q.obj}, which the state does not list"
+    else match q.handle with
+    | none => none
+    | some n => match hmap.get? n with
+      | none => some s!"the pointer of {nodeOf q.obj} for {q.pointee} holds handle {n}, which the state does not list"
+      | some hd => if hd.node == q.pointee then none
+        else some s!"the pointer of {nodeOf q.obj} for {q.pointee} holds handle {n}, of node {hd.node}")
+  let tableF := numbers ++ entries ++ once ++ live ++ held ++ ptrHandles
+  -- HCanOK
+  let canF := r.hobjs.toList.filterMap (fun o =>
+    if !o.canonical then none else
+    match g o.node with
+    | none => some s!"canonical object {o.num} of {o.node}, which is not a node of P"
+    | some n =>
+      if n.isData then some s!"canonical object {o.num} of {o.node}, a data node"
+      else if o.entries != n.hist.length then
+        some s!"the canonical object of {o.node} has {o.entries} entries, its node in P {n.hist.length}"
+      else if o.pos != lvRec o.node then
+        some s!"the canonical object of {o.node} is at {showRec o.pos "no position"}, its latest version {showRec (lvRec o.node) "none"}"
+      else none)
+  let dCanF := D.filterMap (fun e =>
+    if (m.canonicalOf e.1).isSome then none else some s!"{e.1} is in D and has no canonical object")
+  -- HSnapOK
+  let snapF := r.hobjs.toList.filterMap (fun o =>
+    if o.canonical then none else
+    match o.pos with
+    | none => some s!"snapshot {o.num} of {o.node} has no position"
+    | some p => match verAt p o.node with
+      | none => some s!"the snapshot of {o.node} is at R({p}), which holds no version of it"
+      | some w => if w.hist.length == o.entries then none
+        else some s!"the snapshot of {o.node} at R({p}) has {o.entries} entries, the version {w.hist.length}")
+  -- HSlotOK, by the model's record rule
+  let heldCanonical := fun (q : HPtr) => m.holdsCanonical q
+  let writtenOf := fun (q : HPtr) => (q.handle.bind m.handle?).bind (·.written)
+  -- C-P's dead slot: no object that may serve the pointer (Java's getPointerNode), and the
+  -- record rule's reference before Rule R (Java's getSerializedRef) before the cut.
+  let deadPtr := fun (q : HPtr) => !(((q.handle.bind m.objOf).bind m.obj?).any (·.usable q.ref)) &&
+    match maxRef q.ref (writtenOf q) with
+    | some p => decide (p < first)
+    | none => false
+  let slotRes := m.objs.map (fun p =>
+    let o := p.2
+    if !o.canonical || !written sp o.node || !(now.contains o.node || dOf.contains o.node) then ([], 0, 0, 0) else
+    let ys := (pointees sp o.hist).filter (fun y => match g y with
+      | some n => !n.isData
+      | none => false)
+    ys.foldl (fun (acc : List String × Nat × Nat × Nat) y =>
+      let qs := (o.ptrs.filter (·.1 == y)).map (·.2)
+      if qs.isEmpty then (acc.1 ++ [s!"the object of {o.node} has no pointer for {y}"], acc.2) else
+      qs.foldl (fun (acc : List String × Nat × Nat × Nat) q =>
+        if deadPtr q then acc else
+        let got := m.refOf S0 D { o with ptrs := [(y, q)] } y
+        -- Choice 1 and open point 3 (`pointCounts`'s columns 4 and 3).
+        let fromWritten := !dOf.contains y && !heldCanonical q &&
+          m.ptrRef S0 y q != ruleRRef S0 s y q.ref && m.ptrRef S0 y q == writtenOf q
+        let w1 := if fromWritten then 1 else 0
+        let w2 := if fromWritten && q.ref.isNone then 1 else 0
+        let f1 := if got == lvRec y then [] else
+          [s!"the pointer of {o.node} for {y} names {showRec q.ref "a vpos"} and holds {showH q.handle}: the record rule gives {showRec got "a vpos"}, its latest version is {showRec (lvRec y) "none"}"]
+        let f2 := if !dOf.contains y then [] else
+          let liveCanon := q.handle.isSome && q.handle == m.tableOf y && (m.canonicalOf y).isSome
+          if liveCanon then [] else match dOf.get? o.node, dOf.get? y with
+            | some a, some b => if a ≤ b then []
+              else [s!"the pointer of {o.node} (in D at {a}) for {y} (in D at {b}) does not hold {y}'s live handle with its canonical object"]
+            | _, _ => [s!"the pointer of {o.node} for {y}, in D, does not hold {y}'s live handle with its canonical object, and {o.node} is not in D"]
+        (acc.1 ++ f1 ++ f2, acc.2.1 + 1, acc.2.2.1 + w1, acc.2.2.2 + w2)) acc) ([], 0, 0, 0))
+  let slotF := slotRes.flatMap (·.1)
+  -- HRuleROK
+  let ruleF := r.handles.toList.filterMap (fun h =>
+    match h.obj.bind omap.get? with
+    | some o =>
+      if o.canonical then none else
+      match newest S0 s h.node, o.pos with
+      | some w, some p => if w.recNo ≤ p then none
+        else some s!"the snapshot of {h.node} at R({p}) in handle {h.num} is older than R({w.recNo}), its newest version in the startup section"
+      | _, _ => none
+    | none => none)
+  -- HLiveWrittenOK
+  let liveWrittenF := r.handles.toList.filterMap (fun h =>
+    if h.state != "dead" && h.written.isSome then
+      some s!"live handle {h.num} of {h.node} has a written position, {showRec h.written ""}"
+    else none)
+  -- HWrittenOK, and the pointees of the objects' pointers
+  let writtenF := r.handles.toList.filterMap (fun h =>
+    match h.written with
+    | some w => if (verAt w h.node).isSome then none
+      else some s!"handle {h.num} of {h.node} has the written position R({w}), which holds no version of it"
+    | none => none) ++
+    r.hptrs.toList.filterMap (fun q =>
+      match q.ref with
+      | some rr => if (verAt rr q.pointee).isSome then none
+        else some s!"the pointer of {nodeOf q.obj} for {q.pointee} names R({rr}), which holds no version of it"
+      | none => none)
+  let pointeesF := m.objs.flatMap (fun p =>
+    let ys := pointees sp p.2.hist
+    (p.2.ptrs.filter (fun q => !ys.contains q.1)).map (fun q =>
+      s!"object {p.1} of {p.2.node} has a pointer for {q.1}, which is not a pointee of its history"))
+  -- HFastOK
+  let fastF := m.objs.flatMap (fun p => p.2.ptrs.filterMap (fun (y, q) =>
+    match q.ref, q.handle.bind m.handle? with
+    | some _, some hd => match hd.obj.bind m.obj? with
+      | some ob =>
+        if ob.usable q.ref == ob.usable (maxRef (ruleRRef S0 s y q.ref) hd.written) then none
+        else some s!"the pointer of {p.2.node} for {y}: the fast path's test {ob.usable q.ref}, the slow path's {!ob.usable q.ref}"
+      | none => none
+    | _, _ => none))
+  -- T-PIN
+  let pinF := r.handles.toList.filterMap (fun h =>
+    match h.obj with
+    | some a =>
+      if h.state == "dead" || m.pinned D a || m.evictable D h.num then none
+      else some s!"the object of {h.node} in handle {h.num} is not pinned and has not been written, so it may not be evicted"
+    | none => none)
+  -- 02, 4.1 and 4.10
+  let stateF := r.handles.toList.filterMap (fun h =>
+    if h.state == "loading" then some s!"handle {h.num} of {h.node} is loading at the end of the transaction"
+    else if h.state == "live" && deadBefore.contains h.num then
+      some s!"handle {h.num} of {h.node}, dead in an earlier state, is live"
+    else none)
+  -- The cases reached
+  let snapObjs := m.objs.filter (!·.2.canonical)
+  let snapPtrs := m.objs.flatMap (fun p => p.2.ptrs.filter (fun q => match (q.2.handle.bind m.objOf).bind m.obj? with
+    | some ob => !ob.canonical
+    | none => false))
+  let counts : HCounts :=
+    { checked := slotRes.foldl (fun n x => n + x.2.1) 0,
+      snaps := snapObjs.length,
+      snapsSection := if S0.length ≤ 1 then 0
+        else (snapObjs.filter (fun p => (newest S0 s p.2.node).isSome)).length,
+      ptrSnaps := snapPtrs.length,
+      written := slotRes.foldl (fun n x => n + x.2.2.1) 0,
+      writtenVpos := slotRes.foldl (fun n x => n + x.2.2.2) 0,
+      olderSnap := (snapPtrs.filter (fun q => match q.2.ref, newest S0 s q.1 with
+        | some r0, some w => decide (r0 < w.recNo)
+        | _, _ => false)).length }
+  let named := fun (name : String) (l : List String) => l.map (fun msg => (name, msg))
+  (named "HTableOK" tableF ++ named "HCanOK" (canF ++ dCanF) ++ named "HSnapOK" snapF ++
+    named "HSlotOK" slotF ++ named "HRuleROK" ruleF ++ named "HLiveWrittenOK" liveWrittenF ++
+    named "HWrittenOK" writtenF ++ named "pointees" pointeesF ++ named "HFastOK" fastF ++
+    named "T-PIN" pinF ++ named "state" stateF, counts)
 
 /-- C-L4, a diagnostic (bergdb item 001, WP R8, change 3): a first touch follows
 the Level 4 loader (`Mem.follow4`, `SIS/Evict.lean`): the node table's canonical

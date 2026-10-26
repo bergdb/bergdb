@@ -42,7 +42,9 @@ SIS/HandleExample.lean checks them by running. Its runs found two points where t
 than it says, and Java does both: the slow path writes the pointer's
 reference, raised to the written position of the dead handle it holds, back
 into the pointer, and compares the live handle's object with that raised
-reference (SIS/Handle.lean's header, choices 1 and 7).
+reference (SIS/Handle.lean's header, choices 1 and 7). Java's handle state
+is checked against the invariants of SIS/HandleTheorems.lean by the trace
+checker's C-H (step 4c, 2026-10-26).
 
 
 Build and run
@@ -325,6 +327,18 @@ Not trusted, tests only:
   schedule (`slotFailures`, after the model's `invSlotB`; test traces
   `slot.trace` and `badslot.trace`;
   [../docs/level4-alignment.md](../docs/level4-alignment.md), section 7.3).
+  Since bergdb item 009, step 4c, C-H: the model's invariants with handles
+  (SIS/HandleTheorems.lean) on run E's handle state, which the exporter
+  writes as the model's memory with handles (the HMEM, HTABLE, HANDLE, HOBJ
+  and HPTR lines; `toHMem`, `handleFailures`, after the `Bool` twins of
+  SIS/HandleExample.lean): the table and the handles, the canonical objects
+  and D, the snapshots, the record rule by the model's own `HMem.refOf`,
+  the snapshots against Rule R, live handles without a written position,
+  written positions and references that name versions, the fast path's
+  test, T-PIN's unpinned objects written; and how often the states reach
+  the cases of `pointCounts` (test traces `handles.trace` and
+  `badhandle.trace`;
+  [../docs/handles-alignment.md](../docs/handles-alignment.md), section 4).
 * SIS/BoundExample.lean (bergdb item 007): T3 by running. The policy of
   the example of section 7 is a startup distance of two records; on random
   runs of example 2 with a cost like bytes (`bytes2`), the section without
@@ -1004,6 +1018,22 @@ keeps the stream slot's). Changes to the trusted part: comments only
 (SIS/Handle.lean's and SIS/HandleTheorems.lean's, on what is proved). `lake
 build` passes with no warnings and no `sorry`; `#print axioms` shows only
 Lean's standard axioms.
+
+2026-10-26. Handles, step 4c (bergdb item 009): the trace checker's C-H
+(Check/Steps.lean, `toHMem` and `handleFailures`; Check/Trace.lean reads the
+new lines; TraceCheck.lean). Java's trace exporter writes run E's memory as
+the model's memory with handles at the end of each transaction (HMEM, HTABLE,
+HANDLE, HOBJ and HPTR lines, trace format 2; docs/level2-alignment.md, 9.2),
+and C-H checks it against the invariants of SIS/HandleTheorems.lean, with
+the model's own definitions where they decide (`HMem.refOf` for the record
+rule, `HMem.canonicalOf`, `HObj.usable`, `ruleRRef`, `maxRef`, `newest`,
+`HMem.pinned`, `HMem.evictable`); docs/handles-alignment.md, section 4, says
+what it checks and what it cannot. Run E got reads and restarts between its
+transactions (the exporter's `ereads`, `erestart`), so that its states hold
+snapshots and the startups' memories. On `conformance.sh evict` (15
+configurations, 3 seeds): 45 traces, 8,520 states, C-H 0 of 10,321
+transactions fail. No change to the trusted part. `lake build` passes with no
+warnings and no `sorry`.
 
 Stage 1 of bergdb item 001 is done (2026-10-16): lemma M (`LM_newer`, L2),
 T1-L (`T1_lazy`, L3), CC and T2-L (`CC_canonical`, `T2_lazy`, L4) are proved,

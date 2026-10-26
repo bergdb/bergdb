@@ -45,6 +45,18 @@ Checks, per transaction i (R(0) included):
        pointee in D, is a memory slot to its canonical object or belongs to a
        node of D that got dirty no later; the object has a slot for every
        pointee of its history
+  C-H  with run E's handle state (HMEM, HTABLE, HANDLE, HOBJ and HPTR lines;
+       bergdb item 009, step 4c): the model's invariants with handles
+       (SIS/HandleTheorems.lean; `handleFailures`) on Java's states, as the
+       model's memory with handles (`toHMem`): the table and the handles
+       (HTableOK), the canonical objects and D (HCanOK, by position and number
+       of entries), the snapshots (HSnapOK), the record rule for the pointers of
+       canonical objects of nodes current at i or in D, computed by the model's
+       `HMem.refOf` (HSlotOK), the snapshots against Rule R (HRuleROK), live
+       handles without a written position (HLiveWrittenOK), written positions
+       and references that name versions (HWrittenOK), the fast path's test
+       (HFastOK), the unpinned objects written (T-PIN); no handle loading, and
+       a dead handle never live again
 With reclaim, also: C-A checks TouchOK (`StepOK.touchIndex`, `touchReach`,
 `touchUp`) for the TOUCH lines; C-S compares fa(i) (FA lines; the model clamps
 Java's value, `firstAvail`), and from a CUT on runs the model's step on the
@@ -132,6 +144,14 @@ def main (args : List String) : IO UInt32 := do
     let mut cpt : Tally := {}
     let mut slotCount := 0
     let mut slotChecked := 0
+    let mut cht : Tally := {}
+    let mut hStates := 0
+    let mut hHandles := 0
+    let mut hObjs := 0
+    let mut hPtrs := 0
+    let mut hCounts : HCounts := {}
+    -- The handles seen dead in run E's states so far (C-H: a dead handle is never live again).
+    let mut deadSeen : Std.HashSet Nat := {}
     let mut diag : Tally := {}
     let mut ccut : Tally := {}
     let mut cutCount := 0
@@ -245,6 +265,22 @@ def main (args : List String) : IO UInt32 := do
       slotCount := slotCount + r.slots.size
       slotChecked := slotChecked + pn
       cpt := cpt.add i (pf.map (fun m => ("slot", m)))
+      -- C-H (bergdb item 009, step 4c): the stream that the state's startup read, R(0) to
+      -- R(k), gives Rule R; the whole stream so far gives the versions.
+      match r.hmem with
+      | some (k, first) =>
+        let g := SIS.Fast.nodeMap P'
+        let verAt := fun (q : Nat) (y : NodeId) => (jrecs.getD q r0).vers.find? (·.node == y)
+        let (hf, hc) := handleFailures sp (fun x => g[x]?) rlNowSet r.dirty
+          (fun y => (lvNow.get? y).map (·.1)) verAt (jrecs.toList.take (k + 1)) first deadSeen r
+        hStates := hStates + 1
+        hHandles := hHandles + r.handles.size
+        hObjs := hObjs + r.hobjs.size
+        hPtrs := hPtrs + r.hptrs.size
+        hCounts := hCounts.add hc
+        cht := cht.add i hf
+        deadSeen := r.handles.foldl (fun ds h => if h.state == "dead" then ds.insert h.num else ds) deadSeen
+      | none => pure ()
       match r.physcut with
       | some pc =>
         if cutNow < pc then
@@ -294,6 +330,13 @@ def main (args : List String) : IO UInt32 := do
     if slotCount > 0 || cpt.failing > 0 then
       IO.println s!"C-P slots (INV-SLOT on run E's states): {cpt.failing} of {total} transactions fail; {slotCount} SLOT lines, {slotChecked} checked (of objects current or in D)"
       for e in cpt.examples do IO.println s!"  {e}"
+    if hStates > 0 || cht.failing > 0 then
+      IO.println (s!"C-H handles (the model's invariants with handles on run E's states): {cht.failing} of {total} transactions fail; {hStates} states, {hHandles} handles, {hObjs} objects, {hPtrs} pointers, {hCounts.checked} checked by the record rule" ++
+        (if cht.byName.isEmpty then "" else s!" ({", ".intercalate (cht.byName.map (fun p => s!"{p.1} {p.2}"))})"))
+      for e in cht.examples do IO.println s!"  {e}"
+      IO.println (s!"C-H cases (SIS/HandleExample.lean's pointCounts): {hCounts.snaps} snapshots, {hCounts.snapsSection} of nodes in the startup section after a restart; " ++
+        s!"{hCounts.ptrSnaps} pointers to snapshots, {hCounts.olderSnap} with a reference older than the section's (open point 1); " ++
+        s!"{hCounts.written} pointers checked written with their handle's written position (choice 1), {hCounts.writtenVpos} with a vpos (open point 3)")
     IO.println s!"exporter errors: {t.errors.size}"
     for e in t.errors.toList.take 8 do IO.println s!"  {e}"
     if cutCount > 0 || ccut.failing > 0 then
@@ -305,6 +348,7 @@ def main (args : List String) : IO UInt32 := do
       (if cv.failing > 0 then ["C-V"] else []) ++ (if probeFails.length > 0 then ["C-R"] else []) ++
       (if clt.failing > 0 then ["C-L"] else []) ++
       (if cpt.failing > 0 then ["C-P"] else []) ++
+      (if cht.failing > 0 then ["C-H"] else []) ++
       (if ccut.failing > 0 then ["C-CUT"] else []) ++
       (if t.errors.size > 0 then ["exporter"] else []) ++
       (if t.done != some (total - 1) then ["incomplete"] else [])

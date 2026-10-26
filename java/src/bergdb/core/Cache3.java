@@ -166,6 +166,24 @@ public class Cache3 {
     }
 
     /**
+     * The node table's entries, each a node id and its live handle, in the order of handles(),
+     * each map under its own lock; for the trace exporter (stress/TraceExport.java, bergdb item
+     * 009, step 4c), which writes the table as the Lean model's (HMem.table).
+     */
+    java.util.List<java.util.Map.Entry<Long, Handle>> entries() {
+        java.util.ArrayList<java.util.Map.Entry<Long, Handle>> result =
+                new java.util.ArrayList<java.util.Map.Entry<Long, Handle>>();
+        for (HashMap<Long, Handle> m : maps) {
+            synchronized (m) {
+                for (java.util.Map.Entry<Long, Handle> e : m.entrySet()) {
+                    result.add(new java.util.AbstractMap.SimpleImmutableEntry<Long, Handle>(e));
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
      * The objects of the live handles, for the audit (Audit) and the walks (Residents), in the
      * order of handles().
      */

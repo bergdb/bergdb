@@ -814,7 +814,8 @@ sees, and by running on the model's example (level3-alignment.md, section
 
 The trace checker (`lake exe tracecheck`) runs the model's step on traces of
 Java runs and compares every record and D, the first touches after
-restarts (C-L), `CutOK` at every cut Java decides (C-CUT), and INV-SLOT on
-Java's physical states with eviction (C-P). The gates, the test scripts that
-must pass, run it:
+restarts (C-L), `CutOK` at every cut Java decides (C-CUT), INV-SLOT on
+Java's physical states with eviction (C-P), and the invariants with handles
+on Java's handle state (C-H, bergdb item 009). The gates, the test scripts
+that must pass, run it:
 `level2.sh` (step 7), `level3.sh` (step 8) and `level4.sh` (step 5).

@@ -7,11 +7,13 @@ import java.io.PrintWriter;
 import java.util.*;
 
 import bergdb.dag.GetData;
+import bergdb.dag.Handle;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Keys;
 import bergdb.dag.Klong;
 import bergdb.dag.KlongWithPointer;
 import bergdb.dag.Node;
+import bergdb.dag.Pointee;
 import bergdb.dag.Pointer;
 import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
@@ -56,7 +58,10 @@ import bergdb.stream.MemoryStream;
  *              or budget, the capacity controller, with the budget evictbudget=B; Eviction;
  *              default: no run E); slotevery=N: SLOT lines after every N-th
  *              transaction (default 1); evictseed=N: the random schedule's seed (default: the
- *              seed)
+ *              seed); ereads=N: N lookups after each transaction of run E, of random keys at
+ *              random times, checked against the workload (default 0); erestart=K: a restart
+ *              of run E after every K-th transaction (default 0: none); ereads and erestart
+ *              since bergdb item 009, step 4c
  *
  * With reclaim (bergdb item 001, WP R2; docs/level3-alignment.md, 2.7) every executed
  * transaction is a record, reclaim's steps and table stores too: run A records each through
@@ -76,6 +81,22 @@ import bergdb.stream.MemoryStream;
  * the pointee's canonical object), mem (to another object, or to a value), stream, or dead (a
  * stream slot below the stream's first position, M33). The checker's C-P compares them with
  * the model's INV-SLOT. Runs A and B run without eviction, whatever the property evict says.
+ *
+ * Run E's handle state (bergdb item 009, step 4c; items/009-handles/02-implementation-plan.md,
+ * 4.10): with the SLOT lines, and under the write lock, so that the capacity controller's
+ * eviction thread runs no batch meanwhile, run E records its memory as the Lean model's memory
+ * with handles (lean/SIS/Handle.lean, HMem; the mapping of docs/handles-alignment.md, section
+ * 2): HMEM, the startup the state comes from and the stream's first record; HTABLE, the node
+ * table's entries; HANDLE, every handle that the table or a pointer of an object holds, with
+ * its node, state, object and written position; HOBJ, every object that a handle holds, and
+ * the super root and D's, with its node, whether it is canonical, its position and the number
+ * of entries of its history; HPTR, every pointer of an object to an index node, with its
+ * pointee, the record it names and the handle it holds. A handle has the same number in every
+ * state of run E, an object a number in its state. Values have no handles (009-02, 4.8) and are
+ * left out. The checker's C-H checks them against the model's invariants with handles
+ * (lean/SIS/HandleTheorems.lean). Run E's reads (ereads) leave versions read in handles, and
+ * take pointers that hold dead handles through the slow path; after a restart (erestart) the
+ * state recorded for the transaction is the startup's, and HMEM names the record it read last.
  */
 public class TraceExport {
     final long seed;
@@ -96,6 +117,8 @@ public class TraceExport {
     final int retain = Integer.getInteger("retain", 0);
     final String runE = System.getProperty("rune", "");
     final int slotEvery = Integer.getInteger("slotevery", 1);
+    final int eReads = Integer.getInteger("ereads", 0);
+    final int eRestart = Integer.getInteger("erestart", 0);
     final long timeScale = retain > 0 ? bergdb.pub.util.Clock.UNITS_PER_SEC / 100 : 1;
 
     // The workload: per transaction, keys and values (null value: delete).
@@ -245,6 +268,8 @@ public class TraceExport {
         List<String> firsts = new ArrayList<String>();
         /** Run E: the slots of the resident canonical objects after this record (SLOT). */
         List<String> slots = new ArrayList<String>();
+        /** Run E: its handle state after this record (HMEM, HTABLE, HANDLE, HOBJ, HPTR). */
+        List<String> handles = new ArrayList<String>();
         long transSeqSum;
         int puts, deletes;
         /** With reclaim: user, step or table; a step's touch; FA, CUT and PHYSCUT lines. */
@@ -923,6 +948,9 @@ public class TraceExport {
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(1);
         Db db = start(stream, clock, schedule);
+        TreeMap<String, TreeMap<Long, byte[]>> history =
+                new TreeMap<String, TreeMap<Long, byte[]>>();
+        int started = 0;    // the last record that run E's last startup read
         for (int i = 0; i < n; i++) {
             clock.setTime(times[i]);
             Trans.Builder b = db.trans();
@@ -931,6 +959,9 @@ public class TraceExport {
             for (int j = 0; j < ks.length; j++) {
                 if (vs[j] == null) b.delete(ks[j]);
                 else b.put(ks[j], vs[j]);
+                TreeMap<Long, byte[]> h = history.get(ks[j]);
+                if (h == null) history.put(ks[j], h = new TreeMap<Long, byte[]>());
+                h.put(times[i], vs[j]);
             }
             Trans t = b.build();
             db.execute(t);
@@ -940,10 +971,40 @@ public class TraceExport {
                 recA.probes.add("PROBE " + recA.index + " fail run E wrote R(" + recU.index + ") at "
                         + t.tpos + ", run A at " + recU.tpos);
             }
+            // Reads and a restart between transactions (bergdb item 009, step 4c).
+            if (eReads > 0) {
+                String problem = lookupProblem(db, history, i, 0, eReads,
+                        new Random(seed * 37 + i));
+                if (problem != null) {
+                    recA.probes.add("PROBE " + recA.index + " fail run E (" + runE + "): "
+                            + problem);
+                }
+            }
+            if (eRestart > 0 && (i + 1) % eRestart == 0 && i + 1 < n) {
+                db.sync(SyncLevel.STRONG);
+                db.stop();
+                stream = copyOf(stream);
+                try {
+                    db = start(stream, clock, schedule);
+                } catch (RuntimeException e) {
+                    recA.probes.add("PROBE " + recA.index + " fail run E (" + runE
+                            + "): restart failed: " + oneLine(e));
+                    return;
+                }
+                started = recA.index;
+            }
             if ((i + 1) % slotEvery == 0 || i + 1 == n) {
-                List<String> lines = slots(db, recA);
-                recA.slots.addAll(lines);
-                slotLines += lines.size();
+                // Under the write lock: the capacity controller's eviction thread may run
+                // batches after the call (bergdb item 009, step 3d), and the state recorded is
+                // one between them (bergdb item 009, step 4c).
+                synchronized (db.internal().getWriteLock()) {
+                    List<String> lines = slots(db, recA);
+                    recA.slots.addAll(lines);
+                    slotLines += lines.size();
+                    lines = handleState(db, recA, started);
+                    recA.handles.addAll(lines);
+                    handleLines += lines.size();
+                }
             }
         }
         db.sync(SyncLevel.STRONG);
@@ -1009,6 +1070,165 @@ public class TraceExport {
         return lines;
     }
 
+    // ======== Run E's handle state (bergdb item 009, step 4c) ========
+
+    int handleLines = 0;
+
+    /** Run E's handles, numbered in the order the exporter first meets them, so that a handle
+     *  has the same number in every state of run E (the checker's C-H: a dead handle is never
+     *  live again). */
+    final Map<Handle, Integer> handleNumbers = new IdentityHashMap<Handle, Integer>();
+
+    int handleNumber(Handle h) {
+        Integer k = handleNumbers.get(h);
+        if (k == null) handleNumbers.put(h, k = handleNumbers.size() + 1);
+        return k;
+    }
+
+    /** A state's handles and objects, in the order the exporter meets them (handleState). */
+    static final class HState {
+        final List<Handle> handles = new ArrayList<Handle>();
+        final Set<Handle> seen = Collections.newSetFromMap(new IdentityHashMap<Handle, Boolean>());
+        final List<Node> objects = new ArrayList<Node>();
+        final Map<Node, Integer> numbers = new IdentityHashMap<Node, Integer>();
+
+        /** Handle h, and the object it holds. */
+        void handle(Handle h) {
+            if (!seen.add(h)) return;
+            handles.add(h);
+            object(h.obj);
+        }
+
+        /** Object o, numbered from 1 in its state. */
+        void object(Node o) {
+            if (o == null || numbers.containsKey(o)) return;
+            numbers.put(o, objects.size() + 1);
+            objects.add(o);
+        }
+    }
+
+    /**
+     * The handle lines of run E's state now, between transactions, after record rec (the
+     * class comment): the node table's entries and handles, the super root and D's objects,
+     * and, through the pointers of the objects to index nodes, the handles they hold, live or
+     * dead, and the objects of those. started: the last record that the state's startup read.
+     * The caller holds the write lock.
+     */
+    List<String> handleState(Db db, Rec rec, int started) {
+        Db.Internal in = db.internal();
+        String context = "the handle state after R(" + rec.index + ")";
+        HState st = new HState();
+        List<String> tableLines = new ArrayList<String>();
+        for (Map.Entry<Long, Handle> e : in.cache().entries()) {
+            tableLines.add("HTABLE " + mid(e.getKey()) + " " + handleNumber(e.getValue()));
+            st.handle(e.getValue());
+        }
+        st.object(in.superRoot());
+        final List<Node> dObjects = new ArrayList<Node>();
+        in.transSeq().visitGotDirtyNodes(Long.MAX_VALUE, new TransSeq.NodeVisitor() {
+            public void node(Node node, long tpos, long lastTpos) {
+                dObjects.add(node);
+            }
+        });
+        for (Node x : dObjects) st.object(x);
+        for (int j = 0; j < st.objects.size(); j++) {
+            Node x = st.objects.get(j);
+            if (!x.isIndexNode()) continue;
+            int size = x.getSize();
+            for (int i = 0; i < size; i++) {
+                if (!NodeCollection.pointsToIndexNode(x, i)) continue;
+                Pointee p = x.getPointee(i);
+                if (p instanceof Handle) st.handle((Handle) p);
+            }
+        }
+
+        // The stream's first record: the first that starts at or after its first position (a
+        // cut by reclaim; R(0) without one).
+        long firstPos = in.nodeStream().getFirstPos();
+        int first = 0;
+        for (Rec r : recs) {
+            if (r.tpos >= firstPos) {
+                first = r.index;
+                break;
+            }
+        }
+        List<String> lines = new ArrayList<String>();
+        lines.add("HMEM " + started + " " + first);
+        Collections.sort(tableLines);
+        lines.addAll(tableLines);
+        for (Handle h : st.handles) {
+            Node o = h.obj;
+            byte s = h.state();
+            lines.add("HANDLE " + handleNumber(h) + " " + mid(h.id) + " "
+                    + (s == Handle.LIVE ? "live" : s == Handle.LOADING ? "loading" : "dead") + " "
+                    + (o == null ? "-" : "" + st.numbers.get(o)) + " "
+                    + recordOrNone(h.writtenPos, context));
+        }
+        for (Node x : st.objects) {
+            if (!x.isIndexNode()) {
+                error("an object of node " + mid(x.getId()) + " that is not an index node ("
+                        + context + ")");
+                continue;
+            }
+            lines.add("HOBJ " + st.numbers.get(x) + " " + mid(x.getId()) + " "
+                    + (x.isCanonical() ? "canon" : "snap") + " "
+                    + recordOrNone(x.getSpos(), context) + " " + entryCount(x));
+        }
+        for (Node x : st.objects) {
+            if (!x.isIndexNode()) continue;
+            int size = x.getSize();
+            for (int i = 0; i < size; i++) {
+                if (!NodeCollection.pointsToIndexNode(x, i)) continue;
+                Pointee p = x.getPointee(i);
+                long pos = x.getPointerPos(i);
+                if (p == null && pos == Spos.NULL) continue;    // an unused skip pointer
+                String where = "pointer " + i + " of node " + mid(x.getId()) + ", " + context;
+                long y;
+                if (Spos.isVpos(pos)) {
+                    y = mid(pos);
+                } else if (Spos.isValid(pos) && verByPos.containsKey(pos)) {
+                    y = verByPos.get(pos)[1];
+                } else {
+                    error("stream position " + pos + " is not the start of a known version ("
+                            + where + ")");
+                    continue;
+                }
+                lines.add("HPTR " + st.numbers.get(x) + " " + y + " " + recordOrNone(pos, where)
+                        + " " + (p instanceof Handle ? "" + handleNumber((Handle) p) : "-"));
+            }
+        }
+        return lines;
+    }
+
+    /** The record of the version at stream position pos, or - for a vpos or none. */
+    String recordOrNone(long pos, String context) {
+        return Spos.isValid(pos) && !Spos.isVpos(pos) ? recordOfPos(pos, context) : "-";
+    }
+
+    /**
+     * The number of entries of index object x's history in the model (keyEntries and
+     * topEntries): a key node's key and delete klongs; a top node's root pointer and its skip
+     * pointers.
+     */
+    static int entryCount(Node x) {
+        int count = 0;
+        if (x instanceof KeyNode) {
+            KeyNode k = (KeyNode) x;
+            int size = k.size;
+            for (int i = 0; i < size; i++) {
+                int type = Klong.getIntType(k.klongs[i]);
+                if (type == Klong.INT_TYPE_KEY || type == Klong.INT_TYPE_DELETE_BITMAP) count++;
+            }
+        } else {
+            TopNode tn = (TopNode) x;
+            count = 1;
+            for (int j = 0; j < tn.pointersLength; j++) {
+                if (tn.pointers[j] != null || tn.pointersPos[j] != Spos.NULL) count++;
+            }
+        }
+        return count;
+    }
+
     /** The first position at which two streams differ, from the later first position of the
      *  two (after a cut by reclaim); -1 if they are the same. As RestartInvariance.firstDiff. */
     static long firstDiff(AppendOnlyStream s1, AppendOnlyStream s2) {
@@ -1057,14 +1277,24 @@ public class TraceExport {
     }
 
     String lookupProblem(Db db, TreeMap<String, TreeMap<Long, byte[]>> history, int i) {
-        Random rnd = new Random(seed * 31 + i);
+        return lookupProblem(db, history, i, history.size(), 200, new Random(seed * 31 + i));
+    }
+
+    /**
+     * Lookups after user transaction i: each of the first 'latest' keys at the latest time,
+     * then 'random' random keys at random times up to the transaction's; null if each gives
+     * the workload's value.
+     */
+    String lookupProblem(Db db, TreeMap<String, TreeMap<Long, byte[]>> history, int i, int latest,
+            int random, Random rnd) {
         final long fa = db.getFirstAvailableLookupTime();
         List<String> ks = new ArrayList<String>(history.keySet());
+        if (ks.isEmpty()) return null;
         int bad = 0;
         String first = null;
-        for (int j = 0; j < ks.size() + 200; j++) {
-            String k = j < ks.size() ? ks.get(j) : ks.get(rnd.nextInt(ks.size()));
-            long t = j < ks.size() ? Long.MAX_VALUE : times[rnd.nextInt(i + 1)] - rnd.nextInt(2);
+        for (int j = 0; j < latest + random; j++) {
+            String k = j < latest ? ks.get(j) : ks.get(rnd.nextInt(ks.size()));
+            long t = j < latest ? Long.MAX_VALUE : times[rnd.nextInt(i + 1)] - rnd.nextInt(2);
             t = Math.max(t, fa);    // with reclaim, from the first available time on
             Map.Entry<Long, byte[]> e = history.get(k).floorEntry(t);
             byte[] expected = e == null ? null : e.getValue();
@@ -1223,6 +1453,7 @@ public class TraceExport {
             for (String s : rec.probes) out.println(s);
             for (String s : rec.firsts) out.println(s);
             for (String s : rec.slots) out.println(s);
+            for (String s : rec.handles) out.println(s);
             out.println("END " + rec.index);
         }
         out.println("DONE " + (recs.size() - 1));
@@ -1257,7 +1488,7 @@ public class TraceExport {
                     + x.refsBelowCut + " references to versions before a cut)";
         }
         String re = x.runE.isEmpty() ? "" : " (run E: " + x.slotLines + " SLOT lines, "
-                + x.evictionSummary + ")";
+                + x.handleLines + " handle lines, " + x.evictionSummary + ")";
         System.out.println("TraceExport seed=" + x.seed + " n=" + x.n + rc + re + ": "
                 + x.nodes.size() + " nodes, " + x.errors.size() + " errors, " + probeFails
                 + " probe failures; " + args[1]);

@@ -27,9 +27,11 @@
 #      readers; and the capacity controller with a small budget (since bergdb
 #      item 009, step 3d).
 #   5. Conformance with the Lean model, with eviction: conformance.sh evict
-#      (TraceExport's run E with a forced schedule: its stream is run A's, and
-#      its slots meet INV-SLOT, the checker's C-P; 1 seed quick, 3 full). It
-#      needs the checker (cd ../lean && lake build), which the step builds.
+#      (TraceExport's run E with a forced schedule: its stream is run A's, its
+#      slots meet INV-SLOT, the checker's C-P, and its handle state the model's
+#      invariants with handles, C-H, since bergdb item 009, step 4c; 1 seed
+#      quick, 3 full). It needs the checker (cd ../lean && lake build), which
+#      the step builds.
 #   6. LargerThanMemory: on disk, in a capped JVM, a database several times the
 #      budget, its index larger than it: updates, gets, scans, reclaim, a cold
 #      restart, every key checked; the live heap stays below three quarters of
@@ -149,7 +151,7 @@ echo "5. Conformance with the Lean model, with eviction"
 (cd ../lean && lake build) > $LOG/lake.txt 2>&1 || fail "the Lean checker, lake build" $LOG/lake.txt
 sh stress/conformance.sh evict $CONF_SEEDS > $LOG/conformance.txt 2>&1
 grep -q '^CONFORMANCE OK' $LOG/conformance.txt || fail "conformance.sh evict" $LOG/conformance.txt
-echo "   conformance: $(grep '^   traces:' $LOG/conformance.txt | sed 's/^ *//'); C-P $(grep '^   C-P:' $LOG/conformance.txt | sed 's/^ *C-P: //')"
+echo "   conformance: $(grep '^   traces:' $LOG/conformance.txt | sed 's/^ *//'); C-P $(grep '^   C-P:' $LOG/conformance.txt | sed 's/^ *C-P: //'); C-H $(grep '^   C-H:' $LOG/conformance.txt | sed 's/^ *C-H: //')"
 
 echo "6. LargerThanMemory, on disk, a capped JVM"
 $JAVA -ea $LTM -Ddir=build/level4/ltm -cp $CP bergdb.core.LargerThanMemory > $LOG/ltm.txt 2>&1

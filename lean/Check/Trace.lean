@@ -99,6 +99,39 @@ structure TSlot where
   kind : String
   deriving Inhabited
 
+/-- A handle of run E's state at the end of the transaction (a HANDLE line, trace format 2;
+bergdb item 009, step 4c): its number, the same in every state of run E; its node; its state
+(`live`, `loading` or `dead`); the number of the object it holds, if any; and the record of its
+written position, if any. -/
+structure THandle where
+  num : Nat
+  node : NodeId
+  state : String
+  obj : Option Nat
+  written : Option Nat
+  deriving Inhabited
+
+/-- An object of run E's state (a HOBJ line; bergdb item 009, step 4c): its number in the
+state, its node, whether it is canonical, the record of its position (none if it has not been
+written: a vpos), and the number of entries of its history. -/
+structure TObj where
+  num : Nat
+  node : NodeId
+  canonical : Bool
+  pos : Option Nat
+  entries : Nat
+  deriving Inhabited
+
+/-- A pointer of an object of run E's state to an index node (a HPTR line; bergdb item 009,
+step 4c): the object's number, the pointee, the record that its reference names (none for a
+vpos), and the number of the handle it holds, if any. -/
+structure TPtr where
+  obj : Nat
+  pointee : NodeId
+  ref : Option Nat
+  handle : Option Nat
+  deriving Inhabited
+
 /-- One transaction of the trace: `TX i` to `END i`. -/
 structure TRec where
   idx : Nat
@@ -118,6 +151,15 @@ structure TRec where
   firsts : Array TFirst := #[]
   /-- Run E's slots at the end of this transaction (bergdb item 001, WP J4). -/
   slots : Array TSlot := #[]
+  /-- Run E's handle state at the end of this transaction (bergdb item 009, step 4c): the
+  HMEM line (the last record that the state's startup read, R(0) for run E's first, and the
+  stream's first record), the node table (HTABLE: node, handle), the handles (HANDLE), the
+  objects (HOBJ) and their pointers to index nodes (HPTR). -/
+  hmem : Option (Nat × Nat) := none
+  htable : Array (NodeId × Nat) := #[]
+  handles : Array THandle := #[]
+  hobjs : Array TObj := #[]
+  hptrs : Array TPtr := #[]
   /-- With reclaim (trace format 2; bergdb item 001, WPs R2 and R7): the nodes
   T(i)'s touch visited (TOUCH), fa(i) when it changes (FA), a cut decided at
   R(i), as the first record kept and the first available time (CUT), and the
@@ -215,6 +257,28 @@ def parseLine (t : Trace) (n : Nat) (line : String) : Trace :=
         bad "bad SLOT"
       else modCur t (fun r => { r with slots := r.slots.push (TSlot.mk x y rr.toNat? k) })
     | _, _ => bad "bad SLOT"
+  | ["HMEM", k, c] => match k.toNat?, c.toNat? with
+    | some k, some c => modCur t (fun r => { r with hmem := some (k, c) })
+    | _, _ => bad "bad HMEM"
+  | ["HTABLE", y, h] => match y.toNat?, h.toNat? with
+    | some y, some h => modCur t (fun r => { r with htable := r.htable.push (y, h) })
+    | _, _ => bad "bad HTABLE"
+  | ["HANDLE", h, y, st, a, w] => match h.toNat?, y.toNat? with
+    | some h, some y =>
+      if !(["live", "loading", "dead"].contains st) || (a != "-" && a.toNat?.isNone) ||
+          (w != "-" && w.toNat?.isNone) then bad "bad HANDLE"
+      else modCur t (fun r => { r with handles := r.handles.push (THandle.mk h y st a.toNat? w.toNat?) })
+    | _, _ => bad "bad HANDLE"
+  | ["HOBJ", a, y, k, p, e] => match a.toNat?, y.toNat?, e.toNat? with
+    | some a, some y, some e =>
+      if !(["canon", "snap"].contains k) || (p != "-" && p.toNat?.isNone) then bad "bad HOBJ"
+      else modCur t (fun r => { r with hobjs := r.hobjs.push (TObj.mk a y (k == "canon") p.toNat? e) })
+    | _, _, _ => bad "bad HOBJ"
+  | ["HPTR", a, y, rr, h] => match a.toNat?, y.toNat? with
+    | some a, some y =>
+      if (rr != "-" && rr.toNat?.isNone) || (h != "-" && h.toNat?.isNone) then bad "bad HPTR"
+      else modCur t (fun r => { r with hptrs := r.hptrs.push (TPtr.mk a y rr.toNat? h.toNat?) })
+    | _, _ => bad "bad HPTR"
   | "GD" :: xs => match parseNats xs with
     | some xs => modCur t (fun r => { r with gd := xs })
     | none => bad "bad GD"

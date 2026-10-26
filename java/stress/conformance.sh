@@ -19,6 +19,11 @@
 #   schedule, or the capacity controller with a small budget, since J7), whose
 #   stream must be run A's, and whose slots (SLOT lines) the checker's C-P
 #   checks against the model's INV-SLOT; a trace without SLOT lines fails.
+#   Since bergdb item 009, step 4c, run E also writes its handle state (HMEM,
+#   HTABLE, HANDLE, HOBJ and HPTR lines), which the checker's C-H checks
+#   against the model's invariants with handles; a trace without HANDLE lines
+#   fails. Four of its configurations read between run E's transactions, and
+#   three of them restart run E too (TraceExport's ereads and erestart).
 #   Since bergdb 005-04 the small and evict sets each have a configuration
 #   with A6's kind, a segment root that a transaction makes and splits in
 #   place (a6, e-a6: two-segment keys, 40 KVs per transaction); a trace of
@@ -101,6 +106,13 @@ evict() {
     echo "e-r-budget -Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=4 -Dretain=1 -Dprobe=10 -Drune=budget -Devictbudget=20000"
     # A6's kind with the random schedule (bergdb 005-04).
     echo "e-a6      -Dn=40 -Dkeys=200 -Dmaxnode=8 -Dsd=1000 -Dops=40 -Dexact=1 -Dlong=1 -Ddel=25 -Dprobe=10 -Drune=random"
+    # Reads between run E's transactions, at random times, and restarts (bergdb item 009,
+    # step 4c): versions read in handles, pointers that hold dead handles followed again, and
+    # the startup's state, with Rule R from its section, for C-H.
+    echo "e-reads   -Dn=60 -Dkeys=50 -Dmaxnode=14 -Dsd=500 -Dops=4 -Dlong=1 -Ddel=25 -Dprobe=10 -Drune=random -Dereads=20"
+    echo "e-restart -Dn=100 -Dkeys=50 -Dmaxnode=8 -Dsd=300 -Dops=4 -Ddel=25 -Dprobe=10 -Drune=random -Dereads=20 -Derestart=10"
+    echo "e-r-restart -Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=4 -Dretain=1 -Dprobe=10 -Drune=random -Dereads=20 -Derestart=25"
+    echo "e-b-restart -Dn=300 -Dkeys=200 -Dmaxnode=8 -Dsd=500 -Dops=4 -Ddel=25 -Dprobe=10 -Drune=budget -Devictbudget=30000 -Dereads=20 -Derestart=50"
 }
 
 large() {
@@ -176,6 +188,8 @@ summary() {
     fi
     if [ $1 = evict ]; then
         echo "   C-P: $(grep -h '^C-P slots' $dir/*.check.txt | sed -E 's/.*: ([0-9]+) of ([0-9]+) transactions fail; ([0-9]+) SLOT lines, ([0-9]+) checked.*/\1 \2 \3 \4/' | awk '{f+=$1; t+=$2; n+=$3; c+=$4} END {print f+0 " of " t+0 " transactions fail; " n+0 " SLOT lines, " c+0 " checked"}'); traces without SLOT lines: $(grep -L '^SLOT ' $dir/*.trace | wc -l | tr -d ' ')"
+        echo "   C-H: $(grep -h '^C-H handles' $dir/*.check.txt | sed -E 's/.*: ([0-9]+) of ([0-9]+) transactions fail; ([0-9]+) states, ([0-9]+) handles, ([0-9]+) objects, ([0-9]+) pointers, ([0-9]+) checked.*/\1 \2 \3 \4 \5 \6 \7/' | awk '{f+=$1; t+=$2; n+=$3; h+=$4; o+=$5; p+=$6; c+=$7} END {print f+0 " of " t+0 " transactions fail; " n+0 " states, " h+0 " handles, " o+0 " objects, " p+0 " pointers, " c+0 " checked by the record rule"}'); traces without HANDLE lines: $(grep -L '^HANDLE ' $dir/*.trace | wc -l | tr -d ' ')"
+        echo "   C-H cases: $(grep -h '^C-H cases' $dir/*.check.txt | sed -E 's/.*: ([0-9]+) snapshots, ([0-9]+) of nodes.*; ([0-9]+) pointers to snapshots, ([0-9]+) with a reference.*; ([0-9]+) pointers checked written.*, ([0-9]+) with a vpos.*/\1 \2 \3 \4 \5 \6/' | awk '{a+=$1; b+=$2; c+=$3; d+=$4; e+=$5; f+=$6} END {print a+0 " snapshots (" b+0 " of nodes in the startup section after a restart), " c+0 " pointers to snapshots (" d+0 " with a reference older than the section'"'"'s), " e+0 " pointers written with their handle'"'"'s written position (" f+0 " with a vpos)"}')"
     fi
     echo "   C-L: $(grep -h '^C-L' $dir/*.check.txt | awk '{s+=$4} END {print s+0}') of $(grep -h '^C-L' $dir/*.check.txt | awk '{s+=$6} END {print s+0}') FIRST lines fail"
     echo "   C-R: $(grep -h '^C-R' $dir/*.check.txt | awk '{s+=$3} END {print s+0}') failed probes; kinds:"
@@ -217,6 +231,10 @@ for set_name in $RAN; do
     fi
     if [ $set_name = evict ] && grep -L '^SLOT ' build/traces/$set_name/*.trace | grep -q .; then
         echo "CONFORMANCE FAILED: an eviction trace without SLOT lines"
+        exit 1
+    fi
+    if [ $set_name = evict ] && grep -L '^HANDLE ' build/traces/$set_name/*.trace | grep -q .; then
+        echo "CONFORMANCE FAILED: an eviction trace without HANDLE lines"
         exit 1
     fi
     for f in build/traces/$set_name/a6-*.check.txt build/traces/$set_name/e-a6-*.check.txt; do

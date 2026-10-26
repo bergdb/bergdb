@@ -263,3 +263,16 @@ under generational Shenandoah with a 12 GB heap, then under Shenandoah
 without generations with 8 GB) start at 22:30 after the quiet check, about
 two hours.
 
+2026-10-26, 12:40. Step 4c done, by a separate agent at Frans's request, and
+integrated: the trace exporter writes Java's node table, handles, objects and
+pointers (HMEM, HTABLE, HANDLE, HOBJ, HPTR lines, trace format 2), and a new
+checker step, C-H, checks the model's handle invariants on them with the
+model's own definitions (lean/Check/Steps.lean). Run E got lookups and a
+restart (`ereads`, `erestart`) and the evict set four configurations, so
+that the snapshot and Rule R checks have cases; Frans: "As proposed."
+`level4.sh quick` on `main`: C-P 0 of 3445 transactions fail, C-H 0 of 3445;
+before-commit OK; the agent's runs also passed level2.sh and level3.sh
+quick and conformance.sh evict 3 (C-H 0 of 10,321). Histories are compared
+by their entry count, not their contents (a hash is possible; Frans asked
+for more on it).
+

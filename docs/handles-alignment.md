@@ -33,8 +33,8 @@ section 4, and its section 9, what the implementation changed.
   model's, and reads give P; SIS/Proof/HandleRestart.lean), and `tp_handles`
   (every object outside the pinned set may be evicted;
   SIS/Proof/HandlePin.lean). Java's runs are checked against the model by
-  the trace checker through the trace format of the design before handles
-  (section 4); a check of the handle state itself is step 4c.
+  the trace checker through the trace format of the design before handles,
+  and since step 4c through their handle state itself (section 4).
 
 
 ## 2. The mapping α
@@ -110,13 +110,45 @@ for Java.
 
 ## 4. How Java is checked against the model
 
-* **The trace checker** (`conformance.sh evict`, `level4.sh` step 5): the
-  trace exporter (`stress/TraceExport.java`) maps the handles to the trace
-  format of the design before them (a pointer whose handle holds an object
-  usable for it is a memory slot to that object, any other a stream slot
-  with its serialized reference), and the checker's C-P checks them against
-  Evict.lean's physical states. A check of the handle state itself against
-  Handle.lean is step 4c, not done.
+* **The trace checker, C-P** (`conformance.sh evict`, `level4.sh` step 5):
+  the trace exporter (`stress/TraceExport.java`) maps the handles to the
+  trace format of the design before them (a pointer whose handle holds an
+  object usable for it is a memory slot to that object, any other a stream
+  slot with its serialized reference), and the checker's C-P checks them
+  against Evict.lean's physical states.
+* **The trace checker, C-H** (step 4c, 2026-10-26; the same runs): the
+  exporter also writes run E's memory as the model's memory with handles, by
+  α of section 2, at each transaction's end and under the write lock (HMEM,
+  HTABLE, HANDLE, HOBJ and HPTR lines; level2-alignment.md, 9.2), and the
+  checker's C-H (`handleFailures`, lean/Check/Steps.lean) checks it against
+  the invariants of HandleTheorems.lean, which the model's theorems prove:
+  `HTableOK` (the table and the handles, a pointer's handle of its
+  pointee); `HCanOK` and `HSnapOK` (by position, and by the number of entries
+  of an object's history); `HSlotOK`, with the model's own record rule
+  (`HMem.refOf`) on Java's pointers, handles and objects; `HRuleROK`;
+  `HLiveWrittenOK`; `HWrittenOK`, and that a pointer names a pointee of its
+  object's history; `HFastOK`; T-PIN's first part, every object outside the
+  pinned set written; and 02's 4.1 and 4.10, no handle loading at a
+  transaction's end and a dead handle never live again. Run E reads between
+  its transactions in four configurations of the set, and restarts in three
+  (TraceExport's `ereads` and `erestart`): without reads its states held no
+  snapshot (the writer promotes what it follows), and without a restart
+  Rule R is R(0)'s, about which `HRuleROK` says nothing. C-H also counts how
+  often the states reach the cases that HandleExample.lean's runs found
+  (`pointCounts`): a pointer written with its dead handle's written position
+  (choice 1 of Handle.lean), with a vpos (open point 3), and snapshots of
+  nodes in the startup section after a restart; open point 1's case (a
+  snapshot that a pointer older than the section names) does not occur, as
+  in the model's runs, since the slow path writes Rule R back.
+  What C-H does not check: the histories themselves (only their number of
+  entries; C-S checks run A's, and run E's stream is run A's byte for byte);
+  values, which have no handles in Java (R1; C-P checks their slots); the
+  virtual root's object, which Java does not have (R7); the operations'
+  interleavings (R2: it sees states between transactions); the CLOCK bit and
+  the bytes (R3); T-PIN's second part, which is the definition of
+  `HMem.evict`. A pointer that leads to no object that may serve it and
+  whose reference is before the stream's first record (reclaim's cut, M33)
+  is not checked against the record rule, as C-P's dead slots.
 * **The audit** (`core/Audit.java`): INV-CAN, the pins and INV-SLOT as
   before, and the handles: a live handle that a pointer of a resident object
   holds is the table's, a dead one has no object.

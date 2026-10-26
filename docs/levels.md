@@ -94,7 +94,8 @@ without restarts and reclaim, the audit (INV-CAN, the pins, INV-SLOT) on;
 `RestartInvariance`, `CrashTest` and `ReclaimStress` with the schedules every
 and random and the audit; `ReclaimReaders` with forced schedules, on a
 `CutStream` and a `FileStream`; `conformance.sh evict`, the checker's C-P on
-Java's physical states (so it needs Lean too); and `LargerThanMemory`, on disk
+Java's physical states and, since bergdb item 009, step 4c, its C-H on Java's
+handle state (so it needs Lean too); and `LargerThanMemory`, on disk
 in a capped JVM (quick: 500,000 keys, a budget of 20 MB, `-Xmx384m`; full: 2
 million keys, 50 MB, `-Xmx768m`). It takes about 16 minutes full and 4
 quick.
@@ -1751,7 +1752,9 @@ handles, and for handles (`tc_handles`, `tr_handles`, `t2_handles`,
 mapping and its register in [handles-alignment.md](handles-alignment.md)).
 Java is checked against it:
 the audit (INV-CAN, the pins, INV-SLOT, test-only), the checker's C-P on
-Java's physical states (`conformance.sh evict`), and `EvictionInvariance`
+Java's physical states and its C-H, the model's invariants with handles on
+Java's handle state (`conformance.sh evict`; handles-alignment.md, section
+4), and `EvictionInvariance`
 (the same stream byte for byte with every schedule, on the configurations
 of the plan's 8.4, with restarts and reclaim). `level4.sh` runs them, with
 stress under eviction and a larger-than-memory run.

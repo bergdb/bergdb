@@ -670,6 +670,38 @@ SLOT lines come after the FIRST lines of their transaction, sorted. Run E's
 `PROBE` line (its stream against run A's) is in the last record's block. The
 checker's C-P checks the SLOT lines against the model's INV-SLOT.
 
+With handles (since 2026-10-26, bergdb item 009, step 4c;
+handles-alignment.md, section 4), run E also writes its memory as the
+model's memory with handles (lean/SIS/Handle.lean, `HMem`), at the same
+moments as the SLOT lines and after them:
+
+    HMEM k c                     in TX i, at the end of the call whose last
+                                 record is R(i): run E's last startup read
+                                 R(0) to R(k) (its Rule R), and R(c) is the
+                                 first record that starts at or after the
+                                 stream's first position (0 without a cut)
+    HTABLE y h                   the node table's entry for node y: handle h
+    HANDLE h y state a w         handle h of node y, h the same in every state
+                                 of run E: state live, loading or dead; it
+                                 holds object a (- for none); w is the record
+                                 of its written position (- for none)
+    HOBJ a y kind r e            object a of node y, a numbered in its state:
+                                 kind canon or snap; r is the record of its
+                                 position (- if it has none: a vpos); e is the
+                                 number of entries of its history
+    HPTR a y r h                 a pointer of object a to index node y: its
+                                 reference names record r (- for a vpos); it
+                                 holds handle h (- for none)
+
+The handles are the table's and those that a pointer of an object holds; the
+objects, those that the handles hold, the super root and D's. Values have no
+handles and are left out. The checker's C-H checks these lines against the
+model's invariants with handles (lean/SIS/HandleTheorems.lean). The exporter's
+`ereads=N` adds N lookups at random times after each transaction of run E
+(a `PROBE` fail line if one is wrong), and `erestart=K` a restart of run E
+after every K-th transaction; the lines of that transaction are then the
+startup's state, and HMEM's k is the transaction's last record.
+
 FIRST lines come after the `PROBE` lines of their transaction. With `live=1`,
 the root's `LIVE` lines cover every time t ≤ i on each record, at the record's
 own time and at the last Java time before the next record (review-13-claude,

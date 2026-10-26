@@ -1069,4 +1069,19 @@ found each:
   3's reclaim theorems with eviction (T9, T12) are stated over Evict.lean's
   runs. Removing the design before handles would first need T9 and T12 over
   handles.
+* **The check of the handle state is a step of its own, C-H** (4c,
+  2026-10-26; 4.10 and phase 4 had "the checker's C-P for the handle
+  state"). C-P stays as it is, through the trace format of the design
+  before handles. TraceExport writes run E's memory as the model's memory
+  with handles (HMEM, HTABLE, HANDLE, HOBJ and HPTR lines, in trace format 2,
+  as the SLOT lines were; `Cache3.entries` gives it the table), and C-H
+  checks it against HandleTheorems.lean's invariants, the record rule by the
+  model's own `HMem.refOf` (docs/handles-alignment.md, section 4). Two things
+  the plan did not say: run E got reads and restarts between its
+  transactions (TraceExport's `ereads` and `erestart`, in four new
+  configurations of `conformance.sh evict`), since run E has only the writer,
+  which promotes what it follows, so its states held no snapshot, and without
+  a restart Rule R is R(0)'s; and the exporter takes the write lock for the
+  state, since the capacity controller's eviction thread may run batches
+  after a transaction (step 3d), and the SLOT lines were read without it.
 
