@@ -1064,3 +1064,9 @@ found each:
   reference, does not take it (`Handle.usable`), and its swizzle does not
   replace the newer handle (`Node.swizzle`). Checked by reasoning, not by
   the model, whose follow is one step (phase 2's note, 2026-10-26).
+* **No Phys or Evict file goes** (4c's second half, 2026-10-26): the proofs
+  over handles were built on Evict.lean and on E3 to E5's parts, and Level
+  3's reclaim theorems with eviction (T9, T12) are stated over Evict.lean's
+  runs. Removing the design before handles would first need T9 and T12 over
+  handles.
+

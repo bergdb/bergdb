@@ -248,3 +248,18 @@ checker over the handle state) and the removal of the Lean files that only
 the design before handles uses, for Frans to decide; and 009-04's open
 question, Shenandoah in P4's soak. Status stays open until then.
 
+2026-10-26, 09:00. Frans: "Removing the old Lean files. Do it." "Step 4c.
+Do it in a new separate agent." "009-04. Schedule this work to 22:30
+tonight." The old files: none can go. Of the 42 Phys and Evict modules of
+lean/SIS/, the handle model and its proofs use 39 (Handle.lean imports
+Evict.lean; the proofs reuse E3 to E5's parts, and HandleExample.lean
+EvictExample.lean), and Level 3's reclaim theorems with eviction (`T9_readCut`,
+`T12_evictCut`, stated over Evict.lean's runs) use all 42, the other three
+(PhysTheorems.lean, Proof/EvictKeys.lean, Proof/EvictPin.lean) included. So
+nothing was removed; removing the design before handles would first need T9
+and T12 over handles. Step 4c: started in a separate agent, in a scratch
+clone, to report to this session. 009-04: its points 1 and 2 (P4's soak
+under generational Shenandoah with a 12 GB heap, then under Shenandoah
+without generations with 8 GB) start at 22:30 after the quiet check, about
+two hours.
+
