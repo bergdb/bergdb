@@ -364,7 +364,7 @@ theorem HMem.withRoot_followR (S0' S' : Stream V T) (hm : HEInv sp db S0 k m)
     (m.followR sp S0' S' a y = none → (m.withRoot oc).followR sp S0' S' a y = none) ∧
       ∀ m' n b, m.followR sp S0' S' a y = some (m', n, b) →
         ∃ oc' oe', (m.withRoot oc).followR sp S0' S' a y = some (m'.withRoot oc', n, b) ∧
-          m'.obj? m'.root = some oe' ∧ RootRelH sp f oc' oe' := by
+          m'.obj? m'.root = some oe' ∧ RootRelH sp f oc' oe' ∧ oc'.hist = oc.hist := by
   obtain ⟨o', ho', hp'⟩ := HMem.withRoot_objAt hra hr ho hp hroot
   obtain ⟨o0, ho0, -, hn0⟩ := hm.root
   rw [hra, Option.some.injEq] at ho0
@@ -396,7 +396,7 @@ theorem HMem.withRoot_followR (S0' S' : Stream V T) (hm : HEInv sp db S0 k m)
     refine ⟨fun h => (by rw [e1] at h; cases h), fun m' n b h => ?_⟩
     rw [e1, Option.some.injEq, Prod.mk.injEq, Prod.mk.injEq] at h
     obtain ⟨rfl, rfl, rfl⟩ := h
-    exact ⟨oc, oe, e2, hra, hr⟩
+    exact ⟨oc, oe, e2, hra, hr, rfl⟩
   · have hnf : ∀ n0 b0 ob0, p.handle = some n0 → m.objOf n0 = some b0 → m.obj? b0 = some ob0 →
         ob0.usable p.ref = false := by
       intro n0 b0 ob0 h1 h2 h3
@@ -497,7 +497,7 @@ theorem HMem.withRoot_followR (S0' S' : Stream V T) (hm : HEInv sp db S0 k m)
       | some b' =>
         simp only [Option.some.injEq, Prod.mk.injEq] at hsome
         obtain ⟨rfl, rfl, rfl⟩ := hsome
-        exact ⟨oc2, oe2, rfl, by rw [hroot3']; exact hroot3, g3⟩
+        exact ⟨oc2, oe2, rfl, by rw [hroot3']; exact hroot3, g3, by rw [g4, h4]⟩
 
 end Follow
 
@@ -520,7 +520,8 @@ theorem HEInv.followR_sim (hL : Later sp db1 db j1 j) (hm : HEInv sp db db1.S j 
         (m.withRoot oc).followR sp (cutStream c db1.S) (cutStream c db.S) a y = none) ∧
       ∀ m' n b, m.followR sp db1.S db.S a y = some (m', n, b) →
         ∃ oc' oe', (m.withRoot oc).followR sp (cutStream c db1.S) (cutStream c db.S) a y =
-            some (m'.withRoot oc', n, b) ∧ m'.obj? m'.root = some oe' ∧ RootRelH sp f oc' oe' := by
+            some (m'.withRoot oc', n, b) ∧ m'.obj? m'.root = some oe' ∧ RootRelH sp f oc' oe' ∧
+            oc'.hist = oc.hist := by
   have he := hm.followR_later hL hcut hft ho hp hg
   obtain ⟨h1, h2⟩ := HMem.withRoot_followR (cutStream c db1.S) (cutStream c db.S) hm hra hr ho hp hroot hy
   rw [he] at h1 h2
@@ -535,7 +536,8 @@ theorem HEInv.follow_sim (hL : Later sp db1 db j1 j) (hm : HEInv sp db db1.S j m
     (hg : HPtrLaterT sp db1.S db1 j1 db m t y p) {m1 : HMem V} {b : Nat}
     (hf : m.follow sp db1.S db.S a y false = (m1, some b)) :
     ∃ oc' oe', (m.withRoot oc).follow sp (cutStream c db1.S) (cutStream c db.S) a y false =
-        (m1.withRoot oc', some b) ∧ m1.obj? m1.root = some oe' ∧ RootRelH sp f oc' oe' := by
+        (m1.withRoot oc', some b) ∧ m1.obj? m1.root = some oe' ∧ RootRelH sp f oc' oe' ∧
+        oc'.hist = oc.hist := by
   obtain ⟨-, h2⟩ := hm.followR_sim hL hcut hft hra hr ho hp hroot hy hg
   unfold HMem.follow at hf ⊢
   cases hfr : m.followR sp db1.S db.S a y with
@@ -545,9 +547,9 @@ theorem HEInv.follow_sim (hL : Later sp db1 db j1 j) (hm : HEInv sp db db1.S j m
     rw [hfr] at hf
     simp only [Bool.false_eq_true, ↓reduceIte, Prod.mk.injEq, Option.some.injEq] at hf
     obtain ⟨rfl, rfl⟩ := hf
-    obtain ⟨oc', oe', e1, e2, e3⟩ := h2 m2 n2 b2 hfr
+    obtain ⟨oc', oe', e1, e2, e3, e4⟩ := h2 m2 n2 b2 hfr
     rw [e1]
-    exact ⟨oc', oe', rfl, e2, e3⟩
+    exact ⟨oc', oe', rfl, e2, e3, e4⟩
 
 /-- C's read below an object that is not the root's, on the memory with another
 root object and the cut streams, against E's on the whole streams: the same
@@ -612,7 +614,7 @@ theorem CInvH.readAt_sim (hL : Later sp db1 db j1 j) (hls : LiveSub sp) {c : Nat
         omega
       obtain ⟨m1, n1, b1, hf1, hF1, hrd1⟩ := hmA.follow_goodT hinv hls ho1' hp hg hne
       have hbrA : b ≠ accE.1.root := by rw [hrA]; exact hbr
-      obtain ⟨oc2, oe2, g1, g2, g3⟩ := hmA.follow_sim hL hcut hft hraA hrrA ho1' hp
+      obtain ⟨oc2, oe2, g1, g2, g3, -⟩ := hmA.follow_sim hL hcut hft hraA hrrA ho1' hp
         (fun h => absurd h hbrA) hzr hgc hf1
       have hh1 : HInvH sp db db1.S j m1 := by
         have := hhA.follow_reader hinv hmA b z
@@ -740,7 +742,7 @@ theorem CInvH.read_sim (hL : Later sp db1 db j1 j) (hls : LiveSub sp) (hm : HEIn
       apply mem_pointees_of_live hls (t := t)
       rw [hrrA.live t hf, e4]
       exact hz
-    obtain ⟨oc2, oe2, g1, g2, g3⟩ := hmA.follow_sim hL hcut hft hraA hrrA hraA' hp
+    obtain ⟨oc2, oe2, g1, g2, g3, -⟩ := hmA.follow_sim hL hcut hft hraA hrrA hraA' hp
       (fun _ => hzc) hzr hgc hf1
     have hh1 : HInvH sp db db1.S j m1 := by
       have := hhA.follow_reader hinv hmA m.root z
@@ -802,5 +804,303 @@ theorem CInvH.read_sim (hL : Later sp db1 db j1 j) (hls : LiveSub sp) (hm : HEIn
   refine ⟨oc', oe', tl, Prod.ext h1 (by rw [hlC, hnc]), by rw [hlE, hn0], h2, h3⟩
 
 end ReadSim
+
+/-! ## The writer's walk after a restart from a cut stream -/
+
+section WalkSim
+
+variable {sp : Spec V T} {db1 db : DB V T} {j1 j : Nat} {m : HMem V}
+
+/-- The writer's promote of an object that is not the root's: the same with
+another root object. -/
+theorem HMem.withRoot_promote {oc : HObj V} {n : Nat} (hn : ∀ b, m.objOf n = some b → b ≠ m.root) :
+    (m.withRoot oc).promote n = ((m.promote n).1.withRoot oc, (m.promote n).2) := by
+  unfold HMem.promote
+  rw [HMem.withRoot_objOf]
+  cases hb : m.objOf n with
+  | none => rfl
+  | some b =>
+    simp only
+    rw [HMem.withRoot_obj?_ne (hn b hb)]
+    cases m.obj? b with
+    | none => rfl
+    | some o => simp only [HMem.withRoot_setObj_ne (hn b hb)]
+
+/-- The promote leaves every object but the promoted one. -/
+theorem HMem.promote_obj?_ne {n x : Nat} (hn : ∀ b, m.objOf n = some b → b ≠ x) :
+    (m.promote n).1.obj? x = m.obj? x := by
+  unfold HMem.promote
+  cases hb : m.objOf n with
+  | none => rfl
+  | some b =>
+    simp only
+    cases m.obj? b with
+    | none => rfl
+    | some o => exact HMem.obj?_setObj_ne _ _ (Ne.symm (hn b hb))
+
+theorem HMem.promote_root (n : Nat) : (m.promote n).1.root = m.root := by
+  unfold HMem.promote
+  split
+  · split <;> rfl
+  · rfl
+
+/-- C's writer's follow of a live pointer of the canonical object of a current
+node, on the memory with another root object and the cut streams, against E's
+on the whole streams: the same, and the root objects still related. -/
+theorem HEInv.followW_sim (hL : Later sp db1 db j1 j) (hls : LiveSub sp) (hm : HEInv sp db db1.S j m)
+    {c : Nat} (hcut : CutOK sp c db1 j1) {f : Time} {oc oe : HObj V} (hra : m.obj? m.root = some oe)
+    (hr : RootRelH sp f oc oe) {a : Nat} {op : HObj V} (hop : m.obj? a = some op)
+    (hco : op.canonical = true) (hrp : reachable sp db.P j op.node = true) {x : NodeId}
+    (hx : x ∈ sp.live op.hist) (hroot : a = m.root → x ∈ pointees sp oc.hist) :
+    ∃ oc' oe', (m.withRoot oc).follow sp (cutStream c db1.S) (cutStream c db.S) a x true =
+        ((m.follow sp db1.S db.S a x true).1.withRoot oc', (m.follow sp db1.S db.S a x true).2) ∧
+      (m.follow sp db1.S db.S a x true).1.obj? (m.follow sp db1.S db.S a x true).1.root = some oe' ∧
+      RootRelH sp f oc' oe' ∧ oc'.hist = oc.hist := by
+  have hinv := hL.inv
+  have hfj : lastFa db1.S ≤ j := by
+    have h1 := hL.fa1
+    have h2 := hL.inv1.spLt
+    have h3 := hL.le
+    have h4 := hL.inv1.len
+    omega
+  obtain ⟨n, hn, hhist, -, -⟩ := hm.cc a op hop hco
+  have hx' : x ∈ sp.live (n.hist.upTo j) := by
+    rw [upTo_of_forall _ _ (hinv.times _ n hn), ← hhist]; exact hx
+  obtain ⟨e, he, hxe⟩ := hls _ _ hx'
+  obtain ⟨nx, hnx, hlt⟩ := hinv.ptrs op.node n hn e (mem_upTo.mp he).1 x hxe
+  have hxroot : x ≠ SIS.root := hinv.ptr_ne_root hn (mem_upTo.mp he).1 hxe
+  have hxw : written sp x = true := written_of_ne_root sp hxroot
+  have hrx : reachable sp db.P j x = true := by
+    rw [reachable_iff] at hrp ⊢; exact Reach.child hrp hn hx' hnx hlt
+  obtain ⟨p, hp, hli1, hli2⟩ := hm.live a op hop hco hrp x hx
+  have hg : HPtrLaterT sp db1.S db1 j1 db m j x p := by
+    cases hxD : inD db.D x with
+    | true =>
+      obtain ⟨-, -, -, hcs⟩ := hli1 hxD
+      exact Or.inl hcs
+    | false =>
+      cases hhc : m.holdsCanonical p with
+      | true =>
+        obtain ⟨-, -, -, hcs⟩ := HMem.holdsLive_of_holdsCanonical hm.tbl (hm.tbl.ptr_nodes hop hp) hhc
+        exact Or.inl hcs
+      | false =>
+        right
+        have he' := hli2 hxD
+        rw [HMem.slowRef_of_not_holds hhc] at he'
+        obtain ⟨u, hu, hgu⟩ := hinv.clean_good hls hxD hxw (Nat.le_refl _) hrx
+        rw [hu] at he'
+        refine ⟨u.recNo, u, hinv.lv_at hu, hL.VOK_ok (Nat.le_refl _) hrx (hinv.VOK_lv hL.pre hu)
+          (hinv.lv_at hu), hgu, fun r hr' => ?_⟩
+        rw [he', Option.map_some, Option.some.injEq] at hr'
+        omega
+  obtain ⟨h1, h2⟩ := hm.followR_sim hL hcut hfj hra hr hop hp hroot hxroot hg
+  unfold HMem.follow
+  cases hfr : m.followR sp db1.S db.S a x with
+  | none =>
+    rw [h1 hfr]
+    exact ⟨oc, oe, rfl, hra, hr, rfl⟩
+  | some res =>
+    obtain ⟨m1, n1, b1⟩ := res
+    obtain ⟨oc', oe', e1, e2, e3, e4⟩ := h2 m1 n1 b1 hfr
+    rw [e1]
+    simp only [↓reduceIte]
+    have hF := hm.followR_ok hinv hop hfr
+    -- the promoted object is x's, not the root's
+    have hnr : ∀ b, m1.objOf n1 = some b → b ≠ m1.root := by
+      intro b hb he
+      rw [hF.objOf, Option.some.injEq] at hb
+      subst hb
+      obtain ⟨ob, hob, hobn⟩ := hF.obj
+      obtain ⟨o0, ho0, -, hn0⟩ := hF.inv.root
+      rw [← he, hob, Option.some.injEq] at ho0
+      subst ho0
+      exact hxroot (by rw [← hobn, hn0])
+    rw [HMem.withRoot_promote hnr]
+    refine ⟨oc', oe', rfl, ?_, e3, e4⟩
+    rw [HMem.promote_root, HMem.promote_obj?_ne hnr]
+    exact e2
+
+theorem HMem.follow_root_any (sp : Spec V T) (S0 S : Stream V T) (a : Nat) (y : NodeId) (w : Bool) :
+    (m.follow sp S0 S a y w).1.root = m.root := by
+  unfold HMem.follow
+  cases hf : m.followR sp S0 S a y with
+  | none => rfl
+  | some r =>
+    obtain ⟨m1, n, b⟩ := r
+    simp only
+    have := HMem.followR_root sp S0 S hf
+    cases w with
+    | true => simp only [↓reduceIte]; rw [HMem.promote_root, this]
+    | false => simp only [Bool.false_eq_true, ↓reduceIte]; exact this
+
+theorem HMem.reachOnPath_root (sp : Spec V T) (S0 S : Stream V T) (P : Struct V) (j : Time)
+    (path : List NodeId) (x : NodeId) : (m.reachOnPath sp S0 S P j path x).root = m.root := by
+  unfold HMem.reachOnPath
+  simp only
+  cases List.find? (fun p => match P.get? p, m.canonicalOf p with
+      | some n, some _ => (sp.live (n.hist.upTo (j - 1))).contains x
+      | _, _ => false) path with
+  | none => rfl
+  | some p =>
+    simp only
+    cases m.canonicalOf p with
+    | none => rfl
+    | some a => exact HMem.follow_root_any sp S0 S _ x true
+
+/-- The writer reaches a node of its path the same way with a structure P' that
+agrees with P on the live children of the path's nodes at j - 1. -/
+theorem HMem.reachOnPath_congrP {P P' : Struct V} {jj : Time} {path : List NodeId}
+    (hP : ∀ p ∈ path, (P'.get? p).map (fun n => sp.live (n.hist.upTo (jj - 1))) =
+      (P.get? p).map (fun n => sp.live (n.hist.upTo (jj - 1)))) (S0 S : Stream V T) (m : HMem V) (x : NodeId) :
+    m.reachOnPath sp S0 S P' jj path x = m.reachOnPath sp S0 S P jj path x := by
+  unfold HMem.reachOnPath
+  simp only
+  congr 1
+  apply find?_congr_of_mem
+  intro p hp
+  have := hP p hp
+  cases h1 : P'.get? p <;> cases h2 : P.get? p <;> rw [h1, h2] at this <;> simp at this
+  all_goals first | rfl | (cases m.canonicalOf p <;> simp [this])
+
+/-- C's writer reaches a node of its path, on the memory with another root object
+and the cut streams, as E's on the whole streams. -/
+theorem HEInv.reachOnPath_sim (hL : Later sp db1 db j1 j) (hls : LiveSub sp) (hm : HEInv sp db db1.S j m)
+    {c : Nat} (hcut : CutOK sp c db1 j1) {f : Time} {oc oe : HObj V} (hra : m.obj? m.root = some oe)
+    (hr : RootRelH sp f oc oe) {path : List NodeId} (hpath : ∀ p ∈ path, reachable sp db.P j p = true)
+    (hPr : ∀ n, db.P.get? SIS.root = some n → ∀ x ∈ sp.live (n.hist.upTo j), x ∈ pointees sp oc.hist)
+    (x : NodeId) :
+    ∃ oc' oe', (m.withRoot oc).reachOnPath sp (cutStream c db1.S) (cutStream c db.S) db.P (j + 1) path x =
+        (m.reachOnPath sp db1.S db.S db.P (j + 1) path x).withRoot oc' ∧
+      (m.reachOnPath sp db1.S db.S db.P (j + 1) path x).obj? m.root = some oe' ∧
+      RootRelH sp f oc' oe' ∧ oc'.hist = oc.hist := by
+  have hinv := hL.inv
+  have hcan : ∀ z, (m.withRoot oc).canonicalOf z = m.canonicalOf z := HMem.withRoot_canonicalOf hra hr.canonical
+  have hK1 : j + 1 - 1 = j := by omega
+  unfold HMem.reachOnPath
+  simp only [hcan]
+  cases hf : path.find? (fun p => match db.P.get? p, m.canonicalOf p with
+      | some n, some _ => (sp.live (n.hist.upTo (j + 1 - 1))).contains x
+      | _, _ => false) with
+  | none => exact ⟨oc, oe, rfl, hra, hr, rfl⟩
+  | some p =>
+    simp only
+    have hpp := List.find?_some hf
+    have hpm := List.mem_of_find?_eq_some hf
+    cases hnp : db.P.get? p with
+    | none => rw [hnp] at hpp; simp at hpp
+    | some np =>
+      cases hcp : m.canonicalOf p with
+      | none => exact ⟨oc, oe, rfl, hra, hr, rfl⟩
+      | some bp =>
+        simp only
+        rw [hnp, hcp] at hpp
+        simp only [hK1, List.contains_iff_mem] at hpp
+        obtain ⟨op, hop, hco, hnode⟩ := hm.obj_of_canonicalOf hcp
+        obtain ⟨nf, hnf, hh', -, -⟩ := hm.cc bp op hop hco
+        rw [hnode, hnp, Option.some.injEq] at hnf
+        subst hnf
+        have hxop : x ∈ sp.live op.hist := by
+          rw [hh', ← upTo_of_forall _ _ (hinv.times p np hnp)]; exact hpp
+        have hroot : bp = m.root → x ∈ pointees sp oc.hist := by
+          intro he
+          obtain ⟨o0, ho0, -, hn0⟩ := hm.root
+          rw [← he, hop, Option.some.injEq] at ho0
+          subst ho0
+          rw [hnode] at hn0
+          subst hn0
+          exact hPr np hnp x hpp
+        obtain ⟨oc', oe', e1, e2, e3, e4⟩ := hm.followW_sim hL hls hcut hra hr hop hco
+          (by rw [hnode]; exact hpath p hpm) hxop hroot
+        rw [e1]
+        refine ⟨oc', oe', rfl, ?_, e3, e4⟩
+        rw [← HMem.follow_root_any sp db1.S db.S bp x true]
+        exact e2
+
+/-- C's writer's walk, on the memory with another root object and the cut streams,
+as E's on the whole streams. -/
+theorem HEInv.reachPath_sim (hL : Later sp db1 db j1 j) (hls : LiveSub sp) (hev : EvLogic sp db j)
+    {c : Nat} (hcut : CutOK sp c db1 j1) {f : Time} {path : List NodeId}
+    (hpath : ∀ p ∈ path, reachable sp db.P j p = true) :
+    ∀ (L : List NodeId) (m : HMem V) (oc oe : HObj V), HEInv sp db db1.S j m →
+      m.obj? m.root = some oe → RootRelH sp f oc oe →
+      (∀ n, db.P.get? SIS.root = some n → ∀ x ∈ sp.live (n.hist.upTo j), x ∈ pointees sp oc.hist) →
+      ∃ oc' oe', L.foldl (HMem.reachOnPath sp (cutStream c db1.S) (cutStream c db.S) db.P (j + 1) path)
+          (m.withRoot oc) = (L.foldl (HMem.reachOnPath sp db1.S db.S db.P (j + 1) path) m).withRoot oc' ∧
+        (L.foldl (HMem.reachOnPath sp db1.S db.S db.P (j + 1) path) m).obj?
+          (L.foldl (HMem.reachOnPath sp db1.S db.S db.P (j + 1) path) m).root = some oe' ∧
+        RootRelH sp f oc' oe' ∧ oc'.hist = oc.hist := by
+  have hinv := hL.inv
+  intro L
+  induction L with
+  | nil => intro m oc oe _ hra hr _; exact ⟨oc, oe, rfl, hra, hr, rfl⟩
+  | cons x L ih =>
+    intro m oc oe hm hra hr hPr
+    simp only [List.foldl_cons]
+    obtain ⟨oc1, oe1, e1, e2, e3, e4⟩ := hm.reachOnPath_sim hL hls hcut hra hr hpath hPr x
+    rw [e1]
+    have hm1 := (hm.reachOnPath_ok hinv hls hev hpath x).1
+    have hra1 : (m.reachOnPath sp db1.S db.S db.P (j + 1) path x).obj?
+        (m.reachOnPath sp db1.S db.S db.P (j + 1) path x).root = some oe1 := by
+      rw [HMem.reachOnPath_root]; exact e2
+    obtain ⟨oc2, oe2, f1, f2, f3, f4⟩ := ih _ oc1 oe1 hm1 hra1 e3 (by rw [e4]; exact hPr)
+    exact ⟨oc2, oe2, f1, f2, f3, by rw [f4, e4]⟩
+
+end WalkSim
+
+/-! ## Evictions on a memory with another root object -/
+
+section EvictSim
+
+variable {m : HMem V}
+
+theorem HMem.withRoot_pinned {oc : HObj V} (D : Dirty) (a : Nat) : (m.withRoot oc).pinned D a = m.pinned D a := by
+  unfold HMem.pinned
+  simp only [HMem.withRoot_root]
+  by_cases ha : a = m.root
+  · subst ha
+    simp
+  · rw [HMem.withRoot_obj?_ne ha]
+
+theorem HMem.withRoot_evictable {oc oe : HObj V} (hra : m.obj? m.root = some oe) (D : Dirty) (n : Nat) :
+    (m.withRoot oc).evictable D n = m.evictable D n := by
+  unfold HMem.evictable
+  simp only [HMem.withRoot_handle?]
+  cases m.handle? n with
+  | none => rfl
+  | some hd =>
+    simp only
+    cases hd.obj with
+    | none => rfl
+    | some a =>
+      simp only
+      by_cases ha : a = m.root
+      · subst ha
+        rw [HMem.withRoot_obj?_root hra, hra]
+        simp [HMem.pinned]
+      · rw [HMem.withRoot_obj?_ne ha, HMem.withRoot_pinned D a]
+
+/-- An eviction on the memory with another root object: the same; the root's
+object is never evicted. -/
+theorem HMem.withRoot_evict {oc oe : HObj V} (hra : m.obj? m.root = some oe) (D : Dirty) (n : Nat) :
+    (m.withRoot oc).evict D n = (m.evict D n).withRoot oc := by
+  have hev := HMem.withRoot_evictable (oc := oc) hra D n
+  unfold HMem.evict
+  rw [hev]
+  cases hev' : m.evictable D n with
+  | false => rfl
+  | true =>
+    simp only [↓reduceIte, HMem.withRoot_handle?]
+    obtain ⟨hd, b, ob, hh, -, hb, hob, hpin, -⟩ := HMem.evictable_some hev'
+    have hbr : b ≠ m.root := by
+      intro he
+      unfold HMem.pinned at hpin
+      simp [he] at hpin
+    rw [hh]
+    simp only [hb]
+    rw [HMem.withRoot_obj?_ne hbr]
+    unfold HMem.withRoot HMem.setHandle
+    simp only [filter_map_rootH]
+
+end EvictSim
 
 end SIS
