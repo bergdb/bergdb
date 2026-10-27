@@ -23,7 +23,9 @@ them:
   apart from the current state. See [items/readme.md](items/readme.md).
 * `releases/`. The releases: each one's jar, source, release notes and
   baseline measurements. The latest is
-  [2026.1](releases/2026.1/readme.md), internal, of 2026-10-25.
+  [2026.1](releases/2026.1/readme.md), internal, of 2026-10-25. What the
+  next release's notes must say is collected in
+  [releases/next.md](releases/next.md).
 
 BergDB was developed 2012 to 2017. This repository continues from the 2017 source; the work since October 2026 fixed the bugs that stopped it, formalized the algorithm, and added reclaim and eviction.
 

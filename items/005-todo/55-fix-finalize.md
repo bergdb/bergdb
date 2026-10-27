@@ -249,7 +249,7 @@ Questions
    not for this entry. At both releases javac also finds one `@deprecated`
    in Javadoc without `@Deprecated` (`StoredTrans.getValueNode(long[])`,
    which only its own test calls); `-nowarn` hides it, and it is not part
-   of the note.
+   of the note. Frans, 2026-10-27: "Leave it as is."
 5. The suites' check for databases not stopped (the fix, point 5)?
    Recommended: yes; it is a few lines, and it is what keeps point 4
    true. Decided 2026-10-27, as recommended.
@@ -258,6 +258,8 @@ Questions
    about a resource not closed? `Db` has `close()` already; `Database`
    has only `stop()` and would get a `close()`, the same as `stop()` or
    one that waits as `Db.close()` does. Not needed for this entry.
+   Registered as 005-59 (Frans, 2026-10-27: "Add Question 6 as a new 005
+   entry.").
 
 
 Done when
@@ -311,8 +313,10 @@ request, with questions 3 and 5 as recommended; in a clone on `bf19075`
   stopped keeps; the note on garbage collection at the end of `Db.java` is
   gone. `Database.stop()`'s Javadoc says the same for the Pub API: the
   paragraph that promised a stop by the collector is the requirement now.
-  The eviction thread is unchanged (point 3). The change of the API is for
-  the next release's notes; no item holds them yet.
+  The eviction thread is unchanged (point 3). The change of the API is in
+  the notes for the next release, [releases/next.md](../../releases/next.md)
+  (Frans, 2026-10-27: "Good catch. Add a file to bergdb/releases/ with this
+  note.").
 * `ValueNodeTotalMem` is deleted (point 6). `CcDbTest` and
   `CcDbNightTest` have no `finalize()` and stop their database at the end
   of `go()`, in a `finally`. `Class.newInstance()` is

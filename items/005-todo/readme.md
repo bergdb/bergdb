@@ -39,6 +39,7 @@ Open
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
 | [005-56](56-package-dependencies.md) | Investigate | Package dependencies: how the packages depend on each other, and whether that follows their `package.html` files; Frans's question. A first look: four of `java/src`'s nine packages used packages their lists leave out; after 006-08's fixes of `stream` and `dag`, two remain (`pub` uses `core` and `pubimp`, `pubimp` uses `dag` and `storage`), and nothing checks the lists | open |
 | [005-58](58-lean-rule4-by-position.md) | Investigate | A Lean theorem for rule 4 by position (005-57): on the states that the model's startup reaches, a pointer of D whose node has a canonical object names a version of the startup section, the version before one, or the canonical object's own; so rule 4 by position is rule 4 by node id (`HMem.linkD`). Frans: "Yes, but in a separate work item in 005." | open |
+| [005-59](59-autocloseable.md) | Decide | `Db` and `Database` as `AutoCloseable`, for try-with-resources and the warnings of IDEs about a database not closed, now that `stop()` or `close()` is required (005-55, its question 6). Options: both, with a `Database.close()` that waits (recommended) or that is `stop()`; only `Db`; neither | open |
 
 
 Closed
@@ -282,6 +283,8 @@ Files
 * [58-lean-rule4-by-position.md](58-lean-rule4-by-position.md). 005-58, a
   Lean theorem for 005-57's rule 4 by position: the statement, what the
   model needs, the first step; open.
+* [59-autocloseable.md](59-autocloseable.md). 005-59, `Db` and `Database` as
+  `AutoCloseable`: the issue, four options, the questions; open.
 
 Log
 ===
@@ -1056,3 +1059,12 @@ and fails on a difference. Four tests; before-commit, level2.sh quick and
 level4.sh quick pass on `cec0032` with the change, level2.sh full on
 `bf19075` with it, with the check at every startup. Part 2 not made.
 005-58 added for the Lean theorem.
+
+2026-10-27. Added 005-59, at Frans's request ("Add Question 6 as a new 005
+entry."), by Claude (Opus 5.5, Claude Code): 005-55's question 6, `Db` and
+`Database` as `AutoCloseable`; four options, A recommended. 005-55: the
+change of the API noted for the next release in `releases/next.md`, a new
+file with the next release's notes (Frans: "Good catch. Add a file to
+bergdb/releases/ with this note."; "Sure, add limited release notes.": also
+005-46, 005-50 and 005-57); question 4 left as it is (Frans). No change to
+`java/`.
