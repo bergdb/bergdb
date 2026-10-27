@@ -328,6 +328,19 @@ recommended." (`ed852ad`).
 ("Fix 005-53's Reclaim fault", "007-03 step 2: debt test", "Draft 009's
 closure"): W7, W8 and W9, at high effort.
 
+2026-10-27, 17:10. W9's draft of 009's closure is ready (two patches and
+notes in [09-unattended-27-28-october/](09-unattended-27-28-october/)), to
+be applied in the morning after the soak. W7 done: 005-61, Reclaim spaces
+its iterations by the database's live startup distance (`a175840`,
+`7fde735`). Frans on 005-49's questions: the setting is the section's
+target, the actual startup distance what a start reads from; the default
+stays 50 MB (`82b59a1`).
+
+2026-10-27, 17:28. Frans chose three more pieces for the evening: 007-03's
+step 3 as a patch for his review (W10, max effort; not committed to
+`java/`), 005-59's option A (W11), and T9 and T12 over handles in Lean
+(W12, max effort, a new 005 entry). Four agents with W8.
+
 
 ## 8. Outcome
 
