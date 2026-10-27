@@ -36,6 +36,7 @@ Open
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
 | [005-56](56-package-dependencies.md) | Investigate | Package dependencies: how the packages depend on each other, and whether that follows their `package.html` files; Frans's question. A first look: four of `java/src`'s nine packages used packages their lists leave out; after 006-08's fixes of `stream` and `dag`, two remain (`pub` uses `core` and `pubimp`, `pubimp` uses `dag` and `storage`), and nothing checks the lists | open |
 | [005-59](59-autocloseable.md) | Decide | `Db` and `Database` as `AutoCloseable`, for try-with-resources and the warnings of IDEs about a database not closed, now that `stop()` or `close()` is required (005-55, its question 6). Options: both, with a `Database.close()` that waits (recommended) or that is `stop()`; only `Db`; neither | open |
+| [005-60](60-block-storage.md) | Investigate | Block storage: the stream on a raw block device without a file system, as a ring of a fixed size, kept until the room is needed (retention by space); feasible in Java? And on a Linux device in a C or C++ clone. Frans's idea | open |
 
 
 Closed
@@ -290,6 +291,8 @@ Files
   The patch in [58-lean-rule4-by-position/](58-lean-rule4-by-position/).
 * [59-autocloseable.md](59-autocloseable.md). 005-59, `Db` and `Database` as
   `AutoCloseable`: the issue, four options, the questions; open.
+* [60-block-storage.md](60-block-storage.md). 005-60, the stream on a
+  block device without a file system: the idea, the questions; open.
 
 Log
 ===
@@ -1111,3 +1114,7 @@ in the Lean model to link what rule 4 by node id links (`Rule4_positions`,
 lake build clean, trace tests OK, axioms standard. 005-57's report and
 docs/levels.md cite it. For Frans: the trusted additions, and whether the
 by-id check in `linkToCanonical` goes (recommended: it stays).
+
+2026-10-27. Added 005-60, block storage: the stream on a raw block device
+without a file system, as a ring of a fixed size, at Frans's request (his
+idea). The questions; nothing started.
