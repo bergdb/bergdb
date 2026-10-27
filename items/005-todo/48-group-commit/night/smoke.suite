@@ -1,0 +1,5 @@
+# bergdb 005-48: a smoke test of run-f53.sh and run-s1.sh, seconds: one durable and one
+# append-only scenario of group-commit.suite, tiny.
+
+d-t4-smoke   write    2   n=2000 commit=durable threads=4 ops=40 warmup=2000 valsize=1000 bufftime=20
+a-100-smoke  write    2   n=2000 valsize=100 retain=inf ops=20000 bufftime=20

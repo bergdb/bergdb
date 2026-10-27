@@ -29,7 +29,7 @@ Open
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10). For release 2026.1: kept, documented as experimental | open |
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
-| [005-48](48-group-commit.md) | Investigate | Group commit: a sync that waits starts the flush, instead of waiting for `BufferedStream`'s timer; one thread's durable commit from 35 ms to about one force (005-13's question 5) | open |
+| [005-48](48-group-commit.md) | Investigate | Group commit: a sync that waits starts the flush, instead of waiting for `BufferedStream`'s timer; one thread's durable commit from 35 ms to about one force (005-13's question 5) Implemented 2026-10-27 (`e611709`), as Frans decided (006-09): on s1 one thread's durable commits went from 38 to 213 a second, the sync's median from 24.8 to 3.8 ms; the stream's bytes unchanged. F53's runs (tonight) and the recommendation on the buffer time (question 4) still open | open |
 | [005-49](49-smooth-index-writes.md) | Investigate | Smooth index writes: at large startup distances the index is written in bursts (10M keys, 1000 MB: windows of 70 to 1,100 bytes a put); a commit's index writes should follow its own size. Before 007-03's step 3 (005-38) | open |
 | [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API sets it only at start (`cacheSizeInMb`), against 010-P6; the core has `Eviction.setBudget` (also through JMX). The cache should converge gradually to the new size, with no disruption | open |
 | [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API cannot change it for an existing database (against 010-P6); the core can since 2013-04, through JMX only. A decrease in steps (007-03's D4), measured; options A to D for the Pub API; `Reclaim.initialStartupDistance`. First study, from 010-03, in its directory | open |
@@ -1118,3 +1118,9 @@ by-id check in `linkToCanonical` goes (recommended: it stays).
 2026-10-27. Added 005-60, block storage: the stream on a raw block device
 without a file system, as a ring of a fixed size, at Frans's request (his
 idea). The questions; nothing started.
+
+2026-10-27. 005-48 in the code (`e611709`), by Claude (Opus 5.5, Claude
+Code), as Frans decided (006-09: "Yes", if it passes the gates, keeps the
+stream's bytes and measures well): a sync that waits starts the flush. The
+level3 failure seen with it was a race in `ReclaimReaders`'s check, also
+without it, fixed there. Still open: F53's runs tonight and question 4.

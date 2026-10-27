@@ -1,0 +1,51 @@
+--- java/stress/ReclaimReaders.java (e718347)
++++ the experiment copy
+@@ -56,6 +56,11 @@
+     static final boolean DISK = "1".equals(System.getProperty("disk"));
+     static final boolean VERBOSE = "1".equals(System.getProperty("verbose"));
+     static final long SEC = Clock.UNITS_PER_SEC;
++    // 005-48 experiment: pause=NANOS between the loop condition's read of lastCompleted and the
++    // read of stopReaders; fixed=1 reads lastCompleted again after stopReaders.
++    static final long PAUSE = Long.getLong("pause", 0);
++    static final boolean FIXED = "1".equals(System.getProperty("fixed"));
++    static final AtomicLong RESCUED = new AtomicLong(), SESSIONS = new AtomicLong();
+ 
+     final long seed;
+     final Random rnd;
+@@ -202,8 +207,16 @@
+     boolean awaitModel(long actualLookupTime, String what) {
+         long deadline = System.nanoTime() + 60L * 1000 * 1000 * 1000;
+         while (actualLookupTime > lastCompleted) {
++            if (PAUSE > 0) java.util.concurrent.locks.LockSupport.parkNanos(PAUSE);
+             if (failure.get() != null || stopReaders) {
+-                fail(what + ": model was not published through " + actualLookupTime, null);
++                long now = lastCompleted;
++                if (FIXED && actualLookupTime <= now) {
++                    RESCUED.incrementAndGet();
++                    return true;
++                }
++                fail(what + ": model was not published through " + actualLookupTime
++                        + " [lastCompleted read again: " + now + (actualLookupTime <= now
++                        ? ", published" : ", NOT PUBLISHED") + "]", null);
+                 return false;
+             }
+             if (System.nanoTime() >= deadline) {
+@@ -421,6 +434,8 @@
+                 session(db);
+                 stopReaders = true;
+                 for (Thread t : readers) t.join(60 * 1000);
++                SESSIONS.incrementAndGet();     // After the join: nothing between the writer's
++                                                // last publication and stopReaders.
+                 for (Thread t : readers) {
+                     if (t.isAlive()) fail("a reader did not end", null);
+                 }
+@@ -482,7 +497,8 @@
+         System.out.println("Done: " + rounds + " rounds, " + fails + " failures, "
+                 + withCut + " rounds with a cut, " + gets + " gets and " + scans
+                 + " scans correct, expired at admission " + atAdmission + ", expired during "
+-                + during + ", " + (System.currentTimeMillis() - t0) / 1000 + " s.");
++                + during + ", " + (System.currentTimeMillis() - t0) / 1000 + " s. Sessions "
++                + SESSIONS + ", rescued " + RESCUED + " (pause " + PAUSE + ", fixed " + FIXED + ").");
+         System.exit(fails == 0 ? 0 : 1);
+     }
+ }

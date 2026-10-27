@@ -1,0 +1,28 @@
+bergdb 005-48: ReclaimReaders's "model was not published", the instrumented copy
+(ReclaimReaders-experiment.diff; exp.sh, expB.sh, expC.sh, expR.sh), on F53, 2026-10-27.
+"rescued": readers that the old check would have failed and the second read of lastCompleted
+let through (the model published through their lookup time). "NOT PUBLISHED": a lookup time
+beyond the writer's last publication (none). Builds: performance.sh's head-e718347 and
+proto-e718347.
+
+A, a pause of 2 ms between the loop condition's read and the read of stopReaders (exp.sh):
+A-head-pause-orig done: 36 FAIL lines, 0 logs with NOT PUBLISHED
+A-head-pause-fixed done: 0 FAIL lines, 0 logs with NOT PUBLISHED
+A-proto-pause-orig done: 36 FAIL lines, 0 logs with NOT PUBLISHED
+A-proto-pause-fixed done: 0 FAIL lines, 0 logs with NOT PUBLISHED
+  sessions and rescues with the fix: HEAD 862 and 902, prototype 862 and 1,086.
+
+B and C, no pause, with the session counter (an atomic increment) between session() and
+stopReaders = true, which narrowed the window (moved for D):
+B-proto-natural: 132 JVMs, 132 done, sessions 36304, rescued 0, FAIL lines 0, NOT PUBLISHED 0
+B-head-natural: 25 JVMs, 25 done, sessions 7034, rescued 0, FAIL lines 0, NOT PUBLISHED 0
+B-proto-readers8: 31 JVMs, 31 done, sessions 8590, rescued 0, FAIL lines 0, NOT PUBLISHED 0
+C-heavy head: 17 JVMs, 17 done, sessions 4754, rescued 0, FAIL lines 0, NOT PUBLISHED 0
+C-heavy proto: 40 JVMs, 40 done, sessions 11064, rescued 0, FAIL lines 0, NOT PUBLISHED 0
+
+D, no pause, the counter after the join, HEAD and the prototype at once (expC.sh D-both 12 0):
+D-both head: 30 JVMs, 30 done, sessions 8396, rescued 0, FAIL lines 0, NOT PUBLISHED 0
+D-both proto: 101 JVMs, 101 done, sessions 27882, rescued 3, FAIL lines 0, NOT PUBLISHED 0
+
+R, the committed ReclaimReaders (200aaab, its fix) at level3.sh's load for 8 minutes (expR.sh):
+R-committed: 101 JVMs, 101 done, rounds 1212, failures 0

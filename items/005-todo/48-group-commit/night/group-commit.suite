@@ -1,0 +1,14 @@
+# bergdb 005-48, group commit: the scenarios of 005-13's performance-bufftime.suite at the
+# default buffer time, 20 ms (bufftime=20). Durable commits, a sync(ORDINARY) after each
+# transaction, with 1, 4, 16 and 64 threads (question 1), and writers that do not sync
+# (question 2). run-f53.sh and run-s1.sh run it with performance.sh ab: HEAD and the prototype
+# in turns, ABBA, run by run. Same format as performance.suite.
+
+d-t1-b20     write    3   n=100000 commit=durable threads=1 ops=200 warmup=100000 valsize=1000 bufftime=20
+d-t4-b20     write    3   n=100000 commit=durable threads=4 ops=800 warmup=100000 valsize=1000 bufftime=20
+d-t16-b20    write    3   n=100000 commit=durable threads=16 ops=3200 warmup=100000 valsize=1000 bufftime=20
+d-t64-b20    write    3   n=100000 commit=durable threads=64 ops=6400 warmup=100000 valsize=1000 bufftime=20
+
+a-100-b20    write    3   n=100000 valsize=100 retain=inf ops=1000000 bufftime=20
+a-1k-b20     write    3   n=100000 valsize=1000 retain=inf ops=500000 bufftime=20
+a-1k-x100-b20 write   3   n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=20

@@ -1,0 +1,167 @@
+7 scenarios from gc48-group-commit.suite
+CPU idle before the runs: 100%
+Reference session e7183471-20261027T145225-gc48-group-commit.suite-g1-1g-ref
+Candidate session e7183471-d78986e-20261027T145226-gc48-group-commit.suite-g1-1g-cand
+d-t1-b20 (write, 6 runs, alternating)
+ [R]
+  d-t1-b20 run 1: WRITE 200 commits (200 puts) in 5.14 s: 39 commits/s, bytes appended per user byte 1.20, append p50 39.4 us p99.9 324.2 us max 0.32 ms|
+ [C]
+  d-t1-b20 run 1: WRITE 200 commits (200 puts) in 0.92 s: 218 commits/s, bytes appended per user byte 1.20, append p50 32.1 us p99.9 322.2 us max 0.32 ms|
+ [C]
+  d-t1-b20 run 2: WRITE 200 commits (200 puts) in 1.06 s: 189 commits/s, bytes appended per user byte 1.20, append p50 33.5 us p99.9 210.4 us max 0.21 ms|
+ [R]
+  d-t1-b20 run 2: WRITE 200 commits (200 puts) in 5.18 s: 39 commits/s, bytes appended per user byte 1.20, append p50 45.6 us p99.9 879.4 us max 0.88 ms|
+ [R]
+  d-t1-b20 run 3: WRITE 200 commits (200 puts) in 5.27 s: 38 commits/s, bytes appended per user byte 1.20, append p50 39.4 us p99.9 205.4 us max 0.21 ms|
+ [C]
+  d-t1-b20 run 3: WRITE 200 commits (200 puts) in 0.82 s: 244 commits/s, bytes appended per user byte 1.20, append p50 33.8 us p99.9 240.9 us max 0.24 ms|
+ [C]
+  d-t1-b20 run 4: WRITE 200 commits (200 puts) in 1.05 s: 190 commits/s, bytes appended per user byte 1.20, append p50 44.5 us p99.9 693.6 us max 0.69 ms|
+ [R]
+  d-t1-b20 run 4: WRITE 200 commits (200 puts) in 5.06 s: 40 commits/s, bytes appended per user byte 1.20, append p50 58.4 us p99.9 779.0 us max 0.78 ms|
+ [R]
+  d-t1-b20 run 5: WRITE 200 commits (200 puts) in 5.38 s: 37 commits/s, bytes appended per user byte 1.20, append p50 48.1 us p99.9 243.1 us max 0.24 ms|
+ [C]
+  d-t1-b20 run 5: WRITE 200 commits (200 puts) in 0.89 s: 225 commits/s, bytes appended per user byte 1.20, append p50 42.2 us p99.9 2237.0 us max 2.24 ms|
+ [C]
+  d-t1-b20 run 6: WRITE 200 commits (200 puts) in 0.96 s: 208 commits/s, bytes appended per user byte 1.20, append p50 43.0 us p99.9 796.8 us max 0.80 ms|
+ [R]
+  d-t1-b20 run 6: WRITE 200 commits (200 puts) in 5.22 s: 38 commits/s, bytes appended per user byte 1.20, append p50 42.8 us p99.9 237.7 us max 0.24 ms|
+d-t4-b20 (write, 6 runs, alternating)
+ [R]
+  d-t4-b20 run 1: WRITE 800 commits (800 puts) in 5.28 s: 152 commits/s, bytes appended per user byte 1.20, append p50 47.1 us p99.9 1773.3 us max 1.77 ms|
+ [C]
+  d-t4-b20 run 1: WRITE 800 commits (800 puts) in 1.87 s: 428 commits/s, bytes appended per user byte 1.20, append p50 29.3 us p99.9 878.0 us max 0.88 ms|
+ [C]
+  d-t4-b20 run 2: WRITE 800 commits (800 puts) in 1.81 s: 441 commits/s, bytes appended per user byte 1.20, append p50 25.0 us p99.9 1143.5 us max 1.14 ms|
+ [R]
+  d-t4-b20 run 2: WRITE 800 commits (800 puts) in 5.46 s: 147 commits/s, bytes appended per user byte 1.20, append p50 59.1 us p99.9 2192.9 us max 2.19 ms|
+ [R]
+  d-t4-b20 run 3: WRITE 800 commits (800 puts) in 5.23 s: 153 commits/s, bytes appended per user byte 1.20, append p50 46.3 us p99.9 2515.3 us max 2.52 ms|
+ [C]
+  d-t4-b20 run 3: WRITE 800 commits (800 puts) in 1.70 s: 472 commits/s, bytes appended per user byte 1.20, append p50 25.1 us p99.9 944.9 us max 0.94 ms|
+ [C]
+  d-t4-b20 run 4: WRITE 800 commits (800 puts) in 1.75 s: 456 commits/s, bytes appended per user byte 1.20, append p50 25.9 us p99.9 1228.7 us max 1.23 ms|
+ [R]
+  d-t4-b20 run 4: WRITE 800 commits (800 puts) in 5.37 s: 149 commits/s, bytes appended per user byte 1.20, append p50 42.5 us p99.9 831.2 us max 0.83 ms|
+ [R]
+  d-t4-b20 run 5: WRITE 800 commits (800 puts) in 5.36 s: 149 commits/s, bytes appended per user byte 1.20, append p50 46.1 us p99.9 2375.8 us max 2.38 ms|
+ [C]
+  d-t4-b20 run 5: WRITE 800 commits (800 puts) in 1.78 s: 450 commits/s, bytes appended per user byte 1.20, append p50 29.8 us p99.9 683.3 us max 0.68 ms|
+ [C]
+  d-t4-b20 run 6: WRITE 800 commits (800 puts) in 1.58 s: 507 commits/s, bytes appended per user byte 1.20, append p50 31.2 us p99.9 2422.0 us max 2.42 ms|
+ [R]
+  d-t4-b20 run 6: WRITE 800 commits (800 puts) in 5.38 s: 149 commits/s, bytes appended per user byte 1.20, append p50 43.0 us p99.9 1231.2 us max 1.23 ms|
+d-t16-b20 (write, 6 runs, alternating)
+ [R]
+  d-t16-b20 run 1: WRITE 3200 commits (3200 puts) in 5.21 s: 614 commits/s, bytes appended per user byte 1.21, append p50 24.6 us p99.9 1908.7 us max 2.36 ms|
+ [C]
+  d-t16-b20 run 1: WRITE 3200 commits (3200 puts) in 1.96 s: 1634 commits/s, bytes appended per user byte 1.21, append p50 21.1 us p99.9 1220.6 us max 2.50 ms|
+ [C]
+  d-t16-b20 run 2: WRITE 3200 commits (3200 puts) in 1.72 s: 1856 commits/s, bytes appended per user byte 1.21, append p50 20.6 us p99.9 618.5 us max 2.30 ms|
+ [R]
+  d-t16-b20 run 2: WRITE 3200 commits (3200 puts) in 5.18 s: 618 commits/s, bytes appended per user byte 1.21, append p50 34.3 us p99.9 1630.2 us max 2.59 ms|
+ [R]
+  d-t16-b20 run 3: WRITE 3200 commits (3200 puts) in 5.10 s: 628 commits/s, bytes appended per user byte 1.21, append p50 23.3 us p99.9 991.2 us max 1.78 ms|
+ [C]
+  d-t16-b20 run 3: WRITE 3200 commits (3200 puts) in 1.76 s: 1818 commits/s, bytes appended per user byte 1.21, append p50 19.3 us p99.9 811.0 us max 0.94 ms|
+ [C]
+  d-t16-b20 run 4: WRITE 3200 commits (3200 puts) in 1.79 s: 1790 commits/s, bytes appended per user byte 1.21, append p50 18.2 us p99.9 1196.0 us max 1.85 ms|
+ [R]
+  d-t16-b20 run 4: WRITE 3200 commits (3200 puts) in 5.90 s: 542 commits/s, bytes appended per user byte 1.21, append p50 32.0 us p99.9 2179.1 us max 2.29 ms|
+ [R]
+  d-t16-b20 run 5: WRITE 3200 commits (3200 puts) in 5.52 s: 580 commits/s, bytes appended per user byte 1.21, append p50 27.0 us p99.9 1515.5 us max 2.03 ms|
+ [C]
+  d-t16-b20 run 5: WRITE 3200 commits (3200 puts) in 2.01 s: 1596 commits/s, bytes appended per user byte 1.21, append p50 20.7 us p99.9 1826.8 us max 1.90 ms|
+ [C]
+  d-t16-b20 run 6: WRITE 3200 commits (3200 puts) in 1.85 s: 1726 commits/s, bytes appended per user byte 1.21, append p50 20.1 us p99.9 1179.6 us max 2.41 ms|
+ [R]
+  d-t16-b20 run 6: WRITE 3200 commits (3200 puts) in 5.40 s: 592 commits/s, bytes appended per user byte 1.21, append p50 28.3 us p99.9 2572.3 us max 3.34 ms|
+d-t64-b20 (write, 6 runs, alternating)
+ [R]
+  d-t64-b20 run 1: WRITE 6400 commits (6400 puts) in 2.68 s: 2386 commits/s, bytes appended per user byte 1.20, append p50 17.7 us p99.9 3014.7 us max 3.28 ms|
+ [C]
+  d-t64-b20 run 1: WRITE 6400 commits (6400 puts) in 0.90 s: 7126 commits/s, bytes appended per user byte 1.20, append p50 15.2 us p99.9 991.2 us max 1.11 ms|
+ [C]
+  d-t64-b20 run 2: WRITE 6400 commits (6400 puts) in 1.10 s: 5825 commits/s, bytes appended per user byte 1.20, append p50 15.9 us p99.9 671.7 us max 1.97 ms|
+ [R]
+  d-t64-b20 run 2: WRITE 6400 commits (6400 puts) in 2.78 s: 2303 commits/s, bytes appended per user byte 1.20, append p50 18.0 us p99.9 798.7 us max 1.45 ms|
+ [R]
+  d-t64-b20 run 3: WRITE 6400 commits (6400 puts) in 2.72 s: 2351 commits/s, bytes appended per user byte 1.20, append p50 18.3 us p99.9 2031.6 us max 2.14 ms|
+ [C]
+  d-t64-b20 run 3: WRITE 6400 commits (6400 puts) in 0.92 s: 6921 commits/s, bytes appended per user byte 1.20, append p50 16.2 us p99.9 1114.1 us max 1.83 ms|
+ [C]
+  d-t64-b20 run 4: WRITE 6400 commits (6400 puts) in 1.04 s: 6168 commits/s, bytes appended per user byte 1.20, append p50 16.6 us p99.9 2867.2 us max 3.24 ms|
+ [R]
+  d-t64-b20 run 4: WRITE 6400 commits (6400 puts) in 2.57 s: 2495 commits/s, bytes appended per user byte 1.20, append p50 18.3 us p99.9 1187.8 us max 1.33 ms|
+ [R]
+  d-t64-b20 run 5: WRITE 6400 commits (6400 puts) in 2.69 s: 2377 commits/s, bytes appended per user byte 1.20, append p50 17.4 us p99.9 835.6 us max 1.29 ms|
+ [C]
+  d-t64-b20 run 5: WRITE 6400 commits (6400 puts) in 0.98 s: 6543 commits/s, bytes appended per user byte 1.20, append p50 16.2 us p99.9 1163.3 us max 1.67 ms|
+ [C]
+  d-t64-b20 run 6: WRITE 6400 commits (6400 puts) in 1.01 s: 6315 commits/s, bytes appended per user byte 1.20, append p50 17.5 us p99.9 872.4 us max 1.60 ms|
+ [R]
+  d-t64-b20 run 6: WRITE 6400 commits (6400 puts) in 2.84 s: 2254 commits/s, bytes appended per user byte 1.20, append p50 20.2 us p99.9 1310.7 us max 2.37 ms|
+a-100-b20 (write, 6 runs, alternating)
+ [R]
+  a-100-b20 run 1: WRITE 1000000 commits (1000000 puts) in 6.39 s: 156572 commits/s, bytes appended per user byte 2.43, append p50 3.8 us p99.9 70.1 us max 148.16 ms|
+ [C]
+  a-100-b20 run 1: WRITE 1000000 commits (1000000 puts) in 6.12 s: 163531 commits/s, bytes appended per user byte 2.43, append p50 3.4 us p99.9 82.4 us max 123.60 ms|
+ [C]
+  a-100-b20 run 2: WRITE 1000000 commits (1000000 puts) in 6.10 s: 163842 commits/s, bytes appended per user byte 2.43, append p50 3.4 us p99.9 78.3 us max 134.97 ms|
+ [R]
+  a-100-b20 run 2: WRITE 1000000 commits (1000000 puts) in 6.23 s: 160615 commits/s, bytes appended per user byte 2.43, append p50 3.5 us p99.9 79.9 us max 146.62 ms|
+ [R]
+  a-100-b20 run 3: WRITE 1000000 commits (1000000 puts) in 6.08 s: 164493 commits/s, bytes appended per user byte 2.43, append p50 3.5 us p99.9 71.2 us max 138.62 ms|
+ [C]
+  a-100-b20 run 3: WRITE 1000000 commits (1000000 puts) in 6.02 s: 166014 commits/s, bytes appended per user byte 2.43, append p50 3.6 us p99.9 65.3 us max 135.29 ms|
+ [C]
+  a-100-b20 run 4: WRITE 1000000 commits (1000000 puts) in 6.25 s: 160126 commits/s, bytes appended per user byte 2.43, append p50 3.6 us p99.9 87.6 us max 143.39 ms|
+ [R]
+  a-100-b20 run 4: WRITE 1000000 commits (1000000 puts) in 6.16 s: 162382 commits/s, bytes appended per user byte 2.43, append p50 3.6 us p99.9 72.2 us max 145.66 ms|
+ [R]
+  a-100-b20 run 5: WRITE 1000000 commits (1000000 puts) in 6.20 s: 161307 commits/s, bytes appended per user byte 2.43, append p50 3.6 us p99.9 67.1 us max 156.87 ms|
+ [C]
+  a-100-b20 run 5: WRITE 1000000 commits (1000000 puts) in 6.48 s: 154259 commits/s, bytes appended per user byte 2.43, append p50 3.6 us p99.9 82.4 us max 135.35 ms|
+ [C]
+  a-100-b20 run 6: WRITE 1000000 commits (1000000 puts) in 6.00 s: 166692 commits/s, bytes appended per user byte 2.43, append p50 3.5 us p99.9 66.0 us max 137.88 ms|
+ [R]
+  a-100-b20 run 6: WRITE 1000000 commits (1000000 puts) in 6.27 s: 159534 commits/s, bytes appended per user byte 2.43, append p50 3.6 us p99.9 85.0 us max 117.83 ms|
+a-1k-b20 (write, 6 runs, alternating)
+ [R]
+  a-1k-b20 run 1: WRITE 500000 commits (500000 puts) in 6.83 s: 73181 commits/s, bytes appended per user byte 1.22, append p50 8.8 us p99.9 65.3 us max 179.05 ms|
+ [C]
+  a-1k-b20 run 1: WRITE 500000 commits (500000 puts) in 6.23 s: 80262 commits/s, bytes appended per user byte 1.22, append p50 8.7 us p99.9 53.5 us max 99.24 ms|
+ [C]
+  a-1k-b20 run 2: WRITE 500000 commits (500000 puts) in 6.21 s: 80503 commits/s, bytes appended per user byte 1.22, append p50 8.4 us p99.9 55.3 us max 107.10 ms|
+ [R]
+  a-1k-b20 run 2: WRITE 500000 commits (500000 puts) in 6.46 s: 77409 commits/s, bytes appended per user byte 1.22, append p50 8.9 us p99.9 57.9 us max 125.19 ms|
+ [R]
+  a-1k-b20 run 3: WRITE 500000 commits (500000 puts) in 6.38 s: 78320 commits/s, bytes appended per user byte 1.22, append p50 8.6 us p99.9 64.0 us max 126.74 ms|
+ [C]
+  a-1k-b20 run 3: WRITE 500000 commits (500000 puts) in 6.21 s: 80510 commits/s, bytes appended per user byte 1.22, append p50 8.3 us p99.9 54.3 us max 47.75 ms|
+ [C]
+  a-1k-b20 run 4: WRITE 500000 commits (500000 puts) in 6.20 s: 80614 commits/s, bytes appended per user byte 1.22, append p50 8.2 us p99.9 54.0 us max 2.88 ms|
+ [R]
+  a-1k-b20 run 4: WRITE 500000 commits (500000 puts) in 6.22 s: 80434 commits/s, bytes appended per user byte 1.22, append p50 8.8 us p99.9 48.1 us max 110.61 ms|
+ [R]
+  a-1k-b20 run 5: WRITE 500000 commits (500000 puts) in 6.34 s: 78812 commits/s, bytes appended per user byte 1.22, append p50 8.6 us p99.9 66.0 us max 116.31 ms|
+ [C]
+  a-1k-b20 run 5: WRITE 500000 commits (500000 puts) in 6.05 s: 82683 commits/s, bytes appended per user byte 1.22, append p50 8.3 us p99.9 53.0 us max 28.38 ms|
+ [C]
+  a-1k-b20 run 6: WRITE 500000 commits (500000 puts) in 6.31 s: 79207 commits/s, bytes appended per user byte 1.22, append p50 8.4 us p99.9 65.3 us max 50.86 ms|
+ [R]
+  a-1k-b20 run 6: WRITE 500000 commits (500000 puts) in 6.27 s: 79722 commits/s, bytes appended per user byte 1.22, append p50 8.4 us p99.9 58.1 us max 114.01 ms|
+a-1k-x100-b20 (write, 6 runs, alternating)
+ [R]
+FAILED: a-1k-x100-b20 run 1 (write): exit code 1. Last lines of /opt/bergdb-bench/005-48/java/build/perf/runs/e7183471-20261027T145225-gc48-group-commit.suite-g1-1g-ref/a-1k-x100-b20/run1/write.stdout.txt:
+Perf mode=write scenario=a-1k-x100-b20 workload=573dda5d2b194027 {batch=100, bufftime=20, commit=append, firstgets=300000, gets=2000000, halt=0, history=-1, longlen=120, maxops=0, mincuts=0, mixops=50000, mixreaders=2, mtthreads=4, n=100000, nlong=0, ops=10000, rate=0, retain=inf, samplems=1000, scanlen=100, scans=20000, sd=0, seed=1, threads=1, timedgets=1000000, tsize=100, valsize=1000, warmgets=3000000, warmup=-1, windows=5, work=uniform}
+startupDistance 50000000
+PHASE load 4.84 s
+PHASE warmup 1.12 s
+PROGRESS 9 s: 7149 commits, stream 1064 MB, kept 1064 MB, on disk 1062 MB in 71 files, 0 physical cuts
+
+Exception: java.lang.OutOfMemoryError thrown from the UncaughtExceptionHandler in thread "perf-sampler"
+
+Exception: java.lang.OutOfMemoryError thrown from the UncaughtExceptionHandler in thread "main"
+A correctness or storage failure fails the whole run; the data is in /opt/bergdb-bench/005-48/java/build/perf/data/e7183471-20261027T145225-gc48-group-commit.suite-g1-1g-ref/a-1k-x100-b20-run1

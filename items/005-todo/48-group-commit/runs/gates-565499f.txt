@@ -1,0 +1,30 @@
+start 12:06:32
+Unit: SUCCESS, 1045 successful tests in 10.6 s.
+F:    SUCCESS, 73 successful tests in 89.8 s.
+BEFORE COMMIT OK (95 s)
+before-commit exit 0
+12:08:07
+1. Unit tests
+SUCCESS, 1045 successful tests in 9.8 s.
+SUCCESS, 73 successful tests in 87.6 s.
+2. ReclaimStress, random configurations
+   reclaim-0: Done: 50 rounds, 0 failures, 50 rounds with a cut, 32 s, 820 exhaustive verifications.
+   reclaim-1: Done: 50 rounds, 0 failures, 50 rounds with a cut, 31 s, 984 exhaustive verifications.
+   reclaim-2: Done: 50 rounds, 0 failures, 50 rounds with a cut, 31 s, 832 exhaustive verifications.
+   reclaim-3: Done: 50 rounds, 0 failures, 50 rounds with a cut, 33 s, 892 exhaustive verifications.
+3. RestartInvariance with reclaim
+   inv-every1: stream identical, same cut, all checks OK
+   inv-node14: stream identical, same cut, all checks OK
+   inv-node62: stream identical, same cut, all checks OK
+   inv-node8: stream identical, same cut, all checks OK
+4. CrashTest with reclaim
+   crash-0: Done: 5 rounds, 0 failures, 8 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-1: Done: 5 rounds, 0 failures, 8 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-2: Done: 5 rounds, 0 failures, 8 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-3: Done: 5 rounds, 0 failures, 8 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-node8: Done: 5 rounds, 0 failures, 10 s. Cuts where a transaction ends at a meta block's position: 0.
+5. ReclaimReaders, readers while reclaim cuts
+   readers-0: Done: 12 rounds, 0 failures, 12 rounds with a cut, 713455 gets and 300571 scans correct, expired at admission 6, expired during 30, 7 s.
+LEVEL 3 FAILED: ReclaimReaders (log: build/level3/readers-1.txt)
+level3 exit 1
+end 12:11:46

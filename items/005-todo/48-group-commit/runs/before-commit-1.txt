@@ -1,0 +1,4 @@
+Unit: SUCCESS, 1042 successful tests in 8.2 s.
+F:    SUCCESS, 73 successful tests in 86.2 s.
+BEFORE COMMIT OK (91 s)
+exit 0

@@ -1,0 +1,11 @@
+FAIL seed=22 sd=3000 maxnode=62 keys=50 sessions=11 retain=5 readers=4 long=false disk=false
+     java.lang.RuntimeException: session 9: java.lang.AssertionError: get(/k/34, 9223372036854775807): model was not published through 699501541
+       at bergdb.core.ReclaimReaders.run(ReclaimReaders.java:428)
+       at bergdb.core.ReclaimReaders.main(ReclaimReaders.java:464)
+     java.lang.AssertionError: get(/k/34, 9223372036854775807): model was not published through 699501541
+       at bergdb.core.ReclaimReaders.fail(ReclaimReaders.java:197)
+       at bergdb.core.ReclaimReaders.awaitModel(ReclaimReaders.java:206)
+       at bergdb.core.ReclaimReaders.getOne(ReclaimReaders.java:258)
+       at bergdb.core.ReclaimReaders$2.run(ReclaimReaders.java:360)
+       at java.base/java.lang.Thread.run(Thread.java:1527)
+Done: 12 rounds, 1 failures, 12 rounds with a cut, 173891 gets and 108697 scans correct, expired at admission 9, expired during 29, 4 s.

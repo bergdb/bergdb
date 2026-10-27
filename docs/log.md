@@ -1306,3 +1306,16 @@ exercised in the model; the check under assertions in `linkToCanonical`
 compares the two rules on Java's own states (005-58, Outcome). `lake
 build` clean (163 jobs), `test-traces/run.sh` OK, axioms standard
 (`7c1ce2f`).
+
+2026-10-27. 005-48, group commit, in the code, by Claude (Opus 5.5, Claude
+Code), as Frans decided (006-09, W5, reviewed at max effort): a sync that
+waits starts the flush (`BufferedStream.flushSoon`, called by
+`StorageManager.sync` and `syncStrong` before they wait), instead of
+waiting for the buffer time's timer; transactions that arrive during a
+force go out together in the next flush. No new thread, timer or setting
+(010-P3, P10); the stream's bytes unchanged (StreamDigest, with and without
+syncs). On s1, 20 ms buffer time: durable commits a second 38 to 213 with
+one thread, 2,364 to 6,429 with 64; the sync's median 24.8 to 3.8 ms.
+`ReclaimReaders.awaitModel` reads `lastCompleted` again before it fails:
+a race in the check, seen with and without the change. Tests;
+`before-commit.sh` and `level3.sh` (full) pass. F53's runs tonight.

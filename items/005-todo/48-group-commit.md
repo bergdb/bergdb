@@ -109,3 +109,104 @@ Size and order
 S for the code, S to M with the measurements. After 005-46, which changes
 `FileStream.append`, the force that this item paces on. Independent of
 005-47, but the measurements should note which durability they ran with.
+
+
+Prototype
+---------
+
+2026-10-27, by Claude (Opus 5.5, Claude Code), in 006-09's W5: the prototype by 12:31,
+then the ReclaimReaders failure, the gates, the digests and s1's runs from 14:40. Frans
+decided at 12:03 that the change is committed tonight if it passes the gates, keeps the
+stream's bytes and measures well. It is one local commit, java/ only, `200aaab` on
+`e718347` in the clone `/Users/f/fl/bench/006-09/gc48`;
+[48-group-commit/prototype.diff](48-group-commit/prototype.diff) is the same diff.
+
+* **The change** (010-P3: work in response to a call; no thread, timer or setting).
+  `BufferedStream.flushSoon(length)`: if a byte before `length` is still buffered, it
+  raises `flushTo` and wakes the consumer, and returns. While a sync waits for buffered
+  bytes, the consumer skips its timed wait and flushes, flush after flush; what arrives
+  during a force goes out in the next one. `StorageManager.sync(length)` calls it on the
+  main stream (rule D1 is `MainConfirmedRule`), `syncStrong(length)` on every stream (rule
+  D2 may need a replica), before each wait. The timer stays, as the longest time that
+  bytes nobody syncs on stay buffered (`DEFAULT_BUFFER_TIME`'s comment). Locks: a sync
+  holds `d1Lock` (`d2Lock`) and takes the stream's monitor; the consumer calls the
+  listener, which takes `d1Lock`, after it has left the monitor; so no cycle. A sync that
+  comes before its bytes are appended is served at the consumer's next wake, a quarter of
+  the buffer time at most: only `StorageManagerTester.testWait2` does that; `Db.sync`
+  waits for what `store()` appended.
+* **Tests.** `DbTesterStream.testSyncAfterOneCommitWaitsForOneForce` ("Done when": forces
+  of a `FileStreamIo` made 50 ms longer, a buffer time of 4 s; the sync after one commit
+  takes one force and 50 to 250 ms) and `StorageManagerTester.testSyncStartsTheFlush`
+  (sync, and syncStrong with a replica, buffer times of 4 s, each under 1 s). Both fail on
+  the code before, where the syncs wait 4 s for the timer. `testWait2` asserted a sync of
+  more than 20 ms (the timer); it asserts that the bytes are written when the sync
+  returns.
+* **ReclaimReaders, a race in the test.** level3.sh failed once at step 5 (seed 16), and 1
+  of 15 reruns (seed 22): a reader's get of the latest state reported "model was not
+  published through T". The interleaving, at the end of a session:
+  1. The writer executes the session's last transaction; T becomes a lookup time.
+  2. A reader's get of the latest state reads T; `awaitModel`'s loop condition reads
+     `lastCompleted` < T, as the writer is still updating the model.
+  3. The writer sets `lastCompleted` (T or later), returns from `session()` and sets
+     `stopReaders`: some hundred nanoseconds when the last transaction has no sync after
+     it.
+  4. The reader, held up between its two reads, reads `stopReaders` and fails, though the
+     model is published through T.
+
+  No lookup time that a reader sees in a session is beyond the writer's last publication:
+  only `Db.execute` makes lookup times (`DbClock.transactionEnd`), in the writer's thread;
+  reclaim's internal transactions (steps, table stores) run inside the user transaction's
+  execute (`Reclaim.transactionCompleted`), before it returns; `Db.sync` runs none. So the
+  database did nothing wrong (005-57's guess, an internal transaction after the last
+  publication, cannot happen). Evidence (runs in
+  [48-group-commit/runs/reclaimreaders/](48-group-commit/runs/reclaimreaders/)): with a
+  pause of 2 ms between the two reads (an instrumented copy, `experiment/`), all 36 seeds
+  of level3's three JVMs fail, each in its first or second session with readers, on HEAD
+  as on the prototype, each with `lastCompleted`, read again, at or past T; with the fix
+  none fails (862 sessions on each, with 902 and 1,086 readers that the second read let
+  through). Without the pause, six JVMs at once (level3's three on each build; D in
+  `experiment/results.txt`): 3 readers let through by the second read in 27,882 sessions
+  on the prototype, all in seeds 13 to 24 like the two failures (3 in 13,500 sessions
+  there), none in 8,396 on HEAD (3,500 of seeds 13 to 24, where 0.8 were to be expected);
+  never a lookup time beyond the last publication. A first count, with an atomic increment
+  between `session()` and `stopReaders`, saw none in 67,700 sessions: the window is that
+  narrow. The same failure came without group commit in 005-57 (level4.sh quick, 8
+  readers, seed 302, on `bf19075`). The fix, in the same commit: `awaitModel` reads
+  `lastCompleted` again after it has seen `stopReaders` (or a failure) and fails only if T
+  is still not published, so it still finds a lookup time beyond the last publication.
+  With it, 101 runs of step 5's JVMs (1,212 seeds) at level3's load, 0 failures.
+* **Gates**, on `200aaab`'s tree: `before-commit.sh` "BEFORE COMMIT OK (120 s)" (1,046
+  unit tests, 73 f-tests); `level3.sh` (full) "LEVEL 3 OK", step 5 with 0 failures in its
+  36 seeds. Log: `48-group-commit/runs/gates-200aaab.txt`.
+* **StreamDigest** (P2), `tools/digest.sh`, outputs in
+  [48-group-commit/digest/](48-group-commit/digest/): `StreamDigest all` (12
+  configurations; modes plain, reads, restarts) "DIGESTS IDENTICAL (36 of 36)", HEAD
+  against the change. With syncs (`tools/SyncDigest.java`: a sync after every 7th
+  transaction and a thread that syncs in a loop, the path that the change moves): each
+  build gives the stream of mode plain, and HEAD against the change "DIGESTS IDENTICAL (12
+  of 12)", firstPos included (and the runs with syncs were 13 to 150 times faster with the
+  change).
+* **s1** (question 1 and 2; `night/run-s1.sh`, 14:52 to 15:12, the jars of `head-e718347`
+  and `proto-e718347`, 6 runs of each, in turns, heap 1 GB; a force of 4 KB took 4.0 ms at
+  the median, 005-13's ForceProbe). Durable commits, a sync after each transaction, 20 ms:
+
+  | threads | commits/s, HEAD | change | sync p50 ms | p99 ms | forces/s |
+  |---:|---:|---:|---|---|---|
+  | 1 | 38 | 213 | 24.8 to 3.8 | 44.6 to 20.6 | 38 to 213 |
+  | 4 | 149 | 453 | 25.3 to 7.7 | 51.5 to 30.5 | 37 to 222 |
+  | 16 | 603 | 1,758 | 25.2 to 8.0 | 45.6 to 26.0 | 38 to 221 |
+  | 64 | 2,364 | 6,429 | 25.4 to 8.2 | 44.2 to 28.6 | 38 to 208 |
+
+  With the change the disk forces about 95 percent of the time (213 forces of 4.5 ms a
+  second): the force paces the groups, 31 commits a force at 64 threads. Writers that do
+  not sync (question 2): puts a second 160,961 and 163,686 (100-byte values), 78,566 and
+  80,507 (1 KB), 89,598 and 90,534 (1 KB, 100 puts a transaction; heap 2 GB, as HEAD's
+  first run ran out of a 1 GB heap); forces a second and bytes a force the same (29.9 and
+  29.8, 42.1 and 43.2, 45.1 and 45.1). Tables: `night/out/s1/table.md` and
+  `night/out/s1-x100/table.md`.
+* **F53**, tonight in 006-09's quiet block: `night/run-f53.sh` (READY; HEAD against the
+  change in turns, 10 runs of each, the same suite at 20 ms, heap 8 GB; about 45 minutes),
+  outputs in `night/out/f53/`.
+* **Questions.** 1 and 2: s1's answers above, F53's tonight. 3 to 6 are open; on s1 a
+  short wait before the flush (question 3) looks unneeded: under load the disk forces
+  nearly all the time, and the group forms during the force.
