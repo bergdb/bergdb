@@ -18,6 +18,8 @@ import SIS.Proof.HandlePin
 import SIS.Proof.HandleLinkPos
 import SIS.Reclaim
 import SIS.ReclaimTheorems
+import SIS.HandleReclaimTheorems
+import SIS.Proof.HandleCutRun
 import SIS.ReclaimExample
 import SIS.Bound
 import SIS.BoundTheorems

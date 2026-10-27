@@ -133,20 +133,30 @@ earlier times. It is Evict.lean's Level 4 startup taken to handles (which has
 both, by `einv_hinv_startup_facts`), but for the pointers that rule 4 links, of
 the pinned objects to the nodes with canonical objects: they hold the node's
 live handle in both, and keep the stream slot's reference, a version, instead
-of the canonical object's position. -/
+of the canonical object's position. Also what T9's invariant over handles needs
+(bergdb 005-62): every pointer holds a canonical object or has its pointee's
+latest version as its slow path's reference, and the root's pointers to the
+nodes of D hold canonical objects. -/
 theorem heinv_hinvH_startup (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hj : al.stillDirty = javaTest sp)
     (hmk : al.mark = true) (hev : EvictRunOK sp al ts) {k : Nat} (hk : k ≤ ts.length) :
     HEInv sp (st sp al ts k) (st sp al ts k).S k (handleStartup sp (st sp al ts k).S) ∧
-      HInvH sp (st sp al ts k) (st sp al ts k).S k (handleStartup sp (st sp al ts k).S) := by
+      HInvH sp (st sp al ts k) (st sp al ts k).S k (handleStartup sp (st sp al ts k).S) ∧
+      (∀ a o y p, (handleStartup sp (st sp al ts k).S).obj? a = some o → o.ptr? y = some p →
+        (handleStartup sp (st sp al ts k).S).holdsCanonical p = true ∨
+          (handleStartup sp (st sp al ts k).S).slowRef (st sp al ts k).S y p =
+            ((st sp al ts k).S.lv y).map (·.recNo)) ∧
+      (∀ o y p, (handleStartup sp (st sp al ts k).S).obj? (handleStartup sp (st sp al ts k).S).root = some o →
+        o.ptr? y = some p → inD (st sp al ts k).D y = true →
+        (handleStartup sp (st sp al ts k).S).holdsCanonical p = true) := by
   have hst : AlgOK sp al := algOK_of sp al (Or.inl hj)
   have hinv := inv_st sp al ts hok hst k hk
-  obtain ⟨hE, hHE, hall, -, -, -⟩ := einv_hinv_startup_facts hok hph hj hmk hev hk
+  obtain ⟨hE, hHE, hall, hser, hpin, hmem⟩ := einv_hinv_startup_facts hok hph hj hmk hev hk
   obtain ⟨hr, -⟩ := rinv_lazyStartup hok hph hj hmk hev hk
   have hD : (startup sp (st sp al ts k).S).D = (st sp al ts k).D := (T1_strong sp al ts hok hst hk).2
-  unfold evictStartup at hE hHE hall
+  unfold evictStartup at hE hHE hall hser hpin hmem
   unfold handleStartup
-  rw [hD] at hE hHE hall ⊢
-  generalize lazyStartup sp (st sp al ts k).S = m0 at hE hHE hall hr ⊢
+  rw [hD] at hE hHE hall hser hpin hmem ⊢
+  generalize lazyStartup sp (st sp al ts k).S = m0 at hE hHE hall hser hpin hmem hr ⊢
   -- The memory after the positions, M1, and its objects: m0's, with the same slots.
   have hobj1 := Mem.sectionPos_obj? m0 (st sp al ts k).S
   have hslot1 : ∀ a o1, (m0.sectionPos (st sp al ts k).S).obj? a = some o1 →
@@ -158,7 +168,7 @@ theorem heinv_hinvH_startup (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (h
     split
     · rfl
     · split <;> rfl
-  generalize hM1 : m0.sectionPos (st sp al ts k).S = M1 at hE hHE hall hslot1 ⊢
+  generalize hM1 : m0.sectionPos (st sp al ts k).S = M1 at hE hHE hall hser hpin hmem hslot1 ⊢
   -- Evict.lean's startup E = M1.linkD D, and its objects.
   have hobjE := Mem.linkD_obj? M1 (st sp al ts k).D
   have hcanE : ∀ y, (M1.linkD (st sp al ts k).D).canonicalOf y = M1.canonicalOf y := by
@@ -352,7 +362,6 @@ theorem heinv_hinvH_startup (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (h
     rw [this]
     exact (List.Sublist.map _ List.filter_sublist).nodup hkeys
   have hHinv := hEH.relinkH hfw hbk rfl rfl rfl rfl rfl rfl hnd
-  refine ⟨hHinv, ?_⟩
   -- Reads at earlier times: the pointers that differ hold a canonical object.
   have hcanM : ∀ c oc, (M1.linkD (st sp al ts k).D).toH.obj? c = some oc → oc.canonical = true →
       ∃ o'', (M1.toH.linkD (st sp al ts k).D).obj? c = some o'' ∧ o''.canonical = true := by
@@ -367,21 +376,106 @@ theorem heinv_hinvH_startup (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (h
     obtain ⟨n, c, oc, hpn, hc, hoc, hcc⟩ := ((M1.linkD (st sp al ts k).D).toH.holdsCanonical_iff p).mp h
     obtain ⟨o'', ho'', hc''⟩ := hcanM c oc hoc hcc
     exact ((M1.toH.linkD (st sp al ts k).D).holdsCanonical_iff p).mpr ⟨n, c, o'', hpn, hc, ho'', hc''⟩
-  apply hHH.transfer hEH.tbl hkp
-  intro a o' ho' hc t ht hrt z hz
-  obtain ⟨o, ho, hcore, -, hpt⟩ := hbk a o' ho'
-  have e1 : o'.node = o.node := congrArg (fun c => c.1) hcore
-  have e4 : o'.hist = o.hist := congrArg (fun c => c.2.2.2.1) hcore
-  have e5 : o'.canonical = o.canonical := congrArg (fun c => c.2.2.2.2.1) hcore
-  rcases hpt z with h | ⟨q, q', -, hq', hh', hcs, -⟩
-  · exact Or.inl ⟨o, ho, by rw [← e5]; exact hc, e1.symm, by rw [e4], h⟩
-  · right
-    refine ⟨q', hq', Or.inl ?_⟩
-    obtain ⟨c, hcz⟩ := Option.isSome_iff_exists.mp hcs
-    obtain ⟨n, oc, htn, hcn, hoc, hcc⟩ := ((M1.linkD (st sp al ts k).D).toH.canonicalOf_eq_some z c).mp hcz
-    obtain ⟨o'', ho'', hc''⟩ := hcanM c oc hoc hcc
-    exact ((M1.toH.linkD (st sp al ts k).D).holdsCanonical_iff q').mpr ⟨n, c, o'', by rw [hh', htn], hcn, ho'',
-      hc''⟩
+  refine ⟨hHinv, ?_, ?_⟩
+  · apply hHH.transfer hEH.tbl hkp
+    intro a o' ho' hc t ht hrt z hz
+    obtain ⟨o, ho, hcore, -, hpt⟩ := hbk a o' ho'
+    have e1 : o'.node = o.node := congrArg (fun c => c.1) hcore
+    have e4 : o'.hist = o.hist := congrArg (fun c => c.2.2.2.1) hcore
+    have e5 : o'.canonical = o.canonical := congrArg (fun c => c.2.2.2.2.1) hcore
+    rcases hpt z with h | ⟨q, q', -, hq', hh', hcs, -⟩
+    · exact Or.inl ⟨o, ho, by rw [← e5]; exact hc, e1.symm, by rw [e4], h⟩
+    · right
+      refine ⟨q', hq', Or.inl ?_⟩
+      obtain ⟨c, hcz⟩ := Option.isSome_iff_exists.mp hcs
+      obtain ⟨n, oc, htn, hcn, hoc, hcc⟩ := ((M1.linkD (st sp al ts k).D).toH.canonicalOf_eq_some z c).mp hcz
+      obtain ⟨o'', ho'', hc''⟩ := hcanM c oc hoc hcc
+      exact ((M1.toH.linkD (st sp al ts k).D).holdsCanonical_iff q').mpr ⟨n, c, o'', by rw [hh', htn], hcn, ho'',
+        hc''⟩
+  · -- The pointers (bergdb 005-62): each holds a canonical object, or its slow
+    -- path's reference is its pointee's latest version; the root's pointers to the
+    -- nodes of D hold canonical objects.
+    have hEp : ∀ a o y q, (M1.linkD (st sp al ts k).D).toH.obj? a = some o → o.ptr? y = some q →
+        ∃ oE sl, (M1.linkD (st sp al ts k).D).obj? a = some oE ∧ oE.slot? y = some sl ∧
+          q = ((M1.linkD (st sp al ts k).D).ptrOfH (y, sl)).2 := by
+      intro a o y q ho hq
+      rw [Mem.toH_obj?] at ho
+      split at ho
+      · obtain ⟨oE, hoE, rfl⟩ := Option.map_eq_some_iff.mp ho
+        rw [Mem.objH_ptr?] at hq
+        obtain ⟨sl, hsl, rfl⟩ := Option.map_eq_some_iff.mp hq
+        exact ⟨oE, sl, hoE, hsl, rfl⟩
+      · cases ho
+    have hmemC : ∀ a oE y h, (M1.linkD (st sp al ts k).D).obj? a = some oE → oE.slot? y = some (Slot.mem h) →
+        (M1.toH.linkD (st sp al ts k).D).holdsCanonical
+          ((M1.linkD (st sp al ts k).D).ptrOfH (y, Slot.mem h)).2 = true := by
+      intro a oE y h hoE hsl
+      have hc := hmem a oE y h hoE hsl
+      have hth : (M1.linkD (st sp al ts k).D).tableOf y = some h := by
+        unfold Mem.canonicalOf at hc
+        cases ht : (M1.linkD (st sp al ts k).D).tableOf y with
+        | none => rw [ht] at hc; cases hc
+        | some h0 =>
+          rw [ht] at hc
+          simp only at hc
+          cases ho0 : (M1.linkD (st sp al ts k).D).obj? h0 with
+          | none => rw [ho0] at hc; cases hc
+          | some o0 =>
+            rw [ho0] at hc
+            simp only at hc
+            split at hc
+            · rw [Option.some.injEq] at hc; rw [hc]
+            · cases hc
+      have hcEH : (M1.linkD (st sp al ts k).D).toH.canonicalOf y = some h := by
+        rw [Mem.toH_canonicalOf hE.tblNodup hE.tbl]; exact hc
+      obtain ⟨n, oc, htn, hcn, hoc, hcc⟩ := ((M1.linkD (st sp al ts k).D).toH.canonicalOf_eq_some y h).mp hcEH
+      rw [Mem.toH_tableOf, hth, Option.some.injEq] at htn
+      subst htn
+      have hq : ((M1.linkD (st sp al ts k).D).ptrOfH (y, Slot.mem h)).2.handle = some h := by
+        show (if (M1.linkD (st sp al ts k).D).table.any (fun e => e.2 == h) then some h else none) = some h
+        have : (M1.linkD (st sp al ts k).D).table.any (fun e => e.2 == h) = true :=
+          List.any_eq_true.mpr ⟨(y, h), mem_of_lookup _ _ _ hth, by simp⟩
+        rw [this]; rfl
+      obtain ⟨o'', ho'', hc''⟩ := hcanM h oc hoc hcc
+      exact ((M1.toH.linkD (st sp al ts k).D).holdsCanonical_iff _).mpr ⟨h, h, o'', hq, hcn, ho'', hc''⟩
+    have htabC : ∀ z q', q'.handle = (M1.linkD (st sp al ts k).D).toH.tableOf z →
+        ((M1.linkD (st sp al ts k).D).toH.canonicalOf z).isSome = true →
+        (M1.toH.linkD (st sp al ts k).D).holdsCanonical q' = true := by
+      intro z q' hh' hcs
+      obtain ⟨c, hcz⟩ := Option.isSome_iff_exists.mp hcs
+      obtain ⟨n, oc, htn, hcn, hoc, hcc⟩ := ((M1.linkD (st sp al ts k).D).toH.canonicalOf_eq_some z c).mp hcz
+      obtain ⟨o'', ho'', hc''⟩ := hcanM c oc hoc hcc
+      exact ((M1.toH.linkD (st sp al ts k).D).holdsCanonical_iff q').mpr ⟨n, c, o'', by rw [hh', htn], hcn,
+        ho'', hc''⟩
+    refine ⟨fun a o' y q' ho' hq' => ?_, fun o' y q' ho' hq' hyD => ?_⟩
+    · obtain ⟨o, ho, -, -, hpt⟩ := hbk a o' ho'
+      rcases hpt y with h | ⟨q, q'', -, hq'', hh', hcs, -⟩
+      · rw [h] at hq'
+        obtain ⟨oE, sl, hoE, hsl, rfl⟩ := hEp a o y q' ho hq'
+        cases sl with
+        | mem h0 => exact Or.inl (hmemC a oE y h0 hoE hsl)
+        | stream r =>
+          right
+          have := hser a oE y (Slot.stream r) hoE hsl
+          simp only [slotRefOf] at this
+          unfold HMem.slowRef
+          simp only [Mem.ptrOfH, Option.bind_none, maxRef_none]
+          exact this
+      · rw [hq'', Option.some.injEq] at hq'
+        subst hq'
+        exact Or.inl (htabC y q'' hh' hcs)
+    · obtain ⟨o, ho, -, -, hpt⟩ := hbk _ o' ho'
+      rcases hpt y with h | ⟨q, q'', -, hq'', hh', hcs, -⟩
+      · rw [h] at hq'
+        obtain ⟨oE, sl, hoE, hsl, rfl⟩ := hEp _ o y q' ho hq'
+        cases sl with
+        | mem h0 => exact hmemC _ oE y h0 hoE hsl
+        | stream r =>
+          exfalso
+          exact (hpin _ oE y r hoE hsl hyD).2 rfl
+      · rw [hq'', Option.some.injEq] at hq'
+        subst hq'
+        exact htabC y q'' hh' hcs
 
 end Startup
 
@@ -495,7 +589,7 @@ theorem handleInvR_step {ts : List (T × Bool × List HCacheOp)} (hok : RunOK sp
       exact (heinv_hinvH_startup hok hph hj hmk hev (by simp; omega)).1
     · show HInvH sp _ _ _ (handleStartup sp (handleTrans sp al acc.2.2 acc.1 acc.2.1 ts[j].1).1.S)
       rw [hrel'.1]
-      exact (heinv_hinvH_startup hok hph hj hmk hev (by simp; omega)).2
+      exact (heinv_hinvH_startup hok hph hj hmk hev (by simp; omega)).2.1
   · -- No restart: the same startup stream; the memory is the one from the run's state.
     refine ⟨k1, by omega, hS0, hrel', ?_, ?_⟩
     · show HEInv sp _ _ _ (ts[j].2.2.foldl (HMem.cacheOp sp acc.2.2
