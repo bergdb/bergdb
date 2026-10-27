@@ -15,7 +15,7 @@ import java.util.UUID;
  * The bug report of 2015-11-10 (ISSUE151111, from Bryan Wisdom), as a regression test.
  * Each cycle starts the database on the same directory with a finite retain duration
  * (so reclaim is scheduled), reads all objects, deletes them, creates new ones, and
- * stops. The original program repeated this forever, with 10 s between cycles, on
+ * closes it. The original program repeated this forever, with 10 s between cycles, on
  * C:\berg\db. The 2017 code fails when it starts, after about 12 cycles, with "A
  * ValueNode cannot be dirty" (the bounded-startup defects, bergdb 011-04, level 2).
  *
@@ -117,7 +117,7 @@ public class BryanRepro {
                 + (System.currentTimeMillis() - t0) / 1000 + " s.");
     }
 
-    /** One run of the original program: start, read, delete, create, sync, stop. */
+    /** One run of the original program: start, read, delete, create, sync, stop (here close()). */
     static int runJob(File dir, int startId, int expectedExisting) {
         int lastId = startId + COUNT;
         Database db = Factory.database().dir(dir.getPath())
@@ -143,7 +143,12 @@ public class BryanRepro {
         }
 
         db.sync();
-        db.stop();
+        // close(), not stop() as the original, which had 10 s between cycles: stop() returns
+        // before the database is closed (bergdb 005-35), and since 005-46 the thread of its
+        // last cut may still be deleting files. The next cycle's database on the directory
+        // then took those files as its own, and its cut failed on the ones already deleted
+        // ("Cound not delete file", in cycle 37 to 39 of 40; bergdb 006-09).
+        db.close();
         return lastId;
     }
 
