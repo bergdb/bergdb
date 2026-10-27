@@ -50,13 +50,16 @@ public class StorageManager implements AppendOnlyStream {
     /**
      * The main stream's buffer time in ms. 20 since 2026-10-20 (bergdb item 005-13): 100 was
      * chosen for rotating drives; on an SSD a sync after a commit then waited about 120 ms, and
-     * a shorter time costs no throughput of writers that do not sync.
+     * a shorter time costs no throughput of writers that do not sync. Since 2026-10-27 (bergdb
+     * item 005-48) a sync does not wait for it: a waiting sync has the buffer written at once
+     * (BufferedStream.flushSoon). The buffer time is the longest time that bytes nobody syncs
+     * on stay in the buffer.
      */
     public static final int DEFAULT_BUFFER_TIME = 20;
     
     private final AtomicReference<Internal> internal;
     private final Object writeLock;
-    private final AppendOnlyStream mainStream;
+    private final BufferedStream mainStream;
     private long streamLength;
         // The length of this AppendOnlyStream based on all bytes appended with append().
     
@@ -464,6 +467,11 @@ public class StorageManager implements AppendOnlyStream {
      * Waits until the durable length of rule D1 is at least 'length': every byte before that
      * position is durable. A transaction is durable when its last byte is, so a sync of it
      * waits for its lastPos + 1 (bergdb 005-44).
+     * 
+     * <p>If it must wait, it has the main stream write what is buffered at once
+     * (BufferedStream.flushSoon), and waits for that write and its force, not for the
+     * buffer time; syncs that wait at the same time share one write and one force (group
+     * commit, 2026-10-27, bergdb 005-48).</p>
      */
     public void sync(long length) throws IOException {
         synchronized (d1Lock) {
@@ -474,6 +482,7 @@ public class StorageManager implements AppendOnlyStream {
                     throw new IOException("StorageManager has error: " + in.errorString);
                 }
                 
+                mainStream.flushSoon(length);   // Group commit (bergdb 005-48).
                 try {
                     d1Lock.wait(500);
                 } catch (InterruptedException e) {
@@ -487,7 +496,10 @@ public class StorageManager implements AppendOnlyStream {
         }
     }
     
-    /** As sync(), for rule D2. */
+    /**
+     * As sync(), for rule D2. If it must wait, it has every stream write what is buffered
+     * at once, the replicas too, as the rule may need any of them (bergdb 005-48).
+     */
     public void syncStrong(long length) throws IOException {
         synchronized (d2Lock) {
             while (d2Size < length) {
@@ -497,6 +509,11 @@ public class StorageManager implements AppendOnlyStream {
                     throw new IOException("StorageManager has error: " + in.errorString);
                 }
                 
+                for (BufferedStream b : in.streams) {     // Group commit (bergdb 005-48).
+                    if (b != null) {
+                        b.flushSoon(length);
+                    }
+                }
                 try {
                     d2Lock.wait(500);
                 } catch (InterruptedException e) {

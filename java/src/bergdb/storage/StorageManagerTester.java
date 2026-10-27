@@ -281,9 +281,56 @@ public class StorageManagerTester {
         }
         t.join();
         
-        Assert.assertTrue("time[0] = " + time[0], time[0] > 0.02 && time[0] < 0.30);
+        // 2026-10-27 (bergdb 005-48, group commit): the sync has the buffer written at once.
+        // It waited for the timer, 25 to 100 ms here, and the test asserted more than 20 ms.
+        // Now it waits for the append and the flush only; the bytes are written when it
+        // returns.
+        Assert.assertEquals(12, m.getLength());
+        Assert.assertTrue("time[0] = " + time[0], time[0] < 0.30);
         
         manager.stop();
+    }
+    
+    /**
+     * Group commit (2026-10-27, bergdb 005-48): sync() and syncStrong() have the buffers of
+     * their streams written at once, here those of a main stream and a replica, with buffer
+     * times of 4 s. Before, each waited for the timers, about a buffer time.
+     */
+    @Nano
+    public static void testSyncStartsTheFlush() throws IOException {
+        MemoryStream m1 = new MemoryStream();
+        MemoryStream m2 = new MemoryStream();
+        Object writeLock = new Object();
+        StorageManager manager;
+        synchronized (writeLock) {
+            manager = new StorageManager.Builder(writeLock)
+                    .stream("main", m1, 10 * 1000, 4000).stream("r", m2, 10 * 1000, 4000).build();
+            manager.syncStreams(new NullProgressListener());
+        }
+        
+        try {
+            byte[] bytes = new byte[100];
+            synchronized (writeLock) {
+                manager.append(bytes, 0, bytes.length);
+            }
+            long t0 = System.nanoTime();
+            manager.sync(100);
+            long ms1 = (System.nanoTime() - t0) / 1000000;
+            Assert.assertEquals(100, m1.getLength());
+            
+            synchronized (writeLock) {
+                manager.append(bytes, 0, bytes.length);
+            }
+            t0 = System.nanoTime();
+            manager.syncStrong(200);
+            long ms2 = (System.nanoTime() - t0) / 1000000;
+            Assert.assertEquals(200, m1.getLength());
+            Assert.assertEquals(200, m2.getLength());
+            Assert.assertTrue("sync() took " + ms1 + " ms, syncStrong() " + ms2 + " ms",
+                    ms1 < 1000 && ms2 < 1000);
+        } finally {
+            manager.close();
+        }
     }
     
     @Nano

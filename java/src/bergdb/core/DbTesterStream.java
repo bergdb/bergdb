@@ -3,7 +3,9 @@ package bergdb.core;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import bergdb.common.Bytes;
 import bergdb.common.StringUtil;
@@ -16,6 +18,7 @@ import bergdb.pub.util.DbFailedException;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.FileStream;
+import bergdb.stream.FileStreamIo;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.OneFileStream;
 import bergdb.stream.ReadOnlyStream;
@@ -688,5 +691,55 @@ public class DbTesterStream {
         Assert.assertTrue(ex.getCause() instanceof StreamIoException);
         
         db2.stop();
+    }
+    
+    /** A FileStreamIo whose file forces take sleepMs longer, and that counts them (005-48). */
+    private static final class SlowForces extends FileStreamIo {
+        volatile int sleepMs = 0;
+        final AtomicInteger forces = new AtomicInteger();
+        
+        protected void forceFile(File file, RandomAccessFile handle) throws IOException {
+            forces.incrementAndGet();
+            if (sleepMs > 0) {
+                try {
+                    Thread.sleep(sleepMs);
+                } catch (InterruptedException e) {
+                    throw new IOException(e);
+                }
+            }
+            super.forceFile(file, handle);
+        }
+    }
+    
+    /**
+     * Group commit (2026-10-27, bergdb 005-48): a sync after a single commit returns within
+     * about one force of the stream's file, here made 50 ms longer, as the sync has the
+     * write buffer written at once. Before, it waited for the buffer's timer, about the
+     * buffer time (4 s here), and then for the force.
+     */
+    @Nano
+    public static void testSyncAfterOneCommitWaitsForOneForce(TestEnvironment env)
+            throws IOException {
+        SlowForces io = new SlowForces();
+        DbBuilder b = Db.builder();
+        b.testSetupExceptStream();
+        Db db = b.stream("main", new FileStream(env.createTempDir(), io), 100 * 1000, 4000)
+                .start();
+        try {
+            db.execute(db.trans().put("/a", new byte[100]).build());
+            db.sync(SyncLevel.ORDINARY);
+            
+            io.sleepMs = 50;
+            int forces = io.forces.get();
+            long t0 = System.nanoTime();
+            db.execute(db.trans().put("/b", new byte[100]).build());
+            db.sync(SyncLevel.ORDINARY);
+            long ms = (System.nanoTime() - t0) / 1000000;
+            Assert.assertEquals("forces during the sync", 1, io.forces.get() - forces);
+            Assert.assertTrue("the sync took " + ms + " ms", ms >= 50 && ms < 250);
+        } finally {
+            io.sleepMs = 0;
+            db.close();
+        }
     }
 }

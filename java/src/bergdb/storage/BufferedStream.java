@@ -22,6 +22,10 @@ import bergdb.stream.MemoryStream;
  * next append, stop() or close() (2026-10-21, bergdb item 005-14), so that an idle
  * stream does not wake it.
  * 
+ * <p>A sync that waits for buffered bytes has them written at once, without waiting for
+ * the buffer time: it calls flushSoon() (group commit, 2026-10-27, bergdb item 005-48).
+ * The buffer time is then the longest time that bytes nobody syncs on stay buffered.
+ * 
  * @author Frans Lundberg
  */
 public class BufferedStream implements AppendOnlyStream, Closeable {
@@ -57,6 +61,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     private AppendListener appendListener;
     private volatile boolean appendHasBeenCalled = false;
     private boolean idle = false;   // the consumer waits without a timeout, see runConsumer()
+    private long flushTo = 0;       // a sync waits for the bytes before it, see flushSoon()
     private final Waits roomWaits = new Waits();    // the writer's, for test reports (005-46)
 
     /**
@@ -154,7 +159,9 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                     if (stop) {
                         break A;
                     }
-                    wait(waitTime);
+                    if (!syncWaits()) {     // No wait while a sync waits (bergdb 005-48).
+                        wait(waitTime);
+                    }
                 } catch (InterruptedException e) {
                     if (stop) {
                         return;
@@ -209,8 +216,15 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         // transaction size"). 34 of 24,000 closes in a test (005-14, CloseRace).
         boolean result = sizeAvailableToFlush > 0 && (flushAndClose
                 || sizeAvailableToFlush >= twentyFivePercentOfBufferCapacity
-                || waitCount >= waitsBeforeFlush);
+                || waitCount >= waitsBeforeFlush
+                || flushTo > cStart);           // a sync waits (bergdb 005-48)
         return result;
+    }
+
+    /** True when a sync waits for bytes that are still buffered (bergdb 005-48). */
+    private boolean syncWaits() {
+        assert Thread.holdsLock(this);
+        return flushTo > cStart && pStart > cStart;
     }
 
     /**
@@ -492,6 +506,24 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             if (interrupted) {
                 Thread.currentThread().interrupt();
             }
+        }
+    }
+    
+    /**
+     * Has the thread write what is buffered now, without waiting for the buffer time, if a
+     * byte before position 'length' is still buffered; returns at once (2026-10-27, bergdb
+     * 005-48, group commit). A sync that waits for those bytes calls it. The thread writes
+     * what is buffered in one flush (an append and its force, of at most half the buffer);
+     * bytes that arrive meanwhile wait in the buffer, and if a sync waits for them too, the
+     * next flush starts when this one ends. So a sync waits for about one force at low load,
+     * and under load the force paces the groups. Before, a sync waited for the timer, about
+     * a buffer time. The bytes written do not change, only where one append ends and the
+     * next begins.
+     */
+    public synchronized void flushSoon(long length) {
+        if (length > flushTo) {
+            flushTo = length;
+            notifyAll();    // Wakes the consumer, waiting or idle.
         }
     }
     

@@ -198,11 +198,21 @@ public class ReclaimReaders {
                 : new RuntimeException(what + ": " + e, e));
     }
 
-    /** Wait for the oracle, not the database: a latest read can precede model publication. */
+    /**
+     * Wait for the oracle, not the database: a latest read can precede model publication.
+     * The writer publishes the model through its last transaction before it sets stopReaders,
+     * so lastCompleted read after stopReaders is final, and it is read again before the reader
+     * fails. 2026-10-27 (bergdb 005-48): the loop's condition read lastCompleted just before
+     * that publication and stopReaders just after it, and a reader failed ("model was not
+     * published"), once in some thousands of sessions, with and without group commit.
+     */
     boolean awaitModel(long actualLookupTime, String what) {
         long deadline = System.nanoTime() + 60L * 1000 * 1000 * 1000;
         while (actualLookupTime > lastCompleted) {
             if (failure.get() != null || stopReaders) {
+                if (actualLookupTime <= lastCompleted) {
+                    return true;    // Published after the condition's read, before the stop.
+                }
                 fail(what + ": model was not published through " + actualLookupTime, null);
                 return false;
             }
