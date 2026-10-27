@@ -39,7 +39,8 @@ import bergdb.stream.MemoryStream;
  * <li>An iteration starts at an external transaction when the stream has grown by twice
  * the startup distance since the last iteration started, and a quarter of the retain
  * duration has passed (ITERATION_SPACING): pStart is the stream length then, tStart the
- * time. Its cut point pCut is the pStart of the iteration before (the first iteration:
+ * time. The startup distance is Db's live value: the stream's after start(), and the new
+ * one after setStartupDistance() (bergdb 005-61; it was the builder's before). Its cut point pCut is the pStart of the iteration before (the first iteration:
  * its own pStart).</li>
  * <li>Each external transaction allows a step when the bytes rewritten so far are below
  * internalFraction times the stream growth since pStart. A step scans the KVs at time
@@ -116,7 +117,6 @@ public class Reclaim implements Db.TransactionListener {
      * retention keeps the stream within about 1.25 times what the retention needs.
      */
     static final double ITERATION_SPACING = 0.25;
-    private final long initialStartupDistance;
     
     /** A step is made when it may rewrite more than this many bytes. */
     private static final long MIN_STEP_SIZE = 10 * 1000L;
@@ -177,7 +177,6 @@ public class Reclaim implements Db.TransactionListener {
         }
         this.db = db;
         this.aos = aos;
-        this.initialStartupDistance = db.getStartupDistance();
         
         this.retainDuration = Long.MAX_VALUE;
         this.internalFraction = DEFAULT_INTERNAL_FRACTION;
@@ -329,7 +328,7 @@ public class Reclaim implements Db.TransactionListener {
         IterationInfo current = currentIteration();
         
         if (current == null && retainDuration != Long.MAX_VALUE
-                && streamSize > lastPStart() + initialStartupDistance * 2
+                && streamSize > lastPStart() + 2L * db.getStartupDistance()
                 && t.tt - lastTStart() >= (long) (ITERATION_SPACING * retainDuration)) {
             current = new IterationInfo();
             current.pStart = streamSize;
@@ -1297,6 +1296,98 @@ public class Reclaim implements Db.TransactionListener {
         @Nano
         public static void testIterationInfo() {
             
+        }
+        
+        /**
+         * Regression test for a fault found 2026-10-27 (bergdb 005-53, question 3; fixed in
+         * 005-61): Reclaim kept the builder's startup distance, copied when Db was made,
+         * not the stream's that Db.start() reads, nor a later setStartupDistance(). A
+         * database made at 2000 bytes and restarted with the builder's default (50 MB)
+         * then nearly stopped reclaiming. Restarted with the default or with 2000, it must
+         * reclaim the same, as at its own distance.
+         */
+        @Nano
+        public static void testIterationsFollowTheStreamsStartupDistance() {
+            long[] time = {Clock.UNITS_PER_SEC};
+            CoreTestClock clock = new CoreTestClock();
+            clock.setTime(time[0]);
+            MemoryStream stream = new MemoryStream();
+            Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(2000).start();
+            distancePuts(db, clock, time, 2000);
+            db.sync(SyncLevel.STRONG);
+            db.close();
+            
+            long t0 = time[0];
+            long[] iterations = new long[2];
+            long[] length = new long[2];
+            for (int run = 0; run < 2; run++) {
+                time[0] = t0;
+                CoreTestClock c = new CoreTestClock();
+                c.setTime(time[0]);
+                DbBuilder b = Db.builder().testSetup(stream.copy()).clock(c);
+                if (run == 0) {
+                    b.startupDistance(2000);
+                }
+                Db d = b.start();
+                Assert.assertEquals(2000, d.getStartupDistance());
+                iterations[run] = distancePuts(d, c, time, 2000);
+                length[run] = d.getStreamLength() - d.getFirstAvailablePos();
+                d.close();
+            }
+            
+            Assert.assertTrue("iterations: " + iterations[0], iterations[0] >= 10);
+            Assert.assertEquals(iterations[0], iterations[1]);
+            Assert.assertEquals(length[0], length[1]);
+        }
+        
+        /**
+         * A larger startup distance set while the database runs (Db.setStartupDistance) also
+         * spaces reclaim's iterations (bergdb 005-61): none starts before the stream has
+         * grown by twice the new distance.
+         */
+        @Nano
+        public static void testIterationsFollowSetStartupDistance() {
+            long[] time = {Clock.UNITS_PER_SEC};
+            CoreTestClock clock = new CoreTestClock();
+            clock.setTime(time[0]);
+            Db db = Db.builder().testSetup().clock(clock).startupDistance(2000).start();
+            Assert.assertTrue(distancePuts(db, clock, time, 1000) >= 5);
+            
+            db.setStartupDistance(bergdb.storage.RecoverableStream.META_BLOCK_DISTANCE * 2);
+            long pStart = db.internal().reclaim().lastPStart();
+            long length = db.getStreamLength();
+            distancePuts(db, clock, time, 2000);
+            Assert.assertEquals(pStart, db.internal().reclaim().lastPStart());
+            Assert.assertTrue("grew " + (db.getStreamLength() - length), 
+                    db.getStreamLength() - length > 50 * 1000);
+            db.close();
+        }
+        
+        /**
+         * The probe's workload for 005-61 (005-53's ReclaimDistanceProbe): a retention of 1 s,
+         * small puts 50 ms apart. Asserts that each iteration that starts does so when the
+         * stream has grown by more than twice the database's startup distance since the
+         * last one started. Returns the iterations completed.
+         */
+        private static long distancePuts(Db db, CoreTestClock clock, long[] time, int count) {
+            db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+            java.util.Random r = new java.util.Random(1);
+            Reclaim reclaim = db.internal().reclaim();
+            long before = reclaim.getIterationCount();
+            for (int i = 0; i < count; i++) {
+                time[0] += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time[0]);
+                long pStart = reclaim.lastPStart();
+                byte[] v = new byte[1 + r.nextInt(60)];
+                db.execute(db.trans().put("/k/" + r.nextInt(50), v).build());
+                long next = reclaim.lastPStart();
+                if (next != pStart) {
+                    Assert.assertTrue("started at " + next + ", last " + pStart + ", distance "
+                            + db.getStartupDistance(),
+                            next - pStart > 2L * db.getStartupDistance());
+                }
+            }
+            return reclaim.getIterationCount() - before;
         }
         
         /**
