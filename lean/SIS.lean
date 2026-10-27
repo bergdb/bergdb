@@ -22,6 +22,7 @@ import SIS.HandleReclaimTheorems
 import SIS.Proof.HandleCutRun
 import SIS.Proof.HandleCutLater
 import SIS.Proof.HandleCutStart
+import SIS.Proof.HandleCutSim
 import SIS.ReclaimExample
 import SIS.HandleReclaimExample
 import SIS.Bound
