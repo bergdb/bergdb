@@ -214,3 +214,22 @@ Linux) writes the data only, with no journal commit. Java needs no rights
 for it, and it runs on macOS. The recovery questions are a device's: no
 file length tells the end. Oracle's online redo logs are such fixed files,
 used round-robin.
+
+2026-10-27. Frans, 16:21: "I remember thinking of this years ago. My
+conclusion was that storage should really have their own power -- enough
+to store its buffer to disk durably. At least ensure atomic block writes.
+Some capacitors should be enough." This is what data-center SSDs do: power-loss
+protection (PLP), capacitors that hold enough energy to write the drive's
+cache and the writes in flight to flash. Such a drive can treat its cache
+as durable; an NVMe drive with PLP often reports no volatile write cache,
+and a flush then costs next to nothing. On Linux,
+`/sys/block/<dev>/queue/write_cache` says `write back` or `write through`.
+On such a device question 2 is gone and a force is cheap, which changes the
+trade of 005-13, 005-47 and 005-48 too. BergDB need not know: it forces as
+today, and the hardware makes the force cheap (P10). Consumer SSDs mostly
+lack PLP (some protect only data at rest), and the Macs' internal SSDs
+flush their cache at `F_FULLFSYNC` (4 to 5 ms on F53, 005-13). RAID
+controllers did the same for their caches with a battery or capacitors, and
+an embedded board can do it for raw flash: a hold-up capacitor and a
+power-fail signal, enough to finish the page being written. To check: the
+devices of F53 and s1 (s1's virtual disk is whatever its host gives).
