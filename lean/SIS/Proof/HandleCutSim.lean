@@ -1515,4 +1515,206 @@ theorem HMem.withRoot_applyChange {db : DB V T} {S0 : Stream V T} {k : Nat} (hvl
 
 end ChangeSim
 
+/-! ## The writes on a memory with another root object -/
+
+section WriteSim
+
+variable {sp : Spec V T} {m : HMem V} {oc oe : HObj V}
+
+theorem HMem.withRoot_objPos (hra : m.obj? m.root = some oe) (hpos : oc.pos = oe.pos) (b : Nat) :
+    ((m.withRoot oc).obj? b).bind (·.pos) = (m.obj? b).bind (·.pos) := by
+  by_cases hb : b = m.root
+  · subst hb; rw [HMem.withRoot_obj?_root hra, hra]; simp [hpos]
+  · rw [HMem.withRoot_obj?_ne hb]
+
+theorem HMem.withRoot_ptrRef (hra : m.obj? m.root = some oe) (hpos : oc.pos = oe.pos)
+    (hc : oc.canonical = oe.canonical) (S0 : Stream V T) (y : NodeId) (p : HPtr) :
+    (m.withRoot oc).ptrRef S0 y p = m.ptrRef S0 y p := by
+  have hhf : (m.withRoot oc).handle? = m.handle? := rfl
+  unfold HMem.ptrRef
+  rw [hhf, HMem.withRoot_s]
+  cases p.handle.bind m.handle? with
+  | none => rfl
+  | some hd =>
+    simp only
+    cases hb : hd.obj with
+    | none => rfl
+    | some b =>
+      simp only [Option.bind_some]
+      by_cases hbr : b = m.root
+      · subst hbr; rw [HMem.withRoot_obj?_root hra, hra]; simp [hpos, hc]
+      · rw [HMem.withRoot_obj?_ne hbr]
+
+theorem HMem.withRoot_refOf (hra : m.obj? m.root = some oe) (hpos : oc.pos = oe.pos)
+    (hc : oc.canonical = oe.canonical) (S0 : Stream V T) (D : Dirty) (o : HObj V) (y : NodeId) :
+    (m.withRoot oc).refOf S0 D o y = m.refOf S0 D o y := by
+  have hpr : (m.withRoot oc).ptrRef S0 y = m.ptrRef S0 y := funext (HMem.withRoot_ptrRef hra hpos hc S0 y)
+  unfold HMem.refOf
+  rw [hpr]
+  simp only [HMem.withRoot_canonicalOf hra hc, HMem.withRoot_objPos hra hpos]
+
+theorem HMem.withRoot_holdsCanonical (hra : m.obj? m.root = some oe) (hc : oc.canonical = oe.canonical)
+    (p : HPtr) : (m.withRoot oc).holdsCanonical p = m.holdsCanonical p := by
+  have hof : (m.withRoot oc).objOf = m.objOf := rfl
+  unfold HMem.holdsCanonical
+  rw [hof]
+  cases (p.handle.bind m.objOf) with
+  | none => rfl
+  | some b =>
+    simp only [Option.bind_some]
+    by_cases hb : b = m.root
+    · subst hb; rw [HMem.withRoot_obj?_root hra, hra]; simp [hc]
+    · rw [HMem.withRoot_obj?_ne hb]
+
+theorem HMem.withRoot_resolvePtr (hra : m.obj? m.root = some oe) (hc : oc.canonical = oe.canonical)
+    (S0 : Stream V T) (D : Dirty) : (m.withRoot oc).resolvePtr S0 D = m.resolvePtr S0 D := by
+  funext q
+  unfold HMem.resolvePtr
+  simp only [HMem.withRoot_holdsCanonical hra hc, HMem.withRoot_canonicalOf hra hc, HMem.withRoot_tableOf,
+    HMem.withRoot_s]
+
+theorem HMem.withRoot_verOf (hra : m.obj? m.root = some oe) (hpos : oc.pos = oe.pos)
+    (hc : oc.canonical = oe.canonical) (S0 : Stream V T) (D : Dirty) (i : Nat) (x : NodeId) (o : HObj V) :
+    (m.withRoot oc).verOf sp S0 D i x o = m.verOf sp S0 D i x o := by
+  unfold HMem.verOf
+  simp only [HMem.withRoot_refOf hra hpos hc]
+
+/-- Writing a node that is not the root, or without a virtual root, on the memory
+with another root object: the same, and the root objects still related. -/
+theorem HMem.withRoot_writeNode {f : Time} (S0 : Stream V T) (D : Dirty) (i : Nat)
+    (hra : m.obj? m.root = some oe) (hr : RootRelH sp f oc oe)
+    (htnr : ∀ y b, m.canonicalOf y = some b → b = m.root → y = SIS.root) {x : NodeId}
+    (hx : x ≠ SIS.root ∨ sp.virt = false) :
+    ∃ oc' oe', RootRelH sp f oc' oe' ∧ oc'.hist = oc.hist ∧ oe'.hist = oe.hist ∧
+      (m.writeNode sp S0 D i x).1.obj? m.root = some oe' ∧ (m.writeNode sp S0 D i x).1.root = m.root ∧
+      (∀ y b, (m.writeNode sp S0 D i x).1.canonicalOf y = some b → b = m.root → y = SIS.root) ∧
+      (m.withRoot oc).writeNode sp S0 D i x =
+        ((m.writeNode sp S0 D i x).1.withRoot oc', (m.writeNode sp S0 D i x).2) := by
+  have hcan : ∀ z, (m.withRoot oc).canonicalOf z = m.canonicalOf z := HMem.withRoot_canonicalOf hra hr.canonical
+  cases hcx : m.canonicalOf x with
+  | none =>
+    have hcx' : (m.withRoot oc).canonicalOf x = none := by rw [hcan]; exact hcx
+    unfold HMem.writeNode
+    rw [hcx, hcx']
+    exact ⟨oc, oe, hr, rfl, rfl, hra, rfl, htnr, rfl⟩
+  | some h =>
+    have hcx' : (m.withRoot oc).canonicalOf x = some h := by rw [hcan]; exact hcx
+    by_cases hh : h = m.root
+    · subst hh
+      have hxr : x = SIS.root := htnr x m.root hcx rfl
+      have hv : sp.virt = false := by
+        rcases hx with hx | hv
+        · exact absurd hxr hx
+        · exact hv
+      obtain rfl := hr.nv hv
+      have hoc : (m.withRoot oc).obj? m.root = some oc := HMem.withRoot_obj?_root hra
+      rw [HMem.writeNode_shape sp S0 D i hcx' hoc, HMem.writeNode_shape sp S0 D i hcx hra]
+      simp only
+      refine ⟨{ oc with pos := some i, ptrs := oc.ptrs.map (m.resolvePtr S0 D) },
+        { oc with pos := some i, ptrs := oc.ptrs.map (m.resolvePtr S0 D) },
+        RootRelH.ofNV hv f _, rfl, rfl, HMem.obj?_setObj_self _ _ _, rfl, ?_, ?_⟩
+      · intro y b hcb hbr
+        rw [HMem.canonicalOf_setObj_can hra (by rfl)] at hcb
+        exact htnr y b hcb hbr
+      · rw [HMem.withRoot_resolvePtr hra rfl, HMem.withRoot_verOf hra rfl rfl,
+          HMem.withRoot_setObj_root _ { oc with pos := some i, ptrs := oc.ptrs.map (m.resolvePtr S0 D) }]
+    · have hoh' : (m.withRoot oc).obj? h = m.obj? h := HMem.withRoot_obj?_ne hh
+      cases hoh : m.obj? h with
+      | none =>
+        unfold HMem.writeNode
+        rw [hcx, hcx']
+        dsimp only
+        rw [hoh', hoh]
+        exact ⟨oc, oe, hr, rfl, rfl, hra, rfl, htnr, rfl⟩
+      | some o =>
+        rw [hoh] at hoh'
+        rw [HMem.writeNode_shape sp S0 D i hcx' hoh', HMem.writeNode_shape sp S0 D i hcx hoh]
+        simp only
+        refine ⟨oc, oe, hr, rfl, rfl, by rw [HMem.obj?_setObj_ne _ _ (Ne.symm hh)]; exact hra, rfl, ?_, ?_⟩
+        · intro y b hcb hbr
+          rw [HMem.canonicalOf_setObj_can hoh (by rfl)] at hcb
+          exact htnr y b hcb hbr
+        · rw [HMem.withRoot_resolvePtr hra hr.canonical, HMem.withRoot_verOf hra hr.pos hr.canonical,
+            HMem.withRoot_setObj_ne hh]
+
+/-- The physical writer's loop on the memory with another root object. -/
+theorem HMem.withRoot_writeNodes {f : Time} (S0 : Stream V T) (D : Dirty) (i : Nat) :
+    ∀ (xs : List NodeId) (m : HMem V) (L : List (Version V)) (oc oe : HObj V),
+      m.obj? m.root = some oe → RootRelH sp f oc oe →
+      (∀ y b, m.canonicalOf y = some b → b = m.root → y = SIS.root) →
+      (∀ x ∈ xs, x ≠ SIS.root ∨ sp.virt = false) →
+      ∃ oc' oe', RootRelH sp f oc' oe' ∧ oc'.hist = oc.hist ∧ oe'.hist = oe.hist ∧
+        (xs.foldl (hwnStep sp S0 D i) (m, L)).1.obj? m.root = some oe' ∧
+        (xs.foldl (hwnStep sp S0 D i) (m, L)).1.root = m.root ∧
+        xs.foldl (hwnStep sp S0 D i) (m.withRoot oc, L) =
+          ((xs.foldl (hwnStep sp S0 D i) (m, L)).1.withRoot oc', (xs.foldl (hwnStep sp S0 D i) (m, L)).2) := by
+  intro xs
+  induction xs with
+  | nil => intro m L oc oe hra hr _ _; exact ⟨oc, oe, hr, rfl, rfl, hra, rfl, rfl⟩
+  | cons x xs ih =>
+    intro m L oc oe hra hr htnr hxs
+    simp only [List.foldl_cons]
+    obtain ⟨oc1, oe1, hr1, hh1, hh1', ho1, hrt1, htnr1, he1⟩ :=
+      HMem.withRoot_writeNode S0 D i hra hr htnr (hxs x List.mem_cons_self)
+    have hstep : hwnStep sp S0 D i (m.withRoot oc, L) x =
+        ((hwnStep sp S0 D i (m, L) x).1.withRoot oc1, (hwnStep sp S0 D i (m, L) x).2) ∧
+        (hwnStep sp S0 D i (m, L) x).1 = (m.writeNode sp S0 D i x).1 := by
+      unfold hwnStep
+      dsimp only
+      rw [he1]
+      cases hw : m.writeNode sp S0 D i x with
+      | mk m' ov => cases ov <;> exact ⟨rfl, rfl⟩
+    rw [hstep.1]
+    have hra1 : (hwnStep sp S0 D i (m, L) x).1.obj? (hwnStep sp S0 D i (m, L) x).1.root = some oe1 := by
+      rw [hstep.2, hrt1]; exact ho1
+    have htnr1' : ∀ y b, (hwnStep sp S0 D i (m, L) x).1.canonicalOf y = some b →
+        b = (hwnStep sp S0 D i (m, L) x).1.root → y = SIS.root := by
+      rw [hstep.2, hrt1]; exact htnr1
+    obtain ⟨oc2, oe2, hr2, hh2, hh2', ho2, hrt2, he2⟩ :=
+      ih _ (hwnStep sp S0 D i (m, L) x).2 oc1 oe1 hra1 hr1 htnr1' (fun z hz => hxs z (List.mem_cons_of_mem _ hz))
+    have hrt1' : (hwnStep sp S0 D i (m, L) x).1.root = m.root := by rw [hstep.2, hrt1]
+    rw [hrt1'] at ho2 hrt2
+    exact ⟨oc2, oe2, hr2, by rw [hh2, hh1], by rw [hh2', hh1'], ho2, hrt2, he2⟩
+
+theorem HMem.writeNode_s' (S0 : Stream V T) (D : Dirty) (i : Nat) (m : HMem V) (x : NodeId) :
+    (m.writeNode sp S0 D i x).1.s = m.s := by
+  unfold HMem.writeNode
+  cases m.canonicalOf x with
+  | none => rfl
+  | some h =>
+    dsimp only
+    cases m.obj? h with
+    | none => rfl
+    | some o => rfl
+
+theorem HMem.writeNode_cutS0 {c : Nat} {S0 : Stream V T} {D : Dirty} {i : Nat} (hc : c ≤ m.s) (x : NodeId) :
+    m.writeNode sp (cutStream c S0) D i x = m.writeNode sp S0 D i x := by
+  unfold HMem.writeNode HMem.refOf HMem.ptrRef
+  simp only [ruleRRef_cut hc]
+
+theorem HMem.writeNodes_cutS0 {c : Nat} {S0 : Stream V T} {D : Dirty} {i : Nat} :
+    ∀ (xs : List NodeId) (m : HMem V) (L : List (Version V)), c ≤ m.s →
+      xs.foldl (hwnStep sp (cutStream c S0) D i) (m, L) = xs.foldl (hwnStep sp S0 D i) (m, L) := by
+  intro xs
+  induction xs with
+  | nil => intro m L _; rfl
+  | cons x xs ih =>
+    intro m L hc
+    simp only [List.foldl_cons]
+    have h1 : hwnStep sp (cutStream c S0) D i (m, L) x = hwnStep sp S0 D i (m, L) x := by
+      unfold hwnStep; rw [HMem.writeNode_cutS0 hc]
+    rw [h1]
+    have hs : (hwnStep sp S0 D i (m, L) x).1.s = m.s := by
+      unfold hwnStep
+      cases hw : m.writeNode sp S0 D i x with
+      | mk m' ov =>
+        have := HMem.writeNode_s' (sp := sp) S0 D i m x
+        rw [hw] at this
+        cases ov <;> exact this
+    generalize hwnStep sp S0 D i (m, L) x = acc at hs
+    obtain ⟨m', L'⟩ := acc
+    exact ih m' L' (by simp only at hs; rw [hs]; exact hc)
+
+end WriteSim
+
 end SIS
