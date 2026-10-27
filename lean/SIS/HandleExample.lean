@@ -337,6 +337,72 @@ def runCounts [DecidableEq T] (sp : Spec Val T) (al : Algo Val T) (ts : List (T 
 #guard runCounts spec5 al5 (randomTs5 1 40) 2 1 == (0, 0, 20, 27)
 #guard checkHandles spec5 al5 (randomTs5 1 40) 2 1 == (40, 0)
 
+/-! ## Rule 4 by position (bergdb 005-58), by running
+
+`rule4Pos_handles` (SIS/Proof/HandleLinkPos.lean) proves that rule 4 by
+position (`HMem.linkDPos`) links what rule 4 by node id (`HMem.linkD`) links, at
+the startup from the stream after any transaction of a run that meets the
+assumptions. Here, on such runs, the pointers that rule 4 links, counted by the
+record they name (`Rule4_positions`) and by how rule 4 by position finds them. -/
+
+/-- At the startup from S, the pointers of the pinned objects that hold no
+handle and are for a node with a canonical object, which rule 4 links: [all;
+those that name a vpos; a version of the startup section; the version before
+the node's first version there, and not the former; the version of the node's
+canonical object, and neither of the former; none of these (none, by
+`Rule4_positions`); those that rule 4 by position finds by `posToId`; by
+`byPos`; by node id, as Java reads the header for a top node's pointer; and not
+at all (none, by `Rule4Pos_handles`)]. -/
+def rule4Counts (sp : Spec Val T) (S : SIS.Stream Val T) : List Nat :=
+  let s := lastSp S
+  let m := ((lazyStartup sp S).sectionPos S).toH
+  let D := (startup sp S).D
+  let add := fun (l : List Nat) (i : Nat) => l.set i (l.getD i 0 + 1)
+  m.objs.foldl (fun acc p =>
+    if !(p.2.canonical && (inD D p.2.node || p.1 == m.root)) then acc else
+    p.2.ptrs.foldl (fun acc q =>
+      match q.2.handle, m.canonicalOf q.1 with
+      | none, some b =>
+        let acc := add acc 0
+        match q.2.ref with
+        | none => add acc 1
+        | some r =>
+          let i := if decide (s ≤ r) && (S.versionAt r q.1).isSome then 2
+            else if (newest S s q.1).isSome && (Stream.lv (S.take s) q.1).map (·.recNo) == some r then 3
+            else if (m.obj? b).bind (·.pos) == some r then 4 else 5
+          let j := if inPosToId sp S m.s q.1 r then 6 else if (m.byPos q.1 r).isSome then 7
+            else if !isKeyLevel sp p.2.isData p.2.level then 8 else 9
+          add (add acc i) j
+      | _, _ => acc) acc)
+    (List.replicate 10 0)
+
+/-- `rule4Counts` summed over the startups from R(0) and from the stream after
+each transaction of ts. -/
+def runRule4Counts [DecidableEq T] (sp : Spec Val T) (al : Algo Val T) (ts : List T) : List Nat :=
+  (List.range (ts.length + 1)).foldl (fun acc k =>
+    (acc.zip (rule4Counts sp (run sp al (ts.take k)).S)).map (fun (a, b) => a + b))
+    (List.replicate 10 0)
+
+-- Two runs that meet the assumptions, of examples 5 and 3 (41 startups each).
+-- Every pointer that rule 4 links names its node's canonical object's version,
+-- which `byPos` finds. None names a version of the section or the version
+-- before the node's first version there, and no top node's pointer needs its
+-- header: the model's startup raises the slots of the objects it makes from the
+-- section's versions to the newest version there by Rule R (`canonOfVersion`)
+-- and links them (`Mem.linkCanonical`), which Java can do only where `posToId`
+-- gives the node (bergdb 005-58, Outcome). The same in 20 runs of 1,060
+-- startups (example 5, seeds 1 to 12, 60 transactions; example 3, seeds 1 to 8,
+-- 40 transactions: 434 pointers); in example 2 (a written root) rule 4 found
+-- nothing to link in six runs.
+#guard runOKB spec5 al5 ((randomTs5 3 40).map (·.1)) &&
+  physRunOKB spec5 al5 ((randomTs5 3 40).map (·.1)) &&
+  evictRunOKB spec5 al5 ((randomTs5 3 40).map (·.1))
+#guard runRule4Counts spec5 al5 ((randomTs5 3 40).map (·.1)) == [32, 0, 0, 0, 32, 0, 0, 32, 0, 0]
+#guard runOKB spec3 al3 ((randomTs3 4 40).map (·.1)) &&
+  physRunOKB spec3 al3 ((randomTs3 4 40).map (·.1)) &&
+  evictRunOKB spec3 al3 ((randomTs3 4 40).map (·.1))
+#guard runRule4Counts spec3 al3 ((randomTs3 4 40).map (·.1)) == [33, 0, 0, 0, 33, 0, 0, 33, 0, 0]
+
 /-! ## Three small examples
 
 Node 5 has a version in R(0) and a newer one in R(2): `vY0`, `vY2` and the

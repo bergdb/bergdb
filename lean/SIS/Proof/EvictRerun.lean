@@ -96,6 +96,33 @@ theorem fresh_clean (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp) (h
   intro hzn
   rw [href, htake, lv_take (fun r' hr' => (newest_eq_none_iff _ _ z).mp hzn r' (by omega))]
 
+/-- As `fresh_clean`, without Rule R: such a node's latest version names, for
+each pointee, its latest version in the stream after T(j) (bergdb 005-58). -/
+theorem clean_ref_lvAt (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true)
+    (hev : EvictRunOK sp al ts) {j k : Nat} (hjk : j ≤ k) (hk : k ≤ ts.length)
+    (hsj : lastSp (st sp al ts k).S ≤ j) {x : NodeId}
+    (hnew : newest (st sp al ts k).S (lastSp (st sp al ts k).S) x = none)
+    (hr : reachable sp (st sp al ts j).P j x = true) (hxD : inD (st sp al ts j).D x = false)
+    (hxw : written sp x = true) {v : Version V} (hv : (st sp al ts k).S.lv x = some v) :
+    ∀ z ∈ pointees sp v.hist, v.ref? z = ((st sp al ts j).S.lv z).map (·.recNo) := by
+  have hst : AlgOK sp al := algOK_of sp al (Or.inl hj)
+  have hinvj := inv_st sp al ts hok hst j (by omega)
+  have hlog := evLogic_st sp al ts hok hj hmk hev j (by omega)
+  have htake := st_S_take hok hst hjk hk
+  have hnone := (newest_eq_none_iff (st sp al ts k).S (lastSp (st sp al ts k).S) x).mp hnew
+  have hvj : (st sp al ts j).S.lv x = some v := by
+    rw [htake, lv_take (fun r' hr' => hnone r' (by omega))]; exact hv
+  obtain ⟨n, hn⟩ := Option.isSome_iff_exists.mp (Reach.isSome ((reachable_iff _ _ _ _).mp hr))
+  obtain ⟨v', hv', hvh, -, -⟩ := hinvj.lv_whole hn hxw hxD hr
+  rw [hvj, Option.some.injEq] at hv'
+  subst hv'
+  intro z hz
+  have hz' : z ∈ pointees sp n.hist := by rw [← hvh]; exact hz
+  obtain ⟨-, v'', hv'', href⟩ := hlog.clean x n hxw hr hn hxD z hz'
+  rw [hvj, Option.some.injEq] at hv''
+  subst hv''
+  exact href
+
 /-- A node whose D entry predates the section has a version in it: so a node
 without a version in the section, current after T(j) for j in it, is not in D
 then, but by a got-dirty entry of the section. -/
@@ -132,12 +159,88 @@ theorem ruleRRef_idem (S : Stream V T) (s : Nat) (y : NodeId) (r : Option Nat) :
       · simp [h]
       · simp only [h, ↓reduceIte]
 
+/-! ## Near the section (bergdb 005-58) -/
+
+/-- No version of y is in a record strictly between r and s: a reference to
+record r, for pointee y, names a version of y in R(s), ..., or y's latest
+version before R(s) (bergdb 005-58). -/
+def NearSec (S : Stream V T) (s : Nat) (y : NodeId) (r : Nat) : Prop :=
+  ∀ r', r < r' → r' < s → S.versionAt r' y = none
+
+section Near
+
+variable {sp : Spec V T} {db : DB V T} {k : Nat}
+
+/-- A reference to y's latest version is near every section. -/
+theorem Inv.nearSec_of_lv (hinv : Inv sp db k) {y : NodeId} {r : Nat}
+    (h : (db.S.lv y).map (·.recNo) = some r) (s : Nat) : NearSec db.S s y r := by
+  intro r' hr' _
+  cases hl : db.S.lv y with
+  | none => rw [hl] at h; cases h
+  | some u =>
+    rw [hl, Option.map_some, Option.some.injEq] at h
+    obtain ⟨r0, h0, hlast⟩ := (lv_eq_some_iff db.S y u).mp hl
+    obtain ⟨-, hrec, -⟩ := hinv.version_node h0
+    exact hlast r' (by omega)
+
+/-- A reference of a version in record i names its pointee's latest version at
+that record (the record rule), so it is near every section that starts at or
+before i. -/
+theorem Inv.nearSec_of_ref (hinv : Inv sp db k) {i : Nat} {x : NodeId} {v : Version V}
+    (hv : db.S.versionAt i x = some v) {s : Nat} (hsi : s ≤ i) {y : NodeId} {r1 : Nat}
+    (h1 : v.ref? y = some r1) : NearSec db.S s y r1 := by
+  intro r' hr1 hrs
+  obtain ⟨R, hR, hvR, -⟩ := versionAt_spec hv
+  have hi : i < db.S.length := (List.getElem?_eq_some_iff.mp hR).1
+  obtain ⟨pre, hpre, href⟩ := hinv.ref i R hR v hvR
+  rw [href y] at h1
+  split at h1
+  · cases hl : (Stream.building (db.S.take i) pre).lv y with
+    | none => rw [hl] at h1; cases h1
+    | some u =>
+      rw [hl] at h1
+      simp only [Option.map_some, Option.some.injEq] at h1
+      obtain ⟨r0, hr0, hlast⟩ := (lv_eq_some_iff _ y u).mp hl
+      obtain ⟨-, hur, -⟩ := hinv.version_node ((sext_building_take hR hpre).versionAt hr0)
+      have h2 := hlast r' (by omega)
+      rw [versionAt_building_lt (by simp only [List.length_take]; omega), versionAt_take] at h2
+      simpa [show r' < i by omega] using h2
+  · cases h1
+
+/-- A reference of a version names a pointee of its history. -/
+theorem Inv.ref_mem_pointees (hinv : Inv sp db k) {i : Nat} {x : NodeId} {v : Version V}
+    (hv : db.S.versionAt i x = some v) {y : NodeId} {r1 : Nat} (h1 : v.ref? y = some r1) :
+    y ∈ pointees sp v.hist := by
+  obtain ⟨R, hR, hvR, -⟩ := versionAt_spec hv
+  obtain ⟨pre, -, href⟩ := hinv.ref i R hR v hvR
+  rw [href y] at h1
+  split at h1
+  · assumption
+  · cases h1
+
+/-- A reference to y's latest version in R(0), ..., R(K) is near a section that
+starts at or before K. -/
+theorem Inv.nearSec_of_lvAt (hinv : Inv sp db k) {K s : Nat} (hsK : s ≤ K) {y : NodeId}
+    {u : Version V} (hl : Stream.lv (db.S.take (K + 1)) y = some u) : NearSec db.S s y u.recNo := by
+  intro r' hr' hrs
+  obtain ⟨r0, h0, hlast⟩ := (lv_eq_some_iff _ y u).mp hl
+  rw [versionAt_take] at h0
+  split at h0
+  · obtain ⟨-, hrec, -⟩ := hinv.version_node h0
+    have h2 := hlast r' (by omega)
+    rw [versionAt_take] at h2
+    simpa [show r' < K + 1 by omega] using h2
+  · cases h0
+
+end Near
+
 /-- The invariant of the startup's memory, against the stream S after T(k), all
 through the rerun: every object is canonical; every stream slot names, after
 Rule R of S's section, its pointee's latest version; every memory slot names an
 object of its pointee; an object of a node without a version in the section is
-at the node's latest version; every object has a slot for each pointee; and
-every stream slot names a version. -/
+at the node's latest version; every object has a slot for each pointee; every
+stream slot names a version, and no version of its pointee lies between that one
+and the section; and every slot is for a pointee (the last two, bergdb 005-58). -/
 structure RInv (sp : Spec V T) (S : Stream V T) (m : Mem V) : Prop where
   canon : ∀ h o, m.obj? h = some o → o.canonical = true
   fresh : ∀ h o, m.obj? h = some o → ∀ y r, o.slot? y = some (Slot.stream r) →
@@ -151,6 +254,12 @@ structure RInv (sp : Spec V T) (S : Stream V T) (m : Mem V) : Prop where
   /-- Every stream slot's reference names a version of its pointee. -/
   ver : ∀ h o, m.obj? h = some o → ∀ y r, o.slot? y = some (Slot.stream (some r)) →
     ∃ u, S.versionAt r y = some u
+  /-- No version of a stream slot's pointee is in a record between the slot's and
+  the section (bergdb 005-58). -/
+  near : ∀ h o, m.obj? h = some o → ∀ y r, o.slot? y = some (Slot.stream (some r)) →
+    NearSec S (lastSp S) y r
+  /-- Every slot is for a pointee of its object's history (bergdb 005-58). -/
+  keys : ∀ h o, m.obj? h = some o → ∀ y, (o.slot? y).isSome → y ∈ pointees sp o.hist
 
 /-- The stream slot of the object startup makes from version w names, after Rule
 R, what w's reference does. -/
@@ -275,8 +384,25 @@ theorem rinv_lazyBase (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp) 
       exact ⟨w, hinv.lv_at hlv⟩
     · subst hoe
       exact hcv u (fun r' y' h' => hinv.ref_versionAt (hinv.lv_at hu) h') hsl
+  -- The stream slots of the objects before the memory slots are Rule R's of a
+  -- reference, so Rule R leaves them (bergdb 005-58).
+  have hfix2 : ∀ h o2, (lazyRoot sp (st sp al ts k).S (lazySec sp (st sp al ts k).S)).obj? h = some o2 →
+      ∀ y r, o2.slot? y = some (Slot.stream r) →
+      ruleRRef (st sp al ts k).S (lastSp (st sp al ts k).S) y r = r := by
+    intro h o2 ho2 y r hsl
+    obtain ⟨-, -, hsrc⟩ := hb.obj h o2 ho2
+    have hcv : ∀ w : Version V, (canonOfVersion sp (st sp al ts k).S (lastSp (st sp al ts k).S) w).slot? y =
+        some (Slot.stream r) → ruleRRef (st sp al ts k).S (lastSp (st sp al ts k).S) y r = r := by
+      intro w hs
+      have := canonOfVersion_slot_eq hs
+      simp only [Slot.stream.injEq] at this
+      rw [this, ruleRRef_idem]
+    rcases hsrc with ⟨w, -, -, -, hoe, -⟩ | ⟨-, hoe⟩ | ⟨-, u, -, -, -, hoe⟩
+    · subst hoe; exact hcv w hsl
+    · subst hoe; exact hcv _ hsl
+    · subst hoe; exact hcv u hsl
   refine ⟨fun h o ho => ?_, fun h o ho y r hsl => ?_, fun h o ho y h' hsl => ?_, fun h o ho hn => ?_,
-    fun h o ho y hy => ?_, fun h o ho y r hsl => ?_⟩
+    fun h o ho y hy => ?_, fun h o ho y r hsl => ?_, fun h o ho y r hsl => ?_, fun h o ho y hy => ?_⟩
   · unfold lazyBase at ho
     rw [linkCanonical_obj?] at ho
     obtain ⟨o2, ho2, rfl⟩ := Option.map_eq_some_iff.mp ho
@@ -377,6 +503,57 @@ theorem rinv_lazyBase (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp) 
       subst hq
       exact hver2 h o2 ho2 y r hsl2
     · rw [he] at hq; cases hq
+  · -- a stream slot names its pointee's latest version, so nothing lies between
+    unfold lazyBase at ho
+    rw [linkCanonical_obj?] at ho
+    obtain ⟨o2, ho2, rfl⟩ := Option.map_eq_some_iff.mp ho
+    obtain ⟨-, hc2, -⟩ := hb.obj h o2 ho2
+    rw [linkObj_slot? _ hc2] at hsl
+    obtain ⟨sl2, hsl2, hq⟩ := Option.map_eq_some_iff.mp hsl
+    rcases linkQ_cases (lazyRoot sp (st sp al ts k).S (lazySec sp (st sp al ts k).S)) y sl2 with
+      he | ⟨h0, o0, -, -, -, he⟩
+    · rw [he] at hq
+      subst hq
+      have hfr := hfresh2 h o2 ho2 y (some r) hsl2
+      rw [hfix2 h o2 ho2 y (some r) hsl2] at hfr
+      exact hinv.nearSec_of_lv hfr.symm _
+    · rw [he] at hq; cases hq
+  · -- every slot is for a pointee of the history read
+    unfold lazyBase at ho
+    rw [linkCanonical_obj?] at ho
+    obtain ⟨o2, ho2, rfl⟩ := Option.map_eq_some_iff.mp ho
+    obtain ⟨-, hc2, hsrc⟩ := hb.obj h o2 ho2
+    rw [linkObj_slot? _ hc2, Option.isSome_map] at hy
+    rw [(linkObj_fields _ o2).2.2.2.1]
+    rcases hsrc with ⟨w, -, -, -, hoe, -⟩ | ⟨-, hoe⟩ | ⟨-, u, -, -, -, hoe⟩
+    · subst hoe
+      rw [(canonOfVersion_fields sp _ _ w).2.2.2.1]
+      rw [canonOfVersion_slot?] at hy
+      by_cases hmem : y ∈ pointees sp (cutHist w (if isKeyLevel sp w.isData w.level then
+          some (lastSp (st sp al ts k).S) else none))
+      · exact hmem
+      · simp [hmem] at hy
+    · subst hoe
+      have hy' : ((canonOfVersion sp (st sp al ts k).S (lastSp (st sp al ts k).S)
+          (rootVersion sp (lastSp (st sp al ts k).S)
+            (topsRead sp (st sp al ts k).S (lastSp (st sp al ts k).S) true))).slot? y).isSome := hy
+      rw [canonOfVersion_slot?] at hy'
+      generalize hrv : rootVersion sp (lastSp (st sp al ts k).S)
+        (topsRead sp (st sp al ts k).S (lastSp (st sp al ts k).S) true) = rv at hy'
+      show y ∈ pointees sp (rootVersion sp (lastSp (st sp al ts k).S)
+        (topsRead sp (st sp al ts k).S (lastSp (st sp al ts k).S) true)).hist
+      rw [hrv]
+      by_cases hmem : y ∈ pointees sp (cutHist rv (if isKeyLevel sp rv.isData rv.level then
+          some (lastSp (st sp al ts k).S) else none))
+      · exact pointees_cutHist hmem
+      · simp [hmem] at hy'
+    · subst hoe
+      rw [(canonOfVersion_fields sp _ _ u).2.2.2.1]
+      rw [canonOfVersion_slot?] at hy
+      by_cases hmem : y ∈ pointees sp (cutHist u (if isKeyLevel sp u.isData u.level then
+          some (lastSp (st sp al ts k).S) else none))
+      · exact hmem
+      · simp [hmem] at hy
 
 end Base
 
@@ -553,8 +730,40 @@ theorem RInv.reachOnPath (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest s
                         obtain ⟨hsd, R, hR, hxR, hdK⟩ := notD_of_newest_none hok hj (Nat.le_of_lt hKk) hk hsK hnw hd'
                         exact hm.coverGd d R x hsd hdK hR hxR hcx
                     exact (fresh_clean hok hj hmk hev (Nat.le_of_lt hKk) hk hsK hnw hrx hxD hxw hlv).2 z hz
+                -- No version of a pointee lies between the new object's references and the
+                -- section (bergdb 005-58): a version of the section names the latest versions
+                -- at its record; x, current and clean at K, names the latest versions at K.
+                have hnearw : ∀ z r', w.ref? z = some r' →
+                    NearSec (st sp al ts k).S (lastSp (st sp al ts k).S) z r' := by
+                  intro z r' hz
+                  cases hnw : newest (st sp al ts k).S (lastSp (st sp al ts k).S) x with
+                  | some u =>
+                    obtain ⟨r0, hr0, hu0⟩ := newest_some hnw
+                    have hu := newest_lv hnw
+                    rw [hlv, Option.some.injEq] at hu
+                    subst hu
+                    exact hinvk.nearSec_of_ref hu0 hr0 hz
+                  | none =>
+                    have hxD : inD (st sp al ts K).D x = false := by
+                      cases hd : inD (st sp al ts K).D x with
+                      | false => rfl
+                      | true =>
+                        exfalso
+                        obtain ⟨d, hd'⟩ := (inD_iff _ _).mp hd
+                        obtain ⟨hsd, R, hR, hxR, hdK⟩ := notD_of_newest_none hok hj (Nat.le_of_lt hKk) hk hsK hnw hd'
+                        exact hm.coverGd d R x hsd hdK hR hxR hcx
+                    have href := clean_ref_lvAt hok hj hmk hev (Nat.le_of_lt hKk) hk hsK hnw hrx hxD hxw hlv z
+                      (hinvk.ref_mem_pointees hw hz)
+                    rw [hz, st_S_take hok hst (Nat.le_of_lt hKk) hk] at href
+                    cases hl : Stream.lv ((st sp al ts k).S.take (K + 1)) z with
+                    | none => rw [hl] at href; cases href
+                    | some u =>
+                      rw [hl, Option.map_some, Option.some.injEq] at href
+                      rw [href]
+                      exact hinvk.nearSec_of_lvAt hsK hl
                 refine ⟨fun h' o' ho' => ?_, fun h' o' ho' z r' hz => ?_, fun h' o' ho' z h'' hz => ?_,
-                  fun h' o' ho' hn => ?_, fun h' o' ho' z hz => ?_, fun h' o' ho' z r' hz => ?_⟩
+                  fun h' o' ho' hn => ?_, fun h' o' ho' z hz => ?_, fun h' o' ho' z r' hz => ?_,
+                  fun h' o' ho' z r' hz => ?_, fun h' o' ho' z hz => ?_⟩
                 · rw [hobj] at ho'
                   split at ho'
                   · simp only [Option.some.injEq] at ho'; subst ho'; exact hco
@@ -646,6 +855,39 @@ theorem RInv.reachOnPath (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest s
                       simp only [Slot.stream.injEq] at hze
                       exact hinvk.ref_versionAt hw hze.symm
                     · exact hr.ver h' o' ho' z r' hz
+                · -- no version between a stream slot's and the section
+                  rw [hobj] at ho'
+                  split at ho'
+                  · simp only [Option.some.injEq] at ho'; subst ho'
+                    rw [slot?_setSlot_of hsl] at hz
+                    split at hz
+                    · cases hz
+                    · exact hr.near hp op hop z r' hz
+                  · split at ho'
+                    · simp only [Option.some.injEq] at ho'; subst ho'
+                      obtain ⟨-, hze⟩ := hslot1 z _ hz
+                      simp only [Slot.stream.injEq] at hze
+                      exact hnearw z r' hze.symm
+                    · exact hr.near h' o' ho' z r' hz
+                · -- every slot is for a pointee
+                  rw [hobj] at ho'
+                  split at ho'
+                  · simp only [Option.some.injEq] at ho'; subst ho'
+                    rw [slot?_setSlot_of hsl] at hz
+                    show z ∈ pointees sp op.hist
+                    split at hz
+                    · rename_i hzx; subst hzx; exact hr.keys hp op hop _ (by rw [hsl]; rfl)
+                    · exact hr.keys hp op hop z hz
+                  · split at ho'
+                    · simp only [Option.some.injEq] at ho'; subst ho'
+                      show z ∈ pointees sp (Obj.ofVersion sp w cut).hist
+                      have hz' : ((Obj.ofVersion sp w cut).slot? z).isSome := hz
+                      rw [Obj.ofVersion_slot?] at hz'
+                      rw [f4]
+                      split at hz'
+                      · assumption
+                      · cases hz'
+                    · exact hr.keys h' o' ho' z hz
 
 end Walk
 
@@ -748,7 +990,7 @@ theorem RInv.applyChange {m : Mem V} (hr : RInv sp S m) (hfr : ∀ h, m.next ≤
               exact hsrc q (List.mem_of_find?_eq_some hfd) z _ hz
     · exact hsrc (h, o1) (mem_objs_of_obj? ho1) z _ hz
   refine ⟨fun h o3 ho3 => ?_, fun h o3 ho3 z r hz => ?_, fun h o3 ho3 z h' hz => ?_, fun h o3 ho3 hn => ?_,
-    fun h o3 ho3 z hz => ?_, fun h o3 ho3 z r hz => ?_⟩
+    fun h o3 ho3 z hz => ?_, fun h o3 ho3 z r hz => ?_, fun h o3 ho3 z r hz => ?_, fun h o3 ho3 z hz => ?_⟩
   · obtain ⟨o1, L, ho1, rfl⟩ := hobj h o3 ho3
     rw [(updAll_core sp P j _ L o1).2.2.2.2.1]
     rcases hcls h o1 ho1 with ⟨-, h2⟩ | ⟨-, nn, -, hon, -⟩
@@ -873,6 +1115,20 @@ theorem RInv.applyChange {m : Mem V} (hr : RInv sp S m) (hfr : ∀ h, m.next ≤
         exact hnot (List.mem_flatMap.mpr ⟨a, ha, hze⟩)
   · obtain ⟨h2, o2, ho2, hs2⟩ := hstr h o3 ho3 z (some r) hz
     exact hr.ver h2 o2 ho2 z r hs2
+  · obtain ⟨h2, o2, ho2, hs2⟩ := hstr h o3 ho3 z (some r) hz
+    exact hr.near h2 o2 ho2 z r hs2
+  · -- a slot is an old one, for a pointee of the old history, or one for a new entry
+    obtain ⟨o1, L, ho1, rfl⟩ := hobj h o3 ho3
+    rw [(updAll_core sp P j _ L o1).2.2.2.1]
+    rw [updAll_slot] at hz
+    split at hz
+    · rename_i hmem
+      obtain ⟨a, ha, hza⟩ := List.mem_flatMap.mp hmem
+      exact (mem_pointees sp _ z).mpr ⟨⟨j, a.2⟩, List.mem_append_right _ (List.mem_map.mpr ⟨a, ha, rfl⟩), hza⟩
+    · rcases hcls h o1 ho1 with ⟨-, h2⟩ | ⟨-, nn, -, hon, -⟩
+      · obtain ⟨e, he, hze⟩ := (mem_pointees sp _ z).mp (hr.keys h o1 h2 z hz)
+        exact (mem_pointees sp _ z).mpr ⟨e, List.mem_append_left _ he, hze⟩
+      · rw [hon] at hz; simp [newObj, Obj.slot?] at hz
 
 end Apply
 

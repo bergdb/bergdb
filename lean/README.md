@@ -46,6 +46,16 @@ reference (SIS/Handle.lean's header, choices 1 and 7). Java's handle state
 is checked against the invariants of SIS/HandleTheorems.lean by the trace
 checker's C-H (step 4c, 2026-10-26).
 
+Since bergdb 005-58 (2026-10-27) the model also has Java's rule 4 by position
+(bergdb 005-57): `HMem.linkDPos` finds the node that a pointer of D names from
+the startup section's `posToId` and the canonical objects' positions, without
+reading the stream; `handleStartupPos` and `runHandlesPos` are the startup and
+the run with it. Proved: a pointer that rule 4 links names a version of the
+section, the version before its node's first version there, or its node's
+canonical object's (`rule4_positions`), so rule 4 by position links what rule 4
+by node id links (`rule4Pos_handles`), and the runs are the same
+(`runPos_handles`); SIS/Proof/HandleLinkPos.lean.
+
 
 Build and run
 =============
@@ -103,11 +113,15 @@ their proofs are checked the same way, each printing
 `[propext, Classical.choice, Quot.sound]`:
 
     import SIS.Proof.HandlePin
+    import SIS.Proof.HandleLinkPos
     #print axioms SIS.tc_handles
     #print axioms SIS.tr_handles
     #print axioms SIS.t2_handles
     #print axioms SIS.tr_handles_restarts
     #print axioms SIS.tp_handles
+    #print axioms SIS.rule4_positions
+    #print axioms SIS.rule4Pos_handles
+    #print axioms SIS.runPos_handles
 
 The equalities of the checker's fast paths (Check/Fast.lean,
 Check/R4.lean) are checked the same way:
@@ -138,8 +152,8 @@ its section in sis-model.md.
 | SIS/Theorems.lean | T1 (`T1_recovery`, `T1_crash`, `T1_nodes`), T2 (`T2_restart`), T13 (`T13_markExact`) | 9 |
 | SIS/Phys.lean | The physical layer, what Java holds in memory (bergdb item 001, WPs L1 and L3): objects (`Obj`), their slots (`Slot`), the memory with the node table (`Mem`); Java's first touch (`Mem.follow`: Rule R, the table, the version read, cut back in the section); reads (`Mem.read`); the lazy startup (`lazyStartup`); a version cut back to a time (`Version.cutTo`); the operations after startup (`Op`, `Mem.step`, admissible: `OpsOK`); the assumptions of the physical layer (`PhysStep`, `PhysRunOK`); the writer after a lazy startup (WP L4: its view through the physical layer, `Mem.view`; its transaction, `lazyTrans`, with the record of `stepWith`, `step` with its change given) and a run with lazy restarts (`runLazy`); the writer's paths reach the touched nodes too (`pathOf`, WP R3) | — (011-11, 13) |
 | SIS/Evict.lean | The physical layer, part 2, with eviction (bergdb item 001, WP E2; 001-08, section 5): the pinned objects (`Mem.pinned`), unswizzling (`Mem.unswizzle`) and release (`Mem.release`); the Level 4 loader (`Mem.follow4`: the canonical object, or exactly the version a slot names after Rule R) and reads through it (`Mem.read4`); the writer's path (`Mem.reachOnPath4`) and the change (`Mem.applyChange4`, `Mem.newSlot4`); startup with rule 4 (`evictStartup`, `Mem.linkD`); the physical writer (`Mem.refOf`, `Mem.writeNode`) and its transaction (`evictTrans`); cache schedules (`CacheOp`) and runs (`runEvict`); the assumptions of stage 2 (`EvictStep`: TREE, `treeAt`, and A6', `adoptAt`; A-COPY, `CopyStep`; `EvictRunOK`) | — (001-08, 5) |
-| SIS/Handle.lean | The physical layer with handles (bergdb item 009, phase 2, 2a; aligned with Java's step 3a; ../items/009-handles/02-implementation-plan.md, section 4): objects by address (`HObj`), pointers with a reference and a handle (`HPtr`), handles (`Handle`: node, object, written position, dead), the table from node to live handle (`HMem`); following a pointer (`HMem.followR`: the fast path's test, else the reference after Rule R raised to the held handle's written position and written back, `HMem.setRef`, the live handle, `HMem.resolve`, and the load, `HMem.load`; `HMem.follow`, with the writer's `HMem.promote`); reads (`HMem.read`); the writer's walk and change (`HMem.reachOnPath`, `HMem.newPtr`, `HMem.applyChange`); the record rule (`HMem.ptrRef`, `HMem.refOf`) and the physical writer (`HMem.writeNode`, with `resolvePointers`; `handleTrans`); eviction (`HMem.evictable`, `HMem.evict`); startup with rule 4 by handles (`handleStartup`, `Mem.toH`, `HMem.linkD`); reads and evictions between transactions (`HCacheOp`) and runs (`runHandles`). The file's header lists the choices where the plan is vague | — (../items/009-handles/02-implementation-plan.md, 4) |
-| SIS/HandleTheorems.lean | The statements over handles (bergdb item 009, 2c): the invariants (`HTableOK`, `HCanOK`, `HSnapOK`, `HSlotOK` for the record rule, `HRuleROK`, `HLiveWrittenOK` and `HFastOK` for the fast path's test, `HWrittenOK`); T-CACHE (`TC_handles`, proved: `tc_handles`), T2-C (`T2_handles`, with restarts), T-READ (`TR_handles`; with restarts, `TR_handles_restarts`), T-PIN (`TP_handles`); all proved in SIS/Proof/ (`tc_handles`, `t2_handles`, `tr_handles`, `tr_handles_restarts`, `tp_handles`) | — (../items/009-handles/02-implementation-plan.md, 5, phase 2) |
+| SIS/Handle.lean | The physical layer with handles (bergdb item 009, phase 2, 2a; aligned with Java's step 3a; ../items/009-handles/02-implementation-plan.md, section 4): objects by address (`HObj`), pointers with a reference and a handle (`HPtr`), handles (`Handle`: node, object, written position, dead), the table from node to live handle (`HMem`); following a pointer (`HMem.followR`: the fast path's test, else the reference after Rule R raised to the held handle's written position and written back, `HMem.setRef`, the live handle, `HMem.resolve`, and the load, `HMem.load`; `HMem.follow`, with the writer's `HMem.promote`); reads (`HMem.read`); the writer's walk and change (`HMem.reachOnPath`, `HMem.newPtr`, `HMem.applyChange`); the record rule (`HMem.ptrRef`, `HMem.refOf`) and the physical writer (`HMem.writeNode`, with `resolvePointers`; `handleTrans`); eviction (`HMem.evictable`, `HMem.evict`); startup with rule 4 by handles (`handleStartup`, `Mem.toH`, `HMem.linkD`); rule 4 by position, Java's since bergdb 005-57 (`inPosToId` for Java's `posToId`, `HMem.byPos`, `HMem.linkDPos`, `handleStartupPos`); reads and evictions between transactions (`HCacheOp`) and runs (`runHandles`; with rule 4 by position, `runHandlesPos`). The file's header lists the choices where the plan is vague | — (../items/009-handles/02-implementation-plan.md, 4) |
+| SIS/HandleTheorems.lean | The statements over handles (bergdb item 009, 2c): the invariants (`HTableOK`, `HCanOK`, `HSnapOK`, `HSlotOK` for the record rule, `HRuleROK`, `HLiveWrittenOK` and `HFastOK` for the fast path's test, `HWrittenOK`); T-CACHE (`TC_handles`, proved: `tc_handles`), T2-C (`T2_handles`, with restarts), T-READ (`TR_handles`; with restarts, `TR_handles_restarts`), T-PIN (`TP_handles`); rule 4 by position (bergdb 005-58): the positions of the pointers that rule 4 links (`Rule4_positions`), rule 4 by position is rule 4 by node id (`Rule4Pos_handles`), and so are the runs (`RunPos_handles`); all proved in SIS/Proof/ (`tc_handles`, `t2_handles`, `tr_handles`, `tr_handles_restarts`, `tp_handles`, `rule4_positions`, `rule4Pos_handles`, `runPos_handles`) | — (../items/009-handles/02-implementation-plan.md, 5, phase 2) |
 | SIS/PhysTheorems.lean | Lemma M: a newer version of a node serves every time an older one serves (`LM_newer`), so Rule R's version does (`LM_ruleR`), and a version cut back to s serves the times up to s (`LM_cutTo`); T1-L (`T1_lazy`): after the lazy startup from the stream of a run, or of a prefix of it (a crash), and any reads and writer follows, a read at any time up to the last record gives P at that time; CC (`CC_canonical`): in a run with lazy restarts, every canonical object holds its node's whole history; T2-L (`T2_lazy`): such a run appends the records of the run without restarts; `step_eq_stepWith`; stage 2 (bergdb item 001, WP E3): D closed upward (`T15_closed`), and T-CACHE (`TC_records`): in a run with eviction and any cache schedule, without restarts, every transaction of the physical writer appends the model's record and leaves the model's D, and INV-CAN, INV-SNAP and INV-SLOT hold; T-READ (`TR_view`, WP E4): in such a run, a read through the Level 4 loader at any time up to the last record gives P at that time; T2-C (`T2_cache`, WP E5): with restarts too, the records and D stay the model's, and the invariants hold for the stream of the last startup; and T-READ with restarts (`TR_view_restarts`, WP E5); T-PIN (`TP_pins`, WP E6): in such runs, every object outside the pinned set may be evicted | 5.1, 9; 001-08, 5.3 to 5.6 |
 | SIS/Reclaim.lean | Level 3, reclaim (bergdb item 001, WP R3): what a cut leaves of a version (`Version.stub`) and of a record (`Record.cut`); the stream after a cut (`cutStream`); the versions that a lookup at a time may read (`ReadsAt`, WP R7); when a cut is safe (`CutOK`); the same lookups from f on (`SameFrom`); policies that a cut does not change (`PolicyCutOK`); a virtual root seen only through its live children (`ExecRootOK`), whose live children are those of its last entry (`VirtLiveOK`, WP R4); runs that restart from cut streams (`runRestartsCut`, `cutMax`; with eviction, `runEvictCut`) | — (001-07, 5) |
 | SIS/ReclaimTheorems.lean | T13' (`T13_markTouch`, WP R3): with touches, step 3 gives exactly the index nodes not in D (and not a virtual root) that are dirty or touched; T8 (`T8_recoverCut`, WP R4): after a safe cut, startup from the cut stream gives the same lookups at every time from the first available time on (`SameFrom`), and the same D; T9 (`T9_readCut`, WP R4): in a run with eviction as in T2-C, after a safe cut, a read through the Level 4 loader in the running process at any time from the first available time on gives the same on the cut stream as on the whole stream, and gives P; T12 (`T12_restartCut`, WP R5): a run that restarts from safe cut streams appends the records of the run without restarts (its stream is that run's, cut at the largest cut), with that run's D and lookups from the first available time on; T12 with eviction (`T12_evictCut`, WP R5): so does the run with eviction (`runEvictCut`), with any cache schedules whose reads are from the first available time on and the Level 4 startup at each restart | — (001-07, 2.2, 2.9, 2.10) |
@@ -183,7 +197,7 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
 | EvictStepInv, EvictTrans, EvictRun, EvictInit | The memory after the record has the next state's invariant (`AInv.final_ok`); one transaction (`EInv.evictTrans_ok`); runs (`TC_run`); the startup from R(0) (`einv_init`); the invariant in the terms of `TC_records` (`EInv.tc_facts`) |
 | EvictHist, EvictHistTrans, EvictReadT | Stage 2 (WP E4): the invariant for reads at earlier times (`HInv`: every slot of a canonical object for a live child at a time t names an object or a version good for t, or, by INV-SLOT's second half, a node of D), kept by the cache operations and every transaction (`HInv.evictTrans_ok`) and in every run (`HInv.run`); a read at any time up to the last record gives P (`EInv.read4T_ok`) |
 | EvictKeys, EvictPin | Stage 2 (WP E6): no object has two slots for the same pointee, in every memory of every run (`SlotsND`, `slotsND_runEvict`); unswizzling every memory slot to an object, then releasing it, removes it (`Mem.evict_ok`); an object outside the pinned set has been written (`EInv.detachable_of_unpinned`) |
-| EvictRerun, EvictRestart | Stage 2 (WP E5): the startup from the stream after T(k): its rerun keeps `RInv` (every object canonical, every stream slot naming its pointee's latest version after Rule R and naming a version, a slot for each pointee; `rinv_lazyStartup`), and after the positions and rule 4 the memory has the invariant and the invariant for reads at earlier times (`einv_hinv_startup`; with what T9's invariant needs, `einv_hinv_startup_facts`); the physical writer depends on P only through its nodes (`evictTrans_congr`); runs with restarts (`EvictInvR`, `evictInvR_all`) |
+| EvictRerun, EvictRestart | Stage 2 (WP E5): the startup from the stream after T(k): its rerun keeps `RInv` (every object canonical, every stream slot naming its pointee's latest version after Rule R and naming a version, a slot for each pointee; since bergdb 005-58 also: no version of a stream slot's pointee between it and the section, `RInv.near`, and every slot for a pointee, `RInv.keys`; `rinv_lazyStartup`), and after the positions and rule 4 the memory has the invariant and the invariant for reads at earlier times (`einv_hinv_startup`; with what T9's invariant needs, `einv_hinv_startup_facts`); the physical writer depends on P only through its nodes (`evictTrans_congr`); runs with restarts (`EvictInvR`, `evictInvR_all`) |
 | HandleMem, HandleInv | Bergdb item 009, 2d, T-CACHE over handles: the memory's operations; the fast path's test with a pointer's own reference agrees with the slow path's (`hFastOK_of`); evicting a handle changes no pointer's record (`HMem.ptrRef_evict_of`); the invariant with handles (`HEInv`: the table and the handles, INV-CAN, INV-SNAP, INV-SLOT for the record rule, the live pointers of current canonical objects, the snapshots against Rule R, live handles without a written position, references that name versions), and an eviction keeps it (`HEInv.evict`) |
 | HandleFollow, HandleRead | The readers' follow keeps it (`HEInv.followR_ok`: the fast path; the slow path's write-back, live handle and load; and, for reads at earlier times, what the pointers give, `HMem.KeepPtrs`), so reads and any operations between transactions do (`HEInv.cacheOps`); a read at the last time gives P, the writer's view (`HEInv.view_ok`) |
 | HandleWalk, HandleApply, HandleApplyInv | The writer's promote and its walk (`HEInv.follow_writer`, `HEInv.reachPath_ok`); the change applied, with TREE and A-COPY (`HEInv.applyChange_ok`, `HAInv`) |
@@ -191,6 +205,7 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
 | HandleTrans, HandleInit, HandleRecords | One transaction (`HEInv.handleTrans_ok`); runs (`TC_runH`); the startup with handles from R(0) (`heinv_init`, from E3's `einv_lazyBase`: `EInv.toH`, and rule 4, `HEInv.linkD`); T-CACHE over handles (`TC_handles_records`, `tc_handles`) |
 | HandleHist, HandleHistTrans, HandleReadT | Bergdb item 009, phase 4a, T-READ over handles: the invariant for reads at earlier times (`HInvH`: the pointer of a canonical object for a live child at a time t holds a canonical object, or its slow path's reference names a version good for t, or, by INV-SLOT's second half, a node of D), kept by reads (`HInvH.followR`), evictions (`HInvH.evict`: a pointer whose handle held the evicted canonical object then has its node's latest version, clean, as its slow path's reference), every transaction (`HInvH.handleTrans_ok`) and in every run (`HInvH.run`); a read at any time up to the last record gives P (`HEInv.readT_ok`, `tr_handles`) |
 | HandleRestart, HandlePin | The startup with handles from the stream after T(k) has both invariants (`heinv_hinvH_startup`: E5's Level 4 startup taken to handles, `EInv.toH` and `HInv.toH`, and the pointers that rule 4 links, `HEInv.relinkH`); the physical writer with handles depends on P only through its nodes (`handleTrans_congr`); runs with restarts (`HandleInvR`, `handleInvR_all`); T2-C and T-READ with restarts over handles (`t2_handles`, `tr_handles_restarts`); a live handle whose object is not pinned may be evicted (`HEInv.evictable_of_unpinned`), T-PIN (`tp_handles`) |
+| HandleLinkPos | Bergdb 005-58, rule 4 by position: a pointer that holds no handle in the memory before rule 4 is a stream slot of the lazy startup's memory (`before_ptr`), so `RInv` says what it names (`before_ptr_facts`); a canonical object there is at its node's latest position (`before_canon`); the positions (`rule4_positions`); rule 4 by position is rule 4 by node id where each pointer it leaves is in `posToId` or at the canonical object's position (`HMem.linkDPos_eq_linkD`), which the startup's memories meet, with the first version of a node in the section (`first_version`), A4 and a data node's one version (`rule4Pos_handles`); runs (`runPos_handles`; `runHandlesPos` is `runHandles` but for its startups, `runHandlesPos_of_startup`) |
 | CutStream, CutRead | Stage 3 (WP R4): the stream after a cut (its records, `versionAt`, `newest`, the last record); a pointer followed, or a read from a version, on a stream cut at or before the startup pos gives what it gives on the whole stream if it reads no record before the cut (`follow_cut`, `readFrom_cut`); a read from a version that a lookup may read reaches only such versions (`readFrom_readsAt`); a version a lookup may read, a physical read may follow (`ReadsAt.phys`, WP R6) |
 | CutAgree, CutRerun | Structures that agree for lookups from f on (`CutAgree`); a transaction's change is the same on both (`exec_cutAgree`, with `ExecRootOK`), and so is the rerun of the startup section (`rerun_cutAgree`, with `VirtLiveOK`), which keeps every node it starts with the run's (`rerun_cutAgree_nodes`, WP R5) |
 | CutBase, CutTops, CutStart | Startup's reads of a stream cut safely at the times from f to s: without a virtual root, the whole stream's (`Inv.readAt_cut_nv`); with one, the whole stream's but for the root's version, which startup rebuilds from the root children it can read: the root children live from f on are read at their latest versions (`Inv.topsRead_cut_all`), so the rebuilt root has the root's live children from f on (`Inv.cutRoot_live`, `Inv.readAt_cut_v`) |
@@ -259,9 +274,10 @@ Not trusted, tests only:
   and D are the model's, reads give P, the invariants hold; reads at earlier
   times also before reads at the last time), and the trusted run
   `runHandles`; counts that show the runs reach the cases of the plan's open
-  points (`pointCounts`); three small examples: open point 1, the written
-  position that the slow path writes back into the pointer, and the slow
-  path's test against it.
+  points (`pointCounts`); the pointers that rule 4 links, by the record they
+  name and by how rule 4 by position finds them (`rule4Counts`, bergdb
+  005-58); three small examples: open point 1, the written position that the
+  slow path writes back into the pointer, and the slow path's test against it.
 * SIS/ReclaimExample.lean and ReclaimTest.lean (bergdb item 001, WP R3):
   reclaim by running. Example 4, F1-008-07's reclaim example adapted to
   BergDB: example 3's virtual root and top nodes, one value per leaf, reclaim
@@ -1043,6 +1059,29 @@ it with the hash of the node's history in P (a canonical object) or of the
 version at its position (a snapshot); a HOBJ line without a hash is checked
 by the number of entries only. On the evict set (3 seeds) every object's
 history is compared.
+
+2026-10-27. Rule 4 by position (bergdb 005-58), Java's since bergdb 005-57
+(`07b6375`). Changes to the trusted part: new definitions in SIS/Handle.lean,
+`inPosToId` (Java's `posToId` as a test), `HMem.byPos`, `HMem.linkDPos`,
+`handleStartupPos` and `runHandlesPos`; new statements in
+SIS/HandleTheorems.lean, `Rule4_positions`, `Rule4Pos_handles` and
+`RunPos_handles`. No definition changed. All three are proved
+(`rule4_positions`, `rule4Pos_handles`, `runPos_handles`;
+SIS/Proof/HandleLinkPos.lean). The proof rests on two more facts of E5's rerun
+invariant (`RInv.near`, `RInv.keys`, SIS/Proof/EvictRerun.lean): a stream slot's
+reference comes from a version of the section, with Rule R or as it is (the
+record rule), or from the latest version of a node that has no version in the
+section and is current and clean when the rerun's walk loads it (in the
+section, so its references name the latest versions then), or is a copy of
+one of those; so no version of its pointee lies between it and the section.
+The memory before rule 4 is the model's startup's, which applies Rule R by node
+id to the slots of the objects it makes from versions (`canonOfVersion`), where
+Java can apply it only where `posToId` gives the node: on the example runs
+(SIS/HandleExample.lean, `rule4Counts`) every pointer that rule 4 links is at
+its node's canonical object's position, and none needs `posToId` or the header
+read that Java does for a top node's pointer (bergdb 005-58, Outcome).
+`lake build` passes with no warnings and no `sorry`; `#print axioms` shows only
+Lean's standard axioms.
 
 Stage 1 of bergdb item 001 is done (2026-10-16): lemma M (`LM_newer`, L2),
 T1-L (`T1_lazy`, L3), CC and T2-L (`CC_canonical`, `T2_lazy`, L4) are proved,

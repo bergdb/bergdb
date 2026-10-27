@@ -38,7 +38,9 @@ The operations, each mirroring one of Evict.lean and one of Java's:
   writer (`HMem.writeNode`, `HMem.writeNodes`, `handleTrans`);
 * eviction (02, 4.7; `HMem.evictable`, `HMem.evict`);
 * startup (02, 4.9; `handleStartup`): stage 1's reads unchanged, then rule 4,
-  D's pointers resolved to handles by node id (`HMem.linkD`);
+  D's pointers resolved to handles by node id (`HMem.linkD`); and Java's rule 4
+  since bergdb 005-57, by position (`HMem.linkDPos`, `handleStartupPos`), which
+  bergdb 005-58 proves the same (`Rule4Pos_handles`, HandleTheorems.lean);
 * runs with reads and evictions between transactions (`HCacheOp`,
   `runHandles`).
 
@@ -707,6 +709,71 @@ startup) and the root's object. -/
 def handleStartup (sp : Spec V T) (S : Stream V T) : HMem V :=
   (((lazyStartup sp S).sectionPos S).toH).linkD (startup sp S).D
 
+/-! ## Rule 4 by position (bergdb 005-57 and 005-58) -/
+
+/-- Java's `posToId` (`DbStarter.createMaps`) as a test, for a pointer to node y
+that names record r. Java's map holds the position of each index node version of
+R(s), ..., R(k), and of the version before each key node version there (its
+`prevPos`; top node versions have none, bergdb 011-03, G3), to the node's id. A
+Java position names one version; here a record holds at most one version of each
+node and a pointer names its node, so the test is whether the version of y at r
+is such a position: some record f of R(s), ..., R(k) holds a version w of y that
+is an index node version, and r is f, or w is a key node version
+(`isKeyLevel`) and r is the record of w's previous version, y's latest version in
+the records before f. -/
+def inPosToId (sp : Spec V T) (S : Stream V T) (s : Nat) (y : NodeId) (r : Nat) : Bool :=
+  (List.range' s (S.length - s)).any (fun f =>
+    match S.versionAt f y with
+    | some w => !w.isData && (f == r ||
+        (isKeyLevel sp w.isData w.level && (Stream.lv (S.take f) y).map (·.recNo) == some r))
+    | none => false)
+
+/-- Java's `byPos` (`DbStarter.linkD`, since bergdb 005-57): the live handle of
+each canonical object, by the position of its version. For a pointer to node y
+that names record r: y's live handle, if y's canonical object is the version of y
+at r. -/
+def HMem.byPos (m : HMem V) (y : NodeId) (r : Nat) : Option Nat :=
+  match m.canonicalOf y with
+  | some b => if (m.obj? b).bind (·.pos) == some r then m.tableOf y else none
+  | none => none
+
+/-- Rule 4 by position (bergdb 005-57; Java's `DbStarter.linkD` and
+`NodeCollection.linkToCanonical` since then): the pointers of `HMem.linkD`, of the
+same pinned objects, but the node a pointer names is found from what the startup
+knows, without reading the stream. For a pointer that holds no handle: a vpos is
+its node's id; a record in `posToId` (`inPosToId`) gives the id; with the id, the
+node's live handle if it holds a canonical object, as by node id (`byId`).
+Otherwise the canonical object whose version is at the record (`HMem.byPos`). A
+pointer that neither finds is left as it is, except a top node's (an object that
+is not on a key level, `isKeyLevel`: with a virtual root, a root child, or the
+root, which stands for Java's TopDs and which `HMem.linkD` links too), which
+Java resolves by reading the header at its position: by node id.
+Java links pointers to index nodes only; here values have handles (choice 5 of
+the header) and `HMem.linkD` links them, so this does too: a value's one version
+is its canonical object's, which `byPos` finds. (Java also leaves a pointer below
+the stream's first position, cut by reclaim, as it is; this model has no cuts.)
+That it links what `HMem.linkD` links is `Rule4Pos_handles` (HandleTheorems.lean). -/
+def HMem.linkDPos (sp : Spec V T) (S : Stream V T) (m : HMem V) (D : Dirty) : HMem V :=
+  { m with objs := m.objs.map (fun p =>
+      if !(p.2.canonical && (inD D p.2.node || p.1 == m.root)) then p else
+      (p.1, { p.2 with ptrs := p.2.ptrs.map (fun q =>
+        let byId : NodeId × HPtr := match m.canonicalOf q.1 with
+          | some _ => (q.1, { q.2 with handle := m.tableOf q.1 })
+          | none => q
+        match q.2.handle, q.2.ref with
+        | some _, _ => q
+        | none, none => byId
+        | none, some r =>
+          if inPosToId sp S m.s q.1 r then byId else
+          match m.byPos q.1 r with
+          | some n => (q.1, { q.2 with handle := some n })
+          | none => if isKeyLevel sp p.2.isData p.2.level then q else byId) })) }
+
+/-- Java's startup from S with handles and rule 4 by position (bergdb 005-57):
+`handleStartup` with `HMem.linkDPos` in place of `HMem.linkD`. -/
+def handleStartupPos (sp : Spec V T) (S : Stream V T) : HMem V :=
+  (((lazyStartup sp S).sectionPos S).toH).linkDPos sp S (startup sp S).D
+
 /-! ## Cache operations and runs -/
 
 /-- An operation between transactions, with handles: a read at time t, or the
@@ -733,5 +800,18 @@ def runHandles (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool × List HCa
     if p.2.1 then (startup sp r.1.S, handleStartup sp r.1.S, r.1.S) else
     (r.1, p.2.2.foldl (HMem.cacheOp sp acc.2.2 r.1.S r.1.D) r.2, acc.2.2))
     (init sp, handleStartup sp (init sp).S, (init sp).S)
+
+/-- A run with handles and rule 4 by position (bergdb 005-57, Java's since then):
+`runHandles` with `handleStartupPos` in place of `handleStartup`, at R(0) and at
+every restart, and nothing else changed (`runHandlesPos_of_startup`,
+SIS/Proof/HandleLinkPos.lean: were the two startups the same function, it would
+be `runHandles`). -/
+def runHandlesPos (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool × List HCacheOp)) :
+    DB V T × HMem V × Stream V T :=
+  ts.foldl (fun (acc : DB V T × HMem V × Stream V T) p =>
+    let r := handleTrans sp al acc.2.2 acc.1 acc.2.1 p.1
+    if p.2.1 then (startup sp r.1.S, handleStartupPos sp r.1.S, r.1.S) else
+    (r.1, p.2.2.foldl (HMem.cacheOp sp acc.2.2 r.1.S r.1.D) r.2, acc.2.2))
+    (init sp, handleStartupPos sp (init sp).S, (init sp).S)
 
 end SIS
