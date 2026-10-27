@@ -1,0 +1,4 @@
+before-commit/f.txt:005-57 rule 4 by position, checked: 293 startups, 12011 pointers examined, 2346 linked, 2346 linked by id, 0 differences, 3900 header reads
+before-commit/f.txt:005-57 resolvePointers by position, checked: 60394 pointers without a handle, 85 in the section's ids, 83 pinned by position, 83 pinned by id, 60394 checked, 0 differences
+before-commit/unit.txt:005-57 rule 4 by position, checked: 171 startups, 2585 pointers examined, 115 linked, 115 linked by id, 0 differences, 1289 header reads
+before-commit/unit.txt:005-57 resolvePointers by position, checked: 16054 pointers without a handle, 5 in the section's ids, 23 pinned by position, 23 pinned by id, 16054 checked, 0 differences

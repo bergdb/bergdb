@@ -1,0 +1,38 @@
+level4/readers-budget.txt:005-57 rule 4 by position, checked: 163 startups, 7418 pointers examined, 938 linked, 938 linked by id, 0 differences, 2416 header reads
+level4/readers-budget.txt:005-57 resolvePointers by position, checked: 19560 pointers without a handle, 212 in the section's ids, 57 pinned by position, 58 pinned by id, 19560 checked, 0 differences
+level4/ei-node62-r.txt:005-57 rule 4 by position, checked: 45 startups, 3110 pointers examined, 80 linked, 80 linked by id, 0 differences, 40 header reads
+level4/ei-node62-r.txt:005-57 resolvePointers by position, checked: 2885 pointers without a handle, 0 in the section's ids, 0 pinned by position, 0 pinned by id, 2885 checked, 0 differences
+level4/reclaim-every.txt:005-57 rule 4 by position, checked: 1032 startups, 91434 pointers examined, 5717 linked, 5717 linked by id, 0 differences, 6158 header reads
+level4/reclaim-every.txt:005-57 resolvePointers by position, checked: 3767100 pointers without a handle, 48187 in the section's ids, 3154 pinned by position, 3191 pinned by id, 3767100 checked, 0 differences
+level4/crash-every.txt:005-57 rule 4 by position, checked: 1840 startups, 50988 pointers examined, 597 linked, 597 linked by id, 0 differences, 804 header reads
+level4/crash-every.txt:005-57 resolvePointers by position, checked: 759273 pointers without a handle, 15695 in the section's ids, 1554 pinned by position, 1577 pinned by id, 759273 checked, 0 differences
+level4/inv-every.txt:005-57 rule 4 by position, checked: 19 startups, 500 pointers examined, 0 linked, 0 linked by id, 0 differences, 24 header reads
+level4/inv-every.txt:005-57 resolvePointers by position, checked: 112942 pointers without a handle, 574 in the section's ids, 28 pinned by position, 28 pinned by id, 112942 checked, 0 differences
+level4/unit.txt:005-57 rule 4 by position, checked: 171 startups, 2686 pointers examined, 143 linked, 143 linked by id, 0 differences, 1363 header reads
+level4/unit.txt:005-57 resolvePointers by position, checked: 16711 pointers without a handle, 5 in the section's ids, 22 pinned by position, 22 pinned by id, 16711 checked, 0 differences
+level4/inv-random.txt:005-57 rule 4 by position, checked: 19 startups, 500 pointers examined, 0 linked, 0 linked by id, 0 differences, 24 header reads
+level4/inv-random.txt:005-57 resolvePointers by position, checked: 101648 pointers without a handle, 524 in the section's ids, 26 pinned by position, 26 pinned by id, 101648 checked, 0 differences
+level4/ei-node8-r.txt:005-57 rule 4 by position, checked: 95 startups, 2870 pointers examined, 0 linked, 0 linked by id, 0 differences, 210 header reads
+level4/ei-node8-r.txt:005-57 resolvePointers by position, checked: 130000 pointers without a handle, 1196 in the section's ids, 8 pinned by position, 8 pinned by id, 130000 checked, 0 differences
+level4/ei-rec-every1.txt:005-57 rule 4 by position, checked: 4995 startups, 91540 pointers examined, 455 linked, 455 linked by id, 0 differences, 7900 header reads
+level4/ei-rec-every1.txt:005-57 resolvePointers by position, checked: 37394 pointers without a handle, 6 in the section's ids, 25 pinned by position, 25 pinned by id, 37394 checked, 0 differences
+level4/readers-many.txt:005-57 rule 4 by position, checked: 135 startups, 1799 pointers examined, 161 linked, 161 linked by id, 0 differences, 221 header reads
+level4/readers-many.txt:005-57 resolvePointers by position, checked: 4925 pointers without a handle, 28 in the section's ids, 39 pinned by position, 39 pinned by id, 4925 checked, 0 differences
+level4/ltm.txt:005-57 rule 4 by position, checked: 1 startups, 30367 pointers examined, 831 linked, 831 linked by id, 0 differences, 5 header reads
+level4/ltm.txt:005-57 resolvePointers by position, checked: 4992425 pointers without a handle, 0 in the section's ids, 8899 pinned by position, 8899 pinned by id, 4992425 checked, 0 differences
+level4/readers-random.txt:005-57 rule 4 by position, checked: 175 startups, 5895 pointers examined, 1189 linked, 1189 linked by id, 0 differences, 2190 header reads
+level4/readers-random.txt:005-57 resolvePointers by position, checked: 48752 pointers without a handle, 405 in the section's ids, 47 pinned by position, 48 pinned by id, 48752 checked, 0 differences
+level4/ei-rec-node62-r.txt:005-57 rule 4 by position, checked: 95 startups, 4244 pointers examined, 105 linked, 105 linked by id, 0 differences, 85 header reads
+level4/ei-rec-node62-r.txt:005-57 resolvePointers by position, checked: 55770 pointers without a handle, 758 in the section's ids, 225 pinned by position, 225 pinned by id, 55770 checked, 0 differences
+level4/crash-random.txt:005-57 rule 4 by position, checked: 1840 startups, 49627 pointers examined, 703 linked, 703 linked by id, 0 differences, 819 header reads
+level4/crash-random.txt:005-57 resolvePointers by position, checked: 576669 pointers without a handle, 12123 in the section's ids, 918 pinned by position, 928 pinned by id, 576669 checked, 0 differences
+level4/ei-idle-r.txt:005-57 rule 4 by position, checked: 1995 startups, 11810 pointers examined, 0 linked, 0 linked by id, 0 differences, 835 header reads
+level4/ei-idle-r.txt:005-57 resolvePointers by position, checked: 865 pointers without a handle, 0 in the section's ids, 0 pinned by position, 0 pinned by id, 865 checked, 0 differences
+level4/readers-every.txt:005-57 rule 4 by position, checked: 168 startups, 5394 pointers examined, 514 linked, 514 linked by id, 0 differences, 831 header reads
+level4/readers-every.txt:005-57 resolvePointers by position, checked: 124847 pointers without a handle, 648 in the section's ids, 93 pinned by position, 93 pinned by id, 124847 checked, 0 differences
+level4/f.txt:005-57 rule 4 by position, checked: 61 startups, 674 pointers examined, 0 linked, 0 linked by id, 0 differences, 95 header reads
+level4/f.txt:005-57 resolvePointers by position, checked: 41887 pointers without a handle, 85 in the section's ids, 12 pinned by position, 12 pinned by id, 41887 checked, 0 differences
+level4/readers-disk.txt:005-57 rule 4 by position, checked: 146 startups, 4632 pointers examined, 206 linked, 206 linked by id, 0 differences, 333 header reads
+level4/readers-disk.txt:005-57 resolvePointers by position, checked: 242235 pointers without a handle, 1571 in the section's ids, 100 pinned by position, 101 pinned by id, 242235 checked, 0 differences
+level4/reclaim-random.txt:005-57 rule 4 by position, checked: 1032 startups, 91408 pointers examined, 5717 linked, 5717 linked by id, 0 differences, 6125 header reads
+level4/reclaim-random.txt:005-57 resolvePointers by position, checked: 3445262 pointers without a handle, 44346 in the section's ids, 2089 pinned by position, 2113 pinned by id, 3445262 checked, 0 differences

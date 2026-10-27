@@ -1,0 +1,26 @@
+PauseProbe: keys=1000000 valsize=100 budget=20 MB readers=2 seconds=20 tsize=[1, 1000] java=27 gc=ZGC_Minor_Cycles+ZGC_Minor_Pauses+ZGC_Major_Cycles+ZGC_Major_Pauses xmx=2147 MB
+SlowForceProbe: every 100th force takes 1000 ms more
+  slow force, uptime 1.079 to 2.080 s
+  slow force, uptime 4.919 to 5.920 s
+load: 1000000 keys in 7.0 s; uptime 0.145 to 7.103 s
+  commits  1000, median 3.670 ms, p99 25.166, p99.9 805.306, p99.99 939.524, max 1012.773 ms; longest at uptime 5.936s (1012.8 ms) 2.089s (852.1 ms) 4.082s (179.5 ms) 3.473s (106.8 ms) 3.692s (88.2 ms)
+  resident 19 MB, 1086 loads, 181 eviction steps, 1384202 objects evicted, eviction time 328 ms in total, 26.411 ms at most
+  slow force, uptime 8.860 to 9.864 s
+  slow force, uptime 12.858 to 13.863 s
+  slow force, uptime 16.762 to 17.763 s
+  slow force, uptime 20.751 to 21.756 s
+  slow force, uptime 24.665 to 25.670 s
+phase tsize=1, 2 readers, 20 s; uptime 7.108 to 27.109 s
+  gets     2960240, median 0.005 ms, p99 0.016, p99.9 0.049, p99.99 5.243, max 1012.901 ms; longest at uptime 13.871s (1012.9 ms) 13.870s (1012.3 ms) 9.873s (1011.6 ms) 9.874s (1011.0 ms) 21.762s (1010.8 ms)
+  commits  471000, median 0.010 ms, p99 0.918, p99.9 2.621, p99.99 7.340, max 1012.940 ms; longest at uptime 13.871s (1012.9 ms) 21.762s (1010.7 ms) 25.676s (1010.0 ms) 17.769s (1003.7 ms) 9.874s (980.0 ms)
+  resident 38 MB, 3997846 loads, 5403 eviction steps, 5194036 objects evicted, eviction time 5900 ms in total, 26.411 ms at most
+  slow force, uptime 28.574 to 29.579 s
+  slow force, uptime 32.691 to 33.696 s
+  slow force, uptime 36.815 to 37.817 s
+  slow force, uptime 40.930 to 41.935 s
+  slow force, uptime 45.007 to 46.008 s
+phase tsize=1000, 2 readers, 20 s; uptime 27.110 to 47.114 s
+  gets     2103617, median 0.007 ms, p99 0.033, p99.9 0.164, p99.99 7.340, max 1022.773 ms; longest at uptime 41.950s (1022.8 ms) 41.950s (1022.8 ms) 33.707s (1017.3 ms) 33.707s (1017.0 ms) 46.013s (1012.3 ms)
+  commits  711, median 16.777 ms, p99 50.332, p99.9 939.524, p99.99 939.524, max 1040.034 ms; longest at uptime 33.714s (1040.0 ms) 46.046s (1039.1 ms) 41.955s (1037.6 ms) 37.840s (1019.2 ms) 29.598s (1019.1 ms)
+  resident 39 MB, 7774464 loads, 12137 eviction steps, 8923775 objects evicted, eviction time 13848 ms in total, 26.411 ms at most
+PAUSE PROBE OK

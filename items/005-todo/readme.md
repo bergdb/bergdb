@@ -29,16 +29,16 @@ Open
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10). For release 2026.1: kept, documented as experimental | open |
-| [005-46](46-stream-file-lock.md) | Fix | A read of the stream's last file waits for the writer's append and its `fsync` (`FileStream.DbFile`, one monitor for both): seconds on s1's disk, the longest waits left there with handles (009-03); and every read waits while reclaim's physical cut deletes files (`FileStream.pretruncate`, the stream's monitor): up to 171 ms in P4's soak on F53, under every collector (009-04). Item 009's target 2 waits for it | open |
+| [005-46](46-stream-file-lock.md) | Fix | A read of the stream's last file waits for the writer's append and its `fsync` (`FileStream.DbFile`, one monitor for both): seconds on s1's disk, the longest waits left there with handles (009-03); and every read waits while reclaim's physical cut deletes files (`FileStream.pretruncate`, the stream's monitor): up to 171 ms in P4's soak on F53, under every collector (009-04). Investigated 2026-10-27, with probes: every read also waits while a new file is forced (`newFile`), an encrypted database's reads wait for each other, and a commit by an interrupted thread that makes a physical cut fails the database. Proposed: positional reads on a channel of each file's own, safe from interrupts; the file list without a lock; a new file made, and a cut's files deleted on a thread of their own, outside the stream's monitor. Item 009's target 2 waits for it | open |
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
 | [005-48](48-group-commit.md) | Investigate | Group commit: a sync that waits starts the flush, instead of waiting for `BufferedStream`'s timer; one thread's durable commit from 35 ms to about one force (005-13's question 5) | open |
 | [005-49](49-smooth-index-writes.md) | Investigate | Smooth index writes: at large startup distances the index is written in bursts (10M keys, 1000 MB: windows of 70 to 1,100 bytes a put); a commit's index writes should follow its own size. Before 007-03's step 3 (005-38) | open |
-| [005-50](50-fix-node-size-start.md) | Fix | A start with another node size than the stream was written with fails with what looks like a corrupt stream (`StreamFormatException: startup error, node ... not found`); it should fail with a clear error. Only that (005-38) | open |
+| [005-50](50-fix-node-size-start.md) | Fix | A start with another node size than the stream was written with fails with what looks like a corrupt stream (`StreamFormatException: startup error, node ... not found`), or starts, and can then leave a stream that no start opens; it should fail with a clear error. Only that (005-38). Proposed 2026-10-27: the size in the meta block's reserved bytes (offset 44, no new version), checked before recovery writes, a `DbException`; a stream written before starts as today | open |
 | [005-51](51-eviction-on-calls.md) | Fix | Eviction only in response to the calls: the eviction thread wakes once a second while the database is open, also when idle (`evictorLock.wait(1000)`), against 010-P3, calm when not used | open |
 | [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API sets it only at start (`cacheSizeInMb`), against 010-P6; the core has `Eviction.setBudget` (also through JMX). The cache should converge gradually to the new size, with no disruption | open |
 | [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API cannot change it for an existing database (against 010-P6); the core can since 2013-04, through JMX only. A decrease in steps (007-03's D4), measured; options A to D for the Pub API; `Reclaim.initialStartupDistance`. First study, from 010-03, in its directory | open |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
-| [005-55](55-fix-finalize.md) | Fix | The note of deprecated API that every build prints: `finalize()` (six uses) and `Class.newInstance()` (two). `Db.finalize()` stops a database that the application drops without `stop()`, as the Pub API promises; proposed: a `Cleaner` in its place, no `@SuppressWarnings` (Frans: "finalize() need to go"). Found with it: a dropped database whose eviction thread has started is never collected, as the thread holds the `Db` (009's step 3b) | open |
+| [005-55](55-fix-finalize.md) | Fix | The note of deprecated API that every build prints: `finalize()` (six uses) and `Class.newInstance()` (two). `Db.finalize()` stops a database that the application drops without `stop()`, as the Pub API promises. Decided 2026-10-27: no safety net, an application must call `stop()` or `close()`, and the tests stop their databases; no `@SuppressWarnings` (Frans: "finalize() need to go"). Found with it: a dropped database whose eviction thread has started is never collected, as the thread holds the `Db` (009's step 3b) | open |
 | [005-56](56-package-dependencies.md) | Investigate | Package dependencies: how the packages depend on each other, and whether that follows their `package.html` files; Frans's question. A first look: four of `java/src`'s nine packages used packages their lists leave out; after 006-08's fixes of `stream` and `dag`, two remain (`pub` uses `core` and `pubimp`, `pubimp` uses `dag` and `storage`), and nothing checks the lists | open |
 | [005-57](57-startup-header-reads.md) | Investigate | Startup without rule 4's header reads: a cold start at 10M keys took minutes on s1, three quarters of it rule 4's reads of a header for each stream pointer of D's nodes (007-05). Investigated 2026-10-27: no read is needed (the section's `posToId` and the canonical objects' positions give every link, by the reconciliation's argument); the writer's `resolvePointers` reads the same kind of header and needs none either (part 2). Prototypes checked against today's code by id in the gates; on s1 a cold start at 50 MB from 214 s to about 46 s. The change waits for Frans | open |
 
@@ -107,8 +107,9 @@ is done, which 005-33's change needed; 005-33 is decided, A, and done. 005-35,
 005-36 and 005-37 are done, and so are 005-39, 005-40, 005-43 and 005-44.
 005-41 is decided: not now. 005-42 is decided, A1 and B2, and done, and so
 is 005-45. 005-11 is kept as it is for release 2026.1, documented as
-experimental; its decision waits for Frans. 005-55 is best done with
-005-51, as both change the eviction thread's wait. 005-57 is investigated;
+experimental; its decision waits for Frans. 005-55 is decided, no safety
+net; as recommended there it does not change the eviction thread, and is
+then independent of 005-51. 005-57 is investigated;
 its change, item 007's step 6 (007-03), waits for Frans.
 
 
@@ -247,8 +248,10 @@ Files
   `WTransaction.sync(SyncLevel)`; done.
 * [46-stream-file-lock.md](46-stream-file-lock.md). 005-46, a read of the
   stream's last file waits for the writer's append and its `fsync`, and
-  every read waits for a physical cut's deletes; found in 009's
-  measurements and 009-04's soaks; open.
+  every read waits for a new file's forces and a physical cut's deletes;
+  found in 009's measurements and 009-04's soaks; investigated, a fix
+  proposed; open; the probes and their output in
+  [46-stream-file-lock/](46-stream-file-lock/).
 * [47-written-not-forced.md](47-written-not-forced.md). 005-47, a
   durability of "written, not forced": Frans's question, the options and
   the constraints; open.
@@ -257,13 +260,15 @@ Files
 * [49-smooth-index-writes.md](49-smooth-index-writes.md). 005-49, smooth
   index writes: the bursts found in 005-38, the cause, the questions; open.
 * [50-fix-node-size-start.md](50-fix-node-size-start.md). 005-50, a start
-  with another node size fails with a clear error; found in 005-38; open.
+  with another node size fails with a clear error; found in 005-38; open;
+  the fix proposed, the size in the meta block; its prototype, probes and
+  runs in [50-fix-node-size-start/](50-fix-node-size-start/).
 * [54-open-bounds.md](54-open-bounds.md). 005-54, the bounds still open in
   the problem statement (011-01): Q1, Q2, Q3, Q5 and Q8; open.
 * [55-fix-finalize.md](55-fix-finalize.md). 005-55, the deprecated API in
   the build, `finalize()` first: what `Db.finalize()` is for, the probes,
-  a `Cleaner` proposed; open; the probes, the lint script and their output
-  in [55-fix-finalize/](55-fix-finalize/).
+  decided: no safety net (a `Cleaner` not chosen); open; the probes, the
+  lint script and their output in [55-fix-finalize/](55-fix-finalize/).
 * [56-package-dependencies.md](56-package-dependencies.md). 005-56, the
   package dependencies against the `package.html` files: Frans's question,
   a first look, the older rules of 2012 and 2015; open.
@@ -925,3 +930,54 @@ and `pubimp`, and one cycle, `pub` with `pubimp`. No change to `java/`.
 the target for BergDB's own code, the collector's pauses not counted
 (009-01, target 2). By Claude (Opus 5.5, Claude Code). No change to
 `java/`.
+
+2026-10-27. 005-55 decided, at Frans's word ("I think no safety net is
+reasonable. [...] Calling close() is a reasonable requirement. And the
+database is crash-tolerant anyways."): `finalize()` goes with nothing in
+its place, the Pub API's promise of a stop by the collector goes, and the
+tests stop their databases. By Claude (Opus 5.5, Claude Code): the entry
+rewritten around the decision, the `Cleaner` kept as not chosen;
+recommended, no change to the eviction thread (so independent of 005-51)
+and a check in the suites for databases not stopped; new questions 5 and
+6. No change to `java/`.
+
+2026-10-27. 005-50: the fix proposed, at Frans's request ("Propose a
+solution were the node size is stored in the MetaBlock."), by Claude (Opus
+5.5, Claude Code): the size at offset 44 of the meta block, in reserved
+bytes, so no new version, and release 2026.1 starts such a database; a
+start with another size is refused with a `DbException` before recovery
+writes; a stream written before has 0, starts as today, and has the size
+from its next meta block on. Found: a start with a smaller size than
+written can succeed and leave a stream that no start opens (question 3).
+A prototype with its tests and probes, checked; no change to `java/`.
+
+2026-10-27. 005-46 investigated, and a fix proposed, at Frans's request
+("Investigate this more thouroughly. What is you proposal. Document your
+findings. Don't implement it yet, but propose a solution."), by Claude
+(Opus 5.5, Claude Code), with probes on F53 (46-stream-file-lock/). Both
+waits reproduce, and 009's pause probe with a slow force now and then
+shows s1's pattern of 009-03 (both readers and the writer stopped for the
+force). Found: every read also waits while a new file is forced
+(`newFile` holds the stream's monitor); an encrypted database's reads wait
+for each other (`SalsaStream`); a commit by an interrupted thread that
+makes a physical cut, or that waits for room in the write buffer, fails
+the database. Proposed: positional reads on a channel of each file's own,
+without a lock and safe from interrupts; the file list without a lock; a
+new file made outside the stream's monitor; a cut's files deleted on a
+thread of their own, in today's order; `SalsaStream` reads before its
+lock. Five questions for Frans. `docs/levels.md` says the new waits
+(section 7) and the interrupts (section 3). No change to `java/`.
+
+2026-10-27. Added 005-57 and investigated it, at Frans's request
+("Eliminating these reads seem like the way forward to recude the startup
+time. Add this as a todo item to 005. Investigate this in detail and
+document your findings in the item. ..."), by Claude (Opus 5.5, Claude
+Code): rule 4 needs no header reads at startup, and the writer's
+`resolvePointers` none either (a map of the pinned objects by position).
+Prototypes of both in scratch clones (the diffs in 57-startup-header-reads/),
+checked against today's code by id in before-commit, level2.sh and
+level4.sh (full), and on 007-05's databases: no difference. Two scenarios,
+10M keys at 50 and 200 MB, against release 2026.1 and the current code:
+cold on s1 from 214 and 210 s to about 46 and 51 s, warm on F53 0.7 to
+0.9 s less. Part 1 alone moves its reads into the time after the start.
+Four questions for Frans. No change to `java/`.

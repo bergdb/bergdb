@@ -112,3 +112,18 @@ MB, 86 to 94 percent of it in 1.1 to 1.7 million random reads, 73 to 78
 percent of those rule 4's. So 10 s warm holds up to a startup distance of
 about 75 MB at 10M keys with small values, and a cold start needs step 6
 for both rule 4's reads and the rerun's first touches. 007-03 updated.
+
+2026-10-27. Step 6 of 007-03 investigated in 005-57, at Frans's request
+("Add this as a todo item to 005. Investigate this in detail ... but don't
+implement the change in the java/ yet."), by Claude (Opus 5.5, Claude
+Code). Rule 4 needs no reads: by the reconciliation's argument (a node that
+stays dirty is written at least once every startup section), a pointer of
+D that names a node with a canonical object names a vpos, a position in the
+section's `posToId`, or that object's own position. The writer's
+`resolvePointers` reads the same kind of header and needs none either, with
+a map of the pinned objects by position. Prototypes of both, checked
+against today's code by id in before-commit, level2.sh and level4.sh (full)
+and on 007-05's two databases, with no difference. Cold on s1, 10M keys:
+214 and 210 s at 50 and 200 MB today, about 46 and 51 s with the change;
+warm on F53, 0.7 to 0.9 s less. java/ not changed; the change waits for Frans.
+007-03's status and step 6 updated.

@@ -1,0 +1,24 @@
+ReadPathProbe force WORK/f1 10 4096; Java 27, Mac OS X 27.0.1
+writer, append of 4096 bytes (write and force): 814, mean 6.0935 ms, longest 17.871 ms; over 1 ms 814, over 5 ms 468, over 10 ms 19, over 100 ms 0
+  of it the force: 814, mean 5.1121 ms, longest 17.808 ms; over 1 ms 814, over 5 ms 183, over 10 ms 7, over 100 ms 0
+reader monitor (today): 3066646, mean 0.0032 ms, longest 17.838 ms; over 1 ms 815, over 5 ms 419, over 10 ms 14, over 100 ms 0
+reader pread: 13399228, mean 0.0007 ms, longest 8.398 ms; over 1 ms 260, over 5 ms 2, over 10 ms 0, over 100 ms 0
+ReadPathProbe force WORK/f2 10 2500000; Java 27, Mac OS X 27.0.1
+writer, append of 2500000 bytes (write and force): 592, mean 10.6696 ms, longest 29.739 ms; over 1 ms 592, over 5 ms 592, over 10 ms 339, over 100 ms 0
+  of it the force: 592, mean 9.2637 ms, longest 21.350 ms; over 1 ms 592, over 5 ms 579, over 10 ms 273, over 100 ms 0
+reader monitor (today): 2109972, mean 0.0047 ms, longest 21.634 ms; over 1 ms 592, over 5 ms 592, over 10 ms 316, over 100 ms 0
+reader pread: 9075693, mean 0.0011 ms, longest 10.023 ms; over 1 ms 401, over 5 ms 180, over 10 ms 2, over 100 ms 0
+ReadPathProbe cut WORK/f3 10 20; Java 27, Mac OS X 27.0.1
+deleted 10 files of 20 MB, each followed by a directory force: 52.347 ms
+  the deletes: 10, mean 0.6242 ms, longest 3.952 ms; over 1 ms 1, over 5 ms 0, over 10 ms 0, over 100 ms 0
+  the directory forces: 10, mean 4.6101 ms, longest 5.121 ms; over 1 ms 10, over 5 ms 1, over 10 ms 0, over 100 ms 0
+reader pread, of the file not deleted: 1044545, mean 0.0006 ms, longest 0.712 ms; over 1 ms 0, over 5 ms 0, over 10 ms 0, over 100 ms 0
+ReadPathProbe interrupt WORK/f4; Java 27, Mac OS X 27.0.1
+a positional read by a thread whose interrupt flag is set threw java.nio.channels.ClosedByInterruptException
+then a positional read by another thread threw java.nio.channels.ClosedChannelException; the channel is open: false
+a RandomAccessFile read by a thread whose interrupt flag is set: OK, the flag still set: true
+retrying readers, 4 threads, 2 s, an interrupt every 100 us: 1793474 reads, 15384 interrupts, the channel reopened 13755 times, reads that failed 0 (a failure ends the probe); reads by an interrupted thread 1018, flag restored after 1018, lost 0
+ReadPathProbe scale WORK/f5 256 2; Java 27, Mac OS X 27.0.1
+monitor    1 threads   632,508 reads/s  2 threads   465,460 reads/s  4 threads   471,190 reads/s  8 threads   509,658 reads/s
+pread      1 threads   861,594 reads/s  2 threads 1,035,498 reads/s  4 threads 1,046,007 reads/s  8 threads   939,541 reads/s
+raf-each   1 threads   630,050 reads/s  2 threads   674,310 reads/s  4 threads   609,867 reads/s  8 threads   502,191 reads/s

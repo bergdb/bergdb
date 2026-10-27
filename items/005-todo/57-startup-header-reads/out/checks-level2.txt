@@ -1,0 +1,56 @@
+level2/sd1000-keys50-node62.txt:005-57 rule 4 by position, checked: 200 startups, 2692 pointers examined, 0 linked, 0 linked by id, 0 differences, 334 header reads
+level2/sd1000-keys50-node62.txt:005-57 resolvePointers by position, checked: 25694 pointers without a handle, 0 in the section's ids, 0 pinned by position, 0 pinned by id, 25694 checked, 0 differences
+level2/inv-sd1000-node8.txt:005-57 rule 4 by position, checked: 19 startups, 574 pointers examined, 0 linked, 0 linked by id, 0 differences, 42 header reads
+level2/inv-sd1000-node8.txt:005-57 resolvePointers by position, checked: 10986 pointers without a handle, 0 in the section's ids, 0 pinned by position, 0 pinned by id, 10986 checked, 0 differences
+level2/inv-sd100.txt:005-57 rule 4 by position, checked: 19 startups, 725 pointers examined, 0 linked, 0 linked by id, 0 differences, 26 header reads
+level2/inv-sd100.txt:005-57 resolvePointers by position, checked: 15174 pointers without a handle, 0 in the section's ids, 0 pinned by position, 0 pinned by id, 15174 checked, 0 differences
+level2/unit.txt:005-57 rule 4 by position, checked: 171 startups, 2645 pointers examined, 113 linked, 113 linked by id, 0 differences, 1357 header reads
+level2/unit.txt:005-57 resolvePointers by position, checked: 16734 pointers without a handle, 5 in the section's ids, 23 pinned by position, 23 pinned by id, 16734 checked, 0 differences
+level2/sd1000-node30.txt:005-57 rule 4 by position, checked: 200 startups, 20785 pointers examined, 0 linked, 0 linked by id, 0 differences, 372 header reads
+level2/sd1000-node30.txt:005-57 resolvePointers by position, checked: 320720 pointers without a handle, 0 in the section's ids, 0 pinned by position, 0 pinned by id, 320720 checked, 0 differences
+level2/crash-1.txt:005-57 rule 4 by position, checked: 1200 startups, 34869 pointers examined, 180 linked, 180 linked by id, 0 differences, 2206 header reads
+level2/crash-1.txt:005-57 resolvePointers by position, checked: 65132 pointers without a handle, 0 in the section's ids, 42 pinned by position, 42 pinned by id, 65132 checked, 0 differences
+level2/inv-sd10000-node14.txt:005-57 rule 4 by position, checked: 9 startups, 1362 pointers examined, 26 linked, 26 linked by id, 0 differences, 28 header reads
+level2/inv-sd10000-node14.txt:005-57 resolvePointers by position, checked: 8069 pointers without a handle, 0 in the section's ids, 17 pinned by position, 17 pinned by id, 8069 checked, 0 differences
+level2/sd1000-keys50-node14.txt:005-57 rule 4 by position, checked: 200 startups, 2230 pointers examined, 21 linked, 21 linked by id, 0 differences, 612 header reads
+level2/sd1000-keys50-node14.txt:005-57 resolvePointers by position, checked: 5492 pointers without a handle, 0 in the section's ids, 1 pinned by position, 1 pinned by id, 5492 checked, 0 differences
+level2/inv-sd100000-node62.txt:005-57 rule 4 by position, checked: 9 startups, 622 pointers examined, 16 linked, 16 linked by id, 0 differences, 8 header reads
+level2/inv-sd100000-node62.txt:005-57 resolvePointers by position, checked: 577 pointers without a handle, 0 in the section's ids, 0 pinned by position, 0 pinned by id, 577 checked, 0 differences
+level2/crash-node8.txt:005-57 rule 4 by position, checked: 1202 startups, 37652 pointers examined, 15 linked, 15 linked by id, 0 differences, 3101 header reads
+level2/crash-node8.txt:005-57 resolvePointers by position, checked: 137264 pointers without a handle, 0 in the section's ids, 0 pinned by position, 0 pinned by id, 137264 checked, 0 differences
+level2/crash-0.txt:005-57 rule 4 by position, checked: 1202 startups, 36915 pointers examined, 155 linked, 155 linked by id, 0 differences, 2171 header reads
+level2/crash-0.txt:005-57 resolvePointers by position, checked: 74251 pointers without a handle, 0 in the section's ids, 46 pinned by position, 46 pinned by id, 74251 checked, 0 differences
+level2/crash-3.txt:005-57 rule 4 by position, checked: 1200 startups, 35439 pointers examined, 215 linked, 215 linked by id, 0 differences, 2270 header reads
+level2/crash-3.txt:005-57 resolvePointers by position, checked: 60313 pointers without a handle, 0 in the section's ids, 66 pinned by position, 66 pinned by id, 60313 checked, 0 differences
+level2/crash-2.txt:005-57 rule 4 by position, checked: 1202 startups, 36106 pointers examined, 186 linked, 186 linked by id, 0 differences, 2131 header reads
+level2/crash-2.txt:005-57 resolvePointers by position, checked: 71244 pointers without a handle, 0 in the section's ids, 43 pinned by position, 43 pinned by id, 71244 checked, 0 differences
+level2/sd1000-keys50-node8.txt:005-57 rule 4 by position, checked: 200 startups, 2547 pointers examined, 11 linked, 11 linked by id, 0 differences, 601 header reads
+level2/sd1000-keys50-node8.txt:005-57 resolvePointers by position, checked: 8148 pointers without a handle, 0 in the section's ids, 2 pinned by position, 2 pinned by id, 8148 checked, 0 differences
+level2/sd1000-node14.txt:005-57 rule 4 by position, checked: 200 startups, 15049 pointers examined, 4 linked, 4 linked by id, 0 differences, 365 header reads
+level2/sd1000-node14.txt:005-57 resolvePointers by position, checked: 397271 pointers without a handle, 0 in the section's ids, 0 pinned by position, 0 pinned by id, 397271 checked, 0 differences
+level2/sd1000-node8.txt:005-57 rule 4 by position, checked: 200 startups, 12888 pointers examined, 0 linked, 0 linked by id, 0 differences, 527 header reads
+level2/sd1000-node8.txt:005-57 resolvePointers by position, checked: 473075 pointers without a handle, 0 in the section's ids, 1 pinned by position, 1 pinned by id, 473075 checked, 0 differences
+level2/sd1000-keys50-node30.txt:005-57 rule 4 by position, checked: 200 startups, 1664 pointers examined, 2 linked, 2 linked by id, 0 differences, 501 header reads
+level2/sd1000-keys50-node30.txt:005-57 resolvePointers by position, checked: 7268 pointers without a handle, 0 in the section's ids, 2 pinned by position, 2 pinned by id, 7268 checked, 0 differences
+level2/inv-every1.txt:005-57 rule 4 by position, checked: 399 startups, 6175 pointers examined, 11 linked, 11 linked by id, 0 differences, 423 header reads
+level2/inv-every1.txt:005-57 resolvePointers by position, checked: 884 pointers without a handle, 0 in the section's ids, 0 pinned by position, 0 pinned by id, 884 checked, 0 differences
+level2/random-1.txt:005-57 rule 4 by position, checked: 714 startups, 29731 pointers examined, 641 linked, 641 linked by id, 0 differences, 3063 header reads
+level2/random-1.txt:005-57 resolvePointers by position, checked: 185689 pointers without a handle, 0 in the section's ids, 266 pinned by position, 266 pinned by id, 185689 checked, 0 differences
+level2/bryan.txt:005-57 rule 4 by position, checked: 39 startups, 1207694 pointers examined, 1096986 linked, 1096986 linked by id, 0 differences, 70 header reads
+level2/bryan.txt:005-57 resolvePointers by position, checked: 13036 pointers without a handle, 0 in the section's ids, 1805 pinned by position, 1805 pinned by id, 13036 checked, 0 differences
+level2/sd1000-node62.txt:005-57 rule 4 by position, checked: 200 startups, 29238 pointers examined, 2 linked, 2 linked by id, 0 differences, 377 header reads
+level2/sd1000-node62.txt:005-57 resolvePointers by position, checked: 240448 pointers without a handle, 0 in the section's ids, 3 pinned by position, 3 pinned by id, 240448 checked, 0 differences
+level2/inv-default-100MB.txt:005-57 rule 4 by position, checked: 2 startups, 0 pointers examined, 0 linked, 0 linked by id, 0 differences, 0 header reads
+level2/inv-default-100MB.txt:005-57 resolvePointers by position, checked: 0 pointers without a handle, 0 in the section's ids, 0 pinned by position, 0 pinned by id, 0 checked, 0 differences
+level2/random-2.txt:005-57 rule 4 by position, checked: 695 startups, 41185 pointers examined, 799 linked, 799 linked by id, 0 differences, 3079 header reads
+level2/random-2.txt:005-57 resolvePointers by position, checked: 220296 pointers without a handle, 0 in the section's ids, 279 pinned by position, 279 pinned by id, 220296 checked, 0 differences
+level2/inv-idle-1.txt:005-57 rule 4 by position, checked: 399 startups, 2362 pointers examined, 0 linked, 0 linked by id, 0 differences, 167 header reads
+level2/inv-idle-1.txt:005-57 resolvePointers by position, checked: 173 pointers without a handle, 0 in the section's ids, 0 pinned by position, 0 pinned by id, 173 checked, 0 differences
+level2/random-0.txt:005-57 rule 4 by position, checked: 728 startups, 72060 pointers examined, 1384 linked, 1384 linked by id, 0 differences, 3602 header reads
+level2/random-0.txt:005-57 resolvePointers by position, checked: 261369 pointers without a handle, 0 in the section's ids, 506 pinned by position, 506 pinned by id, 261369 checked, 0 differences
+level2/random-3.txt:005-57 rule 4 by position, checked: 721 startups, 66672 pointers examined, 710 linked, 710 linked by id, 0 differences, 3163 header reads
+level2/random-3.txt:005-57 resolvePointers by position, checked: 284883 pointers without a handle, 0 in the section's ids, 179 pinned by position, 179 pinned by id, 284883 checked, 0 differences
+level2/default-disk.txt:005-57 rule 4 by position, checked: 22 startups, 125063 pointers examined, 12650 linked, 12650 linked by id, 0 differences, 153 header reads
+level2/default-disk.txt:005-57 resolvePointers by position, checked: 165450 pointers without a handle, 0 in the section's ids, 117 pinned by position, 117 pinned by id, 165450 checked, 0 differences
+level2/inv-idle-2.txt:005-57 rule 4 by position, checked: 399 startups, 2380 pointers examined, 0 linked, 0 linked by id, 0 differences, 169 header reads
+level2/inv-idle-2.txt:005-57 resolvePointers by position, checked: 131 pointers without a handle, 0 in the section's ids, 0 pinned by position, 0 pinned by id, 131 checked, 0 differences

@@ -1,7 +1,8 @@
 005-55. Fix: the deprecated API in the build; finalize() goes
 =============================================================
 
-Status: open. Kind: fix. Created 2026-10-26.
+Status: open; decided 2026-10-27, no safety net. Kind: fix. Created
+2026-10-26.
 
 Found on 2026-10-26 by Claude (Opus 5.5, Claude Code), from the note that
 every build prints (Frans: "Why the warning?"); registered at Frans's
@@ -10,6 +11,20 @@ not SuppressWarnings. finalize() need to go. In the item, propose a
 solution, but do not implement it."). The probes and their output are in
 [55-fix-finalize/](55-fix-finalize/).
 
+
+Decision
+--------
+
+2026-10-27, Frans: "Db.finalize() is the big question here. I think no
+safety net is reasonable. For the end user it makes sense. Typically there
+is only one database in an application. Calling close() is a reasonable
+requirement. And the database is crash-tolerant anyways."
+
+So question 1 is decided, for the alternative of 2026-10-26:
+`finalize()` goes with nothing in its place, and the Pub API's promise
+goes with it. "The fix" below is the fix as decided; the `Cleaner`
+proposed on 2026-10-26 is kept, not chosen, under "Not chosen: a
+`Cleaner`".
 
 The issue
 ---------
@@ -124,107 +139,97 @@ for its result, only for the cleanup. The f-tests have one database of
 the eviction case: it stays, with finalization on too.
 
 
-The fix, proposed
------------------
+The fix
+-------
 
-1. **`Db`: a `Cleaner` instead of `finalize()`.** `java.lang.ref.Cleaner`
-   (Java 9) is the replacement that JEP 421 points to: an action that
-   runs once the collector has found an object unreachable, in the
-   Cleaner's own thread, without the object.
-   * The action, a static nested class of `Db`, holds the
-     `StorageManager` and the `Eviction`, never the `Db`; a lambda that
-     reads a field of the `Db` would hold the `Db`, which would then never
-     be collected. It closes the storage as `closeStorage()` does, without
-     the write lock (no transaction runs in a `Db` that nothing reaches),
-     and ends the eviction thread (point 2).
-   * The `Db` registers it in its constructor, right after the storage is
-     made (`createStorageManager`, which starts the storage threads), with
-     one `Cleaner` for BergDB: a static final field, made with the first
-     `Db`, whose daemon thread is named `bergdb-cleaner`. So the storage of
-     a `Db` whose constructor throws after that point is closed as well,
-     as `finalize()` closes it today.
-   * `closeStorage()`, the close of `stop()`, `close()` and a start that
-     throws (005-32, 005-35), closes through the `Cleanable`: `clean()`
-     runs the action at most once and unregisters it, so a close by the
-     application and one by the cleaner are the same close, run once. The
-     action keeps the close's `IOException` for `closeStorage()` to return.
-   * `finalize()` goes. The class Javadoc ("Db shutdown") and the note on
-     garbage collection at the end of `Db.java` say what holds instead.
-   * As with `finalize()` today, the collector may find a `Db`
-     unreachable while a call on it still runs, the last call before the
-     application drops it (JLS 12.6.1); the storage could then close under
-     that call, which fails. `Reference.reachabilityFence` in the API's
-     methods is the JDK's remedy. Not proposed: it takes a collection
-     during that last call, and it has not been seen.
-2. **The eviction thread lets go of the `Db` while it waits.** It holds
-   the `Db` only while it runs batches: `EvictorRun` keeps a
-   `WeakReference<Db>`, takes the `Db` from it for each round of batches,
-   and holds neither the `Db` nor a `Db.Internal` while it waits; it ends
-   when the reference is empty. A close ends it at once, by a new
-   `Eviction.stop()` that sets a flag and notifies `evictorLock`, called
-   by the action of point 1, instead of after up to a second, as 005-51
-   also asks. 005-51's question 1 offers another way, a thread that ends
-   when it has nothing to do; that lets go of the `Db` too, but starts a
-   new thread for every burst of loads over the trigger.
-3. **Test code.** `CcDbTest` and `CcDbNightTest` stop their database at
-   the end of `go()`, in a `finally`. `ValueNodeTotalMem` registers each
-   node with a `Cleaner` whose action reports the node's size (it holds
-   the listener and the size, not the node): the same experiment by the
-   current means (005-10's C1: the manual tests are kept).
-4. **`Class.newInstance()`** becomes
+As decided on 2026-10-27: `finalize()` goes with nothing in its place. An
+application calls `stop()` or `close()` when it is done with a database,
+as it closes a file or a socket. For it: 010-P8, nothing depends on the
+collector; 010-P3 and P9, no cleaner thread and nothing shared by the
+databases of a JVM; 010-P11, less code. Against it: the Pub API's
+promise goes, a change of the API (2026.1 is internal, so no user outside
+is affected), and the tests must stop their databases (point 4).
+
+1. **`Db`: no `finalize()`.** The class Javadoc ("Db shutdown") says that
+   `stop()` or `close()` is required, and what a database that is not
+   stopped keeps until the JVM exits: its storage threads (one per
+   stream, parked, no wake-ups since 005-14), its open files, its write
+   buffer (10 MB by default), its cache, and with a memory storage its
+   whole stream. What it has committed is still written: its consumer
+   thread writes the buffer within the buffer time, as after any commit.
+   The storage threads are daemon threads, so they do not keep the JVM
+   alive; at exit, what the buffer holds and has not written is lost as
+   in a crash, which the database tolerates: the next start finds it as
+   of an earlier commit. Finalizers do not run at exit either, so that
+   part is as today. The note at the end of `Db.java`, that no thread of
+   the database may refer to the `Db`, goes: nothing depends on the `Db`
+   being collected.
+2. **The Pub API.** In `Database.stop()`'s Javadoc, the paragraph "It is
+   not a requirement that stop() is called ..." becomes the requirement,
+   with what a database that is not stopped keeps (point 1). Noted for
+   the release (item 008) as a change of the API.
+3. **The eviction thread: unchanged here (recommended, question 3).**
+   The `Cleaner` proposal changed the eviction thread so that a dropped
+   `Db` can be collected. With no safety net, a dropped database keeps its threads,
+   files and write buffer whether its `Db` is collected or not;
+   collecting it would free the cache, and with a memory storage not even
+   most of what it holds. Not worth a `WeakReference` in `EvictorRun`.
+   The eviction thread already ends within a second of `stop()` (it
+   checks `in.isActive()` once a second); 005-51 makes it end at once.
+   This corrects the entry of 2026-10-26, which said that no safety net
+   needs that change too.
+4. **The tests stop their databases.** Every unit test and f-test that
+   starts a database stops it, in a `finally` (or `close()`, which waits
+   for the close). Today, with finalization disabled, the unit tests leave
+   211 storage threads and 1,083 MB of heap, the f-tests 101 and 716 MB
+   ("What the probes found"). `CcDbTest` and `CcDbNightTest` stop their
+   database at the end of `go()`, in a `finally`.
+5. **A check that they keep doing so (question 5).** At the end of
+   `bergdb.dev.Unit` and `bergdb.dev.F`, the suite counts the threads
+   `BufferedStream-consumer-*` and `bergdb-evictor`, after a bounded wait
+   (a few seconds) for the closes that `stop()` started (005-35); any
+   left is a database that a test did not stop, and the suite fails.
+   Without the check nothing notices a new test that forgets: no
+   finalizer cleans up after it, and the suites slowly grow in threads
+   and memory.
+6. **`ValueNodeTotalMem`** registers each node with a `Cleaner` whose
+   action reports the node's size (it holds the listener and the size,
+   not the node): the same experiment by the current means (005-10's C1:
+   the manual tests are kept). A measurement in a manual experiment, not
+   a safety net.
+7. **`Class.newInstance()`** becomes
    `getDeclaredConstructor().newInstance()`, which wraps a constructor's
    exception in an `InvocationTargetException`: in
    `OptionalIcuCollatorFactory`, with one
    `catch (ReflectiveOperationException e)` that throws the `Bug` as now,
    with the exception; in `TestRunner`, nothing more, as `ConsoleUI`
    already unwraps an `InvocationTargetException`.
-5. **The Pub API's promise stays.** `Database.stop()`'s Javadoc says what
-   "stopped automatically" means: the storage is closed some time after
-   the collector finds the database unreachable, when the JVM chooses;
-   an index job holds the database until it is done.
 
 No `@SuppressWarnings` and no new flag in `build.sh`. After the fix
 javac prints no note, and a new use of deprecated API brings it back.
 
 
-The alternative: no safety net
-------------------------------
+Not chosen: a `Cleaner`
+-----------------------
 
-`finalize()` goes with nothing in its place: an application must call
-`stop()` or `close()`, as it closes a file or a socket.
-
-* A database that is not stopped keeps its storage threads (parked, no
-  wake-ups since 005-14), its open files and its write buffer (10 MB by
-  default) until the JVM exits. What it has committed is still written:
-  its consumer thread writes the buffer within the buffer time, as after
-  any commit. Its cache and the rest of its memory go, once point 2 is
-  done, which this alternative needs too.
-* For it: 010-P8, nothing depends on the collector; 010-P3 and P9, no
-  cleaner thread and nothing shared by the databases of a JVM; 010-P11,
-  less code.
-* Against it: the promise of the Pub API goes, a change of the API (2026.1
-  is internal, so no user outside is affected); and the tests, whose
-  databases that are not stopped would hold 1,083 MB of heap after the
-  unit tests and 716 MB after the f-tests, with 211 and 101 storage
-  threads. Each such test would then stop its database, or the suites
-  hold that memory until they end.
+Proposed on 2026-10-26: a `java.lang.ref.Cleaner` in `Db` in place of
+`finalize()`, which would keep the Pub API's promise by closing a dropped
+`Db`'s storage, with an eviction thread that lets go of the `Db` while it
+waits. Not chosen on 2026-10-27 (the decision).
 
 
 Questions
 ---------
 
-1. Keep the Pub API's promise, the proposal, or drop it, the alternative?
-2. The JDK's `Cleaner` thread waits with a timeout of 60 seconds
-   (`jdk.internal.ref.CleanerImpl.run`, Java 27) for as long as its
-   `Cleaner` is reachable: BergDB's one cleaner thread would wake once a
-   minute, from the first `Db` until the JVM exits. A departure from
-   010-P3, small beside the JVM's own (its `Common-Cleaner` does the same;
-   the JVM alone woke about 25 times a second in 005-14); and one thread
-   that the databases of a JVM share, for their closes only (P9). Accept
-   it and record it under P3 in 010-01, or use a thread of BergDB's own
-   that waits on a `ReferenceQueue` of `PhantomReference`s without a
-   timeout, about 20 lines more than the `Cleaner`?
-3. Point 2 with 005-51, which changes the same wait, or before it?
+1. Keep the Pub API's promise, or drop it? Decided 2026-10-27: drop it,
+   no safety net (the decision).
+2. The `Cleaner`'s thread and its wake-up once a minute. Moot: no
+   `Cleaner` in `Db`. The one in `ValueNodeTotalMem` (the fix, point 6)
+   is in a manual experiment.
+3. The eviction thread's `WeakReference` (in the `Cleaner` proposal), with
+   005-51 or before it? Recommended now: not at all (the fix, point 3).
+   005-55 then does not touch the eviction thread and is independent of
+   005-51.
 4. Beyond this entry: at `--release 27`, javac 27 finds 15 more uses:
    `Thread.getId()` (6), `new Long(long)` in src-dev's memory experiments
    (6), and `setPerformancePreferences` of `Socket` and `ServerSocket` in
@@ -235,6 +240,14 @@ Questions
    in Javadoc without `@Deprecated` (`StoredTrans.getValueNode(long[])`,
    which only its own test calls); `-nowarn` hides it, and it is not part
    of the note.
+5. The suites' check for databases not stopped (the fix, point 5)?
+   Recommended: yes; it is a few lines, and it is what keeps point 4
+   true.
+6. Beyond this entry: should `Db` and `Database` implement
+   `AutoCloseable`, for try-with-resources and for the warnings of IDEs
+   about a resource not closed? `Db` has `close()` already; `Database`
+   has only `stop()` and would get a `close()`, the same as `stop()` or
+   one that waits as `Db.close()` does. Not needed for this entry.
 
 
 Done when
@@ -244,34 +257,33 @@ Done when
   prints no note, and `lint.sh` finds no use of deprecated API at
   `--release 17` (eight today,
   [out/lint-release17.txt](55-fix-finalize/out/lint-release17.txt)).
-* A `Db` that is dropped without `stop()` or `close()` has its storage
-  closed once the collector finds it: its threads end and its files
-  close; also when its eviction thread had started, and that thread ends
-  too. Unit tests for both, through the core and the Pub API, each with a
-  bounded wait (`System.gc()`, at most a few seconds).
-* The probes, `run.sh`, also with `--finalization=disabled`: in the three
-  cases the `Db` is collected, its threads end and its file is closed;
-  the unit and f-tests leave no storage or eviction thread after
-  collection.
+* `Db`'s class Javadoc and `Database.stop()`'s say that `stop()` or
+  `close()` is required, and what a database that is not stopped keeps;
+  no Javadoc in `java/src` promises a stop by the collector.
+* The unit tests and the f-tests stop every database they start: the
+  probe `SuiteThreads`, with finalization on and with
+  `--finalization=disabled`, finds no storage or eviction thread at the
+  end of either suite; with question 5 accepted, the suites check this
+  themselves.
 * `stop()`, `close()` and a start that throws close once, as before (the
   tests of 005-32 and 005-35).
-* `java/before-commit.sh` prints `BEFORE COMMIT OK`; `level4.sh` passes,
-  as a change to Level 4's mechanism (the eviction thread).
+* `java/before-commit.sh` prints `BEFORE COMMIT OK`.
 
 
 First step
 ----------
 
-Look for anything else that holds a `Db` from a thread or a static field
-(`Jmx.DbMonitor`, which some tests register with the platform MBean
-server; the Pub API's index jobs, while they run; `Db.testHooks`), and
-write the unit test of the eviction case first: it fails today, with
-finalization on.
+Find the tests that leave a database: run the suites with
+`--finalization=disabled` and count, after each test, the storage threads
+still alive, so each leak is tied to its test. Look also for tests that
+drop a database on purpose, to model a crash; such a test closes the
+storage some other way (a test hook), as no finalizer does it for them.
 
 
 Size and order
 --------------
 
-S: about 40 lines in `Db` and `Eviction`, 30 in the test code and the two
-`newInstance` calls, and the tests. With or after 005-51 (question 3);
-independent of the rest.
+S to M: a few lines in `Db`, `Database` and the two `newInstance` calls;
+most of the work is in the tests that leave the 211 storage threads (one
+per stream, so fewer databases), and the suites' check. Independent of
+005-51 with question 3 as recommended, and of the rest.

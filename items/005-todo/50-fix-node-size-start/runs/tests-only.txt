@@ -1,0 +1,10 @@
+
+======== NanotestForBergDB: unit ========
+On f53 261027 10:06, OpenJDK 64-Bit Server VM 27
+FAILED! bergdb.core.DbTesterRestart.testNodeSizeOfOldStream
+java.lang.AssertionError: started with node size 30, created with 14
+FAILED! bergdb.core.DbTesterRestart.testOtherNodeSizeRefused
+java.lang.AssertionError: started with node size 14, created with 8
+FAILED! bergdb.pubimp.PubTester.testOtherNodeSizeRefused
+java.lang.AssertionError: started with node size 30, created with 8
+FAILURE, total: 3, failed: 3. Time: 0.1 s.

@@ -94,6 +94,11 @@ environment has failed, or that has a bug, does not run on.
   `LookupTimeNotAvailableException` (section 6), and so does `getTrans` of
   a transaction that reclaim has removed; the database goes on. A read or a
   sync while the database stops throws as it did.
+* An interrupt of the application's thread fails the database when its
+  commit waits for room in the write buffer (`BufferedStream.append`), or
+  makes a physical cut of reclaim (`FileStream.pretruncate` forces the
+  directory through a `FileChannel`, which the interrupt closes); 005-46.
+  A sync whose thread is interrupted throws, and the database goes on.
 * The application restarts the database. The stream holds whole records
   only, so the restart rebuilds the state as after a crash at the failure:
   without the failed transaction, or with it if its record was appended
@@ -335,11 +340,12 @@ Limits:
   Generational Shenandoah stopped for 821 ms in P4's soak with an 8 GB
   heap, its old generation full of garbage it had not reclaimed (009-04).
 * A reader's read of the stream's last file waits for the writer's append
-  and its force, which takes seconds on a slow disk; and every read from
-  the stream waits while a physical cut deletes files, up to 171 ms in
-  P4's soak under every collector (005-46; 009-04, section 7.3). These
-  waits are BergDB's own: item 009's pause target is not met until 005-46
-  is done.
+  and its force, which takes seconds on a slow disk; every read from the
+  stream waits while a new file of the stream is forced, and while a
+  physical cut deletes files, up to 171 ms in P4's soak under every
+  collector; and in an encrypted database every read waits for any other
+  (005-46; 009-04, section 7.3). These waits are BergDB's own: item 009's
+  pause target is not met until 005-46 is done.
 * Loads in memory, with no eviction, are 8 to 20 percent slower than before
   handles.
 * D, which cannot be evicted, is bounded only loosely by the startup

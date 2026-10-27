@@ -1,0 +1,469 @@
+diff --git a/java/src/bergdb/core/Db.java b/java/src/bergdb/core/Db.java
+index c3a02ef..d8a1687 100644
+--- a/java/src/bergdb/core/Db.java
++++ b/java/src/bergdb/core/Db.java
+@@ -506,6 +506,9 @@ public class Db {
+      * @throws DatabaseNotCreatedException
+      *             If the stream holds a creation that did not complete, and no committed
+      *             transaction (bergdb 005-33). The start writes nothing.
++     * @throws DbException
++     *             If the database runs with another maximum node size than this start
++     *             (bergdb 005-50). The start writes nothing.
+      * @throws IllegalStateException
+      *             If start() has been called already.
+      * @throws BadReplicaException
+@@ -536,6 +539,9 @@ public class Db {
+      * @throws DatabaseNotCreatedException
+      *          If the stream holds a creation that did not complete, and no committed
+      *          transaction (bergdb 005-33). The start writes nothing.
++     * @throws DbException
++     *          If the database runs with another maximum node size than this start (bergdb
++     *          005-50). The start writes nothing.
+      * @throws IllegalStateException
+      *          If start() has been called already, or stop(): nothing is closed then.
+      * @throws BadReplicaException
+@@ -596,6 +602,7 @@ public class Db {
+      * @throws IllegalDbStateException
+      * @throws BadCryptoKey
+      * @throws DatabaseNotCreatedException
++     * @throws DbException  another maximum node size (bergdb 005-50)
+      */
+     private StartInfo startInner(StartParams params) {
+         assertStateIsZero();
+@@ -605,6 +612,7 @@ public class Db {
+         refuseIncompleteCreation();
+         
+         try {
++            refuseOtherNodeSize();
+             nodeStream.recover();
+         } catch (BadMagicBytes e) {
+             // 2026-10-25 (bergdb 005-33): without a crypto key, the message said that the
+@@ -617,6 +625,13 @@ public class Db {
+                     + "BergDB stream, or it is damaged.");
+         }
+         
++        // The database's node size, which recovery read with the last valid meta block; or,
++        // in a stream whose meta blocks have none (0, written before bergdb 005-50), the size
++        // it runs with, in its meta blocks from the next one on.
++        assert nodeStream.getMetaBlock().getMaxNodeSize() == 0
++                || nodeStream.getMetaBlock().getMaxNodeSize() == maxNodeSize;
++        nodeStream.getMetaBlock().setMaxNodeSize(maxNodeSize);
++        
+         handleStartParams(params);
+         
+         long startupPos = x.startupPos.get();
+@@ -895,6 +910,30 @@ public class Db {
+         }
+     }
+     
++    /**
++     * Refuses a start with another maximum node size than the database runs with
++     * (2026-10-27, bergdb 005-50), before recovery writes anything. The size is in the meta
++     * blocks, from the creation; this reads the last valid one, as recovery does first. A
++     * stream whose meta blocks have none (0, written before 005-50) is not checked. Before,
++     * such a start reran the startup section with the other size, which splits nodes
++     * otherwise, and failed with what looked like a corrupt stream ("node ... not found");
++     * or it started, and the stream it then wrote could not be started again, with either
++     * size (bergdb 005-50, question 3).
++     *
++     * @throws DbException
++     */
++    private void refuseOtherNodeSize() {
++        MetaBlock last = nodeStream.readLastValidMetaBlock();
++        int size = last == null ? 0 : last.getMaxNodeSize();     // None: recover() throws.
++        if (size != 0 && size != maxNodeSize) {
++            throw new DbException("The database's maximum node size is " + size + ", and "
++                    + "this start uses " + maxNodeSize + ". A database must be started with "
++                    + "the node size it was created with: " + size + ", DbBuilder.maxNodeSize"
++                    + size + "() (the Pub API uses 30). The start has written nothing (bergdb "
++                    + "005-50).");
++        }
++    }
++    
+     private void determineDatabaseId() {
+         if (databaseIdFromBuilder.isCreateLaterMarker()) {
+             databaseId = DatabaseId.createRandom();
+@@ -934,6 +973,7 @@ public class Db {
+         MetaBlock meta = nodeStream.getMetaBlock();
+         meta.setId(databaseId.getBytes());
+         meta.setStartupDistance(startupDistance);
++        meta.setMaxNodeSize(maxNodeSize);       // bergdb 005-50
+         meta.setTime(tt);
+         
+         Trans trans = this.trans().build();
+diff --git a/java/src/bergdb/core/DbBuilder.java b/java/src/bergdb/core/DbBuilder.java
+index c6dac34..98fea12 100644
+--- a/java/src/bergdb/core/DbBuilder.java
++++ b/java/src/bergdb/core/DbBuilder.java
+@@ -157,21 +157,38 @@ public class DbBuilder {
+         return this;
+     }
+ 
++    /**
++     * Maximum node size 8. It must stay the same for a database: it is in the stream from
++     * the creation, and a start with another size is refused (bergdb 005-50).
++     */
+     public DbBuilder maxNodeSize8() {
+         this.maxNodeSize = 8;
+         return this;
+     }
+ 
++    /**
++     * Maximum node size 14. It must stay the same for a database: it is in the stream from
++     * the creation, and a start with another size is refused (bergdb 005-50).
++     */
+     public DbBuilder maxNodeSize14() {
+         this.maxNodeSize = 16 - 2;
+         return this;
+     }
+ 
++    /**
++     * Maximum node size 30, the default and the Pub API's. It must stay the same for a
++     * database: it is in the stream from the creation, and a start with another size is
++     * refused (bergdb 005-50).
++     */
+     public DbBuilder maxNodeSize30() {
+         this.maxNodeSize = 32 - 2;
+         return this;
+     }
+ 
++    /**
++     * Maximum node size 62. It must stay the same for a database: it is in the stream from
++     * the creation, and a start with another size is refused (bergdb 005-50).
++     */
+     public DbBuilder maxNodeSize62() {
+         this.maxNodeSize = 64 - 2;
+         return this;
+diff --git a/java/src/bergdb/core/DbTesterRestart.java b/java/src/bergdb/core/DbTesterRestart.java
+index fc3f322..79ed20a 100644
+--- a/java/src/bergdb/core/DbTesterRestart.java
++++ b/java/src/bergdb/core/DbTesterRestart.java
+@@ -1,5 +1,6 @@
+ package bergdb.core;
+ 
++import java.io.IOException;
+ import java.util.ArrayList;
+ import java.util.Collections;
+ import java.util.HashMap;
+@@ -172,6 +173,121 @@ public class DbTesterRestart {
+         Assert.assertEquals("after restart", startupDistance, db.getStartupDistance());
+     }
+     
++    /** A builder with maximum node size 'size', 8, 14, 30 or 62. */
++    private static DbBuilder nodeSize(DbBuilder b, int size) {
++        switch (size) {
++        case 8: return b.maxNodeSize8();
++        case 14: return b.maxNodeSize14();
++        case 30: return b.maxNodeSize30();
++        case 62: return b.maxNodeSize62();
++        default: throw new IllegalArgumentException("node size " + size);
++        }
++    }
++    
++    /** The bytes of a stream, from its first position. */
++    private static byte[] bytesOf(MemoryStream s) throws IOException {
++        byte[] bytes = new byte[(int) (s.getLength() - s.getFirstPos())];
++        s.read(s.getFirstPos(), bytes, 0, bytes.length);
++        return bytes;
++    }
++    
++    /**
++     * Bergdb 005-50: a start with another maximum node size than the database was created
++     * with is refused, with a DbException that names both sizes, and writes nothing; then a
++     * start with the database's size succeeds. Every pair of 8, 14, 30 and 62, on a database
++     * as created, and on one of 300 transactions whose last record a crash has torn, which
++     * recovery fills out. Before, the start reran the startup section with the other size
++     * and failed with "startup error, node ... not found", after recovery's fill.
++     */
++    @Nano
++    private static void testOtherNodeSizeRefused() throws IOException {
++        final int[] sizes = {8, 14, 30, 62};
++        for (int a : sizes) {
++            CoreTestClock clock = new CoreTestClock();
++            MemoryStream created = new MemoryStream();
++            Db db = nodeSize(Db.builder().testSetup(created).clock(clock), a).start();
++            db.sync(SyncLevel.STRONG);
++            db.close();
++            
++            MemoryStream torn = new MemoryStream();
++            db = nodeSize(Db.builder().testSetup(torn).clock(clock), a).start();
++            for (int i = 0; i < 300; i++) {
++                clock.setTime(10 + i);
++                db.execute(db.trans().put("key" + i, "value" + i));
++            }
++            db.sync(SyncLevel.STRONG);
++            db.close();
++            torn.truncate(torn.getLength() - 3);
++            
++            for (MemoryStream s : new MemoryStream[] {created, torn}) {
++                for (int b : sizes) {
++                    if (b == a) {
++                        continue;
++                    }
++                    MemoryStream m = s.copy();
++                    try {
++                        nodeSize(Db.builder().testSetup(m).clock(clock), b).start();
++                        throw new AssertionError("started with node size " + b
++                                + ", created with " + a);
++                    } catch (DbException e) {
++                        Assert.assertEquals(DbException.class, e.getClass());
++                        Assert.assertTrue(e.getMessage(), e.getMessage().contains(
++                                "maximum node size is " + a + ", and this start uses " + b + "."));
++                    }
++                    Assert.assertArrayEquals("the stream as it was", bytesOf(s), bytesOf(m));
++                }
++                
++                Db d = nodeSize(Db.builder().testSetup(s.copy()).clock(clock), a).start();
++                if (s == torn) {
++                    Assert.assertArrayEquals(StringUtil.toBytes("value298"),
++                            DbUtil.get(d, Long.MAX_VALUE, "key298"));
++                    Assert.assertNull(DbUtil.get(d, Long.MAX_VALUE, "key299"));     // Torn.
++                }
++                d.close();
++            }
++        }
++    }
++    
++    /**
++     * Bergdb 005-50: a stream whose meta blocks have no node size (0, as those written before
++     * 005-50) starts as before, without the check. From its next meta block on it has the
++     * size it runs with, and a start with another size is then refused.
++     */
++    @Nano
++    private static void testNodeSizeOfOldStream() throws IOException {
++        CoreTestClock clock = new CoreTestClock();
++        MemoryStream s = new MemoryStream();
++        Db db = Db.builder().testSetup(s).clock(clock).maxNodeSize14().start();
++        clock.setTime(10);
++        db.execute(db.trans().put("key1", "value1"));
++        db.sync(SyncLevel.STRONG);
++        db.close();
++        Assert.assertTrue("one meta block", s.getLength() < RecoverableStream.META_BLOCK_DISTANCE);
++        MemoryStream.TestAccess.write(s, new byte[4], 44);      // As before 005-50.
++        
++        s = s.copy();
++        db = Db.builder().testSetup(s).clock(clock).maxNodeSize14().start();
++        clock.setTime(20);
++        db.execute(db.trans().put("key2", new byte[RecoverableStream.META_BLOCK_DISTANCE]));
++        db.sync(SyncLevel.STRONG);
++        db.close();
++        Assert.assertTrue("two meta blocks", s.getLength() > RecoverableStream.META_BLOCK_DISTANCE
++                + RecoverableStream.META_BLOCK_SIZE);
++        
++        try {
++            Db.builder().testSetup(s.copy()).clock(clock).maxNodeSize30().start();
++            throw new AssertionError("started with node size 30, created with 14");
++        } catch (DbException e) {
++            Assert.assertTrue(e.getMessage(), e.getMessage().contains(
++                    "maximum node size is 14, and this start uses 30."));
++        }
++        
++        db = Db.builder().testSetup(s.copy()).clock(clock).maxNodeSize14().start();
++        Assert.assertArrayEquals(StringUtil.toBytes("value1"),
++                DbUtil.get(db, Long.MAX_VALUE, "key1"));
++        db.close();
++    }
++    
+     /** Simplest possible delete-and-restart test. */
+     @Nano private static void testDelete1() {
+         AppendOnlyStream s = new MemoryStream();
+diff --git a/java/src/bergdb/core/NodeStream.java b/java/src/bergdb/core/NodeStream.java
+index d0e6cfd..5b28d2f 100644
+--- a/java/src/bergdb/core/NodeStream.java
++++ b/java/src/bergdb/core/NodeStream.java
+@@ -110,6 +110,14 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
+     public final long getLastTransPosOfLastValidMetaBlock() {
+         return rstream.getLastTransSposOfLastValidMetaBlock();
+     }
++    
++    /**
++     * The stream's last valid meta block, which recovery starts from, or null if there is
++     * none. It reads the stream and writes nothing (bergdb 005-50).
++     */
++    public MetaBlock readLastValidMetaBlock() {
++        return rstream.readLastValidMetaBlock();
++    }
+ 
+     public final long getNextPos() {
+         return rstream.getNextSpos();
+diff --git a/java/src/bergdb/pubimp/PubTester.java b/java/src/bergdb/pubimp/PubTester.java
+index 0b3e457..dacd64a 100644
+--- a/java/src/bergdb/pubimp/PubTester.java
++++ b/java/src/bergdb/pubimp/PubTester.java
+@@ -35,6 +35,7 @@ import bergdb.pub.WBuilder;
+ import bergdb.pub.util.BadCryptoKey;
+ import bergdb.pub.util.BadReplicaException;
+ import bergdb.pub.util.DatabaseNotCreatedException;
++import bergdb.pub.util.DbException;
+ import bergdb.pub.util.LookupTimeNotAvailableException;
+ import bergdb.storage.BufferedStream;
+ import bergdb.storage.RecoverableStream;
+@@ -1284,6 +1285,29 @@ public class PubTester {
+     }
+     
+     /** A builder of a database on the stream m, with the crypto key unless it is null. */
++    /**
++     * Bergdb 005-50: the Pub API, which uses maximum node size 30, refuses a database that
++     * the core API created with another size, with the core's DbException, which says what
++     * to do, and writes nothing.
++     */
++    @Nano
++    private static void testOtherNodeSizeRefused() {
++        MemoryStream m = new MemoryStream();
++        Db db = Db.builder().testSetup(m).maxNodeSize8().start();
++        db.execute(db.trans().put("key", "value"));
++        db.sync(SyncLevel.STRONG);
++        db.close();
++        final long length = m.getLength();
++        try {
++            builderOn(m, null).start();
++            throw new AssertionError("started with node size 30, created with 8");
++        } catch (DbException e) {
++            Assert.assertTrue(e.getMessage(), e.getMessage().contains(
++                    "maximum node size is 8, and this start uses 30."));
++        }
++        Assert.assertEquals("the stream as it was", length, m.getLength());
++    }
++    
+     private static DatabaseBuilder builderOn(MemoryStream m, CryptoKey key) {
+         DatabaseBuilderImp b = (DatabaseBuilderImp) Factory.database();
+         b.mainStream(m);
+diff --git a/java/src/bergdb/storage/MetaBlock.java b/java/src/bergdb/storage/MetaBlock.java
+index b32970f..ddc08ea 100644
+--- a/java/src/bergdb/storage/MetaBlock.java
++++ b/java/src/bergdb/storage/MetaBlock.java
+@@ -21,7 +21,11 @@ import bergdb.nanotest.Nano;
+  *                 before the meta block.
+  * 24     16       Database ID. 128 random bits, used as unique database ID.
+  * 40      4       startupDistance in bytes. Typically 20M.
+- * 44     83       Reserved, must be set to zero.
++ * 44      4       maxNodeSize, the maximum node size that the database runs with
++ *                 (DbBuilder.maxNodeSize8() to maxNodeSize62()); a start with another is
++ *                 refused. 0 in a meta block written before 2026-10-27: not checked (bergdb
++ *                 005-50).
++ * 48     79       Reserved, must be set to zero.
+  * 127     1       META_BLOCK_LAST_BYTE. 1 is used to indicate that the block is valid.
+  * </pre>
+  */
+@@ -37,7 +41,10 @@ public class MetaBlock {
+      * change of these changes this number, which recovery checks in each meta block it reads,
+      * before it writes anything (2026-10-25, bergdb 005-40). What a record holds has a
+      * version of its own, StoredTrans.RECORD_FORMAT. New databases only: a stream of another
+-     * version is refused.
++     * version is refused. A new field in the reserved bytes whose 0 means "not recorded"
++     * keeps the number, as maxNodeSize at offset 44 did (2026-10-27, bergdb 005-50): an
++     * older version neither checks nor reads those bytes, and it copies a block it read
++     * whole, so it passes the field on; this one reads 0 in a block written before it.
+      */
+     private static final int CURRENT_VERSION = VERSION_154;
+     
+@@ -211,6 +218,19 @@ public class MetaBlock {
+         Bytes.intToBytesLE(startupDistance, block, 40);
+     }
+     
++    /**
++     * The maximum node size that the database runs with, or 0 in a block written before it
++     * was recorded (2026-10-27, bergdb 005-50). A start refuses another size than a recorded
++     * one (Db.refuseOtherNodeSize).
++     */
++    public int getMaxNodeSize() {
++        return Bytes.bytesToIntLE(block, 44);
++    }
++    
++    public void setMaxNodeSize(int maxNodeSize) {
++        Bytes.intToBytesLE(maxNodeSize, block, 44);
++    }
++    
+     /**
+      * Returns true if the last byte is META_BLOCK_LAST_BYTE.
+      */
+@@ -272,5 +292,18 @@ public class MetaBlock {
+             b.setStartupDistance(10*1000000);
+             Assert.assertEquals(10*1000000, b.getStartupDistance());
+         }
++        
++        /** Bergdb 005-50: the node size, at offset 44; 0, as before 005-50, until it is set. */
++        @Nano
++        public static void maxNodeSize() {
++            MetaBlock b = new MetaBlock();
++            Assert.assertEquals(0, b.getMaxNodeSize());
++            b.setMaxNodeSize(62);
++            Assert.assertEquals(62, b.getMaxNodeSize());
++            Assert.assertEquals(62, b.getBlock()[44]);
++            for (int i = 48; i < RecoverableStream.META_BLOCK_SIZE - 1; i++) {
++                Assert.assertEquals("reserved byte " + i, 0, b.getBlock()[i]);
++            }
++        }
+     }
+ }
+diff --git a/java/stress/StreamDigest.java b/java/stress/StreamDigest.java
+index 4295f89..f0bd6ad 100644
+--- a/java/stress/StreamDigest.java
++++ b/java/stress/StreamDigest.java
+@@ -8,6 +8,7 @@ import java.security.NoSuchAlgorithmException;
+ import java.util.*;
+ 
+ import bergdb.pub.util.Clock;
++import bergdb.storage.RecoverableStream;
+ import bergdb.stream.MemoryStream;
+ 
+ /**
+@@ -53,6 +54,9 @@ import bergdb.stream.MemoryStream;
+  *              exits with 1 if they differ.
+  * Properties:
+  *   modes=M,M  the modes to run (default plain,reads,restarts).
++ *   metamask=O:N  the digests take bytes O to O+N-1 of every meta block as zero: for a
++ *              change that writes a field there and nothing else, compared with the build
++ *              before it (bergdb 005-50: metamask=44:4, the node size).
+  */
+ public class StreamDigest {
+     static final byte[] DELETED = null;
+@@ -226,7 +230,29 @@ public class StreamDigest {
+         return count;
+     }
+ 
+-    /** SHA-256 of the stream from position 'from' to its end, in hex. */
++    /** The bytes of every meta block that the digests take as zero: offset and count, or null. */
++    static final int[] MASK = parseMask(System.getProperty("metamask"));
++
++    static int[] parseMask(String prop) {
++        if (prop == null) return null;
++        String[] on = prop.split(":");
++        return new int[] {Integer.parseInt(on[0]), Integer.parseInt(on[1])};
++    }
++
++    /** Zeroes the bytes of MASK in the meta blocks that buf holds: chunk bytes from pos. */
++    static void mask(byte[] buf, long pos, int chunk) {
++        if (MASK == null) return;
++        final long d = RecoverableStream.META_BLOCK_DISTANCE;
++        for (long block = pos / d * d; block < pos + chunk; block += d) {
++            long from = Math.max(pos, block + MASK[0]);
++            long to = Math.min(pos + chunk, block + MASK[0] + MASK[1]);
++            for (long p = from; p < to; p++) {
++                buf[(int) (p - pos)] = 0;
++            }
++        }
++    }
++
++    /** SHA-256 of the stream from position 'from' to its end, in hex; see MASK. */
+     static String digest(MemoryStream s, long from) {
+         MessageDigest md;
+         try {
+@@ -240,6 +266,7 @@ public class StreamDigest {
+             for (long pos = from; pos < len; pos += buf.length) {
+                 int chunk = (int) Math.min(buf.length, len - pos);
+                 s.read(pos, buf, 0, chunk);
++                mask(buf, pos, chunk);
+                 md.update(buf, 0, chunk);
+             }
+         } catch (IOException e) {
+@@ -300,6 +327,9 @@ public class StreamDigest {
+         }
+         Set<String> wanted = new LinkedHashSet<String>(Arrays.asList(args));
+         String[] modes = System.getProperty("modes", "plain,reads,restarts").split(",");
++        if (MASK != null) {
++            System.out.println("METAMASK " + MASK[0] + ":" + MASK[1]);
++        }
+         int configs = 0, modeDiffs = 0;
+         for (String[] c : CONFIGS) {
+             boolean take = wanted.contains("all") || wanted.contains(c[0])

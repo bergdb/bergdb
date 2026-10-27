@@ -13,10 +13,13 @@ the gates and on both databases, and a cold start on s1 goes from about
 3.5 minutes to about 46 seconds:
 
     Startup, 10M keys     2026.1   current   the change
-    50 MB, warm (F53)      7.4 s     7.7 s       6.6 s
-    50 MB, cold (s1)       240 s     214 s        46 s
-    200 MB, warm (F53)    12.9 s    13.2 s      12.1 s
+    50 MB, warm (F53)      7.4 s     7.7 s       6.8 s
+    50 MB, cold (s1)       240 s     214 s       «TBD»
+    200 MB, warm (F53)    12.9 s    13.2 s      12.5 s
     200 MB, cold (s1)      «TBD»     «TBD»       «TBD»
+
+(The change: both parts below; the medians of three warm starts and the
+means of two cold ones; section 6 has them all.)
 
 But that alone moves reads into the time after the start: the writer reads
 the same kind of header for each pointer without a handle of every node it
@@ -112,16 +115,19 @@ cost; the reads are Java's.
 The reads of a start outside the section (counted starts; 007-05 has the
 same counts):
 
-    10M keys, 8-byte values       50 MB        200 MB
-    D, nodes                    176,592       387,117
-    Rule 4: header reads        863,405     1,253,830
-    The rerun: loads             82,866       155,463
-    Rule 4's links                3,634        69,405
+    10M keys, 8-byte values            50 MB        200 MB
+    D, nodes                         176,592       387,117
+    Rule 4: pointers examined        871,106     1,292,217
+    Rule 4: stream reads             863,609     1,254,124
+    Rule 4: links made                 3,634        69,405
+    The rerun: loads                  82,865       155,471
 
 Rule 4 links 0.4 and 5.4 percent of the pointers it examines (the
 prototype's check, section 5): almost every read finds that the pointee has
-no canonical object. On s1 a header read costs about 0.23 ms, so rule 4 is
-about 196 s of a cold start at 50 MB.
+no canonical object. (It reads a little less than it examines: `idByPos`
+remembers 100,000 positions. A read that crosses a meta block counts as two.)
+On s1 a header read costs about 0.23 ms, so rule 4 is about 197 s of a cold
+start at 50 MB, and 2.5 GB read from the device.
 
 
 # 2. Why rule 4 needs no reads
@@ -144,10 +150,12 @@ object, and rule 4 leaves it, as it does today after reading the header.
 
 The exception is a top node's pointer to another top node: top node
 versions have no `prevPos` (G3), so (b)'s second case is not in `posToId`
-for them. The prototype reads the header for such a pointer when the maps
-do not resolve it. It did not happen on the two databases, and the tests'
-small databases had 0.1 to 0.3 such reads a startup per pointer examined
-(section 5).
+for them. The prototype reads the header for a top node's pointer that the
+maps do not resolve. On the two databases that was none; in the gates'
+small databases, where top nodes are a larger part of D, 2 to 36 percent of
+the pointers examined (section 5). A version chain for top nodes, which
+Frans planned in 2016 (011-03, G3), would remove those too; it changes the
+format.
 
 ## 2.2 The argument
 
@@ -238,10 +246,11 @@ copy of each database, with N transactions of 1,000 random updates
     parts 1 and 2                                 0                0
 
 So rule 4's reads at the startup do not spare the writer's: `idByPos` keeps
-100,000 positions, and the writer reads again. At 50 MB the take writes the
-backlog of a section of 2.15 sd at once, before the updates have followed
-many of D's pointers; at 200 MB more of them hold handles by the time they
-are written.
+100,000 positions, and the writer reads again. Why 50 MB reads more than
+200 MB, with fewer transactions, was not looked into; likely, at 50 MB the
+take writes the backlog of a section of 2.15 sd at once, before the updates
+have followed many of D's pointers, and at 200 MB more of them hold handles
+by the time they are written.
 
 With a cold cache it is worse for part 1 alone: today the writer's reads
 mostly find the pages that rule 4 read a moment before; without rule 4 they
@@ -326,13 +335,24 @@ databases; the runs with updates use copies.
 With assertions on, every startup and every `resolvePointers` of the tests
 ran both ways, by position and by id:
 
-    Run                    Startups   Rule 4: pointers   linked   diff.   resolvePointers: pointers   pinned   diff.
-    before-commit, unit         «TBD»
-    before-commit, f-tests      «TBD»
-    level2.sh (full)            «TBD»
-    level4.sh (full)            «TBD»
+    Gate (parts 1 and 2)   Startups   Rule 4: pointers   Linked      Diff.   resolvePointers: pointers   Pinned   Diff.
+    before-commit               464             14,596       2,461       0                      76,448      106       0
+    level2.sh, full          11,951          1,827,324   1,114,127       0                   3,069,771    3,398       0
+    level4.sh, full          14,027            456,896      17,356       0                  14,481,150   17,393       0
 
-On the two databases (`-Dbergdb.rule4.check=true`, F53):
+"Linked": the pointers that rule 4 by position linked, the same as rule 4
+by id linked. "Pinned": the pointers that `resolvePointers` resolved to a
+pinned pointee, by `pinnedByPos` or by the section's ids, the same as by
+id. Rule 4 read the header for a top node's pointer 5,189, 30,918 and
+30,478 times in the three (section 2.1). The gates passed: BEFORE COMMIT
+OK, LEVEL 2 OK, LEVEL 4 OK (conformance: C-P and C-H 0 of 10,321
+transactions fail). Part 1 alone passed before-commit with its check too.
+The sums: [out/checks-before-commit.txt](out/checks-before-commit.txt),
+[out/checks-level2.txt](out/checks-level2.txt),
+[out/checks-level4.txt](out/checks-level4.txt).
+
+On the two databases (part 1 with `-Dbergdb.rule4.check=true`, on F53 and
+again on s1, with the same counts):
 
     Database   Pointers examined   Linked by position   Linked by id   Differences   Header reads
     50 MB                871,106                3,634          3,634             0              0
@@ -379,26 +399,33 @@ Scenario A, 10M keys, 50 MB:
 Scenario B, 10M keys, 200 MB:
 
     Version            Warm, F53 (median)   Warm, the 3 starts    Cold, s1 (2 starts)   Reads
-    2026.1                        12.91 s   12.91 12.99 12.54 s   «TBD»               1,722,436
-    current                       13.24 s   13.23 13.36 13.24 s   «TBD»               1,722,436
-    part 1                        12.05 s   11.77 12.05 12.46 s   «TBD»                 468,312
+    2026.1                        12.91 s   12.91 12.99 12.54 s   220.4 202.8 s       1,722,436
+    current                       13.24 s   13.23 13.36 13.24 s   200.4 218.9 s       1,722,436
+    part 1                        12.05 s   11.77 12.05 12.46 s    51.3  51.2 s         468,312
     parts 1 and 2                 12.51 s   12.07 12.59 12.51 s   «TBD»                 468,312
 
-Warm, the change saves rule 4's 1.1 to 1.3 s of CPU and cached reads, 9
-to 15 percent; part 2 gives back a few tenths at the startup (the pinned map
-and the copy of `posToId`). The rest of a warm start is the rerun and the
-section's nodes (007-05). Cold, rule 4 was 196 s of 214; what is left is the
+Warm, part 1 saves 1.1 to 1.2 s against the current code (rule 4's CPU and
+cached reads; 9 to 15 percent), and part 2 gives back a few tenths of that
+at the startup (it fills the pinned map and copies `posToId`): 0.7 to 0.9 s
+saved with both. The rest of a warm start is the rerun and the section's
+nodes (007-05). Cold, rule 4 was most of the start, and what is left is the
 rerun's loads.
 
-Where a cold start's time goes on s1 (the counted starts, scenario A; a
-counted start pays about 6 µs a read for its stack trace):
+Where a cold start's time goes on s1 (the counted starts; a counted start
+pays about 6 µs a read for its stack trace, which is in "the rest"):
 
-    Version   Start     Rule 4's reads      The rerun's loads   The rest
-    2026.1    233.8 s   863,405, 177.3 s    82,866, 28.8 s       27.7 s
-    current   255.2 s   863,405, 196.5 s    82,866, 30.0 s       28.7 s
-    part 1     50.5 s   none                82,866, 34.2 s       16.3 s
+    Scenario A, 50 MB   Start     Rule 4's reads       The rerun's loads   The rest   From the device
+    2026.1              233.8 s   863,609, 177.3 s     82,866, 28.8 s      27.5 s     2.96 GB
+    current             255.2 s   863,609, 196.6 s     82,866, 30.0 s      28.2 s     2.98 GB
+    part 1               50.5 s   none                 82,866, 34.2 s      15.9 s     0.48 GB
 
-«scenario B's counted starts»
+    Scenario B, 200 MB  Start     Rule 4's reads       The rerun's loads   The rest   From the device
+    2026.1              260.8 s   1,254,124, 193.2 s   155,463, 24.6 s     42.3 s     3.33 GB
+    current             268.7 s   1,254,124, 194.5 s   155,463, 29.6 s     43.8 s     3.11 GB
+    part 1               61.1 s   none                 155,463, 30.1 s     30.2 s     0.58 GB
+
+(The loads are counted by their first read, the node's header, which goes
+to the device; the node's own two reads then come from the cache.)
 
 
 # 7. After the start
@@ -435,8 +462,9 @@ and 300 transactions; s1-57b.sh):
 # 8. What is left of a cold start
 
 With the change, a cold start on s1 at 10M keys and 50 MB is about 46 s:
-the rerun's 82,866 loads, about 0.4 ms each (a header read from the device,
-then the node from the cache), and about 13 s of CPU, twice F53's. The
+the rerun's 82,866 loads, 0.34 to 0.41 ms each (a header read from the
+device, then the node from the cache), and 10 to 14 s of CPU, about twice
+F53's. The
 loads are those of the nodes on the rerun's paths that have no version in
 the section; the section bounds them (a node per level of the tree for each
 put rerun, at most), so with T3 and the deadline the startup is bounded,
@@ -444,7 +472,8 @@ now by a number that is small enough to measure in seconds. To go below
 that:
 
 * **Read the loads several at a time.** s1's disk takes 0.2 to 0.4 ms a read
-  and serves many at once; the rerun reads one at a time. The rerun could
+  and serves several at once (four readers overlapped their reads 4.3 to 6
+  times, 004-02, 10.6); the rerun reads one at a time. The rerun could
   first collect the positions it will load (the paths of the section's puts,
   level by level) and read them in parallel or in position order. 007-03's
   step 6, option A.

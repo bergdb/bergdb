@@ -103,10 +103,10 @@ public class MixedNodeSize {
                 for (int again : new int[] {b, a}) {
                     try {
                         Db d = start(c.copy(), again);
-                        r.append("; restart with " + (again == b ? "B" : "A") + ": " + bad(d, 2 * keys) + " bad");
+                        r.append("; restart with " + again + ": " + bad(d, 2 * keys) + " bad");
                         d.close();
                     } catch (Throwable e) {
-                        r.append("; restart with " + (again == b ? "B" : "A") + ": " + fail(e));
+                        r.append("; restart with " + again + ": " + fail(e));
                     }
                 }
                 System.out.println(r);

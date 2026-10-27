@@ -1,0 +1,18 @@
+X1. A database of release 2026.1 (no node size in its meta blocks), then the prototype.
+rel write x1 30 0 20000: OK, stream 1361328 bytes
+rel meta x1: 0 0 0 0 0 0 0
+proto start x1 8 20000: FAILED: StreamFormatException: startup error, node 359:359 not found, got dirty in trans tt=17930916889910000, tpos=264; startup pos 128, time 17930916889820000; in node table: no
+proto start x1 30 20000: started, 0 of 20000 keys bad
+proto write x1 30 20000 20100: OK, stream 1567368 bytes
+proto meta x1: 0 0 0 0 0 0 0 30
+proto start x1 8 20100: FAILED: DbException: The database's maximum node size is 30, and this start uses 8. A database must be started with the node size it was created with: 30, DbBuilder.maxNodeSize30() (the Pub A...
+proto start x1 62 20100: FAILED: DbException: The database's maximum node size is 30, and this start uses 62. A database must be started with the node size it was created with: 30, DbBuilder.maxNodeSize30() (the Pub ...
+rel start x1 30 20100: started, 0 of 20100 keys bad
+X2. A database of the prototype, then release 2026.1, then the prototype.
+proto write x2 30 0 20000: OK, stream 1361328 bytes
+proto meta x2: 30 30 30 30 30 30 30
+rel start x2 30 20000: started, 0 of 20000 keys bad
+rel write x2 30 20000 20100: OK, stream 1567368 bytes
+rel meta x2: 30 30 30 30 30 30 30 30
+proto start x2 8 20100: FAILED: DbException: The database's maximum node size is 30, and this start uses 8. A database must be started with the node size it was created with: 30, DbBuilder.maxNodeSize30() (the Pub A...
+proto start x2 30 20100: started, 0 of 20100 keys bad

@@ -1,0 +1,39 @@
+== a write buffer of 100,000 bytes, no syncs
+commit 81 threw bergdb.pub.util.DbFailedException: The transaction at time 92000000 failed after it began (the cause); nothing is undone. The database takes no more transactions or reads and must be restarted: the restart rebuilds it from the stream.
+  caused by bergdb.storage.StreamIoException: Thread interrupted while appending.
+  caused by java.io.IOException: Thread interrupted while appending.
+    at bergdb.storage.BufferedStream.append(BufferedStream.java:464)
+    at bergdb.storage.StorageManager.append(StorageManager.java:791)
+    at bergdb.storage.RecoverableStream.append(RecoverableStream.java:529)
+    at bergdb.core.NodeStream.appendNodes(NodeStream.java:140)
+    at bergdb.core.Db.store(Db.java:2035)
+    at bergdb.core.Db.executeInner(Db.java:1803)
+    at bergdb.core.Db.execute(Db.java:1702)
+    at bergdb.core.InterruptCutProbe.main(InterruptCutProbe.java:52)
+  the stream's first position 0 (before: 0)
+81 commits returned; reclaim's iterations 2, the first available lookup time 0, the stream 140200 bytes, durable 140200
+then a commit by a thread not interrupted threw bergdb.pub.util.DbFailedException: Cannot call execute(): the database failed (the cause) and must be restarted.
+then a get threw bergdb.pub.util.DbFailedException: Cannot call getOne(): the database failed (the cause) and must be restarted.
+== a write buffer of 10,000,000 bytes
+commit 196 threw bergdb.pub.util.DbFailedException: The transaction at time 207000000 failed after it began (the cause); nothing is undone. The database takes no more transactions or reads and must be restarted: the restart rebuilds it from the stream.
+  caused by bergdb.storage.StreamIoException
+  caused by java.nio.channels.ClosedByInterruptException
+    at bergdb.stream.FileStreamIo.forceDirectory(FileStreamIo.java:38)
+    at bergdb.stream.FileStream.pretruncate(FileStream.java:298)
+    at bergdb.storage.BufferedStream.pretruncate(BufferedStream.java:511)
+    at bergdb.storage.StorageManager.pretruncate(StorageManager.java:833)
+    at bergdb.core.Reclaim.pretruncate(Reclaim.java:725)
+    at bergdb.core.Reclaim.cutIfDurable(Reclaim.java:371)
+    at bergdb.core.Reclaim.transactionCompleted(Reclaim.java:352)
+    at bergdb.core.Db.executeInner(Db.java:1827)
+    at bergdb.core.Db.execute(Db.java:1702)
+    at bergdb.core.InterruptCutProbe.main(InterruptCutProbe.java:52)
+  the stream's first position 0 (before: 0)
+196 commits returned; reclaim's iterations 7, the first available lookup time 166000001, the stream 411640 bytes, durable 409472
+then a commit by a thread not interrupted threw bergdb.pub.util.DbFailedException: Cannot call execute(): the database failed (the cause) and must be restarted.
+then a get threw bergdb.pub.util.DbFailedException: Cannot call getOne(): the database failed (the cause) and must be restarted.
+== a write buffer of 10,000,000 bytes, no interrupts
+commit 196 made a physical cut: the first position from 0 to 200000
+197 commits returned; reclaim's iterations 7, the first available lookup time 166000001, the stream 411640 bytes, durable 409472
+then a commit by a thread not interrupted: OK
+then a get: OK
