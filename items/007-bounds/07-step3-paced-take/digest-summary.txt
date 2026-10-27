@@ -1,0 +1,17 @@
+StreamDigest all: main 2eaaa45 (digest-base.txt) against the patch (digest-patch.txt).
+Lengths of the plain stream; 'modes' says whether plain, reads and restarts give
+the same stream (sha256) within the configuration, for the patch.
+
+configuration              main      patch  change  digest  modes
+l2-sd100                5131920    5131920   +0.0%  differs  agree
+l2-sd1000-node8         4257960    4355480   +2.3%  differs  agree
+l2-sd10000-node14       2421648    2556312   +5.6%  differs  agree
+l2-sd100000-node62      2492680    2531344   +1.6%  differs  agree
+l2-every1                468400     514616   +9.9%  differs  agree
+l2-idle-1                221192     222152   +0.4%  differs  agree
+l2-idle-2                221560     222112   +0.2%  differs  agree
+l2-default-100MB       78934240   79056128   +0.2%  differs  agree
+l3-every1               1788344    1947712   +8.9%  differs  agree
+l3-node8                6876752    7094096   +3.2%  differs  agree
+l3-node14               1327208    1582944  +19.3%  differs  agree
+l3-node62               9086496   10118752  +11.4%  differs  agree

@@ -32,6 +32,12 @@ Files
   startup time against the section, warm on F53 and cold on s1, with the
   reads by phase; the tool, the night's scripts, the outputs and the
   analysis in [05-startup-time/](05-startup-time/). Ran 2026-10-27.
+* [07-step3-paced-take.md](07-step3-paced-take.md). 007-07, step 3 of
+  007-03 as a patch for Frans's review: 005-49's paced take with the
+  deadline at 2 sd in `TransSeq.take`, its tests, gates and StreamDigest,
+  the findings, and what step 3's "Done when" still needs; the patch and
+  the probes in [07-step3-paced-take/](07-step3-paced-take/). Not in
+  `java/`.
 
 
 Log
@@ -135,3 +141,12 @@ of the stream but for a top node's pointer that the maps do not resolve,
 and with assertions on it also runs by node id and fails on a difference.
 The writer's reads (part 2) and the rerun's loads (option A) are not done;
 the Lean theorem for the argument is 005-58. 007-03 updated.
+
+2026-10-27. 007-07, step 3 as a patch, by Claude (Opus 5.5, Claude Code,
+at max effort) at Frans's choice (006-09: "007-03 step 3 as a patch"):
+005-49's paced take with the deadline at 2 sd, gated in a scratch clone
+(before-commit, level2 steps 1 to 5 and 7, level3 full, level4 quick; all
+36 StreamDigest streams change, as expected); not in `java/`, for Frans to
+decide. Its review found a bias in the prototype's hash (replaced by the
+SplitMix64 finalizer). level2's step 6 (BryanRepro) fails on main itself
+since 005-46, found on the way.
