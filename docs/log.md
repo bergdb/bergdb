@@ -1329,3 +1329,11 @@ than its own reclaimed too seldom or too often (005-53, question 3; no
 wrong cut: the cuts check the live positions). Two unit tests that fail on
 the code before; StreamDigest identical; `before-commit.sh` and `level3.sh`
 (full) pass.
+
+2026-10-27. 005-59 done, by Claude (Opus 5.5, Claude Code), as Frans
+decided (option A, 006-09): `Db` and `Database` implement `AutoCloseable`;
+`Database` has a `close()` that waits until the database is closed, as
+`Db.close()` does, so try-with-resources closes it, also when the block
+throws; `close()` is safe after `stop()`, twice and from several threads.
+Two tests each in `DbTester` and `PubTester`; a line in `releases/next.md`;
+`before-commit.sh` passes.

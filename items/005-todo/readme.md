@@ -34,7 +34,6 @@ Open
 | [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API cannot change it for an existing database (against 010-P6); the core can since 2013-04, through JMX only. A decrease in steps (007-03's D4), measured; options A to D for the Pub API; `Reclaim.initialStartupDistance`. First study, from 010-03, in its directory | open |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
 | [005-56](56-package-dependencies.md) | Investigate | Package dependencies: how the packages depend on each other, and whether that follows their `package.html` files; Frans's question. A first look: four of `java/src`'s nine packages used packages their lists leave out; after 006-08's fixes of `stream` and `dag`, two remain (`pub` uses `core` and `pubimp`, `pubimp` uses `dag` and `storage`), and nothing checks the lists | open |
-| [005-59](59-autocloseable.md) | Decide | `Db` and `Database` as `AutoCloseable`, for try-with-resources and the warnings of IDEs about a database not closed, now that `stop()` or `close()` is required (005-55, its question 6). Options: both, with a `Database.close()` that waits (recommended) or that is `stop()`; only `Db`; neither | open |
 | [005-60](60-block-storage.md) | Investigate | Block storage: the stream on a raw block device without a file system, as a ring of a fixed size, kept until the room is needed (retention by space); feasible in Java? And on a Linux device in a C or C++ clone. Frans's idea | open |
 
 
@@ -43,6 +42,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-59](59-autocloseable.md) | Decide | `Db` and `Database` as `AutoCloseable` (005-55's question 6). Decided 2026-10-27, option A: both implement it, `Database` gets a `close()` that waits as `Db.close()` does, so try-with-resources closes the database; Javadoc, tests, a line in `releases/next.md` | done | 2026-10-27 |
 | [005-61](61-reclaim-startup-distance.md) | Fix | Reclaim spaced its iterations by the builder's startup distance, copied before `start()` read the stream's, and never saw `setStartupDistance`: reclaim ran too seldom or too often (found in 005-53, question 3; no wrong cut). Now it uses the database's live startup distance; two unit tests that fail on the code before; StreamDigest identical | done | 2026-10-27 |
 | [005-49](49-smooth-index-writes.md) | Investigate | Smooth index writes: at large startup distances the index was written in bursts (records of 2.5 to 11.6 MB, up to 72 times their own bytes), and 007-03's deadline alone made records of up to 110 MB. Recommended for 007-03's step 3 (report.md): a paced take, each commit writes the waiting dirty index nodes oldest first, in whole transactions, in proportion to the stream it adds, with the deadline at 2 sd as the backstop (it never fired); the section stays at about sd; at the startup distance that gives today's peak section it writes 3 to 13 percent fewer bytes a put, with records 6 to 11 times smaller. Frans: the startup distance's setting is the section's target, the actual startup distance what a start reads from; the default stays 50 MB | done | 2026-10-27 |
 | [005-58](58-lean-rule4-by-position.md) | Investigate | A Lean theorem for rule 4 by position (005-57). Proved in the model: `Rule4_positions` (a pointer that rule 4 links names a version of the startup section, the version before its node's first one there, or its canonical object's version) and `Rule4Pos_handles` (rule 4 by position links what rule 4 by node id links, at every startup of a run), with no new assumption; new trusted definitions of Java's rule 4 by position in `SIS/Handle.lean`. Frans took the trusted additions as they are, and the by-id check under assertions in `linkToCanonical` stays (2026-10-27) | done | 2026-10-27 |
@@ -294,7 +294,8 @@ Files
   model needs, the theorems, the review and the questions for Frans; done.
   The patch in [58-lean-rule4-by-position/](58-lean-rule4-by-position/).
 * [59-autocloseable.md](59-autocloseable.md). 005-59, `Db` and `Database` as
-  `AutoCloseable`: the issue, four options, the questions; open.
+  `AutoCloseable`: the issue, four options, the questions, the decision
+  (A) and the outcome; done.
 * [60-block-storage.md](60-block-storage.md). 005-60, the stream on a
   block device without a file system: the idea, the questions; open.
 * [61-reclaim-startup-distance.md](61-reclaim-startup-distance.md). 005-61,
@@ -1154,3 +1155,9 @@ position to start from; the default setting stays 50 MB for now.
 spaces its iterations by the database's live startup distance instead of
 the builder's copy. Two unit tests; StreamDigest identical (36 of 36);
 `before-commit.sh` and `level3.sh` (full) pass.
+
+2026-10-27. 005-59 decided and done: Frans chose option A (006-09, 17:27),
+with the other questions as recommended; by Claude (Opus 5.5, Claude
+Code): `Db` and `Database` implement `AutoCloseable`, `Database.close()`
+waits as `Db.close()` does; tests; `releases/next.md`; `before-commit.sh`
+passes.

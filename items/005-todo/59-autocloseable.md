@@ -1,10 +1,20 @@
 005-59. Decide: `Db` and `Database` as `AutoCloseable`
 =====================================================
 
-Status: open. Kind: decide. Created 2026-10-27.
+Status: done (2026-10-27; see Outcome). Kind: decide. Created 2026-10-27.
 
 From 005-55's question 6, registered at Frans's request (2026-10-27: "Add
 Question 6 as a new 005 entry."), by Claude (Opus 5.5, Claude Code).
+Decided by Frans on 2026-10-27 (Decision), and made as decided (Outcome).
+
+
+Decision
+--------
+
+2026-10-27, 17:27, Frans: option A, as recommended, and questions 2 and 3
+as recommended: `Database.close()` gets a line in
+[releases/next.md](../../releases/next.md), in the same commit, and the
+tests stay as they are.
 
 
 The issue
@@ -85,3 +95,34 @@ Size and order
 --------------
 
 S. Independent of the rest; after 005-55 (done).
+
+
+Outcome
+-------
+
+2026-10-27, by Claude (Opus 5.5, Claude Code), as decided; in a clone on
+`7fde735` (005-61), commit `53df466` there (java/ and releases/next.md).
+
+* `Db implements AutoCloseable`; its `close()` is unchanged.
+  `Database extends AutoCloseable` and has a new `void close()`;
+  `DatabaseImp.close()` clears the thread-local connections and calls
+  `Db.close()`. It is not `synchronized`, unlike `stop()`, so that a
+  `stop()` from another thread does not wait for it. `stop()` is unchanged.
+* Javadoc: the class Javadoc of both says that a `try`-with-resources
+  block closes the database, also when the block throws (`Database`'s with
+  an example); `close()` of both says that it waits, that it is safe after
+  `stop()`, twice and from several threads, and that it is
+  `AutoCloseable`'s; `Database.stop()` says that it returns at once and
+  that `stop()` or `close()` is required.
+* Tests, in `DbTester` and `PubTester`: `testTryWithResourcesCloses`, a
+  block that ends and a block that throws, with a buffer time of a minute,
+  so that nothing is written before the close: right after the block the
+  stream is closed and a restart reads every transaction. With a
+  `Database.close()` that only stops, the Pub test fails.
+  `testCloseAfterStopAndTwice`: `stop()` or `close()` in a block, so that
+  the block's `close()` is the second call. The other tests stay as they
+  are (question 3).
+* A line in [releases/next.md](../../releases/next.md), under "API
+  changes" (question 2).
+* `java/before-commit.sh`: unit 1052 tests, f 73 tests, `BEFORE COMMIT OK
+  (93 s)`.
