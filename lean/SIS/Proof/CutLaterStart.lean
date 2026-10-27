@@ -1882,14 +1882,17 @@ theorem rerun_sim (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hj : al.sti
   obtain ⟨oc, oe, h1, h2, h3, -, h5, -⟩ := key (k - s) (Nat.le_refl _)
   exact ⟨oc, oe, h1, h2, h3, h5⟩
 
-/-- The startup from a stream cut safely: the memory of the startup from the
-whole stream but for the root's object, which holds the root's history of the
-logical startup from the cut stream. -/
-theorem startup_sim (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hev : EvictRunOK sp al ts)
+/-- The positions of the startup from a stream cut safely: the memory of the
+startup from the whole stream but for the root's object, which holds the root's
+history of the logical startup from the cut stream (before rule 4). -/
+theorem sectionPos_sim (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hev : EvictRunOK sp al ts)
     (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) (hex : ExecRootOK sp) (hvl : VirtLiveOK sp)
     {k c : Nat} (hk : k ≤ ts.length) (hcut : CutOK sp c (st sp al ts k) k) :
-    ∃ oc oe, SimC sp (lastFa (st sp al ts k).S) (evictStartup sp (cutStream c (st sp al ts k).S))
-        (evictStartup sp (st sp al ts k).S) oc oe ∧
+    ∃ oc oe, (lazyStartup sp (cutStream c (st sp al ts k).S)).sectionPos (cutStream c (st sp al ts k).S) =
+        ((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).withRoot oc ∧
+      ((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).obj?
+        ((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).root = some oe ∧
+      RootRel sp (lastFa (st sp al ts k).S) oc oe ∧
       ∀ n, (startup sp (cutStream c (st sp al ts k).S)).P.get? root = some n → oc.hist = n.hist := by
   have hst : AlgOK sp al := algOK_of sp al (Or.inl hj)
   have hinv := inv_st sp al ts hok hst k hk
@@ -1978,30 +1981,48 @@ theorem startup_sim (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hev : Evi
       (baseStruct sp (cutStream c (st sp al ts k).S) (lastSp (cutStream c (st sp al ts k).S)) true) = _
     rw [lastSp_cut]
     rfl
-  -- The positions and rule 4.
+  -- The positions.
   have hmL := lazy_ok hok hph hj hk
   have hsL : (lazyStartup sp (st sp al ts k).S).s = lastSp (st sp al ts k).S := hmL.sEq
-  have hD : (startup sp (cutStream c (st sp al ts k).S)).D = (startup sp (st sp al ts k).S).D := by
-    rw [startup, startup, startup_D, startup_D, sectionD_cut hcs]
   have hraP : ((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).obj?
       ((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).root =
       some (secObj (st sp al ts k).S (lazyStartup sp (st sp al ts k).S).s oe) := by
     show ((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).obj? (lazyStartup sp (st sp al ts k).S).root = _
     rw [Mem.sectionPos_obj?, hraL]
     rfl
-  have hrr := h3.secPos (st sp al ts k).S (lazyStartup sp (st sp al ts k).S).s
+  refine ⟨secObj (st sp al ts k).S (lazyStartup sp (st sp al ts k).S).s oc,
+    secObj (st sp al ts k).S (lazyStartup sp (st sp al ts k).S).s oe, ?_, hraP,
+    h3.secPos (st sp al ts k).S (lazyStartup sp (st sp al ts k).S).s, ?_⟩
+  · rw [hlazy, sectionPos_withRoot (S := (st sp al ts k).S) (fun y => by rw [hsL]; exact newest_cut hcs y)]
+  · intro n hn
+    rw [secObj_hist]
+    rw [hPC] at hn
+    exact h4 n hn
+
+/-- The startup from a stream cut safely: the memory of the startup from the
+whole stream but for the root's object, which holds the root's history of the
+logical startup from the cut stream. -/
+theorem startup_sim (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hev : EvictRunOK sp al ts)
+    (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) (hex : ExecRootOK sp) (hvl : VirtLiveOK sp)
+    {k c : Nat} (hk : k ≤ ts.length) (hcut : CutOK sp c (st sp al ts k) k) :
+    ∃ oc oe, SimC sp (lastFa (st sp al ts k).S) (evictStartup sp (cutStream c (st sp al ts k).S))
+        (evictStartup sp (st sp al ts k).S) oc oe ∧
+      ∀ n, (startup sp (cutStream c (st sp al ts k).S)).P.get? root = some n → oc.hist = n.hist := by
+  obtain ⟨oc, oe, hsec, hraP, hrr, hist⟩ := sectionPos_sim hok hph hev hj hmk hex hvl hk hcut
+  have hst : AlgOK sp al := algOK_of sp al (Or.inl hj)
+  have hfs := st_fa_le sp al ts hk
+  have hcs : c ≤ lastSp (st sp al ts k).S := Nat.le_trans hcut.1 hfs
+  have hD : (startup sp (cutStream c (st sp al ts k).S)).D = (startup sp (st sp al ts k).S).D := by
+    rw [startup, startup, startup_D, startup_D, sectionD_cut hcs]
   have hev' : evictStartup sp (cutStream c (st sp al ts k).S) =
       (evictStartup sp (st sp al ts k).S).withRoot
         (linkObjD ((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S) (startup sp (st sp al ts k).S).D
-          ((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).root
-          (secObj (st sp al ts k).S (lazyStartup sp (st sp al ts k).S).s oc)) := by
+          ((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).root oc) := by
     unfold evictStartup
-    rw [hlazy, sectionPos_withRoot (S := (st sp al ts k).S) (fun y => by rw [hsL]; exact newest_cut hcs y), hD,
-      linkD_withRoot hraP hrr.canonical]
+    rw [hsec, hD, linkD_withRoot hraP hrr.canonical]
   have hraF : (evictStartup sp (st sp al ts k).S).obj? (evictStartup sp (st sp al ts k).S).root =
       some (linkObjD ((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S) (startup sp (st sp al ts k).S).D
-        ((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).root
-        (secObj (st sp al ts k).S (lazyStartup sp (st sp al ts k).S).s oe)) := by
+        ((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).root oe) := by
     show (((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).linkD (startup sp (st sp al ts k).S).D).obj?
       ((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).root = _
     rw [Mem.linkD_obj?, hraP]
@@ -2011,9 +2032,8 @@ theorem startup_sim (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hev : Evi
   · rw [hev']
     exact RootPerm.refl_withRoot hE.objNodup hE.fresh hraF
   · intro n hn
-    rw [linkObjD_hist, secObj_hist]
-    rw [hPC] at hn
-    exact h4 n hn
+    rw [linkObjD_hist]
+    exact hist n hn
 
 end Start
 
