@@ -11,6 +11,7 @@ import java.util.function.Consumer;
 import bergdb.common.EventToWaitFor;
 import bergdb.common.Util;
 import bergdb.core.Db;
+import bergdb.core.DbBuilder;
 import bergdb.core.DbStoppingException;
 import bergdb.core.DbTester;
 import bergdb.core.DbTesterFailure;
@@ -61,6 +62,68 @@ public class PubTester {
         String value = c.get("/key1", String.class);
         Assert.assertEquals("value1", value);
         db.stop();
+    }
+    
+    /**
+     * bergdb 005-59: Database is AutoCloseable, and its close() waits. A try-with-resources
+     * block closes the database when it ends, also when it throws: with a buffer time of a
+     * minute nothing is written before the close, and right after the block the stream is
+     * closed and holds every transaction.
+     */
+    @Nano
+    public static void testTryWithResourcesCloses() {
+        for (int c = 0; c < 2; c++) {
+            MemoryStream s = new MemoryStream();
+            DbBuilder b = Db.builder();
+            b.testSetupExceptStream();
+            b.stream("main", s, 100 * 1000, 60 * 1000);
+            boolean caught = false;
+            try (Database d = DatabaseImp.createAndStart(b.build())) {
+                Connection con = d.connection();
+                for (int i = 0; i < 20; i++) {
+                    con.w().put("/k" + i, "v" + i).execute();
+                }
+                if (c == 1) {
+                    throw new IllegalStateException("the block throws");
+                }
+            } catch (IllegalStateException e) {
+                caught = true;
+            }
+            Assert.assertEquals("block " + c + " threw", c == 1, caught);
+            DbTesterFailure.assertClosed(s);
+            
+            Database d2 = DatabaseImp.createAndStart(Db.builder().testSetup(s.copy()).build());
+            for (int i = 0; i < 20; i++) {
+                Assert.assertEquals("block " + c, "v" + i, 
+                        d2.connection().get("/k" + i, String.class));
+            }
+            d2.close();
+        }
+    }
+    
+    /**
+     * bergdb 005-59: Database.close() after stop(), and close() twice, are safe, here through
+     * a try-with-resources block: the second call waits for the close, or returns, and the
+     * stream is closed.
+     */
+    @Nano
+    public static void testCloseAfterStopAndTwice() {
+        for (int c = 0; c < 2; c++) {
+            MemoryStream s = new MemoryStream();
+            try (Database d = DatabaseImp.createAndStart(Db.builder().testSetup(s).build())) {
+                d.connection().w().put("/a", "a").execute();
+                if (c == 0) {
+                    d.stop();
+                } else {
+                    d.close();
+                }
+            }
+            DbTesterFailure.assertClosed(s);
+            
+            Database d2 = DatabaseImp.createAndStart(Db.builder().testSetup(s.copy()).build());
+            Assert.assertEquals("call " + c, "a", d2.connection().get("/a", String.class));
+            d2.close();
+        }
     }
     
     private static String v1;

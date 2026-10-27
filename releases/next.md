@@ -26,6 +26,11 @@ API changes
   change. (Frans: "Typically there is only one database in an application.
   Calling close() is a reasonable requirement. And the database is
   crash-tolerant anyways.")
+* **`Db` and `Database` are `AutoCloseable`** (bergdb 005-59). A
+  `try`-with-resources block closes a database when it ends, also when it
+  throws. `Database` has a new method, `close()`: it stops the database as
+  `stop()` does and waits until it is closed, as `Db.close()` does;
+  `stop()` still returns at once. Every call of 2026.1 works as before.
 * **Interrupts** (bergdb 005-46, `eaec93e`). An interrupt of a thread that
   calls BergDB never fails or hangs the database, as it could before (a
   commit that waited for room in the write buffer or made a cut failed the

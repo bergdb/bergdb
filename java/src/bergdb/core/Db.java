@@ -86,9 +86,12 @@ import bergdb.stream.SalsaStream;
  * keep the JVM alive, and at its exit what is buffered and not yet written is lost, as in
  * a crash, which the database tolerates.</p>
  * 
+ * <p>Db is AutoCloseable (bergdb 005-59): a try-with-resources block closes it with close()
+ * when the block ends, also when the block throws, and so waits until it is closed.</p>
+ * 
  * @author Frans Lundberg
  */
-public class Db {
+public class Db implements AutoCloseable {
     
     private Dag dag;
     
@@ -1217,7 +1220,9 @@ public class Db {
      * it returned at once (2026-10-24, bergdb 005-35, Frans's note "26102424-BUG1-close").
      * Called within a transaction (from an action or a listener, which hold the write
      * lock), it closes the storage at once, as before: a close that another call began
-     * waits for that lock.
+     * waits for that lock. It is safe to call it several times, also after stop(), and from
+     * different threads. It is AutoCloseable's close() (bergdb 005-59): a try-with-resources
+     * block calls it when the block ends, also when the block throws.
      */
     public void close() {
         // Under readSync, as a failure (setFailed(), bergdb 005-30).

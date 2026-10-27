@@ -41,9 +41,19 @@ import bergdb.pubimp.IndexManager;
  * thread's interrupt flag is set when the call returns or throws, if it was set before or
  * during the call.</p>
  * 
+ * <p>Stop or close each Database that is started, as a file: nothing else stops it (bergdb
+ * 005-55). stop() returns at once; close() waits until the database is closed. Database is
+ * AutoCloseable (bergdb 005-59), so a try-with-resources block closes it when the block ends,
+ * also when the block throws:</p>
+ * <pre>
+ * try (Database db = Factory.database().memory().start()) {
+ *     db.connection().w().put("/key", "value").execute();
+ * }
+ * </pre>
+ * 
  * @author Frans Lundberg
  */
-public interface Database {
+public interface Database extends AutoCloseable {
 
     /**
      * Name of the primary index.
@@ -60,8 +70,8 @@ public interface Database {
      * transaction or read starts after this method, and a transaction that runs completes.
      * Every transaction that has returned is then written and the files are closed, in the
      * background, typically within a second, also when the program returns from main right
-     * after this method. This method returns at once. Until 005-35, what was still buffered
-     * was lost.
+     * after this method. This method returns at once; close() also waits until the database
+     * is closed. Until 005-35, what was still buffered was lost.
      * </p>
      * 
      * <p>Call sync() before stop() when the transactions must be durable when stop()
@@ -72,16 +82,31 @@ public interface Database {
      * effect (idempotent method).
      * </p>
      * 
-     * <p>stop() must be called once the Database is no longer used, as close() for a file or a
-     * socket: nothing else stops it (2026-10-27, bergdb 005-55; until then the garbage
-     * collector stopped a Database that nothing referred to). A Database that is not stopped
-     * keeps its storage threads, its open files, its write buffer and its memory until the JVM
-     * exits. What it has committed is still written within the buffer time, as after any
+     * <p>stop() or close() must be called once the Database is no longer used, as close() for
+     * a file or a socket: nothing else stops it (2026-10-27, bergdb 005-55; until then the
+     * garbage collector stopped a Database that nothing referred to). A Database that is not
+     * stopped keeps its storage threads, its open files, its write buffer and its memory until
+     * the JVM exits. What it has committed is still written within the buffer time, as after any
      * commit; at the exit of the JVM, what is buffered and not yet written is lost, as in a
      * crash, which the database tolerates.
      * </p>
      */
     public void stop();
+    
+    /**
+     * <p>Stops the database as stop() does, and waits until it is closed (bergdb 005-59):
+     * every transaction that has returned is written, with a file storage forced to the
+     * device, the files are closed, and the storage threads have ended; also when stop() or
+     * another close() began the close. After this method has been called this Database object
+     * must not be used anymore. It is safe to call it several times, also after stop(), and
+     * from different threads.
+     * </p>
+     * 
+     * <p>This is AutoCloseable's close(), without its checked exception: a try-with-resources
+     * block calls it when the block ends, also when the block throws.
+     * </p>
+     */
+    public void close();
 
     /**
      * Gets a connection to the database. The returned object is always the same object for one

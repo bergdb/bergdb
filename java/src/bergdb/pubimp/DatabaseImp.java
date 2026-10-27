@@ -188,6 +188,18 @@ public class DatabaseImp implements Database {
         db.stop();
     }
     
+    /**
+     * Not synchronized, unlike stop(): it waits for the close, and a stop() from another
+     * thread meanwhile returns at once.
+     */
+    public void close() {
+        synchronized (threadLocalConnections) {
+            threadLocalConnections.clear();
+        }
+        
+        db.close();
+    }
+    
     public Job addReplica(String name, String dir) throws IOException {
         if (name == null) {
             throw new IllegalArgumentException("name == null not allowed");

@@ -2461,6 +2461,68 @@ public class DbTester {
         db.close();
     }
     
+    // ======== AutoCloseable, bergdb 005-59 ========
+    
+    /**
+     * bergdb 005-59: Db is AutoCloseable. A try-with-resources block closes the database when
+     * it ends, also when it throws, and waits: with a buffer time of a minute nothing is
+     * written before the close, and right after the block the stream is closed and holds
+     * every transaction.
+     */
+    @Nano
+    public static void testTryWithResourcesCloses() throws Exception {
+        for (int c = 0; c < 2; c++) {
+            MemoryStream s = new MemoryStream();
+            DbBuilder b = Db.builder();
+            b.testSetupExceptStream();
+            b.stream("main", s, 100 * 1000, 60 * 1000);
+            boolean caught = false;
+            try (Db db = b.start()) {
+                for (int i = 0; i < 20; i++) {
+                    db.execute(db.trans().put("/k" + i, "v" + i).build());
+                }
+                if (c == 1) {
+                    throw new IllegalStateException("the block throws");
+                }
+            } catch (IllegalStateException e) {
+                caught = true;
+            }
+            Assert.assertEquals("block " + c + " threw", c == 1, caught);
+            DbTesterFailure.assertClosed(s);
+            
+            Db db2 = Db.builder().testSetup(s.copy()).start();
+            for (int i = 0; i < 20; i++) {
+                Assert.assertEquals("block " + c, "v" + i, DbUtil.getString(db2, "/k" + i));
+            }
+            db2.close();
+        }
+    }
+    
+    /**
+     * bergdb 005-59: close() after stop(), and close() twice, are safe, here through a
+     * try-with-resources block: the second call waits for the close, or returns, and the
+     * stream is closed.
+     */
+    @Nano
+    public static void testCloseAfterStopAndTwice() throws Exception {
+        for (int c = 0; c < 2; c++) {
+            MemoryStream s = new MemoryStream();
+            try (Db db = Db.builder().testSetup(s).start()) {
+                db.execute(db.trans().put("/a", "a").build());
+                if (c == 0) {
+                    db.stop();
+                } else {
+                    db.close();
+                }
+            }
+            DbTesterFailure.assertClosed(s);
+            
+            Db db2 = Db.builder().testSetup(s.copy()).start();
+            Assert.assertEquals("call " + c, "a", DbUtil.getString(db2, "/a"));
+            db2.close();
+        }
+    }
+    
     /** The threads of stop()'s closes that are alive (bergdb 005-35). */
     public static Set<Thread> closeThreads() {
         Set<Thread> result = new java.util.HashSet<Thread>();
