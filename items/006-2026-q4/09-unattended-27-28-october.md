@@ -257,6 +257,28 @@ block to confirm.
 even if you run out of 5h Claude session usage."): the night conductor
 started and the check-ins scheduled (section 6); `night.sh` left at 02:10.
 
+2026-10-27, 12:19. Frans chose to close 005-46 on the afternoon's
+evidence (f1-02, `1f1e542`). Tonight's soak, Props and ScaleBench are a
+confirmation: 005-46 is reopened if they show a read or a commit waiting
+for the stream's writer; they are also 009's evidence for target 2.
+
+2026-10-27, 12:30. W1's three steps for the block are ready (soak, Props,
+ScaleBench C); W1 now prepares a fourth (`performance.sh ab` against
+2026.1) and reruns 009-03's ScaleBench from the device on s1 on HEAD. W3
+reported its theorems proved; at Frans's word ("max for Lean") a new agent
+at max effort reviews and finishes 005-58. Usage paced at Frans's request
+(68 percent of the 5-hour budget used, a reset at about 14:30): W2 and W5
+paused at safe points until 14:38; then, at his word ("In general, I like
+to use Opus 5.5 at High or Max effort levels. Max when the problem is
+hard. [...] I want 005-49 to use Max"), W2 and W5 go on as new agents at
+max effort. W5 found that `level3.sh`'s ReclaimReaders failed once in 15
+runs with group commit (none in 15 without), probably a race in the test
+that faster syncs expose; to be understood before any commit.
+
+2026-10-27, 12:35. 005-51's idle measurement: with the eviction thread
+started, an idle database wakes no more than the JVM; the thread used 1.4
+ms of CPU a minute before, none after (005-51, Outcome).
+
 
 ## 8. Outcome
 

@@ -128,8 +128,27 @@ put it in java and commit."; 006-09, W4), in a clone on `07b6375`.
   to delete; the JMX monitor (`DBMonitor.MThread`, a sleep of a second)
   runs only when an application starts it (`Jmx.registerAndStart()`). A
   sync waits with `wait(500)` on `StorageManager`'s locks, but only while
-  a call waits for durability. The per-process wake-ups of an idle
-  database, by 005-14's `procstat.c`, are in 006-09 (W4).
+  a call waits for durability.
+* Measured, the first point of "Done when": an idle database whose
+  eviction thread has run wakes no more than the JVM it runs in. 005-14's
+  method ([idle-run.sh](51-eviction-on-calls/idle-run.sh),
+  [IdleEvict.java](51-eviction-on-calls/IdleEvict.java), 005-14's
+  `procstat`): a database on a `FileStream` with a budget of 2 MB and a
+  startup distance of 1 MB, 200,000 puts and a read of every key, which
+  start the eviction thread; then 60 s idle, measured after 15 s; two
+  rounds each, on F53 with other work running, 2026-10-27, 12:27 to
+  12:35 ([out/](51-eviction-on-calls/out/)):
+
+  | process | wakeups/s | CPU ms/s | energy, uW | the eviction thread, idle | its CPU in 60 s |
+  |---|---|---|---|---|---|
+  | the JVM alone | 26.1, 26.2 | 0.54, 0.66 | 469, 473 | none | none |
+  | the code before 005-51 (`565499f`) | 26.2, 26.9 | 0.56, 0.73 | 502, 512 | `TIMED_WAITING` | 1.25, 1.63 ms |
+  | with 005-51 (`c2aab10`) | 23.7, 24.2 | 0.62, 0.60 | 459, 437 | `WAITING` | 0 |
+
+  Before, the eviction thread used about 1.4 ms of CPU a minute, its 60
+  wake-ups; after, none. The process counts differ by less than their
+  noise: the eviction thread was 1 of about 26 wake-ups a second, most of
+  them the JVM's own.
 * `before-commit.sh` prints `BEFORE COMMIT OK` (1,044 unit tests, 73
   f-tests, 128 s), and `level4.sh` in full passes (`LEVEL 4 OK`, 16
   minutes), on `07b6375` with the change.

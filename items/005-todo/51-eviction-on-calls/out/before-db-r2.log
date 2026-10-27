@@ -1,0 +1,9 @@
+READY pid=55337 mode=db
+THREADS main (RUNNABLE); Reference Handler (RUNNABLE); Finalizer (WAITING); Signal Dispatcher (RUNNABLE); Notification Thread (RUNNABLE); Common-Cleaner (TIMED_WAITING); BufferedStream-consumer-28 (WAITING); bergdb-evictor (TIMED_WAITING); 
+T0
+THREAD 0.176 ms main
+THREAD 0.021 ms Reference Handler
+THREAD 0.254 ms Signal Dispatcher
+THREAD 0.032 ms Common-Cleaner
+THREAD 1.628 ms bergdb-evictor
+T1 elapsed_s=61.196 java_threads_cpu_ms=2.111
