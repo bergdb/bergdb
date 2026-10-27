@@ -359,9 +359,11 @@ Limits:
   an encrypted database's reads no longer wait for each other. Before, a
   read of the last file waited for the writer's append and its force,
   seconds on a slow disk, and every read for a new file's forces and a
-  cut's deletes, up to 171 ms in P4's soak (009-04, section 7.3). Not yet
-  measured again: the pause probe on s1 and P4's soak (005-46, "Done
-  when"). A writer that fills the write buffer still waits for the disk;
+  cut's deletes, up to 171 ms in P4's soak (009-04, section 7.3). On s1,
+  under ZGC, the longest gets were the forces; since, a force of 2,500 ms
+  left every get at 12.1 ms at most (005-46, "Measured after the change");
+  P4's soak and ScaleBench confirm it in 006-09's quiet block. A writer
+  that fills the write buffer still waits for the disk;
   that does not count against item 009's pause target (Frans,
   2026-10-27), and the test reports show it apart.
 * Loads in memory, with no eviction, are 8 to 20 percent slower than before

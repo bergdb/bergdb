@@ -1,7 +1,7 @@
 005-46. Fix: reads wait for the stream's writer, and interrupts fail the database
 =================================================================================
 
-Status: open. Kind: fix. Created 2026-10-26.
+Status: done. Kind: fix. Created 2026-10-26. Done 2026-10-27.
 
 Found in item 009's measurements
 ([009-03](../009-handles/03-measurements.md), sections 4 and 7), by Claude
@@ -32,6 +32,13 @@ Implemented on 2026-10-27 by Claude (Opus 5.5, Claude Code), at Frans's
 request ("Decision: A. When possible, implement this and commit it."), in
 one commit: changes 1 to 7 and their tests, in "Implemented". Still open:
 the measurements on s1 and P4's soak of "Done when".
+
+Done on 2026-10-27, at Frans's word, on the evidence of "Measured after the
+change" (s1 and F53): asked whether to close it now or wait for P4's soak
+and ScaleBench, he chose "Close it now". Those two run in 006-09's quiet
+block (W1.3, W1.4) as a confirmation; if they show a read or a commit that
+waits for the stream's writer, this entry is opened again. They are also
+the evidence for item 009's target 2, which 006-09 decides.
 
 
 The fault

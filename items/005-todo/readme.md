@@ -28,7 +28,6 @@ Open
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10). For release 2026.1: kept, documented as experimental | open |
-| [005-46](46-stream-file-lock.md) | Fix | A read of the stream's last file waits for the writer's append and its `fsync` (`FileStream.DbFile`, one monitor for both): seconds on s1's disk, the longest waits left there with handles (009-03); and every read waits while reclaim's physical cut deletes files (`FileStream.pretruncate`, the stream's monitor): up to 171 ms in P4's soak on F53, under every collector (009-04). Investigated 2026-10-27, with probes: every read also waits while a new file is forced (`newFile`), an encrypted database's reads wait for each other, and a commit by an interrupted thread that makes a physical cut fails the database. Proposed: positional reads on a channel of each file's own, safe from interrupts; the file list without a lock; a new file made, and a cut's files deleted on a thread of their own, outside the stream's monitor. Decided 2026-10-27: as proposed; `SalsaStream` and interrupts in this entry (today an interrupt can fail the database, a commit that waits for room in the write buffer or makes a cut, or hang it, the storage thread interrupted; a rule proposed, one question open); the test reports note a writer's waits for room, which do not count against item 009's target 2. Implemented 2026-10-27, rule A for interrupts; measured the same day on s1 and F53: no read waits for a force, a new file or a cut any more, and a commit only for room in the write buffer when the disk stalls. Still open: P4's soak and Props and ScaleBench (006-09's quiet block). Item 009's target 2 waits for them | open |
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
 | [005-48](48-group-commit.md) | Investigate | Group commit: a sync that waits starts the flush, instead of waiting for `BufferedStream`'s timer; one thread's durable commit from 35 ms to about one force (005-13's question 5) | open |
 | [005-49](49-smooth-index-writes.md) | Investigate | Smooth index writes: at large startup distances the index is written in bursts (10M keys, 1000 MB: windows of 70 to 1,100 bytes a put); a commit's index writes should follow its own size. Before 007-03's step 3 (005-38) | open |
@@ -45,6 +44,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-46](46-stream-file-lock.md) | Fix | A read of the stream's last file waits for the writer's append and its `fsync` (`FileStream.DbFile`, one monitor for both): seconds on s1's disk, the longest waits left there with handles (009-03); and every read waits while reclaim's physical cut deletes files (`FileStream.pretruncate`, the stream's monitor): up to 171 ms in P4's soak on F53, under every collector (009-04). Investigated 2026-10-27, with probes: every read also waits while a new file is forced (`newFile`), an encrypted database's reads wait for each other, and a commit by an interrupted thread that makes a physical cut fails the database. Proposed: positional reads on a channel of each file's own, safe from interrupts; the file list without a lock; a new file made, and a cut's files deleted on a thread of their own, outside the stream's monitor. Decided 2026-10-27: as proposed; `SalsaStream` and interrupts in this entry (today an interrupt can fail the database, a commit that waits for room in the write buffer or makes a cut, or hang it, the storage thread interrupted; a rule proposed, one question open); the test reports note a writer's waits for room, which do not count against item 009's target 2. Implemented 2026-10-27, rule A for interrupts; measured the same day on s1 and F53: no read waits for a force, a new file or a cut any more, and a commit only for room in the write buffer when the disk stalls. Done 2026-10-27, at Frans's word; P4's soak and ScaleBench in 006-09's quiet block confirm it, and are item 009's evidence | done | 2026-10-27 |
 | [005-03](03-sweep-cost.md) | Investigate | The sweep's cost under read churn (item 001, finding 10). Done by item 009: handles removed the sweep; the capacity controller runs batches of at most 2 ms, and in P4's soak the writer and the readers keep their paced rates (009-04) | done | 2026-10-27 |
 | [005-51](51-eviction-on-calls.md) | Fix | Eviction only in response to the calls: the eviction thread woke once a second while the database was open, also when idle (`evictorLock.wait(1000)`), against 010-P3. Now it waits with no timeout, the database's close wakes it, and `close()` returns after it has ended | done | 2026-10-27 |
 | [005-57](57-startup-header-reads.md) | Investigate | Startup without rule 4's header reads: a cold start at 10M keys took minutes on s1, most of it rule 4's reads of a header for each stream pointer of D's nodes (007-05). Rule 4 now finds a pointer's node by its position (the startup section's `posToId`, the canonical objects' positions), with no read but for a top node's pointer, checked against rule 4 by node id at every startup of the tests; with it, in the prototype, a cold start on s1 at 10M keys took about 46 and 51 s at 50 and 200 MB, where it took 214 and 210 s. Part 1 of the report; part 2, the writer's reads, not made (Frans: "Part 1 alone") | done | 2026-10-27 |
@@ -111,6 +111,7 @@ is 005-45. 005-11 is kept as it is for release 2026.1, documented as
 experimental; its decision waits for Frans. 005-55 is done; it did not
 change the eviction thread, so 005-51 does not depend on it; 005-51 is
 done. 005-57 is done (part 1); 005-58, its Lean theorem, can go any time.
+005-46 is done.
 
 
 Files
@@ -249,8 +250,9 @@ Files
 * [46-stream-file-lock.md](46-stream-file-lock.md). 005-46, a read of the
   stream's last file waits for the writer's append and its `fsync`, and
   every read waits for a new file's forces and a physical cut's deletes;
-  found in 009's measurements and 009-04's soaks; investigated, a fix
-  proposed; open; the probes and their output in
+  found in 009's measurements and 009-04's soaks; investigated, fixed
+  (`eaec93e`, with interrupts), measured on s1 and F53; done; the probes
+  and their output, before and after, in
   [46-stream-file-lock/](46-stream-file-lock/).
 * [47-written-not-forced.md](47-written-not-forced.md). 005-47, a
   durability of "written, not forced": Frans's question, the options and
@@ -1093,3 +1095,10 @@ which the report now shows apart. On F53 the entry's probes: no reader
 waits for a slow force, a new file or a cut (a cut of 57 files from 309 ms
 to 0.5 ms for the cut and 7 ms for the readers), and every call by an
 interrupted thread returns and keeps the flag. In 46-stream-file-lock/after/.
+
+2026-10-27. 005-46 done, at Frans's word ("Close it now", asked whether to
+close it on the day's measurements or wait for P4's soak and ScaleBench), by
+Claude (Opus 5.5, Claude Code). The soak and ScaleBench run in 006-09's
+quiet block as a confirmation, and as item 009's evidence for its target 2;
+if they show a read or a commit waiting for the stream's writer, 005-46 is
+opened again.
