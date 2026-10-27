@@ -21,6 +21,7 @@ import SIS.ReclaimTheorems
 import SIS.HandleReclaimTheorems
 import SIS.Proof.HandleCutRun
 import SIS.ReclaimExample
+import SIS.HandleReclaimExample
 import SIS.Bound
 import SIS.BoundTheorems
 import SIS.BoundExample

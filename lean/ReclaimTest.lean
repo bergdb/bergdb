@@ -6,15 +6,20 @@ checked by running). For each startup pos policy: the assumptions and
 `PolicyCutOK`, T8 at every restart, T12; and with eviction and the four cache
 schedules, after every transaction, the records and D, reads from the first
 available time on (on the cut stream from the running memory too, T9), the
-invariants, and the restarts from the cut streams. And T-SCHEME by running
+invariants, and the restarts from the cut streams; and with handles
+(bergdb 005-62, SIS/HandleReclaimExample.lean) and five eviction schedules, the
+records and D after every transaction (T12 over handles), reads from the first
+available time on, on the cut stream too (T9 over handles), and after the
+restarts, and the lookups at the end. And T-SCHEME by running
 (WP R6, `checkSchemeB`): for every iteration whose scheme conditions hold,
 `CutOK` at its cut position in every later state past the waits.
 Usage: lake exe reclaimtest [seeds] [n] [scheme]
   scheme: T-SCHEME only (for larger runs).
 -/
 import SIS.ReclaimExample
+import SIS.HandleReclaimExample
 
-open SIS SIS.Example SIS.PhysExample SIS.EvictExample SIS.ReclaimExample
+open SIS SIS.Example SIS.PhysExample SIS.EvictExample SIS.ReclaimExample SIS.HandleReclaimExample
 
 def main (args : List String) : IO UInt32 := do
   let seeds := (args[0]?.bind String.toNat?).getD 20
@@ -30,6 +35,8 @@ def main (args : List String) : IO UInt32 := do
     let mut hist := 0
     let mut trans := 0
     let mut fails := 0
+    let mut htrans := 0
+    let mut hfails := 0
     let mut sIters := 0
     let mut sStates := 0
     let mut sFails := 0
@@ -51,12 +58,17 @@ def main (args : List String) : IO UInt32 := do
           let (n1, f1) := checkEvictCut spec4 al cs sched seed
           trans := trans + n1
           fails := fails + f1
+        for sched in [0, 1, 2, 3, 4] do
+          let (n2, f2) := checkHandleCut spec4 al cs sched seed
+          htrans := htrans + n2
+          hfails := hfails + f2
     if fails != 0 then bad := bad + 1
+    if hfails != 0 then bad := bad + 1
     if sFails != 0 then bad := bad + 1
     let scheme := s!"T-SCHEME: {sIters} iterations with the scheme's conditions, CutOK checked in {sStates} states past the waits, {sFails} fail"
     if schemeOnly then
       IO.println s!"policy {a}: {scheme}"
     else
-      IO.println s!"policy {a}: assumptions {okok}/{seeds}, T8 {t8ok}/{seeds}, T12 {t12ok}/{seeds} seeds; largest cut per seed: {cuts}; cuts with a node in D not reachable from the first available time on: {hist}; with eviction: {trans} transactions, {fails} fail; {scheme}"
+      IO.println s!"policy {a}: assumptions {okok}/{seeds}, T8 {t8ok}/{seeds}, T12 {t12ok}/{seeds} seeds; largest cut per seed: {cuts}; cuts with a node in D not reachable from the first available time on: {hist}; with eviction: {trans} transactions, {fails} fail; with handles: {htrans} transactions, {hfails} fail; {scheme}"
   IO.println (if bad == 0 then "all checks pass" else s!"{bad} failures")
   return (if bad == 0 then 0 else 1)

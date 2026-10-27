@@ -321,8 +321,16 @@ Not trusted, tests only:
   assumptions on the virtual root (`execRootOK_spec4`, `virtLiveOK_spec4`;
   also `virtLiveOK_spec4e`).
   `lake exe reclaimtest 20 30`: the same on random runs,
-  for four startup pos policies; `lake exe reclaimtest 100 100 scheme`:
-  T-SCHEME only, on larger runs (9 minutes).
+  for four startup pos policies, and with handles (below); `lake exe
+  reclaimtest 100 100 scheme`: T-SCHEME only, on larger runs (9 minutes).
+* SIS/HandleReclaimExample.lean (bergdb 005-62): reclaim with handles by
+  running, on example 4 with cuts and HandleExample's five eviction schedules
+  (`checkHandleCut`): after every transaction the records are the run's, cut at
+  the largest cut so far, and D is the run's (T12 over handles); reads from the
+  first available time on give P, also on the cut stream from the running
+  memory (T9 over handles) and after the restart from the cut stream; at the
+  end the lookups from the first available time on are the run's. `#guard`
+  checks on two runs with cuts; `lake exe reclaimtest` runs it on random runs.
 * Check/ and TraceCheck.lean: the trace checker, `lake exe tracecheck`. It
   checks traces of Java runs against the model's definitions
   ([011-11](../items/011-docs-archive/11-level2-alignment.md), section 8.5;
