@@ -299,6 +299,18 @@ running, put down to s1's disk or the kernel's reclaim in the run's memory
 cgroup, a judgement for Frans to see. Cold startup at 10M keys: 21.6 and
 19.6 s (170 to 193 s before 005-57).
 
+2026-10-27, 14:38. The work resumed after the usage window's reset: W2
+(005-49) and W5 (005-48) go on as new agents at max effort, from their
+State notes, clones and outputs. Two agents for now, to pace usage; W6
+(005-53's question 3, 005-56's check, 005-52's night step) waits for a
+free slot.
+
+2026-10-27, 14:45 to 15:22. Both agents stopped at the usage limit (its
+window reset at 15:20, not 14:30). At 15:22 Frans: "5h usage has been
+reset. At 0% now. So, go ahead." Both resumed where they stopped, and W6
+started (at high effort, as its pieces are small): 005-53's question 3,
+005-56's check, 005-52's night step.
+
 
 ## 8. Outcome
 
